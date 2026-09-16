@@ -35,7 +35,12 @@ run_hca_optimization <- function() {
   box_scores <- readRDS(box_path)
 
   # 2. Prepare Resolved Dataset
-  resolved <- pred_log |> filter(status == "RESOLVED")
+  # P4-G (Wave 3): exclude is_synthetic fixture rows (C-3). Verified 2026-09-16 that every
+  # currently-shipped RESOLVED row in prediction_accuracy_log.rds is a DIAG_* synthetic fixture
+  # (n=100, all is_synthetic=TRUE) with zero real resolved games logged yet — without this
+  # filter the optimizer would silently fit against fabricated data and report a confident but
+  # meaningless "optimal HCA".
+  resolved <- pred_log |> filter(status == "RESOLVED", !is_synthetic)
   if (nrow(resolved) == 0) {
     stop("No RESOLVED predictions found to optimize against.")
   }
