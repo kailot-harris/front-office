@@ -51,6 +51,13 @@ cat("=== Phase 4 Wave 2 (P4-B) dashboard tests ===\n\n")
 
 app_src <- readLines("app.R", warn = FALSE)
 
+# The negative assertions below ("the old broken call is GONE") must be evaluated against CODE
+# only. Every fix in this wave cites its finding ID in a comment that necessarily quotes the old
+# broken expression verbatim, so a naive grep over the raw file matches the comment and reports a
+# false failure. app_code strips whole-line comments and trailing comments before those greps.
+app_code <- sub("#.*$", "", app_src)
+app_code <- app_code[grepl("[^[:space:]]", app_code)]
+
 # ==============================================================================
 # PART 1 - STATIC SOURCE CHECKS (no browser needed)
 # ==============================================================================
@@ -69,29 +76,30 @@ ok("CHECK 1 (M-6) app.R contains 0 definitions of `%||%`",
            paste(src_lines, collapse = ",")))
 
 # --- C-1: no restated HCA literal ---------------------------------------------------------------
-hca_lits <- grep("calc_hca.*value\\s*=\\s*2\\.4[^0-9]|%\\|\\|%\\s*2\\.4[^0-9]|\\b11\\.6\\b", app_src)
+hca_lits <- grep("calc_hca.*value\\s*=\\s*2\\.4[^0-9]|%\\|\\|%\\s*2\\.4[^0-9]|\\b11\\.6\\b", app_code)
 ok("CHECK 2 (C-1) no hardcoded HCA literal (2.4 / 11.6) remains in app.R",
    length(hca_lits) == 0,
    sprintf("WNBA_HCA referenced on lines %s", paste(grep("WNBA_HCA", app_src), collapse = ",")))
 
 # --- H-3: constant-based path + real column names -----------------------------------------------
 ok("CHECK 3a (H-3) no bare \"cache/box_scores_cache.rds\" literal; CACHE_TEAM_BOX used instead",
-   length(grep('"cache/box_scores_cache\\.rds"', app_src)) == 0 &&
-     length(grep("CACHE_TEAM_BOX", app_src)) > 0,
-   sprintf("CACHE_TEAM_BOX on lines %s", paste(grep("CACHE_TEAM_BOX", app_src), collapse = ",")))
+   length(grep('"cache/box_scores_cache\\.rds"', app_code)) == 0 &&
+     length(grep("CACHE_TEAM_BOX", app_code)) > 0,
+   sprintf("code-only matches for the dead literal = 0; CACHE_TEAM_BOX on app.R lines %s",
+           paste(grep("CACHE_TEAM_BOX", app_src), collapse = ",")))
 
 ok("CHECK 3b (H-3) diagnostics select() uses team_score / opponent_team_score",
-   length(grep("home_score\\s*=\\s*team_score", app_src)) > 0 &&
-     length(grep("away_score\\s*=\\s*opponent_team_score", app_src)) > 0 &&
-     length(grep("home_score\\s*=\\s*score\\b", app_src)) == 0,
-   "old score / opponent_score references absent")
+   length(grep("home_score\\s*=\\s*team_score", app_code)) > 0 &&
+     length(grep("away_score\\s*=\\s*opponent_team_score", app_code)) > 0 &&
+     length(grep("home_score\\s*=\\s*score\\b", app_code)) == 0,
+   "old score / opponent_score references absent from code")
 
 # --- M-3: stringr, not grepl --------------------------------------------------------------------
 ok("CHECK 4a (M-3) props search uses stringr::str_detect(fixed(..., ignore_case = TRUE))",
-   length(grep("str_detect\\(", app_src)) > 0 &&
-     length(grep("ignore_case\\s*=\\s*TRUE", app_src)) > 0 &&
-     length(grep("grepl\\(input\\$props_search_player", app_src)) == 0,
-   "grepl(input$props_search_player, ...) removed")
+   length(grep("str_detect\\(", app_code)) > 0 &&
+     length(grep("ignore_case\\s*=\\s*TRUE", app_code)) > 0 &&
+     length(grep("grepl\\(input\\$props_search_player", app_code)) == 0,
+   "grepl(input$props_search_player, ...) removed from code")
 
 # M-3's caveat, re-verified on this machine rather than taken from the review on trust.
 subj <- c("A'ja Wilson", "aja wilson", "Caitlin Clark")
@@ -113,9 +121,9 @@ ok("CHECK 4c (M-3) a literal \"(\" errors under grepl() but is safe under str_de
 
 # --- L-6: single canonical props path -----------------------------------------------------------
 ok("CHECK 5 (L-6) props read uses CACHE_PLAYER_PROPS only (no data/ + cache/ dual path)",
-   length(grep('"data/latest_player_props\\.rds"', app_src)) == 0 &&
-     length(grep('"cache/latest_player_props\\.rds"', app_src)) == 0 &&
-     length(grep("CACHE_PLAYER_PROPS", app_src)) > 0,
+   length(grep('"data/latest_player_props\\.rds"', app_code)) == 0 &&
+     length(grep('"cache/latest_player_props\\.rds"', app_code)) == 0 &&
+     length(grep("CACHE_PLAYER_PROPS", app_code)) > 0,
    sprintf("CACHE_PLAYER_PROPS on lines %s", paste(grep("CACHE_PLAYER_PROPS", app_src), collapse = ",")))
 
 # --- C-3 / M-8 source-level ---------------------------------------------------------------------
@@ -130,7 +138,7 @@ ok("CHECK 7a (M-8) Win_Pct formatted with scales::percent() at display time",
    sprintf("scales::percent on lines %s", paste(grep("scales::percent", app_src), collapse = ",")))
 
 ok("CHECK 7b (M-8) app.R holds no hardcoded \"79.3%\" string Win_Pct",
-   length(grep('Win_Pct\\s*=\\s*"', app_src)) == 0,
+   length(grep('Win_Pct\\s*=\\s*"', app_code)) == 0,
    "fallback tibble now stores a numeric proportion")
 
 # ==============================================================================
@@ -211,8 +219,17 @@ click_tab <- function(app, tab) {
     'var el = document.querySelector(\'a[data-value="%s"]\'); if (el) { el.click(); true; } else { false; }',
     tab))
 }
+# Scope the error query to the ACTIVE tab pane. shinydashboard keeps every tab in the DOM, so a
+# single broken output on one tab otherwise shows up again on every tab clicked afterwards and is
+# counted N times (this is how the pre-existing plot_embeddings_heatmap failure presented as "5
+# console errors" across 5 tabs). Falls back to a document-wide query if no active pane is found.
 tab_errors <- function(app) {
-  app$get_js('JSON.stringify(Array.from(document.querySelectorAll(".shiny-output-error")).map(function(e){return {id:e.id, text:e.innerText};}));')
+  app$get_js('
+    var pane = document.querySelector(".tab-pane.active") || document;
+    JSON.stringify(Array.from(pane.querySelectorAll(".shiny-output-error")).map(function(e){
+      return {id: e.id, text: e.innerText};
+    }));
+  ')
 }
 n_errors <- function(js) {
   parsed <- jsonlite::fromJSON(js)

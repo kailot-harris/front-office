@@ -56,9 +56,15 @@ cat("=== Phase 4 Wave 2 / P4-D (agent_pipeline) tests ===\n\n")
 DAG <- tibble::tribble(
   ~script,                          ~fn,                           ~mode,    ~out,
   "tools/data_health_probe.R",      "check_cache_health",          "call",   NA,
+  # L-4 (with agent_props): explicit ingest stage. "call" not "guard" — its sys.nframe() footer
+  # stays dormant on purpose so call_fn is the single invoker (no double-ingest). No declared
+  # output: daily_box_ingest() legitimately skips the write when there are no new games.
+  "daily_ingest.R",                 "daily_box_ingest",            "call",   NA,
   "sync_rosters.R",                 "sync_active_rosters",         "guard",  file.path(CACHE_DIR, "active_rosters_cache.rds"),
   "injury_scraper.R",               "fetch_live_wnba_injuries",    "guard",  CACHE_INJURY_DATA,
-  "team_embeddings.py",             NA,                            "py",     CACHE_EMBEDDINGS,
+  # Real output is logs/analytics.duckdb, NOT config.R's CACHE_EMBEDDINGS/CACHE_SIMILARITY CSVs —
+  # see the corrected stage comment in run_full_pipeline.R.
+  "team_embeddings.py",             NA,                            "py",     "logs/analytics.duckdb",
   "prediction_accuracy_logger.R",   "reconcile_predictions",       "call",   NA,
   "shot_quality_engine.R",          NA,                            "always", "cache/team_shot_quality.rds",
   "fatigue_travel_engine.R",        "evaluate_slate_fatigue",      "guard",  "cache/travel_fatigue_metrics.rds",
@@ -66,16 +72,19 @@ DAG <- tibble::tribble(
   "roster_bottom_up_engine.R",      "project_all_wnba_teams",      "guard",  "cache/projected_wnba_standings.rds",
   "market_odds_engine.R",           NA,                            "always", file.path(CACHE_DIR, "latest_value_bets.rds"),
   "prediction_accuracy_logger.R",   "log_todays_predictions",      "call",   NA,
-  "player_props_engine.R",          "generate_active_props_table", "guard",  "data/latest_player_props.rds",
+  # Canonical single write after agent_props' L-6 fix (was also writing data/latest_player_props.rds).
+  "player_props_engine.R",          "generate_active_props_table", "guard",  CACHE_PLAYER_PROPS,
   "copula_props_engine.R",          "run_copula_suite",            "guard",  "cache/copula_wilson_pra.rds",
   "playoff_simulator.R",            "simulate_playoff_suite",      "guard",  "cache/playoff_series_wnba_demo.rds",
   "risk_management_engine.R",       "compute_risk_state",          "guard",  "cache/risk_state.rds",
   "notify_bets.R",                  NA,                            "always", NA,
-  "bet_tracker.r",                  NA,                            "always", file.path(CACHE_DIR, "betting_ledger.rds")
+  # betting_ledger.rds is CONDITIONAL (only written when a pending bet actually grades), so the
+  # unconditional metrics file is the one declared for the freshness assertion.
+  "bet_tracker.r",                  NA,                            "always", file.path(CACHE_DIR, "rolling_bet_metrics.rds")
 )
 
-check(nrow(DAG) == 17, "CHECK 0a  DAG table describes all 17 run_stage() invocations",
-      sprintf("%d stages", nrow(DAG)))
+check(nrow(DAG) == 18, "CHECK 0a  DAG table describes all 18 run_stage() invocations",
+      sprintf("%d stages (17 original + daily_ingest.R, added for L-4)", nrow(DAG)))
 
 pipeline_src <- readLines("run_full_pipeline.R", warn = FALSE)
 declared <- unique(na.omit(stringr::str_match(pipeline_src, '^\\s*run_stage\\("([^"]+)"')[, 2]))
@@ -181,12 +190,20 @@ check(length(broken_before) >= 4,
 # CHECK 2 (M-7) — future.seed present on both future_lapply() calls
 # ==============================================================================
 cat("\n--- CHECK 2 (M-7 / M-2): static checks on run_full_pipeline.R ---\n")
-n_seed <- sum(grepl("future\\.seed", pipeline_src))
+# Strip whole-line AND trailing comments before counting: these fixes are heavily commented and
+# every finding ID / rationale note mentions the very tokens being grepped for. Counting raw lines
+# would pass on a file where the fix is only described, not applied.
+strip_comments <- function(lines) {
+  lines <- lines[!grepl("^\\s*#", lines)]
+  trimws(sub("#.*$", "", lines))
+}
+pipeline_code <- strip_comments(pipeline_src)
+n_seed <- sum(grepl("future\\.seed", pipeline_code))
 check(n_seed == 2, "CHECK 2a (M-7) future.seed passed to both future_lapply() calls",
       sprintf('grep -c "future.seed" run_full_pipeline.R = %d', n_seed))
-check(any(grepl('^source\\("config\\.R"\\)', pipeline_src)),
+check(any(grepl('^source\\("config\\.R"\\)', pipeline_code)),
       "CHECK 2b (M-2) run_full_pipeline.R sources config.R explicitly")
-check(any(grepl("system2\\(\"python\"", pipeline_src)) && any(grepl("exited with status", pipeline_src)),
+check(any(grepl("system2\\(\"python\"", pipeline_code)) && any(grepl("exited with status", pipeline_code)),
       "CHECK 2c (M-1) python stage uses system2() and checks the exit status")
 
 # ==============================================================================
@@ -194,8 +211,7 @@ check(any(grepl("system2\\(\"python\"", pipeline_src)) && any(grepl("exited with
 # ==============================================================================
 hca_lits <- character(0)
 for (f in c("roster_bottom_up_engine.R", "playoff_simulator.R")) {
-  src <- readLines(f, warn = FALSE)
-  code <- src[!grepl("^\\s*#", src)]
+  code <- strip_comments(readLines(f, warn = FALSE))
   if (any(grepl("2\\.40", code))) hca_lits <- c(hca_lits, f)
 }
 check(length(hca_lits) == 0, "CHECK 3 (C-1) no hardcoded 2.40 HCA literal in executable code",
@@ -204,8 +220,7 @@ check(length(hca_lits) == 0, "CHECK 3 (C-1) no hardcoded 2.40 HCA literal in exe
 # ==============================================================================
 # CHECK 4 (H-2) — naive player_id join gone from roster_bottom_up_engine.R
 # ==============================================================================
-rb <- readLines("roster_bottom_up_engine.R", warn = FALSE)
-rb_code <- rb[!grepl("^\\s*#", rb)]
+rb_code <- strip_comments(readLines("roster_bottom_up_engine.R", warn = FALSE))
 check(!any(grepl('left_join\\(rapm_df, by = "player_id"\\)', rb_code)) &&
         any(grepl("join_rapm_to_roster\\(", rb_code)),
       "CHECK 4 (H-2) roster_bottom_up_engine.R uses the shared join_rapm_to_roster() helper")
@@ -291,6 +306,19 @@ check(!any(grepl("UNRELIABLE VALUE", pipe_out)),
 check(any(grepl("\\[FRESH\\]", pipe_out)),
       "CHECK 6e (C-2) run_stage()'s new declared-output freshness assertion ran",
       sprintf("%d [FRESH] line(s) emitted", sum(grepl("\\[FRESH\\]", pipe_out))))
+
+# L-4: daily_ingest.R must not merely be sourced — daily_box_ingest() must actually EXECUTE.
+# The [STAGE] banner alone would also appear for a stage that no-ops, so the real evidence is a
+# log line the function body itself emits (`call: daily_box_ingest()` in the structured extras).
+ingest_stage  <- grepl("\\[STAGE\\] Ingest Latest WNBA Team Box Scores", pipe_out)
+ingest_body   <- grepl("daily_box_ingest\\(\\)", pipe_out)
+ingest_failed <- grepl("\\[FAILED\\] daily_ingest\\.R", pipe_out)
+cat("\n  --- L-4: daily_ingest.R stage, real console evidence ---\n")
+cat(paste0("  | ", pipe_out[ingest_stage | ingest_body], collapse = "\n"), "\n")
+check(any(ingest_stage) && any(ingest_body) && !any(ingest_failed),
+      "CHECK 6f (L-4) daily_ingest.R runs as an explicit stage and daily_box_ingest() executes",
+      sprintf("stage banner=%s, body log lines=%d, failed=%s",
+              any(ingest_stage), sum(ingest_body), any(ingest_failed)))
 
 # ==============================================================================
 # CHECK 7 (M-8) — Win_Pct is a numeric proportion in the freshly written standings

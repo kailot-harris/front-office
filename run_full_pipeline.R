@@ -213,6 +213,29 @@ run_stage <- function(script_name, description, call_fn = NULL, entry_fn = NULL,
 run_stage("tools/data_health_probe.R", "Run Data Health Probe",
           call_fn = "check_cache_health")
 
+# 0.5. Box-Score Ingestion
+# FINDING L-4 (docs/SECURITY_TECHNICAL_REVIEW.md), coordinated with agent_props (P4-E):
+# daily_ingest.R was never a DAG stage. Box-score ingestion happened only as an implicit side
+# effect of prediction_accuracy_logger.R sourcing daily_ingest.R — an invisible dependency that
+# ran the ingest at an arbitrary point in the DAG for reasons unrelated to ingestion.
+# agent_props removed that side effect in this same wave, so the ingest now needs its own
+# explicit stage here or it does not run AT ALL (every downstream engine would quietly consume a
+# frozen data/box_scores_cache.rds — the C-2 failure mode again, one layer up).
+# Placed after the health probe (so a corrupt cache is reported first) and before the IO block
+# below, which loads the caches this stage refreshes.
+#
+# TWO DELIBERATE CHOICES, both per agent_props' spec — do not "tidy" either one:
+#  1. `call_fn`, NOT `entry_fn`. daily_ingest.R's own footer guard is `sys.nframe() == 0`, which
+#     stays dormant under run_stage()'s source(). That is CORRECT here and is deliberately NOT
+#     swept into this wave's C-2 `!interactive()` migration: the guard firing on source AND this
+#     call_fn invoking the function would double-ingest.
+#  2. NO `output =` declaration, even though this stage owns CACHE_TEAM_BOX. daily_box_ingest()
+#     legitimately skips the write when there are no new games ("Team box cache already up to
+#     date; no write necessary", daily_ingest.R:124), so asserting freshness here would fire a
+#     false staleness WARN on every quiet day and train the operator to ignore the check.
+run_stage("daily_ingest.R", "Ingest Latest WNBA Team Box Scores (Incremental)",
+          call_fn = "daily_box_ingest")
+
 # Optimize Base Cache I/O: Load large, relatively static caches into Global Env once.
 # Note: GLOBAL_PLAYER_BOX is static during the pipeline (updated by daily_ingest.R).
 if (file.exists(file.path(CACHE_DIR, "player_box_scores_cache.rds"))) {
@@ -240,9 +263,17 @@ if (file.exists(file.path(CACHE_DIR, "active_rosters_cache.rds"))) {
 run_stage("injury_scraper.R", "Scrape Official WNBA Injury Scratches & Availability Updates",
           entry_fn = "fetch_live_wnba_injuries",
           output   = CACHE_INJURY_DATA)
-# Output: data/team_embeddings.csv, data/team_similarity_matrix.csv (T1b Handoff Notes)
+# Output: logs/analytics.duckdb (tables `team_embeddings` + `team_similarity`).
+# CORRECTED IN PHASE 4 (agent_pipeline): the comment here used to claim this stage outputs
+# data/team_embeddings.csv + data/team_similarity_matrix.csv (config.R's CACHE_EMBEDDINGS /
+# CACHE_SIMILARITY). It does not, and has not for some time — team_embeddings.py:103-114 writes
+# into logs/analytics.duckdb via `con.append()`. The two CSVs are stale 2026-09-12 artifacts that
+# nothing in the DAG refreshes. Found by the new declared-output mtime assertion on its very first
+# real run (it flagged both CSVs as 97.8 hours old behind a [COMPLETED] stage) — exactly the class
+# of drift C-2 is about. The CSV constants are left untouched in config.R (not this wave's
+# ownership); flagged in the Handoff Notes for a later wave to retire or repoint.
 run_stage("team_embeddings.py", "Train Team Style Embeddings & Similarity Matrix (PyTorch)",
-          output = c(CACHE_EMBEDDINGS, CACHE_SIMILARITY))
+          output = "logs/analytics.duckdb")
 
 # 1.5. Prediction-Accuracy Logging — Reconciliation
 run_stage("prediction_accuracy_logger.R", "Reconcile Pending Model Predictions Against Completed WNBA Games",
@@ -300,8 +331,12 @@ run_stage("prediction_accuracy_logger.R", "Log Today's Real Model Win-Probabilit
 # depends on market_odds_engine.R
 message("\n>>> [PARALLEL] Launching Props Engines Group...")
 props_engines <- list(
+  # Declared output is config.R's CACHE_PLAYER_PROPS (= cache/latest_player_props.rds). This
+  # stage used to write TWO copies; agent_props collapsed that to one canonical write in this
+  # same wave (finding L-6), leaving data/latest_player_props.rds an orphan. Declaring the stale
+  # data/ path here would make the freshness assertion cry wolf every night.
   list(s = "player_props_engine.R", d = "Price ZINB Overdispersed WNBA Player Props",
-       f = "generate_active_props_table", o = "data/latest_player_props.rds"),
+       f = "generate_active_props_table", o = CACHE_PLAYER_PROPS),
   list(s = "copula_props_engine.R", d = "Simulate Joint Multivariate Gaussian Copula (PRA / SGPs)",
        f = "run_copula_suite", o = "cache/copula_wilson_pra.rds")
 )
@@ -328,9 +363,12 @@ run_stage("risk_management_engine.R", "Audit Drawdown State & Set Dynamic Kelly 
 # 8. Notification & Settlement
 # Discord: reads Sys.getenv("DISCORD_WEBHOOK", "") only
 run_stage("notify_bets.R", "Dispatch Filtered Discord Webhooks (EV >= 3.0%, CLV >= -0.5%)")
-# Output: cache/betting_ledger.rds, cache/rolling_bet_metrics.rds
+# Output: cache/rolling_bet_metrics.rds (every run) and cache/betting_ledger.rds (CONDITIONAL —
+# only rewritten when at least one pending bet actually grades; on a slate where every bet is
+# still unresolved the ledger is legitimately untouched). Only the unconditional output is
+# declared for the freshness assertion, so a quiet night does not produce a false staleness WARN.
 run_stage("bet_tracker.r", "Grade Previous Completed WNBA Events & Update Rolling CLV%",
-          output = file.path(CACHE_DIR, c("betting_ledger.rds", "rolling_bet_metrics.rds")))
+          output = file.path(CACHE_DIR, "rolling_bet_metrics.rds"))
 
 # Reset parallel plan to sequential. This also shuts the multisession workers down, so by the
 # time the spill merge below runs, no other process holds logs.duckdb.

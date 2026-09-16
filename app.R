@@ -1001,6 +1001,43 @@ server <- function(input, output, session) {
     # round()/max() on a possibly-character column (that throws "non-numeric argument to
     # mathematical function" - the bug being fixed here), and use the real labels when available
     # instead of a generic T1..Tn placeholder.
+    # PRE-EXISTING BUG found by P4-B's headless probe (present at Wave 0 baseline commit 20b12fd,
+    # NOT introduced by Phase 4). r_similarity_raw() above reads logs/analytics.duckdb's
+    # `team_similarity` table, which is stored LONG (225 rows = 15x15, columns
+    # team_a | team_b | similarity). Every line below assumes the WIDE NxN shape of
+    # data/team_similarity_matrix.csv, so `has_label_col` was FALSE, `n` became 225, and
+    # `colnames(mat) <- labels` assigned 225 names to a 3-column matrix:
+    #   Error: length of 'dimnames' [2] not equal to array extent
+    # That error node persisted in the DOM across every subsequently-clicked tab, which is why it
+    # showed up as 5 "console errors" in the probe. Handle the long form directly - it is already
+    # exactly the shape the ggplot below wants - and keep the wide path for the CSV-shaped input.
+    long_cols <- c("team_a", "team_b", "similarity")
+    if (all(long_cols %in% names(sim))) {
+      labels <- sort(unique(as.character(sim$team_a)))
+      long_df <- sim %>%
+        transmute(
+          row_team = factor(as.character(team_a), levels = labels),
+          col_team = factor(as.character(team_b), levels = labels),
+          similarity = as.numeric(similarity)
+        )
+      return(
+        ggplot(long_df, aes(x = col_team, y = row_team, fill = similarity)) +
+          geom_tile() +
+          scale_fill_gradient2(low = "#2c3e50", mid = "#af7ac5", high = "#ffffff",
+                               midpoint = 0.5, name = "Cosine Sim") +
+          labs(title = sprintf("%dx%d WNBA Team Embedding Cosine-Similarity Matrix",
+                               length(labels), length(labels)), x = NULL, y = NULL) +
+          theme_minimal() +
+          theme(
+            plot.background = element_rect(fill = "#1a222d", color = NA),
+            panel.background = element_rect(fill = "#1a222d", color = NA),
+            text = element_text(color = "#ecf0f1"),
+            axis.text = element_text(color = "#bdc3c7"),
+            axis.text.x = element_text(angle = 45, hjust = 1)
+          )
+      )
+    }
+
     has_label_col <- ncol(sim) == nrow(sim) + 1
     if (has_label_col) {
       first_col <- sim[[1]]
@@ -1014,6 +1051,18 @@ server <- function(input, output, session) {
     }
     n <- nrow(mat_df)
     mat <- as.matrix(mat_df)
+    # Fail-safe (same pre-existing bug as above): never assign dimnames to a non-square matrix -
+    # that throws "length of 'dimnames' [2] not equal to array extent" into the browser. Render a
+    # labelled notice instead of an opaque Shiny error state.
+    if (ncol(mat) != n) {
+      return(
+        ggplot() +
+          annotate("text", x = 1, y = 1, size = 5, color = "#e74c3c",
+                   label = sprintf("Similarity matrix is not square (%d rows x %d cols) - cannot render heatmap.",
+                                   n, ncol(mat))) +
+          theme_void() + theme(plot.background = element_rect(fill = "#1a222d", color = NA))
+      )
+    }
     labels <- if (!is.null(team_labels) && length(team_labels) == n) team_labels else paste0("T", 1:n)
     rownames(mat) <- labels
     colnames(mat) <- labels
