@@ -7,17 +7,19 @@ description: Scaffolds a new dated docs/task_assignments_phaseN.md (with Task Tr
 
 ## Why this exists
 
-This repo has run four remediation phases (`docs/task_assignments.md` through
-`docs/task_assignments_phase4.md`), each following the same conventions: a Task Tracker table
-keyed by short task IDs, agents grouped into waves by disjoint file ownership (not by finding
-severity — two agents in the same wave must never write the same file, since there's no merge
-tooling to reconcile conflicting edits), an explicit interface-contracts section for any
-schema/column/function-signature that multiple agents' work depends on, and an append-only
-Handoff Notes section where each agent records exactly what changed and why, including any
-findings *not* addressed and reasons. Future agents are expected to read prior phases' Handoff
-Notes before touching a script another agent already built, because actual filenames/schemas
-sometimes diverge from what an earlier plan document proposed — this only works if every phase
-actually follows the convention.
+This convention was ported from the WNBA Analytics repo's identically-shaped need: that repo ran
+four remediation phases (`docs/task_assignments.md` through `docs/task_assignments_phase4.md`),
+each following the same structure — a Task Tracker table keyed by short task IDs, agents grouped
+into waves by disjoint file ownership (not by finding severity — two agents in the same wave must
+never write the same file, since there's no merge tooling to reconcile conflicting edits), an
+explicit interface-contracts section for any schema/column/function-signature that multiple
+agents' work depends on, and an append-only Handoff Notes section where each agent records exactly
+what changed and why, including any findings *not* addressed and reasons. This repo is a fresh
+scaffold with no phase history yet, but the same convention applies from Phase 1 onward: future
+agents are expected to read prior phases' Handoff Notes before touching a script another agent
+already built, because actual filenames/schemas sometimes diverge from what an earlier plan
+document proposed — this only works if every phase actually follows the convention from the
+start.
 
 ## When to use
 

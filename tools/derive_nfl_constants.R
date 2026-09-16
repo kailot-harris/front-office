@@ -56,9 +56,18 @@ CURRENT_YEAR <- as.integer(format(Sys.Date(), "%Y"))
 # The season currently in progress (if any) has incomplete data (a partial slate of games with
 # NA scores for not-yet-played games) and must be excluded from variance/mean computations.
 raw_probe <- nflreadr::load_schedules(seasons = TRUE)
-completed_seasons <- raw_probe$season[!is.na(raw_probe$home_score) & !is.na(raw_probe$away_score)]
-LAST_COMPLETE_SEASON <- max(completed_seasons, na.rm = TRUE)
 EARLIEST_SEASON <- min(raw_probe$season, na.rm = TRUE)
+# A season only counts as "complete" if EVERY scheduled game in it has a final score - a
+# season with even one NA (future/not-yet-played game) is the in-progress current season and
+# must be excluded entirely, not partially included (an in-progress season's few played games
+# are a biased, tiny, non-representative sample - see the 2026 row of the per-season table
+# below, n=16 games, which would badly skew any window that included it).
+has_na_by_season <- tapply(
+  is.na(raw_probe$home_score) | is.na(raw_probe$away_score),
+  raw_probe$season, any
+)
+complete_seasons_only <- as.integer(names(has_na_by_season)[!has_na_by_season])
+LAST_COMPLETE_SEASON <- max(complete_seasons_only, na.rm = TRUE)
 
 cat("Earliest season available from load_schedules():", EARLIEST_SEASON, "\n")
 cat("Last season with complete (non-NA) final scores:", LAST_COMPLETE_SEASON, "\n\n")

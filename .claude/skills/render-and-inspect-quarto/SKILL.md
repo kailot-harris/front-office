@@ -7,12 +7,14 @@ description: Renders a .qmd/.Rmd file and visually inspects the actual output pa
 
 ## Why this exists
 
-`docs/WNBA_Pipeline_Manuscript.qmd` rendered successfully (exit 0, valid PDF, correct TOC,
-correctly resolved citations) but still had a real defect: the title page showed literal text
-"Invalid Date" instead of a date, because `` date: "`r Sys.Date()`" `` only evaluates under a
-knitr/R engine, and that document had no R code chunks to trigger one. Pandoc passed the string
-through unevaluated and the PDF title-block template choked on it. A successful render exit code
-says nothing about this class of defect — only actually looking at the rendered pages does.
+Ported from the WNBA Analytics repo's identically-shaped bug: a manuscript `.qmd` there rendered
+successfully (exit 0, valid PDF, correct TOC, correctly resolved citations) but still had a real
+defect — the title page showed literal text "Invalid Date" instead of a date, because
+`` date: "`r Sys.Date()`" `` only evaluates under a knitr/R engine, and that document had no R code
+chunks to trigger one. Pandoc passed the string through unevaluated and the PDF title-block
+template choked on it. The lesson generalizes directly: a successful render exit code says nothing
+about this class of defect — only actually looking at the rendered pages does, for any `.qmd`/`.Rmd`
+this repo produces, not just the one that first surfaced the bug.
 
 ## When to use
 

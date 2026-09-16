@@ -7,16 +7,18 @@ description: Verifies that every stage of run_full_pipeline.R actually regenerat
 
 ## Why this exists
 
-This repo previously had four pipeline stages (`sync_rosters.R`, `injury_scraper.R`,
-`roster_bottom_up_engine.R`, `playoff_simulator.R`) gate their real logic on
-`sys.nframe() == 0`, a condition that is only true when a script is the *top-level* `Rscript`
-entry point — never true when `source()`d from inside `run_stage()`, which is how every stage in
-this pipeline actually runs. The result: these stages logged `[COMPLETED]` in well under a second
-while doing nothing, and their output caches sat silently stale, sometimes for days, while the
-pipeline's own log insisted everything was fresh. `run_full_pipeline.R` now asserts this itself
-via `.check_stage_output()`, but this skill exists as an independent, rerunnable second check —
-useful when auditing a run's logs after the fact, or when verifying a fix to the guard condition
-actually holds across a real run.
+This check was ported from the WNBA Analytics repo's identically-shaped bug: several of that
+repo's pipeline stages gated their real logic on `sys.nframe() == 0`, a condition that is only
+true when a script is the *top-level* `Rscript` entry point — never true when `source()`d from
+inside a `run_stage()`-style orchestrator, which is how every stage in that pipeline actually ran.
+The result: those stages logged a success line in well under a second while doing nothing, and
+their output caches sat silently stale, sometimes for days, while the pipeline's own log insisted
+everything was fresh. The lesson generalizes directly here: once this repo has a
+`run_full_pipeline.R` DAG, any stage-invocation guard (`sys.nframe()`, `!interactive()`, or
+similar) is a latent instance of the exact same bug class until proven otherwise, and a log line
+claiming success is not evidence a stage actually did work — only an advancing output-file mtime
+is. This skill exists as an independent, rerunnable check for that, separate from whatever
+in-pipeline assertion the DAG itself may eventually add.
 
 ## When to use
 
@@ -40,39 +42,34 @@ actually holds across a real run.
    - Open the stage script and check its execution guard (`!interactive()`, `sys.nframe()`, etc.)
      for the exact bug class described above.
    - Do not assume the cache is merely "not updated because there was nothing new" without
-     verifying that against the stage's own logic — e.g. `daily_ingest.R` is deliberately
-     incremental and may legitimately leave `CACHE_TEAM_BOX`'s mtime unchanged on a day with no
-     new games. Distinguish "legitimately nothing to do" from "silently failed to run" by reading
-     the stage's actual logic, not just the mtime delta.
+     verifying that against the stage's own logic — an incremental ingestion stage may
+     legitimately leave its output's mtime unchanged on a run with no new source data.
+     Distinguish "legitimately nothing to do" from "silently failed to run" by reading the
+     stage's actual logic, not just the mtime delta.
 4. Report a per-stage fresh/stale table plus a one-line verdict: pipeline run is trustworthy, or
    N stage(s) need investigation before trusting their output.
 
 ## Stage -> output manifest (keep in sync with run_full_pipeline.R)
 
-This manifest is hardcoded in `scripts/check_freshness.R` and mirrors the `output = ` arguments
-in `run_full_pipeline.R` as of the current DAG:
+**PLACEHOLDER — not yet populated.** This repo does not have a `run_full_pipeline.R` DAG yet (it's
+Phase 1+ work); there is nothing real to mirror here. The table below shows the *shape* this
+manifest must take once the pipeline exists — same columns, one row per stage — ported from the
+WNBA Analytics repo's equivalent table for reference, not as a claim about this repo's actual
+stages. Do not fabricate NFL-specific stage/script names to fill this in prematurely.
 
 | Stage script | Declared output(s) |
 |---|---|
-| `sync_rosters.R` | `cache/active_rosters_cache.rds` |
-| `injury_scraper.R` | `config.R`'s `CACHE_INJURY_DATA` |
-| `team_embeddings.py` | `logs/analytics.duckdb` |
-| `shot_quality_engine.R` | `cache/team_shot_quality.rds` |
-| `fatigue_travel_engine.R` | `cache/travel_fatigue_metrics.rds` |
-| `rapm_engine.R` | `cache/rapm_ratings.rds` |
-| `roster_bottom_up_engine.R` | `cache/projected_wnba_standings.rds` |
-| `market_odds_engine.R` | `cache/latest_value_bets.rds`, `cache/odds_history.rds` |
-| `player_props_engine.R` | `config.R`'s `CACHE_PLAYER_PROPS` |
-| `copula_props_engine.R` | `cache/copula_wilson_pra.rds` |
-| `playoff_simulator.R` | `cache/playoff_series_wnba_demo.rds` |
-| `risk_management_engine.R` | `cache/risk_state.rds` |
-| `bet_tracker.r` | `cache/rolling_bet_metrics.rds` |
+| `TODO: populate from run_full_pipeline.R once it exists` | `TODO` |
 
-Stages deliberately excluded from this manifest (no `output =` declared in
-`run_full_pipeline.R`, by design): `tools/data_health_probe.R` (diagnostic only),
-`daily_ingest.R` (incremental — see step 3 above), both `prediction_accuracy_logger.R`
-invocations (log-append semantics, not a single-file freshness target), and `notify_bets.R`
-(dispatch-only, no cache output).
+**Once `run_full_pipeline.R` exists in this repo:**
+1. Replace the placeholder row(s) above with one row per real stage, mirroring that script's
+   `output = ` arguments.
+2. Populate the matching `manifest` list in `scripts/check_freshness.R` (currently an empty
+   placeholder that errors loudly if run before this step is done) with the same stage/output
+   pairs.
+3. Note here which stages are deliberately excluded (diagnostic-only scripts, incremental
+   ingestion stages, log-append-only stages, dispatch-only stages) and why, mirroring the kind of
+   exclusions the WNBA repo's pipeline needed.
 
 **If `run_full_pipeline.R`'s stage list or output paths ever change, update this table and
 `scripts/check_freshness.R` together** — a stale manifest here would itself silently reintroduce

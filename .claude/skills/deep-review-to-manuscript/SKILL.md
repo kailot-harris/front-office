@@ -1,20 +1,21 @@
 ---
 name: deep-review-to-manuscript
-description: Runs a structured deep review of the WNBA Analytics pipeline (via a fresh subagent following a fixed doc/code reading order) and drafts a peer-review-style Quarto manuscript from the findings. Use when asked for a comprehensive/deep review of the project intended to produce a written report, whitepaper, or manuscript-style document — not for small-scope code review of a single PR or file.
+description: Runs a structured deep review of the NFL Analytics pipeline (via a fresh subagent following a fixed doc/code reading order) and drafts a peer-review-style Quarto manuscript from the findings. Use when asked for a comprehensive/deep review of the project intended to produce a written report, whitepaper, or manuscript-style document — not for small-scope code review of a single PR or file.
 ---
 
 # Deep Review to Manuscript
 
 ## Why this exists
 
-This is the exact workflow used to produce `docs/WNBA_Pipeline_Manuscript.qmd`: a fresh
-general-purpose subagent read the codebase in a specific order (project conventions first, then
-orchestration, then modeling code, then validation reports, then bug-history docs) and returned a
-structured findings report, which was then shaped into a manuscript with a fixed academic
-section skeleton. Doing this well depends on two things that are easy to skip under time
-pressure: giving the review subagent a *reading order* (not just "go read the repo") so it builds
-context in dependency order rather than randomly, and treating the subagent's report as raw
-material to be organized into prose, not as prose to copy-paste directly.
+This workflow was ported from the WNBA Analytics repo's identically-shaped need: producing a
+citable, structured manuscript from a deep codebase review required a fresh general-purpose
+subagent reading the codebase in a specific order (project conventions first, then orchestration,
+then modeling code, then validation reports, then bug-history docs), returning a structured
+findings report that was then shaped into a manuscript with a fixed academic section skeleton.
+Doing this well depends on two things that are easy to skip under time pressure: giving the review
+subagent a *reading order* (not just "go read the repo") so it builds context in dependency order
+rather than randomly, and treating the subagent's report as raw material to be organized into
+prose, not as prose to copy-paste directly.
 
 ## When to use
 
@@ -49,7 +50,8 @@ material to be organized into prose, not as prose to copy-paste directly.
    than one that is explicit about its provenance.
 6. **Invoke `render-and-inspect-quarto`** on the finished `.qmd` before reporting it as done —
    this workflow's own output is exactly the kind of document that skill exists to catch defects
-   in (this is literally how the "Invalid Date" bug was found the first time this workflow ran).
+   in (see that skill's own "Why this exists" for the ported anecdote of a rendering defect a
+   plain exit-code check missed).
 7. Tell the user where the file lives and what, if anything, still needs independent
    verification before the document should be treated as final.
 
