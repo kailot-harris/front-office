@@ -28,7 +28,7 @@ files" and "can we roll back a bad wave" unanswerable. Before Wave 1:
 | Task ID | Wave | Owner (agent) | Files Owned | Findings Covered | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | P4-0 | 0 | orchestrator | (repo-wide) `git init` + baseline commit | — | PENDING |
-| P4-C | 1 | `agent_foundation` | `config.R`, `logging_utils.R`, new `rapm_join_utils.R` | C-1 (constant), H-1 (redaction helper), H-2 (shared join helper), M-6 (canonical `%||%`), M-7 (log connection lifecycle), L-2 (config.R comment) | PENDING |
+| P4-C | 1 | `agent_foundation` | `config.R`, `logging_utils.R`, new `rapm_join_utils.R` | C-1 (constant), H-1 (redaction helper), H-2 (shared join helper), M-6 (canonical `%||%`), M-7 (log connection lifecycle), L-2 (config.R comment) | COMPLETED |
 | P4-I | 1 | orchestrator | new `docs/REMEDIATION_INTERFACE_CONTRACTS.md` | interface contracts consumed by Wave 2 | PENDING |
 | P4-A | 2 | `agent_engine` | `market_odds_engine.R`, `tools/optimize_hca.R`, `tools/backtest_margin_hyperparams.R`, `tools/build_calibration_cache.R` | C-1 (engine), H-1 (call site), H-4, L-1, M-5 (engine side), M-6 (remove local) | PENDING |
 | P4-B | 2 | `agent_dashboard` | `app.R` | C-1 (app.R), C-3 (Tab 8 filter/label), H-3, M-3, M-6 (remove local), M-8 (display), L-6 (read canonical) | PENDING |
@@ -95,4 +95,173 @@ and agent_props each independently produce/consume these without seeing each oth
   mark a task COMPLETED on a read-only code review of your own diff.
 
 ## Handoff Notes
-(Appended by each agent as it completes its wave — empty until Wave 1 starts.)
+(Appended by each agent as it completes its wave.)
+
+---
+
+### P4-C — `agent_foundation` (Wave 1) — COMPLETED 2026-09-16
+
+**Files changed:** `config.R`, `logging_utils.R`, new `rapm_join_utils.R`, new
+`tools/test_phase4_foundation.R`. Nothing else. (`logs/logs.duckdb` and `logs/wnba_pipeline.log`
+also show as modified in `git status` — that is the logger writing real rows during the test run,
+not a source edit.)
+
+**What landed**
+
+- **C-1 (constant).** `config.R` now defines `WNBA_HCA <- 2.40` in its own section directly after
+  `WNBA_MARGIN_SIGMA`, with provenance: NBA-inherited per T2, **not** independently re-derived for
+  the WNBA, deliberately not re-derived in this wave. Value only — no call site was rewired (that
+  is `agent_engine`/`agent_dashboard`/`agent_pipeline`'s Wave 2 work).
+- **M-6 (canonical `%||%`).** Kept in `logging_utils.R` in the hardened `is.na(a)[1]` form,
+  now with a comment marking it as the single definition and explaining why the subscript is
+  load-bearing. Local copies in `app.R:50` and `market_odds_engine.R:60` were **left in place**
+  for `agent_dashboard` / `agent_engine` to delete in Wave 2, as briefed.
+- **H-2 (shared join).** New `rapm_join_utils.R` exporting
+  `join_rapm_to_roster(rost, rapm, matched_only = TRUE)` plus
+  `normalize_rapm_last_name(x, from_full_name = TRUE)`.
+- **H-1 (redaction).** New `.log_redact()` applied to (a) every `...` value in
+  `.log_format_extra()`, (b) the `msg` itself, and (c) the DuckDB `extra_json` builder — so the
+  console, `logs/wnba_pipeline.log` and the `logs` table are all covered. Scrubs
+  `apiKey`/`api_key`/`api-key`/`token`/`access_token`/`auth`/`webhook`/`secret`/`password`/
+  `passwd`/`signature`/`key` as query or form params, the same names in JSON `"k": "v"` form,
+  Discord webhook paths (`.../api/webhooks/<id>/<token>`), and `Bearer`/`Basic` auth headers.
+- **M-7 (logging half only).** `.log_write()` no longer opens a connection per line. A
+  process-lifetime connection is held in a `.log_state` env, created lazily, revalidated with
+  `dbIsValid()`, re-established transparently if invalidated, and closed via
+  `reg.finalizer(..., onexit = TRUE)`. The `future.seed` half remains `agent_pipeline`'s.
+- **L-2 (config.R half only).** The window-sweep citation now points at
+  `data/window_sweep_3_25_results.csv` and names it authoritative; verified empirically that
+  `cache/window_sweep_3_25_results.rds` holds identical numbers for all 23 window sizes (differing
+  only in column naming, `ROC-AUC` vs `ROC.AUC`) and labelled it a redundant copy. The
+  `OFFSEASON_METHOD` block got an explicit **STALENESS FLAG**: the `"reset"` benchmark was run at
+  `window_size = 13` and has *not* been rechecked at the current `ROLLING_WINDOW_SIZE`; not
+  re-derived here (out of Wave 1 scope), flagged per the brief's second option.
+
+**FINDINGS FOR WAVE 2 — read these, they contradict existing documentation**
+
+1. **`CLAUDE.md` and `market_odds_engine.R:100-103`'s "verified zero team+last-name collisions"
+   claim is only half true.** It holds on the **roster** side (0 duplicate `(team_name, last_name)`
+   groups across all 209 rostered players — re-verified, see CHECK 2b). It does **not** hold on the
+   **RAPM** side: `rapm_ratings.rds` carries every player who logged possessions for a franchise, so
+   it has **15** duplicate `(team, last_name)` groups (both Ogwumike sisters on LA, two "Jones" on
+   CON, three "Williams" on PHX, etc.). The existing inline join therefore **fans out**: 121 matched
+   roster players become **128 joined rows**. Harmless for `calculate_matchup_delta()` (which takes a
+   per-team max) but it would have silently double-counted in the possession-weighted team
+   aggregates in `player_props_engine.R::get_team_def_rapm()` and
+   `roster_bottom_up_engine.R::compute_team_rapm_ratings()` — i.e. copying the "fixed"
+   market_odds join verbatim into those two files would have introduced a *new* bug.
+   `join_rapm_to_roster()` resolves it: one RAPM row per `(team, last_name)`, chosen by most total
+   possessions (`n_off_poss + n_def_poss`), ties broken deterministically by `total_rapm` then
+   `player_id`. This correctly picks Nneka over Chiney Ogwumike, Kelsey Mitchell, Jackie Young and
+   Jonquel Jones. Affected rows carry `rapm_ambiguous = TRUE` (7 of 121) for auditing.
+2. **No behaviour change for `agent_engine`.** CHECK 2d is a regression guard: per-team
+   `max(total_rapm)` from the helper is **identical** to the legacy inline fan-out join across all
+   15 teams (max abs diff = 0). Dropping the helper into `calculate_matchup_delta()` will not move
+   the star-power delta or any downstream number.
+3. **Contract detail for `agent_pipeline` / `agent_props`.** `join_rapm_to_roster()` defaults to
+   `matched_only = TRUE` (inner-join semantics). Both of your call sites aggregate with
+   `na.rm = TRUE` over possession weights, so inner vs. left join give arithmetically identical
+   results — just call it with the two documented args. Pass `matched_only = FALSE` if you want all
+   209 roster rows back with `total_rapm` NA-filled plus a `rapm_matched` logical. Returned key is
+   `(team_abbreviation, player_id)` where `player_id` is always the **roster/ESPN** ID; the RAPM-side
+   ID is preserved separately as `rapm_player_id`. Fail-safe per repo convention: NULL/empty/missing
+   -column input warns and returns a 0-row typed frame, never errors.
+4. **M-7 trade-off `agent_pipeline` must know about.** DuckDB permits exactly one *writing process*
+   per file. Holding the connection for the process lifetime removes connection churn in the parent
+   but means a second process (a `future_lapply` worker, or the Shiny app running next to the
+   pipeline) cannot open `logs.duckdb` at all while the parent lives. Verified empirically with two
+   concurrent `Rscript` processes: the contender **does not crash** (exit 0, all text-log lines
+   written) but its DuckDB rows would previously have been dropped silently. To stop the logger
+   losing records, a failed DB write now spills to a per-PID TSV
+   (`logs/logs_pending_<pid>.tsv`, path via `LOG_SPILL_FILE()`) and console `[LOG DB ERROR]` output
+   is throttled to once per 60s. **Open item for `agent_pipeline`:** the complementary half — having
+   workers buffer rows and return them to the parent, or merging the spill files back into the
+   `logs` table at end of run — is yours; the spill files are the handoff artifact.
+5. `tools/data_health_probe.R` reports `OVERALL HEALTH: FAILED` — this is **pre-existing and
+   unrelated**: `cache/features_cache.rds` is missing. Flagging so nobody attributes it to Wave 1.
+
+**Verification — real output of `"C:/Program Files/R/R-4.5.2/bin/Rscript.exe" tools/test_phase4_foundation.R`**
+
+```
+=== Phase 4 Wave 1 foundation tests ===
+
+[PASS] CHECK 1 (C-1) config.R defines WNBA_HCA == 2.40  -- WNBA_HCA = 2.4 (class numeric)
+
+  roster rows: 209   rapm rows: 430
+  raw player_id types -- roster: integer, rapm: character; raw ID overlap: 0
+
+  matched players per team:
+ team_abbreviation matched
+               ATL       9
+               CHI       8
+               CON       9
+               DAL       9
+                GS       9
+               IND       8
+                LA       6
+                LV       5
+               MIN       6
+                NY      10
+               PHX      10
+               POR       8
+               SEA       8
+               TOR       5
+               WSH      11
+[PASS] CHECK 2a (H-2) all 15 WNBA_TEAMS have >= 1 matched player  -- 15/15 teams matched, min 5 players/team; missing: none
+
+  duplicate (team,last_name) groups -- roster side: 0 | rapm side: 15
+  helper output: 121 rows for 121 distinct roster players (7 ambiguous, deduped)
+[PASS] CHECK 2b (H-2) 0 duplicate (team,last_name) on roster side; helper emits 1 row/player  -- roster_dups=0, output_dup_groups=0 (rapm side has 15 collision groups, resolved by helper)
+[PASS] CHECK 2c (H-2) output carries a numeric total_rapm with no NAs  -- range -5.03 .. 5.94
+[PASS] CHECK 2d (H-2) per-team top total_rapm identical to legacy market_odds_engine join  -- max abs diff = 0 across 15 teams
+[PASS] CHECK 2e (H-2) fail-safe on NULL input (warn + 0 rows, no error)  -- returned 0-row frame
+
+  .log_format_extra() rendered ->  | call: fetch_market_odds() | url: https://api.the-odds-api.com/v4/sports/basketball_wnba/odds/?apiKey=***REDACTED***&regions=us,us2,eu&markets=h2h&oddsFormat=american | condition_message: GET failed for https://api.the-odds-api.com/v4/sports/basketball_wnba/odds/?apiKey=***REDACTED***&regions=us,us2,eu&markets=h2h&oddsFormat=american
+[PASS] CHECK 3a (H-1) apiKey scrubbed from .log_format_extra() output  -- secret present = FALSE
+  .log_redact(discord webhook) -> https://discord.com/api/webhooks/***REDACTED***
+[PASS] CHECK 3b (H-1) Discord webhook path scrubbed
+  -- log_error() end-to-end (line below is the real logger output) --
+[2026-09-16 08:46:14] [ERROR] [test_phase4_foundation.R] PHASE4 FOUNDATION TEST (H-1 redaction probe). | call: fetch_market_odds() | url: https://api.the-odds-api.com/v4/sports/basketball_wnba/odds/?apiKey=***REDACTED***&regions=us,us2,eu&markets=h2h&oddsFormat=american | webhook: https://discord.com/api/webhooks/***REDACTED***
+[PASS] CHECK 3c (H-1) secret absent from text log AND logs.duckdb row  -- duckdb extra_json = call=fetch_market_odds(); url=https://api.the-odds-api.com/v4/sports/basketball_wnba/odds/?apiKey=***REDACTED***&regions
+[2026-09-16 08:46:14] [INFO] [test_phase4_foundation.R] PHASE4 M-7 connection reuse probe.
+[PASS] CHECK 3d (M-7) .log_write() reuses one process-lifetime DuckDB connection  -- same connection object = TRUE; rows 115 -> 116 across one log_error()
+[2026-09-16 08:46:14] [ERROR] [test_phase4_foundation.R] PHASE4 M-7 spill probe. | url: https://api.the-odds-api.com/v4/sports/basketball_wnba/odds/?apiKey=***REDACTED***&regions=us,us2,eu&markets=h2h&oddsFormat=american
+[LOG DB ERROR] simulated: DB locked by another process
+  spill file -> c:/Users/kailo/kayceeslices/WNBA Analytics/logs/logs_pending_30072.tsv
+  spill line -> 2026-09-16 08:46:14	ERROR	test_phase4_foundation.R	PHASE4 M-7 spill probe.	url=https://api.the-odds-api.com/v4/sports/basketball_wnba/odds/?
+[PASS] CHECK 3e (M-7) DB write failure spills the record to disk instead of dropping it  -- spilled=1 line(s), secret leaked=FALSE
+
+  NULL %||% 'fallback' -> fallback ; NA %||% 7 -> 7 ; c(NA,NA,NA) %||% 0 -> 0
+[PASS] CHECK 4 (M-6) canonical %||% handles scalar and full-NA vector without erroring
+
+  config.R cites: data/window_sweep_3_25_results.csv, cache/window_sweep_3_25_results.rds (all exist = TRUE)
+[PASS] CHECK 5 (L-2) window-sweep citations resolve to real files + offseason staleness flagged  -- citations_exist=TRUE, offseason_staleness_flag=TRUE
+
+=== ALL CHECKS PASSED: 0 check(s) failed ===
+EXIT=0
+```
+
+**Concurrency probe (M-7 trade-off, two simultaneous `Rscript` processes):**
+
+```
+[LOG DB ERROR] init failed: {"exception_type":"IO","exception_message":"Cannot open file \"...\\logs\\logs.duckdb\": The process cannot access the file because it is being used by another process.
+File is already open in C:\PROGRA~1\R\R-45~1.2\bin\x64\Rscript.exe (PID 28680)"}
+[2026-09-16 08:44:53] [INFO] [_tmp_lock_contender.R] CONTENDER line 1
+...
+[2026-09-16 08:44:58] [INFO] [_tmp_lock_contender.R] CONTENDER line 5
+CONTENDER SURVIVED (no crash)
+CONTENDER_EXIT=0
+```
+
+**`git diff --stat` at handoff** (`logs/*` = runtime side effect of the test run, not source edits;
+`rapm_join_utils.R` + `tools/test_phase4_foundation.R` are untracked/new):
+
+```
+ config.R               |  33 ++++++++++-
+ logging_utils.R        | 156 ++++++++++++++++++++++++++++++++++++++++++++-----
+ logs/logs.duckdb       | Bin 1060864 -> 1060864 bytes
+ logs/wnba_pipeline.log |  14 +++++
+ 4 files changed, 187 insertions(+), 16 deletions(-)
+```
+
+Left uncommitted for orchestrator review. Wave 2 is unblocked.

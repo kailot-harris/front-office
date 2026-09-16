@@ -108,7 +108,13 @@ SIMULATION_SEASON  <- 2027
 # <- 13, but that was an artifact of only sampling odd points on a noisier curve - re-run with the
 # full 3-25 sweep (matching the NBA baseline's own tested range) on 2026-09-12 against the same
 # real box_scores_cache.rds/293 held-out CURRENT_SEASON games. Full result in
-# WNBA_Analysis_Project.Rmd and cache/window_sweep_3_25_results.rds; the curve is genuinely
+# WNBA_Analysis_Project.Rmd and `data/window_sweep_3_25_results.csv` — that CSV is the
+# AUTHORITATIVE artifact for this sweep (FINDING L-2: this comment previously cited only
+# `cache/window_sweep_3_25_results.rds`, wrong directory *and* wrong extension). A
+# `cache/window_sweep_3_25_results.rds` does also exist; verified 2026-09-16 that the two hold
+# identical numbers for all 23 window sizes, differing only in column naming (`ROC-AUC` in the
+# .rds vs `ROC.AUC` after CSV round-tripping). Prefer the CSV; the .rds is a redundant copy.
+# The curve is genuinely
 # non-monotonic (e.g. window=5 dips below window=3/4). Peak: window=12 -> Accuracy 0.645 / ROC-AUC
 # 0.678 / Brier 0.225, narrowly ahead of window=13 (0.663 AUC) and window=15 (0.675 AUC), with no
 # further improvement out to window=25 (oscillates 0.65-0.67 AUC).
@@ -132,6 +138,14 @@ OFFSEASON_METHOD <- "reset"  # "reset", "mean_regress", or "decay"
 # 0.604) but lost on both AUC and Brier, which weight probability quality more directly - kept
 # "reset" as the default. Single train/test split, not cross-validated; re-run if the box score
 # cache grows substantially or behavior seems off.
+#
+# STALENESS FLAG (FINDING L-2, 2026-09-16): the benchmark above was run at window_size = 13, which
+# is NOT the live value — ROLLING_WINDOW_SIZE was subsequently lowered to 12 by the wider 3-25
+# sweep. The "reset" conclusion has NOT been rechecked at the current ROLLING_WINDOW_SIZE and is
+# therefore unverified at the value the pipeline actually runs with. Treat it as a carried-forward
+# default, not a validated one. Re-running the three-method comparison at ROLLING_WINDOW_SIZE
+# (read the constant, do not hardcode 12) is the open item; the margins that decided it were small
+# (reset 0.660 vs decay 0.657 AUC), so the winner could plausibly change.
 REST_DAYS_CAP  <- 7
 N_SIMULATIONS  <- 10000
 
@@ -157,6 +171,23 @@ N_SIMULATIONS  <- 10000
 # in the cache to keep it current (WNBA margins run wider than NBA's ~11.8-11.2 because there
 # are fewer possessions per game to regress extreme quarters back toward the mean).
 WNBA_MARGIN_SIGMA <- 14.0
+
+# ------------------------------------------------------------------------------------------
+# Home-Court Advantage (points added to the home side's projected margin)
+# ------------------------------------------------------------------------------------------
+# FINDING C-1 (docs/SECURITY_TECHNICAL_REVIEW.md): this value was previously restated as a bare
+# literal at eight call sites. Seven of them said 2.40; market_odds_engine.R's LIVE code path had
+# drifted to 11.6 (apparently the NBA original's ~11.2-family *sigma* constant pasted into the HCA
+# slot) while its own comment three lines above still documented 2.40 — and
+# tools/backtest_margin_hyperparams.R had since enshrined 11.6 as ground truth. At hca=11.6 with
+# WNBA_MARGIN_SIGMA=14 the model implies a 79.6% home win rate for two identical teams (real WNBA
+# is ~55-58%), which turned the bet recommender into an "always bet the home team at max Kelly
+# stake" machine. This constant is now the SINGLE SOURCE — no script may restate the literal.
+#
+# PROVENANCE: 2.40 is NBA-inherited per T2's note and has NOT been independently re-derived for
+# the WNBA. Deliberately not re-derived here (Phase 4 Wave 1 scope is centralization only);
+# re-running tools/optimize_hca.R against real WNBA margins is a separate, tracked decision.
+WNBA_HCA <- 2.40
 
 # ------------------------------------------------------------------------------------------
 # Cache Filepaths (mirrors NBA config.R's constants 1:1, repointed at this project's folder)

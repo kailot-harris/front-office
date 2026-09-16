@@ -34,8 +34,11 @@
   (`rapm_ratings.rds`'s `player_id` is a different numbering scheme than the ESPN IDs in
   `active_rosters_cache.rds`, and `player_name` there is last-name-only vs. full name in
   rosters). A join on `player_id` or full `player_name` between these two silently returns zero
-  matches. Join on `(team full name, normalized last name)` instead — verified collision-free
-  across current rosters — as done in `market_odds_engine.R`'s `calculate_matchup_delta()`.
+  matches. Join on `(team full name, normalized last name)` instead — but this key is **not**
+  collision-free on the RAPM side (15 `(team, last_name)` groups have >1 RAPM row, e.g. both
+  Ogwumike sisters), so a naive join still fans out. Use the shared `join_rapm_to_roster()`
+  helper in `rapm_join_utils.R`, which resolves each collision to one row (by most total
+  possessions, deterministic tiebreak) rather than reimplementing the join inline.
 
 ## Constants — always read from `config.R`, never hardcode or re-derive locally
 `config.R` centralizes every structural/modeling constant (`WNBA_TEAMS`, `WNBA_SEASON_GAMES`,
