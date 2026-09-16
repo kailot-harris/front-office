@@ -1,0 +1,1499 @@
+================================================================== 
+WNBA PIPELINE AUTOMATED RUN CHECK: Sat 09/12/2026  8:37:20.22 (month=~4,2) 
+================================================================== 
+Using Rscript: "C:\Program Files\R\R-4.5.2\bin\x64\Rscript.exe" 
+[Step 1/3] Running Full WNBA Pipeline... 
+==================================================================
+>>> WNBA QUANTITATIVE ENGINE v5.0 (WNBA PORT) STARTED: 2026-09-12 08:37:20
+==================================================================
+[2026-09-12 08:37:20] [INFO] [run_full_pipeline.R] Pipeline run started.
+
+>>> [STAGE] Sync Active WNBA Rosters (12-Player Cap) & Mid-Season Signings (sync_rosters.R)...
+>>> [COMPLETED] sync_rosters.R in 0.86 seconds.
+[2026-09-12 08:37:21] [INFO] [run_full_pipeline.R] Stage completed: sync_rosters.R | stage: sync_rosters.R | description: Sync Active WNBA Rosters (12-Player Cap) & Mid-Season Signings | elapsed_sec: 0.86
+[1] TRUE
+Warning messages:
+1: package 'ggplot2' was built under R version 4.5.3 
+2: package 'purrr' was built under R version 4.5.3 
+3: package 'dplyr' was built under R version 4.5.3 
+
+>>> [STAGE] Scrape Official WNBA Injury Scratches & Availability Updates (injury_scraper.R)...
+>>> [COMPLETED] injury_scraper.R in 0.02 seconds.
+[2026-09-12 08:37:21] [INFO] [run_full_pipeline.R] Stage completed: injury_scraper.R | stage: injury_scraper.R | description: Scrape Official WNBA Injury Scratches & Availability Updates | elapsed_sec: 0.02
+[1] TRUE
+
+>>> [STAGE] Calculate WNBA Spatial Shot Quality (xeFG%) & Luck (Rolling Window 13) (shot_quality_engine.R)...
+>>> [SHOT QUALITY] Initializing Rolling Shot Quality Engine (WNBA, REAL shot-location data)...
+>>> [SHOT QUALITY] Loading cached real shot data from c:/Users/kailo/kayceeslices/WNBA Analytics/cache/wnba_shots_cache.rds
+>>> [SHOT QUALITY] Profiled 15 WNBA teams (15 on REAL shot data, 0 on SYNTHETIC_FALLBACK) over up-to-12-game rolling windows.
+>>> [COMPLETED] shot_quality_engine.R in 0.92 seconds.
+[2026-09-12 08:37:22] [INFO] [run_full_pipeline.R] Stage completed: shot_quality_engine.R | stage: shot_quality_engine.R | description: Calculate WNBA Spatial Shot Quality (xeFG%) & Luck (Rolling Window 13) | elapsed_sec: 0.92
+[1] TRUE
+
+>>> [STAGE] Compute Haversine Flight Miles, Circadian & Altitude Drag (15 WNBA Arenas) (fatigue_travel_engine.R)...
+>>> [FATIGUE] Initializing Circadian & Travel Distance Engine (WNBA, 15 teams)...
+>>> [FATIGUE] Successfully computed travel fatigue vectors for active slate (WNBA, synthetic demo slate).
+>>> [COMPLETED] fatigue_travel_engine.R in 0.04 seconds.
+[2026-09-12 08:37:22] [INFO] [run_full_pipeline.R] Stage completed: fatigue_travel_engine.R | stage: fatigue_travel_engine.R | description: Compute Haversine Flight Miles, Circadian & Altitude Drag (15 WNBA Arenas) | elapsed_sec: 0.04
+[1] TRUE
+
+>>> [STAGE] Estimate Real Possession-Level RAPM (L2 Ridge Regression) (rapm_engine.R)...
+>>> [RAPM] Initializing REAL Possession-Level RAPM Ridge Regression Engine (WNBA)...
+>>> [RAPM] Loading cached real possession data from c:/Users/kailo/kayceeslices/WNBA Analytics/cache/wnba_pbp_cache.rds
+>>> [RAPM] Solving REAL possession-level Ridge across 253968 possessions & 860 player parameters (lambda = 900)...
+>>> [RAPM] Saved 430 REAL possession-level RAPM ratings to cache/rapm_ratings.rds (63 flagged low-sample).
+[2026-09-12 08:37:24] [INFO] [rapm_engine.R] Saved 430 real possession-level RAPM ratings (63 flagged low-sample). | call: estimate_rapm_ratings() | rows: 430 | low_sample_count: 63 | out_path: cache/rapm_ratings.rds | data_source: real_wnba_stats_possessions
+>>> [COMPLETED] rapm_engine.R in 2.35 seconds.
+[2026-09-12 08:37:24] [INFO] [run_full_pipeline.R] Stage completed: rapm_engine.R | stage: rapm_engine.R | description: Estimate Real Possession-Level RAPM (L2 Ridge Regression) | elapsed_sec: 2.35
+[1] TRUE
+Warning message:
+package 'Matrix' was built under R version 4.5.3 
+
+>>> [STAGE] Generate 15-Team WNBA Bottom-Up Standings & Fair Spreads (roster_bottom_up_engine.R)...
+>>> [COMPLETED] roster_bottom_up_engine.R in 0.01 seconds.
+[2026-09-12 08:37:24] [INFO] [run_full_pipeline.R] Stage completed: roster_bottom_up_engine.R | stage: roster_bottom_up_engine.R | description: Generate 15-Team WNBA Bottom-Up Standings & Fair Spreads | elapsed_sec: 0.01
+[1] TRUE
+
+>>> [STAGE] Benchmark Live WNBA Books vs Sharp Limits & Kelly Stakes (market_odds_engine.R)...
+
+==================================================================
+           WNBA VALUE BETTING & CLV ENGINE (+EV IDENTIFIER)        
+==================================================================
+
+[FEED] Querying live multi-region WNBA odds from The Odds API...
+[2026-09-12 08:37:24] [INFO] [market_odds_engine.R] Querying live multi-region WNBA odds from The Odds API. | call: fetch_market_odds()
+[FEED SUCCESS] Parsing 8 live WNBA games from API.
+[2026-09-12 08:37:25] [INFO] [market_odds_engine.R] Odds API returned 8 live WNBA games. | call: fetch_market_odds() | rows: 8
+[2026-09-12 08:37:25] [INFO] [market_odds_engine.R] Parsed 8 live games with usable bookmaker odds. | call: parse_multi_book_feed() | rows: 8
+
+
+game_date    tip_time_est   Matchup                                    Recommended_Bet             Book           Line   Model_Win_Prob   EV_Percent   Exp_CLV   Bankroll_Rec  Status                           
+-----------  -------------  -----------------------------------------  --------------------------  -----------  ------  ---------------  -----------  --------  -------------  ---------------------------------
+2026-09-17   20:00          Washington Mystics vs. Chicago Sky         Chicago Sky (Home)          1xBet           139            0.833        99.09     -2.45           3.00  ★ VALUE BET (+EV)                
+2026-09-17   20:00          Los Angeles Sparks vs. Dallas Wings        Los Angeles Sparks (Away)   DraftKings      270            0.349        29.13     -1.07           2.70  ★ VALUE BET (+EV)                
+2026-09-17   22:00          Phoenix Mercury vs. Portland Fire          Phoenix Mercury (Away)      1xBet           104            0.616        25.66      5.45           3.00  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+2026-09-17   22:00          Las Vegas Aces vs. Seattle Storm           Las Vegas Aces (Away)       DraftKings     -353            0.790         1.38     -2.52           1.22  No Action                        
+2026-09-17   19:30          Connecticut Sun vs. Atlanta Dream          Atlanta Dream (Home)        GTbets        -1110            0.929         1.27     -3.92           3.00  No Action                        
+2026-09-18   22:00          Portland Fire vs. Golden State Valkyries   Portland Fire (Away)        DraftKings      895            0.192        91.04     36.86           2.54  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+2026-09-18   19:30          New York Liberty vs. Minnesota Lynx        New York Liberty (Away)     DraftKings      262            0.497        79.91      9.37           3.00  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+2026-09-18   19:30          Indiana Fever vs. Toronto Tempo            Toronto Tempo (Home)        FanDuel         490            0.225        32.75      1.72           1.67  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+
+[SUCCESS] Timezone-calibrated WNBA value bets saved to: c:/Users/kailo/kayceeslices/WNBA Analytics/cache/latest_value_bets.rds
+[2026-09-12 08:37:25] [INFO] [market_odds_engine.R] Saved 8 value bets to c:/Users/kailo/kayceeslices/WNBA Analytics/cache/latest_value_bets.rds. | call: evaluate_betting_slate() | rows: 8 | out_path: c:/Users/kailo/kayceeslices/WNBA Analytics/cache/latest_value_bets.rds
+>>> [COMPLETED] market_odds_engine.R in 0.84 seconds.
+[2026-09-12 08:37:25] [INFO] [run_full_pipeline.R] Stage completed: market_odds_engine.R | stage: market_odds_engine.R | description: Benchmark Live WNBA Books vs Sharp Limits & Kelly Stakes | elapsed_sec: 0.84
+[1] TRUE
+Warning messages:
+1: package 'ranger' was built under R version 4.5.3 
+2: package 'httr' was built under R version 4.5.3 
+
+>>> [STAGE] Price ZINB Overdispersed WNBA Player Props (PTS, REB, AST, FG3M, STL, BLK) (player_props_engine.R)...
+>>> [PROPS] Initializing WNBA Zero-Inflated Negative Binomial (ZINB) Props Engine...
+[PROPS] 2/209 roster players have no box-score history (rookies/late signees) — flagged with data_source == 'SYNTHETIC_NO_BOX_DATA' and given a minimal bench-level fallback mean, not fabricated star numbers.
+[PROPS] Loaded REAL WNBA rotation from c:/Users/kailo/kayceeslices/WNBA Analytics/cache/active_rosters_cache.rds: 120 players across 15 teams.
+>>> [PROPS] Processed 720 total props across 15 teams. Discovered 663 positive EV (>= +5.0%) edges.
+>>> [COMPLETED] player_props_engine.R in 1.32 seconds.
+[2026-09-12 08:37:26] [INFO] [run_full_pipeline.R] Stage completed: player_props_engine.R | stage: player_props_engine.R | description: Price ZINB Overdispersed WNBA Player Props (PTS, REB, AST, FG3M, STL, BLK) | elapsed_sec: 1.32
+[1] TRUE
+
+>>> [STAGE] Simulate Joint Multivariate Gaussian Copula (PRA / SGPs) — A'ja Wilson Demo (copula_props_engine.R)...
+>>> [COPULA] Initializing WNBA Joint Multivariate Copula Engine...
+>>> [COPULA] A'ja Wilson PRA Line 38.5 | Copula Over Prob: 46.2% (Fair ML: +117) | Double-Double Prob: 43.9%
+>>> [COMPLETED] copula_props_engine.R in 0.18 seconds.
+[2026-09-12 08:37:27] [INFO] [run_full_pipeline.R] Stage completed: copula_props_engine.R | stage: copula_props_engine.R | description: Simulate Joint Multivariate Gaussian Copula (PRA / SGPs) — A'ja Wilson Demo | elapsed_sec: 0.18
+[1] TRUE
+Warning message:
+package 'mvtnorm' was built under R version 4.5.3 
+
+>>> [STAGE] Execute WNBA Playoff Series Monte Carlo (Bo3 First Round / Bo5 Semis / Bo7 Finals) (playoff_simulator.R)...
+>>> [WNBA PLAYOFFS] Initializing Monte Carlo Playoff Series Simulator...
+>>> [COMPLETED] playoff_simulator.R in 0.00 seconds.
+[2026-09-12 08:37:27] [INFO] [run_full_pipeline.R] Stage completed: playoff_simulator.R | stage: playoff_simulator.R | description: Execute WNBA Playoff Series Monte Carlo (Bo3 First Round / Bo5 Semis / Bo7 Finals) | elapsed_sec: 0
+[1] TRUE
+
+>>> [STAGE] Audit Drawdown State & Set Dynamic Kelly Multiplier (risk_management_engine.R)...
+>>> [RISK] Initializing WNBA Bankroll Risk & Drawdown Management Engine...
+[2026-09-12 08:37:27] [INFO] [risk_management_engine.R] Loaded real betting ledger: 60 RESOLVED bets (of 65 total rows). | call: load_real_ledger() | resolved_rows: 60 | total_rows: 65 | path: cache/betting_ledger.rds
+>>> [RISK] State: OPTIMAL | Active Kelly: 0.250 | Drawdown: -0.77 Units (Max: -5.70) | Beat-CLV: 75.0%
+[2026-09-12 08:37:27] [INFO] [risk_management_engine.R] Risk state computed: OPTIMAL | Kelly=0.250 | drawdown=-0.77 units (max -5.70) | beat-CLV=75.0% | bets_audited=60 | call: compute_risk_state() | risk_status: OPTIMAL | bets_audited: 60 | out_path: cache/risk_state.rds
+>>> [COMPLETED] risk_management_engine.R in 0.06 seconds.
+[2026-09-12 08:37:27] [INFO] [run_full_pipeline.R] Stage completed: risk_management_engine.R | stage: risk_management_engine.R | description: Audit Drawdown State & Set Dynamic Kelly Multiplier | elapsed_sec: 0.06
+[1] TRUE
+
+>>> [STAGE] Dispatch Filtered Discord Webhooks (EV >= 3.0%, CLV >= -0.5%) (notify_bets.R)...
+
+==================================================================
+                 WNBA QUANT BET ALERT DISPATCHER                   
+==================================================================
+
+🏀 MATCHUP: Phoenix Mercury vs. Portland Fire
+   PICK: Phoenix Mercury (Away) | BOOK: 1xBet (+104)
+   STATS: Model Win: 61.6% | EV: +25.66% | Exp CLV: +5.45%
+   STAKE: 3.0% Bankroll (Quarter-Kelly)
+
+🏀 MATCHUP: Portland Fire vs. Golden State Valkyries
+   PICK: Portland Fire (Away) | BOOK: DraftKings (+895)
+   STATS: Model Win: 19.2% | EV: +91.04% | Exp CLV: +36.86%
+   STAKE: 2.5% Bankroll (Quarter-Kelly)
+
+🏀 MATCHUP: New York Liberty vs. Minnesota Lynx
+   PICK: New York Liberty (Away) | BOOK: DraftKings (+262)
+   STATS: Model Win: 49.7% | EV: +79.91% | Exp CLV: +9.37%
+   STAKE: 3.0% Bankroll (Quarter-Kelly)
+
+🏀 MATCHUP: Indiana Fever vs. Toronto Tempo
+   PICK: Toronto Tempo (Home) | BOOK: FanDuel (+490)
+   STATS: Model Win: 22.5% | EV: +32.75% | Exp CLV: +1.72%
+   STAKE: 1.7% Bankroll (Quarter-Kelly)
+
+[ALERT SUCCESS] Broadcasted calibrated live WNBA bets to Discord webhook.
+>>> [COMPLETED] notify_bets.R in 0.28 seconds.
+[2026-09-12 08:37:27] [INFO] [run_full_pipeline.R] Stage completed: notify_bets.R | stage: notify_bets.R | description: Dispatch Filtered Discord Webhooks (EV >= 3.0%, CLV >= -0.5%) | elapsed_sec: 0.28
+[1] TRUE
+
+>>> [STAGE] Grade Previous Completed WNBA Events & Update Rolling CLV% (bet_tracker.r)...
+
+==================================================================
+     GRADING PENDING BETS & CLOSING LINE VALUE (CLV) ETL           
+==================================================================
+
+[LEDGER] Stored 2 active value picks as PENDING for 2026-09-12.
+Evaluating 7 pending bets against official box scores...
+[INFO] Pending bets are active and scheduled for future resolution.
+─────────────────────────────────────────────────────────────────
+7-Day  : Win Rate:  50.0% | ROI:  +1.4% | Avg CLV: +4.18% | Beat CLV: 78.6%
+30-Day : Win Rate:  48.3% | ROI:  -2.5% | Avg CLV: +3.87% | Beat CLV: 75.0%
+All-Time: Win Rate:  48.3% | ROI:  -2.5% | Avg CLV: +3.87% | Total Units: -1.73 U
+──────────────────────────────────────────────────────────────
+Saved performance metrics to: c:/Users/kailo/kayceeslices/WNBA Analytics/cache/rolling_bet_metrics.rds
+
+>>> [COMPLETED] bet_tracker.r in 0.12 seconds.
+[2026-09-12 08:37:27] [INFO] [run_full_pipeline.R] Stage completed: bet_tracker.r | stage: bet_tracker.r | description: Grade Previous Completed WNBA Events & Update Rolling CLV% | elapsed_sec: 0.12
+[1] TRUE
+
+==================================================================
+>>> FULL WNBA PIPELINE EXECUTED IN 7.14 SECONDS
+==================================================================
+[2026-09-12 08:37:27] [INFO] [run_full_pipeline.R] Pipeline run finished in 7.14 seconds.
+Warning messages:
+1: package 'ggplot2' was built under R version 4.5.3 
+2: package 'purrr' was built under R version 4.5.3 
+3: package 'dplyr' was built under R version 4.5.3 
+
+==================================================================
+     GRADING PENDING BETS & CLOSING LINE VALUE (CLV) ETL           
+==================================================================
+
+Evaluating 7 pending bets against official box scores...
+[INFO] Pending bets are active and scheduled for future resolution.
+─────────────────────────────────────────────────────────────────
+7-Day  : Win Rate:  50.0% | ROI:  +1.4% | Avg CLV: +4.18% | Beat CLV: 78.6%
+30-Day : Win Rate:  48.3% | ROI:  -2.5% | Avg CLV: +3.87% | Beat CLV: 75.0%
+All-Time: Win Rate:  48.3% | ROI:  -2.5% | Avg CLV: +3.87% | Total Units: -1.73 U
+──────────────────────────────────────────────────────────────
+Saved performance metrics to: c:/Users/kailo/kayceeslices/WNBA Analytics/cache/rolling_bet_metrics.rds
+
+$last_7
+$last_7$win_rate
+[1] 50
+
+$last_7$roi
+[1] 1.4
+
+$last_7$units
+[1] 0.23
+
+$last_7$total_bets
+[1] 14
+
+$last_7$avg_clv
+[1] 4.18
+
+$last_7$beat_clv_pct
+[1] 78.6
+
+
+$last_30
+$last_30$win_rate
+[1] 48.3
+
+$last_30$roi
+[1] -2.5
+
+$last_30$units
+[1] -1.73
+
+$last_30$total_bets
+[1] 60
+
+$last_30$avg_clv
+[1] 3.87
+
+$last_30$beat_clv_pct
+[1] 75
+
+
+$all_time
+$all_time$win_rate
+[1] 48.3
+
+$all_time$roi
+[1] -2.5
+
+$all_time$units
+[1] -1.73
+
+$all_time$total_bets
+[1] 60
+
+$all_time$avg_clv
+[1] 3.87
+
+$all_time$beat_clv_pct
+[1] 75
+
+
+$ledger
+# A tibble: 60 × 18
+   bet_id   bet_date   matchup team_picked american_odds closing_odds model_prob
+   <chr>    <date>     <chr>   <chr>               <dbl>        <dbl>      <dbl>
+ 1 BET_1001 2026-08-13 Las Ve… Aces                 -135         -150       0.6 
+ 2 BET_1002 2026-08-13 New Yo… Liberty               125          115       0.47
+ 3 BET_1003 2026-08-14 Atlant… Fever                -110         -125       0.55
+ 4 BET_1004 2026-08-14 Phoeni… Mercury               140          130       0.44
+ 5 BET_1005 2026-08-15 Las Ve… Aces                 -135         -150       0.6 
+ 6 BET_1006 2026-08-15 New Yo… Liberty               125          115       0.47
+ 7 BET_1007 2026-08-16 Atlant… Fever                -110         -125       0.55
+ 8 BET_1008 2026-08-16 Phoeni… Mercury               140          130       0.44
+ 9 BET_1009 2026-08-17 Las Ve… Aces                 -135         -150       0.6 
+10 BET_1010 2026-08-17 New Yo… Liberty               125          115       0.47
+# ℹ 50 more rows
+# ℹ 11 more variables: ev_pct <dbl>, stake_units <dbl>, result <chr>,
+#   status <chr>, decimal_odds <dbl>, profit_units <dbl>, closing_dec <dbl>,
+#   closing_fair_prob <dbl>, clv_pct <dbl>, beat_clv <lgl>, cum_units <dbl>
+
+[Step 3/3] Updating Today's WNBA Betting Slate (+EV Engine)... 
+Warning messages:
+1: package 'ranger' was built under R version 4.5.3 
+2: package 'httr' was built under R version 4.5.3 
+3: package 'dplyr' was built under R version 4.5.3 
+
+==================================================================
+           WNBA VALUE BETTING & CLV ENGINE (+EV IDENTIFIER)        
+==================================================================
+
+[FEED] Querying live multi-region WNBA odds from The Odds API...
+[2026-09-12 08:37:30] [INFO] [market_odds_engine.R] Querying live multi-region WNBA odds from The Odds API. | call: fetch_market_odds()
+[FEED SUCCESS] Parsing 8 live WNBA games from API.
+[2026-09-12 08:37:30] [INFO] [market_odds_engine.R] Odds API returned 8 live WNBA games. | call: fetch_market_odds() | rows: 8
+[2026-09-12 08:37:30] [INFO] [market_odds_engine.R] Parsed 8 live games with usable bookmaker odds. | call: parse_multi_book_feed() | rows: 8
+
+
+game_date    tip_time_est   Matchup                                    Recommended_Bet             Book           Line   Model_Win_Prob   EV_Percent   Exp_CLV   Bankroll_Rec  Status                           
+-----------  -------------  -----------------------------------------  --------------------------  -----------  ------  ---------------  -----------  --------  -------------  ---------------------------------
+2026-09-17   20:00          Washington Mystics vs. Chicago Sky         Chicago Sky (Home)          1xBet           139            0.833        99.09     -2.45           3.00  ★ VALUE BET (+EV)                
+2026-09-17   20:00          Los Angeles Sparks vs. Dallas Wings        Los Angeles Sparks (Away)   DraftKings      270            0.349        29.13     -1.07           2.70  ★ VALUE BET (+EV)                
+2026-09-17   22:00          Phoenix Mercury vs. Portland Fire          Phoenix Mercury (Away)      1xBet           104            0.616        25.66      5.45           3.00  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+2026-09-17   22:00          Las Vegas Aces vs. Seattle Storm           Las Vegas Aces (Away)       DraftKings     -353            0.790         1.38     -2.52           1.22  No Action                        
+2026-09-17   19:30          Connecticut Sun vs. Atlanta Dream          Atlanta Dream (Home)        GTbets        -1110            0.929         1.27     -3.92           3.00  No Action                        
+2026-09-18   22:00          Portland Fire vs. Golden State Valkyries   Portland Fire (Away)        DraftKings      895            0.192        91.04     36.86           2.54  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+2026-09-18   19:30          New York Liberty vs. Minnesota Lynx        New York Liberty (Away)     DraftKings      262            0.497        79.91      9.37           3.00  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+2026-09-18   19:30          Indiana Fever vs. Toronto Tempo            Toronto Tempo (Home)        FanDuel         490            0.225        32.75      1.72           1.67  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+
+[SUCCESS] Timezone-calibrated WNBA value bets saved to: c:/Users/kailo/kayceeslices/WNBA Analytics/cache/latest_value_bets.rds
+[2026-09-12 08:37:30] [INFO] [market_odds_engine.R] Saved 8 value bets to c:/Users/kailo/kayceeslices/WNBA Analytics/cache/latest_value_bets.rds. | call: evaluate_betting_slate() | rows: 8 | out_path: c:/Users/kailo/kayceeslices/WNBA Analytics/cache/latest_value_bets.rds
+# A tibble: 8 × 14
+  game_date  tip_time_est Matchup              Recommended_Bet Team  Book   Line
+  <date>     <chr>        <chr>                <chr>           <chr> <chr> <dbl>
+1 2026-09-17 20:00        Washington Mystics … Chicago Sky (H… Chic… 1xBet   139
+2 2026-09-17 20:00        Los Angeles Sparks … Los Angeles Sp… Los … Draf…   270
+3 2026-09-17 22:00        Phoenix Mercury vs.… Phoenix Mercur… Phoe… 1xBet   104
+4 2026-09-17 22:00        Las Vegas Aces vs. … Las Vegas Aces… Las … Draf…  -353
+5 2026-09-17 19:30        Connecticut Sun vs.… Atlanta Dream … Atla… GTbe… -1110
+6 2026-09-18 22:00        Portland Fire vs. G… Portland Fire … Port… Draf…   895
+7 2026-09-18 19:30        New York Liberty vs… New York Liber… New … Draf…   262
+8 2026-09-18 19:30        Indiana Fever vs. T… Toronto Tempo … Toro… FanD…   490
+# ℹ 7 more variables: Model_Win_Prob <dbl>, EV_Percent <dbl>, Exp_CLV <dbl>,
+#   Bankroll_Rec <dbl>, Status <chr>, sharp_line <dbl>, game_id <chr>
+================================================================== 
+WNBA PIPELINE RUN COMPLETED SUCCESSFULLY: Sat 09/12/2026  8:37:30.93 
+================================================================== 
+ 
+================================================================== 
+WNBA PIPELINE AUTOMATED RUN CHECK: Sun 09/13/2026  6:11:55.46 (month=~4,2) 
+================================================================== 
+Using Rscript: "C:\Program Files\R\R-4.5.2\bin\x64\Rscript.exe" 
+[Step 1/3] Running Full WNBA Pipeline... 
+==================================================================
+>>> WNBA QUANTITATIVE ENGINE v5.0 (WNBA PORT) STARTED: 2026-09-13 06:12:17
+==================================================================
+[2026-09-13 06:12:18] [INFO] [run_full_pipeline.R] Pipeline run started.
+
+>>> [STAGE] Sync Active WNBA Rosters (12-Player Cap) & Mid-Season Signings (sync_rosters.R)...
+>>> [COMPLETED] sync_rosters.R in 7.13 seconds.
+[2026-09-13 06:12:25] [INFO] [run_full_pipeline.R] Stage completed: sync_rosters.R | stage: sync_rosters.R | description: Sync Active WNBA Rosters (12-Player Cap) & Mid-Season Signings | elapsed_sec: 7.13
+[1] TRUE
+Warning messages:
+1: package 'ggplot2' was built under R version 4.5.3 
+2: package 'purrr' was built under R version 4.5.3 
+3: package 'dplyr' was built under R version 4.5.3 
+
+>>> [STAGE] Scrape Official WNBA Injury Scratches & Availability Updates (injury_scraper.R)...
+>>> [COMPLETED] injury_scraper.R in 0.03 seconds.
+[2026-09-13 06:12:25] [INFO] [run_full_pipeline.R] Stage completed: injury_scraper.R | stage: injury_scraper.R | description: Scrape Official WNBA Injury Scratches & Availability Updates | elapsed_sec: 0.03
+[1] TRUE
+
+>>> [STAGE] Reconcile Pending Model Predictions Against Completed WNBA Games (prediction_accuracy_logger.R)...
+[2026-09-13 06:12:30] Starting daily WNBA box score ingestion...
+[2026-09-13 06:12:31] Loaded existing cache with 3906 records.
+[2026-09-13 06:12:31] Fetching updates for season 2026 from wehoop API...
+[2026-09-13 06:12:31] [INFO] [prediction_accuracy_logger.R] Fetching wehoop::load_wnba_team_box() updates for season 2026. | call: daily_box_ingest() | season: 2026
+[2026-09-13 06:12:39] Filtered out 2 non-franchise exhibition/All-Star rows (abbreviations: COOP, SPO).
+[2026-09-13 06:12:39] [INFO] [prediction_accuracy_logger.R] Fetched 602 new-season team box rows. | call: daily_box_ingest() | rows: 602 | season: 2026
+[2026-09-13 06:12:39] Ingestion complete. 0 new records identified.
+[2026-09-13 06:12:39] Cache is already up to date. No write necessary.
+[2026-09-13 06:12:39] [INFO] [prediction_accuracy_logger.R] Team box cache already up to date; no write necessary. | call: daily_box_ingest()
+[2026-09-13 06:12:39] [INFO] [prediction_accuracy_logger.R] No PENDING rows matched a completed game in box_scores_cache.rds yet. | call: reconcile_predictions() | pending_rows: 14
+>>> [COMPLETED] prediction_accuracy_logger.R in 14.29 seconds.
+[2026-09-13 06:12:39] [INFO] [run_full_pipeline.R] Stage completed: prediction_accuracy_logger.R | stage: prediction_accuracy_logger.R | description: Reconcile Pending Model Predictions Against Completed WNBA Games | elapsed_sec: 14.29
+[1] TRUE
+Warning message:
+package 'wehoop' was built under R version 4.5.3 
+
+>>> [STAGE] Calculate WNBA Spatial Shot Quality (xeFG%) & Luck (Rolling Window 13) (shot_quality_engine.R)...
+>>> [SHOT QUALITY] Initializing Rolling Shot Quality Engine (WNBA, REAL shot-location data)...
+>>> [SHOT QUALITY] Loading cached real shot data from c:/Users/kailo/kayceeslices/WNBA Analytics/cache/wnba_shots_cache.rds
+>>> [SHOT QUALITY] Profiled 15 WNBA teams (15 on REAL shot data, 0 on SYNTHETIC_FALLBACK) over up-to-12-game rolling windows.
+>>> [COMPLETED] shot_quality_engine.R in 48754.38 seconds.
+[2026-09-13 19:45:14] [INFO] [run_full_pipeline.R] Stage completed: shot_quality_engine.R | stage: shot_quality_engine.R | description: Calculate WNBA Spatial Shot Quality (xeFG%) & Luck (Rolling Window 13) | elapsed_sec: 48754.38
+[1] TRUE
+
+>>> [STAGE] Compute Haversine Flight Miles, Circadian & Altitude Drag (15 WNBA Arenas) (fatigue_travel_engine.R)...
+>>> [FATIGUE] Initializing Circadian & Travel Distance Engine (WNBA, 15 teams)...
+>>> [FATIGUE] Successfully computed travel fatigue vectors for active slate (WNBA, synthetic demo slate).
+>>> [COMPLETED] fatigue_travel_engine.R in 0.75 seconds.
+[2026-09-13 19:45:15] [INFO] [run_full_pipeline.R] Stage completed: fatigue_travel_engine.R | stage: fatigue_travel_engine.R | description: Compute Haversine Flight Miles, Circadian & Altitude Drag (15 WNBA Arenas) | elapsed_sec: 0.75
+[1] TRUE
+
+>>> [STAGE] Estimate Real Possession-Level RAPM (L2 Ridge Regression) (rapm_engine.R)...
+>>> [RAPM] Initializing REAL Possession-Level RAPM Ridge Regression Engine (WNBA)...
+>>> [RAPM] Loading cached real possession data from c:/Users/kailo/kayceeslices/WNBA Analytics/cache/wnba_pbp_cache.rds
+>>> [RAPM] Solving REAL possession-level Ridge across 253968 possessions & 860 player parameters (lambda = 900)...
+>>> [RAPM] Saved 430 REAL possession-level RAPM ratings to cache/rapm_ratings.rds (63 flagged low-sample).
+[2026-09-13 19:46:10] [INFO] [rapm_engine.R] Saved 430 real possession-level RAPM ratings (63 flagged low-sample). | call: estimate_rapm_ratings() | rows: 430 | low_sample_count: 63 | out_path: cache/rapm_ratings.rds | data_source: real_wnba_stats_possessions
+>>> [COMPLETED] rapm_engine.R in 55.40 seconds.
+[2026-09-13 19:46:10] [INFO] [run_full_pipeline.R] Stage completed: rapm_engine.R | stage: rapm_engine.R | description: Estimate Real Possession-Level RAPM (L2 Ridge Regression) | elapsed_sec: 55.4
+[1] TRUE
+Warning message:
+package 'Matrix' was built under R version 4.5.3 
+
+>>> [STAGE] Generate 15-Team WNBA Bottom-Up Standings & Fair Spreads (roster_bottom_up_engine.R)...
+>>> [COMPLETED] roster_bottom_up_engine.R in 0.07 seconds.
+[2026-09-13 19:46:11] [INFO] [run_full_pipeline.R] Stage completed: roster_bottom_up_engine.R | stage: roster_bottom_up_engine.R | description: Generate 15-Team WNBA Bottom-Up Standings & Fair Spreads | elapsed_sec: 0.07
+[1] TRUE
+
+>>> [STAGE] Benchmark Live WNBA Books vs Sharp Limits & Kelly Stakes (market_odds_engine.R)...
+
+==================================================================
+           WNBA VALUE BETTING & CLV ENGINE (+EV IDENTIFIER)        
+==================================================================
+
+[FEED] Querying live multi-region WNBA odds from The Odds API...
+[2026-09-13 19:46:14] [INFO] [market_odds_engine.R] Querying live multi-region WNBA odds from The Odds API. | call: fetch_market_odds()
+[FEED SUCCESS] Parsing 8 live WNBA games from API.
+[2026-09-13 19:46:25] [INFO] [market_odds_engine.R] Odds API returned 8 live WNBA games. | call: fetch_market_odds() | rows: 8
+[2026-09-13 19:46:30] [INFO] [market_odds_engine.R] Parsed 8 live games with usable bookmaker odds. | call: parse_multi_book_feed() | rows: 8
+
+
+game_date    tip_time_est   Matchup                                    Recommended_Bet             Book           Line   Model_Win_Prob   EV_Percent   Exp_CLV   Bankroll_Rec  Status                           
+-----------  -------------  -----------------------------------------  --------------------------  -----------  ------  ---------------  -----------  --------  -------------  ---------------------------------
+2026-09-17   20:00          Washington Mystics vs. Chicago Sky         Chicago Sky (Home)          1xBet           139            0.833        99.09     -2.05           3.00  ★ VALUE BET (+EV)                
+2026-09-17   20:00          Los Angeles Sparks vs. Dallas Wings        Los Angeles Sparks (Away)   DraftKings      270            0.349        29.13      0.00           2.70  ★ VALUE BET (+EV)                
+2026-09-17   22:00          Phoenix Mercury vs. Portland Fire          Phoenix Mercury (Away)      1xBet           106            0.616        26.90      6.96           3.00  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+2026-09-17   22:00          Las Vegas Aces vs. Seattle Storm           Las Vegas Aces (Away)       DraftKings     -353            0.790         1.38     -2.52           1.22  No Action                        
+2026-09-17   19:30          Connecticut Sun vs. Atlanta Dream          Atlanta Dream (Home)        GTbets        -1110            0.929         1.27     -3.85           3.00  No Action                        
+2026-09-18   22:00          Portland Fire vs. Golden State Valkyries   Portland Fire (Away)        DraftKings      895            0.192        91.04     36.49           2.54  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+2026-09-18   19:30          New York Liberty vs. Minnesota Lynx        New York Liberty (Away)     DraftKings      262            0.497        79.91      9.37           3.00  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+2026-09-18   19:30          Indiana Fever vs. Toronto Tempo            Toronto Tempo (Home)        Betfair         580            0.225        53.00     15.06           2.28  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+
+[SUCCESS] Timezone-calibrated WNBA value bets saved to: c:/Users/kailo/kayceeslices/WNBA Analytics/cache/latest_value_bets.rds
+[2026-09-13 19:46:33] [INFO] [market_odds_engine.R] Saved 8 value bets to c:/Users/kailo/kayceeslices/WNBA Analytics/cache/latest_value_bets.rds. | call: evaluate_betting_slate() | rows: 8 | out_path: c:/Users/kailo/kayceeslices/WNBA Analytics/cache/latest_value_bets.rds
+>>> [COMPLETED] market_odds_engine.R in 21.96 seconds.
+[2026-09-13 19:46:33] [INFO] [run_full_pipeline.R] Stage completed: market_odds_engine.R | stage: market_odds_engine.R | description: Benchmark Live WNBA Books vs Sharp Limits & Kelly Stakes | elapsed_sec: 21.96
+[1] TRUE
+Warning messages:
+1: package 'ranger' was built under R version 4.5.3 
+2: package 'httr' was built under R version 4.5.3 
+
+>>> [STAGE] Log Today's Real Model Win-Probability Predictions (prediction_accuracy_logger.R)...
+[2026-09-13 19:46:33] [INFO] [prediction_accuracy_logger.R] All of this slate's game_ids are already present in the prediction log; nothing new to append. | call: log_todays_predictions() | slate_rows: 8
+>>> [COMPLETED] prediction_accuracy_logger.R in 0.50 seconds.
+[2026-09-13 19:46:33] [INFO] [run_full_pipeline.R] Stage completed: prediction_accuracy_logger.R | stage: prediction_accuracy_logger.R | description: Log Today's Real Model Win-Probability Predictions | elapsed_sec: 0.5
+[1] TRUE
+
+>>> [STAGE] Price ZINB Overdispersed WNBA Player Props (PTS, REB, AST, FG3M, STL, BLK) (player_props_engine.R)...
+>>> [PROPS] Initializing WNBA Zero-Inflated Negative Binomial (ZINB) Props Engine...
+[PROPS] 2/209 roster players have no box-score history (rookies/late signees) — flagged with data_source == 'SYNTHETIC_NO_BOX_DATA' and given a minimal bench-level fallback mean, not fabricated star numbers.
+[PROPS] Loaded REAL WNBA rotation from c:/Users/kailo/kayceeslices/WNBA Analytics/cache/active_rosters_cache.rds: 120 players across 15 teams.
+>>> [PROPS] Processed 720 total props across 15 teams. Discovered 676 positive EV (>= +5.0%) edges.
+>>> [COMPLETED] player_props_engine.R in 14.66 seconds.
+[2026-09-13 19:46:48] [INFO] [run_full_pipeline.R] Stage completed: player_props_engine.R | stage: player_props_engine.R | description: Price ZINB Overdispersed WNBA Player Props (PTS, REB, AST, FG3M, STL, BLK) | elapsed_sec: 14.66
+[1] TRUE
+
+>>> [STAGE] Simulate Joint Multivariate Gaussian Copula (PRA / SGPs) — A'ja Wilson Demo (copula_props_engine.R)...
+>>> [COPULA] Initializing WNBA Joint Multivariate Copula Engine...
+>>> [COPULA] A'ja Wilson PRA Line 38.5 | Copula Over Prob: 46.4% (Fair ML: +116) | Double-Double Prob: 43.9%
+>>> [COMPLETED] copula_props_engine.R in 0.92 seconds.
+[2026-09-13 19:46:49] [INFO] [run_full_pipeline.R] Stage completed: copula_props_engine.R | stage: copula_props_engine.R | description: Simulate Joint Multivariate Gaussian Copula (PRA / SGPs) — A'ja Wilson Demo | elapsed_sec: 0.92
+[1] TRUE
+Warning message:
+package 'mvtnorm' was built under R version 4.5.3 
+
+>>> [STAGE] Execute WNBA Playoff Series Monte Carlo (Bo3 First Round / Bo5 Semis / Bo7 Finals) (playoff_simulator.R)...
+>>> [WNBA PLAYOFFS] Initializing Monte Carlo Playoff Series Simulator...
+>>> [COMPLETED] playoff_simulator.R in 0.03 seconds.
+[2026-09-13 19:46:49] [INFO] [run_full_pipeline.R] Stage completed: playoff_simulator.R | stage: playoff_simulator.R | description: Execute WNBA Playoff Series Monte Carlo (Bo3 First Round / Bo5 Semis / Bo7 Finals) | elapsed_sec: 0.03
+[1] TRUE
+
+>>> [STAGE] Audit Drawdown State & Set Dynamic Kelly Multiplier (risk_management_engine.R)...
+>>> [RISK] Initializing WNBA Bankroll Risk & Drawdown Management Engine...
+[2026-09-13 19:46:49] [INFO] [risk_management_engine.R] Loaded real betting ledger: 60 RESOLVED bets (of 67 total rows). | call: load_real_ledger() | resolved_rows: 60 | total_rows: 67 | path: cache/betting_ledger.rds
+>>> [RISK] State: OPTIMAL | Active Kelly: 0.250 | Drawdown: -0.77 Units (Max: -5.70) | Beat-CLV: 75.0%
+[2026-09-13 19:46:49] [INFO] [risk_management_engine.R] Risk state computed: OPTIMAL | Kelly=0.250 | drawdown=-0.77 units (max -5.70) | beat-CLV=75.0% | bets_audited=60 | call: compute_risk_state() | risk_status: OPTIMAL | bets_audited: 60 | out_path: cache/risk_state.rds
+>>> [COMPLETED] risk_management_engine.R in 0.45 seconds.
+[2026-09-13 19:46:49] [INFO] [run_full_pipeline.R] Stage completed: risk_management_engine.R | stage: risk_management_engine.R | description: Audit Drawdown State & Set Dynamic Kelly Multiplier | elapsed_sec: 0.45
+[1] TRUE
+
+>>> [STAGE] Dispatch Filtered Discord Webhooks (EV >= 3.0%, CLV >= -0.5%) (notify_bets.R)...
+
+==================================================================
+                 WNBA QUANT BET ALERT DISPATCHER                   
+==================================================================
+
+🏀 MATCHUP: Los Angeles Sparks vs. Dallas Wings
+   PICK: Los Angeles Sparks (Away) | BOOK: DraftKings (+270)
+   STATS: Model Win: 34.9% | EV: +29.13% | Exp CLV: +0.00%
+   STAKE: 2.7% Bankroll (Quarter-Kelly)
+
+🏀 MATCHUP: Phoenix Mercury vs. Portland Fire
+   PICK: Phoenix Mercury (Away) | BOOK: 1xBet (+106)
+   STATS: Model Win: 61.6% | EV: +26.90% | Exp CLV: +6.96%
+   STAKE: 3.0% Bankroll (Quarter-Kelly)
+
+🏀 MATCHUP: Portland Fire vs. Golden State Valkyries
+   PICK: Portland Fire (Away) | BOOK: DraftKings (+895)
+   STATS: Model Win: 19.2% | EV: +91.04% | Exp CLV: +36.49%
+   STAKE: 2.5% Bankroll (Quarter-Kelly)
+
+🏀 MATCHUP: New York Liberty vs. Minnesota Lynx
+   PICK: New York Liberty (Away) | BOOK: DraftKings (+262)
+   STATS: Model Win: 49.7% | EV: +79.91% | Exp CLV: +9.37%
+   STAKE: 3.0% Bankroll (Quarter-Kelly)
+
+[ALERT SUCCESS] Broadcasted calibrated live WNBA bets to Discord webhook.
+>>> [COMPLETED] notify_bets.R in 0.50 seconds.
+[2026-09-13 19:46:50] [INFO] [run_full_pipeline.R] Stage completed: notify_bets.R | stage: notify_bets.R | description: Dispatch Filtered Discord Webhooks (EV >= 3.0%, CLV >= -0.5%) | elapsed_sec: 0.5
+[1] TRUE
+
+>>> [STAGE] Grade Previous Completed WNBA Events & Update Rolling CLV% (bet_tracker.r)...
+
+==================================================================
+     GRADING PENDING BETS & CLOSING LINE VALUE (CLV) ETL           
+==================================================================
+
+[LEDGER] Stored 2 active value picks as PENDING for 2026-09-13.
+Evaluating 9 pending bets against official box scores...
+[INFO] Pending bets are active and scheduled for future resolution.
+─────────────────────────────────────────────────────────────────
+7-Day  : Win Rate:  58.3% | ROI: +17.2% | Avg CLV: +3.87% | Beat CLV: 75.0%
+30-Day : Win Rate:  50.0% | ROI:  +1.1% | Avg CLV: +3.95% | Beat CLV: 75.9%
+All-Time: Win Rate:  48.3% | ROI:  -2.5% | Avg CLV: +3.87% | Total Units: -1.73 U
+──────────────────────────────────────────────────────────────
+Saved performance metrics to: c:/Users/kailo/kayceeslices/WNBA Analytics/cache/rolling_bet_metrics.rds
+
+>>> [COMPLETED] bet_tracker.r in 0.66 seconds.
+[2026-09-13 19:46:50] [INFO] [run_full_pipeline.R] Stage completed: bet_tracker.r | stage: bet_tracker.r | description: Grade Previous Completed WNBA Events & Update Rolling CLV% | elapsed_sec: 0.66
+[1] TRUE
+
+==================================================================
+>>> FULL WNBA PIPELINE EXECUTED IN 48872.95 SECONDS
+==================================================================
+[2026-09-13 19:46:50] [INFO] [run_full_pipeline.R] Pipeline run finished in 48872.95 seconds.
+================================================================== 
+WNBA PIPELINE AUTOMATED RUN CHECK: Mon 09/14/2026  9:49:46.04 (month=~4,2) 
+================================================================== 
+Using Rscript: "C:\Program Files\R\R-4.5.2\bin\x64\Rscript.exe" 
+[Step 1/3] Running Full WNBA Pipeline... 
+==================================================================
+>>> WNBA QUANTITATIVE ENGINE v5.0 (WNBA PORT) STARTED: 2026-09-14 09:50:06
+==================================================================
+[2026-09-14 09:50:10] [INFO] [run_full_pipeline.R] Pipeline run started.
+
+>>> [STAGE] Sync Active WNBA Rosters (12-Player Cap) & Mid-Season Signings (sync_rosters.R)...
+>>> [COMPLETED] sync_rosters.R in 23.48 seconds.
+[2026-09-14 09:50:34] [INFO] [run_full_pipeline.R] Stage completed: sync_rosters.R | stage: sync_rosters.R | description: Sync Active WNBA Rosters (12-Player Cap) & Mid-Season Signings | elapsed_sec: 23.48
+[1] TRUE
+Warning messages:
+1: package 'ggplot2' was built under R version 4.5.3 
+2: package 'purrr' was built under R version 4.5.3 
+3: package 'dplyr' was built under R version 4.5.3 
+
+>>> [STAGE] Scrape Official WNBA Injury Scratches & Availability Updates (injury_scraper.R)...
+>>> [COMPLETED] injury_scraper.R in 0.04 seconds.
+[2026-09-14 09:50:34] [INFO] [run_full_pipeline.R] Stage completed: injury_scraper.R | stage: injury_scraper.R | description: Scrape Official WNBA Injury Scratches & Availability Updates | elapsed_sec: 0.04
+[1] TRUE
+
+>>> [STAGE] Reconcile Pending Model Predictions Against Completed WNBA Games (prediction_accuracy_logger.R)...
+[2026-09-14 09:50:39] Starting daily WNBA box score ingestion...
+[2026-09-14 09:50:39] Loaded existing cache with 3906 records.
+[2026-09-14 09:50:39] Fetching updates for season 2026 from wehoop API...
+[2026-09-14 09:50:39] [INFO] [prediction_accuracy_logger.R] Fetching wehoop::load_wnba_team_box() updates for season 2026. | call: daily_box_ingest() | season: 2026
+[2026-09-14 09:50:41] Filtered out 2 non-franchise exhibition/All-Star rows (abbreviations: COOP, SPO).
+[2026-09-14 09:50:41] [INFO] [prediction_accuracy_logger.R] Fetched 602 new-season team box rows. | call: daily_box_ingest() | rows: 602 | season: 2026
+[2026-09-14 09:50:41] Ingestion complete. 0 new records identified.
+[2026-09-14 09:50:41] Cache is already up to date. No write necessary.
+[2026-09-14 09:50:41] [INFO] [prediction_accuracy_logger.R] Team box cache already up to date; no write necessary. | call: daily_box_ingest()
+[2026-09-14 09:50:41] [INFO] [prediction_accuracy_logger.R] No PENDING rows matched a completed game in box_scores_cache.rds yet. | call: reconcile_predictions() | pending_rows: 14
+>>> [COMPLETED] prediction_accuracy_logger.R in 7.09 seconds.
+[2026-09-14 09:50:41] [INFO] [run_full_pipeline.R] Stage completed: prediction_accuracy_logger.R | stage: prediction_accuracy_logger.R | description: Reconcile Pending Model Predictions Against Completed WNBA Games | elapsed_sec: 7.09
+[1] TRUE
+Warning message:
+package 'wehoop' was built under R version 4.5.3 
+
+>>> [STAGE] Calculate WNBA Spatial Shot Quality (xeFG%) & Luck (Rolling Window 13) (shot_quality_engine.R)...
+>>> [SHOT QUALITY] Initializing Rolling Shot Quality Engine (WNBA, REAL shot-location data)...
+>>> [SHOT QUALITY] Loading cached real shot data from c:/Users/kailo/kayceeslices/WNBA Analytics/cache/wnba_shots_cache.rds
+>>> [SHOT QUALITY] Profiled 15 WNBA teams (15 on REAL shot data, 0 on SYNTHETIC_FALLBACK) over up-to-12-game rolling windows.
+>>> [COMPLETED] shot_quality_engine.R in 3.26 seconds.
+[2026-09-14 09:50:45] [INFO] [run_full_pipeline.R] Stage completed: shot_quality_engine.R | stage: shot_quality_engine.R | description: Calculate WNBA Spatial Shot Quality (xeFG%) & Luck (Rolling Window 13) | elapsed_sec: 3.26
+[1] TRUE
+
+>>> [STAGE] Compute Haversine Flight Miles, Circadian & Altitude Drag (15 WNBA Arenas) (fatigue_travel_engine.R)...
+>>> [FATIGUE] Initializing Circadian & Travel Distance Engine (WNBA, 15 teams)...
+>>> [FATIGUE] Successfully computed travel fatigue vectors for active slate (WNBA, synthetic demo slate).
+>>> [COMPLETED] fatigue_travel_engine.R in 0.16 seconds.
+[2026-09-14 09:50:45] [INFO] [run_full_pipeline.R] Stage completed: fatigue_travel_engine.R | stage: fatigue_travel_engine.R | description: Compute Haversine Flight Miles, Circadian & Altitude Drag (15 WNBA Arenas) | elapsed_sec: 0.16
+[1] TRUE
+
+>>> [STAGE] Estimate Real Possession-Level RAPM (L2 Ridge Regression) (rapm_engine.R)...
+>>> [RAPM] Initializing REAL Possession-Level RAPM Ridge Regression Engine (WNBA)...
+>>> [RAPM] Loading cached real possession data from c:/Users/kailo/kayceeslices/WNBA Analytics/cache/wnba_pbp_cache.rds
+>>> [RAPM] Solving REAL possession-level Ridge across 253968 possessions & 860 player parameters (lambda = 900)...
+>>> [RAPM] Saved 430 REAL possession-level RAPM ratings to cache/rapm_ratings.rds (63 flagged low-sample).
+[2026-09-14 09:50:51] [INFO] [rapm_engine.R] Saved 430 real possession-level RAPM ratings (63 flagged low-sample). | call: estimate_rapm_ratings() | rows: 430 | low_sample_count: 63 | out_path: cache/rapm_ratings.rds | data_source: real_wnba_stats_possessions
+>>> [COMPLETED] rapm_engine.R in 6.80 seconds.
+[2026-09-14 09:50:52] [INFO] [run_full_pipeline.R] Stage completed: rapm_engine.R | stage: rapm_engine.R | description: Estimate Real Possession-Level RAPM (L2 Ridge Regression) | elapsed_sec: 6.8
+[1] TRUE
+Warning message:
+package 'Matrix' was built under R version 4.5.3 
+
+>>> [STAGE] Generate 15-Team WNBA Bottom-Up Standings & Fair Spreads (roster_bottom_up_engine.R)...
+>>> [COMPLETED] roster_bottom_up_engine.R in 0.03 seconds.
+[2026-09-14 09:50:52] [INFO] [run_full_pipeline.R] Stage completed: roster_bottom_up_engine.R | stage: roster_bottom_up_engine.R | description: Generate 15-Team WNBA Bottom-Up Standings & Fair Spreads | elapsed_sec: 0.03
+[1] TRUE
+
+>>> [STAGE] Benchmark Live WNBA Books vs Sharp Limits & Kelly Stakes (market_odds_engine.R)...
+
+==================================================================
+           WNBA VALUE BETTING & CLV ENGINE (+EV IDENTIFIER)        
+==================================================================
+
+[FEED] Querying live multi-region WNBA odds from The Odds API...
+[2026-09-14 09:50:52] [INFO] [market_odds_engine.R] Querying live multi-region WNBA odds from The Odds API. | call: fetch_market_odds()
+[FEED SUCCESS] Parsing 8 live WNBA games from API.
+[2026-09-14 09:50:53] [INFO] [market_odds_engine.R] Odds API returned 8 live WNBA games. | call: fetch_market_odds() | rows: 8
+[2026-09-14 09:50:54] [INFO] [market_odds_engine.R] Parsed 8 live games with usable bookmaker odds. | call: parse_multi_book_feed() | rows: 8
+
+
+game_date    tip_time_est   Matchup                                    Recommended_Bet             Book           Line   Model_Win_Prob   EV_Percent   Exp_CLV   Bankroll_Rec  Status                           
+-----------  -------------  -----------------------------------------  --------------------------  -----------  ------  ---------------  -----------  --------  -------------  ---------------------------------
+2026-09-17   20:00          Washington Mystics vs. Chicago Sky         Chicago Sky (Home)          1xBet           137            0.833        97.42     -2.87           3.00  ★ VALUE BET (+EV)                
+2026-09-17   20:00          Los Angeles Sparks vs. Dallas Wings        Los Angeles Sparks (Away)   DraftKings      265            0.349        27.38      1.11           2.58  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+2026-09-17   22:00          Phoenix Mercury vs. Portland Fire          Phoenix Mercury (Away)      1xBet           104            0.616        25.66      6.39           3.00  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+2026-09-17   22:00          Las Vegas Aces vs. Seattle Storm           Las Vegas Aces (Away)       DraftKings     -353            0.790         1.38     -2.52           1.22  No Action                        
+2026-09-17   19:30          Connecticut Sun vs. Atlanta Dream          Atlanta Dream (Home)        GTbets        -1110            0.929         1.27     -3.85           3.00  No Action                        
+2026-09-18   19:30          New York Liberty vs. Minnesota Lynx        New York Liberty (Away)     DraftKings      262            0.497        79.91      9.37           3.00  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+2026-09-18   22:00          Portland Fire vs. Golden State Valkyries   Portland Fire (Away)        1xBet           700            0.192        53.60     12.68           1.91  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+2026-09-18   19:30          Indiana Fever vs. Toronto Tempo            Toronto Tempo (Home)        Betfair         580            0.225        53.00     15.25           2.28  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+
+[SUCCESS] Timezone-calibrated WNBA value bets saved to: c:/Users/kailo/kayceeslices/WNBA Analytics/cache/latest_value_bets.rds
+[2026-09-14 09:50:55] [INFO] [market_odds_engine.R] Saved 8 value bets to c:/Users/kailo/kayceeslices/WNBA Analytics/cache/latest_value_bets.rds. | call: evaluate_betting_slate() | rows: 8 | out_path: c:/Users/kailo/kayceeslices/WNBA Analytics/cache/latest_value_bets.rds
+>>> [COMPLETED] market_odds_engine.R in 3.03 seconds.
+[2026-09-14 09:50:55] [INFO] [run_full_pipeline.R] Stage completed: market_odds_engine.R | stage: market_odds_engine.R | description: Benchmark Live WNBA Books vs Sharp Limits & Kelly Stakes | elapsed_sec: 3.03
+[1] TRUE
+Warning messages:
+1: package 'ranger' was built under R version 4.5.3 
+2: package 'httr' was built under R version 4.5.3 
+
+>>> [STAGE] Log Today's Real Model Win-Probability Predictions (prediction_accuracy_logger.R)...
+[2026-09-14 09:50:55] [INFO] [prediction_accuracy_logger.R] All of this slate's game_ids are already present in the prediction log; nothing new to append. | call: log_todays_predictions() | slate_rows: 8
+>>> [COMPLETED] prediction_accuracy_logger.R in 0.24 seconds.
+[2026-09-14 09:50:55] [INFO] [run_full_pipeline.R] Stage completed: prediction_accuracy_logger.R | stage: prediction_accuracy_logger.R | description: Log Today's Real Model Win-Probability Predictions | elapsed_sec: 0.24
+[1] TRUE
+
+>>> [STAGE] Price ZINB Overdispersed WNBA Player Props (PTS, REB, AST, FG3M, STL, BLK) (player_props_engine.R)...
+>>> [PROPS] Initializing WNBA Zero-Inflated Negative Binomial (ZINB) Props Engine...
+[PROPS] 2/209 roster players have no box-score history (rookies/late signees) — flagged with data_source == 'SYNTHETIC_NO_BOX_DATA' and given a minimal bench-level fallback mean, not fabricated star numbers.
+[PROPS] Loaded REAL WNBA rotation from c:/Users/kailo/kayceeslices/WNBA Analytics/cache/active_rosters_cache.rds: 120 players across 15 teams.
+>>> [PROPS] Processed 720 total props across 15 teams. Discovered 672 positive EV (>= +5.0%) edges.
+>>> [COMPLETED] player_props_engine.R in 5.02 seconds.
+[2026-09-14 09:51:00] [INFO] [run_full_pipeline.R] Stage completed: player_props_engine.R | stage: player_props_engine.R | description: Price ZINB Overdispersed WNBA Player Props (PTS, REB, AST, FG3M, STL, BLK) | elapsed_sec: 5.02
+[1] TRUE
+
+>>> [STAGE] Simulate Joint Multivariate Gaussian Copula (PRA / SGPs) — A'ja Wilson Demo (copula_props_engine.R)...
+>>> [COPULA] Initializing WNBA Joint Multivariate Copula Engine...
+>>> [COPULA] A'ja Wilson PRA Line 38.5 | Copula Over Prob: 46.4% (Fair ML: +116) | Double-Double Prob: 43.7%
+>>> [COMPLETED] copula_props_engine.R in 1.11 seconds.
+[2026-09-14 09:51:01] [INFO] [run_full_pipeline.R] Stage completed: copula_props_engine.R | stage: copula_props_engine.R | description: Simulate Joint Multivariate Gaussian Copula (PRA / SGPs) — A'ja Wilson Demo | elapsed_sec: 1.11
+[1] TRUE
+Warning message:
+package 'mvtnorm' was built under R version 4.5.3 
+
+>>> [STAGE] Execute WNBA Playoff Series Monte Carlo (Bo3 First Round / Bo5 Semis / Bo7 Finals) (playoff_simulator.R)...
+>>> [WNBA PLAYOFFS] Initializing Monte Carlo Playoff Series Simulator...
+>>> [COMPLETED] playoff_simulator.R in 0.05 seconds.
+[2026-09-14 09:51:01] [INFO] [run_full_pipeline.R] Stage completed: playoff_simulator.R | stage: playoff_simulator.R | description: Execute WNBA Playoff Series Monte Carlo (Bo3 First Round / Bo5 Semis / Bo7 Finals) | elapsed_sec: 0.05
+[1] TRUE
+
+>>> [STAGE] Audit Drawdown State & Set Dynamic Kelly Multiplier (risk_management_engine.R)...
+>>> [RISK] Initializing WNBA Bankroll Risk & Drawdown Management Engine...
+[2026-09-14 09:51:02] [INFO] [risk_management_engine.R] Loaded real betting ledger: 60 RESOLVED bets (of 69 total rows). | call: load_real_ledger() | resolved_rows: 60 | total_rows: 69 | path: cache/betting_ledger.rds
+>>> [RISK] State: OPTIMAL | Active Kelly: 0.250 | Drawdown: -0.77 Units (Max: -5.70) | Beat-CLV: 75.0%
+[2026-09-14 09:51:02] [INFO] [risk_management_engine.R] Risk state computed: OPTIMAL | Kelly=0.250 | drawdown=-0.77 units (max -5.70) | beat-CLV=75.0% | bets_audited=60 | call: compute_risk_state() | risk_status: OPTIMAL | bets_audited: 60 | out_path: cache/risk_state.rds
+>>> [COMPLETED] risk_management_engine.R in 0.57 seconds.
+[2026-09-14 09:51:02] [INFO] [run_full_pipeline.R] Stage completed: risk_management_engine.R | stage: risk_management_engine.R | description: Audit Drawdown State & Set Dynamic Kelly Multiplier | elapsed_sec: 0.57
+[1] TRUE
+
+>>> [STAGE] Dispatch Filtered Discord Webhooks (EV >= 3.0%, CLV >= -0.5%) (notify_bets.R)...
+
+==================================================================
+                 WNBA QUANT BET ALERT DISPATCHER                   
+==================================================================
+
+🏀 MATCHUP: Los Angeles Sparks vs. Dallas Wings
+   PICK: Los Angeles Sparks (Away) | BOOK: DraftKings (+265)
+   STATS: Model Win: 34.9% | EV: +27.38% | Exp CLV: +1.11%
+   STAKE: 2.6% Bankroll (Quarter-Kelly)
+
+🏀 MATCHUP: Phoenix Mercury vs. Portland Fire
+   PICK: Phoenix Mercury (Away) | BOOK: 1xBet (+104)
+   STATS: Model Win: 61.6% | EV: +25.66% | Exp CLV: +6.39%
+   STAKE: 3.0% Bankroll (Quarter-Kelly)
+
+🏀 MATCHUP: New York Liberty vs. Minnesota Lynx
+   PICK: New York Liberty (Away) | BOOK: DraftKings (+262)
+   STATS: Model Win: 49.7% | EV: +79.91% | Exp CLV: +9.37%
+   STAKE: 3.0% Bankroll (Quarter-Kelly)
+
+🏀 MATCHUP: Portland Fire vs. Golden State Valkyries
+   PICK: Portland Fire (Away) | BOOK: 1xBet (+700)
+   STATS: Model Win: 19.2% | EV: +53.60% | Exp CLV: +12.68%
+   STAKE: 1.9% Bankroll (Quarter-Kelly)
+
+[ALERT SUCCESS] Broadcasted calibrated live WNBA bets to Discord webhook.
+>>> [COMPLETED] notify_bets.R in 0.67 seconds.
+[2026-09-14 09:51:02] [INFO] [run_full_pipeline.R] Stage completed: notify_bets.R | stage: notify_bets.R | description: Dispatch Filtered Discord Webhooks (EV >= 3.0%, CLV >= -0.5%) | elapsed_sec: 0.67
+[1] TRUE
+
+>>> [STAGE] Grade Previous Completed WNBA Events & Update Rolling CLV% (bet_tracker.r)...
+
+==================================================================
+     GRADING PENDING BETS & CLOSING LINE VALUE (CLV) ETL           
+==================================================================
+
+[LEDGER] Stored 1 active value picks as PENDING for 2026-09-14.
+Evaluating 10 pending bets against official box scores...
+[INFO] Pending bets are active and scheduled for future resolution.
+─────────────────────────────────────────────────────────────────
+7-Day  : Win Rate:  70.0% | ROI: +42.5% | Avg CLV: +4.31% | Beat CLV: 80.0%
+30-Day : Win Rate:  50.0% | ROI:  +1.0% | Avg CLV: +3.87% | Beat CLV: 75.0%
+All-Time: Win Rate:  48.3% | ROI:  -2.5% | Avg CLV: +3.87% | Total Units: -1.73 U
+──────────────────────────────────────────────────────────────
+Saved performance metrics to: c:/Users/kailo/kayceeslices/WNBA Analytics/cache/rolling_bet_metrics.rds
+
+>>> [COMPLETED] bet_tracker.r in 0.70 seconds.
+[2026-09-14 09:51:03] [INFO] [run_full_pipeline.R] Stage completed: bet_tracker.r | stage: bet_tracker.r | description: Grade Previous Completed WNBA Events & Update Rolling CLV% | elapsed_sec: 0.7
+[1] TRUE
+
+==================================================================
+>>> FULL WNBA PIPELINE EXECUTED IN 57.34 SECONDS
+==================================================================
+[2026-09-14 09:51:03] [INFO] [run_full_pipeline.R] Pipeline run finished in 57.34 seconds.
+Warning messages:
+1: package 'ggplot2' was built under R version 4.5.3 
+2: package 'purrr' was built under R version 4.5.3 
+3: package 'dplyr' was built under R version 4.5.3 
+
+==================================================================
+     GRADING PENDING BETS & CLOSING LINE VALUE (CLV) ETL           
+==================================================================
+
+Evaluating 10 pending bets against official box scores...
+[INFO] Pending bets are active and scheduled for future resolution.
+─────────────────────────────────────────────────────────────────
+7-Day  : Win Rate:  70.0% | ROI: +42.5% | Avg CLV: +4.31% | Beat CLV: 80.0%
+30-Day : Win Rate:  50.0% | ROI:  +1.0% | Avg CLV: +3.87% | Beat CLV: 75.0%
+All-Time: Win Rate:  48.3% | ROI:  -2.5% | Avg CLV: +3.87% | Total Units: -1.73 U
+──────────────────────────────────────────────────────────────
+Saved performance metrics to: c:/Users/kailo/kayceeslices/WNBA Analytics/cache/rolling_bet_metrics.rds
+
+$last_7
+$last_7$win_rate
+[1] 70
+
+$last_7$roi
+[1] 42.5
+
+$last_7$units
+[1] 4.93
+
+$last_7$total_bets
+[1] 10
+
+$last_7$avg_clv
+[1] 4.31
+
+$last_7$beat_clv_pct
+[1] 80
+
+
+$last_30
+$last_30$win_rate
+[1] 50
+
+$last_30$roi
+[1] 1
+
+$last_30$units
+[1] 0.68
+
+$last_30$total_bets
+[1] 56
+
+$last_30$avg_clv
+[1] 3.87
+
+$last_30$beat_clv_pct
+[1] 75
+
+
+$all_time
+$all_time$win_rate
+[1] 48.3
+
+$all_time$roi
+[1] -2.5
+
+$all_time$units
+[1] -1.73
+
+$all_time$total_bets
+[1] 60
+
+$all_time$avg_clv
+[1] 3.87
+
+$all_time$beat_clv_pct
+[1] 75
+
+
+$ledger
+# A tibble: 60 × 18
+   bet_id   bet_date   matchup team_picked american_odds closing_odds model_prob
+   <chr>    <date>     <chr>   <chr>               <dbl>        <dbl>      <dbl>
+ 1 BET_1001 2026-08-13 Las Ve… Aces                 -135         -150       0.6 
+ 2 BET_1002 2026-08-13 New Yo… Liberty               125          115       0.47
+ 3 BET_1003 2026-08-14 Atlant… Fever                -110         -125       0.55
+ 4 BET_1004 2026-08-14 Phoeni… Mercury               140          130       0.44
+ 5 BET_1005 2026-08-15 Las Ve… Aces                 -135         -150       0.6 
+ 6 BET_1006 2026-08-15 New Yo… Liberty               125          115       0.47
+ 7 BET_1007 2026-08-16 Atlant… Fever                -110         -125       0.55
+ 8 BET_1008 2026-08-16 Phoeni… Mercury               140          130       0.44
+ 9 BET_1009 2026-08-17 Las Ve… Aces                 -135         -150       0.6 
+10 BET_1010 2026-08-17 New Yo… Liberty               125          115       0.47
+# ℹ 50 more rows
+# ℹ 11 more variables: ev_pct <dbl>, stake_units <dbl>, result <chr>,
+#   status <chr>, decimal_odds <dbl>, profit_units <dbl>, closing_dec <dbl>,
+#   closing_fair_prob <dbl>, clv_pct <dbl>, beat_clv <lgl>, cum_units <dbl>
+
+[Step 3/3] Updating Today's WNBA Betting Slate (+EV Engine)... 
+Warning messages:
+1: package 'ranger' was built under R version 4.5.3 
+2: package 'httr' was built under R version 4.5.3 
+3: package 'dplyr' was built under R version 4.5.3 
+
+==================================================================
+           WNBA VALUE BETTING & CLV ENGINE (+EV IDENTIFIER)        
+==================================================================
+
+[FEED] Querying live multi-region WNBA odds from The Odds API...
+[2026-09-14 09:51:07] [INFO] [market_odds_engine.R] Querying live multi-region WNBA odds from The Odds API. | call: fetch_market_odds()
+[FEED SUCCESS] Parsing 8 live WNBA games from API.
+[2026-09-14 09:51:08] [INFO] [market_odds_engine.R] Odds API returned 8 live WNBA games. | call: fetch_market_odds() | rows: 8
+[2026-09-14 09:51:08] [INFO] [market_odds_engine.R] Parsed 8 live games with usable bookmaker odds. | call: parse_multi_book_feed() | rows: 8
+
+
+game_date    tip_time_est   Matchup                                    Recommended_Bet             Book           Line   Model_Win_Prob   EV_Percent   Exp_CLV   Bankroll_Rec  Status                           
+-----------  -------------  -----------------------------------------  --------------------------  -----------  ------  ---------------  -----------  --------  -------------  ---------------------------------
+2026-09-17   20:00          Washington Mystics vs. Chicago Sky         Chicago Sky (Home)          1xBet           137            0.833        97.42     -2.87           3.00  ★ VALUE BET (+EV)                
+2026-09-17   20:00          Los Angeles Sparks vs. Dallas Wings        Los Angeles Sparks (Away)   DraftKings      265            0.349        27.38      1.11           2.58  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+2026-09-17   22:00          Phoenix Mercury vs. Portland Fire          Phoenix Mercury (Away)      1xBet           104            0.616        25.66      6.39           3.00  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+2026-09-17   22:00          Las Vegas Aces vs. Seattle Storm           Las Vegas Aces (Away)       DraftKings     -353            0.790         1.38     -2.52           1.22  No Action                        
+2026-09-17   19:30          Connecticut Sun vs. Atlanta Dream          Atlanta Dream (Home)        GTbets        -1110            0.929         1.27     -3.85           3.00  No Action                        
+2026-09-18   19:30          New York Liberty vs. Minnesota Lynx        New York Liberty (Away)     DraftKings      262            0.497        79.91      9.37           3.00  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+2026-09-18   22:00          Portland Fire vs. Golden State Valkyries   Portland Fire (Away)        1xBet           700            0.192        53.60     12.68           1.91  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+2026-09-18   19:30          Indiana Fever vs. Toronto Tempo            Toronto Tempo (Home)        Betfair         580            0.225        53.00     15.25           2.28  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+
+[SUCCESS] Timezone-calibrated WNBA value bets saved to: c:/Users/kailo/kayceeslices/WNBA Analytics/cache/latest_value_bets.rds
+[2026-09-14 09:51:08] [INFO] [market_odds_engine.R] Saved 8 value bets to c:/Users/kailo/kayceeslices/WNBA Analytics/cache/latest_value_bets.rds. | call: evaluate_betting_slate() | rows: 8 | out_path: c:/Users/kailo/kayceeslices/WNBA Analytics/cache/latest_value_bets.rds
+# A tibble: 8 × 14
+  game_date  tip_time_est Matchup              Recommended_Bet Team  Book   Line
+  <date>     <chr>        <chr>                <chr>           <chr> <chr> <dbl>
+1 2026-09-17 20:00        Washington Mystics … Chicago Sky (H… Chic… 1xBet   137
+2 2026-09-17 20:00        Los Angeles Sparks … Los Angeles Sp… Los … Draf…   265
+3 2026-09-17 22:00        Phoenix Mercury vs.… Phoenix Mercur… Phoe… 1xBet   104
+4 2026-09-17 22:00        Las Vegas Aces vs. … Las Vegas Aces… Las … Draf…  -353
+5 2026-09-17 19:30        Connecticut Sun vs.… Atlanta Dream … Atla… GTbe… -1110
+6 2026-09-18 19:30        New York Liberty vs… New York Liber… New … Draf…   262
+7 2026-09-18 22:00        Portland Fire vs. G… Portland Fire … Port… 1xBet   700
+8 2026-09-18 19:30        Indiana Fever vs. T… Toronto Tempo … Toro… Betf…   580
+# ℹ 7 more variables: Model_Win_Prob <dbl>, EV_Percent <dbl>, Exp_CLV <dbl>,
+#   Bankroll_Rec <dbl>, Status <chr>, sharp_line <dbl>, game_id <chr>
+================================================================== 
+WNBA PIPELINE RUN COMPLETED SUCCESSFULLY: Mon 09/14/2026  9:51:08.93 
+================================================================== 
+ 
+================================================================== 
+WNBA PIPELINE AUTOMATED RUN CHECK: Wed 09/16/2026  6:20:55.84 (month=~4,2) 
+================================================================== 
+Using Rscript: "C:\Program Files\R\R-4.5.2\bin\x64\Rscript.exe" 
+[Step 1/3] Running Full WNBA Pipeline... 
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+Warning message:
+package 'duckdb' was built under R version 4.5.3 
+==================================================================
+>>> WNBA QUANTITATIVE ENGINE v5.0 (WNBA PORT) STARTED: 2026-09-16 06:21:09
+==================================================================
+[2026-09-16 06:21:10] [INFO] [run_full_pipeline.R] Pipeline run started.
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+
+>>> [STAGE] Run Data Health Probe (tools/data_health_probe.R)...
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+>>> [COMPLETED] tools/data_health_probe.R in 1.36 seconds.
+[2026-09-16 06:21:11] [INFO] [run_full_pipeline.R] Stage completed: tools/data_health_probe.R | stage: tools/data_health_probe.R | description: Run Data Health Probe | elapsed_sec: 1.36
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[1] TRUE
+Warning messages:
+1: package 'ggplot2' was built under R version 4.5.3 
+2: package 'purrr' was built under R version 4.5.3 
+3: package 'dplyr' was built under R version 4.5.3 
+>>> [IO] Loaded player_box_scores_cache.rds into GLOBAL_PLAYER_BOX.
+
+>>> [STAGE] Sync Active WNBA Rosters (12-Player Cap) & Mid-Season Signings (sync_rosters.R)...
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+>>> [COMPLETED] sync_rosters.R in 0.23 seconds.
+[2026-09-16 06:21:12] [INFO] [run_full_pipeline.R] Stage completed: sync_rosters.R | stage: sync_rosters.R | description: Sync Active WNBA Rosters (12-Player Cap) & Mid-Season Signings | elapsed_sec: 0.23
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[1] TRUE
+>>> [IO] Loaded active_rosters_cache.rds into GLOBAL_ACTIVE_ROSTERS.
+
+>>> [STAGE] Scrape Official WNBA Injury Scratches & Availability Updates (injury_scraper.R)...
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+>>> [COMPLETED] injury_scraper.R in 0.24 seconds.
+[2026-09-16 06:21:13] [INFO] [run_full_pipeline.R] Stage completed: injury_scraper.R | stage: injury_scraper.R | description: Scrape Official WNBA Injury Scratches & Availability Updates | elapsed_sec: 0.24
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[1] TRUE
+
+>>> [STAGE] Train Team Style Embeddings & Similarity Matrix (PyTorch) (team_embeddings.py)...
+[Embedding Agent] PyTorch detected. Training on CPU engine...
+[Embedding Agent] PyTorch training complete. Exported to logs/analytics.duckdb.
+>>> [COMPLETED] team_embeddings.py in 40.08 seconds.
+[2026-09-16 06:21:54] [INFO] [run_full_pipeline.R] Stage completed: team_embeddings.py | stage: team_embeddings.py | description: Train Team Style Embeddings & Similarity Matrix (PyTorch) | elapsed_sec: 40.08
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[1] TRUE
+
+>>> [STAGE] Reconcile Pending Model Predictions Against Completed WNBA Games (prediction_accuracy_logger.R)...
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[2026-09-16 06:21:57] [INFO] [prediction_accuracy_logger.R] Starting daily WNBA box score ingestion...
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[2026-09-16 06:21:57] [INFO] [prediction_accuracy_logger.R] Loaded existing cache with 3906 records.
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[2026-09-16 06:21:58] [INFO] [prediction_accuracy_logger.R] Fetching updates for season 2026 from wehoop API...
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[2026-09-16 06:21:58] [INFO] [prediction_accuracy_logger.R] Fetching wehoop::load_wnba_team_box() updates for season 2026. | call: daily_box_ingest() | season: 2026
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[2026-09-16 06:21:59] [INFO] [prediction_accuracy_logger.R] Filtered out 2 non-franchise exhibition/All-Star rows (abbreviations: COOP, SPO).
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[2026-09-16 06:21:59] [INFO] [prediction_accuracy_logger.R] Fetched 602 new-season team box rows. | call: daily_box_ingest() | rows: 602 | season: 2026
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[2026-09-16 06:22:00] [INFO] [prediction_accuracy_logger.R] Ingestion complete. 0 new records identified.
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[2026-09-16 06:22:00] [INFO] [prediction_accuracy_logger.R] Cache is already up to date. No write necessary.
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[2026-09-16 06:22:00] [INFO] [prediction_accuracy_logger.R] Team box cache already up to date; no write necessary. | call: daily_box_ingest()
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[2026-09-16 06:22:00] [INFO] [prediction_accuracy_logger.R] No PENDING rows matched a completed game in box_scores_cache.rds yet. | call: reconcile_predictions() | pending_rows: 14
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+>>> [COMPLETED] prediction_accuracy_logger.R in 5.99 seconds.
+[2026-09-16 06:22:00] [INFO] [run_full_pipeline.R] Stage completed: prediction_accuracy_logger.R | stage: prediction_accuracy_logger.R | description: Reconcile Pending Model Predictions Against Completed WNBA Games | elapsed_sec: 5.99
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[1] TRUE
+Warning message:
+package 'wehoop' was built under R version 4.5.3 
+Warning messages:
+1: package 'future' was built under R version 4.5.3 
+2: package 'future.apply' was built under R version 4.5.3 
+
+>>> [PARALLEL] Launching Latent Engines Group...
+[2026-09-16 06:22:09] [INFO] [run_full_pipeline.R] Stage completed: shot_quality_engine.R | stage: shot_quality_engine.R | description: Calculate WNBA Spatial Shot Quality (xeFG%) & Luck | elapsed_sec: 2.25
+
+>>> [STAGE] Calculate WNBA Spatial Shot Quality (xeFG%) & Luck (shot_quality_engine.R)...
+>>> [SHOT QUALITY] Initializing Rolling Shot Quality Engine (WNBA, REAL shot-location data)...
+>>> [SHOT QUALITY] Loading cached real shot data from c:/Users/kailo/kayceeslices/WNBA Analytics/cache/wnba_shots_cache.rds
+>>> [SHOT QUALITY] Profiled 15 WNBA teams (15 on REAL shot data, 0 on SYNTHETIC_FALLBACK) over up-to-12-game rolling windows.
+>>> [COMPLETED] shot_quality_engine.R in 2.25 seconds.
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.[2026-09-16 06:22:07] [INFO] [run_full_pipeline.R] Stage completed: fatigue_travel_engine.R | stage: fatigue_travel_engine.R | description: Compute Haversine Flight Miles & Circadian Drag | elapsed_sec: 0.5
+
+>>> [STAGE] Compute Haversine Flight Miles & Circadian Drag (fatigue_travel_engine.R)...
+>>> [FATIGUE] Initializing Circadian & Travel Distance Engine (WNBA, 15 teams)...
+>>> [FATIGUE] Successfully computed travel fatigue vectors for active slate (WNBA, synthetic demo slate).
+>>> [COMPLETED] fatigue_travel_engine.R in 0.50 seconds.
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.[2026-09-16 06:22:11] [INFO] [rapm_engine.R] Saved 430 real possession-level RAPM ratings (63 flagged low-sample). | call: estimate_rapm_ratings() | rows: 430 | low_sample_count: 63 | out_path: cache/rapm_ratings.rds | data_source: real_wnba_stats_possessions
+[2026-09-16 06:22:11] [INFO] [run_full_pipeline.R] Stage completed: rapm_engine.R | stage: rapm_engine.R | description: Estimate Real Possession-Level RAPM (L2 Ridge Regression) | elapsed_sec: 4.46
+
+>>> [STAGE] Estimate Real Possession-Level RAPM (L2 Ridge Regression) (rapm_engine.R)...
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.>>> [RAPM] Initializing REAL Possession-Level RAPM Ridge Regression Engine (WNBA)...
+>>> [RAPM] Loading cached real possession data from c:/Users/kailo/kayceeslices/WNBA Analytics/cache/wnba_pbp_cache.rds
+>>> [RAPM] Solving REAL possession-level Ridge across 253968 possessions & 860 player parameters (lambda = 900)...
+>>> [RAPM] Saved 430 REAL possession-level RAPM ratings to cache/rapm_ratings.rds (63 flagged low-sample).
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.>>> [COMPLETED] rapm_engine.R in 4.46 seconds.
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.[[1]]
+[1] TRUE
+
+[[2]]
+[1] TRUE
+
+[[3]]
+[1] TRUE
+
+Warning messages:
+1: package 'future' was built under R version 4.5.3 
+2: package 'duckdb' was built under R version 4.5.3 
+3: package 'dplyr' was built under R version 4.5.3 
+4: package 'future' was built under R version 4.5.3 
+5: package 'duckdb' was built under R version 4.5.3 
+6: package 'dplyr' was built under R version 4.5.3 
+7: package 'future' was built under R version 4.5.3 
+8: package 'duckdb' was built under R version 4.5.3 
+9: package 'dplyr' was built under R version 4.5.3 
+10: package 'Matrix' was built under R version 4.5.3 
+
+>>> [STAGE] Generate 15-Team WNBA Bottom-Up Standings & Fair Spreads (roster_bottom_up_engine.R)...
+>>> [COMPLETED] roster_bottom_up_engine.R in 0.05 seconds.
+[2026-09-16 06:22:11] [INFO] [run_full_pipeline.R] Stage completed: roster_bottom_up_engine.R | stage: roster_bottom_up_engine.R | description: Generate 15-Team WNBA Bottom-Up Standings & Fair Spreads | elapsed_sec: 0.05
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[1] TRUE
+
+>>> [STAGE] Benchmark Live WNBA Books vs Sharp Limits & Kelly Stakes (market_odds_engine.R)...
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+
+==================================================================
+           WNBA VALUE BETTING & CLV ENGINE (+EV IDENTIFIER)        
+==================================================================
+
+[FEED] Querying live multi-region WNBA odds from The Odds API...
+[2026-09-16 06:22:14] [INFO] [market_odds_engine.R] Querying live multi-region WNBA odds from The Odds API. | call: fetch_market_odds()
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[FEED SUCCESS] Parsing 8 live WNBA games from API.
+[2026-09-16 06:22:14] [INFO] [market_odds_engine.R] Odds API returned 8 live WNBA games. | call: fetch_market_odds() | rows: 8
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[2026-09-16 06:22:15] [INFO] [market_odds_engine.R] Parsed 8 live games with usable bookmaker odds. | call: parse_multi_book_feed() | rows: 8
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+
+
+game_date    tip_time_est   Matchup                                    Recommended_Bet                 Book             Line   Model_Win_Prob   predicted_margin   contrib_net_diff   contrib_hca   contrib_fatigue   EV_Percent   Exp_CLV   Bankroll_Rec  Status                           
+-----------  -------------  -----------------------------------------  ------------------------------  -------------  ------  ---------------  -----------------  -----------------  ------------  ----------------  -----------  --------  -------------  ---------------------------------
+2026-09-17   20:00          Washington Mystics vs. Chicago Sky         Chicago Sky (Home)              Bally Bet         140            0.948             22.710             11.110          11.6                 0       127.52     -4.06              3  ★ VALUE BET (+EV)                
+2026-09-17   22:00          Las Vegas Aces vs. Seattle Storm           Seattle Storm (Home)            theScore Bet      340            0.441             -2.070            -13.670          11.6                 0        94.04     -2.21              3  ★ VALUE BET (+EV)                
+2026-09-17   22:00          Phoenix Mercury vs. Portland Fire          Portland Fire (Home)            betPARX           102            0.641              5.060             -6.540          11.6                 0        29.48     -1.19              3  ★ VALUE BET (+EV)                
+2026-09-17   20:00          Los Angeles Sparks vs. Dallas Wings        Dallas Wings (Home)             Bovada           -285            0.852             14.640              3.040          11.6                 0        15.09     -3.89              3  ★ VALUE BET (+EV)                
+2026-09-17   19:30          Connecticut Sun vs. Atlanta Dream          Atlanta Dream (Home)            GTbets          -1110            0.970             29.770             18.170          11.6                 0         5.74     -2.71              3  ★ VALUE BET (+EV)                
+2026-09-18   19:30          Indiana Fever vs. Toronto Tempo            Toronto Tempo (Home)            FanDuel           570            0.461             -1.360            -12.960          11.6                 0       208.87      7.54              3  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+2026-09-18   22:00          Portland Fire vs. Golden State Valkyries   Golden State Valkyries (Home)   Betfair          -667            0.937             21.390              9.790          11.6                 0         7.75     -2.07              3  ★ VALUE BET (+EV)                
+2026-09-18   19:30          New York Liberty vs. Minnesota Lynx        Minnesota Lynx (Home)           DraftKings       -250            0.765             10.095             -1.505          11.6                 0         7.10     -2.42              3  ★ VALUE BET (+EV)                
+
+[SUCCESS] Timezone-calibrated WNBA value bets saved to: c:/Users/kailo/kayceeslices/WNBA Analytics/cache/latest_value_bets.rds
+[2026-09-16 06:22:15] [INFO] [market_odds_engine.R] Saved 8 value bets to c:/Users/kailo/kayceeslices/WNBA Analytics/cache/latest_value_bets.rds. | call: evaluate_betting_slate() | rows: 8 | out_path: c:/Users/kailo/kayceeslices/WNBA Analytics/cache/latest_value_bets.rds
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+>>> [COMPLETED] market_odds_engine.R in 3.83 seconds.
+[2026-09-16 06:22:15] [INFO] [run_full_pipeline.R] Stage completed: market_odds_engine.R | stage: market_odds_engine.R | description: Benchmark Live WNBA Books vs Sharp Limits & Kelly Stakes | elapsed_sec: 3.83
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[1] TRUE
+Warning messages:
+1: package 'ranger' was built under R version 4.5.3 
+2: package 'httr' was built under R version 4.5.3 
+
+>>> [STAGE] Log Today's Real Model Win-Probability Predictions (prediction_accuracy_logger.R)...
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[2026-09-16 06:22:16] [INFO] [prediction_accuracy_logger.R] All of this slate's game_ids are already present in the prediction log; nothing new to append. | call: log_todays_predictions() | slate_rows: 8
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+>>> [COMPLETED] prediction_accuracy_logger.R in 0.27 seconds.
+[2026-09-16 06:22:16] [INFO] [run_full_pipeline.R] Stage completed: prediction_accuracy_logger.R | stage: prediction_accuracy_logger.R | description: Log Today's Real Model Win-Probability Predictions | elapsed_sec: 0.27
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[1] TRUE
+
+>>> [PARALLEL] Launching Props Engines Group...
+[2026-09-16 06:22:17] [ERROR] [run_full_pipeline.R] Stage failed: player_props_engine.R (Price ZINB Overdispersed WNBA Player Props) | stage: player_props_engine.R | stack_trace: workRSOCK()  <-  workLoop(makeSOCKmaster(master, port, setup_timeout, timeout,      useXDR, setup_strategy))  <-  workCommand(master)  <-  tryCatch({     msg <- recvData(master)     if (msg$type == "DONE") {         closeNode(master)         FALSE     }     else if (msg$type == "EXEC") {         success <- TRUE         handler <- functio  <-  tryCatchList(expr, classes, parentenv, handlers)  <-  tryCatchOne(expr, names, parentenv, handlers[[1L]])  <-  doTryCatch(return(expr), name, parentenv, handler)  <-  tryCatch(do.call(msg$data$fun, msg$data$args, quote = TRUE),      error = handler)  <-  tryCatchList(expr, classes, parentenv, handlers)  <-  tryCatchOne(expr, names, parentenv, handlers[[1L]])  <-  doTryCatch(return(expr), name, parentenv, handler)  <-  do.call(msg$data$fun, msg$data$args, quote = TRUE)  <-  (function (data = list(core = list(expr = NULL, globals = list(),      packages = character(0L), seed = NULL), capture = list(stdout = TRUE,      split = FALSE, conditionClasses = character(0L), immed  <-  tryCatch({     evalFutureInternal(data) }, error = function(ex) {     msg <- sprintf("future::evalFuture() failed on %s (pid %s) at %s",          Sys.info()[["nodename"]], Sys.getpid(), format(Sys.tim  <-  tryCatchList(expr, classes, parentenv, handlers)  <-  tryCatchOne(expr, names, parentenv, handlers[[1L]])  <-  doTryCatch(return(expr), name, parentenv, handler)  <-  evalFutureInternal(data)  <-  tryCatch({     tryCatch({         withCallingHandlers({             ...future.value <- withVisible({                 eval(expr, envir = globalenv())             })             seed <- globalenv()[[".R  <-  tryCatchList(expr, classes, parentenv, handlers)  <-  tryCatchOne(tryCatchList(expr, names[-nh], parentenv, handlers[-nh]),      names[nh], parentenv, handlers[[nh]])  <-  doTryCatch(return(expr), name, parentenv, handler)  <-  tryCatchList(expr, names[-nh], parentenv, handlers[-nh])  <-  tryCatchOne(expr, names, parentenv, handlers[[1L]])  <-  doTryCatch(return(expr), name, parentenv, handler)  <-  tryCatch({     withCallingHandlers({         ...future.value <- withVisible({             eval(expr, envir = globalenv())         })         seed <- globalenv()[[".Random.seed"]]         FutureResult(  <-  tryCatchList(expr, classes, parentenv, handlers)  <-  withCallingHandlers({     ...future.value <- withVisible({         eval(expr, envir = globalenv())     })     seed <- globalenv()[[".Random.seed"]]     FutureResult(value = ...future.value[["value"]],  <-  withVisible({     eval(expr, envir = globalenv()) })  <-  eval(expr, envir = globalenv())  <-  eval(expr, envir = globalenv())  <-  local({     {         "# future::getGlobalsAndPackages(): wrapping the original future"         "# expression in do.call(), because function called uses '...'  "         "# as a global variable         <-  eval.parent(substitute(eval(quote(expr), envir)))  <-  eval(expr, p)  <-  eval(expr, p)  <-  eval(quote({     {         "# future::getGlobalsAndPackages(): wrapping the original future"         "# expression in do.call(), because function called uses '...'  "         "# as a global variable    <-  eval(quote({     {         "# future::getGlobalsAndPackages(): wrapping the original future"         "# expression in do.call(), because function called uses '...'  "         "# as a global variable    <-  do.call(function(...) {     "# future::getGlobalsAndPackages(): FUN() uses '...' internally "     "# without having an '...' argument. This means '...' is treated"     "# as a global variable. This ma  <-  (function (...)  {     "# future::getGlobalsAndPackages(): FUN() uses '...' internally "     "# without having an '...' argument. This means '...' is treated"     "# as a global variable. This may hap  <-  lapply(seq_along(...future.elements_ii), FUN = function(jj) {     ...future.X_jj <- ...future.elements_ii[[jj]]     {         ...future.FUN(...future.X_jj, ...)     } })  <-  FUN(X[[i]], ...)  <-  ...future.FUN(...future.X_jj, ...)  <-  run_stage(e$s, e$d)  <-  tryCatch({     withCallingHandlers({         if (grepl("\\.py$", script_name)) {             system(sprintf("python %s", script_name))         }         else {             source(script_name, local =   <-  tryCatchList(expr, classes, parentenv, handlers)  <-  tryCatchOne(expr, names, parentenv, handlers[[1L]])  <-  doTryCatch(return(expr), name, parentenv, handler)  <-  withCallingHandlers({     if (grepl("\\.py$", script_name)) {         system(sprintf("python %s", script_name))     }     else {         source(script_name, local = FALSE)     }     if (!is.null(call_  <-  source(script_name, local = FALSE)  <-  withVisible(eval(ei, envir))  <-  eval(ei, envir)  <-  eval(ei, envir)  <-  generate_active_props_table()  <-  get_team_def_rapm(if (exists("GLOBAL_ACTIVE_ROSTERS", inherits = FALSE)) GLOBAL_ACTIVE_ROSTERS else readRDS(roster_cache))  <-  summarise(group_by(left_join(active_rosters, rapm_df, by = "player_id"),      team_name), def_rapm = sum(drapm * n_def_poss, na.rm = TRUE)/sum(n_def_poss,      na.rm = TRUE), .groups = "drop")  <-  group_by(left_join(active_rosters, rapm_df, by = "player_id"),      team_name)  <-  left_join(active_rosters, rapm_df, by = "player_id")  <-  left_join.data.frame(active_rosters, rapm_df, by = "player_id")  <-  join_mutate(x = x, y = y, by = by, type = "left", suffix = suffix,      na_matches = na_matches, keep = keep, multiple = multiple,      unmatched = unmatched, relationship = relationship, user_env = c  <-  join_cast_common(x_key, y_key, vars, error_call = error_call)  <-  join_ptype_common(x, y, vars, error_call = error_call)  <-  try_fetch(vec_ptype2(x, y, x_arg = "", y_arg = "", call = error_call),      vctrs_error_incompatible_type = function(cnd) {         rethrow_error_join_incompatible_type(cnd, vars, error_call)     })  <-  withCallingHandlers(expr, condition = function(cnd) {     {         .__handler_frame__. <- TRUE         .__setup_frame__. <- frame         if (inherits(cnd, "message")) {             except <- c("warn  <-  vec_ptype2(x, y, x_arg = "", y_arg = "", call = error_call)  <-  (function ()  vec_default_ptype2(x = x, y = y, x_arg = x_arg, y_arg = y_arg,      call = call, `vctrs:::from_dispatch` = `vctrs:::from_dispatch`,      `vctrs:::s3_fallback` = `vctrs:::s3_fallback`))()  <-  vec_default_ptype2(x = x, y = y, x_arg = x_arg, y_arg = y_arg,      call = call, `vctrs:::from_dispatch` = `vctrs:::from_dispatch`,      `vctrs:::s3_fallback` = `vctrs:::s3_fallback`)  <-  withRestarts(stop_incompatible_type(x, y, x_arg = x_arg, y_arg = y_arg,      `vctrs:::from_dispatch` = match_from_dispatch(...), call = call),      vctrs_restart_ptype2 = function(ptype) {         pty  <-  withOneRestart(expr, restarts[[1L]])  <-  doWithOneRestart(return(expr), restart)  <-  stop_incompatible_type(x, y, x_arg = x_arg, y_arg = y_arg, `vctrs:::from_dispatch` = match_from_dispatch(...),      call = call)  <-  stop_incompatible(x, y, x_arg = x_arg, y_arg = y_arg, details = details,      ..., message = message, class = c(class, subclass, "vctrs_error_incompatible_type"),      call = call)  <-  stop_vctrs(message, class = c(class, "vctrs_error_incompatible"),      x = x, y = y, details = details, ..., call = call)  <-  abort(message, class = c(class, "vctrs_error"), ..., call = call)  <-  signal_abort(cnd, .file)  <-  signalCondition(cnd)  <-  (function (cnd)  {     {         .__handler_frame__. <- TRUE         .__setup_frame__. <- frame         if (inherits(cnd, "message")) {             except <- c("warning", "error")         }         el  <-  handlers[[1L]](cnd)  <-  rethrow_error_join_incompatible_type(cnd, vars, error_call)  <-  stop_join(message = c(glue("Can't join `{x_name}` with `{y_name}` due to incompatible types."),      i = glue("`{x_name}` is a <{x_type}>."), i = glue("`{y_name}` is a <{y_type}>.")),      class = "dp  <-  stop_dplyr(message = message, class = c(class, "dplyr_error_join"),      ..., call = call)  <-  abort(message = message, class = c(class, "dplyr_error"), ...,      call = call)  <-  signal_abort(cnd, .file)  <-  signalCondition(cnd)  <-  (function (e)  {     captured_calls <<- sys.calls() })(structure(list(message = structure("Can't join `x$player_id` with `y$player_id` due to incompatible types.", names = ""),      trace = structure( | condition_class: dplyr_error_join_incompatible_type/dplyr_error_join/dplyr_error/rlang_error/error/condition | condition_message: Can't join `x$player_id` with `y$player_id` due to incompatible types. ℹ `x$player_id` is a <integer>. ℹ `y$player_id` is a <character>. | call: left_join(active_rosters, rapm_df, by = "player_id")
+
+>>> [STAGE] Price ZINB Overdispersed WNBA Player Props (player_props_engine.R)...
+>>> [PROPS] Initializing WNBA Zero-Inflated Negative Binomial (ZINB) Props Engine...
+[PROPS] 2/209 roster players have no box-score history (rookies/late signees) — flagged with data_source == 'SYNTHETIC_NO_BOX_DATA' and given a minimal bench-level fallback mean, not fabricated star numbers.
+[PROPS] Loaded REAL WNBA rotation: 120 players across 15 teams.
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.[2026-09-16 06:22:17] [INFO] [run_full_pipeline.R] Stage completed: copula_props_engine.R | stage: copula_props_engine.R | description: Simulate Joint Multivariate Gaussian Copula (PRA / SGPs) | elapsed_sec: 0.75
+
+>>> [STAGE] Simulate Joint Multivariate Gaussian Copula (PRA / SGPs) (copula_props_engine.R)...
+>>> [COPULA] Initializing WNBA Joint Multivariate Copula Engine...
+>>> [COPULA] A'ja Wilson PRA Line 38.5 | Copula Over Prob: 37.7% (Fair ML: +165) | Double-Double Prob: 35.0%
+>>> [COMPLETED] copula_props_engine.R in 0.75 seconds.
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.[[1]]
+[1] FALSE
+
+[[2]]
+[1] TRUE
+
+Warning messages:
+1: In value[[3L]](cond) :
+  >>> [FAILED] player_props_engine.R: Can't join `x$player_id` with `y$player_id` due to incompatible types.
+2: package 'mvtnorm' was built under R version 4.5.3 
+3: UNRELIABLE VALUE: One of the 'future.apply' iterations ('future_lapply-2') unexpectedly generated random numbers without declaring so. There is a risk that those random numbers are not statistically sound and the overall results might be invalid. To fix this, specify 'future.seed=TRUE'. This ensures that proper, parallel-safe random numbers are produced via a parallel RNG method. To disable this check, use 'future.seed = NULL', or set option 'future.rng.onMisuse' to "ignore". [future 'future_lapply-2' (4f34b724b6bf97e0224584963bcd39bf-5); on 4f34b724b6bf97e0224584963bcd39bf@KAILOT_HP<25316>] 
+
+>>> [STAGE] Execute WNBA Playoff Series Monte Carlo (Bo3 First Round / Bo5 Semis / Bo7 Finals) (playoff_simulator.R)...
+>>> [WNBA PLAYOFFS] Initializing Monte Carlo Playoff Series Simulator...
+>>> [COMPLETED] playoff_simulator.R in 0.02 seconds.
+[2026-09-16 06:22:17] [INFO] [run_full_pipeline.R] Stage completed: playoff_simulator.R | stage: playoff_simulator.R | description: Execute WNBA Playoff Series Monte Carlo (Bo3 First Round / Bo5 Semis / Bo7 Finals) | elapsed_sec: 0.02
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[1] TRUE
+
+>>> [STAGE] Audit Drawdown State & Set Dynamic Kelly Multiplier (risk_management_engine.R)...
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+>>> [RISK] Initializing WNBA Bankroll Risk & Drawdown Management Engine...
+[2026-09-16 06:22:18] [INFO] [risk_management_engine.R] Loaded real betting ledger: 60 RESOLVED bets (of 73 total rows). | call: load_real_ledger() | resolved_rows: 60 | total_rows: 73 | path: cache/betting_ledger.rds
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+>>> [RISK] State: OPTIMAL | Active Kelly: 0.250 | Drawdown: -0.77 Units (Max: -5.70) | Beat-CLV: 75.0%
+[2026-09-16 06:22:18] [INFO] [risk_management_engine.R] Risk state computed: OPTIMAL | Kelly=0.250 | drawdown=-0.77 units (max -5.70) | beat-CLV=75.0% | bets_audited=60 | call: compute_risk_state() | risk_status: OPTIMAL | bets_audited: 60 | out_path: cache/risk_state.rds
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+>>> [COMPLETED] risk_management_engine.R in 0.30 seconds.
+[2026-09-16 06:22:18] [INFO] [run_full_pipeline.R] Stage completed: risk_management_engine.R | stage: risk_management_engine.R | description: Audit Drawdown State & Set Dynamic Kelly Multiplier | elapsed_sec: 0.3
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[1] TRUE
+
+>>> [STAGE] Dispatch Filtered Discord Webhooks (EV >= 3.0%, CLV >= -0.5%) (notify_bets.R)...
+
+==================================================================
+                 WNBA QUANT BET ALERT DISPATCHER                   
+==================================================================
+
+🏀 MATCHUP: Indiana Fever vs. Toronto Tempo
+   PICK: Toronto Tempo (Home) | BOOK: FanDuel (+570)
+   STATS: Model Win: 46.1% | EV: +208.87% | Exp CLV: +7.54%
+   STAKE: 3.0% Bankroll (Quarter-Kelly)
+
+[ALERT SUCCESS] Broadcasted calibrated live WNBA bets to Discord webhook.
+>>> [COMPLETED] notify_bets.R in 0.43 seconds.
+[2026-09-16 06:22:18] [INFO] [run_full_pipeline.R] Stage completed: notify_bets.R | stage: notify_bets.R | description: Dispatch Filtered Discord Webhooks (EV >= 3.0%, CLV >= -0.5%) | elapsed_sec: 0.43
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[1] TRUE
+
+>>> [STAGE] Grade Previous Completed WNBA Events & Update Rolling CLV% (bet_tracker.r)...
+
+==================================================================
+     GRADING PENDING BETS & CLOSING LINE VALUE (CLV) ETL           
+==================================================================
+
+[LEDGER] Stored 7 active value picks as PENDING for 2026-09-16.
+Evaluating 20 pending bets against official box scores...
+[INFO] Pending bets are active and scheduled for future resolution.
+─────────────────────────────────────────────────────────────────
+7-Day  : Win Rate:  66.7% | ROI: +33.8% | Avg CLV: +4.60% | Beat CLV: 83.3%
+30-Day : Win Rate:  50.0% | ROI:  +1.2% | Avg CLV: +3.87% | Beat CLV: 75.0%
+All-Time: Win Rate:  48.3% | ROI:  -2.5% | Avg CLV: +3.87% | Total Units: -1.73 U
+──────────────────────────────────────────────────────────────
+Saved performance metrics to: c:/Users/kailo/kayceeslices/WNBA Analytics/cache/rolling_bet_metrics.rds
+
+>>> [COMPLETED] bet_tracker.r in 0.19 seconds.
+[2026-09-16 06:22:19] [INFO] [run_full_pipeline.R] Stage completed: bet_tracker.r | stage: bet_tracker.r | description: Grade Previous Completed WNBA Events & Update Rolling CLV% | elapsed_sec: 0.19
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[1] TRUE
+
+==================================================================
+>>> FULL WNBA PIPELINE EXECUTED IN 69.98 SECONDS
+==================================================================
+[2026-09-16 06:22:19] [INFO] [run_full_pipeline.R] Pipeline run finished in 69.98 seconds.
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+Warning messages:
+1: package 'ggplot2' was built under R version 4.5.3 
+2: package 'purrr' was built under R version 4.5.3 
+3: package 'dplyr' was built under R version 4.5.3 
+
+==================================================================
+     GRADING PENDING BETS & CLOSING LINE VALUE (CLV) ETL           
+==================================================================
+
+Evaluating 20 pending bets against official box scores...
+[INFO] Pending bets are active and scheduled for future resolution.
+─────────────────────────────────────────────────────────────────
+7-Day  : Win Rate:  66.7% | ROI: +33.8% | Avg CLV: +4.60% | Beat CLV: 83.3%
+30-Day : Win Rate:  50.0% | ROI:  +1.2% | Avg CLV: +3.87% | Beat CLV: 75.0%
+All-Time: Win Rate:  48.3% | ROI:  -2.5% | Avg CLV: +3.87% | Total Units: -1.73 U
+──────────────────────────────────────────────────────────────
+Saved performance metrics to: c:/Users/kailo/kayceeslices/WNBA Analytics/cache/rolling_bet_metrics.rds
+
+$last_7
+$last_7$win_rate
+[1] 66.7
+
+$last_7$roi
+[1] 33.8
+
+$last_7$units
+[1] 2.33
+
+$last_7$total_bets
+[1] 6
+
+$last_7$avg_clv
+[1] 4.6
+
+$last_7$beat_clv_pct
+[1] 83.3
+
+
+$last_30
+$last_30$win_rate
+[1] 50
+
+$last_30$roi
+[1] 1.2
+
+$last_30$units
+[1] 0.73
+
+$last_30$total_bets
+[1] 52
+
+$last_30$avg_clv
+[1] 3.87
+
+$last_30$beat_clv_pct
+[1] 75
+
+
+$all_time
+$all_time$win_rate
+[1] 48.3
+
+$all_time$roi
+[1] -2.5
+
+$all_time$units
+[1] -1.73
+
+$all_time$total_bets
+[1] 60
+
+$all_time$avg_clv
+[1] 3.87
+
+$all_time$beat_clv_pct
+[1] 75
+
+
+$ledger
+# A tibble: 60 × 18
+   bet_id   bet_date   matchup team_picked american_odds closing_odds model_prob
+   <chr>    <date>     <chr>   <chr>               <dbl>        <dbl>      <dbl>
+ 1 BET_1001 2026-08-13 Las Ve… Aces                 -135         -150       0.6 
+ 2 BET_1002 2026-08-13 New Yo… Liberty               125          115       0.47
+ 3 BET_1003 2026-08-14 Atlant… Fever                -110         -125       0.55
+ 4 BET_1004 2026-08-14 Phoeni… Mercury               140          130       0.44
+ 5 BET_1005 2026-08-15 Las Ve… Aces                 -135         -150       0.6 
+ 6 BET_1006 2026-08-15 New Yo… Liberty               125          115       0.47
+ 7 BET_1007 2026-08-16 Atlant… Fever                -110         -125       0.55
+ 8 BET_1008 2026-08-16 Phoeni… Mercury               140          130       0.44
+ 9 BET_1009 2026-08-17 Las Ve… Aces                 -135         -150       0.6 
+10 BET_1010 2026-08-17 New Yo… Liberty               125          115       0.47
+# ℹ 50 more rows
+# ℹ 11 more variables: ev_pct <dbl>, stake_units <dbl>, result <chr>,
+#   status <chr>, decimal_odds <dbl>, profit_units <dbl>, closing_dec <dbl>,
+#   closing_fair_prob <dbl>, clv_pct <dbl>, beat_clv <lgl>, cum_units <dbl>
+
+[Step 3/3] Updating Today's WNBA Betting Slate (+EV Engine)... 
+Warning messages:
+1: package 'ranger' was built under R version 4.5.3 
+2: package 'httr' was built under R version 4.5.3 
+3: package 'dplyr' was built under R version 4.5.3 
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+Warning message:
+package 'duckdb' was built under R version 4.5.3 
+
+==================================================================
+           WNBA VALUE BETTING & CLV ENGINE (+EV IDENTIFIER)        
+==================================================================
+
+[FEED] Querying live multi-region WNBA odds from The Odds API...
+[2026-09-16 06:22:24] [INFO] [market_odds_engine.R] Querying live multi-region WNBA odds from The Odds API. | call: fetch_market_odds()
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[FEED SUCCESS] Parsing 8 live WNBA games from API.
+[2026-09-16 06:22:25] [INFO] [market_odds_engine.R] Odds API returned 8 live WNBA games. | call: fetch_market_odds() | rows: 8
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+[2026-09-16 06:22:25] [INFO] [market_odds_engine.R] Parsed 8 live games with usable bookmaker odds. | call: parse_multi_book_feed() | rows: 8
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+
+
+game_date    tip_time_est   Matchup                                    Recommended_Bet                 Book             Line   Model_Win_Prob   predicted_margin   contrib_net_diff   contrib_hca   contrib_fatigue   EV_Percent   Exp_CLV   Bankroll_Rec  Status                           
+-----------  -------------  -----------------------------------------  ------------------------------  -------------  ------  ---------------  -----------------  -----------------  ------------  ----------------  -----------  --------  -------------  ---------------------------------
+2026-09-17   20:00          Washington Mystics vs. Chicago Sky         Chicago Sky (Home)              Bally Bet         140            0.948             22.710             11.110          11.6                 0       127.52     -4.06              3  ★ VALUE BET (+EV)                
+2026-09-17   22:00          Las Vegas Aces vs. Seattle Storm           Seattle Storm (Home)            theScore Bet      340            0.441             -2.070            -13.670          11.6                 0        94.04     -2.21              3  ★ VALUE BET (+EV)                
+2026-09-17   22:00          Phoenix Mercury vs. Portland Fire          Portland Fire (Home)            betPARX           102            0.641              5.060             -6.540          11.6                 0        29.48     -1.19              3  ★ VALUE BET (+EV)                
+2026-09-17   20:00          Los Angeles Sparks vs. Dallas Wings        Dallas Wings (Home)             Bovada           -285            0.852             14.640              3.040          11.6                 0        15.09     -3.89              3  ★ VALUE BET (+EV)                
+2026-09-17   19:30          Connecticut Sun vs. Atlanta Dream          Atlanta Dream (Home)            GTbets          -1110            0.970             29.770             18.170          11.6                 0         5.74     -2.71              3  ★ VALUE BET (+EV)                
+2026-09-18   19:30          Indiana Fever vs. Toronto Tempo            Toronto Tempo (Home)            FanDuel           570            0.461             -1.360            -12.960          11.6                 0       208.87      7.54              3  🔥 SHARP +EV (EV ≥ 5% & CLV > 0) 
+2026-09-18   22:00          Portland Fire vs. Golden State Valkyries   Golden State Valkyries (Home)   Betfair          -667            0.937             21.390              9.790          11.6                 0         7.75     -2.07              3  ★ VALUE BET (+EV)                
+2026-09-18   19:30          New York Liberty vs. Minnesota Lynx        Minnesota Lynx (Home)           DraftKings       -250            0.765             10.095             -1.505          11.6                 0         7.10     -2.42              3  ★ VALUE BET (+EV)                
+
+[SUCCESS] Timezone-calibrated WNBA value bets saved to: c:/Users/kailo/kayceeslices/WNBA Analytics/cache/latest_value_bets.rds
+[2026-09-16 06:22:25] [INFO] [market_odds_engine.R] Saved 8 value bets to c:/Users/kailo/kayceeslices/WNBA Analytics/cache/latest_value_bets.rds. | call: evaluate_betting_slate() | rows: 8 | out_path: c:/Users/kailo/kayceeslices/WNBA Analytics/cache/latest_value_bets.rds
+duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+ℹ C:\Users\kailo/.duckdb
+This persists across sessions and is shared with the DuckDB CLI and other clients.
+ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+ℹ See ?duckdb_storage for details and alternatives.
+# A tibble: 8 × 18
+  game_date  tip_time_est Matchup              Recommended_Bet Team  Book   Line
+  <date>     <chr>        <chr>                <chr>           <chr> <chr> <dbl>
+1 2026-09-17 20:00        Washington Mystics … Chicago Sky (H… Chic… Ball…   140
+2 2026-09-17 22:00        Las Vegas Aces vs. … Seattle Storm … Seat… theS…   340
+3 2026-09-17 22:00        Phoenix Mercury vs.… Portland Fire … Port… betP…   102
+4 2026-09-17 20:00        Los Angeles Sparks … Dallas Wings (… Dall… Bova…  -285
+5 2026-09-17 19:30        Connecticut Sun vs.… Atlanta Dream … Atla… GTbe… -1110
+6 2026-09-18 19:30        Indiana Fever vs. T… Toronto Tempo … Toro… FanD…   570
+7 2026-09-18 22:00        Portland Fire vs. G… Golden State V… Gold… Betf…  -667
+8 2026-09-18 19:30        New York Liberty vs… Minnesota Lynx… Minn… Draf…  -250
+# ℹ 11 more variables: Model_Win_Prob <dbl>, predicted_margin <dbl>,
+#   contrib_net_diff <dbl>, contrib_hca <dbl>, contrib_fatigue <dbl>,
+#   EV_Percent <dbl>, Exp_CLV <dbl>, Bankroll_Rec <dbl>, Status <chr>,
+#   sharp_line <dbl>, game_id <chr>
+================================================================== 
+WNBA PIPELINE RUN COMPLETED SUCCESSFULLY: Wed 09/16/2026  6:22:25.98 
+================================================================== 
+ 

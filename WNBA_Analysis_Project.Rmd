@@ -1,0 +1,656 @@
+---
+title: "WNBA Analysis Project: Model Benchmarks & 2027 Season Projections"
+author: "Kailot C. Harris"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+## Introduction
+
+This is the WNBA analog of `NBA_Analysis_Project.Rmd` (T2 / `wnba_rating_engine_agent`, Phase 2 of
+`task_assignments.md`). Per `WNBA_REPLICATION_PLAN.md` §(b)/(d) and the agent brief, this is **not** a
+find-and-replace port of the NBA Rmd - the same methodology (rolling-window feature comparison,
+offseason-transition comparison, model architecture benchmark, Monte Carlo season simulation) is
+re-run from scratch on the real WNBA data foundation `daily_ingest.R`/`player_metrics.R` (T1) already
+built, using `wehoop` team box scores (2019-2026, `box_scores_cache.rds`, 3,906 real team-game rows
+across the 15 real `WNBA_TEAMS` franchises - see `task_assignments.md`'s T0/T1 Handoff Notes for the
+full provenance/validation history of that cache).
+
+Key differences from the NBA baseline that this analysis explicitly re-tests rather than assumes:
+
+1. **Rolling window size**: NBA used 18 games out of an 82-game season (~22%). `config.R` currently sets
+   `ROLLING_WINDOW_SIZE <- 9` as a *proportional placeholder* (18 * 44/82 ~= 9.66 -> 9) - this notebook
+   actually re-runs the NBA Rmd's own "test window sizes" experiment on real WNBA data (5/7/9/11/13
+   games) rather than trusting the proportional-scaling assumption blindly.
+2. **Season length**: `WNBA_SEASON_GAMES <- 44` (not 82) drives the Monte Carlo schedule simulation
+   (round-robin games-per-opponent, zero-sum win totals, ridge-plot win-total axis).
+3. **Offseason transition method**: `config.R`'s `OFFSEASON_METHOD <- "reset"` was carried over from NBA
+   as a *starting default*, flagged as needing re-benchmarking because a ~44-game season accumulates
+   less in-season signal before cross-season noise dominates than NBA's 82-game season - continuity/decay
+   methods may outperform "reset" more often here. Re-tested below.
+4. **Team universe**: 15 real WNBA franchises (`config.R`'s `WNBA_TEAMS`, including the 2026 expansion
+   Toronto Tempo and Portland Fire franchises) instead of NBA's 30.
+
+**IMPORTANT STATUS NOTE (read before trusting any number below):** every code chunk in this file is
+real, complete, and was actually run once by the authoring agent via `Rscript.exe` against the live
+caches to sanity-check it executes end-to-end on real data (see `task_assignments.md`'s T2 Handoff
+Notes for the exact numbers that run produced). However, **this .Rmd file itself has not been formally
+`knitr::knit()`/`rmarkdown::render()`-ed to produce a PDF** as part of this task (no PDF renderer/TeX
+toolchain dependency was verified in this environment) - so the numbers embedded in this document as
+prose commentary should be treated as "verified reproducible via direct script execution, but the Rmd
+artifact itself is unexecuted/unknit." Re-run `rmarkdown::render("WNBA_Analysis_Project.Rmd")` end-to-end
+before treating this as the new pristine baseline analog to the NBA Rmd (per `ADR.md` Principle I /
+this agent's "pristine baseline" discipline noted in `agent3.md`).
+
+Load packages:
+
+```{r package-install-load}
+library(tidyverse)
+library(tidymodels)
+library(wehoop)
+library(slider)
+library(xgboost)
+library(ggridges)
+source("config.R")
+```
+
+## Data Ingestion & Caching
+
+Load the box score data from the `wehoop` API for seasons 2019 through 2026 (via T1's
+`daily_ingest.R`-produced cache, which already applies the `CONN`->`CON` normalization and the
+All-Star/exhibition-row filter documented in `task_assignments.md`'s T0/T1 Handoff Notes):
+
+```{r import-box-scores}
+if (file.exists(CACHE_TEAM_BOX)) {
+  box_scores <- readRDS(CACHE_TEAM_BOX)
+} else {
+  box_scores <- wehoop::load_wnba_team_box(seasons = ALL_SEASONS) |>
+    filter(team_abbreviation %in% names(WNBA_TEAMS))
+  saveRDS(box_scores, CACHE_TEAM_BOX)
+}
+
+cat("Total team box score records:", nrow(box_scores), "\n")
+cat("Distinct franchises:", n_distinct(box_scores$team_abbreviation), "\n")
+cat("Seasons covered:", paste(sort(unique(box_scores$season)), collapse = ", "), "\n")
+```
+
+## Feature Engineering & Offseason Transition Experiments
+
+We compute team rolling averages for key performance indicators (eFG%, Turnover Rate, Free Throw Rate,
+True Shooting %, Points, Rebounds, Assists, Steals, Blocks) - identical feature definitions to the NBA
+baseline (none of these ratios are game-length- or roster-size-dependent, so no formula changes were
+needed here per `WNBA_REPLICATION_PLAN.md`'s Tier 1/2 classification).
+
+To resolve offseason transition artifacts, we test the same three methodologies as the NBA baseline:
+- **Method A (Fresh Reset):** Rolling windows reset cleanly at game 1 of each new season.
+- **Method B (50% Regression to Mean):** New-season baselines regress 50% toward the league average.
+- **Method C (Exponential Decay Carryover):** Rolling stats carry over across seasons via an 80/20 blend.
+
+```{r calc-features-function}
+build_feature_df <- function(data, window_size = ROLLING_WINDOW_SIZE, method = "reset") {
+  if (method == "reset") {
+    features <- data |>
+      arrange(team_id, season, game_date) |>
+      group_by(season, team_id) |>
+      mutate(
+        efg = (field_goals_made + 0.5 * three_point_field_goals_made) / pmax(1, field_goals_attempted),
+        tov = total_turnovers / pmax(1, field_goals_attempted + 0.44 * free_throws_attempted + total_turnovers),
+        ftr = free_throws_attempted / pmax(1, field_goals_attempted),
+        ts  = team_score / pmax(1, 2 * (field_goals_attempted + 0.44 * free_throws_attempted)),
+
+        roll_pts_scored = slide_dbl(team_score, mean, .before = window_size, .after = -1),
+        roll_oreb       = slide_dbl(offensive_rebounds, mean, .before = window_size, .after = -1),
+        roll_dreb       = slide_dbl(defensive_rebounds, mean, .before = window_size, .after = -1),
+        roll_ast        = slide_dbl(assists, mean, .before = window_size, .after = -1),
+        roll_stl        = slide_dbl(steals, mean, .before = window_size, .after = -1),
+        roll_blk        = slide_dbl(blocks, mean, .before = window_size, .after = -1),
+        roll_tov        = slide_dbl(turnovers, mean, .before = window_size, .after = -1),
+        roll_efg        = slide_dbl(efg, mean, .before = window_size, .after = -1),
+        roll_tovp       = slide_dbl(tov, mean, .before = window_size, .after = -1),
+        roll_ftr        = slide_dbl(ftr, mean, .before = window_size, .after = -1),
+        roll_ts         = slide_dbl(ts, mean, .before = window_size, .after = -1),
+        days_rest       = pmin(REST_DAYS_CAP, coalesce(as.numeric(game_date - lag(game_date)), 3))
+      ) |>
+      ungroup()
+  } else {
+    features <- data |>
+      arrange(team_id, game_date) |>
+      group_by(team_id) |>
+      mutate(
+        efg = (field_goals_made + 0.5 * three_point_field_goals_made) / pmax(1, field_goals_attempted),
+        tov = total_turnovers / pmax(1, field_goals_attempted + 0.44 * free_throws_attempted + total_turnovers),
+        ftr = free_throws_attempted / pmax(1, field_goals_attempted),
+        ts  = team_score / pmax(1, 2 * (field_goals_attempted + 0.44 * free_throws_attempted)),
+
+        roll_pts_scored = slide_dbl(team_score, mean, .before = window_size, .after = -1),
+        roll_oreb       = slide_dbl(offensive_rebounds, mean, .before = window_size, .after = -1),
+        roll_dreb       = slide_dbl(defensive_rebounds, mean, .before = window_size, .after = -1),
+        roll_ast        = slide_dbl(assists, mean, .before = window_size, .after = -1),
+        roll_stl        = slide_dbl(steals, mean, .before = window_size, .after = -1),
+        roll_blk        = slide_dbl(blocks, mean, .before = window_size, .after = -1),
+        roll_tov        = slide_dbl(turnovers, mean, .before = window_size, .after = -1),
+        roll_efg        = slide_dbl(efg, mean, .before = window_size, .after = -1),
+        roll_tovp       = slide_dbl(tov, mean, .before = window_size, .after = -1),
+        roll_ftr        = slide_dbl(ftr, mean, .before = window_size, .after = -1),
+        roll_ts         = slide_dbl(ts, mean, .before = window_size, .after = -1),
+        is_new_season   = coalesce(season != lag(season), FALSE),
+        days_rest       = pmin(REST_DAYS_CAP, coalesce(as.numeric(game_date - lag(game_date)), 3))
+      )
+
+    if (method == "mean_regress") {
+      features <- features |>
+        mutate(
+          roll_pts_scored = if_else(is_new_season, 0.5 * roll_pts_scored + 0.5 * mean(team_score, na.rm = TRUE), roll_pts_scored),
+          roll_efg = if_else(is_new_season, 0.5 * roll_efg + 0.5 * mean(efg, na.rm = TRUE), roll_efg),
+          roll_ts  = if_else(is_new_season, 0.5 * roll_ts + 0.5 * mean(ts, na.rm = TRUE), roll_ts)
+        )
+    } else {
+      features <- features |>
+        mutate(
+          roll_pts_scored = if_else(is_new_season, 0.8 * roll_pts_scored + 0.2 * mean(team_score, na.rm = TRUE), roll_pts_scored),
+          roll_efg = if_else(is_new_season, 0.8 * roll_efg + 0.2 * mean(efg, na.rm = TRUE), roll_efg)
+        )
+    }
+    features <- features |> ungroup()
+  }
+
+  features_selected <- features |>
+    select(game_id, season, game_date, team_id, team_winner, team_home_away,
+           roll_pts_scored, roll_oreb, roll_dreb, roll_ast, roll_stl, roll_blk,
+           roll_tov, roll_efg, roll_tovp, roll_ftr, roll_ts, days_rest)
+
+  home_df <- features_selected |>
+    filter(team_home_away == "home") |>
+    select(game_id, season, game_date, home_team = team_id, home_win = team_winner,
+           home_roll_pts = roll_pts_scored, home_roll_oreb = roll_oreb, home_roll_dreb = roll_dreb,
+           home_roll_ast = roll_ast, home_roll_stl = roll_stl, home_roll_blk = roll_blk,
+           home_roll_tov = roll_tov, home_roll_efg = roll_efg, home_roll_tovp = roll_tovp,
+           home_roll_ftr = roll_ftr, home_roll_ts = roll_ts, home_days_rest = days_rest)
+
+  away_df <- features_selected |>
+    filter(team_home_away == "away") |>
+    select(game_id, away_team = team_id, away_win = team_winner,
+           away_roll_pts = roll_pts_scored, away_roll_oreb = roll_oreb, away_roll_dreb = roll_dreb,
+           away_roll_ast = roll_ast, away_roll_stl = roll_stl, away_roll_blk = roll_blk,
+           away_roll_tov = roll_tov, away_roll_efg = roll_efg, away_roll_tovp = roll_tovp,
+           away_roll_ftr = roll_ftr, away_roll_ts = roll_ts, away_days_rest = days_rest)
+
+  model_df <- inner_join(home_df, away_df, by = "game_id") |>
+    mutate(
+      target_home_win = factor(if_else(home_win == TRUE, "Win", "Loss"), levels = c("Win", "Loss")),
+      diff_roll_pts   = home_roll_pts - away_roll_pts,
+      diff_roll_oreb  = home_roll_oreb - away_roll_oreb,
+      diff_roll_dreb  = home_roll_dreb - away_roll_dreb,
+      diff_roll_treb  = (home_roll_oreb + home_roll_dreb) - (away_roll_oreb + away_roll_dreb),
+      diff_roll_ast   = home_roll_ast - away_roll_ast,
+      diff_roll_stl   = home_roll_stl - away_roll_stl,
+      diff_roll_blk   = home_roll_blk - away_roll_blk,
+      diff_roll_tov   = home_roll_tov - away_roll_tov,
+      diff_roll_efg   = home_roll_efg - away_roll_efg,
+      diff_roll_tovp  = home_roll_tovp - away_roll_tovp,
+      diff_roll_ftr   = home_roll_ftr - away_roll_ftr,
+      diff_roll_ts    = home_roll_ts - away_roll_ts,
+      diff_days_rest  = home_days_rest - away_days_rest
+    ) |>
+    drop_na()
+
+  return(model_df)
+}
+```
+
+### Rolling-Window Size Experiment (WNBA-specific - not in the NBA Rmd)
+
+Correction: the NBA baseline's 18-game window was not chosen out of habit. It was tested and verified in
+an experiment (`evaluate_rolling_window()`, sweeping window sizes 3-25 games, optimizing on out-of-sample
+ROC-AUC) in the earlier "Original - No LLM" NBA Rmd; the *current* `NBA_Analysis_Project.Rmd` simply
+reuses that already-validated 18-game result rather than re-running the sweep every time. That NBA-fit
+result does not automatically transfer to WNBA, though: it was optimized against an 82-game season and
+NBA-scale team/possession volume, neither of which matches WNBA's ~44-game season. So we still repeat the
+same experiment methodology here on real WNBA data, rather than trusting the proportional-scaling
+placeholder (`ROLLING_WINDOW_SIZE <- 9`) as-is. A Random Forest is trained on seasons < 2026 and evaluated
+out-of-sample on season >= 2026 for each window size:
+
+```{r window-size-experiment}
+eval_window_size <- function(w) {
+  df <- build_feature_df(box_scores, window_size = w, method = "reset")
+  train_data <- df |> filter(season < CURRENT_SEASON)
+  test_data  <- df |> filter(season >= CURRENT_SEASON)
+
+  rec <- recipe(target_home_win ~ ., data = train_data) |>
+    step_rm(
+      game_id, game_date, season, home_team, away_team, home_win, away_win,
+      home_roll_ts, home_roll_ftr, home_roll_efg, home_roll_pts, home_roll_tovp,
+      home_roll_oreb, home_roll_dreb, home_roll_ast, home_roll_stl, home_roll_blk, home_roll_tov,
+      away_roll_ts, away_roll_ftr, away_roll_efg, away_roll_pts, away_roll_tovp,
+      away_roll_oreb, away_roll_dreb, away_roll_ast, away_roll_stl, away_roll_blk, away_roll_tov,
+      home_days_rest, away_days_rest
+    ) |>
+    step_normalize(all_numeric_predictors())
+
+  rf <- rand_forest(trees = 200, mode = "classification") |> set_engine("ranger", num.threads = 4)
+  wf <- workflow() |> add_recipe(rec) |> add_model(rf)
+  fit_m <- fit(wf, train_data)
+
+  preds <- predict(fit_m, test_data) |>
+    bind_cols(predict(fit_m, test_data, type = "prob")) |>
+    bind_cols(test_data)
+
+  acc <- preds |> accuracy(truth = target_home_win, estimate = .pred_class) |> pull(.estimate)
+  auc <- preds |> roc_auc(truth = target_home_win, .pred_Win, event_level = "first") |> pull(.estimate)
+  brier <- mean((if_else(preds$target_home_win == "Win", 1, 0) - preds$.pred_Win)^2)
+
+  tibble(Window_Size = w, N_Train = nrow(train_data), N_Test = nrow(test_data),
+         Accuracy = round(acc, 4), `ROC-AUC` = round(auc, 4), `Brier Score` = round(brier, 4))
+}
+
+window_size_results <- map_dfr(3:25, eval_window_size)
+knitr::kable(window_size_results, caption = "WNBA Rolling-Window Size Comparison (Tested Out-of-Sample on Current Season, Full 3-25 Sweep)")
+```
+
+**Actual result from re-running this experiment with the wider 3-25 sweep (matching the NBA baseline's own
+tested range) via direct script execution against T1's real `box_scores_cache.rds` (2026-09-12, RF/`ranger`,
+`set.seed(42)`, trained on seasons < `CURRENT_SEASON`, evaluated on the same 293 real held-out
+`CURRENT_SEASON` games at every window size):**
+
+| Window_Size | N_Train | N_Test | Accuracy | ROC-AUC | Brier |
+|---:|---:|---:|---:|---:|---:|
+| 3  | 1609 | 293 | 0.597 | 0.611 | 0.238 |
+| 4  | 1609 | 293 | 0.608 | 0.637 | 0.236 |
+| 5  | 1609 | 293 | 0.543 | 0.591 | 0.241 |
+| 6  | 1609 | 293 | 0.601 | 0.622 | 0.239 |
+| 7  | 1609 | 293 | 0.601 | 0.620 | 0.239 |
+| 8  | 1609 | 293 | 0.577 | 0.612 | 0.240 |
+| 9  | 1609 | 293 | 0.625 | 0.640 | 0.234 |
+| 10 | 1609 | 293 | 0.597 | 0.646 | 0.231 |
+| 11 | 1609 | 293 | 0.611 | 0.657 | 0.227 |
+| **12** | 1609 | 293 | **0.645** | **0.678** | **0.225** |
+| 13 | 1609 | 293 | 0.635 | 0.663 | 0.227 |
+| 14 | 1609 | 293 | 0.604 | 0.664 | 0.227 |
+| 15 | 1609 | 293 | 0.642 | 0.675 | 0.223 |
+| 16 | 1609 | 293 | 0.638 | 0.673 | 0.226 |
+| 17 | 1609 | 293 | 0.628 | 0.656 | 0.229 |
+| 18 | 1609 | 293 | 0.618 | 0.665 | 0.228 |
+| 19 | 1609 | 293 | 0.614 | 0.654 | 0.230 |
+| 20 | 1609 | 293 | 0.628 | 0.654 | 0.230 |
+| 21 | 1609 | 293 | 0.611 | 0.665 | 0.228 |
+| 22 | 1609 | 293 | 0.635 | 0.647 | 0.233 |
+| 23 | 1609 | 293 | 0.628 | 0.652 | 0.228 |
+| 24 | 1609 | 293 | 0.635 | 0.668 | 0.228 |
+| 25 | 1609 | 293 | 0.635 | 0.673 | 0.227 |
+
+**Correction to the earlier narrow-sweep finding, not a confirmation of it.** The previous {5,7,9,11,13}
+sweep looked monotonically improving and suggested the metric was still climbing at 13 with no plateau in
+sight. The full 3-25 sweep shows that was an artifact of only sampling odd points on a genuinely noisy,
+non-monotonic curve (e.g. window=5 dips to 0.591 ROC-AUC, worse than window=3's 0.611; window=8 dips
+back down after window=6/7). **The empirical peak is window=12** (Accuracy 0.645, ROC-AUC 0.678, Brier
+0.225) - narrowly ahead of window=13 (0.663 AUC) and window=15 (0.675 AUC), with the curve then oscillating
+in the low-0.65-to-mid-0.67 ROC-AUC range from 16 through 25 rather than continuing to improve. `config.R`'s
+`ROLLING_WINDOW_SIZE` is updated from **13 to 12** to reflect this empirically-best-tested value.
+
+**Caveat carried over honestly, not glossed over:** this is still a single train/held-out-season split
+(`set.seed(42)`, one RF fit per window size), not cross-validated. Windows 12, 13, and 15 are separated by
+only 0.003-0.015 ROC-AUC - a gap this small on a 293-game test set is plausibly within sampling noise, so
+"12 is optimal" should be read as "12 is the best-performing point in this specific single-split sweep,"
+not as a statistically confirmed global optimum. `ML_BENCHMARK_REPORT.md` (from the separate P4 spec-
+compliance round) already applies proper leave-one-season-out cross-validation to the final model
+evaluation - a fully rigorous window-size selection would ideally use that same CV methodology rather than
+one fixed split, and is flagged here as a legitimate follow-up rather than done retroactively as part of
+this specific re-run.
+
+## Offseason Transition Methodology Comparison
+
+Using the winning window size from above (or the `config.R` default if the experiment above has not
+yet been run in this session), we compare the three offseason-transition methods out-of-sample on the
+current season - re-run from scratch on WNBA data, not assumed to match the NBA baseline's "reset wins"
+result, because a 44-game season leaves much less in-season signal to overwrite a bad prior before the
+season ends:
+
+```{r offseason-comparison}
+eval_offseason_method <- function(method_name) {
+  df <- build_feature_df(box_scores, window_size = ROLLING_WINDOW_SIZE, method = method_name)
+  train_data <- df |> filter(season < CURRENT_SEASON)
+  test_data  <- df |> filter(season >= CURRENT_SEASON)
+
+  rec <- recipe(target_home_win ~ ., data = train_data) |>
+    step_rm(
+      game_id, game_date, season, home_team, away_team, home_win, away_win,
+      home_roll_ts, home_roll_ftr, home_roll_efg, home_roll_pts, home_roll_tovp,
+      home_roll_oreb, home_roll_dreb, home_roll_ast, home_roll_stl, home_roll_blk, home_roll_tov,
+      away_roll_ts, away_roll_ftr, away_roll_efg, away_roll_pts, away_roll_tovp,
+      away_roll_oreb, away_roll_dreb, away_roll_ast, away_roll_stl, away_roll_blk, away_roll_tov,
+      home_days_rest, away_days_rest
+    ) |>
+    step_normalize(all_numeric_predictors())
+
+  rf <- rand_forest(trees = 200, mode = "classification") |> set_engine("ranger", num.threads = 4)
+  wf <- workflow() |> add_recipe(rec) |> add_model(rf)
+  fit_m <- fit(wf, train_data)
+
+  preds <- predict(fit_m, test_data) |>
+    bind_cols(predict(fit_m, test_data, type = "prob")) |>
+    bind_cols(test_data)
+
+  acc <- preds |> accuracy(truth = target_home_win, estimate = .pred_class) |> pull(.estimate)
+  auc <- preds |> roc_auc(truth = target_home_win, .pred_Win, event_level = "first") |> pull(.estimate)
+  brier <- mean((if_else(preds$target_home_win == "Win", 1, 0) - preds$.pred_Win)^2)
+
+  tibble(Method = method_name, Accuracy = round(acc, 4), `ROC-AUC` = round(auc, 4), `Brier Score` = round(brier, 4))
+}
+
+offseason_results <- map_dfr(c("reset", "mean_regress", "decay"), eval_offseason_method)
+knitr::kable(offseason_results, caption = "Comparison of Offseason Transition Methodologies (Tested on Current WNBA Season)")
+```
+
+**Actual result from running this exact experiment once (window_size=13, RF/`ranger`, real 2026-season
+held-out test):**
+
+| Method       | Accuracy | ROC-AUC | Brier |
+|---|---:|---:|---:|
+| reset        | 0.604 | 0.660 | 0.227 |
+| mean_regress | 0.612 | 0.632 | 0.235 |
+| decay        | 0.602 | 0.657 | 0.230 |
+
+Contrary to the plan's speculation that a shorter WNBA season might favor a continuity-weighted method
+over a hard reset, **"reset" actually won** on both ROC-AUC and Brier (mean_regress edges it out on raw
+accuracy alone, 0.612 vs 0.604, but loses on the two metrics that more directly reflect probability
+quality). `config.R`'s `OFFSEASON_METHOD` default of `"reset"` was kept as-is, now backed by a real
+re-benchmark rather than a carried-over assumption - see `config.R`'s comment for the same numbers.
+
+## Model Benchmarking Architecture
+
+We construct the primary modeling dataset using Method A (Fresh Reset) and fit three candidate
+algorithms on historical seasons, exactly mirroring the NBA baseline's three architectures:
+1. **Logistic Regression (Baseline)**
+2. **Random Forest (`ranger`)**
+3. **Gradient Boosted Trees (`xgboost`)**
+
+```{r model-benchmarks}
+model_df <- build_feature_df(box_scores, window_size = ROLLING_WINDOW_SIZE, method = "reset")
+
+train_data <- model_df |> filter(season < CURRENT_SEASON)
+test_data  <- model_df |> filter(season >= CURRENT_SEASON)
+
+wnba_recipe <- recipe(target_home_win ~ ., data = train_data) |>
+  step_rm(
+    game_id, game_date, season, home_team, away_team, home_win, away_win,
+    home_roll_ts, home_roll_ftr, home_roll_efg, home_roll_pts, home_roll_tovp,
+    home_roll_oreb, home_roll_dreb, home_roll_ast, home_roll_stl, home_roll_blk, home_roll_tov,
+    away_roll_ts, away_roll_ftr, away_roll_efg, away_roll_pts, away_roll_tovp,
+    away_roll_oreb, away_roll_dreb, away_roll_ast, away_roll_stl, away_roll_blk, away_roll_tov,
+    home_days_rest, away_days_rest
+  ) |>
+  step_normalize(all_numeric_predictors())
+
+lr_spec <- logistic_reg() |> set_engine("glm")
+lr_wf <- workflow() |> add_recipe(wnba_recipe) |> add_model(lr_spec)
+lr_fit <- fit(lr_wf, train_data)
+
+rf_spec <- rand_forest(trees = 250, mode = "classification") |> set_engine("ranger", importance = "impurity", num.threads = 4)
+rf_wf <- workflow() |> add_recipe(wnba_recipe) |> add_model(rf_spec)
+rf_fit <- fit(rf_wf, train_data)
+
+xgb_spec <- boost_tree(trees = 150, tree_depth = 3, mode = "classification") |> set_engine("xgboost", nthread = 4)
+xgb_wf <- workflow() |> add_recipe(wnba_recipe) |> add_model(xgb_spec)
+xgb_fit <- fit(xgb_wf, train_data)
+
+eval_model <- function(fitted_wf, model_name) {
+  preds <- predict(fitted_wf, test_data) |>
+    bind_cols(predict(fitted_wf, test_data, type = "prob")) |>
+    bind_cols(test_data)
+
+  acc <- preds |> accuracy(truth = target_home_win, estimate = .pred_class) |> pull(.estimate)
+  auc <- preds |> roc_auc(truth = target_home_win, .pred_Win, event_level = "first") |> pull(.estimate)
+  brier <- mean((if_else(preds$target_home_win == "Win", 1, 0) - preds$.pred_Win)^2)
+  logloss <- mn_log_loss(preds, truth = target_home_win, .pred_Win, event_level = "first") |> pull(.estimate)
+
+  tibble(
+    Model = model_name,
+    Accuracy = round(acc, 4),
+    `ROC-AUC` = round(auc, 4),
+    `Brier Score` = round(brier, 4),
+    `Log-Loss` = round(logloss, 4)
+  )
+}
+
+benchmark_results <- bind_rows(
+  eval_model(lr_fit, "Logistic Regression"),
+  eval_model(rf_fit, "Random Forest (ranger)"),
+  eval_model(xgb_fit, "XGBoost (boost_tree)")
+)
+
+knitr::kable(benchmark_results, caption = "Model Architecture Benchmark Performance on Current WNBA Test Season")
+```
+
+**Actual result from running this exact benchmark once (window_size=13, "reset" method, real
+2026-season held-out test):**
+
+| Model        | Accuracy | ROC-AUC | Brier | Log-Loss |
+|---|---:|---:|---:|---:|
+| Logistic Regression      | 0.628 | 0.655 | 0.231 | 0.655 |
+| Random Forest (ranger)   | 0.604 | 0.666 | 0.227 | 0.644 |
+| XGBoost (boost_tree)     | 0.608 | 0.656 | 0.241 | 0.687 |
+
+Random Forest wins on ROC-AUC, Brier, and Log-Loss (the three metrics that matter most for a
+probability-calibrated betting/rating pipeline), matching the NBA baseline's own RF-wins conclusion -
+so this specific NBA finding *does* transfer to WNBA, unlike the offseason-method assumption above.
+Logistic Regression has the best raw accuracy but is not the better-calibrated model. `rf_fit` is used
+as the "best performing architecture" in the season-simulation section below, consistent with this
+result.
+
+## Feature Importance
+
+```{r feature-plots}
+rf_engine <- extract_fit_engine(rf_fit)
+imp_vec <- rf_engine$variable.importance
+
+importance_df <- data.frame(
+  feature = names(imp_vec),
+  importance = as.numeric(imp_vec)
+) |>
+  arrange(desc(importance)) |>
+  head(10)
+
+ggplot(importance_df, aes(x = reorder(feature, importance), y = importance)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  theme_minimal() +
+  labs(
+    title = "Top 10 Feature Importance (Random Forest, WNBA)",
+    x = "Feature Differential",
+    y = "Importance (Gini Impurity)"
+  )
+```
+
+## Simulation-Season Schedule & Dynamic Projection
+
+We construct a `WNBA_SEASON_GAMES`-game regular season schedule per team (round-robin across the 15
+real `WNBA_TEAMS` franchises, not NBA's 82-game/30-team structure) and perform a `N_SIMULATIONS`-season
+Monte Carlo simulation using model probabilities from the best-performing architecture identified above
+(`rf_fit` by default, matching the NBA baseline's winner - swap this if the benchmark table above
+crowns a different model on real WNBA data):
+
+```{r dynamic-simulation}
+team_lookup <- box_scores |>
+  select(team_id, team_name = team_short_display_name) |>
+  distinct() |>
+  mutate(team_id = as.integer(team_id))
+
+team_profiles_current <- model_df |>
+  filter(season == CURRENT_SEASON) |>
+  group_by(home_team) |>
+  slice_tail(n = 1) |>
+  ungroup()
+
+teams <- unique(team_lookup$team_id)
+set.seed(42)
+
+n_teams <- length(teams)
+half_season <- WNBA_SEASON_GAMES / 2  # e.g. 22 home / 22 away for a 44-game season
+sched_list <- list()
+
+for (i in 1:n_teams) {
+  t_home <- teams[i]
+  others <- setdiff(teams, t_home)
+  opps <- sample(rep(others, length.out = half_season))
+  sched_list[[i]] <- tibble(
+    home_team = t_home,
+    away_team = opps,
+    game_date = Sys.Date() + 1:half_season
+  )
+}
+
+sched_sim <- bind_rows(sched_list) |>
+  mutate(
+    game_id = row_number(),
+    season = SIMULATION_SEASON,
+    home_win = FALSE,
+    away_win = FALSE,
+    home_days_rest = 2,
+    away_days_rest = 2,
+    diff_days_rest = 0
+  )
+
+profiles <- team_profiles_current |>
+  select(team_id = home_team, starts_with("home_roll_"))
+
+names(profiles) <- gsub("^home_roll_", "roll_", names(profiles))
+
+sched_sim_features <- sched_sim |>
+  left_join(profiles, by = c("home_team" = "team_id")) |>
+  rename_with(~ paste0("home_", .), starts_with("roll_")) |>
+  left_join(profiles, by = c("away_team" = "team_id")) |>
+  rename_with(~ paste0("away_", .), starts_with("roll_")) |>
+  mutate(
+    diff_roll_pts   = home_roll_pts - away_roll_pts,
+    diff_roll_oreb  = home_roll_oreb - away_roll_oreb,
+    diff_roll_dreb  = home_roll_dreb - away_roll_dreb,
+    diff_roll_treb  = (home_roll_oreb + home_roll_dreb) - (away_roll_oreb + away_roll_dreb),
+    diff_roll_ast   = home_roll_ast - away_roll_ast,
+    diff_roll_stl   = home_roll_stl - away_roll_stl,
+    diff_roll_blk   = home_roll_blk - away_roll_blk,
+    diff_roll_tov   = home_roll_tov - away_roll_tov,
+    diff_roll_efg   = home_roll_efg - away_roll_efg,
+    diff_roll_tovp  = home_roll_tovp - away_roll_tovp,
+    diff_roll_ftr   = home_roll_ftr - away_roll_ftr,
+    diff_roll_ts    = home_roll_ts - away_roll_ts,
+    diff_days_rest  = 0,
+    target_home_win = factor("Win", levels = c("Win", "Loss"))
+  )
+
+predictions_sim <- sched_sim_features |>
+  bind_cols(predict(rf_fit, sched_sim_features, type = "prob"))
+
+home_var <- predictions_sim |>
+  group_by(team_id = home_team) |>
+  summarise(home_wins = sum(.pred_Win), home_var = sum(.pred_Win * (1 - .pred_Win)))
+
+away_var <- predictions_sim |>
+  group_by(team_id = away_team) |>
+  summarise(away_wins = sum(.pred_Loss), away_var = sum(.pred_Loss * (1 - .pred_Loss)))
+
+analytical_ci <- home_var |>
+  left_join(away_var, by = "team_id") |>
+  left_join(team_lookup, by = "team_id") |>
+  mutate(
+    Projected_Wins = round(home_wins + away_wins, 1),
+    Projected_Losses = round(WNBA_SEASON_GAMES - Projected_Wins, 1),
+    SE = round(sqrt(home_var + away_var), 2),
+    CI_Lower_95 = round(Projected_Wins - 1.96 * SE, 1),
+    CI_Upper_95 = round(Projected_Wins + 1.96 * SE, 1)
+  ) |>
+  arrange(desc(Projected_Wins)) |>
+  mutate(Rank = row_number()) |>
+  select(Rank, Team = team_name, Projected_Wins, Projected_Losses, SE, CI_Lower_95, CI_Upper_95)
+
+knitr::kable(head(analytical_ci, 10), caption = sprintf("Top 10 Projected %d WNBA Standings with Analytical 95%% CIs", SIMULATION_SEASON))
+```
+
+## Monte Carlo Simulation (`N_SIMULATIONS` Seasons)
+
+```{r monte-carlo-sim}
+n_sims <- N_SIMULATIONS
+n_games <- nrow(predictions_sim)
+
+sim_matrix <- matrix(rbinom(n_games * n_sims, 1, predictions_sim$.pred_Win), nrow = n_games, ncol = n_sims)
+
+home_teams_vec <- predictions_sim$home_team
+away_teams_vec <- predictions_sim$away_team
+
+teams_vec <- unique(team_lookup$team_id)
+
+team_wins_matrix <- sapply(teams_vec, function(t_id) {
+  colSums(sim_matrix[home_teams_vec == t_id, , drop = FALSE]) +
+  colSums((1 - sim_matrix)[away_teams_vec == t_id, , drop = FALSE])
+})
+
+sim_results <- tibble(
+  sim = rep(1:n_sims, times = length(teams_vec)),
+  team_id = rep(teams_vec, each = n_sims),
+  total_wins = as.vector(team_wins_matrix)
+)
+
+standings_sim_summary <- sim_results |>
+  left_join(team_lookup, by = "team_id") |>
+  group_by(Team = team_name) |>
+  summarise(
+    Mean_Wins = round(mean(total_wins), 1),
+    Median_Wins = median(total_wins),
+    `5th_Pct` = quantile(total_wins, 0.05),
+    `95th_Pct` = quantile(total_wins, 0.95),
+    `2.5th_Pct` = quantile(total_wins, 0.025),
+    `97.5th_Pct` = quantile(total_wins, 0.975)
+  ) |>
+  arrange(desc(Mean_Wins)) |>
+  mutate(Rank = row_number()) |>
+  select(Rank, Team, Mean_Wins, Median_Wins, `5th_Pct`, `95th_Pct`, `2.5th_Pct`, `97.5th_Pct`)
+
+knitr::kable(head(standings_sim_summary, 10), caption = sprintf("Top 10 Projected %d WNBA Standings from %d Monte Carlo Simulations", SIMULATION_SEASON, N_SIMULATIONS))
+```
+
+## Win Total Density Ridge Plot
+
+```{r ridge-plot}
+top10_teams <- head(standings_sim_summary$Team, 10)
+
+sim_results |>
+  left_join(team_lookup, by = "team_id") |>
+  filter(team_name %in% top10_teams) |>
+  ggplot(aes(x = total_wins, y = reorder(team_name, total_wins, median), fill = team_name)) +
+  geom_density_ridges(alpha = 0.7, show.legend = FALSE) +
+  geom_vline(xintercept = WNBA_SEASON_GAMES / 2, linetype = "dashed", color = "darkred") +
+  theme_minimal() +
+  labs(
+    title = "Simulated Win Total Distributions (WNBA Monte Carlo)",
+    subtitle = sprintf("Top 10 Projected Teams for %d Season", SIMULATION_SEASON),
+    x = sprintf("Total Wins (%d-Game Season)", WNBA_SEASON_GAMES),
+    y = "Team"
+  )
+```
+
+## Conclusion & Next Steps
+
+This WNBA analytics baseline re-runs the NBA repo's original methodology (rolling-window features,
+offseason-transition comparison, model-architecture benchmarking, Monte Carlo season simulation) against
+real WNBA data rather than assuming NBA's conclusions transfer, per `WNBA_REPLICATION_PLAN.md`'s Tier 3
+guidance. The rolling-window-size and offseason-transition-method experiments above are WNBA-specific
+additions not present in the original NBA Rmd (the NBA Rmd only ran the offseason-method comparison,
+never a window-size sweep) - added here specifically because `config.R`'s `ROLLING_WINDOW_SIZE <- 9`
+and `OFFSEASON_METHOD <- "reset"` were both explicitly flagged as unvalidated placeholders in T0's
+Handoff Notes.
+
+**Once this notebook has actually been knit end-to-end** (see the status note at the top of this
+document), a human/future agent should: (1) update `config.R`'s `ROLLING_WINDOW_SIZE` and
+`OFFSEASON_METHOD` if the empirical winners differ from the current placeholders, and log that change
+in `task_assignments.md`; (2) treat this file, once finalized, with the same "pristine baseline, do not
+hand-edit" discipline as `NBA_Analysis_Project.Rmd` (`ADR.md` Principle I) - re-run the whole
+methodology fresh rather than patching numbers in by hand if the underlying data changes.
+
+For downstream player-level rating work (bottom-up team ratings, lineup synergy, roster continuity),
+see `roster_bottom_up_engine.R`, `lineup_synergy.R`, and `roster_dynamics.R` in this same folder -
+those were built independently of this Rmd's team-level rolling-feature model and read `WNBA_MARGIN_SIGMA`
+(config.R) rather than this notebook's classifier probabilities for their own margin-to-win-probability
+conversion.
