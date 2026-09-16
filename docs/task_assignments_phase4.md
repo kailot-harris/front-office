@@ -37,7 +37,7 @@ files" and "can we roll back a bad wave" unanswerable. Before Wave 1:
 | P4-F | 2 | `agent_cleanup` | `tools/ml_cv_benchmark.R`, `tools/ml_feature_experiments.R`, repo root scratch files, `.gitignore` | L-2 (tools/ comment), L-3, L-5 | COMPLETED |
 | P4-CK1 | 2.5 | orchestrator | (verification only, no edits) | integration checkpoint for Wave 2 | COMPLETED |
 | P4-G | 3 | orchestrator (confirm with user first) | `cache/latest_value_bets.rds`, `cache/odds_history.rds`, `cache/prediction_accuracy_log.rds` (non-DIAG rows), `tools/optimize_hca.R` | C-1 fix-direction's data-invalidation step | COMPLETED |
-| P4-V | 4 | orchestrator | new `docs/SECURITY_REMEDIATION_VERIFICATION.md` | re-run all 21 reproductions, sign off | PENDING |
+| P4-V | 4 | orchestrator | new `docs/SECURITY_REMEDIATION_VERIFICATION.md`, new `tools/test_phase4_wave4_verification.R`, `player_props_engine.R`, `playoff_simulator.R`, `tools/optimize_hyperparams.R` (M-6 scope expansion) | re-run all 21 reproductions, sign off | COMPLETED |
 
 ## Wave dependency graph
 ```
@@ -1689,3 +1689,59 @@ more log rows. No scrub required.
 **Net effect of Wave 3:** one real code fix (`tools/optimize_hca.R`), zero cache files mutated
 (none were actually dirty once inspected), P4-G marked COMPLETED. `git status --short` at handoff
 shows only `tools/optimize_hca.R` modified plus the new `docs/PHASE4_REMEDIATION_SUMMARY.md`.
+
+---
+
+## P4-V — Wave 4 verification / sign-off (orchestrator, 2026-09-16)
+
+Wrote `tools/test_phase4_wave4_verification.R`, a permanent 49-check harness that re-runs the
+original review's own reproduction technique — grep the real code, exercise the real function,
+read the real cache, run the real script — for all 21 findings, rather than re-reading diffs.
+First pass surfaced 11 apparent failures; every one was investigated individually rather than
+assumed to be a regression. All 11 turned out to be **false positives in the check itself**
+(mostly matching explanatory `# FINDING ...` comments that intentionally quote the old buggy code
+for documentation, which a naive `grepl()` can't distinguish from live code) — tightened the
+harness to strip full-comment lines before matching, confirmed each one individually against the
+real file before accepting the fix. Final run: **49 / 49 checks passed.**
+
+**Real finding, not a check bug: M-6's original scope (`app.R`, `market_odds_engine.R`) was
+incomplete.** A repo-wide, comment-excluded scan for the unhardened scalar `%||%` definition
+turned up three more untouched copies: `player_props_engine.R:66`, `playoff_simulator.R:47`,
+`tools/optimize_hyperparams.R:42` — none were in any Wave 2 agent's file-ownership list. Fixed
+the same way M-6 was originally fixed: deleted each local redefinition, sourced
+`logging_utils.R`'s canonical hardened version instead (`player_props_engine.R` gained an
+explicit `source("logging_utils.R")`; `playoff_simulator.R` used a guarded
+`if (!exists("%||%")) source("logging_utils.R")` matching its existing `config.R`-guard style;
+`tools/optimize_hyperparams.R` already sourced `logging_utils.R`, so just deleted the shadow).
+Re-verified each file still runs standalone to completion post-fix: `player_props_engine.R` exit
+0 (768 props, 722 +EV), `playoff_simulator.R` exit 0 (full Bo3/Bo5/Bo7 bracket), 
+`tools/optimize_hyperparams.R` exit 0 (891-combination grid search) — none were broken by
+removing the shadowed operator.
+
+**Second real finding: `tools/optimize_hyperparams.R` had the identical synthetic-data blind spot
+Wave 3 fixed in `tools/optimize_hca.R` under P4-G.** Its resolved-rows filter never excluded
+`is_synthetic`, so running it (even post-C-1-fix) silently tuned hyperparameters against the 100
+`DIAG_*` fixture games and printed a confident "Best combination... MAE: 12.342" — a fabricated
+result dressed as a real one, the exact C-3 pattern in a file nobody had scoped. Fixed with the
+same `!is_synthetic` filter; re-run now correctly refuses with "No RESOLVED predictions found to
+optimize against."
+
+**Full-pipeline re-run for final C-2/H-2 evidence** (not reused from Wave 2.5 — run fresh for this
+sign-off): `Rscript.exe run_full_pipeline.R`, **18/18 stages `[COMPLETED]`, 0 `[FAILED]`, 39.75s**,
+zero `UNRELIABLE VALUE` RNG warnings, 14 `[FRESH]` freshness-check lines / 0 stale, log-spill merge
+recovered 18 rows from 3 workers, live Discord dispatch succeeded (`[ALERT SUCCESS] Broadcasted
+calibrated live WNBA bets to Discord webhook` — per the user's standing "allow the pipeline to
+send to discord" instruction). `sync_rosters.R` took 2.80s (was 0.23s pre-fix), confirming a real
+scrape, not a no-op.
+
+**Verification doc:** `docs/SECURITY_REMEDIATION_VERIFICATION.md`, structured to mirror
+`docs/SECURITY_TECHNICAL_REVIEW.md` finding-by-finding, citing this run's real output for all 21
+findings plus the 3 gaps found and fixed during verification itself.
+
+**`git status --short` at handoff:** `player_props_engine.R`, `playoff_simulator.R`,
+`tools/optimize_hyperparams.R` modified (M-6 scope fix); new `tools/test_phase4_wave4_verification.R`
+and `docs/SECURITY_REMEDIATION_VERIFICATION.md`; several `cache/*.rds` files modified as the normal
+output of the real pipeline re-run (not hand-edits).
+
+Phase 4 remediation is complete: all 21 original findings + 3 verification-pass findings fixed
+and verified with real reproduction output.

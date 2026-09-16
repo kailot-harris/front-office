@@ -39,7 +39,9 @@ source("config.R")
 source("logging_utils.R")
 .LOG_SCRIPT <- "optimize_hyperparams.R"
 
-`%||%` <- function(a, b) if (!is.null(a) && length(a) > 0 && !is.na(a)) a else b
+# FINDING M-6 (Phase 4 Wave 4): this file carried its own unhardened scalar %||%
+# (errors on a length>1 vector). logging_utils.R (sourced above) already defines the
+# single canonical hardened version — no local redefinition needed.
 
 # Current defaults (market_odds_engine.R lines 67-68 and 95)
 DEFAULT_LIMIT       <- 15.0
@@ -110,7 +112,11 @@ run_hyperparam_optimization <- function() {
   if (!file.exists(log_path)) stop("Missing prediction_accuracy_log.rds cache.")
 
   pred_log <- readRDS(log_path)
-  resolved <- pred_log |> filter(status == "RESOLVED", !is.na(actual_margin))
+  # FINDING P4-G (Phase 4 Wave 4): same class of bug as tools/optimize_hca.R's is_synthetic
+  # guard. Every currently-RESOLVED row in prediction_accuracy_log.rds is a DIAG_* synthetic
+  # fixture (verified 2026-09-16) -- without this filter the grid search silently tunes
+  # hyperparameters against fabricated games and reports a confident but meaningless MAE.
+  resolved <- pred_log |> filter(status == "RESOLVED", !is_synthetic, !is.na(actual_margin))
   if (nrow(resolved) == 0) stop("No RESOLVED predictions found to optimize against.")
 
   lookups <- build_team_lookups()

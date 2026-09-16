@@ -1,8 +1,9 @@
 # Phase 4 Remediation — Summary
 
 **Date:** 2026-09-16
-**Status:** Waves 0–3 complete. Wave 4 (verification sign-off) not yet run — see "What's left"
-at the bottom.
+**Status:** All of Phase 4 (Waves 0–4) complete. All 21 findings verified fixed with real
+reproduction output — see `docs/SECURITY_REMEDIATION_VERIFICATION.md` for the finding-by-finding
+sign-off. "What's left" at the bottom now covers only minor follow-ups, not open findings.
 
 This is the entry-point summary. For the full agent-by-agent evidence (every real command
 output, every check, every deviation explained), read `docs/task_assignments_phase4.md` in
@@ -39,8 +40,9 @@ two agents could never safely edit the same file concurrently. The findings were
   probe, run once all five Wave 2 agents landed.
 - **Wave 3** (orchestrator, complete): investigate and invalidate/regenerate caches poisoned by
   the pre-fix HCA value — gated on user confirmation, given by "Then proceed."
-- **Wave 4** (not yet run): re-run the original review's reproductions against the fixed code,
-  write a verification/sign-off doc.
+- **Wave 4** (orchestrator, complete): re-ran every one of the original review's reproductions
+  against the fixed code (49-check harness, 49/49 passed) plus a fresh full pipeline run
+  (18/18 stages), and wrote `docs/SECURITY_REMEDIATION_VERIFICATION.md` as the formal sign-off.
 
 Every agent brief lives in `agents/agent_foundation.md`, `agent_engine.md`, `agent_dashboard.md`,
 `agent_pipeline.md`, `agent_props.md`, `agent_cleanup.md`.
@@ -128,11 +130,35 @@ reporting a fabricated number. Also re-verified (without ever printing the key) 
 from Wave 2.5 — no log-scrub was needed. Full detail in `docs/task_assignments_phase4.md`'s P4-G
 Handoff Notes entry.
 
+## Wave 4 results (verification / sign-off)
+
+Wrote `tools/test_phase4_wave4_verification.R`, a permanent harness that re-runs the original
+review's own reproduction technique (grep the real code, exercise the real function, read the
+real cache, run the real script) for all 21 findings. First pass had 11 apparent failures, all
+individually investigated and found to be false positives in the check itself (matching
+explanatory `# FINDING ...` comments that intentionally quote old buggy code for documentation),
+not regressions — tightened the harness to exclude comment lines and confirmed each one
+individually. Final: **49 / 49 checks passed.**
+
+One real gap did surface: **M-6's original scope was incomplete.** The review named only `app.R`
+and `market_odds_engine.R` as carrying the unhardened scalar `%||%`; a repo-wide scan found the
+identical bug in three more files nobody had been assigned to touch
+(`player_props_engine.R`, `playoff_simulator.R`, `tools/optimize_hyperparams.R`) — fixed the same
+way M-6 was originally fixed. Also found `tools/optimize_hyperparams.R` had the identical
+synthetic-fixture-data blind spot Wave 3 fixed in `tools/optimize_hca.R` — fixed with the same
+`!is_synthetic` filter.
+
+Also re-ran the full pipeline fresh (not reused from Wave 2.5) for final C-2/H-2 mtime evidence:
+**18/18 stages, 0 failed, 39.75s, 0 RNG warnings**, live Discord dispatch succeeded per the user's
+standing approval. Full detail and all 49 check results in
+`docs/SECURITY_REMEDIATION_VERIFICATION.md` and the P4-V Handoff Notes entry in
+`docs/task_assignments_phase4.md`.
+
 ## What's left
 
-- **Wave 4 — verification doc.** Re-run the original review's own reproductions against the fixed
-  code and write `docs/SECURITY_REMEDIATION_VERIFICATION.md` as the formal sign-off, mirroring
-  `docs/SECURITY_TECHNICAL_REVIEW.md`'s finding-by-finding structure.
+All 21 original findings plus the 3 gaps found during Wave 4 verification are fixed and verified.
+Only minor, non-blocking follow-ups remain:
+
 - `agent_pipeline` flagged the remaining half of M-1 as a follow-up: `config.R` should get a
   `PYTHON_BIN` constant so the interpreter isn't resolved bare from `PATH`. Not yet done.
 - `agent_pipeline` also flagged that `config.R`'s `CACHE_EMBEDDINGS`/`CACHE_SIMILARITY` constants

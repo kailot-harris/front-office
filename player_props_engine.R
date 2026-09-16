@@ -63,7 +63,10 @@ source("config.R")
 # Do not reimplement it here — see rapm_join_utils.R's header for why.
 source("rapm_join_utils.R")
 
-`%||%` <- function(a, b) if (!is.null(a) && length(a) > 0 && !is.na(a)) a else b
+# FINDING M-6 (Phase 4 Wave 4): this file carried its own unhardened scalar %||%
+# (errors on a length>1 vector), identical to the app.R/market_odds_engine.R copies
+# M-6 fixed. Source the single canonical hardened definition instead of restating it.
+source("logging_utils.R")
 
 if (!dir.exists("cache")) dir.create("cache", recursive = TRUE)
 

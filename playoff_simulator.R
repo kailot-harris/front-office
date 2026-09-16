@@ -44,7 +44,11 @@ if (!dir.exists("cache")) dir.create("cache", recursive = TRUE)
 # Guarded so a caller that already sourced config.R does not pay for it twice.
 if (!exists("WNBA_MARGIN_SIGMA") || !exists("WNBA_HCA")) source("config.R")
 
-`%||%` <- function(a, b) if (!is.null(a) && length(a) > 0 && !is.na(a)) a else b
+# FINDING M-6 (Phase 4 Wave 4): this file carried its own unhardened scalar %||%
+# (errors on a length>1 vector), identical to the app.R/market_odds_engine.R copies
+# M-6 fixed. Source the single canonical hardened definition instead of restating it;
+# guarded the same way as the config.R source() just above.
+if (!exists("%||%")) source("logging_utils.R")
 
 message(">>> [WNBA PLAYOFFS] Initializing Monte Carlo Playoff Series Simulator...")
 
