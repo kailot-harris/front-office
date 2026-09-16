@@ -51,25 +51,28 @@ in-pipeline assertion the DAG itself may eventually add.
 
 ## Stage -> output manifest (keep in sync with run_full_pipeline.R)
 
-**PLACEHOLDER — not yet populated.** This repo does not have a `run_full_pipeline.R` DAG yet (it's
-Phase 1+ work); there is nothing real to mirror here. The table below shows the *shape* this
-manifest must take once the pipeline exists — same columns, one row per stage — ported from the
-WNBA Analytics repo's equivalent table for reference, not as a claim about this repo's actual
-stages. Do not fabricate NFL-specific stage/script names to fill this in prematurely.
+Populated from `run_full_pipeline.R`'s Wave 1 skeleton (task P1-D, `docs/task_assignments_phase0.md`)
+— three real ingestion stages, no stub/placeholder stages for later-phase engines that don't exist
+yet (metrics/ratings/fatigue/market/props/risk/notify; see that file's Constraints section).
 
 | Stage script | Declared output(s) |
 |---|---|
-| `TODO: populate from run_full_pipeline.R once it exists` | `TODO` |
+| `daily_ingest.R` | `cache/pbp_cache.rds` (`CACHE_PBP`), `cache/schedules_cache.rds` (`CACHE_SCHEDULES`) |
+| `sync_rosters.R` | `cache/rosters_cache.rds` (`CACHE_ROSTERS`) |
+| `injury_scraper.R` | `cache/injury_data_cache.rds` (`CACHE_INJURY_DATA`) |
 
-**Once `run_full_pipeline.R` exists in this repo:**
-1. Replace the placeholder row(s) above with one row per real stage, mirroring that script's
-   `output = ` arguments.
-2. Populate the matching `manifest` list in `scripts/check_freshness.R` (currently an empty
-   placeholder that errors loudly if run before this step is done) with the same stage/output
-   pairs.
-3. Note here which stages are deliberately excluded (diagnostic-only scripts, incremental
-   ingestion stages, log-append-only stages, dispatch-only stages) and why, mirroring the kind of
-   exclusions the WNBA repo's pipeline needed.
+**Deliberate exclusion / known false-positive source:** `daily_ingest.R` is an incremental
+ingestion stage — `.ingest_one()` legitimately skips the write ("cache already up to date; no
+write necessary") when `nflreadr::load_pbp()` / `nflreadr::load_schedules()` return zero new rows
+for the current season, which is the common case on a quiet day (or on a second run shortly after
+the first). A `[STALE]` verdict for this stage's outputs is therefore not automatically a silent
+no-op bug the way it would be for `sync_rosters.R` or `injury_scraper.R` (which unconditionally
+`saveRDS()` on every successful run) — cross-check the pipeline log for that run (was `force_refresh`
+used? did the log report "N new records identified" as 0?) before concluding a real failure, per
+Procedure step 3 above. This was confirmed empirically: forcing `run_daily_ingest(force_refresh =
+TRUE)` produces a real rewrite that this check correctly reports `[FRESH]`; a normal incremental
+run immediately afterward (0 new rows) correctly reports `[STALE]` because nothing was written —
+both are the script behaving as designed, not a bug in the freshness check itself.
 
 **If `run_full_pipeline.R`'s stage list or output paths ever change, update this table and
 `scripts/check_freshness.R` together** — a stale manifest here would itself silently reintroduce

@@ -48,6 +48,23 @@ vignettes/*.pdf
 # repo hit this identical template-merge conflict and documents dropping these
 # same two lines for the same reason — see its .gitignore history.
 
+# ------------------------------------------------------------------------------
+# Runtime logs — pure diff noise, same rationale as WNBA Analytics's .gitignore.
+# ------------------------------------------------------------------------------
+logs/*.duckdb
+logs/*.duckdb.wal
+logs/*.log
+logs/logs_pending_*.tsv
+
+# ------------------------------------------------------------------------------
+# Raw play-by-play cache: excluded despite the cache/-is-tracked policy above.
+# Unlike this repo's other cache/ artifacts, this one file is (a) ~300MB, over
+# GitHub's 100MB hard per-file limit for a normal push, and (b) a mechanical,
+# one-line nflreadr::load_pbp() pull with no proprietary computation behind it
+# (unlike e.g. WNBA's RAPM ratings) — regenerating it via `daily_ingest.R`'s
+# bootstrap path is the intended recovery path, not restoring it from git.
+cache/pbp_cache.rds
+
 # translation temp files
 po/*~
 

@@ -19,15 +19,20 @@ if (length(args) < 1) {
 run_start <- as.POSIXct(args[1], tz = Sys.timezone())
 if (is.na(run_start)) stop("Could not parse run-start timestamp: ", args[1])
 
-# TODO(NFL pipeline DAG): this manifest is a PLACEHOLDER. The WNBA Analytics repo's version of
-# this script hardcoded its real stage -> output-cache manifest here, mirroring the `output = `
-# arguments in that repo's run_full_pipeline.R. This repo does not have a run_full_pipeline.R yet
-# (it's Phase 1+ work) so there is no real DAG to mirror -- do NOT fabricate NFL stage/script names
-# to fill this in. Once run_full_pipeline.R exists here, populate this list with one entry per
-# stage using the same `list(stage = "<script>", outputs = <path(s)>)` shape as below, and update
-# the "Stage -> output manifest" table in this skill's SKILL.md to match.
+# Populated per docs/task_assignments_phase0.md's Constraints section (P1-D / nfl_pipeline_
+# skeleton_agent's follow-up), mirroring the `output = ` arguments in run_full_pipeline.R's three
+# Wave-1 run_stage() calls. Keep this list and the "Stage -> output manifest" table in this
+# skill's SKILL.md in sync with run_full_pipeline.R if the DAG's stages/outputs ever change.
+#
+# NOTE on daily_ingest.R: its stage legitimately skips the write when nflreadr returns zero new
+# rows for the current season (an already-up-to-date incremental pull) -- see daily_ingest.R's
+# .ingest_one()'s "cache already up to date; no write necessary" branch. A [STALE] report for
+# this stage is NOT automatically a bug; cross-check against the pipeline log for that run before
+# concluding a silent no-op (same guidance as SKILL.md's Procedure step 3).
 manifest <- list(
-  # list(stage = "PLACEHOLDER_STAGE_SCRIPT.R", outputs = "cache/PLACEHOLDER_OUTPUT.rds")
+  list(stage = "daily_ingest.R", outputs = c(CACHE_PBP, CACHE_SCHEDULES)),
+  list(stage = "sync_rosters.R", outputs = CACHE_ROSTERS),
+  list(stage = "injury_scraper.R", outputs = CACHE_INJURY_DATA)
 )
 
 if (length(manifest) == 0) {
