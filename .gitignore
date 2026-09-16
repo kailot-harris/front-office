@@ -30,7 +30,6 @@ vignettes/*.pdf
 
 # knitr and R markdown default cache directories
 *_cache/
-/cache/
 
 # Temporary files created by R markdown
 *.utf8.md
@@ -39,8 +38,15 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
-# pkgdown site
-docs/
+# NOT ignored, on purpose: cache/ and docs/.
+# This is a generic GitHub-generated R .gitignore template, which by default
+# ignores /cache/ (assuming it's a knitr scratch dir) and docs/ (assuming a
+# pkgdown site). Neither assumption holds here: cache/ holds real generated
+# .rds artifacts (e.g. tools/derive_nfl_constants.R's output) that downstream
+# engines read and that are slow to regenerate, and docs/ holds the actual
+# replication plan and task-assignment deliverables. The sibling WNBA Analytics
+# repo hit this identical template-merge conflict and documents dropping these
+# same two lines for the same reason — see its .gitignore history.
 
 # translation temp files
 po/*~
