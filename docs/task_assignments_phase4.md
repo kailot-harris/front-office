@@ -30,11 +30,11 @@ files" and "can we roll back a bad wave" unanswerable. Before Wave 1:
 | P4-0 | 0 | orchestrator | (repo-wide) `git init` + baseline commit | — | PENDING |
 | P4-C | 1 | `agent_foundation` | `config.R`, `logging_utils.R`, new `rapm_join_utils.R` | C-1 (constant), H-1 (redaction helper), H-2 (shared join helper), M-6 (canonical `%||%`), M-7 (log connection lifecycle), L-2 (config.R comment) | COMPLETED |
 | P4-I | 1 | orchestrator | new `docs/REMEDIATION_INTERFACE_CONTRACTS.md` | interface contracts consumed by Wave 2 | PENDING |
-| P4-A | 2 | `agent_engine` | `market_odds_engine.R`, `tools/optimize_hca.R`, `tools/backtest_margin_hyperparams.R`, `tools/build_calibration_cache.R` | C-1 (engine), H-1 (call site), H-4, L-1, M-5 (engine side), M-6 (remove local) | PENDING |
+| P4-A | 2 | `agent_engine` | `market_odds_engine.R`, `tools/optimize_hca.R`, `tools/backtest_margin_hyperparams.R`, `tools/build_calibration_cache.R` | C-1 (engine), H-1 (call site), H-4, L-1, M-5 (engine side), M-6 (remove local) | COMPLETED |
 | P4-B | 2 | `agent_dashboard` | `app.R` | C-1 (app.R), C-3 (Tab 8 filter/label), H-3, M-3, M-6 (remove local), M-8 (display), L-6 (read canonical) | PENDING |
 | P4-D | 2 | `agent_pipeline` | `run_full_pipeline.R`, `sync_rosters.R`, `injury_scraper.R`, `roster_bottom_up_engine.R`, `playoff_simulator.R` | C-2, M-1, M-2, M-7 (pipeline side), C-1 (roster/playoff refs), H-2 (roster_bottom_up_engine.R), M-8 (write numeric) | PENDING |
 | P4-E | 2 | `agent_props` | `player_props_engine.R`, `prediction_accuracy_logger.R`, `daily_ingest.R`, `tools/generate_diagnostic_data.R` | H-2 (player_props_engine.R), M-4, M-5 (logger side), C-3 (schema/migration), L-4, L-6 (canonical write) | PENDING |
-| P4-F | 2 | `agent_cleanup` | `tools/ml_cv_benchmark.R`, `tools/ml_feature_experiments.R`, repo root scratch files, `.gitignore` | L-2 (tools/ comment), L-3, L-5 | PENDING |
+| P4-F | 2 | `agent_cleanup` | `tools/ml_cv_benchmark.R`, `tools/ml_feature_experiments.R`, repo root scratch files, `.gitignore` | L-2 (tools/ comment), L-3, L-5 | COMPLETED |
 | P4-CK1 | 2.5 | orchestrator | (verification only, no edits) | integration checkpoint for Wave 2 | PENDING |
 | P4-G | 3 | orchestrator (confirm with user first) | `cache/latest_value_bets.rds`, `cache/odds_history.rds`, `cache/prediction_accuracy_log.rds` (non-DIAG rows) | C-1 fix-direction's data-invalidation step | PENDING |
 | P4-V | 4 | orchestrator | new `docs/SECURITY_REMEDIATION_VERIFICATION.md` | re-run all 21 reproductions, sign off | PENDING |
@@ -265,3 +265,206 @@ CONTENDER_EXIT=0
 ```
 
 Left uncommitted for orchestrator review. Wave 2 is unblocked.
+
+---
+
+### P4-A — `agent_engine` (Wave 2) — COMPLETED 2026-09-16
+
+**Files changed:** `market_odds_engine.R`, `tools/optimize_hca.R`,
+`tools/backtest_margin_hyperparams.R`, `tools/build_calibration_cache.R`, new
+`tools/test_phase4_engine.R`, plus this tracker file. Nothing else. (`logs/wnba_pipeline.log` and
+`logs/logs.duckdb` also show modified — that is the logger writing real rows during the test run,
+not a source edit. No `cache/*.rds` artifact was mutated; see the note under CHECK 6 below.)
+
+**What landed**
+
+- **C-1 (engine).** `market_odds_engine.R`'s `fair_margin <- ... + 11.6 + ...` and `hcas[i] <- 11.6`
+  now both read `config.R::WNBA_HCA`. The misleading comment block (which documented `2.40` three
+  lines above code that added `11.6`) was rewritten to say the value is read from
+  `config.R::WNBA_HCA` and must not be restated here, and to record what the bug actually did. The
+  file-header note #5 was updated the same way. `tools/build_calibration_cache.R`'s
+  `HCA <- 2.40` and `tools/optimize_hca.R`'s `2.4` literals (line 59's base-margin subtraction, the
+  `optim(par=)` start value, and the baseline-MAE/`cat()` restatements) all read `WNBA_HCA` now.
+  `tools/backtest_margin_hyperparams.R`'s `HCA_CONST <- 11.6  # ...current live constant` — which
+  had enshrined the defect as backtest ground truth — is now `HCA_CONST <- WNBA_HCA`. Verified by
+  evaluating each file's top-level assignments against a real `source("config.R")`:
+  `HCA_CONST = 2.4`, `HCA = 2.4`.
+- **H-1 (call site).** The key is no longer interpolated into a URL string *at all*.
+  `fetch_market_odds()` now builds a keyless `base_url` and attaches `apiKey` via
+  `httr2::req_url_query()` on the request object immediately before `req_perform()`. Only
+  `base_url` is ever logged (both the `log_info()` and the `log_error()` in the error handler).
+  This is option (a) from the brief — Wave 1's logger-level `.log_redact()` remains as defense in
+  depth, not as the only layer.
+- **H-4.** `resolve_team_name()` restructured: abbreviation equality is checked first (so 2-char
+  `"LV"`/`"NY"`/`"GS"` survive), then a `nchar(trimws(s)) >= 3` gate, then forward-only substring
+  matching. The reverse-containment clause `grepl(s, fn, fixed = TRUE)` is **deleted** — that clause
+  is what made `""` match all 15 franchises and return `"Atlanta Dream"`. No-match now returns
+  `NA_character_` (not the raw input) and emits a `WARN` carrying the unresolved value.
+- **L-1.** The nickname clause is now
+  `full_names[vapply(nick, function(n) grepl(paste0("\\b", n, "\\b"), s), logical(1))]`.
+  The old code handed a length-15 vector to `grepl()`'s `pattern`, so only `nick[1]` (`"dream"`) was
+  ever tested and its scalar result was recycled across all 15 positions by `|`. CHECK 2e asserts
+  the `argument 'pattern' has length > 1` R warning no longer fires.
+- **M-5 (engine half).** `market_data_source` (character, `"LIVE_ODDS_API"` / `"SYNTHETIC_FALLBACK"`)
+  is now a column on `fetch_market_odds()`'s return value on **both** branches, per the interface
+  contract above.
+- **M-6.** The local `%||%` at `market_odds_engine.R:60` is deleted; `source("logging_utils.R")` is
+  at line 57 and the first `%||%` use is at line 337, so the canonical hardened definition is always
+  the one in scope (CHECK 5b asserts this ordering mechanically, not by inspection).
+
+**NOTE FOR `agent_props` (M-5 contract detail — read this)**
+
+The brief described `market_data_source` as a field on `fetch_market_odds()`'s return value, but
+`prediction_accuracy_logger.R::log_todays_predictions()` does not call that function — it reads
+`cache/latest_value_bets.rds` (see `prediction_accuracy_logger.R:194`). The marker would therefore
+never have reached you. I additionally **carried it through `evaluate_betting_slate()`'s
+`output_table` select**, so it is a real column on `cache/latest_value_bets.rds`. It is excluded
+from `display_table` so the printed `kable` is unchanged. Read it off the cache alongside
+`Model_Win_Prob`; no call into this engine is needed.
+
+**FLAG FOR P4-G (Wave 3 cache invalidation) — new, not in the review**
+
+`tools/optimize_hca.R` recovers an HCA-free base margin as `predicted_margin - WNBA_HCA`. Every row
+in `cache/prediction_accuracy_log.rds` written **before** this fix had `11.6` baked into
+`predicted_margin`, so for those rows the subtraction leaves a ~9.2-point residual offset that will
+bias the optimizer's answer **upward**. A `STALENESS WARNING` comment saying exactly this is now in
+the file. **Consequence: do not run `tools/optimize_hca.R` to "derive the real WNBA HCA empirically"
+(the review's C-1 fix direction) until P4-G has regenerated or excluded the pre-fix rows** — it
+would produce a confidently wrong number from contaminated inputs. Sequencing matters here.
+
+**Second finding: the C-1 blast radius is larger than the review's table shows.** The review's
+reproduction table was assumed to be the synthetic fixture slate. It was not — **`ODDS_API_KEY` is
+actually provisioned in this environment**, so the standalone run in CHECK 6 pulled 8 **live** games
+from The Odds API (`market_data_source = LIVE_ODDS_API`). Two implications: (1) the invalid
+`latest_value_bets.rds` / `odds_history.rds` rows P4-G must invalidate are real, live betting
+recommendations, not demo data; (2) H-1 was **not** latent — the review's "does not fire today only
+because `ODDS_API_KEY` is empty" premise is **false for this machine**, so a single transient
+network error would already have written the live key to `logs/wnba_pipeline.log` and
+`logs/logs.duckdb`. Both of those files are in the repo tree and predate Wave 1's redaction; the
+orchestrator should consider whether P4-G also needs a log-scrub / key-rotation step.
+
+**Also removed (owned file, same finding):** `tools/backtest_margin_hyperparams.R:54` carried an
+identical unsafe scalar `%||%` copy that the review's M-6 did not list (it names only `app.R` and
+`market_odds_engine.R`). Removed for the same reason; its one use (line 252, a scalar
+`[1] %||% 0.0`) now resolves to the canonical `logging_utils.R` definition. CHECK 5c guards it.
+
+**Verification — real output of `"C:/Program Files/R/R-4.5.2/bin/Rscript.exe" tools/test_phase4_engine.R`**
+
+(Library-load warnings and DuckDB's `~/.duckdb` storage notice elided; everything else verbatim.)
+
+```
+=== Phase 4 Wave 2 engine tests (P4-A / agent_engine) ===
+
+  config.R::WNBA_HCA = 2.4 | WNBA_MARGIN_SIGMA = 14
+  implied home-prob for two IDENTICAL teams at hca=2.40 (fixed) : 0.568
+  implied home-prob for two IDENTICAL teams at hca=11.60 (bug)  : 0.796
+[PASS] CHECK 1 (C-1) implied home-win prob for two identical teams in [0.53, 0.60]  -- p = 0.568 (was 0.796 under the 11.6 bug; real WNBA home rate ~55-58%)
+[PASS] CHECK 1b (C-1) no hardcoded 11.6 / 2.40 HCA literal remains in engine code  -- 0 literal HCA assignments; both sites read WNBA_HCA
+
+  resolve_team_name() fuzz (warnings below are the new H-4 WARN log lines):
+[2026-09-16 08:53:06] [WARN] [test_phase4_engine.R] resolve_team_name(): input too short to resolve to a WNBA franchise (H-4 guard). | call: resolve_team_name() | unresolved_value:
+[2026-09-16 08:53:06] [WARN] [test_phase4_engine.R] resolve_team_name(): input too short to resolve to a WNBA franchise (H-4 guard). | call: resolve_team_name() | unresolved_value: a
+[2026-09-16 08:53:06] [WARN] [test_phase4_engine.R] resolve_team_name(): input too short to resolve to a WNBA franchise (H-4 guard). | call: resolve_team_name() | unresolved_value: s
+[2026-09-16 08:53:06] [WARN] [test_phase4_engine.R] resolve_team_name(): input too short to resolve to a WNBA franchise (H-4 guard). | call: resolve_team_name() | unresolved_value:
+[2026-09-16 08:53:06] [WARN] [test_phase4_engine.R] resolve_team_name(): input too short to resolve to a WNBA franchise (H-4 guard). | call: resolve_team_name() | unresolved_value: xy
+    input=""       -> NA_character_
+    input="a"      -> NA_character_
+    input="s"      -> NA_character_
+    input="  "     -> NA_character_
+    input="xy"     -> NA_character_
+[PASS] CHECK 2a (H-4) degenerate inputs ('', 'a', 's', '  ', 'xy') all return NA_character_  -- 5/5 returned NA (review had ''->Atlanta Dream, 'a'->Atlanta Dream, 's'->Chicago Sky)
+    input=Las Vegas Aces           -> Las Vegas Aces
+    input=Seattle Storm            -> Seattle Storm
+    input=Minnesota Lynx           -> Minnesota Lynx
+    input=Connecticut Sun          -> Connecticut Sun
+    input=Golden State Valkyries   -> Golden State Valkyries
+    input=New York Liberty         -> New York Liberty
+[PASS] CHECK 2b (H-4 regression guard) exact full franchise names still resolve to themselves  -- 6/6 exact matches preserved
+    abbreviations: LV->Las Vegas Aces, SEA->Seattle Storm, NY->New York Liberty, GS->Golden State Valkyries, CON->Connecticut Sun
+[PASS] CHECK 2c (H-4) 2-3 char WNBA_TEAMS abbreviations still resolve (length gate does not eat them)  -- abbreviation branch runs before the nchar(s) < 3 guard
+    nicknames: Aces->Las Vegas Aces, Storm->Seattle Storm, Valkyries->Golden State Valkyries
+[PASS] CHECK 2d (L-1) nickname clause is vectorized: every nickname tested, not just nick[1]  -- pre-fix, grepl() saw a length-15 pattern and only ever tested 'dream'
+[2026-09-16 08:53:06] [WARN] [test_phase4_engine.R] resolve_team_name(): input did not match any WNBA franchise; returning NA. | call: resolve_team_name() | unresolved_value: Unknown FC
+[2026-09-16 08:53:06] [WARN] [test_phase4_engine.R] resolve_team_name(): input did not match any WNBA franchise; returning NA. | call: resolve_team_name() | unresolved_value: Toronto Raptors
+[PASS] CHECK 2e (L-1) no "argument 'pattern' has length > 1" R warning is raised  -- 0 pattern-length warnings across 4 fuzz inputs
+[PASS] CHECK 2f (H-4) unrecognized-but-long inputs return NA, not the raw input passed through  -- 'Unknown FC' -> NA, 'Toronto Raptors' -> NA
+[PASS] CHECK 2g (H-4) caller at get_model_slate_probabilities() handles an NA team name without crashing  -- standings filter on NA -> 0 rows (routes to the devigged-consensus fallback); abbr_for(NA) -> NA
+
+  -- H-1: invoking the real fetch_market_odds() with ODDS_API_KEY=SUPERSECRET123 --
+  new c:/Users/kailo/kayceeslices/WNBA Analytics/logs/wnba_pipeline.log lines written by that call: 3
+    [2026-09-16 08:53:06] [INFO] [test_phase4_engine.R] Querying live multi-region WNBA odds from The Odds API. | call: fetch_market_odds() | url: https://api.the-odds-api.com/v4/sports/basketball_wnba/odds/
+    [2026-09-16 08:53:07] [ERROR] [test_phase4_engine.R] Odds API request failed. | call: fetch_market_odds() | url: https://api.the-odds-api.com/v4/sports/basketball_wnba/odds/ | condition_class: httr2_http_401/httr2_http/httr2_error/rlang_error/rlang_error/error/condition | condition_message: HTTP 401 Unauthorized.
+    [2026-09-16 08:53:07] [WARN] [test_phase4_engine.R] Using SYNTHETIC_FALLBACK calibrated WNBA fixture slate (no live odds). | call: fetch_market_odds() | data_source: SYNTHETIC_FALLBACK
+[PASS] CHECK 3a (H-1) secret absent from logs/wnba_pipeline.log lines written by the real call site  -- secret present in log = FALSE
+[PASS] CHECK 3b (H-1) secret absent from console/stdout of the real call site  -- secret present on stdout = FALSE
+[PASS] CHECK 3c (H-1) secret absent from the logs.duckdb `logs` table  -- rows in logs.duckdb containing the secret = 0
+[PASS] CHECK 3d (H-1) engine source never interpolates api_key into a URL string at all  -- key is attached via httr2::req_url_query(); only the keyless base URL is logged
+
+[PASS] CHECK 4a (M-5) fetch_market_odds() return value carries a market_data_source column  -- columns: game_id, game_date, tip_time_est, matchup, home_team, away_team, best_retail_book, home_ml, away_ml, consensus_home_ml, consensus_away_ml, market_data_source
+[PASS] CHECK 4b (M-5) fallback slate is marked SYNTHETIC_FALLBACK  -- unique(market_data_source) = SYNTHETIC_FALLBACK over 6 rows
+[PASS] CHECK 4c (M-5) live-parse branch is marked LIVE_ODDS_API  -- parse_multi_book_feed() result is tagged before return
+[PASS] CHECK 4d (M-5) marker is carried into cache/latest_value_bets.rds's output_table  -- so prediction_accuracy_logger.R (agent_props) can read it off the cache
+
+  local `%||%` definitions in market_odds_engine.R: 0 | uses: 3
+  source("logging_utils.R") at line 57; first %||% use at line 337
+[PASS] CHECK 5a (M-6) zero local `%||%` redefinitions remain in market_odds_engine.R  -- 0 definitions; canonical one comes from logging_utils.R
+[PASS] CHECK 5b (M-6) logging_utils.R is sourced before the first `%||%` use  -- source line 57 < first use line 337
+[PASS] CHECK 5c (M-6) zero local `%||%` redefinitions in tools/backtest_margin_hyperparams.R (owned file)  -- same unsafe scalar copy; removed for the same reason
+
+  -- C-1 end to end: running market_odds_engine.R standalone --
+  exit status: 0 | rows produced: 8
+  contrib_hca column written by the run:
+                                   Matchup contrib_hca contrib_net_diff
+1       Washington Mystics vs. Chicago Sky         2.4           10.111
+2        Connecticut Sun vs. Atlanta Dream         2.4           10.817
+3      Los Angeles Sparks vs. Dallas Wings         2.4            3.040
+4         Las Vegas Aces vs. Seattle Storm         2.4          -10.367
+5        Phoenix Mercury vs. Portland Fire         2.4           -4.740
+6          Indiana Fever vs. Toronto Tempo         2.4          -10.296
+7 Portland Fire vs. Golden State Valkyries         2.4            7.990
+8      New York Liberty vs. Minnesota Lynx         2.4           -0.230
+  predicted_margin Model_Win_Prob market_data_source
+1          12.8845          0.821      LIVE_ODDS_API
+2          13.4615          0.168      LIVE_ODDS_API
+3           5.9275          0.336      LIVE_ODDS_API
+4          -8.5385          0.271      LIVE_ODDS_API
+5          -2.4375          0.569      LIVE_ODDS_API
+6          -8.2965          0.277      LIVE_ODDS_API
+7          11.0050          0.216      LIVE_ODDS_API
+8           2.3260          0.434      LIVE_ODDS_API
+[PASS] CHECK 6a (C-1) market_odds_engine.R completes standalone against real caches  -- exit=0, 8 rows
+[PASS] CHECK 6b (C-1) every contrib_hca row equals WNBA_HCA (2.40), not 11.6  -- unique(contrib_hca) = 2.4
+[PASS] CHECK 6c (M-5) market_data_source survives into cache/latest_value_bets.rds  -- LIVE_ODDS_API
+[PASS] CHECK 6d (C-1 impact) recommendations are no longer all-home / all-max-stake  -- Bankroll_Rec values = 1.41, 1.89, 2.02, 2.29, 3 (review: all 8 pinned at the 3% Kelly cap)
+  cached .rds artifacts restored to their pre-test bytes (P4-G owns regeneration).
+
+=== ALL CHECKS PASSED: 0 check(s) failed ===
+EXIT=0
+```
+
+**On CHECK 6 and the "do not touch cached `.rds` artifacts in Wave 2" constraint.** The brief
+requires running `market_odds_engine.R` standalone, and `evaluate_betting_slate()` writes
+`cache/latest_value_bets.rds` and `cache/odds_history.rds` unconditionally. The test therefore backs
+both files up before the run and restores them byte-for-byte afterwards, so P4-G still owns
+regeneration. `git status --porcelain cache/` is clean at handoff. Note this means the shipped
+caches **still contain the invalid `contrib_hca = 11.6` rows** — CHECK 6 proves the engine now
+*produces* 2.40, it does not fix the stored artifacts. That is P4-G's job and it is still required.
+
+**CHECK 6d, read honestly.** The review's symptom was all 8 picks on the home side at the 3% Kelly
+cap. Post-fix the stake distribution is genuinely dispersed (1.41 / 1.89 / 2.02 / 2.29 / 3) and the
+home probabilities are no longer uniformly extreme, but one bet still sits at the cap — that is a
+legitimate single saturated bet, not the structural artifact. I did not tune anything to make this
+number look better.
+
+**`git diff --stat` for my four owned files** (the other modified paths in the repo-wide diffstat
+belong to the four `agent_*` peers running concurrently in Wave 2; `logs/*` is the logger's runtime
+side effect; `tools/test_phase4_engine.R` is new/untracked):
+
+```
+ market_odds_engine.R                | 140 ++++++++++++++++------
+ tools/backtest_margin_hyperparams.R |  10 +-
+ tools/build_calibration_cache.R     |   8 +-
+ tools/optimize_hca.R                |  22 +++-
+```
+
+Left uncommitted for orchestrator review.

@@ -127,6 +127,39 @@ daily_box_ingest <- function() {
   invisible(combined)
 }
 
+# ==============================================================================
+# FINDING L-4 (docs/SECURITY_TECHNICAL_REVIEW.md) — DAG membership.
+#
+# This script — the "Automated Daily Box Score Ingestion Pipeline" — was not among
+# run_full_pipeline.R's run_stage() calls at all. Ingestion happened only as an
+# implicit side effect of prediction_accuracy_logger.R sourcing this file and calling
+# daily_box_ingest() during reconciliation, which meant (a) the dependency was
+# invisible, (b) reordering/removing that stage would have stopped ingestion with no
+# stage failure, and (c) every ingestion log line was misattributed to
+# [prediction_accuracy_logger.R] in the real run log.
+#
+# As of Phase 4 Wave 2 this is an explicit early DAG stage, invoked BY NAME via
+# run_stage()'s `call_fn = "daily_box_ingest"` mechanism, and
+# prediction_accuracy_logger.R is a pure consumer of CACHE_TEAM_BOX.
+#
+# WHY THE GUARD BELOW IS STILL `sys.nframe() == 0` AND NOT `!interactive()`
+# (this is the C-2 guard class, so it deserves an explicit answer rather than an
+# assumption — confirmed empirically, not reasoned about):
+#
+#   * run_stage() calls source(script, local = FALSE) from INSIDE a function, where
+#     sys.nframe() is ~10, never 0. So this block stays DORMANT on source — which is
+#     exactly what we now want, because run_stage() invokes daily_box_ingest()
+#     explicitly via call_fn immediately afterward.
+#   * Converting it to `!interactive()` would make the ingest fire TWICE per run:
+#     once on source, once via call_fn. The C-2 remedy for the four no-op stages is
+#     therefore NOT the right remedy here; explicit call_fn invocation is.
+#   * The guard still does its original job: `Rscript daily_ingest.R` run by hand has
+#     sys.nframe() == 0 and ingests, as before.
+#
+# Net: under call_fn the guard is inert by design, and that inertness is required
+# for correctness rather than merely tolerated. Verified in tools/test_phase4_props.R
+# (CHECK L-4a/L-4b).
+# ==============================================================================
 if (sys.nframe() == 0) {
   daily_box_ingest()
 }

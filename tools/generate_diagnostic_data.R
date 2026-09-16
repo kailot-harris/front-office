@@ -1,5 +1,17 @@
 # tools/generate_diagnostic_data.R
 # Generates synthetic resolved data to test the Error Analysis framework.
+#
+# FINDING C-3 (docs/SECURITY_TECHNICAL_REVIEW.md): the 100 rows this script writes
+# were, until Phase 4, indistinguishable from real predictions once in
+# cache/prediction_accuracy_log.rds. app.R's Tab 8 filtered only on
+# `status == "RESOLVED"`, so these fixtures were the ONLY thing the model-accuracy
+# scoreboard ever displayed — a fabricated "83% accuracy / 0.131 Brier" presented as
+# measured performance. Every row written here is now stamped
+# `is_synthetic = TRUE` and `market_data_source = "DIAGNOSTIC"` at
+# `schema_version = 2`, which agent_dashboard's Tab 8 reactive and
+# prediction_accuracy_logger.R::summarize_prediction_accuracy() both filter on.
+# If you add columns here, keep those two stamps — they are an interface contract
+# (docs/task_assignments_phase4.md, "Interface contracts"), not decoration.
 
 PROJECT_DIR <- "C:/Users/kailo/kayceeslices/WNBA Analytics"
 setwd(PROJECT_DIR)
@@ -15,7 +27,8 @@ teams <- names(WNBA_TEAMS)
 
 # Create synthetic resolved games
 synthetic_resolved <- tibble(
-  schema_version = 1L,
+  # C-3: schema_version 2 — carries is_synthetic + market_data_source (see below).
+  schema_version = 2L,
   game_id = paste0("DIAG_", 1:n_games),
   game_date = as.Date("2026-01-01") + sample(0:200, n_games, replace = TRUE),
   season = 2026L,
@@ -34,6 +47,10 @@ synthetic_resolved <- tibble(
   model_offseason_method = "reset",
   injury_data_source = "DIAGNOSTIC",
   shot_quality_data_source = "DIAGNOSTIC",
+  # C-3 interface contract — exact name `is_synthetic`, logical type. This is the
+  # single flag that keeps these fixtures out of every reported accuracy metric.
+  market_data_source = "DIAGNOSTIC",
+  is_synthetic = TRUE,
   status = "RESOLVED",
   actual_winner = "TBD",
   correct = NA,
@@ -70,5 +87,27 @@ synthetic_resolved <- synthetic_resolved |>
   )
 
 updated_log <- bind_rows(existing_log, synthetic_resolved)
+
+# C-3 guard: never let a fixture row reach the log unstamped. If bind_rows() had to
+# NA-fill is_synthetic for pre-existing rows, backfill them with the same rule
+# prediction_accuracy_logger.R::migrate_prediction_log() uses, so this script can
+# never itself be the source of an unmarked synthetic row.
+if (!"is_synthetic" %in% names(updated_log)) updated_log$is_synthetic <- FALSE
+updated_log <- updated_log |>
+  mutate(
+    is_synthetic = coalesce(
+      as.logical(is_synthetic),
+      grepl("^DIAG_", as.character(game_id)) |
+        (!is.na(injury_data_source) & injury_data_source == "DIAGNOSTIC")
+    ),
+    market_data_source = coalesce(
+      as.character(market_data_source),
+      if_else(is_synthetic, "DIAGNOSTIC", "UNKNOWN")
+    )
+  )
+
+stopifnot(is.logical(updated_log$is_synthetic), !any(is.na(updated_log$is_synthetic)))
+
 saveRDS(updated_log, log_path)
-cat(sprintf("Successfully injected %d synthetic RESOLVED games into log for diagnostics.\n", n_games))
+cat(sprintf("Successfully injected %d synthetic RESOLVED games into log for diagnostics (all stamped is_synthetic = TRUE, schema_version 2).\n", n_games))
+cat(sprintf("Log now holds %d rows, %d flagged synthetic.\n", nrow(updated_log), sum(updated_log$is_synthetic)))

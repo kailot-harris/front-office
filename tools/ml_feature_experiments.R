@@ -106,7 +106,16 @@ build_feature_df <- function(data, window_size = WINDOW_SIZE_FOR_COMPARABILITY, 
         roll_ast        = slide_dbl(assists, mean, .before = window_size, .after = -1),
         roll_stl        = slide_dbl(steals, mean, .before = window_size, .after = -1),
         roll_blk        = slide_dbl(blocks, mean, .before = window_size, .after = -1),
-        roll_tov        = slide_dbl(turnovers, mean, .before = window_size, .after = -1),
+        # L-3: `total_turnovers` (not `turnovers`) is used for BOTH the four-factors `tov`
+        # rate above and this rolling count. They are genuinely different cache columns
+        # (total_turnovers ~= turnovers + team_turnovers; means 14.09 vs 13.17, not
+        # identical), and previously this block mixed them for what reads as one concept.
+        # `total_turnovers` wins deliberately: it is the column the paired four-factors
+        # denominator already uses, and it is the full team-possession-ending count, so
+        # diff_roll_tov and diff_roll_tovp now describe the same underlying quantity.
+        # Kept byte-identical to tools/ml_cv_benchmark.R's copy of this block, as the
+        # header above promises.
+        roll_tov        = slide_dbl(total_turnovers, mean, .before = window_size, .after = -1),
         roll_efg        = slide_dbl(efg, mean, .before = window_size, .after = -1),
         roll_tovp       = slide_dbl(tov, mean, .before = window_size, .after = -1),
         roll_ftr        = slide_dbl(ftr, mean, .before = window_size, .after = -1),
@@ -200,7 +209,9 @@ build_feature_df_ewma <- function(data, alpha = 2 / (13 + 1), method = "reset") 
       roll_ast        = ewma_prior(assists, alpha),
       roll_stl        = ewma_prior(steals, alpha),
       roll_blk        = ewma_prior(blocks, alpha),
-      roll_tov        = ewma_prior(turnovers, alpha),
+      # L-3: same deliberate `total_turnovers` choice as build_feature_df() above - this
+      # EWMA variant is a methodology swap only, so it must aggregate the same column.
+      roll_tov        = ewma_prior(total_turnovers, alpha),
       roll_efg        = ewma_prior(efg, alpha),
       roll_tovp       = ewma_prior(tov, alpha),
       roll_ftr        = ewma_prior(ftr, alpha),

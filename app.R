@@ -33,7 +33,12 @@
 
 # Ensure dependencies are available (unchanged package set from the NBA original - the
 # embeddings-tab fix below uses only base R prcomp() + already-loaded ggplot2/dplyr).
-req_pkgs <- c("shiny", "shinydashboard", "DT", "ggplot2", "dplyr", "tidyr", "scales", "plotly")
+# FIX H-3 (adjacent latent defect): "stringr" added. app.R:1214's `word()` call in the Tab 8
+# diagnostics reactive was already unqualified with stringr never attached here - it would have
+# thrown "could not find function \"word\"". It never fired only because H-3's dead box-score path
+# returned NULL two lines earlier; fixing H-3 unmasks it. Both the attach and the stringr:: call
+# qualifications below are required for Tab 8 to render at all.
+req_pkgs <- c("shiny", "shinydashboard", "DT", "ggplot2", "dplyr", "tidyr", "scales", "plotly", "stringr")
 new_pkgs <- req_pkgs[!(req_pkgs %in% installed.packages()[, "Package"])]
 if (length(new_pkgs)) install.packages(new_pkgs)
 
@@ -45,19 +50,48 @@ suppressPackageStartupMessages({
   library(dplyr)
   library(tidyr)
   library(scales)
+  library(stringr)
+  # PRE-EXISTING STARTUP BLOCKER found while testing P4-B (present at Wave 0 baseline commit
+  # 20b12fd, NOT introduced by Phase 4): "plotly" was listed in req_pkgs above and INSTALLED, but
+  # never attached, while the UI calls plotlyOutput() 3x (Tabs 8) and the server calls
+  # renderPlotly()/ggplotly(). None of shiny/shinydashboard/DT/ggplot2/dplyr/tidyr/scales attach
+  # plotly transitively (verified: `"package:plotly" %in% search()` is FALSE after loading all
+  # seven). app.R therefore aborted at UI-construction time with
+  #   Error in plotlyOutput("plot_residual_scatter", height = 450): could not find function "plotlyOutput"
+  # i.e. the whole dashboard - every tab, not just Tab 8 - failed to boot. Attaching it here is a
+  # prerequisite for any headless verification of H-3/C-3 at all.
+  library(plotly)
 })
 
-`%||%` <- function(a, b) if (!is.null(a) && length(a) > 0 && !is.na(a)) a else b
+# FIX M-6 (Phase 4): the local scalar `%||%` that used to live on this line has been DELETED.
+# It was the unhardened form (`!is.na(a)` unsubscripted), which hard-errors on R 4.3+ when applied
+# to a vector - the exact defect that produced the 2026-09-12 Injury-tab incident documented in
+# tools/headless_dashboard_probe.R. There is now exactly ONE definition of this operator in the
+# repo, the hardened `is.na(a)[1]` form in logging_utils.R (Wave 1, agent_foundation), sourced
+# below. Do not re-add a local copy here: two definitions make the operator's behaviour depend on
+# source order (see SECURITY_TECHNICAL_REVIEW.md M-6).
 
-# Margin -> win-probability sigma for the interactive matchup calculator (Tab 7). Read from
-# config.R if available (this is a local file read, not a network call - still consistent
-# with the "zero live API dependencies" principle) rather than re-hardcoding the NBA's 11.2;
-# falls back to the same known WNBA_MARGIN_SIGMA value (14.0, T2's real empirical derivation -
-# see config.R's own comment block) if config.R can't be sourced for any reason.
+# Margin -> win-probability sigma for the interactive matchup calculator (Tab 7), plus WNBA_HCA
+# (FIX C-1) and the CACHE_* path constants (FIX H-3 / L-6). Read from config.R if available (this
+# is a local file read, not a network call - still consistent with the "zero live API
+# dependencies" principle) rather than re-hardcoding the NBA's 11.2; falls back to the same known
+# WNBA_MARGIN_SIGMA value (14.0, T2's real empirical derivation - see config.R's own comment
+# block) if config.R can't be sourced for any reason.
 if (file.exists("config.R")) {
   tryCatch(source("config.R"), error = function(e) NULL)
 }
 if (!exists("WNBA_MARGIN_SIGMA")) WNBA_MARGIN_SIGMA <- 14.0
+# FIX C-1: home-court advantage is a config.R constant now, never a literal in this file.
+if (!exists("WNBA_HCA")) WNBA_HCA <- 2.40
+
+# FIX M-6: source the canonical hardened `%||%` (and the redacting logger) from logging_utils.R.
+# Deliberately NOT wrapped in a file.exists()/tryCatch fallback that re-defines the operator: a
+# second definition anywhere is precisely the defect M-6 reports, so this file must have zero.
+# Sourced AFTER config.R so PROJECT_DIR/LOG_DIR resolve against the real project root.
+# logging_utils.R's own DuckDB init is already fail-safe (it tolerates the log DB being locked by
+# a concurrently-running pipeline and spills to logs/logs_pending_<pid>.tsv), so sourcing it from
+# the dashboard cannot crash app startup.
+source("logging_utils.R")
 
 # ------------------------------------------------------------------------------------------
 # WNBA season window (for the off-season banner below). 2026 season: regular season
@@ -267,7 +301,8 @@ ui <- dashboardPage(
             fluidRow(
               column(4, selectInput("calc_away_team", "Select Away Team:", choices = c("Loading..."))),
               column(4, selectInput("calc_home_team", "Select Home Team:", choices = c("Loading..."))),
-              column(4, numericInput("calc_hca", "Home Court Advantage (pts):", value = 2.4, min = 0, max = 6, step = 0.1))
+              # FIX C-1: default seeded from config.R's WNBA_HCA constant, not a restated literal.
+              column(4, numericInput("calc_hca", "Home Court Advantage (pts):", value = WNBA_HCA, min = 0, max = 6, step = 0.1))
             ),
             fluidRow(
               valueBoxOutput("box_calc_spread", width = 4),
@@ -289,6 +324,10 @@ ui <- dashboardPage(
       # ------------------------------------------------------------------------
       tabItem(
         tabName = "tab_model_diagnostics",
+        # FIX C-3: an explicit "N real resolved predictions" provenance line above the metrics, so
+        # an empty real sample is visible as an honest zero rather than silently backfilled with
+        # the DIAG_* synthetic fixtures that used to be the only rows this tab could ever show.
+        fluidRow(column(12, uiOutput("diag_provenance"))),
         fluidRow(
           valueBoxOutput("vbox_mae", width = 4),
           valueBoxOutput("vbox_rmse", width = 4),
@@ -422,7 +461,9 @@ server <- function(input, output, session) {
         Net_Rating = c(12.14, 12.09, 8.5, 6.2, 4.8, 3.9, 2.6, 1.8, 0.5, -0.4),
         Proj_Wins = c(34.9, 34.9, 30.1, 27.4, 25.0, 23.8, 21.5, 19.9, 17.2, 16.1),
         Proj_Losses = c(9.1, 9.1, 13.9, 16.6, 19.0, 20.2, 22.5, 24.1, 26.8, 27.9),
-        Win_Pct = "79.3%",
+        # FIX M-8: numeric proportion, matching the type agent_pipeline's roster_bottom_up_engine.R
+        # now writes to the real cache. Formatting happens at display time only.
+        Win_Pct = round(Proj_Wins / (Proj_Wins + Proj_Losses), 3),
         Top_Core_Players = "Star Core"
       )
     }
@@ -436,15 +477,19 @@ server <- function(input, output, session) {
     return(raw)
   })
 
-  # T4 Handoff Notes: latest_player_props.rds (root) / cache/latest_player_props.rds, written
-  # by generate_active_props_table() (player_props_engine.R) - 720 props across 15 teams,
-  # real active_rosters_cache.rds-backed rotation per T4's live run.
+  # T4 Handoff Notes: written by generate_active_props_table() (player_props_engine.R) - 720 props
+  # across 15 teams, real active_rosters_cache.rds-backed rotation per T4's live run.
+  #
+  # FIX L-6: this used to read data/latest_player_props.rds and silently FALL BACK to
+  # cache/latest_player_props.rds. Two copies with an undocumented precedence rule means a partial
+  # write to one location produces a split-brain where the dashboard displays one file while
+  # tools/data_health_probe.R validates (and reports green on) the other. There is now a single
+  # canonical location: config.R's CACHE_PLAYER_PROPS, which is also the sole write target as of
+  # agent_props' Wave 2 change to player_props_engine.R.
   r_props_data <- reactive({
     raw_props <- NULL
-    if (file.exists("data/latest_player_props.rds")) {
-      raw_props <- tryCatch(readRDS("data/latest_player_props.rds"), error = function(e) NULL)
-    } else if (file.exists("cache/latest_player_props.rds")) {
-      raw_props <- tryCatch(readRDS("cache/latest_player_props.rds"), error = function(e) NULL)
+    if (file.exists(CACHE_PLAYER_PROPS)) {
+      raw_props <- tryCatch(readRDS(CACHE_PLAYER_PROPS), error = function(e) NULL)
     }
 
     if (is.null(raw_props) || nrow(raw_props) == 0) {
@@ -1120,7 +1165,8 @@ server <- function(input, output, session) {
 
     h_net <- home_row$norm_net[1] %||% 0.0
     a_net <- away_row$norm_net[1] %||% 0.0
-    hca   <- input$calc_hca %||% 2.4
+    # FIX C-1: fall back to config.R's WNBA_HCA constant if the numericInput is blank/NA.
+    hca   <- input$calc_hca %||% WNBA_HCA
 
     sq_path <- "cache/team_shot_quality.rds"
     if (file.exists(sq_path)) {
@@ -1166,34 +1212,93 @@ server <- function(input, output, session) {
   output$tbl_bottom_up_standings <- renderDT({
     std <- r_standings_data()
     display_df <- std %>% select(-starts_with("norm_"))
+
+    # FIX M-8: projected_wnba_standings.rds now stores Win_Pct as a numeric PROPORTION (0.793), not
+    # a pre-formatted string ("79.3%") - caches stay typed for computation, formatting belongs in
+    # the view layer. Format here with scales::percent(). Guarded rather than assumed: if an
+    # older string-formatted cache is still on disk (agent_pipeline's writer change lands in the
+    # same wave), it is already display-ready and passes through untouched instead of coercing to
+    # NA. Same guard applies to any other proportion-shaped column the writer adds later.
+    if ("Win_Pct" %in% names(display_df) && is.numeric(display_df$Win_Pct)) {
+      display_df$Win_Pct <- scales::percent(display_df$Win_Pct, accuracy = 0.1)
+    }
+
     datatable(display_df, options = list(pageLength = 10), rownames = FALSE)
   })
 
   # ----------------------------------------------------------------------------
   # Tab 8: Model Diagnostics Logic
   # ----------------------------------------------------------------------------
+  # FIX C-3: identify synthetic/diagnostic fixture rows in the prediction log.
+  # The contracted provenance flag (docs/task_assignments_phase4.md, "Interface contracts") is the
+  # logical column `is_synthetic`, written by agent_props via tools/generate_diagnostic_data.R and
+  # log_todays_predictions(). We build against that exact name/type. Because this dashboard must
+  # never hard-crash on an older on-disk schema (repo fail-safe convention), a log written before
+  # that migration is classified by the two provenance markers the DIAG_ fixtures actually carry -
+  # a "DIAG_" game_id prefix and injury_data_source == "DIAGNOSTIC" - rather than by trusting an
+  # absent column and silently treating fixtures as real measurements.
+  .flag_synthetic <- function(log) {
+    if (is.null(log) || nrow(log) == 0) return(logical(0))
+    if ("is_synthetic" %in% names(log)) {
+      return(dplyr::coalesce(as.logical(log$is_synthetic), FALSE))
+    }
+    gid  <- if ("game_id" %in% names(log)) as.character(log$game_id) else rep(NA_character_, nrow(log))
+    isrc <- if ("injury_data_source" %in% names(log)) as.character(log$injury_data_source) else rep(NA_character_, nrow(log))
+    dplyr::coalesce(startsWith(gid, "DIAG_"), FALSE) |
+      dplyr::coalesce(toupper(isrc) == "DIAGNOSTIC", FALSE)
+  }
+
+  # FIX C-3: counts backing the visible provenance label, so an empty REAL sample renders as an
+  # honest zero instead of being silently backfilled with diagnostic fixtures.
+  r_diag_provenance <- reactive({
+    log <- r_pred_log()
+    if (is.null(log) || nrow(log) == 0) {
+      return(list(total = 0L, resolved = 0L, real_resolved = 0L, synth_resolved = 0L,
+                  has_flag = FALSE, box_ok = file.exists(CACHE_TEAM_BOX)))
+    }
+    syn <- .flag_synthetic(log)
+    is_res <- dplyr::coalesce(log$status == "RESOLVED", FALSE)
+    list(
+      total          = nrow(log),
+      resolved       = sum(is_res),
+      real_resolved  = sum(is_res & !syn),
+      synth_resolved = sum(is_res & syn),
+      has_flag       = "is_synthetic" %in% names(log),
+      box_ok         = file.exists(CACHE_TEAM_BOX)
+    )
+  })
+
   r_diagnostics_df <- reactive({
     log <- r_pred_log()
-    req(log, nrow(log) > 0)
+    if (is.null(log) || nrow(log) == 0) return(NULL)
 
-    # Resolve only the RESOLVED games
-    resolved <- log |> filter(status == "RESOLVED")
-    req(nrow(resolved) > 0)
+    # FIX C-3: RESOLVED *and* non-synthetic. Previously this filtered on status alone, so the 100
+    # DIAG_* fixture rows (zero game_id overlap with the real box cache, 68 of them dated outside
+    # the May-Oct WNBA season) were the ONLY thing the accuracy scoreboard could ever display -
+    # a fabricated "83% accuracy / 0.131 Brier" presented as measured performance.
+    resolved <- log |> filter(dplyr::coalesce(status == "RESOLVED", FALSE) & !.flag_synthetic(log))
+    if (nrow(resolved) == 0) return(NULL)
 
-    # Join with box scores to get actual outcomes
-    box_path <- "cache/box_scores_cache.rds"
-    if (!file.exists(box_path)) return(NULL)
-    box_scores <- readRDS(box_path)
+    # FIX H-3: was the bare literal "cache/box_scores_cache.rds" - a path that has not existed
+    # since the 2026-09-12 tidy-up moved the artifact to data/. file.exists() was FALSE on every
+    # render, so this reactive returned NULL every time and the value boxes below fell through to
+    # their old `else 0.0` default, displaying a confident "0 pts MAE" produced by a missing file.
+    # CACHE_TEAM_BOX is config.R's single source of truth for this path.
+    if (!file.exists(CACHE_TEAM_BOX)) return(NULL)
+    box_scores <- readRDS(CACHE_TEAM_BOX)
 
-    # Normalize home_team to short nickname for join
+    # Normalize home_team to short nickname for join (stringr::word - see the req_pkgs note above).
     resolved <- resolved |>
-      mutate(.home_short = word(unname(WNBA_TEAMS[home_team]), -1))
+      mutate(.home_short = stringr::word(unname(WNBA_TEAMS[home_team]), -1))
 
+    # FIX H-3: real column names are team_score / opponent_team_score. The previous
+    # select(home_score = score, away_score = opponent_score) referenced columns that do not exist
+    # in this cache and would have errored the moment the path above was corrected.
     game_outcomes <- box_scores |>
       filter(team_home_away == "home") |>
       mutate(game_date = as.Date(game_date)) |>
       select(game_date, home_team_short = team_short_display_name,
-             home_score = score, away_score = opponent_score) |>
+             home_score = team_score, away_score = opponent_team_score) |>
       distinct()
 
     analysis_df <- resolved |>
@@ -1203,25 +1308,59 @@ server <- function(input, output, session) {
         residual = actual_margin - predicted_margin
       )
 
+    if (nrow(analysis_df) == 0) return(NULL)
     analysis_df
   })
 
+  # FIX C-3: visible provenance banner. The point of the scoreboard is that its denominator is
+  # legible: if there are zero real resolved predictions, the tab says so in words rather than
+  # rendering fixture-derived numbers that look like measured model performance.
+  output$diag_provenance <- renderUI({
+    p <- r_diag_provenance()
+    n <- p$real_resolved
+    headline <- sprintf("%d real resolved prediction%s", n, if (n == 1) "" else "s")
+    detail <- sprintf(
+      "%d row%s in cache/prediction_accuracy_log.rds | %d RESOLVED | %d excluded as synthetic/diagnostic fixtures%s",
+      p$total, if (p$total == 1) "" else "s", p$resolved, p$synth_resolved,
+      if (p$has_flag) "" else " (no is_synthetic column on this log yet - classified by DIAG_ game_id / DIAGNOSTIC injury source)"
+    )
+    warn <- if (!p$box_ok) {
+      sprintf("DIAGNOSTICS UNAVAILABLE - box score cache not found at %s. Metrics below show an em dash, not zero.", CACHE_TEAM_BOX)
+    } else if (n == 0) {
+      "DIAGNOSTICS UNAVAILABLE - no real (non-synthetic) resolved predictions to score yet. Metrics below show an em dash, not zero."
+    } else NULL
+
+    div(
+      style = "padding:10px 14px;margin-bottom:10px;border-radius:4px;background:#1a222d;border-left:5px solid #af7ac5;color:#ecf0f1;",
+      tags$strong(style = "font-size:16px;", headline),
+      tags$span(style = "opacity:0.75;margin-left:10px;", detail),
+      if (!is.null(warn)) tags$div(style = "margin-top:6px;color:#e74c3c;font-weight:bold;", warn)
+    )
+  })
+
+  # FIX H-3: render an em dash, never 0.0, when the diagnostics frame is NULL. A missing data
+  # source must never be visually indistinguishable from a perfect-model reading.
+  .diag_metric <- function(df, f) {
+    if (is.null(df) || nrow(df) == 0) return("—")
+    v <- suppressWarnings(f(df))
+    if (!is.finite(v)) return("—")
+    paste0(round(v, 2), " pts")
+  }
+
   output$vbox_mae <- renderValueBox({
-    df <- r_diagnostics_df()
-    val <- if (!is.null(df)) round(mean(abs(df$residual), na.rm = TRUE), 2) else 0.0
-    valueBox(paste0(val, " pts"), "Mean Absolute Error (MAE)", icon = icon("bullseye"), color = "purple")
+    val <- .diag_metric(r_diagnostics_df(), function(d) mean(abs(d$residual), na.rm = TRUE))
+    valueBox(val, "Mean Absolute Error (MAE)", icon = icon("bullseye"), color = "purple")
   })
 
   output$vbox_rmse <- renderValueBox({
-    df <- r_diagnostics_df()
-    val <- if (!is.null(df)) round(sqrt(mean(df$residual^2, na.rm = TRUE)), 2) else 0.0
-    valueBox(paste0(val, " pts"), "Root Mean Square Error (RMSE)", icon = icon("chart-line"), color = "purple")
+    val <- .diag_metric(r_diagnostics_df(), function(d) sqrt(mean(d$residual^2, na.rm = TRUE)))
+    valueBox(val, "Root Mean Square Error (RMSE)", icon = icon("chart-line"), color = "purple")
   })
 
   output$vbox_bias <- renderValueBox({
-    df <- r_diagnostics_df()
-    val <- if (!is.null(df)) round(mean(df$residual, na.rm = TRUE), 2) else 0.0
-    valueBox(paste0(val, " pts"), "Mean Bias (Home Bias)", icon = icon("balance-scale"), color = "purple")
+    # FIX H-3: em dash, not 0.0, on missing data (a 0.0 here reads as "perfectly unbiased").
+    val <- .diag_metric(r_diagnostics_df(), function(d) mean(d$residual, na.rm = TRUE))
+    valueBox(val, "Mean Bias (Home Bias)", icon = icon("balance-scale"), color = "purple")
   })
 
   output$plot_residual_scatter <- renderPlotly({
@@ -1297,8 +1436,22 @@ server <- function(input, output, session) {
     if (input$props_side_filter != "ALL") {
       df <- df %>% filter(toupper(recommended_side) == toupper(input$props_side_filter))
     }
+    # FIX M-3: this was grepl(input$props_search_player, player, ignore.case = TRUE), which treats
+    # raw keystrokes as a REGEX. Shiny's textInput fires on every character, so a user mid-typing a
+    # name hits a partial pattern like "(" or "[" and grepl() hard-errors ("invalid regular
+    # expression"), throwing this reactive and putting all three dependent outputs into Shiny's
+    # opaque error state. Not a ReDoS (measured: TRE is non-backtracking here) - a plain crash.
+    # NOTE: the obvious fix, grepl(..., fixed = TRUE), is WRONG - R silently discards ignore.case
+    # under fixed = TRUE. Re-verified on this machine 2026-09-16 against a 3-name fixture:
+    #   grepl("wilson", fixed = TRUE, ignore.case = TRUE) -> 1 match  [+ "ignore.case will be ignored" warning]
+    #   grepl("wilson", ignore.case = TRUE)               -> 2 matches
+    #   str_detect(fixed("wilson", ignore_case = TRUE))   -> 2 matches  <- correct, and no error on "("
+    # stringr::fixed(..., ignore_case = TRUE) is the only form that keeps literal matching AND
+    # case-insensitivity. stringr is already a dependency (tidyverse; word() is used above).
     if (nzchar(input$props_search_player)) {
-      df <- df %>% filter(grepl(input$props_search_player, player, ignore.case = TRUE))
+      df <- df %>% filter(stringr::str_detect(
+        player, stringr::fixed(input$props_search_player, ignore_case = TRUE)
+      ))
     }
     df %>% filter(ev_pct >= input$props_ev_slider)
   })

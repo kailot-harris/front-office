@@ -68,27 +68,40 @@ source("config.R")
 source("logging_utils.R")
 .LOG_SCRIPT <- "prediction_accuracy_logger.R"
 
-# Defines daily_box_ingest() WITHOUT auto-running it (verified empirically this
-# session: sys.nframe() inside a source()'d file is never 0, so daily_ingest.R's
-# own `if (sys.nframe() == 0) daily_box_ingest()` guard stays dormant here). This
-# guarantees reconcile_predictions() can call daily_box_ingest() itself to force
-# a fresh box_scores_cache.rds, defending against the real pre-existing gap that
-# daily_ingest.R is not itself a stage in run_full_pipeline.R's DAG (see plan).
-if (file.exists("daily_ingest.R")) {
-  source("daily_ingest.R")
-} else if (file.exists(file.path(PROJECT_DIR, "daily_ingest.R"))) {
-  source(file.path(PROJECT_DIR, "daily_ingest.R"))
-}
-# daily_ingest.R sets its own .LOG_SCRIPT <- "daily_ingest.R" at its top level when
-# sourced, which would otherwise silently mis-attribute every log_info()/log_warn()/
-# log_error() call below (found and fixed during this session's Phase 4 verification —
-# a real run showed log lines tagged [daily_ingest.R] for reconcile_predictions()/
-# log_todays_predictions() calls). Reassert this file's own tag afterward.
-.LOG_SCRIPT <- "prediction_accuracy_logger.R"
+# FINDING L-4 (docs/SECURITY_TECHNICAL_REVIEW.md) — RESOLVED IN PHASE 4 WAVE 2.
+#
+# This file used to `source("daily_ingest.R")` and have reconcile_predictions()
+# call daily_box_ingest() itself, as a defensive workaround for daily_ingest.R not
+# being a stage in run_full_pipeline.R's DAG. Two real costs of that workaround:
+#   (a) the pipeline's box-score ingestion was an invisible side effect of the
+#       accuracy logger — reorder or remove this stage and ingestion silently stops
+#       with no corresponding stage failure; and
+#   (b) daily_ingest.R sets its own `.LOG_SCRIPT <- "daily_ingest.R"` at top level,
+#       so every ingestion log line was attributed to [prediction_accuracy_logger.R]
+#       in the real run log (review L-4 quotes the misattributed lines).
+#
+# daily_ingest.R is now an explicit early DAG stage invoked by name via run_stage()'s
+# `call_fn = "daily_box_ingest"` mechanism (see this file's DEVIATION #3 below for how
+# that mechanism works, and docs/task_assignments_phase4.md's P4-E Handoff Notes for
+# the exact run_full_pipeline.R edit, which is agent_pipeline's to apply). This file
+# is now a pure CONSUMER of CACHE_TEAM_BOX and no longer sources or triggers the
+# ingest. The `source("daily_ingest.R")` line was deliberately removed.
 
 PRED_LOG_RDS            <- file.path(CACHE_DIR, "prediction_accuracy_log.rds")
 PRED_LOG_CSV            <- file.path(CACHE_DIR, "prediction_accuracy_log.csv")
-PRED_LOG_SCHEMA_VERSION <- 1L
+
+# FINDING C-3: schema_version 1 -> 2 adds `is_synthetic` (logical) and
+# `market_data_source` (character). See .empty_prediction_log() and
+# migrate_prediction_log() below.
+PRED_LOG_SCHEMA_VERSION <- 2L
+
+# FINDING M-5: PENDING rows this many days past their game_date can never reconcile
+# (they were logged against a SYNTHETIC_FALLBACK fixture slate whose games do not
+# exist in any box score cache). They are swept to UNRESOLVABLE so the stuck-row
+# count is visible instead of accumulating forever under a log message saying "yet".
+# 7 days is the review's suggested horizon; real WNBA games land in box_scores_cache
+# within ~1 day of tip, so this is ~7x the observed reconciliation latency.
+PRED_LOG_UNRESOLVABLE_AFTER_DAYS <- 7L
 
 # ------------------------------------------------------------------------------
 # Canonical empty schema (schema_version column from day one — Best Practice #8)
@@ -112,6 +125,16 @@ PRED_LOG_SCHEMA_VERSION <- 1L
     model_offseason_method    = character(),
     injury_data_source        = character(),
     shot_quality_data_source  = character(),
+    # --- schema_version 2 (FINDING C-3 / M-5) ---------------------------------
+    # market_data_source: provenance of the odds slate the prediction was priced
+    #   against — "LIVE_ODDS_API" / "SYNTHETIC_FALLBACK" (written by agent_engine's
+    #   fetch_market_odds() into cache/latest_value_bets.rds), or "DIAGNOSTIC" for
+    #   tools/generate_diagnostic_data.R fixtures, or "UNKNOWN" for pre-migration rows.
+    # is_synthetic: TRUE for any row that must NEVER count toward measured model
+    #   accuracy — diagnostic fixtures and predictions priced off a synthetic slate.
+    #   Interface contract with agent_dashboard (Tab 8 filter): exact name, logical type.
+    market_data_source        = character(),
+    is_synthetic              = logical(),
     predicted_margin           = double(),
     contrib_net_diff           = double(),
     contrib_hca                = double(),
@@ -125,8 +148,72 @@ PRED_LOG_SCHEMA_VERSION <- 1L
   )
 }
 
+# ------------------------------------------------------------------------------
+# FINDING C-3 — one-time, idempotent schema_version 1 -> 2 migration.
+#
+# The review found that 100 of the log's 114 rows (and 100/100 of the RESOLVED
+# rows) are `DIAG_*` fixtures written by tools/generate_diagnostic_data.R, with zero
+# game_id overlap against the 3,906 real games in data/box_scores_cache.rds and 68 of
+# them dated outside the May-October WNBA season. app.R's Tab 8 filtered only on
+# `status == "RESOLVED"`, so the dashboard's "83% accuracy / 0.131 Brier" scoreboard
+# was 100% fabricated. There was no provenance column to filter on; this adds one.
+#
+# Backfill rule (exactly as briefed): is_synthetic = TRUE where game_id starts with
+# "DIAG_" OR injury_data_source == "DIAGNOSTIC"; FALSE otherwise. On the real cache
+# those two predicates select the same 100 rows (verified), so the OR is belt-and-
+# braces against a fixture written with only one of the two markers.
+#
+# Idempotent: re-running on an already-migrated log is a no-op for existing values.
+# Non-destructive: no row is dropped and no pre-existing column is rewritten.
+# ------------------------------------------------------------------------------
+migrate_prediction_log <- function(df) {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) return(df)
+
+  needs_migration <- !all(c("is_synthetic", "market_data_source") %in% names(df)) ||
+    any(is.na(df$schema_version)) || any(df$schema_version < PRED_LOG_SCHEMA_VERSION, na.rm = TRUE)
+
+  if (!needs_migration) return(df)
+
+  is_diag_id  <- grepl("^DIAG_", as.character(df$game_id))
+  is_diag_inj <- if ("injury_data_source" %in% names(df)) {
+    !is.na(df$injury_data_source) & df$injury_data_source == "DIAGNOSTIC"
+  } else {
+    rep(FALSE, nrow(df))
+  }
+  synthetic_backfill <- is_diag_id | is_diag_inj
+
+  if (!"is_synthetic" %in% names(df)) {
+    df$is_synthetic <- synthetic_backfill
+  } else {
+    # Preserve anything already stamped; only fill gaps.
+    df$is_synthetic <- dplyr::coalesce(as.logical(df$is_synthetic), synthetic_backfill)
+  }
+
+  market_backfill <- if_else(synthetic_backfill, "DIAGNOSTIC", "UNKNOWN")
+  if (!"market_data_source" %in% names(df)) {
+    df$market_data_source <- market_backfill
+  } else {
+    df$market_data_source <- dplyr::coalesce(as.character(df$market_data_source), market_backfill)
+  }
+
+  df$schema_version <- as.integer(PRED_LOG_SCHEMA_VERSION)
+
+  n_synth <- sum(df$is_synthetic, na.rm = TRUE)
+  log_info(sprintf("Migrated prediction log to schema_version %d (C-3): added is_synthetic + market_data_source; backfilled %d/%d row(s) as synthetic.",
+                   PRED_LOG_SCHEMA_VERSION, n_synth, nrow(df)),
+           call = "migrate_prediction_log()", rows = nrow(df), synthetic_rows = n_synth)
+  cat(sprintf("[PREDICTION LOG] Schema migration 1 -> %d applied: %d/%d rows flagged is_synthetic = TRUE.\n",
+              PRED_LOG_SCHEMA_VERSION, n_synth, nrow(df)))
+
+  # Persist the migration so it truly is one-time rather than re-derived every read.
+  saveRDS(df, PRED_LOG_RDS)
+  utils::write.csv(df, PRED_LOG_CSV, row.names = FALSE, na = "")
+
+  df
+}
+
 get_prediction_log <- function() {
-  if (file.exists(PRED_LOG_RDS)) readRDS(PRED_LOG_RDS) else .empty_prediction_log()
+  if (file.exists(PRED_LOG_RDS)) migrate_prediction_log(readRDS(PRED_LOG_RDS)) else .empty_prediction_log()
 }
 
 save_prediction_log <- function(df) {
@@ -157,6 +244,22 @@ save_prediction_log <- function(df) {
   } else {
     "NO_DATA"
   }
+}
+
+# FINDING M-5: provenance of the odds slate itself. agent_engine's Wave-2 change to
+# market_odds_engine.R::fetch_market_odds() carries a `market_data_source` column
+# ("LIVE_ODDS_API" / "SYNTHETIC_FALLBACK") through into cache/latest_value_bets.rds.
+# This reads it per-row if present. Fail-safe per repo convention: if the column is
+# absent (an older cache, or agent_engine's change not yet landed) we return
+# "UNKNOWN" rather than guessing — "UNKNOWN" is deliberately NOT treated as
+# synthetic, so a stale cache degrades to today's behaviour rather than silently
+# suppressing real predictions from the accuracy scoreboard.
+.slate_market_data_source <- function(slate) {
+  if ("market_data_source" %in% names(slate)) {
+    v <- as.character(slate$market_data_source)
+    return(if_else(is.na(v) | !nzchar(v), "UNKNOWN", v))
+  }
+  rep("UNKNOWN", nrow(slate))
 }
 
 .current_shot_quality_data_source <- function() {
@@ -243,6 +346,25 @@ log_todays_predictions <- function() {
 
     predicted_home_win_prob <- if_else(slate$Team == home_full, slate$Model_Win_Prob, 1 - slate$Model_Win_Prob)
 
+    # FINDING M-5 / C-3. DECISION (documented in the P4-E Handoff Notes): we LOG
+    # synthetic-slate predictions but STAMP them, rather than skipping them. Rationale:
+    #   - the log is append-only and is the pipeline's audit trail; silently dropping
+    #     rows would make "the model priced nothing today" and "the model priced six
+    #     fake games today" indistinguishable, which is the exact failure mode this
+    #     whole review is about;
+    #   - marked rows are excluded from summarize_prediction_accuracy() and from
+    #     agent_dashboard's Tab 8, so they cannot contaminate any reported metric; and
+    #   - the M-5 age sweep can then move them to UNRESOLVABLE, making the count of
+    #     permanently-stuck fixture rows visible on purpose.
+    market_src   <- .slate_market_data_source(slate)
+    row_synthetic <- market_src == "SYNTHETIC_FALLBACK"
+
+    if (any(row_synthetic)) {
+      log_warn(sprintf("%d of %d slate row(s) were priced off a SYNTHETIC_FALLBACK odds slate; logged with is_synthetic = TRUE and excluded from accuracy aggregation (M-5).",
+                       sum(row_synthetic), length(row_synthetic)),
+               call = "log_todays_predictions()", synthetic_rows = sum(row_synthetic))
+    }
+
     now_ts <- Sys.time()
 
     new_rows <- tibble(
@@ -265,6 +387,8 @@ log_todays_predictions <- function() {
       model_offseason_method    = as.character(OFFSEASON_METHOD),
       injury_data_source        = .current_injury_data_source(),
       shot_quality_data_source  = .current_shot_quality_data_source(),
+      market_data_source        = market_src,
+      is_synthetic              = row_synthetic,
       status                    = "PENDING",
       actual_winner             = NA_character_,
       correct                   = NA,
@@ -315,6 +439,53 @@ log_todays_predictions <- function() {
 # names), since a literal copy of bet_tracker.r's full-name value would silently
 # match zero rows.
 # ------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# FINDING M-5 — age-based PENDING sweep.
+#
+# The review found 14 PENDING rows for game_dates 2026-09-14..2026-09-18, none of
+# which exist in the box cache (whose latest home game_date is 2026-08-30), because
+# they were logged against fetch_market_odds()'s SYNTHETIC_FALLBACK fixture slate.
+# reconcile_predictions()'s inner_join can NEVER match them, yet the stage logged
+# "No PENDING rows matched a completed game ... yet" — framing a permanent condition
+# as a transient one, with the count growing ~6 rows per pipeline run forever.
+#
+# This moves any PENDING row more than PRED_LOG_UNRESOLVABLE_AFTER_DAYS past its
+# game_date to status "UNRESOLVABLE", so stuck rows are counted and visible rather
+# than silently accumulating. Append-only discipline is preserved: nothing is
+# deleted, only the status column transitions. UNRESOLVABLE rows are excluded from
+# summarize_prediction_accuracy() (which only ever looks at status == "RESOLVED").
+#
+# Safety: a row is only swept once it is genuinely too old, so a real game whose box
+# score is merely slow to land still has a full week to reconcile normally.
+# ------------------------------------------------------------------------------
+#
+# `persist = FALSE` returns the swept frame without writing it, so callers (and
+# tools/test_phase4_props.R) can exercise the sweep on an in-memory probe without
+# overwriting the production log.
+.sweep_unresolvable <- function(df, persist = TRUE) {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) return(df)
+  if (!all(c("status", "game_date") %in% names(df))) return(df)
+
+  cutoff <- Sys.Date() - PRED_LOG_UNRESOLVABLE_AFTER_DAYS
+  stale  <- !is.na(df$status) & df$status == "PENDING" &
+            !is.na(df$game_date) & as.Date(df$game_date) < cutoff
+
+  if (!any(stale)) return(df)
+
+  df$status[stale] <- "UNRESOLVABLE"
+  if ("resolved_timestamp" %in% names(df)) df$resolved_timestamp[stale] <- Sys.time()
+
+  n_synth <- if ("is_synthetic" %in% names(df)) sum(df$is_synthetic[stale], na.rm = TRUE) else NA_integer_
+  log_warn(sprintf("Swept %d PENDING prediction(s) older than %d days past game_date to status UNRESOLVABLE (M-5); %s of them were logged off a synthetic slate.",
+                   sum(stale), PRED_LOG_UNRESOLVABLE_AFTER_DAYS, as.character(n_synth)),
+           call = ".sweep_unresolvable()", swept_rows = sum(stale), cutoff = as.character(cutoff))
+  cat(sprintf("[PREDICTION LOG] Swept %d permanently-stuck PENDING row(s) to UNRESOLVABLE (game_date < %s).\n",
+              sum(stale), as.character(cutoff)))
+
+  if (isTRUE(persist)) save_prediction_log(df)
+  df
+}
+
 reconcile_predictions <- function() {
   tryCatch({
     existing_log <- get_prediction_log()
@@ -325,24 +496,22 @@ reconcile_predictions <- function() {
       return(invisible(existing_log))
     }
 
+    # FINDING L-4: CONSUME the cache that the (now explicit) daily_ingest.R DAG stage
+    # produced — do not trigger the ingest from here. See the header note at the top
+    # of this file. Fail-safe preserved: a missing/unreadable cache degrades to "no
+    # reconciliation possible yet", it does not crash the stage.
     box_scores <- tryCatch({
-      if (exists("daily_box_ingest", mode = "function")) {
-        daily_box_ingest()
-      } else if (file.exists(CACHE_TEAM_BOX)) {
-        readRDS(CACHE_TEAM_BOX)
-      } else {
-        tibble()
-      }
-    }, error = function(e) {
-      log_error("daily_box_ingest() failed during reconciliation; falling back to box_scores_cache.rds as-is on disk.",
-                condition = e, call = "reconcile_predictions()")
       if (file.exists(CACHE_TEAM_BOX)) readRDS(CACHE_TEAM_BOX) else tibble()
+    }, error = function(e) {
+      log_error("Could not read the team box score cache produced by the daily_ingest.R stage.",
+                condition = e, call = "reconcile_predictions()", cache_path = CACHE_TEAM_BOX)
+      tibble()
     })
 
     if (is.null(box_scores) || nrow(box_scores) == 0) {
-      log_info("box_scores_cache.rds unavailable/empty; nothing to reconcile against yet.",
-               call = "reconcile_predictions()", pending_rows = nrow(pending))
-      return(invisible(existing_log))
+      log_warn("box_scores_cache.rds unavailable/empty (has the daily_ingest.R stage run?); nothing to reconcile against yet.",
+               call = "reconcile_predictions()", pending_rows = nrow(pending), cache_path = CACHE_TEAM_BOX)
+      return(invisible(.sweep_unresolvable(existing_log)))
     }
 
     home_results <- box_scores |>
@@ -360,9 +529,9 @@ reconcile_predictions <- function() {
       inner_join(home_results, by = c("game_date" = "game_date", ".home_short" = "home_team_short"))
 
     if (nrow(joined) == 0) {
-      log_info("No PENDING rows matched a completed game in box_scores_cache.rds yet.",
+      log_info("No PENDING rows matched a completed game in box_scores_cache.rds.",
                call = "reconcile_predictions()", pending_rows = nrow(pending))
-      return(invisible(existing_log))
+      return(invisible(.sweep_unresolvable(existing_log)))
     }
 
     resolved <- joined |>
@@ -390,7 +559,7 @@ reconcile_predictions <- function() {
              call = "reconcile_predictions()", rows = nrow(resolved), out_path = PRED_LOG_RDS)
     cat(sprintf("[PREDICTION LOG] Reconciled %d predictions.\n", nrow(resolved)))
 
-    invisible(updated_log)
+    invisible(.sweep_unresolvable(updated_log))
   }, error = function(e) {
     log_error("reconcile_predictions() failed.", condition = e, call = "reconcile_predictions()")
     warning(sprintf(">>> [PREDICTION LOG FAILED] reconcile_predictions(): %s", e$message))
@@ -403,11 +572,27 @@ reconcile_predictions <- function() {
 # RESOLVED rows. Not a dashboard tab (explicitly out of scope for this task —
 # see Handoff Notes' follow-up note).
 # ------------------------------------------------------------------------------
-summarize_prediction_accuracy <- function(window = c("7d", "30d", "season", "all")) {
+summarize_prediction_accuracy <- function(window = c("7d", "30d", "season", "all"),
+                                          include_synthetic = FALSE) {
   window <- match.arg(window)
-  resolved <- get_prediction_log() |> filter(status == "RESOLVED")
+  full <- get_prediction_log()
+  resolved <- full |> filter(status == "RESOLVED")
 
-  empty_summary <- tibble(window = window, n = 0L, accuracy = NA_real_, brier_score = NA_real_, log_loss = NA_real_)
+  # FINDING C-3: never aggregate diagnostic-fixture or synthetic-slate rows into a
+  # reported accuracy number. On the current cache this drops all 100 DIAG_* rows,
+  # which is precisely the point — the "83% accuracy / 0.131 Brier" the dashboard
+  # displayed was computed entirely from fixtures. `include_synthetic = TRUE` exists
+  # only for tooling that deliberately wants to inspect the fixtures.
+  n_synth_dropped <- 0L
+  if (!isTRUE(include_synthetic) && "is_synthetic" %in% names(resolved)) {
+    keep <- !coalesce(resolved$is_synthetic, FALSE)
+    n_synth_dropped <- sum(!keep)
+    resolved <- resolved[keep, , drop = FALSE]
+  }
+
+  empty_summary <- tibble(window = window, n = 0L, accuracy = NA_real_,
+                          brier_score = NA_real_, log_loss = NA_real_,
+                          n_synthetic_excluded = as.integer(n_synth_dropped))
   if (nrow(resolved) == 0) return(empty_summary)
 
   filtered <- switch(window,
@@ -424,7 +609,8 @@ summarize_prediction_accuracy <- function(window = c("7d", "30d", "season", "all
     n           = nrow(filtered),
     accuracy    = round(mean(filtered$correct, na.rm = TRUE), 4),
     brier_score = round(mean(filtered$brier_component, na.rm = TRUE), 4),
-    log_loss    = round(mean(filtered$log_loss_component, na.rm = TRUE), 4)
+    log_loss    = round(mean(filtered$log_loss_component, na.rm = TRUE), 4),
+    n_synthetic_excluded = as.integer(n_synth_dropped)
   )
 }
 

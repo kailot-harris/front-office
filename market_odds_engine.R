@@ -17,10 +17,10 @@
 #      `cache/projected_wnba_standings.rds` (NOT `projected_30_team_standings.rds` —
 #      that NBA filename does not exist in this repo; per task_assignments.md T2
 #      Handoff Notes this was a deliberate rename, not a placeholder to fill in).
-#   5. Margin -> win-probability sigma uses `WNBA_MARGIN_SIGMA` (14.0, empirically
-#      derived by T2 from real WNBA score margins — see config.R) instead of the NBA
-#      original's hardcoded 11.2. Home-court advantage (2.4) kept unchanged per T2's
-#      note that it was not required to be re-derived for this phase.
+#   5. Margin -> win-probability sigma uses `WNBA_MARGIN_SIGMA` and home-court
+#      advantage uses `WNBA_HCA` — BOTH read from config.R, neither restated as a
+#      literal anywhere in this file (FINDING C-1; see config.R for each constant's
+#      derivation and provenance comment).
 #   6. Shot-quality / fatigue lookups: T3's `team_shot_quality.rds` and
 #      `travel_fatigue_metrics.rds` key on WNBA team ABBREVIATIONS (e.g. "LV", "SEA"),
 #      not full team names like the standings cache's `Team` column ("Las Vegas
@@ -57,7 +57,10 @@ source("config.R")
 source("logging_utils.R")
 .LOG_SCRIPT <- "market_odds_engine.R"
 
-`%||%` <- function(a, b) if (!is.null(a) && length(a) > 0 && !is.na(a)) a else b
+# FINDING M-6: the local scalar `%||%` that used to live here has been REMOVED. The
+# single canonical definition (hardened `is.na(a)[1]` form) lives in logging_utils.R,
+# which is sourced immediately above — before any `%||%` use in this file. Do not
+# re-add a local copy: two definitions made "which one wins" depend on source order.
 
 # ------------------------------------------------------------------------------
 # Model Robustness & XAI Helpers
@@ -155,26 +158,66 @@ calculate_kelly <- function(prob, decimal_odds, fraction = 0.25, max_cap_pct = 3
 # standings cache `Team` column), not a short nickname like the NBA version.
 # ------------------------------------------------------------------------------
 resolve_team_name <- function(tm_raw) {
-  s <- tolower(as.character(tm_raw))
+  s <- tolower(trimws(as.character(tm_raw)))
   full_names <- unname(WNBA_TEAMS)
   abbrs      <- names(WNBA_TEAMS)
 
-  # 1. Exact/substring match against full franchise names (covers The Odds API's
-  #    `home_team`/`away_team` fields, which use full names like "Las Vegas Aces").
-  hit <- full_names[sapply(tolower(full_names), function(fn) grepl(fn, s, fixed = TRUE) || grepl(s, fn, fixed = TRUE))]
-  if (length(hit) >= 1) return(hit[1])
+  # FINDING H-4: this function is the canonicalization boundary between The Odds
+  # API's UNTRUSTED home_team/away_team fields and the internal standings lookup
+  # that produces money recommendations. Two hardening rules, both load-bearing:
+  #
+  #  (a) Minimum input length. Degenerate inputs ("", "a", "s") must NOT resolve.
+  #      They previously did, because of the reverse-containment clause below.
+  #  (b) The reverse-containment clause `grepl(s, fn, fixed = TRUE)` (does the
+  #      INPUT appear inside the franchise name?) has been DELETED. Only the
+  #      forward direction is meaningful: is a franchise name present inside the
+  #      input. The reverse direction only ever helped for prefixes and is
+  #      precisely what made "" match every team and return "Atlanta Dream".
+  #
+  # Abbreviations are length 2-3 ("LV", "NY", "GS"), so they are checked BEFORE the
+  # length gate rather than being collateral damage of it.
+  if (length(s) != 1 || is.na(s)) {
+    log_warn("resolve_team_name(): non-scalar/NA input could not be resolved to a WNBA franchise.",
+             call = "resolve_team_name()", unresolved_value = paste(as.character(tm_raw), collapse = ","))
+    return(NA_character_)
+  }
 
-  # 2. Fall back to abbreviation match (covers internal callers that already pass
-  #    a WNBA_TEAMS abbreviation, e.g. "LV").
+  # 1. Abbreviation match (covers internal callers that already pass a WNBA_TEAMS
+  #    abbreviation, e.g. "LV"). Exact equality only — no substring semantics.
   hit_ab <- abbrs[tolower(abbrs) == s]
   if (length(hit_ab) >= 1) return(unname(WNBA_TEAMS[hit_ab[1]]))
 
-  # 3. Nickname-only match (last word of the full name, e.g. "Aces", "Storm").
+  # 2. H-4 length gate: below 3 characters nothing but an exact abbreviation can be
+  #    trusted, so refuse rather than guess.
+  if (nchar(s) < 3) {
+    log_warn("resolve_team_name(): input too short to resolve to a WNBA franchise (H-4 guard).",
+             call = "resolve_team_name()", unresolved_value = as.character(tm_raw))
+    return(NA_character_)
+  }
+
+  # 3. Forward substring match against full franchise names (covers The Odds API's
+  #    `home_team`/`away_team` fields, which use full names like "Las Vegas Aces").
+  hit <- full_names[vapply(tolower(full_names), function(fn) grepl(fn, s, fixed = TRUE), logical(1))]
+  if (length(hit) >= 1) return(hit[1])
+
+  # 4. Nickname-only match (last word of the full name, e.g. "Aces", "Storm").
+  #    FINDING L-1: `nick` is length 15, so paste0("\\b", nick, "\\b") used to be
+  #    handed to grepl() as a length-15 `pattern` — grepl uses only element [1]
+  #    ("dream") and warns, then `|` recycles that single result across all 15
+  #    positions. Harmless only because WNBA_TEAMS happens to start with Atlanta;
+  #    config.R explicitly anticipates re-ordering on expansion. Vectorized with
+  #    vapply() so each nickname is genuinely tested against the input.
   nick <- tolower(word(full_names, -1))
-  hit_nick <- full_names[grepl(paste0("\\b", nick, "\\b"), s) | mapply(function(n) grepl(n, s, fixed = TRUE), nick)]
+  hit_nick <- full_names[vapply(nick, function(n) grepl(paste0("\\b", n, "\\b"), s), logical(1))]
   if (length(hit_nick) >= 1) return(hit_nick[1])
 
-  as.character(tm_raw)
+  # FINDING H-4: no match -> NA_character_, NOT the raw input passed through. The
+  # caller (get_model_slate_probabilities()) must handle NA explicitly; its
+  # `nrow(h_row) > 0` standings check routes NA into the devigged-consensus
+  # fallback, same as any other unrecognized team.
+  log_warn("resolve_team_name(): input did not match any WNBA franchise; returning NA.",
+           call = "resolve_team_name()", unresolved_value = as.character(tm_raw))
+  NA_character_
 }
 
 # Map a canonical full WNBA_TEAMS name back to its abbreviation (used for the
@@ -192,23 +235,35 @@ fetch_market_odds <- function() {
   api_key <- Sys.getenv("ODDS_API_KEY", "")
 
   if (nchar(api_key) > 0) {
-    url <- paste0(
-      "https://api.the-odds-api.com/v4/sports/basketball_wnba/odds/?",
-      "apiKey=", api_key,
-      "&regions=us,us2,eu&markets=h2h&oddsFormat=american"
-    )
+    # FINDING H-1: the API key is NEVER interpolated into a URL string. The base URL
+    # is keyless and is the only thing that is ever logged, printed, or passed
+    # around; the secret is attached by httr2::req_url_query() on the request object
+    # itself, immediately before req_perform(). This is layer 1 of 2 — Wave 1 also
+    # added redaction inside logging_utils.R's sink (defense in depth), but the sink
+    # must not be the ONLY thing standing between a credential and a plaintext log.
+    base_url <- "https://api.the-odds-api.com/v4/sports/basketball_wnba/odds/"
 
     cat("[FEED] Querying live multi-region WNBA odds from The Odds API...\n")
-    log_info("Querying live multi-region WNBA odds from The Odds API.", call = "fetch_market_odds()")
+    log_info("Querying live multi-region WNBA odds from The Odds API.",
+             call = "fetch_market_odds()", url = base_url)
     resp_raw <- tryCatch({
-      request(url) |>
+      request(base_url) |>
+        req_url_query(
+          regions     = "us,us2,eu",
+          markets     = "h2h",
+          oddsFormat  = "american",
+          apiKey      = api_key
+        ) |>
         req_timeout(8) |>
         req_retry(max_tries = 3) |>
         req_perform() |>
         resp_body_json(simplifyVector = TRUE)
     }, error = function(e) {
+      # H-1: log the KEYLESS base URL only. `condition = e` is still safe because
+      # logging_utils.R's .log_redact() scrubs apiKey= out of any condition message
+      # httr2 may have embedded the full request URL into.
       cat(sprintf("[FEED WARNING] API query failed (%s). Using calibrated fixture slate.\n", e$message))
-      log_error("Odds API request failed.", condition = e, call = "fetch_market_odds()", url = url)
+      log_error("Odds API request failed.", condition = e, call = "fetch_market_odds()", url = base_url)
       NULL
     })
 
@@ -220,7 +275,12 @@ fetch_market_odds <- function() {
       if (nrow(parsed) > 0) {
         log_info(sprintf("Parsed %d live games with usable bookmaker odds.", nrow(parsed)),
                  call = "parse_multi_book_feed()", rows = nrow(parsed))
-        return(parsed)
+        # FINDING M-5: provenance marker travels WITH the slate, so every downstream
+        # consumer (evaluate_betting_slate() -> latest_value_bets.rds ->
+        # prediction_accuracy_logger.R::log_todays_predictions()) can tell a real
+        # slate from the fixture slate. Mirrors the existing injury_data_source
+        # pattern. Contract: character, "LIVE_ODDS_API" | "SYNTHETIC_FALLBACK".
+        return(parsed |> mutate(market_data_source = "LIVE_ODDS_API"))
       }
       log_warn("Odds API returned games but none had parseable bookmaker odds; falling back to fixture slate.",
                call = "fetch_market_odds()")
@@ -253,7 +313,11 @@ fetch_market_odds <- function() {
     home_ml           = c(-210, -260, -145, +110, -120, -175),
     away_ml           = c(+175, +215, +122, -130, +100, +150),
     consensus_home_ml = c(-225, -280, -152, +102, -128, -188),
-    consensus_away_ml = c(+188, +230, +130, -118, +108, +162)
+    consensus_away_ml = c(+188, +230, +130, -118, +108, +162),
+    # FINDING M-5: these six matchups are FABRICATED and can never reconcile against
+    # a real box score. The marker below is the only thing that lets
+    # prediction_accuracy_logger.R tell that and exclude/flag these rows.
+    market_data_source = "SYNTHETIC_FALLBACK"
   )
 }
 
@@ -413,17 +477,23 @@ get_model_slate_probabilities <- function(slate_df) {
           if (nrow(f_match) > 0) fatigue_drag <- f_match$point_spread_drag[1]
         }
 
-        # WNBA-specific: home-court advantage (2.40) left unchanged from NBA per
-        # T2's note (not independently re-derived); sigma uses config.R's real
-        # empirically-derived WNBA_MARGIN_SIGMA (14.0), NOT the NBA original's
-        # hardcoded 11.2 — WNBA margins run wider (fewer possessions/game).
-        fair_margin <- (h_net - a_net) + 11.6 + fatigue_drag + calculate_matchup_delta(h_abbr, a_abbr)
+        # FINDING C-1: home-court advantage is read from `config.R::WNBA_HCA`. It is
+        # NOT restated as a literal here. This line previously added a hardcoded
+        # `11.6` while the comment above it documented `2.40` — `11.6` was the NBA
+        # original's sigma-family constant pasted into the HCA slot, which made the
+        # model believe two identical teams win at home 79.6% of the time (real WNBA
+        # rate ~55-58%), saturating Kelly at the 3% cap on every recommendation.
+        # Sigma likewise comes from config.R's empirically-derived
+        # WNBA_MARGIN_SIGMA, NOT the NBA original's hardcoded 11.2 — WNBA margins run
+        # wider (fewer possessions/game). Read both from config.R; do not re-derive
+        # or restate either number in this file.
+        fair_margin <- (h_net - a_net) + WNBA_HCA + fatigue_drag + calculate_matchup_delta(h_abbr, a_abbr)
         p_home <- pnorm(fair_margin / WNBA_MARGIN_SIGMA)
         p_home <- min(max(p_home, 0.03), 0.97)
         home_probs[i] <- round(p_home, 3)
         fair_margins[i] <- fair_margin
         net_diffs[i]    <- h_net - a_net
-        hcas[i]         <- 11.6
+        hcas[i]         <- WNBA_HCA  # FINDING C-1: config.R constant, never a literal
         fatigues[i]     <- fatigue_drag
       } else {
         p_raw_h <- american_to_prob(slate_df$consensus_home_ml[i])
@@ -520,11 +590,15 @@ evaluate_betting_slate <- function() {
       Bankroll_Rec      = quarter_kelly_pct,
       Status            = edge_flag,
       sharp_line        = cons_ml,
-      game_id           = game_id
+      game_id           = game_id,
+      # FINDING M-5: carried through to cache/latest_value_bets.rds so
+      # prediction_accuracy_logger.R::log_todays_predictions() can record slate
+      # provenance ("LIVE_ODDS_API" / "SYNTHETIC_FALLBACK") on each logged row.
+      market_data_source = market_data_source
     ) |>
     arrange(game_date, desc(EV_Percent))
 
-  display_table <- output_table |> select(-game_id, -sharp_line, -Team)
+  display_table <- output_table |> select(-game_id, -sharp_line, -Team, -market_data_source)
   print(knitr::kable(display_table, format = "simple"))
 
   out_path <- file.path(CACHE_DIR, "latest_value_bets.rds")

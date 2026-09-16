@@ -190,6 +190,12 @@ fetch_live_wnba_injuries <- function() {
 }
 
 # Auto-execute
-if (sys.nframe() == 0 || interactive()) {
+# FINDING C-2 (docs/SECURITY_TECHNICAL_REVIEW.md): was `if (sys.nframe() == 0 || interactive())`,
+# which is never TRUE under run_full_pipeline.R's run_stage() (it source()s each stage from inside
+# a function, so sys.nframe() is ~10, and Rscript is non-interactive). This stage logged
+# [COMPLETED] in 0.24s every night while cache/injury_data_cache.rds stayed four days stale —
+# the most time-critical feed in the repo. `!interactive()` matches the guard style that already
+# works in rapm_engine.R / risk_management_engine.R / copula_props_engine.R.
+if (!interactive()) {
   fetch_live_wnba_injuries()
 }

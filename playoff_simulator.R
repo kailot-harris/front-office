@@ -38,6 +38,12 @@ if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
 
 if (!dir.exists("cache")) dir.create("cache", recursive = TRUE)
 
+# Structural constants (WNBA_MARGIN_SIGMA, WNBA_HCA). This used to be sourced only from inside
+# the auto-run guard at the bottom of the file, which meant an analyst who source()d this file
+# and called simulate_single_series() directly hit "object 'WNBA_MARGIN_SIGMA' not found".
+# Guarded so a caller that already sourced config.R does not pay for it twice.
+if (!exists("WNBA_MARGIN_SIGMA") || !exists("WNBA_HCA")) source("config.R")
+
 `%||%` <- function(a, b) if (!is.null(a) && length(a) > 0 && !is.na(a)) a else b
 
 message(">>> [WNBA PLAYOFFS] Initializing Monte Carlo Playoff Series Simulator...")
@@ -94,8 +100,11 @@ get_playoff_adjusted_rating <- function(team_name, reg_net_rating) {
 # ------------------------------------------------------------------------------
 # Generalized Best-of-N Series Simulation (format-aware — bo3 / bo5 / bo7)
 # ------------------------------------------------------------------------------
+# FINDING C-1: `hca_pts` defaulted to the literal 2.40; it now defaults to config.R's WNBA_HCA.
+# Same value, single definition site. (Default args are lazily evaluated, so WNBA_HCA only needs
+# to exist at call time — the guarded source() above guarantees that.)
 simulate_single_series <- function(team_high, team_low, net_high, net_low, n_sims = 10000,
-                                    hca_pts = 2.40, format = "bo7") {
+                                    hca_pts = WNBA_HCA, format = "bo7") {
   if (!format %in% names(PLAYOFF_FORMATS)) stop(sprintf("Unknown playoff format '%s' — must be one of: %s", format, paste(names(PLAYOFF_FORMATS), collapse = ", ")))
   fmt <- PLAYOFF_FORMATS[[format]]
   home_high_flags <- fmt$home_flags
@@ -245,8 +254,14 @@ simulate_playoff_suite <- function() {
   return(results)
 }
 
-if (!interactive() && sys.nframe() == 0) {
-  # Need WNBA_MARGIN_SIGMA from config.R; guard so this still runs standalone.
-  if (!exists("WNBA_MARGIN_SIGMA")) source("config.R")
+# FINDING C-2 (docs/SECURITY_TECHNICAL_REVIEW.md): the guard was
+# `if (!interactive() && sys.nframe() == 0)`. The second clause is never satisfied under
+# run_full_pipeline.R's run_stage(), which source()s each stage from inside a function
+# (sys.nframe() ~10), so this stage logged "[COMPLETED] playoff_simulator.R in 0.02 seconds"
+# without ever simulating a series or touching cache/playoff_series_wnba_demo.rds.
+# Dropping the sys.nframe() clause leaves `!interactive()` — the guard style already proven
+# correct in copula_props_engine.R / rapm_engine.R / risk_management_engine.R.
+# (config.R is now sourced at the top of this file rather than here.)
+if (!interactive()) {
   invisible(simulate_playoff_suite())
 }

@@ -51,7 +51,8 @@ source("config.R")
 source("logging_utils.R")
 .LOG_SCRIPT <- "backtest_margin_hyperparams.R"
 
-`%||%` <- function(a, b) if (!is.null(a) && length(a) > 0 && !is.na(a)) a else b
+# FINDING M-6: local scalar `%||%` removed. The canonical hardened definition lives in
+# logging_utils.R (sourced immediately above, before any use in this file).
 set.seed(20260916)  # fixed seed, bootstrap resampling only
 
 DEFAULT_LIMIT       <- 15.0   # NBA-original / pre-Phase-1 default
@@ -61,7 +62,12 @@ PHASE1_LIMIT        <- 5.0    # Phase 1's (flagged-as-likely-overfit) grid optim
 PHASE1_DAMPENING    <- 0.1
 PHASE1_STAR_WEIGHT  <- 0.0
 
-HCA_CONST <- 11.6  # market_odds_engine.R's current live constant (not being re-optimized here)
+# FINDING C-1: this line used to read `HCA_CONST <- 11.6`, described as
+# "market_odds_engine.R's current live constant". That enshrined the defect as ground
+# truth for the backtest: 11.6 was never the intended HCA, it was the NBA original's
+# sigma-family constant pasted into the HCA slot. Read config.R::WNBA_HCA instead —
+# the backtest must track whatever the engine actually uses, not a frozen copy.
+HCA_CONST <- WNBA_HCA
 
 apply_rating_limits_param <- function(rating, limit, dampening) {
   if (is.na(rating)) return(NA_real_)

@@ -61,7 +61,13 @@ if (!exists("ROLLING_WINDOW_SIZE")) ROLLING_WINDOW_SIZE <- 13
 if (!exists("CACHE_TEAM_BOX")) CACHE_TEAM_BOX <- file.path(PROJECT_DIR, "data", "box_scores_cache.rds")
 if (!exists("CACHE_DIR")) CACHE_DIR <- file.path(PROJECT_DIR, "cache")
 
-HCA <- 2.40  # matches roster_bottom_up_engine.R's get_fair_spread() home-court constant
+# FINDING C-1: home-court advantage is read from config.R::WNBA_HCA, not restated as a
+# literal `2.40` here. Restating it is exactly how market_odds_engine.R drifted to 11.6
+# while its own comment still said 2.40. The `if (!exists(...))` guard matches the
+# defensive pattern used for the other constants above, for the case where config.R is
+# somehow unavailable; config.R is the authority whenever it loads.
+if (!exists("WNBA_HCA")) WNBA_HCA <- 2.40
+HCA <- WNBA_HCA
 
 build_model_calibration_input <- function() {
   if (!file.exists(CACHE_TEAM_BOX)) {

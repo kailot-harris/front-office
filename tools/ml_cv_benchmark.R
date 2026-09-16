@@ -4,7 +4,7 @@
 # model against a named external standard.
 #
 # Reuses WNBA_Analysis_Project.Rmd's exact feature-engineering function (build_feature_df,
-# window_size = ROLLING_WINDOW_SIZE = 13, method = "reset") and its winning architecture on the
+# window_size = config.R's ROLLING_WINDOW_SIZE, method = "reset") and its winning architecture on the
 # real WNBA re-run (Random Forest via ranger - see WNBA_Analysis_Project.Rmd lines ~398-402 and
 # task_assignments.md's T2 Handoff Notes: RF won on ROC-AUC 0.666 / Brier 0.227 / Log-Loss 0.644
 # on a SINGLE train/2026-holdout split). This script does NOT trust that single split; it re-fits
@@ -28,8 +28,21 @@ suppressPackageStartupMessages({
   library(tidyverse)
   library(tidymodels)
   library(slider)
-  library(fastshap)
 })
+
+# fastshap is OPTIONAL. It was ARCHIVED on CRAN and is no longer installable via a
+# plain install.packages() on R 4.5 (it must be built from
+# cran.r-project.org/src/contrib/Archive/fastshap/, which needs Rtools). The SHAP
+# block below was already wrapped in try(..., silent = TRUE), i.e. always intended
+# to be non-essential — but the hard library(fastshap) at the top meant a machine
+# without it could not run the benchmark AT ALL, contrary to this repo's fail-safe
+# convention. Now its absence degrades to "CV metrics without the SHAP importance
+# table", clearly labelled, instead of halting the script.
+HAS_FASTSHAP <- requireNamespace("fastshap", quietly = TRUE)
+if (!HAS_FASTSHAP) {
+  cat("[warn] fastshap not installed (archived on CRAN) - SHAP importance tables will be SKIPPED.\n")
+  cat("[warn] All CV metrics below are unaffected. To restore SHAP, build fastshap from the CRAN archive.\n")
+}
 
 set.seed(20260912)  # fixed seed for reproducibility of bootstrap resampling only (not for tuning)
 
@@ -59,8 +72,13 @@ cat(sprintf("[data] team_embeddings.csv: %d teams x %d embedding dims (real-trai
 
 # ------------------------------------------------------------------------------------------
 # 2. Feature engineering - IDENTICAL to WNBA_Analysis_Project.Rmd's build_feature_df()
-#    (copied verbatim, window_size default overridden by caller to ROLLING_WINDOW_SIZE = 13,
-#    method = "reset", per the Rmd's own real-data re-benchmark: reset won on ROC-AUC/Brier).
+#    (copied verbatim, window_size default overridden by caller to config.R's
+#    ROLLING_WINDOW_SIZE, method = "reset", per the Rmd's own real-data re-benchmark: reset
+#    won on ROC-AUC/Brier).
+#    L-2: this comment deliberately cites the constant's NAME, not its value - the value is
+#    re-benchmarked periodically (config.R holds the derivation + current number), and an
+#    earlier revision of this comment had drifted to a stale literal while the code below
+#    was always reading the live constant correctly.
 # ------------------------------------------------------------------------------------------
 build_feature_df <- function(data, window_size = ROLLING_WINDOW_SIZE, method = "reset") {
   if (method == "reset") {
@@ -79,7 +97,14 @@ build_feature_df <- function(data, window_size = ROLLING_WINDOW_SIZE, method = "
         roll_ast        = slide_dbl(assists, mean, .before = window_size, .after = -1),
         roll_stl        = slide_dbl(steals, mean, .before = window_size, .after = -1),
         roll_blk        = slide_dbl(blocks, mean, .before = window_size, .after = -1),
-        roll_tov        = slide_dbl(turnovers, mean, .before = window_size, .after = -1),
+        # L-3: `total_turnovers` (not `turnovers`) is used for BOTH the four-factors `tov`
+        # rate above and this rolling count. They are genuinely different cache columns
+        # (total_turnovers ~= turnovers + team_turnovers; means 14.09 vs 13.17, not
+        # identical), and previously this block mixed them for what reads as one concept.
+        # `total_turnovers` wins deliberately: it is the column the paired four-factors
+        # denominator already uses, and it is the full team-possession-ending count, so
+        # diff_roll_tov and diff_roll_tovp now describe the same underlying quantity.
+        roll_tov        = slide_dbl(total_turnovers, mean, .before = window_size, .after = -1),
         roll_efg        = slide_dbl(efg, mean, .before = window_size, .after = -1),
         roll_tovp       = slide_dbl(tov, mean, .before = window_size, .after = -1),
         roll_ftr        = slide_dbl(ftr, mean, .before = window_size, .after = -1),
@@ -226,8 +251,8 @@ run_loso <- function(df, label) {
     )
     oof_preds[[as.character(s)]] <- preds
 
-    # SHAP analysis for this fold
-    try({
+    # SHAP analysis for this fold (skipped entirely when fastshap is unavailable)
+    if (HAS_FASTSHAP) try({
       rf_obj <- extract_fit_engine(fit_m)
       # Prepare numeric matrices for fastshap
       p_rec <- prep(rec)
@@ -302,13 +327,22 @@ baseline_ci <- bootstrap_ci(baseline_loso$oof_table)
 cat("-- Baseline (n_oof =", nrow(baseline_loso$oof_table), ") --\n")
 print(baseline_ci)
 
-# SHAP Global Importance for Baseline
+# SHAP Global Importance (skipped when fastshap is unavailable - see HAS_FASTSHAP above)
+shap_importance <- function(shap_table) {
+  if (is.null(shap_table) || nrow(shap_table) == 0 || ncol(shap_table) == 0) return(NULL)
+  shap_table |>
+    summarise(across(where(is.numeric) & !contains("season"), ~mean(abs(.x), na.rm = TRUE))) |>
+    pivot_longer(everything(), names_to = "feature", values_to = "mean_abs_shap") |>
+    arrange(desc(mean_abs_shap))
+}
+
 cat("\n--- Baseline Pooled SHAP Feature Importance (OOF) ---\n")
-baseline_shap_imp <- baseline_loso$shap_table |>
-  summarise(across(where(is.numeric) & !contains("season"), ~mean(abs(.x), na.rm = TRUE))) |>
-  pivot_longer(everything(), names_to = "feature", values_to = "mean_abs_shap") |>
-  arrange(desc(mean_abs_shap))
-print(knitr::kable(baseline_shap_imp, format = "simple"))
+baseline_shap_imp <- shap_importance(baseline_loso$shap_table)
+if (is.null(baseline_shap_imp)) {
+  cat("[skipped] no SHAP values available (fastshap not installed).\n")
+} else {
+  print(knitr::kable(baseline_shap_imp, format = "simple"))
+}
 
 improved_ci <- bootstrap_ci(improved_loso$oof_table)
 cat("-- Improved (+emb_similarity) (n_oof =", nrow(improved_loso$oof_table), ") --\n")
@@ -316,11 +350,12 @@ print(improved_ci)
 
 # SHAP Global Importance for Improved
 cat("\n--- Improved Pooled SHAP Feature Importance (OOF) ---\n")
-improved_shap_imp <- improved_loso$shap_table |>
-  summarise(across(where(is.numeric) & !contains("season"), ~mean(abs(.x), na.rm = TRUE))) |>
-  pivot_longer(everything(), names_to = "feature", values_to = "mean_abs_shap") |>
-  arrange(desc(mean_abs_shap))
-print(knitr::kable(improved_shap_imp, format = "simple"))
+improved_shap_imp <- shap_importance(improved_loso$shap_table)
+if (is.null(improved_shap_imp)) {
+  cat("[skipped] no SHAP values available (fastshap not installed).\n")
+} else {
+  print(knitr::kable(improved_shap_imp, format = "simple"))
+}
 
 
 # Fold-to-fold normal/t-approx CI as a secondary check (8 folds -> t with df = n_folds-1)

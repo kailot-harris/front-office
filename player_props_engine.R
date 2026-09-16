@@ -59,6 +59,9 @@ suppressPackageStartupMessages({
 })
 
 source("config.R")
+# FINDING H-2 (Phase 4): the RAPM<->roster join lives in exactly one place now.
+# Do not reimplement it here — see rapm_join_utils.R's header for why.
+source("rapm_join_utils.R")
 
 `%||%` <- function(a, b) if (!is.null(a) && length(a) > 0 && !is.na(a)) a else b
 
@@ -128,34 +131,132 @@ pzinb_over_vec <- Vectorize(pzinb_over)
 # ------------------------------------------------------------------------------
 # RAPM-based Opponent Adjustment for Props (Task P3-2.4)
 # ------------------------------------------------------------------------------
+# FINDING H-2 (docs/SECURITY_TECHNICAL_REVIEW.md): this function used to left_join()
+# active_rosters to rapm_df keyed on the raw player_id column of each,
+# which hard-errored EVERY NIGHT ("Can't join `x$player_id` with `y$player_id` due to
+# incompatible types: <integer> vs <character>") and was swallowed by run_stage()'s
+# fail-safe tryCatch, leaving data/latest_player_props.rds frozen at 2026-09-14 09:51.
+# The two caches use disjoint ID schemes (zero overlap even coerced to one type).
+# Fixed by calling the shared join_rapm_to_roster() helper, which joins on
+# (team full name, normalized last name) AND resolves the 15 (team, last_name)
+# collision groups on the RAPM side to one row each — critical here, because this
+# function builds a POSSESSION-WEIGHTED aggregate and a naive fan-out join would
+# double-count the duplicated players' possessions (see rapm_join_utils.R header).
+#
+# Returns one row per WNBA franchise with `def_rapm` = possession-weighted mean of
+# the team's rostered players' `drapm`. The league centre used by
+# adjust_mu_for_opponent() is attached as the "league_avg_def" attribute.
+#
+# *** drapm SIGN CONVENTION (verified empirically, see M-4 note below) ***
+# In cache/rapm_ratings.rds, `total_rapm == orapm - drapm` (verified: max abs
+# deviation 0.01 over all 430 rows; the `orapm + drapm` reading is off by up to
+# 31.5). drapm is therefore a points-ALLOWED-style quantity: LOWER drapm = BETTER
+# defender. Every value is positive (min -0.70, max 15.75), so it is a level, not a
+# centred "above average" rating — which is exactly why centring matters below.
 get_team_def_rapm <- function(active_rosters) {
   rapm_path <- "cache/rapm_ratings.rds"
-  if (!file.exists(rapm_path)) return(NULL)
+
+  neutral <- function(v) {
+    out <- tibble(team_name = unname(WNBA_TEAMS), def_rapm = as.numeric(v))
+    attr(out, "league_avg_def") <- as.numeric(v)
+    out
+  }
+
+  if (!file.exists(rapm_path)) {
+    message("[PROPS WARNING] cache/rapm_ratings.rds not found — opponent adjustment disabled (neutral multiplier).")
+    return(neutral(1))
+  }
   rapm_df <- readRDS(rapm_path)
 
-  team_def <- active_rosters |>
-    left_join(rapm_df, by = "player_id") |>
+  joined <- join_rapm_to_roster(active_rosters, rapm_df, matched_only = TRUE)
+
+  if (nrow(joined) == 0 || !all(c("drapm", "n_def_poss") %in% names(joined))) {
+    message("[PROPS WARNING] RAPM/roster join produced no usable rows — opponent adjustment disabled (neutral multiplier).")
+    return(neutral(mean(rapm_df$drapm, na.rm = TRUE)))
+  }
+
+  team_def <- joined |>
     group_by(team_name) |>
     summarise(
       def_rapm = sum(drapm * n_def_poss, na.rm = TRUE) / sum(n_def_poss, na.rm = TRUE),
       .groups = "drop"
-    )
+    ) |>
+    filter(is.finite(def_rapm))
 
-  league_avg_def <- mean(rapm_df$drapm, na.rm = TRUE)
+  # M-4 CENTRING FIX. The old code centred on `mean(rapm_df$drapm)` = 7.12, a
+  # PLAYER-level mean over all 430 RAPM rows including deep-bench/low-possession
+  # players. The possession-weighted mean of the 15 real TEAM aggregates is 9.99.
+  # Centring a team-level quantity on a player-level mean made every one of the 15
+  # opponents score as "above average", i.e. the adjustment had a large baked-in
+  # bias instead of being mean-zero across the league. Centre on the team mean.
+  league_avg_def <- mean(team_def$def_rapm, na.rm = TRUE)
+  if (!is.finite(league_avg_def)) league_avg_def <- mean(rapm_df$drapm, na.rm = TRUE)
 
-  tibble(team_name = WNBA_TEAMS) |>
+  out <- tibble(team_name = unname(WNBA_TEAMS)) |>
     left_join(team_def, by = "team_name") |>
     mutate(def_rapm = coalesce(def_rapm, league_avg_def))
+
+  attr(out, "league_avg_def") <- league_avg_def
+  out
 }
 
+# Fractional change in a player's projected mean per +1.00 of opponent team
+# possession-weighted `drapm`. DERIVED EMPIRICALLY (M-4), not asserted:
+#
+#   Within-player fixed-effects regression on the real cache/player_box_scores_cache.rds,
+#   seasons 2024-2026, 16,657 player-games / 267 players with >= 5 games. Response is
+#   each player's points minus their own mean (so player quality is differenced out);
+#   regressor is the opponent's possession-weighted team drapm, centred on the league
+#   team mean.
+#
+#     absolute scale   : +0.2591 pts per +1 drapm  (SE 0.0341, t = +7.60, p = 3.0e-14)
+#     + minutes control: +0.2586  (so it is not a playing-time artifact)
+#     / mean points 8.768                        -> +0.0296 fractional per unit
+#     direct within-player FRACTIONAL regression : +0.0256 per unit
+#                                                  (SE 0.0049, t = +5.24, p = 1.7e-07)
+#     season-2026-only absolute slope            : +0.2598 (t = +5.00) -- same sign
+#
+#   Team-level corroboration (2026, points allowed per game vs. def_rapm):
+#     slope +2.26 pts allowed per +1 def_rapm, r = +0.675.
+#
+#   We take the direct fractional estimate, 0.0256, since it is the estimand that
+#   matches the multiplicative form actually used. The absolute-scale estimate
+#   (0.0296) is the corroborating upper bound; both are the same sign at p < 1e-6.
+OPP_DEF_MU_SLOPE  <- 0.0256
+# Clamp bounds: +/-15%. The unclamped estimate spans 0.93x (Golden State) to 1.07x
+# (Dallas) across the 15 real 2026 team aggregates, so the clamp is not binding on
+# real data — it exists purely so that a future degenerate RAPM cache cannot swing a
+# projection arbitrarily (the OLD formula's raw ratio spanned roughly 0x to 2.2x and
+# would have flipped a projection's sign outright on a negative team aggregate).
+OPP_DEF_MU_CLAMP  <- c(0.85, 1.15)
+
 adjust_mu_for_opponent <- function(base_mu, opp_def_rapm, league_avg_def) {
-  # adj_mu = base_mu * (opp_def_rapm / league_avg_def_rapm)
-  # Note: In RAPM, a higher defensive rating usually means BETTER defense (lower points allowed).
-  # If opp_def_rapm > league_avg, the opponent is more defensive -> mu should decrease.
-  # So we use (league_avg / opp_def) or similar.
-  # However, the prompt explicitly says: base_mu * (opp_def_rapm / league_avg_def_rapm).
-  # I will follow the prompt's formula exactly.
-  base_mu * (opp_def_rapm / league_avg_def)
+  # FINDING M-4 (docs/SECURITY_TECHNICAL_REVIEW.md). The previous implementation was
+  #   base_mu * (opp_def_rapm / league_avg_def)
+  # carrying a comment that asserted the formula was backwards and then shipped it
+  # anyway "because the prompt says so". That rationale is deleted; the direction is
+  # now settled against real data (see OPP_DEF_MU_SLOPE's derivation above).
+  #
+  # WHAT THE DATA ACTUALLY SAYS — and it contradicts the old comment's PREMISE rather
+  # than its arithmetic. The old comment assumed "higher drapm = better defense". In
+  # THIS repo's rapm_ratings.rds the opposite holds: total_rapm = orapm - drapm, so
+  # drapm is points-allowed-flavoured and LOWER drapm = BETTER defense. The measured
+  # within-player slope is POSITIVE (+0.26 pts per +1 opponent drapm, p = 3e-14):
+  # facing a HIGH-drapm (i.e. WEAK) defense raises a player's output, and facing a
+  # LOW-drapm (i.e. STRONG) defense lowers it. That is the correct, intuitive
+  # behaviour; the old formula's sign was accidentally right while its stated reason
+  # was wrong. What was genuinely broken was everything else: an uncentred ratio over
+  # a player-level league mean (see get_team_def_rapm()), and no clamp over a
+  # denominator that the cache allows to approach zero.
+  #
+  # Now ADDITIVE-in-log-space (a multiplier centred on 1.0 built by ADDING a centred
+  # deviation) rather than a raw ratio, which removes the division entirely and hence
+  # the near-zero-denominator blowup the review flagged.
+  if (!is.finite(league_avg_def)) return(base_mu)
+  ratio <- 1 + OPP_DEF_MU_SLOPE * (opp_def_rapm - league_avg_def)
+  ratio <- pmin(pmax(ratio, OPP_DEF_MU_CLAMP[1]), OPP_DEF_MU_CLAMP[2])
+  ratio <- ifelse(is.finite(ratio), ratio, 1)
+  base_mu * ratio
 }
 
 price_prop_zinb <- function(player_names, teams, stat_cat, projected_mus, lines,
@@ -296,7 +397,8 @@ build_real_rotation_table <- function(rosters) {
 
 # ------------------------------------------------------------------------------
 # Generate Rotation Props Database
-# Output: latest_player_props.rds (root), cache/latest_player_props.rds
+# Output: ONE canonical file, config.R's CACHE_PLAYER_PROPS
+# (cache/latest_player_props.rds) — see FINDING L-6 at the write site below.
 # ------------------------------------------------------------------------------
 
 generate_active_props_table <- function() {
@@ -343,15 +445,16 @@ generate_active_props_table <- function() {
   matchups_file <- file.path(CACHE_DIR, "latest_value_bets.rds")
   def_rapm_df <- get_team_def_rapm(if (exists("GLOBAL_ACTIVE_ROSTERS", inherits = FALSE)) GLOBAL_ACTIVE_ROSTERS else readRDS(roster_cache))
 
-  # IO Optimization: use GLOBAL_PLAYER_BOX for league average
-  rapm_data <- if (exists("GLOBAL_PLAYER_BOX", inherits = FALSE)) {
-    # RAPM is actually saved as rapm_ratings.rds, not GLOBAL_PLAYER_BOX.
-    # Let's just read it once.
-    readRDS("cache/rapm_ratings.rds")
-  } else {
-    readRDS("cache/rapm_ratings.rds")
+  # M-4: the league centre is now computed alongside the team aggregates and carried
+  # on the returned frame, so the adjustment is centred on the mean TEAM defense
+  # rather than on mean(rapm$drapm) — a player-level mean 2.87 units below the team
+  # mean, which biased every single opponent adjustment in the same direction.
+  league_avg_def <- attr(def_rapm_df, "league_avg_def")
+  if (is.null(league_avg_def) || !is.finite(league_avg_def)) {
+    league_avg_def <- mean(def_rapm_df$def_rapm, na.rm = TRUE)
   }
-  league_avg_def <- mean(rapm_data$drapm, na.rm = TRUE)
+  message(sprintf("[PROPS] Opponent adjustment centred on league mean team def_rapm = %.3f (slope %.4f/unit, clamped to [%.2f, %.2f]).",
+                  league_avg_def, OPP_DEF_MU_SLOPE, OPP_DEF_MU_CLAMP[1], OPP_DEF_MU_CLAMP[2]))
 
   matchups <- if (file.exists(matchups_file)) readRDS(matchups_file) else tibble()
 
@@ -423,9 +526,14 @@ generate_active_props_table <- function() {
   ) %>%
     arrange(desc(ev_pct))
 
-  # Save to production cache
-  saveRDS(all_props, "data/latest_player_props.rds")
-  saveRDS(all_props, "cache/latest_player_props.rds")
+  # FINDING L-6 (docs/SECURITY_TECHNICAL_REVIEW.md): this used to write TWO full
+  # copies —  "data/latest_player_props.rds" AND "cache/latest_player_props.rds" —
+  # with app.R silently preferring data/ while tools/data_health_probe.R validated
+  # cache/. Any partial write or single-location update produced a split-brain where
+  # the health probe reported green on a file nobody displayed. Now exactly ONE
+  # canonical write, to config.R's CACHE_PLAYER_PROPS (= cache/latest_player_props.rds).
+  # app.R is repointed at the same constant by agent_dashboard in this same wave.
+  saveRDS(all_props, CACHE_PLAYER_PROPS)
 
   edges_found <- sum(all_props$is_edge)
   n_teams <- length(unique(rosters$team))

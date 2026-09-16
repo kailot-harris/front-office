@@ -27,6 +27,10 @@
 #     downstream confusion with the NBA cache of the same shape). T4/T5 must read this exact
 #     path.
 #
+# PHASE 4 UPDATE (finding C-1): the three `hca <- 2.40` literals below now read `WNBA_HCA` from
+# config.R. The VALUE is unchanged; only its definition site moved. The caveat in the paragraph
+# below still stands and is restated at WNBA_HCA's definition in config.R.
+#
 # Home-court advantage (hca <- 2.40) was left unchanged - not called out as a Tier 3 item in
 # the plan/brief, and the real T1 data's empirical home-margin mean (~1.9 pts, computed during
 # the WNBA_MARGIN_SIGMA derivation above) is close enough to 2.4 that reusing the NBA prior is
@@ -43,31 +47,72 @@ suppressPackageStartupMessages({
 })
 
 source("config.R")
+# FINDING H-2: shared RAPM<->roster join helper (see compute_team_rapm_ratings() below).
+source("rapm_join_utils.R")
+# CLAUDE.md: use the EXISTING normalize_team_abbreviation() (CONN -> CON) rather than
+# reimplementing it. Sourced from player_metrics.R (pure function definitions, no auto-run
+# side effects) rather than daily_ingest.R, whose footer triggers a full live ingest.
+source("player_metrics.R")
 
 # ------------------------------------------------------------------------------
 # Elo & RAPM Feature Computation (Task P3-2.1)
 # ------------------------------------------------------------------------------
+# LATENT DEFECT UN-MASKED BY FINDING C-2 (agent_pipeline, Phase 4 Wave 2).
+# This function was written against a WIDE, one-row-per-game schema
+# (`team_home_abbreviation` / `team_away_abbreviation` / `team_home_score` /
+# `team_away_score`, `season_type == "Regular Season"`). `data/box_scores_cache.rds` has never
+# had that shape: it is wehoop::load_wnba_team_box() output, which is LONG — one row per team
+# per game, keyed on `team_abbreviation` / `opponent_team_abbreviation` / `team_score` /
+# `opponent_team_score` / `team_home_away`, with a NUMERIC `season_type` (2 = Regular Season,
+# 3 = Postseason), never the string "Regular Season".
+# The first filter() therefore errors with "object 'team_home_abbreviation' not found". Nobody
+# saw it because C-2 meant this script never executed inside the pipeline. Reshaping here (and
+# NOT weakening the fix to a tryCatch) is required for the C-2 fix to produce real output — this
+# is exactly the "silent no-op becomes a visible hard failure" case the review predicted.
+# CLAUDE.md data quirks honoured: CONN -> CON is normalized BEFORE the WNBA_TEAMS membership
+# filter (otherwise five seasons of real Connecticut Sun games are dropped as "exhibitions"),
+# via the shared normalize_team_abbreviation() helper rather than a local reimplementation.
 compute_elo_ratings <- function() {
   if (!file.exists(CACHE_TEAM_BOX)) stop("Team box cache missing.")
+
   games <- readRDS(CACHE_TEAM_BOX) |>
-    filter(season_type == "Regular Season",
-           team_home_abbreviation %in% names(WNBA_TEAMS),
-           team_away_abbreviation %in% names(WNBA_TEAMS)) |>
+    normalize_team_abbreviation() |>
+    filter(
+      as.character(season_type) %in% c("2", "Regular Season"),
+      team_abbreviation %in% names(WNBA_TEAMS),
+      opponent_team_abbreviation %in% names(WNBA_TEAMS),
+      team_home_away == "home"          # collapse the long table to one row per game
+    ) |>
+    transmute(
+      game_id, game_date, season,
+      h_team  = team_abbreviation,
+      a_team  = opponent_team_abbreviation,
+      h_score = suppressWarnings(as.numeric(team_score)),
+      a_score = suppressWarnings(as.numeric(opponent_team_score))
+    ) |>
+    filter(!is.na(h_score), !is.na(a_score), h_score != a_score) |>
+    distinct(game_id, .keep_all = TRUE) |>
     arrange(game_date)
+
+  if (nrow(games) == 0) {
+    warning("[ELO] No usable regular-season games in the team box cache; returning flat 1500 ratings.")
+    return(setNames(rep(1500, length(WNBA_TEAMS)), names(WNBA_TEAMS)))
+  }
+  message(sprintf(">>> [ELO] Rating %d real regular-season WNBA games (%s to %s).",
+                  nrow(games), min(games$game_date), max(games$game_date)))
 
   ratings <- setNames(rep(1500, length(WNBA_TEAMS)), names(WNBA_TEAMS))
   last_season <- NA
 
   for (i in seq_len(nrow(games))) {
-    game <- games[i, ]
-    curr_season <- game$season
+    curr_season <- games$season[i]
     if (!is.na(last_season) && curr_season != last_season) {
-      ratings <- 1500 + 0.75 * (ratings - 1500)
+      ratings <- 1500 + 0.75 * (ratings - 1500)   # offseason regression toward the mean
     }
     last_season <- curr_season
-    h_team <- game$team_home_abbreviation
-    a_team <- game$team_away_abbreviation
-    h_win  <- game$team_home_score > game$team_away_score
+    h_team <- games$h_team[i]
+    a_team <- games$a_team[i]
+    h_win  <- games$h_score[i] > games$a_score[i]
     exp_h  <- 1 / (1 + 10^((ratings[a_team] - ratings[h_team]) / 400))
     ratings[h_team] <- ratings[h_team] + 20 * (as.numeric(h_win) - exp_h)
     ratings[a_team] <- ratings[a_team] + 20 * (as.numeric(!h_win) - (1 - exp_h))
@@ -80,18 +125,49 @@ compute_team_rapm_ratings <- function(active_rosters) {
   if (!file.exists(rapm_path)) return(NULL)
   rapm_df <- readRDS(rapm_path)
 
-  team_rapms <- active_rosters |>
-    left_join(rapm_df, by = "player_id") |>
-    group_by(team_name) |>
-    summarise(
-      team_rapm = sum(total_rapm * n_off_poss, na.rm = TRUE) / sum(n_off_poss, na.rm = TRUE),
-      .groups = "drop"
-    )
+  # FINDING H-2 (docs/SECURITY_TECHNICAL_REVIEW.md): this used to be
+  #   active_rosters |> left_join(rapm_df, by = "player_id")
+  # which is the naive join CLAUDE.md explicitly warns against. rapm_ratings.rds$player_id is a
+  # stats-provider ID stored as <character>; active_rosters_cache.rds$player_id is an ESPN athlete
+  # ID stored as <integer>. Zero overlap even coerced, and dplyr now refuses the join outright
+  # ("incompatible types") — the same line hard-fails player_props_engine.R nightly. It was masked
+  # here only because C-2 made this whole script a no-op; fixing C-2 without this would have turned
+  # a silent no-op into a second nightly hard failure.
+  # Use the single shared helper from rapm_join_utils.R (agent_foundation, Wave 1). Do NOT copy
+  # market_odds_engine.R's inline (team, last_name) join here: per that agent's Handoff Notes the
+  # RAPM side has 15 duplicate (team, last_name) groups (both Ogwumike sisters, three Williams on
+  # PHX, ...), so the inline version FANS OUT 121 roster players into 128 rows — harmless for
+  # market_odds' per-team max(), but it would silently double-count in this possession-weighted
+  # aggregate. join_rapm_to_roster() emits exactly one RAPM row per rostered player.
+  joined <- join_rapm_to_roster(active_rosters, rapm_df, matched_only = TRUE)
 
   league_mean <- mean(rapm_df$total_rapm, na.rm = TRUE)
-  tibble(team_name = WNBA_TEAMS) |>
+
+  if (nrow(joined) == 0 || !all(c("total_rapm", "n_off_poss") %in% names(joined))) {
+    # Fail-safe (repo convention): never crash the stage on a schema surprise — fall back to a
+    # flat league-average RAPM for every team and say so loudly.
+    warning("[RAPM] join_rapm_to_roster() returned no usable rows; falling back to league-mean RAPM for all teams.")
+    return(tibble(team_name = unname(WNBA_TEAMS), team_rapm = league_mean))
+  }
+
+  team_rapms <- joined |>
+    group_by(team_name) |>
+    summarise(
+      tot_poss  = sum(n_off_poss, na.rm = TRUE),
+      wsum      = sum(total_rapm * n_off_poss, na.rm = TRUE),
+      mean_rapm = mean(total_rapm, na.rm = TRUE),
+      .groups   = "drop"
+    ) |>
+    # Guard the zero-possession divide-by-zero (would have produced NaN, which coalesce() below
+    # does NOT catch) by degrading to the unweighted team mean.
+    mutate(team_rapm = if_else(tot_poss > 0, wsum / tot_poss, mean_rapm)) |>
+    select(team_name, team_rapm)
+
+  tibble(team_name = unname(WNBA_TEAMS)) |>
     left_join(team_rapms, by = "team_name") |>
-    mutate(team_rapm = coalesce(team_rapm, league_mean))
+    # coalesce() catches NA (team absent from the join) but not NaN/Inf, so check is.finite too.
+    mutate(team_rapm = if_else(is.finite(coalesce(team_rapm, league_mean)),
+                               coalesce(team_rapm, league_mean), league_mean))
 }
 
 
@@ -301,7 +377,10 @@ predict_live_matchup <- function(home_team, away_team, active_rosters, player_ra
   h_res <- compute_team_live_rating(home_team, active_rosters, player_ratings, elo_ratings, team_rapm_df, injury_df)
   a_res <- compute_team_live_rating(away_team, active_rosters, player_ratings, elo_ratings, team_rapm_df, injury_df)
 
-  hca <- 2.40 # Carried over from NBA - not empirically re-derived for WNBA, see header note.
+  # FINDING C-1: was the literal `2.40`. Value unchanged — now read from config.R's WNBA_HCA so
+  # there is exactly one definition of home-court advantage in the repo (the review found the
+  # betting engine had drifted to 11.6 while three other sites still said 2.40).
+  hca <- WNBA_HCA
 
   # Production Model Fusion (Task P3-2.1): Blend Net Rating, Team RAPM, and Elo.
   # We use an equal weight for the two point-based ratings (NetRating and RAPM)
@@ -403,7 +482,7 @@ project_all_wnba_teams <- function() {
   )
 
   # Round-Robin Schedule Simulation Matrix (WNBA_SEASON_GAMES games/team, half home/half away)
-  hca <- 2.40
+  hca <- WNBA_HCA   # FINDING C-1: centralized in config.R (was the literal 2.40).
   sigma <- WNBA_MARGIN_SIGMA
   games_per_opponent <- WNBA_SEASON_GAMES / (n_teams - 1)
 
@@ -435,13 +514,24 @@ project_all_wnba_teams <- function() {
     mutate(
       Proj_Wins   = expected_wins,
       Proj_Losses = round(WNBA_SEASON_GAMES - Proj_Wins, 1),
-      Win_Pct     = paste0(round((Proj_Wins / WNBA_SEASON_GAMES) * 100, 1), "%")
+      # FINDING M-8 (docs/SECURITY_TECHNICAL_REVIEW.md): this was
+      #   paste0(round((Proj_Wins / WNBA_SEASON_GAMES) * 100, 1), "%")
+      # i.e. a presentation-formatted string ("79.3%") persisted into a cache that is an INPUT to
+      # app.R, market_odds_engine.R and playoff_simulator.R. Any consumer treating it numerically
+      # got silent NAs from as.numeric(). Caches stay typed for computation; percent formatting is
+      # done at display time by app.R (scales::percent()), per the Phase 4 interface contract.
+      Win_Pct     = round(Proj_Wins / WNBA_SEASON_GAMES, 4)
     ) |>
     arrange(desc(Proj_Wins)) |>
     mutate(Rank = row_number()) |>
     select(Rank, Team, Net_Rating = True_NRtg, Proj_Wins, Proj_Losses, Win_Pct, Top_Core_Players = Top_Stars)
 
-  print(knitr::kable(team_df, format = "simple"))
+  # Console preview only — Win_Pct is percent-formatted for THIS printout, never for the cache
+  # (M-8): the saved team_df below keeps the numeric proportion.
+  print(knitr::kable(
+    team_df |> mutate(Win_Pct = sprintf("%.1f%%", Win_Pct * 100)),
+    format = "simple"
+  ))
 
   # Zero-sum invariant for a round-robin schedule: total league wins == total league games
   # played == WNBA_SEASON_GAMES * n_teams / 2 (each game has exactly one winner), NOT the NBA
@@ -480,7 +570,7 @@ get_fair_spread <- function(home_team, away_team) {
   }
 
   # Use the same blended model as predict_live_matchup / project_all_wnba_teams
-  hca <- 2.40
+  hca <- WNBA_HCA   # FINDING C-1: centralized in config.R (was the literal 2.40).
   sigma <- WNBA_MARGIN_SIGMA
 
   rating_diff <- h_row$Net_Rating - a_row$Net_Rating
@@ -500,9 +590,17 @@ get_fair_spread <- function(home_team, away_team) {
               home_team, win_prob * 100, away_team, (1 - win_prob) * 100))
 }
 
-# Auto-execute simulation when run as a top-level script (mirrors NBA original's auto-run,
-# but guarded with sys.nframe() so lineup_synergy.R/roster_dynamics.R-style `source()` callers
-# elsewhere don't unexpectedly trigger a full live-data simulation as a side effect).
-if (sys.nframe() == 0) {
+# Auto-execute simulation when run non-interactively.
+# FINDING C-2 (docs/SECURITY_TECHNICAL_REVIEW.md): the original guard was `sys.nframe() == 0`,
+# intended to stop `source()` callers triggering a full simulation as a side effect. It did that
+# far too well: run_full_pipeline.R's run_stage() ALSO source()s this file (from inside a
+# function), so sys.nframe() was never 0 and the single most load-bearing script in the repo was
+# a silent no-op — cache/projected_wnba_standings.rds went unchanged for four days while the
+# stage logged "[COMPLETED] roster_bottom_up_engine.R in 0.05 seconds".
+# `!interactive()` preserves the original intent for the case that actually matters (an analyst
+# source()ing this in RStudio still gets only the function definitions) while letting the
+# non-interactive pipeline run it. Note this also un-masks H-2 below (the RAPM join), which is
+# why that is fixed in the same pass, exactly as the review recommends.
+if (!interactive()) {
   project_all_wnba_teams()
 }

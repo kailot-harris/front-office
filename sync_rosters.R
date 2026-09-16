@@ -130,6 +130,17 @@ sync_active_rosters <- function() {
   return(active_rosters)
 }
 
-if (sys.nframe() == 0 || interactive()) {
+# FINDING C-2 (docs/SECURITY_TECHNICAL_REVIEW.md): this guard used to read
+# `if (sys.nframe() == 0 || interactive())`. `sys.nframe() == 0` is true ONLY when a file is
+# the top-level script of an `Rscript` invocation — it is never 0 inside a source()'d file, and
+# run_full_pipeline.R's run_stage() sources every stage from *inside a function* (nframe ~10).
+# The stage therefore defined sync_active_rosters() and returned in ~0.2s while logging
+# [COMPLETED], leaving cache/active_rosters_cache.rds frozen for days. `!interactive()` is the
+# pattern that already works correctly in copula_props_engine.R / fatigue_travel_engine.R /
+# rapm_engine.R / risk_management_engine.R: TRUE under Rscript whether run directly or sourced,
+# FALSE in an interactive session (so opening this file in RStudio still does not fire a live
+# ESPN scrape). run_full_pipeline.R also declares this entry point explicitly via run_stage()'s
+# `entry_fn` argument so the DAG's contract is visible there, not only here.
+if (!interactive()) {
   sync_active_rosters()
 }
