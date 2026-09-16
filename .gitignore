@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # .gitignore — WNBA Analytics
 # Added in Phase 4 for security/technical-review finding L-5.
 #
@@ -83,3 +84,54 @@ desktop.ini
 # are slow to regenerate (RAPM over 292k possessions, the LOSO benchmarks), and
 # Phase 4's Wave 3 cache-invalidation task depends on having their prior state in
 # git to diff against. Do not add cache/ or data/ here.
+=======
+# History files
+.Rhistory
+.Rapp.history
+
+# Session Data files
+.RData
+.RDataTmp
+
+# User-specific files
+.Ruserdata
+
+# Example code in package build process
+*-Ex.R
+
+# Output files from R CMD build
+/*.tar.gz
+
+# Output files from R CMD check
+/*.Rcheck/
+
+# RStudio files
+.Rproj.user/
+
+# produced vignettes
+vignettes/*.html
+vignettes/*.pdf
+
+# OAuth2 token, see https://github.com/hadley/httr/releases/tag/v0.3
+.httr-oauth
+
+# knitr and R markdown default cache directories
+*_cache/
+/cache/
+
+# Temporary files created by R markdown
+*.utf8.md
+*.knit.md
+
+# R Environment Variables
+.Renviron
+
+# pkgdown site
+docs/
+
+# translation temp files
+po/*~
+
+# RStudio Connect folder
+rsconnect/
+>>>>>>> f96d95b93162296db6ac1a3b9c3b84c00e3b4c98
