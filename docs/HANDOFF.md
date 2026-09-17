@@ -356,14 +356,39 @@ backtest-only pipeline rather than a `run_full_pipeline.R` stage.
   `ridge_participation_only` Brier 0.2320 vs. `ridge_only`'s 0.2318 - no real difference, unlike
   the situational-EPA/Kalman findings above. `ridge_participation_phase1_combined` Sharpe
   +0.0017 at n=262 (tau_best=9, matching the current production gate) - the FIRST non-negative
-  Sharpe value in this entire remediation arc's 18-candidate comparison, but far too close to
-  zero and too small a sample to be distinguishable from noise - not evidence of a real edge.
+  Sharpe value in this entire remediation arc's 18-candidate comparison.
+
+**Follow-up investigation (`tools/investigate_participation_sharpe.R`, same session)**: per the
+"a single summary number is not evidence, look at the actual bet-level distribution" discipline
+already applied to `LONGSHOT_DECIMAL_ODDS_CAP` and `MARKET_BLEND_WEIGHT`, the +0.0017 result was
+followed up with three checks before treating it as anything but noise:
+1. **Full tau grid (0-15)**: Sharpe is NEGATIVE at 9 of 16 thresholds (tau 0-11); only turns
+   positive at tau>=12, where n rapidly shrinks (194 -> 166 -> 130 -> 87) - the same "thin,
+   non-robust high-tau/low-n bump" pattern already flagged for `LONGSHOT_DECIMAL_ODDS_CAP`'s
+   cap=4.0 result. Not a robust region of the parameter space.
+2. **Bootstrap 95% CI at tau=9** (10,000 resamples, n=271 bets in this reconstruction - a minor,
+   expected discrepancy from the harness's n=262 due to reconstruction-order floating-point
+   differences, not a bug): `[-0.151, +0.100]`, median -0.0089, with only 44% of resamples
+   landing positive. The CI comfortably straddles zero - this point estimate is NOT
+   statistically distinguishable from a zero-edge strategy.
+3. **Season composition of the underlying bets**: only 32.1% (87/271) fall in seasons with REAL
+   participation coverage (>= 2016) - the majority, 67.9%, are in 2006-2015, where the
+   participation feature is pure zero-imputed noise by construction (see
+   `ridge_participation_model.R`'s NA-diff-to-0 convention). 113/271 (41.7%) of this candidate's
+   bets are on the exact same `game_id` the deployed baseline (`ensemble_ridge_elo`) also bets
+   on. **The apparent "signal" has nothing to do with the participation data at all.**
+
+**Verdict: debunked.** The +0.0017 Sharpe was noise, not a real edge - both because it isn't
+statistically distinguishable from zero, and because most of the bets it's computed from don't
+even touch real participation-era data.
 - **Status**: NOT promoted to production (couldn't be even if it worked - `CURRENT_SEASON` data
   will never exist for this feature set). Real, honest negative-to-neutral result, same
   discipline as every other candidate this session. Data-availability limitation itself remains
   unfixable and is unchanged (see Known Issue #7 below).
 - **Full detail**: `tools/participation_features.R`'s and `tools/ridge_participation_model.R`'s
-  own headers, `cache/model_comparison_backtest.rds`.
+  own headers, `cache/model_comparison_backtest.rds`,
+  `cache/participation_sharpe_investigation.rds` (full tau grid, bootstrap distribution,
+  bet-level detail).
 
 ## Known issues / unfinished business
 
@@ -405,11 +430,14 @@ backtest-only pipeline rather than a `run_full_pipeline.R` stage.
    / `tools/ridge_participation_model.R`). Re-verified live: 2016-2025 all return real data now;
    `CURRENT_SEASON` (2026) genuinely 404s (confirms the "post-postseason-only" claim is a hard
    wall, not a stale one). Real backtest result: personnel/box-count/pressure features add
-   essentially NO Brier improvement (0.2320 vs. `ridge_only`'s 0.2318) and only a
-   statistically-negligible Sharpe change (+0.0017 at n=262, the first non-negative Sharpe
-   value anywhere in this entire remediation arc, but far too close to zero and too small a
-   sample to call it a real edge). This data source remains fundamentally backtest-only
-   (`CURRENT_SEASON` can never populate it) - kept in `tools/`, not wired into any live stage.
+   essentially NO Brier improvement (0.2320 vs. `ridge_only`'s 0.2318). The candidate's initial
+   +0.0017 Sharpe (n=262) was FOLLOWED UP and DEBUNKED as noise, not a real edge — see
+   `tools/investigate_participation_sharpe.R` in "Recent work" above: negative at 9/16 tau
+   thresholds, a bootstrap 95% CI of `[-0.151, +0.100]` (comfortably straddling zero, 44% of
+   resamples positive), and 68% of the underlying bets fall in seasons where the participation
+   feature is pure zero-imputed noise (pre-2016). This data source remains fundamentally
+   backtest-only (`CURRENT_SEASON` can never populate it) - kept in `tools/`, not wired into any
+   live stage, and now has zero evidence of adding real value beyond `ridge_only`.
 8. ~~Any ridge-model-derived backtest figure computed before the `set.seed()` fix should be
    re-verified~~ **RE-VERIFIED this session** — `tools/model_backtest_harness.R` re-run after
    the fix; every candidate's Brier score matched the previously-reported figure to 3-4 decimal
