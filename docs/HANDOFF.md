@@ -271,6 +271,37 @@ moneylines).
 - **Full detail**: `tools/derive_market_blend_weight_sharpe.R`'s header and full grid printout,
   `cache/market_blend_weight_sharpe_derivation.rds`.
 
+### Real NFL playoff tiebreaker procedure (uncommitted, 2026-09-17)
+
+Closed Known Issue #3 below. `playoff_simulator.R` previously used a deliberately simplified
+tiebreak (win% -> games_played -> alphabetical) instead of the NFL's real multi-step procedure.
+New `nfl_tiebreakers.R` (part of the pipeline DAG, sourced by `playoff_simulator.R`, not a
+`tools/` one-off) implements the real, live-verified (WebSearch/WebFetch against
+`nfl.com/standings/tie-breaking-procedures` and ESPN's tiebreaker explainer, 2026-09-17)
+procedure: head-to-head, division/conference record, common games (min. 4, dynamically computed
+per tied group), strength of victory/schedule (aggregate record of opponents beaten/played),
+combined ranking in points scored/allowed (conference and league-wide), and net points
+(common/conference/all games) - with the official "restart at step 1" cascade rule when a
+criterion splits a tied group into still-tied subgroups (recursive `.cascade()`).
+- **Documented scope limitations** (explicit in `nfl_tiebreakers.R`'s header, not silent):
+  "head-to-head sweep" for 3+ clubs is approximated via intra-group win% rather than the
+  official's narrower sweep-only eligibility condition; net touchdowns and the literal coin
+  toss (the final two of ~12 official steps) are not modeled - both fall back to alphabetical
+  order, which only matters if every other real criterion above them ties exactly (historically
+  very rare); the wild-card same-division-representative rule places an eliminated
+  division-mate immediately after its division's active representative rather than fully
+  modeling the official rule's re-entry into a later tied comparison.
+- **Verification**: smoke-tested against real 2025 (complete) season data - correctly resolved
+  every real win%-tied group found in both conferences (e.g. a 3-way NFC South tie, several
+  2-way division and cross-division ties) without error, plus a `.cascade()` unit check
+  confirming the alphabetical fallback fires only when every real criterion is exhausted. Also
+  ran `run_playoff_simulator()` end-to-end against the real in-progress 2026 season.
+- **Status**: deployed (`playoff_simulator.R` now calls `build_tiebreak_data()` /
+  `resolve_division_ties()` / `resolve_wildcard_ties()` instead of the old `.compute_team_records()`
+  / `.order_key()` pair, which were removed).
+- **Full detail**: `nfl_tiebreakers.R`'s own header (full procedure, cascade rule, scope
+  limitations).
+
 ## Known issues / unfinished business
 
 1. **`NFL_DISCORD_WEBHOOK` not visible to R.** Set in `C:\Users\kailo\Documents\.Renviron`, but
@@ -281,8 +312,11 @@ moneylines).
    empty (no real staked picks yet this season) so `risk_management_engine.R` still reports
    `SYNTHETIC_FALLBACK` in practice until that changes — this is the correct, honest behavior of
    the now-real cold-start path, not a bug.
-3. **Playoff seeding uses a simplified tiebreak** (win% + alphabetical), not the NFL's real
-   multi-step procedure. Unchanged this session.
+3. ~~Playoff seeding uses a simplified tiebreak~~ **CLOSED this session** — `nfl_tiebreakers.R`
+   now implements the NFL's real multi-step procedure (head-to-head, division/conference
+   record, common games, strength of victory/schedule, combined point rankings, net points),
+   with two narrow, explicitly documented scope limitations (net touchdowns / coin toss not
+   modeled — see "Recent work" above). `playoff_simulator.R` is wired to it.
 4. **Staking is not validated as profitable.** Sharpe remains negative at every staking
    threshold and every long-shot odds cap tested (see "Recent work" above) — real-money staking
    should stay paused regardless of any mitigation shipped this session.

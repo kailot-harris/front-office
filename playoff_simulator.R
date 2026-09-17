@@ -42,20 +42,24 @@
 #   Super Bowl:     the two Conference Champions (cross-conference), neutral site, no HCA term.
 #
 # ------------------------------------------------------------------------------------------
-# REAL CURRENT PLAYOFF FIELD - DELIBERATELY SIMPLIFIED SEEDING/TIEBREAK (read before trusting
-# the output as "the" playoff picture):
+# REAL CURRENT PLAYOFF FIELD - REAL NFL TIEBREAKER PROCEDURE (updated 2026-09-17; read before
+# trusting the output as "the" playoff picture):
 #
 # This script determines each of the 32 real NFL_TEAMS' win% from REAL completed
 # CACHE_SCHEDULES games for CURRENT_SEASON (config.R), REG season only. Division winners
-# (seeds 1-4 per conference) = the team with the highest win% in each of NFL_DIVISIONS' 8
-# groups. Wildcards (seeds 5-7) = the next-3 highest win% teams among each conference's
-# remaining (non-division-winner) teams. Ties are broken ONLY by (a) higher win%, then
-# (b) more games played, then (c) alphabetical team abbreviation - purely for deterministic
-# output. This is NOT the NFL's real official tiebreaker procedure, which additionally
-# considers head-to-head record, division record, common-game record, strength of victory /
-# schedule, net points, etc. Treat the resulting seed order as a REASONABLE APPROXIMATION of
-# the real playoff picture, not an official/authoritative one - especially early in a season
-# when few games have been played and win% is a noisy signal.
+# (seeds 1-4 per conference) = the team with the best record in each of NFL_DIVISIONS' 8
+# groups, ties broken via nfl_tiebreakers.R's resolve_division_ties() (head-to-head, division
+# record, common games, conference record, strength of victory/schedule, combined point
+# rankings, net points - the NFL's real official multi-step procedure). Wildcards (seeds 5-7)
+# = the next-3 best remaining conference teams, ties broken via resolve_wildcard_ties() (same
+# idea, wild-card-specific ordering, plus the same-division-representative reduction step).
+# See nfl_tiebreakers.R's own header for the full verified procedure, the cascade/restart rule,
+# and two explicitly documented scope limitations (net touchdowns and coin toss are not
+# modeled - both fall back to alphabetical order, which only matters in the exceedingly rare
+# case every other real criterion above them ties exactly). Treat the resulting seed order as
+# a faithful application of the real tiebreaker rules to this repo's own game log, not as a
+# league-office-certified result - especially early in a season when few games have been
+# played and the deeper tiebreak criteria (common games, SOV/SOS) are themselves noisy.
 #
 # A run during an in-progress (incomplete) season - the expected/normal case, not an error
 # condition - therefore produces a real-but-PROVISIONAL field and simulation based on
@@ -79,84 +83,39 @@ source("config.R")
 source("logging_utils.R")
 .LOG_SCRIPT <- "playoff_simulator.R"
 
-# ------------------------------------------------------------------------------------------
-# .compute_team_records(): real win% per NFL_TEAMS team from CACHE_SCHEDULES' CURRENT_SEASON
-# REG-season completed games. Returns a data.frame with one row per team in NFL_TEAMS (all 32,
-# even teams with 0 completed games - win_pct is NA for those, handled explicitly rather than
-# by accident, per this file's mid-season / 0-games requirement).
-# ------------------------------------------------------------------------------------------
-.compute_team_records <- function(sch) {
-  completed <- sch |>
-    filter(season == CURRENT_SEASON, game_type == "REG",
-           !is.na(home_score), !is.na(away_score))
-
-  if (nrow(completed) == 0) {
-    log_warn(sprintf("No completed REG-season games found for CURRENT_SEASON (%d) yet - all teams will have win_pct = NA.",
-                      CURRENT_SEASON), call = ".compute_team_records()")
-  }
-
-  long <- bind_rows(
-    completed |> transmute(team = home_team,
-                            win  = as.integer(home_score >  away_score),
-                            loss = as.integer(home_score <  away_score),
-                            tie  = as.integer(home_score == away_score)),
-    completed |> transmute(team = away_team,
-                            win  = as.integer(away_score >  home_score),
-                            loss = as.integer(away_score <  home_score),
-                            tie  = as.integer(away_score == home_score))
-  )
-
-  record <- long |>
-    group_by(team) |>
-    summarise(wins = sum(win), losses = sum(loss), ties = sum(tie),
-              games_played = dplyr::n(), .groups = "drop") |>
-    mutate(win_pct = ifelse(games_played > 0, (wins + 0.5 * ties) / games_played, NA_real_))
-
-  all_teams <- data.frame(team = names(NFL_TEAMS), stringsAsFactors = FALSE)
-  out <- all_teams |>
-    left_join(record, by = "team") |>
-    mutate(
-      wins         = ifelse(is.na(wins), 0L, wins),
-      losses       = ifelse(is.na(losses), 0L, losses),
-      ties         = ifelse(is.na(ties), 0L, ties),
-      games_played = ifelse(is.na(games_played), 0L, games_played)
-      # win_pct intentionally left NA for 0-game teams - see header comment.
-    )
-
-  n_zero_game_teams <- sum(out$games_played == 0)
-  if (n_zero_game_teams > 0) {
-    log_warn(sprintf("%d team(s) have 0 completed REG games this season - handled gracefully (win_pct = NA, sorted last for seeding).",
-                      n_zero_game_teams), call = ".compute_team_records()")
-  }
-
-  out
-}
+# Real NFL tiebreaker procedures (head-to-head, division/conference record, common games,
+# strength of victory/schedule, combined point rankings, net points) - see nfl_tiebreakers.R's
+# own header for the full verified procedure, cascade rule, and documented scope limitations
+# (net touchdowns / coin toss are not modeled - alphabetical fallback, exceedingly rare in
+# practice). Replaces this file's PRE-2026-09-17 simplified win%->games_played->alphabetical
+# tiebreak.
+source("nfl_tiebreakers.R")
 
 # ------------------------------------------------------------------------------------------
 # .seed_conference(): given the full 32-team records table (with conference/division attached)
-# and a target conference ("AFC"/"NFC"), returns a 7-row data.frame with seed 1-7, team,
-# division, win_pct, games_played - per the simplified tiebreak documented in the header.
+# plus the per-team-per-game log, and a target conference ("AFC"/"NFC"), returns a 7-row
+# data.frame with seed 1-7, team, division, win_pct, games_played, role. Division winners are
+# the best-by-real-tiebreak team in each division; ties among division winners for seed ORDER
+# (they've already made the playoffs - this only affects seeding 1-4) use the wild-card
+# procedure, since by definition they're from different divisions. Wildcards (seeds 5-7) are
+# the next-best remaining conference teams by the same wild-card procedure.
 # ------------------------------------------------------------------------------------------
-.order_key <- function(df) {
-  # Deterministic sort: higher win_pct first (NA sorts last), then more games_played, then
-  # alphabetical team abbreviation. Purely a tiebreak for deterministic output - NOT the NFL's
-  # real official tiebreaker procedure (see header comment).
-  df |> arrange(desc(is.na(win_pct)), desc(win_pct), desc(games_played), team)
-}
-
-.seed_conference <- function(records, conf) {
+.seed_conference <- function(records, game_log, conf) {
   conf_teams <- records |> filter(conference == conf)
 
   division_winners <- conf_teams |>
     group_by(division) |>
-    group_modify(~ .order_key(.x) |> slice(1)) |>
+    group_modify(~ {
+      ordered <- order_by_record(.x, resolve_division_ties, game_log, records)
+      ordered |> slice(1)
+    }) |>
     ungroup()
 
-  division_winners <- .order_key(division_winners) |>
+  division_winners <- order_by_record(division_winners, resolve_wildcard_ties, game_log, records) |>
     mutate(seed = row_number(), role = "division_winner")
 
   remaining <- conf_teams |> filter(!team %in% division_winners$team)
-  wildcards <- .order_key(remaining) |>
+  wildcards <- order_by_record(remaining, resolve_wildcard_ties, game_log, records) |>
     slice(1:NFL_PLAYOFF_WILDCARDS_PER_CONF) |>
     mutate(seed = NFL_PLAYOFF_DIVISION_WINNERS_PER_CONF + row_number(), role = "wildcard")
 
@@ -273,8 +232,10 @@ run_playoff_simulator <- function() {
     team_ratings <- readRDS(CACHE_TEAM_RATINGS)
     sch          <- readRDS(CACHE_SCHEDULES)
 
-    # ---- Real current field: win% per team, conference/division from NFL_DIVISIONS ----
-    records <- .compute_team_records(sch)
+    # ---- Real current field: win% + full game log per team, conference/division from NFL_DIVISIONS ----
+    tiebreak_data <- build_tiebreak_data(sch)
+    records  <- tiebreak_data$records
+    game_log <- tiebreak_data$game_log
     conf_div <- NFL_DIVISIONS[records$team]
     records$conference <- sub(" .*$", "", conf_div)
     records$division   <- conf_div
@@ -286,8 +247,8 @@ run_playoff_simulator <- function() {
       return(FALSE)
     }
 
-    afc_seeds <- .seed_conference(records, "AFC")
-    nfc_seeds <- .seed_conference(records, "NFC")
+    afc_seeds <- .seed_conference(records, game_log, "AFC")
+    nfc_seeds <- .seed_conference(records, game_log, "NFC")
 
     # ---- Attach real power ratings (with a documented, logged fallback for any missing team) ----
     rating_lookup <- setNames(team_ratings$power_rating, team_ratings$team)
@@ -334,7 +295,7 @@ run_playoff_simulator <- function() {
       season          = CURRENT_SEASON,
       generated_at    = Sys.time(),
       n_simulations   = N_SIMULATIONS,
-      seeding_method  = "Simplified: division leader = highest REG-season win% within NFL_DIVISIONS group; wildcards = next-3 highest win% among remaining conference teams. NOT the NFL's official multi-step tiebreaker (no head-to-head/division-record/SOS/etc.) - see playoff_simulator.R header.",
+      seeding_method  = "Real NFL tiebreaker procedure (head-to-head, division/conference record, common games, strength of victory/schedule, combined point rankings, net points) via nfl_tiebreakers.R - see that file's header for the full verified procedure and its two documented scope limitations (net touchdowns / coin toss not modeled, alphabetical fallback instead).",
       field           = field
     )
 
