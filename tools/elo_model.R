@@ -58,7 +58,7 @@ ELO_SEASON_CARRYOVER <- 2 / 3  # fraction of a team's rating retained at a new s
 # via tools/derive_elo_k.R). Returns one row per game with PRE-update elo ratings/probabilities
 # (no lookahead by construction) plus the fatigue-adjusted final probability.
 # ------------------------------------------------------------------------------------------
-run_elo_walkforward <- function(sch_completed, fatigue, k) {
+run_elo_walkforward <- function(sch_completed, fatigue, k, return_final_state = FALSE) {
   sch_completed <- sch_completed |> dplyr::arrange(gameday, game_id)
   fatigue_lu <- fatigue |> dplyr::select(game_id, team, fatigue_drag_pts)
 
@@ -127,5 +127,29 @@ run_elo_walkforward <- function(sch_completed, fatigue, k) {
     )
   }
 
-  dplyr::bind_rows(out)
+  result <- dplyr::bind_rows(out)
+
+  if (!return_final_state) return(result)
+
+  # Live-inference support (Phase 3 ensemble): expose each team's final rating/season-of-last-
+  # game so a caller can project ratings forward to an upcoming game (applying the same season-
+  # carryover rule for any team that hasn't played yet this season) without re-running the whole
+  # sequential simulation a second time.
+  teams_seen <- ls(envir = elo)
+  final_elo <- setNames(vapply(teams_seen, function(t) get(t, envir = elo, inherits = FALSE), numeric(1)), teams_seen)
+  final_season <- setNames(vapply(teams_seen, function(t) get(t, envir = last_season, inherits = FALSE), numeric(1)), teams_seen)
+  list(games = result, final_elo = final_elo, final_season = final_season)
+}
+
+# ------------------------------------------------------------------------------------------
+# project_elo_rating(): apply the season-carryover rule to a team's stored final rating if it
+# hasn't yet played in `current_season` - the same lazy-carryover logic run_elo_walkforward()
+# applies internally, exposed here so live inference doesn't need to duplicate it.
+# ------------------------------------------------------------------------------------------
+project_elo_rating <- function(rating, last_played_season, current_season) {
+  if (is.na(rating) || is.na(last_played_season)) return(NA_real_)
+  if (current_season > last_played_season) {
+    return(ELO_SEASON_CARRYOVER * rating + (1 - ELO_SEASON_CARRYOVER) * ELO_INITIAL_RATING)
+  }
+  rating
 }

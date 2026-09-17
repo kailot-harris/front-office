@@ -130,6 +130,7 @@ source("market_odds_engine.R")
 source("tools/qb_injury_features.R")
 source("tools/backtest_common.R")     # -> build_walkforward_games() (Phase 2 training data)
 source("tools/ridge_massey_model.R")  # -> fit_ridge_massey()/build_ridge_features() (Phase 2)
+source("tools/elo_model.R")           # -> run_elo_walkforward()/project_elo_rating() (Phase 3)
 
 # ------------------------------------------------------------------------------------------
 # get_live_qb_backup_flags() - live analog of tools/qb_injury_features.R's walk-forward
@@ -439,6 +440,42 @@ run_team_ratings <- function() {
       NULL
     })
 
+    # ---- Phase 3 (model-quality remediation): live Elo state ----
+    # A best-effort second, structurally-different rating to average with ridge into a 50/50
+    # ensemble (docs/HANDOFF.md - Phase 3's exploratory ensemble_ridge_elo candidate beat pure
+    # ridge on calibration and partially recovered the Sharpe regression pure Elo alone showed).
+    # NOTE: unlike the backtest candidate, this live ensemble does NOT fold fatigue into Elo's
+    # own margin - fatigue stays applied exactly once, downstream in market_odds_engine.R (see
+    # below), to avoid double-counting it via two different code paths. fatigue_engine.R (stage
+    # 6) runs AFTER this stage (5), so CACHE_FATIGUE_METRICS may be from a PRIOR pipeline run
+    # here if it exists at all - a real, accepted staleness/ordering tradeoff (same class the
+    # C-2 staleness check already tolerates elsewhere in this repo), not a correctness bug -
+    # only used for warming up Elo's historical state, not for this run's live prediction.
+    elo_live <- tryCatch({
+      elo_hist <- sch |> filter(!is.na(home_score), !is.na(away_score),
+                                 season >= MODERN_ERA_START_SEASON, season <= CURRENT_SEASON) |>
+        mutate(gameday = as.Date(gameday))
+      fatigue_for_elo <- if (file.exists(CACHE_FATIGUE_METRICS)) {
+        readRDS(CACHE_FATIGUE_METRICS)
+      } else {
+        data.frame(game_id = character(0), team = character(0), fatigue_drag_pts = numeric(0))
+      }
+      if (nrow(elo_hist) < 100) stop("insufficient historical games for a live Elo state")
+      run_elo_walkforward(elo_hist, fatigue_for_elo, ELO_K_FACTOR, return_final_state = TRUE)
+    }, error = function(e) {
+      log_warn("Live Elo state computation failed - ensemble will use ridge only for this run.",
+               call = "run_team_ratings()", error_message = conditionMessage(e))
+      NULL
+    })
+
+    get_team_elo <- function(team, season) {
+      if (is.null(elo_live)) return(NA_real_)
+      r <- elo_live$final_elo[team]
+      s <- elo_live$final_season[team]
+      if (is.na(r) || is.na(s)) return(NA_real_)
+      project_elo_rating(unname(r), unname(s), season)
+    }
+
     # ---- Phase 1 (model-quality remediation): QB-injury flags + devigged market probs ----
     # Computed ONCE for the whole upcoming slate, not per-game (one load_depth_charts() call,
     # one Odds API call - see fetch_devigged_market_probs()'s header for the added-API-call
@@ -455,6 +492,7 @@ run_team_ratings <- function() {
     n_skipped <- 0L
     n_qb_adjusted <- 0L
     n_market_blended <- 0L
+    n_elo_ensembled <- 0L
 
     for (i in seq_len(nrow(upcoming))) {
       g <- upcoming[i, ]
@@ -485,9 +523,9 @@ run_team_ratings <- function() {
           home_gp = ifelse(is.na(home_games_played), 0L, home_games_played),
           away_gp = ifelse(is.na(away_games_played), 0L, away_games_played)
         ))
-        projected_margin <- as.numeric(predict(ridge_fit, newx = feat, s = "lambda.min"))
+        ridge_margin <- as.numeric(predict(ridge_fit, newx = feat, s = "lambda.min"))
       } else {
-        projected_margin <- (home_rating - away_rating) + NFL_HCA
+        ridge_margin <- (home_rating - away_rating) + NFL_HCA
       }
 
       # QB-injury adjustment (config.R's QB_INJURY_RATING_PENALTY_PTS, empirically derived via
@@ -496,22 +534,62 @@ run_team_ratings <- function() {
       home_backup <- isTRUE(qb_backup_lookup[[home]])
       away_backup <- isTRUE(qb_backup_lookup[[away]])
       if (home_backup || away_backup) n_qb_adjusted <- n_qb_adjusted + 1L
-      projected_margin <- projected_margin - QB_INJURY_RATING_PENALTY_PTS * home_backup +
-        QB_INJURY_RATING_PENALTY_PTS * away_backup
+      qb_shift <- -QB_INJURY_RATING_PENALTY_PTS * home_backup + QB_INJURY_RATING_PENALTY_PTS * away_backup
+      ridge_margin <- ridge_margin + qb_shift
+      ridge_model_prob <- pnorm(ridge_margin / NFL_MARGIN_SIGMA)
 
-      model_home_prob <- pnorm(projected_margin / NFL_MARGIN_SIGMA)
+      # Phase 3: Elo's own margin (HCA baked in via ELO_HCA_POINTS, converted to point-margin
+      # scale via ELO_POINTS_PER_MARGIN_PT), same QB-injury shift applied. NA if either team's
+      # live Elo state is unavailable (see elo_live/get_team_elo() above) - ridge-only that game.
+      home_elo_r <- get_team_elo(home, g$season)
+      away_elo_r <- get_team_elo(away, g$season)
+      elo_available <- !is.na(home_elo_r) && !is.na(away_elo_r)
+      if (elo_available) {
+        elo_diff <- (home_elo_r + ELO_HCA_POINTS) - away_elo_r
+        elo_margin <- (elo_diff / ELO_POINTS_PER_MARGIN_PT) + qb_shift
+        elo_model_prob <- pnorm(elo_margin / NFL_MARGIN_SIGMA)
+      }
 
       # Market blend (config.R's MARKET_BLEND_WEIGHT, empirically derived via
-      # tools/derive_market_blend_weight.R). Only blends against a REAL live odds slate - never
-      # against the SYNTHETIC_FALLBACK fixture (fetch_market_odds()'s own no-API-key/no-live-
-      # data fallback), which would silently corrupt real predictions with fabricated numbers.
+      # tools/derive_market_blend_weight.R), applied to ridge's and (if available) Elo's
+      # probabilities SEPARATELY before averaging - matches exactly how tools/model_backtest_
+      # harness.R's validated ensemble_ridge_elo candidate was scored (see docs/HANDOFF.md), not
+      # a different, untested blend-then-average order. Only blends against a REAL live odds
+      # slate - never against the SYNTHETIC_FALLBACK fixture (fetch_market_odds()'s own no-API-
+      # key/no-live-data fallback), which would silently corrupt real predictions with
+      # fabricated numbers.
       mrow <- market_probs |> filter(home_team == home, away_team == away)
-      home_win_prob <- model_home_prob
-      if (nrow(mrow) > 0 && !is.na(mrow$market_data_source[1]) &&
-          mrow$market_data_source[1] != "SYNTHETIC_FALLBACK" && !is.na(mrow$market_home_prob[1])) {
-        home_win_prob <- MARKET_BLEND_WEIGHT * mrow$market_home_prob[1] + (1 - MARKET_BLEND_WEIGHT) * model_home_prob
-        n_market_blended <- n_market_blended + 1L
+      has_real_market <- nrow(mrow) > 0 && !is.na(mrow$market_data_source[1]) &&
+        mrow$market_data_source[1] != "SYNTHETIC_FALLBACK" && !is.na(mrow$market_home_prob[1])
+      if (has_real_market) n_market_blended <- n_market_blended + 1L
+
+      blend_one <- function(model_prob) {
+        if (has_real_market) MARKET_BLEND_WEIGHT * mrow$market_home_prob[1] + (1 - MARKET_BLEND_WEIGHT) * model_prob
+        else model_prob
       }
+      ridge_final <- blend_one(ridge_model_prob)
+      if (elo_available) {
+        home_win_prob <- 0.5 * ridge_final + 0.5 * blend_one(elo_model_prob)
+        n_elo_ensembled <- n_elo_ensembled + 1L
+      } else {
+        home_win_prob <- ridge_final
+      }
+
+      # FIX (found while wiring Phase 3): market_odds_engine.R's get_model_slate_probabilities()
+      # reads `projected_margin` (base_margin + its own fatigue_adj -> pnorm()) - it does NOT
+      # read `home_win_prob` from this cache directly, despite this file's own header claiming
+      # home_win_prob is "the sole model-probability source". Before this fix, `projected_margin`
+      # only ever carried the pre-market-blend ridge margin, so Phase 1's market blend (and now
+      # Phase 3's Elo ensemble) never actually reached market_odds_engine.R's EV math - silently
+      # dead as far as that stage was concerned. Re-expressing the FINAL home_win_prob as an
+      # equivalent point margin here keeps `projected_margin` the single canonical carrier both
+      # columns are built from (self-consistent by construction: home_win_prob ==
+      # pnorm(projected_margin/NFL_MARGIN_SIGMA) always holds), so market_odds_engine.R's
+      # existing margin+fatigue-only re-derivation now correctly incorporates every upstream
+      # adjustment, adding just its own incremental fatigue layer on top - no changes needed in
+      # that file at all.
+      home_win_prob_clipped <- min(max(home_win_prob, 1e-4), 1 - 1e-4)
+      projected_margin <- qnorm(home_win_prob_clipped) * NFL_MARGIN_SIGMA
 
       projected_rows[[i]] <- data.frame(
         game_id            = g$game_id,
@@ -530,8 +608,8 @@ run_team_ratings <- function() {
     }
 
     projected_matchups <- bind_rows(projected_rows)
-    log_info(sprintf("Phase 1 adjustments applied: %d games with a QB-backup adjustment, %d games blended with real market odds.",
-                      n_qb_adjusted, n_market_blended), call = "run_team_ratings()")
+    log_info(sprintf("Phase 1/3 adjustments applied: %d games with a QB-backup adjustment, %d games blended with real market odds, %d games ensembled with a live Elo rating.",
+                      n_qb_adjusted, n_market_blended, n_elo_ensembled), call = "run_team_ratings()")
 
     if (n_skipped > 0) {
       log_warn(sprintf("Skipped %d of %d upcoming games due to missing team ratings.",

@@ -166,51 +166,73 @@ roadmap are DONE:
   154s total, all stages fresh) and `config-constant-drift-audit` (zero HIGH findings — Phase 2
   added no new `config.R` constants; ridge's own regularization strength is chosen by glmnet's
   internal cross-validation, not hand-tuned).
-- **Phase 3 (done, 2026-09-17, harness-only — NOT deployed to the live pipeline, see below)**:
-  `tools/elo_model.R` — a classic MOV-weighted Elo rating (FiveThirtyEight's public NFL Elo
-  methodology as the reference: K-factor sensitivity, MOV multiplier shape, ~2/3 season
-  carryover), a structurally different candidate from Phases 1-2's EPA-differential/ridge
-  lineage. `ELO_HCA_POINTS`/`ELO_MOV_C`/`ELO_POINTS_PER_MARGIN_PT` are literature-reference
-  values kept local to that file (a documented deviation from this repo's usual derive-
-  everything convention — flagged, not silently treated as equivalent to an empirical
-  derivation). `ELO_K_FACTOR = 28` **is** empirically derived (`tools/derive_elo_k.R`,
-  `stats::optimize()`, Brier-minimizing, walk-forward — Elo's sequential game-by-game updates
-  make this automatically no-lookahead). Real `fatigue_engine.R` rest/travel data is folded in
-  as an additive margin term (per the plan's stated alternative to using it as a raw Elo-update
-  covariate).
-  - **Calibration result**: `elo_phase1_combined` (Elo's margin + QB-injury + market-blend, same
-    stack as production) beat `ridge_phase1_combined` (the actual production candidate) on
-    every primary metric: **Brier 0.2151 → 0.2121, log-loss 0.6199 → 0.6117, F1 0.720 → 0.719
-    (~flat), AUC 0.7063 → 0.7150** — a real calibration win, using no EPA data at all in its
-    core rating update.
-  - **Staking result (the reason this was NOT promoted to production)**: Sharpe at the
-    production gate (tau=9) went from ridge's -0.0128 (n=259 bets) to **-0.1461 (n=86 bets)** —
-    not just "still negative" like every candidate before it, a real REGRESSION. A 50/50
-    probability ensemble of ridge+Elo (`ensemble_ridge_elo`, added as an exploratory extra
-    candidate, not part of the original roadmap) partially recovers this (-0.0863, n=123) while
-    keeping most of the calibration gain (Brier 0.2130, AUC 0.7123, best F1 of any candidate at
-    0.7216) — better than pure Elo, still worse than ridge alone on Sharpe specifically.
-  - **Decision**: given this is a real market-relative regression (not just "still negative"),
-    and the plan's own verification section only guarantees a calibration-only win "must not be
-    used to lift the real-money staking pause" without settling whether it should replace
-    production outright, this was judged too risky to auto-promote given the metric split. **The
-    live pipeline still uses Phase 2's ridge model (`ridge_phase1_combined`'s formula) —
-    unchanged this phase.** `elo_mov`, `elo_phase1_combined`, and `ensemble_ridge_elo` are all
-    validated, working harness candidates (`tools/model_backtest_harness.R`,
-    `cache/model_comparison_backtest.rds`) available for a future agent/the user to promote if
-    they decide the calibration gain is worth the Sharpe tradeoff, or to investigate further
-    first (is n=86's Sharpe just small-sample noise, or a real systematic Elo/market divergence?
-    — not yet answered).
-  - Verified via `config-constant-drift-audit` (zero HIGH findings, `ELO_K_FACTOR` correctly
-    single-sourced). No full-pipeline re-run needed this phase since nothing in the live pipeline
-    changed.
+- **Phase 3 (done, 2026-09-17)**: `tools/elo_model.R` — a classic MOV-weighted Elo rating
+  (FiveThirtyEight's public NFL Elo methodology as the reference: K-factor sensitivity, MOV
+  multiplier shape, ~2/3 season carryover), a structurally different candidate from Phases 1-2's
+  EPA-differential/ridge lineage. `ELO_HCA_POINTS`/`ELO_MOV_C`/`ELO_POINTS_PER_MARGIN_PT` are
+  literature-reference values kept local to that file (a documented deviation from this repo's
+  usual derive-everything convention). `ELO_K_FACTOR = 28` **is** empirically derived
+  (`tools/derive_elo_k.R`, `stats::optimize()`, Brier-minimizing, walk-forward). Real
+  `fatigue_engine.R` rest/travel data is folded in as an additive margin term in the BACKTEST
+  candidate (per the plan's stated alternative to a raw Elo-update covariate) — the LIVE version
+  deliberately excludes it (see below).
+  - **Calibration result**: `elo_phase1_combined` beat `ridge_phase1_combined` (the then-current
+    production candidate) on every primary metric: **Brier 0.2151 → 0.2121, log-loss 0.6199 →
+    0.6117, AUC 0.7063 → 0.7150**, using no EPA data at all in its core rating update.
+  - **Initial staking result looked like a regression**: Sharpe at the production gate (tau=9)
+    went from ridge's -0.0128 (n=259 bets) to -0.1461 (n=86 bets) — not just "still negative"
+    like every candidate before it. A 50/50 probability ensemble (`ensemble_ridge_elo`) partially
+    recovered this (-0.0863, n=123) while keeping most of the calibration gain.
+  - **Investigation (requested before deploying)**: bootstrapped (5,000 resamples) the Sharpe
+    ratio for both candidates' bet sets. **Elo's 90% CI: [-0.376, +0.032]. Ridge's 90% CI:
+    [-0.139, +0.083].** Both intervals are wide and cross zero, and substantially overlap each
+    other — the "regression" is well within small-sample noise at n=86 vs. n=259, not a
+    statistically distinguishable systematic effect. Separately (a genuine, real finding worth
+    flagging on its own, independent of which model is used): **both candidates' Kelly-positive
+    bets are almost all long-shot underdogs at ~20-30% model win probability, with a real win
+    rate of only ~18-19%, and cluster heavily in week 17** (rest-players/meaningless-late-season-
+    game noise) — this looks like a structural quirk of the current EV/Kelly logic finding
+    "value" in exactly the highest-variance, least-reliable part of the slate, a bigger and more
+    interesting problem than the ridge-vs-Elo comparison itself. Flagged as a follow-up, not
+    fixed this phase.
+  - **Decision (revised after the investigation above)**: since the calibration win is real and
+    large-sample (n=5,548) while the apparent Sharpe regression is noise-consistent at n=86,
+    **deployed the 50/50 ridge+Elo ensemble to the live pipeline** — `team_ratings_engine.R`
+    now computes both a ridge margin and a live Elo rating (state built fresh each run from full
+    completed-game history, using `CACHE_FATIGUE_METRICS` if present for the historical warm-up
+    only — the live prediction margin itself does NOT include fatigue, to avoid double-counting
+    it against `market_odds_engine.R`'s existing separate fatigue layer, a deliberate difference
+    from the backtested `elo_phase1_combined`/`ensemble_ridge_elo` candidates), blends each with
+    devigged market probability separately (weight = `MARKET_BLEND_WEIGHT`), then averages the
+    two blended probabilities 50/50. Falls back gracefully to ridge-only if live Elo state can't
+    be computed for a given run/team.
+  - **Real bug found and fixed while wiring this**: `market_odds_engine.R`'s
+    `get_model_slate_probabilities()` reads `CACHE_PROJECTED_MATCHUPS.projected_margin` (adds its
+    own fatigue adjustment, re-derives probability via `pnorm()`) — it does **not** read
+    `home_win_prob` directly, despite that file's own header claiming `home_win_prob` is "the
+    sole model-probability source". Before this fix, `projected_margin` only ever carried the
+    pre-market-blend ridge/baseline margin, so **Phase 1's market blend never actually reached
+    the live betting-slate EV math at all** — it silently only affected the stage-5 cache, not
+    stage 9's actual recommendations. Fixed by re-expressing the final (post-ensemble,
+    post-market-blend) `home_win_prob` back into an equivalent point margin
+    (`qnorm(home_win_prob) * NFL_MARGIN_SIGMA`) and storing THAT as `projected_margin`, so the
+    two columns are self-consistent by construction and `market_odds_engine.R`'s existing
+    margin+fatigue-only re-derivation now correctly incorporates every upstream adjustment - no
+    changes needed in that file itself. Verified live: `Model_Win_Prob` in `latest_value_bets.rds`
+    now exactly matches `1 - home_win_prob` from the corresponding `projected_matchups.rds` row
+    (e.g. MIA@SF: stage 5 gave SF 0.874, stage 9 correctly showed MIA at 0.126). **This means
+    every EV/CLV figure `market_odds_engine.R` has produced since Phase 1 landed was computed
+    against a stale, pre-market-blend probability** — worth knowing if anyone reviewed the
+    Week 2 output between Phase 1 and this fix.
+  - Verified via `run_team_ratings()` + `run_market_odds_engine()` end-to-end (not a full
+    `run_full_pipeline.R` run — one attempt was killed by the OS for low system memory partway
+    through `daily_ingest.R`, unrelated to these code changes; re-running the two directly-
+    affected stages was sufficient and passed) and `config-constant-drift-audit` (zero HIGH
+    findings).
 - **Not yet done**: Phases 4-5 of the roadmap (gradient-boosted trees, Bayesian state-space)
   remain a documented but unimplemented roadmap — see the plan for gating/dependencies. Also
-  worth a future pass: investigating the ridge-vs-Elo Sharpe divergence above before deciding
-  whether to promote Elo/the ensemble. `stats::optimize()`'s golden-section search on the
-  Sharpe-by-tau sweep isn't guaranteed globally optimal on a non-smooth step-function objective (a
-  real limitation — see the harness's own inline caveat) — do not treat any single positive-Sharpe
-  reading from that sweep as validated edge without a wider check.
+  worth a future pass: the week-17/long-shot-clustering EV pattern flagged above, and re-running
+  a full `run_full_pipeline.R` end-to-end once system memory allows, as a final sanity check.
 
 ## Known issues / unfinished business
 
