@@ -231,6 +231,11 @@ CACHE_FATIGUE_METRICS <- file.path(CACHE_DIR, "fatigue_metrics.rds")
 # CACHE_TEAM_RATINGS / CACHE_FATIGUE_METRICS above (playoff_simulator.R does not own config.R;
 # it owns only this constant and NFL_DIVISIONS above).
 CACHE_PLAYOFF_SIMULATION <- file.path(CACHE_DIR, "playoff_simulation.rds")
+# Added by risk_management_engine.R (Phase 5, task P5-A) per docs/task_assignments_phase4.md's
+# "Constants note" pattern - same narrowly-scoped, documented exception as CACHE_EPA_METRICS /
+# CACHE_TEAM_RATINGS / CACHE_FATIGUE_METRICS / CACHE_PLAYOFF_SIMULATION above
+# (risk_management_engine.R does not own config.R; it owns only this one new constant).
+CACHE_RISK_STATE <- file.path(CACHE_DIR, "risk_state.rds")
 
 # ------------------------------------------------------------------------------------------
 # API Throttling & Rate-Limiting (sport-agnostic starting defaults)

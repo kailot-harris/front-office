@@ -228,6 +228,14 @@ run_stage("playoff_simulator.R", "Simulate Full NFL Playoff Bracket (reseeding, 
           call_fn = "run_playoff_simulator",
           output   = CACHE_PLAYOFF_SIMULATION)
 
+# 8. Risk management engine (Phase 5, task P5-B; engine itself built under P5-A).
+# Writes CACHE_RISK_STATE (config.R). No required reads from other repo caches — falls back to a
+# clearly-labeled SYNTHETIC_FALLBACK ledger since no real betting ledger exists yet (see
+# risk_management_engine.R header and docs/task_assignments_phase4.md).
+run_stage("risk_management_engine.R", "Compute Bankroll Drawdown / Kelly-Tier Risk State",
+          call_fn = "run_risk_management",
+          output   = CACHE_RISK_STATE)
+
 # ------------------------------------------------------------------------------
 # FUTURE STAGES — extension point, not yet implemented (see docs/task_assignments_phase0.md's
 # Constraints section and docs/NFL_REPLICATION_PLAN.md §1's later-phase list). Per that
@@ -236,8 +244,9 @@ run_stage("playoff_simulator.R", "Simulate Full NFL Playoff Bracket (reseeding, 
 # insert its own run_stage() calls HERE, in roughly this order, as each script is actually built:
 #   embeddings (the fatigue/embeddings DAG node's other half, per REPLICATION_PLAN §1 — fatigue
 #   itself is now wired in as stage 6 above) -> market/props pricing (requires a human-provisioned
-#   Odds API key, per REPLICATION_PLAN §2) -> risk management -> notification/settlement ->
-#   live/dashboard.
+#   Odds API key, per REPLICATION_PLAN §2) -> notify (the risk/notify node's other half, now that
+#   risk management is wired in as stage 8 above — notify_bets.R remains blocked on a human-
+#   provisioned Discord webhook) -> live/dashboard.
 # ------------------------------------------------------------------------------
 
 pipeline_total_time <- as.numeric(difftime(Sys.time(), pipeline_start_time, units = "secs"))

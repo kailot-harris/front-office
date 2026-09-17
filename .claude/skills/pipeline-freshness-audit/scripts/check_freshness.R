@@ -36,7 +36,8 @@ manifest <- list(
   list(stage = "epa_metrics_engine.R", outputs = CACHE_EPA_METRICS),
   list(stage = "team_ratings_engine.R", outputs = c(CACHE_TEAM_RATINGS, CACHE_PROJECTED_MATCHUPS)),
   list(stage = "fatigue_engine.R", outputs = CACHE_FATIGUE_METRICS),
-  list(stage = "playoff_simulator.R", outputs = CACHE_PLAYOFF_SIMULATION)
+  list(stage = "playoff_simulator.R", outputs = CACHE_PLAYOFF_SIMULATION),
+  list(stage = "risk_management_engine.R", outputs = CACHE_RISK_STATE)
 )
 
 if (length(manifest) == 0) {
