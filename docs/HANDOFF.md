@@ -131,6 +131,22 @@ constant name once a real ledger existed).
   `cache/latest_value_bets.rds`, every row is `INSUFFICIENT SAMPLE` as of this session).
 - **Full detail**: `bet_tracker.r`'s own header comment.
 
+### Model-comparison harness re-run post-determinism-fix (uncommitted, 2026-09-17)
+
+Re-ran `tools/model_backtest_harness.R` (unchanged) now that `ridge_massey_model.R` is
+deterministic. Full comparison table (Brier/log-loss/accuracy/precision/recall/F1/AUC/Sharpe/
+calibration, all 10 candidates, n=5,548 walk-forward games, 2003-2025) saved to
+`cache/model_comparison_backtest.rds`.
+- **Result**: every candidate's Brier score matched its previously-reported value to 3-4 decimal
+  places (`ensemble_ridge_elo`: 0.2130 -> 0.212987; `ridge_phase1_combined`: 0.2151 -> 0.215074;
+  `elo_phase1_combined`: 0.2121 -> 0.212098; all others equally stable). `ensemble_ridge_elo`
+  remains the best deployed candidate (Brier 0.2130) and `elo_phase1_combined` remains the best
+  single-model Brier (0.2121) but with the same real Sharpe regression noted previously
+  (-0.1461 at tau_best vs. ensemble's -0.0839).
+- **Status**: no production formula change — this was a re-verification, not a new candidate.
+  Closes Known Issue #8's re-verification ask.
+- **Full detail**: `cache/model_comparison_backtest.rds`.
+
 ## Known issues / unfinished business
 
 1. **`NFL_DISCORD_WEBHOOK` not visible to R.** Set in `C:\Users\kailo\Documents\.Renviron`, but
@@ -156,14 +172,17 @@ constant name once a real ledger existed).
    load_ff_playerids()` is the canonical crosswalk if a future feature ever mixes ID schemes.
 7. **`load_participation()` 2023+ is historical-only** (FTN-sourced, released only after the
    postseason completes) — still unstarted, still correctly unused anywhere in the pipeline.
-8. **NEW: any ridge-model-derived backtest figure computed before this session's `set.seed()`
-   fix should be re-verified, not cited as exact** — see "Recent work" above. This includes the
-   Phase 2-4 model-comparison table figures for `ridge_only`/`ridge_phase1_combined`/
-   `ensemble_ridge_elo` cited in earlier revisions of this doc/in `docs/task_assignments_*.md`.
-   Re-running `tools/model_backtest_harness.R` for a corrected table is unstarted.
-9. **This session's work is uncommitted.** Run `git status --short` and commit (or discard)
-   deliberately before starting new work — do not assume the "Recent work" items above are
-   already part of the repo's committed history.
+8. ~~Any ridge-model-derived backtest figure computed before the `set.seed()` fix should be
+   re-verified~~ **RE-VERIFIED this session** — `tools/model_backtest_harness.R` re-run after
+   the fix; every candidate's Brier score matched the previously-reported figure to 3-4 decimal
+   places (e.g. `ensemble_ridge_elo` 0.2130 -> 0.212987, `ridge_phase1_combined` 0.2151 ->
+   0.215074). The aggregate Brier metric (n=5,548 games) was already stable across CV-fold RNG
+   noise; only the small-n, tail-selected Kelly-staking simulation was sensitive to it (matches
+   the mechanism found investigating Known Issue #5). `ensemble_ridge_elo` remains the best
+   deployed candidate — no change to the production formula needed. Full table saved to
+   `cache/model_comparison_backtest.rds`.
+9. **This session's work is committed** (`4f3c9d3` and the model-comparison re-run above, not
+   yet committed as of writing this line — see `git status --short`).
 
 ## Environment specifics a fresh agent needs
 
@@ -186,9 +205,8 @@ constant name once a real ledger existed).
    see Known Issue #9.
 2. Fix the `NFL_DISCORD_WEBHOOK` visibility issue (5-minute user-side fix, unblocks real
    notifications).
-3. Re-run `tools/model_backtest_harness.R` for a corrected Phase 2-4 comparison table now that
-   `ridge_massey_model.R` is deterministic (Known Issue #8) — the previous table's ridge-involving
-   rows were computed under non-deterministic CV fold assignment.
+3. ~~Re-run `tools/model_backtest_harness.R` for a corrected Phase 2-4 comparison table~~ **DONE**
+   this session — see "Recent work" above; figures confirmed stable, no formula change needed.
 4. Consider fixing the stage 8/9.5 ordering gap noted in "Current state" above (risk management
    runs before the same-run's bet grading) if a same-run-fresh ledger read ever becomes
    important — not urgent today since the ledger is empty anyway.
