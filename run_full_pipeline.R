@@ -246,6 +246,16 @@ run_stage("market_odds_engine.R", "Fetch Live NFL Odds & Identify +EV Value Bets
           call_fn = "run_market_odds_engine",
           output   = c(CACHE_LATEST_VALUE_BETS, CACHE_ODDS_HISTORY))
 
+# 10. Discord alpha/CLV alert dispatcher (Phase 7, task P7-B; engine itself built under P7-A).
+# Terminal notification stage — no cache output of its own (matches WNBA's own run_stage() call
+# for notify_bets.R, which also declares no `output`), so it is intentionally absent from the
+# pipeline-freshness-audit skill's manifest (.claude/skills/pipeline-freshness-audit) — nothing to
+# track, not a gap. Reads cache/latest_value_bets.rds (stage 9, market_odds_engine.R) as its sole
+# input — must therefore come after it. Dispatches to NFL_DISCORD_WEBHOOK if visible to this R
+# process, else cleanly falls back to a console-only preview (see notify_bets.R header).
+run_stage("notify_bets.R", "Dispatch NFL Discord Alpha & CLV Bet Alerts",
+          call_fn = "run_notify_bets")
+
 # ------------------------------------------------------------------------------
 # FUTURE STAGES — extension point, not yet implemented (see docs/task_assignments_phase0.md's
 # Constraints section and docs/NFL_REPLICATION_PLAN.md §1's later-phase list). Per that
@@ -254,9 +264,7 @@ run_stage("market_odds_engine.R", "Fetch Live NFL Odds & Identify +EV Value Bets
 # insert its own run_stage() calls HERE, in roughly this order, as each script is actually built:
 #   embeddings (the fatigue/embeddings DAG node's other half, per REPLICATION_PLAN §1 — fatigue
 #   itself is now wired in as stage 6 above) -> player props pricing (the market/props node's
-#   other half, now that market odds is wired in as stage 9 above) -> notify (the risk/notify node's
-#   other half, now that risk management is wired in as stage 8 above — notify_bets.R remains
-#   blocked on a human-provisioned Discord webhook) -> live/dashboard.
+#   other half, now that market odds is wired in as stage 9 above) -> live/dashboard.
 # ------------------------------------------------------------------------------
 
 pipeline_total_time <- as.numeric(difftime(Sys.time(), pipeline_start_time, units = "secs"))
