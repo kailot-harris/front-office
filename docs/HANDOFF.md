@@ -147,6 +147,56 @@ calibration, all 10 candidates, n=5,548 walk-forward games, 2003-2025) saved to
   Closes Known Issue #8's re-verification ask.
 - **Full detail**: `cache/model_comparison_backtest.rds`.
 
+### Situational EPA feature engineering (Phase 4 continuation, uncommitted, 2026-09-17)
+
+Closed the "PBP is only used for blunt full-game EPA averages" gap flagged in `tools/gbm_model.R`'s
+header and `docs/memory_optimization_plan.md`. `daily_ingest.R`'s `.PBP_CACHE_COLUMNS` widened
+from 20 to 23 columns (`score_differential`, `yards_gained`, `pass_oe` added; all three confirmed
+present in a live `nflreadr::load_pbp()` pull before adding) — required a `force_refresh = TRUE`
+re-bootstrap of `CACHE_PBP` (1,145,788 rows, 2002-2026, re-ran clean). `epa_metrics_engine.R` now
+also computes 14 situational per-team-per-game columns (+ their `ROLLING_WINDOW_SIZE` rolling
+versions): early-down vs. money-down EPA/success split, red-zone success rate, explosive-play
+rate, and PROE (pass rate over expected, situation-neutral early downs only) — offense and
+defense-allowed versions of each. New config.R constants: `RED_ZONE_YARDLINE_MAX`,
+`EXPLOSIVE_PASS_YARDS`, `EXPLOSIVE_RUSH_YARDS`, `MONEY_DOWN_MIN`, `GARBAGE_TIME_ABS_SCORE_DIFF`
+(standard sabermetric-convention thresholds, not locally backtested — same status as
+`team_ratings_engine.R`'s `.PYTHAGOREAN_EXPONENT`), plus `SITUATIONAL_EPA_ROLL_COLS` (single
+source of truth for the column-name list, referenced by `tools/backtest_common.R`).
+- **Data quirk found**: `pass_oe` is 100% NA for every play in seasons 2002-2005 (nflverse's
+  pass-over-expected model doesn't cover that era) — documented in `epa_metrics_engine.R`'s
+  header; `off_proe_roll`/`def_proe_allowed_roll` are structurally NA for ~16% of team-game rows
+  as a result. Not a bug — `.safe_mean()`/`.roll_mean_trailing()` already degrade gracefully.
+- These are ADDITIVE columns only — `team_ratings_engine.R`'s live rating formula is unchanged
+  and still reads only the pre-existing full-game columns.
+- `tools/backtest_common.R`'s `build_week_snapshot()`/`build_walkforward_games()` extended to
+  carry every `SITUATIONAL_EPA_ROLL_COLS` column (as-of snapshot, no lookahead) into the
+  walk-forward game table as `home_<col>`/`away_<col>` pairs.
+- New `tools/ridge_situational_model.R` (deliberately a separate file from
+  `tools/ridge_massey_model.R`, not an edit to it — the live production fallback path must not be
+  touched by an unvalidated candidate): same ridge/Massey approach plus 14 situational-EPA-diff
+  regressors (NA diffs imputed to 0). Registered as three new `tools/model_backtest_harness.R`
+  candidates: `ridge_situational_only`, `ridge_situational_phase1_combined`,
+  `ensemble_ridge_situational_elo`.
+- **Result (full re-run, n=5,548 walk-forward games, 2003-2025)**: situational features give a
+  real but modest Brier/log-loss improvement in every matched pair vs. their non-situational
+  counterpart (`ridge_only` 0.2318 -> `ridge_situational_only` 0.2302; `ridge_phase1_combined`
+  0.2151 -> `ridge_situational_phase1_combined` 0.2146; `ensemble_ridge_elo` 0.2130 ->
+  `ensemble_ridge_situational_elo` 0.2127) — genuine calibration signal from richer PBP usage.
+  But Sharpe gets WORSE once blended with market/Elo (`ensemble_ridge_elo` -0.089 @ tau9 ->
+  `ensemble_ridge_situational_elo` -0.114) — same mechanism as Known Issue #5's long-shot EV
+  clustering: at `MARKET_BLEND_WEIGHT=0.97`, extra features add noise to the model's ~3%
+  residual disagreement with market, and that noise is what the tail-selected Kelly simulation
+  picks up.
+- **Status**: NOT promoted to production — `ensemble_ridge_elo` remains deployed (best Brier
+  among ensembles at 0.2130 is statistically indistinguishable from the situational variant's
+  0.2127; `elo_phase1_combined` remains the best single-model Brier at 0.2121). Documented as a
+  modest-positive-but-not-decisive result, following this repo's own precedent for `gbm_stack`'s
+  negative result — the candidate code stays in the harness for future revisiting (e.g. feature
+  selection to drop the weakest situational regressors, or a missingness indicator instead of
+  zero-imputation for the 2002-2005 PROE gap), not deleted.
+- **Full detail**: `tools/ridge_situational_model.R`'s header, `epa_metrics_engine.R`'s header,
+  `config.R`'s "Situational EPA Feature Thresholds" section, `cache/model_comparison_backtest.rds`.
+
 ## Known issues / unfinished business
 
 1. **`NFL_DISCORD_WEBHOOK` not visible to R.** Set in `C:\Users\kailo\Documents\.Renviron`, but

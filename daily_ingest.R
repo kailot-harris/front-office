@@ -50,12 +50,20 @@ source("logging_utils.R")
 # force_refresh = TRUE re-bootstrap (or tools/migrate_pbp_cache_trim.R-style one-off script) to
 # pull the dropped column back in for historical rows - narrowing it is instant (just drop the
 # name here), the cache self-heals to the smaller shape on its next real incremental update.
+#
+# WIDENED 2026-09-17 (Phase 4 model-quality remediation, situational-feature engineering):
+# added score_differential, yards_gained, pass_oe for epa_metrics_engine.R's new situational
+# splits (red zone, explosive plays, money-down PROE, garbage-time exclusion - see config.R's
+# "Situational EPA Feature Thresholds" section). All three confirmed present in a live
+# nflreadr::load_pbp() pull (season 2024, verified 2026-09-17) before adding here. This widening
+# required a force_refresh = TRUE re-bootstrap of CACHE_PBP to backfill historical rows.
 # ------------------------------------------------------------------------------------------
 .PBP_CACHE_COLUMNS <- c(
   "game_id", "play_id", "game_date", "season", "week", "season_type", "game_type",
   "home_team", "away_team", "posteam", "defteam", "posteam_type",
   "play_type", "pass", "down", "ydstogo", "yardline_100", "qtr",
-  "epa", "success", "cpoe"
+  "epa", "success", "cpoe",
+  "score_differential", "yards_gained", "pass_oe"
 )
 
 .ingest_one <- function(cache_path, loader_fn, loader_name, dedupe_keys,

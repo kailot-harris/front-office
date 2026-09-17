@@ -20,6 +20,28 @@
 # play (confirmed live: cpoe non-NA count == 359,596, entirely a subset of
 # pass == 1 rows, 0 non-NA cpoe rows where pass == 0) - handled below via
 # na.rm-based averaging rather than treating missing CPOE as 0.
+#
+# SITUATIONAL FEATURES (added 2026-09-17, Phase 4 model-quality remediation): daily_ingest.R's
+# .PBP_CACHE_COLUMNS was widened to also carry down, ydstogo, yardline_100, qtr,
+# score_differential, yards_gained, pass_oe - previously cached (down/ydstogo/yardline_100/qtr)
+# or newly added (score_differential/yards_gained/pass_oe) specifically for the situational
+# splits below, per config.R's "Situational EPA Feature Thresholds" section (RED_ZONE_YARDLINE_
+# MAX, EXPLOSIVE_PASS_YARDS, EXPLOSIVE_RUSH_YARDS, MONEY_DOWN_MIN, GARBAGE_TIME_ABS_SCORE_DIFF -
+# never re-typed as literals here, sourced from config.R like every other modeling constant).
+# These are ADDITIVE to the existing full-game off_epa_per_play/def_epa_per_play_allowed
+# aggregates above (unchanged), not a replacement - team_ratings_engine.R's rating formula still
+# consumes only the full-game columns; the situational columns are for a future candidate model
+# (tools/model_backtest_harness.R) to evaluate, not yet wired into the live rating formula.
+#
+# DATA QUIRK, VERIFIED LIVE 2026-09-17 (add to CLAUDE.md if this file is revisited): nflverse's
+# `pass_oe` (pass rate over expected, used for off_proe/def_proe_allowed below) is 100% NA for
+# every play in seasons 2002-2005 - live-checked against the real CACHE_PBP: NA rate is exactly
+# 1.0 for 2002-2005, then a stable ~26% (the normal non-dropback-play NA rate) from 2006 onward.
+# This means off_proe_roll/def_proe_allowed_roll are structurally NA for any team-game whose
+# entire trailing ROLLING_WINDOW_SIZE window falls in 2002-2005 (~16% of all rows in the full
+# 2002-2026 history) - .safe_mean()/.roll_mean_trailing()'s na.rm handling already degrades this
+# gracefully to NA rather than a wrong 0, but any consumer should expect real missingness in early
+# seasons, not treat a NA PROE column as a bug.
 # ==============================================================================
 
 suppressPackageStartupMessages({
@@ -54,6 +76,16 @@ source("logging_utils.R")
     lo <- max(1, i - ROLLING_WINDOW_SIZE + 1)
     mean(x[lo:i], na.rm = TRUE)
   }, numeric(1))
+}
+
+# ------------------------------------------------------------------------------------------
+# .safe_mean(): mean(..., na.rm = TRUE) that returns NA_real_ instead of NaN when a
+# per-team-per-game situational slice has zero qualifying plays (e.g. a team ran zero money-down
+# plays in some unusual game) - same treatment off_cpoe already gets above, generalized so the
+# situational features below don't each need their own all(is.na(...)) guard.
+# ------------------------------------------------------------------------------------------
+.safe_mean <- function(x) {
+  if (length(x) == 0 || all(is.na(x))) NA_real_ else mean(x, na.rm = TRUE)
 }
 
 # ------------------------------------------------------------------------------------------
@@ -117,10 +149,55 @@ run_epa_metrics <- function() {
         .groups = "drop"
       )
 
+    # ---- Situational splits (see header comment) ----
+    # Precomputed once on the raw pbp table (not inside summarise()) so both the offensive and
+    # defensive group_by() passes below reuse the identical boolean/numeric vectors - avoids
+    # retyping the same down/yardline/garbage-time logic twice with a chance to drift out of sync.
+    pbp <- pbp |>
+      mutate(
+        .early_down     = down %in% seq_len(MONEY_DOWN_MIN - 1),
+        .money_down     = down >= MONEY_DOWN_MIN,
+        .redzone        = yardline_100 <= RED_ZONE_YARDLINE_MAX,
+        .is_garbage_time = !is.na(qtr) & !is.na(score_differential) &
+                            qtr >= 4 & abs(score_differential) > GARBAGE_TIME_ABS_SCORE_DIFF,
+        .is_explosive   = !is.na(pass) & !is.na(yards_gained) &
+                           ((pass == 1 & yards_gained >= EXPLOSIVE_PASS_YARDS) |
+                            (pass == 0 & yards_gained >= EXPLOSIVE_RUSH_YARDS)),
+        .situation_neutral_early_down = .early_down & !.is_garbage_time
+      )
+
+    off_situational <- pbp |>
+      group_by(season, game_id, game_date, week, team = posteam) |>
+      summarise(
+        off_epa_early_down        = .safe_mean(epa[.early_down]),
+        off_success_early_down    = .safe_mean(success[.early_down]),
+        off_epa_money_down        = .safe_mean(epa[.money_down]),
+        off_success_money_down    = .safe_mean(success[.money_down]),
+        off_redzone_success_rate  = .safe_mean(success[.redzone]),
+        off_explosive_rate        = .safe_mean(as.numeric(.is_explosive)),
+        off_proe                  = .safe_mean(pass_oe[.situation_neutral_early_down]),
+        .groups = "drop"
+      )
+
+    def_situational <- pbp |>
+      group_by(season, game_id, game_date, week, team = defteam) |>
+      summarise(
+        def_epa_early_down_allowed       = .safe_mean(epa[.early_down]),
+        def_success_early_down_allowed   = .safe_mean(success[.early_down]),
+        def_epa_money_down_allowed       = .safe_mean(epa[.money_down]),
+        def_success_money_down_allowed   = .safe_mean(success[.money_down]),
+        def_redzone_success_rate_allowed = .safe_mean(success[.redzone]),
+        def_explosive_rate_allowed       = .safe_mean(as.numeric(.is_explosive)),
+        def_proe_allowed                 = .safe_mean(pass_oe[.situation_neutral_early_down]),
+        .groups = "drop"
+      )
+
     team_game <- full_join(
       off_stats, def_stats,
       by = c("season", "game_id", "game_date", "week", "team")
     ) |>
+      full_join(off_situational, by = c("season", "game_id", "game_date", "week", "team")) |>
+      full_join(def_situational, by = c("season", "game_id", "game_date", "week", "team")) |>
       mutate(game_date = as.Date(game_date)) |>
       arrange(team, game_date, week)
 
@@ -145,6 +222,24 @@ run_epa_metrics <- function() {
         off_success_rate_roll         = .roll_mean_trailing(off_success_rate),
         def_success_rate_allowed_roll = .roll_mean_trailing(def_success_rate_allowed),
         off_cpoe_roll                 = .roll_mean_trailing(off_cpoe),
+        # Situational rolling columns (Phase 4 model-quality remediation) - same trailing-window
+        # treatment as the full-game columns above, same partial-window/short-history fallback
+        # behavior (.roll_mean_trailing()'s na.rm = TRUE also absorbs a team's occasional
+        # single-game NA situational value, e.g. a game with zero money-down plays).
+        off_epa_early_down_roll              = .roll_mean_trailing(off_epa_early_down),
+        off_success_early_down_roll          = .roll_mean_trailing(off_success_early_down),
+        off_epa_money_down_roll              = .roll_mean_trailing(off_epa_money_down),
+        off_success_money_down_roll          = .roll_mean_trailing(off_success_money_down),
+        off_redzone_success_rate_roll        = .roll_mean_trailing(off_redzone_success_rate),
+        off_explosive_rate_roll              = .roll_mean_trailing(off_explosive_rate),
+        off_proe_roll                        = .roll_mean_trailing(off_proe),
+        def_epa_early_down_allowed_roll      = .roll_mean_trailing(def_epa_early_down_allowed),
+        def_success_early_down_allowed_roll  = .roll_mean_trailing(def_success_early_down_allowed),
+        def_epa_money_down_allowed_roll      = .roll_mean_trailing(def_epa_money_down_allowed),
+        def_success_money_down_allowed_roll  = .roll_mean_trailing(def_success_money_down_allowed),
+        def_redzone_success_rate_allowed_roll = .roll_mean_trailing(def_redzone_success_rate_allowed),
+        def_explosive_rate_allowed_roll      = .roll_mean_trailing(def_explosive_rate_allowed),
+        def_proe_allowed_roll                = .roll_mean_trailing(def_proe_allowed),
         games_in_window               = pmin(dplyr::row_number(), ROLLING_WINDOW_SIZE)
       ) |>
       ungroup()

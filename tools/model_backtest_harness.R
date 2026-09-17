@@ -59,6 +59,7 @@ source("tools/qb_injury_features.R")
 source("tools/ridge_massey_model.R") # -> predict_ridge_massey_walkforward() (Phase 2)
 source("tools/elo_model.R")          # -> run_elo_walkforward() (Phase 3)
 source("tools/gbm_model.R")          # -> predict_gbm_walkforward() (Phase 4)
+source("tools/ridge_situational_model.R") # -> predict_ridge_situational_walkforward() (Phase 4, situational features)
 
 epa <- readRDS(CACHE_EPA_METRICS) |> mutate(game_date = as.Date(game_date))
 sch <- readRDS(CACHE_SCHEDULES)   |> mutate(gameday = as.Date(gameday))
@@ -222,6 +223,42 @@ candidates <- list(
     ridge_margin_raw <- predict_ridge_massey_walkforward(games)
     elo_margin_raw   <- games$elo_margin_pts
     predict_gbm_walkforward(games, ridge_margin_raw, elo_margin_raw)
+  }),
+  # Phase 4 (situational-feature engineering): ridge_massey_model.R's same ridge/Massey approach,
+  # but with 14 extra situational-EPA-diff regressors (config.R's SITUATIONAL_EPA_ROLL_COLS -
+  # early-down/money-down EPA/success, red-zone success rate, explosive-play rate, PROE) added on
+  # top of diff_raw/diff_prior/their games-played interactions - see tools/ridge_situational_
+  # model.R's header for the full feature list and why this is a separate file/candidate rather
+  # than an edit to ridge_massey_model.R itself. "ridge_situational_only" is the fair comparison
+  # against "ridge_only" (do situational splits help the SAME ridge approach beat aggregate-EPA-
+  # only ridge?); "ridge_situational_phase1_combined" swaps it into the same QB-injury + market-
+  # blend stack ensemble_ridge_elo is built from, to see whether it's worth promoting on top of
+  # what's actually deployed.
+  list(name = "ridge_situational_only", params = list(), predict_fn = function(games, params) {
+    pnorm(predict_ridge_situational_walkforward(games) / NFL_MARGIN_SIGMA)
+  }),
+  list(name = "ridge_situational_phase1_combined",
+       params = list(weight = MARKET_BLEND_WEIGHT, penalty = QB_INJURY_RATING_PENALTY_PTS),
+       predict_fn = function(games, params) {
+    home_adj <- ifelse(is.na(games$home_qb_backup), 0, as.integer(games$home_qb_backup))
+    away_adj <- ifelse(is.na(games$away_qb_backup), 0, as.integer(games$away_qb_backup))
+    margin <- predict_ridge_situational_walkforward(games) - params$penalty * home_adj + params$penalty * away_adj
+    model_prob <- pnorm(margin / NFL_MARGIN_SIGMA)
+    blend_with_market(model_prob, games$market_prob, params$weight)
+  }),
+  # Ensemble analog of "ensemble_ridge_elo" but with the situational ridge candidate swapped in
+  # for the plain ridge candidate - checks whether situational features help THROUGH the
+  # currently-deployed ensemble shape, not just standalone.
+  list(name = "ensemble_ridge_situational_elo",
+       params = list(weight = MARKET_BLEND_WEIGHT, penalty = QB_INJURY_RATING_PENALTY_PTS),
+       predict_fn = function(games, params) {
+    home_adj <- ifelse(is.na(games$home_qb_backup), 0, as.integer(games$home_qb_backup))
+    away_adj <- ifelse(is.na(games$away_qb_backup), 0, as.integer(games$away_qb_backup))
+    ridge_margin <- predict_ridge_situational_walkforward(games) - params$penalty * home_adj + params$penalty * away_adj
+    elo_margin   <- games$elo_margin_pts + games$fatigue_adj - params$penalty * home_adj + params$penalty * away_adj
+    ridge_prob <- blend_with_market(pnorm(ridge_margin / NFL_MARGIN_SIGMA), games$market_prob, params$weight)
+    elo_prob   <- blend_with_market(pnorm(elo_margin / NFL_MARGIN_SIGMA), games$market_prob, params$weight)
+    0.5 * ridge_prob + 0.5 * elo_prob
   })
 )
 

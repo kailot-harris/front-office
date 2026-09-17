@@ -379,6 +379,49 @@ ELO_K_FACTOR <- 28
 LONGSHOT_DECIMAL_ODDS_CAP <- 9.7
 
 # ------------------------------------------------------------------------------------------
+# Situational EPA Feature Thresholds (Phase 4 model-quality remediation: situational-feature
+# engineering, docs/HANDOFF.md's "situational EPA splits" roadmap item)
+# ------------------------------------------------------------------------------------------
+# NOT locally derived/backtested from this repo's own data - these are standard, widely-cited
+# sabermetric convention thresholds (same status as team_ratings_engine.R's own
+# .PYTHAGOREAN_EXPONENT <- 2.37: carried over from public research as a reasonable starting
+# definition, not tuned against this repo's outcomes). A future agent revisiting Phase 4/5
+# should treat these as candidates to sweep/validate, not settled values.
+#   - RED_ZONE_YARDLINE_MAX: nflverse's own `yardline_100` is always measured as "yards to the
+#     opponent's end zone" regardless of possession side, so `yardline_100 <= 20` is the
+#     league's own standard red-zone definition (no ambiguity/derivation needed here, unlike
+#     the two below).
+#   - EXPLOSIVE_PASS_YARDS / EXPLOSIVE_RUSH_YARDS: the common nflfastR-community explosive-play
+#     convention (10+ yard rush, 15+ yard pass) - see e.g. rbsdm.com/stats and widely-used EPA
+#     write-ups; not the only convention in public use, but the most common one.
+#   - MONEY_DOWN_MIN: down >= 3 (3rd/4th down), the standard "passing down" / conversion-
+#     pressure split used throughout public NFL analytics.
+#   - GARBAGE_TIME_ABS_SCORE_DIFF: |score_differential| > 16 in the 4th quarter (or OT) is a
+#     common nflfastR-community garbage-time heuristic; used here only to EXCLUDE plays from
+#     situational EPA/PROE aggregates, never to drop plays from the base off_epa_per_play/
+#     def_epa_per_play_allowed aggregates in epa_metrics_engine.R (those stay full-game, matching
+#     their existing validated behavior - narrowing scope only for the new situational columns).
+RED_ZONE_YARDLINE_MAX      <- 20
+EXPLOSIVE_PASS_YARDS       <- 15
+EXPLOSIVE_RUSH_YARDS       <- 10
+MONEY_DOWN_MIN             <- 3
+GARBAGE_TIME_ABS_SCORE_DIFF <- 16
+
+# Single source of truth for the situational rolling-column NAMES epa_metrics_engine.R computes
+# (CACHE_EPA_METRICS) and tools/backtest_common.R's build_week_snapshot()/build_walkforward_
+# games() carry through into the walk-forward game table - avoids the two files' column lists
+# silently drifting apart (this repo's CLAUDE.md constants-drift lesson applied to a column-name
+# list, not just a numeric literal).
+SITUATIONAL_EPA_ROLL_COLS <- c(
+  "off_epa_early_down_roll", "off_success_early_down_roll",
+  "off_epa_money_down_roll", "off_success_money_down_roll",
+  "off_redzone_success_rate_roll", "off_explosive_rate_roll", "off_proe_roll",
+  "def_epa_early_down_allowed_roll", "def_success_early_down_allowed_roll",
+  "def_epa_money_down_allowed_roll", "def_success_money_down_allowed_roll",
+  "def_redzone_success_rate_allowed_roll", "def_explosive_rate_allowed_roll", "def_proe_allowed_roll"
+)
+
+# ------------------------------------------------------------------------------------------
 # Cache Filepaths
 # ------------------------------------------------------------------------------------------
 CACHE_PBP             <- file.path(CACHE_DIR, "pbp_cache.rds")

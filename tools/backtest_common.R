@@ -54,6 +54,13 @@ build_prior_season_ratings <- function(epa, season, avg_plays_per_game) {
 # ------------------------------------------------------------------------------------------
 # Every team's as-of "current_raw_rating" and real current-season games_played, using ONLY EPA
 # rows strictly before cutoff_date (no lookahead).
+#
+# Also carries each team's latest as-of value of every column in config.R's
+# SITUATIONAL_EPA_ROLL_COLS (Phase 4 model-quality remediation, situational-feature engineering)
+# straight through, unchanged - these are NOT run through compute_power_rating_points() like
+# off_epa_per_play_roll/def_epa_per_play_allowed_roll are (they aren't point-margin-scale
+# ratings, just situational rates/EPA splits), just carried as their own as-of snapshot values
+# for a candidate model's own feature engineering to use downstream.
 # ------------------------------------------------------------------------------------------
 build_week_snapshot <- function(epa, season, cutoff_date, avg_plays_per_game) {
   asof <- epa |> filter(game_date < cutoff_date)
@@ -63,7 +70,8 @@ build_week_snapshot <- function(epa, season, cutoff_date, avg_plays_per_game) {
     group_by(team) |>
     slice_tail(n = 1) |>
     ungroup() |>
-    select(team, off_epa_per_play_roll, def_epa_per_play_allowed_roll)
+    select(team, off_epa_per_play_roll, def_epa_per_play_allowed_roll,
+           dplyr::all_of(SITUATIONAL_EPA_ROLL_COLS))
 
   if (nrow(latest_asof) == 0) return(NULL)
 
@@ -85,7 +93,7 @@ build_week_snapshot <- function(epa, season, cutoff_date, avg_plays_per_game) {
   latest_asof |>
     left_join(games_played, by = "team") |>
     mutate(games_played = ifelse(is.na(games_played), 0L, games_played)) |>
-    select(team, current_raw_rating, games_played)
+    select(team, current_raw_rating, games_played, dplyr::all_of(SITUATIONAL_EPA_ROLL_COLS))
 }
 
 # ------------------------------------------------------------------------------------------
@@ -126,6 +134,13 @@ build_walkforward_games <- function(epa, completed, calibration_seasons, avg_pla
       rating_lu       <- setNames(snap$current_raw_rating, snap$team)
       prior_lu        <- setNames(snap$prior_season_rating, snap$team)
       games_played_lu <- setNames(snap$games_played, snap$team)
+      # Phase 4 (situational-feature engineering): one named lookup vector per
+      # SITUATIONAL_EPA_ROLL_COLS column, built once per (season, week) snapshot - avoids
+      # rebuilding these inside the per-game loop below.
+      situational_lu <- setNames(
+        lapply(SITUATIONAL_EPA_ROLL_COLS, function(cn) setNames(snap[[cn]], snap$team)),
+        SITUATIONAL_EPA_ROLL_COLS
+      )
 
       for (i in seq_len(nrow(week_games))) {
         g <- week_games[i, ]
@@ -133,7 +148,7 @@ build_walkforward_games <- function(epa, completed, calibration_seasons, avg_pla
         if (is.na(rating_lu[h]) || is.na(rating_lu[a])) next
 
         row_i <- row_i + 1L
-        game_rows[[row_i]] <- data.frame(
+        row <- data.frame(
           season = s, week = w, game_id = g$game_id, gameday = g$gameday,
           home_team = h, away_team = a,
           home_raw = unname(rating_lu[h]),   away_raw = unname(rating_lu[a]),
@@ -144,6 +159,12 @@ build_walkforward_games <- function(epa, completed, calibration_seasons, avg_pla
           home_ml = g$home_moneyline, away_ml = g$away_moneyline,
           stringsAsFactors = FALSE
         )
+        # Phase 4: attach home_<col>/away_<col> for every situational rolling column.
+        for (cn in SITUATIONAL_EPA_ROLL_COLS) {
+          row[[paste0("home_", cn)]] <- unname(situational_lu[[cn]][h])
+          row[[paste0("away_", cn)]] <- unname(situational_lu[[cn]][a])
+        }
+        game_rows[[row_i]] <- row
       }
     }
   }
