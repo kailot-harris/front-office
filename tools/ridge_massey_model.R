@@ -55,9 +55,21 @@ build_ridge_features <- function(games) {
   )
 }
 
+# FOUND DURING Known-Issue-#5 investigation (2026-09-17, tools/derive_longshot_odds_cap.R):
+# glmnet::cv.glmnet() assigns its 5 CV folds via R's global RNG with no seed set anywhere in
+# this file or its callers, so lambda.min - and therefore every downstream prediction from this
+# model - was silently non-deterministic between runs. Confirmed empirically: two back-to-back
+# runs of the identical "ensemble_ridge_elo" production formula over the identical data produced
+# 124 vs. 56 Kelly-positive bets and Sharpe -0.0816 vs. -0.1511 at the same staking gate. A fixed
+# seed local to this function (reset on every call, not relying on caller RNG state) makes fold
+# assignment - and therefore every Brier/Sharpe figure computed from this model anywhere in the
+# repo - reproducible run-to-run. This is a determinism fix, not a tuned hyperparameter, so the
+# seed value itself is arbitrary and does not belong in config.R (see CLAUDE.md's constants
+# convention - only structural/modeling constants live there).
 fit_ridge_massey <- function(train_games) {
   x <- build_ridge_features(train_games)
   y <- train_games$home_margin
+  set.seed(20260917)
   glmnet::cv.glmnet(x, y, alpha = 0, nfolds = 5)
 }
 

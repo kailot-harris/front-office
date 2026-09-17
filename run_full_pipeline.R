@@ -259,6 +259,28 @@ run_stage("market_odds_engine.R", "Fetch Live NFL Odds & Identify +EV Value Bets
           call_fn = "run_market_odds_engine",
           output   = c(CACHE_LATEST_VALUE_BETS, CACHE_ODDS_HISTORY))
 
+# 9.5. Real bet ledger writer/grader (model-quality remediation, Known Issue #2).
+# Writes CACHE_BETTING_LEDGER (config.R). Reads cache/latest_value_bets.rds (stage 9 above) to
+# record today's real, staked value picks as PENDING, and cache/schedules_cache.rds (stage 1)
+# to grade any already-recorded picks whose games have since completed — must therefore come
+# after stage 9. NOTE: this means stage 8's risk_management_engine.R run EARLIER in this same
+# pipeline invocation still saw last run's ledger state (or the SYNTHETIC_FALLBACK seed, on a
+# fresh/empty ledger) — its REAL_LEDGER read only picks up bets graded here on the NEXT pipeline
+# run, one cycle behind. Not fixed by reordering stages 8/9/9.5 in this pass (that would be a
+# larger, separately-reasoned architecture change); documented here and in docs/HANDOFF.md
+# instead of silently accepted.
+#
+# EXPECTED BENIGN C-2 WARNING: unlike every other stage, bet_tracker.r only rewrites
+# CACHE_BETTING_LEDGER when there is a real new pick to append OR a real pending bet whose
+# game has completed to grade - on a run with neither (no staked value bets this slate, and
+# nothing outstanding to resolve), the file is legitimately untouched and
+# .check_stage_output() will WARN it as possibly-stale. That is a true "nothing changed"
+# report, not the silent-no-op failure mode C-2 exists to catch - do not "fix" it by forcing
+# a write every run just to silence the WARN.
+run_stage("bet_tracker.r", "Record & Grade Real Value-Bet Ledger (CLV tracking)",
+          call_fn = "run_bet_tracker",
+          output   = CACHE_BETTING_LEDGER)
+
 # 10. Discord alpha/CLV alert dispatcher (Phase 7, task P7-B; engine itself built under P7-A).
 # Terminal notification stage — no cache output of its own (matches WNBA's own run_stage() call
 # for notify_bets.R, which also declares no `output`), so it is intentionally absent from the

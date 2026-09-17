@@ -15,21 +15,16 @@
 # per the task doc's Constraints section, this is deliberately sport-agnostic
 # bankroll discipline, not something to tune without real data.
 #
-# KNOWN LIMITATION (must stay explicit, not hidden): this repo has no real
-# betting ledger yet. Neither market_odds_engine.R nor bet_tracker.r exist -
-# both are blocked on a human-provisioned Odds API key (see task doc's
-# Overview). WNBA's engine already has a documented cold-start behavior for
-# exactly this case: fall back to a clearly-labeled SYNTHETIC_FALLBACK seed
-# ledger (120 simulated bets) rather than erroring, log a WARN when it does so,
-# and tag the risk report's ledger source so a caller can tell real from
-# synthetic at a glance. That fallback is ported verbatim below. Once
-# bet_tracker.r exists and actually writes a real ledger, the placeholder path
-# referenced below ("cache/betting_ledger.rds", written as a literal string
-# rather than a config.R constant per the task brief's instruction not to add
-# unjustified config.R entries) should become a real CACHE_BETTING_LEDGER
-# constant in config.R, and load_real_ledger() below should be revisited for
-# that ledger's actual schema (see WNBA's own load_real_ledger() comment for
-# the class of column-renaming adapter that was needed there).
+# UPDATE (model-quality remediation, Known Issue #2, 2026-09-17): bet_tracker.r now exists and
+# writes a real ledger at CACHE_BETTING_LEDGER (config.R) - the SYNTHETIC_FALLBACK cold-start
+# path below is no longer dead code's only outcome; it now genuinely activates only when
+# CACHE_BETTING_LEDGER doesn't exist yet or has zero RESOLVED bets (e.g. a fresh checkout, or
+# every recorded pick is still PENDING because its game hasn't been played yet). load_real_
+# ledger() below's transmute() already matches bet_tracker.r's real ledger schema (bet_id/
+# bet_date/stake_units/profit_units/clv_pct/beat_clv/status) - built to satisfy this contract,
+# not the other way around, so no adapter/renaming was needed here (unlike WNBA's own
+# load_real_ledger(), which needed one - see that repo's version for the class of mismatch this
+# NFL repo's ledger was deliberately built to avoid).
 #
 # Per this repo's CLAUDE.md ("Process / conventions") this script does NOT
 # auto-run on source via a `sys.nframe() == 0` / `!interactive()` footer - the
@@ -94,8 +89,7 @@ run_risk_management <- function(bet_history = NULL) {
            call = "run_risk_management()")
 
   tryCatch({
-    real_ledger_path <- "cache/betting_ledger.rds"  # placeholder; becomes CACHE_BETTING_LEDGER
-                                                      # once bet_tracker.r exists (see header)
+    real_ledger_path <- CACHE_BETTING_LEDGER
     data_source <- NA_character_
 
     if (is.null(bet_history)) {
@@ -112,7 +106,7 @@ run_risk_management <- function(bet_history = NULL) {
         }
         if (!is.null(bet_history)) data_source <- "REAL_LEDGER"
       } else {
-        log_warn(sprintf("%s does not exist yet (no bet_tracker.r/market_odds_engine.R in this repo - both blocked on the Odds API key); falling through to synthetic seed ledger.", real_ledger_path),
+        log_warn(sprintf("%s does not exist yet (bet_tracker.r has not run in this environment yet); falling through to synthetic seed ledger.", real_ledger_path),
                  call = "run_risk_management()")
       }
 

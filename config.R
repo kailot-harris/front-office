@@ -328,6 +328,56 @@ QB_INJURY_RATING_PENALTY_PTS <- 1.6
 # how it stacks against the market-blended candidates.
 ELO_K_FACTOR <- 28
 
+# Added by market_odds_engine.R (model-quality remediation, investigation of docs/HANDOFF.md
+# Known Issue #5) - a narrowly-scoped, documented exception (market_odds_engine.R does not own
+# config.R; it owns only this one new constant). Caps staking to bets whose decimal odds on the
+# picked side are <= this value - i.e. gates OUT long-shot underdog prices beyond this point,
+# regardless of how large the model's computed EV looks for them.
+#
+# ROOT CAUSE this mitigates (see tools/investigate_ev_clustering.R's output, run 2026-09-17):
+# home_ev/away_ev = model_prob * decimal_odds - 1. Since MARKET_BLEND_WEIGHT=0.97 anchors 97%
+# of model_prob to the SAME game's own devigged market probability used to derive decimal_odds
+# here, apparent EV is driven almost entirely by the model's remaining 3% disagreement with the
+# market - a roughly fixed absolute probability delta. decimal_odds scales inversely with market
+# probability, so that same fixed delta produces a small EV% at short (favorite) odds and an
+# explosive EV% at long (underdog) odds - an artifact of the EV formula's odds-scaling, not
+# genuine model skill. Confirmed empirically against the production ensemble_ridge_elo formula:
+# 100% (124/124, pre-fix run) of Kelly-positive bets were on the underdog side, and mean EV%
+# was strictly DECREASING as model probability rose (2.26% in the [0,0.1] bin down to 0.46% in
+# the (0.4,0.5] bin) - the "edge" gets larger, not smaller, the longer the odds, concentrated in
+# exactly the noisiest games (backup QBs, rested starters, clinched-playoff-seed week-17 games -
+# 29% of all Kelly-positive bets fell in week 17 alone in that same run).
+#
+# NOTE ON REPRODUCIBILITY: tools/ridge_massey_model.R's cv.glmnet() call had no fixed seed
+# before this same investigation found and fixed it (see that file's own comment) - CV-fold
+# randomness alone swung n_bets 124 -> 56 and Sharpe -0.08 -> -0.15 between two runs of the
+# IDENTICAL formula/data. This constant's derivation below was run only after that fix, so its
+# figures are reproducible run-to-run (re-verified twice, both giving n=56, Sharpe=-0.1461 at
+# no cap) - but this means any EARLIER Brier/Sharpe figure in docs/HANDOFF.md that used the
+# ridge model (ridge_only/ridge_phase1_combined/ensemble_ridge_elo) was computed under the old
+# non-deterministic behavior and should be re-verified, not assumed exact, before being cited.
+#
+# EMPIRICALLY BACKTESTED 2026-09-17 - see tools/derive_longshot_odds_cap.R and
+# cache/longshot_odds_cap_derivation.rds. Walk-forward, out-of-sample, quarter-Kelly staking
+# simulation against REAL historical closing moneylines, MIN_SAMPLE_GAMES_FOR_STAKE gate
+# applied, production ensemble_ridge_elo formula, seasons 2010-2025 (same window as
+# MARKET_BLEND_WEIGHT/MIN_SAMPLE_GAMES_FOR_STAKE - real moneylines only from 2010 onward),
+# n=56 Kelly-positive bets at this staking gate before any odds cap, optimized via
+# stats::optimize() (golden-section search, not a grid search) maximizing Sharpe over the cap
+# in [1.5, 15] decimal odds.
+#   No cap (tau=9 gate only, current production behavior): n=56  Sharpe=-0.1461  cum%=-1.1%
+#   Optimizer result: cap=9.68 -> n=48  Sharpe=-0.0809  cum%=-0.6%
+#   Grid reference (see the derivation script's own printed table): Sharpe is NEGATIVE at
+#   every cap tested from 3.5 to 15 except a thin, low-n (n=13) local bump at cap=4.0
+#   (Sharpe=+0.0069) that is not distinguishable from noise at that sample size.
+#
+# IMPORTANT - READ BEFORE STAKING REAL MONEY: same honesty discipline as
+# MIN_SAMPLE_GAMES_FOR_STAKE's own comment - Sharpe is NEGATIVE at every cap tested. This is a
+# MITIGATION (removes the odds range where the EV formula's own artifact concentrates,
+# roughly halving cumulative loss vs. no cap) not a validated edge. Real-money staking should
+# stay paused (docs/HANDOFF.md Known Issue #4) regardless of this constant's value.
+LONGSHOT_DECIMAL_ODDS_CAP <- 9.7
+
 # ------------------------------------------------------------------------------------------
 # Cache Filepaths
 # ------------------------------------------------------------------------------------------
@@ -367,6 +417,15 @@ CACHE_RISK_STATE <- file.path(CACHE_DIR, "risk_state.rds")
 # (market_odds_engine.R does not own config.R; it owns only these two new constants).
 CACHE_LATEST_VALUE_BETS <- file.path(CACHE_DIR, "latest_value_bets.rds")
 CACHE_ODDS_HISTORY      <- file.path(CACHE_DIR, "odds_history.rds")
+# Added by bet_tracker.r (model-quality remediation, Known Issue #2) - a narrowly-scoped,
+# documented exception (bet_tracker.r does not own config.R; it owns only this one new
+# constant). Per risk_management_engine.R's own header comment (written when it was built,
+# before a real ledger existed): "the placeholder path ... should become a real
+# CACHE_BETTING_LEDGER constant in config.R" once bet_tracker.r exists and writes it - this is
+# that promised follow-through, not a new decision. risk_management_engine.R's
+# load_real_ledger()/run_risk_management() now read this constant instead of a literal
+# "cache/betting_ledger.rds" string.
+CACHE_BETTING_LEDGER <- file.path(CACHE_DIR, "betting_ledger.rds")
 
 # ------------------------------------------------------------------------------------------
 # API Throttling & Rate-Limiting (sport-agnostic starting defaults)

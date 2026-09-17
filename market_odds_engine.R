@@ -605,6 +605,19 @@ evaluate_betting_slate <- function() {
       edge_flag = if_else(insufficient_sample,
                            "\u26a0 INSUFFICIENT SAMPLE (early season)",
                            edge_flag)
+    ) |>
+    mutate(
+      # LONGSHOT_DECIMAL_ODDS_CAP gate (config.R comment has the full derivation/root-cause
+      # writeup - docs/HANDOFF.md Known Issue #5). Run AFTER the sample-size gate above so it
+      # can independently override whatever that logic computed - a long-shot price beyond this
+      # cap should not be staked even for a team with plenty of current-season sample, since the
+      # root cause here is the EV formula's own odds-scaling artifact, not a small-sample
+      # problem. Applied to best_dec (the picked side's decimal odds), not exp_clv/best_ev.
+      longshot_excluded = best_dec > LONGSHOT_DECIMAL_ODDS_CAP,
+      quarter_kelly_pct = if_else(longshot_excluded, 0, quarter_kelly_pct),
+      edge_flag = if_else(longshot_excluded,
+                           "\u26a0 LONG-SHOT ODDS EXCLUDED (staking cap)",
+                           edge_flag)
     )
 
   output_table <- slate |>
