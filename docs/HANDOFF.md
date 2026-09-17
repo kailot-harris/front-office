@@ -229,9 +229,39 @@ roadmap are DONE:
     through `daily_ingest.R`, unrelated to these code changes; re-running the two directly-
     affected stages was sufficient and passed) and `config-constant-drift-audit` (zero HIGH
     findings).
-- **Not yet done**: Phases 4-5 of the roadmap (gradient-boosted trees, Bayesian state-space)
-  remain a documented but unimplemented roadmap — see the plan for gating/dependencies. Also
-  worth a future pass: the week-17/long-shot-clustering EV pattern flagged above.
+- **Phase 4 (attempted, 2026-09-17, NEGATIVE RESULT — not deployed)**: `tools/gbm_model.R` —
+  xgboost (already installed, no new dependency; `lightgbm` is NOT installed and wasn't used) as
+  a STACKING model over Phase 2/3's ridge and Elo margins (fed in raw/unadjusted, plus
+  `qb_diff`, `fatigue_adj`, `market_prob`+a missingness flag, `gp_min`/`gp_avg` as additional
+  features — the tree ensemble was meant to learn a non-linear combination in place of the
+  deployed formula's hand-picked 50/50 average). Nested walk-forward tuning per the plan's
+  explicit requirement: for each test season, boosting-round count (`nrounds`) is chosen via
+  early stopping against a held-out single prior season, then the final model for that test
+  season is refit on the full training pool at that round count — max_depth/eta/subsample/etc.
+  fixed at conservative, regularized values (not exhaustively tuned, documented in that file).
+  - **Result: clearly worse than every market-blended candidate, and worse than doing nothing.**
+    Brier 0.2417 (vs. the deployed `ensemble_ridge_elo`'s 0.2130), AUC 0.6460 — *worse than the
+    original 2003-era baseline's 0.6492*. The calibration table explains why: **5,069 of 5,548
+    games (91%) landed in a single `[0.5, 0.6)` predicted-probability bin** — the model
+    essentially predicts "~57%, home team" almost everywhere, barely discriminating between
+    games at all. Consistent with the plan's own stated overfitting-risk warning: early stopping
+    against a single ~267-game validation season per fold is noisy, likely halting boosting
+    after too few rounds for the trees to learn real structure.
+  - **Decision**: NOT deployed. This is a documented negative result, not a bug to chase down
+    further — Phase 4 was flagged in the plan as the lowest-priority, most exploratory roadmap
+    item precisely because of this overfitting risk at this repo's data scale (~5,500 walk-
+    forward games), and the result matches that prediction. `gbm_stack` remains available as a
+    harness candidate (`tools/model_backtest_harness.R`, `cache/model_comparison_backtest.rds`)
+    if a future agent wants to retry with a different tuning strategy (e.g. a rolling multi-
+    season validation window instead of one single season per fold, looser regularization, or
+    real situational/opponent-adjusted PBP features instead of stacking on Phases 2-3's outputs)
+    rather than starting from scratch.
+  - Verified via `config-constant-drift-audit` (zero HIGH findings — GBM's hyperparameters are
+    local, documented constants in `tools/gbm_model.R`, deliberately not promoted to `config.R`
+    since they were never validated as production-worthy).
+- **Not yet done**: Phase 5 of the roadmap (Bayesian state-space, a research spike per the
+  original plan) remains unimplemented. Also worth a future pass: the week-17/long-shot-
+  clustering EV pattern flagged in Phase 3's writeup above.
 
 ## Pipeline memory fix (2026-09-17)
 

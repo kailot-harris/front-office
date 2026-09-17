@@ -58,6 +58,7 @@ source("tools/backtest_common.R") # -> build_walkforward_games()
 source("tools/qb_injury_features.R")
 source("tools/ridge_massey_model.R") # -> predict_ridge_massey_walkforward() (Phase 2)
 source("tools/elo_model.R")          # -> run_elo_walkforward() (Phase 3)
+source("tools/gbm_model.R")          # -> predict_gbm_walkforward() (Phase 4)
 
 epa <- readRDS(CACHE_EPA_METRICS) |> mutate(game_date = as.Date(game_date))
 sch <- readRDS(CACHE_SCHEDULES)   |> mutate(gameday = as.Date(gameday))
@@ -210,6 +211,17 @@ candidates <- list(
     ridge_prob <- blend_with_market(pnorm(ridge_margin / NFL_MARGIN_SIGMA), games$market_prob, params$weight)
     elo_prob   <- blend_with_market(pnorm(elo_margin / NFL_MARGIN_SIGMA), games$market_prob, params$weight)
     0.5 * ridge_prob + 0.5 * elo_prob
+  }),
+  # Phase 4: gradient-boosted trees (tools/gbm_model.R) as a STACKING model over Phase 2/3's
+  # ridge and Elo margins (raw, unadjusted for QB/market - those are fed in as their own
+  # features so the tree ensemble learns their effect itself, rather than double-applying a
+  # hand-picked adjustment on top of tree output). Nested walk-forward hyperparameter tuning
+  # (nrounds via early stopping on a held-out prior season) happens inside
+  # predict_gbm_walkforward() itself - see that file's header.
+  list(name = "gbm_stack", params = list(), predict_fn = function(games, params) {
+    ridge_margin_raw <- predict_ridge_massey_walkforward(games)
+    elo_margin_raw   <- games$elo_margin_pts
+    predict_gbm_walkforward(games, ridge_margin_raw, elo_margin_raw)
   })
 )
 
