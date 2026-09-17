@@ -110,6 +110,30 @@ NFL_PLAYOFF_WILDCARDS_PER_CONF        <- 3L  # seeds 5-7
 NFL_PLAYOFF_BYES_PER_CONF             <- 1L  # only the #1 seed per conference
 NFL_PLAYOFF_ROUNDS <- c("wild_card", "divisional", "conference_championship", "super_bowl")
 
+# Added by playoff_simulator.R (Phase 4, task P4-A) per docs/task_assignments_phase3.md's
+# "Constants note" pattern - same narrowly-scoped, documented exception as CACHE_EPA_METRICS /
+# CACHE_TEAM_RATINGS / CACHE_FATIGUE_METRICS above (playoff_simulator.R does not own config.R;
+# it owns only this new team->conference/division mapping).
+#
+# Verified via live web search on 2026-09-16 (ESPN/vsporto/sportDA 2026 team-by-division
+# coverage, cross-checked against NFL_TEAMS above): the current 8-division / 32-team structure
+# has been in place since the 2002 realignment (see MODERN_ERA_START_SEASON) and is confirmed
+# UNCHANGED for the 2026 season - no team relocated or changed divisions this offseason. Each
+# entry maps an NFL_TEAMS abbreviation to "CONF North/South/East/West" (4 teams per division,
+# 4 divisions per conference, 8 divisions total). Re-verify at the start of each future season -
+# realignment has happened before (most recently 2002) and is exactly the class of structural
+# fact this repo re-checks rather than assumes.
+NFL_DIVISIONS <- c(
+  BUF = "AFC East",  MIA = "AFC East",  NE  = "AFC East",  NYJ = "AFC East",
+  BAL = "AFC North", CIN = "AFC North", CLE = "AFC North", PIT = "AFC North",
+  HOU = "AFC South", IND = "AFC South", JAX = "AFC South", TEN = "AFC South",
+  DEN = "AFC West",  KC  = "AFC West",  LV  = "AFC West",  LAC = "AFC West",
+  DAL = "NFC East",  PHI = "NFC East",  WAS = "NFC East",  NYG = "NFC East",
+  CHI = "NFC North", DET = "NFC North", GB  = "NFC North", MIN = "NFC North",
+  ATL = "NFC South", CAR = "NFC South", NO  = "NFC South", TB  = "NFC South",
+  ARI = "NFC West",  LA  = "NFC West",  SF  = "NFC West",  SEA = "NFC West"
+)
+
 # ------------------------------------------------------------------------------------------
 # Data Horizons
 # ------------------------------------------------------------------------------------------
@@ -202,6 +226,11 @@ CACHE_PROJECTED_MATCHUPS  <- file.path(CACHE_DIR, "projected_matchups.rds")
 # "Constants note" pattern - same narrowly-scoped, documented exception as CACHE_EPA_METRICS /
 # CACHE_TEAM_RATINGS above (fatigue_engine.R does not own config.R; it owns only this constant).
 CACHE_FATIGUE_METRICS <- file.path(CACHE_DIR, "fatigue_metrics.rds")
+# Added by playoff_simulator.R (Phase 4, task P4-A) per docs/task_assignments_phase3.md's
+# "Constants note" pattern - same narrowly-scoped, documented exception as CACHE_EPA_METRICS /
+# CACHE_TEAM_RATINGS / CACHE_FATIGUE_METRICS above (playoff_simulator.R does not own config.R;
+# it owns only this constant and NFL_DIVISIONS above).
+CACHE_PLAYOFF_SIMULATION <- file.path(CACHE_DIR, "playoff_simulation.rds")
 
 # ------------------------------------------------------------------------------------------
 # API Throttling & Rate-Limiting (sport-agnostic starting defaults)

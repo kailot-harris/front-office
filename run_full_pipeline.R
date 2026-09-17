@@ -221,6 +221,13 @@ run_stage("fatigue_engine.R", "Compute Travel/Circadian & Short-Rest Fatigue Met
           call_fn = "run_fatigue_engine",
           output   = CACHE_FATIGUE_METRICS)
 
+# 7. Playoff bracket simulator (Phase 4, task P4-B; engine itself built under P4-A).
+# Writes CACHE_PLAYOFF_SIMULATION (config.R). Reads CACHE_TEAM_RATINGS from stage 5 and
+# CACHE_SCHEDULES from stage 1 above.
+run_stage("playoff_simulator.R", "Simulate Full NFL Playoff Bracket (reseeding, Monte Carlo)",
+          call_fn = "run_playoff_simulator",
+          output   = CACHE_PLAYOFF_SIMULATION)
+
 # ------------------------------------------------------------------------------
 # FUTURE STAGES — extension point, not yet implemented (see docs/task_assignments_phase0.md's
 # Constraints section and docs/NFL_REPLICATION_PLAN.md §1's later-phase list). Per that
