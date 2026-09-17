@@ -198,6 +198,10 @@ CACHE_EPA_METRICS     <- file.path(CACHE_DIR, "team_epa_metrics.rds")
 # above (team_ratings_engine.R does not own config.R; it owns only these two new constants).
 CACHE_TEAM_RATINGS        <- file.path(CACHE_DIR, "team_ratings.rds")
 CACHE_PROJECTED_MATCHUPS  <- file.path(CACHE_DIR, "projected_matchups.rds")
+# Added by fatigue_engine.R (Phase 3, task P3-A) per docs/task_assignments_phase2.md's
+# "Constants note" pattern - same narrowly-scoped, documented exception as CACHE_EPA_METRICS /
+# CACHE_TEAM_RATINGS above (fatigue_engine.R does not own config.R; it owns only this constant).
+CACHE_FATIGUE_METRICS <- file.path(CACHE_DIR, "fatigue_metrics.rds")
 
 # ------------------------------------------------------------------------------------------
 # API Throttling & Rate-Limiting (sport-agnostic starting defaults)

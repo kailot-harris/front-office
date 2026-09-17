@@ -215,14 +215,22 @@ run_stage("team_ratings_engine.R", "Compute Team Power Ratings & Projected Match
           call_fn = "run_team_ratings",
           output   = c(CACHE_TEAM_RATINGS, CACHE_PROJECTED_MATCHUPS))
 
+# 6. Fatigue/travel & short-rest engine (Phase 3, task P3-B; engine itself built under P3-A).
+# Writes CACHE_FATIGUE_METRICS (config.R). Reads CACHE_SCHEDULES from stage 1 above.
+run_stage("fatigue_engine.R", "Compute Travel/Circadian & Short-Rest Fatigue Metrics",
+          call_fn = "run_fatigue_engine",
+          output   = CACHE_FATIGUE_METRICS)
+
 # ------------------------------------------------------------------------------
 # FUTURE STAGES — extension point, not yet implemented (see docs/task_assignments_phase0.md's
 # Constraints section and docs/NFL_REPLICATION_PLAN.md §1's later-phase list). Per that
 # Constraints note, this wave deliberately does NOT add stub run_stage() calls for scripts that
 # don't exist yet — doing so would immediately fail with "script not found". A later wave should
 # insert its own run_stage() calls HERE, in roughly this order, as each script is actually built:
-#   fatigue/travel & embeddings -> market/props pricing (requires a human-provisioned Odds API
-#   key, per REPLICATION_PLAN §2) -> risk management -> notification/settlement -> live/dashboard.
+#   embeddings (the fatigue/embeddings DAG node's other half, per REPLICATION_PLAN §1 — fatigue
+#   itself is now wired in as stage 6 above) -> market/props pricing (requires a human-provisioned
+#   Odds API key, per REPLICATION_PLAN §2) -> risk management -> notification/settlement ->
+#   live/dashboard.
 # ------------------------------------------------------------------------------
 
 pipeline_total_time <- as.numeric(difftime(Sys.time(), pipeline_start_time, units = "secs"))

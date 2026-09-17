@@ -53,8 +53,9 @@ in-pipeline assertion the DAG itself may eventually add.
 
 Populated from `run_full_pipeline.R`'s Wave 1 skeleton (task P1-D, `docs/task_assignments_phase0.md`)
 — three real ingestion stages — plus Phase 2's two metrics/ratings engine stages (task P2-C,
-`docs/task_assignments_phase1.md`). No stub/placeholder stages remain for later-phase engines that
-don't exist yet (fatigue/embeddings/market/props/risk/notify; see that file's Constraints section).
+`docs/task_assignments_phase1.md`) and Phase 3's fatigue engine stage (task P3-B,
+`docs/task_assignments_phase2.md`). No stub/placeholder stages remain for later-phase engines that
+don't exist yet (embeddings/market/props/risk/notify; see that file's Constraints section).
 
 | Stage script | Declared output(s) |
 |---|---|
@@ -63,6 +64,7 @@ don't exist yet (fatigue/embeddings/market/props/risk/notify; see that file's Co
 | `injury_scraper.R` | `cache/injury_data_cache.rds` (`CACHE_INJURY_DATA`) |
 | `epa_metrics_engine.R` | `cache/team_epa_metrics.rds` (`CACHE_EPA_METRICS`) |
 | `team_ratings_engine.R` | `cache/team_ratings.rds` (`CACHE_TEAM_RATINGS`), `cache/projected_matchups.rds` (`CACHE_PROJECTED_MATCHUPS`) |
+| `fatigue_engine.R` | `cache/fatigue_metrics.rds` (`CACHE_FATIGUE_METRICS`) |
 
 **Deliberate exclusion / known false-positive source:** `daily_ingest.R` is an incremental
 ingestion stage — `.ingest_one()` legitimately skips the write ("cache already up to date; no

@@ -34,7 +34,8 @@ manifest <- list(
   list(stage = "sync_rosters.R", outputs = CACHE_ROSTERS),
   list(stage = "injury_scraper.R", outputs = CACHE_INJURY_DATA),
   list(stage = "epa_metrics_engine.R", outputs = CACHE_EPA_METRICS),
-  list(stage = "team_ratings_engine.R", outputs = c(CACHE_TEAM_RATINGS, CACHE_PROJECTED_MATCHUPS))
+  list(stage = "team_ratings_engine.R", outputs = c(CACHE_TEAM_RATINGS, CACHE_PROJECTED_MATCHUPS)),
+  list(stage = "fatigue_engine.R", outputs = CACHE_FATIGUE_METRICS)
 )
 
 if (length(manifest) == 0) {
