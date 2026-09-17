@@ -466,6 +466,11 @@ CACHE_INJURY_DATA     <- file.path(CACHE_DIR, "injury_data_cache.rds")
 CACHE_PARTICIPATION   <- file.path(CACHE_DIR, "participation_cache.rds")
 CACHE_NEXTGEN_STATS   <- file.path(CACHE_DIR, "nextgen_stats_cache.rds")
 CACHE_PLAYER_PROPS    <- file.path(CACHE_DIR, "latest_player_props.rds")
+# Added by player_id_crosswalk.R's load_player_id_crosswalk() (cross-source NFL player-ID
+# crosswalk, nflreadr::load_ff_playerids() - see that file's header for the live-verified
+# schema/quirks). A narrow documented exception, same pattern as CACHE_EPA_METRICS etc. below
+# (player_id_crosswalk.R does not own config.R; it owns only this one constant).
+CACHE_PLAYER_ID_CROSSWALK <- file.path(CACHE_DIR, "player_id_crosswalk.rds")
 # Added by epa_metrics_engine.R (Phase 2, task P2-A) per docs/task_assignments_phase2.md's
 # "Constants note" - a narrowly-scoped, documented exception to that script's single-file
 # ownership (epa_metrics_engine.R does not own config.R; it owns only this one new constant).

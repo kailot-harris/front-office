@@ -24,9 +24,13 @@
 #     name-matching. Both sources are UNION'd (bind_rows) into one tibble with a
 #     `data_source` tag ("NFLREADR_OFFICIAL" or "ESPN_LIVE") and left as separate rows.
 #     A downstream consumer that wants "most current status for player X" should filter
-#     to the freshest `report_date`/`data_source` itself, ideally via
-#     nflreadr::load_ff_playerids() as the crosswalk if it ever needs to reconcile the
-#     two ID spaces — NOT via a name-string join invented here.
+#     to the freshest `report_date`/`data_source` itself. As of 2026-09-17, run_injury_scraper()
+#     ALSO enriches each row with the other source's crosswalked ID (`espn_athlete_id_crosswalked`
+#     on NFLREADR_OFFICIAL rows, `gsis_id_crosswalked` on ESPN_LIVE rows) via
+#     nflreadr::load_ff_playerids() (player_id_crosswalk.R) — still never merges/collapses rows,
+#     just adds an optional matching key a downstream consumer can use instead of a name-string
+#     join. See player_id_crosswalk.R's header for the crosswalk's own live-verified quirks
+#     (a real duplicate-gsis_id bug in the underlying data, handled by dropping ambiguous IDs).
 #
 # ESPN JSON quirk (LIVE-VERIFIED 2026-09-16 via tools/_probe_espn_injuries.R against the
 # real site.web.api.espn.com/apis/site/v2/sports/football/nfl/injuries feed — this is not
@@ -51,6 +55,11 @@
 source("config.R")
 source("logging_utils.R")
 .LOG_SCRIPT <- "injury_scraper.R"
+# Cross-source player-ID crosswalk (nflreadr::load_ff_playerids()) - enriches each row with the
+# OTHER source's ID below, never used to merge/collapse rows (see header comment's CONFLICT
+# RULE - that design is unchanged). See player_id_crosswalk.R's own header for the live-verified
+# schema/quirks (a real duplicate-gsis_id data bug in the underlying crosswalk, handled there).
+source("player_id_crosswalk.R")
 
 suppressPackageStartupMessages({
   library(nflreadr)
@@ -241,6 +250,44 @@ run_injury_scraper <- function() {
   if (nrow(combined) == 0) {
     log_error("Both injury sources returned 0 rows; refusing to overwrite cache with an empty table.")
     return(FALSE)
+  }
+
+  # ---- Player-ID crosswalk enrichment (see header CONFLICT RULE + player_id_crosswalk.R) ----
+  # Adds each row's OTHER source's id as a new, clearly-provenance-labeled column - never
+  # overwrites the row's own reported gsis_id/espn_athlete_id, never merges rows. A downstream
+  # consumer wanting "current status for player X across both sources" can now match on either
+  # scheme without inventing a name-string join - closing the exact gap this file's header used
+  # to flag as unsolved (nflreadr::load_ff_playerids() "if it ever needs to reconcile the two ID
+  # spaces"). Falls back to all-NA crosswalk columns (never fails the whole scraper run) if the
+  # crosswalk itself can't be loaded.
+  crosswalk <- tryCatch(load_player_id_crosswalk(), error = function(e) {
+    log_error("load_player_id_crosswalk() failed - proceeding without ID-crosswalk enrichment.", condition = e)
+    NULL
+  })
+
+  if (!is.null(crosswalk)) {
+    cw_by_gsis <- crosswalk |> filter(!is.na(gsis_id)) |> distinct(gsis_id, .keep_all = TRUE) |>
+      transmute(gsis_id, espn_athlete_id_crosswalked = suppressWarnings(as.integer(espn_id)))
+    cw_by_espn <- crosswalk |> filter(!is.na(espn_id)) |> distinct(espn_id, .keep_all = TRUE) |>
+      transmute(.espn_chr = espn_id, gsis_id_crosswalked = gsis_id)
+
+    combined <- combined |>
+      left_join(cw_by_gsis, by = "gsis_id") |>
+      mutate(.espn_chr = as.character(espn_athlete_id)) |>
+      left_join(cw_by_espn, by = ".espn_chr") |>
+      select(-.espn_chr)
+
+    assert_join_match_rate(
+      sum(!is.na(combined$gsis_id) & !is.na(combined$espn_athlete_id_crosswalked)),
+      sum(!is.na(combined$gsis_id)), "injury_scraper: gsis_id -> espn_id"
+    )
+    assert_join_match_rate(
+      sum(!is.na(combined$espn_athlete_id) & !is.na(combined$gsis_id_crosswalked)),
+      sum(!is.na(combined$espn_athlete_id)), "injury_scraper: espn_athlete_id -> gsis_id"
+    )
+  } else {
+    combined$espn_athlete_id_crosswalked <- NA_integer_
+    combined$gsis_id_crosswalked <- NA_character_
   }
 
   saved_ok <- tryCatch({

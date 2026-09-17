@@ -302,6 +302,37 @@ criterion splits a tied group into still-tied subgroups (recursive `.cascade()`)
 - **Full detail**: `nfl_tiebreakers.R`'s own header (full procedure, cascade rule, scope
   limitations).
 
+### Player-ID crosswalk hardening (uncommitted, 2026-09-17)
+
+Closed Known Issue #6 below. `nflreadr::load_ff_playerids()` had been named in CLAUDE.md/docs
+as "the canonical crosswalk to use" since Phase 0 but had NEVER actually been called live
+anywhere in this repo (confirmed via repo-wide grep) - purely a documented intention, not
+verified infrastructure. New `player_id_crosswalk.R` is the live verification plus reusable
+infrastructure: `load_player_id_crosswalk()` (loads, caches via new `CACHE_PLAYER_ID_CROSSWALK`,
+and deduplicates) and `assert_join_match_rate()` (the post-join match-rate assertion CLAUDE.md's
+ID-scheme quirk explicitly calls for).
+- **Real data quirk found**: 10 `gsis_id` / 4 `espn_id` / 4 `pfr_id` values in the live
+  `load_ff_playerids()` table each map to 2+ distinct named players (e.g. `gsis_id`
+  `00-0022828` = both "Nate Jones" and "Nathan Jones") - a name-collision bug in the underlying
+  ffverse crosswalk itself, not a parsing error on this repo's end. A naive join would silently
+  fan out these rows. `load_player_id_crosswalk()` drops ambiguous ids rather than guessing.
+- **Applied concretely** in `injury_scraper.R` (deliberately without changing its existing
+  union-only, never-merge design): each row is now enriched with the OTHER source's crosswalked
+  id (`espn_athlete_id_crosswalked` on `NFLREADR_OFFICIAL` rows, `gsis_id_crosswalked` on
+  `ESPN_LIVE` rows) - a downstream consumer wanting "current status for player X across both
+  sources" can now match on either scheme instead of inventing a name-string join.
+- **Result**: ran `run_injury_scraper()` end-to-end against real live data (376 real
+  `NFLREADR_OFFICIAL` rows, 800 real `ESPN_LIVE` rows). Real match rates: 83.2% (`gsis_id` ->
+  `espn_id`), 88.9% (`espn_athlete_id` -> `gsis_id`) - both well above `assert_join_match_rate()`'s
+  default 50% warning threshold. Spot-checked several resolved pairs by name for correctness
+  (e.g. ESPN athlete 4568506 <-> gsis_id 00-0039007, both independently resolving to "Garrett
+  Williams").
+- **Status**: deployed (`injury_scraper.R` wired to `player_id_crosswalk.R`). No other join
+  point in this repo currently mixes ID schemes (`tools/qb_injury_features.R` is gsis_id-only
+  throughout, verified in that file's own header) - this is infrastructure ready for the next
+  player-level feature that does, not a retrofit of a previously-broken join.
+- **Full detail**: `player_id_crosswalk.R`'s own header (full live-verified schema/quirks).
+
 ## Known issues / unfinished business
 
 1. **`NFL_DISCORD_WEBHOOK` not visible to R.** Set in `C:\Users\kailo\Documents\.Renviron`, but
@@ -325,9 +356,18 @@ criterion splits a tied group into still-tied subgroups (recursive `.cascade()`)
    and documented; mitigation reduces but does not eliminate the underlying issue (the model's
    probability estimates are still noisiest in exactly the games most affected — backup QBs,
    rested starters, week 17).
-6. **Four competing NFL player-ID schemes** (ESPN/GSIS/PFR/NFL-NGS) remain a real risk for any
-   FUTURE player-level join beyond the QB-backup feature already built. `nflreadr::
-   load_ff_playerids()` is the canonical crosswalk if a future feature ever mixes ID schemes.
+6. ~~Four competing NFL player-ID schemes remain a real risk for any future player-level
+   join~~ **HARDENED this session** — new `player_id_crosswalk.R` live-verifies
+   `nflreadr::load_ff_playerids()` (12,494 rows, real schema confirmed), found and handles a
+   real duplicate-gsis_id data bug in that crosswalk itself (10 gsis_id / 4 espn_id / 4 pfr_id
+   values each map to 2+ distinct players - dropped rather than guessed), and exposes
+   `assert_join_match_rate()` for the post-join match-rate assertion CLAUDE.md calls for.
+   Applied concretely in `injury_scraper.R`: each row is now enriched with the OTHER source's
+   crosswalked id (`espn_athlete_id_crosswalked` / `gsis_id_crosswalked`), still never
+   merging/collapsing rows. Real match rates against live data: 83.2% (gsis_id -> espn_id),
+   88.9% (espn_athlete_id -> gsis_id). Any FUTURE player-level join should use
+   `load_player_id_crosswalk()` + `assert_join_match_rate()` rather than a fresh, unverified
+   call to `load_ff_playerids()`.
 7. **`load_participation()` 2023+ is historical-only** (FTN-sourced, released only after the
    postseason completes) — still unstarted, still correctly unused anywhere in the pipeline.
 8. ~~Any ridge-model-derived backtest figure computed before the `set.seed()` fix should be
