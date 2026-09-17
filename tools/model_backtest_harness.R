@@ -60,6 +60,7 @@ source("tools/ridge_massey_model.R") # -> predict_ridge_massey_walkforward() (Ph
 source("tools/elo_model.R")          # -> run_elo_walkforward() (Phase 3)
 source("tools/gbm_model.R")          # -> predict_gbm_walkforward() (Phase 4)
 source("tools/ridge_situational_model.R") # -> predict_ridge_situational_walkforward() (Phase 4, situational features)
+source("tools/kalman_state_space_model.R") # -> run_kalman_walkforward() (Phase 5, state-space)
 
 epa <- readRDS(CACHE_EPA_METRICS) |> mutate(game_date = as.Date(game_date))
 sch <- readRDS(CACHE_SCHEDULES)   |> mutate(gameday = as.Date(gameday))
@@ -112,6 +113,22 @@ elo_results <- run_elo_walkforward(elo_full_history, fatigue, ELO_K_FACTOR) |>
   select(game_id, elo_margin_pts, fatigue_adj)
 games <- games |> left_join(elo_results, by = "game_id")
 cat(sprintf("Elo coverage in the scored window: %d/%d games.\n\n", sum(!is.na(games$elo_margin_pts)), nrow(games)))
+
+# ------------------------------------------------------------------------------------------
+# Phase 5: Kalman state-space simulation. Run ONCE across the FULL history for the same
+# burn-in-then-join-by-game_id reason Elo's block above does. kalman_pred_var is that game's
+# OWN combined (home_var + away_var + KALMAN_OBSERVATION_VARIANCE) uncertainty - unlike every
+# other candidate here, this one does NOT convert margin to probability via a fixed
+# NFL_MARGIN_SIGMA; kalman_margin_pts/kalman_pred_var are joined in raw and each candidate below
+# does its own pnorm(margin / sqrt(pred_var)).
+# ------------------------------------------------------------------------------------------
+cat("Simulating Kalman state-space filter sequentially across full history (one-time cost)...\n")
+kalman_full_history <- sch |>
+  filter(!is.na(home_score), !is.na(away_score), season >= MODERN_ERA_START_SEASON, season <= CURRENT_SEASON - 1L)
+kalman_results <- run_kalman_walkforward(kalman_full_history) |>
+  select(game_id, kalman_margin_pts, kalman_pred_var)
+games <- games |> left_join(kalman_results, by = "game_id")
+cat(sprintf("Kalman coverage in the scored window: %d/%d games.\n\n", sum(!is.na(games$kalman_margin_pts)), nrow(games)))
 
 # ------------------------------------------------------------------------------------------
 # Shared building block every candidate's predict_fn() calls - the exact production blend
@@ -259,6 +276,42 @@ candidates <- list(
     ridge_prob <- blend_with_market(pnorm(ridge_margin / NFL_MARGIN_SIGMA), games$market_prob, params$weight)
     elo_prob   <- blend_with_market(pnorm(elo_margin / NFL_MARGIN_SIGMA), games$market_prob, params$weight)
     0.5 * ridge_prob + 0.5 * elo_prob
+  }),
+  # Phase 5: Kalman state-space filter (tools/kalman_state_space_model.R) - a third,
+  # structurally different candidate from the ridge/Elo lineage (genuine Bayesian filtering,
+  # per-game-specific uncertainty rather than a single fixed NFL_MARGIN_SIGMA). "kalman_pure" is
+  # the fair standalone comparison (pnorm() uses THIS candidate's own kalman_pred_var, not
+  # NFL_MARGIN_SIGMA - the whole point of tracking per-team variance explicitly);
+  # "kalman_phase1_combined" adds the QB-injury margin shift (kept in the same additive-margin
+  # form every other candidate uses) then blends with market, still against kalman_pred_var.
+  list(name = "kalman_pure", params = list(), predict_fn = function(games, params) {
+    pnorm(games$kalman_margin_pts / sqrt(games$kalman_pred_var))
+  }),
+  list(name = "kalman_phase1_combined",
+       params = list(weight = MARKET_BLEND_WEIGHT, penalty = QB_INJURY_RATING_PENALTY_PTS),
+       predict_fn = function(games, params) {
+    home_adj <- ifelse(is.na(games$home_qb_backup), 0, as.integer(games$home_qb_backup))
+    away_adj <- ifelse(is.na(games$away_qb_backup), 0, as.integer(games$away_qb_backup))
+    margin <- games$kalman_margin_pts - params$penalty * home_adj + params$penalty * away_adj
+    model_prob <- pnorm(margin / sqrt(games$kalman_pred_var))
+    blend_with_market(model_prob, games$market_prob, params$weight)
+  }),
+  # Three-way ensemble: ridge + Elo + Kalman, each already market-blended/QB-adjusted in their
+  # own established form, simple unweighted average (same "just average the probabilities"
+  # philosophy as ensemble_ridge_elo, extended to a third structurally different candidate rather
+  # than re-deriving new ensemble weights this session).
+  list(name = "ensemble_ridge_elo_kalman",
+       params = list(weight = MARKET_BLEND_WEIGHT, penalty = QB_INJURY_RATING_PENALTY_PTS),
+       predict_fn = function(games, params) {
+    home_adj <- ifelse(is.na(games$home_qb_backup), 0, as.integer(games$home_qb_backup))
+    away_adj <- ifelse(is.na(games$away_qb_backup), 0, as.integer(games$away_qb_backup))
+    ridge_margin  <- predict_ridge_massey_walkforward(games) - params$penalty * home_adj + params$penalty * away_adj
+    elo_margin    <- games$elo_margin_pts + games$fatigue_adj - params$penalty * home_adj + params$penalty * away_adj
+    kalman_margin <- games$kalman_margin_pts - params$penalty * home_adj + params$penalty * away_adj
+    ridge_prob  <- blend_with_market(pnorm(ridge_margin / NFL_MARGIN_SIGMA), games$market_prob, params$weight)
+    elo_prob    <- blend_with_market(pnorm(elo_margin / NFL_MARGIN_SIGMA), games$market_prob, params$weight)
+    kalman_prob <- blend_with_market(pnorm(kalman_margin / sqrt(games$kalman_pred_var)), games$market_prob, params$weight)
+    (ridge_prob + elo_prob + kalman_prob) / 3
   })
 )
 

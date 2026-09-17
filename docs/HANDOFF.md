@@ -197,6 +197,55 @@ source of truth for the column-name list, referenced by `tools/backtest_common.R
 - **Full detail**: `tools/ridge_situational_model.R`'s header, `epa_metrics_engine.R`'s header,
   `config.R`'s "Situational EPA Feature Thresholds" section, `cache/model_comparison_backtest.rds`.
 
+### Phase 5: Kalman-filter state-space model (uncommitted, 2026-09-17)
+
+Per this doc's own prior roadmap note ("Phase 5 (Bayesian state-space) needs an Rtools/rstan
+install decision first, or a pure-R closed-form Kalman-filter alternative") - `rstan`/`cmdstanr`/
+`brms`/`rjags` remain NOT installed on this machine (CLAUDE.md), and installing an MCMC toolchain
+is a real install decision left to the user rather than done silently mid-session. Built the
+documented fallback instead: `tools/kalman_state_space_model.R`, a genuine Bayesian state-space
+model - each team's latent point-margin-scale strength is a Gaussian random walk, updated via
+exact conjugate-Gaussian (Kalman) math (bivariate assumed-density-filtering update, same
+independence approximation TrueSkill/Glicko make - full derivation in that file's header).
+Structurally different from ridge/Elo: it tracks each team's own POSTERIOR VARIANCE explicitly
+(wide for a team with little recent history, narrow for a stable one) and uses that
+GAME-SPECIFIC combined variance for win probability, instead of every other candidate's fixed
+`NFL_MARGIN_SIGMA`. Interface mirrors `tools/elo_model.R`'s `run_elo_walkforward()`/
+`project_elo_rating()` shape (`run_kalman_walkforward()`/`project_kalman_state()`).
+- Four hyperparameters (`KALMAN_INITIAL_VARIANCE`, `KALMAN_PROCESS_VARIANCE`,
+  `KALMAN_OBSERVATION_VARIANCE`, `KALMAN_SEASON_CARRYOVER`) empirically derived via new
+  `tools/derive_kalman_params.R` (`stats::optim()`, L-BFGS-B, box-constrained joint search -
+  same discipline as `ELO_K_FACTOR`'s derivation, generalized from 1 to 4 params). Brier at
+  optimum 0.2202 vs. 0.2225 at literature-informed starting values.
+- **Found and fixed a real memory issue during derivation**: the first `run_kalman_walkforward()`
+  implementation built a length-6,499 list of one-row `data.frame()`s per simulation and
+  `bind_rows()`-ed them - called once per `optim()` iteration, this caused a real background
+  process OOM kill on this machine (already memory-constrained per `bb1cd99`'s pipeline-OOM
+  history). Rewrote to preallocate plain vectors and build one `data.frame()` at the end: same
+  output shape, no observed OOM on retry.
+- Registered three new `tools/model_backtest_harness.R` candidates: `kalman_pure` (standalone,
+  scored against its own `kalman_pred_var`, not `NFL_MARGIN_SIGMA`), `kalman_phase1_combined`
+  (QB-injury + market blend, same additive-margin form every other candidate uses),
+  `ensemble_ridge_elo_kalman` (3-way unweighted probability average).
+- **Result (n=5,548 walk-forward games, 2003-2025)**: `kalman_pure` (Brier 0.2211) ties
+  `elo_mov` (0.2211) as a standalone candidate - not decisively better alone. But
+  `kalman_phase1_combined` and `ensemble_ridge_elo_kalman` (both Brier 0.2127) land in a
+  statistical tie for SECOND-BEST BRIER of all 16 candidates in the harness, edging out the
+  deployed `ensemble_ridge_elo` (0.2130) - a genuine calibration improvement from a structurally
+  different filtering approach. Sharpe, however, is WORSE than deployed at every one of these:
+  `kalman_phase1_combined` -0.216 @ tau9 (vs. deployed -0.089), `ensemble_ridge_elo_kalman`
+  -0.125 @ tau9 - the same mechanism as Known Issue #5/the situational-feature finding above
+  (extra disagreement-with-market signal gets amplified in the thin, tail-selected Kelly sample).
+- **Status**: NOT promoted to production - `ensemble_ridge_elo` remains deployed. The Brier gap
+  (0.2127 vs 0.2130) isn't decisive enough to justify a real Sharpe regression. Documented as a
+  genuine calibration-positive/staking-negative result, same honesty discipline as `gbm_stack`'s
+  precedent - code stays in the harness for future revisiting (e.g. a proper joint covariance
+  update instead of the independence approximation, or tuning KALMAN_* against Sharpe instead of
+  Brier), not deleted.
+- **Full detail**: `tools/kalman_state_space_model.R`'s header (full derivation math),
+  `tools/derive_kalman_params.R`'s header, `config.R`'s "Kalman State-Space Model
+  Hyperparameters" section, `cache/model_comparison_backtest.rds`.
+
 ## Known issues / unfinished business
 
 1. **`NFL_DISCORD_WEBHOOK` not visible to R.** Set in `C:\Users\kailo\Documents\.Renviron`, but

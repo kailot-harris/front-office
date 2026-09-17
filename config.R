@@ -422,6 +422,25 @@ SITUATIONAL_EPA_ROLL_COLS <- c(
 )
 
 # ------------------------------------------------------------------------------------------
+# Kalman State-Space Model Hyperparameters (Phase 5, model-quality remediation)
+# ------------------------------------------------------------------------------------------
+# EMPIRICALLY DERIVED - see tools/derive_kalman_params.R (stats::optim(), method = "L-BFGS-B",
+# box-constrained joint search over all four params, walk-forward Brier minimization - same
+# discipline as ELO_K_FACTOR's tools/derive_elo_k.R, generalized from one parameter to four).
+# Derivation run 2026-09-17 against real CACHE_SCHEDULES data, seasons 2002-2025 (2002 burn-in,
+# scored 2003-2025, n=6,499 games): Brier at optimum = 0.2202 (vs. 0.2225 at literature-informed
+# starting values - KALMAN_INITIAL_VARIANCE/KALMAN_OBSERVATION_VARIANCE started near
+# NFL_MARGIN_SIGMA^2, KALMAN_SEASON_CARRYOVER started at ELO_SEASON_CARRYOVER's 2/3 literature
+# value, KALMAN_PROCESS_VARIANCE started at a small placeholder - see that script's header for
+# the full starting-value rationale). See tools/kalman_state_space_model.R's header for what
+# each parameter means (initial/process/observation variance of the per-team Gaussian random
+# walk, and the season-boundary carryover fraction).
+KALMAN_INITIAL_VARIANCE     <- 213.1376
+KALMAN_PROCESS_VARIANCE     <- 0.5596
+KALMAN_OBSERVATION_VARIANCE <- 149.6345
+KALMAN_SEASON_CARRYOVER     <- 0.7169
+
+# ------------------------------------------------------------------------------------------
 # Cache Filepaths
 # ------------------------------------------------------------------------------------------
 CACHE_PBP             <- file.path(CACHE_DIR, "pbp_cache.rds")
