@@ -56,6 +56,7 @@ source("team_ratings_engine.R")   # -> compute_power_rating_points()
 source("market_odds_engine.R")    # -> american_to_decimal(), american_to_prob(), calculate_kelly()
 source("tools/backtest_common.R") # -> build_walkforward_games()
 source("tools/qb_injury_features.R")
+source("tools/ridge_massey_model.R") # -> predict_ridge_massey_walkforward() (Phase 2)
 
 epa <- readRDS(CACHE_EPA_METRICS) |> mutate(game_date = as.Date(game_date))
 sch <- readRDS(CACHE_SCHEDULES)   |> mutate(gameday = as.Date(gameday))
@@ -135,6 +136,23 @@ candidates <- list(
     home_adj <- ifelse(is.na(games$home_qb_backup), 0, as.integer(games$home_qb_backup))
     away_adj <- ifelse(is.na(games$away_qb_backup), 0, as.integer(games$away_qb_backup))
     margin <- baseline_margin(games) - params$penalty * home_adj + params$penalty * away_adj
+    model_prob <- pnorm(margin / NFL_MARGIN_SIGMA)
+    blend_with_market(model_prob, games$market_prob, params$weight)
+  }),
+  # Phase 2: ridge-regularized Massey rating (tools/ridge_massey_model.R), replacing the
+  # hand-tuned K-blend with a learned, per-season-refit ridge regression. "ridge_only" is the
+  # fair comparison against baseline_k3.6 (does ridge alone beat the original hand-coded
+  # formula?); "ridge_phase1_combined" swaps ridge's margin in for baseline_margin() inside the
+  # SAME QB-injury + market-blend stack production already uses, to test whether ridge is worth
+  # promoting on top of what's actually deployed.
+  list(name = "ridge_only", params = list(), predict_fn = function(games, params) {
+    pnorm(predict_ridge_massey_walkforward(games) / NFL_MARGIN_SIGMA)
+  }),
+  list(name = "ridge_phase1_combined", params = list(weight = MARKET_BLEND_WEIGHT, penalty = QB_INJURY_RATING_PENALTY_PTS),
+       predict_fn = function(games, params) {
+    home_adj <- ifelse(is.na(games$home_qb_backup), 0, as.integer(games$home_qb_backup))
+    away_adj <- ifelse(is.na(games$away_qb_backup), 0, as.integer(games$away_qb_backup))
+    margin <- predict_ridge_massey_walkforward(games) - params$penalty * home_adj + params$penalty * away_adj
     model_prob <- pnorm(margin / NFL_MARGIN_SIGMA)
     blend_with_market(model_prob, games$market_prob, params$weight)
   })

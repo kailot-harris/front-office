@@ -128,6 +128,8 @@ source("logging_utils.R")
 # PENALTY_PTS, never a second, independently-typed copy of either.
 source("market_odds_engine.R")
 source("tools/qb_injury_features.R")
+source("tools/backtest_common.R")     # -> build_walkforward_games() (Phase 2 training data)
+source("tools/ridge_massey_model.R")  # -> fit_ridge_massey()/build_ridge_features() (Phase 2)
 
 # ------------------------------------------------------------------------------------------
 # get_live_qb_backup_flags() - live analog of tools/qb_injury_features.R's walk-forward
@@ -406,6 +408,36 @@ run_team_ratings <- function() {
     # Phase 8 (P8-A): games_played lookup, propagated into projected_matchups so the P8-B
     # staking-gate agent can build its minimum-sample gate without re-deriving this count itself.
     games_played_lookup <- setNames(team_ratings$games_played, team_ratings$team)
+    # Phase 2 (model-quality remediation): raw current-season rating (pre-shrinkage) and
+    # prior-season rating lookups, needed as the ridge model's own input features - NOT the
+    # already-blended power_rating column above (ridge learns its own blend, see below).
+    raw_lookup   <- setNames(team_ratings$current_raw_rating, team_ratings$team)
+    prior_lookup <- setNames(team_ratings$prior_season_rating, team_ratings$team)
+
+    # ---- Phase 2 (model-quality remediation): ridge-regularized Massey rating ----
+    # Replaces the hand-tuned games_played/(games_played+K) shrinkage blend (config.R's
+    # RATING_SHRINKAGE_GAMES_K) with a ridge regression (tools/ridge_massey_model.R) that
+    # LEARNS how to combine current-season vs. prior-season rating signal, fit fresh each
+    # pipeline run on all available historical walk-forward games (never a second, drifting
+    # copy of the training data - reuses build_walkforward_games() from tools/backtest_common.R,
+    # the same builder tools/model_backtest_harness.R used to validate this candidate beat the
+    # production baseline on Brier/log-loss/calibration - see docs/HANDOFF.md). Falls back to
+    # the original K-blend formula (compute_power_rating_points()'s caller-level blend, inlined
+    # below as ridge_fit <- NULL) if the historical table can't be built or the fit fails - never
+    # silently skip prediction for a pipeline run.
+    ridge_fit <- tryCatch({
+      hist_seasons <- (MODERN_ERA_START_SEASON + 1L):(CURRENT_SEASON - 1L)
+      hist_completed <- sch |> filter(!is.na(home_score), !is.na(away_score))
+      hist_games <- build_walkforward_games(epa |> mutate(game_date = as.Date(game_date)),
+                                             hist_completed |> mutate(gameday = as.Date(gameday)),
+                                             hist_seasons, avg_plays_per_game)
+      if (nrow(hist_games) < 100) stop("insufficient historical walk-forward games for a ridge fit")
+      fit_ridge_massey(hist_games)
+    }, error = function(e) {
+      log_warn("Ridge Massey fit failed - falling back to the RATING_SHRINKAGE_GAMES_K blend formula for this run.",
+               call = "run_team_ratings()", error_message = conditionMessage(e))
+      NULL
+    })
 
     # ---- Phase 1 (model-quality remediation): QB-injury flags + devigged market probs ----
     # Computed ONCE for the whole upcoming slate, not per-game (one load_depth_charts() call,
@@ -446,7 +478,17 @@ run_team_ratings <- function() {
       if (is.null(home_games_played) || length(home_games_played) == 0) home_games_played <- NA_integer_
       if (is.null(away_games_played) || length(away_games_played) == 0) away_games_played <- NA_integer_
 
-      projected_margin <- (home_rating - away_rating) + NFL_HCA
+      if (!is.null(ridge_fit)) {
+        feat <- build_ridge_features(data.frame(
+          home_raw = raw_lookup[[home]], away_raw = raw_lookup[[away]],
+          home_prior = prior_lookup[[home]], away_prior = prior_lookup[[away]],
+          home_gp = ifelse(is.na(home_games_played), 0L, home_games_played),
+          away_gp = ifelse(is.na(away_games_played), 0L, away_games_played)
+        ))
+        projected_margin <- as.numeric(predict(ridge_fit, newx = feat, s = "lambda.min"))
+      } else {
+        projected_margin <- (home_rating - away_rating) + NFL_HCA
+      }
 
       # QB-injury adjustment (config.R's QB_INJURY_RATING_PENALTY_PTS, empirically derived via
       # tools/derive_qb_injury_penalty.R). NA flag (unknown) => zero adjustment, same convention

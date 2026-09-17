@@ -145,15 +145,36 @@ roadmap are DONE:
   - Run `tools/model_backtest_harness.R` for the full candidate comparison table (baseline vs.
     market-blend-only vs. QB-injury-only vs. combined) — saved to
     `cache/model_comparison_backtest.rds`.
-- **Not yet done**: Phases 2-5 of the roadmap (ridge-regularized ratings, MOV-weighted Elo,
-  gradient-boosted trees, Bayesian state-space) remain a documented but unimplemented roadmap —
-  see the plan for gating/dependencies. Sharpe at the production staking gate (tau=9) is still
-  reported by the harness for every Phase 1 candidate; it improved somewhat (less negative /
-  occasionally marginally positive at a re-optimized tau for the combined candidate) but this is
-  noisy given `stats::optimize()`'s golden-section search isn't guaranteed globally optimal on a
-  non-smooth step-function objective (a real limitation — see the harness's own inline caveat) —
-  do not treat a single positive-Sharpe reading from that sweep as validated edge without a wider
-  check.
+- **Phase 2 (done, 2026-09-17)**: `tools/ridge_massey_model.R` — a ridge-regularized regression
+  (`glmnet::cv.glmnet(alpha=0)`, already installed, no new dependency) that LEARNS how to combine
+  current-season vs. prior-season rating signal (features: `diff_raw`, `diff_prior`, and their
+  interactions with `avg_gp`, all built from columns already in the walk-forward game table),
+  replacing the hand-tuned `RATING_SHRINKAGE_GAMES_K`/`(games_played/(games_played+K))` blend
+  formula. Refit once per season, trained only on strictly earlier seasons (season-level walk-
+  forward — coarser than the per-week granularity used elsewhere, a documented tradeoff). Cleared
+  the harness's acceptance gate against `phase1_combined` (the actual production baseline at the
+  time): **Brier 0.2168 → 0.2151, log-loss 0.6257 → 0.6199, F1 0.713 → 0.720, AUC 0.7035 →
+  0.7062** (`ridge_phase1_combined` in `tools/model_backtest_harness.R`'s comparison table — full
+  figures in `cache/model_comparison_backtest.rds`). Now wired into the LIVE pipeline:
+  `team_ratings_engine.R::run_team_ratings()` fits ridge fresh each run on the full historical
+  walk-forward table (`build_walkforward_games()`, ~5,548 games, adds ~30-45s to that stage —
+  accepted cost, no new cache/stage needed) and uses it in place of the old `(home_rating -
+  away_rating) + NFL_HCA` line, with the old formula kept as an explicit fallback if the fit ever
+  fails. Live win probabilities are now visibly less extreme/more plausible post-Phase-2 (e.g. a
+  32-game live slate ranged ~21%-87% instead of the pre-Phase-1 93%+/<2% extremes that originally
+  motivated the Phase 8 shrinkage fix). Verified via a full `run_full_pipeline.R` run (exit 0,
+  154s total, all stages fresh) and `config-constant-drift-audit` (zero HIGH findings — Phase 2
+  added no new `config.R` constants; ridge's own regularization strength is chosen by glmnet's
+  internal cross-validation, not hand-tuned).
+- **Not yet done**: Phases 3-5 of the roadmap (MOV-weighted Elo, gradient-boosted trees, Bayesian
+  state-space) remain a documented but unimplemented roadmap — see the plan for gating/
+  dependencies. Sharpe at the production staking gate (tau=9) is still reported by the harness for
+  every candidate including ridge; it's directionally less bad (`ridge_phase1_combined`: -0.0111
+  vs. `phase1_combined`'s -0.0332 at tau=9) but still negative — Phase 2 is a calibration win, not
+  a proven staking edge, same honesty caveat as Phase 1. `stats::optimize()`'s golden-section
+  search on the Sharpe-by-tau sweep isn't guaranteed globally optimal on a non-smooth step-function
+  objective (a real limitation — see the harness's own inline caveat) — do not treat any single
+  positive-Sharpe reading from that sweep as validated edge without a wider check.
 
 ## Known issues / unfinished business
 
