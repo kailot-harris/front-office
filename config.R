@@ -189,6 +189,15 @@ CACHE_INJURY_DATA     <- file.path(CACHE_DIR, "injury_data_cache.rds")
 CACHE_PARTICIPATION   <- file.path(CACHE_DIR, "participation_cache.rds")
 CACHE_NEXTGEN_STATS   <- file.path(CACHE_DIR, "nextgen_stats_cache.rds")
 CACHE_PLAYER_PROPS    <- file.path(CACHE_DIR, "latest_player_props.rds")
+# Added by epa_metrics_engine.R (Phase 2, task P2-A) per docs/task_assignments_phase2.md's
+# "Constants note" - a narrowly-scoped, documented exception to that script's single-file
+# ownership (epa_metrics_engine.R does not own config.R; it owns only this one new constant).
+CACHE_EPA_METRICS     <- file.path(CACHE_DIR, "team_epa_metrics.rds")
+# Added by team_ratings_engine.R (Phase 2, task P2-B) per docs/task_assignments_phase2.md's
+# "Constants note" - same narrowly-scoped, documented exception pattern as CACHE_EPA_METRICS
+# above (team_ratings_engine.R does not own config.R; it owns only these two new constants).
+CACHE_TEAM_RATINGS        <- file.path(CACHE_DIR, "team_ratings.rds")
+CACHE_PROJECTED_MATCHUPS  <- file.path(CACHE_DIR, "projected_matchups.rds")
 
 # ------------------------------------------------------------------------------------------
 # API Throttling & Rate-Limiting (sport-agnostic starting defaults)

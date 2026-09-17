@@ -32,7 +32,9 @@ if (is.na(run_start)) stop("Could not parse run-start timestamp: ", args[1])
 manifest <- list(
   list(stage = "daily_ingest.R", outputs = c(CACHE_PBP, CACHE_SCHEDULES)),
   list(stage = "sync_rosters.R", outputs = CACHE_ROSTERS),
-  list(stage = "injury_scraper.R", outputs = CACHE_INJURY_DATA)
+  list(stage = "injury_scraper.R", outputs = CACHE_INJURY_DATA),
+  list(stage = "epa_metrics_engine.R", outputs = CACHE_EPA_METRICS),
+  list(stage = "team_ratings_engine.R", outputs = c(CACHE_TEAM_RATINGS, CACHE_PROJECTED_MATCHUPS))
 )
 
 if (length(manifest) == 0) {

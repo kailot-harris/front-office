@@ -202,15 +202,27 @@ run_stage("injury_scraper.R", "Scrape NFL Injury Reports (nflreadr primary + ESP
           call_fn = "run_injury_scraper",
           output   = CACHE_INJURY_DATA)
 
+# 4. EPA/CPOE metrics engine (Phase 2, task P2-A).
+# Writes CACHE_EPA_METRICS (config.R). Reads CACHE_PBP from stage 1 above.
+run_stage("epa_metrics_engine.R", "Compute Rolling Team EPA/CPOE Metrics",
+          call_fn = "run_epa_metrics",
+          output   = CACHE_EPA_METRICS)
+
+# 5. Team ratings & projected-matchup engine (Phase 2, task P2-B).
+# Writes CACHE_TEAM_RATINGS and CACHE_PROJECTED_MATCHUPS (config.R) — two outputs from one stage,
+# declared together per the daily_ingest.R stage's multi-output precedent above.
+run_stage("team_ratings_engine.R", "Compute Team Power Ratings & Projected Matchups",
+          call_fn = "run_team_ratings",
+          output   = c(CACHE_TEAM_RATINGS, CACHE_PROJECTED_MATCHUPS))
+
 # ------------------------------------------------------------------------------
 # FUTURE STAGES — extension point, not yet implemented (see docs/task_assignments_phase0.md's
 # Constraints section and docs/NFL_REPLICATION_PLAN.md §1's later-phase list). Per that
 # Constraints note, this wave deliberately does NOT add stub run_stage() calls for scripts that
 # don't exist yet — doing so would immediately fail with "script not found". A later wave should
 # insert its own run_stage() calls HERE, in roughly this order, as each script is actually built:
-#   metrics engines -> team/player ratings -> fatigue/travel & embeddings -> market/props pricing
-#   (requires a human-provisioned Odds API key, per REPLICATION_PLAN §2) -> risk management ->
-#   notification/settlement -> live/dashboard.
+#   fatigue/travel & embeddings -> market/props pricing (requires a human-provisioned Odds API
+#   key, per REPLICATION_PLAN §2) -> risk management -> notification/settlement -> live/dashboard.
 # ------------------------------------------------------------------------------
 
 pipeline_total_time <- as.numeric(difftime(Sys.time(), pipeline_start_time, units = "secs"))
