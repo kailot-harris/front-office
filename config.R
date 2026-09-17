@@ -285,6 +285,22 @@ MIN_SAMPLE_GAMES_FOR_STAKE <- 9
 # very little on top of the market by itself - see QB_INJURY_RATING_PENALTY_PTS below for the
 # piece expected to carry genuine incremental signal instead of re-deriving what the market
 # already prices.
+#
+# RE-CHECKED AGAINST A SHARPE OBJECTIVE 2026-09-17 (tools/derive_market_blend_weight_sharpe.R) -
+# this constant was only ever optimized for Brier/calibration, never for staking profitability,
+# and this session's Phase 4/5 findings (situational EPA, Kalman state-space) both showed Brier
+# improvements can come with Sharpe REGRESSIONS - so the question was worth asking directly
+# against the deployed ensemble_ridge_elo formula and its real staking gates
+# (MIN_SAMPLE_GAMES_FOR_STAKE + LONGSHOT_DECIMAL_ODDS_CAP). Result: Sharpe is NEGATIVE across the
+# ENTIRE [0, 1] weight grid (walk-forward, 2010-2025, n=4,009 games with real moneylines) -
+# roughly -0.05 to -0.06 for w in [0, 0.9], degrading further as w -> 1 (n=0 bets at w=1.00 - a
+# model identical to the market has no edge over its own devigged price, so no positive-EV bet
+# is ever found). The Sharpe-optimal weight (w=0.748, Sharpe=-0.0506, n=1,197 bets) is a real but
+# modest per-bet improvement over w=0.97's Sharpe=-0.0909, but it comes from staking on ~25x more
+# games - LOWERING the weight would mean much larger ABSOLUTE cumulative losses (-80% vs. -0.6%
+# over this window), not a fix. NOT changed as a result of this check: w=0.97's very thin bet
+# volume is arguably the safer property given no real edge exists at any weight, not a flaw to
+# correct. Real-money staking should stay paused regardless (Known Issue #4).
 MARKET_BLEND_WEIGHT <- 0.97
 
 # QB-injury/backup-starter rating adjustment: rating points subtracted from a team's power

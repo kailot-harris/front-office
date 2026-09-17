@@ -246,6 +246,31 @@ GAME-SPECIFIC combined variance for win probability, instead of every other cand
   `tools/derive_kalman_params.R`'s header, `config.R`'s "Kalman State-Space Model
   Hyperparameters" section, `cache/model_comparison_backtest.rds`.
 
+### `MARKET_BLEND_WEIGHT` re-checked against a Sharpe objective (uncommitted, 2026-09-17)
+
+Prompted directly by the Phase 4/5 pattern above (Brier improvements paired with Sharpe
+regressions): `MARKET_BLEND_WEIGHT=0.97` was only ever derived by minimizing Brier
+(`tools/derive_market_blend_weight.R`, against the now-superseded `baseline_k3.6` formula) -
+never checked against Sharpe, and never checked against the formula actually deployed today.
+New `tools/derive_market_blend_weight_sharpe.R` re-runs the sweep against the real deployed
+`ensemble_ridge_elo` formula and its real staking gates (`MIN_SAMPLE_GAMES_FOR_STAKE` +
+`LONGSHOT_DECIMAL_ODDS_CAP`, quarter-Kelly), walk-forward 2010-2025 (n=4,009 games with real
+moneylines).
+- **Result**: Sharpe is NEGATIVE across the ENTIRE `[0, 1]` weight grid - roughly -0.05 to -0.06
+  for w in `[0, 0.9]`, degrading toward `w=1` (zero bets at `w=1.00` - a model identical to the
+  market has no edge over its own devigged price). Sharpe-optimal weight `w=0.748` gives
+  Sharpe=-0.0506 (n=1,197 bets) vs. current `w=0.97`'s Sharpe=-0.0909 (n=47 bets) - a real but
+  modest per-bet improvement, but it comes from staking ~25x more games: cumulative return would
+  be -80% vs. -0.6% over this window. Lowering the weight is NOT a fix; it trades a worse
+  per-bet ratio at very low exposure for a slightly-better ratio at much higher exposure to a
+  strategy with no real edge.
+- **Status**: `MARKET_BLEND_WEIGHT` left UNCHANGED at 0.97 - its thin bet volume is a safety
+  property given no edge exists at any weight in this grid, not a flaw. Documented directly in
+  `config.R`'s `MARKET_BLEND_WEIGHT` comment (a permanent note, not just here). Real-money
+  staking should stay paused regardless (Known Issue #4, unchanged).
+- **Full detail**: `tools/derive_market_blend_weight_sharpe.R`'s header and full grid printout,
+  `cache/market_blend_weight_sharpe_derivation.rds`.
+
 ## Known issues / unfinished business
 
 1. **`NFL_DISCORD_WEBHOOK` not visible to R.** Set in `C:\Users\kailo\Documents\.Renviron`, but
