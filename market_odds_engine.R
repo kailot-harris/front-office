@@ -264,6 +264,47 @@ fetch_market_odds <- function() {
   )
 }
 
+# ------------------------------------------------------------------------------
+# fetch_devigged_market_probs() - Phase 1 (model-quality remediation, docs/HANDOFF.md's
+# post-backtest roadmap). Small, reusable extraction of this file's existing devig math
+# (american_to_prob() + 2-way normalization, same formula already used for cons_fair_h/a
+# below in evaluate_betting_slate()) so team_ratings_engine.R can blend a devigged market
+# probability into CACHE_PROJECTED_MATCHUPS.home_win_prob WITHOUT re-deriving model
+# probability independently (that rule stays intact - see that file's own header) and
+# WITHOUT this file itself changing its consumption contract.
+#
+# Calls fetch_market_odds() itself (same live-fetch-or-fixture-fallback function this file's
+# own evaluate_betting_slate() uses) - this means team_ratings_engine.R (pipeline stage 5)
+# and market_odds_engine.R (stage 9) each trigger their own Odds API call per pipeline run
+# (a documented, accepted cost - see docs/HANDOFF.md's Phase 1 risk callouts - rather than
+# reordering the pipeline's existing stage 5-10 dependency chain).
+#
+# Returns a tibble keyed by (home_team, away_team) - NFL_TEAMS ABBREVIATIONS, matching
+# CACHE_PROJECTED_MATCHUPS's own key shape, via resolve_team_name() - with market_home_prob
+# and market_data_source (the SYNTHETIC_FALLBACK provenance marker travels through so a
+# caller can refuse to blend against fabricated fixture odds - see team_ratings_engine.R's
+# use of this function for that guard).
+# ------------------------------------------------------------------------------
+fetch_devigged_market_probs <- function() {
+  raw_slate <- fetch_market_odds()
+  if (nrow(raw_slate) == 0) {
+    return(tibble(home_team = character(0), away_team = character(0),
+                   market_home_prob = numeric(0), market_data_source = character(0)))
+  }
+
+  home_abbr <- vapply(raw_slate$home_team, resolve_team_name, character(1))
+  away_abbr <- vapply(raw_slate$away_team, resolve_team_name, character(1))
+  imp_h <- american_to_prob(raw_slate$consensus_home_ml)
+  imp_a <- american_to_prob(raw_slate$consensus_away_ml)
+
+  tibble(
+    home_team = home_abbr,
+    away_team = away_abbr,
+    market_home_prob = imp_h / (imp_h + imp_a),
+    market_data_source = raw_slate$market_data_source
+  ) |> filter(!is.na(home_team), !is.na(away_team))
+}
+
 parse_multi_book_feed <- function(games_df) {
   results <- list()
   sharp_keys <- c("pinnacle", "circa", "lowvig", "betonlineag")

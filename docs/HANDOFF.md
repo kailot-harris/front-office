@@ -31,7 +31,7 @@ data in places — this repo deliberately avoided that shortcut except where exp
 | 2 | `sync_rosters.R` | `run_sync_rosters()` | `CACHE_ROSTERS` (~2,968 rows, all 32 teams, full season-to-date ledger incl. IR/practice squad — filter on `status == "ACT"` if you want only active roster) |
 | 3 | `injury_scraper.R` | `run_injury_scraper()` | `CACHE_INJURY_DATA` — `nflreadr::load_injuries()` primary + ESPN site-API secondary (Player-Card-href athlete-ID workaround, see CLAUDE.md) |
 | 4 | `epa_metrics_engine.R` | `run_epa_metrics()` | `CACHE_EPA_METRICS` — rolling per-team offensive/defensive EPA-per-play, success rate, CPOE, window = `ROLLING_WINDOW_SIZE` |
-| 5 | `team_ratings_engine.R` | `run_team_ratings()` | `CACHE_TEAM_RATINGS`, `CACHE_PROJECTED_MATCHUPS` — power ratings (EPA-differential-based, **now shrinkage-adjusted**, see Phase 8 below) + projected margin/win-prob for every upcoming scheduled game, plus a comparison-only Pythagorean-expectation column |
+| 5 | `team_ratings_engine.R` | `run_team_ratings()` | `CACHE_TEAM_RATINGS`, `CACHE_PROJECTED_MATCHUPS` — power ratings (EPA-differential-based, **now shrinkage-adjusted**, see Phase 8 below) + projected margin/win-prob for every upcoming scheduled game, plus a comparison-only Pythagorean-expectation column. **`home_win_prob` is now further adjusted by a QB-backup-starter penalty and blended with real live market odds** — see "Model-quality remediation" below |
 | 6 | `fatigue_engine.R` | `run_fatigue_engine()` | `CACHE_FATIGUE_METRICS` — real rest-days/short-week/travel-haversine/circadian/altitude metrics for every real scheduled game (32-team stadium DB, live-verified incl. 2026 venue renames) |
 | 7 | `playoff_simulator.R` | `run_playoff_simulator()` | `CACHE_PLAYOFF_SIMULATION` — genuine single-elimination, 14-team, reseed-after-every-round Monte Carlo bracket sim off real in-season standings (**simplified tiebreak** — win% + alphabetical, not the NFL's real multi-step tiebreaker procedure) |
 | 8 | `risk_management_engine.R` | `run_risk_management()` | `CACHE_RISK_STATE` — bankroll drawdown / dynamic Kelly-tier tracking. **Uses a `SYNTHETIC_FALLBACK` seed ledger** (clearly labeled in both logs and the cached object) because no real bet ledger/`bet_tracker.r` exists yet |
@@ -98,6 +98,62 @@ current-season EPA data. Fix (commit `d1c90aa`, `docs/task_assignments_phase7.md
 This is real, expected, and verified end-to-end (the pipeline correctly dispatches zero Discord
 picks with a clear log message). The gate will start passing games through once teams accumulate
 3+ games played, likely partway through the season.
+
+## Model-quality remediation (Phase A + Phase 1, 2026-09-17)
+
+Following the Phase 8 constant backtest below (which found the model's Sharpe was negative at
+every staking threshold), a research + planning pass produced a phased model-quality roadmap
+(saved as a plan; ask the user if you need the original plan doc). Phase A and Phase 1 of that
+roadmap are DONE:
+
+- **Phase A**: `tools/backtest_shrinkage_optimizer.R`'s walk-forward game-table builder was
+  extracted into `tools/backtest_common.R` (a regression check confirmed identical output before/
+  after) so it can be reused. `tools/model_backtest_harness.R` is a new general-purpose,
+  multi-candidate comparison harness — reports Brier score, log-loss, a calibration/reliability
+  table (all primary/threshold-free), plus accuracy/precision/recall/F1/AUC (secondary,
+  threshold=0.5, positive class="home win" — stated explicitly per the metric-tension the user's
+  original request surfaced) and a real quarter-Kelly Sharpe/ROI simulation against historical
+  closing lines, for any candidate `predict_fn`.
+- **Phase 1**: two new empirically-derived constants, both via `stats::optimize()` (not a grid
+  search) — see config.R's own comments for full figures:
+  - `MARKET_BLEND_WEIGHT = 0.97` — blends `team_ratings_engine.R`'s EPA-model probability with
+    devigged historical market probability. **Brier dropped from 0.2433 (model only) to 0.2105**
+    (2010-2025, n=4,009 games) — the single biggest calibration improvement found in this repo's
+    history. The optimizer landing near w=1 (market-only) matches the sports-forecasting
+    literature's "market is close to a sufficient statistic" finding — the EPA model contributes
+    little once market info is present.
+  - `QB_INJURY_RATING_PENALTY_PTS = 1.6` — rating-point penalty applied when a real, no-lookahead,
+    depth-chart-derived signal (`tools/qb_injury_features.R`) shows a backup QB started. Smaller
+    but real effect: Brier 0.245644 → 0.245437 (2003-2025, n=5,548 games).
+  - Both are now wired into the LIVE pipeline (`team_ratings_engine.R::run_team_ratings()`), not
+    just the backtest — `CACHE_PROJECTED_MATCHUPS.home_win_prob` is the blended/adjusted value,
+    and `market_odds_engine.R`'s "sole model-probability source" consumption contract is
+    unchanged (the blend happens upstream, per the plan's Option A).
+  - **Real data quirk discovered building this** (not yet in CLAUDE.md — add it if you touch
+    `load_depth_charts()` again): `nflreadr::load_depth_charts()` silently returns TWO different
+    schemas depending on season. Seasons 2002-2024 use the old nflverse weekly-release shape
+    (`season/week/club_code/depth_team/game_type/position`). **Seasons 2025 and 2026 — i.e.
+    `CURRENT_SEASON - 1` too, not just `CURRENT_SEASON`** — already return a live ESPN-scrape
+    shape instead (`dt`, `team`, `gsis_id`, `pos_abb`, `pos_rank`; no `season`/`week`/`position`
+    columns at all). Requesting a season range that spans both schemas silently merges both
+    shapes into one wide data frame rather than erroring — `tools/qb_injury_features.R`'s
+    historical functions only work on the old (2002-2024) schema; `team_ratings_engine.R::
+    get_live_qb_backup_flags()` has its own separate live-schema-aware logic for exactly this
+    reason. This also means the QB-injury backtest's real depth-chart coverage is effectively
+    2002-2024, not 2002-2025 (499 of 5,548 games got "unknown flag, zero adjustment" — mostly
+    real 2025-season coverage gap, not random noise, now that this is understood).
+  - Run `tools/model_backtest_harness.R` for the full candidate comparison table (baseline vs.
+    market-blend-only vs. QB-injury-only vs. combined) — saved to
+    `cache/model_comparison_backtest.rds`.
+- **Not yet done**: Phases 2-5 of the roadmap (ridge-regularized ratings, MOV-weighted Elo,
+  gradient-boosted trees, Bayesian state-space) remain a documented but unimplemented roadmap —
+  see the plan for gating/dependencies. Sharpe at the production staking gate (tau=9) is still
+  reported by the harness for every Phase 1 candidate; it improved somewhat (less negative /
+  occasionally marginally positive at a re-optimized tau for the combined candidate) but this is
+  noisy given `stats::optimize()`'s golden-section search isn't guaranteed globally optimal on a
+  non-smooth step-function objective (a real limitation — see the harness's own inline caveat) —
+  do not treat a single positive-Sharpe reading from that sweep as validated edge without a wider
+  check.
 
 ## Known issues / unfinished business
 

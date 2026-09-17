@@ -112,11 +112,87 @@
 
 suppressPackageStartupMessages({
   library(dplyr)
+  library(nflreadr)
 })
 
 source("config.R")
 source("logging_utils.R")
 .LOG_SCRIPT <- "team_ratings_engine.R"
+
+# Phase 1 (model-quality remediation, docs/HANDOFF.md's post-backtest roadmap): market-blend +
+# QB-injury adjustment. Both scripts are source()-safe (no top-level side effects beyond
+# function/constant definitions). market_odds_engine.R gives fetch_devigged_market_probs()/
+# resolve_team_name(); tools/qb_injury_features.R gives get_qb_starter_table()/
+# compute_qb_backup_flags() - the SAME functions tools/derive_market_blend_weight.R and
+# tools/derive_qb_injury_penalty.R used to derive MARKET_BLEND_WEIGHT/QB_INJURY_RATING_
+# PENALTY_PTS, never a second, independently-typed copy of either.
+source("market_odds_engine.R")
+source("tools/qb_injury_features.R")
+
+# ------------------------------------------------------------------------------------------
+# get_live_qb_backup_flags() - live analog of tools/qb_injury_features.R's walk-forward
+# definition. NOTE A REAL DATA QUIRK, VERIFIED LIVE 2026-09-17 (not in CLAUDE.md yet - add it
+# there if this file is revisited): nflreadr::load_depth_charts() returns TWO DIFFERENT
+# SCHEMAS depending on season, and the cutoff is NOT simply "current season vs. history" -
+# checked live season-by-season: 2002-2024 use the nflverse weekly-release shape (season/week/
+# club_code/depth_team/game_type/position - what tools/qb_injury_features.R's
+# get_qb_starter_table() expects and tools/derive_qb_injury_penalty.R's backtest actually used),
+# while 2025 AND 2026 (i.e. CURRENT_SEASON - 1 too, not just CURRENT_SEASON) already use a live
+# ESPN-scrape shape instead (columns: dt (a timestamp string, NOT season/week), team, gsis_id,
+# pos_abb, pos_rank - no game_type/depth_team/position/season/week columns at all). This means
+# get_qb_starter_table() (the historical/backtest function) cannot be reused for EITHER of the
+# two seasons this live function needs - both calls below query the new schema directly.
+#
+#   1. "Established" starter: mode gsis_id at pos_abb=="QB" & pos_rank==1 across ALL of
+#      CURRENT_SEASON - 1's snapshots (that team's most common 2025 starter).
+#   2. "Current" starter: the single most recent `dt` snapshot's pos_rank==1 QB for
+#      CURRENT_SEASON - that team's actual starter right now.
+# A mismatch => qb_backup_started = TRUE. Returns a named logical vector (by NFL_TEAMS
+# abbreviation), NA for any team with no usable depth-chart data in either call.
+# ------------------------------------------------------------------------------------------
+get_live_qb_backup_flags <- function() {
+  fetch_qb_rows <- function(season) {
+    tryCatch(as.data.frame(nflreadr::load_depth_charts(seasons = season)), error = function(e) {
+      log_warn(sprintf("get_live_qb_backup_flags(): load_depth_charts(%d) failed.", season),
+               call = "get_live_qb_backup_flags()", error_message = conditionMessage(e))
+      NULL
+    })
+  }
+
+  established_raw <- fetch_qb_rows(CURRENT_SEASON - 1L)
+  current_raw      <- fetch_qb_rows(CURRENT_SEASON)
+
+  if (is.null(established_raw) || nrow(established_raw) == 0 ||
+      is.null(current_raw) || nrow(current_raw) == 0) {
+    return(setNames(rep(NA, length(names(NFL_TEAMS))), names(NFL_TEAMS)))
+  }
+
+  established_mode <- established_raw |>
+    dplyr::filter(pos_abb == "QB", pos_rank == 1) |>
+    dplyr::count(team, gsis_id, sort = TRUE) |>
+    dplyr::group_by(team) |>
+    dplyr::slice_head(n = 1) |>
+    dplyr::ungroup()
+  established_lu <- setNames(established_mode$gsis_id, established_mode$team)
+
+  current_starter <- current_raw |>
+    dplyr::filter(pos_abb == "QB", pos_rank == 1) |>
+    dplyr::arrange(team, dplyr::desc(dt)) |>
+    dplyr::group_by(team) |>
+    dplyr::slice_head(n = 1) |>
+    dplyr::ungroup()
+  current_lu <- setNames(current_starter$gsis_id, current_starter$team)
+
+  lookup <- setNames(rep(NA, length(names(NFL_TEAMS))), names(NFL_TEAMS))
+  for (tm in names(NFL_TEAMS)) {
+    est <- established_lu[[tm]]
+    cur <- current_lu[[tm]]
+    if (!is.null(est) && !is.null(cur) && !is.na(est) && !is.na(cur)) {
+      lookup[tm] <- (cur != est)
+    }
+  }
+  lookup
+}
 
 # Pythagorean exponent - see header comment. Not a config.R modeling constant
 # (it's local to this one baseline/comparison calculation, not shared by any
@@ -331,8 +407,22 @@ run_team_ratings <- function() {
     # staking-gate agent can build its minimum-sample gate without re-deriving this count itself.
     games_played_lookup <- setNames(team_ratings$games_played, team_ratings$team)
 
+    # ---- Phase 1 (model-quality remediation): QB-injury flags + devigged market probs ----
+    # Computed ONCE for the whole upcoming slate, not per-game (one load_depth_charts() call,
+    # one Odds API call - see fetch_devigged_market_probs()'s header for the added-API-call
+    # cost this incurs and why it's accepted rather than reordering the pipeline).
+    qb_backup_lookup <- get_live_qb_backup_flags()
+    market_probs <- tryCatch(fetch_devigged_market_probs(), error = function(e) {
+      log_warn("fetch_devigged_market_probs() failed - market blend skipped this run (model-only probabilities used).",
+               call = "run_team_ratings()", error_message = conditionMessage(e))
+      tibble(home_team = character(0), away_team = character(0),
+             market_home_prob = numeric(0), market_data_source = character(0))
+    })
+
     projected_rows <- vector("list", nrow(upcoming))
     n_skipped <- 0L
+    n_qb_adjusted <- 0L
+    n_market_blended <- 0L
 
     for (i in seq_len(nrow(upcoming))) {
       g <- upcoming[i, ]
@@ -357,7 +447,29 @@ run_team_ratings <- function() {
       if (is.null(away_games_played) || length(away_games_played) == 0) away_games_played <- NA_integer_
 
       projected_margin <- (home_rating - away_rating) + NFL_HCA
-      home_win_prob    <- pnorm(projected_margin / NFL_MARGIN_SIGMA)
+
+      # QB-injury adjustment (config.R's QB_INJURY_RATING_PENALTY_PTS, empirically derived via
+      # tools/derive_qb_injury_penalty.R). NA flag (unknown) => zero adjustment, same convention
+      # as that derivation script's own handling of games with no usable depth-chart data.
+      home_backup <- isTRUE(qb_backup_lookup[[home]])
+      away_backup <- isTRUE(qb_backup_lookup[[away]])
+      if (home_backup || away_backup) n_qb_adjusted <- n_qb_adjusted + 1L
+      projected_margin <- projected_margin - QB_INJURY_RATING_PENALTY_PTS * home_backup +
+        QB_INJURY_RATING_PENALTY_PTS * away_backup
+
+      model_home_prob <- pnorm(projected_margin / NFL_MARGIN_SIGMA)
+
+      # Market blend (config.R's MARKET_BLEND_WEIGHT, empirically derived via
+      # tools/derive_market_blend_weight.R). Only blends against a REAL live odds slate - never
+      # against the SYNTHETIC_FALLBACK fixture (fetch_market_odds()'s own no-API-key/no-live-
+      # data fallback), which would silently corrupt real predictions with fabricated numbers.
+      mrow <- market_probs |> filter(home_team == home, away_team == away)
+      home_win_prob <- model_home_prob
+      if (nrow(mrow) > 0 && !is.na(mrow$market_data_source[1]) &&
+          mrow$market_data_source[1] != "SYNTHETIC_FALLBACK" && !is.na(mrow$market_home_prob[1])) {
+        home_win_prob <- MARKET_BLEND_WEIGHT * mrow$market_home_prob[1] + (1 - MARKET_BLEND_WEIGHT) * model_home_prob
+        n_market_blended <- n_market_blended + 1L
+      }
 
       projected_rows[[i]] <- data.frame(
         game_id            = g$game_id,
@@ -376,6 +488,8 @@ run_team_ratings <- function() {
     }
 
     projected_matchups <- bind_rows(projected_rows)
+    log_info(sprintf("Phase 1 adjustments applied: %d games with a QB-backup adjustment, %d games blended with real market odds.",
+                      n_qb_adjusted, n_market_blended), call = "run_team_ratings()")
 
     if (n_skipped > 0) {
       log_warn(sprintf("Skipped %d of %d upcoming games due to missing team ratings.",

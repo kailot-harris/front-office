@@ -260,6 +260,50 @@ RATING_SHRINKAGE_GAMES_K <- 3.6
 # real, positive Sharpe against closing lines, not just re-tuned on this one threshold.
 MIN_SAMPLE_GAMES_FOR_STAKE <- 9
 
+# Added by team_ratings_engine.R (Phase 9/model-quality remediation, "Phase 1" of
+# docs/HANDOFF.md's post-backtest roadmap) - a narrowly-scoped, documented exception
+# (team_ratings_engine.R does not own config.R; it owns only these two new constants).
+# Weight given to devigged historical market probability when blended with the EPA
+# power-rating model's own probability: blended_prob = MARKET_BLEND_WEIGHT * market_prob +
+# (1 - MARKET_BLEND_WEIGHT) * model_prob. Written into CACHE_PROJECTED_MATCHUPS.home_win_prob
+# directly (market_odds_engine.R's consumption contract - "home_win_prob is the sole model-
+# probability source" - is unchanged; the blend happens upstream, not in that file).
+#
+# EMPIRICALLY DERIVED 2026-09-17 - see tools/derive_market_blend_weight.R and
+# cache/market_blend_weight_derivation.rds for the full run. Walk-forward, out-of-sample,
+# optimized via stats::optimize() (golden-section search, not a grid search) minimizing Brier
+# score, seasons 2010-2025 (n=4,009 games) - restricted to this window because real historical
+# closing moneylines only exist in CACHE_SCHEDULES from 2010 onward (unlike RATING_SHRINKAGE_
+# GAMES_K/QB_INJURY_RATING_PENALTY_PTS's full 2003-2025 window - do not silently widen this
+# constant's derivation window without a real historical odds source for 2003-2009).
+#   Model only  (w=0): Brier = 0.243271
+#   Market only (w=1): Brier = 0.210505
+#   Optimizer result:  w=0.969 -> Brier = 0.210472
+# The optimizer found the market alone (w~0.97) is very close to optimal - consistent with the
+# sports-forecasting literature (Wunderlich & Memmert 2018, PLOS ONE) finding the market is
+# close to a "sufficient statistic" once it's in a blend. This means the EPA model contributes
+# very little on top of the market by itself - see QB_INJURY_RATING_PENALTY_PTS below for the
+# piece expected to carry genuine incremental signal instead of re-deriving what the market
+# already prices.
+MARKET_BLEND_WEIGHT <- 0.97
+
+# QB-injury/backup-starter rating adjustment: rating points subtracted from a team's power
+# rating (added to its opponent's relative margin) when tools/qb_injury_features.R's real,
+# no-lookahead depth-chart data shows a backup QB started that week instead of the team's own
+# "primary" QB (as of that week). See tools/qb_injury_features.R's header for why this needed
+# no nflreadr::load_ff_playerids() crosswalk (depth charts are already gsis_id-keyed, same as
+# CACHE_ROSTERS/CACHE_INJURY_DATA - no ID-scheme mixing to reconcile at this join point,
+# verified live rather than assumed).
+#
+# EMPIRICALLY DERIVED 2026-09-17 - see tools/derive_qb_injury_penalty.R and
+# cache/qb_injury_penalty_derivation.rds for the full run. Walk-forward, out-of-sample,
+# optimized via stats::optimize() (golden-section search, not a grid search) minimizing Brier
+# score, seasons 2003-2025 (n=5,548 games; 774 home-team and 777 away-team backup-QB games;
+# 499 games had an unknown backup-QB flag and received zero adjustment rather than a guess).
+#   No adjustment (penalty=0):        Brier = 0.245644
+#   Optimizer result: penalty=1.56 pts -> Brier = 0.245437
+QB_INJURY_RATING_PENALTY_PTS <- 1.6
+
 # ------------------------------------------------------------------------------------------
 # Cache Filepaths
 # ------------------------------------------------------------------------------------------

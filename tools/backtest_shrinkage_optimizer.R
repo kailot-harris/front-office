@@ -59,6 +59,13 @@ source("logging_utils.R")
 source("team_ratings_engine.R")   # -> compute_power_rating_points()
 source("market_odds_engine.R")    # -> american_to_decimal(), american_to_prob(), calculate_kelly()
 
+# 2026-09-17 refactor (Phase A, model-quality remediation): the walk-forward game-table
+# builder (build_prior_season_ratings/build_week_snapshot/the season-week loop) moved into
+# tools/backtest_common.R so tools/model_backtest_harness.R can reuse it without a second,
+# independently-typed copy. This script's own Brier/Sharpe output is unchanged by the move
+# (re-run and diffed against the pre-refactor console output before this commit landed).
+source("tools/backtest_common.R")
+
 if (!file.exists(CACHE_EPA_METRICS) || !file.exists(CACHE_SCHEDULES)) {
   stop("CACHE_EPA_METRICS / CACHE_SCHEDULES missing - run run_daily_ingest() and run_epa_metrics() first.")
 }
@@ -88,122 +95,15 @@ cat(sprintf("Staking window (real Vegas moneylines): seasons %d-%d\n\n",
             min(STAKING_SEASONS), max(STAKING_SEASONS)))
 
 # ------------------------------------------------------------------------------------------
-# Precompute, once per season, the prior-season-final rating for every team (identical
-# formula/inputs to team_ratings_engine.R's own prior_epa_ratings block) - this doesn't
-# depend on K or on in-season week, so it's cached per season rather than recomputed per game.
-# ------------------------------------------------------------------------------------------
-build_prior_season_ratings <- function(season) {
-  prior_epa <- epa |>
-    filter(season == !!(season - 1L)) |>
-    arrange(team, game_date, week) |>
-    group_by(team) |>
-    slice_tail(n = 1) |>
-    ungroup() |>
-    select(team, off_epa_per_play_roll, def_epa_per_play_allowed_roll)
-
-  if (nrow(prior_epa) == 0) return(data.frame(team = character(0), prior_season_rating = numeric(0)))
-
-  league_avg_off_prior <- mean(prior_epa$off_epa_per_play_roll, na.rm = TRUE)
-  league_avg_def_prior <- mean(prior_epa$def_epa_per_play_allowed_roll, na.rm = TRUE)
-
-  prior_epa |>
-    mutate(
-      prior_season_rating = compute_power_rating_points(
-        off_epa_per_play_roll, def_epa_per_play_allowed_roll,
-        league_avg_off_prior, league_avg_def_prior, avg_plays_per_game
-      )
-    ) |>
-    select(team, prior_season_rating)
-}
-
-# ------------------------------------------------------------------------------------------
-# Precompute, once per (season, week) snapshot, every team's as-of "current_raw_rating" and
-# real current-season games_played, using ONLY EPA rows strictly before that week's earliest
-# game_date (no lookahead - see header note).
-# ------------------------------------------------------------------------------------------
-build_week_snapshot <- function(season, week, cutoff_date) {
-  asof <- epa |> filter(game_date < cutoff_date)
-
-  latest_asof <- asof |>
-    arrange(team, game_date, week) |>
-    group_by(team) |>
-    slice_tail(n = 1) |>
-    ungroup() |>
-    select(team, off_epa_per_play_roll, def_epa_per_play_allowed_roll)
-
-  if (nrow(latest_asof) == 0) return(NULL)
-
-  league_avg_off <- mean(latest_asof$off_epa_per_play_roll, na.rm = TRUE)
-  league_avg_def <- mean(latest_asof$def_epa_per_play_allowed_roll, na.rm = TRUE)
-
-  latest_asof <- latest_asof |>
-    mutate(
-      current_raw_rating = compute_power_rating_points(
-        off_epa_per_play_roll, def_epa_per_play_allowed_roll,
-        league_avg_off, league_avg_def, avg_plays_per_game
-      )
-    )
-
-  games_played <- asof |>
-    filter(season == !!season) |>
-    count(team, name = "games_played")
-
-  latest_asof |>
-    left_join(games_played, by = "team") |>
-    mutate(games_played = ifelse(is.na(games_played), 0L, games_played)) |>
-    select(team, current_raw_rating, games_played)
-}
-
-# ------------------------------------------------------------------------------------------
 # Build the full walk-forward game table ONCE (K-independent inputs: current_raw_rating,
 # prior_season_rating, games_played, actual outcome, moneylines). K is applied afterward as
 # a pure blend, so the optimizer never re-touches CACHE_EPA_METRICS/CACHE_SCHEDULES per
 # candidate K - only the cheap blend + pnorm() + Brier/EV math re-runs per candidate.
+# Builder itself lives in tools/backtest_common.R (see this script's source() call above).
 # ------------------------------------------------------------------------------------------
 cat("Building walk-forward per-game snapshot table (one-time cost, not repeated per candidate K)...\n")
 
-game_rows <- list()
-row_i <- 0L
-
-for (s in CALIBRATION_SEASONS) {
-  prior_ratings <- build_prior_season_ratings(s)
-  season_games  <- completed |> filter(season == s)
-  weeks_this_season <- sort(unique(season_games$week))
-
-  for (w in weeks_this_season) {
-    week_games <- season_games |> filter(week == w)
-    cutoff <- min(week_games$gameday, na.rm = TRUE)
-    snap <- build_week_snapshot(s, w, cutoff)
-    if (is.null(snap)) next
-
-    snap <- snap |> left_join(prior_ratings, by = "team") |>
-      mutate(prior_season_rating = ifelse(is.na(prior_season_rating), 0, prior_season_rating))
-
-    rating_lu       <- setNames(snap$current_raw_rating, snap$team)
-    prior_lu        <- setNames(snap$prior_season_rating, snap$team)
-    games_played_lu <- setNames(snap$games_played, snap$team)
-
-    for (i in seq_len(nrow(week_games))) {
-      g <- week_games[i, ]
-      h <- g$home_team; a <- g$away_team
-      if (is.na(rating_lu[h]) || is.na(rating_lu[a])) next
-
-      row_i <- row_i + 1L
-      game_rows[[row_i]] <- data.frame(
-        season = s, week = w, game_id = g$game_id,
-        home_team = h, away_team = a,
-        home_raw = unname(rating_lu[h]),   away_raw = unname(rating_lu[a]),
-        home_prior = unname(prior_lu[h]),  away_prior = unname(prior_lu[a]),
-        home_gp = unname(games_played_lu[h]), away_gp = unname(games_played_lu[a]),
-        home_win = as.integer(g$home_score > g$away_score),
-        home_ml = g$home_moneyline, away_ml = g$away_moneyline,
-        stringsAsFactors = FALSE
-      )
-    }
-  }
-}
-
-games <- bind_rows(game_rows)
+games <- build_walkforward_games(epa, completed, CALIBRATION_SEASONS, avg_plays_per_game)
 cat(sprintf("Built %d walk-forward games across %d seasons.\n\n", nrow(games), length(CALIBRATION_SEASONS)))
 
 # ------------------------------------------------------------------------------------------
