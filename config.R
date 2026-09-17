@@ -207,14 +207,23 @@ N_SIMULATIONS       <- 10000
 # "Constants note" pattern - a narrowly-scoped, documented exception (team_ratings_engine.R does
 # not own config.R; it owns only this one new constant). Controls how heavily a team's blended
 # power rating leans on its prior-season final rating vs. its real current-season EPA, via
-# weight = games_played / (games_played + RATING_SHRINKAGE_GAMES_K). A STARTING HEURISTIC, NOT
-# YET EMPIRICALLY BACKTESTED (same honesty convention as ROLLING_WINDOW_SIZE's comment above) -
-# chosen so that at games_played = 4 (roughly one month into the season) the blend is already
-# 50/50 current-season vs. prior-season, and by games_played = 8+ (~halfway through the 17-game
-# season) it leans heavily (>=2:1) toward real current-season form. A future agent should re-tune
-# this against actual out-of-sample calibration (e.g. Brier score of home_win_prob by week) rather
-# than trusting this starting value.
-RATING_SHRINKAGE_GAMES_K <- 4
+# weight = games_played / (games_played + RATING_SHRINKAGE_GAMES_K).
+#
+# EMPIRICALLY BACKTESTED 2026-09-17 - see tools/backtest_shrinkage_optimizer.R (walk-forward,
+# out-of-sample; each game's rating built only from EPA data strictly before that game's week -
+# no lookahead) and cache/phase8_constant_backtest.rds for the full run. Objective: minimize
+# Brier score of home_win_prob vs. real game outcomes, seasons 2003-2025 (n=5,548 games),
+# optimized via stats::optimize() (golden-section search, not a grid search) over K in [0.1, 30].
+#   Optimizer result: K = 3.56 -> Brier = 0.245643
+#   Prior starting heuristic (K = 4): Brier = 0.245698 (already within 0.00006 of optimal)
+#   Naive baseline K->Inf (pure prior-season rating, never shrinks toward current form): Brier = 0.290935
+#   Naive baseline K->0   (pure current-season rating, no shrinkage at all):             Brier = 0.255067
+# The starting K=4 heuristic turned out to be nearly optimal - kept at the backtested value
+# (rounded to 1 decimal place, not the raw optimizer float, since the objective surface is
+# essentially flat near the optimum and a 2-sig-fig value is more honest about precision than a
+# spurious 3.56). Re-run the backtest script whenever CACHE_EPA_METRICS gains a new completed
+# season and update this value/comment if the recommendation shifts materially.
+RATING_SHRINKAGE_GAMES_K <- 3.6
 
 # Added by market_odds_engine.R (Phase 8, task P8-B) per docs/task_assignments_phase7.md's
 # "Constants note" pattern - a narrowly-scoped, documented exception (market_odds_engine.R does
@@ -226,14 +235,30 @@ RATING_SHRINKAGE_GAMES_K <- 4
 # matchup has played fewer than MIN_SAMPLE_GAMES_FOR_STAKE real current-season games,
 # market_odds_engine.R forces Bankroll_Rec to 0 and marks the row's Status as an insufficient-
 # sample flag, regardless of how large the model's computed EV looks - a well-calibrated model
-# still should not drive a real stake off 1-2 games of noisy current-season data. A STARTING
-# HEURISTIC, NOT YET EMPIRICALLY BACKTESTED (same honesty convention as ROLLING_WINDOW_SIZE's
-# and RATING_SHRINKAGE_GAMES_K's comments above) - 3 games (roughly the first 2-3 weeks of the
-# 17-game season) was chosen as a point past the single-game/two-game extreme-variance zone
-# while still gating most of the early season, not as a backtested optimum. A future agent
-# should re-tune this against actual out-of-sample staking performance (e.g. realized ROI of
-# bets placed at each games_played threshold) rather than trusting this starting value.
-MIN_SAMPLE_GAMES_FOR_STAKE <- 3
+# still should not drive a real stake off 1-2 games of noisy current-season data.
+#
+# EMPIRICALLY BACKTESTED 2026-09-17 - see tools/backtest_shrinkage_optimizer.R and
+# cache/phase8_constant_backtest.rds for the full run. Objective: maximize the Sharpe ratio
+# (mean / sd of per-bet pct return) of a real quarter-Kelly staking simulation, RATING_
+# SHRINKAGE_GAMES_K applied, run against REAL historical Vegas closing moneylines already
+# present in CACHE_SCHEDULES (seasons 2010-2025 only - reliable moneyline coverage; sparse/
+# absent 2002-2009, excluded), n=4,009 games with real odds, optimized via stats::optimize()
+# (golden-section search, not a grid search) over the threshold in [0, 12].
+#   Optimizer result: tau=9  -> n_bets=1,749  Sharpe=-0.0119  cumulative pct return = -62.9%
+#   Prior starting heuristic (tau=3): n_bets=3,088  Sharpe=-0.0296  cumulative pct return = -270.6%
+#   No gate at all (tau=0):           n_bets=3,755  Sharpe=-0.0134  cumulative pct return = -152.0%
+#
+# IMPORTANT - READ BEFORE STAKING REAL MONEY: Sharpe is NEGATIVE at every threshold tested,
+# including tau=9. This backtest does NOT show a profitable staking strategy at any gate value -
+# it only shows that gating out low-sample-size games meaningfully reduces the model's historical
+# losses against real closing lines (tau=9 loses ~4x less cumulative % than tau=3, and ~2.4x less
+# than no gate). Raising this constant to 9 is the empirically-best MITIGATION found among the
+# options tested, not a validated edge. The underlying rating model (EPA-differential power
+# rating, see team_ratings_engine.R) has not been shown to beat the closing line historically -
+# that is a modeling problem this constant cannot fix, and real-money staking should stay paused
+# (per docs/HANDOFF.md Known Issue #5) until a model revision is separately backtested to
+# real, positive Sharpe against closing lines, not just re-tuned on this one threshold.
+MIN_SAMPLE_GAMES_FOR_STAKE <- 9
 
 # ------------------------------------------------------------------------------------------
 # Cache Filepaths
