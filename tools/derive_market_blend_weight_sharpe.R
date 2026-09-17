@@ -128,10 +128,15 @@ cat("Grid diagnostic (w, n_bets, Sharpe, cumulative return %) - printed before o
 cat("small-n Kelly-staking Sharpe surfaces are noisy (see LONGSHOT_DECIMAL_ODDS_CAP's own grid\n")
 cat("finding a thin, non-robust local bump) - a single optimizer result alone would hide that:\n\n")
 grid_w <- seq(0, 1, by = 0.05)
-for (w in grid_w) {
-  r <- sharpe_for_weight(w)
-  cat(sprintf("  w=%.2f  n=%4d  sharpe=%9.4f  cumret_pct=%9.2f\n",
-              w, r$n, ifelse(is.infinite(r$sharpe), NA, r$sharpe), r$cumret_pct))
+grid_results <- lapply(grid_w, sharpe_for_weight)
+grid_table <- data.frame(
+  w = grid_w,
+  n = vapply(grid_results, `[[`, integer(1), "n"),
+  sharpe = vapply(grid_results, function(r) ifelse(is.infinite(r$sharpe), NA_real_, r$sharpe), numeric(1)),
+  cumret_pct = vapply(grid_results, `[[`, numeric(1), "cumret_pct")
+)
+for (i in seq_len(nrow(grid_table))) {
+  with(grid_table[i, ], cat(sprintf("  w=%.2f  n=%4d  sharpe=%9.4f  cumret_pct=%9.2f\n", w, n, sharpe, cumret_pct)))
 }
 
 cat("\nOptimizing MARKET_BLEND_WEIGHT via stats::optimize() (bounded [0, 1], maximizing Sharpe)...\n")
@@ -146,7 +151,8 @@ cat(sprintf("Sharpe-optimal weight: w=%.3f: n=%d, Sharpe=%.4f, cumret_pct=%.2f\n
 
 out <- list(
   run_at = Sys.time(), n_games = nrow(games),
-  grid_w = grid_w, current_weight = MARKET_BLEND_WEIGHT, current_result = current,
+  grid_w = grid_w, grid_table = grid_table,
+  current_weight = MARKET_BLEND_WEIGHT, current_result = current,
   sharpe_optimal_weight = opt$minimum, sharpe_optimal_result = best
 )
 saveRDS(out, file.path(CACHE_DIR, "market_blend_weight_sharpe_derivation.rds"))
