@@ -166,15 +166,51 @@ roadmap are DONE:
   154s total, all stages fresh) and `config-constant-drift-audit` (zero HIGH findings — Phase 2
   added no new `config.R` constants; ridge's own regularization strength is chosen by glmnet's
   internal cross-validation, not hand-tuned).
-- **Not yet done**: Phases 3-5 of the roadmap (MOV-weighted Elo, gradient-boosted trees, Bayesian
-  state-space) remain a documented but unimplemented roadmap — see the plan for gating/
-  dependencies. Sharpe at the production staking gate (tau=9) is still reported by the harness for
-  every candidate including ridge; it's directionally less bad (`ridge_phase1_combined`: -0.0111
-  vs. `phase1_combined`'s -0.0332 at tau=9) but still negative — Phase 2 is a calibration win, not
-  a proven staking edge, same honesty caveat as Phase 1. `stats::optimize()`'s golden-section
-  search on the Sharpe-by-tau sweep isn't guaranteed globally optimal on a non-smooth step-function
-  objective (a real limitation — see the harness's own inline caveat) — do not treat any single
-  positive-Sharpe reading from that sweep as validated edge without a wider check.
+- **Phase 3 (done, 2026-09-17, harness-only — NOT deployed to the live pipeline, see below)**:
+  `tools/elo_model.R` — a classic MOV-weighted Elo rating (FiveThirtyEight's public NFL Elo
+  methodology as the reference: K-factor sensitivity, MOV multiplier shape, ~2/3 season
+  carryover), a structurally different candidate from Phases 1-2's EPA-differential/ridge
+  lineage. `ELO_HCA_POINTS`/`ELO_MOV_C`/`ELO_POINTS_PER_MARGIN_PT` are literature-reference
+  values kept local to that file (a documented deviation from this repo's usual derive-
+  everything convention — flagged, not silently treated as equivalent to an empirical
+  derivation). `ELO_K_FACTOR = 28` **is** empirically derived (`tools/derive_elo_k.R`,
+  `stats::optimize()`, Brier-minimizing, walk-forward — Elo's sequential game-by-game updates
+  make this automatically no-lookahead). Real `fatigue_engine.R` rest/travel data is folded in
+  as an additive margin term (per the plan's stated alternative to using it as a raw Elo-update
+  covariate).
+  - **Calibration result**: `elo_phase1_combined` (Elo's margin + QB-injury + market-blend, same
+    stack as production) beat `ridge_phase1_combined` (the actual production candidate) on
+    every primary metric: **Brier 0.2151 → 0.2121, log-loss 0.6199 → 0.6117, F1 0.720 → 0.719
+    (~flat), AUC 0.7063 → 0.7150** — a real calibration win, using no EPA data at all in its
+    core rating update.
+  - **Staking result (the reason this was NOT promoted to production)**: Sharpe at the
+    production gate (tau=9) went from ridge's -0.0128 (n=259 bets) to **-0.1461 (n=86 bets)** —
+    not just "still negative" like every candidate before it, a real REGRESSION. A 50/50
+    probability ensemble of ridge+Elo (`ensemble_ridge_elo`, added as an exploratory extra
+    candidate, not part of the original roadmap) partially recovers this (-0.0863, n=123) while
+    keeping most of the calibration gain (Brier 0.2130, AUC 0.7123, best F1 of any candidate at
+    0.7216) — better than pure Elo, still worse than ridge alone on Sharpe specifically.
+  - **Decision**: given this is a real market-relative regression (not just "still negative"),
+    and the plan's own verification section only guarantees a calibration-only win "must not be
+    used to lift the real-money staking pause" without settling whether it should replace
+    production outright, this was judged too risky to auto-promote given the metric split. **The
+    live pipeline still uses Phase 2's ridge model (`ridge_phase1_combined`'s formula) —
+    unchanged this phase.** `elo_mov`, `elo_phase1_combined`, and `ensemble_ridge_elo` are all
+    validated, working harness candidates (`tools/model_backtest_harness.R`,
+    `cache/model_comparison_backtest.rds`) available for a future agent/the user to promote if
+    they decide the calibration gain is worth the Sharpe tradeoff, or to investigate further
+    first (is n=86's Sharpe just small-sample noise, or a real systematic Elo/market divergence?
+    — not yet answered).
+  - Verified via `config-constant-drift-audit` (zero HIGH findings, `ELO_K_FACTOR` correctly
+    single-sourced). No full-pipeline re-run needed this phase since nothing in the live pipeline
+    changed.
+- **Not yet done**: Phases 4-5 of the roadmap (gradient-boosted trees, Bayesian state-space)
+  remain a documented but unimplemented roadmap — see the plan for gating/dependencies. Also
+  worth a future pass: investigating the ridge-vs-Elo Sharpe divergence above before deciding
+  whether to promote Elo/the ensemble. `stats::optimize()`'s golden-section search on the
+  Sharpe-by-tau sweep isn't guaranteed globally optimal on a non-smooth step-function objective (a
+  real limitation — see the harness's own inline caveat) — do not treat any single positive-Sharpe
+  reading from that sweep as validated edge without a wider check.
 
 ## Known issues / unfinished business
 

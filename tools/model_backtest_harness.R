@@ -57,10 +57,12 @@ source("market_odds_engine.R")    # -> american_to_decimal(), american_to_prob()
 source("tools/backtest_common.R") # -> build_walkforward_games()
 source("tools/qb_injury_features.R")
 source("tools/ridge_massey_model.R") # -> predict_ridge_massey_walkforward() (Phase 2)
+source("tools/elo_model.R")          # -> run_elo_walkforward() (Phase 3)
 
 epa <- readRDS(CACHE_EPA_METRICS) |> mutate(game_date = as.Date(game_date))
 sch <- readRDS(CACHE_SCHEDULES)   |> mutate(gameday = as.Date(gameday))
 completed <- sch |> filter(!is.na(home_score), !is.na(away_score))
+fatigue <- readRDS(CACHE_FATIGUE_METRICS)
 
 CALIBRATION_SEASONS <- (MODERN_ERA_START_SEASON + 1L):(CURRENT_SEASON - 1L)
 avg_plays_per_game <- mean(epa$n_off_plays, na.rm = TRUE)
@@ -92,6 +94,22 @@ games$market_prob <- ifelse(is.na(games$home_ml) | is.na(games$away_ml), NA_real
 cat(sprintf("Games with a known QB-backup flag: %d/%d. Games with real historical market odds: %d/%d.\n\n",
             sum(!is.na(games$home_qb_backup) & !is.na(games$away_qb_backup)), nrow(games),
             sum(!is.na(games$market_prob)), nrow(games)))
+
+# ------------------------------------------------------------------------------------------
+# Phase 3: Elo simulation. Run ONCE across the FULL history (MODERN_ERA_START_SEASON onward,
+# not just CALIBRATION_SEASONS) so the sequential rating state is properly warmed up before
+# CALIBRATION_SEASONS begins (2002 is Elo's own burn-in season - see tools/derive_elo_k.R),
+# then join elo_margin_pts/fatigue_adj back onto the shared `games` table by game_id so Elo's
+# candidates can be combined with the same QB-injury/market-blend stack as every other
+# candidate, exactly like Phases 1-2's candidates are.
+# ------------------------------------------------------------------------------------------
+cat("Simulating Elo sequentially across full history (one-time cost)...\n")
+elo_full_history <- sch |>
+  filter(!is.na(home_score), !is.na(away_score), season >= MODERN_ERA_START_SEASON, season <= CURRENT_SEASON - 1L)
+elo_results <- run_elo_walkforward(elo_full_history, fatigue, ELO_K_FACTOR) |>
+  select(game_id, elo_margin_pts, fatigue_adj)
+games <- games |> left_join(elo_results, by = "game_id")
+cat(sprintf("Elo coverage in the scored window: %d/%d games.\n\n", sum(!is.na(games$elo_margin_pts)), nrow(games)))
 
 # ------------------------------------------------------------------------------------------
 # Shared building block every candidate's predict_fn() calls - the exact production blend
@@ -155,6 +173,43 @@ candidates <- list(
     margin <- predict_ridge_massey_walkforward(games) - params$penalty * home_adj + params$penalty * away_adj
     model_prob <- pnorm(margin / NFL_MARGIN_SIGMA)
     blend_with_market(model_prob, games$market_prob, params$weight)
+  }),
+  # Phase 3: MOV-weighted Elo (tools/elo_model.R), a structurally different candidate from the
+  # EPA-differential/ridge lineage above - a classic sequential Elo rating with real fatigue
+  # already folded in as an additive margin term (see that file's header). elo_margin_pts is
+  # Elo's OWN margin (fatigue_adj is added separately below, matching tools/elo_model.R's own
+  # construction of its home_win_prob column, so "elo_mov" here reproduces that column exactly).
+  # "elo_phase1_combined" swaps Elo's margin in for baseline_margin()/ridge's margin inside the
+  # SAME QB-injury + market-blend stack, to see whether Elo is worth promoting on top of what's
+  # actually deployed (ridge_phase1_combined, as of Phase 2).
+  list(name = "elo_mov", params = list(), predict_fn = function(games, params) {
+    pnorm((games$elo_margin_pts + games$fatigue_adj) / NFL_MARGIN_SIGMA)
+  }),
+  list(name = "elo_phase1_combined", params = list(weight = MARKET_BLEND_WEIGHT, penalty = QB_INJURY_RATING_PENALTY_PTS),
+       predict_fn = function(games, params) {
+    home_adj <- ifelse(is.na(games$home_qb_backup), 0, as.integer(games$home_qb_backup))
+    away_adj <- ifelse(is.na(games$away_qb_backup), 0, as.integer(games$away_qb_backup))
+    margin <- games$elo_margin_pts + games$fatigue_adj - params$penalty * home_adj + params$penalty * away_adj
+    model_prob <- pnorm(margin / NFL_MARGIN_SIGMA)
+    blend_with_market(model_prob, games$market_prob, params$weight)
+  }),
+  # Exploratory: simple 50/50 probability ensemble of ridge_phase1_combined and
+  # elo_phase1_combined - checks whether averaging the two structurally-different Phase 2/
+  # Phase 3 candidates combines ridge's better Sharpe profile with Elo's better calibration,
+  # rather than picking just one. Not in the original phase roadmap - added because Phase 3's
+  # elo_phase1_combined showed a real calibration win (Brier/log-loss/AUC) alongside a real
+  # Sharpe REGRESSION (not just "still negative" like Phases 1-2, but meaningfully worse) - see
+  # docs/HANDOFF.md for the full comparison and why this candidate was worth checking before
+  # deciding what (if anything) replaces ridge in the live pipeline.
+  list(name = "ensemble_ridge_elo", params = list(weight = MARKET_BLEND_WEIGHT, penalty = QB_INJURY_RATING_PENALTY_PTS),
+       predict_fn = function(games, params) {
+    home_adj <- ifelse(is.na(games$home_qb_backup), 0, as.integer(games$home_qb_backup))
+    away_adj <- ifelse(is.na(games$away_qb_backup), 0, as.integer(games$away_qb_backup))
+    ridge_margin <- predict_ridge_massey_walkforward(games) - params$penalty * home_adj + params$penalty * away_adj
+    elo_margin   <- games$elo_margin_pts + games$fatigue_adj - params$penalty * home_adj + params$penalty * away_adj
+    ridge_prob <- blend_with_market(pnorm(ridge_margin / NFL_MARGIN_SIGMA), games$market_prob, params$weight)
+    elo_prob   <- blend_with_market(pnorm(elo_margin / NFL_MARGIN_SIGMA), games$market_prob, params$weight)
+    0.5 * ridge_prob + 0.5 * elo_prob
   })
 )
 

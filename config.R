@@ -304,6 +304,30 @@ MARKET_BLEND_WEIGHT <- 0.97
 #   Optimizer result: penalty=1.56 pts -> Brier = 0.245437
 QB_INJURY_RATING_PENALTY_PTS <- 1.6
 
+# Added by tools/elo_model.R (Phase 3, model-quality remediation) - a narrowly-scoped,
+# documented exception (tools/elo_model.R does not own config.R; it owns only this one
+# constant plus three literature-reference constants kept LOCAL to that file - see its own
+# header for why ELO_HCA_POINTS/ELO_MOV_C/ELO_POINTS_PER_MARGIN_PT are NOT here: they are
+# taken directly from FiveThirtyEight's public NFL Elo methodology rather than independently
+# re-derived, a deliberate, documented deviation from this file's usual derive-everything
+# convention, not an oversight). ELO_K_FACTOR controls how sharply a team's Elo rating moves
+# after each game (rating_shift = K * mov_multiplier * (actual_outcome - predicted_prob)).
+#
+# EMPIRICALLY DERIVED 2026-09-17 - see tools/derive_elo_k.R and cache/elo_k_derivation.rds.
+# Walk-forward, out-of-sample (Elo's own sequential game-by-game updates make this
+# automatically no-lookahead - each game's prediction only ever uses ratings as they stood
+# strictly before that game), optimized via stats::optimize() (golden-section search, not a
+# grid search) minimizing Brier score, seasons 2003-2025 (2002 = Elo's own "burn-in" season,
+# every team starts at ELO_INITIAL_RATING with no real history yet - not scored, same role
+# 2002 already plays for RATING_SHRINKAGE_GAMES_K's prior-season fallback).
+#   Optimizer result: K=28.31 -> Brier = 0.220483
+# For comparison: this Elo candidate (with tools/elo_model.R's fatigue-as-additive-margin
+# covariate folded in) scored BETTER than both the original baseline (Brier 0.2456) and the
+# Phase 2 ridge candidate ALONE (Brier 0.2317) on this same metric, using no market data at
+# all - see tools/model_backtest_harness.R's comparison table for the full picture including
+# how it stacks against the market-blended candidates.
+ELO_K_FACTOR <- 28
+
 # ------------------------------------------------------------------------------------------
 # Cache Filepaths
 # ------------------------------------------------------------------------------------------
