@@ -333,6 +333,38 @@ ID-scheme quirk explicitly calls for).
   player-level feature that does, not a retrofit of a previously-broken join.
 - **Full detail**: `player_id_crosswalk.R`'s own header (full live-verified schema/quirks).
 
+### Participation/personnel feature pickup (uncommitted, 2026-09-17)
+
+Closed the "unstarted" half of Known Issue #7 below (the data-availability constraint itself
+is not something this repo can fix). New `tools/participation_features.R` is the first real
+use of `nflreadr::load_participation()` in this repo - re-verified live rather than re-citing
+the prior claim: seasons 2016-2025 all return real data now (2016: 48,434 rows/20 cols; 2023+:
+26 cols, six extra FTN player-name/number/position-list columns, not new team-level stats);
+`CURRENT_SEASON` (2026) is a genuine HTTP 404 (0 rows) against the real GitHub release asset -
+confirms this is a hard wall, not a stale claim, and why this stays a `tools/`-only,
+backtest-only pipeline rather than a `run_full_pipeline.R` stage.
+- Joins participation to `CACHE_PBP` by `(game_id, play_id)` (inherits that file's already-
+  verified posteam/defteam resolution rather than re-deriving team attribution from
+  `possession_team`) and computes six per-team-per-game features (offense: 11-personnel rate,
+  defenders-in-box faced, pressure-rate allowed; defense: pass-rushers sent, pressure-rate
+  generated, defenders-in-box deployed), rolling `ROLLING_WINDOW_SIZE` trailing average.
+- New `tools/ridge_participation_model.R` adds these as ridge regressors via a standalone,
+  no-lookahead as-of attach function (deliberately not editing `tools/backtest_common.R`'s
+  shared, production-critical `build_week_snapshot()` for a feature set that can never serve a
+  live prediction). Registered as two new `tools/model_backtest_harness.R` candidates.
+- **Result (n=5,548 walk-forward games, 2003-2025, participation real only 2016+)**:
+  `ridge_participation_only` Brier 0.2320 vs. `ridge_only`'s 0.2318 - no real difference, unlike
+  the situational-EPA/Kalman findings above. `ridge_participation_phase1_combined` Sharpe
+  +0.0017 at n=262 (tau_best=9, matching the current production gate) - the FIRST non-negative
+  Sharpe value in this entire remediation arc's 18-candidate comparison, but far too close to
+  zero and too small a sample to be distinguishable from noise - not evidence of a real edge.
+- **Status**: NOT promoted to production (couldn't be even if it worked - `CURRENT_SEASON` data
+  will never exist for this feature set). Real, honest negative-to-neutral result, same
+  discipline as every other candidate this session. Data-availability limitation itself remains
+  unfixable and is unchanged (see Known Issue #7 below).
+- **Full detail**: `tools/participation_features.R`'s and `tools/ridge_participation_model.R`'s
+  own headers, `cache/model_comparison_backtest.rds`.
+
 ## Known issues / unfinished business
 
 1. **`NFL_DISCORD_WEBHOOK` not visible to R.** Set in `C:\Users\kailo\Documents\.Renviron`, but
@@ -368,8 +400,16 @@ ID-scheme quirk explicitly calls for).
    88.9% (espn_athlete_id -> gsis_id). Any FUTURE player-level join should use
    `load_player_id_crosswalk()` + `assert_join_match_rate()` rather than a fresh, unverified
    call to `load_ff_playerids()`.
-7. **`load_participation()` 2023+ is historical-only** (FTN-sourced, released only after the
-   postseason completes) — still unstarted, still correctly unused anywhere in the pipeline.
+7. ~~`load_participation()` still unstarted, still correctly unused anywhere in the
+   pipeline~~ **STARTED this session** — see "Recent work" above (`tools/participation_features.R`
+   / `tools/ridge_participation_model.R`). Re-verified live: 2016-2025 all return real data now;
+   `CURRENT_SEASON` (2026) genuinely 404s (confirms the "post-postseason-only" claim is a hard
+   wall, not a stale one). Real backtest result: personnel/box-count/pressure features add
+   essentially NO Brier improvement (0.2320 vs. `ridge_only`'s 0.2318) and only a
+   statistically-negligible Sharpe change (+0.0017 at n=262, the first non-negative Sharpe
+   value anywhere in this entire remediation arc, but far too close to zero and too small a
+   sample to call it a real edge). This data source remains fundamentally backtest-only
+   (`CURRENT_SEASON` can never populate it) - kept in `tools/`, not wired into any live stage.
 8. ~~Any ridge-model-derived backtest figure computed before the `set.seed()` fix should be
    re-verified~~ **RE-VERIFIED this session** — `tools/model_backtest_harness.R` re-run after
    the fix; every candidate's Brier score matched the previously-reported figure to 3-4 decimal

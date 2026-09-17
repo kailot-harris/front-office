@@ -464,6 +464,18 @@ CACHE_SCHEDULES       <- file.path(CACHE_DIR, "schedules_cache.rds")
 CACHE_ROSTERS         <- file.path(CACHE_DIR, "rosters_cache.rds")
 CACHE_INJURY_DATA     <- file.path(CACHE_DIR, "injury_data_cache.rds")
 CACHE_PARTICIPATION   <- file.path(CACHE_DIR, "participation_cache.rds")
+# Added by tools/participation_features.R (Known Issue #7 pickup, 2026-09-17) - a
+# tools/-only, backtest-only historical feature pipeline, deliberately NOT part of
+# run_full_pipeline.R's DAG. See that file's header for why: nflreadr::load_participation()
+# is 2016+ only and, per this repo's earlier live verification (CLAUDE.md / docs/
+# NFL_REPLICATION_PLAN.md), 2023+ data is FTN-sourced and released only AFTER the current
+# season's postseason completes - LIVE-RE-VERIFIED 2026-09-17: load_participation(seasons=2026)
+# returns a real 404 (0 rows) against the current in-progress season, confirming this is a hard
+# data-availability wall, not a stale claim. CACHE_PARTICIPATION_FEATURES is the derived
+# per-team-per-game rolling table (personnel/box-count/pressure features), analogous to
+# CACHE_EPA_METRICS but for a fundamentally backtest-only, never-live-usable feature set.
+CACHE_PARTICIPATION_FEATURES <- file.path(CACHE_DIR, "participation_features.rds")
+PARTICIPATION_MIN_SEASON <- 2016L  # nflreadr::load_participation()'s own hard floor, verified live
 CACHE_NEXTGEN_STATS   <- file.path(CACHE_DIR, "nextgen_stats_cache.rds")
 CACHE_PLAYER_PROPS    <- file.path(CACHE_DIR, "latest_player_props.rds")
 # Added by player_id_crosswalk.R's load_player_id_crosswalk() (cross-source NFL player-ID

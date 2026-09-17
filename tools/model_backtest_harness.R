@@ -61,6 +61,7 @@ source("tools/elo_model.R")          # -> run_elo_walkforward() (Phase 3)
 source("tools/gbm_model.R")          # -> predict_gbm_walkforward() (Phase 4)
 source("tools/ridge_situational_model.R") # -> predict_ridge_situational_walkforward() (Phase 4, situational features)
 source("tools/kalman_state_space_model.R") # -> run_kalman_walkforward() (Phase 5, state-space)
+source("tools/ridge_participation_model.R") # -> predict_ridge_participation_walkforward() (Known Issue #7 pickup)
 
 epa <- readRDS(CACHE_EPA_METRICS) |> mutate(game_date = as.Date(game_date))
 sch <- readRDS(CACHE_SCHEDULES)   |> mutate(gameday = as.Date(gameday))
@@ -129,6 +130,28 @@ kalman_results <- run_kalman_walkforward(kalman_full_history) |>
   select(game_id, kalman_margin_pts, kalman_pred_var)
 games <- games |> left_join(kalman_results, by = "game_id")
 cat(sprintf("Kalman coverage in the scored window: %d/%d games.\n\n", sum(!is.na(games$kalman_margin_pts)), nrow(games)))
+
+# ------------------------------------------------------------------------------------------
+# Known Issue #7 pickup: participation/personnel features. CACHE_PARTICIPATION_FEATURES only
+# covers PARTICIPATION_MIN_SEASON (2016) onward (see tools/participation_features.R's header
+# for why) - attach_participation_asof() leaves home_/away_ participation columns NA for any
+# game before that team has real participation history, exactly like every other as-of
+# attach in this harness.
+# ------------------------------------------------------------------------------------------
+if (file.exists(CACHE_PARTICIPATION_FEATURES)) {
+  cat("Attaching participation/personnel features (as-of, no lookahead)...\n")
+  part_features <- readRDS(CACHE_PARTICIPATION_FEATURES) |> mutate(game_date = as.Date(game_date))
+  games <- attach_participation_asof(games, part_features)
+  cat(sprintf("Games with real participation history for BOTH teams: %d/%d.\n\n",
+              sum(!is.na(games$home_off_personnel_11_rate_roll) & !is.na(games$away_off_personnel_11_rate_roll)),
+              nrow(games)))
+} else {
+  cat("CACHE_PARTICIPATION_FEATURES not found - run tools/participation_features.R first. Skipping participation candidates' real coverage (diffs will impute to 0 for every game).\n\n")
+  for (cn in PARTICIPATION_ROLL_COLS) {
+    games[[paste0("home_", cn)]] <- NA_real_
+    games[[paste0("away_", cn)]] <- NA_real_
+  }
+}
 
 # ------------------------------------------------------------------------------------------
 # Shared building block every candidate's predict_fn() calls - the exact production blend
@@ -312,6 +335,23 @@ candidates <- list(
     elo_prob    <- blend_with_market(pnorm(elo_margin / NFL_MARGIN_SIGMA), games$market_prob, params$weight)
     kalman_prob <- blend_with_market(pnorm(kalman_margin / sqrt(games$kalman_pred_var)), games$market_prob, params$weight)
     (ridge_prob + elo_prob + kalman_prob) / 3
+  }),
+  # Known Issue #7 pickup: ridge + participation/personnel features (tools/participation_
+  # features.R / tools/ridge_participation_model.R) - personnel-grouping tendency, box counts,
+  # pressure rates. Only real coverage 2016+ (participation's own hard floor - see that file's
+  # header); earlier seasons impute all-zero diffs (no signal), same convention
+  # ridge_situational_model.R already established for its own coverage gap.
+  list(name = "ridge_participation_only", params = list(), predict_fn = function(games, params) {
+    pnorm(predict_ridge_participation_walkforward(games) / NFL_MARGIN_SIGMA)
+  }),
+  list(name = "ridge_participation_phase1_combined",
+       params = list(weight = MARKET_BLEND_WEIGHT, penalty = QB_INJURY_RATING_PENALTY_PTS),
+       predict_fn = function(games, params) {
+    home_adj <- ifelse(is.na(games$home_qb_backup), 0, as.integer(games$home_qb_backup))
+    away_adj <- ifelse(is.na(games$away_qb_backup), 0, as.integer(games$away_qb_backup))
+    margin <- predict_ridge_participation_walkforward(games) - params$penalty * home_adj + params$penalty * away_adj
+    model_prob <- pnorm(margin / NFL_MARGIN_SIGMA)
+    blend_with_market(model_prob, games$market_prob, params$weight)
   })
 )
 
