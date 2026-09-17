@@ -121,7 +121,7 @@ run_stage <- function(script_name, description, call_fn = NULL, entry_fn = NULL,
   }
   start <- Sys.time()
   captured_calls <- NULL
-  tryCatch({
+  result <- tryCatch({
     withCallingHandlers({
       source(script_name, local = FALSE)
       if (!is.null(call_fn)) {
@@ -170,8 +170,21 @@ run_stage <- function(script_name, description, call_fn = NULL, entry_fn = NULL,
     # Fail-safe behavior: warn on console and let run_full_pipeline.R continue to the next
     # run_stage() call (do NOT stop() / re-throw here).
     warning(sprintf(">>> [FAILED] %s: %s", script_name, e$message))
-    return(FALSE)
+    FALSE
   })
+
+  # Memory-reduction Option 1 (docs/memory_optimization_plan.md): every stage runs source()'d
+  # into this SAME long-lived R process (deliberate, per this file's own header - stages share
+  # .GlobalEnv so later stages can read earlier ones' cache-writer functions). That means a
+  # stage's large local objects (e.g. daily_ingest.R's pre-trim PBP data, team_ratings_engine.R's
+  # historical walk-forward rebuild) are only eligible for garbage collection once R itself
+  # decides to run one - not necessarily before the NEXT stage starts allocating its own large
+  # objects. An explicit gc() here forces that reclaim between every stage rather than leaving it
+  # to chance, directly targeting the cross-stage accumulation failure mode (as opposed to any
+  # single stage's own peak usage, which Option 2's CACHE_PBP column-trim addresses instead).
+  gc(verbose = FALSE)
+
+  result
 }
 
 # ------------------------------------------------------------------------------

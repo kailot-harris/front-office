@@ -231,8 +231,37 @@ roadmap are DONE:
     findings).
 - **Not yet done**: Phases 4-5 of the roadmap (gradient-boosted trees, Bayesian state-space)
   remain a documented but unimplemented roadmap — see the plan for gating/dependencies. Also
-  worth a future pass: the week-17/long-shot-clustering EV pattern flagged above, and re-running
-  a full `run_full_pipeline.R` end-to-end once system memory allows, as a final sanity check.
+  worth a future pass: the week-17/long-shot-clustering EV pattern flagged above.
+
+## Pipeline memory fix (2026-09-17)
+
+The two `run_full_pipeline.R` OS-kills mentioned above were root-caused and fixed, not just
+worked around: `nflreadr::load_pbp()` returns 372 raw columns/play; `CACHE_PBP` was **3.4GB in
+memory** for 1.14M rows, while `epa_metrics_engine.R` (its only real consumer, confirmed via a
+repo-wide grep) touches 9 of those columns. `daily_ingest.R`'s incremental-update step
+(`bind_rows(existing, new_rows)`) transiently held two full copies at once — that's exactly where
+both crashes happened.
+
+Implemented immediately:
+- **`daily_ingest.R`**: added `.PBP_CACHE_COLUMNS`, a documented 20-column whitelist (the 9
+  actually used today + a modest margin for Phase 4's likely situational-feature needs). Trims
+  `CACHE_PBP` to ~167MB in memory (~95% reduction), self-heals the on-disk cache to the smaller
+  shape on the next `run_daily_ingest()` call (even with zero new NFL rows that day), no
+  migration script needed. Verified: file went from 311.5MB → 16.4MB on disk; `epa_metrics_engine.R`
+  re-run against the trimmed cache produced byte-identical output (13,030 team-game rows, 32 teams).
+- **`run_full_pipeline.R`**: `run_stage()` now calls `gc()` after every stage, since all 10 stages
+  share one long-lived R process by design — reduces cross-stage memory accumulation.
+- **Verified fixed**: a full `run_full_pipeline.R` run after both changes completed in 64.19s
+  (vs. ~150-190s before, and vs. two prior OS-kills) with zero failures/stale warnings.
+
+**Planned but not implemented** (see `docs/memory_optimization_plan.md` for full detail on each):
+- **Option 3**: avoid `daily_ingest.R`'s remaining `bind_rows()` structural double-copy (only
+  merge/dedupe `CURRENT_SEASON`'s slice, not the whole history, every run).
+- **Option 4**: migrate `CACHE_PBP` from a flat `.rds` to a disk-backed duckdb/parquet table
+  queried lazily (`dbplyr`), removing the "load everything into R memory" ceiling entirely as
+  history keeps growing season over season.
+- **Option 5**: run memory-heavy pipeline stages as separate `Rscript` subprocesses instead of
+  `source()`-ing everything into one process, so the OS fully reclaims each stage's peak memory.
 
 ## Known issues / unfinished business
 
