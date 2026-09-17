@@ -70,6 +70,32 @@
 #   home_win_prob = pnorm(projected_margin / NFL_MARGIN_SIGMA)
 #
 # ------------------------------------------------------------------------------------------
+# RATING SHRINKAGE TOWARD A PRIOR-SEASON-INFORMED PRIOR (Phase 8, task P8-A):
+#
+# Early in a season, `current_raw_rating` above is computed from a team's single most-recent
+# EPA row, which with only 1-2 real games played is extremely noisy (this is what produced
+# 93%+ win probabilities and +224% EV figures against real Week 2 2026 market odds - see
+# docs/task_assignments_phase7.md). To fix this, each team's FINAL power rating blends
+# `current_raw_rating` with a `prior_season_rating` (that team's last EPA row from the most
+# recent season strictly before CURRENT_SEASON, run through the EXACT SAME
+# compute_power_rating_points() formula below - not a second, subtly-different formula),
+# weighted by how many real CURRENT_SEASON games (completed, from CACHE_SCHEDULES) that team
+# has actually played:
+#
+#   weight       <- games_played / (games_played + RATING_SHRINKAGE_GAMES_K)
+#   power_rating <- weight * current_raw_rating + (1 - weight) * prior_season_rating
+#
+# games_played = 0 -> weight = 0 -> pure prior-season rating. As games_played grows, weight
+# asymptotically approaches 1 (pure current-season signal). RATING_SHRINKAGE_GAMES_K lives in
+# config.R (narrow documented exception, same pattern as CACHE_TEAM_RATINGS etc.) - see that
+# constant's comment for why its value was chosen and that it is NOT yet backtested.
+#
+# If a team genuinely has no prior-season EPA history at all, prior_season_rating falls back to
+# 0 (league average). Per CLAUDE.md, all 32 current NFL_TEAMS have real history back to at least
+# 2002 in this repo's data, so this fallback is expected to essentially NEVER actually trigger -
+# if a log_warn below ever fires for this, that is worth investigating as a real data gap, not
+# something to silently accept.
+# ------------------------------------------------------------------------------------------
 # PYTHAGOREAN-EXPECTATION COMPARISON COLUMN (NOT the primary model):
 # win_pct_pyth = PF^k / (PF^k + PA^k), PF/PA = each team's total points
 # scored/allowed across its completed CACHE_SCHEDULES games this season.
@@ -97,6 +123,22 @@ source("logging_utils.R")
 # other script), so it is kept as a local constant here rather than added to
 # config.R.
 .PYTHAGOREAN_EXPONENT <- 2.37
+
+# ------------------------------------------------------------------------------------------
+# compute_power_rating_points()
+#
+# The SINGLE formula for turning a team's rolling EPA/play values into a point-margin-scale
+# power rating (see header comment's RATING FORMULA section). Extracted into a function so
+# Phase 8's prior-season rating computation reuses the EXACT SAME math as the current-season
+# rating - never a second, independently-typed copy of this formula (the class of drift bug
+# this repo's CLAUDE.md warns about).
+# ------------------------------------------------------------------------------------------
+compute_power_rating_points <- function(off_epa_per_play_roll, def_epa_per_play_allowed_roll,
+                                         league_avg_off, league_avg_def, avg_plays_per_game) {
+  net_epa_per_play <- (off_epa_per_play_roll - league_avg_off) -
+                       (def_epa_per_play_allowed_roll - league_avg_def)
+  net_epa_per_play * avg_plays_per_game
+}
 
 # ------------------------------------------------------------------------------------------
 # run_team_ratings()
@@ -162,12 +204,87 @@ run_team_ratings <- function() {
 
     latest_epa <- latest_epa |>
       mutate(
-        net_epa_per_play = (off_epa_per_play_roll - league_avg_off) -
-                            (def_epa_per_play_allowed_roll - league_avg_def),
-        power_rating     = net_epa_per_play * avg_plays_per_game
+        current_raw_rating = compute_power_rating_points(
+          off_epa_per_play_roll, def_epa_per_play_allowed_roll,
+          league_avg_off, league_avg_def, avg_plays_per_game
+        )
+      )
+
+    # ---- Phase 8 (P8-A): real current-season games_played, from CACHE_SCHEDULES ----
+    # Completed = both score columns non-NA (see header comment's live-verified column notes).
+    # Restricted to season == CURRENT_SEASON only - this is a deliberately different (and
+    # deliberately correctly-scoped) count from the Pythagorean section's internal game count
+    # below, which is renamed .pyth_games_played to avoid colliding with this column.
+    completed_current <- sch |>
+      filter(season == CURRENT_SEASON, !is.na(home_score), !is.na(away_score))
+
+    games_played_current <- bind_rows(
+      completed_current |> transmute(team = home_team),
+      completed_current |> transmute(team = away_team)
+    ) |>
+      group_by(team) |>
+      summarise(games_played = dplyr::n(), .groups = "drop")
+
+    all_teams_df <- data.frame(team = names(NFL_TEAMS), stringsAsFactors = FALSE)
+    games_played_current <- all_teams_df |>
+      left_join(games_played_current, by = "team") |>
+      mutate(games_played = ifelse(is.na(games_played), 0L, games_played))
+
+    # ---- Phase 8 (P8-A): prior-season-final rating, same formula as current_raw_rating ----
+    prior_seasons_available <- unique(epa$season[epa$season < CURRENT_SEASON])
+    if (length(prior_seasons_available) == 0) {
+      log_warn("No prior-season (< CURRENT_SEASON) rows exist in CACHE_EPA_METRICS at all - every team's prior_season_rating will fall back to 0 (league average). This should essentially never happen per CLAUDE.md (all 32 NFL_TEAMS have history back to at least 2002) - investigate if seen.",
+               call = "run_team_ratings()")
+      prior_epa_ratings <- data.frame(team = character(0), prior_season_rating = numeric(0))
+    } else {
+      most_recent_prior_season <- max(prior_seasons_available)
+
+      prior_epa <- epa |>
+        filter(season == most_recent_prior_season) |>
+        arrange(team, game_date, week) |>
+        group_by(team) |>
+        slice_tail(n = 1) |>
+        ungroup() |>
+        select(team, off_epa_per_play_roll, def_epa_per_play_allowed_roll)
+
+      league_avg_off_prior <- mean(prior_epa$off_epa_per_play_roll, na.rm = TRUE)
+      league_avg_def_prior <- mean(prior_epa$def_epa_per_play_allowed_roll, na.rm = TRUE)
+
+      prior_epa_ratings <- prior_epa |>
+        mutate(
+          prior_season_rating = compute_power_rating_points(
+            off_epa_per_play_roll, def_epa_per_play_allowed_roll,
+            league_avg_off_prior, league_avg_def_prior, avg_plays_per_game
+          )
+        ) |>
+        select(team, prior_season_rating)
+    }
+
+    teams_missing_prior <- setdiff(names(NFL_TEAMS), prior_epa_ratings$team)
+    if (length(teams_missing_prior) > 0) {
+      log_warn(sprintf("%d team(s) have NO prior-season EPA history at all (falling back to prior_season_rating = 0 / league average): %s. Per CLAUDE.md this should essentially never trigger for a current NFL_TEAMS abbreviation - investigate if seen.",
+                        length(teams_missing_prior), paste(teams_missing_prior, collapse = ", ")),
+               call = "run_team_ratings()")
+    }
+
+    # ---- Blend: weight <- games_played / (games_played + RATING_SHRINKAGE_GAMES_K) ----
+    latest_epa <- latest_epa |>
+      left_join(games_played_current, by = "team") |>
+      left_join(prior_epa_ratings, by = "team") |>
+      mutate(
+        games_played        = ifelse(is.na(games_played), 0L, games_played),
+        prior_season_rating = ifelse(is.na(prior_season_rating), 0, prior_season_rating),
+        shrinkage_weight     = games_played / (games_played + RATING_SHRINKAGE_GAMES_K),
+        power_rating         = shrinkage_weight * current_raw_rating +
+                                (1 - shrinkage_weight) * prior_season_rating
       )
 
     # ---- Pythagorean-expectation comparison column, from completed CACHE_SCHEDULES games ----
+    # NOTE: intentionally unchanged from the pre-Phase-8 implementation (still all-time-schedule-
+    # cache-scoped and comparison-only per the header comment) - its internal game-count column
+    # is renamed .pyth_games_played below purely to avoid a name collision with the new,
+    # correctly current-season-scoped `games_played` column above (which would otherwise silently
+    # overwrite one or the other on the join and double-count/misreport one of them).
     completed <- sch |> filter(!is.na(home_score), !is.na(away_score))
 
     pf_pa <- bind_rows(
@@ -176,9 +293,9 @@ run_team_ratings <- function() {
     ) |>
       group_by(team) |>
       summarise(
-        points_for     = sum(pf, na.rm = TRUE),
-        points_against = sum(pa, na.rm = TRUE),
-        games_played   = dplyr::n(),
+        points_for        = sum(pf, na.rm = TRUE),
+        points_against     = sum(pa, na.rm = TRUE),
+        .pyth_games_played = dplyr::n(),
         .groups = "drop"
       ) |>
       mutate(
@@ -210,6 +327,9 @@ run_team_ratings <- function() {
              call = "run_team_ratings()")
 
     rating_lookup <- setNames(team_ratings$power_rating, team_ratings$team)
+    # Phase 8 (P8-A): games_played lookup, propagated into projected_matchups so the P8-B
+    # staking-gate agent can build its minimum-sample gate without re-deriving this count itself.
+    games_played_lookup <- setNames(team_ratings$games_played, team_ratings$team)
 
     projected_rows <- vector("list", nrow(upcoming))
     n_skipped <- 0L
@@ -231,19 +351,26 @@ run_team_ratings <- function() {
         next
       }
 
+      home_games_played <- games_played_lookup[[home]]
+      away_games_played <- games_played_lookup[[away]]
+      if (is.null(home_games_played) || length(home_games_played) == 0) home_games_played <- NA_integer_
+      if (is.null(away_games_played) || length(away_games_played) == 0) away_games_played <- NA_integer_
+
       projected_margin <- (home_rating - away_rating) + NFL_HCA
       home_win_prob    <- pnorm(projected_margin / NFL_MARGIN_SIGMA)
 
       projected_rows[[i]] <- data.frame(
-        game_id          = g$game_id,
-        season           = g$season,
-        week             = g$week,
-        home_team        = home,
-        away_team        = away,
-        home_power_rating = home_rating,
-        away_power_rating = away_rating,
-        projected_margin = projected_margin,
-        home_win_prob    = home_win_prob,
+        game_id            = g$game_id,
+        season             = g$season,
+        week               = g$week,
+        home_team          = home,
+        away_team          = away,
+        home_power_rating  = home_rating,
+        away_power_rating  = away_rating,
+        home_games_played  = home_games_played,
+        away_games_played  = away_games_played,
+        projected_margin   = projected_margin,
+        home_win_prob      = home_win_prob,
         stringsAsFactors = FALSE
       )
     }

@@ -203,6 +203,38 @@ OFFSEASON_METHOD    <- "reset"  # "reset", "mean_regress", or "decay" - not yet 
 REST_DAYS_CAP       <- 14       # NFL byes/short weeks span a wider range than WNBA's back-to-backs
 N_SIMULATIONS       <- 10000
 
+# Added by team_ratings_engine.R (Phase 8, task P8-A) per docs/task_assignments_phase7.md's
+# "Constants note" pattern - a narrowly-scoped, documented exception (team_ratings_engine.R does
+# not own config.R; it owns only this one new constant). Controls how heavily a team's blended
+# power rating leans on its prior-season final rating vs. its real current-season EPA, via
+# weight = games_played / (games_played + RATING_SHRINKAGE_GAMES_K). A STARTING HEURISTIC, NOT
+# YET EMPIRICALLY BACKTESTED (same honesty convention as ROLLING_WINDOW_SIZE's comment above) -
+# chosen so that at games_played = 4 (roughly one month into the season) the blend is already
+# 50/50 current-season vs. prior-season, and by games_played = 8+ (~halfway through the 17-game
+# season) it leans heavily (>=2:1) toward real current-season form. A future agent should re-tune
+# this against actual out-of-sample calibration (e.g. Brier score of home_win_prob by week) rather
+# than trusting this starting value.
+RATING_SHRINKAGE_GAMES_K <- 4
+
+# Added by market_odds_engine.R (Phase 8, task P8-B) per docs/task_assignments_phase7.md's
+# "Constants note" pattern - a narrowly-scoped, documented exception (market_odds_engine.R does
+# not own config.R; it owns only this one new constant). Distinct from RATING_SHRINKAGE_GAMES_K
+# above - that constant shapes the rating BLEND (prior-season vs. current-season weighting);
+# this one gates STAKING only (whether a real bankroll recommendation is ever issued for a game),
+# and the two must not be conflated into a single constant even though both are "some number of
+# games" (per the Constraints section of docs/task_assignments_phase7.md). When either team in a
+# matchup has played fewer than MIN_SAMPLE_GAMES_FOR_STAKE real current-season games,
+# market_odds_engine.R forces Bankroll_Rec to 0 and marks the row's Status as an insufficient-
+# sample flag, regardless of how large the model's computed EV looks - a well-calibrated model
+# still should not drive a real stake off 1-2 games of noisy current-season data. A STARTING
+# HEURISTIC, NOT YET EMPIRICALLY BACKTESTED (same honesty convention as ROLLING_WINDOW_SIZE's
+# and RATING_SHRINKAGE_GAMES_K's comments above) - 3 games (roughly the first 2-3 weeks of the
+# 17-game season) was chosen as a point past the single-game/two-game extreme-variance zone
+# while still gating most of the early season, not as a backtested optimum. A future agent
+# should re-tune this against actual out-of-sample staking performance (e.g. realized ROI of
+# bets placed at each games_played threshold) rather than trusting this starting value.
+MIN_SAMPLE_GAMES_FOR_STAKE <- 3
+
 # ------------------------------------------------------------------------------------------
 # Cache Filepaths
 # ------------------------------------------------------------------------------------------

@@ -383,7 +383,9 @@ get_model_slate_probabilities <- function(slate_df) {
     return(slate_df |> mutate(
       model_home_prob  = round(p_raw_h / (p_raw_h + p_raw_a), 3),
       predicted_margin = NA_real_,
-      contrib_fatigue  = NA_real_
+      contrib_fatigue  = NA_real_,
+      home_games_played = NA_integer_,
+      away_games_played = NA_integer_
     ))
   }
 
@@ -409,6 +411,12 @@ get_model_slate_probabilities <- function(slate_df) {
   base_margins    <- rep(NA_real_, nrow(slate_df))
   fatigue_adjs    <- rep(0.0, nrow(slate_df))
   matched         <- rep(FALSE, nrow(slate_df))
+  # P8-B (docs/task_assignments_phase7.md): carry P8-A's per-team real current-season
+  # games_played sample sizes through to the output so the staking gate below can use
+  # them directly, rather than re-deriving games_played independently from CACHE_SCHEDULES
+  # (a second, potentially drifting derivation of the same fact - Finding C-1 discipline).
+  home_games_played_v <- rep(NA_integer_, nrow(slate_df))
+  away_games_played_v <- rep(NA_integer_, nrow(slate_df))
 
   for (i in seq_len(nrow(slate_df))) {
     h_abbr <- home_abbrs[i]
@@ -453,6 +461,8 @@ get_model_slate_probabilities <- function(slate_df) {
     adj_margins[i]  <- adj_margin
     fatigue_adjs[i] <- fatigue_adj
     matched[i]      <- TRUE
+    home_games_played_v[i] <- as.integer(row$home_games_played[1])
+    away_games_played_v[i] <- as.integer(row$away_games_played[1])
   }
 
   # Unmatched games (e.g. a team not yet in projected_matchups.rds's horizon, or a
@@ -473,7 +483,12 @@ get_model_slate_probabilities <- function(slate_df) {
     predicted_margin = adj_margins,
     contrib_base_margin = base_margins,
     contrib_fatigue      = fatigue_adjs,
-    model_matched        = matched
+    model_matched        = matched,
+    # P8-B: unmatched games (fallback devigged-consensus branch above) have no
+    # projected_matchups.rds row to source games_played from - left NA, which the
+    # staking gate below treats conservatively (NA is not >= threshold, so it gates).
+    home_games_played    = home_games_played_v,
+    away_games_played    = away_games_played_v
   )
 }
 
@@ -533,6 +548,22 @@ evaluate_betting_slate <- function() {
         best_ev >= 3.0                 ~ "\u2605 VALUE BET (+EV)",
         TRUE                           ~ "No Action"
       )
+    ) |>
+    mutate(
+      # P8-B minimum-sample staking gate (docs/task_assignments_phase7.md), run AFTER
+      # the EV-based edge_flag above so it OVERRIDES whatever Status/stake that logic
+      # computed - a well-calibrated model still should not drive a real stake off 1-2
+      # games of noisy current-season data (see config.R's MIN_SAMPLE_GAMES_FOR_STAKE
+      # comment for the full rationale). min_games_sample uses pmin() with NA propagation
+      # (an unmatched game with NA games_played is treated conservatively - gated, not
+      # assumed sufficient) via the explicit is.na() check below rather than pmin()'s
+      # default na.rm behavior.
+      min_games_sample = pmin(home_games_played, away_games_played, na.rm = FALSE),
+      insufficient_sample = is.na(min_games_sample) | (min_games_sample < MIN_SAMPLE_GAMES_FOR_STAKE),
+      quarter_kelly_pct = if_else(insufficient_sample, 0, quarter_kelly_pct),
+      edge_flag = if_else(insufficient_sample,
+                           "\u26a0 INSUFFICIENT SAMPLE (early season)",
+                           edge_flag)
     )
 
   output_table <- slate |>
@@ -551,6 +582,8 @@ evaluate_betting_slate <- function() {
       Exp_CLV           = exp_clv,
       Bankroll_Rec      = quarter_kelly_pct,
       Status            = edge_flag,
+      home_games_played = home_games_played,
+      away_games_played = away_games_played,
       sharp_line        = cons_ml,
       game_id           = game_id,
       market_data_source = market_data_source

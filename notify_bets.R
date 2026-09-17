@@ -61,19 +61,55 @@ run_notify_bets <- function() {
     return(FALSE)
   }
 
-  # 2. Filter for Real Institutional Edge (EV >= 3.0% and Non-Negative CLV)
-  # Port verbatim per docs/task_assignments_phase6.md's Constraints — do not loosen.
-  actionable_bets <- bets_df %>%
-    filter(EV_Percent >= 3.0 & Exp_CLV >= -0.5)
+  # 2. Exclude insufficient-sample-flagged rows FIRST (Phase 8, task P8-C).
+  # market_odds_engine.R (P8-B) forces Bankroll_Rec <- 0 and sets Status to an insufficient-
+  # sample marker (currently "⚠ INSUFFICIENT SAMPLE (early season)") when either team in a
+  # matchup has played fewer than MIN_SAMPLE_GAMES_FOR_STAKE real current-season games, EVEN IF
+  # the row's computed EV/CLV looks attractive (noisy early-season power ratings can produce
+  # large but not-actually-tradeable EV figures). A game must clear BOTH the EV/CLV bar below AND
+  # not be insufficient-sample-flagged to ever be dispatched. Matched via grepl() on "INSUFFICIENT
+  # SAMPLE" (not an exact `==` string match) so this stays robust to the leading emoji glyph or
+  # minor wording drift in market_odds_engine.R's Status string, while still being specific enough
+  # not to accidentally exclude an unrelated Status value.
+  is_gated <- grepl("INSUFFICIENT SAMPLE", bets_df$Status, fixed = TRUE)
+  n_gated  <- sum(is_gated, na.rm = TRUE)
+  eligible_bets <- bets_df[is.na(bets_df$Status) | !is_gated, , drop = FALSE]
 
-  # If no sharp line beats CLV today, take the top 3 calibrated model edges
-  if (nrow(actionable_bets) == 0) {
-    log_info("No bets met strict EV >= 3.0% & Exp_CLV >= -0.5% threshold. Selecting top calibrated slate edges.",
-             script = .LOG_SCRIPT)
-    actionable_bets <- head(bets_df %>% arrange(desc(EV_Percent)), 3)
+  if (n_gated > 0) {
+    log_info(sprintf("Excluded %d/%d row(s) flagged insufficient-sample (early season) before actionable-bets filtering.",
+                      n_gated, nrow(bets_df)), script = .LOG_SCRIPT)
   }
 
-  # 3. Format and Preview Alerts
+  # 3. Filter for Real Institutional Edge (EV >= 3.0% and Non-Negative CLV)
+  # Port verbatim per docs/task_assignments_phase6.md's Constraints — do not loosen. Applied only
+  # to eligible_bets (already insufficient-sample-excluded), per P8-C's requirement that the
+  # top-3 fallback below must also only ever pick from non-gated rows.
+  actionable_bets <- eligible_bets %>%
+    filter(EV_Percent >= 3.0 & Exp_CLV >= -0.5)
+
+  # If no sharp line beats CLV today, take the top 3 calibrated model edges — still restricted to
+  # eligible_bets, never the raw (possibly gated) bets_df.
+  if (nrow(actionable_bets) == 0 && nrow(eligible_bets) > 0) {
+    log_info("No bets met strict EV >= 3.0% & Exp_CLV >= -0.5% threshold. Selecting top calibrated slate edges (excluding insufficient-sample rows).",
+             script = .LOG_SCRIPT)
+    actionable_bets <- head(eligible_bets %>% arrange(desc(EV_Percent)), 3)
+  }
+
+  # If literally every row is insufficient-sample-flagged (the real current Week 2 2026 state,
+  # per CLAUDE.md/task_assignments_phase7.md context), eligible_bets is empty and the fallback
+  # above legitimately has nothing to select from. Handle that gracefully — skip dispatch
+  # entirely with a clear explanatory log/console message, not an error.
+  if (nrow(actionable_bets) == 0) {
+    msg <- sprintf(
+      "0 actionable bets after insufficient-sample exclusion: all %d game(s) in this slate are flagged insufficient-sample (early season). Skipping Discord dispatch this run.",
+      nrow(bets_df)
+    )
+    log_info(msg, script = .LOG_SCRIPT)
+    cat(sprintf("\n[NO DISPATCH] %s\n", msg))
+    return(TRUE)
+  }
+
+  # 4. Format and Preview Alerts
   embed_fields <- list()
 
   n_picks <- min(4, nrow(actionable_bets))
@@ -111,7 +147,7 @@ run_notify_bets <- function() {
 
   log_info(sprintf("Formatted %d pick(s) into Discord embed payload.", n_picks), script = .LOG_SCRIPT)
 
-  # 4. Construct Discord Webhook Payload
+  # 5. Construct Discord Webhook Payload
   payload <- list(
     username = "NFL Quant Terminal",
     avatar_url = "https://cdn-icons-png.flaticon.com/512/3211/3211244.png",
@@ -126,7 +162,7 @@ run_notify_bets <- function() {
     )
   )
 
-  # 5. Broadcast to Discord — ONLY if a real env var is set. No hardcoded/dummy URL check
+  # 6. Broadcast to Discord — ONLY if a real env var is set. No hardcoded/dummy URL check
   # needed since there is no hardcoded fallback to guard against. .log_redact() in
   # logging_utils.R already scrubs Discord webhook URL patterns from any log line, so the URL
   # is never logged in full even incidentally.
