@@ -37,7 +37,8 @@ manifest <- list(
   list(stage = "team_ratings_engine.R", outputs = c(CACHE_TEAM_RATINGS, CACHE_PROJECTED_MATCHUPS)),
   list(stage = "fatigue_engine.R", outputs = CACHE_FATIGUE_METRICS),
   list(stage = "playoff_simulator.R", outputs = CACHE_PLAYOFF_SIMULATION),
-  list(stage = "risk_management_engine.R", outputs = CACHE_RISK_STATE)
+  list(stage = "risk_management_engine.R", outputs = CACHE_RISK_STATE),
+  list(stage = "market_odds_engine.R", outputs = c(CACHE_LATEST_VALUE_BETS, CACHE_ODDS_HISTORY))
 )
 
 if (length(manifest) == 0) {

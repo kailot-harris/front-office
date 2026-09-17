@@ -236,6 +236,12 @@ CACHE_PLAYOFF_SIMULATION <- file.path(CACHE_DIR, "playoff_simulation.rds")
 # CACHE_TEAM_RATINGS / CACHE_FATIGUE_METRICS / CACHE_PLAYOFF_SIMULATION above
 # (risk_management_engine.R does not own config.R; it owns only this one new constant).
 CACHE_RISK_STATE <- file.path(CACHE_DIR, "risk_state.rds")
+# Added by market_odds_engine.R (Phase 6, task P6-A) per docs/task_assignments_phase5.md's
+# "Constants note" pattern - same narrowly-scoped, documented exception as CACHE_EPA_METRICS /
+# CACHE_TEAM_RATINGS / CACHE_FATIGUE_METRICS / CACHE_PLAYOFF_SIMULATION / CACHE_RISK_STATE above
+# (market_odds_engine.R does not own config.R; it owns only these two new constants).
+CACHE_LATEST_VALUE_BETS <- file.path(CACHE_DIR, "latest_value_bets.rds")
+CACHE_ODDS_HISTORY      <- file.path(CACHE_DIR, "odds_history.rds")
 
 # ------------------------------------------------------------------------------------------
 # API Throttling & Rate-Limiting (sport-agnostic starting defaults)
@@ -247,8 +253,15 @@ MAX_RETRIES          <- 3
 # Secrets / Webhooks
 # ------------------------------------------------------------------------------------------
 # NEVER hardcode a webhook URL here (see WNBA repo's config.R / REPO_MAP.md for the class of
-# issue this avoids: a live credential checked into a plaintext file). Set DISCORD_WEBHOOK as
-# a real environment variable (e.g. in a .Renviron file or the OS user environment - NOT
+# issue this avoids: a live credential checked into a plaintext file). Set NFL_DISCORD_WEBHOOK
+# as a real environment variable (e.g. in a .Renviron file or the OS user environment - NOT
 # committed to this repo) before notification scripts need it. Sys.getenv() below returns ""
 # until that is done; downstream scripts must treat "" as a "webhook not configured" no-op.
-DISCORD_WEBHOOK <- Sys.getenv("DISCORD_WEBHOOK", "")
+#
+# Deliberately namespaced NFL_DISCORD_WEBHOOK, NOT the plain DISCORD_WEBHOOK name the WNBA
+# repo's config.R uses - both repos' Sys.getenv() calls can share one machine's environment
+# (a single user-level .Renviron), and a plain DISCORD_WEBHOOK name would silently let one
+# repo's pipeline post notifications to the other sport's Discord channel. ODDS_API_KEY is
+# NOT namespaced the same way (still just ODDS_API_KEY) because both repos legitimately share
+# one real Odds API account/key - that collision is intentional, not a bug.
+NFL_DISCORD_WEBHOOK <- Sys.getenv("NFL_DISCORD_WEBHOOK", "")

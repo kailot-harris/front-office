@@ -54,9 +54,10 @@ in-pipeline assertion the DAG itself may eventually add.
 Populated from `run_full_pipeline.R`'s Wave 1 skeleton (task P1-D, `docs/task_assignments_phase0.md`)
 — three real ingestion stages — plus Phase 2's two metrics/ratings engine stages (task P2-C,
 `docs/task_assignments_phase1.md`), Phase 3's fatigue engine stage (task P3-B,
-`docs/task_assignments_phase2.md`), Phase 4's playoff bracket simulator stage (task P4-B, `docs/task_assignments_phase3.md`), and
-Phase 5's risk management engine stage (task P5-B, `docs/task_assignments_phase4.md`). No
-stub/placeholder stages remain for later-phase engines that don't exist yet (embeddings/market/
+`docs/task_assignments_phase2.md`), Phase 4's playoff bracket simulator stage (task P4-B, `docs/task_assignments_phase3.md`),
+Phase 5's risk management engine stage (task P5-B, `docs/task_assignments_phase4.md`), and
+Phase 6's market odds / value-betting engine stage (task P6-B, `docs/task_assignments_phase5.md`).
+No stub/placeholder stages remain for later-phase engines that don't exist yet (embeddings/player
 props/notify; see that file's Constraints section — notify_bets.R remains blocked on a Discord
 webhook).
 
@@ -70,6 +71,7 @@ webhook).
 | `fatigue_engine.R` | `cache/fatigue_metrics.rds` (`CACHE_FATIGUE_METRICS`) |
 | `playoff_simulator.R` | `cache/playoff_simulation.rds` (`CACHE_PLAYOFF_SIMULATION`) |
 | `risk_management_engine.R` | `cache/risk_state.rds` (`CACHE_RISK_STATE`) |
+| `market_odds_engine.R` | `cache/latest_value_bets.rds` (`CACHE_LATEST_VALUE_BETS`), `cache/odds_history.rds` (`CACHE_ODDS_HISTORY`) |
 
 **Deliberate exclusion / known false-positive source:** `daily_ingest.R` is an incremental
 ingestion stage — `.ingest_one()` legitimately skips the write ("cache already up to date; no

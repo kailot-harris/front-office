@@ -236,6 +236,16 @@ run_stage("risk_management_engine.R", "Compute Bankroll Drawdown / Kelly-Tier Ri
           call_fn = "run_risk_management",
           output   = CACHE_RISK_STATE)
 
+# 9. Market odds / value-betting engine (Phase 6, task P6-B; engine itself built under P6-A).
+# Writes CACHE_LATEST_VALUE_BETS and CACHE_ODDS_HISTORY (config.R) — two outputs from one stage,
+# declared together per the daily_ingest.R / team_ratings_engine.R stages' multi-output precedent
+# above. Reads cache/projected_matchups.rds (stage 5, team_ratings_engine.R) as its sole model-
+# probability source and cache/fatigue_metrics.rds (stage 6, fatigue_engine.R) for the fatigue
+# adjustment layered on top — must therefore come after both.
+run_stage("market_odds_engine.R", "Fetch Live NFL Odds & Identify +EV Value Bets",
+          call_fn = "run_market_odds_engine",
+          output   = c(CACHE_LATEST_VALUE_BETS, CACHE_ODDS_HISTORY))
+
 # ------------------------------------------------------------------------------
 # FUTURE STAGES — extension point, not yet implemented (see docs/task_assignments_phase0.md's
 # Constraints section and docs/NFL_REPLICATION_PLAN.md §1's later-phase list). Per that
@@ -243,10 +253,10 @@ run_stage("risk_management_engine.R", "Compute Bankroll Drawdown / Kelly-Tier Ri
 # don't exist yet — doing so would immediately fail with "script not found". A later wave should
 # insert its own run_stage() calls HERE, in roughly this order, as each script is actually built:
 #   embeddings (the fatigue/embeddings DAG node's other half, per REPLICATION_PLAN §1 — fatigue
-#   itself is now wired in as stage 6 above) -> market/props pricing (requires a human-provisioned
-#   Odds API key, per REPLICATION_PLAN §2) -> notify (the risk/notify node's other half, now that
-#   risk management is wired in as stage 8 above — notify_bets.R remains blocked on a human-
-#   provisioned Discord webhook) -> live/dashboard.
+#   itself is now wired in as stage 6 above) -> player props pricing (the market/props node's
+#   other half, now that market odds is wired in as stage 9 above) -> notify (the risk/notify node's
+#   other half, now that risk management is wired in as stage 8 above — notify_bets.R remains
+#   blocked on a human-provisioned Discord webhook) -> live/dashboard.
 # ------------------------------------------------------------------------------
 
 pipeline_total_time <- as.numeric(difftime(Sys.time(), pipeline_start_time, units = "secs"))
