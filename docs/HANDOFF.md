@@ -390,6 +390,72 @@ even touch real participation-era data.
   `cache/participation_sharpe_investigation.rds` (full tau grid, bootstrap distribution,
   bet-level detail).
 
+### New project, Phases 0-2: "train against market disagreement, not game outcome" (uncommitted, 2026-09-17)
+
+Every candidate above (situational EPA, Kalman, participation) was trained to predict the GAME
+better, then blended with market - but at `MARKET_BLEND_WEIGHT=0.97` the market is already
+close to a sufficient statistic for outcome, so a model that predicts outcome slightly better
+doesn't necessarily predict WHERE THE MARKET IS WRONG (the only thing that produces a real
+edge). This new, explicitly-separate project targets `market_residual = home_win -
+market_prob` directly, evaluated on Sharpe from the start rather than Brier-then-hope.
+
+**Phase 0 (fact-check, no code)**: nflreadr's OWN data dictionary (`dictionary_schedules` - a
+lazy-loaded package data object, NOT a namespace function, a real gotcha) documents
+`home_moneyline`/`spread_line` with zero mention of opening-vs-closing timing or source
+vendor - genuinely undocumented, confirmed by also checking nflseedR's `load_sharpe_games()`
+docs (the historical community source these columns trace back to). This repo's own
+`CACHE_ODDS_HISTORY` has only 416 rows spanning <24 hours (started this session) - no temporal
+overlap exists to independently cross-check. **Conclusion**: every `market_prob` this repo has
+ever backtested against has unverifiable timing - a real, previously-unflagged epistemic gap,
+not a blocker, but now documented rather than silently assumed. Public bet-percentage/handle
+data (the classic "fade the public" signal) doesn't exist in this repo and remains an explicit,
+deferred paid-vendor decision, not included below.
+
+**Phase 1 (label) + Phase 2 (features)**: new `tools/market_disagreement_features.R` builds
+`market_residual` for every 2010+ real-moneyline game (reuses `build_walkforward_games()`
+entirely) plus five features hypothesized to predict MARKET error specifically, all from
+already-cached `CACHE_SCHEDULES` columns (`home_rest`/`away_rest`/`div_game` - no new
+ingestion) plus the existing QB-backup flag builder: rest-day mismatch, divisional game,
+primetime (TNF/SNF/MNF), spread size, and QB-backup situation. Runs an exploratory diagnostic
+(mean residual per bucket, naive 95% CI) rather than fitting a model yet.
+- **Bug found and fixed while building this**: the first draft's QB-situation bucketing used
+  `isTRUE()` inside `dplyr::case_when()` - `isTRUE()` is NOT vectorized in base R, so it
+  silently collapsed all 4,009 rows into "neither_backup," masking the real signal below
+  entirely. Fixed with the vectorized `%in% TRUE` equivalent. A live reminder that a script
+  running without error is not evidence it computed the right thing.
+- **Real finding**: of 8 scanned buckets, one clearly stands out - `home_backup_only` (home
+  team started a backup QB, away team didn't; n=430): mean `market_residual` = -0.0615, 95% CI
+  `[-0.1055, -0.0175]` (excludes zero). Every other bucket's CI comfortably includes zero.
+- **Follow-up verification** (`tools/verify_qb_backup_market_bias.R`, same session, same
+  bootstrap discipline `investigate_participation_sharpe.R` established): a genuine walk-
+  forward strategy (bias estimated from ONLY prior-season `home_backup_only` games, applied to
+  bet the away team when it implies positive EV) produced n=399 bets (2011-2024), **Sharpe
+  +0.0911**, cumulative return **+96.6%**, positive in 10 of 14 seasons (not a single-season
+  artifact), bootstrap 95% CI `[-0.0058, +0.187]` with **96.7% of 10,000 resamples positive**.
+  This is categorically different from every other candidate this session (contrast the
+  participation candidate's 44%-positive, zero-straddling CI) - the CI's lower bound is a hair
+  below zero, so it isn't airtight, but this is the strongest result found in this entire
+  remediation arc.
+- **Likely mechanism**: `QB_INJURY_RATING_PENALTY_PTS` (`tools/derive_qb_injury_penalty.R`) was
+  derived as ONE symmetric value for home AND away backup starts, optimized against Brier,
+  never checked for a home/away asymmetry or against Sharpe. This finding suggests the market
+  itself underprices a HOME team's backup-QB downgrade specifically - a genuine market-
+  inefficiency hypothesis (measured against the market's own devigged price, independent of
+  anything this repo's model does internally).
+- **Status**: NOT deployed, NOT staked. This needs, before any real-money consideration: (a)
+  checking against the production staking gates (`MIN_SAMPLE_GAMES_FOR_STAKE`,
+  `LONGSHOT_DECIMAL_ODDS_CAP`) it was NOT run through here, (b) accounting for the fact it was
+  the standout among 8 exploratory buckets (some real, if likely small given the effect size
+  and cross-season consistency, multiple-comparisons risk), and (c) ideally a true holdout
+  check against 2025-2026 data as it accumulates, not just the same walk-forward window used to
+  find it. The next concrete step, if pursued: derive separate `HOME_QB_INJURY_PENALTY_PTS` /
+  `AWAY_QB_INJURY_PENALTY_PTS` constants (replacing the single symmetric
+  `QB_INJURY_RATING_PENALTY_PTS`) via the same `stats::optimize()` discipline, but against
+  Sharpe instead of Brier, then re-run the full model comparison harness.
+- **Full detail**: `tools/market_disagreement_features.R`'s and
+  `tools/verify_qb_backup_market_bias.R`'s own headers,
+  `cache/market_disagreement_features.rds`, `cache/qb_backup_market_bias_verification.rds`.
+
 ## Known issues / unfinished business
 
 1. **`NFL_DISCORD_WEBHOOK` not visible to R.** Set in `C:\Users\kailo\Documents\.Renviron`, but
