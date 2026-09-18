@@ -1,12 +1,10 @@
 # NFL Analytics — Handoff Document
 
-**Last updated**: 2026-09-17. Most recent commit on disk is `aa990e4` ("Add write-handoff-doc
-skill; regenerate docs/HANDOFF.md as a full rewrite"), but **this rewrite documents real,
-verified, UNCOMMITTED work on top of that commit** (see `git status --short` — a future agent
-should run that itself before trusting this doc's "current state" claims at face value, and
-should commit or discard this work deliberately rather than assuming it's already landed).
-Written for a future LLM/agent picking this repo back up cold — read this before touching
-anything, then read `CLAUDE.md` for environment/data-quirk details this doc doesn't repeat.
+**Last updated**: 2026-09-17, after commit `872b4b6` ("New project Phases 0-2: train against
+market disagreement, not outcome"). `git status --short` is clean — everything described below
+is committed. Written for a future LLM/agent picking this repo back up cold — read this before
+touching anything, then read `CLAUDE.md` for environment/data-quirk details this doc doesn't
+repeat.
 
 ## What this repo is
 
@@ -15,10 +13,12 @@ constants, `run_full_pipeline.R` staged DAG, `.claude/skills/` tooling, phased
 `docs/task_assignments_phaseN.md` build tracking) to NFL game predictions, built on `nflverse`
 (`nflreadr`) data. Real git repo, remote `origin` =
 `https://github.com/kailot-harris/NFL_analytics.git` (private). The pipeline runs against real
-live data throughout, with two labeled exceptions: `risk_management_engine.R` falls back to a
-`SYNTHETIC_FALLBACK` seed ledger only when its real ledger (see below — this changed this
-session) has zero RESOLVED bets, and `notify_bets.R`'s Discord dispatch is still
-console-only-preview (webhook env var not visible to R on this machine — see Known Issues).
+live data throughout, with two labeled exceptions: `risk_management_engine.R` reports
+`SYNTHETIC_FALLBACK` (confirmed live, 2026-09-17) because the real bet ledger
+(`CACHE_BETTING_LEDGER`, written by `bet_tracker.r`) is genuinely empty — no staked value bet
+has cleared the early-season `MIN_SAMPLE_GAMES_FOR_STAKE` gate yet this season, not a bug — and
+`notify_bets.R`'s Discord dispatch is still console-only-preview (webhook env var not visible to
+R on this machine — see Known Issues).
 
 **Read `docs/NFL_REPLICATION_PLAN.md` first** if you haven't — it's the live-verified (not
 memorized) Phase 0 research foundation this repo was built from. Re-verify anything
@@ -32,518 +32,239 @@ advanced (`.check_stage_output()`, WARN not fatal, `gc()` after every stage).
 
 | # | Stage script | Exposed function | Real output |
 |---|---|---|---|
-| 1 | `daily_ingest.R` | `run_daily_ingest()` | `CACHE_PBP` (20-column whitelist), `CACHE_SCHEDULES` |
+| 1 | `daily_ingest.R` | `run_daily_ingest()` | `CACHE_PBP` (23-column whitelist as of this session), `CACHE_SCHEDULES` |
 | 2 | `sync_rosters.R` | `run_sync_rosters()` | `CACHE_ROSTERS` |
-| 3 | `injury_scraper.R` | `run_injury_scraper()` | `CACHE_INJURY_DATA` |
-| 4 | `epa_metrics_engine.R` | `run_epa_metrics()` | `CACHE_EPA_METRICS` |
-| 5 | `team_ratings_engine.R` | `run_team_ratings()` | `CACHE_TEAM_RATINGS`, `CACHE_PROJECTED_MATCHUPS` — ridge+Elo ensemble, QB-adjusted, market-blended `home_win_prob` |
+| 3 | `injury_scraper.R` | `run_injury_scraper()` | `CACHE_INJURY_DATA` — now also cross-source-ID-crosswalk enriched (see Recent work) |
+| 4 | `epa_metrics_engine.R` | `run_epa_metrics()` | `CACHE_EPA_METRICS` — full-game EPA/success/CPOE plus 14 new situational splits (see Recent work) |
+| 5 | `team_ratings_engine.R` | `run_team_ratings()` | `CACHE_TEAM_RATINGS`, `CACHE_PROJECTED_MATCHUPS` — ridge+Elo ensemble, QB-adjusted, market-blended `home_win_prob` (production formula unchanged this session) |
 | 6 | `fatigue_engine.R` | `run_fatigue_engine()` | `CACHE_FATIGUE_METRICS` |
-| 7 | `playoff_simulator.R` | `run_playoff_simulator()` | `CACHE_PLAYOFF_SIMULATION` — simplified tiebreak (win% + alphabetical) |
-| 8 | `risk_management_engine.R` | `run_risk_management()` | `CACHE_RISK_STATE` — now reads the real ledger (stage 9.5) when it has RESOLVED bets, else `SYNTHETIC_FALLBACK` |
-| 9 | `market_odds_engine.R` | `run_market_odds_engine()` | `CACHE_LATEST_VALUE_BETS`, `CACHE_ODDS_HISTORY` — real Odds API odds; staking now gated by both `MIN_SAMPLE_GAMES_FOR_STAKE` and the new `LONGSHOT_DECIMAL_ODDS_CAP` (see below) |
-| 9.5 | `bet_tracker.r` | `run_bet_tracker()` | **NEW this session.** `CACHE_BETTING_LEDGER` — real bet ledger, writer+grader |
+| 7 | `playoff_simulator.R` | `run_playoff_simulator()` | `CACHE_PLAYOFF_SIMULATION` — now the NFL's REAL tiebreaker procedure (see Recent work), not the old simplified one |
+| 8 | `risk_management_engine.R` | `run_risk_management()` | `CACHE_RISK_STATE` — reads the real ledger when it has RESOLVED bets, else `SYNTHETIC_FALLBACK` (currently the latter — ledger is empty) |
+| 9 | `market_odds_engine.R` | `run_market_odds_engine()` | `CACHE_LATEST_VALUE_BETS`, `CACHE_ODDS_HISTORY` — real Odds API odds; staking gated by `MIN_SAMPLE_GAMES_FOR_STAKE` and `LONGSHOT_DECIMAL_ODDS_CAP` |
+| 9.5 | `bet_tracker.r` | `run_bet_tracker()` | `CACHE_BETTING_LEDGER` — real bet ledger, writer+grader (currently 0 rows) |
 | 10 | `notify_bets.R` | `run_notify_bets()` | No cache output. Discord dispatch, still console-only-preview |
 
 Stage 9.5 runs after stage 9 (needs its output to record today's picks) but before stage 10.
-**Known ordering gap**: stage 8 (risk management) still runs *before* stage 9.5 grades new bets
-within the same pipeline invocation, so a freshly-graded ledger only affects stage 8's
-`REAL_LEDGER` read on the *next* pipeline run, one cycle behind — documented in
-`run_full_pipeline.R`'s stage-9.5 comment rather than fixed by reordering stages this session
-(a larger, separately-reasoned change).
+**Known ordering gap, unchanged**: stage 8 still runs *before* stage 9.5 grades new bets within
+the same pipeline invocation, so a freshly-graded ledger only affects stage 8's next run — one
+cycle behind. Not urgent while the ledger is empty.
 
-## Build history (chronological)
+## Build history (chronological, one row per phase/effort)
 
-| Commit | What it added |
-|---|---|
-| `9155ad1`…`105eb8e` | Phases 1-7: ingestion, EPA/ratings engines, fatigue engine, playoff sim, risk engine, market odds engine, Discord dispatcher. |
-| `d1c90aa`, `83682a5` | Phase 8: early-season rating shrinkage + minimum-sample staking gate, then backtested (found Sharpe negative at every threshold — the finding that triggered the model-quality remediation below). |
-| `7092bad`…`050aebe` | Model-quality remediation Phases A-4: market blend, QB-injury penalty, ridge Massey rating, MOV-weighted Elo, ridge+Elo ensemble (deployed), GBM stacking (negative result, not deployed). |
-| `bb1cd99` | Fixed two `run_full_pipeline.R` OS-kills (`CACHE_PBP` column trim + inter-stage `gc()`). |
-| `aa990e4` | Added `write-handoff-doc` skill; full HANDOFF.md rewrite. |
-| *(uncommitted, this session)* | Investigated and mitigated Known Issue #5 (long-shot EV clustering); found and fixed a real ridge-model non-determinism bug; built `bet_tracker.r` closing Known Issue #2. See "Recent work" below. |
+| Commit | Phase | What it added |
+|---|---|---|
+| `9155ad1`…`105eb8e` | Phases 1-7 | Ingestion, EPA/ratings engines, fatigue engine, playoff sim, risk engine, market odds engine, Discord dispatcher. |
+| `d1c90aa`, `83682a5` | Phase 8 | Early-season rating shrinkage + minimum-sample staking gate, then backtested (found Sharpe negative at every threshold — the finding that triggered all model-quality remediation since). |
+| `7092bad`…`050aebe` | Remediation A-4 | Market blend, QB-injury penalty, ridge Massey rating, MOV-weighted Elo, ridge+Elo ensemble (deployed), GBM stacking (negative result, not deployed). |
+| `bb1cd99` | — | Fixed two `run_full_pipeline.R` OS-kills (`CACHE_PBP` column trim + inter-stage `gc()`). |
+| `aa990e4` | — | Added `write-handoff-doc` skill; previous full HANDOFF.md rewrite (baseline for everything below). |
+| `4f3c9d3`…`872b4b6` | Remediation continuation | Ridge determinism fix, long-shot EV mitigation, real bet ledger, situational EPA features (Phase 4), Kalman state-space model (Phase 5), market-blend Sharpe re-derivation, real NFL playoff tiebreakers, player-ID crosswalk hardening, participation-data pickup (Known Issue #7, debunked), and a new market-disagreement project (Phases 0-2, one credible positive finding). See "Recent work" below for the compressed per-effort breakdown. |
 
 ## Recent work
 
-### Long-shot EV clustering investigation + `LONGSHOT_DECIMAL_ODDS_CAP` (uncommitted, 2026-09-17)
+Everything below shipped since `aa990e4` (the previous full rewrite), across one long
+session. Each entry is compressed — `git show <hash>` has the full investigation narrative.
 
-`tools/investigate_ev_clustering.R` (new, permanent analysis tool) confirmed docs/HANDOFF.md's
-prior Known Issue #5 against the production `ensemble_ridge_elo` formula: 100% of Kelly-positive
-bets at the production staking gate were underdogs, with mean EV% *increasing* as model
-probability *decreased* (2.26% in the [0,0.1] probability bin vs. 0.46% in [0.4,0.5]), and 29%
-clustering in week 17 alone. Root cause identified: `home_ev = model_prob * decimal_odds - 1`,
-and since `MARKET_BLEND_WEIGHT=0.97` anchors the model probability almost entirely to the same
-game's own market price used to derive `decimal_odds`, the apparent edge is really the model's
-remaining 3% disagreement with the market — a roughly fixed absolute probability delta that gets
-amplified multiplicatively by decimal odds, which are largest exactly for long-shot underdogs.
-Mitigation: `LONGSHOT_DECIMAL_ODDS_CAP <- 9.7` (config.R), backtested via
-`tools/derive_longshot_odds_cap.R` (Sharpe -0.1461 uncapped -> -0.0809 at the optimal cap, n=56
-walk-forward bets, seasons 2010-2025) and wired into `market_odds_engine.R`'s staking gate.
-- **Result**: roughly halves cumulative backtested loss vs. no cap; Sharpe remains NEGATIVE at
-  every cap value tested (see `config.R`'s own constant comment) — this is a mitigation, not a
-  validated edge. Real-money staking should stay paused regardless (Known Issue #4, unchanged).
-- **Status**: deployed (wired into `market_odds_engine.R`'s `evaluate_betting_slate()`).
-- **Full detail**: `tools/investigate_ev_clustering.R`'s own output, `config.R`'s
-  `LONGSHOT_DECIMAL_ODDS_CAP` comment, `cache/longshot_odds_cap_derivation.rds`.
+### Ridge Massey non-determinism fix, long-shot EV mitigation, real bet ledger (`4f3c9d3`)
 
-### Real bug found during that investigation: `ridge_massey_model.R` non-determinism (uncommitted, 2026-09-17)
+Three findings from one investigation. (1) `fit_ridge_massey()`'s `glmnet::cv.glmnet()` had no
+seed, making every Brier/Sharpe figure that used the ridge model silently non-reproducible —
+fixed with a local `set.seed(20260917)`. (2) Root-caused Kelly-positive bets clustering in
+long-shot underdogs to `MARKET_BLEND_WEIGHT=0.97` amplifying the model's thin residual
+disagreement with market via `decimal_odds`; mitigated (not fixed) with
+`LONGSHOT_DECIMAL_ODDS_CAP=9.7`. (3) Built `bet_tracker.r` (pipeline stage 9.5) — a real,
+honest-cold-start (empty, not fabricated) bet ledger writer/grader.
+- **Result**: Sharpe stays negative at every cap value tested; the ledger closed Known Issue #2
+  but remains empty in practice (no picks have cleared the staking gate yet).
+- **Status**: all three deployed.
 
-While backtesting the odds cap, two back-to-back runs of the *identical* production formula over
-identical data produced 124 vs. 56 Kelly-positive bets and Sharpe -0.0816 vs. -0.1511. Root
-cause: `fit_ridge_massey()`'s `glmnet::cv.glmnet()` call assigns its 5 CV folds via R's global
-RNG with no seed set anywhere in that file or its callers — every model refit (once per season,
-~16-23 times per full walk-forward run, and also live in `team_ratings_engine.R`'s production
-ratings) was silently non-reproducible. Fixed with a `set.seed(20260917)` local to
-`fit_ridge_massey()` (reset on every call, not relying on caller RNG state).
-- **Result**: re-running `tools/derive_longshot_odds_cap.R` twice after the fix gave identical
-  n=56, Sharpe=-0.1461 both times — confirmed reproducible.
-- **Status**: fixed (`tools/ridge_massey_model.R`). **Caveat for future work**: any earlier
-  Brier/Sharpe figure elsewhere in this repo that used the ridge model
-  (`ridge_only`/`ridge_phase1_combined`/`ensemble_ridge_elo` in
-  `tools/model_backtest_harness.R`, including the Phase 2-4 comparison table cited in this doc's
-  prior revisions) was computed under the old non-deterministic behavior. Those figures were NOT
-  re-run this session (out of scope) — treat them as approximate, not exact, until re-verified.
-- **Full detail**: `tools/ridge_massey_model.R`'s `fit_ridge_massey()` comment.
+### Model-comparison re-verification post-determinism-fix (`3a98431`)
 
-### Real bet ledger: `bet_tracker.r` (uncommitted, 2026-09-17)
+Re-ran `tools/model_backtest_harness.R` now that ridge is deterministic.
+- **Result**: every candidate's Brier matched its previously-reported value to 3-4 decimals
+  (e.g. `ensemble_ridge_elo` 0.2130). No production change needed — the aggregate Brier metric
+  was already stable; only the small-n Kelly simulation was RNG-sensitive.
+- **Status**: re-verification only, `cache/model_comparison_backtest.rds`.
 
-Closes Known Issue #2. New `bet_tracker.r`, ported from the WNBA sibling's `bet_tracker.r` with
-two deliberate deviations driven by this repo's stricter provenance conventions: (1) cold-starts
-with an **empty** ledger rather than WNBA's fabricated 60-bet seed ledger — mixing fake
-RESOLVED bets into a ledger `risk_management_engine.R` reads as `REAL_LEDGER` would be exactly
-the kind of provenance-loss bug this repo's `SYNTHETIC_FALLBACK`/`market_data_source` markers
-exist to prevent elsewhere; the existing (previously-dead) "real ledger has zero RESOLVED bets ->
-fall through to synthetic" branch in `risk_management_engine.R` already handles an empty ledger
-correctly. (2) only records picks tagged `market_data_source == "LIVE_ODDS_API"`, never a
-`SYNTHETIC_FALLBACK` fixture pick. Grades PENDING bets by joining `(team_picked, bet_date)`
-against `CACHE_SCHEDULES` (pivoted to long form), computing WIN/LOSS, `profit_units`, and an
-approximate CLV (against the bet-time consensus snapshot, not a true kickoff closing line — same
-documented limitation WNBA's version has). Added as pipeline stage 9.5, and `config.R` gained
-`CACHE_BETTING_LEDGER` (`risk_management_engine.R`'s header had already promised this exact
-constant name once a real ledger existed).
-- **Result**: end-to-end smoke-tested against a real historical game (BAL @ CAR, 2002-09-08):
-  pick recorded PENDING, graded WIN with correct `profit_units`/`clv_pct`, and
-  `risk_management_engine.R` correctly switched to `data_source="REAL_LEDGER"`. Test data was
-  injected into a backed-up copy of the caches and fully reverted afterward — the real
-  `cache/betting_ledger.rds` on disk is genuinely empty (0 rows), not seeded with fake bets.
-- **Status**: deployed (`bet_tracker.r`, wired into `run_full_pipeline.R` as stage 9.5). Ledger
-  will remain empty until a real slate produces a `LIVE_ODDS_API` pick with `Bankroll_Rec > 0`
-  (currently blocked by early-season `MIN_SAMPLE_GAMES_FOR_STAKE` gating — see current
-  `cache/latest_value_bets.rds`, every row is `INSUFFICIENT SAMPLE` as of this session).
-- **Full detail**: `bet_tracker.r`'s own header comment.
+### Phase 4: situational EPA feature engineering (`f520b54`)
 
-### Model-comparison harness re-run post-determinism-fix (uncommitted, 2026-09-17)
+Play-by-play was only ever reduced to blunt full-game EPA/success/CPOE means despite
+down/yardline/play_type already being cached and unused. Widened `CACHE_PBP` to 23 columns and
+added 14 situational per-team-per-game splits (early-down vs. money-down EPA/success, red-zone
+success rate, explosive-play rate, PROE) in `epa_metrics_engine.R`, plus a new
+`tools/ridge_situational_model.R` candidate.
+- **Result**: real, modest Brier/log-loss improvement in every matched pair vs. non-situational
+  ridge, but Sharpe gets WORSE once blended with market (`ensemble_ridge_situational_elo`
+  Sharpe -0.114 @ tau9 vs. deployed -0.089) — same market-blend noise-amplification mechanism
+  as the long-shot finding.
+- **Status**: NOT promoted. `ensemble_ridge_elo` stays deployed.
 
-Re-ran `tools/model_backtest_harness.R` (unchanged) now that `ridge_massey_model.R` is
-deterministic. Full comparison table (Brier/log-loss/accuracy/precision/recall/F1/AUC/Sharpe/
-calibration, all 10 candidates, n=5,548 walk-forward games, 2003-2025) saved to
-`cache/model_comparison_backtest.rds`.
-- **Result**: every candidate's Brier score matched its previously-reported value to 3-4 decimal
-  places (`ensemble_ridge_elo`: 0.2130 -> 0.212987; `ridge_phase1_combined`: 0.2151 -> 0.215074;
-  `elo_phase1_combined`: 0.2121 -> 0.212098; all others equally stable). `ensemble_ridge_elo`
-  remains the best deployed candidate (Brier 0.2130) and `elo_phase1_combined` remains the best
-  single-model Brier (0.2121) but with the same real Sharpe regression noted previously
-  (-0.1461 at tau_best vs. ensemble's -0.0839).
-- **Status**: no production formula change — this was a re-verification, not a new candidate.
-  Closes Known Issue #8's re-verification ask.
-- **Full detail**: `cache/model_comparison_backtest.rds`.
+### Phase 5: Kalman-filter state-space model (`5016031`)
 
-### Situational EPA feature engineering (Phase 4 continuation, uncommitted, 2026-09-17)
+`rstan`/`cmdstanr`/`brms` are not installed and installing an MCMC toolchain is a real decision
+left to the user — `tools/kalman_state_space_model.R` is the closed-form fallback: each team's
+latent strength is a Gaussian random walk with exact bivariate conjugate-Gaussian updates,
+using GAME-SPECIFIC predictive variance instead of the fixed `NFL_MARGIN_SIGMA`. Four
+hyperparameters derived via `tools/derive_kalman_params.R`.
+- **Result**: `kalman_phase1_combined`/`ensemble_ridge_elo_kalman` tie for 2nd-best Brier of 16
+  candidates (0.2127 vs. deployed 0.2130) but with meaningfully worse Sharpe (-0.216 vs -0.089
+  @ tau9) — same pattern as situational EPA.
+- **Status**: NOT promoted.
 
-Closed the "PBP is only used for blunt full-game EPA averages" gap flagged in `tools/gbm_model.R`'s
-header and `docs/memory_optimization_plan.md`. `daily_ingest.R`'s `.PBP_CACHE_COLUMNS` widened
-from 20 to 23 columns (`score_differential`, `yards_gained`, `pass_oe` added; all three confirmed
-present in a live `nflreadr::load_pbp()` pull before adding) — required a `force_refresh = TRUE`
-re-bootstrap of `CACHE_PBP` (1,145,788 rows, 2002-2026, re-ran clean). `epa_metrics_engine.R` now
-also computes 14 situational per-team-per-game columns (+ their `ROLLING_WINDOW_SIZE` rolling
-versions): early-down vs. money-down EPA/success split, red-zone success rate, explosive-play
-rate, and PROE (pass rate over expected, situation-neutral early downs only) — offense and
-defense-allowed versions of each. New config.R constants: `RED_ZONE_YARDLINE_MAX`,
-`EXPLOSIVE_PASS_YARDS`, `EXPLOSIVE_RUSH_YARDS`, `MONEY_DOWN_MIN`, `GARBAGE_TIME_ABS_SCORE_DIFF`
-(standard sabermetric-convention thresholds, not locally backtested — same status as
-`team_ratings_engine.R`'s `.PYTHAGOREAN_EXPONENT`), plus `SITUATIONAL_EPA_ROLL_COLS` (single
-source of truth for the column-name list, referenced by `tools/backtest_common.R`).
-- **Data quirk found**: `pass_oe` is 100% NA for every play in seasons 2002-2005 (nflverse's
-  pass-over-expected model doesn't cover that era) — documented in `epa_metrics_engine.R`'s
-  header; `off_proe_roll`/`def_proe_allowed_roll` are structurally NA for ~16% of team-game rows
-  as a result. Not a bug — `.safe_mean()`/`.roll_mean_trailing()` already degrade gracefully.
-- These are ADDITIVE columns only — `team_ratings_engine.R`'s live rating formula is unchanged
-  and still reads only the pre-existing full-game columns.
-- `tools/backtest_common.R`'s `build_week_snapshot()`/`build_walkforward_games()` extended to
-  carry every `SITUATIONAL_EPA_ROLL_COLS` column (as-of snapshot, no lookahead) into the
-  walk-forward game table as `home_<col>`/`away_<col>` pairs.
-- New `tools/ridge_situational_model.R` (deliberately a separate file from
-  `tools/ridge_massey_model.R`, not an edit to it — the live production fallback path must not be
-  touched by an unvalidated candidate): same ridge/Massey approach plus 14 situational-EPA-diff
-  regressors (NA diffs imputed to 0). Registered as three new `tools/model_backtest_harness.R`
-  candidates: `ridge_situational_only`, `ridge_situational_phase1_combined`,
-  `ensemble_ridge_situational_elo`.
-- **Result (full re-run, n=5,548 walk-forward games, 2003-2025)**: situational features give a
-  real but modest Brier/log-loss improvement in every matched pair vs. their non-situational
-  counterpart (`ridge_only` 0.2318 -> `ridge_situational_only` 0.2302; `ridge_phase1_combined`
-  0.2151 -> `ridge_situational_phase1_combined` 0.2146; `ensemble_ridge_elo` 0.2130 ->
-  `ensemble_ridge_situational_elo` 0.2127) — genuine calibration signal from richer PBP usage.
-  But Sharpe gets WORSE once blended with market/Elo (`ensemble_ridge_elo` -0.089 @ tau9 ->
-  `ensemble_ridge_situational_elo` -0.114) — same mechanism as Known Issue #5's long-shot EV
-  clustering: at `MARKET_BLEND_WEIGHT=0.97`, extra features add noise to the model's ~3%
-  residual disagreement with market, and that noise is what the tail-selected Kelly simulation
-  picks up.
-- **Status**: NOT promoted to production — `ensemble_ridge_elo` remains deployed (best Brier
-  among ensembles at 0.2130 is statistically indistinguishable from the situational variant's
-  0.2127; `elo_phase1_combined` remains the best single-model Brier at 0.2121). Documented as a
-  modest-positive-but-not-decisive result, following this repo's own precedent for `gbm_stack`'s
-  negative result — the candidate code stays in the harness for future revisiting (e.g. feature
-  selection to drop the weakest situational regressors, or a missingness indicator instead of
-  zero-imputation for the 2002-2005 PROE gap), not deleted.
-- **Full detail**: `tools/ridge_situational_model.R`'s header, `epa_metrics_engine.R`'s header,
-  `config.R`'s "Situational EPA Feature Thresholds" section, `cache/model_comparison_backtest.rds`.
+### `MARKET_BLEND_WEIGHT` re-checked against a Sharpe objective (`ef09fe9`)
 
-### Phase 5: Kalman-filter state-space model (uncommitted, 2026-09-17)
+The weight was only ever derived by minimizing Brier, never checked against staking
+profitability or the actually-deployed formula. New
+`tools/derive_market_blend_weight_sharpe.R` re-swept it against `ensemble_ridge_elo` and the
+real staking gates.
+- **Result**: Sharpe is negative across the ENTIRE `[0,1]` grid. The Sharpe-optimal weight
+  (0.748, Sharpe -0.051, n=1,197 bets) beats the current 0.97 (-0.091, n=47) per-bet, but only
+  by staking ~25x more games — absolute loss would be far larger (-80% vs -0.6%).
+- **Status**: `MARKET_BLEND_WEIGHT` left at 0.97 — its thin bet volume is a safety property
+  given no edge exists at any weight, not a flaw.
 
-Per this doc's own prior roadmap note ("Phase 5 (Bayesian state-space) needs an Rtools/rstan
-install decision first, or a pure-R closed-form Kalman-filter alternative") - `rstan`/`cmdstanr`/
-`brms`/`rjags` remain NOT installed on this machine (CLAUDE.md), and installing an MCMC toolchain
-is a real install decision left to the user rather than done silently mid-session. Built the
-documented fallback instead: `tools/kalman_state_space_model.R`, a genuine Bayesian state-space
-model - each team's latent point-margin-scale strength is a Gaussian random walk, updated via
-exact conjugate-Gaussian (Kalman) math (bivariate assumed-density-filtering update, same
-independence approximation TrueSkill/Glicko make - full derivation in that file's header).
-Structurally different from ridge/Elo: it tracks each team's own POSTERIOR VARIANCE explicitly
-(wide for a team with little recent history, narrow for a stable one) and uses that
-GAME-SPECIFIC combined variance for win probability, instead of every other candidate's fixed
-`NFL_MARGIN_SIGMA`. Interface mirrors `tools/elo_model.R`'s `run_elo_walkforward()`/
-`project_elo_rating()` shape (`run_kalman_walkforward()`/`project_kalman_state()`).
-- Four hyperparameters (`KALMAN_INITIAL_VARIANCE`, `KALMAN_PROCESS_VARIANCE`,
-  `KALMAN_OBSERVATION_VARIANCE`, `KALMAN_SEASON_CARRYOVER`) empirically derived via new
-  `tools/derive_kalman_params.R` (`stats::optim()`, L-BFGS-B, box-constrained joint search -
-  same discipline as `ELO_K_FACTOR`'s derivation, generalized from 1 to 4 params). Brier at
-  optimum 0.2202 vs. 0.2225 at literature-informed starting values.
-- **Found and fixed a real memory issue during derivation**: the first `run_kalman_walkforward()`
-  implementation built a length-6,499 list of one-row `data.frame()`s per simulation and
-  `bind_rows()`-ed them - called once per `optim()` iteration, this caused a real background
-  process OOM kill on this machine (already memory-constrained per `bb1cd99`'s pipeline-OOM
-  history). Rewrote to preallocate plain vectors and build one `data.frame()` at the end: same
-  output shape, no observed OOM on retry.
-- Registered three new `tools/model_backtest_harness.R` candidates: `kalman_pure` (standalone,
-  scored against its own `kalman_pred_var`, not `NFL_MARGIN_SIGMA`), `kalman_phase1_combined`
-  (QB-injury + market blend, same additive-margin form every other candidate uses),
-  `ensemble_ridge_elo_kalman` (3-way unweighted probability average).
-- **Result (n=5,548 walk-forward games, 2003-2025)**: `kalman_pure` (Brier 0.2211) ties
-  `elo_mov` (0.2211) as a standalone candidate - not decisively better alone. But
-  `kalman_phase1_combined` and `ensemble_ridge_elo_kalman` (both Brier 0.2127) land in a
-  statistical tie for SECOND-BEST BRIER of all 16 candidates in the harness, edging out the
-  deployed `ensemble_ridge_elo` (0.2130) - a genuine calibration improvement from a structurally
-  different filtering approach. Sharpe, however, is WORSE than deployed at every one of these:
-  `kalman_phase1_combined` -0.216 @ tau9 (vs. deployed -0.089), `ensemble_ridge_elo_kalman`
-  -0.125 @ tau9 - the same mechanism as Known Issue #5/the situational-feature finding above
-  (extra disagreement-with-market signal gets amplified in the thin, tail-selected Kelly sample).
-- **Status**: NOT promoted to production - `ensemble_ridge_elo` remains deployed. The Brier gap
-  (0.2127 vs 0.2130) isn't decisive enough to justify a real Sharpe regression. Documented as a
-  genuine calibration-positive/staking-negative result, same honesty discipline as `gbm_stack`'s
-  precedent - code stays in the harness for future revisiting (e.g. a proper joint covariance
-  update instead of the independence approximation, or tuning KALMAN_* against Sharpe instead of
-  Brier), not deleted.
-- **Full detail**: `tools/kalman_state_space_model.R`'s header (full derivation math),
-  `tools/derive_kalman_params.R`'s header, `config.R`'s "Kalman State-Space Model
-  Hyperparameters" section, `cache/model_comparison_backtest.rds`.
+### Quarto profitability-remediation report (`9157a13`)
 
-### `MARKET_BLEND_WEIGHT` re-checked against a Sharpe objective (uncommitted, 2026-09-17)
+`docs/profitability_remediation_report.qmd` (rendered to `.html`/`.pdf`) consolidates the four
+efforts above into one reproducible document built entirely from cached derivation artifacts.
+Rendered and visually inspected both formats (not just exit-code-checked) per this repo's
+`render-and-inspect-quarto` convention; found and fixed two real defects (an overlapping-header
+table, `ggplot` code truncated at the PDF margin) before treating it as done.
+- **Status**: `docs/profitability_remediation_report.{qmd,html,pdf}`, all committed.
 
-Prompted directly by the Phase 4/5 pattern above (Brier improvements paired with Sharpe
-regressions): `MARKET_BLEND_WEIGHT=0.97` was only ever derived by minimizing Brier
-(`tools/derive_market_blend_weight.R`, against the now-superseded `baseline_k3.6` formula) -
-never checked against Sharpe, and never checked against the formula actually deployed today.
-New `tools/derive_market_blend_weight_sharpe.R` re-runs the sweep against the real deployed
-`ensemble_ridge_elo` formula and its real staking gates (`MIN_SAMPLE_GAMES_FOR_STAKE` +
-`LONGSHOT_DECIMAL_ODDS_CAP`, quarter-Kelly), walk-forward 2010-2025 (n=4,009 games with real
-moneylines).
-- **Result**: Sharpe is NEGATIVE across the ENTIRE `[0, 1]` weight grid - roughly -0.05 to -0.06
-  for w in `[0, 0.9]`, degrading toward `w=1` (zero bets at `w=1.00` - a model identical to the
-  market has no edge over its own devigged price). Sharpe-optimal weight `w=0.748` gives
-  Sharpe=-0.0506 (n=1,197 bets) vs. current `w=0.97`'s Sharpe=-0.0909 (n=47 bets) - a real but
-  modest per-bet improvement, but it comes from staking ~25x more games: cumulative return would
-  be -80% vs. -0.6% over this window. Lowering the weight is NOT a fix; it trades a worse
-  per-bet ratio at very low exposure for a slightly-better ratio at much higher exposure to a
-  strategy with no real edge.
-- **Status**: `MARKET_BLEND_WEIGHT` left UNCHANGED at 0.97 - its thin bet volume is a safety
-  property given no edge exists at any weight in this grid, not a flaw. Documented directly in
-  `config.R`'s `MARKET_BLEND_WEIGHT` comment (a permanent note, not just here). Real-money
-  staking should stay paused regardless (Known Issue #4, unchanged).
-- **Full detail**: `tools/derive_market_blend_weight_sharpe.R`'s header and full grid printout,
-  `cache/market_blend_weight_sharpe_derivation.rds`.
+### Real NFL playoff tiebreaker procedure (`c091c9d`)
 
-### Real NFL playoff tiebreaker procedure (uncommitted, 2026-09-17)
+New `nfl_tiebreakers.R` replaces the old win%→alphabetical shortcut with the NFL's real,
+live-verified procedure (head-to-head, division/conference record, common games, strength of
+victory/schedule, combined point rankings, net points, with the official "restart at step 1"
+cascade rule). Three scope limitations are explicitly documented, not silently approximated:
+head-to-head "sweep" for 3+ clubs, net touchdowns, and the literal coin toss all fall back to a
+simpler rule (see the file's own header).
+- **Result**: smoke-tested against real, complete 2025 season data — correctly resolved every
+  real tied group (including a 3-way NFC South tie) without error.
+- **Status**: deployed (`playoff_simulator.R` wired to it).
 
-Closed Known Issue #3 below. `playoff_simulator.R` previously used a deliberately simplified
-tiebreak (win% -> games_played -> alphabetical) instead of the NFL's real multi-step procedure.
-New `nfl_tiebreakers.R` (part of the pipeline DAG, sourced by `playoff_simulator.R`, not a
-`tools/` one-off) implements the real, live-verified (WebSearch/WebFetch against
-`nfl.com/standings/tie-breaking-procedures` and ESPN's tiebreaker explainer, 2026-09-17)
-procedure: head-to-head, division/conference record, common games (min. 4, dynamically computed
-per tied group), strength of victory/schedule (aggregate record of opponents beaten/played),
-combined ranking in points scored/allowed (conference and league-wide), and net points
-(common/conference/all games) - with the official "restart at step 1" cascade rule when a
-criterion splits a tied group into still-tied subgroups (recursive `.cascade()`).
-- **Documented scope limitations** (explicit in `nfl_tiebreakers.R`'s header, not silent):
-  "head-to-head sweep" for 3+ clubs is approximated via intra-group win% rather than the
-  official's narrower sweep-only eligibility condition; net touchdowns and the literal coin
-  toss (the final two of ~12 official steps) are not modeled - both fall back to alphabetical
-  order, which only matters if every other real criterion above them ties exactly (historically
-  very rare); the wild-card same-division-representative rule places an eliminated
-  division-mate immediately after its division's active representative rather than fully
-  modeling the official rule's re-entry into a later tied comparison.
-- **Verification**: smoke-tested against real 2025 (complete) season data - correctly resolved
-  every real win%-tied group found in both conferences (e.g. a 3-way NFC South tie, several
-  2-way division and cross-division ties) without error, plus a `.cascade()` unit check
-  confirming the alphabetical fallback fires only when every real criterion is exhausted. Also
-  ran `run_playoff_simulator()` end-to-end against the real in-progress 2026 season.
-- **Status**: deployed (`playoff_simulator.R` now calls `build_tiebreak_data()` /
-  `resolve_division_ties()` / `resolve_wildcard_ties()` instead of the old `.compute_team_records()`
-  / `.order_key()` pair, which were removed).
-- **Full detail**: `nfl_tiebreakers.R`'s own header (full procedure, cascade rule, scope
-  limitations).
+### Player-ID crosswalk hardening (`52b74a5`)
 
-### Player-ID crosswalk hardening (uncommitted, 2026-09-17)
+`nflreadr::load_ff_playerids()` had been named "the canonical crosswalk" since Phase 0 but was
+never actually called live anywhere in this repo. New `player_id_crosswalk.R` live-verifies it
+(12,494 rows), found a real vendor data bug (10 `gsis_id`/4 `espn_id`/4 `pfr_id` values each map
+to 2+ distinct players — dropped rather than guessed), and exposes `assert_join_match_rate()`.
+Applied concretely in `injury_scraper.R` (each row enriched with the other source's crosswalked
+id, never merging rows).
+- **Result**: real match rates 83.2% (gsis→espn), 88.9% (espn→gsis), both spot-checked correct
+  by name.
+- **Status**: deployed. No other join point in this repo currently mixes ID schemes.
 
-Closed Known Issue #6 below. `nflreadr::load_ff_playerids()` had been named in CLAUDE.md/docs
-as "the canonical crosswalk to use" since Phase 0 but had NEVER actually been called live
-anywhere in this repo (confirmed via repo-wide grep) - purely a documented intention, not
-verified infrastructure. New `player_id_crosswalk.R` is the live verification plus reusable
-infrastructure: `load_player_id_crosswalk()` (loads, caches via new `CACHE_PLAYER_ID_CROSSWALK`,
-and deduplicates) and `assert_join_match_rate()` (the post-join match-rate assertion CLAUDE.md's
-ID-scheme quirk explicitly calls for).
-- **Real data quirk found**: 10 `gsis_id` / 4 `espn_id` / 4 `pfr_id` values in the live
-  `load_ff_playerids()` table each map to 2+ distinct named players (e.g. `gsis_id`
-  `00-0022828` = both "Nate Jones" and "Nathan Jones") - a name-collision bug in the underlying
-  ffverse crosswalk itself, not a parsing error on this repo's end. A naive join would silently
-  fan out these rows. `load_player_id_crosswalk()` drops ambiguous ids rather than guessing.
-- **Applied concretely** in `injury_scraper.R` (deliberately without changing its existing
-  union-only, never-merge design): each row is now enriched with the OTHER source's crosswalked
-  id (`espn_athlete_id_crosswalked` on `NFLREADR_OFFICIAL` rows, `gsis_id_crosswalked` on
-  `ESPN_LIVE` rows) - a downstream consumer wanting "current status for player X across both
-  sources" can now match on either scheme instead of inventing a name-string join.
-- **Result**: ran `run_injury_scraper()` end-to-end against real live data (376 real
-  `NFLREADR_OFFICIAL` rows, 800 real `ESPN_LIVE` rows). Real match rates: 83.2% (`gsis_id` ->
-  `espn_id`), 88.9% (`espn_athlete_id` -> `gsis_id`) - both well above `assert_join_match_rate()`'s
-  default 50% warning threshold. Spot-checked several resolved pairs by name for correctness
-  (e.g. ESPN athlete 4568506 <-> gsis_id 00-0039007, both independently resolving to "Garrett
-  Williams").
-- **Status**: deployed (`injury_scraper.R` wired to `player_id_crosswalk.R`). No other join
-  point in this repo currently mixes ID schemes (`tools/qb_injury_features.R` is gsis_id-only
-  throughout, verified in that file's own header) - this is infrastructure ready for the next
-  player-level feature that does, not a retrofit of a previously-broken join.
-- **Full detail**: `player_id_crosswalk.R`'s own header (full live-verified schema/quirks).
+### Participation/personnel feature pickup, then debunked (`8b6cc38`, `49a4903`)
 
-### Participation/personnel feature pickup (uncommitted, 2026-09-17)
+Known Issue #7 pickup: `tools/participation_features.R` is the first real use of
+`nflreadr::load_participation()` in this repo. Re-verified live: seasons 2016-2025 return real
+data; `CURRENT_SEASON` genuinely 404s (a hard wall, not stale docs) — kept in `tools/`, never a
+live pipeline stage. Registered `tools/ridge_participation_model.R` as two harness candidates.
+- **Result**: no real Brier improvement (0.2320 vs. `ridge_only`'s 0.2318). The one seemingly
+  positive Sharpe (+0.0017, n=262) was followed up (`tools/investigate_participation_sharpe.R`)
+  and debunked: negative at 9/16 tau thresholds, a bootstrap 95% CI of `[-0.151, +0.100]` (44%
+  of resamples positive), and 68% of the underlying bets fall in seasons where the feature is
+  pure zero-imputed noise.
+- **Status**: NOT promoted. Zero evidence this data source adds value.
 
-Closed the "unstarted" half of Known Issue #7 below (the data-availability constraint itself
-is not something this repo can fix). New `tools/participation_features.R` is the first real
-use of `nflreadr::load_participation()` in this repo - re-verified live rather than re-citing
-the prior claim: seasons 2016-2025 all return real data now (2016: 48,434 rows/20 cols; 2023+:
-26 cols, six extra FTN player-name/number/position-list columns, not new team-level stats);
-`CURRENT_SEASON` (2026) is a genuine HTTP 404 (0 rows) against the real GitHub release asset -
-confirms this is a hard wall, not a stale claim, and why this stays a `tools/`-only,
-backtest-only pipeline rather than a `run_full_pipeline.R` stage.
-- Joins participation to `CACHE_PBP` by `(game_id, play_id)` (inherits that file's already-
-  verified posteam/defteam resolution rather than re-deriving team attribution from
-  `possession_team`) and computes six per-team-per-game features (offense: 11-personnel rate,
-  defenders-in-box faced, pressure-rate allowed; defense: pass-rushers sent, pressure-rate
-  generated, defenders-in-box deployed), rolling `ROLLING_WINDOW_SIZE` trailing average.
-- New `tools/ridge_participation_model.R` adds these as ridge regressors via a standalone,
-  no-lookahead as-of attach function (deliberately not editing `tools/backtest_common.R`'s
-  shared, production-critical `build_week_snapshot()` for a feature set that can never serve a
-  live prediction). Registered as two new `tools/model_backtest_harness.R` candidates.
-- **Result (n=5,548 walk-forward games, 2003-2025, participation real only 2016+)**:
-  `ridge_participation_only` Brier 0.2320 vs. `ridge_only`'s 0.2318 - no real difference, unlike
-  the situational-EPA/Kalman findings above. `ridge_participation_phase1_combined` Sharpe
-  +0.0017 at n=262 (tau_best=9, matching the current production gate) - the FIRST non-negative
-  Sharpe value in this entire remediation arc's 18-candidate comparison.
+### New project: train against market disagreement, not game outcome (`872b4b6`)
 
-**Follow-up investigation (`tools/investigate_participation_sharpe.R`, same session)**: per the
-"a single summary number is not evidence, look at the actual bet-level distribution" discipline
-already applied to `LONGSHOT_DECIMAL_ODDS_CAP` and `MARKET_BLEND_WEIGHT`, the +0.0017 result was
-followed up with three checks before treating it as anything but noise:
-1. **Full tau grid (0-15)**: Sharpe is NEGATIVE at 9 of 16 thresholds (tau 0-11); only turns
-   positive at tau>=12, where n rapidly shrinks (194 -> 166 -> 130 -> 87) - the same "thin,
-   non-robust high-tau/low-n bump" pattern already flagged for `LONGSHOT_DECIMAL_ODDS_CAP`'s
-   cap=4.0 result. Not a robust region of the parameter space.
-2. **Bootstrap 95% CI at tau=9** (10,000 resamples, n=271 bets in this reconstruction - a minor,
-   expected discrepancy from the harness's n=262 due to reconstruction-order floating-point
-   differences, not a bug): `[-0.151, +0.100]`, median -0.0089, with only 44% of resamples
-   landing positive. The CI comfortably straddles zero - this point estimate is NOT
-   statistically distinguishable from a zero-edge strategy.
-3. **Season composition of the underlying bets**: only 32.1% (87/271) fall in seasons with REAL
-   participation coverage (>= 2016) - the majority, 67.9%, are in 2006-2015, where the
-   participation feature is pure zero-imputed noise by construction (see
-   `ridge_participation_model.R`'s NA-diff-to-0 convention). 113/271 (41.7%) of this candidate's
-   bets are on the exact same `game_id` the deployed baseline (`ensemble_ridge_elo`) also bets
-   on. **The apparent "signal" has nothing to do with the participation data at all.**
-
-**Verdict: debunked.** The +0.0017 Sharpe was noise, not a real edge - both because it isn't
-statistically distinguishable from zero, and because most of the bets it's computed from don't
-even touch real participation-era data.
-- **Status**: NOT promoted to production (couldn't be even if it worked - `CURRENT_SEASON` data
-  will never exist for this feature set). Real, honest negative-to-neutral result, same
-  discipline as every other candidate this session. Data-availability limitation itself remains
-  unfixable and is unchanged (see Known Issue #7 below).
-- **Full detail**: `tools/participation_features.R`'s and `tools/ridge_participation_model.R`'s
-  own headers, `cache/model_comparison_backtest.rds`,
-  `cache/participation_sharpe_investigation.rds` (full tau grid, bootstrap distribution,
-  bet-level detail).
-
-### New project, Phases 0-2: "train against market disagreement, not game outcome" (uncommitted, 2026-09-17)
-
-Every candidate above (situational EPA, Kalman, participation) was trained to predict the GAME
-better, then blended with market - but at `MARKET_BLEND_WEIGHT=0.97` the market is already
-close to a sufficient statistic for outcome, so a model that predicts outcome slightly better
-doesn't necessarily predict WHERE THE MARKET IS WRONG (the only thing that produces a real
-edge). This new, explicitly-separate project targets `market_residual = home_win -
-market_prob` directly, evaluated on Sharpe from the start rather than Brier-then-hope.
-
-**Phase 0 (fact-check, no code)**: nflreadr's OWN data dictionary (`dictionary_schedules` - a
-lazy-loaded package data object, NOT a namespace function, a real gotcha) documents
-`home_moneyline`/`spread_line` with zero mention of opening-vs-closing timing or source
-vendor - genuinely undocumented, confirmed by also checking nflseedR's `load_sharpe_games()`
-docs (the historical community source these columns trace back to). This repo's own
-`CACHE_ODDS_HISTORY` has only 416 rows spanning <24 hours (started this session) - no temporal
-overlap exists to independently cross-check. **Conclusion**: every `market_prob` this repo has
-ever backtested against has unverifiable timing - a real, previously-unflagged epistemic gap,
-not a blocker, but now documented rather than silently assumed. Public bet-percentage/handle
-data (the classic "fade the public" signal) doesn't exist in this repo and remains an explicit,
-deferred paid-vendor decision, not included below.
-
-**Phase 1 (label) + Phase 2 (features)**: new `tools/market_disagreement_features.R` builds
-`market_residual` for every 2010+ real-moneyline game (reuses `build_walkforward_games()`
-entirely) plus five features hypothesized to predict MARKET error specifically, all from
-already-cached `CACHE_SCHEDULES` columns (`home_rest`/`away_rest`/`div_game` - no new
-ingestion) plus the existing QB-backup flag builder: rest-day mismatch, divisional game,
-primetime (TNF/SNF/MNF), spread size, and QB-backup situation. Runs an exploratory diagnostic
-(mean residual per bucket, naive 95% CI) rather than fitting a model yet.
-- **Bug found and fixed while building this**: the first draft's QB-situation bucketing used
-  `isTRUE()` inside `dplyr::case_when()` - `isTRUE()` is NOT vectorized in base R, so it
-  silently collapsed all 4,009 rows into "neither_backup," masking the real signal below
-  entirely. Fixed with the vectorized `%in% TRUE` equivalent. A live reminder that a script
-  running without error is not evidence it computed the right thing.
-- **Real finding**: of 8 scanned buckets, one clearly stands out - `home_backup_only` (home
-  team started a backup QB, away team didn't; n=430): mean `market_residual` = -0.0615, 95% CI
-  `[-0.1055, -0.0175]` (excludes zero). Every other bucket's CI comfortably includes zero.
-- **Follow-up verification** (`tools/verify_qb_backup_market_bias.R`, same session, same
-  bootstrap discipline `investigate_participation_sharpe.R` established): a genuine walk-
-  forward strategy (bias estimated from ONLY prior-season `home_backup_only` games, applied to
-  bet the away team when it implies positive EV) produced n=399 bets (2011-2024), **Sharpe
-  +0.0911**, cumulative return **+96.6%**, positive in 10 of 14 seasons (not a single-season
-  artifact), bootstrap 95% CI `[-0.0058, +0.187]` with **96.7% of 10,000 resamples positive**.
-  This is categorically different from every other candidate this session (contrast the
-  participation candidate's 44%-positive, zero-straddling CI) - the CI's lower bound is a hair
-  below zero, so it isn't airtight, but this is the strongest result found in this entire
-  remediation arc.
-- **Likely mechanism**: `QB_INJURY_RATING_PENALTY_PTS` (`tools/derive_qb_injury_penalty.R`) was
-  derived as ONE symmetric value for home AND away backup starts, optimized against Brier,
-  never checked for a home/away asymmetry or against Sharpe. This finding suggests the market
-  itself underprices a HOME team's backup-QB downgrade specifically - a genuine market-
-  inefficiency hypothesis (measured against the market's own devigged price, independent of
-  anything this repo's model does internally).
-- **Status**: NOT deployed, NOT staked. This needs, before any real-money consideration: (a)
-  checking against the production staking gates (`MIN_SAMPLE_GAMES_FOR_STAKE`,
-  `LONGSHOT_DECIMAL_ODDS_CAP`) it was NOT run through here, (b) accounting for the fact it was
-  the standout among 8 exploratory buckets (some real, if likely small given the effect size
-  and cross-season consistency, multiple-comparisons risk), and (c) ideally a true holdout
-  check against 2025-2026 data as it accumulates, not just the same walk-forward window used to
-  find it. The next concrete step, if pursued: derive separate `HOME_QB_INJURY_PENALTY_PTS` /
-  `AWAY_QB_INJURY_PENALTY_PTS` constants (replacing the single symmetric
-  `QB_INJURY_RATING_PENALTY_PTS`) via the same `stats::optimize()` discipline, but against
-  Sharpe instead of Brier, then re-run the full model comparison harness.
-- **Full detail**: `tools/market_disagreement_features.R`'s and
-  `tools/verify_qb_backup_market_bias.R`'s own headers,
-  `cache/market_disagreement_features.rds`, `cache/qb_backup_market_bias_verification.rds`.
+Every candidate above predicts the GAME better, then blends with market — but at
+`MARKET_BLEND_WEIGHT=0.97` the market is already close to sufficient, so out-predicting the
+game doesn't necessarily predict WHERE the market is wrong. This project targets
+`market_residual = home_win - market_prob` directly.
+- **Phase 0 (fact-check)**: nflreadr's own data dictionary documents `home_moneyline`/
+  `spread_line` with zero mention of opening-vs-closing timing or source vendor — genuinely
+  undocumented. This repo's `CACHE_ODDS_HISTORY` has only ~1 day of real history. Conclusion:
+  every `market_prob` this repo has ever backtested against has unverifiable timing — a real,
+  previously-unflagged gap, now documented rather than silently assumed.
+- **Phase 1+2**: `tools/market_disagreement_features.R` builds the residual label plus five
+  features (rest mismatch, div game, primetime, spread size, QB-backup situation) from
+  already-cached columns, with an exploratory diagnostic. Found (and fixed) a real bug along
+  the way: `isTRUE()` isn't vectorized in base R and silently collapsed the QB-situation
+  bucketing to one category on the first run.
+- **Result**: one bucket stood out — `home_backup_only` (home team started a backup QB, away
+  team didn't; n=430), 95% CI on the residual excludes zero. Follow-up walk-forward strategy
+  test (`tools/verify_qb_backup_market_bias.R`, bias estimated from prior seasons only): n=399
+  bets, **Sharpe +0.0911**, cumulative return **+96.6%**, positive in 10/14 seasons, bootstrap
+  95% CI `[-0.0058, +0.187]` with **96.7% of resamples positive** — the strongest result in this
+  entire remediation arc, categorically different from the participation false-positive above.
+  Likely mechanism: `QB_INJURY_RATING_PENALTY_PTS` was derived as one symmetric value for
+  home/away backup starts, never checked for asymmetry or against Sharpe.
+- **Status**: NOT deployed or staked. Needs: checking against the real production staking gates
+  (not done yet), accounting for it being the standout of 8 screened buckets, and ideally a true
+  holdout against 2025-2026 data as it accumulates.
 
 ## Known issues / unfinished business
 
 1. **`NFL_DISCORD_WEBHOOK` not visible to R.** Set in `C:\Users\kailo\Documents\.Renviron`, but
    R's user-Renviron lookup resolves to `C:\Users\kailo` directly on this machine. **Fix**: move
-   the line into `C:\Users\kailo\.Renviron`, or set it as a Windows env var.
-2. ~~`risk_management_engine.R` has no real ledger~~ **CLOSED this session** — `bet_tracker.r`
-   now exists and writes `CACHE_BETTING_LEDGER`; see "Recent work" above. The ledger is currently
-   empty (no real staked picks yet this season) so `risk_management_engine.R` still reports
-   `SYNTHETIC_FALLBACK` in practice until that changes — this is the correct, honest behavior of
-   the now-real cold-start path, not a bug.
-3. ~~Playoff seeding uses a simplified tiebreak~~ **CLOSED this session** — `nfl_tiebreakers.R`
-   now implements the NFL's real multi-step procedure (head-to-head, division/conference
-   record, common games, strength of victory/schedule, combined point rankings, net points),
-   with two narrow, explicitly documented scope limitations (net touchdowns / coin toss not
-   modeled — see "Recent work" above). `playoff_simulator.R` is wired to it.
-4. **Staking is not validated as profitable.** Sharpe remains negative at every staking
-   threshold and every long-shot odds cap tested (see "Recent work" above) — real-money staking
-   should stay paused regardless of any mitigation shipped this session.
-5. ~~Kelly-positive bets cluster in long-shot underdogs / week 17~~ **INVESTIGATED AND MITIGATED
-   this session** — see "Recent work" above (`LONGSHOT_DECIMAL_ODDS_CAP`). Root cause understood
-   and documented; mitigation reduces but does not eliminate the underlying issue (the model's
-   probability estimates are still noisiest in exactly the games most affected — backup QBs,
-   rested starters, week 17).
-6. ~~Four competing NFL player-ID schemes remain a real risk for any future player-level
-   join~~ **HARDENED this session** — new `player_id_crosswalk.R` live-verifies
-   `nflreadr::load_ff_playerids()` (12,494 rows, real schema confirmed), found and handles a
-   real duplicate-gsis_id data bug in that crosswalk itself (10 gsis_id / 4 espn_id / 4 pfr_id
-   values each map to 2+ distinct players - dropped rather than guessed), and exposes
-   `assert_join_match_rate()` for the post-join match-rate assertion CLAUDE.md calls for.
-   Applied concretely in `injury_scraper.R`: each row is now enriched with the OTHER source's
-   crosswalked id (`espn_athlete_id_crosswalked` / `gsis_id_crosswalked`), still never
-   merging/collapsing rows. Real match rates against live data: 83.2% (gsis_id -> espn_id),
-   88.9% (espn_athlete_id -> gsis_id). Any FUTURE player-level join should use
-   `load_player_id_crosswalk()` + `assert_join_match_rate()` rather than a fresh, unverified
-   call to `load_ff_playerids()`.
-7. ~~`load_participation()` still unstarted, still correctly unused anywhere in the
-   pipeline~~ **STARTED this session** — see "Recent work" above (`tools/participation_features.R`
-   / `tools/ridge_participation_model.R`). Re-verified live: 2016-2025 all return real data now;
-   `CURRENT_SEASON` (2026) genuinely 404s (confirms the "post-postseason-only" claim is a hard
-   wall, not a stale one). Real backtest result: personnel/box-count/pressure features add
-   essentially NO Brier improvement (0.2320 vs. `ridge_only`'s 0.2318). The candidate's initial
-   +0.0017 Sharpe (n=262) was FOLLOWED UP and DEBUNKED as noise, not a real edge — see
-   `tools/investigate_participation_sharpe.R` in "Recent work" above: negative at 9/16 tau
-   thresholds, a bootstrap 95% CI of `[-0.151, +0.100]` (comfortably straddling zero, 44% of
-   resamples positive), and 68% of the underlying bets fall in seasons where the participation
-   feature is pure zero-imputed noise (pre-2016). This data source remains fundamentally
-   backtest-only (`CURRENT_SEASON` can never populate it) - kept in `tools/`, not wired into any
-   live stage, and now has zero evidence of adding real value beyond `ridge_only`.
-8. ~~Any ridge-model-derived backtest figure computed before the `set.seed()` fix should be
-   re-verified~~ **RE-VERIFIED this session** — `tools/model_backtest_harness.R` re-run after
-   the fix; every candidate's Brier score matched the previously-reported figure to 3-4 decimal
-   places (e.g. `ensemble_ridge_elo` 0.2130 -> 0.212987, `ridge_phase1_combined` 0.2151 ->
-   0.215074). The aggregate Brier metric (n=5,548 games) was already stable across CV-fold RNG
-   noise; only the small-n, tail-selected Kelly-staking simulation was sensitive to it (matches
-   the mechanism found investigating Known Issue #5). `ensemble_ridge_elo` remains the best
-   deployed candidate — no change to the production formula needed. Full table saved to
-   `cache/model_comparison_backtest.rds`.
-9. **This session's work is committed** (`4f3c9d3` and the model-comparison re-run above, not
-   yet committed as of writing this line — see `git status --short`).
+   the line into `C:\Users\kailo\.Renviron`, or set it as a Windows env var. Unchanged.
+2. **Staking is not validated as profitable at the ensemble/portfolio level.** Sharpe is
+   negative for every deployed-formula candidate across every parameter grid tested this
+   session (long-shot cap, market-blend weight, situational/Kalman/participation features) —
+   real-money staking should stay paused. The one exception found (home-backup-QB market bias,
+   see Recent work) is a narrow, single-signal result not yet validated to the same bar as a
+   deployment decision requires.
+3. **Stage 8/9.5 pipeline ordering gap.** `risk_management_engine.R` (stage 8) runs before
+   `bet_tracker.r` (stage 9.5) grades new bets within the same invocation — one cycle behind.
+   Not urgent while the ledger is empty. Not fixed this session (a larger, separately-reasoned
+   reordering).
+4. **Home-backup-QB market bias needs more validation before any deployment consideration**
+   (see Recent work's last entry): check against `MIN_SAMPLE_GAMES_FOR_STAKE`/
+   `LONGSHOT_DECIMAL_ODDS_CAP`, account for multiple-comparisons risk (it was the standout of 8
+   screened buckets), and ideally hold out 2025-2026 data rather than reusing the discovery
+   window. The natural next step if pursued: derive separate `HOME_QB_INJURY_PENALTY_PTS` /
+   `AWAY_QB_INJURY_PENALTY_PTS` (replacing the single symmetric `QB_INJURY_RATING_PENALTY_PTS`)
+   via `stats::optimize()` against Sharpe, then re-run the full comparison harness.
+5. **Four competing NFL player-ID schemes** — HARDENED this session (`player_id_crosswalk.R`,
+   commit `52b74a5`), but remains something any *future* player-level join must use rather than
+   a fresh unverified `load_ff_playerids()` call.
+6. **`load_participation()`** — STARTED and its Sharpe hypothesis DEBUNKED this session (see
+   Recent work). The underlying data-availability limitation (never populated for
+   `CURRENT_SEASON`) is permanent, not a bug to fix.
+7. **Public bet-percentage/handle data** does not exist anywhere in this repo. A real, explicit,
+   deferred paid-vendor decision for the market-disagreement project (Phase 2's "fade the
+   public" angle) — not pursued without user sign-off on cost/ToS.
 
 ## Environment specifics a fresh agent needs
 
-- R: `C:\Program Files\R\R-4.5.2\bin\Rscript.exe` (not on PATH). Installed and confirmed working:
-  `nflreadr`, `dplyr`, `duckdb`, `httr2`, `glmnet`, `xgboost`. NOT installed: `lightgbm`,
-  `rstan`/`cmdstanr`/`brms`/`rjags`.
+- R: `C:\Program Files\R\R-4.5.2\bin\Rscript.exe` (not on PATH). Installed and confirmed
+  working: `nflreadr`, `dplyr`, `duckdb`, `httr2`, `glmnet`, `xgboost`, `ggplot2`, `knitr`,
+  `rmarkdown`, `tinytex`. NOT installed: `lightgbm`, `rstan`/`cmdstanr`/`brms`/`rjags`,
+  `kableExtra`.
+- Quarto: **not on PATH** — the real binary is bundled with RStudio at
+  `C:\Program Files\RStudio\resources\app\bin\quarto\bin\quarto.exe`. Invoke via full path.
 - Real credentials confirmed working: `ODDS_API_KEY`. `NFL_DISCORD_WEBHOOK` is set by the user
   but not currently visible to R (Known Issue #1).
 - Inline multi-line `Rscript -e '...'` has segfaulted before on this machine — write ad hoc R to
-  a temp `.R` file under `tools/` (delete it after) rather than inlining. This session's
-  smoke-tests for `bet_tracker.r` followed that convention (backed up/restored real cache files
-  around the test, deleted the temp script after).
-- `glmnet::cv.glmnet()` calls anywhere in this repo need an explicit local seed (see the
-  `ridge_massey_model.R` fix above) — R's global RNG state is not something to rely on for
-  reproducibility across separate script invocations in this environment.
+  a temp `.R` file under `tools/` (delete it after) rather than inlining.
+- `glmnet::cv.glmnet()` calls anywhere in this repo need an explicit local seed — R's global RNG
+  state is not something to rely on for reproducibility across separate script invocations here.
+- `nflreadr`'s `dictionary_*` objects (e.g. `dictionary_schedules`) are lazy-loaded package
+  *data*, not namespace functions — `nflreadr:::dictionary_schedules` fails; use
+  `data(dictionary_schedules, package = "nflreadr")` first, discovered while fact-checking the
+  market-disagreement project.
+- `isTRUE()` is not vectorized in base R — using it inside `dplyr::case_when()`/`mutate()` over
+  a vector column silently collapses every row to the fallback branch with no error. Use
+  `x %in% TRUE` instead. A real bug found and fixed this session
+  (`tools/market_disagreement_features.R`).
 
 ## Suggested next steps, roughly in priority order
 
-1. **Commit this session's uncommitted work** (or explicitly decide to discard parts of it) —
-   see Known Issue #9.
-2. Fix the `NFL_DISCORD_WEBHOOK` visibility issue (5-minute user-side fix, unblocks real
-   notifications).
-3. ~~Re-run `tools/model_backtest_harness.R` for a corrected Phase 2-4 comparison table~~ **DONE**
-   this session — see "Recent work" above; figures confirmed stable, no formula change needed.
-4. Consider fixing the stage 8/9.5 ordering gap noted in "Current state" above (risk management
-   runs before the same-run's bet grading) if a same-run-fresh ledger read ever becomes
-   important — not urgent today since the ledger is empty anyway.
-5. If reviving Phase 4/5 model work: `gbm_stack` is a working harness candidate to retry with a
-   rolling multi-season validation window; Phase 5 (Bayesian state-space) needs an Rtools/rstan
-   install decision first, or a pure-R closed-form Kalman-filter alternative.
-6. `player_props_engine.R`, team embeddings, a live dashboard remain explicitly deferred
-   non-goals — only start if there's a concrete pull for them.
+1. Fix the `NFL_DISCORD_WEBHOOK` visibility issue (5-minute user-side fix, unblocks real
+   notifications) — Known Issue #1, still open.
+2. Validate or reject the home-backup-QB market bias (Known Issue #4) — the one credible
+   positive-Sharpe finding this session produced. Check it against the real production staking
+   gates, then either derive asymmetric QB-injury-penalty constants and re-run the comparison
+   harness, or let it season against 2025-2026 data as a true holdout before deciding.
+3. If continuing the market-disagreement project: Phase 2's public-bet-percentage/handle data
+   angle needs an explicit user decision (new paid vendor or scraping project) before pursuing —
+   not started pending that.
+4. Consider fixing the stage 8/9.5 ordering gap (Known Issue #3) if a same-run-fresh ledger read
+   ever becomes important — not urgent today since the ledger is empty anyway.
+5. `player_props_engine.R`, team embeddings, a live dashboard, and a true rstan/cmdstanr install
+   for Phase 5's Bayesian state-space idea remain explicitly deferred non-goals — only start if
+   there's a concrete pull for them.
