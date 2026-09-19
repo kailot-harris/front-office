@@ -51,20 +51,42 @@ though roughly grouped by area.
    `.gitignore` + a documented regeneration step). Every commit in this repo touches a dozen+
    binary caches with zero reviewable diff — this is exactly the kind of noise that made the
    2026-09-19 test-script near-miss (`AGENTS.md`) harder to spot quickly in `git status`.
-8. **Trim or rotate `pipeline_execution.log`** — it has added thousands of lines in single commits
-   before; either gitignore it or add real log rotation.
+8. ~~Trim or rotate `pipeline_execution.log`~~ **RESOLVED 2026-09-19.** Root cause: it was
+   already listed in `.gitignore` (added Phase 0) but never actually untracked from git's index —
+   the exact same already-tracked-before-ignored gap `.gitignore`'s own header comment already
+   documented for `.Rhistory`/`logs/*.duckdb`, just missing from that list. Fixed with
+   `git rm --cached pipeline_execution.log` (file stays on disk, stops being committed going
+   forward) plus real size-based rotation added to `schedule_daily.bat` (`.log` → `.log.old` once
+   it exceeds 5MB, tested in isolation before landing in the real script).
 
 ## Product / UX
 
-9. **Fix the Model Diagnostics tab's cosmetic text-overflow** in the narrow "Residual
-   Distribution" panel (`app.R`) — flagged in two prior sessions, still open, low priority.
-10. **Reconcile the `WNBA_GAME_5`/`WNBA_GAME_6` `is_synthetic` discrepancy** noted in
-    `docs/HANDOFF.md`'s 2026-09-19 (first) session entry — the live cache already shows the
-    correct `TRUE` value for both rows, but no session has determined what actually changed it
-    (the classifier fix landed the same day but, per the idempotency guard, could not itself have
-    touched an already-`schema_version == 2` row). A `git log -p -- cache/prediction_accuracy_log.rds`
-    dig (accepting it'll be a binary diff, but commit timestamps/messages may narrow it down) is
-    the likely next step, not a re-guess.
+9. ~~Fix the Model Diagnostics tab's cosmetic text-overflow~~ **RESOLVED 2026-09-19.**
+   `.diag_empty_plot()` now takes `size`/`wrap_width` params (`strwrap()`-based re-wrapping,
+   since plotly doesn't auto-wrap `annotate()` text to the containing box's pixel width); the
+   narrow width=4 "Residual Distribution" panel's call site uses a smaller size + tighter wrap
+   than the two wider panels. Verified via the `headless-ui-regression-sweep` skill: 10/10 tabs
+   clean (0 console errors), screenshot read confirms clean centered wrapping, no overflow/clip.
+   Bonus fix: `tab_model_diagnostics` itself was missing from `tools/headless_dashboard_probe.R`'s
+   `TAB_VALUES` sweep list entirely (a real, pre-existing coverage gap, not caused by this
+   change) — added.
+10. ~~Reconcile the `WNBA_GAME_5`/`WNBA_GAME_6` `is_synthetic` discrepancy~~ **RESOLVED
+    2026-09-19.** Root cause: there was no real external mystery — the "already TRUE" reading
+    reported earlier that same day was a self-inflicted artifact (an in-progress ad hoc test
+    script had briefly overwritten the working-tree cache with toy fixture data before being
+    caught and restored via `git checkout --`; the committed history at every commit,
+    verified via `git show <rev>:cache/prediction_accuracy_log.rds`, has always shown `FALSE`).
+    Investigating that also surfaced a REAL, still-live bug: the WNBA_GAME_N classifier fix could
+    never have retroactively fixed these two rows anyway, because (a) `migrate_prediction_log()`'s
+    `needs_migration` guard skips already-`schema_version == 2` rows entirely, and (b) even past
+    that guard, the `coalesce()`-based "preserve anything already stamped" backfill logic would
+    have kept the stale incorrect `FALSE` forever (coalesce only fills `NA` gaps). Fixed by
+    bumping `PRED_LOG_SCHEMA_VERSION` 2 → 3 (forces a re-scan of all rows) and adding an explicit
+    force-override for `is_unprovenanced_fixture` matches that bypasses the coalesce-preserve
+    logic (safe because that predicate's definition can never match a genuine post-provenance
+    row). Applied to the real cache via `get_prediction_log()`: all 6 `WNBA_GAME_N` rows now
+    correctly `is_synthetic = TRUE`, 0 false positives among the other 11 real rows. Regression
+    test added: `tools/test_pure_functions.R` CHECK 10b.
 
 ## Research (lower priority, no confirmed edge in what's already been tested)
 

@@ -12,6 +12,15 @@
 # That is an index operation and is deliberately left to the orchestrator rather
 # than performed by the agent that wrote this file. Everything else here is
 # purely forward-looking.
+#
+# UPDATE 2026-09-19 (docs/future-work.md item 8): `pipeline_execution.log` (see
+# the "Runtime logs" section below) had the exact same already-tracked-before-
+# ignored gap — it was gitignored from Phase 0 but never untracked, so it kept
+# reappearing in every `git status`/`git add -A` (one commit alone added 3,755
+# lines of pure diff noise). Untracked via `git rm --cached pipeline_execution.log`
+# as part of this fix; also gained real size-based rotation in
+# schedule_daily.bat so the live file itself doesn't grow unbounded on disk
+# either, not just in git.
 
 # ------------------------------------------------------------------------------
 # R session state — the L-5 finding proper.

@@ -93,7 +93,17 @@ PRED_LOG_CSV            <- file.path(CACHE_DIR, "prediction_accuracy_log.csv")
 # FINDING C-3: schema_version 1 -> 2 adds `is_synthetic` (logical) and
 # `market_data_source` (character). See .empty_prediction_log() and
 # migrate_prediction_log() below.
-PRED_LOG_SCHEMA_VERSION <- 2L
+#
+# Bumped 2 -> 3 on 2026-09-19 (docs/future-work.md item 10, "reconcile the
+# WNBA_GAME_5/6 is_synthetic discrepancy"): schema_version 2 already existed on disk
+# for WNBA_GAME_5/WNBA_GAME_6 (migrated under the OLD 2-predicate classifier, before the
+# WNBA_GAME_N fixture predicate existed), and migrate_prediction_log()'s own
+# `needs_migration` guard (`schema_version < PRED_LOG_SCHEMA_VERSION`) means a version
+# bump is the ONLY way to make an already-schema-2 row get re-scanned by a newer
+# predicate. Bumping the constant is itself the fix for those rows — no separate
+# one-off data-patch script needed, since the next `get_prediction_log()` call
+# re-migrates and re-persists automatically.
+PRED_LOG_SCHEMA_VERSION <- 3L
 
 # FINDING M-5: PENDING rows this many days past their game_date can never reconcile
 # (they were logged against a SYNTHETIC_FALLBACK fixture slate whose games do not
@@ -174,8 +184,25 @@ PRED_LOG_UNRESOLVABLE_AFTER_DAYS <- 7L
 # collide with this pattern going forward (every row written after provenance existed
 # carries a real "LIVE_ODDS_API"/"SYNTHETIC_FALLBACK" value here, not "UNKNOWN").
 #
+# RECONCILED 2026-09-19 (later same day, docs/future-work.md item 10): the predicate
+# above was added correctly, but WNBA_GAME_5/WNBA_GAME_6 had already been through a
+# migration pass under the OLD (2-predicate) logic and were already stamped
+# schema_version = 2 / is_synthetic = FALSE on disk. `needs_migration`'s
+# `schema_version < PRED_LOG_SCHEMA_VERSION` guard meant the new predicate could
+# literally never re-run against them without a version bump (PRED_LOG_SCHEMA_VERSION
+# bumped 2 -> 3 below for exactly this reason) — AND, even with the guard bypassed, the
+# "preserve anything already stamped" coalesce below would have kept the incorrect
+# FALSE forever, since coalesce() only fills NA gaps, not incorrect-but-present values.
+# So `is_unprovenanced_fixture` rows are force-corrected as an explicit override AFTER
+# the coalesce, not folded into `synthetic_backfill`'s coalesce-preserved set — this is
+# safe specifically because the predicate's own definition (WNBA_GAME_N game_id AND
+# market_data_source == "UNKNOWN") cannot match any genuine post-provenance row, so
+# overriding a prior stamp for this exact predicate can never clobber real data, unlike
+# a blanket "always trust the newest predicate" rule would for DIAG_/DIAGNOSTIC.
+#
 # Idempotent: re-running on an already-migrated log is a no-op for existing values.
-# Non-destructive: no row is dropped and no pre-existing column is rewritten.
+# Non-destructive: no row is dropped and no pre-existing column is rewritten (except the
+# explicit, narrowly-scoped is_unprovenanced_fixture override above).
 #
 # rds_path/csv_path/persist are explicit params (defaulting to the real PRED_LOG_RDS/
 # PRED_LOG_CSV globals) rather than reading those globals directly inside the function
@@ -218,6 +245,9 @@ migrate_prediction_log <- function(df, rds_path = PRED_LOG_RDS, csv_path = PRED_
     # Preserve anything already stamped; only fill gaps.
     df$is_synthetic <- dplyr::coalesce(as.logical(df$is_synthetic), synthetic_backfill)
   }
+  # Force-correct override, NOT gated by coalesce's "preserve prior stamp" rule -- see
+  # the RECONCILED comment above for why this specific predicate is safe to override.
+  df$is_synthetic[is_unprovenanced_fixture] <- TRUE
 
   market_backfill <- if_else(synthetic_backfill, "DIAGNOSTIC", "UNKNOWN")
   if (!"market_data_source" %in% names(df)) {

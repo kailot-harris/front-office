@@ -38,7 +38,11 @@ suppressMessages(library(shinytest2))
 TAB_VALUES <- c(
   "tab_daily_edges", "tab_steam_radar", "tab_injuries", "tab_bet_tracker",
   "tab_embeddings", "tab_calibration", "tab_standings_calc", "tab_player_props",
-  "tab_clutch_shot_profile"
+  "tab_clutch_shot_profile",
+  # Added 2026-09-19: pre-existing tab, never added to this sweep list despite being
+  # touched by two prior sessions' app.R fixes (2026-09-18 chart/provenance fix,
+  # 2026-09-19 text-overflow fix) -- a real coverage gap, not a new tab.
+  "tab_model_diagnostics"
 )
 
 args <- commandArgs(trailingOnly = TRUE)

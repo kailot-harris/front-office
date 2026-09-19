@@ -102,6 +102,24 @@ df_empty <- data.frame()
 report(identical(migrate_prediction_log(df_empty, persist = FALSE), df_empty),
        "CHECK 10", "migrate_prediction_log() is a no-op on a zero-row/empty data frame")
 
+# Regression guard for the 2026-09-19 (later session) reconciliation fix
+# (docs/future-work.md item 10): a WNBA_GAME_N fixture row already stamped
+# is_synthetic = FALSE under an OLDER schema_version must still get force-corrected to
+# TRUE once PRED_LOG_SCHEMA_VERSION is bumped -- the naive coalesce-only backfill would
+# have permanently preserved the stale incorrect FALSE forever.
+df_stale <- data.frame(
+  game_id = "WNBA_GAME_5",
+  market_data_source = "UNKNOWN",
+  injury_data_source = NA,
+  schema_version = 2L,  # already "migrated" once under the pre-fix 2-predicate logic
+  is_synthetic = FALSE,  # the stale, incorrect stamp this fix must override
+  stringsAsFactors = FALSE
+)
+res_stale <- migrate_prediction_log(df_stale, persist = FALSE)
+report(isTRUE(res_stale$is_synthetic),
+       "CHECK 10b", "migrate_prediction_log() force-corrects an already-schema-2 fixture row stamped FALSE by an older classifier version",
+       sprintf("is_synthetic=%s schema_version=%s", res_stale$is_synthetic, res_stale$schema_version))
+
 # ------------------------------------------------------------------------------
 # join_rapm_to_roster() -- collision handling (H-2), missing columns, empty input
 # ------------------------------------------------------------------------------

@@ -1,3 +1,47 @@
+# Handoff — 2026-09-19 (fourth session) — future-work.md items 10, 9, 8 resolved
+
+Picked up three items from `docs/future-work.md` (renumbered list from the prior session's
+wishlist) at the user's explicit request, in the order given: 10, 9, 8. All three fully resolved,
+not just diagnosed — each struck through with a resolution note in `docs/future-work.md` itself
+rather than repeated here in full; short summary:
+
+**Item 10 (WNBA_GAME_5/6 `is_synthetic` discrepancy):** root-caused via `git show
+<rev>:cache/prediction_accuracy_log.rds` across every commit that touched the file — the
+committed history always showed `FALSE`; the "already TRUE" reading from the prior session was a
+self-inflicted artifact of an in-flight test-script corruption that had already been caught and
+reverted via `git checkout --` before that session's own commits landed. That investigation
+surfaced a REAL still-live bug, though: the WNBA_GAME_N classifier fix from two sessions ago could
+never have retroactively fixed these two rows, because `migrate_prediction_log()`'s
+`needs_migration` guard skips already-`schema_version == 2` rows, and even past that guard the
+`coalesce()`-based "preserve prior stamp" logic would have kept the stale `FALSE` forever. Fixed by
+bumping `PRED_LOG_SCHEMA_VERSION` 2 → 3 (forces a re-scan) plus an explicit force-override for
+`is_unprovenanced_fixture` matches (bypasses coalesce — safe because that predicate can't match a
+genuine post-provenance row). Applied for real via `get_prediction_log()`: all 6 `WNBA_GAME_N`
+rows now correctly `TRUE`, 0 false positives among the other 11 real rows (verified directly).
+Regression test added: `tools/test_pure_functions.R` CHECK 10b.
+
+**Item 9 (Model Diagnostics cosmetic text-overflow):** `.diag_empty_plot()` (`app.R`) now takes
+`size`/`wrap_width` params; the narrow "Residual Distribution" panel's call site uses smaller
+values than the two wider panels. Verified via the `headless-ui-regression-sweep` skill — 10/10
+tabs clean, screenshot-confirmed clean wrapping. Bonus: `tab_model_diagnostics` was missing from
+`tools/headless_dashboard_probe.R`'s `TAB_VALUES` sweep entirely (pre-existing gap, unrelated to
+this session) — added, so it's covered by every future no-argument sweep.
+
+**Item 8 (`pipeline_execution.log` growth):** it was already in `.gitignore` (Phase 0) but never
+actually untracked — same already-tracked-before-ignored gap the `.gitignore` header already
+documented for `.Rhistory`/`logs/*.duckdb`, just missing from that list. Fixed with `git rm
+--cached pipeline_execution.log` (stays on disk, stops being committed) plus real size-based
+rotation added to `schedule_daily.bat` (`.log` → `.log.old` at 5MB, tested in isolation with a
+throwaway `.bat` before landing in the real script, since running the real script would trigger a
+full pipeline execution).
+
+**Files touched**: `prediction_accuracy_logger.R`, `tools/test_pure_functions.R`, `app.R`,
+`tools/headless_dashboard_probe.R`, `.gitignore`, `schedule_daily.bat`,
+`cache/prediction_accuracy_log.rds`/`.csv` (data correction, not code),
+`tools/probe_screenshots/tab_model_diagnostics.png` (regenerated), `docs/future-work.md`.
+
+---
+
 # Handoff — 2026-09-19 (third session) — wishlist items 1-5 implemented
 
 Acted on a 15-item improvement wishlist drafted this session; user selected items 5 and 1-4 for

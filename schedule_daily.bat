@@ -1,4 +1,5 @@
 @echo off
+setlocal EnableDelayedExpansion
 REM ==============================================================================
 REM schedule_daily.bat (WNBA port)
 REM Windows Task Scheduler target for the WNBA Analytics pipeline.
@@ -27,6 +28,23 @@ REM ============================================================================
 
 set PROJECT_DIR=c:\Users\kailo\kayceeslices\WNBA Analytics
 set LOG_FILE=%PROJECT_DIR%\pipeline_execution.log
+set LOG_MAX_BYTES=5242880
+
+REM ------------------------------------------------------------------------------
+REM Log rotation (docs/future-work.md item 8): pipeline_execution.log is append-only
+REM and was growing unbounded (one git commit alone added 3,755 lines before it was
+REM untracked from version control -- see .gitignore's 2026-09-19 update). Untracking
+REM it from git only fixes the repo-bloat half of the problem; this keeps the live file
+REM on disk bounded too. Single-generation rotation (.log -> .log.old, overwriting any
+REM previous .old) rather than a numbered series -- this is an operational log for
+REM manual troubleshooting, not an audit trail that needs long retention.
+REM ------------------------------------------------------------------------------
+if exist "%LOG_FILE%" (
+    for %%F in ("%LOG_FILE%") do set LOG_SIZE=%%~zF
+    if !LOG_SIZE! GTR %LOG_MAX_BYTES% (
+        move /y "%LOG_FILE%" "%LOG_FILE%.old" >nul
+    )
+)
 
 REM ------------------------------------------------------------------------------
 REM Seasonal guard: only run during the WNBA season window (~May through end of October,

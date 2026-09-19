@@ -1463,10 +1463,18 @@ server <- function(input, output, session) {
   # data" case is an honest annotated message instead of an empty plot.
   .diag_chartable <- function(df) if (is.null(df)) NULL else df[!is.na(df$residual), , drop = FALSE]
 
-  .diag_empty_plot <- function(msg) {
+  # `size`/`wrap_width` are tunable per call site because plotly does not auto-wrap
+  # annotate() text to the containing box's pixel width -- a message sized for the
+  # width=8 "Predicted vs. Actual Margin" box overflowed/clipped in the narrower
+  # width=4 "Residual Distribution" box (flagged 2026-09-18, fixed 2026-09-19,
+  # docs/future-work.md item 9). strwrap() re-wraps the message to `wrap_width`
+  # characters/line regardless of any hardcoded \n in the input, so callers don't need
+  # to hand-count characters per box width themselves.
+  .diag_empty_plot <- function(msg, size = 4.5, wrap_width = 40) {
+    wrapped <- paste(strwrap(msg, width = wrap_width), collapse = "\n")
     ggplotly(
       ggplot() +
-        annotate("text", x = 0, y = 0, label = msg, color = "#bdc3c7", size = 4.5) +
+        annotate("text", x = 0, y = 0, label = wrapped, color = "#bdc3c7", size = size) +
         theme_void() +
         theme(plot.background = element_rect(fill = "#1a222d", color = NA))
     )
@@ -1494,7 +1502,10 @@ server <- function(input, output, session) {
   output$plot_residual_dist <- renderPlotly({
     df <- .diag_chartable(r_diagnostics_df())
     req(!is.null(df))
-    if (nrow(df) == 0) return(.diag_empty_plot("No chartable predictions yet\n(predicted_margin missing on all resolved rows)"))
+    # Narrower width=4 box (vs the other two panels' width=8/12) -- smaller size +
+    # tighter wrap_width so the message doesn't overflow/clip (see .diag_empty_plot()'s
+    # own comment).
+    if (nrow(df) == 0) return(.diag_empty_plot("No chartable predictions yet (predicted_margin missing on all resolved rows)", size = 3.3, wrap_width = 20))
 
     p <- ggplot(df, aes(x = residual)) +
       geom_histogram(bins = 20, fill = "#af7ac5", color = "#ecf0f1", alpha = 0.8) +
