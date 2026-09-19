@@ -176,8 +176,20 @@ PRED_LOG_UNRESOLVABLE_AFTER_DAYS <- 7L
 #
 # Idempotent: re-running on an already-migrated log is a no-op for existing values.
 # Non-destructive: no row is dropped and no pre-existing column is rewritten.
+#
+# rds_path/csv_path/persist are explicit params (defaulting to the real PRED_LOG_RDS/
+# PRED_LOG_CSV globals) rather than reading those globals directly inside the function
+# body, specifically so a caller — production or a test — can redirect or suppress the
+# save side effect without depending on a global override surviving a nested source().
+# A prior incident: sourcing this whole file to unit-test this function's classification
+# logic re-ran config.R's top-level assignment of the real PRED_LOG_RDS/PRED_LOG_CSV
+# paths, silently clobbering a pre-set temp-path override and overwriting the real
+# cache/prediction_accuracy_log.rds with test fixture data (recovered via git checkout
+# only because it happened to already be committed). See AGENTS.md's "Testing scripts
+# with real save side effects" section before writing another ad hoc test like that one.
 # ------------------------------------------------------------------------------
-migrate_prediction_log <- function(df) {
+migrate_prediction_log <- function(df, rds_path = PRED_LOG_RDS, csv_path = PRED_LOG_CSV,
+                                    persist = TRUE) {
   if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) return(df)
 
   needs_migration <- !all(c("is_synthetic", "market_data_source") %in% names(df)) ||
@@ -224,8 +236,10 @@ migrate_prediction_log <- function(df) {
               PRED_LOG_SCHEMA_VERSION, n_synth, nrow(df)))
 
   # Persist the migration so it truly is one-time rather than re-derived every read.
-  saveRDS(df, PRED_LOG_RDS)
-  utils::write.csv(df, PRED_LOG_CSV, row.names = FALSE, na = "")
+  if (isTRUE(persist)) {
+    saveRDS(df, rds_path)
+    utils::write.csv(df, csv_path, row.names = FALSE, na = "")
+  }
 
   df
 }
