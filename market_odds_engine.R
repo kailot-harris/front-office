@@ -510,7 +510,25 @@ get_model_slate_probabilities <- function(slate_df) {
     ))
   }
 
-  slate_df |> mutate(model_home_prob = 0.50)
+  # 2026-09-19 fix: this fallback (cache/projected_wnba_standings.rds missing) used to
+  # return a data frame with model_home_prob = 0.50 and NO predicted_margin/contrib_*
+  # columns at all. Two real downstream failure modes: (a) evaluate_betting_slate()'s
+  # select(predicted_margin = predicted_margin, ...) would hard-error on the missing
+  # column rather than degrading gracefully (violates this repo's fail-safe convention
+  # - see CLAUDE.md "Process/conventions"); (b) if that select() were ever relaxed to
+  # tolerate it, downstream MAE/RMSE/bias diagnostics (app.R's Model Diagnostics tab,
+  # tools/check_accuracy_0916_0917.R) would silently score against a fabricated margin.
+  # Explicit NA_real_ + a loud warning keeps the schema consistent AND makes the
+  # degraded state visible in logs, instead of a silent 50/50 guess or a crash.
+  log_warn("cache/projected_wnba_standings.rds not found; returning a degraded slate with model_home_prob = 0.50 and NA predicted_margin/contrib_* for every game (not a real model prediction).",
+           call = "get_model_slate_probabilities()")
+  slate_df |> mutate(
+    model_home_prob  = 0.50,
+    predicted_margin = NA_real_,
+    contrib_net_diff = NA_real_,
+    contrib_hca      = NA_real_,
+    contrib_fatigue  = NA_real_
+  )
 }
 
 # ------------------------------------------------------------------------------

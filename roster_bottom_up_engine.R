@@ -209,6 +209,14 @@ if (!exists("WNBA_ROTATION_SIZE")) WNBA_ROTATION_SIZE <- 8
 # ------------------------------------------------------------------------------
 # 1. Compute Historical Player Impact (Empirically Centered BPM)
 # ------------------------------------------------------------------------------
+# AUDITED 2026-09-17 (docs/bpm_implementation_audit_findings.md): this is deliberately a
+# DIFFERENT metric from player_metrics.R::calculate_bpm_components() (different weights,
+# season-aggregated not per-game, blends in real plus-minus with EB shrinkage). They feed
+# separate, independently-calibrated terms in expected_margin (this function -> rating_diff;
+# the other -> the depth-signal team_top5_bpm/team_minutes_concentration adjustment, whose
+# TOP5_BPM_MARGIN_SLOPE/MINUTES_CONCENTRATION_MARGIN_SLOPE were regressed against the OTHER
+# function's exact weights). Do not "reconcile" the two without re-running
+# tools/research_team_depth_regression.R afterward — see the audit doc for why.
 get_player_bpm_ratings <- function() {
   # IO Optimization: use GLOBAL_PLAYER_BOX if available
   if (!exists("GLOBAL_PLAYER_BOX", inherits = FALSE) && !file.exists(CACHE_PLAYER_BOX)) stop("Player box cache missing.")
@@ -393,7 +401,18 @@ predict_live_matchup <- function(home_team, away_team, active_rosters, player_ra
   elo_prob    <- 1 / (1 + 10^((a_res$elo - h_res$elo) / 400))
   elo_margin  <- qnorm(elo_prob) * WNBA_MARGIN_SIGMA
 
-  expected_margin <- (0.4 * rating_diff) + (0.4 * rapm_diff) + (0.2 * elo_margin) + hca
+  # Team depth/rotation-strength adjustment (research task, 2026-09-17) -- see the derivation
+  # comment above get_team_depth_signal()/adjust_margin_for_depth(). Additive alongside hca;
+  # resolves to 0.0 if either team's trailing signal is unavailable.
+  depth_signal <- get_team_depth_signal()
+  depth_adjustment <- adjust_margin_for_depth(
+    home_top5_bpm               = .depth_signal_scalar(depth_signal, home_team, "depth_top5_bpm"),
+    home_minutes_concentration  = .depth_signal_scalar(depth_signal, home_team, "depth_minutes_concentration"),
+    away_top5_bpm               = .depth_signal_scalar(depth_signal, away_team, "depth_top5_bpm"),
+    away_minutes_concentration  = .depth_signal_scalar(depth_signal, away_team, "depth_minutes_concentration")
+  )
+
+  expected_margin <- (0.4 * rating_diff) + (0.4 * rapm_diff) + (0.2 * elo_margin) + hca + depth_adjustment
 
   # WNBA_MARGIN_SIGMA (14.0) replaces NBA's hardcoded 11.8 - see config.R for the empirical
   # derivation (sd() of real 2019-2026 WNBA home-team-game margins).
@@ -417,6 +436,143 @@ predict_live_matchup <- function(home_team, away_team, active_rosters, player_ra
     Home_Win_Prob   = round(home_prob, 3),
     Fair_Home_ML    = fair_home_ml
   )
+}
+
+# ------------------------------------------------------------------------------
+# 3b. Team Depth/Rotation-Strength Margin Adjustment (research task, 2026-09-17)
+# See docs/team_depth_signal_regression_findings.md for the full narrative writeup and
+# tools/research_team_depth_regression.R for the reproducible derivation script. Added
+# ADDITIVELY alongside the existing rating_diff/rapm_diff/elo_margin/hca terms in
+# predict_live_matchup() and project_all_wnba_teams()'s round-robin loop below -- neither
+# of those existing terms, nor the 0.4/0.4/0.2 weights, are touched.
+#
+# RESEARCH QUESTION: cache/features_cache.rds's team_top5_bpm (starting-unit-strength proxy)
+# and team_minutes_concentration (rotation-shortness HHI) are computed FROM a game's own box
+# stats -- regressing that SAME game's margin on them would be near-tautological (the same box
+# stats mechanically produce the score). Instead this asks: does a team's TRAILING (strictly
+# prior games only) rolling average of these features predict its margin in a LATER game, over
+# and above the team's own trailing-average margin (recent-form baseline)?
+#
+# METHODOLOGY: per-team-game panel built from cache/features_cache.rds (one row per (game_id,
+# team_id), producer: player_metrics.R::get_player_features()) inner-joined to
+# cache/player_box_scores_cache.rds collapsed to one row per (game_id, team_id) for the real
+# margin (team_score - opponent_team_score) -- CONFIRMED empirically (not assumed) to share an
+# EXACT 1:1 (game_id, team_id) key: all 3,906 features_cache.rds rows matched a player-box
+# team-game after normalize_team_abbreviation()/filter_real_franchises() (both files derive
+# from the same wehoop::load_wnba_player_box() pull). For each team, ordered chronologically by
+# game_date, trailing_avg_X = mean(X over the prior min(ROLLING_WINDOW_SIZE, games-so-far)
+# games, STRICTLY excluding the target game) computed for margin, team_top5_bpm, and
+# team_minutes_concentration. Same ROLLING_WINDOW_SIZE (12, config.R) used for all three, and
+# the SAME minimum trailing-games threshold (>= 5) already used for OPP_DEF_MU_SLOPE/
+# SHOT_MIX_PTS_SLOPE elsewhere in this repo -- 3,831 qualifying team-games / 15 teams,
+# 2019-2026.
+#
+# WITHIN-TEAM fixed-effects regression (team-demeaned, mirroring OPP_DEF_MU_SLOPE/
+# SHOT_MIX_PTS_SLOPE's exact methodology, cross-checked against an explicit
+# `lm(margin ~ ... + factor(team_id))` which reproduces identical coefficients to 4 decimal
+# places):
+#     margin ~ trailing_avg_margin + trailing_avg_team_minutes_concentration + trailing_avg_team_top5_bpm
+#     trailing_avg_margin:                     +0.3848  (SE 0.0556, t=+6.93, p=5.1e-12)  [recent-form baseline, always included as a control]
+#     trailing_avg_team_minutes_concentration: -120.82  (SE 52.59,  t=-2.30, p=0.0217)   [sign was a priori ambiguous -- came out negative: a MORE concentrated/shorter rotation predicts a WORSE next-game margin, consistent with the "thin bench / fatigue-fragility" reading over the "reliance on stars" reading]
+#     trailing_avg_team_top5_bpm:               +1.1563  (SE 0.3546, t=+3.26, p=0.0011)   [theory-sensible sign: a stronger recent starting unit predicts a BETTER next-game margin]
+#   n = 3,831 team-games, 15 teams. Both new terms independently clear p < 0.05 AND have a
+#   defensible sign -> BOTH wired in (it was NOT guaranteed both would clear the bar; a
+#   from-first-principles decision was made for each term separately, see the docs file).
+#   Collinearity check: cor(trailing_avg_team_top5_bpm, trailing_avg_margin) = 0.61,
+#   cor(trailing_avg_team_minutes_concentration, trailing_avg_team_top5_bpm) = 0.75, but VIFs
+#   are 2.16 / 3.12 / 4.80 (all < 5) -- close to the rule-of-thumb ceiling but each term remains
+#   separately identifiable, not disqualifying.
+TOP5_BPM_MARGIN_SLOPE <- 1.1563
+MINUTES_CONCENTRATION_MARGIN_SLOPE <- -120.8159
+
+# Clamp bounds: derived from the real spread of the depth adjustment across ALL 15x14 real
+# current-team ordered pairs (computed from each team's actual current trailing-12-game
+# team_top5_bpm/team_minutes_concentration as of the 2026-09-17 cache snapshot): the raw
+# adjustment ranges -4.14 to +4.14 points (the two terms are positively correlated across teams
+# and partially offset each other in practice, per the collinearity note above). +/-6.0 is
+# comfortably non-binding on real data -- exists purely as a rail against a future degenerate
+# features_cache.rds, same non-binding-by-design rationale as OPP_DEF_MU_CLAMP/SHOT_MIX_PTS_CLAMP.
+DEPTH_ADJ_CLAMP <- c(-6.0, 6.0)
+
+# Loads cache/features_cache.rds + cache/player_box_scores_cache.rds (+ active_rosters_cache.rds
+# for the team_id -> team_name key active_rosters/compute_team_live_rating already use) and
+# returns each team's CURRENT trailing-ROLLING_WINDOW_SIZE-game average team_top5_bpm /
+# team_minutes_concentration -- i.e. exactly the same trailing-window quantity the regression
+# above was fit on, evaluated at "today" rather than mid-history. Fail-safe: if either cache is
+# missing, or a team has fewer than the minimum qualifying trailing games, that team is simply
+# absent from the returned tibble -- adjust_margin_for_depth() below resolves a missing team to
+# a neutral (0-adjustment) no-op rather than erroring or NA-poisoning expected_margin.
+get_team_depth_signal <- function() {
+  empty <- tibble(team_name = character(0), depth_top5_bpm = numeric(0), depth_minutes_concentration = numeric(0))
+
+  if (!file.exists(CACHE_FEATURES)) {
+    message("[DEPTH] cache/features_cache.rds not found -- depth/rotation-strength margin adjustment disabled (neutral no-op).")
+    return(empty)
+  }
+  if (!exists("GLOBAL_PLAYER_BOX", inherits = FALSE) && !file.exists(CACHE_PLAYER_BOX)) {
+    message("[DEPTH] cache/player_box_scores_cache.rds not found -- depth/rotation-strength margin adjustment disabled (neutral no-op).")
+    return(empty)
+  }
+  roster_file <- file.path(CACHE_DIR, "active_rosters_cache.rds")
+  if (!exists("GLOBAL_ACTIVE_ROSTERS", inherits = FALSE) && !file.exists(roster_file)) {
+    message("[DEPTH] active_rosters_cache.rds not found -- depth/rotation-strength margin adjustment disabled (neutral no-op).")
+    return(empty)
+  }
+
+  feat <- readRDS(CACHE_FEATURES)
+  box  <- if (exists("GLOBAL_PLAYER_BOX", inherits = FALSE)) GLOBAL_PLAYER_BOX else readRDS(CACHE_PLAYER_BOX)
+  active_rosters <- if (exists("GLOBAL_ACTIVE_ROSTERS", inherits = FALSE)) GLOBAL_ACTIVE_ROSTERS else readRDS(roster_file)
+  team_map <- active_rosters |> distinct(team_id, team_name)
+
+  team_game <- box |>
+    mutate(game_id = as.character(game_id)) |>
+    distinct(game_id, team_id, game_date) |>
+    inner_join(feat, by = c("game_id", "team_id"))
+
+  out <- team_game |>
+    arrange(team_id, game_date) |>
+    group_by(team_id) |>
+    slice_tail(n = ROLLING_WINDOW_SIZE) |>
+    summarise(
+      depth_top5_bpm = mean(team_top5_bpm, na.rm = TRUE),
+      depth_minutes_concentration = mean(team_minutes_concentration, na.rm = TRUE),
+      n_games = n(),
+      .groups = "drop"
+    ) |>
+    filter(n_games >= 5) |>  # same minimum-trailing-games threshold used in the derivation
+    inner_join(team_map, by = "team_id") |>
+    select(team_name, depth_top5_bpm, depth_minutes_concentration)
+
+  out
+}
+
+# Additive, points-scale margin adjustment (NOT a ratio/multiplier -- unlike
+# adjust_mu_for_opponent()/adjust_mu_for_shot_mix() in player_props_engine.R, the regression
+# here was fit directly on margin in points, so no fractional/multiplicative re-expression is
+# needed; the raw coefficients above ARE the points-per-unit scale). Mirrors hca's own
+# additive-alongside role in the expected_margin formula. Fail-safe: any non-finite/missing
+# input (a team absent from get_team_depth_signal()'s output, e.g. a brand-new franchise with
+# < 5 games of history) resolves to a 0.0 no-op adjustment, never NA/error.
+adjust_margin_for_depth <- function(home_top5_bpm, home_minutes_concentration,
+                                     away_top5_bpm, away_minutes_concentration) {
+  if (!is.finite(home_top5_bpm) || !is.finite(away_top5_bpm) ||
+      !is.finite(home_minutes_concentration) || !is.finite(away_minutes_concentration)) {
+    return(0.0)
+  }
+  depth_adj <- TOP5_BPM_MARGIN_SLOPE * (home_top5_bpm - away_top5_bpm) +
+    MINUTES_CONCENTRATION_MARGIN_SLOPE * (home_minutes_concentration - away_minutes_concentration)
+  depth_adj <- pmin(pmax(depth_adj, DEPTH_ADJ_CLAMP[1]), DEPTH_ADJ_CLAMP[2])
+  if (!is.finite(depth_adj)) depth_adj <- 0.0
+  depth_adj
+}
+
+# Small helper: pulls a named column's first value out of get_team_depth_signal()'s
+# team-filtered output, or NA_real_ if the team is absent (which adjust_margin_for_depth()
+# above already resolves to a neutral no-op).
+.depth_signal_scalar <- function(depth_df, team, col) {
+  row <- depth_df |> filter(team_name == team)
+  if (nrow(row) == 0) return(NA_real_)
+  row[[col]][1]
 }
 
 # ------------------------------------------------------------------------------
@@ -486,6 +642,16 @@ project_all_wnba_teams <- function() {
   sigma <- WNBA_MARGIN_SIGMA
   games_per_opponent <- WNBA_SEASON_GAMES / (n_teams - 1)
 
+  # Team depth/rotation-strength adjustment (research task, 2026-09-17) -- computed ONCE for
+  # all teams here (rather than inside the i,j loop) since get_team_depth_signal() does two
+  # cache reads; see the derivation comment above its definition. Vectors aligned to
+  # all_teams, NA for any team absent from the signal (e.g. < 5 qualifying trailing games) --
+  # adjust_margin_for_depth() resolves NA to a 0.0 no-op, same fail-safe contract as
+  # predict_live_matchup()'s use of the same function.
+  depth_signal <- get_team_depth_signal()
+  depth_top5_vec <- vapply(all_teams, function(t) .depth_signal_scalar(depth_signal, t, "depth_top5_bpm"), numeric(1))
+  depth_conc_vec <- vapply(all_teams, function(t) .depth_signal_scalar(depth_signal, t, "depth_minutes_concentration"), numeric(1))
+
   expected_wins <- numeric(n_teams)
 
   for (i in seq_along(all_teams)) {
@@ -499,10 +665,18 @@ project_all_wnba_teams <- function() {
       elo_prob    <- 1 / (1 + 10^((team_elos[j] - team_elos[i]) / 400))
       elo_margin  <- qnorm(elo_prob) * sigma
 
-      margin_home <- (0.4 * rating_diff) + (0.4 * rapm_diff) + (0.2 * elo_margin) + hca
+      # depth_adj is from team i's perspective as HOME (added, like hca); when i is AWAY
+      # (margin_away below) the roles reverse, so the adjustment is negated -- exactly
+      # mirroring how hca itself flips from "+hca" to "-hca" between margin_home/margin_away.
+      depth_adj <- adjust_margin_for_depth(
+        home_top5_bpm = depth_top5_vec[i], home_minutes_concentration = depth_conc_vec[i],
+        away_top5_bpm = depth_top5_vec[j], away_minutes_concentration = depth_conc_vec[j]
+      )
+
+      margin_home <- (0.4 * rating_diff) + (0.4 * rapm_diff) + (0.2 * elo_margin) + hca + depth_adj
       p_win_home  <- pnorm(margin_home / sigma)
 
-      margin_away <- (0.4 * (true_net_ratings[i] - true_net_ratings[j])) + (0.4 * (team_rapms[i] - team_rapms[j])) + (0.2 * (qnorm(1 - elo_prob) * sigma)) - hca
+      margin_away <- (0.4 * (true_net_ratings[i] - true_net_ratings[j])) + (0.4 * (team_rapms[i] - team_rapms[j])) + (0.2 * (qnorm(1 - elo_prob) * sigma)) - hca - depth_adj
       p_win_away  <- pnorm(margin_away / sigma)
 
       team_i_wins <- team_i_wins + (0.5 * p_win_home + 0.5 * p_win_away) * games_per_opponent

@@ -6,6 +6,14 @@ import duckdb
 
 OUTPUT_DB = "logs/analytics.duckdb"
 CSV_TRAIN_SOURCE = "cache/games_for_embeddings.csv"
+# config.R's CACHE_EMBEDDINGS / CACHE_SIMILARITY literals. duckdb (above) is the primary output
+# app.R reads directly; these CSVs were silently orphaned when the duckdb path was added (nothing
+# regenerated them, per run_full_pipeline.R's 2026-09-17 comment) even though load_embeddings.R
+# and tools/ml_cv_benchmark.R still read them. Restoring the CSV export here (additive, alongside
+# duckdb, per this repo's fail-safe convention of never removing an existing consumer's only path)
+# instead of migrating those consumers to duckdb.
+OUTPUT_EMBEDDINGS_CSV = "data/team_embeddings.csv"
+OUTPUT_SIMILARITY_CSV = "data/team_similarity_matrix.csv"
 
 # WNBA has 15 current (2026) franchises vs. the NBA's 30
 WNBA_TEAM_COUNT = 15
@@ -114,6 +122,14 @@ def save_to_db(emb_df, sim_df):
     con.append("team_similarity", sim_long)
 
     con.close()
+
+    # Restore the CSV outputs (config.R's CACHE_EMBEDDINGS / CACHE_SIMILARITY) alongside duckdb --
+    # see the module-level comment above for why. Wide shape: emb_df already has team_id as its
+    # first column; sim_df is reindexed the same way so app.R's existing wide-CSV fallback path
+    # (ncol == nrow + 1, first column = team label) still works unmodified.
+    os.makedirs(os.path.dirname(OUTPUT_EMBEDDINGS_CSV), exist_ok=True)
+    emb_df.to_csv(OUTPUT_EMBEDDINGS_CSV, index=False)
+    sim_df.reset_index().rename(columns={"index": "team_id"}).to_csv(OUTPUT_SIMILARITY_CSV, index=False)
 
 def main():
     if not os.path.exists(CSV_TRAIN_SOURCE):

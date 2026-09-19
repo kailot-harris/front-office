@@ -262,6 +262,114 @@ adjust_mu_for_opponent <- function(base_mu, opp_def_rapm, league_avg_def) {
   base_mu * ratio
 }
 
+# ------------------------------------------------------------------------------
+# Shot-Mix (rim-attempt share) Scoring-Efficiency Adjustment for PTS props
+# (research task, 2026-09-17) — see docs/pbp_shot_mix_regression_findings.md for
+# the full write-up. Added ALONGSIDE the RAPM opponent adjustment above, never
+# touching that code path (per explicit instruction). Applies to PTS pricing
+# ONLY: the underlying signal (rim shots are the highest-efficiency shot type)
+# has no theoretical link to REB/AST/FG3M/STL/BLK, so it is not wired into those.
+#
+# METHODOLOGY (mirrors OPP_DEF_MU_SLOPE's rigor exactly):
+#   Per-player-per-game panel built directly from CACHE_PBP_RAW (763,018 real
+#   ESPN events, 2019-2026), re-deriving that game's pct_rim with the EXACT same
+#   type_text keyword buckets pbp_engine.R already ships (rim = Layup/Dunk/
+#   Putback/Tip Shot/Tip-In, out of 2PA attempts only), joined to that game's
+#   real points/minutes from cache/player_box_scores_cache.rds on the CONFIRMED
+#   direct (game_id, athlete_id) key -- both caches are ESPN-backed integer IDs
+#   in the same namespace (empirically verified: 99.8% of box game_ids found in
+#   the PBP game_id set; 83.2% of box player-games matched a PBP player-game row,
+#   the unmatched 16.8% being real 0-FGA player-games that never appear as a
+#   shooter event, which is expected and correctly excluded rather than a join
+#   failure).
+#
+#   Filtered to player-games with >= 3 FGA (so pct_rim is not a 0/1 artifact of
+#   1-2 shot attempts) and players with >= 5 such qualifying games (same
+#   >= 5-games threshold player_props_engine.R/OPP_DEF_MU_SLOPE already uses
+#   elsewhere in this repo) -> 13,037 player-games across 235 distinct players.
+#
+#   WITHIN-PLAYER fixed-effects regression (player-demeaned points/pct_rim/
+#   minutes, so player-level scoring ability is differenced out exactly like
+#   OPP_DEF_MU_SLOPE's methodology; cross-checked against an explicit
+#   `lm(points ~ pct_rim + minutes + factor(athlete_id))` on the same panel,
+#   which reproduces the identical pct_rim coefficient (0.9586) to 4 decimal
+#   places, confirming the demeaning shortcut is not silently biased):
+#
+#     absolute scale    : +0.9586 pts per +1.0 pct_rim (full 0->1 range),
+#                          controlling for minutes (SE 0.1630, t = +5.88,
+#                          p = 4.2e-09), n = 13,037 player-games / 235 players.
+#     direct fractional  : +0.1174 fractional pts per +1.0 pct_rim, controlling
+#                          for minutes (SE 0.0160, t = +7.33, p = 2.5e-13) --
+#                          this is the estimand used below, matching the
+#                          multiplicative form actually applied (same choice
+#                          OPP_DEF_MU_SLOPE made between its absolute and
+#                          fractional estimates).
+#     no-minutes-control : +1.0416 pts per +1.0 pct_rim (t = +5.56, p = 2.8e-08)
+#                          -- same sign/significance without the control, so the
+#                          effect is not an artifact of the minutes control.
+#
+#   Sign is theoretically sensible: rim shots are the highest-efficiency, lowest-
+#   variance shot type, so a player scores MORE than their own average in a game
+#   where a larger share of their (non-3PT) attempts came at the rim.
+#
+#   CROSS-SECTIONAL CORROBORATION CHECK CAME BACK THE OPPOSITE SIGN, AND THAT IS
+#   EXPECTED, NOT A CONTRADICTION: player-season pct_rim vs. season PPG (current-
+#   season players, >= 5 games) is NEGATIVELY correlated (r = -0.138, p = 0.0026).
+#   That is a BETWEEN-player comparison confounded by role/usage (low-usage bigs
+#   who rarely shoot outside the paint have a high season pct_rim but score less
+#   than high-usage perimeter scorers who take a lot of pull-ups/step-backs) --
+#   precisely the confound within-player fixed effects are designed to remove.
+#   The within-player estimate above is the causally relevant one for adjusting
+#   a specific player's own projection; the negative cross-sectional number is
+#   reported here for transparency, not used for anything.
+#
+#   DECISION: p = 2.5e-13 at n = 13,037 comfortably clears the p < 0.05 bar and
+#   the sign matches theory once the within-player differencing is applied ->
+#   wired in below, additive-in-log-space centred multiplier exactly like
+#   adjust_mu_for_opponent(), composed multiplicatively ON TOP of (not replacing)
+#   the opponent adjustment.
+SHOT_MIX_PTS_SLOPE <- 0.1174
+# Clamp bounds: +/-10%. Real current-roster players' season-aggregated pct_rim
+# (cache/player_pbp_features.rds, players with >= 20 FGA, n = 184) ranges from
+# 0.127 to 0.955 around a league mean of 0.593, which maps to an UNCLAMPED ratio
+# range of only 0.945x-1.042x -- the clamp does not bind on real data, exactly
+# like OPP_DEF_MU_CLAMP; it exists purely so a future degenerate/corrupted PBP
+# features cache cannot swing a projection arbitrarily.
+SHOT_MIX_PTS_CLAMP <- c(0.90, 1.10)
+
+adjust_mu_for_shot_mix <- function(base_mu, player_pct_rim, league_avg_pct_rim) {
+  # Fail-safe, mirrors adjust_mu_for_opponent(): if the league average isn't a
+  # real finite number (e.g. cache/player_pbp_features.rds is missing/empty),
+  # no-op rather than fabricate an adjustment.
+  if (!is.finite(league_avg_pct_rim)) return(base_mu)
+  ratio <- 1 + SHOT_MIX_PTS_SLOPE * (player_pct_rim - league_avg_pct_rim)
+  ratio <- pmin(pmax(ratio, SHOT_MIX_PTS_CLAMP[1]), SHOT_MIX_PTS_CLAMP[2])
+  # A player with no real pct_rim (e.g. no PBP events yet) yields ratio == NA
+  # here; resolve that to a neutral 1x rather than propagating NA into adj_pts,
+  # same pattern adjust_mu_for_opponent() uses for a non-finite ratio.
+  ratio <- ifelse(is.finite(ratio), ratio, 1)
+  base_mu * ratio
+}
+
+# Loads cache/player_pbp_features.rds (CACHE_PLAYER_PBP_FEATURES, config.R) and
+# returns a (player_id, pct_rim) lookup with the league mean pct_rim carried as
+# the "league_avg_pct_rim" attribute, mirroring get_team_def_rapm()'s
+# neutral()/attribute pattern. Read-only consumer of pbp_engine.R's shipped
+# cache -- never recomputes or overwrites it.
+get_player_pct_rim <- function() {
+  if (!file.exists(CACHE_PLAYER_PBP_FEATURES)) {
+    message("[PROPS WARNING] cache/player_pbp_features.rds not found — shot-mix PTS adjustment disabled (neutral multiplier).")
+    out <- tibble(player_id = integer(0), pct_rim = numeric(0))
+    attr(out, "league_avg_pct_rim") <- NA_real_
+    return(out)
+  }
+  feats <- readRDS(CACHE_PLAYER_PBP_FEATURES)
+  out <- feats |> select(player_id, pct_rim) |> filter(!is.na(pct_rim))
+  league_avg <- mean(out$pct_rim, na.rm = TRUE)
+  attr(out, "league_avg_pct_rim") <- if (is.finite(league_avg)) league_avg else NA_real_
+  out
+}
+
 price_prop_zinb <- function(player_names, teams, stat_cat, projected_mus, lines,
                                 over_odds = -110, under_odds = -110) {
   theta <- PROP_DISPERSION[[stat_cat]] %||% 5.0
@@ -386,6 +494,7 @@ build_real_rotation_table <- function(rosters) {
     slice_head(n = WNBA_ROTATION_SIZE) |>
     ungroup() |>
     transmute(
+      player_id   = player_id,
       player_name = player_name,
       team        = team_abbreviation,
       pts_mu      = pts_mu,
@@ -459,6 +568,19 @@ generate_active_props_table <- function() {
   message(sprintf("[PROPS] Opponent adjustment centred on league mean team def_rapm = %.3f (slope %.4f/unit, clamped to [%.2f, %.2f]).",
                   league_avg_def, OPP_DEF_MU_SLOPE, OPP_DEF_MU_CLAMP[1], OPP_DEF_MU_CLAMP[2]))
 
+  # Shot-mix PTS-only adjustment (research task, 2026-09-17) — see
+  # docs/pbp_shot_mix_regression_findings.md and the SHOT_MIX_PTS_SLOPE block
+  # above for the derivation. Loaded alongside, not instead of, the RAPM
+  # opponent adjustment.
+  pct_rim_df <- get_player_pct_rim()
+  league_avg_pct_rim <- attr(pct_rim_df, "league_avg_pct_rim")
+  if (is.null(league_avg_pct_rim) || !is.finite(league_avg_pct_rim)) {
+    league_avg_pct_rim <- NA_real_
+  }
+  message(sprintf("[PROPS] Shot-mix PTS adjustment centred on league mean pct_rim = %s (slope %.4f/unit, clamped to [%.2f, %.2f]).",
+                  if (is.finite(league_avg_pct_rim)) sprintf("%.3f", league_avg_pct_rim) else "NA (disabled)",
+                  SHOT_MIX_PTS_SLOPE, SHOT_MIX_PTS_CLAMP[1], SHOT_MIX_PTS_CLAMP[2]))
+
   matchups <- if (file.exists(matchups_file)) readRDS(matchups_file) else tibble()
 
   # Map players to their opponent for today (Vectorized)
@@ -498,12 +620,34 @@ generate_active_props_table <- function() {
       opp_def_rapm = coalesce(def_rapm, league_avg_def)
     )
 
+  # Direct ESPN-namespace join (player_id == player_id, no name matching needed
+  # — see pbp_engine.R's header). SYNTHETIC_FALLBACK rosters have no player_id
+  # column at all; in that case pct_rim is simply NA for every row, which
+  # adjust_mu_for_shot_mix() already resolves to a neutral 1x, so this degrades
+  # safely rather than erroring.
+  if ("player_id" %in% names(props_base)) {
+    props_base <- props_base |> left_join(pct_rim_df, by = "player_id")
+  } else {
+    props_base <- props_base |> mutate(pct_rim = NA_real_)
+  }
+
   # 2. Calculate all adjusted mus and random lines in one go
   # Noise vectors for each stat category
   n_players <- nrow(props_base)
   props_base <- props_base |>
     mutate(
-      adj_pts  = adjust_mu_for_opponent(pts_mu, opp_def_rapm, league_avg_def),
+      # PTS composes BOTH adjustments: opponent-defense first, then the
+      # shot-mix scoring-efficiency adjustment multiplicatively on top (each
+      # factor is its own centred-on-1.0 multiplier, so chaining them
+      # multiplies the two independent ratios rather than re-deriving a joint
+      # coefficient — documented choice, see SHOT_MIX_PTS_SLOPE block above).
+      # REB/AST/FG3M/STL/BLK deliberately keep ONLY the opponent adjustment —
+      # the shot-mix signal is specifically about scoring efficiency and has no
+      # theoretical link to those categories (out of scope per this task).
+      adj_pts  = adjust_mu_for_shot_mix(
+                   adjust_mu_for_opponent(pts_mu, opp_def_rapm, league_avg_def),
+                   pct_rim, league_avg_pct_rim
+                 ),
       adj_reb  = adjust_mu_for_opponent(reb_mu, opp_def_rapm, league_avg_def),
       adj_ast  = adjust_mu_for_opponent(ast_mu, opp_def_rapm, league_avg_def),
       adj_fg3m = adjust_mu_for_opponent(fg3m_mu, opp_def_rapm, league_avg_def),

@@ -397,6 +397,22 @@ log_todays_predictions <- function() {
       resolved_timestamp        = as.POSIXct(NA)
     )
 
+    # 2026-09-19 finding: every real resolved row logged so far has NA predicted_margin/
+    # contrib_* despite a real predicted_home_win_prob, which silently zeroed out
+    # MAE/RMSE/bias on the Model Diagnostics tab and any accuracy check built on this
+    # log (the originating latest_value_bets.rds snapshot was already overwritten by the
+    # time this was caught, so the exact historical trigger couldn't be forensically
+    # confirmed - the missing-standings fallback in get_model_slate_probabilities() was
+    # fixed the same day as a plausible cause, see market_odds_engine.R). Loudly flag
+    # this exact inconsistency at write time from now on so it's caught same-day, not
+    # rediscovered a week later.
+    margin_missing <- is.na(new_rows$predicted_margin) & !is.na(new_rows$predicted_home_win_prob)
+    if (any(margin_missing)) {
+      log_warn(sprintf("%d of %d slate row(s) have a real predicted_home_win_prob but NA predicted_margin - MAE/RMSE will be unscoreable for these rows once resolved.",
+                       sum(margin_missing), nrow(new_rows)),
+               call = "log_todays_predictions()", affected_game_ids = paste(new_rows$game_id[margin_missing], collapse = ", "))
+    }
+
     existing_log <- get_prediction_log()
 
     # Idempotency (Best Practice #1): dedupe on game_id before inserting, exact

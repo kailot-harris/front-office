@@ -126,7 +126,8 @@ ui <- dashboardPage(
       menuItem("Model Calibration & Reliability", tabName = "tab_calibration", icon = icon("balance-scale")),
       menuItem("WNBA Standings & Matchup Calc", tabName = "tab_standings_calc", icon = icon("calculator"), badgeLabel = "P5", badgeColor = "green"),
       menuItem("Model Diagnostics", tabName = "tab_model_diagnostics", icon = icon("microscope"), badgeLabel = "XAI", badgeColor = "orange"),
-      menuItem("Player Proposition Terminal (PRA)", tabName = "tab_player_props", icon = icon("user-astronaut"), badgeLabel = "ZINB", badgeColor = "yellow")
+      menuItem("Player Proposition Terminal (PRA)", tabName = "tab_player_props", icon = icon("user-astronaut"), badgeLabel = "ZINB", badgeColor = "yellow"),
+      menuItem("Clutch & Shot Profile", tabName = "tab_clutch_shot_profile", icon = icon("fire"), badgeLabel = "PBP", badgeColor = "aqua")
     )
   ),
   dashboardBody(
@@ -376,6 +377,33 @@ ui <- dashboardPage(
           box(
             title = "ZINB Probability Density Curve", width = 4, status = "info",
             plotOutput("plot_prop_zinb_curve", height = 360)
+          )
+        )
+      ),
+
+      # ------------------------------------------------------------------------
+      # Tab 10: Clutch & Shot Profile (pbp_engine.R's real ESPN play-by-play
+      # player features: CACHE_PLAYER_PBP_FEATURES = cache/player_pbp_features.rds).
+      # ------------------------------------------------------------------------
+      tabItem(
+        tabName = "tab_clutch_shot_profile",
+        fluidRow(
+          box(
+            title = "Real Play-by-Play Clutch / Assist / Shot-Mix Player Features", width = 12, status = "info", solidHeader = TRUE,
+            p(style = "color: #bdc3c7; font-size: 12px;",
+              "Built from real ESPN play-by-play (wehoop::load_wnba_pbp(), see pbp_engine.R) - not a synthetic fixture. ",
+              "'Clutch' = period >= 4, <=5:00 remaining in that period, score margin <= 5 at the event. ",
+              "Shot-mix percentages (Rim / Off-Dribble Jumper / Catch & Shoot) are computed over 2-point attempts only; ",
+              "3PT rate is computed over all shot attempts (a different denominator - see pbp_engine.R header for why these ",
+              "are not forced into one mutually-exclusive breakdown). REAL_HISTORICAL_FALLBACK rows had zero CURRENT_SEASON ",
+              "PBP events and instead show career-to-date (ALL_SEASONS) figures."),
+            fluidRow(
+              column(4, checkboxInput("clutch_show_low_volume", "Show low-volume players (FGA < 20)", value = FALSE)),
+              column(8, p(style = "color: #bdc3c7; font-size: 12px; margin-top: 6px;",
+                          "Percentage columns are noisy on very few attempts, so low-FGA players are hidden by default rather than ",
+                          "letting a 2-for-3 shooter sort to the top of a % column - fga_total is always shown so sample size stays visible."))
+            ),
+            DTOutput("tbl_clutch_shot_profile")
           )
         )
       )
@@ -1303,17 +1331,28 @@ server <- function(input, output, session) {
     log <- r_pred_log()
     if (is.null(log) || nrow(log) == 0) {
       return(list(total = 0L, resolved = 0L, real_resolved = 0L, synth_resolved = 0L,
-                  has_flag = FALSE, box_ok = file.exists(CACHE_TEAM_BOX)))
+                  has_flag = FALSE, box_ok = file.exists(CACHE_TEAM_BOX), chartable = 0L))
     }
     syn <- .flag_synthetic(log)
     is_res <- dplyr::coalesce(log$status == "RESOLVED", FALSE)
+    # 2026-09-18 finding: reconcile_predictions() never backfills predicted_margin (it's only
+    # ever set once, at PENDING-insertion time, from that day's latest_value_bets.rds slate) -
+    # a handful of already-logged real resolved rows have NA predicted_margin from whatever
+    # slate produced them, and residual = actual_margin - predicted_margin is NA for those rows.
+    # ggplot silently drops NA-aesthetic rows, so the charts below rendered blank while the
+    # value boxes correctly showed an em dash. Surface the chartable count so the gap is visible.
+    n_chartable <- {
+      df <- tryCatch(r_diagnostics_df(), error = function(e) NULL)
+      if (is.null(df)) 0L else sum(!is.na(df$predicted_margin))
+    }
     list(
       total          = nrow(log),
       resolved       = sum(is_res),
       real_resolved  = sum(is_res & !syn),
       synth_resolved = sum(is_res & syn),
       has_flag       = "is_synthetic" %in% names(log),
-      box_ok         = file.exists(CACHE_TEAM_BOX)
+      box_ok         = file.exists(CACHE_TEAM_BOX),
+      chartable      = n_chartable
     )
   })
 
@@ -1377,6 +1416,12 @@ server <- function(input, output, session) {
       sprintf("DIAGNOSTICS UNAVAILABLE - box score cache not found at %s. Metrics below show an em dash, not zero.", CACHE_TEAM_BOX)
     } else if (n == 0) {
       "DIAGNOSTICS UNAVAILABLE - no real (non-synthetic) resolved predictions to score yet. Metrics below show an em dash, not zero."
+    } else if (p$chartable == 0) {
+      sprintf("CHARTS UNAVAILABLE - all %d real resolved prediction%s logged with a missing predicted_margin (older log rows from before that field was reliably captured); metrics/charts below show an em dash / placeholder, not zero.",
+              n, if (n == 1) "" else "s")
+    } else if (p$chartable < n) {
+      sprintf("%d of %d real resolved predictions are missing predicted_margin and are excluded from the charts below.",
+              n - p$chartable, n)
     } else NULL
 
     div(
@@ -1412,9 +1457,25 @@ server <- function(input, output, session) {
     valueBox(val, "Mean Bias (Home Bias)", icon = icon("balance-scale"), color = "purple")
   })
 
+  # 2026-09-18 finding: rows with NA predicted_margin have an NA residual, and ggplot silently
+  # drops NA-aesthetic rows - so a df that passes req(df) (non-NULL, nrow > 0) could still render
+  # a blank chart with zero visible data points. Filter to chartable rows here so the "not enough
+  # data" case is an honest annotated message instead of an empty plot.
+  .diag_chartable <- function(df) if (is.null(df)) NULL else df[!is.na(df$residual), , drop = FALSE]
+
+  .diag_empty_plot <- function(msg) {
+    ggplotly(
+      ggplot() +
+        annotate("text", x = 0, y = 0, label = msg, color = "#bdc3c7", size = 4.5) +
+        theme_void() +
+        theme(plot.background = element_rect(fill = "#1a222d", color = NA))
+    )
+  }
+
   output$plot_residual_scatter <- renderPlotly({
-    df <- r_diagnostics_df()
-    req(df)
+    df <- .diag_chartable(r_diagnostics_df())
+    req(!is.null(df))
+    if (nrow(df) == 0) return(.diag_empty_plot("No chartable predictions yet\n(predicted_margin missing on all resolved rows)"))
 
     p <- ggplot(df, aes(x = predicted_margin, y = actual_margin)) +
       geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "#e74c3c", linewidth = 1) +
@@ -1431,8 +1492,9 @@ server <- function(input, output, session) {
   })
 
   output$plot_residual_dist <- renderPlotly({
-    df <- r_diagnostics_df()
-    req(df)
+    df <- .diag_chartable(r_diagnostics_df())
+    req(!is.null(df))
+    if (nrow(df) == 0) return(.diag_empty_plot("No chartable predictions yet\n(predicted_margin missing on all resolved rows)"))
 
     p <- ggplot(df, aes(x = residual)) +
       geom_histogram(bins = 20, fill = "#af7ac5", color = "#ecf0f1", alpha = 0.8) +
@@ -1449,8 +1511,9 @@ server <- function(input, output, session) {
   })
 
   output$plot_team_bias <- renderPlotly({
-    df <- r_diagnostics_df()
-    req(df)
+    df <- .diag_chartable(r_diagnostics_df())
+    req(!is.null(df))
+    if (nrow(df) == 0) return(.diag_empty_plot("No chartable predictions yet\n(predicted_margin missing on all resolved rows)"))
 
     team_bias <- df |>
       group_by(home_team) |>
@@ -1577,6 +1640,72 @@ server <- function(input, output, session) {
         axis.text = element_text(color = "#bdc3c7"),
         legend.position = "top"
       )
+  })
+
+  # ----------------------------------------------------------------------------
+  # Tab 10: Clutch & Shot Profile (pbp_engine.R output, config.R's CACHE_PLAYER_PBP_FEATURES)
+  # ----------------------------------------------------------------------------
+  # Fail-safe per repo convention: never crash the app if the pipeline stage hasn't run yet.
+  # Guarded read (mirrors the injury-tab pattern above) rather than a bare readRDS(), since this
+  # cache is also rewritten by a scheduled pipeline run and a read could race a partial write.
+  r_pbp_features <- reactive({
+    if (!file.exists(CACHE_PLAYER_PBP_FEATURES)) return(NULL)
+    tryCatch(readRDS(CACHE_PLAYER_PBP_FEATURES), error = function(e) {
+      message("[tbl_clutch_shot_profile] Failed to read ", CACHE_PLAYER_PBP_FEATURES, ": ", conditionMessage(e))
+      NULL
+    })
+  })
+
+  output$tbl_clutch_shot_profile <- renderDT({
+    df <- r_pbp_features()
+
+    if (is.null(df) || nrow(df) == 0) {
+      return(datatable(tibble(
+        Notice = "Play-by-play player features not yet generated - run pbp_engine.R (or the full pipeline) to build cache/player_pbp_features.rds."
+      ), rownames = FALSE, options = list(dom = "t")))
+    }
+
+    # Per-row NA-fill on real columns: dplyr::coalesce(), NOT this file's scalar %||% (CLAUDE.md /
+    # FIX M-6 - %||% hard-errors on a full vector under R 4.3+). clutch_fg_pct / pct_* are
+    # legitimately NA (not 0) when the player has zero attempts in that bucket, so coalesce to 0
+    # here only for display purposes - the underlying cache keeps the honest NA.
+    display_df <- df %>%
+      mutate(
+        clutch_fg_pct          = dplyr::coalesce(clutch_fg_pct, 0),
+        pct_rim                = dplyr::coalesce(pct_rim, 0),
+        pct_off_dribble_jumper = dplyr::coalesce(pct_off_dribble_jumper, 0),
+        pct_catch_shoot_jumper = dplyr::coalesce(pct_catch_shoot_jumper, 0),
+        pct_three              = dplyr::coalesce(pct_three, 0)
+      )
+
+    if (!isTRUE(input$clutch_show_low_volume)) {
+      display_df <- display_df %>% filter(fga_total >= 20)
+    }
+
+    if (nrow(display_df) == 0) {
+      return(datatable(tibble(
+        Notice = "No players meet the current FGA threshold - check 'Show low-volume players' above."
+      ), rownames = FALSE, options = list(dom = "t")))
+    }
+
+    display_view <- display_df %>%
+      transmute(
+        Player = player_name,
+        Team = team_abbreviation,
+        `Data Source` = data_source,
+        FGA = fga_total,
+        `Clutch Pts` = clutch_points,
+        `Clutch FG%` = scales::percent(clutch_fg_pct, accuracy = 0.1),
+        `Clutch Scoring Plays` = clutch_scoring_plays,
+        Assists = assists,
+        `Rim %` = scales::percent(pct_rim, accuracy = 0.1),
+        `Off-Dribble Jumper %` = scales::percent(pct_off_dribble_jumper, accuracy = 0.1),
+        `Catch & Shoot %` = scales::percent(pct_catch_shoot_jumper, accuracy = 0.1),
+        `3PT Rate` = scales::percent(pct_three, accuracy = 0.1)
+      ) %>%
+      arrange(desc(`Clutch Pts`))
+
+    datatable(display_view, options = list(pageLength = 12, scrollX = TRUE), rownames = FALSE)
   })
 }
 

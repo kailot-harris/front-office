@@ -203,6 +203,13 @@ CACHE_SIMILARITY   <- file.path(PROJECT_DIR, "data", "team_similarity_matrix.csv
 CACHE_INJURY_DATA  <- file.path(CACHE_DIR, "injury_data_cache.rds")
 CACHE_PLAYER_PROPS <- file.path(CACHE_DIR, "latest_player_props.rds")
 
+# Promoted from pbp_engine.R's bare literals (2026-09-17): now a two-consumer path
+# (pbp_engine.R writer + run_full_pipeline.R stage + app.R's "Clutch & Shot Profile"
+# tab reader), which crosses this repo's own stated threshold for centralizing a
+# cache literal here rather than leaving it repeated across files.
+CACHE_PBP_RAW               <- file.path(CACHE_DIR, "wnba_espn_pbp_cache.rds")
+CACHE_PLAYER_PBP_FEATURES   <- file.path(CACHE_DIR, "player_pbp_features.rds")
+
 # ------------------------------------------------------------------------------------------
 # API Throttling & Rate-Limiting (carried over from NBA as reasonable starting defaults -
 # sport-agnostic, per WNBA_REPLICATION_PLAN.md)

@@ -91,6 +91,13 @@ get_player_box_scores_chunked <- function(seasons = ALL_SEASONS) {
   return(all_player_box)
 }
 
+# AUDITED 2026-09-17 (docs/bpm_implementation_audit_findings.md): this is deliberately a
+# DIFFERENT metric from roster_bottom_up_engine.R::get_player_bpm_ratings() (different weights,
+# per-game not season-aggregated, no plus-minus blend). Its output feeds
+# cache/features_cache.rds's team_top5_bpm/team_minutes_concentration, which
+# TOP5_BPM_MARGIN_SLOPE/MINUTES_CONCENTRATION_MARGIN_SLOPE were empirically regressed against
+# EXACTLY as computed here. Do not change these weights without re-running
+# tools/research_team_depth_regression.R and re-deriving those slopes — see the audit doc.
 calculate_bpm_components <- function(player_df) {
   # Robust column mapping across wehoop/ESPN historical schemas
   df <- player_df |>
@@ -161,4 +168,32 @@ get_player_features <- function(seasons = ALL_SEASONS) {
     )
 
   return(team_game_features)
+}
+
+# ------------------------------------------------------------------------------
+# compute_and_cache_player_features() — pipeline entry point (Tier 1 fix, 2026-09-17).
+#
+# get_player_features() above was always fully implemented and real-data-backed, but was
+# never wired into run_full_pipeline.R and never had its output saved anywhere — config.R
+# has declared CACHE_FEATURES ("cache/features_cache.rds") since Phase 0, and
+# tools/data_health_probe.R has flagged it "missing" across three separate remediation
+# waves (see docs/task_assignments_phase4.md's Phase 4 handoff notes), each one noting it
+# as "pre-existing and unrelated" without tracing it to this root cause: there was simply
+# no producer. (There is also still no CONSUMER of this cache anywhere in the pipeline —
+# that is a separate, deliberate follow-up requiring its own empirical validation, not
+# addressed here; see the research note this fix was scoped from.)
+#
+# This wrapper is deliberately the ONLY thing in this file with a side effect.
+# player_metrics.R itself must stay side-effect-free on a bare source() —
+# roster_bottom_up_engine.R already sources this file purely for its function
+# definitions (per that file's own header comment) and must not trigger a recompute as a
+# side effect of that source() call. So this is invoked via run_full_pipeline.R's
+# `call_fn` mechanism (same pattern as daily_ingest.R/prediction_accuracy_logger.R), not
+# an auto-run `if (!interactive())` footer.
+compute_and_cache_player_features <- function(seasons = ALL_SEASONS) {
+  features <- get_player_features(seasons)
+  saveRDS(features, CACHE_FEATURES)
+  message(sprintf("[Player Metrics] Cached %d team-game feature rows (BPM/minutes-concentration) to %s",
+                   nrow(features), CACHE_FEATURES))
+  invisible(features)
 }

@@ -245,6 +245,22 @@ if (file.exists(file.path(CACHE_DIR, "player_box_scores_cache.rds"))) {
   GLOBAL_PLAYER_BOX <- NULL
 }
 
+# 0.7. Player Team-Game Features (BPM / minutes-concentration) — Tier 1 fix (2026-09-17).
+# config.R has declared CACHE_FEATURES ("cache/features_cache.rds") since Phase 0, and
+# tools/data_health_probe.R has checked for it the whole time, but no stage ever produced
+# it — player_metrics.R::get_player_features() was fully implemented and real-data-backed
+# from the start, just never wired into this DAG. Three separate remediation waves
+# (docs/task_assignments_phase4.md) flagged the resulting "cache/features_cache.rds
+# missing" health-probe warning as "pre-existing and unrelated" without tracing it this
+# far. `call_fn`, not `entry_fn`: player_metrics.R is deliberately side-effect-free on a
+# bare source() (roster_bottom_up_engine.R already sources it below purely for its
+# function definitions, and must not trigger a recompute as a side effect of that).
+# Placed here (not earlier) because its only real dependency is CACHE_PLAYER_BOX, just
+# loaded above.
+run_stage("player_metrics.R", "Compute Player Team-Game Features (BPM / Minutes Concentration)",
+          call_fn = "compute_and_cache_player_features",
+          output  = CACHE_FEATURES)
+
 # 1. Official Data Feed & Ingestion
 # Output: cache/active_rosters_cache.rds (T1 Handoff Notes: 209 rows x 7 cols, 15 teams)
 run_stage("sync_rosters.R", "Sync Active WNBA Rosters (12-Player Cap) & Mid-Season Signings",
@@ -263,17 +279,16 @@ if (file.exists(file.path(CACHE_DIR, "active_rosters_cache.rds"))) {
 run_stage("injury_scraper.R", "Scrape Official WNBA Injury Scratches & Availability Updates",
           entry_fn = "fetch_live_wnba_injuries",
           output   = CACHE_INJURY_DATA)
-# Output: logs/analytics.duckdb (tables `team_embeddings` + `team_similarity`).
-# CORRECTED IN PHASE 4 (agent_pipeline): the comment here used to claim this stage outputs
+# Output: logs/analytics.duckdb (tables `team_embeddings` + `team_similarity`), PLUS
 # data/team_embeddings.csv + data/team_similarity_matrix.csv (config.R's CACHE_EMBEDDINGS /
-# CACHE_SIMILARITY). It does not, and has not for some time — team_embeddings.py:103-114 writes
-# into logs/analytics.duckdb via `con.append()`. The two CSVs are stale 2026-09-12 artifacts that
-# nothing in the DAG refreshes. Found by the new declared-output mtime assertion on its very first
-# real run (it flagged both CSVs as 97.8 hours old behind a [COMPLETED] stage) — exactly the class
-# of drift C-2 is about. The CSV constants are left untouched in config.R (not this wave's
-# ownership); flagged in the Handoff Notes for a later wave to retire or repoint.
+# CACHE_SIMILARITY). CORRECTED IN PHASE 4 (agent_pipeline): this comment used to warn that the two
+# CSVs were stale artifacts nothing in the DAG refreshed (team_embeddings.py only wrote duckdb).
+# RE-CORRECTED 2026-09-17 (orphaned-cache-audit skill run): team_embeddings.py's save_to_db() now
+# writes both CSVs again, additively alongside duckdb — load_embeddings.R and
+# tools/ml_cv_benchmark.R still read the CSVs and app.R's wide-shape fallback path still expects
+# them, so retiring the CSVs instead of restoring their producer would have broken real consumers.
 run_stage("team_embeddings.py", "Train Team Style Embeddings & Similarity Matrix (PyTorch)",
-          output = "logs/analytics.duckdb")
+          output = c("logs/analytics.duckdb", CACHE_EMBEDDINGS, CACHE_SIMILARITY))
 
 # 1.5. Prediction-Accuracy Logging — Reconciliation
 run_stage("prediction_accuracy_logger.R", "Reconcile Pending Model Predictions Against Completed WNBA Games",
@@ -286,7 +301,38 @@ suppressPackageStartupMessages({
   library(future)
   library(future.apply)
 })
-plan(multisession) # Use background R sessions for parallel stages
+
+# MEMORY-ADAPTIVE PLAN SELECTION (2026-09-17): a real run on this machine was OOM-killed by the
+# OS twice in the "Latent Engines Group" below, BEFORE reaching any live-API stage — each
+# `multisession` element is a full separate R process (its own package loads, no memory sharing
+# with the parent), and this machine's actual free RAM at run time (checked here, not assumed)
+# can be well below what 3 concurrent worker processes need, e.g. when a normal interactive
+# Chrome session with many tabs is also open (confirmed present during the kill: ~40 chrome.exe
+# processes, ~2.3GB, ordinary browser tabs — not anything this pipeline launched or should ever
+# touch/kill). Rather than hardcoding `plan(sequential)` (which would needlessly slow down every
+# future run, including the scheduled nightly one in schedule_daily.bat where this contention
+# likely won't exist), check real available memory and degrade gracefully, same fail-safe
+# philosophy as the rest of this repo (check response validity, fall back, never hard-crash).
+# Windows-only check (this repo only runs on Windows per CLAUDE.md); any failure to determine
+# free memory conservatively assumes low memory and falls back to sequential.
+MIN_FREE_MB_FOR_PARALLEL <- 4096
+get_free_memory_mb <- function() {
+  tryCatch({
+    out <- system2("powershell.exe", c("-NoProfile", "-Command",
+      "(Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory"), stdout = TRUE)
+    as.numeric(trimws(out[length(out)])) / 1024  # FreePhysicalMemory is in KB
+  }, error = function(e) NA_real_)
+}
+free_mb <- get_free_memory_mb()
+if (is.na(free_mb) || free_mb < MIN_FREE_MB_FOR_PARALLEL) {
+  message(sprintf(">>> [MEMORY] Free RAM %s below the %dMB parallel-safety threshold (or undetectable) — using plan(sequential) for this run to avoid an OOM kill. See run_full_pipeline.R's 2026-09-17 comment for why.",
+                  if (is.na(free_mb)) "UNKNOWN" else sprintf("%.0fMB", free_mb), MIN_FREE_MB_FOR_PARALLEL))
+  plan(sequential)
+} else {
+  message(sprintf(">>> [MEMORY] Free RAM %.0fMB clears the %dMB threshold — using plan(multisession) as normal.",
+                  free_mb, MIN_FREE_MB_FOR_PARALLEL))
+  plan(multisession) # Use background R sessions for parallel stages
+}
 
 # 2. Physics & Biometric Latent Engines (Phase 3) - Parallel Group 1
 # These are independent and only depend on the base ingestion.
@@ -309,6 +355,20 @@ latent_engines <- list(
 future_lapply(latent_engines, function(e) {
   run_stage(e$s, e$d, entry_fn = e$f, output = e$o)
 }, future.seed = TRUE)
+
+# 2.5. Play-by-Play Player Features (pbp_engine.R) - deliberately SEQUENTIAL, not folded into
+# the future.apply "Latent Engines" group above. Empirically this machine OOM-killed the whole
+# pipeline the first time it ran here: each future_lapply `multisession` element is a SEPARATE
+# full R process (its own package loads, no memory sharing with the parent or siblings), and
+# pbp_engine.R's own working set (cache/wnba_espn_pbp_cache.rds, 763k rows / ~30MB on disk,
+# considerably larger deserialized) pushed 4 concurrent worker processes over this machine's
+# available RAM (16GB total, ~5GB free once the other 3 engines' own caches were also loaded).
+# Nothing in the parallel group above depends on pbp_engine.R, and its only real consumer
+# (player_props_engine.R, in the LATER "Props Engines Group") doesn't run for a while yet, so
+# running it here sequentially costs wall-clock time, not correctness, and keeps peak
+# concurrent memory back down at the original 3-worker footprint.
+run_stage("pbp_engine.R", "Compute Real Play-by-Play Clutch/Assist/Shot-Mix Player Features",
+          entry_fn = "compute_player_pbp_features", output = CACHE_PLAYER_PBP_FEATURES)
 
 # 3. Microstructure & Player Valuation Engines
 # depends on rapm_engine.R
