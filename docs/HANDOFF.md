@@ -1,3 +1,31 @@
+# Handoff — 2026-09-19 (second session) — migration classifier gap closed
+
+**Picked up open item 1 from the section immediately below.** Added a third predicate to
+`migrate_prediction_log()`'s synthetic classifier (`prediction_accuracy_logger.R`): any row whose
+`game_id` matches `^WNBA_GAME_[0-9]+$` AND whose `market_data_source` is `NA`/`"UNKNOWN"` (i.e. was
+written before provenance existed) now backfills `is_synthetic = TRUE`, closing the fixture-slate
+misclassification gap described below. Gated on `market_data_source == "UNKNOWN"` specifically so a
+legitimately real game_id can never collide with this pattern for rows written after provenance
+started being recorded.
+
+Verified with a standalone synthetic-df test (parse the file, call `migrate_prediction_log()`
+directly on a 4-row fixture covering `WNBA_GAME_5`/`WNBA_GAME_6`/a real game/a `DIAG_` row) —
+all four classified correctly, real game untouched. **Inspected the live
+`cache/prediction_accuracy_log.rds` while doing this and found its two `WNBA_GAME_5`/`WNBA_GAME_6`
+rows already show `is_synthetic = TRUE`** (not `FALSE` as this file's own prior section describes) —
+could not determine what changed it between that session and this one (schema_version is already
+`2` on both rows, so `migrate_prediction_log()`'s own `needs_migration` idempotency guard means this
+new predicate did NOT touch the persisted cache; something else fixed the data before this session).
+Not investigated further since the observable state is already correct — flagging the discrepancy
+here in case a future agent needs to reconcile it. The code-level classifier gap itself is real and
+is what's fixed here, independent of that data mystery.
+
+**Not done this session**: open items 2-4 from the section below (live-run verification of the
+missing-standings fallback, the Model Diagnostics cosmetic text-overflow clipping, and re-running
+`tools/check_accuracy_0916_0917.R` once more real predictions resolve) remain open, untouched.
+
+---
+
 # Handoff — 2026-09-19 — CURRENT STATE (read this section first)
 
 **This section supersedes every pointer further down this file**, including the 2026-09-17 "CURRENT

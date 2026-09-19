@@ -163,6 +163,17 @@ PRED_LOG_UNRESOLVABLE_AFTER_DAYS <- 7L
 # those two predicates select the same 100 rows (verified), so the OR is belt-and-
 # braces against a fixture written with only one of the two markers.
 #
+# Added 2026-09-19 (HANDOFF.md open item 1): a third predicate catches rows logged
+# BEFORE market_data_source provenance existed, whose game_id is the literal
+# SYNTHETIC_FALLBACK fixture slate hardcoded in market_odds_engine.R::fetch_market_odds()
+# (game_id = paste0("WNBA_GAME_", 1:6)). Without market_data_source at write time, those
+# rows backfilled to market_data_source = "UNKNOWN" and were never caught by the two
+# predicates above, permanently misclassifying real fixture rows as real predictions
+# (found via tools/check_accuracy_0916_0917.R on the 2026-09-16 WNBA_GAME_5/6 rows).
+# Gated on market_data_source == "UNKNOWN" so a legitimately real game_id can never
+# collide with this pattern going forward (every row written after provenance existed
+# carries a real "LIVE_ODDS_API"/"SYNTHETIC_FALLBACK" value here, not "UNKNOWN").
+#
 # Idempotent: re-running on an already-migrated log is a no-op for existing values.
 # Non-destructive: no row is dropped and no pre-existing column is rewritten.
 # ------------------------------------------------------------------------------
@@ -180,7 +191,14 @@ migrate_prediction_log <- function(df) {
   } else {
     rep(FALSE, nrow(df))
   }
-  synthetic_backfill <- is_diag_id | is_diag_inj
+  is_unknown_source <- if ("market_data_source" %in% names(df)) {
+    is.na(df$market_data_source) | df$market_data_source == "UNKNOWN"
+  } else {
+    rep(TRUE, nrow(df))
+  }
+  is_unprovenanced_fixture <- grepl("^WNBA_GAME_[0-9]+$", as.character(df$game_id)) &
+    is_unknown_source
+  synthetic_backfill <- is_diag_id | is_diag_inj | is_unprovenanced_fixture
 
   if (!"is_synthetic" %in% names(df)) {
     df$is_synthetic <- synthetic_backfill
