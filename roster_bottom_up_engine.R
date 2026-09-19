@@ -472,26 +472,29 @@ predict_live_matchup <- function(home_team, away_team, active_rosters, player_ra
 # `lm(margin ~ ... + factor(team_id))` which reproduces identical coefficients to 4 decimal
 # places):
 #     margin ~ trailing_avg_margin + trailing_avg_team_minutes_concentration + trailing_avg_team_top5_bpm
-#     trailing_avg_margin:                     +0.3848  (SE 0.0556, t=+6.93, p=5.1e-12)  [recent-form baseline, always included as a control]
-#     trailing_avg_team_minutes_concentration: -120.82  (SE 52.59,  t=-2.30, p=0.0217)   [sign was a priori ambiguous -- came out negative: a MORE concentrated/shorter rotation predicts a WORSE next-game margin, consistent with the "thin bench / fatigue-fragility" reading over the "reliance on stars" reading]
-#     trailing_avg_team_top5_bpm:               +1.1563  (SE 0.3546, t=+3.26, p=0.0011)   [theory-sensible sign: a stronger recent starting unit predicts a BETTER next-game margin]
+#     trailing_avg_margin:                     +0.4006  (SE 0.0550, t=+7.28, p=4.1e-13)  [recent-form baseline, always included as a control]
+#     trailing_avg_team_minutes_concentration: -102.17  (SE 51.50,  t=-1.98, p=0.0470)   [sign was a priori ambiguous -- came out negative: a MORE concentrated/shorter rotation predicts a WORSE next-game margin, consistent with the "thin bench / fatigue-fragility" reading over the "reliance on stars" reading]
+#     trailing_avg_team_top5_bpm:               +1.0509  (SE 0.3597, t=+2.92, p=0.0034)   [theory-sensible sign: a stronger recent starting unit predicts a BETTER next-game margin]
 #   n = 3,831 team-games, 15 teams. Both new terms independently clear p < 0.05 AND have a
 #   defensible sign -> BOTH wired in (it was NOT guaranteed both would clear the bar; a
 #   from-first-principles decision was made for each term separately, see the docs file).
-#   Collinearity check: cor(trailing_avg_team_top5_bpm, trailing_avg_margin) = 0.61,
-#   cor(trailing_avg_team_minutes_concentration, trailing_avg_team_top5_bpm) = 0.75, but VIFs
-#   are 2.16 / 3.12 / 4.80 (all < 5) -- close to the rule-of-thumb ceiling but each term remains
-#   separately identifiable, not disqualifying.
-TOP5_BPM_MARGIN_SLOPE <- 1.1563
-MINUTES_CONCENTRATION_MARGIN_SLOPE <- -120.8159
+#   RE-DERIVED 2026-09-19 after player_metrics.R::calculate_bpm_components()'s BPM weight
+#   recalibration (docs/bpm_recalibration_findings.md) changed the `steals` weight
+#   (1.40 -> 0.875), which changes raw_bpm_rate and therefore team_top5_bpm/
+#   team_weighted_bpm. Both slopes moved modestly but stayed significant with the same
+#   sign (prior values: +1.1563 / -120.8159) -- re-run per the audit comment above
+#   whenever calculate_bpm_components()'s weights change again.
+TOP5_BPM_MARGIN_SLOPE <- 1.0509
+MINUTES_CONCENTRATION_MARGIN_SLOPE <- -102.1698
 
 # Clamp bounds: derived from the real spread of the depth adjustment across ALL 15x14 real
 # current-team ordered pairs (computed from each team's actual current trailing-12-game
-# team_top5_bpm/team_minutes_concentration as of the 2026-09-17 cache snapshot): the raw
-# adjustment ranges -4.14 to +4.14 points (the two terms are positively correlated across teams
-# and partially offset each other in practice, per the collinearity note above). +/-6.0 is
-# comfortably non-binding on real data -- exists purely as a rail against a future degenerate
-# features_cache.rds, same non-binding-by-design rationale as OPP_DEF_MU_CLAMP/SHOT_MIX_PTS_CLAMP.
+# team_top5_bpm/team_minutes_concentration as of the 2026-09-19 cache snapshot, post-BPM-
+# recalibration): the raw adjustment ranges -3.80 to +3.80 points (the two terms are positively
+# correlated across teams and partially offset each other in practice, per the collinearity note
+# above). +/-6.0 remains comfortably non-binding on real data -- exists purely as a rail against
+# a future degenerate features_cache.rds, same non-binding-by-design rationale as
+# OPP_DEF_MU_CLAMP/SHOT_MIX_PTS_CLAMP.
 DEPTH_ADJ_CLAMP <- c(-6.0, 6.0)
 
 # Loads cache/features_cache.rds + cache/player_box_scores_cache.rds (+ active_rosters_cache.rds

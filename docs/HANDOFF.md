@@ -1,3 +1,70 @@
+# Handoff — 2026-09-19 (third session) — wishlist items 1-5 implemented
+
+Acted on a 15-item improvement wishlist drafted this session; user selected items 5 and 1-4 for
+implementation, rest filed as `docs/future-work.md` (items 6-15, renumbered 1-11 there).
+
+1. **`tools/research_bpm_recalibration.R` (new) + BPM weight recalibration.** Re-derived
+   `player_metrics.R::calculate_bpm_components()`'s 9 per-stat weights against real WNBA data via
+   a non-circular, trailing-average, within-team FE regression (same discipline as
+   `tools/research_team_depth_regression.R`). Result: only `steals` cleared significance
+   (1.40 → 0.875, p=0.004); the other 8 weights were left unchanged (not significant — an honest
+   mostly-negative result, not a full recalibration). The `-2.0` replacement-level anchor
+   recalibration attempt produced an implausible result (+3.51) and was NOT wired in — deferred,
+   documented as a real follow-up in `docs/future-work.md`. Full writeup:
+   `docs/bpm_recalibration_findings.md`. **Required downstream re-derivation, done**: regenerated
+   `cache/features_cache.rds`, re-ran `tools/research_team_depth_regression.R`, updated
+   `TOP5_BPM_MARGIN_SLOPE`/`MINUTES_CONCENTRATION_MARGIN_SLOPE` in `roster_bottom_up_engine.R`
+   (both stayed significant/correctly-signed, magnitudes moved modestly — see that doc's new
+   2026-09-19 addendum), re-verified `DEPTH_ADJ_CLAMP` still non-binding, and confirmed
+   `roster_bottom_up_engine.R` still runs end-to-end via `tools/verify_pipeline_stage.R`.
+2. **`tools/test_pure_functions.R` (new)** — a 16-check regression suite for functions previously
+   only verified ad hoc: `normalize_team_abbreviation()`, `filter_real_franchises()`,
+   `migrate_prediction_log()` (always called with the new `persist = FALSE`, see item below —
+   checksummed the real cache before/after to confirm zero writes), and `join_rapm_to_roster()`
+   (collision handling, missing-column/empty-input fail-safes). All 16 pass. This is the
+   sanctioned safe pattern `AGENTS.md` now points to for testing anything with real save side
+   effects.
+3. **`schedule_weekly_audit.bat` (new)** — runs `orphaned-cache-audit` and
+   `config-constant-drift-audit` (both `.claude/skills/`) and logs to `logs/weekly_audit.log`.
+   Both ran clean end-to-end; findings are the same previously-disclosed false-positive class
+   (`CACHE_EMBEDDINGS`/`CACHE_PBP_RAW`/`CACHE_PLAYER_PBP_FEATURES` all alias their `config.R`
+   constant to a local variable name before `saveRDS()`, which the audit's literal-string grep
+   doesn't follow — confirmed by direct inspection, not a new bug). **NOT registered with Windows
+   Task Scheduler** — the one-time `schtasks /create` command is documented in the `.bat`'s own
+   header comment but deliberately left for a human to run explicitly (a persistent system-level
+   change outside this repo's own scope to make unilaterally).
+4. **Generalized the same-day NA-field detection warning** (`prediction_accuracy_logger.R`,
+   `log_todays_predictions()`) from checking only `predicted_margin` to 8 fields (`predicted_margin`,
+   `contrib_net_diff`, `contrib_hca`, `contrib_fatigue`, `predicted_winner`, `market_data_source`,
+   `injury_data_source`, `shot_quality_data_source`) — any of them coming back NA alongside a real
+   `predicted_home_win_prob` now fires a same-day `log_warn()` naming the field and affected
+   `game_id`s, not just the one field that happened to break before.
+5. **`market_odds_engine.R::evaluate_betting_slate()` now appends every run's full model inputs**
+   (`predicted_margin`/`contrib_*`/`market_data_source`/etc., all 19 output columns +
+   `snapshot_time`) to a new `cache/value_bets_history.rds`, mirroring the existing
+   `odds_history.rds` accumulate-don't-overwrite pattern already in the same function. Directly
+   closes the forensic-recoverability gap from the 2026-09-18/19 NA-`predicted_margin` bug thread
+   above ("the exact model inputs at that prediction moment aren't reconstructable from any
+   surviving cache" — no longer true going forward). **Verified live**: ran
+   `market_odds_engine.R` for real (live Odds API call) twice; confirmed the file appends
+   (3 rows → 6 rows across 2 distinct `snapshot_time`s) rather than overwriting, and confirmed
+   real (non-NA) `predicted_margin` values on all 3 real games priced. **This run also happens to
+   satisfy open item 2 from the 2026-09-19 (first) session below** ("run market_odds_engine.R for
+   real... confirm the new log_warn() in the missing-standings fallback does NOT fire under
+   normal conditions") — it did not fire; `cache/projected_wnba_standings.rds` was present and
+   used normally.
+
+**`AGENTS.md`** (new, repo root, from a follow-up in the same session) — documents the
+save-side-effect testing incident and rule referenced in item 2 above.
+
+**Not done this session**: items 6-15 of the original wishlist — filed as `docs/future-work.md`
+rather than actioned. Also not done: items 2-3 from the 2026-09-19 (first) session's own open list
+(the Model Diagnostics cosmetic clipping, and re-running `tools/check_accuracy_0916_0917.R` once
+more predictions resolve) — both re-filed into `docs/future-work.md` items 9 and (implicitly)
+still open respectively, so they don't get lost across the renumbering.
+
+---
+
 # Handoff — 2026-09-19 (second session) — migration classifier gap closed
 
 **Picked up open item 1 from the section immediately below.** Added a third predicate to

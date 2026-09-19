@@ -429,20 +429,35 @@ log_todays_predictions <- function() {
       resolved_timestamp        = as.POSIXct(NA)
     )
 
-    # 2026-09-19 finding: every real resolved row logged so far has NA predicted_margin/
-    # contrib_* despite a real predicted_home_win_prob, which silently zeroed out
-    # MAE/RMSE/bias on the Model Diagnostics tab and any accuracy check built on this
-    # log (the originating latest_value_bets.rds snapshot was already overwritten by the
-    # time this was caught, so the exact historical trigger couldn't be forensically
-    # confirmed - the missing-standings fallback in get_model_slate_probabilities() was
-    # fixed the same day as a plausible cause, see market_odds_engine.R). Loudly flag
-    # this exact inconsistency at write time from now on so it's caught same-day, not
-    # rediscovered a week later.
-    margin_missing <- is.na(new_rows$predicted_margin) & !is.na(new_rows$predicted_home_win_prob)
-    if (any(margin_missing)) {
-      log_warn(sprintf("%d of %d slate row(s) have a real predicted_home_win_prob but NA predicted_margin - MAE/RMSE will be unscoreable for these rows once resolved.",
-                       sum(margin_missing), nrow(new_rows)),
-               call = "log_todays_predictions()", affected_game_ids = paste(new_rows$game_id[margin_missing], collapse = ", "))
+    # 2026-09-19 finding (originally scoped to predicted_margin only, GENERALIZED
+    # 2026-09-19 second session): every real resolved row logged so far had NA
+    # predicted_margin/contrib_* despite a real predicted_home_win_prob, which silently
+    # zeroed out MAE/RMSE/bias on the Model Diagnostics tab and any accuracy check built
+    # on this log (the originating latest_value_bets.rds snapshot was already overwritten
+    # by the time this was caught, so the exact historical trigger couldn't be
+    # forensically confirmed - the missing-standings fallback in
+    # get_model_slate_probabilities() was fixed the same day as a plausible cause, see
+    # market_odds_engine.R). The original fix only checked predicted_margin; generalized
+    # here to every field that a real predicted_home_win_prob implies should also be
+    # real, so the NEXT silent partial-degraded-fallback bug (in a different column) is
+    # caught same-day too, not rediscovered a week later while debugging a different
+    # blank dashboard chart. Each field is checked independently (a row can trip more
+    # than one warning) and reported with its own affected game_ids, exactly matching
+    # the original predicted_margin warning's format/severity for backward compatibility
+    # with anything already grepping the log for that exact message.
+    completeness_fields <- c(
+      "predicted_margin", "contrib_net_diff", "contrib_hca", "contrib_fatigue",
+      "predicted_winner", "market_data_source", "injury_data_source",
+      "shot_quality_data_source"
+    )
+    for (field in completeness_fields) {
+      field_missing <- is.na(new_rows[[field]]) & !is.na(new_rows$predicted_home_win_prob)
+      if (any(field_missing)) {
+        log_warn(sprintf("%d of %d slate row(s) have a real predicted_home_win_prob but NA %s - downstream metrics relying on this field will be unscoreable/degraded for these rows.",
+                         sum(field_missing), nrow(new_rows), field),
+                 call = "log_todays_predictions()", field = field,
+                 affected_game_ids = paste(new_rows$game_id[field_missing], collapse = ", "))
+      }
     }
 
     existing_log <- get_prediction_log()

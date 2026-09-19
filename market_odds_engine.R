@@ -625,6 +625,32 @@ evaluate_betting_slate <- function() {
   log_info(sprintf("Saved %d value bets to %s.", nrow(output_table), out_path),
            call = "evaluate_betting_slate()", rows = nrow(output_table), out_path = out_path)
 
+  # Appended, NEVER-overwritten history of this exact output_table (full model inputs:
+  # predicted_margin/contrib_*/market_data_source per game_id), same accumulate-don't-
+  # overwrite pattern already used for odds_history.rds above. Added 2026-09-19
+  # (docs/HANDOFF.md open item 4): latest_value_bets.rds itself is overwritten every run,
+  # which is exactly why 5 already-logged prediction_accuracy_log.rds rows with NA
+  # predicted_margin could not be forensically diagnosed after the fact — "the exact
+  # model inputs at that prediction moment aren't reconstructable from any surviving
+  # cache." This closes that gap going forward: prediction_accuracy_logger.R's
+  # log_todays_predictions() (or any future debugging session) can now join
+  # cache/value_bets_history.rds by game_id to recover the exact predicted_margin/
+  # contrib_* values that were live at any past snapshot_time, not just today's.
+  history_path <- file.path(CACHE_DIR, "value_bets_history.rds")
+  history_snapshot <- output_table |> mutate(snapshot_time = Sys.time())
+  if (file.exists(history_path)) {
+    existing_history <- tryCatch(readRDS(history_path), error = function(e) NULL)
+    if (is.null(existing_history)) {
+      log_warn(sprintf("%s exists but failed to read; starting a fresh history rather than blocking the slate.", history_path),
+               call = "evaluate_betting_slate()")
+      saveRDS(history_snapshot, history_path)
+    } else {
+      saveRDS(bind_rows(existing_history, history_snapshot), history_path)
+    }
+  } else {
+    saveRDS(history_snapshot, history_path)
+  }
+
   return(output_table)
 }
 

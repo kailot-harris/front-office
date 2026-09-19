@@ -123,19 +123,32 @@ calculate_bpm_components <- function(player_df) {
     ))
 
   # Standard empirical BPM linear weights scaled per 36 minutes.
-  # TODO(recalibrate): the -2.0 replacement-level anchor (and the per-stat weights
-  # below) were hand-tuned against NBA per-36 distributions in the original repo.
-  # WNBA games are 40 minutes (not 48) and per-player usage/pace distributions differ;
-  # do NOT silently change this number without real WNBA data behind it - once
-  # get_player_features() has run against several real WNBA seasons, re-derive this
-  # anchor (and ideally the weights) from the actual WNBA per-36 stat distribution
-  # rather than carrying the NBA-fit constant forward indefinitely.
+  # RECALIBRATED 2026-09-19 (docs/bpm_recalibration_findings.md,
+  # tools/research_bpm_recalibration.R): re-derived all 9 per-stat weights against real
+  # WNBA data via a within-team, trailing-average (non-circular) regression of team
+  # margin on each box category, mirroring research_team_depth_regression.R's discipline.
+  # Result: only `steals` cleared the significance bar (p=0.004, 0.875 vs the old
+  # NBA-ported 1.40); the other 8 terms were not significant and were left AS-IS per this
+  # repo's significance-gated "don't move a number without real evidence" convention —
+  # this is a mostly-negative empirical result, not a full recalibration. The -2.0
+  # replacement-level anchor was ALSO attempted (10th percentile of the weighted-sum
+  # distribution among minutes>=10 player-games) but produced an implausible result
+  # (+3.51, wrong sign/scale vs. the BPM-family convention of a deeply-negative
+  # replacement level) — deferred, NOT wired in; the anchor below is still the original
+  # NBA-ported -2.0. See the findings doc for the full writeup, including why a
+  # rotation-filtered percentile is likely the wrong replacement-level proxy and what a
+  # better derivation would need (true bottom-of-roster/end-of-bench minutes, not a
+  # percentile within an already-filtered rotation subsample).
+  # Any further change to these weights requires re-running
+  # tools/research_team_depth_regression.R and re-deriving TOP5_BPM_MARGIN_SLOPE /
+  # MINUTES_CONCENTRATION_MARGIN_SLOPE in roster_bottom_up_engine.R — see the audit
+  # comment above and docs/bpm_implementation_audit_findings.md.
   df <- df |>
     mutate(
       min_factor = if_else(minutes > 0, 36 / minutes, 0),
       raw_bpm_rate = if_else(
         minutes >= 5,
-        (0.60 * points + 0.70 * rebounds + 1.05 * assists + 1.40 * steals + 1.15 * blocks -
+        (0.60 * points + 0.70 * rebounds + 1.05 * assists + 0.875 * steals + 1.15 * blocks -
            1.20 * turnovers - 0.45 * (field_goals_attempted - field_goals_made) -
            0.35 * (free_throws_attempted - free_throws_made) + 0.30 * three_point_field_goals_made) * (minutes / 36) - 2.0,
         -2.0

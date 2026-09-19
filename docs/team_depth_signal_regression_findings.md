@@ -238,3 +238,24 @@ models, decision logic, and a live current-signal-per-team printout) via a singl
 `Rscript.exe tools/research_team_depth_regression.R` run. Re-run whenever
 `cache/features_cache.rds`/`cache/player_box_scores_cache.rds` are refreshed with more seasons
 to confirm the coefficients in `roster_bottom_up_engine.R` are still current.
+
+## Addendum (2026-09-19) — re-derived after BPM weight recalibration
+
+`player_metrics.R::calculate_bpm_components()`'s `steals` weight changed from 1.40 to 0.875
+(`docs/bpm_recalibration_findings.md`), which changes `raw_bpm_rate` and therefore
+`team_top5_bpm`/`team_weighted_bpm` — this doc's own "re-run whenever coefficients change"
+instruction, followed. `cache/features_cache.rds` was regenerated
+(`compute_and_cache_player_features()`, mtime-verified fresh) and
+`tools/research_team_depth_regression.R` re-run against it. Both terms stayed significant with
+the same sign; magnitudes moved modestly:
+
+| term | prior (2026-09-17) | current (2026-09-19) |
+|---|---|---|
+| `trailing_avg_team_top5_bpm` | +1.1563, p=0.00112 | +1.0509, p=0.00345 |
+| `trailing_avg_team_minutes_concentration` | -120.82, p=0.0217 | -102.17, p=0.0470 |
+| real depth-adjustment spread (15×14 ordered pairs) | -4.14 to +4.14 | -3.80 to +3.80 |
+
+`roster_bottom_up_engine.R`'s `TOP5_BPM_MARGIN_SLOPE`/`MINUTES_CONCENTRATION_MARGIN_SLOPE`
+constants were updated to the current values above; `DEPTH_ADJ_CLAMP` (±6.0) remains
+comfortably non-binding and was left unchanged. Original 2026-09-17 numbers above are kept
+as-is (historical record, not rewritten) per this repo's append-only documentation convention.
