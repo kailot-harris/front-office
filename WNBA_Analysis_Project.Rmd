@@ -572,6 +572,7 @@ knitr::kable(head(analytical_ci, 10), caption = sprintf("Top 10 Projected %d WNB
 ## Monte Carlo Simulation (`N_SIMULATIONS` Seasons)
 
 ```{r monte-carlo-sim}
+set.seed(42)
 n_sims <- N_SIMULATIONS
 n_games <- nrow(predictions_sim)
 
