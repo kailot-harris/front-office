@@ -215,6 +215,10 @@ placeholder (`ROLLING_WINDOW_SIZE <- 9`) as-is. A Random Forest is trained on se
 out-of-sample on season >= 2026 for each window size:
 
 ```{r window-size-experiment}
+# `data/window_sweep_3_25_results.csv` is the authoritative artifact for this sweep (see
+# config.R's ROLLING_WINDOW_SIZE comment) - load it directly instead of recomputing all 23
+# window sizes on every knit; eval_window_size()/map_dfr() below remain only as a fallback for
+# a fresh checkout without data/.
 eval_window_size <- function(w) {
   df <- build_feature_df(box_scores, window_size = w, method = "reset")
   train_data <- df |> filter(season < CURRENT_SEASON)
@@ -247,7 +251,12 @@ eval_window_size <- function(w) {
          Accuracy = round(acc, 4), `ROC-AUC` = round(auc, 4), `Brier Score` = round(brier, 4))
 }
 
-window_size_results <- map_dfr(3:25, eval_window_size)
+window_sweep_csv <- file.path(PROJECT_DIR, "data", "window_sweep_3_25_results.csv")
+if (file.exists(window_sweep_csv)) {
+  window_size_results <- readr::read_csv(window_sweep_csv, show_col_types = FALSE)
+} else {
+  window_size_results <- map_dfr(3:25, eval_window_size)
+}
 knitr::kable(window_size_results, caption = "WNBA Rolling-Window Size Comparison (Tested Out-of-Sample on Current Season, Full 3-25 Sweep)")
 ```
 
