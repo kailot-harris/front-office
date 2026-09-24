@@ -215,6 +215,7 @@ placeholder (`ROLLING_WINDOW_SIZE <- 9`) as-is. A Random Forest is trained on se
 out-of-sample on season >= 2026 for each window size:
 
 ```{r window-size-experiment}
+set.seed(42)
 eval_window_size <- function(w) {
   df <- build_feature_df(box_scores, window_size = w, method = "reset")
   train_data <- df |> filter(season < CURRENT_SEASON)
@@ -310,6 +311,7 @@ result, because a 44-game season leaves much less in-season signal to overwrite 
 season ends:
 
 ```{r offseason-comparison}
+set.seed(42)
 eval_offseason_method <- function(method_name) {
   df <- build_feature_df(box_scores, window_size = ROLLING_WINDOW_SIZE, method = method_name)
   train_data <- df |> filter(season < CURRENT_SEASON)
@@ -369,6 +371,7 @@ algorithms on historical seasons, exactly mirroring the NBA baseline's three arc
 3. **Gradient Boosted Trees (`xgboost`)**
 
 ```{r model-benchmarks}
+set.seed(42)
 model_df <- build_feature_df(box_scores, window_size = ROLLING_WINDOW_SIZE, method = "reset")
 
 train_data <- model_df |> filter(season < CURRENT_SEASON)
