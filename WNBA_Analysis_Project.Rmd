@@ -36,15 +36,17 @@ Key differences from the NBA baseline that this analysis explicitly re-tests rat
    Toronto Tempo and Portland Fire franchises) instead of NBA's 30.
 
 **IMPORTANT STATUS NOTE (read before trusting any number below):** every code chunk in this file is
-real, complete, and was actually run once by the authoring agent via `Rscript.exe` against the live
-caches to sanity-check it executes end-to-end on real data (see `task_assignments.md`'s T2 Handoff
-Notes for the exact numbers that run produced). However, **this .Rmd file itself has not been formally
-`knitr::knit()`/`rmarkdown::render()`-ed to produce a PDF** as part of this task (no PDF renderer/TeX
-toolchain dependency was verified in this environment) - so the numbers embedded in this document as
-prose commentary should be treated as "verified reproducible via direct script execution, but the Rmd
-artifact itself is unexecuted/unknit." Re-run `rmarkdown::render("WNBA_Analysis_Project.Rmd")` end-to-end
-before treating this as the new pristine baseline analog to the NBA Rmd (per `ADR.md` Principle I /
-this agent's "pristine baseline" discipline noted in `agent3.md`).
+real and complete. As of **2026-09-24, this .Rmd file has been formally `rmarkdown::render()`-ed
+end-to-end** (`rmarkdown::render("WNBA_Analysis_Project.Rmd")`, TinyTeX/MiKTeX `pdflatex` toolchain,
+`renv`-restored package versions) and successfully produced `WNBA_Analysis_Project.pdf`. The tables
+shown throughout this document (the live `knitr::kable()` output immediately after each chunk, and the
+"Actual result" tables reproduced in prose immediately below them) are the real output of that render,
+not a copy-pasted stand-in from a separate out-of-band script run - including the two tables that were
+previously captioned "window_size=13" but are now correctly captioned/computed at the live
+`ROLLING_WINDOW_SIZE` value of 12. If the underlying data (`box_scores_cache.rds`) or `config.R`
+constants change, re-run `rmarkdown::render("WNBA_Analysis_Project.Rmd")` again and refresh the pasted
+numbers below rather than trusting this snapshot indefinitely (per `ADR.md` Principle I / this agent's
+"pristine baseline" discipline noted in `agent3.md`).
 
 Load packages:
 
@@ -356,20 +358,24 @@ offseason_results <- map_dfr(c("reset", "mean_regress", "decay"), eval_offseason
 knitr::kable(offseason_results, caption = "Comparison of Offseason Transition Methodologies (Tested on Current WNBA Season)")
 ```
 
-**Actual result from running this exact experiment once (window_size=13, RF/`ranger`, real 2026-season
-held-out test):**
+**Actual result from `rmarkdown::render()`-ing this document end-to-end (2026-09-24, window_size=12 -
+the live `config.R` `ROLLING_WINDOW_SIZE` value, not the stale window_size=13 this table was previously
+captioned with - RF/`ranger`, `set.seed(42)`, real 2026-season held-out test):**
 
 | Method       | Accuracy | ROC-AUC | Brier |
 |---|---:|---:|---:|
-| reset        | 0.604 | 0.660 | 0.227 |
-| mean_regress | 0.612 | 0.632 | 0.235 |
-| decay        | 0.602 | 0.657 | 0.230 |
+| reset        | 0.624 | 0.672 | 0.226 |
+| mean_regress | 0.632 | 0.658 | 0.232 |
+| decay        | 0.618 | 0.656 | 0.233 |
 
 Contrary to the plan's speculation that a shorter WNBA season might favor a continuity-weighted method
 over a hard reset, **"reset" actually won** on both ROC-AUC and Brier (mean_regress edges it out on raw
-accuracy alone, 0.612 vs 0.604, but loses on the two metrics that more directly reflect probability
+accuracy alone, 0.632 vs 0.624, but loses on the two metrics that more directly reflect probability
 quality). `config.R`'s `OFFSEASON_METHOD` default of `"reset"` was kept as-is, now backed by a real
-re-benchmark rather than a carried-over assumption - see `config.R`'s comment for the same numbers.
+re-benchmark at the live `ROLLING_WINDOW_SIZE` rather than a carried-over assumption or a benchmark run
+at a stale window size - this resolves `config.R`'s "STALENESS FLAG (FINDING L-2, 2026-09-16)" comment
+(the reset-vs-decay/mean_regress ranking is unchanged from the earlier window_size=13 run, just with
+updated numbers).
 
 ## Model Benchmarking Architecture
 
@@ -437,21 +443,26 @@ benchmark_results <- bind_rows(
 knitr::kable(benchmark_results, caption = "Model Architecture Benchmark Performance on Current WNBA Test Season")
 ```
 
-**Actual result from running this exact benchmark once (window_size=13, "reset" method, real
-2026-season held-out test):**
+**Actual result from `rmarkdown::render()`-ing this document end-to-end (2026-09-24, window_size=12 -
+the live `config.R` `ROLLING_WINDOW_SIZE` value, not the stale window_size=13 this table was previously
+captioned with - "reset" method, `set.seed(42)`, real 2026-season held-out test):**
 
 | Model        | Accuracy | ROC-AUC | Brier | Log-Loss |
 |---|---:|---:|---:|---:|
-| Logistic Regression      | 0.628 | 0.655 | 0.231 | 0.655 |
-| Random Forest (ranger)   | 0.604 | 0.666 | 0.227 | 0.644 |
-| XGBoost (boost_tree)     | 0.608 | 0.656 | 0.241 | 0.687 |
+| Logistic Regression      | 0.624 | 0.654 | 0.232 | 0.657 |
+| Random Forest (ranger)   | 0.631 | 0.673 | 0.226 | 0.645 |
+| XGBoost (boost_tree)     | 0.607 | 0.676 | 0.235 | 0.688 |
 
-Random Forest wins on ROC-AUC, Brier, and Log-Loss (the three metrics that matter most for a
-probability-calibrated betting/rating pipeline), matching the NBA baseline's own RF-wins conclusion -
-so this specific NBA finding *does* transfer to WNBA, unlike the offseason-method assumption above.
-Logistic Regression has the best raw accuracy but is not the better-calibrated model. `rf_fit` is used
-as the "best performing architecture" in the season-simulation section below, consistent with this
-result.
+At the current (window_size=12) live setting, the picture is not as clean a Random-Forest sweep as the
+earlier window_size=13 run reported: **XGBoost now narrowly edges Random Forest on ROC-AUC** (0.676 vs
+0.673, a 0.003 gap that is plausibly within sampling noise for a single train/held-out-season split),
+but **Random Forest still wins on Brier and Log-Loss** (0.226/0.645, both best of the three) as well as
+raw Accuracy (0.631). Since Brier and Log-Loss are the calibration metrics that matter most for a
+probability-calibrated betting/rating pipeline, and Random Forest also has the best accuracy, `rf_fit`
+is still used as the "best performing architecture" in the season-simulation section below - but this is
+now a 2-of-3-metrics win plus accuracy, not the clean 3-of-3 sweep the stale window_size=13 numbers had
+reported, so the NBA baseline's "RF wins outright" conclusion should be read as **partially, not fully,
+transferring to WNBA** at the empirically-selected window size.
 
 ## Feature Importance
 
