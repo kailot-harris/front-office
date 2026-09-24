@@ -1,3 +1,81 @@
+# Handoff — 2026-09-24 — CURRENT STATE (read this section first)
+
+**This section supersedes every pointer further down this file.** Everything below is prior-session
+history for the production pipeline/model repo, kept append-only for context — not a live task
+list. This session's work is a **separate thread**: a pre-submission review of the academic
+deliverable `WNBA_Analysis_Project.Rmd` (repo root), not the pipeline/dashboard code the rest of
+this file is about. Read this section if picking up review-remediation work; skip to the
+2026-09-19 section below for pipeline/model work.
+
+## What this session did
+
+1. Ran the `review-submission` skill against `WNBA_Analysis_Project.Rmd` (+ `config.R` +
+   `README.md` as supporting context) — a six-lens read-only review (code, prose, visualization,
+   rubric-grading, integration, reproducibility) with a blind cross-critique round. Per the skill's
+   academic-integrity design, the full report is **not** stored in this repo — it lives outside it
+   at `C:\Users\kailo\AppData\Local\Temp\review-submission-wnba\report.md` (a temp path; may not
+   survive a machine restart/cleanup). `docs/Review-Round-1.md` is a permanent in-repo pointer with
+   a headline-findings summary, in case the temp file is gone by the time someone reads this.
+2. Broke every finding in the full report into one discrete, actionable task each — 27 total — and
+   wrote them into `docs/review_round_1_roadmap.md`, grouped into 6 tiers ordered by the rubric's
+   own weighting (reproducibility was weighted heaviest per the user's explicit request):
+   Tier 1 Reproducibility (7 tasks) → Tier 2 Correctness bugs (3) → Tier 3 Integration/consistency
+   (3) → Tier 4 Narrative (4) → Tier 5 Visualization (4) → Tier 6 Code quality (6).
+3. Created one GitHub issue per task in `kailot-harris/WNBA_analytics`, **issues #1-#27**, numbered
+   to match the roadmap doc 1:1 (issue #N ↔ roadmap item #N). All 27 are currently `OPEN` — **zero
+   have been started or closed**; this session was review/triage only, no code in the Rmd was
+   touched.
+4. Committed `docs/Review-Round-1.md` + `docs/review_round_1_roadmap.md` as commit `b962b4d` and
+   pushed to `origin/main`.
+
+## What's NOT done — this is 100% the next step
+
+None of the 27 issues have been implemented. Per the review's own severity ordering, start with
+Tier 1 (reproducibility, issues #1-#7) — the rubric's heaviest-weighted dimension and currently
+graded "Not met":
+- #1 `renv.lock` — no dependency pin exists at all for `tidyverse`/`tidymodels`/`wehoop`/`slider`/
+  `xgboost`/`ggridges`.
+- #2 `config.R:15`'s hardcoded absolute `PROJECT_DIR` — **re-verify this line number before
+  editing**; `config.R` is actively maintained by the separate pipeline-remediation thread below
+  and may have shifted since 2026-09-24.
+- #3/#4 missing `set.seed()` in the three model-fitting chunks and before the Monte Carlo
+  `rbinom()` draw.
+- #5 the Rmd has **never been knit end-to-end** — every result table in it is hand-pasted from an
+  out-of-band script run, not the adjacent chunk's real output. This is arguably the single
+  highest-leverage fix: knitting it for real will also surface whether #3/#4/#8/#9/#10 below
+  actually reproduce the numbers currently shown.
+- #6 `README.md` is two lines, no setup instructions.
+- #7 two sources of truth for the window-size sweep (`data/window_sweep_3_25_results.csv` vs. the
+  Rmd recomputing from scratch).
+
+Then Tier 2 (issues #8-#10), the two real correctness bugs (`mean_regress`/`decay` blending only
+2-3 of 11 rolling columns; `team_profiles_current` only using each team's most recent *home* game)
+plus the mislabeled "round-robin" schedule generator. Full task list with exact Rmd line numbers:
+`docs/review_round_1_roadmap.md`.
+
+## Gotchas for whoever does the implementation
+
+- **This repo's usual `.R` script conventions (per `CLAUDE.md`) apply to editing the `.Rmd` too**:
+  R is not on PATH, use `C:\Program Files\R\R-4.5.2\bin\Rscript.exe`; inline multi-line `Rscript
+  -e` segfaults on this machine, write to a temp file instead. `rmarkdown::render()` for issue #5
+  should be invoked the same way (script file, not an inline `-e` one-liner), and give it a longer
+  timeout than a typical stage script — a full PDF knit through xgboost/tidymodels model fits will
+  be slow.
+- **`config.R:142-148`'s existing "STALENESS FLAG (FINDING L-2, 2026-09-16)" comment is the source
+  of truth for issue #12** (window_size=13 vs 12 table mismatch) — read it before writing the
+  in-Rmd caveat so the two don't drift apart from each other.
+- **This is a personal academic submission, not the production pipeline** — none of these 27
+  fixes touch `run_full_pipeline.R`'s DAG, `app.R`, or any cache the dashboard reads. Don't
+  conflate this thread's scope with the pipeline-remediation work in the rest of this file.
+- **Uncommitted state at end of this session** (carried over, not caused by this session): several
+  `cache/*.rds`/`data/*.csv` files show as modified in `git status` (pipeline caches regenerated by
+  routine runs) and `tools/check_accuracy_since_0912.R` is untracked (a standalone accuracy-check
+  script, same pattern as `tools/check_accuracy_0916_0917.R` described further down this file) —
+  neither was touched or committed by this session; deliberately left alone since they're unrelated
+  to the review-remediation work above. Run `git status` before starting to confirm current state.
+
+---
+
 # Handoff — 2026-09-19 (fourth session) — future-work.md items 10, 9, 8 resolved
 
 Picked up three items from `docs/future-work.md` (renumbered list from the prior session's
