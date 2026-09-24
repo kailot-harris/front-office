@@ -1,11 +1,157 @@
-# Handoff — 2026-09-24 — CURRENT STATE (read this section first)
+# Handoff — 2026-09-24 (second session) — CURRENT STATE (read this section first)
 
-**This section supersedes every pointer further down this file.** Everything below is prior-session
-history for the production pipeline/model repo, kept append-only for context — not a live task
-list. This session's work is a **separate thread**: a pre-submission review of the academic
-deliverable `WNBA_Analysis_Project.Rmd` (repo root), not the pipeline/dashboard code the rest of
-this file is about. Read this section if picking up review-remediation work; skip to the
-2026-09-19 section below for pipeline/model work.
+**This section supersedes every pointer further down this file, including the "(first session)"
+section immediately below it.** This is a continuation of the same review-remediation thread as
+the first 2026-09-24 session: implementing the 27-issue roadmap in `docs/review_round_1_roadmap.md`
+that session produced, against `WNBA_Analysis_Project.Rmd` (repo root). Still a **separate thread**
+from the pipeline/dashboard work covered by the rest of this file (2026-09-19 and earlier) — none
+of this touched `run_full_pipeline.R`'s DAG, `app.R`, or any cache the dashboard reads. Written after
+commit `8d2c1b8`.
+
+## What this session did
+
+Implemented and merged to `main` all 7 Tier 1 (Reproducibility) issues from the roadmap, using the
+`subagent-brief` skill (one isolated-worktree subagent per issue, each independently re-verified —
+not just trusted from the subagent's own claims — before merge). Issues #8-27 (Tiers 2-6:
+correctness bugs, integration/consistency, narrative, visualization, code quality) are **not**
+started.
+
+| Issue | What | Commit(s) | Status |
+|---|---|---|---|
+| #1 | `renv.lock` + `.Rprofile` dependency pin via `renv::init()`/`snapshot()` | `58cb7a2`, `d04a4f3`, `eaf21c0` | Merged |
+| #2 | `config.R`'s hardcoded absolute `PROJECT_DIR` → `here::here()` | `eb09ac4` | Merged |
+| #3 | `set.seed(42)` added to the 3 model-fitting chunks (`window-size-experiment`, `offseason-comparison`, `model-benchmarks`) | `a0613c8`, `1f8f4e3` | Merged |
+| #4 | `set.seed(42)` added before the Monte Carlo `rbinom()` draw (`monte-carlo-sim` chunk) | `419ab20`, `e99ce89` | Merged |
+| #5 | Rmd actually rendered end-to-end via `rmarkdown::render()`; the 2 stale `window_size=13`-captioned "Actual result" tables (offseason-comparison, model-benchmarks) replaced with real numbers at the live `ROLLING_WINDOW_SIZE=12`; status note at top of Rmd updated to say it's now been rendered | `5060d31` | Merged |
+| #6 | `README.md` expanded with real Setup / Installing dependencies / Running the analysis sections | `f6f9310` | Merged |
+| #7 | `window-size-experiment` chunk now loads `data/window_sweep_3_25_results.csv` (the artifact `config.R` already called authoritative) instead of recomputing 23 window sizes from scratch, with the recompute kept as a `file.exists()`-gated fallback | `a15bd11`, `8a5bc26` | Merged |
+
+**⚠️ GitHub issue tracker is stale — do not trust it.** All of #1-#7 are still showing `OPEN` in
+`gh issue list --repo kailot-harris/WNBA_analytics` as of this session. None of the commits above
+used a `Closes #N` message, so nothing auto-closed them. **This was not fixed this session** —
+closing issues is a visible action on shared state and wasn't in scope without asking first. Before
+trusting issue state for anything, cross-check against the commit table above (or `git log`), not
+the tracker. If you want them closed, that's a one-line `gh issue close 1 2 3 4 5 6 7` — just do it
+consciously, not by assuming the tracker already reflects `main`.
+
+**A real, material finding surfaced by actually rendering the document (issue #5):** at the current
+`ROLLING_WINDOW_SIZE=12` (vs. the stale `13` the old pasted tables were computed at), the
+model-benchmark conclusion changed. Previously: "Random Forest wins on ROC-AUC, Brier, and
+Log-Loss... does transfer to WNBA" (clean 3-of-3 sweep). Now: XGBoost narrowly edges Random Forest
+on ROC-AUC (0.676 vs 0.673); RF still wins Brier, Log-Loss, and Accuracy. The Rmd's prose was
+updated to say this honestly (a 2-of-3-plus-accuracy win, not a clean sweep) rather than keep the
+old claim. The offseason-comparison table's numbers also shifted slightly but the "reset wins"
+ranking/conclusion was unchanged. If you're citing this document's conclusions anywhere else
+(`config.R` comments, other docs), re-check they still match — the RF/XGBoost framing in particular
+is now different from what `config.R`'s own comments say (see next paragraph).
+
+**Not reconciled, and out of scope for this session:** `config.R:132-148`'s comment block (the
+`OFFSEASON_METHOD` derivation, including the "STALENESS FLAG (FINDING L-2, 2026-09-16)" note) still
+quotes the *old* window_size=13 offseason-comparison numbers (reset 0.660/0.227 AUC/Brier) — the
+Rmd itself now shows different, fresher window_size=12 numbers (reset 0.672/0.226) after issue #5.
+The Rmd's own staleness is fixed; `config.R`'s comment citing the old numbers is not — that's
+issue #12's scope ("Add in-document staleness caveat to offseason/benchmark tables"), not #1-7's,
+and this session deliberately did not touch `config.R` beyond issue #2's `PROJECT_DIR` fix (per
+that issue's own brief's Out-of-scope section). Whoever picks up issue #12 should reconcile both
+directions: the Rmd caveat *and* refreshing `config.R`'s comment numbers.
+
+## Incident this session: shared renv package cache got wiped, only partially fixed
+
+While closing out issue #5's subagent, its cleanup step (or something in its worktree's `renv`
+activity — root cause not fully isolated) deleted the **contents** of ~198 of 213 package
+directories in the **machine-wide** renv package cache
+(`C:\Users\kailo\AppData\Local\R\cache\R\renv\cache\v5\windows\R-4.5\x86_64-w64-mingw32\`) — the
+directory skeletons remained but were empty (no `DESCRIPTION`, no package files). This cache is
+shared across **every** renv project on this machine, not scoped to this repo, so if you're working
+in a different renv-enabled project on this same machine and hit unexplained "missing DESCRIPTION
+file" / broken package errors, this incident is the likely cause — check whether that project's own
+`renv::restore()` needs re-running too.
+
+Symptoms at the time: `renv::status()` in this repo reported ~198 packages "missing their
+DESCRIPTION files"; 6 orphaned `R.exe` processes were still running; one subagent worktree
+directory (`.claude/worktrees/agent-ab38602b9684d7e2f`) was locked and undeletable (consistent with
+a lingering process holding file handles in it).
+
+**Partially remediated this session — NOT finished, this is the actual next step for whoever picks
+this up, before anything else:** killed the 6 orphaned `R.exe` processes and removed the now-unlocked
+worktree directory (both done, confirmed clean). Then ran `renv::restore(prompt = FALSE)` repeatedly
+(it's idempotent — each run picks up where the last left off, skipping already-restored packages) to
+rebuild the wiped cache entries. Made real incremental progress across 4 attempts (198 → 113 → 58 →
+32 empty package dirs remaining), but each run got killed by the environment's own low-memory guard
+partway through, and free system memory was observed *dropping* between attempts (1.9GB → 1.4GB of
+16GB total) — this machine was genuinely too memory-constrained at the time to finish, not a bug in
+the restore process itself. **32 packages are still missing their content as of this write-up**,
+including core ones the Rmd directly depends on: `tidymodels`, `tidyverse`, `wehoop`, `stringi`,
+`recipes`, `parsnip`, `rsample`, `workflows`, `tune`, `ragg`. **This means `WNBA_Analysis_Project.Rmd`
+cannot currently be run/knit in this project until the restore finishes** — don't assume the
+environment is usable; check first.
+
+**Before doing anything else in this repo:** free up memory on this machine (close unneeded apps —
+at last check there were several VS Code windows and a Chrome instance each holding a few hundred MB)
+and run `C:\Program Files\R\R-4.5.2\bin\Rscript.exe -e "renv::restore(prompt = FALSE)"` (may need
+several re-runs if memory is still tight — it's safe to re-run, it only rebuilds what's still
+missing) until `C:\Program Files\R\R-4.5.2\bin\Rscript.exe -e "renv::status()"` reports "No issues
+found". Root cause of the original deletion was not fully isolated — worth watching for a recurrence
+if another subagent worktree does cleanup work near a `renv`-activated project.
+
+## Gotchas for whoever picks up Tier 2+ (issues #8-27)
+
+- **Re-verify every line number before editing** — `WNBA_Analysis_Project.Rmd` has been edited by
+  6 different subagents this session alone (issues #1-7); line numbers in
+  `docs/review_round_1_roadmap.md` (written before any of this session's edits) are stale. Search
+  for the literal chunk labels/phrases the roadmap cites, don't trust its line numbers.
+- **This repo's usual `.R` script conventions (per `CLAUDE.md`) apply to editing the `.Rmd` too**: R
+  is not on PATH, use `C:\Program Files\R\R-4.5.2\bin\Rscript.exe`; inline multi-line `Rscript -e`
+  segfaults on this machine — write to a temp file instead.
+- **renv is now active project-wide** (`.Rprofile` sources `renv/activate.R`) — every
+  `Rscript.exe` invocation from the repo root will now try to activate renv. This is intentional
+  (issue #1, user explicitly chose full activation over a scoped-down bare lockfile), but means any
+  new subagent brief for this repo should mention it's active and (as of writing) should be
+  transparent/already-restored — **do not assume that's still true without checking
+  `renv::status()` first**, given the cache-wiping incident above.
+- **Issue #12 needs both directions reconciled**, not just the Rmd side — see "Not reconciled"
+  paragraph above.
+- **Tier 2 (issues #8-10) are real correctness bugs**, not reproducibility/formatting fixes — they
+  change actual model behavior (`mean_regress`/`decay` offseason blending, `team_profiles_current`'s
+  home-game-only staleness, the mislabeled round-robin schedule generator). Re-running issue #5's
+  "knit end-to-end" work after fixing any of these would be worthwhile, since the numbers shown in
+  the document will change again.
+- **Uncommitted state, unrelated to this session** (carried over from before, still present): several
+  `cache/*.rds`/`data/*.csv` files show modified in `git status` (pipeline caches regenerated by
+  routine runs), `.gitignore` has one uncommitted line (`/.subagent-runs/`, from the skill's own
+  `runlog.R init`), and `tools/check_accuracy_since_0912.R` is untracked. None of these were touched
+  or committed by this session. Run `git status` before starting to confirm current state.
+- **`.subagent-runs/` in the repo root** has the full audit trail (briefs, results, run log) for all
+  7 issues this session, if you need to see exact success-criteria evidence rather than just this
+  summary.
+
+## Concrete next step
+
+**Step 0, before any code work:** finish the interrupted `renv::restore()` (see "Incident this
+session" above) — 32 packages including `tidymodels`/`tidyverse`/`wehoop` are still missing their
+content, so the Rmd cannot currently run. Free up machine memory if needed, then re-run
+`renv::restore(prompt = FALSE)` until `renv::status()` is clean.
+
+Once the environment is usable, pick up **issue #8** (`docs/review_round_1_roadmap.md` item 8,
+GitHub issue #8): fix the
+`mean_regress`/`decay` offseason-transition methods in `WNBA_Analysis_Project.Rmd`'s
+`build_feature_df()` (search for the function — it's defined once and reused, currently around the
+`calc-features-function` chunk near the top of the file) to blend all 11 rolling columns at season
+boundaries, not just `roll_pts_scored`/`roll_efg`/(`roll_ts` for `mean_regress` only). After fixing,
+the `offseason-comparison` chunk's three-method comparison will actually exercise the difference
+it's supposed to measure — consider re-running issue #5's render afterward, since the
+already-"fresh" offseason numbers from this session will change again once the bug is fixed. Then
+issue #9 (`team_profiles_current` home-game-only bug) and #10 (schedule generator round-robin
+mislabeling) are next in Tier 2.
+
+---
+
+# Handoff — 2026-09-24 (first session) — review/triage only, no code touched
+
+**Superseded by the "(second session)" section above.** This section is kept for context on how
+the 27-issue roadmap was produced. This session's work was a **separate thread** from the rest of
+this file: a pre-submission review of the academic deliverable `WNBA_Analysis_Project.Rmd` (repo
+root), not the pipeline/dashboard code the rest of this file is about.
 
 ## What this session did
 
