@@ -1,6 +1,6 @@
 # ==============================================================================
 # WNBA Analytics Pipeline - Global Configuration
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/config.R
+# Path: <project root>/config.R (PROJECT_DIR is derived portably via here::here(), not hardcoded)
 #
 # Ported from the NBA Analytics repo's config.R (see REPO_MAP.md / WNBA_REPLICATION_PLAN.md
 # in this folder for full context). This is Phase 0 (T0) of the WNBA replication project —
@@ -12,7 +12,13 @@
 # ==============================================================================
 
 # Working and Cache Directories
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/WNBA Analytics"
+# Derived portably via here::here() (infers the project root from the nearest .git directory/
+# file or other rprojroot marker) instead of a hardcoded absolute path, so this repo runs on
+# any machine without manual editing (GitHub issue #2).
+if (!requireNamespace("here", quietly = TRUE)) {
+  stop("Package 'here' is required to derive PROJECT_DIR portably. Install it with install.packages('here').")
+}
+PROJECT_DIR <- here::here()
 CACHE_DIR   <- file.path(PROJECT_DIR, "cache")
 if (!dir.exists(CACHE_DIR)) dir.create(CACHE_DIR, recursive = TRUE)
 
