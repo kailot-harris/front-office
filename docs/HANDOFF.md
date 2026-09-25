@@ -18,7 +18,7 @@ and earlier).
 | 3 — Integration/consistency | #11, #12, #13 | Closed |
 | 4 — Narrative | #14, #15, #16, #17 | Closed (commit `58f5ca8`) |
 | 5 — Visualization | #18, #19, #20, #21 | Closed (commit `03d50f5`) |
-| 6 — Code quality | #22-27 | **Closed this session — commit `<COMMIT_SHA>`** |
+| 6 — Code quality | #22-27 | **Closed this session — commit `12ebd9c`** |
 
 ## What this session did (#22-27, Tier 6) via `subagent-brief`
 
