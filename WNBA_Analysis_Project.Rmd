@@ -12,14 +12,25 @@ source("config.R")
 
 ## Introduction
 
-This is the WNBA analog of `NBA_Analysis_Project.Rmd` (T2 / `wnba_rating_engine_agent`, Phase 2 of
-`task_assignments.md`). Per `WNBA_REPLICATION_PLAN.md` §(b)/(d) and the agent brief, this is **not** a
-find-and-replace port of the NBA Rmd - the same methodology (rolling-window feature comparison,
-offseason-transition comparison, model architecture benchmark, Monte Carlo season simulation) is
-re-run from scratch on the real WNBA data foundation `daily_ingest.R`/`player_metrics.R` (T1) already
-built, using `wehoop` team box scores (2019-2026, `box_scores_cache.rds`, 3,906 real team-game rows
-across the 15 real `WNBA_TEAMS` franchises - see `task_assignments.md`'s T0/T1 Handoff Notes for the
-full provenance/validation history of that cache).
+This report asks one central question: an existing analysis (`NBA_Analysis_Project.Rmd`) built and
+validated its modeling choices on the NBA - an 82-game season, 30 teams - so does that same approach
+still hold up unmodified when applied to the WNBA, which plays a much shorter season (44 games) with
+15 franchises? Concretely, three modeling choices tuned on the NBA are re-tested here against real
+WNBA data: the optimal size of the rolling-window features used to predict each game, the best method
+for carrying team strength across the offseason, and which model architecture (logistic regression,
+random forest, or gradient boosting) performs best - and the resulting win-total and standings
+projections that follow once those three choices are re-tuned for the WNBA rather than copied from
+the NBA baseline. Each of these is addressed in its own section below.
+
+The methodology mirrors the NBA analysis exactly (rolling-window feature comparison,
+offseason-transition comparison, model architecture benchmark, Monte Carlo season simulation),
+re-run from scratch on real WNBA data - `wehoop` team box scores from 2019-2026, `box_scores_cache.rds`,
+3,906 real team-game rows across the 15 real `WNBA_TEAMS` franchises - rather than assumed to transfer
+as-is. (For the record of how this build fits into the broader project: it is tracked internally as
+T2 / `wnba_rating_engine_agent`, Phase 2 of `task_assignments.md`, and follows the
+`WNBA_REPLICATION_PLAN.md` §(b)/(d) guidance that this should not be a simple find-and-replace port of
+the NBA notebook - see `task_assignments.md`'s T0/T1 Handoff Notes for the full provenance/validation
+history of the underlying data cache.)
 
 Key differences from the NBA baseline that this analysis explicitly re-tests rather than assumes:
 
@@ -37,8 +48,8 @@ Key differences from the NBA baseline that this analysis explicitly re-tests rat
 4. **Team universe**: 15 real WNBA franchises (`config.R`'s `WNBA_TEAMS`, including the 2026 expansion
    Toronto Tempo and Portland Fire franchises) instead of NBA's 30.
 
-**IMPORTANT STATUS NOTE (read before trusting any number below):** every code chunk in this file is
-real and complete. As of **2026-09-24, this .Rmd file has been formally `rmarkdown::render()`-ed
+**A note on this document's provenance (read before trusting any number below):** every code chunk in
+this file is real and complete. As of **2026-09-24, this .Rmd file has been formally `rmarkdown::render()`-ed
 end-to-end** (`rmarkdown::render("WNBA_Analysis_Project.Rmd")`, TinyTeX/MiKTeX `pdflatex` toolchain,
 `renv`-restored package versions) and successfully produced `WNBA_Analysis_Project.pdf`. The tables
 shown throughout this document (the live `knitr::kable()` output immediately after each chunk, and the
@@ -46,9 +57,10 @@ shown throughout this document (the live `knitr::kable()` output immediately aft
 not a copy-pasted stand-in from a separate out-of-band script run - including the two tables that were
 previously captioned "window_size=13" but are now correctly captioned/computed at the live
 `ROLLING_WINDOW_SIZE` value of `r ROLLING_WINDOW_SIZE`. If the underlying data (`box_scores_cache.rds`) or `config.R`
-constants change, re-run `rmarkdown::render("WNBA_Analysis_Project.Rmd")` again and refresh the pasted
-numbers below rather than trusting this snapshot indefinitely (per `ADR.md` Principle I / this agent's
-"pristine baseline" discipline noted in `agent3.md`).
+constants change, this notebook should be re-rendered end-to-end via
+`rmarkdown::render("WNBA_Analysis_Project.Rmd")` and the pasted numbers below refreshed, rather than
+this snapshot being trusted indefinitely or hand-edited in place (`ADR.md` Principle I: treat this file
+as a pristine, re-render-from-source baseline).
 
 Load packages:
 
@@ -480,8 +492,16 @@ raw Accuracy (0.631). Since Brier and Log-Loss are the calibration metrics that 
 probability-calibrated betting/rating pipeline, and Random Forest also has the best accuracy, `rf_fit`
 is still used as the "best performing architecture" in the season-simulation section below - but this is
 now a 2-of-3-metrics win plus accuracy, not the clean 3-of-3 sweep the stale window_size=13 numbers had
-reported, so the NBA baseline's "RF wins outright" conclusion should be read as **partially, not fully,
-transferring to WNBA** at the empirically-selected window size.
+reported.
+
+**Same hedge as the window-size sweep above, applied consistently:** like the 0.003-0.015 ROC-AUC gaps
+that separated windows 12/13/15 there, this benchmark's 0.003 RF-vs-XGBoost ROC-AUC gap is on the same
+single train/held-out-season split (`set.seed(42)`, no cross-validation) and is plausibly within
+sampling noise rather than a reliable ranking - it should not be read as strong evidence that XGBoost
+is "really" better on discrimination. So the NBA baseline's "Random Forest wins outright" conclusion
+should be read as **partially, not fully, confirmed on WNBA data at the empirically-selected window
+size** - Random Forest is retained here on the strength of its Brier/Log-Loss/Accuracy wins, not because
+the ROC-AUC comparison itself is a settled result.
 
 ## Feature Importance
 
@@ -689,27 +709,46 @@ sim_results |>
 
 ## Conclusion & Next Steps
 
-This WNBA analytics baseline re-runs the NBA repo's original methodology (rolling-window features,
-offseason-transition comparison, model-architecture benchmarking, Monte Carlo season simulation) against
-real WNBA data rather than assuming NBA's conclusions transfer, per `WNBA_REPLICATION_PLAN.md`'s Tier 3
-guidance. The rolling-window-size and offseason-transition-method experiments above are WNBA-specific
-additions not present in the original NBA Rmd (the NBA Rmd only ran the offseason-method comparison,
-never a window-size sweep) - added here specifically because `config.R`'s `ROLLING_WINDOW_SIZE`
-(originally 9) and `OFFSEASON_METHOD <- "reset"` were both explicitly flagged as unvalidated placeholders
-in T0's Handoff Notes. The window-size experiment's empirical winner has already been applied back to
-`config.R`, whose live `ROLLING_WINDOW_SIZE` is now `r ROLLING_WINDOW_SIZE`; the offseason-method
-experiment confirmed `"reset"` as the live `OFFSEASON_METHOD` default.
+Returning to the question posed in the Introduction - does the WNBA's shorter season change the NBA
+baseline's modeling choices, and what does that mean for projected standings - the short answer is
+"partly." On rolling-window size, the WNBA does need a different value than a naive proportional
+scaling of the NBA's 18-game window suggested: a full 3-25 sweep on real WNBA data found the empirical
+peak at window size `r ROLLING_WINDOW_SIZE`, not the placeholder of 9 originally carried over, though
+the sweep is noisy enough (windows 12/13/15 within 0.003-0.015 ROC-AUC of each other) that this should
+be read as the best point in a single-split sweep rather than a sharply confirmed optimum. On the
+offseason-transition method, the NBA's answer *did* transfer: "reset" beat both `mean_regress` and
+`decay` on ROC-AUC and Brier score when re-tested on WNBA data, so `config.R`'s `OFFSEASON_METHOD`
+default stays `"reset"`. On model architecture, the result is mixed rather than a clean transfer:
+Random Forest, the NBA baseline's winner, still wins on Brier score, Log-Loss, and Accuracy against
+WNBA data, but XGBoost narrowly edges it on ROC-AUC - a gap small enough to be plausibly noise (see the
+Model Benchmarking section above) rather than a reversal of which architecture is "really" better.
+Random Forest (`rf_fit`) is retained as the production model on the strength of its calibration-metric
+wins.
 
-This notebook has now been knit end-to-end (see the status note at the top of this document) with both
-placeholders resolved against real empirical results rather than left as carried-over NBA defaults. If
-the underlying data or either constant's empirical winner changes again, a human/future agent should:
-(1) re-run the relevant experiment chunk(s) above, update `config.R` accordingly, and log that change in
-`task_assignments.md`; (2) treat this file with the same "pristine baseline, do not hand-edit" discipline
-as `NBA_Analysis_Project.Rmd` (`ADR.md` Principle I) - re-run the whole methodology fresh via
-`rmarkdown::render()` rather than patching numbers in by hand.
+Feeding that retained model into a `WNBA_SEASON_GAMES`-game Monte Carlo season simulation produces the
+win-total and standings projections in the Simulation-Season and Monte Carlo sections above: at the
+time of this render, the Minnesota Lynx project as the top team, with a mean simulated win total around
+31 of 44 games (95% interval roughly 25-37), followed closely by the Indiana Fever and New York Liberty
+in the upper-20s. (This ordering is a live simulation output, not a fixed number - it can shift slightly
+between renders as the underlying data and random draws change; see Tables 4 and 5 for the full,
+currently-rendered top-10 projected standings with both analytical and simulation-based confidence
+intervals.)
 
-For downstream player-level rating work (bottom-up team ratings, lineup synergy, roster continuity),
-see `roster_bottom_up_engine.R`, `lineup_synergy.R`, and `roster_dynamics.R` in this same folder -
-those were built independently of this Rmd's team-level rolling-feature model and read `WNBA_MARGIN_SIGMA`
-(config.R) rather than this notebook's classifier probabilities for their own margin-to-win-probability
-conversion.
+In short: a WNBA-specific rolling-window size and a re-validated (if narrowly mixed) model choice both
+mattered enough to re-derive rather than assume, while the offseason-transition method turned out to
+carry over from the NBA unchanged. All three choices are now backed by real re-benchmarks on WNBA data
+rather than proportional-scaling guesses, and `config.R`'s live constants (`ROLLING_WINDOW_SIZE`,
+`OFFSEASON_METHOD`) reflect the winners above.
+
+**Process notes, for anyone maintaining this analysis going forward:** this notebook has been knit
+end-to-end (see the provenance note at the top of this document), so every table above is real render
+output, not hand-pasted. If the underlying data or either constant's empirical winner changes again,
+the relevant experiment chunk(s) above should be re-run, `config.R` updated accordingly, and that
+change logged in `task_assignments.md`; this file should keep the same "pristine baseline, do not
+hand-edit" discipline as `NBA_Analysis_Project.Rmd` (`ADR.md` Principle I) - re-run the whole
+methodology fresh via `rmarkdown::render()` rather than patching numbers in by hand. For downstream
+player-level rating work (bottom-up team ratings, lineup synergy, roster continuity), see
+`roster_bottom_up_engine.R`, `lineup_synergy.R`, and `roster_dynamics.R` in this same folder - those
+were built independently of this notebook's team-level rolling-feature model and read
+`WNBA_MARGIN_SIGMA` (`config.R`) rather than this notebook's classifier probabilities for their own
+margin-to-win-probability conversion.
