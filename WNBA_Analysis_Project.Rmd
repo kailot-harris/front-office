@@ -211,7 +211,15 @@ build_feature_df <- function(data, window_size = ROLLING_WINDOW_SIZE, method = "
            away_roll_tov = roll_tov, away_roll_efg = roll_efg, away_roll_tovp = roll_tovp,
            away_roll_ftr = roll_ftr, away_roll_ts = roll_ts, away_days_rest = days_rest)
 
-  model_df <- inner_join(home_df, away_df, by = "game_id") |>
+  # Issue #23: `by = "game_id"` alone assumes exactly one home row and one away row per
+  # game_id (no duplicate team-game rows). `relationship = "one-to-one"` (dplyr >= 1.1.0,
+  # confirmed installed here) turns a violation of that assumption into a loud join error
+  # instead of a silent row fan-out.
+  joined_df <- dplyr::inner_join(home_df, away_df, by = "game_id", relationship = "one-to-one")
+
+  n_before_dropna <- nrow(joined_df)
+
+  model_df <- joined_df |>
     mutate(
       target_home_win = factor(if_else(home_win == TRUE, "Win", "Loss"), levels = c("Win", "Loss")),
       diff_roll_pts   = home_roll_pts - away_roll_pts,
@@ -230,7 +238,35 @@ build_feature_df <- function(data, window_size = ROLLING_WINDOW_SIZE, method = "
     ) |>
     drop_na()
 
+  # Issue #25: drop_na() above silently discards rows in the rolling-window's growing
+  # early-season NA gap - report exactly how many so a reader can see the size of that gap.
+  n_after_dropna <- nrow(model_df)
+  message(sprintf(
+    "build_feature_df(window_size=%s, method=%s): drop_na() removed %d of %d joined rows (%d retained) - expected early-season rolling-window NA gap.",
+    window_size, method, n_before_dropna - n_after_dropna, n_before_dropna, n_after_dropna
+  ))
+
   return(model_df)
+}
+
+# Issue #22: the three model-fitting chunks below (window-size-experiment,
+# offseason-comparison, model-benchmarks) each built an identical recipe - same step_rm()
+# exclusion list (raw join keys/labels plus all raw home_roll_*/away_roll_*/*_days_rest
+# columns, keeping only the engineered diff_roll_* columns and target_home_win) followed by
+# step_normalize(all_numeric_predictors()). Extracted here once so all three call the same
+# function instead of redefining the list three times; behavior-preserving (same columns
+# removed, same normalize call).
+build_wnba_recipe <- function(train_data) {
+  recipe(target_home_win ~ ., data = train_data) |>
+    step_rm(
+      game_id, game_date, season, home_team, away_team, home_win, away_win,
+      home_roll_ts, home_roll_ftr, home_roll_efg, home_roll_pts, home_roll_tovp,
+      home_roll_oreb, home_roll_dreb, home_roll_ast, home_roll_stl, home_roll_blk, home_roll_tov,
+      away_roll_ts, away_roll_ftr, away_roll_efg, away_roll_pts, away_roll_tovp,
+      away_roll_oreb, away_roll_dreb, away_roll_ast, away_roll_stl, away_roll_blk, away_roll_tov,
+      home_days_rest, away_days_rest
+    ) |>
+    step_normalize(all_numeric_predictors())
 }
 ```
 
@@ -257,16 +293,7 @@ eval_window_size <- function(w) {
   train_data <- df |> filter(season < CURRENT_SEASON)
   test_data  <- df |> filter(season >= CURRENT_SEASON)
 
-  rec <- recipe(target_home_win ~ ., data = train_data) |>
-    step_rm(
-      game_id, game_date, season, home_team, away_team, home_win, away_win,
-      home_roll_ts, home_roll_ftr, home_roll_efg, home_roll_pts, home_roll_tovp,
-      home_roll_oreb, home_roll_dreb, home_roll_ast, home_roll_stl, home_roll_blk, home_roll_tov,
-      away_roll_ts, away_roll_ftr, away_roll_efg, away_roll_pts, away_roll_tovp,
-      away_roll_oreb, away_roll_dreb, away_roll_ast, away_roll_stl, away_roll_blk, away_roll_tov,
-      home_days_rest, away_days_rest
-    ) |>
-    step_normalize(all_numeric_predictors())
+  rec <- build_wnba_recipe(train_data)
 
   rf <- rand_forest(trees = 200, mode = "classification") |> set_engine("ranger", num.threads = 4)
   wf <- workflow() |> add_recipe(rec) |> add_model(rf)
@@ -370,16 +397,7 @@ eval_offseason_method <- function(method_name) {
   train_data <- df |> filter(season < CURRENT_SEASON)
   test_data  <- df |> filter(season >= CURRENT_SEASON)
 
-  rec <- recipe(target_home_win ~ ., data = train_data) |>
-    step_rm(
-      game_id, game_date, season, home_team, away_team, home_win, away_win,
-      home_roll_ts, home_roll_ftr, home_roll_efg, home_roll_pts, home_roll_tovp,
-      home_roll_oreb, home_roll_dreb, home_roll_ast, home_roll_stl, home_roll_blk, home_roll_tov,
-      away_roll_ts, away_roll_ftr, away_roll_efg, away_roll_pts, away_roll_tovp,
-      away_roll_oreb, away_roll_dreb, away_roll_ast, away_roll_stl, away_roll_blk, away_roll_tov,
-      home_days_rest, away_days_rest
-    ) |>
-    step_normalize(all_numeric_predictors())
+  rec <- build_wnba_recipe(train_data)
 
   rf <- rand_forest(trees = 200, mode = "classification") |> set_engine("ranger", num.threads = 4)
   wf <- workflow() |> add_recipe(rec) |> add_model(rf)
@@ -434,16 +452,7 @@ model_df <- build_feature_df(box_scores, window_size = ROLLING_WINDOW_SIZE, meth
 train_data <- model_df |> filter(season < CURRENT_SEASON)
 test_data  <- model_df |> filter(season >= CURRENT_SEASON)
 
-wnba_recipe <- recipe(target_home_win ~ ., data = train_data) |>
-  step_rm(
-    game_id, game_date, season, home_team, away_team, home_win, away_win,
-    home_roll_ts, home_roll_ftr, home_roll_efg, home_roll_pts, home_roll_tovp,
-    home_roll_oreb, home_roll_dreb, home_roll_ast, home_roll_stl, home_roll_blk, home_roll_tov,
-    away_roll_ts, away_roll_ftr, away_roll_efg, away_roll_pts, away_roll_tovp,
-    away_roll_oreb, away_roll_dreb, away_roll_ast, away_roll_stl, away_roll_blk, away_roll_tov,
-    home_days_rest, away_days_rest
-  ) |>
-  step_normalize(all_numeric_predictors())
+wnba_recipe <- build_wnba_recipe(train_data)
 
 lr_spec <- logistic_reg() |> set_engine("glm")
 lr_wf <- workflow() |> add_recipe(wnba_recipe) |> add_model(lr_spec)
@@ -595,27 +604,27 @@ set.seed(42)
 
 n_teams <- length(teams)
 half_season <- WNBA_SEASON_GAMES / 2  # e.g. 22 home / 22 away for a 44-game season
-sched_list <- list()
 
-for (i in 1:n_teams) {
+# Issue #27: replaced the base-R list-accumulator loop (sched_list <- list(); for (i in
+# 1:n_teams) sched_list[[i]] <- ...; bind_rows(sched_list)) with purrr::map_dfr(), iterating
+# 1:n_teams in the same order so the sample() draws below consume the RNG stream identically
+# under set.seed(42). Per-team balanced-round-robin logic (issue #10's fix) is unchanged:
+# every opponent gets `half_season %/% length(others)` guaranteed home meetings, and the
+# `half_season %% length(others)` leftover meetings go to a randomly chosen subset of
+# opponents each time this chunk runs.
+sched_sim <- purrr::map_dfr(1:n_teams, function(i) {
   t_home <- teams[i]
   others <- setdiff(teams, t_home)
-  # Balanced round-robin: every opponent gets `half_season %/% length(others)` home
-  # meetings, and the `half_season %% length(others)` leftover meetings go to a
-  # *randomly* chosen subset of opponents each time this chunk runs - not always the
-  # same low-index teams, which `rep(others, length.out = half_season)` alone would do.
   base_reps <- half_season %/% length(others)
   remainder <- half_season %% length(others)
   extra_opps <- if (remainder > 0) sample(others, remainder) else integer(0)
   opps <- sample(c(rep(others, base_reps), extra_opps))
-  sched_list[[i]] <- tibble(
+  tibble(
     home_team = t_home,
     away_team = opps,
     game_date = Sys.Date() + 1:half_season
   )
-}
-
-sched_sim <- bind_rows(sched_list) |>
+}) |>
   mutate(
     game_id = row_number(),
     season = SIMULATION_SEASON,
@@ -693,10 +702,13 @@ away_teams_vec <- predictions_sim$away_team
 
 teams_vec <- unique(team_lookup$team_id)
 
-team_wins_matrix <- sapply(teams_vec, function(t_id) {
+# Issue #26: sapply()'s return type/shape depends on runtime simplification rules; vapply()
+# with an explicit FUN.VALUE is type-stable and guaranteed to produce the same
+# n_sims x length(teams_vec) matrix shape the as.vector() call below expects.
+team_wins_matrix <- vapply(teams_vec, function(t_id) {
   colSums(sim_matrix[home_teams_vec == t_id, , drop = FALSE]) +
   colSums((1 - sim_matrix)[away_teams_vec == t_id, , drop = FALSE])
-})
+}, FUN.VALUE = numeric(n_sims))
 
 sim_results <- tibble(
   sim = rep(1:n_sims, times = length(teams_vec)),

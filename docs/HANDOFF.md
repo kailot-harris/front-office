@@ -1,11 +1,90 @@
-# Handoff — 2026-09-25 — CURRENT STATE (read this section first, supersedes the section below)
+# Handoff — 2026-09-25 (Tier 6) — CURRENT STATE (read this section first, supersedes everything below)
 
 **This section supersedes every pointer further down this file, including the "Written after
-commit `a190873`" section immediately below it (which was never updated after Tier 4 landed —
-its tier table is stale, don't trust it).** Same review-remediation thread: implementing the
-27-issue roadmap in `docs/review_round_1_roadmap.md` against `WNBA_Analysis_Project.Rmd` (repo
-root). Still a **separate thread** from the pipeline/dashboard work covered by the rest of this
-file (2026-09-19 and earlier). Written after commit `03d50f5`.
+commit `03d50f5`" section immediately below it.** Same review-remediation thread: implementing
+the 27-issue roadmap in `docs/review_round_1_roadmap.md` against `WNBA_Analysis_Project.Rmd`
+(repo root). This is the **final tier of that roadmap** — all 27 issues are now closed. Still a
+**separate thread** from the pipeline/dashboard work covered by the rest of this file (2026-09-19
+and earlier).
+
+## Where the thread actually stands (verified against `gh issue list`, not assumed from docs)
+
+**All six tiers (#1-27) are done. The review-remediation roadmap is complete.**
+
+| Tier | Issues | Status |
+|---|---|---|
+| 1 — Reproducibility | #1-7 | Closed |
+| 2 — Correctness bugs | #8, #9, #10 | Closed |
+| 3 — Integration/consistency | #11, #12, #13 | Closed |
+| 4 — Narrative | #14, #15, #16, #17 | Closed (commit `58f5ca8`) |
+| 5 — Visualization | #18, #19, #20, #21 | Closed (commit `03d50f5`) |
+| 6 — Code quality | #22-27 | **Closed this session — commit `<COMMIT_SHA>`** |
+
+## What this session did (#22-27, Tier 6) via `subagent-brief`
+
+Dispatched via the `subagent-brief` skill as a single full-brief agent in an isolated git
+worktree, following the same pattern as Tiers 4/5. **Found the worktree's branch was based on an
+older commit than `main`** (missing Tier 5's `03d50f5`/`25cf89c` Rmd and HANDOFF changes) before
+committing — rebased onto `main` first (`git rebase main`, one binary conflict on
+`WNBA_Analysis_Project.pdf` resolved by taking `main`'s copy and re-rendering fresh; the `.Rmd`
+text itself auto-merged with zero conflicts, confirming Tier 6's edits and Tier 5's edits touched
+disjoint regions of the file). **Anyone dispatching another `subagent-brief` agent into a fresh
+worktree for this repo should check `git log HEAD..main --oneline` before committing** — this repo
+has had multiple concurrent worktrees per tier and a stale branch base is an easy way to silently
+revert a previous tier's work on merge.
+
+| Issue | What | Verified how |
+|---|---|---|
+| #22 | Extracted the ~20-line `step_rm()` exclusion list + `step_normalize()` call (duplicated identically across `window-size-experiment`, `offseason-comparison`, `model-benchmarks`) into one `build_wnba_recipe(train_data)` function, defined once right after `build_feature_df()` in the `calc-features-function` chunk. All three chunks now call `rec <- build_wnba_recipe(train_data)` / `wnba_recipe <- build_wnba_recipe(train_data)` instead of redefining the list. | `grep -n "step_rm("` shows exactly one definition site; `grep -n "build_wnba_recipe"` shows the function def plus three call sites. |
+| #23 | `build_feature_df()`'s `inner_join(home_df, away_df, by = "game_id")` now passes `relationship = "one-to-one"` (dplyr 1.2.1 installed here, well past the 1.1.0 minimum) so a duplicate-row cardinality violation errors loudly instead of silently fanning out rows. | Confirmed `packageVersion("dplyr")` is 1.2.1 via a temp `.R` file; render still completes with the same row counts as before, meaning no violation exists in the real data. |
+| #24 | Investigated rather than blindly coerced: `readRDS(CACHE_TEAM_BOX)$team_id` is already native `integer` (`str()` output: `int [1:3916] 3 20 5 9 11 14 16 18 19 8 ...`), and `home_team`/`away_team`/`current_season_df`/`sched_sim`/`predictions_sim` all derive that column via `select()`/mutate-preserving joins with no intervening character coercion anywhere in the pipeline. `team_lookup`'s explicit `as.integer(team_id)` is therefore a no-op on real data, not a fix for an active bug. No coercions added elsewhere (would be a no-op change, and adding dead code isn't the fix the issue asked for) — closed with this evidence instead. | Temp `.R` file: `source("config.R"); box_scores <- readRDS(CACHE_TEAM_BOX); class(box_scores$team_id); str(box_scores$team_id)`. |
+| #25 | `build_feature_df()` now captures `n_before_dropna <- nrow(joined_df)` before the `mutate() |> drop_na()` chain and `n_after_dropna <- nrow(model_df)` after, then `message()`s the counts (e.g. "removed 51 of 1958 joined rows (1907 retained)"). Used plain `message()`, not `cli::cli_inform()` — `cli` is present transitively via `renv.lock` but never `library()`-loaded in the Rmd, and the brief said prefer no new dependency surface. | Ran the extracted function standalone via `knitr::purl()` + `eval()`; confirmed the message fires: `build_feature_df(window_size=12, method=reset): drop_na() removed 51 of 1958 joined rows (1907 retained)`. |
+| #26 | `monte-carlo-sim` chunk's `team_wins_matrix <- sapply(teams_vec, function(t_id) {...})` replaced with `vapply(teams_vec, function(t_id) {...}, FUN.VALUE = numeric(n_sims))`, producing the identical `n_sims x length(teams_vec)` matrix shape the downstream `as.vector(team_wins_matrix)` / `sim_results` tibble construction expects. | `grep -n "sapply("` no longer matches this chunk; `grep -n "vapply("` shows the replacement; full render produced the same Monte Carlo standings numbers (Lynx mean 31.2, 95% CI 25-37) as the pre-edit baseline. |
+| #27 | `dynamic-simulation` chunk's `sched_list <- list(); for (i in 1:n_teams) {...; sched_list[[i]] <- tibble(...)}; sched_sim <- bind_rows(sched_list)` replaced with `sched_sim <- purrr::map_dfr(1:n_teams, function(i) {...})`, iterating `1:n_teams` in the same order (preserving the `set.seed(42)`-seeded `sample()` draw sequence from issue #10's balanced-round-robin fix, unchanged). | `grep -n "sched_list\[\[i\]\]"` no longer matches; `grep -n "map_dfr"` shows the replacement; rendered standings tables (Table 4/5, analytical + Monte Carlo) match the pre-edit baseline exactly. |
+
+**Behavior-preservation check (per the brief's stop condition):** re-rendered end-to-end twice
+(once before discovering the stale rebase base, once after) and diffed every "Actual result"
+pasted-prose table against the freshly-rendered `kable()` output. `window-size-experiment` (loads
+from `data/window_sweep_3_25_results.csv`, untouched) and `model-benchmarks` matched exactly.
+`offseason-comparison`'s `mean_regress`/`decay` rows do **not** match the pasted prose table
+(reset matches; `mean_regress` live-renders 0.615/0.663/0.230 vs. the pasted 0.632/0.658/0.232;
+`decay` live-renders 0.605/0.651/0.234 vs. the pasted 0.618/0.656/0.233) — **but this mismatch is
+pre-existing, not caused by this session's edit.** Verified by extracting the *original,
+pre-Tier-6* `build_feature_df()`/`eval_offseason_method()` code from git history and running it
+standalone in the same environment: it reproduces the identical live numbers (0.615/0.663/0.230
+and 0.605/0.651/0.234), proving the pasted prose table in the document was already stale before
+this session touched anything. Left as-is — re-matching a pasted table to a fresh render is a
+Tier 1/3 reproducibility concern (already closed), not a Tier 6 code-quality one, and is out of
+this session's scope. Flagging here rather than silently leaving it undocumented.
+
+All six closed via `gh issue close N --comment "..."` referencing this session's commit and the
+verification method above.
+
+## Environment notes (new this session)
+
+- Same `renv` cache-wipe failure mode as the last two sessions (`Package 'here' is required...`
+  on first `Rscript.exe` invocation) — `renv::restore(prompt = FALSE)` repaired it in ~1s (packages
+  were present in the shared cache, just not linked into this worktree's private library). This is
+  now three sessions in a row hitting this on a fresh `subagent-brief` worktree; worth someone
+  eventually isolating the root cause rather than continuing to route around it per-session.
+- Confirmed (again) `RSTUDIO_PANDOC` must be set by hand in a bare `Rscript.exe` shell:
+  `Sys.setenv(RSTUDIO_PANDOC = "C:/Program Files/RStudio/resources/app/bin/quarto/bin/tools")`.
+- `pdfcrop.exe did not succeed` warnings during knit (three of them, once per `ggplot2` chunk) are
+  cosmetic MiKTeX image-cropping failures, not knit errors — render still completes and produces a
+  valid PDF; `Quitting from`/`Error in` grep on the render log returns zero matches.
+
+## Concrete next step
+
+**None — the 27-issue roadmap is complete.** Any further work on `WNBA_Analysis_Project.Rmd`
+should start a new roadmap/tier rather than assuming there's an open item left in
+`docs/review_round_1_roadmap.md`.
+
+---
+
+# Handoff — 2026-09-25 (pre-Tier-6) — superseded, kept for the Tier 4/5 record below
+
+**This section is stale — see the section above for current tier status.** Written after commit
+`03d50f5`.
 
 ## Where the thread actually stands (verified against `gh issue list`, not assumed from docs)
 
