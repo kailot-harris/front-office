@@ -291,6 +291,17 @@ if (file.exists(window_sweep_csv)) {
   window_size_results <- map_dfr(3:25, eval_window_size)
 }
 knitr::kable(window_size_results, caption = "WNBA Rolling-Window Size Comparison (Tested Out-of-Sample on Current Season, Full 3-25 Sweep)")
+
+ggplot(window_size_results, aes(x = Window_Size, y = `ROC-AUC`)) +
+  geom_line(color = "steelblue") +
+  geom_point(color = "steelblue", size = 2) +
+  theme_minimal() +
+  labs(
+    title = "Out-of-Sample ROC-AUC vs. Rolling-Window Size (Full 3-25 Sweep)",
+    subtitle = "Non-monotonic, noisy curve - not a smooth improvement toward a single optimum",
+    x = "Window Size (games)",
+    y = "ROC-AUC (held-out current season)"
+  )
 ```
 
 **Actual result from re-running this experiment with the wider 3-25 sweep (matching the NBA baseline's own
@@ -522,10 +533,25 @@ ggplot(importance_df, aes(x = reorder(feature, importance), y = importance)) +
   theme_minimal() +
   labs(
     title = "Top 10 Feature Importance (Random Forest, WNBA)",
+    subtitle = "Gini-impurity importance from a single RF fit - see caveat below",
     x = "Feature Differential",
     y = "Importance (Gini Impurity)"
   )
 ```
+
+**Caveat on the importance measure itself, not just the ranking it produces:** the values above are
+`ranger`'s default Gini-impurity (mean decrease in node impurity) importance from the single `rf_fit`
+model fit earlier in this document, not permutation importance. Gini-impurity importance is a known-
+biased estimator - it systematically favors high-cardinality/continuous predictors (most of the
+`roll_*` differential features here) over binary or low-cardinality ones purely because they offer
+more possible split points, independent of true predictive value - and it is also comparatively
+unstable across refits: retraining `rf_fit` with a different `set.seed()` value can reorder the lower
+half of this top-10 list even when the underlying data is unchanged. The `vip` package's permutation-
+importance method (`vip::vi(rf_fit, method = "permute")`) would avoid the cardinality bias by measuring
+the actual out-of-sample performance drop from shuffling each feature, but `vip` is not currently an
+installed/pinned dependency of this project (`renv.lock` was already scoped and closed under issue #1),
+so this chart should be read as indicative of which feature *families* matter, not as a precise,
+refit-stable ranking within that top 10.
 
 ## Simulation-Season Schedule & Dynamic Projection
 
@@ -533,7 +559,16 @@ We construct a `WNBA_SEASON_GAMES`-game regular season schedule per team (round-
 real `WNBA_TEAMS` franchises, not NBA's 82-game/30-team structure) and perform a `N_SIMULATIONS`-season
 Monte Carlo simulation using model probabilities from the best-performing architecture identified above
 (`rf_fit` by default, matching the NBA baseline's winner - swap this if the benchmark table above
-crowns a different model on real WNBA data):
+crowns a different model on real WNBA data).
+
+**Schedule caveat (also see issue #10's fix, referenced above under the round-robin note):** the
+per-team matchup list generated below is a synthetic, randomly-drawn balanced schedule - each team gets
+a guaranteed floor of home meetings against every opponent plus a randomly assigned remainder - not the
+league's actual published fixture list for `SIMULATION_SEASON`. Real WNBA schedules are not balanced
+round-robins (they vary opponent counts, back-to-backs, and travel in ways this simulation does not
+model). Everything downstream that says "Projected Standings" is projecting win totals against this
+simulated schedule, not the real one, so calendar-specific effects (rest disparities tied to the actual
+slate, not just the `days_rest` placeholder set below) are not captured.
 
 ```{r dynamic-simulation}
 team_lookup <- box_scores |>
@@ -641,7 +676,7 @@ analytical_ci <- home_var |>
   mutate(Rank = row_number()) |>
   select(Rank, Team = team_name, Projected_Wins, Projected_Losses, SE, CI_Lower_95, CI_Upper_95)
 
-knitr::kable(head(analytical_ci, 10), caption = sprintf("Top 10 Projected %d WNBA Standings with Analytical 95%% CIs", SIMULATION_SEASON))
+knitr::kable(head(analytical_ci, 10), caption = sprintf("Top 10 Projected %d WNBA Standings with Analytical 95%% CIs (against a synthetic simulated schedule, not the real published fixture list)", SIMULATION_SEASON))
 ```
 
 ## Monte Carlo Simulation (`N_SIMULATIONS` Seasons)
@@ -684,7 +719,7 @@ standings_sim_summary <- sim_results |>
   mutate(Rank = row_number()) |>
   select(Rank, Team, Mean_Wins, Median_Wins, `5th_Pct`, `95th_Pct`, `2.5th_Pct`, `97.5th_Pct`)
 
-knitr::kable(head(standings_sim_summary, 10), caption = sprintf("Top 10 Projected %d WNBA Standings from %d Monte Carlo Simulations", SIMULATION_SEASON, N_SIMULATIONS))
+knitr::kable(head(standings_sim_summary, 10), caption = sprintf("Top 10 Projected %d WNBA Standings from %d Monte Carlo Simulations (against a synthetic simulated schedule, not the real published fixture list)", SIMULATION_SEASON, N_SIMULATIONS))
 ```
 
 ## Win Total Density Ridge Plot
@@ -698,6 +733,18 @@ sim_results |>
   ggplot(aes(x = total_wins, y = reorder(team_name, total_wins, median), fill = team_name)) +
   geom_density_ridges(alpha = 0.7, show.legend = FALSE) +
   geom_vline(xintercept = WNBA_SEASON_GAMES / 2, linetype = "dashed", color = "darkred") +
+  annotate(
+    geom = "label",
+    x = WNBA_SEASON_GAMES / 2,
+    y = Inf,
+    label = ".500 win pct.",
+    color = "darkred",
+    fill = "white",
+    vjust = 1.2,
+    hjust = -0.05,
+    size = 3,
+    label.size = 0
+  ) +
   theme_minimal() +
   labs(
     title = "Simulated Win Total Distributions (WNBA Monte Carlo)",
