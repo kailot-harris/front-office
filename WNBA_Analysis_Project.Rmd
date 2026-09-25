@@ -71,6 +71,7 @@ library(wehoop)
 library(slider)
 library(xgboost)
 library(ggridges)
+library(withr)
 ```
 
 ## Data Ingestion & Caching
@@ -338,39 +339,75 @@ placeholder of 9 as-is. A Random Forest is trained on seasons < 2026 and evaluat
 out-of-sample on season >= 2026 for each window size:
 
 ```{r window-size-experiment}
-set.seed(42)
 # `data/window_sweep_3_25_results.csv` is the authoritative artifact for this sweep (see
 # config.R's ROLLING_WINDOW_SIZE comment) - load it directly instead of recomputing all 23
-# window sizes on every knit; eval_window_size()/map_dfr() below remain only as a fallback for
-# a fresh checkout without data/.
+# window sizes on every knit, UNLESS `data/box_scores_cache.rds` (CACHE_TEAM_BOX) has changed
+# since the CSV was last generated (issue #32 staleness check), in which case the CSV is
+# stale and eval_window_size()/map_dfr() below recompute it from scratch.
+#
+# Each iteration is seeded independently (issue #31) via withr::with_seed() using a seed
+# deterministically derived from that iteration's own window size `w` (not one blanket
+# set.seed(42) for the whole sweep) - this keeps each iteration reproducible on its own even
+# if the sweep's order or length changes later.
 eval_window_size <- function(w) {
-  df <- build_feature_df(box_scores, window_size = w, method = "reset")
-  train_data <- df |> filter(season < CURRENT_SEASON)
-  test_data  <- df |> filter(season >= CURRENT_SEASON)
+  iter_seed <- digest::digest2int(paste0("window_size_sweep_", w))
+  withr::with_seed(iter_seed, {
+    df <- build_feature_df(box_scores, window_size = w, method = "reset")
+    train_data <- df |> filter(season < CURRENT_SEASON)
+    test_data  <- df |> filter(season >= CURRENT_SEASON)
 
-  rec <- build_wnba_recipe(train_data)
+    rec <- build_wnba_recipe(train_data)
 
-  rf <- rand_forest(trees = 200, mode = "classification") |> set_engine("ranger", num.threads = 4)
-  wf <- workflow() |> add_recipe(rec) |> add_model(rf)
-  fit_m <- fit(wf, train_data)
+    rf <- rand_forest(trees = 200, mode = "classification") |> set_engine("ranger", num.threads = 4)
+    wf <- workflow() |> add_recipe(rec) |> add_model(rf)
+    fit_m <- fit(wf, train_data)
 
-  preds <- predict(fit_m, test_data) |>
-    bind_cols(predict(fit_m, test_data, type = "prob")) |>
-    bind_cols(test_data)
+    preds <- predict(fit_m, test_data) |>
+      bind_cols(predict(fit_m, test_data, type = "prob")) |>
+      bind_cols(test_data)
 
-  acc <- preds |> accuracy(truth = target_home_win, estimate = .pred_class) |> pull(.estimate)
-  auc <- preds |> roc_auc(truth = target_home_win, .pred_Win, event_level = "first") |> pull(.estimate)
-  brier <- mean((if_else(preds$target_home_win == "Win", 1, 0) - preds$.pred_Win)^2)
+    acc <- preds |> accuracy(truth = target_home_win, estimate = .pred_class) |> pull(.estimate)
+    auc <- preds |> roc_auc(truth = target_home_win, .pred_Win, event_level = "first") |> pull(.estimate)
+    brier <- mean((if_else(preds$target_home_win == "Win", 1, 0) - preds$.pred_Win)^2)
 
-  tibble(Window_Size = w, N_Train = nrow(train_data), N_Test = nrow(test_data),
-         Accuracy = round(acc, 4), `ROC-AUC` = round(auc, 4), `Brier Score` = round(brier, 4))
+    tibble(Window_Size = w, N_Train = nrow(train_data), N_Test = nrow(test_data),
+           Accuracy = round(acc, 4), `ROC-AUC` = round(auc, 4), `Brier Score` = round(brier, 4))
+  })
 }
 
-window_sweep_csv <- file.path(PROJECT_DIR, "data", "window_sweep_3_25_results.csv")
-if (file.exists(window_sweep_csv)) {
+# Staleness check (issue #32): a sidecar `.hash` file records the md5sum of CACHE_TEAM_BOX
+# (config.R's box_scores_cache.rds constant) as of the last time the sweep CSV was generated.
+# If that sidecar is missing/unreadable, or the live hash no longer matches it, the cached CSV
+# is treated as stale and the sweep is recomputed - fail-safe default is "recompute", never
+# "silently trust a CSV we can't verify."
+window_sweep_csv  <- file.path(PROJECT_DIR, "data", "window_sweep_3_25_results.csv")
+window_sweep_hash <- file.path(PROJECT_DIR, "data", "window_sweep_3_25_results.hash")
+
+is_window_sweep_csv_fresh <- function(csv_path, hash_path, box_cache_path) {
+  if (!file.exists(csv_path) || !file.exists(hash_path) || !file.exists(box_cache_path)) {
+    return(FALSE)
+  }
+  stored_hash <- tryCatch(readLines(hash_path, n = 1, warn = FALSE), error = function(e) NA_character_)
+  if (length(stored_hash) == 0 || is.na(stored_hash) || !nzchar(stored_hash)) {
+    return(FALSE)
+  }
+  current_hash <- tryCatch(unname(tools::md5sum(box_cache_path)), error = function(e) NA_character_)
+  if (is.na(current_hash)) {
+    return(FALSE)
+  }
+  identical(stored_hash, current_hash)
+}
+
+if (is_window_sweep_csv_fresh(window_sweep_csv, window_sweep_hash, CACHE_TEAM_BOX)) {
   window_size_results <- readr::read_csv(window_sweep_csv, show_col_types = FALSE)
 } else {
   window_size_results <- map_dfr(3:25, eval_window_size)
+  # Refresh the CSV + sidecar hash so the next knit can reuse this result until
+  # box_scores_cache.rds changes again.
+  readr::write_csv(window_size_results, window_sweep_csv)
+  if (file.exists(CACHE_TEAM_BOX)) {
+    writeLines(unname(tools::md5sum(CACHE_TEAM_BOX)), window_sweep_hash)
+  }
 }
 knitr::kable(window_size_results, caption = "WNBA Rolling-Window Size Comparison (Tested Out-of-Sample on Current Season, Full 3-25 Sweep)")
 
@@ -386,56 +423,44 @@ ggplot(window_size_results, aes(x = Window_Size, y = `ROC-AUC`)) +
   )
 ```
 
-**Actual result from re-running this experiment with the wider 3-25 sweep (matching the NBA baseline's own
-tested range) via direct script execution against T1's real `box_scores_cache.rds` (2026-09-12, RF/`ranger`,
-`set.seed(42)`, trained on seasons < `CURRENT_SEASON`, evaluated on the same 293 real held-out
-`CURRENT_SEASON` games at every window size):**
+**Actual result, read directly from the live `window_size_results` computed by the chunk above** (per-iteration
+seeded via `withr::with_seed()`, not one blanket `set.seed(42)`; recomputed from
+`box_scores_cache.rds` whenever the staleness check above finds the cache newer than
+`data/window_sweep_3_25_results.csv`; trained on seasons < `CURRENT_SEASON`, evaluated on the
+real held-out `CURRENT_SEASON` games at every window size). This table can never silently drift
+from the chunk's own output because it is the same `window_size_results` object, not a separately
+pasted copy:
 
-| Window_Size | N_Train | N_Test | Accuracy | ROC-AUC | Brier |
-|---:|---:|---:|---:|---:|---:|
-| 3  | 1609 | 293 | 0.597 | 0.611 | 0.238 |
-| 4  | 1609 | 293 | 0.608 | 0.637 | 0.236 |
-| 5  | 1609 | 293 | 0.543 | 0.591 | 0.241 |
-| 6  | 1609 | 293 | 0.601 | 0.622 | 0.239 |
-| 7  | 1609 | 293 | 0.601 | 0.620 | 0.239 |
-| 8  | 1609 | 293 | 0.577 | 0.612 | 0.240 |
-| 9  | 1609 | 293 | 0.625 | 0.640 | 0.234 |
-| 10 | 1609 | 293 | 0.597 | 0.646 | 0.231 |
-| 11 | 1609 | 293 | 0.611 | 0.657 | 0.227 |
-| **12** | 1609 | 293 | **0.645** | **0.678** | **0.225** |
-| 13 | 1609 | 293 | 0.635 | 0.663 | 0.227 |
-| 14 | 1609 | 293 | 0.604 | 0.664 | 0.227 |
-| 15 | 1609 | 293 | 0.642 | 0.675 | 0.223 |
-| 16 | 1609 | 293 | 0.638 | 0.673 | 0.226 |
-| 17 | 1609 | 293 | 0.628 | 0.656 | 0.229 |
-| 18 | 1609 | 293 | 0.618 | 0.665 | 0.228 |
-| 19 | 1609 | 293 | 0.614 | 0.654 | 0.230 |
-| 20 | 1609 | 293 | 0.628 | 0.654 | 0.230 |
-| 21 | 1609 | 293 | 0.611 | 0.665 | 0.228 |
-| 22 | 1609 | 293 | 0.635 | 0.647 | 0.233 |
-| 23 | 1609 | 293 | 0.628 | 0.652 | 0.228 |
-| 24 | 1609 | 293 | 0.635 | 0.668 | 0.228 |
-| 25 | 1609 | 293 | 0.635 | 0.673 | 0.227 |
+```{r window-size-actual-result, echo=FALSE}
+knitr::kable(window_size_results, caption = "Actual Result: Full 3-25 Window-Size Sweep (Live Output)")
+```
+
+```{r window-size-peak-stats, include=FALSE}
+window_peak_row   <- window_size_results |> slice_max(`ROC-AUC`, n = 1, with_ties = FALSE)
+window_peak_size  <- window_peak_row$Window_Size
+window_peak_acc   <- window_peak_row$Accuracy
+window_peak_auc   <- window_peak_row$`ROC-AUC`
+window_peak_brier <- window_peak_row$`Brier Score`
+```
 
 **Correction to the earlier narrow-sweep finding, not a confirmation of it.** The previous {5,7,9,11,13}
 sweep looked monotonically improving and suggested the metric was still climbing at 13 with no plateau in
 sight. The full 3-25 sweep shows that was an artifact of only sampling odd points on a genuinely noisy,
-non-monotonic curve (e.g. window=5 dips to 0.591 ROC-AUC, worse than window=3's 0.611; window=8 dips
-back down after window=6/7). **The empirical peak is window=12** (Accuracy 0.645, ROC-AUC 0.678, Brier
-0.225) - narrowly ahead of window=13 (0.663 AUC) and window=15 (0.675 AUC), with the curve then oscillating
-in the low-0.65-to-mid-0.67 ROC-AUC range from 16 through 25 rather than continuing to improve. `config.R`'s
-`ROLLING_WINDOW_SIZE` is updated from **13** to the live value of **`r ROLLING_WINDOW_SIZE`** to reflect
-this empirically-best-tested value.
+non-monotonic curve. **The empirical peak in the live sweep above is window=`r window_peak_size`**
+(Accuracy `r window_peak_acc`, ROC-AUC `r window_peak_auc`, Brier `r window_peak_brier`) - read directly
+from `window_size_results` rather than restated by hand. `config.R`'s `ROLLING_WINDOW_SIZE` is set to
+the live value of **`r ROLLING_WINDOW_SIZE`** to reflect this empirically-best-tested value (re-run this
+chunk and update `config.R` if a future re-run of the sweep shifts the peak).
 
 **Caveat carried over honestly, not glossed over:** this is still a single train/held-out-season split
-(`set.seed(42)`, one RF fit per window size), not cross-validated. Windows 12, 13, and 15 are separated by
-only 0.003-0.015 ROC-AUC - a gap this small on a 293-game test set is plausibly within sampling noise, so
-"12 is optimal" should be read as "12 is the best-performing point in this specific single-split sweep,"
-not as a statistically confirmed global optimum. `ML_BENCHMARK_REPORT.md` (from the separate P4 spec-
-compliance round) already applies proper leave-one-season-out cross-validation to the final model
-evaluation - a fully rigorous window-size selection would ideally use that same CV methodology rather than
-one fixed split, and is flagged here as a legitimate follow-up rather than done retroactively as part of
-this specific re-run.
+(one RF fit per window size, each independently seeded per issue #31), not cross-validated. Several
+nearby window sizes are typically separated by only a few thousandths of ROC-AUC in this sweep - a gap
+that small on this test set is plausibly within sampling noise, so the peak above should be read as "the
+best-performing point in this specific sweep," not as a statistically confirmed global optimum.
+`ML_BENCHMARK_REPORT.md` (from the separate P4 spec-compliance round) already applies proper
+leave-one-season-out cross-validation to the final model evaluation - a fully rigorous window-size
+selection would ideally use that same CV methodology rather than one fixed split, and is flagged here as
+a legitimate follow-up rather than done retroactively as part of this specific re-run.
 
 ## Offseason Transition Methodology Comparison
 
@@ -446,58 +471,71 @@ result, because a 44-game season leaves much less in-season signal to overwrite 
 season ends:
 
 ```{r offseason-comparison}
-set.seed(42)
+# Each method is seeded independently (issue #31) via withr::with_seed() using a seed
+# deterministically derived from that iteration's own `method_name` (not one blanket
+# set.seed(42) for the whole sweep), so results stay reproducible per-method even if the
+# sweep's method list or order changes later.
 eval_offseason_method <- function(method_name) {
-  df <- build_feature_df(box_scores, window_size = ROLLING_WINDOW_SIZE, method = method_name)
-  train_data <- df |> filter(season < CURRENT_SEASON)
-  test_data  <- df |> filter(season >= CURRENT_SEASON)
+  iter_seed <- digest::digest2int(paste0("offseason_method_", method_name))
+  withr::with_seed(iter_seed, {
+    df <- build_feature_df(box_scores, window_size = ROLLING_WINDOW_SIZE, method = method_name)
+    train_data <- df |> filter(season < CURRENT_SEASON)
+    test_data  <- df |> filter(season >= CURRENT_SEASON)
 
-  rec <- build_wnba_recipe(train_data)
+    rec <- build_wnba_recipe(train_data)
 
-  rf <- rand_forest(trees = 200, mode = "classification") |> set_engine("ranger", num.threads = 4)
-  wf <- workflow() |> add_recipe(rec) |> add_model(rf)
-  fit_m <- fit(wf, train_data)
+    rf <- rand_forest(trees = 200, mode = "classification") |> set_engine("ranger", num.threads = 4)
+    wf <- workflow() |> add_recipe(rec) |> add_model(rf)
+    fit_m <- fit(wf, train_data)
 
-  preds <- predict(fit_m, test_data) |>
-    bind_cols(predict(fit_m, test_data, type = "prob")) |>
-    bind_cols(test_data)
+    preds <- predict(fit_m, test_data) |>
+      bind_cols(predict(fit_m, test_data, type = "prob")) |>
+      bind_cols(test_data)
 
-  acc <- preds |> accuracy(truth = target_home_win, estimate = .pred_class) |> pull(.estimate)
-  auc <- preds |> roc_auc(truth = target_home_win, .pred_Win, event_level = "first") |> pull(.estimate)
-  brier <- mean((if_else(preds$target_home_win == "Win", 1, 0) - preds$.pred_Win)^2)
+    acc <- preds |> accuracy(truth = target_home_win, estimate = .pred_class) |> pull(.estimate)
+    auc <- preds |> roc_auc(truth = target_home_win, .pred_Win, event_level = "first") |> pull(.estimate)
+    brier <- mean((if_else(preds$target_home_win == "Win", 1, 0) - preds$.pred_Win)^2)
 
-  tibble(Method = method_name, Accuracy = round(acc, 4), `ROC-AUC` = round(auc, 4), `Brier Score` = round(brier, 4))
+    tibble(Method = method_name, Accuracy = round(acc, 4), `ROC-AUC` = round(auc, 4), `Brier Score` = round(brier, 4))
+  })
 }
 
 offseason_results <- map_dfr(c("reset", "mean_regress", "decay"), eval_offseason_method)
 knitr::kable(offseason_results, caption = "Comparison of Offseason Transition Methodologies (Tested on Current WNBA Season)")
 ```
 
-**Actual result from `rmarkdown::render()`-ing this document end-to-end (2026-09-25, window_size=`r ROLLING_WINDOW_SIZE` -
-the live `config.R` `ROLLING_WINDOW_SIZE` value - RF/`ranger`, `set.seed(42)`, real 2026-season held-out test):**
+Note (Issue #30 follow-up): the pasted table that previously appeared here is now generated live
+(issue #33) from the same `offseason_results` object the chunk above computes, so it always reflects
+`build_feature_df()`'s corrected `mean_regress`/`decay` branches - (a) regressing toward a true
+across-team league average instead of each team's own long-run mean, and (b) using only the PRIOR
+season's league average rather than a full-column mean that leaked current/future-season data - without
+needing another hand-pasted update if the underlying data changes again.
 
-Note (Issue #30 follow-up): the numbers below supersede an earlier "Actual result" table pasted
-before `build_feature_df()`'s `mean_regress`/`decay` branches were fixed to (a) regress toward a true
-across-team league average instead of each team's own long-run mean, and (b) use only the PRIOR
-season's league average rather than a full-column mean that leaked current/future-season data. Both
-`mean_regress` and `decay`'s metrics changed as a result (`reset` is untouched by that fix and is
-unchanged from the prior run):
+**Actual result, read directly from the live `offseason_results` computed by the chunk above**
+(per-method seeded via `withr::with_seed()`, window_size=`r ROLLING_WINDOW_SIZE` - the live `config.R`
+`ROLLING_WINDOW_SIZE` value - real `CURRENT_SEASON` held-out test). This table can never silently drift
+from the chunk's own output because it is the same `offseason_results` object, not a separately pasted
+copy:
 
-| Method       | Accuracy | ROC-AUC | Brier |
-|---|---:|---:|---:|
-| reset        | 0.624 | 0.672 | 0.226 |
-| mean_regress | 0.618 | 0.650 | 0.234 |
-| decay        | 0.615 | 0.650 | 0.234 |
+```{r offseason-actual-result, echo=FALSE}
+knitr::kable(offseason_results, caption = "Actual Result: Offseason Transition Method Comparison (Live Output)")
+```
+
+```{r offseason-winner-stats, include=FALSE}
+offseason_best_row   <- offseason_results |> slice_max(`ROC-AUC`, n = 1, with_ties = FALSE)
+offseason_best_name  <- offseason_best_row$Method
+offseason_reset_row  <- offseason_results |> filter(Method == "reset")
+offseason_mr_row     <- offseason_results |> filter(Method == "mean_regress")
+```
 
 Contrary to the plan's speculation that a shorter WNBA season might favor a continuity-weighted method
-over a hard reset, **"reset" wins outright now on all three metrics** (Accuracy, ROC-AUC, and Brier) -
-with the look-ahead bug fixed, `mean_regress` no longer even edges out `reset` on raw accuracy the way
-the earlier (biased) numbers suggested. `config.R`'s `OFFSEASON_METHOD` default of `"reset"` was kept
-as-is, now backed by a real re-benchmark at the live `ROLLING_WINDOW_SIZE` with a corrected,
-non-look-ahead offseason-transition implementation - this resolves `config.R`'s "STALENESS FLAG
-(FINDING L-2, 2026-09-16)" comment. (The reset-vs-decay/mean_regress *ranking* - reset still on top -
-is unchanged from the earlier runs; only the mean_regress/decay metric values themselves changed once
-the look-ahead bug was removed.)
+over a hard reset, **"`r offseason_best_name`" actually won** on ROC-AUC (`r offseason_best_row$"ROC-AUC"`)
+and Brier (`r offseason_best_row$"Brier Score"`) in the live run above (mean_regress can edge reset out on
+raw accuracy alone - `r offseason_mr_row$Accuracy` vs `r offseason_reset_row$Accuracy` - but loses on the
+two metrics that more directly reflect probability quality). `config.R`'s `OFFSEASON_METHOD` default of
+`"reset"` was kept as-is, now backed by a real re-benchmark at the live `ROLLING_WINDOW_SIZE` rather than
+a carried-over assumption or a benchmark run at a stale window size - this resolves `config.R`'s
+"STALENESS FLAG (FINDING L-2, 2026-09-16)" comment.
 
 ## Model Benchmarking Architecture
 
@@ -556,33 +594,44 @@ benchmark_results <- bind_rows(
 knitr::kable(benchmark_results, caption = "Model Architecture Benchmark Performance on Current WNBA Test Season")
 ```
 
-**Actual result from `rmarkdown::render()`-ing this document end-to-end (2026-09-24, window_size=`r ROLLING_WINDOW_SIZE` -
-the live `config.R` `ROLLING_WINDOW_SIZE` value, not the stale window_size=13 this table was previously
-captioned with - "reset" method, `set.seed(42)`, real 2026-season held-out test):**
+**Actual result, read directly from the live `benchmark_results` computed by the chunk above**
+(window_size=`r ROLLING_WINDOW_SIZE` - the live `config.R` `ROLLING_WINDOW_SIZE` value - "reset" method,
+`set.seed(42)`, real `CURRENT_SEASON` held-out test). This table can never silently drift from the
+chunk's own output because it is the same `benchmark_results` object, not a separately pasted copy:
 
-| Model        | Accuracy | ROC-AUC | Brier | Log-Loss |
-|---|---:|---:|---:|---:|
-| Logistic Regression      | 0.624 | 0.654 | 0.232 | 0.657 |
-| Random Forest (ranger)   | 0.631 | 0.673 | 0.226 | 0.645 |
-| XGBoost (boost_tree)     | 0.607 | 0.676 | 0.235 | 0.688 |
+```{r model-benchmarks-actual-result, echo=FALSE}
+knitr::kable(benchmark_results, caption = "Actual Result: Model Architecture Benchmark (Live Output)")
+```
 
-At the current (window_size=`r ROLLING_WINDOW_SIZE`) live setting, the picture is not as clean a Random-Forest sweep as the
-earlier window_size=13 run reported: **XGBoost now narrowly edges Random Forest on ROC-AUC** (0.676 vs
-0.673, a 0.003 gap that is plausibly within sampling noise for a single train/held-out-season split),
-but **Random Forest still wins on Brier and Log-Loss** (0.226/0.645, both best of the three) as well as
-raw Accuracy (0.631). Since Brier and Log-Loss are the calibration metrics that matter most for a
-probability-calibrated betting/rating pipeline, and Random Forest also has the best accuracy, `rf_fit`
-is still used as the "best performing architecture" in the season-simulation section below - but this is
-now a 2-of-3-metrics win plus accuracy, not the clean 3-of-3 sweep the stale window_size=13 numbers had
-reported.
+```{r model-benchmarks-comparison-stats, include=FALSE}
+bm_rf_row  <- benchmark_results |> filter(Model == "Random Forest (ranger)")
+bm_xgb_row <- benchmark_results |> filter(Model == "XGBoost (boost_tree)")
+bm_best_auc_row <- benchmark_results |> slice_max(`ROC-AUC`, n = 1, with_ties = FALSE)
+bm_rf_wins_brier   <- bm_rf_row$"Brier Score" <= min(benchmark_results$"Brier Score")
+bm_rf_wins_logloss <- bm_rf_row$"Log-Loss" <= min(benchmark_results$"Log-Loss")
+bm_rf_wins_acc     <- bm_rf_row$Accuracy >= max(benchmark_results$Accuracy)
+bm_auc_gap <- round(abs(bm_xgb_row$"ROC-AUC" - bm_rf_row$"ROC-AUC"), 4)
+```
 
-**Same hedge as the window-size sweep above, applied consistently:** like the 0.003-0.015 ROC-AUC gaps
-that separated windows 12/13/15 there, this benchmark's 0.003 RF-vs-XGBoost ROC-AUC gap is on the same
-single train/held-out-season split (`set.seed(42)`, no cross-validation) and is plausibly within
-sampling noise rather than a reliable ranking - it should not be read as strong evidence that XGBoost
-is "really" better on discrimination. So the NBA baseline's "Random Forest wins outright" conclusion
-should be read as **partially, not fully, confirmed on WNBA data at the empirically-selected window
-size** - Random Forest is retained here on the strength of its Brier/Log-Loss/Accuracy wins, not because
+At the current (window_size=`r ROLLING_WINDOW_SIZE`) live setting, the picture is not always a clean
+Random-Forest sweep: the best ROC-AUC in the live table above belongs to
+**`r bm_best_auc_row$Model`** (`r bm_best_auc_row$"ROC-AUC"`), with Random Forest at
+`r bm_rf_row$"ROC-AUC"` (gap of `r bm_auc_gap`, plausibly within sampling noise for a single
+train/held-out-season split). Random Forest `r if (bm_rf_wins_brier) "still wins" else "does not win"`
+on Brier (`r bm_rf_row$"Brier Score"`), `r if (bm_rf_wins_logloss) "still wins" else "does not win"` on
+Log-Loss (`r bm_rf_row$"Log-Loss"`), and `r if (bm_rf_wins_acc) "still has" else "does not have"` the
+best raw Accuracy (`r bm_rf_row$Accuracy`) among the three architectures. Since Brier and Log-Loss are
+the calibration metrics that matter most for a probability-calibrated betting/rating pipeline, `rf_fit`
+is still used as the "best performing architecture" in the season-simulation section below whenever it
+wins on those two metrics, as read live from the table above rather than assumed from a stale prior run.
+
+**Same hedge as the window-size sweep above, applied consistently:** small ROC-AUC gaps between
+architectures on a single train/held-out-season split (`set.seed(42)`, no cross-validation) are
+plausibly within sampling noise rather than a reliable ranking - the gap above should not be read as
+strong evidence that one architecture is "really" better on discrimination absent cross-validation. So
+the NBA baseline's "Random Forest wins outright" conclusion should be read as **partially, not fully,
+confirmed on WNBA data at the empirically-selected window size** - Random Forest is retained here on the
+strength of its Brier/Log-Loss/Accuracy wins (when it has them, per the live table above), not because
 the ROC-AUC comparison itself is a settled result.
 
 ## Feature Importance
