@@ -1,12 +1,146 @@
-# Handoff — 2026-09-24 (second session) — CURRENT STATE (read this section first)
+# Handoff — 2026-09-25 — CURRENT STATE (read this section first)
 
-**This section supersedes every pointer further down this file, including the "(first session)"
-section immediately below it.** This is a continuation of the same review-remediation thread as
-the first 2026-09-24 session: implementing the 27-issue roadmap in `docs/review_round_1_roadmap.md`
-that session produced, against `WNBA_Analysis_Project.Rmd` (repo root). Still a **separate thread**
-from the pipeline/dashboard work covered by the rest of this file (2026-09-19 and earlier) — none
-of this touched `run_full_pipeline.R`'s DAG, `app.R`, or any cache the dashboard reads. Written after
-commit `8d2c1b8`.
+**This section supersedes every pointer further down this file, including both 2026-09-24
+sections immediately below it.** Same review-remediation thread: implementing the 27-issue
+roadmap in `docs/review_round_1_roadmap.md` against `WNBA_Analysis_Project.Rmd` (repo root).
+Still a **separate thread** from the pipeline/dashboard work covered by the rest of this file
+(2026-09-19 and earlier). Written after commit `a190873`.
+
+## Where the thread actually stands (verified against `gh issue list`, not assumed from docs)
+
+**Tiers 1-3 are done. Tier 4 (Narrative) is next.**
+
+| Tier | Issues | Status |
+|---|---|---|
+| 1 — Reproducibility | #1-7 | Closed (previous sessions) |
+| 2 — Correctness bugs | #8, #9, #10 | Closed (previous session, see discrepancy note below) |
+| Infra (not in roadmap numbering) | #28 — renv cache wipe + missing pandoc | Closed (previous session, repaired directly by the user, not via subagent) |
+| 3 — Integration/consistency | #11, #12, #13 | **Closed this session** — commit `a190873`, pushed to `main` |
+| 4 — Narrative | #14, #15, #16, #17 | **Open — next up, starting with #14** |
+| 5 — Visualization | #18, #19, #20, #21 | Open |
+| 6 — Code quality | #22-27 | Open |
+
+**A real discrepancy found while verifying tracker state, flagged rather than silently fixed:**
+commit `9c8b91c`'s message says only `(#8)`, but its actual diff also contains the `team_profiles_current`
+fix (issue #9 — was silently using only each team's most recent *home* game, now unions home+away
+rows and takes the true most recent game by date) and the schedule-generator balanced-round-robin
+fix (issue #10 — was `sample(rep(others, length.out = half_season))`, now allocates
+`half_season %/% length(others)` guaranteed home meetings per opponent plus a randomly-assigned
+remainder). GitHub shows #8/#9/#10 all closed within 4 seconds of each other
+(`2026-09-25T01:15:44Z`-`48Z`), consistent with all three having actually landed in that one commit
+despite the trailer only citing one issue number. Nothing was changed to "fix" this — it's a
+commit-message accuracy gap, not a code gap — but don't trust a commit trailer's issue reference as
+a complete list of what that commit touched; check the diff.
+
+## What this session did (#11, #12, #13 — Tier 3)
+
+| Issue | What | Verified how |
+|---|---|---|
+| #11 | Moved `source("config.R")` into the Rmd's `setup` chunk (previously it was sourced later, in `package-install-load`) so every prose mention of `ROLLING_WINDOW_SIZE` — Introduction, window-size section, both offseason/benchmark table captions, Conclusion — could use inline `` `r ROLLING_WINDOW_SIZE` `` instead of a hardcoded literal. One of those literals (Introduction, "config.R currently sets `ROLLING_WINDOW_SIZE <- 9`") had already drifted false: the live value had moved to 12 back in issue #7's fix, but the Introduction text was never updated. | Full `rmarkdown::render()`, then `pdftotext -layout` on the output PDF, grepped for `ROLLING_WINDOW_SIZE` — confirmed every inline expression evaluated to `12` in the actual PDF text, not literal backtick-r source. |
+| #12 | The offseason-comparison and model-benchmark "Actual result" table captions already had staleness callouts from an earlier session (window_size at render time vs. current live value) — these now use the inline-derived constant from #11 so they can't silently drift again. Also updated `config.R`'s own "STALENESS FLAG (FINDING L-2, 2026-09-16)" comment (~line 148), which the Rmd caption explicitly cross-references: it previously still said the offseason re-benchmark at the live window size "has NOT been rechecked," which was no longer true (the Rmd's own offseason-comparison chunk already shows it re-run at window_size=12, reset still winning). Comment rewritten to record that resolution with the actual numbers. | Read both sides (Rmd caption + config.R comment) side by side after editing to confirm they now agree. |
+| #13 | `README.md`'s one-line description expanded to mention the Monte Carlo season-simulation / win-total projection pipeline (previously unmentioned despite being the Rmd's most elaborate output). | Read the diff; one-line change, no render dependency. |
+
+All three closed via `gh issue close N --comment "..."` referencing commit `a190873` and what was
+verified — this session did NOT leave that bookkeeping step undone (a prior session's handoff had
+explicitly flagged issue-closing as skipped/optional; this session did it).
+
+## What's actually in the files right now
+
+- `WNBA_Analysis_Project.Rmd` — 715 lines. `setup` chunk (near the top) now does
+  `knitr::opts_chunk$set(...)` **and** `source("config.R")`; the later `package-install-load` chunk
+  no longer re-sources it. **If you ever move `source("config.R")` back out of `setup`, first grep
+  for every `` `r ROLLING_WINDOW_SIZE` `` / other inline-`r` config reference above wherever you move
+  it to** — they will silently error (`object not found`) during knit if config.R isn't sourced yet
+  at that point in the document.
+- `config.R` — the `OFFSEASON_METHOD` "STALENESS FLAG (FINDING L-2, 2026-09-16)" comment block
+  (~line 148) now says "RESOLVED 2026-09-24" with the actual window_size=12 re-benchmark numbers
+  (reset AUC 0.672/Brier 0.226, mean_regress 0.658/0.232, decay 0.656/0.233 — reset still wins).
+- `README.md` — line 2 now: "Analyzing WNBA games and players to deliver game-level predictions,
+  including a Monte Carlo season-simulation pipeline that projects full-season win totals and
+  standings."
+- `WNBA_Analysis_Project.pdf` — regenerated this session via a real end-to-end
+  `rmarkdown::render()`, reflects all of the above plus the earlier #8/#9/#10 fixes.
+
+## Environment notes (new this session — not in any earlier HANDOFF section)
+
+- **Pandoc is not on PATH or in `RSTUDIO_PANDOC` by default in a bare `Rscript.exe` shell on this
+  machine**, even though issue #28 was already closed as "pandoc repaired." It was never actually
+  missing — RStudio's bundled Quarto install ships pandoc 3.8.3 at
+  `C:\Program Files\RStudio\resources\app\bin\quarto\bin\tools\pandoc.exe` — but a shell/session that
+  didn't launch from inside RStudio (e.g. this agent's Bash tool, or a plain PowerShell/Rscript
+  invocation) doesn't have that env var set, so `rmarkdown::pandoc_available()` returns `FALSE` and
+  `render()` aborts with `"pandoc version 2.8 or higher is required"`. Before rendering from such a
+  shell, set (in the same R session, before calling `rmarkdown::render()`):
+  ```r
+  Sys.setenv(RSTUDIO_PANDOC = "C:/Program Files/RStudio/resources/app/bin/quarto/bin/tools")
+  ```
+  This is consistent with (and confirms independently) what issue #28's own closing comment
+  describes — re-verified fresh this session, not just trusted from that comment.
+- `renv::status()` currently reports `synchronized = TRUE` — no recurrence of the #28 cache-wipe
+  incident observed this session. That incident's root cause (something in a subagent worktree's
+  cleanup step) was never fully isolated per the prior session's notes; still worth watching if more
+  `subagent-brief` work touches this repo.
+- Per this repo's `CLAUDE.md` (unchanged, still applies): R is not on PATH, use
+  `C:\Program Files\R\R-4.5.2\bin\Rscript.exe` directly; inline multi-line `Rscript -e "..."`
+  segfaults on this machine — write R code to a temp `.R` file and run `Rscript.exe path\to\file.R`
+  instead. This is exactly how this session's render verification was done (`/tmp/render_check2.R`).
+
+## The reusable workflow for the remaining tiers (#14-27)
+
+1. Check `gh issue list --repo kailot-harris/WNBA_analytics --state all` for real open/closed
+   state — don't trust `docs/review_round_1_roadmap.md`'s own tier table as current without
+   cross-checking, and don't assume a commit trailer citing `(#N)` means the commit touched *only*
+   `#N` (see the #8/#9/#10 discrepancy above — read the actual diff).
+2. Pick the next open issue in tier order — next up is **#14**.
+3. **Search the Rmd for the chunk label or a distinctive phrase the roadmap quotes, never trust its
+   line numbers** — the file has been edited by many commits since the roadmap was written and is
+   now 715 lines; every prior session's handoff has repeated this same warning because it keeps
+   being true.
+4. Make the edit.
+5. Render end-to-end for real before calling it done: set `RSTUDIO_PANDOC` per the note above, then
+   `rmarkdown::render("WNBA_Analysis_Project.Rmd")` from a temp `.R` file per `CLAUDE.md`'s
+   inline-`-e`-segfault rule.
+6. Extract the rendered PDF's actual text (`pdftotext -layout WNBA_Analysis_Project.pdf out.txt`)
+   and grep for anything that should have evaluated (inline `` `r ` `` expressions, updated prose) to
+   confirm it rendered as a value, not literal backtick-r source or unchanged old text.
+7. Commit with an accurate, complete list of every issue number the commit actually resolves — not
+   just the one issue it was scoped to start with. Re-check the full diff against the roadmap's other
+   nearby items before writing the trailer, given the #8/#9/#10 precedent.
+8. `gh issue close N --comment "..."` for each issue actually resolved, citing the commit hash and
+   what was verified (render + text-extraction check, not just "the diff looks right").
+
+## Concrete next step
+
+**Issue #14** (`docs/review_round_1_roadmap.md` item 14, GitHub issue #14): "Rewrite the Introduction
+to state the research question in plain terms before referencing internal process artifacts." Find
+the `## Introduction` heading near the top of `WNBA_Analysis_Project.Rmd` (currently starts around
+line 12) — its opening paragraph currently leads with "This is the WNBA analog of
+`NBA_Analysis_Project.Rmd` (T2 / `wnba_rating_engine_agent`, Phase 2 of `task_assignments.md`)"
+before ever stating what question the analysis answers. Rewrite so a grader reads the actual research
+question (does WNBA's shorter season change the optimal rolling-window size / offseason-transition
+method / model architecture vs. the NBA baseline, and what are the resulting win-total projections)
+first, with the process/provenance references (T2, `task_assignments.md`, the agent brief) moved
+later or into a footnote-style aside rather than the lead sentence.
+
+**Caution specific to this issue:** this session's own #11 edit already touched part of the same
+Introduction (list item 1's `ROLLING_WINDOW_SIZE` wording, now ending in "...is `` `r ROLLING_WINDOW_SIZE` ``.").
+Re-read the current Introduction in full before rewriting — don't assume the roadmap's originally-quoted
+text (written before any Tier 1-3 fixes) is still verbatim present.
+
+**One step further ahead:** issue #15 (rewrite the Conclusion) is next after #14, and is in the same
+situation — this session's #11 edit already rewrote the Conclusion's `ROLLING_WINDOW_SIZE` paragraph
+and fixed a stale "once this notebook has actually been knit" claim there. Read the current Conclusion
+fresh rather than the roadmap's original quote before starting #15 too. Validate both by rendering
+end-to-end and reading the actual PDF output (step 6 above), not just diffing the Rmd source.
+
+---
+
+# Handoff — 2026-09-24 (second session) — superseded, kept for history
+
+**Superseded by the 2026-09-25 section above** (which folds in what actually happened since: #8/#9/#10
+landed, #28's renv/pandoc incident was fully resolved — not just "partially remediated" as this
+section describes below — and #11/#12/#13 are done). Kept for the blow-by-blow of the renv
+cache-wipe incident and the Tier-1 subagent-brief mechanics, which the section above only summarizes.
 
 ## What this session did
 
@@ -125,7 +259,7 @@ if another subagent worktree does cleanup work near a `renv`-activated project.
   7 issues this session, if you need to see exact success-criteria evidence rather than just this
   summary.
 
-## Concrete next step
+## Concrete next step (STALE — this all happened already; read the 2026-09-25 section at the top instead)
 
 **Step 0, before any code work:** finish the interrupted `renv::restore()` (see "Incident this
 session" above) — 32 packages including `tidymodels`/`tidyverse`/`wehoop` are still missing their
