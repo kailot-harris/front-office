@@ -1,10 +1,82 @@
-# Handoff — 2026-09-25 — CURRENT STATE (read this section first)
+# Handoff — 2026-09-25 — CURRENT STATE (read this section first, supersedes the section below)
 
-**This section supersedes every pointer further down this file, including both 2026-09-24
-sections immediately below it.** Same review-remediation thread: implementing the 27-issue
-roadmap in `docs/review_round_1_roadmap.md` against `WNBA_Analysis_Project.Rmd` (repo root).
-Still a **separate thread** from the pipeline/dashboard work covered by the rest of this file
-(2026-09-19 and earlier). Written after commit `a190873`.
+**This section supersedes every pointer further down this file, including the "Written after
+commit `a190873`" section immediately below it (which was never updated after Tier 4 landed —
+its tier table is stale, don't trust it).** Same review-remediation thread: implementing the
+27-issue roadmap in `docs/review_round_1_roadmap.md` against `WNBA_Analysis_Project.Rmd` (repo
+root). Still a **separate thread** from the pipeline/dashboard work covered by the rest of this
+file (2026-09-19 and earlier). Written after commit `03d50f5`.
+
+## Where the thread actually stands (verified against `gh issue list`, not assumed from docs)
+
+**Tiers 1-5 are done. Tier 6 (Code quality) is next.**
+
+| Tier | Issues | Status |
+|---|---|---|
+| 1 — Reproducibility | #1-7 | Closed |
+| 2 — Correctness bugs | #8, #9, #10 | Closed |
+| 3 — Integration/consistency | #11, #12, #13 | Closed |
+| 4 — Narrative | #14, #15, #16, #17 | Closed (commit `58f5ca8`) — this file's stale section below still lists it as "Open, starting with #14"; it was completed by a `subagent-brief` dispatch whose HANDOFF update step was skipped, not by hand. |
+| 5 — Visualization | #18, #19, #20, #21 | **Closed this session — commit `03d50f5`** |
+| 6 — Code quality | #22-27 | Open — next up |
+
+## What this session did (#18-21, Tier 5) via `subagent-brief`
+
+Dispatched via the `subagent-brief` skill (brief: `.subagent-runs/brief_tier5.md`, run
+`20260925-122021-b869b2`) as a single full-brief agent in an isolated git worktree, following the
+same pattern as Tier 4. **Took two `SendMessage` resumes to actually finish** — the subagent's
+first two "completions" each ended with a non-JSON stall message ("I'll wait for the
+monitor/render task notification...") instead of the required result block, with no commit and no
+render attempted yet. While waiting on the second resume, the orchestrator independently ran the
+render itself in the same worktree in parallel (not a new dispatch, just direct verification) and
+confirmed it succeeded; the resumed subagent finished and committed at essentially the same time,
+so the two efforts converged rather than conflicted. **If a `subagent-brief` agent's final message
+isn't a valid JSON result block, resuming it once or twice with an explicit "send the JSON now, no
+more tool calls" instruction is a reasonable recovery — don't just discard the work, since the
+underlying edits may already be correct** (they were, here). The final recorded result initially
+failed `record-result` with a `schema_violation` — the subagent's self-reported JSON used an
+`evidence` string directly on each criterion instead of the actual schema's `evidence_refs` array
+pointing into a top-level `evidence` list, and omitted several other required top-level fields
+(`item_id`, `summary`, `blocked_reason`, `needed_action`, `changes`). Rebuilt the result against
+`schema/result.v1.json` by hand before it would record — **read that schema file directly before
+constructing a result JSON; don't trust a subagent's self-assembled shape even when its content is
+right.**
+
+| Issue | What | Verified how |
+|---|---|---|
+| #18 | `feature-plots` chunk: added a caption caveat + prose explaining `ranger`'s default Gini-impurity importance is biased toward high-cardinality predictors and unstable across refits; `vip` permutation importance was not substituted because `vip` isn't an installed/pinned dependency (checked via `requireNamespace("vip", quietly = TRUE)` — returned `FALSE`) and adding it was out of scope. | `pdftotext` grep for the caveat text in the rendered PDF. |
+| #19 | `ridge-plot` chunk: added `annotate(geom = "label", x = WNBA_SEASON_GAMES / 2, y = Inf, label = ".500 win pct.", ...)` next to the existing `geom_vline`. | `pdftotext` grep confirms `.500 win pct.` renders as real vector text in the PDF (not just source). |
+| #20 | `window-size-experiment` chunk: added a `geom_line() + geom_point()` ROC-AUC-vs-window-size chart immediately after the existing `knitr::kable(window_size_results, ...)`, kable left intact. | `pdftotext` grep for the new chart's title/subtitle; confirmed `knitr::kable(window_size_results` call still present in the diff. |
+| #21 | Added prose after the `## Simulation-Season Schedule & Dynamic Projection` intro, plus caption suffixes on both the `dynamic-simulation` and `monte-carlo-sim` standings `kable()` calls, stating the schedule is a synthetic balanced-random draw, not a real fixture list. | `pdftotext` grep for the caveat text near both standings tables. |
+
+All four closed via `gh issue close N --comment "..."` referencing commit `03d50f5`.
+
+## Environment notes (new this session)
+
+- **The Tier 5 worktree's `renv` package cache was found wiped** (packages like `broom`,
+  `bit`, `chromote` pointed at empty version directories) before any render was attempted —
+  same failure class as the incident #28 recurrence risk flagged in the 2026-09-25 (pre-Tier-5)
+  section below. `renv::restore(prompt = FALSE)` (Tier 1 — repairs already-lockfile-declared
+  packages, installs nothing new) repaired it in ~60s before rendering. If a future
+  `subagent-brief` worktree hits `"there is no package called 'X'"` on an otherwise-working repo,
+  try this before assuming the brief or the edit is at fault.
+- The `.claude/worktrees/agent-a6cc7eaf0b38f47c9` worktree and its branch
+  `worktree-agent-a6cc7eaf0b38f47c9` are still present after merging (fast-forward, no conflicts)
+  — `git worktree remove` reported it locked by the still-tracked agent process. Safe to remove
+  once that lock clears; not blocking anything.
+
+## Concrete next step
+
+**Tier 6 (Code quality), issues #22-27**, per `docs/review_round_1_roadmap.md`. Same caveat as
+every prior tier: don't trust that roadmap's line numbers, the Rmd is 715+ lines and keeps
+changing — search by chunk label or distinctive phrase.
+
+---
+
+# Handoff — 2026-09-25 (pre-Tier-5) — superseded, kept for the Tier 3/4 record below
+
+**This section is stale — see the section above for current tier status.** Written after commit
+`a190873`.
 
 ## Where the thread actually stands (verified against `gh issue list`, not assumed from docs)
 
