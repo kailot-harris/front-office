@@ -83,7 +83,17 @@ All-Star/exhibition-row filter documented in `task_assignments.md`'s T0/T1 Hando
 if (file.exists(CACHE_TEAM_BOX)) {
   box_scores <- readRDS(CACHE_TEAM_BOX)
 } else {
+  # Issue #29: this fallback path (fresh checkout, no CACHE_TEAM_BOX yet) previously
+  # filtered on raw `team_abbreviation %in% names(WNBA_TEAMS)` without normalizing
+  # first. `wehoop` used "CONN" (not "CON") for the Connecticut Sun in 2019-2023 -
+  # a real franchise code, not an exhibition row - so that naive filter silently
+  # dropped 5 seasons of real Sun data instead of just dropping exhibition rows.
+  # Source the shared normalize_team_abbreviation() helper (player_metrics.R only
+  # defines functions at top level - no auto-run side effects from sourcing it) and
+  # apply it before filtering, matching what the cached/primary path already assumes.
+  source("player_metrics.R")
   box_scores <- wehoop::load_wnba_team_box(seasons = ALL_SEASONS) |>
+    normalize_team_abbreviation() |>
     filter(team_abbreviation %in% names(WNBA_TEAMS))
   saveRDS(box_scores, CACHE_TEAM_BOX)
 }
@@ -156,38 +166,83 @@ build_feature_df <- function(data, window_size = ROLLING_WINDOW_SIZE, method = "
         days_rest       = pmin(REST_DAYS_CAP, coalesce(as.numeric(game_date - lag(game_date)), 3))
       )
 
+    # Issue #30: the two bugs below were both in how the offseason regression/decay
+    # target was computed. The old code did
+    # `mean(team_score, na.rm = TRUE)` etc. while still `group_by(team_id)` (from the
+    # mutate() above) and with NO season cutoff at all - so it (a) regressed each team
+    # toward its OWN long-run mean, not the "league average" the adjacent prose
+    # describes, and (b) leaked every season's data - including seasons chronologically
+    # AFTER the offseason transition being evaluated - into that mean. Fix: compute a
+    # real across-team league average per season (ungrouped, then grouped only by
+    # `season`), and for each new-season transition use only the league average from
+    # the immediately PRIOR season (by chronological order of `season`, not `season -
+    # 1` arithmetic, in case of a non-consecutive season gap) - never the current or a
+    # future season's data.
+    league_season_means <- features |>
+      ungroup() |>
+      group_by(season) |>
+      summarise(
+        lm_team_score = mean(team_score, na.rm = TRUE),
+        lm_oreb       = mean(offensive_rebounds, na.rm = TRUE),
+        lm_dreb       = mean(defensive_rebounds, na.rm = TRUE),
+        lm_ast        = mean(assists, na.rm = TRUE),
+        lm_stl        = mean(steals, na.rm = TRUE),
+        lm_blk        = mean(blocks, na.rm = TRUE),
+        lm_tov        = mean(turnovers, na.rm = TRUE),
+        lm_efg        = mean(efg, na.rm = TRUE),
+        lm_tovp       = mean(tov, na.rm = TRUE),
+        lm_ftr        = mean(ftr, na.rm = TRUE),
+        lm_ts         = mean(ts, na.rm = TRUE),
+        .groups = "drop"
+      )
+
+    season_order <- sort(unique(league_season_means$season))
+    prior_season_lookup <- tibble(
+      season       = season_order[-1],
+      prior_season = season_order[-length(season_order)]
+    )
+    league_prior_means <- prior_season_lookup |>
+      left_join(league_season_means, by = c("prior_season" = "season")) |>
+      select(-prior_season) |>
+      rename_with(~ paste0("prior_", .x), starts_with("lm_"))
+
+    features <- features |>
+      ungroup() |>
+      left_join(league_prior_means, by = "season") |>
+      group_by(team_id)
+
     if (method == "mean_regress") {
       features <- features |>
         mutate(
-          roll_pts_scored = if_else(is_new_season, 0.5 * roll_pts_scored + 0.5 * mean(team_score, na.rm = TRUE), roll_pts_scored),
-          roll_oreb       = if_else(is_new_season, 0.5 * roll_oreb + 0.5 * mean(offensive_rebounds, na.rm = TRUE), roll_oreb),
-          roll_dreb       = if_else(is_new_season, 0.5 * roll_dreb + 0.5 * mean(defensive_rebounds, na.rm = TRUE), roll_dreb),
-          roll_ast        = if_else(is_new_season, 0.5 * roll_ast + 0.5 * mean(assists, na.rm = TRUE), roll_ast),
-          roll_stl        = if_else(is_new_season, 0.5 * roll_stl + 0.5 * mean(steals, na.rm = TRUE), roll_stl),
-          roll_blk        = if_else(is_new_season, 0.5 * roll_blk + 0.5 * mean(blocks, na.rm = TRUE), roll_blk),
-          roll_tov        = if_else(is_new_season, 0.5 * roll_tov + 0.5 * mean(turnovers, na.rm = TRUE), roll_tov),
-          roll_efg        = if_else(is_new_season, 0.5 * roll_efg + 0.5 * mean(efg, na.rm = TRUE), roll_efg),
-          roll_tovp       = if_else(is_new_season, 0.5 * roll_tovp + 0.5 * mean(tov, na.rm = TRUE), roll_tovp),
-          roll_ftr        = if_else(is_new_season, 0.5 * roll_ftr + 0.5 * mean(ftr, na.rm = TRUE), roll_ftr),
-          roll_ts         = if_else(is_new_season, 0.5 * roll_ts + 0.5 * mean(ts, na.rm = TRUE), roll_ts)
+          roll_pts_scored = if_else(is_new_season, 0.5 * roll_pts_scored + 0.5 * prior_lm_team_score, roll_pts_scored),
+          roll_oreb       = if_else(is_new_season, 0.5 * roll_oreb + 0.5 * prior_lm_oreb, roll_oreb),
+          roll_dreb       = if_else(is_new_season, 0.5 * roll_dreb + 0.5 * prior_lm_dreb, roll_dreb),
+          roll_ast        = if_else(is_new_season, 0.5 * roll_ast + 0.5 * prior_lm_ast, roll_ast),
+          roll_stl        = if_else(is_new_season, 0.5 * roll_stl + 0.5 * prior_lm_stl, roll_stl),
+          roll_blk        = if_else(is_new_season, 0.5 * roll_blk + 0.5 * prior_lm_blk, roll_blk),
+          roll_tov        = if_else(is_new_season, 0.5 * roll_tov + 0.5 * prior_lm_tov, roll_tov),
+          roll_efg        = if_else(is_new_season, 0.5 * roll_efg + 0.5 * prior_lm_efg, roll_efg),
+          roll_tovp       = if_else(is_new_season, 0.5 * roll_tovp + 0.5 * prior_lm_tovp, roll_tovp),
+          roll_ftr        = if_else(is_new_season, 0.5 * roll_ftr + 0.5 * prior_lm_ftr, roll_ftr),
+          roll_ts         = if_else(is_new_season, 0.5 * roll_ts + 0.5 * prior_lm_ts, roll_ts)
         )
     } else {
       features <- features |>
         mutate(
-          roll_pts_scored = if_else(is_new_season, 0.8 * roll_pts_scored + 0.2 * mean(team_score, na.rm = TRUE), roll_pts_scored),
-          roll_oreb       = if_else(is_new_season, 0.8 * roll_oreb + 0.2 * mean(offensive_rebounds, na.rm = TRUE), roll_oreb),
-          roll_dreb       = if_else(is_new_season, 0.8 * roll_dreb + 0.2 * mean(defensive_rebounds, na.rm = TRUE), roll_dreb),
-          roll_ast        = if_else(is_new_season, 0.8 * roll_ast + 0.2 * mean(assists, na.rm = TRUE), roll_ast),
-          roll_stl        = if_else(is_new_season, 0.8 * roll_stl + 0.2 * mean(steals, na.rm = TRUE), roll_stl),
-          roll_blk        = if_else(is_new_season, 0.8 * roll_blk + 0.2 * mean(blocks, na.rm = TRUE), roll_blk),
-          roll_tov        = if_else(is_new_season, 0.8 * roll_tov + 0.2 * mean(turnovers, na.rm = TRUE), roll_tov),
-          roll_efg        = if_else(is_new_season, 0.8 * roll_efg + 0.2 * mean(efg, na.rm = TRUE), roll_efg),
-          roll_tovp       = if_else(is_new_season, 0.8 * roll_tovp + 0.2 * mean(tov, na.rm = TRUE), roll_tovp),
-          roll_ftr        = if_else(is_new_season, 0.8 * roll_ftr + 0.2 * mean(ftr, na.rm = TRUE), roll_ftr),
-          roll_ts         = if_else(is_new_season, 0.8 * roll_ts + 0.2 * mean(ts, na.rm = TRUE), roll_ts)
+          roll_pts_scored = if_else(is_new_season, 0.8 * roll_pts_scored + 0.2 * prior_lm_team_score, roll_pts_scored),
+          roll_oreb       = if_else(is_new_season, 0.8 * roll_oreb + 0.2 * prior_lm_oreb, roll_oreb),
+          roll_dreb       = if_else(is_new_season, 0.8 * roll_dreb + 0.2 * prior_lm_dreb, roll_dreb),
+          roll_ast        = if_else(is_new_season, 0.8 * roll_ast + 0.2 * prior_lm_ast, roll_ast),
+          roll_stl        = if_else(is_new_season, 0.8 * roll_stl + 0.2 * prior_lm_stl, roll_stl),
+          roll_blk        = if_else(is_new_season, 0.8 * roll_blk + 0.2 * prior_lm_blk, roll_blk),
+          roll_tov        = if_else(is_new_season, 0.8 * roll_tov + 0.2 * prior_lm_tov, roll_tov),
+          roll_efg        = if_else(is_new_season, 0.8 * roll_efg + 0.2 * prior_lm_efg, roll_efg),
+          roll_tovp       = if_else(is_new_season, 0.8 * roll_tovp + 0.2 * prior_lm_tovp, roll_tovp),
+          roll_ftr        = if_else(is_new_season, 0.8 * roll_ftr + 0.2 * prior_lm_ftr, roll_ftr),
+          roll_ts         = if_else(is_new_season, 0.8 * roll_ts + 0.2 * prior_lm_ts, roll_ts)
         )
     }
-    features <- features |> ungroup()
+    features <- features |> ungroup() |> select(-starts_with("prior_lm_"))
   }
 
   features_selected <- features |>
@@ -418,24 +473,31 @@ offseason_results <- map_dfr(c("reset", "mean_regress", "decay"), eval_offseason
 knitr::kable(offseason_results, caption = "Comparison of Offseason Transition Methodologies (Tested on Current WNBA Season)")
 ```
 
-**Actual result from `rmarkdown::render()`-ing this document end-to-end (2026-09-24, window_size=`r ROLLING_WINDOW_SIZE` -
-the live `config.R` `ROLLING_WINDOW_SIZE` value, not the stale window_size=13 this table was previously
-captioned with - RF/`ranger`, `set.seed(42)`, real 2026-season held-out test):**
+**Actual result from `rmarkdown::render()`-ing this document end-to-end (2026-09-25, window_size=`r ROLLING_WINDOW_SIZE` -
+the live `config.R` `ROLLING_WINDOW_SIZE` value - RF/`ranger`, `set.seed(42)`, real 2026-season held-out test):**
+
+Note (Issue #30 follow-up): the numbers below supersede an earlier "Actual result" table pasted
+before `build_feature_df()`'s `mean_regress`/`decay` branches were fixed to (a) regress toward a true
+across-team league average instead of each team's own long-run mean, and (b) use only the PRIOR
+season's league average rather than a full-column mean that leaked current/future-season data. Both
+`mean_regress` and `decay`'s metrics changed as a result (`reset` is untouched by that fix and is
+unchanged from the prior run):
 
 | Method       | Accuracy | ROC-AUC | Brier |
 |---|---:|---:|---:|
 | reset        | 0.624 | 0.672 | 0.226 |
-| mean_regress | 0.632 | 0.658 | 0.232 |
-| decay        | 0.618 | 0.656 | 0.233 |
+| mean_regress | 0.618 | 0.650 | 0.234 |
+| decay        | 0.615 | 0.650 | 0.234 |
 
 Contrary to the plan's speculation that a shorter WNBA season might favor a continuity-weighted method
-over a hard reset, **"reset" actually won** on both ROC-AUC and Brier (mean_regress edges it out on raw
-accuracy alone, 0.632 vs 0.624, but loses on the two metrics that more directly reflect probability
-quality). `config.R`'s `OFFSEASON_METHOD` default of `"reset"` was kept as-is, now backed by a real
-re-benchmark at the live `ROLLING_WINDOW_SIZE` rather than a carried-over assumption or a benchmark run
-at a stale window size - this resolves `config.R`'s "STALENESS FLAG (FINDING L-2, 2026-09-16)" comment
-(the reset-vs-decay/mean_regress ranking is unchanged from the earlier window_size=13 run, just with
-updated numbers).
+over a hard reset, **"reset" wins outright now on all three metrics** (Accuracy, ROC-AUC, and Brier) -
+with the look-ahead bug fixed, `mean_regress` no longer even edges out `reset` on raw accuracy the way
+the earlier (biased) numbers suggested. `config.R`'s `OFFSEASON_METHOD` default of `"reset"` was kept
+as-is, now backed by a real re-benchmark at the live `ROLLING_WINDOW_SIZE` with a corrected,
+non-look-ahead offseason-transition implementation - this resolves `config.R`'s "STALENESS FLAG
+(FINDING L-2, 2026-09-16)" comment. (The reset-vs-decay/mean_regress *ranking* - reset still on top -
+is unchanged from the earlier runs; only the mean_regress/decay metric values themselves changed once
+the look-ahead bug was removed.)
 
 ## Model Benchmarking Architecture
 
