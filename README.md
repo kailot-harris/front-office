@@ -1,5 +1,6 @@
 # WNBA_analytics
-Analyzing WNBA games and players to deliver game-level predictions.
+Analyzing WNBA games and players to deliver game-level predictions, including a Monte Carlo
+season-simulation pipeline that projects full-season win totals and standings.
 
 ## Setup
 

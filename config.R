@@ -145,13 +145,14 @@ OFFSEASON_METHOD <- "reset"  # "reset", "mean_regress", or "decay"
 # "reset" as the default. Single train/test split, not cross-validated; re-run if the box score
 # cache grows substantially or behavior seems off.
 #
-# STALENESS FLAG (FINDING L-2, 2026-09-16): the benchmark above was run at window_size = 13, which
-# is NOT the live value — ROLLING_WINDOW_SIZE was subsequently lowered to 12 by the wider 3-25
-# sweep. The "reset" conclusion has NOT been rechecked at the current ROLLING_WINDOW_SIZE and is
-# therefore unverified at the value the pipeline actually runs with. Treat it as a carried-forward
-# default, not a validated one. Re-running the three-method comparison at ROLLING_WINDOW_SIZE
-# (read the constant, do not hardcode 12) is the open item; the margins that decided it were small
-# (reset 0.660 vs decay 0.657 AUC), so the winner could plausibly change.
+# STALENESS FLAG (FINDING L-2, 2026-09-16) — RESOLVED 2026-09-24: the benchmark above was originally
+# run at window_size = 13, before ROLLING_WINDOW_SIZE was lowered to 12 by the wider 3-25 sweep.
+# `WNBA_Analysis_Project.Rmd`'s offseason-transition section has since re-run the three-method
+# comparison at the live ROLLING_WINDOW_SIZE (=12 at the time of that re-run): reset AUC 0.672/Brier
+# 0.226, mean_regress AUC 0.658/Brier 0.232, decay AUC 0.656/Brier 0.233 — "reset" won again on both
+# AUC and Brier, same ranking as the window_size=13 run. Still a single train/test split, not
+# cross-validated. If ROLLING_WINDOW_SIZE changes again, re-run that Rmd section (read the constant,
+# do not hardcode a window size) rather than assuming this ranking still holds.
 REST_DAYS_CAP  <- 7
 N_SIMULATIONS  <- 10000
 

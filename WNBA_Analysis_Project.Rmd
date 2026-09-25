@@ -7,6 +7,7 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+source("config.R")
 ```
 
 ## Introduction
@@ -22,10 +23,11 @@ full provenance/validation history of that cache).
 
 Key differences from the NBA baseline that this analysis explicitly re-tests rather than assumes:
 
-1. **Rolling window size**: NBA used 18 games out of an 82-game season (~22%). `config.R` currently sets
-   `ROLLING_WINDOW_SIZE <- 9` as a *proportional placeholder* (18 * 44/82 ~= 9.66 -> 9) - this notebook
-   actually re-runs the NBA Rmd's own "test window sizes" experiment on real WNBA data (5/7/9/11/13
-   games) rather than trusting the proportional-scaling assumption blindly.
+1. **Rolling window size**: NBA used 18 games out of an 82-game season (~22%). `config.R` originally set
+   `ROLLING_WINDOW_SIZE` to a *proportional placeholder* of 9 (18 * 44/82 ~= 9.66 -> 9) - this notebook
+   actually re-runs the NBA Rmd's own "test window sizes" experiment on real WNBA data rather than
+   trusting the proportional-scaling assumption blindly. The live value, after that experiment (see
+   below), is `r ROLLING_WINDOW_SIZE`.
 2. **Season length**: `WNBA_SEASON_GAMES <- 44` (not 82) drives the Monte Carlo schedule simulation
    (round-robin games-per-opponent, zero-sum win totals, ridge-plot win-total axis).
 3. **Offseason transition method**: `config.R`'s `OFFSEASON_METHOD <- "reset"` was carried over from NBA
@@ -43,7 +45,7 @@ shown throughout this document (the live `knitr::kable()` output immediately aft
 "Actual result" tables reproduced in prose immediately below them) are the real output of that render,
 not a copy-pasted stand-in from a separate out-of-band script run - including the two tables that were
 previously captioned "window_size=13" but are now correctly captioned/computed at the live
-`ROLLING_WINDOW_SIZE` value of 12. If the underlying data (`box_scores_cache.rds`) or `config.R`
+`ROLLING_WINDOW_SIZE` value of `r ROLLING_WINDOW_SIZE`. If the underlying data (`box_scores_cache.rds`) or `config.R`
 constants change, re-run `rmarkdown::render("WNBA_Analysis_Project.Rmd")` again and refresh the pasted
 numbers below rather than trusting this snapshot indefinitely (per `ADR.md` Principle I / this agent's
 "pristine baseline" discipline noted in `agent3.md`).
@@ -57,7 +59,6 @@ library(wehoop)
 library(slider)
 library(xgboost)
 library(ggridges)
-source("config.R")
 ```
 
 ## Data Ingestion & Caching
@@ -229,8 +230,8 @@ ROC-AUC) in the earlier "Original - No LLM" NBA Rmd; the *current* `NBA_Analysis
 reuses that already-validated 18-game result rather than re-running the sweep every time. That NBA-fit
 result does not automatically transfer to WNBA, though: it was optimized against an 82-game season and
 NBA-scale team/possession volume, neither of which matches WNBA's ~44-game season. So we still repeat the
-same experiment methodology here on real WNBA data, rather than trusting the proportional-scaling
-placeholder (`ROLLING_WINDOW_SIZE <- 9`) as-is. A Random Forest is trained on seasons < 2026 and evaluated
+same experiment methodology here on real WNBA data, rather than trusting the original proportional-scaling
+placeholder of 9 as-is. A Random Forest is trained on seasons < 2026 and evaluated
 out-of-sample on season >= 2026 for each window size:
 
 ```{r window-size-experiment}
@@ -318,7 +319,8 @@ non-monotonic curve (e.g. window=5 dips to 0.591 ROC-AUC, worse than window=3's 
 back down after window=6/7). **The empirical peak is window=12** (Accuracy 0.645, ROC-AUC 0.678, Brier
 0.225) - narrowly ahead of window=13 (0.663 AUC) and window=15 (0.675 AUC), with the curve then oscillating
 in the low-0.65-to-mid-0.67 ROC-AUC range from 16 through 25 rather than continuing to improve. `config.R`'s
-`ROLLING_WINDOW_SIZE` is updated from **13 to 12** to reflect this empirically-best-tested value.
+`ROLLING_WINDOW_SIZE` is updated from **13** to the live value of **`r ROLLING_WINDOW_SIZE`** to reflect
+this empirically-best-tested value.
 
 **Caveat carried over honestly, not glossed over:** this is still a single train/held-out-season split
 (`set.seed(42)`, one RF fit per window size), not cross-validated. Windows 12, 13, and 15 are separated by
@@ -375,7 +377,7 @@ offseason_results <- map_dfr(c("reset", "mean_regress", "decay"), eval_offseason
 knitr::kable(offseason_results, caption = "Comparison of Offseason Transition Methodologies (Tested on Current WNBA Season)")
 ```
 
-**Actual result from `rmarkdown::render()`-ing this document end-to-end (2026-09-24, window_size=12 -
+**Actual result from `rmarkdown::render()`-ing this document end-to-end (2026-09-24, window_size=`r ROLLING_WINDOW_SIZE` -
 the live `config.R` `ROLLING_WINDOW_SIZE` value, not the stale window_size=13 this table was previously
 captioned with - RF/`ranger`, `set.seed(42)`, real 2026-season held-out test):**
 
@@ -460,7 +462,7 @@ benchmark_results <- bind_rows(
 knitr::kable(benchmark_results, caption = "Model Architecture Benchmark Performance on Current WNBA Test Season")
 ```
 
-**Actual result from `rmarkdown::render()`-ing this document end-to-end (2026-09-24, window_size=12 -
+**Actual result from `rmarkdown::render()`-ing this document end-to-end (2026-09-24, window_size=`r ROLLING_WINDOW_SIZE` -
 the live `config.R` `ROLLING_WINDOW_SIZE` value, not the stale window_size=13 this table was previously
 captioned with - "reset" method, `set.seed(42)`, real 2026-season held-out test):**
 
@@ -470,7 +472,7 @@ captioned with - "reset" method, `set.seed(42)`, real 2026-season held-out test)
 | Random Forest (ranger)   | 0.631 | 0.673 | 0.226 | 0.645 |
 | XGBoost (boost_tree)     | 0.607 | 0.676 | 0.235 | 0.688 |
 
-At the current (window_size=12) live setting, the picture is not as clean a Random-Forest sweep as the
+At the current (window_size=`r ROLLING_WINDOW_SIZE`) live setting, the picture is not as clean a Random-Forest sweep as the
 earlier window_size=13 run reported: **XGBoost now narrowly edges Random Forest on ROC-AUC** (0.676 vs
 0.673, a 0.003 gap that is plausibly within sampling noise for a single train/held-out-season split),
 but **Random Forest still wins on Brier and Log-Loss** (0.226/0.645, both best of the three) as well as
@@ -692,16 +694,19 @@ offseason-transition comparison, model-architecture benchmarking, Monte Carlo se
 real WNBA data rather than assuming NBA's conclusions transfer, per `WNBA_REPLICATION_PLAN.md`'s Tier 3
 guidance. The rolling-window-size and offseason-transition-method experiments above are WNBA-specific
 additions not present in the original NBA Rmd (the NBA Rmd only ran the offseason-method comparison,
-never a window-size sweep) - added here specifically because `config.R`'s `ROLLING_WINDOW_SIZE <- 9`
-and `OFFSEASON_METHOD <- "reset"` were both explicitly flagged as unvalidated placeholders in T0's
-Handoff Notes.
+never a window-size sweep) - added here specifically because `config.R`'s `ROLLING_WINDOW_SIZE`
+(originally 9) and `OFFSEASON_METHOD <- "reset"` were both explicitly flagged as unvalidated placeholders
+in T0's Handoff Notes. The window-size experiment's empirical winner has already been applied back to
+`config.R`, whose live `ROLLING_WINDOW_SIZE` is now `r ROLLING_WINDOW_SIZE`; the offseason-method
+experiment confirmed `"reset"` as the live `OFFSEASON_METHOD` default.
 
-**Once this notebook has actually been knit end-to-end** (see the status note at the top of this
-document), a human/future agent should: (1) update `config.R`'s `ROLLING_WINDOW_SIZE` and
-`OFFSEASON_METHOD` if the empirical winners differ from the current placeholders, and log that change
-in `task_assignments.md`; (2) treat this file, once finalized, with the same "pristine baseline, do not
-hand-edit" discipline as `NBA_Analysis_Project.Rmd` (`ADR.md` Principle I) - re-run the whole
-methodology fresh rather than patching numbers in by hand if the underlying data changes.
+This notebook has now been knit end-to-end (see the status note at the top of this document) with both
+placeholders resolved against real empirical results rather than left as carried-over NBA defaults. If
+the underlying data or either constant's empirical winner changes again, a human/future agent should:
+(1) re-run the relevant experiment chunk(s) above, update `config.R` accordingly, and log that change in
+`task_assignments.md`; (2) treat this file with the same "pristine baseline, do not hand-edit" discipline
+as `NBA_Analysis_Project.Rmd` (`ADR.md` Principle I) - re-run the whole methodology fresh via
+`rmarkdown::render()` rather than patching numbers in by hand.
 
 For downstream player-level rating work (bottom-up team ratings, lineup synergy, roster continuity),
 see `roster_bottom_up_engine.R`, `lineup_synergy.R`, and `roster_dynamics.R` in this same folder -
