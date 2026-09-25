@@ -147,14 +147,31 @@ build_feature_df <- function(data, window_size = ROLLING_WINDOW_SIZE, method = "
       features <- features |>
         mutate(
           roll_pts_scored = if_else(is_new_season, 0.5 * roll_pts_scored + 0.5 * mean(team_score, na.rm = TRUE), roll_pts_scored),
-          roll_efg = if_else(is_new_season, 0.5 * roll_efg + 0.5 * mean(efg, na.rm = TRUE), roll_efg),
-          roll_ts  = if_else(is_new_season, 0.5 * roll_ts + 0.5 * mean(ts, na.rm = TRUE), roll_ts)
+          roll_oreb       = if_else(is_new_season, 0.5 * roll_oreb + 0.5 * mean(offensive_rebounds, na.rm = TRUE), roll_oreb),
+          roll_dreb       = if_else(is_new_season, 0.5 * roll_dreb + 0.5 * mean(defensive_rebounds, na.rm = TRUE), roll_dreb),
+          roll_ast        = if_else(is_new_season, 0.5 * roll_ast + 0.5 * mean(assists, na.rm = TRUE), roll_ast),
+          roll_stl        = if_else(is_new_season, 0.5 * roll_stl + 0.5 * mean(steals, na.rm = TRUE), roll_stl),
+          roll_blk        = if_else(is_new_season, 0.5 * roll_blk + 0.5 * mean(blocks, na.rm = TRUE), roll_blk),
+          roll_tov        = if_else(is_new_season, 0.5 * roll_tov + 0.5 * mean(turnovers, na.rm = TRUE), roll_tov),
+          roll_efg        = if_else(is_new_season, 0.5 * roll_efg + 0.5 * mean(efg, na.rm = TRUE), roll_efg),
+          roll_tovp       = if_else(is_new_season, 0.5 * roll_tovp + 0.5 * mean(tov, na.rm = TRUE), roll_tovp),
+          roll_ftr        = if_else(is_new_season, 0.5 * roll_ftr + 0.5 * mean(ftr, na.rm = TRUE), roll_ftr),
+          roll_ts         = if_else(is_new_season, 0.5 * roll_ts + 0.5 * mean(ts, na.rm = TRUE), roll_ts)
         )
     } else {
       features <- features |>
         mutate(
           roll_pts_scored = if_else(is_new_season, 0.8 * roll_pts_scored + 0.2 * mean(team_score, na.rm = TRUE), roll_pts_scored),
-          roll_efg = if_else(is_new_season, 0.8 * roll_efg + 0.2 * mean(efg, na.rm = TRUE), roll_efg)
+          roll_oreb       = if_else(is_new_season, 0.8 * roll_oreb + 0.2 * mean(offensive_rebounds, na.rm = TRUE), roll_oreb),
+          roll_dreb       = if_else(is_new_season, 0.8 * roll_dreb + 0.2 * mean(defensive_rebounds, na.rm = TRUE), roll_dreb),
+          roll_ast        = if_else(is_new_season, 0.8 * roll_ast + 0.2 * mean(assists, na.rm = TRUE), roll_ast),
+          roll_stl        = if_else(is_new_season, 0.8 * roll_stl + 0.2 * mean(steals, na.rm = TRUE), roll_stl),
+          roll_blk        = if_else(is_new_season, 0.8 * roll_blk + 0.2 * mean(blocks, na.rm = TRUE), roll_blk),
+          roll_tov        = if_else(is_new_season, 0.8 * roll_tov + 0.2 * mean(turnovers, na.rm = TRUE), roll_tov),
+          roll_efg        = if_else(is_new_season, 0.8 * roll_efg + 0.2 * mean(efg, na.rm = TRUE), roll_efg),
+          roll_tovp       = if_else(is_new_season, 0.8 * roll_tovp + 0.2 * mean(tov, na.rm = TRUE), roll_tovp),
+          roll_ftr        = if_else(is_new_season, 0.8 * roll_ftr + 0.2 * mean(ftr, na.rm = TRUE), roll_ftr),
+          roll_ts         = if_else(is_new_season, 0.8 * roll_ts + 0.2 * mean(ts, na.rm = TRUE), roll_ts)
         )
     }
     features <- features |> ungroup()
@@ -502,10 +519,18 @@ team_lookup <- box_scores |>
   distinct() |>
   mutate(team_id = as.integer(team_id))
 
-team_profiles_current <- model_df |>
-  filter(season == CURRENT_SEASON) |>
-  group_by(home_team) |>
-  slice_tail(n = 1) |>
+current_season_df <- model_df |> filter(season == CURRENT_SEASON)
+
+team_profiles_current <- bind_rows(
+  current_season_df |>
+    select(team_id = home_team, game_date, days_rest = home_days_rest, starts_with("home_roll_")) |>
+    rename_with(~ sub("^home_roll_", "roll_", .), starts_with("home_roll_")),
+  current_season_df |>
+    select(team_id = away_team, game_date, days_rest = away_days_rest, starts_with("away_roll_")) |>
+    rename_with(~ sub("^away_roll_", "roll_", .), starts_with("away_roll_"))
+) |>
+  group_by(team_id) |>
+  slice_max(game_date, n = 1, with_ties = FALSE) |>
   ungroup()
 
 teams <- unique(team_lookup$team_id)
@@ -518,7 +543,14 @@ sched_list <- list()
 for (i in 1:n_teams) {
   t_home <- teams[i]
   others <- setdiff(teams, t_home)
-  opps <- sample(rep(others, length.out = half_season))
+  # Balanced round-robin: every opponent gets `half_season %/% length(others)` home
+  # meetings, and the `half_season %% length(others)` leftover meetings go to a
+  # *randomly* chosen subset of opponents each time this chunk runs - not always the
+  # same low-index teams, which `rep(others, length.out = half_season)` alone would do.
+  base_reps <- half_season %/% length(others)
+  remainder <- half_season %% length(others)
+  extra_opps <- if (remainder > 0) sample(others, remainder) else integer(0)
+  opps <- sample(c(rep(others, base_reps), extra_opps))
   sched_list[[i]] <- tibble(
     home_team = t_home,
     away_team = opps,
@@ -538,9 +570,7 @@ sched_sim <- bind_rows(sched_list) |>
   )
 
 profiles <- team_profiles_current |>
-  select(team_id = home_team, starts_with("home_roll_"))
-
-names(profiles) <- gsub("^home_roll_", "roll_", names(profiles))
+  select(team_id, starts_with("roll_"))
 
 sched_sim_features <- sched_sim |>
   left_join(profiles, by = c("home_team" = "team_id")) |>
