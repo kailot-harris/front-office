@@ -8,29 +8,42 @@ output: pdf_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 source("config.R")
+
+# Loaded early (ahead of the `import-box-scores` chunk below in Data Ingestion & Caching) so the
+# live row count can be cited inline in the Introduction. Mirrors that later chunk's cache-first
+# logic; see that chunk for the fallback-path normalization details.
+if (file.exists(CACHE_TEAM_BOX)) {
+  box_scores <- readRDS(CACHE_TEAM_BOX)
+} else {
+  source("player_metrics.R")
+  box_scores <- wehoop::load_wnba_team_box(seasons = ALL_SEASONS) |>
+    normalize_team_abbreviation() |>
+    dplyr::filter(team_abbreviation %in% names(WNBA_TEAMS))
+  saveRDS(box_scores, CACHE_TEAM_BOX)
+}
 ```
 
 ## Introduction
 
-This report asks one central question: an existing analysis (`NBA_Analysis_Project.Rmd`) built and
-validated its modeling choices on the NBA - an 82-game season, 30 teams - so does that same approach
-still hold up unmodified when applied to the WNBA, which plays a much shorter season (44 games) with
-15 franchises? Concretely, three modeling choices tuned on the NBA are re-tested here against real
-WNBA data: the optimal size of the rolling-window features used to predict each game, the best method
-for carrying team strength across the offseason, and which model architecture (logistic regression,
-random forest, or gradient boosting) performs best - and the resulting win-total and standings
-projections that follow once those three choices are re-tuned for the WNBA rather than copied from
-the NBA baseline. Each of these is addressed in its own section below.
+This report asks one central question. An existing analysis (`NBA_Analysis_Project.Rmd`) built and
+validated its modeling choices on the NBA: an 82-game season, 30 teams. Does that same approach still
+hold up unmodified when applied to the WNBA, which plays a much shorter season (44 games) with 15
+franchises? Concretely, three modeling choices tuned on the NBA are re-tested here against real WNBA
+data: the optimal size of the rolling-window features used to predict each game, the best method for
+carrying team strength across the offseason, and which model architecture (logistic regression, random
+forest, or gradient boosting) performs best. The resulting win-total and standings projections follow
+once those three choices are re-tuned for the WNBA rather than copied from the NBA baseline. Each of
+these is addressed in its own section below.
 
 The methodology mirrors the NBA analysis exactly (rolling-window feature comparison,
-offseason-transition comparison, model architecture benchmark, Monte Carlo season simulation),
-re-run from scratch on real WNBA data - `wehoop` team box scores from 2019-2026, `box_scores_cache.rds`,
-3,906 real team-game rows across the 15 real `WNBA_TEAMS` franchises - rather than assumed to transfer
-as-is. (For the record of how this build fits into the broader project: it is tracked internally as
-T2 / `wnba_rating_engine_agent`, Phase 2 of `task_assignments.md`, and follows the
+offseason-transition comparison, model architecture benchmark, Monte Carlo season simulation). It is
+re-run from scratch on real WNBA data - `wehoop` team box scores from 2019-2026, cached in
+`box_scores_cache.rds`, comprising `r nrow(box_scores)` real team-game rows across the 15 real
+`WNBA_TEAMS` franchises - rather than assumed to transfer as-is. This follows the
 `WNBA_REPLICATION_PLAN.md` §(b)/(d) guidance that this should not be a simple find-and-replace port of
-the NBA notebook - see `task_assignments.md`'s T0/T1 Handoff Notes for the full provenance/validation
-history of the underlying data cache.)
+the NBA notebook. The underlying data cache's provenance and validation history - including the
+`CONN`->`CON` normalization and All-Star/exhibition-row filtering described below - is documented
+alongside the ingestion code itself.
 
 Key differences from the NBA baseline that this analysis explicitly re-tests rather than assumes:
 
@@ -48,19 +61,16 @@ Key differences from the NBA baseline that this analysis explicitly re-tests rat
 4. **Team universe**: 15 real WNBA franchises (`config.R`'s `WNBA_TEAMS`, including the 2026 expansion
    Toronto Tempo and Portland Fire franchises) instead of NBA's 30.
 
-**A note on this document's provenance (read before trusting any number below):** every code chunk in
-this file is real and complete. As of **2026-09-24, this .Rmd file has been formally `rmarkdown::render()`-ed
-end-to-end** (`rmarkdown::render("WNBA_Analysis_Project.Rmd")`, TinyTeX/MiKTeX `pdflatex` toolchain,
-`renv`-restored package versions) and successfully produced `WNBA_Analysis_Project.pdf`. The tables
-shown throughout this document (the live `knitr::kable()` output immediately after each chunk, and the
-"Actual result" tables reproduced in prose immediately below them) are the real output of that render,
-not a copy-pasted stand-in from a separate out-of-band script run - including the two tables that were
-previously captioned "window_size=13" but are now correctly captioned/computed at the live
-`ROLLING_WINDOW_SIZE` value of `r ROLLING_WINDOW_SIZE`. If the underlying data (`box_scores_cache.rds`) or `config.R`
-constants change, this notebook should be re-rendered end-to-end via
-`rmarkdown::render("WNBA_Analysis_Project.Rmd")` and the pasted numbers below refreshed, rather than
-this snapshot being trusted indefinitely or hand-edited in place (`ADR.md` Principle I: treat this file
-as a pristine, re-render-from-source baseline).
+**A note on this document's provenance:** this .Rmd file was formally `rmarkdown::render()`-ed
+end-to-end on **2026-09-24** (`rmarkdown::render("WNBA_Analysis_Project.Rmd")`, TinyTeX/MiKTeX
+`pdflatex` toolchain, `renv`-restored package versions), producing `WNBA_Analysis_Project.pdf`. The
+tables shown throughout this document - the live `knitr::kable()` output immediately after each chunk,
+and the "Actual result" tables reproduced in prose immediately below them - are the output of that
+render, including the two tables captioned/computed at the live `ROLLING_WINDOW_SIZE` value of
+`r ROLLING_WINDOW_SIZE`. If the underlying data (`box_scores_cache.rds`) or `config.R` constants
+change, this notebook should be re-rendered end-to-end via `rmarkdown::render("WNBA_Analysis_Project.Rmd")`
+and the numbers below refreshed accordingly (`ADR.md` Principle I: this file is treated as a pristine,
+re-render-from-source baseline).
 
 Load packages:
 
@@ -76,9 +86,9 @@ library(withr)
 
 ## Data Ingestion & Caching
 
-Load the box score data from the `wehoop` API for seasons 2019 through 2026 (via T1's
+Load the box score data from the `wehoop` API for seasons 2019 through 2026, via the
 `daily_ingest.R`-produced cache, which already applies the `CONN`->`CON` normalization and the
-All-Star/exhibition-row filter documented in `task_assignments.md`'s T0/T1 Handoff Notes):
+All-Star/exhibition-row filter described earlier:
 
 ```{r import-box-scores}
 if (file.exists(CACHE_TEAM_BOX)) {
@@ -447,20 +457,20 @@ window_peak_brier <- window_peak_row$`Brier Score`
 sweep looked monotonically improving and suggested the metric was still climbing at 13 with no plateau in
 sight. The full 3-25 sweep shows that was an artifact of only sampling odd points on a genuinely noisy,
 non-monotonic curve. **The empirical peak in the live sweep above is window=`r window_peak_size`**
-(Accuracy `r window_peak_acc`, ROC-AUC `r window_peak_auc`, Brier `r window_peak_brier`) - read directly
-from `window_size_results` rather than restated by hand. `config.R`'s `ROLLING_WINDOW_SIZE` is set to
-the live value of **`r ROLLING_WINDOW_SIZE`** to reflect this empirically-best-tested value (re-run this
-chunk and update `config.R` if a future re-run of the sweep shifts the peak).
+(Accuracy `r window_peak_acc`, ROC-AUC `r window_peak_auc`, Brier `r window_peak_brier`). This is read
+directly from `window_size_results` rather than restated by hand. `config.R`'s `ROLLING_WINDOW_SIZE` is
+set to the live value of **`r ROLLING_WINDOW_SIZE`** to reflect this empirically-best-tested value
+(re-run this chunk and update `config.R` if a future re-run of the sweep shifts the peak).
 
 **Caveat carried over honestly, not glossed over:** this is still a single train/held-out-season split
 (one RF fit per window size, each independently seeded per issue #31), not cross-validated. Several
-nearby window sizes are typically separated by only a few thousandths of ROC-AUC in this sweep - a gap
-that small on this test set is plausibly within sampling noise, so the peak above should be read as "the
+nearby window sizes are typically separated by only a few thousandths of ROC-AUC in this sweep. A gap
+that small on this test set is plausibly within sampling noise. So the peak above should be read as "the
 best-performing point in this specific sweep," not as a statistically confirmed global optimum.
 `ML_BENCHMARK_REPORT.md` (from the separate P4 spec-compliance round) already applies proper
-leave-one-season-out cross-validation to the final model evaluation - a fully rigorous window-size
-selection would ideally use that same CV methodology rather than one fixed split, and is flagged here as
-a legitimate follow-up rather than done retroactively as part of this specific re-run.
+leave-one-season-out cross-validation to the final model evaluation. A fully rigorous window-size
+selection would ideally use that same CV methodology rather than one fixed split. This is flagged here
+as a legitimate follow-up rather than done retroactively as part of this specific re-run.
 
 ## Offseason Transition Methodology Comparison
 
