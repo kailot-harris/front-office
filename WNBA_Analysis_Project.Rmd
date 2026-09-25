@@ -282,7 +282,7 @@ same experiment methodology here on real WNBA data, rather than trusting the ori
 placeholder of 9 as-is. A Random Forest is trained on seasons < 2026 and evaluated
 out-of-sample on season >= 2026 for each window size:
 
-```{r window-size-experiment}
+```{r window-size-experiment, fig.cap="Out-of-sample ROC-AUC across rolling window sizes 3-25, with a 95% bootstrap confidence band from resampling the held-out test-set predictions at each window size."}
 set.seed(42)
 # `data/window_sweep_3_25_results.csv` is the authoritative artifact for this sweep (see
 # config.R's ROLLING_WINDOW_SIZE comment) - load it directly instead of recomputing all 23
@@ -307,8 +307,31 @@ eval_window_size <- function(w) {
   auc <- preds |> roc_auc(truth = target_home_win, .pred_Win, event_level = "first") |> pull(.estimate)
   brier <- mean((if_else(preds$target_home_win == "Win", 1, 0) - preds$.pred_Win)^2)
 
+  # Issue #40: add a resampling-based uncertainty band on ROC-AUC without re-fitting 23 random
+  # forests. Bootstrap-resample (with replacement) the already-computed held-out `preds` rows
+  # B times, recompute roc_auc() on each resample, and take the 2.5th/97.5th percentiles as a
+  # CI. Seeded deterministically per window size (digest2int() hash of a window-specific string,
+  # via withr::with_seed() so the global RNG stream used elsewhere in this chunk/document is
+  # untouched) so re-running the sweep twice reproduces identical CI bounds.
+  n_boot <- 200
+  boot_seed <- digest::digest2int(paste0("window-size-boot-", w))
+  boot_aucs <- withr::with_seed(boot_seed, {
+    vapply(seq_len(n_boot), function(b) {
+      boot_idx <- sample.int(nrow(preds), nrow(preds), replace = TRUE)
+      boot_preds <- preds[boot_idx, ]
+      tryCatch(
+        boot_preds |>
+          roc_auc(truth = target_home_win, .pred_Win, event_level = "first") |>
+          pull(.estimate),
+        error = function(e) NA_real_
+      )
+    }, FUN.VALUE = numeric(1))
+  })
+  auc_ci <- quantile(boot_aucs, probs = c(0.025, 0.975), na.rm = TRUE, names = FALSE)
+
   tibble(Window_Size = w, N_Train = nrow(train_data), N_Test = nrow(test_data),
-         Accuracy = round(acc, 4), `ROC-AUC` = round(auc, 4), `Brier Score` = round(brier, 4))
+         Accuracy = round(acc, 4), `ROC-AUC` = round(auc, 4), `Brier Score` = round(brier, 4),
+         ROC_AUC_CI_Lower = round(auc_ci[1], 4), ROC_AUC_CI_Upper = round(auc_ci[2], 4))
 }
 
 window_sweep_csv <- file.path(PROJECT_DIR, "data", "window_sweep_3_25_results.csv")
@@ -316,16 +339,23 @@ if (file.exists(window_sweep_csv)) {
   window_size_results <- readr::read_csv(window_sweep_csv, show_col_types = FALSE)
 } else {
   window_size_results <- map_dfr(3:25, eval_window_size)
+  # Issue #40: persist the freshly-computed sweep (now including the ROC_AUC_CI_Lower/Upper
+  # bootstrap-CI columns) back to the authoritative CSV artifact so subsequent knits reuse it
+  # via the file.exists() branch above instead of recomputing every render.
+  readr::write_csv(window_size_results, window_sweep_csv)
 }
 knitr::kable(window_size_results, caption = "WNBA Rolling-Window Size Comparison (Tested Out-of-Sample on Current Season, Full 3-25 Sweep)")
 
 ggplot(window_size_results, aes(x = Window_Size, y = `ROC-AUC`)) +
+  # Issue #40: 95% bootstrap CI band (2.5th/97.5th percentiles of ROC-AUC across 200
+  # resamples of the held-out predictions per window size - see eval_window_size() above).
+  geom_ribbon(aes(ymin = ROC_AUC_CI_Lower, ymax = ROC_AUC_CI_Upper), fill = "steelblue", alpha = 0.2) +
   geom_line(color = "steelblue") +
   geom_point(color = "steelblue", size = 2) +
   theme_minimal() +
   labs(
     title = "Out-of-Sample ROC-AUC vs. Rolling-Window Size (Full 3-25 Sweep)",
-    subtitle = "Non-monotonic, noisy curve - not a smooth improvement toward a single optimum",
+    subtitle = "Non-monotonic, noisy curve with a 95% bootstrap CI band - not a smooth improvement toward a single optimum",
     x = "Window Size (games)",
     y = "ROC-AUC (held-out current season)"
   )
@@ -525,7 +555,7 @@ the ROC-AUC comparison itself is a settled result.
 
 ## Feature Importance
 
-```{r feature-plots}
+```{r feature-plots, fig.cap="Top 10 features by Gini-impurity importance from the Random Forest model (rf_fit), ranked by mean decrease in node impurity."}
 rf_engine <- extract_fit_engine(rf_fit)
 imp_vec <- rf_engine$variable.importance
 
@@ -736,7 +766,7 @@ knitr::kable(head(standings_sim_summary, 10), caption = sprintf("Top 10 Projecte
 
 ## Win Total Density Ridge Plot
 
-```{r ridge-plot}
+```{r ridge-plot, fig.cap="Simulated win-total distributions for the top 10 projected WNBA teams across all Monte Carlo season simulations, with the .500 win-percentage threshold marked."}
 top10_teams <- head(standings_sim_summary$Team, 10)
 
 sim_results |>
@@ -744,6 +774,11 @@ sim_results |>
   filter(team_name %in% top10_teams) |>
   ggplot(aes(x = total_wins, y = reorder(team_name, total_wins, median), fill = team_name)) +
   geom_density_ridges(alpha = 0.7, show.legend = FALSE) +
+  # Issue #39: default ggplot2 categorical hue palette is not colorblind-safe; viridis's
+  # discrete scale is perceptually uniform and distinguishable under the common forms of color
+  # vision deficiency (viridisLite is already a transitive dependency of ggplot2/scales per
+  # renv.lock, so no new pinned package is required).
+  scale_fill_viridis_d() +
   geom_vline(xintercept = WNBA_SEASON_GAMES / 2, linetype = "dashed", color = "darkred") +
   annotate(
     geom = "label",
