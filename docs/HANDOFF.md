@@ -1,4 +1,4 @@
-# Handoff — 2026-09-25 (Review Round 2, Tier 3) — CURRENT STATE (read this section first, supersedes everything below)
+# Handoff — 2026-09-25 (Review Round 2, Tier 4) — CURRENT STATE (read this section first, supersedes everything below)
 
 **This section supersedes every pointer further down this file, including the "Tier 6" section
 immediately below it.** New thread, same document: `docs/review_round_2_roadmap.md` is a fresh
@@ -10,20 +10,59 @@ implementation status and per-session verification evidence.
 
 ## Where the thread actually stands (verified against `gh issue list`, not assumed from docs)
 
-**Tiers 1-3 are done (issues #29-37, 9 of 14). Tier 4 (Visualization) is next.**
+**Tiers 1-4 are done (issues #29-40, 12 of 14). Tier 5 (Code quality) is next and last.**
 
 | Tier | Roadmap items | Issues | Status |
 |---|---|---|---|
 | 1 — Correctness bugs | 1, 2 | #29, #30 | Closed — commit `211c5c0` |
 | 2 — Reproducibility | 3, 4, 5 | #31, #32, #33 | Closed — commit `956b5f9` |
 | 3 — Integration/narrative | 6, 7, 8, 9 | #34, #35, #36, #37 | Closed — commit `7127711` |
-| 4 — Visualization | 10, 11, 12 | #38, #39, #40 | Open — next up |
-| 5 — Code quality | 13, 14 | #41, #42 | Open |
+| 4 — Visualization | 10, 11, 12 | #38, #39, #40 | Closed — commit `2267484` |
+| 5 — Code quality | 13, 14 | #41, #42 | Open — next up |
 
 All 14 issues were filed in the Tier 1-2 session (they didn't exist before — `gh issue list`
 previously topped out at #28). Issue numbering matches roadmap item numbering minus 28 (item 1 =
 #29, item 14 = #42) — useful for cross-referencing `docs/review_round_2_roadmap.md`'s numbered list
 directly.
+
+## What this session did (#38-40, Tier 4) via `subagent-brief`
+
+One full-brief `subagent-brief` dispatch (`.subagent-runs/brief_tier4.md`, run
+`20260925-233758-123413`) in its own isolated git worktree.
+
+**Process deviation caught and fixed — read this before trusting any future Tier 4/5 worktree
+without re-checking:** the subagent's worktree was silently branched from a stale pre-Tier-1-3
+base (`44ef8e0`, the commit right after Round 1 closed), not current `main`. The subagent noticed
+this itself mid-task (its own `git diff main` showed Tiers 1-3's code missing), and — contrary to
+this file's own documented rule ("don't let a subagent do this — it doesn't have the context of
+what changed on `main` since its branch point") — resolved the resulting 3-way merge conflict
+itself rather than stopping and returning `blocked`. The orchestrator did not treat the subagent's
+self-report of success as sufficient: independently re-diffed the subagent's merge resolution
+(`git diff main HEAD -- WNBA_Analysis_Project.Rmd` in the worktree) and confirmed it touched only
+the three intended `ggplot` chunks with zero disturbance to Tier 1-3 content, so the resolution was
+accepted rather than redone from scratch. Separately, that same merge had dropped
+`data/window_sweep_3_25_results.csv`/`.hash` from git's index (left as untracked regenerated files
+on disk) — caught via `git status --short` before merging, fixed by re-`git add`ing and
+re-committing both files (verified the CSV's point-estimate columns and the hash's md5sum both
+still matched the pre-Tier-4 baseline/current `box_scores_cache.rds` before doing so).
+**Takeaway: subagents in this repo should never resolve a stale-base merge on their own — if a
+worktree brief's assumed branch point turns out wrong, the correct subagent behavior is `blocked`,
+not self-resolution, even when the fix looks obviously correct in hindsight.**
+
+| Issue | What | Verified how |
+|---|---|---|
+| #38 | Added `fig.cap` to all three `ggplot()` chunk headers (`window-size-experiment`, `feature-plots`, `ridge-plot`), each with a short descriptive caption matching this document's existing table-caption tone. | `grep -n "fig.cap"` shows exactly 3 matches, one per chunk; fresh render shows numbered figure captions ("Figure 1/2/3: ...") under each plot in the rendered PDF. |
+| #39 | Ridge plot's `fill = team_name` now routes through `scale_fill_viridis_d()` (colorblind-safe, perceptually uniform) instead of ggplot2's default categorical hue palette. `viridisLite` was already a transitive dependency (via ggplot2/scales), so `renv.lock` needed no change. | `grep -n "scale_fill_viridis_d"` shows it added to the ridge-plot chunk's layer chain; visually confirmed in the re-rendered PDF. |
+| #40 | `eval_window_size()` now bootstrap-resamples (200 draws, with replacement) the already-computed held-out `preds` per window size, recomputes `roc_auc()` on each resample, and takes the 2.5th/97.5th percentiles as a 95% CI (`ROC_AUC_CI_Lower`/`ROC_AUC_CI_Upper`, new columns) — seeded via `digest::digest2int()` + a nested `withr::with_seed()` composing with the existing per-iteration seed from issue #31. Plotted as a `geom_ribbon()` band around the existing ROC-AUC line. Existing `Accuracy`/`ROC-AUC`/`Brier Score` point estimates are byte-identical to the pre-edit baseline — only new columns were added. | `grep -n "geom_ribbon"` shows the new layer; re-running the sweep twice (deleting the staleness sidecar between runs) produced byte-identical CSVs, confirming deterministic seeding; window=3/4 rows' `Accuracy`/`ROC-AUC`/`Brier Score` values diffed identical against `git show main:data/window_sweep_3_25_results.csv`. |
+
+Fast-forward merged to `main` as `2267484` (after the orchestrator's fix-up commit on top of the
+subagent's merge). Closed #38-#40 via `gh issue close N --comment "..."` citing the commit and this
+session's run ID, with a note about the process deviation above. Git-worktree registration for
+`.claude/worktrees/agent-a8e25c3957ee0186e` was removed (`git worktree remove` + `git branch -d`),
+but the directory itself survived — same Windows file-lock pattern already flagged for two other
+leftover directories below (`agent-a7b9acfce9fb44490`, `agent-af10fe384664826e6`); now three inert,
+unregistered leftover directories exist under `.claude/worktrees/`, none deleted without user
+confirmation.
 
 ## What this session did (#34-37, Tier 3) via `subagent-brief`
 
@@ -46,13 +85,20 @@ Worktree and branch (`.claude/worktrees/agent-ae400f7cf8130ae91`,
 
 ## Concrete next step
 
-**Tier 4 — Visualization (issues #38, #39, #40; roadmap items 10-12).** Re-verify line numbers
-against the current `WNBA_Analysis_Project.Rmd` before writing the brief (Tier 3's edits shifted
-line numbers again). Per the roadmap: add `fig.cap` to every `ggplot` chunk, switch the ridge
-plot's `fill = team_name` to a colorblind-safe discrete palette, and add an uncertainty
-representation (error bars/bands) to the window-size sweep chart. After Tier 4, only Tier 5
-remains (code quality, #41-42 — factor the duplicated feature-computation block, pin `vip` for
-permutation importance).
+**Tier 5 — Code quality (issues #41, #42; roadmap items 13-14) — final tier of this roadmap.**
+Re-verify line numbers against the current `WNBA_Analysis_Project.Rmd` before writing the brief
+(Tier 4's edits shifted line numbers again, including inside `eval_window_size()` where the new
+bootstrap-CI block now sits between the `roc_auc()`/`brier` calc and the returned `tibble()`).
+Per the roadmap: factor the duplicated ~20-line feature-computation block (eFG%/TOV%/FTR/TS% and
+the `roll_*` `slide_dbl()` columns) — currently repeated verbatim between the "reset" and
+"mean_regress/decay" branches of `build_feature_df()` — into one shared helper called from both
+branches; and pin `vip` as a dependency (`renv::install()` + `renv::snapshot()`) to switch the
+feature-importance chart to (or add alongside) permutation importance, resolving the Gini-impurity
+bias the document already flags in its Feature Importance caveat paragraph but doesn't act on.
+**Before writing this tier's brief, verify `git log HEAD..main --oneline` is empty in the new
+worktree before dispatching** — this is now the third tier in a row where a stale worktree base
+was either caught (Tiers 2 and 4) or avoided (Tier 3); don't assume it'll be clean by default.
+After Tier 5, this roadmap (all 14 issues, #29-42) is complete.
 
 ## What this session did (#29-33, Tiers 1-2) via `subagent-brief`
 
