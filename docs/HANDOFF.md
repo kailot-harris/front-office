@@ -1,4 +1,13 @@
-# Handoff — 2026-09-25 (Review Round 2, Tier 4) — CURRENT STATE (read this section first, supersedes everything below)
+# Handoff — 2026-09-26 (Review Round 2, Tier 5 — ROADMAP COMPLETE) — CURRENT STATE (read this section first, supersedes everything below)
+
+**All 14 issues (#29-#42) of `docs/review_round_2_roadmap.md` are now closed.** Tier 5 (#41, #42)
+was the last tier; see "What this session did (#41-42, Tier 5)" below for what happened and a
+recurring environment bug (stale worktree base) worth knowing about before dispatching any future
+`subagent-brief` work in this repo. The section immediately below (originally written as the
+Tier 4 current-state section) is kept for its Tier 1-4 history/table but is otherwise superseded
+by this paragraph.
+
+# Handoff — 2026-09-25 (Review Round 2, Tier 4) — superseded by the Tier 5 section above
 
 **For whoever picks this up next with zero prior context:** this repo (`WNBA Analytics`) is a
 WNBA sports-analytics/betting pipeline — team/player rating models, market-odds integration, a
@@ -22,7 +31,7 @@ implementation status and per-session verification evidence.
 
 ## Where the thread actually stands (verified against `gh issue list`, not assumed from docs)
 
-**Tiers 1-4 are done (issues #29-40, 12 of 14). Tier 5 (Code quality) is next and last.**
+**All 14 issues are closed. The Round 2 roadmap is complete.**
 
 | Tier | Roadmap items | Issues | Status |
 |---|---|---|---|
@@ -30,7 +39,60 @@ implementation status and per-session verification evidence.
 | 2 — Reproducibility | 3, 4, 5 | #31, #32, #33 | Closed — commit `956b5f9` |
 | 3 — Integration/narrative | 6, 7, 8, 9 | #34, #35, #36, #37 | Closed — commit `7127711` |
 | 4 — Visualization | 10, 11, 12 | #38, #39, #40 | Closed — commit `2267484` |
-| 5 — Code quality | 13, 14 | #41, #42 | Open — next up |
+| 5 — Code quality | 13, 14 | #41, #42 | Closed — commit `528b455` |
+
+## What this session did (#41-42, Tier 5) via `subagent-brief`
+
+Two full-brief dispatches were needed. **The first (run `20260926-002636-586b30`) hit the
+stale-worktree-base bug for the third time this roadmap** (after Tiers 2 and 4) — its
+`isolation: "worktree"` agent was silently branched from commit `44ef8e0` (9 commits behind
+`main`, the same pre-Tier-1-3 commit implicated in the Tier 4 incident), not current `main`. This
+time, unlike Tier 4, the subagent **did not self-resolve** the mismatch — it correctly returned
+`status: blocked` after being prompted to re-check its own stale-base output (it had misread `git
+log HEAD..main --oneline`'s non-empty output as confirmation the check was clean). That is the
+correct subagent behavior this file has been asking for since the Tier 4 incident. But the
+work was still unusable as-is: refactoring `build_feature_df()`'s `mean_regress`/`decay` branch
+against that stale base silently dropped Tier 1's issue #30 fix (the
+`league_season_means`/`prior_season_lookup`/`league_prior_means`/`prior_lm_*` mechanism), reverting
+to the pre-#30 bug (`mean(team_score, na.rm = TRUE)` inside `group_by(team_id)` — each team's own
+all-history mean instead of the prior season's league-wide average). That worktree was kept at
+`.claude/worktrees/agent-a7e4dc6b1b436249f` (reason: `blocked`) rather than deleted or merged.
+
+**Given three stale-base incidents in a row, the orchestrator stopped trusting `isolation:
+"worktree"` to branch from the right commit and instead created the worktree manually**
+(`git worktree add .claude/worktrees/tier5-retry -b worktree-tier5-retry main`, confirmed
+`git rev-parse HEAD` == current `main` before dispatch) for the second dispatch (run
+`20260926-032020-87b620`), and pointed the subagent at that fixed path instead of letting it
+create its own. That run succeeded, and — unlike some earlier tiers — the orchestrator
+independently re-derived (not just re-read) the subagent's key claim before merging: re-diffed
+the `mean_regress`/`decay` league-mean block against `main` (byte-identical), and independently
+ran `build_feature_df()` for all three offseason methods against both the pre- and post-refactor
+chunk in isolation, confirming `all.equal()` was `TRUE` for all three (`reset`, `mean_regress`,
+`decay`) rather than trusting the subagent's own claimed comparison. `vip`'s renv.lock entry and
+the caveat-paragraph rewrite were also independently grep-verified.
+
+| Issue | What | Verified how |
+|---|---|---|
+| #41 | The ~20-line eFG%/TOV%/FTR/TS%/`roll_*` block, previously duplicated verbatim between `build_feature_df()`'s `reset` and `mean_regress`/`decay` branches, factored into one `compute_rolling_features(df, window_size)` helper called from both. The `league_season_means`/`prior_season_lookup`/`league_prior_means`/`prior_lm_*` mechanism (Tier 1's #30 fix) was left untouched. | Targeted diff of that region between `main` and the edited chunk returned no differences; orchestrator ran `build_feature_df(box_scores, ROLLING_WINDOW_SIZE, method)` for `reset`/`mean_regress`/`decay` against both the pre- and post-refactor `calc-features-function` chunk loaded into separate environments — `all.equal()` was `TRUE` for all three, matching dimensions (1927x45, 1969x45, 1969x45 respectively). |
+| #42 | Added a `feature-plots-permutation` chunk calling `vip::vi_permute(rf_fit, ..., metric = "accuracy", nsim = 10)` for a second, less-biased top-10 importance chart alongside the existing Gini-impurity chart; pinned `vip@0.4.2` in `renv.lock` (`vip` was archived from live CRAN on 2025-12-02 — installed via `renv::install("vip@0.4.2")` against the CRAN Archive, not a bare `renv::install("vip")`); rewrote the caveat paragraph to describe both charts instead of claiming `vip` was uninstalled. | `grep -n '"vip"' renv.lock` shows the pinned entry (single clean 60-line addition, confirmed via `git diff --stat` — no unrelated `renv.lock` drift); `grep -n "not currently an installed" WNBA_Analysis_Project.Rmd` returns no match; subagent's full render (37/37 chunks, PDF, both charts visually confirmed) was not independently re-run by the orchestrator but is consistent with the independently-verified code correctness above. |
+
+Fast-forward merged to `main` as `528b455` (worktree committed directly, no conflicts since it was
+correctly branched from current `main`). Closed #41-#42 via `gh issue close`. The
+`tier5-retry` worktree's git registration was removed cleanly; its on-disk directory survived
+(same Windows file-lock pattern as three other leftover directories under `.claude/worktrees/`,
+none deleted without user confirmation). The blocked worktree
+(`.claude/worktrees/agent-a7e4dc6b1b436249f`) remains kept, untouched, for reference.
+
+**Takeaway for future `subagent-brief` dispatches in this repo:** `isolation: "worktree"` has now
+mis-branched from a stale base in 3 of 5 Round-2 tiers (2, 4, 5), always landing on commit
+`44ef8e0` or thereabouts. Until that's root-caused, prefer creating the worktree yourself
+(`git worktree add <path> -b <branch> main`, verify `git rev-parse HEAD` before dispatch) and
+pointing the subagent at the fixed path, rather than trusting the tool's own worktree creation.
+Separately, subagents in this repo have twice now tried to "wait for a background monitor
+notification" between turns and gotten stuck doing nothing, because nothing wakes a subagent
+back up once its turn ends unless it has a live background child — tell any future brief
+explicitly to poll synchronously within a turn (or finish with an honest partial-status result)
+instead of ending a turn "holding."
 
 All 14 issues were filed in the Tier 1-2 session (they didn't exist before — `gh issue list`
 previously topped out at #28). Issue numbering matches roadmap item numbering minus 28 (item 1 =
@@ -95,22 +157,10 @@ Fast-forward merged to `main` as `7127711` (no conflicts — worktree was curren
 Worktree and branch (`.claude/worktrees/agent-ae400f7cf8130ae91`,
 `worktree-agent-ae400f7cf8130ae91`) removed after merge.
 
-## Concrete next step
+## Concrete next step (superseded — see the Tier 5 current-state section at the top of this file)
 
-**Tier 5 — Code quality (issues #41, #42; roadmap items 13-14) — final tier of this roadmap.**
-Re-verify line numbers against the current `WNBA_Analysis_Project.Rmd` before writing the brief
-(Tier 4's edits shifted line numbers again, including inside `eval_window_size()` where the new
-bootstrap-CI block now sits between the `roc_auc()`/`brier` calc and the returned `tibble()`).
-Per the roadmap: factor the duplicated ~20-line feature-computation block (eFG%/TOV%/FTR/TS% and
-the `roll_*` `slide_dbl()` columns) — currently repeated verbatim between the "reset" and
-"mean_regress/decay" branches of `build_feature_df()` — into one shared helper called from both
-branches; and pin `vip` as a dependency (`renv::install()` + `renv::snapshot()`) to switch the
-feature-importance chart to (or add alongside) permutation importance, resolving the Gini-impurity
-bias the document already flags in its Feature Importance caveat paragraph but doesn't act on.
-**Before writing this tier's brief, verify `git log HEAD..main --oneline` is empty in the new
-worktree before dispatching** — this is now the third tier in a row where a stale worktree base
-was either caught (Tiers 2 and 4) or avoided (Tier 3); don't assume it'll be clean by default.
-After Tier 5, this roadmap (all 14 issues, #29-42) is complete.
+Tier 5 (#41, #42) is now done; the Round 2 roadmap is complete. See the top of this file for
+what happened, including a third stale-worktree-base incident.
 
 ## What this session did (#29-33, Tiers 1-2) via `subagent-brief`
 
