@@ -127,28 +127,41 @@ To resolve offseason transition artifacts, we test the same three methodologies 
 - **Method C (Exponential Decay Carryover):** Rolling stats carry over across seasons via an 80/20 blend.
 
 ```{r calc-features-function}
+# Issue #41: the reset and mean_regress/decay branches below both used to carry a separately
+# written copy of this ~20-line eFG%/TOV%/FTR/TS%/roll_* block (identical formulas and column
+# names, differing only in what group_by()/arrange() preceded them). Factored into one helper
+# so that logic exists in exactly one place; `days_rest`/`is_new_season` stay outside the helper
+# since they differ (or are absent) between branches. Pure refactor - no computed value changes
+# vs. the pre-refactor version of this chunk.
+compute_rolling_features <- function(df, window_size) {
+  df |>
+    mutate(
+      efg = (field_goals_made + 0.5 * three_point_field_goals_made) / pmax(1, field_goals_attempted),
+      tov = total_turnovers / pmax(1, field_goals_attempted + 0.44 * free_throws_attempted + total_turnovers),
+      ftr = free_throws_attempted / pmax(1, field_goals_attempted),
+      ts  = team_score / pmax(1, 2 * (field_goals_attempted + 0.44 * free_throws_attempted)),
+
+      roll_pts_scored = slide_dbl(team_score, mean, .before = window_size, .after = -1),
+      roll_oreb       = slide_dbl(offensive_rebounds, mean, .before = window_size, .after = -1),
+      roll_dreb       = slide_dbl(defensive_rebounds, mean, .before = window_size, .after = -1),
+      roll_ast        = slide_dbl(assists, mean, .before = window_size, .after = -1),
+      roll_stl        = slide_dbl(steals, mean, .before = window_size, .after = -1),
+      roll_blk        = slide_dbl(blocks, mean, .before = window_size, .after = -1),
+      roll_tov        = slide_dbl(turnovers, mean, .before = window_size, .after = -1),
+      roll_efg        = slide_dbl(efg, mean, .before = window_size, .after = -1),
+      roll_tovp       = slide_dbl(tov, mean, .before = window_size, .after = -1),
+      roll_ftr        = slide_dbl(ftr, mean, .before = window_size, .after = -1),
+      roll_ts         = slide_dbl(ts, mean, .before = window_size, .after = -1)
+    )
+}
+
 build_feature_df <- function(data, window_size = ROLLING_WINDOW_SIZE, method = "reset") {
   if (method == "reset") {
     features <- data |>
       arrange(team_id, season, game_date) |>
       group_by(season, team_id) |>
+      compute_rolling_features(window_size) |>
       mutate(
-        efg = (field_goals_made + 0.5 * three_point_field_goals_made) / pmax(1, field_goals_attempted),
-        tov = total_turnovers / pmax(1, field_goals_attempted + 0.44 * free_throws_attempted + total_turnovers),
-        ftr = free_throws_attempted / pmax(1, field_goals_attempted),
-        ts  = team_score / pmax(1, 2 * (field_goals_attempted + 0.44 * free_throws_attempted)),
-
-        roll_pts_scored = slide_dbl(team_score, mean, .before = window_size, .after = -1),
-        roll_oreb       = slide_dbl(offensive_rebounds, mean, .before = window_size, .after = -1),
-        roll_dreb       = slide_dbl(defensive_rebounds, mean, .before = window_size, .after = -1),
-        roll_ast        = slide_dbl(assists, mean, .before = window_size, .after = -1),
-        roll_stl        = slide_dbl(steals, mean, .before = window_size, .after = -1),
-        roll_blk        = slide_dbl(blocks, mean, .before = window_size, .after = -1),
-        roll_tov        = slide_dbl(turnovers, mean, .before = window_size, .after = -1),
-        roll_efg        = slide_dbl(efg, mean, .before = window_size, .after = -1),
-        roll_tovp       = slide_dbl(tov, mean, .before = window_size, .after = -1),
-        roll_ftr        = slide_dbl(ftr, mean, .before = window_size, .after = -1),
-        roll_ts         = slide_dbl(ts, mean, .before = window_size, .after = -1),
         days_rest       = pmin(REST_DAYS_CAP, coalesce(as.numeric(game_date - lag(game_date)), 3))
       ) |>
       ungroup()
@@ -156,23 +169,8 @@ build_feature_df <- function(data, window_size = ROLLING_WINDOW_SIZE, method = "
     features <- data |>
       arrange(team_id, game_date) |>
       group_by(team_id) |>
+      compute_rolling_features(window_size) |>
       mutate(
-        efg = (field_goals_made + 0.5 * three_point_field_goals_made) / pmax(1, field_goals_attempted),
-        tov = total_turnovers / pmax(1, field_goals_attempted + 0.44 * free_throws_attempted + total_turnovers),
-        ftr = free_throws_attempted / pmax(1, field_goals_attempted),
-        ts  = team_score / pmax(1, 2 * (field_goals_attempted + 0.44 * free_throws_attempted)),
-
-        roll_pts_scored = slide_dbl(team_score, mean, .before = window_size, .after = -1),
-        roll_oreb       = slide_dbl(offensive_rebounds, mean, .before = window_size, .after = -1),
-        roll_dreb       = slide_dbl(defensive_rebounds, mean, .before = window_size, .after = -1),
-        roll_ast        = slide_dbl(assists, mean, .before = window_size, .after = -1),
-        roll_stl        = slide_dbl(steals, mean, .before = window_size, .after = -1),
-        roll_blk        = slide_dbl(blocks, mean, .before = window_size, .after = -1),
-        roll_tov        = slide_dbl(turnovers, mean, .before = window_size, .after = -1),
-        roll_efg        = slide_dbl(efg, mean, .before = window_size, .after = -1),
-        roll_tovp       = slide_dbl(tov, mean, .before = window_size, .after = -1),
-        roll_ftr        = slide_dbl(ftr, mean, .before = window_size, .after = -1),
-        roll_ts         = slide_dbl(ts, mean, .before = window_size, .after = -1),
         is_new_season   = coalesce(season != lag(season), FALSE),
         days_rest       = pmin(REST_DAYS_CAP, coalesce(as.numeric(game_date - lag(game_date)), 3))
       )
@@ -697,19 +695,56 @@ ggplot(importance_df, aes(x = reorder(feature, importance), y = importance)) +
   )
 ```
 
-**Caveat on the importance measure itself, not just the ranking it produces:** the values above are
-`ranger`'s default Gini-impurity (mean decrease in node impurity) importance from the single `rf_fit`
-model fit earlier in this document, not permutation importance. Gini-impurity importance is a known-
-biased estimator - it systematically favors high-cardinality/continuous predictors (most of the
+```{r feature-plots-permutation}
+# Issue #42: the Gini-impurity chart above is a known-biased importance estimator (see caveat
+# below). vip::vi_permute() gives a permutation-importance view of the same rf_fit - measuring
+# the actual drop in out-of-sample accuracy when each feature is shuffled - as a complementary,
+# less-biased comparison alongside the existing chart (not a replacement for it).
+set.seed(42)
+pred_wrapper <- function(object, newdata) {
+  predict(object, new_data = newdata) |> dplyr::pull(.pred_class)
+}
+
+vi_permute_df <- vip::vi_permute(
+  rf_fit,
+  train = train_data,
+  target = "target_home_win",
+  metric = "accuracy",
+  pred_wrapper = pred_wrapper,
+  nsim = 10
+)
+
+vi_permute_top10 <- vi_permute_df |>
+  arrange(desc(Importance)) |>
+  head(10)
+
+ggplot(vi_permute_top10, aes(x = reorder(Variable, Importance), y = Importance)) +
+  geom_col(fill = "darkorange") +
+  coord_flip() +
+  theme_minimal() +
+  labs(
+    title = "Top 10 Feature Importance (Random Forest, WNBA) - Permutation Method",
+    subtitle = "vip::vi_permute() accuracy-drop importance from the same rf_fit - see caveat below",
+    x = "Feature Differential",
+    y = "Importance (Mean Accuracy Decrease)"
+  )
+```
+
+**Caveat on the importance measure itself, not just the ranking it produces:** the first chart above
+uses `ranger`'s default Gini-impurity (mean decrease in node impurity) importance from the single
+`rf_fit` model fit earlier in this document, not permutation importance. Gini-impurity importance is a
+known-biased estimator - it systematically favors high-cardinality/continuous predictors (most of the
 `roll_*` differential features here) over binary or low-cardinality ones purely because they offer
 more possible split points, independent of true predictive value - and it is also comparatively
 unstable across refits: retraining `rf_fit` with a different `set.seed()` value can reorder the lower
-half of this top-10 list even when the underlying data is unchanged. The `vip` package's permutation-
-importance method (`vip::vi(rf_fit, method = "permute")`) would avoid the cardinality bias by measuring
-the actual out-of-sample performance drop from shuffling each feature, but `vip` is not currently an
-installed/pinned dependency of this project (`renv.lock` was already scoped and closed under issue #1),
-so this chart should be read as indicative of which feature *families* matter, not as a precise,
-refit-stable ranking within that top 10.
+half of this top-10 list even when the underlying data is unchanged. The second chart now adds `vip`'s
+permutation-importance method (`vip::vi_permute()`, `vip` pinned in `renv.lock` as of issue #42) to
+address that bias by measuring the actual out-of-sample accuracy drop from shuffling each feature
+`nsim = 10` times. In practice the two rankings here are broadly aligned - the same handful of
+`roll_*` differential features dominate both top-10 lists, just in a slightly different order - so the
+Gini-impurity chart's *feature-family* takeaways hold up under the less-biased permutation method; it
+should still not be read as a precise, refit-stable ranking within the top 10, since permutation
+importance with `nsim = 10` also carries its own resampling noise.
 
 ## Simulation-Season Schedule & Dynamic Projection
 
