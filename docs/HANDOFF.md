@@ -1,5 +1,17 @@
 # Handoff — 2026-09-25 (Review Round 2, Tier 4) — CURRENT STATE (read this section first, supersedes everything below)
 
+**For whoever picks this up next with zero prior context:** this repo (`WNBA Analytics`) is a
+WNBA sports-analytics/betting pipeline — team/player rating models, market-odds integration, a
+Shiny dashboard (`app.R`), and a separate academic-submission deliverable,
+`WNBA_Analysis_Project.Rmd`, which is the *only* file this entire thread touches. Read this repo's
+`CLAUDE.md` first (data quirks, config-constant discipline, environment gotchas that apply
+everywhere in the repo); it is not superseded by anything below. This section of `HANDOFF.md`
+then covers only the current thread: implementing `docs/review_round_2_roadmap.md`'s 14-issue
+review of `WNBA_Analysis_Project.Rmd`. The rest of this very long, append-only file is a
+chronological archive of every earlier thread (the pipeline/dashboard work, and the prior
+27-issue Round 1 roadmap) — each dated section below states in its own header whether it's
+superseded; don't treat anything below this section as current without checking that.
+
 **This section supersedes every pointer further down this file, including the "Tier 6" section
 immediately below it.** New thread, same document: `docs/review_round_2_roadmap.md` is a fresh
 14-issue re-review of `WNBA_Analysis_Project.Rmd`, run after the Round 1 roadmap (the 27 issues
