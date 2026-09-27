@@ -62,21 +62,40 @@ anything remembered.
 
 ## Concrete next step
 
-**Issue #45** (Slice 1: shared `pipeline_stages.R` registry + `run_full_pipeline.R` refactor).
-This is the foundation every other slice in Ticket A depends on, and per its own issue text, the
-riskiest single piece: `run_full_pipeline.R`'s external behavior (stage order, log output,
-declared-output mtime checks) must be provably unchanged after the refactor, and the new
-per-stage **declared inputs** (which don't exist anywhere in the codebase yet) must correctly
-reflect what each stage script actually reads — get this wrong and every later staleness-gating
-slice (#47) inherits wrong dependency data silently. Read #45's own QA section before starting;
-it names the specific verification steps (before/after pipeline diff, the
-`pipeline-freshness-audit` skill, manual cross-check of each stage's real `readRDS`/`read.csv`
-calls against its declared inputs). The `new-pipeline-stage-checklist` skill is directly relevant
-since this touches `run_full_pipeline.R`'s DAG structure.
+**#45 is done, closed, and pushed to `main`** (commit `8aec5ba`, dispatched via the
+`subagent-brief` skill in a separate thread from this handoff's own session — see that skill's
+`.subagent-runs/20260926-185108-84c49d/` for the full brief/result record). `pipeline_stages.R`
+now holds one entry per each of the 20 real `run_stage()` call sites (the issue title's "13"
+undercounted — trust the live file, not the title), including distinct entries for
+`prediction_accuracy_logger.R`'s two invocations and both `future_lapply` parallel groups
+(a `group` field preserves the "latent_engines"/"props_engines" mechanism unchanged), plus the
+new declared **`inputs`** field #47 needs. `git diff` on `run_full_pipeline.R` touches only the
+wiring lines — `run_stage()`, the memory-adaptive `plan()` selection, the IO-loading blocks, and
+the log-spill merge are untouched.
 
-Two steps ahead: once #45 lands, #46 (control panel MVP) is the next real UI work, and is
-deliberately scoped narrow (single-stage run, no dependency gating, no auth, localhost-only) so it
-can be built and manually verified before the riskier slices (#47's dependency gating, #49's
+**Known gap, not yet closed**: a full 20-stage live before/after pipeline run (the QA this issue's
+own text asked for) could **not** be completed on this machine — it was OOM-killed at
+`team_embeddings.py` (PyTorch) twice in a row under low system-wide free RAM (~2.7GB/16GB, even
+after the user freed some), unrelated to the refactor itself. Verification was scoped down
+instead: registry fields were diffed 1:1 against the pre-refactor hardcoded call sites, `inputs`
+citations were spot-checked against real `readRDS`/`read.csv` lines, and 5 representative stages
+spanning both `call_fn` and `entry_fn` modes (`data_health_probe`, `daily_ingest`,
+`player_metrics`, `sync_rosters`, `injury_scraper`) were re-run live through the refactored
+registry and matched the pre-refactor log stage-for-stage. The remaining 15 stages (both parallel
+groups + `team_embeddings.py`) are verified only statically. If a future session has more free
+memory to work with, re-running the full pipeline once end-to-end (before making any further #43
+changes) would close this gap properly.
+
+**Bonus finds, deliberately not fixed (out of #45's scope)**: `fatigue_travel_engine.R` has no
+real schedule input — `evaluate_slate_fatigue()`'s `sample_schedule` is synthetic/demo only, not
+backed by any real WNBA schedule feed. `copula_props_engine.R`'s own header comment claims its
+A'ja Wilson marquee test derives its per-game means from `cache/player_box_scores_cache.rds`, but
+`run_copula_suite()` actually passes hardcoded literal means (`mu_pts = 26.00`, etc.) — the code
+and its own documentation disagree. Neither blocks #43/#44's tree; worth a future issue.
+
+**Two steps ahead**: #46 (control panel MVP) is the next real UI work now that #45 has landed, and
+is deliberately scoped narrow (single-stage run, no dependency gating, no auth, localhost-only) so
+it can be built and manually verified before the riskier slices (#47's dependency gating, #49's
 `app.R` render-helper extraction — the highest-regression-risk slice for the *existing* dashboard)
 stack on top of it.
 
