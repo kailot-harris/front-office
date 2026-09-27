@@ -32,6 +32,12 @@ source("logging_utils.R")
 # top level, OUTSIDE any run_stage() protection — the fail-safe inverted. Constants are now an
 # explicit dependency of the orchestrator.
 source("config.R")
+# Issue #45 (Slice 1 of #43): stage metadata (script/description/call_fn|entry_fn/output, plus
+# the new declared `inputs` field) now lives in pipeline_stages.R's PIPELINE_STAGES registry
+# instead of being hardcoded at each run_stage() call site below. Sourced after config.R
+# because several registry entries reference config.R's CACHE_* constants directly so they
+# resolve to the same real paths the pre-refactor call sites used.
+source("pipeline_stages.R")
 .LOG_SCRIPT <- "run_full_pipeline.R"
 
 pipeline_start_time <- Sys.time()
@@ -198,6 +204,15 @@ run_stage <- function(script_name, description, call_fn = NULL, entry_fn = NULL,
   })
 }
 
+# Issue #45: thin wrapper that looks a stage up in PIPELINE_STAGES (pipeline_stages.R) by id
+# and calls run_stage() with exactly the fields that registry entry carries -- replaces the
+# old pattern of hardcoding script/description/call_fn/entry_fn/output at each call site.
+run_registered_stage <- function(id) {
+  stage <- get_pipeline_stage(id)
+  run_stage(stage$script, stage$description, call_fn = stage$call_fn, entry_fn = stage$entry_fn,
+            output = stage$output)
+}
+
 # ------------------------------------------------------------------------------
 # Chronological Execution Sequence
 # ------------------------------------------------------------------------------
@@ -210,8 +225,7 @@ run_stage <- function(script_name, description, call_fn = NULL, entry_fn = NULL,
 # outside agent_pipeline's Wave 2 file ownership, so rather than edit it, the entry point is
 # invoked explicitly here via the existing `call_fn` mechanism. Flagged in the Handoff Notes so a
 # later wave can align its guard with the other stage scripts.
-run_stage("tools/data_health_probe.R", "Run Data Health Probe",
-          call_fn = "check_cache_health")
+run_registered_stage("data_health_probe")
 
 # 0.5. Box-Score Ingestion
 # FINDING L-4 (docs/SECURITY_TECHNICAL_REVIEW.md), coordinated with agent_props (P4-E):
@@ -233,8 +247,7 @@ run_stage("tools/data_health_probe.R", "Run Data Health Probe",
 #     legitimately skips the write when there are no new games ("Team box cache already up to
 #     date; no write necessary", daily_ingest.R:124), so asserting freshness here would fire a
 #     false staleness WARN on every quiet day and train the operator to ignore the check.
-run_stage("daily_ingest.R", "Ingest Latest WNBA Team Box Scores (Incremental)",
-          call_fn = "daily_box_ingest")
+run_registered_stage("daily_ingest")
 
 # Optimize Base Cache I/O: Load large, relatively static caches into Global Env once.
 # Note: GLOBAL_PLAYER_BOX is static during the pipeline (updated by daily_ingest.R).
@@ -257,15 +270,11 @@ if (file.exists(file.path(CACHE_DIR, "player_box_scores_cache.rds"))) {
 # function definitions, and must not trigger a recompute as a side effect of that).
 # Placed here (not earlier) because its only real dependency is CACHE_PLAYER_BOX, just
 # loaded above.
-run_stage("player_metrics.R", "Compute Player Team-Game Features (BPM / Minutes Concentration)",
-          call_fn = "compute_and_cache_player_features",
-          output  = CACHE_FEATURES)
+run_registered_stage("player_metrics")
 
 # 1. Official Data Feed & Ingestion
 # Output: cache/active_rosters_cache.rds (T1 Handoff Notes: 209 rows x 7 cols, 15 teams)
-run_stage("sync_rosters.R", "Sync Active WNBA Rosters (12-Player Cap) & Mid-Season Signings",
-          entry_fn = "sync_active_rosters",
-          output   = file.path(CACHE_DIR, "active_rosters_cache.rds"))
+run_registered_stage("sync_rosters")
 
 # Load updated rosters into Global Env for downstream engines.
 if (file.exists(file.path(CACHE_DIR, "active_rosters_cache.rds"))) {
@@ -276,9 +285,7 @@ if (file.exists(file.path(CACHE_DIR, "active_rosters_cache.rds"))) {
 }
 
 # Output: cache/injury_data_cache.rds (T1 Handoff Notes: 42 rows, data_source column added)
-run_stage("injury_scraper.R", "Scrape Official WNBA Injury Scratches & Availability Updates",
-          entry_fn = "fetch_live_wnba_injuries",
-          output   = CACHE_INJURY_DATA)
+run_registered_stage("injury_scraper")
 # Output: logs/analytics.duckdb (tables `team_embeddings` + `team_similarity`), PLUS
 # data/team_embeddings.csv + data/team_similarity_matrix.csv (config.R's CACHE_EMBEDDINGS /
 # CACHE_SIMILARITY). CORRECTED IN PHASE 4 (agent_pipeline): this comment used to warn that the two
@@ -287,12 +294,10 @@ run_stage("injury_scraper.R", "Scrape Official WNBA Injury Scratches & Availabil
 # writes both CSVs again, additively alongside duckdb — load_embeddings.R and
 # tools/ml_cv_benchmark.R still read the CSVs and app.R's wide-shape fallback path still expects
 # them, so retiring the CSVs instead of restoring their producer would have broken real consumers.
-run_stage("team_embeddings.py", "Train Team Style Embeddings & Similarity Matrix (PyTorch)",
-          output = c("logs/analytics.duckdb", CACHE_EMBEDDINGS, CACHE_SIMILARITY))
+run_registered_stage("team_embeddings")
 
 # 1.5. Prediction-Accuracy Logging — Reconciliation
-run_stage("prediction_accuracy_logger.R", "Reconcile Pending Model Predictions Against Completed WNBA Games",
-          call_fn = "reconcile_predictions")
+run_registered_stage("prediction_accuracy_logger_reconcile")
 
 # ------------------------------------------------------------------------------
 # Parallel Execution Setup (Task P3-3.3)
@@ -337,14 +342,10 @@ if (is.na(free_mb) || free_mb < MIN_FREE_MB_FOR_PARALLEL) {
 # 2. Physics & Biometric Latent Engines (Phase 3) - Parallel Group 1
 # These are independent and only depend on the base ingestion.
 message("\n>>> [PARALLEL] Launching Latent Engines Group...")
-latent_engines <- list(
-  list(s = "shot_quality_engine.R", d = "Calculate WNBA Spatial Shot Quality (xeFG%) & Luck",
-       f = NULL, o = "cache/team_shot_quality.rds"),
-  list(s = "fatigue_travel_engine.R", d = "Compute Haversine Flight Miles & Circadian Drag",
-       f = "evaluate_slate_fatigue", o = "cache/travel_fatigue_metrics.rds"),
-  list(s = "rapm_engine.R", d = "Estimate Real Possession-Level RAPM (L2 Ridge Regression)",
-       f = "estimate_rapm_ratings", o = "cache/rapm_ratings.rds")
-)
+# Issue #45: group membership (shot_quality_engine.R / fatigue_travel_engine.R /
+# rapm_engine.R) now comes from pipeline_stages.R's PIPELINE_STAGES registry (each entry's
+# group = "latent_engines") instead of this inline list literal.
+latent_engines <- get_pipeline_stage_group("latent_engines")
 
 # Execute in parallel and wait for all to complete.
 # FINDING M-7: `future.seed = TRUE` (was absent). Without it future.apply emits "UNRELIABLE
@@ -353,7 +354,7 @@ latent_engines <- list(
 # drifted run-to-run for reasons unrelated to code changes. TRUE gives each element a
 # statistically sound L'Ecuyer-CMRG stream derived reproducibly from the parent's RNG state.
 future_lapply(latent_engines, function(e) {
-  run_stage(e$s, e$d, entry_fn = e$f, output = e$o)
+  run_stage(e$script, e$description, call_fn = e$call_fn, entry_fn = e$entry_fn, output = e$output)
 }, future.seed = TRUE)
 
 # 2.5. Play-by-Play Player Features (pbp_engine.R) - deliberately SEQUENTIAL, not folded into
@@ -367,68 +368,53 @@ future_lapply(latent_engines, function(e) {
 # (player_props_engine.R, in the LATER "Props Engines Group") doesn't run for a while yet, so
 # running it here sequentially costs wall-clock time, not correctness, and keeps peak
 # concurrent memory back down at the original 3-worker footprint.
-run_stage("pbp_engine.R", "Compute Real Play-by-Play Clutch/Assist/Shot-Mix Player Features",
-          entry_fn = "compute_player_pbp_features", output = CACHE_PLAYER_PBP_FEATURES)
+run_registered_stage("pbp_engine")
 
 # 3. Microstructure & Player Valuation Engines
 # depends on rapm_engine.R
 # Output: cache/projected_wnba_standings.rds
-run_stage("roster_bottom_up_engine.R", "Generate 15-Team WNBA Bottom-Up Standings & Fair Spreads",
-          entry_fn = "project_all_wnba_teams",
-          output   = "cache/projected_wnba_standings.rds")
+run_registered_stage("roster_bottom_up_engine")
 
 # 4. Market Arbitrage & Limits
 # depends on roster_bottom_up_engine.R, shot_quality_engine.R, fatigue_travel_engine.R
 # Output: cache/latest_value_bets.rds, cache/odds_history.rds
-run_stage("market_odds_engine.R", "Benchmark Live WNBA Books vs Sharp Limits & Kelly Stakes",
-          output = file.path(CACHE_DIR, c("latest_value_bets.rds", "odds_history.rds")))
+run_registered_stage("market_odds_engine")
 
 # 4.5. Prediction-Accuracy Logging — Log Today's Predictions
-run_stage("prediction_accuracy_logger.R", "Log Today's Real Model Win-Probability Predictions",
-          call_fn = "log_todays_predictions")
+run_registered_stage("prediction_accuracy_logger_log")
 
 # 5. Advanced Proposition Distributions - Parallel Group 2
 # depends on market_odds_engine.R
 message("\n>>> [PARALLEL] Launching Props Engines Group...")
-props_engines <- list(
-  # Declared output is config.R's CACHE_PLAYER_PROPS (= cache/latest_player_props.rds). This
-  # stage used to write TWO copies; agent_props collapsed that to one canonical write in this
-  # same wave (finding L-6), leaving data/latest_player_props.rds an orphan. Declaring the stale
-  # data/ path here would make the freshness assertion cry wolf every night.
-  list(s = "player_props_engine.R", d = "Price ZINB Overdispersed WNBA Player Props",
-       f = "generate_active_props_table", o = CACHE_PLAYER_PROPS),
-  list(s = "copula_props_engine.R", d = "Simulate Joint Multivariate Gaussian Copula (PRA / SGPs)",
-       f = "run_copula_suite", o = "cache/copula_wilson_pra.rds")
-)
+# Issue #45: group membership (player_props_engine.R / copula_props_engine.R) now comes from
+# pipeline_stages.R's PIPELINE_STAGES registry (each entry's group = "props_engines") instead
+# of this inline list literal. See each entry's own comment there (carried over from here) for
+# the CACHE_PLAYER_PROPS / data/latest_player_props.rds orphan-path rationale (finding L-6).
+props_engines <- get_pipeline_stage_group("props_engines")
 
 # FINDING M-7: future.seed = TRUE — see the latent-engines group above. This is the group the
 # review's "UNRELIABLE VALUE" warning ('future_lapply-2') actually came from: both scripts here
 # are Monte Carlo (ZINB draws / Gaussian copula simulation).
 future_lapply(props_engines, function(e) {
-  run_stage(e$s, e$d, entry_fn = e$f, output = e$o)
+  run_stage(e$script, e$description, call_fn = e$call_fn, entry_fn = e$entry_fn, output = e$output)
 }, future.seed = TRUE)
 
 # 6. Postseason Simulation
 # Output: cache/playoff_series_wnba_demo.rds
-run_stage("playoff_simulator.R", "Execute WNBA Playoff Series Monte Carlo (Bo3 First Round / Bo5 Semis / Bo7 Finals)",
-          entry_fn = "simulate_playoff_suite",
-          output   = "cache/playoff_series_wnba_demo.rds")
+run_registered_stage("playoff_simulator")
 
 # 7. Portfolio Risk Management & Capital Preservation
 # Output: cache/risk_state.rds
-run_stage("risk_management_engine.R", "Audit Drawdown State & Set Dynamic Kelly Multiplier",
-          entry_fn = "compute_risk_state",
-          output   = "cache/risk_state.rds")
+run_registered_stage("risk_management_engine")
 
 # 8. Notification & Settlement
 # Discord: reads Sys.getenv("DISCORD_WEBHOOK", "") only
-run_stage("notify_bets.R", "Dispatch Filtered Discord Webhooks (EV >= 3.0%, CLV >= -0.5%)")
+run_registered_stage("notify_bets")
 # Output: cache/rolling_bet_metrics.rds (every run) and cache/betting_ledger.rds (CONDITIONAL —
 # only rewritten when at least one pending bet actually grades; on a slate where every bet is
 # still unresolved the ledger is legitimately untouched). Only the unconditional output is
 # declared for the freshness assertion, so a quiet night does not produce a false staleness WARN.
-run_stage("bet_tracker.r", "Grade Previous Completed WNBA Events & Update Rolling CLV%",
-          output = file.path(CACHE_DIR, "rolling_bet_metrics.rds"))
+run_registered_stage("bet_tracker")
 
 # Reset parallel plan to sequential. This also shuts the multisession workers down, so by the
 # time the spill merge below runs, no other process holds logs.duckdb.
