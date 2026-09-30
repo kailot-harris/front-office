@@ -8,6 +8,13 @@
   the WNBA sibling repo have not yet been independently re-verified against this machine/repo — a
   future agent running R here for the first time should confirm the Rscript.exe path and inline-`-e`
   behavior itself rather than assuming the WNBA repo's exact findings carry over unchanged, and
+- Confirmed live (2026-09-30): `C:\Program Files\R\R-4.5.2\bin\Rscript.exe` **segfaults (exit
+  139) instead of erroring cleanly** when pointed at a relative path that doesn't resolve to an
+  existing file — e.g. running `.claude/skills/<name>/scripts/foo.R` from this repo's root
+  crashes, because repo-local `.claude/` has no `skills/` subfolder; user-level skills actually
+  live under `C:\Users\<user>\.claude\skills\`. Always use the absolute path when invoking a
+  user-level skill's `.R` scripts from this repo, and treat a bare "Segmentation fault" from
+  Rscript here as a signal to check the path first, not a script-logic bug.
   should update this section with what it actually finds.
 - `config.R` and `tools/derive_nfl_constants.R` were built and run against **real**
   `nflreadr::load_schedules()` / `nflreadr::load_teams(current = TRUE)` data on 2026-09-16 — see
