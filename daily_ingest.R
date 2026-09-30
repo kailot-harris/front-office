@@ -131,13 +131,29 @@ source("logging_utils.R")
   log_info(sprintf("%s: fetched %d current-season rows.", loader_name, nrow(new_rows)),
            call = "run_daily_ingest()", rows = nrow(new_rows), season = CURRENT_SEASON)
 
-  combined <- bind_rows(existing, new_rows) |>
+  # new_rows bound FIRST: dplyr::distinct() keeps the first row per dedupe key, and new_rows is
+  # the fresher fetch (e.g. a game_id whose score was NA at bootstrap time but has since been
+  # played). Binding existing first (the original order here) silently froze every such row at
+  # its stale bootstrap state forever, since no later incremental update could ever win the tie -
+  # confirmed live 2026-09-30 via schedules_cache.rds still showing NA scores for every completed
+  # week 2-3 2026 game despite repeated pipeline runs after those weeks were played.
+  combined <- bind_rows(new_rows, existing) |>
     distinct(across(all_of(dedupe_keys)), .keep_all = TRUE)
 
   n_new_records <- nrow(combined) - nrow(existing)
   log_info(sprintf("%s: ingestion complete. %d new records identified.", loader_name, n_new_records))
 
-  if (n_new_records > 0 || needs_retrim_save) {
+  # n_new_records only counts a ROW-COUNT delta, so it stays 0 when an already-cached game_id's
+  # row gets replaced with corrected content (e.g. a score arriving for a game that was NA at
+  # bootstrap time) - exactly the case the bind_rows() reorder above now fixes. Gating the save
+  # on n_new_records > 0 alone would silently keep discarding that corrected content every run,
+  # reproducing the same staleness bug one layer up. Comparing key-sorted content (order-
+  # insensitive, since bind_rows(new_rows, existing) always puts new_rows first) catches content-
+  # only updates too, not just row-count growth.
+  arrange_keys <- function(df) df |> arrange(across(all_of(dedupe_keys)))
+  content_changed <- !isTRUE(identical(arrange_keys(combined), arrange_keys(existing)))
+
+  if (content_changed || needs_retrim_save) {
     saveRDS(combined, cache_path)
     log_info(sprintf("Updated %s cache with %d new records (%d total).",
                       loader_name, n_new_records, nrow(combined)),
