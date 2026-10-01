@@ -52,8 +52,9 @@ REM covering regular season 2026-05-08 to 2026-09-24 plus playoffs starting 2026
 REM buffer for a Finals that could run into late October). Outside this window, log and exit
 REM without touching any cache files.
 REM ------------------------------------------------------------------------------
-for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value ^| find "="') do set DT=%%I
-set CUR_MM=%DT:~4,2%
+REM wmic is removed on newer Windows builds (e.g. Windows 11 24H2+); use PowerShell's
+REM Get-Date instead, which is present on every supported Windows version here.
+for /f "usebackq" %%I in (`powershell -NoProfile -Command "(Get-Date).ToString('MM')"`) do set CUR_MM=%%I
 
 echo ================================================================== >> "%LOG_FILE%"
 echo WNBA PIPELINE AUTOMATED RUN CHECK: %DATE% %TIME% (month=%CUR_MM%) >> "%LOG_FILE%"
@@ -87,24 +88,64 @@ if %ERRORLEVEL% equ 0 (
 
 echo Using Rscript: %RSCRIPT% >> "%LOG_FILE%"
 
+REM ------------------------------------------------------------------------------
+REM Failure visibility: the .bat used to run all three steps unconditionally and always
+REM print "COMPLETED SUCCESSFULLY" at the end, regardless of whether any step actually
+REM failed (incident: 2026-10-01 renv breakage made steps 2/3 both hard-fail with
+REM "Execution halted", but the log still claimed success). PIPELINE_FAILED tracks whether
+REM any step failed so the final banner reflects reality; each step's own %ERRORLEVEL% is
+REM captured into a dedicated STEPn_RC variable *outside* any parenthesized block (so plain
+REM %...% expansion is safe/current per EnableDelayedExpansion gotcha, see CLAUDE.md) before
+REM being checked. Steps keep running unconditionally after a failure - this only adds
+REM visibility, it does not abort the pipeline.
+REM ------------------------------------------------------------------------------
+set PIPELINE_FAILED=0
+
 REM 1. Run the full 13-stage pipeline (rosters/injuries -> fatigue/shot-quality -> standings ->
 REM    market odds -> props -> playoffs -> risk -> notify -> bet grading; see run_full_pipeline.R)
 echo [Step 1/3] Running Full WNBA Pipeline... >> "%LOG_FILE%"
 %RSCRIPT% "run_full_pipeline.R" >> "%LOG_FILE%" 2>&1
+set STEP1_RC=%ERRORLEVEL%
+if not "%STEP1_RC%"=="0" (
+    set PIPELINE_FAILED=1
+    echo [ERROR] Step 1/3 - run_full_pipeline.R - FAILED with exit code %STEP1_RC% >> "%LOG_FILE%"
+)
 
 REM 2. Grade yesterday's bets and compute rolling accuracy (also called inside
 REM    run_full_pipeline.R itself - same known overlap/non-dedup as the NBA original, per
 REM    REPO_MAP.md section 3.1's note; not fixed here since agent6.md doesn't ask for that cleanup)
-echo [Step 2/3] Grading Yesterday's WNBA Bets & Rolling ROI... >> "%LOG_FILE%"
+echo [Step 2/3] Grading Yesterday's WNBA Bets ^& Rolling ROI... >> "%LOG_FILE%"
 %RSCRIPT% "bet_tracker.r" >> "%LOG_FILE%" 2>&1
+set STEP2_RC=%ERRORLEVEL%
+if not "%STEP2_RC%"=="0" (
+    set PIPELINE_FAILED=1
+    echo [ERROR] Step 2/3 - bet_tracker.r - FAILED with exit code %STEP2_RC% >> "%LOG_FILE%"
+)
 
 REM 3. Generate today's new +EV picks
 echo [Step 3/3] Updating Today's WNBA Betting Slate (+EV Engine)... >> "%LOG_FILE%"
 %RSCRIPT% "market_odds_engine.R" >> "%LOG_FILE%" 2>&1
+set STEP3_RC=%ERRORLEVEL%
+if not "%STEP3_RC%"=="0" (
+    set PIPELINE_FAILED=1
+    echo [ERROR] Step 3/3 - market_odds_engine.R - FAILED with exit code %STEP3_RC% >> "%LOG_FILE%"
+)
 
 echo ================================================================== >> "%LOG_FILE%"
-echo WNBA PIPELINE RUN COMPLETED SUCCESSFULLY: %DATE% %TIME% >> "%LOG_FILE%"
+if "%PIPELINE_FAILED%"=="1" (
+    echo WNBA PIPELINE RUN COMPLETED WITH ERRORS: %DATE% %TIME% >> "%LOG_FILE%"
+) else (
+    echo WNBA PIPELINE RUN COMPLETED SUCCESSFULLY: %DATE% %TIME% >> "%LOG_FILE%"
+)
 echo ================================================================== >> "%LOG_FILE%"
 echo. >> "%LOG_FILE%"
 
-exit /b 0
+REM Exit code reflects overall outcome (1 if any step failed, 0 otherwise) so Task Scheduler's
+REM own "Last Run Result" surfaces a failed run too, on top of the [ERROR] log lines - but a
+REM normal all-steps-succeeded run still exits 0, so Task Scheduler never flags a healthy run
+REM as failed (criterion 5).
+if "%PIPELINE_FAILED%"=="1" (
+    exit /b 1
+) else (
+    exit /b 0
+)

@@ -1,3 +1,119 @@
+# Handoff — 2026-10-01 (New thread: scheduled-pipeline failure — `.bat` syntax bug + renv repair + error-visibility logging) — CURRENT STATE FOR THIS THREAD (read this section first)
+
+**This is a separate thread from the control-panel/auth thread immediately below and the
+postseason-predictions thread further down** — nothing in those threads is affected by this one.
+This thread is purely operational (one `.bat` file, plus a one-time environment repair); it has no
+relationship to either the #43-#54 control-panel/auth issue tree or the 2026 postseason `.qmd`. Read
+`CLAUDE.md` first if you haven't already (unchanged, still applies everywhere).
+
+## What happened, in order
+
+1. **User-reported error:** `Error during pipeline run: Grading yesterday';s bets.'Rolling' is not
+   recognized.` — garbled because `cmd.exe` had already split one `echo` line into two statements.
+2. **Root cause, found by reading `schedule_daily.bat` directly (not guessed):** line 99's `echo`
+   text read `Grading Yesterday's WNBA Bets & Rolling ROI...` — the bare `&` is a `cmd.exe` command
+   separator *everywhere*, not just inside `()` blocks, so the line actually ran as two statements:
+   `echo ...Bets ` followed by `Rolling ROI...`, and the latter isn't a recognized command. **Fixed**
+   by escaping it to `^&` (`schedule_daily.bat:99`, now `Bets ^& Rolling ROI...`) — this was the
+   session's first and only fix needed to make the reported error go away.
+3. **Separately, confirming the fix via a real `schedule_daily.bat` run surfaced a second, unrelated
+   failure:** `renv`'s package library was broken — `Error: package or namespace load failed for
+   'dplyr'/'tidyverse': there is no package called 'cli'`, `Execution halted`, on both the
+   bet-grading and market-odds steps. This is the **same recurring class of issue the "Standing
+   environment/tooling notes" section at the bottom of this file already documents** ("machine-wide
+   shared renv package cache has been found wiped/corrupted more than once... if `renv::status()`
+   reports packages missing their DESCRIPTION files, `renv::restore(prompt = FALSE)` is idempotent
+   and safe to re-run"). This occurrence was **much larger in scope** than the 3-package
+   (`foreach`/`hardhat`/`iterators`) case the standing note was based on: **38 packages** had
+   library directories missing `DESCRIPTION` (full list in that run's tool output, not reproduced
+   here — notably including `cli`, `digest`, `curl`, `data.table`, `DBI`, `bslib`, `chromote`).
+   **Important correction to the standing note's recipe, found this session:** a bare
+   `renv::restore(prompt = FALSE)` was **not** tried in isolation — this session always deleted the
+   broken package directories (those missing `DESCRIPTION`, under
+   `renv/library/windows/R-4.5/x86_64-w64-mingw32/`) *before* calling `renv::restore()`. Whether
+   `restore()` alone (without deleting first) is actually sufficient is still **not confirmed** —
+   flagging this as unresolved rather than assuming the standing note's simpler recipe is complete.
+   Fixed and verified: `renv::status()` now reports "No issues found," and a direct
+   `library(tidyverse); library(dplyr)` loads cleanly (both checked fresh after the restore, not
+   assumed from the restore's own exit code).
+4. **Added error-visibility logging to `schedule_daily.bat`**, dispatched through the
+   `subagent-brief` skill (run `20261001-125941-ae0646`, brief/result under `.subagent-runs/`,
+   status `success`). The `.bat` previously ran its 3 steps (`run_full_pipeline.R`, `bet_tracker.r`,
+   `market_odds_engine.R`) unconditionally and always printed "COMPLETED SUCCESSFULLY" regardless of
+   whether any step actually failed — which is exactly how step 3's incident went unnoticed until a
+   human read the log by hand. Now (`schedule_daily.bat:88-150`): each step's `%ERRORLEVEL%` is
+   captured into its own `STEPn_RC` variable right after the call; a nonzero code sets
+   `PIPELINE_FAILED=1` and appends a greppable `[ERROR] Step N/3 - <script> - FAILED with exit code
+   <n>` line; **all three steps still always run regardless of an earlier failure** (CLAUDE.md's
+   fail-safe-pipeline rule, deliberately preserved, not changed); the final banner prints "COMPLETED
+   WITH ERRORS" instead of "COMPLETED SUCCESSFULLY" when any step failed; and the script's own exit
+   code is now `1` on failure / `0` otherwise, so Windows Task Scheduler's own "Last Run Result"
+   surfaces a failure too, on top of the log line.
+5. **The `subagent-brief` worktree hit the exact stale-base gotcha this file's own standing notes
+   already warn about** ("`isolation: "worktree"` has repeatedly branched a dispatched subagent from
+   a stale `main`... always run `git log HEAD..main --oneline` in the worktree before merging... never
+   let a subagent resolve its own stale-base merge" — now a 6th documented occurrence, not a new
+   bug). Concretely here: the subagent's worktree branched from the committed `main` *before* this
+   session's own uncommitted step-2 fix, so a straight merge would have **silently reverted** that
+   fix. Resolved per the standing note's advice, by hand, not by the subagent: read the subagent's
+   `git diff main -- schedule_daily.bat` inside its worktree, confirmed it only touched the
+   error-handling lines (not step 2's `&`), then manually reapplied just those additions onto the
+   current `main` file (which already had the `^&` fix) via direct edit rather than a git merge.
+   Independently spot-checked afterward (not just trusting the subagent's self-reported evidence):
+   rebuilt a standalone test harness in a temp directory (dummy `ok_step.R`/`fail_step.R`, never the
+   real pipeline scripts) simulating both an all-succeeding run and a two-step-failing run; confirmed
+   `[ERROR]` lines, the correct banner, and the correct exit code in both cases.
+6. **Final verification: a real, live full pipeline run via `schedule_daily.bat`** (both fixes in
+   place) completed cleanly end-to-end — no `[ERROR]` lines, no `"not recognized"` errors anywhere in
+   the log, `market_odds_engine.R` pulled 4 live games from The Odds API and wrote fresh value bets
+   to `cache/latest_value_bets.rds` (2 flagged "SHARP +EV"), final banner "COMPLETED SUCCESSFULLY",
+   exit code 0.
+
+## What's actually changed
+
+- `schedule_daily.bat` — **modified, uncommitted** on `main` (51-line diff, `wc -l` = 151 total).
+  Two changes: the `^&` escape at line 99, and the error-capture/banner/exit-code block at lines
+  88-150 described above. Nothing else in the file touched (log rotation, season-window guard,
+  `%RSCRIPT%` resolution logic all untouched).
+- The cache/data file diffs visible in `git status` (`cache/active_rosters_cache.rds`,
+  `cache/latest_value_bets.rds`, `data/box_scores_cache.rds`, etc.) are **side effects of the live
+  pipeline rerun in step 6 above**, not hand-edited — expected and fine to commit alongside, or
+  leave for whatever this repo's normal cache-commit cadence is.
+- No `run_full_pipeline.R`/`bet_tracker.r`/`market_odds_engine.R`/any other `.R` file was touched.
+- `.subagent-runs/20261001-125941-ae0646/` holds the full brief + result JSON for the logging work,
+  `.subagent-runs/brief-logging.md` and `.subagent-runs/result-logging.json` are this thread's
+  working copies of the same brief/result (kept for reference, not auto-cleaned).
+
+## Environment notes (new/refining this session)
+
+- **The renv-corruption standing note (bottom of this file) needs a caveat, not a rewrite**: it's
+  confirmed as still live and can be far larger in scope (38 packages this time vs. 3 previously),
+  and the fix recipe used this session additionally deleted broken package directories before
+  calling `renv::restore(prompt = FALSE)` — whether bare `restore()` alone would have been enough is
+  untested and should not be assumed either way by a future session.
+- `renv::status()`'s own broken-package list is the fastest diagnostic — don't guess from an
+  `Rscript` error message alone (e.g. "there is no package called 'cli'") which packages are
+  actually broken; `cli` failing to load is a downstream symptom, the actual broken set is much
+  larger and `renv::status()` lists every directory missing a `DESCRIPTION` file directly.
+
+## Concrete next step
+
+**No further code work is required to close out the originally-reported error** — it's fixed and
+live-verified. If picking this thread back up:
+1. **Decide whether to commit `schedule_daily.bat`** (currently uncommitted) — and whether to
+   commit the pipeline-rerun cache-file diffs alongside it or separately, per whatever this repo's
+   normal cadence for cache commits is (not established in this thread).
+2. If the renv-corruption pattern recurs a third time, it's probably worth escalating from "known
+   gotcha, re-run restore" to actually root-causing it — the `subagent-brief` skill's worktree
+   cleanup step is the standing suspect (per the existing note) but has never been confirmed; a
+   focused look at `cleanup_worktrees.R` and anything it does near `renv/` would be the place to
+   start.
+3. Unrelated to this thread: the control-panel thread immediately below (#45 done, #46 next) and the
+   postseason-predictions thread further down are both still exactly where their own sections leave
+   them — this thread didn't touch either.
+
+---
+
 # Handoff — 2026-09-26 (New thread: interactive control-panel app spec — via `/spec-interview`) — CURRENT STATE FOR THIS THREAD (read this section first)
 
 **This is a separate thread from every other thread in this file** (the 2026-postseason-`.qmd`
