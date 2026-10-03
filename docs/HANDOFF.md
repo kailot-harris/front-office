@@ -1,3 +1,173 @@
+# Handoff — 2026-10-03 (Continuing thread: postseason predictions updated with real Round 1 results — AND a 3rd renv-corruption occurrence, now escalated) — CURRENT STATE FOR THIS THREAD (read this section first)
+
+**This is a continuation of the "2026 season accuracy review + postseason predictions `.qmd`"
+thread further down this file** (the one that originally built `WNBA_2026_Postseason_Predictions.qmd`)
+— not a new thread, but picking that one's own "Concrete next step" #3 back up. It is otherwise
+separate from the `.bat`/renv-repair thread immediately below and the control-panel/auth thread
+further down — nothing in those is affected by this one, except that the renv-corruption finding
+below is the **3rd occurrence** of a pattern those threads already flagged, which the standing note
+at the bottom of this file says to escalate at that point. Read `CLAUDE.md` first if you haven't
+already (unchanged, still applies everywhere).
+
+## What happened, in order
+
+1. **User asked to pick the postseason-predictions thread back up** (as of 2026-10-03, six days
+   after the 2026-09-27 Round 1 tip-off). Per that thread's own "Concrete next step" #3, the
+   bracket tree needed re-running round-by-round against real outcomes.
+2. **Checked real Round 1 state against `data/box_scores_cache.rds` and
+   `cache/prediction_accuracy_log.rds` directly** (not assumed from the original pre-series
+   prediction): **#8 New York Liberty swept #1 Minnesota Lynx 2-0** (box scores: 91-75 Liberty
+   road win in G1, 87-71 Liberty home win in G2) — eliminating the model's own pre-series
+   championship favorite (23.9%) in Round 1. **#4 Atlanta Dream swept #5 Washington Mystics 2-0**
+   (92-77, 93-75). The other two series are **tied 1-1**: #2 Golden State vs #7 Dallas (GS won G1
+   104-80, Dallas won G2 108-100) and #3 Las Vegas vs #6 Indiana (LV won G1 102-85, Indiana won G2
+   99-89). Both decisive Game 3s (LV/IND 2026-10-01, GS/DAL 2026-10-02 per
+   `cache/prediction_accuracy_log.rds`'s own `PENDING` rows) **had not yet been ingested into
+   `data/box_scores_cache.rds` as of this render** — its max `game_date` was still 2026-09-30 at
+   render time, even though today is 2026-10-03. Confirmed, not guessed: `prediction_accuracy_log.rds`
+   already has real `LIVE_ODDS_API` rows logged for the ATL-vs-NY semifinal (2026-10-03/10-04),
+   which only exist because the pipeline itself has already determined Round 1's top-half winners —
+   independent confirmation of the box-score read.
+3. **Updated `WNBA_2026_Postseason_Predictions.qmd`** (not a rewrite — inserted one new chunk,
+   fixed one existing chunk, updated the Conclusion prose):
+   - New `{r round1-actual}` chunk (inserted directly after the original pre-series `{r round1}`
+     chunk, before `#### Round 2`): a `tibble::tribble` of the four series' actual state
+     (`DECIDED`/`TIED_1_1` + game counts), which computes `p_high_advances` as **0/1 for the two
+     decided series** and, for the two still-tied series, **a single-game win probability for the
+     decisive Game 3 only** (`single_game_prob_high()`, reusing the same `pnorm((rating_diff +
+     WNBA_HCA) / WNBA_MARGIN_SIGMA)` formula `simulate_single_series()` already computes internally
+     for a single game — not a fresh best-of-3 simulation, which would understate how resolved a
+     1-1 series already is). This `adv_prob` (renamed from the original chunk's identical variable
+     name, which it now overwrites) is what Round 2/Round 3's existing, unmodified code consumes —
+     no changes were needed to the Round 2/Round 3 chunks themselves, since they were already
+     written generically against `adv_prob` rather than against the model's Round 1 output
+     directly.
+   - **Fixed a latent bug in the "Cross-check against the live pipeline's own Game 1 predictions"
+     section**, found while updating this thread, not pre-existing in scope: it filtered
+     `cache/prediction_accuracy_log.rds` on `status == "PENDING"` for the 2026-09-27 Game 1s — true
+     when the doc was first written (games hadn't been played yet), but those rows are now
+     `status == "RESOLVED"` since the games have since been played, so the filter would have
+     silently returned **zero rows** without erroring. Changed the filter to `status == "RESOLVED"`
+     and added a real `actual_home_win` column (joined from `data/box_scores_cache.rds`) to the
+     comparison table, so it now shows live-pipeline-prediction vs. bracket-model-prediction vs.
+     real outcome side by side, not just the two pre-game predictions against each other.
+   - Updated Conclusion prose with the new post-Round-1 championship odds and an explicit statement
+     that this is a living pre-semifinal snapshot, not a final record.
+4. **Rendered via the `render-and-inspect-quarto` skill** (`"C:\Program Files\Quarto\bin\quarto.exe"
+   render WNBA_2026_Postseason_Predictions.qmd`, `RENV_CONFIG_SANDBOX_ENABLED=FALSE` +
+   `RSTUDIO_PANDOC` set per `CLAUDE.md`/this file's standing notes) — exit 0, all 29 chunks executed.
+   **Visually inspected the actual HTML**, not just the exit code: title block shows "October 3,
+   2026" (the real evaluated `Sys.Date()`, not literal `` `r Sys.Date()` `` or "Invalid Date"); the
+   final championship-probability table's own caption confirms `sum(champ_prob)` == exactly 1.000;
+   Minnesota Lynx's row independently confirmed at 0.000/0.000/0.000 across
+   reach-semis/reach-finals/champion columns, consistent with their Round 1 elimination. Updated
+   top three: **Atlanta Dream 41.4%, Golden State Valkyries 21.9%, Las Vegas Aces 13.7%**.
+5. **Committed and pushed**: `775f7c3` — `WNBA_2026_Postseason_Predictions.qmd`/`.html` plus the
+   harmless `cache/playoff_series_wnba_demo.rds` side-effect diff (from `playoff_simulator.R`'s own
+   demo suite re-running as a side effect of being `source()`d — same "harmless" comment the
+   original doc's own `{r team-inputs}` chunk already carries). Pushed to `main` on
+   `kailot-harris/WNBA_analytics`.
+
+## A 3rd renv-corruption occurrence — now past this file's own escalation threshold
+
+While starting this thread, a plain `Rscript.exe` call failed with `there is no package called
+'tidyverse'` — the renv package library was corrupted **again** (same class of issue as the
+`.bat`-repair thread immediately below this one from 2026-10-01, which was itself already a
+recurrence). This file's own standing note at the bottom already says: *"If the renv-corruption
+pattern recurs a third time, it's probably worth escalating from 'known gotcha, re-run restore' to
+actually root-causing it."* **This is that third occurrence.** Escalating here, not just re-running
+the same recipe silently again:
+
+- **A full `renv::restore(prompt = FALSE)` (after deleting package directories missing
+  `DESCRIPTION`, the same recipe the 2026-10-01 thread used) could not be completed this session,
+  for two separate reasons, both confirmed, not guessed:**
+  1. **The machine was critically low on memory** (~1.8-2.1 GB free of 15.7 GB total) for most of
+     this session. Two attempts to run the restore via a backgrounded shell wrapper got their
+     *wrapper* killed by this environment's own low-memory guard — but the underlying
+     `Rscript.exe` process kept running as an orphan afterward anyway (confirmed via
+     `Get-CimInstance Win32_Process -Filter "Name='Rscript.exe'"`'s own `CommandLine` field, not
+     assumed), so nothing was actually lost by the wrapper kills — same "orphaned R process" class
+     of incident `docs/archive/handoff_history.md`'s "2026-09-25 (pre-Tier-6)" section already
+     documents, now recurring under low-memory conditions rather than from a stuck
+     `Rscript.exe -e`. **No R process itself was the memory hog** — `Get-Process | Sort-Object
+     WorkingSet64 -Descending` at the time showed several Chrome processes, 3 VS Code windows, and
+     WSL (`vmmemWSL`) as the actual top consumers, not anything R-related.
+  2. **Once memory pressure cleared enough for the restore to actually run to completion, it still
+     failed outright** (not killed — a clean `Error: failed to install "duckdb"` from `renv`
+     itself) partway through `duckdb`'s C++ source compile under Rtools. The compiler invocation
+     itself produced no visible error text before `renv`'s own failure message — ambiguous whether
+     this was itself a memory-starved compiler death or a genuine compile error; **not
+     distinguished this session**, flagging as unresolved rather than assuming either way. Because
+     `renv::restore()` aborts the whole lockfile on a single package failure, this one `duckdb`
+     failure left the **rest of the ~150-package lockfile uninstalled** — confirmed via directory
+     listing afterward that the following core project packages are still completely missing from
+     `renv/library/windows/R-4.5/x86_64-w64-mingw32/`: **`shiny`, `shinydashboard`, `DT`, `future`,
+     `wehoop`, `chromote`, `shinytest2`, `RSQLite`, `reticulate`, `xgboost`, `duckdb`** (checked by
+     directory existence, not inferred from the restore log). `bslib` and `data.table` happened to
+     already be present from before this session's deletion/restore cycle and are fine.
+- **Workaround used to unblock this thread's own task** (not a fix for the above): rather than
+  fight the full lockfile, ran a narrow `renv::install(c("tidyverse", "knitr", "scales", "here"),
+  prompt = FALSE)` — exactly the packages `config.R`/`playoff_simulator.R`/this `.qmd` actually
+  `library()`/`::`-call. All 85 transitively-pulled packages came from renv's own local package
+  cache (`[linked from cache]` in the install log) in ~12 seconds total — no compilation, so the
+  low-memory/duckdb problems above never came into play for this narrow install. **This makes the
+  `.qmd` in this thread (and anything else that only needs `config.R`'s own dependency set) work
+  again, but does nothing for the packages listed as still-missing above.**
+- **Concrete implication for whoever picks up the control-panel thread (#46+) or
+  `run_full_pipeline.R`/`app.R` next**: those scripts need `shiny`/`shinydashboard`/`DT`/`future`/
+  `wehoop` etc., none of which are currently installed. **Do not assume a bare `library(shiny)`
+  (or running `app.R`/`run_full_pipeline.R`/the headless dashboard probe) will work in this
+  environment right now** — it was not re-verified working after this session's partial restore,
+  and per the directory check above, it almost certainly is not. A full `renv::restore()` still
+  needs to actually succeed past `duckdb`, which needs either (a) more free memory than was
+  available this session (close Chrome/VS Code/WSL first, re-check with
+  `Get-CimInstance Win32_OperatingSystem`'s `FreePhysicalMemory` before attempting), or (b)
+  determining why `duckdb` specifically fails to compile here and fixing that directly (worth
+  checking whether a prebuilt binary is available from the CRAN snapshot `renv`'s lockfile points
+  at, which would avoid the Rtools compile path entirely) — neither was attempted this session.
+- **Still not root-caused**: *why* the renv library keeps getting corrupted in the first place
+  (missing `DESCRIPTION` files appearing between sessions) remains exactly the open question the
+  bottom-of-file standing note already flagged as the long-standing suspect
+  (`subagent-brief`'s worktree cleanup step) — this session's finding is additive (duckdb's compile
+  failure + low memory as a *compounding* factor during *recovery*, not a cause of the original
+  corruption) and doesn't resolve that older open question.
+
+## What's actually changed
+
+- `WNBA_2026_Postseason_Predictions.qmd`/`.html` — modified, committed (`775f7c3`), pushed to
+  `main`. See "What happened" #3-4 above for the exact diff shape.
+- `cache/playoff_series_wnba_demo.rds` — side-effect diff from re-running `playoff_simulator.R`'s
+  own demo suite, committed alongside (harmless, same precedent as the original thread's own render).
+- `renv/library/windows/R-4.5/x86_64-w64-mingw32/` — **not committed** (gitignored, local-only).
+  Currently holds `tidyverse`/`knitr`/`scales`/`here` plus their transitive deps (85 packages) newly
+  restored from cache, plus whatever survived from before. Still missing the packages listed above.
+  No `renv.lock` changes were made or needed (no package *versions* changed, just local
+  installation state).
+
+## Concrete next step
+
+1. **Both pending Round 1 Game 3s (LV/IND 2026-10-01, GS/DAL 2026-10-02) have almost certainly been
+   played in real life by now** (today is 2026-10-03) — `data/box_scores_cache.rds` just hadn't
+   ingested them as of this session's render. Once a working `daily_ingest.R` run (or any fresh
+   data pull) brings the cache current, replace the two `TIED_1_1` rows in the `{r round1-actual}`
+   chunk's `r1_actual` tribble (`WNBA_2026_Postseason_Predictions.qmd`, currently right after the
+   `#### Round 1 — actual results` heading) with the real Game 3 results (`DECIDED`, actual
+   `high_wins`/`low_wins`) instead of the single-game model probability, then re-render and
+   re-verify per the `render-and-inspect-quarto` procedure used this session — the Round 2/Round 3
+   chunks need no changes, same as this session's update.
+2. **Before attempting that `daily_ingest.R` run** (or resuming #46 control-panel work, or running
+   `app.R`), first get a full `renv::restore()` to actually succeed — see the escalation section
+   above for exactly what blocked it this session (memory + `duckdb`'s compile) and what hasn't
+   been tried yet (freeing memory first; checking for a `duckdb` binary that avoids the Rtools
+   compile path). Don't assume the narrow `tidyverse`/`knitr`/`scales`/`here` install this session
+   did is sufficient for anything beyond this one `.qmd`.
+3. Once the full postseason bracket resolves (Finals won), this report should get one more pass
+   treating it as a closed, final record rather than a living snapshot — not needed yet.
+4. Unrelated to this thread: the `.bat`/renv-repair thread immediately below and the control-panel/
+   auth thread further down are both still exactly where their own sections leave them.
+
+---
+
 # Handoff — 2026-10-01 (New thread: scheduled-pipeline failure — `.bat` syntax bug + renv repair + error-visibility logging) — CURRENT STATE FOR THIS THREAD (read this section first)
 
 **This is a separate thread from the control-panel/auth thread immediately below and the
@@ -317,18 +487,19 @@ know this script exists and follows the same independent-reconciliation pattern 
 
 ## Concrete next step
 
-**None required — this was a one-shot report, not a multi-tier roadmap.** If picking this thread
-back up:
-1. **Decide whether to `git add`/commit the two new files** (`WNBA_2026_Postseason_Predictions.qmd`
-   and `.html`) — they're currently untracked; this session did not commit anything (not asked to).
+**Superseded by the 2026-10-03 thread at the top of this file** — item 3 below (re-running Part 2
+with real Round 1 results) has been done; see that section for what changed and what's still open
+(two Round 1 series' Game 3s still pending real data, plus an escalated renv-corruption issue).
+Original next-steps, kept for history:
+1. ~~Decide whether to `git add`/commit the two new files~~ — done (committed as part of the Round-1
+   update, commit `775f7c3`, pushed to `main`).
 2. If the 5 still-`PENDING` 2026-09-24 regular-season rows resolve (box scores catch up), Part 1's
    N=25 real-scoreable-game count should grow to N=30 — re-run Part 1's chunks and update the
-   headline numbers in the Conclusion before treating this doc as a final record.
-3. Once the actual 2026-09-27 Game 1 results are known, Part 2's bracket tree should be re-run
-   round-by-round with real outcomes replacing the corresponding round's probability tree (the
-   `bracket-helpers`/`round1`/`round2`/`round3` chunks are structured so only the relevant round
-   needs re-deriving, not the whole file) — the doc as written is a **pre-Round-1** prediction,
-   not a living/updating bracket tracker.
+   headline numbers in the Conclusion before treating this doc as a final record. **Not done in the
+   2026-10-03 update** (that session touched only Part 2) — still open.
+3. ~~Once the actual 2026-09-27 Game 1 results are known, Part 2's bracket tree should be re-run
+   round-by-round~~ — done for Round 1 (2 of 4 series decided, 2 tied 1-1 modeled as a single
+   decisive game pending real data) in the 2026-10-03 update above.
 
 ---
 
