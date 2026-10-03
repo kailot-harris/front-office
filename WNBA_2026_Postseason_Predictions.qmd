@@ -283,12 +283,62 @@ r1 <- tibble(
   )
 
 knitr::kable(r1 |> select(team_high, team_low, p_high), digits = 3,
-             caption = "Round 1 (Best-of-3): probability the higher seed wins the series.")
+             caption = "Round 1 (Best-of-3), pre-series model prediction: probability the higher seed wins the series.")
+```
 
+#### Round 1 — actual results (updated 2026-10-03)
+
+Round 1 has partly played out since the pre-series prediction above was made. Per an independent
+check of `data/box_scores_cache.rds` (max ingested date 2026-09-30 as of this render), two of the
+four series are **decided** and two remain **tied 1-1** awaiting a decisive Game 3 the box-score
+cache has not yet ingested (`cache/prediction_accuracy_log.rds` confirms both Game 3s are logged
+`PENDING`: LV vs IND 2026-10-01, GS vs DAL 2026-10-02).
+
+```{r round1-actual}
+r1_actual <- tibble::tribble(
+  ~seed_high, ~seed_low, ~status,     ~high_wins, ~low_wins,
+  1,          8,         "DECIDED",   0,          2,
+  2,          7,         "TIED_1_1",  1,          1,
+  3,          6,         "TIED_1_1",  1,          1,
+  4,          5,         "DECIDED",   2,          0
+)
+
+# For a series tied 1-1 in the 1-1-1 format, the higher seed always hosts the decisive Game 3
+# (confirmed above), so the only remaining uncertainty is a single game, not a full series —
+# reuse the same single-game pnorm model simulate_single_series() computes internally, rather
+# than treating it as a fresh best-of-3 (which would understate how close to resolved these
+# already are). WNBA_HCA/WNBA_MARGIN_SIGMA come from config.R, not re-derived here.
+single_game_prob_high <- function(seed_high, seed_low) {
+  rating_diff <- adj_of(seed_high) - adj_of(seed_low)
+  pnorm((rating_diff + WNBA_HCA) / WNBA_MARGIN_SIGMA)
+}
+
+r1_actual <- r1_actual |>
+  mutate(
+    team_high = sapply(seed_high, team_of),
+    team_low  = sapply(seed_low, team_of),
+    p_high_advances = case_when(
+      status == "DECIDED"  ~ as.numeric(high_wins == 2),
+      status == "TIED_1_1" ~ mapply(single_game_prob_high, seed_high, seed_low),
+      TRUE ~ NA_real_
+    )
+  )
+
+knitr::kable(
+  r1_actual |> select(team_high, team_low, status, high_wins, low_wins, p_high_advances),
+  digits = 3,
+  caption = "Round 1 actual state: 1v8 and 4v5 decided; 2v7 and 3v6 tied 1-1, p_high_advances is the higher seed's probability of winning the single decisive Game 3 (model-derived for the two undecided series, 0/1 for the two decided ones)."
+)
+
+cat(sprintf(
+  "Headline: #8 New York Liberty swept #1 Minnesota Lynx 2-0 — the model's #1 championship favorite (23.9%%, Conclusion of the original pre-series render) is already eliminated. #4 Atlanta Dream swept #5 Washington Mystics 2-0.\n"
+))
+
+# Downstream rounds use this actual/updated adv_prob, not the pre-series model-only version above.
 adv_prob <- setNames(rep(NA_real_, 8), 1:8)
-for (i in seq_len(nrow(r1))) {
-  adv_prob[as.character(r1$seed_high[i])] <- r1$p_high[i]
-  adv_prob[as.character(r1$seed_low[i])]  <- 1 - r1$p_high[i]
+for (i in seq_len(nrow(r1_actual))) {
+  adv_prob[as.character(r1_actual$seed_high[i])] <- r1_actual$p_high_advances[i]
+  adv_prob[as.character(r1_actual$seed_low[i])]  <- 1 - r1_actual$p_high_advances[i]
 }
 ```
 
@@ -372,16 +422,19 @@ final_table |>
 
 ### Cross-check against the live pipeline's own Game 1 predictions
 
-`prediction_accuracy_logger.R`'s `log_todays_predictions()` already logged real, `LIVE_ODDS_API`
--sourced predictions for all four 2026-09-27 Game 1s (still `status == "PENDING"` in
-`cache/prediction_accuracy_log.rds`, since those games have not been played yet). These come from the
-live pipeline's own market-odds-blended win model, an independent input from this section's
-box-score-only, RAPM-adjusted series simulator — comparing them is a useful sanity check, not a
+`prediction_accuracy_logger.R`'s `log_todays_predictions()` logged real, `LIVE_ODDS_API`-sourced
+pre-game predictions for all four 2026-09-27 Game 1s. Those rows are now `status == "RESOLVED"`
+(the games have since been played) rather than `PENDING` as they were when this report was first
+drafted — the filter below was updated accordingly, otherwise it would have silently returned zero
+rows. These predictions come from the live pipeline's own market-odds-blended win model, an
+independent input from this section's box-score-only, RAPM-adjusted series simulator — comparing
+them against each other, and now against the real outcome, is a useful sanity check, not a
 guarantee of agreement.
 
 ```{r cross-check}
 game1_preds <- log |>
-  filter(!is_synthetic, status == "PENDING", as.Date(game_date) == as.Date("2026-09-27")) |>
+  filter(!is_synthetic, status == "RESOLVED", as.Date(game_date) == as.Date("2026-09-27"),
+         home_team %in% seeds$abbr) |>
   select(game_date, home_team, away_team, predicted_home_win_prob, predicted_winner)
 
 game1_bracket <- r1 |>
@@ -392,13 +445,19 @@ game1_bracket <- r1 |>
   ) |>
   select(home_abbr, away_abbr, bracket_p_home_win)
 
+game1_actual <- box |>
+  filter(game_date == as.Date("2026-09-27"), team_home_away == "home") |>
+  mutate(actual_home_win = team_winner) |>
+  select(home_abbr = team_abbreviation, actual_home_win)
+
 comparison <- game1_preds |>
   left_join(game1_bracket, by = c("home_team" = "home_abbr", "away_team" = "away_abbr")) |>
+  left_join(game1_actual, by = c("home_team" = "home_abbr")) |>
   select(game_date, home_team, away_team, live_pipeline_p_home_win = predicted_home_win_prob,
-         bracket_model_p_home_win = bracket_p_home_win)
+         bracket_model_p_home_win = bracket_p_home_win, actual_home_win)
 
 knitr::kable(comparison, digits = 3,
-             caption = "Game 1 (2026-09-27): live pipeline's logged prediction vs. this report's bracket series model.")
+             caption = "Game 1 (2026-09-27): live pipeline's pre-game prediction vs. this report's bracket series model vs. the real outcome.")
 ```
 
 ## Conclusion
@@ -408,7 +467,19 @@ stretch of the 2026 regular season (N = `r nrow(scoreable)` games, 2026-09-17 th
 scoreable for win/loss accuracy and Brier score, with margin error additionally available for the
 `r sum(scoreable$market_data_source == "LIVE_ODDS_API")` most-recent `LIVE_ODDS_API` rows — see the
 Limitations subsection above before treating these numbers as a season-long claim, since real
-non-synthetic logging only covers the season's last ~10 days. Part 2 built a fully analytical
-bracket win-probability tree from the confirmed real 2026 postseason bracket and each team's real
-regular-season performance, finding Minnesota (`r sprintf("%.1f%%", final_table$p_champion[final_table$team == "Minnesota Lynx"] * 100)`),
-Atlanta, and Golden State as the top three championship favorites entering the 2026-09-27 First Round.
+non-synthetic logging only covers the season's last ~10 days.
+
+Part 2's pre-series bracket model entering the 2026-09-27 First Round had Minnesota (23.9%), Atlanta
+(22.4%), and Golden State (21.0%) as the top three championship favorites. **That pre-series
+prediction has already missed on its top pick**: #8 New York Liberty swept #1 Minnesota Lynx 2-0 in
+Round 1, eliminating the model's championship favorite before the semifinals. #4 Atlanta Dream also
+swept #5 Washington Mystics 2-0, and the two remaining Round 1 series (#2 Golden State vs #7 Dallas,
+#3 Las Vegas vs #6 Indiana) are tied 1-1 awaiting a decisive Game 3 not yet reflected in
+`data/box_scores_cache.rds` as of this render. Feeding the confirmed results and a single-game model
+for the two undecided Game 3s back into the same bracket tree gives updated championship
+probabilities of Golden State (`r sprintf("%.1f%%", final_table$p_champion[final_table$team == "Golden State Valkyries"] * 100)`),
+Atlanta (`r sprintf("%.1f%%", final_table$p_champion[final_table$team == "Atlanta Dream"] * 100)`),
+and Las Vegas (`r sprintf("%.1f%%", final_table$p_champion[final_table$team == "Las Vegas Aces"] * 100)`)
+as the new top three — see "Round 1 — actual results" above for the full breakdown. This report is a
+living pre-semifinal snapshot, not a final record; it should be re-run again once the two pending
+Game 3s resolve and again after each subsequent round.
