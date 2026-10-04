@@ -1,3 +1,123 @@
+# Handoff — 2026-10-04 (New thread: spec for a new static-snapshot summary app, `summary_app.R` — spec only, not implemented) — CURRENT STATE FOR THIS THREAD (read this section first)
+
+**This is a separate thread from every other thread in this file** — it touched no code, no
+caches, and no existing docs other than adding one new file. Read `CLAUDE.md` first if you
+haven't already.
+
+**Stale-state note on the thread immediately below this one** (the series-length-predictor
+thread): its own "Concrete next step" #1 says "decide whether to commit
+`tools/series_length_predictor.R`" as if still open — it is not. `git log` shows it was committed
+at `23ed8d1` ("feat(tools): add exact series-length predictor for playoff series") sometime after
+that section was written. Trust `git log`, not that section's own next-step text, on this point.
+
+## What this thread is
+
+The user asked to present this project's work as a Shiny app for a presentation — specifically
+2026 prediction accuracy, 2026 playoff predictions, and model comparison. Discussion proceeded in
+three stages: (1) an initial exploratory review of the existing `app.R` (a 1,723-line
+`shinydashboard` betting terminal — Daily Edges, Steam Radar, Injuries, Bet Tracker, Embeddings,
+Model Calibration, Standings/Matchup Calc, Model Diagnostics, Player Props, Clutch/Shot Profile —
+found to have no "results summary" content at all, so trimming it down was ruled out in favor of a
+new standalone app); (2) a review of `WNBA_Analysis_Project.Rmd` for additional context (the
+rolling-window/offseason-method/model-architecture benchmark notebook); (3) a full `/spec-interview`
+(9 sequential Y/N questions, documented turn-by-turn in this thread's own conversation, not
+repeated here) that produced a compiled spec. **Nothing was implemented this session** — no `.R`
+file was written except the spec doc itself.
+
+## What exists now
+
+**`docs/SUMMARY_APP_SPEC.md`** (new, untracked) — the full compiled spec for a new app,
+`summary_app.R`, to be created at repo root. This is the authoritative spec for the next session to
+implement from; it is self-contained (states exact tab contents, exact cache files to read, and
+every architectural decision with its Y/N rationale) so a fresh agent can build directly from it
+without re-running the interview. Read it in full before starting implementation — summary of its
+key decisions, for orientation only (the doc itself is the source of truth):
+
+- **Static-snapshot only, v1** — `summary_app.R` reads only pre-computed `.rds`/`.csv` cache files
+  at startup, no live model fitting, no `wehoop`/`tidymodels` runtime dependency. Live recomputation
+  is explicitly deferred to a future session, not this one.
+- **5 tabs**: Season Standings & Projections (table + new bar chart, from
+  `cache/projected_wnba_standings.rds`, zero new work); Playoff Bracket (a **ggplot2-rendered**
+  bracket graphic — not HTML/CSS, that's deferred — from `cache/playoff_series_wnba_demo.rds` +
+  `cache/series_length_predictions.rds`, with Finals rendered as explicitly TBD/pending rather than
+  showing the Finals matchup `playoff_series_wnba_demo.rds` claims to know, since
+  `series_length_predictions.rds` disagrees and says Finals is undetermined — this thread resolved
+  that disagreement in favor of "pending"); Model Calibration & Reliability (ported near-verbatim
+  from `app.R`'s existing tab, UI ~lines 277-292 / server ~lines 1123-1200); Model Comparison (a
+  **new** table from a **new** script, `tools/build_model_benchmark_cache.R`, which does not exist
+  yet — reusing `WNBA_Analysis_Project.Rmd`'s existing `build_feature_df()`/`build_wnba_recipe()`/
+  `eval_model()`-style logic to fit LR/RF/XGBoost and write `data/model_benchmark_results.csv` —
+  plus the already-cached `data/window_sweep_3_25_results.csv` sweep chart, no new work for that
+  half); Prediction Accuracy Tracker (filtered strictly to `cache/prediction_accuracy_log.rds` rows
+  with `is_synthetic == FALSE & status == "RESOLVED"` — 39 real games as of this session's read, no
+  synthetic `DIAG_*` rows surfaced anywhere, no toggle — value boxes + table + a cumulative-
+  accuracy-over-time chart, deliberately not a probability-calibration scatter since that would
+  duplicate the Calibration tab).
+- **Framework**: lightweight `bslib`/`fluidPage` (`navset_tab`-style), not `shinydashboard` —
+  visually distinct from `app.R` on purpose. UI/visual polish beyond basic theming is flagged in the
+  spec as a near-term follow-up, not part of this version.
+- **File placement**: `summary_app.R` at repo root (flat-layout convention), fully separate from
+  `app.R` — no shared code path.
+
+## Data actually inspected this session (confirms the spec's cache references are real, not assumed)
+
+Checked live via a throwaway R script (written to `tools/tmp_inspect_caches.R`, run, then deleted —
+not left in the repo):
+
+- `cache/prediction_accuracy_log.rds`: 145 rows x 28 cols. `status` breakdown: 136 RESOLVED, 6
+  UNRESOLVABLE, 3 PENDING. `is_synthetic` breakdown: 106 TRUE, 39 FALSE. Of the 136 resolved rows,
+  100 are synthetic `DIAG_*` fixture rows (from a diagnostics/calibration-test run, not live
+  predictions) and only 39 are real. Overall accuracy across *all* 136 resolved rows (real +
+  synthetic mixed) is 80.9% — this blended figure is exactly what the spec's "real-only, no
+  synthetic" decision for the Accuracy Tracker tab is designed to avoid reporting.
+- `cache/model_calibration_input.rds`: 1,902 rows x 7 cols (`game_id`, `season`, `game_date`,
+  `home_team`, `away_team`, `.pred_Win`, `target_home_win`), 2019-2026 — matches what `app.R`'s
+  existing calibration tab already reads.
+- `cache/playoff_series_wnba_demo.rds`: list of 3 (`first_round`, `semifinals`, `finals`), each with
+  `format`/`high_seed`/`low_seed`/`p_high_seed_win`/`fair_ml_*`/`avg_series_games`/`exact_outcomes`.
+  Its `finals` entry names New York Liberty vs. Las Vegas Aces with real probabilities.
+- `cache/series_length_predictions.rds`: list of 6 — `first_round_example`, `semifinal_atl_ny`,
+  `semifinal_gs_lv` (each with `distribution`/`crossvalidation`), `finals = NULL`, `finals_note`
+  ("Finals matchup undetermined pending both semifinal series — not simulated."), `generated_at`.
+  **This directly contradicts `playoff_series_wnba_demo.rds`'s finals entry above** — flagged to the
+  user mid-interview, resolved in favor of this file's "pending" stance for the new app's bracket
+  tab (see spec doc).
+- `cache/projected_wnba_standings.rds`: 15 rows x 7 cols (Rank, Team, Net_Rating, Proj_Wins,
+  Proj_Losses, Win_Pct, Top_Core_Players) — ready to use as-is.
+- `data/window_sweep_3_25_results.csv` exists already (referenced in `WNBA_Analysis_Project.Rmd`'s
+  own staleness-check logic) — confirmed by reading the `.Rmd`, not independently re-verified on
+  disk this session.
+
+## What's actually changed
+
+- `docs/SUMMARY_APP_SPEC.md` — **new, untracked**. The only file this thread added.
+- `tools/tmp_inspect_caches.R` — created, used to inspect the caches above, then **deleted** before
+  this write-up. Not part of the repo.
+- No existing file was modified. `app.R`, `WNBA_Analysis_Project.Rmd`, every cache file, and
+  `run_full_pipeline.R` are all untouched.
+
+## Concrete next step
+
+1. **Implement `summary_app.R` per `docs/SUMMARY_APP_SPEC.md`**, in the order the spec lists its
+   tabs. Start with `tools/build_model_benchmark_cache.R` first (Tab 4's Model Comparison table
+   depends on it; every other tab's data already exists) — reuse `WNBA_Analysis_Project.Rmd`'s
+   `build_feature_df()`/`build_wnba_recipe()` helpers rather than reimplementing the recipe/feature
+   logic, per the spec's explicit instruction not to duplicate that code.
+2. **Validate the Playoff Bracket tab's ggplot2 layout carefully** — it's the one tab with no
+   existing precedent in this repo to copy from (unlike Calibration, which ports near-verbatim from
+   `app.R`). Render it standalone first and visually inspect before wiring into the Shiny tab, per
+   this repo's general "visually inspect, don't trust an absence of errors" discipline (see the
+   `headless-ui-regression-sweep`/`render-and-inspect-quarto` skills for the same principle applied
+   elsewhere in this repo).
+3. **Once v1 ships**, the spec's own "Explicitly deferred" section lists two known follow-ups the
+   user already flagged as wanted soon: live recomputation (at least for Model Comparison, per the
+   user's own "live recompute later" answer during the interview), and general UI/visual polish
+   (the user's own words: "we will make UI enhancements a priority soon").
+4. Unrelated to this thread: every other thread in this file is exactly where its own section
+   leaves it — this thread touched none of them.
+
+---
+
 # Handoff — 2026-10-04 (New thread: standalone playoff series-length predictor — `tools/series_length_predictor.R`) — CURRENT STATE FOR THIS THREAD (read this section first)
 
 **This is a separate thread from the pipeline-rerun/renv thread immediately below** (same calendar
