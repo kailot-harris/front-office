@@ -178,7 +178,11 @@ if (file.exists(PREDICTION_ACCURACY_CACHE_PATH)) {
 
 ui <- page_fluid(
   theme = bs_theme(version = 5, bootswatch = "flatly"),
-  titlePanel("WNBA Model Summary"),
+  div(
+    style = "display: flex; align-items: center; justify-content: space-between;",
+    titlePanel("WNBA Model Summary"),
+    input_dark_mode(id = "dark_mode_toggle")
+  ),
   navset_tab(
     nav_panel(
       "Season Standings & Projections",
