@@ -11,6 +11,13 @@
 # copy/adapted inline from live_calibration.R::calibration_analysis() (sport-agnostic
 # math, no NBA-specific constants) rather than sourcing app.R or live_calibration.R,
 # per the no-shared-code-path constraint established in SA-1.
+# Also implements SA-4 / GitHub issue #58: Tab 4, "Model Comparison" - a table of
+# Logistic Regression / Random Forest / XGBoost benchmark metrics from
+# data/model_benchmark_results.csv (produced by tools/build_model_benchmark_cache.R,
+# which reuses WNBA_Analysis_Project.Rmd's build_feature_df()/build_wnba_recipe()/
+# eval_model() logic), plus a rolling-window-size sweep chart (ROC-AUC vs. window size
+# 3-25, 95% bootstrap CI ribbon) read directly from the already-cached
+# data/window_sweep_3_25_results.csv.
 #
 # Pure static-snapshot design: reads only pre-computed .rds cache files at startup.
 # No live model fitting, no wehoop/tidymodels dependency.
@@ -100,6 +107,46 @@ if (file.exists(CALIBRATION_CACHE_PATH)) {
   calibration_load_error <- paste("Cache file not found:", CALIBRATION_CACHE_PATH)
 }
 
+# ---- Tab 4 (Model Comparison) cache paths ----
+# Both are plain data/ CSV literals (not config.R constants), matching this app's existing
+# convention for caches without a central constant (see CLAUDE.md). model_benchmark_results.csv
+# is produced by tools/build_model_benchmark_cache.R; window_sweep_3_25_results.csv already
+# exists as an authoritative artifact (config.R's ROLLING_WINDOW_SIZE comment) and is read here
+# as-is, with no new computation.
+MODEL_BENCHMARK_CACHE_PATH <- "data/model_benchmark_results.csv"
+WINDOW_SWEEP_CACHE_PATH <- "data/window_sweep_3_25_results.csv"
+
+# ---- Startup-only cache loads for Tab 4 (fail-safe: never crash if a cache is missing) ----
+model_benchmark_data <- NULL
+model_benchmark_load_error <- NULL
+
+if (file.exists(MODEL_BENCHMARK_CACHE_PATH)) {
+  model_benchmark_data <- tryCatch(
+    utils::read.csv(MODEL_BENCHMARK_CACHE_PATH, check.names = FALSE, stringsAsFactors = FALSE),
+    error = function(e) {
+      model_benchmark_load_error <<- conditionMessage(e)
+      NULL
+    }
+  )
+} else {
+  model_benchmark_load_error <- paste("Cache file not found:", MODEL_BENCHMARK_CACHE_PATH)
+}
+
+window_sweep_data <- NULL
+window_sweep_load_error <- NULL
+
+if (file.exists(WINDOW_SWEEP_CACHE_PATH)) {
+  window_sweep_data <- tryCatch(
+    utils::read.csv(WINDOW_SWEEP_CACHE_PATH, check.names = FALSE, stringsAsFactors = FALSE),
+    error = function(e) {
+      window_sweep_load_error <<- conditionMessage(e)
+      NULL
+    }
+  )
+} else {
+  window_sweep_load_error <- paste("Cache file not found:", WINDOW_SWEEP_CACHE_PATH)
+}
+
 ui <- page_fluid(
   theme = bs_theme(version = 5, bootswatch = "flatly"),
   titlePanel("WNBA Model Summary"),
@@ -143,6 +190,19 @@ ui <- page_fluid(
         card_header("Model Probability Calibration & Brier Reliability Diagnostics"),
         uiOutput("calibration_source_caption"),
         plotOutput("calibration_curve_plot", height = "450px")
+      )
+    ),
+    nav_panel(
+      "Model Comparison",
+      br(),
+      uiOutput("model_comparison_status"),
+      card(
+        card_header("Model Architecture Benchmark (Logistic Regression vs. Random Forest vs. XGBoost)"),
+        tableOutput("model_benchmark_table")
+      ),
+      card(
+        card_header("Rolling-Window-Size Sweep: Out-of-Sample ROC-AUC (Window Sizes 3-25)"),
+        plotOutput("window_sweep_plot", height = "450px")
       )
     )
   )
@@ -464,6 +524,72 @@ server <- function(input, output, session) {
         x = "Model Predicted Win Probability",
         y = "Empirical Realized Win Rate",
         size = "Games in bin"
+      ) +
+      theme_minimal(base_size = 13)
+  })
+
+  # ---- Tab 4: Model Comparison (SA-4 / GitHub issue #58) ----
+
+  output$model_comparison_status <- renderUI({
+    msgs <- character(0)
+    if (is.null(model_benchmark_data)) {
+      msgs <- c(msgs, paste0(
+        "No model benchmark data available. Placeholder state: ", model_benchmark_load_error
+      ))
+    }
+    if (is.null(window_sweep_data)) {
+      msgs <- c(msgs, paste0(
+        "No rolling-window-size sweep data available. Placeholder state: ",
+        window_sweep_load_error
+      ))
+    }
+    if (length(msgs) == 0) {
+      return(NULL)
+    }
+    div(
+      class = "alert alert-warning",
+      role = "alert",
+      lapply(msgs, function(m) tagList(strong("Warning: "), m, br()))
+    )
+  })
+
+  output$model_benchmark_table <- renderTable({
+    if (is.null(model_benchmark_data) || nrow(model_benchmark_data) == 0) {
+      data.frame(
+        Model = character(0), Accuracy = numeric(0), `ROC-AUC` = numeric(0),
+        `Brier Score` = numeric(0), `Log-Loss` = numeric(0), check.names = FALSE
+      )
+    } else {
+      model_benchmark_data
+    }
+  }, striped = TRUE, hover = TRUE, bordered = TRUE)
+
+  output$window_sweep_plot <- renderPlot({
+    if (is.null(window_sweep_data) || nrow(window_sweep_data) == 0) {
+      return(
+        ggplot() +
+          annotate("text", x = 0, y = 0, label = "No rolling-window-size sweep data available") +
+          theme_void()
+      )
+    }
+
+    df <- window_sweep_data
+    names(df)[names(df) == "ROC-AUC"] <- "ROC_AUC"
+    names(df)[names(df) == "Brier Score"] <- "Brier_Score"
+
+    ggplot(df, aes(x = Window_Size, y = ROC_AUC)) +
+      geom_ribbon(
+        aes(ymin = ROC_AUC_CI_Lower, ymax = ROC_AUC_CI_Upper),
+        fill = "#2C3E50", alpha = 0.15
+      ) +
+      geom_line(color = "#2C3E50", linewidth = 1.1) +
+      geom_point(color = "#18BC9C", size = 2) +
+      scale_x_continuous(breaks = seq(3, 25, by = 2)) +
+      labs(
+        title = "Out-of-Sample ROC-AUC Across Rolling Window Sizes (3-25)",
+        subtitle = "Shaded band: 95% bootstrap confidence interval",
+        x = "Rolling Window Size (games)",
+        y = "Out-of-Sample ROC-AUC"
       ) +
       theme_minimal(base_size = 13)
   })
