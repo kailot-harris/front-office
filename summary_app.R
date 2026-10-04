@@ -198,6 +198,45 @@ ui <- page_fluid(
           card_header("Projected Wins by Team"),
           plotOutput("standings_chart", height = "500px")
         )
+      ),
+      br(),
+      accordion(
+        open = FALSE,
+        accordion_panel(
+          "Methodology: what does Net Rating mean, and how is it calculated?",
+          p(strong("What a Net Rating of +10 means:"), "A team's Net Rating is its projected
+            scoring margin, per 40-minute WNBA regulation game, against a perfectly
+            ", em("league-average"), " opponent on a neutral court. The league's 15 teams are
+            always centered to average exactly 0.00, so Net Rating is a relative strength
+            scale, not an absolute points-per-game number — a +10.0 team is modeled to beat
+            a league-average team by about 10 points on a neutral court, and a +10.0 team vs. a
+            −5.0 team implies roughly a 15-point model margin before home-court advantage."),
+          p(strong("How it's calculated (bottom-up from individual players, not from team
+            win-loss record):")),
+          tags$ol(
+            tags$li("Every rostered player gets a Box Plus-Minus (BPM) rating: a 50/50 blend of
+              a box-score-stat-derived component and a plus-minus-derived component, each
+              shrunk toward 0.0 for players with limited career minutes so small samples don't
+              produce extreme ratings (", code("roster_bottom_up_engine.R"), ")."),
+            tags$li("For each team, the 8 players projected to play the most are selected as
+              the active rotation (WNBA teams play 5-on-5, not full 12-15 man squads)."),
+            tags$li("The team's 200 total on-court minutes for a regulation game (40 minutes
+              × 5 players on the floor) are split across that 8-player rotation in
+              proportion to each player's historical average minutes, adjusted down for any
+              player listed as Out/Doubtful/Questionable on the current injury report."),
+            tags$li("The team's raw rating is the minutes-weighted average BPM across the
+              rotation, scaled to a 5-on-floor game margin."),
+            tags$li("Finally, every team's raw rating is shifted by the same constant —
+              the league-wide average raw rating — so the 15 teams' Net Ratings always
+              average to exactly 0.00. This is what makes a single number directly comparable
+              across teams and seasons: it answers “how much better/worse than a typical
+              WNBA team is this roster, right now,” not “how many points per game does
+              this team actually score.”")
+          ),
+          p(em("Net Rating is one of three inputs the model blends into actual game-level win
+            probabilities and projected wins (alongside a team RAPM rating and an Elo rating);
+            it is not, by itself, the final prediction shown elsewhere in this app."))
+        )
       )
     ),
     nav_panel(
