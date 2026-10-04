@@ -1,3 +1,148 @@
+# Handoff — 2026-10-04 (Continuing thread: pipeline rerun, Round 1 fully resolved, renv restore root-caused and fixed) — CURRENT STATE FOR THIS THREAD (read this section first)
+
+**Continuation of the 2026-10-03 thread immediately below** (same postseason-predictions thread,
+not a new one) — picking up its own "Concrete next step" items 1 and 2. Also closes out, with an
+actual root cause rather than a workaround, the renv-corruption escalation that 2026-10-03 section
+raised. Separate from the `.bat`/renv-repair thread and the control-panel/auth thread further down,
+same as always. Read `CLAUDE.md` first if you haven't already.
+
+## What happened, in order
+
+1. **User asked to rerun the pipeline**, since real games had occurred in the preceding days that
+   should determine the next round. Ran `run_full_pipeline.R` directly (`"C:\Program Files\R\R-4.5.2\bin\Rscript.exe"
+   --no-init-file run_full_pipeline.R`, `RENV_CONFIG_SANDBOX_ENABLED=FALSE`) rather than via
+   `schedule_daily.bat`, since only a subset of stages mattered for this task.
+2. **Root-caused the renv-corruption/restore-failure pattern the 2026-10-03 section could only
+   escalate, not fix.** That section found `renv::restore()` dying on `Error: failed to install
+   "duckdb"` partway through a C++ source compile, but left open *why* a compile was even being
+   attempted when Posit's CRAN snapshot serves Windows binaries. Checked directly this session:
+   `renv.lock` pinned `duckdb` at **1.5.5**, but
+   `https://packagemanager.posit.co/cran/latest/bin/windows/contrib/4.5/PACKAGES` only publishes a
+   binary for **1.5.6** — `renv::restore()` must match the exact locked version, so a version
+   mismatch (not memory, not a genuine compile bug) silently forced the fallback to a source build,
+   which is what kept dying/getting OOM-killed. Confirmed via `curl`'s own `200` on the binary
+   PACKAGES listing and a direct `available.packages()` call showing the mismatch — not guessed.
+   **Fix**: `install.packages("duckdb", type = "win.binary", repos =
+   "https://packagemanager.posit.co/cran/latest")` (installed in <2 seconds, no compilation) +
+   `renv::record("duckdb")` to sync the lockfile entry to 1.5.6. Then **a full `renv::restore(prompt
+   = FALSE)` succeeded end-to-end** for the first time all session — `renv::status()` reports
+   `$synchronized: TRUE`, 205 packages installed, 0 missing `DESCRIPTION`. Verified by directory
+   listing (not inferred from the restore log) that every previously-missing core package is now
+   present: `shiny`, `shinydashboard`, `DT`, `future`, `wehoop`, `chromote`, `shinytest2`, `xgboost`,
+   `duckdb`. (`RSQLite`/`reticulate` are still absent but confirmed via `grep -rl` to be unused by
+   any script currently in the repo — not a blocker.)
+   - **Scope of this fix, stated precisely**: this explains and fixes why `renv::restore()` kept
+     *failing* this session (and presumably other recent sessions). It does **not** explain the
+     older, still-open mystery of why packages go missing from the library *between* sessions in the
+     first place (the standing note's `subagent-brief` worktree-cleanup suspicion, never confirmed).
+     Both can be true: something intermittently corrupts the library, and separately, the lockfile's
+     stale `duckdb` pin made every *recovery* attempt fail until today. Don't conflate the two when
+     reading this file's history.
+3. **Ran the full pipeline via `run_full_pipeline.R` directly.** `daily_ingest.R` (stage 2 of 20)
+   pulled both decisive Round 1 Game 3s that were still missing as of the 2026-10-03 render:
+   **Las Vegas Aces 94, Indiana Fever 83** (2026-10-01, LV hosting) and **Golden State Valkyries 77,
+   Dallas Wings 73** (2026-10-02, GS hosting) — both favored higher seeds won, consistent with the
+   model's pre-game single-game odds (65.3% GS, 59.0% LV) from the 2026-10-03 report.
+   **Round 1 is now fully decided, all four series**: (8) New York over (1) Minnesota 2-0, (4)
+   Atlanta over (5) Washington 2-0, (2) Golden State over (7) Dallas 2-1, (3) Las Vegas over (6)
+   Indiana 2-1. Both semifinals are confirmed: **(4) Atlanta vs (8) New York** and **(2) Golden State
+   vs (3) Las Vegas**.
+   - **This first `run_full_pipeline.R` invocation still died partway through**, at the same
+     `team_embeddings.py` (PyTorch) stage the 2026-09-25/2026-09-26 threads already documented as
+     OOM-prone on this machine — confirmed via `Get-CimInstance Win32_OperatingSystem` showing
+     ~1.9-2.1 GB free of 15.7 GB at the time. Everything before that stage (including the
+     box-score-critical `daily_ingest.R`) had already completed and persisted, so this was not a
+     blocker for this thread's actual goal.
+   - **A second, independent pipeline run then started and completed in full on its own**, at
+     `2026-10-04 05:30:15` per `logs/wnba_pipeline.log` — almost certainly `schedule_daily.bat`'s
+     normal scheduled trigger (not something this session invoked), landing a few hours after the
+     renv fix. This run **passed `team_embeddings.py` cleanly** (10.19s, no kill) and ran all 20
+     stages end-to-end in 38.31 seconds total — the first clean scheduled run visible in the log
+     since the renv library started failing. Treat this as live confirmation the renv fix holds
+     under real, unattended conditions, not just this session's interactive one.
+4. **Updated `WNBA_2026_Postseason_Predictions.qmd`/`.html`**: replaced the `{r round1-actual}`
+   chunk's two `TIED_1_1` tribble rows with the real `DECIDED` Game 3 results, updated the
+   `#### Round 2` section's intro text (previously "each semifinal's participants are uncertain" —
+   no longer true, both matchups are now named directly), and rewrote the Conclusion's closing
+   paragraph with the four-team championship odds. Rendered via the same
+   `render-and-inspect-quarto` procedure as 2026-10-03 (`"C:\Program Files\Quarto\bin\quarto.exe"
+   render`, exit 0, 29/29 chunks) and visually re-verified: title/date correct, Round 1 table shows
+   all four rows `DECIDED` with correct per-team scores, championship table caption confirms
+   `sum(champ_prob)` == 1.000, prose percentages match the table exactly (Atlanta 37.6%, Golden
+   State 32.1%, Las Vegas 20.8%, New York 9.4%).
+5. **Regenerated `WNBA_2026_Postseason_Bracket.png`** (the bracket visualization from the prior
+   session) with the same real-results update: all eight Round 1 boxes now green/gray (no blue
+   "still projected" boxes), both semifinal boxes show the model's real Bo5 series odds (ATL 71.0%
+   over NY, GS 57.6% over LV) instead of the old 4-way "winner of X vs winner of Y" uncertainty
+   display.
+   - **Known minor gotcha**: the `.qmd`'s own championship percentages (37.6/32.1/20.8/9.4) and the
+     bracket PNG's independently-recomputed ones in this same session differ by ~0.1-1 point in
+     places (e.g. 37.6% vs an earlier 37.5% from a slightly different run) — both call
+     `simulate_single_series(..., n_sims = 10000)` with no fixed random seed, so each independent
+     R session's Monte Carlo draw differs slightly. This is expected simulation noise, not a
+     reasoning bug; only worth fixing (e.g. `set.seed()`) if exact cross-artifact reproducibility is
+     ever required.
+   - **The bracket-generation R code itself was not committed anywhere** — it was written to
+     temporary `tools/tmp_bracket_plot.R`/`tools/tmp_bracket_render.R` files and deleted after each
+     use, per this session's own scratch-file convention, not saved as a reusable script. If
+     periodic bracket regeneration (e.g. after each remaining round) is wanted going forward, it's
+     worth promoting to a permanent `tools/` script instead of re-deriving the ggplot layout logic
+     from a cold start each time — see "Concrete next step" below.
+6. **Committed and pushed**: `9722478` — bundles the `.qmd`/`.html`/bracket PNG update, the real
+   `data/box_scores_cache.rds` diff (the two Game 3s), `cache/injury_data_cache.rds` (routine
+   refresh), `cache/playoff_series_wnba_demo.rds` (harmless `playoff_simulator.R` demo-suite
+   side effect, same as every prior session), and `renv.lock` (the duckdb 1.5.5→1.5.6 pin fix).
+   Pushed to `main` on `kailot-harris/WNBA_analytics`.
+
+## What's actually changed
+
+- `WNBA_2026_Postseason_Predictions.qmd`/`.html`, `WNBA_2026_Postseason_Bracket.png` — committed,
+  `9722478`. Round 1 fully resolved; see "What happened" #4-5 above for the exact diff shape.
+- `data/box_scores_cache.rds` — committed, `9722478`. Contains the two real Game 3s (3986 total
+  rows, confirmed via `daily_ingest.R`'s own log line, not re-derived).
+- `renv.lock` — committed, `9722478`. One record changed: `duckdb` 1.5.5 → 1.5.6. No other package
+  versions touched.
+- `renv/library/windows/R-4.5/x86_64-w64-mingw32/` — **not committed** (gitignored, local-only).
+  Fully synchronized per `renv::status()` as of this session; 205 packages, 0 broken.
+- **Still uncommitted in the working tree as of this write-up** (from the second, automatic
+  `2026-10-04 05:30:15` pipeline run described in "What happened" #3): `cache/betting_ledger.rds`,
+  `cache/copula_wilson_pra.rds`, `cache/injury_data_cache.rds` (refreshed again after the committed
+  version), `cache/latest_player_props.rds`, `cache/latest_value_bets.rds`, `cache/odds_history.rds`,
+  `cache/playoff_series_wnba_demo.rds` (refreshed again), `cache/prediction_accuracy_log.csv`/`.rds`,
+  `cache/projected_wnba_standings.rds`, `cache/risk_state.rds`, `cache/rolling_bet_metrics.rds`,
+  `cache/team_shot_quality.rds`, `cache/value_bets_history.rds`, `data/team_embeddings.csv`,
+  `data/team_similarity_matrix.csv`. These are routine live-pipeline-refresh diffs (market odds,
+  props, risk state, team embeddings), not hand-edited and not reviewed line-by-line this session —
+  flagging rather than silently committing, per this skill's own "surface anomalies" guidance.
+  `data/box_scores_cache.rds` is **not** in this list (0 new records on the second run — already
+  current from the first run's commit).
+
+## Concrete next step
+
+1. **Decide what to do with the uncommitted automatic-refresh cache diffs** listed above — commit
+   them (this repo's established cadence per `665c494`/other prior sessions is to commit live
+   pipeline-rerun cache diffs alongside intentional work, but nothing this session specifically
+   needed from them) or leave them for the next scheduled run to overwrite again. Not acted on here.
+2. **Both confirmed semifinals (ATL vs NY, GS vs LV) are now presumably underway or about to start**
+   — once either resolves (or both), re-run the same update pattern used this session and
+   2026-10-03: pull fresh box scores (`daily_ingest.R` via `run_full_pipeline.R`, or just rerun the
+   full pipeline now that it reliably completes), update `WNBA_2026_Postseason_Predictions.qmd`'s
+   `{r round1-actual}`-equivalent logic for Round 2 (currently there isn't a `{r round2-actual}`
+   chunk analogous to `{r round1-actual}` — would need to be added following the same pattern:
+   actual/decided rows feed `semi_finalist_prob` instead of the model-only computation), and
+   regenerate the bracket PNG.
+3. **If bracket regeneration becomes a recurring need**, promote the bracket-plotting logic (see
+   "What happened" #5's gotcha) into a permanent `tools/` script that takes the current
+   `r1_actual`/semifinal state as input, rather than rewriting the ggplot layout from scratch each
+   session.
+4. Unrelated to this thread: the `.bat`/renv-repair thread and the control-panel/auth thread further
+   down are both still exactly where their own sections leave them — **but note the control-panel
+   thread's #46 (and `app.R`, and anything else needing `shiny`/`wehoop`/etc.) is now actually
+   unblocked**, since the full renv restore succeeded this session. The 2026-10-03 section's warning
+   not to assume those work was accurate as of that section's writing but is now stale.
+
+---
+
 # Handoff — 2026-10-03 (Continuing thread: postseason predictions updated with real Round 1 results — AND a 3rd renv-corruption occurrence, now escalated) — CURRENT STATE FOR THIS THREAD (read this section first)
 
 **This is a continuation of the "2026 season accuracy review + postseason predictions `.qmd`"
@@ -146,23 +291,17 @@ the same recipe silently again:
 
 ## Concrete next step
 
-1. **Both pending Round 1 Game 3s (LV/IND 2026-10-01, GS/DAL 2026-10-02) have almost certainly been
-   played in real life by now** (today is 2026-10-03) — `data/box_scores_cache.rds` just hadn't
-   ingested them as of this session's render. Once a working `daily_ingest.R` run (or any fresh
-   data pull) brings the cache current, replace the two `TIED_1_1` rows in the `{r round1-actual}`
-   chunk's `r1_actual` tribble (`WNBA_2026_Postseason_Predictions.qmd`, currently right after the
-   `#### Round 1 — actual results` heading) with the real Game 3 results (`DECIDED`, actual
-   `high_wins`/`low_wins`) instead of the single-game model probability, then re-render and
-   re-verify per the `render-and-inspect-quarto` procedure used this session — the Round 2/Round 3
-   chunks need no changes, same as this session's update.
-2. **Before attempting that `daily_ingest.R` run** (or resuming #46 control-panel work, or running
-   `app.R`), first get a full `renv::restore()` to actually succeed — see the escalation section
-   above for exactly what blocked it this session (memory + `duckdb`'s compile) and what hasn't
-   been tried yet (freeing memory first; checking for a `duckdb` binary that avoids the Rtools
-   compile path). Don't assume the narrow `tidyverse`/`knitr`/`scales`/`here` install this session
-   did is sufficient for anything beyond this one `.qmd`.
+**Superseded by the 2026-10-04 thread at the top of this file** — items 1 and 2 below are both
+done; see that section for the renv root cause (not just a workaround) and the fully-resolved
+Round 1. Kept for history:
+1. ~~Both pending Round 1 Game 3s... replace the two `TIED_1_1` rows...~~ — done: both Game 3s
+   resolved (LV over IND 94-83, GS over DAL 77-73) and ingested via a real `daily_ingest.R` run;
+   `r1_actual` now has all four rows `DECIDED`.
+2. ~~Before attempting that `daily_ingest.R` run... first get a full `renv::restore()` to actually
+   succeed~~ — done, and root-caused (not just retried): see the 2026-10-04 section's renv entry.
 3. Once the full postseason bracket resolves (Finals won), this report should get one more pass
-   treating it as a closed, final record rather than a living snapshot — not needed yet.
+   treating it as a closed, final record rather than a living snapshot — **still not needed**, both
+   semifinals are in progress as of 2026-10-04.
 4. Unrelated to this thread: the `.bat`/renv-repair thread immediately below and the control-panel/
    auth thread further down are both still exactly where their own sections leave them.
 
