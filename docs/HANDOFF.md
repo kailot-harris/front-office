@@ -1,3 +1,165 @@
+# Handoff — 2026-10-04 (Continuing thread: `summary_app.R` fully implemented — tickets SA-1 through SA-5, issues #55-#59, all merged to `main`) — CURRENT STATE FOR THIS THREAD (read this section first)
+
+**This is a continuation of the spec thread immediately below** (same `summary_app.R` feature,
+different session) — that thread produced `docs/SUMMARY_APP_SPEC.md` and recorded "nothing
+implemented yet." This thread filed 5 GitHub issues from that spec's 5 tabs, then implemented and
+merged all 5. Separate from every other thread further down this file; none of them were touched.
+Read `CLAUDE.md` first if you haven't already.
+
+## What this thread is
+
+Starting from the already-compiled `docs/SUMMARY_APP_SPEC.md` (previous thread), this thread (1)
+added a "Tickets" section to that spec file breaking its 5 tabs into 5 vertical-slice tickets
+(SA-1..SA-5, one tab per ticket, SA-1 bundling the shared app skeleton); (2) filed those 5 tickets
+as GitHub issues #55-#59; (3) implemented all 5 via the `subagent-brief` skill, one dispatch per
+ticket, **run sequentially, not in parallel** — all 5 tickets add a `nav_panel(...)` to the same
+`navset_tab(...)` in the same file, so parallel worktrees branching from the same base would have
+produced near-certain merge conflicts on `summary_app.R`. Each ticket branched from the
+just-merged result of the previous one.
+
+## What exists now
+
+**`summary_app.R`** (783 lines, repo root, **committed to `main`**, 5 merge commits
+`c74c990`..`76ddf62`) — the full static-snapshot Shiny app the spec described. All 5
+`nav_panel(...)` tabs present (`summary_app.R:183,199,208,224,237`, titles: "Season Standings &
+Projections", "Playoff Bracket", "Model Calibration & Reliability", "Model Comparison",
+"Prediction Accuracy Tracker"). Every tab's cache path is a named constant near its own load
+block, not a bare literal re-typed at the read site:
+
+| Tab | Cache path constant | Reads |
+|---|---|---|
+| 1. Season Standings | `STANDINGS_CACHE_PATH` (`summary_app.R:44`) | `cache/projected_wnba_standings.rds` |
+| 2. Playoff Bracket | `PLAYOFF_SERIES_CACHE_PATH`, `SERIES_LENGTH_CACHE_PATH` (`:49-50`) | `cache/playoff_series_wnba_demo.rds`, `cache/series_length_predictions.rds` |
+| 3. Model Calibration | `CALIBRATION_CACHE_PATH` (`:54`) | `cache/model_calibration_input.rds` |
+| 4. Model Comparison | `MODEL_BENCHMARK_CACHE_PATH`, `WINDOW_SWEEP_CACHE_PATH` (`:125-126`) | `data/model_benchmark_results.csv` (new, see below), `data/window_sweep_3_25_results.csv` (pre-existing) |
+| 5. Prediction Accuracy Tracker | `PREDICTION_ACCURACY_CACHE_PATH` (`:161`) | `cache/prediction_accuracy_log.rds`, filtered to `is_synthetic == FALSE & status == "RESOLVED"` |
+
+Every tab has a `file.exists()` guard + `tryCatch(readRDS(...))`/`read.csv(...)` at startup and a
+labeled fallback (warning `div`, empty-but-headered table, placeholder-text plot) if its cache is
+missing — verified live for every tab by a fresh agent actually renaming/hiding the relevant cache
+file(s) and re-running the app, not just by reading the `file.exists()` line and assuming the
+fallback branch works.
+
+**`tools/build_model_benchmark_cache.R`** (239 lines, new, **committed to `main`**, commit
+`cb3b196`) — one-off script (not in `run_full_pipeline.R`'s DAG), reuses
+`WNBA_Analysis_Project.Rmd`'s `build_feature_df()`/`build_wnba_recipe()`/`eval_model()`-style
+logic (lines 136-314/323-334/584-631 of the `.Rmd` as of this session — **re-verify those line
+numbers before trusting them**, source drifts), fits Logistic Regression/Random Forest/XGBoost on
+`season < CURRENT_SEASON` (read from `config.R`, never hardcoded), evaluates on
+`season >= CURRENT_SEASON`, writes **`data/model_benchmark_results.csv`** (new, committed,
+`cb3b196`): `Logistic Regression,0.6396,0.6707,0.2265,0.6456` /
+`Random Forest,0.6366,0.6815,0.2224,0.6365` / `XGBoost,0.6156,0.6762,0.2324,0.6803` (Model,
+Accuracy, ROC-AUC, Brier Score, Log-Loss) — these are real fitted numbers from this session's
+actual run, not placeholders.
+
+## A known-stale number in the spec, surfaced not silently fixed
+
+The spec's Tab 5 section (and the previous thread's own summary above it in this file) says "39
+real games as of [the 2026-10-04 spec-interview session's] read" for
+`cache/prediction_accuracy_log.rds`'s `is_synthetic == FALSE & status == "RESOLVED"` filter. When
+SA-5's subagent re-ran that exact filter this session, it got **36**, not 39 — the cache has been
+refreshed (presumably by a scheduled pipeline run) between the two sessions, and the spec's count
+was always a point-in-time snapshot, not a hardcoded value anywhere in code. Nothing to fix; just
+don't be surprised the live app's value box doesn't match the spec doc's number, and don't treat
+either number as fixed going forward — it moves every time the cache refreshes.
+
+## Loose ends not closed out this session — flagging, not fixing silently
+
+- **GitHub issues #55-#59 are all still `OPEN`** as of `gh issue list` at the time of this
+  writeup, even though all 5 are fully implemented, verified, and merged to `main`. This thread
+  did not close them (closing issues is a visible action outside this handoff-writing step's
+  scope). Whoever picks this up next should close #55-#59 with a reference to the 5 merge commits
+  (`c74c990`, `1754abb`, `3cb230e`, `4f53e15`, `76ddf62`) — or decide not to, if this repo wants a
+  human to do that review first.
+- **`docs/SUMMARY_APP_SPEC.md` has an uncommitted diff** (80 insertions, the "Tickets" section
+  added this session, `git diff --stat docs/SUMMARY_APP_SPEC.md`) — never committed. Worth
+  bundling into whatever commit closes out this thread's documentation, or committing standalone.
+- **3 of the 5 dispatched subagents' worktree directories are still on disk**, not deregistered
+  from git but present as inert folders: `.claude/worktrees/agent-abfee33a93d1a7ad6` (SA-1),
+  `.claude/worktrees/agent-a7ef37791d8f6be4a` (SA-3), `.claude/worktrees/agent-a09fc9d4b35b87d2f`
+  (SA-4). `git worktree remove --force` failed on these three with `Invalid argument` (a Windows
+  file-lock, not a git error) even though `git worktree list` no longer shows them as registered
+  and the branch itself was deleted in each case — this matches this file's own standing note
+  below ("Leftover `.claude/worktrees/<hash>/` directories can accumulate... harmless, not deleted
+  without explicit user confirmation"), now with 3 fresh instances added to that pattern. Safe to
+  delete by hand (`rm -rf`) once confirmed with the user; not done here.
+
+## Environment notes (new this session, not yet folded into `CLAUDE.md`'s own section)
+
+- **The `subagent-brief` skill's own `digest`/`jsonlite` R-package dependency was missing from
+  this project's renv library** (not just pinned in `renv.lock` — actually absent from
+  `renv/library/...`) at two separate points this session, despite the skill's own doc claiming
+  "both packages are already in renv.lock." `install.packages("digest", repos =
+  "https://cloud.r-project.org")` fixed it in seconds both times (binary install, no compile) —
+  but it recurred a second time after already being fixed once mid-session, consistent with this
+  file's long-standing, never-fully-root-caused "machine-wide renv package cache gets wiped
+  between sessions" pattern (see the standing note at the bottom of this file). Don't assume
+  `digest`/`jsonlite` are present in this repo's renv library; check and `install.packages()`
+  on the spot if `validate_brief.R`/`runlog.R` error with `R package 'digest' is required`.
+- **A freshly dispatched `isolation: "worktree"` subagent's renv library starts out completely
+  empty** (not inherited from the main checkout) — SA-1's, SA-4's, and SA-5's subagents all had to
+  run `renv::restore()`/`renv::install()` themselves before they could run/test `summary_app.R`,
+  adding real wall-clock time to each dispatch (SA-4 took ~46 minutes total, partly model-fitting,
+  partly this). Worth knowing up front rather than being surprised when a worktree-isolated
+  subagent's first move is a package restore.
+- **SA-1's subagent did everything right except commit its own work** — it left `summary_app.R`
+  as an uncommitted untracked file in its worktree and reported `status: success` anyway (the
+  brief's "Final step: commit" instruction hadn't been written yet for that first ticket). Caught
+  by this session's own post-dispatch verification step (`git status --short` inside the
+  worktree, before attempting a merge — a plain `git merge` of a branch with no new commits would
+  have silently merged nothing). Fixed by committing it by hand before merging, and every
+  subsequent brief (SA-2 through SA-5) added an explicit "## Final step: commit before finishing"
+  section — none of the other 4 subagents repeated the omission. **Always check
+  `git status --short` inside a dispatched subagent's worktree before merging, regardless of what
+  its self-reported result claims.**
+- **shinytest2's `AppDriver` could not navigate headlessly inside this sandboxed subagent
+  environment** for at least one dispatch (SA-2's subagent hit a `Page.navigate` timeout) — worked
+  around by directly executing the relevant `renderPlot`/`renderTable` reactive body as plain R
+  code against the real cache files instead of driving a real browser DOM. This is a *weaker*
+  verification than the live-browser DOM captures SA-1/SA-3/SA-4/SA-5's subagents achieved
+  successfully in their own dispatches (same machine, same `chromote`/Chrome setup worked for all
+  of them) — SA-2's bracket tab's actual rendered-pixel appearance in a real browser was never
+  directly observed by any subagent or by this session's own merge-time verification. If anyone
+  later notices the Playoff Bracket tab looks wrong only in a real browser (not via direct
+  R-object inspection), start here.
+
+## What's actually changed
+
+- `summary_app.R` — **new, committed**. 783 lines, 5 tabs, all merged to `main` (see table above).
+- `tools/build_model_benchmark_cache.R` — **new, committed** (`cb3b196`). 239 lines.
+- `data/model_benchmark_results.csv` — **new, committed** (`cb3b196`). 3 rows (real fitted LR/RF/
+  XGBoost metrics, see above).
+- `docs/SUMMARY_APP_SPEC.md` — **modified, uncommitted** (Tickets section, 80 insertions — see
+  "Loose ends" above).
+- `.subagent-runs/202610041[6-8]*` (5 run directories: `20261004-160338-5686e2` through
+  `20261004-182135-258ac0`) — new, hold this thread's 5 briefs/results. Already gitignored
+  (`.gitignore:115`), nothing to decide here.
+- `.claude/worktrees/` — 3 leftover directories, already gitignored (`.gitignore:95`), see
+  "Loose ends" above for which ones and why they weren't deleted.
+- No existing file other than `docs/SUMMARY_APP_SPEC.md` was modified by this thread's own hand
+  (every other file in the "What's actually changed" list is new).
+
+## Concrete next step
+
+1. **Decide whether to close GitHub issues #55-#59** (all done, all merged — see "Loose ends"
+   above for the exact merge-commit references to cite when closing).
+2. **Commit `docs/SUMMARY_APP_SPEC.md`'s pending Tickets-section diff**, and decide whether
+   `.subagent-runs/` should be committed or gitignored going forward if it isn't already.
+3. **Run `summary_app.R` live and look at it** (`"C:\Program Files\R\R-4.5.2\bin\Rscript.exe" -e
+   "shiny::runApp('summary_app.R')"`) — every tab was verified individually by its own
+   implementing subagent and cross-checked by this session at merge time, but no one has yet
+   opened the finished, all-5-tabs-merged app in one browser session end-to-end. Start with the
+   Playoff Bracket tab specifically, per the shinytest2 gap noted above.
+4. **The spec's own "Explicitly deferred" list is still fully deferred, untouched this
+   session**: live recomputation of any tab, an HTML/CSS bracket graphic, general UI/visual
+   polish beyond basic `bslib` theming, and showing a Finals matchup before both semifinals
+   resolve (still correctly pending, per Tab 2's verification above). Pick these up only after
+   deciding on #55-#59's closure and confirming the merged app actually looks right end-to-end.
+5. Unrelated to this thread: every other thread in this file is exactly where its own section
+   leaves it — this thread touched none of them.
+
+---
+
 # Handoff — 2026-10-04 (New thread: spec for a new static-snapshot summary app, `summary_app.R` — spec only, not implemented) — CURRENT STATE FOR THIS THREAD (read this section first)
 
 **This is a separate thread from every other thread in this file** — it touched no code, no

@@ -93,6 +93,85 @@ Model, Accuracy, ROC-AUC, Brier Score, Log-Loss.
 | `data/window_sweep_3_25_results.csv` (existing) | Window_Size, N_Train, N_Test, Accuracy, ROC-AUC, Brier Score, ROC_AUC_CI_Lower/Upper | Tab 4 |
 | `cache/prediction_accuracy_log.rds` | 145 x 28; 39 real resolved, 100 synthetic `DIAG_*`, 6 unresolvable, 3 pending | Tab 5 |
 
+## Tickets
+
+Each ticket is a vertical slice: skeleton wiring (if not already present) + data load +
+UI + chart/table for exactly one tab, end to end and independently demoable. Max one tab
+per ticket. Tickets 2-5 depend on Ticket 1 only for the shared `summary_app.R` skeleton
+(nav shell, `bslib` theme, cache-loading boilerplate) — not on each other — so they can be
+built in any order once Ticket 1 lands.
+
+| Ticket | Title | Tab | Depends on | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| SA-1 | App skeleton + Tab 1: Season Standings & Projections | 1 | — | TODO |
+| SA-2 | Tab 2: Playoff Bracket (ggplot2) | 2 | SA-1 (skeleton) | TODO |
+| SA-3 | Tab 3: Model Calibration & Reliability | 3 | SA-1 (skeleton) | TODO |
+| SA-4 | Tab 4: Model Comparison + benchmark cache builder | 4 | SA-1 (skeleton) | TODO |
+| SA-5 | Tab 5: Prediction Accuracy Tracker | 5 | SA-1 (skeleton) | TODO |
+
+### SA-1 — App skeleton + Tab 1: Season Standings & Projections
+**Builds:** `summary_app.R` at repo root (flat layout, per CLAUDE.md) with `bslib`/
+`fluidPage` + `navset_tab` shell, no `shinydashboard`, visually distinct from `app.R`, no
+shared code path/tabs with `app.R`. Establishes the cache-loading pattern (startup-only
+reads, fail-safe `file.exists()` checks per CLAUDE.md's fail-safe convention) that later
+tickets reuse.
+**Tab content:** reads `cache/projected_wnba_standings.rds` as-is and renders it as a table
+(Rank, Team, Net_Rating, Proj_Wins, Proj_Losses, Win_Pct, Top_Core_Players), plus a
+horizontal bar chart of `Proj_Wins` by team.
+**Done when:** `Rscript.exe summary_app.R` launches and Tab 1 renders real data with no
+console errors (verify via `tools/headless_dashboard_probe.R` pattern or manual browser
+check).
+
+### SA-2 — Tab 2: Playoff Bracket
+**Builds:** ggplot2-rendered bracket (rectangles/labels per slot, `geom_segment`
+connectors between rounds — not HTML/CSS). First Round + Semifinals show real matchups,
+win probabilities, and fair moneylines from `cache/playoff_series_wnba_demo.rds`, plus
+series-length stats from `cache/series_length_predictions.rds`. Finals renders as
+TBD/pending only, using `series_length_predictions.rds`'s `finals_note` text — the Finals
+matchup present in `playoff_series_wnba_demo.rds` is deliberately never displayed on this
+tab (that cache disagrees with `series_length_predictions.rds` on whether Finals is
+determined; the latter is source of truth here).
+**Done when:** bracket renders First Round + Semifinals with real probabilities/
+moneylines, and Finals shows only the pending note — never a Finals matchup.
+
+### SA-3 — Tab 3: Model Calibration & Reliability
+**Builds:** ported essentially verbatim from `app.R` (UI ~lines 277-292, server
+~lines 1123-1200) into `summary_app.R`'s own tab — reads `cache/model_calibration_input.rds`
+(1,902 real games, 2019-2026) and reproduces the same Brier/BSS/Log-loss value boxes and
+calibration curve plot. No shared code path with `app.R`; copy/adapt the logic rather than
+sourcing `app.R`.
+**Done when:** value boxes and calibration curve render with the same numbers as `app.R`'s
+existing tab, computed independently from the same cache.
+
+### SA-4 — Tab 4: Model Comparison + benchmark cache builder
+**Builds:** `tools/build_model_benchmark_cache.R` (one-off, not in `run_full_pipeline.R`'s
+DAG, matching `tools/` convention: `setwd()` to project root, source siblings by bare
+filename). Reuses `WNBA_Analysis_Project.Rmd`'s existing `build_feature_df()` /
+`build_wnba_recipe()` / `eval_model()`-style logic — not reimplemented — to fit Logistic
+Regression, Random Forest, and XGBoost on seasons `< CURRENT_SEASON` (from `config.R`),
+evaluate out-of-sample on `season >= CURRENT_SEASON`, and write
+`data/model_benchmark_results.csv` (Model, Accuracy, ROC-AUC, Brier Score, Log-Loss).
+**Tab content:** table of the three models' metrics from that CSV, plus a rolling-window-
+size sweep chart (ROC-AUC vs. window size 3-25, 95% bootstrap CI ribbon) read directly from
+the already-cached `data/window_sweep_3_25_results.csv` — no new computation for the chart.
+**Done when:** running `tools/build_model_benchmark_cache.R` produces
+`data/model_benchmark_results.csv`, and Tab 4 renders both the table and the sweep chart
+from the two CSVs.
+
+### SA-5 — Tab 5: Prediction Accuracy Tracker
+**Builds:** reads `cache/prediction_accuracy_log.rds` filtered strictly to
+`is_synthetic == FALSE & status == "RESOLVED"` (39 real games as of the last cache refresh)
+— synthetic `DIAG_*`, pending, and unresolvable rows excluded entirely, no toggle, no
+synthetic data surfaced anywhere on this tab.
+**Tab content:** value boxes (overall accuracy %, Brier score, log-loss); table
+(game_date, home_team, away_team, predicted_winner, actual_winner, correct); cumulative-
+accuracy-over-time chart (running win-rate as games resolve chronologically by
+`game_date`) — chosen instead of a probability-vs-outcome scatter to avoid duplicating
+Tab 3's reliability plot on a much smaller sample.
+**Done when:** value boxes, table, and chart all reflect only the 39 real resolved rows,
+with zero synthetic rows reachable in the UI.
+
 ## Status
 
-Spec only. Not yet implemented.
+Spec only. Not yet implemented. Tickets SA-1 through SA-5 above are ready to be picked up
+in any order once SA-1's skeleton lands.
