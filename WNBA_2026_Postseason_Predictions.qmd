@@ -286,55 +286,41 @@ knitr::kable(r1 |> select(team_high, team_low, p_high), digits = 3,
              caption = "Round 1 (Best-of-3), pre-series model prediction: probability the higher seed wins the series.")
 ```
 
-#### Round 1 — actual results (updated 2026-10-03)
+#### Round 1 — actual results (updated 2026-10-03, now complete)
 
-Round 1 has partly played out since the pre-series prediction above was made. Per an independent
-check of `data/box_scores_cache.rds` (max ingested date 2026-09-30 as of this render), two of the
-four series are **decided** and two remain **tied 1-1** awaiting a decisive Game 3 the box-score
-cache has not yet ingested (`cache/prediction_accuracy_log.rds` confirms both Game 3s are logged
-`PENDING`: LV vs IND 2026-10-01, GS vs DAL 2026-10-02).
+Round 1 has fully played out since the pre-series prediction above was made. Per an independent
+check of `data/box_scores_cache.rds` (re-ingested live via `daily_ingest.R` as part of this
+update, max date now 2026-10-02), **all four series are decided**: the two Game 3s that were still
+pending as of the prior update (LV vs IND 2026-10-01, GS vs DAL 2026-10-02) have since been played
+and ingested.
 
 ```{r round1-actual}
 r1_actual <- tibble::tribble(
   ~seed_high, ~seed_low, ~status,     ~high_wins, ~low_wins,
   1,          8,         "DECIDED",   0,          2,
-  2,          7,         "TIED_1_1",  1,          1,
-  3,          6,         "TIED_1_1",  1,          1,
+  2,          7,         "DECIDED",   2,          1,
+  3,          6,         "DECIDED",   2,          1,
   4,          5,         "DECIDED",   2,          0
 )
-
-# For a series tied 1-1 in the 1-1-1 format, the higher seed always hosts the decisive Game 3
-# (confirmed above), so the only remaining uncertainty is a single game, not a full series —
-# reuse the same single-game pnorm model simulate_single_series() computes internally, rather
-# than treating it as a fresh best-of-3 (which would understate how close to resolved these
-# already are). WNBA_HCA/WNBA_MARGIN_SIGMA come from config.R, not re-derived here.
-single_game_prob_high <- function(seed_high, seed_low) {
-  rating_diff <- adj_of(seed_high) - adj_of(seed_low)
-  pnorm((rating_diff + WNBA_HCA) / WNBA_MARGIN_SIGMA)
-}
 
 r1_actual <- r1_actual |>
   mutate(
     team_high = sapply(seed_high, team_of),
     team_low  = sapply(seed_low, team_of),
-    p_high_advances = case_when(
-      status == "DECIDED"  ~ as.numeric(high_wins == 2),
-      status == "TIED_1_1" ~ mapply(single_game_prob_high, seed_high, seed_low),
-      TRUE ~ NA_real_
-    )
+    p_high_advances = as.numeric(high_wins == 2)
   )
 
 knitr::kable(
   r1_actual |> select(team_high, team_low, status, high_wins, low_wins, p_high_advances),
   digits = 3,
-  caption = "Round 1 actual state: 1v8 and 4v5 decided; 2v7 and 3v6 tied 1-1, p_high_advances is the higher seed's probability of winning the single decisive Game 3 (model-derived for the two undecided series, 0/1 for the two decided ones)."
+  caption = "Round 1 final results (all four series decided). p_high_advances is 1 if the higher seed won the series, 0 otherwise."
 )
 
 cat(sprintf(
-  "Headline: #8 New York Liberty swept #1 Minnesota Lynx 2-0 — the model's #1 championship favorite (23.9%%, Conclusion of the original pre-series render) is already eliminated. #4 Atlanta Dream swept #5 Washington Mystics 2-0.\n"
+  "Headline: #8 New York Liberty swept #1 Minnesota Lynx 2-0 — the model's #1 championship favorite (23.9%%, Conclusion of the original pre-series render) is already eliminated. #4 Atlanta Dream swept #5 Washington Mystics 2-0. #2 Golden State Valkyries beat #7 Dallas Wings 2-1 (won a decisive Game 3 the model had at 65.3%% pre-game). #3 Las Vegas Aces beat #6 Indiana Fever 2-1 (won a decisive Game 3 the model had at 59.0%% pre-game). Both confirmed semifinals: (4) Atlanta vs (8) New York, and (2) Golden State vs (3) Las Vegas.\n"
 ))
 
-# Downstream rounds use this actual/updated adv_prob, not the pre-series model-only version above.
+# Downstream rounds use this fully-resolved adv_prob, not the pre-series model-only version above.
 adv_prob <- setNames(rep(NA_real_, 8), 1:8)
 for (i in seq_len(nrow(r1_actual))) {
   adv_prob[as.character(r1_actual$seed_high[i])] <- r1_actual$p_high_advances[i]
@@ -344,8 +330,13 @@ for (i in seq_len(nrow(r1_actual))) {
 
 #### Round 2 (Best-of-5 Semifinals)
 
-The bracket is fixed, so each semifinal's *participants* are uncertain but its *slot* is not: the
-winner of (1 vs 8) meets the winner of (4 vs 5); the winner of (2 vs 7) meets the winner of (3 vs 6).
+The bracket is fixed, so each semifinal's slot was always known: the winner of (1 vs 8) meets the
+winner of (4 vs 5); the winner of (2 vs 7) meets the winner of (3 vs 6). With Round 1 now fully
+decided, both semifinal *matchups* are confirmed too: **(4) Atlanta Dream vs (8) New York Liberty**,
+and **(2) Golden State Valkyries vs (3) Las Vegas Aces**. The table below still shows the general
+pairing-probability computation (unchanged code from the pre-series version of this report), but
+with `adv_prob` now 0/1 for every seed, each half collapses to its one real pairing with
+probability 1 — the other three hypothetical pairings per half now show `pairing_prob` of 0.
 
 ```{r round2}
 half_pairs <- list(top = list(c(1, 8), c(4, 5)), bottom = list(c(2, 7), c(3, 6)))
@@ -471,15 +462,18 @@ non-synthetic logging only covers the season's last ~10 days.
 
 Part 2's pre-series bracket model entering the 2026-09-27 First Round had Minnesota (23.9%), Atlanta
 (22.4%), and Golden State (21.0%) as the top three championship favorites. **That pre-series
-prediction has already missed on its top pick**: #8 New York Liberty swept #1 Minnesota Lynx 2-0 in
-Round 1, eliminating the model's championship favorite before the semifinals. #4 Atlanta Dream also
-swept #5 Washington Mystics 2-0, and the two remaining Round 1 series (#2 Golden State vs #7 Dallas,
-#3 Las Vegas vs #6 Indiana) are tied 1-1 awaiting a decisive Game 3 not yet reflected in
-`data/box_scores_cache.rds` as of this render. Feeding the confirmed results and a single-game model
-for the two undecided Game 3s back into the same bracket tree gives updated championship
-probabilities of Golden State (`r sprintf("%.1f%%", final_table$p_champion[final_table$team == "Golden State Valkyries"] * 100)`),
-Atlanta (`r sprintf("%.1f%%", final_table$p_champion[final_table$team == "Atlanta Dream"] * 100)`),
-and Las Vegas (`r sprintf("%.1f%%", final_table$p_champion[final_table$team == "Las Vegas Aces"] * 100)`)
-as the new top three — see "Round 1 — actual results" above for the full breakdown. This report is a
-living pre-semifinal snapshot, not a final record; it should be re-run again once the two pending
-Game 3s resolve and again after each subsequent round.
+prediction already missed on its top pick**: #8 New York Liberty swept #1 Minnesota Lynx 2-0 in
+Round 1, eliminating the model's championship favorite before the semifinals. **Round 1 is now
+fully decided.** #4 Atlanta Dream swept #5 Washington Mystics 2-0; #2 Golden State Valkyries beat
+#7 Dallas Wings 2-1 (the model had Golden State at 65.3% to win that decisive Game 3, and they did);
+#3 Las Vegas Aces beat #6 Indiana Fever 2-1 (the model had Las Vegas at 59.0% to win their decisive
+Game 3, and they did). Both semifinals are now confirmed: **(4) Atlanta Dream vs (8) New York
+Liberty**, and **(2) Golden State Valkyries vs (3) Las Vegas Aces**. Feeding these real results back
+into the same bracket tree gives updated championship probabilities of Atlanta
+(`r sprintf("%.1f%%", final_table$p_champion[final_table$team == "Atlanta Dream"] * 100)`),
+Golden State (`r sprintf("%.1f%%", final_table$p_champion[final_table$team == "Golden State Valkyries"] * 100)`),
+Las Vegas (`r sprintf("%.1f%%", final_table$p_champion[final_table$team == "Las Vegas Aces"] * 100)`),
+and New York (`r sprintf("%.1f%%", final_table$p_champion[final_table$team == "New York Liberty"] * 100)`)
+as the four remaining contenders — see "Round 1 — actual results" above for the full breakdown. This
+report is a living pre-semifinal snapshot, not a final record; it should be re-run again once each
+semifinal series resolves.
