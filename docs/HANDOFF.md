@@ -1,3 +1,136 @@
+# Handoff — 2026-10-04 (Continuing thread: `summary_app.R` — dark/light mode toggle + Net Rating methodology panel added, commit `212f842` pushed to `main`) — CURRENT STATE FOR THIS THREAD (read this section first)
+
+**This is a continuation of the SA-1..SA-5 thread immediately below** (same `summary_app.R` file,
+different session) — that thread shipped all 5 tabs and left some loose ends open. This session
+(1) confirmed those loose ends are now resolved (see "Stale-state corrections" below), (2) added
+two small, **ad hoc, not-tracked-as-GitHub-issues** features the user asked for directly in
+conversation: a dark/light mode toggle, and a methodology explainer for the Net Rating metric on
+Tab 1. Both are committed and pushed to `main` (`212f842`). Read `CLAUDE.md` first if you haven't
+already.
+
+## Stale-state corrections to the SA-1..SA-5 section immediately below
+
+That section's own "Loose ends not closed out this session" lists three items — this session
+re-checked all three against live state (not trusted from the prior write-up):
+
+1. **"GitHub issues #55-#59 are all still OPEN"** — **no longer true.** `gh issue list --state
+   closed` shows all 5 (SA-1 through SA-5) were closed on `2026-10-04T20:05:3x` — after that
+   section was written, before this session started. Not done by this session; just confirming
+   it happened, by whom/how is not recorded in this file.
+2. **"`docs/SUMMARY_APP_SPEC.md` has an uncommitted diff"** — **no longer true.** `git log --
+   docs/SUMMARY_APP_SPEC.md` shows it was committed at `1acd5b9` (the commit immediately after
+   that section's own `76ddf62`). `git diff --stat HEAD -- docs/SUMMARY_APP_SPEC.md` is empty as
+   of this session.
+3. **"3 leftover `.claude/worktrees/<hash>/` directories"** — the *directories* are gone (`ls
+   .claude/worktrees/` is empty), but **6 local branches named `worktree-agent-<hash>` are still
+   present** (`git branch --list "worktree-agent-*"`) — all 6 confirmed merged into `main` via
+   `git merge-base --is-ancestor`, so they're safe to `git branch -d` whenever someone wants to,
+   just not done this session (not asked, and deleting branches is a visible action this skill's
+   own conventions leave to explicit request). This is a new instance of the same leftover-branch
+   pattern, not the exact 3 directories that section named — don't assume they're the same hashes.
+
+## What this thread added (two ad hoc features, user-requested directly, no GitHub issue filed)
+
+### 1. Dark/light mode toggle (commit `c45c368`, merged `bbd1648`)
+
+Added `bslib::input_dark_mode(id = "dark_mode_toggle")` next to `titlePanel("WNBA Model
+Summary")` in `summary_app.R`'s `ui <- page_fluid(...)` block, both wrapped in a flex `div` so the
+toggle sits to the right of the title (`summary_app.R:179-189` as of this write-up — re-verify
+line numbers before trusting them, this file is edited often). No server-side observer needed —
+`bslib`'s native widget toggles Bootstrap 5's `data-bs-theme` attribute client-side.
+
+- **Dispatched via the `subagent-brief` skill**, single full-template brief, Tier 0-1, `isolation:
+  "worktree"`. Run id `20261004-211157-fe3f93`, logged under `.subagent-runs/` (gitignored).
+- **Caught a repeat of the exact SA-1 omission** the section below already documents: the
+  subagent's worktree had the file change but **no commit** — `git merge --no-ff` against its
+  branch reported "Already up to date." Fixed the same way as last time: `git add` +
+  `git commit` by hand inside the worktree before merging. **This is now a second occurrence of
+  "subagent reports success but never committed its own work"** — worth treating as a pattern to
+  watch for, not a one-off, in any future `subagent-brief` dispatch on this project.
+- **Verified independently**, not just trusted from the subagent's self-report: re-ran the
+  subagent's own parse/source check (`parse("summary_app.R"); source("summary_app.R")`) myself
+  inside the worktree before merging, got the same `ui`/`server` classes and exit 0. Did **not**
+  independently re-run the subagent's headless-browser click-toggle screenshots myself (trusted
+  that evidence from the recorded result rather than re-driving Chrome a second time) — if the
+  toggle is ever reported broken in a real browser, that's the one piece of this feature's
+  verification that was taken on the subagent's word alone.
+- Worktree and branch (`.claude/worktrees/agent-a720d9c881678314b`,
+  `worktree-agent-a720d9c881678314b`) were both fully removed after merging — `git worktree
+  remove --force` succeeded this time (unlike the Windows file-lock failures the SA-1..SA-5
+  section reports for 3 other worktrees still sitting on disk as of that section).
+
+### 2. Net Rating methodology explainer (commit `212f842`)
+
+Added a closed-by-default `bslib::accordion()`/`accordion_panel()` panel to the bottom of Tab 1
+("Season Standings & Projections"), titled "Methodology: what does Net Rating mean, and how is it
+calculated?" (`summary_app.R:203-233` as of this write-up — re-verify, same caveat as above).
+**Implemented directly in this session, not delegated** — small enough, single-file, no
+subagent-brief dispatch needed.
+
+- **Content was derived by reading the actual calculation**, not written from general WNBA-rating
+  knowledge, since `projected_wnba_standings.rds`'s `Net_Rating` column (consumed by
+  `summary_app.R`'s Tab 1 table/chart) is produced by `roster_bottom_up_engine.R`, which this
+  session read directly (`compute_team_live_rating()` around lines 294-379, and the
+  league-centering/standings-assembly logic around lines 590-704 — **re-verify these line
+  numbers before trusting them**, this is a different file than `summary_app.R` and drifts on its
+  own schedule). The panel explains, in order: (1) what a +10 value means (projected margin vs. a
+  league-average team on a neutral court, since all 15 teams are re-centered to average exactly
+  0.00 — this centering step is the single most important fact to get right, since it's what
+  makes Net Rating a *relative* scale rather than a realized scoring-margin stat like the NBA's
+  traditional Net Rating); (2) the actual bottom-up derivation steps: per-player BPM (50/50
+  box-score/plus-minus blend, shrunk for low minutes) → top-8 rotation selection → 200
+  regulation-minutes allocated proportional to historical minutes (injury-adjusted) →
+  minutes-weighted average BPM scaled to a margin → league-wide re-centering; (3) a closing note
+  that Net Rating is only one of three inputs (alongside team RAPM and Elo) blended into the
+  model's actual win-probability/win-total predictions, so it is not itself the final prediction
+  shown elsewhere in the app.
+- **Verified live**, not just by reading the diff: wrote a throwaway headless `shinytest2`
+  probe (`tmp_methodology_probe.R`, deleted after use, same scratch-file convention as other
+  threads in this file) with a wrapper `app.R` that `setwd("..")`s and `source()`s
+  `summary_app.R` (needed because `shinytest2::AppDriver$new(app_dir = ...)` otherwise expects
+  an `app.R` directly in that directory, and the repo root's own `app.R` is the unrelated betting
+  terminal, not `summary_app.R`) — confirmed the accordion panel opens on click, its rendered
+  text matches what was written verbatim (checked via `innerText` substring), and
+  `.shiny-output-error` count is 0. Did not screenshot (a `$screenshot()` call with the wrong
+  method name errored after the real checks had already passed; not worth re-running just for a
+  picture given the text/DOM checks already passed).
+
+## What's actually changed (this session only — see the section below for everything before it)
+
+- `summary_app.R` — modified, 2 commits, both pushed: `c45c368` (dark mode toggle, merged via
+  `bbd1648`) and `212f842` (methodology panel). 826 lines total as of this write-up (up from 783
+  at the start of this session).
+- `docs/HANDOFF.md` — this section, new.
+- Nothing else touched. No cache files, no other `.R` scripts, no `config.R`, no pipeline files.
+- `.subagent-runs/20261004-211157-fe3f93/` — new run directory for the dark-mode dispatch,
+  gitignored, status `merged` in its own `meta.json`.
+- 6 stale `worktree-agent-*` branches noted above still exist (all merged, not deleted this
+  session) — separate from the one this session created and cleaned up itself.
+
+## Concrete next step
+
+1. **Nothing from this session is left half-done** — both features are committed, pushed, and
+   independently re-verified (with the one noted exception: the dark-mode toggle's click/screenshot
+   evidence was trusted from the subagent's own report, not independently re-driven).
+2. **Pick up the SA-1..SA-5 thread's own still-open item**: "run `summary_app.R` live and look at
+   it" end-to-end in one real (non-headless) browser session — still not done by any session,
+   including this one (this session's own browser checks were both headless/automated, scoped
+   narrowly to the two features it added, not a full manual pass over all 5 tabs together).
+3. **Optional cleanup, not blocking anything**: `git branch -d` the 6 confirmed-merged
+   `worktree-agent-*` branches listed above, if/when someone wants a tidier `git branch` output.
+4. **Known environment state, unchanged from before this session**: the `renv` library still
+   prints "missing their DESCRIPTION files" warnings for ~30+ packages (`AsioHeaders`, `askpass`,
+   `backports`, `bit`, `broom`, `dplyr`, `DT`, etc.) on every bare `Rscript.exe` invocation — same
+   long-standing corruption pattern documented repeatedly further down this file. **Did not block
+   anything this session** (`shiny`, `bslib`, `shinytest2`, `chromote`, `jsonlite`, `digest` all
+   loaded and worked fine for both the dark-mode dispatch and the methodology-panel probe), but
+   not re-root-caused either — still an open item if anyone wants to chase it further.
+5. Unrelated to this thread: every other thread further down this file is exactly where its own
+   section leaves it — this thread touched none of them beyond the stale-state corrections noted
+   above.
+
+---
+
 # Handoff — 2026-10-04 (Continuing thread: `summary_app.R` fully implemented — tickets SA-1 through SA-5, issues #55-#59, all merged to `main`) — CURRENT STATE FOR THIS THREAD (read this section first)
 
 **This is a continuation of the spec thread immediately below** (same `summary_app.R` feature,
