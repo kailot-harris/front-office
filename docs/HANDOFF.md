@@ -1,3 +1,115 @@
+# Handoff — 2026-10-04 (New thread: standalone playoff series-length predictor — `tools/series_length_predictor.R`) — CURRENT STATE FOR THIS THREAD (read this section first)
+
+**This is a separate thread from the pipeline-rerun/renv thread immediately below** (same calendar
+date, different session) — nothing in that thread was touched here, and this thread touched no
+`.qmd`/bracket-PNG/renv files. Read `CLAUDE.md` first if you haven't already.
+
+## What this thread is
+
+User asked: how to determine the probability a semifinal series goes 4 games vs. 5 games, how to
+break a best-of-3 series into game-by-game predictions, and whether this could be a standalone
+script. Planned first (plan mode), then implemented. **This is net-new functionality, not a tracked
+GitHub issue** — unlike the control-panel/auth thread further down, this was an ad hoc user request
+with no `gh issue` filed for it.
+
+## What exists now
+
+**`tools/series_length_predictor.R`** (353 lines, new, untracked). Deliberately **not** built on top
+of `playoff_simulator.R`'s existing Monte Carlo series simulator (`simulate_single_series()`) as the
+primary calculation — the series-length state space is tiny (at most `win_threshold^2` states, ≤16
+for a Bo7), so it's computed **exactly** via dynamic programming instead of sampled. Monte Carlo is
+invoked only as an optional cross-check, never as the production path. Public functions:
+
+- `series_length_distribution(team_high, team_low, net_high, net_low, format, hca_pts)` — the DP
+  engine. Reuses `PLAYOFF_FORMATS` and the exact same `pnorm((rating_diff ± WNBA_HCA) /
+  WNBA_MARGIN_SIGMA)` margin model `playoff_simulator.R:122-123` already uses, just enumerates the
+  `(w_high, w_low)` state space exactly instead of sampling with `runif()`. Returns a tibble of
+  `P(length = N)` for every reachable N. Internal `stopifnot(abs(sum(probability) - 1) < 1e-9)` —
+  a math invariant, so a hard stop there (unlike this repo's usual file-missing fail-safes) is correct.
+- `bo3_game_by_game_breakdown(net_high, net_low, hca_pts)` — answers "how do you break a Bo3 into
+  game-by-game predictions" directly: `p1`/`p2`/`p3` (per-game win probs, since home team alternates),
+  closed-form `P(length=2) = p1*p2 + (1-p1)*(1-p2)`, `P(length=3) = 1 - P(length=2)`.
+- `crossvalidate_series_length(...)` — calls the DP function, then calls the **existing, unmodified**
+  `simulate_single_series()` and parses its `$exact_outcomes$scoreline` strings (regex on
+  `playoff_simulator.R:165`'s exact `paste0()` format — flagged in-code as a soft coupling) to build
+  an independent Monte Carlo length distribution, then diffs the two. Warns (never `stop()`s) past a
+  0.02 tolerance.
+- `load_real_2026_playoff_seeds()` / `predict_series_length()` / `run_series_length_demo()` —
+  convenience wrappers; see "A real bug the user caught" below for why these pull from
+  `data/box_scores_cache.rds`, not `cache/projected_wnba_standings.rds`.
+
+Auto-runs via `if (!interactive())` at the bottom (same fixed guard `playoff_simulator.R`'s own
+FINDING C-2 already uses — no `sys.nframe()` clause). Saves `cache/series_length_predictions.rds`
+(new, untracked): `$first_round_example`, `$semifinal_atl_ny`, `$semifinal_gs_lv`, `$finals = NULL`,
+`$finals_note`, `$generated_at`.
+
+## Two real bugs caught and fixed this session, not pre-existing in scope
+
+1. **DP off-by-one** (caught by the DP's own internal `stopifnot` invariant, not by eyeballing): the
+   low-seed-wins branch's series-length formula was written as `w_high + w_low + 1 + 1` (copied
+   verbatim from the Plan-phase agent's own pseudocode, which had the identical bug) instead of the
+   correct `w_high + w_low + 1` — produced an out-of-bounds index on the very first run. Fixed in the
+   shipped version; the high-seed-wins branch was already correct and was the reference used to spot
+   the asymmetry.
+2. **Wrong matchup in the first working version, caught by the user, not by any internal check**: the
+   first `run_series_length_demo()` picked semifinal opponents by `Rank == 2` / `Rank == 3` out of
+   `cache/projected_wnba_standings.rds` and produced "Las Vegas Aces vs Minnesota Lynx" — a matchup
+   that doesn't exist, because Minnesota (the real #1 seed) was already eliminated in Round 1 (see the
+   2026-10-03/2026-10-04 sections below) and `projected_wnba_standings.rds` is a forward-looking
+   **mid-season** model projection, not a reflection of actual bracket results — exactly the same
+   distinction `WNBA_2026_Postseason_Predictions.qmd` lines 217-224 already documents, just not reused
+   here the first time. **Fixed** by adding `load_real_2026_playoff_seeds()`, which instead sources
+   real per-game net rating from `CACHE_TEAM_BOX` (`data/box_scores_cache.rds`, filtered
+   `season == 2026`) and a hardcoded `REAL_2026_BRACKET` seed→abbreviation table matching the verified
+   bracket the `.qmd` already cites (Yahoo/CBS/NBC Sports), and hardcodes the real confirmed semifinal
+   pairings — **(4) Atlanta Dream vs (8) New York Liberty** and **(2) Golden State Valkyries vs
+   (3) Las Vegas Aces** — rather than deriving a pairing generically by rank. The Finals matchup is
+   genuinely undetermined pending both semifinals, so it's reported as `$finals = NULL` +
+   `$finals_note`, not fabricated.
+
+## Verified results (this session, both semifinals cross-checked against Monte Carlo within tolerance)
+
+- **Atlanta Dream vs New York Liberty (Bo5):** P(3 games) = 28.9%, P(4 games) = 36.2%, P(5 games) = 35.0%.
+- **Golden State Valkyries vs Las Vegas Aces (Bo5):** P(3 games) = 25.1%, P(4 games) = 37.1%, P(5 games) = 37.7%.
+- Both DP distributions summed to 1 exactly (`sum(probability)`, checked via `readRDS()` on the saved
+  cache after the run, not just trusted from the console log) and matched their own
+  `simulate_single_series(n_sims = 10000)` cross-check within max `|DP - MC|` of 0.003–0.008 (well
+  under the 0.02 tolerance).
+
+## What's actually changed
+
+- `tools/series_length_predictor.R` — **new, untracked**. 353 lines.
+- `cache/series_length_predictions.rds` — **new, untracked**. Output of the script's auto-run.
+- `cache/playoff_series_wnba_demo.rds` — **modified, uncommitted**. Harmless side effect of
+  `source("playoff_simulator.R")` re-running its own demo suite (same documented precedent as every
+  other thread in this file that sources that file).
+- No existing file was modified (`playoff_simulator.R`, `config.R`, `run_full_pipeline.R` all
+  untouched — this is a `tools/`-only addition per `CLAUDE.md`'s folder-layout convention, not part
+  of the pipeline DAG).
+- Plan-mode artifact (not part of the repo): `C:\Users\kailo\.claude\plans\how-can-we-determine-wondrous-garden.md`.
+
+## Concrete next step
+
+1. **Decide whether to commit** `tools/series_length_predictor.R` + `cache/series_length_predictions.rds`,
+   and whether to bundle the `cache/playoff_series_wnba_demo.rds` side-effect diff alongside (this
+   repo's established cadence per prior sessions is to commit routine cache-refresh side effects
+   together with the intentional work that caused them — not yet done here).
+2. **Once either or both real semifinals (ATL vs NY, GS vs LV) actually progress or resolve**,
+   re-running the script requires no code change to pick up fresh net ratings (it reads
+   `CACHE_TEAM_BOX` live) — but `run_series_length_demo()`'s hardcoded semifinal seed pairs (4v8, 2v3)
+   and the Finals section's "undetermined" branch would need manual updates once a Finals matchup is
+   actually known, mirroring the same real-results update pattern the 2026-10-03/2026-10-04 sections
+   below already established for the `.qmd`/bracket PNG.
+3. **Worth considering, not done this session**: `run_series_length_demo()`'s semifinal pairing is
+   hardcoded from this session's own read of the real bracket rather than derived programmatically
+   from Round 1 results (unlike the `.qmd`'s `adv_prob`-driven approach) — fine for a one-off
+   standalone script, but would silently go stale if reused past the current round without noticing.
+4. Unrelated to this thread: every other thread in this file (pipeline/renv immediately below,
+   `.bat`/renv-repair, control-panel/auth #46 next) is exactly where its own section leaves it — this
+   thread touched none of them.
+
+---
+
 # Handoff — 2026-10-04 (Continuing thread: pipeline rerun, Round 1 fully resolved, renv restore root-caused and fixed) — CURRENT STATE FOR THIS THREAD (read this section first)
 
 **Continuation of the 2026-10-03 thread immediately below** (same postseason-predictions thread,
