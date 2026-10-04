@@ -18,6 +18,15 @@
 # eval_model() logic), plus a rolling-window-size sweep chart (ROC-AUC vs. window size
 # 3-25, 95% bootstrap CI ribbon) read directly from the already-cached
 # data/window_sweep_3_25_results.csv.
+# Also implements SA-5 / GitHub issue #59: Tab 5, "Prediction Accuracy Tracker" - reads
+# cache/prediction_accuracy_log.rds, filtered STRICTLY to real, resolved rows
+# (is_synthetic == FALSE & status == "RESOLVED"; ~36-39 rows out of 145 as of the last
+# cache refresh). Synthetic DIAG_* rows, PENDING rows, and UNRESOLVABLE rows are excluded
+# entirely from every value box, table row, and chart point on this tab -- no toggle, no
+# code path that can surface them. Value boxes (accuracy %, Brier score, log-loss) reuse
+# the already-logged per-row brier_component/log_loss_component columns (verified against
+# a manual recompute from predicted_home_win_prob + actual_winner before use) rather than
+# re-deriving the formulas inline a third time in this file.
 #
 # Pure static-snapshot design: reads only pre-computed .rds cache files at startup.
 # No live model fitting, no wehoop/tidymodels dependency.
@@ -147,6 +156,26 @@ if (file.exists(WINDOW_SWEEP_CACHE_PATH)) {
   window_sweep_load_error <- paste("Cache file not found:", WINDOW_SWEEP_CACHE_PATH)
 }
 
+# ---- Tab 5 (Prediction Accuracy Tracker) cache path ----
+# Not a config.R constant (same convention as the Tab 2/3 caches above).
+PREDICTION_ACCURACY_CACHE_PATH <- "cache/prediction_accuracy_log.rds"
+
+# ---- Startup-only cache load for Tab 5 (fail-safe: never crash if the cache is missing) ----
+prediction_accuracy_data <- NULL
+prediction_accuracy_load_error <- NULL
+
+if (file.exists(PREDICTION_ACCURACY_CACHE_PATH)) {
+  prediction_accuracy_data <- tryCatch(
+    readRDS(PREDICTION_ACCURACY_CACHE_PATH),
+    error = function(e) {
+      prediction_accuracy_load_error <<- conditionMessage(e)
+      NULL
+    }
+  )
+} else {
+  prediction_accuracy_load_error <- paste("Cache file not found:", PREDICTION_ACCURACY_CACHE_PATH)
+}
+
 ui <- page_fluid(
   theme = bs_theme(version = 5, bootswatch = "flatly"),
   titlePanel("WNBA Model Summary"),
@@ -203,6 +232,25 @@ ui <- page_fluid(
       card(
         card_header("Rolling-Window-Size Sweep: Out-of-Sample ROC-AUC (Window Sizes 3-25)"),
         plotOutput("window_sweep_plot", height = "450px")
+      )
+    ),
+    nav_panel(
+      "Prediction Accuracy Tracker",
+      br(),
+      uiOutput("accuracy_status"),
+      layout_columns(
+        col_widths = c(4, 4, 4),
+        uiOutput("vbox_accuracy_pct"),
+        uiOutput("vbox_accuracy_brier"),
+        uiOutput("vbox_accuracy_logloss")
+      ),
+      card(
+        card_header("Real Resolved Predictions (synthetic/pending/unresolvable rows excluded)"),
+        tableOutput("accuracy_table")
+      ),
+      card(
+        card_header("Cumulative Accuracy Over Time (Running Win Rate as Games Resolve)"),
+        plotOutput("accuracy_cumulative_plot", height = "450px")
       )
     )
   )
@@ -590,6 +638,143 @@ server <- function(input, output, session) {
         subtitle = "Shaded band: 95% bootstrap confidence interval",
         x = "Rolling Window Size (games)",
         y = "Out-of-Sample ROC-AUC"
+      ) +
+      theme_minimal(base_size = 13)
+  })
+
+  # ---- Tab 5: Prediction Accuracy Tracker (SA-5 / GitHub issue #59) ----
+  #
+  # This is the single most important filter in this tab: STRICTLY restrict to real,
+  # resolved rows (is_synthetic == FALSE & status == "RESOLVED") before any value box,
+  # table row, or chart point is computed/rendered. Synthetic DIAG_* rows, PENDING rows,
+  # and UNRESOLVABLE rows must never reach any output below -- there is no toggle or
+  # branch that relaxes this filter anywhere in this tab.
+
+  r_accuracy_filtered <- reactive({
+    if (is.null(prediction_accuracy_data) || nrow(prediction_accuracy_data) == 0) {
+      return(NULL)
+    }
+
+    d <- prediction_accuracy_data
+    keep <- !is.na(d$is_synthetic) & !is.na(d$status) &
+      d$is_synthetic == FALSE & d$status == "RESOLVED"
+    d <- d[keep, , drop = FALSE]
+
+    if (nrow(d) == 0) {
+      return(NULL)
+    }
+
+    d[order(d$game_date), ]
+  })
+
+  output$accuracy_status <- renderUI({
+    real_rows <- r_accuracy_filtered()
+    if (is.null(real_rows)) {
+      msg <- if (is.null(prediction_accuracy_data)) {
+        paste("No prediction accuracy data available. Placeholder state:",
+              prediction_accuracy_load_error)
+      } else {
+        "No real, resolved predictions available yet (all rows are synthetic, pending, or unresolvable)."
+      }
+      div(
+        class = "alert alert-warning",
+        role = "alert",
+        strong("No prediction accuracy data available. "),
+        msg
+      )
+    } else {
+      NULL
+    }
+  })
+
+  output$vbox_accuracy_pct <- renderUI({
+    real_rows <- r_accuracy_filtered()
+    val <- if (!is.null(real_rows)) {
+      sprintf("%.1f%%", mean(real_rows$correct) * 100)
+    } else {
+      "N/A"
+    }
+    value_box(
+      title = "Overall Accuracy (real resolved games)",
+      value = val,
+      theme = "teal"
+    )
+  })
+
+  output$vbox_accuracy_brier <- renderUI({
+    real_rows <- r_accuracy_filtered()
+    val <- if (!is.null(real_rows)) {
+      sprintf("%.4f", mean(real_rows$brier_component))
+    } else {
+      "N/A"
+    }
+    value_box(
+      title = "Brier Score (lower = better)",
+      value = val,
+      theme = "teal"
+    )
+  })
+
+  output$vbox_accuracy_logloss <- renderUI({
+    real_rows <- r_accuracy_filtered()
+    val <- if (!is.null(real_rows)) {
+      sprintf("%.4f", mean(real_rows$log_loss_component))
+    } else {
+      "N/A"
+    }
+    value_box(
+      title = "Log-Loss (lower = better)",
+      value = val,
+      theme = "teal"
+    )
+  })
+
+  output$accuracy_table <- renderTable({
+    real_rows <- r_accuracy_filtered()
+    if (is.null(real_rows)) {
+      data.frame(
+        game_date = character(0), home_team = character(0), away_team = character(0),
+        predicted_winner = character(0), actual_winner = character(0), correct = logical(0)
+      )
+    } else {
+      data.frame(
+        game_date = as.character(real_rows$game_date),
+        home_team = real_rows$home_team,
+        away_team = real_rows$away_team,
+        predicted_winner = real_rows$predicted_winner,
+        actual_winner = real_rows$actual_winner,
+        correct = real_rows$correct
+      )
+    }
+  }, striped = TRUE, hover = TRUE, bordered = TRUE)
+
+  output$accuracy_cumulative_plot <- renderPlot({
+    real_rows <- r_accuracy_filtered()
+    if (is.null(real_rows)) {
+      return(
+        ggplot() +
+          annotate("text", x = 0, y = 0, label = "No prediction accuracy data available") +
+          theme_void()
+      )
+    }
+
+    df <- data.frame(
+      game_date = real_rows$game_date,
+      correct = as.numeric(real_rows$correct)
+    )
+    df$game_number <- seq_len(nrow(df))
+    df$cumulative_accuracy <- cumsum(df$correct) / df$game_number
+
+    ggplot(df, aes(x = game_date, y = cumulative_accuracy)) +
+      geom_hline(yintercept = 0.5, linetype = "dashed", color = "#B0B0B0") +
+      geom_line(color = "#2C3E50", linewidth = 1.1) +
+      geom_point(color = "#18BC9C", size = 2) +
+      scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, 1)) +
+      labs(
+        title = "Cumulative Prediction Accuracy Over Time (Real Resolved Games Only)",
+        subtitle = sprintf("Running win rate as each of the %d real resolved games resolves chronologically", nrow(df)),
+        x = "Game Date",
+        y = "Cumulative Accuracy"
       ) +
       theme_minimal(base_size = 13)
   })
