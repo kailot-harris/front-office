@@ -1,4 +1,153 @@
-# Handoff — 2026-10-05 (Continuing thread: all 6 Dunks & Threes tickets (#60-65) AND the entire control-panel + auth tree (#43-54, all slices except #49) implemented and merged to `main` — 14 of 16 open GitHub issues closed out by code, commit `13919fc` is `HEAD`) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
+# Handoff — 2026-10-05 (New thread: pushed a 28-commit unpushed backlog to `origin/main`, closed out the tracker per the prior session's own instructions, then added dark-mode support to `summary_app.R`'s Tab 1 — commit `4b70058` is `HEAD`) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
+
+**This supersedes the issue-tracker-is-stale framing of the section immediately below** (same
+day, earlier session — everything else in that section, and everything below it, is still
+accurate). This thread did three unrelated things in sequence, triggered by three separate user
+requests in one conversation: (1) pushed `main`, which turned out to be 28 commits ahead of
+`origin/main` (every commit back through the entire control-panel/auth + D&T thread below had
+only ever been committed locally, never pushed — `git push` had apparently not been run in any
+prior session), (2) closed the 14 issues the prior session's handoff explicitly identified as
+code-complete-but-tracker-stale, (3) a new, unrelated user request — "the projected-standings
+table and plots look bad in dark mode" — answered by wiring real dark-mode support into
+`summary_app.R`'s Tab 1 (and, for consistency, all 5 tabs' tables/plots), not tracked by any
+GitHub issue.
+
+## What this thread did
+
+1. **Pushed `origin/main`** (`365b9e8..3bf8f50..4b70058`). If a future session sees `git status`
+   report "ahead of origin by N commits" again, don't assume that's expected steady-state for
+   this repo — check whether the previous session simply forgot to push before assuming
+   anything else is wrong.
+2. **Closed 14 of the 17 open control-panel/auth/D&T issues** (`gh issue close <N> -c "..."`,
+   each comment citing the exact merge commit) **exactly per the prior session's own "Concrete
+   next step" instruction** (see the section below, which said to do exactly this): #46, #47,
+   #48, #50, #51, #52, #53, #54, #60, #61, #62, #63, #64, #65. Left #43, #44, #49 open, also per
+   that same prior instruction — #43/#44 are epics that cover #49, which is still unstarted.
+   **No code was written for this step** — pure tracker hygiene, verified against `git log`
+   before each close, not against the stale table alone.
+3. **Added dark-mode support to `summary_app.R`** (ad hoc user request, not from either issue
+   tracker thread below). `input_dark_mode()` was already wired into the UI shell (visible in
+   `summary_app.R` since an earlier session) but only ever toggled Bootstrap's own CSS
+   variables — `reactable`'s inline-styled tables and every `ggplot`'s rendered-to-PNG output
+   ignored the toggle completely and stayed a fixed white/light block regardless of mode. Fixed
+   for all 5 tabs (not just the one the user pointed at), since the same two problems existed on
+   every tab, not just Tab 1. See "What's actually implemented" below for the mechanism.
+
+## Issue tracker state (current, verified via `gh issue list --state open` this session)
+
+| # | Title | Code status |
+|---|---|---|
+| 43 | Add interactive control-panel app (epic) | **Open** — blocked on #49 |
+| 44 | Add reusable multi-user auth system (epic) | **Open** — blocked on #49 |
+| 49 | Slice 5: Extract shared render helpers | **Open, NOT STARTED** — see "Concrete next step" |
+| 46, 47, 48, 50, 51, 52, 53, 54, 60, 61, 62, 63, 64, 65 | (titles in the table below this section) | **Closed** this session, all pre-existing merges from the prior session (see commit hashes in the table below) |
+
+Only 3 issues remain open on the tracker now: #43, #44, #49 — all three for the same reason
+(#49 unstarted, #43/#44 are its parent epics). This is a real reduction from "17 open, 14 of them
+actually done" to "3 open, all genuinely unstarted work" — the tracker is no longer stale as of
+this session.
+
+## What's actually implemented (new/changed this session)
+
+| File | Status | Notes |
+|---|---|---|
+| `summary_app.R` | 1,527 lines (was 1,419 before this session, +108) | New dark-mode plumbing: `r_dark_mode()` reactive (top of `server()`, reads `input$dark_mode_toggle == "dark"`) feeds every table/plot output. New top-level helpers (defined right after the `library()` block, before any UI/server code): `gg_line_ink()`, `gg_text_ink()`, `gg_muted_ink()` (color pickers for ggplot elements that are colored explicitly rather than through `theme()`), `gg_dark_overrides(dark)` (full axis/grid/title/background override, for every `theme_minimal()`-based plot), `gg_dark_overrides_void(dark)` (background-only override, for every `theme_void()`-based plot — see "Bugs found" below for why this had to be separate), `reactable_dark_theme(dark)` (a `reactable::reactableTheme()` for all 3 `reactable` tables). All 3 `reactable(...)` calls gained `theme = reactable_dark_theme(dark)`; the accuracy table's per-row outcome tint (`rowStyle`) also gained a dark-mode variant since its light-mode near-black text colors (`#0B4A3E`/`#7B241C`) were unreadable against a dark table background. All 6 `renderPlot({...})` calls gained `bg = "transparent"` and a `+ gg_dark_overrides(dark)` (or `_void` variant) appended to their final `theme()` chain. |
+
+Every other file in this repo is unchanged this session — no other `.R` file was touched.
+
+## Bugs found and fixed this session
+
+1. **`gg_dark_overrides(dark)`'s `axis.text`/`axis.title` entries silently re-enabled the
+   playoff bracket's hidden axes.** The bracket plot (and every "no data available" placeholder
+   plot across all 5 tabs) uses `theme_void()`, which deliberately blanks all axis
+   text/titles/grid. The first implementation pass appended the same `gg_dark_overrides(dark)`
+   used by the `theme_minimal()` plots to these too — `theme_void() + theme(axis.text =
+   element_text(...), ...)` re-enables exactly the elements `theme_void()` had just blanked,
+   since later `theme()` calls override earlier ones element-by-element, not wholesale. This
+   was **not** caught by `shiny::testServer()` or by the absence of
+   `.shiny-output-error` — it's a purely visual regression, only visible in an actual rendered
+   screenshot (confirmed live: the bracket plot grew numeric axis ticks/labels — `"6" "3" "y"
+   "0" "-3"` down the left edge, `"0" "5" "10" "15" "x"` along the bottom — that don't belong on
+   a bracket diagram at all). Fixed by splitting into `gg_dark_overrides_void()` (background-only,
+   no axis entries) for every `theme_void()` call site. **This is exactly the kind of bug this
+   session's "verify with a real screenshot, not just an error-class check" step exists to
+   catch** — see "The reusable workflow" below, which is new this session and worth reading if
+   touching any plot here again.
+
+## Environment/tooling notes (new this session)
+
+- **The prior session's note that `shinytest2::AppDriver` was "unusable system-wide" due to
+  memory pressure did not reproduce this session** — `AppDriver` worked normally once a real
+  Chrome process could launch cleanly. If it fails for you, check for orphaned background `R.exe`
+  processes first (see next bullet) before assuming a repeat of the prior session's memory-
+  pressure issue.
+- **A failed/interrupted `AppDriver$new()` call can leave an orphaned background `R.exe` process
+  running the Shiny app it was trying to connect to**, and these accumulate across repeated
+  failed attempts (10 were found running simultaneously this session, from unrelated earlier
+  probe attempts within the same session). Symptom: every subsequent `AppDriver$new()` call times
+  out with `Chromote: timed out waiting for response to command Page.navigate`, even against a
+  trivial app, with no indication the real cause is resource contention from prior orphans, not
+  the new attempt. Fix: `tasklist //FI "IMAGENAME eq R.exe"` to check, `taskkill //F //IM R.exe`
+  to clear them (safe only if no *legitimate* long-running R process is active — check the list
+  first). This is a different failure mode from the prior session's memory-pressure one, with an
+  easy local fix, not an unfixable environment constraint — don't conflate the two if you hit an
+  `AppDriver` failure in a future session.
+- **`shinytest2::AppDriver$new(app_dir = <path to a single .R file>)` does not work the way it
+  looks like it should**, and fails in two different unhelpful ways depending on exactly how you
+  get it wrong: `app_dir = "somefile.R"` → `Error: attempt to apply non-function` (unrelated to
+  the real cause); pointing it at a directory containing an `app.R` written as a bare `source("real
+  target.R")` (no return value capture) → `Error in func(fname, ...) : app.R did not return a
+  shiny.appobj object.` The fix (used successfully this session, and already documented as the
+  right pattern in the prior session's "Bugs found" item 3 below — worth re-confirming since it
+  bears repeating): write a throwaway wrapper directory containing just an `app.R` that does
+  `setwd("<absolute project root>"); source("real_target.R")$value` (the trailing `$value` is
+  required — `source()` alone returns an invisible `list(value=, visible=)`, not the
+  `shiny.appobj` itself), and point `app_dir` at that wrapper directory, not at the target file.
+- **`AppDriver`'s screenshot method is `get_screenshot(file = ...)`, not `screenshot(...)`** —
+  the latter doesn't exist on this version and fails with `Error: attempt to apply non-function`,
+  easily confused with the wrapper-app-file mistake above since both produce the identical error
+  text. Run `ls(shinytest2::AppDriver$public_methods)` once if unsure which method names this
+  installed version actually exposes, rather than guessing from memory/other projects' usage.
+- `.claude/worktrees/` is still untracked, still not in `.gitignore`, still 552MB across 11
+  worktrees, exactly as the prior session flagged — unchanged this session, still an open item,
+  see "Concrete next step" below.
+- Working tree is clean as of `HEAD` (`4b70058`) except for the pre-existing, un-actioned
+  `.claude/worktrees/` untracked directory noted above — `git status --short` shows nothing else.
+
+## The reusable workflow this session added (on top of the prior session's list below)
+
+1. After any `ggplot`/plot-related change, **take an actual headless-browser screenshot and look
+   at it** before calling the change done — don't rely on `shiny::testServer()` or an absence of
+   `.shiny-output-error` alone. Both of those are blind to purely visual regressions (see "Bugs
+   found" above); a reactive-value assertion has no way to notice a plot grew axis labels it
+   shouldn't have.
+2. For a quick one-off visual probe of a specific app file (rather than the full
+   `tools/headless_dashboard_probe.R` sweep, which is `app.R`-specific), the throwaway-wrapper-
+   directory pattern above is the fastest path: write the 2-line wrapper `app.R`, point
+   `AppDriver$new(app_dir = <wrapper dir>)` at it, `wait_for_idle()`, then `get_screenshot()`.
+   Clean up the wrapper directory and any `tools/tmp_*` scratch files afterward — none of this
+   session's probe scaffolding was committed or left behind.
+
+## Concrete next step
+
+Unchanged from the prior session's own next-step list below, since this thread didn't touch #49:
+
+1. **Issue #49** (Slice 5) is still the only unstarted ticket, still blocking #43/#44. See the
+   prior session's "Concrete next step" item 1 below for the full detail (re-verify
+   `AppDriver` health first, read `control_panel_app.R`'s `run_pipeline_stage_captured()` before
+   starting). One update: `AppDriver` health is no longer in question as of this session (see
+   "Environment/tooling notes" above) — the "don't start until confirmed healthy" gate from the
+   prior session's note is now cleared, assuming no new regression since.
+2. Once #49 lands, close #43 and #44 on the tracker — the only two issues left after that.
+3. The three stale headless probes (`tools/headless_control_panel_probe.R`, `tools/headless_
+   control_panel_staleness_probe.R`, `tools/headless_control_panel_queue_lock_probe.R`) still
+   need the login step added, per the prior session's item 3 below — not touched this session.
+4. `.claude/worktrees/` cleanup (`.gitignore` entry + confirmed `cleanup_worktrees.R` run) is
+   still pending, per the prior session's item 4 below — not touched this session, still 552MB.
+
+---
+
+# Handoff — 2026-10-05 (Continuing thread: all 6 Dunks & Threes tickets (#60-65) AND the entire control-panel + auth tree (#43-54, all slices except #49) implemented and merged to `main` — 14 of 16 open GitHub issues closed out by code, commit `13919fc` is `HEAD`) — PRIOR SESSION'S STATE (superseded by the section above, kept for its still-accurate detail — e.g. "Bugs found," "Environment/tooling notes," "The reusable workflow")
 
 **This supersedes the "spec interview only, nothing implemented yet" framing of the section
 immediately below** (same day, earlier in the day — that section's own content, the spec and
