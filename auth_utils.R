@@ -168,3 +168,55 @@ verify_user <- function(username, password) {
 
   isTRUE(user_exists && password_matches)
 }
+
+#' Create a new user, gated on a key-phrase (Slice 2 of issue #44, GitHub
+#' issue #52).
+#'
+#' Wraps create_user() with an authorization check: the caller-supplied
+#' `key_phrase` must exactly match `Sys.getenv("CONTROL_PANEL_SIGNUP_KEY", "")`.
+#' This is a signup-wide gate (one shared phrase controls whether anyone can
+#' sign up at all), not a per-account secret -- but per CLAUDE.md's
+#' secrets-handling convention it is still treated as secret-adjacent: it is
+#' read only via Sys.getenv(..., "") (never hardcoded), and it is never
+#' echoed back in any error/warning/message produced by this function.
+#'
+#' Fail-safe behavior: if the env var is unset/empty, every signup attempt is
+#' rejected unconditionally -- including a caller who happens to pass
+#' `key_phrase = ""`. An unset gate must never be read as "no gate, allow
+#' everyone" (see CLAUDE.md's fail-safe-design convention).
+#'
+#' @param username character scalar, passed through to create_user().
+#' @param password character scalar, passed through to create_user().
+#' @param key_phrase character scalar, checked against
+#'   Sys.getenv("CONTROL_PANEL_SIGNUP_KEY", "").
+#' @return invisible TRUE on success (account created). invisible FALSE if
+#'   authorization fails (wrong/missing key_phrase, or the gate is unset) --
+#'   this path never calls create_user() and never touches the users table.
+#'   Propagates create_user()'s own error (e.g. duplicate username, invalid
+#'   input) if authorization succeeds but account creation itself fails.
+create_account_if_authorized <- function(username, password, key_phrase) {
+  required_key <- Sys.getenv("CONTROL_PANEL_SIGNUP_KEY", "")
+
+  # Fail-safe: an unset/empty gate rejects everyone, full stop -- never
+  # treated as "no gate". This also naturally rejects a key_phrase of ""
+  # even though "" == "" would otherwise match.
+  if (!nzchar(required_key)) {
+    return(invisible(FALSE))
+  }
+
+  if (!is.character(key_phrase) || length(key_phrase) != 1 || is.na(key_phrase)) {
+    return(invisible(FALSE))
+  }
+
+  # Deliberately no cat()/message()/warning() on the mismatch path below (or
+  # anywhere in this function) that would include `key_phrase` or
+  # `required_key` -- doing so would leak the secret-adjacent gate value into
+  # logs/console output even though this function's job is only to say
+  # yes/no.
+  if (!identical(key_phrase, required_key)) {
+    return(invisible(FALSE))
+  }
+
+  create_user(username, password)
+  invisible(TRUE)
+}
