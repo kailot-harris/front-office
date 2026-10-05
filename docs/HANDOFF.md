@@ -1,3 +1,114 @@
+# Handoff — 2026-10-05 (New thread: Dunks & Threes visual-language emulation for `summary_app.R` — spec interview only, nothing implemented yet, 6 GitHub issues filed: #60-#65) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
+
+**This is a separate thread from everything below it** — grounded in the same `summary_app.R`
+(1,108 lines, unchanged this session) but zero code was written. The thread did three things in
+sequence: (1) dispatched a research subagent to screenshot comparable public sports-analytics
+dashboards, (2) ran a `spec-interview` with the user to turn "emulate Dunks & Threes" into a
+concrete spec, (3) wrote that spec to disk and filed it as 6 GitHub issues. Read `CLAUDE.md` first
+if you haven't already (unchanged, still applies).
+
+## What this thread is
+
+User asked to find comparable projects online for visual/UX comparison. A general-purpose
+subagent researched and screenshotted ~8-10 public NBA/WNBA analytics dashboards and
+tournament-bracket UI examples into `C:\tmp\screenshots\` (**outside this repo, not committed,
+not part of version control** — a local Windows path, resolved there because the subagent's R
+script ran on Windows R even though the directory was requested as `/tmp/screenshots/`; if that
+directory is needed again, check `C:\tmp\screenshots\` first, not `/tmp/screenshots/` under Git
+Bash's POSIX emulation, which stayed empty). The user picked **Dunks & Threes**
+(https://dunksandthrees.com/) as the primary design reference, then asked for a `spec-interview`
+to scope "emulate it" into concrete tickets, then asked to save the spec and file GitHub issues.
+
+## What exists now
+
+**`docs/SPEC_dunksandthrees_emulation.md`** (198 lines, **new, UNCOMMITTED** — `git status
+--short` shows it as `??`, untracked) — the full compiled spec from the interview. Read this file
+directly for the complete rationale/decisions; don't re-derive from this summary. Covers:
+- Why this needed a design discussion (new `reactable` dependency decision, which table columns
+  are bar-appropriate, and a real architectural fork: the Dunks & Threes quadrant scatter
+  (ORTG vs DRTG) turned out to require new model-engine work, since **this repo's rating engine
+  only ever produces a single blended Net Rating — confirmed zero references to
+  `offensive`/`defensive` anywhere in `roster_bottom_up_engine.R`**, not just a missing chart.
+- 6 decisions: whole-app scope (not one tab), add `reactable` as a new dependency, convert all 3
+  existing tables (not just the obvious one), specific bar-column choices per table (including an
+  **inverted-scale** bar for Brier Score/Log-Loss, since those are lower-is-better metrics), the
+  quadrant chart is in scope but split into its own ticket blocked on the engine work, and a
+  6-ticket breakdown prioritizing parallelizability (user's explicit ask: "4+ tickets... prioritize
+  high parallelizability").
+
+**GitHub issues #60-#65** (all `OPEN`, all labeled `enhancement`, filed this session) — one issue
+per ticket in the spec, bodies are the ticket text verbatim plus file/line pointers:
+
+| # | Title | Depends on | Parallelizable with |
+|---|---|---|---|
+| [#60](https://github.com/kailot-harris/WNBA_analytics/issues/60) | Reactable: Standings table | — | 61, 62, 63 |
+| [#61](https://github.com/kailot-harris/WNBA_analytics/issues/61) | Reactable: Model benchmark table | — | 60, 62, 63 |
+| [#62](https://github.com/kailot-harris/WNBA_analytics/issues/62) | Reactable: Accuracy table | — | 60, 61, 63 |
+| [#63](https://github.com/kailot-harris/WNBA_analytics/issues/63) | Typography & chart-minimalism visual pass | — | 60, 61, 62 |
+| [#64](https://github.com/kailot-harris/WNBA_analytics/issues/64) | Offense/Defense rating split (model engine) | — | 60-63 |
+| [#65](https://github.com/kailot-harris/WNBA_analytics/issues/65) | Quadrant scatter chart (ORTG vs DRTG) | **#64** | none (blocked) |
+
+Issues 60-64 can be dispatched in parallel (e.g. via `subagent-brief`, `isolation: "worktree"`) —
+**but note tickets 60-63 all touch `summary_app.R`** (60/61/62 each convert a different
+`tableOutput`/`renderTable` pair to `reactable`; 63 touches the `ui` block's CSS plus every
+`renderPlot`'s `theme()` call). They're logically independent but **not conflict-free if merged
+in parallel against the same base** — same caveat this file has flagged before for the SA-1..SA-5
+tickets (see far below): either serialize the merges (branch each from the previous one's merged
+result, like the SA-1..SA-5 thread did), or expect manual conflict resolution on `summary_app.R`
+at merge time. Ticket 64 (`roster_bottom_up_engine.R`) has zero file overlap with 60-63 and is
+genuinely conflict-free to run alongside them.
+
+## Loose ends not closed out this session — flagging, not fixing silently
+
+- **`docs/SPEC_dunksandthrees_emulation.md` is uncommitted.** Not committed this session (the user
+  didn't ask to commit/push, and this skill's own `git-safety` convention is to only commit on
+  explicit request). Whoever picks this up next should commit it (and decide whether it belongs in
+  its own `docs:` commit or bundled with the first implementation PR that references it).
+- **`C:\tmp\screenshots\` (10 PNGs, ~4MB total) is local-machine-only, not part of this repo, not
+  backed up anywhere.** If the design-comparison screenshots are needed again later, they'd need
+  to be re-captured (2 of the original 10 failed to capture cleanly: `pbpstats.png` and
+  `teamrankings_bracket.png` are actually ERR_CONNECTION_RESET/CloudFront-403 error pages, not
+  real site screenshots — don't mistake them for valid comparisons if revisiting that folder).
+
+## Environment notes (new this session)
+
+- Confirmed `summary_app.R` has **zero** `library(reactable)`/`library(DT)` references today —
+  tickets 60-62 are a genuinely new dependency add, not wiring up something already imported.
+  `renv.lock` will need a `reactable` entry (`renv::snapshot()`) as part of whichever ticket lands
+  first among 60/61/62.
+- Confirmed via `grep` that `roster_bottom_up_engine.R` has zero `offensive`/`defensive`
+  references — ticket 64 is new rating-decomposition logic, not a rename/refactor of something
+  that already computes the split internally.
+
+## What's actually changed
+
+- `docs/SPEC_dunksandthrees_emulation.md` — **new, uncommitted**. 198 lines.
+- `docs/HANDOFF.md` — this section, new.
+- GitHub issues #60-#65 — new, filed via `gh issue create`, not a local file change.
+- `summary_app.R`, `roster_bottom_up_engine.R` — **unchanged this session** (read for research/
+  grounding during the interview, not edited). Line counts confirmed still 1,108 and 801
+  respectively.
+- Nothing else touched. No cache files, no other `.R` scripts, no `config.R`, no pipeline files.
+
+## Concrete next step
+
+1. **Commit `docs/SPEC_dunksandthrees_emulation.md`** (currently untracked) — first thing, before
+   any implementation work starts, so the spec that tickets #60-65 reference is actually in the
+   repo history.
+2. **Start implementation on #60-64** (all independently startable; #65 is blocked on #64). Given
+   the merge-conflict risk on `summary_app.R` noted above for 60/61/62/63, either: (a) serialize
+   them (one `subagent-brief` dispatch at a time, each branching from the previous one's merged
+   result, matching the SA-1..SA-5 thread's precedent far below in this file), or (b) run them
+   genuinely in parallel and accept manual conflict resolution at merge time. #64
+   (`roster_bottom_up_engine.R`) has no file overlap and can run alongside either approach safely.
+3. **#65 (quadrant chart) cannot meaningfully start** until #64's offensive/defensive cache columns
+   exist — don't dispatch it early expecting only UI scaffolding to get done; the spec notes even
+   scaffolding is of limited value without the real data shape to design against.
+4. Unrelated to this thread: every other thread below is exactly where its own section leaves it —
+   this thread touched none of them.
+
+---
+
 # Handoff — 2026-10-04 (Continuing thread: `summary_app.R` — team logos, Tab 5 collapsible log, Tab 1 win-projection chart reworked into a dot-and-whisker plot, commit `888d75c` pushed to `main`) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
 
 **This is a continuation of the Playoff Bracket tree / Tab 5 reorder thread immediately
