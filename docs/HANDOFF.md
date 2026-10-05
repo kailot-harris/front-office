@@ -1,4 +1,176 @@
-# Handoff — 2026-10-05 (New thread: pushed a 28-commit unpushed backlog to `origin/main`, closed out the tracker per the prior session's own instructions, then added dark-mode support to `summary_app.R`'s Tab 1 — commit `4b70058` is `HEAD`) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
+# Handoff — 2026-10-05 (New thread: implemented issue #49 — Slice 5 — in two subagent-brief waves, pushed to `origin/main`, cleaned up 11 of 12 leftover `.claude/worktrees/` dirs — commit `e5c97f3` is `HEAD`) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
+
+**This supersedes the "#49 NOT STARTED" framing of the section immediately below** (same repo,
+prior session — everything else in that section, and everything below it, is still accurate
+unless noted otherwise here). This thread's user asked three things in sequence: (1) implement
+issue #49 "in waves of parallel agents", (2) clean up the leftover `.claude/worktrees/` dirs
+flagged as a 552MB open item in the section below + commit + push, (3) write this handoff.
+
+## What this thread did
+
+1. **Implemented issue #49** (Slice 5 of #43: "Extract shared render helpers + inline results in
+   control panel") using the `subagent-brief` skill (`.claude/skills/subagent-brief`, global —
+   not project-local), as two **sequential** waves, not parallel ones — the task is a single
+   dependent refactor of two shared files (`app.R` then `control_panel_app.R`), and the brief's
+   own hard rules (worktree isolation per writer, no automatic retries) make faking concurrency
+   on shared-file edits a net loss (guaranteed merge conflicts) rather than a speedup. See
+   "The reusable workflow" below for the exact mechanics, including a real gotcha hit twice.
+   - **Wave 1** (commit `a063415`, merged via `b9df1a7`): extracted the plot/table-*building*
+     logic (not the `input$`-dependent data-fetching) out of 15 `renderPlot`/`renderPlotly`/
+     `renderDT` blocks in `app.R`'s `server()` into a new file, `dashboard_render_helpers.R`, as
+     15 plain `build_*()` functions with zero `input$`/`session$` reference (so a different Shiny
+     app can call them later — see Wave 2). Verified via two full runs of
+     `tools/headless_dashboard_probe.R --screenshot`, once against the original `app.R` and once
+     against the refactored one: identical per-tab results, 0 new console errors, screenshots
+     pixel-identical across all 10 affected tabs.
+   - **Wave 2** (commit `a39cf1a`, merged via `e5c97f3`): wired `control_panel_app.R` to call
+     those same `build_*()` helpers after a pipeline stage finishes, so the control panel shows a
+     real chart/table preview of the cache file the stage just wrote, **next to** (not replacing)
+     the existing raw log dump. New `STAGE_PREVIEW_MAP` + `render_stage_preview(stage_id)`
+     (`control_panel_app.R:343-401`) cross-check `pipeline_stages.R`'s `PIPELINE_STAGES[[id]]
+     $output` field before reading the `.rds` and calling the matching helper, wrapped in
+     `tryCatch()` that falls back to "no extra preview" (never an error) on any missing
+     mapping/file/schema mismatch. Verified for 2 of the 5 mapped stages
+     (`roster_bottom_up_engine` → `cache/projected_wnba_standings.rds`, `market_odds_engine` →
+     `cache/latest_value_bets.rds`) by comparing the preview's rendered row count/columns against
+     calling the same `build_*()` helper directly on the same cache file — exact match both
+     times. The other 3 mapped stages (`injury_scraper`, `player_props_engine`, `pbp_engine`)
+     were wired the same way but not individually re-verified this session.
+2. **Cleaned up `.claude/worktrees/`**: 12 leftover worktrees existed from unrelated prior
+   sessions/agents, all already fully merged into `main` (confirmed via `git merge-base
+   --is-ancestor <worktree HEAD> main` on each, before removing anything). Removed 11 via
+   `git worktree remove -f -f` + `git branch -D`; the 12th
+   (`.claude/worktrees/agent-ae227d715064d6d37`) is still held by an OS-level file lock from a
+   still-running process (`rm` fails with "Device or resource busy") — **left in place**, not
+   force-deleted, since the owning process wasn't this session's to kill. Directory size dropped
+   from 552MB to 20KB. Still not in `.gitignore` (see "Concrete next step").
+3. **Pushed `origin/main`** (`fd40802..e5c97f3`, 4 commits: the two feature commits above plus
+   their two merge commits). Nothing else was pending to commit — working tree was already clean
+   going into this thread.
+
+## Issue tracker state — ⚠️ discrepancy, not reconciled this session
+
+`gh issue list --state open` still shows **#49, #44, #43 all OPEN** as of this session. #49's
+code is done, merged, and pushed (see above) — the tracker is now stale on this point, same
+pattern the section below already warned about once. **This was deliberately not fixed this
+session**: closing issues is a visible, semi-reversible action outside what the user asked for
+this thread (implement #49, clean worktrees, commit/push, write this doc — closing tickets
+wasn't one of the three). Whoever picks this up next should close #49 (citing commit `e5c97f3`),
+then #43 and #44 (both were open only pending #49) — don't take my word for "done," re-check
+`git log` / the commits above first, per this doc's own stated principle.
+
+## What's actually implemented (new/changed this session)
+
+| File | Status | Notes |
+|---|---|---|
+| `dashboard_render_helpers.R` | **New**, 643 lines | 15 `build_*()` functions, one per extracted render output (full list: `build_tbl_daily_edges`, `build_tbl_steam_radar`, `build_tbl_injuries`, `build_plot_bankroll_drawdown`, `build_tbl_graded_ledger`, `build_plot_embeddings_pca`, `build_plot_embeddings_heatmap`, `build_plot_calibration_curve`, `build_tbl_bottom_up_standings`, `build_plot_residual_scatter`, `build_plot_residual_dist`, `build_plot_team_bias`, `build_tbl_props_terminal`, `build_plot_prop_zinb_curve`, `build_tbl_clutch_shot_profile`) plus a shared `.diag_empty_plot()` helper. None reference `input$`/`session$` — grep-verified. Sourced from `app.R:100`. |
+| `app.R` | 1,213 lines (was ~1,723 before this session, −510 net incl. the new `source()` line) | Each of the 15 outputs above now just calls its `build_*()` helper with explicit data args; `input$`-dependent filtering (e.g. `input$clutch_show_low_volume`, row-selection on `tbl_props_terminal`) stays inline in `app.R` and is passed into the helper call. |
+| `control_panel_app.R` | 886 lines (was ~724 before this session, +162) | New `STAGE_PREVIEW_MAP` (5 entries) + `render_stage_preview()` (`:343-401`), a new `uiOutput("stage_preview")` near the existing `verbatimTextOutput("output_log")` (`:567`), and `output$stage_preview <- renderUI(...)` wired into the existing `observeEvent(rv$results, ...)` block (`:865-871`). Also adds a locally-scoped `.normalize_value_bets_dates()` (`:315-341`) — see "known residual risk" immediately below, this is a deliberate duplicate, not an oversight. |
+
+Every other file in the repo is unchanged this session.
+
+## Known residual risk — flagged, not fixed, candidate for a future slice
+
+`control_panel_app.R`'s `.normalize_value_bets_dates()` (`:315-341`) is a **documented
+byte-for-byte duplicate** of `app.R`'s `r_normalized_value_bets()` reactive (`app.R:591-622`) —
+the logic that derives a `norm_date` column on `cache/latest_value_bets.rds`'s raw contents
+(including a staggered-placeholder-date fallback for thin/demo slates where the real
+`game_date` column isn't yet distinct across rows). `build_tbl_daily_edges()` requires
+`norm_date` to exist; the raw cache file doesn't have it; `app.R` only ever calls the helper
+*after* its reactive derives it. This couldn't be shared in Wave 2 because (a) `app.R` was
+explicitly out of scope for that brief, and (b) the original is a Shiny `reactive()`, which
+can't be called from outside a reactive context anyway. This repo has been bitten by exactly
+this shape of bug before (see the `CONN`/`CON` team-abbreviation note and the RAPM/roster-join
+note in `CLAUDE.md`) — two copies of non-trivial logic that can silently drift. **Recommended
+next slice**: hoist this into a plain function in `dashboard_render_helpers.R` (it has no
+`input$`/`session$` dependency either, so it fits that file's existing contract) and have both
+`app.R` and `control_panel_app.R` call it from there.
+
+## Environment/tooling notes (new this session)
+
+- **The `subagent-brief` skill's `Agent` tool `isolation: "worktree"` parameter branches new
+  worktrees from a *stale snapshot* of `main` taken at session start, not from `main`'s live tip
+  at dispatch time, at least within a single long-running session that itself advances `main` via
+  merges partway through.** Hit this twice dispatching Wave 2: two separate `isolation:
+  "worktree"` dispatches both landed on commit `fd40802` (3 commits behind the `main` tip at
+  actual dispatch time, `b9df1a7`), so `dashboard_render_helpers.R` (which Wave 2's brief
+  required as a precondition) was missing both times, and both subagents correctly stopped with
+  `status: blocked` rather than guessing — the briefs' explicit "confirm the precondition first,
+  stop if missing" instruction did its job. **Workaround that worked**: create the worktree
+  manually (`git worktree add -b <branch> <path> main`) instead of using the `isolation`
+  parameter, copy the brief file into it by hand (it lives under the gitignored
+  `.subagent-runs/`, which a tool-created worktree also won't contain — see next bullet), and
+  dispatch a plain (non-`isolation`) agent instructed to `cd` into that exact path for every
+  command. If this recurs, suspect the same stale-base cause before suspecting the brief itself.
+- **`.subagent-runs/` (the `subagent-brief` skill's run log) is gitignored by design** (the
+  skill's own `init` command adds the `.gitignore` entry) — which also means any
+  `isolation: "worktree"`-created worktree won't contain it, since worktree creation only copies
+  tracked content. Any brief file a subagent needs to read must be placed into that specific
+  worktree manually if you're not using the `isolation` parameter's own (also-apparently-stale)
+  worktree.
+- `runlog.R record-result` rejected a hand-written result JSON that put free-text evidence
+  directly on each criterion (`{"id":1,"met":"yes","evidence":"..."}`) — the actual
+  `schema/result.v1.json` requires top-level `item_id`/`summary`/`evidence`/`blocked_reason`/
+  `needed_action`/`changes` keys too, and each criterion needs `text` + `evidence_refs` (an array
+  of IDs) pointing into the top-level `evidence` array, not an inline `evidence` string. Read
+  `schema/result.v1.json` directly rather than inferring the shape from the template's prose.
+- `runlog.R record-result --result <path>` **failed silently with "No parseable JSON object
+  found in output"** when `<path>` was a file under `/tmp/...` (a Git-Bash/MSYS path) passed to
+  the Windows-native `Rscript.exe` — moving the same file under the repo's own `.subagent-runs/`
+  directory (a plain Windows-relative path) fixed it immediately. Suspect Windows-native R not
+  resolving MSYS `/tmp` mounts correctly; avoid `/tmp` for any file a Windows `Rscript.exe`
+  invocation needs to read.
+- `.claude/worktrees/` is now 20KB (was 552MB per the section below) — see "What this thread did"
+  item 2. Still not in `.gitignore`; `git status` doesn't flag it as untracked either (worth
+  figuring out why on a future session — possibly a global excludesfile — before assuming
+  it's git-clean by default).
+- Working tree is clean as of `HEAD` (`e5c97f3`), already pushed to `origin/main`.
+
+## The reusable workflow this session added (on top of the prior sessions' lists below)
+
+1. For a refactor that touches two files with a real dependency order (extract-then-consume,
+   like Wave 1 → Wave 2 here), **don't force artificial parallelism** — run it as sequential
+   `subagent-brief` waves, one subagent per wave, each in its own worktree, merged back to `main`
+   before the next wave's brief is even written (the next brief needs to cite real post-merge
+   line numbers/function names, which don't exist until the merge happens).
+2. Before trusting a `subagent-brief` dispatch's `isolation: "worktree"` result, **independently
+   re-run at least one cited check yourself** against the actual worktree path the tool result
+   returns (e.g. `grep -c "^build_" dashboard_render_helpers.R`, `git diff --stat`) — this caught
+   nothing wrong this session (both subagents' claims checked out), but the stale-worktree bug
+   above means the tool-provided isolation can't be trusted blindly for *dispatch correctness*
+   either, not just for the subagent's own claims.
+3. When recording a subagent's final JSON into `runlog.R record-result` and it doesn't match
+   `schema/result.v1.json` (common, since subagents often free-form the `evidence` field per the
+   brief template's loose prose example), **don't fight the subagent for a re-run** — just
+   reshape the same evidence into a schema-compliant JSON yourself from the subagent's reported
+   text and record that; the schema is about the run log's bookkeeping, not about re-verifying
+   the work a second time (you already did that per item 2 above).
+
+## Concrete next step
+
+1. **Tracker hygiene**: close #49 (cite `e5c97f3`), then #43 and #44 (both blocked only on #49).
+   Not done this session — see "Issue tracker state" above for why.
+2. **De-duplicate `.normalize_value_bets_dates()`** per "Known residual risk" above — hoist it
+   into `dashboard_render_helpers.R` and have both `app.R` and `control_panel_app.R` call the
+   shared version.
+3. **Reconcile the `renv` lockfile**: both this session's subagents had to `renv::install()`
+   several packages inside their worktrees just to get `source("app.R")` /
+   `source("control_panel_app.R")` to run standalone — `duckdb`, `tidyverse`, `here`, `RSQLite`,
+   `bcrypt`, `ranger` were all missing from the lockfile despite being actually required. This
+   was never caught before because these files are normally only ever run inside a live Shiny
+   session (`shiny::runApp()`), which must be picking up these packages from somewhere outside
+   `renv`'s tracked library (global library? an untracked local install?) — worth a dedicated
+   session to run `renv::snapshot()` and understand why the lockfile drifted, rather than
+   re-discovering the same gaps piecemeal every time a fresh worktree sources these files.
+4. Remove the last leftover worktree, `.claude/worktrees/agent-ae227d715064d6d37`, once whatever
+   process is holding its lock (check `tasklist` for the PID the lock file names) exits — its
+   branch is already deleted, just the directory remains.
+5. Add `.claude/worktrees/` to `.gitignore` while addressing item 4 above's "why doesn't `git
+   status` already flag this" question — they're likely the same root cause.
+
+---
+
+# Handoff — 2026-10-05 (New thread: pushed a 28-commit unpushed backlog to `origin/main`, closed out the tracker per the prior session's own instructions, then added dark-mode support to `summary_app.R`'s Tab 1 — commit `4b70058` is `HEAD`) — PRIOR SESSION'S STATE (superseded by the section above, kept for its still-accurate detail — e.g. "Bugs found," "Environment/tooling notes," "The reusable workflow")
 
 **This supersedes the issue-tracker-is-stale framing of the section immediately below** (same
 day, earlier session — everything else in that section, and everything below it, is still
