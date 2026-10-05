@@ -355,7 +355,7 @@ ui <- page_fluid(
       uiOutput("model_comparison_status"),
       card(
         card_header("Model Architecture Benchmark (Logistic Regression vs. Random Forest vs. XGBoost)"),
-        tableOutput("model_benchmark_table")
+        reactableOutput("model_benchmark_table")
       ),
       card(
         card_header("Rolling-Window-Size Sweep: Out-of-Sample ROC-AUC (Window Sizes 3-25)"),
@@ -997,16 +997,93 @@ server <- function(input, output, session) {
     )
   })
 
-  output$model_benchmark_table <- renderTable({
+  output$model_benchmark_table <- renderReactable({
     if (is.null(model_benchmark_data) || nrow(model_benchmark_data) == 0) {
-      data.frame(
+      empty_df <- data.frame(
         Model = character(0), Accuracy = numeric(0), `ROC-AUC` = numeric(0),
         `Brier Score` = numeric(0), `Log-Loss` = numeric(0), check.names = FALSE
       )
-    } else {
-      model_benchmark_data
+      return(reactable(empty_df))
     }
-  }, striped = TRUE, hover = TRUE, bordered = TRUE)
+
+    df <- model_benchmark_data
+
+    # Shared red -> yellow -> green ramp for all bar cells below: "goodness" is always
+    # passed in on a 0 (worst, red) to 1 (best, green) scale, so callers do the
+    # direction/inversion math and this function only ever maps goodness -> color.
+    bar_color_scale <- function(goodness) {
+      goodness <- min(max(goodness, 0), 1)
+      ramp <- grDevices::colorRampPalette(c("#E74C3C", "#F1C40F", "#18BC9C"))(101)
+      ramp[round(goodness * 100) + 1]
+    }
+
+    bar_cell_html <- function(pct, color, label) {
+      htmltools::tags$div(
+        style = "display: flex; align-items: center; width: 100%;",
+        htmltools::tags$span(
+          style = "width: 50px; text-align: right; margin-right: 6px; font-variant-numeric: tabular-nums;",
+          label
+        ),
+        htmltools::tags$div(
+          style = "flex-grow: 1; height: 14px; background-color: #e9ecef; border-radius: 2px;",
+          htmltools::tags$div(style = sprintf(
+            "background-color: %s; width: %s%%; height: 100%%; border-radius: 2px;",
+            color, pct
+          ))
+        )
+      )
+    }
+
+    # Accuracy / ROC-AUC: 0-1 scale, higher-is-better ("normal direction" per issue #61 --
+    # see Brier/Log-Loss comment below for the opposite convention). Bar length and color
+    # both scale directly with the raw value: higher value = longer bar = greener.
+    normal_bar_cell <- function(value) {
+      pct <- max(min(value, 1), 0) * 100
+      bar_cell_html(pct, bar_color_scale(value), sprintf("%.3f", value))
+    }
+
+    # Brier Score / Log-Loss: lower-is-better metrics. Inversion convention chosen for
+    # issue #61 (option (b) from the ticket): bar LENGTH stays proportional to the raw
+    # value (so these two differently-scaled columns remain visually comparable row to
+    # row), but the COLOR scale is flipped relative to Accuracy/ROC-AUC above -- goodness
+    # is computed as 1 - normalized_value, so the lowest raw value in the column reads as
+    # the shortest *and* greenest bar (best model), and the highest raw value reads as the
+    # longest *and* reddest bar (worst model). Do not reuse normal_bar_cell() for these.
+    inverted_bar_cell <- function(value, col_values) {
+      max_value <- max(col_values, na.rm = TRUE)
+      min_value <- min(col_values, na.rm = TRUE)
+      pct <- if (max_value > 0) (value / max_value) * 100 else 0
+      goodness <- if (max_value > min_value) {
+        1 - (value - min_value) / (max_value - min_value)
+      } else {
+        1
+      }
+      bar_cell_html(pct, bar_color_scale(goodness), sprintf("%.4f", value))
+    }
+
+    brier_values <- df[["Brier Score"]]
+    logloss_values <- df[["Log-Loss"]]
+
+    reactable(
+      df,
+      striped = TRUE,
+      bordered = TRUE,
+      highlight = TRUE,
+      columns = list(
+        Model = colDef(name = "Model"),
+        Accuracy = colDef(name = "Accuracy", cell = normal_bar_cell, align = "left"),
+        `ROC-AUC` = colDef(name = "ROC-AUC", cell = normal_bar_cell, align = "left"),
+        `Brier Score` = colDef(
+          name = "Brier Score", align = "left",
+          cell = function(value) inverted_bar_cell(value, brier_values)
+        ),
+        `Log-Loss` = colDef(
+          name = "Log-Loss", align = "left",
+          cell = function(value) inverted_bar_cell(value, logloss_values)
+        )
+      )
+    )
+  })
 
   output$window_sweep_plot <- renderPlot({
     if (is.null(window_sweep_data) || nrow(window_sweep_data) == 0) {
