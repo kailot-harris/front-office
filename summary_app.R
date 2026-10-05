@@ -42,6 +42,7 @@ library(bslib)
 library(ggplot2)
 library(png)
 library(grid)
+library(reactable)
 
 # config.R is the single source of truth for WNBA_TEAMS (abbreviation -> full name) and
 # WNBA_SEASON_GAMES (needed for Tab 1's 50/50 reference line, at WNBA_SEASON_GAMES / 2
@@ -276,7 +277,7 @@ ui <- page_fluid(
         col_widths = c(7, 5),
         card(
           card_header("Projected Standings"),
-          tableOutput("standings_table")
+          reactableOutput("standings_table")
         ),
         card(
           card_header("Projected Wins by Team"),
@@ -402,19 +403,98 @@ server <- function(input, output, session) {
     }
   })
 
-  output$standings_table <- renderTable({
+  output$standings_table <- renderReactable({
     if (is.null(standings_data)) {
-      data.frame(
+      empty_df <- data.frame(
         Logo = character(0), Rank = integer(0), Team = character(0), Net_Rating = numeric(0),
-        Proj_Wins = numeric(0), Proj_Losses = numeric(0), Win_Pct = numeric(0),
-        Top_Core_Players = character(0)
+        Proj_Wins = numeric(0), Proj_Wins_SD = numeric(0), Proj_Losses = numeric(0),
+        Win_Pct = numeric(0), Top_Core_Players = character(0)
       )
-    } else {
-      df <- standings_data
-      df$Logo <- vapply(df$Team, team_logo_img_tag, character(1), height_px = 28)
-      df[, c("Logo", setdiff(names(df), "Logo"))]
+      return(reactable(empty_df))
     }
-  }, striped = TRUE, hover = TRUE, bordered = TRUE, sanitize.text.function = function(x) x)
+
+    df <- standings_data
+    df$Logo <- vapply(df$Team, team_logo_img_tag, character(1), height_px = 28)
+    df <- df[, c("Logo", setdiff(names(df), "Logo"))]
+
+    # Diverging bar cell for Net_Rating: centered at 0, with a distinct color/direction on
+    # each side of center (not merely a shorter bar in the same direction) -- below-average
+    # teams get a bar growing left from center in a muted/red tone, above-average teams get a
+    # bar growing right from center in the app's teal accent (matches the flatly bootswatch
+    # theme's primary color, same accent Dunks & Threes uses).
+    max_abs_net_rating <- max(abs(df$Net_Rating), na.rm = TRUE)
+    net_rating_cell <- function(value) {
+      pct <- if (max_abs_net_rating > 0) min(abs(value) / max_abs_net_rating * 100, 100) else 0
+      bar_color <- if (value >= 0) "#18BC9C" else "#E74C3C"
+      htmltools::tags$div(
+        style = "display: flex; align-items: center; width: 100%;",
+        htmltools::tags$span(
+          style = "width: 44px; text-align: right; margin-right: 6px; font-variant-numeric: tabular-nums;",
+          sprintf("%+.2f", value)
+        ),
+        htmltools::tags$div(
+          style = "flex-grow: 1; display: flex; align-items: center; height: 14px;",
+          htmltools::tags$div(
+            style = "flex: 1; height: 100%; display: flex; justify-content: flex-end;",
+            if (value < 0) {
+              htmltools::tags$div(style = sprintf(
+                "background-color: %s; width: %s%%; height: 100%%; border-radius: 2px;",
+                bar_color, pct
+              ))
+            }
+          ),
+          htmltools::tags$div(style = "width: 2px; height: 100%; background-color: #999999;"),
+          htmltools::tags$div(
+            style = "flex: 1; height: 100%; display: flex; justify-content: flex-start;",
+            if (value > 0) {
+              htmltools::tags$div(style = sprintf(
+                "background-color: %s; width: %s%%; height: 100%%; border-radius: 2px;",
+                bar_color, pct
+              ))
+            }
+          )
+        )
+      )
+    }
+
+    # Plain 0-to-1 scale bar cell for Win_Pct (not diverging -- 0 is a real floor, not a
+    # center point).
+    win_pct_cell <- function(value) {
+      pct <- max(min(value, 1), 0) * 100
+      htmltools::tags$div(
+        style = "display: flex; align-items: center; width: 100%;",
+        htmltools::tags$span(
+          style = "width: 42px; text-align: right; margin-right: 6px; font-variant-numeric: tabular-nums;",
+          sprintf("%.3f", value)
+        ),
+        htmltools::tags$div(
+          style = "flex-grow: 1; height: 14px; background-color: #e9ecef; border-radius: 2px;",
+          htmltools::tags$div(style = sprintf(
+            "background-color: #18BC9C; width: %s%%; height: 100%%; border-radius: 2px;", pct
+          ))
+        )
+      )
+    }
+
+    reactable(
+      df,
+      striped = TRUE,
+      bordered = TRUE,
+      highlight = TRUE,
+      defaultPageSize = 15,
+      columns = list(
+        Logo = colDef(name = "", html = TRUE, width = 50, sortable = FALSE),
+        Rank = colDef(name = "Rank", width = 60),
+        Team = colDef(name = "Team"),
+        Net_Rating = colDef(name = "Net Rating", cell = net_rating_cell, align = "left"),
+        Proj_Wins = colDef(name = "Proj. Wins", format = colFormat(digits = 1)),
+        Proj_Wins_SD = colDef(name = "Proj. Wins SD", format = colFormat(digits = 2)),
+        Proj_Losses = colDef(name = "Proj. Losses", format = colFormat(digits = 1)),
+        Win_Pct = colDef(name = "Win %", cell = win_pct_cell, align = "left"),
+        Top_Core_Players = colDef(name = "Top Core Players", minWidth = 220)
+      )
+    )
+  })
 
   # Industry-standard season-projection chart (FiveThirtyEight/ESPN BPI style): a
   # horizontal dot-and-whisker plot ordered by projected wins, not a bar chart -- bars
