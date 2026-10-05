@@ -171,3 +171,127 @@ build_walkforward_games <- function(epa, completed, calibration_seasons, avg_pla
 
   bind_rows(game_rows)
 }
+
+# ------------------------------------------------------------------------------------------
+# grade_walkforward_games(): full walk-forward grading of a season's completed games against
+# the PRODUCTION ensemble formula (ridge Massey + Elo, QB-injury-adjusted, market-blended).
+#
+# Extracted verbatim (2026-10) from tools/weekly_accuracy_report.R's former inline body
+# (~lines 64-148 as of that extraction) so a second consumer (the planned accuracy_tracker.R,
+# issue #5) can call the exact same no-lookahead grading logic instead of a second,
+# independently-typed copy of it (the class of drift this repo's CLAUDE.md warns about).
+# weekly_accuracy_report.R itself is NOT yet wired to call this function (see issue #3 / 1b,
+# a separate follow-up) — this extraction is a pure relocation, zero behavior change.
+#
+# FORMULA PARITY WITH PRODUCTION (must be kept in sync with team_ratings_engine.R's run_team_
+# ratings() inner loop, ~lines 519-576, if that formula ever changes): ridge margin (Phase 2,
+# tools/ridge_massey_model.R's fit_ridge_massey()/predict_ridge_massey_walkforward(), refit once
+# per season) + Elo margin (Phase 3, tools/elo_model.R's run_elo_walkforward(), includes real
+# fatigue_adj), each shifted by the QB-injury penalty (config.R's QB_INJURY_RATING_PENALTY_PTS)
+# then pnorm()'d against NFL_MARGIN_SIGMA, each blended with historical market-implied probability
+# at MARKET_BLEND_WEIGHT, then averaged 50/50 — this is exactly tools/model_backtest_harness.R's
+# validated "ensemble_ridge_elo" candidate.
+#
+# Assumes the CALLER has already done everything build_walkforward_games() above assumes, PLUS:
+# source("market_odds_engine.R") (american_to_prob()), source("tools/qb_injury_features.R")
+# (get_qb_starter_table()/compute_qb_backup_flags()), source("tools/ridge_massey_model.R")
+# (predict_ridge_massey_walkforward()), source("tools/elo_model.R") (run_elo_walkforward()).
+#
+# Args: `epa` = CACHE_EPA_METRICS (readRDS + as.Date(game_date)); `sch` = CACHE_SCHEDULES
+# (readRDS + as.Date(gameday)), NOT pre-filtered to completed games (this function does that
+# filtering itself, exactly as the original inline code did); `fatigue` = CACHE_FATIGUE_METRICS
+# (readRDS, no transform); `season` = single integer season to grade (e.g. CURRENT_SEASON).
+#
+# Returns list(per_game, by_week, overall_accuracy, overall_brier, overall_logloss) — the
+# proposed shape from GitHub issue #2, used by the planned accuracy_tracker.R (issue #5).
+# ------------------------------------------------------------------------------------------
+grade_walkforward_games <- function(epa, sch, fatigue, season) {
+  completed <- sch |> filter(!is.na(home_score), !is.na(away_score))
+  avg_plays_per_game <- mean(epa$n_off_plays, na.rm = TRUE)
+
+  games <- build_walkforward_games(epa, completed, calibration_seasons = season, avg_plays_per_game)
+
+  if (nrow(games) == 0) {
+    return(list(
+      per_game = games, by_week = data.frame(), overall_accuracy = NA_real_,
+      overall_brier = NA_real_, overall_logloss = NA_real_
+    ))
+  }
+
+  # QB-backup flags (as-of, no lookahead — get_qb_starter_table()/compute_qb_backup_flags() only
+  # use each team's OWN starts strictly before the week in question, per tools/qb_injury_
+  # features.R's own header).
+  starter_tbl <- get_qb_starter_table(MODERN_ERA_START_SEASON:season)
+  qb_flags <- compute_qb_backup_flags(starter_tbl) |> select(season, week, team, qb_backup_started)
+  games <- games |>
+    left_join(qb_flags |> rename(home_qb_backup = qb_backup_started), by = c("season", "week", "home_team" = "team")) |>
+    left_join(qb_flags |> rename(away_qb_backup = qb_backup_started), by = c("season", "week", "away_team" = "team"))
+
+  imp_h <- american_to_prob(games$home_ml)
+  imp_a <- american_to_prob(games$away_ml)
+  games$market_prob <- ifelse(is.na(games$home_ml) | is.na(games$away_ml), NA_real_, imp_h / (imp_h + imp_a))
+
+  # Elo run sequentially across full history THROUGH `season` (unlike model_backtest_harness.R's
+  # historical-calibration run, which stops at season - 1 on purpose) so its sequential state is
+  # properly warmed up including this season's own completed weeks.
+  # NOTE: `.env$season` disambiguates the function argument from sch's own `season` column inside
+  # this data-masked filter() — without it, `season <= season` would silently compare the column
+  # to itself instead of to the function argument.
+  elo_full_history <- sch |>
+    filter(!is.na(home_score), !is.na(away_score),
+           season >= MODERN_ERA_START_SEASON, season <= .env$season)
+  elo_results <- run_elo_walkforward(elo_full_history, fatigue, ELO_K_FACTOR) |>
+    select(game_id, elo_margin_pts, fatigue_adj)
+  games <- games |> left_join(elo_results, by = "game_id")
+
+  blend_with_market <- function(model_prob, market_prob, weight) {
+    ifelse(is.na(market_prob), model_prob, weight * market_prob + (1 - weight) * model_prob)
+  }
+
+  home_adj <- ifelse(is.na(games$home_qb_backup), 0, as.integer(games$home_qb_backup))
+  away_adj <- ifelse(is.na(games$away_qb_backup), 0, as.integer(games$away_qb_backup))
+
+  ridge_margin <- predict_ridge_massey_walkforward(games) -
+    QB_INJURY_RATING_PENALTY_PTS * home_adj + QB_INJURY_RATING_PENALTY_PTS * away_adj
+  elo_margin <- games$elo_margin_pts + games$fatigue_adj -
+    QB_INJURY_RATING_PENALTY_PTS * home_adj + QB_INJURY_RATING_PENALTY_PTS * away_adj
+
+  ridge_prob <- blend_with_market(pnorm(ridge_margin / NFL_MARGIN_SIGMA), games$market_prob, MARKET_BLEND_WEIGHT)
+  elo_prob   <- blend_with_market(pnorm(elo_margin / NFL_MARGIN_SIGMA), games$market_prob, MARKET_BLEND_WEIGHT)
+  games$home_win_prob_prod <- 0.5 * ridge_prob + 0.5 * elo_prob
+
+  games <- games |>
+    mutate(
+      predicted_home_win = home_win_prob_prod > 0.5,
+      correct = as.integer(predicted_home_win == (home_win == 1L)),
+      home_full = NFL_TEAMS[home_team],
+      away_full = NFL_TEAMS[away_team],
+      actual_winner = ifelse(home_win == 1, home_full, away_full),
+      predicted_winner = ifelse(predicted_home_win, home_full, away_full)
+    )
+
+  per_game <- games |>
+    arrange(week, desc(home_win_prob_prod)) |>
+    select(week, away_full, home_full, home_win_prob_prod, predicted_winner, actual_winner, correct, home_margin)
+
+  by_week <- games |>
+    group_by(week) |>
+    summarise(
+      n = dplyr::n(),
+      accuracy = mean(correct),
+      brier = mean((home_win_prob_prod - home_win)^2),
+      .groups = "drop"
+    )
+
+  overall_accuracy <- mean(games$correct)
+  overall_brier <- mean((games$home_win_prob_prod - games$home_win)^2)
+  overall_logloss <- {
+    p <- pmin(pmax(games$home_win_prob_prod, 1e-6), 1 - 1e-6)
+    -mean(games$home_win * log(p) + (1 - games$home_win) * log(1 - p))
+  }
+
+  list(
+    per_game = per_game, by_week = by_week, overall_accuracy = overall_accuracy,
+    overall_brier = overall_brier, overall_logloss = overall_logloss
+  )
+}
