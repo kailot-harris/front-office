@@ -285,6 +285,11 @@ ui <- page_fluid(
         )
       ),
       br(),
+      card(
+        card_header("Offense vs. Defense Quadrant (Team Ratings)"),
+        plotOutput("ortg_drtg_quadrant_plot", height = "520px")
+      ),
+      br(),
       accordion(
         open = FALSE,
         accordion_panel(
@@ -594,6 +599,80 @@ server <- function(input, output, session) {
         legend.margin = margin(b = -5),
         plot.subtitle = element_text(size = 9, color = "#7F8C8D"),
         plot.margin = margin(10, 20, 10, 10)
+      )
+  })
+
+  # Quadrant scatter chart: Offensive Rating (x) vs. Defensive Rating (y), one point per
+  # team, rendered as that team's logo (GitHub issue #65 / D&T visual pass ticket 6).
+  # Off_Rating/Def_Rating come straight from the standings cache (ticket 5 / #64) --
+  # Off_Rating - Def_Rating == Net_Rating by construction there, not re-derived here.
+  #
+  # Sign convention (per #64): Def_Rating is lower-is-better (good defense -> more
+  # negative). The y-axis is intentionally left in that natural, un-reversed orientation
+  # (low y = good defense), so the "elite" quadrant is bottom-right (high Off_Rating, low
+  # Def_Rating) -- NOT top-right. Reversing the axis to put "good defense" visually at the
+  # top would make a bad defense's large positive Def_Rating look like it belongs in a
+  # "good" quadrant merely because it's high up; this avoids that trap entirely by keeping
+  # the axis literal and labeling the quadrants explicitly instead.
+  output$ortg_drtg_quadrant_plot <- renderPlot({
+    if (is.null(standings_data) || nrow(standings_data) == 0 ||
+        !all(c("Off_Rating", "Def_Rating") %in% names(standings_data))) {
+      return(
+        ggplot() +
+          annotate("text", x = 0, y = 0, label = "No offense/defense rating data available") +
+          theme_void()
+      )
+    }
+
+    df <- standings_data
+
+    # 0 is the natural center for both axes here (not the sample mean): Off_Rating and
+    # Def_Rating are each already league-centered to average ~0.00 by construction in
+    # roster_bottom_up_engine.R (same centering convention as Net_Rating), so the
+    # quadrant boundary a reader expects -- "league-average offense/defense" -- is x=0 and
+    # y=0, not a recomputed sample mean that would drift with whichever 15 teams are in
+    # the cache.
+    x_span <- max(abs(df$Off_Rating)) * 1.25
+    y_span <- max(abs(df$Def_Rating)) * 1.25
+
+    logo_half <- min(x_span, y_span) * 0.09
+
+    p <- ggplot(df, aes(x = Off_Rating, y = Def_Rating)) +
+      geom_hline(yintercept = 0, linetype = "dashed", color = "#B0B0B0", linewidth = 0.5) +
+      geom_vline(xintercept = 0, linetype = "dashed", color = "#B0B0B0", linewidth = 0.5) +
+      annotate("text", x = x_span * 0.97, y = -y_span * 0.95, label = "Elite\n(Off+ / Def best)",
+               hjust = 1, vjust = 0, size = 3, color = "#18BC9C", fontface = "italic") +
+      annotate("text", x = -x_span * 0.97, y = -y_span * 0.95, label = "Good D, weak O",
+               hjust = 0, vjust = 0, size = 3, color = "#7F8C8D", fontface = "italic") +
+      annotate("text", x = x_span * 0.97, y = y_span * 0.95, label = "Good O, weak D",
+               hjust = 1, vjust = 1, size = 3, color = "#7F8C8D", fontface = "italic") +
+      annotate("text", x = -x_span * 0.97, y = y_span * 0.95, label = "Weakest\n(Off- / Def worst)",
+               hjust = 0, vjust = 1, size = 3, color = "#E74C3C", fontface = "italic")
+
+    for (i in seq_len(nrow(df))) {
+      raster <- team_logo_raster(df$Team[i])
+      if (is.null(raster)) next
+      p <- p + annotation_custom(
+        rasterGrob(raster, interpolate = TRUE),
+        xmin = df$Off_Rating[i] - logo_half, xmax = df$Off_Rating[i] + logo_half,
+        ymin = df$Def_Rating[i] - logo_half, ymax = df$Def_Rating[i] + logo_half
+      )
+    }
+
+    p +
+      coord_cartesian(xlim = c(-x_span, x_span), ylim = c(-y_span, y_span), clip = "off") +
+      labs(
+        x = "Offensive Rating (higher = better offense)",
+        y = "Defensive Rating (lower = better defense)",
+        title = "Offense vs. Defense: Team Quadrant",
+        subtitle = "Dashed lines mark league-average (0.00) offense/defense; bottom-right is the elite quadrant"
+      ) +
+      theme_minimal(base_size = 13) +
+      theme(
+        panel.grid.major = element_line(color = "#EDEDED", linewidth = 0.3),
+        panel.grid.minor = element_blank(),
+        plot.subtitle = element_text(size = 9, color = "#7F8C8D"),
+        plot.margin = margin(14, 24, 10, 10)
       )
   })
 
