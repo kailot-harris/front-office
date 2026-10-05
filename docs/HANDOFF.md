@@ -1,4 +1,175 @@
-# Handoff — 2026-10-04 (Continuing thread: `summary_app.R` — dark/light mode toggle + Net Rating methodology panel added, commit `212f842` pushed to `main`) — CURRENT STATE FOR THIS THREAD (read this section first)
+# Handoff — 2026-10-04 (Continuing thread: `summary_app.R` — Playoff Bracket tab rebuilt as a real tournament tree, Tab 5 reordered, commit `2089543` pushed to `main`) — CURRENT STATE FOR THIS THREAD (read this section first)
+
+**This is a continuation of the dark-mode/methodology-panel thread immediately below** (same
+`summary_app.R` file, different session). That thread's own "Concrete next step" #2 ("run
+`summary_app.R` live and look at it… in one real browser session") is **still not fully done** —
+this session's own verification was real headless-Chrome runs scoped to Tab 2 and Tab 5 only
+(repeated ~6 times across iterations), not a single manual pass over all 5 tabs together. Its
+"Concrete next step" #3 (delete the 6 stale `worktree-agent-*` branches) **is now done** — this
+session did it first thing, confirmed all 6 merged via `git merge-base --is-ancestor` before
+`git branch -d`. Its #4 (renv `DESCRIPTION`-file warnings) is unchanged/not investigated further
+this session. Read `CLAUDE.md` first if you haven't already (unchanged, still applies).
+
+## What this thread is
+
+User asked (1) to make Tab 2 ("Playoff Bracket") more visually appealing, then, once an initial
+ggplot2 tree redesign was live, flagged two real correctness bugs found by actually looking at the
+rendered result — not flagged by any automated check — and (2) asked for a small Tab 5 layout
+reorder. All three were fixed in sequence within this one session/thread.
+
+## Bug 1 (user-caught): eliminated team showing in the semifinals
+
+**Symptom**: after the first tree-layout pass, Minnesota Lynx appeared in a Round-2 (semifinal) box
+even though Minnesota was actually swept 0-2 by New York in Round 1.
+
+**Root cause**: Tab 2 was reading `cache/playoff_series_wnba_demo.rds`, which is stale,
+unrelated demo output from `playoff_simulator.R`'s own self-test suite (it names whatever matchup
+that suite's demo happened to use, e.g. "Las Vegas Aces vs Minnesota Lynx" for "semifinals") — it
+was never real bracket data and had no mechanism to reflect that Minnesota had since been
+eliminated.
+
+**Fix**: switched Tab 2 to read `cache/series_length_predictions.rds` exclusively (produced by
+`tools/series_length_predictor.R`, which this session extended — see below). `summary_app.R` no
+longer reads `playoff_series_wnba_demo.rds` anywhere (`SERIES_LENGTH_CACHE_PATH` at
+`summary_app.R:59` is now the tab's only cache dependency; the old `PLAYOFF_SERIES_CACHE_PATH`
+constant was deleted, not just unused).
+
+`tools/series_length_predictor.R` changes (re-run this session to regenerate the cache with the
+new schema — re-running it also harmlessly re-triggers `playoff_simulator.R`'s own demo suite as a
+documented side effect, same as every prior session that sources that file):
+- Added `REAL_2026_ROUND1_RESULTS` (hardcoded, documented, matches
+  `WNBA_2026_Postseason_Predictions.qmd`'s own `{r round1-actual}` tribble verbatim — not
+  re-derived, since no cache in this repo reliably flags which box-score rows are playoff games;
+  `config.R:102-103` already notes the wehoop feed doesn't carry a playoff `season_type`). Saved as
+  `cache/series_length_predictions.rds$round1_results`.
+- `crossvalidate_series_length()` now also returns the full `mc_result` object (not just the
+  length-only `mc_dist` summary), and `run_round()` exposes it as `$series` on each semifinal
+  entry — giving `summary_app.R` a real simulated `p_high_seed_win`/`fair_ml_high`/`fair_ml_low`/
+  `avg_series_games` for the two real confirmed semifinal matchups (Atlanta-vs-NY, Golden
+  State-vs-LV), not just a series-length distribution.
+
+## Bug 2 (user-caught): Round 1 matches wired into the wrong semifinal slot
+
+**Symptom**: after Bug 1's fix, the bracket now showed real teams, but a connector line from New
+York Liberty's Round 1 box visually appeared to terminate inside the Atlanta Dream semifinal box
+instead of its own correctly-identified New York Liberty slot in that same semifinal box.
+
+**Root cause**: `REAL_2026_ROUND1_RESULTS` is listed in seed-ascending order (`1v8, 2v7, 3v6,
+4v5`), and the bracket layout's row-pairing logic assumed adjacent rows in that list feed the same
+semifinal. They don't — the real bracket pairs `1v8` with `4v5` (both feed the Atlanta-vs-NY
+semifinal) and `2v7` with `3v6` (both feed Golden State-vs-LV), which is the standard
+single-elimination bracket-half structure, not seed-ascending order. Round 1 rows 1 and 2 in the
+original list order (`1v8`, `2v7`) are *not* bracket-adjacent in reality.
+
+**Fix**, both in `summary_app.R`'s `bracket_plot` reactive (`summary_app.R:357` onward):
+1. Reorder `round1` (the list read from the cache) into standard bracket-half order
+   (`bracket_half_order <- c(1, 4, 2, 3)`, matched against each entry's `seed_high`) before laying
+   out rows, rather than trusting the cache's seed-ascending list order to already be
+   bracket-adjacent.
+2. Replaced the Round-1-to-Semifinal connector logic with a **team-name lookup**
+   (`node_y_for_team()`): each connector now traces from the *actual winning team's* row in the
+   Round 1 column to that *same team's* row in the Semifinals column, rather than assuming a fixed
+   row-position pairing. This is the more robust fix — it can't silently mis-wire again even if
+   list/row order changes later, since it no longer depends on any positional assumption at all.
+
+Both bugs were caught by the user visually inspecting a live screenshot, not by any of this
+session's own automated checks (0 `shiny-output-error` elements and 0 console errors were true in
+both the buggy and fixed states) — worth remembering that an error-free headless sweep is
+necessary but **not sufficient** to catch a logically-wrong-but-cleanly-rendered result.
+
+## Tab 5 reorder (small, user-requested, no bug)
+
+`summary_app.R`'s Tab 5 ("Prediction Accuracy Tracker") card order changed from
+HUD → table → plot to **HUD → plot → table** (`summary_app.R:274-292`): the
+`accuracy_cumulative_plot` card now comes immediately after the three value-box HUD cards, with
+the `accuracy_table` card last. Purely a `card(...)` reordering in the `nav_panel`'s UI block, no
+server-side or data changes.
+
+## Verification this session (repeated per-change, not just once at the end)
+
+For every one of the 3 changes above, the same two-step discipline was used (per this repo's
+`headless-ui-regression-sweep` skill, adapted since that skill's own probe script
+`tools/headless_dashboard_probe.R` is hardcoded to `app.R`, the unrelated betting terminal, not
+`summary_app.R`):
+1. **Standalone ggplot render first** (throwaway `tools/tmp_bracket_preview*.R` → a `.png`, read
+   with the Read tool, deleted after). This is what actually caught Bug 1's root `wrap_line()`
+   vectorization issue from the *prior* session's work in one pass, and would have caught either
+   of this session's two bugs if they'd been introduced by this session's own code rather than
+   pre-existing/newly-surfaced data issues.
+2. **Live headless-Chrome verification against the real app**: a throwaway wrapper
+   `tools/tmp_summary_probe_dir/app.R` containing just `setwd("../.."); source("summary_app.R")$value`
+   (the `$value` is required — a bare nested `source()` call returns a `list(value=, visible=)`
+   wrapper, not the `shinyApp()` object itself, which made the very first attempt this session fail
+   with `"app.R did not return a shiny.appobj object"`), driven by a throwaway
+   `tools/tmp_summary_probe_run.R` using `shinytest2::AppDriver` with `CHROMOTE_CHROME` set
+   explicitly and a fixed port (matching `tools/headless_dashboard_probe.R`'s own working
+   settings — the default/unset versions of these two timed out on `Page.navigate` intermittently,
+   confirmed as a pure timing flake since a bare retry with no code change succeeded both times it
+   happened). **Gotcha re-confirmed this session**: `AppDriver`'s screenshot method is
+   `$get_screenshot(file = ...)`, not `$screenshot(path = ...)` — same wrong-method-name trap the
+   dark-mode-thread section below already flagged once; got hit again this session before being
+   caught by R's own "attempt to apply non-function" error. All scratch files
+   (`tools/tmp_bracket_preview*.R/.png`, `tools/tmp_summary_probe_dir/`, `tools/tmp_summary_probe_run.R`,
+   `tools/tmp_*_screenshot*.png`) were deleted after each use — none are part of the repo.
+
+Every verification pass this session showed 0 `.shiny-output-error` elements and 0 browser console
+error log lines, in both the buggy and later-fixed states — see the note above about this being
+necessary-but-not-sufficient.
+
+## What's actually changed
+
+- `summary_app.R` — modified, committed, pushed (`2089543`). 900 lines total (up from ~826 at the
+  start of this session). Tab 2's `bracket_plot`/`bracket_status` reactives fully rewritten; Tab 5's
+  `nav_panel` card order changed; `PLAYOFF_SERIES_CACHE_PATH` constant and its associated
+  `playoff_series_data`/`playoff_series_load_error` load block deleted outright (not just
+  unreferenced).
+- `tools/series_length_predictor.R` — modified, committed, pushed (`2089543`). 389 lines (up from
+  ~354). Added `REAL_2026_ROUND1_RESULTS`; `crossvalidate_series_length()` and `run_round()` both
+  extended to expose a full simulated series object per real semifinal.
+- `cache/series_length_predictions.rds` — modified, committed, pushed (`2089543`). Regenerated by
+  re-running `tools/series_length_predictor.R`; now has `$round1_results` and a `$series` sub-list
+  on each semifinal entry, in addition to everything it already had.
+- `cache/playoff_series_wnba_demo.rds` — modified, committed, pushed (`2089543`). Harmless
+  side-effect refresh from `playoff_simulator.R`'s own demo suite re-running when
+  `series_length_predictor.R` sources it — same documented precedent as every prior session that
+  touched that file. **This file is now read by nothing in `summary_app.R`** (confirmed via
+  `grep`), though other scripts may still produce/consume it independently; not otherwise
+  investigated this session.
+- 6 stale `worktree-agent-*` branches (noted as still-pending cleanup in the section below) —
+  deleted this session, confirmed merged first. `git branch --list "worktree-agent-*"` now returns
+  nothing.
+- Nothing else touched. No other `.R` scripts, no `config.R`, no pipeline files, no other docs.
+
+## Concrete next step
+
+1. **The still-open item from the section below carries forward unchanged**: a single real,
+   non-headless, manual browser session clicking through all 5 tabs together has still never been
+   done by any session, including this one. This session's own verification was real-browser but
+   narrowly scoped (Tab 2 and Tab 5 only, re-run per change, ~6 times total) — worth doing the full
+   5-tab manual pass before considering this app "done," especially since two real bugs were caught
+   only by a human looking at a screenshot, not by any automated check.
+2. **If Round 2 (the semifinals) resolves or progresses**, `cache/series_length_predictions.rds`
+   needs to be regenerated the same way this session did it: edit `tools/series_length_predictor.R`
+   if the Finals matchup becomes knowable (currently hardcoded as genuinely pending via
+   `$finals = NULL` / `$finals_note`), then re-run
+   `"C:\Program Files\R\R-4.5.2\bin\Rscript.exe" tools/series_length_predictor.R`. The bracket tab
+   will pick up the new cache automatically on next app restart — no `summary_app.R` code change
+   needed unless the Finals matchup itself needs to stop being a TBD placeholder.
+3. **Known environment state, unchanged from before this session**: the `renv` library's
+   "missing DESCRIPTION files" warning pattern is still present and was hit again this session
+   (`farver`, then a long chain of `testthat`/`shinytest2` transitive deps —  `brio`, `diffobj`,
+   `evaluate`, `cli`, `fs`, `desc`, `callr`, `cachem`, `fastmap` — were all individually missing).
+   A full `renv::restore(prompt = FALSE)` was run mid-session and completed successfully (exit 0,
+   no errors reported), which resolved everything needed for this session's own work, but the
+   underlying "why do packages keep going missing between sessions" question (flagged by prior
+   sessions, never root-caused) is still open.
+4. Unrelated to this thread: every other thread further down this file is exactly where its own
+   section leaves it — this thread touched none of them beyond the stale-branch cleanup and
+   renv-restore side effects noted above.
+
+---
+
+
 
 **This is a continuation of the SA-1..SA-5 thread immediately below** (same `summary_app.R` file,
 different session) — that thread shipped all 5 tabs and left some loose ends open. This session
