@@ -31,12 +31,11 @@ date-sensitive before trusting it blindly for new work; nflverse/vendor details 
 
 **If you're picking up the accuracy-trajectory monitoring work**, read
 `docs/SPEC_accuracy_trajectory_monitoring.md` next, then jump to "Accuracy-trajectory monitoring
-(issues #1-#7 shipped, #8/#9 done in-repo but open on GitHub, #10 remains)" below — issues #1-#7
-shipped two sessions ago; this session got the user's sign-off (task name
-`NFL_analytics_task_01`, daily 5:15 AM ET) and created the real Windows Task Scheduler job, then
-live-verified both Discord dispatch paths. **Discrepancy to be aware of**: GitHub issues #8 and
-#9 still show OPEN (`gh issue list --state all`) even though the work they describe is done in
-this repo — nobody has closed them yet. Not fixed here; see "Known issues" below.
+(issues #1-#9 shipped, #10 remains)" below — issues #1-#7 shipped two sessions ago; this session
+got the user's sign-off (task name `NFL_analytics_task_01`, daily 5:15 AM ET), created the real
+Windows Task Scheduler job, live-verified both Discord dispatch paths, and closed #8/#9 on GitHub
+with evidence comments. Only #10 (real-world scheduled-fire validation) remains open — it's
+observational, not startable until the task has actually fired on a game day and an off day.
 
 ## Current state: 12-stage pipeline (11 numbered `run_stage()` calls + stage 9.5)
 
@@ -369,14 +368,13 @@ incidentally live-verified both Discord dispatch paths for the first time agains
 
 Committed the 11 cache files this run regenerated (`a5d592f`) and pushed — confirmed local `main`
 was already even with `origin/main` beforehand (the previous doc's "8 commits unpushed" note was
-stale; a prior session had already pushed them).
-- **Status**: issue #8/#9's in-repo work is DONE. **Not done**: closing issues #8/#9 on GitHub
-  (still show OPEN per `gh issue list --state all` as of this writing — flagging per this skill's
-  "surface tracker discrepancies, don't silently fix them" convention, since closing issues is a
-  visible tracker action the project owner should decide on). Issue #10 (real-world scheduled-fire
+stale; a prior session had already pushed them). Closed #8 and #9 on GitHub with evidence
+comments once the user explicitly asked for the issues to be closed (both now CLOSED per
+`gh issue list --state all`).
+- **Status**: #8/#9 fully done, in-repo and on GitHub. Issue #10 (real-world scheduled-fire
   validation) remains open and can't be completed in one sitting — see below.
 
-## Accuracy-trajectory monitoring (issues #1-#7 shipped, #8/#9 done in-repo, #10 remains)
+## Accuracy-trajectory monitoring (issues #1-#9 shipped, #10 remains)
 
 Full spec: `docs/SPEC_accuracy_trajectory_monitoring.md`. Summary: track the model's
 season-to-date prediction accuracy over time (not just a one-off `weekly_accuracy_report.R` run)
@@ -387,10 +385,9 @@ explicitly does NOT build a dashboard (`app.R` does not exist in this repo at al
 to a separate future ticket if ever pursued).
 
 Filed as 10 GitHub issues (`gh issue list --state all` to re-check current status). Native GitHub
-sub-issue links are set for #2/#3 under #1, and #9/#10 under #8. **#1-#7 closed and merged**
-(`ee271ea`…`61e2a90`, since pushed to `origin`); **#8/#9's in-repo work is done but the GitHub
-issues are still open** (see "Known issues" #9), and **#10 genuinely remains** — observational,
-not something to pick up with a subagent (see below).
+sub-issue links are set for #2/#3 under #1, and #9/#10 under #8. **#1-#9 closed** (`ee271ea`…
+`61e2a90` for #1-#7, `a5d592f` + a 2026-10-05 GitHub close-with-evidence pass for #8/#9); **#10
+genuinely remains** — observational, not something to pick up with a subagent (see below).
 
 | Issue | Title | Depends on | Status |
 |---|---|---|---|
@@ -401,8 +398,8 @@ not something to pick up with a subagent (see below).
 | [#5](https://github.com/kailot-harris/NFL_analytics/issues/5) | Build `accuracy_tracker.R` / `run_accuracy_tracker()` core (detect new completed games, append to history; no Discord yet) | #2, #4 | CLOSED — `accuracy_tracker.R` (repo root) |
 | [#6](https://github.com/kailot-harris/NFL_analytics/issues/6) | Add Discord dispatch to `accuracy_tracker.R` (reuses `NFL_DISCORD_WEBHOOK`, same channel as `notify_bets.R`) | #5 | CLOSED — payload construction verified via stubbed `POST()`; **live webhook POST live-verified 2026-10-05** (`status_code: 204` against the real `NFL_DISCORD_WEBHOOK` — see Known Issue #8) |
 | [#7](https://github.com/kailot-harris/NFL_analytics/issues/7) | Wire `accuracy_tracker.R` into `run_full_pipeline.R` as stage "12" (file comment says "11.", see pipeline table above) | #5, #6 | CLOSED — `run_full_pipeline.R:307-308` |
-| [#8](https://github.com/kailot-harris/NFL_analytics/issues/8) | Automate daily execution via Windows Task Scheduler (parent) | #7 | **GitHub status OPEN, but the work is DONE** (2026-10-05) — user signed off on task name `NFL_analytics_task_01` / 5:15 AM ET, task created and confirmed `Ready`. Issue not yet closed on GitHub — see "Known issues" below |
-| [#9](https://github.com/kailot-harris/NFL_analytics/issues/9) | Sub-issue: create scheduled-task wrapper script + job definition | #7 | **GitHub status OPEN, but the work is DONE** (2026-10-05) — same as #8, task created via `schtasks /Create` directly (no separate wrapper script was needed — see Recent work) |
+| [#8](https://github.com/kailot-harris/NFL_analytics/issues/8) | Automate daily execution via Windows Task Scheduler (parent) | #7 | CLOSED (2026-10-05) — user signed off on task name `NFL_analytics_task_01` / 5:15 AM ET, task created and confirmed `Ready` |
+| [#9](https://github.com/kailot-harris/NFL_analytics/issues/9) | Sub-issue: create scheduled-task wrapper script + job definition | #7 | CLOSED (2026-10-05) — task created via `schtasks /Create` directly (no separate wrapper script was needed — see Recent work) |
 | [#10](https://github.com/kailot-harris/NFL_analytics/issues/10) | Sub-issue: validate end-to-end (idempotency + real daily cadence) | #9 | OPEN, genuinely not startable yet — requires observing the scheduled task fire across at least one real game day and one real off day. First real scheduled run: tomorrow (2026-10-05) 5:15 AM ET |
 
 Each issue's GitHub comment thread (not just the commit message) has the closing agent's full
@@ -472,12 +469,12 @@ get wrong by assuming instead of checking:
    visual confirmation that the embed *rendered* correctly in the actual Discord channel has not
    been independently checked by an agent — worth a quick human glance, not re-verifiable by HTTP
    status alone.
-9. **Windows Task Scheduler automation (issues #8/#9) — DONE in-repo 2026-10-05, but GitHub issues
-   #8/#9 are still OPEN.** User signed off on task name `NFL_analytics_task_01` and trigger time
-   5:15 AM ET; `schtasks /Create` ran successfully and `schtasks /Query /V` confirms `Status:
-   Ready`, `Next Run Time: 10/5/2026 5:15:00 AM`. Nobody has closed #8/#9 on GitHub yet — flagging
-   per this doc's own discrepancy-surfacing convention rather than closing them here. Issue #10
-   (real-world validation) remains genuinely open regardless of #8/#9's tracker status.
+9. **Windows Task Scheduler automation (issues #8/#9) — DONE 2026-10-05, in-repo and on GitHub.**
+   User signed off on task name `NFL_analytics_task_01` and trigger time 5:15 AM ET;
+   `schtasks /Create` ran successfully and `schtasks /Query /V` confirms `Status: Ready`,
+   `Next Run Time: 10/5/2026 5:15:00 AM`. #8/#9 closed on GitHub with evidence comments. Issue
+   #10 (real-world validation) remains genuinely open — can't be closed until the task has
+   actually fired on a real game day and a real off day.
 
 ## Environment specifics a fresh agent needs
 
@@ -529,12 +526,12 @@ get wrong by assuming instead of checking:
 
 ## Suggested next steps, roughly in priority order
 
-1. **Issue #10 (end-to-end scheduled validation) is next, but it's observational, not a coding
-   task.** Watch `NFL_analytics_task_01` actually fire tomorrow (2026-10-05, 5:15 AM ET) and on a
-   subsequent off day — `schtasks /Query /TN NFL_analytics_task_01 /V` shows `Last Run Time` /
-   `Last Result` after it's fired at least once. Confirm idempotency (no duplicate Discord posts
-   if run twice with no new completed games) and correct cadence. Consider closing GitHub issues
-   #8/#9 at that point too (see "Known issues" #9 — they're done in-repo but still show OPEN).
+1. **Issue #10 (end-to-end scheduled validation) is the only accuracy-tracker issue left, and
+   it's observational, not a coding task.** Watch `NFL_analytics_task_01` actually fire tomorrow
+   (2026-10-05, 5:15 AM ET) and on a subsequent off day — `schtasks /Query /TN
+   NFL_analytics_task_01 /V` shows `Last Run Time` / `Last Result` after it's fired at least once.
+   Confirm idempotency (no duplicate Discord posts if run twice with no new completed games) and
+   correct cadence, then close #10 on GitHub with that evidence.
 2. **Decide what to do with the home-backup-QB market-bias finding (Known Issue #4).** It already
    has a HOLD recommendation from a gate-aware, multiple-comparisons-corrected re-check
    (`6e2126f`) that this doc had previously failed to surface — re-read that entry under "Recent
