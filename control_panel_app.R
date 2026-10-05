@@ -2,25 +2,45 @@
 # control_panel_app.R
 # Path: c:/Users/kailo/kayceeslices/WNBA Analytics/control_panel_app.R
 #
-# GitHub issue #46 (Slice 2 of issue #43's tree). Lets an operator pick exactly ONE stage
-# from pipeline_stages.R's PIPELINE_STAGES registry, run it synchronously in-process (via
-# source(), same call_fn/entry_fn contract as run_full_pipeline.R's run_stage() -- see
-# run_pipeline_stage_captured() below), and see a pass/fail result plus the captured
-# console output.
+# GitHub issues #46 (Slice 2), #47 (Slice 3), and #48 (Slice 4) of issue #43's tree.
 #
-# SCOPE (explicit, per the issue): single-stage, synchronous/blocking execution only. No
-# dependency-staleness checking (#47), no multi-select/queueing (#48), no inline
-# chart/table rendering of a stage's *data* output (#49 -- this shows captured text output
-# only), no auth/password gate or non-localhost exposure (#50). This is a TRIGGERING tool,
-# not a read-only dashboard -- app.R (the existing shinydashboard) is a distinct file with a
-# distinct job and is intentionally left untouched.
+# #46 let an operator pick exactly ONE stage from pipeline_stages.R's PIPELINE_STAGES
+# registry and run it synchronously in-process (via source(), same call_fn/entry_fn
+# contract as run_full_pipeline.R's run_stage() -- see run_pipeline_stage_captured()
+# below), showing a pass/fail result plus captured console output.
 #
-# EXECUTION MODEL: clicking "Run Stage" blocks the single R process for the duration of the
-# stage (no background worker, no live log streaming -- out of scope per the issue). The run
-# control is disabled the instant the button is clicked via an inline onclick handler (so the
-# browser reflects "running" immediately, independent of the server round-trip that is about
-# to block on the stage itself) and is re-enabled by the server once the blocking call
-# returns and the result is ready to render.
+# #47 added a per-stage dependency-staleness gate (check_stage_staleness()) that
+# hard-blocks a run on a missing/stale declared input unless the operator explicitly
+# acknowledges an override.
+#
+# #48 (this slice) lets the operator multi-select several stages and queue them to run
+# sequentially in the chosen order (a mini custom pipeline), re-checking #47's staleness
+# gate for EACH stage individually at the moment it actually starts (not once for the whole
+# queue at submission time -- see advance_queue() below for why that distinction matters),
+# and adds a cross-session run lock so a second browser tab/user cannot start a second run
+# (single or queued) while one is already in progress, racing on the same cache files.
+#
+# SCOPE (explicit, per the issues): no inline chart/table rendering of a stage's *data*
+# output (#49 -- this shows captured text output only, same as before), no auth/password
+# gate or non-localhost exposure (#50). This is a TRIGGERING tool, not a read-only dashboard
+# -- app.R (the existing shinydashboard) is a distinct file with a distinct job and is
+# intentionally left untouched.
+#
+# EXECUTION MODEL: each queued stage still blocks the single R process for its own duration
+# (no background worker, no live log streaming -- out of scope per #46). What #48 adds is
+# that the queue as a WHOLE does NOT block the process for its entire duration in one
+# uninterrupted call: advance_queue() runs one stage, then reschedules itself via
+# later::later(..., delay = 0) instead of looping in place. Returning to Shiny's event loop
+# between stages is not cosmetic -- it is the only way a second session's periodic lock-poll
+# (see the "cross-session run lock" section below) or Shiny's own disconnect detection
+# (session$onSessionEnded(), used to release the lock on an interrupted run) ever get a
+# chance to run while a multi-stage queue is in flight. A plain for-loop inside one
+# observeEvent would starve every other session on this single-threaded R process for the
+# whole queue's runtime, defeating criterion 2 and 3 below before they could even be
+# observed. The run control (button + stage picker + override checkbox) is disabled the
+# instant the button is clicked via an inline onclick handler for the SAME-tab instant
+# feedback #46 established, and is re-enabled by the server once the whole queue finishes
+# (or is abandoned because the owning session ended).
 #
 # CONTRACT FIDELITY: run_pipeline_stage_captured() below mirrors run_full_pipeline.R's
 # run_stage() stage-invocation contract (source() the script, then either call the named
@@ -230,6 +250,110 @@ check_stage_staleness <- function(stage) {
 }
 
 # ------------------------------------------------------------------------------------------
+# GitHub issue #48's cross-session run lock.
+#
+# shiny::runApp() (how this app is launched, same as app.R / summary_app.R elsewhere in this
+# repo) serves EVERY browser tab/session from ONE single-threaded R process -- there is no
+# per-session process isolation. That means a per-session reactiveVal/reactiveValues object
+# (scoped to one server(input, output, session) closure) is invisible to a second tab: it
+# would let two tabs each believe they alone are running a stage and race on the same cache
+# files, which is exactly what this lock exists to prevent.
+#
+# MECHANISM CHOSEN: a plain environment, `.PIPELINE_RUN_LOCK`, created once at source() time
+# in this file's top-level (package-level) environment -- NOT inside server(). Every
+# session's server(input, output, session) call below is a closure whose enclosing
+# environment is this same top-level environment (that is just how R's lexical scoping
+# works for a function defined at a script's top level), so every session reads and mutates
+# the SAME environment object. Mutating an environment's fields (rather than reassigning a
+# binding) is visible immediately to any other closure holding a reference to it, with no
+# serialization/IPC needed, because it is the same R process and the same object in memory.
+# This is the "global variable in the server's enclosing environment" option the issue's own
+# brief calls out, chosen over an on-disk lock file because every consumer of this lock is
+# already guaranteed to be in this one process (no other process ever runs these stages
+# concurrently -- run_full_pipeline.R and this app are never invoked against the same cache
+# directory at the same time per this repo's existing operational convention), so a
+# filesystem lock would add crash-recovery surface (an orphaned lock FILE surviving a process
+# restart) without buying any additional correctness this script needs.
+#
+# SELF-RELEASE ON AN INTERRUPTED RUN -- the two-layer defense, and its real limitation:
+#
+#   1. PRIMARY: every session registers `session$onSessionEnded(function()
+#      pipeline_lock_release(session$token))` near the top of server() below. Shiny invokes
+#      onSessionEnded callbacks as soon as it notices the browser's websocket connection is
+#      gone (e.g. a closed tab, or shinytest2's AppDriver$stop()) -- which, critically, it can
+#      only notice while the R process is back at its event loop, not while R is itself busy
+#      inside a blocking stage script's source() call. Because advance_queue() (below)
+#      deliberately returns control to the event loop between every queued stage (see the
+#      EXECUTION MODEL header comment above), an interrupted mid-queue run's disconnect is
+#      typically noticed within one stage boundary, not only after the entire queue finishes
+#      -- this is the main reason the queue is implemented as a reschedule-via-later() state
+#      machine instead of a single synchronous loop.
+#
+#   2. FALLBACK, for when (1) never fires: a held lock also records `locked_at`
+#      (Sys.time() when acquired). pipeline_lock_is_held() self-clears any lock older than
+#      LOCK_MAX_AGE_SECS the next time ANY session asks whether the lock is held (lock-check
+#      is on the hot path of every session's periodic poll below, so this is checked
+#      frequently, not just when someone tries to acquire it). This is a deliberately crude
+#      safety net, not a real lease-renewal protocol: it does NOT know whether a run that has
+#      held the lock for that long is still legitimately in progress (e.g. a single very slow
+#      real stage) or truly abandoned, so LOCK_MAX_AGE_SECS is set generously (20 minutes --
+#      well beyond any single stage's realistic runtime observed in this repo) specifically so
+#      it almost never fires in the course of ordinary queued runs, and exists purely to
+#      bound the worst case (e.g. the entire R process wedged such that onSessionEnded's
+#      callback queue itself never drains) rather than leaving the control stuck disabled
+#      forever. Documented limitation: if a legitimate queue run ever needs more than 20
+#      minutes, this fallback would incorrectly release its lock out from under it; that
+#      trade-off is accepted for this ticket rather than building real lease renewal.
+# ------------------------------------------------------------------------------------------
+.PIPELINE_RUN_LOCK <- local({
+  e <- new.env(parent = emptyenv())
+  e$held        <- FALSE
+  e$locked_at   <- NA_real_
+  e$owner_token <- NA_character_
+  e
+})
+
+LOCK_MAX_AGE_SECS <- 20 * 60  # see fallback-release rationale above.
+
+# pipeline_lock_is_held(): the single read path every session's poll and every acquire
+# attempt goes through -- also where the LOCK_MAX_AGE_SECS fallback release happens, so a
+# stuck lock self-clears the next time *anyone* asks, not only on a future acquire attempt.
+pipeline_lock_is_held <- function() {
+  if (!isTRUE(.PIPELINE_RUN_LOCK$held)) return(FALSE)
+  age <- suppressWarnings(as.numeric(difftime(Sys.time(), .PIPELINE_RUN_LOCK$locked_at, units = "secs")))
+  if (!is.na(age) && age > LOCK_MAX_AGE_SECS) {
+    pipeline_lock_release(.PIPELINE_RUN_LOCK$owner_token, force = TRUE)
+    return(FALSE)
+  }
+  TRUE
+}
+
+# pipeline_lock_acquire(token): FALSE if already held (by anyone, including this same
+# session -- re-entrant acquisition is not a supported case, there is only ever one queue
+# per session at a time per the UI below).
+pipeline_lock_acquire <- function(token) {
+  if (pipeline_lock_is_held()) return(FALSE)
+  .PIPELINE_RUN_LOCK$held        <- TRUE
+  .PIPELINE_RUN_LOCK$locked_at   <- as.numeric(Sys.time())
+  .PIPELINE_RUN_LOCK$owner_token <- token
+  TRUE
+}
+
+# pipeline_lock_release(token, force = FALSE): only the session holding the lock may release
+# it by token match (so one session's stale callback can never release a DIFFERENT session's
+# live, legitimate run) -- `force = TRUE` is reserved for the LOCK_MAX_AGE_SECS fallback path
+# above, which by definition has no live owner session left to ask.
+pipeline_lock_release <- function(token, force = FALSE) {
+  if (force || identical(.PIPELINE_RUN_LOCK$owner_token, token)) {
+    .PIPELINE_RUN_LOCK$held        <- FALSE
+    .PIPELINE_RUN_LOCK$locked_at   <- NA_real_
+    .PIPELINE_RUN_LOCK$owner_token <- NA_character_
+    return(TRUE)
+  }
+  FALSE
+}
+
+# ------------------------------------------------------------------------------------------
 # UI
 # ------------------------------------------------------------------------------------------
 stage_ids    <- names(PIPELINE_STAGES)
@@ -240,27 +364,38 @@ ui <- fluidPage(
   useShinyjs(),
   titlePanel("WNBA Analytics -- Pipeline Control Panel"),
   helpText(
-    "Pick one pipeline stage from pipeline_stages.R's registry and run it synchronously,",
-    "in-process (Issue #46). The app blocks for the duration of the run -- there is no",
-    "live log streaming in this slice; captured output appears once the run completes."
+    "Multi-select one or more pipeline stages from pipeline_stages.R's registry (Issue #48)",
+    "-- they queue and run sequentially in the order selected, a mini custom pipeline. Each",
+    "queued stage is re-checked against the Issue #47 staleness gate the moment IT starts,",
+    "not once for the whole queue up front, so an earlier queued stage producing a later",
+    "one's input is correctly picked up. The run control is disabled for every session while",
+    "any run (this tab's or another tab/user's) is in progress, to prevent two runs racing",
+    "on the same cache files; there is no live log streaming -- captured output per stage",
+    "appears as each stage finishes."
   ),
   sidebarLayout(
     sidebarPanel(
       width = 4,
-      selectInput("stage_id", "Pipeline stage", choices = stage_choices),
+      selectizeInput(
+        "stage_id", "Pipeline stage(s) -- order = queue order",
+        choices = stage_choices, multiple = TRUE,
+        options = list(plugins = list("remove_button"), placeholder = "Select stage(s) in run order...")
+      ),
       uiOutput("staleness_ui"),
       actionButton(
-        "run_btn", "Run Stage", icon = icon("play"),
+        "run_btn", "Run Queue", icon = icon("play"),
         class = "btn-primary",
         # Instant client-side feedback independent of the (about to block) server
         # round-trip -- see the header comment's EXECUTION MODEL note. Note this only fires
         # on an actual click, which the browser can't deliver at all while run_btn is
-        # disabled (the staleness block, below) -- so a blocked stage never reaches this
-        # handler client-side, and the server-side guard in observeEvent(input$run_btn) below
-        # is pure defense-in-depth for that case.
+        # disabled (empty selection, the cross-session lock, or this session's own run in
+        # progress) -- so a blocked click never reaches this handler client-side, and the
+        # server-side guards in observeEvent(input$run_btn) below are pure defense-in-depth
+        # for that case.
         onclick = "this.disabled = true; this.innerHTML = 'Running...';"
       ),
       br(), br(),
+      uiOutput("lock_status_ui"),
       uiOutput("status_ui")
     ),
     mainPanel(
@@ -275,121 +410,268 @@ ui <- fluidPage(
 # Server
 # ------------------------------------------------------------------------------------------
 server <- function(input, output, session) {
-  result <- reactiveVal(NULL)
+  # rv: THIS session's queue-run state only (which stage it's up to, results so far). Safe to
+  # keep per-session because only the session that successfully acquired .PIPELINE_RUN_LOCK
+  # ever advances a queue -- a second session that failed to acquire the lock never touches
+  # its own rv$queue at all, it just polls the global lock (see lock_poll below) to keep its
+  # own run control disabled until the lock clears.
+  rv <- reactiveValues(queue = character(0), idx = 0L, running = FALSE,
+                        results = list(), override = FALSE)
 
-  output$output_log <- renderText("(no stage has been run yet)")
-  output$status_ui <- renderUI(tags$em("Idle."))
+  output$output_log      <- renderText("(no stage has been run yet)")
+  output$status_ui       <- renderUI(tags$em("Idle."))
+  output$lock_status_ui  <- renderUI(NULL)
 
-  # staleness(): recomputed whenever the selected stage changes (input$stage_id is its only
-  # reactive dependency -- it deliberately does NOT depend on input$override_ack, so toggling
-  # the override never re-runs the filesystem checks, only the enable/disable logic below).
-  staleness <- reactive({
-    stage <- PIPELINE_STAGES[[input$stage_id]]
-    check_stage_staleness(stage)
+  # Primary lock release path on an interrupted run -- see the "SELF-RELEASE ON AN
+  # INTERRUPTED RUN" comment above .PIPELINE_RUN_LOCK's definition. Registered once per
+  # session; harmless (and a no-op, by the token-match guard inside pipeline_lock_release())
+  # for a session that never held the lock in the first place.
+  session$onSessionEnded(function() {
+    pipeline_lock_release(session$token)
   })
 
-  # sync_run_btn_state(): single source of truth for whether run_btn should be clickable right
-  # now -- blocked (missing/stale input) AND no override checked for the CURRENTLY selected
-  # stage. Called both reactively (below) and again right after a run completes, so a run
-  # finishing never leaves the button in a state that doesn't match the live staleness+override
-  # read for whatever stage happens to be selected at that moment.
+  # staleness_preview(): informational preview ONLY, over every currently-selected stage, in
+  # queue order. This is deliberately NOT what gates whether a queued stage actually runs --
+  # that gate is the fresh check_stage_staleness() call inside advance_queue() below, done at
+  # the moment each stage starts (the crux of #48: an earlier queued stage may produce a
+  # later one's input between queue-submission time and that later stage's start). Showing a
+  # pre-run preview here is purely so the operator can see what's currently fresh/stale
+  # before clicking Run Queue; it recomputes whenever the selection changes.
+  staleness_preview <- reactive({
+    ids <- input$stage_id
+    if (is.null(ids) || length(ids) == 0) return(list())
+    setNames(lapply(ids, function(id) check_stage_staleness(PIPELINE_STAGES[[id]])), ids)
+  })
+
+  # sync_run_btn_state(): single source of truth for whether the run control should be
+  # clickable right now. Unlike #47's single-stage version, this does NOT look at per-stage
+  # staleness at all -- queueing is always allowed regardless of a preview block (see
+  # staleness_preview()'s comment above); the only two gates on STARTING a queue are (a) at
+  # least one stage selected, and (b) the cross-session lock being free. Called reactively on
+  # every lock poll tick (below) so every OTHER session's tab reflects a lock held elsewhere
+  # within one poll interval, and again once this session's own queue finishes.
   sync_run_btn_state <- function() {
-    st <- staleness()
-    if (isTRUE(st$blocked) && !isTRUE(input$override_ack)) {
+    no_selection <- is.null(input$stage_id) || length(input$stage_id) == 0
+    if (no_selection || pipeline_lock_is_held() || isTRUE(rv$running)) {
       shinyjs::disable("run_btn")
     } else {
       shinyjs::enable("run_btn")
     }
   }
 
-  # Issue #47's staleness panel: renders fresh every time staleness() changes (i.e. every time
-  # input$stage_id changes), which is also what makes criterion 4 (no leaking blocked state
-  # across a stage switch) hold -- the checkboxInput("override_ack", ...) below is a brand-new
-  # DOM element each time, always starting unchecked, never carrying over a prior stage's
-  # acknowledgment.
-  output$staleness_ui <- renderUI({
-    st <- staleness()
-    if (!isTRUE(st$blocked)) {
-      return(tags$div(style = "color: #1a7a1a;", tags$em("Inputs OK -- all declared inputs present and fresh.")))
-    }
-    problems <- st$problems
-    tagList(
-      tags$div(
-        style = "color: #b30000; font-weight: bold;",
-        sprintf("BLOCKED: %d declared input(s) are stale or missing.", nrow(problems))
-      ),
-      tags$ul(lapply(seq_len(nrow(problems)), function(i) {
-        tags$li(sprintf("[%s] %s", toupper(problems$reason[i]), problems$detail[i]))
-      })),
-      checkboxInput("override_ack", "I know, run it anyway", value = FALSE)
-    )
-  })
-
+  # Cross-session lock visibility (success criterion 2): a lock acquired by SESSION A is a
+  # mutation of the shared .PIPELINE_RUN_LOCK environment that SESSION B's own reactive graph
+  # has no subscription to (it's a bare environment, not a reactive value) -- B has no way to
+  # be *pushed* a notification when A locks or unlocks. invalidateLater() turns this into a
+  # poll instead: every 500ms, every session's own reactive graph re-checks the shared lock
+  # and resyncs its own run control to match. 500ms keeps a second tab's observed "disabled"
+  # state within shinytest2's wait_for_idle()-style polling without hammering the single R
+  # process between queue stages.
   observe({
+    invalidateLater(500, session)
     sync_run_btn_state()
-  })
-
-  observeEvent(input$run_btn, {
-    stage <- PIPELINE_STAGES[[input$stage_id]]
-    st <- staleness()
-    override_used <- isTRUE(st$blocked) && isTRUE(input$override_ack)
-
-    # Defense-in-depth server-side guard (see the actionButton's onclick comment above): the
-    # client can't normally click a disabled button, but never trust that alone -- re-check
-    # here and refuse to run if the currently-selected stage is blocked and not overridden.
-    if (isTRUE(st$blocked) && !isTRUE(input$override_ack)) {
-      shinyjs::html("run_btn", html = paste(as.character(icon("play")), "Run Stage"))
-      sync_run_btn_state()
-      shinyjs::enable("stage_id")
-      return()
-    }
-
-    res <- run_pipeline_stage_captured(stage)
-    res$override_used <- override_used
-    result(res)
-
-    # Re-enable the control + restore its label/icon now that the blocking run is over; this
-    # message is flushed to the client together with the output/status renders below, i.e.
-    # right when the result appears -- never leaving the button stuck disabled. Re-evaluated
-    # via sync_run_btn_state() rather than an unconditional shinyjs::enable(): the stage
-    # selection may still be the same blocked stage (just run via override), in which case
-    # input$override_ack is still checked (the staleness panel does not re-render just because
-    # a run finished -- only input$stage_id changing triggers that), so the button correctly
-    # stays enabled; it only goes back to disabled if the user switches to a stage that is
-    # itself blocked and whose fresh, unchecked override checkbox hasn't been ticked yet.
-    shinyjs::html("run_btn", html = paste(as.character(icon("play")), "Run Stage"))
-    sync_run_btn_state()
-    shinyjs::enable("stage_id")
-  })
-
-  observeEvent(result(), {
-    res <- result()
-    if (is.null(res)) return()
-
-    output$status_ui <- renderUI({
-      override_note <- if (isTRUE(res$override_used)) {
-        tags$div(style = "color: #8a6d00;", tags$em("Ran via the \"I know, run it anyway\" staleness override."))
+    output$lock_status_ui <- renderUI({
+      if (pipeline_lock_is_held() && !isTRUE(rv$running)) {
+        tags$div(style = "color: #8a6d00;",
+                  tags$em("A pipeline run is in progress in another session -- run control disabled until it finishes."))
       } else {
         NULL
       }
-      if (isTRUE(res$success)) {
-        tagList(
-          tags$strong(style = "color: #1a7a1a;", sprintf("PASS (%.2fs)", res$elapsed)),
-          override_note
-        )
+    })
+  })
+
+  # Issue #47's staleness preview panel, generalized to N selected stages: renders fresh
+  # every time the selection changes. checkboxInput("override_ack", ...) is a brand-new DOM
+  # element each time the panel re-renders (i.e. every stage_id change), always starting
+  # unchecked -- same no-leaking-acknowledgment behavior #47 established, now carried over a
+  # change in the whole queue rather than a single stage.
+  output$staleness_ui <- renderUI({
+    previews <- staleness_preview()
+    if (length(previews) == 0) {
+      return(tags$div(tags$em("Select one or more stages to queue.")))
+    }
+    any_blocked <- any(vapply(previews, function(st) isTRUE(st$blocked), logical(1)))
+    rows <- lapply(seq_along(previews), function(i) {
+      id <- names(previews)[i]
+      st <- previews[[i]]
+      if (!isTRUE(st$blocked)) {
+        tags$li(style = "color: #1a7a1a;", sprintf("%d. %s -- inputs OK", i, id))
       } else {
-        err <- if (is.null(res$error)) "(no error message captured)" else res$error
-        tagList(
-          tags$strong(style = "color: #b30000;", sprintf("FAIL (%.2fs)", res$elapsed)),
-          tags$div(err),
-          override_note
-        )
+        tags$li(style = "color: #b30000;",
+                 sprintf("%d. %s -- BLOCKED: %s", i, id,
+                         paste(sprintf("[%s] %s", toupper(st$problems$reason), st$problems$path), collapse = "; ")))
       }
     })
+    tagList(
+      tags$strong("Queue preview (order = run order):"),
+      tags$ol(rows),
+      if (any_blocked) {
+        tagList(
+          tags$div(style = "color: #b30000;",
+                    "One or more queued stages currently show blocked input(s). Each is",
+                    "re-checked again the moment it actually starts -- an earlier queued",
+                    "stage may resolve this before that point. The override below applies",
+                    "queue-wide to whatever is still blocked when its turn comes."),
+          checkboxInput("override_ack", "I know, run blocked stage(s) anyway", value = FALSE)
+        )
+      } else {
+        NULL
+      }
+    )
+  })
+
+  # ----------------------------------------------------------------------------------------
+  # advance_queue(token): runs ONE queued stage then reschedules itself for the next, instead
+  # of looping synchronously over the whole queue. See the file header's EXECUTION MODEL
+  # comment for why this shape (not a for-loop) is load-bearing for criteria 2 and 3, not
+  # just a style choice. withReactiveDomain(session, ...) is needed because a later::later()
+  # callback runs outside any reactive context -- shinyjs calls and reactiveValues writes
+  # below would otherwise resolve against getDefaultReactiveDomain() == NULL.
+  # ----------------------------------------------------------------------------------------
+  advance_queue <- function(token) {
+    withReactiveDomain(session, {
+      # The lock may have been force-released out from under this token by the
+      # LOCK_MAX_AGE_SECS fallback (pathological case), or this session may have already
+      # ended (onSessionEnded already released it) -- either way, there is nothing safe left
+      # to do except stop advancing.
+      if (!identical(.PIPELINE_RUN_LOCK$owner_token, token) || isTRUE(session$isEnded())) {
+        return(invisible(NULL))
+      }
+
+      if (rv$idx > length(rv$queue)) {
+        pipeline_lock_release(token)
+        rv$running <- FALSE
+        shinyjs::html("run_btn", html = paste(as.character(icon("play")), "Run Queue"))
+        shinyjs::enable("stage_id")
+        sync_run_btn_state()
+        return(invisible(NULL))
+      }
+
+      stage_id <- rv$queue[rv$idx]
+      stage    <- PIPELINE_STAGES[[stage_id]]
+
+      shinyjs::html("run_btn", html = sprintf(
+        "Running (%d/%d): %s...", rv$idx, length(rv$queue), stage_id
+      ))
+
+      # THE crux of #48: a fresh staleness check, right now, at the moment THIS stage starts
+      # -- not whatever check_stage_staleness() returned back when the queue was submitted
+      # (rv$queue was only a list of ids; no staleness result was cached at submission time).
+      # If stage N-1 just wrote the file stage N declares as an input, this call sees that
+      # fresh file on disk, because it runs after stage N-1's run_pipeline_stage_captured()
+      # call below has already returned.
+      st <- check_stage_staleness(stage)
+      if (isTRUE(st$blocked) && !isTRUE(rv$override)) {
+        entry <- list(id = stage_id, status = "skipped_blocked", problems = st$problems,
+                       output = character(0), error = NULL, elapsed = 0, override_used = FALSE)
+      } else {
+        res <- run_pipeline_stage_captured(stage)
+        entry <- list(id = stage_id,
+                       status = if (isTRUE(res$success)) "pass" else "fail",
+                       problems = st$problems,
+                       output = res$output, error = res$error, elapsed = res$elapsed,
+                       override_used = isTRUE(st$blocked) && isTRUE(rv$override))
+      }
+      rv$results <- c(rv$results, list(entry))
+      rv$idx <- rv$idx + 1L
+
+      # Return control to Shiny's event loop NOW, between stages, rather than recursing in
+      # place -- see the file header's EXECUTION MODEL comment.
+      later::later(function() advance_queue(token), delay = 0)
+      invisible(NULL)
+    })
+  }
+
+  observeEvent(input$run_btn, {
+    ids <- input$stage_id
+    if (is.null(ids) || length(ids) == 0) {
+      shinyjs::html("run_btn", html = paste(as.character(icon("play")), "Run Queue"))
+      sync_run_btn_state()
+      return()
+    }
+
+    # Defense-in-depth server-side guard (see the actionButton's onclick comment above): the
+    # client can't normally click a disabled button, but never trust that alone. A failed
+    # acquire means another session (or this one, re-entrantly, which shouldn't be reachable
+    # via the UI) already holds the lock.
+    if (!pipeline_lock_acquire(session$token)) {
+      shinyjs::html("run_btn", html = paste(as.character(icon("play")), "Run Queue"))
+      sync_run_btn_state()
+      showNotification(
+        "A pipeline run is already in progress (started elsewhere). Please wait for it to finish.",
+        type = "warning"
+      )
+      return()
+    }
+
+    rv$queue    <- ids               # snapshot at click time -- the chosen queue order.
+    rv$idx      <- 1L
+    rv$running  <- TRUE
+    rv$results  <- list()
+    rv$override <- isTRUE(input$override_ack)
+
+    shinyjs::disable("stage_id")
+    shinyjs::disable("run_btn")  # already disabled client-side by onclick; this covers a
+                                  # server-initiated resync (e.g. restored session).
+
+    later::later(function() advance_queue(session$token), delay = 0)
+  })
+
+  observeEvent(rv$results, {
+    if (length(rv$results) == 0 && !isTRUE(rv$running)) {
+      # Initial/idle state -- no queue has ever been run in this session yet. Keeps the
+      # pre-#48 idle UX intact rather than showing "Queue complete: 0 stage(s) run."
+      return()
+    }
+    output$status_ui <- renderUI({
+      n <- length(rv$queue)
+      header <- if (isTRUE(rv$running) && rv$idx <= n) {
+        tags$div(tags$em(sprintf("Running stage %d of %d (%s)...",
+                                   rv$idx, n, rv$queue[rv$idx])))
+      } else if (isTRUE(rv$running)) {
+        tags$div(tags$em("Finishing..."))
+      } else {
+        tags$div(tags$strong(sprintf("Queue complete: %d stage(s) run.", length(rv$results))))
+      }
+      rows <- lapply(rv$results, function(entry) {
+        label_color <- switch(entry$status,
+          pass           = "#1a7a1a",
+          fail           = "#b30000",
+          skipped_blocked = "#8a6d00",
+          "#333333"
+        )
+        label <- switch(entry$status,
+          pass            = sprintf("PASS (%.2fs)", entry$elapsed),
+          fail            = sprintf("FAIL (%.2fs)", entry$elapsed),
+          skipped_blocked = "SKIPPED (blocked input, no override)",
+          entry$status
+        )
+        override_note <- if (isTRUE(entry$override_used)) " [ran via staleness override]" else ""
+        tags$li(style = sprintf("color: %s;", label_color),
+                 sprintf("%s -- %s%s", entry$id, label, override_note))
+      })
+      tagList(header, tags$ul(rows))
+    }, quoted = FALSE)
 
     output$output_log <- renderText({
-      if (length(res$output) == 0) "(no output captured)" else paste(res$output, collapse = "\n")
+      if (length(rv$results) == 0) return("(no output captured)")
+      blocks <- vapply(rv$results, function(entry) {
+        head_line <- sprintf("===== %s [%s] =====", entry$id, entry$status)
+        body <- if (entry$status == "skipped_blocked") {
+          paste(sprintf("[%s] %s", toupper(entry$problems$reason), entry$problems$detail), collapse = "\n")
+        } else if (length(entry$output) == 0) {
+          "(no output captured)"
+        } else {
+          paste(entry$output, collapse = "\n")
+        }
+        paste(head_line, body, sep = "\n")
+      }, character(1))
+      paste(blocks, collapse = "\n\n")
     })
+  }, ignoreNULL = FALSE)
+
+  observe({
+    sync_run_btn_state()
   })
 }
 
