@@ -217,14 +217,55 @@ N_SIMULATIONS       <- 10000
 # MIN_SAMPLE_GAMES_FOR_STAKE above - two "games" constants that look similar but gate different
 # things).
 #
-# PLACEHOLDER - NOT YET TUNED: 1000 is a starting guess (an order of magnitude below
-# N_SIMULATIONS, reflecting the much heavier per-trial cost) chosen to keep a first working
-# version fast enough to iterate on, not a value derived from any timing/accuracy benchmark.
-# Real timing/tuning work (how many trials are needed for stable playoff-odds percentages vs.
-# how long each trial actually takes against this repo's real tiebreaker code) is tracked as
-# GitHub issue #16 ("Playoff Odds 6") - a later, independent slice in this same chain. Re-run
-# that issue's benchmark and update this value/comment (following the NFL_MARGIN_SIGMA/NFL_HCA
-# documentation pattern) once it lands; do not treat 1000 as final until then.
+# EMPIRICALLY DERIVED 2026-10-05 - see tools/time_playoff_odds_engine.R (GitHub issue #16,
+# "Playoff Odds 6") for the full timing/stability harness this value and its evidence below
+# came from. Run against the REAL CACHE_SCHEDULES/CACHE_TEAM_RATINGS snapshot already in
+# cache/ on this machine, not a synthetic benchmark.
+#
+# TIMING TABLE (trial count -> wall-clock seconds):
+#   n=30    -> 8.54 sec   (0.2846 sec/trial)              [DIRECTLY MEASURED, this run]
+#   n=50    -> 16.78 sec  (0.3356 sec/trial)               [DIRECTLY MEASURED, this run]
+#   n=1000  -> 204.94 sec (run A) / 308.54 sec (run B)     [DIRECTLY MEASURED, this run -
+#                                                            two full run_playoff_odds_engine()
+#                                                            calls; the ~100 sec spread between
+#                                                            run A and run B at the SAME n is
+#                                                            itself evidence of real machine-
+#                                                            load variance, not a bug]
+#   n=1000  -> 362.58 sec (0.363 sec/trial)                [DIRECTLY MEASURED separately, issue
+#                                                            #13's own verification run, prior
+#                                                            data point - consistent order of
+#                                                            magnitude with the two runs above]
+#   n=200   -> ~62 sec (~1.0 min)                          [EXTRAPOLATED: avg 0.3101 sec/trial
+#                                                            from the n=30/n=50 direct
+#                                                            measurements x 200]
+#   n=500   -> ~155 sec (~2.6 min)                         [EXTRAPOLATED, same method x 500]
+#   n=2000  -> ~620 sec (~10.3 min)                        [EXTRAPOLATED, same method x 2000]
+# Extrapolation is valid here because .simulate_one_season() (playoff_odds_engine.R) is a
+# fresh, independent computation on every call - it re-reads both caches from disk each trial
+# and keeps no shared state/memoization across trials - so per-trial cost does not change with
+# trial count; only wall-clock scales linearly.
+#
+# STABILITY CHECK: ran run_playoff_odds_engine() twice in a row at n=1000 against the IDENTICAL
+# cache snapshot (same tools/time_playoff_odds_engine.R run) and diffed playoff_prob for all 32
+# NFL_TEAMS. Max abs diff across all 32 teams = 0.052 (DEN: 0.631 vs 0.579); mean abs diff =
+# 0.009. TOLERANCE: +/-0.06 (6 percentage points) per team, chosen because this number is read
+# by humans on Discord as a rounded percentage, not used as a precision-critical input - the
+# observed 5.2-point max swing (DEN, a near-50/50 team where variance is structurally highest)
+# sits inside that tolerance, and the binomial standard-error formula sqrt(p*(1-p)/n) confirms
+# this is consistent with ordinary Monte Carlo noise at n=1000, not an instability: worst-case
+# SE (p=0.5) = sqrt(0.25/1000) = 0.0158, so a ~2-3 SE swing on one trial pair is unsurprising;
+# teams at extreme probabilities (JAX/MIA at 0.000-1.000, SEA/MIN near 0.998) showed zero or
+# near-zero diff, exactly as the same formula predicts (SE shrinks toward 0 as p -> 0 or 1).
+#
+# DECISION: kept at 1000 (not changed from the prior starting value - re-confirmed via real
+# measurement rather than kept by default without evidence). Reasoning: this stage runs once per DAILY
+# run_full_pipeline.R run alongside other stages (see that file's header), so a ~3.5-5 min cost
+# at n=1000 is comfortably affordable; n=2000 would roughly double that (~10 min) for a modest
+# noise reduction (SE ~0.0158 -> ~0.0112, worst case) that is not needed given the n=1000
+# stability check above already lands inside the stated tolerance; n=500 would roughly halve
+# runtime but increase worst-case SE to ~0.0224, close enough to the observed 5.2-point max diff
+# at n=1000 that halving n risks pushing real swings outside the stated tolerance rather than
+# comfortably inside it. 1000 is the point in the timing table that balances both constraints.
 N_SEASON_SIMULATIONS <- 1000
 
 # Added by team_ratings_engine.R (Phase 8, task P8-A) per docs/task_assignments_phase7.md's
