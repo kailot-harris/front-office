@@ -193,7 +193,13 @@ crossvalidate_series_length <- function(team_high, team_low, net_high, net_low,
     ))
   }
 
-  list(dp = dp_dist, mc = mc_dist, comparison = comparison, max_abs_diff = round(max_abs_diff, 4))
+  # mc_result (the full simulate_single_series() return -- p_high_seed_win,
+  # fair_ml_high/low, avg_series_games, exact_outcomes, format_label) is kept
+  # here, not just the length-only mc_dist summary, so callers that need the
+  # actual series win probability (not just its length distribution) don't
+  # have to re-simulate a second time.
+  list(dp = dp_dist, mc = mc_dist, comparison = comparison, max_abs_diff = round(max_abs_diff, 4),
+       mc_result = mc_result)
 }
 
 # ------------------------------------------------------------------------------
@@ -217,6 +223,29 @@ crossvalidate_series_length <- function(team_high, team_low, net_high, net_low,
 REAL_2026_BRACKET <- tibble(
   seed = 1:8,
   abbr = c("MIN", "GS", "LV", "ATL", "WSH", "IND", "DAL", "NY")
+)
+
+# ------------------------------------------------------------------------------
+# Real, confirmed Round 1 results (NOT a prediction -- all four series have
+# actually been played and decided). Matches
+# WNBA_2026_Postseason_Predictions.qmd's own `{r round1-actual}` tribble
+# (lines ~297-303) verbatim -- restated here, not re-derived, since no cache in
+# this repo reliably flags which box-score rows are playoff games (see
+# config.R:102-103's own note that the wehoop feed doesn't carry a playoff
+# season_type as of validation). If a future session adds that flag, this
+# table should be replaced with a live read instead of kept in sync by hand.
+# (1) Minnesota Lynx lost to (8) New York Liberty 0-2 -- the round's one real
+# upset; the other three higher seeds all advanced.
+# ------------------------------------------------------------------------------
+REAL_2026_ROUND1_RESULTS <- list(
+  list(seed_high = 1, seed_low = 8, team_high = "Minnesota Lynx", team_low = "New York Liberty",
+       wins_high = 0, wins_low = 2, winner = "New York Liberty"),
+  list(seed_high = 2, seed_low = 7, team_high = "Golden State Valkyries", team_low = "Dallas Wings",
+       wins_high = 2, wins_low = 1, winner = "Golden State Valkyries"),
+  list(seed_high = 3, seed_low = 6, team_high = "Las Vegas Aces", team_low = "Indiana Fever",
+       wins_high = 2, wins_low = 1, winner = "Las Vegas Aces"),
+  list(seed_high = 4, seed_low = 5, team_high = "Atlanta Dream", team_low = "Washington Mystics",
+       wins_high = 2, wins_low = 0, winner = "Atlanta Dream")
 )
 
 load_real_2026_playoff_seeds <- function() {
@@ -320,7 +349,13 @@ run_series_length_demo <- function() {
 
     list(format = format, team_high = high$team, team_low = low$team,
          net_high_adj = net_high_adj, net_low_adj = net_low_adj,
-         distribution = dist, crossvalidation = xval, bo3_breakdown = breakdown)
+         distribution = dist, crossvalidation = xval, bo3_breakdown = breakdown,
+         # Full series object (p_high_seed_win, fair_ml_high/low, avg_series_games,
+         # format_label, exact_outcomes) -- same shape playoff_simulator.R's own
+         # demo suite produces -- so a consumer (e.g. summary_app.R's bracket tab)
+         # can read a real win probability for this REAL confirmed matchup
+         # without re-simulating.
+         series = xval$mc_result)
   }
 
   # Real bracket seeds (qmd lines 211-213): #1 MIN, #2 GS, #3 LV, #4 ATL, #5 WSH,
@@ -334,6 +369,7 @@ run_series_length_demo <- function() {
   cat(">>> pending both semifinal series, so it is NOT simulated here (no fabricated matchup).\n")
 
   results <- list(
+    round1_results      = REAL_2026_ROUND1_RESULTS,
     first_round_example = run_round(s4, s5, "bo3", "Round 1 example (Bo3): Atlanta Dream vs Washington Mystics"),
     semifinal_atl_ny    = run_round(s4, s8, "bo5", "Semifinals (Bo5): Atlanta Dream vs New York Liberty"),
     semifinal_gs_lv     = run_round(s2, s3, "bo5", "Semifinals (Bo5): Golden State Valkyries vs Las Vegas Aces"),
@@ -343,7 +379,7 @@ run_series_length_demo <- function() {
   results$generated_at <- Sys.time()
 
   saveRDS(results, "cache/series_length_predictions.rds")
-  message(">>> [SERIES LENGTH] Saved cache/series_length_predictions.rds (list: $first_round_example, $semifinal_atl_ny, $semifinal_gs_lv, $finals=NULL, $finals_note).")
+  message(">>> [SERIES LENGTH] Saved cache/series_length_predictions.rds (list: $round1_results, $first_round_example, $semifinal_atl_ny, $semifinal_gs_lv, $finals=NULL, $finals_note).")
 
   invisible(results)
 }

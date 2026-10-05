@@ -43,10 +43,19 @@ library(ggplot2)
 
 STANDINGS_CACHE_PATH <- "cache/projected_wnba_standings.rds"
 
-# ---- Tab 2 (Playoff Bracket) cache paths ----
-# Not config.R constants (per CLAUDE.md, these two caches have no central constant);
-# literal paths matching the other consumers' convention.
-PLAYOFF_SERIES_CACHE_PATH <- "cache/playoff_series_wnba_demo.rds"
+# ---- Tab 2 (Playoff Bracket) cache path ----
+# Not a config.R constant (per CLAUDE.md, this cache has no central constant);
+# literal path matching the other consumers' convention.
+#
+# cache/playoff_series_wnba_demo.rds is deliberately NOT read here. It's
+# genuinely stale demo output from playoff_simulator.R's own self-demo suite
+# (e.g. it names a "Las Vegas Aces vs Minnesota Lynx" semifinal, but Minnesota
+# was actually eliminated in Round 1 -- see tools/series_length_predictor.R's
+# REAL_2026_BRACKET/REAL_2026_ROUND1_RESULTS for the real, confirmed bracket
+# state). cache/series_length_predictions.rds is the one real-data source for
+# this tab: its $round1_results is the real, decided Round 1 outcome, and its
+# $semifinal_atl_ny/$semifinal_gs_lv$series fields carry a real simulated win
+# probability for the two real confirmed semifinal matchups.
 SERIES_LENGTH_CACHE_PATH <- "cache/series_length_predictions.rds"
 
 # ---- Tab 3 (Model Calibration & Reliability) cache path ----
@@ -69,22 +78,7 @@ if (file.exists(STANDINGS_CACHE_PATH)) {
   standings_load_error <- paste("Cache file not found:", STANDINGS_CACHE_PATH)
 }
 
-# ---- Startup-only cache loads for Tab 2 (fail-safe: never crash if a cache is missing) ----
-playoff_series_data <- NULL
-playoff_series_load_error <- NULL
-
-if (file.exists(PLAYOFF_SERIES_CACHE_PATH)) {
-  playoff_series_data <- tryCatch(
-    readRDS(PLAYOFF_SERIES_CACHE_PATH),
-    error = function(e) {
-      playoff_series_load_error <<- conditionMessage(e)
-      NULL
-    }
-  )
-} else {
-  playoff_series_load_error <- paste("Cache file not found:", PLAYOFF_SERIES_CACHE_PATH)
-}
-
+# ---- Startup-only cache load for Tab 2 (fail-safe: never crash if the cache is missing) ----
 series_length_data <- NULL
 series_length_load_error <- NULL
 
@@ -288,12 +282,12 @@ ui <- page_fluid(
         uiOutput("vbox_accuracy_logloss")
       ),
       card(
-        card_header("Real Resolved Predictions (synthetic/pending/unresolvable rows excluded)"),
-        tableOutput("accuracy_table")
-      ),
-      card(
         card_header("Cumulative Accuracy Over Time (Running Win Rate as Games Resolve)"),
         plotOutput("accuracy_cumulative_plot", height = "450px")
+      ),
+      card(
+        card_header("Real Resolved Predictions (synthetic/pending/unresolvable rows excluded)"),
+        tableOutput("accuracy_table")
       )
     )
   )
@@ -348,35 +342,24 @@ server <- function(input, output, session) {
   # ---- Tab 2: Playoff Bracket (SA-2 / GitHub issue #56) ----
 
   output$bracket_status <- renderUI({
-    msgs <- character(0)
-    if (is.null(playoff_series_data)) {
-      msgs <- c(msgs, paste0(
-        "No playoff series data available. Placeholder state: ", playoff_series_load_error
-      ))
-    }
-    if (is.null(series_length_data)) {
-      msgs <- c(msgs, paste0(
-        "No series-length prediction data available. Placeholder state: ",
-        series_length_load_error
-      ))
-    }
-    if (length(msgs) == 0) {
+    if (!is.null(series_length_data)) {
       return(NULL)
     }
     div(
       class = "alert alert-warning",
       role = "alert",
-      lapply(msgs, function(m) tagList(strong("Warning: "), m, br()))
+      strong("Warning: "),
+      "No series-length prediction data available. Placeholder state: ",
+      series_length_load_error
     )
   })
 
   output$bracket_plot <- renderPlot({
 
-    # Fail-safe empty state: First Round + Semifinals rendering needs
-    # playoff_series_data; the Finals slot needs series_length_data's finals_note.
-    # If either cache is missing we still render what we can, with a clearly
-    # labeled placeholder for the missing piece (never crash).
-    if (is.null(playoff_series_data)) {
+    # Fail-safe empty state: this whole tab now depends on a single real-data
+    # source, series_length_predictions.rds -- see the cache-path comment above
+    # for why cache/playoff_series_wnba_demo.rds is never read here.
+    if (is.null(series_length_data) || is.null(series_length_data$round1_results)) {
       return(
         ggplot() +
           annotate("text", x = 0, y = 0, label = "No playoff bracket data available") +
@@ -384,104 +367,195 @@ server <- function(input, output, session) {
       )
     }
 
-    # finals_note is read ONLY from series_length_predictions.rds. The Finals
-    # matchup inside playoff_series_wnba_demo.rds$finals is intentionally never
-    # read or rendered anywhere in this tab -- series_length_predictions.rds's
-    # "pending" stance is the source of truth for Finals status.
-    finals_note_text <- if (!is.null(series_length_data) &&
-                             !is.null(series_length_data$finals_note)) {
+    round1 <- series_length_data$round1_results
+    sf_atl_ny <- series_length_data$semifinal_atl_ny$series
+    sf_gs_lv  <- series_length_data$semifinal_gs_lv$series
+
+    finals_note_text <- if (!is.null(series_length_data$finals_note)) {
       series_length_data$finals_note
     } else {
-      "Series-length prediction data unavailable; Finals status unknown."
+      "Finals status unknown."
     }
-    finals_note_text <- paste(strwrap(finals_note_text, width = 26), collapse = "\n")
-
-    fr <- playoff_series_data$first_round
-    sf <- playoff_series_data$semifinals
+    finals_note_text <- paste(strwrap(finals_note_text, width = 30), collapse = "\n")
 
     fmt_pct <- function(p) sprintf("%.1f%%", p * 100)
     fmt_ml <- function(ml) {
       ml <- round(ml)
       if (ml > 0) sprintf("+%d", ml) else sprintf("%d", ml)
     }
-    wrap_line <- function(txt, width = 26) {
+    wrap_line <- function(txt, width = 14) {
       paste(strwrap(txt, width = width), collapse = "\n")
     }
 
-    make_box_label <- function(series) {
+    box_w        <- 3.3
+    NODE_H       <- 1.0   # box height
+    NODE_OFFSET  <- 0.65  # distance from a match's center y to each of its 2 nodes
+    BOTTOM_EDGE  <- NODE_OFFSET + NODE_H / 2
+    centers_x <- c(1.9, 6.9, 11.9)
+
+    # Real, single-elimination bracket shape: 4 decided Round 1 series feed 2
+    # real confirmed semifinal matchups, which feed 1 pending Finals slot.
+    # tools/series_length_predictor.R's REAL_2026_ROUND1_RESULTS is listed in
+    # seed order (1v8, 2v7, 3v6, 4v5), but the STANDARD bracket pairing puts
+    # (1v8) adjacent to (4v5) -- not (2v7) -- since those are the two Round 1
+    # matches whose winners actually meet in the Atlanta-vs-NY semifinal
+    # (1=MIN lost to 8=NY; 4=ATL beat 5=WSH). (2v7) and (3v6) are the other
+    # half, feeding Golden State-vs-Las Vegas. Reorder to that standard
+    # top/bottom bracket-half grouping before laying out rows, rather than
+    # trusting the cache's seed-ascending list order to already be bracket-
+    # adjacent (it isn't -- that mismatch previously caused Round 1
+    # connectors to visually wire into the wrong semifinal slot).
+    bracket_half_order <- c(1, 4, 2, 3) # seed_high order, standard-bracket-adjacent
+    round1 <- round1[order(match(
+      vapply(round1, function(r) r$seed_high, numeric(1)), bracket_half_order
+    ))]
+
+    # Spacing (2.6) clears 2*NODE_OFFSET+NODE_H (2.3) so adjacent matches'
+    # nearest boxes never overlap.
+    match_y <- c(3.9, 1.3, -1.3, -3.9)
+
+    # ---- Round 1 nodes: real decided results, not probabilities. ----
+    build_decided_match <- function(res, y_mid) {
+      data.frame(
+        x = centers_x[1],
+        y = c(y_mid + NODE_OFFSET, y_mid - NODE_OFFSET),
+        team = c(res$team_high, res$team_low),
+        record = c(
+          sprintf("%s %d-%d", if (res$winner == res$team_high) "W" else "L", res$wins_high, res$wins_low),
+          sprintf("%s %d-%d", if (res$winner == res$team_low) "W" else "L", res$wins_low, res$wins_high)
+        ),
+        is_favorite = c(res$winner == res$team_high, res$winner == res$team_low),
+        pending = FALSE
+      )
+    }
+    round1_nodes <- do.call(rbind, Map(build_decided_match, round1, match_y))
+
+    # ---- Semifinal nodes: real simulated win probability for the real matchup. ----
+    sf_y <- c(mean(match_y[1:2]), mean(match_y[3:4]))
+    build_sf_match <- function(series, y_mid) {
+      favorite_is_high <- series$p_high_seed_win >= series$p_low_seed_win
+      data.frame(
+        x = centers_x[2],
+        y = c(y_mid + NODE_OFFSET, y_mid - NODE_OFFSET),
+        team = c(series$high_seed, series$low_seed),
+        record = c(fmt_pct(series$p_high_seed_win), fmt_pct(series$p_low_seed_win)),
+        is_favorite = c(favorite_is_high, !favorite_is_high),
+        pending = FALSE
+      )
+    }
+    sf_nodes <- rbind(
+      build_sf_match(sf_atl_ny, sf_y[1]),
+      build_sf_match(sf_gs_lv, sf_y[2])
+    )
+
+    # ---- Finals nodes: genuinely pending. ----
+    finals_y <- mean(sf_y)
+    finals_nodes <- data.frame(
+      x = centers_x[3], y = c(finals_y + NODE_OFFSET, finals_y - NODE_OFFSET),
+      team = c("TBD", "TBD"), record = c("", ""),
+      is_favorite = c(FALSE, FALSE), pending = TRUE
+    )
+
+    nodes_df <- rbind(round1_nodes, sf_nodes, finals_nodes)
+    wrapped_team <- vapply(nodes_df$team, wrap_line, character(1))
+    nodes_df$label <- ifelse(
+      nodes_df$record == "",
+      nodes_df$team,
+      paste0(wrapped_team, "\n", nodes_df$record)
+    )
+
+    caption_for <- function(series) {
       paste(
-        wrap_line(paste0(series$high_seed, " vs ", series$low_seed)),
         series$format_label,
-        wrap_line(paste0(
-          "P(", series$high_seed, " wins): ", fmt_pct(series$p_high_seed_win)
-        )),
-        wrap_line(paste0(
-          "Fair ML: ", series$high_seed, " ", fmt_ml(series$fair_ml_high),
-          " / ", series$low_seed, " ", fmt_ml(series$fair_ml_low)
-        )),
+        paste0("Fair ML: ", fmt_ml(series$fair_ml_high), " / ", fmt_ml(series$fair_ml_low)),
         paste0("Avg series games: ", round(series$avg_series_games, 2)),
         sep = "\n"
       )
     }
-
-    box_w <- 2.6
-    box_h <- 2.1
-    centers_x <- c(1.5, 5, 8.5)
-    y_center <- 2
-
-    boxes <- data.frame(
-      xmin = centers_x - box_w / 2,
-      xmax = centers_x + box_w / 2,
-      ymin = y_center - box_h / 2,
-      ymax = y_center + box_h / 2,
-      round_label = c("First Round", "Semifinals", "Finals")
-    )
-
-    labels_df <- data.frame(
-      x = centers_x,
-      y = y_center,
-      label = c(make_box_label(fr), make_box_label(sf), finals_note_text)
+    captions_df <- data.frame(
+      x = c(centers_x[2], centers_x[2], centers_x[3]),
+      y = c(sf_y[1] - BOTTOM_EDGE - 0.6, sf_y[2] - BOTTOM_EDGE - 0.6, finals_y - BOTTOM_EDGE - 0.6),
+      label = c(caption_for(sf_atl_ny), caption_for(sf_gs_lv), finals_note_text)
     )
 
     round_titles <- data.frame(
       x = centers_x,
-      y = y_center + box_h / 2 + 0.25,
-      label = c("First Round", "Semifinals", "Finals (TBD)")
+      y = max(match_y) + BOTTOM_EDGE + 0.5,
+      label = c("First Round (Final)", "Semifinals", "Finals (TBD)")
     )
 
-    connectors <- data.frame(
-      x = c(centers_x[1] + box_w / 2, centers_x[2] + box_w / 2),
-      xend = c(centers_x[2] - box_w / 2, centers_x[3] - box_w / 2),
-      y = y_center,
-      yend = y_center
+    # Elbow connector: a 3-segment "H"/"Z" shape from (cx_left, y_source) to
+    # (cx_right, y_target).
+    build_connector <- function(cx_left, cx_right, y_source, y_target) {
+      xmid <- (cx_left + box_w / 2 + cx_right - box_w / 2) / 2
+      data.frame(
+        x    = c(cx_left + box_w / 2, xmid,     xmid),
+        xend = c(xmid,                xmid,     cx_right - box_w / 2),
+        y    = c(y_source,            y_source, y_target),
+        yend = c(y_source,            y_target, y_target)
+      )
+    }
+
+    # Round 1 -> Semifinals: looked up by the actual winning team's name in
+    # both columns, rather than assumed from row position -- a literal
+    # "winner advances to this exact slot" line, which is correct now that
+    # Round 1 is fully decided and both semifinal matchups are real and
+    # confirmed (unlike Tab 2's earlier single-series-per-round design, which
+    # had no real per-team lineage to draw).
+    node_y_for_team <- function(df, team_name) df$y[df$team == team_name][1]
+    round1_to_sf_connectors <- do.call(rbind, lapply(round1, function(res) {
+      y_source <- node_y_for_team(round1_nodes, res$winner)
+      y_target <- node_y_for_team(sf_nodes, res$winner)
+      if (is.na(y_source) || is.na(y_target)) return(NULL)
+      build_connector(centers_x[1], centers_x[2], y_source, y_target)
+    }))
+
+    connectors <- rbind(
+      round1_to_sf_connectors,
+      build_connector(centers_x[2], centers_x[3], sf_y[1], finals_y + NODE_OFFSET),
+      build_connector(centers_x[2], centers_x[3], sf_y[2], finals_y - NODE_OFFSET)
     )
 
-    box_fill <- c("#2C3E50", "#18BC9C", "#B0B0B0")
+    nodes_decided <- nodes_df[!nodes_df$pending, ]
+    nodes_pending <- nodes_df[nodes_df$pending, ]
 
     ggplot() +
-      geom_rect(
-        data = boxes,
-        aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
-        fill = box_fill, color = "black", alpha = 0.15
-      ) +
       geom_segment(
         data = connectors,
         aes(x = x, xend = xend, y = y, yend = yend),
-        linewidth = 1, color = "#2C3E50",
-        arrow = arrow(length = unit(0.2, "cm"))
+        linewidth = 0.9, color = "#B0B0B0"
+      ) +
+      geom_tile(
+        data = nodes_decided,
+        aes(x = x, y = y, fill = is_favorite),
+        width = box_w, height = NODE_H, color = "#2C3E50", linewidth = 0.6
+      ) +
+      geom_tile(
+        data = nodes_pending,
+        aes(x = x, y = y),
+        width = box_w, height = NODE_H, fill = "#F4F6F6",
+        color = "#B0B0B0", linewidth = 0.8, linetype = "dashed"
+      ) +
+      geom_text(
+        data = nodes_df,
+        aes(x = x, y = y, label = label, color = is_favorite),
+        fontface = "bold", size = 3.3, lineheight = 1.05
       ) +
       geom_text(
         data = round_titles,
         aes(x = x, y = y, label = label),
-        fontface = "bold", size = 5
+        fontface = "bold", size = 5, color = "#2C3E50"
       ) +
       geom_label(
-        data = labels_df,
+        data = captions_df,
         aes(x = x, y = y, label = label),
-        size = 3.3, lineheight = 1.1, label.padding = unit(0.4, "lines")
+        size = 3, lineheight = 1.15, label.padding = unit(0.35, "lines"),
+        color = "#2C3E50", fill = "white"
       ) +
+      scale_fill_manual(values = c(`TRUE` = "#18BC9C", `FALSE` = "#EAECEE"), guide = "none") +
+      scale_color_manual(values = c(`TRUE` = "white", `FALSE` = "#2C3E50"), guide = "none") +
       xlim(centers_x[1] - box_w, centers_x[3] + box_w) +
-      ylim(y_center - box_h, y_center + box_h + 0.6) +
+      ylim(min(captions_df$y) - 0.9, max(round_titles$y) + 0.4) +
       theme_void()
   })
 
