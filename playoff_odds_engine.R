@@ -57,6 +57,11 @@
 # fabricating a fake margin that could be mistaken for a modeled quantity.
 # ==============================================================================
 
+suppressPackageStartupMessages({
+  library(httr)
+  library(jsonlite)
+})
+
 source("config.R")
 source("logging_utils.R")
 .LOG_SCRIPT <- "playoff_odds_engine.R"
@@ -216,6 +221,74 @@ run_playoff_odds_engine <- function() {
     log_info(sprintf("Wrote playoff odds (%d season simulations) to CACHE_PLAYOFF_ODDS.",
                       N_SEASON_SIMULATIONS),
              call = "run_playoff_odds_engine()", out_path = CACHE_PLAYOFF_ODDS)
+
+    # --------------------------------------------------------------------------------------
+    # Discord dispatch (GitHub issue #14) — reuses notify_bets.R's/accuracy_tracker.R's exact
+    # webhook/payload/fallback pattern verbatim (same NFL_DISCORD_WEBHOOK env var, same
+    # nzchar()-gated POST()/console-only branching). NO hardcoded webhook URL, live or dummy,
+    # anywhere in this file.
+    #
+    # Payload shape per docs/SPEC_playoff_odds_table.md decision #7 / issue #14: exactly TWO
+    # embed fields (AFC, NFC), NOT one field per team (32 fields would blow past readability and
+    # risk bumping into Discord's 25-field-per-embed cap). Each field is a compact newline-
+    # joined list of that conference's 16 teams, sorted descending by playoff_prob.
+    webhook_url <- Sys.getenv("NFL_DISCORD_WEBHOOK", "")
+
+    .conf_field_value <- function(conf_name) {
+      conf_rows <- field_table[field_table$conference == conf_name, ]
+      conf_rows <- conf_rows[order(-conf_rows$playoff_prob), ]
+      lines <- sprintf("`%s` — %.1f%%", conf_rows$team, conf_rows$playoff_prob * 100)
+      paste(lines, collapse = "\n")
+    }
+
+    afc_value <- .conf_field_value("AFC")
+    nfc_value <- .conf_field_value("NFC")
+
+    embed_fields <- list(
+      list(name = "\U0001F3C8 AFC", value = afc_value, inline = TRUE),
+      list(name = "\U0001F3C8 NFC", value = nfc_value, inline = TRUE)
+    )
+
+    payload <- list(
+      username = "NFL Quant Terminal",
+      avatar_url = "https://cdn-icons-png.flaticon.com/512/3211/3211244.png",
+      embeds = list(
+        list(
+          title = paste("\U0001F3C6 NFL Playoff-Clinching Odds •", format(Sys.Date(), "%B %d, %Y")),
+          description = sprintf(
+            "**%d-season** Monte Carlo field: probability each team clinches a playoff berth (not advancement odds), %d season.",
+            N_SEASON_SIMULATIONS, CURRENT_SEASON
+          ),
+          color = 3066993, # Sharp Dark Emerald Green — matches notify_bets.R's embed style
+          fields = embed_fields,
+          footer = list(text = paste("NFL Quant Engine - Playoff Odds • Generated at", format(Sys.time(), "%H:%M:%S EST")))
+        )
+      )
+    )
+
+    if (nzchar(webhook_url)) {
+      res <- tryCatch(
+        POST(webhook_url, body = payload, encode = "json", timeout(6)),
+        error = function(e) list(status_code = 500, message = e$message)
+      )
+      if (!is.null(res$status_code) && res$status_code %in% c(200, 204)) {
+        cat("\n[ALERT SUCCESS] Broadcasted NFL playoff odds to Discord webhook.\n")
+        log_info("Broadcasted NFL playoff odds to Discord webhook.", call = "run_playoff_odds_engine()",
+                 status_code = res$status_code)
+      } else {
+        cat("\n[ALERT DISPATCHED] Webhook sent.\n")
+        log_warn("Discord webhook POST did not return a clean 200/204.", call = "run_playoff_odds_engine()",
+                 status_code = res$status_code)
+      }
+    } else {
+      cat("\n[CONSOLE ONLY] NFL_DISCORD_WEBHOOK env var not set for this project - Discord dispatch skipped.\n")
+      cat("AFC (top 3):\n")
+      cat(paste(head(strsplit(afc_value, "\n")[[1]], 3), collapse = "\n"), "\n")
+      cat("NFC (top 3):\n")
+      cat(paste(head(strsplit(nfc_value, "\n")[[1]], 3), collapse = "\n"), "\n")
+      log_warn("NFL_DISCORD_WEBHOOK not configured; skipped Discord dispatch (console-only preview shown). Set it as a real environment variable (.Renviron) to enable live dispatch.",
+               call = "run_playoff_odds_engine()")
+    }
 
     TRUE
   }, error = function(e) {
