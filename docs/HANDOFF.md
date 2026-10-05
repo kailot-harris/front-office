@@ -1,16 +1,13 @@
 # NFL Analytics — Handoff Document
 
-**Last updated**: 2026-10-05, after commit `61e2a90` ("Wire accuracy_tracker.R into
-run_full_pipeline.R as stage 12"). Local `main` is **8 commits ahead of `origin/main`**
-(`ee271ea`…`61e2a90`, confirmed via `git log origin/main..HEAD` — none of this session's work has
-been pushed yet). `git status --short` is NOT clean: `docs/HANDOFF.md` (this file, updated this
-session) is now modified, a new untracked `cache/accuracy_history.rds` exists (real content, see
-below — not a stray test artifact), and nine `cache/*.rds` files show as modified — eight of those
-predate this session (present at session start, unrelated to this session's work) plus
-`cache/weekly_accuracy_report.rds` which this session's work legitimately regenerated (same
-schema, new run timestamp). Written for a future LLM/agent picking this repo back up cold — read
-this before touching anything, then read `CLAUDE.md` for environment/data-quirk details this doc
-doesn't repeat.
+**Last updated**: 2026-10-05, after commit `a5d592f` ("Refresh caches from manual pipeline run;
+live-verify Discord webhook dispatch"). Local `main` is **even with `origin/main`** (confirmed via
+`git fetch origin && git rev-list --count origin/main..HEAD` → 0 — the previous session's note
+that 8 commits were unpushed was stale; they, plus this session's one commit, are all on
+`origin/main` already). `git status --short` is clean as of this writing — this session committed
+and pushed every cache file its manual pipeline run regenerated. Written for a future LLM/agent
+picking this repo back up cold — read this before touching anything, then read `CLAUDE.md` for
+environment/data-quirk details this doc doesn't repeat.
 
 ## What this repo is
 
@@ -19,14 +16,14 @@ constants, `run_full_pipeline.R` staged DAG, `.claude/skills/` tooling, phased
 `docs/task_assignments_phaseN.md` build tracking) to NFL game predictions, built on `nflverse`
 (`nflreadr`) data. Real git repo, remote `origin` =
 `https://github.com/kailot-harris/NFL_analytics.git` (private). The pipeline runs against real
-live data throughout, with two labeled exceptions: `risk_management_engine.R` reports
-`SYNTHETIC_FALLBACK` (confirmed live, 2026-09-17) because the real bet ledger
-(`CACHE_BETTING_LEDGER`, written by `bet_tracker.r`) is genuinely empty — no staked value bet
-has cleared the early-season `MIN_SAMPLE_GAMES_FOR_STAKE` gate yet this season, not a bug — and
-`notify_bets.R`'s Discord dispatch, while now wired up correctly (see Known Issues #1 — fixed
-2026-10-04), still has nothing to actually post: every row in the current slate is still
-`INSUFFICIENT SAMPLE (early season)`-gated, so live-fired runs hit the "0 actionable bets" no-op
-path by design rather than reaching the POST call.
+live data throughout. `risk_management_engine.R` reports `SYNTHETIC_FALLBACK` (confirmed live,
+2026-09-17) because the real bet ledger (`CACHE_BETTING_LEDGER`, written by `bet_tracker.r`) is
+genuinely empty — no staked value bet has cleared the early-season `MIN_SAMPLE_GAMES_FOR_STAKE`
+gate yet this season, not a bug. `notify_bets.R`'s Discord dispatch is wired up correctly (Known
+Issue #1, fixed 2026-10-04) and has now actually posted live (2026-10-05) — most slates are still
+100% `INSUFFICIENT SAMPLE (early season)`-gated so most runs still hit the "0 actionable bets"
+no-op path, but at least one long-shot row (excluded from staking by `LONGSHOT_DECIMAL_ODDS_CAP`,
+not by the sample gate) has reached and exercised the real POST call.
 
 **Read `docs/NFL_REPLICATION_PLAN.md` first** if you haven't — it's the live-verified (not
 memorized) Phase 0 research foundation this repo was built from. Re-verify anything
@@ -34,9 +31,12 @@ date-sensitive before trusting it blindly for new work; nflverse/vendor details 
 
 **If you're picking up the accuracy-trajectory monitoring work**, read
 `docs/SPEC_accuracy_trajectory_monitoring.md` next, then jump to "Accuracy-trajectory monitoring
-(issues #1-#7 shipped, #8-#10 remain)" below — issues #1-#7 (the entire in-repo implementation)
-shipped this session; what's left is Windows Task Scheduler automation, which needs your
-sign-off on a task name/trigger time before a future agent creates it.
+(issues #1-#7 shipped, #8/#9 done in-repo but open on GitHub, #10 remains)" below — issues #1-#7
+shipped two sessions ago; this session got the user's sign-off (task name
+`NFL_analytics_task_01`, daily 5:15 AM ET) and created the real Windows Task Scheduler job, then
+live-verified both Discord dispatch paths. **Discrepancy to be aware of**: GitHub issues #8 and
+#9 still show OPEN (`gh issue list --state all`) even though the work they describe is done in
+this repo — nobody has closed them yet. Not fixed here; see "Known issues" below.
 
 ## Current state: 12-stage pipeline (11 numbered `run_stage()` calls + stage 9.5)
 
@@ -56,8 +56,8 @@ advanced (`.check_stage_output()`, WARN not fatal, `gc()` after every stage).
 | 8 | `risk_management_engine.R` | `run_risk_management()` | `CACHE_RISK_STATE` — reads the real ledger when it has RESOLVED bets, else `SYNTHETIC_FALLBACK` (currently the latter — ledger is empty) |
 | 9 | `market_odds_engine.R` | `run_market_odds_engine()` | `CACHE_LATEST_VALUE_BETS`, `CACHE_ODDS_HISTORY` — real Odds API odds; staking gated by `MIN_SAMPLE_GAMES_FOR_STAKE` and `LONGSHOT_DECIMAL_ODDS_CAP` |
 | 9.5 | `bet_tracker.r` | `run_bet_tracker()` | `CACHE_BETTING_LEDGER` — real bet ledger, writer+grader (currently 0 rows) |
-| 10 | `notify_bets.R` | `run_notify_bets()` | No cache output. Discord dispatch wiring fixed 2026-10-04 (Known Issue #1) — live-POST branch confirmed reachable, but nothing has posted yet since the current slate is 100% `INSUFFICIENT SAMPLE`-gated |
-| 11 | `accuracy_tracker.R` | `run_accuracy_tracker()` | `CACHE_ACCURACY_HISTORY` — NEW this session (issues #1-#7, see below). No `output` declared in its `run_stage()` call (deliberately — see that call site's comment): a legitimate no-new-games day is a clean no-op that doesn't touch the file, which `.check_stage_output()`'s staleness check would otherwise flag as a false-positive C-2 warning |
+| 10 | `notify_bets.R` | `run_notify_bets()` | No cache output. Discord dispatch wiring fixed 2026-10-04 (Known Issue #1); **live-verified 2026-10-05** — a manual full-pipeline run actually posted a real embed (Detroit Lions +1650 long-shot pick, correctly flagged non-stakeable) and got back HTTP 204 from the real `NFL_DISCORD_WEBHOOK` |
+| 11 | `accuracy_tracker.R` | `run_accuracy_tracker()` | `CACHE_ACCURACY_HISTORY` — added two sessions ago (issues #1-#7, see below). No `output` declared in its `run_stage()` call (deliberately — see that call site's comment): a legitimate no-new-games day is a clean no-op that doesn't touch the file, which `.check_stage_output()`'s staleness check would otherwise flag as a false-positive C-2 warning. **Discord dispatch live-verified 2026-10-05** — see Recent work |
 
 Stage 9.5 runs after stage 9 (needs its output to record today's picks) but before stage 10.
 Stage 11 (`accuracy_tracker.R`) runs last, after stage 10 (`notify_bets.R`). Note: the GitHub
@@ -83,6 +83,7 @@ cycle behind. Not urgent while the ledger is empty.
 | `4b90b40` | — | Added `tools/weekly_accuracy_report.R` — walk-forward grading of the in-progress season's already-played weeks, a gap no existing cache filled. |
 | `63b2185` | — | Spec'd the accuracy-trajectory monitoring feature (`docs/SPEC_accuracy_trajectory_monitoring.md`) and filed it as 10 GitHub issues (#1-#10). |
 | `ee271ea`…`61e2a90` | Accuracy Tracker #1-#7 | Implemented the entire accuracy-trajectory monitoring feature end-to-end: shared grading function, history cache, `accuracy_tracker.R` + Discord dispatch, pipeline wiring. See "Recent work" below. Issues #8-#10 (Task Scheduler automation) remain open. |
+| `a5d592f` | — | Created the real Windows Task Scheduler job (`NFL_analytics_task_01`, daily 5:15 AM ET, user sign-off obtained first) covering issue #9's work; ran the full pipeline manually against live data to exercise it, which live-verified both Discord dispatch paths (`notify_bets.R` and `accuracy_tracker.R`, both returned HTTP 204) for the first time against the real webhook, then committed+pushed the regenerated caches. See "Recent work" below. |
 
 ## Recent work
 
@@ -307,15 +308,75 @@ self-report) before merging — see each issue's GitHub comment for the specific
   use scratch copies instead and did so correctly. **If you dispatch more subagents against this
   repo's cache-writing scripts, assume the same hazard** — any worktree-isolated agent that runs a
   script touching `cache/*.rds` is mutating the one real shared file, not a worktree-local copy.
-- **Status**: #1-#7 closed and merged to local `main` (not yet pushed — see header). `#6`'s Discord
-  dispatch was verified by stubbing `httr::POST()`, not by an actual network call — no real
-  `NFL_DISCORD_WEBHOOK` POST has been exercised against the accuracy-tracker's new payload yet
-  (the webhook env var itself works fine for `notify_bets.R`, per Known Issue #1). `cache/
-  accuracy_history.rds` currently has exactly 1 real row (2026 season, 48 games graded, 66.7%
-  accuracy, Brier 0.2323 — matches `weekly_accuracy_report.rds`'s own numbers, as expected since
-  both now share `grade_walkforward_games()`).
+- **Status**: #1-#7 closed and merged to local `main` (pushed in a later session, see below).
+  `#6`'s Discord dispatch was verified by stubbing `httr::POST()`, not by an actual network call —
+  no real `NFL_DISCORD_WEBHOOK` POST had been exercised against the accuracy-tracker's new payload
+  yet as of this entry (fixed next session, see below). `cache/accuracy_history.rds` had exactly 1
+  real row at the time (2026 season, 48 games graded, 66.7% accuracy, Brier 0.2323).
 
-## Accuracy-trajectory monitoring (issues #1-#7 shipped, #8-#10 remain)
+### Backfilled: two prior-session findings this doc had never recorded (`6e2126f`, `85d08a7`)
+
+Found while re-deriving this doc's state from `git log` rather than trusting the previous
+HANDOFF.md text — **the previous version of this doc's own "Known Issue #4" claimed the
+home-backup-QB market-bias finding "needs more validation before any deployment consideration,"
+but two commits already on `main` at the time that text was written (both dated 2026-09-30, before
+the accuracy-tracker session) had already done exactly that validation.** Recording them now
+rather than silently rewriting the narrative as if they'd always been reflected here:
+
+- **`6e2126f`** (`tools/verify_qb_backup_market_bias_gated.R`) answered the three open questions
+  from the original finding: (1) gate-aware re-run applying `MIN_SAMPLE_GAMES_FOR_STAKE`/
+  `LONGSHOT_DECIMAL_ODDS_CAP` shrinks the bet set from n=399 to n=217 but Sharpe actually
+  *improves* (0.0911 → 0.1066); the finding is not an artifact of ungated staking. (2) The true
+  count of bucket-levels screened by `tools/market_disagreement_features.R` is 14, not the "~8" in
+  that script's own loose comment — at that corrected count, `home_backup_only`'s raw p=0.00615
+  does NOT survive Bonferroni or Benjamini-Hochberg correction at alpha=0.05 (corrected p=0.086
+  both ways). (3) A true 2025-2026 holdout is not currently possible — no depth-chart cache exists
+  anywhere in this repo (`team_ratings_engine.R` calls `nflreadr::load_depth_charts()` live,
+  never persists it), and only 48 games of 2026 were complete at the time. **Recommendation:
+  HOLD, not promote or reject** — this is a materially different (more cautious) conclusion than
+  "the standout of 8 screened buckets" framing the older doc text implied.
+- **`85d08a7`** (`tools/backtest_shrinkage_optimizer.R`'s sibling, a train/test calibration check)
+  confirmed `RATING_SHRINKAGE_GAMES_K`/`tau=9` minimizes TRAIN-period Brier (matching the deployed
+  config value) but found the Sharpe-optimal sample threshold is g*=0 — the market blend at
+  weight=0.97 already dominates from the first game — reconciled with, not contradicting, the
+  existing Sharpe-negative-everywhere finding.
+- **Why this matters for the next agent**: this doc is reconstructed from `git log` and live repo
+  state each time it's rewritten, specifically so stale narrative text like this can't silently
+  persist. If you find another case where this doc's prose doesn't match what a `git log --all`
+  pass over the relevant files shows, treat the commit history as ground truth and flag the
+  discrepancy here rather than trusting either version blindly.
+
+### Windows Task Scheduler automation created; both Discord dispatch paths live-verified (`a5d592f`)
+
+Picked up issue #8/#9's remaining work. Got the user's explicit sign-off first (task name
+`NFL_analytics_task_01`, daily 5:15 AM ET), per issue #8's own text requiring confirmation before
+creating anything. Created the job via `schtasks /Create` (see Environment specifics below for a
+real quoting gotcha hit along the way), confirmed it's `Ready` with `Next Run Time` tomorrow
+5:15:00 AM via `schtasks /Query /V`. System timezone is already `Eastern Standard Time`, so no ET
+offset conversion was needed.
+
+Then ran `run_full_pipeline.R` manually end-to-end (85.37s, all 11 numbered stages + 9.5) to
+exercise the job's real command once before trusting the scheduler to run it unattended, which
+incidentally live-verified both Discord dispatch paths for the first time against the real
+`NFL_DISCORD_WEBHOOK` (Known Issue #8, below):
+- `notify_bets.R` posted a real embed (Detroit Lions +1650 vs. Carolina Panthers, correctly
+  excluded from staking by `LONGSHOT_DECIMAL_ODDS_CAP`) — `status_code: 204`.
+- `accuracy_tracker.R` detected 14 newly-graded games (season total 48 → 62) and posted a real
+  season-accuracy embed (66.1% over 62 games, Brier 0.2249, Log Loss 0.6415) — `status_code: 204`.
+- `bet_tracker.r` logged a C-2 staleness WARN on `betting_ledger.rds` (417.6 hours stale) — correct
+  behavior, not a bug: there were no real staked picks to append this run, same as every prior
+  run since the ledger went live.
+
+Committed the 11 cache files this run regenerated (`a5d592f`) and pushed — confirmed local `main`
+was already even with `origin/main` beforehand (the previous doc's "8 commits unpushed" note was
+stale; a prior session had already pushed them).
+- **Status**: issue #8/#9's in-repo work is DONE. **Not done**: closing issues #8/#9 on GitHub
+  (still show OPEN per `gh issue list --state all` as of this writing — flagging per this skill's
+  "surface tracker discrepancies, don't silently fix them" convention, since closing issues is a
+  visible tracker action the project owner should decide on). Issue #10 (real-world scheduled-fire
+  validation) remains open and can't be completed in one sitting — see below.
+
+## Accuracy-trajectory monitoring (issues #1-#7 shipped, #8/#9 done in-repo, #10 remains)
 
 Full spec: `docs/SPEC_accuracy_trajectory_monitoring.md`. Summary: track the model's
 season-to-date prediction accuracy over time (not just a one-off `weekly_accuracy_report.R` run)
@@ -326,9 +387,10 @@ explicitly does NOT build a dashboard (`app.R` does not exist in this repo at al
 to a separate future ticket if ever pursued).
 
 Filed as 10 GitHub issues (`gh issue list --state all` to re-check current status). Native GitHub
-sub-issue links are set for #2/#3 under #1, and #9/#10 under #8. **#1-#7 closed and merged this
-session** (`ee271ea`…`61e2a90`, not yet pushed to `origin`); **#8-#10 remain open** and need your
-input, not a subagent, before proceeding (see below).
+sub-issue links are set for #2/#3 under #1, and #9/#10 under #8. **#1-#7 closed and merged**
+(`ee271ea`…`61e2a90`, since pushed to `origin`); **#8/#9's in-repo work is done but the GitHub
+issues are still open** (see "Known issues" #9), and **#10 genuinely remains** — observational,
+not something to pick up with a subagent (see below).
 
 | Issue | Title | Depends on | Status |
 |---|---|---|---|
@@ -337,11 +399,11 @@ input, not a subagent, before proceeding (see below).
 | [#3](https://github.com/kailot-harris/NFL_analytics/issues/3) | Sub-issue: update `tools/weekly_accuracy_report.R` to call it | #2 | CLOSED |
 | [#4](https://github.com/kailot-harris/NFL_analytics/issues/4) | `CACHE_ACCURACY_HISTORY` constant + history-row schema in `config.R` | informed by #2, can start in parallel | CLOSED — `config.R:560`, helpers `tools/backtest_common.R:191-266` |
 | [#5](https://github.com/kailot-harris/NFL_analytics/issues/5) | Build `accuracy_tracker.R` / `run_accuracy_tracker()` core (detect new completed games, append to history; no Discord yet) | #2, #4 | CLOSED — `accuracy_tracker.R` (repo root) |
-| [#6](https://github.com/kailot-harris/NFL_analytics/issues/6) | Add Discord dispatch to `accuracy_tracker.R` (reuses `NFL_DISCORD_WEBHOOK`, same channel as `notify_bets.R`) | #5 | CLOSED — payload construction verified via stubbed `POST()`; **live webhook POST itself not yet exercised** (no real webhook call made — see Known Issues) |
+| [#6](https://github.com/kailot-harris/NFL_analytics/issues/6) | Add Discord dispatch to `accuracy_tracker.R` (reuses `NFL_DISCORD_WEBHOOK`, same channel as `notify_bets.R`) | #5 | CLOSED — payload construction verified via stubbed `POST()`; **live webhook POST live-verified 2026-10-05** (`status_code: 204` against the real `NFL_DISCORD_WEBHOOK` — see Known Issue #8) |
 | [#7](https://github.com/kailot-harris/NFL_analytics/issues/7) | Wire `accuracy_tracker.R` into `run_full_pipeline.R` as stage "12" (file comment says "11.", see pipeline table above) | #5, #6 | CLOSED — `run_full_pipeline.R:307-308` |
-| [#8](https://github.com/kailot-harris/NFL_analytics/issues/8) | Automate daily execution via Windows Task Scheduler (parent) | #7 | OPEN — **needs your sign-off on task name/trigger time before creating**, per the issue's own explicit "confirm with the user" note |
-| [#9](https://github.com/kailot-harris/NFL_analytics/issues/9) | Sub-issue: create scheduled-task wrapper script + job definition | #7 | OPEN — blocked on #8's sign-off |
-| [#10](https://github.com/kailot-harris/NFL_analytics/issues/10) | Sub-issue: validate end-to-end (idempotency + real daily cadence) | #9 | OPEN — inherently can't be done in one sitting; requires observing the scheduled task fire across at least one real game day and one real off day |
+| [#8](https://github.com/kailot-harris/NFL_analytics/issues/8) | Automate daily execution via Windows Task Scheduler (parent) | #7 | **GitHub status OPEN, but the work is DONE** (2026-10-05) — user signed off on task name `NFL_analytics_task_01` / 5:15 AM ET, task created and confirmed `Ready`. Issue not yet closed on GitHub — see "Known issues" below |
+| [#9](https://github.com/kailot-harris/NFL_analytics/issues/9) | Sub-issue: create scheduled-task wrapper script + job definition | #7 | **GitHub status OPEN, but the work is DONE** (2026-10-05) — same as #8, task created via `schtasks /Create` directly (no separate wrapper script was needed — see Recent work) |
+| [#10](https://github.com/kailot-harris/NFL_analytics/issues/10) | Sub-issue: validate end-to-end (idempotency + real daily cadence) | #9 | OPEN, genuinely not startable yet — requires observing the scheduled task fire across at least one real game day and one real off day. First real scheduled run: tomorrow (2026-10-05) 5:15 AM ET |
 
 Each issue's GitHub comment thread (not just the commit message) has the closing agent's full
 verification evidence — read the issue comment for the specific criteria/evidence, this table only
@@ -380,13 +442,20 @@ get wrong by assuming instead of checking:
    `bet_tracker.r` (stage 9.5) grades new bets within the same invocation — one cycle behind.
    Not urgent while the ledger is empty. Not fixed this session (a larger, separately-reasoned
    reordering).
-4. **Home-backup-QB market bias needs more validation before any deployment consideration**
-   (see Recent work's last entry): check against `MIN_SAMPLE_GAMES_FOR_STAKE`/
-   `LONGSHOT_DECIMAL_ODDS_CAP`, account for multiple-comparisons risk (it was the standout of 8
-   screened buckets), and ideally hold out 2025-2026 data rather than reusing the discovery
-   window. The natural next step if pursued: derive separate `HOME_QB_INJURY_PENALTY_PTS` /
-   `AWAY_QB_INJURY_PENALTY_PTS` (replacing the single symmetric `QB_INJURY_RATING_PENALTY_PTS`)
-   via `stats::optimize()` against Sharpe, then re-run the full comparison harness.
+4. **Home-backup-QB market bias: already gate-checked and multiple-comparisons-corrected
+   (`6e2126f`, backfilled into Recent work above after this doc was found to have never recorded
+   it) — recommendation is HOLD, not "needs more validation."** Gate-aware Sharpe actually
+   improves (0.0911 → 0.1066, n=217) so it's not a staking-gate artifact, but the corrected
+   bucket-screening count is 14 (not "~8"), and at that count the raw p=0.00615 does NOT survive
+   Bonferroni/BH correction at alpha=0.05. A true 2025-2026 holdout remains blocked — no
+   depth-chart cache exists in this repo (`load_depth_charts()` is called live, never persisted).
+   If you want to revisit deployment: either (a) persist a depth-chart cache so a genuine
+   out-of-discovery-window holdout becomes possible as 2026 accumulates more weeks, or (b) treat
+   the Bonferroni failure as disqualifying and drop it. Deriving asymmetric
+   `HOME_QB_INJURY_PENALTY_PTS` / `AWAY_QB_INJURY_PENALTY_PTS` (replacing the single symmetric
+   `QB_INJURY_RATING_PENALTY_PTS`, currently `1.6` per `config.R:321`) is still a reasonable next
+   step technically, but shouldn't be read as "this finding just needs one more derivation step
+   before shipping" — the multiple-comparisons result is a real caution, not a formality.
 5. **Four competing NFL player-ID schemes** — HARDENED this session (`player_id_crosswalk.R`,
    commit `52b74a5`), but remains something any *future* player-level join must use rather than
    a fresh unverified `load_ff_playerids()` call.
@@ -396,16 +465,19 @@ get wrong by assuming instead of checking:
 7. **Public bet-percentage/handle data** does not exist anywhere in this repo. A real, explicit,
    deferred paid-vendor decision for the market-disagreement project (Phase 2's "fade the
    public" angle) — not pursued without user sign-off on cost/ToS.
-8. **`accuracy_tracker.R`'s Discord dispatch (#6) has never made a real network POST.** Verified
-   only via a stubbed `httr::POST()` in a worktree test harness. The payload-construction logic is
-   independently confirmed correct, but a live end-to-end post to the real `NFL_DISCORD_WEBHOOK`
-   channel has not happened. Low risk (it's the exact same POST pattern `notify_bets.R` already
-   uses live), but don't assume it's been seen in the actual Discord channel until it has.
-9. **Windows Task Scheduler automation (issues #8-#10) is not started**, and issue #8's own text
-   explicitly says not to create the scheduled task silently — it needs your confirmation on the
-   exact task name and daily trigger time first (the spec suggests "once daily in the
-   evening/late night" to catch all of that day's completed games, but wants explicit sign-off
-   since it determines Discord-update freshness on game days).
+8. **`accuracy_tracker.R`'s Discord dispatch (#6) — FIXED 2026-10-05.** Previously verified only
+   via a stubbed `httr::POST()`. A manual full-pipeline run live-POSTed a real season-accuracy
+   embed to the real `NFL_DISCORD_WEBHOOK` channel and got back `status_code: 204` — same for
+   `notify_bets.R`'s dispatch in the same run. HTTP-level success is confirmed by this agent;
+   visual confirmation that the embed *rendered* correctly in the actual Discord channel has not
+   been independently checked by an agent — worth a quick human glance, not re-verifiable by HTTP
+   status alone.
+9. **Windows Task Scheduler automation (issues #8/#9) — DONE in-repo 2026-10-05, but GitHub issues
+   #8/#9 are still OPEN.** User signed off on task name `NFL_analytics_task_01` and trigger time
+   5:15 AM ET; `schtasks /Create` ran successfully and `schtasks /Query /V` confirms `Status:
+   Ready`, `Next Run Time: 10/5/2026 5:15:00 AM`. Nobody has closed #8/#9 on GitHub yet — flagging
+   per this doc's own discrepancy-surfacing convention rather than closing them here. Issue #10
+   (real-world validation) remains genuinely open regardless of #8/#9's tracker status.
 
 ## Environment specifics a fresh agent needs
 
@@ -437,6 +509,14 @@ get wrong by assuming instead of checking:
   persisted prior-run cache the way `.ingest_one()` does (both effectively rebuild fresh each
   run), so this is currently an isolated instance, not a repo-wide pattern — but re-check any
   NEW incremental-cache-merge code against this trap before trusting it.
+- **`schtasks /Create`'s `/TR` argument needs literal backslash-quote sequences from PowerShell,
+  not plain embedded double-quotes.** Both `/TR '"path" "path2"'` (single-quoted) and
+  `$tr = "`"path`" `"path2`""` (backtick-escaped double-quoted) get re-split by argv parsing and
+  fail with `ERROR: Invalid argument/option`. What worked: build the string with literal
+  backslash-quote pairs — `$tr = '\"C:\Program Files\...\Rscript.exe\" \"...\run_full_pipeline.R\"'`
+  (single-quoted so PowerShell doesn't touch the backslashes) — then pass `$tr` as the `/TR` value.
+  Also: Git Bash mangles `schtasks /Create` (and any other leading-`/`-flag Windows CLI) because
+  it rewrites `/Create` as a path — use the PowerShell tool for `schtasks`, not Bash.
 - **Git-worktree isolation does NOT isolate `cache/*.rds` writes.** Every script in this repo
   `setwd()`s to the hardcoded absolute repo root (`C:\Users\kailo\kayceeslices\NFL Analytics`)
   rather than wherever it's actually being invoked from, so a script run from inside a git
@@ -449,34 +529,23 @@ get wrong by assuming instead of checking:
 
 ## Suggested next steps, roughly in priority order
 
-1. **Get the user's sign-off on GitHub issue [#8](https://github.com/kailot-harris/NFL_analytics/issues/8)'s
-   task name and daily trigger time**, then pick up [#9](https://github.com/kailot-harris/NFL_analytics/issues/9)
-   (scheduled-task wrapper script + `schtasks` job definition) — this is the next unimplemented
-   piece of the accuracy-trajectory monitoring work. Do not create the Task Scheduler entry
-   without that confirmation; issue #8's own text says so explicitly.
-2. Once #9 is live, #10 (end-to-end validation) is an observational task, not a one-sitting
-   coding task — it requires watching the scheduled task actually fire across at least one real
-   game day and one real off day, confirming idempotency and correct Discord cadence both times.
-3. Commit the currently-uncommitted work described in this doc's header (`docs/HANDOFF.md` itself)
-   and decide what to do with the modified `cache/*.rds` files — eight predate this session, one
-   (`weekly_accuracy_report.rds`) was legitimately regenerated this session, and
-   `cache/accuracy_history.rds` is a new real file (1 row, not a test artifact — see "Recent work"
-   above) that should probably be committed rather than left untracked, since every other
-   `CACHE_*` file in this repo is tracked.
-4. `git push` once committed — local `main` is 8 commits ahead of `origin/main` as of this
-   writing; confirm with `git log origin/main..HEAD` before pushing since the count will drift.
-5. Exercise `accuracy_tracker.R`'s Discord dispatch against the real `NFL_DISCORD_WEBHOOK` at
-   least once (Known Issue #8) — it has only been verified via a stubbed `POST()` so far.
-6. Validate or reject the home-backup-QB market bias (Known Issue #4) — the one credible
-   positive-Sharpe finding from a prior session. Check it against the real production staking
-   gates, then either derive asymmetric QB-injury-penalty constants and re-run the comparison
-   harness, or let it season against 2025-2026 data as a true holdout before deciding.
-7. If continuing the market-disagreement project: Phase 2's public-bet-percentage/handle data
+1. **Issue #10 (end-to-end scheduled validation) is next, but it's observational, not a coding
+   task.** Watch `NFL_analytics_task_01` actually fire tomorrow (2026-10-05, 5:15 AM ET) and on a
+   subsequent off day — `schtasks /Query /TN NFL_analytics_task_01 /V` shows `Last Run Time` /
+   `Last Result` after it's fired at least once. Confirm idempotency (no duplicate Discord posts
+   if run twice with no new completed games) and correct cadence. Consider closing GitHub issues
+   #8/#9 at that point too (see "Known issues" #9 — they're done in-repo but still show OPEN).
+2. **Decide what to do with the home-backup-QB market-bias finding (Known Issue #4).** It already
+   has a HOLD recommendation from a gate-aware, multiple-comparisons-corrected re-check
+   (`6e2126f`) that this doc had previously failed to surface — re-read that entry under "Recent
+   work" before deciding whether a depth-chart-cache investment to enable a true 2025-2026 holdout
+   is worth pursuing, or whether to drop the finding given the failed Bonferroni/BH correction.
+3. If continuing the market-disagreement project: Phase 2's public-bet-percentage/handle data
    angle needs an explicit user decision (new paid vendor or scraping project) before pursuing —
    not started pending that.
-8. Consider fixing the stage 8/9.5 ordering gap (Known Issue #3) if a same-run-fresh ledger read
+4. Consider fixing the stage 8/9.5 ordering gap (Known Issue #3) if a same-run-fresh ledger read
    ever becomes important — not urgent today since the ledger is empty anyway.
-9. `player_props_engine.R`, team embeddings, a live dashboard (including the accuracy-trajectory
+5. `player_props_engine.R`, team embeddings, a live dashboard (including the accuracy-trajectory
    dashboard tab explicitly deferred out of the current spec), and a true rstan/cmdstanr install
    for Phase 5's Bayesian state-space idea remain explicitly deferred non-goals — only start if
    there's a concrete pull for them.
