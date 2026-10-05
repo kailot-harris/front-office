@@ -180,6 +180,22 @@ N_SIMULATIONS  <- 10000
 WNBA_MARGIN_SIGMA <- 14.0
 
 # ------------------------------------------------------------------------------------------
+# Offensive/Defensive BPM split (GitHub issue #64)
+# ------------------------------------------------------------------------------------------
+# roster_bottom_up_engine.R::get_player_bpm_ratings() derives per-player Off_Rating/Def_Rating
+# components downstream of player_metrics.R's existing (unmodified) BPM box-score weights by
+# splitting the single `rebounds` box-score term into its offensive/defensive rebound shares
+# (`offensive_rebounds` / `defensive_rebounds`, both already present in CACHE_PLAYER_BOX's raw
+# wehoop schema). This constant is ONLY the fallback used when a player's aggregated
+# offensive_rebounds + defensive_rebounds totals zero (so the split would otherwise be 0/0) -
+# it is not used for any player with real rebound totals, who get their own actual split.
+# Empirically derived from CACHE_PLAYER_BOX (all seasons, 2026-10-05):
+#   sum(offensive_rebounds) == 32541, sum(defensive_rebounds) == 101164,
+#   sum(rebounds) == 133705 == oreb+dreb exactly (no team-rebound discrepancy in this feed).
+#   share = 32541 / (32541 + 101164) = 0.2434, rounded to 0.24.
+WNBA_OFF_REB_SHARE <- 0.24
+
+# ------------------------------------------------------------------------------------------
 # Home-Court Advantage (points added to the home side's projected margin)
 # ------------------------------------------------------------------------------------------
 # FINDING C-1 (docs/SECURITY_TECHNICAL_REVIEW.md): this value was previously restated as a bare
