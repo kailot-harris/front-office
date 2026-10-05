@@ -1,12 +1,17 @@
 # NFL Analytics — Handoff Document
 
-**Last updated**: 2026-09-30, after commit `4b90b40` ("Add tools/weekly_accuracy_report.R for
-grading in-progress-season predictions"). `git status --short` is clean — everything described
-below is committed, **but local `main` is 1 commit ahead of `origin/main`** (`461fdb4`
-"Fix daily_ingest.R silently freezing schedule/PBP rows at bootstrap-time state" was pushed;
-`4b90b40` was not — push it if you want the remote caught up). Written for a future LLM/agent
-picking this repo back up cold — read this before touching anything, then read `CLAUDE.md` for
-environment/data-quirk details this doc doesn't repeat.
+**Last updated**: 2026-10-04, after commit `c6ea381` (merge commit; `85d08a7` "Add train/test
+derivation of MIN_SAMPLE_GAMES_FOR_STAKE calibration responsiveness" is the last real content
+commit). Local `main` is 1 commit ahead of what this doc previously described (`4b90b40`) plus
+three more real commits on top — re-check `git log origin/main..HEAD` before assuming the remote
+is caught up. **`git status --short` is NOT clean right now**: `docs/HANDOFF.md` (this file,
+updated this session) and a new untracked `docs/SPEC_accuracy_trajectory_monitoring.md` are
+uncommitted, plus
+eight `cache/*.rds` files show as modified — those cache diffs predate this session (present at
+session start, not caused by anything done this session; this session only *read* caches via
+`run_notify_bets()`, never wrote any). Written for a future LLM/agent picking this repo back up
+cold — read this before touching anything, then read `CLAUDE.md` for environment/data-quirk
+details this doc doesn't repeat.
 
 ## What this repo is
 
@@ -19,12 +24,18 @@ live data throughout, with two labeled exceptions: `risk_management_engine.R` re
 `SYNTHETIC_FALLBACK` (confirmed live, 2026-09-17) because the real bet ledger
 (`CACHE_BETTING_LEDGER`, written by `bet_tracker.r`) is genuinely empty — no staked value bet
 has cleared the early-season `MIN_SAMPLE_GAMES_FOR_STAKE` gate yet this season, not a bug — and
-`notify_bets.R`'s Discord dispatch is still console-only-preview (webhook env var not visible to
-R on this machine — see Known Issues).
+`notify_bets.R`'s Discord dispatch, while now wired up correctly (see Known Issues #1 — fixed
+2026-10-04), still has nothing to actually post: every row in the current slate is still
+`INSUFFICIENT SAMPLE (early season)`-gated, so live-fired runs hit the "0 actionable bets" no-op
+path by design rather than reaching the POST call.
 
 **Read `docs/NFL_REPLICATION_PLAN.md` first** if you haven't — it's the live-verified (not
 memorized) Phase 0 research foundation this repo was built from. Re-verify anything
 date-sensitive before trusting it blindly for new work; nflverse/vendor details shift over time.
+
+**If you're picking up the accuracy-trajectory monitoring work**, read
+`docs/SPEC_accuracy_trajectory_monitoring.md` next, then jump to "Accuracy-trajectory monitoring
+(spec'd, not yet implemented)" below — that section has the exact next issue to pick up.
 
 ## Current state: 11-stage pipeline
 
@@ -44,7 +55,7 @@ advanced (`.check_stage_output()`, WARN not fatal, `gc()` after every stage).
 | 8 | `risk_management_engine.R` | `run_risk_management()` | `CACHE_RISK_STATE` — reads the real ledger when it has RESOLVED bets, else `SYNTHETIC_FALLBACK` (currently the latter — ledger is empty) |
 | 9 | `market_odds_engine.R` | `run_market_odds_engine()` | `CACHE_LATEST_VALUE_BETS`, `CACHE_ODDS_HISTORY` — real Odds API odds; staking gated by `MIN_SAMPLE_GAMES_FOR_STAKE` and `LONGSHOT_DECIMAL_ODDS_CAP` |
 | 9.5 | `bet_tracker.r` | `run_bet_tracker()` | `CACHE_BETTING_LEDGER` — real bet ledger, writer+grader (currently 0 rows) |
-| 10 | `notify_bets.R` | `run_notify_bets()` | No cache output. Discord dispatch, still console-only-preview |
+| 10 | `notify_bets.R` | `run_notify_bets()` | No cache output. Discord dispatch wiring fixed 2026-10-04 (Known Issue #1) — live-POST branch confirmed reachable, but nothing has posted yet since the current slate is 100% `INSUFFICIENT SAMPLE`-gated |
 
 Stage 9.5 runs after stage 9 (needs its output to record today's picks) but before stage 10.
 **Known ordering gap, unchanged**: stage 8 still runs *before* stage 9.5 grades new bets within
@@ -258,11 +269,60 @@ computes).
   already-cached data, nothing new to ingest). Output at `cache/weekly_accuracy_report.rds`. Rerun
   any time after new weeks complete; NOT automatically re-run by `run_full_pipeline.R`.
 
+## Accuracy-trajectory monitoring (spec'd 2026-10-04, not yet implemented)
+
+Full spec: `docs/SPEC_accuracy_trajectory_monitoring.md`. Summary: track the model's
+season-to-date prediction accuracy over time (not just a one-off `weekly_accuracy_report.R` run)
+via a persisted history cache plus Discord posts, triggered idempotently whenever new games
+complete. Explicitly does NOT touch the staking gate (`MIN_SAMPLE_GAMES_FOR_STAKE` is a per-game
+flag, not a single season-wide on/off event — this feature is independent of staking status) and
+explicitly does NOT build a dashboard (`app.R` does not exist in this repo at all; that's deferred
+to a separate future ticket if ever pursued).
+
+Filed as 10 GitHub issues (`gh issue list --state all` to re-check current status — **all OPEN,
+nothing implemented yet** as of this writing). Native GitHub sub-issue links are set for #2/#3
+under #1, and #9/#10 under #8.
+
+| Issue | Title | Depends on | Status |
+|---|---|---|---|
+| [#1](https://github.com/kailot-harris/NFL_analytics/issues/1) | Extract shared walk-forward grading logic (parent) | — | OPEN |
+| [#2](https://github.com/kailot-harris/NFL_analytics/issues/2) | Sub-issue: extract `grade_walkforward_games()` into `tools/backtest_common.R` | — | OPEN — **pick this up first** |
+| [#3](https://github.com/kailot-harris/NFL_analytics/issues/3) | Sub-issue: update `tools/weekly_accuracy_report.R` to call it | #2 | OPEN |
+| [#4](https://github.com/kailot-harris/NFL_analytics/issues/4) | `CACHE_ACCURACY_HISTORY` constant + history-row schema in `config.R` | informed by #2, can start in parallel | OPEN |
+| [#5](https://github.com/kailot-harris/NFL_analytics/issues/5) | Build `accuracy_tracker.R` / `run_accuracy_tracker()` core (detect new completed games, append to history; no Discord yet) | #2, #4 | OPEN |
+| [#6](https://github.com/kailot-harris/NFL_analytics/issues/6) | Add Discord dispatch to `accuracy_tracker.R` (reuses `NFL_DISCORD_WEBHOOK`, same channel as `notify_bets.R`) | #5 | OPEN |
+| [#7](https://github.com/kailot-harris/NFL_analytics/issues/7) | Wire `accuracy_tracker.R` into `run_full_pipeline.R` as stage 12 | #5, #6 | OPEN |
+| [#8](https://github.com/kailot-harris/NFL_analytics/issues/8) | Automate daily execution via Windows Task Scheduler (parent) | #7 | OPEN |
+| [#9](https://github.com/kailot-harris/NFL_analytics/issues/9) | Sub-issue: create scheduled-task wrapper script + job definition | #7 | OPEN |
+| [#10](https://github.com/kailot-harris/NFL_analytics/issues/10) | Sub-issue: validate end-to-end (idempotency + real daily cadence) | #9 | OPEN |
+
+Each issue body has its own "testable independently" section — these are vertical slices on
+purpose, so progress can be verified incrementally rather than only at the very end. Read the
+issue body itself for full acceptance criteria before starting; don't rely on this table's
+one-line summary alone.
+
+**Key design facts worth re-reading from the spec before implementing**, since they're easy to
+get wrong by assuming instead of checking:
+- The staking-sample gate (`market_odds_engine.R` line ~603) is computed **per game**
+  (`pmin(home_games_played, away_games_played) < MIN_SAMPLE_GAMES_FOR_STAKE`), not once per
+  season — re-verify this line number before citing it, source drifts.
+- The new stage's trigger is idempotency (compare current completed-game set against what's
+  already in `CACHE_ACCURACY_HISTORY`), NOT a calendar/schedule lookup — this is what makes daily
+  unconditional Task Scheduler firing safe without a separate "is today a game day" check.
+- History granularity is one row per **run that finds new completed games**, not one row per NFL
+  week — a Thursday Night Football finish can produce its own row before the rest of that week is
+  done.
+
 ## Known issues / unfinished business
 
-1. **`NFL_DISCORD_WEBHOOK` not visible to R.** Set in `C:\Users\kailo\Documents\.Renviron`, but
-   R's user-Renviron lookup resolves to `C:\Users\kailo` directly on this machine. **Fix**: move
-   the line into `C:\Users\kailo\.Renviron`, or set it as a Windows env var. Unchanged.
+1. **`NFL_DISCORD_WEBHOOK` not visible to R — FIXED 2026-10-04.** Was set in
+   `C:\Users\kailo\Documents\.Renviron`, but R's user-Renviron lookup resolves to
+   `C:\Users\kailo\.Renviron` directly on this machine. Moved into `C:\Users\kailo\.Renviron`;
+   confirmed live via `Sys.getenv("NFL_DISCORD_WEBHOOK")` returning a non-empty value (121 chars)
+   and via an actual `run_notify_bets()` invocation reaching the `nzchar(webhook_url)` live-POST
+   branch (lines ~169-183 of `notify_bets.R`) instead of the console-only fallback. That run
+   produced no actual Discord POST only because every row in the current slate was
+   insufficient-sample-gated (0 actionable bets) — the webhook-visibility bug itself is resolved.
 2. **Staking is not validated as profitable at the ensemble/portfolio level.** Sharpe is
    negative for every deployed-formula candidate across every parameter grid tested this
    session (long-shot cap, market-blend weight, situational/Kalman/participation features) —
@@ -298,8 +358,9 @@ computes).
   `kableExtra`.
 - Quarto: **not on PATH** — the real binary is bundled with RStudio at
   `C:\Program Files\RStudio\resources\app\bin\quarto\bin\quarto.exe`. Invoke via full path.
-- Real credentials confirmed working: `ODDS_API_KEY`. `NFL_DISCORD_WEBHOOK` is set by the user
-  but not currently visible to R (Known Issue #1).
+- Real credentials confirmed working: `ODDS_API_KEY`, `NFL_DISCORD_WEBHOOK` (fixed 2026-10-04 —
+  moved from `C:\Users\kailo\Documents\.Renviron` to `C:\Users\kailo\.Renviron`; see Known Issue
+  #1). `Sys.getenv("NFL_DISCORD_WEBHOOK")` returns a non-empty value as of this writing.
 - Inline multi-line `Rscript -e '...'` has segfaulted before on this machine — write ad hoc R to
   a temp `.R` file under `tools/` (delete it after) rather than inlining.
 - `glmnet::cv.glmnet()` calls anywhere in this repo need an explicit local seed — R's global RNG
@@ -322,23 +383,34 @@ computes).
 
 ## Suggested next steps, roughly in priority order
 
-1. `git push` — local `main` (`4b90b40`) is 1 commit ahead of `origin/main` (`461fdb4`). Trivial,
-   but do it before starting new work so `origin` isn't stale.
-2. Fix the `NFL_DISCORD_WEBHOOK` visibility issue (5-minute user-side fix, unblocks real
-   notifications) — Known Issue #1, still open.
-3. Validate or reject the home-backup-QB market bias (Known Issue #4) — the one credible
-   positive-Sharpe finding this session produced. Check it against the real production staking
+1. **Pick up GitHub issue [#2](https://github.com/kailot-harris/NFL_analytics/issues/2)** —
+   extract `grade_walkforward_games()` out of `tools/weekly_accuracy_report.R` into
+   `tools/backtest_common.R`. This is the first unimplemented piece of the accuracy-trajectory
+   monitoring work (see that section above); #4 can be started in parallel. Validate by diffing
+   `tools/weekly_accuracy_report.R`'s console output before/after the refactor — must be
+   byte-for-byte identical, since this is a pure extraction with zero intended behavior change.
+2. Commit the currently-uncommitted work described in this doc's header (`docs/HANDOFF.md`
+   itself, the new `docs/SPEC_accuracy_trajectory_monitoring.md`) — nothing from this session has
+   been committed yet. Decide separately whether the pre-existing modified `cache/*.rds` files
+   (present since before this session) should be committed, reverted, or left as-is; they weren't
+   touched this session and this doc isn't the place to silently resolve that.
+3. `git push` once committed — confirm with `git log origin/main..HEAD` how many commits ahead
+   `main` actually is before pushing; the exact count has drifted since this doc's previous
+   revision.
+4. Validate or reject the home-backup-QB market bias (Known Issue #4) — the one credible
+   positive-Sharpe finding from a prior session. Check it against the real production staking
    gates, then either derive asymmetric QB-injury-penalty constants and re-run the comparison
    harness, or let it season against 2025-2026 data as a true holdout before deciding.
-4. Re-run `tools/weekly_accuracy_report.R` after each new week completes to build up a real
-   accuracy trend line (only 3 data points exist so far — not enough to distinguish signal from
-   noise yet). Worth watching whether the Week 1→3 accuracy decline (75.0%→68.8%→56.2%) continues
-   or was noise.
-5. If continuing the market-disagreement project: Phase 2's public-bet-percentage/handle data
+5. Once issue #3 lands, re-run `tools/weekly_accuracy_report.R` after each new week completes to
+   build up a real accuracy trend line (only 3 data points existed as of the last check — not
+   enough to distinguish signal from noise yet). This manual step becomes unnecessary once issues
+   #5-#7 ship (automatic per-game tracking), but is still the right thing to do in the meantime.
+6. If continuing the market-disagreement project: Phase 2's public-bet-percentage/handle data
    angle needs an explicit user decision (new paid vendor or scraping project) before pursuing —
    not started pending that.
-6. Consider fixing the stage 8/9.5 ordering gap (Known Issue #3) if a same-run-fresh ledger read
+7. Consider fixing the stage 8/9.5 ordering gap (Known Issue #3) if a same-run-fresh ledger read
    ever becomes important — not urgent today since the ledger is empty anyway.
-7. `player_props_engine.R`, team embeddings, a live dashboard, and a true rstan/cmdstanr install
+8. `player_props_engine.R`, team embeddings, a live dashboard (including the accuracy-trajectory
+   dashboard tab explicitly deferred out of the current spec), and a true rstan/cmdstanr install
    for Phase 5's Bayesian state-space idea remain explicitly deferred non-goals — only start if
    there's a concrete pull for them.
