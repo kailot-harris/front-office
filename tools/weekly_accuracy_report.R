@@ -63,89 +63,32 @@ cat("==============================================================\n\n")
 
 epa <- readRDS(CACHE_EPA_METRICS) |> mutate(game_date = as.Date(game_date))
 sch <- readRDS(CACHE_SCHEDULES)   |> mutate(gameday = as.Date(gameday))
-completed <- sch |> filter(!is.na(home_score), !is.na(away_score))
 fatigue <- readRDS(CACHE_FATIGUE_METRICS)
-avg_plays_per_game <- mean(epa$n_off_plays, na.rm = TRUE)
 
-games <- build_walkforward_games(epa, completed, calibration_seasons = CURRENT_SEASON, avg_plays_per_game)
+# grade_walkforward_games() (tools/backtest_common.R) does its own internal build_walkforward_
+# games() call (including the empty-games early return) and runs the full QB-backup / market-
+# blend / Elo-simulation / ridge+Elo-ensemble grading in one shot. We derive the pre-existing
+# "No completed games" guard and "Built N walk-forward games..." message from its per_game
+# output (nrow/week column) rather than calling build_walkforward_games() a second time
+# ourselves, so console output stays byte-for-byte identical to the old inlined version without
+# redoing that work.
+result <- grade_walkforward_games(epa, sch, fatigue, CURRENT_SEASON)
 
-if (nrow(games) == 0) {
+if (nrow(result$per_game) == 0) {
   cat(sprintf("No completed %d games found in CACHE_SCHEDULES yet — nothing to grade.\n", CURRENT_SEASON))
   quit(save = "no", status = 0)
 }
 
+per_game <- result$per_game
+by_week <- result$by_week
+overall_accuracy <- result$overall_accuracy
+overall_brier <- result$overall_brier
+overall_logloss <- result$overall_logloss
+
 cat(sprintf("Built %d walk-forward games for season %d (weeks: %s).\n\n",
-            nrow(games), CURRENT_SEASON, paste(sort(unique(games$week)), collapse = ", ")))
+            nrow(per_game), CURRENT_SEASON, paste(sort(unique(per_game$week)), collapse = ", ")))
 
-# QB-backup flags (as-of, no lookahead — get_qb_starter_table()/compute_qb_backup_flags() only
-# use each team's OWN starts strictly before the week in question, per tools/qb_injury_
-# features.R's own header).
-starter_tbl <- get_qb_starter_table(MODERN_ERA_START_SEASON:CURRENT_SEASON)
-qb_flags <- compute_qb_backup_flags(starter_tbl) |> select(season, week, team, qb_backup_started)
-games <- games |>
-  left_join(qb_flags |> rename(home_qb_backup = qb_backup_started), by = c("season", "week", "home_team" = "team")) |>
-  left_join(qb_flags |> rename(away_qb_backup = qb_backup_started), by = c("season", "week", "away_team" = "team"))
-
-imp_h <- american_to_prob(games$home_ml)
-imp_a <- american_to_prob(games$away_ml)
-games$market_prob <- ifelse(is.na(games$home_ml) | is.na(games$away_ml), NA_real_, imp_h / (imp_h + imp_a))
-
-# Elo run sequentially across full history THROUGH CURRENT_SEASON (unlike model_backtest_
-# harness.R's historical-calibration run, which stops at CURRENT_SEASON - 1 on purpose) so its
-# sequential state is properly warmed up including this season's own completed weeks.
 cat("Simulating Elo sequentially across full history (through the current season)...\n")
-elo_full_history <- sch |>
-  filter(!is.na(home_score), !is.na(away_score),
-         season >= MODERN_ERA_START_SEASON, season <= CURRENT_SEASON)
-elo_results <- run_elo_walkforward(elo_full_history, fatigue, ELO_K_FACTOR) |>
-  select(game_id, elo_margin_pts, fatigue_adj)
-games <- games |> left_join(elo_results, by = "game_id")
-
-blend_with_market <- function(model_prob, market_prob, weight) {
-  ifelse(is.na(market_prob), model_prob, weight * market_prob + (1 - weight) * model_prob)
-}
-
-home_adj <- ifelse(is.na(games$home_qb_backup), 0, as.integer(games$home_qb_backup))
-away_adj <- ifelse(is.na(games$away_qb_backup), 0, as.integer(games$away_qb_backup))
-
-ridge_margin <- predict_ridge_massey_walkforward(games) -
-  QB_INJURY_RATING_PENALTY_PTS * home_adj + QB_INJURY_RATING_PENALTY_PTS * away_adj
-elo_margin <- games$elo_margin_pts + games$fatigue_adj -
-  QB_INJURY_RATING_PENALTY_PTS * home_adj + QB_INJURY_RATING_PENALTY_PTS * away_adj
-
-ridge_prob <- blend_with_market(pnorm(ridge_margin / NFL_MARGIN_SIGMA), games$market_prob, MARKET_BLEND_WEIGHT)
-elo_prob   <- blend_with_market(pnorm(elo_margin / NFL_MARGIN_SIGMA), games$market_prob, MARKET_BLEND_WEIGHT)
-games$home_win_prob_prod <- 0.5 * ridge_prob + 0.5 * elo_prob
-
-games <- games |>
-  mutate(
-    predicted_home_win = home_win_prob_prod > 0.5,
-    correct = as.integer(predicted_home_win == (home_win == 1L)),
-    home_full = NFL_TEAMS[home_team],
-    away_full = NFL_TEAMS[away_team],
-    actual_winner = ifelse(home_win == 1, home_full, away_full),
-    predicted_winner = ifelse(predicted_home_win, home_full, away_full)
-  )
-
-per_game <- games |>
-  arrange(week, desc(home_win_prob_prod)) |>
-  select(week, away_full, home_full, home_win_prob_prod, predicted_winner, actual_winner, correct, home_margin)
-
-by_week <- games |>
-  group_by(week) |>
-  summarise(
-    n = dplyr::n(),
-    accuracy = mean(correct),
-    brier = mean((home_win_prob_prod - home_win)^2),
-    .groups = "drop"
-  )
-
-overall_accuracy <- mean(games$correct)
-overall_brier <- mean((games$home_win_prob_prod - games$home_win)^2)
-overall_logloss <- {
-  p <- pmin(pmax(games$home_win_prob_prod, 1e-6), 1 - 1e-6)
-  -mean(games$home_win * log(p) + (1 - games$home_win) * log(1 - p))
-}
 
 cat("=== Per-game results (production formula: ensemble ridge+elo, QB-injury-adjusted, market-blended) ===\n")
 for (i in seq_len(nrow(per_game))) {
@@ -160,7 +103,7 @@ cat("\n=== By week ===\n")
 print(as.data.frame(by_week), row.names = FALSE)
 
 cat(sprintf("\nOverall (n=%d games): accuracy=%.1f%%  Brier=%.4f  log-loss=%.4f\n",
-            nrow(games), 100 * overall_accuracy, overall_brier, overall_logloss))
+            nrow(per_game), 100 * overall_accuracy, overall_brier, overall_logloss))
 cat("(Brier 0.25 / log-loss 0.693 = coin-flip baseline; lower is better for both.)\n")
 cat("\nCaveats: small sample (season-to-date only); uses TODAY's EPA/Elo/QB-starter state for\n")
 cat("as-of snapshots, not necessarily what a live run produced in real time that week; grades\n")
