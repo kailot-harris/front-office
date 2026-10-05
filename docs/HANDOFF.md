@@ -198,16 +198,15 @@ is unchanged from that run (i.e. it genuinely no-opped), close #10 with that evi
 1. **Staking is not validated as profitable at the ensemble/portfolio level.** Sharpe is negative
    for every deployed-formula candidate across every parameter grid tested so far (long-shot cap,
    market-blend weight, situational/Kalman/participation features) — real-money staking should
-   stay paused. The one exception (home-backup-QB market bias, item 2 below) is a narrow,
-   single-signal result not validated to a deployment bar.
-2. **Home-backup-QB market bias: HOLD, not "needs more validation."** Gate-aware Sharpe actually
-   improves (0.0911 → 0.1066, n=217) so it's not a staking-gate artifact, but the corrected
-   bucket-screening count is 14 (not an earlier loose estimate of "~8"), and at that count the raw
-   p=0.00615 does NOT survive Bonferroni/BH correction at alpha=0.05. A true 2025-2026 holdout
-   remains blocked — no depth-chart cache exists in this repo (`load_depth_charts()` is called
-   live, never persisted). Revisit only via (a) persisting a depth-chart cache to enable a genuine
-   out-of-discovery-window holdout, or (b) treating the Bonferroni failure as disqualifying and
-   dropping it.
+   stay paused.
+2. **Home-backup-QB market bias: DROPPED (2026-10-05), not pursued further.** Gate-aware Sharpe
+   improved (0.0911 → 0.1066, n=217) so it wasn't a staking-gate artifact, but the corrected
+   bucket-screening count was 14 (not an earlier loose estimate of "~8"), and at that count the raw
+   p=0.00615 did NOT survive Bonferroni/BH correction at alpha=0.05. User made the deliberate call
+   to treat the multiple-comparisons failure as disqualifying rather than invest in a depth-chart
+   cache to pursue a true holdout — this finding is closed, not a hold-for-later. No code changes
+   resulted; `load_depth_charts()` remains called live, never persisted, and no cache for it should
+   be built on the strength of this finding alone.
 3. **Stage 8/9.5 pipeline ordering gap.** `risk_management_engine.R` (stage 8) runs before
    `bet_tracker.r` (stage 9.5) grades new bets within the same invocation — one cycle behind. Not
    urgent while the ledger is empty.
@@ -287,18 +286,18 @@ is unchanged from that run (i.e. it genuinely no-opped), close #10 with that evi
 
 ## Suggested next steps, roughly in priority order
 
-1. **Decide on the uncommitted cache state from this session's verification run (Known Issue #8).**
-   `git status --short` shows 11 modified `cache/*.rds` + 1 new `cache/playoff_odds.rds`. Commit
-   (and push, per the `a5d592f` precedent) or discard — don't leave it sitting indefinitely.
+1. **Known Issue #8 (uncommitted cache state) — DONE 2026-10-05.** Committed and pushed
+   (`7b43185`), following the `a5d592f` precedent.
 2. **Issue #10 (accuracy-tracker end-to-end scheduled validation) is observational, not a coding
-   task, and now half-evidenced** (see "Accuracy-trajectory monitoring" above). Check
+   task, and still only half-evidenced** (see "Accuracy-trajectory monitoring" above). Re-checked
+   2026-10-05: `Last Run Time` had not advanced past the already-evidenced 2026-10-05 05:15:01 run
+   (next run 2026-10-06 05:15 AM) — no new evidence yet, left open. Check
    `schtasks /Query /TN NFL_analytics_task_01 /V`'s `Last Run Time`/`Last Result` next time this
    repo is picked up — if it fired again on a day with zero newly-completed games and the history
    row count didn't grow, close #10 with that evidence.
-3. **Decide what to do with the home-backup-QB market-bias finding (Known Issue #2).** Already has
-   a HOLD recommendation from a gate-aware, multiple-comparisons-corrected check — needs a
-   deliberate decision (depth-chart-cache investment to enable a true holdout, or drop it) rather
-   than more passive accumulation of data.
+3. **Home-backup-QB market-bias finding (Known Issue #2) — DROPPED 2026-10-05, closed.** User
+   made the deliberate call: the Bonferroni/BH correction failure is disqualifying, don't invest in
+   a depth-chart cache to pursue it further. Nothing left to do here.
 4. If continuing the market-disagreement project: Phase 2's public-bet-percentage/handle data angle
    needs an explicit user decision (paid vendor or scraping project) before pursuing.
 5. Consider fixing the stage 8/9.5 ordering gap (Known Issue #3) if a same-run-fresh ledger read
