@@ -44,6 +44,75 @@ library(png)
 library(grid)
 library(reactable)
 
+# ---- Dark-mode-aware plotting/table helpers ----
+# input_dark_mode() in the UI below only toggles Bootstrap's own CSS color-mode
+# variables -- it has no effect on reactable's self-contained inline styles or
+# on ggplot's rendered-to-PNG output, so both need their own explicit dark
+# variant wired to the same input$dark_mode_toggle value (see r_dark_mode()
+# near the top of server()).
+
+gg_line_ink <- function(dark) if (isTRUE(dark)) "#5DADE2" else "#2C3E50"
+gg_text_ink <- function(dark) if (isTRUE(dark)) "#ECECEC" else "#2C3E50"
+gg_muted_ink <- function(dark) if (isTRUE(dark)) "#AAAAAA" else "#7F8C8D"
+
+# Appended to every plot's theme chain (on top of theme_minimal()/theme_void()).
+# Canvas is always transparent (paired with bg = "transparent" on every
+# renderPlot() call below) so the card's own light/dark background shows
+# through instead of a hardcoded white rectangle; axis/grid/title colors only
+# change in dark mode.
+gg_dark_overrides <- function(dark) {
+  if (!isTRUE(dark)) {
+    return(theme(
+      plot.background = element_rect(fill = "transparent", color = NA),
+      panel.background = element_rect(fill = "transparent", color = NA)
+    ))
+  }
+  theme(
+    plot.background = element_rect(fill = "transparent", color = NA),
+    panel.background = element_rect(fill = "transparent", color = NA),
+    text = element_text(color = "#ECECEC"),
+    axis.text = element_text(color = "#CCCCCC"),
+    axis.title = element_text(color = "#ECECEC"),
+    plot.title = element_text(color = "#F5F5F5"),
+    plot.subtitle = element_text(color = "#AAAAAA"),
+    panel.grid.major = element_line(color = "#3A3A3A", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    legend.text = element_text(color = "#ECECEC"),
+    legend.title = element_text(color = "#ECECEC")
+  )
+}
+
+# A separate, narrower override for theme_void()-based plots (the playoff
+# bracket, and every "no data available" placeholder plot): theme_void()
+# deliberately hides all axis text/titles, and gg_dark_overrides()'s
+# axis.text/axis.title entries would silently re-enable them (confirmed live:
+# the bracket plot grew visible numeric axis ticks/labels in dark mode without
+# this). Only the transparent-canvas part applies here; any in-plot text in
+# these charts is colored explicitly at the call site instead (see gg_text_ink()
+# usage above).
+gg_dark_overrides_void <- function(dark) {
+  theme(
+    plot.background = element_rect(fill = "transparent", color = NA),
+    panel.background = element_rect(fill = "transparent", color = NA)
+  )
+}
+
+# reactable::reactableTheme() for the three reactableOutput() tables below --
+# the package's own light-mode defaults otherwise stay a plain white table
+# regardless of bslib's dark-mode toggle.
+reactable_dark_theme <- function(dark) {
+  if (!isTRUE(dark)) return(reactable::reactableTheme())
+  reactable::reactableTheme(
+    color = "#ECECEC",
+    backgroundColor = "#262626",
+    borderColor = "#444444",
+    stripedColor = "#2F2F2F",
+    highlightColor = "#383838",
+    cellPadding = "8px 10px",
+    headerStyle = list(backgroundColor = "#1E1E1E", color = "#ECECEC", borderColor = "#444444")
+  )
+}
+
 # config.R is the single source of truth for WNBA_TEAMS (abbreviation -> full name) and
 # WNBA_SEASON_GAMES (needed for Tab 1's 50/50 reference line, at WNBA_SEASON_GAMES / 2
 # wins) -- these are the two constants summary_app.R borrows from config.R; everything
@@ -414,6 +483,14 @@ ui <- page_fluid(
 
 server <- function(input, output, session) {
 
+  # Single reactive source of truth for "is the user currently in dark mode" --
+  # feeds both the ggplot dark-mode overrides (gg_dark_overrides()) and
+  # reactable's own theme (reactable_dark_theme()) below, so every output in
+  # this app reacts to the same input_dark_mode() toggle defined in the UI.
+  r_dark_mode <- reactive({
+    isTRUE(input$dark_mode_toggle == "dark")
+  })
+
   output$standings_status <- renderUI({
     if (is.null(standings_data)) {
       div(
@@ -428,13 +505,14 @@ server <- function(input, output, session) {
   })
 
   output$standings_table <- renderReactable({
+    dark <- r_dark_mode()
     if (is.null(standings_data)) {
       empty_df <- data.frame(
         Logo = character(0), Rank = integer(0), Team = character(0), Net_Rating = numeric(0),
         Proj_Wins = numeric(0), Proj_Wins_SD = numeric(0), Proj_Losses = numeric(0),
         Win_Pct = numeric(0), Top_Core_Players = character(0)
       )
-      return(reactable(empty_df))
+      return(reactable(empty_df, theme = reactable_dark_theme(dark)))
     }
 
     df <- standings_data
@@ -506,6 +584,7 @@ server <- function(input, output, session) {
       bordered = TRUE,
       highlight = TRUE,
       defaultPageSize = 15,
+      theme = reactable_dark_theme(dark),
       columns = list(
         Logo = colDef(name = "", html = TRUE, width = 50, sortable = FALSE),
         Rank = colDef(name = "Rank", width = 60),
@@ -530,11 +609,12 @@ server <- function(input, output, session) {
   # expected_wins_var accumulator next to the existing expected_wins loop), treating each
   # team's season as a sum of independent Bernoulli trials.
   output$standings_chart <- renderPlot({
+    dark <- r_dark_mode()
     if (is.null(standings_data) || nrow(standings_data) == 0) {
       return(
         ggplot() +
-          annotate("text", x = 0, y = 0, label = "No data available") +
-          theme_void()
+          annotate("text", x = 0, y = 0, label = "No data available", color = gg_text_ink(dark)) +
+          theme_void() + gg_dark_overrides_void(dark)
       )
     }
 
@@ -618,8 +698,9 @@ server <- function(input, output, session) {
         legend.margin = margin(b = -5),
         plot.subtitle = element_text(size = 9, color = "#7F8C8D"),
         plot.margin = margin(10, 20, 10, 10)
-      )
-  })
+      ) +
+      gg_dark_overrides(dark)
+  }, bg = "transparent")
 
   # Quadrant scatter chart: Offensive Rating (x) vs. Defensive Rating (y), one point per
   # team, rendered as that team's logo (GitHub issue #65 / D&T visual pass ticket 6).
@@ -634,12 +715,13 @@ server <- function(input, output, session) {
   # "good" quadrant merely because it's high up; this avoids that trap entirely by keeping
   # the axis literal and labeling the quadrants explicitly instead.
   output$ortg_drtg_quadrant_plot <- renderPlot({
+    dark <- r_dark_mode()
     if (is.null(standings_data) || nrow(standings_data) == 0 ||
         !all(c("Off_Rating", "Def_Rating") %in% names(standings_data))) {
       return(
         ggplot() +
-          annotate("text", x = 0, y = 0, label = "No offense/defense rating data available") +
-          theme_void()
+          annotate("text", x = 0, y = 0, label = "No offense/defense rating data available", color = gg_text_ink(dark)) +
+          theme_void() + gg_dark_overrides_void(dark)
       )
     }
 
@@ -692,8 +774,9 @@ server <- function(input, output, session) {
         panel.grid.minor = element_blank(),
         plot.subtitle = element_text(size = 9, color = "#7F8C8D"),
         plot.margin = margin(14, 24, 10, 10)
-      )
-  })
+      ) +
+      gg_dark_overrides(dark)
+  }, bg = "transparent")
 
   # ---- Tab 2: Playoff Bracket (SA-2 / GitHub issue #56) ----
 
@@ -711,6 +794,8 @@ server <- function(input, output, session) {
   })
 
   output$bracket_plot <- renderPlot({
+    dark <- r_dark_mode()
+    ink <- gg_text_ink(dark)
 
     # Fail-safe empty state: this whole tab now depends on a single real-data
     # source, series_length_predictions.rds -- see the cache-path comment above
@@ -718,8 +803,8 @@ server <- function(input, output, session) {
     if (is.null(series_length_data) || is.null(series_length_data$round1_results)) {
       return(
         ggplot() +
-          annotate("text", x = 0, y = 0, label = "No playoff bracket data available") +
-          theme_void()
+          annotate("text", x = 0, y = 0, label = "No playoff bracket data available", color = ink) +
+          theme_void() + gg_dark_overrides_void(dark)
       )
     }
 
@@ -921,7 +1006,7 @@ server <- function(input, output, session) {
       geom_text(
         data = round_titles,
         aes(x = x, y = y, label = label),
-        fontface = "bold", size = 5, color = "#2C3E50"
+        fontface = "bold", size = 5, color = ink
       ) +
       geom_label(
         data = captions_df,
@@ -933,8 +1018,9 @@ server <- function(input, output, session) {
       scale_color_manual(values = c(`TRUE` = "white", `FALSE` = "#2C3E50"), guide = "none") +
       xlim(centers_x[1] - box_w, centers_x[3] + box_w) +
       ylim(min(captions_df$y) - 0.9, max(round_titles$y) + 0.4) +
-      theme_void()
-  })
+      theme_void() +
+      gg_dark_overrides_void(dark)
+  }, bg = "transparent")
 
   # ---- Tab 3: Model Calibration & Reliability (SA-3 / GitHub issue #57) ----
   #
@@ -1039,13 +1125,14 @@ server <- function(input, output, session) {
   })
 
   output$calibration_curve_plot <- renderPlot({
+    dark <- r_dark_mode()
     cal <- r_calibration_result()
 
     if (!cal$real) {
       return(
         ggplot() +
-          annotate("text", x = 0, y = 0, label = "No calibration data available") +
-          theme_void()
+          annotate("text", x = 0, y = 0, label = "No calibration data available", color = gg_text_ink(dark)) +
+          theme_void() + gg_dark_overrides_void(dark)
       )
     }
 
@@ -1053,7 +1140,7 @@ server <- function(input, output, session) {
 
     ggplot(cal_df, aes(x = mean_predicted, y = observed_win_rate)) +
       geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "#e74c3c", linewidth = 1) +
-      geom_line(color = "#af7ac5", linewidth = 1.3) +
+      geom_line(color = if (dark) "#D7B4EA" else "#af7ac5", linewidth = 1.3) +
       geom_point(aes(size = n_games), color = "#18BC9C") +
       scale_x_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, 1)) +
       scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, 1)) +
@@ -1076,8 +1163,9 @@ server <- function(input, output, session) {
         panel.grid.major = element_line(color = "#EDEDED", linewidth = 0.3),
         panel.grid.minor = element_blank(),
         plot.subtitle = element_text(size = 9, color = "#7F8C8D")
-      )
-  })
+      ) +
+      gg_dark_overrides(dark)
+  }, bg = "transparent")
 
   # ---- Tab 4: Model Comparison (SA-4 / GitHub issue #58) ----
 
@@ -1105,12 +1193,13 @@ server <- function(input, output, session) {
   })
 
   output$model_benchmark_table <- renderReactable({
+    dark <- r_dark_mode()
     if (is.null(model_benchmark_data) || nrow(model_benchmark_data) == 0) {
       empty_df <- data.frame(
         Model = character(0), Accuracy = numeric(0), `ROC-AUC` = numeric(0),
         `Brier Score` = numeric(0), `Log-Loss` = numeric(0), check.names = FALSE
       )
-      return(reactable(empty_df))
+      return(reactable(empty_df, theme = reactable_dark_theme(dark)))
     }
 
     df <- model_benchmark_data
@@ -1176,6 +1265,7 @@ server <- function(input, output, session) {
       striped = TRUE,
       bordered = TRUE,
       highlight = TRUE,
+      theme = reactable_dark_theme(dark),
       columns = list(
         Model = colDef(name = "Model"),
         Accuracy = colDef(name = "Accuracy", cell = normal_bar_cell, align = "left"),
@@ -1193,11 +1283,12 @@ server <- function(input, output, session) {
   })
 
   output$window_sweep_plot <- renderPlot({
+    dark <- r_dark_mode()
     if (is.null(window_sweep_data) || nrow(window_sweep_data) == 0) {
       return(
         ggplot() +
-          annotate("text", x = 0, y = 0, label = "No rolling-window-size sweep data available") +
-          theme_void()
+          annotate("text", x = 0, y = 0, label = "No rolling-window-size sweep data available", color = gg_text_ink(dark)) +
+          theme_void() + gg_dark_overrides_void(dark)
       )
     }
 
@@ -1208,9 +1299,9 @@ server <- function(input, output, session) {
     ggplot(df, aes(x = Window_Size, y = ROC_AUC)) +
       geom_ribbon(
         aes(ymin = ROC_AUC_CI_Lower, ymax = ROC_AUC_CI_Upper),
-        fill = "#2C3E50", alpha = 0.15
+        fill = gg_line_ink(dark), alpha = 0.15
       ) +
-      geom_line(color = "#2C3E50", linewidth = 1.1) +
+      geom_line(color = gg_line_ink(dark), linewidth = 1.1) +
       geom_point(color = "#18BC9C", size = 2) +
       scale_x_continuous(breaks = seq(3, 25, by = 2)) +
       labs(
@@ -1225,8 +1316,9 @@ server <- function(input, output, session) {
         panel.grid.major = element_line(color = "#EDEDED", linewidth = 0.3),
         panel.grid.minor = element_blank(),
         plot.subtitle = element_text(size = 9, color = "#7F8C8D")
-      )
-  })
+      ) +
+      gg_dark_overrides(dark)
+  }, bg = "transparent")
 
   # ---- Tab 5: Prediction Accuracy Tracker (SA-5 / GitHub issue #59) ----
   #
@@ -1316,6 +1408,7 @@ server <- function(input, output, session) {
   })
 
   output$accuracy_table <- renderReactable({
+    dark <- r_dark_mode()
     real_rows <- r_accuracy_filtered()
     df <- if (is.null(real_rows)) {
       data.frame(
@@ -1345,11 +1438,24 @@ server <- function(input, output, session) {
       bordered = TRUE,
       highlight = TRUE,
       defaultPageSize = 15,
+      theme = reactable_dark_theme(dark),
+      # Row tint text colors are swapped for dark mode: the light-mode colors
+      # below (#0B4A3E/#7B241C) are near-black and unreadable against a dark
+      # table background, so dark mode gets a lighter tint + lighter ink
+      # instead of reusing the light-mode pair at a different opacity.
       rowStyle = function(index) {
         if (isTRUE(df$correct[index])) {
-          list(backgroundColor = "rgba(24, 188, 156, 0.18)", color = "#0B4A3E")
+          if (dark) {
+            list(backgroundColor = "rgba(24, 188, 156, 0.25)", color = "#BFF5E6")
+          } else {
+            list(backgroundColor = "rgba(24, 188, 156, 0.18)", color = "#0B4A3E")
+          }
         } else {
-          list(backgroundColor = "rgba(231, 76, 60, 0.15)", color = "#7B241C")
+          if (dark) {
+            list(backgroundColor = "rgba(231, 76, 60, 0.25)", color = "#FFD9D2")
+          } else {
+            list(backgroundColor = "rgba(231, 76, 60, 0.15)", color = "#7B241C")
+          }
         }
       },
       columns = list(
@@ -1376,12 +1482,13 @@ server <- function(input, output, session) {
   outputOptions(output, "accuracy_table", suspendWhenHidden = FALSE)
 
   output$accuracy_cumulative_plot <- renderPlot({
+    dark <- r_dark_mode()
     real_rows <- r_accuracy_filtered()
     if (is.null(real_rows)) {
       return(
         ggplot() +
-          annotate("text", x = 0, y = 0, label = "No prediction accuracy data available") +
-          theme_void()
+          annotate("text", x = 0, y = 0, label = "No prediction accuracy data available", color = gg_text_ink(dark)) +
+          theme_void() + gg_dark_overrides_void(dark)
       )
     }
 
@@ -1394,7 +1501,7 @@ server <- function(input, output, session) {
 
     ggplot(df, aes(x = game_date, y = cumulative_accuracy)) +
       geom_hline(yintercept = 0.5, linetype = "dashed", color = "#B0B0B0") +
-      geom_line(color = "#2C3E50", linewidth = 1.1) +
+      geom_line(color = gg_line_ink(dark), linewidth = 1.1) +
       geom_point(color = "#18BC9C", size = 2) +
       scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, 1)) +
       labs(
@@ -1412,8 +1519,9 @@ server <- function(input, output, session) {
         panel.grid.major = element_line(color = "#EDEDED", linewidth = 0.3),
         panel.grid.minor = element_blank(),
         plot.subtitle = element_text(size = 9, color = "#7F8C8D")
-      )
-  })
+      ) +
+      gg_dark_overrides(dark)
+  }, bg = "transparent")
 }
 
 shinyApp(ui = ui, server = server)
