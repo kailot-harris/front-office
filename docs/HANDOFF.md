@@ -1,4 +1,246 @@
-# Handoff — 2026-10-04 (Continuing thread: `summary_app.R` — Playoff Bracket tab rebuilt as a real tournament tree, Tab 5 reordered, commit `2089543` pushed to `main`) — CURRENT STATE FOR THIS THREAD (read this section first)
+# Handoff — 2026-10-04 (Continuing thread: `summary_app.R` — team logos, Tab 5 collapsible log, Tab 1 win-projection chart reworked into a dot-and-whisker plot, commit `888d75c` pushed to `main`) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
+
+**This is a continuation of the Playoff Bracket tree / Tab 5 reorder thread immediately
+below** (same `summary_app.R` file, different session). This thread is a UI/UX pass
+requested directly by the user in conversation — no GitHub issue was filed for any of it
+(same "ad hoc feature" pattern as the dark-mode-toggle/methodology-panel thread two
+sections down). Read `CLAUDE.md` first if you haven't already (unchanged, still applies).
+
+## Stale-state corrections to the section immediately below
+
+That section's own "Concrete next step" listed open items — re-checked against live state
+this session, not trusted from the prior write-up:
+
+1. **GitHub issues #55-#59 (SA-1..SA-5)** — confirmed **CLOSED** via `gh issue list --state
+   all` (closed `2026-10-04T20:05:3x`, same as the section two below this one already
+   noted). Nothing to do here.
+2. **6 stale `worktree-agent-*` branches** — confirmed **gone**: `git branch --list
+   "worktree-agent-*"` returns nothing, `git branch -a` shows only `main`.
+3. **renv "out-of-sync"/"missing DESCRIPTION files" warnings** — a plain `Rscript.exe`
+   invocation with no project code (`cat("test\n")`) printed **no warning** this session,
+   and `renv::status()` reports *"No issues found — the project is in a consistent
+   state."* This may just be this session's own `renv::snapshot()` run (see below)
+   clearing whatever was out of sync at the time, not a root-cause fix of the
+   long-standing pattern prior sessions flagged — don't assume it's permanently resolved,
+   but it is clean as of right now.
+4. **The still-open item from two sections below carries forward unchanged**: a single
+   real, non-headless, manual browser session clicking through all 5 tabs together has
+   still never been done by any session, including this one. Every verification this
+   session (like every session before it) was headless-Chrome via `shinytest2`.
+
+## What this thread is
+
+Three user requests, handled in sequence in one session:
+
+1. **"let's improve the UI + UX of the summary app. I want to use the team logo icons in
+   the visualizations if possible."** — added real team logos to Tab 1 (standings table +
+   chart) and Tab 2 (playoff bracket boxes).
+2. **"Tab 5: make the log a drop down similar to methodology on tab 1"** — wrapped the
+   "Real Resolved Predictions" table in a closed-by-default `accordion()`, matching Tab 1's
+   existing Net Rating methodology panel.
+3. **"plot on tab 1 needs a major rework. what is the industry standard for this type of
+   projection?"** followed by **"Uncertainty bars on a horizontal dot plot with a 50/50
+   line"** — replaced Tab 1's win-projection bar chart with a FiveThirtyEight/ESPN-BPI-style
+   horizontal dot-and-whisker plot, with a real (not fabricated) ~95% CI and a .500
+   reference line.
+
+## What exists now
+
+### 1. Team logos (`www/logos/<ABBR>_logo.png`, 15 files, new)
+
+Fetched from ESPN's public team-logo CDN (`https://a.espncdn.com/i/teamlogos/wnba/500/
+<espn-slug>.png`) and saved under `config.R`'s `WNBA_TEAMS` abbreviations. **Filename
+pattern is `<ABBR>_logo.png`, not a bare `<ABBR>.png`** — Connecticut Sun's abbreviation is
+`CON`, and `CON` (with or without an extension) is a reserved Windows device name (same
+family as `PRN`/`AUX`/`NUL`/`COM1-9`/`LPT1-9`). A bare `CON.png` can be `ls`-listed by Git
+Bash's POSIX emulation but **cannot be opened via a normal Win32 path** — `git add` failed
+outright mid-session with `error: open("www/logos/CON.png"): No such file or directory`
+even though the file visibly existed on disk. If any future WNBA franchise is ever
+abbreviated `PRN`, `AUX`, `NUL`, or `COM1-9`/`LPT1-9`, the same collision will recur; the
+`_logo` suffix on every file (not just `CON`) sidesteps this for any future case too.
+
+`summary_app.R:52-61` sources `config.R` into an isolated `new.env()` once at the top of
+the file (not line-by-line `get()` calls scattered around) to pull `WNBA_TEAMS` (abbr →
+full name) and `WNBA_SEASON_GAMES` (44, used for the .500 line below) — the only two
+constants this file borrows from `config.R`; this doesn't violate the file's own "no shared
+code path with `app.R`" design note at the top, since `config.R` is a pure constants file,
+not `app.R` itself.
+
+Logo helper functions, `summary_app.R:84-131`:
+- `LOGO_DIR` (`:84`) — resolved to an **absolute path** via `normalizePath()` at source
+  time, not a bare relative `"www/logos"` string.
+- `shiny::addResourcePath("wnba_logos", LOGO_DIR)` (`:92`) — registered explicitly, not
+  relying on Shiny's implicit `www/`-folder auto-mount.
+- `team_abbr_for()` / `team_logo_path()` / `team_logo_raster()` (with a small in-session
+  raster cache, `.logo_raster_cache`) / `team_logo_img_tag()` (`:96-131`) — all fail-safe,
+  return `NA`/`NULL`/`""` on any lookup miss rather than erroring.
+
+**A real bug caught and fixed by looking at a live screenshot, not by an error-free
+headless pass**: both the absolute-path resolution and the explicit `addResourcePath()`
+call exist *because* the first attempt (relative `"www/logos"` string, implicit `www/`
+auto-mount) rendered every logo blank in a real shinytest2/Chrome session, even though it
+worked perfectly in a standalone `Rscript` render — `shiny::runApp()` changes the process
+working directory to the app's own directory for the life of the server, and this repo's
+own headless-probe convention (a wrapper `app.R` that `setwd()`s and sources
+`summary_app.R` from a different directory — see `CLAUDE.md`) makes the directory mismatch
+even more likely to bite in production too. 0 `.shiny-output-error` elements were true in
+*both* the broken and fixed states — the same "absence of an error is not sufficient"
+lesson the Playoff Bracket tree thread (two sections below) already recorded once.
+
+Used in:
+- Tab 1 standings table (`summary_app.R:414`) — a `Logo` column of `<img>` tags via
+  `team_logo_img_tag()`, rendered with `sanitize.text.function = function(x) x` on
+  `renderTable()` (needed for the HTML to render as an image instead of being escaped).
+- Tab 2 playoff bracket (`summary_app.R:728` onward) — each decided bracket box gets a team
+  logo in its left third via `annotation_custom(rasterGrob(...))`, with the team-name text
+  label shifted right to make room (`nodes_df$text_x`/`logo_x`, added this session). Pending
+  ("TBD") Finals boxes have no logo, same as before.
+- Tab 1 win-projection chart (`summary_app.R:478`) — see below.
+
+### 2. Tab 5: collapsible "Real Resolved Predictions" log (`summary_app.R:378-384`)
+
+The table that used to be an always-open `card()` is now `accordion(open = FALSE,
+accordion_panel("Real Resolved Predictions ...", tableOutput("accuracy_table")))` —
+visually matching Tab 1's existing Net Rating methodology accordion.
+
+**A real bug caught and fixed, same "don't trust an error-free check" pattern as above**:
+wrapping the table in a *closed-by-default* accordion made Shiny **permanently suspend its
+rendering** — confirmed live via DOM inspection (`aria-expanded` flipped to `"true"` on
+click, but `#accuracy_table`'s `innerHTML` stayed empty, 0 rows, even after the panel
+visibly opened). Unlike a `tabsetPanel`, a bslib accordion's expand/collapse doesn't trigger
+Shiny's visibility-based re-render hook. Fixed with `outputOptions(output, "accuracy_table",
+suspendWhenHidden = FALSE)` (`summary_app.R:1074`), which forces the table to render in the
+background regardless of the accordion's open/closed state. Re-verified after the fix: 36
+real resolved rows present in the DOM both before and after toggling, 0
+`.shiny-output-error` elements. **If any future tab ever puts a `tableOutput`/`plotOutput`
+inside a closed-by-default `accordion_panel`, apply the same `suspendWhenHidden = FALSE`
+fix up front** — this is a general bslib-accordion gotcha, not specific to this one table.
+
+### 3. Tab 1: win-projection chart reworked into a horizontal dot-and-whisker plot
+
+Replaced the old horizontal bar chart (`geom_col`) with a FiveThirtyEight/ESPN-BPI-style
+plot (`summary_app.R:428-521`, `output$standings_chart`):
+- **Dot** = `Proj_Wins` point estimate, one row per team, ordered highest-to-lowest
+  top-to-bottom, team logo as the row label (no axis text).
+- **Whisker** = a real ~95% CI, `Proj_Wins ± 1.96 × Proj_Wins_SD`, clipped to
+  `[0, WNBA_SEASON_GAMES]`. **This is not a fabricated/placeholder band** — see below for
+  where `Proj_Wins_SD` comes from.
+- **Dashed vertical line at `WNBA_SEASON_GAMES / 2`** (22 wins, read from `config.R`, not
+  hardcoded), labeled `.500 (22 wins)`.
+- **Color split at the playoff line**: `Rank <= 8` (8 of 15 teams make the playoffs, per Tab
+  2's bracket) is teal (`#18BC9C`), everyone else is a muted grey-blue (`#7F93A8`), with a
+  top legend ("Playoff position (top 8)" / "Outside playoff line").
+
+**`Proj_Wins_SD` is new, added to `roster_bottom_up_engine.R`'s `project_all_wnba_teams()`**
+(`roster_bottom_up_engine.R:668,696-701,715-722`): an **analytic** standard deviation on the
+win total, derived from the model's own already-computed per-opponent home/away win
+probabilities (`p_win_home`/`p_win_away`, same loop that already computes the `Proj_Wins`
+expectation) — each team's season is modeled as `games_per_opponent/2` independent home
+Bernoulli(`p_win_home`) trials plus `games_per_opponent/2` independent away
+Bernoulli(`p_win_away`) trials against each of the other 14 opponents, so `Var(total wins) =
+Σ_opponents [(games_per_opponent/2)·p_home·(1-p_home) + (games_per_opponent/2)·p_away·
+(1-p_away)]` by independence-of-sum-of-independent-Bernoullis. `summary_app.R` turns this
+into the ±1.96·SD interval via a normal approximation (reasonable for ~44 trials spread
+across 14 opponents). **Explicitly not fabricated**: when asked for uncertainty bars, the
+alternative considered and rejected was inventing a plausible-looking band with no real
+basis — this derivation was written instead specifically to avoid that.
+
+`cache/projected_wnba_standings.rds` was **regenerated this session** by re-running
+`roster_bottom_up_engine.R` directly (`"C:\Program Files\R\R-4.5.2\bin\Rscript.exe"
+roster_bottom_up_engine.R`) to populate the new `Proj_Wins_SD` column — real fitted values
+this session, ~3.0–3.2 wins across all 15 teams (sensible spread for a 44-game season), not
+placeholders. The new column also now appears in Tab 1's standings table (nothing hides
+it). Every other consumer of this cache (`app.R`, `market_odds_engine.R`,
+`playoff_simulator.R`, `rapm_engine.R`, `live_game_listener.R`) was checked before adding
+the column — all access it by column name, never positionally, so the schema addition is
+safe for them.
+
+## Environment/tooling notes new this session
+
+- **`png` package was not in `renv.lock`** before this session (needed for
+  `png::readPNG()` + `grid::rasterGrob()` to draw logos inside `ggplot2` plots via
+  `annotation_custom()`) — installed (`install.packages("png", ...)`, binary, no compile)
+  and pinned via `renv::snapshot(prompt = FALSE)`. The resulting `renv.lock` diff also
+  backfilled some metadata-only fields on unrelated existing entries (`duckdb`, `vip`) —
+  reviewed, no version changes, safe.
+- **Windows reserved device names collide with team abbreviations** — see the `CON.png`
+  writeup above. Worth remembering for *any* future per-team-abbreviation filename in this
+  repo, not just logos.
+- **`geom_errorbarh()` is deprecated in the installed ggplot2 (4.0.0+)** — the Tab 1 chart
+  uses `geom_errorbar(..., orientation = "y")` instead, which is silent (no deprecation
+  warning) and behaves identically for a horizontal error bar.
+
+## The reusable workflow this session followed (repeat this for future `summary_app.R` UI work)
+
+Same two-step discipline the Playoff Bracket tree thread (two sections below) established,
+applied three times this session (once per user request):
+1. **Standalone `ggplot2` render first** — a throwaway `tools/tmp_*_preview.R` writing a
+   `.png`, read with the Read tool, deleted after. Caught nothing new this session (all
+   three standalone previews looked right first try), but is what *would* catch a layout
+   bug before it reaches the browser.
+2. **Live headless-Chrome verification against the real app** — a throwaway wrapper
+   `tools/tmp_summary_probe_dir/app.R` (`setwd("../..")` then
+   `source("summary_app.R")$value`) driven by a throwaway `tools/tmp_summary_probe_run.R`
+   using `shinytest2::AppDriver` with `CHROMOTE_CHROME` set explicitly and a fixed
+   `shiny_args = list(port = ...)`. **This is what actually caught both real bugs this
+   session** (blank logos, blank Tab 5 table) — neither was visible in the standalone
+   render, both were only visible by actually looking at (or DOM-querying) the live app.
+   - **New gotcha this session, not previously documented**: a screenshot taken
+     immediately after `app$wait_for_idle()` can still be blank/stale even though Shiny's
+     own `shiny:value` events already fired — `Sys.sleep(3)` after `wait_for_idle()` was
+     needed before `get_screenshot()` reliably showed real content. A 1.5s sleep was not
+     enough and produced a convincingly-empty-looking screenshot that could be
+     misread as "nothing rendered" when the actual content was present moments later.
+   - For verifying the Tab 5 accordion specifically, screenshot timing was unreliable
+     enough that **DOM-level assertions** (`document.querySelectorAll(...).length`,
+     `getAttribute('aria-expanded')`) were used as the real evidence instead of trusting a
+     screenshot — worth doing this any time a toggle/collapse interaction is being verified,
+     not just a static render.
+   - All scratch files (`tools/tmp_*_preview.R/.png`, `tools/tmp_summary_probe_dir/`,
+     `tools/tmp_summary_probe_run*.R`, `tools/tmp_screenshot_*.png`,
+     `tools/tmp_check_*.R`) were deleted after each use — confirmed via `git status
+     --short` showing a clean tree before the final commit; none are part of the repo.
+
+## What's actually changed
+
+- `summary_app.R` — modified, committed, pushed (`888d75c`). 1,108 lines (up from 900 at
+  the start of this session).
+- `roster_bottom_up_engine.R` — modified, committed, pushed (`888d75c`). 801 lines.
+  `project_all_wnba_teams()`'s i/j loop extended with the `expected_wins_var` accumulator;
+  `Proj_Wins_SD` added to the saved `team_df`.
+- `cache/projected_wnba_standings.rds` — regenerated, committed, pushed (`888d75c`). Same
+  15-row schema as before plus `Proj_Wins_SD`.
+- `www/logos/*_logo.png` — 15 new files, committed, pushed (`888d75c`). ~740KB total.
+- `renv.lock` — modified, committed, pushed (`888d75c`). `png` pinned; incidental metadata
+  backfill on `duckdb`/`vip` entries (see above).
+- Nothing else touched. No other `.R` scripts, no pipeline files, no other docs (this
+  section is the first edit to `docs/HANDOFF.md` this session).
+
+## Concrete next step
+
+1. **The still-open item from two sections below carries forward again**: a single real,
+   non-headless, manual browser session clicking through all 5 tabs together has still
+   never been done by any session. This session's own checks were all headless/automated
+   and scoped to the specific tabs/features it touched (Tab 1, Tab 2's bracket boxes, Tab
+   5), same pattern as every session before it.
+2. **No further UI/UX requests are currently pending** — the user's three asks this session
+   (logos, Tab 5 dropdown, Tab 1 dot-plot rework) are all implemented, verified live, and
+   pushed. If the user asks for more visual polish, the two real-bug patterns documented
+   above (relative-path/working-directory mismatches for any new static asset; `bslib`
+   accordion + `suspendWhenHidden` for any new collapsible panel) are the first two things
+   to check before assuming a new feature "just didn't render."
+3. **If Tab 2's bracket semifinals resolve**, the existing next-step from the thread two
+   sections below still applies unchanged (regenerate
+   `cache/series_length_predictions.rds` via `tools/series_length_predictor.R`) — this
+   session did not touch that cache or that tab's data logic, only added logos to its
+   existing boxes.
+4. Unrelated to this thread: every other thread further down this file is exactly where its
+   own section leaves it — this thread touched none of them beyond the stale-state
+   corrections noted above.
+
+---
+
+
 
 **This is a continuation of the dark-mode/methodology-panel thread immediately below** (same
 `summary_app.R` file, different session). That thread's own "Concrete next step" #2 ("run
