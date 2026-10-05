@@ -241,6 +241,24 @@ run_stage("playoff_simulator.R", "Simulate Full NFL Playoff Bracket (reseeding, 
           call_fn = "run_playoff_simulator",
           output   = CACHE_PLAYOFF_SIMULATION)
 
+# 7.5. Playoff-clinching probability engine (issues #11-#14/#16; wired in under issue #15).
+# Writes CACHE_PLAYOFF_ODDS (config.R). Reads CACHE_TEAM_RATINGS from stage 5
+# (team_ratings_engine.R) and CACHE_SCHEDULES from stage 1 (daily_ingest.R) — exactly the same
+# dependency shape as stage 7's playoff_simulator.R immediately above, which run_playoff_odds_
+# engine() reuses (.seed_conference()) rather than duplicates (see this script's own header).
+# There is no dependency between the two playoff-related stages ON EACH OTHER — either order
+# relative to stage 7 would be correct — placed directly after it (not before) so the two
+# playoff stages read as one grouped block in this file, matching docs/SPEC_playoff_odds_table.md
+# decision #6's framing of it as "the other playoff-bracket stage." Runs every pipeline
+# execution with no cadence gate (per spec decision #6 — unlike stage 9.5/11's bet-ledger/
+# accuracy-tracker no-op days, run_playoff_odds_engine() always recomputes its
+# N_SEASON_SIMULATIONS-trial Monte Carlo and always rewrites CACHE_PLAYOFF_ODDS). Also dispatches
+# its own AFC/NFC two-field embed to NFL_DISCORD_WEBHOOK (issue #14) — a second real Discord post
+# this pipeline run, independent of stage 10's notify_bets.R dispatch below.
+run_stage("playoff_odds_engine.R", "Compute NFL Playoff-Clinching Probabilities (Monte Carlo season simulation)",
+          call_fn = "run_playoff_odds_engine",
+          output   = CACHE_PLAYOFF_ODDS)
+
 # 8. Risk management engine (Phase 5, task P5-B; engine itself built under P5-A).
 # Writes CACHE_RISK_STATE (config.R). No required reads from other repo caches — falls back to a
 # clearly-labeled SYNTHETIC_FALLBACK ledger since no real betting ledger exists yet (see
