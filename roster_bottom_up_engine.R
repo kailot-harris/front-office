@@ -656,9 +656,20 @@ project_all_wnba_teams <- function() {
   depth_conc_vec <- vapply(all_teams, function(t) .depth_signal_scalar(depth_signal, t, "depth_minutes_concentration"), numeric(1))
 
   expected_wins <- numeric(n_teams)
+  # Analytic win-total variance, not a fabricated/placeholder band: each team's season is
+  # modeled as games_per_opponent/2 independent home Bernoulli(p_win_home) trials plus
+  # games_per_opponent/2 independent away Bernoulli(p_win_away) trials against each of the
+  # other n_teams-1 opponents (the same per-opponent home/away split project_all_wnba_teams()
+  # already uses for the expectation above), so Var(total wins) = sum over all opponents j of
+  # [ (games_per_opponent/2)*p_home*(1-p_home) + (games_per_opponent/2)*p_away*(1-p_away) ],
+  # by independence-of-sum-of-independent-Bernoullis. summary_app.R turns this into a +/-1.96 SD
+  # (~95%) interval via a normal approximation to the resulting Poisson-binomial-like sum, which
+  # is standard for this many near-independent trials (44 games across 14 opponents).
+  expected_wins_var <- numeric(n_teams)
 
   for (i in seq_along(all_teams)) {
     team_i_wins <- 0
+    team_i_var  <- 0
     for (j in seq_along(all_teams)) {
       if (i == j) next
 
@@ -683,8 +694,11 @@ project_all_wnba_teams <- function() {
       p_win_away  <- pnorm(margin_away / sigma)
 
       team_i_wins <- team_i_wins + (0.5 * p_win_home + 0.5 * p_win_away) * games_per_opponent
+      team_i_var  <- team_i_var + (games_per_opponent / 2) *
+        (p_win_home * (1 - p_win_home) + p_win_away * (1 - p_win_away))
     }
-    expected_wins[i] <- round(team_i_wins, 1)
+    expected_wins[i]     <- round(team_i_wins, 1)
+    expected_wins_var[i] <- team_i_var
   }
 
   team_df <- team_df |>
@@ -697,11 +711,15 @@ project_all_wnba_teams <- function() {
       # app.R, market_odds_engine.R and playoff_simulator.R. Any consumer treating it numerically
       # got silent NAs from as.numeric(). Caches stay typed for computation; percent formatting is
       # done at display time by app.R (scales::percent()), per the Phase 4 interface contract.
-      Win_Pct     = round(Proj_Wins / WNBA_SEASON_GAMES, 4)
+      Win_Pct     = round(Proj_Wins / WNBA_SEASON_GAMES, 4),
+      # See the expected_wins_var derivation comment above the i/j loop -- an analytic
+      # standard deviation on the win total, not a placeholder, consumed by summary_app.R's
+      # Tab 1 uncertainty-bar chart.
+      Proj_Wins_SD = round(sqrt(expected_wins_var), 2)
     ) |>
     arrange(desc(Proj_Wins)) |>
     mutate(Rank = row_number()) |>
-    select(Rank, Team, Net_Rating = True_NRtg, Proj_Wins, Proj_Losses, Win_Pct, Top_Core_Players = Top_Stars)
+    select(Rank, Team, Net_Rating = True_NRtg, Proj_Wins, Proj_Wins_SD, Proj_Losses, Win_Pct, Top_Core_Players = Top_Stars)
 
   # Console preview only — Win_Pct is percent-formatted for THIS printout, never for the cache
   # (M-8): the saved team_df below keeps the numeric proportion.

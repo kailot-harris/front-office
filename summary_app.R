@@ -40,6 +40,96 @@
 library(shiny)
 library(bslib)
 library(ggplot2)
+library(png)
+library(grid)
+
+# config.R is the single source of truth for WNBA_TEAMS (abbreviation -> full name) and
+# WNBA_SEASON_GAMES (needed for Tab 1's 50/50 reference line, at WNBA_SEASON_GAMES / 2
+# wins) -- these are the two constants summary_app.R borrows from config.R; everything
+# else about this app's "no shared code path with app.R" design (see header comment) is
+# unaffected, since config.R is a pure constants file, not app.R itself. Fail-safe
+# tryCatch matches the pattern app.R itself already uses to source config.R.
+.config_constants <- tryCatch(
+  {
+    config_env <- new.env()
+    source("config.R", local = config_env)
+    config_env
+  },
+  error = function(e) NULL
+)
+WNBA_TEAMS <- if (!is.null(.config_constants)) get("WNBA_TEAMS", envir = .config_constants) else NULL
+WNBA_SEASON_GAMES <- if (!is.null(.config_constants)) get("WNBA_SEASON_GAMES", envir = .config_constants) else 44
+
+# ---- Team logo helpers ----
+# Logos live in www/logos/<ABBR>_logo.png (ABBR matches config.R's WNBA_TEAMS names),
+# fetched from ESPN's public team-logo CDN. Every lookup is fail-safe: a missing/unmapped
+# team name returns NULL and callers fall back to text-only rendering, never an error.
+#
+# Filename is "<ABBR>_logo.png", NOT a bare "<ABBR>.png": Connecticut Sun's abbreviation
+# is CON, and "CON.png"/"CON" is a reserved Windows device name (same family as PRN, AUX,
+# NUL, COM1-9, LPT1-9) -- a bare CON.png cannot even be opened via a normal Win32 path,
+# which made `git add` fail outright with "No such file or directory" despite the file
+# visibly existing on disk. The _logo suffix sidesteps this for CON today and for any
+# future team abbreviation that happens to collide with a reserved name.
+#
+# LOGO_DIR is resolved to an ABSOLUTE path once here, at source time -- not a bare
+# relative "www/logos" string. shiny::runApp() changes the process working directory to
+# the app's own directory for the life of the server (and a wrapper app.R that sources
+# this file from a different directory, as this repo's own headless-probe convention
+# does -- see CLAUDE.md -- makes that mismatch even more likely), so a relative path
+# evaluated later inside a render/reactive context can silently resolve against the
+# wrong directory and make every logo vanish with no error, caught only by actually
+# looking at a live screenshot (confirmed empirically during this change: logos
+# rendered fine in a standalone Rscript but were blank over shinytest2 until this fix).
+LOGO_DIR <- normalizePath("www/logos", mustWork = FALSE)
+
+# Likewise, the <img src="..."> tags used in the standings table rely on Shiny's static
+# file serving, which by default only auto-mounts a "www/" folder relative to the app's
+# own directory (the same mismatch risk as above). Registering an explicit resource
+# path with an absolute target, once, here, decouples logo serving from wherever the
+# app happens to be launched from.
+tryCatch(
+  shiny::addResourcePath("wnba_logos", LOGO_DIR),
+  error = function(e) NULL
+)
+
+team_abbr_for <- function(team_full_name) {
+  if (is.null(WNBA_TEAMS)) return(NA_character_)
+  hit <- names(WNBA_TEAMS)[match(team_full_name, WNBA_TEAMS)]
+  if (length(hit) == 0) NA_character_ else hit
+}
+
+team_logo_path <- function(team_full_name) {
+  abbr <- team_abbr_for(team_full_name)
+  if (is.na(abbr)) return(NULL)
+  p <- file.path(LOGO_DIR, paste0(abbr, "_logo.png"))
+  if (file.exists(p)) p else NULL
+}
+
+# Small in-session cache so each distinct team's PNG is only decoded once per app run,
+# not once per plot re-render.
+.logo_raster_cache <- new.env(parent = emptyenv())
+
+team_logo_raster <- function(team_full_name) {
+  path <- team_logo_path(team_full_name)
+  if (is.null(path)) return(NULL)
+  cached <- .logo_raster_cache[[path]]
+  if (!is.null(cached)) return(cached)
+  img <- tryCatch(png::readPNG(path), error = function(e) NULL)
+  if (!is.null(img)) .logo_raster_cache[[path]] <- img
+  img
+}
+
+# <img> tag for HTML table cells (sanitize.text.function must be identity at the call
+# site for this to render as an image rather than escaped text).
+team_logo_img_tag <- function(team_full_name, height_px = 24) {
+  abbr <- team_abbr_for(team_full_name)
+  if (is.na(abbr) || is.null(team_logo_path(team_full_name))) return("")
+  sprintf(
+    '<img src="wnba_logos/%s_logo.png" height="%d" style="vertical-align: middle;" alt="%s logo">',
+    abbr, height_px, htmltools::htmlEscape(team_full_name)
+  )
+}
 
 STANDINGS_CACHE_PATH <- "cache/projected_wnba_standings.rds"
 
@@ -285,9 +375,13 @@ ui <- page_fluid(
         card_header("Cumulative Accuracy Over Time (Running Win Rate as Games Resolve)"),
         plotOutput("accuracy_cumulative_plot", height = "450px")
       ),
-      card(
-        card_header("Real Resolved Predictions (synthetic/pending/unresolvable rows excluded)"),
-        tableOutput("accuracy_table")
+      br(),
+      accordion(
+        open = FALSE,
+        accordion_panel(
+          "Real Resolved Predictions (synthetic/pending/unresolvable rows excluded)",
+          tableOutput("accuracy_table")
+        )
       )
     )
   )
@@ -311,15 +405,26 @@ server <- function(input, output, session) {
   output$standings_table <- renderTable({
     if (is.null(standings_data)) {
       data.frame(
-        Rank = integer(0), Team = character(0), Net_Rating = numeric(0),
+        Logo = character(0), Rank = integer(0), Team = character(0), Net_Rating = numeric(0),
         Proj_Wins = numeric(0), Proj_Losses = numeric(0), Win_Pct = numeric(0),
         Top_Core_Players = character(0)
       )
     } else {
-      standings_data
+      df <- standings_data
+      df$Logo <- vapply(df$Team, team_logo_img_tag, character(1), height_px = 28)
+      df[, c("Logo", setdiff(names(df), "Logo"))]
     }
-  }, striped = TRUE, hover = TRUE, bordered = TRUE)
+  }, striped = TRUE, hover = TRUE, bordered = TRUE, sanitize.text.function = function(x) x)
 
+  # Industry-standard season-projection chart (FiveThirtyEight/ESPN BPI style): a
+  # horizontal dot-and-whisker plot ordered by projected wins, not a bar chart -- bars
+  # imply 0 is the meaningful comparison point, but win totals are read against .500 (a
+  # 50/50 reference line) and the playoff cutoff, not against zero. The whisker is a real
+  # ~95% CI (Proj_Wins +/- 1.96*Proj_Wins_SD), not a fabricated band: Proj_Wins_SD is an
+  # analytic standard deviation derived from the model's own per-opponent home/away win
+  # probabilities (see roster_bottom_up_engine.R's project_all_wnba_teams(), the
+  # expected_wins_var accumulator next to the existing expected_wins loop), treating each
+  # team's season as a sum of independent Bernoulli trials.
   output$standings_chart <- renderPlot({
     if (is.null(standings_data) || nrow(standings_data) == 0) {
       return(
@@ -330,13 +435,86 @@ server <- function(input, output, session) {
     }
 
     df <- standings_data
-    df$Team <- factor(df$Team, levels = df$Team[order(df$Proj_Wins)])
+    has_sd <- "Proj_Wins_SD" %in% names(df) && !all(is.na(df$Proj_Wins_SD))
+    df$sd <- if (has_sd) df$Proj_Wins_SD else 0
+    df$y_pos <- rank(df$Proj_Wins, ties.method = "first")
 
-    ggplot(df, aes(x = Team, y = Proj_Wins)) +
-      geom_col(fill = "#2C3E50") +
-      coord_flip() +
-      labs(x = NULL, y = "Projected Wins", title = "Projected Wins by Team") +
-      theme_minimal(base_size = 13)
+    ci_mult <- 1.96  # ~95% normal-approximation interval
+    df$ci_lower <- pmax(0, df$Proj_Wins - ci_mult * df$sd)
+    df$ci_upper <- pmin(WNBA_SEASON_GAMES, df$Proj_Wins + ci_mult * df$sd)
+
+    # 8 of 15 teams make the playoffs (see Tab 2's bracket: 4 best-of-X series in Round
+    # 1), so Rank <= 8 is the playoff line -- matches the already-computed Rank column
+    # rather than re-deriving a cutoff independently.
+    df$playoff_bound <- df$Rank <= 8
+
+    half_line_x <- WNBA_SEASON_GAMES / 2
+
+    x_data_min <- min(df$ci_lower, half_line_x)
+    x_data_max <- max(df$ci_upper, half_line_x)
+    x_span     <- x_data_max - x_data_min
+
+    logo_half_h <- 0.38
+    logo_left   <- x_data_min - x_span * 0.16
+    logo_right  <- x_data_min - x_span * 0.02
+
+    p <- ggplot(df, aes(x = Proj_Wins, y = y_pos)) +
+      geom_vline(xintercept = half_line_x, linetype = "dashed", color = "#B0B0B0", linewidth = 0.7) +
+      annotate(
+        "text", x = half_line_x, y = nrow(df) + 0.55, label = sprintf(".500 (%.0f wins)", half_line_x),
+        size = 3.2, color = "#7F8C8D", vjust = 0
+      ) +
+      geom_errorbar(
+        aes(xmin = ci_lower, xmax = ci_upper, color = playoff_bound),
+        orientation = "y", width = 0.22, linewidth = 0.9, alpha = 0.75
+      ) +
+      geom_point(aes(color = playoff_bound), size = 3.4) +
+      geom_text(
+        aes(label = sprintf("%.1f", Proj_Wins), color = playoff_bound),
+        hjust = -0.35, vjust = -0.9, size = 3.3, show.legend = FALSE
+      )
+
+    for (i in seq_len(nrow(df))) {
+      raster <- team_logo_raster(df$Team[i])
+      if (is.null(raster)) next
+      p <- p + annotation_custom(
+        rasterGrob(raster, interpolate = TRUE),
+        xmin = logo_left, xmax = logo_right,
+        ymin = df$y_pos[i] - logo_half_h, ymax = df$y_pos[i] + logo_half_h
+      )
+    }
+
+    sd_caption <- if (has_sd) {
+      "Whiskers: ~95% interval (projected wins +/- 1.96 SD) from the model's per-opponent win probabilities."
+    } else {
+      "Whiskers unavailable (Proj_Wins_SD not present in this cache) -- showing point estimates only."
+    }
+
+    p +
+      scale_color_manual(
+        values = c(`TRUE` = "#18BC9C", `FALSE` = "#7F93A8"),
+        labels = c(`TRUE` = "Playoff position (top 8)", `FALSE` = "Outside playoff line"),
+        name = NULL
+      ) +
+      scale_y_continuous(breaks = NULL) +
+      coord_cartesian(
+        xlim = c(logo_left, x_data_max + x_span * 0.08),
+        ylim = c(0.3, nrow(df) + 0.9), clip = "off"
+      ) +
+      labs(
+        x = "Projected Wins (44-game season)", y = NULL,
+        title = "Projected Wins by Team",
+        subtitle = sd_caption
+      ) +
+      theme_minimal(base_size = 13) +
+      theme(
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        legend.position = "top",
+        legend.margin = margin(b = -5),
+        plot.subtitle = element_text(size = 9, color = "#7F8C8D"),
+        plot.margin = margin(10, 20, 10, 10)
+      )
   })
 
   # ---- Tab 2: Playoff Bracket (SA-2 / GitHub issue #56) ----
@@ -463,6 +641,11 @@ server <- function(input, output, session) {
       nodes_df$team,
       paste0(wrapped_team, "\n", nodes_df$record)
     )
+    # Decided nodes get a team logo in the left third of their box, so the text label
+    # shifts right to make room; pending ("TBD") nodes have no logo and stay centered.
+    logo_x_offset <- 0.75
+    nodes_df$text_x <- ifelse(nodes_df$pending, nodes_df$x, nodes_df$x + logo_x_offset)
+    nodes_df$logo_x <- nodes_df$x - logo_x_offset
 
     caption_for <- function(series) {
       paste(
@@ -519,7 +702,7 @@ server <- function(input, output, session) {
     nodes_decided <- nodes_df[!nodes_df$pending, ]
     nodes_pending <- nodes_df[nodes_df$pending, ]
 
-    ggplot() +
+    p <- ggplot() +
       geom_segment(
         data = connectors,
         aes(x = x, xend = xend, y = y, yend = yend),
@@ -535,10 +718,26 @@ server <- function(input, output, session) {
         aes(x = x, y = y),
         width = box_w, height = NODE_H, fill = "#F4F6F6",
         color = "#B0B0B0", linewidth = 0.8, linetype = "dashed"
-      ) +
+      )
+
+    # Team logos in the left portion of each decided box (see nodes_df$logo_x above);
+    # pending ("TBD") boxes have no team yet, so no logo to draw.
+    logo_half_w <- 0.42
+    logo_half_h <- 0.40
+    for (i in seq_len(nrow(nodes_decided))) {
+      raster <- team_logo_raster(nodes_decided$team[i])
+      if (is.null(raster)) next
+      p <- p + annotation_custom(
+        rasterGrob(raster, interpolate = TRUE),
+        xmin = nodes_decided$logo_x[i] - logo_half_w, xmax = nodes_decided$logo_x[i] + logo_half_w,
+        ymin = nodes_decided$y[i] - logo_half_h, ymax = nodes_decided$y[i] + logo_half_h
+      )
+    }
+
+    p +
       geom_text(
         data = nodes_df,
-        aes(x = x, y = y, label = label, color = is_favorite),
+        aes(x = text_x, y = y, label = label, color = is_favorite),
         fontface = "bold", size = 3.3, lineheight = 1.05
       ) +
       geom_text(
@@ -864,6 +1063,15 @@ server <- function(input, output, session) {
       )
     }
   }, striped = TRUE, hover = TRUE, bordered = TRUE)
+
+  # Lives inside a closed-by-default accordion panel (see UI block above). Shiny
+  # suspends rendering for outputs that start out hidden and, unlike a tabsetPanel,
+  # a bslib accordion's expand/collapse doesn't trigger Shiny's own visibility-change
+  # re-render hook -- without this, the table stays permanently blank even after the
+  # panel is opened (confirmed live: aria-expanded flips to "true" on click, but
+  # accuracy_table's innerHTML stays empty). suspendWhenHidden = FALSE forces it to
+  # render in the background regardless of the accordion's open/closed state.
+  outputOptions(output, "accuracy_table", suspendWhenHidden = FALSE)
 
   output$accuracy_cumulative_plot <- renderPlot({
     real_rows <- r_accuracy_filtered()
