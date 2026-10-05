@@ -1,3 +1,228 @@
+# Handoff — 2026-10-05 (Continuing thread: all 6 Dunks & Threes tickets (#60-65) AND the entire control-panel + auth tree (#43-54, all slices except #49) implemented and merged to `main` — 14 of 16 open GitHub issues closed out by code, commit `13919fc` is `HEAD`) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
+
+**This supersedes the "spec interview only, nothing implemented yet" framing of the section
+immediately below** (same day, earlier in the day — that section's own content, the spec and
+issue list it describes, is still accurate and worth reading for ticket rationale, just not its
+"nothing implemented yet" status). This session also picked up the entire separate, older
+control-panel/auth issue tree (#43-54, filed 2026-09-26, described starting at the
+`2026-09-26 (New thread: interactive control-panel app spec...)` section far below) and finished
+every slice in it except #49.
+
+## What this thread did
+
+Ran all 16 then-open GitHub issues through implementation in parallel waves (`subagent-brief`
+skill, `isolation: "worktree"`, up to 4 concurrent dispatches), with the orchestrator
+independently re-verifying every subagent's own self-reported evidence before merging — this
+caught several real problems subagents' own probes missed or caused (see "Bugs found" below).
+Partway through, this machine hit two real constraints: a Claude session rate limit (resumed
+after reset) and sustained system-wide memory pressure that made `shinytest2::AppDriver` (real
+headless Chrome) unusable for the back half of the session — confirmed by `main`'s own
+**already-merged, previously browser-tested** `summary_app.R` failing to launch via `AppDriver`
+identically to every new change, i.e. not caused by any of this session's diffs. The later
+tickets (#63, #50, #53's final verification, #54) were implemented directly by the orchestrator
+(not dispatched to subagents) and verified via `shiny::testServer()` instead of a real browser —
+see "The reusable workflow" below for why that turned out to be the *better* verification tool,
+not just a fallback.
+
+## Issue tracker is now stale — flagging, not fixing silently
+
+**`gh issue list --state open` still shows all 16 of these issues as `OPEN`.** Nobody in this
+session closed any of them (closing issues is a visible, judgment-call action this skill's
+git-safety conventions leave to the repo owner, not something to do unprompted while writing a
+handoff). The actual code state, verified against `git log`/file contents, not the tracker:
+
+| # | Title | Code status |
+|---|---|---|
+| 60 | Reactable: Standings table | **Merged**, `98d37c2` |
+| 61 | Reactable: Model benchmark table | **Merged**, `40272f5` |
+| 62 | Reactable: Accuracy table | **Merged**, `972ab89` |
+| 63 | Typography & chart-minimalism visual pass | **Merged**, `530c42c` |
+| 64 | Offense/Defense rating split | **Merged**, `0365dbb` |
+| 65 | Quadrant scatter chart (ORTG vs DRTG) | **Merged**, `b3b56c9` |
+| 43 | Add interactive control-panel app (epic) | Parent of 46-50; all its slices except 49 merged |
+| 44 | Add reusable multi-user auth system (epic) | Parent of 51-54; **all 4 slices merged** |
+| 46 | Slice 2: control_panel_app.R MVP | **Merged**, `0d60468` |
+| 47 | Slice 3: Dependency staleness check | **Merged**, `1b87d28` |
+| 48 | Slice 4: Multi-select queue + run lock | **Merged**, `eaf1736` |
+| 49 | Slice 5: Extract shared render helpers | **NOT STARTED** — see "Concrete next step" |
+| 50 | Slice 6: Network access + password gate + docs | **Merged**, `9491801` |
+| 51 | Slice 1: auth_utils.R core | **Merged**, `92c6987` |
+| 52 | Slice 2: Signup key-phrase gate | **Merged**, `ab029c3` |
+| 53 | Slice 3: Mountable login module | **Merged**, `dd9a491` |
+| 54 | Slice 4: Wire auth into control_panel_app.R | **Merged**, `13919fc` |
+
+Whoever picks this up should close 43, 44, 46-48, 50-54, 60-65 on the tracker (43/44 only once
+49 is also done, since they're epics covering the whole slice list) — left undone here
+deliberately, not forgotten.
+
+## What's actually implemented (new/changed files, with real line counts)
+
+| File | Status | Notes |
+|---|---|---|
+| `summary_app.R` | 1,419 lines (was 1,108 before this thread) | All 3 tables (`standings_table`, `model_benchmark_table`, `accuracy_table`) are `reactable` now, not `renderTable`. New `ortg_drtg_quadrant_plot`. New top-level `tags$style()` CSS block (card-header small-caps, padding). Every `renderPlot` now has the thin-gridline `theme()` extension. |
+| `roster_bottom_up_engine.R` | +~120 lines | `project_all_wnba_teams()`'s cache output gained `Off_Rating`/`Def_Rating` columns, reconciling exactly (`Off_Rating - Def_Rating == Net_Rating`, verified to floating-point tolerance) to the pre-existing `Net_Rating`. New `config.R` constant: `WNBA_OFF_REB_SHARE <- 0.24` (derivation comment in `config.R`). |
+| `auth_utils.R` | 222 lines, new | `create_user()`, `verify_user()` (constant-time, no username-enumeration leak via a fixed dummy bcrypt hash), `create_account_if_authorized()` (key-phrase-gated signup). SQLite store at `cache/auth_users.sqlite`, fully decoupled from `logs/analytics.duckdb`. |
+| `auth_login_module.R` | 229 lines, new | `mod_login_ui(id)`/`mod_login_server(id)`, mountable in any Shiny app. Returns a `reactive(TRUE/FALSE)`. No persisted session (same-tab refresh = new session = re-login, by design). |
+| `control_panel_app.R` | 724 lines, new | Pick stage(s) from `pipeline_stages.R`'s `PIPELINE_STAGES` registry, multi-select queue, per-stage staleness gate with override, cross-session run lock (`.PIPELINE_RUN_LOCK`, in-memory, package-scope, `session$onSessionEnded()` release + 20-min fallback self-clear), real login wall (`mod_login_ui("auth")`/`mod_login_server("auth")`) gating the whole control-panel body. `CONTROL_PANEL_PASSWORD` (the #50 placeholder) is **fully dead**, zero remaining reference. |
+| `docs/CONTROL_PANEL_SETUP.md` | 71 lines, new (rewritten once, by #54) | Setup instructions for `CONTROL_PANEL_SIGNUP_KEY` + network launch. The first version (written by #50) documented `CONTROL_PANEL_PASSWORD` instead — fully replaced, not left as a stale alternate path. |
+| `tools/demo_login_app.R` | 98 lines, new | Throwaway demo app for #53's own QA. **Had a real bug, now fixed** — see "Bugs found" below. |
+| `tools/headless_login_module_probe.R` | 265 lines, new | Live-browser probe for the login module. Last known-good run (before `AppDriver` became unusable) passed all 5 criteria after the demo-app fix. |
+| `tools/headless_control_panel_probe.R`, `tools/headless_control_panel_staleness_probe.R`, `tools/headless_control_panel_queue_lock_probe.R` | Pre-existing (from #46/#47/#48), now **stale** | Flagged with a header comment each: none of them log in first, so every element they drive (`run_btn`, `stage_id`, etc.) no longer exists pre-auth as of #54. Need a login step added (same `set_module_input()`-via-`Shiny.setInputValue()` pattern as `headless_login_module_probe.R`) before they can run again. Not updated this session — see "Environment notes." |
+
+## Bugs found and fixed this session (not pre-existing, introduced by subagents this session)
+
+1. **`control_panel_app.R` (issue #46's own agent): hardcoded absolute-path `setwd()`.**
+   `PROJECT_DIR <- "c:/Users/kailo/kayceeslices/WNBA Analytics"; setwd(PROJECT_DIR)` silently
+   escaped into the **main repo** whenever the script ran from a git worktree at a different
+   path (which coincidentally still existed on this machine) — would have broken under any
+   worktree-based testing, including this session's own verification pattern. Fixed: no
+   `setwd()` at all, `.CONTROL_PANEL_ROOT <- getwd()` captured once at source time instead
+   (matches every other script's "assume cwd = project root" convention per `CLAUDE.md`).
+2. **`tools/demo_login_app.R` (issue #53's own agent): a genuine infinite reactive loop.**
+   `protected_render_count(protected_render_count() + 1)` inside a `renderUI` that also
+   *reads* `logged_in()` — reading `protected_render_count()` un-isolated inside the same
+   render subscribes that render to its own future invalidation, so the write immediately
+   re-triggers it, forever. This is what caused every single "hung"/"timed out"/"killed for
+   low memory" result on a *successful* login path, across multiple independent verification
+   attempts (both live-browser and, initially, `testServer()`) — misdiagnosed for a while as
+   environment/memory pressure before the pattern (always hangs at the exact same semantic
+   point: the only code path that reaches this line) gave it away. Fixed with `isolate()`
+   around the read. **This was in the throwaway test fixture, not in `auth_login_module.R`
+   itself**, which was clean the whole time (confirmed: `verify_user()` timed at ~0.2s
+   standalone, completely unrelated to the hang).
+3. **Three separate agents' own `shinytest2::AppDriver` probes pointed `app_dir` at a bare
+   `.R` *file* path** (e.g. `app_dir = file.path(project_dir, "summary_app.R")`) instead of a
+   directory — `shinytest2` silently falls back to looking for a literal `./app.R` in the
+   resulting directory, launching the **wrong app** (whichever `app.R` happens to live
+   alongside the intended file) with no error. One agent's saved "passing" screenshot was
+   actually of `app.R` (the unrelated betting-terminal dashboard), not the file it claimed to
+   test. The correct pattern (used successfully by later tickets): write a throwaway wrapper
+   `app.R` in a tempdir that does `setwd(project_dir); source("real_target.R")$value`, and
+   point `AppDriver` at that tempdir.
+4. **A test probe (issue #48's own agent) polled the wrong Shiny session's output.**
+   `status_text_js(tab_b)` (a second, independent browser tab/session, used to observe the
+   cross-session lock) was also used to check whether the *first* session's queue had
+   finished — but `status_ui` is per-session reactive state; `tab_b` never ran anything, so
+   its own `status_ui` stayed `"Idle."` forever regardless of what `tab_a` was doing. Fixed by
+   reading `app_a$get_text("#status_ui")` (the session that actually started the queue)
+   instead.
+
+## Environment/tooling notes (new this session)
+
+- **`shinytest2::AppDriver` (real headless Chrome) became unusable system-wide partway
+  through this session** and stayed that way for the rest of it — confirmed not caused by any
+  code change here (tested against `main`'s own pre-existing, previously browser-verified
+  `summary_app.R`, which failed identically: `Error in value[[3L]](cond): Error sourcing
+  .../app.R`, no further detail surfaced). System free memory was observed falling from
+  ~4.5GB to ~3.5GB over the course of the session with no Chrome/R processes of this
+  session's own still running at the time of several kills — this machine runs multiple
+  concurrent Claude Code sessions (see `ListAgents`-visible peer sessions), and the likely
+  cause is memory contention from those, not anything fixable from within this repo. If
+  `AppDriver` is still failing in a future session, don't assume it's your own change; check
+  `Get-CimInstance Win32_OperatingSystem | Select-Object FreePhysicalMemory` and whether other
+  sessions are active first.
+- **`shiny::testServer()` is a far better primary verification tool than a live headless
+  browser for this repo's Shiny apps**, not just a fallback when Chrome is unavailable — it
+  runs in-process (no Chrome, no httpuv networking, no port-conflict/zombie-process risk),
+  completes in under a second for scenarios that took the browser-based probes 60-480+
+  seconds (or never finished), and its determinism is exactly what caught bugs #2 and #4
+  above that the flakier browser probes had been silently failing to catch (misattributing
+  the hang to environment issues). Pattern used repeatedly this session:
+  `source("control_panel_app.R")` (or whichever app file) at top level, then
+  `testServer(server, { session$setInputs(...); ...; cat(isolate(some_reactive())) })`. Two
+  *separate* top-level `testServer()` calls simulate two independent sessions (e.g. two real
+  logged-in users) correctly for most purposes, but note: a session's `onSessionEnded()`
+  callbacks fire when its `testServer()` block *returns*, so this does NOT correctly simulate
+  "two sessions alive at the same moment" for anything that depends on one session's teardown
+  timing relative to another still-open one (e.g. don't trust it for testing a lock still
+  held by session A while session B's block is executing — session A has already "ended" by
+  then). For that specific shape, the live-browser raw-`chromote`-tab pattern in
+  `tools/headless_control_panel_queue_lock_probe.R` is the right tool, when Chrome is healthy.
+- **A git worktree's own `renv` library is often NOT pre-populated** even though
+  `renv.lock` is correct — `renv::restore(prompt = FALSE)` (links from the shared cache,
+  near-instant, no network) is needed once per fresh worktree before any `library()` call
+  that isn't already in every worktree's base state will work. Symptom if skipped:
+  `Error in library(X) : there is no package called 'X'` even though `X` is genuinely in
+  `renv.lock`.
+- **`.claude/worktrees/` is not in `.gitignore`.** 11 worktrees (552MB total, all from this
+  session's `subagent-brief` dispatches, all already merged into `main`) are sitting
+  untracked at `.claude/worktrees/*` right now — `git status --short` shows them as a single
+  `?? .claude/worktrees/` line. Not deleted this session (removal needs
+  `--confirmed-by-user` per the `subagent-brief` skill's own rules, and that confirmation
+  wasn't sought this session). Flagging two separate things for whoever picks this up: (a) a
+  `.gitignore` entry for `.claude/worktrees/` would prevent an accidental `git add -A` from
+  ever staging this, (b) once confirmed safe, `"C:\Program Files\R\R-4.5.2\bin\Rscript.exe"
+  "C:\Users\kailo\.claude\skills\subagent-brief\scripts\cleanup_worktrees.R" remove --all
+  --confirmed-by-user` would reclaim the 552MB — all 11 branches are already merged, nothing
+  would be lost.
+- **Several `cache/*.rds` and `data/*.csv` files show as modified in `git status` that this
+  session never touched** (`betting_ledger.rds`, `copula_wilson_pra.rds`,
+  `injury_data_cache.rds`, `latest_player_props.rds`, `latest_value_bets.rds`,
+  `odds_history.rds`, `playoff_series_wnba_demo.rds`, `prediction_accuracy_log.{csv,rds}`,
+  `risk_state.rds`, `rolling_bet_metrics.rds`, `value_bets_history.rds`,
+  `team_embeddings.csv`, `team_similarity_matrix.csv`) — left exactly as found, not staged or
+  committed by this session. Almost certainly a concurrent peer session's pipeline run on
+  this shared machine, not a regression; worth a quick `git diff --stat` check before trusting
+  these files' current on-disk state for anything.
+- `cache/projected_wnba_standings.rds` **was** intentionally regenerated and committed this
+  session (commit `3a91c68`) specifically to pick up #64's new `Off_Rating`/`Def_Rating`
+  columns — that one file's change was deliberate, unlike the list above.
+
+## The reusable workflow this session converged on (repeat this for future subagent-heavy tickets)
+
+1. Write the brief via the `subagent-brief` skill (`templates/full.md`), dispatch with
+   `isolation: "worktree"`.
+2. **Never trust the subagent's own final JSON result at face value** — re-run at least one
+   cited command or re-read at least one cited `file:line` yourself, per the skill's own
+   rule. This session, that rule caught all 4 bugs listed above; none of them would have
+   surfaced from reading the subagent's report alone (all 4 subagents reported `"status":
+   "success"` with plausible-looking evidence).
+3. Prefer `shiny::testServer()` over a live `AppDriver` browser probe as the *first*
+   verification attempt for Shiny reactive-logic claims (order-of-execution, lock state,
+   gating) — reserve the real browser for things that generically can't be simulated
+   in-process (actual DOM rendering/CSS, multi-tab-alive-simultaneously timing). See
+   "Environment/tooling notes" above for the one real gap in `testServer()`'s simulation.
+4. When a worktree's `library()` call fails with "there is no package called", run
+   `renv::restore(prompt = FALSE)` in that worktree before assuming it's a real missing
+   dependency.
+5. Commit in the worktree, `git merge --no-ff` into `main` from the main checkout (not inside
+   the worktree), then record the result via `runlog.R record-result` /
+   `runlog.R set-status --status merged` so the run log stays an accurate audit trail.
+6. If a ticket's own file conflicts with a sibling ticket's (e.g. multiple D&T tickets all
+   touching `summary_app.R`), merging them one at a time in sequence auto-resolved cleanly in
+   every case this session — no manual conflict resolution was actually needed, despite every
+   brief flagging it as a risk.
+
+## Concrete next step
+
+1. **Issue #49** (Slice 5: "Extract shared render helpers + inline results in control
+   panel") is the only unstarted ticket from this thread. Its own brief/QA explicitly calls
+   it "the highest-risk slice for regressing the existing, working dashboard" and requires
+   visually confirming `app.R`'s charts are pixel-equivalent before/after refactoring
+   `app.R`'s `server` function to extract shared render helpers into a new
+   `dashboard_render_helpers.R` — this is **not** safely doable via `testServer()` alone (it
+   needs real rendered pixels, not just reactive-value assertions), so **do not start this
+   until `shinytest2::AppDriver` is confirmed healthy again** (quick check: `Rscript -e
+   'shinytest2::AppDriver$new(app_dir = "."); cat("OK")'` from the repo root, or re-run
+   `tools/headless_dashboard_probe.R` against `app.R` directly). Read `control_panel_app.R`'s
+   `run_pipeline_stage_captured()` (the existing captured-text-output renderer `control_panel_app.R`
+   currently uses) before starting, since #49's whole point is replacing that with real
+   chart/table previews once a stage's own cache is written.
+2. Once #49 lands, close out issue #43 (the control-panel epic) and #44 (the auth epic) on
+   the tracker, plus every individual slice listed as "Merged" in the table above.
+3. Update the three stale headless probes (`tools/headless_control_panel_probe.R`,
+   `tools/headless_control_panel_staleness_probe.R`,
+   `tools/headless_control_panel_queue_lock_probe.R`) to log in first — each has a header
+   comment now pointing at `tools/headless_login_module_probe.R`'s `set_module_input()`
+   pattern to copy. Do this once `AppDriver` is healthy, so the update can actually be
+   live-tested rather than guessed at blind (this session's own mistake-pattern #3 above is
+   exactly the kind of bug that creeps in when a probe script is edited without being run).
+4. Decide what to do about the `.claude/worktrees/` situation flagged above (`.gitignore`
+   entry + confirmed cleanup) — not urgent, but 552MB is real disk, and the missing
+   `.gitignore` entry is a live risk for an accidental future commit.
+
+---
+
 # Handoff — 2026-10-05 (New thread: Dunks & Threes visual-language emulation for `summary_app.R` — spec interview only, nothing implemented yet, 6 GitHub issues filed: #60-#65) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
 
 **This is a separate thread from everything below it** — grounded in the same `summary_app.R`
