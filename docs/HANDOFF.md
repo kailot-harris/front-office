@@ -48,21 +48,25 @@ stage 7.5 (`playoff_odds_engine.R`), added by issue #15.
 | 6 | `fatigue_engine.R` | `run_fatigue_engine()` | `CACHE_FATIGUE_METRICS` |
 | 7 | `playoff_simulator.R` | `run_playoff_simulator()` | `CACHE_PLAYOFF_SIMULATION` — bracket-only Monte Carlo (Wild Card→Super Bowl) for the 14 teams in the real current field, using the NFL's real tiebreaker procedure to seed that field |
 | 7.5 | `playoff_odds_engine.R` | `run_playoff_odds_engine()` | `CACHE_PLAYOFF_ODDS` — **NEW (issue #15, this session)**. All-32-team make-the-playoffs probability (not round-by-round odds — that stays exclusive to stage 7). `N_SEASON_SIMULATIONS`=1000 trials/run, ~244s real measured runtime in the full-pipeline context. Discord dispatch live-verified (HTTP 204). See "Playoff-clinching probability table — SHIPPED" below |
-| 8 | `risk_management_engine.R` | `run_risk_management()` | `CACHE_RISK_STATE` — reads the real ledger when it has RESOLVED bets, else `SYNTHETIC_FALLBACK` (currently the latter — ledger is empty) |
-| 9 | `market_odds_engine.R` | `run_market_odds_engine()` | `CACHE_LATEST_VALUE_BETS`, `CACHE_ODDS_HISTORY` — real Odds API odds; staking gated by `MIN_SAMPLE_GAMES_FOR_STAKE` and `LONGSHOT_DECIMAL_ODDS_CAP` |
-| 9.5 | `bet_tracker.r` | `run_bet_tracker()` | `CACHE_BETTING_LEDGER` — real bet ledger, writer+grader (currently 0 rows) |
+| 8 | `market_odds_engine.R` | `run_market_odds_engine()` | `CACHE_LATEST_VALUE_BETS`, `CACHE_ODDS_HISTORY` — real Odds API odds; staking gated by `MIN_SAMPLE_GAMES_FOR_STAKE` and `LONGSHOT_DECIMAL_ODDS_CAP` |
+| 9 | `bet_tracker.r` | `run_bet_tracker()` | `CACHE_BETTING_LEDGER` — real bet ledger, writer+grader (currently 0 rows) |
+| 9.5 | `risk_management_engine.R` | `run_risk_management()` | `CACHE_RISK_STATE` — reads the real ledger when it has RESOLVED bets, else `SYNTHETIC_FALLBACK` (currently the latter — ledger is empty). **Reordered this session (closes Known Issue #3)** — moved from old stage 8 (before market_odds_engine.R/bet_tracker.r) to after bet_tracker.r so a bet graded earlier in the same run is reflected immediately, not one cycle behind |
 | 10 | `notify_bets.R` | `run_notify_bets()` | No cache output. Discord dispatch live-verified (HTTP 204) |
 | 11 | `accuracy_tracker.R` | `run_accuracy_tracker()` | `CACHE_ACCURACY_HISTORY` — no `output` declared in its `run_stage()` call deliberately (a no-new-games day is a clean no-op, not a staleness warning). Discord dispatch live-verified (HTTP 204) |
 
 Stage 7.5 sits immediately after stage 7 (same `CACHE_TEAM_RATINGS`/`CACHE_SCHEDULES` dependency
 shape, no dependency between the two playoff-related stages on each other — grouped together in
-the file per `docs/SPEC_playoff_odds_table.md` decision #6's framing). Stage 9.5 runs after stage
-9 (needs its output to record today's picks) but before stage 10. Stage 11 (`accuracy_tracker.R`)
-runs last. Note: GitHub issue text and spec docs for the accuracy-tracker feature call it "stage
-12" in prose; the file's own sequential comment numbering says "11." (doesn't count 7.5/9.5 as
-whole numbers) — don't be surprised by the mismatch.
-**Known ordering gap, unchanged**: stage 8 still runs *before* stage 9.5 grades new bets within
-the same pipeline invocation — one cycle behind. Not urgent while the ledger is empty.
+the file per `docs/SPEC_playoff_odds_table.md` decision #6's framing). Stage 9.5
+(`risk_management_engine.R`) now runs after stage 9 (`bet_tracker.r`) — see the reorder note above
+— but before stage 10. Stage 11 (`accuracy_tracker.R`) runs last. Note: GitHub issue text and spec
+docs for the accuracy-tracker feature call it "stage 12" in prose; the file's own sequential
+comment numbering says "11." (doesn't count 7.5/9.5 as whole numbers) — don't be surprised by the
+mismatch.
+**Ordering gap fixed in code this session, not yet live-verified** (Known Issue #3): `risk_management_engine.R` now runs
+after `bet_tracker.r` grades new bets within the same pipeline invocation, so risk state reflects
+same-run grading instead of being one cycle behind. No other stage reads `CACHE_RISK_STATE`, so
+the reorder has no other dependency impact. Not yet verified with a real full-pipeline run (see
+Known Issue #3 below) — the reorder is syntax-checked (`parse()` succeeded) but not run live.
 
 **Real full-pipeline run this session (verifying issue #15)**: completed in 392.58 total seconds;
 stage 7.5 alone took 244.46s of that. Every stage ran cleanly; `.check_stage_output()` reported
@@ -207,9 +211,16 @@ is unchanged from that run (i.e. it genuinely no-opped), close #10 with that evi
    cache to pursue a true holdout — this finding is closed, not a hold-for-later. No code changes
    resulted; `load_depth_charts()` remains called live, never persisted, and no cache for it should
    be built on the strength of this finding alone.
-3. **Stage 8/9.5 pipeline ordering gap.** `risk_management_engine.R` (stage 8) runs before
-   `bet_tracker.r` (stage 9.5) grades new bets within the same invocation — one cycle behind. Not
-   urgent while the ledger is empty.
+3. **Stage 8/9.5 pipeline ordering gap — FIXED this session, not yet live-verified.**
+   `risk_management_engine.R` moved from old stage 8 (ran before `market_odds_engine.R`/
+   `bet_tracker.r`) to new stage 9.5 (runs after `bet_tracker.r` grades new bets) in
+   `run_full_pipeline.R`. Confirmed via `grep` that `CACHE_RISK_STATE` has no other reader, so the
+   reorder carries no other dependency risk. Syntax-checked with `parse()` only — **has not been
+   exercised with a real `run_full_pipeline.R` invocation yet**; since the real ledger is still
+   empty (0 rows), the behavioral fix (same-run grading reflected in risk state) can't be
+   demonstrated live until there's a real RESOLVED bet to grade. Next session: re-run the full
+   pipeline once there's ledger activity and confirm `risk_management_engine.R`'s log output
+   reflects that run's own `bet_tracker.r` grading, not the prior run's.
 4. **Four competing NFL player-ID schemes** — hardened via `player_id_crosswalk.R`, but remains
    something any *future* player-level join must use rather than a fresh unverified
    `load_ff_playerids()` call.
@@ -300,8 +311,10 @@ is unchanged from that run (i.e. it genuinely no-opped), close #10 with that evi
    a depth-chart cache to pursue it further. Nothing left to do here.
 4. If continuing the market-disagreement project: Phase 2's public-bet-percentage/handle data angle
    needs an explicit user decision (paid vendor or scraping project) before pursuing.
-5. Consider fixing the stage 8/9.5 ordering gap (Known Issue #3) if a same-run-fresh ledger read
-   ever becomes important — not urgent today since the ledger is empty anyway.
+5. **Known Issue #3 (ordering gap) — fixed in code this session, needs live verification.**
+   `risk_management_engine.R` was moved after `bet_tracker.r` in `run_full_pipeline.R`. Re-run the
+   full pipeline once the real ledger has a RESOLVED bet to grade, and confirm
+   `risk_management_engine.R`'s run reflects that same-run grading rather than the prior run's.
 6. `player_props_engine.R`, team embeddings, a live dashboard, and a true rstan/cmdstanr install for
    the Kalman state-space model remain explicitly deferred non-goals — only start if there's a
    concrete pull for them.

@@ -259,15 +259,7 @@ run_stage("playoff_odds_engine.R", "Compute NFL Playoff-Clinching Probabilities 
           call_fn = "run_playoff_odds_engine",
           output   = CACHE_PLAYOFF_ODDS)
 
-# 8. Risk management engine (Phase 5, task P5-B; engine itself built under P5-A).
-# Writes CACHE_RISK_STATE (config.R). No required reads from other repo caches — falls back to a
-# clearly-labeled SYNTHETIC_FALLBACK ledger since no real betting ledger exists yet (see
-# risk_management_engine.R header and docs/task_assignments_phase4.md).
-run_stage("risk_management_engine.R", "Compute Bankroll Drawdown / Kelly-Tier Risk State",
-          call_fn = "run_risk_management",
-          output   = CACHE_RISK_STATE)
-
-# 9. Market odds / value-betting engine (Phase 6, task P6-B; engine itself built under P6-A).
+# 8. Market odds / value-betting engine (Phase 6, task P6-B; engine itself built under P6-A).
 # Writes CACHE_LATEST_VALUE_BETS and CACHE_ODDS_HISTORY (config.R) — two outputs from one stage,
 # declared together per the daily_ingest.R / team_ratings_engine.R stages' multi-output precedent
 # above. Reads cache/projected_matchups.rds (stage 5, team_ratings_engine.R) as its sole model-
@@ -277,16 +269,11 @@ run_stage("market_odds_engine.R", "Fetch Live NFL Odds & Identify +EV Value Bets
           call_fn = "run_market_odds_engine",
           output   = c(CACHE_LATEST_VALUE_BETS, CACHE_ODDS_HISTORY))
 
-# 9.5. Real bet ledger writer/grader (model-quality remediation, Known Issue #2).
-# Writes CACHE_BETTING_LEDGER (config.R). Reads cache/latest_value_bets.rds (stage 9 above) to
+# 9. Real bet ledger writer/grader (model-quality remediation, Known Issue #2).
+# Writes CACHE_BETTING_LEDGER (config.R). Reads cache/latest_value_bets.rds (stage 8 above) to
 # record today's real, staked value picks as PENDING, and cache/schedules_cache.rds (stage 1)
 # to grade any already-recorded picks whose games have since completed — must therefore come
-# after stage 9. NOTE: this means stage 8's risk_management_engine.R run EARLIER in this same
-# pipeline invocation still saw last run's ledger state (or the SYNTHETIC_FALLBACK seed, on a
-# fresh/empty ledger) — its REAL_LEDGER read only picks up bets graded here on the NEXT pipeline
-# run, one cycle behind. Not fixed by reordering stages 8/9/9.5 in this pass (that would be a
-# larger, separately-reasoned architecture change); documented here and in docs/HANDOFF.md
-# instead of silently accepted.
+# after stage 8.
 #
 # EXPECTED BENIGN C-2 WARNING: unlike every other stage, bet_tracker.r only rewrites
 # CACHE_BETTING_LEDGER when there is a real new pick to append OR a real pending bet whose
@@ -298,6 +285,18 @@ run_stage("market_odds_engine.R", "Fetch Live NFL Odds & Identify +EV Value Bets
 run_stage("bet_tracker.r", "Record & Grade Real Value-Bet Ledger (CLV tracking)",
           call_fn = "run_bet_tracker",
           output   = CACHE_BETTING_LEDGER)
+
+# 9.5. Risk management engine (Phase 5, task P5-B; engine itself built under P5-A).
+# Writes CACHE_RISK_STATE (config.R). Reads CACHE_BETTING_LEDGER (stage 9 above) — falls back to a
+# clearly-labeled SYNTHETIC_FALLBACK ledger if it doesn't exist or has zero RESOLVED bets yet (see
+# risk_management_engine.R header and docs/task_assignments_phase4.md). Deliberately moved to run
+# AFTER stage 9 (was stage 8, before market_odds_engine.R/bet_tracker.r) so that any bet graded
+# earlier in THIS SAME pipeline invocation is reflected in this run's risk state immediately,
+# instead of one cycle behind — this closes the ordering gap documented in docs/HANDOFF.md's Known
+# Issue #3. No other stage reads CACHE_RISK_STATE, so this reorder has no other dependency impact.
+run_stage("risk_management_engine.R", "Compute Bankroll Drawdown / Kelly-Tier Risk State",
+          call_fn = "run_risk_management",
+          output   = CACHE_RISK_STATE)
 
 # 10. Discord alpha/CLV alert dispatcher (Phase 7, task P7-B; engine itself built under P7-A).
 # Terminal notification stage — no cache output of its own (matches WNBA's own run_stage() call
