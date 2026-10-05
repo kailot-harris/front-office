@@ -386,7 +386,7 @@ ui <- page_fluid(
         open = FALSE,
         accordion_panel(
           "Real Resolved Predictions (synthetic/pending/unresolvable rows excluded)",
-          tableOutput("accuracy_table")
+          reactableOutput("accuracy_table")
         )
       )
     )
@@ -1281,9 +1281,9 @@ server <- function(input, output, session) {
     )
   })
 
-  output$accuracy_table <- renderTable({
+  output$accuracy_table <- renderReactable({
     real_rows <- r_accuracy_filtered()
-    if (is.null(real_rows)) {
+    df <- if (is.null(real_rows)) {
       data.frame(
         game_date = character(0), home_team = character(0), away_team = character(0),
         predicted_winner = character(0), actual_winner = character(0), correct = logical(0)
@@ -1298,7 +1298,39 @@ server <- function(input, output, session) {
         correct = real_rows$correct
       )
     }
-  }, striped = TRUE, hover = TRUE, bordered = TRUE)
+
+    # Per-game log, not a numeric-metric table -- no bar cells here (contrast with
+    # standings_table/model_benchmark_table). Instead, tint whole rows by outcome:
+    # correct == TRUE gets the app's existing teal "good" accent (#18BC9C, same hue
+    # used for positive signal elsewhere in this file, e.g. the win-probability fill
+    # scale), correct == FALSE gets the matching red/muted "bad" accent (#E74C3C
+    # family) used for worst-case/negative values in the other reactable tables.
+    reactable(
+      df,
+      striped = TRUE,
+      bordered = TRUE,
+      highlight = TRUE,
+      defaultPageSize = 15,
+      rowStyle = function(index) {
+        if (isTRUE(df$correct[index])) {
+          list(backgroundColor = "rgba(24, 188, 156, 0.18)", color = "#0B4A3E")
+        } else {
+          list(backgroundColor = "rgba(231, 76, 60, 0.15)", color = "#7B241C")
+        }
+      },
+      columns = list(
+        game_date = colDef(name = "Date"),
+        home_team = colDef(name = "Home"),
+        away_team = colDef(name = "Away"),
+        predicted_winner = colDef(name = "Predicted Winner"),
+        actual_winner = colDef(name = "Actual Winner"),
+        correct = colDef(
+          name = "Correct",
+          cell = function(value) if (isTRUE(value)) "✓" else "✗"
+        )
+      )
+    )
+  })
 
   # Lives inside a closed-by-default accordion panel (see UI block above). Shiny
   # suspends rendering for outputs that start out hidden and, unlike a tabsetPanel,
