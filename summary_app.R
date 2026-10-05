@@ -263,6 +263,25 @@ if (file.exists(PREDICTION_ACCURACY_CACHE_PATH)) {
 
 ui <- page_fluid(
   theme = bs_theme(version = 5, bootswatch = "flatly"),
+  # GitHub issue #63 (D&T visual pass 4/6): small-caps/letter-spacing section-label
+  # treatment on every card_header() across all 5 tabs, plus consistent card
+  # padding/spacing. No custom tags$style() block existed before this ticket beyond
+  # bs_theme() itself.
+  tags$style(HTML("
+    .card-header {
+      text-transform: uppercase;
+      font-variant: small-caps;
+      letter-spacing: 0.06em;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .card {
+      margin-bottom: 1rem;
+    }
+    .card-body {
+      padding: 1rem 1.25rem;
+    }
+  ")),
   div(
     style = "display: flex; align-items: center; justify-content: space-between;",
     titlePanel("WNBA Model Summary"),
@@ -1048,7 +1067,16 @@ server <- function(input, output, session) {
         y = "Empirical Realized Win Rate",
         size = "Games in bin"
       ) +
-      theme_minimal(base_size = 13)
+      # GitHub issue #63: minimal/thin gridlines, consistent with every other chart in this
+      # file (standings_chart, ortg_drtg_quadrant_plot) -- same light-gray 0.3pt major grid,
+      # no minor grid. The geom_abline() 45-degree reference line above is untouched: it
+      # carries real semantic meaning (perfect calibration) and keeps its own color/weight.
+      theme_minimal(base_size = 13) +
+      theme(
+        panel.grid.major = element_line(color = "#EDEDED", linewidth = 0.3),
+        panel.grid.minor = element_blank(),
+        plot.subtitle = element_text(size = 9, color = "#7F8C8D")
+      )
   })
 
   # ---- Tab 4: Model Comparison (SA-4 / GitHub issue #58) ----
@@ -1191,7 +1219,13 @@ server <- function(input, output, session) {
         x = "Rolling Window Size (games)",
         y = "Out-of-Sample ROC-AUC"
       ) +
-      theme_minimal(base_size = 13)
+      # GitHub issue #63: minimal/thin gridlines, same convention as the rest of this file.
+      theme_minimal(base_size = 13) +
+      theme(
+        panel.grid.major = element_line(color = "#EDEDED", linewidth = 0.3),
+        panel.grid.minor = element_blank(),
+        plot.subtitle = element_text(size = 9, color = "#7F8C8D")
+      )
   })
 
   # ---- Tab 5: Prediction Accuracy Tracker (SA-5 / GitHub issue #59) ----
@@ -1369,7 +1403,16 @@ server <- function(input, output, session) {
         x = "Game Date",
         y = "Cumulative Accuracy"
       ) +
-      theme_minimal(base_size = 13)
+      # GitHub issue #63: minimal/thin gridlines, same convention as the rest of this file.
+      # The 0.5 (coin-flip baseline) geom_hline() above is untouched -- it already uses the
+      # same light, thin styling this ticket establishes elsewhere, and carries real
+      # semantic meaning (the reference an accuracy rate is actually judged against).
+      theme_minimal(base_size = 13) +
+      theme(
+        panel.grid.major = element_line(color = "#EDEDED", linewidth = 0.3),
+        panel.grid.minor = element_blank(),
+        plot.subtitle = element_text(size = 9, color = "#7F8C8D")
+      )
   })
 }
 
