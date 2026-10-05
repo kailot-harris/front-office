@@ -155,3 +155,73 @@ source("playoff_simulator.R")
 
   c(afc_seeds$team, nfc_seeds$team)
 }
+
+# ------------------------------------------------------------------------------------------
+# run_playoff_odds_engine()
+#
+# GitHub issue #13 ("Playoff Odds 3: Monte Carlo loop + run_playoff_odds_engine() cache write
+# (no Discord yet)"). Sole exposed entry point for this file (no sys.nframe()/interactive()
+# auto-run guard, per this repo's call_fn convention - see CLAUDE.md). No required args.
+#
+# Runs N_SEASON_SIMULATIONS trials of .simulate_one_season() (each trial re-reads
+# CACHE_SCHEDULES/CACHE_TEAM_RATINGS fresh - an accepted inefficiency for now; issue #16 tunes
+# performance, not this issue), tallies how many trials each of the 32 real NFL_TEAMS team
+# abbreviations appears in the returned 14-team field, and writes a 32-row
+# team/conference/division/playoff_prob result to CACHE_PLAYOFF_ODDS. Mirrors
+# run_playoff_simulator()'s structure and non-stop()ping TRUE/FALSE return contract.
+#
+# A single .simulate_one_season() call returning NULL (its own documented failure path when a
+# required cache is missing) aborts the whole run immediately (log + return FALSE) rather than
+# silently skipping that trial and undercounting.
+# ------------------------------------------------------------------------------------------
+run_playoff_odds_engine <- function() {
+  log_info(sprintf("Starting NFL playoff odds engine (%d season simulations)...", N_SEASON_SIMULATIONS),
+            call = "run_playoff_odds_engine()")
+
+  result <- tryCatch({
+    team_abbrs <- names(NFL_TEAMS)
+    appearance_counts <- setNames(integer(length(team_abbrs)), team_abbrs)
+
+    for (trial in seq_len(N_SEASON_SIMULATIONS)) {
+      field <- .simulate_one_season()
+
+      if (is.null(field)) {
+        log_error(sprintf(".simulate_one_season() returned NULL on trial %d of %d - aborting run_playoff_odds_engine().",
+                           trial, N_SEASON_SIMULATIONS),
+                  call = "run_playoff_odds_engine()")
+        return(FALSE)
+      }
+
+      appearance_counts[field] <- appearance_counts[field] + 1L
+    }
+
+    conf_div <- NFL_DIVISIONS[team_abbrs]
+    field_table <- data.frame(
+      team         = team_abbrs,
+      conference   = sub(" .*$", "", conf_div),
+      division     = conf_div,
+      playoff_prob = appearance_counts[team_abbrs] / N_SEASON_SIMULATIONS,
+      stringsAsFactors = FALSE,
+      row.names = NULL
+    )
+
+    playoff_odds <- list(
+      season        = CURRENT_SEASON,
+      generated_at  = Sys.time(),
+      n_simulations = N_SEASON_SIMULATIONS,
+      field         = field_table
+    )
+
+    saveRDS(playoff_odds, CACHE_PLAYOFF_ODDS)
+    log_info(sprintf("Wrote playoff odds (%d season simulations) to CACHE_PLAYOFF_ODDS.",
+                      N_SEASON_SIMULATIONS),
+             call = "run_playoff_odds_engine()", out_path = CACHE_PLAYOFF_ODDS)
+
+    TRUE
+  }, error = function(e) {
+    log_error("Playoff odds engine failed.", condition = e, call = "run_playoff_odds_engine()")
+    FALSE
+  })
+
+  invisible(isTRUE(result))
+}
