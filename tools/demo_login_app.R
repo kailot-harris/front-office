@@ -70,7 +70,14 @@ server <- function(input, output, session) {
       return(NULL)
     }
 
-    protected_render_count(protected_render_count() + 1)
+    # isolate() the read: reading protected_render_count() normally (un-isolated) inside
+    # this SAME renderUI subscribes this render to its own future changes -- the write
+    # immediately below then invalidates this very renderUI again, which reads+increments
+    # again, forever. This was a real bug in this test fixture (not in auth_login_module.R
+    # itself) that hung every live/testServer probe run at the exact moment of a successful
+    # login -- the only path that ever reaches this line. isolate() reads the current value
+    # without creating that dependency, so the count still increments once per real render.
+    protected_render_count(isolate(protected_render_count()) + 1)
 
     shiny::tagList(
       shiny::h3("Secret dashboard"),
