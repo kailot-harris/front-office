@@ -38,6 +38,8 @@
 
 suppressPackageStartupMessages({
   library(dplyr)
+  library(httr)
+  library(jsonlite)
 })
 
 source("config.R")
@@ -127,6 +129,72 @@ run_accuracy_tracker <- function() {
                     nrow(newly_graded_games), nrow(graded$per_game),
                     graded$overall_accuracy, graded$overall_brier, graded$overall_logloss),
            script = .LOG_SCRIPT)
+
+  # --------------------------------------------------------------------------
+  # Discord dispatch (issue #6) — reuses notify_bets.R's exact webhook/payload/
+  # fallback pattern verbatim (same NFL_DISCORD_WEBHOOK env var, same
+  # nzchar()-gated POST()/console-only branching). Only reached when new game(s)
+  # were actually appended above — the no-op early-returns at the top of this
+  # function (no completed games yet / nothing new since last run) happen
+  # before this point and never fall through to here, so a no-op run never
+  # posts to Discord. NO hardcoded webhook URL, live or dummy, anywhere in this
+  # file — see config.R's own comment on NFL_DISCORD_WEBHOOK for why.
+  # --------------------------------------------------------------------------
+  webhook_url <- Sys.getenv("NFL_DISCORD_WEBHOOK", "")
+
+  game_fields <- lapply(seq_len(nrow(newly_graded_games)), function(i) {
+    g <- newly_graded_games[i, ]
+    result_icon <- if (isTRUE(g$correct)) "✅ Correct" else "❌ Miss"
+    field_value <- paste0(
+      "**Predicted:** `", g$predicted_winner, "` (", sprintf("%.1f%%", g$predicted_win_prob * 100), " win prob)\n",
+      "**Actual:** `", g$actual_winner, "` — ", result_icon
+    )
+    cat(sprintf("\n\U0001F4CA GAME: %s\n", g$matchup))
+    cat(sprintf("   PREDICTED: %s (%.1f%%) | ACTUAL: %s | %s\n",
+                g$predicted_winner, g$predicted_win_prob * 100, g$actual_winner, result_icon))
+    list(name = g$matchup, value = field_value, inline = FALSE)
+  })
+
+  summary_text <- sprintf(
+    "**Season accuracy:** %.1f%% over %d game(s) • **Brier:** %.4f • **Log Loss:** %.4f",
+    graded$overall_accuracy * 100, nrow(graded$per_game), graded$overall_brier, graded$overall_logloss
+  )
+  cat(sprintf("\nSUMMARY: %s\n", summary_text))
+
+  payload <- list(
+    username = "NFL Quant Terminal",
+    avatar_url = "https://cdn-icons-png.flaticon.com/512/3211/3211244.png",
+    embeds = list(
+      list(
+        title = paste("\U0001F4CA NFL Accuracy Tracker Update •", format(Sys.Date(), "%B %d, %Y")),
+        description = summary_text,
+        color = 3447003, # Calm blue
+        fields = game_fields,
+        footer = list(text = paste("NFL Accuracy Tracker • Executed at", format(Sys.time(), "%H:%M:%S EST")))
+      )
+    )
+  )
+
+  if (nzchar(webhook_url)) {
+    res <- tryCatch(
+      POST(webhook_url, body = payload, encode = "json", timeout(6)),
+      error = function(e) list(status_code = 500, message = e$message)
+    )
+    if (!is.null(res$status_code) && res$status_code %in% c(200, 204)) {
+      cat("\n[ALERT SUCCESS] Broadcasted accuracy-tracker update to Discord webhook.\n")
+      log_info("Broadcasted accuracy-tracker update to Discord webhook.", script = .LOG_SCRIPT, status_code = res$status_code)
+    } else {
+      cat("\n[ALERT DISPATCHED] Webhook sent.\n")
+      log_warn("Discord webhook POST did not return a clean 200/204.", script = .LOG_SCRIPT,
+               status_code = res$status_code)
+    }
+  } else {
+    cat("\n[CONSOLE ONLY] NFL_DISCORD_WEBHOOK env var not set for this project - Discord dispatch skipped.\n")
+    cat("[ACTION REQUIRED] Set NFL_DISCORD_WEBHOOK as a real environment variable (e.g. in a\n")
+    cat("user-level .Renviron file) - do NOT reuse the WNBA repo's DISCORD_WEBHOOK. Output previewed above.\n")
+    log_warn("NFL_DISCORD_WEBHOOK not configured; skipped Discord dispatch (console-only preview shown). Set it as a real environment variable (.Renviron) to enable live dispatch.",
+             script = .LOG_SCRIPT)
+  }
 
   invisible(TRUE)
 }
