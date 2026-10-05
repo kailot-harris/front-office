@@ -20,10 +20,12 @@
 # and adds a cross-session run lock so a second browser tab/user cannot start a second run
 # (single or queued) while one is already in progress, racing on the same cache files.
 #
-# #50 (this slice) makes the app network-accessible (not localhost-only) and adds a
-# placeholder single shared-password gate (CONTROL_PANEL_PASSWORD) in front of the real UI
-# -- see the CONTROL_PANEL_PASSWORD section below. This gate is intentionally temporary: it
-# is swapped out once #44's multi-user auth module (#51/#52/#53) is wired in by #54.
+# #50 made the app network-accessible (not localhost-only) behind a placeholder single
+# shared-password gate (CONTROL_PANEL_PASSWORD). #54 (this slice) replaces that gate
+# entirely with issue #44's real multi-user auth module: auth_utils.R's verify_user()/
+# create_account_if_authorized() (issues #51/#52) mounted via auth_login_module.R's
+# mod_login_ui()/mod_login_server() (issue #53). CONTROL_PANEL_PASSWORD is now fully dead --
+# no reference to it remains anywhere in this file.
 #
 # SCOPE (explicit, per the issues): no inline chart/table rendering of a stage's *data*
 # output (#49 -- this shows captured text output only, same as before). This is a
@@ -87,6 +89,13 @@ suppressPackageStartupMessages({
 # unquoted).
 source("config.R")
 source("pipeline_stages.R")
+# GitHub issue #54: real multi-user auth, replacing #50's placeholder CONTROL_PANEL_PASSWORD
+# gate entirely. auth_utils.R defines verify_user()/create_account_if_authorized() (issues
+# #51/#52); auth_login_module.R defines the mountable mod_login_ui()/mod_login_server() pair
+# (issue #53) that calls them. Sourced here, before the UI/server definitions below, same
+# ordering convention as config.R/pipeline_stages.R.
+source("auth_utils.R")
+source("auth_login_module.R")
 
 # ------------------------------------------------------------------------------------------
 # run_pipeline_stage_captured(stage)
@@ -358,22 +367,6 @@ pipeline_lock_release <- function(token, force = FALSE) {
 }
 
 # ------------------------------------------------------------------------------------------
-# GitHub issue #50: placeholder single shared-password gate.
-#
-# CONTROL_PANEL_PASSWORD, read via Sys.getenv(..., "") (never hardcoded, per CLAUDE.md's
-# no-hardcoded-secrets convention). This is intentionally a single shared password, not a
-# real multi-user account system -- that is #44/#51/#52/#53, wired in by #54, which replaces
-# this entire gate. Until then, the real control-panel UI (stage picker, staleness preview,
-# run control, captured output) is rendered ONLY inside a server-side renderUI() gated on a
-# successful password submission -- genuinely absent from the DOM pre-auth (same
-# server-side-enforced principle #53's login module established), not just CSS-hidden. The
-# SAME generic-looking rejection (no distinct "no password set" vs "wrong password" message)
-# is shown either way, since this is a single shared secret, not a per-account credential
-# where username enumeration would be a separate concern.
-# ------------------------------------------------------------------------------------------
-CONTROL_PANEL_PASSWORD <- Sys.getenv("CONTROL_PANEL_PASSWORD", "")
-
-# ------------------------------------------------------------------------------------------
 # UI
 # ------------------------------------------------------------------------------------------
 stage_ids    <- names(PIPELINE_STAGES)
@@ -430,44 +423,30 @@ control_panel_body_ui <- function() {
   )
 }
 
-password_gate_ui <- function(error = FALSE) {
-  tagList(
-    titlePanel("WNBA Analytics -- Pipeline Control Panel"),
-    div(
-      style = "max-width: 360px; margin: 40px auto; padding: 24px; border: 1px solid #ccc; border-radius: 8px;",
-      h4("Password required"),
-      passwordInput("gate_password", "Password"),
-      actionButton("gate_submit", "Enter", class = "btn-primary"),
-      if (isTRUE(error)) div(style = "color: red; margin-top: 8px;", "Incorrect password.")
-    )
-  )
-}
-
+# GitHub issue #54: mod_login_ui() is ALWAYS mounted (it manages its own visibility --
+# collapses to an empty tagList() once logged in, per auth_login_module.R) so the login/
+# signup form is never gated behind anything itself; the protected control-panel body is a
+# separate uiOutput, gated server-side on the `logged_in` reactive mod_login_server() returns
+# (see server() below) -- genuinely absent from the DOM pre-auth, not merely CSS-hidden, same
+# principle #53 established. Replaces #50's CONTROL_PANEL_PASSWORD gate entirely.
 ui <- fluidPage(
   useShinyjs(),
-  uiOutput("gate_root")
+  mod_login_ui("auth"),
+  uiOutput("control_panel_root")
 )
 
 # ------------------------------------------------------------------------------------------
 # Server
 # ------------------------------------------------------------------------------------------
 server <- function(input, output, session) {
-  # Session-scoped only, same no-persisted-session principle #53's login module established
-  # (no cookie/localStorage) -- a fresh page load always starts ungated.
-  gate_ok <- reactiveVal(FALSE)
-  gate_error <- reactiveVal(FALSE)
+  # GitHub issue #54: real multi-user auth, replacing #50's single shared-password gate.
+  # logged_in is a reactive(TRUE/FALSE) from mod_login_server() -- session-scoped only, no
+  # persisted state (a fresh page load/new session always starts logged out, per #53).
+  logged_in <- mod_login_server("auth")
 
-  output$gate_root <- renderUI({
-    if (isTRUE(gate_ok())) control_panel_body_ui() else password_gate_ui(error = gate_error())
-  })
-
-  observeEvent(input$gate_submit, {
-    if (nzchar(CONTROL_PANEL_PASSWORD) && identical(input$gate_password, CONTROL_PANEL_PASSWORD)) {
-      gate_error(FALSE)
-      gate_ok(TRUE)
-    } else {
-      gate_error(TRUE)
-    }
+  output$control_panel_root <- renderUI({
+    if (!isTRUE(logged_in())) return(NULL)
+    control_panel_body_ui()
   })
 
   # rv: THIS session's queue-run state only (which stage it's up to, results so far). Safe to
@@ -735,23 +714,11 @@ server <- function(input, output, session) {
   })
 }
 
-# GitHub issue #50: refuse to serve on a non-localhost host if CONTROL_PANEL_PASSWORD is
-# unset -- fail-safe, per CLAUDE.md's "every script preserves a fail-safe design" convention
-# (never silently run unprotected). onStart runs once, before the app begins listening, so
-# this is a hard stop at launch time, not merely a warning. shiny::runApp()'s own `host`
-# argument (or the shiny.host option it sets) is what actually determines network exposure;
-# this check reads whichever of those the caller used to launch THIS app object.
-shinyApp(ui = ui, server = server, onStart = function() {
-  host <- getShinyOption("host", getOption("shiny.host", "127.0.0.1"))
-  is_localhost <- host %in% c("127.0.0.1", "localhost", "::1")
-  if (!is_localhost && !nzchar(CONTROL_PANEL_PASSWORD)) {
-    stop(sprintf(
-      paste(
-        "control_panel_app.R refuses to start on a non-localhost host (%s) because",
-        "CONTROL_PANEL_PASSWORD is unset. Set it before launching on a network-accessible",
-        "host -- see docs/CONTROL_PANEL_SETUP.md."
-      ),
-      host
-    ))
-  }
-})
+# GitHub issue #54: #50's onStart host/password refusal check is removed entirely along
+# with CONTROL_PANEL_PASSWORD -- network-accessible launches are now protected by real
+# per-account login (mod_login_server() above), not a single shared secret with an
+# unset-equals-unprotected failure mode, so there is no longer an "unset" state that would
+# leave the app silently unprotected. See docs/CONTROL_PANEL_SETUP.md for how to set
+# CONTROL_PANEL_SIGNUP_KEY (gates new-account signup; existing accounts can still log in
+# without it).
+shinyApp(ui = ui, server = server)

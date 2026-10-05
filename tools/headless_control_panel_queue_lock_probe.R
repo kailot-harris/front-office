@@ -1,3 +1,12 @@
+# STALE SINCE ISSUE #54: control_panel_app.R now requires a real login (mod_login_ui/
+# mod_login_server, issue #53) before any of the stage-picker/run_btn/etc. elements this
+# script drives exist in the DOM at all -- this script predates that and does not log in
+# first, so it will fail before reaching its own checks until updated to create a test
+# account and log in (see tools/headless_login_module_probe.R's set_module_input() pattern)
+# before interacting with anything below. Not updated here because shinytest2::AppDriver was
+# failing system-wide in this environment at the time of #54's verification (confirmed
+# unrelated to this change), so an update to this script could not itself be live-tested.
+
 # Headless browser QA for control_panel_app.R's multi-select queueing + cross-session run
 # lock (GitHub issue #48, Slice 4 of #43), using shinytest2 (chromote-backed, drives real
 # Chrome) -- same pattern as tools/headless_control_panel_probe.R (#46) and
