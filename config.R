@@ -203,6 +203,30 @@ OFFSEASON_METHOD    <- "reset"  # "reset", "mean_regress", or "decay" - not yet 
 REST_DAYS_CAP       <- 14       # NFL byes/short weeks span a wider range than WNBA's back-to-backs
 N_SIMULATIONS       <- 10000
 
+# Added per docs/SPEC_playoff_odds_table.md decision #3 (GitHub issue #11, "Playoff Odds 1" -
+# first slice of the playoff-clinching probability feature, issues #11-#16). Number of Monte
+# Carlo trials for the NEW full-season-to-playoff-odds simulation (the future
+# playoff_odds_engine.R, issue #12): each trial simulates every remaining regular-season game
+# for all 32 teams, then runs the real tiebreaker procedure (nfl_tiebreakers.R) to resolve
+# seeding/playoff berths. Deliberately a SEPARATE constant from N_SIMULATIONS above, not a
+# reuse of it - N_SIMULATIONS backs playoff_simulator.R's much cheaper bracket-only sim (32
+# teams already seeded, single-elimination bracket draws only), whereas this constant's trials
+# each do far more work (full remaining-schedule simulation + real standings/tiebreaker logic),
+# so the two are independently tunable and must not be conflated even though both are "some
+# number of Monte Carlo trials" (same discipline as RATING_SHRINKAGE_GAMES_K vs.
+# MIN_SAMPLE_GAMES_FOR_STAKE above - two "games" constants that look similar but gate different
+# things).
+#
+# PLACEHOLDER - NOT YET TUNED: 1000 is a starting guess (an order of magnitude below
+# N_SIMULATIONS, reflecting the much heavier per-trial cost) chosen to keep a first working
+# version fast enough to iterate on, not a value derived from any timing/accuracy benchmark.
+# Real timing/tuning work (how many trials are needed for stable playoff-odds percentages vs.
+# how long each trial actually takes against this repo's real tiebreaker code) is tracked as
+# GitHub issue #16 ("Playoff Odds 6") - a later, independent slice in this same chain. Re-run
+# that issue's benchmark and update this value/comment (following the NFL_MARGIN_SIGMA/NFL_HCA
+# documentation pattern) once it lands; do not treat 1000 as final until then.
+N_SEASON_SIMULATIONS <- 1000
+
 # Added by team_ratings_engine.R (Phase 8, task P8-A) per docs/task_assignments_phase7.md's
 # "Constants note" pattern - a narrowly-scoped, documented exception (team_ratings_engine.R does
 # not own config.R; it owns only this one new constant). Controls how heavily a team's blended
@@ -558,6 +582,22 @@ CACHE_BETTING_LEDGER <- file.path(CACHE_DIR, "betting_ledger.rds")
 # returns (documented there as list(per_game, by_week, overall_accuracy, overall_brier,
 # overall_logloss)) without needing a schema change once that function exists.
 CACHE_ACCURACY_HISTORY <- file.path(CACHE_DIR, "accuracy_history.rds")
+# Added per docs/SPEC_playoff_odds_table.md decision #5 (GitHub issue #11, "Playoff Odds 1" -
+# first slice of the playoff-clinching probability feature, issues #11-#16) - prep
+# infrastructure for the future playoff_odds_engine.R pipeline stage (issue #12). A narrowly-
+# scoped, documented exception, same pattern as CACHE_EPA_METRICS / CACHE_PLAYOFF_SIMULATION /
+# CACHE_ACCURACY_HISTORY above (playoff_odds_engine.R does not own config.R; it will own only
+# this one new constant once it exists).
+#
+# Purpose: persisted output of the new N_SEASON_SIMULATIONS-trial full-season Monte Carlo
+# simulation - per-team playoff-clinching/seeding probabilities, distinct from
+# CACHE_PLAYOFF_SIMULATION above (that cache holds playoff_simulator.R's cheaper bracket-only
+# sim output, seeded teams only; this one will hold the heavier regular-season-to-playoff-odds
+# sim's output, computed for all 32 teams including those not yet clinched/eliminated).
+# Row schema is not yet defined - that is left to issue #12 (playoff_odds_engine.R itself),
+# not decided here; this slice only reserves the constant/filepath so later issues in the
+# chain can reference CACHE_PLAYOFF_ODDS from the start rather than hardcoding a path string.
+CACHE_PLAYOFF_ODDS <- file.path(CACHE_DIR, "playoff_odds.rds")
 
 # ------------------------------------------------------------------------------------------
 # API Throttling & Rate-Limiting (sport-agnostic starting defaults)
