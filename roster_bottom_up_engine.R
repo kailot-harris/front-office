@@ -254,6 +254,13 @@ get_player_bpm_ratings <- function() {
       # same weights forward with a TODO(recalibrate) comment, which this script inherits)
       pts36 = sum(points * weight, na.rm = TRUE) / sum(minutes * weight, na.rm = TRUE) * 36,
       reb36 = sum(rebounds * weight, na.rm = TRUE) / sum(minutes * weight, na.rm = TRUE) * 36,
+      # GITHUB ISSUE #64: offensive_rebounds/defensive_rebounds already exist on
+      # CACHE_PLAYER_BOX's raw wehoop schema (confirmed oreb+dreb == rebounds exactly, see
+      # WNBA_OFF_REB_SHARE's derivation comment in config.R) -- aggregated here ONLY to derive
+      # the Off_Rating/Def_Rating split below. `reb36` above (and therefore `box_score` and the
+      # existing blended `bpm` two mutates down) is completely unchanged.
+      oreb36 = sum(offensive_rebounds * weight, na.rm = TRUE) / sum(minutes * weight, na.rm = TRUE) * 36,
+      dreb36 = sum(defensive_rebounds * weight, na.rm = TRUE) / sum(minutes * weight, na.rm = TRUE) * 36,
       ast36 = sum(assists * weight, na.rm = TRUE) / sum(minutes * weight, na.rm = TRUE) * 36,
       stl36 = sum(steals * weight, na.rm = TRUE) / sum(minutes * weight, na.rm = TRUE) * 36,
       blk36 = sum(blocks * weight, na.rm = TRUE) / sum(minutes * weight, na.rm = TRUE) * 36,
@@ -265,13 +272,32 @@ get_player_bpm_ratings <- function() {
     ) |>
     filter(total_min >= 200) |>
     mutate(
-      # Standard Box Creation component
-      box_score = 0.55 * pts36 + 0.60 * reb36 + 1.10 * ast36 + 1.40 * stl36 + 1.20 * blk36 - 1.25 * tov36
+      # Standard Box Creation component (UNCHANGED -- drives the existing blended `bpm` and
+      # therefore the existing blended team Net_Rating; GitHub issue #64's split below is
+      # computed downstream of this, never fed back into it).
+      box_score = 0.55 * pts36 + 0.60 * reb36 + 1.10 * ast36 + 1.40 * stl36 + 1.20 * blk36 - 1.25 * tov36,
+
+      # GITHUB ISSUE #64: partition the SAME box_score weights into an offensive half (scoring,
+      # playmaking, ball-security, offensive rebounding) and a defensive half (stocks, defensive
+      # rebounding). off_reb_share/(1-off_reb_share) split the single 0.60*reb36 term between the
+      # two halves in exact proportion to each player's own actual offensive/defensive rebound
+      # mix (falling back to the league-wide WNBA_OFF_REB_SHARE constant only when a player's
+      # oreb36+dreb36 totals zero, i.e. a 0/0 split). Because the two shares always sum to 1,
+      # off_box36 + def_box36 == box_score EXACTLY for every player, by construction -- this is
+      # what lets Off_Rating - Def_Rating reconcile exactly to Net_Rating at the team level
+      # (see project_all_wnba_teams() below), not an approximation.
+      off_reb_share = if_else((oreb36 + dreb36) > 0, oreb36 / (oreb36 + dreb36), WNBA_OFF_REB_SHARE),
+      off_box36 = 0.55 * pts36 + 1.10 * ast36 - 1.25 * tov36 + 0.60 * reb36 * off_reb_share,
+      def_box36 = 1.40 * stl36 + 1.20 * blk36 + 0.60 * reb36 * (1 - off_reb_share)
     )
 
   # Center both metrics at league average (0.00)
   box_mu <- sum(raw_stats$box_score * raw_stats$total_min) / sum(raw_stats$total_min)
   pm_mu  <- sum(raw_stats$empirical_pm36 * raw_stats$total_min) / sum(raw_stats$total_min)
+  # GITHUB ISSUE #64: off_mu + def_mu == box_mu exactly (weighted mean is linear and
+  # off_box36 + def_box36 == box_score exactly for every row above).
+  off_mu <- sum(raw_stats$off_box36 * raw_stats$total_min) / sum(raw_stats$total_min)
+  def_mu <- sum(raw_stats$def_box36 * raw_stats$total_min) / sum(raw_stats$total_min)
 
   ratings <- raw_stats |>
     mutate(
@@ -283,10 +309,27 @@ get_player_bpm_ratings <- function() {
       shrinkage_weight = total_min / (total_min + 500),
       centered_pm = raw_centered_pm * shrinkage_weight,
 
-      # 50/50 Objective Fusion
-      bpm = round(pmax(-5.0, pmin(12.0, 0.50 * centered_box + 0.50 * centered_pm)), 2)
+      # 50/50 Objective Fusion (UNCHANGED -- this IS the existing blended per-player bpm that
+      # feeds the existing blended team Net_Rating; issue #64 does not touch this line).
+      bpm = round(pmax(-5.0, pmin(12.0, 0.50 * centered_box + 0.50 * centered_pm)), 2),
+
+      # GITHUB ISSUE #64: Off_Rating/Def_Rating components, derived downstream of the existing
+      # bpm fusion above rather than reimplementing it. centered_box splits exactly into
+      # centered_off_box + centered_def_box (both centering means are additive, see off_mu/
+      # def_mu above); centered_pm (the plus-minus half of bpm) has no offense/defense label in
+      # the source data, so it is split evenly 50/50 between the two halves -- a player's overall
+      # on-court net impact is credited equally to both ends rather than invented into one side.
+      # Clamp bounds are exactly half of bpm's own (-5.0/12.0 -> -2.5/6.0 each) so a player's
+      # off_bpm + def_bpm stays very close to (and, when neither half is clamp-bound, exactly
+      # equal to) their own bpm; team-level exactness of Off_Rating - Def_Rating == Net_Rating is
+      # guaranteed independently at the project_all_wnba_teams() cache-output stage regardless of
+      # whether any individual player's clamp binds.
+      centered_off_box = off_box36 - off_mu,
+      centered_def_box = def_box36 - def_mu,
+      off_bpm = round(pmax(-2.5, pmin(6.0, 0.50 * centered_off_box + 0.25 * centered_pm)), 2),
+      def_bpm = round(pmax(-2.5, pmin(6.0, 0.50 * centered_def_box + 0.25 * centered_pm)), 2)
     ) |>
-    select(athlete_id, player_name, games_played, total_min, avg_min, bpm)
+    select(athlete_id, player_name, games_played, total_min, avg_min, bpm, off_bpm, def_bpm)
 
   return(ratings)
 }
@@ -298,7 +341,7 @@ compute_team_live_rating <- function(team, active_rosters, player_ratings, elo_r
   team_players <- active_rosters |>
     filter(team_name == team)
 
-  if (nrow(team_players) == 0) return(list(net_rating = 0.0, elo = 1500, team_rapm = 0.0, rotation = tibble()))
+  if (nrow(team_players) == 0) return(list(net_rating = 0.0, off_nrtg = 0.0, def_nrtg = 0.0, elo = 1500, team_rapm = 0.0, rotation = tibble()))
 
   # Map team name to abbreviation for Elo lookup
   team_abbr <- names(WNBA_TEAMS)[WNBA_TEAMS == team]
@@ -308,28 +351,36 @@ compute_team_live_rating <- function(team, active_rosters, player_ratings, elo_r
 
   # Primary Join on athlete_id (player_box_scores_cache.rds) <-> player_id (active_rosters_cache.rds)
   # - per T1's Handoff Notes, both are real ESPN athlete IDs, so this joins cleanly by ID first.
+  # GITHUB ISSUE #64: off_bpm/def_bpm carried through the same join/fallback/replacement-level
+  # chain as the existing bpm column, unchanged in structure.
   roster_rated <- team_players |>
-    left_join(player_ratings |> select(athlete_id, bpm, hist_avg_min = avg_min),
+    left_join(player_ratings |> select(athlete_id, bpm, off_bpm, def_bpm, hist_avg_min = avg_min),
               by = c("player_id" = "athlete_id"))
 
   # Fallback fill for any players matching by name
   unmatched_idx <- which(is.na(roster_rated$bpm))
   if (length(unmatched_idx) > 0) {
-    name_lookup <- player_ratings |> select(player_name, bpm_name = bpm, min_name = avg_min)
+    name_lookup <- player_ratings |> select(player_name, bpm_name = bpm, off_bpm_name = off_bpm, def_bpm_name = def_bpm, min_name = avg_min)
     roster_rated[unmatched_idx, ] <- roster_rated[unmatched_idx, ] |>
       left_join(name_lookup, by = "player_name") |>
       mutate(
         bpm = coalesce(bpm, bpm_name),
+        off_bpm = coalesce(off_bpm, off_bpm_name),
+        def_bpm = coalesce(def_bpm, def_bpm_name),
         hist_avg_min = coalesce(hist_avg_min, min_name)
       ) |>
-      select(-bpm_name, -min_name)
+      select(-bpm_name, -off_bpm_name, -def_bpm_name, -min_name)
   }
 
   # Replacement level prior (-2.0 BPM) for rookies/incoming players - unchanged from NBA;
-  # T1's calculate_bpm_components() TODO(recalibrate) note applies equally here.
+  # T1's calculate_bpm_components() TODO(recalibrate) note applies equally here. off_bpm/def_bpm
+  # replacement priors (-1.0 each) split the same -2.0 evenly, consistent with get_player_bpm_
+  # ratings()'s own 50/50 off/def split of the plus-minus half of bpm.
   roster_rated <- roster_rated |>
     mutate(
       bpm = coalesce(bpm, -2.0),
+      off_bpm = coalesce(off_bpm, -1.0),
+      def_bpm = coalesce(def_bpm, -1.0),
       hist_avg_min = coalesce(hist_avg_min, 15.0)
     )
 
@@ -370,8 +421,21 @@ compute_team_live_rating <- function(team, active_rosters, player_ratings, elo_r
   raw_team_nrtg <- sum(active_rotation$bpm * (active_rotation$allocated_min / 200)) * 5.0
   team_nrtg <- round(pmax(-10.5, pmin(14.0, raw_team_nrtg)), 2)
 
+  # GITHUB ISSUE #64: raw (unclamped, uncentered) offensive/defensive team components, computed
+  # with the exact same minutes-weighting formula as raw_team_nrtg above but using off_bpm/
+  # def_bpm instead of bpm. off_nrtg + def_nrtg == raw_team_nrtg to floating-point precision
+  # (off_bpm + def_bpm == bpm for every rotation player whenever neither half's clamp binds,
+  # per get_player_bpm_ratings()'s derivation comment). These are intentionally NOT independently
+  # clamped/rounded to [-10.5, 14.0] here -- project_all_wnba_teams() enforces the final
+  # Off_Rating - Def_Rating == Net_Rating identity exactly at the cache-output stage instead,
+  # which is robust regardless of whether team_nrtg's own clamp bound.
+  off_nrtg <- sum(active_rotation$off_bpm * (active_rotation$allocated_min / 200)) * 5.0
+  def_nrtg <- sum(active_rotation$def_bpm * (active_rotation$allocated_min / 200)) * 5.0
+
   list(
     net_rating = round(team_nrtg, 2),
+    off_nrtg   = off_nrtg,
+    def_nrtg   = def_nrtg,
     elo        = team_elo,
     team_rapm  = round(team_rapm, 2),
     rotation   = active_rotation |> select(player_name, position, bpm, allocated_min)
@@ -612,6 +676,10 @@ project_all_wnba_teams <- function() {
   top_stars   <- character(n_teams)
   team_elos   <- numeric(n_teams)
   team_rapms  <- numeric(n_teams)
+  # GITHUB ISSUE #64: raw per-team offensive/defensive components (see compute_team_live_rating()
+  # for their derivation; off_raws + def_raws == raw_ratings to floating-point precision).
+  off_raws    <- numeric(n_teams)
+  def_raws    <- numeric(n_teams)
 
   for (idx in seq_along(all_teams)) {
     t <- all_teams[idx]
@@ -619,6 +687,8 @@ project_all_wnba_teams <- function() {
     raw_ratings[idx] <- res$net_rating
     team_elos[idx]   <- res$elo
     team_rapms[idx]  <- res$team_rapm
+    off_raws[idx]    <- res$off_nrtg
+    def_raws[idx]    <- res$def_nrtg
 
     stars <- res$rotation |>
       arrange(desc(bpm)) |>
@@ -628,15 +698,33 @@ project_all_wnba_teams <- function() {
     top_stars[idx] <- stars
   }
 
-  # Center League Net Ratings at Exactly 0.00
+  # Center League Net Ratings at Exactly 0.00 (UNCHANGED -- this is the existing blended Net
+  # Rating computation that GitHub issue #64 must not alter).
   league_mu <- mean(raw_ratings)
   true_net_ratings <- round(raw_ratings - league_mu, 2)
+
+  # GITHUB ISSUE #64: Off_Rating is off_raws centered at its own league mean, the same convention
+  # true_net_ratings itself uses above. Def_Rating is expressed in the conventional "lower is
+  # better" NBA/WNBA Defensive Rating sign (so Net == Off - Def, not Off + Def); the value that
+  # satisfies that sign convention is exactly `off_mu_centered_i - true_net_ratings_i`, which is
+  # algebraically identical (before rounding) to independently centering def_raws at its own
+  # league mean and negating it: mean(off_raws) + mean(def_raws) == mean(off_raws + def_raws) ==
+  # mean(raw_ratings) == league_mu, so Off_Rating_i - (Off_Rating_i - true_net_ratings_i) ==
+  # true_net_ratings_i trivially. Computing Def_Rating directly FROM the already-rounded
+  # Off_Rating/true_net_ratings (rather than from an independent def_raws rounding path)
+  # guarantees Off_Rating - Def_Rating == Net_Rating to floating-point tolerance (success
+  # criterion #2) even though both columns are independently rounded to 2dp for display.
+  off_mu     <- mean(off_raws)
+  Off_Rating <- round(off_raws - off_mu, 2)
+  Def_Rating <- round(Off_Rating - true_net_ratings, 2)
 
   team_df <- tibble(
     Team        = all_teams,
     True_NRtg   = true_net_ratings,
     Elo         = team_elos,
     Team_RAPM   = team_rapms,
+    Off_Rating  = Off_Rating,
+    Def_Rating  = Def_Rating,
     Top_Stars   = top_stars
   )
 
@@ -719,7 +807,11 @@ project_all_wnba_teams <- function() {
     ) |>
     arrange(desc(Proj_Wins)) |>
     mutate(Rank = row_number()) |>
-    select(Rank, Team, Net_Rating = True_NRtg, Proj_Wins, Proj_Wins_SD, Proj_Losses, Win_Pct, Top_Core_Players = Top_Stars)
+    # GITHUB ISSUE #64: Off_Rating/Def_Rating appended -- every pre-existing column name/value
+    # above is unchanged; see the identity-guarantee comment above Off_Rating/Def_Rating's
+    # computation for why Off_Rating - Def_Rating reconciles exactly to Net_Rating here.
+    select(Rank, Team, Net_Rating = True_NRtg, Proj_Wins, Proj_Wins_SD, Proj_Losses, Win_Pct,
+           Top_Core_Players = Top_Stars, Off_Rating, Def_Rating)
 
   # Console preview only — Win_Pct is percent-formatted for THIS printout, never for the cache
   # (M-8): the saved team_df below keeps the numeric proportion.
