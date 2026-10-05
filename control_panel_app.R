@@ -20,11 +20,15 @@
 # and adds a cross-session run lock so a second browser tab/user cannot start a second run
 # (single or queued) while one is already in progress, racing on the same cache files.
 #
+# #50 (this slice) makes the app network-accessible (not localhost-only) and adds a
+# placeholder single shared-password gate (CONTROL_PANEL_PASSWORD) in front of the real UI
+# -- see the CONTROL_PANEL_PASSWORD section below. This gate is intentionally temporary: it
+# is swapped out once #44's multi-user auth module (#51/#52/#53) is wired in by #54.
+#
 # SCOPE (explicit, per the issues): no inline chart/table rendering of a stage's *data*
-# output (#49 -- this shows captured text output only, same as before), no auth/password
-# gate or non-localhost exposure (#50). This is a TRIGGERING tool, not a read-only dashboard
-# -- app.R (the existing shinydashboard) is a distinct file with a distinct job and is
-# intentionally left untouched.
+# output (#49 -- this shows captured text output only, same as before). This is a
+# TRIGGERING tool, not a read-only dashboard -- app.R (the existing shinydashboard) is a
+# distinct file with a distinct job and is intentionally left untouched.
 #
 # EXECUTION MODEL: each queued stage still blocks the single R process for its own duration
 # (no background worker, no live log streaming -- out of scope per #46). What #48 adds is
@@ -354,62 +358,118 @@ pipeline_lock_release <- function(token, force = FALSE) {
 }
 
 # ------------------------------------------------------------------------------------------
+# GitHub issue #50: placeholder single shared-password gate.
+#
+# CONTROL_PANEL_PASSWORD, read via Sys.getenv(..., "") (never hardcoded, per CLAUDE.md's
+# no-hardcoded-secrets convention). This is intentionally a single shared password, not a
+# real multi-user account system -- that is #44/#51/#52/#53, wired in by #54, which replaces
+# this entire gate. Until then, the real control-panel UI (stage picker, staleness preview,
+# run control, captured output) is rendered ONLY inside a server-side renderUI() gated on a
+# successful password submission -- genuinely absent from the DOM pre-auth (same
+# server-side-enforced principle #53's login module established), not just CSS-hidden. The
+# SAME generic-looking rejection (no distinct "no password set" vs "wrong password" message)
+# is shown either way, since this is a single shared secret, not a per-account credential
+# where username enumeration would be a separate concern.
+# ------------------------------------------------------------------------------------------
+CONTROL_PANEL_PASSWORD <- Sys.getenv("CONTROL_PANEL_PASSWORD", "")
+
+# ------------------------------------------------------------------------------------------
 # UI
 # ------------------------------------------------------------------------------------------
 stage_ids    <- names(PIPELINE_STAGES)
 stage_labels <- vapply(PIPELINE_STAGES, function(s) s$description, character(1))
 stage_choices <- setNames(stage_ids, stage_labels)
 
-ui <- fluidPage(
-  useShinyjs(),
-  titlePanel("WNBA Analytics -- Pipeline Control Panel"),
-  helpText(
-    "Multi-select one or more pipeline stages from pipeline_stages.R's registry (Issue #48)",
-    "-- they queue and run sequentially in the order selected, a mini custom pipeline. Each",
-    "queued stage is re-checked against the Issue #47 staleness gate the moment IT starts,",
-    "not once for the whole queue up front, so an earlier queued stage producing a later",
-    "one's input is correctly picked up. The run control is disabled for every session while",
-    "any run (this tab's or another tab/user's) is in progress, to prevent two runs racing",
-    "on the same cache files; there is no live log streaming -- captured output per stage",
-    "appears as each stage finishes."
-  ),
-  sidebarLayout(
-    sidebarPanel(
-      width = 4,
-      selectizeInput(
-        "stage_id", "Pipeline stage(s) -- order = queue order",
-        choices = stage_choices, multiple = TRUE,
-        options = list(plugins = list("remove_button"), placeholder = "Select stage(s) in run order...")
-      ),
-      uiOutput("staleness_ui"),
-      actionButton(
-        "run_btn", "Run Queue", icon = icon("play"),
-        class = "btn-primary",
-        # Instant client-side feedback independent of the (about to block) server
-        # round-trip -- see the header comment's EXECUTION MODEL note. Note this only fires
-        # on an actual click, which the browser can't deliver at all while run_btn is
-        # disabled (empty selection, the cross-session lock, or this session's own run in
-        # progress) -- so a blocked click never reaches this handler client-side, and the
-        # server-side guards in observeEvent(input$run_btn) below are pure defense-in-depth
-        # for that case.
-        onclick = "this.disabled = true; this.innerHTML = 'Running...';"
-      ),
-      br(), br(),
-      uiOutput("lock_status_ui"),
-      uiOutput("status_ui")
+# The real control-panel body, factored into a function rather than a bare UI object so it
+# can be called from inside renderUI() (i.e. only ever rendered server-side, after a
+# successful password check) instead of always being part of the static UI tree.
+control_panel_body_ui <- function() {
+  tagList(
+    titlePanel("WNBA Analytics -- Pipeline Control Panel"),
+    helpText(
+      "Multi-select one or more pipeline stages from pipeline_stages.R's registry (Issue #48)",
+      "-- they queue and run sequentially in the order selected, a mini custom pipeline. Each",
+      "queued stage is re-checked against the Issue #47 staleness gate the moment IT starts,",
+      "not once for the whole queue up front, so an earlier queued stage producing a later",
+      "one's input is correctly picked up. The run control is disabled for every session while",
+      "any run (this tab's or another tab/user's) is in progress, to prevent two runs racing",
+      "on the same cache files; there is no live log streaming -- captured output per stage",
+      "appears as each stage finishes."
     ),
-    mainPanel(
-      width = 8,
-      h4("Captured Output"),
-      verbatimTextOutput("output_log")
+    sidebarLayout(
+      sidebarPanel(
+        width = 4,
+        selectizeInput(
+          "stage_id", "Pipeline stage(s) -- order = queue order",
+          choices = stage_choices, multiple = TRUE,
+          options = list(plugins = list("remove_button"), placeholder = "Select stage(s) in run order...")
+        ),
+        uiOutput("staleness_ui"),
+        actionButton(
+          "run_btn", "Run Queue", icon = icon("play"),
+          class = "btn-primary",
+          # Instant client-side feedback independent of the (about to block) server
+          # round-trip -- see the header comment's EXECUTION MODEL note. Note this only fires
+          # on an actual click, which the browser can't deliver at all while run_btn is
+          # disabled (empty selection, the cross-session lock, or this session's own run in
+          # progress) -- so a blocked click never reaches this handler client-side, and the
+          # server-side guards in observeEvent(input$run_btn) below are pure defense-in-depth
+          # for that case.
+          onclick = "this.disabled = true; this.innerHTML = 'Running...';"
+        ),
+        br(), br(),
+        uiOutput("lock_status_ui"),
+        uiOutput("status_ui")
+      ),
+      mainPanel(
+        width = 8,
+        h4("Captured Output"),
+        verbatimTextOutput("output_log")
+      )
     )
   )
+}
+
+password_gate_ui <- function(error = FALSE) {
+  tagList(
+    titlePanel("WNBA Analytics -- Pipeline Control Panel"),
+    div(
+      style = "max-width: 360px; margin: 40px auto; padding: 24px; border: 1px solid #ccc; border-radius: 8px;",
+      h4("Password required"),
+      passwordInput("gate_password", "Password"),
+      actionButton("gate_submit", "Enter", class = "btn-primary"),
+      if (isTRUE(error)) div(style = "color: red; margin-top: 8px;", "Incorrect password.")
+    )
+  )
+}
+
+ui <- fluidPage(
+  useShinyjs(),
+  uiOutput("gate_root")
 )
 
 # ------------------------------------------------------------------------------------------
 # Server
 # ------------------------------------------------------------------------------------------
 server <- function(input, output, session) {
+  # Session-scoped only, same no-persisted-session principle #53's login module established
+  # (no cookie/localStorage) -- a fresh page load always starts ungated.
+  gate_ok <- reactiveVal(FALSE)
+  gate_error <- reactiveVal(FALSE)
+
+  output$gate_root <- renderUI({
+    if (isTRUE(gate_ok())) control_panel_body_ui() else password_gate_ui(error = gate_error())
+  })
+
+  observeEvent(input$gate_submit, {
+    if (nzchar(CONTROL_PANEL_PASSWORD) && identical(input$gate_password, CONTROL_PANEL_PASSWORD)) {
+      gate_error(FALSE)
+      gate_ok(TRUE)
+    } else {
+      gate_error(TRUE)
+    }
+  })
+
   # rv: THIS session's queue-run state only (which stage it's up to, results so far). Safe to
   # keep per-session because only the session that successfully acquired .PIPELINE_RUN_LOCK
   # ever advances a queue -- a second session that failed to acquire the lock never touches
@@ -675,4 +735,23 @@ server <- function(input, output, session) {
   })
 }
 
-shinyApp(ui = ui, server = server)
+# GitHub issue #50: refuse to serve on a non-localhost host if CONTROL_PANEL_PASSWORD is
+# unset -- fail-safe, per CLAUDE.md's "every script preserves a fail-safe design" convention
+# (never silently run unprotected). onStart runs once, before the app begins listening, so
+# this is a hard stop at launch time, not merely a warning. shiny::runApp()'s own `host`
+# argument (or the shiny.host option it sets) is what actually determines network exposure;
+# this check reads whichever of those the caller used to launch THIS app object.
+shinyApp(ui = ui, server = server, onStart = function() {
+  host <- getShinyOption("host", getOption("shiny.host", "127.0.0.1"))
+  is_localhost <- host %in% c("127.0.0.1", "localhost", "::1")
+  if (!is_localhost && !nzchar(CONTROL_PANEL_PASSWORD)) {
+    stop(sprintf(
+      paste(
+        "control_panel_app.R refuses to start on a non-localhost host (%s) because",
+        "CONTROL_PANEL_PASSWORD is unset. Set it before launching on a network-accessible",
+        "host -- see docs/CONTROL_PANEL_SETUP.md."
+      ),
+      host
+    ))
+  }
+})
