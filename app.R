@@ -93,6 +93,12 @@ if (!exists("WNBA_HCA")) WNBA_HCA <- 2.40
 # the dashboard cannot crash app startup.
 source("logging_utils.R")
 
+# Plot/table "build the object from already-prepared data" helpers for 15 render* outputs,
+# extracted out of this file's server function (GitHub issue #49 / Slice 5 of #43). See that
+# file's header comment for the full design rationale (no input$/session reference inside any
+# helper there, so a later Shiny app can reuse them outside this file's reactive context).
+source("dashboard_render_helpers.R")
+
 # ------------------------------------------------------------------------------------------
 # WNBA season window (for the off-season banner below). 2026 season: regular season
 # 2026-05-08 to 2026-09-24, playoffs 2026-09-27 onward (verified via web search 2026-09-12,
@@ -679,37 +685,7 @@ server <- function(input, output, session) {
 
   output$tbl_daily_edges <- renderDT({
     df <- r_filtered_value_bets()
-
-    if (is.null(df) || nrow(df) == 0) {
-      return(datatable(tibble(
-        Status = "NO GAMES SCHEDULED ON THIS DATE",
-        Details = "No games scheduled for this date. Select another date from the dropdown above."
-      ), rownames = FALSE, options = list(dom = 't')))
-    }
-
-    display_view <- df %>%
-      mutate(
-        `Game Date` = ifelse(is.na(norm_date), "Upcoming", format(norm_date, "%a, %b %d, %Y")),
-        Line = sprintf("%+d", as.integer(Line)),
-        `Model Win Prob` = sprintf("%.1f%%", as.numeric(Model_Win_Prob) * 100),
-        `Edge (EV)` = sprintf("%+.1f%%", as.numeric(EV_Percent)),
-        `Consensus CLV` = sprintf("%+.2f%%", as.numeric(Exp_CLV)),
-        `Kelly Stake` = sprintf("%.1f%%", as.numeric(Bankroll_Rec))
-      ) %>%
-      select(
-        `Game Date`,
-        Matchup = Matchup,
-        `Recommended Pick` = Recommended_Bet,
-        Sportsbook = Book,
-        `Market Odds` = Line,
-        `Model Win Prob`,
-        `Edge (EV)`,
-        `Consensus CLV`,
-        `Kelly Stake`,
-        Signal = Status
-      )
-
-    datatable(display_view, options = list(pageLength = 12, scrollX = TRUE), rownames = FALSE)
+    build_tbl_daily_edges(df)
   })
 
   # ----------------------------------------------------------------------------
@@ -717,97 +693,15 @@ server <- function(input, output, session) {
   # ----------------------------------------------------------------------------
   output$tbl_steam_radar <- renderDT({
     hist_path <- "cache/odds_history.rds"
-
-    steam_df <- tryCatch({
-      if (!file.exists(hist_path)) {
-        NULL
-      } else {
-        hist_df <- readRDS(hist_path)
-
-        if (is.null(hist_df) || !is.data.frame(hist_df) || nrow(hist_df) == 0) {
-          NULL
-        } else {
-          names(hist_df) <- tolower(names(hist_df))
-
-          m_col <- grep("matchup|game|teams", names(hist_df), value = TRUE)[1] %||% "matchup"
-          h_col <- grep("home_ml|current_ml|ml_home|line", names(hist_df), value = TRUE)[1] %||% "home_ml"
-          s_col <- grep("consensus|sharp|pinnacle", names(hist_df), value = TRUE)[1]
-          b_col <- grep("book|sportsbook", names(hist_df), value = TRUE)[1]
-
-          if (!m_col %in% names(hist_df) || !h_col %in% names(hist_df)) {
-            NULL
-          } else {
-            res <- hist_df %>%
-              group_by(.data[[m_col]]) %>%
-              summarise(
-                Open_Line = suppressWarnings(as.numeric(first(.data[[h_col]]))),
-                Current_Line = suppressWarnings(as.numeric(last(.data[[h_col]]))),
-                Sharp_Line = if (!is.na(s_col) && s_col %in% names(hist_df)) {
-                  suppressWarnings(as.numeric(last(.data[[s_col]])))
-                } else {
-                  suppressWarnings(as.numeric(last(.data[[h_col]])))
-                },
-                Book = if (!is.na(b_col) && b_col %in% names(hist_df)) {
-                  as.character(last(.data[[b_col]]))
-                } else {
-                  "Pinnacle / Market"
-                },
-                .groups = "drop"
-              ) %>%
-              mutate(
-                Open_Line = ifelse(is.na(Open_Line), -110, Open_Line),
-                Current_Line = ifelse(is.na(Current_Line), Open_Line, Current_Line),
-                Sharp_Line = ifelse(is.na(Sharp_Line), Current_Line, Sharp_Line),
-                Line_Drift = Current_Line - Open_Line,
-                Signal = case_when(
-                  abs(Line_Drift) >= 20 ~ "\U0001F6A8 HEAVY SHARP STEAM",
-                  abs(Line_Drift) >= 10 ~ "\u26A1 ACTIVE LINE MOVEMENT",
-                  TRUE                  ~ "STABLE CONSENSUS"
-                ),
-                `Open ML` = ifelse(Open_Line > 0, paste0("+", as.integer(Open_Line)), as.character(as.integer(Open_Line))),
-                `Current ML` = ifelse(Current_Line > 0, paste0("+", as.integer(Current_Line)), as.character(as.integer(Current_Line))),
-                `Sharp Consensus` = ifelse(Sharp_Line > 0, paste0("+", as.integer(Sharp_Line)), as.character(as.integer(Sharp_Line)))
-              ) %>%
-              select(
-                Matchup = 1,
-                `Open ML`,
-                `Current ML`,
-                `Sharp Consensus`,
-                `Primary Book` = Book,
-                `Movement Signal` = Signal
-              )
-
-            as.data.frame(res)
-          }
-        }
-      }
-    }, error = function(e) {
-      NULL
-    })
-
-    if (is.null(steam_df) || nrow(steam_df) == 0) {
-      datatable(
-        data.frame(
-          Status = "MONITORING ACTIVE",
-          Details = "Gathering consecutive market snapshots. Steam signals populate as sportsbooks update lines. WNBA book coverage is thinner than NBA's, so this may take longer to populate than expected.",
-          stringsAsFactors = FALSE
-        ),
-        rownames = FALSE,
-        selection = "none",
-        options = list(dom = "t")
-      )
+    # Guarded exactly like the pre-extraction inline tryCatch: a raw readRDS() error (e.g. a
+    # concurrently-written/partial cache file) must fall through to build_tbl_steam_radar(NULL)'s
+    # "MONITORING ACTIVE" placeholder, not propagate as an uncaught render error.
+    hist_df <- if (file.exists(hist_path)) {
+      tryCatch(readRDS(hist_path), error = function(e) NULL)
     } else {
-      datatable(
-        steam_df,
-        options = list(
-          pageLength = 8,
-          scrollX = TRUE,
-          dom = "tip"
-        ),
-        rownames = FALSE,
-        selection = "none"
-      )
+      NULL
     }
+    build_tbl_steam_radar(hist_df)
   })
 
   # ----------------------------------------------------------------------------
@@ -815,61 +709,22 @@ server <- function(input, output, session) {
   # ----------------------------------------------------------------------------
   output$tbl_injuries <- renderDT({
     inj_path <- "cache/injury_data_cache.rds"
-    if (file.exists(inj_path)) {
-      # Guarded like every other cache read in this app (see e.g. the standings/props/embeddings
-      # reactives above) - injury_data_cache.rds is rewritten daily by the scheduled pipeline run,
-      # so a read that races a concurrent write can throw a raw readRDS() error (truncated/partial
-      # file). Previously unguarded here, this was the one reactive in the app that could surface a
-      # raw R error condition straight to the browser (Shiny/DT renders that as "[object Object]"
-      # instead of a message) rather than falling back gracefully like every other tab does.
-      inj_raw <- tryCatch(readRDS(inj_path), error = function(e) {
+    inj_exists <- file.exists(inj_path)
+    # Guarded like every other cache read in this app (see e.g. the standings/props/embeddings
+    # reactives above) - injury_data_cache.rds is rewritten daily by the scheduled pipeline run,
+    # so a read that races a concurrent write can throw a raw readRDS() error (truncated/partial
+    # file). Previously unguarded here, this was the one reactive in the app that could surface a
+    # raw R error condition straight to the browser (Shiny/DT renders that as "[object Object]"
+    # instead of a message) rather than falling back gracefully like every other tab does.
+    inj_raw <- if (inj_exists) {
+      tryCatch(readRDS(inj_path), error = function(e) {
         message("[tbl_injuries] Failed to read ", inj_path, ": ", conditionMessage(e))
         NULL
       })
-      if (is.null(inj_raw)) {
-        return(datatable(tibble(
-          Notice = "Injury cache is being refreshed right now (or was corrupted) - try again in a moment."
-        ), rownames = FALSE))
-      }
-      if (nrow(inj_raw) > 0) {
-        inj_display <- inj_raw %>%
-          mutate(
-            Status = status,
-            Spread_Impact = case_when(
-              grepl("OUT", status, ignore.case = TRUE) ~ "-3.5 to -5.0 pts",
-              grepl("QUESTIONABLE", status, ignore.case = TRUE) ~ "-1.5 to -2.5 pts",
-              TRUE ~ "-0.5 pts"
-            ),
-            # BUG FIX (traced via headless-browser probe, 2026-09-12): this app's `%||%` (line 50)
-            # is a SCALAR null/NA-coalescing operator (`if (!is.null(a) && length(a) > 0 &&
-            # !is.na(a)) a else b`), correct for single config values elsewhere in this file but
-            # NOT vectorized - applying it to a full column (data_source, one value per row) made
-            # `!is.na(a)` return a length-42 logical inside `&&`, which R 4.3+ hard-errors on
-            # ("'length = 42' in coercion to 'logical(1)'"). That error, thrown mid-`mutate()`
-            # inside this renderDT/htmlwidget context, is exactly what the browser was showing as
-            # the unreadable "Error [object Object]" - not a data problem, a vectorization bug.
-            # dplyr::coalesce() is the correct per-row equivalent and is already loaded.
-            Source = coalesce(data_source, "UNKNOWN")
-          ) %>%
-          select(
-            Date = game_date,
-            Team = team_name,
-            Player = player_name,
-            Status = status,
-            Injury = injury_desc,
-            `Est. Spread Drag` = Spread_Impact,
-            `Data Source` = Source
-          )
-        datatable(inj_display, options = list(pageLength = 8, scrollX = TRUE), rownames = FALSE)
-      } else {
-        datatable(tibble(
-          Status = "OFFICIAL REPORT CLEAR",
-          Details = "No confirmed player scratches currently reported on the active slate. All rosters projected at 100% strength."
-        ), rownames = FALSE)
-      }
     } else {
-      datatable(tibble(Notice = "Injury scraper cache pending next pipeline execution."), rownames = FALSE)
+      NULL
     }
+    build_tbl_injuries(inj_exists, inj_raw)
   })
 
   # ----------------------------------------------------------------------------
@@ -906,18 +761,7 @@ server <- function(input, output, session) {
   output$plot_bankroll_drawdown <- renderPlot({
     dat <- r_risk_data()
     req(dat$ledger)
-    ggplot(dat$ledger, aes(x = date, y = bankroll)) +
-      geom_area(fill = "#9b59b6", alpha = 0.25) +
-      geom_line(color = "#af7ac5", linewidth = 1.2) +
-      geom_hline(yintercept = 100, linetype = "dashed", color = "#7f8c8d") +
-      labs(title = "Quantitative Portfolio Growth (Base 100.0 Units)", x = "Date", y = "Bankroll (Units)") +
-      theme_minimal() +
-      theme(
-        plot.background = element_rect(fill = "#1a222d", color = NA),
-        panel.background = element_rect(fill = "#1a222d", color = NA),
-        text = element_text(color = "#ecf0f1"),
-        axis.text = element_text(color = "#bdc3c7")
-      )
+    build_plot_bankroll_drawdown(dat$ledger)
   })
 
   output$txt_risk_engine_status <- renderText({
@@ -938,7 +782,7 @@ server <- function(input, output, session) {
   output$tbl_graded_ledger <- renderDT({
     dat <- r_risk_data()
     req(dat$ledger)
-    datatable(dat$ledger, options = list(pageLength = 8, scrollX = TRUE), rownames = FALSE)
+    build_tbl_graded_ledger(dat$ledger)
   })
 
   # ----------------------------------------------------------------------------
@@ -968,153 +812,12 @@ server <- function(input, output, session) {
 
   output$plot_embeddings_pca <- renderPlot({
     emb <- r_embeddings_raw()
-    if (is.null(emb) || nrow(emb) == 0) {
-      return(
-        ggplot() +
-          annotate("text", x = 1, y = 1, label = "team_embeddings.csv not found - run team_embeddings.py first.", color = "#bdc3c7", size = 5) +
-          theme_void() + theme(plot.background = element_rect(fill = "#1a222d", color = NA))
-      )
-    }
-
-    emb_cols <- grep("^emb_", names(emb), value = TRUE)
-    if (length(emb_cols) < 2) {
-      return(
-        ggplot() +
-          annotate("text", x = 1, y = 1, label = "team_embeddings.csv has fewer than 2 emb_* dims - cannot PCA-project.", color = "#bdc3c7", size = 5) +
-          theme_void() + theme(plot.background = element_rect(fill = "#1a222d", color = NA))
-      )
-    }
-
-    mat <- as.matrix(emb[, emb_cols, drop = FALSE])
-    pca <- prcomp(mat, center = TRUE, scale. = TRUE)
-    var_pct <- round(100 * (pca$sdev^2 / sum(pca$sdev^2))[1:2], 1)
-
-    p_data <- tibble(
-      team_id = emb$team_id,
-      pc1 = pca$x[, 1],
-      pc2 = pca$x[, 2]
-    )
-
-    ggplot(p_data, aes(x = pc1, y = pc2, label = paste("Team", team_id))) +
-      geom_point(size = 5.5, alpha = 0.85, color = "#af7ac5") +
-      geom_text(vjust = -1.2, color = "#ecf0f1", fontface = "bold", size = 3.5) +
-      labs(
-        title = "15 WNBA Teams: Real 16-D Embedding Vectors, PCA-Projected to 2D",
-        subtitle = paste0("PC1 explains ", var_pct[1], "% of variance, PC2 explains ", var_pct[2], "% (real-data-trained as of P1, 2026-09-12 - see caveat above)"),
-        x = "Principal Component 1", y = "Principal Component 2"
-      ) +
-      theme_minimal() +
-      theme(
-        plot.background = element_rect(fill = "#1a222d", color = NA),
-        panel.background = element_rect(fill = "#1a222d", color = NA),
-        text = element_text(color = "#ecf0f1"),
-        axis.text = element_text(color = "#bdc3c7")
-      )
+    build_plot_embeddings_pca(emb)
   })
 
   output$plot_embeddings_heatmap <- renderPlot({
     sim <- r_similarity_raw()
-    if (is.null(sim) || nrow(sim) == 0) {
-      return(
-        ggplot() +
-          annotate("text", x = 1, y = 1, label = "team_similarity_matrix.csv not found - run team_embeddings.py first.", color = "#bdc3c7", size = 5) +
-          theme_void() + theme(plot.background = element_rect(fill = "#1a222d", color = NA))
-      )
-    }
-
-    # A row-label/index column (team id) is present iff there's one more column than row - i.e.
-    # a square NxN similarity matrix plus one label column. That column may hold a real team
-    # abbreviation (e.g. "ATL", as written by the real-data-trained team_embeddings.py) or a bare
-    # numeric index (older mock-data runs) - detect which case this is WITHOUT calling
-    # round()/max() on a possibly-character column (that throws "non-numeric argument to
-    # mathematical function" - the bug being fixed here), and use the real labels when available
-    # instead of a generic T1..Tn placeholder.
-    # PRE-EXISTING BUG found by P4-B's headless probe (present at Wave 0 baseline commit 20b12fd,
-    # NOT introduced by Phase 4). r_similarity_raw() above reads logs/analytics.duckdb's
-    # `team_similarity` table, which is stored LONG (225 rows = 15x15, columns
-    # team_a | team_b | similarity). Every line below assumes the WIDE NxN shape of
-    # data/team_similarity_matrix.csv, so `has_label_col` was FALSE, `n` became 225, and
-    # `colnames(mat) <- labels` assigned 225 names to a 3-column matrix:
-    #   Error: length of 'dimnames' [2] not equal to array extent
-    # That error node persisted in the DOM across every subsequently-clicked tab, which is why it
-    # showed up as 5 "console errors" in the probe. Handle the long form directly - it is already
-    # exactly the shape the ggplot below wants - and keep the wide path for the CSV-shaped input.
-    long_cols <- c("team_a", "team_b", "similarity")
-    if (all(long_cols %in% names(sim))) {
-      labels <- sort(unique(as.character(sim$team_a)))
-      long_df <- sim %>%
-        transmute(
-          row_team = factor(as.character(team_a), levels = labels),
-          col_team = factor(as.character(team_b), levels = labels),
-          similarity = as.numeric(similarity)
-        )
-      return(
-        ggplot(long_df, aes(x = col_team, y = row_team, fill = similarity)) +
-          geom_tile() +
-          scale_fill_gradient2(low = "#2c3e50", mid = "#af7ac5", high = "#ffffff",
-                               midpoint = 0.5, name = "Cosine Sim") +
-          labs(title = sprintf("%dx%d WNBA Team Embedding Cosine-Similarity Matrix",
-                               length(labels), length(labels)), x = NULL, y = NULL) +
-          theme_minimal() +
-          theme(
-            plot.background = element_rect(fill = "#1a222d", color = NA),
-            panel.background = element_rect(fill = "#1a222d", color = NA),
-            text = element_text(color = "#ecf0f1"),
-            axis.text = element_text(color = "#bdc3c7"),
-            axis.text.x = element_text(angle = 45, hjust = 1)
-          )
-      )
-    }
-
-    has_label_col <- ncol(sim) == nrow(sim) + 1
-    if (has_label_col) {
-      first_col <- sim[[1]]
-      first_col_is_numeric_index <- is.numeric(first_col) ||
-        (is.character(first_col) && !anyNA(suppressWarnings(as.numeric(first_col))))
-      team_labels <- if (!first_col_is_numeric_index) as.character(first_col) else NULL
-      mat_df <- sim[, -1, drop = FALSE]
-    } else {
-      team_labels <- NULL
-      mat_df <- sim
-    }
-    n <- nrow(mat_df)
-    mat <- as.matrix(mat_df)
-    # Fail-safe (same pre-existing bug as above): never assign dimnames to a non-square matrix -
-    # that throws "length of 'dimnames' [2] not equal to array extent" into the browser. Render a
-    # labelled notice instead of an opaque Shiny error state.
-    if (ncol(mat) != n) {
-      return(
-        ggplot() +
-          annotate("text", x = 1, y = 1, size = 5, color = "#e74c3c",
-                   label = sprintf("Similarity matrix is not square (%d rows x %d cols) - cannot render heatmap.",
-                                   n, ncol(mat))) +
-          theme_void() + theme(plot.background = element_rect(fill = "#1a222d", color = NA))
-      )
-    }
-    labels <- if (!is.null(team_labels) && length(team_labels) == n) team_labels else paste0("T", 1:n)
-    rownames(mat) <- labels
-    colnames(mat) <- labels
-
-    long_df <- as.data.frame(mat) %>%
-      mutate(row_team = rownames(mat)) %>%
-      pivot_longer(-row_team, names_to = "col_team", values_to = "similarity") %>%
-      mutate(
-        row_team = factor(row_team, levels = labels),
-        col_team = factor(col_team, levels = labels)
-      )
-
-    ggplot(long_df, aes(x = col_team, y = row_team, fill = similarity)) +
-      geom_tile() +
-      scale_fill_gradient2(low = "#2c3e50", mid = "#af7ac5", high = "#ffffff", midpoint = 0.5, name = "Cosine Sim") +
-      labs(title = "15x15 WNBA Team Embedding Cosine-Similarity Matrix", x = NULL, y = NULL) +
-      theme_minimal() +
-      theme(
-        plot.background = element_rect(fill = "#1a222d", color = NA),
-        panel.background = element_rect(fill = "#1a222d", color = NA),
-        text = element_text(color = "#ecf0f1"),
-        axis.text = element_text(color = "#bdc3c7"),
-        axis.text.x = element_text(angle = 45, hjust = 1)
-      )
+    build_plot_embeddings_heatmap(sim)
   })
 
   # ----------------------------------------------------------------------------
@@ -1178,52 +881,7 @@ server <- function(input, output, session) {
 
   output$plot_calibration_curve <- renderPlot({
     cal <- r_calibration_result()
-
-    if (!cal$real) {
-      # Synthetic fallback ONLY reached if box_scores_cache.rds itself is missing
-      # (kept per Ground Rule 3 — fallback stays available, just no longer the
-      # only path ever taken).
-      probs <- seq(0.35, 0.75, by = 0.08)
-      actual <- probs + rnorm(length(probs), 0, 0.015)
-      df <- tibble(pred = probs, actual = actual)
-      p <- ggplot(df, aes(x = pred, y = actual)) +
-        geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "#e74c3c", linewidth = 1) +
-        geom_line(color = "#af7ac5", linewidth = 1.3) +
-        geom_point(color = "#2ecc71", size = 4.5) +
-        scale_x_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0.25, 0.85)) +
-        scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0.25, 0.85)) +
-        labs(
-          title = "SYNTHETIC FALLBACK — box_scores_cache.rds unavailable",
-          subtitle = "Illustrative only. Not real model calibration.",
-          x = "Model Predicted Win Probability",
-          y = "Empirical Realized Win Rate"
-        )
-    } else {
-      cal_df <- cal$result$table
-      p <- ggplot(cal_df, aes(x = mean_predicted, y = observed_win_rate)) +
-        geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "#e74c3c", linewidth = 1) +
-        geom_line(color = "#af7ac5", linewidth = 1.3) +
-        geom_point(aes(size = n_games), color = "#2ecc71") +
-        scale_x_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, 1)) +
-        scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, 1)) +
-        labs(
-          title = sprintf("Model Probability Calibration (Real WNBA Games) — Brier: %.4f | BSS: %.3f | Log-Loss: %.4f",
-                           cal$result$brier, cal$result$bss, cal$result$log_loss),
-          subtitle = "Ideal Calibration follows 45-degree dashed reference line (Expected Prob == Observed Win Rate)",
-          x = "Model Predicted Win Probability",
-          y = "Empirical Realized Win Rate",
-          size = "Games in bin"
-        )
-    }
-
-    p +
-      theme_minimal() +
-      theme(
-        plot.background = element_rect(fill = "#1a222d", color = NA),
-        panel.background = element_rect(fill = "#1a222d", color = NA),
-        text = element_text(color = "#ecf0f1"),
-        axis.text = element_text(color = "#bdc3c7")
-      )
+    build_plot_calibration_curve(cal)
   })
 
   # ----------------------------------------------------------------------------
@@ -1288,19 +946,7 @@ server <- function(input, output, session) {
 
   output$tbl_bottom_up_standings <- renderDT({
     std <- r_standings_data()
-    display_df <- std %>% select(-starts_with("norm_"))
-
-    # FIX M-8: projected_wnba_standings.rds now stores Win_Pct as a numeric PROPORTION (0.793), not
-    # a pre-formatted string ("79.3%") - caches stay typed for computation, formatting belongs in
-    # the view layer. Format here with scales::percent(). Guarded rather than assumed: if an
-    # older string-formatted cache is still on disk (agent_pipeline's writer change lands in the
-    # same wave), it is already display-ready and passes through untouched instead of coercing to
-    # NA. Same guard applies to any other proportion-shaped column the writer adds later.
-    if ("Win_Pct" %in% names(display_df) && is.numeric(display_df$Win_Pct)) {
-      display_df$Win_Pct <- scales::percent(display_df$Win_Pct, accuracy = 0.1)
-    }
-
-    datatable(display_df, options = list(pageLength = 10), rownames = FALSE)
+    build_tbl_bottom_up_standings(std)
   })
 
   # ----------------------------------------------------------------------------
@@ -1463,86 +1109,27 @@ server <- function(input, output, session) {
   # data" case is an honest annotated message instead of an empty plot.
   .diag_chartable <- function(df) if (is.null(df)) NULL else df[!is.na(df$residual), , drop = FALSE]
 
-  # `size`/`wrap_width` are tunable per call site because plotly does not auto-wrap
-  # annotate() text to the containing box's pixel width -- a message sized for the
-  # width=8 "Predicted vs. Actual Margin" box overflowed/clipped in the narrower
-  # width=4 "Residual Distribution" box (flagged 2026-09-18, fixed 2026-09-19,
-  # docs/future-work.md item 9). strwrap() re-wraps the message to `wrap_width`
-  # characters/line regardless of any hardcoded \n in the input, so callers don't need
-  # to hand-count characters per box width themselves.
-  .diag_empty_plot <- function(msg, size = 4.5, wrap_width = 40) {
-    wrapped <- paste(strwrap(msg, width = wrap_width), collapse = "\n")
-    ggplotly(
-      ggplot() +
-        annotate("text", x = 0, y = 0, label = wrapped, color = "#bdc3c7", size = size) +
-        theme_void() +
-        theme(plot.background = element_rect(fill = "#1a222d", color = NA))
-    )
-  }
+  # NOTE: `.diag_empty_plot()` (the shared "no chartable predictions yet" plotly builder used by
+  # the three outputs below) now lives in dashboard_render_helpers.R, sourced near the top of
+  # this file - it contained no input$/session reference, so it moved along with the three
+  # build_plot_* functions that call it.
 
   output$plot_residual_scatter <- renderPlotly({
     df <- .diag_chartable(r_diagnostics_df())
     req(!is.null(df))
-    if (nrow(df) == 0) return(.diag_empty_plot("No chartable predictions yet\n(predicted_margin missing on all resolved rows)"))
-
-    p <- ggplot(df, aes(x = predicted_margin, y = actual_margin)) +
-      geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "#e74c3c", linewidth = 1) +
-      geom_point(color = "#af7ac5", alpha = 0.6) +
-      labs(title = "Predicted vs. Actual Margin", x = "Predicted Margin (Home - Away)", y = "Actual Margin") +
-      theme_minimal() +
-      theme(
-        plot.background = element_rect(fill = "#1a222d", color = NA),
-        panel.background = element_rect(fill = "#1a222d", color = NA),
-        text = element_text(color = "#ecf0f1"),
-        axis.text = element_text(color = "#bdc3c7")
-      )
-    ggplotly(p)
+    build_plot_residual_scatter(df)
   })
 
   output$plot_residual_dist <- renderPlotly({
     df <- .diag_chartable(r_diagnostics_df())
     req(!is.null(df))
-    # Narrower width=4 box (vs the other two panels' width=8/12) -- smaller size +
-    # tighter wrap_width so the message doesn't overflow/clip (see .diag_empty_plot()'s
-    # own comment).
-    if (nrow(df) == 0) return(.diag_empty_plot("No chartable predictions yet (predicted_margin missing on all resolved rows)", size = 3.3, wrap_width = 20))
-
-    p <- ggplot(df, aes(x = residual)) +
-      geom_histogram(bins = 20, fill = "#af7ac5", color = "#ecf0f1", alpha = 0.8) +
-      geom_vline(xintercept = 0, linetype = "dashed", color = "#e74c3c", linewidth = 1) +
-      labs(title = "Distribution of Residuals", x = "Residual (Actual - Predicted)", y = "Frequency") +
-      theme_minimal() +
-      theme(
-        plot.background = element_rect(fill = "#1a222d", color = NA),
-        panel.background = element_rect(fill = "#1a222d", color = NA),
-        text = element_text(color = "#ecf0f1"),
-        axis.text = element_text(color = "#bdc3c7")
-      )
-    ggplotly(p)
+    build_plot_residual_dist(df)
   })
 
   output$plot_team_bias <- renderPlotly({
     df <- .diag_chartable(r_diagnostics_df())
     req(!is.null(df))
-    if (nrow(df) == 0) return(.diag_empty_plot("No chartable predictions yet\n(predicted_margin missing on all resolved rows)"))
-
-    team_bias <- df |>
-      group_by(home_team) |>
-      summarise(mean_res = mean(residual, na.rm = TRUE)) |>
-      arrange(desc(mean_res))
-
-    p <- ggplot(team_bias, aes(x = reorder(home_team, mean_res), y = mean_res)) +
-      geom_col(fill = "#af7ac5") +
-      coord_flip() +
-      labs(title = "Mean Residual by Team (Home Games)", x = "Team", y = "Mean Residual") +
-      theme_minimal() +
-      theme(
-        plot.background = element_rect(fill = "#1a222d", color = NA),
-        panel.background = element_rect(fill = "#1a222d", color = NA),
-        text = element_text(color = "#ecf0f1"),
-        axis.text = element_text(color = "#bdc3c7")
-      )
-    ggplotly(p)
+    build_plot_team_bias(df)
   })
 
   # ----------------------------------------------------------------------------
@@ -1581,76 +1168,26 @@ server <- function(input, output, session) {
 
   output$tbl_props_terminal <- renderDT({
     df <- filtered_props()
-    if (nrow(df) == 0) {
-      return(datatable(tibble(Notice = "No props match the active filter criteria."), rownames = FALSE))
-    }
-
-    table_view <- df %>%
-      mutate(
-        proj_mu = round(as.numeric(proj_mu), 2),
-        ev_pct = round(as.numeric(ev_pct), 1),
-        quarter_kelly = round(as.numeric(quarter_kelly), 3)
-      ) %>%
-      select(player, team, stat, line, proj_mu, recommended_side, market_odds, ev_pct, quarter_kelly) %>%
-      rename(
-        Player = player,
-        Team = team,
-        Stat = stat,
-        Line = line,
-        Projected = proj_mu,
-        Side = recommended_side,
-        Odds = market_odds,
-        `EV %` = ev_pct,
-        `Kelly Stake` = quarter_kelly
-      )
-
-    datatable(table_view, selection = "single", options = list(pageLength = 8, scrollX = TRUE), rownames = FALSE)
+    build_tbl_props_terminal(df)
   })
 
   output$plot_prop_zinb_curve <- renderPlot({
     df <- filtered_props()
-    if (nrow(df) == 0) {
-      return(
-        ggplot() +
-          annotate("text", x = 1, y = 1, label = "No Props Matching Criteria", color = "#bdc3c7", size = 5) +
-          theme_void() +
-          theme(plot.background = element_rect(fill = "#1a222d", color = NA))
-      )
+
+    # Row-selection logic depends on input$tbl_props_terminal_rows_selected, so it stays here
+    # rather than inside the helper; only the resolved `sel` (single-row data frame, 0 rows if
+    # df itself is empty - matching the original's nrow(df) == 0 early-return path) is handed to
+    # build_plot_prop_zinb_curve().
+    s_idx <- input$tbl_props_terminal_rows_selected
+    sel <- if (nrow(df) == 0) {
+      df
+    } else if (!is.null(s_idx) && length(s_idx) > 0 && s_idx <= nrow(df)) {
+      df[s_idx, ]
+    } else {
+      df[1, ]
     }
 
-    s_idx <- input$tbl_props_terminal_rows_selected
-    sel <- if (!is.null(s_idx) && length(s_idx) > 0 && s_idx <= nrow(df)) df[s_idx, ] else df[1, ]
-
-    mu <- as.numeric(sel$proj_mu %||% (sel$line * 1.05))
-    theta <- as.numeric(sel$theta %||% 5.0)
-    pi_0 <- as.numeric(sel$zinb_p_zero %||% 0.02)
-
-    x_max <- max(10, ceiling(mu * 2.2))
-    xs <- 0:x_max
-
-    probs <- (1 - pi_0) * dnbinom(xs, size = theta, mu = mu)
-    probs[1] <- probs[1] + pi_0
-
-    plot_df <- tibble(x = xs, prob = probs, is_over = xs > sel$line)
-
-    ggplot(plot_df, aes(x = x, y = prob, fill = is_over)) +
-      geom_col(alpha = 0.85, width = 0.7) +
-      geom_vline(xintercept = sel$line, linetype = "dashed", color = "#e74c3c", linewidth = 1.1) +
-      scale_fill_manual(values = c("FALSE" = "#3498db", "TRUE" = "#2ecc71"), name = "Side",
-                        labels = c("Under", "Over")) +
-      labs(
-        title = paste(sel$player, "-", sel$stat, "(Line:", sel$line, ")"),
-        subtitle = paste0("ZINB Distribution (mu=", round(mu, 1), ", theta=", round(theta, 1), ", pi0=", round(pi_0, 2), ")"),
-        x = sel$stat, y = "Probability Density"
-      ) +
-      theme_minimal() +
-      theme(
-        plot.background = element_rect(fill = "#1a222d", color = NA),
-        panel.background = element_rect(fill = "#1a222d", color = NA),
-        text = element_text(color = "#ecf0f1"),
-        axis.text = element_text(color = "#bdc3c7"),
-        legend.position = "top"
-      )
+    build_plot_prop_zinb_curve(df, sel)
   })
 
   # ----------------------------------------------------------------------------
@@ -1669,54 +1206,7 @@ server <- function(input, output, session) {
 
   output$tbl_clutch_shot_profile <- renderDT({
     df <- r_pbp_features()
-
-    if (is.null(df) || nrow(df) == 0) {
-      return(datatable(tibble(
-        Notice = "Play-by-play player features not yet generated - run pbp_engine.R (or the full pipeline) to build cache/player_pbp_features.rds."
-      ), rownames = FALSE, options = list(dom = "t")))
-    }
-
-    # Per-row NA-fill on real columns: dplyr::coalesce(), NOT this file's scalar %||% (CLAUDE.md /
-    # FIX M-6 - %||% hard-errors on a full vector under R 4.3+). clutch_fg_pct / pct_* are
-    # legitimately NA (not 0) when the player has zero attempts in that bucket, so coalesce to 0
-    # here only for display purposes - the underlying cache keeps the honest NA.
-    display_df <- df %>%
-      mutate(
-        clutch_fg_pct          = dplyr::coalesce(clutch_fg_pct, 0),
-        pct_rim                = dplyr::coalesce(pct_rim, 0),
-        pct_off_dribble_jumper = dplyr::coalesce(pct_off_dribble_jumper, 0),
-        pct_catch_shoot_jumper = dplyr::coalesce(pct_catch_shoot_jumper, 0),
-        pct_three              = dplyr::coalesce(pct_three, 0)
-      )
-
-    if (!isTRUE(input$clutch_show_low_volume)) {
-      display_df <- display_df %>% filter(fga_total >= 20)
-    }
-
-    if (nrow(display_df) == 0) {
-      return(datatable(tibble(
-        Notice = "No players meet the current FGA threshold - check 'Show low-volume players' above."
-      ), rownames = FALSE, options = list(dom = "t")))
-    }
-
-    display_view <- display_df %>%
-      transmute(
-        Player = player_name,
-        Team = team_abbreviation,
-        `Data Source` = data_source,
-        FGA = fga_total,
-        `Clutch Pts` = clutch_points,
-        `Clutch FG%` = scales::percent(clutch_fg_pct, accuracy = 0.1),
-        `Clutch Scoring Plays` = clutch_scoring_plays,
-        Assists = assists,
-        `Rim %` = scales::percent(pct_rim, accuracy = 0.1),
-        `Off-Dribble Jumper %` = scales::percent(pct_off_dribble_jumper, accuracy = 0.1),
-        `Catch & Shoot %` = scales::percent(pct_catch_shoot_jumper, accuracy = 0.1),
-        `3PT Rate` = scales::percent(pct_three, accuracy = 0.1)
-      ) %>%
-      arrange(desc(`Clutch Pts`))
-
-    datatable(display_view, options = list(pageLength = 12, scrollX = TRUE), rownames = FALSE)
+    build_tbl_clutch_shot_profile(df, input$clutch_show_low_volume)
   })
 }
 
