@@ -291,6 +291,22 @@ run_stage("bet_tracker.r", "Record & Grade Real Value-Bet Ledger (CLV tracking)"
 run_stage("notify_bets.R", "Dispatch NFL Discord Alpha & CLV Bet Alerts",
           call_fn = "run_notify_bets")
 
+# 11. Season-to-date model accuracy trajectory tracker (issue #7; engine itself built under
+# issue #5, Discord dispatch under issue #6). Detects newly-completed/graded CURRENT_SEASON games
+# since the last recorded run and appends one row to CACHE_ACCURACY_HISTORY (config.R) — see
+# accuracy_tracker.R's own header and docs/SPEC_accuracy_trajectory_monitoring.md decisions #3-#5.
+# No `output` declared here, deliberately, same rationale as stage 10's bet_tracker.r comment
+# above: run_accuracy_tracker() only appends to CACHE_ACCURACY_HISTORY when there is at least one
+# newly-graded game since the last run — on a normal no-new-games day (bye weeks, mid-week, or a
+# day with no games completed since the last run) it is a clean no-op that returns without
+# touching the file at all, which is indistinguishable from the C-2 "possibly stale/silent no-op"
+# case .check_stage_output() warns about. Declaring `output = CACHE_ACCURACY_HISTORY` would make
+# that legitimate every-day-without-new-games outcome throw a false-positive staleness WARN, so
+# `output` is intentionally omitted (matches notify_bets.R's own no-`output` convention directly
+# above, for the same "last stage, no unconditional per-run write" reason).
+run_stage("accuracy_tracker.R", "Track Season-to-Date Model Accuracy Trajectory",
+          call_fn = "run_accuracy_tracker")
+
 # ------------------------------------------------------------------------------
 # FUTURE STAGES — extension point, not yet implemented (see docs/task_assignments_phase0.md's
 # Constraints section and docs/NFL_REPLICATION_PLAN.md §1's later-phase list). Per that
