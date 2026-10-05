@@ -521,6 +521,43 @@ CACHE_ODDS_HISTORY      <- file.path(CACHE_DIR, "odds_history.rds")
 # load_real_ledger()/run_risk_management() now read this constant instead of a literal
 # "cache/betting_ledger.rds" string.
 CACHE_BETTING_LEDGER <- file.path(CACHE_DIR, "betting_ledger.rds")
+# Added per docs/SPEC_accuracy_trajectory_monitoring.md decision #6 (GitHub issue #4,
+# "Accuracy Tracker 2") - prep infrastructure for the future accuracy_tracker.R pipeline stage
+# (issue #5) and its grading logic (issue #2's grade_walkforward_games()). A narrowly-scoped,
+# documented exception, same pattern as CACHE_EPA_METRICS / CACHE_BETTING_LEDGER above (the
+# init/append helpers in tools/backtest_common.R do not own config.R; they own only this one
+# new constant).
+#
+# Purpose: persisted season-to-date accuracy history across runs of accuracy_tracker.R, so the
+# model's prediction accuracy trajectory can be posted to Discord and inspected over time
+# (unlike tools/weekly_accuracy_report.R's CACHE_WEEKLY_ACCURACY_REPORT-style caches, which
+# overwrite in place on every run with no history). Per decision #5, one row is appended per
+# *run that detects newly-completed/graded games* (not one row per NFL week) - a run that finds
+# nothing new graded since the last row is a no-op and appends nothing.
+#
+# Row schema (one row per data.frame row, `newly_graded_games` a list-column holding a
+# data.frame of that run's newly-graded games - usually 1 row, but >1 when multiple games
+# complete between runs, e.g. a full Sunday slate graded in one pass):
+#   run_timestamp      <POSIXct> - wall-clock time this row was appended (Sys.time())
+#   season             <integer> - NFL season these games belong to (CURRENT_SEASON)
+#   newly_graded_games <list>    - one data.frame per row, columns:
+#       game_id              <character> - nflverse game_id, joins back to CACHE_SCHEDULES
+#       matchup              <character> - "AWAY @ HOME" display string
+#       predicted_winner     <character> - team abbreviation the model favored pre-game
+#       actual_winner        <character> - team abbreviation that actually won
+#       correct              <logical>   - predicted_winner == actual_winner
+#       predicted_win_prob   <numeric>   - model's pre-game home_win_prob (or winner-side prob)
+#   overall_accuracy   <numeric> - cumulative season-to-date accuracy across ALL graded games
+#                                  for `season` as of this run (not just newly_graded_games)
+#   overall_brier      <numeric> - cumulative season-to-date Brier score, same scope as above
+#   overall_logloss    <numeric> - cumulative season-to-date log-loss, same scope as above
+#   n_games_graded     <integer> - total count of games underlying the three cumulative metrics
+#                                  above (i.e. nrow() of issue #2's grade_walkforward_games()
+#                                  per_game table for `season`, as of this run)
+# This shape is designed to hold whatever issue #2's grade_walkforward_games() eventually
+# returns (documented there as list(per_game, by_week, overall_accuracy, overall_brier,
+# overall_logloss)) without needing a schema change once that function exists.
+CACHE_ACCURACY_HISTORY <- file.path(CACHE_DIR, "accuracy_history.rds")
 
 # ------------------------------------------------------------------------------------------
 # API Throttling & Rate-Limiting (sport-agnostic starting defaults)

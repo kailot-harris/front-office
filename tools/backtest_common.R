@@ -171,3 +171,96 @@ build_walkforward_games <- function(epa, completed, calibration_seasons, avg_pla
 
   bind_rows(game_rows)
 }
+
+# ------------------------------------------------------------------------------------------
+# Accuracy-History Cache Helpers (prep infra for accuracy_tracker.R, GitHub issue #4 /
+# docs/SPEC_accuracy_trajectory_monitoring.md decision #6)
+#
+# These helpers own CACHE_ACCURACY_HISTORY's on-disk schema (see config.R's constant comment
+# for the authoritative row-schema documentation - do not restate/duplicate it here, only
+# reference it, same "single source of truth" discipline CLAUDE.md requires for constants).
+# Assumes the caller has already done source("config.R"); library(dplyr). No top-level side
+# effects beyond function definitions - safe to source() from any script, same convention as
+# the rest of this file.
+# ------------------------------------------------------------------------------------------
+
+# Empty, correctly-typed accuracy-history data.frame (zero rows) - the shape every init/append
+# call below conforms to. Exists as its own function (rather than inlined) so init and append
+# can both build from the identical column-type definition instead of risking two independently-
+# typed copies drifting apart.
+empty_accuracy_history <- function() {
+  data.frame(
+    run_timestamp  = as.POSIXct(character(0)),
+    season         = integer(0),
+    overall_accuracy = numeric(0),
+    overall_brier    = numeric(0),
+    overall_logloss  = numeric(0),
+    n_games_graded   = integer(0),
+    stringsAsFactors = FALSE
+  ) |>
+    dplyr::mutate(newly_graded_games = list())
+}
+
+# init_accuracy_history(): creates (and persists) an empty CACHE_ACCURACY_HISTORY cache file if
+# one does not already exist. Idempotent - if a file already exists at that path this is a no-op
+# that just returns it unchanged (does NOT overwrite/truncate real history). Returns the
+# (possibly just-created) data.frame.
+init_accuracy_history <- function() {
+  if (file.exists(CACHE_ACCURACY_HISTORY)) {
+    return(readRDS(CACHE_ACCURACY_HISTORY))
+  }
+  hist <- empty_accuracy_history()
+  saveRDS(hist, CACHE_ACCURACY_HISTORY)
+  hist
+}
+
+# load_accuracy_history(): reads the existing cache, or initializes+returns an empty one if this
+# is the very first run (file doesn't exist yet) - the read-side counterpart callers should use
+# instead of readRDS(CACHE_ACCURACY_HISTORY) directly, so "no history yet" never has to be
+# special-cased by every caller.
+load_accuracy_history <- function() {
+  if (!file.exists(CACHE_ACCURACY_HISTORY)) return(init_accuracy_history())
+  readRDS(CACHE_ACCURACY_HISTORY)
+}
+
+# append_accuracy_history(): appends one new row to CACHE_ACCURACY_HISTORY and persists the
+# result, per decision #5/#6 - one row per run that detects newly-completed/graded games.
+# Callers that detect nothing new graded since the last row should simply not call this (a
+# true no-op run appends nothing, per decision #4's idempotency requirement) - this function
+# itself always appends exactly one row when called.
+#
+# `newly_graded_games` = a data.frame for THIS run's newly-graded games only, with columns
+# game_id/matchup/predicted_winner/actual_winner/correct/predicted_win_prob (see config.R's
+# CACHE_ACCURACY_HISTORY comment for the full column-type spec) - typically 1 row, but may be
+# >1 (e.g. a full Sunday slate graded in one pass).
+# `overall_accuracy`/`overall_brier`/`overall_logloss`/`n_games_graded` = the CUMULATIVE
+# season-to-date figures across all graded games for `season` as of this run, not just the
+# incremental newly_graded_games rows - matches issue #2's grade_walkforward_games() output
+# shape (overall_accuracy/overall_brier/overall_logloss scoped to all graded games so far).
+#
+# Returns the full updated history data.frame (existing rows + the new one), already persisted
+# to CACHE_ACCURACY_HISTORY.
+append_accuracy_history <- function(season,
+                                     newly_graded_games,
+                                     overall_accuracy,
+                                     overall_brier,
+                                     overall_logloss,
+                                     n_games_graded,
+                                     run_timestamp = Sys.time()) {
+  existing <- load_accuracy_history()
+
+  new_row <- data.frame(
+    run_timestamp    = as.POSIXct(run_timestamp),
+    season           = as.integer(season),
+    overall_accuracy = as.numeric(overall_accuracy),
+    overall_brier    = as.numeric(overall_brier),
+    overall_logloss  = as.numeric(overall_logloss),
+    n_games_graded   = as.integer(n_games_graded),
+    stringsAsFactors = FALSE
+  )
+  new_row$newly_graded_games <- list(newly_graded_games)
+
+  updated <- dplyr::bind_rows(existing, new_row)
+  saveRDS(updated, CACHE_ACCURACY_HISTORY)
+  updated
+}
