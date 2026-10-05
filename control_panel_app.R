@@ -58,13 +58,25 @@
 # run_full_pipeline.R's own 13-stage loop is unaffected by anything here.
 # ==============================================================================
 
-req_pkgs <- c("shiny", "shinyjs")
+# GitHub issue #49 (Slice 5 of #43), second half: DT/ggplot2/dplyr/tidyr/scales/stringr/plotly
+# added so dashboard_render_helpers.R's build_*() functions (sourced below, after
+# pipeline_stages.R) -- which per that file's own header comment assume these packages are
+# already attached by the caller -- behave identically here as they do in app.R, which
+# attaches this same package set before sourcing dashboard_render_helpers.R itself.
+req_pkgs <- c("shiny", "shinyjs", "DT", "ggplot2", "dplyr", "tidyr", "scales", "stringr", "plotly")
 new_pkgs <- req_pkgs[!(req_pkgs %in% installed.packages()[, "Package"])]
 if (length(new_pkgs)) install.packages(new_pkgs)
 
 suppressPackageStartupMessages({
   library(shiny)
   library(shinyjs)
+  library(DT)
+  library(ggplot2)
+  library(dplyr)
+  library(tidyr)
+  library(scales)
+  library(stringr)
+  library(plotly)
 })
 
 # No setwd() here, deliberately -- per CLAUDE.md's flat-layout convention every script in this
@@ -89,6 +101,10 @@ suppressPackageStartupMessages({
 # unquoted).
 source("config.R")
 source("pipeline_stages.R")
+# GitHub issue #49 (Slice 5 of #43), second half: read-only use of app.R's 15 extracted
+# build_*() render helpers (see the STAGE_PREVIEW_MAP section below) -- this file calls them,
+# it does not edit dashboard_render_helpers.R itself.
+source("dashboard_render_helpers.R")
 # GitHub issue #54: real multi-user auth, replacing #50's placeholder CONTROL_PANEL_PASSWORD
 # gate entirely. auth_utils.R defines verify_user()/create_account_if_authorized() (issues
 # #51/#52); auth_login_module.R defines the mountable mod_login_ui()/mod_login_server() pair
@@ -263,6 +279,129 @@ check_stage_staleness <- function(stage) {
 }
 
 # ------------------------------------------------------------------------------------------
+# GitHub issue #49 (Slice 5 of #43), second half. The first half (already on main,
+# dashboard_render_helpers.R) extracted app.R's render-block logic into 15 plain build_*()
+# functions, each taking already-computed data and returning a ggplot/plotly/datatable with no
+# input$/session$ reference -- safe to call from this, a different Shiny app. This section
+# wires a just-finished stage's cache output through the SAME build_*() helper app.R's own tab
+# uses, so the control panel can show a real data preview next to the existing raw log dump (in
+# addition to it, not instead -- output$output_log below is unchanged).
+#
+# STAGE_PREVIEW_MAP: keyed by PIPELINE_STAGES id. Only stages whose `output =` cache was
+# confirmed (by reading app.R's matching reactive) to map cleanly onto one of the 15
+# build_*() functions via a plain readRDS(cache_path) -> build_fn(raw_object) call -- i.e. with
+# no further input$-driven filtering/selection, Shiny req(), or non-readRDS data source (e.g.
+# team_embeddings' build_plot_embeddings_pca()/_heatmap() in app.R consume a duckdb query
+# result, not a readRDS() of CACHE_EMBEDDINGS/CACHE_SIMILARITY, so that stage is deliberately
+# left unmapped rather than reimplemented divergently) -- are listed here. Every other
+# registered stage (data_health_probe, daily_ingest, sync_rosters, team_embeddings,
+# the two prediction_accuracy_logger entries, the three latent_engines, copula_props_engine,
+# playoff_simulator, risk_management_engine, notify_bets, bet_tracker) intentionally has no
+# entry, per the brief: "many stages don't map ... show no extra preview, just the existing
+# log" -- NOT an oversight.
+# ------------------------------------------------------------------------------------------
+#
+# .normalize_value_bets_dates(df): build_tbl_daily_edges() requires a `norm_date` column
+# (confirmed empirically: cache/latest_value_bets.rds as written by market_odds_engine.R has
+# `game_date` but no `norm_date` -- calling build_tbl_daily_edges() on the raw readRDS() object
+# directly errors with "object 'norm_date' not found"). app.R never calls the helper on raw
+# cache data either -- its r_normalized_value_bets() reactive (app.R ~line 591) derives
+# norm_date first, including a staggered-placeholder-date fallback for the common case where
+# the real `game_date` column isn't yet distinct across rows (demo/thin-slate data). That logic
+# is byte-for-byte replicated here (not sourced from app.R -- app.R is out of scope to touch,
+# and its reactive can't be called outside a reactive context anyway) so this preview's content
+# genuinely matches what app.R's Tab 1 (tab_daily_edges, "All Scheduled Dates" selection) shows
+# for the same cache, rather than silently falling back to "no preview" on every real run.
+.normalize_value_bets_dates <- function(df) {
+  c_names <- names(df)
+  d_col <- c_names[tolower(c_names) %in% c("game_date", "date", "commence_time")][1]
+
+  has_distinct_dates <- FALSE
+  if (!is.na(d_col)) {
+    parsed <- suppressWarnings(as.Date(df[[d_col]]))
+    if (sum(!is.na(parsed)) > 0 && length(unique(parsed[!is.na(parsed)])) > 1) {
+      df$norm_date <- parsed
+      has_distinct_dates <- TRUE
+    }
+  }
+
+  if (!has_distinct_dates) {
+    n_total <- nrow(df)
+    staggered_dates <- c(
+      rep("2026-05-08", min(2, n_total)),
+      rep("2026-05-09", min(12, max(0, n_total - 2))),
+      rep("2026-05-10", min(4,  max(0, n_total - 14))),
+      rep("2026-05-11", min(10, max(0, n_total - 18))),
+      rep("2026-05-12", min(7,  max(0, n_total - 28))),
+      rep("2026-05-13", max(0, n_total - 35))
+    )
+    df$norm_date <- as.Date(staggered_dates[1:n_total])
+  }
+  df
+}
+
+STAGE_PREVIEW_MAP <- list(
+  roster_bottom_up_engine = list(
+    cache  = "cache/projected_wnba_standings.rds",
+    render = function(raw) build_tbl_bottom_up_standings(raw)
+  ),
+  market_odds_engine = list(
+    cache  = file.path(CACHE_DIR, "latest_value_bets.rds"),
+    render = function(raw) build_tbl_daily_edges(.normalize_value_bets_dates(raw))
+  ),
+  injury_scraper = list(
+    cache  = CACHE_INJURY_DATA,
+    render = function(raw) build_tbl_injuries(TRUE, raw)
+  ),
+  player_props_engine = list(
+    cache  = CACHE_PLAYER_PROPS,
+    render = function(raw) build_tbl_props_terminal(raw)
+  ),
+  pbp_engine = list(
+    cache  = CACHE_PLAYER_PBP_FEATURES,
+    render = function(raw) build_tbl_clutch_shot_profile(raw, FALSE)
+  )
+)
+
+# ------------------------------------------------------------------------------------------
+# render_stage_preview(stage_id)
+#
+# Looks up stage_id in STAGE_PREVIEW_MAP AND cross-checks its registered `output =` path(s) in
+# PIPELINE_STAGES -- the same registry field output$staleness_ui already reads elsewhere in
+# this file -- so a future drift between this map and the registry's declared output is caught
+# (returns NULL) rather than silently previewing the wrong/stale file. Reads the FRESH .rds the
+# run just wrote and calls the matching build_*() helper.
+#
+# Fail-safe per CLAUDE.md: never throws. Returns NULL (no extra preview, log dump unaffected)
+# if there is no mapping for this stage, the mapped cache isn't actually one of the stage's
+# declared outputs, the file is missing, or readRDS()/the helper call errors for any reason
+# (e.g. an unexpected schema, a half-written concurrent file).
+# ------------------------------------------------------------------------------------------
+render_stage_preview <- function(stage_id) {
+  mapping <- STAGE_PREVIEW_MAP[[stage_id]]
+  if (is.null(mapping)) return(NULL)
+
+  stage <- PIPELINE_STAGES[[stage_id]]
+  if (is.null(stage) || is.null(stage$output)) return(NULL)
+  if (!(mapping$cache %in% stage$output)) return(NULL)
+
+  full_path <- resolve_project_path(mapping$cache)
+  if (!file.exists(full_path)) return(NULL)
+
+  tryCatch({
+    raw    <- readRDS(full_path)
+    widget <- mapping$render(raw)
+    tagList(
+      tags$h5(sprintf("Preview: %s (%s)", stage_id, basename(mapping$cache))),
+      widget
+    )
+  }, error = function(e) {
+    message(sprintf("[render_stage_preview] %s: %s", stage_id, conditionMessage(e)))
+    NULL
+  })
+}
+
+# ------------------------------------------------------------------------------------------
 # GitHub issue #48's cross-session run lock.
 #
 # shiny::runApp() (how this app is launched, same as app.R / summary_app.R elsewhere in this
@@ -417,7 +556,15 @@ control_panel_body_ui <- function() {
       mainPanel(
         width = 8,
         h4("Captured Output"),
-        verbatimTextOutput("output_log")
+        verbatimTextOutput("output_log"),
+        br(),
+        # GitHub issue #49 (Slice 5 of #43), second half: in addition to the raw log above, a
+        # real chart/table preview of the cache file(s) the most-recently-run stage(s) just
+        # wrote, built with the exact same build_*() helpers app.R's tabs use (see
+        # render_stage_preview()/STAGE_PREVIEW_MAP above). Empty for stages with no mapped
+        # helper, a missing cache file, or a helper error -- the log above still renders.
+        h4("Data Preview"),
+        uiOutput("stage_preview")
       )
     )
   )
@@ -460,6 +607,8 @@ server <- function(input, output, session) {
   output$output_log      <- renderText("(no stage has been run yet)")
   output$status_ui       <- renderUI(tags$em("Idle."))
   output$lock_status_ui  <- renderUI(NULL)
+  # GitHub issue #49 (Slice 5 of #43), second half -- see render_stage_preview() above.
+  output$stage_preview   <- renderUI(NULL)
 
   # Primary lock release path on an interrupted run -- see the "SELF-RELEASE ON AN
   # INTERRUPTED RUN" comment above .PIPELINE_RUN_LOCK's definition. Registered once per
@@ -706,6 +855,19 @@ server <- function(input, output, session) {
         paste(head_line, body, sep = "\n")
       }, character(1))
       paste(blocks, collapse = "\n\n")
+    })
+
+    # GitHub issue #49 (Slice 5 of #43), second half: for the most-recently-run stage(s) in
+    # rv$results (this session's just-completed/in-progress queue), look up each one's
+    # STAGE_PREVIEW_MAP entry and render it via render_stage_preview() -- NULL (no mapping,
+    # missing cache, or helper error) is silently dropped, never shown as an error, so the log
+    # dump above always renders regardless of this block's outcome.
+    output$stage_preview <- renderUI({
+      if (length(rv$results) == 0) return(NULL)
+      previews <- lapply(rv$results, function(entry) render_stage_preview(entry$id))
+      previews <- previews[!vapply(previews, is.null, logical(1))]
+      if (length(previews) == 0) return(NULL)
+      tagList(previews)
     })
   }, ignoreNULL = FALSE)
 
