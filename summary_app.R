@@ -43,6 +43,14 @@ library(ggplot2)
 library(png)
 library(grid)
 library(reactable)
+# Also implements SA-6a / GitHub issue #66: Tab 6, "Player Ratings (RAPM)" - a
+# league-wide player leaderboard built entirely from cache/rapm_ratings.rds joined to
+# cache/active_rosters_cache.rds via the shared join_rapm_to_roster() helper
+# (rapm_join_utils.R) -- no new pipeline stage, no inline reimplementation of that join
+# (per CLAUDE.md). dplyr/stringr are attached here (not just available) because
+# join_rapm_to_roster() calls unqualified mutate()/word().
+library(dplyr)
+library(stringr)
 
 # ---- Dark-mode-aware plotting/table helpers ----
 # input_dark_mode() in the UI below only toggles Bootstrap's own CSS color-mode
@@ -330,6 +338,61 @@ if (file.exists(PREDICTION_ACCURACY_CACHE_PATH)) {
   prediction_accuracy_load_error <- paste("Cache file not found:", PREDICTION_ACCURACY_CACHE_PATH)
 }
 
+# ---- Tab 6 (Player Ratings / RAPM) join helper ----
+# Sourced fail-safely, same pattern as config.R above. Per CLAUDE.md, the RAPM <-> roster
+# join has a non-trivial collision-resolution rule and must never be reimplemented inline
+# -- call join_rapm_to_roster() from this file instead.
+.rapm_join_utils_env <- tryCatch(
+  {
+    rapm_join_env <- new.env()
+    source("rapm_join_utils.R", local = rapm_join_env)
+    rapm_join_env
+  },
+  error = function(e) NULL
+)
+join_rapm_to_roster <- if (!is.null(.rapm_join_utils_env) &&
+                            exists("join_rapm_to_roster", envir = .rapm_join_utils_env)) {
+  get("join_rapm_to_roster", envir = .rapm_join_utils_env)
+} else {
+  NULL
+}
+
+# ---- Tab 6 (Player Ratings / RAPM) cache paths ----
+# Not config.R constants (same convention as the Tab 2/3/5 caches above).
+RAPM_RATINGS_CACHE_PATH <- "cache/rapm_ratings.rds"
+ACTIVE_ROSTERS_CACHE_PATH <- "cache/active_rosters_cache.rds"
+
+# ---- Startup-only cache loads for Tab 6 (fail-safe: never crash if a cache is missing) ----
+rapm_ratings_data <- NULL
+rapm_ratings_load_error <- NULL
+
+if (file.exists(RAPM_RATINGS_CACHE_PATH)) {
+  rapm_ratings_data <- tryCatch(
+    readRDS(RAPM_RATINGS_CACHE_PATH),
+    error = function(e) {
+      rapm_ratings_load_error <<- conditionMessage(e)
+      NULL
+    }
+  )
+} else {
+  rapm_ratings_load_error <- paste("Cache file not found:", RAPM_RATINGS_CACHE_PATH)
+}
+
+active_rosters_data <- NULL
+active_rosters_load_error <- NULL
+
+if (file.exists(ACTIVE_ROSTERS_CACHE_PATH)) {
+  active_rosters_data <- tryCatch(
+    readRDS(ACTIVE_ROSTERS_CACHE_PATH),
+    error = function(e) {
+      active_rosters_load_error <<- conditionMessage(e)
+      NULL
+    }
+  )
+} else {
+  active_rosters_load_error <- paste("Cache file not found:", ACTIVE_ROSTERS_CACHE_PATH)
+}
+
 ui <- page_fluid(
   theme = bs_theme(version = 5, bootswatch = "flatly"),
   # GitHub issue #63 (D&T visual pass 4/6): small-caps/letter-spacing section-label
@@ -476,6 +539,22 @@ ui <- page_fluid(
           "Real Resolved Predictions (synthetic/pending/unresolvable rows excluded)",
           reactableOutput("accuracy_table")
         )
+      )
+    ),
+    nav_panel(
+      "Player Ratings (RAPM)",
+      br(),
+      uiOutput("rapm_status"),
+      card(
+        card_header("Team Filter"),
+        selectInput(
+          "rapm_team_filter", label = NULL,
+          choices = NULL, selected = "All Teams", width = "250px"
+        )
+      ),
+      card(
+        card_header("Player RAPM Leaderboard"),
+        reactableOutput("rapm_table")
       )
     )
   )
@@ -1522,6 +1601,167 @@ server <- function(input, output, session) {
       ) +
       gg_dark_overrides(dark)
   }, bg = "transparent")
+
+  # ---- Tab 6: Player Ratings (RAPM) (SA-6a / GitHub issue #66) ----
+  #
+  # Team-filter dropdown options come from config.R's WNBA_TEAMS (abbreviation -> full
+  # name) -- never a hardcoded team list, per CLAUDE.md.
+  observe({
+    team_choices <- c("All Teams")
+    if (!is.null(WNBA_TEAMS)) {
+      team_choices <- c("All Teams", unname(WNBA_TEAMS))
+    }
+    updateSelectInput(session, "rapm_team_filter", choices = team_choices, selected = "All Teams")
+  })
+
+  # Single joined reactive, built exactly once: join_rapm_to_roster(roster_data, rapm_data,
+  # matched_only = TRUE) -- matched_only is hardcoded TRUE (not toggled by any UI control),
+  # so unmatched roster players are excluded entirely, never surfaced with NA (per spec /
+  # CLAUDE.md's no-inline-reimplementation rule for this join).
+  r_rapm_joined <- reactive({
+    if (is.null(join_rapm_to_roster)) {
+      return(NULL)
+    }
+    if (is.null(active_rosters_data) || is.null(rapm_ratings_data)) {
+      return(NULL)
+    }
+    joined <- tryCatch(
+      join_rapm_to_roster(active_rosters_data, rapm_ratings_data, matched_only = TRUE),
+      error = function(e) NULL
+    )
+    if (is.null(joined) || nrow(joined) == 0) {
+      return(NULL)
+    }
+    joined
+  })
+
+  # Second reactive: applies the team filter on top of the joined data. "All Teams"
+  # passes everything through untouched.
+  r_rapm_filtered <- reactive({
+    joined <- r_rapm_joined()
+    if (is.null(joined)) {
+      return(NULL)
+    }
+    team_sel <- input$rapm_team_filter
+    if (is.null(team_sel) || team_sel == "" || team_sel == "All Teams") {
+      return(joined)
+    }
+    filtered <- joined[joined$team_name == team_sel, , drop = FALSE]
+    if (nrow(filtered) == 0) NULL else filtered
+  })
+
+  output$rapm_status <- renderUI({
+    joined <- r_rapm_joined()
+    if (is.null(join_rapm_to_roster)) {
+      return(div(
+        class = "alert alert-warning", role = "alert",
+        strong("No RAPM leaderboard available. "),
+        "Placeholder state: rapm_join_utils.R failed to load."
+      ))
+    }
+    if (is.null(active_rosters_data) || is.null(rapm_ratings_data)) {
+      msgs <- character(0)
+      if (is.null(active_rosters_data)) {
+        msgs <- c(msgs, paste("Active rosters cache:", active_rosters_load_error))
+      }
+      if (is.null(rapm_ratings_data)) {
+        msgs <- c(msgs, paste("RAPM ratings cache:", rapm_ratings_load_error))
+      }
+      return(div(
+        class = "alert alert-warning", role = "alert",
+        strong("No RAPM leaderboard available. "),
+        lapply(msgs, function(m) tagList(m, br()))
+      ))
+    }
+    if (is.null(joined)) {
+      return(div(
+        class = "alert alert-warning", role = "alert",
+        strong("No RAPM leaderboard available. "),
+        "The RAPM/roster join produced zero matched rows."
+      ))
+    }
+    NULL
+  })
+
+  output$rapm_table <- renderReactable({
+    dark <- r_dark_mode()
+    df <- r_rapm_filtered()
+
+    empty_cols <- function() {
+      data.frame(
+        Logo = character(0), Team = character(0), Player = character(0),
+        Total_RAPM = numeric(0), ORAPM = numeric(0), DRAPM = numeric(0),
+        Off_Poss = numeric(0), Def_Poss = numeric(0),
+        Low_Sample = logical(0), Ambiguous_Match = logical(0)
+      )
+    }
+
+    if (is.null(df)) {
+      return(reactable(empty_cols(), theme = reactable_dark_theme(dark)))
+    }
+
+    out <- data.frame(
+      Logo = vapply(df$team_name, team_logo_img_tag, character(1), height_px = 28),
+      Team = df$team_name,
+      Player = df$player_name,
+      Total_RAPM = df$total_rapm,
+      ORAPM = if ("orapm" %in% names(df)) df$orapm else NA_real_,
+      DRAPM = if ("drapm" %in% names(df)) df$drapm else NA_real_,
+      Off_Poss = if ("n_off_poss" %in% names(df)) df$n_off_poss else NA_real_,
+      Def_Poss = if ("n_def_poss" %in% names(df)) df$n_def_poss else NA_real_,
+      Low_Sample = if ("low_sample_flag" %in% names(df)) {
+        coalesce(as.logical(df$low_sample_flag), FALSE)
+      } else {
+        FALSE
+      },
+      Ambiguous_Match = coalesce(as.logical(df$rapm_ambiguous), FALSE),
+      stringsAsFactors = FALSE
+    )
+
+    # Visibly distinguishable badge cell for the two boolean flag columns -- these are
+    # TRUE/FALSE, not a numeric diverge, so this is a flat colored badge (not a
+    # diverging-bar cell like Tab 1's Net Rating) while still matching the app's
+    # existing "flagged rows must be visually distinguishable, never a plain
+    # TRUE/FALSE" convention.
+    flag_badge_cell <- function(label_on_true) {
+      function(value) {
+        if (isTRUE(value)) {
+          htmltools::tags$span(
+            style = paste(
+              "display: inline-block; padding: 2px 8px; border-radius: 10px;",
+              "background-color: #F1C40F; color: #2C3E50; font-weight: 600;",
+              "font-size: 0.78rem;"
+            ),
+            label_on_true
+          )
+        } else {
+          htmltools::tags$span(style = "color: #B0B0B0;", "--")
+        }
+      }
+    }
+
+    reactable(
+      out,
+      striped = TRUE,
+      bordered = TRUE,
+      highlight = TRUE,
+      defaultPageSize = 15,
+      defaultSorted = list(Total_RAPM = "desc"),
+      theme = reactable_dark_theme(dark),
+      columns = list(
+        Logo = colDef(name = "", html = TRUE, width = 50, sortable = FALSE),
+        Team = colDef(name = "Team"),
+        Player = colDef(name = "Player"),
+        Total_RAPM = colDef(name = "Total RAPM", format = colFormat(digits = 2)),
+        ORAPM = colDef(name = "ORAPM", format = colFormat(digits = 2)),
+        DRAPM = colDef(name = "DRAPM", format = colFormat(digits = 2)),
+        Off_Poss = colDef(name = "Off. Possessions", format = colFormat(digits = 0)),
+        Def_Poss = colDef(name = "Def. Possessions", format = colFormat(digits = 0)),
+        Low_Sample = colDef(name = "Low Sample", cell = flag_badge_cell("Low Sample")),
+        Ambiguous_Match = colDef(name = "Ambiguous Match", cell = flag_badge_cell("Ambiguous"))
+      )
+    )
+  })
 }
 
 shinyApp(ui = ui, server = server)
