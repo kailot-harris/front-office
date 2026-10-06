@@ -555,6 +555,10 @@ ui <- page_fluid(
       card(
         card_header("Player RAPM Leaderboard"),
         reactableOutput("rapm_table")
+      ),
+      card(
+        card_header("Top / Bottom 10 by Total RAPM"),
+        plotOutput("rapm_top_bottom_plot", height = "550px")
       )
     )
   )
@@ -1762,6 +1766,70 @@ server <- function(input, output, session) {
       )
     )
   })
+
+  # Diverging top/bottom-10 bar chart for Tab 6 (SA-6b / GitHub issue #67). Reuses
+  # r_rapm_filtered() (the same reactive the table above reads) rather than re-joining or
+  # re-filtering -- the chart always reflects whatever team the "Team Filter" dropdown has
+  # selected. If the filtered set has fewer than 20 matched players (e.g. a single-team
+  # filter with a small roster), a clean top/bottom-10 split isn't meaningful, so every
+  # player is shown instead, sorted by Total_RAPM.
+  #
+  # Bars are colored by sign of Total_RAPM using the exact same two-color convention as
+  # Tab 1's playoff-line coloring (output$standings_chart's scale_color_manual, around
+  # line 757: TRUE = "#18BC9C", FALSE = "#7F93A8") -- here TRUE means "Total RAPM >= 0".
+  output$rapm_top_bottom_plot <- renderPlot({
+    dark <- r_dark_mode()
+    df <- r_rapm_filtered()
+
+    if (is.null(df) || nrow(df) == 0) {
+      return(
+        ggplot() +
+          annotate("text", x = 0, y = 0, label = "No RAPM leaderboard available", color = gg_text_ink(dark)) +
+          theme_void() + gg_dark_overrides_void(dark)
+      )
+    }
+
+    ordered_df <- df[order(-df$total_rapm), , drop = FALSE]
+
+    if (nrow(ordered_df) < 20) {
+      plot_df <- ordered_df
+    } else {
+      plot_df <- rbind(
+        head(ordered_df, 10),
+        tail(ordered_df, 10)
+      )
+    }
+
+    plot_df$label <- paste0(plot_df$player_name, " (", plot_df$team_name, ")")
+    plot_df$label <- factor(plot_df$label, levels = rev(plot_df$label))
+    plot_df$positive <- plot_df$total_rapm >= 0
+
+    ggplot(plot_df, aes(x = total_rapm, y = label, fill = positive)) +
+      geom_col(width = 0.7) +
+      geom_vline(xintercept = 0, color = "#B0B0B0", linewidth = 0.6) +
+      scale_fill_manual(
+        values = c(`TRUE` = "#18BC9C", `FALSE` = "#7F93A8"),
+        labels = c(`TRUE` = "Positive Total RAPM", `FALSE` = "Negative Total RAPM"),
+        name = NULL
+      ) +
+      labs(
+        title = if (nrow(ordered_df) < 20) {
+          "Player RAPM (all matched players, sorted)"
+        } else {
+          "Top 10 / Bottom 10 Players by Total RAPM"
+        },
+        x = "Total RAPM",
+        y = NULL
+      ) +
+      theme_minimal(base_size = 13) +
+      theme(
+        legend.position = "top",
+        legend.margin = margin(b = -5),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor = element_blank()
+      ) +
+      gg_dark_overrides(dark)
+  }, bg = "transparent")
 }
 
 shinyApp(ui = ui, server = server)
