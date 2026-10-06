@@ -1,4 +1,56 @@
-# Handoff — 2026-10-06 (New thread: repopulated the almost-entirely-empty `renv` project library, fixed the stale/incomplete `renv.lock`, committed and pushed — commit `9894265` is `HEAD`) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
+# Handoff — 2026-10-06 (New thread: spec interview for a 6th `summary_app.R` tab — "Player Ratings (RAPM)" — spec written into `docs/SUMMARY_APP_SPEC.md`, 3 GitHub issues filed (#66/#67/#68), nothing implemented yet) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
+
+**This is purely additive to the section immediately below** — no code from the renv/lockfile thread was touched, and this thread's own cache-file churn (see "Pre-existing uncommitted changes" below) predates this session and is unrelated to it. This thread's user asked three things in sequence: (1) "What could be a valuable 6th tab in the summary_app?" (open-ended, answered directly, not implemented), (2) run `/spec-interview` on the chosen idea ("player ratings tab"), (3) "Save spec. Write multiple issue tickets to accomplish this work."
+
+## What this thread did
+
+1. **Answered the open-ended "what's a valuable 6th tab" question** by reading `summary_app.R`'s existing 5 tabs (Season Standings & Projections, Playoff Bracket, Model Calibration & Reliability, Model Comparison, Prediction Accuracy Tracker — all team-level) and `rapm_join_utils.R`, and recommending a **Player Ratings (RAPM)** leaderboard as the one genuinely new angle missing (everything else is team-level), since it needs zero new modeling — just `cache/rapm_ratings.rds` joined to `cache/active_rosters_cache.rds` via the already-proven `join_rapm_to_roster()` helper. Flagged a **Market Odds / Model Edge** tab as a runner-up idea, not pursued (it would need live API calls, cutting against this app's static-snapshot design).
+2. **Ran a 9-question Y/N spec interview** (`/spec-interview`) on the Player Ratings tab, resolving: league-wide table with a team filter (not team-grouped) → full RAPM breakdown columns (not just total) → unmatched roster players excluded entirely (`matched_only = TRUE`, the helper's default) → add a chart, not table-only → diverging top-10/bottom-10 chart (not top-N-only) → team filter drives the chart too, not just the table → low-sample/ambiguous rows get visible badge styling, not plain boolean columns → table gets a team-logo column (`team_logo_img_tag()`, same helper as Tab 1) → add a collapsed-by-default methodology accordion (mirroring Tab 1's Net Rating explainer).
+3. **Wrote the compiled spec into `docs/SUMMARY_APP_SPEC.md`**: a new "### 6. Player Ratings (RAPM)" subsection under `## Tabs`, two new rows in the "Data sources referenced" table (`cache/rapm_ratings.rds`, `cache/active_rosters_cache.rds`), three new rows in the ticket table (SA-6a/SA-6b/SA-6c), three new detailed ticket sections (mirroring the existing SA-1..SA-5 format), and an updated `## Status` line correcting a pre-existing staleness in that file (it still said "Spec only. Not yet implemented" for SA-1 through SA-5, which have actually been closed and merged since 2026-10-04 — see issues #55-#59, #60-#65).
+4. **Filed 3 new GitHub issues** (not 1 — the tab was split into vertical slices, same "max one tab per ticket" convention as SA-1..SA-5, but a single tab is 3 slices here): `#66` (SA-6a: cache load + join wiring + leaderboard table — the only hard dependency for the other two), `#67` (SA-6b: top/bottom RAPM chart, depends on #66), `#68` (SA-6c: methodology accordion, depends on #66).
+
+## Issue tracker state — ⚠️ pre-existing discrepancy, re-confirmed not reconciled this session
+
+`gh issue list --state all --limit 30` this session shows `#43`, `#44`, `#49` still **OPEN** — this is the same staleness the prior 2 sessions below already flagged and left alone (issue #49's work was actually merged via `e5c97f3` per the section below, but the issue itself was never closed). This thread did not touch the tracker beyond filing the 3 new issues above; `#43`/`#44`/`#49` remain exactly as stale as the prior session described.
+
+## What's actually implemented (new/changed this session)
+
+| File | Status | Notes |
+|---|---|---|
+| `docs/SUMMARY_APP_SPEC.md` | Modified, **not yet committed** | New Tab 6 subsection, 2 new data-source-table rows, 3 new ticket-table rows, 3 new detailed ticket sections (SA-6a/b/c), corrected `## Status` line. |
+| `summary_app.R` | **Untouched** | Still exactly 5 tabs, 1,527 lines, as of this session — no Tab 6 code exists yet. |
+| `rapm_join_utils.R` | **Untouched** | 149 lines, already proven/shared by `market_odds_engine.R`/`player_props_engine.R`/`roster_bottom_up_engine.R` — SA-6a's plan is to reuse `join_rapm_to_roster()` as-is, not modify it. |
+| GitHub issues `#66`, `#67`, `#68` | New, open | See ticket detail in `docs/SUMMARY_APP_SPEC.md`'s SA-6a/b/c sections — the issue bodies summarize the same spec but the doc is the source of truth if they ever drift. |
+
+## Pre-existing uncommitted changes — not from this session, flagging not fixing
+
+`git status` at both the start and end of this session also shows `cache/prediction_accuracy_log.csv`, `cache/prediction_accuracy_log.rds`, and `data/box_scores_cache.rds` as modified-but-unstaged. These predate this thread (present in the very first `git status` this session saw) and are almost certainly scheduled-pipeline cache churn, not anything this thread touched — left alone, same as this session left `docs/SUMMARY_APP_SPEC.md`'s own edit uncommitted (no commit was requested this session).
+
+## Environment/tooling notes (new this session)
+
+None — this was a pure spec/doc/tracker session, no R code run, no new tooling exercised.
+
+## The reusable workflow this session added
+
+1. For an open-ended "what should tab N be" question on this app: read every existing tab's data source in `summary_app.R` first (grep the `*_CACHE_PATH`/`*_data` load blocks), then check which *categories* of existing cache/helper infrastructure (e.g. `rapm_join_utils.R`) are unused by any tab yet — that's the fastest way to find an idea that needs zero new pipeline/modeling work.
+2. When `/spec-interview` produces a single-tab spec that still has 3+ independently-buildable pieces (cache+table, chart, explainer), split it into that many GitHub issues with explicit `Depends on` links, rather than one issue — matches this repo's existing SA-1..SA-5 "max one tab per ticket" convention one level deeper.
+3. Before writing a new ticket's body text, re-derive the columns/behavior from the actual helper's doc comment (`rapm_join_utils.R`'s own header comment, in this case) rather than from memory of the interview answers alone — the helper's comment is more precise about exact column names (`orapm`, `drapm`, `n_off_poss`, `n_def_poss`, `low_sample_flag`, `rapm_ambiguous`) than the interview's own phrasing was.
+
+## Concrete next step
+
+Pick up **SA-6a** (issue `#66`) — the hard prerequisite for `#67`/`#68`. Concretely, in `summary_app.R`:
+1. Add `library(dplyr)` and `library(stringr)` near the top (alongside the existing `library(shiny)`/`library(bslib)`/etc. block) — required because `join_rapm_to_roster()` in `rapm_join_utils.R` calls unqualified `mutate()`/`word()`, so it needs both packages *attached*, not just available.
+2. Source `rapm_join_utils.R` the same fail-safe way `config.R` is already sourced (see the existing `.config_constants <- tryCatch({ ... source("config.R", ...) ... }, error = function(e) NULL)` block) — do not reimplement the join inline, per `CLAUDE.md`.
+3. Add two new startup-only cache loads (`cache/rapm_ratings.rds`, `cache/active_rosters_cache.rds`) using the exact same `file.exists()` + `tryCatch` + `*_load_error` pattern every other tab in this file already uses (see `STANDINGS_CACHE_PATH`'s load block as the template).
+4. Add a 6th `nav_panel("Player Ratings (RAPM)", ...)` inside the existing `navset_tab(...)` in the `ui` object, with a team-filter `selectInput`/`selectizeInput` and a `reactableOutput`.
+5. In `server()`, build a reactive that calls `join_rapm_to_roster(roster_data, rapm_data, matched_only = TRUE)` once, then a second reactive that applies the team filter on top of it; render the table off the filtered reactive with `team_logo_img_tag()` for the Logo column and visible badge/highlight styling for `low_sample_flag`/`rapm_ambiguous` rows (reuse the existing colored-cell pattern from `net_rating_cell()` in Tab 1 as a shape reference, don't copy its exact diverging-bar logic since this is boolean flags, not a numeric diverge).
+6. Validate with `Rscript.exe summary_app.R` (full path, per `CLAUDE.md` — R is not on this machine's `PATH`) and, once the headless probe or a manual browser check confirms Tab 6 renders with no console errors, close `#66` with a `Closes #66` commit trailer.
+
+After SA-6a lands, SA-6b (#67, the chart) and SA-6c (#68, the accordion) can be built in either order — both only depend on #66's reactive data/filter existing, not on each other.
+
+---
+
+# Handoff — 2026-10-06 (New thread: repopulated the almost-entirely-empty `renv` project library, fixed the stale/incomplete `renv.lock`, committed and pushed — commit `9894265` is `HEAD`) — PRIOR SESSION'S STATE (superseded by the section above, kept for its still-accurate detail — e.g. "Bugs found," "Environment/tooling notes," "The reusable workflow")
 
 **This directly resolves "Concrete next step" item 3 of the section immediately below** ("Reconcile the `renv` lockfile") — everything else in that section, and everything below it, is still accurate and unchanged. This thread was a single user-flagged observation ("renv lockfile is missing several packages actually needed to source() these files standalone") followed by "Run it" once a plan was proposed. No application code was touched — `renv.lock` is the only file changed.
 

@@ -75,6 +75,32 @@ Model, Accuracy, ROC-AUC, Brier Score, Log-Loss.
   by `game_date`). Chosen over a predicted-probability-vs-outcome scatter, since that would
   duplicate the Calibration tab's existing reliability plot on a much smaller sample.
 
+### 6. Player Ratings (RAPM)
+- Produced via a follow-up spec interview on 2026-10-06, after SA-1 through SA-5 shipped.
+- Data: `cache/rapm_ratings.rds` joined to `cache/active_rosters_cache.rds` via the
+  existing `join_rapm_to_roster()` helper (`rapm_join_utils.R`), `matched_only = TRUE`
+  (its default) — unmatched roster players excluded entirely, not shown with NA. No new
+  pipeline stage or script; both source caches and the join helper are reused as-is.
+  Requires adding `library(dplyr)` and `library(stringr)` to `summary_app.R` (the helper
+  calls unqualified `mutate()`/`word()`, so they must be attached, not just sourced).
+- Team filter dropdown ("All Teams" default + per-`WNBA_TEAMS` options) drives both the
+  table and the chart below.
+- Table (`reactableOutput`): Logo (via `team_logo_img_tag()`, same helper as Tab 1), Team,
+  Player, Total RAPM, ORAPM, DRAPM, Off. Possessions, Def. Possessions, and
+  Low Sample / Ambiguous Match flags. Flagged rows get visible badge/highlight styling
+  (not plain boolean columns), consistent with this app's existing colored-cell
+  convention (e.g. Tab 1's diverging Net Rating bars). Default sort: Total RAPM
+  descending.
+- Chart (`plotOutput`): diverging bar chart of the top 10 + bottom 10 players by Total
+  RAPM within the current team-filter scope (if the filtered set has fewer than 20
+  matched players, show everyone sorted — no forced padding), colored by sign like Tab
+  1's playoff-line coloring, dark-mode-aware via the existing `gg_dark_overrides()` /
+  `r_dark_mode()` machinery.
+- Methodology accordion (collapsed by default, matching Tab 1's pattern): plain-English
+  explanation of what RAPM means, plus the RAPM-side `(team, last_name)`
+  collision-resolution caveat from `rapm_join_utils.R` (resolved by most total
+  possessions, flagged `rapm_ambiguous`).
+
 ## Explicitly deferred (not in this version)
 - Live recomputation of any tab.
 - HTML/CSS bracket graphic (ggplot2 version ships first).
@@ -92,6 +118,8 @@ Model, Accuracy, ROC-AUC, Brier Score, Log-Loss.
 | `data/model_benchmark_results.csv` (new, to be produced by `tools/build_model_benchmark_cache.R`) | Model, Accuracy, ROC-AUC, Brier Score, Log-Loss | Tab 4 |
 | `data/window_sweep_3_25_results.csv` (existing) | Window_Size, N_Train, N_Test, Accuracy, ROC-AUC, Brier Score, ROC_AUC_CI_Lower/Upper | Tab 4 |
 | `cache/prediction_accuracy_log.rds` | 145 x 28; 39 real resolved, 100 synthetic `DIAG_*`, 6 unresolvable, 3 pending | Tab 5 |
+| `cache/rapm_ratings.rds` | per-player RAPM (team, player_name, total_rapm, orapm, drapm, n_off_poss, n_def_poss, low_sample_flag) | Tab 6 |
+| `cache/active_rosters_cache.rds` | 209 x 7 active roster rows (team_abbreviation, team_name, player_id, player_name, ...) | Tab 6 |
 
 ## Tickets
 
@@ -108,6 +136,9 @@ built in any order once Ticket 1 lands.
 | SA-3 | Tab 3: Model Calibration & Reliability | 3 | SA-1 (skeleton) | TODO |
 | SA-4 | Tab 4: Model Comparison + benchmark cache builder | 4 | SA-1 (skeleton) | TODO |
 | SA-5 | Tab 5: Prediction Accuracy Tracker | 5 | SA-1 (skeleton) | TODO |
+| SA-6a | Tab 6: Player Ratings (RAPM) — cache load, join wiring, leaderboard table | 6 | SA-1 (skeleton) | TODO |
+| SA-6b | Tab 6: Player Ratings (RAPM) — top/bottom RAPM chart | 6 | SA-6a | TODO |
+| SA-6c | Tab 6: Player Ratings (RAPM) — methodology accordion | 6 | SA-6a | TODO |
 
 ### SA-1 — App skeleton + Tab 1: Season Standings & Projections
 **Builds:** `summary_app.R` at repo root (flat layout, per CLAUDE.md) with `bslib`/
@@ -171,7 +202,50 @@ Tab 3's reliability plot on a much smaller sample.
 **Done when:** value boxes, table, and chart all reflect only the 39 real resolved rows,
 with zero synthetic rows reachable in the UI.
 
+### SA-6a — Tab 6: Player Ratings (RAPM) — cache load, join wiring, leaderboard table
+**Builds:** new startup-only cache loads for `cache/rapm_ratings.rds` and
+`cache/active_rosters_cache.rds` (same `file.exists()` + `tryCatch` + `*_load_error`
+fail-safe pattern as every other tab), sources `rapm_join_utils.R` the same fail-safe way
+`config.R` is already sourced, and adds `library(dplyr)` / `library(stringr)` to
+`summary_app.R`'s top-level libraries (required because `join_rapm_to_roster()` calls
+unqualified `mutate()`/`word()`). Calls `join_rapm_to_roster(roster_data, rapm_data,
+matched_only = TRUE)` — do not reimplement the join inline (per CLAUDE.md).
+**Tab content:** new nav panel "Player Ratings (RAPM)" with a team filter dropdown ("All
+Teams" default + per-`WNBA_TEAMS` options) and a `reactableOutput` leaderboard: Logo (via
+`team_logo_img_tag()`), Team, Player, Total RAPM, ORAPM, DRAPM, Off. Possessions, Def.
+Possessions, Low Sample / Ambiguous Match flags rendered as a visible badge/highlight (not
+plain booleans) — same colored-cell convention as Tab 1's diverging Net Rating bars.
+Default sort: Total RAPM descending. Unmatched roster players are excluded entirely
+(`matched_only = TRUE`), never shown with NA.
+**Done when:** `Rscript.exe summary_app.R` launches, Tab 6's table renders real joined
+data with no console errors, the team filter correctly narrows the table, and flagged
+rows are visually distinguishable.
+
+### SA-6b — Tab 6: Player Ratings (RAPM) — top/bottom RAPM chart
+**Depends on:** SA-6a (reuses its joined reactive data and team-filter input).
+**Builds:** a `plotOutput` diverging bar chart below the SA-6a table, showing the top 10
++ bottom 10 players by Total RAPM within the current team-filter scope (if the filtered
+set has fewer than 20 matched players, show everyone sorted instead of forcing a 10/10
+split). Bars colored by sign (positive/negative Total RAPM), mirroring Tab 1's
+playoff-line coloring convention. Must react to the same team-filter input as the table
+(selecting a team shrinks the chart to that team's players) and be dark-mode-aware via
+the existing `gg_dark_overrides()` / `r_dark_mode()` helpers.
+**Done when:** the chart renders real top/bottom data, updates when the team filter
+changes, and matches dark-mode styling used elsewhere in the app.
+
+### SA-6c — Tab 6: Player Ratings (RAPM) — methodology accordion
+**Depends on:** SA-6a (tab must exist).
+**Builds:** a collapsed-by-default `accordion`/`accordion_panel` at the bottom of Tab 6,
+mirroring Tab 1's "Methodology: what does Net Rating mean" pattern — plain-English
+explanation of what a RAPM rating represents, plus an explicit caveat describing the
+RAPM-side `(team, last_name)` collision-resolution rule from `rapm_join_utils.R` (resolved
+by most total possessions, flagged `rapm_ambiguous`), so a reader understands why a small
+number of rows carry that flag.
+**Done when:** the accordion renders, is collapsed by default, and its text accurately
+describes the collision-resolution rule actually implemented in `rapm_join_utils.R`.
+
 ## Status
 
-Spec only. Not yet implemented. Tickets SA-1 through SA-5 above are ready to be picked up
-in any order once SA-1's skeleton lands.
+SA-1 through SA-5 are implemented (see closed GitHub issues #55-#59 and the D&T visual
+pass issues #60-#65). SA-6a/SA-6b/SA-6c (Tab 6: Player Ratings) are spec-only as of
+2026-10-06, ready to be picked up — SA-6b and SA-6c depend on SA-6a.
