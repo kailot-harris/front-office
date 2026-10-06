@@ -555,6 +555,40 @@ ui <- page_fluid(
       card(
         card_header("Player RAPM Leaderboard"),
         reactableOutput("rapm_table")
+      ),
+      br(),
+      accordion(
+        open = FALSE,
+        accordion_panel(
+          "Methodology: what is a RAPM rating, and how are players matched to it?",
+          p(strong("What a RAPM rating is:"), "RAPM (Regularized Adjusted Plus-Minus) is a
+            play-by-play-derived estimate of a player's point impact per 100 possessions,
+            isolating their individual contribution from the ten players on the floor at any
+            given moment (teammates and opponents alike) via a regularized regression over
+            every possession they were on court for. It is reported here as three numbers:
+            Offensive RAPM (", strong("ORAPM"), ", impact while the player's team has the
+            ball), Defensive RAPM (", strong("DRAPM"), ", impact while the player's team is
+            defending), and ", strong("Total RAPM"), " (ORAPM + DRAPM), each on a
+            points-per-100-possessions scale centered near 0 for a league-average player — a
+            Total RAPM of +5 means the player's team is modeled to outscore opponents by about
+            5 more points per 100 possessions with that player on the floor than a replacement
+            player would produce, after accounting for teammates and competition faced."),
+          p(strong("A caveat on how players here are matched to their RAPM rating:"), "This
+            table's ratings are joined onto the active roster using each player's team and
+            normalized last name, not a shared player ID — the two underlying caches
+            (", code("rapm_ratings.rds"), " and ", code("active_rosters_cache.rds"), ") use
+            incompatible ID schemes (see ", code("rapm_join_utils.R"), "). Because the RAPM
+            cache includes every player who has ever logged possessions for a franchise, a
+            handful of ", code("(team, last name)"), " combinations match more than one RAPM
+            row — for example both Ogwumike sisters on the Sparks. In those cases,
+            ", code("join_rapm_to_roster()"), " keeps only the RAPM row with the most total
+            possessions played (offensive + defensive possessions combined), breaking any
+            remaining tie deterministically by Total RAPM and then player ID, and marks that
+            player's row with an internal ", code("rapm_ambiguous"), " flag so the resolution
+            can be audited. In practice this correctly resolves the more-used player of a
+            shared surname (e.g. Nneka over Chiney Ogwumike), but it is a best-effort heuristic,
+            not a guaranteed-correct identity match.")
+        )
       )
     )
   )
