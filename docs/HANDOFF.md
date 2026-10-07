@@ -1,4 +1,35 @@
-# Handoff — 2026-10-07 (New thread: implemented Tab 6 "Player Ratings (RAPM)" end to end — SA-6a/SA-6b/SA-6c, issues #66/#67/#68 — via the `/subagent-brief` workflow, 3 isolated-worktree subagents, 1 manual merge-conflict resolution, all merged to `main` and pushed as of commit `b36c1af`) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
+# Handoff — 2026-10-07 (New thread: added a user-adjustable minimum-possessions filter to Tab 6 "Player Ratings (RAPM)" — no issue ticket, ad hoc user request, direct edit (no subagent dispatch) — **uncommitted, not pushed** as of this writing) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
+
+**This supersedes the section immediately below as the "current state," but everything in that section not explicitly updated here is still accurate** — this thread only touched `summary_app.R`. `docs/SUMMARY_APP_SPEC.md` was not read or updated (this was a small ad hoc tweak, not a spec'd ticket). The user asked, in two steps: (1) "For tab 6, let's default filter out players with fewer than 1000 possessions and have a button to filter back in those players," (2) after that landed, "adjust the filter to 2500, and then let the user decide what value to filter out."
+
+## What this thread did
+
+1. **First pass (now superseded by step 2, kept here for the full story)**: added `RAPM_MIN_POSSESSIONS_DEFAULT <- 1000` and an `input_switch("rapm_include_low_poss", ...)` (default off) in the Team Filter card, then had `r_rapm_filtered()` drop any row with `n_off_poss + n_def_poss < 1000` unless the switch was on.
+2. **Second pass, replacing the switch entirely**: changed the default to `RAPM_MIN_POSSESSIONS_DEFAULT <- 2500` (`summary_app.R:369`) and swapped the on/off `input_switch` for a `numericInput("rapm_min_possessions", "Minimum total possessions (offensive + defensive)", value = RAPM_MIN_POSSESSIONS_DEFAULT, min = 0, step = 100, width = "350px")` (`summary_app.R:559-564`), so the user picks the exact cutoff rather than a fixed value — setting it to `0` shows every matched player. `r_rapm_filtered()` (`summary_app.R:1693` onward) now reads `input$rapm_min_possessions` directly each time (falling back to `RAPM_MIN_POSSESSIONS_DEFAULT` if blank/`NA`), computes `total_poss` via `coalesce(n_off_poss, 0) + coalesce(n_def_poss, 0)` (per `CLAUDE.md`'s rule against vector `%||%`), and only applies the cutoff when `min_poss > 0`.
+3. **Validated with `parse(file = "summary_app.R")`** (written to a temp `.R` file and run via the full `Rscript.exe` path, per `CLAUDE.md`'s segfault warning about inline multi-line `-e`) after each pass — syntax-only, confirmed clean both times.
+
+## What's actually implemented (new/changed this session)
+
+| File | Status | Notes |
+|---|---|---|
+| `summary_app.R` | **Modified, not committed.** 1,869 → 1,896 lines (+33/-6 net per `git diff --stat`). | Tab 6's possession filter: `RAPM_MIN_POSSESSIONS_DEFAULT` constant (~line 369), `numericInput("rapm_min_possessions", ...)` in the Team Filter card (~line 559), filtering logic inside `r_rapm_filtered()` (~line 1693-1710). The table (`output$rapm_table`) and chart (`output$rapm_top_bottom_plot`) both read `r_rapm_filtered()` already, so both picked up the new filter automatically — neither was edited directly. **Line numbers will drift — re-grep by symbol name (`RAPM_MIN_POSSESSIONS_DEFAULT`, `rapm_min_possessions`), don't trust these as permanent.** |
+
+## Validation actually performed this session — and what wasn't
+
+- **`parse(file = "summary_app.R")`** run via `Rscript.exe` after each of the two edit passes — both clean, no syntax errors. This is the *only* validation performed.
+- **Not done this session**: no `Rscript.exe summary_app.R` live-launch smoke test (unlike the prior Tab 6 session, which ran one with a timeout wrapper), no headless browser check of Tab 6 (the `headless_dashboard_probe.R` gap flagged in the section below is still open and still applies here), and no check against real `cache/rapm_ratings.rds` data that the numeric input actually narrows the table/chart as expected in a running app. This was treated as a small, low-risk, pattern-matching UI tweak (mirrors the existing team-filter reactive exactly), not as justifying the same validation depth as a full new tab — but a real browser check of the numeric input (including an invalid/blank value, and setting it to `0`) is still worth doing before this is considered fully verified.
+- Pre-existing uncommitted `cache/prediction_accuracy_log.csv`/`.rds` and `data/box_scores_cache.rds` changes (present at session start, same scheduled-pipeline churn every prior session has flagged and left alone) are still sitting in the working tree, untouched by this thread.
+
+## Concrete next step
+
+1. **Do a real browser check of the new control** before trusting it fully: launch `summary_app.R` (e.g. via RStudio's "Run App" or `shiny::runApp("summary_app.R")` from an interactive session, not a backgrounded `Rscript.exe` call which blocks), go to Tab 6, confirm the table and chart both shrink/grow as the "Minimum total possessions" numeric input changes, and confirm `0` shows every matched player and an invalid/blank value falls back to `2500` rather than erroring.
+2. **Decide whether to commit.** This thread's edits are uncommitted and unpushed — the user has not yet asked for a commit. If/when asked, stage only `summary_app.R` (the pre-existing cache-file churn should stay out, per every prior session's convention).
+3. Tab 6's still-open validation gap from the section below (no headless-probe coverage for `summary_app.R`, no live-data correctness check against real `cache/rapm_ratings.rds`) remains open and is now slightly larger in scope (one more interactive control to cover).
+4. The stale issue tracker (`#43`/`#44`/`#49` still shown `OPEN` as of this session's `gh issue list --state open` — re-confirmed, unchanged from every prior session's flag) is still unreconciled.
+
+---
+
+# Handoff — 2026-10-07 (New thread: implemented Tab 6 "Player Ratings (RAPM)" end to end — SA-6a/SA-6b/SA-6c, issues #66/#67/#68 — via the `/subagent-brief` workflow, 3 isolated-worktree subagents, 1 manual merge-conflict resolution, all merged to `main` and pushed as of commit `b36c1af`) — PRIOR SESSION'S STATE (superseded by the section above, kept for its still-accurate detail)
 
 **This supersedes the section immediately below as the "current state," but everything in that section not explicitly updated here (the renv/library notes, the reusable-workflow list, the "Issue tracker state" discrepancy) is still accurate and still applies** — this thread only touched `summary_app.R`, `docs/HANDOFF.md`, and GitHub issues #66/#67/#68; `docs/SUMMARY_APP_SPEC.md` (already committed in `7e1bc29`, the commit immediately before this thread started) was read but not modified. This thread's user asked, in sequence: (1) use `/subagent-brief` to dispatch the three already-filed SA-6x tickets, (2) (after all three landed) "commit and push," (3) this handoff update.
 

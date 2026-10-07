@@ -362,6 +362,12 @@ join_rapm_to_roster <- if (!is.null(.rapm_join_utils_env) &&
 RAPM_RATINGS_CACHE_PATH <- "cache/rapm_ratings.rds"
 ACTIVE_ROSTERS_CACHE_PATH <- "cache/active_rosters_cache.rds"
 
+# Default low-sample cutoff for Tab 6's leaderboard/chart: players with fewer than this many
+# total possessions (offensive + defensive) are hidden until the user raises or lowers the
+# "Minimum total possessions" control below -- a UI display default, not a modeling constant,
+# so it lives here rather than in config.R.
+RAPM_MIN_POSSESSIONS_DEFAULT <- 2500
+
 # ---- Startup-only cache loads for Tab 6 (fail-safe: never crash if a cache is missing) ----
 rapm_ratings_data <- NULL
 rapm_ratings_load_error <- NULL
@@ -550,6 +556,11 @@ ui <- page_fluid(
         selectInput(
           "rapm_team_filter", label = NULL,
           choices = NULL, selected = "All Teams", width = "250px"
+        ),
+        numericInput(
+          "rapm_min_possessions",
+          "Minimum total possessions (offensive + defensive)",
+          value = RAPM_MIN_POSSESSIONS_DEFAULT, min = 0, step = 100, width = "350px"
         )
       ),
       card(
@@ -1673,19 +1684,35 @@ server <- function(input, output, session) {
     joined
   })
 
-  # Second reactive: applies the team filter on top of the joined data. "All Teams"
-  # passes everything through untouched.
+  # Second reactive: applies the team filter and the user-adjustable minimum-possessions
+  # cutoff on top of the joined data. "All Teams" passes everything through untouched; the
+  # possession cutoff uses whatever the "Minimum total possessions" numeric input is
+  # currently set to (defaulting to RAPM_MIN_POSSESSIONS_DEFAULT), so the user can raise or
+  # lower it -- or set it to 0 to include every matched player -- rather than it being a
+  # fixed on/off toggle.
   r_rapm_filtered <- reactive({
     joined <- r_rapm_joined()
     if (is.null(joined)) {
       return(NULL)
     }
+
     team_sel <- input$rapm_team_filter
-    if (is.null(team_sel) || team_sel == "" || team_sel == "All Teams") {
-      return(joined)
+    if (!is.null(team_sel) && team_sel != "" && team_sel != "All Teams") {
+      joined <- joined[joined$team_name == team_sel, , drop = FALSE]
     }
-    filtered <- joined[joined$team_name == team_sel, , drop = FALSE]
-    if (nrow(filtered) == 0) NULL else filtered
+
+    min_poss <- suppressWarnings(as.numeric(input$rapm_min_possessions))
+    if (is.null(min_poss) || length(min_poss) == 0 || is.na(min_poss)) {
+      min_poss <- RAPM_MIN_POSSESSIONS_DEFAULT
+    }
+    if (min_poss > 0) {
+      off_poss <- if ("n_off_poss" %in% names(joined)) as.numeric(joined$n_off_poss) else NA_real_
+      def_poss <- if ("n_def_poss" %in% names(joined)) as.numeric(joined$n_def_poss) else NA_real_
+      total_poss <- coalesce(off_poss, 0) + coalesce(def_poss, 0)
+      joined <- joined[total_poss >= min_poss, , drop = FALSE]
+    }
+
+    if (nrow(joined) == 0) NULL else joined
   })
 
   output$rapm_status <- renderUI({
