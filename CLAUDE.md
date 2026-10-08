@@ -30,6 +30,19 @@
   applied to a full column/vector (`!is.na(a)` returns a vector, `&&` requires length 1). Use
   `dplyr::coalesce()` for any per-row NA-fill on a column; reserve `%||%` for genuinely scalar
   values.
+- `rapm_engine.R`'s `team` column assignment (both the live possession-vote path and the
+  `estimate_rapm_box_plusminus_fallback()` path) is pooled across all of `ALL_SEASONS`, so
+  without correction it reflects "the team this player has the most historical
+  possessions/minutes with," not their current team — wrong for any traded/signed/
+  expansion-drafted player, which silently drops them from `join_rapm_to_roster()`'s inner
+  join (confirmed 2026-10-07: 62 of 152 unambiguous-last-name players mismatched, e.g. Angel
+  Reese attributed to Chicago Sky while on the Atlanta Dream roster). `rapm_engine.R` now
+  calls `reattribute_to_current_roster_team()` at the end of both paths, which overrides
+  `team` with `active_rosters_cache.rds`'s current `team_name` whenever a player's last name
+  is unambiguous league-wide (ambiguous same-surname cases, e.g. multiple "Williams", are
+  left as-is since there's no way to disambiguate from a last-name-only RAPM row). Any future
+  change to `rapm_engine.R`'s team-assignment logic must keep calling this helper, or the
+  same staleness bug returns.
 - `rapm_ratings.rds` and `active_rosters_cache.rds` use incompatible player identifiers
   (`rapm_ratings.rds`'s `player_id` is a different numbering scheme than the ESPN IDs in
   `active_rosters_cache.rds`, and `player_name` there is last-name-only vs. full name in

@@ -253,7 +253,12 @@ PIPELINE_STAGES <- list(
     # estimate_rapm_box_plusminus_fallback(), reads CACHE_PLAYER_BOX when the live pull fails
     # entirely (rapm_engine.R:279-283, `readRDS(box_path)` where
     # box_path = "cache/player_box_scores_cache.rds", i.e. CACHE_PLAYER_BOX's value).
-    inputs      = c(CACHE_PLAYER_BOX),
+    # active_rosters_cache.rds is also a real read as of the 2026-10-07 current-team
+    # re-attribution fix (reattribute_to_current_roster_team(), called from both the
+    # live-pull and fallback paths) — without it, traded/signed/expansion-drafted players'
+    # `team` column silently stays on their historical-possession-plurality team and drops
+    # out of rapm_join_utils.R::join_rapm_to_roster()'s inner join.
+    inputs      = c(CACHE_PLAYER_BOX, file.path(CACHE_DIR, "active_rosters_cache.rds")),
     group       = "latent_engines"
   ),
 

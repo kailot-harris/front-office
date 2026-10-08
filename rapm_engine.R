@@ -67,6 +67,7 @@ if (exists("PROJECT_DIR", inherits = FALSE) == FALSE) {
 if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
 source("config.R")  # WNBA_TEAMS, ALL_SEASONS, CACHE_DIR
 source("logging_utils.R")
+source("rapm_join_utils.R")  # normalize_rapm_last_name() — current-roster re-attribution below
 .LOG_SCRIPT <- "rapm_engine.R"
 
 if (!dir.exists("cache")) dir.create("cache", recursive = TRUE)
@@ -326,6 +327,79 @@ estimate_rapm_box_plusminus_fallback <- function() {
 }
 
 # ------------------------------------------------------------------------------
+# reattribute_to_current_roster_team() — fixes a confirmed staleness bug: both
+# estimate_rapm_ratings()'s possession-vote team assignment (see `team_votes` above)
+# and estimate_rapm_box_plusminus_fallback()'s team assignment are derived from
+# historical data pooled across ALL_SEASONS, so they reflect "the team this player
+# accumulated the most historical data with," not their CURRENT team. That is wrong
+# for any player who isn't still on that team — not just mid-season trades, but any
+# offseason free-agent signing, trade, or expansion-draft move. Empirically (2026-10-07
+# investigation): 62 of 152 unambiguous-last-name comparisons against
+# cache/active_rosters_cache.rds disagreed — e.g. Angel Reese's possession plurality is
+# still with the Chicago Sky even though she is now on the Atlanta Dream roster. Because
+# rapm_join_utils.R::join_rapm_to_roster() joins on (team_name, last_name) with
+# inner-join semantics, every such mismatch silently vanished from the RAPM leaderboard
+# with no warning.
+#
+# Fix: override `team` with the CURRENT roster's team_name whenever a player's last name
+# is UNAMBIGUOUS on the roster side (maps to exactly one team_name league-wide) — this is
+# the same identity signal join_rapm_to_roster() itself relies on, so fixing it here keeps
+# that join correct. Last names ambiguous on the roster side (e.g. multiple
+# "Jones"/"Williams" on different teams) are deliberately left on the historical team:
+# there is no way to tell, from a last-name-only RAPM row, which of several same-surname
+# roster players it belongs to, and guessing would risk a WORSE (silently wrong)
+# attribution than today's season-agnostic one.
+# Fail-safe: if active_rosters_cache.rds is missing/unreadable/malformed, this is a no-op
+# and rapm_df keeps its original team assignment exactly as before.
+# ------------------------------------------------------------------------------
+reattribute_to_current_roster_team <- function(rapm_df) {
+  roster_path <- file.path(CACHE_DIR, "active_rosters_cache.rds")
+  if (!file.exists(roster_path)) {
+    log_warn("active_rosters_cache.rds not found; RAPM team attribution not re-checked against current rosters.",
+             call = "reattribute_to_current_roster_team()")
+    return(rapm_df)
+  }
+
+  roster <- tryCatch(readRDS(roster_path), error = function(e) NULL)
+  if (is.null(roster) || !is.data.frame(roster) ||
+      !all(c("player_name", "team_name") %in% names(roster))) {
+    log_warn("active_rosters_cache.rds missing/malformed; skipping current-team re-attribution.",
+             call = "reattribute_to_current_roster_team()")
+    return(rapm_df)
+  }
+
+  roster_last <- roster %>%
+    dplyr::mutate(last_name = normalize_rapm_last_name(.data$player_name, from_full_name = TRUE)) %>%
+    dplyr::count(.data$last_name, .data$team_name) %>%
+    dplyr::group_by(.data$last_name) %>%
+    dplyr::filter(dplyr::n_distinct(.data$team_name) == 1) %>%
+    dplyr::ungroup() %>%
+    dplyr::distinct(.data$last_name, .data$team_name)
+
+  roster_team_by_last <- setNames(roster_last$team_name, roster_last$last_name)
+
+  n_reattributed <- rapm_df %>%
+    dplyr::mutate(.last_name = normalize_rapm_last_name(.data$player_name, from_full_name = FALSE)) %>%
+    dplyr::filter(!is.na(roster_team_by_last[.data$.last_name]),
+                   roster_team_by_last[.data$.last_name] != .data$team) %>%
+    nrow()
+
+  rapm_df <- rapm_df %>%
+    dplyr::mutate(
+      .last_name = normalize_rapm_last_name(.data$player_name, from_full_name = FALSE),
+      team = dplyr::coalesce(unname(roster_team_by_last[.data$.last_name]), .data$team)
+    ) %>%
+    dplyr::select(-".last_name")
+
+  message(sprintf(">>> [RAPM] Re-attributed %d player(s) to their current roster team (was: historical-possession-plurality team).",
+                   n_reattributed))
+  log_info(sprintf("Re-attributed %d player(s) to current roster team via active_rosters_cache.rds.", n_reattributed),
+           call = "reattribute_to_current_roster_team()", n_reattributed = n_reattributed)
+
+  rapm_df
+}
+
+# ------------------------------------------------------------------------------
 # estimate_rapm_ratings() — main entry point.
 #
 # lambda: NBA original started at 1850 for a *stint*-scale target (point differential per
@@ -358,6 +432,7 @@ estimate_rapm_ratings <- function(lambda = 900, seasons = ALL_SEASONS, force_ref
     log_warn("Real possession data unavailable; using documented real-box-score fallback for RAPM.",
              call = "estimate_rapm_ratings()")
     rapm_df <- estimate_rapm_box_plusminus_fallback()
+    rapm_df <- reattribute_to_current_roster_team(rapm_df)
     saveRDS(rapm_df, "cache/rapm_ratings.rds")
     return(rapm_df)
   }
@@ -431,6 +506,8 @@ estimate_rapm_ratings <- function(lambda = 900, seasons = ALL_SEASONS, force_ref
   ) %>%
     dplyr::filter(!is.na(team)) %>%   # drops team_id==0 / unassigned-possession garbage rows
     dplyr::arrange(dplyr::desc(total_rapm))
+
+  rapm_df <- reattribute_to_current_roster_team(rapm_df)
 
   # Low-sample-size honesty flag: WNBA's ~44-game seasons and 12-player rosters mean far fewer
   # possessions per player than NBA over the same calendar span. Flag (not drop) anyone under
