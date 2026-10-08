@@ -400,7 +400,30 @@ reattribute_to_current_roster_team <- function(rapm_df) {
 }
 
 # ------------------------------------------------------------------------------
-# estimate_rapm_ratings() — main entry point.
+# fit_rapm_ratings() — shared fitting core, extracted from estimate_rapm_ratings() (GitHub
+# issue #70, sub-issue of #69) so a historical, season-specific RAPM snapshot can be produced
+# without touching the live current-season pipeline.
+#
+# team_attribution:
+#   - "current_roster" (used by the live estimate_rapm_ratings() wrapper, unchanged behavior):
+#     overrides `team` via reattribute_to_current_roster_team() at the end, and falls back to
+#     estimate_rapm_box_plusminus_fallback() (also reattributed) if the possession pull fails
+#     or returns 0 rows — never crashes the live pipeline, per this repo's fail-safe
+#     convention.
+#   - "season_pooled" (used only by tools/generate_historical_season_snapshots.R): keeps the
+#     already-computed `primary_team_abbrev` possession-vote as the final `team` column
+#     (no reattribution to 2026 current rosters, which would be wrong for a historical
+#     snapshot), and HARD-STOPS via stop() if the possession pull fails or returns 0 rows for
+#     the requested `seasons` instead of silently falling through to the career-pooled
+#     box-score fallback, which cannot be made season-specific and would silently produce a
+#     wrong (non-season-specific) answer for this path.
+#
+# Also fixes the latent season-filter bug documented in CLAUDE.md /issue #70:
+# load_or_build_wnba_pbp_cache() silently ignores `seasons` whenever
+# cache/wnba_pbp_cache.rds already exists (it always does, pooled across ALL of ALL_SEASONS).
+# This function re-filters `possessions` by `season %in% seasons` right after the cache call —
+# a no-op for the live default caller (seasons = ALL_SEASONS, which matches the cache's full
+# span exactly) but load-bearing for any caller requesting a single historical season.
 #
 # lambda: NBA original started at 1850 for a *stint*-scale target (point differential per
 # stint of ~5-35 possessions, sd ~14.5). Here y is RAW POINTS SCORED ON A SINGLE POSSESSION
@@ -417,23 +440,39 @@ reattribute_to_current_roster_team <- function(rapm_df) {
 # defensible lambda and is a natural follow-up, explicitly flagged here rather than presented
 # as fully tuned.
 # ------------------------------------------------------------------------------
-estimate_rapm_ratings <- function(lambda = 900, seasons = ALL_SEASONS, force_refresh = FALSE) {
+fit_rapm_ratings <- function(seasons = ALL_SEASONS, lambda = 900, force_refresh = FALSE,
+                              team_attribution = c("current_roster", "season_pooled")) {
+  team_attribution <- match.arg(team_attribution)
+
   pbp_cache <- tryCatch(
     load_or_build_wnba_pbp_cache(seasons = seasons, force_refresh = force_refresh),
     error = function(e) {
       message(">>> [RAPM] load_or_build_wnba_pbp_cache() errored: ", conditionMessage(e))
-      log_error("load_or_build_wnba_pbp_cache() errored.", condition = e, call = "estimate_rapm_ratings()")
+      log_error("load_or_build_wnba_pbp_cache() errored.", condition = e, call = "fit_rapm_ratings()")
       NULL
     }
   )
 
+  if (!is.null(pbp_cache) && !is.null(pbp_cache$possessions)) {
+    # Fix for the latent season-filter bug: load_or_build_wnba_pbp_cache() silently ignores
+    # `seasons` whenever the pooled cache already exists. Re-filter here. No-op for the live
+    # default caller (seasons = ALL_SEASONS == the cache's full pooled span).
+    pbp_cache$possessions <- dplyr::filter(pbp_cache$possessions, season %in% seasons)
+  }
+
   if (is.null(pbp_cache) || is.null(pbp_cache$possessions) || nrow(pbp_cache$possessions) == 0) {
+    if (team_attribution == "season_pooled") {
+      log_error(sprintf("No real possession data available for season(s) %s; hard-stopping (season_pooled path does not fall back).",
+                         paste(seasons, collapse = ",")),
+                call = "fit_rapm_ratings()", seasons = paste(seasons, collapse = ","))
+      stop(sprintf("[RAPM] fit_rapm_ratings(): no real possession data for season(s) %s and team_attribution = 'season_pooled' — refusing to fall back to the career-pooled box-score fallback for a season-specific request.",
+                    paste(seasons, collapse = ",")))
+    }
     message(">>> [RAPM] Real possession data unavailable — using documented box-score fallback.")
     log_warn("Real possession data unavailable; using documented real-box-score fallback for RAPM.",
-             call = "estimate_rapm_ratings()")
+             call = "fit_rapm_ratings()")
     rapm_df <- estimate_rapm_box_plusminus_fallback()
     rapm_df <- reattribute_to_current_roster_team(rapm_df)
-    saveRDS(rapm_df, "cache/rapm_ratings.rds")
     return(rapm_df)
   }
 
@@ -507,7 +546,12 @@ estimate_rapm_ratings <- function(lambda = 900, seasons = ALL_SEASONS, force_ref
     dplyr::filter(!is.na(team)) %>%   # drops team_id==0 / unassigned-possession garbage rows
     dplyr::arrange(dplyr::desc(total_rapm))
 
-  rapm_df <- reattribute_to_current_roster_team(rapm_df)
+  if (team_attribution == "current_roster") {
+    rapm_df <- reattribute_to_current_roster_team(rapm_df)
+  }
+  # team_attribution == "season_pooled": leave `team` as the already-computed
+  # primary_team_abbrev possession-vote for the requested season(s) — do NOT reattribute to
+  # the 2026 current roster, which would be wrong for a historical snapshot.
 
   # Low-sample-size honesty flag: WNBA's ~44-game seasons and 12-player rosters mean far fewer
   # possessions per player than NBA over the same calendar span. Flag (not drop) anyone under
@@ -517,7 +561,28 @@ estimate_rapm_ratings <- function(lambda = 900, seasons = ALL_SEASONS, force_ref
   rapm_df <- rapm_df %>%
     dplyr::mutate(low_sample_flag = (n_off_poss + n_def_poss) < 300)
 
+  rapm_df
+}
+
+# ------------------------------------------------------------------------------
+# estimate_rapm_ratings() — main entry point, live/current-season path. Thin wrapper around
+# fit_rapm_ratings(..., team_attribution = "current_roster") that adds the saveRDS() to
+# cache/rapm_ratings.rds and the final success log/message. Behavior-preserving: every real
+# call site in this repo uses the defaults (seasons = ALL_SEASONS), so this refactor is a
+# no-op for the live path (see fit_rapm_ratings()'s header comment for the season-filter fix,
+# which is also a no-op at seasons = ALL_SEASONS).
+# ------------------------------------------------------------------------------
+estimate_rapm_ratings <- function(lambda = 900, seasons = ALL_SEASONS, force_refresh = FALSE) {
+  rapm_df <- fit_rapm_ratings(seasons = seasons, lambda = lambda, force_refresh = force_refresh,
+                               team_attribution = "current_roster")
+
   saveRDS(rapm_df, "cache/rapm_ratings.rds")
+
+  if (identical(rapm_df$data_source[1], "real_box_score_plusminus_fallback")) {
+    # Fallback path already logged its own warning inside estimate_rapm_box_plusminus_fallback().
+    return(rapm_df)
+  }
+
   message(sprintf(">>> [RAPM] Saved %d REAL possession-level RAPM ratings to cache/rapm_ratings.rds (%d flagged low-sample).",
                    nrow(rapm_df), sum(rapm_df$low_sample_flag)))
   log_info(sprintf("Saved %d real possession-level RAPM ratings (%d flagged low-sample).",

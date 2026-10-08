@@ -1,12 +1,23 @@
 # ==============================================================================
 # tools/generate_historical_season_snapshots.R
 #
-# GitHub issue #69 (Standings/Bracket part only -- RAPM is a separate, out-of-scope
-# dispatch, see docs for rapm_engine.R's reattribute_to_current_roster_team() conflict).
+# GitHub issue #69 (Standings/Bracket) + issue #70 (RAPM, sub-issue of #69 -- the RAPM third
+# of #69 that was deliberately split out because it conflicted with rapm_engine.R's
+# reattribute_to_current_roster_team() / pooled-cache season-filter behavior; see rapm_engine.R
+# fit_rapm_ratings() header comment and CLAUDE.md for the resolved design).
 #
-# Generates REAL final (non-projected) per-season regular-season standings and
-# playoff-series results for 2023-2025 from data/box_scores_cache.rds
-# (config.R's CACHE_TEAM_BOX). 2019-2022 backfill is a separate future ticket.
+# Generates REAL final (non-projected) per-season regular-season standings, playoff-series
+# results, AND a real per-season-pooled-team RAPM leaderboard for 2023-2025 from
+# data/box_scores_cache.rds (config.R's CACHE_TEAM_BOX) and cache/wnba_pbp_cache.rds via
+# rapm_engine.R::fit_rapm_ratings(). 2019-2022 backfill is a separate future ticket.
+#
+# RAPM note (issue #70): this is the ONLY caller in the repo that ever passes
+# team_attribution = "season_pooled" to fit_rapm_ratings() -- it fits RAPM separately per
+# historical season (seasons = yr, not ALL_SEASONS) and keeps the per-season
+# possession-vote team (not the player's current/2026 roster team, which would be wrong for
+# a historical snapshot). This script NEVER writes to cache/rapm_ratings.rds -- that file is
+# owned exclusively by rapm_engine.R::estimate_rapm_ratings() (team_attribution =
+# "current_roster", the live path).
 #
 # season_type mapping (empirically verified against the live cache this session via
 # table(box$season_type) and spot-checking 2023 postseason game_ids/dates against the
@@ -29,6 +40,7 @@ PROJECT_DIR <- here::here()
 setwd(PROJECT_DIR)
 source("config.R")
 source("daily_ingest.R")
+source("rapm_engine.R")
 
 suppressPackageStartupMessages(library(dplyr))
 
@@ -115,6 +127,24 @@ generate_historical_season_snapshots <- function(seasons = SEASONS) {
     bracket_path <- file.path(CACHE_DIR, sprintf("playoff_bracket_results_%d.rds", yr))
     saveRDS(bracket, bracket_path)
     message(sprintf("Wrote %s (%d series).", bracket_path, nrow(bracket)))
+
+    # ---- RAPM (issue #70): real, season-specific, season-pooled-team snapshot ----
+    # team_attribution = "season_pooled" is used ONLY here in the whole repo -- it fits RAPM
+    # for this single historical season (seasons = yr, not ALL_SEASONS) and keeps the
+    # per-season possession-vote team instead of the player's current (2026) roster team,
+    # which would be wrong for a historical snapshot. Per fit_rapm_ratings()'s documented
+    # contract, this path hard-stops via stop() rather than falling back to the career-pooled
+    # box-score fallback if real possession data isn't available for this season -- we let
+    # that propagate rather than catching it, so a missing-data problem for one pilot season
+    # is loud, not silently swallowed into a wrong leaderboard.
+    rapm_season <- fit_rapm_ratings(seasons = yr, lambda = 900, team_attribution = "season_pooled")
+    rapm_season$season <- yr
+
+    rapm_path <- file.path(CACHE_DIR, sprintf("rapm_ratings_%d.rds", yr))
+    saveRDS(rapm_season, rapm_path)
+    message(sprintf("Wrote %s (%d players, data_source = %s).",
+                     rapm_path, nrow(rapm_season),
+                     paste(unique(rapm_season$data_source), collapse = ",")))
   }
 }
 
