@@ -46,6 +46,99 @@ suppressPackageStartupMessages(library(dplyr))
 
 SEASONS <- c(2023, 2024, 2025)
 
+# ------------------------------------------------------------------------------
+# assign_bracket_rounds(bracket_df)
+#
+# Derives a `round` label for each series in a single season's bracket, purely
+# from that season's own data (no new data source): series' earliest game_date
+# (chronological order of play) plus the already-computed `winner` column.
+#
+# Algorithm (see tools/generate_historical_season_snapshots.R header / issue #69
+# handoff notes for full rationale):
+#   1. Order the season's series by the earliest game_date in each series'
+#      `games` list-column (ascending).
+#   2. Walk in that order, keeping a running wins_so_far count per team
+#      (starts at 0 for every team at the top of the season).
+#   3. round number for a series = 1 + max(wins_so_far[team_a], wins_so_far[team_b]).
+#      Both participants should already have equal prior win counts (a round-N
+#      matchup only happens between two teams who each won exactly N-1 prior
+#      series that season) -- if they disagree, the chronological-ordering
+#      assumption has broken down for this season and we stop() rather than
+#      silently guessing a label.
+#   4. After resolving winner, increment wins_so_far[winner].
+#   5. Map round numbers -> labels using THIS season's own bracket size: number
+#      of first-round participants = number of distinct teams across the
+#      season's series; number of rounds = log2(that count) (validated to be a
+#      whole number -- if not, that's a non-power-of-2 bracket, e.g. a play-in
+#      game, and we fall back to numeric "Round N" labels for every round
+#      instead of forcing Semifinals/Finals labels that don't fit).
+#      Highest round number -> "Finals", one before -> "Semifinals", one before
+#      that -> "Quarterfinals" (only if present), anything earlier -> "Round 1".
+# ------------------------------------------------------------------------------
+assign_bracket_rounds <- function(bracket_df) {
+  if (nrow(bracket_df) == 0) {
+    bracket_df$round <- character(0)
+    return(bracket_df)
+  }
+
+  # Earliest game_date within each series' own games list (reuses the game_log
+  # already built per-series -- no refetching from box).
+  first_game_date <- vapply(bracket_df$games, function(gl) {
+    min(vapply(gl, function(g) g$game_date, numeric(1)))
+  }, numeric(1))
+
+  order_idx <- order(first_game_date)
+
+  wins_so_far <- new.env()
+  round_number <- integer(nrow(bracket_df))
+
+  for (i in order_idx) {
+    team_a <- bracket_df$team_a[i]
+    team_b <- bracket_df$team_b[i]
+    wa <- if (exists(team_a, envir = wins_so_far, inherits = FALSE)) get(team_a, envir = wins_so_far) else 0L
+    wb <- if (exists(team_b, envir = wins_so_far, inherits = FALSE)) get(team_b, envir = wins_so_far) else 0L
+
+    if (wa != wb) {
+      stop(sprintf(
+        paste0("assign_bracket_rounds: chronological-reconstruction assumption broke down -- ",
+                "series %s vs %s has mismatched prior win counts (%d vs %d). ",
+                "Cannot safely assign a round label; stopping rather than guessing."),
+        team_a, team_b, wa, wb
+      ))
+    }
+
+    round_number[i] <- wa + 1L
+
+    winner <- bracket_df$winner[i]
+    current_winner_wins <- if (exists(winner, envir = wins_so_far, inherits = FALSE)) get(winner, envir = wins_so_far) else 0L
+    assign(winner, current_winner_wins + 1L, envir = wins_so_far)
+  }
+
+  # Bracket size for this season: distinct teams across all its series.
+  n_teams <- length(unique(c(bracket_df$team_a, bracket_df$team_b)))
+  n_rounds_exact <- log2(n_teams)
+  is_power_of_2 <- abs(n_rounds_exact - round(n_rounds_exact)) < 1e-9
+  max_round <- max(round_number)
+
+  if (is_power_of_2) {
+    n_rounds <- round(n_rounds_exact)
+    label_for <- function(rn) {
+      from_top <- n_rounds - rn  # 0 = Finals, 1 = Semifinals, 2 = Quarterfinals (if earlier rounds exist), else Round 1
+      if (from_top == 0) "Finals"
+      else if (from_top == 1) "Semifinals"
+      else if (from_top == 2 && rn > 1) "Quarterfinals"  # only a distinct stage when >1 round precedes it
+      else "Round 1"
+    }
+  } else {
+    # Non-power-of-2 bracket (e.g. a play-in game) -- don't force a label that
+    # doesn't fit; use numeric round labels instead.
+    label_for <- function(rn) sprintf("Round %d", rn)
+  }
+
+  bracket_df$round <- vapply(round_number, label_for, character(1))
+  bracket_df
+}
+
 generate_historical_season_snapshots <- function(seasons = SEASONS) {
   box <- readRDS(CACHE_TEAM_BOX) |> filter_real_franchises()
 
@@ -123,6 +216,8 @@ generate_historical_season_snapshots <- function(seasons = SEASONS) {
       }) |>
       ungroup() |>
       select(-pair_key)
+
+    bracket <- assign_bracket_rounds(bracket)
 
     bracket_path <- file.path(CACHE_DIR, sprintf("playoff_bracket_results_%d.rds", yr))
     saveRDS(bracket, bracket_path)
