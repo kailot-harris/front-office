@@ -7,9 +7,13 @@
 # fit_rapm_ratings() header comment and CLAUDE.md for the resolved design).
 #
 # Generates REAL final (non-projected) per-season regular-season standings, playoff-series
-# results, AND a real per-season-pooled-team RAPM leaderboard for 2023-2025 from
+# results, AND a real per-season-pooled-team RAPM leaderboard for 2019-2025 from
 # data/box_scores_cache.rds (config.R's CACHE_TEAM_BOX) and cache/wnba_pbp_cache.rds via
-# rapm_engine.R::fit_rapm_ratings(). 2019-2022 backfill is a separate future ticket.
+# rapm_engine.R::fit_rapm_ratings(). 2019-2022 backfill (this extension): confirmed both
+# source caches actually cover these seasons before running -- box_scores_cache.rds has
+# season_type 2/3 rows for every year 2019-2022, and wnba_pbp_cache.rds$possessions has
+# 23.5k-38k rows per season across the same range -- so the only reason this was previously
+# deferred was scope/time, not missing data.
 #
 # RAPM note (issue #70): this is the ONLY caller in the repo that ever passes
 # team_attribution = "season_pooled" to fit_rapm_ratings() -- it fits RAPM separately per
@@ -44,7 +48,7 @@ source("rapm_engine.R")
 
 suppressPackageStartupMessages(library(dplyr))
 
-SEASONS <- c(2023, 2024, 2025)
+SEASONS <- 2019:2025
 
 # ------------------------------------------------------------------------------
 # assign_bracket_rounds(bracket_df)
@@ -217,11 +221,30 @@ generate_historical_season_snapshots <- function(seasons = SEASONS) {
       ungroup() |>
       select(-pair_key)
 
-    bracket <- assign_bracket_rounds(bracket)
+    # 2019-2021 used a bye-based playoff format (top 1-2 seeds skipped straight to the
+    # best-of-5 semifinals while seeds 3-6 played two single-elimination rounds to join
+    # them) -- assign_bracket_rounds()'s chronological win-count reconstruction assumes a
+    # balanced bracket with no byes and correctly stop()s rather than mislabeling these
+    # seasons' rounds. Caught here (not fixed) so one season's unreconstructable bracket
+    # shape doesn't abort standings/RAPM generation for every other season; the bracket file
+    # for an affected season is simply not written, same as the existing NULL-safe-missing-
+    # file convention every reader of HISTORICAL_BRACKET already follows downstream.
+    bracket_rounds <- tryCatch(
+      assign_bracket_rounds(bracket),
+      error = function(e) {
+        message(sprintf(
+          "Skipping playoff_bracket_results_%d.rds -- assign_bracket_rounds() failed: %s",
+          yr, conditionMessage(e)
+        ))
+        NULL
+      }
+    )
 
-    bracket_path <- file.path(CACHE_DIR, sprintf("playoff_bracket_results_%d.rds", yr))
-    saveRDS(bracket, bracket_path)
-    message(sprintf("Wrote %s (%d series).", bracket_path, nrow(bracket)))
+    if (!is.null(bracket_rounds)) {
+      bracket_path <- file.path(CACHE_DIR, sprintf("playoff_bracket_results_%d.rds", yr))
+      saveRDS(bracket_rounds, bracket_path)
+      message(sprintf("Wrote %s (%d series).", bracket_path, nrow(bracket_rounds)))
+    }
 
     # ---- RAPM (issue #70): real, season-specific, season-pooled-team snapshot ----
     # team_attribution = "season_pooled" is used ONLY here in the whole repo -- it fits RAPM
