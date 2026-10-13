@@ -120,6 +120,7 @@ run_elo_walkforward <- function(sch_completed, fatigue, k, return_final_state = 
     out[[i]] <- data.frame(
       game_id = g$game_id, season = s, week = g$week,
       home_team = h, away_team = a, home_win = home_win,
+      home_elo_pre = elo_h, away_elo_pre = elo_a,
       elo_prob_pure = p_elo, elo_margin_pts = elo_margin_pts,
       fatigue_adj = fatigue_adj,
       home_win_prob = pnorm(adjusted_margin / NFL_MARGIN_SIGMA),

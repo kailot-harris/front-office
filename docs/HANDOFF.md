@@ -1,12 +1,23 @@
 # NFL Analytics — Handoff Document
 
-**Last updated**: 2026-10-05, after commit `dd136a0` ("Merge issue #15: wire playoff_odds_engine.R
-into run_full_pipeline.R"). `git status --short` shows 11 modified `cache/*.rds` files plus one
-new untracked `cache/playoff_odds.rds` — real output of a real full-pipeline run done this session
-to verify issue #15 (see "Known issues" item 8 below) — **not committed/pushed yet**, a deliberate
-decision point left for the next session, not an oversight. Written for a future LLM/agent picking
-this repo back up cold — read this before touching anything, then read `CLAUDE.md` for
-environment/data-quirk details this doc doesn't repeat.
+**Last updated**: 2026-10-13, after commit `ebf2132` ("Fix stage 8/9.5 ordering gap: run
+risk_management_engine.R after bet_tracker.r") — that commit is already on `main`; everything
+below is **this session's uncommitted work on top of it**. `git status --short` shows 12 modified
+`cache/*.rds` files (fresh output of a real `run_full_pipeline.R` run this session, see below)
+plus a pile of untracked files: a new ad hoc analysis report (`docs/week5_elo_analysis.{qmd,html}`
+and its `cache/elo_*.png`/`cache/elo_scatter_animation.gif` outputs), an additive one-line change
+to `tools/elo_model.R`, and three **pre-existing** untracked scratch files from a 2026-10-08
+session that this doc never previously recorded (`tools/_inspect_week5.R`,
+`tools/plot_week5_projections.R`, `tools/run_week5_refresh.R` — small ad hoc Week-5-projection
+helpers, not part of any pipeline stage; see "Untracked scratch files" below). None of this
+session's work touched `run_full_pipeline.R` or any stage script's behavior. Written for a future
+LLM/agent picking this repo back up cold — read this before touching anything, then read
+`CLAUDE.md` for environment/data-quirk details this doc doesn't repeat.
+
+**This session's work was an ad hoc user-requested analysis/visualization task (an animated Elo
+report), unrelated to the playoff-odds/accuracy-tracker build threads below — but it did turn up
+real new evidence for the still-open Issue #10. See "Issue #10" and "This session: Elo
+visualization report" below.**
 
 ## What this repo is
 
@@ -26,10 +37,11 @@ Three live Discord dispatch paths are now confirmed working against the real `NF
 memorized) Phase 0 research foundation this repo was built from. Re-verify anything
 date-sensitive before trusting it blindly for new work; nflverse/vendor details shift over time.
 
-**The playoff-clinching probability feature (issues #11-#16) shipped in full this session** — see
+**The playoff-clinching probability feature (issues #11-#16) shipped 2026-10-05** — see
 "Playoff-clinching probability table — SHIPPED" below for what's actually live. The only issue
 still open in the whole tracker is **#10** (an observational/calendar-dependent validation, not a
-coding task) — see "Accuracy-trajectory monitoring" below.
+coding task) — **real evidence for both of its acceptance scenarios now exists as of 2026-10-13,
+just not yet closed on GitHub** — see "Accuracy-trajectory monitoring" below.
 
 ## Current state: 13-stage pipeline (12 numbered `run_stage()` calls + stages 7.5 and 9.5)
 
@@ -92,6 +104,66 @@ stage 7.5 alone took 244.46s of that. Every stage ran cleanly; `.check_stage_out
 | `45bcea8`…`dd136a0` | Playoff Odds #11-#16 | This session: implemented the full feature end-to-end via 5 waves of parallel `subagent-brief` dispatch — constants, single-trial sim, Monte Carlo loop + cache write, Discord dispatch ‖ timing/tuning (parallel), pipeline wiring. Real full-pipeline run confirms it live end-to-end (HTTP 204, 392.58s total run). |
 
 ## Recent work
+
+### This session (2026-10-13): Elo visualization report — ad hoc, NOT a pipeline stage
+
+User asked for a standalone Elo-rating analysis/report, not a build task on the issue tracker —
+unrelated to the playoff-odds/accuracy-tracker threads below except for the Issue #10 evidence
+found along the way (see "Accuracy-trajectory monitoring" above). Sequence:
+
+1. **Ran a real, full `run_full_pipeline.R`** (user's explicit instruction — "Week 5's last game
+   just ended") to refresh all caches before analysis. Completed cleanly, 439.23s, exit 0. One
+   pre-existing WARN fired (`bet_tracker.r`'s `betting_ledger.rds` stale — expected, see Known
+   Issue #9/#8, no real bets staked this slate, not a new problem). This is the run that produced
+   the 12 modified `cache/*.rds` files currently uncommitted.
+2. **Additive change to `tools/elo_model.R`**: `run_elo_walkforward()`'s per-game output row now
+   also includes `home_elo_pre`/`away_elo_pre` (the two teams' PRE-game Elo ratings, i.e. the
+   exact inputs already used internally to compute `elo_diff`/`elo_prob_pure` — just newly
+   exposed as output columns). Every existing caller either doesn't care about extra columns or
+   explicitly `select()`s a subset already, so this is non-breaking — confirmed by grepping every
+   call site (`team_ratings_engine.R`, `accuracy_tracker.R`, `tools/model_backtest_harness.R`,
+   `tools/backtest_common.R`, and 6 other `tools/derive_*`/`investigate_*` scripts) before making
+   the change. Needed because "average opponent Elo, no hindsight" requires each team's
+   opponent's rating *at the time that specific game was played*, which wasn't previously exposed.
+3. **New file `docs/week5_elo_analysis.qmd`** (400 lines) — a self-contained Quarto report, NOT
+   wired into `run_full_pipeline.R` and not meant to be (it's a point-in-time analysis artifact,
+   re-run manually when wanted, same category as `tools/derive_*.R` scripts). Six sections:
+   current Elo by team (bar, faceted by conference, colored/grouped by division), week-to-week
+   Elo trajectory (line, faceted by division), average opponent Elo / strength-of-schedule (bar),
+   team-strength-vs-SOS scatter (static + **animated GIF**, see below), early-season upsets table,
+   and overperforming/underperforming-vs-schedule tables. All figures use real team logos
+   (`nflplotR::geom_nfl_logos()`/`element_nfl_logo()`) instead of color-only legends — user
+   feedback mid-session ("impossible to distinguish teams") drove this. Dark theme + a custom
+   blue→green division palette, also user-requested.
+4. **Animated scatter (`cache/elo_scatter_animation.gif`)**: per-week cumulative snapshot
+   (current Elo × average pre-game opponent Elo through that week), each team's own history
+   rendered as a fading grey trail behind its logo. Built manually frame-by-frame with `ggplot2`
+   + `magick::image_animate()` (NOT `gganimate`/`transformr` — never installed, untested whether
+   `nflplotR`'s image-based geoms tween cleanly under `gganimate`, so this avoided that question
+   entirely by hand-rendering each frame). **Real lesson learned mid-build**: a global cubic
+   spline (`stats::spline()`, then tried `splinefun(method="monoH.FC")`) through only 2-5 noisy
+   per-team points overshoots badly and produces visible loops that misrepresent the real path —
+   switched to piecewise-linear interpolation (`approx()`, finely subdivided only for a smooth
+   *rendering* fade, not shape-smoothing) instead. If animating any other noisy-few-point team
+   trajectory in this repo later, start with `approx()`, not a spline.
+5. **New R packages installed** (user-level library, not pinned anywhere — this repo has no
+   `renv.lock`/`DESCRIPTION`): `nflplotR` + its dependencies `ggpath`, `gt`, `magick`, `V8`,
+   `bigD`, `bitops`, `juicyjuice`. `nflplotR` is the standard nflverse package for team logos in
+   `ggplot2` — fits the existing `nflreadr`/`nflfastR` stack already in use here.
+6. **Found and worked around a real quarto bug**: this doc's `embed-resources: true` YAML setting
+   is silently not honored by the local quarto 1.10.18 binary for this `.qmd` — plain
+   `quarto render` leaves a non-self-contained HTML (relative links to a `*_files/` sidecar
+   folder, confirmed via zero `base64` matches in the output). Rendering with the explicit CLI
+   flag `quarto render docs/week5_elo_analysis.qmd --to html --embed-resources` DOES embed
+   correctly (verified: all figures + the GIF inline as base64, no sidecar folder, 2.3MB
+   self-contained file). A note to this effect is left at the top of the `.qmd` itself — **always
+   use the explicit flag when re-rendering this doc** until the YAML-only behavior is re-verified
+   against a newer quarto version.
+7. **Not committed.** `docs/week5_elo_analysis.{qmd,html}`, `cache/elo_*.png`,
+   `cache/elo_scatter_animation.gif`, `cache/elo_anim_frames/` (intermediate per-frame PNGs, could
+   be `.gitignore`d or deleted — they're a build artifact of the GIF, not needed once the GIF
+   exists), and the `tools/elo_model.R` diff are all currently untracked/unstaged. Left as a
+   decision point for the next session (see "Suggested next steps").
 
 ### Playoff-clinching probability table — SHIPPED end-to-end this session (issues #11-#16, `45bcea8`…`dd136a0`, 2026-10-05)
 
@@ -163,7 +235,7 @@ remains the accurate frozen spec (no changes needed during implementation). All 
 closed on GitHub with real verification evidence in each issue's closing comment — read those for
 exact numbers (timings, stability-check deltas, char counts) rather than re-deriving them.
 
-## Accuracy-trajectory monitoring (issues #1-#9 shipped, #10 remains — now partially evidenced)
+## Accuracy-trajectory monitoring (issues #1-#9 shipped, #10 remains — now fully evidenced, not yet closed)
 
 Full spec: `docs/SPEC_accuracy_trajectory_monitoring.md`. Summary: track the model's
 season-to-date prediction accuracy over time via a persisted history cache plus Discord posts,
@@ -179,14 +251,40 @@ appended row 3 of `cache/accuracy_history.rds` (accuracy=0.651, brier=0.2282, lo
 total graded games), and dispatched to Discord successfully (HTTP 204). **This satisfies scenario
 1** of #10's acceptance criteria (a day with newly completed games).
 
-**Scenario 2 is still unevidenced**: a day with *zero* newly-completed games, confirming the stage
-no-ops cleanly (no duplicate history row, no duplicate/empty Discord post). All 3 rows currently
-in `cache/accuracy_history.rds` are from days that had new completions — there is no off/bye-day
-data point yet. This is genuinely calendar-dependent (can't be forced/simulated credibly — the
-whole point is observing the real scheduled job on a real day with nothing new to report) and must
-wait for the task to fire again on such a day. **Next session: re-run the `schtasks /Query` check
-above** — if `Last Run Time` has advanced again since 2026-10-05 and the history file's row count
-is unchanged from that run (i.e. it genuinely no-opped), close #10 with that evidence.
+**Scenario 2 — FOUND this session (2026-10-13), real evidence now exists, #10 not yet closed on
+GitHub.** `logs/nfl_pipeline.log` shows the real scheduled task fired cleanly at both
+**2026-10-10 05:15:03** and **2026-10-11 05:15:03** with zero newly-completed games each time:
+
+```
+[2026-10-10 05:18:42] [INFO] [accuracy_tracker.R] Starting accuracy tracker for season 2026.
+[2026-10-10 05:19:05] [INFO] [accuracy_tracker.R] No new completed games since the last recorded
+  run (season 2026, 65 game(s) graded total, all already recorded).
+[2026-10-10 05:19:05] [INFO] [run_full_pipeline.R] Pipeline run finished in 242.33 seconds.
+
+[2026-10-11 05:15:03] [INFO] [run_full_pipeline.R] Pipeline run started.
+[2026-10-11 05:19:17] [INFO] [accuracy_tracker.R] No new completed games since the last recorded
+  run (season 2026, 65 game(s) graded total, all already recorded).
+[2026-10-11 05:19:17] [INFO] [run_full_pipeline.R] Pipeline run finished in 253.64 seconds.
+```
+
+Verified both ways the acceptance criteria asks for: (1) no duplicate/extra row —
+`cache/accuracy_history.rds` stayed at 65 total graded games across both days (confirmed by
+reading the cache directly: row for 2026-10-09 shows 65, next row jumps straight to 2026-10-12
+with 78 — no 10-10/10-11 rows exist), and (2) no duplicate/empty Discord post — neither run's log
+has a "Broadcasted…Discord webhook" line, just the clean no-op message above. **This satisfies
+Scenario 2 in full.** Combined with the already-evidenced Scenario 1 (2026-10-05), both of #10's
+acceptance-criteria scenarios now have real evidence — **recommend closing #10 on GitHub with
+this log excerpt as the closing comment**, but it was left open this session since closing a
+tracked issue is a visible action the project owner should take deliberately, not something a
+handoff-writing pass does on its own.
+
+Side observation while digging through the log (not a bug, just worth knowing): the scheduled
+task doesn't always fire at exactly 05:15 — several runs started late (`2026-10-05 11:47:17`,
+`2026-10-08 07:47:53`, `2026-10-12 07:55:14`), consistent with Windows Task Scheduler's
+run-ASAP-after-a-missed-start behavior (e.g. machine asleep at 05:15). Didn't affect correctness
+of either no-op evidenced above (both of those happened to fire on time), but if a future session
+is hunting for a *specific* calendar day's behavior, check the actual "Pipeline run started"
+timestamp in the log rather than assuming it ran at 05:15.
 
 **Key design facts worth re-reading from the spec before implementing anything adjacent**:
 - The staking-sample gate (`market_odds_engine.R`) is computed **per game**
@@ -234,23 +332,50 @@ is unchanged from that run (i.e. it genuinely no-opped), close #10 with that evi
    `Ready`, and now confirmed to have fired successfully at least once for real (2026-10-05
    05:15 AM). Issue #10 (the off-day idempotency half of real-world validation) remains open — see
    "Accuracy-trajectory monitoring" above for exactly what's still missing.
-8. **Playoff-odds feature (issues #11-#16) shipped this session — but the verification run left
-   uncommitted cache state.** The real full-pipeline run done to verify issue #15 modified 11
-   existing `cache/*.rds` files and created a new `cache/playoff_odds.rds`, all currently
-   uncommitted (`git status --short` shows them). Prior sessions' convention (see `a5d592f`) was
-   to commit+push regenerated caches after a manual verification run — decide whether to follow
-   that convention here (commit them) or discard, rather than letting them sit indefinitely;
-   either way this is a deliberate decision point left for the next session, not an accident.
-   `N_SEASON_SIMULATIONS` is fully tuned now (not a placeholder) — see issue #16's closing comment
-   for the real timing/stability numbers.
+8. **Playoff-odds feature (issues #11-#16) shipped 2026-10-05.** `N_SEASON_SIMULATIONS` is fully
+   tuned (not a placeholder) — see issue #16's closing comment for the real timing/stability
+   numbers. The cache state from that session's verification run was committed+pushed (`7b43185`,
+   following the `a5d592f` precedent) — **this item is closed**. See item 9 below for the *current*
+   uncommitted cache state (a different, later run).
+9. **Uncommitted cache state again, from this session's (2026-10-13) full-pipeline run.** Same
+   recurring pattern as item 8 above, now from a fresh run: 12 `cache/*.rds` files modified,
+   currently uncommitted. This is expected to recur every time a real `run_full_pipeline.R`
+   invocation happens between commits — decide fresh each time whether to commit (the established
+   `a5d592f`/`7b43185` precedent) or discard, don't assume last time's decision carries forward.
+10. **Three untracked scratch files from an undocumented 2026-10-08 session**
+    (`tools/_inspect_week5.R`, `tools/plot_week5_projections.R`, `tools/run_week5_refresh.R`) —
+    first noticed this session; no prior HANDOFF.md revision recorded them, so whatever session
+    created them on 2026-10-08 never got a handoff pass. Read: small, clearly-scoped ad hoc
+    helpers for a Week 5 projections visualization (`run_week5_refresh.R` re-runs pipeline stages
+    1-5 only to regenerate `CACHE_PROJECTED_MATCHUPS` without live Discord/Odds-API side effects;
+    `_inspect_week5.R` is a one-off cache-inspection snippet; `plot_week5_projections.R` is a
+    larger plotting script, not reviewed in detail this session). Not part of any pipeline stage,
+    not referenced by `docs/week5_elo_analysis.qmd`. Next session: decide whether these are worth
+    committing (if the Week 5 projections visualization is still wanted) or deleting as scratch.
 
 ## Environment specifics a fresh agent needs
 
 - R: `C:\Program Files\R\R-4.5.2\bin\Rscript.exe` (not on PATH). Installed and confirmed working:
   `nflreadr`, `dplyr`, `duckdb`, `httr2`, `glmnet`, `xgboost`, `ggplot2`, `knitr`, `rmarkdown`,
-  `tinytex`. NOT installed: `lightgbm`, `rstan`/`cmdstanr`/`brms`/`rjags`, `kableExtra`.
-- Quarto: **not on PATH** — the real binary is bundled with RStudio at
-  `C:\Program Files\RStudio\resources\app\bin\quarto\bin\quarto.exe`. Invoke via full path.
+  `tinytex`, and as of 2026-10-13: `nflplotR` (+ deps `ggpath`, `gt`, `magick`, `V8`, `bigD`,
+  `bitops`, `juicyjuice`) for team-logo plotting. NOT installed: `lightgbm`,
+  `rstan`/`cmdstanr`/`brms`/`rjags`, `kableExtra`, `gganimate`/`gifski`/`transformr` (animated
+  GIFs in this repo so far are hand-built frame-by-frame with `magick::image_animate()` instead —
+  see `docs/week5_elo_analysis.qmd`'s animated-scatter chunk — specifically to avoid the untested
+  question of whether `nflplotR`'s image-based geoms tween cleanly under `gganimate`). No
+  `renv.lock`/`DESCRIPTION` tracks any of this — package installs are ad hoc to whatever machine
+  runs the code.
+- Quarto: **not on PATH** — a working binary was found this session at
+  `C:\Program Files\Quarto\bin\quarto.exe` (earlier sessions used a different RStudio-bundled path
+  at `C:\Program Files\RStudio\resources\app\bin\quarto\bin\quarto.exe` — both may exist on this
+  machine; the standalone one worked for the 2026-10-13 session). Invoke via full path either way.
+  **`embed-resources: true` in a `.qmd`'s YAML is not reliably honored by quarto 1.10.18 locally**
+  — confirmed on `docs/week5_elo_analysis.qmd`: plain `quarto render` produced a non-self-contained
+  HTML (relative links to a `*_files/` sidecar folder) despite the YAML setting. Always pass the
+  explicit CLI flag too: `quarto render <file>.qmd --to html --embed-resources`. Not yet checked
+  whether this affects `docs/profitability_remediation_report.qmd` or is specific to the newer doc
+  — worth a quick check if that older report is ever re-rendered and sent somewhere expecting a
+  truly standalone file.
 - Real credentials confirmed working: `ODDS_API_KEY`, `NFL_DISCORD_WEBHOOK` (both read from
   `C:\Users\kailo\.Renviron` — NOT `C:\Users\kailo\Documents\.Renviron`, which is where R's
   user-Renviron lookup does *not* resolve on this machine).
@@ -297,26 +422,34 @@ is unchanged from that run (i.e. it genuinely no-opped), close #10 with that evi
 
 ## Suggested next steps, roughly in priority order
 
-1. **Known Issue #8 (uncommitted cache state) — DONE 2026-10-05.** Committed and pushed
-   (`7b43185`), following the `a5d592f` precedent.
-2. **Issue #10 (accuracy-tracker end-to-end scheduled validation) is observational, not a coding
-   task, and still only half-evidenced** (see "Accuracy-trajectory monitoring" above). Re-checked
-   2026-10-05: `Last Run Time` had not advanced past the already-evidenced 2026-10-05 05:15:01 run
-   (next run 2026-10-06 05:15 AM) — no new evidence yet, left open. Check
-   `schtasks /Query /TN NFL_analytics_task_01 /V`'s `Last Run Time`/`Last Result` next time this
-   repo is picked up — if it fired again on a day with zero newly-completed games and the history
-   row count didn't grow, close #10 with that evidence.
-3. **Home-backup-QB market-bias finding (Known Issue #2) — DROPPED 2026-10-05, closed.** User
+1. **Close Issue #10 on GitHub — real evidence for both acceptance scenarios now exists** (see
+   "Accuracy-trajectory monitoring" above, found 2026-10-13). `gh issue close 10` with the
+   2026-10-10/2026-10-11 log excerpt as the closing comment, matching how #1-#9 were each closed
+   with real evidence rather than just marked done in this doc.
+2. **Decide the fate of this session's uncommitted Elo-report work** (Known Issue #9/#10 in the
+   list above): `docs/week5_elo_analysis.{qmd,html}`, `cache/elo_*.png`,
+   `cache/elo_scatter_animation.gif`, `cache/elo_anim_frames/` (can likely be deleted/gitignored —
+   intermediate frames, not needed once the GIF exists), the `tools/elo_model.R` additive diff,
+   and the 12 freshly-regenerated `cache/*.rds` files from this session's pipeline run. This was a
+   user-requested ad hoc report, not a tracked feature, so there's no GitHub issue to close either
+   way — just a commit decision.
+3. **Decide the fate of the undocumented 2026-10-08 scratch files** (`tools/_inspect_week5.R`,
+   `tools/plot_week5_projections.R`, `tools/run_week5_refresh.R`) — commit if the Week 5
+   projections visualization they support is still wanted, delete otherwise.
+4. **Home-backup-QB market-bias finding (Known Issue #2) — DROPPED 2026-10-05, closed.** User
    made the deliberate call: the Bonferroni/BH correction failure is disqualifying, don't invest in
    a depth-chart cache to pursue it further. Nothing left to do here.
-4. If continuing the market-disagreement project: Phase 2's public-bet-percentage/handle data angle
+5. If continuing the market-disagreement project: Phase 2's public-bet-percentage/handle data angle
    needs an explicit user decision (paid vendor or scraping project) before pursuing.
-5. **Known Issue #3 (ordering gap) — fixed in code this session, needs live verification.**
-   `risk_management_engine.R` was moved after `bet_tracker.r` in `run_full_pipeline.R`. Re-run the
-   full pipeline once the real ledger has a RESOLVED bet to grade, and confirm
-   `risk_management_engine.R`'s run reflects that same-run grading rather than the prior run's.
-6. `player_props_engine.R`, team embeddings, a live dashboard, and a true rstan/cmdstanr install for
+6. **Known Issue #3 (ordering gap) — fixed in code 2026-10-05, still needs live verification.**
+   `risk_management_engine.R` was moved after `bet_tracker.r` in `run_full_pipeline.R`. Still
+   unverified as of this session's pipeline run — the real ledger still has 0 RESOLVED bets
+   (confirmed again 2026-10-13: `risk_management_engine.R` logged "0 RESOLVED bets (of 0 total
+   rows)" and fell through to `SYNTHETIC_FALLBACK`). Re-run the full pipeline once the real ledger
+   has a RESOLVED bet to grade, and confirm `risk_management_engine.R`'s run reflects that
+   same-run grading rather than the prior run's.
+7. `player_props_engine.R`, team embeddings, a live dashboard, and a true rstan/cmdstanr install for
    the Kalman state-space model remain explicitly deferred non-goals — only start if there's a
    concrete pull for them.
-7. No new feature is currently spec'd and queued the way playoff-odds was — the next feature needs
+8. No new feature is currently spec'd and queued the way playoff-odds was — the next feature needs
    a `/spec-interview` pass before implementation, same as every feature shipped so far.
