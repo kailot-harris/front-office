@@ -640,6 +640,20 @@ CACHE_ACCURACY_HISTORY <- file.path(CACHE_DIR, "accuracy_history.rds")
 # chain can reference CACHE_PLAYOFF_ODDS from the start rather than hardcoding a path string.
 CACHE_PLAYOFF_ODDS <- file.path(CACHE_DIR, "playoff_odds.rds")
 
+# Added per docs/task_assignments_phase8.md Wave 0 (Phase 9 visualization-GIF build, GitHub
+# issues #18/#19). Narrowly-scoped documented exceptions, same pattern as CACHE_PLAYOFF_ODDS
+# above: tools/playoff_odds_history_backfill.R and tools/turnover_margin_history.R each own
+# exactly one of these constants' producing script, not config.R itself.
+#
+# CACHE_PLAYOFF_ODDS_HISTORY: one row per (week, team) - columns week, team,
+# division_win_prob, playoff_prob, bye_prob. Same per-team fields CACHE_PLAYOFF_ODDS already
+# produces for "now", snapshotted across every historical week instead of just the latest.
+CACHE_PLAYOFF_ODDS_HISTORY <- file.path(CACHE_DIR, "playoff_odds_history.rds")
+# CACHE_TURNOVER_HISTORY: one row per (week, team) - columns week, team, takeaways,
+# giveaways, turnover_margin, cumulative_margin. No turnover data existed anywhere in this
+# repo's caches before this phase (issue #19).
+CACHE_TURNOVER_HISTORY <- file.path(CACHE_DIR, "turnover_margin_history.rds")
+
 # ------------------------------------------------------------------------------------------
 # API Throttling & Rate-Limiting (sport-agnostic starting defaults)
 # ------------------------------------------------------------------------------------------
