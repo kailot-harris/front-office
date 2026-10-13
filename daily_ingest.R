@@ -57,13 +57,23 @@ source("logging_utils.R")
 # "Situational EPA Feature Thresholds" section). All three confirmed present in a live
 # nflreadr::load_pbp() pull (season 2024, verified 2026-09-17) before adding here. This widening
 # required a force_refresh = TRUE re-bootstrap of CACHE_PBP to backfill historical rows.
+#
+# WIDENED 2026-10-13 (Phase 9 / issue #19, turnover-margin infra): added interception,
+# fumble_lost for tools/turnover_margin_history.R's weekly takeaway/giveaway aggregation. Both
+# confirmed present and clean 0/1 indicators in a live nflreadr::load_pbp() pull (season 2024,
+# verified 2026-10-13) before adding here - see tools/turnover_margin_history.R's header comment
+# for the full str()/table() verification output, including confirmation that fumble_lost means
+# "possession changed to the other team" and is NOT simply "a fumble occurred" (a fumble the
+# offense recovers itself has fumble_lost == 0). This widening required a force_refresh = TRUE
+# re-bootstrap of CACHE_PBP to backfill historical rows.
 # ------------------------------------------------------------------------------------------
 .PBP_CACHE_COLUMNS <- c(
   "game_id", "play_id", "game_date", "season", "week", "season_type", "game_type",
   "home_team", "away_team", "posteam", "defteam", "posteam_type",
   "play_type", "pass", "down", "ydstogo", "yardline_100", "qtr",
   "epa", "success", "cpoe",
-  "score_differential", "yards_gained", "pass_oe"
+  "score_differential", "yards_gained", "pass_oe",
+  "interception", "fumble_lost"
 )
 
 .ingest_one <- function(cache_path, loader_fn, loader_name, dedupe_keys,
