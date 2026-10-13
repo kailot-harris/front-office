@@ -34,10 +34,10 @@ series; agents within a wave run in parallel.
 | P9-C | 1 | `agent_turnover_infra` | `daily_ingest.R`, `tools/turnover_margin_history.R` | #19 | COMPLETED |
 | P9-D | 1 | `agent_viz_b_schedule` | `tools/gif_point_diff_race.R`, `tools/gif_division_standings_race.R` | #24, #25 | COMPLETED |
 | P9-E | 1 | `agent_viz_c_epa` | `tools/gif_epa_quadrant_scatter.R`, `tools/gif_epa_net_race.R` | #29, #30 | COMPLETED |
-| P9-F | 2 | `agent_viz_a_rank` | `tools/gif_elo_rank_bump.R`, `tools/gif_elo_heatmap.R` | #20, #21 | PENDING |
-| P9-G | 2 | `agent_viz_a_delta` | `tools/gif_elo_delta_race.R`, `tools/gif_elo_volatility_race.R` | #22, #23 | PENDING |
-| P9-H | 2 | `agent_viz_b_upsets_sos` | `tools/gif_upset_timeline.R`, `tools/gif_pf_pa_scatter_elo.R`, `tools/gif_sos_adjusted_winrace.R` | #26, #27, #28 | PENDING |
-| P9-I | 2 | `agent_viz_c_playoff_turnover` | `tools/gif_playoff_prob_bump.R`, `tools/gif_playoff_odds_heatmap.R`, `tools/gif_turnover_margin_race.R` | #31, #32, #33 | PENDING |
+| P9-F | 2 | `agent_viz_a_rank` | `tools/gif_elo_rank_bump.R`, `tools/gif_elo_heatmap.R` | #20, #21 | COMPLETED |
+| P9-G | 2 | `agent_viz_a_delta` | `tools/gif_elo_delta_race.R`, `tools/gif_elo_volatility_race.R` | #22, #23 | COMPLETED |
+| P9-H | 2 | `agent_viz_b_upsets_sos` | `tools/gif_upset_timeline.R`, `tools/gif_pf_pa_scatter_elo.R`, `tools/gif_sos_adjusted_winrace.R` | #26, #27, #28 | COMPLETED |
+| P9-I | 2 | `agent_viz_c_playoff_turnover` | `tools/gif_playoff_prob_bump.R`, `tools/gif_playoff_odds_heatmap.R`, `tools/gif_turnover_margin_race.R` | #31, #32, #33 | COMPLETED |
 
 ## Phase 0 — Orchestrator-Only Setup
 `config.R` gets exactly 2 new constants this phase: `CACHE_PLAYOFF_ODDS_HISTORY` and
@@ -183,5 +183,52 @@ Wave-1 tasks read/wrote the same cache file concurrently, but this is luck, not 
 future wave with overlapping cache dependencies could race. Worth a scoped fix (e.g. an opt-in
 worktree-relative `PROJECT_DIR` override) before relying on worktree isolation for concurrent
 cache-writing tasks again.
+
+### Known issue: Wave 2 worktrees were provisioned from a stale pre-Wave-1 base commit
+All 4 Wave 2 dispatches (and one re-dispatch) were given isolated git worktrees branched from an
+old commit (the pre-Wave-1 "Scaffold Phase 9..." commit) rather than current main — even though
+Wave 1 was already fully merged at dispatch time. `agent_viz_a_rank`'s first attempt correctly
+detected the missing `tools/elo_history_data.R` dependency and returned `blocked` rather than
+guessing; the orchestrator then `git merge main --no-edit`'d into all remaining live Wave-2
+worktrees (including a freshly-created one for the retry, which was *also* stale) to unblock them
+mid-flight, and re-dispatched the blocked task as a fresh run. No data was lost, but this cost one
+wasted dispatch and several manual merges. Root cause not confirmed (likely a cached worktree base
+ref in the dispatch tooling, not a `config.R`/repo issue) — flagged to the tool vendor; future
+orchestrators dispatching multiple `isolation: "worktree"` agents after merging commits mid-session
+should verify each new worktree's base commit before trusting its view of main.
+
+### Wave 2 (`agent_viz_a_rank` / P9-F, issues #20/#21) — 2026-10-13
+`tools/gif_elo_rank_bump.R` (division-colored rank-bump line race, `rank(-elo)` per week) and
+`tools/gif_elo_heatmap.R` (static `geom_tile()` heatmap, diverging scale centered on
+`ELO_INITIAL_RATING`) built on a second dispatch after the stale-worktree blocker above. Final-
+frame rank order orchestrator-verified to exactly match `current_ratings` sorted by `current_elo`
+descending (32/32 teams); 3 spot-checked heatmap cells matched `trajectory`'s raw Elo exactly.
+Static PNG chosen for the heatmap (documented rationale: a heatmap shows the full team x week grid
+at once, progressive reveal would only hide information). Merged at `a991a44`.
+
+### Wave 2 (`agent_viz_a_delta` / P9-G, issues #22/#23) — 2026-10-13
+`tools/gif_elo_delta_race.R` (single-step `delta = elo - lag(elo)` bar race, signed color) and
+`tools/gif_elo_volatility_race.R` (expanding-window `sd()` of that delta, genuine `NA` — not
+0 — for teams with <2 observations) built cleanly, fully isolated. 3 delta spot-checks exact;
+volatility confirmed to appear only from each team's first 2-observation week and to rise for a
+team (ATL) with an early blowout-magnitude swing. Merged at `757bac6`.
+
+### Wave 2 (`agent_viz_b_upsets_sos` / P9-H, issues #26/#27/#28) — 2026-10-13
+`tools/gif_upset_timeline.R` reused the qmd's `tbl-upsets` filter verbatim — orchestrator-verified
+its top row against the rendered qmd's table, exact match (29 total upsets through week 5).
+`tools/gif_pf_pa_scatter_elo.R`'s 3-team PF/PA spot-check against raw `CACHE_SCHEDULES` matched
+exactly. `tools/gif_sos_adjusted_winrace.R` calls `get_elo_history(max_week = W)` once per week;
+30 of 32 teams' `surprise_index` rank changed between week 2 and week 5, confirming `max_week`
+filtering genuinely drives different output per frame. Merged at `2c609a9`.
+
+### Wave 2 (`agent_viz_c_playoff_turnover` / P9-I, issues #31/#32/#33) — 2026-10-13
+Both upstream cache schemas verified live before any plotting code was written (exact match to
+contract). `tools/gif_playoff_prob_bump.R`: decisiveness (mean |playoff_prob - 0.5|) rose from
+0.354 (week 1) to 0.374 (week 5). `tools/gif_playoff_odds_heatmap.R`: static PNG (only 5 weeks of
+history; a heatmap has no trajectory element that benefits from progressive reveal), row order
+orchestrator-verified to match a direct descending sort of week-5 `playoff_prob`.
+`tools/gif_turnover_margin_race.R`: 3-team final-frame spot-check against a manual running sum of
+`turnover_margin` matched exactly. Agent left an out-of-scope temp schema-check helper
+(`tools/_verify_schemas.R`); orchestrator deleted it before committing. Merged at `b4786c6`.
 
 ---
