@@ -29,11 +29,11 @@ series; agents within a wave run in parallel.
 
 | Task ID | Wave | Owner (agent) | Files Owned | Issues Covered | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| P9-A | 1 | `agent_elo_infra` | `tools/elo_history_data.R`, `docs/week5_elo_analysis.qmd` | #17 | PENDING |
-| P9-B | 1 | `agent_playoff_infra` | `tools/playoff_odds_history_backfill.R` | #18 | PENDING |
-| P9-C | 1 | `agent_turnover_infra` | `daily_ingest.R`, `tools/turnover_margin_history.R` | #19 | PENDING |
-| P9-D | 1 | `agent_viz_b_schedule` | `tools/gif_point_diff_race.R`, `tools/gif_division_standings_race.R` | #24, #25 | PENDING |
-| P9-E | 1 | `agent_viz_c_epa` | `tools/gif_epa_quadrant_scatter.R`, `tools/gif_epa_net_race.R` | #29, #30 | PENDING |
+| P9-A | 1 | `agent_elo_infra` | `tools/elo_history_data.R`, `docs/week5_elo_analysis.qmd` | #17 | COMPLETED |
+| P9-B | 1 | `agent_playoff_infra` | `tools/playoff_odds_history_backfill.R` | #18 | COMPLETED |
+| P9-C | 1 | `agent_turnover_infra` | `daily_ingest.R`, `tools/turnover_margin_history.R` | #19 | COMPLETED |
+| P9-D | 1 | `agent_viz_b_schedule` | `tools/gif_point_diff_race.R`, `tools/gif_division_standings_race.R` | #24, #25 | COMPLETED |
+| P9-E | 1 | `agent_viz_c_epa` | `tools/gif_epa_quadrant_scatter.R`, `tools/gif_epa_net_race.R` | #29, #30 | COMPLETED |
 | P9-F | 2 | `agent_viz_a_rank` | `tools/gif_elo_rank_bump.R`, `tools/gif_elo_heatmap.R` | #20, #21 | PENDING |
 | P9-G | 2 | `agent_viz_a_delta` | `tools/gif_elo_delta_race.R`, `tools/gif_elo_volatility_race.R` | #22, #23 | PENDING |
 | P9-H | 2 | `agent_viz_b_upsets_sos` | `tools/gif_upset_timeline.R`, `tools/gif_pf_pa_scatter_elo.R`, `tools/gif_sos_adjusted_winrace.R` | #26, #27, #28 | PENDING |
@@ -110,5 +110,78 @@ edit has landed.
 ## Handoff Notes
 (Appended by each agent as it completes its wave. Do not mark a Task Tracker row COMPLETED
 without a corresponding entry here.)
+
+---
+
+### Wave 0 (orchestrator) — 2026-10-13
+`CACHE_PLAYOFF_ODDS_HISTORY` and `CACHE_TURNOVER_HISTORY` added to `config.R` (both narrowly-scoped
+documented exceptions, same pattern as `CACHE_PLAYOFF_ODDS`). Committed as `1040491`.
+
+### P9-A (`agent_elo_infra`, issue #17) — 2026-10-13
+`get_elo_history(max_week = NULL)` extracted into `tools/elo_history_data.R`, returning
+`list(long_games, trajectory, current_ratings, team_performance)` per the Interface Contracts
+table, no deviation. `docs/week5_elo_analysis.qmd`'s `compute-elo` chunk rewired to call it; no
+other chunk touched. Logic moved verbatim (orchestrator-verified via diff) with one additive
+`max_week` filter guard. Orchestrator independently re-ran `get_elo_history(max_week=3)` vs
+`max_week=5)` post-merge: trajectory caps at week 4/6, `team_performance$games_played` sums to
+96/158 — matches the agent's reported numbers exactly. Agent's own `render-and-inspect-quarto`
+pass reported no visual regression (not independently re-rendered by the orchestrator). Merged at
+`cd55e09`.
+
+### P9-B (`agent_playoff_infra`, issue #18) — 2026-10-13
+`tools/playoff_odds_history_backfill.R` reuses `.seed_conference()`/`build_tiebreak_data()`
+unmodified via a new `.simulate_one_season_asof(week_cutoff, ...)` twin of
+`playoff_odds_engine.R`'s `.simulate_one_season()`. Measured single-week cost (355.76 sec @ 1000
+trials) before running the full backfill; total runtime 880.5 sec (14.67 min) across weeks 1-5 —
+well under the impractical threshold, so `N_SEASON_SIMULATIONS` was never reduced. Orchestrator
+independently confirmed `cache/playoff_odds_history.rds`: dim 160x5, columns `week, team,
+division_win_prob, playoff_prob, bye_prob` (160 = 5 weeks x 32 teams). Note: week-over-week
+"decisiveness" sanity check showed only a modest difference (week 1 sd=0.376 vs week 5 sd=0.395)
+because `CACHE_TEAM_RATINGS` is a single current snapshot reused for every backfilled week — only
+the real-vs-simulated game split changes by week, not the underlying team-strength assessment;
+this is a property of the existing ratings/engine design, not a defect in this backfill. Merged at
+`5cfbfff`.
+
+### P9-C (`agent_turnover_infra`, issue #19) — 2026-10-13
+`.PBP_CACHE_COLUMNS` widened with `interception`/`fumble_lost`; `CACHE_PBP` re-ingested (1,156,874
+rows, 25 columns). Live-verified against real re-ingested 2024-season data (quoted in
+`tools/turnover_margin_history.R`'s header): both are clean 0/1 indicators; `fumble_lost` confirmed
+to mean "possession changed," NOT merely "a fumble occurred" — 378 of 663 real fumble plays (57%)
+were self-recovered (`fumble_lost == 0`); using `fumble` instead would have overstated giveaways
+~2.3x. `CACHE_TURNOVER_HISTORY` (orchestrator-verified: 158 rows, columns `week, team, takeaways,
+giveaways, turnover_margin, cumulative_margin`) committed separately as a generated cache artifact
+(`ad2da9b`) since the agent's isolated worktree wrote it directly to the shared main-repo `cache/`
+(see Known Issue below). Merged at `d69e7b2`.
+
+### P9-D (`agent_viz_b_schedule`, issues #24/#25) — 2026-10-13
+`tools/gif_point_diff_race.R` and `tools/gif_division_standings_race.R` built cleanly, fully
+isolated in their own worktree (no shared-cache writes — read `CACHE_SCHEDULES`, wrote only new
+files). Both GIFs visually inspected (orchestrator confirmed dark theme + `nflplotR` logos render
+correctly) and numerically sanity-checked against `CACHE_SCHEDULES` directly (3 teams each, exact
+match). Merged at `b1ce7fd`.
+
+### P9-E (`agent_viz_c_epa`, issues #29/#30) — 2026-10-13
+`tools/gif_epa_quadrant_scatter.R` and `tools/gif_epa_net_race.R` built; quadrant reference lines
+confirmed computed live per-frame via `mean()`, never hardcoded. Agent caught and self-corrected
+its own worktree-isolation leak mid-task (an initial run wrote GIFs to the shared main-repo
+`cache/`; agent deleted the stray files and fixed both scripts to write to its own worktree
+`cache/` instead) — orchestrator confirmed no stray EPA files exist in the main repo. Short-history
+teams: zero `CURRENT_SEASON` rows had `games_in_window < ROLLING_WINDOW_SIZE` (every team already
+has 4 trailing games via 2025 carryover), logged rather than assumed. Merged at `f26fb54`.
+
+### Known issue: `config.R`'s hardcoded `PROJECT_DIR` undermines cache-level worktree isolation
+Every Wave-1 `tools/*.R` script follows this repo's existing convention of `setwd()`-ing to the
+absolute main-repo path before `source("config.R")`. That convention predates this phase and is
+correct for normal (non-worktree) invocation, but it means every isolated worktree agent's script
+run still reads/writes the *shared main-repo* `cache/` and `logs/` directories, not an
+isolated copy — `CACHE_PBP` (P9-C) and `logs/logs.duckdb` were both mutated directly in the main
+repo mid-wave. This caused two concrete frictions this wave: (1) P9-A's independent orchestrator
+re-verification was blocked for ~15 minutes by a `logs.duckdb` file lock held by P9-B's
+concurrently-running simulation; (2) P9-E's agent initially wrote its GIFs to the main repo by
+mistake before self-correcting. No actual data corruption occurred this wave because no two
+Wave-1 tasks read/wrote the same cache file concurrently, but this is luck, not a guarantee — a
+future wave with overlapping cache dependencies could race. Worth a scoped fix (e.g. an opt-in
+worktree-relative `PROJECT_DIR` override) before relying on worktree isolation for concurrent
+cache-writing tasks again.
 
 ---
