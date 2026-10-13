@@ -1,27 +1,30 @@
 # NFL Analytics — Handoff Document
 
-**Last updated**: 2026-10-13, after commit `e561171` ("Add Elo visualization report; refresh
-caches from Week 5 pipeline run") — that commit is already on `main` and resolved the previous
-revision's "uncommitted Elo report work" item (the `.qmd`/`.html`/`elo_*.png`/animation GIF/
-`elo_model.R` diff/refreshed-cache items are now all committed; verified via `git status` showing
-none of them untracked anymore). Everything below the "Recent work" section's newest entry is
-**this session's uncommitted work on top of `e561171`** — purely planning/scaffolding artifacts,
-zero code changes, zero pipeline runs. `git status --short` shows only untracked files, no
-modified tracked files: 9 new agent-brief files under `agents/`, one new
-`docs/task_assignments_phase8.md`, plus three files `git status` has flagged as untracked for
-multiple sessions now and still nobody has decided their fate (`tools/_inspect_week5.R`,
-`tools/plot_week5_projections.R`, `tools/run_week5_refresh.R`) and one more from that same
-undecided batch (`cache/week5_projections.png`, `cache/elo_anim_frames/` — the latter is
-intermediate per-frame PNGs from the now-committed animation GIF, likely safe to delete/gitignore
-whenever someone gets to it). Written for a future LLM/agent picking this repo back up cold — read
-this before touching anything, then read `CLAUDE.md` for environment/data-quirk details this doc
-doesn't repeat.
+**Last updated**: 2026-10-13 (same day, later session), after commit `160a6fb` ("Mark Phase 9 Wave
+2 tasks COMPLETED with Handoff Notes (P9-F through P9-I)") — that commit is on `main`. This session
+fully **built and merged** the Week 1-5 visualization-GIF phase that the previous doc revision had
+only planned (issues #17-#33, `docs/task_assignments_phase8.md`, 9 agents across 2 waves). All 9
+Task Tracker rows are now `COMPLETED`; all 14 visualizations plus their 3 infra prerequisites exist
+as real, orchestrator-verified files on `main`. **GitHub issues #17-#33 are still shown `OPEN` on
+the tracker** — the code is done and merged but nobody has run `gh issue close` on any of them yet;
+see "Recent work" and "Suggested next steps" below, this is a real, flagged discrepancy, not
+an oversight to silently paper over. Written for a future LLM/agent picking this repo back up cold
+— read this before touching anything, then read `CLAUDE.md` for environment/data-quirk details
+this doc doesn't repeat.
 
-**This session's work was planning/orchestration only: brainstormed 30 team-level visualization
-ideas, the user picked 14 of them across three groups, and the session (1) filed all 14 plus 3
-necessary data-infra prerequisites as real GitHub issues (#17-#33), then (2) scaffolded a 9-agent,
-2-wave parallel build plan for them. No implementation has started — every task is `PENDING`. See
-"Recent work: Week 1-5 visualization GIFs — planning only" below.**
+**Two new structural findings from this session, both still open** (see "Known issues" below for
+full detail): (1) `config.R`'s `PROJECT_DIR`/`CACHE_DIR`/log-file paths are hardcoded absolute to
+the main repo checkout, so a `tools/*.R` script run inside an isolated `subagent-brief` git
+worktree still reads/writes the ONE shared `cache/`/`logs/` directory — this is a **pre-existing,
+previously-documented** hazard (see the "Git-worktree isolation does NOT isolate `cache/*.rds`
+writes" bullet further down), reconfirmed and given a sharper edge this session: it caused one
+subagent's `logs.duckdb` file lock to block another subagent's work for several minutes, and one
+subagent to momentarily write its output GIFs into the shared main-repo `cache/` before
+self-correcting. (2) **New this session**: the `isolation: "worktree"` dispatch mechanism itself
+provisioned 4 (then a 5th, on retry) fresh git worktrees from a *stale* pre-Phase-9 base commit
+rather than current `main` HEAD, even though `main` was already several commits ahead at dispatch
+time — not a `config.R`/repo issue, a dispatch-tooling issue, flagged upstream via `SendFeedback`
+this session. Fixed live each time by manually `git merge main` into the affected worktrees.
 
 ## What this repo is
 
@@ -42,9 +45,12 @@ memorized) Phase 0 research foundation this repo was built from. Re-verify anyth
 date-sensitive before trusting it blindly for new work; nflverse/vendor details shift over time.
 
 **The playoff-clinching probability feature (issues #11-#16) shipped 2026-10-05** — see
-"Playoff-clinching probability table — SHIPPED" below for what's actually live. The only issue
-still open in the whole tracker is **#10** (an observational/calendar-dependent validation, not a
-coding task) — **real evidence for both of its acceptance scenarios now exists as of 2026-10-13,
+"Playoff-clinching probability table — SHIPPED" below for what's actually live. **The Week 1-5
+visualization-GIF phase (issues #17-#33) shipped 2026-10-13** (code done and merged; the 17 GitHub
+issues themselves are still `OPEN` pending a `gh issue close` pass — see "Suggested next steps").
+The oldest still-genuinely-outstanding issue in the tracker is **#10** (an observational/
+calendar-dependent validation, not a coding task) — **real evidence for both of its acceptance
+scenarios now exists as of 2026-10-13,
 just not yet closed on GitHub** — see "Accuracy-trajectory monitoring" below.
 
 ## Current state: 13-stage pipeline (12 numbered `run_stage()` calls + stages 7.5 and 9.5)
@@ -106,60 +112,85 @@ stage 7.5 alone took 244.46s of that. Every stage ran cleanly; `.check_stage_out
 | `6cba4de`, `7019f28` | — | Closed issues #8/#9 on GitHub with evidence; backfilled two prior-session findings this doc had failed to record (home-backup-QB market-bias gate-check, shrinkage-calibration check). |
 | `125d1ef` | — | Spec'd the playoff-clinching probability table feature (`docs/SPEC_playoff_odds_table.md`) and filed it as 6 GitHub issues (#11-#16). |
 | `45bcea8`…`dd136a0` | Playoff Odds #11-#16 | This session: implemented the full feature end-to-end via 5 waves of parallel `subagent-brief` dispatch — constants, single-trial sim, Monte Carlo loop + cache write, Discord dispatch ‖ timing/tuning (parallel), pipeline wiring. Real full-pipeline run confirms it live end-to-end (HTTP 204, 392.58s total run). |
+| `9268020`…`160a6fb` | Viz-GIF Phase (Phase 9) #17-#33 | Planned (`9268020`, scaffolded `docs/task_assignments_phase8.md` + 9 agent briefs) then built end-to-end this session via 2 waves of parallel `subagent-brief` dispatch — Elo-history extraction, playoff-odds/turnover-margin history backfills (Wave 1 infra) plus 14 animated GIFs/heatmaps across Elo, schedule, EPA, playoff-odds, and turnover-margin visualizations (Wave 1 leaf + Wave 2). GitHub issues not yet closed — see "Suggested next steps." |
 
 ## Recent work
 
-### This session (2026-10-13, later): Week 1-5 visualization GIFs — planning only, nothing built
+### This session (2026-10-13, later): Week 1-5 visualization GIFs — BUILT AND MERGED (issues #17-#33)
 
-Follow-up to the Elo visualization report below (same day, later session) — user liked the
-`elo_scatter_animation.gif` and asked for several more team-level GIFs summarizing weeks 1-5.
-Pure planning/orchestration work, no code written, no scripts run:
+Follow-up to the planning-only session recorded below (same day, earlier) — dispatched and merged
+both waves of `docs/task_assignments_phase8.md`'s 9-agent build plan via the established
+`subagent-brief` pattern (isolated git worktree per agent, independently re-verified against the
+brief's evidence before merge — re-ran or re-read at least one cited command/`file:line` per agent
+rather than trusting self-reports, per the skill's own rule). All 9 Task Tracker rows now
+`COMPLETED`; full per-agent Handoff Notes are in `docs/task_assignments_phase8.md` itself (read
+those for exact numbers — this is a pointer, not a restatement).
 
-1. **Brainstormed 30 team-level visualization ideas** (Elo-based, standings/scores, playoff-odds/
-   EPA/turnovers), ranked by rough visual-power/effort. User picked 14 across three groups:
-   - **Group A (Elo)**: rank bump chart, Elo heatmap, delta bar race, volatility bar race.
-   - **Group B (standings/scores)**: upset timeline, point-diff race, PF/PA-vs-Elo scatter,
-     division-standings race, SOS-adjusted win race.
-   - **Group C (playoff odds/EPA/turnovers)**: playoff-prob bump, playoff-odds heatmap, EPA
-     quadrant scatter, EPA net race, turnover-margin race.
-2. **Investigated real data availability before scoping anything** (avoided the trap of scoping
-   issues against assumed data): confirmed `CACHE_PLAYOFF_ODDS` is a point-in-time snapshot with
-   **no week dimension** (so 2 of the Group-C picks need a historical backfill, not just
-   plotting), and confirmed no turnover data (interceptions/fumbles) is cached anywhere in this
-   repo at all — `.PBP_CACHE_COLUMNS` in `daily_ingest.R` doesn't include them. This surfaced 3
-   infra prerequisites the user hadn't explicitly asked for but the 14 visualizations structurally
-   need.
-3. **Filed 17 real GitHub issues** (`gh issue create`, confirmed with the user first): **#17-#19**
-   are the infra prerequisites (Elo-history-builder extraction/refactor, playoff-odds-history
-   backfill, turnover-data ingestion+aggregation); **#20-#33** are the 14 visualizations, each
-   referencing which infra issue (if any) it depends on. All currently `OPEN`, label
-   `enhancement`, repo `kailot-harris/NFL_analytics`.
-4. **Scaffolded `docs/task_assignments_phase8.md`** via the `remediation-phase-scaffold` skill —
-   titled "Phase 9" internally, continuing this repo's established off-by-one convention where the
-   filename index runs one behind the in-file title number (confirmed by checking every prior
-   `task_assignments_phaseN.md`'s first line: `phase0.md` is titled "Phase 1" ... `phase7.md` is
-   titled "Phase 8" — this file follows the same pattern, don't "fix" it to match in a later pass).
-   Structure: 9-task Task Tracker (all `PENDING`), a Wave 0 orchestrator-only step (2 new
-   `config.R` constants, added by the orchestrator, not by either Wave-1 agent who needs one —
-   `config.R` is a shared file no two agents may edit in the same wave), a 2-wave dependency graph,
-   and an Interface Contracts table fixing the exact `get_elo_history(max_week = NULL)` signature
-   and both new cache schemas (`CACHE_PLAYOFF_ODDS_HISTORY`, `CACHE_TURNOVER_HISTORY`) before any
-   Wave-2 agent needs to consume them.
-5. **Wrote 9 agent briefs** under `agents/` (`agent_elo_infra`, `agent_playoff_infra`,
-   `agent_turnover_infra`, `agent_viz_b_schedule`, `agent_viz_c_epa` — Wave 1; `agent_viz_a_rank`,
-   `agent_viz_a_delta`, `agent_viz_b_upsets_sos`, `agent_viz_c_playoff_turnover` — Wave 2), each
-   with exact file ownership, the specific GitHub issue(s) it closes, concrete per-task
-   instructions (not just a paraphrased issue restatement), the interface contracts it must honor,
-   a runnable test suite, and a definition of done — matching this repo's established
-   `subagent-brief`-dispatch pattern (same pattern used for the playoff-odds #11-#16 and accuracy-
-   tracker #1-#9 builds).
+**Wave 0 (orchestrator-only, commit `1040491`)**: added `CACHE_PLAYOFF_ODDS_HISTORY` and
+`CACHE_TURNOVER_HISTORY` to `config.R`, both narrowly-scoped documented exceptions matching the
+existing `CACHE_PLAYOFF_ODDS` comment-density pattern.
 
-**Nothing has been executed.** All 9 Task Tracker rows in `docs/task_assignments_phase8.md` are
-`PENDING`. No Wave has been dispatched. `config.R` has NOT yet received its 2 new constants (that
-is Wave 0, orchestrator-only, and hasn't happened). Next session should dispatch Wave 1's 5 agents
-(see "Suggested next steps" below) — read `docs/task_assignments_phase8.md` in full before doing
-so, it has the authoritative task/file/contract breakdown; this summary is a pointer to it, not a
-replacement for reading it.
+**Wave 1 (5 agents, all merged)**:
+- **P9-A / #17** (`cd55e09`): `tools/elo_history_data.R` (136 lines) — `get_elo_history(max_week =
+  NULL)` extracted verbatim from `docs/week5_elo_analysis.qmd`'s `compute-elo` chunk, returns
+  `list(long_games, trajectory, current_ratings, team_performance)`. `max_week` filtering
+  orchestrator-independently re-verified live post-merge (not just trusted from the agent's
+  report): `max_week=3` vs `max_week=5` gave trajectory caps at week 4/6 and
+  `team_performance$games_played` sums of 96/158, exactly matching the agent's own numbers.
+- **P9-B / #18** (`5cfbfff`): `tools/playoff_odds_history_backfill.R` (257 lines) —
+  `run_playoff_odds_history_backfill()`, a `.simulate_one_season_asof(week_cutoff, ...)` twin of
+  `playoff_odds_engine.R`'s `.simulate_one_season()` that reuses `.seed_conference()`/
+  `build_tiebreak_data()` unmodified. Measured cost before running unattended: 355.76s/week ×
+  5 weeks = 880.5s (14.67 min) total — well under the impractical threshold, `N_SEASON_SIMULATIONS`
+  never reduced. `cache/playoff_odds_history.rds`: 160 rows (5 weeks × 32 teams), orchestrator-
+  verified via direct `readRDS()`.
+- **P9-C / #19** (`d69e7b2`, plus a separate cache commit `ad2da9b`): widened
+  `daily_ingest.R`'s `.PBP_CACHE_COLUMNS` with `interception`/`fumble_lost`, re-ingested `CACHE_PBP`
+  (1,156,874 rows). **Live-verified column semantics before trusting them** (same discipline
+  `CLAUDE.md` demands for `cpoe`/`pass_oe`): `fumble_lost` is NOT "a fumble occurred" — of 663 real
+  fumble plays in a 2024-season sample, 378 (57%) were self-recovered (`fumble_lost==0`); using
+  `fumble` instead of `fumble_lost` would have overstated every team's giveaways ~2.3x. New
+  `tools/turnover_margin_history.R` (163 lines) writes `cache/turnover_margin_history.rds` (158
+  rows, columns `week, team, takeaways, giveaways, turnover_margin, cumulative_margin`,
+  orchestrator-verified).
+- **P9-D / #24, #25** (`b1ce7fd`): `tools/gif_point_diff_race.R`, `tools/gif_division_standings_race.R`
+  (162/168 lines) — cumulative point-differential line race and division-standings win race from
+  `CACHE_SCHEDULES` only, no new data. Zero worktree-isolation issues — read-only inputs, all
+  output confined to the agent's own worktree.
+- **P9-E / #29, #30** (`f26fb54`): `tools/gif_epa_quadrant_scatter.R`,
+  `tools/gif_epa_net_race.R` (194/176 lines) — quadrant reference lines computed live per-frame via
+  `mean()`, never hardcoded (confirmed by grep). Agent caught and self-corrected its own mid-task
+  worktree-isolation leak (first run wrote GIFs to the shared main-repo `cache/`; agent deleted the
+  stray files and fixed both scripts before finishing).
+
+**Wave 2 (4 agents, all merged — had to work around the stale-worktree-base bug described in the
+header, see "Known issues" below for the full incident)**:
+- **P9-F / #20, #21** (`a991a44`, after one blocked-then-retried dispatch): `tools/gif_elo_rank_bump.R`,
+  `tools/gif_elo_heatmap.R` (188/173 lines). Final-frame rank order orchestrator-verified to match
+  `current_ratings` sorted by `current_elo` descending, 32/32 teams. Heatmap shipped as a static
+  PNG (documented rationale: a heatmap shows the whole team×week grid at once, progressive reveal
+  would hide information a static view already shows).
+- **P9-G / #22, #23** (`757bac6`): `tools/gif_elo_delta_race.R`, `tools/gif_elo_volatility_race.R`
+  (172/193 lines). Volatility correctly shows a genuine missing bar (not a 0-height bar) for any
+  team with fewer than 2 delta observations — confirmed via `filter(!is.na(roll_sd))` before
+  plotting, not a post-hoc coercion.
+- **P9-H / #26, #27, #28** (`2c609a9`): `tools/gif_upset_timeline.R`, `tools/gif_pf_pa_scatter_elo.R`,
+  `tools/gif_sos_adjusted_winrace.R` (137/169/146 lines). Upset-timeline's top row orchestrator-
+  cross-checked against `docs/week5_elo_analysis.html`'s rendered `tbl-upsets` table — exact match.
+  SOS win race confirmed to genuinely use `max_week` filtering (30 of 32 teams' `surprise_index`
+  rank changed between week 2 and week 5), not a frozen single-snapshot chart repeated 5 times.
+- **P9-I / #31, #32, #33** (`b4786c6`): `tools/gif_playoff_prob_bump.R`,
+  `tools/gif_playoff_odds_heatmap.R`, `tools/gif_turnover_margin_race.R` (136/112/154 lines). Both
+  upstream cache schemas verified live before any plotting code was written (the brief's explicit
+  requirement). Playoff-odds heatmap also shipped as a static PNG, same rationale as P9-F's.
+
+**Result**: all 14 `cache/gif_*`/`cache/*heatmap*.png` outputs exist on `main`, each visually
+inspected (not just "ran without error") and numerically spot-checked against raw source data
+(`CACHE_SCHEDULES`, `CACHE_PBP`, the new history caches) before merge. None of the 14 visualization
+scripts (or the 2 infra scripts that aren't cache-producing one-offs) are wired into
+`run_full_pipeline.R`'s DAG — same ad-hoc/on-demand category as `tools/weekly_accuracy_report.R`,
+intentional per the phase doc's Constraints section. **GitHub issues #17-#33 are still `OPEN`** —
+see "Suggested next steps" below.
 
 ### This session (2026-10-13): Elo visualization report — ad hoc, NOT a pipeline stage
 
@@ -414,11 +445,47 @@ timestamp in the log rather than assuming it ran at 05:15.
     PNGs from building `cache/elo_scatter_animation.gif` (now committed). Not needed once the GIF
     exists; candidate for `.gitignore` or deletion, bundled with item 10's cleanup decision since
     both are "leftover untracked files nobody has triaged yet."
-12. **Week 1-5 visualization GIF phase (issues #17-#33) — PLANNED, nothing executed.** See
-    "Recent work: Week 1-5 visualization GIFs — planning only" above and
-    `docs/task_assignments_phase8.md` for the full plan. `config.R` has not yet received its 2
-    Wave-0 constants; no Wave-1 agent has been dispatched. This is the largest open item in this
-    doc — prioritize accordingly in "Suggested next steps" below.
+12. **Week 1-5 visualization GIF phase (issues #17-#33) — CODE DONE AND MERGED, GitHub issues still
+    OPEN.** See "Recent work: Week 1-5 visualization GIFs — BUILT AND MERGED" above and
+    `docs/task_assignments_phase8.md` (all 9 Task Tracker rows `COMPLETED`, full per-agent Handoff
+    Notes). The only remaining action is closing the 17 GitHub issues with evidence — see
+    "Suggested next steps" below. Not closed automatically by this handoff pass on purpose (closing
+    a tracked issue is a visible action the project owner should take deliberately).
+13. **`config.R`'s hardcoded `PROJECT_DIR` undermines worktree isolation for cache/log writes —
+    REOPENED with sharper evidence this session, still unfixed.** This was already documented
+    further down ("Git-worktree isolation does NOT isolate `cache/*.rds` writes") from the
+    playoff-odds build, but the Phase 9 Wave 1/2 dispatches gave it concrete teeth: (a) P9-C's
+    worktree re-ingested the real, shared, 300MB `CACHE_PBP` directly (necessary — it's gitignored,
+    not git-mergeable — but still a cross-worktree side effect); (b) a `logs.duckdb` file lock held
+    by P9-B's long-running Monte Carlo backfill blocked the orchestrator's own independent
+    verification of P9-A's `get_elo_history()` for several minutes; (c) P9-E's agent initially wrote
+    its two output GIFs into the shared main-repo `cache/` before self-correcting mid-task. No data
+    was actually corrupted this wave (no two Wave-1 tasks happened to read/write the *same* cache
+    file concurrently), but that was luck, not a guarantee. A scoped fix (e.g. an opt-in
+    worktree-relative `PROJECT_DIR` override, or just documenting "never run two cache-writing
+    `subagent-brief` dispatches in the same wave") is worth doing before the next multi-agent build
+    that writes caches. Full writeup: `docs/task_assignments_phase8.md`'s "Known issue" Handoff Note.
+14. **`isolation: "worktree"` dispatch tooling provisioned worktrees from a stale base commit —
+    NEW this session, flagged upstream, not a repo-code issue.** All 4 of Wave 2's fresh git
+    worktrees (plus a 5th, re-dispatched after the first attempt correctly self-detected and
+    reported `blocked`) were branched from the pre-Phase-9 commit rather than current `main`, even
+    though `main` was already 9+ commits ahead at dispatch time. Root cause not confirmed (looks
+    like a cached worktree base ref in the Agent-tool dispatch path, not anything in this repo) —
+    filed via `SendFeedback` this session, not something a future session here can fix. **Practical
+    mitigation for next time**: after dispatching any `isolation: "worktree"` agent in a session
+    that has already merged commits to `main`, immediately `git worktree list` and confirm the new
+    worktree's base commit matches current `main` HEAD — `git merge main --no-edit` into it right
+    away if not, before the agent gets far enough to hit a real blocker.
+15. **5 orphaned `.claude/worktrees/agent-*` directory stubs — pre-existing, not from this
+    session's dispatches, not investigated.** `.claude/worktrees/agent-a151bd2d58545d748`,
+    `agent-a25720291e6e2e789` (a remnant of this session's own P9-B worktree — `git worktree
+    remove --force --force` hit a transient `Permission denied` on final directory deletion after
+    git had already unregistered it; harmless, just 8KB of leftover empty scaffold),
+    `agent-a4b81b62d29ce7c29`, `agent-a66512f9a118dde5a`, `agent-a76d32dcb5b0b20f5`. None are
+    registered with `git worktree list` (orphaned, not live worktrees) and each is only ~8KB — not
+    a storage concern, but nobody has confirmed what session created the first four or whether
+    they're safe to `rm -rf`. Left untouched this session (deleting them is a destructive action
+    outside this handoff's scope); worth a quick investigation next time someone's in the area.
 
 ## Environment specifics a fresh agent needs
 
@@ -469,14 +536,22 @@ timestamp in the log rather than assuming it ran at 05:15.
   PowerShell doesn't touch the backslashes) with literal `\"..\"` pairs, then pass it as the `/TR`
   value. Also: Git Bash mangles `schtasks /Create` (rewrites `/Create` as a path) — use the
   PowerShell tool for `schtasks`, not Bash.
-- **Git-worktree isolation does NOT isolate `cache/*.rds` writes.** Every script in this repo
-  `setwd()`s to the hardcoded absolute repo root rather than wherever it's actually being invoked
-  from, so a script run from inside a git worktree (e.g. a `subagent-brief`-dispatched subagent's
-  isolated worktree) still reads/writes the ONE real shared `cache/` directory. Confirmed again
-  this session dispatching issues #11-#16's parallel waves (#14 ‖ #16 both called
-  `run_playoff_odds_engine()` for real against the shared cache around the same time — benign for
-  both, since neither cared about exclusive ownership of the file, only its own run's timing/
-  payload) — same hazard that bit the accuracy-tracker subagent dispatch before it.
+- **Git-worktree isolation does NOT isolate `cache/*.rds`/`logs/*.duckdb` writes.** Every script in
+  this repo `setwd()`s to the hardcoded absolute repo root rather than wherever it's actually being
+  invoked from, so a script run from inside a git worktree (e.g. a `subagent-brief`-dispatched
+  subagent's isolated worktree) still reads/writes the ONE real shared `cache/`/`logs/` directory.
+  First confirmed dispatching issues #11-#16's parallel waves (benign there — concurrent writers
+  didn't care about exclusive file ownership); **gave this real teeth in the Phase 9 build**
+  (`docs/task_assignments_phase8.md`'s "Known issue" Handoff Notes, and this doc's Known Issue #13)
+  — a shared log-file lock blocked one agent's work for several minutes, and one agent momentarily
+  wrote output to the wrong `cache/` before self-correcting. Not yet fixed — see Known Issue #13
+  and "Suggested next steps" #5 for the proposed scoped fix.
+- **New `isolation: "worktree"` worktrees can be provisioned from a stale base commit, not current
+  `main` HEAD** — see Known Issue #14. If you dispatch an `Agent` call with `isolation: "worktree"`
+  after already merging commits to `main` earlier in the same session, immediately check `git
+  worktree list`'s base-commit column for the new worktree against `git log -1 main` — don't assume
+  it matches. If it's stale, `git merge main --no-edit` into it right away, before the dispatched
+  agent gets far enough to hit a real blocker over a dependency that "should" already exist.
 - **`NFL_DISCORD_WEBHOOK` is a REAL live webhook, read from `~/.Renviron` at every fresh `Rscript`
   process start.** Any subagent (or you) testing Discord-dispatch code in this repo
   (`notify_bets.R`, `accuracy_tracker.R`, `playoff_odds_engine.R`) must either stub `httr::POST()`
@@ -489,43 +564,53 @@ timestamp in the log rather than assuming it ran at 05:15.
 
 ## Suggested next steps, roughly in priority order
 
-1. **Dispatch Wave 1 of the visualization-GIF phase (issues #17-#33, `docs/
-   task_assignments_phase8.md`).** This is the freshest and largest-scoped open item. Steps:
-   (a) orchestrator appends the 2 Wave-0 `config.R` constants (`CACHE_PLAYOFF_ODDS_HISTORY`,
-   `CACHE_TURNOVER_HISTORY` — exact lines in the phase file's Interface Contracts table) — this
-   must happen before Wave 1 starts since both Wave-1 agents who need one of these names them but
-   do not edit `config.R` themselves; (b) dispatch the 5 Wave-1 agents (`agent_elo_infra`,
-   `agent_playoff_infra`, `agent_turnover_infra`, `agent_viz_b_schedule`, `agent_viz_c_epa`) in
-   parallel via the established `subagent-brief` pattern (isolated worktrees per agent, re-verify
-   each against its brief's Definition of Done before merge — same process used for issues
-   #11-#16 and the accuracy-tracker build); (c) only after Wave 1 is fully merged, dispatch Wave
-   2's 4 agents. Read the phase file's "Constraints" section before dispatching
-   `agent_playoff_infra` specifically — its backfill is `(latest completed week)`x the normal
-   Monte Carlo simulation cost, confirm that's practical before running it unattended.
+1. **Close GitHub issues #17-#33 (all 17) with real evidence.** The code is done and merged (see
+   "Recent work" above); only the tracker bookkeeping is outstanding. Each issue's closing comment
+   should cite the specific commit hash and verification evidence already written up in
+   `docs/task_assignments_phase8.md`'s per-agent Handoff Notes (file paths, row counts, spot-check
+   numbers) rather than a generic "done" — matching how #1-#9 and #11-#16 were each closed with
+   real numbers in the past. `gh issue close <n> --comment "..."` for each, or `gh issue close
+   17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33` if a single shared closing comment
+   referencing the phase doc is judged sufficient — use your judgment on whether each issue
+   deserves its own tailored evidence excerpt or a shared pointer comment.
 2. **Close Issue #10 on GitHub — real evidence for both acceptance scenarios now exists** (see
-   "Accuracy-trajectory monitoring" above, found 2026-10-13). `gh issue close 10` with the
-   2026-10-10/2026-10-11 log excerpt as the closing comment, matching how #1-#9 were each closed
-   with real evidence rather than just marked done in this doc.
+   "Accuracy-trajectory monitoring" above, found 2026-10-13, still not closed as of this revision
+   either). `gh issue close 10` with the 2026-10-10/2026-10-11 log excerpt as the closing comment.
 3. **Decide the fate of the undocumented 2026-10-08 scratch files** (`tools/_inspect_week5.R`,
    `tools/plot_week5_projections.R`, `tools/run_week5_refresh.R`, `cache/week5_projections.png`)
    — commit if the Week 5 projections visualization they support is still wanted, delete
-   otherwise. Two sessions have now deferred this; make the call next time. Bundle
-   `cache/elo_anim_frames/`'s cleanup into the same pass (Known Issue #11).
-4. **Home-backup-QB market-bias finding (Known Issue #2) — DROPPED 2026-10-05, closed.** User
+   otherwise. **Three sessions have now deferred this** (including this one — it was not touched
+   again); make the call next time. Bundle `cache/elo_anim_frames/`'s cleanup into the same pass
+   (Known Issue #11), and consider bundling the 5 orphaned `.claude/worktrees/agent-*` stub
+   directories too (Known Issue #15) since they're the same flavor of "nobody has triaged this yet."
+4. **Review and decide the 11 modified-but-uncommitted `cache/*.rds` files from this session**
+   (`injury_data_cache.rds`, `latest_value_bets.rds`, `odds_history.rds`, `playoff_odds.rds`,
+   `playoff_simulation.rds`, `projected_matchups.rds`, `risk_state.rds`, `rosters_cache.rds`,
+   `schedules_cache.rds`, `team_epa_metrics.rds`, `team_ratings.rds`) — side effects of this
+   session's Phase 9 subagent dispatches re-running ingestion/engine scripts (e.g. P9-B's timing
+   script invoking `run_playoff_odds_engine()`, P9-C's `daily_ingest.R` re-ingest touching shared
+   state), not reviewed in detail or committed since they're outside Phase 9's explicit file-
+   ownership scope. Decide whether to commit (this repo's established convention per "Build
+   history" — see `a5d592f`/`7b43185` precedent of committing post-verification cache state) or
+   discard, following this repo's existing cache/*.rds-is-tracked policy (see `.gitignore`'s header
+   comment).
+5. **Consider a scoped fix for Known Issue #13** (`config.R`'s hardcoded `PROJECT_DIR` breaking
+   cache/log isolation across git worktrees) before the next multi-agent wave that writes caches
+   concurrently — an opt-in worktree-relative override, or at minimum a documented rule never to
+   schedule two cache-writing `subagent-brief` dispatches in the same wave.
+6. **Home-backup-QB market-bias finding (Known Issue #2) — DROPPED 2026-10-05, closed.** User
    made the deliberate call: the Bonferroni/BH correction failure is disqualifying, don't invest in
    a depth-chart cache to pursue it further. Nothing left to do here.
-5. If continuing the market-disagreement project: Phase 2's public-bet-percentage/handle data angle
+7. If continuing the market-disagreement project: Phase 2's public-bet-percentage/handle data angle
    needs an explicit user decision (paid vendor or scraping project) before pursuing.
-6. **Known Issue #3 (ordering gap) — fixed in code 2026-10-05, still needs live verification.**
+8. **Known Issue #3 (ordering gap) — fixed in code 2026-10-05, still needs live verification.**
    `risk_management_engine.R` was moved after `bet_tracker.r` in `run_full_pipeline.R`. Still
-   unverified as of the 2026-10-13 pipeline run — the real ledger still has 0 RESOLVED bets
-   (confirmed: `risk_management_engine.R` logged "0 RESOLVED bets (of 0 total rows)" and fell
-   through to `SYNTHETIC_FALLBACK`). Re-run the full pipeline once the real ledger has a RESOLVED
-   bet to grade, and confirm `risk_management_engine.R`'s run reflects that same-run grading
-   rather than the prior run's.
-7. `player_props_engine.R`, team embeddings, a live dashboard, and a true rstan/cmdstanr install for
+   unverified — the real ledger still has 0 RESOLVED bets. Re-run the full pipeline once the real
+   ledger has a RESOLVED bet to grade, and confirm `risk_management_engine.R`'s run reflects that
+   same-run grading rather than the prior run's.
+9. `player_props_engine.R`, team embeddings, a live dashboard, and a true rstan/cmdstanr install for
    the Kalman state-space model remain explicitly deferred non-goals — only start if there's a
    concrete pull for them.
-8. No other new feature is currently spec'd and queued the way playoff-odds was — any feature
-   beyond the visualization-GIF phase above needs a `/spec-interview` pass before implementation,
-   same as every feature shipped so far.
+10. No other new feature is currently spec'd and queued. Any feature beyond the now-shipped
+    visualization-GIF phase needs a `/spec-interview` pass before implementation, same as every
+    feature shipped so far.
