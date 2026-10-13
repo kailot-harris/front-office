@@ -1,23 +1,27 @@
 # NFL Analytics — Handoff Document
 
-**Last updated**: 2026-10-13, after commit `ebf2132` ("Fix stage 8/9.5 ordering gap: run
-risk_management_engine.R after bet_tracker.r") — that commit is already on `main`; everything
-below is **this session's uncommitted work on top of it**. `git status --short` shows 12 modified
-`cache/*.rds` files (fresh output of a real `run_full_pipeline.R` run this session, see below)
-plus a pile of untracked files: a new ad hoc analysis report (`docs/week5_elo_analysis.{qmd,html}`
-and its `cache/elo_*.png`/`cache/elo_scatter_animation.gif` outputs), an additive one-line change
-to `tools/elo_model.R`, and three **pre-existing** untracked scratch files from a 2026-10-08
-session that this doc never previously recorded (`tools/_inspect_week5.R`,
-`tools/plot_week5_projections.R`, `tools/run_week5_refresh.R` — small ad hoc Week-5-projection
-helpers, not part of any pipeline stage; see "Untracked scratch files" below). None of this
-session's work touched `run_full_pipeline.R` or any stage script's behavior. Written for a future
-LLM/agent picking this repo back up cold — read this before touching anything, then read
-`CLAUDE.md` for environment/data-quirk details this doc doesn't repeat.
+**Last updated**: 2026-10-13, after commit `e561171` ("Add Elo visualization report; refresh
+caches from Week 5 pipeline run") — that commit is already on `main` and resolved the previous
+revision's "uncommitted Elo report work" item (the `.qmd`/`.html`/`elo_*.png`/animation GIF/
+`elo_model.R` diff/refreshed-cache items are now all committed; verified via `git status` showing
+none of them untracked anymore). Everything below the "Recent work" section's newest entry is
+**this session's uncommitted work on top of `e561171`** — purely planning/scaffolding artifacts,
+zero code changes, zero pipeline runs. `git status --short` shows only untracked files, no
+modified tracked files: 9 new agent-brief files under `agents/`, one new
+`docs/task_assignments_phase8.md`, plus three files `git status` has flagged as untracked for
+multiple sessions now and still nobody has decided their fate (`tools/_inspect_week5.R`,
+`tools/plot_week5_projections.R`, `tools/run_week5_refresh.R`) and one more from that same
+undecided batch (`cache/week5_projections.png`, `cache/elo_anim_frames/` — the latter is
+intermediate per-frame PNGs from the now-committed animation GIF, likely safe to delete/gitignore
+whenever someone gets to it). Written for a future LLM/agent picking this repo back up cold — read
+this before touching anything, then read `CLAUDE.md` for environment/data-quirk details this doc
+doesn't repeat.
 
-**This session's work was an ad hoc user-requested analysis/visualization task (an animated Elo
-report), unrelated to the playoff-odds/accuracy-tracker build threads below — but it did turn up
-real new evidence for the still-open Issue #10. See "Issue #10" and "This session: Elo
-visualization report" below.**
+**This session's work was planning/orchestration only: brainstormed 30 team-level visualization
+ideas, the user picked 14 of them across three groups, and the session (1) filed all 14 plus 3
+necessary data-infra prerequisites as real GitHub issues (#17-#33), then (2) scaffolded a 9-agent,
+2-wave parallel build plan for them. No implementation has started — every task is `PENDING`. See
+"Recent work: Week 1-5 visualization GIFs — planning only" below.**
 
 ## What this repo is
 
@@ -104,6 +108,58 @@ stage 7.5 alone took 244.46s of that. Every stage ran cleanly; `.check_stage_out
 | `45bcea8`…`dd136a0` | Playoff Odds #11-#16 | This session: implemented the full feature end-to-end via 5 waves of parallel `subagent-brief` dispatch — constants, single-trial sim, Monte Carlo loop + cache write, Discord dispatch ‖ timing/tuning (parallel), pipeline wiring. Real full-pipeline run confirms it live end-to-end (HTTP 204, 392.58s total run). |
 
 ## Recent work
+
+### This session (2026-10-13, later): Week 1-5 visualization GIFs — planning only, nothing built
+
+Follow-up to the Elo visualization report below (same day, later session) — user liked the
+`elo_scatter_animation.gif` and asked for several more team-level GIFs summarizing weeks 1-5.
+Pure planning/orchestration work, no code written, no scripts run:
+
+1. **Brainstormed 30 team-level visualization ideas** (Elo-based, standings/scores, playoff-odds/
+   EPA/turnovers), ranked by rough visual-power/effort. User picked 14 across three groups:
+   - **Group A (Elo)**: rank bump chart, Elo heatmap, delta bar race, volatility bar race.
+   - **Group B (standings/scores)**: upset timeline, point-diff race, PF/PA-vs-Elo scatter,
+     division-standings race, SOS-adjusted win race.
+   - **Group C (playoff odds/EPA/turnovers)**: playoff-prob bump, playoff-odds heatmap, EPA
+     quadrant scatter, EPA net race, turnover-margin race.
+2. **Investigated real data availability before scoping anything** (avoided the trap of scoping
+   issues against assumed data): confirmed `CACHE_PLAYOFF_ODDS` is a point-in-time snapshot with
+   **no week dimension** (so 2 of the Group-C picks need a historical backfill, not just
+   plotting), and confirmed no turnover data (interceptions/fumbles) is cached anywhere in this
+   repo at all — `.PBP_CACHE_COLUMNS` in `daily_ingest.R` doesn't include them. This surfaced 3
+   infra prerequisites the user hadn't explicitly asked for but the 14 visualizations structurally
+   need.
+3. **Filed 17 real GitHub issues** (`gh issue create`, confirmed with the user first): **#17-#19**
+   are the infra prerequisites (Elo-history-builder extraction/refactor, playoff-odds-history
+   backfill, turnover-data ingestion+aggregation); **#20-#33** are the 14 visualizations, each
+   referencing which infra issue (if any) it depends on. All currently `OPEN`, label
+   `enhancement`, repo `kailot-harris/NFL_analytics`.
+4. **Scaffolded `docs/task_assignments_phase8.md`** via the `remediation-phase-scaffold` skill —
+   titled "Phase 9" internally, continuing this repo's established off-by-one convention where the
+   filename index runs one behind the in-file title number (confirmed by checking every prior
+   `task_assignments_phaseN.md`'s first line: `phase0.md` is titled "Phase 1" ... `phase7.md` is
+   titled "Phase 8" — this file follows the same pattern, don't "fix" it to match in a later pass).
+   Structure: 9-task Task Tracker (all `PENDING`), a Wave 0 orchestrator-only step (2 new
+   `config.R` constants, added by the orchestrator, not by either Wave-1 agent who needs one —
+   `config.R` is a shared file no two agents may edit in the same wave), a 2-wave dependency graph,
+   and an Interface Contracts table fixing the exact `get_elo_history(max_week = NULL)` signature
+   and both new cache schemas (`CACHE_PLAYOFF_ODDS_HISTORY`, `CACHE_TURNOVER_HISTORY`) before any
+   Wave-2 agent needs to consume them.
+5. **Wrote 9 agent briefs** under `agents/` (`agent_elo_infra`, `agent_playoff_infra`,
+   `agent_turnover_infra`, `agent_viz_b_schedule`, `agent_viz_c_epa` — Wave 1; `agent_viz_a_rank`,
+   `agent_viz_a_delta`, `agent_viz_b_upsets_sos`, `agent_viz_c_playoff_turnover` — Wave 2), each
+   with exact file ownership, the specific GitHub issue(s) it closes, concrete per-task
+   instructions (not just a paraphrased issue restatement), the interface contracts it must honor,
+   a runnable test suite, and a definition of done — matching this repo's established
+   `subagent-brief`-dispatch pattern (same pattern used for the playoff-odds #11-#16 and accuracy-
+   tracker #1-#9 builds).
+
+**Nothing has been executed.** All 9 Task Tracker rows in `docs/task_assignments_phase8.md` are
+`PENDING`. No Wave has been dispatched. `config.R` has NOT yet received its 2 new constants (that
+is Wave 0, orchestrator-only, and hasn't happened). Next session should dispatch Wave 1's 5 agents
+(see "Suggested next steps" below) — read `docs/task_assignments_phase8.md` in full before doing
+so, it has the authoritative task/file/contract breakdown; this summary is a pointer to it, not a
+replacement for reading it.
 
 ### This session (2026-10-13): Elo visualization report — ad hoc, NOT a pipeline stage
 
@@ -337,21 +393,32 @@ timestamp in the log rather than assuming it ran at 05:15.
    numbers. The cache state from that session's verification run was committed+pushed (`7b43185`,
    following the `a5d592f` precedent) — **this item is closed**. See item 9 below for the *current*
    uncommitted cache state (a different, later run).
-9. **Uncommitted cache state again, from this session's (2026-10-13) full-pipeline run.** Same
-   recurring pattern as item 8 above, now from a fresh run: 12 `cache/*.rds` files modified,
-   currently uncommitted. This is expected to recur every time a real `run_full_pipeline.R`
-   invocation happens between commits — decide fresh each time whether to commit (the established
-   `a5d592f`/`7b43185` precedent) or discard, don't assume last time's decision carries forward.
-10. **Three untracked scratch files from an undocumented 2026-10-08 session**
-    (`tools/_inspect_week5.R`, `tools/plot_week5_projections.R`, `tools/run_week5_refresh.R`) —
-    first noticed this session; no prior HANDOFF.md revision recorded them, so whatever session
-    created them on 2026-10-08 never got a handoff pass. Read: small, clearly-scoped ad hoc
-    helpers for a Week 5 projections visualization (`run_week5_refresh.R` re-runs pipeline stages
-    1-5 only to regenerate `CACHE_PROJECTED_MATCHUPS` without live Discord/Odds-API side effects;
-    `_inspect_week5.R` is a one-off cache-inspection snippet; `plot_week5_projections.R` is a
-    larger plotting script, not reviewed in detail this session). Not part of any pipeline stage,
-    not referenced by `docs/week5_elo_analysis.qmd`. Next session: decide whether these are worth
-    committing (if the Week 5 projections visualization is still wanted) or deleting as scratch.
+9. **Uncommitted cache state from the 2026-10-13 full-pipeline run — RESOLVED, committed in
+   `e561171`.** The 12 modified `cache/*.rds` files plus the Elo-report artifacts (`docs/
+   week5_elo_analysis.{qmd,html}`, `cache/elo_*.png`, `cache/elo_scatter_animation.gif`, the
+   `tools/elo_model.R` diff) are all now on `main`. Confirmed via `git status` showing none of
+   them untracked anymore. This item is closed; recorded here only so a future reader doesn't
+   re-flag it as still-pending.
+10. **Three untracked scratch files from an undocumented 2026-10-08 session — STILL UNRESOLVED,
+    now 2 sessions old.** (`tools/_inspect_week5.R`, `tools/plot_week5_projections.R`,
+    `tools/run_week5_refresh.R`, plus `cache/week5_projections.png` which the previous doc revision
+    didn't separately call out). Read: small, clearly-scoped ad hoc helpers for a Week 5
+    projections visualization (`run_week5_refresh.R` re-runs pipeline stages 1-5 only to regenerate
+    `CACHE_PROJECTED_MATCHUPS` without live Discord/Odds-API side effects; `_inspect_week5.R` is a
+    one-off cache-inspection snippet; `plot_week5_projections.R` is a larger plotting script, not
+    reviewed in detail in any session so far). Not part of any pipeline stage, not referenced by
+    `docs/week5_elo_analysis.qmd`. Two sessions have now passed without anyone deciding whether to
+    commit or delete these — next session should actually make the call rather than deferring a
+    third time.
+11. **`cache/elo_anim_frames/` — intermediate build artifact, likely safe to discard.** Per-frame
+    PNGs from building `cache/elo_scatter_animation.gif` (now committed). Not needed once the GIF
+    exists; candidate for `.gitignore` or deletion, bundled with item 10's cleanup decision since
+    both are "leftover untracked files nobody has triaged yet."
+12. **Week 1-5 visualization GIF phase (issues #17-#33) — PLANNED, nothing executed.** See
+    "Recent work: Week 1-5 visualization GIFs — planning only" above and
+    `docs/task_assignments_phase8.md` for the full plan. `config.R` has not yet received its 2
+    Wave-0 constants; no Wave-1 agent has been dispatched. This is the largest open item in this
+    doc — prioritize accordingly in "Suggested next steps" below.
 
 ## Environment specifics a fresh agent needs
 
@@ -422,20 +489,28 @@ timestamp in the log rather than assuming it ran at 05:15.
 
 ## Suggested next steps, roughly in priority order
 
-1. **Close Issue #10 on GitHub — real evidence for both acceptance scenarios now exists** (see
+1. **Dispatch Wave 1 of the visualization-GIF phase (issues #17-#33, `docs/
+   task_assignments_phase8.md`).** This is the freshest and largest-scoped open item. Steps:
+   (a) orchestrator appends the 2 Wave-0 `config.R` constants (`CACHE_PLAYOFF_ODDS_HISTORY`,
+   `CACHE_TURNOVER_HISTORY` — exact lines in the phase file's Interface Contracts table) — this
+   must happen before Wave 1 starts since both Wave-1 agents who need one of these names them but
+   do not edit `config.R` themselves; (b) dispatch the 5 Wave-1 agents (`agent_elo_infra`,
+   `agent_playoff_infra`, `agent_turnover_infra`, `agent_viz_b_schedule`, `agent_viz_c_epa`) in
+   parallel via the established `subagent-brief` pattern (isolated worktrees per agent, re-verify
+   each against its brief's Definition of Done before merge — same process used for issues
+   #11-#16 and the accuracy-tracker build); (c) only after Wave 1 is fully merged, dispatch Wave
+   2's 4 agents. Read the phase file's "Constraints" section before dispatching
+   `agent_playoff_infra` specifically — its backfill is `(latest completed week)`x the normal
+   Monte Carlo simulation cost, confirm that's practical before running it unattended.
+2. **Close Issue #10 on GitHub — real evidence for both acceptance scenarios now exists** (see
    "Accuracy-trajectory monitoring" above, found 2026-10-13). `gh issue close 10` with the
    2026-10-10/2026-10-11 log excerpt as the closing comment, matching how #1-#9 were each closed
    with real evidence rather than just marked done in this doc.
-2. **Decide the fate of this session's uncommitted Elo-report work** (Known Issue #9/#10 in the
-   list above): `docs/week5_elo_analysis.{qmd,html}`, `cache/elo_*.png`,
-   `cache/elo_scatter_animation.gif`, `cache/elo_anim_frames/` (can likely be deleted/gitignored —
-   intermediate frames, not needed once the GIF exists), the `tools/elo_model.R` additive diff,
-   and the 12 freshly-regenerated `cache/*.rds` files from this session's pipeline run. This was a
-   user-requested ad hoc report, not a tracked feature, so there's no GitHub issue to close either
-   way — just a commit decision.
 3. **Decide the fate of the undocumented 2026-10-08 scratch files** (`tools/_inspect_week5.R`,
-   `tools/plot_week5_projections.R`, `tools/run_week5_refresh.R`) — commit if the Week 5
-   projections visualization they support is still wanted, delete otherwise.
+   `tools/plot_week5_projections.R`, `tools/run_week5_refresh.R`, `cache/week5_projections.png`)
+   — commit if the Week 5 projections visualization they support is still wanted, delete
+   otherwise. Two sessions have now deferred this; make the call next time. Bundle
+   `cache/elo_anim_frames/`'s cleanup into the same pass (Known Issue #11).
 4. **Home-backup-QB market-bias finding (Known Issue #2) — DROPPED 2026-10-05, closed.** User
    made the deliberate call: the Bonferroni/BH correction failure is disqualifying, don't invest in
    a depth-chart cache to pursue it further. Nothing left to do here.
@@ -443,13 +518,14 @@ timestamp in the log rather than assuming it ran at 05:15.
    needs an explicit user decision (paid vendor or scraping project) before pursuing.
 6. **Known Issue #3 (ordering gap) — fixed in code 2026-10-05, still needs live verification.**
    `risk_management_engine.R` was moved after `bet_tracker.r` in `run_full_pipeline.R`. Still
-   unverified as of this session's pipeline run — the real ledger still has 0 RESOLVED bets
-   (confirmed again 2026-10-13: `risk_management_engine.R` logged "0 RESOLVED bets (of 0 total
-   rows)" and fell through to `SYNTHETIC_FALLBACK`). Re-run the full pipeline once the real ledger
-   has a RESOLVED bet to grade, and confirm `risk_management_engine.R`'s run reflects that
-   same-run grading rather than the prior run's.
+   unverified as of the 2026-10-13 pipeline run — the real ledger still has 0 RESOLVED bets
+   (confirmed: `risk_management_engine.R` logged "0 RESOLVED bets (of 0 total rows)" and fell
+   through to `SYNTHETIC_FALLBACK`). Re-run the full pipeline once the real ledger has a RESOLVED
+   bet to grade, and confirm `risk_management_engine.R`'s run reflects that same-run grading
+   rather than the prior run's.
 7. `player_props_engine.R`, team embeddings, a live dashboard, and a true rstan/cmdstanr install for
    the Kalman state-space model remain explicitly deferred non-goals — only start if there's a
    concrete pull for them.
-8. No new feature is currently spec'd and queued the way playoff-odds was — the next feature needs
-   a `/spec-interview` pass before implementation, same as every feature shipped so far.
+8. No other new feature is currently spec'd and queued the way playoff-odds was — any feature
+   beyond the visualization-GIF phase above needs a `/spec-interview` pass before implementation,
+   same as every feature shipped so far.
