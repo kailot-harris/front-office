@@ -1,32 +1,69 @@
-# Handoff — 2026-10-08, later same day (Issue #70 — RAPM third of #69 — implemented, verified, and merged to `main` via a second `subagent-brief` dispatch) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
+# Handoff — 2026-10-17 (renv library repair + full pipeline rerun) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
 
 ## What this thread did
 
-Picked up directly from the previous 2026-10-08 entry below (now demoted into "Closed work"), which had spec'd issue #70 but not implemented it. This thread implemented #70 end to end via a single `subagent-brief` full-tier dispatch (run id `20261008-202602-4027b0`, worktree `agent-a55aa191aa09f4d54`), independently re-verified every one of its 5 success criteria against the real files (not just trusted its self-reported JSON), then merged.
+User asked to rerun the pipeline. `Rscript.exe run_full_pipeline.R` failed immediately at the
+`risk_management_engine.R` stage with `Error in library(duckdb) : there is no package called
+'duckdb'`, plus a `renv` warning that ~30+ other packages (`bslib`, `cli`, `DBI`, `digest`,
+`fs`, `evaluate`, etc.) were "missing their DESCRIPTION files" — the project's `renv` library on
+this machine was corrupted again (a prior, different occurrence of this same failure shape is
+already documented below in "Closed work" and in the environment notes). Ran
+`renv::restore(prompt = FALSE)` (via a temp `tools/tmp_renv_restore.R`, since inline multi-line
+`-e` segfaults on this machine — see environment notes; the temp file was deleted after use, not
+left in the repo). It completed with exit code 0 and reinstalled the broken packages. Reran
+`run_full_pipeline.R`, which then completed cleanly in **38.06 seconds**, all stages reporting
+`[FRESH]`/`[COMPLETED]`, ending with the playoff simulator, risk-state audit, Discord bet-alert
+dispatch, and bet-grading/CLV stages all succeeding and writing fresh caches.
 
-**Issue #69's commit from the prior session (`tools/generate_historical_season_snapshots.R` + 6 standings/bracket cache files) was committed separately first** as `382f55d` before this thread's own work landed — so by the time this thread started, #69's Standings/Bracket two-thirds were already in `main`, not still sitting uncommitted as the prior entry describes. Cross-check `git log` yourself before trusting either entry's framing of what's committed, since this is the kind of detail that goes stale fast.
+**This was a from-scratch `renv::restore()` against an already-populated-but-broken library**,
+not a brand-new clean library — so it does not fully close "Open items" #5 below (nobody has
+yet restored into a genuinely empty library from this `renv.lock`), but it is a second
+confirmation that `restore()` against *this* lockfile reliably repairs a corrupted library in
+one pass, on top of the 2026-10-06 incident referenced below.
 
 ## What's actually implemented (new/changed this session)
 
-| File | Status | Notes |
-|---|---|---|
-| `rapm_engine.R` | **Changed, 597 lines, committed `5d7711f`** | New `fit_rapm_ratings(seasons = ALL_SEASONS, lambda = 900, force_refresh = FALSE, team_attribution = c("current_roster", "season_pooled"))` (lines ~443-566) extracted from `estimate_rapm_ratings()`'s body — possession pull, season filter (the actual bug fix: `dplyr::filter(possessions, season %in% seasons)`, previously missing so a per-season call silently fit across all pooled seasons), design-matrix build, ridge fit, and team-vote logic. `team_attribution = "current_roster"` keeps today's `reattribute_to_current_roster_team()` + box-score-fallback-never-crashes behavior. `team_attribution = "season_pooled"` skips reattribution (keeps the season's real primary-team vote) and hard-stops via `stop()` instead of falling back if the possession pull fails for the requested season(s). `estimate_rapm_ratings()` (lines ~575-592) is now a thin wrapper: calls `fit_rapm_ratings(..., team_attribution = "current_roster")` then `saveRDS()`. Re-verified independently: `cache/rapm_ratings.rds`'s `md5sum` is identical before/after this refactor (`fae1678bea5cabcde3ec1719e36cedc3`) — confirmed zero behavior change for the live path, not just taken on faith. |
-| `tools/generate_historical_season_snapshots.R` | **Changed, 151 lines (was 121), committed `5d7711f`** | Added a loop calling `fit_rapm_ratings(seasons = yr, lambda = 900, team_attribution = "season_pooled")` for each of 2023/2024/2025, tags a `season = yr` column, `saveRDS()`s to `cache/rapm_ratings_<year>.rds`. This script is the **only** call site in the repo passing `team_attribution = "season_pooled"` (re-verified: `grep -rn "season_pooled" --include=*.R .` matches only `rapm_engine.R`'s own parameter definition/branches and this one call). Does not touch `cache/rapm_ratings.rds` and the standings/bracket section from #69 is unmodified (re-verified via `git status --short` in the dispatch worktree before merge — only this file, `rapm_engine.R`, and the 3 new RAPM caches were touched). |
-| `cache/rapm_ratings_{2023,2024,2025}.rds` | **New, committed `5d7711f`** | 156/157/181 rows respectively. `data_source` is `real_wnba_stats_possessions` for every row in all 3 files (no fallback rows triggered). Spot-checked Angel Reese (`player_id` `1642291`): `team` = `"Chicago Sky"` in both the 2024 and 2025 files (her actual team those seasons, season-pooled attribution) vs. `"Atlanta Dream"` in the live `cache/rapm_ratings.rds` (current-roster attribution, her 2026 team) — confirms the two attribution modes genuinely diverge, independently re-run, not just read from the subagent's own report. Not present in the 2023 file (not yet in the league/possession data that season). |
-| `cache/rapm_ratings.rds` | **Unchanged** | `md5sum` identical before/after this session's work (see above) and before/after the full `tools/generate_historical_season_snapshots.R` re-run. |
+Nothing — this was an environment-repair + pipeline-rerun session, no source files were
+changed. No new commits were made. `git status` still shows only the same shape of
+pipeline-refreshed cache/data files as dirty (`cache/*.rds`, `data/box_scores_cache.rds`,
+`data/team_embeddings.csv`, `data/team_similarity_matrix.csv`) — these are expected working-tree
+diffs from any pipeline run, not evidence of a code change, and were left uncommitted per normal
+git-safety convention (only commit when asked).
 
-**Committed and merged to `main` as `5d7711f`** (fast-forward from `fdd4858`). **Not yet pushed** — `git status -sb` shows `main...origin/main [ahead 1]` as of this writing; pushing was left to the user, per normal git-safety convention.
+## Anomalies noticed while gathering state for this handoff — flagged, not fixed
 
-## Validation performed this session — and what wasn't
-
-- **Performed** (all independently re-run by this thread, not just read from the dispatched subagent's self-reported result): re-grepped `rapm_engine.R` for `fit_rapm_ratings`/`estimate_rapm_ratings` to confirm the extraction actually happened and the old inline logic is gone; re-hashed `cache/rapm_ratings.rds` and confirmed it matches the subagent's claimed before/after hash; `readRDS()`'d all 3 new RAPM cache files directly and checked `season`, `team`, `data_source` columns, including the Angel Reese cross-file spot check above; re-ran `git status --short` in the dispatch worktree pre-merge to confirm no out-of-scope file was touched; re-grepped the whole repo for `season_pooled` to confirm single-call-site scope.
-- **Not performed**: no re-run of the full `run_full_pipeline.R` DAG (out of scope — this was a standalone historical-snapshot generation, not a live-pipeline change); no k-fold cross-validation of `lambda = 900` (explicitly out of scope per #70's own ticket text, flagged as a future follow-up); push to `origin/main` (left to the user).
+- **Two commits landed since the last HANDOFF entry below with no corresponding HANDOFF update**:
+  `e08e5d6` ("add round labels to historical playoff bracket data (issue #69 follow-up)") and
+  `00ee515` ("backfill 2019-2022 historical standings/RAPM, 2022 playoff bracket"), both from a
+  different session (`Claude-Session: .../session_01D5QKdxbPb1ZNwFnJp3PEpb`, not this thread's
+  session). Read `git show <hash>` directly if you need their detail; summarizing here only
+  enough to flag the gap: `00ee515` extends `tools/generate_historical_season_snapshots.R` from
+  2023-2025 back to 2019-2025, adding `cache/actual_wnba_standings_{2019..2022}.rds`,
+  `cache/rapm_ratings_{2019..2022}.rds`, and `cache/playoff_bracket_results_2022.rds` — but
+  **2019-2021 have no bracket file**, documented in that commit's own message as a deliberate
+  limitation (the old bye-based playoff format breaks `assign_bracket_rounds()`'s chronological
+  reconstruction), not a bug to fix.
+- **Issues #69 and #70 are now `CLOSED`** on the tracker (confirmed via `gh issue view`), resolving
+  the tracker-hygiene item the previous HANDOFF top section used to flag as open. Someone did this
+  outside any session reflected in this file.
+- **A new issue, `#71`, is open and unaddressed**: "RAPM: ORAPM/DRAPM are highly correlated
+  (0.77), suppressing Total RAPM for every star player (e.g. A'Ja Wilson nets to 0.64)" — a real
+  methodology issue in `rapm_engine.R`'s possession-level ridge fit per its own description, not
+  a display/join bug. Nobody has started on it in any session reflected in this file.
+- **A fourth orphaned worktree-shaped directory has appeared**: `.claude/worktrees/bracket-rounds-fix`
+  (in addition to the three already tracked in "Open items" #4 below). Like the other three, `git
+  worktree list` does not register it (only `main` shows). Not investigated further or removed
+  this session — folded into the existing open item rather than duplicating it.
 
 ## Concrete next step
 
-1. **Immediate**: decide whether to `git push` — `main` is 1 commit ahead of `origin/main` (`5d7711f`).
-2. **Tracker hygiene**: issue #70 is fully implemented and merged but **still shows `OPEN`** on the tracker (`gh issue view 70`), and #69's `sub-issues-completed` still reads `0/1` (GitHub doesn't auto-close a sub-issue from a commit here — no `Closes #70` trailer was used, intentionally, since the fix was dispatched/verified by this session rather than written by a human closing it inline). Decide whether to `gh issue close 70` (and then 69, since both of its thirds — Standings/Bracket and RAPM — are now shipped) — this is a visible tracker action, left for the user rather than done automatically.
-3. Beyond that, nothing in this repo is blocking on #69/#70 any further — move to whichever item in "Open items" below is highest priority, or to issue #43/#44's remaining control-panel/auth work.
+1. Nothing is currently broken or blocking — the pipeline runs clean end to end as of this
+   session. The next unit of work is whichever "Open items" entry below is highest priority; #71
+   (the RAPM ORAPM/DRAPM correlation bug) is the newest and most concrete, since it has a detailed
+   ticket already filed and affects every star player's displayed rating.
+2. If `renv` breaks again on this machine, the fix is the same one-liner used this session:
+   write `renv::restore(prompt = FALSE)` to a temp `.R` file (never inline `-e`, see environment
+   notes) and run it with the full `Rscript.exe` path before retrying the pipeline.
 
 ---
 
@@ -77,17 +114,19 @@ rationale) behind one of the rows below, not to determine current state.
 | Scheduled-pipeline failure (`.bat` syntax bug + renv repair + error-visibility logging) | Shipped. |
 | Interactive control-panel app spec interview (2026-09-26) | Superseded by the control-panel/auth row above (spec → shipped). |
 | Isolated `summary_app.R` into standalone sibling deploy dir + shinyapps.io publish | Shipped (no repo files touched). Standing risk/re-sync procedure kept live above, full narrative archived. |
-| Issue #69 Standings + Bracket pilot (2023-2025) | Shipped — committed `382f55d`. RAPM third split into sub-issue #70, spec'd then implemented in a later same-day session (row below). |
-| Issue #70 RAPM third of #69 (season-pooled 2023-2025 RAPM snapshots) | Shipped — committed/merged `5d7711f`, independently re-verified. **Tracker still shows #70 (and #69) `OPEN`** — see "Open items" below, now folded into item 1. |
+| Issue #69 Standings + Bracket pilot (2023-2025, later backfilled to 2019-2022 and given round labels in undocumented follow-up commits `e08e5d6`/`00ee515` — see 2026-10-17 entry above) | Shipped and **tracker-closed** (confirmed via `gh issue view 69` on 2026-10-17). |
+| Issue #70 RAPM third of #69 (season-pooled 2023-2025 RAPM snapshots) | Shipped — committed/merged `5d7711f`, independently re-verified, and **tracker-closed** (confirmed via `gh issue view 70` on 2026-10-17). |
+| `renv` library corruption, 2nd documented occurrence (missing `duckdb` + ~30 packages' DESCRIPTION files, blocking `run_full_pipeline.R`) | Repaired via `renv::restore(prompt = FALSE)` on 2026-10-17 (see current top section). Not a from-scratch clean-library restore — "Open items" #5 below is still open. |
 
-## Open items (standing, unreconciled — confirmed live via `gh issue list --state open` on 2026-10-08)
+## Open items (standing, unreconciled — last cross-checked live via `gh issue list --state open` / `gh issue view` on 2026-10-17)
 
 These have been flagged by **every** session that touched this area since they first appeared and remain genuinely open — not rediscovered this trim, just consolidated into one place instead of being repeated in full in every archived section:
 
-1. **GitHub issue tracker is stale**: `#43`, `#44`, `#49`, `#69`, `#70` all still show `OPEN` (re-confirmed 2026-10-08), but #49's code was merged in `e5c97f3`, #69/#70's code is merged in `382f55d`/`5d7711f`, and #43/#44 (parent epics of #49) have no remaining work blocking them beyond that. Nobody has run `gh issue close` on any of the five. Closing them is a visible tracker action — do it once confirmed, don't just trust this note.
+1. **GitHub issue tracker is partially stale**: `#43`, `#44`, `#49` still show `OPEN` (re-confirmed 2026-10-17), but #49's code was merged in `e5c97f3` and #43/#44 (parent epics of #49) have no remaining work blocking them beyond that. (`#69`/`#70` were in this same bucket as of 2026-10-08 but are now confirmed `CLOSED` as of 2026-10-17 — that part of this item is resolved.) Nobody has run `gh issue close` on #43/#44/#49. Closing them is a visible tracker action — do it once confirmed, don't just trust this note.
+1a. **New issue `#71` (filed 2026-10-09, still open as of 2026-10-17)**: RAPM's `ORAPM`/`DRAPM` are highly correlated (0.77) in `rapm_engine.R`'s possession-level ridge fit, which suppresses `total_rapm` for every star player (e.g. A'Ja Wilson nets to 0.64 despite elite `orapm`/`drapm` individually). Read the full ticket (`gh issue view 71`) before starting — it's a real methodology issue in the ridge fit itself, not a display or join bug, and has no implementation started in any session reflected in this file.
 2. **`dashboard_render_helpers.R` does not contain `.normalize_value_bets_dates()`**, so `control_panel_app.R` still carries its own byte-for-byte duplicate of `app.R`'s `r_normalized_value_bets()` reactive logic (deriving `norm_date` on `cache/latest_value_bets.rds`, including the staggered-placeholder-date fallback for thin/demo slates). Recommended fix (never built): hoist into a plain function in `dashboard_render_helpers.R` and have both `app.R` and `control_panel_app.R` call it from there.
-3. **Three headless probes never got a login step added**: `tools/headless_control_panel_probe.R`, `tools/headless_control_panel_staleness_probe.R`, `tools/headless_control_panel_queue_lock_probe.R` all predate the control-panel's real auth wall (added in the #43/#44 tree) and will fail against every element they try to drive, since none of them log in first. `tools/headless_login_module_probe.R`'s `set_module_input()` pattern is the one to copy. Not updated in any session since the auth wall landed.
-4. **Three leftover worktrees now, not two** (`.claude/worktrees/agent-ae227d715064d6d37`, pre-existing; `.claude/worktrees/agent-a46276a0f4609d125`, added by a prior session's `subagent-brief` dispatch for issue #69 whose `git worktree remove` failed with an OS-level file lock; and `.claude/worktrees/agent-a55aa191aa09f4d54`, added by this session's #70 dispatch — `git worktree remove` on it failed with `error: failed to delete ... Invalid argument` even though `git worktree list` no longer shows it registered, same failure shape as the other two). None of the three are registered with git any more (`.git/worktrees/` has no entry for any of them — orphaned directories, not real worktrees), all still safe to leave in place rather than force-deleting. `.claude/worktrees/` is still not in `.gitignore`. Re-check before assuming any of this is still true — this count has grown every session that's dispatched a writer subagent on this machine, suggesting the OS-level lock issue is systemic to this environment rather than a one-off, and may be worth a real fix (e.g. a short delay/retry around `git worktree remove`, or an explicit `tools/cleanup_orphaned_worktrees.R`) rather than re-flagging it every session.
+2a. **Three headless probes never got a login step added**: `tools/headless_control_panel_probe.R`, `tools/headless_control_panel_staleness_probe.R`, `tools/headless_control_panel_queue_lock_probe.R` all predate the control-panel's real auth wall (added in the #43/#44 tree) and will fail against every element they try to drive, since none of them log in first. `tools/headless_login_module_probe.R`'s `set_module_input()` pattern is the one to copy. Not updated in any session since the auth wall landed.
+4. **Four leftover worktree-shaped directories now, not three** (`.claude/worktrees/agent-ae227d715064d6d37`, pre-existing; `.claude/worktrees/agent-a46276a0f4609d125`, added by a prior session's `subagent-brief` dispatch for issue #69 whose `git worktree remove` failed with an OS-level file lock; `.claude/worktrees/agent-a55aa191aa09f4d54`, added by a later #70 dispatch with the same failure shape; and `.claude/worktrees/bracket-rounds-fix`, noticed new as of 2026-10-17 — not yet attributed to a specific session, not investigated beyond confirming `git worktree list` doesn't register it either). None of the four are registered with git any more (`.git/worktrees/` has no entry for any of them — orphaned directories, not real worktrees), all still safe to leave in place rather than force-deleting. `.claude/worktrees/` is still not in `.gitignore`. Re-check before assuming any of this is still true — this count has grown every session that's dispatched a writer subagent on this machine, suggesting the OS-level lock issue is systemic to this environment rather than a one-off, and may be worth a real fix (e.g. a short delay/retry around `git worktree remove`, or an explicit `tools/cleanup_orphaned_worktrees.R`) rather than re-flagging it every session.
 5. **Nobody has run a from-scratch `renv::restore()`** against the fixed `renv.lock` (post-`9894265`) on a clean library to confirm it restores in one pass — the 2026-10-06 session only ever repaired *this machine's* already-populated-but-broken library incrementally.
 
 ## Standing environment/tooling notes (still live, condensed from archived sessions)
@@ -105,9 +144,14 @@ These have been flagged by **every** session that touched this area since they f
 - The `subagent-brief` skill's scripts (`runlog.R`, `validate_brief.R`, etc.) live under the **user's home directory** (`C:\Users\kailo\.claude\skills\subagent-brief\scripts\`), not under this repo's own `.claude/skills/` (which only holds this repo's own project-scoped skills, e.g. `config-constant-drift-audit`). Calling them with a relative path like `.claude/skills/subagent-brief/scripts/runlog.R` resolves to a nonexistent file in *this* repo and reproducibly **segfaults** `Rscript.exe` (exit code 139 in Git Bash / `-1073741819` in PowerShell) rather than failing with a normal "file not found" error — don't mistake that segfault for the already-documented inline-`-e` segfault issue; always invoke this skill's scripts by their full home-directory path.
 - `runlog.R record-result` validates against `schema/result.v1.json`, which requires top-level `schema_version`, `item_id`, `summary`, `evidence` (a separate array of `{id, type, ref, excerpt}` objects, not inline per-criterion text), `blocked_reason`, `needed_action`, and `changes: {worktree, files_changed}` — a result JSON built only from the brief template's minimal per-criterion `{id, met, evidence}` shape (no top-level `evidence` array, no `changes`) fails schema validation. Read `schema/result.v<N>.json` directly before hand-writing a result file rather than inferring the shape from the brief template's "Output schema" section alone.
 
-## Concrete next step (beyond the top "CURRENT STATE" section's own next steps, and the sibling-deploy sync duty above)
+## Concrete next step (beyond the top "CURRENT STATE" section's own next step, and the sibling-deploy sync duty above)
 
-The top section's 2-item list (push `main`, decide on tracker hygiene for #69/#70) is the actual next unit of work. Once that's done, pick from "Open items" above based on priority — none of them are blocking anything else:
-1. Tracker hygiene (`gh issue close` for #43/#44/#49/#69/#70) is the cheapest, lowest-risk one to clear.
-2. The `.normalize_value_bets_dates()` de-duplication is the only one with real drift risk (two copies of non-trivial logic that can silently diverge — this repo has been bitten by exactly this shape of bug before, per `CLAUDE.md`'s `CONN`/`CON` and RAPM-join notes).
-3. The three stale headless probes and the three leftover worktrees are low-urgency cleanup, worth bundling into whatever session next touches `control_panel_app.R` or `.claude/worktrees/` for an unrelated reason — though the worktree-cleanup failure recurring on a third consecutive dispatch (see Open items #4) is starting to look worth a real fix rather than more cleanup.
+Nothing is currently blocking — `main` is clean-running (pipeline verified end to end on
+2026-10-17) and #69/#70's tracker hygiene is already resolved. Pick from "Open items" above
+based on priority:
+1. **Issue #71** (RAPM `ORAPM`/`DRAPM` correlation suppressing `total_rapm` for star players) is
+   the newest, most concrete, and has real user-visible impact (wrong-looking ratings in the
+   Shiny app) — read the full ticket before starting.
+2. Tracker hygiene (`gh issue close` for #43/#44/#49) is the cheapest, lowest-risk one to clear.
+3. The `.normalize_value_bets_dates()` de-duplication is the only one with real drift risk (two copies of non-trivial logic that can silently diverge — this repo has been bitten by exactly this shape of bug before, per `CLAUDE.md`'s `CONN`/`CON` and RAPM-join notes).
+4. The three stale headless probes and the four leftover worktree-shaped directories are low-urgency cleanup, worth bundling into whatever session next touches `control_panel_app.R` or `.claude/worktrees/` for an unrelated reason — though the worktree-cleanup failure recurring across multiple dispatches (see Open items #4) is starting to look worth a real fix rather than more cleanup.

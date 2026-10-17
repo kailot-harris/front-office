@@ -4206,3 +4206,42 @@ archive only if you need the full narrative behind a specific past fix.
 - **Not performed, and not this thread's to do**: no live browser check of the actually-deployed `https://kailot-harris.shinyapps.io/wnba_summary_app_deploy/` URL (flagged as the sibling's own "Concrete next step" — this repo-side entry doesn't duplicate that detail, see the sibling's `HANDOFF.md`). No investigation into the unexplained `LICENSE` file. No decision made about whether/when to build the `tools/sync_summary_app_deploy.R` automation suggested above — that's a recommendation, not a committed plan.
 
 ---
+
+---
+
+## Archived 2026-10-17 — superseded "CURRENT STATE" section from the 2026-10-08 Issue #70 thread
+
+The following was the top "CURRENT STATE FOR THIS THREAD" section of `docs/HANDOFF.md` from
+2026-10-08 until this archive pass. It is superseded: issues #69 and #70 are both now `CLOSED`
+on the tracker (confirmed via `gh issue view` on 2026-10-17), resolving the tracker-hygiene
+item this section used to flag as open. Kept verbatim for the detailed file-by-file narrative.
+
+# Handoff — 2026-10-08, later same day (Issue #70 — RAPM third of #69 — implemented, verified, and merged to `main` via a second `subagent-brief` dispatch) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
+
+## What this thread did
+
+Picked up directly from the previous 2026-10-08 entry below (now demoted into "Closed work"), which had spec'd issue #70 but not implemented it. This thread implemented #70 end to end via a single `subagent-brief` full-tier dispatch (run id `20261008-202602-4027b0`, worktree `agent-a55aa191aa09f4d54`), independently re-verified every one of its 5 success criteria against the real files (not just trusted its self-reported JSON), then merged.
+
+**Issue #69's commit from the prior session (`tools/generate_historical_season_snapshots.R` + 6 standings/bracket cache files) was committed separately first** as `382f55d` before this thread's own work landed — so by the time this thread started, #69's Standings/Bracket two-thirds were already in `main`, not still sitting uncommitted as the prior entry describes. Cross-check `git log` yourself before trusting either entry's framing of what's committed, since this is the kind of detail that goes stale fast.
+
+## What's actually implemented (new/changed this session)
+
+| File | Status | Notes |
+|---|---|---|
+| `rapm_engine.R` | **Changed, 597 lines, committed `5d7711f`** | New `fit_rapm_ratings(seasons = ALL_SEASONS, lambda = 900, force_refresh = FALSE, team_attribution = c("current_roster", "season_pooled"))` (lines ~443-566) extracted from `estimate_rapm_ratings()`'s body — possession pull, season filter (the actual bug fix: `dplyr::filter(possessions, season %in% seasons)`, previously missing so a per-season call silently fit across all pooled seasons), design-matrix build, ridge fit, and team-vote logic. `team_attribution = "current_roster"` keeps today's `reattribute_to_current_roster_team()` + box-score-fallback-never-crashes behavior. `team_attribution = "season_pooled"` skips reattribution (keeps the season's real primary-team vote) and hard-stops via `stop()` instead of falling back if the possession pull fails for the requested season(s). `estimate_rapm_ratings()` (lines ~575-592) is now a thin wrapper: calls `fit_rapm_ratings(..., team_attribution = "current_roster")` then `saveRDS()`. Re-verified independently: `cache/rapm_ratings.rds`'s `md5sum` is identical before/after this refactor (`fae1678bea5cabcde3ec1719e36cedc3`) — confirmed zero behavior change for the live path, not just taken on faith. |
+| `tools/generate_historical_season_snapshots.R` | **Changed, 151 lines (was 121), committed `5d7711f`** | Added a loop calling `fit_rapm_ratings(seasons = yr, lambda = 900, team_attribution = "season_pooled")` for each of 2023/2024/2025, tags a `season = yr` column, `saveRDS()`s to `cache/rapm_ratings_<year>.rds`. This script is the **only** call site in the repo passing `team_attribution = "season_pooled"` (re-verified: `grep -rn "season_pooled" --include=*.R .` matches only `rapm_engine.R`'s own parameter definition/branches and this one call). Does not touch `cache/rapm_ratings.rds` and the standings/bracket section from #69 is unmodified (re-verified via `git status --short` in the dispatch worktree before merge — only this file, `rapm_engine.R`, and the 3 new RAPM caches were touched). |
+| `cache/rapm_ratings_{2023,2024,2025}.rds` | **New, committed `5d7711f`** | 156/157/181 rows respectively. `data_source` is `real_wnba_stats_possessions` for every row in all 3 files (no fallback rows triggered). Spot-checked Angel Reese (`player_id` `1642291`): `team` = `"Chicago Sky"` in both the 2024 and 2025 files (her actual team those seasons, season-pooled attribution) vs. `"Atlanta Dream"` in the live `cache/rapm_ratings.rds` (current-roster attribution, her 2026 team) — confirms the two attribution modes genuinely diverge, independently re-run, not just read from the subagent's own report. Not present in the 2023 file (not yet in the league/possession data that season). |
+| `cache/rapm_ratings.rds` | **Unchanged** | `md5sum` identical before/after this session's work (see above) and before/after the full `tools/generate_historical_season_snapshots.R` re-run. |
+
+**Committed and merged to `main` as `5d7711f`** (fast-forward from `fdd4858`). **Not yet pushed** — `git status -sb` shows `main...origin/main [ahead 1]` as of this writing; pushing was left to the user, per normal git-safety convention.
+
+## Validation performed this session — and what wasn't
+
+- **Performed** (all independently re-run by this thread, not just read from the dispatched subagent's self-reported result): re-grepped `rapm_engine.R` for `fit_rapm_ratings`/`estimate_rapm_ratings` to confirm the extraction actually happened and the old inline logic is gone; re-hashed `cache/rapm_ratings.rds` and confirmed it matches the subagent's claimed before/after hash; `readRDS()`'d all 3 new RAPM cache files directly and checked `season`, `team`, `data_source` columns, including the Angel Reese cross-file spot check above; re-ran `git status --short` in the dispatch worktree pre-merge to confirm no out-of-scope file was touched; re-grepped the whole repo for `season_pooled` to confirm single-call-site scope.
+- **Not performed**: no re-run of the full `run_full_pipeline.R` DAG (out of scope — this was a standalone historical-snapshot generation, not a live-pipeline change); no k-fold cross-validation of `lambda = 900` (explicitly out of scope per #70's own ticket text, flagged as a future follow-up); push to `origin/main` (left to the user).
+
+## Concrete next step (as of 2026-10-08, superseded — see current `docs/HANDOFF.md` top section)
+
+1. **Immediate**: decide whether to `git push` — `main` is 1 commit ahead of `origin/main` (`5d7711f`).
+2. **Tracker hygiene**: issue #70 is fully implemented and merged but **still shows `OPEN`** on the tracker (`gh issue view 70`), and #69's `sub-issues-completed` still reads `0/1` (GitHub doesn't auto-close a sub-issue from a commit here — no `Closes #70` trailer was used, intentionally, since the fix was dispatched/verified by this session rather than written by a human closing it inline). Decide whether to `gh issue close 70` (and then 69, since both of its thirds — Standings/Bracket and RAPM — are now shipped) — this is a visible tracker action, left for the user rather than done automatically.
+3. Beyond that, nothing in this repo is blocking on #69/#70 any further — move to whichever item in "Open items" below is highest priority, or to issue #43/#44's remaining control-panel/auth work.
