@@ -17,21 +17,18 @@ if %ERRORLEVEL% equ 0 (
 
 echo Using Rscript: %RSCRIPT% >> "%LOG_FILE%"
 
-REM 1. Ingest yesterday's box scores
-echo [Step 1/3] Running Daily Ingestion... >> "%LOG_FILE%"
+REM Run the master quantitative pipeline (all stages orchestrated internally in DAG order)
+echo Running Master Quantitative Pipeline (run_full_pipeline.R)... >> "%LOG_FILE%"
 %RSCRIPT% "run_full_pipeline.R" >> "%LOG_FILE%" 2>&1
-
-REM 2. Grade yesterday's bets and compute rolling accuracy
-echo [Step 2/3] Grading Yesterday's Bets & Rolling ROI... >> "%LOG_FILE%"
-%RSCRIPT% "bet_tracker.R" >> "%LOG_FILE%" 2>&1
-
-REM 3. Generate today's new +EV picks
-echo [Step 3/3] Updating Today's Betting Slate (+EV Engine)... >> "%LOG_FILE%"
-%RSCRIPT% "market_odds_engine.R" >> "%LOG_FILE%" 2>&1
+set PIPELINE_EXIT=%ERRORLEVEL%
 
 echo ================================================================== >> "%LOG_FILE%"
-echo PIPELINE RUN COMPLETED SUCCESSFULLY: %DATE% %TIME% >> "%LOG_FILE%"
+if "%PIPELINE_EXIT%"=="0" (
+    echo PIPELINE RUN COMPLETED SUCCESSFULLY: %DATE% %TIME% >> "%LOG_FILE%"
+) else (
+    echo PIPELINE RUN FAILED WITH EXIT CODE %PIPELINE_EXIT%: %DATE% %TIME% >> "%LOG_FILE%"
+)
 echo ================================================================== >> "%LOG_FILE%"
 echo. >> "%LOG_FILE%"
 
-exit /b 0
+exit /b %PIPELINE_EXIT%

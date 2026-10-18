@@ -79,14 +79,11 @@ optional (silent fallback to fixture data).
 1. **`schedule_daily.bat`** (Windows Task Scheduler target, runs daily ~05:00 EST per the phase-2 log):
    ```
    cd NBA Analytics
-   Rscript run_full_pipeline.R   >> pipeline_execution.log
-   Rscript bet_tracker.R         >> pipeline_execution.log
-   Rscript market_odds_engine.R  >> pipeline_execution.log
+   Rscript run_full_pipeline.R >> pipeline_execution.log
    ```
-   Note: `run_full_pipeline.R` itself already calls `bet_tracker.R` and effectively duplicates
-   `market_odds_engine.R`'s role — the `.bat` file predates some later additions to
-   `run_full_pipeline.R` and the two are not perfectly deduplicated. This is a known inconsistency,
-   not a bug to "fix" blindly — verify current intent before touching.
+   Note: Simplified to delegate exclusively to `run_full_pipeline.R` (issue #11), which orchestrates
+   the full 13-stage DAG in correct sequence (including risk management, market odds, notifications,
+   bet tracking, and prediction logging). No duplicate individual stages are run.
 
 2. **`run_full_pipeline.R`** (the "master" DAG, called by the `.bat` and directly runnable). Executes,
    in order, via a `run_stage(script_name, description)` helper that `source()`s each file inside a
@@ -521,8 +518,8 @@ Still open as of the current code (verified by inspection, not just doc claims):
   `bet_log.rds` vs `betting_ledger.rds`, root vs `cache/` duplication of some `.rds` files).
 - Two different sigma constants (11.2 vs 11.8) for the margin→probability normal-CDF conversion across
   `market_odds_engine.R` vs `roster_bottom_up_engine.R`/`playoff_simulator.R`.
-- `schedule_daily.bat` and `run_full_pipeline.R` overlap (both eventually call bet grading / odds
-  evaluation) — not unified into one clean invocation.
+- `schedule_daily.bat` and `run_full_pipeline.R` overlap — fixed per issue #11 (`schedule_daily.bat`
+  now delegates directly to `run_full_pipeline.R` without redundant stage calls).
 
 ---
 
