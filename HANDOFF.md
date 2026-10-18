@@ -1,9 +1,8 @@
 # HANDOFF — NBA Analytics
 
-Updated 2026-10-18 (second pass same day, after commit `051dc76`), following a session that
-discovered issues #1–#8 had *already* been resolved by a separate parallel session before it could
-land its own (redundant) fix for #1 — see §2.3 below, read it before starting #9. Originally
-written 2026-10-17.
+Updated 2026-10-18 (third pass same day, after commits `869c3ad` and `490afec` closed issues #9
+and #10 via the `subagent-brief` skill workflow described in §5.1). Originally written 2026-10-17;
+second pass documented the #1–#8 parallel-session collision (§2.3).
 For whoever picks this up next — human or agent, zero assumed context.
 
 ---
@@ -15,7 +14,9 @@ A personal Windows-only NBA analytics + quantitative sports-betting pipeline. Mo
 `schedule_daily.bat` + Windows Task Scheduler (daily ~05:00) and `run_full_pipeline.R`.
 
 **Git Repository:** Remote `origin` → `https://github.com/kailot-harris/NBA_analytics`, default/only branch `main`.
-Working tree is clean. Issues #1 through #8 are fully resolved, tested, committed, pushed, and closed on GitHub.
+Working tree is clean (aside from an untracked `.claude/` directory, see §5.2). Issues #1 through
+#10 are fully resolved, tested, committed, pushed, and closed on GitHub. Only #11 and #12 remain
+open.
 
 **Read `REPO_MAP.md` first, in full, before touching any code.** It is an exhaustive, verified,
 file-by-file inventory (data sources, the pipeline DAG, every script's real vs. synthetic
@@ -46,10 +47,12 @@ code). Reading order: `REPO_MAP.md` → `ADR.md` (Phase 1 rationale) → `engine
 11. `1b0a834` — `fix(issue-6)`: Wire Tab 6 model calibration to live `prediction_accuracy_logger.R` and `live_calibration.R`.
 12. `71051ca` — `fix(issue-7)`: Enhance `load_embeddings.R` and plot real 16-D team embeddings in Tab 5 via 2D PCA.
 13. `391e47f` — `fix(issue-8)`: Feed risk engine drawdown-tiered Kelly multiplier into bet sizing (`market_odds_engine.R` & `notify_bets.R`).
+14. `869c3ad` — `Fix #9`: `live_game_listener.R` now reads `ODDS_API_KEY` first, falling back to `THE_ODDS_API_KEY`.
+15. `490afec` — `Fix #10`: Renamed `bet_tracker.r` → `bet_tracker.R` (100% rename, history preserved via `git log --follow`).
 
 ### 2.2 `INCONSISTENCY_REMEDIATION_PLAN.md` → GitHub issues #1–#12
 
-Verified status as of 2026-10-18 (`gh issue list --repo kailot-harris/NBA_analytics --state all`):
+Verified status as of 2026-10-18, after #9/#10 landed (`gh issue list --repo kailot-harris/NBA_analytics --state all`):
 
 | # | Title | Priority | State | Commit | Summary of Resolution |
 |---|---|---|---|---|---|
@@ -61,10 +64,14 @@ Verified status as of 2026-10-18 (`gh issue list --repo kailot-harris/NBA_analyt
 | [#6](https://github.com/kailot-harris/NBA_analytics/issues/6) | `app.R` Tab 6 calibration curve is hardcoded/fake | P2 | CLOSED | `1b0a834` | Built `prediction_accuracy_logger.R` (`get_prediction_log()`, `log_todays_predictions()`, `reconcile_predictions()`); declared `CACHE_PREDICTION_LOG` in `config.R`; upgraded `app.R` Tab 6 with 4 KPI value boxes and dark-themed `live_calibration.R::calibration_analysis()` plot; wired stage into `run_full_pipeline.R`. |
 | [#7](https://github.com/kailot-harris/NBA_analytics/issues/7) | `app.R` Tab 5 "Team Embeddings" doesn't plot real embeddings | P2 | CLOSED | `71051ca` | Enhanced `load_embeddings.R` with `get_nba_team_metadata()`, `get_team_embeddings()`, `get_embeddings_pca()`, `get_team_similarity_matrix()`; updated `app.R` Tab 5 with a true 2D PCA projection of the 16-D vectors (`plot_embeddings_pca`) and segregated the shot quality luck profile into its own card (`plot_shot_quality_luck`). |
 | [#8](https://github.com/kailot-harris/NBA_analytics/issues/8) | Risk engine's Kelly multiplier not fed back into bet sizing | P2 | CLOSED | `391e47f` | Integrated `CACHE_RISK_STATE` into `market_odds_engine.R` so `calculate_kelly()` scales by `active_kelly_multiplier` (and flags `🛑 TRADING HALTED (Drawdown Stop-Loss)` when 0.0); updated `notify_bets.R` to respect circuit breaker and dynamic Kelly tier; reordered `run_full_pipeline.R` DAG so `risk_management_engine.R` executes before `market_odds_engine.R`. |
-| [#9](https://github.com/kailot-harris/NBA_analytics/issues/9) | `live_game_listener.R` env-var naming inconsistency | P3 | OPEN | — | `live_game_listener.R` reads `THE_ODDS_API_KEY`, while `config.R` and `market_odds_engine.R` read `ODDS_API_KEY`. |
-| [#10](https://github.com/kailot-harris/NBA_analytics/issues/10) | `bet_tracker.r` lowercase extension | P3 | OPEN | — | File is named `bet_tracker.r` instead of `bet_tracker.R`, inconsistent with conventions and casing across repo. |
-| [#11](https://github.com/kailot-harris/NBA_analytics/issues/11) | `schedule_daily.bat`/`run_full_pipeline.R` overlap | P3 | OPEN | — | `schedule_daily.bat` runs Python embeddings and R pipeline, while `run_full_pipeline.R` also orchestrates stages. Needs deduplication/clear boundaries. |
+| [#9](https://github.com/kailot-harris/NBA_analytics/issues/9) | `live_game_listener.R` env-var naming inconsistency | P3 | CLOSED | `869c3ad` | `live_game_listener.R:17` now reads `Sys.getenv("ODDS_API_KEY", Sys.getenv("THE_ODDS_API_KEY", ""))` — matches `market_odds_engine.R`'s naming, with backward-compatible fallback. `REPO_MAP.md`'s `THE_ODDS_API_KEY` row updated to describe it as a legacy fallback, not an inconsistency. |
+| [#10](https://github.com/kailot-harris/NBA_analytics/issues/10) | `bet_tracker.r` lowercase extension | P3 | CLOSED | `490afec` | File renamed `bet_tracker.r` → `bet_tracker.R` (git-verified 100% rename, history intact). `run_full_pipeline.R:108`'s `run_stage("bet_tracker.R", ...)` call site and `REPO_MAP.md`'s six documentation references updated. `app.R` had no reference to update; `schedule_daily.bat` already used the uppercase name. |
+| [#11](https://github.com/kailot-harris/NBA_analytics/issues/11) | `schedule_daily.bat`/`run_full_pipeline.R` overlap | P3 | OPEN | — | `schedule_daily.bat` runs Python embeddings and R pipeline, while `run_full_pipeline.R` also orchestrates stages. Needs deduplication/clear boundaries. **Next up.** |
 | [#12](https://github.com/kailot-harris/NBA_analytics/issues/12) | `WNBA_REPLICATION_PLAN.md` is stale | P3 | OPEN | — | Document describes a Phase-0 proposal that was superseded by independent development of the actual `WNBA Analytics` repo. Needs archival banner or update. |
+
+Full criteria/evidence for #9 and #10 live in `.subagent-runs/<run-id>/` (run ids
+`20261018-032449-67c159` and `20261018-033123-c4df40` respectively — see `runlog.R show --run-id
+<id>`), not duplicated here; this table is a pointer, not the evidence itself.
 
 ### 2.3 Gotcha: parallel-session collision on issue #1 (2026-10-18)
 
@@ -106,7 +113,7 @@ All 8 active stages are monitored with `.check_stage_output()` staleness verific
 - `risk_management_engine.R` (`cache/risk_state.rds`) -> `>>> [FRESH]`
 - `market_odds_engine.R` (`cache/latest_value_bets.rds`) -> `>>> [FRESH]`
 - `prediction_accuracy_logger.R` (`cache/prediction_accuracy_log.rds`) -> `>>> [FRESH]`
-- `bet_tracker.r` (`cache/betting_ledger.rds`) -> `>>> [FRESH]`
+- `bet_tracker.R` (`cache/betting_ledger.rds`) -> `>>> [FRESH]`
 
 **Pipeline DAG Ordering Note:**
 `risk_management_engine.R` is intentionally sequenced **before** `market_odds_engine.R` so that current bankroll drawdown state and the dynamic Kelly multiplier are written to `cache/risk_state.rds` before `market_odds_engine.R` sizes today's slate bets.
@@ -124,7 +131,7 @@ All 8 active stages are monitored with `.check_stage_output()` staleness verific
 - `risk_management_engine.R`: Analyzes real resolved bets from `cache/betting_ledger.rds`.
 - `prediction_accuracy_logger.R`: Tracks real model predictions and reconciles against completed box score game outcomes.
 - `load_embeddings.R` / `app.R` Tab 5: Computes real 2D PCA on 16-D vectors from `cache/team_embeddings.csv`.
-- `bet_tracker.r`: Grades real bets against actual box scores in `cache/betting_ledger.rds`.
+- `bet_tracker.R`: Grades real bets against actual box scores in `cache/betting_ledger.rds`.
 
 ### Explicit Loud Fallbacks
 When cache files are missing or external APIs are unavailable, engines emit loud `>>> [WARN] Using SYNTHETIC_FALLBACK ...` console logs:
@@ -140,7 +147,15 @@ When cache files are missing or external APIs are unavailable, engines emit loud
 
 ### 5.1 The `subagent-brief` skill is the process being used for issue work
 
-Issue work in this repo (at least by Session B above, and recommended for whoever picks up #9–#12)
+This workflow was reused successfully, with no collision, for #9 and #10 (run ids
+`20261018-032449-67c159` and `20261018-033123-c4df40`): verify live state → write brief → validate
+→ create worktree → register run → dispatch plain `general-purpose` agent into that worktree →
+independently re-verify every criterion → `record-result` → fast-forward `git merge` → `set-status
+merged` → remove worktree/branch → push → close issue (GitHub auto-closed both from the commit
+message's `Fix #N` / closing-keyword text, so the explicit `gh issue close` calls reported
+"already closed" — that's expected, not an error). Follow the same sequence for #11 and #12.
+
+Issue work in this repo (at least by Session B above, and recommended for whoever picks up #11–#12)
 goes through the user's `subagent-brief` skill
 (`C:\Users\kailo\.claude\skills\subagent-brief\`), not ad hoc delegation. Concretely, per issue:
 
