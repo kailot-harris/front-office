@@ -47,8 +47,8 @@ simulate_single_series <- function(team_high, team_low, net_high, net_low, n_sim
   rating_diff <- net_high - net_low
   
   # Game win probabilities for High Seed
-  p_high_home <- pnorm((rating_diff + hca_pts) / 11.2)
-  p_high_away <- pnorm((rating_diff - hca_pts) / 11.2)
+  p_high_home <- pnorm((rating_diff + hca_pts) / (if (exists("MARGIN_SIGMA")) MARGIN_SIGMA else 11.8))
+  p_high_away <- pnorm((rating_diff - hca_pts) / (if (exists("MARGIN_SIGMA")) MARGIN_SIGMA else 11.8))
   
   sim_results <- matrix(0, nrow = n_sims, ncol = 2) # [high_wins, low_wins]
   series_lengths <- integer(n_sims)

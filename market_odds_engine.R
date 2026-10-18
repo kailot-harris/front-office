@@ -271,7 +271,7 @@ get_model_slate_probabilities <- function(slate_df) {
         }
         
         fair_margin <- (h_net - a_net) + 2.4 + fatigue_drag
-        p_home <- pnorm(fair_margin / 11.2)
+        p_home <- pnorm(fair_margin / (if (exists("MARGIN_SIGMA")) MARGIN_SIGMA else 11.8))
         p_home <- min(max(p_home, 0.03), 0.97)
         home_probs[i] <- round(p_home, 3)
       } else {

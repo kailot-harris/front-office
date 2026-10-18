@@ -19,6 +19,8 @@ suppressPackageStartupMessages({
   library(scales)
 })
 
+if (file.exists("config.R")) source("config.R")
+
 `%||%` <- function(a, b) if (!is.null(a) && length(a) > 0 && !is.na(a)) a else b
 
 # ------------------------------------------------------------------------------
@@ -797,7 +799,7 @@ server <- function(input, output, session) {
     
     fair_margin <- (h_net - a_net) + hca
     fair_spread <- -fair_margin
-    p_home <- pnorm(fair_margin / 11.2)
+    p_home <- pnorm(fair_margin / (if (exists("MARGIN_SIGMA")) MARGIN_SIGMA else 11.8))
     p_home <- min(max(p_home, 0.01), 0.99)
     
     fair_ml <- ifelse(p_home >= 0.5,

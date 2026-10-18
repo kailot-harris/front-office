@@ -169,7 +169,7 @@ predict_live_matchup <- function(home_team, away_team, active_rosters, player_ra
   hca <- 2.40 # Standard NBA Home Court Advantage
   expected_margin <- (h_res$net_rating - a_res$net_rating) + hca
   
-  home_prob <- pnorm(expected_margin / 11.8)
+  home_prob <- pnorm(expected_margin / (if (exists("MARGIN_SIGMA")) MARGIN_SIGMA else 11.8))
   fair_spread <- -round(expected_margin, 1)
   
   fair_home_ml <- if_else(home_prob >= 0.50,
@@ -234,7 +234,7 @@ project_all_30_teams <- function() {
   
   # Round-Robin Schedule Simulation Matrix (41 Home, 41 Away)
   hca <- 2.40
-  sigma <- 11.8
+  sigma <- if (exists("MARGIN_SIGMA")) MARGIN_SIGMA else 11.8
   games_per_opponent <- 82 / (n_teams - 1)
   
   expected_wins <- numeric(n_teams)
@@ -294,7 +294,7 @@ get_fair_spread <- function(home_team, away_team) {
   hca <- 2.40
   margin <- (h_row$Net_Rating - a_row$Net_Rating) + hca
   spread <- -round(margin, 1)
-  win_prob <- round(pnorm(margin / 11.8), 3)
+  win_prob <- round(pnorm(margin / (if (exists("MARGIN_SIGMA")) MARGIN_SIGMA else 11.8)), 3)
   
   cat(sprintf("\n🏀 MATCHUP: %s (Away) @ %s (Home)\n", away_team, home_team))
   cat(sprintf("   ► %s Rating: %+0.2f | %s Rating: %+0.2f\n", home_team, h_row$Net_Rating, away_team, a_row$Net_Rating))
