@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { TeamProjection, ModelMetadata } from '@/lib/types';
 import { Trophy, TrendingUp, Filter, ArrowUpDown, ShieldAlert, Award } from 'lucide-react';
+import { TeamLogo } from '@/components/TeamLogo';
 
 interface StandingsClientProps {
   teams: TeamProjection[];
@@ -51,32 +52,42 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams }) => {
     <div className="space-y-6">
       {/* Top Stat Highlights */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
-          <div className="p-3 bg-amber-500/10 text-amber-400 rounded-lg">
-            <Trophy className="w-6 h-6" />
+        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
+          <div className="relative flex-shrink-0">
+            <div className="w-12 h-12 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
+              <TeamLogo team={topTitleFavorite?.team} size="lg" />
+            </div>
+            <div className="absolute -bottom-1 -right-1 p-1 bg-amber-500/20 text-amber-400 rounded-md border border-amber-500/30 shadow">
+              <Trophy className="w-3.5 h-3.5" />
+            </div>
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="text-xs text-slate-400 uppercase font-semibold">Title Favorite</div>
-            <div className="text-xl font-bold text-white flex items-baseline gap-2">
-              {topTitleFavorite?.team_name}
-              <span className="text-xs font-medium text-amber-400">
-                {(topTitleFavorite?.ensemble_title_prob * 100).toFixed(1)}% prob
+            <div className="text-lg font-bold text-white flex items-baseline gap-2 truncate">
+              <span className="truncate">{topTitleFavorite?.team_name}</span>
+              <span className="text-xs font-semibold text-amber-400 flex-shrink-0">
+                {(topTitleFavorite?.ensemble_title_prob * 100).toFixed(1)}%
               </span>
             </div>
             <div className="text-xs text-slate-400">{topTitleFavorite?.ensemble_mean_wins.toFixed(1)} proj wins</div>
           </div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
-          <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-lg">
-            <TrendingUp className="w-6 h-6" />
+        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
+          <div className="relative flex-shrink-0">
+            <div className="w-12 h-12 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
+              <TeamLogo team={topWinProjected?.team} size="lg" />
+            </div>
+            <div className="absolute -bottom-1 -right-1 p-1 bg-emerald-500/20 text-emerald-400 rounded-md border border-emerald-500/30 shadow">
+              <TrendingUp className="w-3.5 h-3.5" />
+            </div>
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="text-xs text-slate-400 uppercase font-semibold">Top Projected Seed</div>
-            <div className="text-xl font-bold text-white flex items-baseline gap-2">
-              {topWinProjected?.team}
-              <span className="text-xs font-medium text-emerald-400">
-                {topWinProjected?.ensemble_mean_wins.toFixed(1)} - {topWinProjected?.proj_losses.toFixed(1)}
+            <div className="text-lg font-bold text-white flex items-baseline gap-2 truncate">
+              <span className="truncate">{topWinProjected?.team_name}</span>
+              <span className="text-xs font-semibold text-emerald-400 flex-shrink-0">
+                {topWinProjected?.ensemble_mean_wins.toFixed(1)}W
               </span>
             </div>
             <div className="text-xs text-slate-400">Win Pct {(topWinProjected?.win_pct * 100).toFixed(1)}%</div>
@@ -84,7 +95,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams }) => {
         </div>
 
         <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
-          <div className="p-3 bg-indigo-500/10 text-indigo-400 rounded-lg">
+          <div className="p-3 bg-indigo-500/10 text-indigo-400 rounded-lg flex-shrink-0">
             <Award className="w-6 h-6" />
           </div>
           <div>
@@ -94,15 +105,20 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams }) => {
           </div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
-          <div className="p-3 bg-rose-500/10 text-rose-400 rounded-lg">
-            <ShieldAlert className="w-6 h-6" />
+        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
+          <div className="relative flex-shrink-0">
+            <div className="w-12 h-12 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
+              <TeamLogo team={mostVolatileTeam?.team} size="lg" />
+            </div>
+            <div className="absolute -bottom-1 -right-1 p-1 bg-rose-500/20 text-rose-400 rounded-md border border-rose-500/30 shadow">
+              <ShieldAlert className="w-3.5 h-3.5" />
+            </div>
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="text-xs text-slate-400 uppercase font-semibold">Highest Variance</div>
-            <div className="text-xl font-bold text-white flex items-baseline gap-2">
-              {mostVolatileTeam?.team}
-              <span className="text-xs font-medium text-rose-400">
+            <div className="text-lg font-bold text-white flex items-baseline gap-2 truncate">
+              <span className="truncate">{mostVolatileTeam?.team_name}</span>
+              <span className="text-xs font-semibold text-rose-400 flex-shrink-0">
                 ±{mostVolatileTeam?.ensemble_sd_wins.toFixed(1)} SD
               </span>
             </div>
@@ -233,12 +249,15 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams }) => {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
-                        <span className="w-10 h-7 rounded bg-slate-800 border border-slate-700/80 flex items-center justify-center font-bold text-xs tracking-wider text-amber-400 font-mono">
-                          {team.team}
-                        </span>
+                        <div className="w-10 h-10 rounded-lg bg-slate-950/80 border border-slate-800 p-1 flex items-center justify-center flex-shrink-0 group-hover:border-slate-700 transition-colors">
+                          <TeamLogo team={team.team} size="md" />
+                        </div>
                         <div>
-                          <div className="font-semibold text-white group-hover:text-indigo-400 transition-colors">
-                            {team.team_name}
+                          <div className="font-semibold text-white group-hover:text-indigo-400 transition-colors flex items-center gap-2">
+                            <span>{team.team_name}</span>
+                            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800/80 text-amber-400 border border-slate-700/60 font-semibold">
+                              {team.team}
+                            </span>
                           </div>
                           <div className="text-xs text-slate-400">
                             {team.proj_wins.toFixed(1)}W - {team.proj_losses.toFixed(1)}L

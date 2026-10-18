@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { TeamProjection, ModelMetadata } from '@/lib/types';
 import { GitCompare } from 'lucide-react';
+import { TeamLogo } from '@/components/TeamLogo';
 
 interface VariantsClientProps {
   teams: TeamProjection[];
@@ -330,10 +331,13 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
                     >
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2.5">
-                          <span className="w-9 h-7 rounded bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-xs font-mono text-amber-400">
-                            {team.team}
-                          </span>
-                          <span className="font-semibold text-white">{team.team_name}</span>
+                          <div className="w-8 h-8 rounded-lg bg-slate-950/80 border border-slate-800 p-1 flex items-center justify-center flex-shrink-0">
+                            <TeamLogo team={team.team} size="sm" />
+                          </div>
+                          <div>
+                            <span className="font-semibold text-white block leading-tight">{team.team_name}</span>
+                            <span className="text-[10px] font-mono text-amber-400 font-semibold">{team.team}</span>
+                          </div>
                         </div>
                       </td>
                       <td className="py-3 px-3 text-center font-mono font-bold text-indigo-400 bg-indigo-950/20 text-base">

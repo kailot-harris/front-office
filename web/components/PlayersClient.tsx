@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { PlayerProjection } from '@/lib/types';
 import { Search, AlertTriangle, ArrowUpDown, Filter, Sparkles, UserCheck } from 'lucide-react';
+import { TeamLogo } from '@/components/TeamLogo';
 
 interface PlayersClientProps {
   players: PlayerProjection[];
@@ -307,8 +308,11 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                         p10-p90 PTS: {player.pts_p10.toFixed(1)} - {player.pts_p90.toFixed(1)}
                       </div>
                     </td>
-                    <td className="py-3 px-3 text-center font-mono font-bold text-xs text-amber-400">
-                      {player.team}
+                    <td className="py-3 px-3 text-center">
+                      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-950/80 border border-slate-800">
+                        <TeamLogo team={player.team} size="xs" />
+                        <span className="font-mono font-bold text-xs text-amber-400">{player.team}</span>
+                      </div>
                     </td>
                     <td className="py-3 px-3 text-center text-xs font-semibold text-slate-300">
                       {player.position}
