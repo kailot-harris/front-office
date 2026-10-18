@@ -1,6 +1,6 @@
 # MLB Analytics — Handoff Document
 
-**Last updated**: 2026-10-18, after completing Phase 1 Wave 2 (Issue #14) and closing Phase 1 (Issue #12). **`main` is clean and up to date with `origin/main`** (confirmed via `git status -sb` and `git push`). Written for whoever picks this repo up next, cold — read this before touching anything.
+**Last updated**: 2026-10-18, after completing Phase 2 Wave 1 (Issue #16). **`main` is clean and up to date with `origin/main`**. Written for whoever picks this repo up next, cold — read this before touching anything.
 
 ## What this project is
 
@@ -8,13 +8,15 @@
 
 - **Phase 0 (research)**: **100% complete and closed** (all 10 issues #1–#10 closed). Deliverable: `docs/MLB_REPLICATION_PLAN.md`.
 - **Phase 1 (data foundation)**: **100% complete and closed** (all issues #12, #13, #14 closed). Full pipeline skeleton and all data acquisition/crosswalk stages operational and verified.
-- **Next up**: **Phase 2, Wave 1 (Issue #16)** — Pythagorean baseline (`mlb_pythag_baseline.R`) and Elo engine (`mlb_elo_engine.R`) with starting-pitcher adjustment.
+- **Phase 2, Wave 1 (rating engines)**: **100% complete and closed** (Issue #16 closed). Pythagorean baseline (`mlb_pythag_baseline.R`) and Elo engine (`mlb_elo_engine.R`) with starting-pitcher adjustment implemented and verified.
+- **Next up**: **Phase 2, Wave 2 (Issue #17)** — Empirical constant derivation (`tools/derive_mlb_constants.R`) and park-factor adjustment decision.
 
 **Read in this order**:
-1. `docs/task_assignments_phase1.md` — interface contracts and cache layout for Phase 1.
-2. `docs/MLB_IMPLEMENTATION_PLAN.md` (314 lines, committed `4b19f23`) — the Phase 1–9 engine-build roadmap (read Phase 2 before starting #16).
-3. `docs/MLB_REPLICATION_PLAN.md` (530 lines, committed `1a495e9`, self-check-amended `237d1cb`) — the Phase 0 synthesis deliverable (§3 and §4 provide the mathematical foundations for Phase 2).
-4. `docs/research/phase0c-elo-methodology.md` and `phase0b-team-player-stats.md` — primary methodology files for Phase 2 ratings.
+1. `docs/task_assignments_phase2.md` — interface contracts and cache layout for Phase 2.
+2. `docs/task_assignments_phase1.md` — interface contracts and cache layout for Phase 1.
+3. `docs/MLB_IMPLEMENTATION_PLAN.md` (314 lines, committed `4b19f23`) — the Phase 1–9 engine-build roadmap (read Phase 2 before starting #17).
+4. `docs/MLB_REPLICATION_PLAN.md` (530 lines, committed `1a495e9`, self-check-amended `237d1cb`) — the Phase 0 synthesis deliverable (§3 and §4 provide the mathematical foundations for Phase 2).
+5. `docs/research/phase0c-elo-methodology.md` and `phase0b-team-player-stats.md` — primary methodology files for Phase 2 ratings.
 
 ## Progress tracking
 
@@ -43,9 +45,9 @@ All tracking lives in the GitHub issue tracker (`kailot-harris/MLB-Analytics`), 
 | **#12** | **Phase 1: Data foundation** | **CLOSED** | — | **Completed & closed (Waves 1 & 2 fully verified)** |
 | **#13** | **Phase 1, Wave 1: Ingestion scripts + ID-crosswalk** | **CLOSED** | — | **Completed in commit `bd90439` with full live verification** |
 | **#14** | **Phase 1, Wave 2: Pipeline skeleton (run_full_pipeline.R)** | **CLOSED** | — | **Completed: 4/4 stages wired, output validation, DuckDB logged** |
-| **#15** | **Phase 2: Rating engine (Pythagorean + Elo)** | **OPEN** | none (#12 closed) | **ACTIVE NEXT PHASE** |
-| **#16** | **Phase 2, Wave 1: Pythagorean baseline + Elo engine** | **OPEN** | none (#12 closed) | **NEXT UP (parallelizable: 2 disjoint files)** |
-| #17 | Phase 2, Wave 2: Constant derivation + park-factor decision | OPEN | #16 | Blocked by #16 |
+| **#15** | **Phase 2: Rating engine (Pythagorean + Elo)** | **OPEN** | none (#12 closed) | **ACTIVE PHASE** |
+| **#16** | **Phase 2, Wave 1: Pythagorean baseline + Elo engine** | **CLOSED** | — | **Completed: Pythagenpat baseline + 4-factor Elo engine wired & verified** |
+| **#17** | **Phase 2, Wave 2: Constant derivation + park-factor decision** | **OPEN** | none (#16 closed) | **NEXT UP (`tools/derive_mlb_constants.R`)** |
 | #18 | Phase 3: Specialty models (Marcel, bullpen fatigue) | OPEN | #15 | Parallel with #19 once Phase 2 lands |
 | #19 | Phase 4: Postseason bracket simulator | OPEN | #15 | Parallel with #18 |
 | #20 | Phase 5: Risk management engine (port) | OPEN | #12 | Unblocked now that Phase 1 is closed |
@@ -56,18 +58,21 @@ All tracking lives in the GitHub issue tracker (`kailot-harris/MLB-Analytics`), 
 
 ## What's actually implemented
 
-All Phase 1 code is implemented, live-tested, cached, and committed.
+All Phase 1 and Phase 2 Wave 1 code is implemented, live-tested, cached, and committed.
 
 | File | Lines | Type | Callable Entrypoint | Output / Cache |
 |---|---|---|---|---|
-| `config.R` | 247 | Real | `source("config.R")` | Single source of truth for paths, `cache_path()`, team/ID seed table, `MLB_WAR_SOURCE = "fWAR"`, Phase 2/3 placeholders. |
+| `config.R` | 251 | Real | `source("config.R")` | Single source of truth for paths, `cache_path()`, team/ID seed table, `MLB_WAR_SOURCE = "fWAR"`, Phase 2/3 placeholders. |
 | `logging_utils.R` | 242 | Real | `log_info()`, `log_warn()`, `log_error()`, `log_live_call()` | Dual logging: console/text (`logs/mlb_pipeline.log`) + DuckDB analytical store (`logs/logs.duckdb`) with secret scrubbing. |
-| `run_full_pipeline.R` | 289 | Real | `run_full_pipeline(season, force_refresh)` | Orchestrates all pipeline stages with fail-safe `run_stage()` try/catch, deep stack-trace capture, output existence/freshness checking, and summary reporting. |
+| `run_full_pipeline.R` | 313 | Real | `run_full_pipeline(season, force_refresh)` | Orchestrates all 6 pipeline stages with fail-safe `run_stage()` try/catch, deep stack-trace capture, output existence/freshness checking, and summary reporting. Verified: 6/6 stages completed in 2.64s. |
 | `mlb_ingest.R` | 312 | Real | `run_mlb_ingest(season, start_date, end_date, force_refresh)` | Ingests MLB schedule (2,998 games for 2024), box scores (200 team entries), and Statcast pitch records (7,836 rows) with seam annotations (`PITCHf/x` vs `Statcast_out_of_hand`, and 2026 strike zone ABS shift). Caches to `cache/ingest/`. |
 | `mlb_stats_sync.R` | 227 | Real | `run_stats_sync(seasons, force_refresh)` | Syncs FanGraphs batter leaders (617 rows), pitcher leaders (656 rows), and park factors (30 rows), enforcing `fWAR` as default. Caches to `cache/stats_sync/`. |
 | `mlb_injury_scraper.R` | 151 | Real | `run_injury_scraper(force_refresh)` | Scrapes ESPN MLB injuries feed, extracts ESPN athlete ID via Player-Card href. Verified: 280 records parsed, 100% ID extraction. Caches to `cache/injury/mlb_injuries.rds`. |
 | `mlb_id_crosswalk.R` | 226 | Real | `run_id_crosswalk(force_refresh)`, `query_id_crosswalk(id_scheme, id_val)` | Unified 5-way join table across MLBAM (`mlb_id`), FanGraphs (`fangraphs_id`), BRef (`bref_id`), Retrosheet (`retro_id`), and ESPN (`espn_id`). Ambiguous IDs deduplicated. Verified: 136,455 players indexed, dual-direction query verified. Caches to `cache/id_crosswalk/mlb_id_crosswalk.rds`. |
+| `mlb_pythag_baseline.R` | 236 | Real | `run_pythag_baseline(season, method, force_refresh)` | Computes variable-exponent Pythagenpat win expectation baseline (`((RS+RA)/G)^0.287`) alongside Pythagenport, Fixed 1.83, and Fixed 2.0 baselines and luck/sequencing residuals. Caches to `cache/pythag/pythag_baseline_<yr>.rds` and `cache/pythag/mlb_pythag_standings.rds`. |
+| `mlb_elo_engine.R` | 589 | Real | `run_elo_engine(seasons, force_refresh)` | Full team Elo engine with 4-factor pregame adjustment (HFA, rest, travel, starting pitcher rGS), Game Score calculator, opener heuristic, FanGraphs preseason seeding, and chronological walk-forward simulation. Caches to `cache/ratings/mlb_team_ratings.rds`, `pitcher_rgs_tracker.rds`, and `mlb_elo_history.rds`. |
 | `docs/task_assignments_phase1.md` | 57 | Real | Doc | Phase 1 task assignments, interface contracts, and cache isolation specs. |
+| `docs/task_assignments_phase2.md` | 55 | Real | Doc | Phase 2 task assignments, mathematical formulations, and component status. |
 | `renv.lock` | — | Config | `renv::restore()` | Locked dependencies: `baseballr` (v2.0.0), `duckdb`, `dplyr`, `dbplyr`, `jsonlite`, `rvest`, `xml2`, etc. |
 | `.Rprofile` & `renv/` | — | Config | Auto-bootstraps renv on session start. |
 
@@ -91,7 +96,6 @@ All Phase 1 code is implemented, live-tested, cached, and committed.
 
 ## Concrete next step
 
-**Phase 2, Wave 1 (Issue #16) — Pythagorean Baseline + Elo Engine**:
-- Deliverable 1: `mlb_pythag_baseline.R` — Implement Pythagenpat variable-exponent formula (`((RS + RA)/G)^0.287`) as default win-expectation baseline, with fixed exponent 2 and Pythagenport options. Reads `cache/ingest/mlb_boxscores_*.rds` and `cache/ingest/mlb_schedule_*.rds`.
-- Deliverable 2: `mlb_elo_engine.R` — Implement team Elo ratings with the headline starting-pitcher adjustment (`ratingAdj = C * (pitcher_rGS − team_rGS)`), home-field advantage, and rest.
-- Once #16 lands, Wave 2 (#17) will run empirical constant derivation (`tools/derive_mlb_constants.R`).
+**Phase 2, Wave 2 (Issue #17) — Constant Derivation + Park-Factor Decision**:
+- Deliverable: `tools/derive_mlb_constants.R` — Grid-search or Nelder-Mead optimization against 2018–2024 historical games to empirically derive optimal weights (K-factor, HFA, rest value, travel exponent, starting-pitcher blend coefficient `C`, and Game Score weights).
+- Empirically compare 1-year vs. 3-year vs. 5-year rolling park factor variants and update `config.R` constants accordingly.

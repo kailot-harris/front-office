@@ -557,7 +557,7 @@ run_elo_engine <- function(seasons = 2024, season = NULL, force_refresh = FALSE)
   }
   sched <- readRDS(sched_file)
 
-  starters_df <- extract_game_starters(sched = sched, season = season)
+  starters_df <- extract_game_starters(sched = sched, season = target_season)
 
   park_file <- cache_path("stats_sync", "fg_park.rds")
   park_factors <- if (file.exists(park_file)) readRDS(park_file) else NULL
