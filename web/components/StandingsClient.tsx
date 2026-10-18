@@ -33,7 +33,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      const tabParam = params.get('tab');
+      const tabParam = params.get('view') || params.get('tab');
       if (tabParam === 'table' || tabParam === 'visualizer') {
         setActiveTab(tabParam);
       }
@@ -44,7 +44,8 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
     setActiveTab(tab);
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
-      url.searchParams.set('tab', tab);
+      url.searchParams.set('view', tab);
+      url.searchParams.delete('tab');
       window.history.replaceState(null, '', url.toString());
     }
   };
@@ -193,25 +194,25 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
       </div>
 
       {/* View Switcher: Playoff Contenders Snapshot vs Full League Standings Table */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
-        <div className="inline-flex rounded-xl bg-slate-900/90 p-1 border border-slate-800 shadow-inner" role="tablist">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/60 p-2.5 rounded-2xl border border-slate-800">
+        <div className="inline-flex rounded-xl bg-slate-950 p-1.5 border border-slate-800/80 shadow-inner" role="tablist">
           <button
             type="button"
             role="tab"
             id="tab-btn-visualizer"
             aria-selected={activeTab === 'visualizer'}
             onClick={() => handleTabChange('visualizer')}
-            className={`cursor-pointer select-none flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+            className={`cursor-pointer select-none flex items-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all ${
               activeTab === 'visualizer'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/40 ring-1 ring-indigo-400/50'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900'
             }`}
           >
-            <BarChart2 className="w-4 h-4 pointer-events-none" />
+            <BarChart2 className="w-4 h-4 pointer-events-none text-amber-400" />
             <span className="pointer-events-none">Playoff Contenders (Box-Whisker)</span>
             <span
-              className={`text-[10px] px-1.5 py-0.2 rounded font-mono pointer-events-none ${
-                activeTab === 'visualizer' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
+              className={`text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
+                activeTab === 'visualizer' ? 'bg-white/20 text-white font-bold' : 'bg-slate-800 text-slate-400'
               }`}
             >
               Visualizer
@@ -224,17 +225,17 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
             id="tab-btn-table"
             aria-selected={activeTab === 'table'}
             onClick={() => handleTabChange('table')}
-            className={`cursor-pointer select-none flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+            className={`cursor-pointer select-none flex items-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all ${
               activeTab === 'table'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/40 ring-1 ring-indigo-400/50'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900'
             }`}
           >
-            <Table className="w-4 h-4 pointer-events-none" />
+            <Table className="w-4 h-4 pointer-events-none text-indigo-300" />
             <span className="pointer-events-none">Full Standings Table</span>
             <span
-              className={`text-[10px] px-1.5 py-0.2 rounded font-mono pointer-events-none ${
-                activeTab === 'table' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
+              className={`text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
+                activeTab === 'table' ? 'bg-white/20 text-white font-bold' : 'bg-slate-800 text-slate-400'
               }`}
             >
               30 Teams
@@ -242,10 +243,10 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
           </button>
         </div>
 
-        <div className="text-xs text-slate-400 flex items-center gap-2">
+        <div className="text-xs text-slate-400 flex items-center gap-2 px-2">
           <span>Active View:</span>
           <span className="font-semibold text-slate-200">
-            {activeTab === 'visualizer' ? 'Contenders Win Distributions' : 'Detailed 30-Franchise Standings'}
+            {activeTab === 'visualizer' ? 'Playoff Contenders Distribution Snapshot' : 'All 30 NBA Franchises (Sortable Metrics)'}
           </span>
         </div>
       </div>
