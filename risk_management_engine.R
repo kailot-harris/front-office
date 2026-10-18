@@ -8,22 +8,55 @@ suppressPackageStartupMessages({
   library(tidyr)
 })
 
+source("config.R")
+
 if (!dir.exists("cache")) dir.create("cache", recursive = TRUE)
 
 message(">>> [RISK] Initializing Bankroll Risk & Drawdown Management Engine...")
 
+load_real_ledger <- function(path) {
+  raw <- tryCatch(readRDS(path), error = function(e) {
+    warning("Could not read ledger file at ", path, ": ", e$message)
+    NULL
+  })
+  if (is.null(raw) || !is.data.frame(raw) || nrow(raw) == 0) return(NULL)
+
+  resolved <- raw |>
+    filter(status == "RESOLVED") |>
+    arrange(bet_date)
+
+  if (nrow(resolved) == 0) return(NULL)
+
+  resolved |>
+    transmute(
+      bet_id   = bet_id,
+      date     = as.Date(bet_date),
+      stake    = stake_units,
+      pnl      = profit_units,
+      clv_pct  = clv_pct,
+      beat_clv = beat_clv
+    )
+}
+
 compute_risk_state <- function(bet_history = NULL) {
+  real_ledger_path <- if (exists("CACHE_BETTING_LEDGER")) CACHE_BETTING_LEDGER else file.path(CACHE_DIR, "betting_ledger.rds")
+  data_source <- "REAL_LEDGER"
+
   if (is.null(bet_history)) {
-    if (file.exists("cache/bet_log.rds")) {
-      bet_history <- readRDS("cache/bet_log.rds")
-    } else {
-      # Build simulated historical ledger
+    if (file.exists(real_ledger_path)) {
+      bet_history <- load_real_ledger(real_ledger_path)
+    }
+
+    if (is.null(bet_history) || nrow(bet_history) == 0) {
+      # Build simulated historical ledger - clearly synthetic fallback
+      message(">>> [WARN] Using SYNTHETIC_FALLBACK 120-bet seed ledger (no real RESOLVED bets available). This is simulated P&L, NOT real betting results.")
+      data_source <- "SYNTHETIC_FALLBACK"
       set.seed(101)
       n_bets <- 120
       dates <- seq.Date(Sys.Date() - 40, Sys.Date(), length.out = n_bets)
       pnl_units <- rnorm(n_bets, mean = 0.15, sd = 1.05)
       clv_diff  <- rnorm(n_bets, mean = 0.022, sd = 0.035)
-      
+
       bet_history <- tibble(
         bet_id = paste0("BET_", 1:n_bets),
         date = dates,
@@ -34,7 +67,7 @@ compute_risk_state <- function(bet_history = NULL) {
       )
     }
   }
-  
+
   # Calculate cumulative bankroll path (Base 100 units)
   cum_pnl <- cumsum(bet_history$pnl)
   bankroll_path <- 100 + cum_pnl
@@ -96,19 +129,19 @@ compute_risk_state <- function(bet_history = NULL) {
     rolling_30d_clv_pct = round(rolling_30d_clv, 2),
     beat_clv_rate_pct = round(beat_clv_rate, 2),
     total_bets_audited = nrow(bet_history),
+    data_source = data_source,
     ledger = bet_history %>% mutate(
       bankroll = round(bankroll_path, 2),
       drawdown = round(drawdown_units, 2)
     )
   )
   
-  saveRDS(risk_report, "cache/risk_state.rds")
-  message(sprintf(">>> [RISK] State: %s | Active Kelly: %.3f | Drawdown: -%.2f Units (Max: -%.2f) | Beat-CLV: %.1f%%",
-                  risk_status, active_kelly_mult, current_dd_units, max_dd_units, beat_clv_rate))
+  out_path <- if (exists("CACHE_RISK_STATE")) CACHE_RISK_STATE else file.path(CACHE_DIR, "risk_state.rds")
+  saveRDS(risk_report, out_path)
+  message(sprintf(">>> [RISK] State: %s (%s) | Active Kelly: %.3f | Drawdown: -%.2f Units (Max: -%.2f) | Beat-CLV: %.1f%%",
+                  risk_status, data_source, active_kelly_mult, current_dd_units, max_dd_units, beat_clv_rate))
   
   return(risk_report)
 }
 
-if (!interactive()) {
-  invisible(compute_risk_state())
-}
+invisible(compute_risk_state())

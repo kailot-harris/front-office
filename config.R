@@ -30,6 +30,8 @@ CACHE_SIMILARITY   <- file.path(PROJECT_DIR, "team_similarity_matrix.csv")
 CACHE_INJURY_DATA  <- file.path(CACHE_DIR, "injury_data_cache.rds")
 CACHE_ACTIVE_ROSTERS <- file.path(CACHE_DIR, "active_rosters_cache.rds")
 CACHE_PLAYER_PROPS <- file.path(CACHE_DIR, "latest_player_props.rds")
+CACHE_BETTING_LEDGER <- file.path(CACHE_DIR, "betting_ledger.rds")
+CACHE_RISK_STATE     <- file.path(CACHE_DIR, "risk_state.rds")
 
 # API Throttling & Rate-Limiting
 RATE_LIMIT_SLEEP_SEC <- 1.5

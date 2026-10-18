@@ -98,8 +98,8 @@ run_stage("copula_props_engine.R", "Simulate Joint Multivariate Gaussian Copula 
 # 6. Postseason Simulation
 run_stage("playoff_simulator.R", "Execute 8-Man Playoff Series Monte Carlo (10,000 Iterations)")
 
-# 7. Portfolio Risk Management & Capital Preservation
-run_stage("risk_management_engine.R", "Audit Drawdown State & Set Dynamic Kelly Multiplier")
+run_stage("risk_management_engine.R", "Audit Drawdown State & Set Dynamic Kelly Multiplier",
+          output = file.path(CACHE_DIR, "risk_state.rds"))
 
 # 8. Notification & Settlement
 run_stage("notify_bets.R", "Dispatch Filtered Discord Webhooks (EV >= 5.0%, CLV > 0)")
