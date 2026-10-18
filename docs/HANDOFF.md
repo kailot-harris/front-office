@@ -23,8 +23,9 @@ All core predictive, specialty, simulation, risk, market, and notification engin
 - **Phase 5 (Risk Management)**: **100% complete** (issue #20 closed). `mlb_risk_management_engine.R` with dynamic Kelly scaling (0.25 / 0.175 / 0.10 / 0.00 halt) and synthetic cold-start fallback.
 - **Phase 6 (Market Odds)**: **100% complete** (issue #21 closed). `mlb_market_odds_engine.R` with Odds API `baseball_mlb` integration, devigging, EV/Kelly calculations, and synthetic slate fallback.
 - **Phase 7 (Discord Alerts)**: **100% complete** (issue #22 closed). `mlb_notify_bets.R` with baseball branding, embed formatting, institutional EV/CLV edge filtering, and safe console preview.
-- **Phase 8 (Calibration Review)**: **Audited & Documented** (issue #23 open). Backtested 2,432 games; confirmed MLB's 162-game schedule naturally prevents NFL-style probability spikes. Brief prepared: `subagent_brief_issue_23.md`.
-- **Phase 9+ (Deferred Ideas)**: Open issue #24 for future roadmap enhancements.
+- **Phase 8 (Calibration Review)**: **100% complete** (issue #23 closed). Backtested 2,432 games; confirmed MLB's 162-game schedule naturally prevents NFL-style probability spikes. 10-game staking gate enforced.
+- **Phase 9 (Visualization Suite)**: **100% complete** (issue #24 closed). Modern dark theme (`tools/viz_theme.R`), 4 publication-ready PNG tools in `tools/viz_*.R`, and master runner `tools/run_all_visualizations.R`.
+- **Phase 10 (Bayesian Partial Pooling)**: **Scoped as Issue #25**. Empirical Bayes James-Stein shrinkage engine for batter wOBA and pitcher FIP components.
 
 ---
 
@@ -47,7 +48,8 @@ Verified live via `gh issue list --state all`:
 | #21 | Phase 6: Market odds engine | CLOSED | `mlb_market_odds_engine.R` (The Odds API + devig EV) |
 | #22 | Phase 7: Discord alert dispatcher | CLOSED | `mlb_notify_bets.R` (rich embeds, webhook dispatch) |
 | #23 | Phase 8: Early-season calibration review | CLOSED | Empirical audit complete: zero probability spikes; 10-game sample gate confirmed |
-| #24 | Phase 9+: Deferred / idea-stage | OPEN | Post-build enhancements |
+| #24 | Phase 9: Quantitative visualization suite | CLOSED | `tools/viz_*.R` + `tools/run_all_visualizations.R` (4 PNGs in `cache/viz/`) |
+| **#25** | **Phase 10: Hierarchical empirical Bayes partial-pooling engine** | **OPEN** | **Scoped academic modeling spike (`mlb_bayes_pooling.R`)** |
 
 ---
 
