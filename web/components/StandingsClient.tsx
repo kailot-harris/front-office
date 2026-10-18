@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { TeamProjection, ModelMetadata } from '@/lib/types';
-import { Trophy, TrendingUp, Filter, ArrowUpDown, ArrowUp, ArrowDown, ShieldAlert, Award } from 'lucide-react';
+import { Trophy, TrendingUp, Filter, ArrowUpDown, ArrowUp, ArrowDown, ShieldAlert, Award, BarChart2, Table, ArrowRight } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { PlayoffContendersBoxWhisker } from '@/components/PlayoffContendersBoxWhisker';
 
@@ -23,6 +23,7 @@ export type StandingsSortField =
   | 'ensemble_title_prob';
 
 export const StandingsClient: React.FC<StandingsClientProps> = ({ teams }) => {
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'table'>('visualizer');
   const [selectedConference, setSelectedConference] = useState<'All' | 'East' | 'West'>('All');
   const [selectedDivision, setSelectedDivision] = useState<string>('All');
   const [sortBy, setSortBy] = useState<StandingsSortField>('ensemble_mean_wins');
@@ -171,59 +172,126 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams }) => {
         </div>
       </div>
 
-      {/* Filter and Control Bar */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 text-slate-400 text-sm font-medium">
-            <Filter className="w-4 h-4" />
-            <span>Filter By:</span>
-          </div>
-
-          {/* Conference filter pills */}
-          <div className="inline-flex rounded-lg bg-slate-950 p-1 border border-slate-800">
-            {(['All', 'East', 'West'] as const).map((conf) => (
-              <button
-                key={conf}
-                onClick={() => setSelectedConference(conf)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                  selectedConference === conf
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {conf} {conf !== 'All' ? 'Conf' : 'Leagues'}
-              </button>
-            ))}
-          </div>
-
-          {/* Division select dropdown */}
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-400">Division:</label>
-            <select
-              value={selectedDivision}
-              onChange={(e) => setSelectedDivision(e.target.value)}
-              className="bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500"
+      {/* View Switcher: Playoff Contenders Snapshot vs Full League Standings Table */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+        <div className="inline-flex rounded-xl bg-slate-900/90 p-1 border border-slate-800 shadow-inner">
+          <button
+            type="button"
+            onClick={() => setActiveTab('visualizer')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              activeTab === 'visualizer'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <BarChart2 className="w-4 h-4" />
+            <span>Playoff Contenders (Box-Whisker)</span>
+            <span
+              className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${
+                activeTab === 'visualizer' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
+              }`}
             >
-              <option value="All">All Divisions</option>
-              {divisions.map((div) => (
-                <option key={div} value={div}>
-                  {div}
-                </option>
-              ))}
-            </select>
-          </div>
+              Visualizer
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('table')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              activeTab === 'table'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <Table className="w-4 h-4" />
+            <span>Full Standings Table</span>
+            <span
+              className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${
+                activeTab === 'table' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
+              }`}
+            >
+              30 Teams
+            </span>
+          </button>
         </div>
 
-        <div className="text-xs text-slate-400">
-          Showing <span className="font-bold text-slate-200">{filteredTeams.length}</span> of 30 teams
+        <div className="text-xs text-slate-400 flex items-center gap-2">
+          <span>Active View:</span>
+          <span className="font-semibold text-slate-200">
+            {activeTab === 'visualizer' ? 'Contenders Win Distributions' : 'Detailed 30-Franchise Standings'}
+          </span>
         </div>
       </div>
 
-      {/* Playoff Contenders Visualization Snapshot (Playoff Prob >= 40%) */}
-      <PlayoffContendersBoxWhisker teams={teams} />
+      {activeTab === 'visualizer' ? (
+        /* Tab 1: Playoff Contenders Box-Whisker Visualization */
+        <div className="space-y-4">
+          <PlayoffContendersBoxWhisker teams={teams} />
+          <div className="flex justify-end pt-1">
+            <button
+              type="button"
+              onClick={() => setActiveTab('table')}
+              className="inline-flex items-center gap-2 text-xs font-semibold text-indigo-400 hover:text-indigo-300 bg-slate-900 border border-slate-800 px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors shadow"
+            >
+              <span>Explore All 30 Teams in Standings Table</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* Tab 2: Full Standings Table */
+        <div className="space-y-4">
+          {/* Filter and Control Bar */}
+          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2 text-slate-400 text-sm font-medium">
+                <Filter className="w-4 h-4" />
+                <span>Filter By:</span>
+              </div>
 
-      {/* Main Standings Table */}
-      <div className="bg-slate-900/70 border border-slate-800 rounded-xl shadow-xl overflow-hidden">
+              {/* Conference filter pills */}
+              <div className="inline-flex rounded-lg bg-slate-950 p-1 border border-slate-800">
+                {(['All', 'East', 'West'] as const).map((conf) => (
+                  <button
+                    key={conf}
+                    onClick={() => setSelectedConference(conf)}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                      selectedConference === conf
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {conf} {conf !== 'All' ? 'Conf' : 'Leagues'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Division select dropdown */}
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-slate-400">Division:</label>
+                <select
+                  value={selectedDivision}
+                  onChange={(e) => setSelectedDivision(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="All">All Divisions</option>
+                  {divisions.map((div) => (
+                    <option key={div} value={div}>
+                      {div}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="text-xs text-slate-400">
+              Showing <span className="font-bold text-slate-200">{filteredTeams.length}</span> of 30 teams
+            </div>
+          </div>
+
+          {/* Main Standings Table */}
+          <div className="bg-slate-900/70 border border-slate-800 rounded-xl shadow-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse">
             <thead>
@@ -442,6 +510,19 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams }) => {
           </table>
         </div>
       </div>
+
+      <div className="flex justify-end pt-1">
+        <button
+          type="button"
+          onClick={() => setActiveTab('visualizer')}
+          className="inline-flex items-center gap-2 text-xs font-semibold text-indigo-400 hover:text-indigo-300 bg-slate-900 border border-slate-800 px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors shadow"
+        >
+          <BarChart2 className="w-3.5 h-3.5" />
+          <span>Switch to Playoff Contenders Visualizer</span>
+        </button>
+      </div>
     </div>
+  )}
+</div>
   );
 };
