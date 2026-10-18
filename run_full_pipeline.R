@@ -235,11 +235,34 @@ run_full_pipeline <- function(season = 2024, force_refresh = FALSE) {
   )
   
   # ----------------------------------------------------------------------------
-  # EXTENSION POINTS: Future Phase 2+ Pipeline Stages
+  # Stage 5: Pythagorean Win Expectation Baseline (Pythagenpat)
   # ----------------------------------------------------------------------------
-  # Phase 2: Rating Engine
-  #   - run_stage("mlb_pythag_baseline.R", "Pythagorean Win Expectation Baseline", ...)
-  #   - run_stage("mlb_elo_engine.R", "MLB Elo Rating Engine (w/ Pitcher Adjustment)", ...)
+  run_stage(
+    script_name   = "mlb_pythag_baseline.R",
+    description   = "Compute Pythagorean Win-Expectation Baseline (Pythagenpat)",
+    call_fn       = "run_pythag_baseline",
+    output        = cache_path("pythag", "mlb_pythag_standings.rds", create = FALSE),
+    require_fresh = force_refresh,
+    season        = season,
+    force_refresh = force_refresh
+  )
+  
+  # ----------------------------------------------------------------------------
+  # Stage 6: Team Elo Rating Engine (w/ Starting-Pitcher & Rest Adjustments)
+  # ----------------------------------------------------------------------------
+  run_stage(
+    script_name   = "mlb_elo_engine.R",
+    description   = "Compute Team Elo Ratings with Starting-Pitcher Adjustment",
+    call_fn       = "run_elo_engine",
+    output        = cache_path("ratings", "mlb_team_ratings.rds", create = FALSE),
+    require_fresh = force_refresh,
+    season        = season,
+    force_refresh = force_refresh
+  )
+  
+  # ----------------------------------------------------------------------------
+  # EXTENSION POINTS: Future Phase 3+ Pipeline Stages
+  # ----------------------------------------------------------------------------
   # Phase 3: Specialty Models
   #   - run_stage("mlb_bullpen_fatigue.R", "Bullpen Usage & High-Leverage Fatigue Engine", ...)
   #   - run_stage("mlb_marcel_projections.R", "Marcel Baseline Projections", ...)

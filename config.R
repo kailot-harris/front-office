@@ -53,7 +53,9 @@ MLB_CACHE_STAGES <- list(
   ingest        = "ingest",        # mlb_ingest.R         (schedule/box score/Statcast)
   stats_sync    = "stats_sync",    # mlb_stats_sync.R      (FanGraphs leaderboard sync)
   injury        = "injury",        # mlb_injury_scraper.R  (ESPN injuries feed)
-  id_crosswalk  = "id_crosswalk"   # mlb_id_crosswalk.R    (cross-vendor ID join table)
+  id_crosswalk  = "id_crosswalk",  # mlb_id_crosswalk.R    (cross-vendor ID join table)
+  pythag        = "pythag",        # mlb_pythag_baseline.R (Pythagorean win expectation)
+  ratings       = "ratings"        # mlb_elo_engine.R      (Elo ratings w/ pitcher adjustment)
 )
 
 #' Build (and create, if needed) a cache path for one pipeline stage.
