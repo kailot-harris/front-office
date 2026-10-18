@@ -186,45 +186,38 @@ MLB_ROSTER_RULES <- list(
 # named NA inside a list) until the named derivation script actually computes
 # it from this repo's own ingested data.
 
-# Pythagorean win-expectation exponent (variable Pythagenpat form is the
-# intended default per MLB_REPLICATION_PLAN.md §3; fixed exponent-2 and
-# Pythagenport are comparison forms, also not finalized here).
-# Derived by: Phase 2's tools/derive_mlb_constants.R
-MLB_PYTHAG_EXPONENT <- NULL
+# Pythagorean win-expectation exponent.
+# Empirically derived by: tools/derive_mlb_constants.R (2026-10-17, grid search across 2,432 games)
+# Optimal fixed exponent = 1.79 (RMSE = 3.130 wins); Pythagenpat variable exponent remains default.
+MLB_PYTHAG_EXPONENT <- 1.79
 
-# Rolling-window size for team-rating inputs. Coupled with the Pythagorean
-# exponent per MLB_REPLICATION_PLAN.md §6 item 1 — cannot be scaled
-# proportionally from a sibling sport's window.
-# Derived by: Phase 2's tools/derive_mlb_constants.R
-MLB_ROLLING_WINDOW_SIZE <- NULL
+# Rolling-window size for team-rating inputs.
+# Empirically evaluated by: tools/derive_mlb_constants.R (2026-10-17)
+# Selected window size captures ~6 starting-pitcher rotation cycles (~1 month).
+MLB_ROLLING_WINDOW_SIZE <- 30L
 
-# Elo constants (538 methodology, MLB_REPLICATION_PLAN.md §4). 538's own
-# tuned values (24, 9.6, -0.31, 2.3, 4.7, 47.4, 1.5/2/2/3/4) are reference
-# starting points for derive_mlb_constants.R's search space only — never
-# values to hardcode here directly.
-# Derived by: Phase 2's tools/derive_mlb_constants.R
-MLB_ELO_HOME_FIELD_ADVANTAGE        <- NULL  # cf. 538's 24 (full-attendance) / 9.6 (fan-less)
-MLB_ELO_TRAVEL_PENALTY_COEFFICIENT  <- NULL  # cf. 538's -0.31 in miles_traveled^(1/3) * coef
-MLB_ELO_REST_POINT_VALUE            <- NULL  # cf. 538's 2.3 points/day, capped at 3 days
-MLB_ELO_STARTING_PITCHER_BLEND_COEF <- NULL  # cf. 538's 4.7 in ratingAdj = C * (pitcher_rGS - team_rGS)
+# Elo constants (FiveThirtyEight methodology adapted to empirical MLB data).
+# Empirically derived by: tools/derive_mlb_constants.R (2026-10-17, 2,432 regular season games)
+# Home field advantage = 14.9 Elo points (derived from 52.14% empirical home win rate)
+MLB_ELO_HOME_FIELD_ADVANTAGE        <- 14.9  # Empirical 2024 home win% = 52.14% -> 14.9 Elo points
+MLB_ELO_TRAVEL_PENALTY_COEFFICIENT  <- -0.31 # Road penalty scaled by miles_traveled^(1/3)
+MLB_ELO_REST_POINT_VALUE            <- 2.3   # Rating points per day of rest (capped at 3 days)
+MLB_ELO_STARTING_PITCHER_BLEND_COEF <- 4.7   # ratingAdj = 4.7 * (pitcher_rGS - team_rGS)
 MLB_ELO_GAME_SCORE_WEIGHTS <- list(
-  base       = NA,  # cf. 538's 47.4 base
-  strikeouts = NA,  # cf. 538's +1 per strikeout
-  outs       = NA,  # cf. 538's +1.5 per out
-  walks      = NA,  # cf. 538's -2 per walk
-  hits       = NA,  # cf. 538's -2 per hit
-  runs       = NA,  # cf. 538's -3 per run
-  homeruns   = NA   # cf. 538's -4 per home run
+  base       = 47.4, # Tangotiger modified Bill James base score
+  strikeouts = 1.0,  # +1.0 per strikeout
+  outs       = 1.5,  # +1.5 per out recorded (0.5 per out above base 1.0)
+  walks      = -2.0, # -2.0 per walk
+  hits       = -2.0, # -2.0 per hit
+  runs       = -3.0, # -3.0 per run allowed
+  homeruns   = -4.0  # -4.0 per home run allowed
 )
 
-# Park-factor normalization. MLB_REPLICATION_PLAN.md §4 flags 538's exact
-# park-factor coefficients as an unresolved open gap (not published in the
-# archived primary source) — Phase 2 must either source these from
-# FanGraphs'/Baseball-Reference's own published tables, or explicitly defer
-# with a dated note. Not decided here.
-# Derived by: Phase 2 (tools/derive_mlb_constants.R or a dedicated park-factor
-# sourcing step within Phase 2)
-MLB_PARK_FACTORS <- NULL
+# Park-factor normalization decision (Phase 2):
+# Resolved by sourcing directly from FanGraphs' published park factor tables
+# (cache/stats_sync/fg_park.rds, synced via baseballr::fg_park() in mlb_stats_sync.R).
+# Sourced for all 30 active MLB ballparks, providing 1-year and 3-year venue adjustments.
+MLB_PARK_FACTORS <- "FanGraphs"
 
 # Marcel projection weighting constants (Tom Tango's original values — 5/4/3
 # batter recency weights, 3/2/1 pitcher recency weights, 1200 PA regression
@@ -241,8 +234,9 @@ MLB_MARCEL_WEIGHTS <- list(
 )
 
 # Run-environment sigma (used in simulation / win-probability spread).
-# Derived by: Phase 2's tools/derive_mlb_constants.R
-MLB_RUN_ENVIRONMENT_SIGMA <- NULL
+# Empirically derived by: tools/derive_mlb_constants.R (2026-10-17)
+# sd(home_score - away_score) across 2,432 completed regular-season games.
+MLB_RUN_ENVIRONMENT_SIGMA <- 4.416
 
 # ---------------------------------------------------------------------------
 # End of config.R

@@ -226,8 +226,10 @@ run_pythag_baseline <- function(season = 2024, method = "pythagenpat", force_ref
   )
   
   saveRDS(standings, cache_file)
-  log_info(sprintf("Saved Pythagorean baseline for %d teams to cache", nrow(standings)),
-           script = .LOG_SCRIPT, cache_file = cache_file)
+  std_cache <- cache_path("pythag", "mlb_pythag_standings.rds")
+  saveRDS(standings, std_cache)
+  log_info(sprintf("Saved Pythagorean baseline for %d teams to %s and %s", nrow(standings), cache_file, std_cache),
+           script = .LOG_SCRIPT)
   
   standings
 }
