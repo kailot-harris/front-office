@@ -14,8 +14,10 @@ import {
   Activity,
   Info,
   TrendingUp,
+  MapPin,
 } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
+import { getBallparkGeometry, generateBallparkSvgData } from '@/lib/ballparks';
 
 interface SpatialAnalyticsClientProps {
   data: StatcastSpatialData;
@@ -136,25 +138,12 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
   const homeY = 440;
   const scale = 0.92;
 
-  // Ballpark wall SVG path
-  const parkWallPath = useMemo(() => {
-    if (!activeParkDim) return '';
-    const lf = activeParkDim.lf * scale;
-    const lcf = activeParkDim.lcf * scale;
-    const cf = activeParkDim.cf * scale;
-    const rcf = activeParkDim.rcf * scale;
-    const rf = activeParkDim.rf * scale;
+  // Accurate Multi-Segment Ballpark Geometry
+  const richPark = useMemo(() => getBallparkGeometry(selectedPark), [selectedPark]);
+  const parkSvgData = useMemo(() => {
+    return generateBallparkSvgData(richPark, homeX, homeY, scale);
+  }, [richPark, homeX, homeY, scale]);
 
-    // Angles: LF is -45°, LCF is -22.5°, CF is 0°, RCF is +22.5°, RF is +45°
-    const rad = (deg: number) => (deg * Math.PI) / 180;
-    const pLF = { x: homeX + lf * Math.sin(rad(-45)), y: homeY - lf * Math.cos(rad(-45)) };
-    const pLCF = { x: homeX + lcf * Math.sin(rad(-22.5)), y: homeY - lcf * Math.cos(rad(-22.5)) };
-    const pCF = { x: homeX + cf * Math.sin(rad(0)), y: homeY - cf * Math.cos(rad(0)) };
-    const pRCF = { x: homeX + rcf * Math.sin(rad(22.5)), y: homeY - rcf * Math.cos(rad(22.5)) };
-    const pRF = { x: homeX + rf * Math.sin(rad(45)), y: homeY - rf * Math.cos(rad(45)) };
-
-    return `M ${pLF.x} ${pLF.y} Q ${pLCF.x} ${pLCF.y} ${pCF.x} ${pCF.y} Q ${pRCF.x} ${pRCF.y} ${pRF.x} ${pRF.y}`;
-  }, [activeParkDim]);
 
   return (
     <div className="space-y-6">
@@ -349,20 +338,42 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
               </div>
             </div>
 
-            {/* Park Dimension Badges */}
-            <div className="flex items-center gap-3 text-xs bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2">
-              <span className="text-slate-400 font-medium">Fence Distances:</span>
-              <span className="font-mono text-slate-200">
-                LF: <strong className="text-sky-400">{activeParkDim.lf} ft</strong> ({activeParkDim.wall_lf} ft wall)
-              </span>
-              <span className="text-slate-600">•</span>
-              <span className="font-mono text-slate-200">
-                CF: <strong className="text-sky-400">{activeParkDim.cf} ft</strong>
-              </span>
-              <span className="text-slate-600">•</span>
-              <span className="font-mono text-slate-200">
-                RF: <strong className="text-sky-400">{activeParkDim.rf} ft</strong> ({activeParkDim.wall_rf} ft wall)
-              </span>
+            {/* Park Dimension Badges & Architectural Profile */}
+            <div className="flex flex-col gap-1.5 text-xs bg-slate-950/80 border border-slate-800 rounded-lg px-3.5 py-2.5">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-slate-400 font-medium">Fence Distances:</span>
+                <span className="font-mono text-slate-200">
+                  LF: <strong className="text-sky-400">{richPark.lf}&apos;</strong> ({richPark.wallHeightLf}&apos; wall)
+                </span>
+                <span className="text-slate-600">•</span>
+                <span className="font-mono text-slate-200">
+                  LCF: <strong className="text-sky-400">{richPark.lcf}&apos;</strong>
+                </span>
+                <span className="text-slate-600">•</span>
+                <span className="font-mono text-slate-200">
+                  CF: <strong className="text-sky-400">{richPark.cf}&apos;</strong> ({richPark.wallHeightCf}&apos; wall)
+                </span>
+                <span className="text-slate-600">•</span>
+                <span className="font-mono text-slate-200">
+                  RCF: <strong className="text-sky-400">{richPark.rcf}&apos;</strong>
+                </span>
+                <span className="text-slate-600">•</span>
+                <span className="font-mono text-slate-200">
+                  RF: <strong className="text-sky-400">{richPark.rf}&apos;</strong> ({richPark.wallHeightRf}&apos; wall)
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-[11px] text-slate-400 border-t border-slate-800/60 pt-1.5 flex-wrap">
+                <span className="text-amber-400 font-semibold flex items-center gap-1">
+                  <MapPin className="w-3 h-3 text-amber-400" />
+                  {richPark.parkName} ({richPark.cityState})
+                </span>
+                <span className="text-slate-600">•</span>
+                <span>{richPark.roofType}</span>
+                <span className="text-slate-600">•</span>
+                <span>{richPark.surface}</span>
+                <span className="text-slate-600">•</span>
+                <span className="text-slate-300">{richPark.iconicFeatures.join(' • ')}</span>
+              </div>
             </div>
           </div>
 
@@ -409,9 +420,28 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                       <stop offset="0%" stopColor="#0f172a" />
                       <stop offset="100%" stopColor="#020617" />
                     </radialGradient>
+                    <radialGradient id="ballparkGrassTier1" cx="50%" cy="90%" r="90%">
+                      <stop offset="0%" stopColor="#064e3b" stopOpacity="0.45" />
+                      <stop offset="65%" stopColor="#022c22" stopOpacity="0.75" />
+                      <stop offset="100%" stopColor="#091422" stopOpacity="0.9" />
+                    </radialGradient>
+                    <radialGradient id="warningTrackTier1" cx="50%" cy="85%" r="85%">
+                      <stop offset="0%" stopColor="#92400e" stopOpacity="0.6" />
+                      <stop offset="100%" stopColor="#713f12" stopOpacity="0.85" />
+                    </radialGradient>
+                    <radialGradient id="ballparkDirtTier1" cx="50%" cy="75%" r="75%">
+                      <stop offset="0%" stopColor="#78350f" stopOpacity="0.45" />
+                      <stop offset="100%" stopColor="#451a03" stopOpacity="0.65" />
+                    </radialGradient>
+                    <filter id="wallGlowTier1" x="-20%" y="-20%" width="140%" height="140%">
+                      <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#38bdf8" floodOpacity="0.4" />
+                    </filter>
+                    <filter id="highWallGlowTier1" x="-20%" y="-20%" width="140%" height="140%">
+                      <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#f59e0b" floodOpacity="0.6" />
+                    </filter>
                   </defs>
 
-                  {/* Field Background */}
+                  {/* Field Background Canvas */}
                   <rect
                     width={spraySvgWidth}
                     height={spraySvgHeight}
@@ -419,62 +449,69 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                     rx="16"
                   />
 
-                  {/* Foul lines */}
-                  {/* 45 deg left foul line: homeX - 300, homeY - 300 */}
-                  <line
-                    x1={homeX}
-                    y1={homeY}
-                    x2={homeX - 275}
-                    y2={homeY - 275}
-                    stroke="#334155"
-                    strokeWidth="1.5"
-                    strokeDasharray="4 4"
-                  />
-                  {/* 45 deg right foul line */}
-                  <line
-                    x1={homeX}
-                    y1={homeY}
-                    x2={homeX + 275}
-                    y2={homeY - 275}
-                    stroke="#334155"
-                    strokeWidth="1.5"
-                    strokeDasharray="4 4"
-                  />
-
-                  {/* Infield dirt arc */}
+                  {/* Foul Ground & Backstop Geometry */}
                   <path
-                    d={`M ${homeX - 120} ${homeY - 120} A 170 170 0 0 1 ${homeX + 120} ${homeY - 120} L ${homeX} ${homeY} Z`}
-                    fill="#1e293b"
-                    opacity="0.35"
+                    d={parkSvgData.backstopPolygon}
+                    fill="#0f172a"
+                    stroke="#1e293b"
+                    strokeWidth="1.2"
                   />
 
-                  {/* Infield Diamond (90-ft basepaths scaled: ~80 px) */}
-                  {/* Home plate: (250, 440) */}
-                  {/* 1st base: (250 + 55, 440 - 55) = (305, 385) */}
-                  {/* 2nd base: (250, 440 - 110) = (250, 330) */}
-                  {/* 3rd base: (250 - 55, 440 - 55) = (195, 385) */}
-                  <polygon
-                    points={`${homeX},${homeY} ${homeX + 55},${homeY - 55} ${homeX},${homeY - 110} ${homeX - 55},${homeY - 55}`}
-                    fill="none"
-                    stroke="#475569"
-                    strokeWidth="1.5"
-                  />
-
-                  {/* Pitcher's Mound */}
-                  <circle
-                    cx={homeX}
-                    cy={homeY - 58}
-                    r="6"
-                    fill="#334155"
-                    stroke="#64748b"
+                  {/* Fair Territory Solid Grass Polygon (Exact shape of the outfield wall) */}
+                  <path
+                    d={parkSvgData.fairTerritoryPolygon}
+                    fill="url(#ballparkGrassTier1)"
+                    stroke="#1e293b"
                     strokeWidth="1"
                   />
 
-                  {/* Home Plate Icon */}
-                  <polygon
-                    points={`${homeX},${homeY} ${homeX - 5},${homeY + 4} ${homeX - 5},${homeY + 8} ${homeX + 5},${homeY + 8} ${homeX + 5},${homeY + 4}`}
-                    fill="#f8fafc"
+                  {/* Warning Track Ribbon (15 ft buffer inward along the wall contour) */}
+                  <path
+                    d={parkSvgData.warningTrackPolygon}
+                    fill="url(#warningTrackTier1)"
+                    stroke="#b45309"
+                    strokeWidth="0.8"
+                    opacity="0.85"
                   />
+
+                  {/* Foul lines */}
+                  {parkSvgData.wallPoints.length > 0 && (
+                    <>
+                      <line
+                        x1={homeX}
+                        y1={homeY}
+                        x2={parkSvgData.wallPoints[0].x}
+                        y2={parkSvgData.wallPoints[0].y}
+                        stroke="#e2e8f0"
+                        strokeWidth="1.5"
+                      />
+                      <line
+                        x1={homeX}
+                        y1={homeY}
+                        x2={parkSvgData.wallPoints[parkSvgData.wallPoints.length - 1].x}
+                        y2={parkSvgData.wallPoints[parkSvgData.wallPoints.length - 1].y}
+                        stroke="#e2e8f0"
+                        strokeWidth="1.5"
+                      />
+                      {/* Yellow Foul Poles */}
+                      <circle
+                        cx={parkSvgData.wallPoints[0].x}
+                        cy={parkSvgData.wallPoints[0].y}
+                        r="4"
+                        fill="#fbbf24"
+                        stroke="#d97706"
+                        strokeWidth="1.5"
+                      />
+                      <circle
+                        cx={parkSvgData.wallPoints[parkSvgData.wallPoints.length - 1].x}
+                        cy={parkSvgData.wallPoints[parkSvgData.wallPoints.length - 1].y}
+                        r="4"
+                        fill="#fbbf24"
+                        stroke="#d97706"
+                        strokeWidth="1.5"
+                      />
+                    </>
+                  )}
 
                   {/* Distance Rings: 200ft, 300ft, 400ft */}
                   {[200, 300, 400].map((ft) => {
@@ -501,30 +538,151 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                     );
                   })}
 
-                  {/* Active Ballpark Outfield Wall */}
-                  {parkWallPath && (
+                  {/* Infield dirt arc */}
+                  <path
+                    d={`M ${homeX - 110} ${homeY - 110} A 155 155 0 0 1 ${homeX + 110} ${homeY - 110} L ${homeX} ${homeY} Z`}
+                    fill="url(#ballparkDirtTier1)"
+                    stroke="#334155"
+                    strokeWidth="1"
+                  />
+
+                  {/* Historic Keyhole Dirt Strip (if park.hasKeyholeDirt e.g. ARI, DET) */}
+                  {richPark.hasKeyholeDirt && (
                     <path
-                      d={parkWallPath}
-                      fill="none"
-                      stroke="#38bdf8"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      opacity="0.85"
+                      d={`M ${homeX - 4.5} ${homeY - 12} L ${homeX - 4.5} ${homeY - 55} L ${homeX + 4.5} ${homeY - 55} L ${homeX + 4.5} ${homeY - 12} Z`}
+                      fill="#78350f"
+                      stroke="#92400e"
+                      strokeWidth="0.8"
+                      opacity="0.9"
                     />
                   )}
 
-                  {/* Ballpark Wall Label */}
-                  <text
-                    x={homeX}
-                    y={homeY - activeParkDim.cf * scale - 8}
-                    fill="#38bdf8"
-                    fontSize="10"
-                    fontWeight="bold"
-                    textAnchor="middle"
-                    fontFamily="monospace"
-                  >
-                    {activeParkDim.park} Wall ({activeParkDim.cf} ft)
-                  </text>
+                  {/* Infield Diamond (90-ft basepaths scaled: ~80 px) */}
+                  <polygon
+                    points={`${homeX},${homeY} ${homeX + 55},${homeY - 55} ${homeX},${homeY - 110} ${homeX - 55},${homeY - 55}`}
+                    fill="#020617"
+                    fillOpacity="0.6"
+                    stroke="#64748b"
+                    strokeWidth="1.2"
+                  />
+
+                  {/* Pitcher's Mound & Rubber */}
+                  <circle
+                    cx={homeX}
+                    cy={homeY - 55.6}
+                    r="5.5"
+                    fill="#78350f"
+                    stroke="#b45309"
+                    strokeWidth="1"
+                  />
+                  <rect
+                    x={homeX - 2.2}
+                    y={homeY - 56.6}
+                    width="4.4"
+                    height="1.5"
+                    fill="#f8fafc"
+                  />
+
+                  {/* Bases (1B, 2B, 3B diamonds) */}
+                  <rect
+                    x={homeX + 52.5}
+                    y={homeY - 57.5}
+                    width="5.5"
+                    height="5.5"
+                    fill="#f8fafc"
+                    transform={`rotate(45 ${homeX + 55} ${homeY - 55})`}
+                  />
+                  <rect
+                    x={homeX - 2.75}
+                    y={homeY - 112.75}
+                    width="5.5"
+                    height="5.5"
+                    fill="#f8fafc"
+                    transform={`rotate(45 ${homeX} ${homeY - 110})`}
+                  />
+                  <rect
+                    x={homeX - 57.5}
+                    y={homeY - 57.5}
+                    width="5.5"
+                    height="5.5"
+                    fill="#f8fafc"
+                    transform={`rotate(45 ${homeX - 55} ${homeY - 55})`}
+                  />
+
+                  {/* Home Plate Icon */}
+                  <polygon
+                    points={`${homeX},${homeY} ${homeX - 5},${homeY + 4} ${homeX - 5},${homeY + 8} ${homeX + 5},${homeY + 8} ${homeX + 5},${homeY + 4}`}
+                    fill="#f8fafc"
+                  />
+
+                  {/* Multi-Segment Outfield Wall Base Path */}
+                  <path
+                    d={parkSvgData.wallPath}
+                    fill="none"
+                    stroke="#0284c7"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    filter="url(#wallGlowTier1)"
+                  />
+
+                  {/* High Wall 3D Extrusion Segments (e.g. Green Monster, Clemente Wall, McCovey Cove) */}
+                  {parkSvgData.highWallSegments.map((seg, idx) => (
+                    <g key={idx}>
+                      <line
+                        x1={seg.x1}
+                        y1={seg.y1}
+                        x2={seg.x2}
+                        y2={seg.y2}
+                        stroke="#f59e0b"
+                        strokeWidth="4.5"
+                        strokeLinecap="square"
+                        filter="url(#highWallGlowTier1)"
+                      />
+                      <line
+                        x1={seg.x1}
+                        y1={seg.y1}
+                        x2={seg.x2}
+                        y2={seg.y2}
+                        stroke="#fef08a"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      />
+                    </g>
+                  ))}
+
+                  {/* Ballpark Wall Distance & Landmark Labels */}
+                  {parkSvgData.wallPoints
+                    .filter((p) => p.isKeyMarker || p.label)
+                    .map((p, idx) => {
+                      const isHigh = p.wallHeight >= 14;
+                      return (
+                        <g key={idx}>
+                          <circle
+                            cx={p.x}
+                            cy={p.y}
+                            r={isHigh ? 4 : 3}
+                            fill={isHigh ? '#f59e0b' : '#38bdf8'}
+                            stroke="#ffffff"
+                            strokeWidth="1.2"
+                          />
+                          {p.label && (
+                            <text
+                              x={p.x + (p.angle > 0 ? 6 : p.angle < 0 ? -6 : 0)}
+                              y={p.y - 7}
+                              textAnchor={p.angle > 10 ? 'start' : p.angle < -10 ? 'end' : 'middle'}
+                              fill={isHigh ? '#fbbf24' : '#7dd3fc'}
+                              fontSize="8.5"
+                              fontFamily="monospace"
+                              fontWeight="bold"
+                            >
+                              {p.label}
+                            </text>
+                          )}
+                        </g>
+                      );
+                    })}
+
 
                   {/* Batted Ball Points */}
                   {filteredBalls.map((ball, idx) => {

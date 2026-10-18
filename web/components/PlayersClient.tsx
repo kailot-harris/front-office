@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { PlayerProjection } from '@/lib/types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { PlayerProjection, PlayerSpatialMap } from '@/lib/types';
 import {
   Search,
   AlertTriangle,
@@ -11,14 +11,23 @@ import {
   UserCheck,
   Shield,
   Zap,
+  ChevronDown,
+  ChevronUp,
+  Compass,
+  Crosshair,
 } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
+import { PlayerSpatialDropdown } from '@/components/PlayerSpatialDropdown';
 
 interface PlayersClientProps {
   players: PlayerProjection[];
+  initialSpatialMaps?: Record<string, PlayerSpatialMap>;
 }
 
-export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
+export const PlayersClient: React.FC<PlayersClientProps> = ({
+  players,
+  initialSpatialMaps,
+}) => {
   const [activeGroup, setActiveGroup] = useState<'Batter' | 'Pitcher'>('Batter');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTeam, setSelectedTeam] = useState<string>('All');
@@ -27,6 +36,25 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
   const [statMode, setStatMode] = useState<'pooled_rates' | 'marcel_totals'>('pooled_rates');
   const [sortBy, setSortBy] = useState<keyof PlayerProjection>('stat1_pooled');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Expanded dropdown map state & spatial telemetry dictionary
+  const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
+  const [spatialMaps, setSpatialMaps] = useState<Record<string, PlayerSpatialMap>>(
+    initialSpatialMaps || {}
+  );
+
+  useEffect(() => {
+    if (!initialSpatialMaps || Object.keys(initialSpatialMaps).length === 0) {
+      fetch('/data/player_spatial_maps.json')
+        .then((res) => {
+          if (!res.ok) throw new Error('Failed to fetch player spatial maps');
+          return res.json();
+        })
+        .then((data: Record<string, PlayerSpatialMap>) => setSpatialMaps(data))
+        .catch((err) => console.warn('Could not load player spatial maps:', err));
+    }
+  }, [initialSpatialMaps]);
+
 
   const batters = useMemo(() => players.filter((p) => p.player_type === 'Batter'), [players]);
   const pitchers = useMemo(() => players.filter((p) => p.player_type === 'Pitcher'), [players]);
@@ -348,6 +376,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
             <thead>
               <tr className="border-b border-slate-800 bg-slate-950/90 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                 <th className="py-3.5 px-4">Player</th>
+                <th className="py-3.5 px-3 text-center">Spatial Map</th>
                 <th className="py-3.5 px-3">Club / Role</th>
                 <th
                   onClick={() => handleSort('proj_workload')}
@@ -470,120 +499,190 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-sm">
-              {filteredPlayers.slice(0, 150).map((p) => (
-                <tr key={p.player_id} className="hover:bg-slate-800/40 transition-colors">
-                  <td className="py-3 px-4">
-                    <div className="font-bold text-white">{p.player_name}</div>
-                    <div className="text-[11px] text-slate-400 font-mono">
-                      Age {p.age} • Obs {p.observed_workload}{' '}
-                      {p.player_type === 'Batter' ? 'PA' : 'IP'}
-                    </div>
-                  </td>
-                  <td className="py-3 px-3">
-                    <div className="flex items-center gap-2">
-                      <TeamLogo team={p.team} size="xs" />
-                      <span className="font-mono text-xs font-semibold text-slate-200">
-                        {p.team}
-                      </span>
-                      <span
-                        className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${
-                          p.position === 'B'
-                            ? 'bg-indigo-500/15 text-indigo-300'
-                            : p.position === 'SP'
-                            ? 'bg-emerald-500/15 text-emerald-300'
-                            : 'bg-amber-500/15 text-amber-300'
-                        }`}
-                      >
-                        {p.position}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-3 text-right font-mono text-slate-200">
-                    {p.proj_workload}
-                  </td>
-                  <td className="py-3 px-3 text-right font-mono text-xs text-slate-400">
-                    {p.park_factor.toFixed(3)}
-                  </td>
-
-                  {statMode === 'pooled_rates' ? (
-                    <>
-                      <td className="py-3 px-3 text-right font-mono text-slate-400">
-                        {p.player_type === 'Batter'
-                          ? `.${Math.round(p.stat1_raw * 1000).toString().padStart(3, '0')}`
-                          : p.stat1_raw.toFixed(2)}
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono font-bold text-indigo-300 bg-indigo-950/20">
-                        <div>
-                          {p.player_type === 'Batter'
-                            ? `.${Math.round(p.stat1_pooled * 1000).toString().padStart(3, '0')}`
-                            : p.stat1_pooled.toFixed(2)}
+              {filteredPlayers.slice(0, 150).map((p) => {
+                const isExpanded = expandedPlayerId === p.player_id;
+                return (
+                  <React.Fragment key={p.player_id}>
+                    <tr
+                      onClick={() => setExpandedPlayerId(isExpanded ? null : p.player_id)}
+                      className={`hover:bg-slate-800/40 transition-colors cursor-pointer ${
+                        isExpanded ? 'bg-indigo-950/25 border-l-2 border-indigo-500' : ''
+                      }`}
+                    >
+                      <td className="py-3 px-4">
+                        <div className="font-bold text-white flex items-center gap-1.5">
+                          <span>{p.player_name}</span>
+                          {spatialMaps[p.player_id]?.is_statcast_tracked && (
+                            <span
+                              className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"
+                              title="Verified Statcast Tracked"
+                            />
+                          )}
                         </div>
-                        <div className="text-[10px] text-slate-400 font-normal">
-                          [{p.stat1_p10.toFixed(p.player_type === 'Batter' ? 3 : 2)}–
-                          {p.stat1_p90.toFixed(p.player_type === 'Batter' ? 3 : 2)}]
+                        <div className="text-[11px] text-slate-400 font-mono">
+                          Age {p.age} • Obs {p.observed_workload}{' '}
+                          {p.player_type === 'Batter' ? 'PA' : 'IP'}
                         </div>
                       </td>
+                      <td className="py-3 px-3 text-center">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedPlayerId(isExpanded ? null : p.player_id);
+                          }}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all ${
+                            isExpanded
+                              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-bold'
+                              : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60'
+                          }`}
+                          title={
+                            isExpanded
+                              ? 'Close map'
+                              : p.player_type === 'Batter'
+                              ? 'View Hit Spray Chart'
+                              : 'View Strike Zone Pitches'
+                          }
+                        >
+                          {p.player_type === 'Batter' ? (
+                            <Compass className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <Crosshair className="w-3.5 h-3.5 text-indigo-400" />
+                          )}
+                          <span>
+                            {isExpanded
+                              ? 'Close'
+                              : p.player_type === 'Batter'
+                              ? 'Spray'
+                              : 'Zone'}
+                          </span>
+                          {isExpanded ? (
+                            <ChevronUp className="w-3.5 h-3.5" />
+                          ) : (
+                            <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+                          )}
+                        </button>
+                      </td>
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-2">
+                          <TeamLogo team={p.team} size="xs" />
+                          <span className="font-mono text-xs font-semibold text-slate-200">
+                            {p.team}
+                          </span>
+                          <span
+                            className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${
+                              p.position === 'B'
+                                ? 'bg-indigo-500/15 text-indigo-300'
+                                : p.position === 'SP'
+                                ? 'bg-emerald-500/15 text-emerald-300'
+                                : 'bg-amber-500/15 text-amber-300'
+                            }`}
+                          >
+                            {p.position}
+                          </span>
+                        </div>
+                      </td>
                       <td className="py-3 px-3 text-right font-mono text-slate-200">
-                        {p.player_type === 'Batter'
-                          ? `.${Math.round(p.stat2_pooled * 1000).toString().padStart(3, '0')}`
-                          : p.stat2_pooled.toFixed(2)}
+                        {p.proj_workload}
                       </td>
-                      <td className="py-3 px-3 text-right font-mono text-xs text-slate-300">
-                        <span>{p.k_pct_pooled.toFixed(1)}%</span>
-                        <span className="text-slate-500 mx-1">/</span>
-                        <span>{p.bb_pct_pooled.toFixed(1)}%</span>
+                      <td className="py-3 px-3 text-right font-mono text-xs text-slate-400">
+                        {p.park_factor.toFixed(3)}
                       </td>
-                      <td className="py-3 px-3 text-right font-mono text-xs text-amber-400">
-                        {p.stat1_shrinkage.toFixed(1)}%
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="py-3 px-3 text-right font-mono font-bold text-amber-300 bg-amber-950/15">
-                        {p.count1_val} {p.count1_label}
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono text-slate-200">
-                        {p.count2_val}
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono text-slate-200">
-                        {p.count3_val}
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono text-sky-300 font-semibold">
-                        {p.player_type === 'Batter'
-                          ? `.${Math.round(p.stat3_val * 1000).toString().padStart(3, '0')}`
-                          : p.stat3_val.toFixed(1)}
-                      </td>
-                      <td className="py-3 px-3 text-center font-mono text-xs text-slate-300">
-                        {p.count1_p10} – <strong className="text-white">{p.count1_p50}</strong> –{' '}
-                        {p.count1_p90} {p.count1_label}
-                      </td>
-                    </>
-                  )}
 
-                  <td className="py-3 px-4 text-right font-mono">
-                    <div className="flex items-center justify-end gap-2">
-                      <span
-                        className={`text-xs font-bold ${
-                          p.composite_zscore >= 1.5
-                            ? 'text-emerald-400'
-                            : p.composite_zscore <= -1.5
-                            ? 'text-rose-400'
-                            : 'text-slate-300'
-                        }`}
-                      >
-                        {p.composite_zscore > 0
-                          ? `+${p.composite_zscore.toFixed(2)}σ`
-                          : `${p.composite_zscore.toFixed(2)}σ`}
-                      </span>
-                      {p.is_outlier && (
-                        <span className="px-1.5 py-0.5 text-[10px] rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold">
-                          OUTLIER
-                        </span>
+                      {statMode === 'pooled_rates' ? (
+                        <>
+                          <td className="py-3 px-3 text-right font-mono text-slate-400">
+                            {p.player_type === 'Batter'
+                              ? `.${Math.round(p.stat1_raw * 1000).toString().padStart(3, '0')}`
+                              : p.stat1_raw.toFixed(2)}
+                          </td>
+                          <td className="py-3 px-3 text-right font-mono font-bold text-indigo-300 bg-indigo-950/20">
+                            <div>
+                              {p.player_type === 'Batter'
+                                ? `.${Math.round(p.stat1_pooled * 1000).toString().padStart(3, '0')}`
+                                : p.stat1_pooled.toFixed(2)}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-normal">
+                              [{p.stat1_p10.toFixed(p.player_type === 'Batter' ? 3 : 2)}–
+                              {p.stat1_p90.toFixed(p.player_type === 'Batter' ? 3 : 2)}]
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 text-right font-mono text-slate-200">
+                            {p.player_type === 'Batter'
+                              ? `.${Math.round(p.stat2_pooled * 1000).toString().padStart(3, '0')}`
+                              : p.stat2_pooled.toFixed(2)}
+                          </td>
+                          <td className="py-3 px-3 text-right font-mono text-xs text-slate-300">
+                            <span>{p.k_pct_pooled.toFixed(1)}%</span>
+                            <span className="text-slate-500 mx-1">/</span>
+                            <span>{p.bb_pct_pooled.toFixed(1)}%</span>
+                          </td>
+                          <td className="py-3 px-3 text-right font-mono text-xs text-amber-400">
+                            {p.stat1_shrinkage.toFixed(1)}%
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="py-3 px-3 text-right font-mono font-bold text-amber-300 bg-amber-950/15">
+                            {p.count1_val} {p.count1_label}
+                          </td>
+                          <td className="py-3 px-3 text-right font-mono text-slate-200">
+                            {p.count2_val}
+                          </td>
+                          <td className="py-3 px-3 text-right font-mono text-slate-200">
+                            {p.count3_val}
+                          </td>
+                          <td className="py-3 px-3 text-right font-mono text-sky-300 font-semibold">
+                            {p.player_type === 'Batter'
+                              ? `.${Math.round(p.stat3_val * 1000).toString().padStart(3, '0')}`
+                              : p.stat3_val.toFixed(1)}
+                          </td>
+                          <td className="py-3 px-3 text-center font-mono text-xs text-slate-300">
+                            {p.count1_p10} – <strong className="text-white">{p.count1_p50}</strong> –{' '}
+                            {p.count1_p90} {p.count1_label}
+                          </td>
+                        </>
                       )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+
+                      <td className="py-3 px-4 text-right font-mono">
+                        <div className="flex items-center justify-end gap-2">
+                          <span
+                            className={`text-xs font-bold ${
+                              p.composite_zscore >= 1.5
+                                ? 'text-emerald-400'
+                                : p.composite_zscore <= -1.5
+                                ? 'text-rose-400'
+                                : 'text-slate-300'
+                            }`}
+                          >
+                            {p.composite_zscore > 0
+                              ? `+${p.composite_zscore.toFixed(2)}σ`
+                              : `${p.composite_zscore.toFixed(2)}σ`}
+                          </span>
+                          {p.is_outlier && (
+                            <span className="px-1.5 py-0.5 text-[10px] rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold">
+                              OUTLIER
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+
+                    {/* Expandable Spatial Dropdown Row */}
+                    {isExpanded && (
+                      <tr key={`${p.player_id}-dropdown-map`} className="bg-slate-950/80">
+                        <td colSpan={11} className="p-3 sm:p-5">
+                          <PlayerSpatialDropdown
+                            player={p}
+                            spatialData={spatialMaps[p.player_id]}
+                            onClose={() => setExpandedPlayerId(null)}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -7,6 +7,7 @@ import {
   ModelDiagnostics,
   PostseasonOpsData,
   StatcastSpatialData,
+  PlayerSpatialDictionary,
 } from './types';
 
 export function getTeamsData(): TeamProjection[] {
@@ -44,3 +45,11 @@ export function getSpatialData(): StatcastSpatialData {
   const fileContent = fs.readFileSync(filePath, 'utf-8');
   return JSON.parse(fileContent) as StatcastSpatialData;
 }
+
+export function getPlayerSpatialMaps(): PlayerSpatialDictionary {
+  const filePath = path.join(process.cwd(), 'public', 'data', 'player_spatial_maps.json');
+  if (!fs.existsSync(filePath)) return {};
+  const fileContent = fs.readFileSync(filePath, 'utf-8');
+  return JSON.parse(fileContent) as PlayerSpatialDictionary;
+}
+

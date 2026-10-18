@@ -399,8 +399,16 @@ export_spatial_analytics <- function(out_dir = file.path(MLB_ROOT_DIR, "web", "p
   log_info(sprintf("Spatial analytics export completed in %.2fs (%s).", elapsed, out_file),
            script = .LOG_SCRIPT)
 
+  # Generate individual player spatial dropdown maps (Spray Charts & Strike Zone Arsenals)
+  player_maps_script <- file.path(PROJECT_DIR, "tools", "export_player_spatial_maps.R")
+  if (file.exists(player_maps_script)) {
+    source(player_maps_script)
+    export_player_spatial_maps(out_dir = out_dir)
+  }
+
   invisible(out_file)
 }
+
 
 if (sys.nframe() == 0) {
   export_spatial_analytics()

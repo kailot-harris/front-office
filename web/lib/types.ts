@@ -443,3 +443,82 @@ export interface StatcastSpatialData {
     };
   };
 }
+
+export interface PlayerBattedBall {
+  x: number;
+  y: number;
+  dist: number;
+  bearing: number;
+  ev: number;
+  la: number;
+  hit_type: 'Single' | 'Double' | 'Triple' | 'Home Run' | 'Out';
+  event: string;
+  parks_hr_count: number;
+}
+
+export interface PlayerPitchItem {
+  px: number;
+  pz: number;
+  pitch_type: string;
+  pitch_name: string;
+  velo: number;
+  pfx_x: number;
+  pfx_z: number;
+  result: 'called_strike' | 'swinging_strike' | 'ball' | 'foul' | 'in_play';
+  is_strike: boolean;
+  in_zone: boolean;
+}
+
+export interface BatterSpatialSummary {
+  total_balls: number;
+  hits: number;
+  home_runs: number;
+  avg_ev: number;
+  max_ev: number;
+  avg_dist: number;
+  max_dist: number;
+  avg_la: number;
+  hard_hit_pct: number;
+  pull_pct: number;
+  center_pct: number;
+  oppo_pct: number;
+}
+
+export interface PitcherArsenalItem {
+  pitch_type: string;
+  pitch_name: string;
+  count: number;
+  pct: number;
+  avg_velo: number;
+  avg_hb: number;
+  avg_ivb: number;
+  whiff_pct: number;
+}
+
+export interface PitcherSpatialSummary {
+  total_pitches: number;
+  avg_velo: number;
+  max_velo: number;
+  strike_pct: number;
+  zone_pct: number;
+  whiff_pct: number;
+  called_strike_pct: number;
+  arsenal: PitcherArsenalItem[];
+}
+
+export interface PlayerSpatialMap {
+  player_id: string;
+  player_name: string;
+  player_type: 'Batter' | 'Pitcher';
+  team: string;
+  position: string;
+  is_statcast_tracked: boolean;
+  sample_size: number;
+  batted_balls?: PlayerBattedBall[];
+  batter_summary?: BatterSpatialSummary;
+  pitches?: PlayerPitchItem[];
+  pitcher_summary?: PitcherSpatialSummary;
+}
+
+export type PlayerSpatialDictionary = Record<string, PlayerSpatialMap>;
+

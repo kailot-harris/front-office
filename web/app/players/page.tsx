@@ -15,7 +15,7 @@ export default function PlayersPage() {
             </span>
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Toggle between 630 Batters and 649 Pitchers (SP/RP) with Hierarchical Empirical Bayes Pooled Rates, Tom Tango&apos;s Marcel Counting Projections, and Statistical Outlier Flags (|z| ≥ 2.0).
+            Toggle between 630 Batters and 649 Pitchers (SP/RP) with Hierarchical Empirical Bayes Pooled Rates, Tom Tango&apos;s Marcel Counting Projections, Statistical Outlier Flags, and Interactive Spatial Spray & Strike Zone Maps for every player.
           </p>
         </div>
       </div>
