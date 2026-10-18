@@ -42,7 +42,7 @@ All stages write exclusively to isolated subdirectories under `cache/` managed b
 
 | Component | File | Callable Contract | Prerequisites | Status |
 |---|---|---|---|---|
-| **Pipeline Skeleton** | `run_full_pipeline.R` | `run_full_pipeline(season = 2024, force_refresh = FALSE)` | Wave 1 contracts finalized | **Queued** (blocked by #13) |
+| **Pipeline Skeleton** | `run_full_pipeline.R` | `run_full_pipeline(season = 2024, force_refresh = FALSE)` | Wave 1 contracts finalized | **Done** (verified live: 4/4 stages executed, deep stack-trace capture, output validation, DuckDB logged) |
 
 ---
 

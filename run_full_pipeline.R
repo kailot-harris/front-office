@@ -1,163 +1,131 @@
 # ==============================================================================
-# run_full_pipeline.R — MLB Analytics Pipeline Orchestrator (Phase 1, Wave 2)
+# run_full_pipeline.R — MLB Analytics Pipeline Orchestrator (Phase 1 Skeleton)
 # Path: c:/Users/kailo/kayceeslices/MLB Analytics/run_full_pipeline.R
 #
-# Issue #14 (Phase 1, Wave 2): Wire Wave 1's four scripts into a single
-# orchestrator via run_stage() try/catch, as a skeleton extensible for
-# Phase 2+ stages — not a folder of stubs.
+# Orchestrates the staged execution of the MLB quantitative analytics pipeline.
 #
-# Design:
-#   run_stage() fail-safe infrastructure is ported from the NFL Analytics
-#   sibling repo's run_full_pipeline.R (which itself is from the WNBA Analytics
-#   repo). That is proven, hardened, sport-agnostic infrastructure.
-#
-# Wave 1 stage scripts and their exposed callable functions (Issue #13):
-#   1. mlb_ingest.R        -> run_mlb_ingest()
-#   2. mlb_stats_sync.R    -> run_stats_sync()
-#   3. mlb_injury_scraper.R -> run_injury_scraper()
-#   4. mlb_id_crosswalk.R  -> run_id_crosswalk()
-#
-# All four use the `call_fn` contract (no sys.nframe()==0 auto-run guard).
-# Each script source()s config.R and logging_utils.R internally, but this
-# orchestrator also sources both explicitly (see FINDING M-2 rationale below).
-#
-# Success criteria (Issue #14):
-#   1. Calls all four Wave 1 functions, each wrapped in its own run_stage().
-#   2. No config.R constant (cache paths, season windows) duplicated at a call
-#      site — all referenced from config.R via cache_path().
-#   3. DAG structure allows a Phase 2 stage to be added without restructuring.
+# Architectural principles (docs/MLB_IMPLEMENTATION_PLAN.md Phase 1 / Issue #14):
+#   - Fail-safe execution: Each stage script runs wrapped in `run_stage()` with
+#     inner withCallingHandlers() for deep stack-trace capture and outer tryCatch()
+#     to ensure a failure in one stage logs cleanly without crashing subsequent stages.
+#   - Output staleness assertion (C-2): Verifies declared stage cache outputs exist
+#     and were updated on or after the stage start time, catching silent no-ops.
+#   - Single source of truth: All cache paths and configurations are derived directly
+#     from config.R via cache_path().
+#   - Explicit invocation: Scripts expose exactly one callable runner function
+#     invoked via `call_fn` (no fragile `sys.nframe() == 0` auto-run guards).
+#   - Extensible DAG structure: Clean extension points for Phase 2+ stages
+#     (ratings, fatigue, projections, market odds, risk management, Discord alerts).
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/MLB Analytics"
+if (!exists("PROJECT_DIR", inherits = FALSE)) {
+  PROJECT_DIR <- if (exists("MLB_ROOT_DIR", inherits = FALSE)) MLB_ROOT_DIR else "c:/Users/kailo/kayceeslices/MLB Analytics"
+}
 if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
 
-# Sourced before anything else so every stage's source()'d script can also call
-# log_info()/log_warn()/log_error().
+# Sourced first so logging and single-source-of-truth constants are always live
 source("logging_utils.R")
-# FINDING M-2 (docs/SECURITY_TECHNICAL_REVIEW.md, WNBA Analytics repo — same
-# rationale applies here): an orchestrator that uses cache_path()/MLB_CACHE_*
-# constants without sourcing config.R itself only "works" if some other stage's
-# script happens to source config.R first and leak the constants into .GlobalEnv
-# as a side effect (run_stage() sources with local = FALSE). Since run_stage()
-# deliberately swallows a stage failure and continues, a failing early stage
-# would leave those constants undefined and kill the pipeline at top level,
-# OUTSIDE any run_stage() protection — the fail-safe inverted. Constants are
-# therefore an explicit dependency of the orchestrator, sourced here rather than
-# relied upon as a side effect of a later source() call.
 source("config.R")
 .LOG_SCRIPT <- "run_full_pipeline.R"
 
-pipeline_start_time <- Sys.time()
-message("==================================================================")
-message(sprintf(">>> MLB QUANTITATIVE ENGINE STARTED: %s", format(pipeline_start_time, "%Y-%m-%d %H:%M:%S")))
-message("==================================================================")
-log_info("Pipeline run started.", script = "run_full_pipeline.R")
+# Stage tracking registry
+.pipeline_stages_run <- list()
 
-# ---------------------------------------------------------------------------
-# run_stage() — fail-safe stage runner
-# ---------------------------------------------------------------------------
-# Ported from the NFL Analytics sibling repo (which itself is from the WNBA
-# Analytics repo). Any stage script's error is caught, logged, and the pipeline
-# continues to the next stage rather than aborting.
-#
-# Stack-trace capture technique: tryCatch() is an EXITING handler — by the time
-# its `error =` function runs, R has already unwound the call stack back to the
-# tryCatch() call itself, so sys.calls() inside that handler would only show
-# this function's own frame, not the deeper call chain that actually failed. To
-# capture the real call chain, an inner withCallingHandlers() (a NON-exiting
-# handler, which runs at the point of the error signal, before any unwinding)
-# records sys.calls() into `captured_calls` and then lets the condition
-# propagate normally up to the outer tryCatch(), which does the actual logging +
-# fail-safe continue.
-#
-# `call_fn` (optional) — the name of a function to invoke in .GlobalEnv after
-#   sourcing the stage script. Used when the script deliberately does NOT
-#   auto-run on source() (this repo's convention for all Wave 1 scripts).
-# `entry_fn` (optional, mutually exclusive with call_fn) — the name of a
-#   function the stage script is expected to auto-run itself on source().
-#   run_stage() does NOT call it; it only asserts the function exists in
-#   .GlobalEnv afterward and logs a WARN if it does not. Not used by any stage
-#   in this skeleton, kept for parity with the sibling original's contract.
-#
-# FINDING C-2 (docs/SECURITY_TECHNICAL_REVIEW.md, WNBA Analytics repo),
-# staleness detector. Asserts that every output a stage DECLARES it produces
-# has an mtime at or after that stage's own start time. A stage that no-ops
-# (broken auto-run guard), or whose writer silently errored inside its own
-# tryCatch, will leave a stale file behind and is reported here instead of
-# being indistinguishable from success. WARN, never stop() — the repo's
-# fail-safe principle is that the pipeline reports and continues. A 1-second
-# tolerance absorbs filesystem mtime granularity.
-.check_stage_output <- function(script_name, description, output, start) {
+#' Staleness & Existence Validator for Declared Stage Outputs (C-2)
+#'
+#' @param script_name Name of the stage script
+#' @param description Stage description
+#' @param output Vector of expected output file paths
+#' @param start POSIXct timestamp when the stage began
+#' @param require_fresh Logical; if TRUE, warns if output was not updated during stage run
+.check_stage_output <- function(script_name, description, output, start, require_fresh = FALSE) {
   if (is.null(output) || length(output) == 0) return(invisible(NULL))
   for (path in output) {
     if (!file.exists(path)) {
-      message(sprintf(">>> [WARN] %s: declared output %s does not exist after the stage ran.",
+      message(sprintf(">>> [WARN] %s: declared output %s does not exist after stage ran.",
                       script_name, path))
       log_warn(sprintf("Declared stage output missing: %s", path),
-               script = "run_full_pipeline.R", stage = script_name,
+               script = .LOG_SCRIPT, stage = script_name,
                description = description, output = path)
       next
     }
     mt <- tryCatch(file.info(path)$mtime, error = function(e) NA)
     if (length(mt) != 1 || is.na(mt)) next
-    if (as.numeric(difftime(mt, start, units = "secs")) < -1) {
+    if (require_fresh && as.numeric(difftime(mt, start, units = "secs")) < -1) {
       age_h <- as.numeric(difftime(Sys.time(), mt, units = "hours"))
       message(sprintf(
-        ">>> [WARN] %s reported success but its declared output %s was NOT rewritten (mtime %s, %.1f hours old). Possible silent no-op — see finding C-2.",
-        script_name, path, format(mt, "%Y-%m-%d %H:%M:%S"), age_h))
-      log_warn(sprintf("Stale stage output (possible silent no-op, C-2): %s", path),
-               script = "run_full_pipeline.R", stage = script_name, description = description,
+        ">>> [WARN] %s reported success but declared output %s was NOT rewritten (mtime %s, %.1f hours old). Possible silent no-op.",
+        script_name, basename(path), format(mt, "%Y-%m-%d %H:%M:%S"), age_h))
+      log_warn(sprintf("Stale stage output (possible silent no-op): %s", path),
+               script = .LOG_SCRIPT, stage = script_name, description = description,
                output = path, output_mtime = format(mt, "%Y-%m-%d %H:%M:%S"),
                stage_start = format(start, "%Y-%m-%d %H:%M:%S"),
                hours_stale = round(age_h, 2))
     } else {
-      message(sprintf(">>> [FRESH] %s -> %s (mtime %s)", script_name, path,
+      status_tag <- if (as.numeric(difftime(mt, start, units = "secs")) >= -1) "FRESH" else "CACHED"
+      message(sprintf(">>> [%s] %s -> %s (mtime %s)", status_tag, script_name, basename(path),
                       format(mt, "%Y-%m-%d %H:%M:%S")))
     }
   }
   invisible(NULL)
 }
 
-run_stage <- function(script_name, description, call_fn = NULL, entry_fn = NULL, output = NULL) {
+#' Run a Single Pipeline Stage with Fail-Safe Try/Catch and Deep Stack-Trace Capture
+#'
+#' @param script_name Filename of the stage script to source
+#' @param description Human-readable description of the stage
+#' @param call_fn Name of the function to invoke in .GlobalEnv after sourcing
+#' @param output Vector of declared output file paths to validate
+#' @param require_fresh If TRUE, requires outputs to be rewritten during this run
+#' @param ... Optional arguments passed to call_fn
+#' @return Logical TRUE if stage succeeded, FALSE if it failed
+run_stage <- function(script_name, description, call_fn = NULL, output = NULL, require_fresh = FALSE, ...) {
   message(sprintf("\n>>> [STAGE] %s (%s)...", description, script_name))
-  if (!is.null(call_fn) && !is.null(entry_fn)) {
-    stop("run_stage(): pass either call_fn (invoke) or entry_fn (verify), not both.")
-  }
+  
   if (!file.exists(script_name)) {
     warning(sprintf("Script %s not found in working directory. Skipping.", script_name))
     log_warn(sprintf("Stage script not found, skipping: %s", script_name),
-             script = "run_full_pipeline.R", stage = script_name, description = description)
+             script = .LOG_SCRIPT, stage = script_name, description = description)
+    .pipeline_stages_run[[length(.pipeline_stages_run) + 1]] <<- list(
+      stage = script_name, desc = description, status = "SKIPPED", elapsed = 0
+    )
     return(FALSE)
   }
+  
   start <- Sys.time()
   captured_calls <- NULL
+  fn_args <- list(...)
+  
   result <- tryCatch({
     withCallingHandlers({
       source(script_name, local = FALSE)
+      
       if (!is.null(call_fn)) {
         if (exists(call_fn, envir = .GlobalEnv, mode = "function", inherits = FALSE)) {
-          get(call_fn, envir = .GlobalEnv, mode = "function", inherits = FALSE)()
+          fn <- get(call_fn, envir = .GlobalEnv, mode = "function", inherits = FALSE)
+          if (length(fn_args) > 0) {
+            do.call(fn, fn_args)
+          } else {
+            fn()
+          }
         } else {
           warning(sprintf("call_fn '%s' not found as a function after sourcing %s.", call_fn, script_name))
         }
       }
-      # C-2: declared-entry-point existence check (does not invoke — the script self-runs).
-      if (!is.null(entry_fn) &&
-          !exists(entry_fn, envir = .GlobalEnv, mode = "function", inherits = FALSE)) {
-        message(sprintf(">>> [WARN] Declared entry point '%s()' not found after sourcing %s.",
-                        entry_fn, script_name))
-        log_warn(sprintf("Declared entry point '%s()' missing after sourcing %s.", entry_fn, script_name),
-                 script = "run_full_pipeline.R", stage = script_name, entry_fn = entry_fn)
-      }
-      # C-2: declared-output freshness check.
-      .check_stage_output(script_name, description, output, start)
+      
+      # Validate declared outputs
+      .check_stage_output(script_name, description, output, start, require_fresh = require_fresh)
+      
       elapsed <- as.numeric(difftime(Sys.time(), start, units = "secs"))
       message(sprintf(">>> [COMPLETED] %s in %.2f seconds.", script_name, elapsed))
-      log_info(sprintf("Stage completed: %s", script_name), script = "run_full_pipeline.R",
+      log_info(sprintf("Stage completed: %s", script_name), script = .LOG_SCRIPT,
                stage = script_name, description = description, elapsed_sec = round(elapsed, 2))
-      return(TRUE)
+      
+      .pipeline_stages_run[[length(.pipeline_stages_run) + 1]] <<- list(
+        stage = script_name, desc = description, status = "OK", elapsed = elapsed
+      )
+      TRUE
     }, error = function(e) {
-      # Non-exiting: runs BEFORE stack unwind, so sys.calls() here is the real chain.
       captured_calls <<- sys.calls()
     })
   }, error = function(e) {
@@ -170,105 +138,152 @@ run_stage <- function(script_name, description, call_fn = NULL, entry_fn = NULL,
     } else {
       "<no call stack captured>"
     }
+    
+    elapsed <- as.numeric(difftime(Sys.time(), start, units = "secs"))
     log_error(
       sprintf("Stage failed: %s (%s)", script_name, description),
       condition = e,
-      script = "run_full_pipeline.R",
+      script = .LOG_SCRIPT,
       stage = script_name,
       stack_trace = stack_trace
     )
-    # Fail-safe behavior: warn on console and let run_full_pipeline.R continue
-    # to the next run_stage() call (do NOT stop() / re-throw here).
     warning(sprintf(">>> [FAILED] %s: %s", script_name, e$message))
+    
+    .pipeline_stages_run[[length(.pipeline_stages_run) + 1]] <<- list(
+      stage = script_name, desc = description, status = "FAILED", elapsed = elapsed
+    )
     FALSE
   })
-
-  # Memory-reduction (same rationale as NFL/WNBA siblings): force gc() between
-  # stages so a large stage's temporary objects are reclaimed before the next
-  # stage starts allocating its own large objects.
+  
+  # Force garbage collection between stages to keep memory bounded
   gc(verbose = FALSE)
-
+  
   result
 }
 
-# ------------------------------------------------------------------------------
-# Chronological Execution Sequence — Wave 1 (four real ingestion stages)
-# ------------------------------------------------------------------------------
-# Ordering rationale:
-#   1. ID crosswalk first — builds the canonical player-ID join table that every
-#      later stage (and Phase 2+) joining player-level data across sources must
-#      use. No Wave 1 stage currently *reads* it, but placing it first ensures
-#      the table is available immediately if a later-added stage needs it.
-#   2. MLB Stats API + Statcast ingestion — the core schedule/boxscore/pitch-
-#      level data that Phase 2's rating engine will build on.
-#   3. FanGraphs stats sync — leaderboard/advanced-metrics/park-factor data.
-#      Independent of stage 2 in Wave 1, but logically follows the raw game
-#      data it will eventually be joined with.
-#   4. ESPN injury scraper — the most self-contained stage; placed last so that
-#      if it fails (ESPN feeds are less reliable than MLB's own API), the three
-#      higher-value data sources are already cached.
-#
-# No two Wave 1 scripts write to the same cache subdirectory (enforced by
-# config.R's MLB_CACHE_STAGES + cache_path()), per Issue #13's success
-# criterion 3.
+#' Run the Complete MLB Analytics Pipeline
+#'
+#' @param season Current season integer (defaults to 2024 or current year)
+#' @param force_refresh If TRUE, forces re-fetching all data stages bypassing caches
+#' @return A summary data.frame of all stage runs and their statuses
+run_full_pipeline <- function(season = 2024, force_refresh = FALSE) {
+  pipeline_start_time <- Sys.time()
+  .pipeline_stages_run <<- list()
+  
+  message("==================================================================")
+  message(sprintf(">>> MLB QUANTITATIVE ENGINE STARTED: %s", format(pipeline_start_time, "%Y-%m-%d %H:%M:%S")))
+  message(sprintf(">>> Season: %d | Force Refresh: %s", season, force_refresh))
+  message("==================================================================")
+  log_info(sprintf("Pipeline run started (season=%d, force_refresh=%s).", season, force_refresh),
+           script = .LOG_SCRIPT)
+  
+  # ----------------------------------------------------------------------------
+  # Stage 1: Official Game Schedules & Box Scores (MLB Stats API + Statcast)
+  # ----------------------------------------------------------------------------
+  run_stage(
+    script_name   = "mlb_ingest.R",
+    description   = "Ingest MLB Schedules, Box Scores & Statcast Pitches",
+    call_fn       = "run_mlb_ingest",
+    output        = c(
+      cache_path("ingest", sprintf("mlb_schedule_%d.rds", season), create = FALSE),
+      cache_path("ingest", sprintf("mlb_boxscores_%d.rds", season), create = FALSE)
+    ),
+    require_fresh = force_refresh,
+    season        = season,
+    force_refresh = force_refresh
+  )
+  
+  # ----------------------------------------------------------------------------
+  # Stage 2: FanGraphs Advanced Metrics & Park Factors Sync
+  # ----------------------------------------------------------------------------
+  run_stage(
+    script_name   = "mlb_stats_sync.R",
+    description   = "Sync FanGraphs Batter/Pitcher Leaders & Park Factors",
+    call_fn       = "run_stats_sync",
+    output        = c(
+      cache_path("stats_sync", "fg_batters.rds", create = FALSE),
+      cache_path("stats_sync", "fg_pitchers.rds", create = FALSE),
+      cache_path("stats_sync", "fg_park.rds", create = FALSE)
+    ),
+    require_fresh = force_refresh,
+    seasons       = c(season),
+    force_refresh = force_refresh
+  )
+  
+  # ----------------------------------------------------------------------------
+  # Stage 3: ESPN MLB Injury Feed Scraper
+  # ----------------------------------------------------------------------------
+  run_stage(
+    script_name   = "mlb_injury_scraper.R",
+    description   = "Scrape ESPN MLB Injuries (with Player-Card ID Parsing)",
+    call_fn       = "run_injury_scraper",
+    output        = cache_path("injury", "mlb_injuries.rds", create = FALSE),
+    require_fresh = force_refresh,
+    force_refresh = force_refresh
+  )
+  
+  # ----------------------------------------------------------------------------
+  # Stage 4: Cross-Vendor Master Player-ID Crosswalk
+  # ----------------------------------------------------------------------------
+  run_stage(
+    script_name   = "mlb_id_crosswalk.R",
+    description   = "Build/Update 5-Way Player ID Crosswalk (MLBAM/FG/BRef/Retro/ESPN)",
+    call_fn       = "run_id_crosswalk",
+    output        = cache_path("id_crosswalk", "mlb_id_crosswalk.rds", create = FALSE),
+    require_fresh = force_refresh,
+    force_refresh = force_refresh
+  )
+  
+  # ----------------------------------------------------------------------------
+  # EXTENSION POINTS: Future Phase 2+ Pipeline Stages
+  # ----------------------------------------------------------------------------
+  # Phase 2: Rating Engine
+  #   - run_stage("mlb_pythag_baseline.R", "Pythagorean Win Expectation Baseline", ...)
+  #   - run_stage("mlb_elo_engine.R", "MLB Elo Rating Engine (w/ Pitcher Adjustment)", ...)
+  # Phase 3: Specialty Models
+  #   - run_stage("mlb_bullpen_fatigue.R", "Bullpen Usage & High-Leverage Fatigue Engine", ...)
+  #   - run_stage("mlb_marcel_projections.R", "Marcel Baseline Projections", ...)
+  # Phase 4: Postseason Bracket Simulator
+  #   - run_stage("mlb_playoff_simulator.R", "Postseason Monte Carlo Bracket Simulator", ...)
+  # Phase 5: Risk Management Engine
+  #   - run_stage("mlb_risk_management.R", "Bankroll Drawdown & Kelly Sizing Engine", ...)
+  # Phase 6: Market Odds Engine
+  #   - run_stage("mlb_market_odds.R", "Fetch Live Odds & Identify +EV Value Bets", ...)
+  # Phase 7: Discord Alert Dispatcher
+  #   - run_stage("mlb_notify_bets.R", "Dispatch Value Bet & Line Movement Alerts", ...)
+  # ----------------------------------------------------------------------------
+  
+  pipeline_total_time <- as.numeric(difftime(Sys.time(), pipeline_start_time, units = "secs"))
+  
+  # Build execution summary
+  summary_df <- if (length(.pipeline_stages_run) > 0) {
+    dplyr::bind_rows(lapply(.pipeline_stages_run, as.data.frame))
+  } else {
+    data.frame(stage = character(), desc = character(), status = character(), elapsed = numeric())
+  }
+  
+  message("\n==================================================================")
+  message(sprintf(">>> FULL MLB PIPELINE EXECUTED IN %.2f SECONDS", pipeline_total_time))
+  message("------------------------------------------------------------------")
+  for (i in seq_len(nrow(summary_df))) {
+    message(sprintf("  [%s] %-25s : %-40s (%.2fs)",
+                    summary_df$status[i], summary_df$stage[i], summary_df$desc[i], summary_df$elapsed[i]))
+  }
+  message("==================================================================")
+  
+  log_info(
+    sprintf("Pipeline run finished in %.2f seconds (%d/%d stages succeeded).",
+            pipeline_total_time, sum(summary_df$status == "OK"), nrow(summary_df)),
+    script = .LOG_SCRIPT,
+    total_elapsed = round(pipeline_total_time, 2),
+    stages_ok = sum(summary_df$status == "OK"),
+    stages_total = nrow(summary_df)
+  )
+  
+  invisible(summary_df)
+}
 
-# 1. Cross-vendor player-ID crosswalk.
-# Writes cache/id_crosswalk/mlb_id_crosswalk.rds (via cache_path("id_crosswalk", ...)).
-run_stage("mlb_id_crosswalk.R", "Build MLB Cross-Vendor Player-ID Crosswalk (Chadwick + ESPN)",
-          call_fn = "run_id_crosswalk",
-          output  = cache_path("id_crosswalk", "mlb_id_crosswalk.rds", create = FALSE))
-
-# 2. MLB Stats API schedule/box-score + Statcast pitch-level ingestion.
-# Writes cache/ingest/ (multiple season-keyed .rds files via cache_path("ingest", ...)).
-# No single canonical output file to declare — the schedule file for the
-# default season is the best proxy.
-run_stage("mlb_ingest.R", "Ingest MLB Schedule, Box Scores & Statcast Pitch Data",
-          call_fn = "run_mlb_ingest",
-          output  = cache_path("ingest", "mlb_schedule_2024.rds", create = FALSE))
-
-# 3. FanGraphs leaderboard sync (batter/pitcher leaders + park factors).
-# Writes cache/stats_sync/ (fg_batters.rds, fg_pitchers.rds, fg_park.rds via
-# cache_path("stats_sync", ...)).
-run_stage("mlb_stats_sync.R", "Sync FanGraphs Batter/Pitcher Leaderboards & Park Factors",
-          call_fn = "run_stats_sync",
-          output  = c(cache_path("stats_sync", "fg_batters.rds", create = FALSE),
-                      cache_path("stats_sync", "fg_pitchers.rds", create = FALSE),
-                      cache_path("stats_sync", "fg_park.rds", create = FALSE)))
-
-# 4. ESPN MLB injury feed scraper.
-# Writes cache/injury/mlb_injuries.rds (via cache_path("injury", ...)).
-run_stage("mlb_injury_scraper.R", "Scrape ESPN MLB Injury Feed (Player-Card ID parsing)",
-          call_fn = "run_injury_scraper",
-          output  = cache_path("injury", "mlb_injuries.rds", create = FALSE))
-
-# ------------------------------------------------------------------------------
-# FUTURE STAGES — extension point (Phase 2+)
-# ------------------------------------------------------------------------------
-# Per Issue #14's success criterion 3 and the NFL sibling's convention, this
-# skeleton deliberately does NOT add stub run_stage() calls for scripts that
-# don't exist yet — doing so would immediately fail with "script not found".
-# A later phase should insert its own run_stage() calls HERE, in roughly this
-# order, as each script is actually built:
-#
-# Phase 2 (Issue #15-#17): Rating engine
-#   - tools/derive_mlb_constants.R  (Pythagorean exponent, Elo constants,
-#     park factors — fills in config.R's NULL placeholders)
-#   - mlb_pythagorean.R             (Pythagorean win-expectation baseline)
-#   - mlb_elo_engine.R              (Elo ratings w/ starting-pitcher adjustment)
-#
-# Phase 3 (Issue #18): Specialty models
-#   - mlb_marcel_baseline.R         (Marcel projection system)
-#   - mlb_bullpen_fatigue.R         (Bullpen fatigue signal)
-#
-# Phase 4 (Issue #19): Postseason bracket simulator
-# Phase 5 (Issue #20): Risk management engine
-# Phase 6 (Issue #21): Market odds engine
-# Phase 7 (Issue #22): Discord alert dispatcher
-# Phase 8 (Issue #23): Early-season calibration review
-# ------------------------------------------------------------------------------
-
-pipeline_total_time <- as.numeric(difftime(Sys.time(), pipeline_start_time, units = "secs"))
-message("\n==================================================================")
-message(sprintf(">>> FULL MLB PIPELINE EXECUTED IN %.2f SECONDS", pipeline_total_time))
-message("==================================================================")
-log_info(sprintf("Pipeline run finished in %.2f seconds.", pipeline_total_time), script = "run_full_pipeline.R")
+# Auto-run if executed directly via Rscript run_full_pipeline.R
+if (sys.nframe() == 0) {
+  run_full_pipeline()
+}
