@@ -238,5 +238,13 @@ MLB_MARCEL_WEIGHTS <- list(
 MLB_RUN_ENVIRONMENT_SIGMA <- 4.416
 
 # ---------------------------------------------------------------------------
+# 5. Secrets / Webhooks
+# ---------------------------------------------------------------------------
+# Sourced from local .Renviron or environment variable.
+# NEVER hardcode a webhook URL in tracked code.
+# Downstream stages treat "" as a "webhook not configured" no-op.
+MLB_DISCORD_WEBHOOK <- Sys.getenv("MLB_DISCORD_WEBHOOK", Sys.getenv("DISCORD_WEBHOOK_URL", ""))
+
+# ---------------------------------------------------------------------------
 # End of config.R
 # ---------------------------------------------------------------------------
