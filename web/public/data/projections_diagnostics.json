@@ -1,0 +1,113 @@
+{
+  "totalResolvedGames": 2430,
+  "overallAccuracy": 0.5663,
+  "brierScore": 0.2449,
+  "brierSkillScore": 0.0204,
+  "logLoss": 0.6828,
+  "homeWinRate": 0.5284,
+  "weightedCalibError": 0.0182,
+  "calibrationStatus": "OPTIMAL",
+  "calibration": [
+    {
+      "bin": "<40%",
+      "midpoint": 0.375,
+      "count": 63,
+      "meanPredictedProb": 0.3726,
+      "empiricalWinRate": 0.2698
+    },
+    {
+      "bin": "40-45%",
+      "midpoint": 0.425,
+      "count": 213,
+      "meanPredictedProb": 0.4308,
+      "empiricalWinRate": 0.4836
+    },
+    {
+      "bin": "45-50%",
+      "midpoint": 0.475,
+      "count": 519,
+      "meanPredictedProb": 0.4795,
+      "empiricalWinRate": 0.4451
+    },
+    {
+      "bin": "50-55%",
+      "midpoint": 0.525,
+      "count": 840,
+      "meanPredictedProb": 0.5251,
+      "empiricalWinRate": 0.5548
+    },
+    {
+      "bin": "55-60%",
+      "midpoint": 0.575,
+      "count": 559,
+      "meanPredictedProb": 0.5728,
+      "empiricalWinRate": 0.5599
+    },
+    {
+      "bin": "60-65%",
+      "midpoint": 0.625,
+      "count": 176,
+      "meanPredictedProb": 0.6218,
+      "empiricalWinRate": 0.6761
+    },
+    {
+      "bin": "65%+",
+      "midpoint": 0.675,
+      "count": 60,
+      "meanPredictedProb": 0.6792,
+      "empiricalWinRate": 0.5833
+    }
+  ],
+  "accuracyDrift": [
+    {
+      "season": "Early (Games 1-300)",
+      "games": 300,
+      "accuracy": 0.57,
+      "brierScore": 0.2454
+    },
+    {
+      "season": "Mid (Games 301-1200)",
+      "games": 900,
+      "accuracy": 0.5511,
+      "brierScore": 0.2476
+    },
+    {
+      "season": "Late (Games 1201-2430)",
+      "games": 1230,
+      "accuracy": 0.5764,
+      "brierScore": 0.2427
+    }
+  ],
+  "residualDistribution": [
+    {
+      "bucket": "< -0.50",
+      "count": 350,
+      "label": "Heavy Road Upset"
+    },
+    {
+      "bucket": "-0.50 to -0.35",
+      "count": 899,
+      "label": "Moderate Home Win"
+    },
+    {
+      "bucket": "-0.35 to 0.00",
+      "count": 35,
+      "label": "Expected Favorite Win"
+    },
+    {
+      "bucket": "0.00 to 0.35",
+      "count": 7,
+      "label": "Expected Road Win"
+    },
+    {
+      "bucket": "0.35 to 0.50",
+      "count": 435,
+      "label": "Moderate Road Win"
+    },
+    {
+      "bucket": "> 0.50",
+      "count": 704,
+      "label": "Heavy Home Upset"
+    }
+  ]
+}
