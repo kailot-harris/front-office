@@ -100,9 +100,13 @@ Executing `Rscript -e "source('run_full_pipeline.R'); res <- run_full_pipeline()
 | `mlb_market_odds_engine.R` | 500 | Real | `run_market_odds_engine()` | The Odds API integration (`baseball_mlb`), sharp devigging, +EV, and fractional Kelly staking. |
 | `mlb_risk_management_engine.R` | 255 | Real | `run_risk_management()` | Bankroll drawdown tracking and dynamic Kelly stop-loss tiers. |
 | `mlb_notify_bets.R` | 215 | Real | `run_notify_bets()` | Discord value-bet webhook dispatcher with baseball embed formatting. |
+| `tests/testthat/` | ~250 | Real | `testthat::test_dir('tests/testthat')` | Automated unit test suite (44 assertions) covering Pythagenpat, Elo, game scores, devigging, Kelly staking, ID crosswalk, and Bayes shrinkage. |
+| `.github/workflows/ci.yml` | 38 | CI | GitHub Actions | Continuous integration running renv restore and testthat unit tests on push/PR. |
+| `scripts/run_pipeline_task.ps1` | 27 | Infra | PowerShell / Scheduled Task | Automated production pipeline execution wrapper for Windows Task Scheduler (`MLB_Analytics_Scheduled_Pipeline`). |
 | `tools/derive_mlb_constants.R` | 235 | Real | CLI / Script | Empirical constant derivation across 2,432 games. |
 | `tools/evaluate_bayes_shrinkage.R` | 210 | Real | `test_shrinkage_monotonicity()` | Monotonicity and variance-reduction verification for empirical Bayes shrinkage. |
 | `tools/viz_*.R` | ~600 | Real | `run_all_visualizations()` | 4 publication-ready PNG visualization scripts in modern dark theme. |
 | `reports/Baseball analytics model comparison.md` | ~400 | Report | Document | Academic/industry research comparison covering win probability, player projection, Statcast pitching, postseason simulation, and betting market efficiency. |
 | `research_notes/` | ~25 files | Notes | Documents | Detailed literature and empirical research notes. |
 | `ROADMAP.md` | 55 | Roadmap | Document | Post-v1 capability ideas, automation roadmap, and testing/CI wishlist. |
+

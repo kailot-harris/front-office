@@ -19,11 +19,6 @@ Roughly ordered by value-to-effort, not a strict priority queue.
   already tracks a bankroll ledger; there's no visualization of drawdown/
   growth history yet. Would reuse `tools/viz_theme.R` for styling.
   Effort: Small-medium.
-- **Live scheduling of the full pipeline.** `run_full_pipeline.R` +
-  `mlb_notify_bets.R` currently run on demand only. Wiring a cron/Windows
-  Task Scheduler job to run on a game-day cadence would make the Discord
-  alerting actually operational rather than manually triggered.
-  Effort: Medium — needs a persistent scheduler, not just a script change.
 - **Multi-book odds aggregation.** `mlb_market_odds_engine.R` (Phase 6)
   currently devigs against a single Odds API feed. Aggregating multiple
   books would sharpen the devig and EV estimate, but depends on the
@@ -32,20 +27,19 @@ Roughly ordered by value-to-effort, not a strict priority queue.
 
 ## 2. Process / infra items
 
-- **Add a `testthat` suite.** Reviewed in session on 2026-10-18: zero
-  automated tests exist anywhere in the repo (only `renv`'s bundled
-  copies reference `testthat`). The project currently relies on
-  verification/derivation scripts (`tools/derive_mlb_constants.R`,
-  `tools/evaluate_bayes_shrinkage.R`) instead of unit tests. Worth a
-  deliberate call on whether that's sufficient going forward or whether
-  core engines (Pythagenpat, Elo, Marcel, Bayes pooling) need real
-  regression tests.
+- **[SHIPPED 2026-10-18] Live scheduling of full pipeline.** Operationalized via
+  `scripts/run_pipeline_task.ps1` and registered under Windows Task Scheduler
+  (`MLB_Analytics_Scheduled_Pipeline`) on a twice-daily cadence (11:00 AM morning
+  slate, 5:00 PM pre-game lineups) logging to `logs/scheduled_runs.log`.
+- **[SHIPPED 2026-10-18] Automated `testthat` suite & GitHub Actions CI.**
+  Implemented formal unit test suite under `tests/testthat/` (44 assertions covering
+  Pythagorean win expectation, Elo updates, Tangotiger game score math, market odds
+  devigging & Kelly staking, 5-way player crosswalk, and empirical Bayes shrinkage
+  monotonicity). Integrated with GitHub Actions CI workflow (`.github/workflows/ci.yml`).
 - **Add a root `README.md`.** Currently `docs/HANDOFF.md` is the only
   orientation document for a newcomer; a short README pointing at it
   would lower the barrier for anyone browsing the repo on GitHub.
-- **GitHub Actions CI.** No CI currently runs the pipeline or any tests
-  on push. Would need the testthat suite above (or at least the parse/
-  syntax check done ad hoc this session) wired into a workflow.
+
 
 ## 3. Explicitly out of scope
 
