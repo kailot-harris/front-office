@@ -35,7 +35,7 @@ Verified live via `gh issue list --state all`:
 
 | Issue | Title | Status | Evidence / Notes |
 |---|---|---|---|
-| #11 | Epic: MLB Analytics engine build (Phases 1-9) | OPEN | Parent epic |
+| #11 | Epic: MLB Analytics engine build (Phases 1-9) | CLOSED | Top-level engine build epic closed with all 25 issues completed |
 | #12 | Phase 1: Data foundation | CLOSED | Complete (skeleton, ingestion, crosswalk) |
 | #13 | Phase 1, Wave 1: Ingestion scripts + ID-crosswalk | CLOSED | `mlb_ingest.R`, `mlb_stats_sync.R`, `mlb_injury_scraper.R`, `mlb_id_crosswalk.R` |
 | #14 | Phase 1, Wave 2: Pipeline skeleton | CLOSED | `run_full_pipeline.R` fail-safe orchestrator |
@@ -49,7 +49,7 @@ Verified live via `gh issue list --state all`:
 | #22 | Phase 7: Discord alert dispatcher | CLOSED | `mlb_notify_bets.R` (rich embeds, webhook dispatch) |
 | #23 | Phase 8: Early-season calibration review | CLOSED | Empirical audit complete: zero probability spikes; 10-game sample gate confirmed |
 | #24 | Phase 9: Quantitative visualization suite | CLOSED | `tools/viz_*.R` + `tools/run_all_visualizations.R` (4 PNGs in `cache/viz/`) |
-| **#25** | **Phase 10: Hierarchical empirical Bayes partial-pooling engine** | **CLOSED** | **`mlb_bayes_pooling.R` + `tools/evaluate_bayes_shrinkage.R` wired as Stage 8** |
+| #25 | Phase 10: Hierarchical empirical Bayes partial-pooling engine | CLOSED | `mlb_bayes_pooling.R` + `tools/evaluate_bayes_shrinkage.R` wired as Stage 8 |
 
 ---
 
@@ -103,3 +103,6 @@ Executing `Rscript -e "source('run_full_pipeline.R'); res <- run_full_pipeline()
 | `tools/derive_mlb_constants.R` | 235 | Real | CLI / Script | Empirical constant derivation across 2,432 games. |
 | `tools/evaluate_bayes_shrinkage.R` | 210 | Real | `test_shrinkage_monotonicity()` | Monotonicity and variance-reduction verification for empirical Bayes shrinkage. |
 | `tools/viz_*.R` | ~600 | Real | `run_all_visualizations()` | 4 publication-ready PNG visualization scripts in modern dark theme. |
+| `reports/Baseball analytics model comparison.md` | ~400 | Report | Document | Academic/industry research comparison covering win probability, player projection, Statcast pitching, postseason simulation, and betting market efficiency. |
+| `research_notes/` | ~25 files | Notes | Documents | Detailed literature and empirical research notes. |
+| `ROADMAP.md` | 55 | Roadmap | Document | Post-v1 capability ideas, automation roadmap, and testing/CI wishlist. |
