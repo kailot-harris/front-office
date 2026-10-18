@@ -14,6 +14,7 @@ import {
   Layers,
   HelpCircle,
   Calculator,
+  Table,
 } from 'lucide-react';
 import { HalloweenBasketball } from '@/components/HalloweenBasketball';
 
@@ -25,10 +26,17 @@ export const Sidebar: React.FC = () => {
   const navItems = [
     {
       href: '/',
-      label: 'Season Standings',
-      badge: '30 Teams',
+      label: 'Playoff Snapshot',
+      badge: 'Contenders',
       icon: Trophy,
-      desc: 'Win distributions & title equity',
+      desc: 'Box-whisker win distributions',
+    },
+    {
+      href: '/teams',
+      label: 'Full Standings Table',
+      badge: '30 Teams',
+      icon: Table,
+      desc: 'All 30 franchises & sortable stats',
     },
     {
       href: '/variants',

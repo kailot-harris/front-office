@@ -62,7 +62,7 @@ export const PlayoffContendersBoxWhisker: React.FC<PlayoffContendersBoxWhiskerPr
               <button
                 key={conf}
                 onClick={() => setSelectedConf(conf)}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                className={`cursor-pointer select-none px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
                   selectedConf === conf
                     ? 'bg-indigo-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
@@ -76,7 +76,7 @@ export const PlayoffContendersBoxWhisker: React.FC<PlayoffContendersBoxWhiskerPr
           {/* Toggle Expand/Collapse */}
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-colors"
+            className="cursor-pointer select-none p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-colors"
             title={isExpanded ? 'Collapse Snapshot' : 'Expand Snapshot'}
           >
             {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}

@@ -10,7 +10,7 @@ export default function TeamsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
           <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-3">
-            <span>Team Standings & Projections</span>
+            <span>Full Standings Table</span>
             <span className="text-sm font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
               30 NBA Franchises
             </span>
@@ -21,7 +21,7 @@ export default function TeamsPage() {
         </div>
       </div>
 
-      <StandingsClient teams={teams} metadata={metadata} />
+      <StandingsClient teams={teams} metadata={metadata} initialTab="table" />
     </div>
   );
 }

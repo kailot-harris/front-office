@@ -31,7 +31,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <StandingsClient teams={teams} metadata={metadata} />
+      <StandingsClient teams={teams} metadata={metadata} initialTab="visualizer" />
     </div>
   );
 }
