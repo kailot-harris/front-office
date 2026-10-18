@@ -261,11 +261,40 @@ run_full_pipeline <- function(season = 2024, force_refresh = FALSE) {
   )
   
   # ----------------------------------------------------------------------------
-  # EXTENSION POINTS: Future Phase 3+ Pipeline Stages
+  # Stage 7: Tom Tango's Marcel Projection System (Benchmark Baseline)
   # ----------------------------------------------------------------------------
-  # Phase 3: Specialty Models
-  #   - run_stage("mlb_bullpen_fatigue.R", "Bullpen Usage & High-Leverage Fatigue Engine", ...)
-  #   - run_stage("mlb_marcel_projections.R", "Marcel Baseline Projections", ...)
+  run_stage(
+    script_name   = "mlb_marcel_baseline.R",
+    description   = "Generate Marcel 3-Year Baseline Projections (Batters & Pitchers)",
+    call_fn       = "run_marcel_baseline",
+    output        = c(
+      cache_path("specialty", sprintf("marcel_batters_%d.rds", season + 1L), create = FALSE),
+      cache_path("specialty", sprintf("marcel_pitchers_%d.rds", season + 1L), create = FALSE)
+    ),
+    require_fresh = force_refresh,
+    target_season = season + 1L,
+    force_refresh = force_refresh
+  )
+
+  # ----------------------------------------------------------------------------
+  # Stage 8: Bullpen Workload & High-Leverage Fatigue Diagnostic Engine
+  # ----------------------------------------------------------------------------
+  run_stage(
+    script_name   = "mlb_bullpen_fatigue.R",
+    description   = "Compute Relief-Pitcher Fatigue & Bullpen Workload Diagnostics",
+    call_fn       = "run_bullpen_fatigue",
+    output        = c(
+      cache_path("specialty", "bullpen_fatigue_daily.rds", create = FALSE),
+      cache_path("specialty", "bullpen_team_status.rds", create = FALSE)
+    ),
+    require_fresh = force_refresh,
+    season        = season,
+    force_refresh = force_refresh
+  )
+
+  # ----------------------------------------------------------------------------
+  # EXTENSION POINTS: Future Phase 4+ Pipeline Stages
+  # ----------------------------------------------------------------------------
   # Phase 4: Postseason Bracket Simulator
   #   - run_stage("mlb_playoff_simulator.R", "Postseason Monte Carlo Bracket Simulator", ...)
   # Phase 5: Risk Management Engine
