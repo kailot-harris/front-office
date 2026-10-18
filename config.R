@@ -57,7 +57,8 @@ MLB_CACHE_STAGES <- list(
   pythag        = "pythag",        # mlb_pythag_baseline.R (Pythagorean win expectation)
   ratings       = "ratings",       # mlb_elo_engine.R      (Elo ratings w/ pitcher adjustment)
   specialty     = "specialty",     # mlb_marcel_baseline.R, mlb_bullpen_fatigue.R
-  postseason    = "postseason"     # mlb_postseason_simulator.R (Phase 4 bracket simulator)
+  postseason    = "postseason",    # mlb_postseason_simulator.R (Phase 4 bracket simulator)
+  risk          = "risk"           # mlb_risk_management_engine.R (Phase 5 bankroll & Kelly monitor)
 )
 
 #' Build (and create, if needed) a cache path for one pipeline stage.
@@ -88,6 +89,10 @@ cache_path <- function(stage, ..., create = TRUE) {
   normalizePath(file.path(stage_dir, do.call(file.path, as.list(extra))),
                 winslash = "/", mustWork = FALSE)
 }
+
+# Canonical cache references for Risk Management (Phase 5, Issue #20)
+CACHE_RISK_STATE     <- cache_path("risk", "mlb_risk_state.rds")
+CACHE_BETTING_LEDGER <- cache_path("risk", "betting_ledger.rds")
 
 # ---------------------------------------------------------------------------
 # 2. WAR source (Phase 1's one open decision this phase actually resolves)

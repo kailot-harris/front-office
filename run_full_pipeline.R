@@ -310,10 +310,19 @@ run_full_pipeline <- function(season = 2024, force_refresh = FALSE) {
   )
 
   # ----------------------------------------------------------------------------
-  # EXTENSION POINTS: Future Phase 5+ Pipeline Stages
+  # Stage 10: Risk Management & Dynamic Kelly Sizing Engine
   # ----------------------------------------------------------------------------
-  # Phase 5: Risk Management Engine
-  #   - run_stage("mlb_risk_management.R", "Bankroll Drawdown & Kelly Sizing Engine", ...)
+  run_stage(
+    script_name   = "mlb_risk_management_engine.R",
+    description   = "Monitor Bankroll Drawdown & Enforce Dynamic Kelly Stop-Loss",
+    call_fn       = "run_risk_management",
+    output        = cache_path("risk", "mlb_risk_state.rds", create = FALSE),
+    require_fresh = force_refresh
+  )
+
+  # ----------------------------------------------------------------------------
+  # EXTENSION POINTS: Future Phase 6+ Pipeline Stages
+  # ----------------------------------------------------------------------------
   # Phase 6: Market Odds Engine
   #   - run_stage("mlb_market_odds.R", "Fetch Live Odds & Identify +EV Value Bets", ...)
   # Phase 7: Discord Alert Dispatcher
