@@ -29,6 +29,7 @@ The engine executes as a staged DAG orchestrator with staleness validation and d
 | **11** | `mlb_market_odds_engine.R` | The Odds API (`baseball_mlb`), consensus sharp devigging, +EV detection, and fractional Kelly staking. |
 | **12** | `mlb_risk_management_engine.R` | Bankroll drawdown tracking and dynamic Kelly stop-loss tiers (0.250 / 0.175 / 0.100 / 0.000 halt). |
 | **13** | `mlb_notify_bets.R` | Discord webhook notification dispatcher with institutional CLV and sample-size edge filtering. |
+| **14** | `tools/export_web_data.R` | Exports 30-team Monte Carlo projections, 1,279 batter/pitcher Bayes & Marcel profiles, 10,000-sim bracket odds, bullpen status, and calibration JSON to `web/public/data/`. |
 
 ---
 

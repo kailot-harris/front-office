@@ -359,6 +359,24 @@ run_full_pipeline <- function(season = 2024, force_refresh = FALSE) {
     output        = NULL, # Terminal notification stage
     require_fresh = FALSE
   )
+
+  # ----------------------------------------------------------------------------
+  # Stage 14: Next.js Web Dashboard JSON Exporter (tools/export_web_data.R)
+  # ----------------------------------------------------------------------------
+  run_stage(
+    script_name   = "tools/export_web_data.R",
+    description   = "Export Next.js Web Dashboard JSON Artifacts (web/public/data)",
+    call_fn       = "run_web_export",
+    output        = c(
+      file.path(MLB_ROOT_DIR, "web", "public", "data", "projections_season_teams.json"),
+      file.path(MLB_ROOT_DIR, "web", "public", "data", "projections_season_players.json"),
+      file.path(MLB_ROOT_DIR, "web", "public", "data", "projections_models_metadata.json"),
+      file.path(MLB_ROOT_DIR, "web", "public", "data", "projections_diagnostics.json"),
+      file.path(MLB_ROOT_DIR, "web", "public", "data", "projections_postseason_ops.json")
+    ),
+    require_fresh = force_refresh,
+    season        = season
+  )
   
   pipeline_total_time <- as.numeric(difftime(Sys.time(), pipeline_start_time, units = "secs"))
   
