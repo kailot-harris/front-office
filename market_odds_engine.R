@@ -113,6 +113,7 @@ fetch_market_odds <- function() {
   }
   
   # Official Calibrated Schedule Fallback with True Dates
+  message(">>> [WARN] Using SYNTHETIC_FALLBACK schedule slate: The Odds API returned 0 games or key unavailable.")
   cat("[FEED NOTICE] Using calibrated schedule slate.\n")
   tibble(
     game_id           = paste0("GAME_", 1:6),
@@ -281,7 +282,7 @@ get_model_slate_probabilities <- function(slate_df) {
     }
     return(slate_df |> mutate(model_home_prob = home_probs))
   }
-  
+  message(sprintf(">>> [WARN] Using SYNTHETIC_FALLBACK: '%s' missing. Defaulting model home win probabilities to 0.50.", standings_path))
   slate_df |> mutate(model_home_prob = 0.50)
 }
 

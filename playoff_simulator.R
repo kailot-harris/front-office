@@ -8,6 +8,7 @@ suppressPackageStartupMessages({
   library(tidyr)
 })
 
+if (file.exists("config.R")) source("config.R")
 if (!dir.exists("cache")) dir.create("cache", recursive = TRUE)
 
 message(">>> [PLAYOFFS] Initializing Monte Carlo Playoff Series Simulator...")
@@ -18,17 +19,22 @@ message(">>> [PLAYOFFS] Initializing Monte Carlo Playoff Series Simulator...")
 get_playoff_adjusted_rating <- function(team_code, reg_net_rating) {
   # Playoff rotation boosts teams with elite top-3 talent; reduces deep-bench reliance
   # Load RAPM if exists
-  if (file.exists("cache/rapm_ratings.rds")) {
-    rapm_data <- readRDS("cache/rapm_ratings.rds")
-    tm_players <- rapm_data %>% filter(team == team_code) %>% arrange(desc(total_rapm))
-    if (nrow(tm_players) >= 3) {
-      top3_boost <- mean(head(tm_players$total_rapm, 3)) * 0.35
-      return(reg_net_rating + top3_boost)
+  rapm_path <- if (exists("CACHE_DIR")) file.path(CACHE_DIR, "rapm_ratings.rds") else "cache/rapm_ratings.rds"
+  if (file.exists(rapm_path)) {
+    rapm_data <- tryCatch(readRDS(rapm_path), error = function(e) NULL)
+    if (!is.null(rapm_data) && is.data.frame(rapm_data)) {
+      tm_players <- rapm_data %>% filter(team == team_code) %>% arrange(desc(total_rapm))
+      if (nrow(tm_players) >= 3) {
+        top3_boost <- mean(head(tm_players$total_rapm, 3)) * 0.35
+        return(reg_net_rating + top3_boost)
+      }
     }
   }
   # Default playoff leverage bump for contenders
+  message(sprintf(">>> [WARN] Using SYNTHETIC_FALLBACK playoff leverage: '%s' missing or insufficient player ratings for team %s.", rapm_path, team_code))
   contender_leverage <- c("BOS" = 2.4, "DEN" = 2.2, "OKC" = 1.8, "MIN" = 1.5, "NYK" = 1.6, "DAL" = 1.9, "MIL" = 1.4, "PHI" = 1.3)
-  return(reg_net_rating + (contender_leverage[[team_code]] %||% 0.0))
+  lev <- if (team_code %in% names(contender_leverage)) contender_leverage[[team_code]] else 0.0
+  return(reg_net_rating + lev)
 }
 
 # ------------------------------------------------------------------------------
@@ -109,6 +115,11 @@ simulate_single_series <- function(team_high, team_low, net_high, net_low, n_sim
 
 # Run sample marquee playoff matchup simulation
 simulate_playoff_suite <- function() {
+  standings_path <- if (exists("CACHE_DIR")) file.path(CACHE_DIR, "projected_30_team_standings.rds") else "cache/projected_30_team_standings.rds"
+  if (!file.exists(standings_path)) {
+    message(sprintf(">>> [WARN] Using SYNTHETIC_FALLBACK series ratings: '%s' missing. Using baseline ratings (BOS=10.5, NYK=5.2).", standings_path))
+  }
+  
   # Example matchup: Boston (#1 East) vs New York (#2 East)
   res <- simulate_single_series(
     team_high = "BOS",
@@ -118,7 +129,8 @@ simulate_playoff_suite <- function() {
     n_sims    = 10000
   )
   
-  saveRDS(res, "cache/playoff_series_bos_nyk.rds")
+  out_path <- if (exists("CACHE_DIR")) file.path(CACHE_DIR, "playoff_series_bos_nyk.rds") else "cache/playoff_series_bos_nyk.rds"
+  saveRDS(res, out_path)
   message(sprintf(">>> [PLAYOFFS] BOS vs NYK (10,000 Sims) | BOS Series Win: %.1f%% (%+d) | Avg Games: %.2f",
                   res$p_high_seed_win * 100, res$fair_ml_high, res$avg_series_games))
   return(res)

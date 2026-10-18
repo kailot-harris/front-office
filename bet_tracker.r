@@ -21,6 +21,7 @@ get_bet_ledger <- function() {
   if (file.exists(LEDGER_FILE)) {
     readRDS(LEDGER_FILE)
   } else {
+    message(sprintf(">>> [WARN] Using SYNTHETIC_FALLBACK: '%s' missing. Seeding 30-day historical synthetic betting ledger.", LEDGER_FILE))
     set.seed(42)
     past_dates <- seq(Sys.Date() - 30, Sys.Date() - 1, by = "day")
     

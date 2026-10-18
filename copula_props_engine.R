@@ -9,6 +9,7 @@ suppressPackageStartupMessages({
   library(mvtnorm) # Multivariate Gaussian distribution
 })
 
+if (file.exists("config.R")) source("config.R")
 if (!dir.exists("cache")) dir.create("cache", recursive = TRUE)
 
 message(">>> [COPULA] Initializing Joint Multivariate Copula Engine...")
@@ -90,6 +91,13 @@ simulate_joint_player_props <- function(player_name, mu_pts, mu_reb, mu_ast,
 
 # Run Marquee Test: Nikola Jokic PRA Combination
 run_copula_suite <- function() {
+  props_path <- if (exists("CACHE_DIR")) file.path(CACHE_DIR, "latest_player_props.rds") else "cache/latest_player_props.rds"
+  if (!file.exists(props_path)) {
+    message(sprintf(">>> [WARN] Using SYNTHETIC_FALLBACK PRA inputs: '%s' missing. Falling back to synthetic defaults for Nikola Jokic.", props_path))
+  } else {
+    message(">>> [WARN] Using SYNTHETIC_FALLBACK PRA parameters for Nikola Jokic (mu_pts=26.4, mu_reb=12.3, mu_ast=9.2, line=47.5): live multi-stat PRA combination market feed is unconfigured.")
+  }
+  
   jokic_pra <- simulate_joint_player_props(
     player_name = "Nikola Jokic",
     mu_pts = 26.4,
@@ -98,7 +106,8 @@ run_copula_suite <- function() {
     line_pra = 47.5
   )
   
-  saveRDS(jokic_pra, "cache/copula_jokic_pra.rds")
+  out_path <- if (exists("CACHE_DIR")) file.path(CACHE_DIR, "copula_jokic_pra.rds") else "cache/copula_jokic_pra.rds"
+  saveRDS(jokic_pra, out_path)
   message(sprintf(">>> [COPULA] %s PRA Line %.1f | Copula Over Prob: %.1f%% (Fair ML: %+d) | Triple-Double Prob: %.1f%%",
                   jokic_pra$player, jokic_pra$line_pra, jokic_pra$copula_p_over * 100, 
                   jokic_pra$fair_odds_over, jokic_pra$p_triple_double))

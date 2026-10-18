@@ -8,6 +8,7 @@ suppressPackageStartupMessages({
   library(tidyr)
 })
 
+if (file.exists("config.R")) source("config.R")
 if (!dir.exists("cache")) dir.create("cache", recursive = TRUE)
 
 message(">>> [SHOT QUALITY] Initializing 15-Game Rolling Shot Quality Engine...")
@@ -24,6 +25,11 @@ calc_expected_shot_prob <- function(distance_ft, is_corner_3 = FALSE) {
 }
 
 generate_team_shot_profiles <- function(n_rolling_games = 15) {
+  shot_cache <- if (exists("CACHE_DIR")) file.path(CACHE_DIR, "shot_locations.rds") else "cache/shot_locations.rds"
+  if (!file.exists(shot_cache)) {
+    message(sprintf(">>> [WARN] Using SYNTHETIC_FALLBACK: '%s' is missing or unreadable. Simulating %d-game shot distributions for 30 teams.", shot_cache, n_rolling_games))
+  }
+  
   teams <- c("BOS", "OKC", "DEN", "MIN", "NYK", "MIL", "PHI", "CLE", "IND", "DAL",
              "PHX", "LAC", "NOP", "LAL", "GSW", "SAC", "MIA", "ORL", "HOU", "CHI",
              "ATL", "MEM", "BKN", "TOR", "UTA", "SAS", "POR", "CHA", "DET", "WAS")
@@ -103,7 +109,8 @@ generate_team_shot_profiles <- function(n_rolling_games = 15) {
     ) %>%
     arrange(desc(shooting_luck_pts))
   
-  saveRDS(shot_profiles, "cache/team_shot_quality.rds")
+  out_path <- if (exists("CACHE_DIR")) file.path(CACHE_DIR, "team_shot_quality.rds") else "cache/team_shot_quality.rds"
+  saveRDS(shot_profiles, out_path)
   message(sprintf(">>> [SHOT QUALITY] Profiled 30 teams over %d-game rolling windows.", n_rolling_games))
   return(shot_profiles)
 }

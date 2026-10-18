@@ -8,6 +8,7 @@ suppressPackageStartupMessages({
   library(tidyr)
 })
 
+if (file.exists("config.R")) source("config.R")
 if (!dir.exists("cache")) dir.create("cache", recursive = TRUE)
 
 message(">>> [FATIGUE] Initializing Circadian & Travel Distance Engine...")
@@ -89,16 +90,27 @@ calculate_travel_fatigue <- function(team_code, origin_team_code, days_rest = 1,
 }
 
 # Evaluate a slate of road teams
-evaluate_slate_fatigue <- function() {
-  sample_schedule <- tibble(
-    away_team = c("LAL", "MIA", "GSW", "BOS"),
-    home_team = c("DEN", "UTA", "NYK", "PHI"),
-    last_played_at = c("LAL", "DAL", "GSW", "BOS"),
-    days_rest = c(0, 1, 0, 2), # LAL on B2B playing at altitude in Denver
-    is_b2b = c(TRUE, FALSE, TRUE, FALSE)
-  )
+evaluate_slate_fatigue <- function(schedule_data = NULL) {
+  sched_path <- if (exists("CACHE_DIR")) file.path(CACHE_DIR, "schedule_cache.rds") else "cache/schedule_cache.rds"
   
-  results <- sample_schedule %>%
+  if (is.null(schedule_data)) {
+    if (file.exists(sched_path)) {
+      schedule_data <- tryCatch(readRDS(sched_path), error = function(e) NULL)
+    }
+  }
+  
+  if (is.null(schedule_data) || !is.data.frame(schedule_data) || nrow(schedule_data) == 0) {
+    message(sprintf(">>> [WARN] Using SYNTHETIC_FALLBACK schedule: '%s' is missing or unreadable. Generating calibrated 4-game sample slate.", sched_path))
+    schedule_data <- tibble(
+      away_team = c("LAL", "MIA", "GSW", "BOS"),
+      home_team = c("DEN", "UTA", "NYK", "PHI"),
+      last_played_at = c("LAL", "DAL", "GSW", "BOS"),
+      days_rest = c(0, 1, 0, 2), # LAL on B2B playing at altitude in Denver
+      is_b2b = c(TRUE, FALSE, TRUE, FALSE)
+    )
+  }
+  
+  results <- schedule_data %>%
     rowwise() %>%
     mutate(
       fatigue_metrics = list(calculate_travel_fatigue(home_team, last_played_at, days_rest, is_b2b)),
@@ -108,7 +120,8 @@ evaluate_slate_fatigue <- function() {
     ) %>%
     select(-fatigue_metrics)
   
-  saveRDS(results, "cache/travel_fatigue_metrics.rds")
+  out_path <- if (exists("CACHE_DIR")) file.path(CACHE_DIR, "travel_fatigue_metrics.rds") else "cache/travel_fatigue_metrics.rds"
+  saveRDS(results, out_path)
   message(">>> [FATIGUE] Successfully computed travel fatigue vectors for active slate.")
   return(results)
 }

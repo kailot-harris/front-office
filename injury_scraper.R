@@ -77,8 +77,11 @@ fetch_live_nba_injuries <- function() {
     }
   }
   
+  injury_table <- if (length(all_scratches) > 0) bind_rows(all_scratches) else tibble()
+  
   # If 0 injuries returned (Offseason / Pre-Season mode)
-  if (length(all_scratches) == 0) {
+  if (nrow(injury_table) == 0) {
+    message(">>> [WARN] Using SYNTHETIC_FALLBACK injury list: live injury portal returned 0 disclosures (offseason/preseason).")
     cat("[OFFSEASON INFO] Regular season daily injury reports are inactive (September).\n")
     cat("[OFFSEASON INFO] Loading high-impact rehabilitation & recovery roster list.\n\n")
     
@@ -91,7 +94,6 @@ fetch_live_nba_injuries <- function() {
       injury_desc = c("Foot/Tendon Recovery", "Knee Inflammation", "Meniscus Recovery", "Ankle Surgery", "Elbow Soreness", "Right Foot Procedure")
     )
   } else {
-    injury_table <- bind_rows(all_scratches)
     cat(sprintf("[INJURY SUCCESS] Parsed %d official player injury designations.\n\n", nrow(injury_table)))
   }
   

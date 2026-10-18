@@ -102,6 +102,7 @@ def train_pytorch_model(df):
 
 def main():
     if not os.path.exists(CSV_TRAIN_SOURCE):
+        print(f">>> [WARN] Using SYNTHETIC_FALLBACK: Source file '{CSV_TRAIN_SOURCE}' not found. Generating 1,000 mock game observations...")
         print(f"[Embedding Agent] Warning: Source file {CSV_TRAIN_SOURCE} not found. Generating mock schema...")
         df = pd.DataFrame({
             "home_team": np.random.randint(1, 31, 1000),

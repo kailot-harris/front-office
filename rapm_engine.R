@@ -9,6 +9,7 @@ suppressPackageStartupMessages({
   library(Matrix)
 })
 
+if (file.exists("config.R")) source("config.R")
 if (!dir.exists("cache")) dir.create("cache", recursive = TRUE)
 
 message(">>> [RAPM] Initializing Bayesian Stint-Level RAPM Ridge Regression Engine...")
@@ -41,7 +42,11 @@ solve_ridge_rapm <- function(X, y, weights, lambda = 2000) {
 # Stint Matrix Ingestion & Estimation
 # ------------------------------------------------------------------------------
 estimate_rapm_ratings <- function(lambda = 1850) {
-  stint_file <- "cache/stint_lineups.rds"
+  stint_file <- if (exists("CACHE_DIR")) file.path(CACHE_DIR, "stint_lineups.rds") else "cache/stint_lineups.rds"
+  
+  if (!file.exists(stint_file)) {
+    message(sprintf(">>> [WARN] Using SYNTHETIC_FALLBACK: '%s' is missing or unreadable. Generating 6,500 synthetic stint observations.", stint_file))
+  }
   
   # Generate or load realistic stint observations
   teams <- c("BOS", "MIL", "DEN", "OKC", "MIN", "NYK", "PHI", "CLE", "IND", "ORL",
@@ -109,8 +114,9 @@ estimate_rapm_ratings <- function(lambda = 1850) {
   ) %>%
     arrange(desc(total_rapm))
   
-  saveRDS(rapm_df, "cache/rapm_ratings.rds")
-  message(">>> [RAPM] Successfully saved Bayesian RAPM ratings to cache/rapm_ratings.rds.")
+  out_path <- if (exists("CACHE_DIR")) file.path(CACHE_DIR, "rapm_ratings.rds") else "cache/rapm_ratings.rds"
+  saveRDS(rapm_df, out_path)
+  message(sprintf(">>> [RAPM] Successfully saved Bayesian RAPM ratings to %s.", out_path))
   return(rapm_df)
 }
 

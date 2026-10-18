@@ -32,6 +32,7 @@ fetch_nba_shots <- function(team_id = "1610612738", season = "2023-24") {
   
   res <- tryCatch(GET(url, add_headers(.headers = headers), timeout(10)), error = function(e) NULL)
   if (is.null(res) || status_code(res) != 200) {
+    message(">>> [WARN] Using SYNTHETIC_FALLBACK shots: live stats API blocked or unavailable. Generating calibrated shot spatial sample.")
     message(">>> [MOCK] Live API blocked by rate-limit; generating calibrated shot spatial sample...")
     return(generate_synthetic_shots())
   }
