@@ -374,6 +374,35 @@ day one — it is named explicitly above but is not the risk this plan designate
 
 ---
 
+## Explicit Non-Goals of This Document
+
+Consolidated from the six input research files' own non-goals sections, which this document inherits
+rather than relaxes:
+
+- Does not create or modify `config.R`, `run_full_pipeline.R`, or any `.R` engine script — no engine
+  code exists in this repo as of this document, and none is created here.
+- Does not assert a final numeric value for any constant flagged "needs empirical re-derivation"
+  above: the Pythagorean exponent (§3), any 538 Elo constant including the `4.7` pitcher-adjustment
+  coefficient (§4), Marcel's weighting constants (§5), or run-environment sigma / home-field advantage
+  / rolling-window size / roster-derived constants (§6). All require re-derivation against this
+  repo's own data in a future build phase.
+- Does not fabricate or substitute a non-qualifying citation for the unresolved MLB ML-vs-Pythagorean
+  win-prediction gap (§5) — the gap is named explicitly and left open, not silently dropped.
+- Does not sign up for, authenticate against, or use credentials for any vendor (MLB Stats API,
+  Baseball Savant, FanGraphs, ESPN, The Odds API) — §2's findings are from public documentation and
+  unauthenticated endpoints only.
+- Does not independently re-verify NBA/WNBA/NFL sibling-engine internals — comparisons in §1 and §6 are
+  drawn from this project's own planning docs and the NFL plan's published structure, not a fresh audit
+  of those repos.
+- Does not decide between `baseballr`'s built-in Retrosheet wrapper and the standalone `retrosheet`
+  package (§2a), nor between fWAR and bWAR as a build-phase default (§3) — both are named open
+  decisions for a future phase, not resolved here.
+- Does not re-fetch or re-verify the six input research files' own citations beyond the two spot-checks
+  logged under "Spot-checks performed during assembly" below — their findings are aggregated, not
+  re-derived.
+
+---
+
 ## Sources Consulted
 
 All URLs below are aggregated verbatim from the six input research files' own "Sources Consulted"
@@ -480,8 +509,22 @@ except as noted under "Spot-checks performed during assembly" below.
 
 ### Spot-checks performed during assembly
 
-No new WebSearch/WebFetch calls were made during this assembly step — all six input files' own
+No new WebSearch/WebFetch calls were made during the initial assembly step — all six input files' own
 fetch dates and URLs were carried forward as-is, per this task's "pure synthesis" scope. One internal
 consistency check was performed by re-reading `phase0d-specialty-models.md` §5 in full before drafting
 this plan's §5 gap section, to confirm the "no qualifying citation" conclusion and its candidate table
 were reproduced accurately rather than summarized loosely.
+
+**Spot-checks added during the issue #9 self-check pass (2026-10-18):** two of this document's claims
+were independently re-verified via live `WebFetch`, per issue #9's own checklist requirement to
+spot-check 1-2 citations by re-opening the source URL:
+1. `https://baseballsavant.mlb.com/csv-docs` — re-fetched live; confirmed the page still states
+   verbatim "Values from 2008-16 are via PitchFX, and adjusted to roughly out-of-hand release point.
+   All velocities from 2017 and beyond are Statcast, which are reported out-of-hand," matching §2b's
+   claim exactly.
+2. `https://fivethirtyeight.com/methodology/how-our-mlb-predictions-work/` — re-fetched live; confirmed
+   it still returns an HTTP 301 redirect to `https://abcnews.com/politics`, matching §4's claim that
+   the live URL is dead and all Elo-methodology content is sourced from the archived Wayback snapshot
+   instead.
+
+Both spot-checks passed — no correction to this document's claims was needed as a result.
