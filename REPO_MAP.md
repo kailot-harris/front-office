@@ -532,7 +532,7 @@ Still open as of the current code (verified by inspection, not just doc claims):
 | Name | Where read | Required? | Notes |
 |---|---|---|---|
 | `ODDS_API_KEY` | `market_odds_engine.R` (`Sys.getenv("ODDS_API_KEY","")`) | Optional | Empty → silent fallback to fixture slate. Get a key from the-odds-api.com. |
-| `THE_ODDS_API_KEY` | `live_game_listener.R` | Optional, currently unused downstream | Different env var name than `market_odds_engine.R` uses (`ODDS_API_KEY`) — inconsistent naming, note if you wire this up. |
+| `THE_ODDS_API_KEY` | `live_game_listener.R` (`Sys.getenv("ODDS_API_KEY", Sys.getenv("THE_ODDS_API_KEY", ""))`) | Optional, currently unused downstream | Legacy fallback name. `live_game_listener.R` now reads `ODDS_API_KEY` first (matching `market_odds_engine.R`) and falls back to `THE_ODDS_API_KEY` if only that is set — no longer an inconsistency, fixed per issue #9. |
 | `DISCORD_WEBHOOK` | `notify_bets.R`, `live_game_listener.R` | Effectively always set | **Hardcoded live value in `config.R` line 37** via `Sys.setenv(...)`. Treat as an exposed credential — rotate/regenerate this webhook before any public sharing of this repo, and do not carry the literal value into the WNBA project; generate a fresh webhook instead. |
 
 No `.Renviron`, `.env`, or credentials file exists — the one real secret lives in plaintext in

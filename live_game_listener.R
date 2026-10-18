@@ -14,7 +14,7 @@ source("config.R")
 message(">>> [LIVE SNIPER] Starting Live Game Listener & Market Steam Sniper...")
 
 DISCORD_WEBHOOK_URL <- Sys.getenv("DISCORD_WEBHOOK", "https://discord.com/api/webhooks/dummy/key")
-ODDS_API_KEY <- Sys.getenv("THE_ODDS_API_KEY", "")
+ODDS_API_KEY <- Sys.getenv("ODDS_API_KEY", Sys.getenv("THE_ODDS_API_KEY", ""))
 
 # In-memory tracking of alerted game IDs and timestamps to prevent webhook flooding
 if (!exists("ALERT_LOG")) {
