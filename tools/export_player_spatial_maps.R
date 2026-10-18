@@ -408,28 +408,67 @@ export_player_spatial_maps <- function(out_dir = file.path(MLB_ROOT_DIR, "web", 
 
           if (in_z) {
             # In rulebook strike zone: [-0.85, +0.85] ft x, [1.5, 3.5] ft z
-            if (is_fastball) {
+            if (pt_info$type == "FF") {
               px_val <- round(runif(1, -0.75, 0.75), 2)
-              pz_val <- round(runif(1, 2.2, 3.4), 2) # high in zone
+              pz_val <- round(runif(1, 2.05, 3.42), 2) # upper two-thirds
+            } else if (pt_info$type == "SI") {
+              px_val <- round(runif(1, arm_dir * 0.05, arm_dir * 0.78), 2) # armside
+              pz_val <- round(runif(1, 1.58, 2.75), 2) # lower two-thirds
             } else if (is_breaking) {
-              px_val <- round(runif(1, -arm_dir * 0.2, -arm_dir * 0.8), 2) # gloveside
-              pz_val <- round(runif(1, 1.55, 2.5), 2) # low in zone
+              px_val <- round(runif(1, -arm_dir * 0.1, -arm_dir * 0.78), 2) # gloveside
+              pz_val <- round(runif(1, 1.55, 2.65), 2) # low
             } else {
-              px_val <- round(runif(1, arm_dir * 0.1, arm_dir * 0.8), 2) # armside changeup
-              pz_val <- round(runif(1, 1.55, 2.4), 2)
+              px_val <- round(runif(1, arm_dir * 0.1, arm_dir * 0.78), 2) # armside
+              pz_val <- round(runif(1, 1.55, 2.50), 2) # low
             }
           } else {
-            # Out of zone: Shadow or chase
-            side <- sample(c(-1, 1), 1)
-            if (is_breaking) {
-              px_val <- round(-arm_dir * runif(1, 0.86, 1.45), 2)
-              pz_val <- round(runif(1, 1.0, 2.1), 2) # buried low
-            } else if (is_fastball) {
-              px_val <- round(side * runif(1, 0.86, 1.35), 2)
-              pz_val <- round(runif(1, 3.45, 4.2), 2) # high heat chase
+            # Out of zone: Realistic bivariate miss distribution by pitch type
+            if (pt_info$type == "FF") {
+              # 4-Seamer: Elevated chase (across plate width), arm-side run, or glove-side miss
+              ff_miss <- sample(c("high_chase", "arm_side", "glove_side"), 1, prob = c(0.45, 0.35, 0.20))
+              if (ff_miss == "high_chase") {
+                px_val <- round(runif(1, -0.78, 0.78), 2) # elevated across plate
+                pz_val <- round(runif(1, 3.52, 4.05), 2)
+              } else if (ff_miss == "arm_side") {
+                px_val <- round(arm_dir * runif(1, 0.86, 1.35), 2) # arm-side miss
+                pz_val <- round(runif(1, 2.1, 3.5), 2)
+              } else {
+                px_val <- round(-arm_dir * runif(1, 0.86, 1.25), 2) # glove-side miss
+                pz_val <- round(runif(1, 2.1, 3.4), 2)
+              }
+            } else if (pt_info$type == "SI") {
+              # Sinker: arm-side run or below zone
+              si_miss <- sample(c("arm_side", "low_sink", "high_miss"), 1, prob = c(0.55, 0.35, 0.10))
+              if (si_miss == "arm_side") {
+                px_val <- round(arm_dir * runif(1, 0.86, 1.38), 2)
+                pz_val <- round(runif(1, 1.4, 2.7), 2)
+              } else if (si_miss == "low_sink") {
+                px_val <- round(runif(1, arm_dir * 0.05, arm_dir * 0.8), 2)
+                pz_val <- round(runif(1, 0.9, 1.48), 2)
+              } else {
+                px_val <- round(arm_dir * runif(1, 0.4, 1.1), 2)
+                pz_val <- round(runif(1, 2.8, 3.7), 2)
+              }
+            } else if (is_breaking) {
+              # Breaking balls: glove-side chase or buried below zone
+              brk_miss <- sample(c("gloveside_chase", "buried_dirt"), 1, prob = c(0.60, 0.40))
+              if (brk_miss == "gloveside_chase") {
+                px_val <- round(-arm_dir * runif(1, 0.86, 1.45), 2)
+                pz_val <- round(runif(1, 1.2, 2.4), 2)
+              } else {
+                px_val <- round(runif(1, -arm_dir * 0.5, arm_dir * 0.3), 2)
+                pz_val <- round(runif(1, 0.8, 1.48), 2)
+              }
             } else {
-              px_val <- round(arm_dir * runif(1, 0.86, 1.40), 2)
-              pz_val <- round(runif(1, 1.0, 2.0), 2)
+              # Changeup / Splitter: arm-side fade or buried below zone
+              ch_miss <- sample(c("arm_chase", "low_dirt"), 1, prob = c(0.60, 0.40))
+              if (ch_miss == "arm_chase") {
+                px_val <- round(arm_dir * runif(1, 0.86, 1.40), 2)
+                pz_val <- round(runif(1, 1.2, 2.4), 2)
+              } else {
+                px_val <- round(runif(1, -0.3, arm_dir * 0.6), 2)
+                pz_val <- round(runif(1, 0.8, 1.48), 2)
+              }
             }
           }
 

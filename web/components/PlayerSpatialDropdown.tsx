@@ -459,18 +459,17 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                   </linearGradient>
                 </defs>
 
-                {/* Home Plate at Bottom (z ≈ 0.5 to 0.7) */}
+                {/* Home Plate at Ground Level (under the strike zone) */}
                 <polygon
-                  points="0,0.5 -0.71,0.65 -0.71,0.85 0.71,0.85 0.71,0.65"
+                  points="-0.71,4.05 0.71,4.05 0.71,4.20 0,4.35 -0.71,4.20"
                   fill="#334155"
                   stroke="#64748b"
-                  strokeWidth="0.04"
-                  transform="scale(1, -1) translate(0, -1.3)"
+                  strokeWidth="0.03"
                 />
 
                 {/* Batter Box Guidelines (Left & Right) */}
-                <rect x="-1.9" y="1.2" width="0.7" height="2.8" fill="none" stroke="#1e293b" strokeWidth="0.03" strokeDasharray="0.08 0.08" rx="0.1" />
-                <rect x="1.2" y="1.2" width="0.7" height="2.8" fill="none" stroke="#1e293b" strokeWidth="0.03" strokeDasharray="0.08 0.08" rx="0.1" />
+                <rect x="-1.9" y="1.3" width="0.7" height="2.7" fill="none" stroke="#1e293b" strokeWidth="0.03" strokeDasharray="0.08 0.08" rx="0.1" />
+                <rect x="1.2" y="1.3" width="0.7" height="2.7" fill="none" stroke="#1e293b" strokeWidth="0.03" strokeDasharray="0.08 0.08" rx="0.1" />
                 <text x="-1.55" y="2.7" fill="#334155" fontSize="0.18" textAnchor="middle" fontFamily="monospace">
                   RHB
                 </text>
@@ -478,12 +477,12 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                   LHB
                 </text>
 
-                {/* Outer Shadow Zone Perimeter (Chase Boundary) */}
+                {/* Outer Shadow Zone Perimeter (Chase Boundary: 1.1 to 3.9 ft z, ±1.15 ft x) */}
                 <rect
                   x="-1.15"
-                  y="1.2"
+                  y="1.1"
                   width="2.3"
-                  height="2.6"
+                  height="2.8"
                   fill="none"
                   stroke="#1e293b"
                   strokeWidth="0.03"
@@ -491,7 +490,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                   rx="0.08"
                 />
 
-                {/* Rulebook Strike Zone Box [-0.85 to 0.85 ft x, 1.5 to 3.5 ft z] */}
+                {/* Rulebook Strike Zone Box [-0.85 to 0.85 ft x, 1.5 to 3.5 ft z -> svg y 1.5 to 3.5] */}
                 <rect
                   x="-0.85"
                   y="1.5"
@@ -509,16 +508,16 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 <line x1="-0.85" y1="2.167" x2="0.85" y2="2.167" stroke="#3730a3" strokeWidth="0.02" strokeDasharray="0.04 0.04" />
                 <line x1="-0.85" y1="2.833" x2="0.85" y2="2.833" stroke="#3730a3" strokeWidth="0.02" strokeDasharray="0.04 0.04" />
 
-                {/* Zone Labels */}
-                <text x="-0.56" y="3.25" fill="#4338ca" fontSize="0.14" textAnchor="middle" fontFamily="monospace">1</text>
-                <text x="0" y="3.25" fill="#4338ca" fontSize="0.14" textAnchor="middle" fontFamily="monospace">2</text>
-                <text x="0.56" y="3.25" fill="#4338ca" fontSize="0.14" textAnchor="middle" fontFamily="monospace">3</text>
-                <text x="-0.56" y="2.55" fill="#4338ca" fontSize="0.14" textAnchor="middle" fontFamily="monospace">4</text>
-                <text x="0" y="2.55" fill="#4338ca" fontSize="0.14" textAnchor="middle" fontFamily="monospace">5</text>
-                <text x="0.56" y="2.55" fill="#4338ca" fontSize="0.14" textAnchor="middle" fontFamily="monospace">6</text>
-                <text x="-0.56" y="1.9" fill="#4338ca" fontSize="0.14" textAnchor="middle" fontFamily="monospace">7</text>
-                <text x="0" y="1.9" fill="#4338ca" fontSize="0.14" textAnchor="middle" fontFamily="monospace">8</text>
-                <text x="0.56" y="1.9" fill="#4338ca" fontSize="0.14" textAnchor="middle" fontFamily="monospace">9</text>
+                {/* Standard MLB Statcast Zone Numbers: 1-3 (Top), 4-6 (Middle), 7-9 (Bottom) */}
+                <text x="-0.56" y="1.9" fill="#4338ca" fontSize="0.14" textAnchor="middle" fontFamily="monospace">1</text>
+                <text x="0" y="1.9" fill="#4338ca" fontSize="0.14" textAnchor="middle" fontFamily="monospace">2</text>
+                <text x="0.56" y="1.9" fill="#4338ca" fontSize="0.14" textAnchor="middle" fontFamily="monospace">3</text>
+                <text x="-0.56" y="2.57" fill="#4338ca" fontSize="0.14" textAnchor="middle" fontFamily="monospace">4</text>
+                <text x="0" y="2.57" fill="#4338ca" fontSize="0.14" textAnchor="middle" fontFamily="monospace">5</text>
+                <text x="0.56" y="2.57" fill="#4338ca" fontSize="0.14" textAnchor="middle" fontFamily="monospace">6</text>
+                <text x="-0.56" y="3.24" fill="#4338ca" fontSize="0.14" textAnchor="middle" fontFamily="monospace">7</text>
+                <text x="0" y="3.24" fill="#4338ca" fontSize="0.14" textAnchor="middle" fontFamily="monospace">8</text>
+                <text x="0.56" y="3.24" fill="#4338ca" fontSize="0.14" textAnchor="middle" fontFamily="monospace">9</text>
 
                 {/* Plotted Pitches */}
                 {displayedPitches.map((pt, idx) => {
@@ -526,10 +525,12 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                   const isHovered = hoveredPitch === pt;
                   const isWhiff = pt.result === 'swinging_strike';
 
-                  // SVG Y is inverted (higher plate_z is higher up on screen)
-                  // Let viewBox height be 4.5, so svgY = 4.5 - pt.pz
+                  // Statcast Z coordinates:
+                  // 3.5 ft (top of zone) -> svgY = 1.5
+                  // 1.5 ft (bottom of zone) -> svgY = 3.5
+                  // Ground level (0 ft) -> svgY = 5.0
                   const svgX = pt.px;
-                  const svgY = 4.5 - pt.pz;
+                  const svgY = 5.0 - pt.pz;
 
                   return (
                     <g
@@ -713,10 +714,10 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                           <td className="py-2 px-2 text-right text-slate-200">{a.pct}%</td>
                           <td className="py-2 px-2 text-right text-amber-300 font-bold">{a.avg_velo}</td>
                           <td className="py-2 px-2 text-right text-slate-300">
-                            {a.avg_hb > 0 ? `+${a.avg_hb}&quot;` : `${a.avg_hb}&quot;`}
+                            {a.avg_hb > 0 ? `+${a.avg_hb}"` : `${a.avg_hb}"`}
                           </td>
                           <td className="py-2 px-2 text-right text-slate-300">
-                            {a.avg_ivb > 0 ? `+${a.avg_ivb}&quot;` : `${a.avg_ivb}&quot;`}
+                            {a.avg_ivb > 0 ? `+${a.avg_ivb}"` : `${a.avg_ivb}"`}
                           </td>
                           <td className="py-2 px-3 text-right text-rose-400 font-bold">{a.whiff_pct}%</td>
                         </tr>
