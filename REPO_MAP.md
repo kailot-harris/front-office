@@ -83,7 +83,7 @@ optional (silent fallback to fixture data).
    Rscript bet_tracker.R         >> pipeline_execution.log
    Rscript market_odds_engine.R  >> pipeline_execution.log
    ```
-   Note: `run_full_pipeline.R` itself already calls `bet_tracker.r` and effectively duplicates
+   Note: `run_full_pipeline.R` itself already calls `bet_tracker.R` and effectively duplicates
    `market_odds_engine.R`'s role — the `.bat` file predates some later additions to
    `run_full_pipeline.R` and the two are not perfectly deduplicated. This is a known inconsistency,
    not a bug to "fix" blindly — verify current intent before touching.
@@ -104,7 +104,7 @@ optional (silent fallback to fixture data).
    10. playoff_simulator.R    -> cache/playoff_series_bos_nyk.rds
    11. risk_management_engine.R -> cache/risk_state.rds
    12. notify_bets.R          -> Discord webhook dispatch (reads latest_value_bets.rds)
-   13. bet_tracker.r          -> cache/betting_ledger.rds, cache/rolling_bet_metrics.rds
+   13. bet_tracker.R          -> cache/betting_ledger.rds, cache/rolling_bet_metrics.rds
    ```
    Notably **not** called from `run_full_pipeline.R`: `daily_ingest.R`, `player_metrics.R`,
    `lineup_synergy.R`, `roster_dynamics.R`, `team_embeddings.py`, `load_embeddings.R`,
@@ -160,7 +160,7 @@ optional (silent fallback to fixture data).
  notify_bets.R  (Discord webhook, reads latest_value_bets.rds)
      |
      v
- bet_tracker.r  (grades yesterday's bets from box_scores_cache.rds,
+ bet_tracker.R  (grades yesterday's bets from box_scores_cache.rds,
                  writes cache/betting_ledger.rds, cache/rolling_bet_metrics.rds)
      |
      v
@@ -346,7 +346,7 @@ ADR). If they're missing, `daily_ingest.R`/`player_metrics.R` do a full historic
   probabilities, and compares against a naive independent-Poisson convolution to show the "copula edge".
   `run_copula_suite()` runs one hardcoded example (Nikola Jokic, mu_pts=26.4/mu_reb=12.3/mu_ast=9.2,
   line=47.5), writes `cache/copula_jokic_pra.rds`. Not parameterized over the full roster yet.
-- **`bet_tracker.r`** (lowercase `.r` — note the inconsistent extension) — `get_bet_ledger()`: loads
+- **`bet_tracker.R`** — `get_bet_ledger()`: loads
   `cache/betting_ledger.rds` or seeds a synthetic 30-day/2-bets-per-day historical ledger.
   `append_todays_picks()`: pulls `★`/`VALUE`-tagged rows from `latest_value_bets.rds`, appends as
   `PENDING` (dedup by team+date). `grade_yesterday_bets()` (auto-runs on source): joins pending bets to
@@ -457,7 +457,7 @@ Known filename mismatches (verify before relying on any of these in new code):
   to its synthetic roster.
 - `risk_management_engine.R` reads `cache/bet_log.rds`, which nothing else in the repo writes; it
   always falls back to its synthetic ledger. The *real* ledger lives at `cache/betting_ledger.rds`
-  (written by `bet_tracker.r`) and is a different schema.
+  (written by `bet_tracker.R`) and is a different schema.
 - `.rds` is R's native single-object serialization format (binary, not portable across languages
   without `pyreadr`/similar). All caches are `readRDS`/`saveRDS`.
 
@@ -484,7 +484,7 @@ anywhere past the roster/injury layer unless you specifically verify each cache 
   multiplier (0.25 → 0.175 → 0.10 → 0.00) — these two Kelly-scaling mechanisms are not currently wired
   together in code (risk engine's multiplier isn't read back into `calculate_kelly()`'s `fraction` arg
   anywhere); reconciling them would be a natural next step, not something already done.
-- **Ledger & grading**: `bet_tracker.r`, compound-key join on `(team_picked, game_date)==(team_name,
+- **Ledger & grading**: `bet_tracker.R`, compound-key join on `(team_picked, game_date)==(team_name,
   bet_date)` against real box scores, tracks CLV% realized vs the closing sharp line.
 - **Notification**: Discord webhook only (no SMS/Telegram/push despite `next_researcher_handoff_prompt.md`
   mentioning "Discord/Telegram" — Telegram was never implemented).
@@ -518,8 +518,7 @@ Still open as of the current code (verified by inspection, not just doc claims):
 - **Risk engine ↔ Kelly sizing** not reconciled (see §7).
 - **`app.R` "Team Embeddings" tab** doesn't actually visualize the 16-D embeddings.
 - Filename/path inconsistencies noted throughout (`active_rosters.rds` vs `active_rosters_cache.rds`,
-  `bet_log.rds` vs `betting_ledger.rds`, root vs `cache/` duplication of some `.rds` files, `bet_tracker.r`
-  lowercase extension vs everything else `.R`).
+  `bet_log.rds` vs `betting_ledger.rds`, root vs `cache/` duplication of some `.rds` files).
 - Two different sigma constants (11.2 vs 11.8) for the margin→probability normal-CDF conversion across
   `market_odds_engine.R` vs `roster_bottom_up_engine.R`/`playoff_simulator.R`.
 - `schedule_daily.bat` and `run_full_pipeline.R` overlap (both eventually call bet grading / odds

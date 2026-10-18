@@ -105,7 +105,7 @@ run_stage("playoff_simulator.R", "Execute 8-Man Playoff Series Monte Carlo (10,0
 
 # 8. Notification & Settlement
 run_stage("notify_bets.R", "Dispatch Filtered Discord Webhooks (EV >= 5.0%, CLV > 0)")
-run_stage("bet_tracker.r", "Grade Previous Completed Events & Update Rolling CLV%")
+run_stage("bet_tracker.R", "Grade Previous Completed Events & Update Rolling CLV%")
 run_stage("prediction_accuracy_logger.R", "Reconcile Outcomes & Log Pre-Game Win Probabilities",
           output = file.path(CACHE_DIR, "prediction_accuracy_log.rds"))
 
