@@ -91,7 +91,8 @@ run_stage("roster_bottom_up_engine.R", "Generate 30-Team Bottom-Up Standings & F
 run_stage("market_odds_engine.R", "Benchmark Live Books vs Pinnacle Limits & Kelly Stakes")
 
 # 5. Advanced Proposition Distributions
-run_stage("player_props_engine.R", "Price ZINB Overdispersed Player Props (PTS, REB, AST, BLK, STL)")
+run_stage("player_props_engine.R", "Price ZINB Overdispersed Player Props (PTS, REB, AST, BLK, STL)",
+          output = file.path(CACHE_DIR, "latest_player_props.rds"))
 run_stage("copula_props_engine.R", "Simulate Joint Multivariate Gaussian Copula (PRA / SGPs)")
 
 # 6. Postseason Simulation

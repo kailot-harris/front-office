@@ -9,8 +9,8 @@ suppressPackageStartupMessages({
   library(jsonlite)
 })
 
-# Create cache directory if needed
-if (!dir.exists("cache")) dir.create("cache", recursive = TRUE)
+source("config.R")
+source("roster_join_utils.R")
 
 message(">>> [PROPS] Initializing Zero-Inflated Negative Binomial (ZINB) Props Engine...")
 
@@ -119,28 +119,8 @@ price_prop_zinb <- function(player_name, team, stat_cat, projected_mu, line,
 # ------------------------------------------------------------------------------
 
 generate_active_props_table <- function() {
-  # Load active rotation players if available, or generate calibrated sample
-  roster_cache <- "cache/active_rosters.rds"
-  if (file.exists(roster_cache)) {
-    rosters <- readRDS(roster_cache)
-  } else {
-    # Generate calibrated 30-team primary rotation (8 players per team)
-    teams <- c("BOS", "MIL", "DEN", "OKC", "MIN", "NYK", "PHI", "CLE", "IND", "ORL",
-               "MIA", "LAL", "GSW", "PHX", "DAL", "LAC", "SAC", "NOP", "HOU", "CHI",
-               "ATL", "BKN", "TOR", "MEM", "UTA", "SAS", "POR", "CHA", "WAS", "DET")
-    rosters <- bind_rows(lapply(teams, function(tm) {
-      tibble(
-        player_name = paste0(tm, " Player ", 1:8),
-        team = tm,
-        pts_mu = c(26.5, 20.2, 16.4, 13.8, 11.2, 9.5, 7.8, 6.2),
-        reb_mu = c(7.8, 8.4, 5.2, 4.1, 5.5, 3.2, 2.9, 2.4),
-        ast_mu = c(6.5, 4.2, 3.8, 2.9, 1.8, 2.1, 1.4, 1.1),
-        fg3m_mu = c(3.1, 2.4, 1.8, 1.6, 1.2, 1.0, 0.7, 0.5),
-        stl_mu = c(1.3, 1.1, 0.9, 0.8, 0.7, 0.6, 0.4, 0.4),
-        blk_mu = c(1.2, 0.8, 0.6, 0.5, 0.4, 0.3, 0.2, 0.2)
-      )
-    }))
-  }
+  # Build calibrated rotation table from live roster cache + box scores via shared join utils
+  rosters <- build_real_rotation_table()
   
   # Compute prop edges across categories
   props_list <- list()
@@ -180,7 +160,8 @@ generate_active_props_table <- function() {
   
   # Save to production cache
   saveRDS(all_props, "latest_player_props.rds")
-  saveRDS(all_props, "cache/latest_player_props.rds")
+  out_cache <- if (exists("CACHE_PLAYER_PROPS")) CACHE_PLAYER_PROPS else file.path(CACHE_DIR, "latest_player_props.rds")
+  saveRDS(all_props, out_cache)
   
   edges_found <- sum(all_props$is_edge)
   message(sprintf(">>> [PROPS] Processed %d total props across 30 teams. Discovered %d positive EV (>= +5.0%%) edges.",
@@ -189,6 +170,4 @@ generate_active_props_table <- function() {
   return(all_props)
 }
 
-if (!interactive()) {
-  invisible(generate_active_props_table())
-}
+invisible(generate_active_props_table())
