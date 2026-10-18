@@ -277,7 +277,24 @@ run_full_pipeline <- function(season = 2024, force_refresh = FALSE) {
   )
 
   # ----------------------------------------------------------------------------
-  # Stage 8: Bullpen Workload & High-Leverage Fatigue Diagnostic Engine
+  # Stage 8: Hierarchical Empirical Bayes Partial Pooling (Issue #25)
+  # ----------------------------------------------------------------------------
+  run_stage(
+    script_name   = "mlb_bayes_pooling.R",
+    description   = "Compute Hierarchical Empirical Bayes Partial Pooling (Batters/Pitchers/Teams)",
+    call_fn       = "run_bayes_pooling",
+    output        = c(
+      cache_path("specialty", "bayes_pooled_batters.rds", create = FALSE),
+      cache_path("specialty", "bayes_pooled_pitchers.rds", create = FALSE),
+      cache_path("specialty", "bayes_team_talent.rds", create = FALSE)
+    ),
+    require_fresh = force_refresh,
+    seasons       = c(season),
+    force_refresh = force_refresh
+  )
+
+  # ----------------------------------------------------------------------------
+  # Stage 9: Bullpen Workload & High-Leverage Fatigue Diagnostic Engine
   # ----------------------------------------------------------------------------
   run_stage(
     script_name   = "mlb_bullpen_fatigue.R",
@@ -293,7 +310,7 @@ run_full_pipeline <- function(season = 2024, force_refresh = FALSE) {
   )
 
   # ----------------------------------------------------------------------------
-  # Stage 9: 12-Team Postseason Monte Carlo Bracket Simulator
+  # Stage 10: 12-Team Postseason Monte Carlo Bracket Simulator
   # ----------------------------------------------------------------------------
   run_stage(
     script_name   = "mlb_postseason_simulator.R",
@@ -310,7 +327,7 @@ run_full_pipeline <- function(season = 2024, force_refresh = FALSE) {
   )
 
   # ----------------------------------------------------------------------------
-  # Stage 10: Market Odds & +EV Value Betting Engine (The Odds API)
+  # Stage 11: Market Odds & +EV Value Betting Engine (The Odds API)
   # ----------------------------------------------------------------------------
   run_stage(
     script_name   = "mlb_market_odds_engine.R",
@@ -322,7 +339,7 @@ run_full_pipeline <- function(season = 2024, force_refresh = FALSE) {
   )
 
   # ----------------------------------------------------------------------------
-  # Stage 11: Risk Management & Dynamic Kelly Sizing Engine
+  # Stage 12: Risk Management & Dynamic Kelly Sizing Engine
   # ----------------------------------------------------------------------------
   run_stage(
     script_name   = "mlb_risk_management_engine.R",
@@ -333,7 +350,7 @@ run_full_pipeline <- function(season = 2024, force_refresh = FALSE) {
   )
 
   # ----------------------------------------------------------------------------
-  # Stage 12: Discord Bet Alert Dispatcher (Phase 7, Issue #22)
+  # Stage 13: Discord Bet Alert Dispatcher (Phase 7, Issue #22)
   # ----------------------------------------------------------------------------
   run_stage(
     script_name   = "mlb_notify_bets.R",
