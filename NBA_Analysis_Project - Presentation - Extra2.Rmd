@@ -1,0 +1,320 @@
+---
+title: "NBA_Analysis_Project - Presentation - Extra2"
+author: "Kailot C. Harris"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r rolling-window-expt}
+#| echo: false
+#| message: false
+#| warning: false
+
+# 1. Define the experiment function
+evaluate_rolling_window <- function(window_size, data = box_scores, n_trees = 300) {
+  
+  # A. Feature Engineering with variable window size
+  features <- data |>
+    arrange(team_id, game_date) |>
+    group_by(team_id) |>
+    mutate(
+      hga = if_else(str_detect(team_home_away, "away"), 0, 1),
+      efg = (field_goals_made + 0.5 * three_point_field_goals_made) / field_goals_attempted,
+      tov = total_turnovers / (field_goals_attempted + 0.44 * free_throws_attempted + total_turnovers),
+      ftr = free_throws_attempted / field_goals_attempted,
+      ts  = team_score / (2 * (field_goals_attempted + (0.44 * free_throws_attempted))),
+      
+      # Variable rolling window: .before = window_size
+      roll_pts_scored = slide_dbl(team_score, mean, .before = window_size, .after = -1),
+      roll_oreb       = slide_dbl(offensive_rebounds, mean, .before = window_size, .after = -1),
+      roll_dreb       = slide_dbl(defensive_rebounds, mean, .before = window_size, .after = -1),
+      roll_ast        = slide_dbl(assists, mean, .before = window_size, .after = -1),
+      roll_stl        = slide_dbl(steals, mean, .before = window_size, .after = -1),
+      roll_blk        = slide_dbl(blocks, mean, .before = window_size, .after = -1),
+      roll_tov        = slide_dbl(turnovers, mean, .before = window_size, .after = -1),
+      roll_efg        = slide_dbl(efg, mean, .before = window_size, .after = -1),
+      roll_tovp       = slide_dbl(tov, mean, .before = window_size, .after = -1),
+      roll_ftr        = slide_dbl(ftr, mean, .before = window_size, .after = -1),
+      roll_ts         = slide_dbl(ts, mean, .before = window_size, .after = -1),
+      days_rest       = as.numeric(game_date - lag(game_date))
+    ) |>
+    ungroup()
+
+  # B. Home/Away Differentials
+  home_df <- features |>
+    filter(team_home_away == "home") |>
+    select(game_id, season, game_date, home_team = team_id, home_win = team_winner,
+           home_roll_pts = roll_pts_scored, home_roll_oreb = roll_oreb, home_roll_dreb = roll_dreb,
+           home_roll_ast = roll_ast, home_roll_stl = roll_stl, home_roll_blk = roll_blk,
+           home_roll_tov = roll_tov, home_roll_efg = roll_efg, home_roll_tovp = roll_tovp,
+           home_roll_ftr = roll_ftr, home_roll_ts = roll_ts, home_days_rest = days_rest)
+
+  away_df <- features |>
+    filter(team_home_away == "away") |>
+    select(game_id, away_team = team_id, away_win = team_winner,
+           away_roll_pts = roll_pts_scored, away_roll_oreb = roll_oreb, away_roll_dreb = roll_dreb,
+           away_roll_ast = roll_ast, away_roll_stl = roll_stl, away_roll_blk = roll_blk,
+           away_roll_tov = roll_tov, away_roll_efg = roll_efg, away_roll_tovp = roll_tovp,
+           away_roll_ftr = roll_ftr, away_roll_ts = roll_ts, away_days_rest = days_rest)
+
+  model_df <- inner_join(home_df, away_df, by = "game_id") |>
+    mutate(
+      target_home_win = factor(if_else(home_win == TRUE, "Win", "Loss"), levels = c("Win", "Loss")),
+      diff_roll_pts   = home_roll_pts - away_roll_pts,
+      diff_roll_oreb  = home_roll_oreb - away_roll_oreb,
+      diff_roll_dreb  = home_roll_dreb - away_roll_dreb,
+      diff_rol_treb   = (home_roll_oreb + home_roll_dreb) - (away_roll_oreb + away_roll_dreb),
+      diff_roll_ast   = home_roll_ast - away_roll_ast,
+      diff_roll_stl   = home_roll_stl - away_roll_stl,
+      diff_roll_blk   = home_roll_blk - away_roll_blk,
+      diff_roll_tov   = home_roll_tov - away_roll_tov,
+      diff_roll_efg   = home_roll_efg - away_roll_efg,
+      diff_roll_tovp  = home_roll_tovp - away_roll_tovp,
+      diff_roll_ftr   = home_roll_ftr - away_roll_ftr,
+      diff_roll_ts    = home_roll_ts - away_roll_ts,
+      diff_days_rest  = home_days_rest - away_days_rest
+    ) |>
+    drop_na() # Drop initial games where window produces NaN
+
+  # C. Train/Test Split
+  train_data <- model_df |> filter(season < 2026)
+  test_data  <- model_df |> filter(season >= 2026)
+
+  # D. Recipe & Fit
+  recipe_spec <- recipe(target_home_win ~ ., data = train_data) |>
+    step_rm(game_id, game_date, home_team, away_team, home_win, away_win,
+            home_roll_ts, home_roll_ftr, home_roll_efg, away_roll_ts, away_roll_ftr, 
+            away_roll_efg, home_roll_pts, away_roll_pts, home_roll_tovp, away_roll_tovp) |>
+    step_normalize(all_numeric_predictors())
+
+  rf_spec <- rand_forest(trees = n_trees, mode = "classification") |>
+    set_engine("ranger", num.threads = parallel::detectCores())
+
+  wf <- workflow() |>
+    add_recipe(recipe_spec) |>
+    add_model(rf_spec)
+
+  fit_obj <- fit(wf, data = train_data)
+
+  # E. Predictions & Metrics
+  preds <- predict(fit_obj, test_data) |>
+    bind_cols(predict(fit_obj, test_data, type = "prob")) |>
+    bind_cols(test_data)
+
+  acc <- preds |> accuracy(truth = target_home_win, estimate = .pred_class) |> pull(.estimate)
+  auc <- preds |> roc_auc(truth = target_home_win, .pred_Win, event_level = "first") |> pull(.estimate)
+  kap <- preds |> kap(truth = target_home_win, estimate = .pred_class) |> pull(.estimate)
+
+  tibble(
+    window_size = window_size,
+    accuracy    = round(acc, 4),
+    roc_auc     = round(auc, 4),
+    kappa       = round(kap, 4),
+    test_games  = nrow(test_data)
+  )
+}
+
+# 2. Test window sizes from 3 games to 25 games
+window_tests <- 3:25
+
+# Run the experiment across all window sizes with a progress bar
+window_results <- map_dfr(window_tests, evaluate_rolling_window, .progress = "Testing Window Sizes")
+
+# View summary table
+head(window_results, 30)
+
+```
+
+```{r plot-window-experiment}
+#| echo: false
+#| message: false
+#| warning: false
+
+
+# Reshape for multi-metric plotting
+window_results_long <- window_results |>
+  pivot_longer(cols = c(accuracy, roc_auc), names_to = "metric", values_to = "score") |>
+  mutate(metric = if_else(metric == "accuracy", "Accuracy", "ROC-AUC"))
+
+# Find the best window size based on ROC-AUC
+best_window <- window_results |>
+  slice_max(roc_auc, n = 1) |>
+  pull(window_size)
+
+# Plot performance curves
+ggplot(window_results_long, aes(x = window_size, y = score, color = metric, group = metric)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 3) +
+  geom_vline(xintercept = best_window, linetype = "dashed", color = "darkred", alpha = 0.8) +
+  annotate("text", x = best_window - 0.8, y = min(window_results_long$score) + 0.01,
+           label = paste("Optimal Window:", best_window, "games"), 
+           hjust = 0, color = "darkred", fontface = "bold") +
+  scale_color_manual(values = c("Accuracy" = "steelblue", "ROC-AUC" = "darkorange")) +
+  scale_x_continuous(breaks = window_tests) +
+  theme_minimal() +
+  labs(
+    title = "Model Performance vs. Rolling Window Size",
+    subtitle = "Comparing Out-of-Sample Accuracy and ROC-AUC on 2026 Test Season",
+    x = "Rolling Window Size (Number of Games)",
+    y = "Metric Score",
+    color = "Metric"
+  )
+```
+
+
+```{r training-seasons-experiment}
+#| echo: false
+#| message: false
+#| warning: false
+
+# 1. Build model_df ONCE using the optimal 18-game rolling window
+opt_window <- 18
+
+features_exp <- box_scores |>
+  arrange(team_id, game_date) |>
+  group_by(team_id) |>
+  mutate(
+    hga  = if_else(str_detect(team_home_away, "away"), 0, 1),
+    efg  = (field_goals_made + 0.5 * three_point_field_goals_made) / field_goals_attempted,
+    tov  = total_turnovers / (field_goals_attempted + 0.44 * free_throws_attempted + total_turnovers),
+    ftr  = free_throws_attempted / field_goals_attempted,
+    ts   = team_score / (2 * (field_goals_attempted + (0.44 * free_throws_attempted))),
+    
+    roll_pts_scored = slide_dbl(team_score, mean, .before = opt_window, .after = -1),
+    roll_oreb       = slide_dbl(offensive_rebounds, mean, .before = opt_window, .after = -1),
+    roll_dreb       = slide_dbl(defensive_rebounds, mean, .before = opt_window, .after = -1),
+    roll_ast        = slide_dbl(assists, mean, .before = opt_window, .after = -1),
+    roll_stl        = slide_dbl(steals, mean, .before = opt_window, .after = -1),
+    roll_blk        = slide_dbl(blocks, mean, .before = opt_window, .after = -1),
+    roll_tov        = slide_dbl(turnovers, mean, .before = opt_window, .after = -1),
+    roll_efg        = slide_dbl(efg, mean, .before = opt_window, .after = -1),
+    roll_tovp       = slide_dbl(tov, mean, .before = opt_window, .after = -1),
+    roll_ftr        = slide_dbl(ftr, mean, .before = opt_window, .after = -1),
+    roll_ts         = slide_dbl(ts, mean, .before = opt_window, .after = -1),
+    days_rest       = as.numeric(game_date - lag(game_date))
+  ) |>
+  ungroup()
+
+home_df_exp <- features_exp |>
+  filter(team_home_away == "home") |>
+  select(game_id, season, game_date, home_team = team_id, home_win = team_winner,
+         home_roll_pts = roll_pts_scored, home_roll_oreb = roll_oreb, home_roll_dreb = roll_dreb,
+         home_roll_ast = roll_ast, home_roll_stl = roll_stl, home_roll_blk = roll_blk,
+         home_roll_tov = roll_tov, home_roll_efg = roll_efg, home_roll_tovp = roll_tovp,
+         home_roll_ftr = roll_ftr, home_roll_ts = roll_ts, home_days_rest = days_rest)
+
+away_df_exp <- features_exp |>
+  filter(team_home_away == "away") |>
+  select(game_id, away_team = team_id, away_win = team_winner,
+         away_roll_pts = roll_pts_scored, away_roll_oreb = roll_oreb, away_roll_dreb = roll_dreb,
+         away_roll_ast = roll_ast, away_roll_stl = roll_stl, away_roll_blk = roll_blk,
+         away_roll_tov = roll_tov, away_roll_efg = roll_efg, away_roll_tovp = roll_tovp,
+         away_roll_ftr = roll_ftr, away_roll_ts = roll_ts, away_days_rest = days_rest)
+
+model_df_exp <- inner_join(home_df_exp, away_df_exp, by = "game_id") |>
+  mutate(
+    target_home_win = factor(if_else(home_win == TRUE, "Win", "Loss"), levels = c("Win", "Loss")),
+    diff_roll_pts   = home_roll_pts - away_roll_pts,
+    diff_roll_oreb  = home_roll_oreb - away_roll_oreb,
+    diff_roll_dreb  = home_roll_dreb - away_roll_dreb,
+    diff_rol_treb   = (home_roll_oreb + home_roll_dreb) - (away_roll_oreb + away_roll_dreb),
+    diff_roll_ast   = home_roll_ast - away_roll_ast,
+    diff_roll_stl   = home_roll_stl - away_roll_stl,
+    diff_roll_blk   = home_roll_blk - away_roll_blk,
+    diff_roll_tov   = home_roll_tov - away_roll_tov,
+    diff_roll_efg   = home_roll_efg - away_roll_efg,
+    diff_roll_tovp  = home_roll_tovp - away_roll_tovp,
+    diff_roll_ftr   = home_roll_ftr - away_roll_ftr,
+    diff_roll_ts    = home_roll_ts - away_roll_ts,
+    diff_days_rest  = home_days_rest - away_days_rest
+  ) |>
+  drop_na()
+
+# 2. Fixed Test Set: Season 2026
+test_data_fixed <- model_df_exp |> filter(season >= 2026)
+
+# 3. Define function to test different training lookback depths
+evaluate_seasons_depth <- function(n_seasons_back) {
+  start_year <- 2026 - n_seasons_back
+  
+  # Filter training data for the specified lookback window
+  train_data_subset <- model_df_exp |>
+    filter(season >= start_year & season < 2026)
+  
+  # Recipe & Model
+  recipe_spec <- recipe(target_home_win ~ ., data = train_data_subset) |>
+    step_rm(game_id, game_date, home_team, away_team, home_win, away_win,
+            home_roll_ts, home_roll_ftr, home_roll_efg, away_roll_ts, away_roll_ftr, 
+            away_roll_efg, home_roll_pts, away_roll_pts, home_roll_tovp, away_roll_tovp) |>
+    step_normalize(all_numeric_predictors())
+
+  rf_spec <- rand_forest(trees = 300, mode = "classification") |>
+    set_engine("ranger", num.threads = parallel::detectCores())
+
+  wf <- workflow() |>
+    add_recipe(recipe_spec) |>
+    add_model(rf_spec)
+
+  fit_obj <- fit(wf, data = train_data_subset)
+
+  # Evaluate on the fixed 2026 test season
+  preds <- predict(fit_obj, test_data_fixed) |>
+    bind_cols(predict(fit_obj, test_data_fixed, type = "prob")) |>
+    bind_cols(test_data_fixed)
+
+  acc <- preds |> accuracy(truth = target_home_win, estimate = .pred_class) |> pull(.estimate)
+  auc <- preds |> roc_auc(truth = target_home_win, .pred_Win, event_level = "first") |> pull(.estimate)
+  kap <- preds |> kap(truth = target_home_win, estimate = .pred_class) |> pull(.estimate)
+
+  tibble(
+    seasons_back  = n_seasons_back,
+    years_trained = paste0(start_year, "–2025"),
+    train_games   = nrow(train_data_subset),
+    accuracy      = round(acc, 4),
+    roc_auc       = round(auc, 4),
+    kappa         = round(kap, 4)
+  )
+}
+
+# 4. Test from 1 season back (2025 only) up to 11 seasons back (2015–2025)
+season_tests <- 1:11
+
+season_results <- map_dfr(season_tests, evaluate_seasons_depth, .progress = "Testing Training Depths")
+
+# Display results table
+season_results
+```
+
+```{r plot-seasons-experiment}
+#| echo: false
+#| message: false
+#| warning: false
+
+
+season_results_long <- season_results |>
+  pivot_longer(cols = c(accuracy, roc_auc), names_to = "metric", values_to = "score") |>
+  mutate(metric = if_else(metric == "accuracy", "Accuracy", "ROC-AUC"))
+
+best_depth <- season_results |>
+  slice_max(roc_auc, n = 1) |>
+  pull(seasons_back)
+
+ggplot(season_results_long, aes(x = seasons_back, y = score, color = metric, group = metric)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 3) +
+  geom_vline(xintercept = best_depth, linetype = "dashed", color = "darkred", alpha = 0.8) +
+  annotate("text", x = best_depth + 0.3, y = min(season_results_long$score) + 0.01,
+           label = paste("Optimal Depth:", best_depth, "Seasons"), 
+           hjust = 0, color = "darkred", fontface = "bold") +
+  scale_color_manual(values = c("Accuracy" = "steelblue", "ROC-AUC" = "darkorange")) +
+  scale_x_continuous(breaks = 1:11, labels = paste0(1:11, " yr\n(", (2026 - (1:11)), ")")) +
+  theme_minimal() +
+  labs(
+    title = "Model Performance vs. Historical Training Depth",
+    subtitle = "Testing how many seasons of historical data produce the best 2026 predictions",
+    x = "Historical Seasons Included (Start Year)",
+    y = "Metric Score",
+    color = "Metric"
+  )
+```
+

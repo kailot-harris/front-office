@@ -1,0 +1,671 @@
+---
+title: "NBA_Analysis_Project-Presentation-extra"
+author: "Kailot C. Harris"
+format: revealjs
+editor: visual
+---
+
+### Creating synthetic data for 2027 season
+
+```{r schedule-scrape}
+# install.packages("jsonlite")
+library(jsonlite)
+library(httr2)
+
+# 1. NBA.com's backend schedule endpoint
+nba_schedule_url <- "https://cdn.nba.com/static/json/staticData/scheduleLeagueV2.json"
+schedule_url <- "https://raw.githubusercontent.com/sportsdataverse/hoopR-data/main/nba/schedules/csv/nba_schedule_2025.csv"
+
+schedule_2027_raw <- hoopR::espn_nba_scoreboard(season = 2027)
+schedule_2026_raw <- hoopR::espn_nba_scoreboard(season = 2026)
+
+schedule_2026 <- schedule_2026_raw |>
+  filter(season_type == 2) |>
+  mutate(season_2027=if_else(season==2027, TRUE, FALSE)) |>
+  select(
+    game_id,     game_date,     season,     season_2027,     home_team = home_team_id,
+    away_team = away_team_id
+  ) |>
+  arrange(game_date)
+
+schedule_2027 <- schedule_2027_raw |>
+  filter(season_type == 2) |>
+  mutate(season_2027=if_else(season==2027, TRUE, FALSE)) |>
+  select(
+    game_id,     game_date,     season,     season_2027,     home_team = home_team_id,
+    away_team = away_team_id
+  ) |>
+  arrange(game_date)
+
+schedule_2026_2027 <- bind_rows(schedule_2026,schedule_2027)
+
+sched_2027 <- schedule_2026_2027 |>
+  filter(season_2027==TRUE) |>
+  select(game_id, game_date, home_team, away_team)
+
+#head(sched_2027)
+
+sched_2026_2027 <- bind_rows(schedule_2026_raw, schedule_2027_raw) |>
+  filter(season_type == 2) |>
+  mutate(season_2027 = if_else(season == 2027, TRUE, FALSE)) |>
+  select(
+    game_id,     game_date,     season,     season_2027,     home_team = home_team_id,
+    away_team = away_team_id
+  ) |>
+  arrange(game_date)
+
+
+games_2027 <- sched_2026_2027 |>
+  filter(season_2027 == TRUE)
+```
+
+```{r synthetic-data}
+team_profiles_2027 <- features_df |>
+  filter(season == 2026) |>
+  group_by(team_id) |>
+  slice_tail(n = 1) |>
+  ungroup() |>
+  mutate(team_id = as.integer(team_id), roll_pts = roll_pts_scored, roll_treb = roll_oreb+roll_dreb) |>
+  select(
+    team_id,
+    roll_ts,
+    roll_efg,
+    roll_pts,
+    roll_oreb,
+    roll_dreb,
+    roll_treb,
+    roll_tovp,
+    roll_ftr,
+    roll_tov,
+    roll_stl,
+    roll_blk,
+    roll_ast
+  )
+
+# 1. Filter to 2027 games only
+games_2027 <- sched_2026_2027 |>
+  filter(season_2027 == TRUE)
+
+team_profiles_2027 |>
+  mutate(roll_treb = roll_oreb+roll_dreb)
+
+# 2. Join Home & Away baseline ratings (from your 2026 profiles)
+model_input_2027 <- games_2027 |>
+  # 1. Provide placeholder metadata columns that recipe's step_rm() expects to see
+  mutate(
+    home_win = FALSE,
+    away_win = FALSE,
+    home_days_rest = 2,
+    away_days_rest = 2,
+    diff_days_rest = 0
+  ) |>
+  # 2. Join Home stats
+  left_join(team_profiles_2027, by = c("home_team" = "team_id")) |>
+  rename_with(~ paste0("home_", .), starts_with("roll_")) |>
+  # 3. Join Away stats
+  left_join(team_profiles_2027, by = c("away_team" = "team_id")) |>
+  rename_with(~ paste0("away_", .), starts_with("roll_")) |>
+  # 4. Calculate all differentials that existed in training data
+  mutate(
+    diff_roll_ts   = home_roll_ts - away_roll_ts,
+    diff_roll_efg  = home_roll_efg - away_roll_efg,
+    diff_roll_pts  = home_roll_pts - away_roll_pts,
+    diff_roll_dreb = home_roll_dreb - away_roll_dreb,
+    diff_roll_tovp = home_roll_tovp - away_roll_tovp,
+    diff_roll_ftr  = home_roll_ftr - away_roll_ftr,
+    diff_roll_tov  = home_roll_tov - away_roll_tov,
+    diff_roll_oreb = home_roll_oreb - away_roll_oreb,
+    diff_roll_blk = home_roll_blk - away_roll_blk,
+    diff_rol_treb  = home_roll_treb - away_roll_treb,
+    diff_roll_stl  = home_roll_stl - away_roll_stl,
+    diff_roll_ast  = home_roll_ast - away_roll_ast,
+    # Standard neutral/rest baseline
+    diff_days_rest = 0
+  )    
+```
+
+```{r predict-2027}
+# 3. Predict Win Probabilities for the 2027 season!
+predictions_2027 <- model_input_2027 |>
+  bind_cols(predict(nba_fit, model_input_2027, type = "prob")) |>
+  bind_cols(predict(nba_fit, model_input_2027, type = "class"))
+```
+
+```{r projected-2027-standings}
+# 1. Create a Team ID to Team Name lookup table
+team_lookup <- box_scores |>
+  select(team_id, team_name = team_short_display_name) |>
+  distinct() |>
+  mutate(team_id = as.integer(team_id))
+
+# 2. Calculate expected wins at Home (.pred_Win)
+home_wins_df <- predictions_2027 |>
+  group_by(team_id = home_team) |>
+  summarise(home_wins = sum(.pred_Win))
+
+# 3. Calculate expected wins on the Road (.pred_Loss = Home loss -> Away win)
+away_wins_df <- predictions_2027 |>
+  group_by(team_id = away_team) |>
+  summarise(away_wins = sum(.pred_Loss))
+
+# 4. Combine into complete 2027 Projected Standings
+projected_standings_2027 <- home_wins_df |>
+  left_join(away_wins_df, by = "team_id") |>
+  left_join(team_lookup, by = "team_id") |>
+  mutate(
+    projected_wins = round(home_wins + away_wins, 1),
+    projected_losses = round(82 - projected_wins, 1)
+  ) |>
+  arrange(desc(projected_wins)) |>
+  mutate(Rank = row_number()) |>
+  select(Rank, Team = team_name, Wins = projected_wins, Losses = projected_losses)
+
+# 1. Count actual scheduled games and calculate true 82-game pace
+projected_standings_82 <- home_wins_df |>
+  left_join(away_wins_df, by = "team_id") |>
+  left_join(
+    # Count total games actually on the schedule per team
+    predictions_2027 |> 
+      count(home_team, name = "home_games") |> 
+      rename(team_id = home_team),
+    by = "team_id"
+  ) |>
+  left_join(
+    predictions_2027 |> 
+      count(away_team, name = "away_games") |> 
+      rename(team_id = away_team),
+    by = "team_id"
+  ) |>
+  left_join(team_lookup, by = "team_id") |>
+  mutate(
+    total_games_scheduled = home_games + away_games,
+    total_raw_wins        = home_wins + away_wins,
+    # Scale to full 82-game season
+    win_pct               = total_raw_wins / total_games_scheduled,
+    wins_82_pace          = round(win_pct * 82, 1),
+    losses_82_pace        = round(82 - wins_82_pace, 1)
+  ) |>
+  arrange(desc(wins_82_pace)) |>
+  mutate(Rank = row_number()) |>
+  select(Rank, Team = team_name, Wins = wins_82_pace, Losses = losses_82_pace, `Win%` = win_pct)
+
+# View normalized 2027 Standings
+head(projected_standings_82, 10)
+
+# View the Top 10 Projected Teams in 2027
+head(projected_standings_2027,10)
+
+```
+
+```{r 2027-analysis}
+# 1. Calculate Variance for Home games: p * (1 - p)
+home_var <- predictions_2027 |>
+  group_by(team_id = home_team) |>
+  summarise(
+    home_wins = sum(.pred_Win),
+    home_var  = sum(.pred_Win * (1 - .pred_Win))
+  )
+
+# 2. Calculate Variance for Away games: p * (1 - p)
+away_var <- predictions_2027 |>
+  group_by(team_id = away_team) |>
+  summarise(
+    away_wins = sum(.pred_Loss),
+    away_var  = sum(.pred_Loss * (1 - .pred_Loss))
+  )
+
+# 3. Combine and compute 95% Confidence Intervals scaled to 82 games
+standings_ci_analytical <- home_var |>
+  left_join(away_var, by = "team_id") |>
+  left_join(team_lookup, by = "team_id") |>
+  mutate(
+    # Pace-scale factor (e.g., 82 / actual scheduled games)
+    scale_factor = 82 / (home_wins + away_wins + (82 - (home_wins + away_wins))), # or schedule length
+    total_wins   = (home_wins + away_wins),
+    
+    # Standard Error = sqrt(Home_Var + Away_Var)
+    se_wins      = sqrt(home_var + away_var),
+    
+    # 95% CI (Z = 1.96)
+    ci_lower_95  = round(total_wins - (1.96 * se_wins), 1),
+    ci_upper_95  = round(total_wins + (1.96 * se_wins), 1),
+    proj_wins    = round(total_wins, 1)
+  ) |>
+  arrange(desc(proj_wins)) |>
+  select(Team = team_name, Projected = proj_wins, `95% CI Lower` = ci_lower_95, `95% CI Upper` = ci_upper_95, SE = se_wins)
+
+head(standings_ci_analytical, 10)
+
+standings_ci_82 <- home_var |>
+  left_join(away_var, by = "team_id") |>
+  left_join(
+    predictions_2027 |> count(home_team, name = "home_games") |> rename(team_id = home_team),
+    by = "team_id"
+  ) |>
+  left_join(
+    predictions_2027 |> count(away_team, name = "away_games") |> rename(team_id = away_team),
+    by = "team_id"
+  ) |>
+  left_join(team_lookup, by = "team_id") |>
+  mutate(
+    total_games_scheduled = home_games + away_games,
+    total_raw_wins        = home_wins + away_wins,
+    win_pct               = total_raw_wins / total_games_scheduled,
+    
+    # 1. Scale mean wins to 82 games
+    wins_82_pace          = round(win_pct * 82, 1),
+    
+    # 2. Scale Standard Error to 82-game season: SE_82 = sqrt(82 * p * (1-p))
+    se_82                 = round(sqrt(82 * win_pct * (1 - win_pct)), 2),
+    
+    # 3. 95% Confidence Intervals for 82 games
+    ci_lower_95           = round(wins_82_pace - (1.96 * se_82), 1),
+    ci_upper_95           = round(wins_82_pace + (1.96 * se_82), 1)
+  ) |>
+  arrange(desc(wins_82_pace)) |>
+  mutate(Rank = row_number()) |>
+  select(Rank, Team = team_name, Projected = wins_82_pace, `95% CI Lower` = ci_lower_95, `95% CI Upper` = ci_upper_95, SE = se_82)
+
+head(standings_ci_82, 10)
+
+```
+
+```{r monte-carlo-sim}
+
+set.seed(42) # For reproducible results
+n_sims <- 10000
+
+# 1. Run 10,000 simulated seasons
+sim_results <- map_dfr(1:n_sims, function(sim_id) {
+  # Flip weighted coin for every game on the schedule
+  sim_games <- predictions_2027 |>
+    mutate(home_won_sim = rbinom(n(), 1, .pred_Win))
+  
+  # Tally simulated wins per team
+  home_tallies <- sim_games |>
+    group_by(team_id = home_team) |>
+    summarise(wins = sum(home_won_sim))
+  
+  away_tallies <- sim_games |>
+    group_by(team_id = away_team) |>
+    summarise(wins = sum(1 - home_won_sim))
+  
+  home_tallies |>
+    left_join(away_tallies, by = "team_id") |>
+    mutate(total_wins = wins.x + wins.y, sim = sim_id) |>
+    select(sim, team_id, total_wins)
+})
+```
+
+```{r compute-ci-sims}
+# 2. Compute 90% and 95% Confidence Intervals from simulation percentiles
+standings_ci_sim <- sim_results |>
+  left_join(team_lookup, by = "team_id") |>
+  group_by(Team = team_name) |>
+  summarise(
+    Mean_Wins = round(mean(total_wins), 1),
+    Median_Wins = median(total_wins),
+    `5th_Percentile` = quantile(total_wins, 0.05),   # Lower bound of 90% CI
+    `95th_Percentile` = quantile(total_wins, 0.95),  # Upper bound of 90% CI
+    `2.5th_Percentile` = quantile(total_wins, 0.025), # Lower bound of 95% CI
+    `97.5th_Percentile` = quantile(total_wins, 0.975) # Upper bound of 95% CI
+  ) |>
+  arrange(desc(Mean_Wins))
+
+head(standings_ci_sim, 10)
+```
+
+```{r plotting-sim-ci-results}
+ggplot(standings_ci_sim, aes(x = reorder(Team, Mean_Wins), y = Mean_Wins)) +
+  geom_pointrange(
+    aes(ymin = `5th_Percentile`, ymax = `95th_Percentile`),
+    color = "midnightblue",
+    size = 0.5
+  ) +
+  geom_hline(yintercept = 41, linetype = "dashed", color = "red", alpha = 0.7) +
+  coord_flip() +
+  theme_minimal() +
+  labs(
+    title = "2027 NBA Projected Wins with 90% Confidence Intervals",
+    subtitle = "Points show expected wins; bars indicate the 5th to 95th percentile outcome range (10,000 simulations)",
+    x = "Team",
+    y = "Regular Season Wins"
+  )
+
+# Scale the simulation percentiles to an 82-game pace
+scale_factor <- 82 / mean(standings_ci_sim$Mean_Wins * 2) # ~1.49
+
+standings_ci_sim_82 <- standings_ci_sim |>
+  mutate(across(where(is.numeric), ~ round(. * scale_factor, 1)))
+
+ggplot(standings_ci_sim_82, aes(x = reorder(Team, Mean_Wins), y = Mean_Wins)) +
+  geom_pointrange(
+    aes(ymin = `5th_Percentile`, ymax = `95th_Percentile`),
+    color = "midnightblue",
+    size = 0.5
+  ) +
+  geom_hline(yintercept = 41, linetype = "dashed", color = "red", alpha = 0.7) +
+  coord_flip() +
+  theme_minimal() +
+  labs(
+    title = "2027 NBA Projected Wins with 90% Confidence Intervals (82-Game Pace)",
+    subtitle = "Points show expected wins; bars indicate 5th to 95th percentile range (10,000 simulations)",
+    x = "Team",
+    y = "Projected Regular Season Wins"
+  )
+
+```
+
+```{r ridge-plot}
+library(ggridges)
+
+sim_results |>
+  left_join(team_lookup, by = "team_id") |>
+  filter(team_name %in% head(standings_ci_sim$Team, 10)) |>
+  ggplot(aes(x = total_wins, y = reorder(team_name, total_wins, median), fill = team_name)) +
+  geom_density_ridges(alpha = 0.7, show.legend = FALSE) +
+  theme_minimal() +
+  labs(
+    title = "Simulated Win Total Distributions (10,000 Seasons)",
+    subtitle = "Top 10 Projected NBA Teams for 2027",
+    x = "Total Wins",
+    y = "Team"
+  )
+```
+
+### Analysis of impact of rolling-window size on predictive accuracy
+
+```{r rolling-window-expt}
+# 1. Define the experiment function
+evaluate_rolling_window <- function(window_size, data = box_scores, n_trees = 300) {
+  
+  # A. Feature Engineering with variable window size
+  features <- data |>
+    arrange(team_id, game_date) |>
+    group_by(team_id) |>
+    mutate(
+      hga = if_else(str_detect(team_home_away, "away"), 0, 1),
+      efg = (field_goals_made + 0.5 * three_point_field_goals_made) / field_goals_attempted,
+      tov = total_turnovers / (field_goals_attempted + 0.44 * free_throws_attempted + total_turnovers),
+      ftr = free_throws_attempted / field_goals_attempted,
+      ts  = team_score / (2 * (field_goals_attempted + (0.44 * free_throws_attempted))),
+      
+      # Variable rolling window: .before = window_size
+      roll_pts_scored = slide_dbl(team_score, mean, .before = window_size, .after = -1),
+      roll_oreb       = slide_dbl(offensive_rebounds, mean, .before = window_size, .after = -1),
+      roll_dreb       = slide_dbl(defensive_rebounds, mean, .before = window_size, .after = -1),
+      roll_ast        = slide_dbl(assists, mean, .before = window_size, .after = -1),
+      roll_stl        = slide_dbl(steals, mean, .before = window_size, .after = -1),
+      roll_blk        = slide_dbl(blocks, mean, .before = window_size, .after = -1),
+      roll_tov        = slide_dbl(turnovers, mean, .before = window_size, .after = -1),
+      roll_efg        = slide_dbl(efg, mean, .before = window_size, .after = -1),
+      roll_tovp       = slide_dbl(tov, mean, .before = window_size, .after = -1),
+      roll_ftr        = slide_dbl(ftr, mean, .before = window_size, .after = -1),
+      roll_ts         = slide_dbl(ts, mean, .before = window_size, .after = -1),
+      days_rest       = as.numeric(game_date - lag(game_date))
+    ) |>
+    ungroup()
+
+  # B. Home/Away Differentials
+  home_df <- features |>
+    filter(team_home_away == "home") |>
+    select(game_id, season, game_date, home_team = team_id, home_win = team_winner,
+           home_roll_pts = roll_pts_scored, home_roll_oreb = roll_oreb, home_roll_dreb = roll_dreb,
+           home_roll_ast = roll_ast, home_roll_stl = roll_stl, home_roll_blk = roll_blk,
+           home_roll_tov = roll_tov, home_roll_efg = roll_efg, home_roll_tovp = roll_tovp,
+           home_roll_ftr = roll_ftr, home_roll_ts = roll_ts, home_days_rest = days_rest)
+
+  away_df <- features |>
+    filter(team_home_away == "away") |>
+    select(game_id, away_team = team_id, away_win = team_winner,
+           away_roll_pts = roll_pts_scored, away_roll_oreb = roll_oreb, away_roll_dreb = roll_dreb,
+           away_roll_ast = roll_ast, away_roll_stl = roll_stl, away_roll_blk = roll_blk,
+           away_roll_tov = roll_tov, away_roll_efg = roll_efg, away_roll_tovp = roll_tovp,
+           away_roll_ftr = roll_ftr, away_roll_ts = roll_ts, away_days_rest = days_rest)
+
+  model_df <- inner_join(home_df, away_df, by = "game_id") |>
+    mutate(
+      target_home_win = factor(if_else(home_win == TRUE, "Win", "Loss"), levels = c("Win", "Loss")),
+      diff_roll_pts   = home_roll_pts - away_roll_pts,
+      diff_roll_oreb  = home_roll_oreb - away_roll_oreb,
+      diff_roll_dreb  = home_roll_dreb - away_roll_dreb,
+      diff_rol_treb   = (home_roll_oreb + home_roll_dreb) - (away_roll_oreb + away_roll_dreb),
+      diff_roll_ast   = home_roll_ast - away_roll_ast,
+      diff_roll_stl   = home_roll_stl - away_roll_stl,
+      diff_roll_blk   = home_roll_blk - away_roll_blk,
+      diff_roll_tov   = home_roll_tov - away_roll_tov,
+      diff_roll_efg   = home_roll_efg - away_roll_efg,
+      diff_roll_tovp  = home_roll_tovp - away_roll_tovp,
+      diff_roll_ftr   = home_roll_ftr - away_roll_ftr,
+      diff_roll_ts    = home_roll_ts - away_roll_ts,
+      diff_days_rest  = home_days_rest - away_days_rest
+    ) |>
+    drop_na() # Drop initial games where window produces NaN
+
+  # C. Train/Test Split
+  train_data <- model_df |> filter(season < 2026)
+  test_data  <- model_df |> filter(season >= 2026)
+
+  # D. Recipe & Fit
+  recipe_spec <- recipe(target_home_win ~ ., data = train_data) |>
+    step_rm(game_id, game_date, home_team, away_team, home_win, away_win,
+            home_roll_ts, home_roll_ftr, home_roll_efg, away_roll_ts, away_roll_ftr, 
+            away_roll_efg, home_roll_pts, away_roll_pts, home_roll_tovp, away_roll_tovp) |>
+    step_normalize(all_numeric_predictors())
+
+  rf_spec <- rand_forest(trees = n_trees, mode = "classification") |>
+    set_engine("ranger", num.threads = parallel::detectCores())
+
+  wf <- workflow() |>
+    add_recipe(recipe_spec) |>
+    add_model(rf_spec)
+
+  fit_obj <- fit(wf, data = train_data)
+
+  # E. Predictions & Metrics
+  preds <- predict(fit_obj, test_data) |>
+    bind_cols(predict(fit_obj, test_data, type = "prob")) |>
+    bind_cols(test_data)
+
+  acc <- preds |> accuracy(truth = target_home_win, estimate = .pred_class) |> pull(.estimate)
+  auc <- preds |> roc_auc(truth = target_home_win, .pred_Win, event_level = "first") |> pull(.estimate)
+  kap <- preds |> kap(truth = target_home_win, estimate = .pred_class) |> pull(.estimate)
+
+  tibble(
+    window_size = window_size,
+    accuracy    = round(acc, 4),
+    roc_auc     = round(auc, 4),
+    kappa       = round(kap, 4),
+    test_games  = nrow(test_data)
+  )
+}
+
+# 2. Test window sizes from 3 games to 25 games
+window_tests <- 3:25
+
+# Run the experiment across all window sizes with a progress bar
+window_results <- map_dfr(window_tests, evaluate_rolling_window, .progress = "Testing Window Sizes")
+
+# View summary table
+head(window_results, 30)
+```
+
+plotting results
+
+```{r plot-window-experiment}
+# Reshape for multi-metric plotting
+window_results_long <- window_results |>
+  pivot_longer(cols = c(accuracy, roc_auc), names_to = "metric", values_to = "score") |>
+  mutate(metric = if_else(metric == "accuracy", "Accuracy", "ROC-AUC"))
+
+# Find the best window size based on ROC-AUC
+best_window <- window_results |>
+  slice_max(roc_auc, n = 1) |>
+  pull(window_size)
+
+# Plot performance curves
+ggplot(window_results_long, aes(x = window_size, y = score, color = metric, group = metric)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 3) +
+  geom_vline(xintercept = best_window, linetype = "dashed", color = "darkred", alpha = 0.8) +
+  annotate("text", x = best_window - 0.8, y = min(window_results_long$score) + 0.01,
+           label = paste("Optimal Window:", best_window, "games"), 
+           hjust = 0, color = "darkred", fontface = "bold") +
+  scale_color_manual(values = c("Accuracy" = "steelblue", "ROC-AUC" = "darkorange")) +
+  scale_x_continuous(breaks = window_tests) +
+  theme_minimal() +
+  labs(
+    title = "Model Performance vs. Rolling Window Size",
+    subtitle = "Comparing Out-of-Sample Accuracy and ROC-AUC on 2026 Test Season",
+    x = "Rolling Window Size (Number of Games)",
+    y = "Metric Score",
+    color = "Metric"
+  )
+```
+
+```{r training-seasons-experiment}
+# 1. Build model_df ONCE using the optimal 18-game rolling window
+opt_window <- 18
+
+features_exp <- box_scores |>
+  arrange(team_id, game_date) |>
+  group_by(team_id) |>
+  mutate(
+    hga  = if_else(str_detect(team_home_away, "away"), 0, 1),
+    efg  = (field_goals_made + 0.5 * three_point_field_goals_made) / field_goals_attempted,
+    tov  = total_turnovers / (field_goals_attempted + 0.44 * free_throws_attempted + total_turnovers),
+    ftr  = free_throws_attempted / field_goals_attempted,
+    ts   = team_score / (2 * (field_goals_attempted + (0.44 * free_throws_attempted))),
+    
+    roll_pts_scored = slide_dbl(team_score, mean, .before = opt_window, .after = -1),
+    roll_oreb       = slide_dbl(offensive_rebounds, mean, .before = opt_window, .after = -1),
+    roll_dreb       = slide_dbl(defensive_rebounds, mean, .before = opt_window, .after = -1),
+    roll_ast        = slide_dbl(assists, mean, .before = opt_window, .after = -1),
+    roll_stl        = slide_dbl(steals, mean, .before = opt_window, .after = -1),
+    roll_blk        = slide_dbl(blocks, mean, .before = opt_window, .after = -1),
+    roll_tov        = slide_dbl(turnovers, mean, .before = opt_window, .after = -1),
+    roll_efg        = slide_dbl(efg, mean, .before = opt_window, .after = -1),
+    roll_tovp       = slide_dbl(tov, mean, .before = opt_window, .after = -1),
+    roll_ftr        = slide_dbl(ftr, mean, .before = opt_window, .after = -1),
+    roll_ts         = slide_dbl(ts, mean, .before = opt_window, .after = -1),
+    days_rest       = as.numeric(game_date - lag(game_date))
+  ) |>
+  ungroup()
+
+home_df_exp <- features_exp |>
+  filter(team_home_away == "home") |>
+  select(game_id, season, game_date, home_team = team_id, home_win = team_winner,
+         home_roll_pts = roll_pts_scored, home_roll_oreb = roll_oreb, home_roll_dreb = roll_dreb,
+         home_roll_ast = roll_ast, home_roll_stl = roll_stl, home_roll_blk = roll_blk,
+         home_roll_tov = roll_tov, home_roll_efg = roll_efg, home_roll_tovp = roll_tovp,
+         home_roll_ftr = roll_ftr, home_roll_ts = roll_ts, home_days_rest = days_rest)
+
+away_df_exp <- features_exp |>
+  filter(team_home_away == "away") |>
+  select(game_id, away_team = team_id, away_win = team_winner,
+         away_roll_pts = roll_pts_scored, away_roll_oreb = roll_oreb, away_roll_dreb = roll_dreb,
+         away_roll_ast = roll_ast, away_roll_stl = roll_stl, away_roll_blk = roll_blk,
+         away_roll_tov = roll_tov, away_roll_efg = roll_efg, away_roll_tovp = roll_tovp,
+         away_roll_ftr = roll_ftr, away_roll_ts = roll_ts, away_days_rest = days_rest)
+
+model_df_exp <- inner_join(home_df_exp, away_df_exp, by = "game_id") |>
+  mutate(
+    target_home_win = factor(if_else(home_win == TRUE, "Win", "Loss"), levels = c("Win", "Loss")),
+    diff_roll_pts   = home_roll_pts - away_roll_pts,
+    diff_roll_oreb  = home_roll_oreb - away_roll_oreb,
+    diff_roll_dreb  = home_roll_dreb - away_roll_dreb,
+    diff_rol_treb   = (home_roll_oreb + home_roll_dreb) - (away_roll_oreb + away_roll_dreb),
+    diff_roll_ast   = home_roll_ast - away_roll_ast,
+    diff_roll_stl   = home_roll_stl - away_roll_stl,
+    diff_roll_blk   = home_roll_blk - away_roll_blk,
+    diff_roll_tov   = home_roll_tov - away_roll_tov,
+    diff_roll_efg   = home_roll_efg - away_roll_efg,
+    diff_roll_tovp  = home_roll_tovp - away_roll_tovp,
+    diff_roll_ftr   = home_roll_ftr - away_roll_ftr,
+    diff_roll_ts    = home_roll_ts - away_roll_ts,
+    diff_days_rest  = home_days_rest - away_days_rest
+  ) |>
+  drop_na()
+
+# 2. Fixed Test Set: Season 2026
+test_data_fixed <- model_df_exp |> filter(season >= 2026)
+
+# 3. Define function to test different training lookback depths
+evaluate_seasons_depth <- function(n_seasons_back) {
+  start_year <- 2026 - n_seasons_back
+  
+  # Filter training data for the specified lookback window
+  train_data_subset <- model_df_exp |>
+    filter(season >= start_year & season < 2026)
+  
+  # Recipe & Model
+  recipe_spec <- recipe(target_home_win ~ ., data = train_data_subset) |>
+    step_rm(game_id, game_date, home_team, away_team, home_win, away_win,
+            home_roll_ts, home_roll_ftr, home_roll_efg, away_roll_ts, away_roll_ftr, 
+            away_roll_efg, home_roll_pts, away_roll_pts, home_roll_tovp, away_roll_tovp) |>
+    step_normalize(all_numeric_predictors())
+
+  rf_spec <- rand_forest(trees = 300, mode = "classification") |>
+    set_engine("ranger", num.threads = parallel::detectCores())
+
+  wf <- workflow() |>
+    add_recipe(recipe_spec) |>
+    add_model(rf_spec)
+
+  fit_obj <- fit(wf, data = train_data_subset)
+
+  # Evaluate on the fixed 2026 test season
+  preds <- predict(fit_obj, test_data_fixed) |>
+    bind_cols(predict(fit_obj, test_data_fixed, type = "prob")) |>
+    bind_cols(test_data_fixed)
+
+  acc <- preds |> accuracy(truth = target_home_win, estimate = .pred_class) |> pull(.estimate)
+  auc <- preds |> roc_auc(truth = target_home_win, .pred_Win, event_level = "first") |> pull(.estimate)
+  kap <- preds |> kap(truth = target_home_win, estimate = .pred_class) |> pull(.estimate)
+
+  tibble(
+    seasons_back  = n_seasons_back,
+    years_trained = paste0(start_year, "–2025"),
+    train_games   = nrow(train_data_subset),
+    accuracy      = round(acc, 4),
+    roc_auc       = round(auc, 4),
+    kappa         = round(kap, 4)
+  )
+}
+
+# 4. Test from 1 season back (2025 only) up to 11 seasons back (2015–2025)
+season_tests <- 1:11
+
+season_results <- map_dfr(season_tests, evaluate_seasons_depth, .progress = "Testing Training Depths")
+
+# Display results table
+season_results
+```
+
+```{r plot-seasons-experiment}
+season_results_long <- season_results |>
+  pivot_longer(cols = c(accuracy, roc_auc), names_to = "metric", values_to = "score") |>
+  mutate(metric = if_else(metric == "accuracy", "Accuracy", "ROC-AUC"))
+
+best_depth <- season_results |>
+  slice_max(roc_auc, n = 1) |>
+  pull(seasons_back)
+
+ggplot(season_results_long, aes(x = seasons_back, y = score, color = metric, group = metric)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 3) +
+  geom_vline(xintercept = best_depth, linetype = "dashed", color = "darkred", alpha = 0.8) +
+  annotate("text", x = best_depth + 0.3, y = min(season_results_long$score) + 0.01,
+           label = paste("Optimal Depth:", best_depth, "Seasons"), 
+           hjust = 0, color = "darkred", fontface = "bold") +
+  scale_color_manual(values = c("Accuracy" = "steelblue", "ROC-AUC" = "darkorange")) +
+  scale_x_continuous(breaks = 1:11, labels = paste0(1:11, " yr\n(", (2026 - (1:11)), ")")) +
+  theme_minimal() +
+  labs(
+    title = "Model Performance vs. Historical Training Depth",
+    subtitle = "Testing how many seasons of historical data produce the best 2026 predictions",
+    x = "Historical Seasons Included (Start Year)",
+    y = "Metric Score",
+    color = "Metric"
+  )
+```
