@@ -24,9 +24,12 @@ source("tools/viz_theme.R")
 
 generate_viz_pythag_luck <- function(season = 2024,
                                      standings_file = cache_path("pythag", "mlb_pythag_standings.rds"),
-                                     output_file    = "pythag_luck_quadrants_2024.png") {
+                                     output_file    = sprintf("pythag_luck_quadrants_%d.png", season)) {
   message(sprintf(">>> [VIZ] Generating Pythagorean luck quadrants for %d...", season))
   
+  if (!file.exists(standings_file)) {
+    standings_file <- cache_path("pythag", sprintf("pythag_baseline_%d.rds", season))
+  }
   if (!file.exists(standings_file)) {
     stop(sprintf("Pythagorean standings file not found at '%s'. Run mlb_pythag_baseline.R first.", standings_file))
   }
@@ -39,18 +42,31 @@ generate_viz_pythag_luck <- function(season = 2024,
   # Fetch team table for abbreviations and division info
   teams_meta <- as.data.frame(get_mlb_team_table())
   mlb_teams <- teams_meta[which(teams_meta[["sport_id"]] == 1 & !is.na(teams_meta[["division_name"]])),
-                          c("team_id", "team_abbreviation", "division_name")]
+                          c("team_id", "team_full_name", "team_abbreviation", "division_name")]
   mlb_teams$division <- standardize_division(mlb_teams$division_name)
   
   # Merge abbreviations
-  df <- merge(pythag_df, mlb_teams[, c("team_id", "team_abbreviation", "division")],
-              by = "team_id", all.x = TRUE)
+  df <- if ("team_id" %in% names(pythag_df)) {
+    merge(pythag_df, mlb_teams[, c("team_id", "team_abbreviation", "division")],
+          by = "team_id", all.x = TRUE)
+  } else {
+    merge(pythag_df, mlb_teams[, c("team_full_name", "team_abbreviation", "division")],
+          by.x = "team_name", by.y = "team_full_name", all.x = TRUE)
+  }
   df$team_abbreviation[is.na(df$team_abbreviation)] <- substr(df$team_name[is.na(df$team_abbreviation)], 1, 3)
   
+  # Standardize Pythagorean win pct column
+  if (!"win_pct_pythagenpat" %in% names(df) && "exp_pythagenpat" %in% names(df)) {
+    df$win_pct_pythagenpat <- df$exp_pythagenpat
+  } else if (!"win_pct_pythagenpat" %in% names(df) && "pythag_win_pct" %in% names(df)) {
+    df$win_pct_pythagenpat <- df$pythag_win_pct
+  }
+
   # Ensure luck_wins is present (luck_wins_pat)
   if (!"luck_wins_pat" %in% names(df)) {
     df$luck_wins_pat <- round((df$actual_win_pct - df$win_pct_pythagenpat) * df$games_played, 1)
   }
+
   
   # Axis limits and centers
   center_val <- 0.500

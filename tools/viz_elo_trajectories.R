@@ -21,7 +21,8 @@ source("tools/viz_theme.R")
 
 generate_viz_elo_trajectories <- function(season = 2024,
                                           history_file = cache_path("ratings", "mlb_elo_history.rds"),
-                                          output_file  = "elo_trajectories_2024.png") {
+                                          output_file  = sprintf("elo_trajectories_%d.png", season)) {
+
   message(sprintf(">>> [VIZ] Generating Elo trajectories visualization for %d...", season))
   
   if (!file.exists(history_file)) {

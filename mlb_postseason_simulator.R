@@ -76,6 +76,14 @@ seed_postseason_teams <- function(season = 2024) {
     standings %>% dplyr::inner_join(teams_meta, by = c("team_name" = "team_full_name"))
   }
 
+  # Ensure run_diff and team_full_name columns exist
+  if (!"run_diff" %in% names(df) && "run_differential" %in% names(df)) {
+    df$run_diff <- df$run_differential
+  }
+  if (!"team_full_name" %in% names(df) && "team_name" %in% names(df)) {
+    df$team_full_name <- df$team_name
+  }
+
   # Load team Elo ratings if available for rating enrichment
   elo_file <- cache_path("ratings", "mlb_team_ratings.rds")
   if (file.exists(elo_file)) {
@@ -112,11 +120,12 @@ seed_postseason_teams <- function(season = 2024) {
     # Combined seeds 1 through 6
     dplyr::bind_rows(div_winners, wild_cards) %>%
       dplyr::arrange(seed) %>%
-      dplyr::select(
+      dplyr::transmute(
         seed, team_id, team_name = team_full_name, team_abbr = team_abbreviation,
         division = division_name, wins, losses, run_diff, elo_rating
       )
   }
+
 
   seeds <- list(
     AL = seed_league("American League"),
