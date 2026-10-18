@@ -97,8 +97,8 @@ CACHE_RISK_STATE     <- cache_path("risk", "mlb_risk_state.rds")
 CACHE_BETTING_LEDGER <- cache_path("risk", "betting_ledger.rds")
 
 # Canonical cache references for Market Odds & Value Bets (Phase 6 & 7, Issues #21, #22)
-CACHE_LATEST_VALUE_BETS <- cache_path("market", "latest_value_bets.rds")
-CACHE_MARKET_ODDS       <- cache_path("market", "market_odds.rds")
+CACHE_LATEST_VALUE_BETS <- file.path(MLB_CACHE_ROOT, "latest_value_bets.rds")
+CACHE_MARKET_ODDS       <- file.path(MLB_CACHE_ROOT, "market_odds.rds")
 MLB_ODDS_SPORT_KEY      <- "baseball_mlb"
 
 # ---------------------------------------------------------------------------

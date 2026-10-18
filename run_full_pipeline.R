@@ -310,7 +310,19 @@ run_full_pipeline <- function(season = 2024, force_refresh = FALSE) {
   )
 
   # ----------------------------------------------------------------------------
-  # Stage 10: Risk Management & Dynamic Kelly Sizing Engine
+  # Stage 10: Market Odds & +EV Value Betting Engine (The Odds API)
+  # ----------------------------------------------------------------------------
+  run_stage(
+    script_name   = "mlb_market_odds_engine.R",
+    description   = "Ingest MLB Market Odds & Compute +EV Kelly Value Bets",
+    call_fn       = "run_market_odds_engine",
+    output        = CACHE_LATEST_VALUE_BETS,
+    require_fresh = force_refresh,
+    force_refresh = force_refresh
+  )
+
+  # ----------------------------------------------------------------------------
+  # Stage 11: Risk Management & Dynamic Kelly Sizing Engine
   # ----------------------------------------------------------------------------
   run_stage(
     script_name   = "mlb_risk_management_engine.R",
@@ -321,7 +333,7 @@ run_full_pipeline <- function(season = 2024, force_refresh = FALSE) {
   )
 
   # ----------------------------------------------------------------------------
-  # Stage 11: Discord Bet Alert Dispatcher (Phase 7, Issue #22)
+  # Stage 12: Discord Bet Alert Dispatcher (Phase 7, Issue #22)
   # ----------------------------------------------------------------------------
   run_stage(
     script_name   = "mlb_notify_bets.R",
