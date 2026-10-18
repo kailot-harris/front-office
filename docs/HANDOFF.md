@@ -1,10 +1,13 @@
 # MLB Analytics — Handoff Document
 
-**Last updated**: 2026-10-17, after commit `e8291cd` ("Add Phase 0d research: specialty baseball
-models", 7 commits total on `main`). **`main` is 1 commit ahead of `origin/main`, not pushed** —
-check `git status` before assuming the remote matches; don't push without checking with whoever's
-driving, per standard git-safety practice. Written for whoever picks this repo up next, cold — read
-this before touching anything.
+**Last updated**: 2026-10-18, after commit `237d1cb` ("Phase 0g: self-check pass on
+MLB_REPLICATION_PLAN.md"). **`main` is up to date with `origin/main`** (confirmed via `git fetch` +
+`git status -sb` this session — unlike the previous revision of this doc, there is no unpushed
+commit right now). However, **the working tree is not clean**: `docs/MLB_IMPLEMENTATION_PLAN.md` is
+a real, finished deliverable sitting **uncommitted** at repo root (see "What's actually implemented"
+below) — written and left uncommitted deliberately, per explicit instruction this session not to
+commit. Don't assume `git log` alone reflects everything written; check `git status` too. Written
+for whoever picks this repo up next, cold — read this before touching anything.
 
 ## What this project is
 
@@ -12,221 +15,245 @@ this before touching anything.
 (`NBA Analytics` → `WNBA Analytics` → `NFL Analytics`, all under `C:\Users\kailo\kayceeslices\`),
 each later port built on a shared R architecture (`config.R` single-source-of-truth constants,
 `run_full_pipeline.R` staged DAG, Elo/ridge rating engines, fatigue/market/risk/notify stages,
-Discord dispatch). **None of that architecture exists in this repo yet.** This repo is currently
-in **Phase 0: research only** — the stage every sibling port went through first, producing a
-`docs/<SPORT>_REPLICATION_PLAN.md` live-verified research document before any engine code gets
-written.
+Discord dispatch). **None of that architecture exists in this repo yet — still zero `.R` files of
+any kind.** Phase 0 (research-only) is now **functionally complete** (six research files + the
+synthesized replication plan + its self-check pass all exist and are committed/pushed), but its
+tracker issue (#10, "present deliverable / close Phase 0") is **still open** — see "Progress
+tracking" below for why that matters and hasn't just been closed outright.
 
 **Read in this order**:
 1. `docs/PHASE0_RESEARCH_PLAN.md` (committed `4eeaa49`) — the scoping plan for the Phase 0 research
-   itself. This is a plan *about* the research, not the research. It defines what six sections the
-   eventual deliverable must cover, what "done" looks like, and explicit non-goals. Its "Execution
-   approach" section says this research should be done directly in the main session, not delegated
-   to subagents — **that approach was superseded partway through**: in practice, each sub-issue
-   (#2–#7) has been worked as an independent delegated subagent run (see "The reusable workflow"
-   below), one research file per issue under `docs/research/`, because the dependency graph the plan
-   itself describes (§2 feeds §3–§5, §3 feeds §6) turned out to decompose cleanly along the GitHub
-   sub-issue boundaries once #2/#3 were done and committed. Don't be confused that the plan document
-   says one thing and the actual workflow did another — the sub-issues are the source of truth for
-   current process, not the plan's "Execution approach" section.
-2. `docs/MLB_REPLICATION_PLAN.md` — **still does not exist.** This is the actual research deliverable
-   `PHASE0_RESEARCH_PLAN.md` describes producing. It is assembled from the per-issue files in
-   `docs/research/` as issue #8 (Wave D), not yet started. Don't search for it as if it should be
-   there yet.
-3. `docs/research/phase0a-r-packages.md`, `phase0a-vendor-api.md`, `phase0b-team-player-stats.md`,
+   itself. Its "Execution approach" section is stale (says research should happen directly in the
+   main session; in practice #2–#7 were each worked as independent delegated subagent runs via the
+   `subagent-brief` skill) — everything else in it is still live.
+2. `docs/MLB_REPLICATION_PLAN.md` (530 lines, committed `1a495e9`, self-check-amended `237d1cb`) —
+   **the actual Phase 0 deliverable, now complete.** Synthesizes all six `docs/research/phase0*.md`
+   files into the NFL plan's 6-section template, with a closing Summary Judgment naming MLB's single
+   biggest risk (the starting-pitcher Elo mechanism + four-ID-scheme fragmentation, compounded) and
+   the unresolved ML-vs-Pythagorean-baseline citation gap carried forward explicitly, not dropped.
+   Every numeric constant in it is flagged "needs empirical re-derivation" — **do not copy a number
+   out of this document into a future `config.R` and treat it as final.**
+3. `docs/MLB_IMPLEMENTATION_PLAN.md` (314 lines, **written this session, not yet committed** — see
+   header warning above) — the Phase 1–9 engine-build roadmap that picks up where
+   `MLB_REPLICATION_PLAN.md` leaves off. Read this before starting any engine-build work; it cites
+   back to specific `MLB_REPLICATION_PLAN.md` sections per phase and explicitly flags which phases
+   are new builds (no sibling analog — the starting-pitcher Elo layer, the ID-crosswalk utility)
+   versus straight ports (risk engine, market odds engine, Discord dispatcher).
+4. `docs/research/phase0a-r-packages.md`, `phase0a-vendor-api.md`, `phase0b-team-player-stats.md`,
    `phase0c-elo-methodology.md`, `phase0d-specialty-models.md`, `phase0e-structural-divergences.md`
-   — **all six per-issue research files are now complete** (issues #2, #3, #4, #5, #6, #7
-   respectively; see Progress tracking below). Read these instead of re-deriving their findings —
-   each one's own "Sources Consulted" section has the URLs and fetch dates.
-4. `../NFL Analytics/docs/NFL_REPLICATION_PLAN.md` — the structural template this repo's eventual
-   `MLB_REPLICATION_PLAN.md` should mirror (6 sections: porting strategy/failure modes, data-source
-   decision table, stats worth surfacing, Elo methodology, specialty models, structural divergences;
-   closed out with a dated "Sources Consulted" list). Read this for shape, not for baseball-specific
-   content — none of its NFL-specific facts transfer.
+   — the six per-issue research files `MLB_REPLICATION_PLAN.md` was assembled from. Read these for
+   primary evidence/sources if `MLB_REPLICATION_PLAN.md`'s own citations need re-verifying; each
+   file's own "Sources Consulted" section has the URLs and fetch dates.
+5. `../NFL Analytics/docs/NFL_REPLICATION_PLAN.md` and `../NFL Analytics/docs/task_assignments_phase*.md`
+   — the structural templates `MLB_REPLICATION_PLAN.md` and `MLB_IMPLEMENTATION_PLAN.md` mirror.
+   Read for shape/convention (6-section research template; phase-numbered task-assignment docs with
+   wave/interface-contract breakdowns), not for baseball-specific content — none of the NFL-specific
+   facts transfer.
 
-**Hard boundary rule carried over from every sibling repo**: nothing in this Phase 0 stage writes
-`config.R`, `run_full_pipeline.R`, or any engine script. No credentials or vendor signups either.
-This is strictly a research/documentation phase — see "Non-goals" in both `PHASE0_RESEARCH_PLAN.md`
-and the epic issue (#1, below).
+**Hard boundary rule, now split by phase**: Phase 0 (issues #1–#10) wrote no `config.R`,
+`run_full_pipeline.R`, or any engine script, and that rule held for the entire phase. **Phase 1
+onward (issues #11–#24, tracked as a separate epic) is explicitly scoped to write that code** — but
+as of this writing, **no Phase 1+ work has actually started**; #11–#24 are tracker scaffolding only
+(see below), not yet dispatched. No credentials or vendor signups have happened in either phase.
 
 ## Progress tracking
 
 All tracking lives in the GitHub issue tracker (`kailot-harris/MLB-Analytics`), using real native
 GitHub sub-issue and blocked-by/blocking relationships. Re-run `gh issue list --state all` yourself
-before trusting this table — this is a repo that gets worked by more than one concurrent
-session/agent (confirmed this session: #4, #5, and #7 landed on `main` from other sessions while
-this session was still working #6), so staleness can happen fast.
+before trusting this table — this repo gets worked by more than one concurrent session/agent
+(confirmed again this session: issue #9 was closed by a concurrent session while this session was
+between tasks), so staleness can happen fast.
+
+### Phase 0 (research) — functionally complete, tracker not fully closed
 
 | Issue | Title | Status | Blocked by | Evidence |
 |---|---|---|---|---|
-| #1 | Epic: Phase 0 research plan | OPEN | — | — |
-| #2 | Phase 0a: R-package ecosystem verification | **CLOSED** | none | `docs/research/phase0a-r-packages.md`; commit `1105811` |
-| #3 | Phase 0a: Direct vendor/API verification | **CLOSED** | none | `docs/research/phase0a-vendor-api.md`; commit `1105811` |
-| #4 | Phase 0b: Team/player statistics research | **CLOSED** | #2, #3 | `docs/research/phase0b-team-player-stats.md`; commit `96acad1`; closing comment has full summary |
-| #5 | Phase 0c: Baseball Elo methodology research | **CLOSED** | #2, #3 | `docs/research/phase0c-elo-methodology.md`; commit `0822baa`; closing comment has full summary |
-| #6 | Phase 0d: Specialty model research + ML citation | **CLOSED** | #2, #3 | `docs/research/phase0d-specialty-models.md`; commit `e8291cd`; closing comment has full summary — **includes an explicitly unresolved gap, see below** |
-| #7 | Phase 0e: Structural divergences research | **CLOSED** | #4 | `docs/research/phase0e-structural-divergences.md`; commit `bc47ebd`; closing comment has full summary |
-| #8 | Phase 0f: Draft `docs/MLB_REPLICATION_PLAN.md` | OPEN, **next up — now unblocked** | #2,#3,#4,#5,#6,#7 (all closed) | not started |
-| #9 | Phase 0g: Self-check pass | OPEN | #8 | — |
-| #10 | Phase 0h: Present deliverable / close Phase 0 | OPEN | #9 | — |
+| #1 | Epic: Phase 0 research plan | **OPEN** | — | Stale: its own `- [ ]` checklist for #2–#10 has zero boxes ticked even though #2–#9 are closed. Flagged, not fixed — see below. |
+| #2 | Phase 0a: R-package ecosystem verification | CLOSED | none | `docs/research/phase0a-r-packages.md`; commit `1105811` |
+| #3 | Phase 0a: Direct vendor/API verification | CLOSED | none | `docs/research/phase0a-vendor-api.md`; commit `1105811` |
+| #4 | Phase 0b: Team/player statistics research | CLOSED | #2, #3 | `docs/research/phase0b-team-player-stats.md`; commit `96acad1` |
+| #5 | Phase 0c: Baseball Elo methodology research | CLOSED | #2, #3 | `docs/research/phase0c-elo-methodology.md`; commit `0822baa` |
+| #6 | Phase 0d: Specialty model research + ML citation | CLOSED | #2, #3 | `docs/research/phase0d-specialty-models.md`; commit `e8291cd` — **includes the explicitly unresolved ML-citation gap, carried forward through #8 and #9, see below** |
+| #7 | Phase 0e: Structural divergences research | CLOSED | #4 | `docs/research/phase0e-structural-divergences.md`; commit `bc47ebd` |
+| #8 | Phase 0f: Draft `docs/MLB_REPLICATION_PLAN.md` | CLOSED | #2–#7 | `docs/MLB_REPLICATION_PLAN.md`; commit `1a495e9`; evidence comment at `gh issue view 8 --comments` has the full independent-verification trail (headers, URL aggregation, fetch-date carryover, re-derivation caveats all spot-checked before merge) |
+| #9 | Phase 0g: Self-check pass | **CLOSED** | #8 | `docs/MLB_REPLICATION_PLAN.md` (amended in place); commit `237d1cb`; closed by a **concurrent session** this repo was sharing mid-session — closed 2 of 7 checklist items that the assembly pass had left open (live re-verified 2 citations; added a consolidated "Explicit Non-Goals" section) |
+| #10 | Phase 0h: Present deliverable / close Phase 0 | **OPEN, deliverable already presented, not yet confirmed-closed** | #9 (closed) | The plan was presented to the user in conversation this session (structure, Summary Judgment, self-check results all walked through) — but the user has not yet explicitly said "close it," and whoever picks this up should get that explicit go-ahead before closing #10 and #1, not infer it from the plan simply existing. |
 
-**Tracker-hygiene discrepancy, flagged not fixed**: issue #1's own body has a `- [ ]` checklist for
-sub-issues #2–#10. None of those checkboxes are ticked even though #2–#7 are now all closed. This is
-stale tracker bookkeeping on the epic issue itself, not a sign the work isn't done — trust the
-sub-issues' own `state` field (via `gh issue list --state all`) over issue #1's checklist. Decide
-whether to update it; this doc isn't the place to silently fix it.
+**Tracker-hygiene discrepancy on #1, still not fixed**: flagged in the previous revision of this
+doc and still true — issue #1's own body has a `- [ ]` checklist for #2–#10, none ticked despite
+#2–#9 being closed. Decide whether to fix this when #10 actually closes (closing #10 is a natural
+point to also tick #1's boxes and close #1 itself) — this doc isn't the place to silently fix it.
 
-**Issue #6's hard requirement came up empty, documented not fabricated**: its spec required finding
-a real, peer-reviewed, MLB-specific citation comparing an ML model (RF/GBM/NN) against a Pythagorean
-baseline with real MAE/RMSE/R². After a documented 8+-candidate search (table in
-`docs/research/phase0d-specialty-models.md` §5), **no qualifying citation exists in the publicly
-indexed literature as of the 2026-10-17 fetch date** — flagged prominently in the file itself with
-the full search trail (what was checked and why each candidate was disqualified), so a future
-session doesn't repeat the same dead ends. If issue #8's `docs/MLB_REPLICATION_PLAN.md` needs this
-citation, it will need either a deeper/different search or an explicit decision to publish without
-one.
+**The ML-vs-Pythagorean-baseline citation gap (from #6) is still open by design, and has now
+survived three downstream passes without being dropped or fabricated**: #6's own research
+(`phase0d-specialty-models.md` §5) found no qualifying peer-reviewed MLB citation after an
+8-candidate search; #8's assembly carried the gap forward into `MLB_REPLICATION_PLAN.md` §5 and its
+Summary Judgment; #9's self-check explicitly verified it was carried forward correctly, not
+backfilled with a disqualified candidate. If this gap is ever resolved, `MLB_REPLICATION_PLAN.md` §5
+names the most promising unexplored avenue (a *Journal of Quantitative Analysis in Sports* /
+*Journal of Sports Analytics* database search not available in this research environment).
 
-**Issue #6 took two dispatch attempts this session** (run IDs `20261017-233137-8975bb` then
-`20261017-233424-5ea53c` in `.subagent-runs/`, both recorded via the `subagent-brief` skill's
-`runlog.R`): the first hit the worktree-deletion bug described below before writing anything and is
-logged `status: blocked`; the second completed cleanly (`status: success`, `review: merged`) and
-produced the file now on `main`. If you see any note elsewhere (including an earlier revision of
-this very doc, written mid-session by a concurrent agent) describing the second run as
-"abandoned/orphaned with no result recorded" — that was true only transiently, before the result was
-recorded; `.subagent-runs/20261017-233424-5ea53c/meta.json` is the authoritative record and shows
-`success`/`merged`.
+### Phase 1–9 (engine build) — epic + tracker scaffolding filed this session, **zero work started**
+
+Filed this session as a new epic, separate from Phase 0's epic (#1), because Phase 0's epic was
+scoped specifically to the research deliverable, not the build that follows it. All real GitHub
+sub-issue (`--parent`) and dependency (`--blocked-by`) relationships, verified via
+`gh api repos/.../issues/<N>/sub_issues` — not just prose nesting.
+
+| Issue | Title | Status | Blocked by | Parallel with |
+|---|---|---|---|---|
+| #11 | Epic: MLB Analytics engine build (Phases 1-9) | OPEN | #10 (informally — not a real GitHub block, since #10 was still open when this epic was filed; treat #10's closure as a prerequisite in spirit) | — |
+| #12 | Phase 1: Data foundation | OPEN | none | #20 (Phase 5) once both start |
+| #13 | Phase 1, Wave 1: Ingestion scripts + ID-crosswalk utility | OPEN | none | internally parallel (4 disjoint files — see issue body) |
+| #14 | Phase 1, Wave 2: Pipeline skeleton | OPEN | #13 | — |
+| #15 | Phase 2: Rating engine (Pythagorean + Elo) | OPEN | #12 | — |
+| #16 | Phase 2, Wave 1: Pythagorean baseline + Elo engine | OPEN | #12 | internally parallel (2 disjoint files) |
+| #17 | Phase 2, Wave 2: Constant derivation + park-factor decision | OPEN | #16 | — |
+| #18 | Phase 3: Specialty models (Marcel, bullpen fatigue) | OPEN | #15 | #19 (Phase 4) |
+| #19 | Phase 4: Postseason bracket simulator | OPEN | #15 | #18 (Phase 3) |
+| #20 | Phase 5: Risk management engine (port) | OPEN | #12 | #15–#19 (Phases 2–4) |
+| #21 | Phase 6: Market odds engine (port) | OPEN | #12, #15 | — |
+| #22 | Phase 7: Discord alert dispatcher (port) | OPEN | #21 | — |
+| #23 | Phase 8: Early-season calibration review (decision point, not guaranteed build) | OPEN | #15 | — |
+| #24 | Phase 9+: Deferred/idea-stage placeholder | OPEN | #12,#15,#18–#23 | — |
+
+**None of #12–#24 have had any code written against them yet** — this is purely the tracked roadmap
+from `docs/MLB_IMPLEMENTATION_PLAN.md`, filed as real issues so the parallelism is visible in the
+tracker, not just in the planning doc. The `engine-build` label (color `0e8a16`) tags all of #11–#24.
 
 ## What's actually implemented
 
 **Still nothing but documentation and tracker scaffolding — no engine code.** Current file state
-(`wc -l` on everything under `docs/`, 2026-10-17):
+(`wc -l`, 2026-10-18):
 
 | File | Lines | State |
 |---|---|---|
-| `docs/PHASE0_RESEARCH_PLAN.md` | 159 | The Phase 0 scoping plan. Its "Execution approach" section is stale (see above) — everything else in it is still the live source of truth for what each section must cover. |
-| `docs/HANDOFF.md` | this file | Updated this session. |
-| `docs/research/phase0a-r-packages.md` | 71 | Done (issue #2). `baseballr`/`Lahman`/`pitchRx`/`mlbgameday`/`mlbplotR`/`retrosheet` maintenance-status table. Flags `pitchRx` and `mlbgameday` as CRAN-archived traps; flags `baseballr`'s Baseball-Reference/ESPN-backed functions as broken (HTTP 403/500) despite the package overall being actively maintained. |
-| `docs/research/phase0a-vendor-api.md` | 45 | Done (issue #3). MLB Stats API, Baseball Savant, FanGraphs ToS, ESPN injuries feed, The Odds API. |
-| `docs/research/phase0b-team-player-stats.md` | 77 | Done (issue #4). Pythagenpat exponent, run differential, wOBA/wRC+, FIP/xFIP (SIERA unconfirmed as a `baseballr` column), BABIP, fWAR-vs-bWAR (documented as non-interchangeable; no confirmed `baseballr` path to bWAR), Statcast leading indicators. |
-| `docs/research/phase0c-elo-methodology.md` | 193 | Done (issue #5, this session). FiveThirtyEight's MLB Elo methodology cited from an **archived** primary source (live URL now 301s to `abcnews.com/politics`) plus 538's live GitHub `mlb-elo` README. Starting-pitcher adjustment formula `ratingAdj = 4.7 * (pitcher_rGS − team_rGS)` confirmed verbatim against the primary source. Park factors confirmed as a named, designed-in input; exact park-factor coefficients flagged as an open gap, not fabricated. |
-| `docs/research/phase0d-specialty-models.md` | 261 | Done (issue #6). Marcel's exact weighting scheme (5/4/3 recency, 1200 PA regression, piecewise age formula, from Tango's own archived write-up), PECOTA as closed-methodology precedent only, bullpen fatigue with an explicit NFL-short-week mechanistic-vs-spiritual distinction, two real peer-reviewed Bayesian partial-pooling papers. **The hard-requirement ML-vs-Pythagorean citation search came up empty, flagged prominently in §5 — see above, don't drop that caveat downstream.** |
-| `docs/research/phase0e-structural-divergences.md` | 205 | Done (issue #7). 162-game season / rolling-window coupling to #4's Pythagorean exponent, universal DH history, Manfred-man extra-innings rule (confirmed permanent Feb 2023, regular-season only), 2026 postseason bracket shape, roster-size rules. |
+| `docs/PHASE0_RESEARCH_PLAN.md` | 159 | Phase 0 scoping plan. Committed, stable. |
+| `docs/MLB_REPLICATION_PLAN.md` | 530 | **Phase 0's finished deliverable.** Committed (`1a495e9`, amended `237d1cb`). All 8 sections present (6 body + Summary Judgment + Sources Consulted), plus a consolidated Explicit Non-Goals section added by #9. |
+| `docs/MLB_IMPLEMENTATION_PLAN.md` | 314 | **Phase 1–9 engine-build roadmap. Written this session. Untracked/uncommitted — `git status` shows it as `??`, by explicit instruction not to commit this session.** Covers all 9 phases with per-phase goal/source/deliverables/port-vs-new-build/carried-forward-open-items. |
+| `docs/research/phase0a-r-packages.md` | 71 | Done (#2). |
+| `docs/research/phase0a-vendor-api.md` | 45 | Done (#3). |
+| `docs/research/phase0b-team-player-stats.md` | 77 | Done (#4). |
+| `docs/research/phase0c-elo-methodology.md` | 193 | Done (#5). |
+| `docs/research/phase0d-specialty-models.md` | 261 | Done (#6). Contains the unresolved ML-citation gap, see above. |
+| `docs/research/phase0e-structural-divergences.md` | 205 | Done (#7). |
+| `docs/HANDOFF.md` | this file | Rewritten this session. |
 
 No `config.R`. No `run_full_pipeline.R`. No `.R` files of any kind. No `renv.lock`, no `.Rprofile`.
 No repo-local `.claude/skills/` (the `subagent-brief` skill used this session lives globally at
-`C:\Users\kailo\.claude\skills\subagent-brief`, not in this repo). `main` is at commit `e8291cd`,
-**1 commit ahead of `origin/main` (not yet pushed)** — `docs/HANDOFF.md` itself is also currently
-modified-but-uncommitted (this update), by explicit instruction not to commit or push it.
+`C:\Users\kailo\.claude\skills\subagent-brief`, not in this repo).
 
 ## Environment/tooling notes
 
-- **Remote already configured**: `origin` = `https://github.com/kailot-harris/MLB-Analytics` (both
-  fetch/push). `main` tracks `origin/main` but is currently 1 commit ahead, unpushed — see above.
-- **A `.git/` folder already existed in this directory before the first session's first commit** —
-  flagged historically, never root-caused, hasn't mattered since; mentioning once more only so a
-  future `git log` surprise (history predating `4eeaa49`) isn't alarming.
+- **Remote**: `origin` = `https://github.com/kailot-harris/MLB-Analytics`. `main` is in sync with
+  `origin/main` as of this writing (`git fetch` + `git status -sb` both confirmed this session) —
+  this is a change from the previous revision of this doc, which warned main was 1 commit ahead and
+  unpushed. That commit has since been pushed (and more added on top). **Re-check before trusting
+  this** — the uncommitted `docs/MLB_IMPLEMENTATION_PLAN.md` means `origin/main` is currently
+  *missing* a real, finished file that only exists locally.
+- **Leftover artifacts from this session, not cleaned up, safe to review/remove but left for the
+  next session to decide**:
+  - `brief-issue9.md` (repo root, untracked) — a `subagent-brief`-style prep brief for issue #9,
+    written by a concurrent session before #9 was picked up. **#9 is now closed** (by that same or
+    another concurrent session), so this file's content is now historical, not actionable. Its own
+    annotations (e.g. the "six packages not five" checklist-miscount catch, the exact citation-gap
+    verification requirement) were evidently used, since #9's closing comment matches its guidance —
+    but the file itself was never committed or deleted. Decide whether to delete it or fold any
+    still-useful annotations into this doc.
+  - `.claude/worktrees/agent-a06e217ce87e8b5c2/` — the isolated worktree used to dispatch issue #8's
+    synthesis subagent. Still registered (`git worktree list` shows it `locked`, pointing at commit
+    `28fc320`), even though its one deliverable file was already copied out to the main tree and
+    committed. Per the `subagent-brief` skill's own protocol, removing a kept/registered worktree
+    needs explicit user confirmation (`cleanup_worktrees.R remove --confirmed-by-user`) — not done
+    this session, flagged for whoever has that conversation with the user next.
+  - `.subagent-runs/` (git-ignored, per `/.subagent-runs/` in `.gitignore`) now holds 9 run
+    directories (`20261017-231637-dc2250` through `20261018-000017-64cd0b`) plus a `batches/`
+    directory and a loose `brief-issue6.md`. Each run's `meta.json`/`result.json` is the authoritative
+    record of what that dispatch actually did — check `status` and, if present, `blocked_reason`
+    before trusting any narrative summary (including this doc's) about what happened in a given run.
+    Run `Rscript C:/Users/kailo/.claude/skills/subagent-brief/scripts/check_storage.R` at the start of
+    a future session if this directory keeps growing — it wasn't checked this session.
 - **`gh` CLI, authenticated as `kailot-harris`** (`repo`, `workflow`, `read:org`, `gist` scopes — no
-  `project` scope, so no GitHub Project board; sub-issue linking doesn't need it). `--parent`,
-  `--blocked-by`, `--blocking` on `gh issue create` work and create real native sub-issue/dependency
-  relationships (verify via `gh api repos/.../issues/<N>/sub_issues`), not just body text.
-  **`gh issue close` can no-op with "already closed"** if the merged commit's message contained
-  `Closes #N` and had already been pushed — GitHub auto-closes on push to the default branch. If that
-  happens, use `gh issue comment` instead to attach the evidence comment; don't treat the no-op as an
-  error.
-- **Label set**: `phase-0` (color `5319e7`) tags this research wave; otherwise only GitHub's defaults.
-- **No R environment of any kind set up** — no package installs, no `renv` bootstrap. Not needed yet;
-  Phase 0 is research/documentation only.
-- **`.subagent-runs/` is git-ignored** (`/.subagent-runs/` in `.gitignore`) and holds every delegated
-  run's brief/meta/result this session, per the `subagent-brief` skill's protocol. Useful for
-  reconstructing what happened to a specific issue attempt (see issue #6 note above) — check
-  `meta.json`'s `status` field and, if present, `result.json`'s `blocked_reason`/`needed_action`.
-- **Known reproducible platform bug, hit at least twice this session**: an `Agent` call with
-  `isolation: "worktree"` can have its worktree directory deleted by something external to the agent
-  while the agent is still actively working (confirmed via `git worktree list` showing no trace, not
-  even a prunable stale entry — i.e. something ran a clean `git worktree remove`, not a crash). Hit on
-  the first attempts at both issue #5 (run `20261017-232930-b254f0`) and issue #6 (run
-  `20261017-233137-8975bb`). The affected agent correctly stops and returns `status: "blocked"` rather
-  than improvising — the fix each time was simply dispatching a fresh run with a new worktree, not
-  resuming the dead one. Filed as product feedback (not actionable from inside this repo); if it keeps
-  happening, that's worth a fresh feedback note rather than assuming it's fixed.
-- **A completed `isolation: "worktree"` agent's worktree can outlive its `git worktree` registration**:
-  after a run finishes, `git worktree list` may show the worktree already gone (merged/removed
-  cleanly) while the directory under `.claude/worktrees/agent-<id>/` and its file contents are still
-  physically present on disk, now sharing the main repo's own `.git` (i.e. `git -C` commands inside it
-  report "On branch main"). Treat it as a plain directory to copy the new file(s) out of, not as a
-  live git worktree to `git -C ... diff`/`merge` against — `git worktree list` is the source of truth
-  for what's actually still registered.
-- **An untracked, empty `.claude/worktrees/` directory is present at repo root** as of this
-  writing — a leftover from a worktree that was torn down cleanly after merging (the directory
-  itself just wasn't cleaned up by that teardown). Harmless, not gitignored, not tracked; safe to
-  delete, or add to `.gitignore` alongside the existing `/.subagent-runs/` entry if it keeps
-  recurring.
-- **This session's final commit (`e8291cd`) was deliberately not pushed**, per explicit
-  instruction not to commit-or-push beyond that point. Don't assume `origin/main` reflects it.
+  `project` scope). `--parent`, `--blocked-by`, `--blocking` on `gh issue create` all confirmed
+  working this session for the #11–#24 engine-build tracker (verified via
+  `gh api repos/.../issues/<N>/sub_issues`), same as the Phase 0 tracker.
+- **Label set**: `phase-0` (color `5319e7`, Phase 0 research) and, new this session, `engine-build`
+  (color `0e8a16`, Phase 1–9 engine build) — otherwise only GitHub's defaults.
+- **No R environment of any kind set up** — no package installs, no `renv` bootstrap. This will
+  actually block Phase 1 (#12/#13) the moment real ingestion code needs to run/test against live
+  `baseballr`/MLB Stats API calls — budget time for an `renv` bootstrap as part of (or immediately
+  before) Phase 1, Wave 1, since no prior session has done this yet in this repo.
+- **Known reproducible platform bug** (carried forward from the previous revision of this doc, not
+  re-triggered this session but still worth knowing): an `Agent` call with `isolation: "worktree"`
+  can have its worktree directory deleted by something external to the agent while the agent is
+  still working, confirmed on two separate Phase 0 runs. The fix each time was dispatching a fresh
+  run with a new worktree, not resuming the dead one. Filed as product feedback previously; if it
+  recurs, that's worth a fresh feedback note.
 
-## The reusable workflow (for working any Phase 0 sub-issue)
+## The reusable workflow
 
-This is the pattern used for issues #2 through #7 (all now closed) and the one to adapt for #8
-(synthesis), per step 7 below:
+### For any single-file Phase 0-style research/synthesis task (proven across #2–#9)
+1. Confirm the issue is actually unblocked (`gh issue view <N>` → check `blocked-by`).
+2. Write a `subagent-brief` `full`-template brief (goal = issue's own research questions verbatim,
+   scope = prerequisite files + exactly one new output file, out-of-scope = touching the tracker or
+   unrelated docs, tiers = 0–1 only). Validate with `validate_brief.R`, register with
+   `runlog.R new-run --worktree ...`.
+3. Dispatch via `Agent` with `isolation: "worktree"`, pasting the registered brief verbatim.
+4. **Verify before trusting**: independently re-check at least one cited claim yourself before
+   merging — this session re-verified issue #8's subagent-reported header list, URL-aggregation
+   count, and re-derivation-caveat line numbers directly against the worktree file before copying it
+   out, rather than taking the subagent's self-report at face value. Record the result with
+   `runlog.R record-result` (evidence `type` must be `file_ref`/`command`/`test_output`/`diff`/
+   `other`, not `file` — and the result JSON needs top-level `schema_version`, `item_id`,
+   `summary`, `evidence` array, `blocked_reason`, `needed_action`, and `changes` fields or
+   `record-result` fails schema validation — this tripped this session on the first attempt for
+   issue #8's result; see `.subagent-runs/20261018-000017-64cd0b/result-raw.json` for a working
+   example of the full shape).
+5. Copy the new file out of the worktree into the real tree, `git add` + commit with `Closes #N`,
+   `git push`. `gh issue close` can no-op ("already closed") if the push already auto-closed it via
+   the commit body — use `gh issue comment` to attach the evidence comment instead of erroring.
 
-1. Confirm the issue is actually unblocked (`gh issue view <N>` → check `blocked-by`) before starting.
-2. Use the globally-installed `subagent-brief` skill (`C:\Users\kailo\.claude\skills\subagent-brief`)
-   to write a `full` template brief: goal = the issue's own research questions verbatim, scope = read
-   the already-closed prerequisite issues' research files + write exactly one new
-   `docs/research/phase0X-<topic>.md` file, out-of-scope = touching `docs/MLB_REPLICATION_PLAN.md`
-   (doesn't exist yet) and touching GitHub issues (the orchestrator handles that after review), tiers
-   = 0–1 only (no GitHub/network-state-changing actions granted to the subagent). Validate with
-   `validate_brief.R`, register with `runlog.R new-run --worktree ...`.
-3. Dispatch via the `Agent` tool with `isolation: "worktree"`, pasting the registered brief verbatim
-   into the prompt, telling the subagent its final message must be the JSON result block per the
-   brief's Output schema.
-4. On completion, **verify before trusting**: re-run or re-check at least one of the subagent's cited
-   claims yourself (e.g. this session independently `curl`'d the FiveThirtyEight methodology URL to
-   confirm the claimed 301 redirect before merging issue #5's file). Record the result with
-   `runlog.R record-result` (evidence `type` must be one of `file_ref`/`command`/`test_output`/
-   `diff`/`other` — not `file`, that's a schema validation error worth knowing about in advance).
-5. If the run came back `blocked` (e.g. the worktree-deletion bug above), don't retry the same
-   subagent — register a **new** run with an amended brief (carry forward whatever partial findings
-   the blocked run reported, as a lead to re-verify, not as citable fact) and dispatch fresh. Mark the
-   dead run `rejected` via `runlog.R set-status`.
-6. If the run succeeded, copy the new file out of the worktree into the real tree (see the "outlive
-   its registration" note above if `git worktree list` no longer shows it), `git add` + commit with
-   `Closes #N` in the commit body, `git push`. Note: pushing with `Closes #N` auto-closes the issue —
-   use `gh issue comment` (not `gh issue close`) to attach the evidence-bearing comment afterward.
-7. Issue #8 will need a different shape than steps 2–6 above: it's a single synthesis task reading
-   all of `docs/research/phase0*.md` and assembling them into one `docs/MLB_REPLICATION_PLAN.md`
-   following the NFL plan's 6-section structure — probably still worth a `full`-template brief and a
-   worktree, but its "Scope" should explicitly list all six research files as required reading rather
-   than naming prerequisite-issue files generically.
-
-No divergences from a reference implementation to document yet — there's no engine code, so this
-section is empty by construction, not by oversight.
+### For filing a multi-phase tracker (new this session, used for #11–#24)
+1. Write the full roadmap as a planning doc first (`docs/MLB_IMPLEMENTATION_PLAN.md`) — decide the
+   phase breakdown, dependency graph, and which phases have internally-parallelizable waves *before*
+   touching the issue tracker, so the issue bodies can cite a stable source document rather than
+   being drafted from scratch per-issue.
+2. Create a label for the new epic's issues if none fits (`engine-build`, this session).
+3. Create the epic issue first, then each phase issue with `--parent <epic>` and `--blocked-by
+   <prereq-phase>`, then each wave issue (where a phase has multiple sequential/parallel waves) with
+   `--parent <phase>` and `--blocked-by <prior-wave-or-phase>`.
+4. Verify the hierarchy landed as real links, not just issue-body prose: `gh api
+   repos/.../issues/<epic>/sub_issues` should list every phase number; repeat per phase for its
+   waves. This session did this for #11, #12, #15, and #14's `blocked-by` edge — all confirmed
+   correct.
+5. **Do not dispatch any Phase 1+ subagent work yet** — #11–#24 are tracker scaffolding only as of
+   this writing. When Phase 1 Wave 1 (#13) actually starts, follow the single-task workflow above
+   per task, or write a `docs/task_assignments_phase1.md`-style file first (per the NFL-repo
+   convention cited in `MLB_IMPLEMENTATION_PLAN.md`'s own "How to use this document" section) if the
+   wave's four parallel tasks need tighter interface-contract coordination than one `subagent-brief`
+   per task provides.
 
 ## Concrete next step
 
-**All of #2–#7 are closed as of commit `e8291cd`. Issue #8 — draft `docs/MLB_REPLICATION_PLAN.md`
-— is unblocked and is the real next milestone.** Per issue #8's own body (`gh issue view 8 --json
-body --jq .body`):
+**Two independent next steps, pick based on what the user wants first:**
 
-- Synthesize all six `docs/research/phase0*.md` files into one document, structured on
-  `../NFL Analytics/docs/NFL_REPLICATION_PLAN.md`'s 6-section template: (1) porting
-  strategy/failure modes, (2) data-source decision table (R-package subsection from #2 + vendor/API
-  subsection from #3), (3) team/player statistics (#4), (4) Elo methodology (#5), (5) specialty
-  models (#6), (6) structural divergences (#7).
-- Every factual claim needs its inline fetch date carried forward from the source file, plus a
-  closing "Sources Consulted" section aggregating all six files' source tables with real URLs, and
-  a closing "Summary Judgment" paragraph naming MLB's biggest risk/divergence relative to the prior
-  sibling ports (candidates already surfaced: the starting-pitcher Elo adjustment with no sibling
-  analog from #5; the four-independent-ID-scheme problem named in issue #1's own framing, worse
-  than NFL's four; or the still-unresolved ML-vs-baseline citation gap from #6 — **don't drop this
-  caveat silently during assembly, it needs an explicit decision, not a quiet omission**).
-- This is single-document synthesis, not new live research — the six input files already did the
-  research. Shouldn't need new WebSearch/WebFetch calls except to double-check a specific citation
-  if something looks stale during assembly. Per step 7 of the workflow above, still probably worth
-  a `full`-template `subagent-brief` dispatch and its own worktree, with "Scope" explicitly listing
-  all six research files as required reading.
-- **Two steps out**: #9 (self-check pass — confirm no section in the assembled plan smuggles in a
-  final numeric constant instead of "needs empirical re-derivation," confirm every claim has a dated
-  source) and #10 (present the deliverable to the user, close Phase 0 — also the point to force a
-  decision on the open ML-citation gap rather than let it linger unresolved). Both are still fully
-  unstarted.
+1. **Close out Phase 0 (issue #10, then #1)** — the deliverable has already been presented to the
+   user in this session's conversation (structure, Summary Judgment, self-check results). The only
+   remaining action is getting the user's explicit confirmation to close, then: `gh issue close 10`
+   (or comment if a push auto-closed it some other way), fix #1's stale checklist, `gh issue close 1`.
+   **Do not do this without that explicit confirmation** — it was deliberately left pending this
+   session, not forgotten.
+2. **Start Phase 1, Wave 1 (issue #13)** — the first real engine-build work: four parallel,
+   file-disjoint scripts (`mlb_ingest.R`, `mlb_stats_sync.R`, `mlb_injury_scraper.R`,
+   `mlb_id_crosswalk.R`) plus `config.R`. Needs an `renv` bootstrap first (none exists in this repo
+   yet — see Environment notes above). Source of requirements: `MLB_IMPLEMENTATION_PLAN.md` Phase 1
+   and issue #13's own body (already has the full per-file task table and interface-contract
+   convention spelled out). **Two steps out**: Wave 2 (#14, pipeline skeleton) is blocked by Wave 1
+   and depends on Wave 1's exposed function signatures being finalized first — don't start #14's
+   dispatch until Wave 1's four scripts' signatures are locked, per the Interface Contracts
+   convention in the sibling repos' own Phase 1 history.
+
+Also unresolved and worth deciding alongside either step above: `docs/MLB_IMPLEMENTATION_PLAN.md`
+is still uncommitted. It's a finished, reviewed deliverable, not a draft — commit it (separately
+from any Phase 0 closing-out commit, since it belongs to the Phase 1–9 epic, not Phase 0) once
+someone actually wants it on `main`.
