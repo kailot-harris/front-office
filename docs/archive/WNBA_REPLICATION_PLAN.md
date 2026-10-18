@@ -1,4 +1,16 @@
-# WNBA Replication Plan
+# [ARCHIVED] WNBA Replication Plan
+
+> [!WARNING]
+> **HISTORICAL / ARCHIVED PROPOSAL ONLY — DO NOT USE AS LIVE PLAN**
+>
+> This document describes an initial Phase-0 replication proposal written when no WNBA codebase existed.
+> The standalone `WNBA Analytics` project has since been independently developed and is actively maintained at:
+> `C:\Users\kailo\kayceeslices\WNBA Analytics\`
+> It contains its own `renv.lock` dependency management, auth and role-based access control, play-by-play
+> ingester, prediction accuracy logger, and independent daily pipeline.
+> This file is preserved in `docs/archive/` purely for historical reference (see Issue #12).
+
+---
 
 Goal: replicate the NBA Analytics system (see `REPO_MAP.md` for the full inventory of what exists
 today) into a **new sibling directory** `C:\Users\kailo\kayceeslices\WNBA Analytics`, swapping every
