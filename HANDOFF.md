@@ -53,6 +53,9 @@ code). Reading order: `REPO_MAP.md` → `ADR.md` (Phase 1 rationale) → `engine
 17. `5e793c2` — `Fix #11`: Deduplicate `schedule_daily.bat` by delegating directly to `run_full_pipeline.R` DAG.
 18. `1ddd3af` — `docs`: Update `HANDOFF.md` with commit hash for issue 11.
 19. `f3a44fd` — `Fix #12`: Move `WNBA_REPLICATION_PLAN.md` to `docs/archive/` with historical disclaimer banner.
+20. `29a9bf4` — `docs`: Finalize `HANDOFF.md` with Issue 12 resolution and update `.gitignore` for `docs/archive/`.
+21. `b4d1c8f` — `feat(projections)`: Implement `season_simulator.R` for 1,000-season Monte Carlo projections across 4 model variants.
+22. `bae5652` — `feat(web)`: Implement Phase 2 Next.js projections web application with variants breakout tabs and diagnostics.
 
 ### 2.2 `INCONSISTENCY_REMEDIATION_PLAN.md` → GitHub issues #1–#12
 
