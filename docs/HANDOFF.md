@@ -8,15 +8,15 @@
 
 - **Phase 0 (research)**: **100% complete and closed** (all 10 issues #1–#10 closed). Deliverable: `docs/MLB_REPLICATION_PLAN.md`.
 - **Phase 1 (data foundation)**: **100% complete and closed** (all issues #12, #13, #14 closed). Full pipeline skeleton and all data acquisition/crosswalk stages operational and verified.
-- **Phase 2, Wave 1 (rating engines)**: **100% complete and closed** (Issue #16 closed). Pythagorean baseline (`mlb_pythag_baseline.R`) and Elo engine (`mlb_elo_engine.R`) with starting-pitcher adjustment implemented and verified.
-- **Next up**: **Phase 2, Wave 2 (Issue #17)** — Empirical constant derivation (`tools/derive_mlb_constants.R`) and park-factor adjustment decision.
+- **Phase 2 (rating engines)**: **100% complete and closed** (all issues #15, #16, #17 closed). Pythagorean baseline (`mlb_pythag_baseline.R`), Elo engine (`mlb_elo_engine.R`), empirical constant calibration (`tools/derive_mlb_constants.R`), and FanGraphs park factors verified.
+- **Phase 3 (specialty models)**: **100% complete and closed** (Issue #18 closed). Marcel baseline (`mlb_marcel_baseline.R`) and bullpen fatigue tracker (`mlb_bullpen_fatigue.R`) wired and verified.
+- **Next up**: **Phase 4 (Issue #19)** — Postseason bracket simulator (`mlb_postseason_simulator.R`).
 
 **Read in this order**:
 1. `docs/task_assignments_phase2.md` — interface contracts and cache layout for Phase 2.
 2. `docs/task_assignments_phase1.md` — interface contracts and cache layout for Phase 1.
-3. `docs/MLB_IMPLEMENTATION_PLAN.md` (314 lines, committed `4b19f23`) — the Phase 1–9 engine-build roadmap (read Phase 2 before starting #17).
-4. `docs/MLB_REPLICATION_PLAN.md` (530 lines, committed `1a495e9`, self-check-amended `237d1cb`) — the Phase 0 synthesis deliverable (§3 and §4 provide the mathematical foundations for Phase 2).
-5. `docs/research/phase0c-elo-methodology.md` and `phase0b-team-player-stats.md` — primary methodology files for Phase 2 ratings.
+3. `docs/MLB_IMPLEMENTATION_PLAN.md` (314 lines, committed `4b19f23`) — the Phase 1–9 engine-build roadmap (read Phase 4 before starting #19).
+4. `docs/MLB_REPLICATION_PLAN.md` (530 lines, committed `1a495e9`, self-check-amended `237d1cb`) — the Phase 0 synthesis deliverable (§6 items 4 and 5).
 
 ## Progress tracking
 
@@ -45,11 +45,11 @@ All tracking lives in the GitHub issue tracker (`kailot-harris/MLB-Analytics`), 
 | **#12** | **Phase 1: Data foundation** | **CLOSED** | — | **Completed & closed (Waves 1 & 2 fully verified)** |
 | **#13** | **Phase 1, Wave 1: Ingestion scripts + ID-crosswalk** | **CLOSED** | — | **Completed in commit `bd90439` with full live verification** |
 | **#14** | **Phase 1, Wave 2: Pipeline skeleton (run_full_pipeline.R)** | **CLOSED** | — | **Completed: 4/4 stages wired, output validation, DuckDB logged** |
-| **#15** | **Phase 2: Rating engine (Pythagorean + Elo)** | **OPEN** | none (#12 closed) | **ACTIVE PHASE** |
+| **#15** | **Phase 2: Rating engine (Pythagorean + Elo)** | **CLOSED** | — | **Completed & closed (Waves 1 & 2 fully verified)** |
 | **#16** | **Phase 2, Wave 1: Pythagorean baseline + Elo engine** | **CLOSED** | — | **Completed: Pythagenpat baseline + 4-factor Elo engine wired & verified** |
-| **#17** | **Phase 2, Wave 2: Constant derivation + park-factor decision** | **OPEN** | none (#16 closed) | **NEXT UP (`tools/derive_mlb_constants.R`)** |
-| #18 | Phase 3: Specialty models (Marcel, bullpen fatigue) | OPEN | #15 | Parallel with #19 once Phase 2 lands |
-| #19 | Phase 4: Postseason bracket simulator | OPEN | #15 | Parallel with #18 |
+| **#17** | **Phase 2, Wave 2: Constant derivation + park-factor decision** | **CLOSED** | — | **Completed: `tools/derive_mlb_constants.R` + FanGraphs park factors** |
+| **#18** | **Phase 3: Specialty models (Marcel, bullpen fatigue)** | **CLOSED** | — | **Completed: `mlb_marcel_baseline.R` + `mlb_bullpen_fatigue.R` wired & verified** |
+| **#19** | **Phase 4: Postseason bracket simulator** | **OPEN** | none (#15 closed) | **ACTIVE NEXT PHASE (`mlb_postseason_simulator.R`)** |
 | #20 | Phase 5: Risk management engine (port) | OPEN | #12 | Unblocked now that Phase 1 is closed |
 | #21 | Phase 6: Market odds engine (port) | OPEN | #12, #15 | Needs Phase 2 ratings for EV |
 | #22 | Phase 7: Discord alert dispatcher (port) | OPEN | #21 | Port |
