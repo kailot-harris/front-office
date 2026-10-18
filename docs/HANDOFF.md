@@ -46,7 +46,7 @@ Verified live via `gh issue list --state all`:
 | #20 | Phase 5: Risk management engine | CLOSED | `mlb_risk_management_engine.R` (sport-agnostic Kelly) |
 | #21 | Phase 6: Market odds engine | CLOSED | `mlb_market_odds_engine.R` (The Odds API + devig EV) |
 | #22 | Phase 7: Discord alert dispatcher | CLOSED | `mlb_notify_bets.R` (rich embeds, webhook dispatch) |
-| **#23** | **Phase 8: Early-season calibration review** | **OPEN** | **Decision point backtest complete; ready for formal closure** |
+| #23 | Phase 8: Early-season calibration review | CLOSED | Empirical audit complete: zero probability spikes; 10-game sample gate confirmed |
 | #24 | Phase 9+: Deferred / idea-stage | OPEN | Post-build enhancements |
 
 ---
