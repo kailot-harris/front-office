@@ -294,6 +294,24 @@ evaluate_betting_slate <- function() {
   cat("           NBA VALUE BETTING & CLV ENGINE (+EV IDENTIFIER)        \n")
   cat("==================================================================\n\n")
   
+  # Read active Kelly multiplier and risk status from CACHE_RISK_STATE
+  risk_state_path <- if (exists("CACHE_RISK_STATE")) CACHE_RISK_STATE else file.path(CACHE_DIR, "risk_state.rds")
+  active_kelly_mult <- 0.25
+  risk_status <- "OPTIMAL"
+  
+  if (file.exists(risk_state_path)) {
+    risk_state <- tryCatch(readRDS(risk_state_path), error = function(e) NULL)
+    if (!is.null(risk_state) && is.list(risk_state)) {
+      if (!is.null(risk_state$active_kelly_multiplier) && is.numeric(risk_state$active_kelly_multiplier) && !is.na(risk_state$active_kelly_multiplier)) {
+        active_kelly_mult <- max(0, as.numeric(risk_state$active_kelly_multiplier))
+      }
+      if (!is.null(risk_state$risk_status) && is.character(risk_state$risk_status) && !is.na(risk_state$risk_status)) {
+        risk_status <- as.character(risk_state$risk_status)
+      }
+    }
+  }
+  cat(sprintf("[RISK INTEGRATION] Active Kelly multiplier set to %.3f (status: %s)\n", active_kelly_mult, risk_status))
+  
   raw_slate <- fetch_market_odds()
   
   snapshot <- raw_slate |> mutate(snapshot_time = Sys.time(), bet_date = Sys.Date())
@@ -331,8 +349,9 @@ evaluate_betting_slate <- function() {
       cons_ml     = if_else(pick_home, consensus_home_ml, consensus_away_ml),
       exp_clv     = if_else(pick_home, home_exp_clv, away_exp_clv),
       
-      quarter_kelly_pct = calculate_kelly(best_prob, best_dec, fraction = 0.25, max_cap_pct = 3.0),
+      quarter_kelly_pct = calculate_kelly(best_prob, best_dec, fraction = active_kelly_mult, max_cap_pct = 3.0),
       edge_flag = case_when(
+        active_kelly_mult == 0.0       ~ "🛑 TRADING HALTED (Drawdown Stop-Loss)",
         best_ev >= 5.0 & exp_clv > 0.0 ~ "🔥 SHARP +EV (EV ≥ 5% & CLV > 0)",
         best_ev >= 3.0                 ~ "★ VALUE BET (+EV)",
         TRUE                           ~ "No Action"
