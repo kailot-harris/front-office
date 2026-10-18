@@ -56,7 +56,8 @@ MLB_CACHE_STAGES <- list(
   id_crosswalk  = "id_crosswalk",  # mlb_id_crosswalk.R    (cross-vendor ID join table)
   pythag        = "pythag",        # mlb_pythag_baseline.R (Pythagorean win expectation)
   ratings       = "ratings",       # mlb_elo_engine.R      (Elo ratings w/ pitcher adjustment)
-  specialty     = "specialty"      # mlb_marcel_baseline.R, mlb_bullpen_fatigue.R
+  specialty     = "specialty",     # mlb_marcel_baseline.R, mlb_bullpen_fatigue.R
+  postseason    = "postseason"     # mlb_postseason_simulator.R (Phase 4 bracket simulator)
 )
 
 #' Build (and create, if needed) a cache path for one pipeline stage.
@@ -162,7 +163,7 @@ MLB_TEAMS <- tryCatch(
 )
 
 # ---------------------------------------------------------------------------
-# 4. Roster-rule facts (live-confirmed, structural — not derived constants)
+# 4. Roster-rule & Postseason Facts (live-confirmed, structural)
 # ---------------------------------------------------------------------------
 # MLB_REPLICATION_PLAN.md §6 item 6: these three numbers are live-confirmed
 # rule facts (not empirically-derived modeling constants) and may be used
@@ -175,6 +176,33 @@ MLB_ROSTER_RULES <- list(
   active_roster_max               = 26L,
   september_postseason_expansion  = 28L,
   offseason_roster_max            = 40L
+)
+
+# Postseason bracket and rule specifications (MLB_REPLICATION_PLAN.md §6 items 4 & 5):
+#   - 12-team bracket: 6 per league (3 division winners seeded 1-3, 3 wild cards seeded 4-6).
+#   - Seeds 1-2 receive first-round byes.
+#   - Wild Card Round (WC): Best-of-3, hosted entirely by higher seed (3-0 format).
+#   - Division Series (DS): Best-of-5, 2-2-1 home format.
+#   - League Championship Series (LCS): Best-of-7, 2-3-2 home format.
+#   - World Series (WS): Best-of-7, 2-3-2 home format (higher regular-season win% hosts).
+#   - Manfred-man rule (automatic runner on 2nd in extra innings) applies ONLY
+#     in regular season; postseason extra innings use traditional rules.
+MLB_POSTSEASON_RULES <- list(
+  teams_per_league   = 6L,
+  total_teams        = 12L,
+  series_length      = list(
+    wild_card    = 3L,
+    div_series   = 5L,
+    champ_series = 7L,
+    world_series = 7L
+  ),
+  home_format        = list(
+    wild_card    = c("higher", "higher", "higher"),
+    div_series   = c("higher", "higher", "lower", "lower", "higher"),
+    champ_series = c("higher", "higher", "lower", "lower", "lower", "higher", "higher"),
+    world_series = c("higher", "higher", "lower", "lower", "lower", "higher", "higher")
+  ),
+  ghost_runner_extra_innings = FALSE # Traditional rules in postseason
 )
 
 # ---------------------------------------------------------------------------

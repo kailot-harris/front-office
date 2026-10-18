@@ -293,10 +293,25 @@ run_full_pipeline <- function(season = 2024, force_refresh = FALSE) {
   )
 
   # ----------------------------------------------------------------------------
-  # EXTENSION POINTS: Future Phase 4+ Pipeline Stages
+  # Stage 9: 12-Team Postseason Monte Carlo Bracket Simulator
   # ----------------------------------------------------------------------------
-  # Phase 4: Postseason Bracket Simulator
-  #   - run_stage("mlb_playoff_simulator.R", "Postseason Monte Carlo Bracket Simulator", ...)
+  run_stage(
+    script_name   = "mlb_postseason_simulator.R",
+    description   = "Simulate 12-Team MLB Postseason Bracket (WC/DS/LCS/WS)",
+    call_fn       = "run_postseason_simulator",
+    output        = c(
+      cache_path("postseason", sprintf("postseason_sim_results_%d.rds", season), create = FALSE),
+      cache_path("postseason", "postseason_team_probabilities.rds", create = FALSE)
+    ),
+    require_fresh = force_refresh,
+    season        = season,
+    n_sims        = 10000,
+    force_refresh = force_refresh
+  )
+
+  # ----------------------------------------------------------------------------
+  # EXTENSION POINTS: Future Phase 5+ Pipeline Stages
+  # ----------------------------------------------------------------------------
   # Phase 5: Risk Management Engine
   #   - run_stage("mlb_risk_management.R", "Bankroll Drawdown & Kelly Sizing Engine", ...)
   # Phase 6: Market Odds Engine
