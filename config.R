@@ -1,0 +1,247 @@
+# config.R — MLB Analytics shared configuration
+#
+# Single source of truth for cache paths, the team/ID table, and WAR-source
+# selection. This is Phase 1's shared prerequisite (issue #13): Wave 1's four
+# ingestion scripts (mlb_ingest.R, mlb_stats_sync.R, mlb_injury_scraper.R,
+# mlb_id_crosswalk.R) and Wave 2's run_full_pipeline.R skeleton (issue #14)
+# all `source("config.R")`.
+#
+# Derived from docs/MLB_IMPLEMENTATION_PLAN.md Phase 1 and
+# docs/MLB_REPLICATION_PLAN.md §1/§2 — read those before changing this file.
+#
+# Hard rule carried forward from both docs' "constants this plan explicitly
+# refuses to finalize" sections: this file must never hardcode the Pythagorean
+# exponent, any Elo constant (home-field advantage, travel-penalty coefficient,
+# rest-point value, starting-pitcher blend coefficient, game-score weights),
+# Marcel's weighting constants, run-environment sigma, or any roster-rule-
+# derived pipeline constant. Every one of those appears below as an explicit
+# placeholder (NULL / NA) naming the later script that must compute it from
+# this repo's own ingested data — never a number copied from either doc or a
+# sibling repo's config.R.
+
+# ---------------------------------------------------------------------------
+# 0. Packages
+# ---------------------------------------------------------------------------
+# baseballr is this repo's intended primary package for MLB Stats API /
+# Statcast / FanGraphs access (MLB_REPLICATION_PLAN.md §2a), but it is not
+# installed in this environment as of this writing. This file does not
+# install packages (Tier 0/1 scope only). It prefers baseballr when available
+# and falls back to a direct, documented call against the public MLB Stats
+# API endpoint (statsapi.mlb.com/api/v1/teams), which §2b confirms is
+# unauthenticated and publicFacing:true. jsonlite is used for that fallback
+# and is already installed in this environment.
+.mlb_has_baseballr <- requireNamespace("baseballr", quietly = TRUE)
+.mlb_has_jsonlite <- requireNamespace("jsonlite", quietly = TRUE)
+
+# ---------------------------------------------------------------------------
+# 1. Paths
+# ---------------------------------------------------------------------------
+MLB_ROOT_DIR <- normalizePath(
+  if (nzchar(Sys.getenv("MLB_ANALYTICS_ROOT"))) Sys.getenv("MLB_ANALYTICS_ROOT") else getwd(),
+  winslash = "/", mustWork = FALSE
+)
+
+MLB_CACHE_ROOT <- file.path(MLB_ROOT_DIR, "cache")
+
+# Cache-path convention for Wave 1's four ingestion scripts (issue #13):
+# each script gets its own named stage and therefore its own cache
+# subdirectory, so none of the four can collide on a shared file name.
+# `cache_path(stage, ...)` is the one place that convention lives — scripts
+# should call this helper rather than hand-building paths under
+# MLB_CACHE_ROOT themselves.
+MLB_CACHE_STAGES <- list(
+  ingest        = "ingest",        # mlb_ingest.R         (schedule/box score/Statcast)
+  stats_sync    = "stats_sync",    # mlb_stats_sync.R      (FanGraphs leaderboard sync)
+  injury        = "injury",        # mlb_injury_scraper.R  (ESPN injuries feed)
+  id_crosswalk  = "id_crosswalk"   # mlb_id_crosswalk.R    (cross-vendor ID join table)
+)
+
+#' Build (and create, if needed) a cache path for one pipeline stage.
+#'
+#' @param stage One of names(MLB_CACHE_STAGES) — "ingest", "stats_sync",
+#'   "injury", or "id_crosswalk". Each Wave 1 script should pass its own
+#'   stage name so the four scripts never write into the same subdirectory.
+#' @param ... Optional additional path segments (e.g. a filename) appended
+#'   under that stage's subdirectory.
+#' @param create If TRUE (default), creates the directory if it does not
+#'   already exist.
+#' @return A normalized file path string.
+cache_path <- function(stage, ..., create = TRUE) {
+  if (!stage %in% names(MLB_CACHE_STAGES)) {
+    stop(sprintf(
+      "cache_path(): unknown stage '%s' — must be one of: %s",
+      stage, paste(names(MLB_CACHE_STAGES), collapse = ", ")
+    ))
+  }
+  stage_dir <- file.path(MLB_CACHE_ROOT, MLB_CACHE_STAGES[[stage]])
+  if (create && !dir.exists(stage_dir)) {
+    dir.create(stage_dir, recursive = TRUE, showWarnings = FALSE)
+  }
+  extra <- c(...)
+  if (length(extra) == 0) {
+    return(normalizePath(stage_dir, winslash = "/", mustWork = FALSE))
+  }
+  normalizePath(file.path(stage_dir, do.call(file.path, as.list(extra))),
+                winslash = "/", mustWork = FALSE)
+}
+
+# ---------------------------------------------------------------------------
+# 2. WAR source (Phase 1's one open decision this phase actually resolves)
+# ---------------------------------------------------------------------------
+# MLB_IMPLEMENTATION_PLAN.md Phase 1 / MLB_REPLICATION_PLAN.md §2a & §3:
+# baseballr's Baseball-Reference-backed functions report live HTTP 403
+# breakage, so there is no confirmed baseballr path to bWAR. fWAR (FanGraphs,
+# via fg_batter_leaders()/fg_pitcher_leaders()) is the default WAR source.
+# Do not average fWAR and bWAR or treat them as redundant (§1 failure mode 4).
+MLB_WAR_SOURCE <- "fWAR"
+
+# ---------------------------------------------------------------------------
+# 3. Team / ID table — seeded from a live MLB Stats API call, not hand-typed
+# ---------------------------------------------------------------------------
+# Endpoint (confirmed unauthenticated/public, MLB_REPLICATION_PLAN.md §2b):
+#   GET https://statsapi.mlb.com/api/v1/teams?sportId=1&activeStatus=Y
+# Preferred accessor once baseballr is installed: baseballr::mlb_teams()
+# (wraps the same /teams endpoint per §2a's function catalog).
+#
+# build_mlb_team_table() is the single documented seeding call for this
+# table. It is called once below (guarded by tryCatch so a network-less
+# environment still sources this file successfully — see success criterion
+# 1) and the result is cached to disk via cache_path("id_crosswalk", ...) so
+# later sources of this file do not require a live call every time.
+build_mlb_team_table <- function() {
+  if (.mlb_has_baseballr) {
+    # Preferred path once baseballr is installed in this environment.
+    return(baseballr::mlb_teams())
+  }
+  if (!.mlb_has_jsonlite) {
+    stop("Neither baseballr nor jsonlite is available to seed the team table.")
+  }
+  # Documented fallback: direct call against the same public endpoint
+  # baseballr::mlb_teams() itself wraps.
+  resp <- jsonlite::fromJSON(
+    "https://statsapi.mlb.com/api/v1/teams?sportId=1&activeStatus=Y"
+  )
+  resp$teams
+}
+
+.mlb_team_table_cache_file <- cache_path("id_crosswalk", "mlb_teams.rds")
+
+#' Get the MLB team/ID table, loading from cache if present, otherwise
+#' calling build_mlb_team_table() live and caching the result.
+get_mlb_team_table <- function(refresh = FALSE) {
+  if (!refresh && file.exists(.mlb_team_table_cache_file)) {
+    return(readRDS(.mlb_team_table_cache_file))
+  }
+  teams <- build_mlb_team_table()
+  tryCatch(
+    saveRDS(teams, .mlb_team_table_cache_file),
+    error = function(e) invisible(NULL)
+  )
+  teams
+}
+
+# Seed MLB_TEAMS now via the live/cached call above. Wrapped in tryCatch so
+# sourcing this file never hard-fails in a network-less or baseballr-less
+# environment (e.g. CI) — in that failure case MLB_TEAMS is an empty
+# data.frame and a warning is raised naming the fallback endpoint to retry.
+MLB_TEAMS <- tryCatch(
+  get_mlb_team_table(),
+  error = function(e) {
+    warning(
+      "config.R: could not seed MLB_TEAMS from a live call. ",
+      "Retry via get_mlb_team_table(refresh = TRUE) once network/baseballr ",
+      "is available. Documented source: GET https://statsapi.mlb.com/api/v1/",
+      "teams?sportId=1&activeStatus=Y (or baseballr::mlb_teams()). ",
+      "Original error: ", conditionMessage(e)
+    )
+    data.frame()
+  }
+)
+
+# ---------------------------------------------------------------------------
+# 4. Roster-rule facts (live-confirmed, structural — not derived constants)
+# ---------------------------------------------------------------------------
+# MLB_REPLICATION_PLAN.md §6 item 6: these three numbers are live-confirmed
+# rule facts (not empirically-derived modeling constants) and may be used
+# structurally (e.g. to validate roster size in mlb_ingest.R). Do NOT derive
+# any additional pipeline-internal constant from them (e.g. an invented
+# bullpen-usage denominator) — that would be exactly the kind of
+# roster-rule-derived constant §3 of this file's placeholders section below
+# reserves for Phase 2's tools/derive_mlb_constants.R.
+MLB_ROSTER_RULES <- list(
+  active_roster_max               = 26L,
+  september_postseason_expansion  = 28L,
+  offseason_roster_max            = 40L
+)
+
+# ---------------------------------------------------------------------------
+# 5. Placeholders for constants Phase 2+ must empirically derive
+# ---------------------------------------------------------------------------
+# None of the values below may ever be set to a number copied from
+# MLB_IMPLEMENTATION_PLAN.md, MLB_REPLICATION_PLAN.md, or any sibling repo's
+# config.R (e.g. 538's own 4.7 / 24 / 9.6 / -0.31 / 2.3 / 47.4 /
+# 1.5/2/2/3/4, or Pythagorean exponents 2 / 1.83 / 0.287). Each is NULL (or a
+# named NA inside a list) until the named derivation script actually computes
+# it from this repo's own ingested data.
+
+# Pythagorean win-expectation exponent (variable Pythagenpat form is the
+# intended default per MLB_REPLICATION_PLAN.md §3; fixed exponent-2 and
+# Pythagenport are comparison forms, also not finalized here).
+# Derived by: Phase 2's tools/derive_mlb_constants.R
+MLB_PYTHAG_EXPONENT <- NULL
+
+# Rolling-window size for team-rating inputs. Coupled with the Pythagorean
+# exponent per MLB_REPLICATION_PLAN.md §6 item 1 — cannot be scaled
+# proportionally from a sibling sport's window.
+# Derived by: Phase 2's tools/derive_mlb_constants.R
+MLB_ROLLING_WINDOW_SIZE <- NULL
+
+# Elo constants (538 methodology, MLB_REPLICATION_PLAN.md §4). 538's own
+# tuned values (24, 9.6, -0.31, 2.3, 4.7, 47.4, 1.5/2/2/3/4) are reference
+# starting points for derive_mlb_constants.R's search space only — never
+# values to hardcode here directly.
+# Derived by: Phase 2's tools/derive_mlb_constants.R
+MLB_ELO_HOME_FIELD_ADVANTAGE        <- NULL  # cf. 538's 24 (full-attendance) / 9.6 (fan-less)
+MLB_ELO_TRAVEL_PENALTY_COEFFICIENT  <- NULL  # cf. 538's -0.31 in miles_traveled^(1/3) * coef
+MLB_ELO_REST_POINT_VALUE            <- NULL  # cf. 538's 2.3 points/day, capped at 3 days
+MLB_ELO_STARTING_PITCHER_BLEND_COEF <- NULL  # cf. 538's 4.7 in ratingAdj = C * (pitcher_rGS - team_rGS)
+MLB_ELO_GAME_SCORE_WEIGHTS <- list(
+  base       = NA,  # cf. 538's 47.4 base
+  strikeouts = NA,  # cf. 538's +1 per strikeout
+  outs       = NA,  # cf. 538's +1.5 per out
+  walks      = NA,  # cf. 538's -2 per walk
+  hits       = NA,  # cf. 538's -2 per hit
+  runs       = NA,  # cf. 538's -3 per run
+  homeruns   = NA   # cf. 538's -4 per home run
+)
+
+# Park-factor normalization. MLB_REPLICATION_PLAN.md §4 flags 538's exact
+# park-factor coefficients as an unresolved open gap (not published in the
+# archived primary source) — Phase 2 must either source these from
+# FanGraphs'/Baseball-Reference's own published tables, or explicitly defer
+# with a dated note. Not decided here.
+# Derived by: Phase 2 (tools/derive_mlb_constants.R or a dedicated park-factor
+# sourcing step within Phase 2)
+MLB_PARK_FACTORS <- NULL
+
+# Marcel projection weighting constants (Tom Tango's original values — 5/4/3
+# batter recency weights, 3/2/1 pitcher recency weights, 1200 PA regression
+# blend, .003/.006 age-adjustment slopes — are starting points to faithfully
+# reproduce as a *baseline*, per MLB_REPLICATION_PLAN.md §5, not final
+# tunable values for this repo without their own empirical check).
+# Derived by: Phase 3's mlb_marcel_baseline.R
+MLB_MARCEL_WEIGHTS <- list(
+  batter_recency_weights  = NA,  # cf. Tango's 5/4/3
+  pitcher_recency_weights = NA,  # cf. Tango's 3/2/1
+  regression_pa           = NA,  # cf. Tango's 1200 PA
+  age_adjustment_over_29   = NA, # cf. Tango's (age-29)*.003
+  age_adjustment_under_29  = NA  # cf. Tango's (age-29)*.006 (Tango later flagged a sign error in his own original)
+)
+
+# Run-environment sigma (used in simulation / win-probability spread).
+# Derived by: Phase 2's tools/derive_mlb_constants.R
+MLB_RUN_ENVIRONMENT_SIGMA <- NULL
+
+# ---------------------------------------------------------------------------
+# End of config.R
+# ---------------------------------------------------------------------------
