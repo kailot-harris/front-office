@@ -8,7 +8,38 @@ message("==================================================================")
 message(sprintf(">>> NBA QUANTITATIVE ENGINE v5.0 STARTED: %s", format(pipeline_start_time, "%Y-%m-%d %H:%M:%S")))
 message("==================================================================")
 
-run_stage <- function(script_name, description) {
+source("config.R")
+
+# .check_stage_output() — output-staleness assertion (Finding C-2, ported from NFL/WNBA sibling
+# repos). After each stage completes, checks that every declared output file's mtime is at or
+# after the stage's own start time. A silent no-op (e.g. a dead auto-run guard — the exact bug
+# from issue #1) leaves the file untouched; this surfaces it immediately rather than letting
+# the pipeline log "COMPLETED" and carry stale data silently.
+# WARN, never stop() — fail-safe: report and continue.
+.check_stage_output <- function(script_name, description, output, start) {
+  if (is.null(output) || length(output) == 0) return(invisible(NULL))
+  for (path in output) {
+    if (!file.exists(path)) {
+      message(sprintf(">>> [WARN] %s: declared output '%s' does not exist after the stage ran.",
+                      script_name, path))
+      next
+    }
+    mt <- tryCatch(file.info(path)$mtime, error = function(e) NA)
+    if (length(mt) != 1 || is.na(mt)) next
+    if (as.numeric(difftime(mt, start, units = "secs")) < -1) {
+      age_h <- as.numeric(difftime(Sys.time(), mt, units = "hours"))
+      message(sprintf(
+        ">>> [WARN] %s reported success but declared output '%s' was NOT rewritten (mtime %s, %.1f h old). Possible silent no-op — see issue #1 / finding C-2.",
+        script_name, path, format(mt, "%Y-%m-%d %H:%M:%S"), age_h))
+    } else {
+      message(sprintf(">>> [FRESH] %s -> %s (mtime %s)",
+                      script_name, path, format(mt, "%Y-%m-%d %H:%M:%S")))
+    }
+  }
+  invisible(NULL)
+}
+
+run_stage <- function(script_name, description, call_fn = NULL, output = NULL) {
   message(sprintf("\n>>> [STAGE] %s (%s)...", description, script_name))
   if (!file.exists(script_name)) {
     warning(sprintf("Script %s not found in working directory. Skipping.", script_name))
@@ -17,6 +48,18 @@ run_stage <- function(script_name, description) {
   start <- Sys.time()
   tryCatch({
     source(script_name, local = FALSE)
+    if (!is.null(call_fn)) {
+      if (exists(call_fn, envir = .GlobalEnv, mode = "function", inherits = FALSE)) {
+        get(call_fn, envir = .GlobalEnv, mode = "function", inherits = FALSE)()
+      } else {
+        warning(sprintf(">>> [WARN] call_fn '%s' not found as a function after sourcing %s.", call_fn, script_name))
+      }
+    }
+    # Output-staleness check (Finding C-2, ported from NFL/WNBA Analytics sibling repos).
+    # A stage that silently no-ops (e.g. a broken auto-run guard) will leave its declared
+    # output file untouched; mtime < stage start exposes it rather than logging "COMPLETED".
+    # WARN, never stop() — the pipeline reports and continues.
+    .check_stage_output(script_name, description, output, start)
     elapsed <- as.numeric(difftime(Sys.time(), start, units = "secs"))
     message(sprintf(">>> [COMPLETED] %s in %.2f seconds.", script_name, elapsed))
     return(TRUE)
@@ -26,12 +69,14 @@ run_stage <- function(script_name, description) {
   })
 }
 
+
 # ------------------------------------------------------------------------------
 # Chronological Execution Sequence
 # ------------------------------------------------------------------------------
 
 # 1. Official Data Feed & Ingestion
-run_stage("sync_rosters.R", "Sync Active 556-Player Rosters & Mid-Season Trades")
+run_stage("sync_rosters.R",  "Sync Active 556-Player Rosters & Mid-Season Trades",
+          output = file.path(CACHE_DIR, "active_rosters_cache.rds"))
 run_stage("injury_scraper.R", "Scrape Official Injury Scratches & Availability Updates")
 
 # 2. Physics & Biometric Latent Engines (Phase 5)

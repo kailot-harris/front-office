@@ -90,6 +90,4 @@ sync_active_rosters <- function() {
   return(active_rosters)
 }
 
-if (sys.nframe() == 0 || interactive()) {
-  sync_active_rosters()
-}
+sync_active_rosters()

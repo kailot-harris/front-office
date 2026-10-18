@@ -62,6 +62,4 @@ daily_box_ingest <- function() {
   invisible(combined)
 }
 
-if (sys.nframe() == 0) {
-  daily_box_ingest()
-}
+daily_box_ingest()
