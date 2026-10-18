@@ -3,11 +3,24 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Trophy, BarChart3, Users, Activity, Sparkles, Menu, X, ShieldCheck, Layers } from 'lucide-react';
+import {
+  Trophy,
+  BarChart3,
+  Users,
+  Activity,
+  Menu,
+  X,
+  ShieldCheck,
+  Layers,
+  HelpCircle,
+  Calculator,
+} from 'lucide-react';
+import { HalloweenBasketball } from '@/components/HalloweenBasketball';
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const [showSigmaExplainer, setShowSigmaExplainer] = useState(false);
 
   const navItems = [
     {
@@ -34,7 +47,7 @@ export const Sidebar: React.FC = () => {
     {
       href: '/diagnostics',
       label: 'Diagnostics',
-      badge: 'Brier 0.198',
+      badge: 'Brier 0.2284',
       icon: Activity,
       desc: 'Reliability & calibration curve',
     },
@@ -43,24 +56,24 @@ export const Sidebar: React.FC = () => {
   const NavContent = () => (
     <div className="flex flex-col h-full justify-between p-4">
       <div className="space-y-6">
-        {/* Brand Header */}
+        {/* Brand Header with Halloween Basketball Button Logo */}
         <div className="flex items-center gap-3 px-2 pt-1 pb-2 border-b border-slate-800/80">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-amber-500/20 flex-shrink-0">
-            <Sparkles className="w-5 h-5 text-white" />
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-amber-600 via-orange-600 to-slate-900 border border-orange-500/30 flex items-center justify-center shadow-lg shadow-orange-500/20 flex-shrink-0">
+            <HalloweenBasketball className="w-7 h-7" size={28} />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="font-extrabold text-base tracking-tight bg-gradient-to-r from-amber-400 via-orange-400 to-indigo-400 bg-clip-text text-transparent">
+              <span className="font-extrabold text-base tracking-tight bg-gradient-to-r from-orange-400 via-amber-400 to-indigo-400 bg-clip-text text-transparent">
                 NBA ANALYTICS
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium truncate">Season-Long Projections 2025-26</p>
+            <p className="text-[11px] text-slate-400 font-medium truncate">Season Projections 2025-26</p>
           </div>
         </div>
 
         {/* Navigation Links */}
         <div className="space-y-1">
-          <div className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
+          <div className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 font-mono">
             Main Navigation
           </div>
           {navItems.map((item) => {
@@ -77,7 +90,11 @@ export const Sidebar: React.FC = () => {
                     : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
                 }`}
               >
-                <Icon className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-indigo-400'}`} />
+                <Icon
+                  className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
+                    isActive ? 'text-white' : 'text-slate-400 group-hover:text-indigo-400'
+                  }`}
+                />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold">{item.label}</span>
@@ -89,7 +106,11 @@ export const Sidebar: React.FC = () => {
                       {item.badge}
                     </span>
                   </div>
-                  <p className={`text-[11px] truncate ${isActive ? 'text-indigo-200' : 'text-slate-500'}`}>
+                  <p
+                    className={`text-[11px] truncate ${
+                      isActive ? 'text-indigo-200' : 'text-slate-500'
+                    }`}
+                  >
                     {item.desc}
                   </p>
                 </div>
@@ -113,10 +134,75 @@ export const Sidebar: React.FC = () => {
               <span className="text-[10px] text-slate-400 block">Total Games</span>
               <span className="font-mono font-bold text-slate-200">1.23M</span>
             </div>
-            <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800/50">
-              <span className="text-[10px] text-slate-400 block">Margin σ</span>
+            
+            {/* Margin Sigma with ? Explainer Bubble & Compact Popover */}
+            <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800/50 relative">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-slate-400 block">Margin σ</span>
+                <button
+                  type="button"
+                  onClick={() => setShowSigmaExplainer(!showSigmaExplainer)}
+                  className="text-amber-400 hover:text-amber-300 p-0.5 rounded hover:bg-slate-800 transition-colors"
+                  aria-label="What does margin sigma mean?"
+                  title="What does margin sigma mean? Click for explainer."
+                >
+                  <HelpCircle className="w-3 h-3" />
+                </button>
+              </div>
               <span className="font-mono font-bold text-slate-200">11.8 pts</span>
+
+              {/* Localized Compact Popover Card (Not Full Page) */}
+              {showSigmaExplainer && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40 bg-transparent"
+                    onClick={() => setShowSigmaExplainer(false)}
+                  />
+                  <div className="absolute left-0 md:left-full md:ml-3 bottom-full mb-2 md:bottom-auto md:-top-16 z-50 w-72 sm:w-80 bg-slate-900 border border-slate-700 rounded-xl p-3.5 shadow-2xl space-y-2.5 animate-in fade-in zoom-in-95 duration-150 text-slate-200">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
+                        <Calculator className="w-3.5 h-3.5" />
+                        <span>Margin σ = 11.8 pts</span>
+                      </div>
+                      <button
+                        onClick={() => setShowSigmaExplainer(false)}
+                        className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+
+                    <p className="text-[11px] text-slate-300 leading-relaxed">
+                      Standard deviation of single-game score differentials around expected margin. Converts point margins into game win probabilities:
+                    </p>
+
+                    <div className="bg-slate-950 p-2 rounded border border-slate-800 font-mono text-[10.5px] text-emerald-400 font-semibold">
+                      P(Win) = Φ( Expected_Margin / 11.8 )
+                    </div>
+
+                    <div className="space-y-1 font-mono text-[10.5px]">
+                      <div className="flex justify-between text-slate-300">
+                        <span>Pick&apos;em (0.0 pt):</span>
+                        <span className="font-bold text-white">50.0%</span>
+                      </div>
+                      <div className="flex justify-between text-slate-300">
+                        <span>+3.5 pt favorite:</span>
+                        <span className="font-bold text-white">61.7%</span>
+                      </div>
+                      <div className="flex justify-between text-slate-300">
+                        <span>+6.0 pt favorite:</span>
+                        <span className="font-bold text-white">69.5%</span>
+                      </div>
+                      <div className="flex justify-between text-slate-300">
+                        <span>+12.0 pt favorite:</span>
+                        <span className="font-bold text-white">84.6%</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
+
             <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800/50">
               <span className="text-[10px] text-slate-400 block">Variants</span>
               <span className="font-mono font-bold text-indigo-400">4 Blend</span>
@@ -147,8 +233,8 @@ export const Sidebar: React.FC = () => {
       {/* Mobile Header Bar (shown only on small screens) */}
       <div className="md:hidden sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-amber-500 to-indigo-600 flex items-center justify-center shadow-md">
-            <Sparkles className="w-4 h-4 text-white" />
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-amber-600 via-orange-600 to-slate-900 border border-orange-500/30 flex items-center justify-center shadow-md">
+            <HalloweenBasketball className="w-6 h-6" size={24} />
           </div>
           <div>
             <span className="font-extrabold text-sm tracking-tight text-white">NBA PROJECTIONS</span>

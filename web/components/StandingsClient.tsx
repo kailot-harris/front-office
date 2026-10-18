@@ -2,18 +2,30 @@
 
 import React, { useState, useMemo } from 'react';
 import { TeamProjection, ModelMetadata } from '@/lib/types';
-import { Trophy, TrendingUp, Filter, ArrowUpDown, ShieldAlert, Award } from 'lucide-react';
+import { Trophy, TrendingUp, Filter, ArrowUpDown, ArrowUp, ArrowDown, ShieldAlert, Award } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
+import { PlayoffContendersBoxWhisker } from '@/components/PlayoffContendersBoxWhisker';
 
 interface StandingsClientProps {
   teams: TeamProjection[];
   metadata?: ModelMetadata;
 }
 
+export type StandingsSortField =
+  | 'rank'
+  | 'team'
+  | 'conference'
+  | 'division'
+  | 'ensemble_mean_wins'
+  | 'win_pct'
+  | 'percentile_range'
+  | 'ensemble_playoff_prob'
+  | 'ensemble_title_prob';
+
 export const StandingsClient: React.FC<StandingsClientProps> = ({ teams }) => {
   const [selectedConference, setSelectedConference] = useState<'All' | 'East' | 'West'>('All');
   const [selectedDivision, setSelectedDivision] = useState<string>('All');
-  const [sortBy, setSortBy] = useState<keyof TeamProjection>('ensemble_mean_wins');
+  const [sortBy, setSortBy] = useState<StandingsSortField>('ensemble_mean_wins');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const divisions = useMemo(() => {
@@ -29,19 +41,51 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams }) => {
         return true;
       })
       .sort((a, b) => {
-        const valA = a[sortBy] as number;
-        const valB = b[sortBy] as number;
-        return sortOrder === 'desc' ? valB - valA : valA - valB;
+        let cmp = 0;
+        if (sortBy === 'team') {
+          cmp = a.team_name.localeCompare(b.team_name);
+        } else if (sortBy === 'conference') {
+          cmp = a.conference.localeCompare(b.conference) || b.ensemble_mean_wins - a.ensemble_mean_wins;
+        } else if (sortBy === 'division') {
+          cmp = a.division.localeCompare(b.division) || b.ensemble_mean_wins - a.ensemble_mean_wins;
+        } else if (sortBy === 'rank') {
+          cmp = (a.rank ?? 0) - (b.rank ?? 0);
+        } else if (sortBy === 'percentile_range') {
+          const rangeA = a.ensemble_p90 - a.ensemble_p10;
+          const rangeB = b.ensemble_p90 - b.ensemble_p10;
+          cmp = rangeA - rangeB;
+        } else {
+          const valA = (a[sortBy as keyof TeamProjection] as number) ?? 0;
+          const valB = (b[sortBy as keyof TeamProjection] as number) ?? 0;
+          cmp = valA - valB;
+        }
+        return sortOrder === 'desc' ? -cmp : cmp;
       });
   }, [teams, selectedConference, selectedDivision, sortBy, sortOrder]);
 
-  const handleSort = (field: keyof TeamProjection) => {
+  const handleSort = (field: StandingsSortField) => {
     if (sortBy === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
       setSortBy(field);
-      setSortOrder('desc');
+      // Alphabetical and rank default to asc, stats default to desc
+      if (field === 'team' || field === 'conference' || field === 'division' || field === 'rank') {
+        setSortOrder('asc');
+      } else {
+        setSortOrder('desc');
+      }
     }
+  };
+
+  const renderSortIndicator = (field: StandingsSortField) => {
+    if (sortBy !== field) {
+      return <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 opacity-40 group-hover:opacity-100 transition-opacity" />;
+    }
+    return sortOrder === 'asc' ? (
+      <ArrowUp className="w-3.5 h-3.5 text-indigo-400 font-bold" />
+    ) : (
+      <ArrowDown className="w-3.5 h-3.5 text-indigo-400 font-bold" />
+    );
   };
 
   const topTitleFavorite = [...teams].sort((a, b) => b.ensemble_title_prob - a.ensemble_title_prob)[0];
@@ -175,53 +219,111 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams }) => {
         </div>
       </div>
 
+      {/* Playoff Contenders Visualization Snapshot (Playoff Prob >= 40%) */}
+      <PlayoffContendersBoxWhisker teams={teams} />
+
       {/* Main Standings Table */}
       <div className="bg-slate-900/70 border border-slate-800 rounded-xl shadow-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse">
             <thead>
-              <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 font-medium text-xs">
-                <th className="py-3.5 px-4 w-12 text-center">Rank</th>
-                <th className="py-3.5 px-4">Team</th>
-                <th className="py-3.5 px-3 text-center">Conf</th>
-                <th className="py-3.5 px-3 text-center">Div</th>
+              <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 font-medium text-xs select-none">
                 <th
-                  onClick={() => handleSort('ensemble_mean_wins')}
-                  className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors"
+                  onClick={() => handleSort('rank')}
+                  className="py-3.5 px-4 w-14 text-center cursor-pointer hover:text-white transition-colors group"
+                  title="Click to sort by rank"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span className={sortBy === 'rank' ? 'text-indigo-400 font-bold' : ''}>Rank</span>
+                    {renderSortIndicator('rank')}
+                  </div>
+                </th>
+                <th
+                  onClick={() => handleSort('team')}
+                  className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors group"
+                  title="Click to sort alphabetically by team name"
                 >
                   <div className="flex items-center gap-1.5">
-                    <span>Ensemble Wins</span>
-                    <ArrowUpDown className="w-3.5 h-3.5" />
+                    <span className={sortBy === 'team' ? 'text-indigo-400 font-bold' : ''}>Team</span>
+                    {renderSortIndicator('team')}
+                  </div>
+                </th>
+                <th
+                  onClick={() => handleSort('conference')}
+                  className="py-3.5 px-3 text-center cursor-pointer hover:text-white transition-colors group"
+                  title="Click to sort by conference"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span className={sortBy === 'conference' ? 'text-indigo-400 font-bold' : ''}>Conf</span>
+                    {renderSortIndicator('conference')}
+                  </div>
+                </th>
+                <th
+                  onClick={() => handleSort('division')}
+                  className="py-3.5 px-3 text-center cursor-pointer hover:text-white transition-colors group"
+                  title="Click to sort by division"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span className={sortBy === 'division' ? 'text-indigo-400 font-bold' : ''}>Div</span>
+                    {renderSortIndicator('division')}
+                  </div>
+                </th>
+                <th
+                  onClick={() => handleSort('ensemble_mean_wins')}
+                  className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors group"
+                  title="Click to sort by projected ensemble wins"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className={sortBy === 'ensemble_mean_wins' ? 'text-indigo-400 font-bold' : ''}>
+                      Ensemble Wins
+                    </span>
+                    {renderSortIndicator('ensemble_mean_wins')}
                   </div>
                 </th>
                 <th
                   onClick={() => handleSort('win_pct')}
-                  className="py-3.5 px-3 cursor-pointer hover:text-white transition-colors text-right"
+                  className="py-3.5 px-3 cursor-pointer hover:text-white transition-colors text-right group"
+                  title="Click to sort by win percentage"
                 >
                   <div className="flex items-center justify-end gap-1.5">
-                    <span>Win %</span>
-                    <ArrowUpDown className="w-3.5 h-3.5" />
+                    <span className={sortBy === 'win_pct' ? 'text-indigo-400 font-bold' : ''}>Win %</span>
+                    {renderSortIndicator('win_pct')}
                   </div>
                 </th>
-                <th className="py-3.5 px-4 min-w-[200px]">
-                  <span>10th - 90th Percentile Range</span>
+                <th
+                  onClick={() => handleSort('percentile_range')}
+                  className="py-3.5 px-4 min-w-[200px] cursor-pointer hover:text-white transition-colors group"
+                  title="Click to sort by distribution width (p90 - p10 variance)"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className={sortBy === 'percentile_range' ? 'text-indigo-400 font-bold' : ''}>
+                      10th - 90th Percentile Range
+                    </span>
+                    {renderSortIndicator('percentile_range')}
+                  </div>
                 </th>
                 <th
                   onClick={() => handleSort('ensemble_playoff_prob')}
-                  className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors text-right"
+                  className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors text-right group"
+                  title="Click to sort by playoff probability"
                 >
                   <div className="flex items-center justify-end gap-1.5">
-                    <span>Playoffs</span>
-                    <ArrowUpDown className="w-3.5 h-3.5" />
+                    <span className={sortBy === 'ensemble_playoff_prob' ? 'text-indigo-400 font-bold' : ''}>
+                      Playoffs
+                    </span>
+                    {renderSortIndicator('ensemble_playoff_prob')}
                   </div>
                 </th>
                 <th
                   onClick={() => handleSort('ensemble_title_prob')}
-                  className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors text-right"
+                  className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors text-right group"
+                  title="Click to sort by title probability"
                 >
                   <div className="flex items-center justify-end gap-1.5">
-                    <span>Title Prob</span>
-                    <ArrowUpDown className="w-3.5 h-3.5" />
+                    <span className={sortBy === 'ensemble_title_prob' ? 'text-indigo-400 font-bold' : ''}>
+                      Title Prob
+                    </span>
+                    {renderSortIndicator('ensemble_title_prob')}
                   </div>
                 </th>
               </tr>

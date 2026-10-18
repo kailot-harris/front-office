@@ -59,6 +59,7 @@ code). Reading order: `REPO_MAP.md` → `ADR.md` (Phase 1 rationale) → `engine
 23. `be50bff` — `feat(web)`: Integrate official NBA team logos across standings, variants, and player tables.
 24. `ab70dcd` — `feat(web)`: Convert top header to responsive left sidebar (`Sidebar.tsx`).
 25. `2c662a4` — `feat(web)`: Activate `GeistSans` and `GeistMono` typography from `'geist/font'` across all views.
+26. `feat(web)`: Add Halloween basketball logo, compact margin sigma popover, full column sorting, playoff contenders box-whisker plot, and variant Brier score calibration visualizer.
 
 ### 2.2 `INCONSISTENCY_REMEDIATION_PLAN.md` → GitHub issues #1–#12
 

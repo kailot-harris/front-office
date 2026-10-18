@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { TeamProjection, ModelMetadata } from '@/lib/types';
 import { GitCompare } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
+import { BrierScoreComparison } from '@/components/BrierScoreComparison';
 
 interface VariantsClientProps {
   teams: TeamProjection[];
@@ -41,7 +42,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
       strengths: [
         'Minimizes overall predictive variance and overfitting to single stat engines',
         'Balanced shrinkage against noise in early-season rotation adjustments',
-        'Consistently lowest Brier score in historical cross-validation',
+        'Consistently lowest Brier score in historical cross-validation (0.2284 vs 0.237-0.244 for single variants)',
       ],
       methodology:
         'Game-by-game Pythagorean margin expectation computed from linear blend of variant offensive and defensive ratings, simulated over 1,000 independent seasons.',
@@ -234,6 +235,9 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
           </div>
         </div>
       </div>
+
+      {/* Historical Cross-Validation: Brier Score Calibration Visualization */}
+      <BrierScoreComparison />
 
       {/* Model Divergence & Disagreement Matrix */}
       <div className="space-y-4">
