@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { GeistSans, GeistMono } from 'geist/font';
 import './globals.css';
 import { Sidebar } from '@/components/Sidebar';
-
-const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'NBA Season-Long Projections | 1,000-Season Monte Carlo',
@@ -17,14 +15,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className={`dark ${GeistSans.variable} ${GeistMono.variable}`}>
       <body
-        className={`${inter.className} bg-slate-950 text-slate-100 min-h-screen flex flex-col md:flex-row antialiased selection:bg-indigo-600 selection:text-white`}
+        className={`${GeistSans.className} font-sans bg-slate-950 text-slate-100 min-h-screen flex flex-col md:flex-row antialiased selection:bg-indigo-600 selection:text-white`}
       >
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
           <main className="flex-1 pb-10">{children}</main>
-          <footer className="border-t border-slate-800 bg-slate-900/50 py-5 text-center text-xs text-slate-500">
+          <footer className="border-t border-slate-800 bg-slate-900/50 py-5 text-center text-xs text-slate-500 font-sans">
             <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
               <span>NBA Season-Long Projections System • 1,000 Monte Carlo Simulations</span>
               <span>4 Model Variants (Bottom-Up, RAPM, Fatigue, Embeddings) + Ensemble</span>

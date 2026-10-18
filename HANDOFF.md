@@ -57,6 +57,8 @@ code). Reading order: `REPO_MAP.md` → `ADR.md` (Phase 1 rationale) → `engine
 21. `b4d1c8f` — `feat(projections)`: Implement `season_simulator.R` for 1,000-season Monte Carlo projections across 4 model variants.
 22. `bae5652` — `feat(web)`: Implement Phase 2 Next.js projections web application with variants breakout tabs and diagnostics.
 23. `be50bff` — `feat(web)`: Integrate official NBA team logos across standings, variants, and player tables.
+24. `ab70dcd` — `feat(web)`: Convert top header to responsive left sidebar (`Sidebar.tsx`).
+25. `feat(web)`: Activate `GeistSans` and `GeistMono` typography from `'geist/font'` across all views.
 
 ### 2.2 `INCONSISTENCY_REMEDIATION_PLAN.md` → GitHub issues #1–#12
 
