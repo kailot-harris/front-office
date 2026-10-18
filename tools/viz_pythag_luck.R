@@ -21,6 +21,7 @@ suppressPackageStartupMessages({
 
 source("config.R")
 source("tools/viz_theme.R")
+source("tools/mlb_logo_utils.R")
 
 generate_viz_pythag_luck <- function(season = 2024,
                                      standings_file = cache_path("pythag", "mlb_pythag_standings.rds"),
@@ -68,10 +69,20 @@ generate_viz_pythag_luck <- function(season = 2024,
   }
 
   
+  # Filter strictly to the 30 active MLB franchises
+  act_teams <- subset(as.data.frame(MLB_TEAMS), sport_id == 1 & active == TRUE)
+  df <- df[which(df$team_name %in% act_teams$team_full_name), ]
+  
+  # Fetch team_id for logo mapping
+  if (!"team_id" %in% names(df)) {
+    df <- merge(df, act_teams[, c("team_id", "team_full_name")],
+                by.x = "team_name", by.y = "team_full_name", all.x = TRUE)
+  }
+
   # Axis limits and centers
   center_val <- 0.500
-  xlims <- c(0.24, 0.65)
-  ylims <- c(0.24, 0.65)
+  xlims <- c(0.35, 0.65)
+  ylims <- c(0.35, 0.65)
   
   # Label placement: nudge slightly above points
   p <- ggplot(df, aes(x = win_pct_pythagenpat, y = actual_win_pct)) +
@@ -83,25 +94,25 @@ generate_viz_pythag_luck <- function(season = 2024,
     geom_abline(intercept = 0, slope = 1, linetype = "dotted", color = "#8B949E", linewidth = 0.6) +
     
     # Quadrant Background Watermarks / Labels
-    annotate("text", x = 0.61, y = 0.63, label = "ELITE CONTENDERS\n(Strong Base + Results)",
+    annotate("text", x = 0.64, y = 0.64, label = "ELITE CONTENDERS\n(Strong Base + Results)",
              color = "#30363D", size = 4.2, fontface = "bold.italic", hjust = 1, lineheight = 0.9) +
-    annotate("text", x = 0.26, y = 0.63, label = "LUCKY / OVERACHIEVERS\n(1-Run / High-Leverage Surge)",
+    annotate("text", x = 0.36, y = 0.64, label = "LUCKY / OVERACHIEVERS\n(1-Run / High-Leverage Surge)",
              color = "#30363D", size = 4.2, fontface = "bold.italic", hjust = 0, lineheight = 0.9) +
-    annotate("text", x = 0.26, y = 0.27, label = "REBUILDING / STRUGGLING\n(Sub-.500 Run Diff & Record)",
+    annotate("text", x = 0.36, y = 0.36, label = "REBUILDING / STRUGGLING\n(Sub-.500 Run Diff & Record)",
              color = "#30363D", size = 4.2, fontface = "bold.italic", hjust = 0, lineheight = 0.9) +
-    annotate("text", x = 0.61, y = 0.27, label = "UNLUCKY UNDERACHIEVERS\n(Strong Run Diff, Poor Sequencing)",
+    annotate("text", x = 0.64, y = 0.36, label = "UNLUCKY UNDERACHIEVERS\n(Strong Run Diff, Poor Sequencing)",
              color = "#30363D", size = 4.2, fontface = "bold.italic", hjust = 1, lineheight = 0.9) +
     
     # Team Points colored by luck (luck_wins_pat)
-    geom_point(aes(color = luck_wins_pat, size = abs(luck_wins_pat)), alpha = 0.9) +
+    geom_point(aes(color = luck_wins_pat, size = abs(luck_wins_pat)), alpha = 0.85) +
     
     # Team text labels
     geom_text(
       aes(
-        label = sprintf("%s\n(%s%+.1f)", team_abbreviation, ifelse(luck_wins_pat >= 0, "+", ""), luck_wins_pat),
-        vjust = ifelse(actual_win_pct >= win_pct_pythagenpat, -0.4, 1.4)
+        label = sprintf("%s (%+.1f)", team_abbreviation, luck_wins_pat),
+        vjust = ifelse(actual_win_pct >= win_pct_pythagenpat, -1.2, 2.0)
       ),
-      size = 2.8,
+      size = 2.6,
       fontface = "bold",
       color = "#E6EDF3",
       lineheight = 0.85
@@ -120,12 +131,12 @@ generate_viz_pythag_luck <- function(season = 2024,
     # Coordinates & scales
     scale_x_continuous(
       labels = scales::number_format(accuracy = 0.001),
-      breaks = seq(0.250, 0.650, 0.050),
+      breaks = seq(0.350, 0.650, 0.050),
       limits = xlims
     ) +
     scale_y_continuous(
       labels = scales::number_format(accuracy = 0.001),
-      breaks = seq(0.250, 0.650, 0.050),
+      breaks = seq(0.350, 0.650, 0.050),
       limits = ylims
     ) +
     
@@ -140,16 +151,37 @@ generate_viz_pythag_luck <- function(season = 2024,
     # Labels
     labs(
       title = sprintf("%d MLB Pythagorean Luck & Performance Quadrants", season),
-      subtitle = "Comparison of Actual Win% vs. Pythagenpat Expected Win% based on Run Differential & Run Environment\nPoints sized and colored by Luck Residuals (Wins above/below expected)",
+      subtitle = "Comparison of Actual Win% vs. Pythagenpat Expected Win% based on Run Differential & Run Environment\nPoints sized and colored by Luck Residuals (Wins above/below expected) with official team logos",
       x = "Pythagenpat Expected Win % (Run Differential Quality)",
-      y = "Actual 2024 Win %",
+      y = sprintf("Actual %d Win %%", season),
       caption = "Dotted line: Expected = Actual Win% | Dashed lines: .500 Division | Source: KayceeSlices MLB Analytics Engine"
     )
-  
+
+  # Layer official team logos on top of points
+  for (i in seq_len(nrow(df))) {
+    row <- df[i, ]
+    tid <- row$team_id %||% row$team_id.x %||% row$team_id.y
+    logo_path <- get_team_logo_path(tid)
+    if (!is.null(logo_path) && file.exists(logo_path)) {
+      img <- tryCatch(png::readPNG(logo_path), error = function(e) NULL)
+      if (!is.null(img)) {
+        logo_grob <- grid::rasterGrob(img, interpolate = TRUE)
+        p <- p + annotation_custom(
+          grob = logo_grob,
+          xmin = row$win_pct_pythagenpat - 0.0055,
+          xmax = row$win_pct_pythagenpat + 0.0055,
+          ymin = row$actual_win_pct - 0.0055,
+          ymax = row$actual_win_pct + 0.0055
+        )
+      }
+    }
+  }
+
   # Save PNG
   saved_path <- save_mlb_plot(p, output_file, width = 11, height = 7.5, dpi = 300)
   return(invisible(saved_path))
 }
+
 
 if (sys.nframe() == 0) {
   generate_viz_pythag_luck()

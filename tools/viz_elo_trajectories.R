@@ -162,7 +162,7 @@ generate_viz_elo_trajectories <- function(season = 2024,
         top_gainer$team_name, top_gainer$elo_gain,
         top_decliner$team_name, top_decliner$elo_gain
       ),
-      x = "Date (2024 Regular Season)",
+      x = sprintf("Date (%d Regular Season)", season),
       y = "Elo Rating (1500 = League Average Baseline)",
       caption = "Source: MLB Stats API & KayceeSlices MLB Analytics Engine | Tangotiger rGS & Rest Adjusted"
     )

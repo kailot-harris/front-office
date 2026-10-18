@@ -22,6 +22,7 @@ suppressPackageStartupMessages({
 
 source("config.R")
 source("tools/viz_theme.R")
+source("tools/mlb_logo_utils.R")
 
 generate_viz_bullpen_fatigue <- function(status_file = cache_path("specialty", "bullpen_team_status.rds"),
                                          daily_file  = cache_path("specialty", "bullpen_fatigue_daily.rds"),
@@ -37,11 +38,11 @@ generate_viz_bullpen_fatigue <- function(status_file = cache_path("specialty", "
     stop("Bullpen team status dataframe is empty.")
   }
   
-  # Fetch team table for abbreviations and division info
+  # Fetch team table for abbreviations, team_id, and division info
   teams_meta <- as.data.frame(get_mlb_team_table())
   mlb_teams <- teams_meta[which(teams_meta[["sport_id"]] == 1 & !is.na(teams_meta[["division_name"]])),
-                          c("team_full_name", "team_abbreviation", "division_name")]
-  names(mlb_teams)[1] <- "team"
+                          c("team_id", "team_full_name", "team_abbreviation", "division_name")]
+  names(mlb_teams)[2] <- "team"
   mlb_teams$division <- standardize_division(mlb_teams$division_name)
   
   df <- merge(status_df, mlb_teams, by = "team", all.x = TRUE)
@@ -99,10 +100,10 @@ generate_viz_bullpen_fatigue <- function(status_file = cache_path("specialty", "
     # Labels
     geom_text(
       aes(label = team_abbreviation),
-      size = 2.9,
+      size = 2.6,
       fontface = "bold",
       color = "#E6EDF3",
-      vjust = -0.8,
+      nudge_y = -3.2,
       check_overlap = FALSE
     ) +
     
@@ -129,7 +130,32 @@ generate_viz_bullpen_fatigue <- function(status_file = cache_path("specialty", "
       y = "Bullpen Vulnerability Score (0 = Fully Rested, 100+ = Critical Fatigue)",
       caption = "Source: KayceeSlices MLB Analytics Engine | Workload & Velocity Delta Adjusted"
     )
-  
+
+  # Layer official team logos on top of points
+  x_range <- diff(range(df$x_jitter, na.rm = TRUE))
+  y_range <- diff(range(df$y_jitter, na.rm = TRUE))
+  logo_dx <- max(0.35, x_range * 0.022)
+  logo_dy <- max(1.6, y_range * 0.026)
+
+  for (i in seq_len(nrow(df))) {
+    row <- df[i, ]
+    tid <- row$team_id
+    logo_path <- get_team_logo_path(tid)
+    if (!is.null(logo_path) && file.exists(logo_path)) {
+      img <- tryCatch(png::readPNG(logo_path), error = function(e) NULL)
+      if (!is.null(img)) {
+        logo_grob <- grid::rasterGrob(img, interpolate = TRUE)
+        p <- p + annotation_custom(
+          grob = logo_grob,
+          xmin = row$x_jitter - logo_dx,
+          xmax = row$x_jitter + logo_dx,
+          ymin = row$y_jitter - logo_dy,
+          ymax = row$y_jitter + logo_dy
+        )
+      }
+    }
+  }
+
   # Save PNG
   saved_path <- save_mlb_plot(p, output_file, width = 11, height = 7.5, dpi = 300)
   return(invisible(saved_path))

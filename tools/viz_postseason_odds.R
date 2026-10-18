@@ -21,6 +21,7 @@ suppressPackageStartupMessages({
 
 source("config.R")
 source("tools/viz_theme.R")
+source("tools/mlb_logo_utils.R")
 
 generate_viz_postseason_odds <- function(season = 2024,
                                          probs_file  = cache_path("postseason", "postseason_team_probabilities.rds"),
@@ -51,33 +52,9 @@ generate_viz_postseason_odds <- function(season = 2024,
   # Order teams by World Series Championship Probability
   df <- df[order(df$pct_ws, df$pct_pennant, df$pct_lcs), ]
   df$team_label <- factor(df$team_label, levels = df$team_label)
+  df$y_idx <- seq_len(nrow(df))
   
-  # Reshape to long format for progression stages
-  long_df <- df %>%
-    select(team_label, league, seed, elo_rating, pct_ds, pct_lcs, pct_pennant, pct_ws) %>%
-    pivot_longer(
-      cols = c(pct_ds, pct_lcs, pct_pennant, pct_ws),
-      names_to = "stage",
-      values_to = "probability"
-    )
-  
-  # Stage labels & order
-  stage_map <- c(
-    "pct_ds"      = "Make Division Series (LDS)",
-    "pct_lcs"     = "Make League Championship (LCS)",
-    "pct_pennant" = "Win League Pennant",
-    "pct_ws"      = "World Series Champion"
-  )
-  long_df$stage_label <- factor(stage_map[long_df$stage], levels = rev(unname(stage_map)))
-  
-  # Stage Color Palette
-  stage_colors <- c(
-    "World Series Champion"           = "#F1E05A", # Radiant Gold
-    "Win League Pennant"              = "#58A6FF", # Blue
-    "Make League Championship (LCS)"  = "#7EE787", # Green
-    "Make Division Series (LDS)"      = "#8B949E"  # Slate
-  )
-  
+  # Base ggplot
   p <- ggplot(df, aes(x = pct_ws, y = team_label)) +
     # Background subtle bar for Pennant probability
     geom_col(aes(x = pct_pennant), fill = "#58A6FF", alpha = 0.25, width = 0.6) +
@@ -85,12 +62,12 @@ generate_viz_postseason_odds <- function(season = 2024,
     # Primary bar for World Series Title probability
     geom_col(aes(fill = league), width = 0.6, alpha = 0.9) +
     
-    # Text labels showing WS% and Pennant%
+    # Text labels showing WS% and Pennant% (offset to allow room for logo)
     geom_text(
       aes(
         label = sprintf("WS: %.1f%%  (Pennant: %.1f%% | LCS: %.1f%%)",
                         pct_ws, pct_pennant, pct_lcs),
-        x = pct_ws + 0.4
+        x = pct_ws + 1.8
       ),
       hjust = 0,
       size = 3.2,
@@ -130,6 +107,28 @@ generate_viz_postseason_odds <- function(season = 2024,
       caption = "Source: KayceeSlices MLB Analytics Engine | 12-Team Bracket Monte Carlo Simulation"
     )
   
+  # Layer Team Logo Images onto the end of each World Series bar
+  for (i in seq_len(nrow(df))) {
+    row <- df[i, ]
+    logo_path <- get_team_logo_path(row$team_id)
+    if (!is.null(logo_path) && file.exists(logo_path)) {
+      img <- tryCatch(png::readPNG(logo_path), error = function(e) NULL)
+      if (!is.null(img)) {
+        logo_grob <- grid::rasterGrob(img, interpolate = TRUE)
+        # Position logo at end of WS bar
+        logo_x <- row$pct_ws + 0.8
+        logo_y <- row$y_idx
+        p <- p + annotation_custom(
+          grob = logo_grob,
+          xmin = logo_x - 0.65,
+          xmax = logo_x + 0.65,
+          ymin = logo_y - 0.42,
+          ymax = logo_y + 0.42
+        )
+      }
+    }
+  }
+
   # Save PNG
   saved_path <- save_mlb_plot(p, output_file, width = 11.5, height = 7.5, dpi = 300)
   return(invisible(saved_path))
@@ -138,3 +137,4 @@ generate_viz_postseason_odds <- function(season = 2024,
 if (sys.nframe() == 0) {
   generate_viz_postseason_odds()
 }
+
