@@ -321,13 +321,15 @@ run_full_pipeline <- function(season = 2024, force_refresh = FALSE) {
   )
 
   # ----------------------------------------------------------------------------
-  # EXTENSION POINTS: Future Phase 6+ Pipeline Stages
+  # Stage 11: Discord Bet Alert Dispatcher (Phase 7, Issue #22)
   # ----------------------------------------------------------------------------
-  # Phase 6: Market Odds Engine
-  #   - run_stage("mlb_market_odds.R", "Fetch Live Odds & Identify +EV Value Bets", ...)
-  # Phase 7: Discord Alert Dispatcher
-  #   - run_stage("mlb_notify_bets.R", "Dispatch Value Bet & Line Movement Alerts", ...)
-  # ----------------------------------------------------------------------------
+  run_stage(
+    script_name   = "mlb_notify_bets.R",
+    description   = "Dispatch MLB Value Bet & Line Movement Alerts to Discord",
+    call_fn       = "run_notify_bets",
+    output        = NULL, # Terminal notification stage
+    require_fresh = FALSE
+  )
   
   pipeline_total_time <- as.numeric(difftime(Sys.time(), pipeline_start_time, units = "secs"))
   
