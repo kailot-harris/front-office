@@ -50,7 +50,7 @@ code). Reading order: `REPO_MAP.md` → `ADR.md` (Phase 1 rationale) → `engine
 14. `869c3ad` — `Fix #9`: `live_game_listener.R` now reads `ODDS_API_KEY` first, falling back to `THE_ODDS_API_KEY`.
 15. `490afec` — `Fix #10`: Renamed `bet_tracker.r` → `bet_tracker.R` (100% rename, history preserved via `git log --follow`).
 16. `ab92d09` — `docs`: Update `HANDOFF.md` with resolution of issues 9 and 10 and clean stale worktree.
-17. Pending commit — `Fix #11`: Deduplicate `schedule_daily.bat` by delegating directly to `run_full_pipeline.R` DAG.
+17. `5e793c2` — `Fix #11`: Deduplicate `schedule_daily.bat` by delegating directly to `run_full_pipeline.R` DAG.
 
 ### 2.2 `INCONSISTENCY_REMEDIATION_PLAN.md` → GitHub issues #1–#12
 
@@ -68,7 +68,7 @@ Verified status as of 2026-10-18, after #9/#10/#11 landed (`gh issue list --repo
 | [#8](https://github.com/kailot-harris/NBA_analytics/issues/8) | Risk engine's Kelly multiplier not fed back into bet sizing | P2 | CLOSED | `391e47f` | Integrated `CACHE_RISK_STATE` into `market_odds_engine.R` so `calculate_kelly()` scales by `active_kelly_multiplier` (and flags `🛑 TRADING HALTED (Drawdown Stop-Loss)` when 0.0); updated `notify_bets.R` to respect circuit breaker and dynamic Kelly tier; reordered `run_full_pipeline.R` DAG so `risk_management_engine.R` executes before `market_odds_engine.R`. |
 | [#9](https://github.com/kailot-harris/NBA_analytics/issues/9) | `live_game_listener.R` env-var naming inconsistency | P3 | CLOSED | `869c3ad` | `live_game_listener.R:17` now reads `Sys.getenv("ODDS_API_KEY", Sys.getenv("THE_ODDS_API_KEY", ""))` — matches `market_odds_engine.R`'s naming, with backward-compatible fallback. `REPO_MAP.md`'s `THE_ODDS_API_KEY` row updated to describe it as a legacy fallback, not an inconsistency. |
 | [#10](https://github.com/kailot-harris/NBA_analytics/issues/10) | `bet_tracker.r` lowercase extension | P3 | CLOSED | `490afec` | File renamed `bet_tracker.r` → `bet_tracker.R` (git-verified 100% rename, history intact). `run_full_pipeline.R:108`'s `run_stage("bet_tracker.R", ...)` call site and `REPO_MAP.md`'s six documentation references updated. `app.R` had no reference to update; `schedule_daily.bat` already used the uppercase name. |
-| [#11](https://github.com/kailot-harris/NBA_analytics/issues/11) | `schedule_daily.bat`/`run_full_pipeline.R` overlap | P3 | CLOSED | Pending | Simplified `schedule_daily.bat` to delegate directly to `run_full_pipeline.R` as the single orchestrator; eliminated redundant secondary runs of `bet_tracker.R` and `market_odds_engine.R`; added exit code validation. |
+| [#11](https://github.com/kailot-harris/NBA_analytics/issues/11) | `schedule_daily.bat`/`run_full_pipeline.R` overlap | P3 | CLOSED | `5e793c2` | Simplified `schedule_daily.bat` to delegate directly to `run_full_pipeline.R` as the single orchestrator; eliminated redundant secondary runs of `bet_tracker.R` and `market_odds_engine.R`; added exit code validation. |
 | [#12](https://github.com/kailot-harris/NBA_analytics/issues/12) | `WNBA_REPLICATION_PLAN.md` is stale | P3 | OPEN | — | Document describes a Phase-0 proposal that was superseded by independent development of the actual `WNBA Analytics` repo. Needs archival banner or update. **Next up.** |
 
 Full criteria/evidence for #9 and #10 live in `.subagent-runs/<run-id>/` (run ids
