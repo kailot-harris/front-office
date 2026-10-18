@@ -55,7 +55,8 @@ MLB_CACHE_STAGES <- list(
   injury        = "injury",        # mlb_injury_scraper.R  (ESPN injuries feed)
   id_crosswalk  = "id_crosswalk",  # mlb_id_crosswalk.R    (cross-vendor ID join table)
   pythag        = "pythag",        # mlb_pythag_baseline.R (Pythagorean win expectation)
-  ratings       = "ratings"        # mlb_elo_engine.R      (Elo ratings w/ pitcher adjustment)
+  ratings       = "ratings",       # mlb_elo_engine.R      (Elo ratings w/ pitcher adjustment)
+  specialty     = "specialty"      # mlb_marcel_baseline.R, mlb_bullpen_fatigue.R
 )
 
 #' Build (and create, if needed) a cache path for one pipeline stage.
@@ -219,18 +220,16 @@ MLB_ELO_GAME_SCORE_WEIGHTS <- list(
 # Sourced for all 30 active MLB ballparks, providing 1-year and 3-year venue adjustments.
 MLB_PARK_FACTORS <- "FanGraphs"
 
-# Marcel projection weighting constants (Tom Tango's original values — 5/4/3
-# batter recency weights, 3/2/1 pitcher recency weights, 1200 PA regression
-# blend, .003/.006 age-adjustment slopes — are starting points to faithfully
-# reproduce as a *baseline*, per MLB_REPLICATION_PLAN.md §5, not final
-# tunable values for this repo without their own empirical check).
-# Derived by: Phase 3's mlb_marcel_baseline.R
+# Marcel projection weighting constants (Tom Tango's original values).
+# Configured by: Phase 3's mlb_marcel_baseline.R (reproduced faithfully as a benchmark baseline)
+# 5/4/3 batter recency weights, 3/2/1 pitcher recency weights, 1200 PA regression blend,
+# piecewise age adjustments: .003 slope above 29, .006 slope under 29 (Tango corrected sign).
 MLB_MARCEL_WEIGHTS <- list(
-  batter_recency_weights  = NA,  # cf. Tango's 5/4/3
-  pitcher_recency_weights = NA,  # cf. Tango's 3/2/1
-  regression_pa           = NA,  # cf. Tango's 1200 PA
-  age_adjustment_over_29   = NA, # cf. Tango's (age-29)*.003
-  age_adjustment_under_29  = NA  # cf. Tango's (age-29)*.006 (Tango later flagged a sign error in his own original)
+  batter_recency_weights  = c(5, 4, 3), # Most recent -> oldest
+  pitcher_recency_weights = c(3, 2, 1), # Most recent -> oldest
+  regression_pa           = 1200,       # PA of league average performance blended in
+  age_adjustment_over_29   = 0.003,     # (age - 29) * 0.003 decline per year
+  age_adjustment_under_29  = 0.006      # (29 - age) * 0.006 growth per year (Tango correction)
 )
 
 # Run-environment sigma (used in simulation / win-probability spread).
