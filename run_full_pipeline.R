@@ -104,6 +104,8 @@ run_stage("risk_management_engine.R", "Audit Drawdown State & Set Dynamic Kelly 
 # 8. Notification & Settlement
 run_stage("notify_bets.R", "Dispatch Filtered Discord Webhooks (EV >= 5.0%, CLV > 0)")
 run_stage("bet_tracker.r", "Grade Previous Completed Events & Update Rolling CLV%")
+run_stage("prediction_accuracy_logger.R", "Reconcile Outcomes & Log Pre-Game Win Probabilities",
+          output = file.path(CACHE_DIR, "prediction_accuracy_log.rds"))
 
 pipeline_total_time <- as.numeric(difftime(Sys.time(), pipeline_start_time, units = "secs"))
 message("\n==================================================================")

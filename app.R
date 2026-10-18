@@ -20,6 +20,8 @@ suppressPackageStartupMessages({
 })
 
 if (file.exists("config.R")) source("config.R")
+if (file.exists("live_calibration.R")) source("live_calibration.R")
+if (file.exists("prediction_accuracy_logger.R")) source("prediction_accuracy_logger.R")
 
 `%||%` <- function(a, b) if (!is.null(a) && length(a) > 0 && !is.na(a)) a else b
 
@@ -163,9 +165,15 @@ ui <- dashboardPage(
       tabItem(
         tabName = "tab_calibration",
         fluidRow(
+          valueBoxOutput("box_cal_brier", width = 3),
+          valueBoxOutput("box_cal_bss", width = 3),
+          valueBoxOutput("box_cal_logloss", width = 3),
+          valueBoxOutput("box_cal_samples", width = 3)
+        ),
+        fluidRow(
           box(
             title = "Model Probability Calibration & Brier Reliability Diagnostics", width = 12, status = "primary",
-            plotOutput("plot_calibration_curve", height = 450)
+            plotOutput("plot_calibration_curve", height = 480)
           )
         )
       ),
@@ -245,6 +253,16 @@ server <- function(input, output, session) {
     } else {
       source("market_odds_engine.R")
       evaluate_betting_slate()
+    }
+  })
+  
+  r_prediction_log <- reactive({
+    pred_path <- if (exists("CACHE_PREDICTION_LOG")) CACHE_PREDICTION_LOG else "cache/prediction_accuracy_log.rds"
+    if (file.exists(pred_path)) {
+      readRDS(pred_path)
+    } else {
+      source("prediction_accuracy_logger.R")
+      get_prediction_log()
     }
   })
   
@@ -742,32 +760,60 @@ server <- function(input, output, session) {
   })
   
   # ----------------------------------------------------------------------------
-  # Tab 6: Calibration Curve
+  # Tab 6: Model Calibration & Reliability Diagnostics
   # ----------------------------------------------------------------------------
+  r_calibration_results <- reactive({
+    log_data <- r_prediction_log()
+    req(log_data)
+    resolved <- log_data |> filter(status == "RESOLVED")
+    if (nrow(resolved) < 5) return(NULL)
+    calibration_analysis(resolved)
+  })
+
+  output$box_cal_brier <- renderValueBox({
+    cal <- r_calibration_results()
+    val <- if (!is.null(cal)) sprintf("%.4f", cal$brier) else "N/A"
+    valueBox(val, "Brier Score (Mean Squared Error)", icon = icon("bullseye"), color = "blue")
+  })
+
+  output$box_cal_bss <- renderValueBox({
+    cal <- r_calibration_results()
+    val <- if (!is.null(cal)) sprintf("%+.2f%%", cal$bss * 100) else "N/A"
+    valueBox(val, "Brier Skill Score vs 50/50", icon = icon("award"), color = "green")
+  })
+
+  output$box_cal_logloss <- renderValueBox({
+    cal <- r_calibration_results()
+    val <- if (!is.null(cal)) sprintf("%.4f", cal$log_loss) else "N/A"
+    valueBox(val, "Log-Loss (Cross-Entropy)", icon = icon("chart-bar"), color = "purple")
+  })
+
+  output$box_cal_samples <- renderValueBox({
+    log_data <- r_prediction_log()
+    n_res <- if (!is.null(log_data)) sum(log_data$status == "RESOLVED", na.rm = TRUE) else 0
+    valueBox(format(n_res, big.mark = ","), "Resolved Game Outcomes", icon = icon("database"), color = "teal")
+  })
+
   output$plot_calibration_curve <- renderPlot({
-    probs <- seq(0.35, 0.75, by = 0.08)
-    actual <- probs + rnorm(length(probs), 0, 0.015)
-    df <- tibble(pred = probs, actual = actual)
+    cal <- r_calibration_results()
+    req(cal)
     
-    ggplot(df, aes(x = pred, y = actual)) +
-      geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "#e74c3c", linewidth = 1) +
-      geom_line(color = "#3498db", linewidth = 1.3) +
-      geom_point(color = "#2ecc71", size = 4.5) +
-      scale_x_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0.25, 0.85)) +
-      scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0.25, 0.85)) +
-      labs(
-        title = "Model Probability Calibration & Brier Diagnostics (Brier Score: 0.1982)",
-        subtitle = "Ideal Calibration follows 45-degree dashed reference line (Expected Prob == Observed Win Rate)",
-        x = "Model Predicted Win Probability",
-        y = "Empirical Realized Win Rate"
-      ) +
-      theme_minimal() +
+    p <- cal$plot +
+      scale_x_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, 1)) +
+      scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, 1)) +
       theme(
-        plot.background = element_rect(fill = "#1a222d", color = NA),
+        plot.background  = element_rect(fill = "#1a222d", color = NA),
         panel.background = element_rect(fill = "#1a222d", color = NA),
-        text = element_text(color = "#ecf0f1"),
-        axis.text = element_text(color = "#bdc3c7")
+        text             = element_text(color = "#ecf0f1"),
+        axis.text        = element_text(color = "#bdc3c7"),
+        axis.title       = element_text(color = "#ecf0f1"),
+        panel.grid.major = element_line(color = "#2c3e50"),
+        panel.grid.minor = element_line(color = "#243040"),
+        legend.background= element_rect(fill = "#1a222d", color = NA),
+        legend.text      = element_text(color = "#ecf0f1"),
+        legend.title     = element_text(color = "#ecf0f1")
       )
+    p
   })
   
   # ----------------------------------------------------------------------------
