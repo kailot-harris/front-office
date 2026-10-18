@@ -60,7 +60,8 @@ MLB_CACHE_STAGES <- list(
   postseason    = "postseason",    # mlb_postseason_simulator.R (Phase 4 bracket simulator)
   risk          = "risk",          # mlb_risk_management_engine.R (Phase 5 bankroll & Kelly monitor)
   market        = "market",        # mlb_market_odds_engine.R (Phase 6 market odds & value bets)
-  notify        = "notify"         # mlb_notify_bets.R (Phase 7 Discord alert dispatcher)
+  notify        = "notify",        # mlb_notify_bets.R (Phase 7 Discord alert dispatcher)
+  viz           = "viz"            # tools/viz_*.R (Phase 9 quantitative visualization suite)
 )
 
 #' Build (and create, if needed) a cache path for one pipeline stage.
