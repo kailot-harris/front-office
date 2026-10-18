@@ -10,11 +10,11 @@ phase table instead) or once they're explicitly rejected (see §3 below).
 
 Roughly ordered by value-to-effort, not a strict priority queue.
 
-- **Recurring/automated calibration re-check.** Phase 8 (issue #23) was a
-  one-time backtest audit. Turn it into a repeatable check that reuses the
-  `tools/evaluate_bayes_shrinkage.R` monotonicity-check pattern so
-  calibration drift gets caught each season rather than audited once.
-  Effort: Small-medium.
+- **[SHIPPED 2026-10-18] Recurring/automated calibration re-check.** Implemented
+  `tools/evaluate_season_calibration.R` and `tests/testthat/test-calibration.R`.
+  Evaluates walk-forward Brier scores (0.2447 vs 0.2500 coin-flip), log loss (0.6824),
+  7 probability bin reliability checks (weighted calib error = 1.82%), chronological
+  progression (Early/Mid/Late), and automated flags for extreme outliers or drift.
 - **Bankroll P&L dashboard over time.** `mlb_risk_management_engine.R`
   already tracks a bankroll ledger; there's no visualization of drawdown/
   growth history yet. Would reuse `tools/viz_theme.R` for styling.
@@ -32,13 +32,14 @@ Roughly ordered by value-to-effort, not a strict priority queue.
   (`MLB_Analytics_Scheduled_Pipeline`) on a twice-daily cadence (11:00 AM morning
   slate, 5:00 PM pre-game lineups) logging to `logs/scheduled_runs.log`.
 - **[SHIPPED 2026-10-18] Automated `testthat` suite & GitHub Actions CI.**
-  Implemented formal unit test suite under `tests/testthat/` (44 assertions covering
+  Implemented formal unit test suite under `tests/testthat/` (54 assertions covering
   Pythagorean win expectation, Elo updates, Tangotiger game score math, market odds
-  devigging & Kelly staking, 5-way player crosswalk, and empirical Bayes shrinkage
-  monotonicity). Integrated with GitHub Actions CI workflow (`.github/workflows/ci.yml`).
-- **Add a root `README.md`.** Currently `docs/HANDOFF.md` is the only
-  orientation document for a newcomer; a short README pointing at it
-  would lower the barrier for anyone browsing the repo on GitHub.
+  devigging & Kelly staking, 5-way player crosswalk, empirical Bayes shrinkage
+  monotonicity, and season calibration). Integrated with GitHub Actions CI workflow
+  (`.github/workflows/ci.yml`).
+- **[SHIPPED 2026-10-18] Add a root `README.md`.** Complete orientation guide with
+  badges, architecture table, quickstart setup, testing commands, and documentation links.
+
 
 
 ## 3. Explicitly out of scope
