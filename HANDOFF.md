@@ -1,6 +1,9 @@
 # HANDOFF — NBA Analytics
 
-Updated 2026-10-18, following resolution of GitHub Issues #1–#8 on `main`. Originally written 2026-10-17.
+Updated 2026-10-18 (second pass same day, after commit `051dc76`), following a session that
+discovered issues #1–#8 had *already* been resolved by a separate parallel session before it could
+land its own (redundant) fix for #1 — see §2.3 below, read it before starting #9. Originally
+written 2026-10-17.
 For whoever picks this up next — human or agent, zero assumed context.
 
 ---
@@ -63,6 +66,33 @@ Verified status as of 2026-10-18 (`gh issue list --repo kailot-harris/NBA_analyt
 | [#11](https://github.com/kailot-harris/NBA_analytics/issues/11) | `schedule_daily.bat`/`run_full_pipeline.R` overlap | P3 | OPEN | — | `schedule_daily.bat` runs Python embeddings and R pipeline, while `run_full_pipeline.R` also orchestrates stages. Needs deduplication/clear boundaries. |
 | [#12](https://github.com/kailot-harris/NBA_analytics/issues/12) | `WNBA_REPLICATION_PLAN.md` is stale | P3 | OPEN | — | Document describes a Phase-0 proposal that was superseded by independent development of the actual `WNBA Analytics` repo. Needs archival banner or update. |
 
+### 2.3 Gotcha: parallel-session collision on issue #1 (2026-10-18)
+
+**Re-verify `git log`/`gh issue list` against live state before starting *any* issue — don't trust
+this doc's own tables past the moment they were written.** This repo had two independent sessions
+working on it around the same time on 2026-10-18:
+
+- Session A (whichever one produced commits `b7b4c77` through `391e47f` and the first revision of
+  this doc) worked through #1–#8 directly, committing and pushing each fix to `main` as it went.
+- Session B (using the `subagent-brief` skill — see §5.1 below) read an **earlier** snapshot of
+  this doc that still showed #1 as the sole open P0 issue, built a full brief for it, and dispatched
+  a subagent into its own git worktree (`subagent/issue-1-sync-rosters`, commit `b36aecd`,
+  "Fix dead auto-run guard... (Closes #1)") to fix it. The subagent's fix was functionally
+  equivalent to `b7b4c77` (same guard-removal + staleness-check approach) but entirely independent
+  work, produced without knowledge that `main` had already moved.
+- When Session B's orchestrator tried `git merge subagent/issue-1-sync-rosters` into `main`, it hit
+  a real conflict in `run_full_pipeline.R` (both branches had independently added a
+  `.check_stage_output()`-style helper at the same location). The orchestrator correctly
+  `git merge --abort`'d rather than force a resolution, re-checked `gh issue list --state all`,
+  found #1 already `CLOSED` on the real `main`, and discarded the redundant branch/worktree instead
+  of merging (`git worktree remove --force` + `git branch -D subagent/issue-1-sync-rosters`, after
+  user confirmation). **No code was lost** — `b7b4c77` on `main` is the fix that actually shipped;
+  `b36aecd` never merged and no longer exists as a ref.
+- Lesson for next time, independent of which session you are: before dispatching any subagent brief
+  for an issue, run `gh issue list --repo kailot-harris/NBA_analytics --state all` and `git log
+  --oneline -10 main` yourself, live, even if a HANDOFF.md in front of you says the issue is open —
+  it may have been closed minutes ago by a session you can't see.
+
 ---
 
 ## 3. Automation and Pipeline Status (Verified Live)
@@ -106,9 +136,69 @@ When cache files are missing or external APIs are unavailable, engines emit loud
 
 ---
 
-## 5. Concrete Next Steps
+## 5. Environment and tooling notes
 
-With all high-priority architectural issues (#1–#8) resolved, remaining work focuses on the four P3 housekeeping and documentation issues:
+### 5.1 The `subagent-brief` skill is the process being used for issue work
+
+Issue work in this repo (at least by Session B above, and recommended for whoever picks up #9–#12)
+goes through the user's `subagent-brief` skill
+(`C:\Users\kailo\.claude\skills\subagent-brief\`), not ad hoc delegation. Concretely, per issue:
+
+1. Read the issue itself (`gh issue view <N> --repo kailot-harris/NBA_analytics`) — don't work from
+   a table summary.
+2. **Re-verify it's still actually open live** (§2.3's lesson) before writing a brief.
+3. Write a `full` template brief (one task that edits files) under `.subagent-runs/` describing
+   Goal/Context/Scope/Out-of-scope/Allowed actions (Tier 0–1 is enough for these; none of #9–#12
+   need Tier 2/3)/Success criteria/Stop conditions. Validate it with
+   `Rscript scripts/validate_brief.R <path>` until `errors` is empty — in particular, each numbered
+   success criterion must be a **single line** (the validator splits criteria text on `\n`, so a
+   criterion that wraps onto a second line loses its own `Verify:` clause silently, logged only as
+   a non-blocking warning) and each `Tier N` grant line must use the `- Tier N: detail` colon form,
+   not free text after the number.
+4. Create an actual git worktree yourself first (`git worktree add -b subagent/issue-N-<slug>
+   ../<repo>-wt-issue<N> main`), **then** register the run with
+   `runlog.R new-run --brief <path> --worktree <that path>`. Do not pass `isolation: "worktree"` to
+   the `Agent` tool on top of this — it tries to create its *own* nested worktree inside the
+   current one and fails with a `core.worktree redirect` error (confirmed this session). Dispatch a
+   plain (non-isolated) `general-purpose` agent and tell it explicitly, in the prompt, which
+   pre-made worktree directory to `cd` into and do all its work in.
+5. On **PowerShell** (not the Bash tool) to invoke any of the skill's R scripts on this Windows
+   machine — `Rscript <script>.R` through the Bash tool's git-bash `sh` segfaults immediately
+   (exit 139) on this setup; the identical command through the `PowerShell` tool works fine.
+6. After the subagent reports (or, as happened this session, gets cut off by a session rate limit
+   mid-report after it had already committed), **independently re-verify every success criterion
+   yourself** from git history and on-disk state before calling `runlog.R record-result` — don't
+   trust an agent's self-report, and don't assume a cut-off agent failed to do the work; check
+   first (this session's `active_rosters_cache.rds` mtime evidence showed the cut-off subagent had
+   in fact already run and validated its fix live, it just didn't get to say so).
+7. Only after your own verification, `record-result`, then `git merge` the worktree branch into
+   `main` locally (no `--no-verify`, no force) and `set-status`. If the merge conflicts, `git merge
+   --abort`, don't resolve blindly — re-check whether the issue was independently closed elsewhere
+   first (§2.3).
+
+### 5.2 Known clutter in the working tree (not yet cleaned up, needs an explicit decision)
+
+- `.claude/worktrees/agent-acb649a8f99d2e851/` — a locked, unused worktree left over from a failed
+  `Agent(isolation: "worktree")` call this session (see §5.1 point 4 for why it failed). It is
+  untracked by git (shows up under `git status`) and currently still on disk. Nobody has decided
+  whether to `git worktree remove --force` it yet — do that only with explicit user confirmation,
+  same as any worktree/branch deletion.
+- `.subagent-runs/brief-issue1.md` and `.subagent-runs/result-issue1.json` — the brief and recorded
+  result for the superseded issue-#1 run (run id `20261018-010631-9ea09d`, status `rejected`, see
+  §2.3). Left in place as the audit trail the skill is designed to produce; not an error, just note
+  it's for a fix that never actually merged.
+- `.subagent-runs/20261018-010612-01cf47/` — an orphaned run directory from a `new-run` call made
+  *before* its worktree existed (registered without `--worktree`, then immediately superseded by a
+  second `new-run` call with `--worktree` set, run id `20261018-010631-9ea09d`). Harmless, never
+  dispatched to any agent.
+
+---
+
+## 6. Concrete Next Steps
+
+With all high-priority architectural issues (#1–#8) resolved, remaining work focuses on the four P3
+housekeeping and documentation issues. **Re-verify all four are still open** (`gh issue list
+--repo kailot-harris/NBA_analytics --state all`) before starting — see §2.3.
 
 1. **Issue [#9](https://github.com/kailot-harris/NBA_analytics/issues/9)**: Standardize environment variable naming.
    - Update `live_game_listener.R` to check `ODDS_API_KEY` (with backward-compatible fallback to `THE_ODDS_API_KEY`).
@@ -118,3 +208,9 @@ With all high-priority architectural issues (#1–#8) resolved, remaining work f
    - Ensure clean boundary where `schedule_daily.bat` triggers `run_full_pipeline.R` rather than executing redundant individual scripts.
 4. **Issue [#12](https://github.com/kailot-harris/NBA_analytics/issues/12)**: Mark `WNBA_REPLICATION_PLAN.md` as archived / superseded.
    - Add clear historical disclaimer banner pointing readers to the actual standalone `WNBA Analytics` repository.
+
+All four are independent (no `Depends on` relationships between them per the original remediation
+plan), so they can be worked in any order, including in parallel across separate worktrees/sessions
+— just apply §2.3's lesson and re-check live issue state immediately before each one, since this
+same repo has now demonstrated that parallel sessions on this machine are a real, not theoretical,
+possibility.
