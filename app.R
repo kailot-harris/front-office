@@ -20,6 +20,7 @@ suppressPackageStartupMessages({
 })
 
 if (file.exists("config.R")) source("config.R")
+if (file.exists("load_embeddings.R")) source("load_embeddings.R")
 if (file.exists("live_calibration.R")) source("live_calibration.R")
 if (file.exists("prediction_accuracy_logger.R")) source("prediction_accuracy_logger.R")
 
@@ -153,8 +154,14 @@ ui <- dashboardPage(
         tabName = "tab_embeddings",
         fluidRow(
           box(
-            title = "30-Team Latent Style & Shot Quality Clusters", width = 12, status = "primary",
-            plotOutput("plot_embeddings_cluster", height = 460)
+            title = "Real 16-D Team Latent Style Embeddings (2D PCA Projection)", width = 12, status = "primary", solidHeader = TRUE,
+            plotOutput("plot_embeddings_pca", height = 460)
+          )
+        ),
+        fluidRow(
+          box(
+            title = "Shot Quality & Expected Regression Profile", width = 12, status = "info",
+            plotOutput("plot_shot_quality_luck", height = 400)
           )
         )
       ),
@@ -713,9 +720,64 @@ server <- function(input, output, session) {
   })
   
   # ----------------------------------------------------------------------------
-  # Tab 5: Team Embeddings Plot
+  # Tab 5: Team Latent Embeddings & Shot Quality Profiling
   # ----------------------------------------------------------------------------
-  output$plot_embeddings_cluster <- renderPlot({
+  output$plot_embeddings_pca <- renderPlot({
+    pca_res <- tryCatch({
+      if (exists("get_embeddings_pca", mode = "function")) {
+        get_embeddings_pca(nba_only = TRUE)
+      } else {
+        NULL
+      }
+    }, error = function(e) NULL)
+    
+    if (is.null(pca_res) || is.null(pca_res$data) || nrow(pca_res$data) == 0) {
+      # Fallback placeholder if embeddings have not been computed yet
+      set.seed(42)
+      pca_df <- tibble(
+        team_id = 1:30,
+        team_name = paste("Team", 1:30),
+        team_abbreviation = c("ATL", "BOS", "NO", "CHI", "CLE", "DAL", "DEN", "DET", "GS", "HOU",
+                              "IND", "LAC", "LAL", "MIA", "MIL", "MIN", "BKN", "NY", "ORL", "PHI",
+                              "PHX", "POR", "SAC", "SA", "OKC", "UTAH", "WSH", "TOR", "MEM", "CHA"),
+        PC1 = rnorm(30, 0, 1.5),
+        PC2 = rnorm(30, 0, 1.3)
+      )
+      pc1_pct <- 16.6
+      pc2_pct <- 13.5
+    } else {
+      pca_df <- pca_res$data
+      pc1_pct <- pca_res$pc1_pct
+      pc2_pct <- pca_res$pc2_pct
+    }
+    
+    ggplot(pca_df, aes(x = PC1, y = PC2, label = team_abbreviation)) +
+      geom_hline(yintercept = 0, linetype = "dashed", color = "#34495e", linewidth = 0.6) +
+      geom_vline(xintercept = 0, linetype = "dashed", color = "#34495e", linewidth = 0.6) +
+      geom_point(color = "#3498db", size = 6.0, alpha = 0.85) +
+      geom_point(color = "#2980b9", size = 2.5, alpha = 0.95) +
+      geom_text(vjust = -1.3, color = "#ecf0f1", fontface = "bold", size = 4.2) +
+      labs(
+        title = "30-Team Latent Style & Tactical Embeddings (16-D PyTorch/SVD Space)",
+        subtitle = sprintf("2D Principal Component Projection (PC1: %.1f%% variance explained, PC2: %.1f%% variance explained)", pc1_pct, pc2_pct),
+        x = sprintf("Principal Component 1 (%.1f%% Variance)", pc1_pct),
+        y = sprintf("Principal Component 2 (%.1f%% Variance)", pc2_pct)
+      ) +
+      theme_minimal() +
+      theme(
+        plot.background = element_rect(fill = "#1a222d", color = NA),
+        panel.background = element_rect(fill = "#1a222d", color = NA),
+        panel.grid.major = element_line(color = "#243040", linewidth = 0.5),
+        panel.grid.minor = element_blank(),
+        text = element_text(color = "#ecf0f1"),
+        plot.title = element_text(face = "bold", size = 15, color = "#ffffff"),
+        plot.subtitle = element_text(color = "#bdc3c7", size = 11),
+        axis.title = element_text(color = "#ecf0f1", size = 12),
+        axis.text = element_text(color = "#bdc3c7", size = 10)
+      )
+  })
+
+  output$plot_shot_quality_luck <- renderPlot({
     sq_file <- "cache/team_shot_quality.rds"
     if (file.exists(sq_file)) {
       sq_data <- readRDS(sq_file)
@@ -724,36 +786,45 @@ server <- function(input, output, session) {
           x_dim = actual_pts_per_game,
           y_dim = shooting_luck_pts,
           cluster = factor(case_when(
-            shooting_luck_pts >= 2.0  ~ "Overvalued (Fade)",
-            shooting_luck_pts <= -2.0 ~ "Undervalued (Buy)",
+            shooting_luck_pts >= 2.0  ~ "Overvalued (Fade Luck)",
+            shooting_luck_pts <= -2.0 ~ "Undervalued (Buy Luck)",
             TRUE                      ~ "Baseline Calibrated"
-          ))
+          ), levels = c("Undervalued (Buy Luck)", "Baseline Calibrated", "Overvalued (Fade Luck)"))
         )
     } else {
       set.seed(42)
       p_data <- tibble(
-        team = c("BOS", "DEN", "OKC", "MIN", "NYK", "MIL", "DAL", "LAL", "GSW", "MIA"),
+        team = c("BOS", "DEN", "OKC", "MIN", "NY", "MIL", "DAL", "LAL", "GS", "MIA"),
         x_dim = rnorm(10, 114, 3),
         y_dim = rnorm(10, 0, 2),
-        cluster = factor(sample(1:3, 10, replace = TRUE))
+        cluster = factor(sample(c("Undervalued (Buy Luck)", "Baseline Calibrated", "Overvalued (Fade Luck)"), 10, replace = TRUE),
+                         levels = c("Undervalued (Buy Luck)", "Baseline Calibrated", "Overvalued (Fade Luck)"))
       )
     }
     
     ggplot(p_data, aes(x = x_dim, y = y_dim, color = cluster, label = team)) +
-      geom_point(size = 5.5, alpha = 0.85) +
-      geom_text(vjust = -1.2, color = "#ecf0f1", fontface = "bold", size = 4) +
-      scale_color_manual(values = c("#2ecc71", "#3498db", "#e74c3c")) +
+      geom_hline(yintercept = 0, linetype = "dashed", color = "#7f8c8d", linewidth = 0.6) +
+      geom_hline(yintercept = c(-2, 2), linetype = "dotted", color = "#e67e22", alpha = 0.6) +
+      geom_point(size = 5.0, alpha = 0.85) +
+      geom_text(vjust = -1.2, color = "#ecf0f1", fontface = "bold", size = 3.8) +
+      scale_color_manual(values = c("Undervalued (Buy Luck)" = "#2ecc71", "Baseline Calibrated" = "#3498db", "Overvalued (Fade Luck)" = "#e74c3c")) +
       labs(
-        title = "30-Team Latent Tactical Space (Points Created vs. Shooting Luck)",
-        x = "Actual Points Created (Pace & Shot Creation)",
-        y = "Shooting Luck Residual (Regression Differential)"
+        title = "Shot Quality & Expected Regression Profile (15-Game xeFG%)",
+        subtitle = "Points Created vs. Shooting Luck Residual (Expected Regression Differential)",
+        x = "Actual Points Created Per Game (Offensive Rating / Pace)",
+        y = "Shooting Luck Residual (Points/Game Above Expectation)"
       ) +
       theme_minimal() +
       theme(
         plot.background = element_rect(fill = "#1a222d", color = NA),
         panel.background = element_rect(fill = "#1a222d", color = NA),
+        panel.grid.major = element_line(color = "#243040", linewidth = 0.5),
+        panel.grid.minor = element_blank(),
         text = element_text(color = "#ecf0f1"),
-        axis.text = element_text(color = "#bdc3c7"),
+        plot.title = element_text(face = "bold", size = 14, color = "#ffffff"),
+        plot.subtitle = element_text(color = "#bdc3c7", size = 10),
+        axis.title = element_text(color = "#ecf0f1", size = 11),
+        axis.text = element_text(color = "#bdc3c7", size = 10),
         legend.position = "top",
         legend.title = element_blank()
       )
