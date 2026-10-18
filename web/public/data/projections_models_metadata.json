@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0",
+  "pipeline_stage": "season_long_projections",
+  "generated_at": "2026-10-18T04:31:03Z",
+  "season": 2026,
+  "n_simulations": 1000,
+  "margin_sigma": 11.8,
+  "home_court_advantage": 2.4,
+  "total_schedule_games": 1230,
+  "teams_count": 30,
+  "players_count": 330,
+  "models": {
+    "ensemble": {
+      "name": "Multi-Model Ensemble Blend",
+      "weights": {
+        "variant_bottom_up": 0.35,
+        "variant_rapm": 0.25,
+        "variant_shot_fatigue": 0.2,
+        "variant_embeddings": 0.2
+      },
+      "description": "Weighted blend of production bottom-up, bayesian rapm, shot quality fatigue, and style embeddings"
+    },
+    "variant_bottom_up": {
+      "name": "Production Bottom-Up Rotation BPM",
+      "weight": 0.35,
+      "description": "Minute-weighted player BPM ratings aggregated over 240-minute active roster rotations"
+    },
+    "variant_rapm": {
+      "name": "Bayesian Stint-Level RAPM",
+      "weight": 0.25,
+      "description": "Ridge-regularized adjusted plus-minus stint ratings centered across league"
+    },
+    "variant_shot_fatigue": {
+      "name": "Shot Quality & Circadian Travel Fatigue",
+      "weight": 0.2,
+      "description": "Bottom-up ratings adjusted for spatial shot-quality regression and travel/circadian rest fatigue"
+    },
+    "variant_embeddings": {
+      "name": "16-D Style Latent Embeddings",
+      "weight": 0.2,
+      "description": "Pythagorean expected win probability modulated by 16-D team stylistic similarity matrix"
+    }
+  }
+}
