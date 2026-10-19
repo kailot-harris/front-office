@@ -1,5 +1,7 @@
 # Front Office
 
+**Live:** https://kailot-harris.github.io/front-office/
+
 A single multi-page site combining four independent sport analytics projects,
 each served as a static Next.js export under its own path:
 
@@ -38,10 +40,23 @@ root `index.html` into one `site/` folder, and publishes it with
 `actions/deploy-pages`.
 
 Each app's `next.config.mjs` sets `basePath` from the `PAGES_BASE_PATH` env var
-plus its own slug (e.g. `/front-office/nba`). **Set
-`PAGES_BASE_PATH` in the workflow to `/<this-repo's-actual-name>`** once it's
-pushed to GitHub (project Pages are served at
-`https://<user>.github.io/<repo-name>/`).
+plus its own slug (e.g. `/front-office/nba`). `PAGES_BASE_PATH` is set to
+`/front-office` in `deploy.yml` — **if this repo is ever renamed, update that
+value to match**, since project Pages are served at
+`https://<user>.github.io/<repo-name>/`.
+
+The apps also set `trailingSlash: true`, so each route exports as
+`<route>/index.html` and both `/nba/teams` and `/nba/teams/` resolve.
+
+### Utility: regenerating a lockfile
+
+`.github/workflows/relock.yml` (manual dispatch, pick a sport) regenerates that
+app's `package-lock.json` on a Linux runner with npm 11 and verifies `npm ci`
+accepts it. This exists because **npm 10 crashes** with
+`Cannot read properties of null (reading 'edgesOut')` while resolving the
+`@vitest/coverage-v8` peer graph — on both Windows (10.9.8) and Linux runners
+(10.9.9). If a lockfile ever drifts out of sync with its `package.json`, run
+this workflow and commit the resulting artifact rather than fighting local npm.
 
 ## Data regeneration
 
