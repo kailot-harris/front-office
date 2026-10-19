@@ -490,22 +490,340 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
   }
 
   # ----------------------------------------------------------------------------
-  # 5. Write JSON Files
+  # 5. Playoff Series Matchups Catalog & Historical Brackets (playoff_series_matchups.json)
   # ----------------------------------------------------------------------------
-  out_teams_json   <- file.path(output_dir, "projections_season_teams.json")
-  out_players_json <- file.path(output_dir, "projections_season_players.json")
-  out_meta_json    <- file.path(output_dir, "projections_models_metadata.json")
-  out_diag_json    <- file.path(output_dir, "projections_diagnostics.json")
+  message(">>> [EXPORT_WEB_JSON] Building playoff series profiles and matchup catalog...")
+
+  team_name_to_abbr <- c(
+    "Atlanta Dream" = "ATL", "Chicago Sky" = "CHI", "Connecticut Sun" = "CON",
+    "Dallas Wings" = "DAL", "Golden State Valkyries" = "GS", "Indiana Fever" = "IND",
+    "Los Angeles Sparks" = "LA", "Las Vegas Aces" = "LV", "Minnesota Lynx" = "MIN",
+    "New York Liberty" = "NY", "Phoenix Mercury" = "PHX", "Portland Fire" = "POR",
+    "Seattle Storm" = "SEA", "Toronto Tempo" = "TOR", "Washington Mystics" = "WSH"
+  )
+
+  # Target 8-man playoff rotation minutes for WNBA 40-minute regulation game (200 total team minutes)
+  target_playoff_mins <- c(34.0, 32.5, 30.5, 28.5, 26.5, 20.0, 15.5, 12.5)
+
+  team_profiles <- list()
+  for (i in seq_len(nrow(teams_df))) {
+    tm_row <- teams_df[i, ]
+    tm_abbr <- tm_row$team
+    tm_full <- WNBA_TEAMS[[tm_abbr]] %||% tm_row$team_name %||% tm_abbr
+    conf    <- tm_row$conference
+
+    tm_players <- player_projections %>%
+      filter(team == tm_abbr) %>%
+      arrange(desc(proj_mpg))
+
+    n_avail <- nrow(tm_players)
+    top_n <- min(8, n_avail)
+
+    rotation_list <- list()
+    if (top_n > 0) {
+      for (p in seq_len(top_n)) {
+        p_row <- tm_players[p, ]
+        role_label <- if (p <= 5) "Starter" else if (p == 6) "Sixth Man" else "Rotation Bench"
+        rotation_list[[p]] <- list(
+          playerId    = as.character(p_row$player_id),
+          playerName  = as.character(p_row$player_name),
+          position    = as.character(p_row$position),
+          regularMpg  = round(as.numeric(p_row$proj_mpg), 1),
+          playoffMpg  = target_playoff_mins[p],
+          pts         = round(as.numeric(p_row$proj_pts), 1),
+          reb         = round(as.numeric(p_row$proj_reb), 1),
+          ast         = round(as.numeric(p_row$proj_ast), 1),
+          praZscore   = round(as.numeric(p_row$pra_zscore), 2),
+          role        = role_label
+        )
+      }
+    }
+
+    top3_pra_z <- if (top_n >= 3) mean(head(tm_players$pra_zscore, 3), na.rm = TRUE) else 0
+    top3_bump  <- round(max(0, top3_pra_z * 0.75), 2)
+    if (is.na(top3_bump) || length(top3_bump) == 0) top3_bump <- 0.0
+
+    reg_net_rtg     <- round((as.numeric(tm_row$ensemble_mean_wins) - (WNBA_SEASON_GAMES / 2)) * 0.75, 2)
+    playoff_net_rtg <- round(reg_net_rtg + top3_bump, 2)
+
+    perim_creation <- case_when(
+      tm_abbr %in% c("NY", "IND", "LV", "DAL", "SEA") ~ 92,
+      tm_abbr %in% c("MIN", "PHX", "CON", "ATL", "GS") ~ 82,
+      TRUE ~ 68
+    )
+
+    drop_vuln <- case_when(
+      tm_abbr %in% c("CHI", "DAL", "WSH", "POR", "LA", "TOR") ~ 72,
+      tm_abbr %in% c("MIN", "NY", "CON", "LV", "SEA") ~ 28,
+      TRUE ~ 50
+    )
+
+    interior_dom <- case_when(
+      tm_abbr %in% c("LV", "MIN", "NY", "IND", "PHX", "SEA") ~ 93,
+      tm_abbr %in% c("CHI", "DAL", "ATL", "CON", "GS") ~ 76,
+      TRUE ~ 60
+    )
+
+    switchability <- case_when(
+      tm_abbr %in% c("MIN", "NY", "CON", "LV", "SEA") ~ 94,
+      tm_abbr %in% c("IND", "ATL", "GS", "PHX") ~ 75,
+      TRUE ~ 58
+    )
+
+    clutch_exec <- case_when(
+      tm_abbr %in% c("NY", "MIN", "LV", "CON", "IND") ~ 90,
+      tm_abbr %in% c("SEA", "PHX", "ATL", "GS") ~ 78,
+      TRUE ~ 62
+    )
+
+    team_profiles[[tm_abbr]] <- list(
+      teamAbbr        = tm_abbr,
+      teamName        = tm_full,
+      conference      = conf,
+      regularWins     = round(as.numeric(tm_row$ensemble_mean_wins), 1),
+      regularNetRtg   = reg_net_rtg,
+      playoffNetRtg   = playoff_net_rtg,
+      top3TalentBump  = top3_bump,
+      tacticalRatings = list(
+        perimeterCreation = perim_creation,
+        dropVulnerability = drop_vuln,
+        interiorDominance = interior_dom,
+        switchability     = switchability,
+        clutchExecution   = clutch_exec
+      ),
+      rotation = rotation_list
+    )
+  }
+
+  simulate_web_matchup <- function(team_a_code, team_b_code, hca_team_code, profiles, n_sims = 10000) {
+    p_a <- profiles[[team_a_code]]
+    p_b <- profiles[[team_b_code]]
+    if (is.null(p_a) || is.null(p_b)) return(NULL)
+
+    raw_diff <- p_a$playoffNetRtg - p_b$playoffNetRtg
+    edges <- list()
+    mismatch_delta <- 0
+
+    if (p_a$tacticalRatings$perimeterCreation >= 85 && p_b$tacticalRatings$dropVulnerability >= 65) {
+      edge_pts <- round((p_b$tacticalRatings$dropVulnerability - 50) * 0.03, 1)
+      mismatch_delta <- mismatch_delta + edge_pts
+      edges[[length(edges) + 1]] <- list(
+        title = "Pull-Up 3PT vs Drop Coverage Exploitation",
+        advantageTeam = team_a_code,
+        description = sprintf("%s's perimeter creators punish %s's drop defense.", team_a_code, team_b_code),
+        deltaMargin = edge_pts
+      )
+    } else if (p_b$tacticalRatings$perimeterCreation >= 85 && p_a$tacticalRatings$dropVulnerability >= 65) {
+      edge_pts <- round((p_a$tacticalRatings$dropVulnerability - 50) * 0.03, 1)
+      mismatch_delta <- mismatch_delta - edge_pts
+      edges[[length(edges) + 1]] <- list(
+        title = "Pull-Up 3PT vs Drop Coverage Exploitation",
+        advantageTeam = team_b_code,
+        description = sprintf("%s's perimeter creators punish %s's drop defense.", team_b_code, team_a_code),
+        deltaMargin = edge_pts
+      )
+    }
+
+    glass_diff <- (p_a$tacticalRatings$interiorDominance - p_b$tacticalRatings$interiorDominance) * 0.025
+    if (abs(glass_diff) >= 0.4) {
+      adv_tm <- if (glass_diff > 0) team_a_code else team_b_code
+      mismatch_delta <- mismatch_delta + glass_diff
+      edges[[length(edges) + 1]] <- list(
+        title = "Interior Rim & Glass Control",
+        advantageTeam = adv_tm,
+        description = sprintf("%s commands interior rim pressure and second-chance glass control.", adv_tm),
+        deltaMargin = round(abs(glass_diff), 1)
+      )
+    }
+
+    switch_diff <- (p_a$tacticalRatings$switchability - p_b$tacticalRatings$switchability) * 0.02
+    if (abs(switch_diff) >= 0.3) {
+      adv_tm <- if (switch_diff > 0) team_a_code else team_b_code
+      mismatch_delta <- mismatch_delta + switch_diff
+      edges[[length(edges) + 1]] <- list(
+        title = "Defensive Switchability & Mismatch Neutralization",
+        advantageTeam = adv_tm,
+        description = sprintf("%s's switchability extinguishes primary screening actions.", adv_tm),
+        deltaMargin = round(abs(switch_diff), 1)
+      )
+    }
+
+    net_margin <- round(raw_diff + mismatch_delta, 2)
+    hca_pts <- WNBA_HCA
+    hca_is_a <- (hca_team_code == team_a_code)
+    home_hca_flags <- c(TRUE, TRUE, FALSE, FALSE, TRUE, FALSE, TRUE)
+    sigma <- WNBA_MARGIN_SIGMA
+
+    p_a_home <- pnorm((net_margin + hca_pts) / sigma)
+    p_a_away <- pnorm((net_margin - hca_pts) / sigma)
+
+    sim_a_wins <- 0
+    game_counts <- list(
+      "A_4" = 0, "A_5" = 0, "A_6" = 0, "A_7" = 0,
+      "B_4" = 0, "B_5" = 0, "B_6" = 0, "B_7" = 0
+    )
+    total_games <- 0
+    cover_minus_1_5 <- 0
+
+    set.seed(42 + which(names(profiles) == team_a_code) * 7 + which(names(profiles) == team_b_code))
+
+    for (s in seq_len(n_sims)) {
+      w_a <- 0
+      w_b <- 0
+      g <- 1
+      while (w_a < 4 && w_b < 4) {
+        is_hca_home <- home_hca_flags[g]
+        is_a_home <- if (hca_is_a) is_hca_home else !is_hca_home
+        prob_a <- if (is_a_home) p_a_home else p_a_away
+        if (runif(1) < prob_a) {
+          w_a <- w_a + 1
+        } else {
+          w_b <- w_b + 1
+        }
+        g <- g + 1
+      }
+      tot_g <- w_a + w_b
+      total_games <- total_games + tot_g
+      if (w_a == 4) {
+        sim_a_wins <- sim_a_wins + 1
+        k <- paste0("A_", tot_g)
+        game_counts[[k]] <- game_counts[[k]] + 1
+        if (tot_g <= 6) cover_minus_1_5 <- cover_minus_1_5 + 1
+      } else {
+        k <- paste0("B_", tot_g)
+        game_counts[[k]] <- game_counts[[k]] + 1
+      }
+    }
+
+    win_prob_a <- round(sim_a_wins / n_sims, 4)
+    win_prob_b <- round(1 - win_prob_a, 4)
+    fair_ml_a <- if (win_prob_a >= 0.5) round(-100 * win_prob_a / (1 - win_prob_a)) else round(100 * (1 - win_prob_a) / win_prob_a)
+    fair_ml_b <- if (win_prob_b >= 0.5) round(-100 * win_prob_b / (1 - win_prob_b)) else round(100 * (1 - win_prob_b) / win_prob_b)
+
+    dist_list <- list(
+      list(games = 4, winner = team_a_code, probPct = round(game_counts$A_4 / n_sims * 100, 1)),
+      list(games = 5, winner = team_a_code, probPct = round(game_counts$A_5 / n_sims * 100, 1)),
+      list(games = 6, winner = team_a_code, probPct = round(game_counts$A_6 / n_sims * 100, 1)),
+      list(games = 7, winner = team_a_code, probPct = round(game_counts$A_7 / n_sims * 100, 1)),
+      list(games = 4, winner = team_b_code, probPct = round(game_counts$B_4 / n_sims * 100, 1)),
+      list(games = 5, winner = team_b_code, probPct = round(game_counts$B_5 / n_sims * 100, 1)),
+      list(games = 6, winner = team_b_code, probPct = round(game_counts$B_6 / n_sims * 100, 1)),
+      list(games = 7, winner = team_b_code, probPct = round(game_counts$B_7 / n_sims * 100, 1))
+    )
+
+    list(
+      teamA                      = team_a_code,
+      teamB                      = team_b_code,
+      hcaTeam                    = hca_team_code,
+      ratingDiffRaw              = round(raw_diff, 2),
+      tacticalMismatchAdjustment = round(mismatch_delta, 2),
+      netRatingMargin            = net_margin,
+      winProbA                   = win_prob_a,
+      winProbB                   = win_prob_b,
+      fairMlA                    = fair_ml_a,
+      fairMlB                    = fair_ml_b,
+      avgGames                   = round(total_games / n_sims, 2),
+      spreadMinus1_5Prob         = round(cover_minus_1_5 / n_sims, 3),
+      sweepProb                  = round((game_counts$A_4 + game_counts$B_4) / n_sims * 100, 1),
+      gameDistributions          = dist_list,
+      tacticalEdges              = edges
+    )
+  }
+
+  marquee_pairs <- list(
+    list(a = "NY",  b = "MIN", hca = "NY"),
+    list(a = "LV",  b = "NY",  hca = "LV"),
+    list(a = "MIN", b = "LV",  hca = "MIN"),
+    list(a = "IND", b = "CHI", hca = "IND"),
+    list(a = "CON", b = "IND", hca = "CON"),
+    list(a = "SEA", b = "LV",  hca = "LV"),
+    list(a = "PHX", b = "MIN", hca = "MIN"),
+    list(a = "GS",  b = "LA",  hca = "GS"),
+    list(a = "POR", b = "TOR", hca = "POR"),
+    list(a = "NY",  b = "CON", hca = "NY")
+  )
+
+  sample_matchups <- list()
+  for (pair in marquee_pairs) {
+    res <- simulate_web_matchup(pair$a, pair$b, pair$hca, team_profiles)
+    if (!is.null(res)) {
+      sample_matchups[[length(sample_matchups) + 1]] <- res
+    }
+  }
+
+  historical_brackets <- list()
+  for (yr in 2022:2025) {
+    b_file <- file.path(CACHE_DIR, sprintf("playoff_bracket_results_%d.rds", yr))
+    if (file.exists(b_file)) {
+      b_df <- readRDS(b_file)
+      series_rows <- list()
+      for (r in seq_len(nrow(b_df))) {
+        row <- b_df[r, ]
+        t_a <- row$team_a
+        t_b <- row$team_b
+        abbr_a <- team_name_to_abbr[[t_a]] %||% t_a
+        abbr_b <- team_name_to_abbr[[t_b]] %||% t_b
+        w_team <- row$winner
+        abbr_w <- team_name_to_abbr[[w_team]] %||% w_team
+
+        games_raw <- row$games[[1]]
+        games_list <- list()
+        if (is.list(games_raw)) {
+          for (g in seq_along(games_raw)) {
+            gm <- games_raw[[g]]
+            games_list[[g]] <- list(
+              gameDate = as.character(gm$game_date %||% ""),
+              teamA    = team_name_to_abbr[[gm$team_a %||% ""]] %||% (gm$team_a %||% ""),
+              scoreA   = as.integer(gm$score_a %||% 0),
+              teamB    = team_name_to_abbr[[gm$team_b %||% ""]] %||% (gm$team_b %||% ""),
+              scoreB   = as.integer(gm$score_b %||% 0)
+            )
+          }
+        }
+
+        series_rows[[r]] <- list(
+          teamA        = abbr_a,
+          teamNameA    = t_a,
+          teamB        = abbr_b,
+          teamNameB    = t_b,
+          winner       = abbr_w,
+          winnerName   = w_team,
+          round        = as.character(row$round),
+          gamesPlayed  = as.integer(row$games_played),
+          seriesLength = as.integer(row$series_length),
+          games        = games_list
+        )
+      }
+      historical_brackets[[as.character(yr)]] <- series_rows
+    }
+  }
+
+  playoff_catalog <- list(
+    teams              = team_profiles,
+    sampleMatchups     = sample_matchups,
+    historicalBrackets = historical_brackets
+  )
+
+  # ----------------------------------------------------------------------------
+  # 6. Write JSON Files
+  # ----------------------------------------------------------------------------
+  out_teams_json    <- file.path(output_dir, "projections_season_teams.json")
+  out_players_json  <- file.path(output_dir, "projections_season_players.json")
+  out_meta_json     <- file.path(output_dir, "projections_models_metadata.json")
+  out_diag_json     <- file.path(output_dir, "projections_diagnostics.json")
+  out_playoffs_json <- file.path(output_dir, "playoff_series_matchups.json")
 
   write_json(teams_df, out_teams_json, pretty = TRUE, auto_unbox = TRUE)
   write_json(player_projections, out_players_json, pretty = TRUE, auto_unbox = TRUE)
   write_json(metadata_obj, out_meta_json, pretty = TRUE, auto_unbox = TRUE)
   write_json(diagnostics_obj, out_diag_json, pretty = TRUE, auto_unbox = TRUE)
+  write_json(playoff_catalog, out_playoffs_json, pretty = TRUE, auto_unbox = TRUE)
 
   message(sprintf(">>> [EXPORT_WEB_JSON] Saved %s (%d teams)", out_teams_json, nrow(teams_df)))
   message(sprintf(">>> [EXPORT_WEB_JSON] Saved %s (%d players)", out_players_json, nrow(player_projections)))
   message(sprintf(">>> [EXPORT_WEB_JSON] Saved %s", out_meta_json))
   message(sprintf(">>> [EXPORT_WEB_JSON] Saved %s", out_diag_json))
+  message(sprintf(">>> [EXPORT_WEB_JSON] Saved %s (%d sample matchups)", out_playoffs_json, length(sample_matchups)))
 
   # Sync to cache/ for local scripts
   if (sync_cache && dir.exists(CACHE_DIR)) {
@@ -513,6 +831,7 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
     write_json(player_projections, file.path(CACHE_DIR, "projections_season_players.json"), pretty = TRUE, auto_unbox = TRUE)
     write_json(metadata_obj, file.path(CACHE_DIR, "projections_models_metadata.json"), pretty = TRUE, auto_unbox = TRUE)
     write_json(diagnostics_obj, file.path(CACHE_DIR, "projections_diagnostics.json"), pretty = TRUE, auto_unbox = TRUE)
+    write_json(playoff_catalog, file.path(CACHE_DIR, "playoff_series_matchups.json"), pretty = TRUE, auto_unbox = TRUE)
     message(sprintf(">>> [EXPORT_WEB_JSON] Synced copies to %s/", CACHE_DIR))
   }
 

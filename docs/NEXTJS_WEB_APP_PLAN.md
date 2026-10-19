@@ -51,4 +51,5 @@ Suggested priority order:
 ## Status
 - **Phase 0:** Completed (Next.js scaffold, App Router, shell layout, WNBA 15-team theming, dark slate UI).
 - **Phase 1:** Completed (registered `export_web_json` pipeline stage in `pipeline_stages.R` and `run_full_pipeline.R`, generated static JSON data in `web/public/data/` and `cache/`, ported `/`, `/variants`, `/players`, `/diagnostics`, `/teams`, verified `npm run build` and full pipeline).
-- **Phase 2:** Up next (Playoff series page `/series`).
+- **Phase 2:** Completed (exported `playoff_series_matchups.json` with 15-team profiles, 8-man WNBA 200-minute rotation tightening, 10,000-sim Monte Carlo engine with Bo3/Bo5/Bo7 formats, `SeriesProbRing.tsx`, `TacticalMismatchRadar.tsx`, `PlayoffSeriesClient.tsx`, `/series` route, and 2022-2025 historical postseason brackets archive; verified with `npm run build` [10/10 pages] and `run_full_pipeline.R` [48.4s]).
+- **Phase 3:** Up next (Net-new R engines: Shots, Offseason moves, Coaching impact, Defense, Player DNA, CBA/cap sheet, Clutch leverage).

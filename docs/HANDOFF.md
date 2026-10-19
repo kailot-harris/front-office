@@ -1,4 +1,65 @@
-# Handoff — 2026-10-18 (Next.js web app, Phase 1: offline JSON export pipeline + core routes) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
+# Handoff — 2026-10-18 (Next.js web app, Phase 2: playoff series simulator & historical brackets) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
+
+## What this thread did
+
+Executed Phase 2 of `docs/NEXTJS_WEB_APP_PLAN.md`:
+1. **Playoff Series Matchup Catalog & JSON Export:**
+   - Extended `export_web_json.R` with Section 5 to generate `web/public/data/playoff_series_matchups.json` (and mirror to `cache/`).
+   - Built 15 WNBA team playoff profiles:
+     - 8-man postseason rotation contraction scaled specifically for WNBA 40-minute regulation games (200 total player-minutes: 34m, 32.5m, 30.5m, 28.5m, 26.5m, 20m, 15.5m, 12.5m).
+     - Calculated top-3 talent leverage bumps from PRA z-scores.
+     - Modeled 5 tactical archetype pillars (0-100 scale): Perimeter Creation, Drop Vulnerability, Interior Dominance, Switchability, Clutch Execution.
+   - Pre-simulated 10 marquee postseason pairings across 10,000 Monte Carlo iterations (e.g. NY vs MIN Finals rematch, LV vs NY heavyweight rivalry, MIN vs LV, IND vs CHI, CON vs IND, GS vs LA, etc.).
+   - Extracted and serialized complete historical postseason brackets from `cache/playoff_bracket_results_{2022..2025}.rds` (all 28 playoff series across 2022-2025 with game-by-game scores and series winners).
+2. **TypeScript Data Model:**
+   - Created `web/lib/playoffTypes.ts` with definitions for `PlayoffPlayer`, `TacticalRatings`, `TeamPlayoffProfile`, `GameOutcomeProb`, `TacticalEdge`, `PlayoffSeriesMatchupResult`, `HistoricalGame`, `HistoricalSeries`, and `PlayoffMatchupsCatalog`.
+3. **React Components & UI:**
+   - Created `web/components/SeriesProbRing.tsx`: SVG probability donut ring showing series win probabilities, fair moneyline pricing, expected series duration, and peak scorelines.
+   - Created `web/components/TacticalMismatchRadar.tsx`: Dual-bar comparative metric visualization for the 5 tactical dimensions and detected matchup edges (+PTS/100 margin adjustments).
+   - Created `web/components/PlayoffSeriesClient.tsx`: Full interactive client featuring:
+     - Marquee quick-select pills.
+     - Arbitrary Team A vs Team B selector with team logos and conference indicators.
+     - Round format selector supporting all 3 official WNBA playoff formats:
+       - Best-of-3 (First Round: 1-1-1 schedule, win threshold 2)
+       - Best-of-5 (Semifinals: 2-2-1 schedule, win threshold 3)
+       - Best-of-7 (WNBA Finals: 2-2-1-1-1 schedule, win threshold 4)
+     - Home Court Advantage toggle (+2.40 PTS HCA).
+     - Live client-side Monte Carlo simulator using normal CDF approximation calibrated with WNBA constants (`WNBA_MARGIN_SIGMA = 14.0`, `WNBA_HCA = 2.40`).
+     - Stat highlight badges (Fair ML, Expected Games, Sweep %, Net Playoff Margin).
+     - Exact scoreline distribution breakdown table.
+     - 8-Man playoff rotation contraction table comparing regular season MPG to playoff contracted MPG and role assignments.
+     - Historical Postseason Brackets Archive tab with year selection (2022–2025) and expandable game box scores.
+4. **App Route:**
+   - Created `web/app/series/page.tsx` server component reading static JSON catalog.
+5. **Verification:**
+   - Ran `npm run build` in `web/` - compiled cleanly with 0 warnings/errors (10/10 static pages generated).
+   - Ran `run_full_pipeline.R` end-to-end - verified all 9 stages passed in 48.41 seconds, with Stage 9 exporting all 5 JSON datasets in 3.09 seconds.
+   - Updated `docs/NEXTJS_WEB_APP_PLAN.md` status to mark Phase 2 complete.
+
+## What's actually implemented (new/changed this session)
+
+| File | State |
+|---|---|
+| `export_web_json.R` | Extended to build and export `playoff_series_matchups.json` (teams, sample matchups, historical brackets). |
+| `web/lib/playoffTypes.ts` | New, 90 lines. TypeScript contracts for playoff profiles, tactical ratings, series simulation, and historical brackets. |
+| `web/components/SeriesProbRing.tsx` | New, 137 lines. Interactive SVG series probability ring with fair ML and duration stats. |
+| `web/components/TacticalMismatchRadar.tsx` | New, 153 lines. Tactical pillar comparison with detected mismatch margin edges. |
+| `web/components/PlayoffSeriesClient.tsx` | New, 670 lines. Comprehensive interactive playoff series simulator and historical bracket viewer. |
+| `web/app/series/page.tsx` | New, 43 lines. Next.js App Router route for `/series`. |
+| `web/public/data/playoff_series_matchups.json` | New static dataset (85 KB) with 15 team profiles, 10 marquee matchups, and 2022-2025 historical series. |
+| `docs/NEXTJS_WEB_APP_PLAN.md` | Updated status reflecting Phase 0, 1, and 2 complete, Phase 3 up next. |
+
+## Concrete next step
+
+Proceed with **Phase 3** of `docs/NEXTJS_WEB_APP_PLAN.md`:
+Resolve the Phase 3 open questions and implement net-new R engines:
+1. Confirm shot-location telemetry availability in `CACHE_PBP_RAW` / `player_pbp_features.rds` to build the Shot Charts engine (`shot_quality_engine.R` web export).
+2. Offseason transactions & roster movements engine.
+3. Coaching impact, defense versatility, player DNA, and clutch leverage metrics.
+
+---
+
+# Handoff — 2026-10-18 (Next.js web app, Phase 1: offline JSON export pipeline + core routes) — superseded by Phase 2 above
 
 ## What this thread did
 
