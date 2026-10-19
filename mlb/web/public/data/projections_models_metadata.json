@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0",
+  "pipeline_stage": "mlb_season_and_postseason_projections",
+  "generated_at": "2026-10-19T21:00:22Z",
+  "season": 2024,
+  "n_simulations": 1000,
+  "postseason_sims": 10000,
+  "margin_sigma": 4.35,
+  "home_court_advantage": 14.9,
+  "pythag_exponent": 1.79,
+  "total_schedule_games": 2430,
+  "teams_count": 30,
+  "players_count": 1279,
+  "batters_count": 630,
+  "pitchers_count": 649,
+  "models": {
+    "ensemble": {
+      "name": "Multi-Model Sabermetric Blend",
+      "weights": {
+        "variant_bottom_up": 0.35,
+        "variant_rapm": 0.25,
+        "variant_shot_fatigue": 0.2,
+        "variant_embeddings": 0.2
+      },
+      "description": "Optimal blend of 4-Factor Starting-Pitcher Elo (35%), Hierarchical Empirical Bayes Talent (25%), Pythagenpat Run-Expectation (20%), and Marcel + Bullpen Fatigue (20%)."
+    },
+    "variant_bottom_up": {
+      "name": "4-Factor Starting-Pitcher Elo",
+      "weight": 0.35,
+      "description": "Team Elo rating adjusted for Home Field (+14.9 Elo), rest/travel, and Tangotiger rolling starter Game Score (4.7 * rGS delta)."
+    },
+    "variant_rapm": {
+      "name": "Hierarchical Empirical Bayes Talent",
+      "weight": 0.25,
+      "description": "Closed-form empirical Bayes partial pooling (Beta-Binomial & Normal-Normal) across park-adjusted batter wOBA/ISO and pitcher xFIP/K%/BB%."
+    },
+    "variant_shot_fatigue": {
+      "name": "Pythagenpat Run-Expectation",
+      "weight": 0.2,
+      "description": "David Smyth's variable-exponent run differential baseline ((RS + RA)/G)^0.287 isolating underlying run quality from sequencing luck."
+    },
+    "variant_embeddings": {
+      "name": "Marcel 3-Yr & Bullpen Fatigue",
+      "weight": 0.2,
+      "description": "Tom Tango's 5/4/3 age-curved player projections combined with high-leverage relief pitcher cumulative workload & velocity fatigue penalties."
+    }
+  }
+}

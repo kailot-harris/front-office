@@ -1,0 +1,21 @@
+# subagent-brief run logs (may contain sensitive output)
+/.subagent-runs/
+
+# config.R-managed cache (regenerated via cache_path(), not source-controlled)
+/cache/
+
+# Claude subagent worktrees and local configs
+/.claude/
+
+# Pipeline log files and DuckDB store
+/logs/
+
+# Secrets and environment files
+.env
+.env.*
+.Renviron
+
+# Next.js web application dependencies & build output
+/web/node_modules/
+/web/.next/
+/web/out/
