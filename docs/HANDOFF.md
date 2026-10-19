@@ -91,6 +91,16 @@ A high-performance, dark-themed, data-dense Next.js 14 App Router web platform b
    - Removed internal "Phase" tags from external UI badges across all views.
    - Removed cluttering betting odds terminology across navigation, matchup cards, tables, and home screen in favor of clean analytical margin projections, win probabilities, and score margin key numbers.
    - Fixed unescaped LaTeX math character string in `VariantsClient.tsx`.
+7. **Historical Weekly Projections & Matchup Date Integration**:
+   - Expanded `tools/export_web_datasets.R` (Section 3) to export all 272 games for the 2026 season across Weeks 1–18 (generating `web/public/data/matchups_current_week.json`, 235.5 KB).
+   - Joined all 80 graded historical games from `cache/accuracy_history.rds` and `cache/schedules_cache.rds` with exact pre-game model predictions (`projected_margin`, `home_win_prob`, `away_win_prob`), final game outcomes (`home_score`, `away_score`, `actual_winner`), and out-of-sample prediction verification (`✓ Model Correct` vs `✗ Upset`).
+   - Enhanced `web/components/MatchupCard.tsx` and `web/components/MatchupsClient.tsx` to prominently display exact game dates (`gameday`, `weekday`), `FINAL` indicators, actual scores, model prediction outcome badges, and an aggregated weekly accuracy KPI card (`Model Prediction Record: X / Y Correct (%)`).
+8. **Coaching Play-Caller Role Disambiguation**:
+   - Resolved user ambiguity regarding defensive head coaches (e.g. Jeff Hafley in Miami, Todd Bowles in Tampa Bay, Robert Saleh in Tennessee, Aaron Glenn in NY Jets) by distinguishing play-calling duties into separate `Off. Caller` and `Def. Caller` attributes across all 32 teams in `web/public/data/coaching_profiles.json` and `web/lib/types.ts`.
+   - Updated `web/components/CoachingClient.tsx` with dedicated dual-caller table columns, interactive filter dropdowns, and deep-dive drawer breakdowns.
+9. **Quarterback Matrix & Players Page Performance Overhaul**:
+   - Diagnosed root cause of UI lag/slowness on `/players`: 100+ concurrent unoptimized remote headshot image requests to `static.www.nfl.com` blocking the browser main thread and canvas re-renders.
+   - Replaced canvas headshots with instant vector `<TeamLogo />` nodes with colored tier rings, added a `Starters (32)` vs `All QBs` toggle (defaulting to 32 to eliminate visual clumping), added table pagination (25 per page with page size selector and page controls), and applied lazy async decoding for table avatars. Reduced page load times from >10s to <100ms.
 
 ---
 

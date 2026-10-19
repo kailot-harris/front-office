@@ -57,6 +57,11 @@ export interface MatchupGame {
   home_travel_miles: number;
   away_travel_miles: number;
   key_number_flag: string;
+  is_completed?: boolean;
+  home_score?: number;
+  away_score?: number;
+  actual_winner?: string;
+  prediction_correct?: boolean;
 }
 
 export interface MatchupsDataset {
@@ -194,6 +199,8 @@ export interface CoachProfile {
   offensive_coordinator: string;
   defensive_coordinator: string;
   play_caller: 'Head Coach' | 'Offensive Coordinator' | 'Defensive Coordinator';
+  offensive_play_caller?: 'Head Coach' | 'Offensive Coordinator';
+  defensive_play_caller?: 'Head Coach' | 'Defensive Coordinator';
   fourth_down_aggression_index: number; // 0 - 100 scale (percentile)
   pass_rate_over_expected: number; // PROE %
   early_down_pass_rate: number; // %

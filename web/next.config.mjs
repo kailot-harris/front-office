@@ -5,7 +5,17 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'a.espncdn.com',
-        pathname: '/i/teamlogos/**',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'static.www.nfl.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'static.nfl.com',
+        pathname: '/**',
       },
     ],
   },

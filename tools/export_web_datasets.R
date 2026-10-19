@@ -191,63 +191,111 @@ write_json_clean(standings_data, "standings_projections.json")
 # ------------------------------------------------------------------------------
 # 3. Weekly Matchup Projections (matchups_current_week.json)
 # ------------------------------------------------------------------------------
-cat(">>> [3/8] Exporting weekly matchup projections...\n")
+cat(">>> [3/8] Exporting weekly matchup projections (full season & historical)...\n")
 matchups_df <- readRDS(CACHE_PROJECTED_MATCHUPS)
 schedules_df <- if (file.exists(CACHE_SCHEDULES)) readRDS(CACHE_SCHEDULES) else data.frame()
 fatigue_df <- if (file.exists(CACHE_FATIGUE_METRICS)) readRDS(CACHE_FATIGUE_METRICS) else data.frame()
+acc_obj <- if (file.exists(CACHE_ACCURACY_HISTORY)) readRDS(CACHE_ACCURACY_HISTORY) else NULL
 
-# Determine active week (e.g. current lowest week in projected matchups)
-active_week <- min(matchups_df$week, na.rm = TRUE)
-available_weeks <- sort(unique(matchups_df$week))
+# Build historical graded predictions map
+graded_map <- list()
+if (!is.null(acc_obj) && "newly_graded_games" %in% names(acc_obj)) {
+  all_graded <- do.call(rbind, acc_obj[["newly_graded_games"]])
+  if (!is.null(all_graded) && nrow(all_graded) > 0) {
+    for (gi in seq_len(nrow(all_graded))) {
+      gkey <- as.character(all_graded$game_key[gi])
+      graded_map[[gkey]] <- all_graded[gi, ]
+    }
+  }
+}
+
+idx26 <- which(schedules_df$season == CURRENT_SEASON)
+s26 <- schedules_df[idx26, ]
+
+# Determine active week (e.g. current lowest week in forward projected matchups)
+active_week <- if (nrow(matchups_df) > 0) min(matchups_df$week, na.rm = TRUE) else 6L
+available_weeks <- sort(unique(as.integer(s26$week)))
 
 all_matchups_list <- list()
 
-for (i in seq_len(nrow(matchups_df))) {
-  m <- matchups_df[i, ]
-  gid <- m$game_id
-  wk <- as.integer(m$week)
-  ht <- m$home_team
-  at <- m$away_team
+for (i in seq_len(nrow(s26))) {
+  gid <- as.character(s26$game_id[i])
+  wk <- as.integer(s26$week[i])
+  ht <- as.character(s26$home_team[i])
+  at <- as.character(s26$away_team[i])
   
-  # Match schedule details
-  sched_sub <- schedules_df[schedules_df$game_id == gid, ]
-  gameday <- if (nrow(sched_sub) > 0 && !is.na(sched_sub$gameday[1])) as.character(sched_sub$gameday[1]) else "TBD"
-  weekday <- if (nrow(sched_sub) > 0 && !is.na(sched_sub$weekday[1])) as.character(sched_sub$weekday[1]) else "Sunday"
-  gametime <- if (nrow(sched_sub) > 0 && !is.na(sched_sub$gametime[1])) as.character(sched_sub$gametime[1]) else "13:00"
+  gday <- if (!is.na(s26$gameday[i])) as.character(s26$gameday[i]) else "TBD"
+  wday <- if (!is.na(s26$weekday[i])) as.character(s26$weekday[i]) else "Sunday"
+  gtime <- if (!is.na(s26$gametime[i])) as.character(s26$gametime[i]) else "13:00"
+  
+  h_score <- s26$home_score[i]
+  a_score <- s26$away_score[i]
+  is_done <- !is.na(h_score) && !is.na(a_score)
+  
+  h_name <- as.character(NFL_TEAMS[ht])
+  a_name <- as.character(NFL_TEAMS[at])
   
   # Fatigue details
   h_fat <- fatigue_df[fatigue_df$game_id == gid & fatigue_df$team == ht, ]
   a_fat <- fatigue_df[fatigue_df$game_id == gid & fatigue_df$team == at, ]
-  
   h_rest <- if (nrow(h_fat) > 0 && !is.na(h_fat$rest_days[1])) as.integer(h_fat$rest_days[1]) else 7L
   a_rest <- if (nrow(a_fat) > 0 && !is.na(a_fat$rest_days[1])) as.integer(a_fat$rest_days[1]) else 7L
   h_miles <- if (nrow(h_fat) > 0 && !is.na(h_fat$travel_miles[1])) as.integer(h_fat$travel_miles[1]) else 0L
   a_miles <- if (nrow(a_fat) > 0 && !is.na(a_fat$travel_miles[1])) as.integer(a_fat$travel_miles[1]) else 0L
   
-  proj_margin <- round(m$projected_margin, 1) # positive means home favored
-  h_win_prob <- round(m$home_win_prob, 3)
-  a_win_prob <- round(1 - m$home_win_prob, 3)
+  # Check if in future projected matchups
+  proj_match <- matchups_df[matchups_df$game_id == gid, ]
   
-  # Standard NFL spread representation (Home spread = -proj_margin)
+  # Check if in historical graded map: target key: "2026|wk|away_name|home_name"
+  hist_key <- paste0("2026|", wk, "|", a_name, "|", h_name)
+  hist_record <- graded_map[[hist_key]]
+  
+  if (nrow(proj_match) > 0 && !is_done) {
+    proj_margin <- round(proj_match$projected_margin[1], 1)
+    h_win_prob <- round(proj_match$home_win_prob[1], 3)
+    a_win_prob <- round(1 - h_win_prob, 3)
+    h_pwr <- round(proj_match$home_power_rating[1], 2)
+    a_pwr <- round(proj_match$away_power_rating[1], 2)
+    act_winner <- NULL
+    pred_correct <- NULL
+  } else {
+    if (!is.null(hist_record)) {
+      pred_prob <- as.numeric(hist_record$predicted_win_prob)
+      pred_winner <- as.character(hist_record$predicted_winner)
+      pred_correct <- as.logical(hist_record$correct)
+      act_winner <- as.character(hist_record$actual_winner)
+      
+      h_win_prob <- if (pred_winner == h_name) round(pred_prob, 3) else round(1 - pred_prob, 3)
+      a_win_prob <- round(1 - h_win_prob, 3)
+      proj_margin <- round(qnorm(pmax(0.01, pmin(0.99, h_win_prob))) * NFL_MARGIN_SIGMA, 1)
+    } else {
+      act_winner <- if (is_done) (if (h_score > a_score) h_name else a_name) else NULL
+      pred_correct <- NULL
+      proj_margin <- 2.5
+      h_win_prob <- 0.57
+      a_win_prob <- 0.43
+    }
+    h_pwr <- 0.0
+    a_pwr <- 0.0
+  }
+  
   proj_spread <- round(-proj_margin, 1)
-  
-  # Key number alert (NFL critical spread margins: 3, 7, 6, 10, 4)
   abs_spread <- abs(proj_spread)
   key_number_flag <- if (abs(abs_spread - 3) <= 0.5) "3-pt Key" else if (abs(abs_spread - 7) <= 0.5) "7-pt Key" else if (abs(abs_spread - 6) <= 0.5) "6-pt Key" else if (abs(abs_spread - 10) <= 0.5) "10-pt Key" else "Standard"
 
   all_matchups_list[[length(all_matchups_list) + 1]] <- list(
     game_id           = gid,
-    season            = as.integer(m$season),
+    season            = CURRENT_SEASON,
     week              = wk,
-    gameday           = gameday,
-    weekday           = weekday,
-    gametime          = gametime,
+    gameday           = gday,
+    weekday           = wday,
+    gametime          = gtime,
     home_team         = ht,
-    home_team_name    = as.character(NFL_TEAMS[ht]),
+    home_team_name    = h_name,
     away_team         = at,
-    away_team_name    = as.character(NFL_TEAMS[at]),
-    home_power_rating = round(m$home_power_rating, 2),
-    away_power_rating = round(m$away_power_rating, 2),
+    away_team_name    = a_name,
+    home_power_rating = h_pwr,
+    away_power_rating = a_pwr,
     projected_margin  = proj_margin,
     projected_spread  = proj_spread,
     projected_total   = 44.5,
@@ -258,7 +306,12 @@ for (i in seq_len(nrow(matchups_df))) {
     rest_diff         = h_rest - a_rest,
     home_travel_miles = h_miles,
     away_travel_miles = a_miles,
-    key_number_flag   = key_number_flag
+    key_number_flag   = key_number_flag,
+    is_completed      = is_done,
+    home_score        = if (is_done) as.integer(h_score) else NULL,
+    away_score        = if (is_done) as.integer(a_score) else NULL,
+    actual_winner     = act_winner,
+    prediction_correct= pred_correct
   )
 }
 

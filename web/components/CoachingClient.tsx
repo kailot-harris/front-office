@@ -196,7 +196,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <div className="flex items-center gap-2">
-            <label className="text-xs font-mono text-slate-400 whitespace-nowrap">Play Caller:</label>
+            <label className="text-xs font-mono text-slate-400 whitespace-nowrap">Offensive Caller:</label>
             <select
               value={playCallerFilter}
               onChange={(e) => setPlayCallerFilter(e.target.value)}
@@ -205,7 +205,6 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
               <option value="ALL">All Roles</option>
               <option value="Head Coach">Head Coach</option>
               <option value="Offensive Coordinator">Offensive Coordinator</option>
-              <option value="Defensive Coordinator">Defensive Coordinator</option>
             </select>
           </div>
         </div>
@@ -222,7 +221,8 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
                 <th className="px-3 py-3">Tenure</th>
                 <th className="px-3 py-3">Off Coordinator</th>
                 <th className="px-3 py-3">Def Coordinator</th>
-                <th className="px-3 py-3">Play Caller</th>
+                <th className="px-3 py-3">Off. Caller</th>
+                <th className="px-3 py-3">Def. Caller</th>
                 <th
                   className="px-3 py-3 text-right cursor-pointer hover:text-white"
                   onClick={() => {
@@ -283,13 +283,24 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
                     </td>
                     <td className="px-3 py-3">
                       <span
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-sans ${
-                          c.play_caller === 'Head Coach'
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-sans font-medium ${
+                          (c.offensive_play_caller || c.play_caller) === 'Head Coach'
+                            ? 'bg-purple-950/80 border border-purple-800 text-purple-300'
+                            : 'bg-emerald-950/80 border border-emerald-800 text-emerald-300'
+                        }`}
+                      >
+                        {c.offensive_play_caller || c.play_caller}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3">
+                      <span
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-sans font-medium ${
+                          (c.defensive_play_caller || 'Defensive Coordinator') === 'Head Coach'
                             ? 'bg-purple-950/80 border border-purple-800 text-purple-300'
                             : 'bg-blue-950/80 border border-blue-800 text-blue-300'
                         }`}
                       >
-                        {c.play_caller}
+                        {c.defensive_play_caller || 'Defensive Coordinator'}
                       </span>
                     </td>
                     <td className="px-3 py-3 text-right font-bold">
@@ -362,6 +373,14 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
                 <p className="text-xs text-slate-400 font-mono mt-0.5">
                   Career Record: {selectedCoach.career_record} • {selectedCoach.super_bowl_wins} Super Bowl Titles
                 </p>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-slate-300">
+                    <strong className="text-slate-400">Offense Calls:</strong> {selectedCoach.offensive_play_caller || selectedCoach.play_caller} ({selectedCoach.offensive_play_caller === 'Head Coach' ? selectedCoach.head_coach : selectedCoach.offensive_coordinator})
+                  </span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-slate-300">
+                    <strong className="text-slate-400">Defense Calls:</strong> {selectedCoach.defensive_play_caller || 'Defensive Coordinator'} ({selectedCoach.defensive_play_caller === 'Head Coach' ? selectedCoach.head_coach : selectedCoach.defensive_coordinator})
+                  </span>
+                </div>
               </div>
             </div>
 

@@ -1,9 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { QbProfile } from '@/lib/types';
 import { TeamLogo } from './TeamLogo';
-import Image from 'next/image';
 
 interface QbEfficiencyScatterProps {
   qbs: QbProfile[];
@@ -17,15 +16,35 @@ export default function QbEfficiencyScatter({
   selectedQb,
 }: QbEfficiencyScatterProps) {
   const [hoveredQb, setHoveredQb] = useState<QbProfile | null>(null);
+  const [startersOnly, setStartersOnly] = useState(true);
 
   // Filter QBs with valid numeric ratings
-  const validQbs = qbs.filter(
-    (q) =>
-      typeof q.off_epa_roll === 'number' &&
-      !isNaN(q.off_epa_roll) &&
-      typeof q.off_cpoe_roll === 'number' &&
-      !isNaN(q.off_cpoe_roll)
-  );
+  const validQbs = useMemo(() => {
+    const list = qbs.filter(
+      (q) =>
+        typeof q.off_epa_roll === 'number' &&
+        !isNaN(q.off_epa_roll) &&
+        typeof q.off_cpoe_roll === 'number' &&
+        !isNaN(q.off_cpoe_roll)
+    );
+
+    if (!startersOnly) return list;
+
+    // Pick 1 primary starting QB per team (prioritizing status ACT, highest years_exp or EPA)
+    const teamMap = new Map<string, QbProfile>();
+    for (const q of list) {
+      if (!teamMap.has(q.team)) {
+        teamMap.set(q.team, q);
+      } else {
+        const existing = teamMap.get(q.team)!;
+        // Keep active or higher experience
+        if ((q.status === 'ACT' && existing.status !== 'ACT') || q.years_exp > existing.years_exp) {
+          teamMap.set(q.team, q);
+        }
+      }
+    }
+    return Array.from(teamMap.values());
+  }, [qbs, startersOnly]);
 
   if (validQbs.length === 0) {
     return (
@@ -36,8 +55,6 @@ export default function QbEfficiencyScatter({
   }
 
   // Bounds for X (EPA/play) and Y (CPOE %)
-  // Typical EPA/play ranges from -0.30 to +0.35
-  // Typical CPOE ranges from -10.0 to +12.0
   const minEpa = -0.25;
   const maxEpa = 0.35;
   const minCpoe = -10.0;
@@ -50,7 +67,6 @@ export default function QbEfficiencyScatter({
 
   const toPercentY = (cpoe: number) => {
     const clamped = Math.max(minCpoe, Math.min(maxCpoe, cpoe));
-    // SVG / CSS coordinate: 0% is top (high CPOE), 100% is bottom (low CPOE)
     return 100 - ((clamped - minCpoe) / (maxCpoe - minCpoe)) * 100;
   };
 
@@ -73,24 +89,51 @@ export default function QbEfficiencyScatter({
           </p>
         </div>
 
-        {/* Legend */}
-        <div className="flex items-center gap-3 text-[11px] text-slate-400 font-mono">
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-            Tier 1: Elite
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
-            Tier 2: Positive
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-            Tier 3: Mixed
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-            Tier 4: Sub-par
-          </span>
+        {/* View Controls & Legend */}
+        <div className="flex items-center gap-4 flex-wrap">
+          {/* Starter Filter Toggle */}
+          <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 p-0.5 rounded-lg text-xs font-mono">
+            <button
+              onClick={() => setStartersOnly(true)}
+              className={`px-2.5 py-1 rounded-md transition-all ${
+                startersOnly
+                  ? 'bg-emerald-600 text-white font-bold shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Starters (32)
+            </button>
+            <button
+              onClick={() => setStartersOnly(false)}
+              className={`px-2.5 py-1 rounded-md transition-all ${
+                !startersOnly
+                  ? 'bg-emerald-600 text-white font-bold shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              All QBs ({qbs.length})
+            </button>
+          </div>
+
+          {/* Legend */}
+          <div className="flex items-center gap-3 text-[11px] text-slate-400 font-mono hidden md:flex">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+              Tier 1: Elite
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+              Tier 2: Positive
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+              Tier 3: Mixed
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+              Tier 4: Sub-par
+            </span>
+          </div>
         </div>
       </div>
 
@@ -143,7 +186,7 @@ export default function QbEfficiencyScatter({
           </span>
         </div>
 
-        {/* Scatter Points (Quarterbacks) */}
+        {/* Scatter Points (Quarterbacks with lightweight Team Logo nodes) */}
         {validQbs.map((qb) => {
           const posX = toPercentX(qb.off_epa_roll);
           const posY = toPercentY(qb.off_cpoe_roll);
@@ -153,11 +196,12 @@ export default function QbEfficiencyScatter({
           // Color by composite score
           const isElite = qb.off_epa_roll > 0.08 && qb.off_cpoe_roll > 1.0;
           const isGood = qb.off_epa_roll > 0 && qb.off_cpoe_roll > -2.0;
+          const isSubpar = qb.off_epa_roll < -0.05 && qb.off_cpoe_roll < -3.0;
 
           return (
             <div
               key={`${qb.player_name}-${qb.team}`}
-              className="absolute -translate-x-1/2 -translate-y-1/2 transition-transform duration-150 cursor-pointer group"
+              className="absolute -translate-x-1/2 -translate-y-1/2 transition-transform duration-100 cursor-pointer group"
               style={{
                 left: `${posX}%`,
                 top: `${posY}%`,
@@ -167,47 +211,29 @@ export default function QbEfficiencyScatter({
               onMouseEnter={() => setHoveredQb(qb)}
               onMouseLeave={() => setHoveredQb(null)}
             >
-              {/* Point Node */}
+              {/* Point Node - Fast Vector Team Logo */}
               <div
-                className={`relative rounded-full transition-all flex items-center justify-center p-0.5 shadow-md ${
+                className={`w-7 h-7 rounded-full transition-all flex items-center justify-center p-0.5 shadow-md ${
                   isSelected
-                    ? 'ring-2 ring-emerald-400 scale-125 bg-emerald-950'
+                    ? 'ring-2 ring-emerald-400 scale-125 bg-emerald-950 shadow-emerald-500/30'
                     : isHovered
-                    ? 'ring-2 ring-cyan-400 scale-125 bg-slate-900'
+                    ? 'ring-2 ring-cyan-400 scale-125 bg-slate-900 shadow-cyan-500/30'
                     : isElite
-                    ? 'border-2 border-emerald-400/80 bg-slate-900/90'
+                    ? 'border-2 border-emerald-400 bg-slate-900'
                     : isGood
-                    ? 'border border-blue-400/70 bg-slate-900/90'
-                    : 'border border-slate-600 bg-slate-900/90'
+                    ? 'border-2 border-blue-400 bg-slate-900'
+                    : isSubpar
+                    ? 'border-2 border-rose-500 bg-slate-900'
+                    : 'border-2 border-amber-400 bg-slate-900'
                 }`}
               >
-                {qb.headshot_url ? (
-                  <div className="relative w-6 h-6 rounded-full overflow-hidden bg-slate-800">
-                    <Image
-                      src={qb.headshot_url}
-                      alt={qb.player_name}
-                      fill
-                      sizes="24px"
-                      className="object-cover object-top"
-                      unoptimized
-                    />
-                  </div>
-                ) : (
-                  <div className="w-5 h-5 flex items-center justify-center">
-                    <TeamLogo team={qb.team} size="xs" />
-                  </div>
-                )}
-
-                {/* Team Mini Badge */}
-                <span className="absolute -bottom-1 -right-1 bg-slate-950 border border-slate-800 text-[8px] font-mono px-0.5 rounded text-slate-300">
-                  {qb.team}
-                </span>
+                <TeamLogo team={qb.team} size="xs" />
               </div>
 
-              {/* Point Label (Always visible for Elite or on Hover/Selected) */}
+              {/* Point Label (Visible on Hover/Selected or for Tier 1 Elite) */}
               {(isHovered || isSelected || isElite) && (
                 <div
-                  className={`absolute left-1/2 -translate-x-1/2 mt-1.5 px-2 py-0.5 rounded text-[10px] font-mono whitespace-nowrap border pointer-events-none shadow-xl ${
+                  className={`absolute left-1/2 -translate-x-1/2 mt-1 px-2 py-0.5 rounded text-[10px] font-mono whitespace-nowrap border pointer-events-none shadow-xl ${
                     isSelected
                       ? 'bg-emerald-950 text-emerald-200 border-emerald-600 z-50'
                       : isHovered
@@ -216,7 +242,7 @@ export default function QbEfficiencyScatter({
                   }`}
                 >
                   <span className="font-semibold">{qb.player_name.split(' ').pop()}</span>
-                  <span className="ml-1 opacity-75">
+                  <span className="ml-1 opacity-80 text-[9px]">
                     ({qb.off_epa_roll > 0 ? '+' : ''}
                     {qb.off_epa_roll.toFixed(2)})
                   </span>

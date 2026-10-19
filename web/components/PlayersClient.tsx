@@ -5,7 +5,6 @@ import { QbProfile } from '@/lib/types';
 import { TeamLogo } from './TeamLogo';
 import QbEfficiencyScatter from './QbEfficiencyScatter';
 import { Search, Award, TrendingUp } from 'lucide-react';
-import Image from 'next/image';
 
 interface PlayersClientProps {
   initialQbs: QbProfile[];
@@ -17,6 +16,8 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
   const [sortField, setSortField] = useState<'off_epa_roll' | 'off_cpoe_roll' | 'years_exp'>('off_epa_roll');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [selectedQb, setSelectedQb] = useState<QbProfile | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number | 'ALL'>(25);
 
   // Teams list for filter
   const teams = useMemo(() => {
@@ -42,6 +43,14 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
         return sortDirection === 'desc' ? (bVal as number) - (aVal as number) : (aVal as number) - (bVal as number);
       });
   }, [initialQbs, searchQuery, selectedTeam, sortField, sortDirection]);
+
+  // Pagination calculation
+  const totalPages = pageSize === 'ALL' ? 1 : Math.ceil(filteredQbs.length / pageSize);
+  const paginatedQbs = useMemo(() => {
+    if (pageSize === 'ALL') return filteredQbs;
+    const start = (currentPage - 1) * pageSize;
+    return filteredQbs.slice(start, start + pageSize);
+  }, [filteredQbs, currentPage, pageSize]);
 
   // Leaders
   const topEpa = useMemo(() => {
@@ -250,7 +259,7 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono">
-              {filteredQbs.map((qb) => {
+              {paginatedQbs.map((qb) => {
                 const isSelected = selectedQb?.player_name === qb.player_name;
                 const epa = qb.off_epa_roll ?? 0;
                 const cpoe = qb.off_cpoe_roll ?? 0;
@@ -266,14 +275,17 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2.5">
                         {qb.headshot_url ? (
-                          <div className="relative w-7 h-7 rounded-full overflow-hidden bg-slate-800 flex-shrink-0">
-                            <Image
+                          <div className="w-7 h-7 rounded-full overflow-hidden bg-slate-800 flex-shrink-0 border border-slate-700">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
                               src={qb.headshot_url}
                               alt={qb.player_name}
-                              fill
-                              sizes="28px"
-                              className="object-cover object-top"
-                              unoptimized
+                              loading="lazy"
+                              decoding="async"
+                              className="w-full h-full object-cover object-top"
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.display = 'none';
+                              }}
                             />
                           </div>
                         ) : (
@@ -322,6 +334,52 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Footer */}
+        <div className="p-3 bg-slate-950/80 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-slate-400">
+          <div className="flex items-center gap-2">
+            <span>Rows per page:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                const val = e.target.value === 'ALL' ? 'ALL' : Number(e.target.value);
+                setPageSize(val);
+                setCurrentPage(1);
+              }}
+              className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-white"
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value="ALL">All ({filteredQbs.length})</option>
+            </select>
+            <span className="text-slate-500">
+              Showing {pageSize === 'ALL' ? filteredQbs.length : Math.min(filteredQbs.length, (currentPage - 1) * pageSize + 1)}–
+              {pageSize === 'ALL' ? filteredQbs.length : Math.min(filteredQbs.length, currentPage * pageSize)} of {filteredQbs.length} QBs
+            </span>
+          </div>
+
+          {pageSize !== 'ALL' && totalPages > 1 && (
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800"
+              >
+                Previous
+              </button>
+              <span className="px-2 text-slate-300 font-bold">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Selected QB Detailed Drawer/Card */}
@@ -331,13 +389,14 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
             <div className="flex items-center gap-4">
               {selectedQb.headshot_url ? (
                 <div className="relative w-14 h-14 rounded-full overflow-hidden bg-slate-800 border-2 border-emerald-500/60">
-                  <Image
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
                     src={selectedQb.headshot_url}
                     alt={selectedQb.player_name}
-                    fill
-                    sizes="56px"
-                    className="object-cover object-top"
-                    unoptimized
+                    className="w-full h-full object-cover object-top"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
                   />
                 </div>
               ) : (

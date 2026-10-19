@@ -12,6 +12,7 @@ import {
   Table as TableIcon,
   Zap,
   Shield,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface MatchupsClientProps {
@@ -48,6 +49,19 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
     return ['All', ...Array.from(set)];
   }, [weekMatchups]);
 
+  // Model prediction accuracy stats for completed/graded games
+  const gradedStats = useMemo(() => {
+    const graded = weekMatchups.filter((m) => m.prediction_correct !== null && m.prediction_correct !== undefined);
+    if (graded.length === 0) return null;
+    const correctCount = graded.filter((m) => m.prediction_correct).length;
+    const accuracy = ((correctCount / graded.length) * 100).toFixed(1);
+    return {
+      total: graded.length,
+      correct: correctCount,
+      accuracy,
+    };
+  }, [weekMatchups]);
+
   // Key stats highlights
   const largestFavorite = useMemo(() => {
     if (weekMatchups.length === 0) return null;
@@ -74,25 +88,76 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
         </div>
 
         <div className="flex items-center gap-1.5 flex-nowrap">
-          {dataset.available_weeks.map((wk) => (
-            <button
-              key={wk}
-              onClick={() => setSelectedWeek(wk)}
-              className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all whitespace-nowrap ${
-                selectedWeek === wk
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 font-bold'
-                  : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
-              }`}
-            >
-              Week {wk} {wk === dataset.active_week ? '★' : ''}
-            </button>
-          ))}
+          {dataset.available_weeks.map((wk) => {
+            const isSelected = selectedWeek === wk;
+            const isActive = wk === dataset.active_week;
+            const isPast = wk < dataset.active_week;
+            return (
+              <button
+                key={wk}
+                onClick={() => setSelectedWeek(wk)}
+                className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                  isSelected
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 font-bold'
+                    : isPast
+                    ? 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800/80'
+                    : isActive
+                    ? 'bg-slate-900 text-emerald-400 border border-emerald-500/40 hover:bg-slate-800'
+                    : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
+                }`}
+              >
+                <span>Week {wk}</span>
+                {isActive && <span className="text-amber-400 text-[10px]">★ Active</span>}
+                {isPast && <span className="text-[10px] text-slate-500 font-normal">Final</span>}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* Week Highlights Bar */}
       {largestFavorite && closestGame && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {gradedStats ? (
+            <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[10px] font-mono uppercase text-slate-400 block font-semibold">
+                  Model Prediction Record
+                </span>
+                <span className="text-sm font-bold text-emerald-400 block truncate">
+                  {gradedStats.correct} / {gradedStats.total} Correct ({gradedStats.accuracy}%)
+                </span>
+                <span className="text-[11px] font-mono text-slate-400">
+                  Out-of-sample graded games
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
+                <Shield className="w-5 h-5 text-amber-400" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[10px] font-mono uppercase text-slate-400 block font-semibold">
+                  Rest Differential
+                </span>
+                <span className="text-sm font-bold text-white block truncate">
+                  {biggestRestMismatch && biggestRestMismatch.rest_diff !== 0
+                    ? biggestRestMismatch.rest_diff > 0
+                      ? `${biggestRestMismatch.home_team} +${biggestRestMismatch.rest_diff}d Rest`
+                      : `${biggestRestMismatch.away_team} +${Math.abs(biggestRestMismatch.rest_diff)}d Rest`
+                    : 'Balanced Slates'}
+                </span>
+                <span className="text-[11px] font-mono text-slate-400">
+                  {biggestRestMismatch ? `${biggestRestMismatch.away_team} @ ${biggestRestMismatch.home_team}` : ''}
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Largest Projected Favorite */}
           <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
@@ -127,28 +192,6 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
               </span>
               <span className="text-[11px] font-mono text-cyan-400">
                 Line: {Math.abs(closestGame.projected_margin).toFixed(1)} pts
-              </span>
-            </div>
-          </div>
-
-          {/* Rest / Travel Mismatch */}
-          <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
-              <Shield className="w-5 h-5 text-amber-400" />
-            </div>
-            <div className="min-w-0">
-              <span className="text-[10px] font-mono uppercase text-slate-400 block font-semibold">
-                Rest Differential
-              </span>
-              <span className="text-sm font-bold text-white block truncate">
-                {biggestRestMismatch && biggestRestMismatch.rest_diff !== 0
-                  ? biggestRestMismatch.rest_diff > 0
-                    ? `${biggestRestMismatch.home_team} +${biggestRestMismatch.rest_diff}d Rest`
-                    : `${biggestRestMismatch.away_team} +${Math.abs(biggestRestMismatch.rest_diff)}d Rest`
-                  : 'Balanced Slates'}
-              </span>
-              <span className="text-[11px] font-mono text-slate-400">
-                {biggestRestMismatch ? `${biggestRestMismatch.away_team} @ ${biggestRestMismatch.home_team}` : ''}
               </span>
             </div>
           </div>
@@ -226,15 +269,16 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-950/90 text-[11px] font-mono uppercase tracking-wider text-slate-400 border-b border-slate-800">
                 <tr>
-                  <th className="py-3 px-3">Date / Time</th>
+                  <th className="py-3 px-3">Date</th>
                   <th className="py-3 px-3">Away Team</th>
                   <th className="py-3 px-3 text-center">@</th>
                   <th className="py-3 px-3">Home Team</th>
                   <th className="py-3 px-3 text-center">Projected Margin</th>
-                  <th className="py-3 px-3 text-center">Total</th>
+                  <th className="py-3 px-3 text-center">Actual Score</th>
+                  <th className="py-3 px-3 text-center">Model Result</th>
                   <th className="py-3 px-3 text-right">Away Win %</th>
                   <th className="py-3 px-3 text-right">Home Win %</th>
-                  <th className="py-3 px-3 text-center">Rest Advantage</th>
+                  <th className="py-3 px-3 text-center">Rest Adv</th>
                   <th className="py-3 px-3 text-center">Key Margin</th>
                 </tr>
               </thead>
@@ -246,8 +290,8 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
 
                   return (
                     <tr key={m.game_id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="py-2.5 px-3 font-mono text-slate-400 whitespace-nowrap">
-                        {m.weekday.slice(0, 3)} {m.gametime}
+                      <td className="py-2.5 px-3 font-mono text-slate-300 whitespace-nowrap">
+                        <span className="text-slate-400">{m.weekday.slice(0, 3)}</span> {m.gameday}
                       </td>
                       <td className="py-2.5 px-3">
                         <div className="flex items-center gap-2">
@@ -271,8 +315,31 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                       <td className="py-2.5 px-3 text-center font-mono font-bold text-emerald-400">
                         {favTeam} +{margin}
                       </td>
-                      <td className="py-2.5 px-3 text-center font-mono text-slate-400">
-                        {m.projected_total.toFixed(1)}
+                      <td className="py-2.5 px-3 text-center font-mono">
+                        {m.is_completed ? (
+                          <span className="font-bold text-white bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                            {m.away_score} - {m.home_score}
+                          </span>
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 text-center font-mono text-xs">
+                        {m.is_completed ? (
+                          m.prediction_correct === true ? (
+                            <span className="text-emerald-400 font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[10px]">
+                              ✓ Correct
+                            </span>
+                          ) : m.prediction_correct === false ? (
+                            <span className="text-amber-400 font-bold px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-[10px]">
+                              ✗ Upset
+                            </span>
+                          ) : (
+                            <span className="text-slate-500 font-bold">Final</span>
+                          )
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )}
                       </td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold">
                         <span className={!isHomeFav ? 'text-emerald-400' : 'text-slate-400'}>
