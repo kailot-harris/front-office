@@ -194,23 +194,23 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
 
       {/* View Switcher: Playoff Contenders Snapshot vs Full League Standings Table */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/60 p-2.5 rounded-2xl border border-slate-800">
-        <div className="inline-flex rounded-xl bg-slate-950 p-1.5 border border-slate-800/80 shadow-inner" role="tablist">
+        <div className="inline-flex rounded-xl bg-slate-950 p-1.5 border border-slate-800/80 shadow-inner relative z-10" role="tablist">
           <button
             type="button"
             role="tab"
             id="tab-btn-visualizer"
             aria-selected={activeTab === 'visualizer'}
             onClick={() => handleTabChange('visualizer')}
-            className={`cursor-pointer select-none flex items-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all ${
+            className={`cursor-pointer select-none flex items-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-10 ${
               activeTab === 'visualizer'
                 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/40 ring-1 ring-indigo-400/50'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
             }`}
           >
-            <BarChart2 className="w-4 h-4 pointer-events-none text-amber-400" />
-            <span className="pointer-events-none">Playoff Contenders (Box-Whisker)</span>
+            <BarChart2 className="w-4 h-4 text-amber-400" />
+            <span>Playoff Contenders (Box-Whisker)</span>
             <span
-              className={`text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
+              className={`text-[10px] px-2 py-0.5 rounded font-mono ${
                 activeTab === 'visualizer' ? 'bg-white/20 text-white font-bold' : 'bg-slate-800 text-slate-400'
               }`}
             >
@@ -224,16 +224,16 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
             id="tab-btn-table"
             aria-selected={activeTab === 'table'}
             onClick={() => handleTabChange('table')}
-            className={`cursor-pointer select-none flex items-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all ${
+            className={`cursor-pointer select-none flex items-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-10 ${
               activeTab === 'table'
                 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/40 ring-1 ring-indigo-400/50'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
             }`}
           >
-            <Table className="w-4 h-4 pointer-events-none text-indigo-300" />
-            <span className="pointer-events-none">Full Standings Table</span>
+            <Table className="w-4 h-4 text-indigo-300" />
+            <span>Full Standings Table</span>
             <span
-              className={`text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
+              className={`text-[10px] px-2 py-0.5 rounded font-mono ${
                 activeTab === 'table' ? 'bg-white/20 text-white font-bold' : 'bg-slate-800 text-slate-400'
               }`}
             >

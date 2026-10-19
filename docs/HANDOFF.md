@@ -33,6 +33,10 @@ Successfully audited all data sources for sampling integrity, overhauled the 15-
    - Re-executed data pipeline scripts: `build_coaching_dataset.R`, `export_web_json.R`, `build_cba_cap_dataset.R`, `build_defense_dataset.R`, `build_player_dna_dataset.R`, `build_clutch_dataset.R`, and `build_shot_chart_dataset.R`.
    - Verified Next.js static production build (`npm run build`) compiles cleanly across all **17/17 static routes**.
 
+4. **Production Copy & UI Polish:**
+   - Removed internal "Phase" and planning monikers from production user interface in `web/components/Sidebar.tsx` (updated status badges to "Full Analytics Suite Live" and "Live Analytics System").
+   - Fixed "Full Standings Table" tab clickability in `web/components/StandingsClient.tsx` by removing obstructing `pointer-events-none` rules and elevating tab container stacking z-index.
+
 ---
 
 # Previous Handoff — 2026-10-19 (Next.js web app, Phase 3: COMPLETE — All 7 Net-New Engines & 17 Static Routes Operational)

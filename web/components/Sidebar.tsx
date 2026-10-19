@@ -196,7 +196,7 @@ export const Sidebar: React.FC = () => {
           <div className="bg-slate-950/50 border border-emerald-900/30 rounded-xl p-3 space-y-1">
             <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Phase 3 Suite Live</span>
+              <span>Full Analytics Suite Live</span>
             </div>
             <p className="text-[11px] text-slate-500">
               All 12 analytics engines & routes operational.
@@ -209,7 +209,7 @@ export const Sidebar: React.FC = () => {
         <div className="flex items-center justify-between text-xs text-slate-400 px-1">
           <span className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Phase 3 Production</span>
+            <span>Live Analytics System</span>
           </span>
           <span className="font-mono text-[11px] text-slate-400">v1.0.0</span>
         </div>
