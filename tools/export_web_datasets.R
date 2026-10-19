@@ -434,38 +434,156 @@ write_json_clean(playoff_data, "playoff_picture.json")
 # ------------------------------------------------------------------------------
 # 6. Player & QB Composite Profiles (player_qb_profiles.json)
 # ------------------------------------------------------------------------------
-cat(">>> [6/8] Exporting QB & player composite profiles...\n")
+cat(">>> [6/8] Exporting QB & player composite profiles (individual passer stats)...\n")
 rosters_df <- if (file.exists(CACHE_ROSTERS)) readRDS(CACHE_ROSTERS) else data.frame()
 
 qb_list <- list()
 if (nrow(rosters_df) > 0) {
-  # Filter QBs with ACT status
-  qbs <- rosters_df[rosters_df$position == "QB" & rosters_df$status == "ACT", ]
+  # Filter QBs with ACT or INA status (includes rostered starters who are temporarily inactive)
+  qbs <- rosters_df[rosters_df$position == "QB" & rosters_df$status %in% c("ACT", "INA"), ]
   # Deduplicate by full name / team
   qbs <- qbs[!duplicated(qbs[, c("team", "full_name")]), ]
+  
+  # Load player-level stats for accurate individual QB EPA and CPOE
+  ps_all <- tryCatch({
+    if (requireNamespace("nflreadr", quietly = TRUE)) {
+      as.data.frame(nflreadr::load_player_stats(seasons = 2024:CURRENT_SEASON))
+    } else {
+      data.frame()
+    }
+  }, error = function(e) {
+    data.frame()
+  })
+  
+  # Prepare aggregated stats maps
+  qb26_map <- list()
+  qb_hist_map <- list()
+  
+  if (nrow(ps_all) > 0) {
+    ps_qb <- ps_all[ps_all$position == "QB" & ps_all$season_type == "REG", ]
+    
+    # 2026 Season Stats
+    ps26 <- ps_qb[ps_qb$season == CURRENT_SEASON, ]
+    if (nrow(ps26) > 0) {
+      pids26 <- unique(ps26$player_id)
+      for (pid in pids26) {
+        sub <- ps26[ps26$player_id == pid, ]
+        att <- sum(sub$attempts, na.rm = TRUE)
+        comp <- sum(sub$completions, na.rm = TRUE)
+        p_epa <- sum(sub$passing_epa, na.rm = TRUE)
+        r_epa <- sum(sub$rushing_epa, na.rm = TRUE)
+        carries <- sum(sub$carries, na.rm = TRUE)
+        tot_plays <- att + carries
+        epa_play <- if (tot_plays > 0) (p_epa + r_epa) / tot_plays else 0.0
+        cpoe_val <- if (att > 0 && any(!is.na(sub$passing_cpoe))) {
+          weighted.mean(sub$passing_cpoe, sub$attempts, na.rm = TRUE)
+        } else {
+          0.0
+        }
+        qb26_map[[pid]] <- list(
+          attempts = att,
+          completions = comp,
+          epa_per_play = epa_play,
+          cpoe = cpoe_val
+        )
+      }
+    }
+    
+    # Career Multi-Season Stats (2024-2026)
+    pids_tot <- unique(ps_qb$player_id)
+    for (pid in pids_tot) {
+      sub <- ps_qb[ps_qb$player_id == pid, ]
+      att <- sum(sub$attempts, na.rm = TRUE)
+      p_epa <- sum(sub$passing_epa, na.rm = TRUE)
+      r_epa <- sum(sub$rushing_epa, na.rm = TRUE)
+      carries <- sum(sub$carries, na.rm = TRUE)
+      tot_plays <- att + carries
+      epa_play <- if (tot_plays > 0) (p_epa + r_epa) / tot_plays else 0.0
+      cpoe_val <- if (att > 0 && any(!is.na(sub$passing_cpoe))) {
+        weighted.mean(sub$passing_cpoe, sub$attempts, na.rm = TRUE)
+      } else {
+        0.0
+      }
+      qb_hist_map[[pid]] <- list(
+        attempts = att,
+        epa_per_play = epa_play,
+        cpoe = cpoe_val
+      )
+    }
+  }
+  
+  # Identify primary starter per franchise
+  team_starter_map <- list()
+  for (tm in unique(qbs$team)) {
+    tm_qbs <- qbs[qbs$team == tm, ]
+    best_name <- tm_qbs$full_name[1]
+    max_att <- -1
+    max_exp <- -1
+    for (ki in seq_len(nrow(tm_qbs))) {
+      q_row <- tm_qbs[ki, ]
+      pid <- as.character(q_row$gsis_id)
+      att <- if (!is.null(qb26_map[[pid]])) qb26_map[[pid]]$attempts else 0
+      exp <- if (!is.na(q_row$years_exp)) as.integer(q_row$years_exp) else 0
+      if (att > max_att || (att == max_att && exp > max_exp)) {
+        max_att <- att
+        max_exp <- exp
+        best_name <- q_row$full_name
+      }
+    }
+    team_starter_map[[tm]] <- best_name
+  }
   
   for (i in seq_len(nrow(qbs))) {
     q <- qbs[i, ]
     tm <- q$team
     full_name <- q$full_name
+    pid <- as.character(q$gsis_id)
     headshot <- if (!is.na(q$headshot_url) && nchar(q$headshot_url) > 5) q$headshot_url else paste0("https://a.espncdn.com/i/headshots/nfl/players/full/", q$espn_id, ".png")
     
-    # Check if team EPA is available
-    tm_epa <- epa_split[[tm]]
-    epa_val <- if (!is.null(tm_epa)) tm_epa$off_epa_per_play_roll[nrow(tm_epa)] else 0.0
-    cpoe_val <- if (!is.null(tm_epa)) tm_epa$off_cpoe_roll[nrow(tm_epa)] else 0.0
+    is_starter <- (full_name == team_starter_map[[tm]])
+    years <- if (!is.na(q$years_exp)) as.integer(q$years_exp) else 0L
+    base_epa <- if (years == 0) -0.115 else if (years <= 2) -0.095 else -0.080
+    base_cpoe <- if (years == 0) -2.8 else if (years <= 2) -2.0 else -1.5
+    
+    s26 <- qb26_map[[pid]]
+    s_hist <- qb_hist_map[[pid]]
+    att26 <- if (!is.null(s26)) s26$attempts else 0
+    att_tot <- if (!is.null(s_hist)) s_hist$attempts else 0
+    
+    if (att26 >= 35) {
+      epa_val <- s26$epa_per_play
+      cpoe_val <- s26$cpoe
+    } else if (att26 > 0) {
+      if (att_tot >= 35) {
+        weight26 <- att26 / 35
+        epa_val <- weight26 * s26$epa_per_play + (1 - weight26) * s_hist$epa_per_play
+        cpoe_val <- weight26 * s26$cpoe + (1 - weight26) * s_hist$cpoe
+      } else {
+        weight26 <- att_tot / 35
+        epa_val <- weight26 * s26$epa_per_play + (1 - weight26) * base_epa
+        cpoe_val <- weight26 * s26$cpoe + (1 - weight26) * base_cpoe
+      }
+    } else if (att_tot >= 20) {
+      epa_val <- 0.70 * s_hist$epa_per_play + 0.30 * (-0.08)
+      cpoe_val <- s_hist$cpoe * 0.75
+    } else {
+      epa_val <- base_epa
+      cpoe_val <- base_cpoe
+    }
 
     qb_list[[length(qb_list) + 1]] <- list(
       player_name     = full_name,
       team            = tm,
       jersey_number   = if (!is.na(q$jersey_number)) as.integer(q$jersey_number) else 0L,
-      years_exp       = if (!is.na(q$years_exp)) as.integer(q$years_exp) else 0L,
+      years_exp       = years,
       college         = if (!is.na(q$college)) as.character(q$college) else "N/A",
       depth_position  = if (!is.na(q$depth_chart_position)) as.character(q$depth_chart_position) else "QB",
       headshot_url    = headshot,
       off_epa_roll    = round(epa_val, 3),
       off_cpoe_roll   = round(if (!is.na(cpoe_val)) cpoe_val else 0.0, 2),
-      status          = as.character(q$status)
+      status          = as.character(q$status),
+      is_starter      = is_starter,
+      attempts_2026   = as.integer(att26)
     )
   }
 }

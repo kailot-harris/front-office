@@ -136,6 +136,8 @@ export interface QbProfile {
   off_epa_roll: number;
   off_cpoe_roll: number;
   status: string;
+  is_starter?: boolean;
+  attempts_2026?: number;
 }
 
 export interface CalibrationBin {

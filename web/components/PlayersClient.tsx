@@ -52,17 +52,17 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
     return filteredQbs.slice(start, start + pageSize);
   }, [filteredQbs, currentPage, pageSize]);
 
-  // Leaders
+  // Leaders (qualified starters or QBs with >= 35 attempts)
   const topEpa = useMemo(() => {
     return [...initialQbs]
-      .filter((q) => typeof q.off_epa_roll === 'number' && !isNaN(q.off_epa_roll))
+      .filter((q) => (q.is_starter || (q.attempts_2026 ?? 0) >= 35) && typeof q.off_epa_roll === 'number' && !isNaN(q.off_epa_roll))
       .sort((a, b) => b.off_epa_roll - a.off_epa_roll)
       .slice(0, 3);
   }, [initialQbs]);
 
   const topCpoe = useMemo(() => {
     return [...initialQbs]
-      .filter((q) => typeof q.off_cpoe_roll === 'number' && !isNaN(q.off_cpoe_roll))
+      .filter((q) => (q.is_starter || (q.attempts_2026 ?? 0) >= 35) && typeof q.off_cpoe_roll === 'number' && !isNaN(q.off_cpoe_roll))
       .sort((a, b) => b.off_cpoe_roll - a.off_cpoe_roll)
       .slice(0, 3);
   }, [initialQbs]);
@@ -293,7 +293,18 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
                             {qb.player_name.slice(0, 2)}
                           </div>
                         )}
-                        <span className="font-sans font-medium text-white">{qb.player_name}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-sans font-medium text-white">{qb.player_name}</span>
+                          {qb.is_starter ? (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+                              Starter
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-slate-800 text-slate-400 border border-slate-700/60 font-normal">
+                              Backup
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-3 py-2.5">

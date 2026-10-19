@@ -101,6 +101,11 @@ A high-performance, dark-themed, data-dense Next.js 14 App Router web platform b
 9. **Quarterback Matrix & Players Page Performance Overhaul**:
    - Diagnosed root cause of UI lag/slowness on `/players`: 100+ concurrent unoptimized remote headshot image requests to `static.www.nfl.com` blocking the browser main thread and canvas re-renders.
    - Replaced canvas headshots with instant vector `<TeamLogo />` nodes with colored tier rings, added a `Starters (32)` vs `All QBs` toggle (defaulting to 32 to eliminate visual clumping), added table pagination (25 per page with page size selector and page controls), and applied lazy async decoding for table avatars. Reduced page load times from >10s to <100ms.
+10. **Individual Quarterback Efficiency Ratings & Depth Chart Differentiation**:
+    - Diagnosed root cause of identical QB ratings: `tools/export_web_datasets.R` (Section 6) previously assigned each team's aggregate offensive EPA (`tm_epa$off_epa_per_play_roll`) to every quarterback on that roster, causing all QBs on the same franchise to display identical EPA and CPOE figures (e.g. Goff and Dobbs both showing +0.209; Purdy, Jones, and Rourke all showing +0.179).
+    - Refactored Section 6 to pull individual player-level passing and rushing statistics from `nflreadr::load_player_stats(seasons = 2024:2026)` for all rostered QBs (`ACT` and `INA` statuses, ensuring franchise passers like Lamar Jackson are fully tracked).
+    - Built an Empirical Bayes shrinkage calculation: qualified 2026 passers (>= 35 attempts) receive their exact 2026 per-dropback EPA and attempt-weighted CPOE; low-sample QBs (< 35 attempts) are smoothly regressed with career multi-season data; established backups with NFL dropbacks receive discounted career marks; untested backups and rookies receive calibrated draft/experience replacement-level priors (-0.08 to -0.115 EPA).
+    - Designated primary franchise starters across all 32 teams via `is_starter` and `attempts_2026` in `web/lib/types.ts`, enhanced `QbEfficiencyScatter.tsx` starter filtering, and added explicit `Starter` and `Backup` visual badges to the `/players` roster table.
 
 ---
 

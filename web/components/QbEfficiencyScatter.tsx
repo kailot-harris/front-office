@@ -30,15 +30,18 @@ export default function QbEfficiencyScatter({
 
     if (!startersOnly) return list;
 
-    // Pick 1 primary starting QB per team (prioritizing status ACT, highest years_exp or EPA)
+    // Pick 1 primary starting QB per team using is_starter
+    const starters = list.filter((q) => q.is_starter);
+    if (starters.length > 0) return starters;
+
+    // Fallback: pick highest attempts or experience
     const teamMap = new Map<string, QbProfile>();
     for (const q of list) {
       if (!teamMap.has(q.team)) {
         teamMap.set(q.team, q);
       } else {
         const existing = teamMap.get(q.team)!;
-        // Keep active or higher experience
-        if ((q.status === 'ACT' && existing.status !== 'ACT') || q.years_exp > existing.years_exp) {
+        if ((q.attempts_2026 ?? 0) > (existing.attempts_2026 ?? 0)) {
           teamMap.set(q.team, q);
         }
       }
