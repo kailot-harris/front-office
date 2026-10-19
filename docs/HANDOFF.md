@@ -1,6 +1,6 @@
 # NFL Analytics — Handoff Document
 
-**Last updated**: 2026-10-19, with `main` at commit `df18cd9` (pushed to `origin/main`). Built and shipped the comprehensive Next.js 14 Web Application Dashboard in `web/` with 10 prerendered analytical hubs, fixed historical schedule point differential leak (+3048 pts) in `team_ratings_engine.R`, conducted candidate ensemble ablation study for Models #4 and #5, audited all 32 head coaches and OverTheCap $301.2M salary cap ceiling for the 2026-2027 season, resolved button click interceptions, and eliminated betting jargon in favor of pure analytical projections. Written for a future LLM/agent picking this repo back up cold — read this before touching anything, then read `CLAUDE.md` for environment/data-quirk details this doc doesn't repeat.
+**Last updated**: 2026-10-19, with `main` at commit `27f4cbc` (pushed to `origin/main`). Most recent work: built the `web/` app's test suite from zero — 582 tests in five layers plus a regression-gated pipeline runner — which surfaced **20 defects now catalogued in `web/tests/known-issues.json`**, five of them high-severity and three of those showing wrong numbers to the reader right now (see "Web app test suite" below; nothing was fixed, only found and documented). Previously, at `df18cd9`: Built and shipped the comprehensive Next.js 14 Web Application Dashboard in `web/` with 10 prerendered analytical hubs, fixed historical schedule point differential leak (+3048 pts) in `team_ratings_engine.R`, conducted candidate ensemble ablation study for Models #4 and #5, audited all 32 head coaches and OverTheCap $301.2M salary cap ceiling for the 2026-2027 season, resolved button click interceptions, and eliminated betting jargon in favor of pure analytical projections. Written for a future LLM/agent picking this repo back up cold — read this before touching anything, then read `CLAUDE.md` for environment/data-quirk details this doc doesn't repeat.
 
 **Two structural findings from the Phase 9 session (carried forward, still open — not touched this
 session)** (see "Known issues" below for full detail): (1) `config.R`'s
@@ -109,6 +109,171 @@ A high-performance, dark-themed, data-dense Next.js 14 App Router web platform b
 
 ---
 
+## Web app test suite (`web/tests/`) — SHIPPED 2026-10-19 (`27f4cbc`)
+
+Before this commit `web/` had **no tests at all**. It now has 582, plus a one-command pipeline.
+Nothing in the app or in the R exporter was changed, so every failing test below is a live,
+unfixed defect rather than a stale expectation.
+
+### Running it
+
+```powershell
+cd "c:\Users\kailo\kayceeslices\NFL Analytics\web"
+npm test               # typecheck -> lint -> contracts -> components -> build -> e2e  (~5 min)
+npm run test:fast      # the first four stages only, no build/browser                  (~20 s)
+npm run test:contracts # dataset contracts, invariants and drift only
+npm run test:components# React component tests only
+npm run test:e2e       # Playwright only (does NOT build for you first)
+npm run test:strict    # ignore the known-issues baseline; every failure fails the run
+```
+
+First time on a new machine: `npm install --legacy-peer-deps` then
+`npm run test:e2e:install` (downloads the Playwright chromium build, ~120 MB).
+
+### Why it is shaped the way it is
+
+`web/lib/data.ts` reads all ten datasets with a bare `JSON.parse(...) as T` cast, so **TypeScript
+proves nothing about the data at runtime**, and every page is statically prerendered at build time.
+The expensive failure mode for this app is therefore not a crash — it is a page rendering a
+plausible, confident, wrong number. The suite is weighted toward data coherence accordingly:
+
+| Layer | Files | Tests | What it protects |
+| --- | --- | --- | --- |
+| Schema | `tests/contracts/schema.test.ts` + `schemas.ts` | 24 | zod contract per dataset, `.strict()` so a field added upstream in R fails a test instead of silently going unrendered |
+| Type truth | `tests/contracts/types-vs-data.test.ts` | 10 | parses the string-literal unions out of `lib/types.ts` **source** and compares them against the values actually shipped |
+| Invariants | `tests/contracts/invariants.test.ts` | 111 | mutually exclusive probabilities summing to 1, schedule structure, cross-dataset reconciliation, per-row arithmetic |
+| Referential | `tests/contracts/referential.test.ts` | 32 | every team code in all ten datasets resolved against `lib/teams.ts` — the four-competing-ID-schemes hazard `CLAUDE.md` flags |
+| Assets | `tests/contracts/assets.test.ts` | 14 | gallery index vs. files on disk (both directions), sizes, remote hosts vs. `next.config.mjs` `remotePatterns` |
+| Drift | `tests/drift/content-drift.test.ts` | 20 | numeric literals written into page copy vs. the data they describe |
+| `lib/data.ts` unit | `tests/unit/data.test.ts` | 16 | the single I/O boundary, including its error paths |
+| Components | `tests/components/*.test.tsx` (5 files) | 142 | filter/sort/paginate/tab/modal behaviour in jsdom, against the **real** datasets, plus empty and single-row resilience |
+| E2E | `tests/e2e/*.spec.ts` (5 specs) | 213 | production build in real Chromium: route smoke, hydration, layout geometry, a11y baseline, broken images, mobile drawer |
+
+Current standing: **227 node tests (26 failing), 142 component tests (4 failing), 213 Playwright
+tests (24 failing)** — 54 failures, every one of them mapped to a documented defect.
+
+**The drift layer is the point.** `CLAUDE.md` records WNBA Finding C-1: a modelling constant typed
+a second time at a live call site, drifted out of sync with `config.R`, and implied a materially
+wrong win-probability curve until someone noticed. That is exactly what `web/` does with margin
+sigma — see `DRIFT-1` below. `tests/drift/content-drift.test.ts` reads component **source** and
+compares its literals against the live datasets so that class of bug fails a test.
+
+### The known-issues baseline — read this before you touch the suite
+
+`npm test` does not just report pass/fail. `scripts/run-test-suite.mjs` reconciles every failure
+against `web/tests/known-issues.json`:
+
+- a failure **listed** there → `KNOWN`, does **not** fail the run
+- a failure **not listed** → `NEW FAILURES`, exits 1
+- a listed test that now **passes** → `FIXED`, prompting you to delete the entry
+
+So the suite is usable as a merge gate while the 20 defects are still open, without hiding them.
+Each entry carries an `id`, `severity`, `title`, a `fix` naming the file the fix belongs in, and the
+test-name substrings it matches. There is deliberately **no** working `--update-baseline`: adding an
+entry requires a human-written title and fix, so the baseline cannot silently absorb a regression.
+Verified in both directions this session — `npm run test:strict` fails, and an injected bad team
+code (`team_epa_profiles[0].team = 'XYZ'`) was correctly reported as 2 NEW FAILURES.
+
+When you fix a defect: run the suite, see it reported as `FIXED`, delete that entry from
+`known-issues.json`.
+
+### The 20 defects, by severity
+
+All five high-severity items are in `web/`-adjacent code or in `tools/export_web_datasets.R`.
+Full titles, fixes and matching test names live in `web/tests/known-issues.json` — this is a
+pointer, not a duplicate.
+
+**High (5)**
+
+- **`DRIFT-1`** — margin sigma is hardcoded in **three** components with **two different values**.
+  `components/Sidebar.tsx` prints `σ = 14.6` (correct, matches `model_diagnostics.json`) four times,
+  while `app/page.tsx` prints `13.8 pts` and `components/PlayoffBracketSimulator.tsx` *simulates
+  every bracket* with `diff / 13.8` and a `1.8`-point HFA against a real `home_field_adv` of `1.93`.
+  The sidebar and the home-page banner contradict each other on screen. This is WNBA Finding C-1
+  recurring verbatim in the web layer.
+- **`DATA-1`** — `division_title_prob` is literally `round(pmin(1.0, playoff_prob * 0.62), 3)` at
+  `tools/export_web_datasets.R:176`, with byes `0.65`/`playoff_prob * 0.08` at `:147` and
+  `0.02`/`0.05` fallbacks at `:144`-`:145`. These are scaled, not simulated, so mutually exclusive
+  outcomes do not sum to 1: NFC North division titles total **1.523**, NFC East **0.636**, and
+  league-wide Super Bowl probability totals **1.077**. `playoff_prob` itself is fine (exactly 7.000
+  per conference).
+- **`DATA-2`** — **36 of 91** completed games show a projected favourite that contradicts their own
+  ✓/✗ badge on the same card. The badges imply 61.5% accuracy; the displayed margins imply 50.5%.
+  Visible on `/matchups`: *SEA @ DEN, Final 14–17, "Proj: DEN +3.1", badge "✗ Upset."* Cause is in
+  `tools/export_web_datasets.R` ~`:265`, where `h_win_prob` is picked by a `pred_winner == h_name`
+  **string** comparison against the accuracy-history record and `projected_margin` is then
+  reconstructed from it via `qnorm(...) * NFL_MARGIN_SIGMA` rather than carried through.
+- **`DATA-3`** — the `/diagnostics` calibration curve is a **hardcoded literal list** at
+  `tools/export_web_datasets.R:614`-`:625`, not computed from graded predictions. Its bin counts
+  total **272** (the full season schedule) while only **92** games have been played, and the curve
+  tracks the diagonal almost exactly — far smoother than 92 real games would produce. The page
+  presents it as out-of-sample calibration.
+- **`UI-1`** — `app/layout.tsx` never offsets the content column for the sidebar, which is
+  `fixed left-0 w-64 z-30` at `lg:` and up. Below **1792px** viewport width the sidebar covers the
+  left 256px of every page. At 1440×900 (a very common laptop size) **seven controls across five
+  pages** sit underneath it, so clicking them activates the sidebar nav link on top instead —
+  measured with `document.elementFromPoint`, not inferred.
+
+**Medium (7)** — `UI-2` `/players` pagination strands the user on an empty table (`currentPage` is
+never reset when the search or team filter changes); `ID-1` `salary_cap_profiles.json` keys the Rams
+as `LAR` while `lib/teams.ts` and every other dataset use `LA`, so the Rams get fallback alt text
+and the generic emerald palette; `TYPE-1` `lib/types.ts` omits the `'A-'`/`'B-'` grades the coaching
+data actually contains and declares the matchup score fields `?: number` when the export ships
+`null`; `DATA-4` `/playoffs` seeds CLE as the AFC 4-seed while `/` gives CLE a 23.4% playoff
+probability and bubble team BAL 68.3% (two engines disagreeing); `DATA-5` two top-100 contracts have
+guaranteed money exceeding total contract value (Matt Stafford 90 > 55, Vita Vea 46 > 30); `A11Y-1`
+the `<select>` dropdowns on `/`, `/coaching` and `/players` have no accessible name and 8 of 10
+pages jump `h1` → `h3`; `UI-4` the open mobile drawer paints over its own close button and has no
+close control of its own, leaving the backdrop as the only way out.
+
+**Low (8)** — `DRIFT-2` the matchups chip reads "Weeks 6 – 18 (192 Games)" against a selector
+offering 1–18 and a dataset of 272, and advertises a 4-pt key number the export never emits;
+`DRIFT-3` `DiagnosticsClient` recomputes Brier improvement against a hardcoded `0.25` instead of
+`data.brier_baseline`; `ID-2` `value_bets.json` uses full team names instead of abbreviations **and
+is dead code** (`getValueBets()` is exported from `lib/data.ts` but no page imports it); `DATA-6`
+the season's one tied game (`2026_05_NYG_WAS`, 27-27) is credited to the away team because the
+winner is picked with `if (h_score > a_score) h_name else a_name` and has no tie branch; `DATA-7`
+`fourth_down_aggression_index` is labelled "th %ile" in the UI but spans only 52–98 across the
+league, so the least aggressive coach reads as league-average; `DATA-8` the recommended value-bet
+slate has a negative mean expected CLV (−0.32); `UI-3` `StandingsClient` renders the string `NaN%`
+for an empty team list (`(top?.super_bowl_prob * 100)` guards the property access but not the
+arithmetic — unreachable with the real 32-team export); `UI-5` `/players` clips three
+absolutely-positioned elements 4–13px off the right edge on a 412px phone with no scroll container.
+
+### Conventions that will bite you if you add tests without reading them
+
+`web/tests/README.md` is the full writeup. The ones that actually cost time to rediscover:
+
+- Tests run against the **real datasets, not fixtures** — a failure means the page is broken for the
+  data that actually ships. The trade-off is sensitivity to a fresh export; that is intentional.
+- **Scope row queries to the `<table>`.** Team names and percentages appear in both the highlight
+  cards and the table, so an unscoped `getByText` throws "found multiple elements".
+- **`/teams` has two separate All/AFC/NFC chip groups** — the EPA scatter owns one, the table owns
+  the other, with independent state. Clicking the scatter's leaves the table at 32 rows.
+- **Week rail buttons are labelled `"Week 1Final"`, not `"1"`.** There is no word boundary between
+  `1` and `F`, so match `^Week 1(?!\d)` — `^Week 1\b` silently matches nothing.
+- **Playwright's `getByText('FINAL')` is a case-insensitive substring match**, so it also hits those
+  `Week 1Final` rail labels. Scope to `main` and pass `{ exact: true }`.
+- **The mobile drawer is hidden with `-translate-x-full`, not `display: none`**, so it keeps a
+  bounding box and Playwright still calls it "visible". Decide open/closed on **geometry** (is the
+  panel's x ≥ 0?), via `aside[class*="w-72"]` — the desktop sidebar is the `w-64` one.
+- **`body.textContent` includes Next's inline RSC `<script>` payload**, which legitimately contains
+  the substrings `undefined` and `NaN`. Scope placeholder checks to `main`.
+- **Overflow is only a bug if it is unreachable.** The 18-week rail and the wide tables sit inside
+  `overflow-x: auto` on purpose, so the overflow checks walk up the tree and exclude scrollable
+  ancestors.
+- **E2E runs against `next build && next start`, not `next dev`** — every page is statically
+  prerendered, so dev mode exercises a different path and hides build-time data errors behind an
+  on-demand compile.
+- **`tests/e2e/interactions.spec.ts` pins a 1920px viewport** via `test.use`, specifically to get
+  clear of `UI-1`. **Remove that `test.use` once `UI-1` is fixed**, or those tests keep passing for
+  the wrong reason.
+- **The two Playwright projects do not overlap**: `desktop-chromium` runs everything except
+  `mobile.spec.ts`; `mobile-chromium` runs only `mobile.spec.ts`, which carries its own full route
+  sweep. Running both over everything just duplicates work and double-reports the same defects.
+
+---
+
 ## Current state: 13-stage pipeline (12 numbered `run_stage()` calls + stages 7.5 and 9.5)
 
 Runs end-to-end against real data. `run_full_pipeline.R`'s `run_stage()` sources each stage
@@ -169,6 +334,8 @@ stage 7.5 alone took 244.46s of that. Every stage ran cleanly; `.check_stage_out
 | `125d1ef` | — | Spec'd the playoff-clinching probability table feature (`docs/SPEC_playoff_odds_table.md`) and filed it as 6 GitHub issues (#11-#16). |
 | `45bcea8`…`dd136a0` | Playoff Odds #11-#16 | This session: implemented the full feature end-to-end via 5 waves of parallel `subagent-brief` dispatch — constants, single-trial sim, Monte Carlo loop + cache write, Discord dispatch ‖ timing/tuning (parallel), pipeline wiring. Real full-pipeline run confirms it live end-to-end (HTTP 204, 392.58s total run). |
 | `9268020`…`160a6fb` | Viz-GIF Phase (Phase 9) #17-#33 | Planned (`9268020`, scaffolded `docs/task_assignments_phase8.md` + 9 agent briefs) then built end-to-end this session via 2 waves of parallel `subagent-brief` dispatch — Elo-history extraction, playoff-odds/turnover-margin history backfills (Wave 1 infra) plus 14 animated GIFs/heatmaps across Elo, schedule, EPA, playoff-odds, and turnover-margin visualizations (Wave 1 leaf + Wave 2). GitHub issues not yet closed — see "Suggested next steps." |
+| `970a86d`…`462f629` | Web dashboard (`web/`) | Next.js 14 App Router platform: 10 statically prerendered analytical hubs fed by `tools/export_web_datasets.R` -> `web/public/data/*.json`. Includes the point-differential leak fix in `team_ratings_engine.R`, the 2026 coaching/salary-cap overhaul, the ensemble ablation study, historical weekly projections, and per-QB EPA/CPOE via Empirical Bayes shrinkage. Not previously recorded in this table. |
+| `27f4cbc` | Web test suite (`web/tests/`) | 582 tests in five layers (schema, type-truth, invariants, referential, assets, drift) plus component and Playwright E2E suites, and `scripts/run-test-suite.mjs` — a six-stage runner that reconciles failures against a `known-issues.json` baseline. Surfaced 20 defects, 5 high-severity; none fixed. No app or R code changed. |
 
 ## Recent work
 
@@ -684,6 +851,57 @@ timestamp in the log rather than assuming it ran at 05:15.
     they're safe to `rm -rf`. Left untouched this session (deleting them is a destructive action
     outside this handoff's scope); worth a quick investigation next time someone's in the area.
 
+17. **20 defects in `web/` found by the new test suite — all open, none fixed.** Catalogued with
+    per-file fixes in `web/tests/known-issues.json`; see "Web app test suite" above for the
+    severity breakdown. Deliberately left unfixed so the failing tests stay meaningful evidence,
+    and because three of them are modelling decisions the project owner should make rather than the
+    agent that found them: `DATA-1` (should division/bye/conference/Super-Bowl probabilities come
+    from the playoff simulator and be renormalised, or is the `* 0.62` scaling an accepted
+    approximation?), `DATA-3` (the `/diagnostics` calibration curve must either be computed from
+    graded predictions or be labelled as illustrative — it is currently presented as real
+    out-of-sample calibration), and `DATA-4` (the provisional seeding in `nfl_tiebreakers.R` and the
+    simulated odds in `playoff_odds_engine.R` disagree on screen; reconcile them or label them as
+    distinct quantities). The other 17 are unambiguous code fixes. **`DRIFT-1` and `UI-1` are the
+    two to do first** — both are small, both are currently showing readers wrong or unreachable
+    content, and `DRIFT-1` is a verbatim recurrence of the WNBA Finding C-1 constant-drift pattern
+    this repo's `CLAUDE.md` exists to prevent.
+
+18. **`@vitest/coverage-v8` is an unused dev dependency.** Installed while setting up the suite,
+    then the coverage config and `test:coverage` script were both removed on purpose: v8 coverage
+    emits no report under vitest 4's `projects` layout here, and a vitest-only percentage would be
+    actively misleading for this suite (the contract/invariant/drift layers assert on JSON and
+    execute almost no app code, while the layer that does exercise the components end to end —
+    Playwright — is not instrumented by vitest at all). The package is still in
+    `web/package.json` devDependencies. Harmless, but it is dead weight and should either be
+    removed or a working coverage setup should be wired up.
+
+- **`web/` toolchain (added 2026-10-19, `27f4cbc`).** Node v22.22.3, npm 10.9.8.
+  - **`npm install` in `web/` needs `--legacy-peer-deps`.** A plain install of `vitest` fails with
+    `npm error Cannot read properties of null (reading 'edgesOut')` — an npm 10.9.8 bug triggered by
+    vitest's circular optional peer dependency on `@vitest/coverage-v8`. `--legacy-peer-deps`
+    installs cleanly. Pinned to **vitest 4**, not 5, because vitest 5 requires
+    `@types/node@^22 || >=24` while this project pins `^20`.
+  - **Playwright browsers are not in the repo.** `npm run test:e2e:install` fetches chromium
+    (~120 MB) into `C:\Users\kailo\AppData\Local\ms-playwright\`. A fresh machine must run it before
+    `npm test` reaches the e2e stage.
+  - **`web/tsconfig.json` now sets `"target": "ES2017"`.** Without it `tsc --noEmit` rejects every
+    `for...of` over a `Set`/`Map` in the test files (TS2802), because an absent `target` defaults to
+    ES5. No runtime effect — `noEmit` is true and Next downlevels via SWC against browserslist.
+  - **If `tsc` reports errors that do not match the source, delete `web/tsconfig.tsbuildinfo`.**
+    `incremental: true` caches across config changes and will keep reporting stale errors after a
+    `tsconfig.json` edit. This cost real time this session.
+  - **JSX in test files is compiled by oxc**, configured via `oxc: { jsx: { runtime: 'automatic' } }`
+    in `web/vitest.config.mts`, because `tsconfig.json` sets `"jsx": "preserve"` for the Next
+    compiler. Vitest 4 ignores the older `esbuild: { jsx }` key and warns about it.
+  - **`web/vitest.config.mts` is `.mts`, not `.ts`**, and uses `import.meta.dirname`; the `.ts`
+    form warned under Vite's native config loader.
+  - **Playwright `retries: 1` is set for all environments, not just CI.** Browser runs occasionally
+    hit a transient driver-protocol error (`Unterminated string in JSON at position 524288`) when
+    several workers share the managed `next start` server; the managed server's `stdout` is set to
+    `'ignore'` for the same reason. A genuine failure still fails both attempts.
+  - **`web/test-results/` is gitignored** (reports, traces, failure screenshots, the JSON the
+    orchestrator parses). Don't commit it.
+
 ## Environment specifics a fresh agent needs
 
 - R: `C:\Program Files\R\R-4.5.2\bin\Rscript.exe` (not on PATH). Installed and confirmed working:
@@ -742,7 +960,7 @@ timestamp in the log rather than assuming it ran at 05:15.
   (`docs/task_assignments_phase8.md`'s "Known issue" Handoff Notes, and this doc's Known Issue #13)
   — a shared log-file lock blocked one agent's work for several minutes, and one agent momentarily
   wrote output to the wrong `cache/` before self-correcting. Not yet fixed — see Known Issue #13
-  and "Suggested next steps" #5 for the proposed scoped fix.
+  and "Suggested next steps" #8 for the proposed scoped fix.
 - **New `isolation: "worktree"` worktrees can be provisioned from a stale base commit, not current
   `main` HEAD** — see Known Issue #14. If you dispatch an `Agent` call with `isolation: "worktree"`
   after already merging commits to `main` earlier in the same session, immediately check `git
@@ -761,7 +979,29 @@ timestamp in the log rather than assuming it ran at 05:15.
 
 ## Suggested next steps, roughly in priority order
 
-1. **Close GitHub issues #17-#33 (all 17) with real evidence.** The code is done and merged (see
+1. **Fix `DRIFT-1` (margin sigma hardcoded three times, two different values) — smallest
+   high-severity win available.** `app/page.tsx` says `13.8 pts` and
+   `components/PlayoffBracketSimulator.tsx` simulates with `diff / 13.8` and a `1.8` HFA, while
+   `components/Sidebar.tsx` says `σ = 14.6` and `model_diagnostics.json` says
+   `margin_sigma: 14.6`, `home_field_adv: 1.93`. Thread the values from the dataset into all three
+   (the sidebar currently takes no props, so it needs the value passed down or a shared constants
+   module). Validate with `npm run test:contracts` — four tests in
+   `tests/drift/content-drift.test.ts` cover this and will report as `FIXED`. Then delete the
+   `DRIFT-1` entry from `web/tests/known-issues.json`.
+2. **Fix `UI-1` (the fixed sidebar covers page content below 1792px).** `app/layout.tsx` renders
+   `<Sidebar />` as the first child of a `flex md:flex-row` body, which reads as though the sidebar
+   occupies a column — it does not, because at `lg:` it is `position: fixed`. Add a matching left
+   offset to the content wrapper (`lg:pl-64` on the `flex-1` div) or make the sidebar participate in
+   the flex flow. Validate with `npm run test:e2e` (`tests/e2e/layout.spec.ts`, 10 tests), **and
+   then remove the `test.use({ viewport: { width: 1920 … } })` pin at the top of
+   `tests/e2e/interactions.spec.ts`** — it exists only to get clear of this bug, and leaving it
+   means those tests keep passing for the wrong reason.
+3. **Decide the three modelling questions behind `DATA-1`, `DATA-3` and `DATA-4`** (Known Issue
+   #17) — these are owner calls, not agent calls, and they block the only remaining high-severity
+   items. `DATA-3` is the most reputationally awkward of the three: `/diagnostics` currently
+   presents a hardcoded literal curve as out-of-sample model calibration.
+
+4. **Close GitHub issues #17-#33 (all 17) with real evidence.** The code is done and merged (see
    "Recent work" above); only the tracker bookkeeping is outstanding. Each issue's closing comment
    should cite the specific commit hash and verification evidence already written up in
    `docs/task_assignments_phase8.md`'s per-agent Handoff Notes (file paths, row counts, spot-check
@@ -770,10 +1010,10 @@ timestamp in the log rather than assuming it ran at 05:15.
    17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33` if a single shared closing comment
    referencing the phase doc is judged sufficient — use your judgment on whether each issue
    deserves its own tailored evidence excerpt or a shared pointer comment.
-2. **Close Issue #10 on GitHub — real evidence for both acceptance scenarios now exists** (see
+5. **Close Issue #10 on GitHub — real evidence for both acceptance scenarios now exists** (see
    "Accuracy-trajectory monitoring" above, found 2026-10-13, still not closed as of this revision
    either). `gh issue close 10` with the 2026-10-10/2026-10-11 log excerpt as the closing comment.
-3. **Decide the fate of the Week 5/6 projections scratch-file pattern — now 8 files, 3 sessions
+6. **Decide the fate of the Week 5/6 projections scratch-file pattern — now 8 files, 3 sessions
    deferred, doubled this session instead of resolved** (Known Issue #10: `tools/_inspect_week5.R`,
    `tools/plot_week5_projections.R`, `tools/run_week5_refresh.R`, `cache/week5_projections.png`,
    plus this session's Week 6 twins `tools/_inspect_week6.R`, `tools/plot_week6_projections.R`,
@@ -789,7 +1029,7 @@ timestamp in the log rather than assuming it ran at 05:15.
    `.gitignore` rule for the `*_anim_frames/` pattern so future GIF scripts don't re-add this),
    and consider bundling the 5 orphaned `.claude/worktrees/agent-*` stub directories too (Known
    Issue #16) since they're the same flavor of "nobody has triaged this yet."
-4. **Review and decide the 11 modified-but-uncommitted `cache/*.rds` files — reopened a second time,
+7. **Review and decide the 11 modified-but-uncommitted `cache/*.rds` files — reopened a second time,
    now with this session's writes layered on top** (Known Issue #9: `injury_data_cache.rds`,
    `latest_value_bets.rds`, `odds_history.rds`, `playoff_odds.rds`, `playoff_simulation.rds`,
    `projected_matchups.rds`, `risk_state.rds`, `rosters_cache.rds`, `schedules_cache.rds`,
@@ -802,29 +1042,29 @@ timestamp in the log rather than assuming it ran at 05:15.
    Given this is the **second** time this exact item has recurred after being marked resolved,
    worth deciding whether to just make "commit refreshed cache state" a routine last step of any
    session that runs real pipeline stages, rather than a recurring judgment call.
-5. **Consider a scoped fix for Known Issue #14** (`config.R`'s hardcoded `PROJECT_DIR` breaking
+8. **Consider a scoped fix for Known Issue #14** (`config.R`'s hardcoded `PROJECT_DIR` breaking
    cache/log isolation across git worktrees) before the next multi-agent wave that writes caches
    concurrently — an opt-in worktree-relative override, or at minimum a documented rule never to
    schedule two cache-writing `subagent-brief` dispatches in the same wave.
-6. **Decide whether this session's three new ad hoc GIFs should be formalized** (filed as GitHub
+9. **Decide whether this session's three new ad hoc GIFs should be formalized** (filed as GitHub
    issues + committed, matching Phase 9's pattern) or stay permanently ad hoc like
    `tools/weekly_accuracy_report.R` — the user explicitly asked for them built directly without the
    `remediation-phase-scaffold`/issue-tracker ceremony this session, but that was a one-time
    expedience call, not necessarily a permanent decision about whether `tools/gif_qb_epa_race.R`,
    `tools/gif_rookie_snap_race.R`, and `tools/gif_division_pd_area.R` should ever land on `main`.
-7. **Home-backup-QB market-bias finding (Known Issue #2) — DROPPED 2026-10-05, closed.** User
+10. **Home-backup-QB market-bias finding (Known Issue #2) — DROPPED 2026-10-05, closed.** User
    made the deliberate call: the Bonferroni/BH correction failure is disqualifying, don't invest in
    a depth-chart cache to pursue it further. Nothing left to do here.
-8. If continuing the market-disagreement project: Phase 2's public-bet-percentage/handle data angle
+11. If continuing the market-disagreement project: Phase 2's public-bet-percentage/handle data angle
    needs an explicit user decision (paid vendor or scraping project) before pursuing.
-9. **Known Issue #3 (ordering gap) — fixed in code 2026-10-05, still needs live verification.**
+12. **Known Issue #3 (ordering gap) — fixed in code 2026-10-05, still needs live verification.**
    `risk_management_engine.R` was moved after `bet_tracker.r` in `run_full_pipeline.R`. Still
    unverified — the real ledger still has 0 RESOLVED bets. Re-run the full pipeline once the real
    ledger has a RESOLVED bet to grade, and confirm `risk_management_engine.R`'s run reflects that
    same-run grading rather than the prior run's.
-10. `player_props_engine.R`, team embeddings, a live dashboard, and a true rstan/cmdstanr install for
+13. `player_props_engine.R`, team embeddings, a live dashboard, and a true rstan/cmdstanr install for
     the Kalman state-space model remain explicitly deferred non-goals — only start if there's a
     concrete pull for them.
-11. No other new feature is currently spec'd and queued. Any feature beyond the now-shipped
+14. No other new feature is currently spec'd and queued. Any feature beyond the now-shipped
     visualization-GIF phase needs a `/spec-interview` pass before implementation, same as every
     feature shipped so far.
