@@ -5,22 +5,22 @@
 Successfully audited all data sources for sampling integrity, overhauled the 15-team WNBA coaching staff registry to accurate 2026 ground truth, and aligned all data pipelines and frontend pages with `season: 2026`:
 
 1. **2026 WNBA Coaching Staff Overhaul (`build_coaching_dataset.R`, `CoachesClient.tsx`):**
-   - Updated the 15-team coaching staff registry, tenures, career win percentages, and coaching tree genealogy to true 2026 ground truth:
-     - **IND:** Stephanie White (Hired from CON to coach Caitlin Clark & Aliyah Boston).
-     - **CON:** Rachid Meziane (Belgian Olympic National Team HC & EuroBasket champion).
-     - **ATL:** Karl Smesko (Legendary FGCU HC, NCAA D1 top-3 winning percentage).
-     - **CHI:** Tyler Marsh (Former Las Vegas Aces assistant / player dev director).
-     - **WSH:** Sydney Johnson (Former Chicago Sky assistant / Princeton HC).
-     - **LA:** Lynne Roberts (Pac-12 Coach of the Year from Utah).
-     - **DAL:** Chris Koclanes (Hired under Curt Miller).
-     - **GS:** Natalie Nakase (Inaugural Head Coach / former Aces assistant).
-     - **POR:** Alex Sarama (Inaugural Head Coach / European Constraints-Led specialist).
-     - **TOR:** Tamara Tatham (Inaugural Head Coach / Canadian National Team Olympian & coach).
-     - **LV:** Becky Hammon (Updated staff: Charlene Thomas-Swinson associate HC, Sugar Rodgers offensive coord, replacing Marsh/Nakase).
-     - **NY:** Sandy Brondello (Defending 2024 WNBA Champion).
-     - **MIN:** Cheryl Reeve (4x WNBA Champion, USA National Team).
-     - **PHX:** Nate Tibbetts.
-     - **SEA:** Noelle Quinn.
+   - Synchronized the 15-team coaching staff registry with exact 2026 Basketball-Reference records (`https://www.basketball-reference.com/wnba/years/2026_coaches.html`):
+     - **NY:** Chris DeMarco (1st yr, 44 G, 26-18, .591).
+     - **TOR:** Sandy Brondello (1st yr with TOR, 14 yrs overall, 496 career G, 282-214, .569).
+     - **ATL:** Karl Smesko (2nd yr, 88 G, 60-28, .682).
+     - **CHI:** Tyler Marsh (2nd yr, 88 G, 26-62, .295).
+     - **CON:** Rachid Meziane (2nd yr, 88 G, 22-66, .250).
+     - **DAL:** Jose Fernandez (1st yr, 44 G, 27-17, .614).
+     - **GS:** Natalie Nakase (2nd yr, 88 G, 55-33, .625).
+     - **IND:** Stephanie White (4th yr w/ IND, 6th overall, 236 G, 144-92, .610).
+     - **LA:** Lynne Roberts (2nd yr, 88 G, 37-51, .420).
+     - **LV:** Becky Hammon (5th yr, 204 G, 148-56, .725).
+     - **MIN:** Cheryl Reeve (17th yr, 598 G, 397-201, .664).
+     - **PHX:** Nate Tibbetts (3rd yr, 128 G, 62-66, .484).
+     - **POR:** Alex Sarama (1st yr, 44 G, 17-27, .386).
+     - **SEA:** Sonia Raman (1st yr, 44 G, 8-36, .182).
+     - **WSH:** Sydney Johnson (2nd yr, 88 G, 44-44, .500).
    - Tagged each coaching record with `season: 2026` and added a prominent `2026 Season` badge in `web/components/CoachesClient.tsx`.
 
 2. **Data Sampling & Attribution Spot-Check:**

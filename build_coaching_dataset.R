@@ -34,21 +34,21 @@ cat(">>> Building official 15-team WNBA coaching staff registry (2026 season)...
 
 coaching_registry_raw <- tribble(
   ~team_abbr, ~team_name, ~head_coach, ~tenure_years, ~career_games, ~career_win_pct, ~coaching_tree, ~assoc_head_coach, ~offensive_coord, ~defensive_coord, ~player_dev_lead, ~tactical_archetype,
-  "NY",  "New York Liberty",       "Sandy Brondello",   5, 424, 0.642, "Australian National Team", "Olaf Lange",       "Roneeka Hodges",    "Zach O'Brien",     "Jack Murphy",      "5-Out Motion Spacing, High-PPO DHO Triggers & Drop-Deterrence",
-  "LV",  "Las Vegas Aces",         "Becky Hammon",      5, 212, 0.736, "Gregg Popovich",           "Charlene Thomas",  "Sugar Rodgers",     "Larry Blunt",      "Tora Suber",       "Pace-and-Space Spread PnR, Relentless Rim Pressure & Aggressive Blitz",
-  "MIN", "Minnesota Lynx",         "Cheryl Reeve",     17, 566, 0.675, "Anne Donovan",             "Katie Smith",      "Rebekkah Brunson",  "Elaine Powell",    "Michael Brown",    "High-Post Pinch Hub, Cutters Continuity & Physical Lockdown Containment",
-  "IND", "Indiana Fever",          "Stephanie White",   2, 208, 0.582, "Lin Dunn",                 "Briann January",   "Austin Kelly",      "Paul Goriss",      "Karima Christmas", "Turbo-Pace 7-Second Transition, Caitlin Clark Deep Drag Screens & Spaced Floor",
-  "CON", "Connecticut Sun",        "Rachid Meziane",    2, 44,  0.568, "European Modern / Belgium","Valeriane Vukosavljevic Disc.", "Pascal Angillis", "Maxence Broyer", "Camille Le Noir", "Physical Attrition, Smothering Nail Help & High-Leverage Post Feeds",
-  "ATL", "Atlanta Dream",          "Karl Smesko",       2, 44,  0.545, "FGCU / Modern Analytics",  "Kelly Schumacher", "Chelsea Lyles",     "Vickie Johnson",   "Daynia La-Force",  "Spread-and-Rake 3-Point Analytics, 5-Out Inverted Drives & Aggressive Closeouts",
-  "CHI", "Chicago Sky",            "Tyler Marsh",       2, 44,  0.500, "Becky Hammon",             "Crystal Robinson", "Tanisha Wright",    "Ty Ellis",         "Courtney Paris",   "Relentless Glass Crash, High-Energy Physical Trapping & Post Isolation",
-  "WSH", "Washington Mystics",     "Sydney Johnson",    2, 44,  0.477, "Princeton / Pete Carril",  "LaToya Sanders",   "Shelley Patterson", "Ashlee McGee",     "Drew Johnson",     "Flow Motion Read-and-React, Backdoor Cutting & Perimeter Containment",
-  "LA",  "Los Angeles Sparks",     "Lynne Roberts",     2, 44,  0.477, "Utah / Modern Pace & Space","Gavin Petersen",  "Camille Smith",     "Steve Smith",      "Danielle Viglione","Ultra-High Pace Spread Offense, Early Clock 3s & Dynamic Transition Flow",
-  "DAL", "Dallas Wings",           "Chris Koclanes",    2, 44,  0.455, "Curt Miller",              "Brandi Poole",     "Courtney Paris",    "Zak Bross",        "April Phillips",   "Double-Big High-Low Feeds, Interior Rim Protection & Fast Break Flow",
-  "SEA", "Seattle Storm",          "Noelle Quinn",      6, 200, 0.560, "Dan Hughes",               "Pokey Chatman",    "Perry Huang",       "Ebony Hoffman",    "Kyle Reese",       "Spread 4-Out Pick-and-Roll, Early Clock 3s & Wing Switchability",
-  "PHX", "Phoenix Mercury",        "Nate Tibbetts",     3, 84,  0.524, "Mark Daigneault",          "Kristi Toliver",   "Michael Joiner",    "Megan Vogel",      "Cory McRae",       "Modern NBA 5-Out Drive-and-Kick, Corner Spacing & High Pick Roll Blitz",
-  "GS",  "Golden State Valkyries", "Natalie Nakase",    2, 44,  0.523, "Becky Hammon",             "Kelly Schumacher", "Brian Agler",       "Danielle McCray",  "Brittany Boyd",    "Pace-and-Space Spread Motion, Paige Bueckers PnR Hub & Switch Defense",
-  "POR", "Portland Fire",          "Alex Sarama",       1, 0,   0.500, "European Constraints-Led", "Alex Jensen",      "Dawn Staley Disc.", "Ryan Saunders",    "Marcus Davis",     "European Flow Motion, DHO Triggers & Tactical Late-Clock Discipline",
-  "TOR", "Toronto Tempo",          "Tamara Tatham",     1, 0,   0.500, "Canadian National Program","Lisa Thomaidis",   "Carly Clarke",      "Fabian McKenzie",  "Roy Rana",         "High-IQ .5-Second Decision Flow, Perimeter Ball Pressure & Multi-Position Wings"
+  "ATL", "Atlanta Dream",          "Karl Smesko",       2, 88,  0.682, "FGCU / Modern Analytics",  "Kelly Schumacher", "Chelsea Lyles",     "Vickie Johnson",   "Daynia La-Force",  "Spread-and-Rake 3-Point Analytics, 5-Out Inverted Drives & Aggressive Closeouts",
+  "CHI", "Chicago Sky",            "Tyler Marsh",       2, 88,  0.295, "Becky Hammon",             "Crystal Robinson", "Tanisha Wright",    "Ty Ellis",         "Courtney Paris",   "Relentless Glass Crash, High-Energy Physical Trapping & Post Isolation",
+  "CON", "Connecticut Sun",        "Rachid Meziane",    2, 88,  0.250, "European Modern / Belgium","Valeriane Vukosavljevic Disc.", "Pascal Angillis", "Maxence Broyer", "Camille Le Noir", "Physical Attrition, Smothering Nail Help & High-Leverage Post Feeds",
+  "DAL", "Dallas Wings",           "Jose Fernandez",    1, 44,  0.614, "South Florida (USF)",      "Brandi Poole",     "Courtney Paris",    "Zak Bross",        "April Phillips",   "Double-Big High-Low Feeds, Interior Rim Protection & Fast Break Flow",
+  "GS",  "Golden State Valkyries", "Natalie Nakase",    2, 88,  0.625, "Becky Hammon",             "Kelly Schumacher", "Brian Agler",       "Danielle McCray",  "Brittany Boyd",    "Pace-and-Space Spread Motion, Paige Bueckers PnR Hub & Switch Defense",
+  "IND", "Indiana Fever",          "Stephanie White",   4, 236, 0.610, "Lin Dunn",                 "Briann January",   "Austin Kelly",      "Paul Goriss",      "Karima Christmas", "Turbo-Pace 7-Second Transition, Caitlin Clark Deep Drag Screens & Spaced Floor",
+  "LA",  "Los Angeles Sparks",     "Lynne Roberts",     2, 88,  0.420, "Utah / Modern Pace & Space","Gavin Petersen",  "Camille Smith",     "Steve Smith",      "Danielle Viglione","Ultra-High Pace Spread Offense, Early Clock 3s & Dynamic Transition Flow",
+  "LV",  "Las Vegas Aces",         "Becky Hammon",      5, 204, 0.725, "Gregg Popovich",           "Charlene Thomas",  "Sugar Rodgers",     "Larry Blunt",      "Tora Suber",       "Pace-and-Space Spread PnR, Relentless Rim Pressure & Aggressive Blitz",
+  "MIN", "Minnesota Lynx",         "Cheryl Reeve",     17, 598, 0.664, "Anne Donovan",             "Katie Smith",      "Rebekkah Brunson",  "Elaine Powell",    "Michael Brown",    "High-Post Pinch Hub, Cutters Continuity & Physical Lockdown Containment",
+  "NY",  "New York Liberty",       "Chris DeMarco",     1, 44,  0.591, "Steve Kerr / Golden State", "Olaf Lange",       "Roneeka Hodges",    "Zach O'Brien",     "Jack Murphy",      "5-Out Motion Spacing, High-PPO DHO Triggers & Drop-Deterrence",
+  "PHX", "Phoenix Mercury",        "Nate Tibbetts",     3, 128, 0.484, "Mark Daigneault",          "Kristi Toliver",   "Michael Joiner",    "Megan Vogel",      "Cory McRae",       "Modern NBA 5-Out Drive-and-Kick, Corner Spacing & High Pick Roll Blitz",
+  "POR", "Portland Fire",          "Alex Sarama",       1, 44,  0.386, "European Constraints-Led", "Alex Jensen",      "Dawn Staley Disc.", "Ryan Saunders",    "Marcus Davis",     "European Flow Motion, DHO Triggers & Tactical Late-Clock Discipline",
+  "SEA", "Seattle Storm",          "Sonia Raman",       1, 44,  0.182, "Tara VanDerveer / MIT",    "Pokey Chatman",    "Perry Huang",       "Ebony Hoffman",    "Kyle Reese",       "Spread 4-Out Pick-and-Roll, Early Clock 3s & Wing Switchability",
+  "TOR", "Toronto Tempo",          "Sandy Brondello",   1, 496, 0.569, "Australian National Team", "Lisa Thomaidis",   "Carly Clarke",      "Fabian McKenzie",  "Roy Rana",         "High-IQ .5-Second Decision Flow, Perimeter Ball Pressure & Multi-Position Wings",
+  "WSH", "Washington Mystics",     "Sydney Johnson",    2, 88,  0.500, "Princeton / Pete Carril",  "LaToya Sanders",   "Shelley Patterson", "Ashlee McGee",     "Drew Johnson",     "Flow Motion Read-and-React, Backdoor Cutting & Perimeter Containment"
 )
 
 # ------------------------------------------------------------------------------
@@ -92,16 +92,16 @@ compute_wnba_coaching_metrics <- function(reg) {
     # WNBA League Average half-court PPP is ~0.89. Elite ATO offenses hit 1.02 - 1.12.
     # Elite ATO defenses suppress opponent ATOs below 0.82.
     base_ato_off <- case_when(
-      row$head_coach %in% c("Becky Hammon", "Sandy Brondello", "Cheryl Reeve") ~ runif(1, 1.06, 1.14),
-      row$head_coach %in% c("Stephanie White", "Karl Smesko", "Noelle Quinn", "Nate Tibbetts") ~ runif(1, 0.98, 1.06),
+      row$head_coach %in% c("Becky Hammon", "Sandy Brondello", "Cheryl Reeve", "Chris DeMarco") ~ runif(1, 1.06, 1.14),
+      row$head_coach %in% c("Stephanie White", "Karl Smesko", "Jose Fernandez", "Nate Tibbetts") ~ runif(1, 0.98, 1.06),
       row$head_coach %in% c("Natalie Nakase", "Alex Sarama", "Rachid Meziane", "Lynne Roberts") ~ runif(1, 0.93, 1.00),
       TRUE ~ runif(1, 0.86, 0.94)
     )
     
     base_ato_def <- case_when(
       row$head_coach %in% c("Cheryl Reeve", "Stephanie White", "Becky Hammon", "Rachid Meziane") ~ runif(1, 0.77, 0.83),
-      row$head_coach %in% c("Sandy Brondello", "Noelle Quinn", "Tyler Marsh") ~ runif(1, 0.82, 0.88),
-      row$head_coach %in% c("Nate Tibbetts", "Karl Smesko", "Lynne Roberts", "Chris Koclanes") ~ runif(1, 0.88, 0.95),
+      row$head_coach %in% c("Chris DeMarco", "Sandy Brondello", "Tyler Marsh") ~ runif(1, 0.82, 0.88),
+      row$head_coach %in% c("Nate Tibbetts", "Karl Smesko", "Lynne Roberts", "Jose Fernandez") ~ runif(1, 0.88, 0.95),
       TRUE ~ runif(1, 0.86, 0.93)
     )
     
@@ -109,7 +109,7 @@ compute_wnba_coaching_metrics <- function(reg) {
     # Challenge success rate ranges from 45% to 78%
     challenge_success <- case_when(
       row$head_coach %in% c("Cheryl Reeve", "Becky Hammon", "Stephanie White") ~ runif(1, 0.71, 0.80),
-      row$head_coach %in% c("Sandy Brondello", "Noelle Quinn", "Karl Smesko", "Nate Tibbetts") ~ runif(1, 0.60, 0.70),
+      row$head_coach %in% c("Chris DeMarco", "Sandy Brondello", "Karl Smesko", "Nate Tibbetts") ~ runif(1, 0.60, 0.70),
       TRUE ~ runif(1, 0.46, 0.58)
     )
     
@@ -118,22 +118,22 @@ compute_wnba_coaching_metrics <- function(reg) {
     
     # 4. Shot Quality Lift (eFG% lift generated by scheme spacing vs pure personnel)
     sq_lift <- case_when(
-      row$head_coach %in% c("Becky Hammon", "Sandy Brondello", "Stephanie White", "Karl Smesko", "Lynne Roberts") ~ runif(1, 0.028, 0.048),
-      row$head_coach %in% c("Cheryl Reeve", "Nate Tibbetts", "Noelle Quinn", "Natalie Nakase", "Alex Sarama") ~ runif(1, 0.014, 0.028),
+      row$head_coach %in% c("Becky Hammon", "Chris DeMarco", "Stephanie White", "Karl Smesko", "Lynne Roberts") ~ runif(1, 0.028, 0.048),
+      row$head_coach %in% c("Cheryl Reeve", "Sandy Brondello", "Nate Tibbetts", "Natalie Nakase", "Alex Sarama") ~ runif(1, 0.014, 0.028),
       TRUE ~ runif(1, -0.010, 0.012)
     )
     
     # 5. Rotation Stagger Score (0-100: Star staggering vs bench bleed prevention)
     stagger_score <- case_when(
-      row$head_coach %in% c("Cheryl Reeve", "Becky Hammon", "Sandy Brondello", "Stephanie White") ~ round(runif(1, 88, 98)),
-      row$head_coach %in% c("Noelle Quinn", "Natalie Nakase", "Tyler Marsh", "Rachid Meziane") ~ round(runif(1, 79, 88)),
+      row$head_coach %in% c("Cheryl Reeve", "Becky Hammon", "Chris DeMarco", "Stephanie White") ~ round(runif(1, 88, 98)),
+      row$head_coach %in% c("Sandy Brondello", "Natalie Nakase", "Tyler Marsh", "Rachid Meziane") ~ round(runif(1, 79, 88)),
       TRUE ~ round(runif(1, 60, 78))
     )
     
     # 6. Player Development Score (0-100: Young player YoY value growth)
     dev_score <- case_when(
       row$head_coach %in% c("Stephanie White", "Cheryl Reeve", "Tyler Marsh", "Natalie Nakase", "Karl Smesko", "Alex Sarama") ~ round(runif(1, 91, 99)),
-      row$head_coach %in% c("Becky Hammon", "Sandy Brondello", "Noelle Quinn", "Tamara Tatham", "Lynne Roberts") ~ round(runif(1, 83, 90)),
+      row$head_coach %in% c("Becky Hammon", "Chris DeMarco", "Sandy Brondello", "Sonia Raman", "Lynne Roberts") ~ round(runif(1, 83, 90)),
       TRUE ~ round(runif(1, 65, 82))
     )
     
