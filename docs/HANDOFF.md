@@ -1,18 +1,6 @@
 # NFL Analytics — Handoff Document
 
-**Last updated**: 2026-10-13 (same day, yet another later session), with `main` still at commit
-`2298bc4` (nothing new committed this session — see below). The prior doc revision recorded the
-Phase 9 visualization-GIF build (issues #17-#33, all merged, GitHub issues still open). **This
-session did not touch the Phase 9 tracker at all** — it did two unrelated, explicitly ad hoc
-things at the user's direct request, neither filed as a GitHub issue or wired into
-`run_full_pipeline.R`: (1) a Week 6 projections PNG, built as an exact structural twin of the
-already-undecided Week 5 scratch-file pattern (see Known Issue #10 below — now extended, not
-resolved, by this session), and (2) three new standalone GIFs (QB EPA/play rank race, rookie
-snap-share ramp-up, division point-differential stacked area) picked from a 30-idea brainstorm
-pool, explicitly excluding anything betting/market-related per the user's instruction. See "Recent
-work" below for both. Written for a future LLM/agent picking this repo back up cold — read this
-before touching anything, then read `CLAUDE.md` for environment/data-quirk details this doc
-doesn't repeat.
+**Last updated**: 2026-10-19, with `main` at commit `df18cd9` (pushed to `origin/main`). Built and shipped the comprehensive Next.js 14 Web Application Dashboard in `web/` with 10 prerendered analytical hubs, fixed historical schedule point differential leak (+3048 pts) in `team_ratings_engine.R`, conducted candidate ensemble ablation study for Models #4 and #5, audited all 32 head coaches and OverTheCap $301.2M salary cap ceiling for the 2026-2027 season, resolved button click interceptions, and eliminated betting jargon in favor of pure analytical projections. Written for a future LLM/agent picking this repo back up cold — read this before touching anything, then read `CLAUDE.md` for environment/data-quirk details this doc doesn't repeat.
 
 **Two structural findings from the Phase 9 session (carried forward, still open — not touched this
 session)** (see "Known issues" below for full detail): (1) `config.R`'s
