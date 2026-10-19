@@ -53,3 +53,19 @@ export function getPlayerSpatialMaps(): PlayerSpatialDictionary {
   return JSON.parse(fileContent) as PlayerSpatialDictionary;
 }
 
+import { PlayoffMatchupsCatalog } from './playoffTypes';
+
+export function getPlayoffSeriesCatalog(): PlayoffMatchupsCatalog {
+  const filePath = path.join(process.cwd(), 'public', 'data', 'playoff_series_matchups.json');
+  if (!fs.existsSync(filePath)) {
+    return {
+      updatedAt: new Date().toISOString(),
+      nSims: 10000,
+      teams: {},
+      matchups: {},
+    };
+  }
+  const fileContent = fs.readFileSync(filePath, 'utf-8');
+  return JSON.parse(fileContent) as PlayoffMatchupsCatalog;
+}
+

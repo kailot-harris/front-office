@@ -16,6 +16,7 @@ import {
   Calculator,
   Flame,
   Compass,
+  Swords,
 } from 'lucide-react';
 import { BaseballCrest } from '@/components/BaseballCrest';
 
@@ -54,9 +55,16 @@ export const Sidebar: React.FC = () => {
       desc: 'Spray, Strike Zone, IVB & Shift',
     },
     {
+      href: '/series',
+      label: 'Playoff Simulator',
+      badge: '10K Sims',
+      icon: Swords,
+      desc: '3/5/7-game rotation series match-ups',
+    },
+    {
       href: '/postseason',
       label: 'Postseason & Bullpen',
-      badge: '10K Sims',
+      badge: '12-Team Ops',
       icon: Flame,
       desc: '12-team bracket, bullpen & +EV bets',
     },
@@ -235,9 +243,9 @@ export const Sidebar: React.FC = () => {
         <div className="flex items-center justify-between text-xs text-slate-400 px-1">
           <span className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>14-Stage DAG Active</span>
+            <span>15-Stage DAG Active</span>
           </span>
-          <span className="font-mono text-[11px] text-slate-400">v1.4.0</span>
+          <span className="font-mono text-[11px] text-slate-400">v1.5.0</span>
         </div>
         <div className="flex items-center gap-1.5 text-[11px] text-slate-400 px-1">
           <ShieldCheck className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
