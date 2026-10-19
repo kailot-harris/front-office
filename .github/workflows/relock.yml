@@ -1,0 +1,38 @@
+name: Regenerate a sport's package-lock.json
+
+# Utility workflow: regenerates a lockfile on a Linux runner and uploads it as
+# an artifact. Useful when a local npm hits a platform-specific arborist bug.
+on:
+  workflow_dispatch:
+    inputs:
+      sport:
+        description: Which app's lockfile to regenerate
+        required: true
+        type: choice
+        options: [nba, wnba, mlb, nfl]
+
+jobs:
+  relock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Regenerate lockfile from scratch
+        working-directory: ${{ inputs.sport }}/web
+        run: |
+          npm --version
+          rm -f package-lock.json
+          npm install --package-lock-only --no-audit --no-fund
+
+      - name: Verify npm ci accepts the new lockfile
+        working-directory: ${{ inputs.sport }}/web
+        run: npm ci --no-audit --no-fund
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-lock-${{ inputs.sport }}
+          path: ${{ inputs.sport }}/web/package-lock.json
