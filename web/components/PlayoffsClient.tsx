@@ -146,7 +146,7 @@ export const PlayoffsClient: React.FC<PlayoffsClientProps> = ({ dataset }) => {
                     </div>
                   </div>
                   <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                    {(team.playoff_prob * 100).toFixed(1)}% Playoff Odds
+                    {(team.playoff_prob * 100).toFixed(1)}% Playoff Prob
                   </span>
                 </div>
               ))}
@@ -179,7 +179,7 @@ export const PlayoffsClient: React.FC<PlayoffsClientProps> = ({ dataset }) => {
                     </div>
                   </div>
                   <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                    {(team.playoff_prob * 100).toFixed(1)}% Playoff Odds
+                    {(team.playoff_prob * 100).toFixed(1)}% Playoff Prob
                   </span>
                 </div>
               ))}

@@ -54,10 +54,10 @@ export default function HomePage() {
             <Swords className="w-4 h-4 text-slate-400 group-hover:text-emerald-400 transition-colors" />
           </div>
           <h2 className="text-base font-bold text-white mb-1 group-hover:text-emerald-300 transition-colors">
-            Weekly Spreads & Projections
+            Weekly Matchup Projections
           </h2>
           <p className="text-xs text-slate-400 leading-relaxed">
-            Projected spreads, totals, cover probabilities, and rest/travel fatigue penalties for current week games.
+            Projected margins, totals, win probabilities, and rest/travel fatigue adjustments for current week games.
           </p>
         </Link>
 
@@ -89,7 +89,7 @@ export default function HomePage() {
             14-Team Playoff Machine
           </h2>
           <p className="text-xs text-slate-400 leading-relaxed">
-            Provisional seeding, official NFL tiebreakers, and 1,000-trial Monte Carlo bracket advancement odds.
+            Provisional seeding, official NFL tiebreakers, and 1,000-trial Monte Carlo bracket advancement probabilities.
           </p>
         </Link>
       </div>

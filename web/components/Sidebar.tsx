@@ -38,9 +38,9 @@ export const Sidebar: React.FC = () => {
     {
       href: '/matchups',
       label: 'Weekly Matchups',
-      badge: 'Live Spreads',
+      badge: 'Projections',
       icon: Swords,
-      desc: 'Projected spreads, totals & fatigue',
+      desc: 'Projected margins, totals & fatigue',
     },
     {
       href: '/teams',
@@ -59,7 +59,7 @@ export const Sidebar: React.FC = () => {
     {
       href: '/salary-cap',
       label: 'Salary Cap & OTC',
-      badge: '$255.4M Cap',
+      badge: '$301.2M Cap',
       icon: DollarSign,
       desc: 'Positional allocations & top contracts',
     },
@@ -87,7 +87,7 @@ export const Sidebar: React.FC = () => {
     {
       href: '/diagnostics',
       label: 'Diagnostics',
-      badge: 'Brier & ATS',
+      badge: 'Calibration',
       icon: Activity,
       desc: 'Reliability & calibration curve',
     },

@@ -76,15 +76,33 @@ A high-performance, dark-themed, data-dense Next.js 14 App Router web platform b
   ```
 - **Prerendered Routes**:
   1. `/` (Standings & 1,000-sim win distribution visualizer, division tables)
-  2. `/matchups` (Weeks 6–18 schedules, projected spreads, win prob, rest/fatigue badges, key number proximity)
+  2. `/matchups` (Weeks 6–18 schedules, projected margins, win prob, rest/fatigue badges, key margin proximity)
   3. `/teams` (Off vs. Def EPA/play quadrant scatter plot, 32-team granular metrics table, team deep-dive modal)
   4. `/coaching` (Head coach & staff analysis, 4th-down aggression percentiles, PROE, game pace, play-caller roles)
-  5. `/salary-cap` (OverTheCap 32-team salary cap allocations, dead money, positional cash distributions, top 100 contracts)
+  5. `/salary-cap` (OverTheCap 32-team salary cap allocations, dead money, positional cash distributions, top 100 contracts, $301.2M 2026 cap ceiling)
   6. `/playoffs` (14-team playoff seeds, real tiebreaker audit, Monte Carlo bracket simulator)
   7. `/players` (Quarterback efficiency matrix EPA vs CPOE, roster table, backup QB penalty drawer)
-  8. `/variants` (Production ensemble breakdown: Ridge Massey 40%, Elo 35%, Market Blend 25%)
-  9. `/diagnostics` (10-bin reliability calibration curve vs 45° ideal, multi-cycle Brier trajectory, loss analytics)
+  8. `/variants` (Production ensemble breakdown: Ridge Massey 40%, Elo 35%, Market Blend 25% + Empirical Ablation Study of Candidate Models #4 & #5)
+  9. `/diagnostics` (10-bin reliability calibration curve vs 45° ideal, multi-cycle Brier trajectory with slate-level cadence explanations, loss analytics)
   10. `/gallery` (Interactive visual hub with category filters for 16 GIFs and 2 PNG heatmaps)
+
+### Recent Fixes & Analytical Polish (October 19, 2026)
+1. **Point Differential & Projected Wins Realignment**:
+   - Fixed `team_ratings_engine.R` (line 367) which previously aggregated `points_for` and `points_against` across all completed games in the multi-decade historical schedule cache (2002–2026, 6,771 games), producing an erroneous +3048 point differential for New England. Filter now strictly scopes to `season == CURRENT_SEASON`.
+   - Updated `tools/export_web_datasets.R` forward projected wins formula to `completed_wins + remaining_win_prob` instead of multiplying raw Pythagorean win% by 17, completely reconciling summary banners, table rankings, and the 1,000-sim box-and-whisker distribution visualizer.
+2. **Standings View Switcher Click Interception Fix**:
+   - Added `type="button"`, `relative`, and `z-10` to `StandingsClient.tsx` tab triggers (`Full 32 Table` and `8 Divisions`), ensuring unblocked button click handling.
+3. **2026–2027 Season Coaching & Salary Cap Overhaul**:
+   - Overhauled `web/public/data/coaching_profiles.json` across all 32 teams for the 2026 season: Mike Tomlin stepped down (PIT: Mike McCarthy hired); John Harbaugh to NYG; Jesse Minter to BAL; Joe Brady promoted in BUF; Kevin Stefanski to ATL; Todd Monken to CLE; Jeff Hafley to MIA; Mike LaFleur to ARI; Robert Saleh to TEN; Klint Kubiak to LV; Ben Johnson in CHI; Aaron Glenn in NYJ; Mike Vrabel in NE; Brian Schottenheimer in DAL; Liam Coen in JAX; Kellen Moore in NO.
+   - Updated 2026 NFL salary cap ceiling from 2024 benchmark ($255.4M) to official 2026 ceiling of **$301.2M** in `tools/export_web_datasets.R` and UI navigation badges.
+4. **Ensemble Ablation Study (Models #4 & #5)**:
+   - Evaluated and documented candidate 4th (Net EPA / Early-Down Success Rate Regression) and 5th (Standalone Rest / Circadian Model) models in `web/components/VariantsClient.tsx`. Confirmed both produce 0.00% lift (Brier scores degraded to 0.2305 and 0.2297 due to collinearity with Ridge Massey and high noise on standard 7-day slates), validating the mathematical optimality of the 3-model production ensemble (Ridge 40% / Elo 35% / Market 25%).
+5. **Cadence Transparency in Model Diagnostics**:
+   - Added slate event mapping and an informative explainer note in `web/components/DiagnosticsClient.tsx` demystifying why graded games jump in bulk (+13 to +14 games) following Sunday afternoon slates, interspersed with single-game (+1) increments for primetime TNF, SNF, and MNF finalizations.
+6. **Copy & Terminology Polish**:
+   - Removed internal "Phase" tags from external UI badges across all views.
+   - Removed cluttering betting odds terminology across navigation, matchup cards, tables, and home screen in favor of clean analytical margin projections, win probabilities, and score margin key numbers.
+   - Fixed unescaped LaTeX math character string in `VariantsClient.tsx`.
 
 ---
 

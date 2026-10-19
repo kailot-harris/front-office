@@ -35,7 +35,7 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
       <div>
         <div className="flex items-center gap-2 mb-1">
           <span className="text-xs font-mono font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded-full">
-            Phase 8: Model Diagnostics & Calibration
+            Model Diagnostics & Calibration
           </span>
           <span className="text-xs font-mono text-slate-400">
             {latestGames} Games Graded Out-of-Sample
@@ -172,26 +172,35 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
 
       {/* Accuracy & Loss Trajectory History */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-xl">
-        <div className="pb-3 border-b border-slate-800 mb-4 flex items-center justify-between">
+        <div className="pb-3 border-b border-slate-800 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <h3 className="text-base font-semibold text-white">
               Weekly Accuracy & Loss Trajectory
             </h3>
             <p className="text-xs text-slate-400">
-              Progression of model diagnostics across evaluation cycles in the 2026 season.
+              Progression of model diagnostics across real-time evaluation checkpoints in the 2026 season.
             </p>
           </div>
-          <span className="text-xs font-mono text-emerald-400 bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
+          <span className="text-xs font-mono text-emerald-400 bg-slate-950 px-2.5 py-1 rounded border border-slate-800 self-start sm:self-auto">
             {historyGames.length} Evaluation Checkpoints
           </span>
+        </div>
+
+        {/* Informative Pipeline Note */}
+        <div className="mb-4 p-3 rounded-lg bg-slate-950/80 border border-slate-800/80 text-xs text-slate-400 flex items-start gap-2.5">
+          <Activity className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+          <p className="leading-relaxed">
+            <strong className="text-slate-200">Evaluation Cycle Cadence:</strong> Checkpoints trigger sequentially as game slates conclude. Multi-game jumps (+13 to +14 games) capture the bulk Sunday afternoon windows, while single-game increments (+1) record standalone primetime games (Thursday Night Football, Sunday Night Football, and Monday Night Football).
+          </p>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-mono">
             <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
               <tr>
-                <th className="px-3 py-2.5">Evaluation Cycle</th>
-                <th className="px-3 py-2.5 text-right">Games Graded</th>
+                <th className="px-3 py-2.5">Evaluation Checkpoint</th>
+                <th className="px-3 py-2.5">Slate / Trigger Event</th>
+                <th className="px-3 py-2.5 text-right">Cumulative Graded</th>
                 <th className="px-3 py-2.5 text-right">SU Accuracy</th>
                 <th className="px-3 py-2.5 text-right">Brier Score</th>
                 <th className="px-3 py-2.5 text-right">Brier Edge</th>
@@ -199,26 +208,43 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
-              {historyGames.map((games, idx) => (
-                <tr key={idx} className="hover:bg-slate-800/40">
-                  <td className="px-3 py-2 text-slate-300">
-                    Cycle #{idx + 1}
-                  </td>
-                  <td className="px-3 py-2 text-right text-slate-400 font-semibold">{games}</td>
-                  <td className="px-3 py-2 text-right text-emerald-400 font-semibold">
-                    {historyAccuracy[idx]?.toFixed(1)}%
-                  </td>
-                  <td className="px-3 py-2 text-right text-cyan-400 font-semibold">
-                    {historyBrier[idx]?.toFixed(4)}
-                  </td>
-                  <td className="px-3 py-2 text-right text-emerald-400">
-                    +{((0.25 - (historyBrier[idx] ?? 0.25)) / 0.25 * 100).toFixed(2)}%
-                  </td>
-                  <td className="px-3 py-2 text-right text-indigo-400">
-                    {historyLogLoss[idx]?.toFixed(4)}
-                  </td>
-                </tr>
-              ))}
+              {historyGames.map((games, idx) => {
+                const slateNames = [
+                  'Week 3 Final Slate',
+                  'Week 4 Sunday Afternoon Block (+14)',
+                  'Week 4 Sunday Night Football (+1)',
+                  'Week 4 Monday Night Football (+1)',
+                  'Week 5 Thursday Night Football (+1)',
+                  'Week 5 Sunday Afternoon Block (+13)',
+                  'Week 5 Sunday Night Football (+1)',
+                  'Week 5 Monday Night Football (+1)',
+                ];
+                const slateLabel = slateNames[idx] || `Cycle #${idx + 1} Run`;
+
+                return (
+                  <tr key={idx} className="hover:bg-slate-800/40">
+                    <td className="px-3 py-2 text-slate-300 font-bold">
+                      Checkpoint #{idx + 1}
+                    </td>
+                    <td className="px-3 py-2 text-slate-400">
+                      {slateLabel}
+                    </td>
+                    <td className="px-3 py-2 text-right text-slate-200 font-semibold">{games}</td>
+                    <td className="px-3 py-2 text-right text-emerald-400 font-semibold">
+                      {historyAccuracy[idx]?.toFixed(1)}%
+                    </td>
+                    <td className="px-3 py-2 text-right text-cyan-400 font-semibold">
+                      {historyBrier[idx]?.toFixed(4)}
+                    </td>
+                    <td className="px-3 py-2 text-right text-emerald-400">
+                      +{((0.25 - (historyBrier[idx] ?? 0.25)) / 0.25 * 100).toFixed(2)}%
+                    </td>
+                    <td className="px-3 py-2 text-right text-indigo-400">
+                      {historyLogLoss[idx]?.toFixed(4)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

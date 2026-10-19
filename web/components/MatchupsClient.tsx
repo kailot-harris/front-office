@@ -230,19 +230,19 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                   <th className="py-3 px-3">Away Team</th>
                   <th className="py-3 px-3 text-center">@</th>
                   <th className="py-3 px-3">Home Team</th>
-                  <th className="py-3 px-3 text-center">Projected Spread</th>
+                  <th className="py-3 px-3 text-center">Projected Margin</th>
                   <th className="py-3 px-3 text-center">Total</th>
                   <th className="py-3 px-3 text-right">Away Win %</th>
                   <th className="py-3 px-3 text-right">Home Win %</th>
                   <th className="py-3 px-3 text-center">Rest Advantage</th>
-                  <th className="py-3 px-3 text-center">Key Number</th>
+                  <th className="py-3 px-3 text-center">Key Margin</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-sans">
                 {filteredMatchups.map((m) => {
                   const isHomeFav = m.projected_margin > 0;
                   const favTeam = isHomeFav ? m.home_team : m.away_team;
-                  const spread = Math.abs(m.projected_spread).toFixed(1);
+                  const margin = Math.abs(m.projected_margin).toFixed(1);
 
                   return (
                     <tr key={m.game_id} className="hover:bg-slate-800/40 transition-colors">
@@ -269,7 +269,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                         </div>
                       </td>
                       <td className="py-2.5 px-3 text-center font-mono font-bold text-emerald-400">
-                        {favTeam} -{spread}
+                        {favTeam} +{margin}
                       </td>
                       <td className="py-2.5 px-3 text-center font-mono text-slate-400">
                         {m.projected_total.toFixed(1)}

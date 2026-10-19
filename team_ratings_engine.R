@@ -364,7 +364,7 @@ run_team_ratings <- function() {
     # is renamed .pyth_games_played below purely to avoid a name collision with the new,
     # correctly current-season-scoped `games_played` column above (which would otherwise silently
     # overwrite one or the other on the join and double-count/misreport one of them).
-    completed <- sch |> filter(!is.na(home_score), !is.na(away_score))
+    completed <- sch |> filter(season == CURRENT_SEASON, !is.na(home_score), !is.na(away_score))
 
     pf_pa <- bind_rows(
       completed |> transmute(team = home_team, pf = home_score, pa = away_score),

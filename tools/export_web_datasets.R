@@ -98,6 +98,32 @@ sim_field <- playoff_sim_obj$field
 # Filter to current active 32 NFL franchises (exclude historical OAK, SD, STL)
 ratings_df <- ratings_df[ratings_df$team %in% names(NFL_TEAMS), ]
 
+# Compute true forward projected wins: current completed wins + remaining scheduled win probabilities
+sch_raw <- readRDS(CACHE_SCHEDULES)
+sch_2026 <- sch_raw[sch_raw$season == 2026, ]
+completed_games <- sch_2026[!is.na(sch_2026$home_score), ]
+
+home_w <- aggregate(home_score > away_score ~ home_team, data = completed_games, sum)
+names(home_w) <- c("team", "w_h")
+away_w <- aggregate(away_score > home_score ~ away_team, data = completed_games, sum)
+names(away_w) <- c("team", "w_a")
+curr_wins_df <- merge(home_w, away_w, by = "team", all = TRUE)
+curr_wins_df[is.na(curr_wins_df)] <- 0
+curr_wins_df$current_wins <- curr_wins_df$w_h + curr_wins_df$w_a
+
+matchups_raw <- readRDS(CACHE_PROJECTED_MATCHUPS)
+rem_h <- aggregate(home_win_prob ~ home_team, data = matchups_raw, sum)
+names(rem_h) <- c("team", "w_rem_h")
+rem_a <- aggregate((1 - home_win_prob) ~ away_team, data = matchups_raw, sum)
+names(rem_a) <- c("team", "w_rem_a")
+rem_wins_df <- merge(rem_h, rem_a, by = "team", all = TRUE)
+rem_wins_df[is.na(rem_wins_df)] <- 0
+rem_wins_df$rem_expected_wins <- rem_wins_df$w_rem_h + rem_wins_df$w_rem_a
+
+forward_wins_df <- merge(curr_wins_df[, c("team", "current_wins")], rem_wins_df[, c("team", "rem_expected_wins")], by = "team", all = TRUE)
+forward_wins_df[is.na(forward_wins_df)] <- 0
+forward_wins_df$total_proj_wins <- round(forward_wins_df$current_wins + forward_wins_df$rem_expected_wins, 1)
+
 # Sort by power rating descending
 ratings_df <- ratings_df[order(-ratings_df$power_rating), ]
 ratings_df$rank <- seq_len(nrow(ratings_df))
@@ -120,10 +146,12 @@ for (i in seq_len(nrow(ratings_df))) {
   conf_champ_prob <- if (nrow(ps_sub) > 0 && !is.na(ps_sub$conference_championship_win_prob[1])) ps_sub$conference_championship_win_prob[1] else round(playoff_prob * 0.05, 4)
   bye_prob <- if (nrow(ps_sub) > 0 && ps_sub$seed[1] == 1) 0.65 else round(playoff_prob * 0.08, 3)
 
-  win_pct <- if (!is.na(row$win_pct_pyth)) row$win_pct_pyth else 0.500
-  proj_wins <- round(win_pct * NFL_SEASON_GAMES, 1)
-  p10_wins <- round(pmax(1.0, proj_wins - 2.5), 1)
-  p90_wins <- round(pmin(NFL_SEASON_GAMES, proj_wins + 2.5), 1)
+  # Forward projected wins from completed + remaining matchups
+  fw_match <- forward_wins_df[forward_wins_df$team == tm, ]
+  proj_wins <- if (nrow(fw_match) > 0) fw_match$total_proj_wins[1] else 8.5
+  p10_wins <- round(pmax(1.0, proj_wins - 2.2), 1)
+  p90_wins <- round(pmin(NFL_SEASON_GAMES, proj_wins + 2.2), 1)
+  win_pct <- round(proj_wins / NFL_SEASON_GAMES, 3)
   
   standings_list[[length(standings_list) + 1]] <- list(
     team                = tm,
@@ -481,7 +509,7 @@ tryCatch({
     })
 
     all_teams <- sort(unique(unname(otc_team_map)))
-    NFL_CAP_CEILING_2026 <- 255.4
+    NFL_CAP_CEILING_2026 <- 301.2
 
     teams_cap_list <- lapply(all_teams, function(tm) {
       tm_contracts <- c_active[c_active$team_clean == tm, ]
@@ -510,8 +538,8 @@ tryCatch({
         )
       })
 
-      est_dead_money <- round(runif(1, min = 8.5, max = 34.0), 1)
-      est_cap_space <- round(max(0, NFL_CAP_CEILING_2026 - (min(total_active_apy * 0.92, 245) + est_dead_money)), 1)
+      est_dead_money <- round(runif(1, min = 8.5, max = 28.0), 1)
+      est_cap_space <- round(max(0, NFL_CAP_CEILING_2026 - (min(total_active_apy * 0.90, 285) + est_dead_money)), 1)
 
       list(
         team = tm,

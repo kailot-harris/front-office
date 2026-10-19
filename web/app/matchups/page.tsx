@@ -4,9 +4,9 @@ import { MatchupsClient } from '@/components/MatchupsClient';
 import { Swords } from 'lucide-react';
 
 export const metadata = {
-  title: 'Weekly NFL Matchups & Spread Projections | NFL Analytics',
+  title: 'Weekly NFL Matchups & Projections | NFL Analytics',
   description:
-    'Game-by-game projected spreads, totals, win probabilities, and situational fatigue penalties for all weekly NFL matchups.',
+    'Game-by-game projected margins, totals, win probabilities, and situational fatigue adjustments for all weekly NFL matchups.',
 };
 
 export default function MatchupsPage() {
@@ -28,7 +28,7 @@ export default function MatchupsPage() {
             <span>Weekly Matchup Projections</span>
           </h1>
           <p className="text-slate-400 text-sm mt-1 max-w-3xl">
-            Model-projected point spreads, game totals, and win probabilities powered by Ridge regression, Elo ratings, and situational fatigue adjustments (rest days, short weeks, and travel mileage).
+            Model-projected victory margins, game totals, and win probabilities powered by Ridge regression, Elo ratings, and situational fatigue adjustments (rest days, short weeks, and travel mileage).
           </p>
         </div>
 

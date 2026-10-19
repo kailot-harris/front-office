@@ -12,10 +12,10 @@ interface MatchupCardProps {
 export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
   const isHomeFavored = matchup.projected_margin > 0;
   const favoredTeam = isHomeFavored ? matchup.home_team : matchup.away_team;
-  const spreadValue = Math.abs(matchup.projected_spread);
+  const marginValue = Math.abs(matchup.projected_margin);
 
-  // Spread formatting string (e.g. "KC -3.5")
-  const spreadDisplay = `${favoredTeam} -${spreadValue.toFixed(1)}`;
+  // Margin formatting string (e.g. "KC +3.5")
+  const marginDisplay = `${favoredTeam} +${marginValue.toFixed(1)}`;
 
   // Kickoff time formatter
   const formattedTime = matchup.gametime ? `${matchup.gametime} ET` : 'TBD';
@@ -36,11 +36,11 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
           </div>
         </div>
 
-        {/* Key Number or Window Badge */}
+        {/* Key Margin or Window Badge */}
         {matchup.key_number_flag !== 'Standard' ? (
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1">
             <Zap className="w-2.5 h-2.5" />
-            {matchup.key_number_flag}
+            {matchup.key_number_flag.replace('Key', 'Margin')}
           </span>
         ) : (
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/50">
@@ -70,15 +70,15 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
             </div>
           </div>
 
-          {/* Center VS & Spread Box (Col 3) */}
+          {/* Center VS & Projected Margin Box (Col 3) */}
           <div className="col-span-1 flex flex-col items-center justify-center text-center px-1">
             <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-bold mb-0.5">
-              Spread
+              Proj Margin
             </span>
             <div className="bg-slate-950 px-2 py-1 rounded-md border border-slate-800 text-xs font-mono font-black text-emerald-400 shadow-inner whitespace-nowrap">
-              {spreadDisplay}
+              {marginDisplay}
             </div>
-            <span className="text-[10px] font-mono text-slate-400 mt-1">O/U {matchup.projected_total.toFixed(1)}</span>
+            <span className="text-[10px] font-mono text-slate-400 mt-1">Total {matchup.projected_total.toFixed(1)}</span>
           </div>
 
           {/* Home Team (Col 4-5) */}

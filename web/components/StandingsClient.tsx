@@ -232,35 +232,38 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
       {/* Navigation View Switcher & Filters Bar */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* View Switcher Tabs */}
-        <div className="inline-flex rounded-lg bg-slate-950 p-1 border border-slate-800">
+        <div className="relative z-10 inline-flex rounded-lg bg-slate-950 p-1 border border-slate-800">
           <button
+            type="button"
             onClick={() => handleTabChange('visualizer')}
             className={`cursor-pointer select-none flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
               activeTab === 'visualizer'
                 ? 'bg-emerald-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900'
             }`}
           >
             <BarChart2 className="w-4 h-4" />
             <span>Distribution Visualizer</span>
           </button>
           <button
+            type="button"
             onClick={() => handleTabChange('table')}
             className={`cursor-pointer select-none flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
               activeTab === 'table'
                 ? 'bg-emerald-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900'
             }`}
           >
             <TableIcon className="w-4 h-4" />
             <span>Full 32 Table</span>
           </button>
           <button
+            type="button"
             onClick={() => handleTabChange('divisions')}
             className={`cursor-pointer select-none flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
               activeTab === 'divisions'
                 ? 'bg-emerald-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900'
             }`}
           >
             <Grid className="w-4 h-4" />

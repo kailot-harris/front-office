@@ -160,7 +160,7 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
           </div>
 
           <div className="text-right font-mono text-xs text-slate-400">
-            <span className="block text-slate-500 text-[10px] uppercase">Model Base Odds</span>
+            <span className="block text-slate-500 text-[10px] uppercase">Model Probability</span>
             <span className="text-amber-400 font-bold text-sm">
               {(champion.super_bowl_win_prob * 100).toFixed(1)}% Super Bowl Equity
             </span>
