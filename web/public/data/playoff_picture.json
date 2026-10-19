@@ -1,0 +1,244 @@
+{
+  "season": 2026,
+  "generated_at": "2026-10-18 05:16:03.704493",
+  "n_simulations": 10000,
+  "seeding_method": "Real NFL tiebreaker procedure (head-to-head, division/conference record, common games, strength of victory/schedule, combined point rankings, net points) via nfl_tiebreakers.R - see that file's header for the full verified procedure and its two documented scope limitations (net touchdowns / coin toss not modeled, alphabetical fallback instead).",
+  "afc_seeds": [
+    {
+      "seed": 1,
+      "team": "KC",
+      "team_name": "Kansas City Chiefs",
+      "division": "AFC West",
+      "role": "division_winner",
+      "win_pct": 1,
+      "power_rating": 3.74,
+      "wild_card_win_prob": 1,
+      "divisional_win_prob": 0.522,
+      "conf_champ_win_prob": 0.203,
+      "super_bowl_win_prob": 0.0769
+    },
+    {
+      "seed": 2,
+      "team": "BAL",
+      "team_name": "Baltimore Ravens",
+      "division": "AFC North",
+      "role": "division_winner",
+      "win_pct": 0.8,
+      "power_rating": 6.49,
+      "wild_card_win_prob": 0.871,
+      "divisional_win_prob": 0.36,
+      "conf_champ_win_prob": 0.191,
+      "super_bowl_win_prob": 0.0813
+    },
+    {
+      "seed": 3,
+      "team": "JAX",
+      "team_name": "Jacksonville Jaguars",
+      "division": "AFC South",
+      "role": "division_winner",
+      "win_pct": 0.8,
+      "power_rating": 13.39,
+      "wild_card_win_prob": 0.768,
+      "divisional_win_prob": 0.493,
+      "conf_champ_win_prob": 0.351,
+      "super_bowl_win_prob": 0.2183
+    },
+    {
+      "seed": 4,
+      "team": "BUF",
+      "team_name": "Buffalo Bills",
+      "division": "AFC East",
+      "role": "division_winner",
+      "win_pct": 0.8,
+      "power_rating": 8.21,
+      "wild_card_win_prob": 0.69,
+      "divisional_win_prob": 0.375,
+      "conf_champ_win_prob": 0.172,
+      "super_bowl_win_prob": 0.0834
+    },
+    {
+      "seed": 5,
+      "team": "DEN",
+      "team_name": "Denver Broncos",
+      "division": "AFC West",
+      "role": "wildcard",
+      "win_pct": 0.667,
+      "power_rating": 2.61,
+      "wild_card_win_prob": 0.31,
+      "divisional_win_prob": 0.122,
+      "conf_champ_win_prob": 0.036,
+      "super_bowl_win_prob": 0.0134
+    },
+    {
+      "seed": 6,
+      "team": "NE",
+      "team_name": "New England Patriots",
+      "division": "AFC East",
+      "role": "wildcard",
+      "win_pct": 0.6,
+      "power_rating": 4.57,
+      "wild_card_win_prob": 0.232,
+      "divisional_win_prob": 0.106,
+      "conf_champ_win_prob": 0.045,
+      "super_bowl_win_prob": 0.0158
+    },
+    {
+      "seed": 7,
+      "team": "LV",
+      "team_name": "Las Vegas Raiders",
+      "division": "AFC West",
+      "role": "wildcard",
+      "win_pct": 0.6,
+      "power_rating": -8.28,
+      "wild_card_win_prob": 0.129,
+      "divisional_win_prob": 0.022,
+      "conf_champ_win_prob": 0.002,
+      "super_bowl_win_prob": 0
+    }
+  ],
+  "nfc_seeds": [
+    {
+      "seed": 1,
+      "team": "SF",
+      "team_name": "San Francisco 49ers",
+      "division": "NFC West",
+      "role": "division_winner",
+      "win_pct": 1,
+      "power_rating": 2.36,
+      "wild_card_win_prob": 1,
+      "divisional_win_prob": 0.537,
+      "conf_champ_win_prob": 0.184,
+      "super_bowl_win_prob": 0.0642
+    },
+    {
+      "seed": 2,
+      "team": "MIN",
+      "team_name": "Minnesota Vikings",
+      "division": "NFC North",
+      "role": "division_winner",
+      "win_pct": 1,
+      "power_rating": 14.7,
+      "wild_card_win_prob": 0.692,
+      "divisional_win_prob": 0.583,
+      "conf_champ_win_prob": 0.47,
+      "super_bowl_win_prob": 0.3054
+    },
+    {
+      "seed": 3,
+      "team": "NYG",
+      "team_name": "New York Giants",
+      "division": "NFC East",
+      "role": "division_winner",
+      "win_pct": 0.7,
+      "power_rating": 3.75,
+      "wild_card_win_prob": 0.625,
+      "divisional_win_prob": 0.214,
+      "conf_champ_win_prob": 0.105,
+      "super_bowl_win_prob": 0.0396
+    },
+    {
+      "seed": 4,
+      "team": "CAR",
+      "team_name": "Carolina Panthers",
+      "division": "NFC South",
+      "role": "division_winner",
+      "win_pct": 0.5,
+      "power_rating": -0.42,
+      "wild_card_win_prob": 0.593,
+      "divisional_win_prob": 0.185,
+      "conf_champ_win_prob": 0.048,
+      "super_bowl_win_prob": 0.0153
+    },
+    {
+      "seed": 5,
+      "team": "GB",
+      "team_name": "Green Bay Packers",
+      "division": "NFC North",
+      "role": "wildcard",
+      "win_pct": 0.6,
+      "power_rating": -2.03,
+      "wild_card_win_prob": 0.407,
+      "divisional_win_prob": 0.117,
+      "conf_champ_win_prob": 0.025,
+      "super_bowl_win_prob": 0.006
+    },
+    {
+      "seed": 6,
+      "team": "CHI",
+      "team_name": "Chicago Bears",
+      "division": "NFC North",
+      "role": "wildcard",
+      "win_pct": 0.6,
+      "power_rating": 0.99,
+      "wild_card_win_prob": 0.374,
+      "divisional_win_prob": 0.163,
+      "conf_champ_win_prob": 0.041,
+      "super_bowl_win_prob": 0.0128
+    },
+    {
+      "seed": 7,
+      "team": "SEA",
+      "team_name": "Seattle Seahawks",
+      "division": "NFC West",
+      "role": "wildcard",
+      "win_pct": 0.5,
+      "power_rating": 9.56,
+      "wild_card_win_prob": 0.308,
+      "divisional_win_prob": 0.201,
+      "conf_champ_win_prob": 0.128,
+      "super_bowl_win_prob": 0.0676
+    }
+  ],
+  "afc_bubble": [
+    {
+      "team": "CIN",
+      "team_name": "Cincinnati Bengals",
+      "division": "AFC North",
+      "playoff_prob": 0.763
+    },
+    {
+      "team": "HOU",
+      "team_name": "Houston Texans",
+      "division": "AFC South",
+      "playoff_prob": 0.329
+    },
+    {
+      "team": "CLE",
+      "team_name": "Cleveland Browns",
+      "division": "AFC North",
+      "playoff_prob": 0.203
+    },
+    {
+      "team": "PIT",
+      "team_name": "Pittsburgh Steelers",
+      "division": "AFC North",
+      "playoff_prob": 0.063
+    }
+  ],
+  "nfc_bubble": [
+    {
+      "team": "LA",
+      "team_name": "Los Angeles Rams",
+      "division": "NFC West",
+      "playoff_prob": 0.854
+    },
+    {
+      "team": "ATL",
+      "team_name": "Atlanta Falcons",
+      "division": "NFC South",
+      "playoff_prob": 0.594
+    },
+    {
+      "team": "DET",
+      "team_name": "Detroit Lions",
+      "division": "NFC North",
+      "playoff_prob": 0.583
+    },
+    {
+      "team": "TB",
+      "team_name": "Tampa Bay Buccaneers",
+      "division": "NFC South",
+      "playoff_prob": 0.184
+    }
+  ]
+}

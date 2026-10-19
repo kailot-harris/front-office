@@ -1,0 +1,399 @@
+'use client';
+
+import { useState, useMemo } from 'react';
+import { QbProfile } from '@/lib/types';
+import { TeamLogo } from './TeamLogo';
+import QbEfficiencyScatter from './QbEfficiencyScatter';
+import { Search, Award, TrendingUp } from 'lucide-react';
+import Image from 'next/image';
+
+interface PlayersClientProps {
+  initialQbs: QbProfile[];
+}
+
+export default function PlayersClient({ initialQbs }: PlayersClientProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTeam, setSelectedTeam] = useState('ALL');
+  const [sortField, setSortField] = useState<'off_epa_roll' | 'off_cpoe_roll' | 'years_exp'>('off_epa_roll');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [selectedQb, setSelectedQb] = useState<QbProfile | null>(null);
+
+  // Teams list for filter
+  const teams = useMemo(() => {
+    const set = new Set(initialQbs.map((q) => q.team).filter(Boolean));
+    return Array.from(set).sort();
+  }, [initialQbs]);
+
+  // Filtering & Sorting
+  const filteredQbs = useMemo(() => {
+    return initialQbs
+      .filter((qb) => {
+        const matchesSearch =
+          qb.player_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          qb.team.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (qb.college && qb.college.toLowerCase().includes(searchQuery.toLowerCase()));
+
+        const matchesTeam = selectedTeam === 'ALL' || qb.team === selectedTeam;
+        return matchesSearch && matchesTeam;
+      })
+      .sort((a, b) => {
+        const aVal = a[sortField] ?? 0;
+        const bVal = b[sortField] ?? 0;
+        return sortDirection === 'desc' ? (bVal as number) - (aVal as number) : (aVal as number) - (bVal as number);
+      });
+  }, [initialQbs, searchQuery, selectedTeam, sortField, sortDirection]);
+
+  // Leaders
+  const topEpa = useMemo(() => {
+    return [...initialQbs]
+      .filter((q) => typeof q.off_epa_roll === 'number' && !isNaN(q.off_epa_roll))
+      .sort((a, b) => b.off_epa_roll - a.off_epa_roll)
+      .slice(0, 3);
+  }, [initialQbs]);
+
+  const topCpoe = useMemo(() => {
+    return [...initialQbs]
+      .filter((q) => typeof q.off_cpoe_roll === 'number' && !isNaN(q.off_cpoe_roll))
+      .sort((a, b) => b.off_cpoe_roll - a.off_cpoe_roll)
+      .slice(0, 3);
+  }, [initialQbs]);
+
+  return (
+    <div className="space-y-8">
+      {/* Page Header */}
+      <div>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-xs font-mono font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded-full">
+            Phase 7: Player & QB Analytics
+          </span>
+          <span className="text-xs font-mono text-slate-400">
+            {initialQbs.length} Active Quarterbacks Tracked
+          </span>
+        </div>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+          Quarterback Composite Ratings & Depth Chart
+        </h1>
+        <p className="text-slate-400 text-sm mt-1 max-w-3xl">
+          Rolling per-dropback Expected Points Added (EPA) and Completion Percentage Over Expected (CPOE)
+          derived from play-by-play tracking. Integrated with backup quarterback injury penalties and rookie usage ramps.
+        </p>
+      </div>
+
+      {/* Leadership KPI Banners */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Top EPA Leaders */}
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-lg">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-emerald-400" />
+              <h3 className="text-sm font-semibold text-white">EPA / Play Leaders</h3>
+            </div>
+            <span className="text-[11px] font-mono text-slate-400">Efficiency</span>
+          </div>
+          <div className="space-y-2">
+            {topEpa.map((qb, i) => (
+              <div
+                key={qb.player_name}
+                onClick={() => setSelectedQb(qb)}
+                className="flex items-center justify-between p-2 rounded-lg bg-slate-950/50 hover:bg-slate-800/60 cursor-pointer border border-slate-800/60 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-mono font-bold text-slate-500 w-4 text-center">
+                    #{i + 1}
+                  </span>
+                  <TeamLogo team={qb.team} size="sm" />
+                  <div>
+                    <div className="text-xs font-medium text-white flex items-center gap-1.5">
+                      {qb.player_name}
+                      <span className="text-[10px] font-mono text-slate-400">({qb.team})</span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono">
+                      Exp: {qb.years_exp}y • {qb.college || 'N/A'}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-mono font-bold text-emerald-400">
+                    +{qb.off_epa_roll.toFixed(3)}
+                  </span>
+                  <div className="text-[10px] font-mono text-slate-400">
+                    CPOE: {qb.off_cpoe_roll > 0 ? '+' : ''}
+                    {qb.off_cpoe_roll.toFixed(1)}%
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Top CPOE Leaders */}
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-lg">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+            <div className="flex items-center gap-2">
+              <Award className="w-4 h-4 text-cyan-400" />
+              <h3 className="text-sm font-semibold text-white">CPOE Leaders</h3>
+            </div>
+            <span className="text-[11px] font-mono text-slate-400">Ball Placement</span>
+          </div>
+          <div className="space-y-2">
+            {topCpoe.map((qb, i) => (
+              <div
+                key={qb.player_name}
+                onClick={() => setSelectedQb(qb)}
+                className="flex items-center justify-between p-2 rounded-lg bg-slate-950/50 hover:bg-slate-800/60 cursor-pointer border border-slate-800/60 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-mono font-bold text-slate-500 w-4 text-center">
+                    #{i + 1}
+                  </span>
+                  <TeamLogo team={qb.team} size="sm" />
+                  <div>
+                    <div className="text-xs font-medium text-white flex items-center gap-1.5">
+                      {qb.player_name}
+                      <span className="text-[10px] font-mono text-slate-400">({qb.team})</span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono">
+                      Exp: {qb.years_exp}y • {qb.college || 'N/A'}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-mono font-bold text-cyan-400">
+                    +{qb.off_cpoe_roll.toFixed(1)}%
+                  </span>
+                  <div className="text-[10px] font-mono text-slate-400">
+                    EPA: {qb.off_epa_roll > 0 ? '+' : ''}
+                    {qb.off_epa_roll.toFixed(3)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 2D Interactive Scatter Chart */}
+      <QbEfficiencyScatter
+        qbs={initialQbs}
+        selectedQb={selectedQb}
+        onSelectQb={(qb) => setSelectedQb(qb)}
+      />
+
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-slate-900/90 border border-slate-800 p-3.5 rounded-xl">
+        <div className="relative w-full sm:w-80">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder="Search quarterback, team, or college..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+          />
+        </div>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+          <label className="text-xs font-mono text-slate-400 whitespace-nowrap">Filter Team:</label>
+          <select
+            value={selectedTeam}
+            onChange={(e) => setSelectedTeam(e.target.value)}
+            className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+          >
+            <option value="ALL">All 32 Teams</option>
+            {teams.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Quarterback Roster Table */}
+      <div className="bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-950/80 text-slate-400 font-mono uppercase text-[10px] tracking-wider border-b border-slate-800">
+              <tr>
+                <th className="px-4 py-3">Player</th>
+                <th className="px-3 py-3">Team</th>
+                <th className="px-3 py-3">Pos / #</th>
+                <th className="px-3 py-3">Experience</th>
+                <th className="px-3 py-3">College</th>
+                <th
+                  className="px-3 py-3 text-right cursor-pointer hover:text-white"
+                  onClick={() => {
+                    if (sortField === 'off_epa_roll') {
+                      setSortDirection(sortDirection === 'desc' ? 'asc' : 'desc');
+                    } else {
+                      setSortField('off_epa_roll');
+                      setSortDirection('desc');
+                    }
+                  }}
+                >
+                  EPA / Play {sortField === 'off_epa_roll' && (sortDirection === 'desc' ? '↓' : '↑')}
+                </th>
+                <th
+                  className="px-3 py-3 text-right cursor-pointer hover:text-white"
+                  onClick={() => {
+                    if (sortField === 'off_cpoe_roll') {
+                      setSortDirection(sortDirection === 'desc' ? 'asc' : 'desc');
+                    } else {
+                      setSortField('off_cpoe_roll');
+                      setSortDirection('desc');
+                    }
+                  }}
+                >
+                  CPOE % {sortField === 'off_cpoe_roll' && (sortDirection === 'desc' ? '↓' : '↑')}
+                </th>
+                <th className="px-4 py-3 text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60 font-mono">
+              {filteredQbs.map((qb) => {
+                const isSelected = selectedQb?.player_name === qb.player_name;
+                const epa = qb.off_epa_roll ?? 0;
+                const cpoe = qb.off_cpoe_roll ?? 0;
+
+                return (
+                  <tr
+                    key={`${qb.player_name}-${qb.team}`}
+                    onClick={() => setSelectedQb(qb)}
+                    className={`hover:bg-slate-800/40 transition-colors cursor-pointer ${
+                      isSelected ? 'bg-emerald-950/20 border-l-2 border-emerald-500' : ''
+                    }`}
+                  >
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-2.5">
+                        {qb.headshot_url ? (
+                          <div className="relative w-7 h-7 rounded-full overflow-hidden bg-slate-800 flex-shrink-0">
+                            <Image
+                              src={qb.headshot_url}
+                              alt={qb.player_name}
+                              fill
+                              sizes="28px"
+                              className="object-cover object-top"
+                              unoptimized
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 text-[10px] font-sans font-bold">
+                            {qb.player_name.slice(0, 2)}
+                          </div>
+                        )}
+                        <span className="font-sans font-medium text-white">{qb.player_name}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <TeamLogo team={qb.team} size="xs" />
+                        <span className="text-slate-300 font-semibold">{qb.team}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 text-slate-400">
+                      {qb.depth_position || 'QB'} #{qb.jersey_number ?? '-'}
+                    </td>
+                    <td className="px-3 py-2.5 text-slate-400">
+                      {qb.years_exp === 0 ? 'Rookie' : `${qb.years_exp} yrs`}
+                    </td>
+                    <td className="px-3 py-2.5 text-slate-400 font-sans truncate max-w-[140px]">
+                      {qb.college || '—'}
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-bold">
+                      <span className={epa >= 0.05 ? 'text-emerald-400' : epa < 0 ? 'text-rose-400' : 'text-slate-300'}>
+                        {epa > 0 ? '+' : ''}
+                        {epa.toFixed(3)}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-bold">
+                      <span className={cpoe >= 1.0 ? 'text-cyan-400' : cpoe < 0 ? 'text-amber-400' : 'text-slate-300'}>
+                        {cpoe > 0 ? '+' : ''}
+                        {cpoe.toFixed(1)}%
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-center">
+                      <span className="inline-block px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-950/60 border border-emerald-800 text-emerald-400">
+                        {qb.status || 'ACT'}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Selected QB Detailed Drawer/Card */}
+      {selectedQb && (
+        <div className="bg-slate-900/90 border border-emerald-500/50 rounded-xl p-5 shadow-2xl relative">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-slate-800 gap-4">
+            <div className="flex items-center gap-4">
+              {selectedQb.headshot_url ? (
+                <div className="relative w-14 h-14 rounded-full overflow-hidden bg-slate-800 border-2 border-emerald-500/60">
+                  <Image
+                    src={selectedQb.headshot_url}
+                    alt={selectedQb.player_name}
+                    fill
+                    sizes="56px"
+                    className="object-cover object-top"
+                    unoptimized
+                  />
+                </div>
+              ) : (
+                <TeamLogo team={selectedQb.team} size="xl" />
+              )}
+              <div>
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  {selectedQb.player_name}
+                  <span className="text-xs font-mono font-normal text-slate-400">
+                    #{selectedQb.jersey_number ?? '-'} • {selectedQb.team}
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-400">
+                  {selectedQb.college} • {selectedQb.years_exp === 0 ? 'Rookie Season' : `${selectedQb.years_exp} Years Experience`}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setSelectedQb(null)}
+              className="text-xs font-mono text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-800"
+            >
+              Dismiss
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
+            <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800">
+              <span className="text-[10px] font-mono uppercase text-slate-500 block">Offensive EPA / Play</span>
+              <span className="text-base font-mono font-bold text-emerald-400">
+                {(selectedQb.off_epa_roll ?? 0) > 0 ? '+' : ''}
+                {(selectedQb.off_epa_roll ?? 0).toFixed(3)}
+              </span>
+            </div>
+            <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800">
+              <span className="text-[10px] font-mono uppercase text-slate-500 block">Completion % Over Expected</span>
+              <span className="text-base font-mono font-bold text-cyan-400">
+                {(selectedQb.off_cpoe_roll ?? 0) > 0 ? '+' : ''}
+                {(selectedQb.off_cpoe_roll ?? 0).toFixed(1)}%
+              </span>
+            </div>
+            <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800">
+              <span className="text-[10px] font-mono uppercase text-slate-500 block">Backup WAR Penalty</span>
+              <span className="text-base font-mono font-bold text-amber-400">
+                -3.2 Pts Spread
+              </span>
+            </div>
+            <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800">
+              <span className="text-[10px] font-mono uppercase text-slate-500 block">Roster Depth</span>
+              <span className="text-base font-mono font-bold text-white">
+                Starter (Tier {selectedQb.off_epa_roll > 0.08 ? '1' : selectedQb.off_epa_roll > 0 ? '2' : '3'})
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,26 +1,29 @@
 # NFL Analytics — Handoff Document
 
-**Last updated**: 2026-10-13 (same day, later session), after commit `160a6fb` ("Mark Phase 9 Wave
-2 tasks COMPLETED with Handoff Notes (P9-F through P9-I)") — that commit is on `main`. This session
-fully **built and merged** the Week 1-5 visualization-GIF phase that the previous doc revision had
-only planned (issues #17-#33, `docs/task_assignments_phase8.md`, 9 agents across 2 waves). All 9
-Task Tracker rows are now `COMPLETED`; all 14 visualizations plus their 3 infra prerequisites exist
-as real, orchestrator-verified files on `main`. **GitHub issues #17-#33 are still shown `OPEN` on
-the tracker** — the code is done and merged but nobody has run `gh issue close` on any of them yet;
-see "Recent work" and "Suggested next steps" below, this is a real, flagged discrepancy, not
-an oversight to silently paper over. Written for a future LLM/agent picking this repo back up cold
-— read this before touching anything, then read `CLAUDE.md` for environment/data-quirk details
-this doc doesn't repeat.
+**Last updated**: 2026-10-13 (same day, yet another later session), with `main` still at commit
+`2298bc4` (nothing new committed this session — see below). The prior doc revision recorded the
+Phase 9 visualization-GIF build (issues #17-#33, all merged, GitHub issues still open). **This
+session did not touch the Phase 9 tracker at all** — it did two unrelated, explicitly ad hoc
+things at the user's direct request, neither filed as a GitHub issue or wired into
+`run_full_pipeline.R`: (1) a Week 6 projections PNG, built as an exact structural twin of the
+already-undecided Week 5 scratch-file pattern (see Known Issue #10 below — now extended, not
+resolved, by this session), and (2) three new standalone GIFs (QB EPA/play rank race, rookie
+snap-share ramp-up, division point-differential stacked area) picked from a 30-idea brainstorm
+pool, explicitly excluding anything betting/market-related per the user's instruction. See "Recent
+work" below for both. Written for a future LLM/agent picking this repo back up cold — read this
+before touching anything, then read `CLAUDE.md` for environment/data-quirk details this doc
+doesn't repeat.
 
-**Two new structural findings from this session, both still open** (see "Known issues" below for
-full detail): (1) `config.R`'s `PROJECT_DIR`/`CACHE_DIR`/log-file paths are hardcoded absolute to
-the main repo checkout, so a `tools/*.R` script run inside an isolated `subagent-brief` git
-worktree still reads/writes the ONE shared `cache/`/`logs/` directory — this is a **pre-existing,
-previously-documented** hazard (see the "Git-worktree isolation does NOT isolate `cache/*.rds`
-writes" bullet further down), reconfirmed and given a sharper edge this session: it caused one
-subagent's `logs.duckdb` file lock to block another subagent's work for several minutes, and one
-subagent to momentarily write its output GIFs into the shared main-repo `cache/` before
-self-correcting. (2) **New this session**: the `isolation: "worktree"` dispatch mechanism itself
+**Two structural findings from the Phase 9 session (carried forward, still open — not touched this
+session)** (see "Known issues" below for full detail): (1) `config.R`'s
+`PROJECT_DIR`/`CACHE_DIR`/log-file paths are hardcoded absolute to the main repo checkout, so a
+`tools/*.R` script run inside an isolated `subagent-brief` git worktree still reads/writes the ONE
+shared `cache/`/`logs/` directory — this is a **pre-existing, previously-documented** hazard (see
+the "Git-worktree isolation does NOT isolate `cache/*.rds` writes" bullet further down), reconfirmed
+and given a sharper edge in the Phase 9 session: it caused one subagent's `logs.duckdb` file lock to
+block another subagent's work for several minutes, and one subagent to momentarily write its output
+GIFs into the shared main-repo `cache/` before self-correcting. (2) **From that same session**: the
+`isolation: "worktree"` dispatch mechanism itself
 provisioned 4 (then a 5th, on retry) fresh git worktrees from a *stale* pre-Phase-9 base commit
 rather than current `main` HEAD, even though `main` was already several commits ahead at dispatch
 time — not a `config.R`/repo issue, a dispatch-tooling issue, flagged upstream via `SendFeedback`
@@ -52,6 +55,38 @@ The oldest still-genuinely-outstanding issue in the tracker is **#10** (an obser
 calendar-dependent validation, not a coding task) — **real evidence for both of its acceptance
 scenarios now exists as of 2026-10-13,
 just not yet closed on GitHub** — see "Accuracy-trajectory monitoring" below.
+
+## NFL Web Application Dashboard (`web/`) — SHIPPED 2026-10-19
+
+A high-performance, dark-themed, data-dense Next.js 14 App Router web platform built in `web/` with full architectural, visual, and analytical parity to `NBA Analytics/web`.
+
+### Architecture & Data Bridge
+- **Export Engine**: `tools/export_web_datasets.R` bridges production R cache (`cache/*.rds`) and OverTheCap (`load_contracts()`) directly into static JSON files in `web/public/data/` and syncs 18 animated race GIFs/heatmaps into `web/public/animations/`.
+  - To refresh datasets after a full pipeline run:
+    ```powershell
+    # Write runner to disk and execute with absolute path to avoid Windows Rscript segfaults
+    Rscript.exe "c:\Users\kailo\kayceeslices\NFL Analytics\tools\export_web_datasets.R"
+    ```
+- **Web App Directory**: `c:\Users\kailo\kayceeslices\NFL Analytics\web`
+- **Build / Run Commands**:
+  ```powershell
+  cd "c:\Users\kailo\kayceeslices\NFL Analytics\web"
+  npm run dev    # Development server on http://localhost:3000
+  npm run build  # Static production prerender (all 14 routes static)
+  ```
+- **Prerendered Routes**:
+  1. `/` (Standings & 1,000-sim win distribution visualizer, division tables)
+  2. `/matchups` (Weeks 6–18 schedules, projected spreads, win prob, rest/fatigue badges, key number proximity)
+  3. `/teams` (Off vs. Def EPA/play quadrant scatter plot, 32-team granular metrics table, team deep-dive modal)
+  4. `/coaching` (Head coach & staff analysis, 4th-down aggression percentiles, PROE, game pace, play-caller roles)
+  5. `/salary-cap` (OverTheCap 32-team salary cap allocations, dead money, positional cash distributions, top 100 contracts)
+  6. `/playoffs` (14-team playoff seeds, real tiebreaker audit, Monte Carlo bracket simulator)
+  7. `/players` (Quarterback efficiency matrix EPA vs CPOE, roster table, backup QB penalty drawer)
+  8. `/variants` (Production ensemble breakdown: Ridge Massey 40%, Elo 35%, Market Blend 25%)
+  9. `/diagnostics` (10-bin reliability calibration curve vs 45° ideal, multi-cycle Brier trajectory, loss analytics)
+  10. `/gallery` (Interactive visual hub with category filters for 16 GIFs and 2 PNG heatmaps)
+
+---
 
 ## Current state: 13-stage pipeline (12 numbered `run_stage()` calls + stages 7.5 and 9.5)
 
@@ -115,6 +150,117 @@ stage 7.5 alone took 244.46s of that. Every stage ran cleanly; `.check_stage_out
 | `9268020`…`160a6fb` | Viz-GIF Phase (Phase 9) #17-#33 | Planned (`9268020`, scaffolded `docs/task_assignments_phase8.md` + 9 agent briefs) then built end-to-end this session via 2 waves of parallel `subagent-brief` dispatch — Elo-history extraction, playoff-odds/turnover-margin history backfills (Wave 1 infra) plus 14 animated GIFs/heatmaps across Elo, schedule, EPA, playoff-odds, and turnover-margin visualizations (Wave 1 leaf + Wave 2). GitHub issues not yet closed — see "Suggested next steps." |
 
 ## Recent work
+
+### This session (2026-10-13, yet another later session): Week 6 projections PNG + 3 ad hoc GIFs — NOT committed, NOT tracked as GitHub issues
+
+Two separate, explicit user requests, both deliberately kept outside the issue tracker and outside
+`run_full_pipeline.R`'s DAG — same "ad hoc visualization" category as `tools/weekly_accuracy_report.R`
+and the Week 5 Elo report. **Nothing from this session is committed** — see `git status` output
+referenced in "Suggested next steps" below for the full current dirty-tree state.
+
+**1. Week 6 projections PNG** (`cache/week6_projections.png`), built by re-running the exact
+Week 5 pattern this doc's Known Issue #10 already flagged as an undecided scratch-file backlog —
+now there are two full copies of it:
+- `tools/run_week6_refresh.R` (30 lines) — twin of `tools/run_week5_refresh.R`: re-runs pipeline
+  stages 1-5 only (`daily_ingest.R` → `sync_rosters.R` → `injury_scraper.R` →
+  `epa_metrics_engine.R` → `team_ratings_engine.R`) to refresh `CACHE_PROJECTED_MATCHUPS`, skipping
+  fatigue/playoff/market/bet/Discord stages. Ran for real this session — refreshed `CACHE_PBP`
+  (1,156,874 rows, 0 new), `CACHE_SCHEDULES`, `CACHE_ROSTERS` (3,035 rows/32 teams),
+  `CACHE_INJURY_DATA` (2,213 rows, real ESPN+nflreadr crosswalk match rates 83.6%/86.0% — both
+  comfortably above whatever threshold `assert_join_match_rate()` enforces), `CACHE_EPA_METRICS`,
+  `CACHE_TEAM_RATINGS`, and `CACHE_PROJECTED_MATCHUPS` (193 rows, live Odds-API blend, 28 games
+  parsed from a real market pull).
+- `tools/plot_week6_projections.R` (76 lines) — twin of `tools/plot_week5_projections.R`: dark-theme
+  horizontal dot-and-stem chart, home win probability per Week 6 game, sorted. 14 Week 6 games
+  rendered; visually inspected, not just "ran without error."
+- `tools/_inspect_week6.R` (7 lines) — twin of `_inspect_week5.R`, a throwaway cache-peek script.
+- **Flag, not a silent fix**: this is now the *second* near-identical copy of the same
+  week-N-projections pattern. Known Issue #10 already asked a prior session to decide whether to
+  commit or delete the Week 5 version; nobody has, and this session added a Week 6 twin on top
+  instead of consolidating. **Recommend next session either (a) parameterize one script
+  (`tools/plot_week_projections.R` taking `WEEK` as an argument/env var) and delete both
+  week-specific copies, or (b) explicitly decide both are disposable one-offs and delete all 6
+  files** (`run_week{5,6}_refresh.R`, `plot_week{5,6}_projections.R`, `_inspect_week{5,6}.R`) —
+  see "Suggested next steps" below.
+
+**2. Three new ad hoc GIFs**, picked by the user from a 30-idea brainstorm pool (the same pool
+Phase 9's `docs/task_assignments_phase8.md` says the Elo/standings/playoff-odds-EPA-turnovers
+groups were drawn from) with betting/market content explicitly excluded per the user's
+instruction. None of these are GitHub issues, none are in `docs/task_assignments_phase8.md`, none
+reuse Phase 9's infra scripts (`elo_history_data.R` etc.) since none of the three need Elo data:
+
+- **`tools/gif_qb_epa_race.R`** (159 lines) → `cache/gif_qb_epa_race.gif`. Top-10 qualified QBs
+  (season attempts ≥ 50, filtering mop-up appearances) ranked by cumulative EPA/dropback, animated
+  as a **bump chart** (discrete rank 1-10 on a reversed y-axis, `nflplotR::geom_nfl_logos()` at each
+  week's tip) — same pattern as the existing `tools/gif_elo_rank_bump.R`. Pulls
+  `nflreadr::load_player_stats()` directly; **no existing cache has player-level EPA** —
+  `CACHE_PBP` is trimmed to a 25-column team-level whitelist (`game_id, play_id, game_date, season,
+  week, season_type, home_team, away_team, posteam, defteam, posteam_type, play_type, pass, down,
+  ydstogo, yardline_100, qtr, epa, success, cpoe, score_differential, yards_gained, pass_oe,
+  interception, fumble_lost` — no `passer_player_name`/`passer_player_id` at all), confirmed by
+  direct inspection this session, not assumed. Any future player-level feature in this repo needs a
+  fresh `load_player_stats()`/`load_pbp()` pull, not `CACHE_PBP`.
+- **`tools/gif_rookie_snap_race.R`** (152 lines) → `cache/gif_rookie_snap_race.gif`. Top-10
+  CURRENT_SEASON rookies (QB/RB/WR/TE, `CACHE_ROSTERS`' `entry_year == CURRENT_SEASON`, deduped to
+  one row per `gsis_id`) by total offensive snaps, animated as a **raw-value** line race (0-100%
+  offensive snap share) with `geom_nfl_logos()` tips — raw values worked here (unlike the QB chart)
+  because snap-share has enough natural spread across 10 players not to overlap. Joins
+  `CACHE_ROSTERS.pfr_id` to `nflreadr::load_snap_counts()`'s `pfr_player_id` — both are native PFR
+  IDs, so no `load_ff_playerids()` crosswalk was needed for this particular join. A week with no
+  `load_snap_counts()` row for a rostered rookie is left as a genuine line-chart gap (not filled to
+  0%) — deliberate, to keep "inactive/not yet active-rostered" visually distinct from "played a
+  clean zero-snap game."
+- **`tools/gif_division_pd_area.R`** (143 lines) → `cache/gif_division_pd_area.gif`. All 8
+  `NFL_DIVISIONS` divisions' summed cumulative point differential (4 teams each) by week, animated
+  stacked-area chart (`geom_area(position = "stack")`) — positive-PD divisions stack above zero,
+  negative below. Reuses `tools/gif_point_diff_race.R`'s per-team cumulative-PD logic, rolled up one
+  level to division.
+
+All three sanity-checked against a direct recomputation from source data (not just "ran without
+error") — see each script's own trailing sanity-check block, which prints `match=TRUE/FALSE`.
+
+**Real bugs hit and fixed this session, worth knowing before writing the next player-level chart
+in this repo**:
+- **`dplyr::left_join()` silently suffixes a duplicate non-key column name to `.x`/`.y` instead of
+  erroring** — `gif_qb_epa_race.R`'s first draft joined a frame back onto itself to re-attach
+  `player_display_name`, but that column already existed on both sides; the join silently produced
+  `player_display_name.x`/`.y`, and a later `select(player_display_name)` failed with "column
+  doesn't exist" several steps downstream of the real cause. Fix: don't carry duplicate non-key
+  columns into a join at all if the data's already there — the second join was unnecessary and was
+  deleted, not patched. **Check for this class of bug by tracing the error back to the join, not
+  just the `select()` that surfaced it.**
+- **`nflplotR::geom_nfl_headshots()` rendered generic grey placeholder blobs, not real player
+  photos, in this environment** — tried first on the QB chart (`aes(player_gsis = player_id)`),
+  silently fell back to a placeholder shape instead of erroring. Not debugged further (network
+  restriction vs. ID-format mismatch vs. something else — unknown); worked around by using
+  `geom_nfl_logos(team_abbr = ...)` instead (proven working elsewhere in this repo, e.g.
+  `docs/week5_elo_analysis.qmd`'s scatter animation). **If a future chart genuinely needs player
+  headshots specifically (not just team identity), this needs real debugging first** — don't assume
+  `geom_nfl_headshots()` works here just because it's part of the same package as the
+  already-proven `geom_nfl_logos()`.
+- **Raw-value line races overlap into unreadable blobs when the underlying metric is tightly
+  clustered** — the QB EPA/play chart's first draft plotted raw `cum_epa_per_play` values directly;
+  5 weeks into the season the top-10 QBs are separated by hundredths of EPA/play, so their
+  `geom_nfl_logos()` tips rendered as a solid overlapping smear. Fixed by switching to a
+  rank-based bump chart (`scale_y_reverse()` over discrete rank, same pattern as the existing
+  `tools/gif_elo_rank_bump.R`) — rank guarantees even vertical spacing regardless of how close the
+  underlying values are. **Default to a rank/bump-chart layout, not a raw-value layout, for any
+  future "top-N players over time" race chart in this repo** — raw values only worked for the
+  rookie snap-share chart because 0-100% naturally has more spread than a per-play EPA rate does.
+- **A named-vector lookup subset (e.g. `NFL_DIVISIONS[team]`) carries its names into a `mutate()`
+  column, breaking `scale_fill_manual()`'s level matching** — `gif_division_pd_area.R`'s first draft
+  did `mutate(division = NFL_DIVISIONS[team])` without `unname()`; `ggplot2` printed a silent "No
+  shared levels found between `names(values)` of the manual scale and the data's fill values"
+  warning (chart still rendered correctly in this case — just got lucky), not a hard error. Fixed
+  by wrapping every such lookup in `unname()`. **Flagging a likely pre-existing instance of this
+  same bug, not fixed this session (out of this session's scope — a different file than the three
+  being built):** `tools/gif_point_diff_race.R` (Phase 9, merged, committed) does the identical
+  `mutate(..., division = NFL_DIVISIONS[team])` without `unname()` and then feeds that column
+  straight into `aes(color = division)` + `scale_color_manual(values = division_colors)`. It
+  wasn't re-run this session to confirm whether the same silent warning fires there too (this
+  session only read the file, didn't execute it) — worth a quick check next time anyone touches
+  that script, since the warning (when it does fire) doesn't block rendering but indicates the
+  color mapping may be relying on luck rather than a confirmed level match.
 
 ### This session (2026-10-13, later): Week 1-5 visualization GIFs — BUILT AND MERGED (issues #17-#33)
 
@@ -424,34 +570,64 @@ timestamp in the log rather than assuming it ran at 05:15.
    numbers. The cache state from that session's verification run was committed+pushed (`7b43185`,
    following the `a5d592f` precedent) — **this item is closed**. See item 9 below for the *current*
    uncommitted cache state (a different, later run).
-9. **Uncommitted cache state from the 2026-10-13 full-pipeline run — RESOLVED, committed in
-   `e561171`.** The 12 modified `cache/*.rds` files plus the Elo-report artifacts (`docs/
-   week5_elo_analysis.{qmd,html}`, `cache/elo_*.png`, `cache/elo_scatter_animation.gif`, the
-   `tools/elo_model.R` diff) are all now on `main`. Confirmed via `git status` showing none of
-   them untracked anymore. This item is closed; recorded here only so a future reader doesn't
-   re-flag it as still-pending.
-10. **Three untracked scratch files from an undocumented 2026-10-08 session — STILL UNRESOLVED,
-    now 2 sessions old.** (`tools/_inspect_week5.R`, `tools/plot_week5_projections.R`,
-    `tools/run_week5_refresh.R`, plus `cache/week5_projections.png` which the previous doc revision
-    didn't separately call out). Read: small, clearly-scoped ad hoc helpers for a Week 5
-    projections visualization (`run_week5_refresh.R` re-runs pipeline stages 1-5 only to regenerate
-    `CACHE_PROJECTED_MATCHUPS` without live Discord/Odds-API side effects; `_inspect_week5.R` is a
-    one-off cache-inspection snippet; `plot_week5_projections.R` is a larger plotting script, not
-    reviewed in detail in any session so far). Not part of any pipeline stage, not referenced by
-    `docs/week5_elo_analysis.qmd`. Two sessions have now passed without anyone deciding whether to
-    commit or delete these — next session should actually make the call rather than deferring a
-    third time.
-11. **`cache/elo_anim_frames/` — intermediate build artifact, likely safe to discard.** Per-frame
-    PNGs from building `cache/elo_scatter_animation.gif` (now committed). Not needed once the GIF
-    exists; candidate for `.gitignore` or deletion, bundled with item 10's cleanup decision since
-    both are "leftover untracked files nobody has triaged yet."
-12. **Week 1-5 visualization GIF phase (issues #17-#33) — CODE DONE AND MERGED, GitHub issues still
+9. **Uncommitted cache state — REOPENED, same 11 files as Phase 9 left dirty, now with another
+   session's writes layered on top.** Item 9 was previously marked resolved after `e561171`
+   committed a *different* batch of cache changes (the Week 5 Elo-report refresh, 2026-10-13
+   01:17 AM). The Phase 9 session's own subagent dispatches (P9-B's timing script invoking
+   `run_playoff_odds_engine()`, P9-C's `daily_ingest.R` re-ingest, etc.) re-dirtied the same 11
+   files afresh sometime after that commit — confirmed still dirty at the very start of this
+   session, before this session touched anything (i.e. not caused by this session). **This
+   session's own `tools/run_week6_refresh.R` execution then further modified 6 of those same 11
+   files** (`cache/injury_data_cache.rds`, `rosters_cache.rds`, `schedules_cache.rds`,
+   `team_epa_metrics.rds`, `team_ratings.rds`, `projected_matchups.rds`) with a real, fresh
+   stages-1-5 pipeline run. The other 5 (`latest_value_bets.rds`, `odds_history.rds`,
+   `playoff_odds.rds`, `playoff_simulation.rds`, `risk_state.rds`) are untouched by this session —
+   still carrying whatever Phase 9 session left them at. **Not a new problem, just not yet
+   resolved a second time** — same recommendation as before: commit if this repo's
+   commit-cache-state-after-a-real-run convention (see `a5d592f`/`7b43185`/`e561171` precedent) is
+   still the intended policy, or explicitly decide otherwise. Given this has now recurred twice in
+   a row after being marked "resolved," the real fix may be **committing cache state as routine
+   practice at the end of every session that ran real pipeline stages**, not re-litigating it
+   session by session — worth a deliberate decision rather than another one-off commit.
+10. **Week-N-projections scratch-file pattern — STILL UNRESOLVED, now 3 sessions old and DOUBLED
+    this session instead of resolved.** Originally 4 files from an undocumented 2026-10-08 session
+    (`tools/_inspect_week5.R`, `tools/plot_week5_projections.R`, `tools/run_week5_refresh.R`,
+    `cache/week5_projections.png`). **This session added an exact Week 6 twin of all 4**
+    (`tools/_inspect_week6.R`, `tools/plot_week6_projections.R`, `tools/run_week6_refresh.R`,
+    `cache/week6_projections.png`) rather than consolidating or deciding the Week 5 originals' fate
+    — see "Recent work" above for why (a direct, explicit user request for a Week 6 PNG, answered
+    the fastest way, which was copying the proven Week 5 pattern rather than stopping to
+    refactor). Three sessions have now passed without anyone deciding whether to commit or delete
+    the *original* 4 files, and there are now 8 total. **Next session should actually make the
+    call**: either parameterize into one `tools/plot_week_projections.R` (taking a week number)
+    and delete both week-specific copies, or explicitly decide these are disposable per-week
+    one-offs worth regenerating fresh each time (in which case delete all 8 after each use rather
+    than accumulating a 9th, 10th, etc. copy next week).
+11. **Six pure-scratch inspection scripts from this session — safe to delete, never meant to
+    persist.** `tools/_inspect_data_sources.R`, `_inspect_nflplotR.R`, `_inspect_pbp_cols.R`,
+    `_inspect_player_stats.R`, `_inspect_player_stats2.R`, `_inspect_snaps.R` — one-off data-shape
+    exploration snippets used while building this session's three new GIF scripts (checking
+    `CACHE_ROSTERS`/`CACHE_PBP` column names, `nflreadr::load_player_stats()`/`load_snap_counts()`
+    schemas, `nflplotR`'s available geoms). Unlike `_inspect_week5.R`/`_inspect_week6.R` (which at
+    least mirror a kept pattern worth debating), these six have no ongoing purpose once the three
+    GIF scripts they informed are done — **recommend deleting all six next session** rather than
+    folding them into the same "decide the fate" debate as Known Issue #10's files.
+12. **`cache/elo_anim_frames/` plus 3 new per-GIF frame directories this session — all intermediate
+    build artifacts, likely safe to discard.** `cache/elo_anim_frames/` (per-frame PNGs from
+    `cache/elo_scatter_animation.gif`, now committed) was already flagged here. **This session added
+    three more of the same category**: `cache/qb_epa_race_anim_frames/`,
+    `cache/rookie_snap_race_anim_frames/`, `cache/division_pd_area_anim_frames/` — per-frame PNGs
+    from building this session's three new GIFs. None needed once their GIF exists; candidate for
+    `.gitignore` or deletion, bundled with Known Issues #10/#11's cleanup decision since all are
+    "leftover untracked files nobody has triaged yet." Worth adding a repo-wide `.gitignore` rule
+    for `cache/*_anim_frames/` so this stops recurring per new GIF script.
+13. **Week 1-5 visualization GIF phase (issues #17-#33) — CODE DONE AND MERGED, GitHub issues still
     OPEN.** See "Recent work: Week 1-5 visualization GIFs — BUILT AND MERGED" above and
     `docs/task_assignments_phase8.md` (all 9 Task Tracker rows `COMPLETED`, full per-agent Handoff
     Notes). The only remaining action is closing the 17 GitHub issues with evidence — see
     "Suggested next steps" below. Not closed automatically by this handoff pass on purpose (closing
     a tracked issue is a visible action the project owner should take deliberately).
-13. **`config.R`'s hardcoded `PROJECT_DIR` undermines worktree isolation for cache/log writes —
+14. **`config.R`'s hardcoded `PROJECT_DIR` undermines worktree isolation for cache/log writes —
     REOPENED with sharper evidence this session, still unfixed.** This was already documented
     further down ("Git-worktree isolation does NOT isolate `cache/*.rds` writes") from the
     playoff-odds build, but the Phase 9 Wave 1/2 dispatches gave it concrete teeth: (a) P9-C's
@@ -465,7 +641,7 @@ timestamp in the log rather than assuming it ran at 05:15.
     worktree-relative `PROJECT_DIR` override, or just documenting "never run two cache-writing
     `subagent-brief` dispatches in the same wave") is worth doing before the next multi-agent build
     that writes caches. Full writeup: `docs/task_assignments_phase8.md`'s "Known issue" Handoff Note.
-14. **`isolation: "worktree"` dispatch tooling provisioned worktrees from a stale base commit —
+15. **`isolation: "worktree"` dispatch tooling provisioned worktrees from a stale base commit —
     NEW this session, flagged upstream, not a repo-code issue.** All 4 of Wave 2's fresh git
     worktrees (plus a 5th, re-dispatched after the first attempt correctly self-detected and
     reported `blocked`) were branched from the pre-Phase-9 commit rather than current `main`, even
@@ -476,7 +652,7 @@ timestamp in the log rather than assuming it ran at 05:15.
     that has already merged commits to `main`, immediately `git worktree list` and confirm the new
     worktree's base commit matches current `main` HEAD — `git merge main --no-edit` into it right
     away if not, before the agent gets far enough to hit a real blocker.
-15. **5 orphaned `.claude/worktrees/agent-*` directory stubs — pre-existing, not from this
+16. **5 orphaned `.claude/worktrees/agent-*` directory stubs — pre-existing, not from this
     session's dispatches, not investigated.** `.claude/worktrees/agent-a151bd2d58545d748`,
     `agent-a25720291e6e2e789` (a remnant of this session's own P9-B worktree — `git worktree
     remove --force --force` hit a transient `Permission denied` on final directory deletion after
@@ -576,41 +752,58 @@ timestamp in the log rather than assuming it ran at 05:15.
 2. **Close Issue #10 on GitHub — real evidence for both acceptance scenarios now exists** (see
    "Accuracy-trajectory monitoring" above, found 2026-10-13, still not closed as of this revision
    either). `gh issue close 10` with the 2026-10-10/2026-10-11 log excerpt as the closing comment.
-3. **Decide the fate of the undocumented 2026-10-08 scratch files** (`tools/_inspect_week5.R`,
-   `tools/plot_week5_projections.R`, `tools/run_week5_refresh.R`, `cache/week5_projections.png`)
-   — commit if the Week 5 projections visualization they support is still wanted, delete
-   otherwise. **Three sessions have now deferred this** (including this one — it was not touched
-   again); make the call next time. Bundle `cache/elo_anim_frames/`'s cleanup into the same pass
-   (Known Issue #11), and consider bundling the 5 orphaned `.claude/worktrees/agent-*` stub
-   directories too (Known Issue #15) since they're the same flavor of "nobody has triaged this yet."
-4. **Review and decide the 11 modified-but-uncommitted `cache/*.rds` files from this session**
-   (`injury_data_cache.rds`, `latest_value_bets.rds`, `odds_history.rds`, `playoff_odds.rds`,
-   `playoff_simulation.rds`, `projected_matchups.rds`, `risk_state.rds`, `rosters_cache.rds`,
-   `schedules_cache.rds`, `team_epa_metrics.rds`, `team_ratings.rds`) — side effects of this
-   session's Phase 9 subagent dispatches re-running ingestion/engine scripts (e.g. P9-B's timing
-   script invoking `run_playoff_odds_engine()`, P9-C's `daily_ingest.R` re-ingest touching shared
-   state), not reviewed in detail or committed since they're outside Phase 9's explicit file-
-   ownership scope. Decide whether to commit (this repo's established convention per "Build
-   history" — see `a5d592f`/`7b43185` precedent of committing post-verification cache state) or
-   discard, following this repo's existing cache/*.rds-is-tracked policy (see `.gitignore`'s header
-   comment).
-5. **Consider a scoped fix for Known Issue #13** (`config.R`'s hardcoded `PROJECT_DIR` breaking
+3. **Decide the fate of the Week 5/6 projections scratch-file pattern — now 8 files, 3 sessions
+   deferred, doubled this session instead of resolved** (Known Issue #10: `tools/_inspect_week5.R`,
+   `tools/plot_week5_projections.R`, `tools/run_week5_refresh.R`, `cache/week5_projections.png`,
+   plus this session's Week 6 twins `tools/_inspect_week6.R`, `tools/plot_week6_projections.R`,
+   `tools/run_week6_refresh.R`, `cache/week6_projections.png`). Parameterize into one script
+   (preferred — e.g. `tools/plot_week_projections.R` taking a week number) and delete both
+   week-specific copies, or explicitly decide these are one-time disposables and delete all 8 —
+   either way, stop letting a 3rd/4th/5th weekly copy accumulate. Also delete the **six pure-scratch
+   inspection scripts from this session** (Known Issue #11: `tools/_inspect_data_sources.R`,
+   `_inspect_nflplotR.R`, `_inspect_pbp_cols.R`, `_inspect_player_stats.R`, `_inspect_player_stats2.R`,
+   `_inspect_snaps.R`) — these have no ongoing purpose, unlike the week5/6 files which at least
+   support a kept visualization. Bundle `cache/elo_anim_frames/` + this session's 3 new
+   `cache/*_anim_frames/` dirs' cleanup into the same pass (Known Issue #12 — also consider adding a
+   `.gitignore` rule for the `*_anim_frames/` pattern so future GIF scripts don't re-add this),
+   and consider bundling the 5 orphaned `.claude/worktrees/agent-*` stub directories too (Known
+   Issue #16) since they're the same flavor of "nobody has triaged this yet."
+4. **Review and decide the 11 modified-but-uncommitted `cache/*.rds` files — reopened a second time,
+   now with this session's writes layered on top** (Known Issue #9: `injury_data_cache.rds`,
+   `latest_value_bets.rds`, `odds_history.rds`, `playoff_odds.rds`, `playoff_simulation.rds`,
+   `projected_matchups.rds`, `risk_state.rds`, `rosters_cache.rds`, `schedules_cache.rds`,
+   `team_epa_metrics.rds`, `team_ratings.rds`). Originally side effects of the Phase 9 session's
+   subagent dispatches re-running ingestion/engine scripts; this session's own
+   `tools/run_week6_refresh.R` execution (stages 1-5, real data) further modified 6 of the same 11.
+   Decide whether to commit (this repo's established convention per "Build history" — see
+   `a5d592f`/`7b43185`/`e561171` precedent of committing post-verification cache state) or discard,
+   following this repo's existing cache/*.rds-is-tracked policy (see `.gitignore`'s header comment).
+   Given this is the **second** time this exact item has recurred after being marked resolved,
+   worth deciding whether to just make "commit refreshed cache state" a routine last step of any
+   session that runs real pipeline stages, rather than a recurring judgment call.
+5. **Consider a scoped fix for Known Issue #14** (`config.R`'s hardcoded `PROJECT_DIR` breaking
    cache/log isolation across git worktrees) before the next multi-agent wave that writes caches
    concurrently — an opt-in worktree-relative override, or at minimum a documented rule never to
    schedule two cache-writing `subagent-brief` dispatches in the same wave.
-6. **Home-backup-QB market-bias finding (Known Issue #2) — DROPPED 2026-10-05, closed.** User
+6. **Decide whether this session's three new ad hoc GIFs should be formalized** (filed as GitHub
+   issues + committed, matching Phase 9's pattern) or stay permanently ad hoc like
+   `tools/weekly_accuracy_report.R` — the user explicitly asked for them built directly without the
+   `remediation-phase-scaffold`/issue-tracker ceremony this session, but that was a one-time
+   expedience call, not necessarily a permanent decision about whether `tools/gif_qb_epa_race.R`,
+   `tools/gif_rookie_snap_race.R`, and `tools/gif_division_pd_area.R` should ever land on `main`.
+7. **Home-backup-QB market-bias finding (Known Issue #2) — DROPPED 2026-10-05, closed.** User
    made the deliberate call: the Bonferroni/BH correction failure is disqualifying, don't invest in
    a depth-chart cache to pursue it further. Nothing left to do here.
-7. If continuing the market-disagreement project: Phase 2's public-bet-percentage/handle data angle
+8. If continuing the market-disagreement project: Phase 2's public-bet-percentage/handle data angle
    needs an explicit user decision (paid vendor or scraping project) before pursuing.
-8. **Known Issue #3 (ordering gap) — fixed in code 2026-10-05, still needs live verification.**
+9. **Known Issue #3 (ordering gap) — fixed in code 2026-10-05, still needs live verification.**
    `risk_management_engine.R` was moved after `bet_tracker.r` in `run_full_pipeline.R`. Still
    unverified — the real ledger still has 0 RESOLVED bets. Re-run the full pipeline once the real
    ledger has a RESOLVED bet to grade, and confirm `risk_management_engine.R`'s run reflects that
    same-run grading rather than the prior run's.
-9. `player_props_engine.R`, team embeddings, a live dashboard, and a true rstan/cmdstanr install for
-   the Kalman state-space model remain explicitly deferred non-goals — only start if there's a
-   concrete pull for them.
-10. No other new feature is currently spec'd and queued. Any feature beyond the now-shipped
+10. `player_props_engine.R`, team embeddings, a live dashboard, and a true rstan/cmdstanr install for
+    the Kalman state-space model remain explicitly deferred non-goals — only start if there's a
+    concrete pull for them.
+11. No other new feature is currently spec'd and queued. Any feature beyond the now-shipped
     visualization-GIF phase needs a `/spec-interview` pass before implementation, same as every
     feature shipped so far.
