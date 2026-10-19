@@ -109,10 +109,16 @@ print(league_averages)
 rotation_player_ids <- as.character(unique(players_df$player_id))
 player_shots_matched <- clean_fga %>%
   filter(athlete_id %in% rotation_player_ids) %>%
+  left_join(
+    players_df %>%
+      mutate(player_id = as.character(player_id)) %>%
+      select(player_id, player_team = team),
+    by = c("athlete_id" = "player_id")
+  ) %>%
   select(
     athlete_id,
     player_name = athlete_name_1,
-    team_abbrev = away_team_abbrev,
+    team_abbrev = player_team,
     period = period_number,
     clock = clock_display_value,
     type = type_text,
@@ -133,6 +139,7 @@ if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 # Save league metadata
 meta_path <- "web/public/data/shots_metadata.json"
 meta_obj <- list(
+  season = 2026,
   updated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ"),
   total_shots_sampled = nrow(clean_fga),
   league_averages = league_averages,

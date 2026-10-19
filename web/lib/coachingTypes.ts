@@ -42,6 +42,7 @@ export interface RadarPercentiles {
 }
 
 export interface CoachingStaffMetric {
+  season?: number;
   teamAbbr: string;
   teamName: string;
   headCoach: HeadCoachInfo;

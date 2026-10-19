@@ -72,9 +72,14 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
         <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-              <Briefcase className="w-3.5 h-3.5" />
-              <span>WNBA Tactical Staffs & System Impact</span>
+            <div className="inline-flex items-center gap-2">
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                <Briefcase className="w-3.5 h-3.5" />
+                <span>WNBA Tactical Staffs & System Impact</span>
+              </span>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                2026 Season
+              </span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
               Coaching Staffs & Tactical Impact

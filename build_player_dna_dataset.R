@@ -221,6 +221,7 @@ for (i in seq_len(nrow(players_df))) {
   manifold_y <- round((category_scores$defense * 0.5 + category_scores$rebounding * 0.5) - 50, 1)
 
   player_dna_list[[i]] <- list(
+    season = 2026,
     playerId = as.character(p$player_id),
     playerName = name,
     team = team,

@@ -1,4 +1,41 @@
-# Handoff — 2026-10-19 (Next.js web app, Phase 3: COMPLETE — All 7 Net-New Engines & 17 Static Routes Operational) — CURRENT STATE FOR THIS THREAD
+# Handoff — 2026-10-19 (2026 WNBA Coaching Staff Overhaul, Data Sampling Spot-Check & 2026 Alignment Complete) — CURRENT STATE FOR THIS THREAD
+
+## What this thread did
+
+Successfully audited all data sources for sampling integrity, overhauled the 15-team WNBA coaching staff registry to accurate 2026 ground truth, and aligned all data pipelines and frontend pages with `season: 2026`:
+
+1. **2026 WNBA Coaching Staff Overhaul (`build_coaching_dataset.R`, `CoachesClient.tsx`):**
+   - Updated the 15-team coaching staff registry, tenures, career win percentages, and coaching tree genealogy to true 2026 ground truth:
+     - **IND:** Stephanie White (Hired from CON to coach Caitlin Clark & Aliyah Boston).
+     - **CON:** Rachid Meziane (Belgian Olympic National Team HC & EuroBasket champion).
+     - **ATL:** Karl Smesko (Legendary FGCU HC, NCAA D1 top-3 winning percentage).
+     - **CHI:** Tyler Marsh (Former Las Vegas Aces assistant / player dev director).
+     - **WSH:** Sydney Johnson (Former Chicago Sky assistant / Princeton HC).
+     - **LA:** Lynne Roberts (Pac-12 Coach of the Year from Utah).
+     - **DAL:** Chris Koclanes (Hired under Curt Miller).
+     - **GS:** Natalie Nakase (Inaugural Head Coach / former Aces assistant).
+     - **POR:** Alex Sarama (Inaugural Head Coach / European Constraints-Led specialist).
+     - **TOR:** Tamara Tatham (Inaugural Head Coach / Canadian National Team Olympian & coach).
+     - **LV:** Becky Hammon (Updated staff: Charlene Thomas-Swinson associate HC, Sugar Rodgers offensive coord, replacing Marsh/Nakase).
+     - **NY:** Sandy Brondello (Defending 2024 WNBA Champion).
+     - **MIN:** Cheryl Reeve (4x WNBA Champion, USA National Team).
+     - **PHX:** Nate Tibbetts.
+     - **SEA:** Noelle Quinn.
+   - Tagged each coaching record with `season: 2026` and added a prominent `2026 Season` badge in `web/components/CoachesClient.tsx`.
+
+2. **Data Sampling & Attribution Spot-Check:**
+   - **`build_shot_chart_dataset.R`:** Fixed player team attribution bug where shots were previously tagged with `away_team_abbrev` regardless of whether the player was home or away. Joined with `players_df` to ensure shots are mapped to the player's true franchise team (`player_team`). Added `season: 2026` to `web/public/data/shots_metadata.json`.
+   - **`export_web_json.R`:** In `player_box_df` aggregation, prioritized `CURRENT_SEASON` (2026) box scores with a coalesce fallback to multi-year history, preventing historical minute and scoring averages from diluting 2026 projection baselines.
+   - **`build_cba_cap_dataset.R`:** Canonicalized conference categorization by replacing obsolete `WAS` reference with `WSH` (`ATL`, `CHI`, `CON`, `IND`, `NY`, `WSH`, `TOR`).
+   - **Explicit `season: 2026` Tagging:** Updated `build_defense_dataset.R`, `build_player_dna_dataset.R`, and `build_clutch_dataset.R` to embed `season: 2026` across all exported JSON and RDS outputs.
+
+3. **Compilation & Verification:**
+   - Re-executed data pipeline scripts: `build_coaching_dataset.R`, `export_web_json.R`, `build_cba_cap_dataset.R`, `build_defense_dataset.R`, `build_player_dna_dataset.R`, `build_clutch_dataset.R`, and `build_shot_chart_dataset.R`.
+   - Verified Next.js static production build (`npm run build`) compiles cleanly across all **17/17 static routes**.
+
+---
+
+# Previous Handoff — 2026-10-19 (Next.js web app, Phase 3: COMPLETE — All 7 Net-New Engines & 17 Static Routes Operational)
 
 ## What this thread did
 

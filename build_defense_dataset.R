@@ -212,6 +212,7 @@ for (i in seq_len(nrow(players_df))) {
   }
 
   defensive_profiles[[i]] <- list(
+    season = 2026,
     playerId = as.character(p$player_id),
     playerName = name,
     team = team,

@@ -202,6 +202,7 @@ for (i in seq_len(nrow(players_df))) {
   }
 
   clutch_profiles[[i]] <- list(
+    season = 2026,
     playerId = p_id,
     playerName = name,
     team = team,

@@ -235,22 +235,79 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
   rosters_df <- if (file.exists(rosters_path)) readRDS(rosters_path) else tibble()
   player_box_df <- if (file.exists(player_box_path)) readRDS(player_box_path) else tibble()
 
-  # Compute empirical per-player averages from box scores (2025/2026 or all seasons)
+  # Compute empirical per-player averages from box scores (prioritize CURRENT_SEASON with historical fallback)
   if (nrow(player_box_df) > 0) {
-    player_stats <- player_box_df %>%
+    # Check if season column is present
+    has_season_col <- "season" %in% names(player_box_df)
+    
+    current_season_box <- if (has_season_col) {
+      player_box_df %>% filter(season == CURRENT_SEASON, !is.na(minutes) & minutes > 0)
+    } else {
+      tibble()
+    }
+
+    # If current season has games for players, compute current season averages
+    current_stats <- if (nrow(current_season_box) > 0) {
+      current_season_box %>%
+        group_by(athlete_display_name) %>%
+        summarise(
+          career_games = n(),
+          avg_mpg = mean(minutes, na.rm = TRUE),
+          avg_pts = mean(points, na.rm = TRUE),
+          avg_reb = mean(rebounds, na.rm = TRUE),
+          avg_ast = mean(assists, na.rm = TRUE),
+          sd_pts = sd(points, na.rm = TRUE),
+          sd_reb = sd(rebounds, na.rm = TRUE),
+          sd_ast = sd(assists, na.rm = TRUE),
+          .groups = "drop"
+        )
+    } else {
+      tibble()
+    }
+
+    # All-season averages as fallback for rookies or players with small 2026 sample
+    all_stats <- player_box_df %>%
       filter(!is.na(minutes) & minutes > 0) %>%
       group_by(athlete_display_name) %>%
       summarise(
-        career_games = n(),
-        avg_mpg = mean(minutes, na.rm = TRUE),
-        avg_pts = mean(points, na.rm = TRUE),
-        avg_reb = mean(rebounds, na.rm = TRUE),
-        avg_ast = mean(assists, na.rm = TRUE),
-        sd_pts = sd(points, na.rm = TRUE),
-        sd_reb = sd(rebounds, na.rm = TRUE),
-        sd_ast = sd(assists, na.rm = TRUE),
+        all_career_games = n(),
+        all_avg_mpg = mean(minutes, na.rm = TRUE),
+        all_avg_pts = mean(points, na.rm = TRUE),
+        all_avg_reb = mean(rebounds, na.rm = TRUE),
+        all_avg_ast = mean(assists, na.rm = TRUE),
+        all_sd_pts = sd(points, na.rm = TRUE),
+        all_sd_reb = sd(rebounds, na.rm = TRUE),
+        all_sd_ast = sd(assists, na.rm = TRUE),
         .groups = "drop"
       )
+
+    if (nrow(current_stats) > 0) {
+      player_stats <- all_stats %>%
+        left_join(current_stats, by = "athlete_display_name") %>%
+        mutate(
+          career_games = coalesce(career_games, all_career_games),
+          avg_mpg = coalesce(avg_mpg, all_avg_mpg),
+          avg_pts = coalesce(avg_pts, all_avg_pts),
+          avg_reb = coalesce(avg_reb, all_avg_reb),
+          avg_ast = coalesce(avg_ast, all_avg_ast),
+          sd_pts = coalesce(sd_pts, all_sd_pts),
+          sd_reb = coalesce(sd_reb, all_sd_reb),
+          sd_ast = coalesce(sd_ast, all_sd_ast)
+        ) %>%
+        select(athlete_display_name, career_games, avg_mpg, avg_pts, avg_reb, avg_ast, sd_pts, sd_reb, sd_ast)
+    } else {
+      player_stats <- all_stats %>%
+        rename(
+          career_games = all_career_games,
+          avg_mpg = all_avg_mpg,
+          avg_pts = all_avg_pts,
+          avg_reb = all_avg_reb,
+          avg_ast = all_avg_ast,
+          sd_pts = all_sd_pts,
+          sd_reb = all_sd_reb,
+          sd_ast = all_sd_ast
+        )
+    }
   } else {
     player_stats <- tibble(
       athlete_display_name = character(),

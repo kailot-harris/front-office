@@ -69,7 +69,7 @@ build_cba_cap_dataset <- function() {
 
     # Full team name and conference resolution
     team_name <- if (abbr %in% names(WNBA_TEAMS)) unname(WNBA_TEAMS[abbr]) else if (!is.null(team_info$teamName) && !is.na(team_info$teamName)) team_info$teamName else abbr
-    east_teams <- c("ATL", "CHI", "CON", "IND", "NY", "WAS", "TOR")
+    east_teams <- c("ATL", "CHI", "CON", "IND", "NY", "WSH", "TOR")
     conf <- if (abbr %in% east_teams) "East" else "West"
 
     pts <- if ("proj_pts" %in% names(team_players)) team_players$proj_pts else 0
