@@ -1,8 +1,6 @@
 # HANDOFF — NBA Analytics
 
-Updated 2026-10-18 (third pass same day, after commits `869c3ad` and `490afec` closed issues #9
-and #10 via the `subagent-brief` skill workflow described in §5.1). Originally written 2026-10-17;
-second pass documented the #1–#8 parallel-session collision (§2.3).
+Updated 2026-10-19 (fourth pass, documenting the 6-stage web test and verification pipeline mirroring NFL and WNBA Analytics). Originally written 2026-10-17; second pass documented the #1–#8 parallel-session collision (§2.3); third pass documented #9 and #10 closures.
 For whoever picks this up next — human or agent, zero assumed context.
 
 ---
@@ -61,6 +59,11 @@ code). Reading order: `REPO_MAP.md` → `ADR.md` (Phase 1 rationale) → `engine
 25. `2c662a4` — `feat(web)`: Activate `GeistSans` and `GeistMono` typography from `'geist/font'` across all views.
 26. `21571f1` — `feat(web)`: Add Halloween basketball logo, compact margin sigma popover, full column sorting, playoff contenders box-whisker plot, and variant Brier score calibration visualizer.
 27. `3dcdd5c` — `feat(web)`: Break up Season Standings into sub-tabs (Playoff Contenders Visualizer vs Full Standings Table) to eliminate scrolling.
+28. `6288d0e` — `fix(web)`: Wire Full Standings Table to dedicated sidebar route and fix clickable tab controls.
+29. `07e651f` — `refactor(web)`: Keep single Season Standings tab with unified in-page view toggle between visualizer and table.
+30. `aad83b0` — `feat`: Complete Sprints 1-5 (Series, Cap Sheet, Player DNA, Defense, Clutch) with 2026-27 Spotrac calibration.
+31. `148c797` — `feat(cba)`: Expand verified Spotrac contract registry to 19 franchises and 93 verified players.
+32. `c5420c3` — `feat(cba)`: 100% verified Spotrac contract coverage across all 30 NBA franchises.
 
 ### 2.2 `INCONSISTENCY_REMEDIATION_PLAN.md` → GitHub issues #1–#12
 
@@ -221,15 +224,50 @@ goes through the user's `subagent-brief` skill
 
 ---
 
-## 6. Concrete Next Steps
- 
-All 12 issues from `INCONSISTENCY_REMEDIATION_PLAN.md` (#1 through #12) are now completely resolved,
-tested, committed, and closed on GitHub. The pipeline runs cleanly end-to-end via `schedule_daily.bat`
-and `run_full_pipeline.R` in ~21 seconds with full output-staleness verification.
- 
-Future roadmap items outside the inconsistency remediation scope (per `REPO_MAP.md` §9 and
-`engineering_log_phase3.md`):
-1. **Real Stint-Level RAPM**: Replace synthetic stint generation in `rapm_engine.R` with real play-by-play lineup tracking.
-2. **Live In-Play Odds Integration**: Connect `live_game_listener.R` to live WebSocket/REST in-play feeds.
-3. **Multi-Player Copula**: Expand `copula_props_engine.R` beyond single-player demonstrations to full slate SGPs.
+## 6. Web Application Test Suite & Verification Pipeline (Built 2026-10-19)
+
+Mirrored the NFL Analytics and WNBA Analytics 6-stage test architecture for the NBA Analytics web platform (`web/`):
+- **Stage 1: TypeScript (`tsc --noEmit`)**: Strict static typechecking across all components and pages.
+- **Stage 2: ESLint (`next lint --max-warnings=0`)**: Next.js core web vitals and TypeScript linting with zero allowed warnings.
+- **Stage 3: Contracts, Invariants & Drift (`vitest run --project node`)**:
+  - `tests/contracts/schemas.ts`: Strict `.strict()` Zod schemas covering all 15 JSON datasets and 25 per-player shot telemetry files.
+  - `tests/contracts/schema.test.ts`: File existence, non-emptiness, valid JSON, no orphan datasets, and Zod adherence.
+  - `tests/contracts/types-vs-data.test.ts`: TypeScript interface field parity and union type exhaustiveness.
+  - `tests/contracts/invariants.test.ts`: NBA mathematical invariants (30 teams, 82 games, 1,230 league wins, quantile monotonicity $p_{10} \le p_{50} \le p_{90}$, playoff probability sums $\sum \approx 100\%$, CBA cap tiers).
+  - `tests/contracts/referential.test.ts`: 30-team code integrity, 330-player pool consistency, shot player mapping.
+  - `tests/contracts/assets.test.ts`: Team logo URLs and shot chart file presence.
+  - `tests/drift/content-drift.test.ts`: Source code copy drift audit against live data.
+- **Stage 4: React Components (`vitest run --project components` in JSDOM)**:
+  - 29 unit and integration tests across StandingsClient, PlayersClient, ShotsExplorerClient, PlayoffSeriesClient, and Client Pages.
+- **Stage 5: Production Build (`next build`)**:
+  - Verifies all 17 static routes prerender cleanly to production HTML and JS bundles without errors.
+- **Stage 6: Browser End-to-End (`playwright test`)**:
+  - 79 tests across Desktop Chromium (1440×900) and Mobile Chromium (Pixel 7).
+  - `smoke.spec.ts`: All 12 routes load 200 OK, render headings & dataset markers, 0 console errors, no failed requests, no placeholders, no horizontal overflow.
+  - `layout.spec.ts`: Desktop viewport responsive tests (1280px, 1440px, 1920px) verifying sticky sidebar non-overlap and scroll boundaries.
+  - `interactions.spec.ts`: Interactive search, sorting, filtering, and tab switching.
+  - `a11y-and-assets.spec.ts`: Accessible landmarks, `<h1>` hierarchy, image `alt` attributes, ESPN CDN resolution.
+  - `mobile.spec.ts`: Pixel 7 drawer toggle, navigation transitions, and zero horizontal scrolling.
+- **Baseline Defect Reconciliation (`web/tests/known-issues.json`)**:
+  - Tracks 3 legitimate upstream data & copy discrepancies (`cbaThresholdSources` undocumented key in `cba_cap_sheet.json`, `clutch_leverage_metrics.json` `tsDelta` arithmetic variance, and stale 2024 cap threshold copy in `app/cap-sheet/page.tsx`), preventing build failure while maintaining total visibility.
+- **Test Orchestrator (`web/scripts/run-test-suite.mjs`)**:
+  - Supports `--fast`, `--strict`, and `--only=<stage>` with automated Markdown summary generation (`test-results/SUMMARY.md`).
+- **Documentation**:
+  - Full guide in `web/tests/README.md`.
+
+---
+
+## 7. Concrete Next Steps
+
+All 12 issues from `INCONSISTENCY_REMEDIATION_PLAN.md` (#1 through #12) are completely resolved, tested, committed, and closed on GitHub. The web test pipeline runs cleanly end-to-end via `npm test` or `node scripts/run-test-suite.mjs`.
+
+Future roadmap items:
+1. **Upstream Data Fixes (Resolving `known-issues.json`)**:
+   - `cba_cap_sheet.json`: Declare `cbaThresholdSources` in `lib/cbaTypes.ts` or omit from `scripts/generate_cba_cap_sheet.py`.
+   - `clutch_leverage_metrics.json`: Recalculate `tsDelta` as true `clutchTsPct - baseTsPct` or document volume weighting in exporter.
+   - `app/cap-sheet/page.tsx` & `components/CapSheetClient.tsx`: Update fallback constants to mirror 2026-27 thresholds (`165.0 / 200.4 / 209.0 / 221.7`).
+2. **Real Stint-Level RAPM**: Replace synthetic stint generation in `rapm_engine.R` with real play-by-play lineup tracking.
+3. **Live In-Play Odds Integration**: Connect `live_game_listener.R` to live WebSocket/REST in-play feeds.
+4. **Multi-Player Copula**: Expand `copula_props_engine.R` beyond single-player demonstrations to full slate SGPs.
+
 

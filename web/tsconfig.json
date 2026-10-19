@@ -1,5 +1,9 @@
 {
   "compilerOptions": {
+    // Required so `tsc --noEmit` allows iterating Set/Map (for...of, spread).
+    // Has no runtime effect: noEmit is true and Next.js does its own
+    // downlevelling via SWC against the browserslist targets.
+    "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
