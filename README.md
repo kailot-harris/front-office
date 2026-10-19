@@ -1,4 +1,4 @@
-# Sports Analytics
+# Front Office
 
 A single multi-page site combining four independent sport analytics projects,
 each served as a static Next.js export under its own path:
@@ -38,7 +38,7 @@ root `index.html` into one `site/` folder, and publishes it with
 `actions/deploy-pages`.
 
 Each app's `next.config.mjs` sets `basePath` from the `PAGES_BASE_PATH` env var
-plus its own slug (e.g. `/sports-analytics-site/nba`). **Set
+plus its own slug (e.g. `/front-office/nba`). **Set
 `PAGES_BASE_PATH` in the workflow to `/<this-repo's-actual-name>`** once it's
 pushed to GitHub (project Pages are served at
 `https://<user>.github.io/<repo-name>/`).
