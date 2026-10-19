@@ -190,6 +190,77 @@ verified_contracts <- list(
     list(playerId = "3136195", playerName = "Devin Vassell", position = "G", salary2026 = 27.0, salary2027 = 24.5, salary2028 = 22.0, contractType = "Guaranteed", notes = "Spotrac: 5-yr $135M rookie extension"),
     list(playerId = "4433140", playerName = "Stephon Castle", position = "G", salary2026 = 9.8, salary2027 = 12.5, salary2028 = 0.0, contractType = "Team Option", notes = "Spotrac: No. 4 overall rookie scale contract"),
     list(playerId = "4278077", playerName = "Keldon Johnson", position = "F", salary2026 = 17.5, salary2027 = 0.0, salary2028 = 0.0, contractType = "Guaranteed", notes = "Spotrac: 4-yr $74M descending deal")
+  ),
+  MIL = list(
+    list(playerId = "3032977", playerName = "Giannis Antetokounmpo", position = "F", salary2026 = 58.5, salary2027 = 62.8, salary2028 = 0.0, contractType = "Player Option", notes = "Spotrac: Supermax extension ($58,456,566 in '26-27)"),
+    list(playerId = "3064440", playerName = "Myles Turner", position = "C", salary2026 = 26.6, salary2027 = 28.5, salary2028 = 0.0, contractType = "Guaranteed", notes = "Spotrac: Free Agent Signing ($26,584,164 in '26-27)"),
+    list(playerId = "4277960", playerName = "Tyler Herro", position = "G", salary2026 = 33.0, salary2027 = 0.0, salary2028 = 0.0, contractType = "Guaranteed", notes = "Spotrac: 4-yr $130M deal ($33,000,000 in '26-27)"),
+    list(playerId = "4432168", playerName = "Jaime Jaquez Jr.", position = "F", salary2026 = 5.9, salary2027 = 0.0, salary2028 = 0.0, contractType = "Team Option", notes = "Spotrac: 4th-yr rookie option ($5,939,141 in '26-27)"),
+    list(playerId = "3064433", playerName = "Bobby Portis", position = "F", salary2026 = 13.4, salary2027 = 0.0, salary2028 = 0.0, contractType = "Player Option", notes = "Spotrac: Veteran deal")
+  ),
+  PHI = list(
+    list(playerId = "3059318", playerName = "Joel Embiid", position = "C", salary2026 = 58.1, salary2027 = 62.5, salary2028 = 66.8, contractType = "Guaranteed", notes = "Spotrac: Supermax extension ($58,100,000 in '26-27)"),
+    list(playerId = "4251", playerName = "Paul George", position = "F", salary2026 = 54.1, salary2027 = 57.8, salary2028 = 0.0, contractType = "Player Option", notes = "Spotrac: 4-yr max deal ($54,126,380 in '26-27)"),
+    list(playerId = "4431678", playerName = "Tyrese Maxey", position = "G", salary2026 = 40.8, salary2027 = 44.0, salary2028 = 47.3, contractType = "Guaranteed", notes = "Spotrac: 5-yr rookie max ($40,770,520 in '26-27)"),
+    list(playerId = "3064426", playerName = "Kelly Oubre Jr.", position = "F", salary2026 = 8.4, salary2027 = 0.0, salary2028 = 0.0, contractType = "Guaranteed", notes = "Spotrac: 2-yr deal")
+  ),
+  CLE = list(
+    list(playerId = "3908809", playerName = "Donovan Mitchell", position = "G", salary2026 = 50.1, salary2027 = 54.1, salary2028 = 0.0, contractType = "Player Option", notes = "Spotrac: 3-yr max extension ($50,105,628 in '26-27)"),
+    list(playerId = "4432158", playerName = "Evan Mobley", position = "F", salary2026 = 50.1, salary2027 = 54.1, salary2028 = 58.1, contractType = "Guaranteed", notes = "Spotrac: 5-yr rookie max ($50,105,628 in '26-27)"),
+    list(playerId = "4395625", playerName = "Darius Garland", position = "G", salary2026 = 42.2, salary2027 = 45.4, salary2028 = 0.0, contractType = "Guaranteed", notes = "Spotrac: 5-yr max extension ($42,166,510 in '26-27)"),
+    list(playerId = "4066368", playerName = "Jarrett Allen", position = "C", salary2026 = 28.0, salary2027 = 30.2, salary2028 = 32.5, contractType = "Guaranteed", notes = "Spotrac: 3-yr extension ($28.0M in '26-27)")
+  ),
+  PHX = list(
+    list(playerId = "3136193", playerName = "Devin Booker", position = "G", salary2026 = 57.1, salary2027 = 61.0, salary2028 = 0.0, contractType = "Guaranteed", notes = "Spotrac: 4-yr supermax extension ($57,078,728 in '26-27)"),
+    list(playerId = "6580", playerName = "Bradley Beal", position = "G", salary2026 = 53.7, salary2027 = 0.0, salary2028 = 0.0, contractType = "Player Option", notes = "Spotrac: 5-yr veteran max ($53,666,215 in '26-27)"),
+    list(playerId = "3064438", playerName = "Grayson Allen", position = "G", salary2026 = 18.2, salary2027 = 19.5, salary2028 = 0.0, contractType = "Guaranteed", notes = "Spotrac: 4-yr $70M extension"),
+    list(playerId = "3102530", playerName = "Jusuf Nurkic", position = "C", salary2026 = 19.4, salary2027 = 0.0, salary2028 = 0.0, contractType = "Guaranteed", notes = "Spotrac: Multi-year contract")
+  ),
+  ORL = list(
+    list(playerId = "4432810", playerName = "Paolo Banchero", position = "F", salary2026 = 41.2, salary2027 = 44.5, salary2028 = 47.8, contractType = "Guaranteed", notes = "Spotrac: 5-yr rookie max extension ($41,240,250 in '26-27)"),
+    list(playerId = "4432163", playerName = "Franz Wagner", position = "F", salary2026 = 41.8, salary2027 = 45.1, salary2028 = 48.4, contractType = "Guaranteed", notes = "Spotrac: 5-yr rookie max extension ($41,754,690 in '26-27)"),
+    list(playerId = "4432164", playerName = "Jalen Suggs", position = "G", salary2026 = 32.4, salary2027 = 35.0, salary2028 = 37.6, contractType = "Guaranteed", notes = "Spotrac: 5-yr rookie extension ($32,400,000 in '26-27)"),
+    list(playerId = "4431679", playerName = "Desmond Bane", position = "G", salary2026 = 39.4, salary2027 = 42.6, salary2028 = 45.8, contractType = "Guaranteed", notes = "Spotrac: 5-yr extension via trade ($39,446,090 in '26-27)"),
+    list(playerId = "4066373", playerName = "Wendell Carter Jr.", position = "C", salary2026 = 18.5, salary2027 = 19.8, salary2028 = 0.0, contractType = "Guaranteed", notes = "Spotrac: 3-yr extension")
+  ),
+  IND = list(
+    list(playerId = "4432811", playerName = "Tyrese Haliburton", position = "G", salary2026 = 48.9, salary2027 = 52.8, salary2028 = 56.8, contractType = "Guaranteed", notes = "Spotrac: 5-yr rookie supermax ($48,924,624 in '26-27)"),
+    list(playerId = "3147573", playerName = "Pascal Siakam", position = "F", salary2026 = 48.9, salary2027 = 52.8, salary2028 = 0.0, contractType = "Guaranteed", notes = "Spotrac: 4-yr max deal ($48,924,624 in '26-27)"),
+    list(playerId = "4277905", playerName = "Andrew Nembhard", position = "G", salary2026 = 18.5, salary2027 = 19.8, salary2028 = 21.2, contractType = "Guaranteed", notes = "Spotrac: 3-yr extension ($18.5M in '26-27)"),
+    list(playerId = "4432812", playerName = "Bennedict Mathurin", position = "G", salary2026 = 11.2, salary2027 = 0.0, salary2028 = 0.0, contractType = "Team Option", notes = "Spotrac: Rookie Scale Option")
+  ),
+  MIA = list(
+    list(playerId = "4066261", playerName = "Bam Adebayo", position = "C", salary2026 = 49.5, salary2027 = 53.5, salary2028 = 57.5, contractType = "Guaranteed", notes = "Spotrac: 3-yr max extension ($49,488,300 in '26-27)"),
+    list(playerId = "3934674", playerName = "Terry Rozier", position = "G", salary2026 = 26.6, salary2027 = 0.0, salary2028 = 0.0, contractType = "Guaranteed", notes = "Spotrac: Expiring contract year"),
+    list(playerId = "4432814", playerName = "Nikola Jovic", position = "F", salary2026 = 4.4, salary2027 = 0.0, salary2028 = 0.0, contractType = "Team Option", notes = "Spotrac: Rookie scale contract"),
+    list(playerId = "5105550", playerName = "Kel'el Ware", position = "C", salary2026 = 4.8, salary2027 = 6.2, salary2028 = 0.0, contractType = "Team Option", notes = "Spotrac: First-round rookie scale")
+  ),
+  HOU = list(
+    list(playerId = "4432815", playerName = "Alperen Sengun", position = "C", salary2026 = 35.6, salary2027 = 38.5, salary2028 = 41.4, contractType = "Guaranteed", notes = "Spotrac: 5-yr rookie extension ($35,642,202 in '26-27)"),
+    list(playerId = "3200", playerName = "Kevin Durant", position = "F", salary2026 = 43.9, salary2027 = 0.0, salary2028 = 0.0, contractType = "Guaranteed", notes = "Spotrac: Extension via trade ($43,902,439 in '26-27)"),
+    list(playerId = "3102528", playerName = "Fred VanVleet", position = "G", salary2026 = 25.0, salary2027 = 0.0, salary2028 = 0.0, contractType = "Team Option", notes = "Spotrac: Restructured extension ($25,000,000 in '26-27)"),
+    list(playerId = "4432817", playerName = "Jabari Smith Jr.", position = "F", salary2026 = 23.6, salary2027 = 25.5, salary2028 = 27.4, contractType = "Guaranteed", notes = "Spotrac: Rookie Extension ($23,643,411 in '26-27)"),
+    list(playerId = "5104155", playerName = "Amen Thompson", position = "G", salary2026 = 12.3, salary2027 = 16.5, salary2028 = 0.0, contractType = "Team Option", notes = "Spotrac: 4th-yr rookie option ($12,258,609 in '26-27)"),
+    list(playerId = "4432818", playerName = "Tari Eason", position = "F", salary2026 = 14.1, salary2027 = 15.2, salary2028 = 16.3, contractType = "Guaranteed", notes = "Spotrac: Multi-year extension ($14,051,724 in '26-27)")
+  ),
+  TOR = list(
+    list(playerId = "4432819", playerName = "Scottie Barnes", position = "F", salary2026 = 41.8, salary2027 = 45.1, salary2028 = 48.4, contractType = "Guaranteed", notes = "Spotrac: 5-yr designated rookie max ($41,754,690 in '26-27)"),
+    list(playerId = "4277962", playerName = "Immanuel Quickley", position = "G", salary2026 = 32.5, salary2027 = 35.0, salary2028 = 37.5, contractType = "Guaranteed", notes = "Spotrac: 5-yr $175M contract ($32,500,000 in '26-27)"),
+    list(playerId = "4395627", playerName = "RJ Barrett", position = "F", salary2026 = 29.6, salary2027 = 0.0, salary2028 = 0.0, contractType = "Guaranteed", notes = "Spotrac: 4-yr $107M contract ($29,616,071 in '26-27)"),
+    list(playerId = "4066374", playerName = "Jakob Poeltl", position = "C", salary2026 = 19.5, salary2027 = 0.0, salary2028 = 0.0, contractType = "Guaranteed", notes = "Spotrac: 4-yr $80M contract")
+  ),
+  DAL = list(
+    list(playerId = "6442", playerName = "Kyrie Irving", position = "G", salary2026 = 39.5, salary2027 = 0.0, salary2028 = 0.0, contractType = "Guaranteed", notes = "Spotrac: Final year ($39,491,282 in '26-27)"),
+    list(playerId = "6475", playerName = "Klay Thompson", position = "G", salary2026 = 17.5, salary2027 = 0.0, salary2028 = 0.0, contractType = "Guaranteed", notes = "Spotrac: 3-yr $50M deal ($17,460,317 in '26-27)"),
+    list(playerId = "4066375", playerName = "Daniel Gafford", position = "C", salary2026 = 17.3, salary2027 = 0.0, salary2028 = 0.0, contractType = "Guaranteed", notes = "Spotrac: 3-yr extension ($17,263,584 in '26-27)"),
+    list(playerId = "5104156", playerName = "Dereck Lively II", position = "C", salary2026 = 7.2, salary2027 = 9.8, salary2028 = 0.0, contractType = "Team Option", notes = "Spotrac: 4th-yr rookie option ($7,239,131 in '26-27)"),
+    list(playerId = "4066376", playerName = "P.J. Washington", position = "F", salary2026 = 15.5, salary2027 = 0.0, salary2028 = 0.0, contractType = "Guaranteed", notes = "Spotrac: 3-yr $48M deal")
+  ),
+  SAC = list(
+    list(playerId = "3155535", playerName = "Domantas Sabonis", position = "C", salary2026 = 45.5, salary2027 = 48.0, salary2028 = 0.0, contractType = "Guaranteed", notes = "Spotrac: 5-yr extension ($45,472,000 in '26-27)"),
+    list(playerId = "4432824", playerName = "Keegan Murray", position = "F", salary2026 = 24.1, salary2027 = 26.0, salary2028 = 28.0, contractType = "Guaranteed", notes = "Spotrac: 5-yr $140M extension ($24,137,936 in '26-27)"),
+    list(playerId = "4066377", playerName = "Malik Monk", position = "G", salary2026 = 19.5, salary2027 = 21.0, salary2028 = 0.0, contractType = "Player Option", notes = "Spotrac: 4-yr $78M deal"),
+    list(playerId = "4432825", playerName = "Keon Ellis", position = "G", salary2026 = 2.4, salary2027 = 0.0, salary2028 = 0.0, contractType = "Guaranteed", notes = "Spotrac: Standard contract")
   )
 )
 
