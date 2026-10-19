@@ -546,6 +546,49 @@ PIPELINE_STAGES <- list(
     output      = file.path("web", "public", "data", "defensive_metrics.json"),
     inputs      = c(file.path("web", "public", "data", "projections_season_players.json")),
     group       = NULL
+  ),
+
+  # ---------------------------------------------------------------------------------------
+  # 14. WNBA High-Dimensional Player DNA & Historical Twins (Phase 3)
+  # ---------------------------------------------------------------------------------------
+  player_dna_dataset = list(
+    id          = "player_dna_dataset",
+    script      = "build_player_dna_dataset.R",
+    description = "Compile 16-D Skill Vectors & Cosine Historical Archetype Twins",
+    call_fn     = NULL,
+    entry_fn    = NULL,
+    output      = file.path("web", "public", "data", "player_dna_profiles.json"),
+    inputs      = c(file.path("web", "public", "data", "projections_season_players.json")),
+    group       = NULL
+  ),
+
+  # ---------------------------------------------------------------------------------------
+  # 15. WNBA True Clutch & Leverage Creation Index (Phase 3)
+  # ---------------------------------------------------------------------------------------
+  clutch_dataset = list(
+    id          = "clutch_dataset",
+    script      = "build_clutch_dataset.R",
+    description = "Compile True Clutch Shot Creation, Pressure TS% & c-dWPA",
+    call_fn     = NULL,
+    entry_fn    = NULL,
+    output      = file.path("web", "public", "data", "clutch_leverage_metrics.json"),
+    inputs      = c(file.path("web", "public", "data", "projections_season_players.json"),
+                    file.path(CACHE_DIR, "player_pbp_features.rds")),
+    group       = NULL
+  ),
+
+  # ---------------------------------------------------------------------------------------
+  # 16. WNBA Hard Salary Cap, Rookie Scale & Roster Crunch (Phase 3)
+  # ---------------------------------------------------------------------------------------
+  cba_cap_dataset = list(
+    id          = "cba_cap_dataset",
+    script      = "build_cba_cap_dataset.R",
+    description = "Compile WNBA Hard Salary Cap Sheets, Supermax Tags & 11-vs-12 Crunch",
+    call_fn     = NULL,
+    entry_fn    = NULL,
+    output      = file.path("web", "public", "data", "cba_cap_sheet.json"),
+    inputs      = c(file.path("web", "public", "data", "projections_season_players.json")),
+    group       = NULL
   )
 )
 

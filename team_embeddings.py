@@ -113,13 +113,14 @@ def save_to_db(emb_df, sim_df):
     # Save embeddings
     con.execute("CREATE TABLE IF NOT EXISTS team_embeddings (team_id VARCHAR, emb_1 DOUBLE, emb_2 DOUBLE, emb_3 DOUBLE, emb_4 DOUBLE, emb_5 DOUBLE, emb_6 DOUBLE, emb_7 DOUBLE, emb_8 DOUBLE, emb_9 DOUBLE, emb_10 DOUBLE, emb_11 DOUBLE, emb_12 DOUBLE, emb_13 DOUBLE, emb_14 DOUBLE, emb_15 DOUBLE, emb_16 DOUBLE)")
     con.execute("DELETE FROM team_embeddings")
-    con.append("team_embeddings", emb_df)
+    placeholders = ",".join(["?"] * 17)
+    con.executemany(f"INSERT INTO team_embeddings VALUES ({placeholders})", [tuple(r) for r in emb_df.itertuples(index=False)])
 
     # Save similarity matrix (flattened to long format)
     sim_long = sim_df.reset_index().melt(id_vars='index', var_name='team_b', value_name='similarity').rename(columns={'index': 'team_a'})
     con.execute("CREATE TABLE IF NOT EXISTS team_similarity (team_a VARCHAR, team_b VARCHAR, similarity DOUBLE)")
     con.execute("DELETE FROM team_similarity")
-    con.append("team_similarity", sim_long)
+    con.executemany("INSERT INTO team_similarity VALUES (?, ?, ?)", [tuple(r) for r in sim_long.itertuples(index=False)])
 
     con.close()
 

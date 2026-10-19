@@ -436,6 +436,18 @@ run_registered_stage("coaching_dataset")
 # Output: web/public/data/defensive_metrics.json (+ cache/defensive_metrics.rds)
 run_registered_stage("defense_dataset")
 
+# 14. WNBA High-Dimensional Player DNA & Historical Twins (Phase 3)
+# Output: web/public/data/player_dna_profiles.json (+ cache/player_dna_profiles.rds)
+run_registered_stage("player_dna_dataset")
+
+# 15. WNBA True Clutch & Leverage Creation Index (Phase 3)
+# Output: web/public/data/clutch_leverage_metrics.json (+ cache/clutch_leverage_metrics.rds)
+run_registered_stage("clutch_dataset")
+
+# 16. WNBA Hard Salary Cap, Rookie Scale & 11-vs-12 Player Roster Crunch (Phase 3)
+# Output: web/public/data/cba_cap_sheet.json (+ cache/cba_cap_sheet.rds)
+run_registered_stage("cba_cap_dataset")
+
 # Reset parallel plan to sequential. This also shuts the multisession workers down, so by the
 # time the spill merge below runs, no other process holds logs.duckdb.
 plan(sequential)

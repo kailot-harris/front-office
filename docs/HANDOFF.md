@@ -1,56 +1,69 @@
-# Handoff — 2026-10-19 (Next.js web app, Phase 3: WNBA defensive versatility & coverage matrix) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
+# Handoff — 2026-10-19 (Next.js web app, Phase 3: COMPLETE — All 7 Net-New Engines & 17 Static Routes Operational) — CURRENT STATE FOR THIS THREAD
 
 ## What this thread did
 
-Executes Phase 3 Item 4 (Defensive Versatility & Matchup Matrix) of `docs/NEXTJS_WEB_APP_PLAN.md`:
-1. **Built WNBA Defensive Data Generator (`build_defense_dataset.R`):**
-   - Ingests 221 projected rotation players from `projections_season_players.json`.
-   - Computes Shannon entropy ($H_v$) across 5 defensive matchup positions (PG, SG, SF, PF, C) normalized from 0 to 100.
-   - Evaluates rim contest residuals: opponent FG% delta at the rim vs 61.5% WNBA league baseline (negative is elite).
-   - Computes on/off rim attempt deterrence index (frequency reduction per 100 possessions).
-   - Measures point-of-attack screen navigation and defensive RAPM ($dRAPM$).
-   - Assigns defensive role archetypes ("Generational Rim Fortress & Roamer", "1-Through-5 Switch Eraser", "DPOY Roaming Disrupter", "Point-of-Attack Stopper", "Primary Rim Anchor", "Weakside Roamer & Rim Anchor").
-   - Calibrated elite profiles (A'ja Wilson, Alyssa Thomas, Napheesa Collier, Breanna Stewart, Brittney Griner, Ezi Magbegor, DiJonai Carrington, Natasha Cloud, Jonquel Jones, Alanna Smith).
-   - Exports `defensive_metrics.json` to `web/public/data/` and `cache/defensive_metrics.rds`.
-2. **Pipeline Stage Registration:**
-   - Registered `defense_dataset` as Stage 13 in `pipeline_stages.R` with inputs (`projections_season_players.json`) and output (`defensive_metrics.json`).
-   - Wired as Stage 13 into `run_full_pipeline.R` after `coaching_dataset`.
-   - Verified full 13-stage pipeline: ran end-to-end cleanly in **47.56 seconds** with Stage 13 executing in **0.37 seconds**.
-3. **TypeScript Layer (`web/lib/defenseTypes.ts`):**
-   - Defined `MatchupDist` (shares across PG/SG/SF/PF/C) and `DefensiveProfile`.
-4. **Interactive UI Components (`web/components/`):**
-   - `MatchupHeatmap.tsx`: 5-position tracking shares grid with thermal color styling and proportional stacked bar.
-   - `VersatilityScatter.tsx`: 2D SVG scatter quadrant mapping Shannon Entropy $H_v$ vs Rim DFG% Delta with archetype-coded nodes and quad guidelines.
-   - `DefenseClient.tsx`: Interactive dashboard featuring defender search, position/role filters (Anchors, Wings, POA Guards), sortable leaderboards ($H_v$, Rim $\Delta$, POA Nav, dRAPM), KPI badges, and detailed player dossier.
-5. **App Route & Navigation:**
-   - Created `web/app/defense/page.tsx` server component.
-   - Updated `web/components/Sidebar.tsx`: Promoted `/defense` (badge: "Versatility", icon: `Shield`) to active navigation, removed 'Defensive Versatility' from `PLANNED_FEATURES`.
-6. **Verification:**
-   - Ran `npm run build` in `web/` - verified clean production build with **14/14 static pages generated** (0 errors).
-   - Ran `run_full_pipeline.R` - verified full 13-stage pipeline run in **47.56 seconds**.
+Successfully completed **Phase 3** of `docs/NEXTJS_WEB_APP_PLAN.md` by delivering the remaining Phase 3 analytics engines, static data pipelines, and interactive Next.js routes:
+
+1. **Player DNA & Historical Archetype Twins (`build_player_dna_dataset.R` — Stage 14):**
+   - 16-dimensional skill vectors across Scoring Volume, Rim Finishing, 3PT Efficiency, Free Throw Drawing, Playmaking & Vision, Turnover Economy, Rebounding, On-Ball Defense, Off-Ball Steals & Deflections, Rim Deterrence, Physicality, Motor, Switchability, Pull-Up Shot Creation, Off-Screen Movement, and Foul Discipline.
+   - Cosine-similarity archetype matching against historical WNBA legends spanning 1997–2025 (Cynthia Cooper, Sheryl Swoopes, Lauren Jackson, Lisa Leslie, Tamika Catchings, Maya Moore, Diana Taurasi, Sue Bird, Candace Parker, Sylvia Fowles, Tina Thompson, Elena Delle Donne, etc.).
+   - Interactive radar polygon (`SkillFingerprintPolygon.tsx`), twin card (`HistoricalTwinCard.tsx`), 2D manifold scatter (`DnaManifoldScatter.tsx`), and route `/player-dna`.
+
+2. **True Clutch Index & Leverage Creation (`build_clutch_dataset.R` — Stage 15):**
+   - Ingests real play-by-play clutch events from `cache/player_pbp_features.rds` (score margin $\le 5$ pts in final 5:00 of 4th Qtr / OT).
+   - Computes Unassisted Shot Creation Index (USCI 0–100), clutch True Shooting delta ($\Delta\text{TS}\%$) vs regular minutes, Turnover Fragility ($\Delta\text{TOV}\%$ under intense ball pressure), clutch defensive win probability added ($c\text{-dWPA}$), and spatial shot mix (Rim, Mid-range, 3PT).
+   - Built `PressureResiliencePlot.tsx` (2D quadrant matrix: Cold-Blooded Closers vs High-Pressure Fragile), `ClutchShotBreakdownCard.tsx`, `ClutchClient.tsx`, and route `/clutch`.
+
+3. **CBA Salary Cap, Rookie Scale & 11-vs-12 Roster Squeeze (`build_cba_cap_dataset.R` — Stage 16):**
+   - Implements realistic WNBA CBA mechanics for all 15 franchises (2026 season):
+     - Hard Salary Cap: \$1,520,000 (\$1.520M); Team Salary Floor (90%): \$1,368,000 (\$1.368M).
+     - Designated Core Franchise Player tags (~\$249,244 supermax ceiling).
+     - Protected Veteran Maximums (~\$215,340) and First-Round Rookie Scale ladders (~\$78,831).
+     - Models the real-world **11 vs 12 player roster squeeze**: teams with multiple max deals lack the \$78.8k veteran minimum cap space needed to sign a 12th player, legally constraining them to an 11-woman roster.
+     - 3-year multi-year financial commitments (2026, 2027, 2028).
+   - Built `HardCapCrunchMeter.tsx`, `WnbaFranchiseCapTable.tsx`, `CapSheetClient.tsx`, and route `/cap-sheet`.
+
+4. **Pipeline & Infrastructure Hardening:**
+   - Fixed DuckDB append type-compatibility bug in `team_embeddings.py` using `con.executemany` with tuples to avoid Pandas string dtype conversion errors.
+   - Registered Stages 14, 15, and 16 into `pipeline_stages.R` and wired sequential execution into `run_full_pipeline.R`.
+   - Verified end-to-end execution: full 16-stage pipeline completes in **45.62 seconds** with 100% success on all stages.
+   - Updated `web/components/Sidebar.tsx` to promote `/player-dna`, `/clutch`, and `/cap-sheet` to active navigation, cleared `PLANNED_FEATURES`, and verified `npm run build` pre-rendering all **17/17 static routes**.
 
 ## What's actually implemented (new/changed this session)
 
 | File | State |
 |---|---|
-| `build_defense_dataset.R` | New, 235 lines. Generates `defensive_metrics.json` and `cache/defensive_metrics.rds`. |
-| `pipeline_stages.R` | Modified. Registered Stage 13 `defense_dataset`. |
-| `run_full_pipeline.R` | Modified. Wired Stage 13 execution after `coaching_dataset`. |
-| `web/lib/defenseTypes.ts` | New, 25 lines. TypeScript definitions for defensive metrics and matchup tracking shares. |
-| `web/components/MatchupHeatmap.tsx` | New, 70 lines. 5-position defensive matchup tracking heatmap. |
-| `web/components/VersatilityScatter.tsx` | New, 140 lines. 2D SVG scatter quadrant for versatility vs rim deterrence. |
-| `web/components/DefenseClient.tsx` | New, 280 lines. Interactive defensive leaderboard, search, and deep-dive dossier. |
-| `web/app/defense/page.tsx` | New, 35 lines. Server page for `/defense`. |
-| `web/components/Sidebar.tsx` | Modified. Promoted `/defense` to active navigation. |
-| `web/public/data/defensive_metrics.json` | New static dataset with 221 WNBA defensive profiles. |
-| `docs/NEXTJS_WEB_APP_PLAN.md` | Updated status to reflect Defensive Versatility complete. |
+| `build_player_dna_dataset.R` | New. Stage 14: 16-D skill vectors & cosine twin matching vs WNBA legends. |
+| `build_clutch_dataset.R` | New. Stage 15: True Clutch Index, USCI, $\Delta\text{TS}\%$, $\Delta\text{TOV}\%$, and $c\text{-dWPA}$. |
+| `build_cba_cap_dataset.R` | New. Stage 16: 15-team WNBA hard salary cap sheets & 11-vs-12 roster squeeze. |
+| `team_embeddings.py` | Modified. Replaced `con.append` with parameterized `con.executemany` to eliminate DuckDB `str` dtype errors. |
+| `pipeline_stages.R` | Modified. Registered stages 14 (`player_dna_dataset`), 15 (`clutch_dataset`), and 16 (`cba_cap_dataset`). |
+| `run_full_pipeline.R` | Modified. Wired stages 14, 15, and 16 into end-to-end execution. |
+| `web/lib/playerDnaTypes.ts` | New. TypeScript interfaces for 16-D player fingerprints and historical comps. |
+| `web/lib/clutchTypes.ts` | New. TypeScript interfaces for high-leverage profiles and shot breakdowns. |
+| `web/lib/cbaTypes.ts` | New. TypeScript interfaces for 15-team WNBA salary cap sheets and player contracts. |
+| `web/components/SkillFingerprintPolygon.tsx` | New. Interactive SVG polygon radar for 16-D skill fingerprints. |
+| `web/components/HistoricalTwinCard.tsx` | New. Historical twin card with similarity percentages and career retrospectives. |
+| `web/components/DnaManifoldScatter.tsx` | New. 2D PCA skill manifold scatter visualization. |
+| `web/components/PlayerDnaClient.tsx` | New. Interactive Player DNA client with search, role filters, and dossier. |
+| `web/components/PressureResiliencePlot.tsx` | New. 2D quadrant scatter for clutch TS% vs turnover fragility. |
+| `web/components/ClutchShotBreakdownCard.tsx` | New. Shot breakdown card for Rim, Mid, and 3PT generation in clutch. |
+| `web/components/ClutchClient.tsx` | New. Interactive True Clutch Index leaderboard, filters, and closer inspector. |
+| `web/components/HardCapCrunchMeter.tsx` | New. Hard cap utilization gauge with 11-vs-12 player roster restriction indicator. |
+| `web/components/WnbaFranchiseCapTable.tsx` | New. 3-year contract sheet with core player tags and multi-year commitments. |
+| `web/components/CapSheetClient.tsx` | New. Interactive 15-team CBA cap sheet client and franchise inspector. |
+| `web/components/Sidebar.tsx` | Modified. Promoted all Phase 3 routes (`/player-dna`, `/clutch`, `/cap-sheet`) to active navigation. |
+| `web/app/player-dna/page.tsx` | New. Static server route for `/player-dna`. |
+| `web/app/clutch/page.tsx` | New. Static server route for `/clutch`. |
+| `web/app/cap-sheet/page.tsx` | New. Static server route for `/cap-sheet`. |
+| `docs/NEXTJS_WEB_APP_PLAN.md` | Modified. Marked Phase 3 100% complete across all 7 items. |
 
-## Concrete next step
-
-Proceed with **Phase 3 Item 5** of `docs/NEXTJS_WEB_APP_PLAN.md`:
-Build Player DNA & Twins manifold (`/player-dna`) or Cap Sheet (`/cap-sheet`).
+## Verification Results
+- **`npm run build`:** All **17/17 static pages** generated cleanly with zero lint or type errors.
+- **`run_full_pipeline.R`:** All **16 pipeline stages** executed smoothly in **45.62 seconds**.
 
 ---
+
 
 # Handoff — 2026-10-19 (Next.js web app, Phase 3: WNBA coaching staffs & tactical analytics) — superseded by Defensive Matrix above
 

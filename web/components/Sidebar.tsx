@@ -11,21 +11,17 @@ import {
   Menu,
   X,
   Swords,
-  Layers,
   Crosshair,
   ArrowRightLeft,
   Briefcase,
   Shield,
+  Dna,
+  Flame,
+  Coins,
+  CheckCircle2,
 } from 'lucide-react';
 
-// Phase 3 of docs/NEXTJS_WEB_APP_PLAN.md (player-dna, cap-sheet, clutch)
-// needs net-new R engines before a route exists —
-// listed here as a visible placeholder, not a Link, until each one ships.
-const PLANNED_FEATURES = [
-  'Player DNA & Twins',
-  'Cap & CBA Sheet',
-  'True Clutch Index',
-];
+const PLANNED_FEATURES: string[] = [];
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
@@ -52,6 +48,27 @@ export const Sidebar: React.FC = () => {
       badge: 'Props',
       icon: Users,
       desc: 'Rate distributions & outliers',
+    },
+    {
+      href: '/player-dna',
+      label: 'Player DNA & Twins',
+      badge: '16-D',
+      icon: Dna,
+      desc: 'Fingerprints & historical comps',
+    },
+    {
+      href: '/clutch',
+      label: 'True Clutch Index',
+      badge: 'Leverage',
+      icon: Flame,
+      desc: 'Shot creation & pressure fragility',
+    },
+    {
+      href: '/cap-sheet',
+      label: 'CBA Cap Sheet',
+      badge: 'Hard Cap',
+      icon: Coins,
+      desc: '11-vs-12 crunch & contract book',
     },
     {
       href: '/shots',
@@ -159,31 +176,42 @@ export const Sidebar: React.FC = () => {
           })}
         </div>
 
-        <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3.5 space-y-2">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400 uppercase tracking-wide">
-            <Layers className="w-3.5 h-3.5" />
-            <span>Planned (Phase 3)</span>
+        {PLANNED_FEATURES.length > 0 ? (
+          <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3.5 space-y-2">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400 uppercase tracking-wide">
+              <span>Planned (Phase 3)</span>
+            </div>
+            <ul className="space-y-1">
+              {PLANNED_FEATURES.map((label) => (
+                <li
+                  key={label}
+                  className="text-[11px] text-slate-500 px-2 py-1 rounded-lg bg-slate-900/60 border border-slate-800/50"
+                >
+                  {label}
+                </li>
+              ))}
+            </ul>
           </div>
-          <ul className="space-y-1">
-            {PLANNED_FEATURES.map((label) => (
-              <li
-                key={label}
-                className="text-[11px] text-slate-500 px-2 py-1 rounded-lg bg-slate-900/60 border border-slate-800/50"
-              >
-                {label}
-              </li>
-            ))}
-          </ul>
-        </div>
+        ) : (
+          <div className="bg-slate-950/50 border border-emerald-900/30 rounded-xl p-3 space-y-1">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Phase 3 Suite Live</span>
+            </div>
+            <p className="text-[11px] text-slate-500">
+              All 12 analytics engines & routes operational.
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="pt-4 border-t border-slate-800/80 space-y-2">
         <div className="flex items-center justify-between text-xs text-slate-400 px-1">
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            <span>Scaffold — Phase 0</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Phase 3 Production</span>
           </span>
-          <span className="font-mono text-[11px] text-slate-400">v0.1.0</span>
+          <span className="font-mono text-[11px] text-slate-400">v1.0.0</span>
         </div>
       </div>
     </div>
