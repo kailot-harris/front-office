@@ -488,6 +488,21 @@ PIPELINE_STAGES <- list(
                     file.path(CACHE_DIR, "player_box_scores_cache.rds"),
                     file.path(CACHE_DIR, "model_calibration_input.rds")),
     group       = NULL
+  ),
+
+  # ---------------------------------------------------------------------------------------
+  # 10. WNBA 14-Zone Shot Chart Spatial Extraction (Phase 3)
+  # ---------------------------------------------------------------------------------------
+  shot_chart_dataset = list(
+    id          = "shot_chart_dataset",
+    script      = "build_shot_chart_dataset.R",
+    description = "Extract WNBA Shot Locations & 14-Zone Baselines for Web App",
+    call_fn     = NULL,
+    entry_fn    = NULL,
+    output      = file.path("web", "public", "data", "shots_index.json"),
+    inputs      = c(file.path(CACHE_DIR, "wnba_espn_pbp_cache.rds"),
+                    file.path("web", "public", "data", "projections_season_players.json")),
+    group       = NULL
   )
 )
 

@@ -417,8 +417,12 @@ run_registered_stage("notify_bets")
 run_registered_stage("bet_tracker")
 
 # 9. Next.js Static Web JSON Export (Phase 1)
-# Output: web/public/data/projections_season_teams.json (+ players, metadata, diagnostics)
+# Output: web/public/data/projections_season_teams.json (+ players, metadata, diagnostics, playoffs)
 run_registered_stage("export_web_json")
+
+# 10. WNBA 14-Zone Shot Chart Spatial Extraction (Phase 3)
+# Output: web/public/data/shots_index.json (+ shots_metadata.json, web/public/data/shots/*.json)
+run_registered_stage("shot_chart_dataset")
 
 # Reset parallel plan to sequential. This also shuts the multisession workers down, so by the
 # time the spill merge below runs, no other process holds logs.duckdb.

@@ -1,4 +1,60 @@
-# Handoff — 2026-10-18 (Next.js web app, Phase 2: playoff series simulator & historical brackets) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
+# Handoff — 2026-10-18 (Next.js web app, Phase 3: WNBA shot charts & 14-zone spatial explorer) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
+
+## What this thread did
+
+Executed Phase 3 Item 1 (Shot Charts & Spatial Telemetry Engine) of `docs/NEXTJS_WEB_APP_PLAN.md`:
+1. **Resolved Phase 3 Open Question on Shot Location Telemetry:**
+   - Validated `CACHE_PBP_RAW` (`cache/wnba_espn_pbp_cache.rds`): carries 267,647 tracked field goal attempts with valid half-court tracking coordinates (`coordinate_x_raw`, `coordinate_y_raw`), shot types, athlete identifiers, and made/missed outcomes.
+2. **Built WNBA Shot Chart Generator (`build_shot_chart_dataset.R`):**
+   - Transformed ESPN tracking coordinates to standard half-court geometry: `x = coordinate_x_raw - 25.0` (-25 to +25 ft), `y = pmax(0, pmin(47, coordinate_y_raw + 4.0))` (0 to 47 ft from baseline, rim at 5.25 ft).
+   - Calibrated 14 discrete spatial court zones specifically for WNBA regulation court dimensions (FIBA 22.15 ft 3-point line, 21.0 ft corner 3s, 4.0 ft restricted area arc).
+   - Computed league baselines across all 14 zones (Restricted Area 61.5% FG, Paint Low 39.5%, Paint High 40.0%, Corner 3s ~36.5%, Wing 3s ~34.8%, Logo 3s 19.5%).
+   - Filtered and exported 209,308 shots across 210 rotation players into:
+     - `web/public/data/shots_metadata.json`
+     - `web/public/data/shots_index.json`
+     - `web/public/data/shots/[playerId].json` (210 individual JSON telemetry datasets)
+     - Mirrored index and metadata to `cache/`.
+3. **Pipeline Stage Registration:**
+   - Registered `shot_chart_dataset` as Stage 10 in `pipeline_stages.R` with inputs (`wnba_espn_pbp_cache.rds`, `projections_season_players.json`) and output (`shots_index.json`).
+   - Wired as Stage 10 into `run_full_pipeline.R` directly after `export_web_json`.
+   - Verified full 10-stage pipeline: ran end-to-end in **45.94 seconds** with Stage 10 running in **8.88 seconds**.
+4. **TypeScript Layer & Mathematics (`web/lib/`):**
+   - Created `web/lib/shotTypes.ts` defining `ShotRecord`, `PlayerShotData`, `ShotsMetadata`, `PlayerCatalogEntry`, `ZoneMetric`, `HexBin`.
+   - Created `web/lib/shotChartUtils.ts` implementing Empirical Bayes shrinkage (`M_PRIOR_WEIGHT = 15`), Binomial Z-scores, Points Per Shot (PPS), dynamic Hexbin grid generation with Goldsberry-style frequency scaling, and thermal color maps.
+5. **Interactive UI Components (`web/components/`):**
+   - Created `web/components/PlayerShotChart.tsx`: Half-court SVG court graphic with 14-zone heat overlays, dynamic hexbins, individual shot scatter plots, rolling prior shot window selector (Last 25, 50, 100, 250, All Season), KPI summary cards (FGM/FGA, eFG%, 3PT Rate, Rim Rate, Hot/Cold counts), and detailed zone metric table.
+   - Created `web/components/ShotsExplorerClient.tsx`: Player search, team filter, featured WNBA star pills (A'ja Wilson, Caitlin Clark, Breanna Stewart, Sabrina Ionescu, Napheesa Collier, Kelsey Plum, Alyssa Thomas, Arike Ogunbowale), and telemetry loader.
+   - Updated `web/components/Sidebar.tsx`: Promoted `/shots` (badge: "14 Zones", icon: `Crosshair`) to active navigation, removed from planned list.
+6. **App Route:**
+   - Created `web/app/shots/page.tsx` server component reading `shots_index.json` and `shots_metadata.json`.
+7. **Verification:**
+   - Ran `npm run build` in `web/` - verified clean production build with **11/11 static pages generated** (0 warnings/errors).
+
+## What's actually implemented (new/changed this session)
+
+| File | State |
+|---|---|
+| `build_shot_chart_dataset.R` | New, 225 lines. Extracts 267k+ shots, classifies into 14 WNBA zones, generates `shots_metadata.json`, `shots_index.json`, and 210 player shot files in `web/public/data/shots/`. |
+| `pipeline_stages.R` | Modified. Registered Stage 10 `shot_chart_dataset`. |
+| `run_full_pipeline.R` | Modified. Wired Stage 10 execution right after `export_web_json`. |
+| `web/lib/shotTypes.ts` | New, 77 lines. Type definitions for shot records, spatial zones, hexbins, and metadata. |
+| `web/lib/shotChartUtils.ts` | New, 318 lines. Empirical Bayes shrinkage, Binomial z-scores, hexbin generation, thermal color maps. |
+| `web/components/PlayerShotChart.tsx` | New, 480 lines. Half-court SVG visualization (14 zones, hexbins, scatter), rolling window controls, and zone metrics table. |
+| `web/components/ShotsExplorerClient.tsx` | New, 230 lines. Player search, franchise filters, featured WNBA stars, and dynamic telemetry fetcher. |
+| `web/components/Sidebar.tsx` | Modified. Promoted `/shots` to active navigation. |
+| `web/app/shots/page.tsx` | New, 55 lines. Next.js App Router route for `/shots`. |
+| `web/public/data/shots/` | New directory with 210 per-player JSON telemetry files. |
+| `web/public/data/shots_{index,metadata}.json` | New static datasets (index & 14-zone league baselines). |
+| `docs/NEXTJS_WEB_APP_PLAN.md` | Updated open questions and status to reflect Shot Charts complete. |
+
+## Concrete next step
+
+Proceed with **Phase 3 Item 2** of `docs/NEXTJS_WEB_APP_PLAN.md`:
+Build Offseason Transactions & Roster Movements / Coaching Impact engines.
+
+---
+
+# Handoff — 2026-10-18 (Next.js web app, Phase 2: playoff series simulator & historical brackets) — superseded by Phase 3 above
 
 ## What this thread did
 

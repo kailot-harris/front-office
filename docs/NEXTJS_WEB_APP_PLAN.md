@@ -46,10 +46,12 @@ Suggested priority order:
 ## Open questions / decision points before Phase 3
 - Does WNBA's CBA cap structure support a cap-sheet feature analogous to NBA's, or does it need a
   different model?
-- Confirm shot-location data availability before scheduling the shots engine.
+- Confirm shot-location data availability before scheduling the shots engine. -> **RESOLVED (2026-10-18):** Confirmed in `CACHE_PBP_RAW` (`wnba_espn_pbp_cache.rds`), which carries 267k+ tracked field goal attempts with half-court coordinates (`coordinate_x_raw`, `coordinate_y_raw`), shot types, and athlete identifiers.
 
 ## Status
 - **Phase 0:** Completed (Next.js scaffold, App Router, shell layout, WNBA 15-team theming, dark slate UI).
 - **Phase 1:** Completed (registered `export_web_json` pipeline stage in `pipeline_stages.R` and `run_full_pipeline.R`, generated static JSON data in `web/public/data/` and `cache/`, ported `/`, `/variants`, `/players`, `/diagnostics`, `/teams`, verified `npm run build` and full pipeline).
 - **Phase 2:** Completed (exported `playoff_series_matchups.json` with 15-team profiles, 8-man WNBA 200-minute rotation tightening, 10,000-sim Monte Carlo engine with Bo3/Bo5/Bo7 formats, `SeriesProbRing.tsx`, `TacticalMismatchRadar.tsx`, `PlayoffSeriesClient.tsx`, `/series` route, and 2022-2025 historical postseason brackets archive; verified with `npm run build` [10/10 pages] and `run_full_pipeline.R` [48.4s]).
-- **Phase 3:** Up next (Net-new R engines: Shots, Offseason moves, Coaching impact, Defense, Player DNA, CBA/cap sheet, Clutch leverage).
+- **Phase 3:** In Progress:
+  - **Item 1 (Shot Charts):** Completed (implemented `build_shot_chart_dataset.R` as Stage 10 in `pipeline_stages.R` and `run_full_pipeline.R`, 14-zone WNBA court classification, Empirical Bayes shrinkage, `shots_metadata.json`, `shots_index.json`, 210 player shot files in `web/public/data/shots/`, `PlayerShotChart.tsx`, `ShotsExplorerClient.tsx`, `/shots` route, and sidebar navigation; verified `npm run build` [11/11 pages] and full 10-stage pipeline [45.9s]).
+  - **Item 2 (Offseason Moves & Coaching Impact):** Up next.

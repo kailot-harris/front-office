@@ -12,13 +12,13 @@ import {
   X,
   Swords,
   Layers,
+  Crosshair,
 } from 'lucide-react';
 
-// Phase 3 of docs/NEXTJS_WEB_APP_PLAN.md (shots, offseason, coaches, defense,
+// Phase 3 of docs/NEXTJS_WEB_APP_PLAN.md (offseason, coaches, defense,
 // player-dna, cap-sheet, clutch) needs net-new R engines before a route exists —
 // listed here as a visible placeholder, not a Link, until each one ships.
 const PLANNED_FEATURES = [
-  'Shot Charts',
   'Offseason Moves',
   'Coaching Staffs',
   'Defensive Versatility',
@@ -52,6 +52,13 @@ export const Sidebar: React.FC = () => {
       badge: 'Props',
       icon: Users,
       desc: 'Rate distributions & outliers',
+    },
+    {
+      href: '/shots',
+      label: 'Shot Charts',
+      badge: '14 Zones',
+      icon: Crosshair,
+      desc: 'Half-court spatial heatmaps',
     },
     {
       href: '/series',
