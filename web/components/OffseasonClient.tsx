@@ -141,7 +141,7 @@ export const OffseasonClient: React.FC<Props> = ({
             </h1>
             <p className="text-sm sm:text-base text-slate-300">
               Track blockbusters, free agency migrations, Golden State Valkyries expansion rosters,
-              roster continuity scores, and the 2026 Bueckers draft class.
+              roster continuity scores, and the 2026 collegiate draft class.
             </p>
           </div>
 
@@ -156,7 +156,7 @@ export const OffseasonClient: React.FC<Props> = ({
             </div>
             <div className="text-center px-3">
               <div className="text-xl font-bold text-amber-400">#1</div>
-              <div className="text-[11px] text-slate-400 uppercase font-semibold">Paige to DAL</div>
+              <div className="text-[11px] text-slate-400 uppercase font-semibold">Azzi to DAL</div>
             </div>
           </div>
         </div>

@@ -310,9 +310,9 @@ team_profiles <- list(
       list(name = "Kayla McBride", type = "draft", bpm = 3.6, pos = "G")
     ),
     draft_picks = list(
-      list(name = "Kiki Iriafen", pick = 7, school = "USC", archetype = "Physical Interior Forward")
+      list(name = "Olivia Miles", pick = 2, school = "TCU", archetype = "Showtime Triple-Double Maestro")
     ),
-    offseason_verdict = "Napheesa Collier's MVP trajectory anchors a defensive juggernaut that retools seamlessly despite expansion draft departures."
+    offseason_verdict = "Napheesa Collier's MVP trajectory anchors a defensive juggernaut, now supercharged by dynamic lottery playmaker Olivia Miles."
   ),
   list(
     team = "LV",
@@ -333,7 +333,7 @@ team_profiles <- list(
       list(name = "Alysha Clark", type = "free_agency", bpm = 1.4, pos = "F")
     ),
     draft_picks = list(
-      list(name = "Te-Hina Paopao", pick = 12, school = "South Carolina", archetype = "Perimeter Sniper")
+      list(name = "Te-Hina Paopao", pick = 16, school = "South Carolina", archetype = "Perimeter Sniper")
     ),
     offseason_verdict = "A'ja Wilson remains the most dominant player on the planet; retained the core four of Wilson, Plum, Young, and Gray."
   ),
@@ -354,9 +354,9 @@ team_profiles <- list(
     ),
     departures = list(),
     draft_picks = list(
-      list(name = "Aneesah Morrow", pick = 8, school = "LSU", archetype = "High-Motor Glass Crasher")
+      list(name = "Raven Johnson", pick = 10, school = "South Carolina", archetype = "Lockdown Defensive Initiator")
     ),
-    offseason_verdict = "Caitlin Clark entering Year 2 with a fully retained core and expanded chemistry makes Indiana the most dangerous young team in sports."
+    offseason_verdict = "Caitlin Clark entering Year 2 with a fully retained core plus collegiate teammate Raven Johnson at #10 makes Indiana an ascendant threat."
   ),
   list(
     team = "SEA",
@@ -378,9 +378,10 @@ team_profiles <- list(
       list(name = "Sami Whitcomb", type = "free_agency", bpm = 0.6, pos = "G")
     ),
     draft_picks = list(
-      list(name = "Georgia Amoore", pick = 6, school = "Kentucky", archetype = "Dynamic PnR Creator")
+      list(name = "Awa Fam", pick = 3, school = "Spain", archetype = "Dominant European Interior Anchor"),
+      list(name = "Taina Mair", pick = 14, school = "Duke", archetype = "High-Pace Pick-and-Roll Playmaker")
     ),
-    offseason_verdict = "The biggest offseason winner by net BPM added (+6.8): Seattle vaulted from borderline playoff squad straight into championship contention."
+    offseason_verdict = "The biggest offseason winner: Seattle pairs superstar veteran additions with #3 overall pick Awa Fam for long-term interior dominance."
   ),
   list(
     team = "CON",
@@ -399,9 +400,10 @@ team_profiles <- list(
     ),
     departures = list(),
     draft_picks = list(
-      list(name = "Aaliyah Edwards (Core Extension)", pick = 5, school = "UConn", archetype = "Physical Interior Two-Way")
+      list(name = "Nell Angloma", pick = 12, school = "France", archetype = "Physical European Two-Way Slasher"),
+      list(name = "Gianna Kneepkens", pick = 15, school = "UCLA", archetype = "Deadly Catch-and-Shoot Wing")
     ),
-    offseason_verdict = "Alyssa Thomas and DeWanna Bonner continue to anchor one of the league's nastiest half-court defensive machines."
+    offseason_verdict = "Alyssa Thomas and DeWanna Bonner anchor Connecticut's defensive machine, reinforced by first-round wings Angloma (#12) and Kneepkens (#15)."
   ),
   list(
     team = "PHX",
@@ -423,7 +425,7 @@ team_profiles <- list(
       list(name = "Sug Sutton", type = "trade", bpm = 0.3, pos = "G")
     ),
     draft_picks = list(
-      list(name = "Kamilla Cardoso (Rights)", pick = 4, school = "South Carolina", archetype = "Rim Deterrent Giant")
+      list(name = "Kamilla Cardoso (Rights)", pick = 17, school = "South Carolina", archetype = "Rim Deterrent Giant")
     ),
     offseason_verdict = "Brittney Griner, Kahleah Copper, and Natasha Cloud form a ferocious veteran trio with playoff punch."
   ),
@@ -444,9 +446,9 @@ team_profiles <- list(
     ),
     departures = list(),
     draft_picks = list(
-      list(name = "Madison Booker", pick = 10, school = "Texas", archetype = "Point Forward Initiator")
+      list(name = "Madina Okot", pick = 13, school = "South Carolina", archetype = "Interior Glass Crasher & Rim Runner")
     ),
-    offseason_verdict = "Rhyne Howard and Allisha Gray maintain offensive balance while Canada solidifies perimeter transition tempo."
+    offseason_verdict = "Rhyne Howard and Allisha Gray maintain offensive balance while Canada and #13 pick Madina Okot solidify transition rebounding and tempo."
   ),
   list(
     team = "GS",
@@ -467,9 +469,9 @@ team_profiles <- list(
     ),
     departures = list(),
     draft_picks = list(
-      list(name = "Aneesah Morrow", pick = 5, school = "LSU", archetype = "Relentless Glass Crasher & Chaos Agent")
+      list(name = "Flau'jae Johnson", pick = 8, school = "LSU", archetype = "Dynamic Two-Way Scoring Guard")
     ),
-    offseason_verdict = "Masterclass expansion launch: Securing proven veteran creators Kayla McBride and Julie Vanloo alongside #5 overall pick Aneesah Morrow anchors Chase Center with an immediate competitive baseline."
+    offseason_verdict = "Masterclass expansion launch: Flau'jae Johnson brings electric perimeter dynamism to Chase Center alongside proven veteran leaders Kayla McBride and Julie Vanloo."
   ),
   list(
     team = "CHI",
@@ -488,9 +490,9 @@ team_profiles <- list(
     ),
     departures = list(),
     draft_picks = list(
-      list(name = "Olivia Miles", pick = 3, school = "Notre Dame", archetype = "Flashy Lead Playmaker")
+      list(name = "Gabriela Jaquez", pick = 5, school = "UCLA", archetype = "High-Motor Two-Way Slashing Wing")
     ),
-    offseason_verdict = "Angel Reese's second season combined with Chennedy Carter's scoring punch guarantees high-intensity glass dominance."
+    offseason_verdict = "Angel Reese's second season combined with UCLA rookie wing Gabriela Jaquez guarantees unrelenting glass and perimeter intensity."
   ),
   list(
     team = "DAL",
@@ -512,9 +514,9 @@ team_profiles <- list(
       list(name = "Monique Billings", type = "draft", bpm = 1.4, pos = "F")
     ),
     draft_picks = list(
-      list(name = "Paige Bueckers", pick = 1, school = "UConn", archetype = "Generational Three-Level Playmaker")
+      list(name = "Azzi Fudd", pick = 1, school = "UConn", archetype = "Generational Pure Perimeter Shooter")
     ),
-    offseason_verdict = "Franchise-altering lottery coup: Securing Paige Bueckers at #1 overall unites a generational three-level engine with Arike Ogunbowale, instantly supercharging the offense."
+    offseason_verdict = "Franchise-altering lottery coup: Selecting Azzi Fudd at #1 overall unites a lethal collegiate sniper with Paige Bueckers and Arike Ogunbowale, creating an elite backcourt."
   ),
   list(
     team = "LA",
@@ -559,9 +561,11 @@ team_profiles <- list(
       list(name = "Natasha Cloud", type = "trade", bpm = 3.2, pos = "G")
     ),
     draft_picks = list(
-      list(name = "Aaliyah Nye", pick = 14, school = "Alabama", archetype = "Catch-and-Shoot Specialist")
+      list(name = "Lauren Betts", pick = 4, school = "UCLA", archetype = "Imposing Rim Deterrent & Drop-Step Finisher"),
+      list(name = "Angela Dugalić", pick = 9, school = "UCLA", archetype = "Versatile Switchable Stretch Forward"),
+      list(name = "Cotie McMahon", pick = 11, school = "Ole Miss", archetype = "Physical Downhill Freight Train")
     ),
-    offseason_verdict = "Young assets like Aaliyah Edwards and Shakira Austin get full run as Washington stockpiles future draft capital."
+    offseason_verdict = "Draft jackpot: Adding 6'7\" interior anchor Lauren Betts at #4 plus Dugalić (#9) and McMahon (#11) instantly remakes the Mystics' frontcourt."
   ),
   list(
     team = "POR",
@@ -581,9 +585,9 @@ team_profiles <- list(
     ),
     departures = list(),
     draft_picks = list(
-      list(name = "Raven Johnson", pick = 11, school = "South Carolina", archetype = "High-Pressure Floor General")
+      list(name = "Iyana Martín Carrión", pick = 7, school = "Spain", archetype = "International Pick-and-Roll Maestro")
     ),
-    offseason_verdict = "Physical expansion foundation in the Pacific Northwest built around interior rebounding and aggressive perimeter defense."
+    offseason_verdict = "Physical expansion foundation in the Pacific Northwest built around interior rebounding and Spanish floor general Iyana Martín Carrión."
   ),
   list(
     team = "TOR",
@@ -603,9 +607,9 @@ team_profiles <- list(
     ),
     departures = list(),
     draft_picks = list(
-      list(name = "Shayeann Day-Wilson", pick = 13, school = "Miami", archetype = "Canadian Speed Guard")
+      list(name = "Kiki Rice", pick = 6, school = "UCLA", archetype = "Championship Lead Floor General")
     ),
-    offseason_verdict = "Historic Canadian expansion franchise connects with local roots immediately via Nurse and Achonwa while laying long-term culture."
+    offseason_verdict = "Historic Canadian expansion franchise connects with local roots via Nurse and Achonwa while securing championship cornerstone Kiki Rice at #6 overall."
   )
 )
 
@@ -615,142 +619,349 @@ team_profiles <- list(
 draft_prospects <- list(
   list(
     pick = 1,
-    player_name = "Paige Bueckers",
+    player_name = "Azzi Fudd",
     team = "DAL",
     position = "G",
     school_or_club = "UConn",
-    height = "6'0\"",
-    archetype = "Generational Three-Level Initiator",
-    projected_bpm_prior = 4.8,
-    projected_mpg = 32.5,
+    height = "5'11\"",
+    archetype = "Generational Pure Perimeter Shooter",
+    projected_bpm_prior = 4.2,
+    projected_mpg = 31.0,
     upside_tier = "Franchise Pillar",
     trade_note = "Selection won by Dallas Wings via Draft Lottery (#1 overall)",
     strengths = c(
-      "Uncanny floor vision & passing precision in half-court pick-and-roll",
-      "Deadly 42%+ 3PT shooting with lightning quick release off screens",
-      "Elite mid-range pull-up touch and deceleration change-of-pace",
-      "Anticipatory passing lane steals and high-IQ positional defense"
+      "Unrivaled catch-and-shoot 3PT mechanics (43%+ collegiate range)",
+      "Elite off-ball gravity and relocation instinct freeing teammates",
+      "Crisp mid-range pull-up touch out of pin-down screening action",
+      "High-IQ positional off-ball team defense and spacing discipline"
     ),
     swing_skills = c(
-      "Durable physical frame against physical WNBA guard checks",
-      "Defensive strength navigating screening collisions"
+      "Durable physical frame against physical WNBA perimeter defenders",
+      "Self-created separation off primary isolation dribbles"
     ),
-    comp = "Sue Bird with lethal modern scoring volume"
+    comp = "Klay Thompson shooting stroke with Maya Moore relocation intelligence"
   ),
   list(
     pick = 2,
-    player_name = "Lauren Betts",
-    team = "LA",
-    position = "C",
-    school_or_club = "UCLA",
-    height = "6'7\"",
-    archetype = "Dominant Interior Anchor",
-    projected_bpm_prior = 3.4,
-    projected_mpg = 27.0,
-    upside_tier = "Franchise Pillar",
-    trade_note = "Selection awarded to Los Angeles Sparks via Draft Lottery (#2 overall)",
-    strengths = c(
-      "Imposing 6'7\" frame altering every shot within 8 feet of the rim",
-      "Soft hands and high-percentage drop-step finishes around the glass",
-      "Elite defensive rebounding percentage anchoring transition breaks"
-    ),
-    swing_skills = c(
-      "Perimeter lateral foot speed when pulled into high ball screens",
-      "Free throw shooting consistency under late-game fouling pressure"
-    ),
-    comp = "Brittney Griner rim deterrence with modern touch"
-  ),
-  list(
-    pick = 3,
     player_name = "Olivia Miles",
-    team = "CHI",
+    team = "MIN",
     position = "G",
-    school_or_club = "Notre Dame",
+    school_or_club = "TCU",
     height = "5'10\"",
     archetype = "Showtime Triple-Double Maestro",
-    projected_bpm_prior = 3.1,
-    projected_mpg = 28.5,
-    upside_tier = "Core Starter",
+    projected_bpm_prior = 3.6,
+    projected_mpg = 29.5,
+    upside_tier = "Franchise Pillar",
     trade_note = NULL,
     strengths = c(
-      "Electrifying full-court transition vision and no-look passing",
-      "Fearless guard rebounding triggering immediate fast breaks",
-      "Paint touch penetration breaking down initial defensive shells"
+      "Electrifying full-court transition vision and signature no-look passing",
+      "Fearless guard rebounding triggering immediate transition offense",
+      "Paint touch penetration breaking down initial perimeter shells"
     ),
     swing_skills = c(
       "Consistent outside catch-and-shoot 3PT percentage",
-      "Turnover management in congested playoff half-court environments"
+      "Turnover management in congested playoff half-court sets"
     ),
     comp = "Chelsea Gray flair combined with Courtney Vandersloot pace"
   ),
   list(
+    pick = 3,
+    player_name = "Awa Fam",
+    team = "SEA",
+    position = "C",
+    school_or_club = "Spain",
+    height = "6'4\"",
+    archetype = "Dominant European Interior Anchor",
+    projected_bpm_prior = 3.3,
+    projected_mpg = 27.0,
+    upside_tier = "Franchise Pillar",
+    trade_note = NULL,
+    strengths = c(
+      "High-level EuroLeague and Spanish Liga Femenina professional pedigree",
+      "Imposing post defense and natural shot-altering reach",
+      "Soft hands with high-percentage touch in the restricted area"
+    ),
+    swing_skills = c(
+      "Adjusting to the high screening speed and physicality of the WNBA",
+      "Free throw shooting consistency under late fouling pressure"
+    ),
+    comp = "Jonquel Jones defensive presence with European polish"
+  ),
+  list(
     pick = 4,
-    player_name = "Kiki Iriafen",
+    player_name = "Lauren Betts",
     team = "WSH",
+    position = "C",
+    school_or_club = "UCLA",
+    height = "6'7\"",
+    archetype = "Imposing Rim Deterrent & Drop-Step Finisher",
+    projected_bpm_prior = 3.1,
+    projected_mpg = 26.5,
+    upside_tier = "Core Starter",
+    trade_note = NULL,
+    strengths = c(
+      "Imposing 6'7\" frame altering every shot within 8 feet of the rim",
+      "Soft touch finishing around the glass through defensive contact",
+      "Elite defensive rebounding percentage anchoring transition breaks"
+    ),
+    swing_skills = c(
+      "Lateral foot speed when pulled into high perimeter ball screens",
+      "Range extension beyond 15 feet"
+    ),
+    comp = "Brittney Griner rim deterrence with modern touch"
+  ),
+  list(
+    pick = 5,
+    player_name = "Gabriela Jaquez",
+    team = "CHI",
     position = "F",
-    school_or_club = "USC",
-    height = "6'3\"",
-    archetype = "High-Motor Two-Way Forward",
-    projected_bpm_prior = 2.8,
+    school_or_club = "UCLA",
+    height = "6'0\"",
+    archetype = "High-Motor Two-Way Slashing Wing",
+    projected_bpm_prior = 2.7,
     projected_mpg = 25.0,
     upside_tier = "Core Starter",
     trade_note = NULL,
     strengths = c(
-      "Tenacious offensive rebounding and second-chance putbacks",
-      "Polished face-up mid-range game from the free-throw extended elbow",
-      "Switchable defensive motor contesting perimeter guards and forwards"
+      "Relentless offensive rebounding and 50/50 loose-ball hustle",
+      "Tenacious on-ball defensive containment against multiple positions",
+      "Transition slash-and-kick playmaking"
     ),
     swing_skills = c(
-      "Extending perimeter shooting range reliably beyond the 22.15 ft arc",
-      "Playmaking consistency out of double teams"
+      "Consistent perimeter jump shot off the catch",
+      "Creating off the bounce against set defenses"
     ),
-    comp = "Alyssa Thomas motor with face-up scoring polish"
-  ),
-  list(
-    pick = 5,
-    player_name = "Aneesah Morrow",
-    team = "GS",
-    position = "F",
-    school_or_club = "LSU",
-    height = "6'1\"",
-    archetype = "Relentless Glass Crasher & Chaos Agent",
-    projected_bpm_prior = 2.4,
-    projected_mpg = 24.0,
-    upside_tier = "Core Starter",
-    trade_note = "Selection awarded via expansion draft allocation to Golden State Valkyries (#5 overall)",
-    strengths = c(
-      "Unstoppable offensive glass pursuit defying height metrics",
-      "Active defensive hands generating deflections and run-out steals",
-      "Physical transition finisher through contact"
-    ),
-    swing_skills = c(
-      "Half-court shooting efficiency against set interior defenses",
-      "Positional size on defense against traditional post players"
-    ),
-    comp = "Angel Reese intensity with transition open-court punch"
+    comp = "Alyssa Thomas work ethic with perimeter versatility"
   ),
   list(
     pick = 6,
-    player_name = "Georgia Amoore",
-    team = "SEA",
+    player_name = "Kiki Rice",
+    team = "TOR",
     position = "G",
-    school_or_club = "Kentucky",
-    height = "5'6\"",
-    archetype = "Step-Back Perimeter Creator",
-    projected_bpm_prior = 2.1,
-    projected_mpg = 22.5,
+    school_or_club = "UCLA",
+    height = "5'11\"",
+    archetype = "Championship Lead Floor General",
+    projected_bpm_prior = 2.8,
+    projected_mpg = 27.5,
+    upside_tier = "Core Starter",
+    trade_note = "Toronto Tempo inaugural draft selection (#6 overall)",
+    strengths = c(
+      "Poised pick-and-roll pacing and mature decision-making",
+      "Physical guard defense at point-of-attack with strong active hands",
+      "Relentless downhill rim attacks and drawing fouls"
+    ),
+    swing_skills = c(
+      "3PT pull-up volume when defenses go under screens",
+      "Mid-range pull-up consistency"
+    ),
+    comp = "Jordin Canada burst with bigger defensive frame"
+  ),
+  list(
+    pick = 7,
+    player_name = "Iyana Martín Carrión",
+    team = "POR",
+    position = "G",
+    school_or_club = "Spain",
+    height = "5'8\"",
+    archetype = "International Pick-and-Roll Maestro",
+    projected_bpm_prior = 2.4,
+    projected_mpg = 23.0,
+    upside_tier = "Core Starter",
+    trade_note = "Portland Fire inaugural draft selection (#7 overall)",
+    strengths = c(
+      "Prodigious FIBA U19 MVP vision and playmaking feel",
+      "Lethal step-back jumper and stop-and-pop touch",
+      "Crafty change-of-direction dribble combos shaking perimeter defenders"
+    ),
+    swing_skills = c(
+      "Physical containment against taller WNBA guards",
+      "Finishing over athletic shot blockers"
+    ),
+    comp = "Julie Vanloo playmaking wizardry with high upside"
+  ),
+  list(
+    pick = 8,
+    player_name = "Flau'jae Johnson",
+    team = "GS",
+    position = "G",
+    school_or_club = "LSU",
+    height = "5'10\"",
+    archetype = "Dynamic Two-Way Scoring Guard",
+    projected_bpm_prior = 2.6,
+    projected_mpg = 25.5,
+    upside_tier = "Core Starter",
+    trade_note = "Selection awarded to Golden State Valkyries (*)",
+    strengths = c(
+      "Explosive first step attacking closeouts in transition and half-court",
+      "Clutch shot-making gene and fearless scoring mentality",
+      "Athletic perimeter on-ball lockdown pressure"
+    ),
+    swing_skills = c(
+      "Catch-and-shoot consistency from deep WNBA 3PT distance",
+      "Pick-and-roll playmaking reads against dropping bigs"
+    ),
+    comp = "Arike Ogunbowale scoring flair with superior defensive wingspan"
+  ),
+  list(
+    pick = 9,
+    player_name = "Angela Dugalić",
+    team = "WSH",
+    position = "F",
+    school_or_club = "UCLA",
+    height = "6'4\"",
+    archetype = "Versatile Switchable Stretch Forward",
+    projected_bpm_prior = 2.2,
+    projected_mpg = 21.0,
+    upside_tier = "Rotation Asset",
+    trade_note = "Acquired by Washington Mystics via trade",
+    strengths = c(
+      "6'4\" perimeter shooting stretching out opposing frontcourts",
+      "Switchability guarding wings and bigs",
+      "High-IQ passing from the high post"
+    ),
+    swing_skills = c(
+      "Physical strength against low-post bruisers",
+      "Finishing through traffic"
+    ),
+    comp = "Satou Sabally lite stretch-forward prototype"
+  ),
+  list(
+    pick = 10,
+    player_name = "Raven Johnson",
+    team = "IND",
+    position = "G",
+    school_or_club = "South Carolina",
+    height = "5'9\"",
+    archetype = "Lockdown Defensive Initiator",
+    projected_bpm_prior = 2.3,
+    projected_mpg = 22.0,
+    upside_tier = "Rotation Asset",
+    trade_note = NULL,
+    strengths = c(
+      "Elite on-ball point-of-attack defensive harassment",
+      "Championship pedigree and vocal leadership",
+      "High assist-to-turnover ratio in transition"
+    ),
+    swing_skills = c(
+      "Half-court perimeter shooting consistency",
+      "Finishing around the rim"
+    ),
+    comp = "Natasha Cloud defensive intensity and intangibles"
+  ),
+  list(
+    pick = 11,
+    player_name = "Cotie McMahon",
+    team = "WSH",
+    position = "F",
+    school_or_club = "Ole Miss",
+    height = "6'0\"",
+    archetype = "Physical Downhill Freight Train",
+    projected_bpm_prior = 2.0,
+    projected_mpg = 20.0,
+    upside_tier = "Rotation Asset",
+    trade_note = NULL,
+    strengths = c(
+      "Powerfully built frame bowling through contact to the rim",
+      "Tenacious foul-drawing rate",
+      "Active defensive hands generating transition runouts"
+    ),
+    swing_skills = c(
+      "3PT range extension",
+      "Turnover rate when defenses pack the paint"
+    ),
+    comp = "Angel McCoughtry power driving style"
+  ),
+  list(
+    pick = 12,
+    player_name = "Nell Angloma",
+    team = "CON",
+    position = "G/F",
+    school_or_club = "France",
+    height = "5'11\"",
+    archetype = "Physical European Two-Way Slasher",
+    projected_bpm_prior = 1.9,
+    projected_mpg = 18.5,
+    upside_tier = "Rotation Asset",
+    trade_note = NULL,
+    strengths = c(
+      "Physical EuroLeague / French LFB professional experience",
+      "Active defensive motor and transition athleticism",
+      "Aggressive slasher drawing contact"
+    ),
+    swing_skills = c(
+      "Perimeter shot consistency",
+      "Playmaking reads"
+    ),
+    comp = "Tiffany Hayes slashing motor with European defensive discipline"
+  ),
+  list(
+    pick = 13,
+    player_name = "Madina Okot",
+    team = "ATL",
+    position = "C",
+    school_or_club = "South Carolina",
+    height = "6'6\"",
+    archetype = "Interior Glass Crasher & Rim Runner",
+    projected_bpm_prior = 1.8,
+    projected_mpg = 17.0,
     upside_tier = "Specialist",
     trade_note = NULL,
     strengths = c(
-      "Unlimited 3PT range with off-the-dribble step-back lethality",
-      "Pick-and-roll pocket passing delivering on-target feeds",
-      "Clutch scoring gene in tight late-game scenarios"
+      "Imposing 6'6\" presence dominating both backboards",
+      "Athletic rim running in early offense",
+      "Shot blocking presence"
     ),
     swing_skills = c(
-      "Defensive vulnerability against taller physical backcourts",
-      "Finishing in traffic over collapsing 6'4\"+ rim protectors"
+      "Free throw percentage",
+      "Perimeter defensive foot speed"
     ),
-    comp = "Kelsey Plum microwave perimeter scoring"
+    comp = "Kiah Stokes rim deterrence and rebounding prowess"
+  ),
+  list(
+    pick = 14,
+    player_name = "Taina Mair",
+    team = "SEA",
+    position = "G",
+    school_or_club = "Duke",
+    height = "5'9\"",
+    archetype = "High-Pace Pick-and-Roll Playmaker",
+    projected_bpm_prior = 1.7,
+    projected_mpg = 16.5,
+    upside_tier = "Specialist",
+    trade_note = NULL,
+    strengths = c(
+      "Speedy open-court playmaker pushing fast break tempo",
+      "Active ball pressure and steal anticipation",
+      "Pass-first mentality finding corner shooters"
+    ),
+    swing_skills = c(
+      "Finishing over length",
+      "3PT shooting off dribble"
+    ),
+    comp = "Sug Sutton pace and distribution"
+  ),
+  list(
+    pick = 15,
+    player_name = "Gianna Kneepkens",
+    team = "CON",
+    position = "G",
+    school_or_club = "UCLA",
+    height = "6'0\"",
+    archetype = "Deadly Catch-and-Shoot Wing",
+    projected_bpm_prior = 1.8,
+    projected_mpg = 18.0,
+    upside_tier = "Specialist",
+    trade_note = NULL,
+    strengths = c(
+      "40%+ collegiate 3PT marksman with lightning quick release",
+      "Intelligent off-ball cutting exploiting defensive overplays",
+      "High basketball IQ and poise"
+    ),
+    swing_skills = c(
+      "Defensive foot speed against elite perimeter athletes",
+      "Creating own shot off bounce"
+    ),
+    comp = "Bridget Carleton perimeter gravity and sharpshooting"
   )
 )
 
