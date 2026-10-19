@@ -1,0 +1,725 @@
+import { z } from 'zod';
+import {
+  WNBA_TEAMS,
+  WNBA_CONFERENCES,
+  WNBA_DIVISIONS,
+  WNBA_POSITIONS,
+  EXPECTED_SHOT_ZONES,
+} from '../helpers/datasets';
+
+const teamEnum = z.enum(WNBA_TEAMS);
+const conferenceEnum = z.enum(WNBA_CONFERENCES);
+const divisionEnum = z.enum(WNBA_DIVISIONS);
+const positionEnum = z.enum([...WNBA_POSITIONS, 'G/F'] as const);
+const shotZoneEnum = z.enum(EXPECTED_SHOT_ZONES);
+const prob = z.number().finite().min(0).max(1);
+const pct = z.number().finite().min(0).max(100);
+const finiteNumber = z.number().finite();
+
+// 1. projections_season_teams.json -> TeamProjection[] (lib/types.ts)
+export const TeamProjectionSchema = z
+  .object({
+    rank: z.number().int().min(1).max(15),
+    team_id: z.number().int().positive(),
+    team: teamEnum,
+    team_name: z.string().min(2),
+    conference: conferenceEnum,
+    division: divisionEnum,
+    proj_wins: finiteNumber.min(0).max(44),
+    proj_losses: finiteNumber.min(0).max(44),
+    win_pct: prob,
+    ensemble_mean_wins: finiteNumber.min(0).max(44),
+    ensemble_median_wins: finiteNumber.min(0).max(44),
+    ensemble_sd_wins: finiteNumber.min(0).max(22),
+    ensemble_p10: finiteNumber.min(0).max(44),
+    ensemble_p25: finiteNumber.min(0).max(44),
+    ensemble_p50: finiteNumber.min(0).max(44),
+    ensemble_p75: finiteNumber.min(0).max(44),
+    ensemble_p90: finiteNumber.min(0).max(44),
+    ensemble_playoff_prob: prob,
+    ensemble_title_prob: prob,
+    variant_bottom_up_mean_wins: finiteNumber.min(0).max(44),
+    variant_bottom_up_median_wins: finiteNumber.min(0).max(44),
+    variant_bottom_up_sd_wins: finiteNumber.min(0).max(22),
+    variant_bottom_up_p10: finiteNumber.min(0).max(44),
+    variant_bottom_up_p25: finiteNumber.min(0).max(44),
+    variant_bottom_up_p50: finiteNumber.min(0).max(44),
+    variant_bottom_up_p75: finiteNumber.min(0).max(44),
+    variant_bottom_up_p90: finiteNumber.min(0).max(44),
+    variant_bottom_up_playoff_prob: prob,
+    variant_bottom_up_title_prob: prob,
+    variant_rapm_mean_wins: finiteNumber.min(0).max(44),
+    variant_rapm_median_wins: finiteNumber.min(0).max(44),
+    variant_rapm_sd_wins: finiteNumber.min(0).max(22),
+    variant_rapm_p10: finiteNumber.min(0).max(44),
+    variant_rapm_p25: finiteNumber.min(0).max(44),
+    variant_rapm_p50: finiteNumber.min(0).max(44),
+    variant_rapm_p75: finiteNumber.min(0).max(44),
+    variant_rapm_p90: finiteNumber.min(0).max(44),
+    variant_rapm_playoff_prob: prob,
+    variant_rapm_title_prob: prob,
+    variant_shot_fatigue_mean_wins: finiteNumber.min(0).max(44),
+    variant_shot_fatigue_median_wins: finiteNumber.min(0).max(44),
+    variant_shot_fatigue_sd_wins: finiteNumber.min(0).max(22),
+    variant_shot_fatigue_p10: finiteNumber.min(0).max(44),
+    variant_shot_fatigue_p25: finiteNumber.min(0).max(44),
+    variant_shot_fatigue_p50: finiteNumber.min(0).max(44),
+    variant_shot_fatigue_p75: finiteNumber.min(0).max(44),
+    variant_shot_fatigue_p90: finiteNumber.min(0).max(44),
+    variant_shot_fatigue_playoff_prob: prob,
+    variant_shot_fatigue_title_prob: prob,
+    variant_embeddings_mean_wins: finiteNumber.min(0).max(44),
+    variant_embeddings_median_wins: finiteNumber.min(0).max(44),
+    variant_embeddings_sd_wins: finiteNumber.min(0).max(22),
+    variant_embeddings_p10: finiteNumber.min(0).max(44),
+    variant_embeddings_p25: finiteNumber.min(0).max(44),
+    variant_embeddings_p50: finiteNumber.min(0).max(44),
+    variant_embeddings_p75: finiteNumber.min(0).max(44),
+    variant_embeddings_p90: finiteNumber.min(0).max(44),
+    variant_embeddings_playoff_prob: prob,
+    variant_embeddings_title_prob: prob,
+    _row: z.string().optional(),
+  })
+  .strict();
+
+// 2. projections_season_players.json -> PlayerProjection[] (lib/types.ts)
+export const PlayerProjectionSchema = z
+  .object({
+    player_id: z.string().min(1),
+    player_name: z.string().min(2),
+    team: teamEnum,
+    position: positionEnum,
+    proj_games: finiteNumber.min(1).max(44),
+    proj_mpg: finiteNumber.min(0).max(40),
+    proj_min_total: finiteNumber.min(0),
+    proj_pts: finiteNumber.min(0).max(40),
+    proj_reb: finiteNumber.min(0).max(20),
+    proj_ast: finiteNumber.min(0).max(15),
+    proj_pts_total: finiteNumber.min(0),
+    proj_reb_total: finiteNumber.min(0),
+    proj_ast_total: finiteNumber.min(0),
+    pts_p10: finiteNumber.min(0),
+    pts_p25: finiteNumber.min(0),
+    pts_p50: finiteNumber.min(0),
+    pts_p75: finiteNumber.min(0),
+    pts_p90: finiteNumber.min(0),
+    reb_p10: finiteNumber.min(0),
+    reb_p25: finiteNumber.min(0),
+    reb_p50: finiteNumber.min(0),
+    reb_p75: finiteNumber.min(0),
+    reb_p90: finiteNumber.min(0),
+    ast_p10: finiteNumber.min(0),
+    ast_p25: finiteNumber.min(0),
+    ast_p50: finiteNumber.min(0),
+    ast_p75: finiteNumber.min(0),
+    ast_p90: finiteNumber.min(0),
+    games_p10: finiteNumber.min(0).max(44),
+    games_p25: finiteNumber.min(0).max(44),
+    games_p50: finiteNumber.min(0).max(44),
+    games_p75: finiteNumber.min(0).max(44),
+    games_p90: finiteNumber.min(0).max(44),
+    games_sd: finiteNumber.min(0),
+    pts_sd: finiteNumber.min(0),
+    reb_sd: finiteNumber.min(0),
+    ast_sd: finiteNumber.min(0),
+    pts_zscore: finiteNumber,
+    reb_zscore: finiteNumber,
+    ast_zscore: finiteNumber,
+    pra_zscore: finiteNumber,
+    is_outlier: z.boolean(),
+  })
+  .strict();
+
+// 3. projections_models_metadata.json -> ModelMetadata (lib/types.ts)
+const VariantMetadataEntrySchema = z
+  .object({
+    name: z.string().min(2),
+    weight: prob,
+    description: z.string().min(5),
+  })
+  .strict();
+
+export const ModelMetadataSchema = z
+  .object({
+    schema_version: z.string().min(1),
+    pipeline_stage: z.string().min(1),
+    generated_at: z.string().min(1),
+    season: z.number().int().min(2020).max(2035),
+    n_simulations: z.number().int().positive(),
+    margin_sigma: finiteNumber.positive(),
+    home_court_advantage: finiteNumber,
+    total_schedule_games: z.number().int().positive(),
+    teams_count: z.literal(15),
+    players_count: z.number().int().min(150),
+    models: z
+      .object({
+        ensemble: z
+          .object({
+            name: z.string().min(2),
+            weights: z.record(z.string(), prob),
+            description: z.string().min(5),
+          })
+          .strict(),
+        variant_bottom_up: VariantMetadataEntrySchema,
+        variant_rapm: VariantMetadataEntrySchema,
+        variant_shot_fatigue: VariantMetadataEntrySchema,
+        variant_embeddings: VariantMetadataEntrySchema,
+      })
+      .strict(),
+  })
+  .strict();
+
+// 4. projections_diagnostics.json -> ModelDiagnostics (lib/types.ts)
+export const CalibrationBinSchema = z
+  .object({
+    bin: z.string().min(1),
+    midpoint: prob,
+    count: z.number().int().min(0),
+    meanPredictedProb: prob,
+    empiricalWinRate: prob,
+  })
+  .strict();
+
+export const AccuracyDriftEntrySchema = z
+  .object({
+    season: z.union([z.string().min(4), z.number().int().min(2015).max(2035)]),
+    games: z.number().int().positive(),
+    accuracy: prob,
+    brierScore: finiteNumber.min(0).max(1),
+  })
+  .strict();
+
+export const ResidualBucketSchema = z
+  .object({
+    bucket: z.string().min(1),
+    count: z.number().int().min(0),
+    label: z.string().min(1),
+  })
+  .strict();
+
+export const ModelDiagnosticsSchema = z
+  .object({
+    totalResolvedGames: z.number().int().positive(),
+    overallAccuracy: prob,
+    brierScore: finiteNumber.min(0).max(1),
+    logLoss: finiteNumber.positive(),
+    homeWinRate: prob,
+    calibration: z.array(CalibrationBinSchema).min(5),
+    accuracyDrift: z.array(AccuracyDriftEntrySchema).min(1),
+    residualDistribution: z.array(ResidualBucketSchema).min(3),
+  })
+  .strict();
+
+// 5. cba_cap_sheet.json -> WnbaCbaLeagueOverview (lib/cbaTypes.ts)
+export const WnbaPlayerContractSchema = z
+  .object({
+    playerId: z.string().min(1),
+    playerName: z.string().min(2),
+    position: positionEnum,
+    salary2026: finiteNumber.min(0),
+    salary2027: finiteNumber.min(0),
+    salary2028: finiteNumber.min(0),
+    contractType: z.string().min(2),
+    notes: z.string(),
+  })
+  .strict();
+
+export const WnbaFranchiseCbaProfileSchema = z
+  .object({
+    teamAbbr: teamEnum,
+    teamName: z.string().min(3),
+    conference: conferenceEnum,
+    totalPayroll2026: finiteNumber.positive(),
+    totalPayroll2027: finiteNumber.min(0),
+    totalPayroll2028: finiteNumber.min(0),
+    hardSalaryCap: finiteNumber.positive(),
+    capFloor: finiteNumber.positive(),
+    capSpace2026: finiteNumber,
+    rosterCount: z.union([z.literal(11), z.literal(12)]),
+    twelfthSpotAvailable: z.boolean(),
+    cbaTier: z.enum([
+      'Hard Cap Squeeze (11 Roster)',
+      'Cap Compliant (12 Roster)',
+      'Flexible Cap Room',
+      'Maximum Cap Space',
+    ]),
+    corePlayer: z.string().min(1),
+    projectedCapSpace2027: finiteNumber,
+    projectedCapSpace2028: finiteNumber,
+    hardCapCrunchIndex: finiteNumber.min(0).max(110),
+    contracts: z.array(WnbaPlayerContractSchema).min(10).max(20),
+  })
+  .strict();
+
+export const WnbaCbaLeagueOverviewSchema = z
+  .object({
+    season: z.string().min(4),
+    hardSalaryCap: finiteNumber.positive(),
+    capFloor: finiteNumber.positive(),
+    supermaxSalary: finiteNumber.positive(),
+    vetMaxSalary: finiteNumber.positive(),
+    vetMinSalary: finiteNumber.positive(),
+    rookieMinSalary: finiteNumber.positive(),
+    averagePayroll: finiteNumber.positive(),
+    hardCapSqueezeTeamCount: z.number().int().min(0).max(15),
+    twelvePlayerTeamCount: z.number().int().min(0).max(15),
+    maxCapSpaceTeamCount: z.number().int().min(0).max(15),
+    teams: z.array(WnbaFranchiseCbaProfileSchema).length(15),
+  })
+  .strict();
+
+// 6. clutch_leverage_metrics.json -> ClutchProfile[] (lib/clutchTypes.ts)
+const ShotZoneStatsSchema = z
+  .object({
+    fga: z.number().int().min(0),
+    fgm: z.number().int().min(0),
+    pct: pct,
+  })
+  .strict();
+
+export const ClutchProfileSchema = z
+  .object({
+    season: z.number().int().optional(),
+    playerId: z.string().min(1),
+    playerName: z.string().min(2),
+    team: teamEnum,
+    position: positionEnum,
+    clutchArchetype: z.string().min(2),
+    clutchMpg: finiteNumber.min(0).max(10),
+    clutchUsgPct: pct,
+    clutchTsPct: pct,
+    baseTsPct: pct,
+    tsDelta: finiteNumber,
+    usciScore: finiteNumber.min(0),
+    unassistedFgmPct: pct,
+    clutchPpp: finiteNumber.min(0),
+    tovFragility: finiteNumber,
+    cDwpa: finiteNumber,
+    shotBreakdown: z
+      .object({
+        totalClutchFga: z.number().int().min(0),
+        rim: ShotZoneStatsSchema,
+        mid: ShotZoneStatsSchema,
+        three: ShotZoneStatsSchema,
+      })
+      .strict(),
+  })
+  .strict();
+
+// 7. coaching_metrics.json -> CoachingStaffMetric[] (lib/coachingTypes.ts)
+export const CoachingStaffMetricSchema = z
+  .object({
+    season: z.number().int().optional(),
+    teamAbbr: teamEnum,
+    teamName: z.string().min(3),
+    headCoach: z
+      .object({
+        name: z.string().min(2),
+        tenureYears: z.number().int().min(0),
+        careerGames: z.number().int().min(0),
+        careerWinPct: prob,
+        coachingTree: z.string().min(2),
+        tacticalArchetype: z.string().min(2),
+      })
+      .strict(),
+    assistants: z
+      .object({
+        associateHC: z.string().min(2),
+        offensiveCoord: z.string().min(2),
+        defensiveCoord: z.string().min(2),
+        playerDevLead: z.string().min(2),
+      })
+      .strict(),
+    metrics: z
+      .object({
+        coachImpactRating: pct,
+        talentExpectedWins: finiteNumber.min(0).max(44),
+        actualProjectedWins: finiteNumber.min(0).max(44),
+        coachingWinsAdded: finiteNumber,
+        atoOffensivePpp: finiteNumber.positive(),
+        atoDefensivePppAllowed: finiteNumber.positive(),
+        challengeSuccessRate: pct,
+        challengeWpa: finiteNumber,
+        shotQualityLiftEfg: finiteNumber,
+        rotationStaggerScore: pct,
+        playerDevelopmentScore: pct,
+      })
+      .strict(),
+    radarPercentiles: z
+      .object({
+        atoMastery: pct,
+        tacticalInnovation: pct,
+        rotationEfficiency: pct,
+        inGameWpa: pct,
+        playerDevelopment: pct,
+      })
+      .strict(),
+  })
+  .strict();
+
+// 8. defensive_metrics.json -> DefensiveProfile[] (lib/defenseTypes.ts)
+export const DefensiveProfileSchema = z
+  .object({
+    season: z.number().int().optional(),
+    playerId: z.string().min(1),
+    playerName: z.string().min(2),
+    team: teamEnum,
+    position: positionEnum,
+    projMpg: finiteNumber.min(0).max(40),
+    defensiveRole: z.string().min(2),
+    versatilityScore: pct,
+    rimDfgDelta: finiteNumber,
+    rimDeterrenceIndex: finiteNumber.min(0),
+    poaNavigation: pct,
+    dRapm: finiteNumber,
+    matchupDist: z
+      .object({
+        pgPct: pct,
+        sgPct: pct,
+        sfPct: pct,
+        pfPct: pct,
+        cPct: pct,
+      })
+      .strict(),
+  })
+  .strict();
+
+// 9. player_dna_profiles.json -> PlayerDnaProfile[] (lib/playerDnaTypes.ts)
+export const PlayerDnaProfileSchema = z
+  .object({
+    season: z.number().int().optional(),
+    playerId: z.string().min(1),
+    playerName: z.string().min(2),
+    team: teamEnum,
+    position: positionEnum,
+    archetype: z.string().min(2),
+    projPts: finiteNumber.min(0),
+    projReb: finiteNumber.min(0),
+    projAst: finiteNumber.min(0),
+    projMpg: finiteNumber.min(0).max(40),
+    overallRating: pct,
+    manifoldX: finiteNumber,
+    manifoldY: finiteNumber,
+    skillVector: z
+      .object({
+        rim_fg: pct,
+        paint_power: pct,
+        paint_touches: pct,
+        cns_3p: pct,
+        pullup_3p: pct,
+        ft_pct: pct,
+        ast_pct: pct,
+        pot_ast: pct,
+        tov_control: pct,
+        drive_ast: pct,
+        switchability: pct,
+        rim_protection: pct,
+        perimeter_havoc: pct,
+        d_rapm: pct,
+        oreb: pct,
+        dreb: pct,
+      })
+      .strict(),
+    categoryScores: z
+      .object({
+        finishing: pct,
+        shooting: pct,
+        playmaking: pct,
+        defense: pct,
+        rebounding: pct,
+      })
+      .strict(),
+    historicalTwins: z
+      .array(
+        z
+          .object({
+            compName: z.string().min(2),
+            era: z.string().min(4),
+            archetype: z.string().min(2),
+            position: z.string().min(1),
+            similarityPct: finiteNumber.min(0).max(100),
+            keySharedTrait: z.string().min(2),
+          })
+          .strict()
+      )
+      .min(1),
+  })
+  .strict();
+
+// 10. offseason_draft.json -> OffseasonDraftProspect[] (lib/offseasonTypes.ts)
+export const OffseasonDraftProspectSchema = z
+  .object({
+    pick: z.number().int().min(1).max(30),
+    player_name: z.string().min(2),
+    team: teamEnum,
+    position: positionEnum,
+    school_or_club: z.string().min(2),
+    height: z.string().min(3),
+    archetype: z.string().min(2),
+    projected_bpm_prior: finiteNumber,
+    projected_mpg: finiteNumber.min(0).max(40),
+    upside_tier: z.string().min(2),
+    trade_note: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+    strengths: z.array(z.string().min(2)).min(1),
+    swing_skills: z.array(z.string().min(2)).min(1),
+    comp: z.string().min(2),
+  })
+  .strict();
+
+// 11. offseason_teams.json -> OffseasonTeamProfile[] (lib/offseasonTypes.ts)
+export const OffseasonTeamProfileSchema = z
+  .object({
+    team: teamEnum,
+    team_name: z.string().min(3),
+    conference: conferenceEnum,
+    division: divisionEnum,
+    baseline_wins: finiteNumber.min(0).max(44),
+    projected_wins_with_moves: finiteNumber.min(0).max(44),
+    net_wins_change: finiteNumber,
+    net_bpm_added: finiteNumber,
+    roster_continuity_pct: pct,
+    grade: z.string().min(1),
+    strategic_posture: z.string().min(2),
+    additions: z.array(
+      z
+        .object({
+          name: z.string().min(2),
+          type: z.string().min(2),
+          bpm: finiteNumber,
+          pos: positionEnum,
+        })
+        .strict()
+    ),
+    departures: z.array(
+      z
+        .object({
+          name: z.string().min(2),
+          type: z.string().min(2),
+          bpm: finiteNumber,
+          pos: positionEnum,
+        })
+        .strict()
+    ),
+    draft_picks: z.array(
+      z
+        .object({
+          name: z.string().min(2),
+          pick: z.number().int().min(1).max(30),
+          school: z.string().min(2),
+          archetype: z.string().min(2),
+        })
+        .strict()
+    ),
+    offseason_verdict: z.string().min(5),
+  })
+  .strict();
+
+// 12. offseason_transactions.json -> OffseasonTransaction[] (lib/offseasonTypes.ts)
+export const OffseasonTransactionSchema = z
+  .object({
+    id: z.string().min(1),
+    type: z.enum(['trade', 'free_agency', 'extension', 'expansion_draft', 'draft']),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    player_name: z.string().min(2),
+    player_id: z.string().optional(),
+    position: positionEnum,
+    from_team: teamEnum.nullable().optional(),
+    to_team: teamEnum,
+    contract_terms: z.string().min(2),
+    trade_details: z
+      .object({
+        counterparts_received: z.array(z.string()).optional(),
+        draft_assets: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+    player_bpm: finiteNumber,
+    player_pts: finiteNumber.min(0),
+    player_reb: finiteNumber.min(0),
+    player_ast: finiteNumber.min(0),
+    projected_minutes: finiteNumber.min(0).max(40),
+    delta_net_rating: finiteNumber,
+    delta_projected_wins: finiteNumber,
+    impact_tier: z.enum(['superstar', 'all_star', 'starter', 'rotation']),
+    fit_score: pct,
+    age: z.number().int().min(18).max(45),
+    headline: z.string().min(5),
+    analysis: z
+      .object({
+        summary: z.string().min(5),
+        offensive_impact: z.string().min(5),
+        defensive_impact: z.string().min(5),
+        risk_factor: z.string().min(5),
+      })
+      .strict(),
+  })
+  .strict();
+
+// 13. playoff_series_matchups.json -> PlayoffMatchupsCatalog (lib/playoffTypes.ts)
+const TacticalRatingsSchema = z
+  .object({
+    perimeterCreation: pct,
+    dropVulnerability: pct,
+    interiorDominance: pct,
+    switchability: pct,
+    clutchExecution: pct,
+  })
+  .strict();
+
+const PlayoffPlayerSchema = z
+  .object({
+    playerId: z.union([z.string().min(1), z.number().int()]),
+    playerName: z.string().min(2),
+    position: positionEnum,
+    regularMpg: finiteNumber.min(0).max(40),
+    playoffMpg: finiteNumber.min(0).max(40),
+    pts: finiteNumber.min(0),
+    reb: finiteNumber.min(0),
+    ast: finiteNumber.min(0),
+    praZscore: finiteNumber,
+    role: z.enum(['Starter', 'Sixth Man', 'Rotation Bench']),
+  })
+  .strict();
+
+export const TeamPlayoffProfileSchema = z
+  .object({
+    teamAbbr: teamEnum,
+    teamName: z.string().min(3),
+    conference: conferenceEnum,
+    regularWins: finiteNumber.min(0).max(44),
+    regularNetRtg: finiteNumber,
+    playoffNetRtg: finiteNumber,
+    top3TalentBump: finiteNumber,
+    tacticalRatings: TacticalRatingsSchema,
+    rotation: z.array(PlayoffPlayerSchema).length(8),
+  })
+  .strict();
+
+const GameOutcomeProbSchema = z
+  .object({
+    games: z.number().int().min(2).max(7),
+    winner: teamEnum,
+    probPct: pct,
+  })
+  .strict();
+
+const TacticalEdgeSchema = z
+  .object({
+    title: z.string().min(2),
+    advantageTeam: teamEnum,
+    description: z.string().min(5),
+    deltaMargin: finiteNumber,
+  })
+  .strict();
+
+export const PlayoffSeriesMatchupResultSchema = z
+  .object({
+    teamA: teamEnum,
+    teamB: teamEnum,
+    hcaTeam: teamEnum,
+    format: z.enum(['bo3', 'bo5', 'bo7']).optional(),
+    ratingDiffRaw: finiteNumber,
+    tacticalMismatchAdjustment: finiteNumber,
+    netRatingMargin: finiteNumber,
+    winProbA: prob,
+    winProbB: prob,
+    fairMlA: z.number().int(),
+    fairMlB: z.number().int(),
+    avgGames: finiteNumber.min(2).max(7),
+    spreadMinus1_5Prob: prob,
+    sweepProb: pct,
+    gameDistributions: z.array(GameOutcomeProbSchema).min(4),
+    tacticalEdges: z.array(TacticalEdgeSchema),
+  })
+  .strict();
+
+const HistoricalSeriesSchema = z
+  .object({
+    teamA: z.string().min(2),
+    teamNameA: z.string().min(2),
+    teamB: z.string().min(2),
+    teamNameB: z.string().min(2),
+    winner: z.string().min(2),
+    winnerName: z.string().min(2),
+    round: z.string().min(2),
+    gamesPlayed: z.number().int().min(2).max(7),
+    seriesLength: z.number().int().min(2).max(7),
+    games: z
+      .array(
+        z
+          .object({
+            gameDate: z.string().min(4),
+            teamA: z.string().min(2),
+            scoreA: z.number().int().positive(),
+            teamB: z.string().min(2),
+            scoreB: z.number().int().positive(),
+          })
+          .strict()
+      )
+      .min(2)
+      .max(7),
+  })
+  .strict();
+
+export const PlayoffMatchupsCatalogSchema = z
+  .object({
+    teams: z.record(teamEnum, TeamPlayoffProfileSchema),
+    sampleMatchups: z.array(PlayoffSeriesMatchupResultSchema).min(1),
+    historicalBrackets: z.record(z.string(), z.array(HistoricalSeriesSchema)).optional(),
+  })
+  .strict();
+
+// 14. shots_index.json -> PlayerCatalogEntry[] (lib/shotTypes.ts)
+export const PlayerCatalogEntrySchema = z
+  .object({
+    player_id: z.string().min(1),
+    player_name: z.string().min(2),
+    team: teamEnum,
+    total_shots: z.number().int().positive(),
+  })
+  .strict();
+
+// 15. shots_metadata.json -> ShotsMetadata (lib/shotTypes.ts)
+export const ZoneLeagueAverageSchema = z
+  .object({
+    zone: shotZoneEnum,
+    total_fga: z.number().int().positive(),
+    total_fgm: z.number().int().min(0),
+    lg_fg_pct: prob,
+  })
+  .strict();
+
+export const ShotsMetadataSchema = z
+  .object({
+    season: z.number().int().optional(),
+    updated_at: z.string().min(1),
+    total_shots_sampled: z.number().int().positive(),
+    league_averages: z.array(ZoneLeagueAverageSchema).length(14),
+    zones: z.array(shotZoneEnum).length(14),
+  })
+  .strict();
+
+// 16. public/data/shots/<player_id>.json -> PlayerShotData (lib/shotTypes.ts)
+export const ShotRecordSchema = z
+  .object({
+    x: finiteNumber.min(-30).max(30),
+    y: finiteNumber.min(-10).max(50),
+    dist: finiteNumber.min(0).max(60),
+    val: z.union([z.literal(2), z.literal(3)]),
+    made: z.boolean(),
+    zone: shotZoneEnum,
+    type: z.string().min(1),
+    period: z.number().int().min(1).max(10),
+    clock: z.string().min(1),
+  })
+  .strict();
+
+export const PlayerShotDataSchema = z
+  .object({
+    player_id: z.string().min(1),
+    player_name: z.string().min(2),
+    team: teamEnum,
+    total_shots: z.number().int().positive(),
+    shots: z.array(ShotRecordSchema).min(1),
+  })
+  .strict();

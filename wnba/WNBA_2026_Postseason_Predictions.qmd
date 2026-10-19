@@ -1,0 +1,479 @@
+---
+title: "2026 WNBA Postseason Predictions & Regular-Season Model Accuracy Review"
+author: "Kailot C. Harris"
+date: "`r Sys.Date()`"
+format:
+  html:
+    toc: true
+    embed-resources: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+suppressPackageStartupMessages({
+  library(tidyverse)
+})
+source("config.R")
+```
+
+## Introduction
+
+This report has two parts. **Part 1** independently re-verifies the live pipeline's own win-probability
+predictions against real box-score outcomes for every 2026 regular-season game that has actually
+resolved as of this writing, using `cache/prediction_accuracy_log.rds`
+(`prediction_accuracy_logger.R`) as the prediction source and `data/box_scores_cache.rds`
+(`config.R`'s `CACHE_TEAM_BOX`) as ground truth — not trusting the log's own `correct`/
+`brier_component` columns, the same "distrust the log's own columns" discipline
+`tools/check_accuracy_since_0912.R` already established for this repo. **Part 2** builds a full
+2026 postseason bracket win-probability tree from `playoff_simulator.R`'s series simulator, seeded
+with the real, confirmed 2026 playoff bracket (verified via live web search, cited below) and real
+empirical regular-season net ratings rather than the model's forward-looking projected standings,
+since the regular season has now actually been played.
+
+## Part 1: 2026 Regular-Season Prediction Accuracy
+
+### Data and scope
+
+```{r load-accuracy-data}
+log <- readRDS("cache/prediction_accuracy_log.rds")
+box <- readRDS(CACHE_TEAM_BOX) |> mutate(game_date = as.Date(game_date))
+
+log_2026 <- log |> filter(season == 2026)
+n_total       <- nrow(log_2026)
+n_synthetic   <- sum(log_2026$is_synthetic, na.rm = TRUE)
+n_real        <- sum(!log_2026$is_synthetic, na.rm = TRUE)
+n_real_resolved <- log_2026 |> filter(!is_synthetic, status == "RESOLVED") |> nrow()
+n_real_pending  <- log_2026 |> filter(!is_synthetic, status == "PENDING") |> nrow()
+
+cat(sprintf(
+  "2026 prediction log: %d total rows | %d synthetic/diagnostic fixtures (excluded) | %d real predictions (%d resolved, %d still pending a box score)\n",
+  n_total, n_synthetic, n_real, n_real_resolved, n_real_pending
+))
+```
+
+Two scoping decisions, both consequences of real, previously-documented data quirks in this repo
+rather than choices made for this report:
+
+1. **Synthetic/diagnostic rows are excluded.** `n_synthetic` of the `n_total` 2026 rows are
+   `DIAGNOSTIC`-fixture or `SYNTHETIC_FALLBACK`-slate predictions (`is_synthetic == TRUE`,
+   `prediction_accuracy_logger.R`'s Finding C-3/M-5) — the accuracy of a model against a fabricated
+   fixture slate says nothing about its accuracy against real games, so these are dropped exactly as
+   `summarize_prediction_accuracy()` already does.
+2. **Real, non-synthetic logging only started on 2026-09-17.** Every real (`is_synthetic == FALSE`)
+   row in the log is dated 2026-09-17 or later — earlier-season games were never logged with real
+   market provenance. "The entire resolved 2026 regular season" is therefore, in practice, every real
+   prediction the pipeline logged that has since resolved against a real box score: the last ~10 days
+   of the 2026-05-08–2026-09-24 season. `n_real_pending` real predictions remain PENDING: 5 are
+   2026-09-24 games (the regular season's final scheduled day) whose box scores had not yet landed in
+   `data/box_scores_cache.rds` as of this render, and 4 are Game 1s of the 2026 postseason itself
+   (2026-09-27 — see Part 2), which are not regular-season games at all and are excluded from this
+   section's scoring.
+
+### Independent re-verification against real box scores
+
+Following `tools/check_accuracy_since_0912.R`'s pattern, every real resolved prediction is rejoined
+against `box_scores_cache.rds` on `(game_date, home_team)` and every metric below is recomputed from
+that join — the log's own `correct`/`brier_component`/`log_loss_component` columns are read only for
+a sanity cross-check, never taken as ground truth.
+
+```{r reconcile-independently}
+home_results <- box |>
+  filter(team_home_away == "home") |>
+  select(game_date, home_abbr = team_abbreviation, away_abbr = opponent_team_abbreviation,
+         home_score = team_score, away_score = opponent_team_score, home_win = team_winner) |>
+  distinct()
+
+scoreable <- log_2026 |>
+  filter(!is_synthetic, status == "RESOLVED") |>
+  mutate(game_date = as.Date(game_date)) |>
+  left_join(home_results, by = c("game_date" = "game_date", "home_team" = "home_abbr")) |>
+  filter(!is.na(home_score)) |>
+  mutate(
+    actual_winner_indep = if_else(home_win, home_team, away_team),
+    correct_indep       = predicted_winner == actual_winner_indep,
+    actual_home_win     = as.integer(home_win),
+    p_clamped           = pmin(pmax(predicted_home_win_prob, 1e-6), 1 - 1e-6),
+    brier_indep         = (predicted_home_win_prob - actual_home_win)^2,
+    log_loss_indep      = -(actual_home_win * log(p_clamped) + (1 - actual_home_win) * log(1 - p_clamped)),
+    actual_margin_indep = home_score - away_score
+  )
+
+# Sanity cross-check: the log's own `correct` column should agree with the independent join.
+n_mismatch <- sum(scoreable$correct != scoreable$correct_indep, na.rm = TRUE)
+cat(sprintf("Rows independently re-verified: %d. Disagreements with the log's own `correct` column: %d.\n",
+            nrow(scoreable), n_mismatch))
+
+knitr::kable(
+  scoreable |>
+    select(game_date, home_team, away_team, predicted_home_win_prob, predicted_winner,
+           actual_winner_indep, correct_indep, actual_margin_indep, predicted_margin, market_data_source) |>
+    arrange(game_date),
+  digits = 3,
+  caption = "Every real, resolved 2026 regular-season prediction, independently re-scored against data/box_scores_cache.rds."
+)
+```
+
+### Headline accuracy metrics
+
+```{r score-block-function}
+score_block <- function(df, label) {
+  n <- nrow(df)
+  if (n == 0) return(tibble(window = label, n = 0L))
+  m <- df |> filter(!is.na(predicted_margin))
+  tibble(
+    window       = label,
+    n            = n,
+    accuracy     = round(mean(df$correct_indep), 4),
+    brier_score  = round(mean(df$brier_indep), 4),
+    log_loss     = round(mean(df$log_loss_indep), 4),
+    n_with_margin = nrow(m),
+    margin_mae   = if (nrow(m) > 0) round(mean(abs(m$actual_margin_indep - m$predicted_margin)), 2) else NA_real_,
+    margin_rmse  = if (nrow(m) > 0) round(sqrt(mean((m$actual_margin_indep - m$predicted_margin)^2)), 2) else NA_real_,
+    margin_bias  = if (nrow(m) > 0) round(mean(m$actual_margin_indep - m$predicted_margin), 2) else NA_real_
+  )
+}
+
+accuracy_summary <- bind_rows(
+  score_block(scoreable, "All real resolved (N)"),
+  score_block(scoreable |> filter(market_data_source == "LIVE_ODDS_API"), "LIVE_ODDS_API only (full margin data)"),
+  score_block(scoreable |> filter(market_data_source == "UNKNOWN"), "UNKNOWN provenance (pre-fix; win/loss + Brier only)")
+)
+
+knitr::kable(accuracy_summary, digits = 3,
+             caption = "Independently-verified 2026 regular-season prediction accuracy, overall and by market-odds provenance.")
+```
+
+The `UNKNOWN`-provenance rows are real games (confirmed via the independent box-score join above),
+logged before `market_data_source` provenance existed on `predicted_margin`/`contrib_*`
+(`prediction_accuracy_logger.R`'s header, "DEVIATION"/Finding notes) — they are still fully scoreable
+for win/loss accuracy and Brier/log-loss, just not for margin error.
+
+### Calibration
+
+With only `r nrow(scoreable)` real resolved games, a full reliability curve would be noise-dominated;
+instead, predictions are grouped into three coarse confidence bands and checked against the empirical
+win rate within each band.
+
+```{r calibration-table}
+calib <- scoreable |>
+  mutate(
+    conf_for_predicted = if_else(predicted_home_win_prob >= 0.5, predicted_home_win_prob, 1 - predicted_home_win_prob),
+    band = cut(conf_for_predicted, breaks = c(0.5, 0.65, 0.8, 1.0), include.lowest = TRUE,
+               labels = c("50-65% (toss-up)", "65-80% (lean)", "80-100% (confident)"))
+  ) |>
+  group_by(band) |>
+  summarise(n = n(), avg_predicted_conf = round(mean(conf_for_predicted), 3),
+            empirical_hit_rate = round(mean(correct_indep), 3), .groups = "drop")
+
+knitr::kable(calib, caption = "Calibration: predicted confidence in the favored side vs. empirical hit rate, by band (N = 25).")
+```
+
+```{r calibration-plot, fig.cap="Predicted home win probability vs. actual outcome for every independently-scored real 2026 regular-season game (jittered vertically for visibility)."}
+scoreable |>
+  mutate(actual_home_win = factor(actual_home_win, labels = c("Home loss", "Home win"))) |>
+  ggplot(aes(x = predicted_home_win_prob, y = actual_home_win, color = market_data_source)) +
+  geom_jitter(height = 0.08, width = 0, size = 2.5, alpha = 0.8) +
+  geom_vline(xintercept = 0.5, linetype = "dashed", color = "grey40") +
+  scale_color_viridis_d(end = 0.8) +
+  theme_minimal() +
+  labs(title = "Predicted Home Win Probability vs. Actual Outcome",
+       subtitle = "2026 regular season, real resolved games only (N = 25)",
+       x = "Predicted P(home win)", y = NULL, color = "Market data source")
+```
+
+### Limitations of this section
+
+- **Small sample (N = `r nrow(scoreable)`).** Real, non-synthetic prediction logging only began in the
+  season's final ~10 days; none of the headline numbers above should be read as a season-long accuracy
+  claim.
+- **5 real predictions for the regular season's final day (2026-09-24) remain PENDING** because
+  `data/box_scores_cache.rds` had not yet ingested those games as of this render; they are excluded
+  here rather than guessed at.
+- **Margin metrics are unavailable for the 8 `UNKNOWN`-provenance rows** (pre-provenance-fix), per
+  `prediction_accuracy_logger.R`'s documented Finding M-5/C-3 history — not a new gap introduced by
+  this report.
+
+## Part 2: 2026 WNBA Postseason Predictions
+
+### Confirmed bracket and format
+
+The 2026 postseason format and first-round matchups were verified via live web search (not assumed to
+carry over from a prior season) against
+[Yahoo Sports](https://sports.yahoo.com/wnba/breaking-news/article/wnba-playoffs-2026-matchups-bracket-full-schedule-and-how-to-watch-141426723.html),
+[CBS Sports](https://www.cbssports.com/wnba/news/2026-wnba-playoffs-bracket-schedule/), and
+[NBC Sports](https://www.nbcsports.com/wnba/news/2026-wnba-playoffs-scenarios-seeding-tiebreakers-updated-bracket-and-standings):
+
+- **First Round (Bo3, 1-1-1):** No reseeding — the fixed bracket is #1 vs #8, #2 vs #7, #3 vs #6, #4 vs
+  #5. Higher seed hosts Games 1 and 3; the lower seed hosts Game 2.
+- **Semifinals (Bo5, 2-2-1):** Higher seed hosts Games 1, 2, and 5 if necessary.
+- **Finals (Bo7, 2-2-1-1-1):** Higher seed hosts Games 1, 2, 5, and 7.
+
+Confirmed 2026 seeds and first-round matchups: **(1) Minnesota Lynx** vs (8) New York Liberty,
+**(2) Golden State Valkyries** vs (7) Dallas Wings, **(3) Las Vegas Aces** vs (6) Indiana Fever,
+**(4) Atlanta Dream** vs (5) Washington Mystics. This matches `playoff_simulator.R`'s already-coded
+`PLAYOFF_FORMATS` registry (bo3/bo5/bo7 home-flag sequences + win thresholds) exactly — no format
+changes were needed there.
+
+### Team inputs: real empirical net ratings
+
+Because the regular season has actually been played, this section uses each playoff team's real
+per-game point differential from `data/box_scores_cache.rds` as the base net rating — not
+`cache/projected_wnba_standings.rds`, which is a forward-looking model projection meant for
+mid-season use. `playoff_simulator.R`'s `get_playoff_adjusted_rating()` then applies its real-RAPM
+playoff-leverage adjustment (`cache/rapm_ratings.rds`, which now exists and has real per-team RAPM
+data for all 8 of these teams, so the fallback contender-leverage table is not used here).
+
+```{r team-inputs}
+suppressMessages(source("playoff_simulator.R"))  # also re-runs its own bo3/bo5/bo7 demo suite once (harmless)
+
+b26 <- box |> filter(season == 2026)
+net_real <- b26 |>
+  group_by(team_abbreviation) |>
+  summarise(GP = n(), net_rating = mean(team_score - opponent_team_score), .groups = "drop")
+
+seeds <- tibble(
+  seed = 1:8,
+  abbr = c("MIN", "GS", "LV", "ATL", "WSH", "IND", "DAL", "NY")
+) |>
+  mutate(team = unname(WNBA_TEAMS[abbr])) |>
+  left_join(net_real, by = c("abbr" = "team_abbreviation")) |>
+  rowwise() |>
+  mutate(net_adj = get_playoff_adjusted_rating(team, net_rating)) |>
+  ungroup()
+
+knitr::kable(seeds |> select(seed, team, GP, net_rating, net_adj), digits = 2,
+             caption = "2026 playoff field: real regular-season per-game net rating and RAPM-adjusted playoff rating.")
+```
+
+### Bracket win-probability tree
+
+Rather than a single flat Monte Carlo bracket draw, each round's series is simulated directly via
+`simulate_single_series()` for every matchup that fixed-bracket structure (no reseeding, confirmed
+above) makes possible, and probabilities are combined analytically across rounds — e.g. Minnesota's
+probability of reaching the Final is `P(MIN wins Round 1)` times the probability-weighted sum, over
+Atlanta and Washington (Minnesota's only two possible semifinal opponents), of Minnesota winning that
+specific semifinal series. This avoids simulation noise from re-drawing the whole bracket tens of
+thousands of times and makes every intermediate number auditable.
+
+```{r bracket-helpers}
+team_of <- function(s) seeds$team[seeds$seed == s]
+adj_of  <- function(s) seeds$net_adj[seeds$seed == s]
+
+series_prob_high <- function(seed_high, seed_low, format) {
+  simulate_single_series(
+    team_high = team_of(seed_high), team_low = team_of(seed_low),
+    net_high = adj_of(seed_high), net_low = adj_of(seed_low),
+    n_sims = 10000, format = format
+  )$p_high_seed_win
+}
+```
+
+#### Round 1 (Best-of-3)
+
+```{r round1}
+r1_pairs <- list(c(1, 8), c(2, 7), c(3, 6), c(4, 5))
+r1 <- tibble(
+  seed_high = sapply(r1_pairs, `[`, 1),
+  seed_low  = sapply(r1_pairs, `[`, 2)
+) |>
+  mutate(
+    team_high = sapply(seed_high, team_of),
+    team_low  = sapply(seed_low, team_of),
+    p_high    = mapply(series_prob_high, seed_high, seed_low, format = "bo3")
+  )
+
+knitr::kable(r1 |> select(team_high, team_low, p_high), digits = 3,
+             caption = "Round 1 (Best-of-3), pre-series model prediction: probability the higher seed wins the series.")
+```
+
+#### Round 1 — actual results (updated 2026-10-03, now complete)
+
+Round 1 has fully played out since the pre-series prediction above was made. Per an independent
+check of `data/box_scores_cache.rds` (re-ingested live via `daily_ingest.R` as part of this
+update, max date now 2026-10-02), **all four series are decided**: the two Game 3s that were still
+pending as of the prior update (LV vs IND 2026-10-01, GS vs DAL 2026-10-02) have since been played
+and ingested.
+
+```{r round1-actual}
+r1_actual <- tibble::tribble(
+  ~seed_high, ~seed_low, ~status,     ~high_wins, ~low_wins,
+  1,          8,         "DECIDED",   0,          2,
+  2,          7,         "DECIDED",   2,          1,
+  3,          6,         "DECIDED",   2,          1,
+  4,          5,         "DECIDED",   2,          0
+)
+
+r1_actual <- r1_actual |>
+  mutate(
+    team_high = sapply(seed_high, team_of),
+    team_low  = sapply(seed_low, team_of),
+    p_high_advances = as.numeric(high_wins == 2)
+  )
+
+knitr::kable(
+  r1_actual |> select(team_high, team_low, status, high_wins, low_wins, p_high_advances),
+  digits = 3,
+  caption = "Round 1 final results (all four series decided). p_high_advances is 1 if the higher seed won the series, 0 otherwise."
+)
+
+cat(sprintf(
+  "Headline: #8 New York Liberty swept #1 Minnesota Lynx 2-0 — the model's #1 championship favorite (23.9%%, Conclusion of the original pre-series render) is already eliminated. #4 Atlanta Dream swept #5 Washington Mystics 2-0. #2 Golden State Valkyries beat #7 Dallas Wings 2-1 (won a decisive Game 3 the model had at 65.3%% pre-game). #3 Las Vegas Aces beat #6 Indiana Fever 2-1 (won a decisive Game 3 the model had at 59.0%% pre-game). Both confirmed semifinals: (4) Atlanta vs (8) New York, and (2) Golden State vs (3) Las Vegas.\n"
+))
+
+# Downstream rounds use this fully-resolved adv_prob, not the pre-series model-only version above.
+adv_prob <- setNames(rep(NA_real_, 8), 1:8)
+for (i in seq_len(nrow(r1_actual))) {
+  adv_prob[as.character(r1_actual$seed_high[i])] <- r1_actual$p_high_advances[i]
+  adv_prob[as.character(r1_actual$seed_low[i])]  <- 1 - r1_actual$p_high_advances[i]
+}
+```
+
+#### Round 2 (Best-of-5 Semifinals)
+
+The bracket is fixed, so each semifinal's slot was always known: the winner of (1 vs 8) meets the
+winner of (4 vs 5); the winner of (2 vs 7) meets the winner of (3 vs 6). With Round 1 now fully
+decided, both semifinal *matchups* are confirmed too: **(4) Atlanta Dream vs (8) New York Liberty**,
+and **(2) Golden State Valkyries vs (3) Las Vegas Aces**. The table below still shows the general
+pairing-probability computation (unchanged code from the pre-series version of this report), but
+with `adv_prob` now 0/1 for every seed, each half collapses to its one real pairing with
+probability 1 — the other three hypothetical pairings per half now show `pairing_prob` of 0.
+
+```{r round2}
+half_pairs <- list(top = list(c(1, 8), c(4, 5)), bottom = list(c(2, 7), c(3, 6)))
+
+semi_finalist_prob <- setNames(rep(0, 8), 1:8)
+semi_detail <- list()
+
+for (half_name in names(half_pairs)) {
+  g1 <- half_pairs[[half_name]][[1]]; g2 <- half_pairs[[half_name]][[2]]
+  for (a in g1) for (b in g2) {
+    pairing_prob <- adv_prob[as.character(a)] * adv_prob[as.character(b)]
+    seed_high <- min(a, b); seed_low <- max(a, b)
+    p_high <- series_prob_high(seed_high, seed_low, format = "bo5")
+    p_a_win <- if (a == seed_high) p_high else (1 - p_high)
+    semi_finalist_prob[as.character(a)] <- semi_finalist_prob[as.character(a)] + pairing_prob * p_a_win
+    semi_finalist_prob[as.character(b)] <- semi_finalist_prob[as.character(b)] + pairing_prob * (1 - p_a_win)
+    semi_detail[[length(semi_detail) + 1]] <- tibble(
+      half = half_name, team_a = team_of(a), team_b = team_of(b),
+      pairing_prob = pairing_prob, p_a_win = p_a_win
+    )
+  }
+}
+
+knitr::kable(bind_rows(semi_detail), digits = 3,
+             caption = "Round 2 (Best-of-5): every possible semifinal pairing given Round 1, its probability of occurring, and the probability the first-listed team wins it.")
+```
+
+#### Round 3 (Best-of-7 Finals) and championship probabilities
+
+```{r round3}
+top_candidates <- c(1, 4, 5, 8); bottom_candidates <- c(2, 3, 6, 7)
+champ_prob <- setNames(rep(0, 8), 1:8)
+finals_detail <- list()
+
+for (a in top_candidates) for (b in bottom_candidates) {
+  pairing_prob <- semi_finalist_prob[as.character(a)] * semi_finalist_prob[as.character(b)]
+  if (pairing_prob < 1e-9) next
+  seed_high <- min(a, b); seed_low <- max(a, b)
+  p_high <- series_prob_high(seed_high, seed_low, format = "bo7")
+  p_a_win <- if (a == seed_high) p_high else (1 - p_high)
+  champ_prob[as.character(a)] <- champ_prob[as.character(a)] + pairing_prob * p_a_win
+  champ_prob[as.character(b)] <- champ_prob[as.character(b)] + pairing_prob * (1 - p_a_win)
+  finals_detail[[length(finals_detail) + 1]] <- tibble(
+    team_top = team_of(a), team_bottom = team_of(b), pairing_prob = pairing_prob, p_top_win = p_a_win
+  )
+}
+
+knitr::kable(bind_rows(finals_detail) |> arrange(desc(pairing_prob)), digits = 3,
+             caption = "Every possible Finals pairing, its probability of occurring, and the probability the first-listed team wins it (only pairings with non-negligible probability shown).")
+
+final_table <- seeds |>
+  mutate(
+    p_reach_semis  = adv_prob[as.character(seed)],
+    p_reach_finals = semi_finalist_prob[as.character(seed)],
+    p_champion     = champ_prob[as.character(seed)]
+  ) |>
+  arrange(desc(p_champion)) |>
+  select(seed, team, p_reach_semis, p_reach_finals, p_champion)
+
+knitr::kable(final_table, digits = 3,
+             caption = sprintf("2026 WNBA championship probabilities by seed (columns sum to 1: %.3f).", sum(champ_prob)))
+```
+
+```{r champ-plot, fig.cap="2026 WNBA championship probability by team, from the bracket win-probability tree."}
+final_table |>
+  mutate(team = fct_reorder(team, p_champion)) |>
+  ggplot(aes(x = p_champion, y = team, fill = p_champion)) +
+  geom_col() +
+  scale_fill_viridis_c(guide = "none") +
+  scale_x_continuous(labels = scales::percent) +
+  theme_minimal() +
+  labs(title = "2026 WNBA Championship Probability", x = "Championship probability", y = NULL)
+```
+
+### Cross-check against the live pipeline's own Game 1 predictions
+
+`prediction_accuracy_logger.R`'s `log_todays_predictions()` logged real, `LIVE_ODDS_API`-sourced
+pre-game predictions for all four 2026-09-27 Game 1s. Those rows are now `status == "RESOLVED"`
+(the games have since been played) rather than `PENDING` as they were when this report was first
+drafted — the filter below was updated accordingly, otherwise it would have silently returned zero
+rows. These predictions come from the live pipeline's own market-odds-blended win model, an
+independent input from this section's box-score-only, RAPM-adjusted series simulator — comparing
+them against each other, and now against the real outcome, is a useful sanity check, not a
+guarantee of agreement.
+
+```{r cross-check}
+game1_preds <- log |>
+  filter(!is_synthetic, status == "RESOLVED", as.Date(game_date) == as.Date("2026-09-27"),
+         home_team %in% seeds$abbr) |>
+  select(game_date, home_team, away_team, predicted_home_win_prob, predicted_winner)
+
+game1_bracket <- r1 |>
+  mutate(
+    home_abbr = seeds$abbr[match(team_high, seeds$team)],
+    away_abbr = seeds$abbr[match(team_low, seeds$team)],
+    bracket_p_home_win = p_high  # team_high is the series host / higher seed in every Round 1 pairing
+  ) |>
+  select(home_abbr, away_abbr, bracket_p_home_win)
+
+game1_actual <- box |>
+  filter(game_date == as.Date("2026-09-27"), team_home_away == "home") |>
+  mutate(actual_home_win = team_winner) |>
+  select(home_abbr = team_abbreviation, actual_home_win)
+
+comparison <- game1_preds |>
+  left_join(game1_bracket, by = c("home_team" = "home_abbr", "away_team" = "away_abbr")) |>
+  left_join(game1_actual, by = c("home_team" = "home_abbr")) |>
+  select(game_date, home_team, away_team, live_pipeline_p_home_win = predicted_home_win_prob,
+         bracket_model_p_home_win = bracket_p_home_win, actual_home_win)
+
+knitr::kable(comparison, digits = 3,
+             caption = "Game 1 (2026-09-27): live pipeline's pre-game prediction vs. this report's bracket series model vs. the real outcome.")
+```
+
+## Conclusion
+
+Part 1 found that every real, independently-verifiable prediction the pipeline logged in the final
+stretch of the 2026 regular season (N = `r nrow(scoreable)` games, 2026-09-17 through 2026-09-23) is
+scoreable for win/loss accuracy and Brier score, with margin error additionally available for the
+`r sum(scoreable$market_data_source == "LIVE_ODDS_API")` most-recent `LIVE_ODDS_API` rows — see the
+Limitations subsection above before treating these numbers as a season-long claim, since real
+non-synthetic logging only covers the season's last ~10 days.
+
+Part 2's pre-series bracket model entering the 2026-09-27 First Round had Minnesota (23.9%), Atlanta
+(22.4%), and Golden State (21.0%) as the top three championship favorites. **That pre-series
+prediction already missed on its top pick**: #8 New York Liberty swept #1 Minnesota Lynx 2-0 in
+Round 1, eliminating the model's championship favorite before the semifinals. **Round 1 is now
+fully decided.** #4 Atlanta Dream swept #5 Washington Mystics 2-0; #2 Golden State Valkyries beat
+#7 Dallas Wings 2-1 (the model had Golden State at 65.3% to win that decisive Game 3, and they did);
+#3 Las Vegas Aces beat #6 Indiana Fever 2-1 (the model had Las Vegas at 59.0% to win their decisive
+Game 3, and they did). Both semifinals are now confirmed: **(4) Atlanta Dream vs (8) New York
+Liberty**, and **(2) Golden State Valkyries vs (3) Las Vegas Aces**. Feeding these real results back
+into the same bracket tree gives updated championship probabilities of Atlanta
+(`r sprintf("%.1f%%", final_table$p_champion[final_table$team == "Atlanta Dream"] * 100)`),
+Golden State (`r sprintf("%.1f%%", final_table$p_champion[final_table$team == "Golden State Valkyries"] * 100)`),
+Las Vegas (`r sprintf("%.1f%%", final_table$p_champion[final_table$team == "Las Vegas Aces"] * 100)`),
+and New York (`r sprintf("%.1f%%", final_table$p_champion[final_table$team == "New York Liberty"] * 100)`)
+as the four remaining contenders — see "Round 1 — actual results" above for the full breakdown. This
+report is a living pre-semifinal snapshot, not a final record; it should be re-run again once each
+semifinal series resolves.

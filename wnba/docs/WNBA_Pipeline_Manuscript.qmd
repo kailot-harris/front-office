@@ -1,0 +1,363 @@
+---
+title: "A Modular Pipeline for WNBA Team and Player Performance Forecasting: Architecture, Validation, and Threats to Validity"
+author: "Kailot C. Harris"
+date: today
+format:
+  pdf:
+    toc: true
+    number-sections: true
+  html:
+    toc: true
+    number-sections: true
+bibliography: references.bib
+abstract: |
+  We describe the architecture, statistical methodology, and validation results of a modular
+  forecasting pipeline for the Women's National Basketball Association (WNBA), adapted from an
+  earlier NBA-focused system. The pipeline ingests possession- and shot-level play-by-play data,
+  fuses adjusted plus-minus (RAPM), box-score, and Elo-style signals into team and player ratings,
+  and propagates these ratings through market-calibration, player-prop-pricing, playoff-simulation,
+  and bankroll-risk layers. We report leave-one-season-out cross-validated performance for the
+  primary win-probability model (pooled accuracy 0.639, 95% CI 0.618-0.661) and for a
+  market-line-fitting sub-model (pooled out-of-fold MAE 13.11 points, 95% CI 12.70-13.52), and
+  benchmark the former against a published WNBA-specific model. We give particular attention to a
+  class of defects discovered during a structured remediation review -- a home-court-advantage
+  parameter transcription error, silent no-op pipeline stages that produced misleadingly "complete"
+  logs, and an identifier-mismatch join collision between two internal player-rating tables -- because
+  each is a general failure mode for any adapted or rapidly-iterated sports-analytics codebase, and
+  because one of them (the transcription error) appears to have been self-validated by a downstream
+  optimizer fit on its own contaminated residuals. We conclude with a discussion of unresolved
+  architectural gaps and features carried over from the NBA source system without WNBA-specific
+  recalibration.
+---
+
+# Introduction
+
+Sports-forecasting systems that are ported from one league to a structurally different one -- shorter
+games, shorter seasons, smaller rosters, a smaller and more volatile franchise universe -- face a
+specific reproducibility risk: constants, thresholds, and architectural assumptions tuned for the
+source league can be carried into the target league silently, producing a system that runs without
+error but encodes the wrong league. This paper documents such a port: a modular WNBA forecasting
+pipeline derived from an existing NBA system, and a structured multi-phase review process undertaken
+specifically to surface exactly this class of defect before treating the WNBA system's output as
+trustworthy.
+
+We organize the paper around the pipeline's actual execution order rather than around a idealized
+statistical taxonomy, because several of the most consequential findings in this project were
+*architectural* rather than *statistical* -- for example, a pipeline stage that logged as
+"successfully completed" while performing no work at all (§5.2). A purely statistical description of
+the modeling choices would miss this entirely.
+
+The system was developed against the historical design references `REPO_MAP.md` and
+`WNBA_REPLICATION_PLAN.md`, which describe the original NBA system and the initial WNBA port plan
+respectively. We treat those two documents as historical background only; where the current
+implementation materially diverges from them, we say so explicitly (§7), since several components
+planned as long-term synthetic placeholders (RAPM, shot quality) were subsequently built out against
+real data, and the port surfaced at least one unanticipated volatility risk (WNBA franchise count
+changing from 12 to 15 teams across the seasons studied) exactly as the planning document had
+flagged as a possibility.
+
+# Data Sources
+
+The pipeline's primary data source is the `wehoop` R package, an ESPN- and WNBA-Stats-API-backed
+data provider analogous to the NBA-focused `hoopR` package. Three feed types are consumed:
+
+- **Team and player box scores** (`wehoop::load_wnba_*_box()`), 2019-2026, used for Elo updates,
+  box-score-derived plus-minus, rotation/minutes modeling, and reconciliation of logged predictions
+  against real outcomes.
+- **Possession-level play-by-play** (`wehoop::load_wnba_stats_possessions()`), 292,569 rows across
+  the same period (253,970 retained after removing seven rows with implausible point totals),
+  used to build the possession-level design matrix underlying the RAPM model (§4.1).
+- **Shot-location data** (`wehoop::load_wnba_stats_shots()`), 20,000-42,000 shots per season across
+  all eight seasons studied, used for expected-points and shooting-luck estimation (§4.4).
+
+A fourth, auxiliary source is ESPN's roster and injury endpoints, scraped directly rather than
+through `wehoop`, and a fifth is a live sportsbook-odds feed (The Odds API) used for market
+calibration (§4.6).
+
+## Data-quality corrections
+
+Several corrections to the raw feeds were necessary before any of the above data could be used
+without silently corrupting downstream aggregates. We highlight three:
+
+**Franchise universe instability.** The WNBA expanded from 12 franchises (2019-2024) to 13 (2025,
+Golden State Valkyries) to 15 (2026, Toronto Tempo and Portland Fire). Every structural constant that
+depends on the team count -- schedule length assumptions, standings simulation, the RAPM team-ID map
+-- reads from a single centralized registry rather than a hardcoded literal, specifically to absorb
+this churn without requiring code changes at every site that iterates over teams.
+
+**Non-franchise rows and team-code normalization.** Raw box-score data includes All-Star and
+exhibition rows under season-varying non-franchise codes (`DEL`, `WIL`, `ALL`, `USA`, `STE`, `CLA`,
+`COL`, `COOP`, `SPO`, and others). These must be filtered by restricting to the canonical franchise
+code list -- but the underlying data source uses the code `CONN` for the Connecticut Sun in seasons
+2019-2023, while the canonical registry uses `CON`. Applying the exhibition-row filter *before*
+normalizing `CONN` to `CON` silently discards five entire seasons of a genuine franchise's data rather
+than only the intended exhibition rows -- a defect that produces no error, no missing-file warning,
+and a plausible-looking (merely smaller) dataset, and is therefore not the kind of bug that reveals
+itself through ordinary testing. It was caught only by an explicit season-by-season row-count and
+non-franchise-code audit.
+
+**Injuries endpoint schema divergence.** The WNBA injuries endpoint, unlike the structurally similar
+NBA endpoint that most of the injury-scraping code was originally written against, has no
+`athlete.id` field. The player identifier must instead be parsed out of the href of an embedded
+"Player Card" link -- a source-specific workaround with no general analogue, included here because it
+is a concrete example of the broader risk of assuming schema parity between two leagues' otherwise
+similar API surfaces.
+
+# Pipeline Architecture
+
+The pipeline is orchestrated by a single driver script that sources each stage script in dependency
+order inside a fault-isolating wrapper: a stage failure is logged and the run proceeds rather than
+aborting the entire pipeline, consistent with a fail-safe design principle applied throughout the
+codebase (every consumer of an external or possibly-stale resource falls back to a clearly labeled
+synthetic value rather than halting). As of the most recent verified full run, all eighteen stages
+completed with zero failures in under forty seconds of wall-clock time.
+
+The stage sequence, in execution order, is: a pre-flight cache/schema health check; incremental
+box-score ingestion; roster and injury synchronization (parallel with a team-style-embedding
+subprocess); reconciliation of the previous day's logged predictions against real outcomes; three
+independent feature-engineering stages executed in parallel (shot quality, fatigue/travel, RAPM);
+team-rating fusion; market-odds generation and same-day prediction logging; two independent
+player-prop pricing stages executed in parallel (a parametric count model and a copula-based
+multivariate model); playoff-series Monte Carlo simulation; bankroll risk-state computation; and
+finally notification dispatch and ledger rollup.
+
+Two design choices in this orchestration merit comment as methodological, not merely
+implementation, decisions. First, each stage's declared output cache file is checked for an
+advanced modification time as a post-condition, not merely for its existence -- this distinction is
+what later exposed several silently non-functional stages (§5.2). Second, downstream stages consume
+upstream stages' outputs exclusively through versioned cache files on disk rather than through
+in-process object passing, which makes every intermediate artifact of the pipeline independently
+inspectable and re-runnable, at the cost of requiring the freshness-checking discipline just
+described.
+
+# Statistical and Modeling Methodology
+
+## Adjusted plus-minus (RAPM)
+
+Player value at the possession level is estimated via regularized adjusted plus-minus. A sparse
+possession-by-player design matrix is constructed with separate offensive and defensive indicator
+columns per player, and a weighted ridge regression is solved with a fixed penalty ($\lambda = 900$)
+selected from a small grid search (\{50, 100, 300, 1000\}) rather than by cross-validation. We flag
+this explicitly as a limitation: the ridge penalty governing how much possession-level noise is
+shrunk toward league-average is, at present, chosen by inspection rather than by an out-of-sample
+criterion, and a future revision should replace this with a proper cross-validated selection.
+Numeric team identifiers from the possession-level API are mapped by hand to the pipeline's canonical
+franchise codes. Where a possession-level pull fails or returns insufficient data, a box-score-derived
+fallback -- a minutes-weighted, shrunk plus-minus estimate -- is substituted, and every downstream
+consumer of RAPM output can distinguish real from fallback estimates via an explicit data-source flag,
+along with per-player possession counts that allow low-sample players to be down-weighted or excluded.
+
+## Team rating fusion
+
+Team strength is estimated as a weighted fusion of four independent signals: an Elo rating updated
+game-by-game from box scores with a fixed K-factor and a fractional offseason regression toward the
+mean; a possession-weighted team aggregate of the RAPM ratings above; a box-score-derived player-level
+box plus-minus metric, itself a fifty-fifty blend of a box-score-creation formula and a shrunk
+empirical plus-minus, restricted to players with a minimum minutes threshold and current-season
+performance up-weighted relative to prior seasons; and a top-rotation-weighted live team rating that
+combines historical minutes distribution with player ratings and applies injury-driven minute
+reallocation. The four signals are combined into a single matchup-level fair margin with a fixed
+linear weighting, add a home-court-advantage term, and are converted to a win probability via a normal
+approximation whose standard deviation is set to the empirical standard deviation of real home-margin
+outcomes (1,953 games) rather than to a value carried over from the source league.
+
+## Shot quality
+
+Team-level shooting efficiency is decomposed into an expected-points-per-shot baseline, computed from
+real shot-location data via a distance-bucketed field-goal-percentage curve, and an observed-minus-expected
+"shooting luck" residual. The expected-shooting curve itself was carried over from the source
+league's system without WNBA-specific re-fitting. We consider this a live limitation rather than a
+resolved design choice: thirteen of fifteen teams in the current output show a *negative* shooting-luck
+residual, which is difficult to interpret as thirteen teams simultaneously underperforming a correctly
+calibrated baseline, and easier to interpret as evidence that the baseline curve itself runs
+systematically "hot" for the league's actual shot-distance and efficiency profile. A per-team synthetic
+fallback is used only for teams with fewer than three real games in a given window.
+
+## Fatigue and travel
+
+An arena database of geographic coordinates, time zone, and altitude for every current franchise venue
+feeds a haversine-distance travel-fatigue model with additive penalties for travel distance, circadian
+time-zone shift, altitude, and back-to-back scheduling. The underlying arena data is real and current
+(including the two 2026 expansion franchises); the altitude penalty is included for structural
+completeness but in practice never triggers, as no current WNBA market clears the model's altitude
+threshold. We note as a limitation that the schedule against which this component is demonstrated in
+the pipeline's own test harness is a small fabricated fixture rather than a live schedule feed,
+distinguishing "the underlying model uses real geography" from "the demonstrated output reflects a
+real slate."
+
+## Market calibration
+
+Fair game margins are computed as the sum of the team-rating differential (from §4.2), the
+home-court-advantage constant, a fatigue-driven adjustment, and a star-power delta computed from each
+team's highest-RAPM player. Win probabilities are obtained via the same normal approximation described
+in §4.2. When a live odds feed is unavailable, a clearly labeled synthetic six-game fixture is
+substituted and every downstream consumer can distinguish real from synthetic market data via an
+explicit source tag. Leave-one-season-out cross-validation of the rating-input dampening and clamping
+parameters governing this stage yields a pooled out-of-fold mean absolute error of 13.11 points (95%
+CI 12.70-13.52) under the current configuration, an improvement over a pooled MAE of 13.57 under the
+system's pre-optimization default configuration.
+
+## Player and combination props
+
+Individual player statistical props are priced using a zero-inflated negative binomial distribution
+with per-statistical-category dispersion and zero-inflation parameters re-estimated empirically on
+WNBA data. Opponent adjustment is applied via an empirically fitted slope relating a player's expected
+mean to the opponent's defensive rating, clamped to a bounded multiplicative range to prevent
+extrapolation beyond the data used to fit it. Multi-statistic combination props (for example, points
+plus rebounds plus assists) are priced via Monte Carlo simulation from a multivariate Gaussian copula
+whose pairwise correlation structure between points, rebounds, and assists is estimated directly from
+real WNBA rotation data rather than carried over from the source league.
+
+## Playoff simulation
+
+Playoff series outcomes are simulated via a format-aware Monte Carlo routine that encodes the current
+WNBA playoff format for each round, including a best-of-three first round in which, unlike a naive
+higher-seed-hosts-more assumption, the *lower* seed hosts the second game. Team strength inputs for
+simulation apply an additional weighting to a team's top RAPM contributors to reflect increased
+reliance on top players in a shortened playoff rotation.
+
+## Risk management and live calibration
+
+A quarter-Kelly staking framework with drawdown-triggered de-risking (staged reductions at three- and
+five-unit drawdowns, and a full trading halt at eight units) governs recommended bet sizing, computed
+against a real resolved-bet ledger where available. A separate live-calibration module implements
+standard probabilistic scoring (Brier score, Brier skill score, log-loss) correctly parameterized for
+the WNBA's forty-minute game length rather than the source league's forty-eight-minute length; however,
+we report this module as validated only against a small synthetic demonstration feed, since no live
+in-play odds integration has yet been wired to a real endpoint, and no real-world calibration numbers
+for in-game win probability currently exist for this system.
+
+# Validation Results
+
+The primary win-probability model was evaluated via leave-one-season-out cross-validation, yielding a
+pooled accuracy of 0.639 (95% CI 0.618-0.661). Benchmarked against a published WNBA-specific model
+[@AlvesBarbosa2025], which reports 67.48% accuracy, this represents a 3.58-percentage-point shortfall
+against an external reference point, which we report plainly as a gap rather than reframe favorably.
+
+A separate hyperparameter sweep over the rolling-window feature size found a single-split peak
+(accuracy 0.645, AUC 0.678, Brier score 0.225) at a twelve-game window; we flag this result as
+descriptive rather than confirmatory, since it reflects one train/test split and has not been
+cross-validated.
+
+Prior to a logging-schema correction described in §5.3, a dashboard-facing accuracy figure was
+computed over a prediction log in which the large majority of rows were synthetic diagnostic fixtures
+rather than real resolved games, yielding a misleadingly high headline accuracy figure. Following the
+correction, the same query correctly returns zero real resolved predictions, since the log's real
+history begins only after the correction was deployed. We report this as an honest, if currently
+uninformative, result, and note that a home-court-advantage optimizer intended to re-derive the
+model's home-court constant from real resolved outcomes has, as of this writing, likewise never been
+run against a non-empty set of real resolved games.
+
+# Discovered Defects with Methodological Significance
+
+A structured, multi-phase code review of this pipeline surfaced several defects whose significance is
+methodological rather than purely operational: each would have silently biased the pipeline's
+statistical output while producing no error and no visibly abnormal log. We describe three in detail
+because each represents a general failure mode relevant beyond this specific codebase.
+
+## A parameter transcription error in the home-court-advantage constant
+
+The market-calibration stage's live code set its home-court-advantage input to 11.6 at the point of
+use, three lines below a code comment stating the intended value of 2.40 -- apparently a value from
+the source NBA system's unrelated margin-standard-deviation parameter, mispasted into the wrong slot.
+The quantitative consequence is severe rather than cosmetic: holding two otherwise identical teams
+constant, a home-court-advantage input of 11.6 against the model's margin standard deviation of 14.0
+implies a 79.6% home win probability, against the WNBA's actual observed home win rate of
+approximately 55-58%; the corrected value of 2.40 implies 56.8%, consistent with observation. Live
+evidence consistent with the bug being active in production was found directly: on the day it was
+discovered, all recommended bets in the day's slate were on the home side, all were pinned at the
+staking model's maximum bankroll-percentage cap, and several carried implausible expected-value
+figures in excess of 100%. The fix centralizes the constant in the single shared configuration module
+read by every consumer, and every cached artifact produced while the bug was live was identified and
+regenerated rather than left in place.
+
+We highlight a second-order consequence of this defect in §7: a separate hyperparameter-optimization
+run, intended to independently re-derive the correct home-court-advantage value from residuals of
+already-logged predictions, recovered a value close to the buggy 11.6 rather than the correct 2.40 --
+because the residuals it was fit against were themselves generated by the buggy live system. An
+optimizer trained on the output of a broken instrument can reproduce and appear to validate the
+instrument's own error; we consider this a noteworthy general caution for any pipeline that
+retrospectively tunes parameters against its own historical predictions rather than against
+independently verified ground truth.
+
+## Silent no-op pipeline stages
+
+Several pipeline stages gated their primary logic on a condition intended to detect "this script was
+invoked directly from the command line" -- true only when the script is the top-level entry point of
+an `Rscript` process, and never true when the same script is instead `source()`d from within another
+script's function body, as every stage in this pipeline is when invoked by the orchestrator. The
+practical effect was that four stages, including the roster synchronization, injury scraping,
+team-rating fusion, and playoff-simulation stages, logged as completing successfully in well under a
+second while performing no actual work, leaving their output caches silently stale with modification
+timestamps dating from days before the "successful" run that claimed to have regenerated them. This
+is a defect class we consider particularly serious for any data pipeline with a similar
+orchestration pattern, because the log output -- ordinarily the first and often only artifact
+inspected to confirm a pipeline ran correctly -- was not merely incomplete but affirmatively
+misleading. The remediation replaces the invocation-detection condition with one that correctly
+distinguishes sourced execution from direct invocation, and additionally instruments the orchestrator
+itself to assert that each stage's declared output file's modification time actually advanced during
+that stage's execution, so that a future recurrence of this failure mode would be caught structurally
+rather than relying on a human noticing an anomalously fast stage.
+
+## An identifier and naming mismatch between two rating tables
+
+The pipeline's possession-level RAPM output and its player-roster cache use two incompatible player
+identifier schemes -- RAPM's numeric identifier is drawn from a different numbering system than the
+roster cache's identifiers, and RAPM's player-name field stores only a surname where the roster
+cache stores a full name. A join on either field independently returns zero matches, which is at
+least immediately visible; the more dangerous case is a composite join key of team and normalized
+surname, which resolves the great majority of players correctly but is not itself collision-free,
+since a number of team-surname combinations correspond to more than one real player. A shared,
+single join utility now resolves each such collision deterministically by total possession volume
+with an explicit tiebreak rule, and is the exclusively sanctioned path for this join anywhere in the
+codebase, rather than leaving each consuming script to reimplement the join -- and its collision
+handling -- independently.
+
+# Discussion: Divergence from the Original Design Plan and Remaining Gaps
+
+The system's original port plan anticipated that several major modeling components -- adjusted
+plus-minus, shot quality, fatigue and travel modeling, playoff simulation, bankroll risk management,
+and combination-prop pricing -- would remain long-term synthetic placeholders, ported chiefly for
+interface compatibility with the source system rather than as fully realized WNBA-specific models.
+This assumption did not hold for the two most statistically central of these components: both the
+adjusted-plus-minus and shot-quality engines were subsequently built out into models operating on
+real possession- and shot-location-level WNBA data, a substantial expansion of scope beyond what was
+originally planned. Fatigue and travel modeling occupies an intermediate state -- real venue geography
+feeding a still-fabricated demonstration schedule -- and should be read accordingly.
+
+Separately, several thresholds and structural assumptions calibrated for the source league's longer
+games and larger rosters were carried over into the WNBA system unchanged and have not yet been
+independently validated against WNBA data: a fixed eight-player rotation size, a thirty-minute
+co-occurrence threshold used to detect star-player lineup overlap, and, as discussed in §4.4, the
+shot-quality baseline curve itself. We regard each of these as a candidate for WNBA-specific
+recalibration in future work, distinct in kind from the outright defects described in §5, since each
+runs without error and produces plausible-looking output -- the concern is calibration, not
+correctness of implementation.
+
+Finally, we note one architectural inconsistency that remains unresolved at the time of this writing
+and was not part of the enumerated defect list addressed during the remediation phases described
+above: the team-style-embedding subprocess currently writes its output into a database file, while
+the downstream visualization component that consumes team embeddings still expects a flat CSV file at
+a different path. This should be treated as a live gap rather than a historical finding, and any
+reported similarity between team playing styles derived from the embeddings dashboard tab should be
+read with the additional caveat that the embedding vectors themselves were originally trained on
+fabricated, rather than real, matchup data.
+
+# Conclusion
+
+We have described a modular WNBA forecasting pipeline, its constituent statistical models, and the
+results of a structured review process that surfaced several defects of genuine methodological
+consequence rather than mere code-quality issues. The pipeline's primary win-probability model
+achieves a cross-validated accuracy of 0.639, trailing a comparable published benchmark by 3.58
+percentage points, and several of its components -- most notably shot quality and live in-play
+calibration -- carry explicit, unresolved calibration or implementation gaps that should temper
+confidence in their output until addressed. We consider the discovered defects, and in particular the
+home-court-advantage transcription error and its apparent self-validation by a downstream optimizer,
+to be of interest beyond this specific system, as instances of general failure modes -- silent
+parameter corruption, misleading success logging, and identifier-mismatch join collisions -- that can
+affect any actively developed, multi-stage sports-analytics or forecasting pipeline.
+
+# References
+
+::: {#refs}
+:::

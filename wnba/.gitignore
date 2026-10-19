@@ -1,0 +1,116 @@
+# .gitignore — WNBA Analytics
+# Added in Phase 4 for security/technical-review finding L-5.
+#
+# IMPORTANT (read before assuming this file is doing its job): a .gitignore only
+# affects UNTRACKED paths. Phase 0's `git init` baseline commit captured
+# `.Rhistory`, `logs/logs.duckdb`, `logs/analytics.duckdb` and
+# `logs/wnba_pipeline.log` as tracked files, so the rules below will NOT take
+# effect for them until someone runs, once, from the repo root:
+#
+#     git rm --cached .Rhistory logs/logs.duckdb logs/analytics.duckdb logs/wnba_pipeline.log
+#
+# That is an index operation and is deliberately left to the orchestrator rather
+# than performed by the agent that wrote this file. Everything else here is
+# purely forward-looking.
+#
+# UPDATE 2026-09-19 (docs/future-work.md item 8): `pipeline_execution.log` (see
+# the "Runtime logs" section below) had the exact same already-tracked-before-
+# ignored gap — it was gitignored from Phase 0 but never untracked, so it kept
+# reappearing in every `git status`/`git add -A` (one commit alone added 3,755
+# lines of pure diff noise). Untracked via `git rm --cached pipeline_execution.log`
+# as part of this fix; also gained real size-based rotation in
+# schedule_daily.bat so the live file itself doesn't grow unbounded on disk
+# either, not just in git.
+
+# ------------------------------------------------------------------------------
+# R session state — the L-5 finding proper.
+# ------------------------------------------------------------------------------
+# .Rhistory is a verbatim transcript of past interactive sessions. Today's copy
+# holds no secret (it captured fetch_market_odds() including the
+# Sys.getenv("ODDS_API_KEY", "") block, which is the safe pattern), but any
+# future session in which a human pastes a live key would record it here. This
+# repo's standing rule is that no secret is ever committed; keeping session
+# transcripts out of version control is the cheap structural enforcement of it.
+.Rhistory
+.Rapp.history
+.RData
+.Rproj.user/
+*.Rproj
+
+# Never commit a real credential file. All keys/webhooks are read via
+# Sys.getenv(..., "") — .Renviron is where a human would actually set them.
+.Renviron
+.Renviron.local
+.env
+
+# ------------------------------------------------------------------------------
+# Runtime logs — pure diff noise.
+# ------------------------------------------------------------------------------
+# logging_utils.R appends a real row to logs/wnba_pipeline.log and logs/logs.duckdb
+# on every pipeline run AND every test run, so these show as modified in `git
+# status` after any verification work, with no source change behind it (flagged
+# by agent_foundation in its Wave 1 handoff). logs_pending_<pid>.tsv is the M-7
+# spill file written when the DuckDB handle is held by another process.
+logs/*.duckdb
+logs/*.duckdb.wal
+logs/*.log
+logs/logs_pending_*.tsv
+pipeline_execution.log
+
+# ------------------------------------------------------------------------------
+# Scratch scripts.
+# ------------------------------------------------------------------------------
+# CLAUDE.md mandates writing R code to a temp .R file rather than using inline
+# multi-line `Rscript -e` (which segfaults on this machine), so throwaway scripts
+# are a structural, recurring by-product of doing any work here. L-5 was exactly
+# these accumulating at repo root, where the convention is that every root .R is
+# a pipeline script sourced by bare filename. Genuine one-off utilities belong in
+# tools/ with a descriptive name (see tools/derive_props_distribution_params.R,
+# which absorbed the four deleted temp_derive_*/temp_check_* files).
+temp_*.R
+temp_*.r
+_tmp_*.R
+_tmp_*.r
+.tmp_*.R
+.tmp_*.r
+
+# ------------------------------------------------------------------------------
+# OS / editor noise.
+# ------------------------------------------------------------------------------
+Thumbs.db
+desktop.ini
+.DS_Store
+*~
+.vscode/
+.idea/
+
+# ------------------------------------------------------------------------------
+# NOT ignored, on purpose: cache/ and data/.
+# ------------------------------------------------------------------------------
+# These hold generated .rds/.csv artifacts, but they are tracked deliberately —
+# the dashboard, the props engines and the health probe all read them, several
+# are slow to regenerate (RAPM over 292k possessions, the LOSO benchmarks), and
+# Phase 4's Wave 3 cache-invalidation task depends on having their prior state in
+# git to diff against. Do not add cache/ or data/ here.
+
+# ------------------------------------------------------------------------------
+# Misc R/RStudio artifacts (merged in from a GitHub-generated template that
+# briefly conflicted with this file — see git history; /cache/ and docs/ were
+# deliberately dropped from that template, per the section above).
+# ------------------------------------------------------------------------------
+.RDataTmp
+.Ruserdata
+*-Ex.R
+/*.tar.gz
+/*.Rcheck/
+vignettes/*.html
+vignettes/*.pdf
+.httr-oauth
+*_cache/
+*.utf8.md
+*.knit.md
+po/*~
+rsconnect/
+# subagent-brief run logs (may contain sensitive output)
+/.subagent-runs/
+.claude/
