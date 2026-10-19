@@ -1,0 +1,125 @@
+{
+  "totalResolvedGames": 2631,
+  "overallAccuracy": 0.6287,
+  "brierScore": 0.2284,
+  "logLoss": 0.5842,
+  "homeWinRate": 0.55,
+  "calibration": [
+    {
+      "bin": "0-10%",
+      "midpoint": 0.05,
+      "count": 5,
+      "meanPredictedProb": 0.095,
+      "empiricalWinRate": 0
+    },
+    {
+      "bin": "10-20%",
+      "midpoint": 0.15,
+      "count": 143,
+      "meanPredictedProb": 0.154,
+      "empiricalWinRate": 0.196
+    },
+    {
+      "bin": "20-30%",
+      "midpoint": 0.25,
+      "count": 265,
+      "meanPredictedProb": 0.255,
+      "empiricalWinRate": 0.37
+    },
+    {
+      "bin": "30-40%",
+      "midpoint": 0.35,
+      "count": 273,
+      "meanPredictedProb": 0.354,
+      "empiricalWinRate": 0.414
+    },
+    {
+      "bin": "40-50%",
+      "midpoint": 0.45,
+      "count": 345,
+      "meanPredictedProb": 0.45,
+      "empiricalWinRate": 0.501
+    },
+    {
+      "bin": "50-60%",
+      "midpoint": 0.55,
+      "count": 333,
+      "meanPredictedProb": 0.545,
+      "empiricalWinRate": 0.495
+    },
+    {
+      "bin": "60-70%",
+      "midpoint": 0.65,
+      "count": 365,
+      "meanPredictedProb": 0.648,
+      "empiricalWinRate": 0.614
+    },
+    {
+      "bin": "70-80%",
+      "midpoint": 0.75,
+      "count": 425,
+      "meanPredictedProb": 0.749,
+      "empiricalWinRate": 0.64
+    },
+    {
+      "bin": "80-90%",
+      "midpoint": 0.85,
+      "count": 343,
+      "meanPredictedProb": 0.85,
+      "empiricalWinRate": 0.764
+    },
+    {
+      "bin": "90-100%",
+      "midpoint": 0.95,
+      "count": 134,
+      "meanPredictedProb": 0.927,
+      "empiricalWinRate": 0.836
+    }
+  ],
+  "accuracyDrift": [
+    {
+      "season": "2025",
+      "games": 1315,
+      "accuracy": 0.613,
+      "brierScore": 0.2355
+    },
+    {
+      "season": "2026",
+      "games": 1316,
+      "accuracy": 0.644,
+      "brierScore": 0.2213
+    }
+  ],
+  "residualDistribution": [
+    {
+      "bucket": "< -0.4",
+      "count": 577,
+      "label": "Large Under-forecast"
+    },
+    {
+      "bucket": "-0.4 to -0.2",
+      "count": 496,
+      "label": "Moderate Under-forecast"
+    },
+    {
+      "bucket": "-0.2 to 0.0",
+      "count": 374,
+      "label": "Slight Under-forecast"
+    },
+    {
+      "bucket": "0.0 to 0.2",
+      "count": 120,
+      "label": "Slight Over-forecast"
+    },
+    {
+      "bucket": "0.2 to 0.4",
+      "count": 327,
+      "label": "Moderate Over-forecast"
+    },
+    {
+      "bucket": "> 0.4",
+      "count": 737,
+      "label": "Large Over-forecast"
+    }
+  ]
+}

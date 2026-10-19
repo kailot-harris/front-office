@@ -1,0 +1,868 @@
+---
+title: "<span style='font-size: 60%;'>Predicting NBA Game-level Results via a Machine-Learning Pipeline</span>"
+subtitle: "DATA 607 - Data Science in Context Presentation"
+author: "Kailot C. Harris"
+date: "2026/09/21"
+format: 
+  revealjs:
+    smaller: true
+    scrollable: true
+    center-title-slide: true
+    theme: night
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Agenda
+
+::: {style="font-size: 110%; line-height: 2.2;"}
+
+1. **Data Pipeline and Rolling Metrics**
+2. **Machine Learning Workflow**
+3. **Findings and Model Evaluation**
+
+:::
+
+::: {.notes}
+Hello, and welcome everyone to my talk today. I will first outline the data pipeline I developed and the computations behind the rolling metrics that were features in this workflow. Then, I will go over the ML tools and settings I used to produce predictions for the 2027 NBA season. Finally, I will discuss some key findings and model performance metrics.
+:::
+## Background and Motivation
+
+::: {style="font-size: 115%; line-height: 2.2"}
+
+**Inspiration:**
+
+['Exploring Machine Learning: Predicting the NBA' by author Kishore Annambhotla.]{style="font-size: 75%"}
+
+[https://medium.com/@k4annam/exploring-machine-learning-predicting-the-nba-607aea31c955]{style="color: grey; font-size: 55%"}
+
+** **
+
+
+**Objective:**
+
+[Build a Machine Learning pipeline using real-time data to predict NBA game outcomes.]{style="font-size: 75%"}
+
+** **
+
+
+**R Packages utilized:**
+
+[`hoopR`, `tidyverse`, `slider`, and `tidymodels`]{style="font-size: 75%"}
+:::
+
+::: {.notes}
+I came across this medium article in which the author, in Python, used certain ML tools to predict NBA games with a reasonable degree of accuracy. I have replicated the author's approach, however using R. 
+
+The main goal is to validate model accuracy against the resolved 2026 regular NBA season and then predict season-end rankings for the 2027 season.
+
+The listed R packages were used for importing data, tidying data, calculating window functions, and applying models to training and testing data.
+:::
+
+
+## Data and Feature Engineering
+
+**Data Source:**
+
+*Game-level box score data from `hoopR` package (2019-2026 seasons)*
+
+```{r package-install-load}
+#| echo: false
+#| message: false
+#| warning: false
+
+library(tidyverse)
+library(tidymodels)
+library(hoopR)
+library(slider)
+```
+
+```{r import-box-scores}
+#| echo: true
+#| message: false
+#| warning: false
+
+box_scores <- hoopR::load_nba_team_box(seasons = 2019:2026)
+```
+
+**Rolling Metrics:**
+
+*18-game rolling averages are computed for:*
+
+--- Offensive output and shooting metrics (Effective FG%, True Shooting %)
+
+--- Advanced box stats (Rebounds, Assists, Turnovers, Steals, Blocks)
+
+**Contextual factors:**
+
+*Days of rest and home court advantage (HCA)*
+
+
+<details>
+<summary><span style="color: #2a9d8f; font-weight: bold; cursor: pointer;">Click to view feature engineering R code</span></summary>
+```{r calc-features}
+#| echo: true
+#| message: false
+#| warning: false
+
+#Empirically derived rolling-calc-window
+n_rolling_days <- 18
+
+full_features_df <- box_scores |>
+  arrange(team_id, game_date) |>
+  group_by(team_id) |>
+  mutate(
+    #define home-game advantage
+    hga = if_else(str_detect(team_home_away, "away"),0,1),
+    
+    #define last game outcome
+    lgo = lag(as.integer(team_winner), n = 1, default = NA),
+    
+    #define effective field goal percentage
+    efg = (field_goals_made + 0.5*three_point_field_goals_made)/(field_goals_attempted),
+    
+    #define turnover rate percentage
+    tov = (total_turnovers)/(field_goals_attempted + 0.44 * free_throws_attempted + total_turnovers),
+    
+    #define free throw rate
+    ftr = free_throws_attempted/field_goals_attempted,
+    
+    #define true shooting percentage
+    ts = team_score / (2* (field_goals_attempted + (0.44 * free_throws_attempted))),
+    
+    # Rolling n-game average of offensive rating and shooting %
+    roll_pts_scored = slide_dbl(team_score, mean, .before = n_rolling_days, .after = -1),
+    roll_field_goal_pct = slide_dbl(field_goal_pct, mean, .before = n_rolling_days, .after = -1),
+    roll_oreb = slide_dbl(offensive_rebounds, mean, .before = n_rolling_days, .after = -1),
+    roll_dreb = slide_dbl(defensive_rebounds, mean, .before = n_rolling_days, .after = -1),
+    roll_reb = slide_dbl(total_rebounds, mean, .before = n_rolling_days, .after = -1),
+    roll_ast = slide_dbl(assists, mean, .before = n_rolling_days, .after = -1),
+    roll_stl = slide_dbl(steals, mean, .before = n_rolling_days, .after = -1),
+    roll_blk = slide_dbl(blocks, mean, .before = n_rolling_days, .after = -1),
+    roll_tov = slide_dbl(turnovers, mean, .before = n_rolling_days, .after = -1),
+    roll_efg = slide_dbl(efg, mean, .before = n_rolling_days, .after = -1),
+    roll_tovp = slide_dbl(tov, mean, .before = n_rolling_days, .after = -1),
+    roll_ftr = slide_dbl(ftr, mean, .before = n_rolling_days, .after = -1),
+    roll_ts = slide_dbl(ts, mean, .before = n_rolling_days, .after = -1),
+    
+    days_rest = as.numeric(game_date - lag(game_date))
+  ) |>
+  ungroup()
+```
+</details>
+
+```{r features-select}
+#| echo: false
+#| message: false
+#| warning: false
+
+features_df <- full_features_df |>
+  select(game_id, season, game_date, team_id, team_winner, team_home_away, opponent_team_id, roll_pts_scored, roll_oreb, roll_dreb, roll_ast, roll_stl, roll_blk, roll_tov, roll_efg, roll_tovp, roll_ftr, roll_ts, hga, lgo, days_rest)
+
+#glimpse(features_df)
+```
+
+::: {.notes}
+Data was sourced indirectly from ESPN via the HoopR package. Window functions were used to calculate 18-game rolling averages for several metrics. Additionally, a schedule was used to calculate "days of rest" for each simulated game, as well as a fixed home-court advantage value (2.4) that added to the home team's win probability. Here we see the window function calculations using the slider package where the window is defined as the 18 preceding games and the current game is withheld to avoid data leakage.
+:::
+
+
+## Machine Learning Pipeline
+
+**Train/Test split:**
+
+--- [*Training: Historical seasons (2019-2025)*]{style="font-size: 75%"}
+
+--- [*Testing: 2026 season*]{style="font-size: 75%"}
+
+**Tidymodels Recipe:**
+
+*Data normalization, feature disentanglement, and removal of collinear variables (i.e. non-independent)*
+
+**Algorithm:**
+
+*Random forest classification model (`ranger`) with 500 trees, evaluating Gini impurity*
+
+```{r home-away-divergence}
+#| echo: false
+#| message: false
+#| warning: false
+
+home_df <- features_df |>
+  filter(team_home_away=="home") |>
+  select(game_id, season, game_date, 
+         home_team = team_id, 
+         home_win = team_winner, 
+         home_roll_pts = roll_pts_scored, 
+         home_roll_oreb = roll_oreb,
+         home_roll_dreb = roll_dreb,
+         home_roll_ast = roll_ast,
+         home_roll_stl = roll_stl,
+         home_roll_blk = roll_blk,
+         home_roll_tov = roll_tov,
+         home_roll_efg = roll_efg,
+         home_roll_tovp = roll_tovp,
+         home_roll_ftr = roll_ftr,
+         home_roll_ts = roll_ts,
+         home_days_rest = days_rest,
+  )
+
+away_df <- features_df |>
+  filter(team_home_away=="away") |>
+  select(game_id, 
+         away_team = team_id, 
+         away_win = team_winner, 
+         away_roll_pts = roll_pts_scored, 
+         away_roll_oreb = roll_oreb,
+         away_roll_dreb = roll_dreb,
+         away_roll_ast = roll_ast,
+         away_roll_stl = roll_stl,
+         away_roll_blk = roll_blk,
+         away_roll_tov = roll_tov,
+         away_roll_efg = roll_efg,
+         away_roll_tovp = roll_tovp,
+         away_roll_ftr = roll_ftr,
+         away_roll_ts = roll_ts,
+         away_days_rest = days_rest,
+  )
+#merge home and away data frames with inner join on `game_id` 
+model_df <- inner_join(home_df, away_df, by = "game_id") |>
+  mutate(
+    target_home_win = factor(if_else(home_win==TRUE, "Win", "Loss")),
+    diff_roll_pts  = home_roll_pts - away_roll_pts,
+    diff_roll_oreb  = home_roll_oreb - away_roll_oreb,
+    diff_roll_dreb  = home_roll_dreb - away_roll_dreb,
+    diff_rol_treb = (home_roll_oreb + home_roll_dreb)-(away_roll_oreb + away_roll_dreb),
+    diff_roll_ast  = home_roll_ast - away_roll_ast,
+    diff_roll_stl  = home_roll_stl - away_roll_stl,
+    diff_roll_blk  = home_roll_blk - away_roll_blk,
+    diff_roll_tov  = home_roll_tov - away_roll_tov,
+    diff_roll_efg  = home_roll_efg - away_roll_efg,
+    diff_roll_tovp  = home_roll_tovp - away_roll_tovp,
+    diff_roll_ftr  = home_roll_ftr - away_roll_ftr,
+    diff_roll_ts  = home_roll_ts - away_roll_ts,
+    diff_days_rest = home_days_rest - away_days_rest,
+    
+  )
+```
+
+```{r model-training}
+#| echo: false
+#| message: false
+#| warning: false
+
+train_data <- model_df |>
+  filter(season<2026)
+
+test_data <- model_df |>
+  filter(season>=2026)
+
+nba_recipe <- recipe(target_home_win ~ ., data = train_data) |>
+  step_rm(game_id, game_date, home_team, away_team, home_win, away_win, home_roll_ts, home_roll_ftr, home_roll_efg, away_roll_ts, away_roll_ftr, away_roll_efg, home_roll_pts, away_roll_pts, home_roll_tovp, away_roll_tovp) |>
+  step_normalize(all_numeric_predictors())
+```
+
+```{r model-training-2}
+#| echo: true
+#| message: false
+#| warning: false
+
+rf_spec <- rand_forest(trees=500, mode = "classification") |>
+  set_engine("ranger", importance = "impurity")
+```
+
+```{r model-training-3}
+#| echo: true
+#| message: false
+#| warning: false
+
+nba_workflow <- workflow() |>
+  add_recipe(nba_recipe) |>
+  add_model(rf_spec)
+
+nba_fit <- fit(nba_workflow, data = train_data)
+
+```
+
+::: {.notes}
+I am enthusiastic about machine learning but have limited experience beyond replicating others' workflows. I used tidymodels documentation and code examples, as well as an LLM (Gemini 4.6 flash, medium reasoning) to guide me through the implementation of this ML pipeline. 
+
+The 2019-2025 seasons were used as training data, while the 2026 season was reserved for validation testing. 
+
+Tidymodels was used to implement a Random Forest classification model (ranger), and the feature importance was evaluated via Gini impurity calculations.
+
+Here we see the setup for the random forest engine, and a workflow item that combines the model and inputs to fit the weights of the feature set against the known game outcomes. 
+:::
+
+
+## Findings and Model Evaluation
+
+::: {.columns}
+
+::: {.column width="30%"}
+**2026 Season Metrics:**
+
+* **Accuracy:** 63% 
+
+[(compared to 50% random baseline)]{style="font-size: 55%"}
+
+* **ROC-AUC:** 0.669  
+
+**Key Drivers:**  
+* <span style="font-size: 85%;">Differential TS%</span>  
+* <span style="font-size: 85%;">Differential eFG%</span>
+:::
+
+```{r 2026-predict}
+#| echo: false
+#| message: false
+#| warning: false
+#| outputs: false
+
+predictions <- predict(nba_fit, test_data) |>
+  bind_cols(predict(nba_fit, test_data, type = "prob")) |>
+  bind_cols(test_data)
+
+# Metrics (Accuracy, ROC-AUC)
+truth <- predictions |>
+  metrics(truth = target_home_win, estimate = .pred_class)
+
+roc_auc <- predictions |>
+  roc_auc(truth = target_home_win, .pred_Win, event_level = "second")
+```
+
+```{r feature-plots}
+#| echo: false
+#| message: false
+#| warning: false
+
+
+# 1. Extract the ranger engine directly
+rf_engine <- extract_fit_engine(nba_fit)
+
+# 2. Extract and sort purely in Base R (no dplyr needed)
+imp_vec <- rf_engine$variable.importance
+importance_df <- data.frame(
+  feature = names(imp_vec),
+  importance = as.numeric(imp_vec)
+)
+
+# Sort descending and take top 10
+importance_df <- importance_df[order(-importance_df$importance), ]
+top10_df <- head(importance_df, 10)
+```
+::: {.column width="70%"}
+```{r feature-plots-2}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 9
+#| fig-height: 4.5
+#| out-width: "95%"
+#| outputs: true
+
+ggplot(top10_df, aes(x = reorder(feature, importance), y = importance)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  theme_minimal() +
+  labs(
+    title = "Top Features for Predicting NBA Winners",
+    x = "Feature",
+    y = "Importance (Impurity Gini)"
+  )
+```
+:::
+:::
+
+::: {.notes}
+The Random Forest achieved a prediction accuracy of 63% on 2026 NBA regular season games (the testing set). The area under the curve value was roughly 0.67. And as we see in the figure plotting features vs importance metric (Gini impurity), the differentials in true shooting % and effective FG % are the most important features for predicting NBA game-level outcomes in 2026. NBA pundits may read this as an indication that shooting far outweighs other aspects of the game at the NBA level. However, this could be measuring the impact of NBA teams spending the last several years optimizing rosters, rotations, and shot selection around offensive efficiency. 
+
+Before the next slide, I want to warn that these results are the product of a model with 63% accuracy, and do not yet reflect important play-level statistics like shot-location, assist-trees, etc.
+:::
+
+
+## 2027 NBA Regular Season Predictions
+```{r schedule-scrape}
+#| echo: false
+#| message: false
+#| warning: false
+#| results: false
+
+# install.packages("jsonlite")
+library(jsonlite)
+library(httr2)
+
+# 1. NBA.com's backend schedule endpoint
+nba_schedule_url <- "https://cdn.nba.com/static/json/staticData/scheduleLeagueV2.json"
+schedule_url <- "https://raw.githubusercontent.com/sportsdataverse/hoopR-data/main/nba/schedules/csv/nba_schedule_2025.csv"
+
+schedule_2027_raw <- hoopR::espn_nba_scoreboard(season = 2027)
+schedule_2026_raw <- hoopR::espn_nba_scoreboard(season = 2026)
+
+schedule_2026 <- schedule_2026_raw |>
+  filter(season_type == 2) |>
+  mutate(season_2027=if_else(season==2027, TRUE, FALSE)) |>
+  select(
+    game_id,     game_date,     season,     season_2027,     home_team = home_team_id,
+    away_team = away_team_id
+  ) |>
+  arrange(game_date)
+
+schedule_2027 <- schedule_2027_raw |>
+  filter(season_type == 2) |>
+  mutate(season_2027=if_else(season==2027, TRUE, FALSE)) |>
+  select(
+    game_id,     game_date,     season,     season_2027,     home_team = home_team_id,
+    away_team = away_team_id
+  ) |>
+  arrange(game_date)
+
+schedule_2026_2027 <- bind_rows(schedule_2026,schedule_2027)
+
+sched_2027 <- schedule_2026_2027 |>
+  filter(season_2027==TRUE) |>
+  select(game_id, game_date, home_team, away_team)
+
+#head(sched_2027)
+
+sched_2026_2027 <- bind_rows(schedule_2026_raw, schedule_2027_raw) |>
+  filter(season_type == 2) |>
+  mutate(season_2027 = if_else(season == 2027, TRUE, FALSE)) |>
+  select(
+    game_id,     game_date,     season,     season_2027,     home_team = home_team_id,
+    away_team = away_team_id
+  ) |>
+  arrange(game_date)
+
+
+games_2027 <- sched_2026_2027 |>
+  filter(season_2027 == TRUE)
+```
+
+```{r synthetic-data}
+#| echo: false
+#| message: false
+#| warning: false
+#| results: false
+
+
+team_profiles_2027 <- features_df |>
+  filter(season == 2026) |>
+  group_by(team_id) |>
+  slice_tail(n = 1) |>
+  ungroup() |>
+  mutate(team_id = as.integer(team_id), roll_pts = roll_pts_scored, roll_treb = roll_oreb+roll_dreb) |>
+  select(
+    team_id,
+    roll_ts,
+    roll_efg,
+    roll_pts,
+    roll_oreb,
+    roll_dreb,
+    roll_treb,
+    roll_tovp,
+    roll_ftr,
+    roll_tov,
+    roll_stl,
+    roll_blk,
+    roll_ast
+  )
+
+# 1. Filter to 2027 games only
+games_2027 <- sched_2026_2027 |>
+  filter(season_2027 == TRUE)
+
+team_profiles_2027 |>
+  mutate(roll_treb = roll_oreb+roll_dreb)
+
+# 2. Join Home & Away baseline ratings (from your 2026 profiles)
+model_input_2027 <- games_2027 |>
+  # 1. Provide placeholder metadata columns that recipe's step_rm() expects to see
+  mutate(
+    home_win = FALSE,
+    away_win = FALSE,
+    home_days_rest = 2,
+    away_days_rest = 2,
+    diff_days_rest = 0
+  ) |>
+  # 2. Join Home stats
+  left_join(team_profiles_2027, by = c("home_team" = "team_id")) |>
+  rename_with(~ paste0("home_", .), starts_with("roll_")) |>
+  # 3. Join Away stats
+  left_join(team_profiles_2027, by = c("away_team" = "team_id")) |>
+  rename_with(~ paste0("away_", .), starts_with("roll_")) |>
+  # 4. Calculate all differentials that existed in training data
+  mutate(
+    diff_roll_ts   = home_roll_ts - away_roll_ts,
+    diff_roll_efg  = home_roll_efg - away_roll_efg,
+    diff_roll_pts  = home_roll_pts - away_roll_pts,
+    diff_roll_dreb = home_roll_dreb - away_roll_dreb,
+    diff_roll_tovp = home_roll_tovp - away_roll_tovp,
+    diff_roll_ftr  = home_roll_ftr - away_roll_ftr,
+    diff_roll_tov  = home_roll_tov - away_roll_tov,
+    diff_roll_oreb = home_roll_oreb - away_roll_oreb,
+    diff_roll_blk = home_roll_blk - away_roll_blk,
+    diff_rol_treb  = home_roll_treb - away_roll_treb,
+    diff_roll_stl  = home_roll_stl - away_roll_stl,
+    diff_roll_ast  = home_roll_ast - away_roll_ast,
+    # Standard neutral/rest baseline
+    diff_days_rest = 0
+  )    
+```
+
+```{r predict-2027}
+#| echo: false
+#| message: false
+#| warning: false
+#| results: false
+
+
+# 3. Predict Win Probabilities for the 2027 season!
+predictions_2027 <- model_input_2027 |>
+  bind_cols(predict(nba_fit, model_input_2027, type = "prob")) |>
+  bind_cols(predict(nba_fit, model_input_2027, type = "class"))
+```
+
+```{r projected-2027-standings}
+#| echo: false
+#| message: false
+#| warning: false
+#| results: false
+
+# 1. Create a Team ID to Team Name lookup table
+team_lookup <- box_scores |>
+  select(team_id, team_name = team_short_display_name) |>
+  distinct() |>
+  mutate(team_id = as.integer(team_id))
+
+# 2. Calculate expected wins at Home (.pred_Win)
+home_wins_df <- predictions_2027 |>
+  group_by(team_id = home_team) |>
+  summarise(home_wins = sum(.pred_Win))
+
+# 3. Calculate expected wins on the Road (.pred_Loss = Home loss -> Away win)
+away_wins_df <- predictions_2027 |>
+  group_by(team_id = away_team) |>
+  summarise(away_wins = sum(.pred_Loss))
+
+# 4. Combine into complete 2027 Projected Standings
+projected_standings_2027 <- home_wins_df |>
+  left_join(away_wins_df, by = "team_id") |>
+  left_join(team_lookup, by = "team_id") |>
+  mutate(
+    projected_wins = round(home_wins + away_wins, 1),
+    projected_losses = round(82 - projected_wins, 1)
+  ) |>
+  arrange(desc(projected_wins)) |>
+  mutate(Rank = row_number()) |>
+  select(Rank, Team = team_name, Wins = projected_wins, Losses = projected_losses)
+
+# 1. Count actual scheduled games and calculate true 82-game pace
+projected_standings_82 <- home_wins_df |>
+  left_join(away_wins_df, by = "team_id") |>
+  left_join(
+    # Count total games actually on the schedule per team
+    predictions_2027 |> 
+      count(home_team, name = "home_games") |> 
+      rename(team_id = home_team),
+    by = "team_id"
+  ) |>
+  left_join(
+    predictions_2027 |> 
+      count(away_team, name = "away_games") |> 
+      rename(team_id = away_team),
+    by = "team_id"
+  ) |>
+  left_join(team_lookup, by = "team_id") |>
+  mutate(
+    total_games_scheduled = home_games + away_games,
+    total_raw_wins        = home_wins + away_wins,
+    # Scale to full 82-game season
+    win_pct               = total_raw_wins / total_games_scheduled,
+    wins_82_pace          = round(win_pct * 82, 1),
+    losses_82_pace        = round(82 - wins_82_pace, 1)
+  ) |>
+  arrange(desc(wins_82_pace)) |>
+  mutate(Rank = row_number()) |>
+  select(Rank, Team = team_name, Wins = wins_82_pace, Losses = losses_82_pace, `Win%` = win_pct)
+
+# View normalized 2027 Standings
+head(projected_standings_82, 10)
+
+# View the Top 10 Projected Teams in 2027
+head(projected_standings_2027,10)
+```
+
+```{r 2027-analysis}
+#| echo: false
+#| message: false
+#| warning: false
+#| results: false
+
+
+# 1. Calculate Variance for Home games: p * (1 - p)
+home_var <- predictions_2027 |>
+  group_by(team_id = home_team) |>
+  summarise(
+    home_wins = sum(.pred_Win),
+    home_var  = sum(.pred_Win * (1 - .pred_Win))
+  )
+
+# 2. Calculate Variance for Away games: p * (1 - p)
+away_var <- predictions_2027 |>
+  group_by(team_id = away_team) |>
+  summarise(
+    away_wins = sum(.pred_Loss),
+    away_var  = sum(.pred_Loss * (1 - .pred_Loss))
+  )
+
+# 3. Combine and compute 95% Confidence Intervals scaled to 82 games
+standings_ci_analytical <- home_var |>
+  left_join(away_var, by = "team_id") |>
+  left_join(team_lookup, by = "team_id") |>
+  mutate(
+    # Pace-scale factor (e.g., 82 / actual scheduled games)
+    scale_factor = 82 / (home_wins + away_wins + (82 - (home_wins + away_wins))), # or schedule length
+    total_wins   = (home_wins + away_wins),
+    
+    # Standard Error = sqrt(Home_Var + Away_Var)
+    se_wins      = sqrt(home_var + away_var),
+    
+    # 95% CI (Z = 1.96)
+    ci_lower_95  = round(total_wins - (1.96 * se_wins), 1),
+    ci_upper_95  = round(total_wins + (1.96 * se_wins), 1),
+    proj_wins    = round(total_wins, 1)
+  ) |>
+  arrange(desc(proj_wins)) |>
+  select(Team = team_name, Projected = proj_wins, `95% CI Lower` = ci_lower_95, `95% CI Upper` = ci_upper_95, SE = se_wins)
+
+head(standings_ci_analytical, 10)
+
+standings_ci_82 <- home_var |>
+  left_join(away_var, by = "team_id") |>
+  left_join(
+    predictions_2027 |> count(home_team, name = "home_games") |> rename(team_id = home_team),
+    by = "team_id"
+  ) |>
+  left_join(
+    predictions_2027 |> count(away_team, name = "away_games") |> rename(team_id = away_team),
+    by = "team_id"
+  ) |>
+  left_join(team_lookup, by = "team_id") |>
+  mutate(
+    total_games_scheduled = home_games + away_games,
+    total_raw_wins        = home_wins + away_wins,
+    win_pct               = total_raw_wins / total_games_scheduled,
+    
+    # 1. Scale mean wins to 82 games
+    wins_82_pace          = round(win_pct * 82, 1),
+    
+    # 2. Scale Standard Error to 82-game season: SE_82 = sqrt(82 * p * (1-p))
+    se_82                 = round(sqrt(82 * win_pct * (1 - win_pct)), 2),
+    
+    # 3. 95% Confidence Intervals for 82 games
+    ci_lower_95           = round(wins_82_pace - (1.96 * se_82), 1),
+    ci_upper_95           = round(wins_82_pace + (1.96 * se_82), 1)
+  ) |>
+  arrange(desc(wins_82_pace)) |>
+  mutate(Rank = row_number()) |>
+  select(Rank, Team = team_name, Projected = wins_82_pace, `95% CI Lower` = ci_lower_95, `95% CI Upper` = ci_upper_95, SE = se_82)
+```
+
+```{r standings-2027}
+#| echo: false
+#| message: false
+#| warning: false
+
+library(knitr)
+
+standings_ci_82 |>
+  head(10) |>
+  kable(format="html", align="c")
+```
+
+::: {.notes}
+Here we isolate the top 10 projected teams for the upcoming 2027 season. Notice how the standard errors and confidence intervals reflect the inherent volatility of projecting over an 82-game schedule. Teams like the NY Knicks sit comfortably at the top, but the confidence bands show substantial overlap among playoff contenders.
+:::
+
+## Monte Carlo Simulation Results
+```{r monte-carlo-sim}
+#| echo: false
+#| message: false
+#| warning: false
+#| results: false
+
+set.seed(42) # For reproducible results
+n_sims <- 10000
+
+# 1. Run 10,000 simulated seasons
+sim_results <- map_dfr(1:n_sims, function(sim_id) {
+  # Flip weighted coin for every game on the schedule
+  sim_games <- predictions_2027 |>
+    mutate(home_won_sim = rbinom(n(), 1, .pred_Win))
+  
+  # Tally simulated wins per team
+  home_tallies <- sim_games |>
+    group_by(team_id = home_team) |>
+    summarise(wins = sum(home_won_sim))
+  
+  away_tallies <- sim_games |>
+    group_by(team_id = away_team) |>
+    summarise(wins = sum(1 - home_won_sim))
+  
+  home_tallies |>
+    left_join(away_tallies, by = "team_id") |>
+    mutate(total_wins = wins.x + wins.y, sim = sim_id) |>
+    select(sim, team_id, total_wins)
+})
+```
+
+
+```{r compute-ci-sims}
+#| echo: false
+#| message: false
+#| warning: false
+#| results: false
+
+# 2. Compute 90% and 95% Confidence Intervals from simulation percentiles
+standings_ci_sim <- sim_results |>
+  left_join(team_lookup, by = "team_id") |>
+  group_by(Team = team_name) |>
+  summarise(
+    Mean_Wins = round(mean(total_wins), 1),
+    Median_Wins = median(total_wins),
+    `5th_Percentile` = quantile(total_wins, 0.05),   # Lower bound of 90% CI
+    `95th_Percentile` = quantile(total_wins, 0.95),  # Upper bound of 90% CI
+    `2.5th_Percentile` = quantile(total_wins, 0.025), # Lower bound of 95% CI
+    `97.5th_Percentile` = quantile(total_wins, 0.975) # Upper bound of 95% CI
+  ) |>
+  arrange(desc(Mean_Wins))
+
+head(standings_ci_sim, 10)
+```
+
+```{r plotting-sim-ci-results}
+#| echo: false
+#| message: false
+#| warning: false
+#| results: false
+
+#ggplot(standings_ci_sim, aes(x = reorder(Team, Mean_Wins), y = Mean_Wins)) +
+#  geom_pointrange(
+#    aes(ymin = `5th_Percentile`, ymax = `95th_Percentile`),
+#    color = "midnightblue",
+#    size = 0.5
+#  ) +
+#  geom_hline(yintercept = 41, linetype = "dashed", color = "red", alpha = 0.7) +
+#  coord_flip() +
+#  theme_minimal() +
+#  labs(
+#    title = "2027 NBA Projected Wins with 90% Confidence Intervals",
+#    subtitle = "Points show expected wins; bars indicate the 5th to 95th percentile outcome range (10,000 simulations)",
+#    x = "Team",
+#    y = "Regular Season Wins"
+#  )
+
+# Scale the simulation percentiles to an 82-game pace
+scale_factor <- 82 / mean(standings_ci_sim$Mean_Wins * 2) # ~1.49
+
+standings_ci_sim_82 <- standings_ci_sim |>
+  mutate(across(where(is.numeric), ~ round(. * scale_factor, 1)))
+
+#ggplot(standings_ci_sim_82, aes(x = reorder(Team, Mean_Wins), y = Mean_Wins)) +
+#  geom_pointrange(
+#    aes(ymin = `5th_Percentile`, ymax = `95th_Percentile`),
+#    color = "midnightblue",
+#    size = 0.5
+#  ) +
+#  geom_hline(yintercept = 41, linetype = "dashed", color = "red", alpha = 0.7) +
+#  coord_flip() +
+#  theme_minimal() +
+#  labs(
+#    title = "2027 NBA Projected Wins with 90% Confidence Intervals (82-Game Pace)",
+#    subtitle = "Points show expected wins; bars indicate 5th to 95th percentile range (10,000 simulations)",
+#    x = "Team",
+#    y = "Projected Regular Season Wins"
+#  )
+```
+
+```{r ridge-plot}
+#| echo: false
+#| message: false
+#| warning: false
+
+library(ggridges)
+
+sim_results |>
+  left_join(team_lookup, by = "team_id") |>
+  filter(team_name %in% head(standings_ci_sim$Team, 10)) |>
+  ggplot(aes(x = total_wins, y = reorder(team_name, total_wins, median), fill = team_name)) +
+  geom_density_ridges(alpha = 0.7, show.legend = FALSE) +
+  theme_minimal() +
+  labs(
+    title = "Simulated Win Total Distributions (10,000 Seasons)",
+    subtitle = "Top 10 Projected NBA Teams for 2027",
+    x = "Total Wins",
+    y = "Team"
+  )
+```
+
+::: {.notes}
+To stress-test these deterministic win totals, a 10,000 season Monte Carlo simulation was completed using game-level probabilities. This ridge plot displays the distribution of simulated win outcomes for the top 10 ranked teams. It not only confirms the point estimates provided in the last table, but it also visualizes the spread of the probability density function, showing us the floor and ceiling for performance of these ten teams. 
+:::
+
+
+## Summary and Conclusions
+
+**Summary:**
+
+* [**An end-to-end Machine Learning pipeline was built using Random Forest classification**]{style="font-size:85%"}
+
+
+* [**Achieved an accuracy of 63% on 2026 NBA Season game-level predictions**]{style="font-size:85%"}
+
+
+**Takeaways:**
+
+* [*Rolling features capture team momentum better than static seasonal stats.*]{style="font-size: 75%"}
+
+* [*Random Forest methodology provides a stable probability estimate for game outcomes.*]{style="font-size: 75%"}
+
+**Next steps:**
+
+* [*Player-level tracking, injury awareness, XGBoost comparison, and star match-up differentials.*]{style="font-size: 75%"}
+
+::: {.notes}
+An ML pipeline was built that furnished game-level win-loss predictions on the 2027 NBA season after validation on the withheld 2026 season. 
+
+Some important points were that rolling features (e.g. window functions) are effective predictors of team momentum. The Random Forest methodology was replicated and produced reasonably accurate results.
+
+Next steps could include tracking player-level details on a play-by-play granularity (more data, potentially better), incorporating injuries into the prediction pipeline (e.g. model tinkering), trying a different ML engine for regression, and trying to replicate an idea in the literature about star-on-star matchups and how they impact wins.
+:::
+
+## Citations and Acknowledgements
+
+* **Medium article on NBA predictions using ML:**
+
+--- *https://medium.com/@k4annam/exploring-machine-learning-predicting-the-nba-607aea31c955*
+
+* **Core R Packages:**
+
+--- *`tidymodels`, `hoopR`, `slider`, and `tidyverse`*
+
+
+--- *`hoopR` package: https://hoopr.sportsdataverse.org*
+
+* *Code structuring and `tidymodels` syntax debugging were assisted by Google Gemini (Flash model 3.6, 2026).* 
+
+--- *All logic, data pipeline design, and outputs were verified by the author.*
+
+::: {.notes}
+Thank you everyone for your time and attention. I'm now happy to take any questions.
+:::
+
+
+
+
