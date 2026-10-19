@@ -18,6 +18,7 @@ import {
   Compass,
   Swords,
   Dna,
+  Award,
 } from 'lucide-react';
 import { BaseballCrest } from '@/components/BaseballCrest';
 
@@ -56,6 +57,13 @@ export const Sidebar: React.FC = () => {
       desc: 'Archetypes & historical comps (1980+)',
     },
     {
+      href: '/clutch',
+      label: 'True Clutch Index',
+      badge: 'Leverage LI',
+      icon: Flame,
+      desc: 'Tango LI, RISP resilience & Firemen',
+    },
+    {
       href: '/spatial',
       label: 'Spatial Analytics',
       badge: 'Statcast',
@@ -73,7 +81,7 @@ export const Sidebar: React.FC = () => {
       href: '/postseason',
       label: 'Postseason & Bullpen',
       badge: '12-Team Ops',
-      icon: Flame,
+      icon: Award,
       desc: '12-team bracket, bullpen & +EV bets',
     },
     {
@@ -251,9 +259,9 @@ export const Sidebar: React.FC = () => {
         <div className="flex items-center justify-between text-xs text-slate-400 px-1">
           <span className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>16-Stage DAG Active</span>
+            <span>17-Stage DAG Active</span>
           </span>
-          <span className="font-mono text-[11px] text-slate-400">v1.6.0</span>
+          <span className="font-mono text-[11px] text-slate-400">v1.7.0</span>
         </div>
         <div className="flex items-center gap-1.5 text-[11px] text-slate-400 px-1">
           <ShieldCheck className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />

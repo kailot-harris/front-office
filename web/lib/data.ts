@@ -86,3 +86,20 @@ export function getPlayerDnaCatalog(): PlayerDnaCatalog {
   return JSON.parse(fileContent) as PlayerDnaCatalog;
 }
 
+import { ClutchCatalog } from './clutchTypes';
+
+export function getClutchCatalog(): ClutchCatalog {
+  const filePath = path.join(process.cwd(), 'public', 'data', 'clutch_leverage_metrics.json');
+  if (!fs.existsSync(filePath)) {
+    return {
+      updatedAt: new Date().toISOString(),
+      totalProfiles: 0,
+      clutchLeaderBatters: [],
+      clutchLeaderPitchers: [],
+      profiles: [],
+    };
+  }
+  const fileContent = fs.readFileSync(filePath, 'utf-8');
+  return JSON.parse(fileContent) as ClutchCatalog;
+}
+
