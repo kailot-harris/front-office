@@ -87,6 +87,7 @@ export function getPlayerDnaCatalog(): PlayerDnaCatalog {
 }
 
 import { ClutchCatalog } from './clutchTypes';
+import { CbtLeagueOverview } from './cbtTypes';
 
 export function getClutchCatalog(): ClutchCatalog {
   const filePath = path.join(process.cwd(), 'public', 'data', 'clutch_leverage_metrics.json');
@@ -101,5 +102,23 @@ export function getClutchCatalog(): ClutchCatalog {
   }
   const fileContent = fs.readFileSync(filePath, 'utf-8');
   return JSON.parse(fileContent) as ClutchCatalog;
+}
+
+export function getCbtPayrollOverview(): CbtLeagueOverview {
+  const filePath = path.join(process.cwd(), 'public', 'data', 'cbt_payroll_sheet.json');
+  if (!fs.existsSync(filePath)) {
+    return {
+      season: '2026',
+      baseThreshold: 244.0,
+      tier1Threshold: 264.0,
+      tier2Threshold: 284.0,
+      tier3Threshold: 304.0,
+      totalLeaguePayroll: 0,
+      totalLuxuryTaxCollected: 0,
+      teams: [],
+    };
+  }
+  const fileContent = fs.readFileSync(filePath, 'utf-8');
+  return JSON.parse(fileContent) as CbtLeagueOverview;
 }
 

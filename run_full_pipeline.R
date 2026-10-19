@@ -411,6 +411,17 @@ run_full_pipeline <- function(season = 2024, force_refresh = FALSE) {
     require_fresh = force_refresh
   )
   
+  # ----------------------------------------------------------------------------
+  # Stage 18: Competitive Balance Tax (CBT) & Salary Payroll Architect Engine
+  # ----------------------------------------------------------------------------
+  run_stage(
+    script_name   = "mlb_cbt_payroll_engine.R",
+    description   = "Compute 30-Team CBT Luxury Tax, Payrolls & Contract Surplus",
+    call_fn       = "run_mlb_cbt_payroll_engine",
+    output        = file.path(MLB_ROOT_DIR, "web", "public", "data", "cbt_payroll_sheet.json"),
+    require_fresh = force_refresh
+  )
+  
   pipeline_total_time <- as.numeric(difftime(Sys.time(), pipeline_start_time, units = "secs"))
   
   # Build execution summary
