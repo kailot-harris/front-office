@@ -532,6 +532,20 @@ PIPELINE_STAGES <- list(
     output      = file.path("web", "public", "data", "coaching_metrics.json"),
     inputs      = c(file.path("web", "public", "data", "projections_season_teams.json")),
     group       = NULL
+  ),
+
+  # ---------------------------------------------------------------------------------------
+  # 13. WNBA Defensive Versatility & Rim Deterrence (Phase 3)
+  # ---------------------------------------------------------------------------------------
+  defense_dataset = list(
+    id          = "defense_dataset",
+    script      = "build_defense_dataset.R",
+    description = "Compile Defensive Versatility Entropy & Rim Suppression Matrix",
+    call_fn     = NULL,
+    entry_fn    = NULL,
+    output      = file.path("web", "public", "data", "defensive_metrics.json"),
+    inputs      = c(file.path("web", "public", "data", "projections_season_players.json")),
+    group       = NULL
   )
 )
 

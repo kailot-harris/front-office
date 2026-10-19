@@ -432,6 +432,10 @@ run_registered_stage("offseason_dataset")
 # Output: web/public/data/coaching_metrics.json (+ cache/coaching_metrics.rds)
 run_registered_stage("coaching_dataset")
 
+# 13. WNBA Defensive Versatility & Rim Deterrence (Phase 3)
+# Output: web/public/data/defensive_metrics.json (+ cache/defensive_metrics.rds)
+run_registered_stage("defense_dataset")
+
 # Reset parallel plan to sequential. This also shuts the multisession workers down, so by the
 # time the spill merge below runs, no other process holds logs.duckdb.
 plan(sequential)

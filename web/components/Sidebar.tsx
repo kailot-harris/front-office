@@ -15,13 +15,13 @@ import {
   Crosshair,
   ArrowRightLeft,
   Briefcase,
+  Shield,
 } from 'lucide-react';
 
-// Phase 3 of docs/NEXTJS_WEB_APP_PLAN.md (defense,
-// player-dna, cap-sheet, clutch) needs net-new R engines before a route exists —
+// Phase 3 of docs/NEXTJS_WEB_APP_PLAN.md (player-dna, cap-sheet, clutch)
+// needs net-new R engines before a route exists —
 // listed here as a visible placeholder, not a Link, until each one ships.
 const PLANNED_FEATURES = [
-  'Defensive Versatility',
   'Player DNA & Twins',
   'Cap & CBA Sheet',
   'True Clutch Index',
@@ -59,6 +59,13 @@ export const Sidebar: React.FC = () => {
       badge: '14 Zones',
       icon: Crosshair,
       desc: 'Half-court spatial heatmaps',
+    },
+    {
+      href: '/defense',
+      label: 'Defensive Matrix',
+      badge: 'Versatility',
+      icon: Shield,
+      desc: 'Entropy & rim suppression',
     },
     {
       href: '/coaches',
