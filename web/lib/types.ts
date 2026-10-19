@@ -58,6 +58,7 @@ export interface TeamProjection {
   variant_embeddings_p90: number;
   variant_embeddings_playoff_prob: number;
   variant_embeddings_title_prob: number;
+  _row?: string;
 }
 
 export interface PlayerProjection {

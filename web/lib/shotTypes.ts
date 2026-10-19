@@ -31,6 +31,7 @@ export interface ZoneLeagueAverage {
 }
 
 export interface ShotsMetadata {
+  season?: number;
   updated_at: string;
   total_shots_sampled: number;
   league_averages: ZoneLeagueAverage[];

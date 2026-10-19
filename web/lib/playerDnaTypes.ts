@@ -35,6 +35,7 @@ export interface CategoryScores {
 }
 
 export interface PlayerDnaProfile {
+  season?: number;
   playerId: string;
   playerName: string;
   team: string;

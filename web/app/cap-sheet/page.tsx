@@ -21,8 +21,8 @@ async function getCbaData(): Promise<WnbaCbaLeagueOverview> {
     vetMinSalary: 0.0788,
     rookieMinSalary: 0.0672,
     averagePayroll: 1.46,
-    hardCapSqueezeTeamCount: 11,
-    twelvePlayerTeamCount: 4,
+    hardCapSqueezeTeamCount: 8,
+    twelvePlayerTeamCount: 7,
     maxCapSpaceTeamCount: 1,
     teams: [],
   };

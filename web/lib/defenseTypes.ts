@@ -7,6 +7,7 @@ export interface MatchupDist {
 }
 
 export interface DefensiveProfile {
+  season?: number;
   playerId: string;
   playerName: string;
   team: string;

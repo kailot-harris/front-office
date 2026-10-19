@@ -12,6 +12,7 @@ export interface ClutchShotBreakdown {
 }
 
 export interface ClutchProfile {
+  season?: number;
   playerId: string;
   playerName: string;
   team: string;
