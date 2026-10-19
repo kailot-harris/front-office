@@ -503,6 +503,21 @@ PIPELINE_STAGES <- list(
     inputs      = c(file.path(CACHE_DIR, "wnba_espn_pbp_cache.rds"),
                     file.path("web", "public", "data", "projections_season_players.json")),
     group       = NULL
+  ),
+
+  # ---------------------------------------------------------------------------------------
+  # 11. WNBA Offseason Moves & Roster Landscape (Phase 3)
+  # ---------------------------------------------------------------------------------------
+  offseason_dataset = list(
+    id          = "offseason_dataset",
+    script      = "build_offseason_dataset.R",
+    description = "Compile Offseason Roster Moves, Cap Space & Draft Board",
+    call_fn     = NULL,
+    entry_fn    = NULL,
+    output      = file.path("web", "public", "data", "offseason_transactions.json"),
+    inputs      = c(file.path("web", "public", "data", "projections_season_players.json"),
+                    file.path("web", "public", "data", "projections_season_teams.json")),
+    group       = NULL
   )
 )
 

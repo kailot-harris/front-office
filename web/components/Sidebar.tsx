@@ -13,13 +13,13 @@ import {
   Swords,
   Layers,
   Crosshair,
+  ArrowRightLeft,
 } from 'lucide-react';
 
-// Phase 3 of docs/NEXTJS_WEB_APP_PLAN.md (offseason, coaches, defense,
+// Phase 3 of docs/NEXTJS_WEB_APP_PLAN.md (coaches, defense,
 // player-dna, cap-sheet, clutch) needs net-new R engines before a route exists —
 // listed here as a visible placeholder, not a Link, until each one ships.
 const PLANNED_FEATURES = [
-  'Offseason Moves',
   'Coaching Staffs',
   'Defensive Versatility',
   'Player DNA & Twins',
@@ -59,6 +59,13 @@ export const Sidebar: React.FC = () => {
       badge: '14 Zones',
       icon: Crosshair,
       desc: 'Half-court spatial heatmaps',
+    },
+    {
+      href: '/offseason',
+      label: 'Offseason & Moves',
+      badge: 'Trades',
+      icon: ArrowRightLeft,
+      desc: 'Trades, expansion & draft',
     },
     {
       href: '/series',

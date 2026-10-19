@@ -424,6 +424,10 @@ run_registered_stage("export_web_json")
 # Output: web/public/data/shots_index.json (+ shots_metadata.json, web/public/data/shots/*.json)
 run_registered_stage("shot_chart_dataset")
 
+# 11. WNBA Offseason Moves & Roster Landscape (Phase 3)
+# Output: web/public/data/offseason_transactions.json (+ offseason_teams.json, offseason_draft.json)
+run_registered_stage("offseason_dataset")
+
 # Reset parallel plan to sequential. This also shuts the multisession workers down, so by the
 # time the spill merge below runs, no other process holds logs.duckdb.
 plan(sequential)
