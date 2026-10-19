@@ -89,7 +89,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
           <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
             <div className="flex items-center gap-2">
               <Zap className="w-4 h-4 text-emerald-400" />
-              <h3 className="text-sm font-semibold text-white">4th-Down Aggression Leaders</h3>
+              <h2 className="text-sm font-semibold text-white">4th-Down Aggression Leaders</h2>
             </div>
             <span className="text-[10px] font-mono text-slate-400">Percentile</span>
           </div>
@@ -121,7 +121,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
           <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
             <div className="flex items-center gap-2">
               <SlidersHorizontal className="w-4 h-4 text-cyan-400" />
-              <h3 className="text-sm font-semibold text-white">Pass Rate Over Expected</h3>
+              <h2 className="text-sm font-semibold text-white">Pass Rate Over Expected</h2>
             </div>
             <span className="text-[10px] font-mono text-slate-400">Air Raid / Spread</span>
           </div>
@@ -153,7 +153,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
           <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-indigo-400" />
-              <h3 className="text-sm font-semibold text-white">Franchise Stability</h3>
+              <h2 className="text-sm font-semibold text-white">Franchise Stability</h2>
             </div>
             <span className="text-[10px] font-mono text-slate-400">Tenure</span>
           </div>
@@ -198,6 +198,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
           <div className="flex items-center gap-2">
             <label className="text-xs font-mono text-slate-400 whitespace-nowrap">Offensive Caller:</label>
             <select
+              aria-label="Filter by offensive play caller"
               value={playCallerFilter}
               onChange={(e) => setPlayCallerFilter(e.target.value)}
               className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
@@ -364,12 +365,12 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
             <div className="flex items-center gap-4">
               <TeamLogo team={selectedCoach.team} size="xl" />
               <div>
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
                   {selectedCoach.head_coach}
                   <span className="text-xs font-mono font-normal text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
                     {selectedCoach.team} • Year {selectedCoach.tenure_years}
                   </span>
-                </h3>
+                </h2>
                 <p className="text-xs text-slate-400 font-mono mt-0.5">
                   Career Record: {selectedCoach.career_record} • {selectedCoach.super_bowl_wins} Super Bowl Titles
                 </p>

@@ -65,12 +65,12 @@ export default function QbEfficiencyScatter({
 
   const toPercentX = (epa: number) => {
     const clamped = Math.max(minEpa, Math.min(maxEpa, epa));
-    return ((clamped - minEpa) / (maxEpa - minEpa)) * 100;
+    return 4 + ((clamped - minEpa) / (maxEpa - minEpa)) * 92;
   };
 
   const toPercentY = (cpoe: number) => {
     const clamped = Math.max(minCpoe, Math.min(maxCpoe, cpoe));
-    return 100 - ((clamped - minCpoe) / (maxCpoe - minCpoe)) * 100;
+    return 94 - ((clamped - minCpoe) / (maxCpoe - minCpoe)) * 88;
   };
 
   const zeroEpaX = toPercentX(0.0);
@@ -81,12 +81,12 @@ export default function QbEfficiencyScatter({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-2 mb-4">
         <div>
-          <h3 className="text-base font-semibold text-white flex items-center gap-2">
+          <h2 className="text-base font-semibold text-white flex items-center gap-2">
             Quarterback Composite Tier Matrix
             <span className="text-xs font-mono font-normal text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded-full">
               EPA/Play vs. CPOE
             </span>
-          </h3>
+          </h2>
           <p className="text-xs text-slate-400">
             Rolling EPA per dropback (efficiency) vs Completion % Over Expected (accuracy & difficulty).
           </p>
@@ -141,7 +141,7 @@ export default function QbEfficiencyScatter({
       </div>
 
       {/* Scatter Canvas */}
-      <div className="relative w-full h-[420px] sm:h-[480px] bg-slate-950/60 rounded-lg border border-slate-800/80 p-6 select-none">
+      <div className="relative w-full h-[420px] sm:h-[480px] bg-slate-950/60 rounded-lg border border-slate-800/80 p-6 select-none overflow-hidden">
         {/* Quadrant Background Labels */}
         <div className="absolute top-4 right-4 text-right pointer-events-none">
           <div className="text-xs font-bold font-mono tracking-wider text-emerald-400/30 uppercase">
@@ -200,6 +200,8 @@ export default function QbEfficiencyScatter({
           const isElite = qb.off_epa_roll > 0.08 && qb.off_cpoe_roll > 1.0;
           const isGood = qb.off_epa_roll > 0 && qb.off_cpoe_roll > -2.0;
           const isSubpar = qb.off_epa_roll < -0.05 && qb.off_cpoe_roll < -3.0;
+          const labelAlignClass =
+            posX > 75 ? 'right-0' : posX < 25 ? 'left-0' : 'left-1/2 -translate-x-1/2';
 
           return (
             <div
@@ -236,7 +238,7 @@ export default function QbEfficiencyScatter({
               {/* Point Label (Visible on Hover/Selected or for Tier 1 Elite) */}
               {(isHovered || isSelected || isElite) && (
                 <div
-                  className={`absolute left-1/2 -translate-x-1/2 mt-1 px-2 py-0.5 rounded text-[10px] font-mono whitespace-nowrap border pointer-events-none shadow-xl ${
+                  className={`absolute ${labelAlignClass} mt-1 px-2 py-0.5 rounded text-[10px] font-mono whitespace-nowrap border pointer-events-none shadow-xl ${
                     isSelected
                       ? 'bg-emerald-950 text-emerald-200 border-emerald-600 z-50'
                       : isHovered

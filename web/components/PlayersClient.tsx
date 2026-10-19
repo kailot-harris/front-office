@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { QbProfile } from '@/lib/types';
 import { TeamLogo } from './TeamLogo';
 import QbEfficiencyScatter from './QbEfficiencyScatter';
@@ -18,6 +18,10 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
   const [selectedQb, setSelectedQb] = useState<QbProfile | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<number | 'ALL'>(25);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedTeam]);
 
   // Teams list for filter
   const teams = useMemo(() => {
@@ -95,7 +99,7 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
           <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-emerald-400" />
-              <h3 className="text-sm font-semibold text-white">EPA / Play Leaders</h3>
+              <h2 className="text-sm font-semibold text-white">EPA / Play Leaders</h2>
             </div>
             <span className="text-[11px] font-mono text-slate-400">Efficiency</span>
           </div>
@@ -140,7 +144,7 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
           <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
             <div className="flex items-center gap-2">
               <Award className="w-4 h-4 text-cyan-400" />
-              <h3 className="text-sm font-semibold text-white">CPOE Leaders</h3>
+              <h2 className="text-sm font-semibold text-white">CPOE Leaders</h2>
             </div>
             <span className="text-[11px] font-mono text-slate-400">Ball Placement</span>
           </div>
@@ -204,6 +208,7 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
         <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
           <label className="text-xs font-mono text-slate-400 whitespace-nowrap">Filter Team:</label>
           <select
+            aria-label="Filter by team"
             value={selectedTeam}
             onChange={(e) => setSelectedTeam(e.target.value)}
             className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
@@ -351,6 +356,7 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
           <div className="flex items-center gap-2">
             <span>Rows per page:</span>
             <select
+              aria-label="Rows per page"
               value={pageSize}
               onChange={(e) => {
                 const val = e.target.value === 'ALL' ? 'ALL' : Number(e.target.value);
@@ -414,12 +420,12 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
                 <TeamLogo team={selectedQb.team} size="xl" />
               )}
               <div>
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   {selectedQb.player_name}
                   <span className="text-xs font-mono font-normal text-slate-400">
                     #{selectedQb.jersey_number ?? '-'} • {selectedQb.team}
                   </span>
-                </h3>
+                </h2>
                 <p className="text-xs text-slate-400">
                   {selectedQb.college} • {selectedQb.years_exp === 0 ? 'Rookie Season' : `${selectedQb.years_exp} Years Experience`}
                 </p>

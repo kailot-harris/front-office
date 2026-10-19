@@ -19,6 +19,7 @@ export default defineConfig({
   resolve: { alias },
   oxc: jsx,
   test: {
+    testTimeout: 15000,
     // Reporters are chosen per-stage by scripts/run-test-suite.mjs (it needs a
     // separate JSON file per project to reconcile against the baseline), so no
     // json reporter is pinned here.

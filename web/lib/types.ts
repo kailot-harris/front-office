@@ -58,10 +58,10 @@ export interface MatchupGame {
   away_travel_miles: number;
   key_number_flag: string;
   is_completed?: boolean;
-  home_score?: number;
-  away_score?: number;
-  actual_winner?: string;
-  prediction_correct?: boolean;
+  home_score?: number | null;
+  away_score?: number | null;
+  actual_winner?: string | null;
+  prediction_correct?: boolean | null;
 }
 
 export interface MatchupsDataset {
@@ -210,7 +210,7 @@ export interface CoachProfile {
   pace_seconds_per_play: number; // neutral game-script pace
   offensive_scheme: string;
   defensive_scheme: string;
-  timeout_management_grade: 'A+' | 'A' | 'B+' | 'B' | 'C+' | 'C' | 'D';
+  timeout_management_grade: 'A+' | 'A' | 'A-' | 'B+' | 'B' | 'B-' | 'C+' | 'C' | 'D';
   challenge_win_pct: number;
   career_record: string;
   super_bowl_wins: number;

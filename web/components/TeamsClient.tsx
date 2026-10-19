@@ -416,12 +416,12 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams }) => {
               <div className="flex items-center gap-3">
                 <TeamLogo team={selectedTeam.team} size="lg" />
                 <div>
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
                     <span>{selectedTeam.team_name}</span>
                     <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
                       {selectedTeam.team}
                     </span>
-                  </h3>
+                  </h2>
                   <p className="text-xs text-slate-400 font-mono">
                     {selectedTeam.conference} • {selectedTeam.division} • {selectedTeam.games_in_sample} Games Evaluated
                   </p>
@@ -473,9 +473,9 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams }) => {
 
               {/* Situational Splits Breakdown */}
               <div className="space-y-2">
-                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono">
+                <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono">
                   Situational Splits & Down Efficiency
-                </h4>
+                </h3>
                 <div className="grid grid-cols-2 gap-3 text-xs font-mono">
                   <div className="bg-slate-950/50 p-3 rounded-lg border border-slate-800/80 space-y-2">
                     <span className="font-bold text-slate-300 block border-b border-slate-800 pb-1">

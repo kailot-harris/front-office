@@ -52,9 +52,9 @@ export const EpaQuadrantScatter: React.FC<EpaQuadrantScatterProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-white tracking-tight">
+              <h2 className="text-sm font-bold text-white tracking-tight">
                 Offensive vs. Defensive EPA/Play Quadrant
-              </h3>
+              </h2>
               <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
                 32 Franchises
               </span>

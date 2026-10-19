@@ -112,9 +112,9 @@ export const PlayoffsClient: React.FC<PlayoffsClientProps> = ({ dataset }) => {
         <div className="flex items-center justify-between border-b border-slate-800 pb-2">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-emerald-400" />
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
+            <h2 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
               In The Hunt • Playoff Bubble Franchises
-            </h3>
+            </h2>
           </div>
           <span className="text-xs font-mono text-slate-400">Next 4 Teams Out Per Conference</span>
         </div>

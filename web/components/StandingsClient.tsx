@@ -149,12 +149,14 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
           <div className="min-w-0">
             <div className="text-[11px] text-slate-400 uppercase font-semibold font-mono">Super Bowl Favorite</div>
             <div className="text-base font-bold text-white flex items-baseline gap-2 truncate">
-              <span className="truncate">{topSbFavorite?.team_name}</span>
+              <span className="truncate">{topSbFavorite?.team_name ?? '—'}</span>
               <span className="text-xs font-semibold text-amber-400 flex-shrink-0 font-mono">
-                {(topSbFavorite?.super_bowl_prob * 100).toFixed(1)}%
+                {topSbFavorite ? `${(topSbFavorite.super_bowl_prob * 100).toFixed(1)}%` : '—'}
               </span>
             </div>
-            <div className="text-xs text-slate-400 font-mono">{topSbFavorite?.projected_wins.toFixed(1)} proj wins</div>
+            <div className="text-xs text-slate-400 font-mono">
+              {topSbFavorite ? `${topSbFavorite.projected_wins.toFixed(1)} proj wins` : '—'}
+            </div>
           </div>
         </div>
 
@@ -171,12 +173,14 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
           <div className="min-w-0">
             <div className="text-[11px] text-slate-400 uppercase font-semibold font-mono">#1 Power Rating</div>
             <div className="text-base font-bold text-white flex items-baseline gap-2 truncate">
-              <span className="truncate">{topPowerTeam?.team_name}</span>
+              <span className="truncate">{topPowerTeam?.team_name ?? '—'}</span>
               <span className="text-xs font-semibold text-emerald-400 flex-shrink-0 font-mono">
-                +{topPowerTeam?.power_rating.toFixed(2)} pts
+                {topPowerTeam ? `+${topPowerTeam.power_rating.toFixed(2)} pts` : '—'}
               </span>
             </div>
-            <div className="text-xs text-slate-400 font-mono">Net EPA: +{topPowerTeam?.net_epa_roll.toFixed(3)}/play</div>
+            <div className="text-xs text-slate-400 font-mono">
+              {topPowerTeam ? `Net EPA: +${topPowerTeam.net_epa_roll.toFixed(3)}/play` : '—'}
+            </div>
           </div>
         </div>
 
@@ -193,13 +197,13 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
           <div className="min-w-0">
             <div className="text-[11px] text-slate-400 uppercase font-semibold font-mono">Top Point Differential</div>
             <div className="text-base font-bold text-white flex items-baseline gap-2 truncate">
-              <span className="truncate">{topPointDiffTeam?.team_name}</span>
+              <span className="truncate">{topPointDiffTeam?.team_name ?? '—'}</span>
               <span className="text-xs font-semibold text-cyan-400 flex-shrink-0 font-mono">
-                +{topPointDiffTeam?.point_diff} pts
+                {topPointDiffTeam ? `+${topPointDiffTeam.point_diff} pts` : '—'}
               </span>
             </div>
             <div className="text-xs text-slate-400 font-mono">
-              {topPointDiffTeam?.points_for} PF / {topPointDiffTeam?.points_against} PA
+              {topPointDiffTeam ? `${topPointDiffTeam.points_for} PF / ${topPointDiffTeam.points_against} PA` : '—'}
             </div>
           </div>
         </div>
@@ -217,13 +221,13 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
           <div className="min-w-0">
             <div className="text-[11px] text-slate-400 uppercase font-semibold font-mono">Playoff Equity Leader</div>
             <div className="text-base font-bold text-white flex items-baseline gap-2 truncate">
-              <span className="truncate">{topPlayoffLock?.team_name}</span>
+              <span className="truncate">{topPlayoffLock?.team_name ?? '—'}</span>
               <span className="text-xs font-semibold text-purple-400 flex-shrink-0 font-mono">
-                {(topPlayoffLock?.playoff_prob * 100).toFixed(1)}%
+                {topPlayoffLock ? `${(topPlayoffLock.playoff_prob * 100).toFixed(1)}%` : '—'}
               </span>
             </div>
             <div className="text-xs text-slate-400 font-mono">
-              Bye: {(topPlayoffLock?.first_round_bye_prob * 100).toFixed(0)}%
+              {topPlayoffLock ? `Bye: ${(topPlayoffLock.first_round_bye_prob * 100).toFixed(0)}%` : '—'}
             </div>
           </div>
         </div>
@@ -306,6 +310,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
           <div className="flex items-center gap-1.5">
             <Filter className="w-3.5 h-3.5 text-slate-500" />
             <select
+              aria-label="Filter by division"
               value={selectedDivision}
               onChange={(e) => setSelectedDivision(e.target.value)}
               className="bg-slate-950 border border-slate-800 text-slate-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500/50"

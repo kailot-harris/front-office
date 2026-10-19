@@ -277,9 +277,9 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
                     <div className="flex items-center gap-3">
                       <TeamLogo team={selectedTeam.team} size="md" />
                       <div>
-                        <h3 className="text-base font-bold text-white">
+                        <h2 className="text-base font-bold text-white">
                           {selectedTeam.team} Cap Allocation
-                        </h3>
+                        </h2>
                         <p className="text-xs text-slate-400 font-mono">
                           Active Cash APY: ${selectedTeam.total_active_apy.toFixed(1)}M
                         </p>

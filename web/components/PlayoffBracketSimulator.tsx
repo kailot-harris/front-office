@@ -24,10 +24,10 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
   // Helper to simulate a matchup between team A and team B based on power ratings + home field
   const simulateGame = (teamA: PlayoffSeed, teamB: PlayoffSeed, isNeutral = false): SimulatedGameResult => {
     // Higher seed is teamA (home unless neutral)
-    const hca = isNeutral ? 0 : 1.8;
+    const hca = isNeutral ? 0 : 1.93;
     const diff = teamA.power_rating - teamB.power_rating + hca;
-    // Win prob using pnorm approximation (sigma = 13.8)
-    const z = diff / 13.8;
+    // Win prob using pnorm approximation (sigma = 14.6)
+    const z = diff / 14.6;
     const winProbA = 0.5 * (1 + Math.sign(z) * Math.sqrt(1 - Math.exp(-2 * z * z / Math.PI)));
 
     const rand = Math.random();
@@ -112,10 +112,10 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
       {/* Simulator Control Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
         <div>
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
+          <h2 className="text-base font-bold text-white flex items-center gap-2">
             <Swords className="w-5 h-5 text-emerald-400" />
             <span>Monte Carlo Playoff Bracket Simulator</span>
-          </h3>
+          </h2>
           <p className="text-xs text-slate-400 mt-0.5">
             14-Team Reseeding Format (Seeds 1–7) • Official NFL Bracket Logic with Wild Card, Divisional, Conf Champ & Super Bowl.
           </p>
@@ -152,7 +152,7 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
               <span className="text-[10px] font-mono uppercase text-amber-400 font-bold flex items-center gap-1">
                 <Trophy className="w-3.5 h-3.5" /> Simulated Super Bowl Champion
               </span>
-              <h4 className="text-lg font-black text-white">{champion.team_name}</h4>
+              <h3 className="text-lg font-black text-white">{champion.team_name}</h3>
               <p className="text-xs text-slate-300 font-mono">
                 Defeated {superBowlMatchup.afc.team === champion.team ? superBowlMatchup.nfc.team_name : superBowlMatchup.afc.team_name} in the Super Bowl!
               </p>

@@ -20,7 +20,7 @@ export default function RootLayout({
         className={`${GeistSans.className} font-sans bg-slate-950 text-slate-100 min-h-screen flex flex-col md:flex-row antialiased selection:bg-emerald-600 selection:text-white`}
       >
         <Sidebar />
-        <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
+        <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden lg:pl-64">
           <main className="flex-1 pb-10">{children}</main>
           <footer className="border-t border-slate-800 bg-slate-900/50 py-5 text-center text-xs text-slate-500 font-sans">
             <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">

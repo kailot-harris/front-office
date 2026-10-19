@@ -116,7 +116,7 @@ export default function VariantsClient({ data }: VariantsClientProps) {
         <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
           <div className="flex items-center gap-2">
             <Sliders className="w-4 h-4 text-emerald-400" />
-            <h3 className="text-sm font-semibold text-white">Production Ensemble Weight Allocation</h3>
+            <h2 className="text-sm font-semibold text-white">Production Ensemble Weight Allocation</h2>
           </div>
           <span className="text-xs font-mono text-slate-400">Normalized ∑ = 100%</span>
         </div>
@@ -166,7 +166,7 @@ export default function VariantsClient({ data }: VariantsClientProps) {
                   ) : (
                     <Layers className="w-5 h-5 text-indigo-400" />
                   )}
-                  <h3 className="text-base font-bold text-white">{v.name}</h3>
+                  <h2 className="text-base font-bold text-white">{v.name}</h2>
                 </div>
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-white">
                   {(v.weight * 100).toFixed(0)}% Weight
@@ -214,9 +214,9 @@ export default function VariantsClient({ data }: VariantsClientProps) {
           <div className="flex items-center gap-2">
             <Layers className="w-5 h-5 text-amber-400" />
             <div>
-              <h3 className="text-base font-bold text-white">
+              <h2 className="text-base font-bold text-white">
                 Candidate Models Evaluation & Ablation Analysis (Models #4 & #5)
-              </h3>
+              </h2>
               <p className="text-xs text-slate-400">
                 Evaluation of potential 4th and 5th ensemble components tested against 2026 walk-forward out-of-sample data.
               </p>
@@ -238,7 +238,7 @@ export default function VariantsClient({ data }: VariantsClientProps) {
                   <span className="text-[10px] font-mono text-amber-400 block uppercase font-bold">
                     {cand.number}
                   </span>
-                  <h4 className="text-sm font-bold text-white">{cand.name}</h4>
+                  <h3 className="text-sm font-bold text-white">{cand.name}</h3>
                 </div>
                 <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-400">
                   Weight: {cand.evaluatedWeight}

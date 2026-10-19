@@ -76,7 +76,7 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
             {Number(latestBrier).toFixed(4)}
           </div>
           <p className="text-[11px] text-emerald-400 font-mono mt-1">
-            +{Number(latestImprovement).toFixed(2)}% vs uninformative (0.250)
+            +{Number(latestImprovement).toFixed(2)}% vs uninformative ({data.brier_baseline.toFixed(3)})
           </p>
         </div>
 
@@ -118,7 +118,7 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
         {/* Calibration Decile Table */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-xl flex flex-col justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-white mb-2">Decile Probability Breakdown</h3>
+            <h2 className="text-sm font-semibold text-white mb-2">Decile Probability Breakdown</h2>
             <p className="text-xs text-slate-400 mb-3">
               Sample count and realized win rate per 10% probability bucket.
             </p>
@@ -174,9 +174,9 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
       <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-xl">
         <div className="pb-3 border-b border-slate-800 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h3 className="text-base font-semibold text-white">
+            <h2 className="text-base font-semibold text-white">
               Weekly Accuracy & Loss Trajectory
-            </h3>
+            </h2>
             <p className="text-xs text-slate-400">
               Progression of model diagnostics across real-time evaluation checkpoints in the 2026 season.
             </p>
@@ -237,7 +237,7 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
                       {historyBrier[idx]?.toFixed(4)}
                     </td>
                     <td className="px-3 py-2 text-right text-emerald-400">
-                      +{((0.25 - (historyBrier[idx] ?? 0.25)) / 0.25 * 100).toFixed(2)}%
+                      +{(((data.brier_baseline - (historyBrier[idx] ?? data.brier_baseline)) / data.brier_baseline) * 100).toFixed(2)}%
                     </td>
                     <td className="px-3 py-2 text-right text-indigo-400">
                       {historyLogLoss[idx]?.toFixed(4)}

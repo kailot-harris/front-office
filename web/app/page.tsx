@@ -38,7 +38,7 @@ export default function HomePage() {
           </div>
           <div className="bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-right">
             <span className="text-slate-500 block text-[10px] uppercase font-mono">Margin Sigma (σ)</span>
-            <span className="text-white font-mono font-bold text-sm">13.8 pts</span>
+            <span className="text-white font-mono font-bold text-sm">14.6 pts</span>
           </div>
         </div>
       </div>

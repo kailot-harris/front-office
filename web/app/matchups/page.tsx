@@ -22,7 +22,7 @@ export default function MatchupsPage() {
               <Swords className="w-3.5 h-3.5" />
               <span>Weekly Projection Engine</span>
             </span>
-            <span className="text-xs text-slate-400 font-mono">Weeks 6 – 18 (192 Games)</span>
+            <span className="text-xs text-slate-400 font-mono">Weeks 1 – 18 (272 Games)</span>
           </div>
           <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-3">
             <span>Weekly Matchup Projections</span>
