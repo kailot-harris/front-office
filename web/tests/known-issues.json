@@ -1,0 +1,217 @@
+{
+  "$comment": [
+    "Baseline of tests that are CURRENTLY FAILING because they have found a real",
+    "defect that has not been fixed yet. `npm run test:all` compares each run",
+    "against this file:",
+    "",
+    "  - a failure listed here        -> reported as KNOWN, does not fail the run",
+    "  - a failure NOT listed here    -> reported as NEW REGRESSION, fails the run",
+    "  - a listed test that now PASSES -> reported as FIXED; delete its entry",
+    "",
+    "This keeps the suite usable as a merge gate while the documented defects are",
+    "still open, without ever hiding them. Every entry must name the defect and",
+    "where the fix belongs — an entry with no `fix` is not allowed to be added.",
+    "",
+    "Match is on the test's full name (suite path + test title), substring-matched.",
+    "See docs/TESTING.md for the full triage writeup."
+  ],
+  "issues": [
+    {
+      "id": "DATA-1",
+      "severity": "high",
+      "title": "division_title_prob / first_round_bye_prob / conf_champ_prob / super_bowl_prob are scaled from playoff_prob by magic multipliers instead of being simulated, so mutually exclusive outcomes do not sum to 1",
+      "fix": "tools/export_web_datasets.R lines ~147 and ~176: replace `playoff_prob * 0.62`, the 0.65/0.08 bye split and the 0.02/0.05 fallbacks with values read from the playoff simulator, then renormalise per division/conference.",
+      "tests": [
+        "exactly one team wins each division",
+        "exactly one team per conference gets the first-round bye",
+        "exactly one team per conference wins the conference",
+        "exactly one team wins the Super Bowl"
+      ]
+    },
+    {
+      "id": "DATA-2",
+      "severity": "high",
+      "title": "36 of 91 graded games present a projected margin that contradicts their own correct/incorrect badge; the badges imply 61.5% accuracy while the displayed margins imply 50.5%",
+      "fix": "tools/export_web_datasets.R ~line 265: `h_win_prob` is chosen by comparing `pred_winner == h_name` against the accuracy-history record, then `projected_margin` is reconstructed from it via qnorm. Make the export carry the originally predicted margin instead of reconstructing it, or fix the name comparison.",
+      "tests": [
+        "prediction_correct agrees with the projected margin and the result",
+        "no completed card pairs a correct projection with an Upset badge"
+      ]
+    },
+    {
+      "id": "DATA-3",
+      "severity": "high",
+      "title": "The /diagnostics calibration curve is a hardcoded literal, not computed from graded predictions: its bin counts total all 272 scheduled games while only 92 have been played",
+      "fix": "tools/export_web_datasets.R lines 614-625: compute calibration_curve by binning the model's actual graded predictions instead of writing a literal list.",
+      "tests": [
+        "calibration bin counts sum to the number of games actually graded"
+      ]
+    },
+    {
+      "id": "UI-1",
+      "severity": "high",
+      "title": "The fixed w-64 sidebar overlays the left edge of page content on every desktop viewport below 1792px, making 7 controls across 5 pages unclickable at 1440x900",
+      "fix": "app/layout.tsx: offset the content column by the sidebar width (e.g. `lg:pl-64` on the flex-1 wrapper), or let the sidebar participate in the flex flow instead of being `fixed`.",
+      "tests": [
+        "content clears the sidebar at",
+        "has no control hidden under the sidebar at 1440px"
+      ]
+    },
+    {
+      "id": "UI-2",
+      "severity": "medium",
+      "title": "PlayersClient never resets currentPage when the search or team filter changes, so filtering from page 2+ renders an empty table while the footer still reports matches",
+      "fix": "components/PlayersClient.tsx: add `useEffect(() => setCurrentPage(1), [searchQuery, selectedTeam])`, or clamp currentPage to totalPages.",
+      "tests": [
+        "filtering while on a later page does not strand the user on an empty page",
+        "searching from a later page still shows the match"
+      ]
+    },
+    {
+      "id": "DRIFT-1",
+      "severity": "high",
+      "title": "Margin sigma is hardcoded in three separate components with two different values: Sidebar.tsx says 14.6 (correct) while app/page.tsx says 13.8 and PlayoffBracketSimulator.tsx simulates with 13.8. The sidebar and the home-page banner contradict each other on screen.",
+      "fix": "Read margin_sigma and home_field_adv from model_diagnostics.json in all three places. app/page.tsx: pass the diagnostics dataset into the sigma chip. components/Sidebar.tsx: it hardcodes 14.6 four times (lines ~207, 217, 220, 221) and takes no props, so it needs the value threading through or a shared constants module. components/PlayoffBracketSimulator.tsx: accept sigma/HFA as props instead of inlining 13.8 and 1.8. This is the exact failure mode CLAUDE.md records as WNBA Finding C-1.",
+      "tests": [
+        "the home page sigma chip matches model_diagnostics.margin_sigma",
+        "PlayoffBracketSimulator simulates with the real sigma, not a literal",
+        "PlayoffBracketSimulator uses the real home-field advantage",
+        "all hardcoded margin sigma literals agree with each other"
+      ]
+    },
+    {
+      "id": "DRIFT-2",
+      "severity": "low",
+      "title": "The matchups page chip reads \"Weeks 6 - 18 (192 Games)\" while the week selector offers weeks 1-18 and the dataset holds 272 games; it also advertises a 4-point key number the export never emits",
+      "fix": "app/matchups/page.tsx: derive the chip from dataset.available_weeks / dataset.matchups.length, and drop 4 from the key-number list (or emit it upstream).",
+      "tests": [
+        "the matchups page week range covers every selectable week",
+        "the matchups page key-number chip lists only numbers the data emits",
+        "every key number advertised on the matchups page is reachable"
+      ]
+    },
+    {
+      "id": "DRIFT-3",
+      "severity": "low",
+      "title": "DiagnosticsClient recomputes Brier improvement against a hardcoded 0.25 instead of data.brier_baseline",
+      "fix": "components/DiagnosticsClient.tsx ~line 240: use `data.brier_baseline` in the per-row improvement calculation and in the \"(0.250)\" caption.",
+      "tests": [
+        "DiagnosticsClient does not re-type the Brier baseline"
+      ]
+    },
+    {
+      "id": "ID-1",
+      "severity": "medium",
+      "title": "salary_cap_profiles.json keys the Rams as LAR while lib/teams.ts and every other dataset use LA, so the Rams render with fallback alt text and the generic emerald palette on /salary-cap",
+      "fix": "tools/export_web_datasets.R: map the OverTheCap \"Rams\" row to LA, matching nflverse. Alternatively add a LAR alias to lib/teams.ts.",
+      "tests": [
+        "salary_cap_profiles.teams[].team",
+        "salary_cap_profiles.top_league_contracts[].team",
+        "standings, EPA, coaching and salary-cap all cover the same 32 franchises",
+        "renders a degraded logo label for the Rams because the data says LAR"
+      ]
+    },
+    {
+      "id": "ID-2",
+      "severity": "low",
+      "title": "value_bets.json identifies teams by full name while every other dataset uses abbreviations; the dataset is also dead code (getValueBets is exported but no page imports it)",
+      "fix": "Either wire value_bets.json into a page and normalise `team` to an abbreviation in tools/export_web_datasets.R, or remove getValueBets from lib/data.ts and stop shipping the file.",
+      "tests": [
+        "value_bets.team uses the same ID space as every other dataset"
+      ]
+    },
+    {
+      "id": "TYPE-1",
+      "severity": "medium",
+      "title": "lib/types.ts tells two lies the compiler cannot catch: timeout_management_grade omits the 'A-'/'B-' values the data contains, and the matchup score fields are declared `?: number` while the export ships null",
+      "fix": "lib/types.ts: widen CoachProfile.timeout_management_grade to include minus grades, and change home_score/away_score/actual_winner/prediction_correct to `?: T | null`.",
+      "tests": [
+        "CoachProfile.timeout_management_grade",
+        "ungraded games use null, which lib/types.ts does not admit"
+      ]
+    },
+    {
+      "id": "DATA-4",
+      "severity": "medium",
+      "title": "playoff_picture.json seeds CLE as the AFC 4-seed while standings_projections.json gives CLE a 23.4% playoff probability and bubble team BAL 68.3%; the two pages contradict each other",
+      "fix": "The provisional seeding (nfl_tiebreakers.R) and the playoff odds (playoff_odds_engine.R) are computed independently. Reconcile them in tools/export_web_datasets.R, or label the seeding as a point-in-time snapshot distinct from the simulated odds.",
+      "tests": [
+        "every seeded team has a non-trivial playoff_prob in the standings",
+        "bubble teams rank below the field on playoff_prob"
+      ]
+    },
+    {
+      "id": "DATA-5",
+      "severity": "medium",
+      "title": "Two top-100 contracts carry more guaranteed money than total contract value (Matt Stafford 90 > 55, Vita Vea 46 > 30)",
+      "fix": "tools/export_web_datasets.R salary-cap section: the OverTheCap value and guarantee columns are being read from different contract rows or different contract years. Reconcile them.",
+      "tests": [
+        "contract value is at least the guaranteed money"
+      ]
+    },
+    {
+      "id": "DATA-6",
+      "severity": "low",
+      "title": "The one tied game of the season (2026_05_NYG_WAS, 27-27) is credited to the away team, because the winner is picked with `if (h_score > a_score) h_name else a_name` and has no tie branch",
+      "fix": "tools/export_web_datasets.R ~line 272: add an explicit tie case for actual_winner and exclude ties from the accuracy grading.",
+      "tests": [
+        "a tied game is not credited to either team"
+      ]
+    },
+    {
+      "id": "DATA-7",
+      "severity": "low",
+      "title": "fourth_down_aggression_index is documented and labelled as a percentile but spans only 52-98 across the league, so the /coaching table's \"52nd %ile\" reads as a league-average coach when it is the least aggressive one",
+      "fix": "Either rank the index to a true 0-100 percentile in the export, or relabel the column in components/CoachingClient.tsx and the comment in lib/types.ts as an index rather than a percentile.",
+      "tests": [
+        "fourth_down_aggression_index behaves like a percentile across the league"
+      ]
+    },
+    {
+      "id": "DATA-8",
+      "severity": "low",
+      "title": "The recommended value-bet slate has a negative mean expected CLV (-0.32)",
+      "fix": "Investigate in market_odds_engine.R / risk_management_engine.R. Low priority while value_bets.json stays unrendered (see ID-2).",
+      "tests": [
+        "EV and expected CLV are broadly aligned across the slate"
+      ]
+    },
+    {
+      "id": "A11Y-1",
+      "severity": "medium",
+      "title": "The division/team <select> dropdowns on /, /coaching and /players have no accessible name (no label, aria-label or title), and 8 of 10 pages jump from h1 straight to h3",
+      "fix": "Add `aria-label` to each <select> in StandingsClient / CoachingClient / PlayersClient. Promote the section labels that currently render as styled <span>/<h3> so heading levels increase by one.",
+      "tests": [
+        "every form control has an accessible name",
+        "does not skip a heading level"
+      ]
+    },
+    {
+      "id": "UI-3",
+      "severity": "low",
+      "title": "StandingsClient highlight cards render the string \"NaN%\" for an empty team list, because `(top?.super_bowl_prob * 100)` guards the property access but not the arithmetic",
+      "fix": "components/StandingsClient.tsx: guard the whole expression, e.g. `top ? (top.super_bowl_prob * 100).toFixed(1) + '%' : '—'`. Not reachable with the current 32-team export.",
+      "tests": [
+        "renders an empty dataset without printing NaN in the highlight cards"
+      ]
+    },
+    {
+      "id": "UI-4",
+      "severity": "medium",
+      "title": "Once the mobile nav drawer is open it paints over its own close button, and the drawer has no close control of its own, so the backdrop is the only way out",
+      "fix": "components/Sidebar.tsx: the toggle is `fixed top-4 left-4 z-50` and the drawer is `fixed top-0 left-0 w-72 z-50`. Equal z-index plus later DOM order means the drawer wins. Raise the toggle above the drawer (e.g. z-[60]) or add an explicit close button inside the drawer panel.",
+      "tests": [
+        "the toggle is still tappable once the drawer is open"
+      ]
+    },
+    {
+      "id": "UI-5",
+      "severity": "low",
+      "title": "On a 412px phone viewport /players clips three absolutely-positioned elements 4-13px off the right edge, with no scroll container to reach them",
+      "fix": "components/QbEfficiencyScatter.tsx / PlayersClient.tsx: the offenders are `div.absolute` (right edge 425px) and `span.ml-1` (416px) against a 412px viewport — centred absolute labels using `left-1/2 -translate-x-1/2` that overflow near the chart edge. Clamp them inside their container or let the container scroll.",
+      "tests": [
+        "no element is clipped outside the viewport without a scroll container"
+      ]
+    }
+  ]
+}
