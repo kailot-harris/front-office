@@ -3,15 +3,23 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Trophy, BarChart3, Users, Activity, Sparkles } from 'lucide-react';
+import { Trophy, BarChart3, Users, Activity, Sparkles, Crosshair, Shuffle, Briefcase, Swords, Coins, Dna, Shield, Flame } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
 
   const navItems = [
     { href: '/', label: 'Season Standings', icon: Trophy },
+    { href: '/offseason', label: 'Offseason Moves', icon: Shuffle },
+    { href: '/cap-sheet', label: 'Cap & Aprons', icon: Coins },
     { href: '/variants', label: 'Model Variants', icon: BarChart3 },
     { href: '/players', label: 'Player Projections', icon: Users },
+    { href: '/player-dna', label: 'Player DNA', icon: Dna },
+    { href: '/defense', label: 'Defense', icon: Shield },
+    { href: '/clutch', label: 'Clutch', icon: Flame },
+    { href: '/shots', label: 'Shot Charts', icon: Crosshair },
+    { href: '/coaches', label: 'Coaches', icon: Briefcase },
+    { href: '/series', label: 'Playoffs', icon: Swords },
     { href: '/diagnostics', label: 'Diagnostics & Calibration', icon: Activity },
   ];
 

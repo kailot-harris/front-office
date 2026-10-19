@@ -1,0 +1,136 @@
+'use client';
+
+import React from 'react';
+import { TacticalRatings, TacticalEdge } from '@/lib/playoffTypes';
+import { Zap, Shield, Target, Flame, Layers } from 'lucide-react';
+
+interface TacticalMismatchRadarProps {
+  teamA: string;
+  teamB: string;
+  ratingsA: TacticalRatings;
+  ratingsB: TacticalRatings;
+  tacticalEdges: TacticalEdge[];
+}
+
+export const TacticalMismatchRadar: React.FC<TacticalMismatchRadarProps> = ({
+  teamA,
+  teamB,
+  ratingsA,
+  ratingsB,
+  tacticalEdges,
+}) => {
+  const dimensions = [
+    { key: 'perimeterCreation', label: 'Perimeter Creation', desc: 'Pull-up 3PT & primary initiator shot-making', icon: Target },
+    { key: 'dropVulnerability', label: 'Drop Vulnerability', desc: 'Susceptibility to PnR pull-ups (lower is better)', icon: Shield },
+    { key: 'interiorDominance', label: 'Interior Dominance', desc: 'Rim pressure, glass crashes & paint deterrence', icon: Flame },
+    { key: 'switchability', label: '1-to-5 Switchability', desc: 'Point-of-attack switch equity & screen neutralization', icon: Layers },
+    { key: 'clutchExecution', label: 'Clutch Half-Court PPP', desc: 'Late-clock execution in high-leverage possessions', icon: Zap },
+  ];
+
+  return (
+    <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-5 shadow-lg space-y-5">
+      <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div>
+          <h3 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+            <span>Tactical Profile Comparison</span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
+              0-100 Ratings
+            </span>
+          </h3>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Comparative head-to-head tactical metrics influencing playoff margin adjustments.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 text-xs font-mono">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+            <span className="text-white font-bold">{teamA}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
+            <span className="text-white font-bold">{teamB}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Comparative Bars */}
+      <div className="space-y-4">
+        {dimensions.map((dim) => {
+          const valA = ratingsA[dim.key as keyof TacticalRatings] || 50;
+          const valB = ratingsB[dim.key as keyof TacticalRatings] || 50;
+          const Icon = dim.icon;
+
+          return (
+            <div key={dim.key} className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-1.5">
+                  <Icon className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="font-semibold text-slate-200">{dim.label}</span>
+                </div>
+                <div className="flex items-center gap-3 font-mono font-bold text-xs">
+                  <span className="text-amber-400">{valA}</span>
+                  <span className="text-slate-600">vs</span>
+                  <span className="text-sky-400">{valB}</span>
+                </div>
+              </div>
+
+              {/* Dual Progress Bar */}
+              <div className="grid grid-cols-2 gap-1.5 h-2 bg-slate-950/80 rounded-full p-0.5 border border-slate-800/80">
+                {/* Team A bar (Right aligned) */}
+                <div className="h-full flex justify-end">
+                  <div
+                    className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, valA)}%` }}
+                  />
+                </div>
+                {/* Team B bar (Left aligned) */}
+                <div className="h-full flex justify-start">
+                  <div
+                    className="h-full bg-sky-500 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, valB)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Detected Tactical Mismatch Edges */}
+      {tacticalEdges && tacticalEdges.length > 0 && (
+        <div className="pt-3 border-t border-slate-800 space-y-2">
+          <span className="text-xs font-bold text-slate-300 block">
+            Systemic Matchup Edges Detected:
+          </span>
+          <div className="space-y-2">
+            {tacticalEdges.map((edge, idx) => (
+              <div
+                key={idx}
+                className="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800/90 flex items-start gap-2.5"
+              >
+                <span
+                  className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded mt-0.5 flex-shrink-0 ${
+                    edge.advantageTeam === teamA
+                      ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                      : 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
+                  }`}
+                >
+                  +{edge.deltaMargin} PTS • {edge.advantageTeam}
+                </span>
+                <div className="min-w-0">
+                  <span className="text-xs font-bold text-white block tracking-tight">
+                    {edge.title}
+                  </span>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {edge.description}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

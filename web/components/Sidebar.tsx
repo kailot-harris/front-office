@@ -14,6 +14,13 @@ import {
   Layers,
   HelpCircle,
   Calculator,
+  Shuffle,
+  Crosshair,
+  Briefcase,
+  Swords,
+  Coins,
+  Dna,
+  Flame,
 } from 'lucide-react';
 import { HalloweenBasketball } from '@/components/HalloweenBasketball';
 
@@ -31,6 +38,20 @@ export const Sidebar: React.FC = () => {
       desc: 'Win distributions & franchise table',
     },
     {
+      href: '/offseason',
+      label: 'Offseason Moves',
+      badge: 'Trades • FA • Draft',
+      icon: Shuffle,
+      desc: 'Impact analysis & trade machine',
+    },
+    {
+      href: '/cap-sheet',
+      label: 'Cap & Aprons',
+      badge: 'CBA 2026',
+      icon: Coins,
+      desc: 'Apron handcuffs & tax brackets',
+    },
+    {
       href: '/variants',
       label: 'Model Variants',
       badge: '4 Engines',
@@ -43,6 +64,48 @@ export const Sidebar: React.FC = () => {
       badge: '330 Pool',
       icon: Users,
       desc: 'Outliers & rate distributions',
+    },
+    {
+      href: '/player-dna',
+      label: 'Player DNA & Twins',
+      badge: '16-D Manifold',
+      icon: Dna,
+      desc: 'Archetypes & historical comps',
+    },
+    {
+      href: '/defense',
+      label: 'Defensive Versatility',
+      badge: 'Switch Matrix',
+      icon: ShieldCheck,
+      desc: 'Positional entropy & rim deterrence',
+    },
+    {
+      href: '/clutch',
+      label: 'True Clutch Index',
+      badge: 'Leverage LI',
+      icon: Flame,
+      desc: 'USCI, TS% resilience & c-dWPA',
+    },
+    {
+      href: '/shots',
+      label: 'Shot Charts',
+      badge: 'Hot Zones',
+      icon: Crosshair,
+      desc: 'Empirical Bayes & binomial z',
+    },
+    {
+      href: '/coaches',
+      label: 'Coaching Staffs',
+      badge: '30 Staffs',
+      icon: Briefcase,
+      desc: 'Tactics, ATO & CVA lift',
+    },
+    {
+      href: '/series',
+      label: 'Playoff Simulator',
+      badge: '10k Sims',
+      icon: Swords,
+      desc: '7-game Monte Carlo series',
     },
     {
       href: '/diagnostics',

@@ -86,6 +86,15 @@ run_stage("fatigue_travel_engine.R", "Compute Haversine Flight Miles, Circadian 
 # 3. Microstructure & Player Valuation Engines (Phase 4)
 run_stage("rapm_engine.R", "Estimate Bayesian Stint-Level RAPM (L2 Ridge Regression)")
 run_stage("roster_bottom_up_engine.R", "Generate 30-Team Bottom-Up Standings & Fair Spreads")
+run_stage("build_coaching_dataset.R", "Compile Coaching Staff Registry, Tactical ATOs & CVA Impact",
+          output = file.path(CACHE_DIR, "coaching_metrics.rds"))
+run_stage("build_cba_cap_dataset.R", "Calculate 30-Team CBA Cap Sheets, Aprons & Luxury Tax Penalties")
+run_stage("build_player_dna_dataset.R", "Embed 16-D Player DNA Vectors & Nearest Historical Twins",
+          output = file.path(CACHE_DIR, "player_dna_profiles.rds"))
+run_stage("build_defense_dataset.R", "Compute Positional Versatility Entropy & Rim Deterrence Residuals",
+          output = file.path(CACHE_DIR, "defensive_metrics.rds"))
+run_stage("build_clutch_dataset.R", "Analyze Leverage Index Filtering & Unassisted Shot Creation (USCI)",
+          output = file.path(CACHE_DIR, "clutch_leverage_metrics.rds"))
 
 # 4. Risk Management & Capital Allocation
 run_stage("risk_management_engine.R", "Audit Drawdown State & Set Dynamic Kelly Multiplier",

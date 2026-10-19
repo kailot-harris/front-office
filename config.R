@@ -40,6 +40,13 @@ CACHE_PLAYER_PROPS <- file.path(CACHE_DIR, "latest_player_props.rds")
 CACHE_BETTING_LEDGER <- file.path(CACHE_DIR, "betting_ledger.rds")
 CACHE_RISK_STATE     <- file.path(CACHE_DIR, "risk_state.rds")
 CACHE_PREDICTION_LOG <- file.path(CACHE_DIR, "prediction_accuracy_log.rds")
+CACHE_COACHING_REGISTRY <- file.path(CACHE_DIR, "coaching_staff_registry.rds")
+CACHE_COACHING_METRICS  <- file.path(CACHE_DIR, "coaching_metrics.rds")
+CACHE_COACHING_JSON     <- file.path(PROJECT_DIR, "web", "public", "data", "coaching_metrics.json")
+CACHE_PLAYOFF_SERIES    <- file.path(CACHE_DIR, "playoff_series_cache.rds")
+CACHE_PLAYOFF_MATCHUPS  <- file.path(PROJECT_DIR, "web", "public", "data", "playoff_series_matchups.json")
+CACHE_CBA_CAP_SHEET     <- file.path(CACHE_DIR, "cba_cap_sheet_cache.rds")
+CACHE_CBA_JSON          <- file.path(PROJECT_DIR, "web", "public", "data", "cba_cap_sheet.json")
 
 # API Throttling & Rate-Limiting
 RATE_LIMIT_SLEEP_SEC <- 1.5
