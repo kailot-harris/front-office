@@ -468,6 +468,26 @@ PIPELINE_STAGES <- list(
     inputs      = c(file.path(CACHE_DIR, "betting_ledger.rds"),
                      file.path(CACHE_DIR, "latest_value_bets.rds"), CACHE_TEAM_BOX),
     group       = NULL
+  ),
+
+  # ---------------------------------------------------------------------------------------
+  # 9. Next.js Static Web JSON Export (Phase 1)
+  # ---------------------------------------------------------------------------------------
+  export_web_json = list(
+    id          = "export_web_json",
+    script      = "export_web_json.R",
+    description = "Export Static JSON Datasets for Next.js Web App",
+    call_fn     = NULL,
+    entry_fn    = "export_web_json",
+    output      = file.path("web", "public", "data", "projections_season_teams.json"),
+    inputs      = c(file.path(CACHE_DIR, "projected_wnba_standings.rds"),
+                    file.path(CACHE_DIR, "rapm_ratings.rds"),
+                    file.path(CACHE_DIR, "team_shot_quality.rds"),
+                    file.path("data", "team_embeddings.csv"),
+                    file.path(CACHE_DIR, "active_rosters_cache.rds"),
+                    file.path(CACHE_DIR, "player_box_scores_cache.rds"),
+                    file.path(CACHE_DIR, "model_calibration_input.rds")),
+    group       = NULL
   )
 )
 

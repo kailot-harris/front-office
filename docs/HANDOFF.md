@@ -1,4 +1,50 @@
-# Handoff — 2026-10-18 (Next.js web app, Phase 0: plan + scaffold) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
+# Handoff — 2026-10-18 (Next.js web app, Phase 1: offline JSON export pipeline + core routes) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
+
+## What this thread did
+
+Executed Phase 1 of `docs/NEXTJS_WEB_APP_PLAN.md`:
+1. **Added JSON Export Stage to R Pipeline:**
+   - Implemented `export_web_json.R` containing `export_web_json(output_dir, sync_cache)`.
+   - Registered `export_web_json` in `pipeline_stages.R` with inputs (`projected_wnba_standings.rds`, `rapm_ratings.rds`, `team_shot_quality.rds`, `team_embeddings.csv`, `active_rosters_cache.rds`, `player_box_scores_cache.rds`, `model_calibration_input.rds`) and declared target `web/public/data/projections_season_teams.json`.
+   - Wired `run_registered_stage("export_web_json")` as Stage 9 in `run_full_pipeline.R` (after `bet_tracker`).
+   - Ran `run_full_pipeline.R`: verified all 9 stages passed cleanly in 39.02 seconds, writing 4 static JSON datasets to `web/public/data/` (and mirroring to `cache/`) in 0.59 seconds.
+2. **Static Assets & TypeScript Metadata Layer:**
+   - Synced all 15 WNBA team logos from `www/logos/` into `web/public/logos/`.
+   - Created `web/lib/types.ts` defining `TeamProjection`, `PlayerProjection`, `ModelMetadata`, `ModelDiagnostics`, and helper interfaces.
+   - Created `web/lib/teams.ts` providing 15-team WNBA metadata, full names, ESPN codes, conference assignments (Eastern 7, Western 8), primary brand colors, and `getTeamLogoUrl()`.
+   - Created `web/lib/data.ts` implementing server-side static JSON reader with safe empty-state fallbacks.
+3. **Ported Core Next.js Routes & Components:**
+   - `/` (`web/app/page.tsx` + `web/components/StandingsClient.tsx` + `web/components/PlayoffContendersBoxWhisker.tsx`): 15-team standings, conference toggles, and box-whisker distribution visualizer calibrated for the 44-game WNBA schedule (.500 mark at 22 wins).
+   - `/variants` (`web/app/variants/page.tsx` + `web/components/VariantsClient.tsx` + `web/components/BrierScoreComparison.tsx`): 4-variant methodology breakdown, Brier score / log-loss calibration metrics, and team-by-team model disagreement matrix.
+   - `/players` (`web/app/players/page.tsx` + `web/components/PlayersClient.tsx`): 221 active rotation players, position/team filtering, per-game vs. total stats toggle, and outlier z-score detection badges.
+   - `/diagnostics` (`web/app/diagnostics/page.tsx` + `web/components/DiagnosticsClient.tsx`): Empirical calibration reliability curves (SVG), calibration bin tables, historical accuracy drift (2019-2026), and simulation forecast residuals.
+   - `/teams` (`web/app/teams/page.tsx`): Permanent redirect shim to `/?tab=table`.
+   - `web/components/TeamLogo.tsx`: Dual-mode local logo loader with text-badge fallback.
+4. **Verification:**
+   - Ran `npm run build` in `web/` - verified clean production build (0 warnings/errors, 9/9 static routes generated).
+   - Updated `docs/NEXTJS_WEB_APP_PLAN.md` to record Phase 0 and Phase 1 completion.
+
+## What's actually implemented (new/changed this session)
+
+| File | State |
+|---|---|
+| `export_web_json.R` | New, 237 lines. Exports `projections_season_teams.json`, `projections_season_players.json`, `projections_models_metadata.json`, and `projections_diagnostics.json`. |
+| `pipeline_stages.R` | Modified. Registered stage `export_web_json` with input/output metadata. |
+| `run_full_pipeline.R` | Modified. Registered Stage 9 execution right after `bet_tracker`. |
+| `web/lib/{types,teams,data}.ts` | New. Type contracts, WNBA team directory & colors, static JSON file reader. |
+| `web/components/{StandingsClient,PlayoffContendersBoxWhisker,VariantsClient,BrierScoreComparison,PlayersClient,DiagnosticsClient,TeamLogo}.tsx` | New interactive UI components. |
+| `web/app/{page,variants/page,players/page,diagnostics/page,teams/page}.tsx` | New/updated App Router pages. |
+| `web/public/logos/` & `web/public/data/` | New static assets (15 team logos + 4 JSON projection files). |
+| `docs/NEXTJS_WEB_APP_PLAN.md` | Updated status reflecting Phase 0 & 1 complete, Phase 2 up next. |
+
+## Concrete next step
+
+Proceed with **Phase 2** of `docs/NEXTJS_WEB_APP_PLAN.md`:
+Port the Playoff Series Monte Carlo simulation route (`/series`) using WNBA's existing `cache/playoff_bracket_results_*.rds` and `playoff_simulator.R`. Wire series projection data into `export_web_json.R` (`projections_series.json`), build `SeriesClient.tsx`, and verify `npm run build`.
+
+---
+
+# Handoff — 2026-10-18 (Next.js web app, Phase 0: plan + scaffold) — superseded by Phase 1 above
 
 ## What this thread did
 

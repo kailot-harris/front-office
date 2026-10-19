@@ -49,4 +49,6 @@ Suggested priority order:
 - Confirm shot-location data availability before scheduling the shots engine.
 
 ## Status
-Not started. This document records the agreed plan only.
+- **Phase 0:** Completed (Next.js scaffold, App Router, shell layout, WNBA 15-team theming, dark slate UI).
+- **Phase 1:** Completed (registered `export_web_json` pipeline stage in `pipeline_stages.R` and `run_full_pipeline.R`, generated static JSON data in `web/public/data/` and `cache/`, ported `/`, `/variants`, `/players`, `/diagnostics`, `/teams`, verified `npm run build` and full pipeline).
+- **Phase 2:** Up next (Playoff series page `/series`).

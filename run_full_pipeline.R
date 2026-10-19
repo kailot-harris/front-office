@@ -416,6 +416,10 @@ run_registered_stage("notify_bets")
 # declared for the freshness assertion, so a quiet night does not produce a false staleness WARN.
 run_registered_stage("bet_tracker")
 
+# 9. Next.js Static Web JSON Export (Phase 1)
+# Output: web/public/data/projections_season_teams.json (+ players, metadata, diagnostics)
+run_registered_stage("export_web_json")
+
 # Reset parallel plan to sequential. This also shuts the multisession workers down, so by the
 # time the spill merge below runs, no other process holds logs.duckdb.
 plan(sequential)
