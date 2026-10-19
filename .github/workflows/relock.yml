@@ -21,6 +21,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: Use npm 11 (npm 10 arborist crashes on this peer graph)
+        run: npm i -g npm@latest && npm --version
+
       - name: Regenerate lockfile from scratch
         working-directory: ${{ inputs.sport }}/web
         run: |
