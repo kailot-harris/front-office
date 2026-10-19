@@ -156,7 +156,7 @@ export const OffseasonClient: React.FC<Props> = ({
             </div>
             <div className="text-center px-3">
               <div className="text-xl font-bold text-amber-400">#1</div>
-              <div className="text-[11px] text-slate-400 uppercase font-semibold">Paige to GS</div>
+              <div className="text-[11px] text-slate-400 uppercase font-semibold">Paige to DAL</div>
             </div>
           </div>
         </div>

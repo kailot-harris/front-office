@@ -454,11 +454,11 @@ team_profiles <- list(
     conference = "West",
     division = "Western",
     baseline_wins = 16.0,
-    projected_wins_with_moves = 19.8,
-    net_wins_change = 3.8,
-    net_bpm_added = 5.2,
+    projected_wins_with_moves = 18.8,
+    net_wins_change = 2.8,
+    net_bpm_added = 3.6,
     roster_continuity_pct = 0.0,
-    grade = "A-",
+    grade = "B+",
     strategic_posture = "Inaugural Expansion Build",
     additions = list(
       list(name = "Kayla McBride", type = "draft", bpm = 3.6, pos = "G"),
@@ -467,9 +467,9 @@ team_profiles <- list(
     ),
     departures = list(),
     draft_picks = list(
-      list(name = "Paige Bueckers", pick = 1, school = "UConn", archetype = "Generational Three-Level Playmaker")
+      list(name = "Aneesah Morrow", pick = 5, school = "LSU", archetype = "Relentless Glass Crasher & Chaos Agent")
     ),
-    offseason_verdict = "Masterclass expansion launch: Landing Paige Bueckers at #1 and surrounding her with Kayla McBride provides instant legitimacy in Chase Center."
+    offseason_verdict = "Masterclass expansion launch: Securing proven veteran creators Kayla McBride and Julie Vanloo alongside #5 overall pick Aneesah Morrow anchors Chase Center with an immediate competitive baseline."
   ),
   list(
     team = "CHI",
@@ -498,12 +498,12 @@ team_profiles <- list(
     conference = "West",
     division = "Western",
     baseline_wins = 18.0,
-    projected_wins_with_moves = 17.4,
-    net_wins_change = -0.6,
-    net_bpm_added = -2.8,
+    projected_wins_with_moves = 21.2,
+    net_wins_change = 3.2,
+    net_bpm_added = 4.6,
     roster_continuity_pct = 72.0,
-    grade = "C+",
-    strategic_posture = "Asset Pivot",
+    grade = "A",
+    strategic_posture = "Generational Core Era",
     additions = list(
       list(name = "Kayla Thornton", type = "trade", bpm = 0.8, pos = "F")
     ),
@@ -512,9 +512,9 @@ team_profiles <- list(
       list(name = "Monique Billings", type = "draft", bpm = 1.4, pos = "F")
     ),
     draft_picks = list(
-      list(name = "Lauren Betts", pick = 2, school = "UCLA", archetype = "Dominant Rim Protector")
+      list(name = "Paige Bueckers", pick = 1, school = "UConn", archetype = "Generational Three-Level Playmaker")
     ),
-    offseason_verdict = "Parting with Sabally hurts in the immediate term, but Arike Ogunbowale's scoring and lottery assets provide future retooling fuel."
+    offseason_verdict = "Franchise-altering lottery coup: Securing Paige Bueckers at #1 overall unites a generational three-level engine with Arike Ogunbowale, instantly supercharging the offense."
   ),
   list(
     team = "LA",
@@ -616,7 +616,7 @@ draft_prospects <- list(
   list(
     pick = 1,
     player_name = "Paige Bueckers",
-    team = "GS",
+    team = "DAL",
     position = "G",
     school_or_club = "UConn",
     height = "6'0\"",
@@ -624,7 +624,7 @@ draft_prospects <- list(
     projected_bpm_prior = 4.8,
     projected_mpg = 32.5,
     upside_tier = "Franchise Pillar",
-    trade_note = "Selection awarded via 2026 Draft Lottery to Expansion Valkyries",
+    trade_note = "Selection won by Dallas Wings via Draft Lottery (#1 overall)",
     strengths = c(
       "Uncanny floor vision & passing precision in half-court pick-and-roll",
       "Deadly 42%+ 3PT shooting with lightning quick release off screens",
@@ -640,7 +640,7 @@ draft_prospects <- list(
   list(
     pick = 2,
     player_name = "Lauren Betts",
-    team = "DAL",
+    team = "LA",
     position = "C",
     school_or_club = "UCLA",
     height = "6'7\"",
@@ -648,7 +648,7 @@ draft_prospects <- list(
     projected_bpm_prior = 3.4,
     projected_mpg = 27.0,
     upside_tier = "Franchise Pillar",
-    trade_note = NULL,
+    trade_note = "Selection awarded to Los Angeles Sparks via Draft Lottery (#2 overall)",
     strengths = c(
       "Imposing 6'7\" frame altering every shot within 8 feet of the rim",
       "Soft hands and high-percentage drop-step finishes around the glass",
@@ -686,7 +686,7 @@ draft_prospects <- list(
   list(
     pick = 4,
     player_name = "Kiki Iriafen",
-    team = "MIN",
+    team = "WSH",
     position = "F",
     school_or_club = "USC",
     height = "6'3\"",
@@ -709,7 +709,7 @@ draft_prospects <- list(
   list(
     pick = 5,
     player_name = "Aneesah Morrow",
-    team = "IND",
+    team = "GS",
     position = "F",
     school_or_club = "LSU",
     height = "6'1\"",
@@ -717,7 +717,7 @@ draft_prospects <- list(
     projected_bpm_prior = 2.4,
     projected_mpg = 24.0,
     upside_tier = "Core Starter",
-    trade_note = NULL,
+    trade_note = "Selection awarded via expansion draft allocation to Golden State Valkyries (#5 overall)",
     strengths = c(
       "Unstoppable offensive glass pursuit defying height metrics",
       "Active defensive hands generating deflections and run-out steals",
