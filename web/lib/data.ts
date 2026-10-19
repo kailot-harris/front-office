@@ -54,6 +54,7 @@ export function getPlayerSpatialMaps(): PlayerSpatialDictionary {
 }
 
 import { PlayoffMatchupsCatalog } from './playoffTypes';
+import { PlayerDnaCatalog } from './playerDnaTypes';
 
 export function getPlayoffSeriesCatalog(): PlayoffMatchupsCatalog {
   const filePath = path.join(process.cwd(), 'public', 'data', 'playoff_series_matchups.json');
@@ -67,5 +68,21 @@ export function getPlayoffSeriesCatalog(): PlayoffMatchupsCatalog {
   }
   const fileContent = fs.readFileSync(filePath, 'utf-8');
   return JSON.parse(fileContent) as PlayoffMatchupsCatalog;
+}
+
+export function getPlayerDnaCatalog(): PlayerDnaCatalog {
+  const filePath = path.join(process.cwd(), 'public', 'data', 'player_dna_profiles.json');
+  if (!fs.existsSync(filePath)) {
+    return {
+      updatedAt: new Date().toISOString(),
+      eraBaseline: '1980-2026',
+      totalPlayers: 0,
+      batterArchetypes: [],
+      pitcherArchetypes: [],
+      profiles: [],
+    };
+  }
+  const fileContent = fs.readFileSync(filePath, 'utf-8');
+  return JSON.parse(fileContent) as PlayerDnaCatalog;
 }
 

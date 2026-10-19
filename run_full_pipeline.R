@@ -389,6 +389,17 @@ run_full_pipeline <- function(season = 2024, force_refresh = FALSE) {
     require_fresh = force_refresh
   )
   
+  # ----------------------------------------------------------------------------
+  # Stage 16: High-Dimensional Player DNA & Historical Twins Engine (1980-2026)
+  # ----------------------------------------------------------------------------
+  run_stage(
+    script_name   = "mlb_player_dna_engine.R",
+    description   = "Compute 16-D Skill Vectors & Cosine Historical Comps",
+    call_fn       = "run_mlb_player_dna_engine",
+    output        = file.path(MLB_ROOT_DIR, "web", "public", "data", "player_dna_profiles.json"),
+    require_fresh = force_refresh
+  )
+  
   pipeline_total_time <- as.numeric(difftime(Sys.time(), pipeline_start_time, units = "secs"))
   
   # Build execution summary

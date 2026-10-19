@@ -17,6 +17,7 @@ import {
   Flame,
   Compass,
   Swords,
+  Dna,
 } from 'lucide-react';
 import { BaseballCrest } from '@/components/BaseballCrest';
 
@@ -46,6 +47,13 @@ export const Sidebar: React.FC = () => {
       badge: '1,279 Pool',
       icon: Users,
       desc: 'Batters (630) & Pitchers (649) toggle',
+    },
+    {
+      href: '/player-dna',
+      label: 'Player DNA & Twins',
+      badge: '16-D Manifold',
+      icon: Dna,
+      desc: 'Archetypes & historical comps (1980+)',
     },
     {
       href: '/spatial',
@@ -243,9 +251,9 @@ export const Sidebar: React.FC = () => {
         <div className="flex items-center justify-between text-xs text-slate-400 px-1">
           <span className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>15-Stage DAG Active</span>
+            <span>16-Stage DAG Active</span>
           </span>
-          <span className="font-mono text-[11px] text-slate-400">v1.5.0</span>
+          <span className="font-mono text-[11px] text-slate-400">v1.6.0</span>
         </div>
         <div className="flex items-center gap-1.5 text-[11px] text-slate-400 px-1">
           <ShieldCheck className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
