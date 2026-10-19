@@ -518,6 +518,20 @@ PIPELINE_STAGES <- list(
     inputs      = c(file.path("web", "public", "data", "projections_season_players.json"),
                     file.path("web", "public", "data", "projections_season_teams.json")),
     group       = NULL
+  ),
+
+  # ---------------------------------------------------------------------------------------
+  # 12. WNBA Coaching Staff & Tactical Analytics (Phase 3)
+  # ---------------------------------------------------------------------------------------
+  coaching_dataset = list(
+    id          = "coaching_dataset",
+    script      = "build_coaching_dataset.R",
+    description = "Compile Coaching Staffs, ATO Efficiency & Tactical Ratings",
+    call_fn     = NULL,
+    entry_fn    = NULL,
+    output      = file.path("web", "public", "data", "coaching_metrics.json"),
+    inputs      = c(file.path("web", "public", "data", "projections_season_teams.json")),
+    group       = NULL
   )
 )
 
