@@ -1,0 +1,70 @@
+# History files
+.Rhistory
+.Rapp.history
+
+# Session Data files
+.RData
+.RDataTmp
+
+# User-specific files
+.Ruserdata
+
+# Example code in package build process
+*-Ex.R
+
+# Output files from R CMD build
+/*.tar.gz
+
+# Output files from R CMD check
+/*.Rcheck/
+
+# RStudio files
+.Rproj.user/
+
+# produced vignettes
+vignettes/*.html
+vignettes/*.pdf
+
+# OAuth2 token, see https://github.com/hadley/httr/releases/tag/v0.3
+.httr-oauth
+
+# knitr and R markdown default cache directories
+*_cache/
+
+# Temporary files created by R markdown
+*.utf8.md
+*.knit.md
+
+# R Environment Variables
+.Renviron
+
+# NOT ignored, on purpose: cache/ and docs/.
+# This is a generic GitHub-generated R .gitignore template, which by default
+# ignores /cache/ (assuming it's a knitr scratch dir) and docs/ (assuming a
+# pkgdown site). Neither assumption holds here: cache/ holds real generated
+# .rds artifacts (e.g. tools/derive_nfl_constants.R's output) that downstream
+# engines read and that are slow to regenerate, and docs/ holds the actual
+# replication plan and task-assignment deliverables. The sibling WNBA Analytics
+# repo hit this identical template-merge conflict and documents dropping these
+# same two lines for the same reason — see its .gitignore history.
+
+# ------------------------------------------------------------------------------
+# Runtime logs — pure diff noise, same rationale as WNBA Analytics's .gitignore.
+# ------------------------------------------------------------------------------
+logs/*.duckdb
+logs/*.duckdb.wal
+logs/*.log
+logs/logs_pending_*.tsv
+
+# Raw play-by-play cache: excluded despite the cache/-is-tracked policy above.
+cache/pbp_cache.rds
+cache/*_frames/
+cache/elo_anim_frames/
+
+# translation temp files
+po/*~
+
+# RStudio Connect folder
+rsconnect/
+# subagent-brief run logs (may contain sensitive output)
+/.subagent-runs/

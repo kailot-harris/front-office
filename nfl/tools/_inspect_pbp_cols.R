@@ -1,0 +1,5 @@
+setwd("c:/Users/kailo/kayceeslices/NFL Analytics")
+source("config.R")
+pbp <- readRDS(CACHE_PBP)
+cat("ncol:", ncol(pbp), "\n")
+print(names(pbp))

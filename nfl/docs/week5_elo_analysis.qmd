@@ -1,0 +1,350 @@
+﻿---
+title: "Elo Ratings After Week 5"
+subtitle: "NFL Analytics — 2026 season"
+author: "kailot-harris / NFL Analytics"
+date: today
+code-overflow: wrap
+format:
+  html:
+    toc: true
+    number-sections: true
+    embed-resources: true
+execute:
+  echo: false
+  warning: false
+---
+
+<!-- NOTE: YAML's embed-resources: true above is silently not applied by this machine's quarto
+     1.10.18 for this doc - `quarto render` leaves images as relative-path links to a
+     week5_elo_analysis_files/ sidecar folder instead of inlining base64 (confirmed via grep for
+     "base64" in the rendered HTML - zero matches). Rendering with the explicit CLI flag
+     `quarto render docs/week5_elo_analysis.qmd --to html --embed-resources` DOES embed
+     correctly (verified: all figures + the animated GIF inline as base64, no sidecar folder).
+     Always render this doc with that explicit flag until the YAML-only behavior is re-verified
+     against a newer quarto version - otherwise the .html file is NOT self-contained and breaks
+     when moved/sent outside this repo's docs/ folder. -->
+
+```{r}
+#| label: setup
+#| include: false
+knitr::opts_chunk$set(fig.width = 8, fig.height = 6)
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(tidyr)
+  library(ggplot2)
+  library(knitr)
+  library(nflplotR)
+  library(magick)
+})
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics"
+setwd(PROJECT_DIR)
+source("config.R")
+source("logging_utils.R")
+source("tools/elo_model.R")
+
+division_colors <- c(
+  "AFC East" = "#0D3B5C", "AFC North" = "#115677", "AFC South" = "#15708D", "AFC West" = "#198595",
+  "NFC East" = "#219A9B", "NFC North" = "#2CB0A1", "NFC South" = "#3CC1A7", "NFC West" = "#4FD1AE"
+)
+
+bg_dark     <- "#1e2228"
+panel_dark  <- "#262b33"
+grid_dark   <- "#3a4049"
+text_light  <- "#d8dee5"
+
+theme_elo_dark <- function() {
+  theme_minimal(base_size = 12) +
+    theme(
+      plot.background  = element_rect(fill = bg_dark, color = NA),
+      panel.background = element_rect(fill = panel_dark, color = NA),
+      legend.background = element_rect(fill = bg_dark, color = NA),
+      legend.key        = element_rect(fill = panel_dark, color = NA),
+      strip.background  = element_rect(fill = panel_dark, color = NA),
+      panel.grid.major  = element_line(color = grid_dark),
+      panel.grid.minor  = element_blank(),
+      text              = element_text(color = text_light),
+      axis.text         = element_text(color = text_light),
+      strip.text        = element_text(color = text_light, face = "bold"),
+      plot.title        = element_text(color = text_light)
+    )
+}
+```
+
+```{r}
+#| label: compute-elo
+source("tools/elo_history_data.R")
+result <- get_elo_history()
+long_games <- result$long_games
+trajectory <- result$trajectory
+current_ratings <- result$current_ratings
+team_performance <- result$team_performance
+```
+
+## Current Elo Rating by Team
+
+Live Elo state after every game played through Week 5, carryover-projected to the current
+season (`ELO_SEASON_CARRYOVER` applied only to teams that haven't yet played this season — not
+relevant by Week 5). Dashed line marks `ELO_INITIAL_RATING` (1500), an average team.
+
+```{r}
+#| label: fig-current-elo
+#| fig-cap: "Current Elo rating, by division, Week 5 2026"
+p_current <- ggplot(current_ratings, aes(x = reorder(team, current_elo), y = current_elo, fill = division)) +
+  geom_col() +
+  geom_nfl_logos(aes(team_abbr = team), width = 0.04, y = 60) +
+  geom_hline(yintercept = ELO_INITIAL_RATING, linetype = "dashed", color = "grey70") +
+  coord_flip() +
+  facet_wrap(~conference, scales = "free_y") +
+  scale_fill_manual(values = division_colors) +
+  theme_elo_dark() +
+  theme(axis.title = element_blank(), legend.title = element_blank(),
+        axis.text.y = element_blank())
+
+ggsave(file.path(CACHE_DIR, "elo_current_rating.png"), p_current, width = 11, height = 7, dpi = 150, bg = bg_dark)
+p_current
+```
+
+## Week-to-Week Elo Trajectory
+
+Each team's **pre-game** Elo rating entering every week it played this season, plus its current
+(post-Week-5) rating as the final point — so each line traces exactly what the team's rating was
+at kickoff each week, never a look-ahead value. Bye weeks simply leave a gap in that team's line.
+Faceted by division (same grouping/coloring as the figures above), one line per team within each
+panel.
+
+```{r}
+#| label: fig-trajectory
+#| fig-cap: "Week-to-week Elo trajectory, by division, through Week 5 2026"
+#| fig-width: 11
+#| fig-height: 9
+trajectory <- bind_rows(
+  long_games |> transmute(team, week, elo = team_elo_pre),
+  current_ratings |> transmute(team, week = max(long_games$week) + 1L, elo = current_elo)
+) |>
+  distinct(team, week, .keep_all = TRUE) |>
+  mutate(division = NFL_DIVISIONS[team]) |>
+  filter(!is.na(division))
+
+p_trajectory <- ggplot(trajectory, aes(x = week, y = elo, group = team)) +
+  geom_line(color = "#3CC1A7", linewidth = 0.6, alpha = 0.8) +
+  geom_hline(yintercept = ELO_INITIAL_RATING, linetype = "dashed", color = "grey60") +
+  geom_nfl_logos(aes(team_abbr = team), width = 0.045) +
+  facet_wrap(~division, ncol = 4) +
+  scale_x_continuous(breaks = sort(unique(trajectory$week))) +
+  theme_elo_dark() +
+  theme(axis.title.y = element_blank()) +
+  labs(x = "Week (pre-game rating; last point = current)")
+
+ggsave(file.path(CACHE_DIR, "elo_trajectory.png"), p_trajectory, width = 13, height = 9, dpi = 150, bg = bg_dark)
+p_trajectory
+```
+
+## Average Opponent Elo Rating (Strength of Schedule)
+
+For each team, the average Elo rating its opponents held **immediately before** that game was
+played (no hindsight — an opponent that has since improved or collapsed doesn't retroactively
+change how hard this team's schedule looked at kickoff). Regular season only, 2026.
+
+```{r}
+#| label: fig-sos
+#| fig-cap: "Average opponent Elo (pre-game), by division, Week 5 2026"
+p_sos <- ggplot(team_performance, aes(x = reorder(team, avg_opponent_elo), y = avg_opponent_elo, fill = division)) +
+  geom_col() +
+  geom_nfl_logos(aes(team_abbr = team), width = 0.04, y = 60) +
+  geom_hline(yintercept = ELO_INITIAL_RATING, linetype = "dashed", color = "grey70") +
+  coord_flip() +
+  facet_wrap(~conference, scales = "free_y") +
+  scale_fill_manual(values = division_colors) +
+  theme_elo_dark() +
+  theme(axis.title = element_blank(), legend.title = element_blank(),
+        axis.text.y = element_blank())
+
+ggsave(file.path(CACHE_DIR, "elo_avg_opponent.png"), p_sos, width = 11, height = 7, dpi = 150, bg = bg_dark)
+p_sos
+```
+
+### Team Elo vs. Schedule Strength
+
+Own current Elo rating (x-axis) against average pre-game opponent Elo faced so far (y-axis).
+Dashed lines mark the 1500 baseline on both axes — upper-right is "good team, hard schedule",
+lower-left is "bad team, soft schedule".
+
+```{r}
+#| label: fig-scatter
+#| fig-cap: "Team strength vs. strength of schedule, Week 5 2026"
+p_scatter <- ggplot(team_performance, aes(x = current_elo, y = avg_opponent_elo)) +
+  geom_hline(yintercept = ELO_INITIAL_RATING, linetype = "dashed", color = "grey60") +
+  geom_vline(xintercept = ELO_INITIAL_RATING, linetype = "dashed", color = "grey60") +
+  geom_nfl_logos(aes(team_abbr = team), width = 0.045) +
+  theme_elo_dark() +
+  labs(x = "Current Elo rating", y = "Average opponent Elo (pre-game)")
+
+ggsave(file.path(CACHE_DIR, "elo_sos_scatter.png"), p_scatter, width = 9, height = 7, dpi = 150, bg = bg_dark)
+p_scatter
+```
+
+### Animated: Team Strength vs. Schedule Strength, Week by Week
+
+The same scatter plot as a weekly animation — each frame is the cumulative state through that
+week (current Elo on the x-axis, average pre-game opponent Elo faced so far on the y-axis).
+Each team's own history up to that frame is drawn as a faint grey trail behind its logo, fading
+out the further back in the season a point is (piecewise-linear between the real weekly
+positions, not a global spline — a cubic fit through only 2-5 noisy points overshoots badly and
+produces loops that don't reflect the real path).
+
+```{r}
+#| label: fig-scatter-animated
+#| fig-cap: "Animated: team strength vs. schedule strength, by week"
+all_teams <- sort(unique(current_ratings$team))
+max_week  <- max(long_games$week)
+
+grid_tw <- expand_grid(team = all_teams, week = 1:(max_week + 1L))
+traj_filled <- grid_tw |>
+  left_join(trajectory |> select(team, week, elo), by = c("team", "week")) |>
+  arrange(team, week) |>
+  group_by(team) |>
+  tidyr::fill(elo, .direction = "down") |>
+  ungroup()
+
+week_seq <- 1:max_week
+snap_all <- bind_rows(lapply(week_seq, function(w) {
+  y_df <- long_games |> filter(week <= w) |> group_by(team) |>
+    summarise(avg_opponent_elo = mean(opp_elo_pre), .groups = "drop")
+  x_df <- traj_filled |> filter(week == w + 1L) |> select(team, current_elo = elo)
+  inner_join(x_df, y_df, by = "team") |> mutate(frame_week = w)
+}))
+
+xr <- range(snap_all$current_elo, na.rm = TRUE); yr <- range(snap_all$avg_opponent_elo, na.rm = TRUE)
+pad_x <- diff(xr) * 0.1; pad_y <- diff(yr) * 0.1
+anim_xlim <- xr + c(-pad_x, pad_x); anim_ylim <- yr + c(-pad_y, pad_y)
+
+frame_dir <- file.path(CACHE_DIR, "elo_anim_frames")
+if (!dir.exists(frame_dir)) dir.create(frame_dir)
+frame_files <- character(0)
+
+for (w in week_seq) {
+  trail_segs <- bind_rows(lapply(all_teams, function(tm) {
+    hist_pts <- snap_all |> filter(team == tm, frame_week <= w) |> arrange(frame_week)
+    if (nrow(hist_pts) < 2) return(NULL)
+    n_interp <- 12 * (nrow(hist_pts) - 1) + 1
+    sx_y <- approx(hist_pts$frame_week, hist_pts$current_elo, n = n_interp)$y
+    sy_y <- approx(hist_pts$frame_week, hist_pts$avg_opponent_elo, n = n_interp)$y
+    n <- length(sx_y)
+    tibble(team = tm, x0 = sx_y[-n], y0 = sy_y[-n], x1 = sx_y[-1], y1 = sy_y[-1],
+           recency = seq(0, 1, length.out = n - 1))
+  }))
+  if (nrow(trail_segs) == 0) {
+    trail_segs <- tibble(team = character(0), x0 = numeric(0), y0 = numeric(0),
+                          x1 = numeric(0), y1 = numeric(0), recency = numeric(0))
+  }
+  trail_segs <- trail_segs |> mutate(alpha_val = recency^1.6)
+
+  cur <- snap_all |> filter(frame_week == w)
+
+  p_frame <- ggplot() +
+    geom_segment(data = trail_segs, aes(x = x0, y = y0, xend = x1, yend = y1, alpha = alpha_val),
+                 color = "grey65", linewidth = 0.7, show.legend = FALSE) +
+    scale_alpha_continuous(range = c(0.02, 0.4), limits = c(0, 1)) +
+    geom_hline(yintercept = ELO_INITIAL_RATING, linetype = "dashed", color = "grey60") +
+    geom_vline(xintercept = ELO_INITIAL_RATING, linetype = "dashed", color = "grey60") +
+    geom_nfl_logos(data = cur, aes(x = current_elo, y = avg_opponent_elo, team_abbr = team), width = 0.05) +
+    coord_cartesian(xlim = anim_xlim, ylim = anim_ylim) +
+    theme_elo_dark() +
+    labs(x = "Elo rating (cumulative)", y = "Avg. opponent Elo (pre-game, cumulative)",
+         title = sprintf("Through Week %d, %d", w, CURRENT_SEASON))
+
+  fpath <- file.path(frame_dir, sprintf("frame_%02d.png", w))
+  ggsave(fpath, p_frame, width = 9, height = 7, dpi = 120, bg = bg_dark)
+  frame_files <- c(frame_files, fpath)
+}
+
+# Hold on the final (current) frame a few extra ticks so the GIF doesn't loop too fast.
+frame_files_final <- c(frame_files, rep(tail(frame_files, 1), 4))
+gif <- magick::image_animate(magick::image_join(magick::image_read(frame_files_final)), fps = 1, loop = 0)
+gif_path <- file.path(CACHE_DIR, "elo_scatter_animation.gif")
+magick::image_write(gif, gif_path)
+
+knitr::include_graphics(gif_path)
+```
+
+## Early-Season Upsets
+
+A game counts as an upset if the team that won had a pre-game Elo win probability below 50%
+(i.e. was the underdog once home-field advantage is baked in). Sorted by magnitude — how big a
+longshot the winner was.
+
+```{r}
+#| label: tbl-upsets
+upsets <- long_games |>
+  filter(team_win == 1, team_win_prob < 0.5) |>
+  transmute(week, underdog = team, favorite = opp,
+            underdog_win_prob = round(team_win_prob, 3),
+            underdog_elo = round(team_elo_pre, 0),
+            favorite_elo = round(opp_elo_pre, 0),
+            upset_magnitude = round(0.5 - team_win_prob, 3)) |>
+  arrange(desc(upset_magnitude))
+
+kable(upsets)
+```
+
+## Overperforming / Underperforming Against Schedule
+
+`surprise_index` = actual win% minus Elo-implied expected win% (the average pre-game win
+probability across that team's own games) — positive means winning more than the schedule/Elo
+said it should, negative means losing more than expected.
+
+### Good record despite a hard schedule
+
+Teams facing a tougher-than-average slate (`avg_opponent_elo` above 1500) who are also
+outperforming their Elo-implied expectation.
+
+```{r}
+#| label: tbl-overperform-hard
+team_performance |>
+  filter(avg_opponent_elo > ELO_INITIAL_RATING) |>
+  arrange(desc(surprise_index)) |>
+  transmute(team, games_played, wins, win_pct = round(win_pct, 3),
+            expected_win_pct = round(expected_win_pct, 3),
+            avg_opponent_elo = round(avg_opponent_elo, 0),
+            surprise_index = round(surprise_index, 3)) |>
+  head(8) |>
+  kable()
+```
+
+### Poor record despite a soft schedule
+
+Teams facing an easier-than-average slate (`avg_opponent_elo` below 1500) who are also
+underperforming their Elo-implied expectation.
+
+```{r}
+#| label: tbl-underperform-soft
+team_performance |>
+  filter(avg_opponent_elo < ELO_INITIAL_RATING) |>
+  arrange(surprise_index) |>
+  transmute(team, games_played, wins, win_pct = round(win_pct, 3),
+            expected_win_pct = round(expected_win_pct, 3),
+            avg_opponent_elo = round(avg_opponent_elo, 0),
+            surprise_index = round(surprise_index, 3)) |>
+  head(8) |>
+  kable()
+```
+
+## Further Questions Worth Gathering
+
+Candidates for follow-up analysis, not yet computed here:
+
+- **Week-to-week Elo volatility** — which teams' ratings have swung the most since Week 1
+  (biggest single-game Elo shift), as a proxy for "boom/bust" rather than steady teams.
+- **Model vs. market disagreement** — compare this Elo-implied line against real market odds
+  (`market_odds_engine.R`'s devigged probabilities) to flag games where the model and the market
+  see a team very differently.
+- **Division-race tightness** — current Elo gap between the top two teams in each division, to
+  flag which races are closest heading into the back half of the season.
+- **QB-injury-adjusted Elo swings** — cross-reference `qb_injury_features.R`'s QB-backup flags
+  against this season's biggest Elo losses, to see how much of a team's slide is injury-driven
+  vs. a genuine rating decline.
+- **Pythagorean win% vs. Elo** — compare each team's point-differential-implied win% (already
+  computed in `team_ratings_engine.R`) against its actual record, to separate "unlucky in close
+  games" teams from teams whose Elo decline is about scoring, not variance.
+- **Fatigue/rest correlation with upsets** — check whether this season's upsets (above) cluster
+  on short-rest or high-travel games per `fatigue_engine.R`'s drag metric.

@@ -1,0 +1,19 @@
+{
+  "$comment": [
+    "Baseline of tests that are CURRENTLY FAILING because they have found a real",
+    "defect that has not been fixed yet. `npm run test:all` compares each run",
+    "against this file:",
+    "",
+    "  - a failure listed here        -> reported as KNOWN, does not fail the run",
+    "  - a failure NOT listed here    -> reported as NEW REGRESSION, fails the run",
+    "  - a listed test that now PASSES -> reported as FIXED; delete its entry",
+    "",
+    "This keeps the suite usable as a merge gate while the documented defects are",
+    "still open, without ever hiding them. Every entry must name the defect and",
+    "where the fix belongs — an entry with no `fix` is not allowed to be added.",
+    "",
+    "Match is on the test's full name (suite path + test title), substring-matched.",
+    "See docs/TESTING.md for the full triage writeup."
+  ],
+  "issues": []
+}
