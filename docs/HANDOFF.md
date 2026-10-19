@@ -1,4 +1,58 @@
-# Handoff — 2026-10-17 (renv library repair + full pipeline rerun) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
+# Handoff — 2026-10-18 (Next.js web app, Phase 0: plan + scaffold) — CURRENT STATE FOR THIS THREAD (read this section first, for whoever picks this up next)
+
+## What this thread did
+
+User asked to review progress on a sibling project, `C:\Users\kailo\kayceeslices\NBA Analytics`,
+which has a `web/` subfolder (Next.js 14 App Router + React 18 + TypeScript + Tailwind, static
+JSON data layer — no backend/DB) presenting that repo's Monte Carlo season-simulation outputs,
+and plan + start porting equivalent functionality into this repo. Surveyed the NBA app's routes
+(`web/components/Sidebar.tsx`, `web/app/*`) and its own `WEB_APP_SURVEY.md`, then cross-checked
+against this repo's existing engines (`rapm_engine.R`, `player_props_engine.R`,
+`playoff_simulator.R`, `load_embeddings.R`/`team_embeddings.py`, `projected_wnba_standings.rds`)
+to see what's portable now vs. what needs new R engines first.
+
+Wrote the phased plan to `docs/NEXTJS_WEB_APP_PLAN.md` (commit `7a40498`), then executed Phase 0
+of that plan: scaffolded `web/` with `create-next-app@14.2.35` (`--typescript --tailwind --eslint
+--app --no-src-dir --import-alias "@/*"`), added `geist`/`lucide-react` to match the NBA app's
+`package.json`, ported its `next.config.mjs` (ESPN CDN `remotePatterns`), `tailwind.config.ts`,
+and dark slate/indigo theme, and wrote a WNBA-rebranded `Sidebar.tsx` and a placeholder `page.tsx`
+(commit `a3c293a`). Verified with `npm run build` (clean compile, 2 static routes) before
+committing; deleted the `.next/` build output afterward since it's gitignored. Both commits
+pushed to `main`.
+
+## What's actually implemented (new/changed this session)
+
+| File | State |
+|---|---|
+| `docs/NEXTJS_WEB_APP_PLAN.md` | New, ~50 lines. Records Phase 0 (scaffold, done) through Phase 3 (net-new R engines: shots, offseason, coaching, defense, player-dna, CBA/cap-sheet, clutch — not started) and two explicit open questions (WNBA cap-sheet applicability, shot-location data availability) that block starting Phase 3. |
+| `web/` (new top-level folder, Next.js 14 project) | Scaffold only — **no data layer, no real pages**. `web/app/page.tsx` (16 lines) is a static placeholder explaining the scaffold state, not a real standings page. `web/components/Sidebar.tsx` (207 lines) has 5 working nav links (`/`, `/variants`, `/players`, `/series`, `/diagnostics`) that currently 404 except `/` — those routes don't exist yet, that's Phase 1. A "Planned (Phase 3)" list in the sidebar is plain text, not links. `web/app/layout.tsx` (35 lines), `web/tailwind.config.ts` (23 lines), `web/next.config.mjs` (14 lines) are direct ports of the NBA app's versions, re-branded. No `lib/data.ts`, no `lib/types.ts`, no `public/data/*.json` — those are Phase 1 (the `export_web_json.R` pipeline stage). |
+| `run_full_pipeline.R` / `pipeline_stages.R` | **Unchanged.** No new pipeline stage registered yet — Phase 1 work, not started. |
+
+## Anomalies noticed while gathering state for this handoff — flagged, not fixed
+
+Nothing new. Re-checked the same things the 2026-10-17 entry below flagged and found no change:
+tracker still shows `#43`/`#44`/`#49`/`#71` open (`gh issue list --state open`, re-run this
+session), and the same four orphaned worktree-shaped directories are still present under
+`.claude/worktrees/` (`agent-a46276a0f4609d125`, `agent-a55aa191aa09f4d54`,
+`agent-ae227d715064d6d37`, `bracket-rounds-fix`) — `git worktree list` still only shows `main`.
+
+## Concrete next step
+
+Phase 1 of `docs/NEXTJS_WEB_APP_PLAN.md`: add `export_web_json.R` as a new pipeline stage
+(register it in `pipeline_stages.R`, wire it via `run_registered_stage()` after the
+standings/RAPM/props/embeddings stages it reads from), writing JSON into `web/public/data/`
+from `cache/projected_wnba_standings.rds`, `cache/rapm_ratings.rds`, `cache/latest_player_props.rds`,
+and `data/team_embeddings.csv`. Then add `web/lib/data.ts` (`fs.readFileSync` + `JSON.parse`
+pattern, copy NBA's `web/lib/data.ts`) and `web/lib/types.ts`, and replace the placeholder
+`web/app/page.tsx` with a real Standings page (port of NBA's `StandingsClient.tsx`, 15 teams not
+30). Validate by running `npm run build` again and spot-checking the rendered page locally
+(`npm run dev`) before moving to `/variants`/`/players`/`/diagnostics`. Phase 2 (playoff
+`/series` page from `cache/playoff_bracket_results_*.rds`) and Phase 3 (net-new R engines) come
+after — see the plan doc for the open questions to resolve before starting Phase 3.
+
+---
+
+# Handoff — 2026-10-17 (renv library repair + full pipeline rerun) — superseded by the entry above; kept for its Open Items/environment notes, which are still live
 
 ## What this thread did
 
