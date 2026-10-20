@@ -1,3 +1,5 @@
+import { BASE_PATH } from './basePath';
+
 export interface TeamMetadata {
   abbr: string;
   name: string;
@@ -152,10 +154,7 @@ export const WNBA_TEAMS_METADATA: Record<string, TeamMetadata> = {
 
 export const getTeamLogoUrl = (teamAbbr: string): string => {
   const normalized = teamAbbr?.toUpperCase();
-  if (WNBA_TEAMS_METADATA[normalized]) {
-    return `/logos/${normalized}_logo.png`;
-  }
-  return `/logos/${normalized}_logo.png`;
+  return `${BASE_PATH}/logos/${normalized}_logo.png`;
 };
 
 export const getTeamColors = (teamAbbr: string) => {
