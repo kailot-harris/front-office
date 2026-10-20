@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { VisualMediaItem } from '@/lib/types';
 import { Image as ImageIcon, Search, Film, Download, Maximize2, X } from 'lucide-react';
 import Image from 'next/image';
+import { BASE_PATH } from '@/lib/basePath';
 
 interface GalleryClientProps {
   mediaItems: VisualMediaItem[];
@@ -89,7 +90,7 @@ export default function GalleryClient({ mediaItems }: GalleryClientProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredMedia.map((item) => {
           const isGif = item.type === 'gif' || item.filename.endsWith('.gif');
-          const mediaUrl = `/animations/${item.filename}`;
+          const mediaUrl = `${BASE_PATH}/animations/${item.filename}`;
 
           return (
             <div
@@ -177,7 +178,7 @@ export default function GalleryClient({ mediaItems }: GalleryClientProps) {
             <div className="p-4 bg-slate-950 flex items-center justify-center overflow-auto max-h-[65vh]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={`/animations/${activeMedia.filename}`}
+                src={`${BASE_PATH}/animations/${activeMedia.filename}`}
                 alt={activeMedia.title}
                 className="max-h-[60vh] max-w-full object-contain rounded-lg border border-slate-800"
               />
@@ -187,7 +188,7 @@ export default function GalleryClient({ mediaItems }: GalleryClientProps) {
             <div className="p-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
               <span>{activeMedia.description}</span>
               <a
-                href={`/animations/${activeMedia.filename}`}
+                href={`${BASE_PATH}/animations/${activeMedia.filename}`}
                 download={activeMedia.filename}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-emerald-500 text-slate-950 font-bold font-mono hover:bg-emerald-400 transition-colors"
               >
