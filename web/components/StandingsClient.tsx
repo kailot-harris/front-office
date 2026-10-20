@@ -236,42 +236,54 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
       {/* Navigation View Switcher & Filters Bar */}
       <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* View Switcher Tabs */}
-        <div className="relative z-10 inline-flex rounded-lg bg-surface p-1 border border-slate-800">
+        <div
+          className="flex flex-wrap sm:inline-flex rounded-xl bg-surface p-1.5 border border-slate-800/80 shadow-inner relative z-20 w-full sm:w-auto gap-1 sm:gap-0"
+          role="tablist"
+        >
           <button
             type="button"
+            role="tab"
+            id="tab-btn-visualizer"
+            aria-selected={activeTab === 'visualizer'}
             onClick={() => handleTabChange('visualizer')}
-            className={`cursor-pointer select-none flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+            className={`cursor-pointer select-none touch-manipulation flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-20 ${
               activeTab === 'visualizer'
-                ? 'bg-accent-600 text-white shadow-sm'
+                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
                 : 'text-slate-400 hover:text-white hover:bg-surface-raised'
             }`}
           >
-            <BarChart2 className="w-4 h-4" />
-            <span>Distribution Visualizer</span>
+            <BarChart2 className="w-4 h-4 pointer-events-none" />
+            <span className="pointer-events-none">Distribution Visualizer</span>
           </button>
           <button
             type="button"
+            role="tab"
+            id="tab-btn-table"
+            aria-selected={activeTab === 'table'}
             onClick={() => handleTabChange('table')}
-            className={`cursor-pointer select-none flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+            className={`cursor-pointer select-none touch-manipulation flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-20 ${
               activeTab === 'table'
-                ? 'bg-accent-600 text-white shadow-sm'
+                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
                 : 'text-slate-400 hover:text-white hover:bg-surface-raised'
             }`}
           >
-            <TableIcon className="w-4 h-4" />
-            <span>Full 32 Table</span>
+            <TableIcon className="w-4 h-4 pointer-events-none" />
+            <span className="pointer-events-none">Full 32 Table</span>
           </button>
           <button
             type="button"
+            role="tab"
+            id="tab-btn-divisions"
+            aria-selected={activeTab === 'divisions'}
             onClick={() => handleTabChange('divisions')}
-            className={`cursor-pointer select-none flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+            className={`cursor-pointer select-none touch-manipulation flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-20 ${
               activeTab === 'divisions'
-                ? 'bg-accent-600 text-white shadow-sm'
+                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
                 : 'text-slate-400 hover:text-white hover:bg-surface-raised'
             }`}
           >
-            <Grid className="w-4 h-4" />
-            <span>8 Divisions</span>
+            <Grid className="w-4 h-4 pointer-events-none" />
+            <span className="pointer-events-none">8 Divisions</span>
           </button>
         </div>
 

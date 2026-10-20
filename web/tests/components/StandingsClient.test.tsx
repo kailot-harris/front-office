@@ -43,9 +43,9 @@ describe('StandingsClient renders', () => {
 
   it('shows the three view tabs', () => {
     render(<StandingsClient dataset={dataset} />);
-    expect(screen.getByRole('button', { name: /visuali/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /table/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /division/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /visuali/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /table/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /division/i })).toBeInTheDocument();
   });
 
   it('lists all 32 teams in the table view', () => {
