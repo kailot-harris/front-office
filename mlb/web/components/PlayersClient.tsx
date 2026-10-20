@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { PlayerSpatialDropdown } from '@/components/PlayerSpatialDropdown';
+import { BASE_PATH } from '@/lib/basePath';
 
 interface PlayersClientProps {
   players: PlayerProjection[];
@@ -45,7 +46,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
 
   useEffect(() => {
     if (!initialSpatialMaps || Object.keys(initialSpatialMaps).length === 0) {
-      fetch('/data/player_spatial_maps.json')
+      fetch(`${BASE_PATH}/data/player_spatial_maps.json`)
         .then((res) => {
           if (!res.ok) throw new Error('Failed to fetch player spatial maps');
           return res.json();
