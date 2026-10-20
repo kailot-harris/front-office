@@ -28,15 +28,15 @@ export default function HomePage() {
 
         {/* Quick Stats Grid */}
         <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
-          <div className="bg-surface-raised border border-slate-800 rounded-xl px-3.5 py-2.5 text-right">
+          <div className="bg-surface-raised border border-slate-800 rounded-lg px-3 py-2 text-right">
             <span className="text-slate-500 block text-[10px] uppercase font-mono">Total Simulations</span>
             <span className="text-white font-mono font-bold text-sm">1,000 Seasons</span>
           </div>
-          <div className="bg-surface-raised border border-slate-800 rounded-xl px-3.5 py-2.5 text-right">
+          <div className="bg-surface-raised border border-slate-800 rounded-lg px-3 py-2 text-right">
             <span className="text-slate-500 block text-[10px] uppercase font-mono">Playoff Field</span>
             <span className="text-emerald-400 font-mono font-bold text-sm">14 Seeds (7/Conf)</span>
           </div>
-          <div className="bg-surface-raised border border-slate-800 rounded-xl px-3.5 py-2.5 text-right">
+          <div className="bg-surface-raised border border-slate-800 rounded-lg px-3 py-2 text-right">
             <span className="text-slate-500 block text-[10px] uppercase font-mono">Margin Sigma (σ)</span>
             <span className="text-white font-mono font-bold text-sm">14.6 pts</span>
           </div>
