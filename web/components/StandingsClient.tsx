@@ -216,22 +216,28 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
 
       {/* View Switcher: Playoff Contenders Snapshot vs Full League Standings Table */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
-        <div className="inline-flex rounded-xl bg-surface-raised/90 p-1 border border-slate-800 shadow-inner">
+        <div
+          className="flex flex-wrap sm:inline-flex rounded-xl bg-surface p-1.5 border border-slate-800/80 shadow-inner relative z-20 w-full sm:w-auto gap-1 sm:gap-0"
+          role="tablist"
+        >
           <button
             type="button"
+            role="tab"
+            id="tab-btn-visualizer"
+            aria-selected={activeTab === 'visualizer'}
             onClick={() => setActiveTab('visualizer')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+            className={`cursor-pointer select-none touch-manipulation flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-20 ${
               activeTab === 'visualizer'
-                ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
+                : 'text-slate-400 hover:text-white hover:bg-surface-raised'
             }`}
           >
-            <BarChart2 className="w-4 h-4" />
-            <span>Postseason Contenders (Box-Whisker)</span>
+            <BarChart2 className="w-4 h-4 pointer-events-none" />
+            <span className="pointer-events-none">Postseason Contenders (Box-Whisker)</span>
             <span
-              className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${
+              className={`text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
                 activeTab === 'visualizer'
-                  ? 'bg-white/20 text-white'
+                  ? 'bg-white/20 text-white font-bold'
                   : 'bg-slate-800 text-slate-400'
               }`}
             >
@@ -241,18 +247,21 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
 
           <button
             type="button"
+            role="tab"
+            id="tab-btn-table"
+            aria-selected={activeTab === 'table'}
             onClick={() => setActiveTab('table')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+            className={`cursor-pointer select-none touch-manipulation flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-20 ${
               activeTab === 'table'
-                ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
+                : 'text-slate-400 hover:text-white hover:bg-surface-raised'
             }`}
           >
-            <Table className="w-4 h-4" />
-            <span>Full MLB Standings (30 Clubs)</span>
+            <Table className="w-4 h-4 pointer-events-none" />
+            <span className="pointer-events-none">Full MLB Standings (30 Clubs)</span>
             <span
-              className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${
-                activeTab === 'table' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
+              className={`text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
+                activeTab === 'table' ? 'bg-white/20 text-white font-bold' : 'bg-slate-800 text-slate-400'
               }`}
             >
               Full Table
