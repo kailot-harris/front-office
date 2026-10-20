@@ -107,7 +107,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ overview }) => {
                     onClick={() => setLeagueFilter(lg)}
                     className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors ${
                       leagueFilter === lg
-                        ? 'bg-sky-600 text-white'
+                        ? 'bg-emerald-600 text-white'
                         : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
                     }`}
                   >

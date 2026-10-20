@@ -211,7 +211,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
             onClick={() => setActiveTab('spray')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               activeTab === 'spray'
-                ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/30 ring-1 ring-sky-400/50'
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 ring-1 ring-emerald-400/50'
                 : 'bg-slate-950/60 text-slate-400 hover:text-white hover:bg-slate-800/60 border border-slate-800'
             }`}
           >
@@ -223,7 +223,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
             onClick={() => setActiveTab('zone')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               activeTab === 'zone'
-                ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/30 ring-1 ring-sky-400/50'
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 ring-1 ring-emerald-400/50'
                 : 'bg-slate-950/60 text-slate-400 hover:text-white hover:bg-slate-800/60 border border-slate-800'
             }`}
           >
@@ -235,7 +235,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
             onClick={() => setActiveTab('movement')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               activeTab === 'movement'
-                ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/30 ring-1 ring-sky-400/50'
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 ring-1 ring-emerald-400/50'
                 : 'bg-slate-950/60 text-slate-400 hover:text-white hover:bg-slate-800/60 border border-slate-800'
             }`}
           >
@@ -247,7 +247,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
             onClick={() => setActiveTab('defense')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               activeTab === 'defense'
-                ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/30 ring-1 ring-sky-400/50'
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 ring-1 ring-emerald-400/50'
                 : 'bg-slate-950/60 text-slate-400 hover:text-white hover:bg-slate-800/60 border border-slate-800'
             }`}
           >
@@ -295,7 +295,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                       onClick={() => setSprayHandFilter(hand)}
                       className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
                         sprayHandFilter === hand
-                          ? 'bg-sky-600 text-white'
+                          ? 'bg-emerald-600 text-white'
                           : 'text-slate-400 hover:text-white'
                       }`}
                     >
@@ -882,7 +882,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                     onClick={() => setZoneMetric(m.id as 'pct' | 'swing' | 'whiff' | 'calledStrike')}
                     className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
                       zoneMetric === m.id
-                        ? 'bg-sky-600 text-white'
+                        ? 'bg-emerald-600 text-white'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >

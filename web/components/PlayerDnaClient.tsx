@@ -101,7 +101,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
               onClick={() => handleTypeSwitch('Batter')}
               className={`px-4 py-2 rounded-lg font-bold transition-all ${
                 playerType === 'Batter'
-                  ? 'bg-sky-600 text-white shadow-md shadow-sky-600/30'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -112,7 +112,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
               onClick={() => handleTypeSwitch('Pitcher')}
               className={`px-4 py-2 rounded-lg font-bold transition-all ${
                 playerType === 'Pitcher'
-                  ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >

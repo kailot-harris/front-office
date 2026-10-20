@@ -137,13 +137,13 @@ export const Sidebar: React.FC = () => {
                 onClick={() => setIsOpen(false)}
                 className={`group flex items-start gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
                     : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
                 }`}
               >
                 <Icon
                   className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
-                    isActive ? 'text-white' : 'text-slate-400 group-hover:text-indigo-400'
+                    isActive ? 'text-white' : 'text-slate-400 group-hover:text-emerald-400'
                   }`}
                 />
                 <div className="min-w-0 flex-1">
@@ -159,7 +159,7 @@ export const Sidebar: React.FC = () => {
                   </div>
                   <p
                     className={`text-[11px] truncate ${
-                      isActive ? 'text-indigo-200' : 'text-slate-500'
+                      isActive ? 'text-emerald-200' : 'text-slate-500'
                     }`}
                   >
                     {item.desc}

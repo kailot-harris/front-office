@@ -101,7 +101,7 @@ export const FranchisePayrollTable: React.FC<FranchisePayrollTableProps> = ({
                 onClick={() => setContractTypeFilter(t)}
                 className={`px-2 py-1 text-[11px] font-medium rounded transition-colors ${
                   contractTypeFilter === t
-                    ? 'bg-sky-600 text-white shadow'
+                    ? 'bg-emerald-600 text-white shadow'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850'
                 }`}
               >

@@ -50,7 +50,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
           onClick={() => setActiveTab('bracket')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
             activeTab === 'bracket'
-              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+              ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
               : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
@@ -70,7 +70,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
           onClick={() => setActiveTab('bullpen')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
             activeTab === 'bullpen'
-              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+              ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
               : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
@@ -90,7 +90,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
           onClick={() => setActiveTab('market')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
             activeTab === 'market'
-              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+              ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
               : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
@@ -258,7 +258,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
                   onClick={() => setBullpenLeague(lg)}
                   className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                     bullpenLeague === lg
-                      ? 'bg-indigo-600 text-white shadow-sm'
+                      ? 'bg-emerald-600 text-white shadow-sm'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >

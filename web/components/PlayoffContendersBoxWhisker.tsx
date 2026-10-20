@@ -64,7 +64,7 @@ export const PlayoffContendersBoxWhisker: React.FC<PlayoffContendersBoxWhiskerPr
                 onClick={() => setSelectedLeague(lg)}
                 className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
                   selectedLeague === lg
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'bg-emerald-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
