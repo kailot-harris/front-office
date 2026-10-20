@@ -95,13 +95,13 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
           </div>
 
           {/* Batter / Pitcher Toggle */}
-          <div className="flex items-center gap-2 bg-slate-950/80 p-1.5 rounded-xl border border-slate-800 self-start lg:self-auto font-mono text-xs">
+          <div className="flex items-center gap-2 bg-surface/80 p-1.5 rounded-xl border border-slate-800 self-start lg:self-auto font-mono text-xs">
             <button
               type="button"
               onClick={() => handleTypeSwitch('Batter')}
               className={`px-4 py-2 rounded-lg font-bold transition-all ${
                 playerType === 'Batter'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                  ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -112,7 +112,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
               onClick={() => handleTypeSwitch('Pitcher')}
               className={`px-4 py-2 rounded-lg font-bold transition-all ${
                 playerType === 'Pitcher'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                  ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -126,7 +126,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Search & Directory Roster (4 cols) */}
         <div className="lg:col-span-4 space-y-4">
-          <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-3">
+          <div className="p-4 rounded-2xl bg-surface-raised/90 border border-slate-800 shadow-xl space-y-3">
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-3.5 text-slate-400" />
               <input
@@ -134,7 +134,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
                 placeholder={`Search ${playerType} by name, team, or archetype...`}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 bg-slate-950 rounded-xl border border-slate-800 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 font-mono"
+                className="w-full pl-9 pr-4 py-2.5 bg-surface rounded-xl border border-slate-800 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 font-mono"
               />
             </div>
 
@@ -144,7 +144,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
               <select
                 value={selectedArchetype}
                 onChange={(e) => setSelectedArchetype(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500 font-mono cursor-pointer truncate"
+                className="w-full bg-surface border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500 font-mono cursor-pointer truncate"
               >
                 {availableArchetypes.map((arch) => (
                   <option key={arch} value={arch}>
@@ -165,7 +165,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
                     className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition-all ${
                       isSelected
                         ? 'bg-sky-950/40 border-sky-500/60 shadow-lg shadow-sky-500/10'
-                        : 'bg-slate-950/60 border-slate-800/80 hover:bg-slate-800/50 hover:border-slate-700'
+                        : 'bg-surface/60 border-slate-800/80 hover:bg-slate-800/50 hover:border-slate-700'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -198,7 +198,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
         {/* Middle Column: Player Focus Profile & 16-D Breakdown (4 cols) */}
         <div className="lg:col-span-4 space-y-4">
           {/* Headline Card */}
-          <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4">
+          <div className="p-5 rounded-2xl bg-surface-raised/90 border border-slate-800 shadow-xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
               <div className="flex items-center gap-3">
                 <TeamLogo team={selectedPlayer.team} size="lg" />
@@ -221,7 +221,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
             </div>
 
             {/* Archetype Badge */}
-            <div className="p-3 bg-slate-950/80 rounded-xl border border-sky-500/30 flex items-center justify-between">
+            <div className="p-3 bg-surface/80 rounded-xl border border-sky-500/30 flex items-center justify-between">
               <div>
                 <span className="text-[10px] uppercase font-mono font-bold text-slate-400 block">Classified Archetype</span>
                 <span className="text-sm font-bold text-sky-300 font-mono">{selectedPlayer.archetype}</span>
@@ -231,19 +231,19 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
 
             {/* Headline Key Stats Grid */}
             <div className="grid grid-cols-4 gap-2 text-center font-mono text-xs">
-              <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
+              <div className="bg-surface p-2 rounded-lg border border-slate-800">
                 <span className="text-[10px] text-slate-400 block">{selectedPlayer.headlineStats.stat1Label}</span>
                 <span className="font-bold text-white text-xs">{selectedPlayer.headlineStats.stat1Val}</span>
               </div>
-              <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
+              <div className="bg-surface p-2 rounded-lg border border-slate-800">
                 <span className="text-[10px] text-slate-400 block">{selectedPlayer.headlineStats.stat2Label}</span>
                 <span className="font-bold text-white text-xs">{selectedPlayer.headlineStats.stat2Val}</span>
               </div>
-              <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
+              <div className="bg-surface p-2 rounded-lg border border-slate-800">
                 <span className="text-[10px] text-slate-400 block">{selectedPlayer.headlineStats.stat3Label}</span>
                 <span className="font-bold text-white text-xs">{selectedPlayer.headlineStats.stat3Val}</span>
               </div>
-              <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
+              <div className="bg-surface p-2 rounded-lg border border-slate-800">
                 <span className="text-[10px] text-slate-400 block">{selectedPlayer.headlineStats.countLabel}</span>
                 <span className="font-bold text-amber-400 text-xs">{selectedPlayer.headlineStats.countVal}</span>
               </div>
@@ -262,12 +262,12 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
               </span>
               <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                 {skillEntries.map((item) => (
-                  <div key={item.key} className="bg-slate-950/60 p-2 rounded-lg border border-slate-800/50 space-y-1">
+                  <div key={item.key} className="bg-surface/60 p-2 rounded-lg border border-slate-800/50 space-y-1">
                     <div className="flex justify-between text-[10.5px]">
                       <span className="text-slate-400 truncate">{item.label}</span>
                       <span className="font-bold text-white">{item.val}</span>
                     </div>
-                    <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
+                    <div className="w-full bg-surface-raised h-1.5 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full ${playerType === 'Batter' ? 'bg-sky-500' : 'bg-amber-500'}`}
                         style={{ width: `${item.val}%` }}
@@ -283,7 +283,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
         {/* Right Column: Historical Twins & 2D Manifold Scatter (4 cols) */}
         <div className="lg:col-span-4 space-y-6">
           {/* Historical Twins List */}
-          <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-3.5">
+          <div className="p-5 rounded-2xl bg-surface-raised/90 border border-slate-800 shadow-xl space-y-3.5">
             <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
               <div>
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">

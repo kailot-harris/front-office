@@ -67,9 +67,9 @@ export const FranchisePayrollTable: React.FC<FranchisePayrollTableProps> = ({
   };
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+    <div className="bg-surface-raised/90 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
       {/* Table Header Controls */}
-      <div className="p-4 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-950/40">
+      <div className="p-4 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-surface/40">
         <div>
           <h3 className="font-bold text-white text-base flex items-center gap-2">
             <span>{teamName} Contract Architecture</span>
@@ -89,19 +89,19 @@ export const FranchisePayrollTable: React.FC<FranchisePayrollTableProps> = ({
               placeholder="Search player or pos..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-400 focus:outline-none focus:border-sky-500 w-44"
+              className="bg-surface border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-400 focus:outline-none focus:border-sky-500 w-44"
             />
           </div>
 
           {/* Filter Pills */}
-          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+          <div className="flex items-center gap-1 bg-surface p-1 rounded-lg border border-slate-800">
             {contractTypes.map((t) => (
               <button
                 key={t}
                 onClick={() => setContractTypeFilter(t)}
                 className={`px-2 py-1 text-[11px] font-medium rounded transition-colors ${
                   contractTypeFilter === t
-                    ? 'bg-emerald-600 text-white shadow'
+                    ? 'bg-accent-600 text-white shadow'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850'
                 }`}
               >
@@ -116,7 +116,7 @@ export const FranchisePayrollTable: React.FC<FranchisePayrollTableProps> = ({
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead>
-            <tr className="bg-slate-950/80 border-b border-slate-800 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+            <tr className="bg-surface/80 border-b border-slate-800 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
               <th className="py-3 px-4">
                 <button
                   onClick={() => toggleSort('playerName')}
@@ -239,7 +239,7 @@ export const FranchisePayrollTable: React.FC<FranchisePayrollTableProps> = ({
       </div>
 
       {/* Footer Summary Bar */}
-      <div className="p-3 bg-slate-950/80 border-t border-slate-800 flex flex-wrap items-center justify-between text-xs text-slate-400 px-4">
+      <div className="p-3 bg-surface/80 border-t border-slate-800 flex flex-wrap items-center justify-between text-xs text-slate-400 px-4">
         <div className="flex items-center gap-4">
           <span>Market Baseline: <strong className="text-slate-200 font-mono">$8.5M / WAR</strong></span>
           <span>Guaranteed Total: <strong className="text-white font-mono">${contracts.reduce((sum, c) => sum + c.salary2026, 0).toFixed(1)}M</strong></span>

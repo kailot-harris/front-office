@@ -146,14 +146,14 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
   return (
     <div className="space-y-6">
       {/* Top-Level Batter / Pitcher Group Toggle */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 rounded-xl p-3 shadow-lg">
-        <div className="inline-flex rounded-xl bg-slate-950 p-1 border border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-raised/90 border border-slate-800 rounded-xl p-3 shadow-lg">
+        <div className="inline-flex rounded-xl bg-surface p-1 border border-slate-800">
           <button
             type="button"
             onClick={() => handleGroupSwitch('Batter')}
             className={`flex items-center gap-2.5 px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${
               activeGroup === 'Batter'
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -175,7 +175,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
             onClick={() => handleGroupSwitch('Pitcher')}
             className={`flex items-center gap-2.5 px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${
               activeGroup === 'Pitcher'
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -211,7 +211,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
 
       {/* Overview KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
+        <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
           <div className="p-3 bg-amber-500/10 text-amber-400 rounded-lg">
             <UserCheck className="w-6 h-6" />
           </div>
@@ -230,7 +230,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
           </div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
+        <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
           <div className="p-3 bg-rose-500/10 text-rose-400 rounded-lg">
             <AlertTriangle className="w-6 h-6" />
           </div>
@@ -243,7 +243,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
           </div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
+        <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
           <div className="p-3 bg-indigo-500/10 text-indigo-400 rounded-lg">
             <Sparkles className="w-6 h-6" />
           </div>
@@ -264,7 +264,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
           </div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
+        <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
           <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-lg">
             <Filter className="w-6 h-6" />
           </div>
@@ -279,7 +279,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
       </div>
 
       {/* Control Panel: Search, Filters, Stat Mode */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3 flex-1 min-w-[280px]">
           {/* Search Input */}
           <div className="relative flex-1 min-w-[200px]">
@@ -289,7 +289,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
               placeholder={`Search ${activeGroup.toLowerCase()} name or club...`}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 text-sm text-slate-200 rounded-lg pl-9 pr-3 py-1.5 focus:outline-none focus:border-indigo-500"
+              className="w-full bg-surface border border-slate-800 text-sm text-slate-200 rounded-lg pl-9 pr-3 py-1.5 focus:outline-none focus:border-indigo-500"
             />
           </div>
 
@@ -297,7 +297,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
           <select
             value={selectedTeam}
             onChange={(e) => setSelectedTeam(e.target.value)}
-            className="bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500"
+            className="bg-surface border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500"
           >
             <option value="All">All 30 Clubs</option>
             {teams.map((t) => (
@@ -312,7 +312,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
             <select
               value={pitcherRole}
               onChange={(e) => setPitcherRole(e.target.value as 'All' | 'SP' | 'RP')}
-              className="bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500"
+              className="bg-surface border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500"
             >
               <option value="All">All Roles (SP + RP)</option>
               <option value="SP">Starting Pitchers (SP)</option>
@@ -326,7 +326,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
               onlyOutliers
                 ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 shadow-sm'
-                : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                : 'bg-surface text-slate-400 border-slate-800 hover:text-white'
             }`}
           >
             <AlertTriangle className="w-3.5 h-3.5" />
@@ -337,7 +337,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
         {/* Empirical Bayes Pooled Rates vs Marcel Counting Totals Toggle */}
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-400 font-medium">Projection Engine:</span>
-          <div className="inline-flex rounded-lg bg-slate-950 p-1 border border-slate-800">
+          <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
             <button
               onClick={() => {
                 setStatMode('pooled_rates');
@@ -346,7 +346,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
               }}
               className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                 statMode === 'pooled_rates'
-                  ? 'bg-emerald-600 text-white shadow-sm'
+                  ? 'bg-accent-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -360,7 +360,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
               }}
               className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                 statMode === 'marcel_totals'
-                  ? 'bg-emerald-600 text-white shadow-sm'
+                  ? 'bg-accent-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -371,11 +371,11 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
       </div>
 
       {/* Player Projections Table */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+      <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-800 bg-slate-950/90 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <tr className="border-b border-slate-800 bg-surface/90 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                 <th className="py-3.5 px-4">Player</th>
                 <th className="py-3.5 px-3 text-center">Spatial Map</th>
                 <th className="py-3.5 px-3">Club / Role</th>
@@ -671,7 +671,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
 
                     {/* Expandable Spatial Dropdown Row */}
                     {isExpanded && (
-                      <tr key={`${p.player_id}-dropdown-map`} className="bg-slate-950/80">
+                      <tr key={`${p.player_id}-dropdown-map`} className="bg-surface/80">
                         <td colSpan={11} className="p-3 sm:p-5">
                           <PlayerSpatialDropdown
                             player={p}
@@ -688,7 +688,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
           </table>
         </div>
         {filteredPlayers.length > 150 && (
-          <div className="p-3 bg-slate-950/80 border-t border-slate-800 text-center text-xs text-slate-400 font-mono">
+          <div className="p-3 bg-surface/80 border-t border-slate-800 text-center text-xs text-slate-400 font-mono">
             Showing top 150 of {filteredPlayers.length} matching {activeGroup.toLowerCase()}s — use search or club filter to narrow further.
           </div>
         )}

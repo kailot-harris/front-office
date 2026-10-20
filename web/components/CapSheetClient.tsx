@@ -63,17 +63,17 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ overview }) => {
 
           {/* League Macro Metrics */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:min-w-[340px]">
-            <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3">
+            <div className="bg-surface/70 border border-slate-800 rounded-xl p-3">
               <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Base CBT Line</span>
               <span className="font-mono font-bold text-base text-white">${overview.baseThreshold}M</span>
               <span className="text-[10px] text-emerald-400 block mt-0.5">2026 Benchmark</span>
             </div>
-            <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3">
+            <div className="bg-surface/70 border border-slate-800 rounded-xl p-3">
               <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Tax Payers</span>
               <span className="font-mono font-bold text-base text-amber-400">{totalTaxPayingTeams} / 30</span>
               <span className="text-[10px] text-slate-400 block mt-0.5">Clubs Above Base</span>
             </div>
-            <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 col-span-2 sm:col-span-1">
+            <div className="bg-surface/70 border border-slate-800 rounded-xl p-3 col-span-2 sm:col-span-1">
               <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Total Tax Pool</span>
               <span className="font-mono font-bold text-base text-rose-400">${overview.totalLuxuryTaxCollected.toFixed(1)}M</span>
               <span className="text-[10px] text-slate-400 block mt-0.5">Est. Revenue Share</span>
@@ -86,7 +86,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ overview }) => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: 30-Team Leaderboard Selector (5 Cols) */}
         <div className="lg:col-span-5 space-y-4">
-          <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-xl">
+          <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 shadow-xl">
             {/* Filter Bar */}
             <div className="flex flex-col gap-3 pb-3 border-b border-slate-800">
               <div className="flex items-center justify-between">
@@ -107,8 +107,8 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ overview }) => {
                     onClick={() => setLeagueFilter(lg)}
                     className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors ${
                       leagueFilter === lg
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                        ? 'bg-accent-600 text-white'
+                        : 'bg-surface text-slate-400 hover:text-white border border-slate-800'
                     }`}
                   >
                     {lg}
@@ -129,7 +129,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ overview }) => {
                     className={`px-2 py-1 text-[11px] font-medium rounded-lg transition-colors ${
                       selectedTierFilter === tier.id
                         ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                        : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                        : 'bg-surface text-slate-400 hover:text-white border border-slate-800'
                     }`}
                   >
                     {tier.label}
