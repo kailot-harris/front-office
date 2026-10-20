@@ -45,7 +45,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
               <Shield className="w-3.5 h-3.5" /> Positional Versatility & Coverage Matrix
             </span>
-            <span className="text-xs text-zinc-500 font-mono">Shannon Entropy ($H_v$) & Tracking Shares</span>
+            <span className="text-xs text-zinc-500 font-mono">Shannon Entropy (H<sub>v</sub>) & Tracking Shares</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
             Defensive Versatility & Rim Protection Architecture
@@ -105,7 +105,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                   onClick={() => setSortKey('versatilityScore')}
                   className={`underline-offset-2 ${sortKey === 'versatilityScore' ? 'text-emerald-400 underline font-semibold' : 'hover:text-zinc-200'}`}
                 >
-                  $H_v$ Switch
+                  H<sub>v</sub> Switch
                 </button>
                 <button
                   onClick={() => setSortKey('rimDfgDelta')}
@@ -250,7 +250,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
             <div className="p-3.5 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
               <div className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5 mb-1">
                 <Shield className="w-3.5 h-3.5 text-indigo-400" />
-                Shannon Entropy ($H_v$): {selectedProfile.versatilityScore}
+                Shannon Entropy (H<sub>v</sub>): {selectedProfile.versatilityScore}
               </div>
               <p className="text-[11px] text-zinc-400 leading-relaxed">
                 A score of 100 indicates perfect 20% parity defending all 5 positions without team defensive rotation compromises.
