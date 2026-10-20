@@ -13,9 +13,11 @@ describe('Static logo & image assets contract', () => {
     for (const abbr of WNBA_TEAMS) {
       const url = getTeamLogoUrl(abbr);
       expect(url, `getTeamLogoUrl(${abbr}) returned empty`).toBeTruthy();
-      expect(url).toBe(`/logos/${abbr}_logo.png`);
+      expect(url).toBe(`/wnba/logos/${abbr}_logo.png`);
 
-      const filePath = path.join(PUBLIC_DIR, url);
+      // url includes the site's /wnba basePath, but files on disk under public/ don't - strip
+      // it back off before resolving a filesystem path.
+      const filePath = path.join(PUBLIC_DIR, url.replace(/^\/wnba/, ''));
       expect(fs.existsSync(filePath), `Logo file missing: ${filePath}`).toBe(true);
 
       const stat = fs.statSync(filePath);

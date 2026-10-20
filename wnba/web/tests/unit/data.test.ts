@@ -53,8 +53,8 @@ describe('lib/teams.ts metadata helpers', () => {
   it('getTeamLogoUrl() and getTeamColors() resolve case-insensitively across all 15 WNBA teams', () => {
     expect(WNBA_TEAMS_METADATA.NY.fullName).toBe('New York Liberty');
     expect(WNBA_TEAMS_METADATA.LV.fullName).toBe('Las Vegas Aces');
-    expect(getTeamLogoUrl('min')).toBe('/logos/MIN_logo.png');
-    expect(getTeamLogoUrl('NY')).toBe('/logos/NY_logo.png');
+    expect(getTeamLogoUrl('min')).toBe('/wnba/logos/MIN_logo.png');
+    expect(getTeamLogoUrl('NY')).toBe('/wnba/logos/NY_logo.png');
     expect(getTeamColors('lv').primary).toBe('#000000');
     expect(getTeamColors('UNKNOWN').primary).toBe('#6366f1');
     expect(Object.keys(WNBA_TEAMS_METADATA)).toHaveLength(15);
