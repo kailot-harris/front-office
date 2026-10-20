@@ -8,6 +8,12 @@ on:
 # IMPORTANT: set this to "/<this-repo-name>" once the repo is created on GitHub
 # (project pages are served at https://<user>.github.io/<repo-name>/).
 # Leave empty only if this is published as a user/org root site (<user>.github.io).
+#
+# Each sport's next.config.mjs reads this to compute its own basePath
+# (PAGES_BASE_PATH + "/<sport>"), which Next only applies to its own generated
+# URLs - any hand-written "<img src='/...'>" or "fetch('/...')" in app code
+# bypasses it and 404s in production while working fine in local dev. See
+# README.md's "Gotcha: basePath does not rewrite hand-written asset paths".
 env:
   PAGES_BASE_PATH: /front-office
 

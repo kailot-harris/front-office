@@ -87,3 +87,22 @@ cd nba/web && npm install && npm run dev
 Note: since `basePath` is always `/${PAGES_BASE_PATH}/<sport>`, and
 `PAGES_BASE_PATH` is unset locally, the dev server serves the app under
 `/nba`, `/wnba`, etc. (e.g. http://localhost:3000/nba) rather than at `/`.
+
+### Gotcha: `basePath` does not rewrite hand-written asset paths
+
+Next's `basePath`/`assetPrefix` config only prefixes URLs it generates itself
+(`next/link`, `next/image`, its own JS/CSS chunks). It does **not** touch a
+literal string you write yourself, e.g. `<img src="/logos/ATL_logo.png">` or
+`fetch('/data/shots/123.json')`. Those resolve against the domain root in the
+browser, so in production (served at `/front-office/<sport>/...`) they 404
+while looking completely fine in local dev (served at `/`) — this is exactly
+what broke WNBA team logos (see `wnba/web/lib/basePath.ts`, fixed 2026-10-20).
+
+Any new `<img src="/...">` or `fetch('/...')` against a file under `public/`
+must go through that sport's own `BASE_PATH` constant instead
+(`wnba/web/lib/basePath.ts` is the reference implementation — mirrors
+`next.config.mjs`'s own `basePath` computation). `nba/web` and `mlb/web` have
+the same hardcoded-path pattern in a few components
+(`InlinePlayerShotCard.tsx`, `ShotChartModal.tsx`, `ShotsExplorerClient.tsx`,
+`PlayersClient.tsx`) that hasn't been fixed yet as of this writing — same bug,
+just not yet reported as broken.
