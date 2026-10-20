@@ -44,13 +44,13 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
   return (
     <div className="space-y-6">
       {/* Top Sub-Navigation Tabs */}
-      <div className="flex flex-wrap items-center gap-2 bg-slate-900/90 border border-slate-800 rounded-xl p-2 shadow-lg">
+      <div className="flex flex-wrap items-center gap-2 bg-surface-raised/90 border border-slate-800 rounded-xl p-2 shadow-lg">
         <button
           type="button"
           onClick={() => setActiveTab('bracket')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
             activeTab === 'bracket'
-              ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+              ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
               : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
@@ -70,7 +70,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
           onClick={() => setActiveTab('bullpen')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
             activeTab === 'bullpen'
-              ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+              ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
               : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
@@ -90,7 +90,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
           onClick={() => setActiveTab('market')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
             activeTab === 'market'
-              ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+              ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
               : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
@@ -111,7 +111,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
         <div className="space-y-6">
           {/* Postseason Format Banner */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
+            <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
               <TeamLogo team={wsLeader?.team} size="lg" />
               <div>
                 <div className="text-xs text-slate-400 uppercase font-semibold">
@@ -124,7 +124,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
               </div>
             </div>
 
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
+            <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4">
               <div className="text-xs text-slate-400 uppercase font-semibold">Wild Card Series</div>
               <div className="text-lg font-bold text-white mt-0.5">Best-of-3 (3-0 Home)</div>
               <div className="text-xs text-slate-400 mt-0.5">
@@ -132,7 +132,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
               </div>
             </div>
 
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
+            <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4">
               <div className="text-xs text-slate-400 uppercase font-semibold">
                 Division & League Series
               </div>
@@ -142,7 +142,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
               </div>
             </div>
 
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
+            <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4">
               <div className="text-xs text-slate-400 uppercase font-semibold">
                 Extra-Innings Rule
               </div>
@@ -161,9 +161,9 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
             ].map((lg) => (
               <div
                 key={lg.badge}
-                className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl"
+                className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl"
               >
-                <div className="p-4 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between">
+                <div className="p-4 bg-surface/80 border-b border-slate-800 flex items-center justify-between">
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
                     <Award className="w-4 h-4 text-amber-400" />
                     <span>{lg.title}</span>
@@ -176,7 +176,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="border-b border-slate-800 bg-slate-950/50 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      <tr className="border-b border-slate-800 bg-surface/50 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                         <th className="py-2.5 px-3">Seed</th>
                         <th className="py-2.5 px-3">Club</th>
                         <th className="py-2.5 px-2 text-right">Elo</th>
@@ -240,7 +240,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
       {/* TAB 2: Bullpen Workload & Fatigue Monitor */}
       {activeTab === 'bullpen' && (
         <div className="space-y-4">
-          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <Flame className="w-5 h-5 text-amber-400" />
@@ -251,14 +251,14 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
               </p>
             </div>
 
-            <div className="inline-flex rounded-lg bg-slate-950 p-1 border border-slate-800">
+            <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
               {(['All', 'AL', 'NL'] as const).map((lg) => (
                 <button
                   key={lg}
                   onClick={() => setBullpenLeague(lg)}
                   className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                     bullpenLeague === lg
-                      ? 'bg-emerald-600 text-white shadow-sm'
+                      ? 'bg-accent-600 text-white shadow-sm'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -268,11 +268,11 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
             </div>
           </div>
 
-          <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+          <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-800 bg-slate-950/90 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  <tr className="border-b border-slate-800 bg-surface/90 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                     <th className="py-3.5 px-4">Club</th>
                     <th className="py-3.5 px-3">Division</th>
                     <th className="py-3.5 px-3 text-right">High-Lev Arms</th>
@@ -338,7 +338,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
         <div className="space-y-6">
           {/* Risk Management KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
+            <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4">
               <div className="flex items-center justify-between text-xs text-slate-400 uppercase font-semibold">
                 <span>Bankroll & Stop-Loss Status</span>
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
@@ -352,7 +352,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
               </div>
             </div>
 
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
+            <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4">
               <div className="flex items-center justify-between text-xs text-slate-400 uppercase font-semibold">
                 <span>Active Kelly Multiplier</span>
                 <Activity className="w-4 h-4 text-indigo-400" />
@@ -365,7 +365,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
               </div>
             </div>
 
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
+            <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4">
               <div className="flex items-center justify-between text-xs text-slate-400 uppercase font-semibold">
                 <span>Beat Closing Line (CLV)</span>
                 <TrendingUp className="w-4 h-4 text-amber-400" />
@@ -379,7 +379,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
               </div>
             </div>
 
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
+            <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4">
               <div className="flex items-center justify-between text-xs text-slate-400 uppercase font-semibold">
                 <span>Current Drawdown</span>
                 <AlertTriangle className="w-4 h-4 text-sky-400" />
@@ -394,8 +394,8 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
           </div>
 
           {/* +EV Value Bets Table */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
-            <div className="p-4 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between">
+          <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+            <div className="p-4 bg-surface/80 border-b border-slate-800 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-bold text-white">
                   Devigged Market Odds & +EV Kelly Value Recommendations
@@ -409,7 +409,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-800 bg-slate-950/90 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  <tr className="border-b border-slate-800 bg-surface/90 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                     <th className="py-3.5 px-4">Matchup</th>
                     <th className="py-3.5 px-3">Recommended Bet</th>
                     <th className="py-3.5 px-3">Sportsbook</th>

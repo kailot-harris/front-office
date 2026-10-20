@@ -54,7 +54,7 @@ export const TacticalMismatchRadar: React.FC<TacticalMismatchRadarProps> = ({
   const gridLevels = [0.25, 0.5, 0.75, 1.0];
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
+    <div className="bg-surface-raised/90 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
       <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 mb-2">
         <div>
           <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
@@ -150,7 +150,7 @@ export const TacticalMismatchRadar: React.FC<TacticalMismatchRadarProps> = ({
           const valB = ratingsB[axis.key];
           const advA = valA >= valB;
           return (
-            <div key={i} className="bg-slate-950/60 p-1.5 rounded-lg border border-slate-800/60">
+            <div key={i} className="bg-surface/60 p-1.5 rounded-lg border border-slate-800/60">
               <span className="text-[9.5px] font-mono text-slate-400 block truncate" title={axis.desc}>
                 {axis.label}
               </span>

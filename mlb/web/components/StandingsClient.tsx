@@ -122,9 +122,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
     <div className="space-y-6">
       {/* Top Stat Highlights */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
+        <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
           <div className="relative flex-shrink-0">
-            <div className="w-12 h-12 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
+            <div className="w-12 h-12 rounded-xl bg-surface/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
               <TeamLogo team={topTitleFavorite?.team} size="lg" />
             </div>
             <div className="absolute -bottom-1 -right-1 p-1 bg-amber-500/20 text-amber-400 rounded-md border border-amber-500/30 shadow">
@@ -148,9 +148,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
           </div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
+        <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
           <div className="relative flex-shrink-0">
-            <div className="w-12 h-12 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
+            <div className="w-12 h-12 rounded-xl bg-surface/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
               <TeamLogo team={topWinProjected?.team} size="lg" />
             </div>
             <div className="absolute -bottom-1 -right-1 p-1 bg-emerald-500/20 text-emerald-400 rounded-md border border-emerald-500/30 shadow">
@@ -174,7 +174,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
           </div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
+        <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
           <div className="p-3 bg-indigo-500/10 text-indigo-400 rounded-lg flex-shrink-0">
             <Award className="w-6 h-6" />
           </div>
@@ -187,9 +187,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
           </div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
+        <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
           <div className="relative flex-shrink-0">
-            <div className="w-12 h-12 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
+            <div className="w-12 h-12 rounded-xl bg-surface/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
               <TeamLogo team={mostVolatileTeam?.team} size="lg" />
             </div>
             <div className="absolute -bottom-1 -right-1 p-1 bg-rose-500/20 text-rose-400 rounded-md border border-rose-500/30 shadow">
@@ -216,13 +216,13 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
 
       {/* View Switcher: Playoff Contenders Snapshot vs Full League Standings Table */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
-        <div className="inline-flex rounded-xl bg-slate-900/90 p-1 border border-slate-800 shadow-inner">
+        <div className="inline-flex rounded-xl bg-surface-raised/90 p-1 border border-slate-800 shadow-inner">
           <button
             type="button"
             onClick={() => setActiveTab('visualizer')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
               activeTab === 'visualizer'
-                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
             }`}
           >
@@ -244,7 +244,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
             onClick={() => setActiveTab('table')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
               activeTab === 'table'
-                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
             }`}
           >
@@ -279,13 +279,13 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
       {activeTab === 'table' && (
         <div className="space-y-4">
           {/* Filter & Sort Controls */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2 text-xs text-slate-400">
                 <Filter className="w-4 h-4 text-indigo-400" />
                 <span className="font-semibold uppercase">League:</span>
               </div>
-              <div className="inline-flex rounded-lg bg-slate-950 p-1 border border-slate-800">
+              <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
                 {(['All', 'AL', 'NL'] as const).map((lg) => (
                   <button
                     key={lg}
@@ -295,7 +295,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                     }}
                     className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                       selectedLeague === lg
-                        ? 'bg-emerald-600 text-white shadow-sm'
+                        ? 'bg-accent-600 text-white shadow-sm'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -307,7 +307,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
               <select
                 value={selectedDivision}
                 onChange={(e) => setSelectedDivision(e.target.value)}
-                className="bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500"
+                className="bg-surface border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500"
               >
                 <option value="All">All 6 Divisions</option>
                 {divisions.map((d) => (
@@ -325,11 +325,11 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
           </div>
 
           {/* Main Standings Table */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+          <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-800 bg-slate-950/80 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  <tr className="border-b border-slate-800 bg-surface/80 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                     <th
                       onClick={() => handleSort('rank')}
                       className="py-3.5 px-3 cursor-pointer hover:text-white group select-none"
@@ -507,7 +507,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex flex-col gap-1">
-                            <div className="relative h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                            <div className="relative h-2 bg-surface rounded-full overflow-hidden border border-slate-800">
                               <div
                                 className="absolute top-0 bottom-0 bg-indigo-500/50 rounded-full"
                                 style={{ left: `${leftPct}%`, width: `${widthPct}%` }}

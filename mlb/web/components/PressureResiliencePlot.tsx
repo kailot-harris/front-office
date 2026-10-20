@@ -32,7 +32,7 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
   const scaleY = (val: number) => height - padding - ((val - yMin) / (yMax - yMin)) * (height - 2 * padding);
 
   return (
-    <div className="flex flex-col p-4 bg-slate-950/70 rounded-2xl border border-slate-800 shadow-xl space-y-2">
+    <div className="flex flex-col p-4 bg-surface/70 rounded-2xl border border-slate-800 shadow-xl space-y-2">
       <div className="flex items-center justify-between">
         <div>
           <h4 className="text-xs font-bold text-white uppercase tracking-wider font-mono">
@@ -45,7 +45,7 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
           </p>
         </div>
         <div className="text-right">
-          <span className="text-[10px] font-mono bg-slate-900 border border-slate-800 text-rose-400 px-2 py-0.5 rounded font-bold">
+          <span className="text-[10px] font-mono bg-surface-raised border border-slate-800 text-rose-400 px-2 py-0.5 rounded font-bold">
             N = {profiles.length} {playerType}s
           </span>
         </div>

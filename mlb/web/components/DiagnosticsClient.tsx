@@ -22,7 +22,7 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
     <div className="space-y-8">
       {/* Top Headline Accuracy & Scoring Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5">
+        <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-5">
           <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
             <span>Walk-Forward Win Accuracy</span>
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -35,7 +35,7 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
           </p>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5">
+        <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-5">
           <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
             <span>Walk-Forward Brier Score</span>
             <Target className="w-4 h-4 text-indigo-400" />
@@ -48,7 +48,7 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
           </p>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5">
+        <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-5">
           <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
             <span>Log-Loss Reliability</span>
             <TrendingUp className="w-4 h-4 text-amber-400" />
@@ -62,7 +62,7 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
           </p>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5">
+        <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-5">
           <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
             <span>Empirical Home Field Win%</span>
             <ShieldCheck className="w-4 h-4 text-sky-400" />
@@ -78,7 +78,7 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
       </div>
 
       {/* Model Calibration Curve & Reliability Diagram */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-6 space-y-6">
+      <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-6 space-y-6">
         <div>
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <Target className="w-5 h-5 text-indigo-400" />
@@ -92,7 +92,7 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
         {/* Visual Calibration Curve Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
           {/* SVG Calibration Chart */}
-          <div className="bg-slate-950 p-6 rounded-xl border border-slate-800">
+          <div className="bg-surface p-6 rounded-xl border border-slate-800">
             <div className="relative w-full aspect-square max-w-[420px] mx-auto">
               <svg viewBox="0 0 400 400" className="w-full h-full overflow-visible">
                 {/* Grid lines */}
@@ -251,7 +251,7 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
       {/* Chronological Season Drift & Residual Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Season Progression Split */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-6 space-y-4">
+        <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-6 space-y-4">
           <div>
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-emerald-400" />
@@ -266,7 +266,7 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
             {diagnostics.accuracyDrift.map((split) => (
               <div
                 key={split.season}
-                className="bg-slate-950/70 border border-slate-800 rounded-xl p-4 flex items-center justify-between"
+                className="bg-surface/70 border border-slate-800 rounded-xl p-4 flex items-center justify-between"
               >
                 <div>
                   <div className="text-sm font-bold text-white">{split.season}</div>
@@ -294,7 +294,7 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
         </div>
 
         {/* Residual Error Distribution */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-6 space-y-4">
+        <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-6 space-y-4">
           <div>
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
               <BarChart2 className="w-5 h-5 text-amber-400" />
@@ -317,7 +317,7 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
                     </span>
                     <span className="font-mono font-bold text-white">{res.count} games</span>
                   </div>
-                  <div className="h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                  <div className="h-2.5 bg-surface rounded-full overflow-hidden border border-slate-800">
                     <div
                       className="h-full bg-gradient-to-r from-indigo-500 to-sky-400 rounded-full"
                       style={{ width: `${pct}%` }}

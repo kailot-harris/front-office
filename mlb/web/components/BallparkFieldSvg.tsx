@@ -55,7 +55,7 @@ export const BallparkFieldSvg: React.FC<BallparkFieldSvgProps> = ({
     <div className="w-full flex flex-col items-center select-none space-y-3">
       {/* Ballpark Header & Selector Bar */}
       {showParkSelector && (
-        <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-950/80 border border-slate-800/90 rounded-xl p-3">
+        <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface/80 border border-slate-800/90 rounded-xl p-3">
           <div className="flex items-center gap-2.5">
             <TeamLogo team={park.team} size="sm" />
             <div>
@@ -87,7 +87,7 @@ export const BallparkFieldSvg: React.FC<BallparkFieldSvgProps> = ({
               id="park-select"
               value={selectedTeam}
               onChange={(e) => setSelectedTeam(e.target.value)}
-              className="bg-slate-900 border border-slate-700 text-white text-xs rounded-lg px-2.5 py-1.5 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="bg-surface-raised border border-slate-700 text-white text-xs rounded-lg px-2.5 py-1.5 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
               {allParks.map((p) => (
                 <option key={p.team} value={p.team}>
@@ -421,7 +421,7 @@ export const BallparkFieldSvg: React.FC<BallparkFieldSvgProps> = ({
 
         {/* Hover Tooltip Overlay */}
         {hoveredBall && (
-          <div className="absolute top-2 left-2 right-2 sm:right-auto sm:max-w-xs bg-slate-950/95 border border-indigo-500/40 rounded-lg p-3 shadow-2xl pointer-events-none text-xs space-y-1.5 z-20 backdrop-blur-md">
+          <div className="absolute top-2 left-2 right-2 sm:right-auto sm:max-w-xs bg-surface/95 border border-indigo-500/40 rounded-lg p-3 shadow-2xl pointer-events-none text-xs space-y-1.5 z-20 backdrop-blur-md">
             <div className="flex items-center justify-between">
               <span className="font-bold uppercase tracking-wider text-white">
                 {hoveredBall.hit_type}
@@ -447,7 +447,7 @@ export const BallparkFieldSvg: React.FC<BallparkFieldSvgProps> = ({
       </div>
 
       {/* Iconic Features List */}
-      <div className="w-full flex items-center justify-between text-xs bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 flex-wrap gap-2">
+      <div className="w-full flex items-center justify-between text-xs bg-surface-raised/60 border border-slate-800 rounded-lg px-3 py-2 flex-wrap gap-2">
         <div className="flex items-center gap-1.5 text-slate-400 text-[11px]">
           <Info className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
           <span className="font-semibold text-slate-300">Architectural Profile:</span>

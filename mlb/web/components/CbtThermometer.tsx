@@ -30,7 +30,7 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
   };
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-xl">
+    <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-5 shadow-xl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
           <div className="flex items-center gap-2">
@@ -66,7 +66,7 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
       {/* Progress Bar Container */}
       <div className="relative pt-6 pb-2">
         {/* Track */}
-        <div className="h-4 w-full bg-slate-950 rounded-full border border-slate-800 overflow-hidden relative">
+        <div className="h-4 w-full bg-surface rounded-full border border-slate-800 overflow-hidden relative">
           {/* Shaded Threshold Regions */}
           <div
             className="absolute top-0 bottom-0 bg-amber-500/10 border-r border-amber-500/30"
@@ -137,7 +137,7 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
 
       {/* Penalty Badges & Status Details */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 pt-4 border-t border-slate-800/80 text-xs">
-        <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
+        <div className="flex items-center gap-2 p-2.5 rounded-lg bg-surface/60 border border-slate-800">
           <DollarSign className="w-4 h-4 text-emerald-400 flex-shrink-0" />
           <div className="min-w-0">
             <div className="text-[10px] text-slate-400">CBT Tax Rate Applied</div>
@@ -145,7 +145,7 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
+        <div className="flex items-center gap-2 p-2.5 rounded-lg bg-surface/60 border border-slate-800">
           {team.penalties.draftPickDrop10 ? (
             <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
           ) : (
@@ -159,7 +159,7 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
+        <div className="flex items-center gap-2 p-2.5 rounded-lg bg-surface/60 border border-slate-800">
           {team.penalties.internationalPoolReduction ? (
             <ShieldAlert className="w-4 h-4 text-rose-400 flex-shrink-0" />
           ) : (
