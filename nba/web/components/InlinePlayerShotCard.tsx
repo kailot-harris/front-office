@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { PlayerShotData, ShotsMetadata } from '@/lib/shotTypes';
 import { PlayerShotChart } from '@/components/PlayerShotChart';
 import { TeamLogo } from '@/components/TeamLogo';
+import { BASE_PATH } from '@/lib/basePath';
 import { Crosshair, AlertCircle, Loader2, ChevronUp } from 'lucide-react';
 
 interface InlinePlayerShotCardProps {
@@ -32,8 +33,8 @@ export const InlinePlayerShotCard: React.FC<InlinePlayerShotCardProps> = ({
     const loadData = async () => {
       try {
         const [shotsRes, metaRes] = await Promise.all([
-          fetch(`/data/shots/${playerId}.json`),
-          fetch('/data/shots_metadata.json'),
+          fetch(`${BASE_PATH}/data/shots/${playerId}.json`),
+          fetch(`${BASE_PATH}/data/shots_metadata.json`),
         ]);
 
         if (!shotsRes.ok) {

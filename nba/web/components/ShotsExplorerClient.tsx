@@ -5,6 +5,7 @@ import { PlayerCatalogEntry, PlayerShotData, ShotsMetadata } from '@/lib/shotTyp
 import { PlayerShotChart } from '@/components/PlayerShotChart';
 import { TeamLogo } from '@/components/TeamLogo';
 import { NBA_TEAMS_METADATA } from '@/lib/teams';
+import { BASE_PATH } from '@/lib/basePath';
 import { Search, Crosshair, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 
 interface ShotsExplorerClientProps {
@@ -79,7 +80,7 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
     setLoading(true);
     setError(null);
 
-    fetch(`/data/shots/${selectedPlayer.player_id}.json`)
+    fetch(`${BASE_PATH}/data/shots/${selectedPlayer.player_id}.json`)
       .then((res) => {
         if (!res.ok) throw new Error(`Could not load shots for ${selectedPlayer.player_name}`);
         return res.json();
