@@ -46,7 +46,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center gap-1">
               <Shield className="w-3.5 h-3.5" /> Positional Versatility & Coverage Matrix
             </span>
-            <span className="text-xs text-slate-500 font-mono">Shannon Entropy ($H_v$) & Tracking Shares</span>
+            <span className="text-xs text-slate-500 font-mono">Shannon Entropy (H<sub>v</sub>) & Tracking Shares</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
             Defensive Versatility & Rim Protection Architecture

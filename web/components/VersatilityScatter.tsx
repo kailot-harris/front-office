@@ -37,7 +37,7 @@ export const VersatilityScatter: React.FC<VersatilityScatterProps> = ({
             Versatility vs. Rim Deterrence Residual
           </h4>
           <p className="text-[11px] text-slate-500">
-            X: Shannon Entropy $H_{'{'}vers{'}'}$ (Switch Range) ⟵ Single Positional Anchor
+            X: Shannon Entropy H<sub>vers</sub> (Switch Range) ⟵ Single Positional Anchor
             <br />
             Y: Rim DFG% Delta (Top = Elite Rim Fortress & Suppression)
           </p>
