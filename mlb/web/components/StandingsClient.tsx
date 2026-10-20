@@ -222,7 +222,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
             onClick={() => setActiveTab('visualizer')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
               activeTab === 'visualizer'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
             }`}
           >
@@ -244,7 +244,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
             onClick={() => setActiveTab('table')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
               activeTab === 'table'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
             }`}
           >
@@ -295,7 +295,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                     }}
                     className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                       selectedLeague === lg
-                        ? 'bg-indigo-600 text-white shadow-sm'
+                        ? 'bg-emerald-600 text-white shadow-sm'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >

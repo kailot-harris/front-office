@@ -153,7 +153,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
             onClick={() => handleGroupSwitch('Batter')}
             className={`flex items-center gap-2.5 px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${
               activeGroup === 'Batter'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -175,7 +175,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
             onClick={() => handleGroupSwitch('Pitcher')}
             className={`flex items-center gap-2.5 px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${
               activeGroup === 'Pitcher'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -346,7 +346,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
               }}
               className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                 statMode === 'pooled_rates'
-                  ? 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-emerald-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -360,7 +360,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
               }}
               className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                 statMode === 'marcel_totals'
-                  ? 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-emerald-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >

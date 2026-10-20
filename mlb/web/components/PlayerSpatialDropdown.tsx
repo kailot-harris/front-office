@@ -147,7 +147,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 onClick={() => setBatterFilter('all')}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   batterFilter === 'all'
-                    ? 'bg-indigo-600 text-white font-bold'
+                    ? 'bg-emerald-600 text-white font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -158,7 +158,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 onClick={() => setBatterFilter('hits')}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   batterFilter === 'hits'
-                    ? 'bg-indigo-600 text-white font-bold'
+                    ? 'bg-emerald-600 text-white font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -169,7 +169,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 onClick={() => setBatterFilter('hrs')}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   batterFilter === 'hrs'
-                    ? 'bg-indigo-600 text-white font-bold'
+                    ? 'bg-emerald-600 text-white font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -180,7 +180,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 onClick={() => setBatterFilter('xbh')}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   batterFilter === 'xbh'
-                    ? 'bg-indigo-600 text-white font-bold'
+                    ? 'bg-emerald-600 text-white font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -191,7 +191,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 onClick={() => setBatterFilter('hard_hit')}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   batterFilter === 'hard_hit'
-                    ? 'bg-indigo-600 text-white font-bold'
+                    ? 'bg-emerald-600 text-white font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -205,7 +205,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 onClick={() => setPitcherFilter('all')}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   pitcherFilter === 'all'
-                    ? 'bg-indigo-600 text-white font-bold'
+                    ? 'bg-emerald-600 text-white font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -216,7 +216,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 onClick={() => setPitcherFilter('whiffs')}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   pitcherFilter === 'whiffs'
-                    ? 'bg-indigo-600 text-white font-bold'
+                    ? 'bg-emerald-600 text-white font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -227,7 +227,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 onClick={() => setPitcherFilter('strikes')}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   pitcherFilter === 'strikes'
-                    ? 'bg-indigo-600 text-white font-bold'
+                    ? 'bg-emerald-600 text-white font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -240,7 +240,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                   onClick={() => setPitcherFilter(pitcherFilter === a.pitch_type ? 'all' : a.pitch_type)}
                   className={`px-2.5 py-1.5 rounded-md transition-colors ${
                     pitcherFilter === a.pitch_type
-                      ? 'bg-indigo-600 text-white font-bold'
+                      ? 'bg-emerald-600 text-white font-bold'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
