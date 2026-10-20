@@ -302,12 +302,12 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-1 self-start md:self-auto">
+        <div className="flex items-center bg-surface-raised border border-slate-800 rounded-lg p-1 self-start md:self-auto">
           <button
             onClick={() => setActiveTab('simulator')}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-bold transition-all ${
               activeTab === 'simulator'
-                ? 'bg-emerald-600 text-white shadow-md'
+                ? 'bg-accent-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -318,7 +318,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
             onClick={() => setActiveTab('historical')}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-bold transition-all ${
               activeTab === 'historical'
-                ? 'bg-emerald-600 text-white shadow-md'
+                ? 'bg-accent-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -338,42 +338,42 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => handleQuickMatchup('NY', 'MIN', 'NY', 'bo7')}
-                className="px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-slate-900 border border-slate-800 hover:border-amber-500/60 text-slate-300 hover:text-amber-400 transition-all flex items-center gap-2"
+                className="px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-surface-raised border border-slate-800 hover:border-amber-500/60 text-slate-300 hover:text-amber-400 transition-all flex items-center gap-2"
               >
                 <span>NY vs MIN</span>
                 <span className="text-[10px] text-amber-500 font-semibold">(2024/2026 Finals Rematch)</span>
               </button>
               <button
                 onClick={() => handleQuickMatchup('LV', 'NY', 'LV', 'bo7')}
-                className="px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-slate-900 border border-slate-800 hover:border-amber-500/60 text-slate-300 hover:text-amber-400 transition-all flex items-center gap-2"
+                className="px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-surface-raised border border-slate-800 hover:border-amber-500/60 text-slate-300 hover:text-amber-400 transition-all flex items-center gap-2"
               >
                 <span>LV vs NY</span>
                 <span className="text-[10px] text-slate-500 font-semibold">(Heavyweight Clash)</span>
               </button>
               <button
                 onClick={() => handleQuickMatchup('MIN', 'LV', 'MIN', 'bo5')}
-                className="px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-slate-900 border border-slate-800 hover:border-amber-500/60 text-slate-300 hover:text-amber-400 transition-all flex items-center gap-2"
+                className="px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-surface-raised border border-slate-800 hover:border-amber-500/60 text-slate-300 hover:text-amber-400 transition-all flex items-center gap-2"
               >
                 <span>MIN vs LV</span>
                 <span className="text-[10px] text-slate-500 font-semibold">(West Finals Bo5)</span>
               </button>
               <button
                 onClick={() => handleQuickMatchup('IND', 'CHI', 'IND', 'bo3')}
-                className="px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-slate-900 border border-slate-800 hover:border-amber-500/60 text-slate-300 hover:text-amber-400 transition-all flex items-center gap-2"
+                className="px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-surface-raised border border-slate-800 hover:border-amber-500/60 text-slate-300 hover:text-amber-400 transition-all flex items-center gap-2"
               >
                 <span>IND vs CHI</span>
                 <span className="text-[10px] text-slate-500 font-semibold">(Midwest Bo3)</span>
               </button>
               <button
                 onClick={() => handleQuickMatchup('CON', 'IND', 'CON', 'bo5')}
-                className="px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-slate-900 border border-slate-800 hover:border-amber-500/60 text-slate-300 hover:text-amber-400 transition-all flex items-center gap-2"
+                className="px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-surface-raised border border-slate-800 hover:border-amber-500/60 text-slate-300 hover:text-amber-400 transition-all flex items-center gap-2"
               >
                 <span>CON vs IND</span>
                 <span className="text-[10px] text-slate-500 font-semibold">(East Semifinals)</span>
               </button>
               <button
                 onClick={() => handleQuickMatchup('GS', 'LA', 'GS', 'bo3')}
-                className="px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-slate-900 border border-slate-800 hover:border-amber-500/60 text-slate-300 hover:text-amber-400 transition-all flex items-center gap-2"
+                className="px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-surface-raised border border-slate-800 hover:border-amber-500/60 text-slate-300 hover:text-amber-400 transition-all flex items-center gap-2"
               >
                 <span>GS vs LA</span>
                 <span className="text-[10px] text-slate-500 font-semibold">(California Clash)</span>
@@ -382,10 +382,10 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
           </div>
 
           {/* Matchup Setup Panel */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl">
+          <div className="bg-surface-raised/90 border border-slate-800 rounded-2xl p-6 shadow-xl">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
               {/* Team A Picker */}
-              <div className="lg:col-span-4 bg-slate-950/60 border border-slate-800 rounded-xl p-4 space-y-3">
+              <div className="lg:col-span-4 bg-surface/60 border border-slate-800 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-mono uppercase tracking-wider text-amber-400 font-bold">
                     Team A
@@ -404,7 +404,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                         setTeamACode(newA);
                         if (hcaTeam === teamACode) setHcaTeam(newA);
                       }}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm font-bold text-white focus:outline-none focus:border-amber-500"
+                      className="w-full bg-surface-raised border border-slate-700 rounded-lg px-3 py-2 text-sm font-bold text-white focus:outline-none focus:border-amber-500"
                     >
                       {teamKeys.map((k) => (
                         <option key={k} value={k} disabled={k === teamBCode}>
@@ -436,15 +436,15 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                   <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block text-center">
                     Postseason Round Format
                   </span>
-                  <div className="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                  <div className="grid grid-cols-3 gap-1 bg-surface p-1 rounded-lg border border-slate-800">
                     {(['bo3', 'bo5', 'bo7'] as SeriesFormat[]).map((fmt) => (
                       <button
                         key={fmt}
                         onClick={() => setFormat(fmt)}
                         className={`py-1.5 text-[11px] font-mono font-bold rounded-md transition-all text-center ${
                           format === fmt
-                            ? 'bg-emerald-600 text-white shadow-sm'
-                            : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                            ? 'bg-accent-600 text-white shadow-sm'
+                            : 'text-slate-400 hover:text-white hover:bg-surface-raised'
                         }`}
                       >
                         {fmt === 'bo3' ? 'Bo3 (R1)' : fmt === 'bo5' ? 'Bo5 (Semis)' : 'Bo7 (Finals)'}
@@ -461,7 +461,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                   <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block text-center">
                     Home-Court Advantage (+2.40 PTS)
                   </span>
-                  <div className="grid grid-cols-2 gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                  <div className="grid grid-cols-2 gap-1 bg-surface p-1 rounded-lg border border-slate-800">
                     <button
                       onClick={() => setHcaTeam(teamACode)}
                       className={`py-1 text-xs font-mono font-bold rounded-md transition-all ${
@@ -487,7 +487,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               </div>
 
               {/* Team B Picker */}
-              <div className="lg:col-span-4 bg-slate-950/60 border border-slate-800 rounded-xl p-4 space-y-3">
+              <div className="lg:col-span-4 bg-surface/60 border border-slate-800 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-mono uppercase tracking-wider text-sky-400 font-bold">
                     Team B
@@ -506,7 +506,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                         setTeamBCode(newB);
                         if (hcaTeam === teamBCode) setHcaTeam(newB);
                       }}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm font-bold text-white focus:outline-none focus:border-sky-500"
+                      className="w-full bg-surface-raised border border-slate-700 rounded-lg px-3 py-2 text-sm font-bold text-white focus:outline-none focus:border-sky-500"
                     >
                       {teamKeys.map((k) => (
                         <option key={k} value={k} disabled={k === teamACode}>
@@ -529,7 +529,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
             <>
               {/* Stat Highlights Bar */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow">
+                <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-4 shadow">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block font-bold">
                     Fair Series Moneyline
                   </span>
@@ -545,7 +545,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                   <span className="text-[10px] text-slate-500 mt-1 block">Zero-vig implied probability</span>
                 </div>
 
-                <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow">
+                <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-4 shadow">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block font-bold">
                     Expected Series Length
                   </span>
@@ -557,7 +557,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                   </span>
                 </div>
 
-                <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow">
+                <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-4 shadow">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block font-bold">
                     Series Sweep Probability
                   </span>
@@ -569,7 +569,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                   </span>
                 </div>
 
-                <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow">
+                <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-4 shadow">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block font-bold">
                     Net Rating Margin
                   </span>
@@ -585,7 +585,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               {/* Main Simulation Visuals: Prob Ring + Tactical Radar */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 {/* Left: Prob Ring & Exact Scoreline Breakdown */}
-                <div className="lg:col-span-5 bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-lg space-y-6">
+                <div className="lg:col-span-5 bg-surface-raised/80 border border-slate-800 rounded-2xl p-6 shadow-lg space-y-6">
                   <div className="text-center">
                     <h3 className="text-sm font-bold text-white tracking-tight">
                       Monte Carlo Series Win Probabilities
@@ -615,7 +615,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
 
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       {/* Team A Outcomes */}
-                      <div className="space-y-1.5 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+                      <div className="space-y-1.5 bg-surface/60 p-2.5 rounded-lg border border-slate-800/80">
                         <span className="font-bold text-amber-400 text-[11px] block">{result.teamA} Wins</span>
                         {result.gameDistributions
                           .filter((d) => d.winner === result.teamA)
@@ -628,7 +628,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                       </div>
 
                       {/* Team B Outcomes */}
-                      <div className="space-y-1.5 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+                      <div className="space-y-1.5 bg-surface/60 p-2.5 rounded-lg border border-slate-800/80">
                         <span className="font-bold text-sky-400 text-[11px] block">{result.teamB} Wins</span>
                         {result.gameDistributions
                           .filter((d) => d.winner === result.teamB)
@@ -658,7 +658,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               </div>
 
               {/* 8-Man Playoff Rotation Shortening Breakdown */}
-              <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+              <div className="bg-surface-raised/80 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-800 gap-2">
                   <div>
                     <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
@@ -684,7 +684,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
 
                     <div className="overflow-x-auto border border-slate-800 rounded-lg">
                       <table className="w-full text-left text-xs font-mono">
-                        <thead className="bg-slate-950 text-slate-400 border-b border-slate-800">
+                        <thead className="bg-surface text-slate-400 border-b border-slate-800">
                           <tr>
                             <th className="px-3 py-2">Player</th>
                             <th className="px-2 py-2">Pos</th>
@@ -696,7 +696,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                             <th className="px-2 py-2 text-center">Role</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800/60 bg-slate-900/60">
+                        <tbody className="divide-y divide-slate-800/60 bg-surface-raised/60">
                           {teamA?.rotation.map((p, idx) => (
                             <tr key={idx} className="hover:bg-slate-800/40">
                               <td className="px-3 py-2 font-semibold text-slate-200 truncate max-w-[120px]">
@@ -737,7 +737,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
 
                     <div className="overflow-x-auto border border-slate-800 rounded-lg">
                       <table className="w-full text-left text-xs font-mono">
-                        <thead className="bg-slate-950 text-slate-400 border-b border-slate-800">
+                        <thead className="bg-surface text-slate-400 border-b border-slate-800">
                           <tr>
                             <th className="px-3 py-2">Player</th>
                             <th className="px-2 py-2">Pos</th>
@@ -749,7 +749,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                             <th className="px-2 py-2 text-center">Role</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800/60 bg-slate-900/60">
+                        <tbody className="divide-y divide-slate-800/60 bg-surface-raised/60">
                           {teamB?.rotation.map((p, idx) => (
                             <tr key={idx} className="hover:bg-slate-800/40">
                               <td className="px-3 py-2 font-semibold text-slate-200 truncate max-w-[120px]">
@@ -800,14 +800,14 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
             </div>
 
             {/* Year Selector */}
-            <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 p-1 rounded-lg">
+            <div className="flex items-center gap-1.5 bg-surface-raised border border-slate-800 p-1 rounded-lg">
               {bracketYears.map((yr) => (
                 <button
                   key={yr}
                   onClick={() => setSelectedYear(yr)}
                   className={`px-3 py-1.5 rounded-md text-xs font-mono font-bold transition-all ${
                     selectedYear === yr
-                      ? 'bg-emerald-600 text-white shadow'
+                      ? 'bg-accent-600 text-white shadow'
                       : 'text-slate-400 hover:text-white hover:bg-slate-800'
                   }`}
                 >
@@ -826,7 +826,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               return (
                 <div
                   key={idx}
-                  className="bg-slate-900/90 border border-slate-800 hover:border-slate-700 rounded-xl p-5 shadow-lg space-y-4 transition-all"
+                  className="bg-surface-raised/90 border border-slate-800 hover:border-slate-700 rounded-xl p-5 shadow-lg space-y-4 transition-all"
                 >
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-amber-400">
@@ -887,7 +887,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                         {series.games.map((g, gIdx) => (
                           <div
                             key={gIdx}
-                            className="flex items-center justify-between bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800/60 text-xs font-mono"
+                            className="flex items-center justify-between bg-surface px-3 py-1.5 rounded-lg border border-slate-800/60 text-xs font-mono"
                           >
                             <span className="text-slate-500 text-[10px]">Game {gIdx + 1} ({g.gameDate})</span>
                             <div className="flex items-center gap-3">

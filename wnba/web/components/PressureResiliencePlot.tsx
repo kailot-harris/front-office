@@ -54,7 +54,7 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
   const avgY = scaleY(53.0); // ~53% WNBA average clutch TS%
 
   return (
-    <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-5 space-y-4">
+    <div className="bg-surface/70 border border-slate-800 rounded-xl p-5 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
@@ -65,7 +65,7 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
             Clutch True Shooting % vs Turnover Fragility (ΔTOV%) under &le; 5 pt leverage
           </p>
         </div>
-        <div className="text-[11px] font-mono text-slate-500 bg-slate-900 px-2.5 py-1 rounded border border-slate-800">
+        <div className="text-[11px] font-mono text-slate-500 bg-surface-raised px-2.5 py-1 rounded border border-slate-800">
           Min. 8 Clutch FGA ({qualified.length} players)
         </div>
       </div>
@@ -288,7 +288,7 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
         {/* Floating tooltip */}
         {hoveredProfile && (
           <div
-            className="absolute top-3 right-3 pointer-events-none bg-slate-900/95 border border-slate-700 p-3 rounded-lg shadow-xl text-xs space-y-1 z-20 backdrop-blur-sm"
+            className="absolute top-3 right-3 pointer-events-none bg-surface-raised/95 border border-slate-700 p-3 rounded-lg shadow-xl text-xs space-y-1 z-20 backdrop-blur-sm"
           >
             <div className="font-bold text-white flex items-center justify-between gap-3">
               <span>{hoveredProfile.playerName}</span>

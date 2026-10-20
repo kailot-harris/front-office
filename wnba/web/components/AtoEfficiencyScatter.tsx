@@ -46,7 +46,7 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
   const midY = scaleY(0.95); // WNBA median offensive PPP
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg p-5">
+    <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg p-5">
       {/* Header Info */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-800">
         <div>
@@ -279,7 +279,7 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
 
       {/* Selected Coach Quick Card */}
       {selectedCoach && (
-        <div className="mt-4 p-3 bg-slate-950/80 rounded-lg border border-slate-800 flex items-center justify-between text-xs">
+        <div className="mt-4 p-3 bg-surface/80 rounded-lg border border-slate-800 flex items-center justify-between text-xs">
           <div className="flex items-center gap-2">
             <TeamLogo team={selectedCoach.teamAbbr} size="sm" />
             <div>
