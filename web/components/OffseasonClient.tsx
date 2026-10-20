@@ -168,7 +168,7 @@ export const OffseasonClient: React.FC<Props> = ({
           onClick={() => setActiveTab('feed')}
           className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'feed'
-              ? 'border-indigo-500 text-indigo-400 bg-indigo-500/5'
+              ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
               : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
           }`}
         >
@@ -180,7 +180,7 @@ export const OffseasonClient: React.FC<Props> = ({
           onClick={() => setActiveTab('grades')}
           className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'grades'
-              ? 'border-indigo-500 text-indigo-400 bg-indigo-500/5'
+              ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
               : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
           }`}
         >
@@ -192,7 +192,7 @@ export const OffseasonClient: React.FC<Props> = ({
           onClick={() => setActiveTab('simulator')}
           className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'simulator'
-              ? 'border-indigo-500 text-indigo-400 bg-indigo-500/5'
+              ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
               : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
           }`}
         >
@@ -204,7 +204,7 @@ export const OffseasonClient: React.FC<Props> = ({
           onClick={() => setActiveTab('draft')}
           className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'draft'
-              ? 'border-indigo-500 text-indigo-400 bg-indigo-500/5'
+              ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
               : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
           }`}
         >

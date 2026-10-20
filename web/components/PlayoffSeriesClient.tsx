@@ -307,7 +307,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
             onClick={() => setActiveTab('simulator')}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-bold transition-all ${
               activeTab === 'simulator'
-                ? 'bg-amber-500 text-slate-950 shadow-md'
+                ? 'bg-emerald-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -318,7 +318,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
             onClick={() => setActiveTab('historical')}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-bold transition-all ${
               activeTab === 'historical'
-                ? 'bg-amber-500 text-slate-950 shadow-md'
+                ? 'bg-emerald-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -443,7 +443,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                         onClick={() => setFormat(fmt)}
                         className={`py-1.5 text-[11px] font-mono font-bold rounded-md transition-all text-center ${
                           format === fmt
-                            ? 'bg-amber-500 text-slate-950 shadow-sm'
+                            ? 'bg-emerald-600 text-white shadow-sm'
                             : 'text-slate-400 hover:text-white hover:bg-slate-900'
                         }`}
                       >
@@ -807,7 +807,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                   onClick={() => setSelectedYear(yr)}
                   className={`px-3 py-1.5 rounded-md text-xs font-mono font-bold transition-all ${
                     selectedYear === yr
-                      ? 'bg-amber-500 text-slate-950 shadow'
+                      ? 'bg-emerald-600 text-white shadow'
                       : 'text-slate-400 hover:text-white hover:bg-slate-800'
                   }`}
                 >

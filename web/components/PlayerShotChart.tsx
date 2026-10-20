@@ -101,7 +101,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
                   onClick={() => setPriorN(preset.value)}
                   className={`px-3 py-1 text-xs font-mono font-bold rounded-md transition-all ${
                     isSelected
-                      ? 'bg-indigo-600 text-white shadow-sm'
+                      ? 'bg-emerald-600 text-white shadow-sm'
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
@@ -570,7 +570,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
                   key={f}
                   onClick={() => setZoneFilter(f)}
                   className={`px-2 py-0.5 rounded ${
-                    zoneFilter === f ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                    zoneFilter === f ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   {f}

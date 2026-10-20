@@ -123,7 +123,7 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
                 onClick={() => setSelectedPlayer(star)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                   isSelected
-                    ? 'bg-amber-500 text-slate-950 font-bold shadow-md'
+                    ? 'bg-emerald-600 text-white font-bold shadow-md'
                     : 'bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
                 }`}
               >
