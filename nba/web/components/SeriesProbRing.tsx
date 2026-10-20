@@ -1,8 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
+import { Download } from 'lucide-react';
 import { GameOutcomeProb } from '@/lib/playoffTypes';
 import { TeamLogo } from '@/components/TeamLogo';
+import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 
 interface SeriesProbRingProps {
   teamA: string;
@@ -40,10 +42,27 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
   // Find most likely outcome
   const mostLikely = [...gameDistributions].sort((a, b) => b.probPct - a.probPct)[0];
 
+  const svgRef = useRef<SVGSVGElement | null>(null);
+
+  const handleExportPng = () => {
+    if (svgRef.current) {
+      exportSvgAsPng(svgRef.current, `${teamA}-vs-${teamB}-series-prob-ring`);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center select-none">
+      <button
+        type="button"
+        onClick={handleExportPng}
+        title="Export PNG"
+        aria-label="Export chart as PNG"
+        className="self-end mb-1 p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+      >
+        <Download className="w-3.5 h-3.5" />
+      </button>
       <div className="relative" style={{ width: size, height: size }}>
-        <svg width={size} height={size} className="transform -rotate-90">
+        <svg ref={svgRef} width={size} height={size} className="transform -rotate-90">
           <circle
             cx={size / 2}
             cy={size / 2}

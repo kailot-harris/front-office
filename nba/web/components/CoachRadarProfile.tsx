@@ -1,7 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
+import { Download } from 'lucide-react';
 import { RadarPercentiles } from '@/lib/coachingTypes';
+import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 
 interface CoachRadarProfileProps {
   percentiles: RadarPercentiles;
@@ -47,10 +49,27 @@ export const CoachRadarProfile: React.FC<CoachRadarProfileProps> = ({
   // Background concentric rings at 20, 40, 60, 80, 100
   const rings = [20, 40, 60, 80, 100];
 
+  const svgRef = useRef<SVGSVGElement | null>(null);
+
+  const handleExportPng = () => {
+    if (svgRef.current) {
+      exportSvgAsPng(svgRef.current, `${coachName.replace(/\s+/g, '-').toLowerCase()}-radar-profile`);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center" title={`5D Tactical Profile: ${coachName}`}>
+      <button
+        type="button"
+        onClick={handleExportPng}
+        title="Export PNG"
+        aria-label="Export radar chart as PNG"
+        className="self-end mb-1 p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+      >
+        <Download className="w-3.5 h-3.5" />
+      </button>
       <div className="relative">
-        <svg width={size} height={size} className="overflow-visible select-none">
+        <svg ref={svgRef} width={size} height={size} className="overflow-visible select-none">
           <defs>
             <radialGradient id="radarFill" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stopColor="#6366f1" stopOpacity="0.45" />

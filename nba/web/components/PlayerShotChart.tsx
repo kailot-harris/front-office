@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { PlayerShotData, ShotsMetadata, ZoneMetric, ShotRecord } from '@/lib/shotTypes';
 import {
   filterPriorNShots,
@@ -20,7 +20,9 @@ import {
   Layers,
   CircleDot,
   Sliders,
+  Download,
 } from 'lucide-react';
+import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 
 interface PlayerShotChartProps {
   playerData: PlayerShotData;
@@ -37,6 +39,16 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
   const [viewMode, setViewMode] = useState<'zones' | 'hex' | 'scatter'>('zones');
   const [hoveredShot, setHoveredShot] = useState<ShotRecord | null>(null);
   const [zoneFilter, setZoneFilter] = useState<'ALL' | 'HOT' | 'COLD' | 'NEUTRAL'>('ALL');
+  const courtSvgRef = useRef<SVGSVGElement | null>(null);
+
+  const handleExportPng = () => {
+    if (courtSvgRef.current) {
+      exportSvgAsPng(
+        courtSvgRef.current,
+        `${playerData.player_name.replace(/\s+/g, '-').toLowerCase()}-shot-chart`
+      );
+    }
+  };
 
   // Filter shots by Prior N
   const activeShots = useMemo(() => {
@@ -241,12 +253,22 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
                 <span className="w-2.5 h-2.5 rounded-full bg-cyan-500"></span>
                 <span>Cold (&lt;-5%)</span>
               </span>
+              <button
+                type="button"
+                onClick={handleExportPng}
+                title="Export PNG"
+                aria-label="Export shot chart as PNG"
+                className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
 
           {/* SVG Court Canvas */}
           <div className="w-full max-w-[540px] aspect-[500/470] relative">
             <svg
+              ref={courtSvgRef}
               viewBox="0 0 500 470"
               className="w-full h-full drop-shadow-lg select-none"
               style={{ background: '#0b0f17' }}

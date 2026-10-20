@@ -2,9 +2,10 @@
 
 import React, { useState, useMemo } from 'react';
 import { PlayerProjection } from '@/lib/types';
-import { Search, AlertTriangle, ArrowUpDown, Filter, Sparkles, UserCheck, Crosshair, ChevronUp } from 'lucide-react';
+import { Search, AlertTriangle, ArrowUpDown, Filter, Sparkles, UserCheck, Crosshair, ChevronUp, Download } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { InlinePlayerShotCard } from '@/components/InlinePlayerShotCard';
+import { exportToCsv } from '@/lib/exportToCsv';
 
 interface PlayersClientProps {
   players: PlayerProjection[];
@@ -49,6 +50,24 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
         return sortOrder === 'desc' ? valB - valA : valA - valB;
       });
   }, [players, onlyOutliers, selectedTeam, selectedPosition, searchTerm, sortBy, sortOrder]);
+
+  const handleExportCsv = () => {
+    exportToCsv(
+      filteredPlayers as unknown as Record<string, unknown>[],
+      [
+        { key: 'player_name', label: 'Player' },
+        { key: 'team', label: 'Team' },
+        { key: 'position', label: 'Pos' },
+        { key: 'proj_games', label: 'Games' },
+        { key: 'proj_mpg', label: 'MPG' },
+        { key: statMode === 'per_game' ? 'proj_pts' : 'proj_pts_total', label: statMode === 'per_game' ? 'PTS/G' : 'Total PTS' },
+        { key: statMode === 'per_game' ? 'proj_reb' : 'proj_reb_total', label: statMode === 'per_game' ? 'REB/G' : 'Total REB' },
+        { key: statMode === 'per_game' ? 'proj_ast' : 'proj_ast_total', label: statMode === 'per_game' ? 'AST/G' : 'Total AST' },
+        { key: 'pra_zscore', label: 'PRA z-score' },
+      ],
+      'player-projections'
+    );
+  };
 
   const handleSort = (field: keyof PlayerProjection) => {
     if (sortBy === field) {
@@ -198,6 +217,15 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
               Season Totals
             </button>
           </div>
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            title="Export CSV"
+            aria-label="Export players table as CSV"
+            className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 

@@ -1,7 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
+import { Download } from 'lucide-react';
 import { CategoryScores } from '@/lib/playerDnaTypes';
+import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 
 interface SkillFingerprintPolygonProps {
   categoryScores: CategoryScores;
@@ -47,12 +49,31 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
     })
     .join(' ');
 
+  const svgRef = useRef<SVGSVGElement | null>(null);
+
+  const handleExportPng = () => {
+    if (svgRef.current) {
+      exportSvgAsPng(svgRef.current, 'skill-fingerprint-polygon');
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-center p-3 bg-zinc-950/60 rounded-xl border border-zinc-800/80">
-      <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">
-        Skill Fingerprint (16-D Aggregate)
+      <div className="w-full flex items-center justify-between mb-1">
+        <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+          Skill Fingerprint (16-D Aggregate)
+        </div>
+        <button
+          type="button"
+          onClick={handleExportPng}
+          title="Export PNG"
+          aria-label="Export chart as PNG"
+          className="p-1.5 rounded-lg border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 transition-colors"
+        >
+          <Download className="w-3.5 h-3.5" />
+        </button>
       </div>
-      <svg width={size} height={size} className="overflow-visible">
+      <svg ref={svgRef} width={size} height={size} className="overflow-visible">
         {/* Background Concentric Rings (25%, 50%, 75%, 100%) */}
         {[0.25, 0.5, 0.75, 1.0].map((level) => {
           const points = axes

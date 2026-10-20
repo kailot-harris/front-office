@@ -26,7 +26,9 @@ import {
   ChevronUp,
   Zap,
   Scale,
+  Download,
 } from 'lucide-react';
+import { exportToCsv } from '@/lib/exportToCsv';
 
 interface OffseasonClientProps {
   transactions: OffseasonTransaction[];
@@ -106,6 +108,21 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
       return true;
     });
   }, [teams, confFilter]);
+
+  const handleExportTeamsCsv = () => {
+    exportToCsv(
+      filteredTeams as unknown as Record<string, unknown>[],
+      [
+        { key: 'team', label: 'Franchise' },
+        { key: 'grade', label: 'Grade' },
+        { key: 'roster_continuity_pct', label: 'Continuity' },
+        { key: 'net_bpm_added', label: 'Net BPM' },
+        { key: 'net_wins_change', label: 'Net Win Delta' },
+        { key: 'projected_wins_with_moves', label: 'Proj Wins' },
+      ],
+      'offseason-franchise-rankings'
+    );
+  };
 
   // Filtered Draft Prospects
   const filteredDraftProspects = useMemo(() => {
@@ -774,6 +791,15 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 }`}
               >
                 Western Conference
+              </button>
+              <button
+                type="button"
+                onClick={handleExportTeamsCsv}
+                title="Export CSV"
+                aria-label="Export franchise rankings table as CSV"
+                className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
