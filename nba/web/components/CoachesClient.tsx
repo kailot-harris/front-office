@@ -102,7 +102,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
               onClick={() => setActiveTab('tierboard')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                 activeTab === 'tierboard'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
               }`}
             >
@@ -113,7 +113,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
               onClick={() => setActiveTab('scatter')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                 activeTab === 'scatter'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
               }`}
             >
@@ -124,7 +124,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
               onClick={() => setActiveTab('waterfall')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                 activeTab === 'waterfall'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
               }`}
             >
@@ -135,7 +135,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
               onClick={() => setActiveTab('genealogy')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                 activeTab === 'genealogy'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
               }`}
             >

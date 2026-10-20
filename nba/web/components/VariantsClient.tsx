@@ -183,7 +183,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
               onClick={() => setActiveVariant(key)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                 isActive
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
                   : 'bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
               }`}
             >
@@ -258,7 +258,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
                 onClick={() => setDivergenceSort('divergence')}
                 className={`px-2.5 py-1 rounded text-xs font-semibold ${
                   divergenceSort === 'divergence'
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-emerald-600 text-white'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -267,7 +267,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
               <button
                 onClick={() => setDivergenceSort('wins')}
                 className={`px-2.5 py-1 rounded text-xs font-semibold ${
-                  divergenceSort === 'wins' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                  divergenceSort === 'wins' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 Ensemble Wins
@@ -275,7 +275,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
               <button
                 onClick={() => setDivergenceSort('alpha')}
                 className={`px-2.5 py-1 rounded text-xs font-semibold ${
-                  divergenceSort === 'alpha' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                  divergenceSort === 'alpha' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 Team A-Z

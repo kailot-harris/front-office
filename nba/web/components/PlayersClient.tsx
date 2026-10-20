@@ -176,7 +176,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
               }}
               className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                 statMode === 'per_game'
-                  ? 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-emerald-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -191,7 +191,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
               }}
               className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                 statMode === 'totals'
-                  ? 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-emerald-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
