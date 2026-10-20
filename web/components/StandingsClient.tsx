@@ -195,14 +195,14 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
 
       {/* View Switcher: Playoff Contenders Snapshot vs Full League Standings Table */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-raised/60 p-2.5 rounded-2xl border border-slate-800">
-        <div className="inline-flex rounded-xl bg-surface p-1.5 border border-slate-800/80 shadow-inner" role="tablist">
+        <div className="flex flex-wrap sm:inline-flex rounded-xl bg-surface p-1.5 border border-slate-800/80 shadow-inner relative z-20 w-full sm:w-auto gap-1 sm:gap-0" role="tablist">
           <button
             type="button"
             role="tab"
             id="tab-btn-visualizer"
             aria-selected={activeTab === 'visualizer'}
             onClick={() => handleTabChange('visualizer')}
-            className={`cursor-pointer select-none flex items-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all ${
+            className={`cursor-pointer select-none touch-manipulation flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-20 ${
               activeTab === 'visualizer'
                 ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
                 : 'text-slate-400 hover:text-white hover:bg-surface-raised'
@@ -225,7 +225,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
             id="tab-btn-table"
             aria-selected={activeTab === 'table'}
             onClick={() => handleTabChange('table')}
-            className={`cursor-pointer select-none flex items-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all ${
+            className={`cursor-pointer select-none touch-manipulation flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-20 ${
               activeTab === 'table'
                 ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
                 : 'text-slate-400 hover:text-white hover:bg-surface-raised'
