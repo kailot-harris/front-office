@@ -5,7 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Front Office</title>
   <style>
-    :root { color-scheme: dark; }
+    :root {
+      color-scheme: dark;
+      /* Teal Current — this landing page's own colorway, per
+         docs-internal/COLORWAY_IMPLEMENTATION_PLAN.md §1/§4 */
+      --surface: #041313;
+      --surface-raised: #0a2424;
+      --accent: #2dd4bf;
+      /* Each sport's own accent, sampled here so a card previews the site it links to */
+      --nfl-accent: #059669;
+      --nba-accent: #4f46e5;
+      --wnba-accent: #7c3aed;
+      --mlb-accent: #0284c7;
+    }
     body {
       margin: 0;
       min-height: 100vh;
@@ -14,11 +26,18 @@
       align-items: center;
       justify-content: center;
       gap: 2rem;
-      background: #0b0d12;
+      background: var(--surface);
       color: #e7e9ee;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
-    h1 { font-size: 1.5rem; font-weight: 600; letter-spacing: 0.02em; margin: 0; }
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin: 0;
+      color: var(--accent);
+      text-shadow: 0 0 24px rgba(45, 212, 191, 0.35);
+    }
     nav {
       display: grid;
       grid-template-columns: repeat(2, minmax(160px, 1fr));
@@ -27,25 +46,36 @@
     a.card {
       display: block;
       padding: 1.25rem 2rem;
-      border: 1px solid #262a35;
+      border: 1px solid #1c3333;
+      border-top: 3px solid var(--sport-accent);
       border-radius: 0.75rem;
-      background: #12151c;
+      background: var(--surface-raised);
       color: inherit;
       text-decoration: none;
       font-weight: 600;
       text-align: center;
-      transition: border-color 0.15s ease, transform 0.15s ease;
+      text-shadow: 0 0 18px color-mix(in srgb, var(--sport-accent) 55%, transparent);
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--sport-accent) 25%, transparent) inset;
+      transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
     }
-    a.card:hover { border-color: #4a7dff; transform: translateY(-2px); }
+    a.card:hover {
+      transform: translateY(-2px);
+      border-color: var(--sport-accent);
+      box-shadow: 0 0 0 1px var(--sport-accent) inset, 0 0 20px color-mix(in srgb, var(--sport-accent) 40%, transparent);
+    }
+    a.card[data-sport="nfl"] { --sport-accent: var(--nfl-accent); }
+    a.card[data-sport="nba"] { --sport-accent: var(--nba-accent); }
+    a.card[data-sport="wnba"] { --sport-accent: var(--wnba-accent); }
+    a.card[data-sport="mlb"] { --sport-accent: var(--mlb-accent); }
   </style>
 </head>
 <body>
   <h1>Front Office</h1>
   <nav>
-    <a class="card" href="nba/">NBA</a>
-    <a class="card" href="wnba/">WNBA</a>
-    <a class="card" href="mlb/">MLB</a>
-    <a class="card" href="nfl/">NFL</a>
+    <a class="card" data-sport="nba" href="nba/">NBA</a>
+    <a class="card" data-sport="wnba" href="wnba/">WNBA</a>
+    <a class="card" data-sport="mlb" href="mlb/">MLB</a>
+    <a class="card" data-sport="nfl" href="nfl/">NFL</a>
   </nav>
 </body>
 </html>
