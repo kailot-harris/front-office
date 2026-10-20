@@ -170,7 +170,7 @@ export const CoachRadarProfile: React.FC<CoachRadarProfileProps> = ({
         {axes.map((a) => (
           <div
             key={a.key}
-            className="p-2 rounded-lg bg-slate-900/60 border border-slate-800 flex flex-col justify-between"
+            className="p-2 rounded-lg bg-surface-raised/60 border border-slate-800 flex flex-col justify-between"
             title={a.desc}
           >
             <span className="text-[10px] text-slate-400 font-medium truncate">{a.label}</span>

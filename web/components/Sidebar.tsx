@@ -149,7 +149,7 @@ export const Sidebar: React.FC = () => {
                 onClick={() => setIsOpen(false)}
                 className={`group flex items-start gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+                    ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
                     : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
                 }`}
               >
@@ -183,23 +183,23 @@ export const Sidebar: React.FC = () => {
         </div>
 
         {/* Engine Metadata Card */}
-        <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3.5 space-y-2.5">
+        <div className="bg-surface/70 border border-slate-800/80 rounded-xl p-3.5 space-y-2.5">
           <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400 uppercase tracking-wide">
             <Layers className="w-3.5 h-3.5" />
             <span>Simulation Spec</span>
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800/50">
+            <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50">
               <span className="text-[10px] text-slate-400 block">Monte Carlo</span>
               <span className="font-mono font-bold text-slate-200">1,000 Sims</span>
             </div>
-            <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800/50">
+            <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50">
               <span className="text-[10px] text-slate-400 block">Total Games</span>
               <span className="font-mono font-bold text-slate-200">1.23M</span>
             </div>
             
             {/* Margin Sigma with ? Explainer Bubble & Compact Popover */}
-            <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800/50 relative">
+            <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50 relative">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] text-slate-400 block">Margin σ</span>
                 <button
@@ -221,7 +221,7 @@ export const Sidebar: React.FC = () => {
                     className="fixed inset-0 z-40 bg-transparent"
                     onClick={() => setShowSigmaExplainer(false)}
                   />
-                  <div className="absolute left-0 md:left-full md:ml-3 bottom-full mb-2 md:bottom-auto md:-top-16 z-50 w-72 sm:w-80 bg-slate-900 border border-slate-700 rounded-xl p-3.5 shadow-2xl space-y-2.5 animate-in fade-in zoom-in-95 duration-150 text-slate-200">
+                  <div className="absolute left-0 md:left-full md:ml-3 bottom-full mb-2 md:bottom-auto md:-top-16 z-50 w-72 sm:w-80 bg-surface-raised border border-slate-700 rounded-xl p-3.5 shadow-2xl space-y-2.5 animate-in fade-in zoom-in-95 duration-150 text-slate-200">
                     <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                       <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
                         <Calculator className="w-3.5 h-3.5" />
@@ -239,7 +239,7 @@ export const Sidebar: React.FC = () => {
                       Standard deviation of single-game score differentials around expected margin. Converts point margins into game win probabilities:
                     </p>
 
-                    <div className="bg-slate-950 p-2 rounded border border-slate-800 font-mono text-[10.5px] text-emerald-400 font-semibold">
+                    <div className="bg-surface p-2 rounded border border-slate-800 font-mono text-[10.5px] text-emerald-400 font-semibold">
                       P(Win) = Φ( Expected_Margin / 11.8 )
                     </div>
 
@@ -266,7 +266,7 @@ export const Sidebar: React.FC = () => {
               )}
             </div>
 
-            <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800/50">
+            <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50">
               <span className="text-[10px] text-slate-400 block">Variants</span>
               <span className="font-mono font-bold text-indigo-400">4 Blend</span>
             </div>
@@ -294,7 +294,7 @@ export const Sidebar: React.FC = () => {
   return (
     <>
       {/* Mobile Header Bar (shown only on small screens) */}
-      <div className="md:hidden sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+      <div className="md:hidden sticky top-0 z-40 bg-surface-raised/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-amber-600 via-orange-600 to-slate-900 border border-orange-500/30 flex items-center justify-center shadow-md">
             <HalloweenBasketball className="w-6 h-6" size={24} />
@@ -317,10 +317,10 @@ export const Sidebar: React.FC = () => {
       {isOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
           <div
-            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-surface/80 backdrop-blur-sm transition-opacity"
             onClick={() => setIsOpen(false)}
           />
-          <div className="relative w-72 max-w-[85vw] bg-slate-900 border-r border-slate-800 h-full z-10 flex flex-col shadow-2xl">
+          <div className="relative w-72 max-w-[85vw] bg-surface-raised border-r border-slate-800 h-full z-10 flex flex-col shadow-2xl">
             <div className="absolute top-3 right-3">
               <button
                 onClick={() => setIsOpen(false)}
@@ -335,7 +335,7 @@ export const Sidebar: React.FC = () => {
       )}
 
       {/* Desktop Persistent Sidebar */}
-      <aside className="hidden md:flex w-64 lg:w-72 flex-col flex-shrink-0 h-screen sticky top-0 bg-slate-900/90 backdrop-blur-md border-r border-slate-800 z-30">
+      <aside className="hidden md:flex w-64 lg:w-72 flex-col flex-shrink-0 h-screen sticky top-0 bg-surface-raised/90 backdrop-blur-md border-r border-slate-800 z-30">
         <NavContent />
       </aside>
     </>

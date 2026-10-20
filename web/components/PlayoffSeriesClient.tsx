@@ -252,7 +252,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
           </div>
 
           <div className="flex items-center gap-2 text-xs font-mono">
-            <span className="px-3 py-1.5 rounded-lg bg-slate-950/80 border border-slate-800 text-slate-300">
+            <span className="px-3 py-1.5 rounded-lg bg-surface/80 border border-slate-800 text-slate-300">
               σ = 11.8 Margins
             </span>
             <span className="px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 font-bold">
@@ -263,7 +263,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
       </div>
 
       {/* Preset Matchup Pills */}
-      <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center gap-2 overflow-x-auto">
+      <div className="p-3 rounded-xl bg-surface-raised/60 border border-slate-800 flex items-center gap-2 overflow-x-auto">
         <span className="text-xs font-bold text-slate-400 whitespace-nowrap flex items-center gap-1.5 pl-1">
           <Sparkles className="w-3.5 h-3.5 text-amber-400" />
           Marquee Series:
@@ -280,7 +280,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               className={`px-2.5 py-1 rounded-lg text-xs font-medium border flex items-center gap-1.5 whitespace-nowrap transition-all ${
                 teamACode === preset.a && teamBCode === preset.b
                   ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
-                  : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-850'
+                  : 'bg-surface text-slate-400 border-slate-800 hover:text-white hover:bg-slate-850'
               }`}
             >
               <TeamLogo team={preset.a} size="xs" />
@@ -293,9 +293,9 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
       </div>
 
       {/* Team Selection Bar */}
-      <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+      <div className="p-5 rounded-2xl bg-surface-raised/90 border border-slate-800 shadow-xl grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
         {/* Team A Picker (5 cols) */}
-        <div className="md:col-span-5 p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/90 flex items-center justify-between gap-3">
+        <div className="md:col-span-5 p-3.5 rounded-xl bg-surface/80 border border-slate-800/90 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <TeamLogo team={teamACode} size="lg" />
             <div className="min-w-0">
@@ -312,7 +312,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                 className="bg-transparent text-sm font-black text-white focus:outline-none cursor-pointer tracking-tight"
               >
                 {teamList.map((tm) => (
-                  <option key={tm.teamAbbr} value={tm.teamAbbr} className="bg-slate-900 text-white">
+                  <option key={tm.teamAbbr} value={tm.teamAbbr} className="bg-surface-raised text-white">
                     {tm.teamName} ({tm.teamAbbr}) • {tm.regularWins} W
                   </option>
                 ))}
@@ -350,7 +350,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
         </div>
 
         {/* Team B Picker (5 cols) */}
-        <div className="md:col-span-5 p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/90 flex items-center justify-between gap-3">
+        <div className="md:col-span-5 p-3.5 rounded-xl bg-surface/80 border border-slate-800/90 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <TeamLogo team={teamBCode} size="lg" />
             <div className="min-w-0">
@@ -367,7 +367,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                 className="bg-transparent text-sm font-black text-white focus:outline-none cursor-pointer tracking-tight"
               >
                 {teamList.map((tm) => (
-                  <option key={tm.teamAbbr} value={tm.teamAbbr} className="bg-slate-900 text-white">
+                  <option key={tm.teamAbbr} value={tm.teamAbbr} className="bg-surface-raised text-white">
                     {tm.teamName} ({tm.teamAbbr}) • {tm.regularWins} W
                   </option>
                 ))}
@@ -388,7 +388,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
       {/* Main Simulation Results Dashboard */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Series Outcome Probabilities Ring (5 cols) */}
-        <div className="lg:col-span-5 bg-slate-900/80 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col justify-between">
+        <div className="lg:col-span-5 bg-surface-raised/80 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
               <div className="flex items-center gap-2">
@@ -432,7 +432,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
       </div>
 
       {/* 8-Man Playoff Rotation Side-by-Side Comparison */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg p-5 space-y-4">
+      <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
           <div>
             <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
@@ -471,7 +471,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               {profileA.rotation.map((p) => (
                 <div
                   key={p.playerId}
-                  className="p-2 rounded-lg bg-slate-950/60 border border-slate-800/80 flex items-center justify-between text-xs"
+                  className="p-2 rounded-lg bg-surface/60 border border-slate-800/80 flex items-center justify-between text-xs"
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -508,7 +508,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               {profileB.rotation.map((p) => (
                 <div
                   key={p.playerId}
-                  className="p-2 rounded-lg bg-slate-950/60 border border-slate-800/80 flex items-center justify-between text-xs"
+                  className="p-2 rounded-lg bg-surface/60 border border-slate-800/80 flex items-center justify-between text-xs"
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">

@@ -106,7 +106,7 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
   return (
     <div className="space-y-6">
       {/* Player Selection Header */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+      <div className="bg-surface-raised/80 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -132,8 +132,8 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
                   onClick={() => setSelectedPlayer(star)}
                   className={`px-3 py-1 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 ${
                     isSelected
-                      ? 'bg-emerald-600 text-white font-bold shadow-md shadow-emerald-600/20'
-                      : 'bg-slate-950 text-slate-300 border border-slate-800 hover:border-slate-700 hover:text-white'
+                      ? 'bg-accent-600 text-white font-bold shadow-md shadow-accent-600/20'
+                      : 'bg-surface text-slate-300 border border-slate-800 hover:border-slate-700 hover:text-white'
                   }`}
                 >
                   <TeamLogo team={star.team} size="xs" />
@@ -153,7 +153,7 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by player name or team..."
-              className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+              className="w-full pl-9 pr-4 py-2 bg-surface border border-slate-800 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
             />
           </div>
 
@@ -169,7 +169,7 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
                   setSelectedPlayer(pool[0]);
                 }
               }}
-              className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
+              className="w-full px-3 py-2 bg-surface border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
             >
               {teams.map((tm) => {
                 const meta = NBA_TEAMS_METADATA[tm];
@@ -190,7 +190,7 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
                 const found = catalog.find((c) => c.player_id === e.target.value);
                 if (found) setSelectedPlayer(found);
               }}
-              className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
+              className="w-full px-3 py-2 bg-surface border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
             >
               {filteredCatalog.map((p) => (
                 <option key={p.player_id} value={p.player_id}>
@@ -203,7 +203,7 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
       </div>
 
       {/* Main Shot Chart Container */}
-      <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-2xl">
+      <div className="bg-surface-raised/60 border border-slate-800 rounded-2xl p-6 shadow-2xl">
         {loading && (
           <div className="h-96 flex flex-col items-center justify-center gap-3 text-slate-400">
             <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />

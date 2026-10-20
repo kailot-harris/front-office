@@ -120,7 +120,7 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
         </span>
         <div className="grid grid-cols-2 gap-2 text-xs font-mono">
           {/* Team A */}
-          <div className="space-y-1 p-2 rounded-lg bg-slate-950/60 border border-slate-800/80">
+          <div className="space-y-1 p-2 rounded-lg bg-surface/60 border border-slate-800/80">
             <span className="text-[10px] text-amber-400 font-bold block mb-1">{teamA} Wins</span>
             {distA.map((d) => (
               <div key={`a-${d.games}`} className="flex items-center justify-between text-[11px]">
@@ -131,7 +131,7 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
           </div>
 
           {/* Team B */}
-          <div className="space-y-1 p-2 rounded-lg bg-slate-950/60 border border-slate-800/80">
+          <div className="space-y-1 p-2 rounded-lg bg-surface/60 border border-slate-800/80">
             <span className="text-[10px] text-sky-400 font-bold block mb-1">{teamB} Wins</span>
             {distB.map((d) => (
               <div key={`b-${d.games}`} className="flex items-center justify-between text-[11px]">

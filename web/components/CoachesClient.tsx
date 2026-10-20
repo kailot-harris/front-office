@@ -97,12 +97,12 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           </div>
 
           {/* Sub-tab Navigation */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-950/80 border border-slate-800 rounded-xl overflow-x-auto self-start md:self-auto">
+          <div className="flex items-center gap-1.5 p-1 bg-surface/80 border border-slate-800 rounded-xl overflow-x-auto self-start md:self-auto">
             <button
               onClick={() => setActiveTab('tierboard')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                 activeTab === 'tierboard'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                  ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
               }`}
             >
@@ -113,7 +113,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
               onClick={() => setActiveTab('scatter')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                 activeTab === 'scatter'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                  ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
               }`}
             >
@@ -124,7 +124,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
               onClick={() => setActiveTab('waterfall')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                 activeTab === 'waterfall'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                  ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
               }`}
             >
@@ -135,7 +135,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
               onClick={() => setActiveTab('genealogy')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                 activeTab === 'genealogy'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                  ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
               }`}
             >
@@ -148,7 +148,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
 
       {/* Top 4 KPI Stat Badges */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 shadow-sm flex items-center gap-3">
+        <div className="p-3.5 rounded-xl bg-surface-raised/80 border border-slate-800 shadow-sm flex items-center gap-3">
           <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 flex-shrink-0">
             <Award className="w-5 h-5" />
           </div>
@@ -162,7 +162,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           </div>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 shadow-sm flex items-center gap-3">
+        <div className="p-3.5 rounded-xl bg-surface-raised/80 border border-slate-800 shadow-sm flex items-center gap-3">
           <div className="p-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 flex-shrink-0">
             <Crosshair className="w-5 h-5" />
           </div>
@@ -176,7 +176,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           </div>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 shadow-sm flex items-center gap-3">
+        <div className="p-3.5 rounded-xl bg-surface-raised/80 border border-slate-800 shadow-sm flex items-center gap-3">
           <div className="p-2.5 rounded-lg bg-sky-500/10 text-sky-400 flex-shrink-0">
             <Zap className="w-5 h-5" />
           </div>
@@ -190,7 +190,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           </div>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 shadow-sm flex items-center gap-3">
+        <div className="p-3.5 rounded-xl bg-surface-raised/80 border border-slate-800 shadow-sm flex items-center gap-3">
           <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-400 flex-shrink-0">
             <TrendingUp className="w-5 h-5" />
           </div>
@@ -213,7 +213,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           {/* Left Column: List of Coaches (7 cols) */}
           <div className="lg:col-span-7 space-y-4">
             {/* Search & Filter Bar */}
-            <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-wrap items-center justify-between gap-3">
+            <div className="p-3 rounded-xl bg-surface-raised/80 border border-slate-800 flex flex-wrap items-center justify-between gap-3">
               <div className="relative flex-1 min-w-[200px]">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
@@ -221,7 +221,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                   placeholder="Filter by coach, assistant, or team..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-surface border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
@@ -231,7 +231,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                 <select
                   value={selectedTree}
                   onChange={(e) => setSelectedTree(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
+                  className="bg-surface border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
                 >
                   {coachingTrees.map((tree) => (
                     <option key={tree} value={tree}>
@@ -256,7 +256,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                     className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                       isSelected
                         ? 'bg-slate-850 border-amber-500/60 shadow-lg shadow-amber-500/10'
-                        : 'bg-slate-900/70 border-slate-800/80 hover:bg-slate-850 hover:border-slate-700'
+                        : 'bg-surface-raised/70 border-slate-800/80 hover:bg-slate-850 hover:border-slate-700'
                     }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
@@ -315,7 +315,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           {/* Right Column: Detailed Coach Dossier (5 cols) */}
           <div className="lg:col-span-5">
             {selectedCoach && (
-              <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-xl space-y-5 sticky top-20">
+              <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-5 shadow-xl space-y-5 sticky top-20">
                 {/* Dossier Header */}
                 <div className="flex items-center justify-between pb-4 border-b border-slate-800">
                   <div className="flex items-center gap-3">
@@ -365,25 +365,25 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                     Bench & Assistant Staff
                   </span>
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="p-2 bg-slate-950/60 rounded border border-slate-800">
+                    <div className="p-2 bg-surface/60 rounded border border-slate-800">
                       <span className="text-[10px] text-slate-500 block">Associate HC</span>
                       <span className="text-slate-200 font-medium truncate block">
                         {selectedCoach.assistants.associateHC}
                       </span>
                     </div>
-                    <div className="p-2 bg-slate-950/60 rounded border border-slate-800">
+                    <div className="p-2 bg-surface/60 rounded border border-slate-800">
                       <span className="text-[10px] text-slate-500 block">Offensive Lead</span>
                       <span className="text-slate-200 font-medium truncate block">
                         {selectedCoach.assistants.offensiveCoord}
                       </span>
                     </div>
-                    <div className="p-2 bg-slate-950/60 rounded border border-slate-800">
+                    <div className="p-2 bg-surface/60 rounded border border-slate-800">
                       <span className="text-[10px] text-slate-500 block">Defensive Lead</span>
                       <span className="text-slate-200 font-medium truncate block">
                         {selectedCoach.assistants.defensiveCoord}
                       </span>
                     </div>
-                    <div className="p-2 bg-slate-950/60 rounded border border-slate-800">
+                    <div className="p-2 bg-surface/60 rounded border border-slate-800">
                       <span className="text-[10px] text-slate-500 block">Player Dev / Shooting</span>
                       <span className="text-slate-200 font-medium truncate block">
                         {selectedCoach.assistants.playerDevLead}
@@ -412,7 +412,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           <CoachImpactWaterfall coach={selectedCoach} />
 
           {/* Quick switcher to other top coaches */}
-          <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800">
+          <div className="p-4 rounded-xl bg-surface-raised/60 border border-slate-800">
             <span className="text-xs font-bold text-slate-300 block mb-2">
               Inspect Talent Bridge for Other Coaches:
             </span>
@@ -424,7 +424,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                   className={`px-2.5 py-1 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition-all ${
                     selectedCoach.teamAbbr === c.teamAbbr
                       ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                      : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                      : 'bg-surface text-slate-400 border-slate-800 hover:text-white'
                   }`}
                 >
                   <TeamLogo team={c.teamAbbr} size="xs" />
@@ -438,7 +438,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
 
       {/* Coaching Tree Genealogy Tab */}
       {activeTab === 'genealogy' && (
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-5 shadow-lg space-y-6">
+        <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-5 shadow-lg space-y-6">
           <div className="flex items-center gap-2.5 pb-4 border-b border-slate-800">
             <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400">
               <GitBranch className="w-5 h-5" />
@@ -461,7 +461,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
               return (
                 <div
                   key={treeName}
-                  className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-slate-700 transition-all space-y-3"
+                  className="p-4 rounded-xl bg-surface/70 border border-slate-800 hover:border-slate-700 transition-all space-y-3"
                 >
                   <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
                     <div>
@@ -482,7 +482,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                           setSelectedCoach(member);
                           setActiveTab('tierboard');
                         }}
-                        className="p-2 rounded-lg bg-slate-900/60 border border-slate-800/80 hover:bg-slate-850 hover:border-amber-500/40 cursor-pointer flex items-center justify-between transition-all"
+                        className="p-2 rounded-lg bg-surface-raised/60 border border-slate-800/80 hover:bg-slate-850 hover:border-amber-500/40 cursor-pointer flex items-center justify-between transition-all"
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           <TeamLogo team={member.teamAbbr} size="xs" />
