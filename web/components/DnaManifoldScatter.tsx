@@ -1,7 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
+import { Download } from 'lucide-react';
 import { PlayerDnaProfile } from '@/lib/playerDnaTypes';
+import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 
 interface DnaManifoldScatterProps {
   players: PlayerDnaProfile[];
@@ -28,6 +30,14 @@ export const DnaManifoldScatter: React.FC<DnaManifoldScatterProps> = ({
   const scaleX = (val: number) => padding + ((val - xMin) / (xMax - xMin)) * (width - 2 * padding);
   const scaleY = (val: number) => height - padding - ((val - yMin) / (yMax - yMin)) * (height - 2 * padding);
 
+  const svgRef = useRef<SVGSVGElement | null>(null);
+
+  const handleExportPng = () => {
+    if (svgRef.current) {
+      exportSvgAsPng(svgRef.current, 'dna-manifold-scatter');
+    }
+  };
+
   return (
     <div className="flex flex-col p-4 bg-zinc-950/60 rounded-xl border border-zinc-800/80">
       <div className="flex items-center justify-between mb-2">
@@ -41,15 +51,24 @@ export const DnaManifoldScatter: React.FC<DnaManifoldScatterProps> = ({
             Vertical: Paint Anchor & Rebound Engine ⟵ Perimeter Guard
           </p>
         </div>
-        <div className="text-right">
+        <div className="text-right flex items-center gap-2">
           <span className="text-[10px] font-mono bg-zinc-900 border border-zinc-800 text-sky-400 px-2 py-0.5 rounded">
             N = {players.length} Players
           </span>
+          <button
+            type="button"
+            onClick={handleExportPng}
+            title="Export PNG"
+            aria-label="Export chart as PNG"
+            className="p-1.5 rounded-lg border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
       <div className="relative w-full overflow-hidden flex justify-center">
-        <svg viewBox={`0 0 ${width} ${height}`} className="w-full max-w-[500px] h-auto overflow-visible">
+        <svg ref={svgRef} viewBox={`0 0 ${width} ${height}`} className="w-full max-w-[500px] h-auto overflow-visible">
           {/* Grid lines */}
           <line x1={padding} y1={scaleY(0)} x2={width - padding} y2={scaleY(0)} stroke="#27272a" strokeWidth="1" strokeDasharray="3,3" />
           <line x1={scaleX(0)} y1={padding} x2={scaleX(0)} y2={height - padding} stroke="#27272a" strokeWidth="1" strokeDasharray="3,3" />

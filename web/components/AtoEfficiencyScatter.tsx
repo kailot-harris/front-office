@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { CoachingStaffMetric } from '@/lib/coachingTypes';
 import { TeamLogo } from '@/components/TeamLogo';
-import { Crosshair } from 'lucide-react';
+import { Crosshair, Download } from 'lucide-react';
+import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 
 interface AtoEfficiencyScatterProps {
   coaches: CoachingStaffMetric[];
@@ -17,6 +18,13 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
   onSelectCoach,
 }) => {
   const [hoveredCoach, setHoveredCoach] = useState<CoachingStaffMetric | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
+
+  const handleExportPng = () => {
+    if (svgRef.current) {
+      exportSvgAsPng(svgRef.current, 'ato-efficiency-scatter');
+    }
+  };
 
   // Bounds for axes
   // Offense PPP: 0.92 to 1.20
@@ -82,12 +90,22 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
             <span className="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
             <span>CIR &lt; 65</span>
           </div>
+          <button
+            type="button"
+            onClick={handleExportPng}
+            title="Export PNG"
+            aria-label="Export chart as PNG"
+            className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
       {/* SVG Canvas */}
       <div className="relative flex justify-center overflow-x-auto">
         <svg
+          ref={svgRef}
           viewBox={`0 0 ${width} ${height}`}
           className="w-full max-w-[760px] select-none font-sans"
         >

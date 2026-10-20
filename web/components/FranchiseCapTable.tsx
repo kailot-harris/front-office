@@ -1,7 +1,9 @@
 'use client';
 
 import React from 'react';
+import { Download } from 'lucide-react';
 import { FranchiseCbaProfile } from '@/lib/cbaTypes';
+import { exportToCsv } from '@/lib/exportToCsv';
 
 interface FranchiseCapTableProps {
   profile: FranchiseCbaProfile;
@@ -9,6 +11,21 @@ interface FranchiseCapTableProps {
 
 export const FranchiseCapTable: React.FC<FranchiseCapTableProps> = ({ profile }) => {
   const { contracts, totalPayroll2026, totalPayroll2027, totalPayroll2028, projectedCapSpace2027, projectedCapSpace2028 } = profile;
+
+  const handleExportCsv = () => {
+    exportToCsv(
+      contracts as unknown as Record<string, unknown>[],
+      [
+        { key: 'playerName', label: 'Player' },
+        { key: 'position', label: 'Pos' },
+        { key: 'salary2026', label: '2026-27 ($M)' },
+        { key: 'salary2027', label: '2027-28 ($M)' },
+        { key: 'salary2028', label: '2028-29 ($M)' },
+        { key: 'contractType', label: 'Status' },
+      ],
+      `${profile.teamAbbr || 'team'}-cap-book`
+    );
+  };
 
   return (
     <div className="bg-surface/70 border border-slate-800 rounded-xl overflow-hidden shadow-lg space-y-3 p-4">
@@ -22,6 +39,15 @@ export const FranchiseCapTable: React.FC<FranchiseCapTableProps> = ({ profile })
           </span>
         </div>
         <div className="flex items-center gap-3 text-xs font-mono">
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            title="Export CSV"
+            aria-label="Export table as CSV"
+            className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
           <div>
             <span className="text-slate-400 text-[10px] mr-1">2027 Room:</span>
             <span className={`font-bold ${projectedCapSpace2027 > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
