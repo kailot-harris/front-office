@@ -28,9 +28,9 @@ export const PlayoffsClient: React.FC<PlayoffsClientProps> = ({ dataset }) => {
       {/* Top Postseason Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* AFC #1 Seed */}
-        <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
+        <div className="bg-surface-raised/70 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
           <div className="relative flex-shrink-0">
-            <div className="w-12 h-12 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
+            <div className="w-12 h-12 rounded-xl bg-surface/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
               <TeamLogo team={afc1?.team} size="lg" />
             </div>
             <div className="absolute -bottom-1 -right-1 p-1 bg-red-500/20 text-red-400 rounded-md border border-red-500/30 shadow">
@@ -54,9 +54,9 @@ export const PlayoffsClient: React.FC<PlayoffsClientProps> = ({ dataset }) => {
         </div>
 
         {/* NFC #1 Seed */}
-        <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
+        <div className="bg-surface-raised/70 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
           <div className="relative flex-shrink-0">
-            <div className="w-12 h-12 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
+            <div className="w-12 h-12 rounded-xl bg-surface/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
               <TeamLogo team={nfc1?.team} size="lg" />
             </div>
             <div className="absolute -bottom-1 -right-1 p-1 bg-blue-500/20 text-blue-400 rounded-md border border-blue-500/30 shadow">
@@ -80,9 +80,9 @@ export const PlayoffsClient: React.FC<PlayoffsClientProps> = ({ dataset }) => {
         </div>
 
         {/* Super Bowl Equity Leader */}
-        <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
+        <div className="bg-surface-raised/70 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
           <div className="relative flex-shrink-0">
-            <div className="w-12 h-12 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
+            <div className="w-12 h-12 rounded-xl bg-surface/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
               <TeamLogo team={topSbFav?.team} size="lg" />
             </div>
             <div className="absolute -bottom-1 -right-1 p-1 bg-amber-500/20 text-amber-400 rounded-md border border-amber-500/30 shadow">
@@ -121,7 +121,7 @@ export const PlayoffsClient: React.FC<PlayoffsClientProps> = ({ dataset }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* AFC Bubble */}
-          <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 space-y-3">
+          <div className="bg-surface-raised/70 border border-slate-800 rounded-xl p-4 space-y-3">
             <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
               <span className="text-xs font-mono uppercase text-red-400 font-bold flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-red-500" />
@@ -133,7 +133,7 @@ export const PlayoffsClient: React.FC<PlayoffsClientProps> = ({ dataset }) => {
               {dataset.afc_bubble.map((team, idx) => (
                 <div
                   key={team.team}
-                  className="flex items-center justify-between p-2 rounded-lg bg-slate-950/40 hover:bg-slate-800/40 transition-colors"
+                  className="flex items-center justify-between p-2 rounded-lg bg-surface/40 hover:bg-slate-800/40 transition-colors"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className="text-xs font-mono font-bold text-slate-500 w-4">
@@ -154,7 +154,7 @@ export const PlayoffsClient: React.FC<PlayoffsClientProps> = ({ dataset }) => {
           </div>
 
           {/* NFC Bubble */}
-          <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 space-y-3">
+          <div className="bg-surface-raised/70 border border-slate-800 rounded-xl p-4 space-y-3">
             <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
               <span className="text-xs font-mono uppercase text-blue-400 font-bold flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-blue-500" />
@@ -166,7 +166,7 @@ export const PlayoffsClient: React.FC<PlayoffsClientProps> = ({ dataset }) => {
               {dataset.nfc_bubble.map((team, idx) => (
                 <div
                   key={team.team}
-                  className="flex items-center justify-between p-2 rounded-lg bg-slate-950/40 hover:bg-slate-800/40 transition-colors"
+                  className="flex items-center justify-between p-2 rounded-lg bg-surface/40 hover:bg-slate-800/40 transition-colors"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className="text-xs font-mono font-bold text-slate-500 w-4">
@@ -189,7 +189,7 @@ export const PlayoffsClient: React.FC<PlayoffsClientProps> = ({ dataset }) => {
       </div>
 
       {/* Official NFL Tiebreaker Mechanics Reference */}
-      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 space-y-2.5">
+      <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4 space-y-2.5">
         <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-300 uppercase tracking-wide">
           <HelpCircle className="w-4 h-4 text-emerald-400" />
           <span>Official Tiebreaker Engine Mechanics (nfl_tiebreakers.R)</span>
@@ -198,27 +198,27 @@ export const PlayoffsClient: React.FC<PlayoffsClientProps> = ({ dataset }) => {
           {dataset.seeding_method}
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-1 text-[11px] font-mono">
-          <div className="bg-slate-950 p-2 rounded-lg border border-slate-800/80">
+          <div className="bg-surface p-2 rounded-lg border border-slate-800/80">
             <span className="text-emerald-400 font-bold block">1. Head-to-Head</span>
             <span className="text-slate-500 text-[10px]">Direct game sweeps</span>
           </div>
-          <div className="bg-slate-950 p-2 rounded-lg border border-slate-800/80">
+          <div className="bg-surface p-2 rounded-lg border border-slate-800/80">
             <span className="text-emerald-400 font-bold block">2. Division Record</span>
             <span className="text-slate-500 text-[10px]">Within division</span>
           </div>
-          <div className="bg-slate-950 p-2 rounded-lg border border-slate-800/80">
+          <div className="bg-surface p-2 rounded-lg border border-slate-800/80">
             <span className="text-emerald-400 font-bold block">3. Common Games</span>
             <span className="text-slate-500 text-[10px]">Min 4 common opponents</span>
           </div>
-          <div className="bg-slate-950 p-2 rounded-lg border border-slate-800/80">
+          <div className="bg-surface p-2 rounded-lg border border-slate-800/80">
             <span className="text-emerald-400 font-bold block">4. Conf Record</span>
             <span className="text-slate-500 text-[10px]">Intra-conference</span>
           </div>
-          <div className="bg-slate-950 p-2 rounded-lg border border-slate-800/80">
+          <div className="bg-surface p-2 rounded-lg border border-slate-800/80">
             <span className="text-emerald-400 font-bold block">5. SOV</span>
             <span className="text-slate-500 text-[10px]">Strength of victory</span>
           </div>
-          <div className="bg-slate-950 p-2 rounded-lg border border-slate-800/80">
+          <div className="bg-surface p-2 rounded-lg border border-slate-800/80">
             <span className="text-emerald-400 font-bold block">6. SOS</span>
             <span className="text-slate-500 text-[10px]">Strength of schedule</span>
           </div>

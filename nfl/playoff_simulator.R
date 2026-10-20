@@ -1,6 +1,6 @@
 # ==============================================================================
 # NFL Playoff Bracket Simulator
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/playoff_simulator.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/playoff_simulator.R
 #
 # Phase 4, Task P4-A (docs/task_assignments_phase3.md). Genuinely new bracket-advancement
 # logic, NOT a port of the WNBA sibling repo's playoff_simulator.R: that file models

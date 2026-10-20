@@ -1,6 +1,6 @@
 # ==============================================================================
 # Gradient-Boosted Trees Model (Phase 4, model-quality remediation)
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/gbm_model.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/gbm_model.R
 #
 # Per docs/HANDOFF.md's roadmap: gated on Phase 2 or 3 beating the Phase 1 baseline first
 # (both did - ridge and the deployed ridge+Elo ensemble). xgboost is already installed in

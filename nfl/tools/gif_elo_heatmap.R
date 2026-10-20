@@ -47,7 +47,7 @@
 # below, so every CACHE_* read still correctly resolves to the main repo's shared, read-only
 # cache, while this script's own output PNG is written under WORKTREE_CACHE_DIR so it lands
 # inside THIS worktree's cache/ rather than the main repo's.
-WORKTREE_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics/.claude/worktrees/agent-a9109db7db5e8351c"
+WORKTREE_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 WORKTREE_CACHE_DIR <- file.path(WORKTREE_DIR, "cache")
 if (!dir.exists(WORKTREE_CACHE_DIR)) dir.create(WORKTREE_CACHE_DIR, recursive = TRUE)
 setwd(WORKTREE_DIR)

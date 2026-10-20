@@ -1,7 +1,7 @@
 # ==============================================================================
 # market_odds_engine.R (NFL port)
 # Phase 6 (task P6-A) - Market Odds / Value-Betting Engine
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/market_odds_engine.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/market_odds_engine.R
 #
 # Ported from the WNBA Analytics repo's market_odds_engine.R. Sport-agnostic pieces
 # (american_to_decimal/american_to_prob/prob_to_american/calculate_kelly, sharp-book
@@ -65,7 +65,7 @@
 #      8-stage convention is call_fn-style explicit invocation only.
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({

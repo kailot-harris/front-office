@@ -43,9 +43,9 @@ export const EpaQuadrantScatter: React.FC<EpaQuadrantScatterProps> = ({
   };
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg space-y-4">
+    <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg space-y-4">
       {/* Header bar */}
-      <div className="p-4 bg-slate-950/70 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+      <div className="p-4 bg-surface/70 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg">
             <Layers className="w-5 h-5" />
@@ -66,14 +66,14 @@ export const EpaQuadrantScatter: React.FC<EpaQuadrantScatterProps> = ({
         </div>
 
         {/* Conference Filter */}
-        <div className="inline-flex rounded-lg bg-slate-900 p-1 border border-slate-800">
+        <div className="inline-flex rounded-lg bg-surface-raised p-1 border border-slate-800">
           {(['All', 'AFC', 'NFC'] as const).map((conf) => (
             <button
               key={conf}
               onClick={() => setSelectedConf(conf)}
               className={`cursor-pointer select-none px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
                 selectedConf === conf
-                  ? 'bg-emerald-600 text-white shadow-sm'
+                  ? 'bg-accent-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -85,7 +85,7 @@ export const EpaQuadrantScatter: React.FC<EpaQuadrantScatterProps> = ({
 
       {/* Main Scatter Canvas Area */}
       <div className="p-4 sm:p-6">
-        <div className="relative w-full h-[460px] sm:h-[520px] bg-slate-950/70 rounded-xl border border-slate-800/80 p-4 overflow-hidden select-none">
+        <div className="relative w-full h-[460px] sm:h-[520px] bg-surface/70 rounded-xl border border-slate-800/80 p-4 overflow-hidden select-none">
           {/* Quadrant Background Tints */}
           {/* Top-Right: Elite Tier (Good Offense, Good Defense) */}
           <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-emerald-500/5 border-b border-l border-slate-800/60 pointer-events-none">
@@ -157,10 +157,10 @@ export const EpaQuadrantScatter: React.FC<EpaQuadrantScatterProps> = ({
                 <div
                   className={`p-1 rounded-full transition-all shadow-md ${
                     isSelected
-                      ? 'bg-emerald-500 ring-2 ring-white ring-offset-2 ring-offset-slate-900 shadow-emerald-500/40'
+                      ? 'bg-accent-500 ring-2 ring-white ring-offset-2 ring-offset-slate-900 shadow-accent-500/40'
                       : isHovered
                       ? 'bg-slate-800 ring-2 ring-emerald-400 shadow-lg'
-                      : 'bg-slate-900/90 border border-slate-700/70 hover:border-emerald-400'
+                      : 'bg-surface-raised/90 border border-slate-700/70 hover:border-emerald-400'
                   }`}
                 >
                   <TeamLogo team={team.team} size="sm" />
@@ -172,7 +172,7 @@ export const EpaQuadrantScatter: React.FC<EpaQuadrantScatterProps> = ({
           {/* Hover Tooltip Card */}
           {hoveredTeam && (
             <div
-              className="absolute z-40 bg-slate-900/95 border border-emerald-500/50 rounded-xl p-3 shadow-2xl backdrop-blur-md pointer-events-none text-xs space-y-1.5 min-w-[200px]"
+              className="absolute z-40 bg-surface-raised/95 border border-emerald-500/50 rounded-xl p-3 shadow-2xl backdrop-blur-md pointer-events-none text-xs space-y-1.5 min-w-[200px]"
               style={{
                 left: `${Math.min(75, Math.max(5, getXPercent(hoveredTeam.off_epa_per_play)))}%`,
                 top: `${Math.min(75, Math.max(5, getYPercent(hoveredTeam.def_epa_per_play)))}%`,

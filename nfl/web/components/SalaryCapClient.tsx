@@ -71,7 +71,7 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
 
       {/* KPI Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-lg">
+        <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 shadow-lg">
           <div className="flex items-center justify-between text-slate-400 pb-2">
             <span className="text-xs font-medium">NFL Cap Ceiling</span>
             <DollarSign className="w-4 h-4 text-emerald-400" />
@@ -82,7 +82,7 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
           <p className="text-[11px] text-slate-400 mt-1">Official 2026 limit per franchise</p>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-lg">
+        <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 shadow-lg">
           <div className="flex items-center justify-between text-slate-400 pb-2">
             <span className="text-xs font-medium">Avg Active Roster APY</span>
             <PieChart className="w-4 h-4 text-cyan-400" />
@@ -93,7 +93,7 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
           <p className="text-[11px] text-slate-400 mt-1">Average annualized commitments</p>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-lg">
+        <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 shadow-lg">
           <div className="flex items-center justify-between text-slate-400 pb-2">
             <span className="text-xs font-medium">Top League Contract</span>
             <Award className="w-4 h-4 text-indigo-400" />
@@ -106,7 +106,7 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
           </p>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-lg">
+        <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 shadow-lg">
           <div className="flex items-center justify-between text-slate-400 pb-2">
             <span className="text-xs font-medium">Active OTC Contracts</span>
             <Layers className="w-4 h-4 text-amber-400" />
@@ -119,14 +119,14 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
       </div>
 
       {/* View Switcher Ribbon & Search */}
-      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-slate-900/90 border border-slate-800 p-3.5 rounded-xl">
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-surface-raised/90 border border-slate-800 p-3.5 rounded-xl">
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
             onClick={() => setActiveTab('teams')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
               activeTab === 'teams'
                 ? 'bg-emerald-500 text-slate-950 font-bold shadow-md'
-                : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                : 'bg-surface text-slate-400 hover:text-white border border-slate-800'
             }`}
           >
             32 Team Cap Profiles
@@ -136,7 +136,7 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
             className={`px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
               activeTab === 'top_contracts'
                 ? 'bg-emerald-500 text-slate-950 font-bold shadow-md'
-                : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                : 'bg-surface text-slate-400 hover:text-white border border-slate-800'
             }`}
           >
             Top 100 League Contracts
@@ -150,7 +150,7 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
             placeholder={activeTab === 'teams' ? 'Search team code...' : 'Search player, team, position...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+            className="w-full bg-surface border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
           />
         </div>
       </div>
@@ -160,10 +160,10 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Team Table */}
-            <div className="lg:col-span-2 bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+            <div className="lg:col-span-2 bg-surface-raised/90 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs font-mono">
-                  <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+                  <thead className="bg-surface/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                     <tr>
                       <th className="px-4 py-3">Team</th>
                       <th
@@ -214,7 +214,7 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
                           key={t.team}
                           onClick={() => setSelectedTeam(t)}
                           className={`hover:bg-slate-800/40 transition-colors cursor-pointer ${
-                            isSelected ? 'bg-emerald-950/20 border-l-2 border-emerald-500' : ''
+                            isSelected ? 'bg-accent-950/20 border-l-2 border-accent-500' : ''
                           }`}
                         >
                           <td className="px-4 py-2.5">
@@ -271,7 +271,7 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
 
             {/* Selected Team Positional Spending Sunburst/Bar Breakdown */}
             {selectedTeam && (
-              <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col justify-between">
+              <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
                     <div className="flex items-center gap-3">
@@ -305,7 +305,7 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
                               ${item.apy.toFixed(1)}M ({item.pct}%)
                             </span>
                           </div>
-                          <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                          <div className="h-1.5 w-full bg-surface rounded-full overflow-hidden border border-slate-800">
                             <div
                               className="h-full bg-emerald-500 rounded-full"
                               style={{ width: `${Math.min(item.pct * 2.5, 100)}%` }}
@@ -323,7 +323,7 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
                     {selectedTeam.top_paid_players.map((p, i) => (
                       <div
                         key={i}
-                        className="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800 text-xs font-mono"
+                        className="flex items-center justify-between p-2 rounded-lg bg-surface/60 border border-slate-800 text-xs font-mono"
                       >
                         <div className="flex items-center gap-2">
                           <span className="text-slate-500 font-bold">#{i + 1}</span>
@@ -347,10 +347,10 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
 
       {/* View 2: Top 100 League Contracts Table */}
       {activeTab === 'top_contracts' && (
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+        <div className="bg-surface-raised/90 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-mono">
-              <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+              <thead className="bg-surface/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                 <tr>
                   <th className="px-4 py-3">Rank</th>
                   <th className="px-4 py-3">Player</th>

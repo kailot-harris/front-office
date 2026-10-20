@@ -1,6 +1,6 @@
 # ==============================================================================
 # Automated Daily Play-by-Play / Schedule Ingestion Pipeline (NFL)
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/daily_ingest.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/daily_ingest.R
 #
 # Ported from WNBA Analytics/daily_ingest.R (bootstrap-if-cache-missing, then
 # incremental current-season fetch + dedupe idiom). wehoop::load_wnba_team_box()

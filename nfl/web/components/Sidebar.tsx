@@ -133,8 +133,8 @@ export const Sidebar: React.FC = () => {
                 onClick={() => setIsOpen(false)}
                 className={`group flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
                   isActive
-                    ? 'bg-gradient-to-r from-emerald-600/90 to-teal-700/80 text-white shadow-lg shadow-emerald-950 border border-emerald-400/30'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-900/80 border border-transparent hover:border-slate-800'
+                    ? 'bg-gradient-to-r from-accent-600/90 to-teal-700/80 text-white shadow-lg shadow-accent-950 border border-accent-400/30'
+                    : 'text-slate-300 hover:text-white hover:bg-surface-raised/80 border border-transparent hover:border-slate-800'
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -142,7 +142,7 @@ export const Sidebar: React.FC = () => {
                     className={`p-1.5 rounded-lg transition-colors ${
                       isActive
                         ? 'bg-white/10 text-white'
-                        : 'bg-slate-950 text-slate-400 group-hover:text-emerald-400 group-hover:bg-slate-900 border border-slate-800'
+                        : 'bg-surface text-slate-400 group-hover:text-accent-400 group-hover:bg-surface-raised border border-slate-800'
                     }`}
                   >
                     <Icon className="w-4 h-4 flex-shrink-0" />
@@ -158,8 +158,8 @@ export const Sidebar: React.FC = () => {
                   <span
                     className={`ml-2 px-1.5 py-0.5 text-[9px] font-mono rounded flex-shrink-0 border ${
                       isActive
-                        ? 'bg-emerald-950/80 text-emerald-300 border-emerald-400/40'
-                        : 'bg-slate-950 text-slate-400 border-slate-800 group-hover:border-slate-700'
+                        ? 'bg-accent-950/80 text-emerald-300 border-accent-400/40'
+                        : 'bg-surface text-slate-400 border-slate-800 group-hover:border-slate-700'
                     }`}
                   >
                     {item.badge}
@@ -173,7 +173,7 @@ export const Sidebar: React.FC = () => {
 
       {/* Model Spec & Sigma Footer */}
       <div className="pt-4 border-t border-slate-800/80 space-y-3">
-        <div className="bg-slate-950/70 rounded-xl p-3 border border-slate-800 text-xs font-mono space-y-2">
+        <div className="bg-surface/70 rounded-xl p-3 border border-slate-800 text-xs font-mono space-y-2">
           <div className="flex items-center justify-between text-slate-400 text-[11px]">
             <span className="flex items-center gap-1.5">
               <Layers className="w-3.5 h-3.5 text-emerald-400" />
@@ -212,7 +212,7 @@ export const Sidebar: React.FC = () => {
 
           {/* Popover Explainer Card */}
           {showSigmaExplainer && (
-            <div className="mt-2 p-2.5 rounded-lg bg-slate-900 border border-cyan-800/60 text-[10px] text-slate-300 space-y-1.5 animate-in fade-in slide-in-from-bottom-1 duration-150">
+            <div className="mt-2 p-2.5 rounded-lg bg-surface-raised border border-cyan-800/60 text-[10px] text-slate-300 space-y-1.5 animate-in fade-in slide-in-from-bottom-1 duration-150">
               <div className="font-bold text-cyan-300 flex items-center gap-1">
                 <span>NFL Margin Sigma (σ = 14.6)</span>
               </div>
@@ -248,7 +248,7 @@ export const Sidebar: React.FC = () => {
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed top-4 left-4 z-[60] p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white shadow-xl"
+        className="lg:hidden fixed top-4 left-4 z-[60] p-2 rounded-xl bg-surface-raised border border-slate-800 text-slate-300 hover:text-white shadow-xl"
         aria-label="Toggle navigation"
       >
         {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -258,18 +258,18 @@ export const Sidebar: React.FC = () => {
       {isOpen && (
         <div
           onClick={() => setIsOpen(false)}
-          className="lg:hidden fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-sm"
+          className="lg:hidden fixed inset-0 z-40 bg-surface/80 backdrop-blur-sm"
         />
       )}
 
       {/* Desktop Persistent Sidebar */}
-      <aside className="hidden lg:flex fixed top-0 left-0 h-screen w-64 bg-slate-950 border-r border-slate-800/80 z-30 flex-col">
+      <aside className="hidden lg:flex fixed top-0 left-0 h-screen w-64 bg-surface border-r border-slate-800/80 z-30 flex-col">
         <NavContent />
       </aside>
 
       {/* Mobile Drawer */}
       <aside
-        className={`lg:hidden fixed top-0 left-0 h-screen w-72 bg-slate-950 border-r border-slate-800 z-50 transform transition-transform duration-200 ease-in-out ${
+        className={`lg:hidden fixed top-0 left-0 h-screen w-72 bg-surface border-r border-slate-800 z-50 transform transition-transform duration-200 ease-in-out ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

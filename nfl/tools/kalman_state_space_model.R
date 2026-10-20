@@ -1,6 +1,6 @@
 # ==============================================================================
 # Kalman-Filter State-Space Rating Model (Phase 5, model-quality remediation)
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/kalman_state_space_model.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/kalman_state_space_model.R
 #
 # Per docs/HANDOFF.md's roadmap: "Phase 5 (Bayesian state-space) needs an Rtools/rstan install
 # decision first, or a pure-R closed-form Kalman-filter alternative." rstan/cmdstanr/brms/rjags

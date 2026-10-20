@@ -108,7 +108,7 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
   };
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg space-y-6 p-4 sm:p-6">
+    <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg space-y-6 p-4 sm:p-6">
       {/* Simulator Control Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
         <div>
@@ -145,7 +145,7 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
       {isSimulated && champion && superBowlMatchup && (
         <div className="bg-gradient-to-r from-amber-600/20 via-emerald-600/20 to-indigo-600/20 border border-amber-500/40 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in zoom-in-95 duration-200">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-slate-950/80 border border-amber-500/40 flex items-center justify-center p-1.5 shadow-lg shadow-amber-500/10">
+            <div className="w-12 h-12 rounded-xl bg-surface/80 border border-amber-500/40 flex items-center justify-center p-1.5 shadow-lg shadow-amber-500/10">
               <TeamLogo team={champion.team} size="lg" />
             </div>
             <div>
@@ -187,7 +187,7 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
                 className={`p-2.5 rounded-lg border transition-all flex items-center justify-between ${
                   champion?.team === s.team
                     ? 'bg-amber-950/30 border-amber-500/50 shadow-md'
-                    : 'bg-slate-950/50 border-slate-800 hover:border-slate-700'
+                    : 'bg-surface/50 border-slate-800 hover:border-slate-700'
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -259,7 +259,7 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
                 className={`p-2.5 rounded-lg border transition-all flex items-center justify-between ${
                   champion?.team === s.team
                     ? 'bg-amber-950/30 border-amber-500/50 shadow-md'
-                    : 'bg-slate-950/50 border-slate-800 hover:border-slate-700'
+                    : 'bg-surface/50 border-slate-800 hover:border-slate-700'
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">

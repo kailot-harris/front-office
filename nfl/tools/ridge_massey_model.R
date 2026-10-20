@@ -1,6 +1,6 @@
 # ==============================================================================
 # Ridge-Regularized Massey/EPA Rating Model (Phase 2, model-quality remediation)
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/ridge_massey_model.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/ridge_massey_model.R
 #
 # Per docs/HANDOFF.md's post-Phase-8-backtest roadmap: replace team_ratings_engine.R's
 # hand-tuned games_played/(games_played+K) shrinkage blend with a ridge-regularized

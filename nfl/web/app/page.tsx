@@ -28,15 +28,15 @@ export default function HomePage() {
 
         {/* Quick Stats Grid */}
         <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-right">
+          <div className="bg-surface-raised border border-slate-800 rounded-xl px-3.5 py-2.5 text-right">
             <span className="text-slate-500 block text-[10px] uppercase font-mono">Total Simulations</span>
             <span className="text-white font-mono font-bold text-sm">1,000 Seasons</span>
           </div>
-          <div className="bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-right">
+          <div className="bg-surface-raised border border-slate-800 rounded-xl px-3.5 py-2.5 text-right">
             <span className="text-slate-500 block text-[10px] uppercase font-mono">Playoff Field</span>
             <span className="text-emerald-400 font-mono font-bold text-sm">14 Seeds (7/Conf)</span>
           </div>
-          <div className="bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-right">
+          <div className="bg-surface-raised border border-slate-800 rounded-xl px-3.5 py-2.5 text-right">
             <span className="text-slate-500 block text-[10px] uppercase font-mono">Margin Sigma (σ)</span>
             <span className="text-white font-mono font-bold text-sm">14.6 pts</span>
           </div>
@@ -47,7 +47,7 @@ export default function HomePage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Link
           href="/matchups"
-          className="group p-4 bg-slate-900/60 hover:bg-slate-800/60 border border-slate-800 hover:border-emerald-500/40 rounded-xl transition-all shadow-sm"
+          className="group p-4 bg-surface-raised/60 hover:bg-slate-800/60 border border-slate-800 hover:border-emerald-500/40 rounded-xl transition-all shadow-sm"
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-mono uppercase tracking-wider text-emerald-400 font-bold">Matchup Engine</span>
@@ -63,7 +63,7 @@ export default function HomePage() {
 
         <Link
           href="/teams"
-          className="group p-4 bg-slate-900/60 hover:bg-slate-800/60 border border-slate-800 hover:border-emerald-500/40 rounded-xl transition-all shadow-sm"
+          className="group p-4 bg-surface-raised/60 hover:bg-slate-800/60 border border-slate-800 hover:border-emerald-500/40 rounded-xl transition-all shadow-sm"
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-mono uppercase tracking-wider text-cyan-400 font-bold">Advanced EPA</span>
@@ -79,7 +79,7 @@ export default function HomePage() {
 
         <Link
           href="/playoffs"
-          className="group p-4 bg-slate-900/60 hover:bg-slate-800/60 border border-slate-800 hover:border-emerald-500/40 rounded-xl transition-all shadow-sm"
+          className="group p-4 bg-surface-raised/60 hover:bg-slate-800/60 border border-slate-800 hover:border-emerald-500/40 rounded-xl transition-all shadow-sm"
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-mono uppercase tracking-wider text-amber-400 font-bold">Postseason</span>

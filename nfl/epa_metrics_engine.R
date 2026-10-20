@@ -1,6 +1,6 @@
 # ==============================================================================
 # EPA / CPOE Metrics Engine (NFL)
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/epa_metrics_engine.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/epa_metrics_engine.R
 #
 # Phase 2, Task P2-A (docs/task_assignments_phase2.md). First real consumer of
 # ROLLING_WINDOW_SIZE. Aggregates nflreadr::load_pbp()'s play-level EPA/CPOE

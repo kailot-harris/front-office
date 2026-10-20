@@ -1,6 +1,6 @@
 # ==============================================================================
 # Walk-Forward Backtest / Optimizer for Phase 8's Two Unvalidated Constants
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/backtest_shrinkage_optimizer.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/backtest_shrinkage_optimizer.R
 #
 # config.R's own comments on RATING_SHRINKAGE_GAMES_K and MIN_SAMPLE_GAMES_FOR_STAKE
 # both say, verbatim, "NOT YET EMPIRICALLY BACKTESTED" and call for exactly this: a
@@ -42,7 +42,7 @@
 #   "/c/Program Files/R/R-4.5.2/bin/Rscript.exe" tools/backtest_shrinkage_optimizer.R
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({

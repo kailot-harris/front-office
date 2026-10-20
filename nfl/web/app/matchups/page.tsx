@@ -34,11 +34,11 @@ export default function MatchupsPage() {
 
         {/* Quick Context Chips */}
         <div className="flex items-center gap-2.5 text-xs font-mono">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-right">
+          <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
             <span className="text-slate-500 block text-[10px] uppercase">Active Slate</span>
             <span className="text-white font-bold">Week {dataset.active_week}</span>
           </div>
-          <div className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-right">
+          <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
             <span className="text-slate-500 block text-[10px] uppercase">Key Margin Alerts</span>
             <span className="text-emerald-400 font-bold">3, 7, 6, 10, 4</span>
           </div>

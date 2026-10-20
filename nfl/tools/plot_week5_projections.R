@@ -2,7 +2,7 @@
 # freshly regenerated CACHE_PROJECTED_MATCHUPS (home_win_prob / projected_margin columns per
 # config.R's documented schema). Not part of run_full_pipeline.R's DAG - a one-off chart, same
 # category as tools/weekly_accuracy_report.R.
-setwd("c:/Users/kailo/kayceeslices/NFL Analytics")
+setwd("c:/Users/kailo/kayceeslices/front-office/nfl analytics")
 source("config.R")
 library(ggplot2)
 library(dplyr)

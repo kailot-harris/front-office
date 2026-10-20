@@ -1,6 +1,6 @@
 # ==============================================================================
 # Investigation: is ridge_participation_phase1_combined's +0.0017 Sharpe (n=262) real?
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/investigate_participation_sharpe.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/investigate_participation_sharpe.R
 #
 # tools/model_backtest_harness.R reported the FIRST non-negative Sharpe value in this entire
 # remediation arc's 18-candidate comparison: ridge_participation_phase1_combined,
@@ -24,7 +24,7 @@
 #   "/c/Program Files/R/R-4.5.2/bin/Rscript.exe" tools/investigate_participation_sharpe.R
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({

@@ -1,6 +1,6 @@
 # ==============================================================================
 # NFL Analytics Pipeline - Global Configuration
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/config.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/config.R
 #
 # Ported from the WNBA Analytics repo's config.R (itself ported from an NBA Analytics
 # repo) - see that repo's config.R header and its Finding C-1 for the class of bug this
@@ -19,7 +19,7 @@
 # ==============================================================================
 
 # Working and Cache Directories
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 CACHE_DIR   <- file.path(PROJECT_DIR, "cache")
 if (!dir.exists(CACHE_DIR)) dir.create(CACHE_DIR, recursive = TRUE)
 

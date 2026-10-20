@@ -106,9 +106,9 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams }) => {
       {/* Top EPA Leaders Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Top Offense */}
-        <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
+        <div className="bg-surface-raised/70 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
           <div className="relative flex-shrink-0">
-            <div className="w-12 h-12 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
+            <div className="w-12 h-12 rounded-xl bg-surface/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
               <TeamLogo team={topOffense?.team} size="lg" />
             </div>
             <div className="absolute -bottom-1 -right-1 p-1 bg-emerald-500/20 text-emerald-400 rounded-md border border-emerald-500/30 shadow">
@@ -128,9 +128,9 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams }) => {
         </div>
 
         {/* Top Defense */}
-        <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
+        <div className="bg-surface-raised/70 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
           <div className="relative flex-shrink-0">
-            <div className="w-12 h-12 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
+            <div className="w-12 h-12 rounded-xl bg-surface/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
               <TeamLogo team={topDefense?.team} size="lg" />
             </div>
             <div className="absolute -bottom-1 -right-1 p-1 bg-cyan-500/20 text-cyan-400 rounded-md border border-cyan-500/30 shadow">
@@ -150,9 +150,9 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams }) => {
         </div>
 
         {/* Top Success Rate */}
-        <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
+        <div className="bg-surface-raised/70 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
           <div className="relative flex-shrink-0">
-            <div className="w-12 h-12 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
+            <div className="w-12 h-12 rounded-xl bg-surface/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
               <TeamLogo team={topSuccessRate?.team} size="lg" />
             </div>
             <div className="absolute -bottom-1 -right-1 p-1 bg-purple-500/20 text-purple-400 rounded-md border border-purple-500/30 shadow">
@@ -172,9 +172,9 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams }) => {
         </div>
 
         {/* Top Explosive Rate */}
-        <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
+        <div className="bg-surface-raised/70 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
           <div className="relative flex-shrink-0">
-            <div className="w-12 h-12 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
+            <div className="w-12 h-12 rounded-xl bg-surface/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
               <TeamLogo team={topExplosive?.team} size="lg" />
             </div>
             <div className="absolute -bottom-1 -right-1 p-1 bg-amber-500/20 text-amber-400 rounded-md border border-amber-500/30 shadow">
@@ -202,7 +202,7 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams }) => {
       />
 
       {/* Advanced EPA Table Toolbar */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Activity className="w-4 h-4 text-emerald-400" />
           <span className="font-bold text-xs uppercase font-mono text-white">
@@ -218,18 +218,18 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams }) => {
               placeholder="Search team..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 w-40 sm:w-48"
+              className="bg-surface border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 w-40 sm:w-48"
             />
           </div>
 
-          <div className="inline-flex rounded-lg bg-slate-950 p-1 border border-slate-800">
+          <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
             {(['All', 'AFC', 'NFC'] as const).map((conf) => (
               <button
                 key={conf}
                 onClick={() => setSelectedConf(conf)}
                 className={`cursor-pointer select-none px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
                   selectedConf === conf
-                    ? 'bg-emerald-600 text-white shadow-sm'
+                    ? 'bg-accent-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -241,10 +241,10 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams }) => {
       </div>
 
       {/* Advanced EPA Table */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+      <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-950/90 text-[11px] font-mono uppercase tracking-wider text-slate-400 border-b border-slate-800">
+            <thead className="bg-surface/90 text-[11px] font-mono uppercase tracking-wider text-slate-400 border-b border-slate-800">
               <tr>
                 <th
                   onClick={() => handleSort('team')}
@@ -344,7 +344,7 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams }) => {
                   key={t.team}
                   onClick={() => setSelectedTeam(t)}
                   className={`hover:bg-slate-800/40 transition-colors cursor-pointer group ${
-                    selectedTeam?.team === t.team ? 'bg-emerald-950/20' : ''
+                    selectedTeam?.team === t.team ? 'bg-accent-950/20' : ''
                   }`}
                 >
                   <td className="py-2.5 px-3">
@@ -408,11 +408,11 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams }) => {
       {selectedTeam && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
           <div
-            className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl space-y-4"
+            className="bg-surface-raised border border-slate-700/80 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+            <div className="p-4 bg-surface border-b border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <TeamLogo team={selectedTeam.team} size="lg" />
                 <div>
@@ -439,7 +439,7 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams }) => {
             <div className="p-5 space-y-4">
               {/* Primary Metric Chips */}
               <div className="grid grid-cols-3 gap-3 font-mono text-center">
-                <div className="bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+                <div className="bg-surface/70 p-3 rounded-xl border border-slate-800">
                   <span className="text-[10px] text-slate-500 uppercase block">Net EPA/Play</span>
                   <span
                     className={`text-lg font-black ${
@@ -451,13 +451,13 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams }) => {
                       : selectedTeam.net_epa_per_play.toFixed(3)}
                   </span>
                 </div>
-                <div className="bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+                <div className="bg-surface/70 p-3 rounded-xl border border-slate-800">
                   <span className="text-[10px] text-slate-500 uppercase block">Offense Success</span>
                   <span className="text-lg font-black text-white">
                     {selectedTeam.off_success_rate.toFixed(1)}%
                   </span>
                 </div>
-                <div className="bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+                <div className="bg-surface/70 p-3 rounded-xl border border-slate-800">
                   <span className="text-[10px] text-slate-500 uppercase block">Passing CPOE</span>
                   <span
                     className={`text-lg font-black ${
@@ -477,7 +477,7 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams }) => {
                   Situational Splits & Down Efficiency
                 </h3>
                 <div className="grid grid-cols-2 gap-3 text-xs font-mono">
-                  <div className="bg-slate-950/50 p-3 rounded-lg border border-slate-800/80 space-y-2">
+                  <div className="bg-surface/50 p-3 rounded-lg border border-slate-800/80 space-y-2">
                     <span className="font-bold text-slate-300 block border-b border-slate-800 pb-1">
                       Offensive Leverage
                     </span>
@@ -503,7 +503,7 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams }) => {
                     </div>
                   </div>
 
-                  <div className="bg-slate-950/50 p-3 rounded-lg border border-slate-800/80 space-y-2">
+                  <div className="bg-surface/50 p-3 rounded-lg border border-slate-800/80 space-y-2">
                     <span className="font-bold text-slate-300 block border-b border-slate-800 pb-1">
                       Defensive Resistance
                     </span>
@@ -533,7 +533,7 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams }) => {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-3 bg-slate-950 border-t border-slate-800 text-right">
+            <div className="p-3 bg-surface border-t border-slate-800 text-right">
               <button
                 onClick={() => setSelectedTeam(null)}
                 className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold font-mono transition-colors"

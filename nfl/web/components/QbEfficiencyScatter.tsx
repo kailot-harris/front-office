@@ -51,7 +51,7 @@ export default function QbEfficiencyScatter({
 
   if (validQbs.length === 0) {
     return (
-      <div className="p-8 text-center text-slate-500 bg-slate-900/60 rounded-xl border border-slate-800">
+      <div className="p-8 text-center text-slate-500 bg-surface-raised/60 rounded-xl border border-slate-800">
         No quarterback efficiency coordinates available.
       </div>
     );
@@ -77,7 +77,7 @@ export default function QbEfficiencyScatter({
   const zeroCpoeY = toPercentY(0.0);
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-xl relative overflow-hidden flex flex-col">
+    <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-5 shadow-xl relative overflow-hidden flex flex-col">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-2 mb-4">
         <div>
@@ -95,12 +95,12 @@ export default function QbEfficiencyScatter({
         {/* View Controls & Legend */}
         <div className="flex items-center gap-4 flex-wrap">
           {/* Starter Filter Toggle */}
-          <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 p-0.5 rounded-lg text-xs font-mono">
+          <div className="flex items-center gap-1 bg-surface border border-slate-800 p-0.5 rounded-lg text-xs font-mono">
             <button
               onClick={() => setStartersOnly(true)}
               className={`px-2.5 py-1 rounded-md transition-all ${
                 startersOnly
-                  ? 'bg-emerald-600 text-white font-bold shadow-sm'
+                  ? 'bg-accent-600 text-white font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -110,7 +110,7 @@ export default function QbEfficiencyScatter({
               onClick={() => setStartersOnly(false)}
               className={`px-2.5 py-1 rounded-md transition-all ${
                 !startersOnly
-                  ? 'bg-emerald-600 text-white font-bold shadow-sm'
+                  ? 'bg-accent-600 text-white font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -141,7 +141,7 @@ export default function QbEfficiencyScatter({
       </div>
 
       {/* Scatter Canvas */}
-      <div className="relative w-full h-[420px] sm:h-[480px] bg-slate-950/60 rounded-lg border border-slate-800/80 p-6 select-none overflow-hidden">
+      <div className="relative w-full h-[420px] sm:h-[480px] bg-surface/60 rounded-lg border border-slate-800/80 p-6 select-none overflow-hidden">
         {/* Quadrant Background Labels */}
         <div className="absolute top-4 right-4 text-right pointer-events-none">
           <div className="text-xs font-bold font-mono tracking-wider text-emerald-400/30 uppercase">
@@ -176,7 +176,7 @@ export default function QbEfficiencyScatter({
           className="absolute top-0 bottom-0 border-l border-dashed border-slate-700/60"
           style={{ left: `${zeroEpaX}%` }}
         >
-          <span className="absolute top-1 -translate-x-1/2 bg-slate-900 border border-slate-700 px-1.5 py-0.5 rounded text-[9px] font-mono text-slate-400">
+          <span className="absolute top-1 -translate-x-1/2 bg-surface-raised border border-slate-700 px-1.5 py-0.5 rounded text-[9px] font-mono text-slate-400">
             0.0 EPA
           </span>
         </div>
@@ -184,7 +184,7 @@ export default function QbEfficiencyScatter({
           className="absolute left-0 right-0 border-t border-dashed border-slate-700/60"
           style={{ top: `${zeroCpoeY}%` }}
         >
-          <span className="absolute left-1 -translate-y-1/2 bg-slate-900 border border-slate-700 px-1.5 py-0.5 rounded text-[9px] font-mono text-slate-400">
+          <span className="absolute left-1 -translate-y-1/2 bg-surface-raised border border-slate-700 px-1.5 py-0.5 rounded text-[9px] font-mono text-slate-400">
             0.0% CPOE
           </span>
         </div>
@@ -220,16 +220,16 @@ export default function QbEfficiencyScatter({
               <div
                 className={`w-7 h-7 rounded-full transition-all flex items-center justify-center p-0.5 shadow-md ${
                   isSelected
-                    ? 'ring-2 ring-emerald-400 scale-125 bg-emerald-950 shadow-emerald-500/30'
+                    ? 'ring-2 ring-accent-400 scale-125 bg-accent-950 shadow-accent-500/30'
                     : isHovered
-                    ? 'ring-2 ring-cyan-400 scale-125 bg-slate-900 shadow-cyan-500/30'
+                    ? 'ring-2 ring-cyan-400 scale-125 bg-surface-raised shadow-cyan-500/30'
                     : isElite
-                    ? 'border-2 border-emerald-400 bg-slate-900'
+                    ? 'border-2 border-emerald-400 bg-surface-raised'
                     : isGood
-                    ? 'border-2 border-blue-400 bg-slate-900'
+                    ? 'border-2 border-blue-400 bg-surface-raised'
                     : isSubpar
-                    ? 'border-2 border-rose-500 bg-slate-900'
-                    : 'border-2 border-amber-400 bg-slate-900'
+                    ? 'border-2 border-rose-500 bg-surface-raised'
+                    : 'border-2 border-amber-400 bg-surface-raised'
                 }`}
               >
                 <TeamLogo team={qb.team} size="xs" />
@@ -240,10 +240,10 @@ export default function QbEfficiencyScatter({
                 <div
                   className={`absolute ${labelAlignClass} mt-1 px-2 py-0.5 rounded text-[10px] font-mono whitespace-nowrap border pointer-events-none shadow-xl ${
                     isSelected
-                      ? 'bg-emerald-950 text-emerald-200 border-emerald-600 z-50'
+                      ? 'bg-accent-950 text-emerald-200 border-accent-600 z-50'
                       : isHovered
-                      ? 'bg-slate-900 text-cyan-300 border-cyan-500 z-50'
-                      : 'bg-slate-900/90 text-slate-200 border-slate-700/80'
+                      ? 'bg-surface-raised text-cyan-300 border-cyan-500 z-50'
+                      : 'bg-surface-raised/90 text-slate-200 border-slate-700/80'
                   }`}
                 >
                   <span className="font-semibold">{qb.player_name.split(' ').pop()}</span>

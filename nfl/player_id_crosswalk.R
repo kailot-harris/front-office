@@ -1,6 +1,6 @@
 # ==============================================================================
 # Cross-Source NFL Player-ID Crosswalk
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/player_id_crosswalk.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/player_id_crosswalk.R
 #
 # CLAUDE.md flags four competing NFL player-ID schemes (ESPN athlete IDs, GSIS IDs - nflverse's
 # own primary key, PFR IDs, NFL.com/NGS-style IDs) as a real join-mismatch risk and names

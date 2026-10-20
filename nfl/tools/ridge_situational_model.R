@@ -1,7 +1,7 @@
 # ==============================================================================
 # Ridge-Regularized Massey/EPA Rating Model + Situational EPA Features (Phase 4, model-quality
 # remediation, situational-feature engineering)
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/ridge_situational_model.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/ridge_situational_model.R
 #
 # Extends tools/ridge_massey_model.R's ridge feature set with the per-team-per-game situational
 # splits epa_metrics_engine.R now computes (config.R's SITUATIONAL_EPA_ROLL_COLS - early-down vs.
