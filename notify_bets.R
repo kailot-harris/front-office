@@ -1,6 +1,6 @@
 # ==============================================================================
 # notify_bets.R
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/notify_bets.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/notify_bets.R
 # Phase 7 (P7-A) — NFL Discord Alpha & CLV Webhook Dispatcher
 #
 # Ported from the WNBA Analytics sibling repo's notify_bets.R (see that file's header —

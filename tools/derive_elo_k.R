@@ -1,6 +1,6 @@
 # ==============================================================================
 # Elo K-Factor - Empirical Derivation (Phase 3)
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/derive_elo_k.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/derive_elo_k.R
 #
 # Precedent: tools/derive_market_blend_weight.R / tools/derive_qb_injury_penalty.R.
 # Derives ELO_K_FACTOR (tools/elo_model.R's rating-update sensitivity) via
@@ -19,7 +19,7 @@
 #   "/c/Program Files/R/R-4.5.2/bin/Rscript.exe" tools/derive_elo_k.R
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({

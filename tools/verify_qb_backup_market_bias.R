@@ -1,6 +1,6 @@
 # ==============================================================================
 # Verification: is the home-backup-QB market bias a real, walk-forward-exploitable edge?
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/verify_qb_backup_market_bias.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/verify_qb_backup_market_bias.R
 #
 # tools/market_disagreement_features.R's exploratory diagnostic found one bucket, among ~8
 # scanned, whose 95% CI clearly excludes zero: games where the HOME team started a backup QB
@@ -20,7 +20,7 @@
 #   "/c/Program Files/R/R-4.5.2/bin/Rscript.exe" tools/verify_qb_backup_market_bias.R
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({

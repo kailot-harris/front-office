@@ -1,6 +1,6 @@
 # ==============================================================================
 # General-Purpose Model-Comparison Backtest Harness (Phase A, model-quality remediation)
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/model_backtest_harness.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/model_backtest_harness.R
 #
 # Generalizes tools/backtest_shrinkage_optimizer.R's walk-forward, no-lookahead discipline
 # into a REUSABLE comparison across multiple candidate rating models, not just the two
@@ -41,7 +41,7 @@
 #   "/c/Program Files/R/R-4.5.2/bin/Rscript.exe" tools/model_backtest_harness.R
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({

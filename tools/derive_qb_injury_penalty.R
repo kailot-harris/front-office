@@ -1,6 +1,6 @@
 # ==============================================================================
 # QB-Injury/Backup-Starter Rating Penalty - Empirical Derivation (Phase 1)
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/derive_qb_injury_penalty.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/derive_qb_injury_penalty.R
 #
 # Precedent: tools/derive_nfl_constants.R (one-off, documented derivation script that
 # prints the final value(s) for config.R rather than writing config.R itself). This
@@ -22,7 +22,7 @@
 #   "/c/Program Files/R/R-4.5.2/bin/Rscript.exe" tools/derive_qb_injury_penalty.R
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({

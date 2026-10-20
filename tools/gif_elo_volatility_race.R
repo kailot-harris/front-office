@@ -34,7 +34,7 @@
 # (always an absolute path - see CLAUDE.md's Rscript.exe relative-path segfault note)
 # ==============================================================================
 
-WORKTREE_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics/.claude/worktrees/agent-a71af4f0d8862dce5"
+WORKTREE_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 WORKTREE_CACHE_DIR <- file.path(WORKTREE_DIR, "cache")
 if (!dir.exists(WORKTREE_CACHE_DIR)) dir.create(WORKTREE_CACHE_DIR, recursive = TRUE)
 setwd(WORKTREE_DIR)

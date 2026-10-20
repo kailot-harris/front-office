@@ -1,6 +1,6 @@
 # ==============================================================================
 # Elo History Builder (Phase 9 infra, issue #17)
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/elo_history_data.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/elo_history_data.R
 #
 # Extracted verbatim (no logic changes) from docs/week5_elo_analysis.qmd's
 # `compute-elo` chunk, plus the `fig-trajectory` chunk's `trajectory` object -
@@ -25,10 +25,10 @@
 #
 # Run standalone with (sources config.R/logging_utils.R/elo_model.R itself -
 # no caller setup required):
-#   "/c/Program Files/R/R-4.5.2/bin/Rscript.exe" "c:/Users/kailo/kayceeslices/NFL Analytics/tools/elo_history_data.R"
+#   "/c/Program Files/R/R-4.5.2/bin/Rscript.exe" "c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/elo_history_data.R"
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({

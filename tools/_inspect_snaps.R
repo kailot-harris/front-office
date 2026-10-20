@@ -1,4 +1,4 @@
-setwd("c:/Users/kailo/kayceeslices/NFL Analytics")
+setwd("c:/Users/kailo/kayceeslices/front-office/nfl analytics")
 source("config.R")
 sn <- nflreadr::load_snap_counts(seasons = CURRENT_SEASON)
 cat(paste(names(sn), collapse=", "), "\n")

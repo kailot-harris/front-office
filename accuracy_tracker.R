@@ -1,6 +1,6 @@
 # ==============================================================================
 # accuracy_tracker.R
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/accuracy_tracker.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/accuracy_tracker.R
 #
 # GitHub issue #5 (Accuracy Tracker 3) — detects newly-completed/graded CURRENT_SEASON games
 # since the last recorded run and appends one row to cache/accuracy_history.rds (config.R's
@@ -31,7 +31,7 @@
 # check, not a schema change to CACHE_ACCURACY_HISTORY's documented columns.
 #
 # Run with:
-#   "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" "c:/Users/kailo/kayceeslices/NFL Analytics/accuracy_tracker.R"
+#   "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" "c:/Users/kailo/kayceeslices/front-office/nfl analytics/accuracy_tracker.R"
 # (no auto-run at the bottom of this file — that invocation only loads function definitions
 # unless a caller also calls run_accuracy_tracker()).
 # ==============================================================================

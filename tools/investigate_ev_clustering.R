@@ -1,6 +1,6 @@
 # ==============================================================================
 # tools/investigate_ev_clustering.R
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/investigate_ev_clustering.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/investigate_ev_clustering.R
 #
 # Investigates docs/HANDOFF.md Known Issue #5: "essentially all Kelly-positive bets
 # across every candidate tested are long-shot underdogs (~20-30% model win
@@ -21,7 +21,7 @@
 #   "/c/Program Files/R/R-4.5.2/bin/Rscript.exe" tools/investigate_ev_clustering.R
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({

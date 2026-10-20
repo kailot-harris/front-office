@@ -1,6 +1,6 @@
 # ==============================================================================
 # NFL Roster Synchronizer
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/sync_rosters.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/sync_rosters.R
 #
 # Ported from WNBA Analytics's sync_rosters.R (see that repo's file for the original
 # ESPN-site-API-driven pattern), with the ESPN/wehoop-style per-team live HTTP loop

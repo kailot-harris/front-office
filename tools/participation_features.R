@@ -1,6 +1,6 @@
 # ==============================================================================
 # Participation / Personnel Feature Engineering (Known Issue #7 pickup)
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/participation_features.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/participation_features.R
 #
 # CLAUDE.md's Known Issue #7 (docs/HANDOFF.md): "load_participation() 2023+ is
 # historical-only ... still unstarted, still correctly unused anywhere in the pipeline." This
@@ -49,7 +49,7 @@
 #   "/c/Program Files/R/R-4.5.2/bin/Rscript.exe" tools/participation_features.R
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({

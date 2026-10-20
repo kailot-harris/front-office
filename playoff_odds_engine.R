@@ -1,6 +1,6 @@
 # ==============================================================================
 # NFL Playoff-Clinching Probability Engine - Single-Trial Season Simulator
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/playoff_odds_engine.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/playoff_odds_engine.R
 #
 # GitHub issue #12 ("Playoff Odds 2: Single-trial remaining-season simulation + real-
 # tiebreaker reseed function"). Part of the playoff-clinching-probability feature spec'd in

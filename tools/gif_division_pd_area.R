@@ -20,7 +20,7 @@
 # (always an absolute path - see CLAUDE.md's Rscript.exe relative-path segfault note)
 # ==============================================================================
 
-setwd("c:/Users/kailo/kayceeslices/NFL Analytics")
+setwd("c:/Users/kailo/kayceeslices/front-office/nfl analytics")
 
 suppressPackageStartupMessages({
   library(dplyr)

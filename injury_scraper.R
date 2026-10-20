@@ -1,6 +1,6 @@
 # ==============================================================================
 # NFL Injury Scraper — official nflverse report + same-day ESPN freshness feed
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/injury_scraper.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/injury_scraper.R
 #
 # Ported from WNBA Analytics/injury_scraper.R (fetch_live_wnba_injuries() ->
 # run_injury_scraper()). The WNBA script hit ESPN's site-API as its ONLY source; this

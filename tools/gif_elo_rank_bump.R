@@ -41,7 +41,7 @@
 # OUTPUT, however, is written under WORKTREE_CACHE_DIR so it lands inside THIS worktree's cache/
 # rather than silently writing into the main repo's cache/ - same pattern as every other Phase 9
 # gif_*.R script (e.g. tools/gif_epa_net_race.R, tools/gif_division_standings_race.R).
-WORKTREE_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics/.claude/worktrees/agent-a9109db7db5e8351c"
+WORKTREE_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 WORKTREE_CACHE_DIR <- file.path(WORKTREE_DIR, "cache")
 if (!dir.exists(WORKTREE_CACHE_DIR)) dir.create(WORKTREE_CACHE_DIR, recursive = TRUE)
 setwd(WORKTREE_DIR)

@@ -1,4 +1,4 @@
-setwd("c:/Users/kailo/kayceeslices/NFL Analytics")
+setwd("c:/Users/kailo/kayceeslices/front-office/nfl analytics")
 x <- readRDS("cache/projected_matchups.rds")
 cat("cols:", paste(names(x), collapse=", "), "\n")
 cat("weeks present:", paste(sort(unique(x$week)), collapse=","), "\n")

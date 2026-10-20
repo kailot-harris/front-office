@@ -1,7 +1,7 @@
 # ==============================================================================
 # Gate-aware re-verification + multiple-comparisons correction for the home-backup-QB
 # market-bias finding (docs/HANDOFF.md Known Issue #4).
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/verify_qb_backup_market_bias_gated.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/verify_qb_backup_market_bias_gated.R
 #
 # tools/verify_qb_backup_market_bias.R's walk-forward strategy test (n=399 bets, Sharpe
 # +0.0911, cumulative return +96.6%, bootstrap 95% CI [-0.0058, +0.187], 96.7% of resamples
@@ -35,11 +35,11 @@
 # ==============================================================================
 
 # NOTE: config.R hardcodes its own PROJECT_DIR/CACHE_DIR to the main checkout
-# ("c:/Users/kailo/kayceeslices/NFL Analytics") - sourcing it always repoints CACHE_DIR there
+# ("c:/Users/kailo/kayceeslices/front-office/nfl analytics") - sourcing it always repoints CACHE_DIR there
 # regardless of this script's own setwd(). When running this script from a worktree, override
 # CACHE_DIR back to the worktree's own cache/ AFTER source("config.R") (below) so outputs land
 # in the worktree being worked in, not the shared main checkout.
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics/.claude/worktrees/agent-afcb1ad06438eb485"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics/.claude/worktrees/agent-afcb1ad06438eb485"
 setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({
@@ -55,7 +55,7 @@ source("market_odds_engine.R")  # -> american_to_decimal(), calculate_kelly()
 # main-checkout path every time either is sourced - so re-deriving CACHE_DIR from PROJECT_DIR
 # here would silently pick up the OVERWRITTEN value, not this script's own. Use a
 # script-local, differently-named constant instead so it survives every source() call above.
-WORKTREE_CACHE_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics/.claude/worktrees/agent-afcb1ad06438eb485/cache"
+WORKTREE_CACHE_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics/.claude/worktrees/agent-afcb1ad06438eb485/cache"
 CACHE_DIR <- WORKTREE_CACHE_DIR  # see NOTE above
 # CACHE_SCHEDULES was already resolved to file.path(<main-checkout CACHE_DIR>, ...) at
 # source("config.R") time above (a one-time file.path() call, not lazily re-evaluated) - fix it

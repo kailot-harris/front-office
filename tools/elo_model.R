@@ -1,7 +1,7 @@
 # ==============================================================================
 # MOV-Weighted Elo Rating Model, with Season Carryover + Fatigue Covariate
 # (Phase 3, model-quality remediation)
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/elo_model.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/elo_model.R
 #
 # Per docs/HANDOFF.md's roadmap: a structurally different candidate from Phases 1-2's
 # EPA-differential/ridge lineage - a classic margin-of-victory-weighted Elo rating,

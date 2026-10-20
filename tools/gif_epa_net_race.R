@@ -1,6 +1,6 @@
 # ==============================================================================
 # EPA Net Bar Race - Animated GIF (NFL)
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/gif_epa_net_race.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/gif_epa_net_race.R
 #
 # Closes GitHub issue #30. Phase 9 (docs/task_assignments_phase8.md, task P9-E), Wave 1 - no
 # dependency on the Elo infra work, reads only CACHE_EPA_METRICS (see epa_metrics_engine.R).
@@ -43,7 +43,7 @@
 # CACHE_EPA_METRICS) still correctly resolves to config.R's main-repo path (that input cache is
 # shared, read-only, real data - not something this task regenerates). Same pattern as
 # tools/derive_min_sample_games_for_stake.R's own WORKTREE_DIR handling.
-WORKTREE_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics/.claude/worktrees/agent-a3bf5020eee07ccdb"
+WORKTREE_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 WORKTREE_CACHE_DIR <- file.path(WORKTREE_DIR, "cache")
 if (!dir.exists(WORKTREE_CACHE_DIR)) dir.create(WORKTREE_CACHE_DIR, recursive = TRUE)
 setwd(WORKTREE_DIR)

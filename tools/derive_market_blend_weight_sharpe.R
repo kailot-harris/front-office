@@ -1,7 +1,7 @@
 # ==============================================================================
 # Market-Blend Weight - Sharpe-Objective Re-Derivation (Phase 5 continuation, model-quality
 # remediation)
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/derive_market_blend_weight_sharpe.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/derive_market_blend_weight_sharpe.R
 #
 # tools/derive_market_blend_weight.R derived MARKET_BLEND_WEIGHT=0.97 by minimizing walk-forward
 # BRIER SCORE against the (now-superseded) baseline_k3.6 formula - never against Sharpe, and
@@ -26,7 +26,7 @@
 #   "/c/Program Files/R/R-4.5.2/bin/Rscript.exe" tools/derive_market_blend_weight_sharpe.R
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({
