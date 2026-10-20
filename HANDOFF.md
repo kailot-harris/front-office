@@ -585,9 +585,11 @@ history from 2026-10-20 (§2, needs a force-push to four repos); and whether to
 rename or `git init` the confusingly-named local `front-office` parent folder
 (§2).
 
-**One more latent trap, not yet hit:** `README.md`'s "Gotcha" section and
-`deploy.yml`'s `PAGES_BASE_PATH` comment both describe Step 1 of the §5 fix
-(prefix hand-written paths with `BASE_PATH`) but **neither mentions Step 2**
-(the `env:` key that makes it actually work in the browser). Anyone following
-only those two documents will reproduce the original broken fix. Updating them
-to point at §5 is a small, worthwhile docs task.
+**Resolved 2026-10-20** (commit titled "docs: document both steps of the
+basePath fix in README and deploy.yml"): `README.md`'s "Gotcha" section and `deploy.yml`'s
+`PAGES_BASE_PATH` comment previously described only Step 1 of the §5 fix, so
+anyone following them would have reproduced the original broken version. Both
+now document both steps, state that a green build plus a `curl` 200 is not
+sufficient evidence, and point here. `README.md` also no longer claims NBA/MLB
+are unfixed. If you change the §5 fix pattern, update those two files too —
+they are the first thing a newcomer reads.

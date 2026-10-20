@@ -5,15 +5,27 @@ on:
     branches: [main]
   workflow_dispatch: {}
 
-# IMPORTANT: set this to "/<this-repo-name>" once the repo is created on GitHub
-# (project pages are served at https://<user>.github.io/<repo-name>/).
-# Leave empty only if this is published as a user/org root site (<user>.github.io).
+# IMPORTANT: this must match "/<this-repo-name>" (project pages are served at
+# https://<user>.github.io/<repo-name>/), so if the repo is ever renamed, change
+# this too or every asset URL breaks. Leave empty only if this is ever published
+# as a user/org root site (<user>.github.io).
 #
 # Each sport's next.config.mjs reads this to compute its own basePath
 # (PAGES_BASE_PATH + "/<sport>"), which Next only applies to its own generated
 # URLs - any hand-written "<img src='/...'>" or "fetch('/...')" in app code
-# bypasses it and 404s in production while working fine in local dev. See
-# README.md's "Gotcha: basePath does not rewrite hand-written asset paths".
+# bypasses it and 404s in production while working fine in local dev.
+#
+# Fixing that takes TWO steps, and step 1 alone is a no-op in production:
+#   1. prefix the hand-written path with that sport's BASE_PATH constant
+#      (<sport>/web/lib/basePath.ts)
+#   2. keep "env: { PAGES_BASE_PATH: repoBase }" in that sport's next.config.mjs
+#      so the value is inlined into the CLIENT bundle - Next only substitutes
+#      NODE_ENV and NEXT_PUBLIC_* there, so without it BASE_PATH silently
+#      degrades to "/<sport>" in the browser and the paths still 404.
+#
+# A green build plus a 200 from curl does NOT prove this works - that is how the
+# first broken fix passed review. Verify the built bundle instead. See README.md's
+# "Gotcha: basePath does not rewrite hand-written asset paths" and HANDOFF.md §5.
 env:
   PAGES_BASE_PATH: /front-office
 

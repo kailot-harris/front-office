@@ -95,14 +95,48 @@ Next's `basePath`/`assetPrefix` config only prefixes URLs it generates itself
 literal string you write yourself, e.g. `<img src="/logos/ATL_logo.png">` or
 `fetch('/data/shots/123.json')`. Those resolve against the domain root in the
 browser, so in production (served at `/front-office/<sport>/...`) they 404
-while looking completely fine in local dev (served at `/`) — this is exactly
-what broke WNBA team logos (see `wnba/web/lib/basePath.ts`, fixed 2026-10-20).
+while looking completely fine in local dev — this is exactly what broke WNBA
+team logos (see `wnba/web/lib/basePath.ts`).
 
-Any new `<img src="/...">` or `fetch('/...')` against a file under `public/`
-must go through that sport's own `BASE_PATH` constant instead
-(`wnba/web/lib/basePath.ts` is the reference implementation — mirrors
-`next.config.mjs`'s own `basePath` computation). `nba/web` and `mlb/web` have
-the same hardcoded-path pattern in a few components
-(`InlinePlayerShotCard.tsx`, `ShotChartModal.tsx`, `ShotsExplorerClient.tsx`,
-`PlayersClient.tsx`) that hasn't been fixed yet as of this writing — same bug,
-just not yet reported as broken.
+All four sports are fixed as of 2026-10-20. Fixing this takes **two** steps,
+and step 1 alone is a no-op in production — that mistake shipped once already.
+
+**Step 1 — route the path through `BASE_PATH`.** Any `<img src="/...">` or
+`fetch('/...')` against a file under `public/` must import that sport's
+`BASE_PATH` constant from `<sport>/web/lib/basePath.ts` (all four exist) and
+prefix it:
+
+```ts
+import { BASE_PATH } from '@/lib/basePath';
+fetch(`${BASE_PATH}/data/shots/${id}.json`);
+```
+
+**Step 2 — make sure `PAGES_BASE_PATH` reaches the browser.** `lib/basePath.ts`
+reads `process.env.PAGES_BASE_PATH`, but it's imported by `'use client'`
+components, so it compiles into the **client** bundle. Next.js only substitutes
+`process.env.NODE_ENV` and `NEXT_PUBLIC_*` vars there — any other custom var is
+left as a runtime lookup against an empty `process` shim, comes back
+`undefined`, and the `?? ''` fallback silently degrades `BASE_PATH` to
+`/<sport>` instead of `/front-office/<sport>`. Every "fixed" path still 404s.
+
+That's why each `next.config.mjs` carries this line, which is **not** redundant
+with `basePath` and must not be removed:
+
+```js
+env: { PAGES_BASE_PATH: repoBase },
+```
+
+**Verifying it.** A green build and a `200` from `curl` on the asset URL are
+*not* sufficient — they prove the file is served at that path, not that the app
+requests it there. That's exactly how the first broken fix passed review. Check
+the built bundle instead:
+
+```sh
+# want no output: no unresolved runtime lookups left
+grep -rl PAGES_BASE_PATH nba/web/out/_next/static/chunks/
+# want a hit: the value inlined at build time
+grep -ro '"".concat("/front-office","/nba")' nba/web/out/_next/static/chunks/
+```
+
+Best of all, load the page and watch the browser network tab for 404s.
+`HANDOFF.md` §5 has the full write-up.
