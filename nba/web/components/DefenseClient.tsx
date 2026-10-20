@@ -86,7 +86,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                   onClick={() => setSelectedRoleFilter(tab.val)}
                   className={`flex-1 py-1 text-xs font-semibold rounded-md transition-colors ${
                     selectedRoleFilter === tab.val
-                      ? 'bg-emerald-600 text-white shadow-sm'
+                      ? 'bg-accent-600 text-white shadow-sm'
                       : 'bg-zinc-800/80 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
                   }`}
                 >

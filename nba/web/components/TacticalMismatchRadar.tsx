@@ -28,7 +28,7 @@ export const TacticalMismatchRadar: React.FC<TacticalMismatchRadarProps> = ({
   ];
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-5 shadow-lg space-y-5">
+    <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-5 shadow-lg space-y-5">
       <div className="flex items-center justify-between pb-3 border-b border-slate-800">
         <div>
           <h3 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
@@ -76,7 +76,7 @@ export const TacticalMismatchRadar: React.FC<TacticalMismatchRadarProps> = ({
               </div>
 
               {/* Dual Progress Bar */}
-              <div className="grid grid-cols-2 gap-1.5 h-2 bg-slate-950/80 rounded-full p-0.5 border border-slate-800/80">
+              <div className="grid grid-cols-2 gap-1.5 h-2 bg-surface/80 rounded-full p-0.5 border border-slate-800/80">
                 {/* Team A bar (Right aligned) */}
                 <div className="h-full flex justify-end">
                   <div
@@ -107,7 +107,7 @@ export const TacticalMismatchRadar: React.FC<TacticalMismatchRadarProps> = ({
             {tacticalEdges.map((edge, idx) => (
               <div
                 key={idx}
-                className="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800/90 flex items-start gap-2.5"
+                className="p-2.5 rounded-lg bg-surface/70 border border-slate-800/90 flex items-start gap-2.5"
               >
                 <span
                   className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded mt-0.5 flex-shrink-0 ${

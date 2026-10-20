@@ -183,8 +183,8 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
               onClick={() => setActiveVariant(key)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                 isActive
-                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
-                  : 'bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
+                  ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
+                  : 'bg-surface-raised text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
               }`}
             >
               <span>{detail.name}</span>
@@ -201,7 +201,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
       </div>
 
       {/* Active Variant Architecture Card */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-6 space-y-4">
+      <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-6 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
@@ -212,7 +212,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
             </div>
             <p className="text-slate-300 text-sm mt-1">{currentVariantInfo.description}</p>
           </div>
-          <div className="text-xs text-slate-400 bg-slate-950 p-3 rounded-lg border border-slate-800 max-w-sm">
+          <div className="text-xs text-slate-400 bg-surface p-3 rounded-lg border border-slate-800 max-w-sm">
             <span className="text-amber-400 font-semibold block mb-0.5">Methodology:</span>
             {currentVariantInfo.methodology}
           </div>
@@ -226,7 +226,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
             {currentVariantInfo.strengths.map((s, idx) => (
               <div
                 key={idx}
-                className="bg-slate-950/60 border border-slate-800/80 rounded-lg p-3 text-xs text-slate-300 flex items-start gap-2"
+                className="bg-surface/60 border border-slate-800/80 rounded-lg p-3 text-xs text-slate-300 flex items-start gap-2"
               >
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1 flex-shrink-0" />
                 <span>{s}</span>
@@ -253,12 +253,12 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
           </div>
           <div className="flex items-center gap-2 text-xs">
             <span className="text-slate-400">Sort by:</span>
-            <div className="inline-flex rounded-lg bg-slate-950 p-1 border border-slate-800">
+            <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
               <button
                 onClick={() => setDivergenceSort('divergence')}
                 className={`px-2.5 py-1 rounded text-xs font-semibold ${
                   divergenceSort === 'divergence'
-                    ? 'bg-emerald-600 text-white'
+                    ? 'bg-accent-600 text-white'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -267,7 +267,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
               <button
                 onClick={() => setDivergenceSort('wins')}
                 className={`px-2.5 py-1 rounded text-xs font-semibold ${
-                  divergenceSort === 'wins' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
+                  divergenceSort === 'wins' ? 'bg-accent-600 text-white' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 Ensemble Wins
@@ -275,7 +275,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
               <button
                 onClick={() => setDivergenceSort('alpha')}
                 className={`px-2.5 py-1 rounded text-xs font-semibold ${
-                  divergenceSort === 'alpha' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
+                  divergenceSort === 'alpha' ? 'bg-accent-600 text-white' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 Team A-Z
@@ -285,11 +285,11 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
         </div>
 
         {/* Matrix Table */}
-        <div className="bg-slate-900/70 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+        <div className="bg-surface-raised/70 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm border-collapse">
               <thead>
-                <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 text-xs">
+                <tr className="bg-surface/80 border-b border-slate-800 text-slate-400 text-xs">
                   <th className="py-3 px-4">Team</th>
                   <th className="py-3 px-3 text-center bg-indigo-950/30 text-indigo-300 font-bold">
                     Ensemble
@@ -335,7 +335,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
                     >
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-slate-950/80 border border-slate-800 p-1 flex items-center justify-center flex-shrink-0">
+                          <div className="w-8 h-8 rounded-lg bg-surface/80 border border-slate-800 p-1 flex items-center justify-center flex-shrink-0">
                             <TeamLogo team={team.team} size="sm" />
                           </div>
                           <div>

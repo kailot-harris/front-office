@@ -72,7 +72,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
                   onClick={() => setSelectedPosFilter(pos)}
                   className={`flex-1 py-1 text-xs font-semibold rounded-md transition-colors ${
                     selectedPosFilter === pos
-                      ? 'bg-emerald-600 text-white shadow-sm'
+                      ? 'bg-accent-600 text-white shadow-sm'
                       : 'bg-zinc-800/80 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
                   }`}
                 >

@@ -235,7 +235,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
 
         {/* Global KPI Pills */}
         <div className="flex items-center gap-3">
-          <div className="bg-slate-900/90 border border-slate-800 rounded-xl px-3.5 py-2">
+          <div className="bg-surface-raised/90 border border-slate-800 rounded-xl px-3.5 py-2">
             <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider font-mono">
               Top Gainer
             </span>
@@ -246,7 +246,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
               </span>
             </div>
           </div>
-          <div className="bg-slate-900/90 border border-slate-800 rounded-xl px-3.5 py-2">
+          <div className="bg-surface-raised/90 border border-slate-800 rounded-xl px-3.5 py-2">
             <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider font-mono">
               Tracked Moves
             </span>
@@ -256,13 +256,13 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
       </div>
 
       {/* Primary Tab Navigation */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900/70 p-1.5 rounded-2xl border border-slate-800/80">
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-raised/70 p-1.5 rounded-2xl border border-slate-800/80">
         <div className="flex items-center gap-1.5 overflow-x-auto">
           <button
             onClick={() => setActiveTab('feed')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
               activeTab === 'feed'
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
             }`}
           >
@@ -270,7 +270,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
             <span>Transaction Ledger & Impact Feed</span>
             <span
               className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
-                activeTab === 'feed' ? 'bg-indigo-700 text-indigo-100' : 'bg-slate-800 text-slate-400'
+                activeTab === 'feed' ? 'bg-accent-700 text-indigo-100' : 'bg-slate-800 text-slate-400'
               }`}
             >
               {transactions.length}
@@ -281,7 +281,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
             onClick={() => setActiveTab('teams')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
               activeTab === 'teams'
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
             }`}
           >
@@ -289,7 +289,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
             <span>Franchise Winners & Losers (30 Teams)</span>
             <span
               className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
-                activeTab === 'teams' ? 'bg-indigo-700 text-indigo-100' : 'bg-slate-800 text-slate-400'
+                activeTab === 'teams' ? 'bg-accent-700 text-indigo-100' : 'bg-slate-800 text-slate-400'
               }`}
             >
               Rankings
@@ -300,7 +300,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
             onClick={() => setActiveTab('machine')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
               activeTab === 'machine'
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
             }`}
           >
@@ -315,7 +315,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
             onClick={() => setActiveTab('draft')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
               activeTab === 'draft'
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
             }`}
           >
@@ -323,7 +323,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
             <span>Draft Class & Rookie Projections</span>
             <span
               className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
-                activeTab === 'draft' ? 'bg-indigo-700 text-indigo-100' : 'bg-slate-800 text-slate-400'
+                activeTab === 'draft' ? 'bg-accent-700 text-indigo-100' : 'bg-slate-800 text-slate-400'
               }`}
             >
               {draftProspects.length}
@@ -339,7 +339,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
         <div className="space-y-6">
           {/* Quick Metrics Banner */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 flex items-center justify-between">
+            <div className="bg-surface-raised/80 border border-slate-800/80 rounded-2xl p-4 flex items-center justify-between">
               <div>
                 <span className="text-xs text-slate-400 uppercase tracking-wider font-mono">Blockbuster Trades</span>
                 <div className="text-2xl font-black text-white mt-0.5">{totalTrades} Verified</div>
@@ -350,7 +350,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
               </div>
             </div>
 
-            <div className="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 flex items-center justify-between">
+            <div className="bg-surface-raised/80 border border-slate-800/80 rounded-2xl p-4 flex items-center justify-between">
               <div>
                 <span className="text-xs text-slate-400 uppercase tracking-wider font-mono">Free Agent Signings</span>
                 <div className="text-2xl font-black text-amber-400 mt-0.5">{totalFreeAgents} Signings</div>
@@ -361,7 +361,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
               </div>
             </div>
 
-            <div className="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 flex items-center justify-between">
+            <div className="bg-surface-raised/80 border border-slate-800/80 rounded-2xl p-4 flex items-center justify-between">
               <div>
                 <span className="text-xs text-slate-400 uppercase tracking-wider font-mono">Draft Class Signings</span>
                 <div className="text-2xl font-black text-emerald-400 mt-0.5">{totalDraftPicks} Rookies</div>
@@ -372,7 +372,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
               </div>
             </div>
 
-            <div className="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 flex items-center justify-between">
+            <div className="bg-surface-raised/80 border border-slate-800/80 rounded-2xl p-4 flex items-center justify-between">
               <div>
                 <span className="text-xs text-slate-400 uppercase tracking-wider font-mono">Avg Net Rating Delta</span>
                 <div className="text-2xl font-black text-indigo-300 mt-0.5">+1.84 pts</div>
@@ -385,7 +385,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
           </div>
 
           {/* Interactive Filters Bar */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-4">
+          <div className="bg-surface-raised/90 border border-slate-800 rounded-2xl p-4 space-y-4">
             <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
               {/* Search */}
               <div className="relative flex-1 max-w-md">
@@ -395,7 +395,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                   placeholder="Search player, team, trade package..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                  className="w-full bg-surface border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
                 />
               </div>
 
@@ -415,7 +415,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                   onClick={() => setTypeFilter('trade')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                     typeFilter === 'trade'
-                      ? 'bg-emerald-600 text-white shadow-sm'
+                      ? 'bg-accent-600 text-white shadow-sm'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -425,7 +425,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                   onClick={() => setTypeFilter('free_agency')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                     typeFilter === 'free_agency'
-                      ? 'bg-emerald-600 text-white shadow-sm'
+                      ? 'bg-accent-600 text-white shadow-sm'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -435,7 +435,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                   onClick={() => setTypeFilter('draft')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                     typeFilter === 'draft'
-                      ? 'bg-emerald-600 text-white shadow-sm'
+                      ? 'bg-accent-600 text-white shadow-sm'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -448,7 +448,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 <select
                   value={teamFilter}
                   onChange={(e) => setTeamFilter(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
+                  className="bg-surface border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
                 >
                   <option value="all">All Franchises (30)</option>
                   {availableTeams.map((tm) => (
@@ -461,7 +461,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as 'wins' | 'nrtg' | 'bpm' | 'date')}
-                  className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
+                  className="bg-surface border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
                 >
                   <option value="wins">Sort: Proj Wins (Highest)</option>
                   <option value="nrtg">Sort: Net Rating Impact</option>
@@ -475,7 +475,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
           {/* Transaction Cards List */}
           <div className="space-y-4">
             {filteredTransactions.length === 0 ? (
-              <div className="text-center py-12 bg-slate-900/50 rounded-2xl border border-slate-800">
+              <div className="text-center py-12 bg-surface-raised/50 rounded-2xl border border-slate-800">
                 <AlertTriangle className="w-8 h-8 text-amber-400 mx-auto mb-2 opacity-60" />
                 <p className="text-slate-300 font-medium">No transactions matched your filter criteria.</p>
                 <button
@@ -499,9 +499,9 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 return (
                   <div
                     key={t.id}
-                    className={`bg-slate-900/90 border rounded-2xl transition-all overflow-hidden ${
+                    className={`bg-surface-raised/90 border rounded-2xl transition-all overflow-hidden ${
                       isExpanded
-                        ? 'border-indigo-500/50 shadow-xl shadow-indigo-950/20'
+                        ? 'border-accent-500/50 shadow-xl shadow-accent-950/20'
                         : 'border-slate-800 hover:border-slate-700'
                     }`}
                   >
@@ -557,7 +557,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                       </div>
 
                       {/* Middle: Movement Pathway (From -> To) */}
-                      <div className="flex items-center gap-2.5 bg-slate-950/70 border border-slate-800/80 px-3.5 py-1.5 rounded-xl flex-shrink-0">
+                      <div className="flex items-center gap-2.5 bg-surface/70 border border-slate-800/80 px-3.5 py-1.5 rounded-xl flex-shrink-0">
                         {t.from_team ? (
                           <div className="flex items-center gap-1.5">
                             {availableTeams.includes(t.from_team) ? (
@@ -619,7 +619,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
 
                     {/* Expandable Analytical Breakdown Drawer */}
                     {isExpanded && (
-                      <div className="border-t border-slate-800/80 bg-slate-950/60 p-5 space-y-5">
+                      <div className="border-t border-slate-800/80 bg-surface/60 p-5 space-y-5">
                         {/* Summary & Contract Specs */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div className="md:col-span-2 space-y-2">
@@ -629,7 +629,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                             <p className="text-sm text-slate-200 leading-relaxed">{t.analysis.summary}</p>
                           </div>
 
-                          <div className="bg-slate-900/90 border border-slate-800/80 rounded-xl p-3.5 space-y-2 text-xs">
+                          <div className="bg-surface-raised/90 border border-slate-800/80 rounded-xl p-3.5 space-y-2 text-xs">
                             <div className="text-[10px] font-bold uppercase text-slate-400 font-mono">
                               Terms & Asset Details
                             </div>
@@ -662,7 +662,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                         {/* Three Pillars: Offensive Impact, Defensive Impact, Risk Assessment */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           {/* Offensive Impact */}
-                          <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3.5 space-y-1.5">
+                          <div className="bg-surface-raised/60 border border-slate-800/80 rounded-xl p-3.5 space-y-1.5">
                             <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-xs">
                               <TrendingUp className="w-3.5 h-3.5" />
                               <span>Offensive Spacing & Creation</span>
@@ -671,7 +671,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                           </div>
 
                           {/* Defensive Impact */}
-                          <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3.5 space-y-1.5">
+                          <div className="bg-surface-raised/60 border border-slate-800/80 rounded-xl p-3.5 space-y-1.5">
                             <div className="flex items-center gap-1.5 text-indigo-400 font-bold text-xs">
                               <CheckCircle2 className="w-3.5 h-3.5" />
                               <span>Defensive & Scheme Utility</span>
@@ -680,7 +680,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                           </div>
 
                           {/* Risk Assessment */}
-                          <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3.5 space-y-1.5">
+                          <div className="bg-surface-raised/60 border border-slate-800/80 rounded-xl p-3.5 space-y-1.5">
                             <div className="flex items-center gap-1.5 text-amber-400 font-bold text-xs">
                               <ShieldAlert className="w-3.5 h-3.5" />
                               <span>Risk & Exposure Profile</span>
@@ -708,7 +708,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
 
                           <div className="flex items-center gap-2">
                             <span className="text-[11px] text-slate-400 font-mono">Tactical Spacing Fit Score:</span>
-                            <div className="flex items-center gap-1.5 bg-slate-900 px-2.5 py-1 rounded-md border border-slate-800">
+                            <div className="flex items-center gap-1.5 bg-surface-raised px-2.5 py-1 rounded-md border border-slate-800">
                               <Zap className="w-3 h-3 text-amber-400" />
                               <span className="font-mono font-bold text-white text-xs">{t.fit_score}/100</span>
                             </div>
@@ -730,7 +730,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
       {activeTab === 'teams' && (
         <div className="space-y-6">
           {/* Header & Conference Filter */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 rounded-2xl p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-raised/90 border border-slate-800 rounded-2xl p-4">
             <div>
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <span>Franchise Net Talent Impact & Continuity Rankings</span>
@@ -759,7 +759,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 onClick={() => setConfFilter('East')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   confFilter === 'East'
-                    ? 'bg-emerald-600 text-white shadow-sm'
+                    ? 'bg-accent-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -769,7 +769,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 onClick={() => setConfFilter('West')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   confFilter === 'West'
-                    ? 'bg-emerald-600 text-white shadow-sm'
+                    ? 'bg-accent-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -781,10 +781,10 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
           {/* Grid Layout: Left 30-team rankings table, Right active team deep-dive */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* 30-Team Table (7 cols on lg) */}
-            <div className="lg:col-span-7 bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden">
+            <div className="lg:col-span-7 bg-surface-raised/90 border border-slate-800 rounded-2xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-950/80 border-b border-slate-800 text-slate-400 uppercase font-mono text-[10px]">
+                  <thead className="bg-surface/80 border-b border-slate-800 text-slate-400 uppercase font-mono text-[10px]">
                     <tr>
                       <th className="py-3 px-3">Franchise</th>
                       <th className="py-3 px-2 text-center">Grade</th>
@@ -806,7 +806,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                           onClick={() => setSelectedTeamProfile(tm.team)}
                           className={`cursor-pointer transition-colors ${
                             isSelected
-                              ? 'bg-indigo-950/40 border-l-4 border-indigo-500'
+                              ? 'bg-accent-950/40 border-l-4 border-accent-500'
                               : 'hover:bg-slate-800/40'
                           }`}
                         >
@@ -869,7 +869,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
             {/* Selected Franchise Detail Card (5 cols on lg) */}
             <div className="lg:col-span-5 space-y-4">
               {activeTeamDetail && (
-                <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-5 sticky top-20">
+                <div className="bg-surface-raised/90 border border-slate-800 rounded-2xl p-5 space-y-5 sticky top-20">
                   {/* Franchise Header */}
                   <div className="flex items-center justify-between border-b border-slate-800 pb-4">
                     <div className="flex items-center gap-3">
@@ -891,14 +891,14 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
 
                   {/* Stat Metrics Grid */}
                   <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+                    <div className="bg-surface p-2.5 rounded-xl border border-slate-800/80">
                       <span className="text-[10px] text-slate-400 block font-mono">Baseline Wins</span>
                       <span className="font-mono font-bold text-slate-300 text-sm">
                         {activeTeamDetail.baseline_wins}
                       </span>
                     </div>
 
-                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+                    <div className="bg-surface p-2.5 rounded-xl border border-slate-800/80">
                       <span className="text-[10px] text-slate-400 block font-mono">Net Win Delta</span>
                       <span
                         className={`font-mono font-bold text-sm ${
@@ -911,7 +911,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                       </span>
                     </div>
 
-                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+                    <div className="bg-surface p-2.5 rounded-xl border border-slate-800/80">
                       <span className="text-[10px] text-slate-400 block font-mono">Continuity</span>
                       <span className="font-mono font-bold text-indigo-300 text-sm">
                         {Math.round(activeTeamDetail.roster_continuity_pct * 100)}%
@@ -920,7 +920,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                   </div>
 
                   {/* Offseason Verdict */}
-                  <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3.5 space-y-1.5">
+                  <div className="bg-surface/70 border border-slate-800/80 rounded-xl p-3.5 space-y-1.5">
                     <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
                       Analytical Verdict
                     </div>
@@ -942,7 +942,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                         {activeTeamDetail.additions.map((a, idx) => (
                           <div
                             key={idx}
-                            className="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/60 text-xs font-mono"
+                            className="flex items-center justify-between p-2 rounded-lg bg-surface/60 border border-slate-800/60 text-xs font-mono"
                           >
                             <span className="font-medium text-white">{a.name} ({a.pos})</span>
                             <span className="text-emerald-400 font-bold">+{a.bpm}</span>
@@ -965,7 +965,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                         {activeTeamDetail.departures.map((d, idx) => (
                           <div
                             key={idx}
-                            className="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/60 text-xs font-mono"
+                            className="flex items-center justify-between p-2 rounded-lg bg-surface/60 border border-slate-800/60 text-xs font-mono"
                           >
                             <span className="font-medium text-slate-300">{d.name} ({d.pos})</span>
                             <span className="text-rose-400 font-bold">+{d.bpm}</span>
@@ -1009,7 +1009,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
       {activeTab === 'machine' && (
         <div className="space-y-6">
           {/* Machine Header */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-2">
+          <div className="bg-surface-raised/90 border border-slate-800 rounded-2xl p-5 space-y-2">
             <div className="flex items-center gap-2">
               <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
                 <Scale className="w-5 h-5" />
@@ -1026,7 +1026,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
           {/* Trade Setup Controls Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Team A Sandbox Box */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-4">
+            <div className="bg-surface-raised/90 border border-slate-800 rounded-2xl p-5 space-y-4">
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div className="flex items-center gap-2.5">
                   <TeamLogo team={sandboxTeamA} size="md" />
@@ -1035,7 +1035,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                     <select
                       value={sandboxTeamA}
                       onChange={(e) => setSandboxTeamA(e.target.value)}
-                      className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-sm font-bold text-white focus:outline-none focus:border-indigo-500"
+                      className="bg-surface border border-slate-800 rounded-lg px-2.5 py-1 text-sm font-bold text-white focus:outline-none focus:border-indigo-500"
                     >
                       {availableTeams.map((t) => (
                         <option key={t} value={t}>
@@ -1091,7 +1091,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                         e.target.value = '';
                       }
                     }}
-                    className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-rose-500"
+                    className="flex-1 bg-surface border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-rose-500"
                   >
                     <option value="" disabled>
                       Select player from {sandboxTeamA} active roster...
@@ -1144,7 +1144,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                         e.target.value = '';
                       }
                     }}
-                    className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                    className="flex-1 bg-surface border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
                   >
                     <option value="" disabled>
                       Select player from {sandboxTeamB} active roster...
@@ -1162,7 +1162,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
             </div>
 
             {/* Team B Sandbox Box */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-4">
+            <div className="bg-surface-raised/90 border border-slate-800 rounded-2xl p-5 space-y-4">
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div className="flex items-center gap-2.5">
                   <TeamLogo team={sandboxTeamB} size="md" />
@@ -1171,7 +1171,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                     <select
                       value={sandboxTeamB}
                       onChange={(e) => setSandboxTeamB(e.target.value)}
-                      className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-sm font-bold text-white focus:outline-none focus:border-indigo-500"
+                      className="bg-surface border border-slate-800 rounded-lg px-2.5 py-1 text-sm font-bold text-white focus:outline-none focus:border-indigo-500"
                     >
                       {availableTeams.map((t) => (
                         <option key={t} value={t}>
@@ -1192,7 +1192,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
 
               {/* Team B Exchange Summary */}
               <div className="space-y-3 pt-2">
-                <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-1.5">
+                <div className="p-3 rounded-xl bg-surface/70 border border-slate-800/80 space-y-1.5">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-mono">
                     Assets Received by {sandboxTeamB}:
                   </span>
@@ -1209,7 +1209,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                   </div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-1.5">
+                <div className="p-3 rounded-xl bg-surface/70 border border-slate-800/80 space-y-1.5">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-mono">
                     Assets Relinquished by {sandboxTeamB}:
                   </span>
@@ -1243,7 +1243,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Team A Simulation Result */}
-              <div className="bg-slate-950/80 border border-slate-800/90 rounded-xl p-4 space-y-3">
+              <div className="bg-surface/80 border border-slate-800/90 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <TeamLogo team={sandboxCalculation.teamA.team} size="sm" />
@@ -1261,13 +1261,13 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                  <div className="bg-slate-900 p-2 rounded-lg">
+                  <div className="bg-surface-raised p-2 rounded-lg">
                     <span className="text-[10px] text-slate-400 block">Post-Trade Wins</span>
                     <span className="font-bold text-white text-sm">
                       {sandboxCalculation.teamA.newWins} Wins
                     </span>
                   </div>
-                  <div className="bg-slate-900 p-2 rounded-lg">
+                  <div className="bg-surface-raised p-2 rounded-lg">
                     <span className="text-[10px] text-slate-400 block">Net Rating Shift</span>
                     <span
                       className={`font-bold text-sm ${
@@ -1284,7 +1284,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
               </div>
 
               {/* Team B Simulation Result */}
-              <div className="bg-slate-950/80 border border-slate-800/90 rounded-xl p-4 space-y-3">
+              <div className="bg-surface/80 border border-slate-800/90 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <TeamLogo team={sandboxCalculation.teamB.team} size="sm" />
@@ -1302,13 +1302,13 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                  <div className="bg-slate-900 p-2 rounded-lg">
+                  <div className="bg-surface-raised p-2 rounded-lg">
                     <span className="text-[10px] text-slate-400 block">Post-Trade Wins</span>
                     <span className="font-bold text-white text-sm">
                       {sandboxCalculation.teamB.newWins} Wins
                     </span>
                   </div>
-                  <div className="bg-slate-900 p-2 rounded-lg">
+                  <div className="bg-surface-raised p-2 rounded-lg">
                     <span className="text-[10px] text-slate-400 block">Net Rating Shift</span>
                     <span
                       className={`font-bold text-sm ${
@@ -1334,7 +1334,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
       {activeTab === 'draft' && (
         <div className="space-y-6">
           {/* Header */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="bg-surface-raised/90 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
                 <GraduationCap className="w-5 h-5 text-emerald-400" />
@@ -1346,7 +1346,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
               </p>
             </div>
 
-            <div className="flex items-center gap-2 text-xs font-mono bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800">
+            <div className="flex items-center gap-2 text-xs font-mono bg-surface px-3 py-1.5 rounded-xl border border-slate-800">
               <span className="text-slate-400">Class Size:</span>
               <span className="font-bold text-white">{draftProspects.length} Total Rookies</span>
               <span className="text-slate-500">|</span>
@@ -1355,7 +1355,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
           </div>
 
           {/* Draft Filters & Search Bar */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+          <div className="bg-surface-raised/90 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
             {/* Search */}
             <div className="relative flex-1 max-w-md">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -1364,12 +1364,12 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 placeholder="Search rookie, team, college/club, or archetype..."
                 value={draftSearch}
                 onChange={(e) => setDraftSearch(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                className="w-full bg-surface border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
               />
             </div>
 
             {/* Round 1 / Round 2 Toggle Pills */}
-            <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
+            <div className="flex items-center gap-1.5 bg-surface p-1 rounded-xl border border-slate-800">
               <button
                 onClick={() => setDraftRoundFilter('all')}
                 className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
@@ -1384,7 +1384,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 onClick={() => setDraftRoundFilter(1)}
                 className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
                   draftRoundFilter === 1
-                    ? 'bg-emerald-600 text-white shadow-sm'
+                    ? 'bg-accent-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -1394,7 +1394,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 onClick={() => setDraftRoundFilter(2)}
                 className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
                   draftRoundFilter === 2
-                    ? 'bg-emerald-600 text-white shadow-sm'
+                    ? 'bg-accent-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -1418,7 +1418,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 onClick={() => setDraftPosFilter('G')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   draftPosFilter === 'G'
-                    ? 'bg-emerald-600 text-white shadow-sm'
+                    ? 'bg-accent-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -1428,7 +1428,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 onClick={() => setDraftPosFilter('F')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   draftPosFilter === 'F'
-                    ? 'bg-emerald-600 text-white shadow-sm'
+                    ? 'bg-accent-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -1438,7 +1438,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 onClick={() => setDraftPosFilter('C')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   draftPosFilter === 'C'
-                    ? 'bg-emerald-600 text-white shadow-sm'
+                    ? 'bg-accent-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -1451,7 +1451,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
               <select
                 value={draftTierFilter}
                 onChange={(e) => setDraftTierFilter(e.target.value)}
-                className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
+                className="bg-surface border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
               >
                 <option value="all">All Upside Tiers</option>
                 <option value="Franchise Pillar">Franchise Pillar</option>
@@ -1464,7 +1464,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
 
           {/* Draft Prospect Cards Grid */}
           {filteredDraftProspects.length === 0 ? (
-            <div className="text-center py-12 bg-slate-900/50 rounded-2xl border border-slate-800">
+            <div className="text-center py-12 bg-surface-raised/50 rounded-2xl border border-slate-800">
               <AlertTriangle className="w-8 h-8 text-amber-400 mx-auto mb-2 opacity-60" />
               <p className="text-slate-300 font-medium">No rookies matched your filter criteria.</p>
               <button
@@ -1483,7 +1483,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
               {filteredDraftProspects.map((prospect) => (
               <div
                 key={prospect.pick}
-                className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-4 hover:border-slate-700 transition-all flex flex-col justify-between"
+                className="bg-surface-raised/90 border border-slate-800 rounded-2xl p-5 space-y-4 hover:border-slate-700 transition-all flex flex-col justify-between"
               >
                 <div className="space-y-3">
                   {/* Pick Badge & Team */}
@@ -1522,7 +1522,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                   </div>
 
                   {/* Archetype & Upside Tier */}
-                  <div className="space-y-1 bg-slate-950/70 p-2.5 rounded-xl border border-slate-800/80">
+                  <div className="space-y-1 bg-surface/70 p-2.5 rounded-xl border border-slate-800/80">
                     <span className="text-[10px] uppercase font-bold text-slate-400 font-mono block">
                       Role Archetype
                     </span>
@@ -1531,11 +1531,11 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
 
                   {/* Metrics Strip: Prior BPM & Proj MPG */}
                   <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                    <div className="bg-slate-950 p-2 rounded-lg border border-slate-800/60">
+                    <div className="bg-surface p-2 rounded-lg border border-slate-800/60">
                       <span className="text-[10px] text-slate-400 block">Rookie BPM Prior</span>
                       <span className="font-bold text-emerald-400">{prospect.projected_bpm_prior}</span>
                     </div>
-                    <div className="bg-slate-950 p-2 rounded-lg border border-slate-800/60">
+                    <div className="bg-surface p-2 rounded-lg border border-slate-800/60">
                       <span className="text-[10px] text-slate-400 block">Proj Minutes</span>
                       <span className="font-bold text-indigo-300">{prospect.projected_mpg} mpg</span>
                     </div>
