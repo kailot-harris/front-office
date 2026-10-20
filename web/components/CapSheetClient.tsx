@@ -291,7 +291,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                     onClick={() => setViewMode('roster')}
                     className={`px-2.5 py-1 rounded font-medium transition-all ${
                       viewMode === 'roster'
-                        ? 'bg-amber-500 text-slate-950 font-bold'
+                        ? 'bg-emerald-600 text-white font-bold'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -301,7 +301,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                     onClick={() => setViewMode('multiyear')}
                     className={`px-2.5 py-1 rounded font-medium transition-all ${
                       viewMode === 'multiyear'
-                        ? 'bg-amber-500 text-slate-950 font-bold'
+                        ? 'bg-emerald-600 text-white font-bold'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >

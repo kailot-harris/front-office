@@ -101,7 +101,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
                   onClick={() => setPriorN(preset.value)}
                   className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                     isSelected
-                      ? 'bg-indigo-600 text-white shadow-md'
+                      ? 'bg-emerald-600 text-white shadow-md'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -125,7 +125,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
               onClick={() => setViewMode('zones')}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                 viewMode === 'zones'
-                  ? 'bg-amber-600 text-white shadow-md'
+                  ? 'bg-emerald-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -136,7 +136,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
               onClick={() => setViewMode('hex')}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                 viewMode === 'hex'
-                  ? 'bg-indigo-600 text-white shadow-md'
+                  ? 'bg-emerald-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
               }`}
             >

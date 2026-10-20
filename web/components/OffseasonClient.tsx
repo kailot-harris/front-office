@@ -262,7 +262,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
             onClick={() => setActiveTab('feed')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
               activeTab === 'feed'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
             }`}
           >
@@ -281,7 +281,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
             onClick={() => setActiveTab('teams')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
               activeTab === 'teams'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
             }`}
           >
@@ -300,7 +300,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
             onClick={() => setActiveTab('machine')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
               activeTab === 'machine'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
             }`}
           >
@@ -315,7 +315,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
             onClick={() => setActiveTab('draft')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
               activeTab === 'draft'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
             }`}
           >
@@ -415,7 +415,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                   onClick={() => setTypeFilter('trade')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                     typeFilter === 'trade'
-                      ? 'bg-indigo-600 text-white shadow-sm'
+                      ? 'bg-emerald-600 text-white shadow-sm'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -425,7 +425,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                   onClick={() => setTypeFilter('free_agency')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                     typeFilter === 'free_agency'
-                      ? 'bg-amber-600 text-white shadow-sm'
+                      ? 'bg-emerald-600 text-white shadow-sm'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -759,7 +759,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 onClick={() => setConfFilter('East')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   confFilter === 'East'
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'bg-emerald-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -769,7 +769,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 onClick={() => setConfFilter('West')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   confFilter === 'West'
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'bg-emerald-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -1394,7 +1394,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 onClick={() => setDraftRoundFilter(2)}
                 className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
                   draftRoundFilter === 2
-                    ? 'bg-amber-600 text-white shadow-sm'
+                    ? 'bg-emerald-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -1418,7 +1418,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 onClick={() => setDraftPosFilter('G')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   draftPosFilter === 'G'
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'bg-emerald-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -1428,7 +1428,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 onClick={() => setDraftPosFilter('F')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   draftPosFilter === 'F'
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'bg-emerald-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -1438,7 +1438,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 onClick={() => setDraftPosFilter('C')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   draftPosFilter === 'C'
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'bg-emerald-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >

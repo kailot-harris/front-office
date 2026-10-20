@@ -64,7 +64,7 @@ export const PlayoffContendersBoxWhisker: React.FC<PlayoffContendersBoxWhiskerPr
                 onClick={() => setSelectedConf(conf)}
                 className={`cursor-pointer select-none px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
                   selectedConf === conf
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'bg-emerald-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
