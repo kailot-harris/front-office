@@ -118,9 +118,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
     <div className="space-y-6">
       {/* Top Stat Highlights */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
+        <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
           <div className="relative flex-shrink-0">
-            <div className="w-12 h-12 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
+            <div className="w-12 h-12 rounded-xl bg-surface/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
               <TeamLogo team={topTitleFavorite?.team} size="lg" />
             </div>
             <div className="absolute -bottom-1 -right-1 p-1 bg-amber-500/20 text-amber-400 rounded-md border border-amber-500/30 shadow">
@@ -139,9 +139,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
           </div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
+        <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
           <div className="relative flex-shrink-0">
-            <div className="w-12 h-12 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
+            <div className="w-12 h-12 rounded-xl bg-surface/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
               <TeamLogo team={topWinProjected?.team} size="lg" />
             </div>
             <div className="absolute -bottom-1 -right-1 p-1 bg-emerald-500/20 text-emerald-400 rounded-md border border-emerald-500/30 shadow">
@@ -160,7 +160,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
           </div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
+        <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
           <div className="p-3 bg-indigo-500/10 text-indigo-400 rounded-lg flex-shrink-0">
             <Award className="w-6 h-6" />
           </div>
@@ -171,9 +171,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
           </div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
+        <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
           <div className="relative flex-shrink-0">
-            <div className="w-12 h-12 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
+            <div className="w-12 h-12 rounded-xl bg-surface/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
               <TeamLogo team={mostVolatileTeam?.team} size="lg" />
             </div>
             <div className="absolute -bottom-1 -right-1 p-1 bg-rose-500/20 text-rose-400 rounded-md border border-rose-500/30 shadow">
@@ -194,8 +194,8 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
       </div>
 
       {/* View Switcher: Playoff Contenders Snapshot vs Full League Standings Table */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/60 p-2.5 rounded-2xl border border-slate-800">
-        <div className="inline-flex rounded-xl bg-slate-950 p-1.5 border border-slate-800/80 shadow-inner" role="tablist">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-raised/60 p-2.5 rounded-2xl border border-slate-800">
+        <div className="inline-flex rounded-xl bg-surface p-1.5 border border-slate-800/80 shadow-inner" role="tablist">
           <button
             type="button"
             role="tab"
@@ -204,8 +204,8 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
             onClick={() => handleTabChange('visualizer')}
             className={`cursor-pointer select-none flex items-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all ${
               activeTab === 'visualizer'
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/40 ring-1 ring-emerald-400/50'
-                : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
+                : 'text-slate-400 hover:text-white hover:bg-surface-raised'
             }`}
           >
             <BarChart2 className="w-4 h-4 pointer-events-none text-amber-400" />
@@ -227,8 +227,8 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
             onClick={() => handleTabChange('table')}
             className={`cursor-pointer select-none flex items-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all ${
               activeTab === 'table'
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/40 ring-1 ring-emerald-400/50'
-                : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
+                : 'text-slate-400 hover:text-white hover:bg-surface-raised'
             }`}
           >
             <Table className="w-4 h-4 pointer-events-none text-indigo-300" />
@@ -259,7 +259,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
             <button
               type="button"
               onClick={() => handleTabChange('table')}
-              className="cursor-pointer select-none inline-flex items-center gap-2 text-xs font-semibold text-indigo-400 hover:text-indigo-300 bg-slate-900 border border-slate-800 px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors shadow"
+              className="cursor-pointer select-none inline-flex items-center gap-2 text-xs font-semibold text-indigo-400 hover:text-indigo-300 bg-surface-raised border border-slate-800 px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors shadow"
             >
               <span>Explore All 30 Teams in Standings Table</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -270,7 +270,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
         /* Tab 2: Full Standings Table */
         <div className="space-y-4">
           {/* Filter and Control Bar */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2 text-slate-400 text-sm font-medium">
                 <Filter className="w-4 h-4" />
@@ -278,14 +278,14 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
               </div>
 
               {/* Conference filter pills */}
-              <div className="inline-flex rounded-lg bg-slate-950 p-1 border border-slate-800">
+              <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
                 {(['All', 'East', 'West'] as const).map((conf) => (
                   <button
                     key={conf}
                     onClick={() => setSelectedConference(conf)}
                     className={`cursor-pointer select-none px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
                       selectedConference === conf
-                        ? 'bg-emerald-600 text-white shadow-sm'
+                        ? 'bg-accent-600 text-white shadow-sm'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -300,7 +300,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                 <select
                   value={selectedDivision}
                   onChange={(e) => setSelectedDivision(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500"
+                  className="bg-surface border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500"
                 >
                   <option value="All">All Divisions</option>
                   {divisions.map((div) => (
@@ -318,11 +318,11 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
           </div>
 
           {/* Main Standings Table */}
-          <div className="bg-slate-900/70 border border-slate-800 rounded-xl shadow-xl overflow-hidden">
+          <div className="bg-surface-raised/70 border border-slate-800 rounded-xl shadow-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse">
             <thead>
-              <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 font-medium text-xs select-none">
+              <tr className="bg-surface/80 border-b border-slate-800 text-slate-400 font-medium text-xs select-none">
                 <th
                   onClick={() => handleSort('rank')}
                   className="py-3.5 px-4 w-14 text-center cursor-pointer hover:text-white transition-colors group"
@@ -446,7 +446,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-slate-950/80 border border-slate-800 p-1 flex items-center justify-center flex-shrink-0 group-hover:border-slate-700 transition-colors">
+                        <div className="w-10 h-10 rounded-lg bg-surface/80 border border-slate-800 p-1 flex items-center justify-center flex-shrink-0 group-hover:border-slate-700 transition-colors">
                           <TeamLogo team={team.team} size="md" />
                         </div>
                         <div>
@@ -542,7 +542,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
         <button
           type="button"
           onClick={() => handleTabChange('visualizer')}
-          className="cursor-pointer select-none inline-flex items-center gap-2 text-xs font-semibold text-indigo-400 hover:text-indigo-300 bg-slate-900 border border-slate-800 px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors shadow"
+          className="cursor-pointer select-none inline-flex items-center gap-2 text-xs font-semibold text-indigo-400 hover:text-indigo-300 bg-surface-raised border border-slate-800 px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors shadow"
         >
           <BarChart2 className="w-3.5 h-3.5 pointer-events-none" />
           <span className="pointer-events-none">Switch to Playoff Contenders Visualizer</span>

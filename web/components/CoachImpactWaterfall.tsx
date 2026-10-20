@@ -74,7 +74,7 @@ export const CoachImpactWaterfall: React.FC<CoachImpactWaterfallProps> = ({ coac
   ];
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg p-5">
+    <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg p-5">
       <div className="flex flex-wrap items-center justify-between gap-4 pb-4 mb-4 border-b border-slate-800">
         <div className="flex items-center gap-3">
           <TeamLogo team={teamAbbr} size="md" />
@@ -100,12 +100,12 @@ export const CoachImpactWaterfall: React.FC<CoachImpactWaterfallProps> = ({ coac
         </div>
 
         <div className="flex items-center gap-4 text-xs font-mono">
-          <div className="p-2 rounded-lg bg-slate-950/80 border border-slate-800 text-right">
+          <div className="p-2 rounded-lg bg-surface/80 border border-slate-800 text-right">
             <span className="text-[10px] text-slate-400 block font-sans">Roster Baseline</span>
             <span className="font-bold text-indigo-400 text-sm">{talentWins} Wins</span>
           </div>
           <div className="text-slate-600 font-bold text-lg">→</div>
-          <div className="p-2 rounded-lg bg-slate-950/80 border border-slate-800 text-right">
+          <div className="p-2 rounded-lg bg-surface/80 border border-slate-800 text-right">
             <span className="text-[10px] text-slate-400 block font-sans">Final Projection</span>
             <span className="font-bold text-amber-400 text-sm">{finalWins} Wins</span>
           </div>
@@ -120,7 +120,7 @@ export const CoachImpactWaterfall: React.FC<CoachImpactWaterfallProps> = ({ coac
           const pct = Math.min(100, Math.max(10, (Math.abs(step.val) / maxWinsScale) * 100));
 
           return (
-            <div key={idx} className="p-2.5 rounded-lg bg-slate-950/50 border border-slate-800/80">
+            <div key={idx} className="p-2.5 rounded-lg bg-surface/50 border border-slate-800/80">
               <div className="flex items-center justify-between text-xs mb-1.5">
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-[10px] font-bold text-slate-500 w-4">

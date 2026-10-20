@@ -69,7 +69,7 @@ export const InlinePlayerShotCard: React.FC<InlinePlayerShotCardProps> = ({
   }, [playerId, playerName]);
 
   return (
-    <div className="rounded-2xl bg-slate-900/95 border border-indigo-500/30 p-5 shadow-2xl space-y-5 animate-in fade-in slide-in-from-top-2 duration-200">
+    <div className="rounded-2xl bg-surface-raised/95 border border-indigo-500/30 p-5 shadow-2xl space-y-5 animate-in fade-in slide-in-from-top-2 duration-200">
       {/* Inline Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
         <div className="flex items-center gap-3">

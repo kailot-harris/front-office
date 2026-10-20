@@ -33,9 +33,9 @@ export const PlayoffContendersBoxWhisker: React.FC<PlayoffContendersBoxWhiskerPr
   const winTicks = [30, 35, 41, 50, 55, 60, 65];
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+    <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
       {/* Header bar */}
-      <div className="p-4 bg-slate-950/70 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+      <div className="p-4 bg-surface/70 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg">
             <Layers className="w-5 h-5" />
@@ -57,14 +57,14 @@ export const PlayoffContendersBoxWhisker: React.FC<PlayoffContendersBoxWhiskerPr
 
         <div className="flex items-center gap-2.5">
           {/* Conference filter pills */}
-          <div className="inline-flex rounded-lg bg-slate-900 p-1 border border-slate-800">
+          <div className="inline-flex rounded-lg bg-surface-raised p-1 border border-slate-800">
             {(['All', 'East', 'West'] as const).map((conf) => (
               <button
                 key={conf}
                 onClick={() => setSelectedConf(conf)}
                 className={`cursor-pointer select-none px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
                   selectedConf === conf
-                    ? 'bg-emerald-600 text-white shadow-sm'
+                    ? 'bg-accent-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -154,7 +154,7 @@ export const PlayoffContendersBoxWhisker: React.FC<PlayoffContendersBoxWhiskerPr
                 >
                   {/* Team Identity Column */}
                   <div className="w-32 sm:w-44 flex items-center gap-2 flex-shrink-0">
-                    <div className="w-7 h-7 rounded-md bg-slate-950 p-0.5 border border-slate-800 flex items-center justify-center flex-shrink-0">
+                    <div className="w-7 h-7 rounded-md bg-surface p-0.5 border border-slate-800 flex items-center justify-center flex-shrink-0">
                       <TeamLogo team={team.team} size="xs" />
                     </div>
                     <div className="min-w-0">

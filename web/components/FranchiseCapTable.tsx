@@ -11,7 +11,7 @@ export const FranchiseCapTable: React.FC<FranchiseCapTableProps> = ({ profile })
   const { contracts, totalPayroll2026, totalPayroll2027, totalPayroll2028, projectedCapSpace2027, projectedCapSpace2028 } = profile;
 
   return (
-    <div className="bg-slate-950/70 border border-slate-800 rounded-xl overflow-hidden shadow-lg space-y-3 p-4">
+    <div className="bg-surface/70 border border-slate-800 rounded-xl overflow-hidden shadow-lg space-y-3 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-800">
         <div>
           <h4 className="text-xs font-bold text-white tracking-tight">
@@ -52,7 +52,7 @@ export const FranchiseCapTable: React.FC<FranchiseCapTableProps> = ({ profile })
           </thead>
           <tbody className="divide-y divide-slate-850 font-mono">
             {contracts.map((c) => (
-              <tr key={c.playerId} className="hover:bg-slate-900/50 transition-colors">
+              <tr key={c.playerId} className="hover:bg-surface-raised/50 transition-colors">
                 <td className="py-2 font-sans font-medium text-white truncate max-w-[140px]">
                   {c.playerName}
                 </td>
@@ -85,7 +85,7 @@ export const FranchiseCapTable: React.FC<FranchiseCapTableProps> = ({ profile })
             ))}
           </tbody>
           <tfoot>
-            <tr className="border-t-2 border-slate-800 font-mono font-bold text-xs bg-slate-900/80">
+            <tr className="border-t-2 border-slate-800 font-mono font-bold text-xs bg-surface-raised/80">
               <td className="py-2.5 font-sans text-white">Total Guaranteed Payroll</td>
               <td className="py-2.5 text-center text-slate-500">—</td>
               <td className="py-2.5 text-right text-amber-400">${totalPayroll2026.toFixed(1)}M</td>

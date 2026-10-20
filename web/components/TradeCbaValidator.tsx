@@ -44,7 +44,7 @@ export const TradeCbaValidator: React.FC<TradeCbaValidatorProps> = ({ profile })
   const isLegal = !failsSalaryMatch && !failsAggregation && !failsCash;
 
   return (
-    <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-4 space-y-4">
+    <div className="bg-surface/70 border border-slate-800 rounded-xl p-4 space-y-4">
       <div className="flex items-center justify-between pb-2 border-b border-slate-800">
         <div className="flex items-center gap-2">
           <Calculator className="w-4 h-4 text-indigo-400" />
@@ -75,7 +75,7 @@ export const TradeCbaValidator: React.FC<TradeCbaValidatorProps> = ({ profile })
             step="0.5"
             value={outgoingSalary}
             onChange={(e) => setOutgoingSalary(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
+            className="w-full bg-surface-raised border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
           />
         </div>
         <div>
@@ -87,7 +87,7 @@ export const TradeCbaValidator: React.FC<TradeCbaValidatorProps> = ({ profile })
             step="0.5"
             value={incomingSalary}
             onChange={(e) => setIncomingSalary(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
+            className="w-full bg-surface-raised border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
           />
         </div>
       </div>
@@ -99,7 +99,7 @@ export const TradeCbaValidator: React.FC<TradeCbaValidatorProps> = ({ profile })
             type="checkbox"
             checked={isAggregating}
             onChange={(e) => setIsAggregating(e.target.checked)}
-            className="rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0"
+            className="rounded bg-surface-raised border-slate-700 text-accent-600 focus:ring-0"
           />
           <span>Aggregating 2+ Outgoing Players</span>
         </label>
@@ -108,14 +108,14 @@ export const TradeCbaValidator: React.FC<TradeCbaValidatorProps> = ({ profile })
             type="checkbox"
             checked={sendingCash}
             onChange={(e) => setSendingCash(e.target.checked)}
-            className="rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0"
+            className="rounded bg-surface-raised border-slate-700 text-accent-600 focus:ring-0"
           />
           <span>Sending Cash Considerations</span>
         </label>
       </div>
 
       {/* Regulatory Diagnostic Feedback */}
-      <div className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 text-[11px] space-y-1">
+      <div className="p-2.5 rounded-lg bg-surface-raised/80 border border-slate-800 text-[11px] space-y-1">
         <div className="flex items-center justify-between">
           <span className="text-slate-400">Rule Applied:</span>
           <span className="font-mono font-bold text-amber-400">{matchingPctLabel}</span>

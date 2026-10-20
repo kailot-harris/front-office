@@ -35,7 +35,7 @@ export const ApronThermometer: React.FC<ApronThermometerProps> = ({ profile }) =
   };
 
   return (
-    <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-4 space-y-3 select-none">
+    <div className="bg-surface/70 border border-slate-800 rounded-xl p-4 space-y-3 select-none">
       <div className="flex items-center justify-between text-xs">
         <div className="flex items-center gap-2">
           <span className="font-bold text-white tracking-tight">CBA Apron Thermometer</span>
@@ -74,7 +74,7 @@ export const ApronThermometer: React.FC<ApronThermometerProps> = ({ profile }) =
         </div>
 
         {/* Track bar */}
-        <div className="h-3 w-full bg-slate-900 rounded-full overflow-hidden flex relative border border-slate-800">
+        <div className="h-3 w-full bg-surface-raised rounded-full overflow-hidden flex relative border border-slate-800">
           {/* Filled current payroll */}
           <div
             className={`h-full ${getFillColor()} rounded-full transition-all duration-500 relative`}
@@ -102,25 +102,25 @@ export const ApronThermometer: React.FC<ApronThermometerProps> = ({ profile }) =
 
       {/* Headroom Status Pills */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-800/80 text-[11px] font-mono">
-        <div className="p-1.5 rounded bg-slate-900/80 border border-slate-800">
+        <div className="p-1.5 rounded bg-surface-raised/80 border border-slate-800">
           <span className="text-[9px] text-slate-400 block font-sans">Cap Space</span>
           <span className={`font-bold ${profile.capSpace2026 > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
             {profile.capSpace2026 > 0 ? `+$${profile.capSpace2026}M` : '$0.0M'}
           </span>
         </div>
-        <div className="p-1.5 rounded bg-slate-900/80 border border-slate-800">
+        <div className="p-1.5 rounded bg-surface-raised/80 border border-slate-800">
           <span className="text-[9px] text-slate-400 block font-sans">Tax Cushion</span>
           <span className={`font-bold ${profile.taxSpace2026 >= 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
             {profile.taxSpace2026 >= 0 ? `+$${profile.taxSpace2026}M` : `-$${Math.abs(profile.taxSpace2026)}M (Tax)`}
           </span>
         </div>
-        <div className="p-1.5 rounded bg-slate-900/80 border border-slate-800">
+        <div className="p-1.5 rounded bg-surface-raised/80 border border-slate-800">
           <span className="text-[9px] text-slate-400 block font-sans">1st Apron Room</span>
           <span className={`font-bold ${profile.firstApronSpace2026 >= 0 ? 'text-emerald-400' : 'text-orange-400'}`}>
             {profile.firstApronSpace2026 >= 0 ? `+$${profile.firstApronSpace2026}M` : `-$${Math.abs(profile.firstApronSpace2026)}M`}
           </span>
         </div>
-        <div className="p-1.5 rounded bg-slate-900/80 border border-slate-800">
+        <div className="p-1.5 rounded bg-surface-raised/80 border border-slate-800">
           <span className="text-[9px] text-slate-400 block font-sans">2nd Apron Room</span>
           <span className={`font-bold ${profile.secondApronSpace2026 >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
             {profile.secondApronSpace2026 >= 0 ? `+$${profile.secondApronSpace2026}M` : `-$${Math.abs(profile.secondApronSpace2026)}M (Breached)`}

@@ -85,14 +85,14 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Controls Bar */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Prior N Window Controls */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1.5 text-xs text-slate-400 font-semibold uppercase tracking-wider mr-1">
             <Sliders className="w-3.5 h-3.5 text-indigo-400" />
             <span>Prior Shots Window:</span>
           </div>
-          <div className="inline-flex rounded-lg bg-slate-950 p-1 border border-slate-800">
+          <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
             {windowPresets.map((preset) => {
               const isSelected = priorN === preset.value;
               return (
@@ -101,7 +101,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
                   onClick={() => setPriorN(preset.value)}
                   className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                     isSelected
-                      ? 'bg-emerald-600 text-white shadow-md'
+                      ? 'bg-accent-600 text-white shadow-md'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -120,12 +120,12 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
           <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
             Display:
           </span>
-          <div className="inline-flex rounded-lg bg-slate-950 p-1 border border-slate-800">
+          <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
             <button
               onClick={() => setViewMode('zones')}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                 viewMode === 'zones'
-                  ? 'bg-emerald-600 text-white shadow-md'
+                  ? 'bg-accent-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -136,7 +136,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
               onClick={() => setViewMode('hex')}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                 viewMode === 'hex'
-                  ? 'bg-emerald-600 text-white shadow-md'
+                  ? 'bg-accent-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -147,7 +147,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
               onClick={() => setViewMode('scatter')}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                 viewMode === 'scatter'
-                  ? 'bg-emerald-600 text-white shadow-md'
+                  ? 'bg-accent-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -160,7 +160,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
 
       {/* KPI Cards Overview */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3">
+        <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-3">
           <div className="text-[10px] text-slate-400 uppercase font-semibold">Field Goal %</div>
           <div className="text-xl font-bold font-mono text-white">
             {(overall.fgPct * 100).toFixed(1)}%
@@ -170,7 +170,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
           </div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3">
+        <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-3">
           <div className="text-[10px] text-slate-400 uppercase font-semibold">Effective FG (eFG%)</div>
           <div className="text-xl font-bold font-mono text-indigo-400">
             {(overall.eFgPct * 100).toFixed(1)}%
@@ -178,7 +178,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
           <div className="text-[11px] text-slate-400">Weighted 3PT value</div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3">
+        <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-3">
           <div className="text-[10px] text-slate-400 uppercase font-semibold">Rim Frequency</div>
           <div className="text-xl font-bold font-mono text-amber-400">
             {(overall.rimFreq * 100).toFixed(1)}%
@@ -186,7 +186,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
           <div className="text-[11px] text-slate-400">Restricted area</div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3">
+        <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-3">
           <div className="text-[10px] text-slate-400 uppercase font-semibold">3-Point Frequency</div>
           <div className="text-xl font-bold font-mono text-cyan-400">
             {(overall.threeFreq * 100).toFixed(1)}%
@@ -196,7 +196,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
           </div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
+        <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
           <div>
             <div className="text-[10px] text-slate-400 uppercase font-semibold">Hot Zones</div>
             <div className="text-xl font-bold font-mono text-rose-400 flex items-center gap-1">
@@ -207,7 +207,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
           </div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
+        <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
           <div>
             <div className="text-[10px] text-slate-400 uppercase font-semibold">Cold Zones</div>
             <div className="text-xl font-bold font-mono text-cyan-400 flex items-center gap-1">
@@ -221,7 +221,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
 
       {/* Main Court Visualization Box */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-8 bg-slate-950/80 border border-slate-800 rounded-2xl p-4 shadow-2xl relative overflow-hidden flex flex-col items-center">
+        <div className="lg:col-span-8 bg-surface/80 border border-slate-800 rounded-2xl p-4 shadow-2xl relative overflow-hidden flex flex-col items-center">
           <div className="w-full flex items-center justify-between mb-2 text-xs text-slate-400 px-2">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-white">{playerData.player_name}</span>
@@ -504,7 +504,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
 
           {/* Hover Details Floating Banner */}
           {hoveredShot && (
-            <div className="mt-3 text-xs bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-3 text-slate-300">
+            <div className="mt-3 text-xs bg-surface-raised border border-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-3 text-slate-300">
               <span className="font-semibold text-white">{hoveredShot.type}</span>
               <span>•</span>
               <span className={hoveredShot.made ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
@@ -520,7 +520,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
 
         {/* Right Side: Detailed Zone Telemetry Table */}
         <div className="lg:col-span-4 space-y-4">
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-xl">
+          <div className="bg-surface-raised/80 border border-slate-800 rounded-2xl p-4 shadow-xl">
             <div className="flex flex-col gap-2 mb-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
@@ -533,7 +533,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
               </div>
 
               {/* Status Filter Tabs */}
-              <div className="flex items-center gap-1 p-1 bg-slate-950/80 rounded-lg border border-slate-800 text-[11px]">
+              <div className="flex items-center gap-1 p-1 bg-surface/80 rounded-lg border border-slate-800 text-[11px]">
                 <button
                   type="button"
                   onClick={() => setZoneFilter('ALL')}
@@ -592,7 +592,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
                 return (
                   <div
                     key={zm.zone}
-                    className="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800/80 hover:border-slate-700 transition-colors"
+                    className="p-2.5 rounded-lg bg-surface/70 border border-slate-800/80 hover:border-slate-700 transition-colors"
                   >
                     <div className="flex items-center justify-between text-xs mb-1">
                       <div className="flex flex-col">

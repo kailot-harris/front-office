@@ -48,7 +48,7 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
   const midY = scaleY(1.05); // League median offensive PPP
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg p-5">
+    <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg p-5">
       {/* Header Info */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-800">
         <div>
@@ -301,7 +301,7 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
 
         {/* Hover / Active Floating Tooltip */}
         {hoveredCoach && (
-          <div className="absolute top-4 right-6 pointer-events-none bg-slate-950/95 border border-slate-700/80 rounded-xl p-3 shadow-2xl backdrop-blur-md w-64 z-20">
+          <div className="absolute top-4 right-6 pointer-events-none bg-surface/95 border border-slate-700/80 rounded-xl p-3 shadow-2xl backdrop-blur-md w-64 z-20">
             <div className="flex items-center gap-2.5 pb-2 mb-2 border-b border-slate-800">
               <TeamLogo team={hoveredCoach.teamAbbr} size="sm" />
               <div className="min-w-0">
@@ -321,25 +321,25 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-[11px]">
-              <div className="p-1.5 bg-slate-900/80 rounded border border-slate-800/80">
+              <div className="p-1.5 bg-surface-raised/80 rounded border border-slate-800/80">
                 <span className="text-[9px] text-slate-400 block">Off ATO PPP</span>
                 <span className="font-mono font-bold text-emerald-400">
                   {hoveredCoach.metrics.atoOffensivePpp.toFixed(3)}
                 </span>
               </div>
-              <div className="p-1.5 bg-slate-900/80 rounded border border-slate-800/80">
+              <div className="p-1.5 bg-surface-raised/80 rounded border border-slate-800/80">
                 <span className="text-[9px] text-slate-400 block">Def ATO PPP</span>
                 <span className="font-mono font-bold text-sky-400">
                   {hoveredCoach.metrics.atoDefensivePppAllowed.toFixed(3)}
                 </span>
               </div>
-              <div className="p-1.5 bg-slate-900/80 rounded border border-slate-800/80">
+              <div className="p-1.5 bg-surface-raised/80 rounded border border-slate-800/80">
                 <span className="text-[9px] text-slate-400 block">Challenge Win %</span>
                 <span className="font-mono font-bold text-amber-400">
                   {(hoveredCoach.metrics.challengeSuccessRate * 100).toFixed(1)}%
                 </span>
               </div>
-              <div className="p-1.5 bg-slate-900/80 rounded border border-slate-800/80">
+              <div className="p-1.5 bg-surface-raised/80 rounded border border-slate-800/80">
                 <span className="text-[9px] text-slate-400 block">Scheme Lift (xSQ)</span>
                 <span className="font-mono font-bold text-indigo-400">
                   +{hoveredCoach.metrics.shotQualityLiftEfg}% eFG

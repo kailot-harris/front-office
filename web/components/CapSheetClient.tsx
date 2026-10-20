@@ -96,7 +96,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
           </div>
 
           <div className="flex items-center gap-2 text-xs font-mono">
-            <span className="px-3 py-1.5 rounded-lg bg-slate-950/80 border border-slate-800 text-slate-300">
+            <span className="px-3 py-1.5 rounded-lg bg-surface/80 border border-slate-800 text-slate-300">
               Cap: $140.6M • Tax: $170.8M
             </span>
             <span className="px-3 py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 font-bold">
@@ -108,7 +108,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 shadow-sm flex items-center gap-3">
+        <div className="p-3.5 rounded-xl bg-surface-raised/80 border border-slate-800 shadow-sm flex items-center gap-3">
           <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-400 flex-shrink-0">
             <DollarSign className="w-5 h-5" />
           </div>
@@ -122,7 +122,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
           </div>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 shadow-sm flex items-center gap-3">
+        <div className="p-3.5 rounded-xl bg-surface-raised/80 border border-slate-800 shadow-sm flex items-center gap-3">
           <div className="p-2.5 rounded-lg bg-rose-500/10 text-rose-400 flex-shrink-0">
             <ShieldAlert className="w-5 h-5" />
           </div>
@@ -135,7 +135,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
           </div>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 shadow-sm flex items-center gap-3">
+        <div className="p-3.5 rounded-xl bg-surface-raised/80 border border-slate-800 shadow-sm flex items-center gap-3">
           <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 flex-shrink-0">
             <CheckCircle2 className="w-5 h-5" />
           </div>
@@ -148,7 +148,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
           </div>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 shadow-sm flex items-center gap-3">
+        <div className="p-3.5 rounded-xl bg-surface-raised/80 border border-slate-800 shadow-sm flex items-center gap-3">
           <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-400 flex-shrink-0">
             <Flame className="w-5 h-5" />
           </div>
@@ -168,7 +168,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
         {/* Left Column: 30 Teams Ranking Table (6 cols) */}
         <div className="lg:col-span-6 space-y-3">
           {/* Search & Filter Toolbar */}
-          <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-wrap items-center justify-between gap-2">
+          <div className="p-3 rounded-xl bg-surface-raised/80 border border-slate-800 flex flex-wrap items-center justify-between gap-2">
             <div className="relative flex-1 min-w-[160px]">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
@@ -176,14 +176,14 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                 placeholder="Search team..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                className="w-full bg-surface border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
               />
             </div>
 
             <select
               value={selectedTier}
               onChange={(e) => setSelectedTier(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
+              className="bg-surface border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
             >
               {tiers.map((t) => (
                 <option key={t} value={t}>
@@ -205,7 +205,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                   className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                     isSelected
                       ? 'bg-slate-850 border-amber-500/60 shadow-lg shadow-amber-500/10'
-                      : 'bg-slate-900/70 border-slate-800/80 hover:bg-slate-850 hover:border-slate-700'
+                      : 'bg-surface-raised/70 border-slate-800/80 hover:bg-slate-850 hover:border-slate-700'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -268,7 +268,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
           {selectedTeam && (
             <div className="space-y-4 sticky top-20">
               {/* Franchise Dossier Header */}
-              <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 shadow-xl flex items-center justify-between gap-3">
+              <div className="p-4 rounded-xl bg-surface-raised/90 border border-slate-800 shadow-xl flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <TeamLogo team={selectedTeam.teamAbbr} size="lg" />
                   <div>
@@ -286,12 +286,12 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
+                <div className="flex items-center gap-1.5 bg-surface p-1 rounded-lg border border-slate-800 text-xs">
                   <button
                     onClick={() => setViewMode('roster')}
                     className={`px-2.5 py-1 rounded font-medium transition-all ${
                       viewMode === 'roster'
-                        ? 'bg-emerald-600 text-white font-bold'
+                        ? 'bg-accent-600 text-white font-bold'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -301,7 +301,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                     onClick={() => setViewMode('multiyear')}
                     className={`px-2.5 py-1 rounded font-medium transition-all ${
                       viewMode === 'multiyear'
-                        ? 'bg-emerald-600 text-white font-bold'
+                        ? 'bg-accent-600 text-white font-bold'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -314,12 +314,12 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
               <ApronThermometer profile={selectedTeam} />
 
               {/* Active CBA Handcuffs Checklist */}
-              <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2.5">
+              <div className="p-4 rounded-xl bg-surface/70 border border-slate-800 space-y-2.5">
                 <span className="text-xs font-bold text-white block">
                   CBA Regulatory Restrictions & Handcuffs:
                 </span>
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="flex items-center gap-2 p-2 rounded bg-slate-900/60 border border-slate-800/80">
+                  <div className="flex items-center gap-2 p-2 rounded bg-surface-raised/60 border border-slate-800/80">
                     <Lock
                       className={`w-3.5 h-3.5 ${
                         selectedTeam.handcuffs.frozenPick7Years ? 'text-rose-400' : 'text-slate-600'
@@ -334,7 +334,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 p-2 rounded bg-slate-900/60 border border-slate-800/80">
+                  <div className="flex items-center gap-2 p-2 rounded bg-surface-raised/60 border border-slate-800/80">
                     <Lock
                       className={`w-3.5 h-3.5 ${
                         selectedTeam.handcuffs.noSalaryAggregation ? 'text-rose-400' : 'text-slate-600'
@@ -349,7 +349,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 p-2 rounded bg-slate-900/60 border border-slate-800/80">
+                  <div className="flex items-center gap-2 p-2 rounded bg-surface-raised/60 border border-slate-800/80">
                     <Lock
                       className={`w-3.5 h-3.5 ${
                         selectedTeam.handcuffs.noCashInTrades ? 'text-rose-400' : 'text-slate-600'
@@ -364,7 +364,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 p-2 rounded bg-slate-900/60 border border-slate-800/80">
+                  <div className="flex items-center gap-2 p-2 rounded bg-surface-raised/60 border border-slate-800/80">
                     <Lock
                       className={`w-3.5 h-3.5 ${
                         selectedTeam.handcuffs.noTpmle ? 'text-rose-400' : 'text-slate-600'
