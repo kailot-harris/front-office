@@ -1,7 +1,8 @@
 # HANDOFF — `front-office` consolidation & GitHub Pages workstream
 
-**Written:** 2026-10-19, after commit `5ade015` ("Document live URL, trailing-slash
-routing, and the relock workflow"). Working tree clean, `main` pushed, site live.
+**Written:** 2026-10-20, after commit `132c7fa` ("docs: document the basePath
+hand-written-asset gotcha behind the WNBA logo bug"). Working tree clean, `main`
+pushed, deploy green, site live.
 **For:** whoever picks this up next, with no context from the session that created it.
 
 ---
@@ -229,6 +230,37 @@ history.
 
 ## 5. Environment & tooling gotchas
 
+**`basePath` does not rewrite hand-written asset paths — this broke WNBA logos
+in production and the same bug is live in NBA and MLB right now.** Next's
+`basePath`/`assetPrefix` (see §3's `next.config.mjs` snippet) only prefixes URLs
+*Next itself* generates (`next/link`, `next/image`, its own JS/CSS chunks). A
+literal string you write yourself — `<img src="/logos/ATL_logo.png">`,
+`fetch('/data/shots/123.json')` — is not touched. It resolves against the domain
+root in the browser, so it works fine in local dev (`basePath` is `''` there,
+per §3) and silently 404s in production (`basePath` is `/front-office/<sport>`).
+
+This is exactly what broke WNBA's team logos (reported by the user as "icons not
+appearing", traced from the live `/wnba/players/` page down to
+`wnba/web/lib/teams.ts`'s `getTeamLogoUrl()`, fixed in commit `742023e`). The
+fix pattern: a `BASE_PATH` constant per sport
+(`wnba/web/lib/basePath.ts`) that mirrors `next.config.mjs`'s own `basePath`
+computation, imported anywhere a literal `/...` asset path would otherwise be
+written. Documented for future sports in `README.md`'s "Gotcha: `basePath` does
+not rewrite hand-written asset paths" section and pointed to from
+`deploy.yml`'s `PAGES_BASE_PATH` comment.
+
+**Confirmed still broken, live, as of this writing** (verified with `curl`
+against the production URLs, not assumed from reading code):
+
+| Sport | File(s) with the bug | What's broken |
+|---|---|---|
+| nba | `components/InlinePlayerShotCard.tsx`, `components/ShotChartModal.tsx`, `components/ShotsExplorerClient.tsx` | Player shot-chart data fetch (`fetch('/data/shots/...json')`, `fetch('/data/shots_metadata.json')`) — 404s, so shot charts can't load |
+| mlb | `components/PlayersClient.tsx` | `fetch('/data/player_spatial_maps.json')` — 404s |
+| wnba | — | **Fixed**, commit `742023e` |
+| nfl | — | Audited, no hand-written `/...` asset path found |
+
+This is the single highest-value next fix in this repo — see §7.
+
 **npm 10 cannot resolve the NFL dependency graph at all.** It crashes with:
 
 ```
@@ -324,9 +356,34 @@ kicked manually (`gh workflow run deploy.yml --ref main`). Both workflows define
 
 ## 7. Concrete next step
 
-**Bump CI to Node 22** — the clearest outstanding item, and low-risk.
+**Fix the same hand-written-`basePath` bug in NBA and MLB** (§5) — it's live and
+broken right now, same root cause as the WNBA fix in this session, same proven
+pattern to apply.
 
-- **File:** `.github/workflows/deploy.yml:57` — change `node-version: 20` to
+- **Files:** `nba/web/components/InlinePlayerShotCard.tsx`,
+  `nba/web/components/ShotChartModal.tsx`,
+  `nba/web/components/ShotsExplorerClient.tsx`,
+  `mlb/web/components/PlayersClient.tsx`.
+- **Pattern to replicate:** `wnba/web/lib/basePath.ts` + the `742023e` diff
+  (`lib/teams.ts`, `ShotsExplorerClient.tsx`). Create an equivalent
+  `nba/web/lib/basePath.ts` and `mlb/web/lib/basePath.ts` (same
+  `process.env.PAGES_BASE_PATH + '/<sport>'` computation as that sport's own
+  `next.config.mjs`), import `BASE_PATH` into each file above, prefix every
+  hardcoded `fetch('/...')` call.
+- **Also re-check** each sport's test suite for a hardcoded-URL assertion like
+  WNBA's `tests/unit/data.test.ts`/`tests/contracts/assets.test.ts` had
+  (expected bare `/logos/...`, needed updating to `/wnba/logos/...`) — NBA/MLB
+  may have an equivalent test on the now-changed fetch URL.
+- **Validate:** `npm run build` with `PAGES_BASE_PATH=/front-office` set (use
+  `MSYS_NO_PATHCONV=1` on Git Bash per §5), grep the exported `out/` HTML for
+  the fetch URL or check the built JS chunk, then after pushing, `curl` the
+  live data URL under `/front-office/<sport>/data/...` the same way §5's table
+  was verified.
+
+**Step after that — bump CI to Node 22**, low-risk and previously the top item.
+
+- **File:** `.github/workflows/deploy.yml:57` (now shifted further down by the
+  gotcha added above — re-find the `node-version: 20` line) — change to
   `node-version: 22`. Consider the same in `relock.yml:22` (already 22).
 - **Why:** the current successful build emits 150 `EBADENGINE` warnings because
   dependencies require node ≥22 (§5). Local dev is already on v22.22.3, so this
