@@ -123,8 +123,8 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
                 onClick={() => setSelectedPlayer(star)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                   isSelected
-                    ? 'bg-emerald-600 text-white font-bold shadow-md'
-                    : 'bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
+                    ? 'bg-accent-600 text-white font-bold shadow-md'
+                    : 'bg-surface-raised border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
                 }`}
               >
                 <TeamLogo team={star.team} size="xs" />
@@ -137,7 +137,7 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
       )}
 
       {/* Search and Filters Bar */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 bg-surface-raised/60 p-3 rounded-xl border border-slate-800">
         <div className="md:col-span-6 relative">
           <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
           <input
@@ -145,7 +145,7 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
             placeholder="Search rotation player by name or team..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+            className="w-full bg-surface border border-slate-800 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
           />
         </div>
 
@@ -153,7 +153,7 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
           <select
             value={selectedTeam}
             onChange={(e) => setSelectedTeam(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+            className="w-full bg-surface border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
           >
             {teams.map((t) => (
               <option key={t} value={t}>
@@ -170,7 +170,7 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
               const match = catalog.find((p) => p.player_id === e.target.value);
               if (match) setSelectedPlayer(match);
             }}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white font-semibold focus:outline-none focus:border-indigo-500 transition-colors"
+            className="w-full bg-surface border border-slate-800 rounded-lg px-3 py-2 text-sm text-white font-semibold focus:outline-none focus:border-indigo-500 transition-colors"
           >
             {filteredCatalog.map((p) => (
               <option key={p.player_id} value={p.player_id}>
@@ -183,7 +183,7 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
 
       {/* Active Player Card Header */}
       {selectedPlayer && (
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="bg-surface-raised/90 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <TeamLogo team={selectedPlayer.team} size="lg" />
             <div>
@@ -221,7 +221,7 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
 
       {/* Loading & Error States */}
       {loading && (
-        <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-16 flex flex-col items-center justify-center space-y-3">
+        <div className="bg-surface-raised/40 border border-slate-800/80 rounded-2xl p-16 flex flex-col items-center justify-center space-y-3">
           <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
           <p className="text-sm text-slate-400 font-mono">
             Loading spatial coordinates & Empirical Bayes priors...

@@ -22,11 +22,11 @@ export const MatchupHeatmap: React.FC<MatchupHeatmapProps> = ({ dist }) => {
     if (pct >= 25) return 'bg-indigo-700/80 text-indigo-100 font-semibold border-indigo-500';
     if (pct >= 15) return 'bg-indigo-950/80 text-indigo-300 border-indigo-800';
     if (pct >= 8) return 'bg-slate-800/80 text-slate-300 border-slate-700';
-    return 'bg-slate-900/60 text-slate-500 border-slate-800';
+    return 'bg-surface-raised/60 text-slate-500 border-slate-800';
   };
 
   return (
-    <div className="p-4 bg-slate-950/60 rounded-xl border border-slate-800/80 space-y-3">
+    <div className="p-4 bg-surface/60 rounded-xl border border-slate-800/80 space-y-3">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
           Defensive Matchup Distribution (Tracking Shares)
@@ -52,7 +52,7 @@ export const MatchupHeatmap: React.FC<MatchupHeatmapProps> = ({ dist }) => {
       </div>
 
       {/* Visual Stacked Bar */}
-      <div className="w-full h-3 rounded-full overflow-hidden flex bg-slate-900 border border-slate-800 mt-2">
+      <div className="w-full h-3 rounded-full overflow-hidden flex bg-surface-raised border border-slate-800 mt-2">
         <div style={{ width: `${dist.pgPct}%` }} className="bg-indigo-400 h-full" title={`PG: ${dist.pgPct}%`} />
         <div style={{ width: `${dist.sgPct}%` }} className="bg-violet-400 h-full" title={`SG: ${dist.sgPct}%`} />
         <div style={{ width: `${dist.sfPct}%` }} className="bg-amber-400 h-full" title={`SF: ${dist.sfPct}%`} />

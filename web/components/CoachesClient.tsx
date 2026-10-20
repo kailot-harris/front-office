@@ -90,7 +90,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 p-3 bg-slate-900/80 rounded-xl border border-slate-800/80 backdrop-blur-sm self-start md:self-auto">
+          <div className="grid grid-cols-3 gap-3 p-3 bg-surface-raised/80 rounded-xl border border-slate-800/80 backdrop-blur-sm self-start md:self-auto">
             <div className="text-center px-3">
               <div className="text-xl font-bold text-indigo-400">
                 {topCirCoach?.metrics.coachImpactRating}
@@ -119,7 +119,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           onClick={() => setActiveTab('tierboard')}
           className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'tierboard'
-              ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
+              ? 'border-accent-600 bg-accent-600 text-white shadow-sm'
               : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
           }`}
         >
@@ -131,7 +131,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           onClick={() => setActiveTab('scatter')}
           className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'scatter'
-              ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
+              ? 'border-accent-600 bg-accent-600 text-white shadow-sm'
               : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
           }`}
         >
@@ -143,7 +143,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           onClick={() => setActiveTab('waterfall')}
           className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'waterfall'
-              ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
+              ? 'border-accent-600 bg-accent-600 text-white shadow-sm'
               : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
           }`}
         >
@@ -155,7 +155,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           onClick={() => setActiveTab('genealogy')}
           className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'genealogy'
-              ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
+              ? 'border-accent-600 bg-accent-600 text-white shadow-sm'
               : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
           }`}
         >
@@ -168,7 +168,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
       {activeTab === 'tierboard' && (
         <div className="space-y-6">
           {/* Controls Bar */}
-          <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+          <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between bg-surface-raised/60 p-4 rounded-xl border border-slate-800">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <input
@@ -176,7 +176,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                 placeholder="Search coach, assistant, or franchise..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                className="w-full pl-9 pr-4 py-2 bg-surface border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
               />
             </div>
 
@@ -185,7 +185,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
               <select
                 value={selectedTree}
                 onChange={(e) => setSelectedTree(e.target.value)}
-                className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                className="bg-surface border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
               >
                 {coachingTrees.map((tree) => (
                   <option key={tree} value={tree}>
@@ -207,8 +207,8 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                     onClick={() => setSelectedCoach(c)}
                     className={`cursor-pointer border rounded-xl p-4 transition-all duration-200 ${
                       isSelected
-                        ? 'bg-slate-900/90 border-indigo-500/50 shadow-lg shadow-indigo-500/10'
-                        : 'bg-slate-900/40 border-slate-800/80 hover:border-slate-700'
+                        ? 'bg-surface-raised/90 border-accent-500/50 shadow-lg shadow-accent-500/10'
+                        : 'bg-surface-raised/40 border-slate-800/80 hover:border-slate-700'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-4">
@@ -251,7 +251,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                         </div>
                         <ChevronRight
                           className={`w-4 h-4 text-slate-500 transition-transform ${
-                            isSelected ? 'text-indigo-400 translate-x-0.5' : ''
+                            isSelected ? 'text-accent-400 translate-x-0.5' : ''
                           }`}
                         />
                       </div>
@@ -263,7 +263,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
 
             {/* Selected Coach Detailed Dossier */}
             {selectedCoach && (
-              <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-6">
+              <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-5 space-y-6">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-4">
                   <div className="flex items-center gap-3">
                     <TeamLogo team={selectedCoach.teamAbbr} size="lg" />
@@ -292,7 +292,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                 />
 
                 {/* Assistants Staff Box */}
-                <div className="p-3.5 bg-slate-950/60 rounded-lg border border-slate-800/80 space-y-2 text-xs">
+                <div className="p-3.5 bg-surface/60 rounded-lg border border-slate-800/80 space-y-2 text-xs">
                   <span className="text-[10px] uppercase font-bold text-slate-400 block">
                     Bench Staff & Tactical Coordinators
                   </span>
@@ -336,7 +336,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           <CoachImpactWaterfall coach={selectedCoach} />
 
           {/* Quick Selector Pills */}
-          <div className="flex flex-wrap items-center gap-2 p-4 bg-slate-900/40 rounded-xl border border-slate-800">
+          <div className="flex flex-wrap items-center gap-2 p-4 bg-surface-raised/40 rounded-xl border border-slate-800">
             <span className="text-xs text-slate-400 font-semibold mr-2">Select Staff:</span>
             {initialData.map((c) => (
               <button
@@ -344,8 +344,8 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                 onClick={() => setSelectedCoach(c)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   selectedCoach.teamAbbr === c.teamAbbr
-                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
-                    : 'bg-slate-950 text-slate-300 border border-slate-800 hover:border-slate-700'
+                    ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
+                    : 'bg-surface text-slate-300 border border-slate-800 hover:border-slate-700'
                 }`}
               >
                 <span>{c.teamAbbr}</span>
@@ -366,7 +366,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
               return (
                 <div
                   key={tree}
-                  className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-4 hover:border-slate-700 transition-all"
+                  className="bg-surface-raised/60 border border-slate-800 rounded-xl p-5 space-y-4 hover:border-slate-700 transition-all"
                 >
                   <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
                     <GitBranch className="w-4 h-4 text-indigo-400" />
@@ -381,7 +381,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                           setSelectedCoach(disciple);
                           setActiveTab('tierboard');
                         }}
-                        className="p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 hover:border-indigo-500/40 cursor-pointer transition-all flex items-center justify-between"
+                        className="p-3 bg-surface/60 rounded-lg border border-slate-800/80 hover:border-indigo-500/40 cursor-pointer transition-all flex items-center justify-between"
                       >
                         <div className="flex items-center gap-2.5">
                           <TeamLogo team={disciple.teamAbbr} size="sm" />

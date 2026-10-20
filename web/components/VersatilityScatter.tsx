@@ -30,7 +30,7 @@ export const VersatilityScatter: React.FC<VersatilityScatterProps> = ({
   const scaleY = (val: number) => padding + ((val - yMax) / (yMin - yMax)) * (height - 2 * padding);
 
   return (
-    <div className="flex flex-col p-4 bg-slate-950/60 rounded-xl border border-slate-800/80">
+    <div className="flex flex-col p-4 bg-surface/60 rounded-xl border border-slate-800/80">
       <div className="flex items-center justify-between mb-2">
         <div>
           <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
@@ -43,7 +43,7 @@ export const VersatilityScatter: React.FC<VersatilityScatterProps> = ({
           </p>
         </div>
         <div className="text-right">
-          <span className="text-[10px] font-mono bg-slate-900 border border-slate-800 text-indigo-400 px-2 py-0.5 rounded">
+          <span className="text-[10px] font-mono bg-surface-raised border border-slate-800 text-indigo-400 px-2 py-0.5 rounded">
             N = {profiles.length} Defenders
           </span>
         </div>

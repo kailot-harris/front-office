@@ -156,7 +156,7 @@ export const CoachRadarProfile: React.FC<CoachRadarProfileProps> = ({
       {/* Axis Breakdown Badges */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-4 text-[11px] w-full max-w-[280px]">
         {axes.map((axis) => (
-          <div key={axis.key} className="flex justify-between items-center text-slate-400 bg-slate-900/50 px-2 py-0.5 rounded border border-slate-800/80">
+          <div key={axis.key} className="flex justify-between items-center text-slate-400 bg-surface-raised/50 px-2 py-0.5 rounded border border-slate-800/80">
             <span className="truncate pr-1">{axis.label}</span>
             <span className="font-mono font-bold text-indigo-400">{axis.value}th</span>
           </div>

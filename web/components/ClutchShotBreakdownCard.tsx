@@ -39,7 +39,7 @@ export const ClutchShotBreakdownCard: React.FC<ClutchShotBreakdownCardProps> = (
   ];
 
   return (
-    <div className="p-4 bg-slate-950/60 rounded-xl border border-slate-800/80 space-y-3">
+    <div className="p-4 bg-surface/60 rounded-xl border border-slate-800/80 space-y-3">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
           <Target className="w-3.5 h-3.5 text-rose-400" />
@@ -52,7 +52,7 @@ export const ClutchShotBreakdownCard: React.FC<ClutchShotBreakdownCardProps> = (
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {zones.map((z) => (
-          <div key={z.name} className="p-3 rounded-lg bg-slate-900/60 border border-slate-800/90 space-y-1.5">
+          <div key={z.name} className="p-3 rounded-lg bg-surface-raised/60 border border-slate-800/90 space-y-1.5">
             <div className="text-[11px] text-slate-400 font-medium truncate">{z.name}</div>
             <div className="flex items-baseline justify-between">
               <span className="text-xl font-extrabold text-slate-100">{z.pct.toFixed(1)}%</span>
