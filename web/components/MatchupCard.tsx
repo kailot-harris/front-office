@@ -21,9 +21,9 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
   const formattedTime = matchup.gametime ? `${matchup.gametime} ET` : 'TBD';
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden hover:border-emerald-500/40 transition-all shadow-md group flex flex-col justify-between">
+    <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden hover:border-emerald-500/40 transition-all shadow-md group flex flex-col justify-between">
       {/* Card Header */}
-      <div className="p-3 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between text-xs font-mono text-slate-400">
+      <div className="p-3 bg-surface/80 border-b border-slate-800 flex items-center justify-between text-xs font-mono text-slate-400">
         <div className="flex items-center gap-2">
           <Calendar className="w-3.5 h-3.5 text-slate-500" />
           <span className="font-semibold text-slate-300">
@@ -103,7 +103,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
                 <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-bold mb-0.5">
                   Final
                 </span>
-                <div className="bg-slate-950 px-2 py-1 rounded-md border border-slate-800 text-xs font-mono font-black text-white shadow-inner whitespace-nowrap">
+                <div className="bg-surface px-2 py-1 rounded-md border border-slate-800 text-xs font-mono font-black text-white shadow-inner whitespace-nowrap">
                   <span className={Number(matchup.away_score) > Number(matchup.home_score) ? 'text-emerald-400' : 'text-slate-400'}>
                     {matchup.away_score}
                   </span>
@@ -121,7 +121,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
                 <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-bold mb-0.5">
                   Proj Margin
                 </span>
-                <div className="bg-slate-950 px-2 py-1 rounded-md border border-slate-800 text-xs font-mono font-black text-emerald-400 shadow-inner whitespace-nowrap">
+                <div className="bg-surface px-2 py-1 rounded-md border border-slate-800 text-xs font-mono font-black text-emerald-400 shadow-inner whitespace-nowrap">
                   {marginDisplay}
                 </div>
                 <span className="text-[10px] font-mono text-slate-400 mt-1">Total {matchup.projected_total.toFixed(1)}</span>
@@ -165,7 +165,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
             </span>
           </div>
 
-          <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden flex border border-slate-800">
+          <div className="h-2 w-full bg-surface rounded-full overflow-hidden flex border border-slate-800">
             <div
               className={`h-full transition-all duration-500 ${
                 !isHomeFavored ? 'bg-emerald-500' : 'bg-slate-700'
@@ -185,7 +185,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
       </div>
 
       {/* Fatigue & Travel Metrics Footer */}
-      <div className="p-3 bg-slate-950/60 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+      <div className="p-3 bg-surface/60 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
         {/* Rest differential */}
         <div className="flex items-center gap-1.5 text-slate-400">
           <Shield className="w-3.5 h-3.5 text-slate-500" />

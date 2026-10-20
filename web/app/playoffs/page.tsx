@@ -34,11 +34,11 @@ export default function PlayoffsPage() {
 
         {/* Quick Context Chips */}
         <div className="flex items-center gap-2.5 text-xs font-mono">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-right">
+          <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
             <span className="text-slate-500 block text-[10px] uppercase">Simulations</span>
             <span className="text-white font-bold">{dataset.n_simulations.toLocaleString()} Trials</span>
           </div>
-          <div className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-right">
+          <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
             <span className="text-slate-500 block text-[10px] uppercase">Seeding Format</span>
             <span className="text-amber-400 font-bold">14 Teams (4 Div + 3 WC)</span>
           </div>

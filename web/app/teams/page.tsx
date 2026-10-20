@@ -34,11 +34,11 @@ export default function TeamsPage() {
 
         {/* Quick Context Chips */}
         <div className="flex items-center gap-2.5 text-xs font-mono">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-right">
+          <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
             <span className="text-slate-500 block text-[10px] uppercase">Evaluation Window</span>
             <span className="text-white font-bold">Rolling 4 Games</span>
           </div>
-          <div className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-right">
+          <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
             <span className="text-slate-500 block text-[10px] uppercase">Efficiency Model</span>
             <span className="text-emerald-400 font-bold">nflverse PBP Engine</span>
           </div>

@@ -137,9 +137,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
       {/* Top Stat Highlights */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Super Bowl Favorite */}
-        <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5 shadow-sm">
+        <div className="bg-surface-raised/70 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5 shadow-sm">
           <div className="relative flex-shrink-0">
-            <div className="w-12 h-12 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
+            <div className="w-12 h-12 rounded-xl bg-surface/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
               <TeamLogo team={topSbFavorite?.team} size="lg" />
             </div>
             <div className="absolute -bottom-1 -right-1 p-1 bg-amber-500/20 text-amber-400 rounded-md border border-amber-500/30 shadow">
@@ -161,9 +161,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
         </div>
 
         {/* Highest Power Rating */}
-        <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5 shadow-sm">
+        <div className="bg-surface-raised/70 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5 shadow-sm">
           <div className="relative flex-shrink-0">
-            <div className="w-12 h-12 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
+            <div className="w-12 h-12 rounded-xl bg-surface/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
               <TeamLogo team={topPowerTeam?.team} size="lg" />
             </div>
             <div className="absolute -bottom-1 -right-1 p-1 bg-emerald-500/20 text-emerald-400 rounded-md border border-emerald-500/30 shadow">
@@ -185,9 +185,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
         </div>
 
         {/* Best Point Differential */}
-        <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5 shadow-sm">
+        <div className="bg-surface-raised/70 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5 shadow-sm">
           <div className="relative flex-shrink-0">
-            <div className="w-12 h-12 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
+            <div className="w-12 h-12 rounded-xl bg-surface/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
               <TeamLogo team={topPointDiffTeam?.team} size="lg" />
             </div>
             <div className="absolute -bottom-1 -right-1 p-1 bg-cyan-500/20 text-cyan-400 rounded-md border border-cyan-500/30 shadow">
@@ -209,9 +209,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
         </div>
 
         {/* Playoff Lock */}
-        <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5 shadow-sm">
+        <div className="bg-surface-raised/70 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5 shadow-sm">
           <div className="relative flex-shrink-0">
-            <div className="w-12 h-12 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
+            <div className="w-12 h-12 rounded-xl bg-surface/80 border border-slate-800 flex items-center justify-center p-1.5 shadow-inner">
               <TeamLogo team={topPlayoffLock?.team} size="lg" />
             </div>
             <div className="absolute -bottom-1 -right-1 p-1 bg-purple-500/20 text-purple-400 rounded-md border border-purple-500/30 shadow">
@@ -234,16 +234,16 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
       </div>
 
       {/* Navigation View Switcher & Filters Bar */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* View Switcher Tabs */}
-        <div className="relative z-10 inline-flex rounded-lg bg-slate-950 p-1 border border-slate-800">
+        <div className="relative z-10 inline-flex rounded-lg bg-surface p-1 border border-slate-800">
           <button
             type="button"
             onClick={() => handleTabChange('visualizer')}
             className={`cursor-pointer select-none flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
               activeTab === 'visualizer'
-                ? 'bg-emerald-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                ? 'bg-accent-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-surface-raised'
             }`}
           >
             <BarChart2 className="w-4 h-4" />
@@ -254,8 +254,8 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
             onClick={() => handleTabChange('table')}
             className={`cursor-pointer select-none flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
               activeTab === 'table'
-                ? 'bg-emerald-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                ? 'bg-accent-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-surface-raised'
             }`}
           >
             <TableIcon className="w-4 h-4" />
@@ -266,8 +266,8 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
             onClick={() => handleTabChange('divisions')}
             className={`cursor-pointer select-none flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
               activeTab === 'divisions'
-                ? 'bg-emerald-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                ? 'bg-accent-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-surface-raised'
             }`}
           >
             <Grid className="w-4 h-4" />
@@ -285,19 +285,19 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
               placeholder="Search franchise..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 w-40 sm:w-48"
+              className="bg-surface border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 w-40 sm:w-48"
             />
           </div>
 
           {/* Conference filter */}
-          <div className="inline-flex rounded-lg bg-slate-950 p-1 border border-slate-800">
+          <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
             {(['All', 'AFC', 'NFC'] as const).map((conf) => (
               <button
                 key={conf}
                 onClick={() => setSelectedConference(conf)}
                 className={`cursor-pointer select-none px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
                   selectedConference === conf
-                    ? 'bg-emerald-600 text-white shadow-sm'
+                    ? 'bg-accent-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -313,7 +313,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
               aria-label="Filter by division"
               value={selectedDivision}
               onChange={(e) => setSelectedDivision(e.target.value)}
-              className="bg-slate-950 border border-slate-800 text-slate-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500/50"
+              className="bg-surface border border-slate-800 text-slate-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500/50"
             >
               <option value="All">All Divisions</option>
               {divisions.map((div) => (
@@ -343,7 +343,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
               {filteredTeams.map((team) => (
                 <div
                   key={team.team}
-                  className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 space-y-3 hover:border-emerald-500/40 transition-all shadow-sm"
+                  className="bg-surface-raised/70 border border-slate-800 rounded-xl p-4 space-y-3 hover:border-emerald-500/40 transition-all shadow-sm"
                 >
                   <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -367,14 +367,14 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                    <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-800/60">
+                    <div className="bg-surface/60 p-2 rounded-lg border border-slate-800/60">
                       <span className="text-[10px] text-slate-500 block uppercase">Proj Wins</span>
                       <span className="text-white font-bold text-sm">{team.projected_wins.toFixed(1)}W</span>
                       <span className="text-[10px] text-slate-500 block">
                         ({team.wins_p10.toFixed(0)} - {team.wins_p90.toFixed(0)})
                       </span>
                     </div>
-                    <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-800/60">
+                    <div className="bg-surface/60 p-2 rounded-lg border border-slate-800/60">
                       <span className="text-[10px] text-slate-500 block uppercase">Playoff Prob</span>
                       <span
                         className={`font-bold text-sm ${
@@ -413,10 +413,10 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
 
       {/* Tab 2: Full 32 Table */}
       {activeTab === 'table' && (
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+        <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/90 text-[11px] font-mono uppercase tracking-wider text-slate-400 border-b border-slate-800">
+              <thead className="bg-surface/90 text-[11px] font-mono uppercase tracking-wider text-slate-400 border-b border-slate-800">
                 <tr>
                   <th
                     onClick={() => handleSort('rank')}
@@ -599,9 +599,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
               return (
                 <div
                   key={divName}
-                  className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-md flex flex-col justify-between"
+                  className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-md flex flex-col justify-between"
                 >
-                  <div className="p-3 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between">
+                  <div className="p-3 bg-surface/80 border-b border-slate-800 flex items-center justify-between">
                     <span className="font-bold text-xs text-white font-mono flex items-center gap-1.5">
                       <span className={`w-2 h-2 rounded-full ${isAfc ? 'bg-red-500' : 'bg-blue-500'}`} />
                       {divName}

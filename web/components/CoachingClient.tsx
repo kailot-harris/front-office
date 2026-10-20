@@ -85,7 +85,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
       {/* KPI Cards / Leaders */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Most Aggressive on 4th Down */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-lg">
+        <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 shadow-lg">
           <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
             <div className="flex items-center gap-2">
               <Zap className="w-4 h-4 text-emerald-400" />
@@ -98,7 +98,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
               <div
                 key={c.team}
                 onClick={() => setSelectedCoach(c)}
-                className="flex items-center justify-between p-2 rounded-lg bg-slate-950/50 hover:bg-slate-800/60 cursor-pointer border border-slate-800/60 transition-colors"
+                className="flex items-center justify-between p-2 rounded-lg bg-surface/50 hover:bg-slate-800/60 cursor-pointer border border-slate-800/60 transition-colors"
               >
                 <div className="flex items-center gap-2.5">
                   <span className="text-xs font-mono font-bold text-slate-500 w-4">#{i + 1}</span>
@@ -117,7 +117,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
         </div>
 
         {/* Highest PROE (Pass-Happy) */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-lg">
+        <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 shadow-lg">
           <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
             <div className="flex items-center gap-2">
               <SlidersHorizontal className="w-4 h-4 text-cyan-400" />
@@ -130,7 +130,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
               <div
                 key={c.team}
                 onClick={() => setSelectedCoach(c)}
-                className="flex items-center justify-between p-2 rounded-lg bg-slate-950/50 hover:bg-slate-800/60 cursor-pointer border border-slate-800/60 transition-colors"
+                className="flex items-center justify-between p-2 rounded-lg bg-surface/50 hover:bg-slate-800/60 cursor-pointer border border-slate-800/60 transition-colors"
               >
                 <div className="flex items-center gap-2.5">
                   <span className="text-xs font-mono font-bold text-slate-500 w-4">#{i + 1}</span>
@@ -149,7 +149,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
         </div>
 
         {/* Longest Tenured */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-lg">
+        <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 shadow-lg">
           <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-indigo-400" />
@@ -162,7 +162,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
               <div
                 key={c.team}
                 onClick={() => setSelectedCoach(c)}
-                className="flex items-center justify-between p-2 rounded-lg bg-slate-950/50 hover:bg-slate-800/60 cursor-pointer border border-slate-800/60 transition-colors"
+                className="flex items-center justify-between p-2 rounded-lg bg-surface/50 hover:bg-slate-800/60 cursor-pointer border border-slate-800/60 transition-colors"
               >
                 <div className="flex items-center gap-2.5">
                   <span className="text-xs font-mono font-bold text-slate-500 w-4">#{i + 1}</span>
@@ -182,7 +182,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-slate-900/90 border border-slate-800 p-3.5 rounded-xl">
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-surface-raised/90 border border-slate-800 p-3.5 rounded-xl">
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -190,7 +190,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
             placeholder="Search coach, coordinator, team, or scheme..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+            className="w-full bg-surface border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
           />
         </div>
 
@@ -201,7 +201,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
               aria-label="Filter by offensive play caller"
               value={playCallerFilter}
               onChange={(e) => setPlayCallerFilter(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+              className="bg-surface border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
             >
               <option value="ALL">All Roles</option>
               <option value="Head Coach">Head Coach</option>
@@ -212,10 +212,10 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
       </div>
 
       {/* Coaches Table */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+      <div className="bg-surface-raised/90 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-mono">
-            <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+            <thead className="bg-surface/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
               <tr>
                 <th className="px-4 py-3">Team</th>
                 <th className="px-3 py-3">Head Coach</th>
@@ -261,7 +261,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
                     key={c.team}
                     onClick={() => setSelectedCoach(c)}
                     className={`hover:bg-slate-800/40 transition-colors cursor-pointer ${
-                      isSelected ? 'bg-emerald-950/20 border-l-2 border-emerald-500' : ''
+                      isSelected ? 'bg-accent-950/20 border-l-2 border-accent-500' : ''
                     }`}
                   >
                     <td className="px-4 py-3">
@@ -360,7 +360,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
 
       {/* Selected Coach Deep-Dive Drawer */}
       {selectedCoach && (
-        <div className="bg-slate-900/90 border border-emerald-500/50 rounded-xl p-5 shadow-2xl relative">
+        <div className="bg-surface-raised/90 border border-emerald-500/50 rounded-xl p-5 shadow-2xl relative">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-slate-800 gap-4">
             <div className="flex items-center gap-4">
               <TeamLogo team={selectedCoach.team} size="xl" />
@@ -375,10 +375,10 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
                   Career Record: {selectedCoach.career_record} • {selectedCoach.super_bowl_wins} Super Bowl Titles
                 </p>
                 <div className="flex items-center gap-2 mt-2">
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-slate-300">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-surface border border-slate-800 text-slate-300">
                     <strong className="text-slate-400">Offense Calls:</strong> {selectedCoach.offensive_play_caller || selectedCoach.play_caller} ({selectedCoach.offensive_play_caller === 'Head Coach' ? selectedCoach.head_coach : selectedCoach.offensive_coordinator})
                   </span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-slate-300">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-surface border border-slate-800 text-slate-300">
                     <strong className="text-slate-400">Defense Calls:</strong> {selectedCoach.defensive_play_caller || 'Defensive Coordinator'} ({selectedCoach.defensive_play_caller === 'Head Coach' ? selectedCoach.head_coach : selectedCoach.defensive_coordinator})
                   </span>
                 </div>
@@ -394,25 +394,25 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
-            <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800">
+            <div className="bg-surface/60 p-3 rounded-lg border border-slate-800">
               <span className="text-[10px] font-mono uppercase text-slate-500 block">Offensive Scheme</span>
               <span className="text-xs font-sans font-semibold text-white block mt-0.5">
                 {selectedCoach.offensive_scheme}
               </span>
             </div>
-            <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800">
+            <div className="bg-surface/60 p-3 rounded-lg border border-slate-800">
               <span className="text-[10px] font-mono uppercase text-slate-500 block">Defensive Scheme</span>
               <span className="text-xs font-sans font-semibold text-white block mt-0.5">
                 {selectedCoach.defensive_scheme}
               </span>
             </div>
-            <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800">
+            <div className="bg-surface/60 p-3 rounded-lg border border-slate-800">
               <span className="text-[10px] font-mono uppercase text-slate-500 block">Play-Action Rate</span>
               <span className="text-sm font-mono font-bold text-emerald-400 block mt-0.5">
                 {selectedCoach.play_action_rate.toFixed(1)}%
               </span>
             </div>
-            <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800">
+            <div className="bg-surface/60 p-3 rounded-lg border border-slate-800">
               <span className="text-[10px] font-mono uppercase text-slate-500 block">Challenge Win %</span>
               <span className="text-sm font-mono font-bold text-cyan-400 block mt-0.5">
                 {selectedCoach.challenge_win_pct.toFixed(1)}%
