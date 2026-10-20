@@ -1,6 +1,7 @@
-// Mirrors next.config.mjs's basePath: the site is published to GitHub Pages at
-// kailot-harris.github.io/front-office/wnba/, not domain root, so any asset referenced by a
-// hardcoded "/..." string (manual <img src>, fetch()) needs this prefix or it 404s in production
-// while still looking correct in `next dev`, where there's no subpath. `next build` always sets
-// NODE_ENV=production, so this and next.config.mjs stay in sync without a separate env var.
-export const BASE_PATH = process.env.NODE_ENV === 'production' ? '/front-office/wnba' : '';
+// Mirrors next.config.mjs's basePath computation: this app is published as part of the
+// combined front-office site at <user>.github.io/front-office/wnba/, not domain root, so any
+// asset referenced by a hardcoded "/..." string (manual <img src>, fetch()) needs this prefix
+// or it 404s in production. next.config.mjs can't be imported by client/server app code, so the
+// same `PAGES_BASE_PATH + '/wnba'` logic is duplicated here rather than shared.
+const repoBase = process.env.PAGES_BASE_PATH ?? '';
+export const BASE_PATH = `${repoBase}/wnba`;
