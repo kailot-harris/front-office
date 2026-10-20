@@ -1,3 +1,5 @@
+import { BASE_PATH } from './basePath';
+
 export interface TeamMetadata {
   abbr: string;
   teamId: number;
@@ -329,7 +331,7 @@ export const MLB_TEAMS_METADATA: Record<string, TeamMetadata> = {
 export const getTeamLogoUrl = (teamAbbr: string): string => {
   const meta = MLB_TEAMS_METADATA[teamAbbr?.toUpperCase()];
   if (meta?.teamId) {
-    return `/logos/${meta.teamId}.png`;
+    return `${BASE_PATH}/logos/${meta.teamId}.png`;
   }
   const code = meta?.espnCode || teamAbbr?.toLowerCase();
   return `https://a.espncdn.com/i/teamlogos/mlb/500/${code}.png`;
