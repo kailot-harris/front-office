@@ -112,7 +112,7 @@ export default function VariantsClient({ data }: VariantsClientProps) {
       </div>
 
       {/* Ensemble Weight Visualization Bar */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-xl">
+      <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-5 shadow-xl">
         <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
           <div className="flex items-center gap-2">
             <Sliders className="w-4 h-4 text-emerald-400" />
@@ -122,7 +122,7 @@ export default function VariantsClient({ data }: VariantsClientProps) {
         </div>
 
         {/* Visual Bar */}
-        <div className="h-6 w-full rounded-lg overflow-hidden flex shadow-inner bg-slate-950 p-0.5 border border-slate-800">
+        <div className="h-6 w-full rounded-lg overflow-hidden flex shadow-inner bg-surface p-0.5 border border-slate-800">
           <div
             style={{ width: `${weights.ridge_massey * 100}%` }}
             className="h-full bg-gradient-to-r from-emerald-600 to-emerald-500 flex items-center justify-center text-[11px] font-mono font-bold text-white shadow-sm"
@@ -154,7 +154,7 @@ export default function VariantsClient({ data }: VariantsClientProps) {
         {variants.map((v) => (
           <div
             key={v.id}
-            className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col justify-between"
+            className="bg-surface-raised/90 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col justify-between"
           >
             <div>
               <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
@@ -168,7 +168,7 @@ export default function VariantsClient({ data }: VariantsClientProps) {
                   )}
                   <h2 className="text-base font-bold text-white">{v.name}</h2>
                 </div>
-                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-white">
+                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-surface border border-slate-800 text-white">
                   {(v.weight * 100).toFixed(0)}% Weight
                 </span>
               </div>
@@ -209,7 +209,7 @@ export default function VariantsClient({ data }: VariantsClientProps) {
       </div>
 
       {/* Candidate Models #4 & #5 Ablation Study Section */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-xl space-y-4">
+      <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-5 shadow-xl space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
           <div className="flex items-center gap-2">
             <Layers className="w-5 h-5 text-amber-400" />
@@ -222,7 +222,7 @@ export default function VariantsClient({ data }: VariantsClientProps) {
               </p>
             </div>
           </div>
-          <span className="text-xs font-mono px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-amber-400 font-semibold">
+          <span className="text-xs font-mono px-2.5 py-1 rounded bg-surface border border-slate-800 text-amber-400 font-semibold">
             Empirical Ablation Study
           </span>
         </div>
@@ -231,7 +231,7 @@ export default function VariantsClient({ data }: VariantsClientProps) {
           {candidateModels.map((cand) => (
             <div
               key={cand.id}
-              className="p-4 rounded-lg bg-slate-950/70 border border-slate-800/80 space-y-3"
+              className="p-4 rounded-lg bg-surface/70 border border-slate-800/80 space-y-3"
             >
               <div className="flex items-center justify-between">
                 <div>
@@ -240,13 +240,13 @@ export default function VariantsClient({ data }: VariantsClientProps) {
                   </span>
                   <h3 className="text-sm font-bold text-white">{cand.name}</h3>
                 </div>
-                <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-400">
+                <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-surface-raised border border-slate-700 text-slate-400">
                   Weight: {cand.evaluatedWeight}
                 </span>
               </div>
 
               <div className="text-xs space-y-2">
-                <div className="flex items-center justify-between text-[11px] font-mono bg-slate-900/60 p-2 rounded border border-slate-800">
+                <div className="flex items-center justify-between text-[11px] font-mono bg-surface-raised/60 p-2 rounded border border-slate-800">
                   <span className="text-slate-400">Out-of-Sample Lift:</span>
                   <span className="text-rose-400 font-bold">{cand.liftStatus}</span>
                 </div>
@@ -265,7 +265,7 @@ export default function VariantsClient({ data }: VariantsClientProps) {
         {/* Ablation Benchmark Table */}
         <div className="overflow-x-auto pt-2">
           <table className="w-full text-left text-xs font-mono">
-            <thead className="bg-slate-950/90 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+            <thead className="bg-surface/90 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
               <tr>
                 <th className="px-3 py-2">Ensemble Architecture</th>
                 <th className="px-3 py-2">Weight Distribution</th>
@@ -275,12 +275,12 @@ export default function VariantsClient({ data }: VariantsClientProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
-              <tr className="bg-emerald-950/20 hover:bg-emerald-950/30">
+              <tr className="bg-accent-950/20 hover:bg-accent-950/30">
                 <td className="px-3 py-2 text-white font-bold">3-Model Baseline (Production)</td>
                 <td className="px-3 py-2 text-slate-300">Ridge (40%) + Elo (35%) + Market (25%)</td>
                 <td className="px-3 py-2 text-right text-emerald-400 font-bold">0.2282</td>
                 <td className="px-3 py-2 text-right text-emerald-400 font-bold">0.6491</td>
-                <td className="px-3 py-2 text-center text-emerald-400 font-bold">Active Production</td>
+                <td className="px-3 py-2 text-center text-accent-400 font-bold">Active Production</td>
               </tr>
               <tr className="hover:bg-slate-800/40">
                 <td className="px-3 py-2 text-slate-400">4-Model Variant (+ Net EPA)</td>
@@ -302,7 +302,7 @@ export default function VariantsClient({ data }: VariantsClientProps) {
       </div>
 
       {/* Mathematical Ensembling Notes */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-lg">
+      <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-5 shadow-lg">
         <div className="flex items-center gap-2 pb-3 border-b border-slate-800 mb-3 text-white font-semibold">
           <HelpCircle className="w-4 h-4 text-emerald-400" />
           <span>Why Ensemble Independent Estimators?</span>

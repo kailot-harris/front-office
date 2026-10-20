@@ -53,7 +53,7 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
       {/* KPI Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {/* Straight-up Accuracy */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-lg">
+        <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 shadow-lg">
           <div className="flex items-center justify-between text-slate-400 pb-2">
             <span className="text-xs font-medium">Straight-Up Accuracy</span>
             <Target className="w-4 h-4 text-emerald-400" />
@@ -67,7 +67,7 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
         </div>
 
         {/* Brier Score */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-lg">
+        <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 shadow-lg">
           <div className="flex items-center justify-between text-slate-400 pb-2">
             <span className="text-xs font-medium">Ensemble Brier Score</span>
             <ShieldCheck className="w-4 h-4 text-cyan-400" />
@@ -81,7 +81,7 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
         </div>
 
         {/* Log Loss */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-lg">
+        <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 shadow-lg">
           <div className="flex items-center justify-between text-slate-400 pb-2">
             <span className="text-xs font-medium">Cross-Entropy Log Loss</span>
             <Activity className="w-4 h-4 text-indigo-400" />
@@ -95,7 +95,7 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
         </div>
 
         {/* Margin Sigma */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-lg">
+        <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 shadow-lg">
           <div className="flex items-center justify-between text-slate-400 pb-2">
             <span className="text-xs font-medium">Margin Sigma (σ)</span>
             <BarChart2 className="w-4 h-4 text-amber-400" />
@@ -116,7 +116,7 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
         </div>
 
         {/* Calibration Decile Table */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-xl flex flex-col justify-between">
+        <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 shadow-xl flex flex-col justify-between">
           <div>
             <h2 className="text-sm font-semibold text-white mb-2">Decile Probability Breakdown</h2>
             <p className="text-xs text-slate-400 mb-3">
@@ -125,7 +125,7 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs font-mono">
-                <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+                <thead className="bg-surface/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                   <tr>
                     <th className="px-2 py-2">Bin</th>
                     <th className="px-2 py-2 text-right">Pred</th>
@@ -171,7 +171,7 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
       </div>
 
       {/* Accuracy & Loss Trajectory History */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-xl">
+      <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-5 shadow-xl">
         <div className="pb-3 border-b border-slate-800 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <h2 className="text-base font-semibold text-white">
@@ -181,13 +181,13 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
               Progression of model diagnostics across real-time evaluation checkpoints in the 2026 season.
             </p>
           </div>
-          <span className="text-xs font-mono text-emerald-400 bg-slate-950 px-2.5 py-1 rounded border border-slate-800 self-start sm:self-auto">
+          <span className="text-xs font-mono text-emerald-400 bg-surface px-2.5 py-1 rounded border border-slate-800 self-start sm:self-auto">
             {historyGames.length} Evaluation Checkpoints
           </span>
         </div>
 
         {/* Informative Pipeline Note */}
-        <div className="mb-4 p-3 rounded-lg bg-slate-950/80 border border-slate-800/80 text-xs text-slate-400 flex items-start gap-2.5">
+        <div className="mb-4 p-3 rounded-lg bg-surface/80 border border-slate-800/80 text-xs text-slate-400 flex items-start gap-2.5">
           <Activity className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
           <p className="leading-relaxed">
             <strong className="text-slate-200">Evaluation Cycle Cadence:</strong> Checkpoints trigger sequentially as game slates conclude. Multi-game jumps (+13 to +14 games) capture the bulk Sunday afternoon windows, while single-game increments (+1) record standalone primetime games (Thursday Night Football, Sunday Night Football, and Monday Night Football).
@@ -196,7 +196,7 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-mono">
-            <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+            <thead className="bg-surface/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
               <tr>
                 <th className="px-3 py-2.5">Evaluation Checkpoint</th>
                 <th className="px-3 py-2.5">Slate / Trigger Event</th>

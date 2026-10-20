@@ -81,7 +81,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
   return (
     <div className="space-y-6">
       {/* Week Selector Ribbon */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-3 overflow-x-auto">
+      <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-3 overflow-x-auto">
         <div className="flex items-center gap-2 flex-shrink-0">
           <Calendar className="w-4 h-4 text-emerald-400" />
           <span className="text-xs font-mono font-bold uppercase text-slate-300">Select Slate:</span>
@@ -98,12 +98,12 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                 onClick={() => setSelectedWeek(wk)}
                 className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                   isSelected
-                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 font-bold'
+                    ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30 font-bold'
                     : isPast
-                    ? 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800/80'
+                    ? 'bg-surface text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800/80'
                     : isActive
-                    ? 'bg-slate-900 text-emerald-400 border border-emerald-500/40 hover:bg-slate-800'
-                    : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
+                    ? 'bg-surface-raised text-accent-400 border border-accent-500/40 hover:bg-slate-800'
+                    : 'bg-surface text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
                 }`}
               >
                 <span>Week {wk}</span>
@@ -119,7 +119,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
       {largestFavorite && closestGame && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {gradedStats ? (
-            <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
+            <div className="bg-surface-raised/70 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
                 <CheckCircle2 className="w-5 h-5 text-emerald-400" />
               </div>
@@ -136,7 +136,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
               </div>
             </div>
           ) : (
-            <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
+            <div className="bg-surface-raised/70 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
                 <Shield className="w-5 h-5 text-amber-400" />
               </div>
@@ -159,7 +159,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
           )}
 
           {/* Largest Projected Favorite */}
-          <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
+          <div className="bg-surface-raised/70 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
               <Zap className="w-5 h-5 text-emerald-400" />
             </div>
@@ -179,7 +179,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
           </div>
 
           {/* Closest Matchup / Pick'em */}
-          <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
+          <div className="bg-surface-raised/70 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center flex-shrink-0">
               <Swords className="w-5 h-5 text-cyan-400" />
             </div>
@@ -199,7 +199,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
       )}
 
       {/* Filter and View Mode Toolbar */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Day Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto">
           {daysInWeek.map((day) => (
@@ -226,15 +226,15 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
               placeholder="Filter team..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 w-36 sm:w-44"
+              className="bg-surface border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 w-36 sm:w-44"
             />
           </div>
 
-          <div className="inline-flex rounded-lg bg-slate-950 p-1 border border-slate-800">
+          <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
             <button
               onClick={() => setViewMode('grid')}
               className={`p-1.5 rounded-md text-xs transition-colors ${
-                viewMode === 'grid' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
+                viewMode === 'grid' ? 'bg-accent-600 text-white' : 'text-slate-400 hover:text-white'
               }`}
               title="Card Grid View"
             >
@@ -243,7 +243,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
             <button
               onClick={() => setViewMode('table')}
               className={`p-1.5 rounded-md text-xs transition-colors ${
-                viewMode === 'table' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
+                viewMode === 'table' ? 'bg-accent-600 text-white' : 'text-slate-400 hover:text-white'
               }`}
               title="Compact Table View"
             >
@@ -264,10 +264,10 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
 
       {/* Compact Table View */}
       {viewMode === 'table' && (
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+        <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/90 text-[11px] font-mono uppercase tracking-wider text-slate-400 border-b border-slate-800">
+              <thead className="bg-surface/90 text-[11px] font-mono uppercase tracking-wider text-slate-400 border-b border-slate-800">
                 <tr>
                   <th className="py-3 px-3">Date</th>
                   <th className="py-3 px-3">Away Team</th>
@@ -317,7 +317,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                       </td>
                       <td className="py-2.5 px-3 text-center font-mono">
                         {m.is_completed ? (
-                          <span className="font-bold text-white bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                          <span className="font-bold text-white bg-surface px-2 py-0.5 rounded border border-slate-800">
                             {m.away_score} - {m.home_score}
                           </span>
                         ) : (

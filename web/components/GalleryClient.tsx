@@ -55,7 +55,7 @@ export default function GalleryClient({ mediaItems }: GalleryClientProps) {
       </div>
 
       {/* Filter and Category Pills */}
-      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-slate-900/90 border border-slate-800 p-3.5 rounded-xl">
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-surface-raised/90 border border-slate-800 p-3.5 rounded-xl">
         {/* Category Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
           {categories.map((cat) => (
@@ -64,8 +64,8 @@ export default function GalleryClient({ mediaItems }: GalleryClientProps) {
               onClick={() => setSelectedCategory(cat)}
               className={`px-3 py-1.5 rounded-lg text-xs font-mono capitalize whitespace-nowrap transition-all ${
                 selectedCategory === cat
-                  ? 'bg-emerald-500 text-slate-950 font-bold shadow-md'
-                  : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                  ? 'bg-accent-500 text-slate-950 font-bold shadow-md'
+                  : 'bg-surface text-slate-400 hover:text-white border border-slate-800'
               }`}
             >
               {cat === 'ALL' ? 'All Visuals' : cat}
@@ -81,7 +81,7 @@ export default function GalleryClient({ mediaItems }: GalleryClientProps) {
             placeholder="Search visual title or file..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+            className="w-full bg-surface border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
           />
         </div>
       </div>
@@ -95,12 +95,12 @@ export default function GalleryClient({ mediaItems }: GalleryClientProps) {
           return (
             <div
               key={item.filename}
-              className="bg-slate-900/90 border border-slate-800 hover:border-slate-700 rounded-xl overflow-hidden shadow-lg flex flex-col justify-between group transition-all"
+              className="bg-surface-raised/90 border border-slate-800 hover:border-slate-700 rounded-xl overflow-hidden shadow-lg flex flex-col justify-between group transition-all"
             >
               <div>
                 {/* Media Preview Box */}
                 <div
-                  className="relative w-full aspect-video bg-slate-950 border-b border-slate-800 cursor-pointer overflow-hidden flex items-center justify-center"
+                  className="relative w-full aspect-video bg-surface border-b border-slate-800 cursor-pointer overflow-hidden flex items-center justify-center"
                   onClick={() => setActiveMedia(item)}
                 >
                   <Image
@@ -114,15 +114,15 @@ export default function GalleryClient({ mediaItems }: GalleryClientProps) {
 
                   {/* Badge Overlay */}
                   <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
-                    <span className="bg-slate-950/80 backdrop-blur border border-slate-800 text-[10px] font-mono px-2 py-0.5 rounded text-white flex items-center gap-1">
+                    <span className="bg-surface/80 backdrop-blur border border-slate-800 text-[10px] font-mono px-2 py-0.5 rounded text-white flex items-center gap-1">
                       {isGif ? <Film className="w-3 h-3 text-cyan-400" /> : <ImageIcon className="w-3 h-3 text-emerald-400" />}
                       {isGif ? 'ANIMATION' : 'STATIC PLOT'}
                     </span>
                   </div>
 
                   {/* Hover Maximizer Icon */}
-                  <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                    <span className="p-2.5 rounded-full bg-slate-900/90 text-white border border-slate-700 shadow-xl flex items-center gap-1.5 text-xs font-mono">
+                  <div className="absolute inset-0 bg-surface/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    <span className="p-2.5 rounded-full bg-surface-raised/90 text-white border border-slate-700 shadow-xl flex items-center gap-1.5 text-xs font-mono">
                       <Maximize2 className="w-4 h-4 text-emerald-400" /> Fullscreen
                     </span>
                   </div>
@@ -142,7 +142,7 @@ export default function GalleryClient({ mediaItems }: GalleryClientProps) {
               </div>
 
               {/* Card Footer */}
-              <div className="px-4 py-2.5 bg-slate-950/60 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-mono text-slate-400">
+              <div className="px-4 py-2.5 bg-surface/60 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-mono text-slate-400">
                 <span className="capitalize">{item.category}</span>
                 <span className="text-slate-500">{(item.size_bytes / 1024).toFixed(0)} KB</span>
               </div>
@@ -153,8 +153,8 @@ export default function GalleryClient({ mediaItems }: GalleryClientProps) {
 
       {/* Fullscreen Modal View */}
       {activeMedia && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-surface/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-surface-raised border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-4 border-b border-slate-800">
               <div>
@@ -175,7 +175,7 @@ export default function GalleryClient({ mediaItems }: GalleryClientProps) {
             </div>
 
             {/* Modal Image Display */}
-            <div className="p-4 bg-slate-950 flex items-center justify-center overflow-auto max-h-[65vh]">
+            <div className="p-4 bg-surface flex items-center justify-center overflow-auto max-h-[65vh]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`${BASE_PATH}/animations/${activeMedia.filename}`}

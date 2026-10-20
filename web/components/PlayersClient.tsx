@@ -95,7 +95,7 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
       {/* Leadership KPI Banners */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Top EPA Leaders */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-lg">
+        <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 shadow-lg">
           <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-emerald-400" />
@@ -108,7 +108,7 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
               <div
                 key={qb.player_name}
                 onClick={() => setSelectedQb(qb)}
-                className="flex items-center justify-between p-2 rounded-lg bg-slate-950/50 hover:bg-slate-800/60 cursor-pointer border border-slate-800/60 transition-colors"
+                className="flex items-center justify-between p-2 rounded-lg bg-surface/50 hover:bg-slate-800/60 cursor-pointer border border-slate-800/60 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-mono font-bold text-slate-500 w-4 text-center">
@@ -140,7 +140,7 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
         </div>
 
         {/* Top CPOE Leaders */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-lg">
+        <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 shadow-lg">
           <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
             <div className="flex items-center gap-2">
               <Award className="w-4 h-4 text-cyan-400" />
@@ -153,7 +153,7 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
               <div
                 key={qb.player_name}
                 onClick={() => setSelectedQb(qb)}
-                className="flex items-center justify-between p-2 rounded-lg bg-slate-950/50 hover:bg-slate-800/60 cursor-pointer border border-slate-800/60 transition-colors"
+                className="flex items-center justify-between p-2 rounded-lg bg-surface/50 hover:bg-slate-800/60 cursor-pointer border border-slate-800/60 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-mono font-bold text-slate-500 w-4 text-center">
@@ -193,7 +193,7 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
       />
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-slate-900/90 border border-slate-800 p-3.5 rounded-xl">
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-surface-raised/90 border border-slate-800 p-3.5 rounded-xl">
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -201,7 +201,7 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
             placeholder="Search quarterback, team, or college..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+            className="w-full bg-surface border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
           />
         </div>
 
@@ -211,7 +211,7 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
             aria-label="Filter by team"
             value={selectedTeam}
             onChange={(e) => setSelectedTeam(e.target.value)}
-            className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+            className="bg-surface border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
           >
             <option value="ALL">All 32 Teams</option>
             {teams.map((t) => (
@@ -224,10 +224,10 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
       </div>
 
       {/* Quarterback Roster Table */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+      <div className="bg-surface-raised/90 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-950/80 text-slate-400 font-mono uppercase text-[10px] tracking-wider border-b border-slate-800">
+            <thead className="bg-surface/80 text-slate-400 font-mono uppercase text-[10px] tracking-wider border-b border-slate-800">
               <tr>
                 <th className="px-4 py-3">Player</th>
                 <th className="px-3 py-3">Team</th>
@@ -274,7 +274,7 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
                     key={`${qb.player_name}-${qb.team}`}
                     onClick={() => setSelectedQb(qb)}
                     className={`hover:bg-slate-800/40 transition-colors cursor-pointer ${
-                      isSelected ? 'bg-emerald-950/20 border-l-2 border-emerald-500' : ''
+                      isSelected ? 'bg-accent-950/20 border-l-2 border-accent-500' : ''
                     }`}
                   >
                     <td className="px-4 py-2.5">
@@ -352,7 +352,7 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
         </div>
 
         {/* Pagination Footer */}
-        <div className="p-3 bg-slate-950/80 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-slate-400">
+        <div className="p-3 bg-surface/80 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-slate-400">
           <div className="flex items-center gap-2">
             <span>Rows per page:</span>
             <select
@@ -363,7 +363,7 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
                 setPageSize(val);
                 setCurrentPage(1);
               }}
-              className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-white"
+              className="bg-surface-raised border border-slate-800 rounded px-2 py-1 text-white"
             >
               <option value={25}>25</option>
               <option value={50}>50</option>
@@ -380,7 +380,7 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800"
+                className="px-2.5 py-1 rounded bg-surface-raised border border-slate-800 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800"
               >
                 Previous
               </button>
@@ -390,7 +390,7 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
               <button
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800"
+                className="px-2.5 py-1 rounded bg-surface-raised border border-slate-800 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800"
               >
                 Next
               </button>
@@ -401,7 +401,7 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
 
       {/* Selected QB Detailed Drawer/Card */}
       {selectedQb && (
-        <div className="bg-slate-900/90 border border-emerald-500/50 rounded-xl p-5 shadow-2xl relative">
+        <div className="bg-surface-raised/90 border border-emerald-500/50 rounded-xl p-5 shadow-2xl relative">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-slate-800 gap-4">
             <div className="flex items-center gap-4">
               {selectedQb.headshot_url ? (
@@ -441,27 +441,27 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
-            <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800">
+            <div className="bg-surface/60 p-3 rounded-lg border border-slate-800">
               <span className="text-[10px] font-mono uppercase text-slate-500 block">Offensive EPA / Play</span>
               <span className="text-base font-mono font-bold text-emerald-400">
                 {(selectedQb.off_epa_roll ?? 0) > 0 ? '+' : ''}
                 {(selectedQb.off_epa_roll ?? 0).toFixed(3)}
               </span>
             </div>
-            <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800">
+            <div className="bg-surface/60 p-3 rounded-lg border border-slate-800">
               <span className="text-[10px] font-mono uppercase text-slate-500 block">Completion % Over Expected</span>
               <span className="text-base font-mono font-bold text-cyan-400">
                 {(selectedQb.off_cpoe_roll ?? 0) > 0 ? '+' : ''}
                 {(selectedQb.off_cpoe_roll ?? 0).toFixed(1)}%
               </span>
             </div>
-            <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800">
+            <div className="bg-surface/60 p-3 rounded-lg border border-slate-800">
               <span className="text-[10px] font-mono uppercase text-slate-500 block">Backup WAR Penalty</span>
               <span className="text-base font-mono font-bold text-amber-400">
                 -3.2 Pts Spread
               </span>
             </div>
-            <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800">
+            <div className="bg-surface/60 p-3 rounded-lg border border-slate-800">
               <span className="text-[10px] font-mono uppercase text-slate-500 block">Roster Depth</span>
               <span className="text-base font-mono font-bold text-white">
                 Starter (Tier {selectedQb.off_epa_roll > 0.08 ? '1' : selectedQb.off_epa_roll > 0 ? '2' : '3'})

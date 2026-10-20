@@ -34,9 +34,9 @@ export const WinDistributionBoxWhisker: React.FC<WinDistributionBoxWhiskerProps>
   const winTicks = [4, 6, 8, 10, 12, 14];
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+    <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
       {/* Header bar */}
-      <div className="p-4 bg-slate-950/70 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+      <div className="p-4 bg-surface/70 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg">
             <Layers className="w-5 h-5" />
@@ -58,7 +58,7 @@ export const WinDistributionBoxWhisker: React.FC<WinDistributionBoxWhiskerProps>
 
         <div className="flex items-center gap-2.5">
           {/* Threshold toggle */}
-          <div className="inline-flex rounded-lg bg-slate-900 p-1 border border-slate-800 text-xs">
+          <div className="inline-flex rounded-lg bg-surface-raised p-1 border border-slate-800 text-xs">
             <button
               onClick={() => setFilterThreshold(0.0)}
               className={`px-2 py-1 rounded-md font-medium transition-all ${
@@ -70,7 +70,7 @@ export const WinDistributionBoxWhisker: React.FC<WinDistributionBoxWhiskerProps>
             <button
               onClick={() => setFilterThreshold(0.25)}
               className={`px-2 py-1 rounded-md font-medium transition-all ${
-                filterThreshold === 0.25 ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                filterThreshold === 0.25 ? 'bg-accent-600 text-white shadow' : 'text-slate-400 hover:text-white'
               }`}
             >
               Contenders (≥25%)
@@ -78,14 +78,14 @@ export const WinDistributionBoxWhisker: React.FC<WinDistributionBoxWhiskerProps>
           </div>
 
           {/* Conference filter pills */}
-          <div className="inline-flex rounded-lg bg-slate-900 p-1 border border-slate-800">
+          <div className="inline-flex rounded-lg bg-surface-raised p-1 border border-slate-800">
             {(['All', 'AFC', 'NFC'] as const).map((conf) => (
               <button
                 key={conf}
                 onClick={() => setSelectedConf(conf)}
                 className={`cursor-pointer select-none px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
                   selectedConf === conf
-                    ? 'bg-emerald-600 text-white shadow-sm'
+                    ? 'bg-accent-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -170,7 +170,7 @@ export const WinDistributionBoxWhisker: React.FC<WinDistributionBoxWhiskerProps>
               return (
                 <div
                   key={team.team}
-                  className="grid grid-cols-12 items-center gap-2 p-2 rounded-lg bg-slate-950/40 hover:bg-slate-800/40 transition-colors border border-slate-800/40"
+                  className="grid grid-cols-12 items-center gap-2 p-2 rounded-lg bg-surface/40 hover:bg-slate-800/40 transition-colors border border-slate-800/40"
                 >
                   {/* Franchise Identification */}
                   <div className="col-span-4 sm:col-span-3 flex items-center gap-2.5 min-w-0">
