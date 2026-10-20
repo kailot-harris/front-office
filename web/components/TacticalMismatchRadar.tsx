@@ -28,7 +28,7 @@ export const TacticalMismatchRadar: React.FC<TacticalMismatchRadarProps> = ({
   ];
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-5 shadow-lg space-y-5">
+    <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-5 shadow-lg space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-800 gap-2">
         <div>
           <h3 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
@@ -76,7 +76,7 @@ export const TacticalMismatchRadar: React.FC<TacticalMismatchRadarProps> = ({
               </div>
 
               {/* Dual Progress Bar */}
-              <div className="grid grid-cols-2 gap-1.5 h-2 bg-slate-950/80 rounded-full p-0.5 border border-slate-800/80">
+              <div className="grid grid-cols-2 gap-1.5 h-2 bg-surface/80 rounded-full p-0.5 border border-slate-800/80">
                 {/* Team A bar (Right aligned) */}
                 <div className="h-full flex justify-end">
                   <div
@@ -130,7 +130,7 @@ export const TacticalMismatchRadar: React.FC<TacticalMismatchRadarProps> = ({
                       {edge.description}
                     </p>
                   </div>
-                  <span className="font-mono font-bold text-[11px] px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300">
+                  <span className="font-mono font-bold text-[11px] px-2 py-0.5 rounded bg-surface-raised border border-slate-800 text-slate-300">
                     Adv: {edge.advantageTeam}
                   </span>
                 </div>

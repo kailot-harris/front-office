@@ -142,7 +142,7 @@ export const Sidebar: React.FC = () => {
                 onClick={() => setIsOpen(false)}
                 className={`group flex items-start gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+                    ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
                     : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
                 }`}
               >
@@ -175,7 +175,7 @@ export const Sidebar: React.FC = () => {
           })}
         </div>
 
-        <div className="bg-slate-950/50 border border-emerald-900/30 rounded-xl p-3 space-y-1">
+        <div className="bg-surface/50 border border-emerald-900/30 rounded-xl p-3 space-y-1">
           <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
             <span>Full Analytics Suite Live</span>
@@ -200,7 +200,7 @@ export const Sidebar: React.FC = () => {
 
   return (
     <>
-      <div className="md:hidden sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+      <div className="md:hidden sticky top-0 z-40 bg-surface-raised/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-indigo-600 via-violet-600 to-slate-900 border border-indigo-500/30 flex items-center justify-center shadow-md">
             <Trophy className="w-5 h-5 text-white" />
@@ -219,10 +219,10 @@ export const Sidebar: React.FC = () => {
       {isOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
           <div
-            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-surface/80 backdrop-blur-sm transition-opacity"
             onClick={() => setIsOpen(false)}
           />
-          <div className="relative w-72 max-w-[85vw] bg-slate-900 border-r border-slate-800 h-full z-10 flex flex-col shadow-2xl">
+          <div className="relative w-72 max-w-[85vw] bg-surface-raised border-r border-slate-800 h-full z-10 flex flex-col shadow-2xl">
             <div className="absolute top-3 right-3">
               <button
                 onClick={() => setIsOpen(false)}
@@ -236,7 +236,7 @@ export const Sidebar: React.FC = () => {
         </div>
       )}
 
-      <aside className="hidden md:flex w-64 lg:w-72 flex-col flex-shrink-0 h-screen sticky top-0 bg-slate-900/90 backdrop-blur-md border-r border-slate-800 z-30">
+      <aside className="hidden md:flex w-64 lg:w-72 flex-col flex-shrink-0 h-screen sticky top-0 bg-surface-raised/90 backdrop-blur-md border-r border-slate-800 z-30">
         <NavContent />
       </aside>
     </>

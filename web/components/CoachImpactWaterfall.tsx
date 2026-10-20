@@ -74,7 +74,7 @@ export const CoachImpactWaterfall: React.FC<CoachImpactWaterfallProps> = ({ coac
   ];
 
   return (
-    <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 shadow-lg space-y-5">
+    <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-5 shadow-lg space-y-5">
       <div className="flex items-center justify-between border-b border-slate-800 pb-4">
         <div className="flex items-center gap-3">
           <TeamLogo team={teamAbbr} size="md" />
@@ -104,7 +104,7 @@ export const CoachImpactWaterfall: React.FC<CoachImpactWaterfallProps> = ({ coac
         {steps.map((step, idx) => (
           <div
             key={idx}
-            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg bg-slate-950/60 border border-slate-800/80 hover:border-slate-700 transition-colors"
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg bg-surface/60 border border-slate-800/80 hover:border-slate-700 transition-colors"
           >
             <div className="space-y-0.5">
               <div className="flex items-center gap-2">

@@ -111,15 +111,15 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
           </div>
 
           <div className="flex flex-wrap md:flex-nowrap gap-3">
-            <div className="px-4 py-3 rounded-xl bg-slate-950/80 border border-slate-800 text-center min-w-[110px]">
+            <div className="px-4 py-3 rounded-xl bg-surface/80 border border-slate-800 text-center min-w-[110px]">
               <div className="text-[11px] text-slate-400 uppercase font-semibold">Tracked Closers</div>
               <div className="text-xl font-black text-rose-400">{initialProfiles.length}</div>
             </div>
-            <div className="px-4 py-3 rounded-xl bg-slate-950/80 border border-slate-800 text-center min-w-[110px]">
+            <div className="px-4 py-3 rounded-xl bg-surface/80 border border-slate-800 text-center min-w-[110px]">
               <div className="text-[11px] text-slate-400 uppercase font-semibold">Leverage Margin</div>
               <div className="text-xl font-black text-amber-400">&le; 5 Pts</div>
             </div>
-            <div className="px-4 py-3 rounded-xl bg-slate-950/80 border border-slate-800 text-center min-w-[110px]">
+            <div className="px-4 py-3 rounded-xl bg-surface/80 border border-slate-800 text-center min-w-[110px]">
               <div className="text-[11px] text-slate-400 uppercase font-semibold">Time Window</div>
               <div className="text-xl font-black text-emerald-400">Final 5:00</div>
             </div>
@@ -141,7 +141,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
         {/* Selected Player Deep Dive (5 cols) */}
         <div className="lg:col-span-5 space-y-4">
           {selectedProfile ? (
-            <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-lg space-y-4">
+            <div className="p-5 rounded-2xl bg-surface-raised/80 border border-slate-800 shadow-lg space-y-4">
               {/* Header */}
               <div className="flex items-start justify-between">
                 <div>
@@ -173,7 +173,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
 
               {/* Metric Badges */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-                <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800/80 text-center">
+                <div className="p-2.5 rounded-lg bg-surface border border-slate-800/80 text-center">
                   <div className="text-[10px] text-slate-400 uppercase font-medium">Clutch TS%</div>
                   <div className="text-base font-extrabold text-emerald-400">
                     {selectedProfile.clutchTsPct.toFixed(1)}%
@@ -183,7 +183,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                   </div>
                 </div>
 
-                <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800/80 text-center">
+                <div className="p-2.5 rounded-lg bg-surface border border-slate-800/80 text-center">
                   <div className="text-[10px] text-slate-400 uppercase font-medium">Clutch USG%</div>
                   <div className="text-base font-extrabold text-amber-400">
                     {selectedProfile.clutchUsgPct.toFixed(1)}%
@@ -193,7 +193,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                   </div>
                 </div>
 
-                <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800/80 text-center">
+                <div className="p-2.5 rounded-lg bg-surface border border-slate-800/80 text-center">
                   <div className="text-[10px] text-slate-400 uppercase font-medium">Turnover Fragility</div>
                   <div className={`text-base font-extrabold ${selectedProfile.tovFragility <= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                     {selectedProfile.tovFragility >= 0 ? `+${selectedProfile.tovFragility.toFixed(1)}%` : `${selectedProfile.tovFragility.toFixed(1)}%`}
@@ -203,7 +203,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                   </div>
                 </div>
 
-                <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800/80 text-center">
+                <div className="p-2.5 rounded-lg bg-surface border border-slate-800/80 text-center">
                   <div className="text-[10px] text-slate-400 uppercase font-medium">Clutch dWPA</div>
                   <div className={`text-base font-extrabold ${selectedProfile.cDwpa >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                     {selectedProfile.cDwpa >= 0 ? `+${selectedProfile.cDwpa.toFixed(2)}%` : `${selectedProfile.cDwpa.toFixed(2)}%`}
@@ -213,7 +213,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
               </div>
 
               {/* Unassisted Shot Creation Bar */}
-              <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800/80 space-y-1.5">
+              <div className="p-3 bg-surface/80 rounded-xl border border-slate-800/80 space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-300 font-medium flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
@@ -239,7 +239,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
               <ClutchShotBreakdownCard breakdown={selectedProfile.shotBreakdown} />
             </div>
           ) : (
-            <div className="p-12 text-center text-slate-500 bg-slate-900/40 rounded-xl border border-slate-800">
+            <div className="p-12 text-center text-slate-500 bg-surface-raised/40 rounded-xl border border-slate-800">
               Select a player to view detailed clutch analytics
             </div>
           )}
@@ -247,7 +247,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
       </div>
 
       {/* Leaderboard Table Controls */}
-      <div className="p-4 bg-slate-900/60 rounded-xl border border-slate-800 space-y-4">
+      <div className="p-4 bg-surface-raised/60 rounded-xl border border-slate-800 space-y-4">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div className="relative flex-1 max-w-md">
             <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
@@ -256,7 +256,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
               placeholder="Search closer by name, team, archetype..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-rose-500"
+              className="w-full pl-9 pr-4 py-2 bg-surface border border-slate-800 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-rose-500"
             />
           </div>
 
@@ -267,7 +267,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
               <select
                 value={selectedTeam}
                 onChange={(e) => setSelectedTeam(e.target.value)}
-                className="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-rose-500 font-mono"
+                className="bg-surface border border-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-rose-500 font-mono"
               >
                 {teams.map((t) => (
                   <option key={t} value={t}>
@@ -283,7 +283,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
               <select
                 value={selectedPos}
                 onChange={(e) => setSelectedPos(e.target.value)}
-                className="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-rose-500 font-mono"
+                className="bg-surface border border-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-rose-500 font-mono"
               >
                 <option value="ALL">ALL</option>
                 <option value="G">Guard (G)</option>
@@ -298,7 +298,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
               <select
                 value={sortField}
                 onChange={(e) => handleSort(e.target.value as SortField)}
-                className="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-rose-500 font-mono"
+                className="bg-surface border border-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-rose-500 font-mono"
               >
                 <option value="usciScore">USCI Rating</option>
                 <option value="clutchTsPct">Clutch TS%</option>
@@ -316,7 +316,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
+              <tr className="border-b border-slate-800 text-slate-400 bg-surface/40">
                 <th className="py-2.5 px-3 font-semibold">Rank</th>
                 <th className="py-2.5 px-3 font-semibold">Player</th>
                 <th className="py-2.5 px-3 font-semibold">Team</th>

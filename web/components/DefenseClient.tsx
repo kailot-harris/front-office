@@ -62,7 +62,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Search & Leaderboard (4 cols) */}
         <div className="lg:col-span-4 space-y-4">
-          <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800 space-y-3">
+          <div className="p-4 rounded-xl bg-surface-raised/50 border border-slate-800 space-y-3">
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
               <input
@@ -70,7 +70,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                 placeholder="Search defender, team, role..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm bg-slate-950 border border-slate-800 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                className="w-full pl-9 pr-3 py-2 text-sm bg-surface border border-slate-800 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
               />
             </div>
 
@@ -87,8 +87,8 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                   onClick={() => setSelectedRoleFilter(rf.val)}
                   className={`px-2.5 py-1 text-xs rounded-md font-medium transition-colors ${
                     selectedRoleFilter === rf.val
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
+                      ? 'bg-accent-600 text-white'
+                      : 'bg-surface text-slate-400 hover:text-slate-200 border border-slate-800'
                   }`}
                 >
                   {rf.label}
@@ -106,7 +106,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                     e.target.value as 'versatilityScore' | 'rimDfgDelta' | 'dRapm' | 'poaNavigation'
                   )
                 }
-                className="bg-slate-950 border border-slate-800 rounded px-2 py-0.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                className="bg-surface border border-slate-800 rounded px-2 py-0.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
               >
                 <option value="versatilityScore">Versatility Score (H_v)</option>
                 <option value="rimDfgDelta">Rim DFG% Delta (Low is Best)</option>
@@ -126,8 +126,8 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                   onClick={() => setSelectedProfile(p)}
                   className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                     isSelected
-                      ? 'bg-indigo-950/30 border-indigo-500/50 shadow-md shadow-indigo-500/10'
-                      : 'bg-slate-900/40 border-slate-800/80 hover:border-slate-700'
+                      ? 'bg-accent-950/30 border-accent-500/50 shadow-md shadow-accent-500/10'
+                      : 'bg-surface-raised/40 border-slate-800/80 hover:border-slate-700'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -166,7 +166,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                     </div>
                     <ChevronRight
                       className={`w-4 h-4 text-slate-500 transition-transform ${
-                        isSelected ? 'text-indigo-400 translate-x-0.5' : ''
+                        isSelected ? 'text-accent-400 translate-x-0.5' : ''
                       }`}
                     />
                   </div>
@@ -179,7 +179,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
         {/* Right Column: Deep-Dive Dossier (8 cols) */}
         <div className="lg:col-span-8 space-y-6">
           {/* Header Card */}
-          <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 shadow-xl space-y-4">
+          <div className="p-6 rounded-2xl bg-surface-raised/60 border border-slate-800 shadow-xl space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
               <div className="flex items-center gap-4">
                 <TeamLogo team={selectedProfile.team} size="lg" />
@@ -202,11 +202,11 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-center min-w-[90px]">
+                <div className="p-3 rounded-xl bg-surface/80 border border-slate-800 text-center min-w-[90px]">
                   <div className="text-[10px] text-slate-400 uppercase font-semibold">Versatility H_v</div>
                   <div className="text-lg font-black text-indigo-400">{selectedProfile.versatilityScore}</div>
                 </div>
-                <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-center min-w-[90px]">
+                <div className="p-3 rounded-xl bg-surface/80 border border-slate-800 text-center min-w-[90px]">
                   <div className="text-[10px] text-slate-400 uppercase font-semibold">Rim DFG Δ</div>
                   <div
                     className={`text-lg font-black ${
@@ -221,7 +221,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
 
             {/* Key Metric Gauges */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
-              <div className="p-3 bg-slate-950/50 rounded-xl border border-slate-800">
+              <div className="p-3 bg-surface/50 rounded-xl border border-slate-800">
                 <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
                   <Shield className="w-3.5 h-3.5 text-indigo-400" />
                   <span>POA Screen Nav</span>
@@ -230,7 +230,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                 <div className="text-[10px] text-slate-500 mt-0.5">Pick-and-roll navigation</div>
               </div>
 
-              <div className="p-3 bg-slate-950/50 rounded-xl border border-slate-800">
+              <div className="p-3 bg-surface/50 rounded-xl border border-slate-800">
                 <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
                   <Crosshair className="w-3.5 h-3.5 text-emerald-400" />
                   <span>Rim Deterrence</span>
@@ -239,7 +239,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                 <div className="text-[10px] text-slate-500 mt-0.5">Attempts suppressed/100</div>
               </div>
 
-              <div className="p-3 bg-slate-950/50 rounded-xl border border-slate-800">
+              <div className="p-3 bg-surface/50 rounded-xl border border-slate-800">
                 <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
                   <Activity className="w-3.5 h-3.5 text-amber-400" />
                   <span>Defensive RAPM</span>
@@ -254,7 +254,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                 <div className="text-[10px] text-slate-500 mt-0.5">Pts saved / 100 poss</div>
               </div>
 
-              <div className="p-3 bg-slate-950/50 rounded-xl border border-slate-800">
+              <div className="p-3 bg-surface/50 rounded-xl border border-slate-800">
                 <div className="text-xs text-slate-400 mb-1">Projected MPG</div>
                 <div className="text-base font-bold text-slate-100">{selectedProfile.projMpg} MPG</div>
                 <div className="text-[10px] text-slate-500 mt-0.5">Rotation workload</div>

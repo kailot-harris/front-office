@@ -27,7 +27,7 @@ export const HardCapCrunchMeter: React.FC<HardCapCrunchMeterProps> = ({ profile 
   const twelfthRosterThreshold = 0.0788; // $78,831
 
   return (
-    <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-4 shadow-lg space-y-4">
+    <div className="bg-surface/70 border border-slate-800 rounded-xl p-4 shadow-lg space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-800">
         <div>
           <div className="flex items-center gap-2">
@@ -81,7 +81,7 @@ export const HardCapCrunchMeter: React.FC<HardCapCrunchMeterProps> = ({ profile 
           </span>
         </div>
 
-        <div className="relative w-full h-4 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+        <div className="relative w-full h-4 bg-surface-raised rounded-full overflow-hidden border border-slate-800">
           {/* Minimum Floor Line (90%) */}
           <div
             className="absolute top-0 bottom-0 border-r-2 border-dashed border-amber-400/70 z-10"

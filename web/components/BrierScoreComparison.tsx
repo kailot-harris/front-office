@@ -97,7 +97,7 @@ export const BrierScoreComparison: React.FC = () => {
   const benchmarkPct = getPositionPct(0.250);
 
   return (
-    <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 space-y-6">
+    <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
         <div>
           <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -108,7 +108,7 @@ export const BrierScoreComparison: React.FC = () => {
             Historical cross-validation comparison across 1,902 resolved games (Lower Brier score = superior predictive accuracy).
           </p>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono text-slate-300">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-slate-800 text-xs font-mono text-slate-300">
           <ShieldCheck className="w-4 h-4 text-emerald-400" />
           <span>Baseline Benchmark: 0.2500 (Random Coin Toss)</span>
         </div>
@@ -149,7 +149,7 @@ export const BrierScoreComparison: React.FC = () => {
                 className={`p-3.5 rounded-xl border transition-all ${
                   model.isEnsemble
                     ? 'bg-indigo-950/20 border-indigo-500/40 shadow-lg shadow-indigo-950/50'
-                    : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700'
+                    : 'bg-surface/60 border-slate-800/80 hover:border-slate-700'
                 }`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
@@ -174,7 +174,7 @@ export const BrierScoreComparison: React.FC = () => {
                 </div>
 
                 {/* Progress Gauge */}
-                <div className="relative h-3 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                <div className="relative h-3 w-full bg-surface-raised rounded-full overflow-hidden border border-slate-800">
                   <div
                     className="absolute inset-y-0 w-0.5 bg-amber-400/80 z-20"
                     style={{ left: `${benchmarkPct}%` }}

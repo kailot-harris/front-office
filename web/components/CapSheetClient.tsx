@@ -81,19 +81,19 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            <div className="px-3 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-center">
+            <div className="px-3 py-2.5 rounded-xl bg-surface/80 border border-slate-800 text-center">
               <div className="text-[10px] text-slate-400 uppercase font-semibold">Hard Cap</div>
               <div className="text-base font-black text-white font-mono">$1,520,000</div>
             </div>
-            <div className="px-3 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-center">
+            <div className="px-3 py-2.5 rounded-xl bg-surface/80 border border-slate-800 text-center">
               <div className="text-[10px] text-slate-400 uppercase font-semibold">Salary Floor (90%)</div>
               <div className="text-base font-black text-amber-400 font-mono">$1,368,000</div>
             </div>
-            <div className="px-3 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-center">
+            <div className="px-3 py-2.5 rounded-xl bg-surface/80 border border-slate-800 text-center">
               <div className="text-[10px] text-slate-400 uppercase font-semibold">Supermax Max</div>
               <div className="text-base font-black text-rose-400 font-mono">$249,244</div>
             </div>
-            <div className="px-3 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-center">
+            <div className="px-3 py-2.5 rounded-xl bg-surface/80 border border-slate-800 text-center">
               <div className="text-[10px] text-slate-400 uppercase font-semibold">11-Roster Squeeze</div>
               <div className="text-base font-black text-rose-400 font-mono">
                 {initialData.hardCapSqueezeTeamCount} / 15
@@ -107,7 +107,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Team Ledger (5 cols) */}
         <div className="lg:col-span-5 space-y-3">
-          <div className="p-3.5 bg-slate-900/60 rounded-xl border border-slate-800 space-y-3">
+          <div className="p-3.5 bg-surface-raised/60 rounded-xl border border-slate-800 space-y-3">
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
@@ -116,7 +116,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                   placeholder="Search franchise or core star..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                  className="w-full pl-8 pr-3 py-1.5 bg-surface border border-slate-800 rounded-lg text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500"
                 />
               </div>
 
@@ -124,7 +124,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
               <select
                 value={selectedConf}
                 onChange={(e) => setSelectedConf(e.target.value)}
-                className="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-500 font-mono"
+                className="bg-surface border border-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-500 font-mono"
               >
                 <option value="ALL">All Conf</option>
                 <option value="East">East</option>
@@ -135,7 +135,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
               <select
                 value={selectedTier}
                 onChange={(e) => setSelectedTier(e.target.value)}
-                className="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-500 font-mono"
+                className="bg-surface border border-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-500 font-mono"
               >
                 <option value="ALL">All Tiers</option>
                 <option value="Hard Cap Squeeze (11 Roster)">11 Roster Squeeze</option>
@@ -162,12 +162,12 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                   className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
                     isSelected
                       ? 'bg-amber-950/20 border-amber-500/50 shadow-md ring-1 ring-amber-500/30'
-                      : 'bg-slate-900/60 border-slate-800/80 hover:bg-slate-800/50'
+                      : 'bg-surface-raised/60 border-slate-800/80 hover:bg-slate-800/50'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center font-black font-mono text-sm text-white">
+                      <div className="w-8 h-8 rounded-lg bg-surface border border-slate-800 flex items-center justify-center font-black font-mono text-sm text-white">
                         {t.teamAbbr}
                       </div>
                       <div>
@@ -217,7 +217,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
           {selectedTeam ? (
             <>
               {/* Franchise Title Banner */}
-              <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
+              <div className="p-4 rounded-xl bg-surface-raised/80 border border-slate-800 flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-amber-400 border border-slate-700">
@@ -247,7 +247,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
               <WnbaFranchiseCapTable profile={selectedTeam} />
             </>
           ) : (
-            <div className="p-12 text-center text-slate-500 bg-slate-900/40 rounded-xl border border-slate-800">
+            <div className="p-12 text-center text-slate-500 bg-surface-raised/40 rounded-xl border border-slate-800">
               Select a team to inspect its CBA cap sheet
             </div>
           )}

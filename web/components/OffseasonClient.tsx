@@ -145,7 +145,7 @@ export const OffseasonClient: React.FC<Props> = ({
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 p-3 bg-slate-900/80 rounded-xl border border-slate-800/80 backdrop-blur-sm self-start md:self-auto">
+          <div className="grid grid-cols-3 gap-3 p-3 bg-surface-raised/80 rounded-xl border border-slate-800/80 backdrop-blur-sm self-start md:self-auto">
             <div className="text-center px-3">
               <div className="text-xl font-bold text-indigo-400">15</div>
               <div className="text-[11px] text-slate-400 uppercase font-semibold">Active Teams</div>
@@ -168,7 +168,7 @@ export const OffseasonClient: React.FC<Props> = ({
           onClick={() => setActiveTab('feed')}
           className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'feed'
-              ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
+              ? 'border-accent-600 bg-accent-600 text-white shadow-sm'
               : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
           }`}
         >
@@ -180,7 +180,7 @@ export const OffseasonClient: React.FC<Props> = ({
           onClick={() => setActiveTab('grades')}
           className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'grades'
-              ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
+              ? 'border-accent-600 bg-accent-600 text-white shadow-sm'
               : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
           }`}
         >
@@ -192,7 +192,7 @@ export const OffseasonClient: React.FC<Props> = ({
           onClick={() => setActiveTab('simulator')}
           className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'simulator'
-              ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
+              ? 'border-accent-600 bg-accent-600 text-white shadow-sm'
               : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
           }`}
         >
@@ -204,7 +204,7 @@ export const OffseasonClient: React.FC<Props> = ({
           onClick={() => setActiveTab('draft')}
           className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'draft'
-              ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
+              ? 'border-accent-600 bg-accent-600 text-white shadow-sm'
               : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
           }`}
         >
@@ -217,7 +217,7 @@ export const OffseasonClient: React.FC<Props> = ({
       {activeTab === 'feed' && (
         <div className="space-y-6">
           {/* Controls Bar */}
-          <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+          <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between bg-surface-raised/60 p-4 rounded-xl border border-slate-800">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <input
@@ -225,7 +225,7 @@ export const OffseasonClient: React.FC<Props> = ({
                 placeholder="Search player, team, or trade details..."
                 value={txSearch}
                 onChange={(e) => setTxSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                className="w-full pl-9 pr-4 py-2 bg-surface border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
               />
             </div>
 
@@ -236,7 +236,7 @@ export const OffseasonClient: React.FC<Props> = ({
                 <select
                   value={txTypeFilter}
                   onChange={(e) => setTxTypeFilter(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                  className="bg-surface border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
                 >
                   <option value="all">All Types</option>
                   <option value="trade">Trades</option>
@@ -251,7 +251,7 @@ export const OffseasonClient: React.FC<Props> = ({
                 <select
                   value={txTeamFilter}
                   onChange={(e) => setTxTeamFilter(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                  className="bg-surface border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
                 >
                   <option value="all">All Teams</option>
                   {teamOptions.map((t) => (
@@ -273,8 +273,8 @@ export const OffseasonClient: React.FC<Props> = ({
                   key={tx.id}
                   className={`border rounded-xl transition-all duration-200 overflow-hidden ${
                     isExpanded
-                      ? 'bg-slate-900/90 border-indigo-500/40 shadow-lg shadow-indigo-500/5'
-                      : 'bg-slate-900/40 border-slate-800/80 hover:border-slate-700'
+                      ? 'bg-surface-raised/90 border-indigo-500/40 shadow-lg shadow-indigo-500/5'
+                      : 'bg-surface-raised/40 border-slate-800/80 hover:border-slate-700'
                   }`}
                 >
                   {/* Clickable Header */}
@@ -342,9 +342,9 @@ export const OffseasonClient: React.FC<Props> = ({
 
                   {/* Expanded Detail Panel */}
                   {isExpanded && (
-                    <div className="p-5 border-t border-slate-800/80 bg-slate-950/60 space-y-4">
+                    <div className="p-5 border-t border-slate-800/80 bg-surface/60 space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="bg-slate-900/60 p-3.5 rounded-lg border border-slate-800">
+                        <div className="bg-surface-raised/60 p-3.5 rounded-lg border border-slate-800">
                           <div className="text-xs text-slate-400 mb-1">Statistical Baseline</div>
                           <div className="text-sm font-medium text-slate-200">
                             {tx.player_pts} PTS • {tx.player_reb} REB • {tx.player_ast} AST
@@ -354,7 +354,7 @@ export const OffseasonClient: React.FC<Props> = ({
                           </div>
                         </div>
 
-                        <div className="bg-slate-900/60 p-3.5 rounded-lg border border-slate-800">
+                        <div className="bg-surface-raised/60 p-3.5 rounded-lg border border-slate-800">
                           <div className="text-xs text-slate-400 mb-1">Tactical Fit Score</div>
                           <div className="text-xl font-bold text-indigo-400">{tx.fit_score}/100</div>
                           <div className="text-xs text-slate-500 mt-1">
@@ -362,7 +362,7 @@ export const OffseasonClient: React.FC<Props> = ({
                           </div>
                         </div>
 
-                        <div className="md:col-span-2 bg-slate-900/60 p-3.5 rounded-lg border border-slate-800">
+                        <div className="md:col-span-2 bg-surface-raised/60 p-3.5 rounded-lg border border-slate-800">
                           <div className="text-xs text-slate-400 mb-1">Trade Assets Exchanged</div>
                           <div className="text-xs text-slate-300">
                             {tx.trade_details?.counterparts_received?.length ? (
@@ -386,7 +386,7 @@ export const OffseasonClient: React.FC<Props> = ({
 
                       {/* Detailed Scouting Breakdown */}
                       <div className="space-y-2 text-xs">
-                        <div className="p-3 bg-slate-900/40 rounded-lg border border-slate-800/80">
+                        <div className="p-3 bg-surface-raised/40 rounded-lg border border-slate-800/80">
                           <span className="font-bold text-slate-200">Strategic Summary: </span>
                           <span className="text-slate-300">{tx.analysis.summary}</span>
                         </div>
@@ -418,13 +418,13 @@ export const OffseasonClient: React.FC<Props> = ({
       {activeTab === 'grades' && (
         <div className="space-y-6">
           {/* Controls Bar */}
-          <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+          <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between bg-surface-raised/60 p-4 rounded-xl border border-slate-800">
             <div className="flex items-center gap-3">
               <span className="text-xs text-slate-400 font-medium">Filter Team:</span>
               <select
                 value={gradeTeamFilter}
                 onChange={(e) => setGradeTeamFilter(e.target.value)}
-                className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                className="bg-surface border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
               >
                 <option value="all">All 15 Teams</option>
                 {teamOptions.map((t) => (
@@ -442,7 +442,7 @@ export const OffseasonClient: React.FC<Props> = ({
                 onChange={(e) =>
                   setGradeSortBy(e.target.value as 'net_wins' | 'net_bpm' | 'wins')
                 }
-                className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                className="bg-surface border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
               >
                 <option value="net_wins">Net Wins Added</option>
                 <option value="net_bpm">Net BPM Added</option>
@@ -456,7 +456,7 @@ export const OffseasonClient: React.FC<Props> = ({
             {sortedTeams.map((team) => (
               <div
                 key={team.team}
-                className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-all space-y-4 flex flex-col justify-between"
+                className="bg-surface-raised/60 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-all space-y-4 flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-center justify-between gap-3 mb-2">
@@ -478,7 +478,7 @@ export const OffseasonClient: React.FC<Props> = ({
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 my-3 p-2.5 bg-slate-950/60 rounded-lg border border-slate-800/80 text-center">
+                  <div className="grid grid-cols-3 gap-2 my-3 p-2.5 bg-surface/60 rounded-lg border border-slate-800/80 text-center">
                     <div>
                       <div className="text-[10px] text-slate-400 uppercase">Baseline</div>
                       <div className="text-sm font-bold text-slate-300">{team.baseline_wins} W</div>
@@ -576,7 +576,7 @@ export const OffseasonClient: React.FC<Props> = ({
       {/* TAB 3: INTERACTIVE TRADE & ROSTER MACHINE */}
       {activeTab === 'simulator' && (
         <div className="space-y-6">
-          <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-6 space-y-6">
+          <div className="bg-surface-raised/40 border border-slate-800 rounded-xl p-6 space-y-6">
             <div>
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <Sliders className="w-5 h-5 text-indigo-400" />
@@ -590,13 +590,13 @@ export const OffseasonClient: React.FC<Props> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Franchise A */}
-              <div className="bg-slate-950/60 p-5 rounded-xl border border-slate-800 space-y-4">
+              <div className="bg-surface/60 p-5 rounded-xl border border-slate-800 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="text-sm font-bold text-white">Team 1</div>
                   <select
                     value={simTeamA}
                     onChange={(e) => setSimTeamA(e.target.value)}
-                    className="bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-xs text-indigo-400 font-bold focus:outline-none"
+                    className="bg-surface-raised border border-slate-700 rounded px-2.5 py-1 text-xs text-indigo-400 font-bold focus:outline-none"
                   >
                     {teamOptions.map((t) => (
                       <option key={t} value={t}>
@@ -612,11 +612,11 @@ export const OffseasonClient: React.FC<Props> = ({
                     type="text"
                     value={simPlayerToB}
                     onChange={(e) => setSimPlayerToB(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200"
+                    className="w-full bg-surface-raised border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200"
                   />
                 </div>
 
-                <div className="p-3 bg-slate-900/60 rounded border border-slate-800/80 text-xs space-y-1">
+                <div className="p-3 bg-surface-raised/60 rounded border border-slate-800/80 text-xs space-y-1">
                   <div className="text-slate-400">Simulated Net Impact:</div>
                   <div className="text-sm font-bold text-emerald-400">
                     +{simResults.deltaWinsA} Projected Regular Season Wins
@@ -628,13 +628,13 @@ export const OffseasonClient: React.FC<Props> = ({
               </div>
 
               {/* Franchise B */}
-              <div className="bg-slate-950/60 p-5 rounded-xl border border-slate-800 space-y-4">
+              <div className="bg-surface/60 p-5 rounded-xl border border-slate-800 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="text-sm font-bold text-white">Team 2</div>
                   <select
                     value={simTeamB}
                     onChange={(e) => setSimTeamB(e.target.value)}
-                    className="bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-xs text-indigo-400 font-bold focus:outline-none"
+                    className="bg-surface-raised border border-slate-700 rounded px-2.5 py-1 text-xs text-indigo-400 font-bold focus:outline-none"
                   >
                     {teamOptions.map((t) => (
                       <option key={t} value={t}>
@@ -650,11 +650,11 @@ export const OffseasonClient: React.FC<Props> = ({
                     type="text"
                     value={simPlayerToA}
                     onChange={(e) => setSimPlayerToA(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200"
+                    className="w-full bg-surface-raised border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200"
                   />
                 </div>
 
-                <div className="p-3 bg-slate-900/60 rounded border border-slate-800/80 text-xs space-y-1">
+                <div className="p-3 bg-surface-raised/60 rounded border border-slate-800/80 text-xs space-y-1">
                   <div className="text-slate-400">Simulated Net Impact:</div>
                   <div className="text-sm font-bold text-rose-400">
                     {simResults.deltaWinsB} Projected Regular Season Wins
@@ -684,7 +684,7 @@ export const OffseasonClient: React.FC<Props> = ({
             {initialDraft.map((prospect) => (
               <div
                 key={prospect.pick}
-                className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 hover:border-indigo-500/40 transition-all space-y-4 flex flex-col justify-between"
+                className="bg-surface-raised/60 border border-slate-800 rounded-xl p-5 hover:border-indigo-500/40 transition-all space-y-4 flex flex-col justify-between"
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-3">
@@ -706,7 +706,7 @@ export const OffseasonClient: React.FC<Props> = ({
                     </span>
                   </div>
 
-                  <div className="p-2.5 bg-slate-950/60 rounded-lg border border-slate-800/80 space-y-1">
+                  <div className="p-2.5 bg-surface/60 rounded-lg border border-slate-800/80 space-y-1">
                     <div className="text-[10px] text-slate-400 uppercase font-semibold">Archetype</div>
                     <div className="text-xs font-bold text-slate-200">{prospect.archetype}</div>
                     <div className="text-[11px] text-slate-500 flex justify-between pt-1">

@@ -36,7 +36,7 @@ export const WnbaFranchiseCapTable: React.FC<WnbaFranchiseCapTableProps> = ({ pr
   };
 
   return (
-    <div className="bg-slate-950/70 border border-slate-800 rounded-xl overflow-hidden shadow-lg space-y-3 p-4">
+    <div className="bg-surface/70 border border-slate-800 rounded-xl overflow-hidden shadow-lg space-y-3 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-800">
         <div>
           <h4 className="text-xs font-bold text-white tracking-tight flex items-center gap-1.5">
@@ -67,7 +67,7 @@ export const WnbaFranchiseCapTable: React.FC<WnbaFranchiseCapTableProps> = ({ pr
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs border-collapse">
           <thead>
-            <tr className="border-b border-slate-800 text-[10px] font-mono text-slate-400 uppercase tracking-wider bg-slate-900/40">
+            <tr className="border-b border-slate-800 text-[10px] font-mono text-slate-400 uppercase tracking-wider bg-surface-raised/40">
               <th className="py-2 px-2.5 font-semibold">Player</th>
               <th className="py-2 px-2.5 font-semibold text-center">Pos</th>
               <th className="py-2 px-2.5 font-semibold text-right">2026 Salary</th>
@@ -79,7 +79,7 @@ export const WnbaFranchiseCapTable: React.FC<WnbaFranchiseCapTableProps> = ({ pr
           </thead>
           <tbody className="divide-y divide-slate-800/60 font-mono">
             {contracts.map((c) => (
-              <tr key={c.playerId} className="hover:bg-slate-900/50 transition-colors">
+              <tr key={c.playerId} className="hover:bg-surface-raised/50 transition-colors">
                 <td className="py-2 px-2.5 font-sans font-medium text-white truncate max-w-[140px]">
                   {c.playerName}
                 </td>
@@ -119,7 +119,7 @@ export const WnbaFranchiseCapTable: React.FC<WnbaFranchiseCapTableProps> = ({ pr
             ))}
           </tbody>
           <tfoot>
-            <tr className="border-t-2 border-slate-800 bg-slate-900/70 font-mono font-bold text-xs text-white">
+            <tr className="border-t-2 border-slate-800 bg-surface-raised/70 font-mono font-bold text-xs text-white">
               <td className="py-2.5 px-2.5 font-sans">Total Guaranteed Commitments</td>
               <td className="py-2.5 px-2.5 text-center text-slate-400">{contracts.length}</td>
               <td className="py-2.5 px-2.5 text-right text-indigo-400">
