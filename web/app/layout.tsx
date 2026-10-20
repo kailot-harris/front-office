@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { GeistSans, GeistMono } from 'geist/font';
 import './globals.css';
 import { Sidebar } from '@/components/Sidebar';
+import { SportSwitcher } from '@/components/SportSwitcher';
 
 export const metadata: Metadata = {
   title: 'NBA Season-Long Projections | 1,000-Season Monte Carlo',
@@ -21,6 +22,7 @@ export default function RootLayout({
       >
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
+          <SportSwitcher current="nba" />
           <main className="flex-1 pb-10">{children}</main>
           <footer className="border-t border-slate-800 bg-slate-900/50 py-5 text-center text-xs text-slate-500 font-sans">
             <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
