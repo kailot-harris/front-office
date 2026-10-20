@@ -30,7 +30,7 @@
 #   "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" "<this worktree>\tools\gif_point_diff_race.R"
 # ==============================================================================
 
-WORKTREE_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics/.claude/worktrees/agent-a2db751154571a815"
+WORKTREE_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 WORKTREE_CACHE_DIR <- file.path(WORKTREE_DIR, "cache")
 if (!dir.exists(WORKTREE_CACHE_DIR)) dir.create(WORKTREE_CACHE_DIR, recursive = TRUE)
 setwd(WORKTREE_DIR)

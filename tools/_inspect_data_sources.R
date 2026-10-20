@@ -1,4 +1,4 @@
-setwd("c:/Users/kailo/kayceeslices/NFL Analytics")
+setwd("c:/Users/kailo/kayceeslices/front-office/nfl analytics")
 source("config.R")
 
 cat("=== CACHE_ROSTERS columns ===\n")

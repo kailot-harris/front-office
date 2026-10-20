@@ -33,7 +33,7 @@
 #   "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" "<this worktree>\tools\gif_upset_timeline.R"
 # ==============================================================================
 
-WORKTREE_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics/.claude/worktrees/agent-a8cb3dfcf30886990"
+WORKTREE_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 WORKTREE_CACHE_DIR <- file.path(WORKTREE_DIR, "cache")
 if (!dir.exists(WORKTREE_CACHE_DIR)) dir.create(WORKTREE_CACHE_DIR, recursive = TRUE)
 setwd(WORKTREE_DIR)

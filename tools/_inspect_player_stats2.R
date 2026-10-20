@@ -1,4 +1,4 @@
-setwd("c:/Users/kailo/kayceeslices/NFL Analytics")
+setwd("c:/Users/kailo/kayceeslices/front-office/nfl analytics")
 source("config.R")
 ps <- nflreadr::load_player_stats(seasons = CURRENT_SEASON)
 cat(paste(names(ps), collapse=", "), "\n")

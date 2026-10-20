@@ -1,6 +1,6 @@
 # ==============================================================================
 # Long-Shot Staking Odds Cap - Empirical Derivation
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/derive_longshot_odds_cap.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/derive_longshot_odds_cap.R
 #
 # Investigates and mitigates docs/HANDOFF.md Known Issue #5: tools/
 # investigate_ev_clustering.R (run 2026-09-17, see that script's output) confirmed
@@ -43,7 +43,7 @@
 #   "/c/Program Files/R/R-4.5.2/bin/Rscript.exe" tools/derive_longshot_odds_cap.R
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({

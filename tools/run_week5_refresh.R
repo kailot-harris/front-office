@@ -2,7 +2,7 @@
 # run_full_pipeline.R), skipping fatigue/playoff/market/bet/discord stages since this run's sole
 # purpose is to regenerate CACHE_PROJECTED_MATCHUPS for a week 5 prediction visualization, not a
 # full pipeline execution with live Discord/Odds-API side effects.
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 setwd(PROJECT_DIR)
 source("logging_utils.R")
 source("config.R")

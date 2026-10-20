@@ -1,6 +1,6 @@
 # ==============================================================================
 # Kalman State-Space Model Hyperparameters - Empirical Derivation (Phase 5)
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/derive_kalman_params.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/derive_kalman_params.R
 #
 # Precedent: tools/derive_elo_k.R (single-parameter stats::optimize()), generalized to
 # stats::optim() (method = "L-BFGS-B", box-constrained, not a grid search) for
@@ -13,7 +13,7 @@
 #   "/c/Program Files/R/R-4.5.2/bin/Rscript.exe" tools/derive_kalman_params.R
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({

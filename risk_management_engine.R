@@ -1,7 +1,7 @@
 # ==============================================================================
 # risk_management_engine.R (NFL port of WNBA Analytics' risk_management_engine.R)
 # Phase 5, Task P5-A (docs/task_assignments_phase4.md)
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/risk_management_engine.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/risk_management_engine.R
 #
 # Ported per that task doc's Overview: WNBA's engine is entirely sport-agnostic
 # (bankroll drawdown monitor / dynamic Kelly-multiplier stop-loss operating on

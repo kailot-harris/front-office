@@ -1,6 +1,6 @@
 # ==============================================================================
 # Team Ratings & Matchup Projection Engine (NFL)
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/team_ratings_engine.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/team_ratings_engine.R
 #
 # Phase 2, Task P2-B (docs/task_assignments_phase2.md). First real consumer of
 # NFL_HCA and NFL_MARGIN_SIGMA (per that doc's Interface Contracts table). Reads

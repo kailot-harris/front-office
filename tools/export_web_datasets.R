@@ -11,7 +11,7 @@ suppressPackageStartupMessages({
   library(jsonlite)
 })
 
-PROJECT_ROOT <- "c:/Users/kailo/kayceeslices/NFL Analytics"
+PROJECT_ROOT <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 setwd(PROJECT_ROOT)
 source("config.R")
 

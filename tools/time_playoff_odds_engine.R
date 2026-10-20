@@ -1,7 +1,7 @@
 # ==============================================================================
 # One-off timing/stability harness for GitHub issue #16 ("Playoff Odds 6: Time
 # and tune N_SEASON_SIMULATIONS against real data").
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/time_playoff_odds_engine.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/time_playoff_odds_engine.R
 #
 # NOT part of run_full_pipeline.R's DAG (per tools/ convention in CLAUDE.md) and not
 # required to be kept as a permanent script per issue #16's own "Testable independently"
@@ -25,7 +25,7 @@
 # regardless of invocation directory.
 # ==============================================================================
 
-setwd("c:/Users/kailo/kayceeslices/NFL Analytics/.claude/worktrees/agent-a29965b4a3135a707")
+setwd("c:/Users/kailo/kayceeslices/front-office/nfl analytics/.claude/worktrees/agent-a29965b4a3135a707")
 source("config.R")
 source("playoff_odds_engine.R")
 

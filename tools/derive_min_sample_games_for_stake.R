@@ -1,6 +1,6 @@
 # ==============================================================================
 # Train/Test Derivation of MIN_SAMPLE_GAMES_FOR_STAKE via Calibration Responsiveness
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/derive_min_sample_games_for_stake.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/derive_min_sample_games_for_stake.R
 #
 # Answers a DIFFERENT question than tools/backtest_shrinkage_optimizer.R's existing
 # MIN_SAMPLE_GAMES_FOR_STAKE derivation (config.R:228-261, tau=9, 2026-09-17). That
@@ -50,7 +50,7 @@
 # lands inside the worktree (not silently written into the main repo's cache/), while every
 # READ of an existing CACHE_* path still correctly resolves to config.R's main-repo path
 # (those input caches are shared, read-only, real data - not something this task regenerates).
-WORKTREE_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics/.claude/worktrees/agent-a648d39a05886e7cb"
+WORKTREE_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics/.claude/worktrees/agent-a648d39a05886e7cb"
 WORKTREE_CACHE_DIR <- file.path(WORKTREE_DIR, "cache")
 if (!dir.exists(WORKTREE_CACHE_DIR)) dir.create(WORKTREE_CACHE_DIR, recursive = TRUE)
 setwd(WORKTREE_DIR)

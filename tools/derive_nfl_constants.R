@@ -1,6 +1,6 @@
 # ==============================================================================
 # NFL Analytics Pipeline - Empirical Constant Derivation
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/derive_nfl_constants.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/derive_nfl_constants.R
 #
 # Phase 0 (T0) reproducible derivation script. Pulls REAL historical NFL
 # schedule/results data via nflreadr::load_schedules() and empirically computes

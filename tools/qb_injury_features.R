@@ -1,6 +1,6 @@
 # ==============================================================================
 # QB-Injury / Backup-Starter Feature Builder (Phase 1, model-quality remediation)
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/qb_injury_features.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/qb_injury_features.R
 #
 # First player-level data join in this repo (CLAUDE.md flags this as the highest
 # join-mismatch risk area - four competing NFL player-ID schemes exist). VERIFIED

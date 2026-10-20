@@ -1,6 +1,6 @@
 # ==============================================================================
 # NFL Playoff Odds — Week-by-Week History Backfill
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/playoff_odds_history_backfill.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/playoff_odds_history_backfill.R
 #
 # GitHub issue #18 ("Historical weekly playoff-odds backfill (CACHE_PLAYOFF_ODDS_HISTORY)"),
 # docs/task_assignments_phase8.md task P9-B. CACHE_PLAYOFF_ODDS (playoff_odds_engine.R's
@@ -11,8 +11,9 @@
 # convenience choice.
 #
 # This is a tools/ one-off (per CLAUDE.md's folder-layout convention), not part of
-# run_full_pipeline.R's DAG - it is re-run manually/periodically, not every pipeline run, since
-# it is strictly more expensive than the single "now" snapshot (see cost note below).
+# run_full_pipeline.R's DAG - it is re-run manually/periodically (once per week, after that
+# week's games conclude), not every pipeline run, since it is strictly more expensive than the
+# single "now" snapshot (see cost note below).
 #
 # ------------------------------------------------------------------------------------------
 # WHY THIS REUSES .seed_conference() / build_tiebreak_data() RATHER THAN DUPLICATING THEM:
@@ -61,9 +62,23 @@
 # measured seconds-per-week and total runtime); N_SEASON_SIMULATIONS itself was NOT reduced for
 # this script - if the measured cost had made an unattended full run impractical, this script
 # would stop short of running the whole backfill rather than silently cutting the trial count.
+#
+# INCREMENTAL BEHAVIOR (added after the initial full backfill, so re-running weekly doesn't
+# re-pay the whole season's cost every time): a week's retrospective snapshot is a deterministic
+# function of only the games completed through that week (see "RETROSPECTIVE SNAPSHOT
+# DEFINITION" above) plus whatever's in CACHE_SCHEDULES/CACHE_TEAM_RATINGS right now for the
+# not-yet-real portion of the simulated season - once week W has actually been played out to
+# completion, re-simulating "as of week W" again produces the same quantity (up to Monte Carlo
+# noise alone), so an already-cached completed week is never recomputed. Each run reads any
+# existing CACHE_PLAYOFF_ODDS_HISTORY, diffs its cached `week` values against
+# 1:latest_completed_week, and only runs .simulate_one_season_asof() for the weeks NOT already
+# present - e.g. with weeks 1-6 cached, a week-7 run does 1 week of simulation (not 7), the
+# Monday-after-games-conclude cadence this script is meant to run on. A first-ever run (no
+# cache file yet) or a cache that fails its schema check still runs the full 1:latest_completed_
+# week backfill, same as the original behavior.
 # ==============================================================================
 
-setwd("C:/Users/kailo/kayceeslices/NFL Analytics")
+setwd("c:/Users/kailo/kayceeslices/front-office/nfl analytics")
 source("config.R")
 source("logging_utils.R")
 .LOG_SCRIPT <- "playoff_odds_history_backfill.R"
@@ -144,17 +159,21 @@ source("playoff_simulator.R")
 #
 # Sole exposed entry point (no sys.nframe()/interactive() auto-run guard, per this repo's
 # call_fn convention - see CLAUDE.md). No required args. For each week W in
-# 1:(latest fully-completed week in CURRENT_SEASON), runs N_SEASON_SIMULATIONS trials of
-# .simulate_one_season_asof(W, ...), tallies each of the 32 real NFL_TEAMS abbreviations'
-# appearance as a playoff team / division winner / #1-seed bye across those trials, and writes
-# one (week, team) row per team per week to CACHE_PLAYOFF_ODDS_HISTORY. Mirrors
-# run_playoff_odds_engine()'s non-stop()ping TRUE/FALSE return contract.
+# 1:(latest fully-completed week in CURRENT_SEASON) NOT already present in an existing
+# CACHE_PLAYOFF_ODDS_HISTORY (see "INCREMENTAL BEHAVIOR" above), runs N_SEASON_SIMULATIONS
+# trials of .simulate_one_season_asof(W, ...), tallies each of the 32 real NFL_TEAMS
+# abbreviations' appearance as a playoff team / division winner / #1-seed bye across those
+# trials, and writes one (week, team) row per team per week to CACHE_PLAYOFF_ODDS_HISTORY -
+# newly-simulated weeks combined with whatever already-cached weeks were reused unchanged.
+# Mirrors run_playoff_odds_engine()'s non-stop()ping TRUE/FALSE return contract.
 #
 # "Latest fully-completed week" = the largest week number for which every scheduled REG game
 # has a non-NA score (a week with any in-progress/postponed game is NOT treated as complete).
 #
 # A single .simulate_one_season_asof() call returning NULL aborts the whole run immediately
-# (log + return FALSE), same non-silent-undercounting contract run_playoff_odds_engine() uses.
+# (log + return FALSE), same non-silent-undercounting contract run_playoff_odds_engine() uses -
+# the output file is NOT overwritten in this case, so a prior successful cache (full or partial)
+# is left intact rather than being clobbered by a failed re-run.
 # ------------------------------------------------------------------------------------------
 run_playoff_odds_history_backfill <- function() {
   log_info(sprintf("Starting NFL playoff odds history backfill (%d season simulations per week)...",
@@ -191,14 +210,62 @@ run_playoff_odds_history_backfill <- function() {
       return(FALSE)
     }
     latest_completed_week <- max(fully_completed_weeks)
-    log_info(sprintf("Latest fully-completed week in CURRENT_SEASON (%d): week %d. Backfilling weeks 1:%d.",
-                      CURRENT_SEASON, latest_completed_week, latest_completed_week),
+
+    # ---- Load any existing cache and work out which weeks are already done. A week already
+    # present in the existing cache is a deterministic retrospective snapshot (see this file's
+    # header) and is reused as-is rather than re-simulated - see "INCREMENTAL BEHAVIOR" above.
+    # A missing file, an unreadable file, or a file with an unexpected schema are all treated
+    # identically to "nothing cached yet" (full 1:latest_completed_week backfill), never a hard
+    # failure - this script's whole job is to (re)build that cache, so a damaged/outdated one is
+    # not a reason to stop.
+    expected_cols <- c("week", "team", "division_win_prob", "playoff_prob", "bye_prob")
+    existing_history <- NULL
+    if (file.exists(CACHE_PLAYOFF_ODDS_HISTORY)) {
+      existing_history <- tryCatch({
+        cached <- readRDS(CACHE_PLAYOFF_ODDS_HISTORY)
+        if (!is.data.frame(cached) || !all(expected_cols %in% names(cached))) {
+          log_warn("Existing CACHE_PLAYOFF_ODDS_HISTORY has an unexpected schema - ignoring it and running a full backfill.",
+                   call = "run_playoff_odds_history_backfill()")
+          NULL
+        } else {
+          cached
+        }
+      }, error = function(e) {
+        log_warn(sprintf("Existing CACHE_PLAYOFF_ODDS_HISTORY could not be read (%s) - ignoring it and running a full backfill.",
+                          conditionMessage(e)),
+                 call = "run_playoff_odds_history_backfill()")
+        NULL
+      })
+    }
+
+    # Cached weeks beyond the current latest_completed_week are dropped rather than carried
+    # forward - that situation only arises from a stale/leftover cache (e.g. a new season
+    # started and CACHE_PLAYOFF_ODDS_HISTORY wasn't cleared), and such rows would otherwise
+    # silently reappear in the output even though they're no longer a valid prefix of 1:latest_
+    # completed_week.
+    if (!is.null(existing_history)) {
+      existing_history <- existing_history[existing_history$week <= latest_completed_week, ]
+    }
+    cached_weeks <- if (is.null(existing_history)) integer(0) else sort(unique(existing_history$week))
+    weeks_to_run <- setdiff(seq_len(latest_completed_week), cached_weeks)
+
+    if (length(weeks_to_run) == 0) {
+      log_info(sprintf("CACHE_PLAYOFF_ODDS_HISTORY already covers weeks 1:%d (latest fully-completed week) - nothing to simulate.",
+                        latest_completed_week),
+               call = "run_playoff_odds_history_backfill()")
+      return(TRUE)
+    }
+
+    log_info(sprintf("Latest fully-completed week in CURRENT_SEASON (%d): week %d. %d week(s) already cached; simulating week(s) %s.",
+                      CURRENT_SEASON, latest_completed_week, length(cached_weeks),
+                      paste(weeks_to_run, collapse = ", ")),
              call = "run_playoff_odds_history_backfill()")
 
     team_abbrs <- names(NFL_TEAMS)
-    all_rows <- vector("list", latest_completed_week)
+    all_rows <- vector("list", length(weeks_to_run))
 
-    for (w in seq_len(latest_completed_week)) {
+    for (i in seq_along(weeks_to_run)) {
+      w <- weeks_to_run[i]
       week_start <- Sys.time()
 
       playoff_counts   <- setNames(integer(length(team_abbrs)), team_abbrs)
@@ -225,11 +292,11 @@ run_playoff_odds_history_backfill <- function() {
       }
 
       week_elapsed <- as.numeric(Sys.time() - week_start, units = "secs")
-      log_info(sprintf("Backfilled week %d/%d (%d season simulations) in %.1f sec.",
-                        w, latest_completed_week, N_SEASON_SIMULATIONS, week_elapsed),
+      log_info(sprintf("Backfilled week %d (%d/%d new week(s) this run, %d season simulations) in %.1f sec.",
+                        w, i, length(weeks_to_run), N_SEASON_SIMULATIONS, week_elapsed),
                call = "run_playoff_odds_history_backfill()")
 
-      all_rows[[w]] <- data.frame(
+      all_rows[[i]] <- data.frame(
         week               = w,
         team               = team_abbrs,
         division_win_prob  = division_counts[team_abbrs] / N_SEASON_SIMULATIONS,
@@ -240,11 +307,22 @@ run_playoff_odds_history_backfill <- function() {
       )
     }
 
-    playoff_odds_history <- dplyr::bind_rows(all_rows)
+    newly_simulated <- dplyr::bind_rows(all_rows)
+
+    # Reused cached weeks + newly-simulated weeks, deduped defensively on week (newly-simulated
+    # rows win on the - should-never-happen - chance of overlap, since weeks_to_run was built as
+    # a set difference against cached_weeks above) and sorted for a stable on-disk row order.
+    playoff_odds_history <- if (is.null(existing_history)) {
+      newly_simulated
+    } else {
+      dplyr::bind_rows(newly_simulated, existing_history[, expected_cols]) |>
+        dplyr::distinct(week, team, .keep_all = TRUE)
+    }
+    playoff_odds_history <- playoff_odds_history |> dplyr::arrange(week, team)
 
     saveRDS(playoff_odds_history, CACHE_PLAYOFF_ODDS_HISTORY)
-    log_info(sprintf("Wrote playoff odds history (weeks 1:%d, %d season simulations/week) to CACHE_PLAYOFF_ODDS_HISTORY.",
-                      latest_completed_week, N_SEASON_SIMULATIONS),
+    log_info(sprintf("Wrote playoff odds history (weeks 1:%d - %d newly simulated, %d reused from cache - %d season simulations/week) to CACHE_PLAYOFF_ODDS_HISTORY.",
+                      latest_completed_week, length(weeks_to_run), length(cached_weeks), N_SEASON_SIMULATIONS),
              call = "run_playoff_odds_history_backfill()", out_path = CACHE_PLAYOFF_ODDS_HISTORY)
 
     TRUE

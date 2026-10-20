@@ -1,6 +1,6 @@
 # ==============================================================================
 # Market-Blend Weight - Empirical Derivation (Phase 1)
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/derive_market_blend_weight.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/derive_market_blend_weight.R
 #
 # Precedent: tools/derive_nfl_constants.R / tools/derive_qb_injury_penalty.R (one-off,
 # documented derivation scripts that print the final value for config.R). Derives
@@ -20,7 +20,7 @@
 #   "/c/Program Files/R/R-4.5.2/bin/Rscript.exe" tools/derive_market_blend_weight.R
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({

@@ -1,6 +1,6 @@
 # ==============================================================================
 # Ridge Model + Participation/Personnel Features (Known Issue #7 pickup)
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/ridge_participation_model.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/ridge_participation_model.R
 #
 # Extends tools/ridge_massey_model.R's ridge feature set with the six per-team-per-game
 # participation/personnel features tools/participation_features.R computes (personnel-grouping

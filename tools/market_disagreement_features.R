@@ -1,7 +1,7 @@
 # ==============================================================================
 # Market-Disagreement Project: Phases 0-2 (label + hypothesized features + exploratory
 # diagnostics, NO model fit yet - that's Phase 3, a separate future script)
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/market_disagreement_features.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/market_disagreement_features.R
 #
 # PHASE 0 FINDINGS (fact-check before building anything, 2026-09-17):
 #   - nflreadr::dictionary_schedules (v1.5.1, live-checked via data(dictionary_schedules,
@@ -59,7 +59,7 @@
 #   "/c/Program Files/R/R-4.5.2/bin/Rscript.exe" tools/market_disagreement_features.R
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
 setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({

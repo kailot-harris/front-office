@@ -1,6 +1,6 @@
 # ==============================================================================
 # Weekly Turnover-Margin History Cache
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/turnover_margin_history.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/turnover_margin_history.R
 #
 # Phase 9 / issue #19 (Wave 1, P9-C). Aggregates CACHE_PBP's play-level
 # interception/fumble_lost columns to one row per (week, team) and writes the
@@ -12,7 +12,7 @@
 # script segfaults Rscript.exe on this machine; this is a repo-local tools/
 # script so a relative path from the repo root also works, but absolute is
 # always safe):
-#   "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" "c:/Users/kailo/kayceeslices/NFL Analytics/tools/turnover_margin_history.R"
+#   "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" "c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/turnover_margin_history.R"
 #
 # ------------------------------------------------------------------------------------------
 # LIVE-VERIFIED COLUMN SEMANTICS (2026-10-13, nflreadr::load_pbp(seasons = 2024), 49,492 rows)
@@ -71,7 +71,7 @@ suppressPackageStartupMessages({
   library(dplyr)
 })
 
-setwd("c:/Users/kailo/kayceeslices/NFL Analytics")
+setwd("c:/Users/kailo/kayceeslices/front-office/nfl analytics")
 source("config.R")
 source("logging_utils.R")
 .LOG_SCRIPT <- "turnover_margin_history.R"

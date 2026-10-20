@@ -1,6 +1,6 @@
 # ==============================================================================
 # NFL Official Playoff Tiebreaker Procedures
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/nfl_tiebreakers.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/nfl_tiebreakers.R
 #
 # Replaces playoff_simulator.R's DELIBERATELY SIMPLIFIED tiebreak (win% -> games_played ->
 # alphabetical) with the NFL's real, official multi-step procedure. Sourced by

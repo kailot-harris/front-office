@@ -1,6 +1,6 @@
 # ==============================================================================
 # Shared Walk-Forward Game-Table Builder (Phase A, model-quality remediation)
-# Path: c:/Users/kailo/kayceeslices/NFL Analytics/tools/backtest_common.R
+# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/backtest_common.R
 #
 # Extracted from tools/backtest_shrinkage_optimizer.R (2026-09-17) so a second
 # consumer (tools/model_backtest_harness.R) can reuse the exact same no-lookahead
