@@ -148,7 +148,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Header Card */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+      <div className="bg-surface-raised border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-sky-500/5 rounded-full blur-3xl pointer-events-none" />
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
           <div>
@@ -170,7 +170,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full lg:w-auto">
-            <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3 text-center">
+            <div className="bg-surface/70 border border-slate-800/80 rounded-xl p-3 text-center">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                 Pitches Analyzed
               </div>
@@ -178,7 +178,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                 {data.sample_pitches_analyzed.toLocaleString()}
               </div>
             </div>
-            <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3 text-center">
+            <div className="bg-surface/70 border border-slate-800/80 rounded-xl p-3 text-center">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                 Batted Balls
               </div>
@@ -186,7 +186,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                 {data.sample_batted_balls.toLocaleString()}
               </div>
             </div>
-            <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3 text-center">
+            <div className="bg-surface/70 border border-slate-800/80 rounded-xl p-3 text-center">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                 Shadow Pitches
               </div>
@@ -194,7 +194,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                 {data.tier2_zone.framing_summary.total_shadow_taken.toLocaleString()}
               </div>
             </div>
-            <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3 text-center">
+            <div className="bg-surface/70 border border-slate-800/80 rounded-xl p-3 text-center">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                 Shift BABIP Δ
               </div>
@@ -211,8 +211,8 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
             onClick={() => setActiveTab('spray')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               activeTab === 'spray'
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 ring-1 ring-emerald-400/50'
-                : 'bg-slate-950/60 text-slate-400 hover:text-white hover:bg-slate-800/60 border border-slate-800'
+                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30 ring-1 ring-accent-400/50'
+                : 'bg-surface/60 text-slate-400 hover:text-white hover:bg-slate-800/60 border border-slate-800'
             }`}
           >
             <Compass className="w-4 h-4" />
@@ -223,8 +223,8 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
             onClick={() => setActiveTab('zone')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               activeTab === 'zone'
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 ring-1 ring-emerald-400/50'
-                : 'bg-slate-950/60 text-slate-400 hover:text-white hover:bg-slate-800/60 border border-slate-800'
+                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30 ring-1 ring-accent-400/50'
+                : 'bg-surface/60 text-slate-400 hover:text-white hover:bg-slate-800/60 border border-slate-800'
             }`}
           >
             <Crosshair className="w-4 h-4" />
@@ -235,8 +235,8 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
             onClick={() => setActiveTab('movement')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               activeTab === 'movement'
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 ring-1 ring-emerald-400/50'
-                : 'bg-slate-950/60 text-slate-400 hover:text-white hover:bg-slate-800/60 border border-slate-800'
+                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30 ring-1 ring-accent-400/50'
+                : 'bg-surface/60 text-slate-400 hover:text-white hover:bg-slate-800/60 border border-slate-800'
             }`}
           >
             <Activity className="w-4 h-4" />
@@ -247,8 +247,8 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
             onClick={() => setActiveTab('defense')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               activeTab === 'defense'
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 ring-1 ring-emerald-400/50'
-                : 'bg-slate-950/60 text-slate-400 hover:text-white hover:bg-slate-800/60 border border-slate-800'
+                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30 ring-1 ring-accent-400/50'
+                : 'bg-surface/60 text-slate-400 hover:text-white hover:bg-slate-800/60 border border-slate-800'
             }`}
           >
             <Shield className="w-4 h-4" />
@@ -263,7 +263,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
       {activeTab === 'spray' && (
         <div className="space-y-6">
           {/* Controls & Filter Bar */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="bg-surface-raised border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3">
               {/* Ballpark Selector */}
               <div>
@@ -273,7 +273,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                 <select
                   value={selectedPark}
                   onChange={(e) => setSelectedPark(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  className="bg-surface border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-sky-500"
                 >
                   {Object.entries(data.tier1_spray.park_dimensions).map(([code, p]) => (
                     <option key={code} value={code}>
@@ -288,14 +288,14 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                 <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
                   Batter Hand
                 </label>
-                <div className="flex rounded-lg bg-slate-950 border border-slate-800 p-0.5">
+                <div className="flex rounded-lg bg-surface border border-slate-800 p-0.5">
                   {(['ALL', 'L', 'R'] as const).map((hand) => (
                     <button
                       key={hand}
                       onClick={() => setSprayHandFilter(hand)}
                       className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
                         sprayHandFilter === hand
-                          ? 'bg-emerald-600 text-white'
+                          ? 'bg-accent-600 text-white'
                           : 'text-slate-400 hover:text-white'
                       }`}
                     >
@@ -313,7 +313,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                 <select
                   value={sprayTypeFilter}
                   onChange={(e) => setSprayTypeFilter(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  className="bg-surface border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-sky-500"
                 >
                   <option value="ALL">All Outcomes ({filteredBalls.length})</option>
                   <option value="Home Run">Home Runs</option>
@@ -331,7 +331,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                     type="checkbox"
                     checked={hardHitOnly}
                     onChange={(e) => setHardHitOnly(e.target.checked)}
-                    className="w-4 h-4 rounded bg-slate-950 border-slate-800 text-sky-500 focus:ring-0 focus:ring-offset-0"
+                    className="w-4 h-4 rounded bg-surface border-slate-800 text-sky-500 focus:ring-0 focus:ring-offset-0"
                   />
                   <span>Hard-Hit (95+ mph)</span>
                 </label>
@@ -339,7 +339,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
             </div>
 
             {/* Park Dimension Badges & Architectural Profile */}
-            <div className="flex flex-col gap-1.5 text-xs bg-slate-950/80 border border-slate-800 rounded-lg px-3.5 py-2.5">
+            <div className="flex flex-col gap-1.5 text-xs bg-surface/80 border border-slate-800 rounded-lg px-3.5 py-2.5">
               <div className="flex items-center gap-3 flex-wrap">
                 <span className="text-slate-400 font-medium">Fence Distances:</span>
                 <span className="font-mono text-slate-200">
@@ -380,7 +380,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
           {/* Main Visualizer Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* SVG Spray Field (8 cols) */}
-            <div className="lg:col-span-8 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col items-center relative">
+            <div className="lg:col-span-8 bg-surface-raised border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col items-center relative">
               <div className="w-full flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-white">
@@ -735,7 +735,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
             {/* Inspector & HR in 30 Parks Panel (4 cols) */}
             <div className="lg:col-span-4 space-y-4">
               {/* Ball Inspector Card */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+              <div className="bg-surface-raised border border-slate-800 rounded-2xl p-5 shadow-xl">
                 <div className="flex items-center justify-between mb-3 border-b border-slate-800 pb-2.5">
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
                     <Crosshair className="w-4 h-4 text-sky-400" />
@@ -769,25 +769,25 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
 
                     {/* Stat Grid */}
                     <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                      <div className="bg-surface p-2.5 rounded-lg border border-slate-800">
                         <div className="text-slate-400 text-[10px] uppercase font-semibold">Exit Velocity</div>
                         <div className="text-base font-bold text-white font-mono mt-0.5">
                           {selectedBall.exit_velocity.toFixed(1)} <span className="text-xs text-slate-400">mph</span>
                         </div>
                       </div>
-                      <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                      <div className="bg-surface p-2.5 rounded-lg border border-slate-800">
                         <div className="text-slate-400 text-[10px] uppercase font-semibold">Launch Angle</div>
                         <div className="text-base font-bold text-white font-mono mt-0.5">
                           {selectedBall.launch_angle}°
                         </div>
                       </div>
-                      <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                      <div className="bg-surface p-2.5 rounded-lg border border-slate-800">
                         <div className="text-slate-400 text-[10px] uppercase font-semibold">Est. Distance</div>
                         <div className="text-base font-bold text-sky-400 font-mono mt-0.5">
                           {selectedBall.dist.toFixed(0)} <span className="text-xs text-slate-400">ft</span>
                         </div>
                       </div>
-                      <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                      <div className="bg-surface p-2.5 rounded-lg border border-slate-800">
                         <div className="text-slate-400 text-[10px] uppercase font-semibold">Spray Bearing</div>
                         <div className="text-base font-bold text-slate-200 font-mono mt-0.5">
                           {selectedBall.bearing > 0 ? `+${selectedBall.bearing.toFixed(1)}°` : `${selectedBall.bearing.toFixed(1)}°`}
@@ -796,7 +796,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                     </div>
 
                     {/* HR in X Parks Progress Bar */}
-                    <div className="bg-slate-950 border border-slate-800 rounded-xl p-3">
+                    <div className="bg-surface border border-slate-800 rounded-xl p-3">
                       <div className="flex items-center justify-between text-xs mb-1.5">
                         <span className="font-semibold text-slate-300">Home Run in 30 Parks</span>
                         <span className="font-mono font-bold text-rose-400">
@@ -827,7 +827,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
               </div>
 
               {/* Top 30-Park Expected HR Leaders */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
+              <div className="bg-surface-raised border border-slate-800 rounded-2xl p-4 shadow-xl">
                 <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2.5 flex items-center justify-between">
                   <span>Sample HR Leaders</span>
                   <span className="text-[10px] text-slate-500">Actual vs 30-Pk Exp</span>
@@ -836,7 +836,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                   {data.tier1_spray.hr_hitters.slice(0, 5).map((hitter) => (
                     <div
                       key={hitter.batter_id}
-                      className="bg-slate-950/70 border border-slate-800/80 rounded-lg p-2.5 flex items-center justify-between text-xs"
+                      className="bg-surface/70 border border-slate-800/80 rounded-lg p-2.5 flex items-center justify-between text-xs"
                     >
                       <div className="min-w-0 pr-2">
                         <div className="font-semibold text-white truncate">{hitter.batter_name}</div>
@@ -865,12 +865,12 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
       {activeTab === 'zone' && (
         <div className="space-y-6">
           {/* Controls Bar */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="bg-surface-raised border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Heatmap Metric:
               </span>
-              <div className="flex rounded-lg bg-slate-950 border border-slate-800 p-0.5">
+              <div className="flex rounded-lg bg-surface border border-slate-800 p-0.5">
                 {[
                   { id: 'whiff', label: 'Whiff Rate %' },
                   { id: 'swing', label: 'Swing Rate %' },
@@ -882,7 +882,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                     onClick={() => setZoneMetric(m.id as 'pct' | 'swing' | 'whiff' | 'calledStrike')}
                     className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
                       zoneMetric === m.id
-                        ? 'bg-emerald-600 text-white'
+                        ? 'bg-accent-600 text-white'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -899,7 +899,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* 3x3 Strike Zone SVG (7 cols) */}
-            <div className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col items-center">
+            <div className="lg:col-span-7 bg-surface-raised border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col items-center">
               <div className="w-full flex items-center justify-between mb-4">
                 <span className="text-sm font-bold text-white flex items-center gap-2">
                   <Crosshair className="w-4 h-4 text-sky-400" />
@@ -1067,7 +1067,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
             {/* Zone Telemetry & Catcher Framing Details (5 cols) */}
             <div className="lg:col-span-5 space-y-4">
               {/* Selected Zone Card */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+              <div className="bg-surface-raised border border-slate-800 rounded-2xl p-5 shadow-xl">
                 <div className="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
                     <Crosshair className="w-4 h-4 text-sky-400" />
@@ -1083,26 +1083,26 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                 {selectedZone ? (
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                      <div className="bg-surface p-2.5 rounded-lg border border-slate-800">
                         <div className="text-slate-400 text-[10px] uppercase font-semibold">Pitch Count</div>
                         <div className="text-base font-bold text-white font-mono mt-0.5">
                           {selectedZone.pitch_count}{' '}
                           <span className="text-xs text-slate-400">({selectedZone.pct_of_zone}%)</span>
                         </div>
                       </div>
-                      <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                      <div className="bg-surface p-2.5 rounded-lg border border-slate-800">
                         <div className="text-slate-400 text-[10px] uppercase font-semibold">Whiff Rate</div>
                         <div className="text-base font-bold text-rose-400 font-mono mt-0.5">
                           {selectedZone.whiff_rate}%
                         </div>
                       </div>
-                      <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                      <div className="bg-surface p-2.5 rounded-lg border border-slate-800">
                         <div className="text-slate-400 text-[10px] uppercase font-semibold">Swing Rate</div>
                         <div className="text-base font-bold text-sky-400 font-mono mt-0.5">
                           {selectedZone.swing_rate}%
                         </div>
                       </div>
-                      <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                      <div className="bg-surface p-2.5 rounded-lg border border-slate-800">
                         <div className="text-slate-400 text-[10px] uppercase font-semibold">Called Strike %</div>
                         <div className="text-base font-bold text-emerald-400 font-mono mt-0.5">
                           {selectedZone.called_strike_rate}%
@@ -1110,7 +1110,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                       </div>
                     </div>
 
-                    <div className="text-[11px] text-slate-400 bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono">
+                    <div className="text-[11px] text-slate-400 bg-surface p-3 rounded-xl border border-slate-800 font-mono">
                       Coordinates: X [{selectedZone.x_min.toFixed(2)}, {selectedZone.x_max.toFixed(2)}] ft • Z [{selectedZone.z_min.toFixed(2)}, {selectedZone.z_max.toFixed(2)}] ft
                     </div>
                   </div>
@@ -1122,7 +1122,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
               </div>
 
               {/* Catcher Framing Deep-Dive Card */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+              <div className="bg-surface-raised border border-slate-800 rounded-2xl p-5 shadow-xl">
                 <div className="flex items-center gap-2 mb-3 border-b border-slate-800 pb-2">
                   <Shield className="w-4 h-4 text-indigo-400" />
                   <h3 className="text-sm font-bold text-white">
@@ -1135,14 +1135,14 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                 </p>
 
                 <div className="grid grid-cols-2 gap-3 text-xs mb-4">
-                  <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  <div className="bg-surface p-3 rounded-xl border border-slate-800">
                     <div className="text-slate-400 text-[10px] uppercase font-semibold">Taken Borderline Pitches</div>
                     <div className="text-lg font-black text-white font-mono mt-0.5">
                       {data.tier2_zone.framing_summary.total_shadow_taken.toLocaleString()}
                     </div>
                     <div className="text-[10px] text-slate-500 mt-0.5">Statcast sample</div>
                   </div>
-                  <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  <div className="bg-surface p-3 rounded-xl border border-slate-800">
                     <div className="text-slate-400 text-[10px] uppercase font-semibold">Called Strike Rate</div>
                     <div className="text-lg font-black text-indigo-400 font-mono mt-0.5">
                       {data.tier2_zone.framing_summary.shadow_strike_rate}%
@@ -1153,7 +1153,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                   </div>
                 </div>
 
-                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2 text-xs">
+                <div className="bg-surface p-3 rounded-xl border border-slate-800 space-y-2 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="text-slate-400">Called Strikes Stolen:</span>
                     <span className="font-mono font-bold text-emerald-400">
@@ -1183,7 +1183,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
       {activeTab === 'movement' && (
         <div className="space-y-6">
           {/* Controls Bar */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="bg-surface-raised border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Drill Down Pitcher Arsenal:
@@ -1191,7 +1191,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
               <select
                 value={selectedPitcherId}
                 onChange={(e) => setSelectedPitcherId(Number(e.target.value))}
-                className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-sky-500"
+                className="bg-surface border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-sky-500"
               >
                 {data.tier3_movement.pitcher_arsenals.map((pitcher) => (
                   <option key={pitcher.pitcher_id} value={pitcher.pitcher_id}>
@@ -1208,7 +1208,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* IVB vs HB 2D Scatter Chart (7 cols) */}
-            <div className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col items-center">
+            <div className="lg:col-span-7 bg-surface-raised border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col items-center">
               <div className="w-full flex items-center justify-between mb-2">
                 <span className="text-sm font-bold text-white flex items-center gap-2">
                   <Activity className="w-4 h-4 text-sky-400" />
@@ -1324,7 +1324,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                       className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${
                         isSelected
                           ? 'bg-slate-800 border-white text-white'
-                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                          : 'bg-surface border-slate-800 text-slate-400 hover:text-white'
                       }`}
                     >
                       <span
@@ -1341,7 +1341,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
             {/* Pitcher Arsenal Drill-Down & Table (5 cols) */}
             <div className="lg:col-span-5 space-y-4">
               {/* Pitcher 3D Release Footprint */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+              <div className="bg-surface-raised border border-slate-800 rounded-2xl p-5 shadow-xl">
                 <div className="flex items-center justify-between mb-3 border-b border-slate-800 pb-2.5">
                   <div className="flex items-center gap-3">
                     <TeamLogo team={activePitcher.team} className="w-7 h-7" />
@@ -1360,13 +1360,13 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs mb-4">
-                  <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                  <div className="bg-surface p-2.5 rounded-xl border border-slate-800">
                     <div className="text-slate-400 text-[10px] uppercase font-semibold">Horiz Release (X)</div>
                     <div className="text-base font-bold text-white font-mono mt-0.5">
                       {activePitcher.avg_release_x > 0 ? `+${activePitcher.avg_release_x}` : activePitcher.avg_release_x} ft
                     </div>
                   </div>
-                  <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                  <div className="bg-surface p-2.5 rounded-xl border border-slate-800">
                     <div className="text-slate-400 text-[10px] uppercase font-semibold">Vertical Release (Z)</div>
                     <div className="text-base font-bold text-white font-mono mt-0.5">
                       {activePitcher.avg_release_z} ft
@@ -1386,7 +1386,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                     return (
                       <div
                         key={p.pitch_type}
-                        className="bg-slate-950/80 border border-slate-800/80 rounded-xl p-3 text-xs"
+                        className="bg-surface/80 border border-slate-800/80 rounded-xl p-3 text-xs"
                       >
                         <div className="flex items-center justify-between mb-1.5">
                           <div className="flex items-center gap-2">
@@ -1456,7 +1456,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Infield Sector Distribution (5 cols) */}
-            <div className="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+            <div className="lg:col-span-5 bg-surface-raised border border-slate-800 rounded-2xl p-6 shadow-xl">
               <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
                 <Layers className="w-4 h-4 text-sky-400" />
                 Infield Ground Ball Sector Frequency
@@ -1473,7 +1473,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                   return (
                     <div
                       key={idx}
-                      className="bg-slate-950 p-3.5 rounded-xl border border-slate-800"
+                      className="bg-surface p-3.5 rounded-xl border border-slate-800"
                     >
                       <div className="flex items-center justify-between text-xs mb-1.5">
                         <span className="font-bold text-white">{sec.sector}</span>
@@ -1498,7 +1498,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
             </div>
 
             {/* Directional BABIP Grid (7 cols) */}
-            <div className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+            <div className="lg:col-span-7 bg-surface-raised border border-slate-800 rounded-2xl p-6 shadow-xl">
               <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-emerald-400" />
                 Directional BABIP & Spray Efficiency
@@ -1570,7 +1570,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
               </div>
 
               {/* Explanatory Callout */}
-              <div className="mt-5 p-3.5 bg-slate-950 rounded-xl border border-slate-800 text-xs text-slate-400 space-y-1.5">
+              <div className="mt-5 p-3.5 bg-surface rounded-xl border border-slate-800 text-xs text-slate-400 space-y-1.5">
                 <div className="font-semibold text-slate-200 flex items-center gap-1.5">
                   <Info className="w-3.5 h-3.5 text-sky-400" />
                   Tactical Shift Adaptation Note:

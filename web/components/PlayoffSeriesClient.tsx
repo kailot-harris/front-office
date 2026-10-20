@@ -242,13 +242,13 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
           </div>
 
           {/* Series Length Selector */}
-          <div className="flex items-center gap-2 bg-slate-950/80 p-1.5 rounded-xl border border-slate-800 self-start lg:self-auto font-mono text-xs">
+          <div className="flex items-center gap-2 bg-surface/80 p-1.5 rounded-xl border border-slate-800 self-start lg:self-auto font-mono text-xs">
             <button
               type="button"
               onClick={() => setSeriesLength(3)}
               className={`px-3 py-2 rounded-lg font-bold transition-all ${
                 seriesLength === 3
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                  ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -259,7 +259,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               onClick={() => setSeriesLength(5)}
               className={`px-3 py-2 rounded-lg font-bold transition-all ${
                 seriesLength === 5
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                  ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -270,7 +270,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               onClick={() => setSeriesLength(7)}
               className={`px-3 py-2 rounded-lg font-bold transition-all ${
                 seriesLength === 7
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                  ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -281,9 +281,9 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
       </div>
 
       {/* Matchup Selection Bar */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+      <div className="bg-surface-raised/90 border border-slate-800 rounded-2xl p-4 shadow-xl grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
         {/* Team A Selector */}
-        <div className="md:col-span-5 bg-slate-950/80 border border-slate-800/80 rounded-xl p-3 flex items-center gap-3">
+        <div className="md:col-span-5 bg-surface/80 border border-slate-800/80 rounded-xl p-3 flex items-center gap-3">
           <TeamLogo team={teamACode} size="lg" />
           <div className="flex-1 min-w-0">
             <span className="text-[10px] uppercase font-mono font-bold text-sky-400 block">Team A (High Seed Option)</span>
@@ -293,7 +293,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               className="w-full bg-transparent text-white font-bold text-sm sm:text-base focus:outline-none cursor-pointer truncate"
             >
               {teamsList.map((t) => (
-                <option key={t.teamAbbr} value={t.teamAbbr} className="bg-slate-900 text-white">
+                <option key={t.teamAbbr} value={t.teamAbbr} className="bg-surface-raised text-white">
                   {t.fullName} ({t.regularWins} Proj Wins)
                 </option>
               ))}
@@ -327,7 +327,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
         </div>
 
         {/* Team B Selector */}
-        <div className="md:col-span-5 bg-slate-950/80 border border-slate-800/80 rounded-xl p-3 flex items-center gap-3">
+        <div className="md:col-span-5 bg-surface/80 border border-slate-800/80 rounded-xl p-3 flex items-center gap-3">
           <TeamLogo team={teamBCode} size="lg" />
           <div className="flex-1 min-w-0">
             <span className="text-[10px] uppercase font-mono font-bold text-amber-400 block">Team B (Challenger)</span>
@@ -337,7 +337,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               className="w-full bg-transparent text-white font-bold text-sm sm:text-base focus:outline-none cursor-pointer truncate"
             >
               {teamsList.map((t) => (
-                <option key={t.teamAbbr} value={t.teamAbbr} className="bg-slate-900 text-white">
+                <option key={t.teamAbbr} value={t.teamAbbr} className="bg-surface-raised text-white">
                   {t.fullName} ({t.regularWins} Proj Wins)
                 </option>
               ))}
@@ -377,7 +377,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
           />
 
           {/* Tactical Edges Callout Card */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
+          <div className="bg-surface-raised/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
             <div className="flex items-center gap-2 border-b border-slate-800/80 pb-2">
               <Sparkles className="w-4 h-4 text-amber-400" />
               <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">
@@ -421,7 +421,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                 })}
               </div>
             ) : (
-              <div className="p-3 bg-slate-950/50 rounded-xl border border-slate-800 text-xs text-slate-400 font-mono">
+              <div className="p-3 bg-surface/50 rounded-xl border border-slate-800 text-xs text-slate-400 font-mono">
                 Evenly balanced tactical matchup; neither club holds an extreme swing edge in rotation whiff rate or bullpen leverage.
               </div>
             )}
@@ -438,37 +438,37 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
           />
 
           {/* Tale of the Tape Summary Table */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3 font-mono">
+          <div className="bg-surface-raised/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3 font-mono">
             <h3 className="text-xs font-bold text-white uppercase tracking-wider border-b border-slate-800/80 pb-2">
               Postseason Tale of the Tape
             </h3>
 
             <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between p-2 rounded bg-slate-950/60 border border-slate-800/50">
+              <div className="flex items-center justify-between p-2 rounded bg-surface/60 border border-slate-800/50">
                 <span className="text-sky-400 font-bold">{profileA.regularWins} Wins</span>
                 <span className="text-slate-400 text-[11px]">Regular Season Record</span>
                 <span className="text-amber-400 font-bold">{profileB.regularWins} Wins</span>
               </div>
 
-              <div className="flex items-center justify-between p-2 rounded bg-slate-950/60 border border-slate-800/50">
+              <div className="flex items-center justify-between p-2 rounded bg-surface/60 border border-slate-800/50">
                 <span className="text-sky-400 font-bold">{profileA.baseElo}</span>
                 <span className="text-slate-400 text-[11px]">Base Team Elo Rating</span>
                 <span className="text-amber-400 font-bold">{profileB.baseElo}</span>
               </div>
 
-              <div className="flex items-center justify-between p-2 rounded bg-slate-950/60 border border-slate-800/50">
+              <div className="flex items-center justify-between p-2 rounded bg-surface/60 border border-slate-800/50">
                 <span className="text-sky-400 font-bold">rGS {profileA.starters[0]?.rGS}</span>
                 <span className="text-slate-400 text-[11px]">Ace Starter Rating (Game 1)</span>
                 <span className="text-amber-400 font-bold">rGS {profileB.starters[0]?.rGS}</span>
               </div>
 
-              <div className="flex items-center justify-between p-2 rounded bg-slate-950/60 border border-slate-800/50">
+              <div className="flex items-center justify-between p-2 rounded bg-surface/60 border border-slate-800/50">
                 <span className="text-sky-400 font-bold">xFIP {profileA.relievers[0]?.xFip}</span>
                 <span className="text-slate-400 text-[11px]">Closer / High-LI Shutdown</span>
                 <span className="text-amber-400 font-bold">xFIP {profileB.relievers[0]?.xFip}</span>
               </div>
 
-              <div className="flex items-center justify-between p-2 rounded bg-slate-950/60 border border-slate-800/50">
+              <div className="flex items-center justify-between p-2 rounded bg-surface/60 border border-slate-800/50">
                 <span className="text-sky-400 font-bold">wOBA {profileA.lineupCore[0]?.wOBA.toFixed(3)}</span>
                 <span className="text-slate-400 text-[11px]">Lineup Anchor wOBA</span>
                 <span className="text-amber-400 font-bold">wOBA {profileB.lineupCore[0]?.wOBA.toFixed(3)}</span>

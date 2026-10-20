@@ -46,7 +46,7 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
   });
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
+    <div className="bg-surface-raised/90 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
       <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 mb-4">
         <div>
           <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
@@ -100,7 +100,7 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
 
         {/* Head-to-Head Odds Cards */}
         <div className="space-y-3 w-full sm:w-44">
-          <div className="bg-slate-950/80 border border-sky-500/30 rounded-xl p-2.5 flex items-center justify-between">
+          <div className="bg-surface/80 border border-sky-500/30 rounded-xl p-2.5 flex items-center justify-between">
             <div>
               <span className="text-xs font-bold text-sky-400 block font-mono">{teamA}</span>
               <span className="text-[11px] text-slate-400">Fair Line</span>
@@ -111,7 +111,7 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
             </div>
           </div>
 
-          <div className="bg-slate-950/80 border border-amber-500/30 rounded-xl p-2.5 flex items-center justify-between">
+          <div className="bg-surface/80 border border-amber-500/30 rounded-xl p-2.5 flex items-center justify-between">
             <div>
               <span className="text-xs font-bold text-amber-400 block font-mono">{teamB}</span>
               <span className="text-[11px] text-slate-400">Fair Line</span>
@@ -150,7 +150,7 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
                   <span className="font-bold">{d.winner} in {d.games}</span>
                   <span className="text-white font-black">{d.probPct}%</span>
                 </div>
-                <div className="w-full bg-slate-900 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                <div className="w-full bg-surface-raised h-1.5 rounded-full mt-1.5 overflow-hidden">
                   <div
                     className={`h-full rounded-full ${isA ? 'bg-sky-500' : 'bg-amber-500'}`}
                     style={{ width: `${Math.min(100, d.probPct * 2.5)}%` }}

@@ -98,7 +98,7 @@ export const BrierScoreComparison: React.FC = () => {
   const benchmarkPct = getPositionPct(0.25);
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-5 sm:p-6 space-y-5 shadow-xl">
+    <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-5 sm:p-6 space-y-5 shadow-xl">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
         <div>
@@ -121,7 +121,7 @@ export const BrierScoreComparison: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 text-xs">
-          <div className="bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800 text-right font-mono">
+          <div className="bg-surface px-3 py-1.5 rounded-lg border border-slate-800 text-right font-mono">
             <span className="text-[10px] text-slate-400 block font-sans">Walk-Forward Sample</span>
             <span className="text-white font-bold">2,430 MLB Games</span>
           </div>
@@ -156,7 +156,7 @@ export const BrierScoreComparison: React.FC = () => {
               className={`p-3 rounded-xl border transition-all ${
                 model.isEnsemble
                   ? 'bg-indigo-950/25 border-indigo-500/40 shadow-md'
-                  : 'bg-slate-950/60 border-slate-800/80'
+                  : 'bg-surface/60 border-slate-800/80'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -177,7 +177,7 @@ export const BrierScoreComparison: React.FC = () => {
                 </div>
 
                 {/* Bar Track */}
-                <div className="flex-1 relative h-5 bg-slate-900 rounded-lg border border-slate-800 overflow-hidden">
+                <div className="flex-1 relative h-5 bg-surface-raised rounded-lg border border-slate-800 overflow-hidden">
                   {/* Benchmark 0.2500 Line */}
                   <div
                     className="absolute top-0 bottom-0 w-0.5 bg-rose-500/60 z-20"

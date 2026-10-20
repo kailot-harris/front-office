@@ -14,7 +14,7 @@ export const SurplusValueCalculator: React.FC = () => {
   const roiMultiplier = salary > 0 ? (fairMarketValue / salary) : 1;
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-xl">
+    <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-5 shadow-xl">
       <div className="flex items-center gap-2 mb-3">
         <div className="p-1.5 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400">
           <Calculator className="w-4 h-4" />
@@ -29,7 +29,7 @@ export const SurplusValueCalculator: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-4">
         {/* Slider 1: Annual Salary */}
-        <div className="bg-slate-950/70 p-3.5 rounded-lg border border-slate-800">
+        <div className="bg-surface/70 p-3.5 rounded-lg border border-slate-800">
           <div className="flex justify-between items-center text-xs mb-2">
             <span className="text-slate-400 font-medium">Annual Salary (AAV)</span>
             <span className="font-mono font-bold text-white">${salary.toFixed(1)}M</span>
@@ -51,7 +51,7 @@ export const SurplusValueCalculator: React.FC = () => {
         </div>
 
         {/* Slider 2: Projected WAR */}
-        <div className="bg-slate-950/70 p-3.5 rounded-lg border border-slate-800">
+        <div className="bg-surface/70 p-3.5 rounded-lg border border-slate-800">
           <div className="flex justify-between items-center text-xs mb-2">
             <span className="text-slate-400 font-medium">Projected WAR</span>
             <span className="font-mono font-bold text-sky-400">{projectedWar.toFixed(1)} WAR</span>
@@ -73,7 +73,7 @@ export const SurplusValueCalculator: React.FC = () => {
         </div>
 
         {/* Slider 3: Cost per WAR Market Rate */}
-        <div className="bg-slate-950/70 p-3.5 rounded-lg border border-slate-800">
+        <div className="bg-surface/70 p-3.5 rounded-lg border border-slate-800">
           <div className="flex justify-between items-center text-xs mb-2">
             <span className="text-slate-400 font-medium">Market Cost / Win</span>
             <span className="font-mono font-bold text-amber-400">${marketRate.toFixed(1)}M / WAR</span>
@@ -97,7 +97,7 @@ export const SurplusValueCalculator: React.FC = () => {
 
       {/* Output Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-        <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800">
+        <div className="p-3 rounded-lg bg-surface/60 border border-slate-800">
           <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
             <DollarSign className="w-3.5 h-3.5 text-slate-400" />
             <span>Fair Market Production Value</span>
@@ -131,7 +131,7 @@ export const SurplusValueCalculator: React.FC = () => {
           </p>
         </div>
 
-        <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800">
+        <div className="p-3 rounded-lg bg-surface/60 border border-slate-800">
           <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-sky-400" />
             <span>Contract Efficiency Multiple</span>

@@ -95,7 +95,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
 
   if (!spatialData) {
     return (
-      <div className="p-8 text-center bg-slate-900/90 border border-slate-800 rounded-xl space-y-3">
+      <div className="p-8 text-center bg-surface-raised/90 border border-slate-800 rounded-xl space-y-3">
         <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
         <div className="text-sm font-semibold text-slate-300">
           Loading spatial mapping telemetry for {player.player_name}...
@@ -105,7 +105,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
   }
 
   return (
-    <div className="relative bg-slate-950/95 border border-indigo-500/30 rounded-xl p-5 shadow-2xl backdrop-blur-md space-y-5 animate-in fade-in duration-200">
+    <div className="relative bg-surface/95 border border-indigo-500/30 rounded-xl p-5 shadow-2xl backdrop-blur-md space-y-5 animate-in fade-in duration-200">
       {/* Top Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
         <div className="flex items-center gap-3">
@@ -141,13 +141,13 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
         {/* Filter Controls & Close Button */}
         <div className="flex items-center gap-2 flex-wrap">
           {isBatter ? (
-            <div className="inline-flex rounded-lg bg-slate-900 border border-slate-800 p-0.5 text-xs font-medium flex-wrap gap-0.5">
+            <div className="inline-flex rounded-lg bg-surface-raised border border-slate-800 p-0.5 text-xs font-medium flex-wrap gap-0.5">
               <button
                 type="button"
                 onClick={() => setBatterFilter('all')}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   batterFilter === 'all'
-                    ? 'bg-emerald-600 text-white font-bold'
+                    ? 'bg-accent-600 text-white font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -158,7 +158,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 onClick={() => setBatterFilter('hits')}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   batterFilter === 'hits'
-                    ? 'bg-emerald-600 text-white font-bold'
+                    ? 'bg-accent-600 text-white font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -169,7 +169,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 onClick={() => setBatterFilter('hrs')}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   batterFilter === 'hrs'
-                    ? 'bg-emerald-600 text-white font-bold'
+                    ? 'bg-accent-600 text-white font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -180,7 +180,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 onClick={() => setBatterFilter('xbh')}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   batterFilter === 'xbh'
-                    ? 'bg-emerald-600 text-white font-bold'
+                    ? 'bg-accent-600 text-white font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -191,7 +191,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 onClick={() => setBatterFilter('hard_hit')}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   batterFilter === 'hard_hit'
-                    ? 'bg-emerald-600 text-white font-bold'
+                    ? 'bg-accent-600 text-white font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -199,13 +199,13 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
               </button>
             </div>
           ) : (
-            <div className="inline-flex rounded-lg bg-slate-900 border border-slate-800 p-0.5 text-xs font-medium flex-wrap gap-0.5">
+            <div className="inline-flex rounded-lg bg-surface-raised border border-slate-800 p-0.5 text-xs font-medium flex-wrap gap-0.5">
               <button
                 type="button"
                 onClick={() => setPitcherFilter('all')}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   pitcherFilter === 'all'
-                    ? 'bg-emerald-600 text-white font-bold'
+                    ? 'bg-accent-600 text-white font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -216,7 +216,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 onClick={() => setPitcherFilter('whiffs')}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   pitcherFilter === 'whiffs'
-                    ? 'bg-emerald-600 text-white font-bold'
+                    ? 'bg-accent-600 text-white font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -227,7 +227,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 onClick={() => setPitcherFilter('strikes')}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   pitcherFilter === 'strikes'
-                    ? 'bg-emerald-600 text-white font-bold'
+                    ? 'bg-accent-600 text-white font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -240,7 +240,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                   onClick={() => setPitcherFilter(pitcherFilter === a.pitch_type ? 'all' : a.pitch_type)}
                   className={`px-2.5 py-1.5 rounded-md transition-colors ${
                     pitcherFilter === a.pitch_type
-                      ? 'bg-emerald-600 text-white font-bold'
+                      ? 'bg-accent-600 text-white font-bold'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -266,7 +266,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
         /* BATTER SPRAY CHART & SUMMARY */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Column: Field SVG Spray Chart with Accurate Multi-Segment Ballpark Geometries */}
-          <div className="lg:col-span-7 bg-slate-900/90 border border-slate-800 rounded-xl p-4 flex flex-col items-center relative">
+          <div className="lg:col-span-7 bg-surface-raised/90 border border-slate-800 rounded-xl p-4 flex flex-col items-center relative">
             <BallparkFieldSvg
               initialTeam={player.team}
               battedBalls={displayedBalls}
@@ -291,7 +291,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
           <div className="lg:col-span-5 space-y-4">
             {/* 4 Metric Badges */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-1">
+              <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-3.5 space-y-1">
                 <div className="text-[11px] text-slate-400 font-mono flex items-center justify-between">
                   <span>AVG EXIT VELO</span>
                   <Flame className="w-3.5 h-3.5 text-amber-400" />
@@ -305,7 +305,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 </div>
               </div>
 
-              <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-1">
+              <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-3.5 space-y-1">
                 <div className="text-[11px] text-slate-400 font-mono flex items-center justify-between">
                   <span>PEAK EXIT VELO</span>
                   <Zap className="w-3.5 h-3.5 text-rose-400" />
@@ -317,7 +317,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 <div className="text-[10px] text-slate-400 font-mono">Max projected barrel</div>
               </div>
 
-              <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-1">
+              <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-3.5 space-y-1">
                 <div className="text-[11px] text-slate-400 font-mono flex items-center justify-between">
                   <span>MAX DISTANCE</span>
                   <Target className="w-3.5 h-3.5 text-sky-400" />
@@ -331,7 +331,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 </div>
               </div>
 
-              <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-1">
+              <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-3.5 space-y-1">
                 <div className="text-[11px] text-slate-400 font-mono flex items-center justify-between">
                   <span>HITS / HOME RUNS</span>
                   <Compass className="w-3.5 h-3.5 text-emerald-400" />
@@ -349,14 +349,14 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
             </div>
 
             {/* Directional Spray Distribution (Pull / Center / Oppo) */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-3">
+            <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-semibold text-white">Directional Spray Distribution</span>
                 <span className="text-[11px] text-slate-400 font-mono">Shift Sensitivity</span>
               </div>
 
               {/* Stacked Percentage Bar */}
-              <div className="w-full h-3 rounded-full overflow-hidden flex bg-slate-950 border border-slate-800">
+              <div className="w-full h-3 rounded-full overflow-hidden flex bg-surface border border-slate-800">
                 <div
                   style={{ width: `${spatialData.batter_summary?.pull_pct ?? 35}%` }}
                   className="bg-indigo-500 transition-all duration-300"
@@ -397,13 +397,13 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
             </div>
 
             {/* Recent Batted Ball Inspect Box */}
-            <div className="bg-slate-900/80 border border-slate-800/80 rounded-xl p-3.5 text-xs space-y-2">
+            <div className="bg-surface-raised/80 border border-slate-800/80 rounded-xl p-3.5 text-xs space-y-2">
               <div className="flex items-center justify-between text-slate-300 font-semibold">
                 <span>Selected Batted Ball Telemetry</span>
                 <span className="text-[10px] font-mono text-slate-500">Hover or click any dot</span>
               </div>
               {hoveredBall ? (
-                <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 font-mono text-xs space-y-1">
+                <div className="p-2.5 rounded-lg bg-surface border border-slate-800 font-mono text-xs space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="text-white font-bold">{hoveredBall.event}</span>
                     <span className={HIT_COLORS[hoveredBall.hit_type]?.textClass ?? 'text-white'}>
@@ -439,7 +439,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
         /* PITCHER STRIKE ZONE & ARSENAL SUMMARY */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Column: Strike Zone SVG */}
-          <div className="lg:col-span-6 bg-slate-900/90 border border-slate-800 rounded-xl p-4 flex flex-col items-center relative">
+          <div className="lg:col-span-6 bg-surface-raised/90 border border-slate-800 rounded-xl p-4 flex flex-col items-center relative">
             <div className="w-full flex items-center justify-between text-xs text-slate-400 mb-2 font-mono">
               <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-indigo-400" />
@@ -565,7 +565,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
 
               {/* Pitch Tooltip Overlay */}
               {hoveredPitch && (
-                <div className="absolute top-2 left-2 right-2 sm:right-auto sm:max-w-xs bg-slate-950/95 border border-indigo-500/40 rounded-lg p-3 shadow-xl pointer-events-none text-xs space-y-1.5 z-20 backdrop-blur-md">
+                <div className="absolute top-2 left-2 right-2 sm:right-auto sm:max-w-xs bg-surface/95 border border-indigo-500/40 rounded-lg p-3 shadow-xl pointer-events-none text-xs space-y-1.5 z-20 backdrop-blur-md">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-white flex items-center gap-1.5">
                       <span
@@ -622,7 +622,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
           <div className="lg:col-span-6 space-y-4">
             {/* 4 Metric Badges */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-1">
+              <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-3.5 space-y-1">
                 <div className="text-[11px] text-slate-400 font-mono flex items-center justify-between">
                   <span>AVG VELOCITY</span>
                   <Flame className="w-3.5 h-3.5 text-rose-400" />
@@ -636,7 +636,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 </div>
               </div>
 
-              <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-1">
+              <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-3.5 space-y-1">
                 <div className="text-[11px] text-slate-400 font-mono flex items-center justify-between">
                   <span>STRIKE %</span>
                   <Activity className="w-3.5 h-3.5 text-emerald-400" />
@@ -649,7 +649,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 </div>
               </div>
 
-              <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-1">
+              <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-3.5 space-y-1">
                 <div className="text-[11px] text-slate-400 font-mono flex items-center justify-between">
                   <span>ZONE RATE</span>
                   <Target className="w-3.5 h-3.5 text-indigo-400" />
@@ -660,7 +660,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 <div className="text-[10px] text-slate-400 font-mono">Rulebook 3x3 boundaries</div>
               </div>
 
-              <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-1">
+              <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-3.5 space-y-1">
                 <div className="text-[11px] text-slate-400 font-mono flex items-center justify-between">
                   <span>WHIFF % (SWG STR)</span>
                   <Zap className="w-3.5 h-3.5 text-amber-400" />
@@ -673,14 +673,14 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
             </div>
 
             {/* Arsenal Breakdown Table */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
-              <div className="px-4 py-2.5 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between text-xs">
+            <div className="bg-surface-raised/90 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+              <div className="px-4 py-2.5 bg-surface/60 border-b border-slate-800 flex items-center justify-between text-xs">
                 <span className="font-semibold text-white">Pitch Arsenal & 3D Movement Profiles</span>
                 <span className="text-[11px] font-mono text-slate-400">IVB vs. HB (inches)</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs font-mono">
-                  <thead className="bg-slate-950/40 text-slate-400 border-b border-slate-800/80">
+                  <thead className="bg-surface/40 text-slate-400 border-b border-slate-800/80">
                     <tr>
                       <th className="py-2 px-3">Pitch</th>
                       <th className="py-2 px-2 text-right">Usage</th>
@@ -729,13 +729,13 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
             </div>
 
             {/* Selected Pitch Inspect Box */}
-            <div className="bg-slate-900/80 border border-slate-800/80 rounded-xl p-3.5 text-xs space-y-2">
+            <div className="bg-surface-raised/80 border border-slate-800/80 rounded-xl p-3.5 text-xs space-y-2">
               <div className="flex items-center justify-between text-slate-300 font-semibold">
                 <span>Selected Pitch Telemetry</span>
                 <span className="text-[10px] font-mono text-slate-500">Hover or click any pitch</span>
               </div>
               {hoveredPitch ? (
-                <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 font-mono text-xs space-y-1">
+                <div className="p-2.5 rounded-lg bg-surface border border-slate-800 font-mono text-xs space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="text-white font-bold flex items-center gap-1.5">
                       <span

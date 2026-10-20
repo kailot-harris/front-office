@@ -33,9 +33,9 @@ export const PlayoffContendersBoxWhisker: React.FC<PlayoffContendersBoxWhiskerPr
   const winTicks = [65, 73, 81, 88, 95, 102, 108];
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+    <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
       {/* Header bar */}
-      <div className="p-4 bg-slate-950/70 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+      <div className="p-4 bg-surface/70 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg">
             <Layers className="w-5 h-5" />
@@ -57,14 +57,14 @@ export const PlayoffContendersBoxWhisker: React.FC<PlayoffContendersBoxWhiskerPr
 
         <div className="flex items-center gap-2.5">
           {/* League filter pills */}
-          <div className="inline-flex rounded-lg bg-slate-900 p-1 border border-slate-800">
+          <div className="inline-flex rounded-lg bg-surface-raised p-1 border border-slate-800">
             {(['All', 'AL', 'NL'] as const).map((lg) => (
               <button
                 key={lg}
                 onClick={() => setSelectedLeague(lg)}
                 className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
                   selectedLeague === lg
-                    ? 'bg-emerald-600 text-white shadow-sm'
+                    ? 'bg-accent-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -180,7 +180,7 @@ export const PlayoffContendersBoxWhisker: React.FC<PlayoffContendersBoxWhiskerPr
                   </div>
 
                   {/* Center Box-Whisker Track */}
-                  <div className="flex-1 relative h-6 bg-slate-950/80 rounded border border-slate-800/70 overflow-hidden">
+                  <div className="flex-1 relative h-6 bg-surface/80 rounded border border-slate-800/70 overflow-hidden">
                     {/* Vertical Reference Line at 81 Wins (.500) */}
                     <div
                       className="absolute top-0 bottom-0 w-px border-l border-dashed border-amber-500/40 z-0"

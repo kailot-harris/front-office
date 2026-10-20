@@ -14,11 +14,11 @@ export const HistoricalTwinCard: React.FC<HistoricalTwinCardProps> = ({ twin, ra
     if (pct >= 98) return 'bg-emerald-950/80 text-emerald-400 border-emerald-800/80';
     if (pct >= 96) return 'bg-sky-950/80 text-sky-400 border-sky-800/80';
     if (pct >= 94) return 'bg-amber-950/80 text-amber-400 border-amber-800/80';
-    return 'bg-slate-900 text-slate-400 border-slate-800';
+    return 'bg-surface-raised text-slate-400 border-slate-800';
   };
 
   return (
-    <div className="flex items-center justify-between p-3.5 bg-slate-900/60 rounded-xl border border-slate-800/80 hover:border-slate-700 transition-colors">
+    <div className="flex items-center justify-between p-3.5 bg-surface-raised/60 rounded-xl border border-slate-800/80 hover:border-slate-700 transition-colors">
       <div className="flex items-center gap-3">
         <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-slate-800 text-slate-300 font-bold text-xs font-mono">
           #{rank}

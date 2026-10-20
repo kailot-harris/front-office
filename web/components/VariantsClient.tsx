@@ -184,8 +184,8 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
               onClick={() => setActiveVariant(key)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                 isActive
-                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
-                  : 'bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
+                  ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
+                  : 'bg-surface-raised text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
               }`}
             >
               <span>{detail.name}</span>
@@ -202,7 +202,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
       </div>
 
       {/* Selected Variant Explainer Card */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-6 space-y-4 shadow-lg">
+      <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-6 space-y-4 shadow-lg">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-slate-800/80 pb-4">
           <div>
             <div className="flex items-center gap-2.5">
@@ -234,7 +234,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
             <h3 className="text-xs font-bold uppercase tracking-wider text-sky-400">
               Mathematical Specification
             </h3>
-            <p className="text-xs text-slate-300 leading-relaxed bg-slate-950/70 p-3.5 rounded-lg border border-slate-800 font-mono">
+            <p className="text-xs text-slate-300 leading-relaxed bg-surface/70 p-3.5 rounded-lg border border-slate-800 font-mono">
               {currentVariantInfo.methodology}
             </p>
           </div>
@@ -245,8 +245,8 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
       <BrierScoreComparison />
 
       {/* 30-Team Model Divergence Matrix */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
-        <div className="p-5 bg-slate-950/70 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+        <div className="p-5 bg-surface/70 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h3 className="text-base font-bold text-white flex items-center gap-2">
               <GitCompare className="w-5 h-5 text-indigo-400" />
@@ -259,7 +259,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
 
           <div className="flex items-center gap-2 text-xs">
             <span className="text-slate-400 font-medium">Sort Matrix:</span>
-            <div className="inline-flex rounded-lg bg-slate-900 p-1 border border-slate-800">
+            <div className="inline-flex rounded-lg bg-surface-raised p-1 border border-slate-800">
               {(
                 [
                   { id: 'divergence', label: 'Max Spread (ΔW)' },
@@ -272,7 +272,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
                   onClick={() => setDivergenceSort(opt.id)}
                   className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
                     divergenceSort === opt.id
-                      ? 'bg-emerald-600 text-white shadow-sm'
+                      ? 'bg-accent-600 text-white shadow-sm'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -286,7 +286,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-800 bg-slate-950/90 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <tr className="border-b border-slate-800 bg-surface/90 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                 <th className="py-3.5 px-4">Franchise</th>
                 <th className="py-3.5 px-3 text-right text-indigo-300">Ensemble</th>
                 <th className="py-3.5 px-3 text-right">Pitcher Elo (35%)</th>

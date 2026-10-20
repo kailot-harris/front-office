@@ -96,13 +96,13 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
           </div>
 
           {/* Batter / Pitcher Toggle */}
-          <div className="flex items-center gap-2 bg-slate-950/80 p-1.5 rounded-xl border border-slate-800 self-start lg:self-auto font-mono text-xs">
+          <div className="flex items-center gap-2 bg-surface/80 p-1.5 rounded-xl border border-slate-800 self-start lg:self-auto font-mono text-xs">
             <button
               type="button"
               onClick={() => handleTypeSwitch('Batter')}
               className={`px-4 py-2 rounded-lg font-bold transition-all ${
                 playerType === 'Batter'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                  ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -113,7 +113,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
               onClick={() => handleTypeSwitch('Pitcher')}
               className={`px-4 py-2 rounded-lg font-bold transition-all ${
                 playerType === 'Pitcher'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                  ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -127,7 +127,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Search & Leaderboard (4 cols) */}
         <div className="lg:col-span-4 space-y-4">
-          <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-3">
+          <div className="p-4 rounded-2xl bg-surface-raised/90 border border-slate-800 shadow-xl space-y-3">
             {/* Search Input */}
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-3.5 text-slate-400" />
@@ -136,7 +136,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
                 placeholder={`Search ${playerType} by name, team, or archetype...`}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 bg-slate-950 rounded-xl border border-slate-800 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 font-mono"
+                className="w-full pl-9 pr-4 py-2.5 bg-surface rounded-xl border border-slate-800 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 font-mono"
               />
             </div>
 
@@ -147,7 +147,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
                 <select
                   value={selectedArchetype}
                   onChange={(e) => setSelectedArchetype(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-rose-500 font-mono truncate"
+                  className="w-full bg-surface border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-rose-500 font-mono truncate"
                 >
                   {availableArchetypes.map((arch) => (
                     <option key={arch} value={arch}>
@@ -162,7 +162,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
                 <select
                   value={sortKey}
                   onChange={(e) => setSortKey(e.target.value as 'clutchScore' | 'deltaClutch' | 'highLiWpa' | 'wpaTotal')}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-rose-500 font-mono"
+                  className="w-full bg-surface border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-rose-500 font-mono"
                 >
                   <option value="clutchScore">Sort: Clutch Score</option>
                   <option value="deltaClutch">Sort: ΔwOBA Pressure</option>
@@ -185,7 +185,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
                     className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition-all ${
                       isSelected
                         ? 'bg-rose-950/40 border-rose-500/60 shadow-lg shadow-rose-500/10'
-                        : 'bg-slate-950/60 border-slate-800/80 hover:bg-slate-800/50 hover:border-slate-700'
+                        : 'bg-surface/60 border-slate-800/80 hover:bg-slate-800/50 hover:border-slate-700'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -226,7 +226,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
         {/* Middle Column: Player Focus Profile & Pressure Resilience Plot (4 cols) */}
         <div className="lg:col-span-4 space-y-4">
           {/* Focus Headline Card */}
-          <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4">
+          <div className="p-5 rounded-2xl bg-surface-raised/90 border border-slate-800 shadow-xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
               <div className="flex items-center gap-3">
                 <TeamLogo team={selectedProfile.team} size="lg" />
@@ -251,7 +251,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
             </div>
 
             {/* Archetype Badge */}
-            <div className="p-3 bg-slate-950/80 rounded-xl border border-rose-500/30 flex items-center justify-between">
+            <div className="p-3 bg-surface/80 rounded-xl border border-rose-500/30 flex items-center justify-between">
               <div>
                 <span className="text-[10px] uppercase font-mono font-bold text-slate-400 block">Classified Leverage Role</span>
                 <span className="text-sm font-bold text-rose-300 font-mono">{selectedProfile.clutchArchetype}</span>
@@ -261,15 +261,15 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
 
             {/* Base vs High-LI Metric Comparison Grid */}
             <div className="grid grid-cols-3 gap-2 text-center font-mono text-xs">
-              <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
+              <div className="bg-surface p-2 rounded-lg border border-slate-800">
                 <span className="text-[10px] text-slate-400 block">{selectedProfile.baseMetricLabel}</span>
                 <span className="font-bold text-white text-xs">{selectedProfile.baseMetricVal.toFixed(3)}</span>
               </div>
-              <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
+              <div className="bg-surface p-2 rounded-lg border border-slate-800">
                 <span className="text-[10px] text-slate-400 block">{selectedProfile.clutchMetricLabel}</span>
                 <span className="font-bold text-sky-400 text-xs">{selectedProfile.clutchMetricVal.toFixed(3)}</span>
               </div>
-              <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
+              <div className="bg-surface p-2 rounded-lg border border-slate-800">
                 <span className="text-[10px] text-slate-400 block">Pressure Delta</span>
                 <span
                   className={`font-black text-xs ${
@@ -285,13 +285,13 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
 
             {/* Total WPA & High-LI WPA Breakdown */}
             <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-              <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800/60">
+              <div className="bg-surface/80 p-2.5 rounded-xl border border-slate-800/60">
                 <span className="text-[10px] text-slate-400 block">Total Season WPA</span>
                 <span className="text-base font-bold text-white">
                   {selectedProfile.wpaTotal > 0 ? `+${selectedProfile.wpaTotal.toFixed(2)}` : selectedProfile.wpaTotal.toFixed(2)} Wins
                 </span>
               </div>
-              <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800/60">
+              <div className="bg-surface/80 p-2.5 rounded-xl border border-slate-800/60">
                 <span className="text-[10px] text-slate-400 block">High-Leverage WPA (LI &ge; 1.5)</span>
                 <span className="text-base font-bold text-rose-400">
                   {selectedProfile.highLiWpa > 0 ? `+${selectedProfile.highLiWpa.toFixed(2)}` : selectedProfile.highLiWpa.toFixed(2)} Wins

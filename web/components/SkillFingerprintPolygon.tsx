@@ -58,7 +58,7 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
     .join(' ');
 
   return (
-    <div className="flex flex-col items-center justify-center p-4 bg-slate-950/70 rounded-2xl border border-slate-800 shadow-xl">
+    <div className="flex flex-col items-center justify-center p-4 bg-surface/70 rounded-2xl border border-slate-800 shadow-xl">
       <div className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono mb-2">
         16-D Skill Fingerprint ({playerType})
       </div>

@@ -20,11 +20,11 @@ export default function HomePage() {
           </p>
         </div>
         <div className="flex items-center gap-3 text-xs text-slate-400">
-          <div className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-right">
+          <div className="bg-surface-raised border border-slate-800 rounded-lg px-3 py-2 text-right">
             <span className="text-slate-500 block">Total Simulated Games</span>
             <span className="text-white font-mono font-bold">2,430,000 Games</span>
           </div>
-          <div className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-right">
+          <div className="bg-surface-raised border border-slate-800 rounded-lg px-3 py-2 text-right">
             <span className="text-slate-500 block">Sabermetric Engines</span>
             <span className="text-white font-mono font-bold">4 Distinct Variants</span>
           </div>
