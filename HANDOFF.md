@@ -3,6 +3,15 @@
 **Written:** 2026-10-20, after commit `132c7fa` ("docs: document the basePath
 hand-written-asset gotcha behind the WNBA logo bug"). Working tree clean, `main`
 pushed, deploy green, site live.
+
+**Updated:** 2026-10-20, after commit `dc3e353` (last of four subtree merges
+bringing in the client-bundle `PAGES_BASE_PATH` fix). 390 commits on
+`origin/main`, tree clean, deploy run `39357674081` green (5/5 jobs), site live
+and verified. This update closed out the previous §7 ("fix the hand-written
+`basePath` bug in NBA and MLB") **and corrected a wrong claim it rested on** —
+the WNBA fix that §5 previously reported as "Fixed, commit `742023e`" was still
+broken in production. See §5's two-layer gotcha.
+
 **For:** whoever picks this up next, with no context from the session that created it.
 
 ---
@@ -94,7 +103,36 @@ working copies remain at `C:\Users\kailo\kayceeslices\<SPORT> Analytics`, each o
 | `kayceeslices\NFL Analytics` | `kailot-harris/NFL_analytics` |
 
 No decision has been made about retiring them. **Nothing syncs automatically
-between those repos and this one.** The `src-<sport>` remotes used for the subtree
+between those repos and this one.**
+
+**Anomaly worth knowing about the local layout:** the folder holding those four
+checkouts is `C:\Users\kailo\kayceeslices\front-office\`, i.e. it shares this
+repo's name while being **neither a git repository nor a checkout of it** (`git
+rev-parse` there fails with "not a git repository"). Its contents are the four
+standalone clones plus an unrelated `wnba_summary_app_deploy\` directory. An
+agent started in that directory sees something that looks like this monorepo,
+has no `.git`, and has no indication the aggregator exists — which is exactly the
+wrong-repo trap §6 step 0 warns about. Left as-is; renaming or `git init`-ing it
+is the owner's call.
+
+As of 2026-10-20 each standalone repo is **3 commits ahead** of what it was
+before the `basePath` work, all four already propagated here:
+
+| Upstream repo | New commits |
+|---|---|
+| `WNBA_analytics` | `e1189f5`, `30bb5d6`, `e9c7656` |
+| `NBA_analytics` | `e5c570a`, `3419155`, `874742f` |
+| `NFL_analytics` | `8a39a86`, `833e384`, `63f93f1` |
+| `MLB-Analytics` | `b8aa990`, `c65504c`, `bbb3e56` |
+
+Three commits each for one logical fix is a **course-correction artifact**, not
+three separate changes: the first commit used the wrong `basePath` pattern, the
+second realigned it to this repo's pattern, the third added the missing client-
+bundle `env` key (§5). They were already pushed before the problems were found,
+so they were left as forward-only commits rather than rewritten. Squashing them
+would need a force-push to four repos and has **not** been done — owner's call.
+
+The `src-<sport>` remotes used for the subtree
 merge were deleted after use, so pulling later upstream work requires re-adding
 one:
 
@@ -128,14 +166,43 @@ const basePath  = `${repoBase}/${sportSlug}`;
 
 const nextConfig = {
   output: 'export',        // static export; GitHub Pages cannot run a Next server
+  env: { PAGES_BASE_PATH: repoBase },  // REQUIRED - see §5, this is load-bearing
   trailingSlash: true,     // emits <route>/index.html - see §5
   basePath,
   images: { unoptimized: true, remotePatterns: [ /* per-sport CDN hosts */ ] },
 };
 ```
 
-`PAGES_BASE_PATH` is set to `/front-office` in `deploy.yml:12`. **If this repo is
+`PAGES_BASE_PATH` is set to `/front-office` in `deploy.yml:18`. **If this repo is
 renamed, that value must change to match**, or every asset URL breaks.
+
+The `env: { PAGES_BASE_PATH: repoBase }` line is **not redundant** with the
+`basePath` above it, and deleting it reintroduces a silent production-only
+breakage. It exists so `lib/basePath.ts` (next row) can read the same value from
+*client-side* code. §5 explains why.
+
+Each app also has a **`<sport>/web/lib/basePath.ts`** (6–7 lines, all four
+present and identical apart from the slug):
+
+```ts
+const repoBase = process.env.PAGES_BASE_PATH ?? '';
+export const BASE_PATH = `${repoBase}/nba`;
+```
+
+`BASE_PATH` must be imported and prefixed onto **every hand-written asset path**
+in app code (`fetch('/data/...')`, `<img src="/logos/...">`). Current importers:
+
+| Sport | Files importing `BASE_PATH` |
+|---|---|
+| nba | `components/InlinePlayerShotCard.tsx`, `components/ShotChartModal.tsx`, `components/ShotsExplorerClient.tsx` |
+| wnba | `lib/teams.ts` (`getTeamLogoUrl`), `components/ShotsExplorerClient.tsx` |
+| mlb | `lib/teams.ts` (`getTeamLogoUrl`), `components/PlayersClient.tsx` |
+| nfl | `components/GalleryClient.tsx` (3 paths: `next/image` src, modal `<img>`, download `href`) |
+
+NBA's and NFL's `getTeamLogoUrl()` are **not** in that list on purpose — they
+return `https://a.espncdn.com/...` CDN URLs, so they're immune to this bug class.
+MLB's returns a local `/logos/<teamId>.png` for known teams and falls back to the
+ESPN CDN otherwise, so only its local branch needed the prefix.
 
 | Sport | Routes (dirs with `page.tsx`) | Tracked data files | `public/data` size | Ingest entrypoints | `renv.lock` |
 |---|---|---|---|---|---|
@@ -160,6 +227,34 @@ Re-run and confirmed at the time of writing (not remembered from earlier):
   `/nba/teams` and `/nba/teams/` forms.
 - Data JSON serves correctly, e.g. `mlb/data/clutch_leverage_metrics.json` → 200
   (~276KB), `nba/data/coaching_metrics.json` → 200 (~32KB).
+
+Added by the 2026-10-20 update (the `PAGES_BASE_PATH` client-bundle fix):
+
+- All four apps built locally with `MSYS_NO_PATHCONV=1 PAGES_BASE_PATH=/front-office
+  npm run build` — green, in both the standalone upstream checkouts and this repo's
+  layout.
+- Deploy run `39357674081` green, 5/5 jobs.
+- **The built bundle was inspected, not just the build exit code.** The deployed
+  chunk `/front-office/nba/_next/static/chunks/app/shots/page-92475596c06ac52b.js`
+  contains `"".concat("/front-office","/nba")` and **zero** occurrences of the
+  string `PAGES_BASE_PATH`, proving the value is inlined at build time rather than
+  looked up at runtime in the browser. This is the check that would have caught the
+  original broken WNBA fix; see §5 and §6 step 6.
+- Live `curl` 200s on the specific assets that were 404ing:
+  `/front-office/mlb/logos/147.png`, `/front-office/wnba/logos/NY_logo.png`,
+  `/front-office/mlb/data/player_spatial_maps.json`,
+  `/front-office/nba/data/shots_metadata.json`; and
+  `/front-office/nfl/gallery/` HTML now emits `front-office/nfl/animations/...` srcs.
+- **Statically checked** (not executed) that no test asserts a bare-prefix URL that
+  the change would break: NBA's `tests/setup/vitest.setup.ts:31-32` matches with
+  `url.includes('/data/shots/')` + `split(...)`, which still works on a prefixed
+  URL; WNBA's `tests/contracts/assets.test.ts:16` and `tests/unit/data.test.ts:56-57`
+  expect `/wnba/logos/...`, which is what `BASE_PATH` evaluates to when
+  `PAGES_BASE_PATH` is unset (as in vitest). No other test references a bare
+  `/data/`, `/logos/`, or `/animations/` URL.
+
+**Still not performed — do not assume coverage:** no sport's test suite, `lint`, or
+`typecheck` was actually *run* in either session.
 
 **Not performed — do not assume coverage:** no sport's own test suite, `lint`, or
 `typecheck` was run in this workstream, and **`deploy.yml` does not gate on them**
@@ -230,9 +325,11 @@ history.
 
 ## 5. Environment & tooling gotchas
 
-**`basePath` does not rewrite hand-written asset paths — this broke WNBA logos
-in production and the same bug is live in NBA and MLB right now.** Next's
-`basePath`/`assetPrefix` (see §3's `next.config.mjs` snippet) only prefixes URLs
+**`basePath` does not rewrite hand-written asset paths — and fixing it takes
+TWO steps, not one.** All four sports are fixed as of `dc3e353`; this section is
+the reference for the next person who adds a sport or a hand-written asset path.
+
+Next's `basePath`/`assetPrefix` (see §3's `next.config.mjs` snippet) only prefixes URLs
 *Next itself* generates (`next/link`, `next/image`, its own JS/CSS chunks). A
 literal string you write yourself — `<img src="/logos/ATL_logo.png">`,
 `fetch('/data/shots/123.json')` — is not touched. It resolves against the domain
@@ -241,25 +338,56 @@ per §3) and silently 404s in production (`basePath` is `/front-office/<sport>`)
 
 This is exactly what broke WNBA's team logos (reported by the user as "icons not
 appearing", traced from the live `/wnba/players/` page down to
-`wnba/web/lib/teams.ts`'s `getTeamLogoUrl()`, fixed in commit `742023e`). The
-fix pattern: a `BASE_PATH` constant per sport
-(`wnba/web/lib/basePath.ts`) that mirrors `next.config.mjs`'s own `basePath`
-computation, imported anywhere a literal `/...` asset path would otherwise be
-written. Documented for future sports in `README.md`'s "Gotcha: `basePath` does
-not rewrite hand-written asset paths" section and pointed to from
-`deploy.yml`'s `PAGES_BASE_PATH` comment.
+`wnba/web/lib/teams.ts`'s `getTeamLogoUrl()`).
 
-**Confirmed still broken, live, as of this writing** (verified with `curl`
-against the production URLs, not assumed from reading code):
+### Step 1 — route hand-written paths through `BASE_PATH`
 
-| Sport | File(s) with the bug | What's broken |
-|---|---|---|
-| nba | `components/InlinePlayerShotCard.tsx`, `components/ShotChartModal.tsx`, `components/ShotsExplorerClient.tsx` | Player shot-chart data fetch (`fetch('/data/shots/...json')`, `fetch('/data/shots_metadata.json')`) — 404s, so shot charts can't load |
-| mlb | `components/PlayersClient.tsx` | `fetch('/data/player_spatial_maps.json')` — 404s |
-| wnba | — | **Fixed**, commit `742023e` |
-| nfl | — | Audited, no hand-written `/...` asset path found |
+Add/import the per-sport `BASE_PATH` constant from `<sport>/web/lib/basePath.ts`
+(§3) and prefix every literal `/...` asset path with it. Done for all four sports;
+§3's table lists the current importers.
 
-This is the single highest-value next fix in this repo — see §7.
+### Step 2 — expose `PAGES_BASE_PATH` to the client bundle (the part that was missed)
+
+**Step 1 alone does nothing in production.** `lib/basePath.ts` reads
+`process.env.PAGES_BASE_PATH`, but it is imported by `'use client'` components, so
+it is compiled into the **browser** bundle. Next.js only substitutes two things
+into client bundles: `process.env.NODE_ENV`, and vars prefixed
+`NEXT_PUBLIC_`. A plain custom var is left as a literal runtime property
+lookup against webpack's empty `process` shim — which is `undefined` in the
+browser, so `?? ''` swallowed it and `BASE_PATH` silently became `/wnba`
+instead of `/front-office/wnba`. Every "fixed" path still 404'd.
+
+The fix is the `env: { PAGES_BASE_PATH: repoBase }` key in each
+`next.config.mjs` (§3), which makes Next inline the real value at build time.
+Evidence of the bug, from the shipped pre-fix MLB bundle:
+
+```js
+let t = null !== (i = l(257).env.PAGES_BASE_PATH) && void 0 !== i ? i : ''   // ← runtime lookup, undefined in browser
+```
+
+and after adding the `env` key:
+
+```js
+let i = "".concat("/front-office", "/mlb")                                    // ← inlined at build time
+```
+
+**This defeated the obvious verification.** The original fix was checked by
+`curl`-ing the asset URLs and seeing 200s — but that only proves the files are
+*served* at the right path, not that the app *requests* them there. A green
+build plus 200s on hand-constructed URLs is **not** sufficient evidence. See §6
+step 6 for the check that actually catches it.
+
+| Sport | Status as of `dc3e353` |
+|---|---|
+| wnba | Step 1 in `742023e`; Step 2 in `e9c7656` → merged `dc3e353`. Logos + shot fetch verified live. |
+| nba | Both steps, `874742f` (+ earlier path commits) → merged. Shot-chart fetches verified live. |
+| mlb | Both steps, `bbb3e56` (+ earlier) → merged. Logos + spatial-map fetch verified live. |
+| nfl | Both steps, `63f93f1` (+ earlier) → merged. Gallery `/animations/` paths verified live. |
+
+**If you add a fifth sport, or any new hand-written asset path, do both steps**
+and verify per §6 step 6.
+
+### Other environment gotchas
 
 **npm 10 cannot resolve the NFL dependency graph at all.** It crashes with:
 
@@ -321,6 +449,51 @@ upstream repos.
 
 ## 6. The proven workflow for changing this site
 
+0. **Decide which repo you're editing — this is the step people get wrong.**
+   There are *two* plausible places to edit a sport's app, and they are not the
+   same repo:
+
+   - `C:\Users\kailo\kayceeslices\front-office\<SPORT> Analytics\` — the local
+     working copy of that sport's **standalone upstream repo** (§2). Note the
+     local parent folder is *also* named `front-office` but is **not a git repo
+     at all** and is **not** a checkout of this one; it just holds the four
+     standalone clones side by side.
+   - this repo (`kailot-harris/front-office`) — the only thing GitHub Pages
+     actually builds and serves.
+
+   **Editing a standalone repo alone deploys nothing.** Nothing syncs
+   automatically (§2). Pick one of:
+
+   - **Aggregator-only** (fastest; fine for publishing-layer changes): edit here,
+     commit, push. The upstream repo then lacks the fix and will conflict on the
+     next subtree pull.
+   - **Upstream-then-propagate** (what was done on 2026-10-20, preferred for app
+     code so the standalone repo stays the source of truth):
+
+     ```sh
+     # 1. in the standalone checkout: edit, commit, push to its own origin/main
+     # 2. in a clone of THIS repo:
+     git remote add nba-origin https://github.com/kailot-harris/NBA_analytics
+     git fetch nba-origin main
+     git subtree pull --prefix=nba nba-origin main -m "Merge <what> (git subtree)"
+     git push origin main        # ← this is what triggers the deploy
+     ```
+
+     The remotes are not persisted in this repo's config (the original
+     `src-<sport>` ones were deleted after the initial merge, §2), so re-add one
+     each time; name it whatever you like.
+
+   **Keep the two sides' patterns identical or every pull conflicts.** On
+   2026-10-20 a fix was written in the standalone repos using a
+   `NODE_ENV === 'production'` check with a hardcoded `/front-office/<sport>`,
+   while this repo already computed `basePath` from `PAGES_BASE_PATH` (§3). The
+   subtree pull hit a content conflict in `next.config.mjs` immediately. The
+   resolution was to rewrite the standalone side to match this repo's pattern
+   (commits `30bb5d6`/`3419155`/`833e384`/`c65504c`), after which all four pulls
+   merged clean. **This repo's pattern is authoritative** — it's the one the
+   deploy workflow feeds `PAGES_BASE_PATH` into, and it doesn't hardcode the repo
+   name.
+
 1. **Edit** the relevant file — a sport's app under `<sport>/web/`, or this
    workstream's files per §1.
 2. **If you touched dependencies**, do *not* trust local npm for NFL (§5). Use
@@ -346,6 +519,28 @@ upstream repos.
    curl -s -o /dev/null -w '%{http_code}\n' "$BASE/nba/data/coaching_metrics.json"
    ```
    Allow ~20s after deploy for the CDN to serve new content.
+6. **If you touched anything asset-path- or env-var-related, verify the built
+   bundle, not just the HTTP status.** 200s on URLs you typed yourself prove
+   only that the file is *served* there — not that the app *asks* for it there.
+   That gap is what let a broken `basePath` fix ship and get signed off (§5).
+
+   ```sh
+   # no unresolved runtime lookups should remain:
+   grep -rc PAGES_BASE_PATH <sport>/web/out/_next/static/chunks/ | grep -v ':0$'
+   # and the value should appear inlined (note: Next splits it across a concat):
+   grep -ro '"".concat("/front-office","/nba")' <sport>/web/out/_next/static/chunks/
+   ```
+
+   The same check against the **deployed** bundle, which is the real proof:
+
+   ```sh
+   BASE=https://kailot-harris.github.io/front-office
+   CHUNK=$(curl -s "$BASE/nba/shots/" | grep -o '/front-office/nba/_next/static/chunks/app/shots/page-[a-z0-9]*\.js' | head -1)
+   curl -s "$BASE${CHUNK#/front-office}" | grep -c PAGES_BASE_PATH   # want 0
+   ```
+
+   Better still, load the page in a browser and watch the network tab for 404s —
+   no static check substitutes for seeing the app actually fetch its data.
 
 **Workflow-level caveat discovered here:** the very first push that *creates* the
 default branch does **not** fire the `push` trigger, so no deploy ran until it was
@@ -356,35 +551,15 @@ kicked manually (`gh workflow run deploy.yml --ref main`). Both workflows define
 
 ## 7. Concrete next step
 
-**Fix the same hand-written-`basePath` bug in NBA and MLB** (§5) — it's live and
-broken right now, same root cause as the WNBA fix in this session, same proven
-pattern to apply.
+**The previous top item — the hand-written-`basePath` bug — is done** for all
+four sports (§5), including the client-bundle inlining step that the first
+attempt missed. Nothing in this repo is known-broken in production right now.
 
-- **Files:** `nba/web/components/InlinePlayerShotCard.tsx`,
-  `nba/web/components/ShotChartModal.tsx`,
-  `nba/web/components/ShotsExplorerClient.tsx`,
-  `mlb/web/components/PlayersClient.tsx`.
-- **Pattern to replicate:** `wnba/web/lib/basePath.ts` + the `742023e` diff
-  (`lib/teams.ts`, `ShotsExplorerClient.tsx`). Create an equivalent
-  `nba/web/lib/basePath.ts` and `mlb/web/lib/basePath.ts` (same
-  `process.env.PAGES_BASE_PATH + '/<sport>'` computation as that sport's own
-  `next.config.mjs`), import `BASE_PATH` into each file above, prefix every
-  hardcoded `fetch('/...')` call.
-- **Also re-check** each sport's test suite for a hardcoded-URL assertion like
-  WNBA's `tests/unit/data.test.ts`/`tests/contracts/assets.test.ts` had
-  (expected bare `/logos/...`, needed updating to `/wnba/logos/...`) — NBA/MLB
-  may have an equivalent test on the now-changed fetch URL.
-- **Validate:** `npm run build` with `PAGES_BASE_PATH=/front-office` set (use
-  `MSYS_NO_PATHCONV=1` on Git Bash per §5), grep the exported `out/` HTML for
-  the fetch URL or check the built JS chunk, then after pushing, `curl` the
-  live data URL under `/front-office/<sport>/data/...` the same way §5's table
-  was verified.
+**Bump CI to Node 22**, low-risk, now the top item.
 
-**Step after that — bump CI to Node 22**, low-risk and previously the top item.
-
-- **File:** `.github/workflows/deploy.yml:57` (now shifted further down by the
-  gotcha added above — re-find the `node-version: 20` line) — change to
-  `node-version: 22`. Consider the same in `relock.yml:22` (already 22).
+- **File:** `.github/workflows/deploy.yml:63` (`node-version: 20`; re-verify the
+  line number, this doc has shifted it twice) — change to `node-version: 22`.
+  `relock.yml:22` is already 22.
 - **Why:** the current successful build emits 150 `EBADENGINE` warnings because
   dependencies require node ≥22 (§5). Local dev is already on v22.22.3, so this
   also removes a local/CI divergence.
@@ -404,5 +579,15 @@ promoting into the root workflow or deleting, so it stops looking like active CI
 
 **Also open, owner decisions (not blockers):** rotating the webhook and the
 `REPO_MAP.md` public-disclosure question (§4); whether to archive the four now-
-redundant private upstream repos (§2); and whether to wire up real build-time data
-regeneration (§4).
+redundant private upstream repos (§2); whether to wire up real build-time data
+regeneration (§4); whether to squash the three-commit-per-repo course-correction
+history from 2026-10-20 (§2, needs a force-push to four repos); and whether to
+rename or `git init` the confusingly-named local `front-office` parent folder
+(§2).
+
+**One more latent trap, not yet hit:** `README.md`'s "Gotcha" section and
+`deploy.yml`'s `PAGES_BASE_PATH` comment both describe Step 1 of the §5 fix
+(prefix hand-written paths with `BASE_PATH`) but **neither mentions Step 2**
+(the `env:` key that makes it actually work in the browser). Anyone following
+only those two documents will reproduce the original broken fix. Updating them
+to point at §5 is a small, worthwhile docs task.
