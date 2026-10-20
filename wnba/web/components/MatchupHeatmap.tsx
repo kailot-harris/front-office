@@ -18,7 +18,7 @@ export const MatchupHeatmap: React.FC<MatchupHeatmapProps> = ({ dist }) => {
   ];
 
   const getHeatBg = (pct: number) => {
-    if (pct >= 35) return 'bg-indigo-600 text-white font-bold border-indigo-400';
+    if (pct >= 35) return 'bg-emerald-600 text-white font-bold border-indigo-400';
     if (pct >= 25) return 'bg-indigo-700/80 text-indigo-100 font-semibold border-indigo-500';
     if (pct >= 15) return 'bg-indigo-950/80 text-indigo-300 border-indigo-800';
     if (pct >= 8) return 'bg-slate-800/80 text-slate-300 border-slate-700';

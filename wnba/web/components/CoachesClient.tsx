@@ -119,7 +119,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           onClick={() => setActiveTab('tierboard')}
           className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'tierboard'
-              ? 'border-indigo-500 text-indigo-400 bg-indigo-500/5'
+              ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
               : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
           }`}
         >
@@ -131,7 +131,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           onClick={() => setActiveTab('scatter')}
           className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'scatter'
-              ? 'border-indigo-500 text-indigo-400 bg-indigo-500/5'
+              ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
               : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
           }`}
         >
@@ -143,7 +143,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           onClick={() => setActiveTab('waterfall')}
           className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'waterfall'
-              ? 'border-indigo-500 text-indigo-400 bg-indigo-500/5'
+              ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
               : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
           }`}
         >
@@ -155,7 +155,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           onClick={() => setActiveTab('genealogy')}
           className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'genealogy'
-              ? 'border-indigo-500 text-indigo-400 bg-indigo-500/5'
+              ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
               : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
           }`}
         >
@@ -344,7 +344,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                 onClick={() => setSelectedCoach(c)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   selectedCoach.teamAbbr === c.teamAbbr
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
                     : 'bg-slate-950 text-slate-300 border border-slate-800 hover:border-slate-700'
                 }`}
               >

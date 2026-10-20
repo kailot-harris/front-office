@@ -201,7 +201,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
             onClick={() => handleTabChange('visualizer')}
             className={`cursor-pointer select-none touch-manipulation flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-20 ${
               activeTab === 'visualizer'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/40 ring-1 ring-indigo-400/50'
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/40 ring-1 ring-emerald-400/50'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
             }`}
           >
@@ -224,7 +224,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
             onClick={() => handleTabChange('table')}
             className={`cursor-pointer select-none touch-manipulation flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-20 ${
               activeTab === 'table'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/40 ring-1 ring-indigo-400/50'
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/40 ring-1 ring-emerald-400/50'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
             }`}
           >
@@ -283,7 +283,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                     onClick={() => setSelectedConference(conf)}
                     className={`cursor-pointer select-none px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
                       selectedConference === conf
-                        ? 'bg-indigo-600 text-white shadow-sm'
+                        ? 'bg-emerald-600 text-white shadow-sm'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
