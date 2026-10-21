@@ -2,9 +2,10 @@
 
 import React, { useState, useMemo } from 'react';
 import { TeamProjection, ModelMetadata } from '@/lib/types';
-import { GitCompare } from 'lucide-react';
+import { GitCompare, Download } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { BrierScoreComparison } from '@/components/BrierScoreComparison';
+import { exportToCsv } from '@/lib/exportToCsv';
 
 interface VariantsClientProps {
   teams: TeamProjection[];
@@ -168,6 +169,32 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
 
   const currentVariantInfo = variantDetails[activeVariant];
 
+  const handleExportCsv = () => {
+    const rows = sortedDivergenceTeams.map((team) => ({
+      team: team.team,
+      team_name: team.team_name,
+      ensemble_mean_wins: team.ensemble_mean_wins,
+      variant_bottom_up: team.variantWins.variant_bottom_up,
+      variant_rapm: team.variantWins.variant_rapm,
+      variant_shot_fatigue: team.variantWins.variant_shot_fatigue,
+      variant_embeddings: team.variantWins.variant_embeddings,
+      spread: team.spread,
+    }));
+    exportToCsv(
+      rows,
+      [
+        { key: 'team_name', label: 'Team' },
+        { key: 'ensemble_mean_wins', label: 'Ensemble' },
+        { key: 'variant_bottom_up', label: 'Bottom-Up BPM' },
+        { key: 'variant_rapm', label: 'Bayesian RAPM' },
+        { key: 'variant_shot_fatigue', label: 'Shot & Fatigue' },
+        { key: 'variant_embeddings', label: '16-D Embeddings' },
+        { key: 'spread', label: 'Variant Spread' },
+      ],
+      'model-variants-matrix'
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Variant Selector Tabs */}
@@ -279,6 +306,16 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
                 Team A-Z
               </button>
             </div>
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              title="Export CSV"
+              aria-label="Export model variants table as CSV"
+              data-export-exclude
+              className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 

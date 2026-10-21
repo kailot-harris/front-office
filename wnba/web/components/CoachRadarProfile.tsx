@@ -1,7 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { RadarPercentiles } from '@/lib/coachingTypes';
+import { Download } from 'lucide-react';
+import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 
 interface CoachRadarProfileProps {
   percentiles: RadarPercentiles;
@@ -47,8 +49,31 @@ export const CoachRadarProfile: React.FC<CoachRadarProfileProps> = ({
   // Background concentric rings at 20, 40, 60, 80, 100
   const rings = [20, 40, 60, 80, 100];
 
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const handleExportPng = () => {
+    if (containerRef.current) {
+      exportSvgAsPng(containerRef.current, `${coachName.replace(/\s+/g, '-').toLowerCase()}-radar-profile`);
+    }
+  };
+
   return (
-    <div className="flex flex-col items-center" title={`5D Tactical Profile: ${coachName}`}>
+    <div ref={containerRef} className="flex flex-col items-center" title={`5D Tactical Profile: ${coachName}`}>
+      <div className="w-full flex items-center justify-between mb-1">
+        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">
+          {coachName} — 5D Radar Profile
+        </span>
+        <button
+          type="button"
+          onClick={handleExportPng}
+          title="Export PNG"
+          aria-label="Export radar chart as PNG"
+          data-export-exclude
+          className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+        >
+          <Download className="w-3.5 h-3.5" />
+        </button>
+      </div>
       <div className="relative">
         <svg width={size} height={size} className="overflow-visible select-none">
           <defs>

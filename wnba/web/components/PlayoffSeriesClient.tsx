@@ -19,7 +19,9 @@ import {
   History,
   ChevronRight,
   ChevronDown,
+  Download,
 } from 'lucide-react';
+import { exportToCsv } from '@/lib/exportToCsv';
 
 interface PlayoffSeriesClientProps {
   catalog: PlayoffMatchupsCatalog;
@@ -280,6 +282,27 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
 
   const toggleSeriesExpand = (idx: number) => {
     setExpandedSeries((prev) => ({ ...prev, [idx]: !prev[idx] }));
+  };
+
+  const handleExportRotationCsv = (
+    rotation: TeamPlayoffProfile['rotation'] | undefined,
+    teamCode: string
+  ) => {
+    if (!rotation) return;
+    exportToCsv(
+      rotation as unknown as Record<string, unknown>[],
+      [
+        { key: 'playerName', label: 'Player' },
+        { key: 'position', label: 'Pos' },
+        { key: 'regularMpg', label: 'Reg MPG' },
+        { key: 'playoffMpg', label: 'Playoff MPG' },
+        { key: 'pts', label: 'PTS' },
+        { key: 'reb', label: 'REB' },
+        { key: 'ast', label: 'AST' },
+        { key: 'role', label: 'Role' },
+      ],
+      `${teamCode}-playoff-rotation`
+    );
   };
 
   return (
@@ -677,9 +700,21 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Team A Rotation */}
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-bold text-amber-400">
-                      <TeamLogo team={teamACode} size="xs" />
-                      <span>{teamA?.teamName} Playoff Rotation</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-xs font-bold text-amber-400">
+                        <TeamLogo team={teamACode} size="xs" />
+                        <span>{teamA?.teamName} Playoff Rotation</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleExportRotationCsv(teamA?.rotation, teamACode)}
+                        title="Export CSV"
+                        aria-label="Export team A rotation as CSV"
+                        data-export-exclude
+                        className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </button>
                     </div>
 
                     <div className="overflow-x-auto border border-slate-800 rounded-lg">
@@ -730,9 +765,21 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
 
                   {/* Team B Rotation */}
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-bold text-sky-400">
-                      <TeamLogo team={teamBCode} size="xs" />
-                      <span>{teamB?.teamName} Playoff Rotation</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-xs font-bold text-sky-400">
+                        <TeamLogo team={teamBCode} size="xs" />
+                        <span>{teamB?.teamName} Playoff Rotation</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleExportRotationCsv(teamB?.rotation, teamBCode)}
+                        title="Export CSV"
+                        aria-label="Export team B rotation as CSV"
+                        data-export-exclude
+                        className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </button>
                     </div>
 
                     <div className="overflow-x-auto border border-slate-800 rounded-lg">

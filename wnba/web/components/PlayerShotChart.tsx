@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { PlayerShotData, ShotsMetadata, ZoneMetric, ShotRecord } from '@/lib/shotTypes';
 import {
   filterPriorNShots,
@@ -20,7 +20,9 @@ import {
   Layers,
   CircleDot,
   Sliders,
+  Download,
 } from 'lucide-react';
+import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 
 interface PlayerShotChartProps {
   playerData: PlayerShotData;
@@ -81,6 +83,14 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
     { label: 'Last 250', value: 250 },
     { label: 'All Season', value: 'all' as const },
   ];
+
+  const courtCardRef = useRef<HTMLDivElement | null>(null);
+
+  const handleExportPng = () => {
+    if (courtCardRef.current) {
+      exportSvgAsPng(courtCardRef.current, `${playerData.player_name}-shot-chart`);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -237,7 +247,24 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
       {/* Main Grid: Half-Court Canvas + Zone Metrics Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Court Canvas Column */}
-        <div className="lg:col-span-7 bg-surface border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden flex flex-col items-center">
+        <div ref={courtCardRef} className="lg:col-span-7 bg-surface border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden flex flex-col items-center">
+          <div className="w-full flex items-center justify-between mb-2 text-xs text-slate-400">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-white">{playerData.player_name}</span>
+              <span className="font-mono text-amber-400">({playerData.team})</span>
+              <span>• Half-Court Telemetry</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleExportPng}
+              title="Export PNG"
+              aria-label="Export shot chart as PNG"
+              data-export-exclude
+              className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </button>
+          </div>
           <div className="w-full max-w-[500px] relative select-none">
             {/* SVG WNBA Half-Court */}
             <svg

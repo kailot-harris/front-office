@@ -1,8 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
+import { Download } from 'lucide-react';
 import { GameOutcomeProb } from '@/lib/playoffTypes';
 import { TeamLogo } from '@/components/TeamLogo';
+import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 
 interface SeriesProbRingProps {
   teamA: string;
@@ -39,8 +41,31 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
   // Find most likely outcome
   const mostLikely = [...gameDistributions].sort((a, b) => b.probPct - a.probPct)[0];
 
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const handleExportPng = () => {
+    if (containerRef.current) {
+      exportSvgAsPng(containerRef.current, `${teamA}-vs-${teamB}-series-prob-ring`);
+    }
+  };
+
   return (
-    <div className="flex flex-col items-center select-none">
+    <div ref={containerRef} className="flex flex-col items-center select-none">
+      <div className="w-full flex items-center justify-between mb-1">
+        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">
+          {teamA} vs {teamB} — Series Probabilities
+        </span>
+        <button
+          type="button"
+          onClick={handleExportPng}
+          title="Export PNG"
+          aria-label="Export chart as PNG"
+          data-export-exclude
+          className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+        >
+          <Download className="w-3.5 h-3.5" />
+        </button>
+      </div>
       <div className="relative" style={{ width: size, height: size }}>
         <svg width={size} height={size} className="transform -rotate-90">
           <circle

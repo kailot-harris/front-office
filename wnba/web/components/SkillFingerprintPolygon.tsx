@@ -1,7 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
+import { Download } from 'lucide-react';
 import { CategoryScores } from '@/lib/playerDnaTypes';
+import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 
 interface SkillFingerprintPolygonProps {
   categoryScores: CategoryScores;
@@ -39,10 +41,30 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
     })
     .join(' ');
 
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const handleExportPng = () => {
+    if (containerRef.current) {
+      exportSvgAsPng(containerRef.current, 'skill-fingerprint-polygon');
+    }
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center p-3 bg-surface/60 rounded-xl border border-slate-800/80">
-      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
-        Skill Fingerprint (16-D Aggregate)
+    <div ref={containerRef} className="flex flex-col items-center justify-center p-3 bg-surface/60 rounded-xl border border-slate-800/80">
+      <div className="w-full flex items-center justify-between mb-1">
+        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+          Skill Fingerprint (16-D Aggregate)
+        </div>
+        <button
+          type="button"
+          onClick={handleExportPng}
+          title="Export PNG"
+          aria-label="Export chart as PNG"
+          data-export-exclude
+          className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+        >
+          <Download className="w-3.5 h-3.5" />
+        </button>
       </div>
       <svg width={size} height={size} className="overflow-visible select-none">
         {/* Background Concentric Rings (25%, 50%, 75%, 100%) */}
