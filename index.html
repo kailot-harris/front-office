@@ -126,92 +126,254 @@
       color: var(--sport-accent);
       opacity: 1;
     }
+
+    /* ===================== Trophy Hero Showcase =====================
+       Colorway per docs-internal/COLORWAY_IMPLEMENTATION_PLAN.md: the card
+       sits in Teal Current and borrows each sport's accent from the vars
+       already defined above, the same way .card[data-sport] does. */
+    .hero-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+      width: 100%;
+      padding: 0 1rem;
+      box-sizing: border-box;
+    }
+    @media (min-width: 960px) {
+      .hero-container {
+        flex-direction: row;
+        justify-content: center;
+        gap: 3rem;
+        max-width: 1080px;
+        padding: 0;
+      }
+    }
+    .trophy-showcase {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      width: 100%;
+      max-width: 380px;
+      flex-shrink: 0;
+      box-sizing: border-box;
+      padding: 1.25rem;
+      background: var(--surface-raised);
+      border: 1px solid #1c3333;
+      border-radius: 1.75rem;
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--sport-accent) 25%, transparent) inset,
+                  0 20px 50px -10px rgba(0, 0, 0, 0.6);
+      transition: box-shadow 0.3s ease;
+    }
+    .trophy-showcase[data-sport="nfl"] { --sport-accent: var(--nfl-accent); }
+    .trophy-showcase[data-sport="nba"] { --sport-accent: var(--nba-accent); }
+    .trophy-showcase[data-sport="wnba"] { --sport-accent: var(--wnba-accent); }
+    .trophy-showcase[data-sport="mlb"] { --sport-accent: var(--mlb-accent); }
+
+    .trophy-tabs {
+      display: flex;
+      gap: 0.375rem;
+      padding: 0.25rem;
+      background: var(--surface);
+      border: 1px solid #1c3333;
+      border-radius: 0.75rem;
+    }
+    .trophy-tab {
+      background: transparent;
+      border: none;
+      color: #e7e9ee;
+      opacity: 0.6;
+      font: inherit;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      padding: 0.4rem 0.875rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: background 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+    }
+    .trophy-tab:hover { opacity: 1; }
+    .trophy-tab:focus-visible {
+      outline: 2px solid var(--sport-accent);
+      outline-offset: 2px;
+    }
+    .trophy-tab[aria-selected="true"] {
+      background: var(--surface-raised);
+      color: var(--sport-accent);
+      opacity: 1;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--sport-accent);
+    }
+
+    .trophy-stage {
+      position: relative;
+      width: 100%;
+      max-width: 320px;
+      aspect-ratio: 1;
+      border-radius: 22%;
+      overflow: hidden;
+      background: #000 var(--trophy-poster) center / cover no-repeat;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7);
+    }
+    .trophy-stage video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .trophy-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.125rem;
+      text-align: center;
+    }
+    .trophy-title {
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: #e7e9ee;
+    }
+    .trophy-subtitle {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--sport-accent);
+      transition: color 0.2s ease;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
+    }
+
+    /* The stage already paints the poster as its background, so dropping the
+       video leaves a still trophy rather than an empty black square. */
+    @media (prefers-reduced-motion: reduce) {
+      .trophy-stage video { display: none; }
+    }
   </style>
 </head>
 <body>
   <h1>Front Office</h1>
-  <nav>
-    <div class="card" data-sport="nba">
-      <button class="card-header" type="button" aria-expanded="false">
-        <img class="favicon" src="nba/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
-        <span>NBA</span>
-        <span class="chevron">&#9656;</span>
-      </button>
-      <ul class="tab-list">
-        <li><a href="nba/">Season Standings</a></li>
-        <li><a href="nba/offseason/">Offseason Moves</a></li>
-        <li><a href="nba/cap-sheet/">Cap &amp; Aprons</a></li>
-        <li><a href="nba/variants/">Model Variants</a></li>
-        <li><a href="nba/players/">Player Projections</a></li>
-        <li><a href="nba/player-dna/">Player DNA &amp; Twins</a></li>
-        <li><a href="nba/defense/">Defensive Versatility</a></li>
-        <li><a href="nba/clutch/">True Clutch Index</a></li>
-        <li><a href="nba/shots/">Shot Charts</a></li>
-        <li><a href="nba/coaches/">Coaching Staffs</a></li>
-        <li><a href="nba/series/">Playoff Simulator</a></li>
-        <li><a href="nba/diagnostics/">Diagnostics</a></li>
-      </ul>
-    </div>
-    <div class="card" data-sport="wnba">
-      <button class="card-header" type="button" aria-expanded="false">
-        <img class="favicon" src="wnba/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
-        <span>WNBA</span>
-        <span class="chevron">&#9656;</span>
-      </button>
-      <ul class="tab-list">
-        <li><a href="wnba/">Season Standings</a></li>
-        <li><a href="wnba/variants/">Model Variants</a></li>
-        <li><a href="wnba/players/">Player Projections</a></li>
-        <li><a href="wnba/player-dna/">Player DNA &amp; Twins</a></li>
-        <li><a href="wnba/clutch/">True Clutch Index</a></li>
-        <li><a href="wnba/cap-sheet/">CBA Cap Sheet</a></li>
-        <li><a href="wnba/shots/">Shot Charts</a></li>
-        <li><a href="wnba/defense/">Defensive Matrix</a></li>
-        <li><a href="wnba/coaches/">Coaching Staffs</a></li>
-        <li><a href="wnba/offseason/">Offseason &amp; Moves</a></li>
-        <li><a href="wnba/series/">Playoff Simulator</a></li>
-        <li><a href="wnba/diagnostics/">Diagnostics</a></li>
-      </ul>
-    </div>
-    <div class="card" data-sport="mlb">
-      <button class="card-header" type="button" aria-expanded="false">
-        <img class="favicon" src="mlb/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
-        <span>MLB</span>
-        <span class="chevron">&#9656;</span>
-      </button>
-      <ul class="tab-list">
-        <li><a href="mlb/">Season Standings</a></li>
-        <li><a href="mlb/variants/">Model Variants</a></li>
-        <li><a href="mlb/players/">Player Projections</a></li>
-        <li><a href="mlb/player-dna/">Player DNA &amp; Twins</a></li>
-        <li><a href="mlb/clutch/">True Clutch Index</a></li>
-        <li><a href="mlb/cap-sheet/">Cap &amp; Luxury Tax</a></li>
-        <li><a href="mlb/spatial/">Spatial Analytics</a></li>
-        <li><a href="mlb/series/">Playoff Simulator</a></li>
-        <li><a href="mlb/postseason/">Postseason &amp; Bullpen</a></li>
-        <li><a href="mlb/diagnostics/">Diagnostics</a></li>
-      </ul>
-    </div>
-    <div class="card" data-sport="nfl">
-      <button class="card-header" type="button" aria-expanded="false">
-        <img class="favicon" src="nfl/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
-        <span>NFL</span>
-        <span class="chevron">&#9656;</span>
-      </button>
-      <ul class="tab-list">
-        <li><a href="nfl/">Season Standings</a></li>
-        <li><a href="nfl/matchups/">Weekly Matchups</a></li>
-        <li><a href="nfl/teams/">Team Ratings &amp; EPA</a></li>
-        <li><a href="nfl/coaching/">Coaching Analysis</a></li>
-        <li><a href="nfl/salary-cap/">Salary Cap &amp; OTC</a></li>
-        <li><a href="nfl/playoffs/">Playoff Machine</a></li>
-        <li><a href="nfl/players/">QB &amp; Player Ratings</a></li>
-        <li><a href="nfl/variants/">Model Variants</a></li>
-        <li><a href="nfl/diagnostics/">Diagnostics</a></li>
-        <li><a href="nfl/gallery/">Visual Gallery</a></li>
-      </ul>
-    </div>
-  </nav>
+  <div class="hero-container">
+    <!-- ===================== Trophy Hero Showcase ===================== -->
+    <section class="trophy-showcase" data-sport="nfl"
+             style="--trophy-poster: url(assets/trophies/nfl-poster-512.webp)"
+             aria-labelledby="trophy-showcase-heading">
+      <h2 id="trophy-showcase-heading" class="sr-only">Championship Trophies</h2>
+      <div class="trophy-tabs" role="tablist" aria-label="Select championship sport">
+        <button role="tab" id="tab-nfl" class="trophy-tab" data-sport="nfl" aria-selected="true" aria-controls="trophy-panel" type="button">NFL</button>
+        <button role="tab" id="tab-nba" class="trophy-tab" data-sport="nba" aria-selected="false" aria-controls="trophy-panel" tabindex="-1" type="button">NBA</button>
+        <button role="tab" id="tab-wnba" class="trophy-tab" data-sport="wnba" aria-selected="false" aria-controls="trophy-panel" tabindex="-1" type="button">WNBA</button>
+        <button role="tab" id="tab-mlb" class="trophy-tab" data-sport="mlb" aria-selected="false" aria-controls="trophy-panel" tabindex="-1" type="button">MLB</button>
+      </div>
+      <div id="trophy-panel" class="trophy-stage" role="tabpanel" aria-labelledby="tab-nfl">
+        <video id="trophy-video" loop muted playsinline preload="none"
+               aria-label="The Vince Lombardi Trophy rotating 360 degrees"
+               poster="assets/trophies/nfl-poster-512.webp">
+          <!-- H.264 Baseline in MP4: the one format every target browser
+               decodes, so no second <source> is needed. -->
+          <source id="trophy-source" src="assets/trophies/nfl-turntable.mp4" type="video/mp4" />
+        </video>
+      </div>
+      <div class="trophy-meta">
+        <span id="trophy-title" class="trophy-title">Vince Lombardi Trophy</span>
+        <span class="trophy-subtitle">360&deg; Hardware Showcase</span>
+      </div>
+      <div id="trophy-live-status" class="sr-only" aria-live="polite"></div>
+    </section>
+    <nav>
+      <div class="card" data-sport="nba">
+        <button class="card-header" type="button" aria-expanded="false">
+          <img class="favicon" src="nba/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
+          <span>NBA</span>
+          <span class="chevron">&#9656;</span>
+        </button>
+        <ul class="tab-list">
+          <li><a href="nba/">Season Standings</a></li>
+          <li><a href="nba/offseason/">Offseason Moves</a></li>
+          <li><a href="nba/cap-sheet/">Cap &amp; Aprons</a></li>
+          <li><a href="nba/variants/">Model Variants</a></li>
+          <li><a href="nba/players/">Player Projections</a></li>
+          <li><a href="nba/player-dna/">Player DNA &amp; Twins</a></li>
+          <li><a href="nba/defense/">Defensive Versatility</a></li>
+          <li><a href="nba/clutch/">True Clutch Index</a></li>
+          <li><a href="nba/shots/">Shot Charts</a></li>
+          <li><a href="nba/coaches/">Coaching Staffs</a></li>
+          <li><a href="nba/series/">Playoff Simulator</a></li>
+          <li><a href="nba/diagnostics/">Diagnostics</a></li>
+        </ul>
+      </div>
+      <div class="card" data-sport="wnba">
+        <button class="card-header" type="button" aria-expanded="false">
+          <img class="favicon" src="wnba/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
+          <span>WNBA</span>
+          <span class="chevron">&#9656;</span>
+        </button>
+        <ul class="tab-list">
+          <li><a href="wnba/">Season Standings</a></li>
+          <li><a href="wnba/variants/">Model Variants</a></li>
+          <li><a href="wnba/players/">Player Projections</a></li>
+          <li><a href="wnba/player-dna/">Player DNA &amp; Twins</a></li>
+          <li><a href="wnba/clutch/">True Clutch Index</a></li>
+          <li><a href="wnba/cap-sheet/">CBA Cap Sheet</a></li>
+          <li><a href="wnba/shots/">Shot Charts</a></li>
+          <li><a href="wnba/defense/">Defensive Matrix</a></li>
+          <li><a href="wnba/coaches/">Coaching Staffs</a></li>
+          <li><a href="wnba/offseason/">Offseason &amp; Moves</a></li>
+          <li><a href="wnba/series/">Playoff Simulator</a></li>
+          <li><a href="wnba/diagnostics/">Diagnostics</a></li>
+        </ul>
+      </div>
+      <div class="card" data-sport="mlb">
+        <button class="card-header" type="button" aria-expanded="false">
+          <img class="favicon" src="mlb/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
+          <span>MLB</span>
+          <span class="chevron">&#9656;</span>
+        </button>
+        <ul class="tab-list">
+          <li><a href="mlb/">Season Standings</a></li>
+          <li><a href="mlb/variants/">Model Variants</a></li>
+          <li><a href="mlb/players/">Player Projections</a></li>
+          <li><a href="mlb/player-dna/">Player DNA &amp; Twins</a></li>
+          <li><a href="mlb/clutch/">True Clutch Index</a></li>
+          <li><a href="mlb/cap-sheet/">Cap &amp; Luxury Tax</a></li>
+          <li><a href="mlb/spatial/">Spatial Analytics</a></li>
+          <li><a href="mlb/series/">Playoff Simulator</a></li>
+          <li><a href="mlb/postseason/">Postseason &amp; Bullpen</a></li>
+          <li><a href="mlb/diagnostics/">Diagnostics</a></li>
+        </ul>
+      </div>
+      <div class="card" data-sport="nfl">
+        <button class="card-header" type="button" aria-expanded="false">
+          <img class="favicon" src="nfl/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
+          <span>NFL</span>
+          <span class="chevron">&#9656;</span>
+        </button>
+        <ul class="tab-list">
+          <li><a href="nfl/">Season Standings</a></li>
+          <li><a href="nfl/matchups/">Weekly Matchups</a></li>
+          <li><a href="nfl/teams/">Team Ratings &amp; EPA</a></li>
+          <li><a href="nfl/coaching/">Coaching Analysis</a></li>
+          <li><a href="nfl/salary-cap/">Salary Cap &amp; OTC</a></li>
+          <li><a href="nfl/playoffs/">Playoff Machine</a></li>
+          <li><a href="nfl/players/">QB &amp; Player Ratings</a></li>
+          <li><a href="nfl/variants/">Model Variants</a></li>
+          <li><a href="nfl/diagnostics/">Diagnostics</a></li>
+          <li><a href="nfl/gallery/">Visual Gallery</a></li>
+        </ul>
+      </div>
+    </nav>
+  </div>
   <script>
     document.querySelectorAll('.card-header').forEach(function (header) {
       header.addEventListener('click', function () {
@@ -220,6 +382,133 @@
         header.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
       });
     });
+
+    (function initTrophyShowcase() {
+      var showcase = document.querySelector('.trophy-showcase');
+      if (!showcase) return;
+
+      var tabs = showcase.querySelector('.trophy-tabs');
+      var panel = showcase.querySelector('#trophy-panel');
+      var video = showcase.querySelector('#trophy-video');
+      var source = showcase.querySelector('#trophy-source');
+      var titleEl = showcase.querySelector('#trophy-title');
+      var liveStatus = showcase.querySelector('#trophy-live-status');
+      var tabList = Array.prototype.slice.call(tabs.querySelectorAll('.trophy-tab'));
+
+      // Accents come from the page's CSS vars via [data-sport], not from here.
+      var TROPHIES = {
+        nfl: { title: 'Vince Lombardi Trophy', label: 'The Vince Lombardi Trophy rotating 360 degrees' },
+        nba: { title: "Larry O'Brien Trophy", label: "The Larry O'Brien Championship Trophy rotating 360 degrees" },
+        wnba: { title: 'WNBA Championship Trophy', label: 'The WNBA Championship Trophy rotating 360 degrees' },
+        mlb: { title: "Commissioner's Trophy", label: "The Commissioner's Trophy rotating 360 degrees" }
+      };
+
+      var motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+      var inView = false;
+
+      function stillOnly() {
+        return motionQuery.matches;
+      }
+
+      function clipFor(sport) {
+        return 'assets/trophies/' + sport + '-turntable.mp4';
+      }
+
+      function selectSport(sport, focusTab) {
+        var trophy = TROPHIES[sport];
+        if (!trophy || showcase.dataset.sport === sport) return;
+
+        showcase.dataset.sport = sport;
+
+        tabList.forEach(function (tab) {
+          var selected = tab.dataset.sport === sport;
+          tab.setAttribute('aria-selected', selected ? 'true' : 'false');
+          // Roving tabindex: only the selected tab sits in the tab order.
+          if (selected) {
+            tab.removeAttribute('tabindex');
+            panel.setAttribute('aria-labelledby', tab.id);
+            if (focusTab) tab.focus();
+          } else {
+            tab.setAttribute('tabindex', '-1');
+          }
+        });
+
+        var poster = 'assets/trophies/' + sport + '-poster-512.webp';
+        video.poster = poster;
+        showcase.style.setProperty('--trophy-poster', 'url(' + poster + ')');
+        titleEl.textContent = trophy.title;
+        video.setAttribute('aria-label', trophy.label);
+        liveStatus.textContent = 'Showing the ' + trophy.title;
+
+        if (stillOnly()) {
+          // Never pull a multi-megabyte clip the viewer asked not to see.
+          source.removeAttribute('src');
+          return;
+        }
+
+        source.src = clipFor(sport);
+        video.load();
+        if (inView) video.play().catch(function () {});
+      }
+
+      tabs.addEventListener('click', function (event) {
+        var tab = event.target.closest('.trophy-tab');
+        if (tab) selectSport(tab.dataset.sport, false);
+      });
+
+      // Arrow-key navigation, per the ARIA tabs pattern.
+      tabs.addEventListener('keydown', function (event) {
+        var step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+        var index = tabList.indexOf(document.activeElement);
+        if (index === -1) return;
+        if (step) {
+          event.preventDefault();
+          selectSport(tabList[(index + step + tabList.length) % tabList.length].dataset.sport, true);
+        } else if (event.key === 'Home' || event.key === 'End') {
+          event.preventDefault();
+          selectSport(tabList[event.key === 'Home' ? 0 : tabList.length - 1].dataset.sport, true);
+        }
+      });
+
+      // Start playing straight away, then let the observer pause the clip once
+      // it scrolls away. Gating the *first* play on the observer would mean a
+      // silent dead card anywhere its callback never arrives.
+      function start() {
+        if (stillOnly()) return;
+        inView = true;
+        if (!video.currentSrc) video.load();
+        video.play().catch(function () {});
+      }
+      start();
+
+      if ('IntersectionObserver' in window) {
+        new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            inView = entry.isIntersecting;
+            if (stillOnly()) return;
+            if (inView) {
+              if (!video.currentSrc) video.load();
+              video.play().catch(function () {});
+            } else {
+              video.pause();
+            }
+          });
+        }, { threshold: 0.25 }).observe(showcase);
+      }
+
+      // Respond if the viewer flips the reduced-motion setting mid-visit.
+      motionQuery.addEventListener('change', function () {
+        if (stillOnly()) {
+          video.pause();
+          source.removeAttribute('src');
+          video.load();
+        } else {
+          source.src = clipFor(showcase.dataset.sport);
+          video.load();
+          if (inView) video.play().catch(function () {});
+        }
+      });
+    })();
   </script>
 </body>
 </html>
