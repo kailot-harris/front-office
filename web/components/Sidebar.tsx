@@ -21,7 +21,7 @@ import {
   Award,
   Coins,
 } from 'lucide-react';
-import { BaseballCrest } from '@/components/BaseballCrest';
+import { BASE_PATH } from '@/lib/basePath';
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
@@ -106,8 +106,9 @@ export const Sidebar: React.FC = () => {
       <div className="space-y-6 flex-1 overflow-y-auto min-h-0">
         {/* Brand Header */}
         <div className="flex items-center gap-3 px-2 pt-1 pb-2 border-b border-slate-800/80">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-sky-600 via-indigo-600 to-slate-900 border border-sky-500/30 flex items-center justify-center shadow-lg shadow-sky-500/20 flex-shrink-0">
-            <BaseballCrest className="w-7 h-7" size={28} />
+          <div className="w-11 h-11 rounded-xl overflow-hidden border border-sky-500/30 shadow-lg shadow-sky-500/20 flex-shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`${BASE_PATH}/sport-icons/mlb.png`} alt="" width={44} height={44} className="w-full h-full object-cover" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -284,8 +285,9 @@ export const Sidebar: React.FC = () => {
       {/* Mobile Header Bar */}
       <div className="md:hidden sticky top-0 z-40 bg-surface-raised/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-sky-600 via-indigo-600 to-slate-900 border border-sky-500/30 flex items-center justify-center shadow-md">
-            <BaseballCrest className="w-6 h-6" size={24} />
+          <div className="w-9 h-9 rounded-lg overflow-hidden border border-sky-500/30 shadow-md">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`${BASE_PATH}/sport-icons/mlb.png`} alt="" width={36} height={36} className="w-full h-full object-cover" />
           </div>
           <div>
             <span className="font-extrabold text-sm tracking-tight text-white">
