@@ -40,42 +40,186 @@
     }
     nav {
       display: grid;
-      grid-template-columns: repeat(2, minmax(160px, 1fr));
+      grid-template-columns: repeat(2, minmax(200px, 1fr));
       gap: 1rem;
     }
-    a.card {
-      display: block;
-      padding: 1.25rem 2rem;
+    .card {
+      display: flex;
+      flex-direction: column;
+      padding: 0;
       border: 1px solid #1c3333;
       border-top: 3px solid var(--sport-accent);
       border-radius: 0.75rem;
       background: var(--surface-raised);
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--sport-accent) 25%, transparent) inset;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      overflow: hidden;
+    }
+    .card[data-sport="nfl"] { --sport-accent: var(--nfl-accent); }
+    .card[data-sport="nba"] { --sport-accent: var(--nba-accent); }
+    .card[data-sport="wnba"] { --sport-accent: var(--wnba-accent); }
+    .card[data-sport="mlb"] { --sport-accent: var(--mlb-accent); }
+    .card:hover {
+      border-color: var(--sport-accent);
+      box-shadow: 0 0 0 1px var(--sport-accent) inset, 0 0 20px color-mix(in srgb, var(--sport-accent) 40%, transparent);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      padding: 1.25rem 2rem;
+      background: none;
+      border: none;
       color: inherit;
+      font: inherit;
+      cursor: pointer;
       text-decoration: none;
       font-weight: 600;
       text-align: center;
       text-shadow: 0 0 18px color-mix(in srgb, var(--sport-accent) 55%, transparent);
-      box-shadow: 0 0 0 1px color-mix(in srgb, var(--sport-accent) 25%, transparent) inset;
-      transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+      width: 100%;
     }
-    a.card:hover {
-      transform: translateY(-2px);
-      border-color: var(--sport-accent);
-      box-shadow: 0 0 0 1px var(--sport-accent) inset, 0 0 20px color-mix(in srgb, var(--sport-accent) 40%, transparent);
+    .card-header .favicon {
+      width: 1.25rem;
+      height: 1.25rem;
+      flex-shrink: 0;
     }
-    a.card[data-sport="nfl"] { --sport-accent: var(--nfl-accent); }
-    a.card[data-sport="nba"] { --sport-accent: var(--nba-accent); }
-    a.card[data-sport="wnba"] { --sport-accent: var(--wnba-accent); }
-    a.card[data-sport="mlb"] { --sport-accent: var(--mlb-accent); }
+    .card-header .chevron {
+      margin-left: 0.25rem;
+      transition: transform 0.15s ease;
+      font-size: 0.75rem;
+      opacity: 0.75;
+    }
+    .card.expanded .card-header .chevron {
+      transform: rotate(90deg);
+    }
+    .tab-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.2s ease;
+      border-top: 1px solid color-mix(in srgb, var(--sport-accent) 25%, transparent);
+    }
+    .card.expanded .tab-list {
+      max-height: 26rem;
+    }
+    .tab-list li {
+      border-top: 1px solid color-mix(in srgb, var(--sport-accent) 15%, transparent);
+    }
+    .tab-list li:first-child {
+      border-top: none;
+    }
+    .tab-list a {
+      display: block;
+      padding: 0.6rem 1.25rem;
+      color: inherit;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      opacity: 0.9;
+    }
+    .tab-list a:hover {
+      background: color-mix(in srgb, var(--sport-accent) 15%, transparent);
+      color: var(--sport-accent);
+      opacity: 1;
+    }
   </style>
 </head>
 <body>
   <h1>Front Office</h1>
   <nav>
-    <a class="card" data-sport="nba" href="nba/">NBA</a>
-    <a class="card" data-sport="wnba" href="wnba/">WNBA</a>
-    <a class="card" data-sport="mlb" href="mlb/">MLB</a>
-    <a class="card" data-sport="nfl" href="nfl/">NFL</a>
+    <div class="card" data-sport="nba">
+      <button class="card-header" type="button" aria-expanded="false">
+        <img class="favicon" src="nba/web/app/favicon.ico" alt="" />
+        <span>NBA</span>
+        <span class="chevron">&#9656;</span>
+      </button>
+      <ul class="tab-list">
+        <li><a href="nba/">Season Standings</a></li>
+        <li><a href="nba/offseason">Offseason Moves</a></li>
+        <li><a href="nba/cap-sheet">Cap &amp; Aprons</a></li>
+        <li><a href="nba/variants">Model Variants</a></li>
+        <li><a href="nba/players">Player Projections</a></li>
+        <li><a href="nba/player-dna">Player DNA &amp; Twins</a></li>
+        <li><a href="nba/defense">Defensive Versatility</a></li>
+        <li><a href="nba/clutch">True Clutch Index</a></li>
+        <li><a href="nba/shots">Shot Charts</a></li>
+        <li><a href="nba/coaches">Coaching Staffs</a></li>
+        <li><a href="nba/series">Playoff Simulator</a></li>
+        <li><a href="nba/diagnostics">Diagnostics</a></li>
+      </ul>
+    </div>
+    <div class="card" data-sport="wnba">
+      <button class="card-header" type="button" aria-expanded="false">
+        <img class="favicon" src="wnba/web/app/favicon.ico" alt="" />
+        <span>WNBA</span>
+        <span class="chevron">&#9656;</span>
+      </button>
+      <ul class="tab-list">
+        <li><a href="wnba/">Season Standings</a></li>
+        <li><a href="wnba/variants">Model Variants</a></li>
+        <li><a href="wnba/players">Player Projections</a></li>
+        <li><a href="wnba/player-dna">Player DNA &amp; Twins</a></li>
+        <li><a href="wnba/clutch">True Clutch Index</a></li>
+        <li><a href="wnba/cap-sheet">CBA Cap Sheet</a></li>
+        <li><a href="wnba/shots">Shot Charts</a></li>
+        <li><a href="wnba/defense">Defensive Matrix</a></li>
+        <li><a href="wnba/coaches">Coaching Staffs</a></li>
+        <li><a href="wnba/offseason">Offseason &amp; Moves</a></li>
+        <li><a href="wnba/series">Playoff Simulator</a></li>
+        <li><a href="wnba/diagnostics">Diagnostics</a></li>
+      </ul>
+    </div>
+    <div class="card" data-sport="mlb">
+      <button class="card-header" type="button" aria-expanded="false">
+        <img class="favicon" src="mlb/web/app/favicon.ico" alt="" />
+        <span>MLB</span>
+        <span class="chevron">&#9656;</span>
+      </button>
+      <ul class="tab-list">
+        <li><a href="mlb/">Season Standings</a></li>
+        <li><a href="mlb/variants">Model Variants</a></li>
+        <li><a href="mlb/players">Player Projections</a></li>
+        <li><a href="mlb/player-dna">Player DNA &amp; Twins</a></li>
+        <li><a href="mlb/clutch">True Clutch Index</a></li>
+        <li><a href="mlb/cap-sheet">Cap &amp; Luxury Tax</a></li>
+        <li><a href="mlb/spatial">Spatial Analytics</a></li>
+        <li><a href="mlb/series">Playoff Simulator</a></li>
+        <li><a href="mlb/postseason">Postseason &amp; Bullpen</a></li>
+        <li><a href="mlb/diagnostics">Diagnostics</a></li>
+      </ul>
+    </div>
+    <div class="card" data-sport="nfl">
+      <button class="card-header" type="button" aria-expanded="false">
+        <img class="favicon" src="nfl/web/app/favicon.ico" alt="" />
+        <span>NFL</span>
+        <span class="chevron">&#9656;</span>
+      </button>
+      <ul class="tab-list">
+        <li><a href="nfl/">Season Standings</a></li>
+        <li><a href="nfl/matchups">Weekly Matchups</a></li>
+        <li><a href="nfl/teams">Team Ratings &amp; EPA</a></li>
+        <li><a href="nfl/coaching">Coaching Analysis</a></li>
+        <li><a href="nfl/salary-cap">Salary Cap &amp; OTC</a></li>
+        <li><a href="nfl/playoffs">Playoff Machine</a></li>
+        <li><a href="nfl/players">QB &amp; Player Ratings</a></li>
+        <li><a href="nfl/variants">Model Variants</a></li>
+        <li><a href="nfl/diagnostics">Diagnostics</a></li>
+        <li><a href="nfl/gallery">Visual Gallery</a></li>
+      </ul>
+    </div>
   </nav>
+  <script>
+    document.querySelectorAll('.card-header').forEach(function (header) {
+      header.addEventListener('click', function () {
+        var card = header.closest('.card');
+        var isExpanded = card.classList.toggle('expanded');
+        header.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+      });
+    });
+  </script>
 </body>
 </html>
