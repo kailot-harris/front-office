@@ -22,7 +22,8 @@ daily_box_ingest <- function() {
     existing_box <- readRDS(CACHE_TEAM_BOX)
     log_message(sprintf("Loaded existing cache with %d records.", nrow(existing_box)))
   } else {
-    log_message("Cache not found. Initializing complete historical ingestion (2019:2026)...")
+    log_message(sprintf("Cache not found. Initializing complete historical ingestion (%d:%d)...",
+                        min(ALL_SEASONS), max(ALL_SEASONS)))
     existing_box <- hoopR::load_nba_team_box(seasons = ALL_SEASONS)
     saveRDS(existing_box, CACHE_TEAM_BOX)
     log_message(sprintf("Saved initial cache with %d records.", nrow(existing_box)))

@@ -11,8 +11,8 @@ if (!dir.exists(CACHE_DIR)) dir.create(CACHE_DIR, recursive = TRUE)
 # Data Horizons
 HISTORICAL_SEASONS <- 2019:2025
 TEST_SEASON        <- 2026
-CURRENT_SEASON     <- 2026
-ALL_SEASONS        <- 2019:2026
+CURRENT_SEASON     <- 2027
+ALL_SEASONS        <- 2019:2027
 SIMULATION_SEASON  <- 2027
 
 # Rolling Window & Modeling Hyperparameters
