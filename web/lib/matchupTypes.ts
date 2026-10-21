@@ -26,22 +26,38 @@
  * navigable and the accuracy stat stable, and match issue #16's week language.
  * This is the only granularity in the dataset or the UI.
  *
- * DESIGN DECISION 2 - FUTURE-GAME PROJECTIONS: a pending game's projection is
- * never invented. It comes from the PENDING row that
- * prediction_accuracy_logger.R already writes into
- * cache/prediction_accuracy_log.rds before tip-off, which carries a real
- * model-produced home win probability. Because those rows leave the margin
- * blank, `predicted_margin` for a pending game is the inversion of that same
- * logged probability through this repo's documented margin -> win-probability
- * map (config.R MARGIN_SIGMA), flagged by `projection_basis:
- * 'margin_from_logged_win_prob'`. A scheduled game the logger has not predicted
- * yet — the large majority of a season, since it only runs a few days ahead —
- * has `has_projection: false` and null in every projection field, never a
- * placeholder number.
+ * DESIGN DECISION 2 - TWO PROJECTION BASES, NEVER MIXED. Projections on this
+ * page come from TWO DIFFERENT MODELS, and `projection_basis` always says
+ * which. They are not interchangeable: do not average them, do not rank or
+ * aggregate across them, and never render one as if it were the other (NBA
+ * issue #14 is open against exactly that class of defect).
+ *
+ *  - LOGGED MODEL ('logged_model_margin', 'margin_from_logged_win_prob') —
+ *    the richer model. The daily slate engine's win probability, written per
+ *    game into cache/prediction_accuracy_log.rds before tip-off by
+ *    prediction_accuracy_logger.R and graded there afterwards. This is the only
+ *    basis that is ever graded. Covers a few dozen games, since the logger runs
+ *    only a few days ahead. A logged projection is never overwritten.
+ *  - TEAM RATING DIFFERENTIAL ('team_rating_differential') — the simpler
+ *    model, filling every game the log has not predicted. Verbatim the
+ *    computation prediction_accuracy_logger.R:142-172 already uses:
+ *    (home Net_Rating − away Net_Rating) + 2.40 home-court points, turned into
+ *    a win probability by pnorm(margin / MARGIN_SIGMA). No rest, travel or
+ *    injury adjustment, and nothing simulated.
+ *
+ * A game with neither has `has_projection: false` and null in every projection
+ * field, never a placeholder number.
  */
 
-/** Where a game's projected margin came from. */
-export type ProjectionBasis = 'logged_model_margin' | 'margin_from_logged_win_prob';
+/**
+ * Which model produced a game's projection. The first two values are the same
+ * logged model (the second just derives the margin from its probability); the
+ * third is the separate, simpler ratings computation.
+ */
+export type ProjectionBasis =
+  | 'logged_model_margin'
+  | 'margin_from_logged_win_prob'
+  | 'team_rating_differential';
 
 export interface MatchupGame {
   /** ESPN game id, from the schedule spine. */
@@ -58,7 +74,7 @@ export interface MatchupGame {
   home_team_name: string;
   away_team_name: string;
   is_completed: boolean;
-  /** False when no logged model prediction was joined to this game. */
+  /** True when the game carries a projection from either basis. */
   has_projection: boolean;
   projection_basis: ProjectionBasis | null;
   predicted_margin: number | null;
@@ -83,6 +99,10 @@ export interface MatchupSlate {
   end_date: string;
   status: SlateStatus;
   games_total: number;
+  /** Games in the slate projected by the logged model (either logged basis). */
+  logged_projection_total: number;
+  /** Games in the slate projected from team rating differential. */
+  ratings_projection_total: number;
   /** Completed, graded games in the slate — the denominator of accuracy_pct. */
   graded_total: number;
   correct_total: number;
@@ -111,6 +131,14 @@ export interface MatchupsDataset {
   pending_games: number;
   games_with_projection: number;
   games_without_projection: number;
+  /** Games projected by the logged model — counted separately, never summed. */
+  games_logged_basis: number;
+  /** Games projected from team rating differential. */
+  games_ratings_basis: number;
+  /** Human-readable description of the ratings-derived computation. */
+  ratings_source: string;
+  /** Share of scheduled games whose two teams were both found in the ratings table. */
+  rating_match_rate_pct: number;
   /** Measured join rate of the accuracy log onto the schedule, never assumed. */
   logged_predictions_in_season: number;
   logged_predictions_matched: number;

@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { TeamLogo } from '@/components/TeamLogo';
-import { MatchupGame } from '@/lib/matchupTypes';
-import { CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { MatchupGame, ProjectionBasis } from '@/lib/matchupTypes';
+import { CheckCircle2, XCircle, Clock, Info } from 'lucide-react';
 
 interface MatchupCardProps {
   matchup: MatchupGame;
@@ -16,10 +16,35 @@ const signed = (n: number | null): string => {
   return `${n > 0 ? '+' : ''}${n.toFixed(1)}`;
 };
 
+/**
+ * The two projection bases are DIFFERENT MODELS and are labelled as such on
+ * every card (see lib/matchupTypes.ts DESIGN DECISION 2). The badge is the
+ * visible marker a reader uses to tell them apart; nothing in this card mixes
+ * the two or compares one game's number with another's.
+ */
+const BASIS_BADGE: Record<ProjectionBasis, { short: string; note: string; tone: string }> = {
+  logged_model_margin: {
+    short: 'Logged model',
+    note: 'Pre-game projection from the logged slate model — the one graded for accuracy.',
+    tone: 'bg-accent-500/10 text-accent-400 border-accent-500/30',
+  },
+  margin_from_logged_win_prob: {
+    short: 'Logged model',
+    note: 'Logged slate model win probability; margin derived from it via MARGIN_SIGMA.',
+    tone: 'bg-accent-500/10 text-accent-400 border-accent-500/30',
+  },
+  team_rating_differential: {
+    short: 'Team ratings',
+    note: 'Simpler fallback: net-rating difference + 2.40 home-court points. Not the logged slate model, and not comparable with it.',
+    tone: 'bg-sky-500/10 text-sky-300 border-sky-500/30',
+  },
+};
+
 export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup: m }) => {
   const homeFavored = m.predicted_margin !== null && m.predicted_margin >= 0;
   const favorite = m.predicted_margin === null ? null : homeFavored ? m.home_team : m.away_team;
   const graded = m.is_completed && m.prediction_correct !== null;
+  const basis = m.projection_basis === null ? null : BASIS_BADGE[m.projection_basis];
 
   return (
     <div
@@ -94,10 +119,20 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup: m }) => {
           <span className="text-sm font-bold font-mono text-accent-400">
             {favorite === null ? 'No projection' : `${favorite} ${signed(Math.abs(m.predicted_margin!) * -1)}`}
           </span>
-          {m.projection_basis === 'margin_from_logged_win_prob' && (
-            <span className="text-[10px] font-mono text-slate-500 block">
-              margin derived from logged win prob
+          {/* VISIBLE basis marker — which of the two models produced this number. */}
+          {basis !== null && (
+            <span
+              className={`mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[9px] font-mono uppercase tracking-wide ${basis.tone}`}
+              title={basis.note}
+              data-testid="projection-basis-badge"
+              data-projection-basis={m.projection_basis}
+            >
+              <Info className="w-2.5 h-2.5" />
+              <span>Basis: {basis.short}</span>
             </span>
+          )}
+          {basis !== null && (
+            <span className="text-[10px] font-mono text-slate-500 block mt-0.5">{basis.note}</span>
           )}
         </div>
 

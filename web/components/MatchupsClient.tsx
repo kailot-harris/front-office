@@ -79,12 +79,38 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
     };
   }, [slateGames]);
 
+  /**
+   * "Largest projected edge" is ranked WITHIN ONE BASIS ONLY.
+   *
+   * The dataset carries projections from two different models (see
+   * lib/matchupTypes.ts DESIGN DECISION 2): the logged slate model and the
+   * simpler team-rating differential. Their margins are not on a common scale,
+   * so sorting them together would make this card imply a relationship between
+   * numbers computed from unrelated inputs — the defect NBA issue #14 is open
+   * against. The logged model is preferred when the week has any logged game;
+   * otherwise the ratings basis is used, and the card names whichever it ranked.
+   */
   const biggestSpread = useMemo(() => {
-    const withProjection = slateGames.filter((m) => m.predicted_margin !== null);
-    if (withProjection.length === 0) return null;
-    return [...withProjection].sort(
+    const byBasis = (ratings: boolean) =>
+      slateGames.filter(
+        (m) =>
+          m.predicted_margin !== null &&
+          (m.projection_basis === 'team_rating_differential') === ratings,
+      );
+    const logged = byBasis(false);
+    const pool = logged.length > 0 ? logged : byBasis(true);
+    if (pool.length === 0) return null;
+    const top = [...pool].sort(
       (a, b) => Math.abs(b.predicted_margin!) - Math.abs(a.predicted_margin!),
     )[0];
+    return {
+      game: top,
+      basisLabel:
+        top.projection_basis === 'team_rating_differential'
+          ? 'Team-ratings basis only'
+          : 'Logged-model basis only',
+      pooled: pool.length,
+    };
   }, [slateGames]);
 
   const handleExportCsv = () => {
@@ -96,6 +122,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
         { key: 'away_team', label: 'Away' },
         { key: 'home_team', label: 'Home' },
         { key: 'predicted_margin', label: 'Projected Margin (Home)' },
+        { key: 'projection_basis', label: 'Projection Basis' },
         { key: 'predicted_home_win_prob', label: 'Home Win Prob' },
         { key: 'away_score', label: 'Away Score' },
         { key: 'home_score', label: 'Home Score' },
@@ -194,13 +221,14 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
             {biggestSpread ? (
               <>
                 <span className="text-sm font-bold text-white block truncate">
-                  {biggestSpread.predicted_margin! >= 0
-                    ? biggestSpread.home_team
-                    : biggestSpread.away_team}{' '}
-                  −{Math.abs(biggestSpread.predicted_margin!).toFixed(1)}
+                  {biggestSpread.game.predicted_margin! >= 0
+                    ? biggestSpread.game.home_team
+                    : biggestSpread.game.away_team}{' '}
+                  −{Math.abs(biggestSpread.game.predicted_margin!).toFixed(1)}
                 </span>
                 <span className="text-[11px] font-mono text-slate-400">
-                  {biggestSpread.away_team} @ {biggestSpread.home_team}
+                  {biggestSpread.game.away_team} @ {biggestSpread.game.home_team} ·{' '}
+                  {biggestSpread.basisLabel}
                 </span>
               </>
             ) : (
@@ -226,6 +254,47 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
           </div>
         </div>
       </div>
+
+      {/*
+        PROJECTION BASIS LEGEND — the reader-facing statement that this week's
+        projections come from two different models, with the count from each.
+        Required so neither the cards nor the table can be read as one model's
+        output (see lib/matchupTypes.ts DESIGN DECISION 2 and NBA issue #14).
+      */}
+      {slateMeta && (
+        <div
+          className="bg-surface-raised/60 border border-slate-800 rounded-xl p-3 text-[11px] font-mono text-slate-400 space-y-1.5"
+          data-testid="projection-basis-legend"
+        >
+          <span className="text-[10px] font-mono uppercase text-slate-300 font-bold block">
+            Two projection bases — not interchangeable
+          </span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-accent-400 inline-block" />
+              <span>
+                <span className="text-accent-400 font-bold">Logged model</span> ·{' '}
+                {slateMeta.logged_projection_total} game
+                {slateMeta.logged_projection_total === 1 ? '' : 's'} — the graded slate model&apos;s
+                pre-game projection
+              </span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-sky-300 inline-block" />
+              <span>
+                <span className="text-sky-300 font-bold">Team ratings</span> ·{' '}
+                {slateMeta.ratings_projection_total} game
+                {slateMeta.ratings_projection_total === 1 ? '' : 's'} — net-rating difference plus
+                flat home court, not the logged model
+              </span>
+            </span>
+          </div>
+          <span className="block text-slate-500">
+            The two are produced from unrelated inputs, so they are never averaged together and
+            never ranked against each other. Only the logged model is graded for accuracy.
+          </span>
+        </div>
+      )}
 
       {/* Day pills, search, view toggle */}
       <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -321,6 +390,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                   <th className="text-left px-3 py-2 font-semibold">Date</th>
                   <th className="text-left px-3 py-2 font-semibold">Matchup</th>
                   <th className="text-right px-3 py-2 font-semibold">Proj. margin</th>
+                  <th className="text-left px-3 py-2 font-semibold">Basis</th>
                   <th className="text-right px-3 py-2 font-semibold">Home win %</th>
                   <th className="text-right px-3 py-2 font-semibold">Score</th>
                   <th className="text-right px-3 py-2 font-semibold">Result</th>
@@ -345,6 +415,21 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                       {m.predicted_margin === null
                         ? '—'
                         : `${m.predicted_margin > 0 ? '+' : ''}${m.predicted_margin.toFixed(1)}`}
+                    </td>
+                    {/* Which model produced the margin in the cell to the left. */}
+                    <td
+                      className={`px-3 py-2 whitespace-nowrap ${
+                        m.projection_basis === 'team_rating_differential'
+                          ? 'text-sky-300'
+                          : 'text-accent-400'
+                      }`}
+                      data-projection-basis={m.projection_basis ?? 'none'}
+                    >
+                      {m.projection_basis === null
+                        ? '—'
+                        : m.projection_basis === 'team_rating_differential'
+                          ? 'Team ratings'
+                          : 'Logged model'}
                     </td>
                     <td className="px-3 py-2 text-right text-slate-300 tabular-nums">
                       {m.predicted_home_win_prob === null

@@ -34,6 +34,19 @@ export default function MatchupsPage() {
             pick and whether it graded out correct; the active week shows live projections; upcoming
             weeks show the pending projection with no score or result.
           </p>
+          {/*
+            Two different models produce the projections on this page. Saying so
+            here, and labelling every card and table row with its basis, is what
+            keeps the page from implying the two numbers are comparable.
+          */}
+          <p className="text-slate-500 text-xs mt-2 max-w-3xl font-mono">
+            Projection basis: {dataset.games_logged_basis} game
+            {dataset.games_logged_basis === 1 ? '' : 's'} carry the logged slate model&apos;s own
+            pre-game projection — the only basis that is graded for accuracy —
+            and {dataset.games_ratings_basis} are projected from team rating differential (
+            {dataset.ratings_source}). The two come from unrelated inputs, are never averaged, and
+            every game is labelled with the one that produced it.
+          </p>
         </div>
 
         <div className="flex items-center gap-2.5 text-xs font-mono">

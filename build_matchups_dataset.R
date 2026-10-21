@@ -72,22 +72,47 @@
 # week indices are contiguous from 1 with no gap.
 #
 # ------------------------------------------------------------------------------
-# DESIGN DECISION 2 - WHERE FUTURE-GAME PROJECTIONS COME FROM.
+# DESIGN DECISION 2 - WHERE PROJECTIONS COME FROM, AND WHY THERE ARE TWO BASES.
 # ------------------------------------------------------------------------------
-# Future (not-yet-played) games get their projection from the PENDING rows that
-# prediction_accuracy_logger.R already writes into CACHE_PREDICTION_LOG before
-# tip-off. Those rows carry a real model-produced `predicted_home_win_prob` but
-# leave `predicted_margin` NA, so the projected margin for a pending game is
-# reconstructed from that same logged probability using this repo's own documented
-# margin -> win-probability relation (config.R MARGIN_SIGMA, win_prob =
-# pnorm(margin / MARGIN_SIGMA)), inverted as margin = qnorm(p) * MARGIN_SIGMA.
-# Every game therefore records a `projection_basis` of either
-# "logged_model_margin" (margin came straight from the log) or
-# "margin_from_logged_win_prob" (margin inverted from the logged probability).
-# Nothing is simulated, imputed from team strength, or otherwise invented: a
-# scheduled game the log has not predicted yet - the large majority of the
-# season, since the logger only runs a few days ahead - emits NULL for every
-# projection field and `projection_basis: null`, never a placeholder number.
+# TWO DIFFERENT MODELS PRODUCE THE NUMBERS ON THIS PAGE. They are kept apart,
+# never averaged, never compared against each other, and every game says which
+# one it used via `projection_basis`:
+#
+#   (A) LOGGED MODEL PREDICTION - the richer one. The daily slate engine's
+#       `Model_Win_Prob`, written per game into CACHE_PREDICTION_LOG by
+#       prediction_accuracy_logger.R:253-268 before tip-off. This is the model
+#       the accuracy log grades, so it is the ONLY basis that is ever graded,
+#       and it always wins: a logged projection is never overwritten or adjusted
+#       here. The logger only runs a few days ahead, so it covers a few dozen
+#       games out of a full season.
+#         basis "logged_model_margin"          - margin came straight from the log.
+#         basis "margin_from_logged_win_prob"  - the log left `predicted_margin`
+#           NA, so the margin is the inversion of that same logged probability
+#           through this repo's documented margin -> win-probability map
+#           (margin = qnorm(p) * MARGIN_SIGMA). Same model, derived field.
+#
+#   (B) TEAM RATING DIFFERENTIAL - the simpler one, used only to fill games the
+#       log has not predicted. It is NOT a new model: it is verbatim the
+#       computation prediction_accuracy_logger.R:142-172 already performs when
+#       it backfills games, reading the same ratings file -
+#       cache/projected_30_team_standings.rds, column `Net_Rating`, keyed by its
+#       `Team` short names - and the same arithmetic:
+#         pred_margin = (home_rating - away_rating) + HCA_POINTS
+#         pred_prob   = pnorm(pred_margin / MARGIN_SIGMA)
+#       No rest, travel, injury or roster adjustment is applied, because the
+#       logger applies none. basis "team_rating_differential".
+#
+# These two bases are NOT interchangeable and must never be presented as one
+# number: (A) is a full model output, (B) is a season-long rating difference
+# plus a flat home-court constant. NBA issue #14 is open against exactly this
+# class of defect - a card implying a relationship between numbers computed from
+# unrelated inputs - so the UI labels every card with its basis and never ranks
+# or aggregates across the two (see web/components/MatchupCard.tsx and
+# web/components/MatchupsClient.tsx).
+#
+# A game whose teams are absent from the ratings table (only ESPN's TBD NBA Cup
+# placeholders, which are dropped earlier anyway) still emits NULL for every
+# projection field and `projection_basis: null` - never a placeholder number.
 #
 # ------------------------------------------------------------------------------
 # GRADING, AND THE "NOTHING GRADED YET" STATE.
@@ -284,6 +309,62 @@ if (n_log_unmatched > 0) {
 }
 
 # ------------------------------------------------------------------------------
+# 2b. RATINGS FALLBACK PROJECTION for games the log has not predicted
+#     (see DESIGN DECISION 2, basis (B)). This is the SAME computation as
+#     prediction_accuracy_logger.R:142-172, not a new model.
+# ------------------------------------------------------------------------------
+
+# Home-court advantage in points.
+# SOURCE OF TRUTH: prediction_accuracy_logger.R:169 (`hca <- 2.40`), where it is
+# a bare literal inside a function this stage must not modify (that logger is
+# out of scope). The value is therefore DELIBERATELY DUPLICATED here as a named
+# constant - so that the duplication is visible and attributed rather than
+# pasted as an unexplained magic number - instead of being hoisted into a
+# competing config.R constant. If the logger's literal ever changes, change this
+# line with it.
+HCA_POINTS <- 2.40
+
+# Resolved from CACHE_DIR (config.R), never from another checkout. The file is a
+# gitignored artifact of an earlier pipeline stage (roster_bottom_up_engine.R),
+# so a fresh worktree will not have it until that stage has run.
+RATINGS_PATH <- file.path(CACHE_DIR, "projected_30_team_standings.rds")
+if (!file.exists(RATINGS_PATH)) {
+  stop(sprintf(paste0(
+    "Team ratings not found at %s - run the earlier pipeline stage first ",
+    "(roster_bottom_up_engine.R writes cache/projected_30_team_standings.rds). ",
+    "Without it the scheduled games the accuracy log has not predicted cannot be ",
+    "projected, and this stage refuses to emit a dataset with invented numbers."),
+    RATINGS_PATH))
+}
+ratings_df <- as.data.frame(readRDS(RATINGS_PATH))
+if (!all(c("Team", "Net_Rating") %in% names(ratings_df))) {
+  stop(sprintf("%s does not carry the expected `Team` / `Net_Rating` columns.", RATINGS_PATH))
+}
+team_ratings <- setNames(suppressWarnings(as.numeric(ratings_df$Net_Rating)),
+                         as.character(ratings_df$Team))
+team_ratings <- team_ratings[!is.na(team_ratings)]
+cat(sprintf(">>> Team ratings: %d rated teams from %s (column Net_Rating)\n",
+            length(team_ratings), basename(RATINGS_PATH)))
+
+# Ratings are keyed by the same team SHORT display names the spine carries, so
+# the match rate is measured, not assumed.
+games$home_rating <- unname(team_ratings[games$home_name])
+games$away_rating <- unname(team_ratings[games$away_name])
+n_rated <- sum(!is.na(games$home_rating) & !is.na(games$away_rating))
+rated_pct <- round(100 * n_rated / nrow(games), 1)
+cat(sprintf(">>> Both teams rated for %d of %d scheduled games (%.1f%%)\n",
+            n_rated, nrow(games), rated_pct))
+if (rated_pct < 90) {
+  unmatched <- sort(unique(c(games$home_name[is.na(games$home_rating)],
+                             games$away_name[is.na(games$away_rating)])))
+  stop(sprintf(paste0(
+    "Only %.1f%% of scheduled games have both teams present in %s - the ratings ",
+    "table's `Team` naming does not match the schedule's short display names. ",
+    "Unmatched: %s"),
+    rated_pct, basename(RATINGS_PATH), paste(unmatched, collapse = ", ")))
+}
+
+# ------------------------------------------------------------------------------
 # 3. REAL SCORES: the target season's team box scores, joined on ESPN game_id
 # ------------------------------------------------------------------------------
 team_box <- fetch_or_cache(
@@ -367,12 +448,20 @@ for (i in seq_len(nrow(games))) {
   win_prob <- as.numeric(g$predicted_home_win_prob)
   margin <- as.numeric(g$predicted_margin)
   basis <- NULL
+  # PRECEDENCE: a logged model prediction always wins and is never overwritten
+  # or adjusted by the ratings fallback (see DESIGN DECISION 2).
   if (!is.na(margin)) {
     basis <- "logged_model_margin"
   } else if (!is.na(win_prob)) {
     # Inverse of this repo's documented margin -> win-prob map (config.R MARGIN_SIGMA).
     margin <- qnorm(min(max(win_prob, 1e-6), 1 - 1e-6)) * MARGIN_SIGMA
     basis <- "margin_from_logged_win_prob"
+  } else if (!is.na(g$home_rating) && !is.na(g$away_rating)) {
+    # Verbatim prediction_accuracy_logger.R:142-172. A DIFFERENT, simpler model
+    # than the logged one above - labelled as such, never blended with it.
+    margin <- (as.numeric(g$home_rating) - as.numeric(g$away_rating)) + HCA_POINTS
+    win_prob <- pnorm(margin / MARGIN_SIGMA)
+    basis <- "team_rating_differential"
   }
 
   matchups[[i]] <- list(
@@ -386,8 +475,9 @@ for (i in seq_len(nrow(games))) {
     home_team_name = as.character(g$home_name),
     away_team_name = as.character(g$away_name),
     is_completed = is_completed,
-    # TRUE only when a logged model prediction was joined to this game.
-    has_projection = !is.na(g$log_game_id) && (!is.na(win_prob) || !is.na(margin)),
+    # TRUE when the game carries a projection from EITHER basis; which one it is
+    # is always readable from `projection_basis`.
+    has_projection = !is.null(basis),
     projection_basis = basis,
     predicted_margin = num_or_null(margin, 2),
     predicted_home_win_prob = num_or_null(win_prob, 4),
@@ -408,8 +498,18 @@ for (i in seq_len(nrow(games))) {
 n_completed <- sum(vapply(matchups, function(m) isTRUE(m$is_completed), logical(1)))
 n_pending <- length(matchups) - n_completed
 n_projected <- sum(vapply(matchups, function(m) isTRUE(m$has_projection), logical(1)))
+basis_vec <- vapply(matchups,
+                    function(m) if (is.null(m$projection_basis)) NA_character_ else m$projection_basis,
+                    character(1))
+n_logged_basis <- sum(basis_vec %in% c("logged_model_margin", "margin_from_logged_win_prob"))
+n_ratings_basis <- sum(basis_vec == "team_rating_differential", na.rm = TRUE)
 cat(sprintf(">>> %d graded games, %d pending; %d games carry a model projection, %d carry none\n",
             n_completed, n_pending, n_projected, length(matchups) - n_projected))
+cat(sprintf(">>> projection_basis: %d from the logged model, %d from team rating differential\n",
+            n_logged_basis, n_ratings_basis))
+# Invariant: a projection must never be both bases, and every projected game
+# must name one.
+stopifnot(n_logged_basis + n_ratings_basis == n_projected)
 
 # ------------------------------------------------------------------------------
 # 6. Slate summaries, including per-slate accuracy over GRADED games only
@@ -439,6 +539,15 @@ slates <- lapply(slate_ids, function(s) {
     end_date = format(b$end_date[1], "%Y-%m-%d"),
     status = if (s < active_slate) "past" else if (s == active_slate) "active" else "future",
     games_total = as.integer(length(in_slate)),
+    # Per-basis counts, so the UI can state the week's mix of projection
+    # sources instead of implying one model produced all of them.
+    logged_projection_total = as.integer(sum(vapply(in_slate, function(m) {
+      !is.null(m$projection_basis) &&
+        m$projection_basis %in% c("logged_model_margin", "margin_from_logged_win_prob")
+    }, logical(1)))),
+    ratings_projection_total = as.integer(sum(vapply(in_slate, function(m) {
+      identical(m$projection_basis, "team_rating_differential")
+    }, logical(1)))),
     graded_total = as.integer(n_graded),
     correct_total = as.integer(n_correct),
     # NULL, not 0, when nothing in the week is graded - the UI must render a
@@ -462,6 +571,12 @@ dataset <- list(
   pending_games = as.integer(n_pending),
   games_with_projection = as.integer(n_projected),
   games_without_projection = as.integer(length(matchups) - n_projected),
+  # The two bases, counted separately and never summed into one "model" figure.
+  games_logged_basis = as.integer(n_logged_basis),
+  games_ratings_basis = as.integer(n_ratings_basis),
+  ratings_source = sprintf("%s (Net_Rating) + %.2f HCA, pnorm(margin / %.1f)",
+                           basename(RATINGS_PATH), HCA_POINTS, MARGIN_SIGMA),
+  rating_match_rate_pct = rated_pct,
   # Measured on every run, never assumed (see JOIN KEY above).
   logged_predictions_in_season = as.integer(nrow(log_season)),
   logged_predictions_matched = as.integer(n_log_matched),
