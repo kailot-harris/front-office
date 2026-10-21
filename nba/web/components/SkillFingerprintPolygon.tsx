@@ -49,16 +49,16 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
     })
     .join(' ');
 
-  const svgRef = useRef<SVGSVGElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const handleExportPng = () => {
-    if (svgRef.current) {
-      exportSvgAsPng(svgRef.current, 'skill-fingerprint-polygon');
+    if (containerRef.current) {
+      exportSvgAsPng(containerRef.current, 'skill-fingerprint-polygon');
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center p-3 bg-zinc-950/60 rounded-xl border border-zinc-800/80">
+    <div ref={containerRef} className="flex flex-col items-center justify-center p-3 bg-zinc-950/60 rounded-xl border border-zinc-800/80">
       <div className="w-full flex items-center justify-between mb-1">
         <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
           Skill Fingerprint (16-D Aggregate)
@@ -68,12 +68,13 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
           onClick={handleExportPng}
           title="Export PNG"
           aria-label="Export chart as PNG"
+          data-export-exclude
           className="p-1.5 rounded-lg border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 transition-colors"
         >
           <Download className="w-3.5 h-3.5" />
         </button>
       </div>
-      <svg ref={svgRef} width={size} height={size} className="overflow-visible">
+      <svg width={size} height={size} className="overflow-visible">
         {/* Background Concentric Rings (25%, 50%, 75%, 100%) */}
         {[0.25, 0.5, 0.75, 1.0].map((level) => {
           const points = axes

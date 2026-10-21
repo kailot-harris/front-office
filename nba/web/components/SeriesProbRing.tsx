@@ -42,27 +42,33 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
   // Find most likely outcome
   const mostLikely = [...gameDistributions].sort((a, b) => b.probPct - a.probPct)[0];
 
-  const svgRef = useRef<SVGSVGElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const handleExportPng = () => {
-    if (svgRef.current) {
-      exportSvgAsPng(svgRef.current, `${teamA}-vs-${teamB}-series-prob-ring`);
+    if (containerRef.current) {
+      exportSvgAsPng(containerRef.current, `${teamA}-vs-${teamB}-series-prob-ring`);
     }
   };
 
   return (
-    <div className="flex flex-col items-center select-none">
-      <button
-        type="button"
-        onClick={handleExportPng}
-        title="Export PNG"
-        aria-label="Export chart as PNG"
-        className="self-end mb-1 p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
-      >
-        <Download className="w-3.5 h-3.5" />
-      </button>
+    <div ref={containerRef} className="flex flex-col items-center select-none">
+      <div className="w-full flex items-center justify-between mb-1">
+        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">
+          {teamA} vs {teamB} — Series Probabilities
+        </span>
+        <button
+          type="button"
+          onClick={handleExportPng}
+          title="Export PNG"
+          aria-label="Export chart as PNG"
+          data-export-exclude
+          className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+        >
+          <Download className="w-3.5 h-3.5" />
+        </button>
+      </div>
       <div className="relative" style={{ width: size, height: size }}>
-        <svg ref={svgRef} width={size} height={size} className="transform -rotate-90">
+        <svg width={size} height={size} className="transform -rotate-90">
           <circle
             cx={size / 2}
             cy={size / 2}

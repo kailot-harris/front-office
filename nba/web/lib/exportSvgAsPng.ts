@@ -1,21 +1,23 @@
 /**
- * Client-side SVG -> PNG export utility.
+ * Client-side chart export utility.
  *
- * Serializes a live <svg> element, draws it onto an offscreen canvas
- * (scaled up for crispness), and downloads the result as a PNG via
- * canvas.toBlob. No server/API involvement — safe to call from a fully
- * static export.
+ * Captures an arbitrary DOM element (not just a bare <svg>) as a PNG, so a
+ * chart's title/subtitle/legend/caption -- which are almost always plain
+ * HTML siblings of the <svg>, not part of it -- are included in the export.
+ *
+ * Technique: clone the element, inline every element's *computed* style
+ * (Tailwind utility classes only resolve while the page's stylesheet is
+ * attached, so a standalone serialized clone needs literal values), wrap the
+ * clone in a single-use SVG <foreignObject>, rasterize that to an offscreen
+ * canvas, then download as PNG. Generic and data-agnostic -- works off any
+ * element ref alone, no chart-specific logic. No server/API involvement --
+ * safe to call from a fully static export.
  */
 
 const PNG_SCALE = 2;
 
-// Style properties worth inlining. Most of these components style their SVG
-// shapes/text via Tailwind utility classes (e.g. `fill-emerald-400`), which
-// only resolve while the page's stylesheet is attached. A standalone
-// serialized <svg> loaded into an <img> has no stylesheet, so we snapshot
-// the *computed* values from the live DOM onto each cloned node as inline
-// `style` before serializing.
 const STYLE_PROPS = [
+  // SVG shape/text styling
   'fill',
   'stroke',
   'stroke-width',
@@ -25,12 +27,64 @@ const STYLE_PROPS = [
   'opacity',
   'fill-opacity',
   'stroke-opacity',
+  'text-anchor',
+  // Typography
+  'color',
   'font-family',
   'font-size',
   'font-weight',
-  'text-anchor',
-  'color',
+  'font-style',
+  'line-height',
+  'letter-spacing',
+  'text-transform',
+  'text-decoration',
+  'white-space',
+  // Box model / layout
+  'display',
+  'flex-direction',
+  'flex-wrap',
+  'align-items',
+  'justify-content',
+  'justify-items',
+  'gap',
+  'row-gap',
+  'column-gap',
+  'width',
+  'height',
+  'min-width',
+  'min-height',
+  'max-width',
+  'max-height',
+  'padding-top',
+  'padding-right',
+  'padding-bottom',
+  'padding-left',
+  'margin-top',
+  'margin-right',
+  'margin-bottom',
+  'margin-left',
+  'border-top-width',
+  'border-right-width',
+  'border-bottom-width',
+  'border-left-width',
+  'border-top-color',
+  'border-right-color',
+  'border-bottom-color',
+  'border-left-color',
+  'border-top-style',
+  'border-right-style',
+  'border-bottom-style',
+  'border-left-style',
+  'border-radius',
   'background-color',
+  'box-sizing',
+  'position',
+  'top',
+  'left',
+  'right',
+  'bottom',
+  'z-index',
+  'overflow',
 ] as const;
 
 function inlineComputedStyles(source: Element, target: Element): void {
@@ -54,45 +108,57 @@ function inlineComputedStyles(source: Element, target: Element): void {
   }
 }
 
-function getSvgPixelSize(svg: SVGSVGElement): { width: number; height: number } {
-  const viewBox = svg.viewBox && svg.viewBox.baseVal;
-  const widthAttr = svg.getAttribute('width');
-  const heightAttr = svg.getAttribute('height');
+function withDateStamp(filename: string, extension: string): string {
+  const base = filename.toLowerCase().endsWith(`.${extension}`)
+    ? filename.slice(0, -(extension.length + 1))
+    : filename;
+  const dateStamp = new Date().toISOString().slice(0, 10);
+  return `${base}_${dateStamp}.${extension}`;
+}
 
-  const rect = svg.getBoundingClientRect();
+function getElementPixelSize(el: Element): { width: number; height: number } {
+  const rect = el.getBoundingClientRect();
+  let width = rect.width;
+  let height = rect.height;
 
-  let width = rect.width || (widthAttr ? parseFloat(widthAttr) : 0) || (viewBox ? viewBox.width : 0);
-  let height = rect.height || (heightAttr ? parseFloat(heightAttr) : 0) || (viewBox ? viewBox.height : 0);
-
-  if (!width || !Number.isFinite(width)) width = 600;
-  if (!height || !Number.isFinite(height)) height = 400;
+  if (!width || !Number.isFinite(width)) width = 500;
+  if (!height || !Number.isFinite(height)) height = 300;
 
   return { width, height };
 }
 
-export function exportSvgAsPng(svgRef: SVGSVGElement, filename: string): void {
-  if (typeof window === 'undefined' || typeof document === 'undefined' || !svgRef) {
+/**
+ * Exports `element` (and everything inside it -- title, subtitle, caption,
+ * legend, the chart itself, etc.) as a downloaded PNG. `element` should be
+ * the container that visually represents "this chart", not just its <svg>.
+ *
+ * Elements marked `data-export-exclude` (e.g. the export button itself) are
+ * stripped from the captured clone.
+ */
+export function exportSvgAsPng(element: Element, filename: string): void {
+  if (typeof window === 'undefined' || typeof document === 'undefined' || !element) {
     return;
   }
 
-  const svgClone = svgRef.cloneNode(true) as SVGSVGElement;
-  inlineComputedStyles(svgRef, svgClone);
-  const { width, height } = getSvgPixelSize(svgRef);
+  const clone = element.cloneNode(true) as HTMLElement;
+  inlineComputedStyles(element, clone);
+  clone.querySelectorAll('[data-export-exclude]').forEach((el) => el.remove());
 
-  svgClone.setAttribute('width', String(width));
-  svgClone.setAttribute('height', String(height));
-  if (!svgClone.getAttribute('xmlns')) {
-    svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-  }
+  const { width, height } = getElementPixelSize(element);
 
+  clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
   const serializer = new XMLSerializer();
-  const svgString = serializer.serializeToString(svgClone);
+  const htmlString = serializer.serializeToString(clone);
+
+  const svgString =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
+    `<foreignObject width="100%" height="100%">${htmlString}</foreignObject>` +
+    `</svg>`;
+
   const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
   const svgUrl = URL.createObjectURL(svgBlob);
 
-  const normalizedFilename = filename.toLowerCase().endsWith('.png')
-    ? filename
-    : `${filename}.png`;
+  const normalizedFilename = withDateStamp(filename, 'png');
 
   const img = new Image();
   img.onload = () => {
@@ -106,8 +172,9 @@ export function exportSvgAsPng(svgRef: SVGSVGElement, filename: string): void {
       return;
     }
 
-    // White background so transparent SVGs don't export as black in viewers
-    // that don't honor alpha.
+    // The captured card's own background is often semi-transparent
+    // (relies on the page's dark backdrop), so paint the app's dark
+    // background first rather than leaving it transparent/black.
     ctx.fillStyle = '#0b0f17';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.scale(PNG_SCALE, PNG_SCALE);

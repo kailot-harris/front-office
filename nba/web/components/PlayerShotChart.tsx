@@ -39,12 +39,12 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
   const [viewMode, setViewMode] = useState<'zones' | 'hex' | 'scatter'>('zones');
   const [hoveredShot, setHoveredShot] = useState<ShotRecord | null>(null);
   const [zoneFilter, setZoneFilter] = useState<'ALL' | 'HOT' | 'COLD' | 'NEUTRAL'>('ALL');
-  const courtSvgRef = useRef<SVGSVGElement | null>(null);
+  const courtCardRef = useRef<HTMLDivElement | null>(null);
 
   const handleExportPng = () => {
-    if (courtSvgRef.current) {
+    if (courtCardRef.current) {
       exportSvgAsPng(
-        courtSvgRef.current,
+        courtCardRef.current,
         `${playerData.player_name.replace(/\s+/g, '-').toLowerCase()}-shot-chart`
       );
     }
@@ -233,7 +233,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
 
       {/* Main Court Visualization Box */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-8 bg-surface/80 border border-slate-800 rounded-2xl p-4 shadow-2xl relative overflow-hidden flex flex-col items-center">
+        <div ref={courtCardRef} className="lg:col-span-8 bg-surface/80 border border-slate-800 rounded-2xl p-4 shadow-2xl relative overflow-hidden flex flex-col items-center">
           <div className="w-full flex items-center justify-between mb-2 text-xs text-slate-400 px-2">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-white">{playerData.player_name}</span>
@@ -258,6 +258,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
                 onClick={handleExportPng}
                 title="Export PNG"
                 aria-label="Export shot chart as PNG"
+                data-export-exclude
                 className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
               >
                 <Download className="w-3.5 h-3.5" />
@@ -268,7 +269,6 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
           {/* SVG Court Canvas */}
           <div className="w-full max-w-[540px] aspect-[500/470] relative">
             <svg
-              ref={courtSvgRef}
               viewBox="0 0 500 470"
               className="w-full h-full drop-shadow-lg select-none"
               style={{ background: '#0b0f17' }}

@@ -16,11 +16,11 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
   metadata,
 }) => {
   const maxResidualCount = Math.max(...diagnostics.residualDistribution.map((d) => d.count));
-  const calibrationSvgRef = useRef<SVGSVGElement | null>(null);
+  const calibrationCardRef = useRef<HTMLDivElement | null>(null);
 
   const handleExportCalibrationPng = () => {
-    if (calibrationSvgRef.current) {
-      exportSvgAsPng(calibrationSvgRef.current, 'model-calibration-curve');
+    if (calibrationCardRef.current) {
+      exportSvgAsPng(calibrationCardRef.current, 'model-calibration-curve');
     }
   };
 
@@ -134,8 +134,17 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
           {/* SVG Calibration Chart */}
           <div className="bg-surface p-6 rounded-xl border border-slate-800">
+            <div ref={calibrationCardRef}>
+            <div className="mb-3">
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                Probability Calibration Curve (Reliability Diagram)
+              </h3>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Validating whether forecasts of 70% win probability win exactly 70% of the time in empirical data.
+              </p>
+            </div>
             <div className="relative w-full aspect-square max-w-[420px] mx-auto">
-              <svg ref={calibrationSvgRef} viewBox="0 0 400 400" className="w-full h-full overflow-visible">
+              <svg viewBox="0 0 400 400" className="w-full h-full overflow-visible">
                 {/* Grid lines */}
                 {[0.2, 0.4, 0.6, 0.8].map((step) => {
                   const pos = 40 + step * 320;
@@ -240,6 +249,7 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
                 <div className="w-3 h-3 rounded-full bg-indigo-500" />
                 <span className="text-indigo-300 font-semibold">Empirical Model Bins</span>
               </div>
+            </div>
             </div>
           </div>
 
