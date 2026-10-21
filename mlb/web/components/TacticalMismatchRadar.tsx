@@ -1,7 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
+import { Download } from 'lucide-react';
 import { MlbTacticalRatings } from '@/lib/playoffTypes';
+import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 
 interface TacticalMismatchRadarProps {
   teamA: string;
@@ -53,8 +55,16 @@ export const TacticalMismatchRadar: React.FC<TacticalMismatchRadarProps> = ({
   // Grid circles
   const gridLevels = [0.25, 0.5, 0.75, 1.0];
 
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const handleExportPng = () => {
+    if (containerRef.current) {
+      exportSvgAsPng(containerRef.current, `tactical-mismatch-radar-${teamA}-vs-${teamB}`);
+    }
+  };
+
   return (
-    <div className="bg-surface-raised/90 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
+    <div ref={containerRef} className="bg-surface-raised/90 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
       <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 mb-2">
         <div>
           <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
@@ -71,6 +81,16 @@ export const TacticalMismatchRadar: React.FC<TacticalMismatchRadarProps> = ({
             <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
             {teamB}
           </span>
+          <button
+            type="button"
+            onClick={handleExportPng}
+            title="Export PNG"
+            aria-label="Export chart as PNG"
+            data-export-exclude
+            className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 

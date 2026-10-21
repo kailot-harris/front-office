@@ -14,9 +14,11 @@ import {
   BarChart2,
   Table,
   ArrowRight,
+  Download,
 } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { PlayoffContendersBoxWhisker } from '@/components/PlayoffContendersBoxWhisker';
+import { exportToCsv } from '@/lib/exportToCsv';
 
 interface StandingsClientProps {
   teams: TeamProjection[];
@@ -105,6 +107,28 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
       <ArrowUp className="w-3.5 h-3.5 text-indigo-400 font-bold" />
     ) : (
       <ArrowDown className="w-3.5 h-3.5 text-indigo-400 font-bold" />
+    );
+  };
+
+  const handleExportCsv = () => {
+    exportToCsv(
+      filteredTeams as unknown as Record<string, unknown>[],
+      [
+        { key: 'rank', label: 'Rank' },
+        { key: 'full_name', label: 'Franchise' },
+        { key: 'division', label: 'Division' },
+        { key: 'ensemble_mean_wins', label: 'Proj Wins' },
+        { key: 'proj_losses', label: 'Proj Losses' },
+        { key: 'win_pct', label: 'Win %' },
+        { key: 'elo_rating', label: 'Elo' },
+        { key: 'luck_wins', label: 'Pythag Luck' },
+        { key: 'ensemble_p10', label: 'P10 Wins' },
+        { key: 'ensemble_p50', label: 'P50 Wins' },
+        { key: 'ensemble_p90', label: 'P90 Wins' },
+        { key: 'ensemble_playoff_prob', label: 'Playoff %' },
+        { key: 'ensemble_title_prob', label: 'World Series %' },
+      ],
+      'mlb-standings'
     );
   };
 
@@ -327,9 +351,21 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
               </select>
             </div>
 
-            <div className="text-xs text-slate-400 font-mono">
-              Showing <span className="text-white font-bold">{filteredTeams.length}</span> of 30 MLB
-              Franchises
+            <div className="flex items-center gap-3">
+              <div className="text-xs text-slate-400 font-mono">
+                Showing <span className="text-white font-bold">{filteredTeams.length}</span> of 30 MLB
+                Franchises
+              </div>
+              <button
+                type="button"
+                onClick={handleExportCsv}
+                title="Export CSV"
+                aria-label="Export table as CSV"
+                data-export-exclude
+                className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
 
