@@ -3,7 +3,8 @@
 import { useState, useMemo } from 'react';
 import { CoachProfile } from '@/lib/types';
 import { TeamLogo } from './TeamLogo';
-import { Search, Zap, Clock, SlidersHorizontal, ChevronRight } from 'lucide-react';
+import { Search, Zap, Clock, SlidersHorizontal, ChevronRight, Download } from 'lucide-react';
+import { exportToCsv } from '@/lib/exportToCsv';
 
 interface CoachingClientProps {
   initialCoaches: CoachProfile[];
@@ -60,6 +61,26 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
       .sort((a, b) => b.tenure_years - a.tenure_years)
       .slice(0, 3);
   }, [initialCoaches]);
+
+  const handleExportCsv = () => {
+    exportToCsv(
+      filteredCoaches as unknown as Record<string, unknown>[],
+      [
+        { key: 'team', label: 'Team' },
+        { key: 'head_coach', label: 'Head Coach' },
+        { key: 'tenure_years', label: 'Tenure (Years)' },
+        { key: 'offensive_coordinator', label: 'Off Coordinator' },
+        { key: 'defensive_coordinator', label: 'Def Coordinator' },
+        { key: 'offensive_play_caller', label: 'Off Play Caller' },
+        { key: 'defensive_play_caller', label: 'Def Play Caller' },
+        { key: 'fourth_down_aggression_index', label: '4th Down Aggression %ile' },
+        { key: 'pass_rate_over_expected', label: 'PROE %' },
+        { key: 'pace_seconds_per_play', label: 'Pace (s)' },
+        { key: 'timeout_management_grade', label: 'Clock Grade' },
+      ],
+      'nfl-coaching-profiles'
+    );
+  };
 
   return (
     <div className="space-y-8">
@@ -213,6 +234,18 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
 
       {/* Coaches Table */}
       <div className="bg-surface-raised/90 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+        <div className="flex items-center justify-end px-4 py-2 border-b border-slate-800">
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            title="Export CSV"
+            aria-label="Export coaching table as CSV"
+            data-export-exclude
+            className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-mono">
             <thead className="bg-surface/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">

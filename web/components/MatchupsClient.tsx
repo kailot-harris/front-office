@@ -13,7 +13,9 @@ import {
   Zap,
   Shield,
   CheckCircle2,
+  Download,
 } from 'lucide-react';
+import { exportToCsv } from '@/lib/exportToCsv';
 
 interface MatchupsClientProps {
   dataset: MatchupsDataset;
@@ -77,6 +79,27 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
     if (weekMatchups.length === 0) return null;
     return [...weekMatchups].sort((a, b) => Math.abs(b.rest_diff) - Math.abs(a.rest_diff))[0];
   }, [weekMatchups]);
+
+  const handleExportCsv = () => {
+    exportToCsv(
+      filteredMatchups as unknown as Record<string, unknown>[],
+      [
+        { key: 'gameday', label: 'Date' },
+        { key: 'weekday', label: 'Weekday' },
+        { key: 'away_team', label: 'Away Team' },
+        { key: 'home_team', label: 'Home Team' },
+        { key: 'projected_margin', label: 'Projected Margin' },
+        { key: 'away_score', label: 'Away Score' },
+        { key: 'home_score', label: 'Home Score' },
+        { key: 'prediction_correct', label: 'Model Correct' },
+        { key: 'away_win_prob', label: 'Away Win %' },
+        { key: 'home_win_prob', label: 'Home Win %' },
+        { key: 'rest_diff', label: 'Rest Differential' },
+        { key: 'key_number_flag', label: 'Key Margin' },
+      ],
+      `nfl-matchups-week-${selectedWeek}`
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -265,6 +288,18 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
       {/* Compact Table View */}
       {viewMode === 'table' && (
         <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+          <div className="flex items-center justify-end px-3 py-2 border-b border-slate-800">
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              title="Export CSV"
+              aria-label="Export matchups table as CSV"
+              data-export-exclude
+              className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </button>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-surface/90 text-[11px] font-mono uppercase tracking-wider text-slate-400 border-b border-slate-800">

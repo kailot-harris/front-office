@@ -1,7 +1,8 @@
 'use client';
 
 import { DiagnosticsDataset } from '@/lib/types';
-import { Layers, Sliders, Cpu, Shuffle, HelpCircle } from 'lucide-react';
+import { Layers, Sliders, Cpu, Shuffle, HelpCircle, Download } from 'lucide-react';
+import { exportToCsv } from '@/lib/exportToCsv';
 
 interface VariantsClientProps {
   data: DiagnosticsDataset;
@@ -89,6 +90,44 @@ export default function VariantsClient({ data }: VariantsClientProps) {
       recommendation: 'Retained as an additive situational margin penalty ([-1.5, +1.5 pts]) inside the simulation engine rather than a meta-weight.',
     },
   ];
+
+  const ablationBenchmarks = [
+    {
+      architecture: '3-Model Baseline (Production)',
+      weight_distribution: 'Ridge (40%) + Elo (35%) + Market (25%)',
+      brier_score: 0.2282,
+      log_loss: 0.6491,
+      status: 'Active Production',
+    },
+    {
+      architecture: '4-Model Variant (+ Net EPA)',
+      weight_distribution: 'Ridge (35%) + Elo (30%) + Market (25%) + EPA (10%)',
+      brier_score: 0.2305,
+      log_loss: 0.6542,
+      status: 'Rejected (No Lift)',
+    },
+    {
+      architecture: '5-Model Variant (+ Rest / Fatigue)',
+      weight_distribution: 'Ridge (35%) + Elo (30%) + Market (25%) + Rest (10%)',
+      brier_score: 0.2297,
+      log_loss: 0.6528,
+      status: 'Rejected (No Lift)',
+    },
+  ];
+
+  const handleExportAblationCsv = () => {
+    exportToCsv(
+      ablationBenchmarks as unknown as Record<string, unknown>[],
+      [
+        { key: 'architecture', label: 'Ensemble Architecture' },
+        { key: 'weight_distribution', label: 'Weight Distribution' },
+        { key: 'brier_score', label: 'Brier Score' },
+        { key: 'log_loss', label: 'Log Loss' },
+        { key: 'status', label: 'Ensemble Status' },
+      ],
+      'nfl-ablation-benchmarks'
+    );
+  };
 
   return (
     <div className="space-y-8">
@@ -263,7 +302,19 @@ export default function VariantsClient({ data }: VariantsClientProps) {
         </div>
 
         {/* Ablation Benchmark Table */}
-        <div className="overflow-x-auto pt-2">
+        <div className="flex items-center justify-end pt-2">
+          <button
+            type="button"
+            onClick={handleExportAblationCsv}
+            title="Export CSV"
+            aria-label="Export ablation benchmark table as CSV"
+            data-export-exclude
+            className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-mono">
             <thead className="bg-surface/90 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
               <tr>

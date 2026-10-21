@@ -1,12 +1,23 @@
 'use client';
 
+import { useRef } from 'react';
+import { Download } from 'lucide-react';
 import { CalibrationBin } from '@/lib/types';
+import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 
 interface CalibrationCurveProps {
   bins: CalibrationBin[];
 }
 
 export default function CalibrationCurve({ bins }: CalibrationCurveProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const handleExportPng = () => {
+    if (containerRef.current) {
+      exportSvgAsPng(containerRef.current, 'calibration-curve');
+    }
+  };
+
   // SVG Canvas dimensions
   const width = 500;
   const height = 350;
@@ -34,7 +45,7 @@ export default function CalibrationCurve({ bins }: CalibrationCurveProps) {
   }, '');
 
   return (
-    <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col">
+    <div ref={containerRef} className="bg-surface-raised/90 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col">
       <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
         <div>
           <h2 className="text-base font-semibold text-white flex items-center gap-2">
@@ -56,6 +67,16 @@ export default function CalibrationCurve({ bins }: CalibrationCurveProps) {
             <span className="w-3 h-0.5 bg-emerald-400"></span>
             Model Actual
           </span>
+          <button
+            type="button"
+            onClick={handleExportPng}
+            title="Export PNG"
+            aria-label="Export calibration curve as PNG"
+            data-export-exclude
+            className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 

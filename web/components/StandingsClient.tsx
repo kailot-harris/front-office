@@ -15,9 +15,11 @@ import {
   Zap,
   TrendingUp,
   Search,
+  Download,
 } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { WinDistributionBoxWhisker } from '@/components/WinDistributionBoxWhisker';
+import { exportToCsv } from '@/lib/exportToCsv';
 
 interface StandingsClientProps {
   dataset: StandingsDataset;
@@ -131,6 +133,27 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
   const topPowerTeam = useMemo(() => [...teams].sort((a, b) => b.power_rating - a.power_rating)[0], [teams]);
   const topPointDiffTeam = useMemo(() => [...teams].sort((a, b) => b.point_diff - a.point_diff)[0], [teams]);
   const topPlayoffLock = useMemo(() => [...teams].sort((a, b) => b.playoff_prob - a.playoff_prob)[0], [teams]);
+
+  const handleExportCsv = () => {
+    exportToCsv(
+      filteredTeams as unknown as Record<string, unknown>[],
+      [
+        { key: 'rank', label: 'Rank' },
+        { key: 'team_name', label: 'Team' },
+        { key: 'division', label: 'Division' },
+        { key: 'power_rating', label: 'Power Rating' },
+        { key: 'net_epa_roll', label: 'Net EPA/Play' },
+        { key: 'point_diff', label: 'Point Diff' },
+        { key: 'projected_wins', label: 'Projected Wins' },
+        { key: 'wins_p10', label: 'Wins P10' },
+        { key: 'wins_p90', label: 'Wins P90' },
+        { key: 'playoff_prob', label: 'Playoff %' },
+        { key: 'division_title_prob', label: 'Division Title %' },
+        { key: 'super_bowl_prob', label: 'Super Bowl %' },
+      ],
+      'nfl-standings'
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -426,6 +449,18 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
       {/* Tab 2: Full 32 Table */}
       {activeTab === 'table' && (
         <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+          <div className="flex items-center justify-end px-3 py-2 border-b border-slate-800">
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              title="Export CSV"
+              aria-label="Export standings table as CSV"
+              data-export-exclude
+              className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </button>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-surface/90 text-[11px] font-mono uppercase tracking-wider text-slate-400 border-b border-slate-800">

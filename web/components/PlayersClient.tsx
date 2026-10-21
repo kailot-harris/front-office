@@ -4,7 +4,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { QbProfile } from '@/lib/types';
 import { TeamLogo } from './TeamLogo';
 import QbEfficiencyScatter from './QbEfficiencyScatter';
-import { Search, Award, TrendingUp } from 'lucide-react';
+import { Search, Award, TrendingUp, Download } from 'lucide-react';
+import { exportToCsv } from '@/lib/exportToCsv';
 
 interface PlayersClientProps {
   initialQbs: QbProfile[];
@@ -70,6 +71,24 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
       .sort((a, b) => b.off_cpoe_roll - a.off_cpoe_roll)
       .slice(0, 3);
   }, [initialQbs]);
+
+  const handleExportCsv = () => {
+    exportToCsv(
+      filteredQbs as unknown as Record<string, unknown>[],
+      [
+        { key: 'player_name', label: 'Player' },
+        { key: 'team', label: 'Team' },
+        { key: 'depth_position', label: 'Position' },
+        { key: 'jersey_number', label: 'Jersey #' },
+        { key: 'years_exp', label: 'Experience (Years)' },
+        { key: 'college', label: 'College' },
+        { key: 'off_epa_roll', label: 'EPA / Play' },
+        { key: 'off_cpoe_roll', label: 'CPOE %' },
+        { key: 'status', label: 'Status' },
+      ],
+      'nfl-quarterbacks'
+    );
+  };
 
   return (
     <div className="space-y-8">
@@ -225,6 +244,18 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
 
       {/* Quarterback Roster Table */}
       <div className="bg-surface-raised/90 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+        <div className="flex items-center justify-end px-4 py-2 border-b border-slate-800">
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            title="Export CSV"
+            aria-label="Export quarterback table as CSV"
+            data-export-exclude
+            className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-surface/80 text-slate-400 font-mono uppercase text-[10px] tracking-wider border-b border-slate-800">
