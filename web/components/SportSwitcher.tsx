@@ -30,7 +30,7 @@ export const SportSwitcher: React.FC<{ current: (typeof SPORTS)[number]['slug'] 
           }`}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`${repoBase}/${current}/sport-icons/${slug}.svg`} alt="" width={20} height={20} className="w-5 h-5 rounded" />
+          <img src={`${repoBase}/${current}/sport-icons/${slug}.png`} alt="" width={20} height={20} className="w-5 h-5 rounded" />
           <span>{label}</span>
         </a>
       );
