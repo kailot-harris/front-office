@@ -1,0 +1,61 @@
+import React from 'react';
+import { Swords } from 'lucide-react';
+import { getMatchupsData } from '@/lib/data';
+import { MatchupsClient } from '@/components/MatchupsClient';
+
+export const metadata = {
+  title: 'Matchups: Weekly Slates, Projections & Graded Results | NBA Quantitative Analytics',
+  description:
+    'Per-game NBA matchup slates for the whole season: live model projections for the current week, final scores with graded prediction results for past weeks, and pending projections for upcoming weeks.',
+};
+
+export default function MatchupsPage() {
+  const dataset = getMatchupsData();
+  const activeSlate = dataset.slates.find((s) => s.slate === dataset.active_slate) ?? null;
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-7xl space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-accent-500/10 text-accent-400 border border-accent-500/20 font-mono flex items-center gap-1.5">
+              <Swords className="w-3.5 h-3.5" />
+              <span>Per-Game Projection Engine</span>
+            </span>
+            <span className="text-xs text-slate-400 font-mono">
+              {dataset.available_slates.length} weekly slates · {dataset.total_games} games
+            </span>
+          </div>
+          <h1 className="text-3xl font-black tracking-tight text-white">Matchup Slates</h1>
+          <p className="text-slate-400 text-sm mt-1 max-w-3xl">
+            Every game of the season bucketed into weekly slates. Past weeks show the real final
+            score next to the model&apos;s pre-game pick and whether it graded out correct; the
+            active week shows live projections; upcoming weeks show the pending projection with no
+            score or result.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5 text-xs font-mono">
+          <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
+            <span className="text-slate-500 block text-[10px] uppercase">Active Slate</span>
+            <span className="text-white font-bold">Week {dataset.active_slate}</span>
+          </div>
+          <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
+            <span className="text-slate-500 block text-[10px] uppercase">Graded / Pending</span>
+            <span className="text-accent-400 font-bold">
+              {dataset.completed_games} / {dataset.pending_games}
+            </span>
+          </div>
+          {activeSlate && (
+            <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
+              <span className="text-slate-500 block text-[10px] uppercase">Window</span>
+              <span className="text-white font-bold">{activeSlate.start_date}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <MatchupsClient dataset={dataset} />
+    </div>
+  );
+}

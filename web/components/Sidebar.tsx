@@ -21,6 +21,7 @@ import {
   Coins,
   Dna,
   Flame,
+  CalendarDays,
 } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
 
@@ -99,6 +100,13 @@ export const Sidebar: React.FC = () => {
       badge: '30 Staffs',
       icon: Briefcase,
       desc: 'Tactics, ATO & CVA lift',
+    },
+    {
+      href: '/matchups',
+      label: 'Matchup Slates',
+      badge: 'Weekly Grid',
+      icon: CalendarDays,
+      desc: 'Per-game picks, scores & grades',
     },
     {
       href: '/series',

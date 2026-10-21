@@ -4,7 +4,19 @@
 # ==============================================================================
 
 # Working and Cache Directories
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NBA Analytics"
+#   Derived from this file's own location rather than hardcoded, so the repo works
+#   from any checkout path (it has been relocated once already) and so a git
+#   worktree stays self-contained. Falls back to the working directory when the
+#   source file's path is unavailable (e.g. pasted into a console).
+PROJECT_DIR <- local({
+  ofile <- NULL
+  for (fr in sys.frames()) {
+    cand <- tryCatch(get("ofile", envir = fr, inherits = FALSE), error = function(e) NULL)
+    if (is.character(cand) && length(cand) == 1L && nzchar(cand)) ofile <- cand
+  }
+  base <- if (is.null(ofile)) getwd() else dirname(ofile)
+  normalizePath(base, winslash = "/", mustWork = FALSE)
+})
 CACHE_DIR   <- file.path(PROJECT_DIR, "cache")
 if (!dir.exists(CACHE_DIR)) dir.create(CACHE_DIR, recursive = TRUE)
 
@@ -47,6 +59,8 @@ CACHE_PLAYOFF_SERIES    <- file.path(CACHE_DIR, "playoff_series_cache.rds")
 CACHE_PLAYOFF_MATCHUPS  <- file.path(PROJECT_DIR, "web", "public", "data", "playoff_series_matchups.json")
 CACHE_CBA_CAP_SHEET     <- file.path(CACHE_DIR, "cba_cap_sheet_cache.rds")
 CACHE_CBA_JSON          <- file.path(PROJECT_DIR, "web", "public", "data", "cba_cap_sheet.json")
+CACHE_MATCHUPS          <- file.path(CACHE_DIR, "matchups_cache.rds")
+CACHE_MATCHUPS_JSON     <- file.path(PROJECT_DIR, "web", "public", "data", "matchups_slates.json")
 
 # API Throttling & Rate-Limiting
 RATE_LIMIT_SLEEP_SEC <- 1.5

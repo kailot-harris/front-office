@@ -118,6 +118,12 @@ run_stage("bet_tracker.R", "Grade Previous Completed Events & Update Rolling CLV
 run_stage("prediction_accuracy_logger.R", "Reconcile Outcomes & Log Pre-Game Win Probabilities",
           output = file.path(CACHE_DIR, "prediction_accuracy_log.rds"))
 
+# 9. Web-Facing Per-Game Slates (must run AFTER prediction_accuracy_logger.R, which
+# writes the graded prediction log this stage reads, and after the box-score cache
+# ingestion that supplies the real final scores it joins on game_id.)
+run_stage("build_matchups_dataset.R", "Assemble Weekly Matchup Slates, Projections & Graded Results",
+          output = file.path(CACHE_DIR, "matchups_cache.rds"))
+
 pipeline_total_time <- as.numeric(difftime(Sys.time(), pipeline_start_time, units = "secs"))
 message("\n==================================================================")
 message(sprintf(">>> FULL PIPELINE EXECUTED SUCCESSFULLY IN %.2f SECONDS", pipeline_total_time))
