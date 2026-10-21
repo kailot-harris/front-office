@@ -104,7 +104,9 @@
       border-top: 1px solid color-mix(in srgb, var(--sport-accent) 25%, transparent);
     }
     .card.expanded .tab-list {
-      max-height: 26rem;
+      /* Must clear the longest list (NBA, 13 items ~= 31rem) or the overflow
+         rule above silently swallows the last entries. */
+      max-height: 34rem;
     }
     .tab-list li {
       border-top: 1px solid color-mix(in srgb, var(--sport-accent) 15%, transparent);
@@ -309,6 +311,7 @@
           <li><a href="nba/clutch/">True Clutch Index</a></li>
           <li><a href="nba/shots/">Shot Charts</a></li>
           <li><a href="nba/coaches/">Coaching Staffs</a></li>
+          <li><a href="nba/matchups/">Matchup Slates</a></li>
           <li><a href="nba/series/">Playoff Simulator</a></li>
           <li><a href="nba/diagnostics/">Diagnostics</a></li>
         </ul>
