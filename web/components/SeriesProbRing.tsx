@@ -1,7 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
+import { Download } from 'lucide-react';
 import { GameOutcomeProb } from '@/lib/playoffTypes';
+import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 
 interface SeriesProbRingProps {
   teamA: string;
@@ -45,8 +47,16 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
     return a.winner === teamA ? -1 : 1;
   });
 
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const handleExportPng = () => {
+    if (containerRef.current) {
+      exportSvgAsPng(containerRef.current, `series-prob-ring-${teamA}-vs-${teamB}`);
+    }
+  };
+
   return (
-    <div className="bg-surface-raised/90 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
+    <div ref={containerRef} className="bg-surface-raised/90 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
       <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 mb-4">
         <div>
           <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
@@ -54,9 +64,21 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
           </h3>
           <p className="text-xs text-slate-400">10,000 Monte Carlo Series Iterations</p>
         </div>
-        <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-          Best-of-{seriesLength}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+            Best-of-{seriesLength}
+          </span>
+          <button
+            type="button"
+            onClick={handleExportPng}
+            title="Export PNG"
+            aria-label="Export chart as PNG"
+            data-export-exclude
+            className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       {/* Donut Ring Visualizer */}

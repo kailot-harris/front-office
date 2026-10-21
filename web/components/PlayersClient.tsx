@@ -15,10 +15,12 @@ import {
   ChevronUp,
   Compass,
   Crosshair,
+  Download,
 } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { PlayerSpatialDropdown } from '@/components/PlayerSpatialDropdown';
 import { BASE_PATH } from '@/lib/basePath';
+import { exportToCsv } from '@/lib/exportToCsv';
 
 interface PlayersClientProps {
   players: PlayerProjection[];
@@ -125,6 +127,27 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
     sortBy,
     sortOrder,
   ]);
+
+  const handleExportCsv = () => {
+    exportToCsv(
+      filteredPlayers as unknown as Record<string, unknown>[],
+      [
+        { key: 'player_name', label: 'Player' },
+        { key: 'team', label: 'Club' },
+        { key: 'position', label: 'Position' },
+        { key: 'proj_workload', label: activeGroup === 'Batter' ? 'Proj PA' : 'Proj IP' },
+        { key: 'park_factor', label: 'Park Factor' },
+        { key: 'stat1_raw', label: activeGroup === 'Batter' ? 'Raw wOBA' : 'Raw xFIP' },
+        { key: 'stat1_pooled', label: activeGroup === 'Batter' ? 'Pooled wOBA' : 'Pooled xFIP' },
+        { key: 'stat2_pooled', label: activeGroup === 'Batter' ? 'Pooled ISO' : 'Marcel ERA' },
+        { key: 'k_pct_pooled', label: 'K%' },
+        { key: 'bb_pct_pooled', label: 'BB%' },
+        { key: 'composite_zscore', label: 'Z-Score' },
+        { key: 'is_outlier', label: 'Outlier' },
+      ],
+      `${activeGroup.toLowerCase()}-projections`
+    );
+  };
 
   const handleSort = (field: keyof PlayerProjection) => {
     if (sortBy === field) {
@@ -336,6 +359,16 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
 
         {/* Empirical Bayes Pooled Rates vs Marcel Counting Totals Toggle */}
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            title="Export CSV"
+            aria-label="Export table as CSV"
+            data-export-exclude
+            className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
           <span className="text-xs text-slate-400 font-medium">Projection Engine:</span>
           <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
             <button

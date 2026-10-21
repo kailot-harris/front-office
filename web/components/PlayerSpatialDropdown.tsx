@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { PlayerProjection, PlayerSpatialMap, PlayerBattedBall, PlayerPitchItem } from '@/lib/types';
 import {
   Compass,
@@ -11,8 +11,11 @@ import {
   Flame,
   CheckCircle2,
   X,
+  Download,
 } from 'lucide-react';
 import { BallparkFieldSvg } from '@/components/BallparkFieldSvg';
+import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
+import { exportToCsv } from '@/lib/exportToCsv';
 
 interface PlayerSpatialDropdownProps {
   player: PlayerProjection;
@@ -76,6 +79,37 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
     }
     return list;
   }, [spatialData?.batted_balls, batterFilter]);
+
+  const sprayChartRef = useRef<HTMLDivElement | null>(null);
+  const zoneChartRef = useRef<HTMLDivElement | null>(null);
+
+  const handleExportSprayChart = () => {
+    if (sprayChartRef.current) {
+      exportSvgAsPng(sprayChartRef.current, `${player.player_name}-spray-chart`);
+    }
+  };
+
+  const handleExportZoneChart = () => {
+    if (zoneChartRef.current) {
+      exportSvgAsPng(zoneChartRef.current, `${player.player_name}-strike-zone`);
+    }
+  };
+
+  const handleExportArsenalCsv = () => {
+    exportToCsv(
+      (spatialData?.pitcher_summary?.arsenal ?? []) as unknown as Record<string, unknown>[],
+      [
+        { key: 'pitch_name', label: 'Pitch' },
+        { key: 'pitch_type', label: 'Type' },
+        { key: 'pct', label: 'Usage %' },
+        { key: 'avg_velo', label: 'Velo' },
+        { key: 'avg_hb', label: 'H-Break' },
+        { key: 'avg_ivb', label: 'IVB' },
+        { key: 'whiff_pct', label: 'Whiff %' },
+      ],
+      `${player.player_name}-pitch-arsenal`
+    );
+  };
 
   // Filtered pitches
   const displayedPitches = useMemo(() => {
@@ -266,7 +300,17 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
         /* BATTER SPRAY CHART & SUMMARY */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Column: Field SVG Spray Chart with Accurate Multi-Segment Ballpark Geometries */}
-          <div className="lg:col-span-7 bg-surface-raised/90 border border-slate-800 rounded-xl p-4 flex flex-col items-center relative">
+          <div ref={sprayChartRef} className="lg:col-span-7 bg-surface-raised/90 border border-slate-800 rounded-xl p-4 flex flex-col items-center relative">
+            <button
+              type="button"
+              onClick={handleExportSprayChart}
+              title="Export PNG"
+              aria-label="Export chart as PNG"
+              data-export-exclude
+              className="absolute top-3 right-3 p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors z-10"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </button>
             <BallparkFieldSvg
               initialTeam={player.team}
               battedBalls={displayedBalls}
@@ -439,13 +483,25 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
         /* PITCHER STRIKE ZONE & ARSENAL SUMMARY */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Column: Strike Zone SVG */}
-          <div className="lg:col-span-6 bg-surface-raised/90 border border-slate-800 rounded-xl p-4 flex flex-col items-center relative">
+          <div ref={zoneChartRef} className="lg:col-span-6 bg-surface-raised/90 border border-slate-800 rounded-xl p-4 flex flex-col items-center relative">
             <div className="w-full flex items-center justify-between text-xs text-slate-400 mb-2 font-mono">
               <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-indigo-400" />
                 <span>Catcher / Umpire Perspective</span>
               </span>
-              <span>Plate Width [-0.85, +0.85 ft]</span>
+              <div className="flex items-center gap-2">
+                <span>Plate Width [-0.85, +0.85 ft]</span>
+                <button
+                  type="button"
+                  onClick={handleExportZoneChart}
+                  title="Export PNG"
+                  aria-label="Export chart as PNG"
+                  data-export-exclude
+                  className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
 
             {/* Strike Zone SVG Canvas */}
@@ -676,7 +732,19 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
             <div className="bg-surface-raised/90 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
               <div className="px-4 py-2.5 bg-surface/60 border-b border-slate-800 flex items-center justify-between text-xs">
                 <span className="font-semibold text-white">Pitch Arsenal & 3D Movement Profiles</span>
-                <span className="text-[11px] font-mono text-slate-400">IVB vs. HB (inches)</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono text-slate-400">IVB vs. HB (inches)</span>
+                  <button
+                    type="button"
+                    onClick={handleExportArsenalCsv}
+                    title="Export CSV"
+                    aria-label="Export table as CSV"
+                    data-export-exclude
+                    className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs font-mono">

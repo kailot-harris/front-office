@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Search, ArrowUpDown, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { Search, ArrowUpDown, TrendingUp, TrendingDown, DollarSign, Download } from 'lucide-react';
 import { MlbPlayerContract } from '@/lib/cbtTypes';
+import { exportToCsv } from '@/lib/exportToCsv';
 
 interface FranchisePayrollTableProps {
   contracts: MlbPlayerContract[];
@@ -39,6 +40,23 @@ export const FranchisePayrollTable: React.FC<FranchisePayrollTableProps> = ({
         return sortAsc ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number);
       });
   }, [contracts, search, contractTypeFilter, sortField, sortAsc]);
+
+  const handleExportCsv = () => {
+    exportToCsv(
+      filteredContracts as unknown as Record<string, unknown>[],
+      [
+        { key: 'playerName', label: 'Player' },
+        { key: 'position', label: 'Position' },
+        { key: 'contractType', label: 'Status' },
+        { key: 'salary2026', label: '2026 Salary ($M)' },
+        { key: 'salary2027', label: '2027 Salary ($M)' },
+        { key: 'salary2028', label: '2028 Salary ($M)' },
+        { key: 'projectedWar', label: 'Proj WAR' },
+        { key: 'surplusValue', label: 'Surplus Value ($M)' },
+      ],
+      `${teamName || 'team'}-payroll`
+    );
+  };
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -81,6 +99,16 @@ export const FranchisePayrollTable: React.FC<FranchisePayrollTableProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            title="Export CSV"
+            aria-label="Export table as CSV"
+            data-export-exclude
+            className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
           {/* Search Box */}
           <div className="relative">
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />

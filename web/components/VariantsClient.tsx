@@ -2,9 +2,10 @@
 
 import React, { useState, useMemo } from 'react';
 import { TeamProjection, ModelMetadata } from '@/lib/types';
-import { GitCompare, CheckCircle2, Layers } from 'lucide-react';
+import { GitCompare, CheckCircle2, Layers, Download } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { BrierScoreComparison } from '@/components/BrierScoreComparison';
+import { exportToCsv } from '@/lib/exportToCsv';
 
 interface VariantsClientProps {
   teams: TeamProjection[];
@@ -171,6 +172,23 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
 
   const currentVariantInfo = variantDetails[activeVariant];
 
+  const handleExportCsv = () => {
+    exportToCsv(
+      sortedDivergenceTeams as unknown as Record<string, unknown>[],
+      [
+        { key: 'team_name', label: 'Franchise' },
+        { key: 'league', label: 'League' },
+        { key: 'ensemble_mean_wins', label: 'Ensemble Wins' },
+        { key: 'variant_bottom_up_mean_wins', label: 'Pitcher Elo (35%)' },
+        { key: 'variant_rapm_mean_wins', label: 'Emp. Bayes (25%)' },
+        { key: 'variant_shot_fatigue_mean_wins', label: 'Pythagenpat (20%)' },
+        { key: 'variant_embeddings_mean_wins', label: 'Marcel+BP (20%)' },
+        { key: 'spread', label: 'Max Spread (Delta W)' },
+      ],
+      'model-divergence-matrix'
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Variant Selector Tabs */}
@@ -258,6 +276,16 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
           </div>
 
           <div className="flex items-center gap-2 text-xs">
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              title="Export CSV"
+              aria-label="Export table as CSV"
+              data-export-exclude
+              className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </button>
             <span className="text-slate-400 font-medium">Sort Matrix:</span>
             <div className="inline-flex rounded-lg bg-surface-raised p-1 border border-slate-800">
               {(

@@ -1,7 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
+import { Download } from 'lucide-react';
 import { ClutchProfile } from '@/lib/clutchTypes';
+import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 
 interface PressureResiliencePlotProps {
   profiles: ClutchProfile[];
@@ -31,8 +33,16 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
   const scaleX = (val: number) => padding + ((val - xMin) / (xMax - xMin)) * (width - 2 * padding);
   const scaleY = (val: number) => height - padding - ((val - yMin) / (yMax - yMin)) * (height - 2 * padding);
 
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const handleExportPng = () => {
+    if (containerRef.current) {
+      exportSvgAsPng(containerRef.current, `pressure-resilience-plot-${playerType.toLowerCase()}`);
+    }
+  };
+
   return (
-    <div className="flex flex-col p-4 bg-surface/70 rounded-2xl border border-slate-800 shadow-xl space-y-2">
+    <div ref={containerRef} className="flex flex-col p-4 bg-surface/70 rounded-2xl border border-slate-800 shadow-xl space-y-2">
       <div className="flex items-center justify-between">
         <div>
           <h4 className="text-xs font-bold text-white uppercase tracking-wider font-mono">
@@ -44,10 +54,20 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
               : 'X: Base wOBA Against (Talent) | Y: ΔwOBA Against (Bottom = Lockdown Eraser)'}
           </p>
         </div>
-        <div className="text-right">
+        <div className="text-right flex items-center gap-2">
           <span className="text-[10px] font-mono bg-surface-raised border border-slate-800 text-rose-400 px-2 py-0.5 rounded font-bold">
             N = {profiles.length} {playerType}s
           </span>
+          <button
+            type="button"
+            onClick={handleExportPng}
+            title="Export PNG"
+            aria-label="Export chart as PNG"
+            data-export-exclude
+            className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 

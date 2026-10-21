@@ -1,8 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { ModelDiagnostics, ModelMetadata } from '@/lib/types';
-import { Target, CheckCircle2, TrendingUp, BarChart2, ShieldCheck } from 'lucide-react';
+import { Target, CheckCircle2, TrendingUp, BarChart2, ShieldCheck, Download } from 'lucide-react';
+import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
+import { exportToCsv } from '@/lib/exportToCsv';
 
 interface DiagnosticsClientProps {
   diagnostics: ModelDiagnostics;
@@ -17,6 +19,27 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
     1,
     ...diagnostics.residualDistribution.map((d) => d.count)
   );
+
+  const calibrationChartRef = useRef<HTMLDivElement | null>(null);
+
+  const handleExportCalibrationChart = () => {
+    if (calibrationChartRef.current) {
+      exportSvgAsPng(calibrationChartRef.current, 'calibration-curve');
+    }
+  };
+
+  const handleExportCalibrationCsv = () => {
+    exportToCsv(
+      diagnostics.calibration as unknown as Record<string, unknown>[],
+      [
+        { key: 'bin', label: 'Forecast Bin' },
+        { key: 'count', label: 'Games (N)' },
+        { key: 'meanPredictedProb', label: 'Predicted Prob' },
+        { key: 'empiricalWinRate', label: 'Empirical Win %' },
+      ],
+      'calibration-bin-breakdown'
+    );
+  };
 
   return (
     <div className="space-y-8">
@@ -92,7 +115,17 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
         {/* Visual Calibration Curve Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
           {/* SVG Calibration Chart */}
-          <div className="bg-surface p-6 rounded-xl border border-slate-800">
+          <div ref={calibrationChartRef} className="bg-surface p-6 rounded-xl border border-slate-800 relative">
+            <button
+              type="button"
+              onClick={handleExportCalibrationChart}
+              title="Export PNG"
+              aria-label="Export chart as PNG"
+              data-export-exclude
+              className="absolute top-3 right-3 p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </button>
             <div className="relative w-full aspect-square max-w-[420px] mx-auto">
               <svg viewBox="0 0 400 400" className="w-full h-full overflow-visible">
                 {/* Grid lines */}
@@ -208,7 +241,20 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
           </div>
 
           {/* Tabular Calibration Bin Breakdown */}
-          <div className="overflow-x-auto">
+          <div className="space-y-2">
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleExportCalibrationCsv}
+                title="Export CSV"
+                aria-label="Export table as CSV"
+                data-export-exclude
+                className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-400">
@@ -244,6 +290,7 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
                 })}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       </div>

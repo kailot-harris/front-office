@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   StatcastSpatialData,
   BattedBallPoint,
@@ -15,9 +15,12 @@ import {
   Info,
   TrendingUp,
   MapPin,
+  Download,
 } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { getBallparkGeometry, generateBallparkSvgData } from '@/lib/ballparks';
+import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
+import { exportToCsv } from '@/lib/exportToCsv';
 
 interface SpatialAnalyticsClientProps {
   data: StatcastSpatialData;
@@ -144,6 +147,43 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
     return generateBallparkSvgData(richPark, homeX, homeY, scale);
   }, [richPark, homeX, homeY, scale]);
 
+  const sprayChartRef = useRef<HTMLDivElement | null>(null);
+  const zoneChartRef = useRef<HTMLDivElement | null>(null);
+  const movementChartRef = useRef<HTMLDivElement | null>(null);
+
+  const handleExportSprayChart = () => {
+    if (sprayChartRef.current) {
+      exportSvgAsPng(sprayChartRef.current, 'statcast-spray-chart');
+    }
+  };
+
+  const handleExportZoneChart = () => {
+    if (zoneChartRef.current) {
+      exportSvgAsPng(zoneChartRef.current, 'strike-zone-heatmap');
+    }
+  };
+
+  const handleExportMovementChart = () => {
+    if (movementChartRef.current) {
+      exportSvgAsPng(movementChartRef.current, 'pitch-movement-profile');
+    }
+  };
+
+  const handleExportDirectionalBabipCsv = () => {
+    exportToCsv(
+      data.tier4_defense.directional_babip as unknown as Record<string, unknown>[],
+      [
+        { key: 'stand', label: 'Batter Hand' },
+        { key: 'spray_dir', label: 'Direction' },
+        { key: 'batted_balls', label: 'Batted Balls' },
+        { key: 'hits', label: 'Hits' },
+        { key: 'babip', label: 'BABIP' },
+        { key: 'avg_ev', label: 'Avg EV' },
+        { key: 'avg_dist', label: 'Avg Distance' },
+      ],
+      'directional-babip-efficiency'
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -380,7 +420,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
           {/* Main Visualizer Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* SVG Spray Field (8 cols) */}
-            <div className="lg:col-span-8 bg-surface-raised border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col items-center relative">
+            <div ref={sprayChartRef} className="lg:col-span-8 bg-surface-raised border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col items-center relative">
               <div className="w-full flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-white">
@@ -391,6 +431,16 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                   </span>
                 </div>
                 <div className="flex items-center gap-3 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={handleExportSprayChart}
+                    title="Export PNG"
+                    aria-label="Export chart as PNG"
+                    data-export-exclude
+                    className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                  </button>
                   <span className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> HR
                   </span>
@@ -899,15 +949,27 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* 3x3 Strike Zone SVG (7 cols) */}
-            <div className="lg:col-span-7 bg-surface-raised border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col items-center">
+            <div ref={zoneChartRef} className="lg:col-span-7 bg-surface-raised border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col items-center">
               <div className="w-full flex items-center justify-between mb-4">
                 <span className="text-sm font-bold text-white flex items-center gap-2">
                   <Crosshair className="w-4 h-4 text-sky-400" />
                   Statcast 3×3 Strike Zone Grid
                 </span>
-                <span className="text-xs text-slate-400">
-                  Showing: <strong className="text-sky-400 capitalize">{zoneMetric}</strong>
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400">
+                    Showing: <strong className="text-sky-400 capitalize">{zoneMetric}</strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleExportZoneChart}
+                    title="Export PNG"
+                    aria-label="Export chart as PNG"
+                    data-export-exclude
+                    className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
               {/* SVG 3x3 Grid */}
@@ -1208,13 +1270,25 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* IVB vs HB 2D Scatter Chart (7 cols) */}
-            <div className="lg:col-span-7 bg-surface-raised border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col items-center">
+            <div ref={movementChartRef} className="lg:col-span-7 bg-surface-raised border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col items-center">
               <div className="w-full flex items-center justify-between mb-2">
                 <span className="text-sm font-bold text-white flex items-center gap-2">
                   <Activity className="w-4 h-4 text-sky-400" />
                   Movement Profile (Induced Vertical vs. Horizontal Break)
                 </span>
-                <span className="text-xs text-slate-400 font-mono">Inches (&quot;)</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400 font-mono">Inches (&quot;)</span>
+                  <button
+                    type="button"
+                    onClick={handleExportMovementChart}
+                    title="Export PNG"
+                    aria-label="Export chart as PNG"
+                    data-export-exclude
+                    className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
               {/* Movement SVG Chart */}
@@ -1499,10 +1573,22 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
 
             {/* Directional BABIP Grid (7 cols) */}
             <div className="lg:col-span-7 bg-surface-raised border border-slate-800 rounded-2xl p-6 shadow-xl">
-              <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-emerald-400" />
-                Directional BABIP & Spray Efficiency
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-emerald-400" />
+                  Directional BABIP & Spray Efficiency
+                </h3>
+                <button
+                  type="button"
+                  onClick={handleExportDirectionalBabipCsv}
+                  title="Export CSV"
+                  aria-label="Export table as CSV"
+                  data-export-exclude
+                  className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                </button>
+              </div>
               <p className="text-xs text-slate-400 mb-4">
                 Empirical batting average on balls in play categorized by batter handedness and spray direction.
               </p>
