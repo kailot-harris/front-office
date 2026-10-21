@@ -2,9 +2,10 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { TeamProjection, ModelMetadata } from '@/lib/types';
-import { Trophy, TrendingUp, Filter, ArrowUpDown, ArrowUp, ArrowDown, ShieldAlert, Award, BarChart2, Table, ArrowRight } from 'lucide-react';
+import { Trophy, TrendingUp, Filter, ArrowUpDown, ArrowUp, ArrowDown, ShieldAlert, Award, BarChart2, Table, ArrowRight, Download } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { PlayoffContendersBoxWhisker } from '@/components/PlayoffContendersBoxWhisker';
+import { exportToCsv } from '@/lib/exportToCsv';
 
 interface StandingsClientProps {
   teams: TeamProjection[];
@@ -82,6 +83,23 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
         return sortOrder === 'desc' ? -cmp : cmp;
       });
   }, [teams, selectedConference, selectedDivision, sortBy, sortOrder]);
+
+  const handleExportCsv = () => {
+    exportToCsv(
+      filteredTeams as unknown as Record<string, unknown>[],
+      [
+        { key: 'rank', label: 'Rank' },
+        { key: 'team_name', label: 'Team' },
+        { key: 'conference', label: 'Conf' },
+        { key: 'division', label: 'Div' },
+        { key: 'ensemble_mean_wins', label: 'Ensemble Wins' },
+        { key: 'win_pct', label: 'Win %' },
+        { key: 'ensemble_playoff_prob', label: 'Playoffs' },
+        { key: 'ensemble_title_prob', label: 'Title Prob' },
+      ],
+      'wnba-standings'
+    );
+  };
 
   const handleSort = (field: StandingsSortField) => {
     if (sortBy === field) {
@@ -310,8 +328,20 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
               </div>
             </div>
 
-            <div className="text-xs text-slate-400">
-              Showing <span className="font-bold text-slate-200">{filteredTeams.length}</span> of 15 teams
+            <div className="flex items-center gap-3">
+              <div className="text-xs text-slate-400">
+                Showing <span className="font-bold text-slate-200">{filteredTeams.length}</span> of 15 teams
+              </div>
+              <button
+                type="button"
+                onClick={handleExportCsv}
+                title="Export CSV"
+                aria-label="Export standings table as CSV"
+                data-export-exclude
+                className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
 

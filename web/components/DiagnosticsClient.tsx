@@ -1,8 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { ModelDiagnostics, ModelMetadata } from '@/lib/types';
-import { Target, CheckCircle2, TrendingUp, BarChart2, ShieldCheck } from 'lucide-react';
+import { Target, CheckCircle2, TrendingUp, BarChart2, ShieldCheck, Download } from 'lucide-react';
+import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
+import { exportToCsv } from '@/lib/exportToCsv';
 
 interface DiagnosticsClientProps {
   diagnostics: ModelDiagnostics;
@@ -14,6 +16,26 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
   metadata,
 }) => {
   const maxResidualCount = Math.max(1, ...diagnostics.residualDistribution.map((d) => d.count));
+  const calibrationCardRef = useRef<HTMLDivElement | null>(null);
+
+  const handleExportCalibrationPng = () => {
+    if (calibrationCardRef.current) {
+      exportSvgAsPng(calibrationCardRef.current, 'model-calibration-curve');
+    }
+  };
+
+  const handleExportCalibrationCsv = () => {
+    exportToCsv(
+      diagnostics.calibration as unknown as Record<string, unknown>[],
+      [
+        { key: 'bin', label: 'Probability Bin' },
+        { key: 'count', label: 'Sample N' },
+        { key: 'meanPredictedProb', label: 'Mean Forecast' },
+        { key: 'empiricalWinRate', label: 'Empirical Win %' },
+      ],
+      'model-calibration-bins'
+    );
+  };
 
   return (
     <div className="space-y-8">
@@ -73,15 +95,41 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
       </div>
 
       {/* Model Calibration Curve & Reliability Diagram */}
-      <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-6 space-y-6">
-        <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Target className="w-5 h-5 text-indigo-400" />
-            <span>Probability Calibration Curve (Reliability Diagram)</span>
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Validating whether forecasts of 70% win probability win exactly 70% of the time in empirical data.
-          </p>
+      <div ref={calibrationCardRef} className="bg-surface-raised/80 border border-slate-800 rounded-xl p-6 space-y-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <Target className="w-5 h-5 text-indigo-400" />
+              <span>Probability Calibration Curve (Reliability Diagram)</span>
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">
+              Validating whether forecasts of 70% win probability win exactly 70% of the time in empirical data.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleExportCalibrationPng}
+              title="Export chart as PNG"
+              aria-label="Export calibration chart as PNG"
+              data-export-exclude
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Chart PNG</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleExportCalibrationCsv}
+              title="Export table as CSV"
+              aria-label="Export calibration table as CSV"
+              data-export-exclude
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Table CSV</span>
+            </button>
+          </div>
         </div>
 
         {/* Visual Calibration Curve Grid */}

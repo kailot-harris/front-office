@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { ClutchProfile } from '@/lib/clutchTypes';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Download } from 'lucide-react';
+import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 
 interface PressureResiliencePlotProps {
   profiles: ClutchProfile[];
@@ -53,8 +54,16 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
   const zeroX = scaleX(0); // 0% delta TOV
   const avgY = scaleY(53.0); // ~53% WNBA average clutch TS%
 
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const handleExportPng = () => {
+    if (containerRef.current) {
+      exportSvgAsPng(containerRef.current, 'pressure-resilience-plot');
+    }
+  };
+
   return (
-    <div className="bg-surface/70 border border-slate-800 rounded-xl p-5 space-y-4">
+    <div ref={containerRef} className="bg-surface/70 border border-slate-800 rounded-xl p-5 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
@@ -65,8 +74,20 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
             Clutch True Shooting % vs Turnover Fragility (ΔTOV%) under &le; 5 pt leverage
           </p>
         </div>
-        <div className="text-[11px] font-mono text-slate-500 bg-surface-raised px-2.5 py-1 rounded border border-slate-800">
-          Min. 8 Clutch FGA ({qualified.length} players)
+        <div className="flex items-center gap-2">
+          <div className="text-[11px] font-mono text-slate-500 bg-surface-raised px-2.5 py-1 rounded border border-slate-800">
+            Min. 8 Clutch FGA ({qualified.length} players)
+          </div>
+          <button
+            type="button"
+            onClick={handleExportPng}
+            title="Export PNG"
+            aria-label="Export chart as PNG"
+            data-export-exclude
+            className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 

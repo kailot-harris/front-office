@@ -1,7 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { DefensiveProfile } from '@/lib/defenseTypes';
+import { Download } from 'lucide-react';
+import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 
 interface VersatilityScatterProps {
   profiles: DefensiveProfile[];
@@ -29,8 +31,16 @@ export const VersatilityScatter: React.FC<VersatilityScatterProps> = ({
   const scaleX = (val: number) => padding + ((val - xMin) / (xMax - xMin)) * (width - 2 * padding);
   const scaleY = (val: number) => padding + ((val - yMax) / (yMin - yMax)) * (height - 2 * padding);
 
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const handleExportPng = () => {
+    if (containerRef.current) {
+      exportSvgAsPng(containerRef.current, 'versatility-scatter');
+    }
+  };
+
   return (
-    <div className="flex flex-col p-4 bg-surface/60 rounded-xl border border-slate-800/80">
+    <div ref={containerRef} className="flex flex-col p-4 bg-surface/60 rounded-xl border border-slate-800/80">
       <div className="flex items-center justify-between mb-2">
         <div>
           <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
@@ -42,10 +52,20 @@ export const VersatilityScatter: React.FC<VersatilityScatterProps> = ({
             Y: Rim DFG% Delta (Top = Elite Rim Fortress & Suppression)
           </p>
         </div>
-        <div className="text-right">
+        <div className="flex items-center gap-2">
           <span className="text-[10px] font-mono bg-surface-raised border border-slate-800 text-indigo-400 px-2 py-0.5 rounded">
             N = {profiles.length} Defenders
           </span>
+          <button
+            type="button"
+            onClick={handleExportPng}
+            title="Export PNG"
+            aria-label="Export chart as PNG"
+            data-export-exclude
+            className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 

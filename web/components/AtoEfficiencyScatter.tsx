@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { CoachingStaffMetric } from '@/lib/coachingTypes';
 import { TeamLogo } from '@/components/TeamLogo';
-import { Crosshair } from 'lucide-react';
+import { Crosshair, Download } from 'lucide-react';
+import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 
 interface AtoEfficiencyScatterProps {
   coaches: CoachingStaffMetric[];
@@ -17,6 +18,13 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
   onSelectCoach,
 }) => {
   const [hoveredCoach, setHoveredCoach] = useState<CoachingStaffMetric | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const handleExportPng = () => {
+    if (containerRef.current) {
+      exportSvgAsPng(containerRef.current, 'ato-efficiency-scatter');
+    }
+  };
 
   // Bounds for axes in WNBA
   // Offense PPP: 0.82 to 1.15
@@ -46,7 +54,7 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
   const midY = scaleY(0.95); // WNBA median offensive PPP
 
   return (
-    <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg p-5">
+    <div ref={containerRef} className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg p-5">
       {/* Header Info */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-800">
         <div>
@@ -72,6 +80,16 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
             <div className="w-3 h-3 rounded-full bg-indigo-500/30 border border-indigo-400" />
             <span>Selected</span>
           </div>
+          <button
+            type="button"
+            onClick={handleExportPng}
+            title="Export PNG"
+            aria-label="Export chart as PNG"
+            data-export-exclude
+            className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 

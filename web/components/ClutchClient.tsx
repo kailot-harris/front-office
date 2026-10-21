@@ -11,7 +11,9 @@ import {
   Sparkles,
   Zap,
   Award,
+  Download,
 } from 'lucide-react';
+import { exportToCsv } from '@/lib/exportToCsv';
 
 interface ClutchClientProps {
   initialProfiles: ClutchProfile[];
@@ -89,6 +91,26 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
       setSortField(field);
       setSortAsc(field === 'tovFragility'); // default ascending for fragility
     }
+  };
+
+  const handleExportCsv = () => {
+    exportToCsv(
+      filteredProfiles as unknown as Record<string, unknown>[],
+      [
+        { key: 'playerName', label: 'Player' },
+        { key: 'team', label: 'Team' },
+        { key: 'position', label: 'Pos' },
+        { key: 'clutchArchetype', label: 'Clutch Archetype' },
+        { key: 'usciScore', label: 'USCI' },
+        { key: 'clutchTsPct', label: 'Clutch TS%' },
+        { key: 'tsDelta', label: 'Delta TS%' },
+        { key: 'tovFragility', label: 'Delta TOV%' },
+        { key: 'clutchUsgPct', label: 'Clutch USG%' },
+        { key: 'cDwpa', label: 'Clutch dWPA' },
+        { key: 'clutchMpg', label: 'Clutch MPG' },
+      ],
+      'clutch-leaderboard'
+    );
   };
 
   return (
@@ -309,6 +331,17 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                 <option value="clutchMpg">Clutch MPG</option>
               </select>
             </div>
+
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              title="Export CSV"
+              aria-label="Export clutch leaderboard as CSV"
+              data-export-exclude
+              className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
