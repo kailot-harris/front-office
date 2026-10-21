@@ -1,6 +1,6 @@
 """
 Team & Entity Embedding Network
-File: c:/Users/kailo/kayceeslices/NBA Analytics/team_embeddings.py
+File: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/team_embeddings.py
 """
 
 import sys

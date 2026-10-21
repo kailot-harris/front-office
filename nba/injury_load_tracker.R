@@ -1,6 +1,6 @@
 # ==============================================================================
 # Injury, Load Management & Schedule Fatigue Tracker
-# Path: c:/Users/kailo/kayceeslices/NBA Analytics/injury_load_tracker.R
+# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/injury_load_tracker.R
 # ==============================================================================
 
 suppressPackageStartupMessages({

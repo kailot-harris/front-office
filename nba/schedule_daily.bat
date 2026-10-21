@@ -1,5 +1,5 @@
 @echo off
-set PROJECT_DIR=c:\Users\kailo\kayceeslices\NBA Analytics
+set PROJECT_DIR=c:\Users\kailo\kayceeslices\front-office\NBA Analytics
 set LOG_FILE=%PROJECT_DIR%\pipeline_execution.log
 
 echo ================================================================== >> "%LOG_FILE%"
