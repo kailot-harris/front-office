@@ -718,18 +718,26 @@ function renderZoneCircle(name: string, cx: number, cy: number, r: number, metri
 }
 
 // Helper: Text Badge in SVG Zone
+const BADGE_WIDTH = 50;
+const BADGE_HEIGHT = 30;
+const COURT_WIDTH = 500;
+
 function renderZoneLabelBadge(name: string, x: number, y: number, metric?: ZoneMetric) {
   if (!metric || metric.fga === 0) return null;
 
   const pct = (metric.fgPct * 100).toFixed(0);
+  const halfWidth = BADGE_WIDTH / 2;
+  // Clamp so the badge never bleeds past the court's own svg bounds, even
+  // when its anchor point sits in a narrow edge zone (e.g. the corner 3s).
+  const clampedX = Math.min(Math.max(x, halfWidth), COURT_WIDTH - halfWidth);
 
   return (
-    <g key={name} transform={`translate(${x}, ${y})`}>
+    <g key={name} transform={`translate(${clampedX}, ${y})`}>
       <rect
-        x="-32"
-        y="-11"
-        width="64"
-        height="22"
+        x={-halfWidth}
+        y={-BADGE_HEIGHT / 2}
+        width={BADGE_WIDTH}
+        height={BADGE_HEIGHT}
         rx="4"
         fill="rgba(15, 23, 42, 0.85)"
         stroke={metric.status === 'HOT' ? '#f43f5e' : metric.status === 'COLD' ? '#06b6d4' : '#475569'}
@@ -737,13 +745,13 @@ function renderZoneLabelBadge(name: string, x: number, y: number, metric?: ZoneM
       />
       <text
         x="0"
-        y="3.5"
         textAnchor="middle"
         fontSize="9.5"
         fontWeight="bold"
         fill={metric.status === 'HOT' ? '#fda4af' : metric.status === 'COLD' ? '#67e8f9' : '#e2e8f0'}
       >
-        {metric.fgm}/{metric.fga} ({pct}%)
+        <tspan x="0" y="-2">{metric.fgm}/{metric.fga}</tspan>
+        <tspan x="0" y="11">({pct}%)</tspan>
       </text>
     </g>
   );
