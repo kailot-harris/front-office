@@ -43,6 +43,19 @@
       grid-template-columns: repeat(2, minmax(200px, 1fr));
       gap: 1rem;
     }
+    /* Two 200px tracks plus the gap need 416px, which is wider than a 375px
+       phone viewport minus the hero's 1rem gutters — the grid refuses to
+       shrink past its minimum and the page scrolls sideways instead. Stack
+       into one column before that happens. */
+    @media (max-width: 480px) {
+      nav {
+        grid-template-columns: 1fr;
+        width: 100%;
+      }
+      .card-header {
+        padding: 1.1rem 1rem;
+      }
+    }
     .card {
       display: flex;
       flex-direction: column;
