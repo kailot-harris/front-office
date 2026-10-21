@@ -118,7 +118,7 @@ export const Sidebar: React.FC = () => {
 
   const NavContent = () => (
     <div className="flex flex-col h-full justify-between p-4">
-      <div className="space-y-6">
+      <div className="space-y-6 flex-1 overflow-y-auto min-h-0">
         {/* Brand Header with Halloween Basketball Button Logo */}
         <div className="flex items-center gap-3 px-2 pt-1 pb-2 border-b border-slate-800/80">
           <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-amber-600 via-orange-600 to-slate-900 border border-orange-500/30 flex items-center justify-center shadow-lg shadow-orange-500/20 flex-shrink-0">
