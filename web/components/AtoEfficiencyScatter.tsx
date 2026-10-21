@@ -18,11 +18,11 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
   onSelectCoach,
 }) => {
   const [hoveredCoach, setHoveredCoach] = useState<CoachingStaffMetric | null>(null);
-  const svgRef = useRef<SVGSVGElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const handleExportPng = () => {
-    if (svgRef.current) {
-      exportSvgAsPng(svgRef.current, 'ato-efficiency-scatter');
+    if (containerRef.current) {
+      exportSvgAsPng(containerRef.current, 'ato-efficiency-scatter');
     }
   };
 
@@ -56,7 +56,7 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
   const midY = scaleY(1.05); // League median offensive PPP
 
   return (
-    <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg p-5">
+    <div ref={containerRef} className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg p-5">
       {/* Header Info */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-800">
         <div>
@@ -95,6 +95,7 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
             onClick={handleExportPng}
             title="Export PNG"
             aria-label="Export chart as PNG"
+            data-export-exclude
             className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
           >
             <Download className="w-3.5 h-3.5" />
@@ -105,7 +106,6 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
       {/* SVG Canvas */}
       <div className="relative flex justify-center overflow-x-auto">
         <svg
-          ref={svgRef}
           viewBox={`0 0 ${width} ${height}`}
           className="w-full max-w-[760px] select-none font-sans"
         >

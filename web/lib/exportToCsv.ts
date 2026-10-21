@@ -11,6 +11,14 @@ export interface CsvColumn {
   label: string;
 }
 
+function withDateStamp(filename: string, extension: string): string {
+  const base = filename.toLowerCase().endsWith(`.${extension}`)
+    ? filename.slice(0, -(extension.length + 1))
+    : filename;
+  const dateStamp = new Date().toISOString().slice(0, 10);
+  return `${base}_${dateStamp}.${extension}`;
+}
+
 function toCsvCell(value: unknown): string {
   if (value === null || value === undefined) {
     return '';
@@ -52,9 +60,7 @@ export function exportToCsv(
   const blob = new Blob(['﻿' + csvText], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
 
-  const normalizedFilename = filename.toLowerCase().endsWith('.csv')
-    ? filename
-    : `${filename}.csv`;
+  const normalizedFilename = withDateStamp(filename, 'csv');
 
   const link = document.createElement('a');
   link.href = url;

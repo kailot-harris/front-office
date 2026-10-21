@@ -30,16 +30,16 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
   const scaleX = (val: number) => padding + ((val - xMin) / (xMax - xMin)) * (width - 2 * padding);
   const scaleY = (val: number) => height - padding - ((val - yMin) / (yMax - yMin)) * (height - 2 * padding);
 
-  const svgRef = useRef<SVGSVGElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const handleExportPng = () => {
-    if (svgRef.current) {
-      exportSvgAsPng(svgRef.current, 'pressure-resilience-plot');
+    if (containerRef.current) {
+      exportSvgAsPng(containerRef.current, 'pressure-resilience-plot');
     }
   };
 
   return (
-    <div className="flex flex-col p-4 bg-zinc-950/60 rounded-xl border border-zinc-800/80">
+    <div ref={containerRef} className="flex flex-col p-4 bg-zinc-950/60 rounded-xl border border-zinc-800/80">
       <div className="flex items-center justify-between mb-2">
         <div>
           <h4 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
@@ -60,6 +60,7 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
             onClick={handleExportPng}
             title="Export PNG"
             aria-label="Export chart as PNG"
+            data-export-exclude
             className="p-1.5 rounded-lg border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 transition-colors"
           >
             <Download className="w-3.5 h-3.5" />
@@ -68,7 +69,7 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
       </div>
 
       <div className="relative w-full overflow-hidden flex justify-center">
-        <svg ref={svgRef} viewBox={`0 0 ${width} ${height}`} className="w-full max-w-[500px] h-auto overflow-visible">
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full max-w-[500px] h-auto overflow-visible">
           {/* Quadrant Axis Lines */}
           <line
             x1={padding}
