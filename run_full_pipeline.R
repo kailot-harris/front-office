@@ -75,6 +75,16 @@ run_stage <- function(script_name, description, call_fn = NULL, output = NULL) {
 # ------------------------------------------------------------------------------
 
 # 1. Official Data Feed & Ingestion
+# daily_ingest.R runs FIRST: it is the only stage that pulls new box scores from the
+# hoopR API, and every downstream stage (ratings, reconciliation, bet grading) reads
+# CACHE_TEAM_BOX. It was previously absent from this orchestrator and from
+# schedule_daily.bat, so ingestion never ran on a scheduled run and the box-score cache
+# sat frozen at the end of the prior season while the models kept re-running over it.
+# No `output =` declared on purpose: daily_box_ingest() deliberately skips the write when
+# there are no new records ("Cache is already up to date"), so a declared output would
+# trip .check_stage_output's staleness WARN on every quiet day. It self-executes on
+# source(), so it needs no call_fn.
+run_stage("daily_ingest.R", "Ingest New Official Box Scores (hoopR)")
 run_stage("sync_rosters.R",  "Sync Active 556-Player Rosters & Mid-Season Trades",
           output = file.path(CACHE_DIR, "active_rosters_cache.rds"))
 run_stage("injury_scraper.R", "Scrape Official Injury Scratches & Availability Updates")
