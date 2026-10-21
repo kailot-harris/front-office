@@ -2,7 +2,8 @@
 
 import { DiagnosticsDataset } from '@/lib/types';
 import CalibrationCurve from './CalibrationCurve';
-import { ShieldCheck, Target, Activity, BarChart2 } from 'lucide-react';
+import { ShieldCheck, Target, Activity, BarChart2, Download } from 'lucide-react';
+import { exportToCsv } from '@/lib/exportToCsv';
 
 interface DiagnosticsClientProps {
   data: DiagnosticsDataset;
@@ -28,6 +29,40 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
   const historyAccuracy = Array.isArray(data.overall_accuracy) ? data.overall_accuracy : [data.overall_accuracy];
   const historyBrier = Array.isArray(data.overall_brier) ? data.overall_brier : [data.overall_brier];
   const historyLogLoss = Array.isArray(data.overall_logloss) ? data.overall_logloss : [data.overall_logloss];
+
+  const handleExportCalibrationCsv = () => {
+    exportToCsv(
+      data.calibration_curve as unknown as Record<string, unknown>[],
+      [
+        { key: 'bin', label: 'Bin' },
+        { key: 'predicted_mid', label: 'Predicted Mid' },
+        { key: 'actual_win_rate', label: 'Actual Win Rate' },
+        { key: 'count', label: 'Count' },
+      ],
+      'nfl-calibration-deciles'
+    );
+  };
+
+  const handleExportTrajectoryCsv = () => {
+    const rows = historyGames.map((games, idx) => ({
+      checkpoint: idx + 1,
+      cumulative_graded: games,
+      su_accuracy: historyAccuracy[idx],
+      brier_score: historyBrier[idx],
+      log_loss: historyLogLoss[idx],
+    }));
+    exportToCsv(
+      rows,
+      [
+        { key: 'checkpoint', label: 'Evaluation Checkpoint' },
+        { key: 'cumulative_graded', label: 'Cumulative Graded' },
+        { key: 'su_accuracy', label: 'SU Accuracy' },
+        { key: 'brier_score', label: 'Brier Score' },
+        { key: 'log_loss', label: 'Log Loss' },
+      ],
+      'nfl-accuracy-trajectory'
+    );
+  };
 
   return (
     <div className="space-y-8">
@@ -118,7 +153,19 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
         {/* Calibration Decile Table */}
         <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 shadow-xl flex flex-col justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-white mb-2">Decile Probability Breakdown</h2>
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-white mb-2">Decile Probability Breakdown</h2>
+              <button
+                type="button"
+                onClick={handleExportCalibrationCsv}
+                title="Export CSV"
+                aria-label="Export decile breakdown as CSV"
+                data-export-exclude
+                className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <p className="text-xs text-slate-400 mb-3">
               Sample count and realized win rate per 10% probability bucket.
             </p>
@@ -181,9 +228,21 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
               Progression of model diagnostics across real-time evaluation checkpoints in the 2026 season.
             </p>
           </div>
-          <span className="text-xs font-mono text-emerald-400 bg-surface px-2.5 py-1 rounded border border-slate-800 self-start sm:self-auto">
-            {historyGames.length} Evaluation Checkpoints
-          </span>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <span className="text-xs font-mono text-emerald-400 bg-surface px-2.5 py-1 rounded border border-slate-800">
+              {historyGames.length} Evaluation Checkpoints
+            </span>
+            <button
+              type="button"
+              onClick={handleExportTrajectoryCsv}
+              title="Export CSV"
+              aria-label="Export accuracy trajectory as CSV"
+              data-export-exclude
+              className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
         {/* Informative Pipeline Note */}

@@ -3,7 +3,8 @@
 import { useState, useMemo } from 'react';
 import { SalaryCapDataset, TeamCapProfile } from '@/lib/types';
 import { TeamLogo } from './TeamLogo';
-import { Search, DollarSign, PieChart, Layers, Award } from 'lucide-react';
+import { Search, DollarSign, PieChart, Layers, Award, Download } from 'lucide-react';
+import { exportToCsv } from '@/lib/exportToCsv';
 
 interface SalaryCapClientProps {
   data: SalaryCapDataset;
@@ -47,6 +48,40 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
   }, [data.teams]);
 
   const avgTeamApy = totalLeagueApy / (data.teams.length || 1);
+
+  const handleExportTeamsCsv = () => {
+    exportToCsv(
+      filteredTeams as unknown as Record<string, unknown>[],
+      [
+        { key: 'team', label: 'Team' },
+        { key: 'total_active_contracts', label: 'Active Contracts' },
+        { key: 'total_active_apy', label: 'Active APY ($M)' },
+        { key: 'total_guaranteed', label: 'Guaranteed ($M)' },
+        { key: 'estimated_cap_space', label: 'Est Cap Space ($M)' },
+        { key: 'dead_money', label: 'Dead Money ($M)' },
+        { key: 'cap_health_rating', label: 'Cap Health' },
+      ],
+      'nfl-team-cap-profiles'
+    );
+  };
+
+  const handleExportContractsCsv = () => {
+    exportToCsv(
+      filteredContracts as unknown as Record<string, unknown>[],
+      [
+        { key: 'player', label: 'Player' },
+        { key: 'position', label: 'Position' },
+        { key: 'team', label: 'Team' },
+        { key: 'apy', label: 'APY ($M)' },
+        { key: 'value', label: 'Total Value ($M)' },
+        { key: 'guaranteed', label: 'Guaranteed ($M)' },
+        { key: 'apy_cap_pct', label: 'Cap % at Signing' },
+        { key: 'years', label: 'Years' },
+        { key: 'year_signed', label: 'Signed' },
+      ],
+      'nfl-top-contracts'
+    );
+  };
 
   return (
     <div className="space-y-8">
@@ -161,6 +196,18 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Team Table */}
             <div className="lg:col-span-2 bg-surface-raised/90 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+              <div className="flex items-center justify-end px-4 py-2 border-b border-slate-800">
+                <button
+                  type="button"
+                  onClick={handleExportTeamsCsv}
+                  title="Export CSV"
+                  aria-label="Export team cap profiles as CSV"
+                  data-export-exclude
+                  className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                </button>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs font-mono">
                   <thead className="bg-surface/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
@@ -348,6 +395,18 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
       {/* View 2: Top 100 League Contracts Table */}
       {activeTab === 'top_contracts' && (
         <div className="bg-surface-raised/90 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+          <div className="flex items-center justify-end px-4 py-2 border-b border-slate-800">
+            <button
+              type="button"
+              onClick={handleExportContractsCsv}
+              title="Export CSV"
+              aria-label="Export top contracts as CSV"
+              data-export-exclude
+              className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </button>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-mono">
               <thead className="bg-surface/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">

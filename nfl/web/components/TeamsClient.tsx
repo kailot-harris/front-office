@@ -15,7 +15,9 @@ import {
   Activity,
   Flame,
   Target,
+  Download,
 } from 'lucide-react';
+import { exportToCsv } from '@/lib/exportToCsv';
 
 interface TeamsClientProps {
   teams: TeamEpaProfile[];
@@ -100,6 +102,25 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams }) => {
   const topDefense = useMemo(() => [...teams].sort((a, b) => a.def_epa_per_play - b.def_epa_per_play)[0], [teams]);
   const topSuccessRate = useMemo(() => [...teams].sort((a, b) => b.off_success_rate - a.off_success_rate)[0], [teams]);
   const topExplosive = useMemo(() => [...teams].sort((a, b) => b.off_explosive_rate - a.off_explosive_rate)[0], [teams]);
+
+  const handleExportCsv = () => {
+    exportToCsv(
+      filteredTeams as unknown as Record<string, unknown>[],
+      [
+        { key: 'team_name', label: 'Team' },
+        { key: 'division', label: 'Division' },
+        { key: 'net_epa_per_play', label: 'Net EPA/Play' },
+        { key: 'off_epa_per_play', label: 'Off EPA/Play' },
+        { key: 'def_epa_per_play', label: 'Def EPA Allowed' },
+        { key: 'off_success_rate', label: 'Success %' },
+        { key: 'off_cpoe', label: 'CPOE' },
+        { key: 'off_money_down_epa', label: '3rd/4th Down EPA' },
+        { key: 'off_redzone_success', label: 'Red Zone %' },
+        { key: 'off_explosive_rate', label: 'Explosive %' },
+      ],
+      'nfl-team-epa-profiles'
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -242,6 +263,18 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams }) => {
 
       {/* Advanced EPA Table */}
       <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+        <div className="flex items-center justify-end px-3 py-2 border-b border-slate-800">
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            title="Export CSV"
+            aria-label="Export EPA profiles table as CSV"
+            data-export-exclude
+            className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-surface/90 text-[11px] font-mono uppercase tracking-wider text-slate-400 border-b border-slate-800">
