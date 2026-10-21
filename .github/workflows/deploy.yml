@@ -108,6 +108,10 @@ jobs:
         run: |
           mkdir -p site
           cp index.html site/
+          # The landing page's own assets (trophy clips and posters). These are
+          # not part of any sport's Next build, so they have to be copied in
+          # explicitly or every asset URL on the landing page 404s.
+          cp -r assets site/
           for sport in nba wnba mlb nfl; do
             mkdir -p "site/$sport"
             cp -r "artifacts/site-$sport/." "site/$sport/"
