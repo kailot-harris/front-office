@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { BASE_PATH } from '@/lib/basePath';
 import {
   Trophy,
   BarChart3,
@@ -117,8 +118,9 @@ export const Sidebar: React.FC = () => {
     <div className="flex flex-col h-full justify-between p-4">
       <div className="space-y-6 flex-1 overflow-y-auto min-h-0">
         <div className="flex items-center gap-3 px-2 pt-1 pb-2 border-b border-slate-800/80">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-indigo-600 via-violet-600 to-slate-900 border border-indigo-500/30 flex items-center justify-center shadow-lg shadow-indigo-500/20 flex-shrink-0">
-            <Trophy className="w-6 h-6 text-white" />
+          <div className="w-11 h-11 rounded-xl overflow-hidden border border-indigo-500/30 shadow-lg shadow-indigo-500/20 flex-shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`${BASE_PATH}/sport-icons/wnba.png`} alt="" width={44} height={44} className="w-full h-full object-cover" />
           </div>
           <div className="min-w-0">
             <span className="font-extrabold text-base tracking-tight bg-gradient-to-r from-indigo-400 via-violet-400 to-amber-400 bg-clip-text text-transparent">
@@ -202,8 +204,9 @@ export const Sidebar: React.FC = () => {
     <>
       <div className="md:hidden sticky top-0 z-40 bg-surface-raised/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-indigo-600 via-violet-600 to-slate-900 border border-indigo-500/30 flex items-center justify-center shadow-md">
-            <Trophy className="w-5 h-5 text-white" />
+          <div className="w-9 h-9 rounded-lg overflow-hidden border border-indigo-500/30 shadow-md">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`${BASE_PATH}/sport-icons/wnba.png`} alt="" width={36} height={36} className="w-full h-full object-cover" />
           </div>
           <span className="font-extrabold text-sm tracking-tight text-white">WNBA ANALYTICS</span>
         </div>
