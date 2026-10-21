@@ -61,6 +61,11 @@ CACHE_CBA_CAP_SHEET     <- file.path(CACHE_DIR, "cba_cap_sheet_cache.rds")
 CACHE_CBA_JSON          <- file.path(PROJECT_DIR, "web", "public", "data", "cba_cap_sheet.json")
 CACHE_MATCHUPS          <- file.path(CACHE_DIR, "matchups_cache.rds")
 CACHE_MATCHUPS_JSON     <- file.path(PROJECT_DIR, "web", "public", "data", "matchups_slates.json")
+# Season-keyed hoopR pulls backing the Matchups page. The season number is hoopR's
+# (end-year) numbering, which is NOT the same as CURRENT_SEASON's - see the
+# SEASON SCOPE note at the top of build_matchups_dataset.R.
+CACHE_MATCHUPS_SCHEDULE <- function(season) file.path(CACHE_DIR, sprintf("matchups_schedule_%d.rds", season))
+CACHE_MATCHUPS_TEAM_BOX <- function(season) file.path(CACHE_DIR, sprintf("matchups_team_box_%d.rds", season))
 
 # API Throttling & Rate-Limiting
 RATE_LIMIT_SLEEP_SEC <- 1.5

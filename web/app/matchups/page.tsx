@@ -23,15 +23,16 @@ export default function MatchupsPage() {
               <span>Per-Game Projection Engine</span>
             </span>
             <span className="text-xs text-slate-400 font-mono">
-              {dataset.available_slates.length} weekly slates · {dataset.total_games} games
+              {dataset.season_label} season · {dataset.available_slates.length} weekly slates ·{' '}
+              {dataset.total_games} games
             </span>
           </div>
           <h1 className="text-3xl font-black tracking-tight text-white">Matchup Slates</h1>
           <p className="text-slate-400 text-sm mt-1 max-w-3xl">
-            Every game of the season bucketed into weekly slates. Past weeks show the real final
-            score next to the model&apos;s pre-game pick and whether it graded out correct; the
-            active week shows live projections; upcoming weeks show the pending projection with no
-            score or result.
+            Every game of the {dataset.season_label} season — and only that season — bucketed into
+            weekly slates. Past weeks show the real final score next to the model&apos;s pre-game
+            pick and whether it graded out correct; the active week shows live projections; upcoming
+            weeks show the pending projection with no score or result.
           </p>
         </div>
 
@@ -40,10 +41,15 @@ export default function MatchupsPage() {
             <span className="text-slate-500 block text-[10px] uppercase">Active Slate</span>
             <span className="text-white font-bold">Week {dataset.active_slate}</span>
           </div>
+          {/* With nothing graded yet, say so instead of printing a bare "0 /". */}
           <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
-            <span className="text-slate-500 block text-[10px] uppercase">Graded / Pending</span>
+            <span className="text-slate-500 block text-[10px] uppercase">
+              {dataset.graded_games_available ? 'Graded / Pending' : 'Grading'}
+            </span>
             <span className="text-accent-400 font-bold">
-              {dataset.completed_games} / {dataset.pending_games}
+              {dataset.graded_games_available
+                ? `${dataset.completed_games} / ${dataset.pending_games}`
+                : 'Not yet graded'}
             </span>
           </div>
           {activeSlate && (

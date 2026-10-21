@@ -59,7 +59,15 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
     });
   }, [slateGames, selectedDay, searchQuery]);
 
-  /** "X / Y correct (Z%)" over GRADED games only — never over scheduled games. */
+  /**
+   * "X / Y correct (Z%)" over GRADED games only — never over scheduled games.
+   *
+   * ZERO-GRADED STATE: returns null when the week has no graded game, which
+   * early in a season is the whole season (see lib/matchupTypes.ts GRADING
+   * STATE and dataset.grading_state === 'no_games_graded_yet'). Rendering below
+   * branches on that null to show an explicit "Not yet graded" message, so the
+   * accuracy figure is never printed as 0 / 0, NaN% or a misleading 0%.
+   */
   const gradedStats = useMemo(() => {
     const graded = slateGames.filter((m) => m.is_completed && m.prediction_correct !== null);
     if (graded.length === 0) return null;
@@ -131,8 +139,11 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                 {meta?.status === 'active' && (
                   <span className="text-amber-400 text-[10px]">★ Active</span>
                 )}
+                {/* A past week with nothing graded says so rather than "Final". */}
                 {meta?.status === 'past' && (
-                  <span className="text-[10px] text-slate-500 font-normal">Final</span>
+                  <span className="text-[10px] text-slate-500 font-normal">
+                    {meta.graded_total > 0 ? 'Final' : 'Ungraded'}
+                  </span>
                 )}
                 {meta?.status === 'future' && (
                   <span className="text-[10px] text-slate-500 font-normal">Upcoming</span>
@@ -160,10 +171,14 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
             <span className="text-sm font-bold block truncate text-white">
               {gradedStats
                 ? `${gradedStats.correct} / ${gradedStats.total} correct (${gradedStats.accuracy}%)`
-                : 'Not yet played'}
+                : 'Not yet graded'}
             </span>
             <span className="text-[11px] font-mono text-slate-400">
-              {gradedStats ? 'Graded games only' : 'Projections pending — no result yet'}
+              {gradedStats
+                ? 'Graded games only'
+                : dataset.grading_state === 'no_games_graded_yet'
+                  ? `No ${dataset.season_label} game graded yet`
+                  : 'No graded game in this week yet'}
             </span>
           </div>
         </div>
@@ -206,7 +221,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
               {slateMeta ? `${slateMeta.start_date} → ${slateMeta.end_date}` : '—'}
             </span>
             <span className="text-[11px] font-mono text-slate-400">
-              {slateGames.length} games · season {dataset.season}
+              {slateGames.length} games · {dataset.season_label} season
             </span>
           </div>
         </div>
