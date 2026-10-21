@@ -3,6 +3,7 @@
 import React, { useRef } from 'react';
 import { ModelDiagnostics, ModelMetadata } from '@/lib/types';
 import { Target, CheckCircle2, TrendingUp, BarChart2, ShieldCheck, Download } from 'lucide-react';
+import { seasonEndYearLabel } from '@/lib/season';
 import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 import { exportToCsv } from '@/lib/exportToCsv';
 
@@ -321,7 +322,9 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
                 className="bg-surface p-4 rounded-xl border border-slate-800 flex items-center justify-between"
               >
                 <div>
-                  <div className="text-base font-bold text-white">Season {drift.season}</div>
+                  <div className="text-base font-bold text-white">
+                    Season {seasonEndYearLabel(Number(drift.season))}
+                  </div>
                   <div className="text-xs text-slate-400">{drift.games} resolved games evaluated</div>
                 </div>
                 <div className="text-right">

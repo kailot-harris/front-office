@@ -20,14 +20,19 @@ players_df <- fromJSON(players_json_path)
 cat(sprintf(">>> Loaded %d rotation players.\n", nrow(players_df)))
 
 # 1. Load or fetch shot data
-shots_cache_path <- "cache/nba_shots_2024.rds"
+# SHOT_CHART_SEASON is hoopR's END-year numbering. The site projects 2026-2027, but
+# that season does not have a usable shot sample yet, so default to the last completed
+# season (2026 => 2025-2026). The span is stamped into shots_metadata.json below and
+# shown on the page. Override with NBA_SHOT_CHART_SEASON to inspect another sample.
+SHOT_CHART_SEASON <- as.integer(Sys.getenv("NBA_SHOT_CHART_SEASON", "2026"))
+shots_cache_path <- sprintf("cache/nba_shots_%d.rds", SHOT_CHART_SEASON)
 if (file.exists(shots_cache_path)) {
-  cat(">>> Loading shot data from local cache...\n")
+  cat(sprintf(">>> Loading shot data from local cache (%s)...\n", shots_cache_path))
   raw_shots <- readRDS(shots_cache_path)
 } else {
-  cat(">>> Fetching 2024 NBA shot records via hoopR...\n")
+  cat(sprintf(">>> Fetching season %d NBA shot records via hoopR...\n", SHOT_CHART_SEASON))
   raw_shots <- tryCatch({
-    s <- hoopR::load_nba_shots(seasons = 2024)
+    s <- hoopR::load_nba_shots(seasons = SHOT_CHART_SEASON)
     saveRDS(s, shots_cache_path)
     s
   }, error = function(e) {
@@ -87,12 +92,21 @@ classify_14_zones <- function(x, y, dist, val = 2) {
   return("Center Mid")
 }
 
+# ESPN occasionally emits a clock as H:MM:SS (e.g. "1:38:43") alongside the usual
+# M:SS. The shot record contract expects a game clock, so keep the final two parts.
+normalize_clock <- function(x) {
+  vapply(strsplit(as.character(x), ":", fixed = TRUE), function(parts) {
+    if (length(parts) >= 2) paste(tail(parts, 2), collapse = ":") else as.character(parts)
+  }, character(1))
+}
+
 # Filter to field goal attempts
 fga_shots <- raw_shots %>%
   filter(!is.na(athlete_id_1), score_value %in% c(0, 2, 3) | scoring_play) %>%
   filter(!grepl("Free Throw", type_text, ignore.case = TRUE)) %>%
   mutate(
     athlete_id = as.character(athlete_id_1),
+    clock = normalize_clock(clock_display_value),
     # Court coordinate transformation: width 0..50 -> -25..25; length from baseline 0..47
     # Note: ESPN raw tracking coordinates measure y from the backboard plane (rim at y=1.25),
     # whereas regulation NBA half-court measures y from baseline (4.0 ft behind backboard, rim at y=5.25).
@@ -129,7 +143,7 @@ player_shots_matched <- fga_shots %>%
     player_name = athlete_name_1,
     team_abbrev,
     period = period_number,
-    clock = clock_display_value,
+    clock = clock,
     type = type_text,
     x,
     y,
@@ -145,11 +159,28 @@ cat(sprintf(">>> Matched %d shots across rotation players.\n", nrow(player_shots
 out_dir <- "web/public/data/shots"
 if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 
+# Which NBA season(s) these shots were actually taken in. Read off the data rather
+# than restated from SHOT_CHART_SEASON, so the label cannot drift away from the file
+# that is loaded. hoopR's shot `season` is the END year, so 2026 is the completed
+# 2025-2026 season -- one season behind the projection, and labeled as such on the page.
+shot_season_label <- local({
+  yrs <- if ("season" %in% names(raw_shots)) {
+    sort(unique(suppressWarnings(as.integer(raw_shots$season))))
+  } else {
+    integer(0)
+  }
+  yrs <- yrs[!is.na(yrs)]
+  if (length(yrs) == 0) yrs <- SHOT_CHART_SEASON
+  paste(sprintf("%d-%d", yrs - 1L, yrs), collapse = " + ")
+})
+cat(sprintf(">>> [SHOT CHARTS] Shot sample is from the %s season.\n", shot_season_label))
+
 # Save league metadata
 meta_path <- "web/public/data/shots_metadata.json"
 write_json(list(
   updated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ"),
   total_shots_sampled = nrow(fga_shots),
+  source_season_label = shot_season_label,
   league_averages = league_averages,
   zones = c(
     "Restricted Area",
@@ -172,6 +203,19 @@ cat(sprintf(">>> Wrote 14-zone metadata to %s\n", meta_path))
 
 # Group shots by player and export per-player JSON
 player_groups <- split(player_shots_matched, player_shots_matched$athlete_id)
+
+# Prune per-player files left by an earlier build that are no longer in this run's
+# catalog. Without this, a changed rotation (or a player dropping below the shot
+# minimum) leaves stale <id>.json files behind, and shots_index.json stops matching
+# what is actually on disk.
+stale_files <- setdiff(
+  sub("\\.json$", "", list.files(out_dir, pattern = "\\.json$")),
+  names(player_groups)
+)
+if (length(stale_files) > 0) {
+  unlink(file.path(out_dir, paste0(stale_files, ".json")))
+  cat(sprintf(">>> Pruned %d stale per-player shot files.\n", length(stale_files)))
+}
 
 cat(sprintf(">>> Writing per-player shot files for %d players...\n", length(player_groups)))
 

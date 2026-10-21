@@ -8,6 +8,8 @@ import {
   TransactionType,
 } from '@/lib/offseasonTypes';
 import { PlayerProjection } from '@/lib/types';
+import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
+import { SEASON_SOURCES } from '@/lib/season';
 import { TeamLogo } from '@/components/TeamLogo';
 import {
   ArrowRight,
@@ -243,6 +245,14 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
             <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono">
               Trades • Free Agency • Draft
             </span>
+          </div>
+          <div className="mt-2">
+            <SeasonSourceBadge
+              season={SEASON_SOURCES.offseason.season}
+              kind="projection"
+              label="Offseason"
+              title={SEASON_SOURCES.offseason.note}
+            />
           </div>
           <p className="text-slate-400 text-sm max-w-3xl">
             Quantitative transaction space analyzing roster turnover, returning minute continuity, bottom-up net rating swings,

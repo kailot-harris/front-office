@@ -15,34 +15,5 @@
     "Match is on the test's full name (suite path + test title), substring-matched.",
     "See tests/README.md for the full triage writeup."
   ],
-  "issues": [
-    {
-      "id": "nba-cba-threshold-sources-undocumented-key",
-      "title": "cba_cap_sheet.json ships undocumented cbaThresholdSources key",
-      "defect": "cba_cap_sheet.json contains top-level cbaThresholdSources object not declared in CbaLeagueOverview interface in lib/cbaTypes.ts or schema",
-      "fix": "data pipeline (scripts/generate_cba_cap_sheet.py or lib/cbaTypes.ts) - declare in CbaLeagueOverview or remove from exporter",
-      "tests": [
-        "cba_cap_sheet.json matches CbaLeagueOverviewSchema",
-        "'CbaLeagueOverview' ('lib/cbaTypes.ts') matches keys in 'cba_cap_sheet.json'"
-      ]
-    },
-    {
-      "id": "nba-clutch-ts-delta-arithmetic",
-      "title": "clutch_leverage_metrics.json tsDelta mismatches clutchTsPct - baseTsPct for 8 stars",
-      "defect": "8 players (Doncic, SGA, Jokic, Edwards, Curry, Brunson, Wembanyama, Flagg) have tsDelta differing from clutchTsPct - baseTsPct by up to 5.7 percentage points",
-      "fix": "data pipeline (scripts/export_clutch_metrics.py) - recalculate tsDelta as clutchTsPct - baseTsPct or document volume-weighted formula",
-      "tests": [
-        "clutch_leverage_metrics.json: tsDelta ≈ clutchTsPct - baseTsPct and shot breakdowns are coherent"
-      ]
-    },
-    {
-      "id": "nba-cap-sheet-content-drift-stale-2024-thresholds",
-      "title": "app/cap-sheet/page.tsx & CapSheetClient.tsx use hardcoded 2024-25 cap thresholds instead of 2026-27",
-      "defect": "app/cap-sheet/page.tsx fallback and CapSheetClient.tsx hardcode 140.6 / 170.8 / 178.1 / 188.9 instead of live 2026-27 values (165.0 / 200.4 / 209.0 / 221.7)",
-      "fix": "web/app/cap-sheet/page.tsx and web/components/CapSheetClient.tsx - update fallback constants to mirror 2026-27 live cap sheet",
-      "tests": [
-        "app/cap-sheet/page.tsx and CapSheetClient.tsx CBA thresholds match cba_cap_sheet.json"
-      ]
-    }
-  ]
+  "issues": []
 }

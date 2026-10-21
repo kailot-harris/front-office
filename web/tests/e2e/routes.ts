@@ -32,7 +32,7 @@ export const ROUTES: RouteSpec[] = [
     path: '/variants',
     title: 'Model Variants Breakout',
     heading: 'Model Variants Breakout',
-    dataMarkers: ['Production Bottom-Up BPM', 'Bayesian RAPM'],
+    dataMarkers: ['Production Bottom-Up BPM', 'Possession-Level RAPM'],
     expectsSearch: false,
   },
   {

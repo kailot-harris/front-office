@@ -105,11 +105,32 @@ export interface PlayerProjection {
   is_outlier: boolean;
 }
 
+/**
+ * A variant's inputs are not always observed in the season being projected. RAPM, for
+ * instance, is fit on the last COMPLETED season because hoopR publishes no possession
+ * table for a season in progress. `source_season_label` is the span those inputs came
+ * from, e.g. '2025-2026', or '2025-2026 + 2026-2027' where an engine pools two seasons.
+ * Undefined/null means the artifact carries no season stamp — show nothing rather than
+ * assume it matches `ModelMetadata.season`.
+ */
+export type SourceSeasonLabel = string | null;
+
+export interface VariantMetadata {
+  name: string;
+  weight: number;
+  description: string;
+  source_season_label?: SourceSeasonLabel;
+}
+
 export interface ModelMetadata {
+  /** '1.2' added season_label and full-year per-variant source_season_label. */
   schema_version: string;
   pipeline_stage: string;
   generated_at: string;
+  /** The season being PROJECTED, not the season the inputs were observed in. */
   season: number;
+  /** Full-year display label for the projected season, e.g. '2026-2027'. */
+  season_label?: string;
   n_simulations: number;
   margin_sigma: number;
   home_court_advantage: number;
@@ -122,26 +143,10 @@ export interface ModelMetadata {
       weights: Record<string, number>;
       description: string;
     };
-    variant_bottom_up: {
-      name: string;
-      weight: number;
-      description: string;
-    };
-    variant_rapm: {
-      name: string;
-      weight: number;
-      description: string;
-    };
-    variant_shot_fatigue: {
-      name: string;
-      weight: number;
-      description: string;
-    };
-    variant_embeddings: {
-      name: string;
-      weight: number;
-      description: string;
-    };
+    variant_bottom_up: VariantMetadata;
+    variant_rapm: VariantMetadata;
+    variant_shot_fatigue: VariantMetadata;
+    variant_embeddings: VariantMetadata;
   };
 }
 

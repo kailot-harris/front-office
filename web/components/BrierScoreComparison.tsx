@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { Target, Trophy, ShieldCheck } from 'lucide-react';
+import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
+import { SEASON_SOURCES } from '@/lib/season';
 
 interface ModelBrierMetric {
   id: string;
@@ -30,7 +32,7 @@ export const BrierScoreComparison: React.FC = () => {
       color: 'text-indigo-400',
       barColor: 'bg-gradient-to-r from-indigo-500 to-amber-400',
       isEnsemble: true,
-      notes: 'Lowest Brier score & log-loss across 2,631 historical cross-validation games',
+      notes: 'Lowest Brier score & log-loss across 2,631 games in the 2024-2025 + 2025-2026 backtest',
     },
     {
       id: 'shot_fatigue',
@@ -73,8 +75,8 @@ export const BrierScoreComparison: React.FC = () => {
     },
     {
       id: 'rapm',
-      name: 'Bayesian Stint-Level RAPM',
-      shortName: 'Bayesian RAPM',
+      name: 'Possession-Level RAPM (ORAPM / DRAPM)',
+      shortName: 'Possession-Level RAPM',
       weight: '25% Weight',
       brierScore: 0.2441,
       logLoss: 0.6184,
@@ -82,7 +84,7 @@ export const BrierScoreComparison: React.FC = () => {
       color: 'text-amber-400',
       barColor: 'bg-amber-500/80',
       isEnsemble: false,
-      notes: 'Box-score unbiased; centered prior dampens stint collinearity',
+      notes: 'Box-score unbiased; separate offence/defence blocks; ridge prior dampens lineup collinearity',
     },
   ];
 
@@ -112,6 +114,12 @@ export const BrierScoreComparison: React.FC = () => {
                 <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   Lower is Better
                 </span>
+                <SeasonSourceBadge
+                  season={SEASON_SOURCES.brier.season}
+                  kind="backtest"
+                  label="Backtest"
+                  title={SEASON_SOURCES.brier.note}
+                />
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
                 Mean squared error between projected win probabilities and real outcomes. Random coin flip = 0.2500.
@@ -236,7 +244,7 @@ export const BrierScoreComparison: React.FC = () => {
           <span>Why the Multi-Model Ensemble Consistently Minimizes Brier Score:</span>
         </div>
         <p className="text-slate-400 leading-relaxed text-[11.5px]">
-          Individual model engines have distinct idiosyncratic blind spots: <strong>Bayesian RAPM</strong> has high stint variance on smaller early-season samples; <strong>Bottom-Up BPM</strong> overweights raw depth chart minutes without adjusting for travel fatigue; and <strong>16-D Embeddings</strong> capture non-linear matchup friction but exhibit higher variance. Because the error residuals of these four methodologies have near-zero cross-correlation, their linear blend cancels out uncorrelated noise while reinforcing genuine statistical signal. This shrinks extreme variance and achieves the lowest Brier score in historical cross-validation (<strong className="text-white">0.2284</strong> vs ~0.2410 for single variants, an <strong className="text-emerald-400">8.64% error reduction</strong> over random expectation).
+          Individual model engines have distinct idiosyncratic blind spots: <strong>Possession-Level RAPM</strong> is fit only on the last completed season&apos;s possessions and is blind to offseason roster changes; <strong>Bottom-Up BPM</strong> overweights raw depth chart minutes without adjusting for travel fatigue; and <strong>16-D Embeddings</strong> capture non-linear matchup friction but exhibit higher variance. Because the error residuals of these four methodologies have near-zero cross-correlation, their linear blend cancels out uncorrelated noise while reinforcing genuine statistical signal. This shrinks extreme variance and achieves the lowest Brier score in historical cross-validation (<strong className="text-white">0.2284</strong> vs ~0.2410 for single variants, an <strong className="text-emerald-400">8.64% error reduction</strong> over random expectation).
         </p>
       </div>
     </div>

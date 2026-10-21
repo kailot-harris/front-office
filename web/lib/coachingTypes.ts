@@ -41,6 +41,35 @@ export interface RadarPercentiles {
   playerDevelopment: number;
 }
 
+/**
+ * Where each metric block actually came from, emitted by build_coaching_dataset.R.
+ *
+ * `observed_pbp` means the field was measured from cache/pbp_timeout_cache.rds.
+ * `synthetic_coach_band` means it was drawn from a hand-assigned per-coach range
+ * and is not an observation. `coachingWinsAdded` is always a residual between two
+ * of the project's own model variants, never a measured coach effect.
+ */
+export type CoachingProvenanceTag =
+  | 'observed_pbp'
+  | 'synthetic_coach_band'
+  | 'model_residual_ensemble_minus_bottom_up';
+
+export interface CoachingProvenance {
+  atoMetrics: CoachingProvenanceTag;
+  challengeMetrics: CoachingProvenanceTag;
+  coachingWinsAdded: CoachingProvenanceTag;
+  shotQualityLift: CoachingProvenanceTag;
+  rotationAndDevelopment: CoachingProvenanceTag;
+  /**
+   * Season span the `observed_pbp` fields were measured over, e.g. '2025-2026' or
+   * '2025-2026 + 2026-2027'. Absent when nothing on the card is observed — the pooled
+   * window usually straddles two seasons, and early in a season almost all of it
+   * comes from the previous one.
+   */
+  observedSeasons?: string | null;
+  generatedAt: string;
+}
+
 export interface CoachingStaffMetric {
   teamAbbr: string;
   teamName: string;
@@ -48,4 +77,5 @@ export interface CoachingStaffMetric {
   assistants: AssistantsInfo;
   metrics: CoachingMetrics;
   radarPercentiles: RadarPercentiles;
+  provenance: CoachingProvenance;
 }

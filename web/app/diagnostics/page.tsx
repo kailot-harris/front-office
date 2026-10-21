@@ -1,5 +1,7 @@
 import { getDiagnostics, getMetadata } from '@/lib/data';
 import { DiagnosticsClient } from '@/components/DiagnosticsClient';
+import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
+import { SEASON_SOURCES } from '@/lib/season';
 
 export default function DiagnosticsPage() {
   const diagnostics = getDiagnostics();
@@ -14,6 +16,12 @@ export default function DiagnosticsPage() {
             <span className="text-sm font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
               Calibration & Accuracy
             </span>
+            <SeasonSourceBadge
+              season={SEASON_SOURCES.diagnostics.season}
+              kind="backtest"
+              label="Backtest"
+              title={SEASON_SOURCES.diagnostics.note}
+            />
           </h1>
           <p className="text-slate-400 text-sm mt-1">
             Empirical reliability curves, Brier score, accuracy drift over time, and residual distributions from historical evaluations.

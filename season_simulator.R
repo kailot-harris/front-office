@@ -133,10 +133,74 @@ if (file.exists(standings_path)) {
 # Center at 0.00
 rating_bu <- round(rating_bu - mean(rating_bu), 2)
 
-# --- Variant 2: Bayesian Stint-Level RAPM ---
+# Provenance guard: the engines now stamp a `data_source` column onto their outputs.
+# A cache artifact that is stamped SYNTHETIC_FALLBACK -- or predates the stamp
+# entirely -- is not an observation, and the variant built on it carries no
+# information about real teams. Report it here, where the rating is actually used.
+check_provenance <- function(df, label) {
+  src <- if ("data_source" %in% names(df)) unique(as.character(df$data_source)) else NA_character_
+  if (length(src) == 0 || all(is.na(src))) {
+    message(sprintf(">>> [PROVENANCE] %s carries no data_source stamp; treat it as unverified (regenerate it to find out).", label))
+    return(invisible("unstamped"))
+  }
+  if (any(grepl("SYNTHETIC", src, ignore.case = TRUE))) {
+    message(sprintf(">>> [PROVENANCE] %s is SYNTHETIC (%s). This variant is not evidence about real teams.",
+                    label, paste(src, collapse = ", ")))
+    return(invisible("synthetic"))
+  }
+  message(sprintf(">>> [PROVENANCE] %s sourced from %s.", label, paste(src, collapse = ", ")))
+  invisible("real")
+}
+
+# Which NBA season a variant's inputs were actually observed in. Several engines now
+# stamp a `season_label` / `source_seasons` column onto their artifacts; this reads it
+# back so the exported metadata (and the web UI built on it) can say "2025-26" next to
+# a number rather than leaving the reader to assume it describes the season being
+# projected. Returns NULL when an artifact carries no season stamp -- the UI then shows
+# nothing rather than a guess.
+expand_season_label <- function(lab) {
+  lab <- trimws(as.character(lab))
+  vapply(lab, function(x) {
+    if (grepl("^\\d{4}-\\d{2}$", x)) {
+      paste0(substr(x, 1, 4), "-", substr(x, 1, 2), substr(x, 6, 7))
+    } else {
+      x
+    }
+  }, character(1), USE.NAMES = FALSE)
+}
+
+read_season_label <- function(df) {
+  if (is.null(df)) return(NULL)
+  if ("season_label" %in% names(df)) {
+    lab <- unique(as.character(df$season_label))
+    lab <- lab[!is.na(lab) & lab != ""]
+    if (length(lab) > 0) {
+      return(paste(sort(expand_season_label(lab)), collapse = " + "))
+    }
+  }
+  # shot_quality_engine.R stamps `source_seasons` in hoopR end-year numbering
+  # ("2026+2027"), which has to be expanded to display spans.
+  if ("source_seasons" %in% names(df)) {
+    raw <- unique(unlist(strsplit(as.character(df$source_seasons), "\\+")))
+    raw <- suppressWarnings(as.integer(trimws(raw)))
+    raw <- sort(raw[!is.na(raw)])
+    if (length(raw) > 0) {
+      return(paste(sprintf("%d-%d", raw - 1L, raw), collapse = " + "))
+    }
+  }
+  NULL
+}
+
+# --- Variant 2: Possession-Level RAPM (ORAPM / DRAPM) ---
 rapm_path <- get_cache_file("rapm_ratings.rds")
+rapm_season_label <- NULL
 if (file.exists(rapm_path)) {
   rapm_df <- readRDS(rapm_path)
+  check_provenance(rapm_df, "rapm_ratings.rds (Variant 2)")
+  rapm_season_label <- read_season_label(rapm_df)
+  if (!is.null(rapm_season_label)) {
+    message(sprintf(">>> [PROVENANCE] rapm_ratings.rds was fit on the %s season.", rapm_season_label))
+  }
   # Proportional weights for 10-man rotation
   rot_weights <- c(36, 34, 32, 28, 26, 24, 22, 18, 10, 10) / 240 * 5.0
   rating_rapm_raw <- sapply(NBA_TEAMS$team, function(tm) {
@@ -156,8 +220,11 @@ rating_rapm <- round(rating_rapm_raw - mean(rating_rapm_raw), 2)
 
 # --- Variant 3: Shot-Quality Regression & Circadian Travel Fatigue ---
 sq_path <- get_cache_file("team_shot_quality.rds")
+sq_season_label <- NULL
 if (file.exists(sq_path)) {
   sq_df <- readRDS(sq_path)
+  check_provenance(sq_df, "team_shot_quality.rds (Variant 3)")
+  sq_season_label <- read_season_label(sq_df)
   sq_map <- setNames(sq_df$regression_edge_pts, sq_df$team)
   # Full season regress 60% of shot-luck residuals
   sq_adj <- sapply(NBA_TEAMS$team, function(tm) {
@@ -699,11 +766,18 @@ cat(sprintf("      Generated projections for %d rotation players. Outlier player
 cat("[6/6] Exporting RDS caches and Next.js frontend JSON schemas...\n")
 
 # Model metadata schema
+projected_season_label <- sprintf("%d-%d", CURR_SEASON - 1L, CURR_SEASON)
+prior_season_label     <- sprintf("%d-%d", CURR_SEASON - 2L, CURR_SEASON - 1L)
+
 metadata_obj <- list(
-  schema_version       = "1.0",
+  # 1.2 adds the projected `season_label` and full-year per-model
+  # `source_season_label`, so the UI can distinguish the season being PROJECTED
+  # from the season each variant's inputs were OBSERVED in.
+  schema_version       = "1.2",
   pipeline_stage       = "season_long_projections",
   generated_at         = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
   season               = CURR_SEASON,
+  season_label         = projected_season_label,
   n_simulations        = N_SIMS,
   margin_sigma         = MARGIN_SIGMA,
   home_court_advantage = HCA_PTS,
@@ -719,27 +793,38 @@ metadata_obj <- list(
         variant_shot_fatigue = ens_w_sf,
         variant_embeddings  = ens_w_emb
       ),
-      description = "Weighted blend of production bottom-up, bayesian rapm, shot quality fatigue, and style embeddings"
+      description = "Weighted blend of production bottom-up, possession-level RAPM, shot quality fatigue, and style embeddings"
     ),
     variant_bottom_up = list(
       name = "Production Bottom-Up Rotation BPM",
       weight = ens_w_bu,
-      description = "Minute-weighted player BPM ratings aggregated over 240-minute active roster rotations"
+      description = "Minute-weighted player BPM ratings aggregated over 240-minute active roster rotations",
+      # Player BPM and rotation form come from the last completed season; only the
+      # schedule and simulation horizon are 2026-2027.
+      source_season_label = prior_season_label
     ),
     variant_rapm = list(
-      name = "Bayesian Stint-Level RAPM",
+      name = "Possession-Level RAPM (ORAPM / DRAPM)",
       weight = ens_w_rap,
-      description = "Ridge-regularized adjusted plus-minus stint ratings centered across league"
+      description = paste0("Ridge-regularized adjusted plus-minus fit one row per possession, ",
+                           "separating offensive and defensive impact, centered across league"),
+      # The season the ratings were OBSERVED in, which is not the season being
+      # projected: hoopR publishes no possession table for a season in progress.
+      source_season_label = rapm_season_label
     ),
     variant_shot_fatigue = list(
       name = "Shot Quality & Circadian Travel Fatigue",
       weight = ens_w_sf,
-      description = "Bottom-up ratings adjusted for spatial shot-quality regression and travel/circadian rest fatigue"
+      description = "Bottom-up ratings adjusted for spatial shot-quality regression and travel/circadian rest fatigue",
+      source_season_label = sq_season_label
     ),
     variant_embeddings = list(
       name = "16-D Style Latent Embeddings",
       weight = ens_w_emb,
-      description = "Pythagorean expected win probability modulated by 16-D team stylistic similarity matrix"
+      description = "Pythagorean expected win probability modulated by 16-D team stylistic similarity matrix",
+      # The similarity matrix is estimated from the last completed season's style
+      # profile, so the observed input span is the prior season.
+      source_season_label = prior_season_label
     )
   )
 )

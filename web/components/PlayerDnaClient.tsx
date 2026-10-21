@@ -6,6 +6,8 @@ import { SkillFingerprintPolygon } from './SkillFingerprintPolygon';
 import { HistoricalTwinCard } from './HistoricalTwinCard';
 import { DnaManifoldScatter } from './DnaManifoldScatter';
 import { Search, Dna, Activity, Crosshair, BarChart3, ChevronRight } from 'lucide-react';
+import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
+import { SEASON_SOURCES } from '@/lib/season';
 
 interface PlayerDnaClientProps {
   initialProfiles: PlayerDnaProfile[];
@@ -37,6 +39,12 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
               <Dna className="w-3.5 h-3.5" /> High-Dimensional Player DNA
             </span>
             <span className="text-xs text-zinc-500 font-mono">16-D Manifold Embedding</span>
+            <SeasonSourceBadge
+              season={SEASON_SOURCES.playerDna.season}
+              kind="projection"
+              label="Projected season"
+              title={SEASON_SOURCES.playerDna.note}
+            />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
             Player DNA & Nearest Historical Comparables

@@ -5,7 +5,9 @@ import { TeamProjection, ModelMetadata } from '@/lib/types';
 import { GitCompare, Download } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { BrierScoreComparison } from '@/components/BrierScoreComparison';
+import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { formatSeasonLabel } from '@/lib/season';
 
 interface VariantsClientProps {
   teams: TeamProjection[];
@@ -19,9 +21,31 @@ type VariantKey =
   | 'variant_shot_fatigue'
   | 'variant_embeddings';
 
-export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
+export const VariantsClient: React.FC<VariantsClientProps> = ({ teams, metadata }) => {
   const [activeVariant, setActiveVariant] = useState<VariantKey>('ensemble');
   const [divergenceSort, setDivergenceSort] = useState<'divergence' | 'alpha' | 'wins'>('divergence');
+
+  // The season each variant's inputs were observed in, read off the pipeline's own
+  // metadata rather than hardcoded here — an engine that starts pooling a different
+  // span should change this label without a code edit. The ensemble spans whatever
+  // its components span, so it lists the distinct set.
+  const sourceSeasons = useMemo(() => {
+    const m = metadata?.models;
+    const per: Partial<Record<VariantKey, string | null | undefined>> = {
+      variant_bottom_up: m?.variant_bottom_up?.source_season_label,
+      variant_rapm: m?.variant_rapm?.source_season_label,
+      variant_shot_fatigue: m?.variant_shot_fatigue?.source_season_label,
+      variant_embeddings: m?.variant_embeddings?.source_season_label,
+    };
+    const spans = Array.from(
+      new Set(
+        Object.values(per)
+          .filter((s): s is string => typeof s === 'string' && s.length > 0)
+          .flatMap((s) => s.split('+').map((p) => p.trim()))
+      )
+    ).sort();
+    return { ...per, ensemble: spans.length > 0 ? spans.join(' + ') : null };
+  }, [metadata]);
 
   const variantDetails: Record<
     VariantKey,
@@ -39,7 +63,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
       name: 'Multi-Model Ensemble Blend',
       weightBadge: 'Combined 100%',
       description:
-        'Optimal weighted blend aggregating Production Bottom-Up (35%), Bayesian RAPM (25%), Shot-Quality Fatigue (20%), and Latent Style Embeddings (20%).',
+        'Optimal weighted blend aggregating Production Bottom-Up (35%), Possession-Level RAPM (25%), Shot-Quality Fatigue (20%), and Latent Style Embeddings (20%).',
       strengths: [
         'Minimizes overall predictive variance and overfitting to single stat engines',
         'Balanced shrinkage against noise in early-season rotation adjustments',
@@ -64,17 +88,17 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
     },
     variant_rapm: {
       id: 'variant_rapm',
-      name: 'Bayesian Stint-Level RAPM',
+      name: 'Possession-Level RAPM (ORAPM / DRAPM)',
       weightBadge: 'Weight 25%',
       description:
-        'Ridge-regularized adjusted plus-minus stint ratings centered across league possessions.',
+        'Ridge-regularized adjusted plus-minus fit one row per possession, separating offensive from defensive impact and centered across league possessions.',
       strengths: [
         'Free from box-score bias (screen assists, box-outs, rim deterrence)',
-        'Bayesian prior centered to mitigate collinearity among frequent lineup pairings',
-        'Isolates lineup interaction effects',
+        'Offence and defence estimated as separate coefficient blocks, not inferred from one combined number',
+        'Ridge prior mitigates collinearity among frequent lineup pairings',
       ],
       methodology:
-        'Stint-level possession matrix solved using L2 ridge regression with empirical Bayes hyperparameter tuning.',
+        'Every possession enters as one row — offensive five in one block, defensive five in another, against points scored — solved by L2 ridge with the penalty chosen by 5-fold cross-validation on held-out possessions.',
     },
     variant_shot_fatigue: {
       id: 'variant_shot_fatigue',
@@ -124,7 +148,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
       // Which model likes them most/least?
       const modelScores = [
         { model: 'Bottom-Up BPM', wins: bu },
-        { model: 'Bayesian RAPM', wins: rapm },
+        { model: 'Possession-Level RAPM', wins: rapm },
         { model: 'Shot & Fatigue', wins: sf },
         { model: '16-D Embeddings', wins: emb },
       ];
@@ -188,7 +212,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
         { key: 'team_name', label: 'Team' },
         { key: 'ensemble_mean_wins', label: 'Ensemble' },
         { key: 'variant_bottom_up', label: 'Bottom-Up BPM' },
-        { key: 'variant_rapm', label: 'Bayesian RAPM' },
+        { key: 'variant_rapm', label: 'Possession-Level RAPM' },
         { key: 'variant_shot_fatigue', label: 'Shot & Fatigue' },
         { key: 'variant_embeddings', label: '16-D Embeddings' },
         { key: 'spread', label: 'Variant Spread' },
@@ -222,6 +246,16 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
               >
                 {detail.weightBadge}
               </span>
+              {sourceSeasons[key] && (
+                <span
+                  className={`text-[10px] font-mono ${
+                    isActive ? 'text-white/75' : 'text-slate-500'
+                  }`}
+                  title={`Inputs observed in ${sourceSeasons[key]}, projected onto the current season`}
+                >
+                  {formatSeasonLabel(sourceSeasons[key])}
+                </span>
+              )}
             </button>
           );
         })}
@@ -231,11 +265,16 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
       <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-6 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <h2 className="text-xl font-bold text-white">{currentVariantInfo.name}</h2>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
                 {currentVariantInfo.weightBadge}
               </span>
+              <SeasonSourceBadge
+                season={sourceSeasons[activeVariant]}
+                label="Fit on"
+                title={`This variant's inputs are observed ${sourceSeasons[activeVariant]} data, projected forward onto the current season.`}
+              />
             </div>
             <p className="text-slate-300 text-sm mt-1">{currentVariantInfo.description}</p>
           </div>
@@ -335,7 +374,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
                     <div className="text-[10px] text-slate-500 font-normal">35% Weight</div>
                   </th>
                   <th className="py-3 px-3 text-center">
-                    <div>Bayesian RAPM</div>
+                    <div>Possession-Level RAPM</div>
                     <div className="text-[10px] text-slate-500 font-normal">25% Weight</div>
                   </th>
                   <th className="py-3 px-3 text-center">

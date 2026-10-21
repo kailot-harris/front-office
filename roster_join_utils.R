@@ -156,9 +156,21 @@ build_real_rotation_table <- function(rosters = NULL, player_box = NULL, rotatio
     )
 
   # 3. Team abbreviation map from box scores
+  #
+  # Use every season in the cache, not just CURRENT_SEASON. During the offseason
+  # (or any point before the new season's first box score lands) the current-season
+  # slice is empty, which previously left this map with zero rows and made
+  # `coalesce(team_abbreviation, team_name)` fall back to full names ("Lakers").
+  # That silently changed the public player-projection team key from "LAL" to
+  # "Lakers" and broke every cross-dataset join. Take the most recent abbreviation
+  # observed for each franchise instead.
   team_map <- player_box |>
-    filter(season == curr_season, !team_name %in% c("World", "Team Stars", "Team Stripes", "All-Stars")) |>
-    distinct(team_name, team_abbreviation)
+    filter(!is.na(team_abbreviation),
+           !team_name %in% c("World", "Team Stars", "Team Stripes", "All-Stars")) |>
+    select(team_name, team_abbreviation, season) |>
+    arrange(desc(season)) |>
+    distinct(team_name, .keep_all = TRUE) |>
+    select(team_name, team_abbreviation)
 
   # 4. Join Roster with current season stats
   joined_cur <- join_by_id_then_name(
@@ -181,6 +193,20 @@ build_real_rotation_table <- function(rosters = NULL, player_box = NULL, rotatio
     name_col_right = "athlete_name",
     suffix_cols = "pts_mu_h"
   )
+
+  # join_by_id_then_name() returns its left side untouched when the right side is
+  # empty, so a season with no box scores yet (e.g. the offseason, before any
+  # CURRENT_SEASON games land in the cache) leaves the stat columns absent entirely
+  # rather than present-and-NA. Materialize them as NA so the coalesce chain below
+  # still resolves -- otherwise `case_when(!is.na(pts_mu) ...)` errors with
+  # "object 'pts_mu' not found" instead of falling through to historical stats.
+  expected_stat_cols <- c(
+    "pts_mu", "reb_mu", "ast_mu", "fg3m_mu", "stl_mu", "blk_mu", "avg_min",
+    "pts_mu_h", "reb_mu_h", "ast_mu_h", "fg3m_mu_h", "stl_mu_h", "blk_mu_h", "avg_min_h"
+  )
+  for (col in setdiff(expected_stat_cols, names(joined_full))) {
+    joined_full[[col]] <- NA_real_
+  }
 
   # 6. Reconcile stats & impute bench priors for true rookies
   matched_rosters <- joined_full |>

@@ -64,9 +64,15 @@ describe('UI copy & fallback constants vs live JSON data drift', () => {
     expect(cbaCapSheet.firstApron).toBe(209.0);
     expect(cbaCapSheet.secondApron).toBe(221.7);
 
-    // Tests will surface stale 140.6 / 170.8 / 178.1 / 188.9 constants if present
+    // The page fallback must mirror the live 2026-27 sheet, and the client must
+    // read the thresholds from initialData rather than re-hardcoding an old year.
     expect(capPageSrc).toContain('salaryCap: 165');
-    expect(capClientSrc).toContain('$165.0M');
+    expect(capClientSrc).toContain('initialData.salaryCap');
+    expect(capClientSrc).toContain('initialData.luxuryTaxThreshold');
+    expect(capClientSrc).toContain('initialData.secondApron');
+    for (const stale of ['140.6', '170.8', '178.1', '188.9']) {
+      expect(capClientSrc).not.toContain(stale);
+    }
   });
 
   it('Sidebar.tsx Brier score badge matches projections_diagnostics.json', () => {

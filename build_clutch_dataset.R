@@ -179,6 +179,11 @@ for (i in seq_len(nrow(players_df))) {
     c_dwpa <- 3.40
   }
 
+  # The hand-calibrated overrides above change clutch_ts_pct without touching the
+  # delta computed from the generic formula. Recompute after the overrides so
+  # tsDelta is always exactly clutchTsPct - baseTsPct.
+  ts_delta <- round(clutch_ts_pct - base_ts, 1)
+
   clutch_profiles[[i]] <- list(
     playerId = as.character(p$player_id),
     playerName = name,

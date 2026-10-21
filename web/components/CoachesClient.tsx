@@ -6,6 +6,7 @@ import { TeamLogo } from '@/components/TeamLogo';
 import { CoachRadarProfile } from '@/components/CoachRadarProfile';
 import { AtoEfficiencyScatter } from '@/components/AtoEfficiencyScatter';
 import { CoachImpactWaterfall } from '@/components/CoachImpactWaterfall';
+import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
 import {
   Briefcase,
   Crosshair,
@@ -26,6 +27,19 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTree, setSelectedTree] = useState<string>('All');
   const [selectedCoach, setSelectedCoach] = useState<CoachingStaffMetric>(initialData[0] || null);
+
+  // The ATO and challenge figures on this page fall back to the last completed
+  // season because the 2026-2027 play-by-play sample is too small. Taken from
+  // whichever cards actually carry observed data; absent entirely when every card
+  // is a synthetic coach band.
+  const observedSeasons = useMemo(() => {
+    const spans = new Set<string>();
+    initialData.forEach((c) => {
+      const s = c.provenance?.observedSeasons;
+      if (s) s.split('+').forEach((p) => spans.add(p.trim()));
+    });
+    return spans.size > 0 ? Array.from(spans).sort().join(' + ') : null;
+  }, [initialData]);
 
   // Distinct coaching trees
   const coachingTrees = useMemo(() => {
@@ -81,13 +95,19 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                 <Briefcase className="w-6 h-6" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
                     Coaching Staffs & Tactical Impact Panel
                   </h1>
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
                     2026-2027 Projected Season
                   </span>
+                  <SeasonSourceBadge
+                    season={observedSeasons}
+                    kind="fallback"
+                    label="Fallback: ATO & challenges observed"
+                    title={`After-timeout possessions and coach's challenges are counted from observed ${observedSeasons} play-by-play. The 2026-2027 sample is too small, so the page falls back to the last completed season.`}
+                  />
                 </div>
                 <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
                   Decoupling coaching value-added from baseline roster talent using RAPM residuals, ATO efficiency, and challenge leverage.

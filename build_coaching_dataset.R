@@ -65,10 +65,112 @@ coaching_registry_raw <- tribble(
 cat(">>> Ingesting tactical logs (ATOs, Challenge equity, Shot Quality residuals)...\n")
 
 # Issue #4 Protocol: Check for local tracking or announce SYNTHETIC_FALLBACK
-has_pbp_cache <- file.exists(file.path(CACHE_DIR, "pbp_timeout_cache.rds"))
+#
+# Expected schema for cache/pbp_timeout_cache.rds -- one row per tactical event:
+#   team          character  project team code (BOS, GSW, ...)
+#   event_type    character  "ato_offense" | "ato_defense" | "challenge"
+#   points        numeric    points on the post-timeout possession (ato rows)
+#   possessions   numeric    possessions represented by the row (ato rows, normally 1)
+#   challenge_won logical    outcome of a coach's challenge (challenge rows)
+#
+# Unlike shot_quality_engine.R and rapm_engine.R this builder does NOT hard-fail when
+# the cache is absent, because it also produces the coaching registry and the
+# coachingWinsAdded bridge that the whole /coaches page renders from. Set
+# STRICT_COACHING_PROVENANCE=TRUE to make a missing cache an error instead.
+STRICT_COACHING_PROVENANCE <- isTRUE(as.logical(
+  Sys.getenv("STRICT_COACHING_PROVENANCE", "FALSE")
+))
 
-if (!has_pbp_cache) {
-  cat(">>> [WARN] Using SYNTHETIC_FALLBACK for PBP ATO timeout events and challenge records (adhering to Issue #4 logging standards)\n")
+# The current season is only a handful of games old at this point. ATO and challenge
+# rates from that sample are too noisy to present as a season-long observation, so
+# fall back to the last completed season and say so in `observedSeasons`.
+MIN_CURRENT_SEASON_GAMES <- 10L
+
+PBP_TIMEOUT_CACHE <- file.path(CACHE_DIR, "pbp_timeout_cache.rds")
+PBP_REQUIRED_COLS <- c("team", "event_type")
+
+load_tactical_events <- function() {
+  if (!file.exists(PBP_TIMEOUT_CACHE)) return(NULL)
+  ev <- tryCatch(readRDS(PBP_TIMEOUT_CACHE), error = function(e) {
+    cat(sprintf(">>> [WARN] %s exists but could not be read: %s\n",
+                PBP_TIMEOUT_CACHE, conditionMessage(e)))
+    NULL
+  })
+  if (is.null(ev) || nrow(ev) == 0) return(NULL)
+  missing_cols <- setdiff(PBP_REQUIRED_COLS, names(ev))
+  if (length(missing_cols) > 0) {
+    cat(sprintf(">>> [WARN] %s is missing column(s): %s. Ignoring it.\n",
+                PBP_TIMEOUT_CACHE, paste(missing_cols, collapse = ", ")))
+    return(NULL)
+  }
+  ev <- as.data.frame(ev)
+
+  # build_tactical_events_dataset.R pools the current and prior seasons. Early in a
+  # season the current slice is too small to support a season-long rate, so use the
+  # last completed season alone rather than mixing a token sample into the label.
+  if (all(c("season", "game_id") %in% names(ev))) {
+    current_games <- length(unique(ev$game_id[ev$season == CURRENT_SEASON]))
+    if (current_games < MIN_CURRENT_SEASON_GAMES) {
+      prior <- ev[ev$season < CURRENT_SEASON, , drop = FALSE]
+      if (nrow(prior) > 0) {
+        cat(sprintf(
+          ">>> [COACHING] Only %d game(s) observed in %d; falling back to the last completed season (%d).\n",
+          current_games, CURRENT_SEASON, CURRENT_SEASON - 1L))
+        ev <- prior
+      }
+    }
+  }
+
+  ato <- ev[ev$event_type %in% c("ato_offense", "ato_defense"), , drop = FALSE]
+  chal <- ev[ev$event_type == "challenge", , drop = FALSE]
+
+  agg_ppp <- function(df) {
+    if (nrow(df) == 0) return(setNames(numeric(0), character(0)))
+    pts <- tapply(as.numeric(df$points), df$team, sum, na.rm = TRUE)
+    pos <- tapply(as.numeric(df$possessions), df$team, sum, na.rm = TRUE)
+    pos[is.na(pos) | pos <= 0] <- NA_real_
+    pts / pos
+  }
+
+  # Which NBA seasons these ATO possessions and challenges were actually observed in.
+  # Normally this is the last completed season because the current one is still too
+  # small; if a full-season sample is present the label expands to the observed span.
+  # The /coaches page displays this rather than letting the figures read as current.
+  season_label <- if ("season" %in% names(ev)) {
+    yrs <- sort(unique(suppressWarnings(as.integer(ev$season))))
+    yrs <- yrs[!is.na(yrs)]
+    if (length(yrs) > 0) {
+      paste(sprintf("%d-%d", yrs - 1L, yrs), collapse = " + ")
+    } else {
+      NULL
+    }
+  } else {
+    NULL
+  }
+
+  list(
+    ato_off = agg_ppp(ato[ato$event_type == "ato_offense", , drop = FALSE]),
+    ato_def = agg_ppp(ato[ato$event_type == "ato_defense", , drop = FALSE]),
+    challenge = if (nrow(chal) > 0) {
+      tapply(as.logical(chal$challenge_won), chal$team, mean, na.rm = TRUE)
+    } else setNames(numeric(0), character(0)),
+    n_events = nrow(ev),
+    season_label = season_label
+  )
+}
+
+tactical_events <- load_tactical_events()
+has_pbp_cache <- !is.null(tactical_events)
+
+if (has_pbp_cache) {
+  cat(sprintf(">>> Loaded %d real tactical events from %s (ATO and challenge metrics measured).\n",
+              tactical_events$n_events, basename(PBP_TIMEOUT_CACHE)))
+} else {
+  msg <- paste0("Using SYNTHETIC_FALLBACK for PBP ATO timeout events and challenge records ",
+                "(adhering to Issue #4 logging standards). These fields are drawn from ",
+                "hand-assigned per-coach bands, not observed play-by-play.")
+  if (STRICT_COACHING_PROVENANCE) stop(msg)
+  cat(sprintf(">>> [WARN] %s\n", msg))
 }
 
 # Load existing projection caches to calibrate talent baseline vs actual
@@ -129,7 +231,26 @@ compute_coaching_metrics <- function(reg) {
       row$head_coach %in% c("Erik Spoelstra", "Joe Mazzulla", "Steve Kerr", "Mike Brown") ~ runif(1, 0.58, 0.67),
       TRUE ~ runif(1, 0.44, 0.57)
     )
-    
+
+    # Measured values override the per-coach bands wherever the tactical event cache
+    # covers this team. Tracked per field so the export can say which is which.
+    ato_source <- "synthetic_coach_band"
+    challenge_source <- "synthetic_coach_band"
+    if (has_pbp_cache) {
+      m_off <- tactical_events$ato_off[team]
+      m_def <- tactical_events$ato_def[team]
+      m_chal <- tactical_events$challenge[team]
+      if (!is.na(m_off) && !is.na(m_def) && length(m_off) == 1 && length(m_def) == 1) {
+        base_ato_off <- as.numeric(m_off)
+        base_ato_def <- as.numeric(m_def)
+        ato_source <- "observed_pbp"
+      }
+      if (!is.na(m_chal) && length(m_chal) == 1) {
+        challenge_success <- as.numeric(m_chal)
+        challenge_source <- "observed_pbp"
+      }
+    }
+
     # Challenge WPA (Season Win Probability Added from overturned high-leverage calls)
     challenge_wpa <- round((challenge_success - 0.50) * 0.85 + runif(1, -0.05, 0.15), 3)
     
@@ -200,6 +321,27 @@ compute_coaching_metrics <- function(reg) {
         rotationEfficiency = p_rot,
         inGameWpa = p_wpa,
         playerDevelopment = p_dev
+      ),
+      # Per-field provenance so the /coaches page can label what is measured.
+      # coachingWinsAdded is a residual between two of this project's own model
+      # variants (ensemble minus bottom-up), not an observation of coach effect --
+      # see NBA #14 before presenting it as a causal bridge.
+      provenance = list(
+        atoMetrics = ato_source,
+        challengeMetrics = challenge_source,
+        coachingWinsAdded = "model_residual_ensemble_minus_bottom_up",
+        shotQualityLift = "synthetic_coach_band",
+        rotationAndDevelopment = "synthetic_coach_band",
+        # The season span the observed_pbp fields were measured over. NULL when
+        # nothing on this card is observed, so the UI shows no season label rather
+        # than putting a real-looking span next to a synthetic band.
+        observedSeasons = if (identical(ato_source, "observed_pbp") ||
+                              identical(challenge_source, "observed_pbp")) {
+          tactical_events$season_label
+        } else {
+          NULL
+        },
+        generatedAt = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
       )
     )
   }

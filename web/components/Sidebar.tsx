@@ -48,7 +48,7 @@ export const Sidebar: React.FC = () => {
     {
       href: '/cap-sheet',
       label: 'Cap & Aprons',
-      badge: 'CBA 2026',
+      badge: 'CBA 2026-2027',
       icon: Coins,
       desc: 'Apron handcuffs & tax brackets',
     },
@@ -139,7 +139,7 @@ export const Sidebar: React.FC = () => {
                 NBA ANALYTICS
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium truncate">Season Projections 2025-26</p>
+            <p className="text-[11px] text-slate-400 font-medium truncate">Season Projections 2026-2027</p>
           </div>
         </div>
 
@@ -311,7 +311,7 @@ export const Sidebar: React.FC = () => {
           </div>
           <div>
             <span className="font-extrabold text-sm tracking-tight text-white">NBA PROJECTIONS</span>
-            <span className="text-[10px] text-amber-400 font-mono ml-2">2025-26</span>
+            <span className="text-[10px] text-amber-400 font-mono ml-2">2026-2027</span>
           </div>
         </div>
         <button

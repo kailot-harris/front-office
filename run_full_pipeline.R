@@ -94,8 +94,22 @@ run_stage("shot_quality_engine.R", "Calculate 15-Game Spatial Shot Quality (xeFG
 run_stage("fatigue_travel_engine.R", "Compute Haversine Flight Miles, Circadian & Altitude Drag")
 
 # 3. Microstructure & Player Valuation Engines (Phase 4)
-run_stage("rapm_engine.R", "Estimate Bayesian Stint-Level RAPM (L2 Ridge Regression)")
+# Play-by-play extraction must precede the engines that consume it:
+# build_coaching_dataset.R falls back to per-coach synthetic bands without
+# pbp_timeout_cache.rds.
+#
+# rapm_engine.R no longer reads stint_lineups.rds -- it fits a possession-level
+# design on hoopR's published possession table instead, which is what makes ORAPM
+# and DRAPM separable (see that file's header). The stint stage is kept because the
+# stint table is still the only on/off and lineup-synergy dataset in the repo, but
+# nothing downstream of it runs today, so a failure here no longer breaks RAPM.
+run_stage("build_stint_dataset.R", "Extract Stint-Level Lineups from Play-by-Play",
+          output = file.path(CACHE_DIR, "stint_lineups.rds"))
+run_stage("rapm_engine.R", "Estimate Possession-Level ORAPM/DRAPM (L2 Ridge Regression)",
+          output = file.path(CACHE_DIR, "rapm_ratings.rds"))
 run_stage("roster_bottom_up_engine.R", "Generate 30-Team Bottom-Up Standings & Fair Spreads")
+run_stage("build_tactical_events_dataset.R", "Extract After-Timeout Possessions & Challenge Outcomes",
+          output = file.path(CACHE_DIR, "pbp_timeout_cache.rds"))
 run_stage("build_coaching_dataset.R", "Compile Coaching Staff Registry, Tactical ATOs & CVA Impact",
           output = file.path(CACHE_DIR, "coaching_metrics.rds"))
 run_stage("build_cba_cap_dataset.R", "Calculate 30-Team CBA Cap Sheets, Aprons & Luxury Tax Penalties")

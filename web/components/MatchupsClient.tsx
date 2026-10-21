@@ -5,6 +5,7 @@ import { MatchupsDataset } from '@/lib/matchupTypes';
 import { MatchupCard } from '@/components/MatchupCard';
 import { TeamLogo } from '@/components/TeamLogo';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { formatSeasonLabel } from '@/lib/season';
 import {
   Calendar,
   CheckCircle2,
@@ -204,7 +205,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
               {gradedStats
                 ? 'Graded games only'
                 : dataset.grading_state === 'no_games_graded_yet'
-                  ? `No ${dataset.season_label} game graded yet`
+                  ? `No ${formatSeasonLabel(dataset.season_label) ?? dataset.season_label} game graded yet`
                   : 'No graded game in this week yet'}
             </span>
           </div>
@@ -249,7 +250,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
               {slateMeta ? `${slateMeta.start_date} → ${slateMeta.end_date}` : '—'}
             </span>
             <span className="text-[11px] font-mono text-slate-400">
-              {slateGames.length} games · {dataset.season_label} season
+              {slateGames.length} games · {formatSeasonLabel(dataset.season_label) ?? dataset.season_label} season
             </span>
           </div>
         </div>

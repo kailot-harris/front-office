@@ -34,7 +34,8 @@ describe('lib/data.ts server data loaders', () => {
 
   it('getMetadata() returns model metadata with 1,000 simulations and 1230 schedule games', () => {
     const meta = getMetadata();
-    expect(meta.season).toBe(2026);
+    // config.R's CURRENT_SEASON is the hoopR end-year for 2026-2027.
+    expect(meta.season).toBe(2027);
     expect(meta.n_simulations).toBe(1000);
     expect(meta.total_schedule_games).toBe(1230);
     expect(meta.teams_count).toBe(30);

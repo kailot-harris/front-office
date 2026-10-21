@@ -1,5 +1,7 @@
 import { getTeamsData, getMetadata } from '@/lib/data';
 import { VariantsClient } from '@/components/VariantsClient';
+import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
+import { SEASON_SOURCES } from '@/lib/season';
 
 export default function VariantsPage() {
   const teams = getTeamsData();
@@ -14,9 +16,15 @@ export default function VariantsPage() {
             <span className="text-sm font-semibold px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
               4 Variants + Ensemble
             </span>
+            <SeasonSourceBadge
+              season={SEASON_SOURCES.variants.season}
+              kind="projection"
+              label="Projected season"
+              title={SEASON_SOURCES.variants.note}
+            />
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Compare 1,000-season predictions across Production Bottom-Up BPM, Bayesian RAPM, Shot Quality & Fatigue, and 16-D Embeddings.
+            Compare 1,000-season predictions across Production Bottom-Up BPM, Possession-Level RAPM, Shot Quality & Fatigue, and 16-D Embeddings.
           </p>
         </div>
       </div>

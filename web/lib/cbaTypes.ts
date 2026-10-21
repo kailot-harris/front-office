@@ -56,7 +56,10 @@ export interface FranchiseCbaProfile {
 }
 
 export interface CbaLeagueOverview {
+  /** League year in full-year form, e.g. '2026-2027'. */
   season: string;
+  /** Where the cap/apron thresholds were cross-checked. */
+  cbaThresholdSources?: string;
   salaryCap: number;
   luxuryTaxThreshold: number;
   firstApron: number;
