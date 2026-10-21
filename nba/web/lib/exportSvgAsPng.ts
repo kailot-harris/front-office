@@ -5,19 +5,21 @@
  * chart's title/subtitle/legend/caption -- which are almost always plain
  * HTML siblings of the <svg>, not part of it -- are included in the export.
  *
- * Technique: clone the element, inline every element's *computed* style
- * (Tailwind utility classes only resolve while the page's stylesheet is
- * attached, so a standalone serialized clone needs literal values), wrap the
- * clone in a single-use SVG <foreignObject>, rasterize that to an offscreen
- * canvas, then download as PNG. Generic and data-agnostic -- works off any
- * element ref alone, no chart-specific logic. No server/API involvement --
- * safe to call from a fully static export.
+ * Technique: walk the live DOM using real layout boxes (getBoundingClientRect
+ * + getComputedStyle), manually drawing backgrounds/borders/text onto a
+ * canvas, and separately rasterizing any nested <svg> elements (the chart
+ * itself, plus any inline icons) to be drawn in place. This deliberately
+ * avoids the SVG <foreignObject> + canvas.toBlob trick: Chromium taints the
+ * canvas when a foreignObject contains HTML, so toBlob silently resolves
+ * with `null` and nothing downloads -- no visible error, just a dead button.
+ * Generic and data-agnostic -- works off any element ref alone, no
+ * chart-specific logic. No server/API involvement -- safe to call from a
+ * fully static export.
  */
 
 const PNG_SCALE = 2;
 
-const STYLE_PROPS = [
-  // SVG shape/text styling
+const SVG_STYLE_PROPS = [
   'fill',
   'stroke',
   'stroke-width',
@@ -27,70 +29,17 @@ const STYLE_PROPS = [
   'opacity',
   'fill-opacity',
   'stroke-opacity',
-  'text-anchor',
-  // Typography
-  'color',
   'font-family',
   'font-size',
   'font-weight',
-  'font-style',
-  'line-height',
-  'letter-spacing',
-  'text-transform',
-  'text-decoration',
-  'white-space',
-  // Box model / layout
-  'display',
-  'flex-direction',
-  'flex-wrap',
-  'align-items',
-  'justify-content',
-  'justify-items',
-  'gap',
-  'row-gap',
-  'column-gap',
-  'width',
-  'height',
-  'min-width',
-  'min-height',
-  'max-width',
-  'max-height',
-  'padding-top',
-  'padding-right',
-  'padding-bottom',
-  'padding-left',
-  'margin-top',
-  'margin-right',
-  'margin-bottom',
-  'margin-left',
-  'border-top-width',
-  'border-right-width',
-  'border-bottom-width',
-  'border-left-width',
-  'border-top-color',
-  'border-right-color',
-  'border-bottom-color',
-  'border-left-color',
-  'border-top-style',
-  'border-right-style',
-  'border-bottom-style',
-  'border-left-style',
-  'border-radius',
-  'background-color',
-  'box-sizing',
-  'position',
-  'top',
-  'left',
-  'right',
-  'bottom',
-  'z-index',
-  'overflow',
+  'text-anchor',
+  'color',
 ] as const;
 
 function inlineComputedStyles(source: Element, target: Element): void {
   const computed = window.getComputedStyle(source);
   let styleText = '';
-  for (const prop of STYLE_PROPS) {
+  for (const prop of SVG_STYLE_PROPS) {
     const value = computed.getPropertyValue(prop);
     if (value) {
       styleText += `${prop}:${value};`;
@@ -116,15 +65,169 @@ function withDateStamp(filename: string, extension: string): string {
   return `${base}_${dateStamp}.${extension}`;
 }
 
-function getElementPixelSize(el: Element): { width: number; height: number } {
-  const rect = el.getBoundingClientRect();
-  let width = rect.width;
-  let height = rect.height;
+function isTransparent(color: string): boolean {
+  if (!color || color === 'transparent') return true;
+  const match = color.match(/rgba?\(\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*(?:,\s*([\d.]+)\s*)?\)/);
+  if (match && match[1] !== undefined) {
+    return parseFloat(match[1]) === 0;
+  }
+  return false;
+}
 
-  if (!width || !Number.isFinite(width)) width = 500;
-  if (!height || !Number.isFinite(height)) height = 300;
+function cornerRadius(cs: CSSStyleDeclaration, width: number, height: number): number {
+  const raw = parseFloat(cs.borderRadius);
+  if (!raw || Number.isNaN(raw)) return 0;
+  return Math.min(raw, Math.min(width, height) / 2);
+}
 
-  return { width, height };
+function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
+  if (w <= 0 || h <= 0) return;
+  ctx.beginPath();
+  if (r > 0 && typeof ctx.roundRect === 'function') {
+    ctx.roundRect(x, y, w, h, r);
+  } else {
+    ctx.rect(x, y, w, h);
+  }
+}
+
+function collectSvgNodes(node: Element, acc: SVGSVGElement[]): void {
+  if (node.hasAttribute('data-export-exclude')) return;
+  if (node.tagName.toLowerCase() === 'svg') {
+    acc.push(node as unknown as SVGSVGElement);
+    return;
+  }
+  for (const child of Array.from(node.children)) {
+    collectSvgNodes(child, acc);
+  }
+}
+
+function rasterizeSvgToImage(svgEl: SVGSVGElement): Promise<HTMLImageElement> {
+  return new Promise((resolve) => {
+    const clone = svgEl.cloneNode(true) as SVGSVGElement;
+    inlineComputedStyles(svgEl, clone);
+
+    const rect = svgEl.getBoundingClientRect();
+    const width = rect.width || svgEl.width?.baseVal?.value || 24;
+    const height = rect.height || svgEl.height?.baseVal?.value || 24;
+
+    clone.setAttribute('width', String(width));
+    clone.setAttribute('height', String(height));
+    if (!clone.getAttribute('xmlns')) {
+      clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    }
+
+    const svgString = new XMLSerializer().serializeToString(clone);
+    const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(img); // resolve with a broken (naturalWidth 0) image; draw step just skips it
+    };
+    img.src = url;
+  });
+}
+
+function drawTextNode(
+  ctx: CanvasRenderingContext2D,
+  textNode: Text,
+  originX: number,
+  originY: number
+): void {
+  const text = textNode.textContent;
+  if (!text || !text.trim()) return;
+  const parent = textNode.parentElement;
+  if (!parent) return;
+
+  const range = document.createRange();
+  range.selectNodeContents(textNode);
+  const rects = Array.from(range.getClientRects());
+  if (rects.length === 0) return;
+
+  const cs = window.getComputedStyle(parent);
+  ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  ctx.fillStyle = cs.color;
+  ctx.textBaseline = 'alphabetic';
+  const fontSizePx = parseFloat(cs.fontSize) || 12;
+  const baselineOffset = fontSizePx * 0.22;
+
+  if (rects.length === 1) {
+    ctx.fillText(text.trim(), rects[0].left - originX, rects[0].bottom - originY - baselineOffset);
+    return;
+  }
+
+  // Wrapped across multiple visual lines: approximate each line's substring
+  // proportionally to that line's rect width vs. the total rect width.
+  const totalWidth = rects.reduce((sum, r) => sum + r.width, 0) || 1;
+  let charCursor = 0;
+  for (let i = 0; i < rects.length; i++) {
+    const r = rects[i];
+    const isLast = i === rects.length - 1;
+    const share = r.width / totalWidth;
+    const lineLen = isLast ? text.length - charCursor : Math.round(text.length * share);
+    const line = text.slice(charCursor, charCursor + lineLen).trim();
+    charCursor += lineLen;
+    if (line) {
+      ctx.fillText(line, r.left - originX, r.bottom - originY - baselineOffset);
+    }
+  }
+}
+
+function drawTree(
+  ctx: CanvasRenderingContext2D,
+  node: Node,
+  originX: number,
+  originY: number,
+  svgImages: Map<SVGSVGElement, HTMLImageElement>
+): void {
+  if (node.nodeType === Node.TEXT_NODE) {
+    drawTextNode(ctx, node as Text, originX, originY);
+    return;
+  }
+
+  if (!(node instanceof Element)) return;
+  if (node.hasAttribute('data-export-exclude')) return;
+
+  const tag = node.tagName.toLowerCase();
+
+  if (tag === 'svg') {
+    const img = svgImages.get(node as unknown as SVGSVGElement);
+    if (img && img.naturalWidth > 0) {
+      const rect = node.getBoundingClientRect();
+      ctx.drawImage(img, rect.left - originX, rect.top - originY, rect.width, rect.height);
+    }
+    return;
+  }
+
+  const rect = node.getBoundingClientRect();
+  if (rect.width > 0 && rect.height > 0) {
+    const cs = window.getComputedStyle(node);
+    const radius = cornerRadius(cs, rect.width, rect.height);
+
+    const bg = cs.backgroundColor;
+    if (bg && !isTransparent(bg)) {
+      roundedRectPath(ctx, rect.left - originX, rect.top - originY, rect.width, rect.height, radius);
+      ctx.fillStyle = bg;
+      ctx.fill();
+    }
+
+    const borderWidth = parseFloat(cs.borderTopWidth) || 0;
+    if (borderWidth > 0 && cs.borderTopStyle !== 'none' && !isTransparent(cs.borderTopColor)) {
+      roundedRectPath(ctx, rect.left - originX, rect.top - originY, rect.width, rect.height, radius);
+      ctx.strokeStyle = cs.borderTopColor;
+      ctx.lineWidth = borderWidth;
+      ctx.stroke();
+    }
+  }
+
+  for (const child of Array.from(node.childNodes)) {
+    drawTree(ctx, child, originX, originY, svgImages);
+  }
 }
 
 /**
@@ -133,44 +236,30 @@ function getElementPixelSize(el: Element): { width: number; height: number } {
  * the container that visually represents "this chart", not just its <svg>.
  *
  * Elements marked `data-export-exclude` (e.g. the export button itself) are
- * stripped from the captured clone.
+ * skipped entirely.
  */
 export function exportSvgAsPng(element: Element, filename: string): void {
   if (typeof window === 'undefined' || typeof document === 'undefined' || !element) {
     return;
   }
 
-  const clone = element.cloneNode(true) as HTMLElement;
-  inlineComputedStyles(element, clone);
-  clone.querySelectorAll('[data-export-exclude]').forEach((el) => el.remove());
+  const containerRect = element.getBoundingClientRect();
+  const width = containerRect.width || 500;
+  const height = containerRect.height || 300;
 
-  const { width, height } = getElementPixelSize(element);
+  const svgNodes: SVGSVGElement[] = [];
+  collectSvgNodes(element, svgNodes);
 
-  clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
-  const serializer = new XMLSerializer();
-  const htmlString = serializer.serializeToString(clone);
+  Promise.all(svgNodes.map((svg) => rasterizeSvgToImage(svg))).then((images) => {
+    const svgImages = new Map<SVGSVGElement, HTMLImageElement>();
+    svgNodes.forEach((svg, i) => svgImages.set(svg, images[i]));
 
-  const svgString =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
-    `<foreignObject width="100%" height="100%">${htmlString}</foreignObject>` +
-    `</svg>`;
-
-  const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-  const svgUrl = URL.createObjectURL(svgBlob);
-
-  const normalizedFilename = withDateStamp(filename, 'png');
-
-  const img = new Image();
-  img.onload = () => {
     const canvas = document.createElement('canvas');
     canvas.width = width * PNG_SCALE;
     canvas.height = height * PNG_SCALE;
 
     const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      URL.revokeObjectURL(svgUrl);
-      return;
-    }
+    if (!ctx) return;
 
     // The captured card's own background is often semi-transparent
     // (relies on the page's dark backdrop), so paint the app's dark
@@ -178,9 +267,10 @@ export function exportSvgAsPng(element: Element, filename: string): void {
     ctx.fillStyle = '#0b0f17';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.scale(PNG_SCALE, PNG_SCALE);
-    ctx.drawImage(img, 0, 0, width, height);
 
-    URL.revokeObjectURL(svgUrl);
+    drawTree(ctx, element, containerRect.left, containerRect.top, svgImages);
+
+    const normalizedFilename = withDateStamp(filename, 'png');
 
     canvas.toBlob((blob) => {
       if (!blob) return;
@@ -193,9 +283,5 @@ export function exportSvgAsPng(element: Element, filename: string): void {
       document.body.removeChild(link);
       URL.revokeObjectURL(pngUrl);
     }, 'image/png');
-  };
-  img.onerror = () => {
-    URL.revokeObjectURL(svgUrl);
-  };
-  img.src = svgUrl;
+  });
 }
