@@ -1,6 +1,6 @@
 # ==============================================================================
 # Lineup Synergy, Combinatorics & Staggering Metrics
-# Path: c:/Users/kailo/kayceeslices/NBA Analytics/lineup_synergy.R
+# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/lineup_synergy.R
 # ==============================================================================
 
 suppressPackageStartupMessages({

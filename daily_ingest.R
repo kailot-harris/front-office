@@ -1,6 +1,6 @@
 # ==============================================================================
 # Automated Daily Box Score Ingestion Pipeline
-# Path: c:/Users/kailo/kayceeslices/NBA Analytics/daily_ingest.R
+# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/daily_ingest.R
 # ==============================================================================
 
 suppressPackageStartupMessages({

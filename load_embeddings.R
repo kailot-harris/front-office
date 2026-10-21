@@ -1,6 +1,6 @@
 # ==============================================================================
 # Embedding Loader & Tidy Joining Helper
-# Path: c:/Users/kailo/kayceeslices/NBA Analytics/load_embeddings.R
+# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/load_embeddings.R
 # ==============================================================================
 
 suppressPackageStartupMessages({

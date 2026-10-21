@@ -1,9 +1,9 @@
 # ==============================================================================
 # Bottom-Up Player-Composed NBA H2H Prediction & Standings Engine
-# Path: c:/Users/kailo/kayceeslices/NBA Analytics/roster_bottom_up_engine.R
+# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/roster_bottom_up_engine.R
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NBA Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/NBA Analytics"
 if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({

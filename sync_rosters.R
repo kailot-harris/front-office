@@ -1,9 +1,9 @@
 # ==============================================================================
 # Live NBA Roster Synchronizer (Automated Offseason Trade Tracker)
-# Path: c:/Users/kailo/kayceeslices/NBA Analytics/sync_rosters.R
+# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/sync_rosters.R
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NBA Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/NBA Analytics"
 if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({

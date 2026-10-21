@@ -1,10 +1,10 @@
 # ==============================================================================
 # NBA Analytics Pipeline - Global Configuration
-# Path: c:/Users/kailo/kayceeslices/NBA Analytics/config.R
+# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/config.R
 # ==============================================================================
 
 # Working and Cache Directories
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NBA Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/NBA Analytics"
 CACHE_DIR   <- file.path(PROJECT_DIR, "cache")
 if (!dir.exists(CACHE_DIR)) dir.create(CACHE_DIR, recursive = TRUE)
 

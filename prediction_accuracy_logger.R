@@ -1,6 +1,6 @@
 # ==============================================================================
 # prediction_accuracy_logger.R
-# Path: c:/Users/kailo/kayceeslices/NBA Analytics/prediction_accuracy_logger.R
+# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/prediction_accuracy_logger.R
 #
 # Daily, structured, append-only log of the model's pre-game win-probability
 # predictions vs. realized game outcomes — distinct from bet_tracker.r's betting
@@ -12,7 +12,7 @@
 # Follows the proven sibling design from WNBA Analytics & NFL Analytics.
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NBA Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/NBA Analytics"
 if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({

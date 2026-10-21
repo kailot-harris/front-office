@@ -1,9 +1,9 @@
 # ==============================================================================
 # Live NBA Injury Scraper & Roster Availability Feeder
-# Path: c:/Users/kailo/kayceeslices/NBA Analytics/injury_scraper.R
+# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/injury_scraper.R
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NBA Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/NBA Analytics"
 if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({
