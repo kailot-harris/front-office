@@ -15,31 +15,39 @@ source("config.R")
 # after the stage's own start time. A silent no-op (e.g. a dead auto-run guard — the exact bug
 # from issue #1) leaves the file untouched; this surfaces it immediately rather than letting
 # the pipeline log "COMPLETED" and carry stale data silently.
-# WARN, never stop() — fail-safe: report and continue.
-.check_stage_output <- function(script_name, description, output, start) {
+# WARN by default (fail-safe: report and continue). Critical stages pass strict = TRUE to turn
+# a missing/stale output into a hard stage failure (issue #18).
+.check_stage_output <- function(script_name, description, output, start, strict = FALSE) {
   if (is.null(output) || length(output) == 0) return(invisible(NULL))
+  problems <- character(0)
   for (path in output) {
     if (!file.exists(path)) {
-      message(sprintf(">>> [WARN] %s: declared output '%s' does not exist after the stage ran.",
-                      script_name, path))
+      problems <- c(problems, sprintf("declared output '%s' does not exist after the stage ran", path))
       next
     }
     mt <- tryCatch(file.info(path)$mtime, error = function(e) NA)
     if (length(mt) != 1 || is.na(mt)) next
     if (as.numeric(difftime(mt, start, units = "secs")) < -1) {
       age_h <- as.numeric(difftime(Sys.time(), mt, units = "hours"))
-      message(sprintf(
-        ">>> [WARN] %s reported success but declared output '%s' was NOT rewritten (mtime %s, %.1f h old). Possible silent no-op — see issue #1 / finding C-2.",
-        script_name, path, format(mt, "%Y-%m-%d %H:%M:%S"), age_h))
+      problems <- c(problems, sprintf(
+        "declared output '%s' was NOT rewritten (mtime %s, %.1f h old). Possible silent no-op — see issue #1 / finding C-2",
+        path, format(mt, "%Y-%m-%d %H:%M:%S"), age_h))
     } else {
       message(sprintf(">>> [FRESH] %s -> %s (mtime %s)",
                       script_name, path, format(mt, "%Y-%m-%d %H:%M:%S")))
     }
   }
+  if (length(problems) > 0) {
+    msg <- sprintf(">>> [%s] %s: %s", if (isTRUE(strict)) "FAIL" else "WARN",
+                   script_name, paste(problems, collapse = "; "))
+    if (isTRUE(strict)) stop(msg, call. = FALSE)
+    message(msg)
+  }
   invisible(NULL)
 }
 
-run_stage <- function(script_name, description, call_fn = NULL, output = NULL) {
+run_stage <- function(script_name, description, call_fn = NULL, output = NULL,
+                      strict_output = FALSE) {
   message(sprintf("\n>>> [STAGE] %s (%s)...", description, script_name))
   if (!file.exists(script_name)) {
     warning(sprintf("Script %s not found in working directory. Skipping.", script_name))
@@ -58,8 +66,7 @@ run_stage <- function(script_name, description, call_fn = NULL, output = NULL) {
     # Output-staleness check (Finding C-2, ported from NFL/WNBA Analytics sibling repos).
     # A stage that silently no-ops (e.g. a broken auto-run guard) will leave its declared
     # output file untouched; mtime < stage start exposes it rather than logging "COMPLETED".
-    # WARN, never stop() — the pipeline reports and continues.
-    .check_stage_output(script_name, description, output, start)
+    .check_stage_output(script_name, description, output, start, strict = strict_output)
     elapsed <- as.numeric(difftime(Sys.time(), start, units = "secs"))
     message(sprintf(">>> [COMPLETED] %s in %.2f seconds.", script_name, elapsed))
     return(TRUE)
@@ -110,6 +117,31 @@ run_stage("rapm_engine.R", "Estimate Possession-Level ORAPM/DRAPM (L2 Ridge Regr
 run_stage("roster_bottom_up_engine.R", "Generate 30-Team Bottom-Up Standings & Fair Spreads")
 run_stage("build_tactical_events_dataset.R", "Extract After-Timeout Possessions & Challenge Outcomes",
           output = file.path(CACHE_DIR, "pbp_timeout_cache.rds"))
+
+# Season-long projections (issue #18). This stage consumes the shot-quality,
+# RAPM, and bottom-up engines above and writes BOTH cache/ and web/public/data/.
+# Every projection-dependent stage below (coaching, clutch, defense, DNA,
+# playoffs, matchups) reads web/public/data/projections_*.json, so this must run
+# before them. strict_output turns a missing/stale artifact into a hard failure,
+# and a failed run aborts the pipeline rather than letting those stages publish
+# pages built from older projections.
+if (!run_stage(
+  "season_simulator.R",
+  "Simulate 1,000-Season Team & Player Projections and Publish to web/public/data",
+  output = c(
+    file.path(CACHE_DIR, "projections_season_teams.json"),
+    file.path(CACHE_DIR, "projections_season_players.json"),
+    file.path(CACHE_DIR, "projections_models_metadata.json"),
+    file.path(WEB_DATA_DIR, "projections_season_teams.json"),
+    file.path(WEB_DATA_DIR, "projections_season_players.json"),
+    file.path(WEB_DATA_DIR, "projections_models_metadata.json")
+  ),
+  strict_output = TRUE
+)) {
+  stop("season_simulator.R failed or did not republish projections; aborting before projection-dependent stages so no page can read stale projections.",
+       call. = FALSE)
+}
+
 run_stage("build_coaching_dataset.R", "Compile Coaching Staff Registry, Tactical ATOs & CVA Impact",
           output = file.path(CACHE_DIR, "coaching_metrics.rds"))
 run_stage("build_cba_cap_dataset.R", "Calculate 30-Team CBA Cap Sheets, Aprons & Luxury Tax Penalties")
@@ -147,6 +179,47 @@ run_stage("prediction_accuracy_logger.R", "Reconcile Outcomes & Log Pre-Game Win
 # ingestion that supplies the real final scores it joins on game_id.)
 run_stage("build_matchups_dataset.R", "Assemble Weekly Matchup Slates, Projections & Graded Results",
           output = file.path(CACHE_DIR, "matchups_cache.rds"))
+
+# Final projection publish guard (issue #18). Every page above reads these three
+# files; assert the scheduled run actually left fresh copies and that the
+# metadata's generated_at/season_label describe this run -- not a previous one.
+projection_web_json <- file.path(
+  WEB_DATA_DIR,
+  c("projections_season_teams.json",
+    "projections_season_players.json",
+    "projections_models_metadata.json")
+)
+missing_projections <- projection_web_json[!file.exists(projection_web_json)]
+if (length(missing_projections) > 0) {
+  stop(sprintf("Pipeline finished without publishing projection artifact(s): %s",
+               paste(missing_projections, collapse = ", ")), call. = FALSE)
+}
+projection_mtimes <- file.info(projection_web_json)$mtime
+stale_projections <- projection_web_json[
+  is.na(projection_mtimes) |
+    as.numeric(difftime(projection_mtimes, pipeline_start_time, units = "secs")) < -1
+]
+if (length(stale_projections) > 0) {
+  stop(sprintf("Pipeline finished with projection artifact(s) older than the run: %s",
+               paste(stale_projections, collapse = ", ")), call. = FALSE)
+}
+projection_meta <- jsonlite::fromJSON(file.path(WEB_DATA_DIR, "projections_models_metadata.json"))
+projection_generated_at <- as.POSIXct(
+  projection_meta$generated_at,
+  format = "%Y-%m-%dT%H:%M:%SZ",
+  tz = "UTC"
+)
+expected_season_label <- sprintf("%d-%d", CURRENT_SEASON - 1L, CURRENT_SEASON)
+if (is.na(projection_generated_at) ||
+    as.numeric(difftime(projection_generated_at, pipeline_start_time, units = "secs")) < -2 ||
+    !identical(projection_meta$season_label, expected_season_label)) {
+  stop(sprintf(
+    "Projection publish guard failed: generated_at=%s season_label=%s (expected %s or newer).",
+    projection_meta$generated_at, projection_meta$season_label, expected_season_label
+  ), call. = FALSE)
+}
+message(sprintf(">>> [CONTRACT] Projections published by this run: %s (%s)",
+                projection_meta$generated_at, projection_meta$season_label))
 
 pipeline_total_time <- as.numeric(difftime(Sys.time(), pipeline_start_time, units = "secs"))
 message("\n==================================================================")

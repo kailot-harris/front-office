@@ -17,6 +17,16 @@ if (file.exists("config.R")) {
   source("config.R")
 }
 
+# Fallbacks for running stand-alone from a checkout without config.R.
+if (!exists("CACHE_DIR")) CACHE_DIR <- file.path(getwd(), "cache")
+if (!exists("WEB_DATA_DIR")) WEB_DATA_DIR <- file.path(getwd(), "web", "public", "data")
+if (!dir.exists(CACHE_DIR)) dir.create(CACHE_DIR, recursive = TRUE)
+if (!dir.exists(WEB_DATA_DIR)) dir.create(WEB_DATA_DIR, recursive = TRUE)
+
+# Timestamp for the publish contract at the end of this script: every cache and
+# web JSON artifact must be rewritten at or after this instant.
+simulator_started_at <- Sys.time()
+
 # Ensure local cache directory exists in worktree
 if (!dir.exists("cache")) {
   dir.create("cache", recursive = TRUE)
@@ -829,12 +839,19 @@ metadata_obj <- list(
   )
 )
 
-# Export targets
-out_teams_rds    <- "cache/projections_season_teams.rds"
-out_players_rds  <- "cache/projections_season_players.rds"
-out_teams_json   <- "cache/projections_season_teams.json"
-out_players_json <- "cache/projections_season_players.json"
-out_meta_json    <- "cache/projections_models_metadata.json"
+# Export targets.
+# Cache is the internal artifact store; WEB_DATA_DIR is the directory Next.js
+# serves. Both copies are written on every run so publishing projections needs
+# no manual copy step (issue #18).
+out_teams_rds    <- file.path(CACHE_DIR, "projections_season_teams.rds")
+out_players_rds  <- file.path(CACHE_DIR, "projections_season_players.rds")
+out_teams_json   <- file.path(CACHE_DIR, "projections_season_teams.json")
+out_players_json <- file.path(CACHE_DIR, "projections_season_players.json")
+out_meta_json    <- file.path(CACHE_DIR, "projections_models_metadata.json")
+
+web_teams_json   <- file.path(WEB_DATA_DIR, "projections_season_teams.json")
+web_players_json <- file.path(WEB_DATA_DIR, "projections_season_players.json")
+web_meta_json    <- file.path(WEB_DATA_DIR, "projections_models_metadata.json")
 
 # Write RDS
 saveRDS(team_projections, out_teams_rds)
@@ -842,23 +859,91 @@ saveRDS(player_projections, out_players_rds)
 cat(sprintf("      Saved: %s (%d rows)\n", out_teams_rds, nrow(team_projections)))
 cat(sprintf("      Saved: %s (%d rows)\n", out_players_rds, nrow(player_projections)))
 
-# Write JSON (pretty, auto_unbox for clean API ingestion)
+# Write cache JSON (pretty, auto_unbox for clean API ingestion) and publish the
+# exact same payloads to the web data directory.
 write_json(team_projections, out_teams_json, pretty = TRUE, auto_unbox = TRUE)
 write_json(player_projections, out_players_json, pretty = TRUE, auto_unbox = TRUE)
 write_json(metadata_obj, out_meta_json, pretty = TRUE, auto_unbox = TRUE)
+write_json(team_projections, web_teams_json, pretty = TRUE, auto_unbox = TRUE)
+write_json(player_projections, web_players_json, pretty = TRUE, auto_unbox = TRUE)
+write_json(metadata_obj, web_meta_json, pretty = TRUE, auto_unbox = TRUE)
 cat(sprintf("      Saved: %s\n", out_teams_json))
 cat(sprintf("      Saved: %s\n", out_players_json))
 cat(sprintf("      Saved: %s\n", out_meta_json))
+cat(sprintf("      Published: %s\n", web_teams_json))
+cat(sprintf("      Published: %s\n", web_players_json))
+cat(sprintf("      Published: %s\n", web_meta_json))
 
-# Also sync to CACHE_DIR if distinct from local worktree cache
-if (exists("CACHE_DIR") && CACHE_DIR != "cache" && dir.exists(CACHE_DIR)) {
-  saveRDS(team_projections, file.path(CACHE_DIR, "projections_season_teams.rds"))
-  saveRDS(player_projections, file.path(CACHE_DIR, "projections_season_players.rds"))
-  write_json(team_projections, file.path(CACHE_DIR, "projections_season_teams.json"), pretty = TRUE, auto_unbox = TRUE)
-  write_json(player_projections, file.path(CACHE_DIR, "projections_season_players.json"), pretty = TRUE, auto_unbox = TRUE)
-  write_json(metadata_obj, file.path(CACHE_DIR, "projections_models_metadata.json"), pretty = TRUE, auto_unbox = TRUE)
-  cat(sprintf("      Synced to main repo CACHE_DIR: %s\n", CACHE_DIR))
+# ------------------------------------------------------------------------------
+# Publish contract (issue #18)
+# ------------------------------------------------------------------------------
+# A "successful" simulator run that leaves any of the six JSON artifacts
+# untouched (or publishes a different payload than the cache copy) would let the
+# site serve stale projections. Fail loudly instead: both the cache and web
+# copies must exist, have been rewritten during this run, and carry the same
+# generated_at / season_label.
+published_json <- c(
+  out_teams_json, out_players_json, out_meta_json,
+  web_teams_json, web_players_json, web_meta_json
+)
+
+missing_json <- published_json[!file.exists(published_json)]
+if (length(missing_json) > 0) {
+  stop(sprintf(
+    "Projection publish contract failed; missing artifact(s): %s",
+    paste(missing_json, collapse = ", ")
+  ), call. = FALSE)
 }
+
+published_mtimes <- file.info(published_json)$mtime
+stale_json <- published_json[
+  is.na(published_mtimes) |
+    as.numeric(difftime(published_mtimes, simulator_started_at, units = "secs")) < -1
+]
+if (length(stale_json) > 0) {
+  stop(sprintf(
+    "Projection publish contract failed; artifact(s) not rewritten by this run: %s",
+    paste(stale_json, collapse = ", ")
+  ), call. = FALSE)
+}
+
+for (pair in list(
+  c(out_teams_json, web_teams_json),
+  c(out_players_json, web_players_json),
+  c(out_meta_json, web_meta_json)
+)) {
+  cache_md5 <- unname(tools::md5sum(pair[[1]]))
+  web_md5   <- unname(tools::md5sum(pair[[2]]))
+  if (!identical(cache_md5, web_md5)) {
+    stop(sprintf(
+      "Projection publish contract failed; web copy does not match cache copy:\n  cache: %s\n  web:   %s",
+      pair[[1]], pair[[2]]
+    ), call. = FALSE)
+  }
+}
+
+cache_meta <- fromJSON(out_meta_json)
+web_meta   <- fromJSON(web_meta_json)
+if (!identical(cache_meta$generated_at, web_meta$generated_at) ||
+    !identical(cache_meta$season_label, web_meta$season_label)) {
+  stop(sprintf(
+    "Projection publish contract failed; metadata mismatch (cache generated_at=%s season=%s, web generated_at=%s season=%s).",
+    cache_meta$generated_at, cache_meta$season_label,
+    web_meta$generated_at, web_meta$season_label
+  ), call. = FALSE)
+}
+
+generated_at_ct <- as.POSIXct(web_meta$generated_at, format = "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+if (is.na(generated_at_ct) ||
+    as.numeric(difftime(generated_at_ct, simulator_started_at, units = "secs")) < -2) {
+  stop(sprintf(
+    "Projection publish contract failed; web metadata generated_at (%s) predates this run (%s).",
+    web_meta$generated_at, format(simulator_started_at, "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+  ), call. = FALSE)
+}
+
+cat(sprintf("      Publish contract OK: 6 JSON artifacts rewritten and web copies match cache (%s, %s)\n",
+            web_meta$generated_at, web_meta$season_label))
 
 cat("\n==================================================================\n")
 cat("      SEASON SIMULATOR RUN COMPLETED SUCCESSFULLY (<90s)          \n")

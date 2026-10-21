@@ -126,7 +126,7 @@ describe('Strict Zod schema contracts against public/data/*.json', () => {
   });
 
   it('offseason_transactions.json matches OffseasonTransactionSchema', () => {
-    expect(d.offseasonTransactions.length).toBeGreaterThanOrEqual(30);
+    expect(d.offseasonTransactions.length).toBeGreaterThanOrEqual(183);
     assertValid(z.array(OffseasonTransactionSchema), d.offseasonTransactions, 'offseason_transactions.json');
   });
 

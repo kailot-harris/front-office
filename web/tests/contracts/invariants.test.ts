@@ -240,6 +240,7 @@ describe('Domain & mathematical invariants: clutch, defense, playerDna, coaches,
     coaches,
     offseasonDraft,
     offseasonTeams,
+    offseasonTransactions,
     playoffSeries,
     shotsIndex,
     shotsMetadata,
@@ -300,6 +301,46 @@ describe('Domain & mathematical invariants: clutch, defense, playerDna, coaches,
         1
       );
     }
+  });
+
+  it('offseason_transactions.json: canonical 183+ record catalog is preserved and drives team profiles', () => {
+    // The offseason builder reads this catalog as read-only input. A regression
+    // once replaced it with a 30-record subset, silently dropping most moves.
+    expect(offseasonTransactions.length).toBeGreaterThanOrEqual(183);
+
+    const ids = offseasonTransactions.map((t) => t.id);
+    expect(new Set(ids).size, 'duplicate transaction ids').toBe(ids.length);
+
+    const draftPicks = offseasonTransactions.filter((t) => t.type === 'draft');
+    expect(draftPicks).toHaveLength(LEAGUE.DRAFT_PICKS);
+    expect(draftPicks.map((t) => t.draft_pick?.pick).sort((a, b) => a! - b!)).toEqual(
+      Array.from({ length: LEAGUE.DRAFT_PICKS }, (_, i) => i + 1)
+    );
+    for (const t of draftPicks) {
+      const profile = offseasonDraft.find((p) => p.pick === t.draft_pick?.pick);
+      expect(profile?.player_name, `draft pick ${t.draft_pick?.pick}`).toBe(t.player_name);
+    }
+
+    const knownIds = [
+      'tx-2026-giannis-antetokounmpo',
+      'tx-2026-lebron-james',
+      'dr-2026-pick-1-aj-dybantsa',
+      'dr-2026-pick-60-malique-lewis',
+    ];
+    for (const id of knownIds) {
+      expect(ids, `missing canonical transaction ${id}`).toContain(id);
+    }
+
+    // Every roster move summarized in offseason_teams.json must come from the
+    // full catalog, not a subset generated alongside the team profiles.
+    const catalogNames = new Set(offseasonTransactions.map((t) => t.player_name));
+    const orphans: string[] = [];
+    for (const team of offseasonTeams) {
+      for (const move of [...team.additions, ...team.departures]) {
+        if (!catalogNames.has(move.name)) orphans.push(`${team.team}: ${move.name}`);
+      }
+    }
+    expect(orphans, `team moves missing from catalog:\n${orphans.slice(0, 10).join('\n')}`).toEqual([]);
   });
 
   it('playoff_series_matchups.json: 8-player playoff rotations sum to ~240 team minutes, and sampleMatchups win probabilities sum to 1', () => {
