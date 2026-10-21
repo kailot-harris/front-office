@@ -1,7 +1,7 @@
 # ==============================================================================
 # roster_join_utils.R
 # Shared utility for joining active rosters, box scores, and ratings
-# Path: c:/Users/kailo/kayceeslices/NBA Analytics/roster_join_utils.R
+# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/roster_join_utils.R
 # ==============================================================================
 
 suppressPackageStartupMessages({

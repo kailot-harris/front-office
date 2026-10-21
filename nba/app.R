@@ -1,7 +1,7 @@
 # ==============================================================================
 # app.R
 # Full Production 8-Tab Quantitative NBA Sports Trading Terminal
-# Path: c:/Users/kailo/kayceeslices/NBA Analytics/app.R
+# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/app.R
 # ==============================================================================
 
 # Ensure dependencies are available

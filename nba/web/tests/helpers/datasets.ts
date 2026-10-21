@@ -103,6 +103,7 @@ export const EXPECTED_DATA_FILES = [
   'offseason_teams.json',
   'offseason_transactions.json',
   'playoff_series_matchups.json',
+  'matchups_slates.json',
   'shots_index.json',
   'shots_metadata.json',
 ] as const;

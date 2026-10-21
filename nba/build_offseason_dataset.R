@@ -1,7 +1,7 @@
 # ==============================================================================
 # build_offseason_dataset.R
 # 2026-2027 NBA Season Offseason Moves, Transactions & Draft Analytics
-# Path: c:/Users/kailo/kayceeslices/NBA Analytics/build_offseason_dataset.R
+# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/build_offseason_dataset.R
 # ==============================================================================
 
 suppressPackageStartupMessages({

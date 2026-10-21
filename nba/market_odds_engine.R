@@ -1,10 +1,10 @@
 # ==============================================================================
 # market_odds_engine.R
 # Phase 5: Timezone-Aware Date Preservation & Multi-Factor Market Valuation
-# Path: c:/Users/kailo/kayceeslices/NBA Analytics/market_odds_engine.R
+# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/market_odds_engine.R
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NBA Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/NBA Analytics"
 if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({

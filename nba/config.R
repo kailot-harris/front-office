@@ -1,18 +1,30 @@
 # ==============================================================================
 # NBA Analytics Pipeline - Global Configuration
-# Path: c:/Users/kailo/kayceeslices/NBA Analytics/config.R
+# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/config.R
 # ==============================================================================
 
 # Working and Cache Directories
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NBA Analytics"
+#   Derived from this file's own location rather than hardcoded, so the repo works
+#   from any checkout path (it has been relocated once already) and so a git
+#   worktree stays self-contained. Falls back to the working directory when the
+#   source file's path is unavailable (e.g. pasted into a console).
+PROJECT_DIR <- local({
+  ofile <- NULL
+  for (fr in sys.frames()) {
+    cand <- tryCatch(get("ofile", envir = fr, inherits = FALSE), error = function(e) NULL)
+    if (is.character(cand) && length(cand) == 1L && nzchar(cand)) ofile <- cand
+  }
+  base <- if (is.null(ofile)) getwd() else dirname(ofile)
+  normalizePath(base, winslash = "/", mustWork = FALSE)
+})
 CACHE_DIR   <- file.path(PROJECT_DIR, "cache")
 if (!dir.exists(CACHE_DIR)) dir.create(CACHE_DIR, recursive = TRUE)
 
 # Data Horizons
 HISTORICAL_SEASONS <- 2019:2025
 TEST_SEASON        <- 2026
-CURRENT_SEASON     <- 2026
-ALL_SEASONS        <- 2019:2026
+CURRENT_SEASON     <- 2027
+ALL_SEASONS        <- 2019:2027
 SIMULATION_SEASON  <- 2027
 
 # Rolling Window & Modeling Hyperparameters
@@ -47,6 +59,13 @@ CACHE_PLAYOFF_SERIES    <- file.path(CACHE_DIR, "playoff_series_cache.rds")
 CACHE_PLAYOFF_MATCHUPS  <- file.path(PROJECT_DIR, "web", "public", "data", "playoff_series_matchups.json")
 CACHE_CBA_CAP_SHEET     <- file.path(CACHE_DIR, "cba_cap_sheet_cache.rds")
 CACHE_CBA_JSON          <- file.path(PROJECT_DIR, "web", "public", "data", "cba_cap_sheet.json")
+CACHE_MATCHUPS          <- file.path(CACHE_DIR, "matchups_cache.rds")
+CACHE_MATCHUPS_JSON     <- file.path(PROJECT_DIR, "web", "public", "data", "matchups_slates.json")
+# Season-keyed hoopR pulls backing the Matchups page. The season number is hoopR's
+# (end-year) numbering, which is NOT the same as CURRENT_SEASON's - see the
+# SEASON SCOPE note at the top of build_matchups_dataset.R.
+CACHE_MATCHUPS_SCHEDULE <- function(season) file.path(CACHE_DIR, sprintf("matchups_schedule_%d.rds", season))
+CACHE_MATCHUPS_TEAM_BOX <- function(season) file.path(CACHE_DIR, sprintf("matchups_team_box_%d.rds", season))
 
 # API Throttling & Rate-Limiting
 RATE_LIMIT_SLEEP_SEC <- 1.5

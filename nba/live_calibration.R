@@ -1,6 +1,6 @@
 # ==============================================================================
 # Live In-Play Simulation, Market Odds Conversion & Calibration
-# Path: c:/Users/kailo/kayceeslices/NBA Analytics/live_calibration.R
+# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/live_calibration.R
 # ==============================================================================
 
 suppressPackageStartupMessages({

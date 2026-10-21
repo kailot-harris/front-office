@@ -1,9 +1,9 @@
 # ==============================================================================
 # NBA Bet Ledger & Automated Rolling Accuracy + CLV Grader
-# Path: c:/Users/kailo/kayceeslices/NBA Analytics/bet_tracker.R
+# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/bet_tracker.R
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NBA Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/NBA Analytics"
 if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({

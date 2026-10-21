@@ -1,9 +1,9 @@
 # ==============================================================================
 # NBA Analytics Enhanced Model: Feature Fusion & Out-of-Sample Benchmark
-# Path: c:/Users/kailo/kayceeslices/NBA Analytics/enhanced_model.R
+# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/enhanced_model.R
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NBA Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/NBA Analytics"
 if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({

@@ -1,6 +1,6 @@
 # ==============================================================================
 # prediction_accuracy_logger.R
-# Path: c:/Users/kailo/kayceeslices/NBA Analytics/prediction_accuracy_logger.R
+# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/prediction_accuracy_logger.R
 #
 # Daily, structured, append-only log of the model's pre-game win-probability
 # predictions vs. realized game outcomes — distinct from bet_tracker.r's betting
@@ -12,7 +12,7 @@
 # Follows the proven sibling design from WNBA Analytics & NFL Analytics.
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NBA Analytics"
+PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/NBA Analytics"
 if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({
@@ -125,10 +125,19 @@ seed_prediction_log <- function() {
 
   box_scores <- readRDS(box_path)
 
-  # Filter completed home games for 2025 and 2026 seasons
+  # Seasons the log covers: the current one plus the one before it. Derived from
+  # CURRENT_SEASON (config.R) rather than hardcoded, so a season rollover does not
+  # silently leave this filter a year behind and stop every new game from grading.
+  recent_seasons <- if (exists("CURRENT_SEASON")) {
+    c(CURRENT_SEASON - 1L, CURRENT_SEASON)
+  } else {
+    c(2026L, 2027L)
+  }
+
+  # Filter completed home games for the current and previous seasons
   games <- box_scores |>
     filter(
-      season %in% c(2025, 2026),
+      season %in% recent_seasons,
       team_home_away == "home",
       season_type %in% c(2, 3)
     )
@@ -146,7 +155,7 @@ seed_prediction_log <- function() {
     ratings <- setNames(std$Net_Rating, std$Team)
   } else {
     team_diffs <- box_scores |>
-      filter(season %in% c(2025, 2026)) |>
+      filter(season %in% recent_seasons) |>
       group_by(team_short_display_name) |>
       summarise(net = mean(team_score - opponent_team_score, na.rm = TRUE), .groups = "drop")
     ratings <- setNames(team_diffs$net, team_diffs$team_short_display_name)
