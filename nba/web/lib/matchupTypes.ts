@@ -3,8 +3,8 @@
  * build_matchups_dataset.R at the repo root.
  *
  * SEASON SCOPE: the dataset covers EXACTLY ONE NBA season — the one named by
- * `season_label` (e.g. '2026-27'). `season` is that season in hoopR's end-year
- * numbering (2027 === the 2026-27 season), which is NOT config.R's
+ * `season_label` (e.g. '2026-2027'). `season` is that season in hoopR's end-year
+ * numbering (2027 === the 2026-2027 season), which is NOT config.R's
  * CURRENT_SEASON convention and is NOT the accuracy log's `season` column (the
  * log labels two different seasons 2026, so it cannot scope anything). The
  * spine is `schedule_source` — the full hoopR schedule for that one season —
@@ -114,9 +114,9 @@ export interface MatchupSlate {
 export type GradingState = 'graded' | 'no_games_graded_yet';
 
 export interface MatchupsDataset {
-  /** hoopR end-year season number (2027 === the 2026-27 season). */
+  /** hoopR end-year season number (2027 === the 2026-2027 season). */
   season: number;
-  /** Human-facing span, e.g. '2026-27'. */
+  /** Human-facing span, e.g. '2026-2027'. */
   season_label: string;
   generated_at: string;
   slate_granularity: 'week_of_season';

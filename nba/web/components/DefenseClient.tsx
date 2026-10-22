@@ -5,6 +5,8 @@ import { DefensiveProfile } from '@/lib/defenseTypes';
 import { MatchupHeatmap } from './MatchupHeatmap';
 import { VersatilityScatter } from './VersatilityScatter';
 import { Shield, Search, ChevronRight, Activity, Crosshair, ArrowUpDown } from 'lucide-react';
+import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
+import { SEASON_SOURCES } from '@/lib/season';
 
 interface DefenseClientProps {
   initialProfiles: DefensiveProfile[];
@@ -46,6 +48,12 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
               <Shield className="w-3.5 h-3.5" /> Positional Versatility & Coverage Matrix
             </span>
             <span className="text-xs text-zinc-500 font-mono">Shannon Entropy (H<sub>v</sub>) & Tracking Shares</span>
+            <SeasonSourceBadge
+              season={SEASON_SOURCES.defense.season}
+              kind="projection"
+              label="Projected season"
+              title={SEASON_SOURCES.defense.note}
+            />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
             Defensive Versatility & Rim Protection Architecture

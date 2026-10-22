@@ -148,9 +148,9 @@ MATCHUPS_HOOPR_SEASON <- {
   env <- Sys.getenv("NBA_MATCHUPS_SEASON", unset = "")
   if (nzchar(env)) as.integer(env) else 2027L
 }
-# Human-facing label: hoopR season 2027 -> "2026-27".
-MATCHUPS_SEASON_LABEL <- sprintf("%d-%02d", MATCHUPS_HOOPR_SEASON - 1L,
-                                 MATCHUPS_HOOPR_SEASON %% 100L)
+# Human-facing label: hoopR season 2027 -> "2026-2027".
+MATCHUPS_SEASON_LABEL <- sprintf("%d-%d", MATCHUPS_HOOPR_SEASON - 1L,
+                                 MATCHUPS_HOOPR_SEASON)
 
 if (!dir.exists(CACHE_DIR)) dir.create(CACHE_DIR, recursive = TRUE)
 if (!dir.exists(dirname(CACHE_MATCHUPS_JSON))) {

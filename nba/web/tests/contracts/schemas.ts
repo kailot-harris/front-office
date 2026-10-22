@@ -28,6 +28,19 @@ const prob = z.number().finite().min(0).max(1);
 const pct = z.number().finite().min(0).max(100);
 const num = z.number().finite();
 const wins = num.min(0).max(82);
+// Provenance tags the R exporters stamp onto metric blocks. Anything not in this
+// set means a builder started emitting a label the site does not know how to show.
+const provenanceTag = z.enum([
+  'observed_pbp',
+  'synthetic_coach_band',
+  'model_residual_ensemble_minus_bottom_up',
+]);
+// A season span an artifact's inputs were observed in: one 'YYYY-YY' label, or
+// several joined by ' + ' where a builder pools seasons. This is deliberately NOT
+// the season being projected -- see SeasonSourceBadge.
+const seasonSpan = z
+  .string()
+  .regex(/^\d{4}-\d{4}( \+ \d{4}-\d{4})*$/, 'expected e.g. "2025-2026" or "2025-2026 + 2026-2027"');
 
 // ----------------------------------------------------------------------------
 // 1. projections_season_teams.json -> TeamProjection[] (lib/types.ts)
@@ -113,7 +126,12 @@ export const PlayerProjectionSchema = z
 // 3. projections_models_metadata.json -> ModelMetadata (lib/types.ts)
 // ----------------------------------------------------------------------------
 const VariantMetaSchema = z
-  .object({ name: z.string().min(2), weight: prob, description: z.string().min(5) })
+  .object({
+    name: z.string().min(2),
+    weight: prob,
+    description: z.string().min(5),
+    source_season_label: seasonSpan.optional(),
+  })
   .strict();
 
 export const ModelMetadataSchema = z
@@ -122,6 +140,7 @@ export const ModelMetadataSchema = z
     pipeline_stage: z.string().min(1),
     generated_at: z.string().datetime(),
     season: z.number().int().min(2020).max(2035),
+    season_label: seasonSpan,
     n_simulations: z.number().int().positive(),
     margin_sigma: num.positive(),
     home_court_advantage: num,
@@ -252,6 +271,7 @@ export const FranchiseCbaProfileSchema = z
 export const CbaLeagueOverviewSchema = z
   .object({
     season: z.string().regex(/^\d{4}-\d{4}$/),
+    cbaThresholdSources: z.string().min(2).optional(),
     salaryCap: num.positive(),
     luxuryTaxThreshold: num.positive(),
     firstApron: num.positive(),
@@ -348,6 +368,21 @@ export const CoachingStaffMetricSchema = z
         rotationEfficiency: pct,
         inGameWpa: pct,
         playerDevelopment: pct,
+      })
+      .strict(),
+    // Per-field provenance emitted by build_coaching_dataset.R. `synthetic_coach_band`
+    // marks a value drawn from a hand-assigned per-coach range rather than measured.
+    provenance: z
+      .object({
+        atoMetrics: provenanceTag,
+        challengeMetrics: provenanceTag,
+        coachingWinsAdded: provenanceTag,
+        shotQualityLift: provenanceTag,
+        rotationAndDevelopment: provenanceTag,
+        // Season span the observed_pbp fields were measured over, e.g. '2025-2026'.
+        // Omitted entirely when nothing on the card is observed, so optional.
+        observedSeasons: seasonSpan.nullable().optional(),
+        generatedAt: z.string().min(10),
       })
       .strict(),
   })
@@ -633,6 +668,7 @@ export const ShotsMetadataSchema = z
   .object({
     updated_at: z.string().datetime(),
     total_shots_sampled: z.number().int().positive(),
+    source_season_label: seasonSpan,
     league_averages: z
       .array(
         z

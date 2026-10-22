@@ -7,6 +7,8 @@ import {
   TeamPlayoffProfile,
 } from '@/lib/playoffTypes';
 import { TeamLogo } from '@/components/TeamLogo';
+import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
+import { SEASON_SOURCES } from '@/lib/season';
 import { SeriesProbRing } from '@/components/SeriesProbRing';
 import { TacticalMismatchRadar } from '@/components/TacticalMismatchRadar';
 import {
@@ -240,9 +242,12 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                   <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
                     7-Game Playoff Series Matchup Simulator
                   </h1>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                    Sprint 1 Live
-                  </span>
+                  <SeasonSourceBadge
+                    season={SEASON_SOURCES.playoffSeries.season}
+                    kind="projection"
+                    label="Projected season"
+                    title={SEASON_SOURCES.playoffSeries.note}
+                  />
                 </div>
                 <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
                   10,000-sim Monte Carlo engine with 8-man playoff rotation contractions, tactical mismatch exploitation, and 2-2-1-1-1 home court advantage.

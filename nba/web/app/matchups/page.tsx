@@ -2,6 +2,8 @@ import React from 'react';
 import { Swords } from 'lucide-react';
 import { getMatchupsData } from '@/lib/data';
 import { MatchupsClient } from '@/components/MatchupsClient';
+import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
+import { formatSeasonLabel, SEASON_SOURCES } from '@/lib/season';
 
 export const metadata = {
   title: 'Matchups: Weekly Slates, Projections & Graded Results | NBA Quantitative Analytics',
@@ -12,6 +14,8 @@ export const metadata = {
 export default function MatchupsPage() {
   const dataset = getMatchupsData();
   const activeSlate = dataset.slates.find((s) => s.slate === dataset.active_slate) ?? null;
+  const seasonLabel =
+    formatSeasonLabel(dataset.season_label) ?? dataset.season_label;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl space-y-6">
@@ -23,13 +27,19 @@ export default function MatchupsPage() {
               <span>Per-Game Projection Engine</span>
             </span>
             <span className="text-xs text-slate-400 font-mono">
-              {dataset.season_label} season · {dataset.available_slates.length} weekly slates ·{' '}
+              {seasonLabel} season · {dataset.available_slates.length} weekly slates ·{' '}
               {dataset.total_games} games
             </span>
+            <SeasonSourceBadge
+              season={seasonLabel}
+              kind="projection"
+              label="Season"
+              title={SEASON_SOURCES.matchups.note}
+            />
           </div>
           <h1 className="text-3xl font-black tracking-tight text-white">Matchup Slates</h1>
           <p className="text-slate-400 text-sm mt-1 max-w-3xl">
-            Every game of the {dataset.season_label} season — and only that season — bucketed into
+            Every game of the {seasonLabel} season — and only that season — bucketed into
             weekly slates. Past weeks show the real final score next to the model&apos;s pre-game
             pick and whether it graded out correct; the active week shows live projections; upcoming
             weeks show the pending projection with no score or result.

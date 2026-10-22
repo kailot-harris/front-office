@@ -20,6 +20,11 @@ PROJECT_DIR <- local({
 CACHE_DIR   <- file.path(PROJECT_DIR, "cache")
 if (!dir.exists(CACHE_DIR)) dir.create(CACHE_DIR, recursive = TRUE)
 
+# Public web data directory served by the Next.js app. Pipeline stages publish
+# their frontend JSON here directly -- there is no manual copy step (issue #18).
+WEB_DATA_DIR <- file.path(PROJECT_DIR, "web", "public", "data")
+if (!dir.exists(WEB_DATA_DIR)) dir.create(WEB_DATA_DIR, recursive = TRUE)
+
 # Data Horizons
 HISTORICAL_SEASONS <- 2019:2025
 TEST_SEASON        <- 2026

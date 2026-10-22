@@ -33,6 +33,13 @@ export interface ZoneLeagueAverage {
 export interface ShotsMetadata {
   updated_at: string;
   total_shots_sampled: number;
+  /**
+   * NBA season(s) the shots were taken in, e.g. '2025-2026'. `updated_at` is when the
+   * file was generated, which says nothing about how old the shots are — these two
+   * have been several seasons apart. Optional: files written before this field
+   * existed do not carry it.
+   */
+  source_season_label?: string;
   league_averages: ZoneLeagueAverage[];
   zones: string[];
 }

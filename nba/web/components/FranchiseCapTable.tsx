@@ -18,9 +18,9 @@ export const FranchiseCapTable: React.FC<FranchiseCapTableProps> = ({ profile })
       [
         { key: 'playerName', label: 'Player' },
         { key: 'position', label: 'Pos' },
-        { key: 'salary2026', label: '2026-27 ($M)' },
-        { key: 'salary2027', label: '2027-28 ($M)' },
-        { key: 'salary2028', label: '2028-29 ($M)' },
+        { key: 'salary2026', label: '2026-2027 ($M)' },
+        { key: 'salary2027', label: '2027-2028 ($M)' },
+        { key: 'salary2028', label: '2028-2029 ($M)' },
         { key: 'contractType', label: 'Status' },
       ],
       `${profile.teamAbbr || 'team'}-cap-book`
@@ -35,7 +35,7 @@ export const FranchiseCapTable: React.FC<FranchiseCapTableProps> = ({ profile })
             3-Year Salary Cap Book & Option Sheet
           </h4>
           <span className="text-[10px] text-slate-400">
-            Player salary commitments, player options (PO), and team options (TO). Sourced from official Spotrac & Basketball-Reference 2026-27 CBA filings.
+            Player salary commitments, player options (PO), and team options (TO). Sourced from official Spotrac & Basketball-Reference 2026-2027 CBA filings.
           </span>
         </div>
         <div className="flex items-center gap-3 text-xs font-mono">
@@ -70,9 +70,9 @@ export const FranchiseCapTable: React.FC<FranchiseCapTableProps> = ({ profile })
             <tr className="border-b border-slate-800 text-[10px] font-mono text-slate-400 uppercase tracking-wider">
               <th className="pb-2 font-semibold">Player</th>
               <th className="pb-2 font-semibold text-center">Pos</th>
-              <th className="pb-2 font-semibold text-right">2026-27 ($M)</th>
-              <th className="pb-2 font-semibold text-right">2027-28 ($M)</th>
-              <th className="pb-2 font-semibold text-right">2028-29 ($M)</th>
+              <th className="pb-2 font-semibold text-right">2026-2027 ($M)</th>
+              <th className="pb-2 font-semibold text-right">2027-2028 ($M)</th>
+              <th className="pb-2 font-semibold text-right">2028-2029 ($M)</th>
               <th className="pb-2 font-semibold text-center">Status</th>
             </tr>
           </thead>

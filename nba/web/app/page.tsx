@@ -1,5 +1,7 @@
 import { getTeamsData, getMetadata } from '@/lib/data';
 import { StandingsClient } from '@/components/StandingsClient';
+import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
+import { SEASON_SOURCES } from '@/lib/season';
 
 export default function HomePage() {
   const teams = getTeamsData();
@@ -11,12 +13,16 @@ export default function HomePage() {
         <div>
           <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-3">
             <span>NBA Season Projections</span>
-            <span className="text-sm font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
-              Season 2025-26
-            </span>
+            <SeasonSourceBadge
+              season={metadata.season_label ?? metadata.season}
+              kind="projection"
+              label="Projected season"
+              title={SEASON_SOURCES.teamProjections.note}
+            />
           </h1>
           <p className="text-slate-400 text-sm mt-1">
             Probabilistic 1,000-season Monte Carlo simulation results across all 30 teams and multi-model blend.
+            Inputs include 2025-2026 observed RAPM and shot quality.
           </p>
         </div>
         <div className="flex items-center gap-3 text-xs text-slate-400">

@@ -1,5 +1,7 @@
 import { getPlayersData } from '@/lib/data';
 import { PlayersClient } from '@/components/PlayersClient';
+import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
+import { SEASON_SOURCES } from '@/lib/season';
 
 export default function PlayersPage() {
   const players = getPlayersData();
@@ -13,9 +15,15 @@ export default function PlayersPage() {
             <span className="text-sm font-semibold px-2.5 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20">
               330 Active Rotation Players
             </span>
+            <SeasonSourceBadge
+              season={SEASON_SOURCES.playerProjections.season}
+              kind="projection"
+              label="Projected season"
+              title={SEASON_SOURCES.playerProjections.note}
+            />
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Projected Games, MPG, Points, Rebounds, Assists, and Statistical Outlier Badges (|z| &gt; 2.0).
+            Projected 2026-2027 Games, MPG, Points, Rebounds, Assists, and Statistical Outlier Badges (|z| &gt; 2.0).
           </p>
         </div>
       </div>

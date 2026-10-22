@@ -3,6 +3,7 @@
 import React from 'react';
 import { HistoricalTwin } from '@/lib/playerDnaTypes';
 import { Sparkles } from 'lucide-react';
+import { formatSeasonLabel } from '@/lib/season';
 
 interface HistoricalTwinCardProps {
   twin: HistoricalTwin;
@@ -25,7 +26,9 @@ export const HistoricalTwinCard: React.FC<HistoricalTwinCardProps> = ({ twin, ra
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-sm text-zinc-100">{twin.compName}</span>
+            <span className="font-semibold text-sm text-zinc-100">
+              {formatSeasonLabel(twin.compName) ?? twin.compName}
+            </span>
             <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-medium">
               {twin.position}
             </span>

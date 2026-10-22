@@ -2,6 +2,8 @@
 
 import React, { useState, useMemo } from 'react';
 import { CbaLeagueOverview, FranchiseCbaProfile } from '@/lib/cbaTypes';
+import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
+import { SEASON_SOURCES } from '@/lib/season';
 import { TeamLogo } from '@/components/TeamLogo';
 import { ApronThermometer } from '@/components/ApronThermometer';
 import { TradeCbaValidator } from '@/components/TradeCbaValidator';
@@ -84,12 +86,15 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                   <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
                     CBA Salary Cap, Apron & Luxury Tax Architect
                   </h1>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                    Sprint 2 Live
-                  </span>
+                  <SeasonSourceBadge
+                    season={initialData.season}
+                    kind="projection"
+                    label="League year"
+                    title={SEASON_SOURCES.capSheet.note}
+                  />
                 </div>
                 <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-                  Regulatory modeling of the 2026–2027 NBA salary cap ($140.6M), luxury tax brackets, repeater surcharges, and second apron trade handcuffs.
+                  Regulatory modeling of the {initialData.season} NBA salary cap (${initialData.salaryCap}M), luxury tax brackets, repeater surcharges, and second apron trade handcuffs.
                 </p>
               </div>
             </div>
@@ -97,10 +102,10 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
 
           <div className="flex items-center gap-2 text-xs font-mono">
             <span className="px-3 py-1.5 rounded-lg bg-surface/80 border border-slate-800 text-slate-300">
-              Cap: $140.6M • Tax: $170.8M
+              Cap: ${initialData.salaryCap}M • Tax: ${initialData.luxuryTaxThreshold}M
             </span>
             <span className="px-3 py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 font-bold">
-              2nd Apron: $188.9M
+              2nd Apron: ${initialData.secondApron}M
             </span>
           </div>
         </div>
@@ -144,7 +149,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
             <div className="flex items-baseline gap-1.5 mt-0.5">
               <span className="font-mono text-base font-bold text-emerald-400">{initialData.capRoomTeamCount} Franchises</span>
             </div>
-            <span className="text-[10px] text-slate-500 font-mono">Sub-$140.6M flexible payrolls</span>
+            <span className="text-[10px] text-slate-500 font-mono">Sub-${initialData.salaryCap}M flexible payrolls</span>
           </div>
         </div>
 

@@ -39,7 +39,7 @@ export const ApronThermometer: React.FC<ApronThermometerProps> = ({ profile }) =
       <div className="flex items-center justify-between text-xs">
         <div className="flex items-center gap-2">
           <span className="font-bold text-white tracking-tight">CBA Apron Thermometer</span>
-          <span className="font-mono text-[10px] text-slate-400">2026-27 Payroll Horizon</span>
+          <span className="font-mono text-[10px] text-slate-400">2026-2027 Payroll Horizon</span>
         </div>
         <div className="font-mono font-bold">
           <span className="text-slate-400 text-[11px] mr-1.5">Payroll:</span>

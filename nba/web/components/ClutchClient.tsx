@@ -5,6 +5,8 @@ import { ClutchProfile } from '@/lib/clutchTypes';
 import { ClutchShotBreakdownCard } from './ClutchShotBreakdownCard';
 import { PressureResiliencePlot } from './PressureResiliencePlot';
 import { Flame, Search, ChevronRight, Activity, Crosshair, ArrowUpDown, Shield } from 'lucide-react';
+import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
+import { SEASON_SOURCES } from '@/lib/season';
 
 interface ClutchClientProps {
   initialProfiles: ClutchProfile[];
@@ -43,6 +45,12 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
               <Flame className="w-3.5 h-3.5" /> True Clutch & Leverage Creation Index
             </span>
             <span className="text-xs text-zinc-500 font-mono">Leverage Index (LI $\le 5$ pts, $\le 5:00$ 4Q)</span>
+            <SeasonSourceBadge
+              season={SEASON_SOURCES.clutch.season}
+              kind="projection"
+              label="Projected season"
+              title={SEASON_SOURCES.clutch.note}
+            />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
             Late-Game Shot Creation, Efficiency & Defensive Stops

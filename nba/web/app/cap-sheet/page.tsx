@@ -13,10 +13,11 @@ function getCbaData(): CbaLeagueOverview {
   if (!fs.existsSync(filePath)) {
     return {
       season: '2026-2027',
-      salaryCap: 140.6,
-      luxuryTaxThreshold: 170.8,
-      firstApron: 178.1,
-      secondApron: 188.9,
+      cbaThresholdSources: 'Fallback values; live cba_cap_sheet.json was not found.',
+      salaryCap: 165.0,
+      luxuryTaxThreshold: 200.4,
+      firstApron: 209.0,
+      secondApron: 221.7,
       averagePayroll: 0,
       totalLeagueTaxRevenue: 0,
       secondApronTeamCount: 0,
@@ -33,10 +34,11 @@ function getCbaData(): CbaLeagueOverview {
     console.error('Failed to load cba_cap_sheet.json:', err);
     return {
       season: '2026-2027',
-      salaryCap: 140.6,
-      luxuryTaxThreshold: 170.8,
-      firstApron: 178.1,
-      secondApron: 188.9,
+      cbaThresholdSources: 'Fallback values; live cba_cap_sheet.json was not found.',
+      salaryCap: 165.0,
+      luxuryTaxThreshold: 200.4,
+      firstApron: 209.0,
+      secondApron: 221.7,
       averagePayroll: 0,
       totalLeagueTaxRevenue: 0,
       secondApronTeamCount: 0,
