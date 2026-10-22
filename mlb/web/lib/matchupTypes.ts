@@ -2,8 +2,14 @@
 // web/lib/matchupTypes.ts
 // Type definitions for the Weekly Matchup Slates dataset (/matchups)
 //
-// Source: web/public/data/matchups_slates.json, written by
+// Source: web/public/data/matchups_index.json plus one
+// web/public/data/matchups/week-<NN>.json per slate, written by
 // export_matchup_slates() in tools/export_web_data.R.
+//
+// The season's matchup rows are deliberately NOT part of the index. The page is
+// a server component that passes what it reads to a client component, so
+// anything in the index is serialized into the static HTML — and only one slate
+// is ever on screen. Slates load on demand instead; see MatchupsClient.
 // ==============================================================================
 
 /** Where a game's displayed win probability came from. */
@@ -68,7 +74,11 @@ export interface MatchupSlate {
   correct_count: number;
 }
 
-export interface MatchupsDataset {
+/**
+ * Season totals and per-slate summaries — everything the ribbon, the header
+ * chips and the slate-summary cards need, with no matchup rows.
+ */
+export interface MatchupsIndex {
   season: number;
   generated_at: string;
   /** Week holding the most recent date with results. */
@@ -80,5 +90,4 @@ export interface MatchupsDataset {
   /** Season-to-date correct-pick rate in [0, 1]; null when nothing is graded. */
   overall_accuracy: number | null;
   available_weeks: MatchupSlate[];
-  matchups: Matchup[];
 }
