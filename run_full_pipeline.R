@@ -142,6 +142,21 @@ if (!run_stage(
        call. = FALSE)
 }
 
+# Offseason profiles. These were absent from the pipeline entirely, so the daily
+# run refreshed projections_season_teams while offseason_teams kept the previous
+# day's baseline_wins -- the mismatch the cross-dataset check in
+# web/tests/contracts/referential.test.ts catches. Order matters: the sync owns
+# baseline_wins (build_offseason_dataset.R deliberately preserves whatever is
+# already in the file, per the issue #19 contract), so it must run first, and
+# both must run after season_simulator.R above.
+run_stage("scripts/sync_offseason_wins.R", "Sync Offseason baseline_wins to Current Projections",
+          output = file.path(WEB_DATA_DIR, "offseason_teams.json"))
+run_stage("build_offseason_dataset.R", "Rebuild Offseason Team Profiles & Draft Models from the Transaction Catalog",
+          output = c(
+            file.path(WEB_DATA_DIR, "offseason_teams.json"),
+            file.path(WEB_DATA_DIR, "offseason_draft.json")
+          ))
+
 run_stage("build_coaching_dataset.R", "Compile Coaching Staff Registry, Tactical ATOs & CVA Impact",
           output = file.path(CACHE_DIR, "coaching_metrics.rds"))
 run_stage("build_cba_cap_dataset.R", "Calculate 30-Team CBA Cap Sheets, Aprons & Luxury Tax Penalties")
