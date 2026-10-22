@@ -55,6 +55,27 @@ export function getPlayerSpatialMaps(): PlayerSpatialDictionary {
 
 import { PlayoffMatchupsCatalog } from './playoffTypes';
 import { PlayerDnaCatalog } from './playerDnaTypes';
+import { MatchupsDataset } from './matchupTypes';
+
+export function getMatchupsData(): MatchupsDataset {
+  const filePath = path.join(process.cwd(), 'public', 'data', 'matchups_slates.json');
+  if (!fs.existsSync(filePath)) {
+    return {
+      season: new Date().getFullYear(),
+      generated_at: new Date().toISOString(),
+      active_week: 1,
+      total_games: 0,
+      completed_games: 0,
+      graded_games: 0,
+      correct_picks: 0,
+      overall_accuracy: null,
+      available_weeks: [],
+      matchups: [],
+    };
+  }
+  const fileContent = fs.readFileSync(filePath, 'utf-8');
+  return JSON.parse(fileContent) as MatchupsDataset;
+}
 
 export function getPlayoffSeriesCatalog(): PlayoffMatchupsCatalog {
   const filePath = path.join(process.cwd(), 'public', 'data', 'playoff_series_matchups.json');

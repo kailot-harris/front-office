@@ -20,6 +20,7 @@ import {
   Dna,
   Award,
   Coins,
+  CalendarDays,
 } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
 
@@ -84,6 +85,13 @@ export const Sidebar: React.FC = () => {
       badge: '10K Sims',
       icon: Swords,
       desc: '3/5/7-game rotation series match-ups',
+    },
+    {
+      href: '/matchups',
+      label: 'Weekly Matchups',
+      badge: 'Slate Grades',
+      icon: CalendarDays,
+      desc: 'Every game by week, graded vs pre-game Elo',
     },
     {
       href: '/postseason',
