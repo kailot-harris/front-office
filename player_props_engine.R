@@ -154,8 +154,21 @@ pzinb_over_vec <- Vectorize(pzinb_over)
 # In cache/rapm_ratings.rds, `total_rapm == orapm - drapm` (verified: max abs
 # deviation 0.01 over all 430 rows; the `orapm + drapm` reading is off by up to
 # 31.5). drapm is therefore a points-ALLOWED-style quantity: LOWER drapm = BETTER
-# defender. Every value is positive (min -0.70, max 15.75), so it is a level, not a
-# centred "above average" rating — which is exactly why centring matters below.
+# defender.
+#
+# UPDATED for GitHub issue #71 (fix A): `drapm` is now exported LEAGUE-CENTRED by
+# rapm_engine.R::fit_rapm_ratings() — mean(drapm) == 0, so values straddle zero and
+# 0 means league-average defence. It is no longer the uncentred all-positive level
+# (min -0.70, max 15.75, mean 7.12) described by older revisions of this comment.
+# The sign convention is UNCHANGED: lower is still better. Nothing below needs to
+# change either, because the shift is uniform and adjust_mu_for_opponent() consumes
+# only the DIFFERENCE `opp_def_rapm - league_avg_def`, where both terms come from the
+# same post-shift `drapm` column (league_avg_def is recomputed from the team
+# aggregates below, not hardcoded) — so the adjustment is shift-invariant by
+# construction. Team-level centring below is still load-bearing: the possession-
+# weighted team mean differs from the player-level mean (it was 9.99 vs 7.12 before
+# centring, and differs from 0 by the same gap after), so the team aggregates are
+# NOT automatically mean-zero just because the player column is.
 get_team_def_rapm <- function(active_rosters) {
   rapm_path <- "cache/rapm_ratings.rds"
 
@@ -186,7 +199,10 @@ get_team_def_rapm <- function(active_rosters) {
     ) |>
     filter(is.finite(def_rapm))
 
-  # M-4 CENTRING FIX. The old code centred on `mean(rapm_df$drapm)` = 7.12, a
+  # M-4 CENTRING FIX. (Numbers below are from the pre-issue-#71 uncentred cache; the
+  # argument is unchanged after centring, only shifted — the player-level and
+  # possession-weighted-team-level means still differ by the same ~2.9.)
+  # The old code centred on `mean(rapm_df$drapm)` = 7.12, a
   # PLAYER-level mean over all 430 RAPM rows including deep-bench/low-possession
   # players. The possession-weighted mean of the 15 real TEAM aggregates is 9.99.
   # Centring a team-level quantity on a player-level mean made every one of the 15

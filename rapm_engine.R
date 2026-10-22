@@ -439,6 +439,31 @@ reattribute_to_current_roster_team <- function(rapm_df) {
 # out-of-sample — a future pass with proper CV (e.g. leave-one-season-out) would give a more
 # defensible lambda and is a natural follow-up, explicitly flagged here rather than presented
 # as fully tuned.
+#
+# *** WHAT THIS MODEL CAN AND CANNOT IDENTIFY (GitHub issue #71, fix A) ***
+# build_possession_design_matrix() emits 2 * n_players columns: offense first, defense second,
+# each possession contributing +1 to five offense columns and +1 to five defense columns. The
+# design matrix therefore has an EXACT null direction:
+#
+#     v = (+1, ..., +1,   -1, ..., -1)        # +1 on every offense column, -1 on every defense column
+#     X %*% v = 5 - 5 = 0                     # exactly 0 for every possession row (verified: max|X %*% v| = 0
+#                                             # over all 253,968 possessions / 860 columns)
+#
+# Consequence: adding a constant c to EVERY offensive coefficient while subtracting c from
+# EVERY defensive coefficient leaves every prediction unchanged. The ABSOLUTE LEVELS of
+# orapm and drapm are NOT IDENTIFIED by this fit. What IS identified is (a) relative values
+# within the offense side, (b) relative values within the defense side, and (c) the centered
+# total `orapm - drapm`.
+#
+# Ridge's minimum-norm solution resolves the degeneracy by pinning sum(beta_off) ==
+# sum(beta_def), i.e. mean(orapm) == mean(drapm) (empirically both 7.12 in the shipped cache).
+# That equality is what makes the centering step below SAFE for total_rapm: subtracting each
+# side's own mean shifts the total by mean(drapm) - mean(orapm), which is 0 up to float noise.
+# See tools/verify_rapm_centering.R for the numerical proof against the shipped cache.
+#
+# NOTE: the ~0.77 orapm/drapm correlation reported in issue #71 is a lambda-driven shrinkage
+# artifact (0.06 at lambda=50, 0.77 at lambda=900, 0.99 at lambda=30,000), NOT an O/D encoding
+# bug. It is deliberately NOT addressed here; lambda stays 900.
 # ------------------------------------------------------------------------------
 fit_rapm_ratings <- function(seasons = ALL_SEASONS, lambda = 900, force_refresh = FALSE,
                               team_attribution = c("current_roster", "season_pooled")) {
@@ -484,6 +509,18 @@ fit_rapm_ratings <- function(seasons = ALL_SEASONS, lambda = 900, force_refresh 
 
   orapm <- coefficients[1:dm$n_players] * 100      # scaled to "points per 100 possessions"
   drapm <- coefficients[(dm$n_players + 1):(2 * dm$n_players)] * 100
+
+  # --- CENTERING STEP (issue #71, fix A) -------------------------------------------------
+  # The absolute O/D levels are not identified (see the null-direction note in this
+  # function's header), so the raw coefficients' shared positive offset is an artifact of
+  # ridge's minimum-norm tie-break, not a finding. Export each side centered on its own
+  # league mean so 0 == league average and the sign of a single number is interpretable.
+  # total_rapm is computed AFTER centering and is unchanged to within float noise, because
+  # ridge pins mean(orapm) == mean(drapm): the total shifts by mean(drapm) - mean(orapm) ~ 0.
+  orapm <- orapm - mean(orapm, na.rm = TRUE)
+  drapm <- drapm - mean(drapm, na.rm = TRUE)
+  # ---------------------------------------------------------------------------------------
+
   total_rapm <- orapm - drapm
 
   player_names <- pbp_cache$player_names
@@ -554,14 +591,99 @@ fit_rapm_ratings <- function(seasons = ALL_SEASONS, lambda = 900, force_refresh 
   # the 2026 current roster, which would be wrong for a historical snapshot.
 
   # Low-sample-size honesty flag: WNBA's ~44-game seasons and 12-player rosters mean far fewer
-  # possessions per player than NBA over the same calendar span. Flag (not drop) anyone under
-  # ~300 combined possessions (roughly a full season of low-rotation bench minutes) so
-  # downstream consumers/humans know which ratings are noisiest, per the brief's explicit
-  # instruction to give "honest caveats on data volume/statistical reliability."
+  # possessions per player than NBA over the same calendar span. Flag (not drop) the noisiest
+  # ratings so downstream consumers/humans know which ones not to trust.
+  #
+  # RULE CHANGED from a raw possession count to a SHRINKAGE rule (issue #71, fix A).
+  #
+  # The old `(n_off_poss + n_def_poss) < 300` cut flagged 63 of 430 players (14.7%) and caught
+  # NONE of the low-exposure players topping the Total RAPM leaderboard — Dungee (391
+  # combined), Nivar (561), Clouden (1,662), Jaquez (1,931), Park (2,207) all ranked 3rd-10th
+  # league-wide while unflagged. But raising the count is the wrong instrument, and the
+  # intuition behind it ("low exposure = noisy") is empirically BACKWARDS here: measured sd of
+  # total_rapm by combined-possession band is 1.48 (<500), 2.51 (500-1k), 2.87 (1-2k), 3.29
+  # (2-3k), 2.71 (>5k). The LOWEST-exposure band is the LEAST variable, because ridge shrinks
+  # it hardest. Shrinkage dominates MORE at low exposure, not less. A count-based cut also
+  # lands arbitrarily: the league median combined exposure is 2,597, so any threshold near
+  # 2,500 flags ~half the league by construction rather than by evidence.
+  #
+  # What actually matters is HOW MUCH OF A RATING IS DATA vs. PRIOR. Ridge shrinks each
+  # coefficient by roughly s_i = n_i / (n_i + lambda), so `1 - s_i` is the fraction of the
+  # reported number contributed by the shrinkage prior rather than by the player's own
+  # possessions. Flag a player when the weaker of their two sides is more than two-thirds
+  # prior (s < 1/3, i.e. fewer than lambda/2 possessions on that side). This is why Dungee
+  # ranks 5th at +6.19 on 194 offensive possessions: she is 82% prior, shrunk ~5x toward zero
+  # and still top-five, so her unshrunk signal is ~+34/100 — lineup luck, not a player effect.
+  # Measured: flags 124 of 430 (28.8%), catching Dungee (82% prior) and Nivar (76%).
+  #
+  # Expressing the rule against `lambda` rather than a hardcoded possession count means it
+  # stays correct if lambda is ever re-tuned (see this function's header: lambda = 900 came
+  # from a coarse grid search and a CV pass is a known follow-up). Flag, never drop.
+  RAPM_MIN_DATA_SHARE <- 1 / 3
   rapm_df <- rapm_df %>%
-    dplyr::mutate(low_sample_flag = (n_off_poss + n_def_poss) < 300)
+    dplyr::mutate(
+      shrinkage_data_share = pmin(
+        n_off_poss / (n_off_poss + lambda),
+        n_def_poss / (n_def_poss + lambda)
+      ),
+      low_sample_flag = shrinkage_data_share < RAPM_MIN_DATA_SHARE
+    )
+
+  # Leaderboard eligibility is a SEPARATE mechanism from the honesty flag above (issue #71,
+  # fix A). `low_sample_flag` answers "how much of this one number is prior?"; eligibility
+  # answers "should this row compete for a top-N rank at all?". Conflating them into one
+  # boolean was what forced the earlier 48.8% flag rate — a dataset-level claim that half the
+  # league is untrustworthy, in order to clean a presentation-level ranking.
+  #
+  # Require >= 1,000 possessions on BOTH sides (not combined, which lets a one-sided specialist
+  # through on garbage-time minutes). Measured: 242 of 430 eligible, and the resulting top ten
+  # is Parker, Delle Donne, Park, Prince, Jones, Gray, Miles, Diggins-Smith, Burton, Clark —
+  # no sub-1,000-possession row. Consumers that rank or sort should filter on this column;
+  # consumers that display a single player's rating should use `low_sample_flag` instead.
+  RAPM_LEADERBOARD_MIN_POSS_PER_SIDE <- 1000L
+  rapm_df <- rapm_df %>%
+    dplyr::mutate(leaderboard_eligible = pmin(n_off_poss, n_def_poss) >=
+                    RAPM_LEADERBOARD_MIN_POSS_PER_SIDE)
+
+  # --- CONTRACT INVARIANT (issue #71, fix A) ---------------------------------------------
+  # On the real-possession path orapm/drapm are league-centered above, so all three rating
+  # columns must have mean ~0. Tolerance 0.02 covers the round(, 2) applied to each column
+  # (max rounding shift of a mean is 0.005) with ample headroom. Skipped, not failed, when
+  # orapm/drapm are all NA (the estimate_rapm_box_plusminus_fallback() path, which never
+  # reaches this line today but is guarded anyway).
+  assert_rapm_centered(rapm_df, tolerance = 0.02)
 
   rapm_df
+}
+
+# ------------------------------------------------------------------------------
+# assert_rapm_centered() — contract invariant for the centering introduced in issue #71.
+# Verifies mean(orapm) ~ 0, mean(drapm) ~ 0 and mean(total_rapm) ~ 0 within `tolerance`.
+# Returns `rapm_df` invisibly so it can be used inline. No-ops (with a message) when
+# orapm/drapm are entirely NA, which is the documented box-score fallback path where absolute
+# O/D splits are not produced at all.
+# ------------------------------------------------------------------------------
+assert_rapm_centered <- function(rapm_df, tolerance = 0.02) {
+  if (is.null(rapm_df) || nrow(rapm_df) == 0) return(invisible(rapm_df))
+  if (!all(c("orapm", "drapm", "total_rapm") %in% names(rapm_df))) return(invisible(rapm_df))
+
+  if (all(is.na(rapm_df$orapm)) && all(is.na(rapm_df$drapm))) {
+    message(">>> [RAPM] Centering invariant skipped: orapm/drapm are all NA (box-score fallback path).")
+    return(invisible(rapm_df))
+  }
+
+  means <- c(
+    orapm      = mean(rapm_df$orapm, na.rm = TRUE),
+    drapm      = mean(rapm_df$drapm, na.rm = TRUE),
+    total_rapm = mean(rapm_df$total_rapm, na.rm = TRUE)
+  )
+  bad <- names(means)[!is.finite(means) | abs(means) > tolerance]
+  if (length(bad) > 0) {
+    stop(sprintf("[RAPM] Centering contract violated (tolerance %.3f): %s. orapm/drapm must be exported centered on their league means (issue #71).",
+                  tolerance,
+                  paste(sprintf("mean(%s) = %.4f", bad, means[bad]), collapse = "; ")))
+  }
+  invisible(rapm_df)
 }
 
 # ------------------------------------------------------------------------------
