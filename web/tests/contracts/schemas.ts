@@ -441,8 +441,8 @@ export const PlayerDnaProfileSchema = z
       .array(
         z
           .object({
-            compName: z.string().min(2),
-            era: z.string().min(4),
+            compName: z.string().min(2).refine((v) => !/\b[0-9]{4}-[0-9]{2}\b/.test(v), "short-form season span"),
+            era: z.string().regex(/^[0-9]{4}-[0-9]{4}$/),
             archetype: z.string().min(2),
             position: z.string().min(1),
             similarityPct: pct,
