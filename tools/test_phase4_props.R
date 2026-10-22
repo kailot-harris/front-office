@@ -13,7 +13,23 @@
 # Usage: "C:/Program Files/R/R-4.5.2/bin/Rscript.exe" tools/test_phase4_props.R
 # ==============================================================================
 
-setwd("c:/Users/kailo/kayceeslices/WNBA Analytics")
+# Resolve the repo root from THIS SCRIPT'S own location rather than hardcoding it.
+# The previous line was setwd("c:/Users/kailo/kayceeslices/WNBA Analytics"), a path
+# that stopped existing when the repo moved under front-office/ — which left the
+# suite unrunnable from any cwd, main tree included. Deriving it from --file= also
+# makes the suite work unchanged inside a git worktree.
+local({
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- sub("^--file=", "", args[grepl("^--file=", args)])
+  root <- if (length(file_arg)) {
+    dirname(dirname(normalizePath(file_arg[1], winslash = "/", mustWork = FALSE)))
+  } else {
+    getwd()   # sourced interactively: assume the caller is already at the root
+  }
+  if (!file.exists(file.path(root, "config.R")))
+    stop(sprintf("test_phase4_props.R: cannot locate the repo root (no config.R at '%s')", root))
+  setwd(root)
+})
 
 suppressPackageStartupMessages({
   library(dplyr)
@@ -161,12 +177,20 @@ extreme_hi <- adjust_mu_for_opponent(base_mu, league_avg + 1000, league_avg)
 extreme_lo <- adjust_mu_for_opponent(base_mu, league_avg - 1000, league_avg)
 near_zero  <- adjust_mu_for_opponent(base_mu, 5, 1e-9)
 neg_avg    <- adjust_mu_for_opponent(base_mu, -3, 0)
+# SIGN-INDEPENDENT SINCE #79. These probes must each land ON a clamp bound, but
+# WHICH bound depends on the sign of OPP_DEF_MU_SLOPE: before #79 the +1000 probe
+# hit the cap, after it the floor. Asserting a specific bound per probe made this
+# check fail on a correct, ranking-neutral sign flip. So assert that the two
+# probes hit the two bounds as a SET, which still fails if the clamp stops binding
+# or collapses both probes onto one side. Bounds read from OPP_DEF_MU_CLAMP rather
+# than restated as literals, per the repo's constants rule.
+clamp_bounds <- sort(base_mu * OPP_DEF_MU_CLAMP)
+clamp_hits   <- sort(c(extreme_hi, extreme_lo))
 ok("CHECK M-4d  multiplier is clamped to [0.85, 1.15] and survives a near-zero / zero league_avg_def",
-   isTRUE(all.equal(extreme_hi, base_mu * 1.15)) &&
-     isTRUE(all.equal(extreme_lo, base_mu * 0.85)) &&
+   isTRUE(all.equal(clamp_hits, clamp_bounds)) &&
      is.finite(near_zero) && near_zero > 0 && is.finite(neg_avg) && neg_avg > 0,
-   sprintf("+1000 -> %.3f (cap %.3f), -1000 -> %.3f (floor %.3f), league_avg=1e-9 -> %.3f, league_avg=0 -> %.3f",
-           extreme_hi, base_mu * 1.15, extreme_lo, base_mu * 0.85, near_zero, neg_avg))
+   sprintf("+1000 -> %.3f, -1000 -> %.3f; bounds {%.3f, %.3f}; league_avg=1e-9 -> %.3f, league_avg=0 -> %.3f",
+           extreme_hi, extreme_lo, clamp_bounds[1], clamp_bounds[2], near_zero, neg_avg))
 
 ok("CHECK M-4e  the \"I will follow the prompt's formula exactly\" rationale is deleted",
    !any(grepl("follow the prompt", src, ignore.case = TRUE)),
