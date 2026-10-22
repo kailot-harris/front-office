@@ -453,13 +453,15 @@ reattribute_to_current_roster_team <- function(rapm_df) {
 # EVERY defensive coefficient leaves every prediction unchanged. The ABSOLUTE LEVELS of
 # orapm and drapm are NOT IDENTIFIED by this fit. What IS identified is (a) relative values
 # within the offense side, (b) relative values within the defense side, and (c) the centered
-# total `orapm - drapm`.
+# total (`orapm + drapm` in the exported sign convention; see the negation step below, which
+# makes that sum identically the raw `beta_off - beta_def` the fit actually identifies).
 #
 # Ridge's minimum-norm solution resolves the degeneracy by pinning sum(beta_off) ==
-# sum(beta_def), i.e. mean(orapm) == mean(drapm) (empirically both 7.12 in the shipped cache).
+# sum(beta_def), i.e. mean(beta_off) == mean(beta_def) on the RAW coefficient scale
+# (empirically both 7.12 pts/100 in the shipped cache, before the defensive block is negated).
 # That equality is what makes the centering step below SAFE for total_rapm: subtracting each
-# side's own mean shifts the total by mean(drapm) - mean(orapm), which is 0 up to float noise.
-# See tools/verify_rapm_centering.R for the numerical proof against the shipped cache.
+# side's own mean shifts the total by mean(beta_def) - mean(beta_off), which is 0 up to float
+# noise. See tools/verify_rapm_centering.R for the numerical proof against the shipped cache.
 #
 # NOTE: the ~0.77 orapm/drapm correlation reported in issue #71 is a lambda-driven shrinkage
 # artifact (0.06 at lambda=50, 0.77 at lambda=900, 0.99 at lambda=30,000), NOT an O/D encoding
@@ -507,8 +509,24 @@ fit_rapm_ratings <- function(seasons = ALL_SEASONS, lambda = 900, force_refresh 
 
   coefficients <- solve_ridge_rapm(dm$X, dm$y, weights = dm$weights, lambda = lambda)
 
+  # --- SIGN CONVENTION (GitHub issue #79) ------------------------------------------------
+  # Both raw coefficient blocks come out of the ridge as "points produced per 100 possessions
+  # by the side of the ball this column indexes", so the defensive block is a points-ALLOWED
+  # quantity in which a LARGER value is a WORSE defender. Negate it here so that the exported
+  # `drapm` reads the conventional way — POSITIVE drapm == strong defender, 0 == league
+  # average — and so `total_rapm` is an honest SUM of the two sides. This matches NBA
+  # Analytics' engine, which negates at the same point in its fit (`rapm_engine.R:553`,
+  # negation immediately before its sum-to-zero gauge step); the ordering here follows that
+  # precedent deliberately. Negation and centring commute exactly (mean(-d) == -mean(d)), so
+  # this is a readability/precedent choice, not a numerical one.
+  #
+  # RANKING-NEUTRAL BY CONSTRUCTION: the old export was `total_rapm <- orapm - drapm_raw`,
+  # which is identically `orapm + (-drapm_raw)`. No player's total_rapm or rank moves; only
+  # the sign of the standalone `drapm` column flips. See tools/verify_rapm_sign_flip.R for the
+  # numerical proof against the shipped cache.
   orapm <- coefficients[1:dm$n_players] * 100      # scaled to "points per 100 possessions"
-  drapm <- coefficients[(dm$n_players + 1):(2 * dm$n_players)] * 100
+  drapm <- -coefficients[(dm$n_players + 1):(2 * dm$n_players)] * 100
+  # ---------------------------------------------------------------------------------------
 
   # --- CENTERING STEP (issue #71, fix A) -------------------------------------------------
   # The absolute O/D levels are not identified (see the null-direction note in this
@@ -516,12 +534,15 @@ fit_rapm_ratings <- function(seasons = ALL_SEASONS, lambda = 900, force_refresh 
   # ridge's minimum-norm tie-break, not a finding. Export each side centered on its own
   # league mean so 0 == league average and the sign of a single number is interpretable.
   # total_rapm is computed AFTER centering and is unchanged to within float noise, because
-  # ridge pins mean(orapm) == mean(drapm): the total shifts by mean(drapm) - mean(orapm) ~ 0.
+  # ridge pins the two raw block means equal: the total shifts by mean(beta_def) -
+  # mean(beta_off) ~ 0 (the negation above does not affect this argument).
   orapm <- orapm - mean(orapm, na.rm = TRUE)
   drapm <- drapm - mean(drapm, na.rm = TRUE)
   # ---------------------------------------------------------------------------------------
 
-  total_rapm <- orapm - drapm
+  # Additive in the post-#79 convention: both sides are now "points of impact per 100", so the
+  # total is their SUM. Numerically identical to the old `orapm - drapm_raw`.
+  total_rapm <- orapm + drapm
 
   player_names <- pbp_cache$player_names
   name_lookup <- if (!is.null(player_names) && nrow(player_names) > 0) {
@@ -653,6 +674,15 @@ fit_rapm_ratings <- function(seasons = ALL_SEASONS, lambda = 900, force_refresh 
   # reaches this line today but is guarded anyway).
   assert_rapm_centered(rapm_df, tolerance = 0.02)
 
+  # --- CONTRACT INVARIANT (issue #79) ----------------------------------------------------
+  # The sign convention is now additive: drapm is negated at the fit so that positive == strong
+  # defender, which makes total_rapm the SUM of the two sides. Pin that row-wise so a
+  # half-applied sign change (negating one and not the other, or reverting the total to a
+  # subtraction) fails loudly instead of silently forking the numbers. Tolerance 0.015 covers
+  # the round(, 2) applied independently to all three columns: each is off by at most 0.005, so
+  # the worst-case accumulated deviation of the identity is 0.015.
+  assert_rapm_additive(rapm_df, tolerance = 0.015)
+
   rapm_df
 }
 
@@ -662,6 +692,10 @@ fit_rapm_ratings <- function(seasons = ALL_SEASONS, lambda = 900, force_refresh 
 # Returns `rapm_df` invisibly so it can be used inline. No-ops (with a message) when
 # orapm/drapm are entirely NA, which is the documented box-score fallback path where absolute
 # O/D splits are not produced at all.
+#
+# NOTE ON SIGNS: this invariant is sign-convention-agnostic (a mean of 0 stays a mean of 0
+# under negation), so issue #79's flip left it untouched. The companion
+# assert_rapm_additive() below is the one that pins the convention itself.
 # ------------------------------------------------------------------------------
 assert_rapm_centered <- function(rapm_df, tolerance = 0.02) {
   if (is.null(rapm_df) || nrow(rapm_df) == 0) return(invisible(rapm_df))
@@ -682,6 +716,43 @@ assert_rapm_centered <- function(rapm_df, tolerance = 0.02) {
     stop(sprintf("[RAPM] Centering contract violated (tolerance %.3f): %s. orapm/drapm must be exported centered on their league means (issue #71).",
                   tolerance,
                   paste(sprintf("mean(%s) = %.4f", bad, means[bad]), collapse = "; ")))
+  }
+  invisible(rapm_df)
+}
+
+# ------------------------------------------------------------------------------
+# assert_rapm_additive() — contract invariant for the sign convention set in issue #79.
+# Verifies ROW-WISE that total_rapm == orapm + drapm within `tolerance` (default 0.015, which
+# is the worst-case accumulation of the independent round(, 2) applied to each of the three
+# columns: 3 * 0.005). This is the guard against a half-applied sign flip: negating the
+# defensive block while leaving total_rapm a subtraction (or vice versa) breaks the identity
+# on every row and stops here instead of silently shipping forked numbers.
+# Returns `rapm_df` invisibly. No-ops (with a message) when orapm/drapm are entirely NA — the
+# documented estimate_rapm_box_plusminus_fallback() path, which produces a total with no O/D
+# split and therefore has no identity to check.
+# ------------------------------------------------------------------------------
+assert_rapm_additive <- function(rapm_df, tolerance = 0.015) {
+  if (is.null(rapm_df) || nrow(rapm_df) == 0) return(invisible(rapm_df))
+  if (!all(c("orapm", "drapm", "total_rapm") %in% names(rapm_df))) return(invisible(rapm_df))
+
+  if (all(is.na(rapm_df$orapm)) && all(is.na(rapm_df$drapm))) {
+    message(">>> [RAPM] Additive-identity invariant skipped: orapm/drapm are all NA (box-score fallback path).")
+    return(invisible(rapm_df))
+  }
+
+  dev <- abs(rapm_df$total_rapm - (rapm_df$orapm + rapm_df$drapm))
+  dev <- dev[!is.na(dev)]
+  if (length(dev) == 0) return(invisible(rapm_df))
+
+  n_bad <- sum(dev > tolerance)
+  if (n_bad > 0) {
+    worst <- which.max(dev)
+    stop(sprintf(paste0("[RAPM] Additive-identity contract violated (tolerance %.3f): %d of %d rows ",
+                        "have total_rapm != orapm + drapm (max abs deviation %.4f). Since issue #79, ",
+                        "drapm is exported negated (positive == strong defender), so total_rapm MUST ",
+                        "be the SUM of the two sides — this failure means the sign flip is only ",
+                        "half-applied somewhere."),
+                 tolerance, n_bad, length(dev), max(dev)))
   }
   invisible(rapm_df)
 }

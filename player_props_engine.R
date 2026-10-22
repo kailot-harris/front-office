@@ -150,25 +150,31 @@ pzinb_over_vec <- Vectorize(pzinb_over)
 # the team's rostered players' `drapm`. The league centre used by
 # adjust_mu_for_opponent() is attached as the "league_avg_def" attribute.
 #
-# *** drapm SIGN CONVENTION (verified empirically, see M-4 note below) ***
-# In cache/rapm_ratings.rds, `total_rapm == orapm - drapm` (verified: max abs
-# deviation 0.01 over all 430 rows; the `orapm + drapm` reading is off by up to
-# 31.5). drapm is therefore a points-ALLOWED-style quantity: LOWER drapm = BETTER
-# defender.
+# *** drapm SIGN CONVENTION (GitHub issue #79) ***
+# In cache/rapm_ratings.rds, `total_rapm == orapm + drapm`. rapm_engine.R negates
+# the ridge's defensive coefficient block before export, so `drapm` is an IMPACT
+# quantity on the conventional orientation: HIGHER drapm = BETTER defender, and 0 is
+# a league-average defence (the block is also league-centred, issue #71 fix A).
 #
-# UPDATED for GitHub issue #71 (fix A): `drapm` is now exported LEAGUE-CENTRED by
-# rapm_engine.R::fit_rapm_ratings() — mean(drapm) == 0, so values straddle zero and
-# 0 means league-average defence. It is no longer the uncentred all-positive level
-# (min -0.70, max 15.75, mean 7.12) described by older revisions of this comment.
-# The sign convention is UNCHANGED: lower is still better. Nothing below needs to
-# change either, because the shift is uniform and adjust_mu_for_opponent() consumes
-# only the DIFFERENCE `opp_def_rapm - league_avg_def`, where both terms come from the
-# same post-shift `drapm` column (league_avg_def is recomputed from the team
-# aggregates below, not hardcoded) — so the adjustment is shift-invariant by
-# construction. Team-level centring below is still load-bearing: the possession-
-# weighted team mean differs from the player-level mean (it was 9.99 vs 7.12 before
-# centring, and differs from 0 by the same gap after), so the team aggregates are
-# NOT automatically mean-zero just because the player column is.
+# HISTORICAL NOTE — the PRE-#79 convention, for anyone reading an older cache or an
+# older revision of this file: `drapm` used to be exported un-negated, so the total
+# was `orapm - drapm` and LOWER drapm meant the better defender. That is no longer
+# true anywhere in this repo. The flip is exactly ranking-neutral — `orapm - d_raw`
+# is identically `orapm + (-d_raw)` — so no player's total_rapm or rank moved; only
+# the standalone `drapm` column's sign, and `OPP_DEF_MU_SLOPE`'s sign below, changed.
+# Earlier revisions also described an uncentred all-positive `drapm` level (min
+# -0.70, max 15.75, mean 7.12); that predates issue #71's centring.
+#
+# Nothing in the aggregation below is sign-sensitive: adjust_mu_for_opponent()
+# consumes only the DIFFERENCE `opp_def_rapm - league_avg_def`, where both terms come
+# from the same `drapm` column (league_avg_def is recomputed from the team aggregates
+# below, not hardcoded), so the adjustment is shift-invariant by construction and the
+# negation simply flips the bracketed difference — which is why negating
+# OPP_DEF_MU_SLOPE alongside it leaves every multiplier bit-identical. Team-level
+# centring below is still load-bearing: the possession-weighted team mean differs
+# from the player-level mean (it was 9.99 vs 7.12 before centring, and differs from 0
+# by the same gap after), so the team aggregates are NOT automatically mean-zero just
+# because the player column is.
 get_team_def_rapm <- function(active_rosters) {
   rapm_path <- "cache/rapm_ratings.rds"
 
@@ -228,20 +234,29 @@ get_team_def_rapm <- function(active_rosters) {
 #   regressor is the opponent's possession-weighted team drapm, centred on the league
 #   team mean.
 #
-#     absolute scale   : +0.2591 pts per +1 drapm  (SE 0.0341, t = +7.60, p = 3.0e-14)
-#     + minutes control: +0.2586  (so it is not a playing-time artifact)
-#     / mean points 8.768                        -> +0.0296 fractional per unit
-#     direct within-player FRACTIONAL regression : +0.0256 per unit
-#                                                  (SE 0.0049, t = +5.24, p = 1.7e-07)
-#     season-2026-only absolute slope            : +0.2598 (t = +5.00) -- same sign
+#     absolute scale   : -0.2591 pts per +1 drapm  (SE 0.0341, |t| = 7.60, p = 3.0e-14)
+#     + minutes control: -0.2586  (so it is not a playing-time artifact)
+#     / mean points 8.768                        -> -0.0296 fractional per unit
+#     direct within-player FRACTIONAL regression : -0.0256 per unit
+#                                                  (SE 0.0049, |t| = 5.24, p = 1.7e-07)
+#     season-2026-only absolute slope            : -0.2598 (|t| = 5.00) -- same sign
 #
 #   Team-level corroboration (2026, points allowed per game vs. def_rapm):
-#     slope +2.26 pts allowed per +1 def_rapm, r = +0.675.
+#     slope -2.26 pts allowed per +1 def_rapm, r = -0.675.
 #
-#   We take the direct fractional estimate, 0.0256, since it is the estimand that
+#   NEGATIVE because `drapm` is a defensive IMPACT measure (issue #79: higher =
+#   better defender), so facing a higher-drapm opponent SUPPRESSES a player's output.
+#   The magnitudes are properties of the data and did not change at the #79 flip;
+#   the signs did. Before #79 the same regressions on the un-negated (points-allowed)
+#   `drapm` returned exactly these numbers with the opposite sign (+0.2591, +0.0256,
+#   +2.26, r = +0.675), which is what the finding was originally written up as. Since
+#   both the regressor and the shipped slope flipped together, every multiplier
+#   adjust_mu_for_opponent() produces is bit-identical across the change.
+#
+#   We take the direct fractional estimate, -0.0256, since it is the estimand that
 #   matches the multiplicative form actually used. The absolute-scale estimate
-#   (0.0296) is the corroborating upper bound; both are the same sign at p < 1e-6.
-OPP_DEF_MU_SLOPE  <- 0.0256
+#   (-0.0296) is the corroborating upper bound; both are the same sign at p < 1e-6.
+OPP_DEF_MU_SLOPE  <- -0.0256
 # Clamp bounds: +/-15%. The unclamped estimate spans 0.93x (Golden State) to 1.07x
 # (Dallas) across the 15 real 2026 team aggregates, so the clamp is not binding on
 # real data — it exists purely so that a future degenerate RAPM cache cannot swing a
@@ -256,17 +271,21 @@ adjust_mu_for_opponent <- function(base_mu, opp_def_rapm, league_avg_def) {
   # anyway "because the prompt says so". That rationale is deleted; the direction is
   # now settled against real data (see OPP_DEF_MU_SLOPE's derivation above).
   #
-  # WHAT THE DATA ACTUALLY SAYS — and it contradicts the old comment's PREMISE rather
-  # than its arithmetic. The old comment assumed "higher drapm = better defense". In
-  # THIS repo's rapm_ratings.rds the opposite holds: total_rapm = orapm - drapm, so
-  # drapm is points-allowed-flavoured and LOWER drapm = BETTER defense. The measured
-  # within-player slope is POSITIVE (+0.26 pts per +1 opponent drapm, p = 3e-14):
-  # facing a HIGH-drapm (i.e. WEAK) defense raises a player's output, and facing a
-  # LOW-drapm (i.e. STRONG) defense lowers it. That is the correct, intuitive
-  # behaviour; the old formula's sign was accidentally right while its stated reason
-  # was wrong. What was genuinely broken was everything else: an uncentred ratio over
-  # a player-level league mean (see get_team_def_rapm()), and no clamp over a
-  # denominator that the cache allows to approach zero.
+  # WHAT THE DATA ACTUALLY SAYS. Since issue #79, `drapm` is a defensive IMPACT measure
+  # (total_rapm = orapm + drapm, HIGHER drapm = BETTER defense), and the measured
+  # within-player slope on it is NEGATIVE (-0.26 pts per +1 opponent drapm, p = 3e-14):
+  # facing a HIGH-drapm (i.e. STRONG) defense lowers a player's output, and facing a
+  # LOW-drapm (i.e. WEAK) defense raises it. That is the correct, intuitive behaviour,
+  # and it now reads the intuitive way too — negative slope against a
+  # better-is-higher defensive rating.
+  #
+  # The M-4 finding predates that flip: it was measured on the un-negated
+  # points-allowed `drapm` and written up as a POSITIVE +0.26. Nothing about the
+  # finding changed — the regressor's sign did, so the shipped slope's sign did with
+  # it (see OPP_DEF_MU_SLOPE above), leaving every multiplier identical. What M-4
+  # genuinely fixed was elsewhere: an uncentred ratio over a player-level league mean
+  # (see get_team_def_rapm()), and no clamp over a denominator that the cache allows
+  # to approach zero.
   #
   # Now ADDITIVE-in-log-space (a multiplier centred on 1.0 built by ADDING a centred
   # deviation) rather than a raw ratio, which removes the division entirely and hence

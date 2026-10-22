@@ -427,9 +427,17 @@ compute_fold_team_rapm <- function(possessions_train, lambda = 900) {
   X_sparse <- sparseMatrix(i = i_idx, j = j_idx, x = val_idx, dims = c(n_poss, 2 * n_players))
   coefs <- solve_ridge_rapm(X_sparse, poss_clean$points, weights = rep(1, n_poss), lambda = lambda)
 
+  # SIGN CONVENTION (GitHub issue #80). This file deliberately duplicates the ridge fit
+  # rather than calling rapm_engine.R::fit_rapm_ratings(), because the CV experiment needs
+  # to refit per train/test fold on a season subset. That duplication means the sign
+  # convention has to be mirrored here by hand: negate the defensive coefficient block so
+  # positive drapm == strong defender, and make total_rapm their SUM.
+  # SOURCE OF TRUTH: rapm_engine.R::fit_rapm_ratings()'s "SIGN CONVENTION (GitHub issue
+  # #79)" negation step — if that changes, change this with it. (No centring step here:
+  # these fold ratings are consumed only as relative within-fold features by this script.)
   orapm <- coefs[1:n_players] * 100
-  drapm <- coefs[(n_players + 1):(2 * n_players)] * 100
-  total_rapm <- orapm - drapm
+  drapm <- -coefs[(n_players + 1):(2 * n_players)] * 100
+  total_rapm <- orapm + drapm
 
   off_n <- as.integer(table(as.vector(off_cols))[as.character(all_players)])
   def_n <- as.integer(table(as.vector(def_cols))[as.character(all_players)])

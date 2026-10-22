@@ -112,29 +112,30 @@ cat(sprintf("  team def_rapm range = %.3f .. %.3f across %d teams\n",
 base_mu <- 15.0
 
 # *** READ THIS BEFORE "FIXING" THE DIRECTION OF THIS ASSERTION ***
-# The P4-E brief asks to assert that `opp_def_rapm > league_avg_def` DECREASES mu,
-# on the premise "facing a better defense should lower the projection". That premise
-# is inherited from the very code comment M-4 exists to delete, and it is WRONG for
-# this repo's cache: rapm_ratings.rds satisfies total_rapm == orapm - drapm (max abs
-# deviation 0.01 over all 430 rows), i.e. drapm is points-ALLOWED flavoured, so
-# LOWER drapm = BETTER defense. The empirical within-player slope is POSITIVE
-# (+0.259 pts per +1 opponent drapm, t = +7.60, p = 3.0e-14, 2024-2026, n = 16,657).
-# So we assert the SEMANTIC intent ("a better defense lowers mu") expressed in the
-# correct variable direction, and separately pin the literal numeric direction the
-# data actually supports. Asserting the brief's literal form would enshrine the sign
-# error the finding is about.
-mu_vs_weak   <- adjust_mu_for_opponent(base_mu, league_avg + 2, league_avg)  # weak D (high drapm)
-mu_vs_strong <- adjust_mu_for_opponent(base_mu, league_avg - 2, league_avg)  # strong D (low drapm)
+# The ASSERTIONS below are the semantic intent — "facing a better defense lowers mu"
+# — and they are convention-independent. The PROBE DIRECTION is not: it depends on
+# which way `drapm` points. Since GitHub issue #79, rapm_ratings.rds satisfies
+# total_rapm == orapm + drapm: drapm is a defensive IMPACT measure, so HIGHER drapm
+# = BETTER defense, and the strong-defense probe is `league_avg + 2`. The empirical
+# within-player slope on that regressor is NEGATIVE (-0.259 pts per +1 opponent
+# drapm, |t| = 7.60, p = 3.0e-14, 2024-2026, n = 16,657), and OPP_DEF_MU_SLOPE is
+# shipped negative to match.
+# HISTORICAL: before #79, drapm was points-ALLOWED flavoured (total = orapm - drapm,
+# lower = better), the probes were reversed, and both the measured and shipped slopes
+# were positive. The flip negated the regressor and the slope together, so every
+# number this check prints is unchanged.
+mu_vs_weak   <- adjust_mu_for_opponent(base_mu, league_avg - 2, league_avg)  # weak D (low drapm)
+mu_vs_strong <- adjust_mu_for_opponent(base_mu, league_avg + 2, league_avg)  # strong D (high drapm)
 mu_vs_avg    <- adjust_mu_for_opponent(base_mu, league_avg,     league_avg)
 
-cat(sprintf("  base_mu = %.2f | vs STRONG defense (drapm-2) -> %.4f | vs league-average -> %.4f | vs WEAK defense (drapm+2) -> %.4f\n",
+cat(sprintf("  base_mu = %.2f | vs STRONG defense (drapm+2) -> %.4f | vs league-average -> %.4f | vs WEAK defense (drapm-2) -> %.4f\n",
             base_mu, mu_vs_strong, mu_vs_avg, mu_vs_weak))
 
-ok("CHECK M-4a  facing a BETTER defense (lower drapm) LOWERS mu vs. base_mu",
+ok("CHECK M-4a  facing a BETTER defense (higher drapm) LOWERS mu vs. base_mu",
    mu_vs_strong < base_mu,
    sprintf("%.4f < %.4f (delta %.4f)", mu_vs_strong, base_mu, mu_vs_strong - base_mu))
 
-ok("CHECK M-4b  facing a WEAKER defense (higher drapm) RAISES mu; league-average is a no-op",
+ok("CHECK M-4b  facing a WEAKER defense (lower drapm) RAISES mu; league-average is a no-op",
    mu_vs_weak > base_mu && isTRUE(all.equal(mu_vs_avg, base_mu)),
    sprintf("weak %.4f > base %.4f; average %.4f == base", mu_vs_weak, base_mu, mu_vs_avg))
 
