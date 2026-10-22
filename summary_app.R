@@ -366,7 +366,14 @@ ACTIVE_ROSTERS_CACHE_PATH <- "cache/active_rosters_cache.rds"
 # total possessions (offensive + defensive) are hidden until the user raises or lowers the
 # "Minimum total possessions" control below -- a UI display default, not a modeling constant,
 # so it lives here rather than in config.R.
-RAPM_MIN_POSSESSIONS_DEFAULT <- 2500
+# Leaderboard eligibility (issue #71, fix A): require this many possessions on BOTH sides,
+# not combined. A combined cut lets a one-sided row through on garbage-time minutes, and the
+# previous combined default of 2,500 was doing the same job as — and silently duplicating —
+# the dataset-level low_sample_flag. The two are now distinct: rapm_engine.R's
+# `low_sample_flag` is a per-rating honesty flag (shrinkage-based), while this is the
+# rank-eligibility cut. 1,000 per side leaves 242 of 430 rows eligible and yields a top ten
+# with no sub-1,000-possession player. User-adjustable in the UI; 0 disables it.
+RAPM_MIN_POSS_PER_SIDE_DEFAULT <- 1000
 
 # ---- Startup-only cache loads for Tab 6 (fail-safe: never crash if a cache is missing) ----
 rapm_ratings_data <- NULL
@@ -559,8 +566,8 @@ ui <- page_fluid(
         ),
         numericInput(
           "rapm_min_possessions",
-          "Minimum total possessions (offensive + defensive)",
-          value = RAPM_MIN_POSSESSIONS_DEFAULT, min = 0, step = 100, width = "350px"
+          "Minimum possessions per side (offensive and defensive)",
+          value = RAPM_MIN_POSS_PER_SIDE_DEFAULT, min = 0, step = 100, width = "350px"
         )
       ),
       card(
@@ -1686,8 +1693,8 @@ server <- function(input, output, session) {
 
   # Second reactive: applies the team filter and the user-adjustable minimum-possessions
   # cutoff on top of the joined data. "All Teams" passes everything through untouched; the
-  # possession cutoff uses whatever the "Minimum total possessions" numeric input is
-  # currently set to (defaulting to RAPM_MIN_POSSESSIONS_DEFAULT), so the user can raise or
+  # possession cutoff uses whatever the "Minimum possessions per side" numeric input is
+  # currently set to (defaulting to RAPM_MIN_POSS_PER_SIDE_DEFAULT), so the user can raise or
   # lower it -- or set it to 0 to include every matched player -- rather than it being a
   # fixed on/off toggle.
   r_rapm_filtered <- reactive({
@@ -1703,13 +1710,17 @@ server <- function(input, output, session) {
 
     min_poss <- suppressWarnings(as.numeric(input$rapm_min_possessions))
     if (is.null(min_poss) || length(min_poss) == 0 || is.na(min_poss)) {
-      min_poss <- RAPM_MIN_POSSESSIONS_DEFAULT
+      min_poss <- RAPM_MIN_POSS_PER_SIDE_DEFAULT
     }
     if (min_poss > 0) {
+      # Per-side, not combined (issue #71, fix A): a player must clear the bar on BOTH the
+      # offensive and defensive side to be rank-eligible. pmin() of the two sides is the
+      # weaker side, which is also the side that drives rapm_engine.R's shrinkage-based
+      # low_sample_flag, so the two mechanisms stay consistent about which side is binding.
       off_poss <- if ("n_off_poss" %in% names(joined)) as.numeric(joined$n_off_poss) else NA_real_
       def_poss <- if ("n_def_poss" %in% names(joined)) as.numeric(joined$n_def_poss) else NA_real_
-      total_poss <- coalesce(off_poss, 0) + coalesce(def_poss, 0)
-      joined <- joined[total_poss >= min_poss, , drop = FALSE]
+      weaker_side_poss <- pmin(coalesce(off_poss, 0), coalesce(def_poss, 0))
+      joined <- joined[weaker_side_poss >= min_poss, , drop = FALSE]
     }
 
     if (nrow(joined) == 0) NULL else joined

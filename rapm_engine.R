@@ -594,18 +594,56 @@ fit_rapm_ratings <- function(seasons = ALL_SEASONS, lambda = 900, force_refresh 
   # possessions per player than NBA over the same calendar span. Flag (not drop) the noisiest
   # ratings so downstream consumers/humans know which ones not to trust.
   #
-  # THRESHOLD RAISED 300 -> RAPM_LOW_SAMPLE_POSS (issue #71, fix A). The old 300-combined cut
-  # was empirically useless: it flagged only 63 of 430 players (14.7%) and caught NONE of the
-  # low-exposure players actually topping the Total RAPM leaderboard — Dungee (391 combined),
-  # Nivar (561), Clouden (1,662), Jaquez (1,931), Park (2,207) all sailed through unflagged
-  # while ranking 3rd-10th league-wide. 2,500 combined possessions (~1,250 per side) is set
-  # just above the worst of those cases and sits slightly below the league median combined
-  # exposure (2,597), i.e. it flags the bottom ~49% of the distribution. At lambda = 900 that
-  # is the exposure band where ridge shrinkage has not yet dominated the noise, so these
-  # ratings are driven more by lineup luck than by the player. Flag, never drop.
-  RAPM_LOW_SAMPLE_POSS <- 2500L
+  # RULE CHANGED from a raw possession count to a SHRINKAGE rule (issue #71, fix A).
+  #
+  # The old `(n_off_poss + n_def_poss) < 300` cut flagged 63 of 430 players (14.7%) and caught
+  # NONE of the low-exposure players topping the Total RAPM leaderboard — Dungee (391
+  # combined), Nivar (561), Clouden (1,662), Jaquez (1,931), Park (2,207) all ranked 3rd-10th
+  # league-wide while unflagged. But raising the count is the wrong instrument, and the
+  # intuition behind it ("low exposure = noisy") is empirically BACKWARDS here: measured sd of
+  # total_rapm by combined-possession band is 1.48 (<500), 2.51 (500-1k), 2.87 (1-2k), 3.29
+  # (2-3k), 2.71 (>5k). The LOWEST-exposure band is the LEAST variable, because ridge shrinks
+  # it hardest. Shrinkage dominates MORE at low exposure, not less. A count-based cut also
+  # lands arbitrarily: the league median combined exposure is 2,597, so any threshold near
+  # 2,500 flags ~half the league by construction rather than by evidence.
+  #
+  # What actually matters is HOW MUCH OF A RATING IS DATA vs. PRIOR. Ridge shrinks each
+  # coefficient by roughly s_i = n_i / (n_i + lambda), so `1 - s_i` is the fraction of the
+  # reported number contributed by the shrinkage prior rather than by the player's own
+  # possessions. Flag a player when the weaker of their two sides is more than two-thirds
+  # prior (s < 1/3, i.e. fewer than lambda/2 possessions on that side). This is why Dungee
+  # ranks 5th at +6.19 on 194 offensive possessions: she is 82% prior, shrunk ~5x toward zero
+  # and still top-five, so her unshrunk signal is ~+34/100 — lineup luck, not a player effect.
+  # Measured: flags 124 of 430 (28.8%), catching Dungee (82% prior) and Nivar (76%).
+  #
+  # Expressing the rule against `lambda` rather than a hardcoded possession count means it
+  # stays correct if lambda is ever re-tuned (see this function's header: lambda = 900 came
+  # from a coarse grid search and a CV pass is a known follow-up). Flag, never drop.
+  RAPM_MIN_DATA_SHARE <- 1 / 3
   rapm_df <- rapm_df %>%
-    dplyr::mutate(low_sample_flag = (n_off_poss + n_def_poss) < RAPM_LOW_SAMPLE_POSS)
+    dplyr::mutate(
+      shrinkage_data_share = pmin(
+        n_off_poss / (n_off_poss + lambda),
+        n_def_poss / (n_def_poss + lambda)
+      ),
+      low_sample_flag = shrinkage_data_share < RAPM_MIN_DATA_SHARE
+    )
+
+  # Leaderboard eligibility is a SEPARATE mechanism from the honesty flag above (issue #71,
+  # fix A). `low_sample_flag` answers "how much of this one number is prior?"; eligibility
+  # answers "should this row compete for a top-N rank at all?". Conflating them into one
+  # boolean was what forced the earlier 48.8% flag rate — a dataset-level claim that half the
+  # league is untrustworthy, in order to clean a presentation-level ranking.
+  #
+  # Require >= 1,000 possessions on BOTH sides (not combined, which lets a one-sided specialist
+  # through on garbage-time minutes). Measured: 242 of 430 eligible, and the resulting top ten
+  # is Parker, Delle Donne, Park, Prince, Jones, Gray, Miles, Diggins-Smith, Burton, Clark —
+  # no sub-1,000-possession row. Consumers that rank or sort should filter on this column;
+  # consumers that display a single player's rating should use `low_sample_flag` instead.
+  RAPM_LEADERBOARD_MIN_POSS_PER_SIDE <- 1000L
+  rapm_df <- rapm_df %>%
+    dplyr::mutate(leaderboard_eligible = pmin(n_off_poss, n_def_poss) >=
+                    RAPM_LEADERBOARD_MIN_POSS_PER_SIDE)
 
   # --- CONTRACT INVARIANT (issue #71, fix A) ---------------------------------------------
   # On the real-possession path orapm/drapm are league-centered above, so all three rating
