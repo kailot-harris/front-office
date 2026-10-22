@@ -590,7 +590,8 @@ ui <- page_fluid(
             every possession they were on court for. It is reported here as three numbers:
             Offensive RAPM (", strong("ORAPM"), ", impact while the player's team has the
             ball), Defensive RAPM (", strong("DRAPM"), ", impact while the player's team is
-            defending), and ", strong("Total RAPM"), " (ORAPM + DRAPM), each on a
+            defending — higher is a stronger defender, i.e. more points prevented), and ",
+            strong("Total RAPM"), " (ORAPM + DRAPM), each on a
             points-per-100-possessions scale centered near 0 for a league-average player — a
             Total RAPM of +5 means the player's team is modeled to outscore opponents by about
             5 more points per 100 possessions with that player on the floor than a replacement
