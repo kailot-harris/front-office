@@ -919,6 +919,15 @@ run_web_export <- function(season = 2026, n_sims = 1000L, out_dir = file.path(ML
   jsonlite::write_json(diagnostics_obj,    f_diag,    pretty = TRUE, auto_unbox = TRUE)
   jsonlite::write_json(postseason_ops_obj, f_ops,     pretty = TRUE, auto_unbox = TRUE)
 
+  # --- Weekly Matchup Slates Export (Issue #28) ---
+  matchups_file <- NULL
+  tryCatch({
+    matchups_file <- export_matchup_slates(season = season, out_dir = out_dir)
+  }, error = function(e) {
+    log_warn(sprintf("Matchup slates export failed non-fatally: %s", conditionMessage(e)),
+             script = .LOG_SCRIPT)
+  })
+
   # --- Statcast 4-Tier Spatial Analytics Export ---
   spatial_file <- NULL
   if (file.exists(file.path(PROJECT_DIR, "tools", "export_spatial_analytics.R"))) {
@@ -951,8 +960,294 @@ run_web_export <- function(season = 2026, n_sims = 1000L, out_dir = file.path(ML
     metadata    = f_meta,
     diagnostics = f_diag,
     ops         = f_ops,
+    matchups    = matchups_file,
     spatial     = spatial_file
   ))
+}
+
+# ==============================================================================
+# Weekly Matchup Slates Export (Issue #28)
+#
+# Builds a game-level dataset of every 2026 MLB season game (regular season plus
+# postseason), grouped into Monday-anchored weekly slates. Past games are graded
+# against the Elo engine's walk-forward (pre-game) win probability; games with no
+# result yet carry a forward-looking projection from current team Elo.
+# ==============================================================================
+
+# Game types that count as "the season": regular season plus the four postseason
+# rounds. Spring training ("S"), exhibitions ("E", which include non-MLB college
+# opponents) and the All-Star Game ("A") are excluded -- they have no Elo rating
+# basis and are not season games.
+MATCHUP_GAME_TYPES <- c("R", "F", "D", "L", "W")
+
+#' Monday that starts the ISO week containing each date
+monday_of_week <- function(d) {
+  d <- as.Date(d)
+  d - (as.integer(format(d, "%u")) - 1L)
+}
+
+#' Monday-anchored week-of-season index (week 1 = week containing the first game)
+#'
+#' @param game_dates Vector coercible to Date
+#' @param anchor_monday Date; Monday starting the season's first week
+#' @return Integer vector of 1-based week numbers
+compute_season_week <- function(game_dates, anchor_monday) {
+  weeks <- as.numeric(difftime(monday_of_week(game_dates),
+                               as.Date(anchor_monday), units = "days")) / 7
+  as.integer(round(weeks)) + 1L
+}
+
+#' Human label for a slate's date range, e.g. "Mar 30 - Apr 5"
+format_week_label <- function(week_start) {
+  week_start <- as.Date(week_start)
+  week_end <- week_start + 6L
+  sprintf("%s %d - %s %d",
+          format(week_start, "%b"), as.integer(format(week_start, "%d")),
+          format(week_end, "%b"),   as.integer(format(week_end, "%d")))
+}
+
+#' Grade a pre-game prediction against the realized result
+#'
+#' The pick is the side the walk-forward probability favored; it is correct when
+#' that side won. Returns NA when the game is ungraded (no walk-forward
+#' probability, or no result).
+#'
+#' @param home_win_prob Numeric vector of pre-game home win probabilities
+#' @param home_won Numeric/logical vector; 1 (or TRUE) when the home team won
+#' @return Logical vector (NA where ungraded)
+grade_matchup_prediction <- function(home_win_prob, home_won) {
+  ungraded <- is.na(home_win_prob) | is.na(home_won)
+  out <- (home_win_prob > 0.5) == (as.numeric(home_won) == 1)
+  out[ungraded] <- NA
+  as.logical(out)
+}
+
+#' Collapse the raw schedule to one row per game
+#'
+#' A postponed game and its makeup share a game_pk, so the played row wins. The
+#' ranking also keeps a real result ahead of a "Scheduled" placeholder.
+dedupe_schedule_games <- function(sched) {
+  rank_of <- function(s) {
+    dplyr::case_when(
+      s %in% c("Final", "Completed Early") ~ 1L,
+      s == "Scheduled"                     ~ 2L,
+      s == "Postponed"                     ~ 3L,
+      TRUE                                 ~ 4L
+    )
+  }
+  sched %>%
+    dplyr::mutate(.status_rank = rank_of(.data$status_detailed_state)) %>%
+    dplyr::arrange(.data$game_pk, .data$.status_rank) %>%
+    dplyr::distinct(.data$game_pk, .keep_all = TRUE) %>%
+    dplyr::select(-".status_rank")
+}
+
+#' Build the weekly matchup slate dataset
+#'
+#' @param schedule Season schedule tibble (cache/ingest/mlb_schedule_<season>.rds)
+#' @param elo_history Walk-forward Elo history (cache/ratings/mlb_elo_history.rds)
+#' @param team_ratings Current team Elo (cache/ratings/mlb_team_ratings.rds)
+#' @param season Season integer
+#' @return List with active_week, available_weeks, matchups and season totals
+build_matchup_slates <- function(schedule, elo_history, team_ratings, season = 2026) {
+  schedule <- tibble::as_tibble(schedule)
+  elo_history <- tibble::as_tibble(elo_history)
+  team_ratings <- tibble::as_tibble(team_ratings)
+
+  games <- schedule %>%
+    dplyr::filter(.data$game_type %in% MATCHUP_GAME_TYPES) %>%
+    dedupe_schedule_games() %>%
+    dplyr::mutate(game_date = as.Date(substr(as.character(.data$official_date), 1, 10)))
+
+  if (nrow(games) == 0) {
+    stop("build_matchup_slates(): schedule contains no season games.")
+  }
+
+  # The Elo history can carry a second row for a suspended-and-resumed game;
+  # keep the earliest, which is the genuine pre-game prediction.
+  elo <- elo_history %>%
+    dplyr::mutate(.elo_date = as.character(.data$game_date)) %>%
+    dplyr::arrange(.data$game_pk, .data$.elo_date) %>%
+    dplyr::distinct(.data$game_pk, .keep_all = TRUE) %>%
+    dplyr::transmute(
+      game_pk        = .data$game_pk,
+      elo_home_prob  = as.numeric(.data$home_win_prob),
+      elo_home_won   = as.numeric(.data$home_won),
+      elo_home_score = as.integer(.data$home_score),
+      elo_away_score = as.integer(.data$away_score)
+    )
+
+  anchor_monday <- monday_of_week(min(games$game_date, na.rm = TRUE))
+
+  teams_ref <- get_canonical_mlb_teams() %>%
+    dplyr::select(team_id = "team_id", abbr = "team")
+  elo_now <- team_ratings %>%
+    dplyr::select(team_id = "team_id", elo_rating = "elo_rating")
+
+  m <- games %>%
+    dplyr::left_join(elo, by = "game_pk") %>%
+    dplyr::left_join(teams_ref, by = c("home_team_id" = "team_id")) %>%
+    dplyr::rename(home_team = "abbr") %>%
+    dplyr::left_join(teams_ref, by = c("away_team_id" = "team_id")) %>%
+    dplyr::rename(away_team = "abbr") %>%
+    dplyr::left_join(dplyr::rename(elo_now, home_elo = "elo_rating"),
+                     by = c("home_team_id" = "team_id")) %>%
+    dplyr::left_join(dplyr::rename(elo_now, away_elo = "elo_rating"),
+                     by = c("away_team_id" = "team_id")) %>%
+    dplyr::mutate(
+      week          = compute_season_week(.data$game_date, anchor_monday),
+      status_detail = as.character(.data$status_detailed_state),
+      is_completed  = .data$status_detail %in% c("Final", "Completed Early") &
+                        !is.na(.data$home_score) & !is.na(.data$away_score)
+    )
+
+  # Forward-looking projection from current Elo for every game lacking a
+  # walk-forward probability (scheduled games, and postseason rounds the Elo
+  # engine does not cover).
+  fwd_prob <- vapply(
+    seq_len(nrow(m)),
+    function(i) {
+      calc_game_win_prob(
+        team_home     = list(elo_rating = m$home_elo[i]),
+        team_away     = list(elo_rating = m$away_elo[i]),
+        is_neutral    = FALSE,
+        is_postseason = FALSE
+      )
+    },
+    numeric(1)
+  )
+
+  has_wf <- !is.na(m$elo_home_prob)
+  m <- m %>%
+    dplyr::mutate(
+      home_win_prob      = ifelse(has_wf, .data$elo_home_prob, fwd_prob),
+      projection_source  = ifelse(has_wf, "walk_forward", "current_elo"),
+      prediction_correct = grade_matchup_prediction(.data$elo_home_prob, .data$elo_home_won)
+    )
+
+  matchups <- m %>%
+    dplyr::transmute(
+      game_pk            = as.integer(.data$game_pk),
+      game_date          = format(.data$game_date, "%Y-%m-%d"),
+      week               = as.integer(.data$week),
+      game_type          = as.character(.data$game_type),
+      series_description = as.character(.data$series_description),
+      status_detail      = .data$status_detail,
+      venue_name         = as.character(.data$venue_name),
+      home_team_id       = as.integer(.data$home_team_id),
+      home_team_name     = as.character(.data$home_team_name),
+      home_team          = ifelse(is.na(.data$home_team), "MLB", .data$home_team),
+      away_team_id       = as.integer(.data$away_team_id),
+      away_team_name     = as.character(.data$away_team_name),
+      away_team          = ifelse(is.na(.data$away_team), "MLB", .data$away_team),
+      is_completed       = as.logical(.data$is_completed),
+      home_win_prob      = round(as.numeric(.data$home_win_prob), 4),
+      away_win_prob      = round(1 - as.numeric(.data$home_win_prob), 4),
+      projection_source  = .data$projection_source,
+      home_score         = ifelse(.data$is_completed, as.integer(.data$home_score), NA_integer_),
+      away_score         = ifelse(.data$is_completed, as.integer(.data$away_score), NA_integer_),
+      prediction_correct = .data$prediction_correct
+    ) %>%
+    dplyr::arrange(.data$game_date, .data$game_pk)
+
+  # Active slate: the week holding the most recent date with results.
+  latest_result <- if (nrow(elo_history) > 0) {
+    as.Date(substr(as.character(max(elo_history$game_date, na.rm = TRUE)), 1, 10))
+  } else {
+    min(games$game_date, na.rm = TRUE)
+  }
+  active_week <- compute_season_week(latest_result, anchor_monday)
+
+  week_summary <- matchups %>%
+    dplyr::group_by(week = .data$week) %>%
+    dplyr::summarise(
+      game_count    = dplyr::n(),
+      graded_count  = sum(!is.na(.data$prediction_correct)),
+      correct_count = sum(.data$prediction_correct, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    dplyr::arrange(.data$week)
+
+  available_weeks <- week_summary %>%
+    dplyr::mutate(
+      start_date = format(anchor_monday + (.data$week - 1L) * 7L, "%Y-%m-%d"),
+      end_date   = format(anchor_monday + (.data$week - 1L) * 7L + 6L, "%Y-%m-%d"),
+      label      = format_week_label(anchor_monday + (.data$week - 1L) * 7L),
+      status     = dplyr::case_when(
+        .data$week < active_week  ~ "past",
+        .data$week == active_week ~ "active",
+        TRUE                      ~ "future"
+      )
+    ) %>%
+    dplyr::select("week", "label", "status", "start_date", "end_date",
+                  "game_count", "graded_count", "correct_count")
+
+  graded_total <- sum(!is.na(matchups$prediction_correct))
+  correct_total <- sum(matchups$prediction_correct, na.rm = TRUE)
+
+  list(
+    season          = as.integer(season),
+    generated_at    = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+    active_week     = as.integer(active_week),
+    total_games     = nrow(matchups),
+    completed_games = sum(matchups$is_completed),
+    graded_games    = graded_total,
+    correct_picks   = as.integer(correct_total),
+    overall_accuracy = if (graded_total > 0) round(correct_total / graded_total, 4) else NA_real_,
+    available_weeks = available_weeks,
+    matchups        = matchups
+  )
+}
+
+#' Export the weekly matchup slate dataset to JSON
+#'
+#' @param season Season integer (default 2026)
+#' @param out_dir Output directory (default web/public/data)
+#' @return Invisible path to the written JSON file
+export_matchup_slates <- function(season = 2026,
+                                  out_dir = file.path(MLB_ROOT_DIR, "web", "public", "data")) {
+  if (!exists("calc_game_win_prob", mode = "function")) {
+    prev_log_script <- if (exists(".LOG_SCRIPT", envir = globalenv())) {
+      get(".LOG_SCRIPT", envir = globalenv())
+    } else {
+      NULL
+    }
+    source("mlb_postseason_simulator.R")
+    if (!is.null(prev_log_script)) {
+      assign(".LOG_SCRIPT", prev_log_script, envir = globalenv())
+    }
+  }
+
+  sched_file <- cache_path("ingest", sprintf("mlb_schedule_%d.rds", season), create = FALSE)
+  elo_file <- cache_path("ratings", "mlb_elo_history.rds", create = FALSE)
+  ratings_file <- cache_path("ratings", "mlb_team_ratings.rds", create = FALSE)
+
+  for (f in c(sched_file, elo_file, ratings_file)) {
+    if (!file.exists(f)) {
+      stop(sprintf("export_matchup_slates(): required cache missing: %s", f))
+    }
+  }
+
+  dataset <- build_matchup_slates(
+    schedule     = readRDS(sched_file),
+    elo_history  = readRDS(elo_file),
+    team_ratings = readRDS(ratings_file),
+    season       = season
+  )
+
+  if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+  f_matchups <- file.path(out_dir, "matchups_slates.json")
+  jsonlite::write_json(dataset, f_matchups, pretty = TRUE, auto_unbox = TRUE, na = "null")
+
+  cat(sprintf("      Saved: %s (%d games across %d slates, active week %d)\n",
+              f_matchups, dataset$total_games, nrow(dataset$available_weeks),
+              dataset$active_week))
+  log_info(sprintf("Matchup slates export: %d games, %d slates, %d/%d graded picks correct.",
+                   dataset$total_games, nrow(dataset$available_weeks),
+                   dataset$correct_picks, dataset$graded_games),
+           script = .LOG_SCRIPT)
+
+  invisible(f_matchups)
 }
 
 if (sys.nframe() == 0) {
