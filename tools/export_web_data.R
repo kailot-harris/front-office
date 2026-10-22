@@ -1199,11 +1199,60 @@ build_matchup_slates <- function(schedule, elo_history, team_ratings, season = 2
   )
 }
 
+#' Write a built slate dataset out as an index plus one file per slate
+#'
+#' Split out from export_matchup_slates() so the file layout can be tested
+#' against a fixture — the exporter itself needs the season caches, which CI
+#' does not have.
+#'
+#' @param dataset Result of build_matchup_slates()
+#' @param out_dir Output directory (web/public/data)
+#' @return Character vector of written paths, index first
+write_matchup_slate_files <- function(dataset, out_dir) {
+  if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+  weeks_dir <- file.path(out_dir, "matchups")
+  if (!dir.exists(weeks_dir)) dir.create(weeks_dir, recursive = TRUE, showWarnings = FALSE)
+
+  # Index: the dataset without the matchup rows. Kept pretty-printed like its
+  # sibling exports, since it is small and read by humans during debugging.
+  index_obj <- dataset[setdiff(names(dataset), "matchups")]
+  f_index <- file.path(out_dir, "matchups_index.json")
+  jsonlite::write_json(index_obj, f_index, pretty = TRUE, auto_unbox = TRUE, na = "null")
+
+  # One file per slate, minified: these are fetched over the wire, never read by
+  # hand, and pretty-printing them costs ~50% in transfer for nothing.
+  week_files <- character(0)
+  for (wk in dataset$available_weeks$week) {
+    rows <- dataset$matchups[dataset$matchups$week == wk, , drop = FALSE]
+    f_week <- file.path(weeks_dir, sprintf("week-%02d.json", wk))
+    jsonlite::write_json(rows, f_week, pretty = FALSE, auto_unbox = TRUE, na = "null")
+    week_files <- c(week_files, f_week)
+  }
+
+  # An earlier version of this exporter wrote one combined file. Leaving it
+  # behind would ship a stale 1.6 MB copy of the season in every build.
+  f_legacy <- file.path(out_dir, "matchups_slates.json")
+  if (file.exists(f_legacy)) {
+    file.remove(f_legacy)
+    cat(sprintf("      Removed superseded combined export: %s\n", f_legacy))
+  }
+
+  c(f_index, week_files)
+}
+
 #' Export the weekly matchup slate dataset to JSON
+#'
+#' Written as an index plus one file per slate, not a single blob. The whole
+#' season is ~1.1 MB of matchup rows, and `page.tsx` hands whatever it reads to
+#' a client component, so a combined file ends up serialized into the static
+#' HTML of a page that only ever displays one week at a time. The index carries
+#' the season totals and per-slate summaries (game/graded/correct counts), which
+#' is everything the ribbon and the header chips need; `MatchupsClient` fetches
+#' `matchups/week-<NN>.json` when a slate is selected.
 #'
 #' @param season Season integer (default 2026)
 #' @param out_dir Output directory (default web/public/data)
-#' @return Invisible path to the written JSON file
+#' @return Invisible character vector of written file paths (index first)
 export_matchup_slates <- function(season = 2026,
                                   out_dir = file.path(MLB_ROOT_DIR, "web", "public", "data")) {
   if (!exists("calc_game_win_prob", mode = "function")) {
@@ -1235,19 +1284,22 @@ export_matchup_slates <- function(season = 2026,
     season       = season
   )
 
-  if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
-  f_matchups <- file.path(out_dir, "matchups_slates.json")
-  jsonlite::write_json(dataset, f_matchups, pretty = TRUE, auto_unbox = TRUE, na = "null")
+  written <- write_matchup_slate_files(dataset, out_dir)
+  f_index <- written[1]
+  week_files <- written[-1]
 
-  cat(sprintf("      Saved: %s (%d games across %d slates, active week %d)\n",
-              f_matchups, dataset$total_games, nrow(dataset$available_weeks),
+  index_kb <- round(file.size(f_index) / 1024, 1)
+  cat(sprintf("      Saved: %s (%.1f KB index) + %d slate files in %s/\n",
+              f_index, index_kb, length(week_files), file.path(out_dir, "matchups")))
+  cat(sprintf("             %d games across %d slates, active week %d\n",
+              dataset$total_games, nrow(dataset$available_weeks),
               dataset$active_week))
   log_info(sprintf("Matchup slates export: %d games, %d slates, %d/%d graded picks correct.",
                    dataset$total_games, nrow(dataset$available_weeks),
                    dataset$correct_picks, dataset$graded_games),
            script = .LOG_SCRIPT)
 
-  invisible(f_matchups)
+  invisible(c(f_index, week_files))
 }
 
 if (sys.nframe() == 0) {
