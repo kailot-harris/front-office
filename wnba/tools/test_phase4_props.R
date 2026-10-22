@@ -13,7 +13,23 @@
 # Usage: "C:/Program Files/R/R-4.5.2/bin/Rscript.exe" tools/test_phase4_props.R
 # ==============================================================================
 
-setwd("c:/Users/kailo/kayceeslices/WNBA Analytics")
+# Resolve the repo root from THIS SCRIPT'S own location rather than hardcoding it.
+# The previous line was setwd("c:/Users/kailo/kayceeslices/WNBA Analytics"), a path
+# that stopped existing when the repo moved under front-office/ — which left the
+# suite unrunnable from any cwd, main tree included. Deriving it from --file= also
+# makes the suite work unchanged inside a git worktree.
+local({
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- sub("^--file=", "", args[grepl("^--file=", args)])
+  root <- if (length(file_arg)) {
+    dirname(dirname(normalizePath(file_arg[1], winslash = "/", mustWork = FALSE)))
+  } else {
+    getwd()   # sourced interactively: assume the caller is already at the root
+  }
+  if (!file.exists(file.path(root, "config.R")))
+    stop(sprintf("test_phase4_props.R: cannot locate the repo root (no config.R at '%s')", root))
+  setwd(root)
+})
 
 suppressPackageStartupMessages({
   library(dplyr)
@@ -112,29 +128,30 @@ cat(sprintf("  team def_rapm range = %.3f .. %.3f across %d teams\n",
 base_mu <- 15.0
 
 # *** READ THIS BEFORE "FIXING" THE DIRECTION OF THIS ASSERTION ***
-# The P4-E brief asks to assert that `opp_def_rapm > league_avg_def` DECREASES mu,
-# on the premise "facing a better defense should lower the projection". That premise
-# is inherited from the very code comment M-4 exists to delete, and it is WRONG for
-# this repo's cache: rapm_ratings.rds satisfies total_rapm == orapm - drapm (max abs
-# deviation 0.01 over all 430 rows), i.e. drapm is points-ALLOWED flavoured, so
-# LOWER drapm = BETTER defense. The empirical within-player slope is POSITIVE
-# (+0.259 pts per +1 opponent drapm, t = +7.60, p = 3.0e-14, 2024-2026, n = 16,657).
-# So we assert the SEMANTIC intent ("a better defense lowers mu") expressed in the
-# correct variable direction, and separately pin the literal numeric direction the
-# data actually supports. Asserting the brief's literal form would enshrine the sign
-# error the finding is about.
-mu_vs_weak   <- adjust_mu_for_opponent(base_mu, league_avg + 2, league_avg)  # weak D (high drapm)
-mu_vs_strong <- adjust_mu_for_opponent(base_mu, league_avg - 2, league_avg)  # strong D (low drapm)
+# The ASSERTIONS below are the semantic intent — "facing a better defense lowers mu"
+# — and they are convention-independent. The PROBE DIRECTION is not: it depends on
+# which way `drapm` points. Since GitHub issue #79, rapm_ratings.rds satisfies
+# total_rapm == orapm + drapm: drapm is a defensive IMPACT measure, so HIGHER drapm
+# = BETTER defense, and the strong-defense probe is `league_avg + 2`. The empirical
+# within-player slope on that regressor is NEGATIVE (-0.259 pts per +1 opponent
+# drapm, |t| = 7.60, p = 3.0e-14, 2024-2026, n = 16,657), and OPP_DEF_MU_SLOPE is
+# shipped negative to match.
+# HISTORICAL: before #79, drapm was points-ALLOWED flavoured (total = orapm - drapm,
+# lower = better), the probes were reversed, and both the measured and shipped slopes
+# were positive. The flip negated the regressor and the slope together, so every
+# number this check prints is unchanged.
+mu_vs_weak   <- adjust_mu_for_opponent(base_mu, league_avg - 2, league_avg)  # weak D (low drapm)
+mu_vs_strong <- adjust_mu_for_opponent(base_mu, league_avg + 2, league_avg)  # strong D (high drapm)
 mu_vs_avg    <- adjust_mu_for_opponent(base_mu, league_avg,     league_avg)
 
-cat(sprintf("  base_mu = %.2f | vs STRONG defense (drapm-2) -> %.4f | vs league-average -> %.4f | vs WEAK defense (drapm+2) -> %.4f\n",
+cat(sprintf("  base_mu = %.2f | vs STRONG defense (drapm+2) -> %.4f | vs league-average -> %.4f | vs WEAK defense (drapm-2) -> %.4f\n",
             base_mu, mu_vs_strong, mu_vs_avg, mu_vs_weak))
 
-ok("CHECK M-4a  facing a BETTER defense (lower drapm) LOWERS mu vs. base_mu",
+ok("CHECK M-4a  facing a BETTER defense (higher drapm) LOWERS mu vs. base_mu",
    mu_vs_strong < base_mu,
    sprintf("%.4f < %.4f (delta %.4f)", mu_vs_strong, base_mu, mu_vs_strong - base_mu))
 
-ok("CHECK M-4b  facing a WEAKER defense (higher drapm) RAISES mu; league-average is a no-op",
+ok("CHECK M-4b  facing a WEAKER defense (lower drapm) RAISES mu; league-average is a no-op",
    mu_vs_weak > base_mu && isTRUE(all.equal(mu_vs_avg, base_mu)),
    sprintf("weak %.4f > base %.4f; average %.4f == base", mu_vs_weak, base_mu, mu_vs_avg))
 
@@ -160,12 +177,20 @@ extreme_hi <- adjust_mu_for_opponent(base_mu, league_avg + 1000, league_avg)
 extreme_lo <- adjust_mu_for_opponent(base_mu, league_avg - 1000, league_avg)
 near_zero  <- adjust_mu_for_opponent(base_mu, 5, 1e-9)
 neg_avg    <- adjust_mu_for_opponent(base_mu, -3, 0)
+# SIGN-INDEPENDENT SINCE #79. These probes must each land ON a clamp bound, but
+# WHICH bound depends on the sign of OPP_DEF_MU_SLOPE: before #79 the +1000 probe
+# hit the cap, after it the floor. Asserting a specific bound per probe made this
+# check fail on a correct, ranking-neutral sign flip. So assert that the two
+# probes hit the two bounds as a SET, which still fails if the clamp stops binding
+# or collapses both probes onto one side. Bounds read from OPP_DEF_MU_CLAMP rather
+# than restated as literals, per the repo's constants rule.
+clamp_bounds <- sort(base_mu * OPP_DEF_MU_CLAMP)
+clamp_hits   <- sort(c(extreme_hi, extreme_lo))
 ok("CHECK M-4d  multiplier is clamped to [0.85, 1.15] and survives a near-zero / zero league_avg_def",
-   isTRUE(all.equal(extreme_hi, base_mu * 1.15)) &&
-     isTRUE(all.equal(extreme_lo, base_mu * 0.85)) &&
+   isTRUE(all.equal(clamp_hits, clamp_bounds)) &&
      is.finite(near_zero) && near_zero > 0 && is.finite(neg_avg) && neg_avg > 0,
-   sprintf("+1000 -> %.3f (cap %.3f), -1000 -> %.3f (floor %.3f), league_avg=1e-9 -> %.3f, league_avg=0 -> %.3f",
-           extreme_hi, base_mu * 1.15, extreme_lo, base_mu * 0.85, near_zero, neg_avg))
+   sprintf("+1000 -> %.3f, -1000 -> %.3f; bounds {%.3f, %.3f}; league_avg=1e-9 -> %.3f, league_avg=0 -> %.3f",
+           extreme_hi, extreme_lo, clamp_bounds[1], clamp_bounds[2], near_zero, neg_avg))
 
 ok("CHECK M-4e  the \"I will follow the prompt's formula exactly\" rationale is deleted",
    !any(grepl("follow the prompt", src, ignore.case = TRUE)),
