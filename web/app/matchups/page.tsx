@@ -1,6 +1,6 @@
 import React from 'react';
 import { Metadata } from 'next';
-import { getMatchupsData } from '@/lib/data';
+import { getMatchupsIndex, getMatchupsWeek } from '@/lib/data';
 import { MatchupsClient } from '@/components/MatchupsClient';
 import { Swords } from 'lucide-react';
 
@@ -11,7 +11,9 @@ export const metadata: Metadata = {
 };
 
 export default function MatchupsPage() {
-  const dataset = getMatchupsData();
+  const dataset = getMatchupsIndex();
+  // Only the opening slate is inlined into the HTML; the rest load on demand.
+  const initialMatchups = getMatchupsWeek(dataset.active_week);
   const accuracyPct =
     dataset.overall_accuracy !== null ? `${(dataset.overall_accuracy * 100).toFixed(1)}%` : '—';
 
@@ -53,7 +55,7 @@ export default function MatchupsPage() {
         </div>
       </div>
 
-      <MatchupsClient dataset={dataset} />
+      <MatchupsClient index={dataset} initialMatchups={initialMatchups} />
     </div>
   );
 }

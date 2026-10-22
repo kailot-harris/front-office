@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { MatchupsDataset, SlateStatus } from '@/lib/matchupTypes';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Matchup, MatchupsIndex, SlateStatus } from '@/lib/matchupTypes';
 import { MatchupCard } from '@/components/MatchupCard';
 import { TeamLogo } from '@/components/TeamLogo';
+import { BASE_PATH } from '@/lib/basePath';
 import {
   Calendar,
   Search,
@@ -14,11 +15,18 @@ import {
   Clock,
   Radio,
   Target,
+  Loader2,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface MatchupsClientProps {
-  dataset: MatchupsDataset;
+  index: MatchupsIndex;
+  /** Rows for index.active_week, inlined by the server component. */
+  initialMatchups: Matchup[];
 }
+
+const weekUrl = (week: number): string =>
+  `${BASE_PATH}/data/matchups/week-${String(week).padStart(2, '0')}.json`;
 
 const STATUS_COPY: Record<SlateStatus, string> = {
   past: 'Completed slate — graded against the pre-game model',
@@ -28,20 +36,58 @@ const STATUS_COPY: Record<SlateStatus, string> = {
 
 const pct = (p: number): string => `${(p * 100).toFixed(1)}%`;
 
-export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
-  const [selectedWeek, setSelectedWeek] = useState<number>(dataset.active_week);
+export const MatchupsClient: React.FC<MatchupsClientProps> = ({ index, initialMatchups }) => {
+  const [selectedWeek, setSelectedWeek] = useState<number>(index.active_week);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
+  // Slates fetched so far, keyed by week. Seeded with the one the server
+  // inlined, so the opening view needs no request.
+  const [slates, setSlates] = useState<Record<number, Matchup[]>>({
+    [index.active_week]: initialMatchups,
+  });
+  const [loadError, setLoadError] = useState<number | null>(null);
+  // Weeks with a request in flight, so a double-click doesn't fire two fetches.
+  const inFlight = useRef<Set<number>>(new Set());
+
+  const loaded = slates[selectedWeek];
+  const isLoading = loaded === undefined && loadError !== selectedWeek;
+
+  useEffect(() => {
+    if (slates[selectedWeek] !== undefined) return;
+    if (inFlight.current.has(selectedWeek)) return;
+
+    const week = selectedWeek;
+    const controller = new AbortController();
+    inFlight.current.add(week);
+    setLoadError((prev) => (prev === week ? null : prev));
+
+    fetch(weekUrl(week), { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<Matchup[]>;
+      })
+      .then((rows) => {
+        setSlates((prev) => ({ ...prev, [week]: rows }));
+      })
+      .catch((err: unknown) => {
+        // An abort is this effect being cleaned up, not a failed load.
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        setLoadError(week);
+      })
+      .finally(() => {
+        inFlight.current.delete(week);
+      });
+
+    return () => controller.abort();
+  }, [selectedWeek, slates]);
+
   const selectedSlate = useMemo(
-    () => dataset.available_weeks.find((w) => w.week === selectedWeek) ?? null,
-    [dataset.available_weeks, selectedWeek]
+    () => index.available_weeks.find((w) => w.week === selectedWeek) ?? null,
+    [index.available_weeks, selectedWeek]
   );
 
-  const weekMatchups = useMemo(
-    () => dataset.matchups.filter((m) => m.week === selectedWeek),
-    [dataset.matchups, selectedWeek]
-  );
+  const weekMatchups = useMemo(() => loaded ?? [], [loaded]);
 
   const filteredMatchups = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -56,20 +102,23 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
   }, [weekMatchups, searchQuery]);
 
   // Per-slate model record, over the games carrying a gradeable pre-game pick.
+  // Taken from the index rather than counted off the rows, so it is right
+  // before the slate arrives and doesn't flicker while one is loading.
   const gradedStats = useMemo(() => {
-    const graded = weekMatchups.filter((m) => m.prediction_correct !== null);
-    if (graded.length === 0) return null;
-    const correct = graded.filter((m) => m.prediction_correct === true).length;
+    if (!selectedSlate || selectedSlate.graded_count === 0) return null;
+    const { graded_count: total, correct_count: correct } = selectedSlate;
     return {
-      total: graded.length,
+      total,
       correct,
-      accuracy: ((correct / graded.length) * 100).toFixed(1),
+      accuracy: ((correct / total) * 100).toFixed(1),
     };
-  }, [weekMatchups]);
+  }, [selectedSlate]);
 
+  // Before the rows arrive the slate's own game count is the honest answer:
+  // an ungraded slate is one where nothing has been played and graded yet.
   const pendingCount = useMemo(
-    () => weekMatchups.filter((m) => !m.is_completed).length,
-    [weekMatchups]
+    () => (loaded ? loaded.filter((m) => !m.is_completed).length : (selectedSlate?.game_count ?? 0)),
+    [loaded, selectedSlate]
   );
 
   const biggestMismatch = useMemo(() => {
@@ -89,12 +138,12 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
           <Calendar className="w-4 h-4 text-accent-400" />
           <span className="text-xs font-mono font-bold uppercase text-slate-300">Select Slate</span>
           <span className="text-[11px] font-mono text-slate-500">
-            {dataset.available_weeks.length} weeks · {dataset.total_games} games
+            {index.available_weeks.length} weeks · {index.total_games} games
           </span>
         </div>
 
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-          {dataset.available_weeks.map((wk) => {
+          {index.available_weeks.map((wk) => {
             const isSelected = selectedWeek === wk.week;
             return (
               <button
@@ -261,7 +310,30 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
         </div>
       </div>
 
-      {filteredMatchups.length === 0 && (
+      {isLoading && (
+        <div className="bg-surface-raised/70 border border-slate-800 rounded-xl p-8 flex items-center justify-center gap-2.5 text-sm text-slate-400 font-mono">
+          <Loader2 className="w-4 h-4 animate-spin text-accent-400" />
+          <span>Loading week {selectedWeek}…</span>
+        </div>
+      )}
+
+      {loadError === selectedWeek && (
+        <div className="bg-surface-raised/70 border border-amber-500/30 rounded-xl p-8 text-center space-y-3">
+          <div className="flex items-center justify-center gap-2.5 text-sm text-amber-400 font-mono">
+            <AlertTriangle className="w-4 h-4" />
+            <span>Could not load week {selectedWeek}.</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLoadError(null)}
+            className="cursor-pointer text-xs font-mono font-semibold px-3 py-1.5 rounded-lg bg-surface border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {!isLoading && loadError !== selectedWeek && filteredMatchups.length === 0 && (
         <div className="bg-surface-raised/70 border border-slate-800 rounded-xl p-8 text-center text-sm text-slate-400 font-mono">
           No games match this filter for week {selectedWeek}.
         </div>

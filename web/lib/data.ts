@@ -55,10 +55,10 @@ export function getPlayerSpatialMaps(): PlayerSpatialDictionary {
 
 import { PlayoffMatchupsCatalog } from './playoffTypes';
 import { PlayerDnaCatalog } from './playerDnaTypes';
-import { MatchupsDataset } from './matchupTypes';
+import { Matchup, MatchupsIndex } from './matchupTypes';
 
-export function getMatchupsData(): MatchupsDataset {
-  const filePath = path.join(process.cwd(), 'public', 'data', 'matchups_slates.json');
+export function getMatchupsIndex(): MatchupsIndex {
+  const filePath = path.join(process.cwd(), 'public', 'data', 'matchups_index.json');
   if (!fs.existsSync(filePath)) {
     return {
       season: new Date().getFullYear(),
@@ -70,11 +70,23 @@ export function getMatchupsData(): MatchupsDataset {
       correct_picks: 0,
       overall_accuracy: null,
       available_weeks: [],
-      matchups: [],
     };
   }
   const fileContent = fs.readFileSync(filePath, 'utf-8');
-  return JSON.parse(fileContent) as MatchupsDataset;
+  return JSON.parse(fileContent) as MatchupsIndex;
+}
+
+/**
+ * One slate's matchup rows, read at build time. Only called for the slate the
+ * page opens on — every other week is fetched client-side from the same files
+ * under public/, which is the whole point of splitting them up.
+ */
+export function getMatchupsWeek(week: number): Matchup[] {
+  const fileName = `week-${String(week).padStart(2, '0')}.json`;
+  const filePath = path.join(process.cwd(), 'public', 'data', 'matchups', fileName);
+  if (!fs.existsSync(filePath)) return [];
+  const fileContent = fs.readFileSync(filePath, 'utf-8');
+  return JSON.parse(fileContent) as Matchup[];
 }
 
 export function getPlayoffSeriesCatalog(): PlayoffMatchupsCatalog {

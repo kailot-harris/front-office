@@ -261,3 +261,46 @@ test_that("the dataset exposes the documented top-level shape", {
   expect_type(d$matchups$is_completed, "logical")
   expect_type(d$matchups$prediction_correct, "logical")
 })
+
+test_that("the export splits into an index plus one file per slate", {
+  d <- build_fixture_dataset()
+  out_dir <- file.path(tempdir(), "matchup-split-test")
+  unlink(out_dir, recursive = TRUE)
+  dir.create(out_dir, recursive = TRUE)
+  on.exit(unlink(out_dir, recursive = TRUE), add = TRUE)
+
+  # A combined file from an earlier export must not survive the split.
+  legacy <- file.path(out_dir, "matchups_slates.json")
+  writeLines("{}", legacy)
+
+  written <- write_matchup_slate_files(d, out_dir)
+
+  expect_false(file.exists(legacy))
+  expect_equal(basename(written[1]), "matchups_index.json")
+  expect_equal(length(written) - 1L, nrow(d$available_weeks))
+
+  # The index carries the summaries and none of the rows: that is the whole
+  # point, since everything in it is serialized into the page's static HTML.
+  idx <- jsonlite::read_json(written[1])
+  expect_false("matchups" %in% names(idx))
+  expect_equal(idx$total_games, nrow(d$matchups))
+  expect_equal(length(idx$available_weeks), nrow(d$available_weeks))
+
+  # Zero-padded names, because MatchupsClient builds the URL the same way.
+  week_files <- written[-1]
+  expect_equal(
+    basename(week_files),
+    sprintf("week-%02d.json", d$available_weeks$week)
+  )
+
+  # Every game appears in exactly one slate file, and nowhere twice.
+  rows <- unlist(lapply(week_files, jsonlite::read_json), recursive = FALSE)
+  expect_equal(length(rows), nrow(d$matchups))
+  pks <- vapply(rows, function(m) as.integer(m$game_pk), integer(1))
+  expect_setequal(pks, d$matchups$game_pk)
+  expect_false(any(duplicated(pks)))
+
+  # Each file holds only its own week.
+  wk1 <- jsonlite::read_json(file.path(out_dir, "matchups", "week-01.json"))
+  expect_true(all(vapply(wk1, function(m) m$week, numeric(1)) == 1))
+})
