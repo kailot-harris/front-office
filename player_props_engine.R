@@ -234,32 +234,48 @@ get_team_def_rapm <- function(active_rosters) {
 #   regressor is the opponent's possession-weighted team drapm, centred on the league
 #   team mean.
 #
-#     absolute scale   : -0.2591 pts per +1 drapm  (SE 0.0341, |t| = 7.60, p = 3.0e-14)
-#     + minutes control: -0.2586  (so it is not a playing-time artifact)
-#     / mean points 8.768                        -> -0.0296 fractional per unit
-#     direct within-player FRACTIONAL regression : -0.0256 per unit
-#                                                  (SE 0.0049, |t| = 5.24, p = 1.7e-07)
-#     season-2026-only absolute slope            : -0.2598 (|t| = 5.00) -- same sign
+#   RE-DERIVED 2026-10-22 against the current caches (issues #79/#81). Reproduce with
+#   tools/rederive_m4_slope.R, which prints all five figures below plus a
+#   significance-gated verdict:
+#
+#     absolute scale   : -0.4159 pts per +1 drapm  (SE 0.0508, |t| = 8.19, p = 2.9e-16)
+#     + minutes control: -0.4536  (SE 0.0471, |t| = 9.63, p = 7.1e-22)
+#                                 (so it is not a playing-time artifact)
+#     / mean points 8.768                        -> -0.0474 fractional per unit
+#     direct within-player FRACTIONAL regression : -0.0409 per unit
+#                                                  (SE 0.0077, |t| = 5.32, p = 1.0e-07)
+#     season-2026-only absolute slope            : -0.3676 (|t| = 4.97, p = 6.8e-07,
+#                                                  n = 5,910) -- same sign
 #
 #   Team-level corroboration (2026, points allowed per game vs. def_rapm):
-#     slope -2.26 pts allowed per +1 def_rapm, r = -0.675.
+#     slope -3.13 pts allowed per +1 def_rapm, r = -0.652 (n = 15 teams).
 #
 #   NEGATIVE because `drapm` is a defensive IMPACT measure (issue #79: higher =
 #   better defender), so facing a higher-drapm opponent SUPPRESSES a player's output.
-#   The magnitudes are properties of the data and did not change at the #79 flip;
-#   the signs did. Before #79 the same regressions on the un-negated (points-allowed)
-#   `drapm` returned exactly these numbers with the opposite sign (+0.2591, +0.0256,
-#   +2.26, r = +0.675), which is what the finding was originally written up as. Since
-#   both the regressor and the shipped slope flipped together, every multiplier
-#   adjust_mu_for_opponent() produces is bit-identical across the change.
+#   The signs flipped at #79; the magnitudes did not flip with them — they GREW.
 #
-#   We take the direct fractional estimate, -0.0256, since it is the estimand that
+#   SUPERSEDED FIGURES, kept so the change is auditable: the original derivation
+#   recorded -0.2591 absolute / -0.0296 via mean points / -0.0256 direct fractional /
+#   -0.2598 for 2026 alone / -2.26 and r = -0.675 at team level (written up with the
+#   opposite signs, pre-#79). Re-measurement puts the same estimators 1.6x-1.75x
+#   higher. That drift is NOT an artifact of #79's flip or #81's refit: running the
+#   identical regression against the pre-#79, pre-centring cache also returned
+#   |0.4160|, so the gap is accumulated 2026 data since the original measurement, not
+#   a convention or cache effect. Both the old and new estimates are the same sign at
+#   p < 1e-6; only the size moved.
+#
+#   We take the direct fractional estimate, -0.0409, since it is the estimand that
 #   matches the multiplicative form actually used. The absolute-scale estimate
-#   (-0.0296) is the corroborating upper bound; both are the same sign at p < 1e-6.
-OPP_DEF_MU_SLOPE  <- -0.0256
-# Clamp bounds: +/-15%. The unclamped estimate spans 0.93x (Golden State) to 1.07x
-# (Dallas) across the 15 real 2026 team aggregates, so the clamp is not binding on
-# real data — it exists purely so that a future degenerate RAPM cache cannot swing a
+#   (-0.0474) is the corroborating upper bound; both are the same sign at p < 1e-6.
+#   Adopting -0.0409 over -0.0256 moves a projection by at most 2.64% on a single
+#   team (Toronto Tempo, the league's weakest defence) and leaves the clamp binding
+#   for 0 of 15 teams, so no projection is clamp-limited by the change.
+OPP_DEF_MU_SLOPE  <- -0.0409
+# Clamp bounds: +/-15%. Re-measured 2026-10-22 under the -0.0409 slope and the
+# post-#81 cache: the unclamped estimate spans 0.95x (Washington Mystics, the
+# strongest defense) to 1.07x (Toronto Tempo, the weakest) across the 15 real 2026
+# team aggregates, so the clamp still does not bind on real data for any team
+# — it exists purely so that a future degenerate RAPM cache cannot swing a
 # projection arbitrarily (the OLD formula's raw ratio spanned roughly 0x to 2.2x and
 # would have flipped a projection's sign outright on a negative team aggregate).
 OPP_DEF_MU_CLAMP  <- c(0.85, 1.15)

@@ -111,6 +111,28 @@ a3 <- report("direct fractional (the shipped form)",
 cat(sprintf("\nabsolute / mean points -> fractional  : %+0.4f  (corroborating estimate)\n",
             a1["slope"] / mean(d$points, na.rm = TRUE)))
 
+# Season-2026-only absolute slope: the write-up cites this as a same-sign check.
+d26 <- d %>% filter(season == 2026) %>%
+  group_by(athlete_id) %>% filter(n() >= 5) %>%
+  mutate(resid = points - mean(points, na.rm = TRUE)) %>% ungroup()
+f26 <- summary(lm(resid ~ opp_c, data = d26))$coefficients
+cat(sprintf("season-2026-only absolute slope       : %+0.4f  (|t| = %0.2f, p = %.3g, n = %d)\n",
+            f26["opp_c", 1], abs(f26["opp_c", 3]), f26["opp_c", 4], nrow(d26)))
+
+# Team-level corroboration: points ALLOWED per game vs the team's def_rapm.
+allowed <- pb %>%
+  filter(season == 2026, !is.na(opponent_team_score)) %>%
+  mutate(opp_abbr = if_else(opponent_team_abbreviation == "CONN", "CON",
+                            opponent_team_abbreviation)) %>%
+  distinct(game_id, team_abbreviation, opp_abbr, team_score, opponent_team_score) %>%
+  group_by(abbr = opp_abbr) %>%
+  summarise(pts_allowed = mean(team_score, na.rm = TRUE), .groups = "drop") %>%
+  inner_join(td %>% select(abbr, def_rapm), by = "abbr")
+ft <- summary(lm(pts_allowed ~ def_rapm, data = allowed))$coefficients
+rr <- cor(allowed$pts_allowed, allowed$def_rapm, use = "complete.obs")
+cat(sprintf("team-level (2026): %+0.2f pts allowed per +1 def_rapm, r = %+0.3f (n = %d teams)\n",
+            ft["def_rapm", 1], rr, nrow(allowed)))
+
 cat("\n=== verdict ===\n")
 shipped <- OPP_DEF_MU_SLOPE
 measured <- a3["slope"]; pv <- a3["p"]
