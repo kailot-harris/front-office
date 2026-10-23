@@ -24,8 +24,18 @@
 # R: C:\Program Files\R\R-4.5.2\bin\Rscript.exe tools/test_pure_functions.R
 # ==============================================================================
 
-PROJECT_DIR <- "C:/Users/kailo/kayceeslices/WNBA Analytics"
-setwd(PROJECT_DIR)
+local({
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- sub("^--file=", "", args[grepl("^--file=", args)])
+  root <- if (length(file_arg)) {
+    dirname(dirname(normalizePath(file_arg[1], winslash = "/", mustWork = FALSE)))
+  } else if (file.exists("config.R")) {
+    getwd()
+  } else {
+    "C:/Users/kailo/kayceeslices/front-office/WNBA Analytics"
+  }
+  if (dir.exists(root)) setwd(root)
+})
 
 suppressPackageStartupMessages(library(dplyr))
 source("config.R")
