@@ -279,9 +279,31 @@ RAPM_TUNE_LAMBDA <- isTRUE(as.logical(Sys.getenv("RAPM_TUNE_LAMBDA", "FALSE")))
 RAPM_MIN_DATA_SHARE <- 1 / 3
 
 # Leaderboard rank-eligibility cut (rapm_engine.R::fit_rapm_ratings() ->
-# `leaderboard_eligible`, and summary_app.R's Tab 6 "Minimum possessions" UI default, which
-# reads THIS constant so the two can never drift apart again -- the duplication issue #82
-# exists to kill).
+# `leaderboard_eligible`).
+#
+# RETIRED CONSUMER (2026-10-23): the second constant below,
+# RAPM_MIN_POSS_PER_SIDE_DEFAULT, existed because the WNBA summary app's Tab 6 "Minimum
+# possessions" UI default read THIS constant rather than restating the number, so the two
+# could never drift apart again -- the duplication issue #82 exists to kill. That Tab 6 UI,
+# and the whole app it belonged to, has now retired to a sibling repository
+# (`kailot-harris/DATA-607-Agentic_Coding-WNBA-Summary`); this repo's stale fork of that app
+# has been deleted. So RAPM_MIN_POSS_PER_SIDE_DEFAULT currently has no caller in this repo.
+#
+# Precisely who still reads it, verified 2026-10-23 -- the two are NOT the same thing:
+#   - The frozen retirement snapshot at C:/Users/kailo/kayceeslices/_retired/
+#     wnba_summary_app_upstream/ DOES read this constant; its app.R lifts it out of a
+#     private config_env. That snapshot carries its own frozen copy of this file, though,
+#     so editing the value here does not reach it.
+#   - The live sibling repo (`kailot-harris/DATA-607-Agentic_Coding-WNBA-Summary`) does
+#     NOT read it. It never adopted #82; its app.R:446 defines its own local
+#     `RAPM_MIN_POSSESSIONS_DEFAULT <- 2500`, a COMBINED two-sided cut -- the pre-#71
+#     semantics this repo deliberately replaced, since a combined cut lets a one-sided
+#     garbage-time row through. If that app is ever folded back in, this is the number to
+#     reconcile, and 2500-combined is the stale side of the disagreement, not this one.
+#
+# KEEP IT ANYWAY: it records the real empirical derivation below (1,000 per side leaves
+# 242 of 430 rows eligible), and it was centralized by issue #82 deliberately. Deleting it
+# would re-open the duplication that #82 closed the moment any UI default comes back.
 #
 # Eligibility is a SEPARATE mechanism from the honesty flag above (issue #71, fix A).
 # `low_sample_flag` answers "how much of this one number is prior?"; eligibility answers

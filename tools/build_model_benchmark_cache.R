@@ -1,6 +1,16 @@
 # build_model_benchmark_cache.R
 # ------------------------------------------------------------------------------------------
-# SA-4 (GitHub issue #58) - one-off cache builder for summary_app.R's "Model Comparison" tab.
+# SA-4 (GitHub issue #58) - one-off cache builder for the summary app's "Model Comparison" tab.
+#
+# ORPHANED PRODUCER (declared 2026-10-23): its only consumer has retired. The summary app that
+# read this script's output now lives in a separate repository
+# (`kailot-harris/DATA-607-Agentic_Coding-WNBA-Summary`), and that app's stale fork in THIS
+# repo has been deleted. So `data/model_benchmark_results.csv` is currently produced here and
+# consumed by nothing in this repo. This is expected, not a bug -- the orphaned-cache-audit
+# skill will
+# flag the artifact and this note is the answer. The producer is kept deliberately: it is the
+# only thing that regenerates the benchmark table, and re-deriving it from
+# WNBA_Analysis_Project.Rmd's chunk would be the duplication issue #58 removed.
 # NOT added to run_full_pipeline.R's DAG (matches tools/ convention: setwd() to the absolute
 # project root, then source() siblings by bare filename, so it runs correctly regardless of
 # invocation directory - see CLAUDE.md's "Folder layout" section).
