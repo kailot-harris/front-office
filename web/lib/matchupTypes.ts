@@ -38,12 +38,20 @@
  *    prediction_accuracy_logger.R and graded there afterwards. This is the only
  *    basis that is ever graded. Covers a few dozen games, since the logger runs
  *    only a few days ahead. A logged projection is never overwritten.
- *  - TEAM RATING DIFFERENTIAL ('team_rating_differential') — the simpler
- *    model, filling every game the log has not predicted. Verbatim the
- *    computation prediction_accuracy_logger.R:142-172 already uses:
- *    (home Net_Rating − away Net_Rating) + 2.40 home-court points, turned into
- *    a win probability by pnorm(margin / MARGIN_SIGMA). No rest, travel or
- *    injury adjustment, and nothing simulated.
+ *  - PRIMARY ENSEMBLE ('primary_ensemble') — the simpler model, filling every
+ *    game the log has not predicted. The 4-model blend's net ratings
+ *    (0.35 BPM / 0.25 RAPM / 0.20 shot quality + fatigue / 0.20 embeddings)
+ *    differenced, plus 2.40 home-court points, plus the two sides' schedule
+ *    drag from fatigue_travel_engine.R (rest, back-to-backs, travel, circadian
+ *    shift, altitude), turned into a win probability by pnorm(margin / sigma).
+ *    Sigma is per game: MARGIN_SIGMA widened in quadrature by how far apart the
+ *    four models put each team, so an uncertain matchup prices nearer a coin
+ *    flip. Nothing simulated per game, and no injury adjustment.
+ *  - TEAM RATING DIFFERENTIAL ('team_rating_differential') — RETIRED. The
+ *    single-model predecessor of the above, a bare Net_Rating differential
+ *    plus home court. build_matchups_dataset.R stops rather than emit it, so no
+ *    current dataset carries it; the value stays in the union only so an
+ *    archived dataset still parses and still labels its own games honestly.
  *
  * A game with neither has `has_projection: false` and null in every projection
  * field, never a placeholder number.
@@ -52,7 +60,8 @@
 /**
  * Which model produced a game's projection. The first two values are the same
  * logged model (the second just derives the margin from its probability); the
- * third is the separate, simpler ratings computation.
+ * third is the separate, simpler ensemble computation. The fourth is retired
+ * and appears only in archived datasets.
  */
 export type ProjectionBasis =
   | 'logged_model_margin'
@@ -102,7 +111,11 @@ export interface MatchupSlate {
   games_total: number;
   /** Games in the slate projected by the logged model (either logged basis). */
   logged_projection_total: number;
-  /** Games in the slate projected from team rating differential or ensemble. */
+  /**
+   * Games in the slate projected from the ratings side rather than the logged
+   * model. Equal to ensemble_projection_total now that the differential is
+   * retired; kept as the umbrella count for archived datasets.
+   */
   ratings_projection_total: number;
   /** Games in the slate projected from primary 4-model ensemble. */
   ensemble_projection_total?: number;
@@ -136,7 +149,12 @@ export interface MatchupsDataset {
   games_without_projection: number;
   /** Games projected by the logged model — counted separately, never summed. */
   games_logged_basis: number;
-  /** Games projected from team rating differential or ensemble. */
+  /**
+   * Season-wide count of ratings-side projections. Equal to
+   * games_ensemble_basis now that the differential is retired; kept as the
+   * umbrella count for archived datasets. Prefer games_ensemble_basis when
+   * naming the model in UI copy.
+   */
   games_ratings_basis: number;
   /** Games projected from primary 4-model ensemble. */
   games_ensemble_basis?: number;

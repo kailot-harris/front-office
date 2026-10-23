@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { MatchupsDataset } from '@/lib/matchupTypes';
+import { MatchupsDataset, ProjectionBasis } from '@/lib/matchupTypes';
 import { MatchupCard } from '@/components/MatchupCard';
 import { TeamLogo } from '@/components/TeamLogo';
 import { exportToCsv } from '@/lib/exportToCsv';
@@ -85,21 +85,31 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
    *
    * The dataset carries projections from two different models (see
    * lib/matchupTypes.ts DESIGN DECISION 2): the logged slate model and the
-   * simpler team-rating differential. Their margins are not on a common scale,
-   * so sorting them together would make this card imply a relationship between
+   * primary 4-model ensemble. Their margins are not on a common scale, so
+   * sorting them together would make this card imply a relationship between
    * numbers computed from unrelated inputs — the defect NBA issue #14 is open
    * against. The logged model is preferred when the week has any logged game;
-   * otherwise the ratings basis is used, and the card names whichever it ranked.
+   * otherwise the ensemble basis is used, and the card names whichever it ranked.
+   *
+   * The partition is on the LOGGED bases, not on the retired
+   * 'team_rating_differential'. Testing for that retired value made the
+   * "non-ratings" pool everything-except-differential, which since the
+   * ensemble replaced the differential means logged and ensemble games pooled
+   * together — exactly the cross-basis ranking this card exists to prevent.
    */
   const biggestSpread = useMemo(() => {
-    const byBasis = (ratings: boolean) =>
+    const LOGGED_BASES: ProjectionBasis[] = [
+      'logged_model_margin',
+      'margin_from_logged_win_prob',
+    ];
+    const byBasis = (wantLogged: boolean) =>
       slateGames.filter(
         (m) =>
           m.predicted_margin !== null &&
-          (m.projection_basis === 'team_rating_differential') === ratings,
+          LOGGED_BASES.includes(m.projection_basis as ProjectionBasis) === wantLogged,
       );
-    const logged = byBasis(false);
-    const pool = logged.length > 0 ? logged : byBasis(true);
+    const logged = byBasis(true);
+    const pool = logged.length > 0 ? logged : byBasis(false);
     if (pool.length === 0) return null;
     const top = [...pool].sort(
       (a, b) => Math.abs(b.predicted_margin!) - Math.abs(a.predicted_margin!),
