@@ -45,6 +45,11 @@ get_cache_file <- function(filename) {
 MARGIN_SIGMA  <- if (exists("MARGIN_SIGMA")) MARGIN_SIGMA else 11.8
 HCA_PTS       <- 2.40
 N_SIMS        <- 1000
+# Both Monte Carlo blocks (team ensemble and per-player season) are seeded from this
+# single constant so the stage is reproducible: unchanged inputs must yield identical
+# published projections, otherwise every run churns the committed JSON and leaves
+# downstream datasets referencing a stale draw.
+SIM_SEED      <- 424242
 CURR_SEASON   <- if (exists("CURRENT_SEASON")) CURRENT_SEASON else 2026
 
 cat("\n==================================================================\n")
@@ -474,6 +479,7 @@ simulate_variant <- function(ratings, n_sims = 1000) {
   )
 }
 
+set.seed(SIM_SEED)
 sim_bottom_up   <- simulate_variant(rating_bu, n_sims = N_SIMS)
 sim_rapm        <- simulate_variant(rating_rapm, n_sims = N_SIMS)
 sim_shot_fatigue <- simulate_variant(rating_sf, n_sims = N_SIMS)
@@ -488,6 +494,34 @@ ens_w_bu  <- 0.35
 ens_w_rap <- 0.25
 ens_w_sf  <- 0.20
 ens_w_emb <- 0.20
+
+rating_ensemble_raw <-
+  ens_w_bu * rating_bu +
+  ens_w_rap * rating_rapm +
+  ens_w_sf * rating_sf +
+  ens_w_emb * rating_emb
+rating_ensemble <- round(rating_ensemble_raw, 2)
+
+# RATING-SCALE DISAGREEMENT. How far apart the four models put this team, as a
+# weight-respecting SD around the blend, in the same net-rating points the
+# margin is expressed in. This is NOT the win-total SD (`ensemble_sd_wins`),
+# which is the spread of simulated 82-game outcomes; this is the spread of the
+# four *inputs*, so a team the models agree on gets a narrow number and one they
+# argue over gets a wide one. build_matchups_dataset.R adds the two sides'
+# values in quadrature to MARGIN_SIGMA, widening a game's win probability
+# toward 0.5 exactly where the ensemble is least sure of the teams in it.
+# Weights sum to 1, so this is the weighted variance around the weighted mean.
+rating_variant_mat <- cbind(rating_bu, rating_rapm, rating_sf, rating_emb)
+rating_disagreement_sd <- round(sqrt(as.numeric(
+  ((rating_variant_mat - rating_ensemble_raw)^2) %*%
+    c(ens_w_bu, ens_w_rap, ens_w_sf, ens_w_emb)
+)), 2)
+cat(sprintf(paste0(
+  "      Rating-scale disagreement SD: mean %.2f, range %.2f .. %.2f pts ",
+  "(widest: %s)\n"),
+  mean(rating_disagreement_sd), min(rating_disagreement_sd),
+  max(rating_disagreement_sd),
+  NBA_TEAMS$team[which.max(rating_disagreement_sd)]))
 
 ensemble_wins_matrix <- (ens_w_bu * sim_bottom_up$wins_matrix +
                          ens_w_rap * sim_rapm$wins_matrix +
@@ -649,7 +683,7 @@ if (!is.null(active_rosters_df)) {
 n_players <- nrow(player_base)
 
 # Stochastic simulation for each player across 1,000 seasons
-set.seed(42)
+set.seed(SIM_SEED)
 sim_games_mat <- matrix(0L, nrow = n_players, ncol = N_SIMS)
 sim_pts_mat   <- matrix(0.0, nrow = n_players, ncol = N_SIMS)
 sim_reb_mat   <- matrix(0.0, nrow = n_players, ncol = N_SIMS)
@@ -690,6 +724,14 @@ for (p in 1:n_players) {
 }
 
 # Aggregate player distributions
+# Unrounded simulation means, taken once so the published per-game rates and
+# season totals below are derived from the SAME numbers rather than computed
+# independently and reconciled afterwards.
+mean_games     <- rowMeans(sim_games_mat)
+mean_pts_total <- rowMeans(sim_pts_mat)
+mean_reb_total <- rowMeans(sim_reb_mat)
+mean_ast_total <- rowMeans(sim_ast_mat)
+
 player_projections <- tibble(
   player_id       = player_base$player_id,
   player_name     = player_base$player_name,
@@ -697,19 +739,32 @@ player_projections <- tibble(
   position        = player_base$position,
   
   # Projected games & minutes
-  proj_games      = round(rowMeans(sim_games_mat), 1),
+  proj_games      = round(mean_games, 1),
   proj_mpg        = round(rowMeans(sim_mpg_mat), 1),
   proj_min_total  = round(rowMeans(sim_games_mat * sim_mpg_mat), 1),
   
-  # Projected per-game stats
-  proj_pts        = round(rowMeans(sim_pts_mat / sim_games_mat), 1),
-  proj_reb        = round(rowMeans(sim_reb_mat / sim_games_mat), 1),
-  proj_ast        = round(rowMeans(sim_ast_mat / sim_games_mat), 1),
-  
-  # Projected season totals
-  proj_pts_total  = round(rowMeans(sim_pts_mat), 1),
-  proj_reb_total  = round(rowMeans(sim_reb_mat), 1),
-  proj_ast_total  = round(rowMeans(sim_ast_mat), 1),
+  # Projected per-game stats.
+  #
+  # These are the SEASON RATE, mean(total) / mean(games), not the mean of each
+  # simulation's own per-game ratio. The two are different statistics: a player
+  # whose minutes and availability are correlated across simulations has
+  # E[pts/games] != E[pts]/E[games] (Jensen), and the published totals below are
+  # E[pts]. Publishing the mean-of-ratios here left season totals that did not
+  # reconcile with per_game * games by up to 5.3 points - a real inconsistency
+  # between two numbers on the same row of the same page, not a rounding
+  # artifact. The rate is also what a "per game" figure on a season projection
+  # means: total production divided by games played.
+  proj_pts        = round(mean_pts_total / mean_games, 1),
+  proj_reb        = round(mean_reb_total / mean_games, 1),
+  proj_ast        = round(mean_ast_total / mean_games, 1),
+
+  # Projected season totals, straight off the unrounded simulation. These are
+  # the source of truth; the per-game rates above are derived from them, so the
+  # identity total == per_game * games now holds exactly before publishing and
+  # the only residual is the 1-decimal rounding of the three published figures.
+  proj_pts_total  = round(mean_pts_total, 1),
+  proj_reb_total  = round(mean_reb_total, 1),
+  proj_ast_total  = round(mean_ast_total, 1),
   
   # Quantile distributions: Points
   pts_p10         = round(apply(sim_pts_mat / sim_games_mat, 1, quantile, 0.10), 1),
@@ -845,6 +900,7 @@ metadata_obj <- list(
 # no manual copy step (issue #18).
 out_teams_rds    <- file.path(CACHE_DIR, "projections_season_teams.rds")
 out_players_rds  <- file.path(CACHE_DIR, "projections_season_players.rds")
+out_ensemble_ratings_rds <- file.path(CACHE_DIR, "ensemble_team_ratings.rds")
 out_teams_json   <- file.path(CACHE_DIR, "projections_season_teams.json")
 out_players_json <- file.path(CACHE_DIR, "projections_season_players.json")
 out_meta_json    <- file.path(CACHE_DIR, "projections_models_metadata.json")
@@ -856,8 +912,27 @@ web_meta_json    <- file.path(WEB_DATA_DIR, "projections_models_metadata.json")
 # Write RDS
 saveRDS(team_projections, out_teams_rds)
 saveRDS(player_projections, out_players_rds)
+ensemble_ratings_df <- tibble::tibble(
+  team = NBA_TEAMS$team,
+  team_name = NBA_TEAMS$team_name,
+  ensemble_net_rating = rating_ensemble,
+  rating_bottom_up = rating_bu,
+  rating_rapm = rating_rapm,
+  rating_shot_fatigue = rating_sf,
+  rating_embeddings = rating_emb,
+  proj_wins = ensemble_mean_wins,
+  # Spread of simulated 82-game win totals. Reported, not consumed per game:
+  # it is on the wins scale, not the margin scale.
+  proj_wins_sd = ensemble_sd_wins,
+  # Spread of the four model ratings around the blend, in net-rating points -
+  # the margin-scale uncertainty build_matchups_dataset.R folds into a game's
+  # sigma so the blend's own disagreement reaches the published win probability.
+  rating_disagreement_sd = rating_disagreement_sd
+)
+saveRDS(ensemble_ratings_df, out_ensemble_ratings_rds)
 cat(sprintf("      Saved: %s (%d rows)\n", out_teams_rds, nrow(team_projections)))
 cat(sprintf("      Saved: %s (%d rows)\n", out_players_rds, nrow(player_projections)))
+cat(sprintf("      Saved: %s (%d teams)\n", out_ensemble_ratings_rds, nrow(ensemble_ratings_df)))
 
 # Write cache JSON (pretty, auto_unbox for clean API ingestion) and publish the
 # exact same payloads to the web data directory.

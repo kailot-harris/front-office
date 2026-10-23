@@ -40,7 +40,11 @@ test.describe('A11y Landmarks & Image Assets', () => {
       }
     });
 
-    await page.goto('/standings', { waitUntil: 'networkidle' });
+    // /matchups, not /standings: there is no /standings page in the export, so
+    // this test used to assert on a 404 page that carries no logos at all and
+    // could therefore never have failed. /matchups renders both team logos from
+    // the ESPN CDN and the /shots/ assets this check is about.
+    await page.goto('/matchups', { waitUntil: 'networkidle' });
     expect(failedUrls).toEqual([]);
   });
 });

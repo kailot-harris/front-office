@@ -27,6 +27,7 @@ import type {
 } from '@/lib/offseasonTypes';
 import type { PlayoffMatchupsCatalog } from '@/lib/playoffTypes';
 import type { PlayerCatalogEntry, PlayerShotData, ShotsMetadata } from '@/lib/shotTypes';
+import type { MatchupsDataset } from '@/lib/matchupTypes';
 
 export const WEB_ROOT = path.resolve(__dirname, '../..');
 export const PUBLIC_DIR = path.join(WEB_ROOT, 'public');
@@ -145,5 +146,6 @@ export function loadAllDatasets() {
     playoffSeries: readJsonFile<PlayoffMatchupsCatalog>('playoff_series_matchups.json'),
     shotsIndex: readJsonFile<PlayerCatalogEntry[]>('shots_index.json'),
     shotsMetadata: readJsonFile<ShotsMetadata>('shots_metadata.json'),
+    matchups: readJsonFile<MatchupsDataset>('matchups_slates.json'),
   };
 }

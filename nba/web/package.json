@@ -20,7 +20,9 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report test-results/playwright-report",
-    "test:e2e:install": "playwright install chromium"
+    "test:e2e:install": "playwright install chromium",
+    "check:build-fresh": "node scripts/check-build-fresh.mjs",
+    "build:verify": "next build && node scripts/check-build-fresh.mjs"
   },
   "dependencies": {
     "geist": "^1.8.1",

@@ -33,6 +33,12 @@ cat(sprintf(">>> Loaded %d player projections for 2026-2027 season.\n", nrow(pla
 # Rebounding: oreb_pct, dreb_pct
 # ------------------------------------------------------------------------------
 
+# Expand short season spans ("2018-19") to full years ("2018-2019"), globally within a string.
+# Mirrors formatSeasonLabel() in web/lib/season.ts (slice-based rule; idempotent on full years).
+format_season_label <- function(x) {
+  gsub("\\b([0-9]{2})([0-9]{2})-([0-9]{2})\\b", "\\1\\2-\\1\\3", x, perl = TRUE)
+}
+
 historical_comps <- tribble(
   ~comp_name, ~era, ~archetype, ~pos, ~dna_vector,
   "LeBron James (2012-13 MIA)", "2012-13", "Helio-Centric Power Hub", "F",
@@ -218,8 +224,8 @@ for (i in seq_len(nrow(players_df))) {
   
   twins <- lapply(top_5_indices, function(idx) {
     list(
-      compName = historical_comps$comp_name[idx],
-      era = historical_comps$era[idx],
+      compName = format_season_label(historical_comps$comp_name[idx]),
+      era = format_season_label(historical_comps$era[idx]),
       archetype = historical_comps$archetype[idx],
       position = historical_comps$pos[idx],
       similarityPct = sim_scores[idx],

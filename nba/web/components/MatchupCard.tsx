@@ -33,6 +33,11 @@ const BASIS_BADGE: Record<ProjectionBasis, { short: string; note: string; tone: 
     note: 'Logged slate model win probability; margin derived from it via MARGIN_SIGMA.',
     tone: 'bg-accent-500/10 text-accent-400 border-accent-500/30',
   },
+  primary_ensemble: {
+    short: 'Primary ensemble',
+    note: 'Full-season 4-model blend: 35% BPM, 25% RAPM, 20% Shot Quality/Fatigue, 20% Embeddings + home-court advantage.',
+    tone: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30',
+  },
   team_rating_differential: {
     short: 'Team ratings',
     note: 'Simpler fallback: net-rating difference + 2.40 home-court points. Not the logged slate model, and not comparable with it.',

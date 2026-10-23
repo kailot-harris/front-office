@@ -5,7 +5,7 @@ import { CoachingStaffMetric } from '@/lib/coachingTypes';
 import { TeamLogo } from '@/components/TeamLogo';
 import { CoachRadarProfile } from '@/components/CoachRadarProfile';
 import { AtoEfficiencyScatter } from '@/components/AtoEfficiencyScatter';
-import { CoachImpactWaterfall } from '@/components/CoachImpactWaterfall';
+import { CoachImpactProfile } from '@/components/CoachImpactProfile';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
 import {
   Briefcase,
@@ -23,7 +23,7 @@ interface CoachesClientProps {
 }
 
 export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => {
-  const [activeTab, setActiveTab] = useState<'tierboard' | 'scatter' | 'waterfall' | 'genealogy'>('tierboard');
+  const [activeTab, setActiveTab] = useState<'tierboard' | 'scatter' | 'profile' | 'genealogy'>('tierboard');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTree, setSelectedTree] = useState<string>('All');
   const [selectedCoach, setSelectedCoach] = useState<CoachingStaffMetric>(initialData[0] || null);
@@ -110,7 +110,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                   />
                 </div>
                 <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-                  Decoupling coaching value-added from baseline roster talent using RAPM residuals, ATO efficiency, and challenge leverage.
+                  Comparing ensemble and roster-talent win projections alongside independent tactical indicators. The gap between the two projections is a model residual, not a measured coaching effect.
                 </p>
               </div>
             </div>
@@ -141,15 +141,15 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
               ATO Tactical Matrix
             </button>
             <button
-              onClick={() => setActiveTab('waterfall')}
+              onClick={() => setActiveTab('profile')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                activeTab === 'waterfall'
+                activeTab === 'profile'
                   ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
               }`}
             >
               <TrendingUp className="w-3.5 h-3.5" />
-              Talent-to-Wins Bridge
+              Impact Profile
             </button>
             <button
               onClick={() => setActiveTab('genealogy')}
@@ -426,15 +426,15 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
         />
       )}
 
-      {/* Talent-to-Wins Waterfall Tab */}
-      {activeTab === 'waterfall' && selectedCoach && (
+      {/* Coaching Impact Profile Tab */}
+      {activeTab === 'profile' && selectedCoach && (
         <div className="space-y-4">
-          <CoachImpactWaterfall coach={selectedCoach} />
+          <CoachImpactProfile coach={selectedCoach} />
 
           {/* Quick switcher to other top coaches */}
           <div className="p-4 rounded-xl bg-surface-raised/60 border border-slate-800">
             <span className="text-xs font-bold text-slate-300 block mb-2">
-              Inspect Talent Bridge for Other Coaches:
+              Inspect Impact Profile for Other Coaches:
             </span>
             <div className="flex flex-wrap gap-2">
               {initialData.slice(0, 10).map((c) => (

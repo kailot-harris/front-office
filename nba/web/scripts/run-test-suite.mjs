@@ -125,6 +125,11 @@ const STAGES = [
     cmd: ['npx', 'playwright', 'test'],
     resultFile: 'playwright-results.json',
     parse: parsePlaywright,
+    // See minTests below. This stage once reported PASS having run 0 tests for
+    // months, because its webServer could not start; the floor is what makes
+    // that state loud. Raise it when real specs are added, never lower it to
+    // accommodate a harness that stopped working.
+    minTests: 40,
   },
 ];
 
@@ -257,6 +262,23 @@ for (const stage of stagesToRun) {
   if (!tests) {
     entry.ok = false;
     entry.note = `could not read ${stage.resultFile}; treating the stage as failed`;
+    hardFailure = true;
+    report.push(entry);
+    continue;
+  }
+
+  // A stage that ran far fewer tests than it owns has not passed - it has
+  // failed to run. `ok` below is "no regressions", which an empty result set
+  // satisfies trivially, so the count is checked separately.
+  const minTests = stage.minTests ?? 1;
+  if (tests.length < minTests) {
+    entry.ok = false;
+    entry.total = tests.length;
+    entry.passed = tests.filter((t) => t.status === 'passed').length;
+    entry.failed = tests.filter((t) => t.status === 'failed').length;
+    entry.note =
+      `ran ${tests.length} test(s), below this stage's floor of ${minTests} - ` +
+      `the harness did not execute, so a green result here means nothing`;
     hardFailure = true;
     report.push(entry);
     continue;

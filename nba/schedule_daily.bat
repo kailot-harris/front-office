@@ -25,6 +25,13 @@ set PIPELINE_EXIT=%ERRORLEVEL%
 echo ================================================================== >> "%LOG_FILE%"
 if "%PIPELINE_EXIT%"=="0" (
     echo PIPELINE RUN COMPLETED SUCCESSFULLY: %DATE% %TIME% >> "%LOG_FILE%"
+    echo Rebuilding static export in web/out... >> "%LOG_FILE%"
+    call npm --prefix web run build >> "%LOG_FILE%" 2>&1
+    if errorlevel 1 (
+        echo Static export build failed! >> "%LOG_FILE%"
+    ) else (
+        echo Static export successfully refreshed. >> "%LOG_FILE%"
+    )
 ) else (
     echo PIPELINE RUN FAILED WITH EXIT CODE %PIPELINE_EXIT%: %DATE% %TIME% >> "%LOG_FILE%"
 )

@@ -441,8 +441,8 @@ export const PlayerDnaProfileSchema = z
       .array(
         z
           .object({
-            compName: z.string().min(2),
-            era: z.string().min(4),
+            compName: z.string().min(2).refine((v) => !/\b[0-9]{4}-[0-9]{2}\b/.test(v), "short-form season span"),
+            era: z.string().regex(/^[0-9]{4}-[0-9]{4}$/),
             archetype: z.string().min(2),
             position: z.string().min(1),
             similarityPct: pct,
@@ -706,5 +706,89 @@ export const PlayerShotDataSchema = z
     team: teamEnum,
     total_shots: z.number().int().positive(),
     shots: z.array(ShotRecordSchema).min(1),
+  })
+  .strict();
+
+// ----------------------------------------------------------------------------
+// 14. matchups_slates.json -> MatchupsDataset (lib/matchupTypes.ts)
+// ----------------------------------------------------------------------------
+export const ProjectionBasisSchema = z.enum([
+  'logged_model_margin',
+  'margin_from_logged_win_prob',
+  'primary_ensemble',
+  'team_rating_differential',
+]);
+
+export const MatchupGameSchema = z
+  .object({
+    game_id: z.string().min(1),
+    slate: z.number().int().positive(),
+    game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    weekday: z.string().min(2),
+    season: z.number().int().positive(),
+    home_team: teamEnum,
+    away_team: teamEnum,
+    home_team_name: z.string().min(1),
+    away_team_name: z.string().min(1),
+    is_completed: z.boolean(),
+    has_projection: z.boolean(),
+    projection_basis: ProjectionBasisSchema.nullable(),
+    predicted_margin: num.nullable(),
+    predicted_home_win_prob: num.min(0).max(1).nullable(),
+    predicted_away_win_prob: num.min(0).max(1).nullable(),
+    predicted_winner: teamEnum.nullable(),
+    home_score: z.number().int().nullable(),
+    away_score: z.number().int().nullable(),
+    actual_margin: z.number().int().nullable(),
+    actual_winner: teamEnum.nullable(),
+    prediction_correct: z.boolean().nullable(),
+  })
+  .strict();
+
+export const MatchupSlateSchema = z
+  .object({
+    slate: z.number().int().positive(),
+    label: z.string().min(1),
+    start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    status: z.enum(['past', 'active', 'future']),
+    games_total: z.number().int().min(0),
+    logged_projection_total: z.number().int().min(0),
+    ratings_projection_total: z.number().int().min(0),
+    ensemble_projection_total: z.number().int().min(0).optional(),
+    graded_total: z.number().int().min(0),
+    correct_total: z.number().int().min(0),
+    accuracy_pct: num.min(0).max(100).nullable(),
+  })
+  .strict();
+
+export const MatchupsDatasetSchema = z
+  .object({
+    season: z.number().int().positive(),
+    season_label: seasonSpan,
+    generated_at: z.string(),
+    slate_granularity: z.literal('week_of_season'),
+    season_start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    season_end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    schedule_source: z.string().min(1),
+    active_slate: z.number().int().positive(),
+    available_slates: z.array(z.number().int().positive()),
+    total_games: z.number().int().positive(),
+    completed_games: z.number().int().min(0),
+    pending_games: z.number().int().min(0),
+    games_with_projection: z.number().int().min(0),
+    games_without_projection: z.number().int().min(0),
+    games_logged_basis: z.number().int().min(0),
+    games_ratings_basis: z.number().int().min(0),
+    games_ensemble_basis: z.number().int().min(0).optional(),
+    ratings_source: z.string().min(1),
+    rating_match_rate_pct: num.min(0).max(100),
+    logged_predictions_in_season: z.number().int().min(0),
+    logged_predictions_matched: z.number().int().min(0),
+    join_match_rate_pct: num.min(0).max(100),
+    graded_games_available: z.boolean(),
+    grading_state: z.enum(['graded', 'no_games_graded_yet']),
+    slates: z.array(MatchupSlateSchema),
+    matchups: z.array(MatchupGameSchema),
   })
   .strict();

@@ -53,6 +53,59 @@
 # as raw points allowed and computes orapm - drapm. Same model, opposite display
 # convention -- do not copy a formula between the two files without checking this.)
 #
+# IDENTIFIABILITY -- THE O/D SPLIT HAS A DEGREE OF FREEDOM THE DATA CANNOT SEE.
+# Every possession contributes five +1s to the offensive block and five +1s to the
+# defensive block, so the vector v = (+1 on every offensive column, -1 on every
+# defensive column) satisfies X v = 0 EXACTLY. Verified on the real 2025-26 matrix:
+# max|Xv| = 0 across all 244,782 possessions. Adding c to every offensive coefficient
+# and subtracting c from every defensive one therefore leaves the residual sum of
+# squares bit-for-bit identical while moving every player's ORAPM and DRAPM by 100c.
+# Differences BETWEEN players are estimable; the absolute level of either block is not.
+#
+# This is the textbook over-parameterised-model situation, and it is resolved the
+# textbook way: with a side constraint on the non-estimable direction. We use
+# SUM-TO-ZERO -- each block is centred on its own mean before export, so 0 means
+# "league average" on both axes rather than "wherever the ridge prior happened to
+# land". Two things to know about this choice:
+#
+#   * It is the published convention for possession-level RAPM. Kahn et al.,
+#     "Possession-Level Player Impact in the Pre-Play-by-Play NBA Era"
+#     (arXiv:2605.24056) S4.7 mean-centres "by computing the arithmetic mean of all
+#     player coefficients within each block (offensive and defensive separately)",
+#     because raw coefficients are "deviations from the ridge-shrinkage prior at zero,
+#     not from the empirical league average"; their Remark 4 gives the reason as making
+#     values "interpretable on an absolute scale relative to the league average rather
+#     than relative to an arbitrary zero". Their total is ORAPM + DRAPM, as ours is.
+#     (They reach the same sign convention by coding the defensive block -1 instead of
+#     negating a +1-coded block as we do -- equivalent, not a difference in model.)
+#   * It is the standard identifying constraint for any over-parameterised linear
+#     model. See Meier, ANOVA and Experimental Design, S2 (ETH Zurich): a cell-means
+#     model with a global term "is not identifiable anymore because we have g+1
+#     parameters to model the g mean values", since shifting a constant between the
+#     global term and the effects leaves every fitted value unchanged; the sum-to-zero
+#     side constraint (sum alpha_i = 0, `contr.sum` in R) removes the extra parameter
+#     and makes each effect read as a deviation from the global level. That note also
+#     makes the point this comment exists to serve: "the values we get for the alpha_i
+#     (heavily) depend on the side constraint that we use", so the constraint has to be
+#     documented with the numbers or the numbers cannot be read.
+#
+# WHY BOTHER, GIVEN THE RIDGE ALREADY LANDS CLOSE. A ridge solution lies in the row
+# space of X, which is orthogonal to v, so the solver cannot help but return
+# mean(beta_off) = mean(beta_def) and hence mean(total_rapm) = 0. Centring y then puts
+# each block within ~0.08 pts/100 of zero on its own. So the constraint below moves no
+# player more than 0.0823 pts/100 and leaves total_rapm and every ranking untouched
+# TODAY. It is enforced anyway because both of those guarantees are incidental: the
+# orthogonality argument needs a uniform, symmetric penalty, and the per-axis level
+# needs y centred. Give offence and defence separate lambdas, or shrink toward
+# box-score priors instead of toward zero (both common next steps), and the penalty
+# stops being invariant along v -- at which point the prior silently chooses the gauge.
+# The sibling WNBA engine is the worked example of the second guarantee failing: it
+# does not centre y, so league-average scoring lands inside every rating and both
+# blocks sit around +7 instead of 0. Running THIS data through that setup reproduces
+# it exactly (mean orapm = mean drapm = +7.665, against league 1.1604 pts/possession
+# spread over 10 players). See check_rapm_gauge() below, which fails the run if the
+# constraint ever stops holding.
+#
 # ID NAMESPACES: possessions and stats-shots use NBA-Stats person_id and team_id
 # (1610612737..1610612766), NOT ESPN ids. The team_id -> tricode map and the
 # person_id -> surname map are both derived live from load_nba_stats_shots(), which is
@@ -449,6 +502,39 @@ reattribute_to_current_roster <- function(rapm_df) {
 }
 
 # ------------------------------------------------------------------------------
+# Gauge guard. The sum-to-zero constraint is trivially true the instant it is
+# applied, so on its own this check proves nothing. What it is for is the NEXT
+# change: separate lambdas per block, possession weights, a non-zero shrinkage
+# target, or a port of the solver all break the orthogonality argument that keeps
+# mean(total_rapm) at 0, and any of them would otherwise slide the whole leaderboard
+# by a constant with nothing to notice it. A hard stop here is the cheapest way to
+# make that failure loud instead of silent -- an unlabelled gauge shift is how the
+# WNBA engine came to report both blocks at +7 and a 0.77 O/D correlation that read
+# as a modelling bug rather than a missing constant.
+# ------------------------------------------------------------------------------
+# Tolerance has to clear the rounding noise in the EXPORTED columns, not just the
+# full-precision vectors this is called on inside the fit. orapm/drapm ship rounded to
+# 2dp, which leaves a mean of order 1e-4 across ~580 players, so a tolerance of 1e-8
+# would reject the engine's own output if anyone re-checked the saved artifact. 1e-3
+# sits ~10x above that rounding floor and ~80x below the smallest real gauge shift
+# observed here (0.0823), so it accepts rounding and nothing else.
+RAPM_GAUGE_TOL <- 1e-3
+
+check_rapm_gauge <- function(orapm, drapm, tol = RAPM_GAUGE_TOL) {
+  offenders <- c(ORAPM = abs(mean(orapm)), DRAPM = abs(mean(drapm)),
+                 total = abs(mean(orapm + drapm)))
+  bad <- offenders[offenders > tol]
+  if (length(bad) > 0) {
+    stop(sprintf(paste0("RAPM gauge constraint violated (%s). Each block must average 0 ",
+                        "after centring -- see the IDENTIFIABILITY note at the top of this ",
+                        "file. A non-zero mean here means the O/D split is being read on an ",
+                        "arbitrary scale, so no rating in the output is comparable to 0."),
+                 paste(sprintf("mean(%s) = %.3g", names(bad), bad), collapse = "; ")))
+  }
+  invisible(TRUE)
+}
+
+# ------------------------------------------------------------------------------
 # Fit
 # ------------------------------------------------------------------------------
 estimate_rapm_from_possessions <- function(cache, lambda = RAPM_LAMBDA, source_tag = NULL) {
@@ -465,6 +551,17 @@ estimate_rapm_from_possessions <- function(cache, lambda = RAPM_LAMBDA, source_t
   # points ALLOWED above average, so it is negated: positive drapm == good defender.
   orapm <- coefficients[1:dm$n_players] * 100
   drapm <- -coefficients[(dm$n_players + 1):(2 * dm$n_players)] * 100
+
+  # Sum-to-zero side constraint on each block -- the identifying constraint for the
+  # null direction documented in the IDENTIFIABILITY header note. After this, 0 is
+  # the league-average player on each axis by construction rather than by accident.
+  gauge_shift <- c(orapm = mean(orapm), drapm = mean(drapm))
+  orapm <- orapm - gauge_shift[["orapm"]]
+  drapm <- drapm - gauge_shift[["drapm"]]
+  message(sprintf(paste0(">>> [RAPM] Sum-to-zero constraint applied: ORAPM shifted %+.4f, ",
+                         "DRAPM shifted %+.4f pts/100 (rankings unaffected)."),
+                  -gauge_shift[["orapm"]], -gauge_shift[["drapm"]]))
+  check_rapm_gauge(orapm, drapm)
 
   pid <- as.character(dm$all_players)
 
@@ -503,10 +600,63 @@ estimate_rapm_from_possessions <- function(cache, lambda = RAPM_LAMBDA, source_t
 
   rapm_df <- reattribute_to_current_roster(rapm_df)
 
+  # Low-sample-size honesty flag. RULE CHANGED from a raw possession count to a SHRINKAGE
+  # rule (issue #22, backporting WNBA Analytics' issue #71 fix A).
+  #
+  # The old `possessions < 500` cut stated a shrinkage criterion in its comment ("mostly the
+  # ridge prior, not the player") but encoded a fixed count, which is lambda-blind while this
+  # engine's lambda is CV-tunable (RAPM_LAMBDA / RAPM_TUNE_LAMBDA above): at lambda = 3000,
+  # 500 combined possessions is ~250 a side = 250/3250 = 7.7% data, so the number and the
+  # comment were not the same claim, and a re-tune would move the claim again.
+  #
+  # Ridge shrinks each coefficient by roughly s_i = n_i / (n_i + lambda), so `1 - s_i` is the
+  # fraction of the reported rating contributed by the prior rather than by the player's own
+  # possessions. Take the WEAKER of the two sides, not the combined count, so a one-sided
+  # specialist cannot pass on garbage-time minutes at the other end.
+  #
+  # The count-based intuition is also empirically backwards here. Measured sd of total_rapm by
+  # combined-possession band on the 2025-26 fit: 0.61 (<500), 0.86 (500-1k), 1.27 (1-2k), 1.54
+  # (2-3k), 1.75 (3-5k), 2.12 (>5k). The LOWEST-exposure band is the LEAST variable, because
+  # ridge shrinks it hardest. What a reader needs is not "is this noisy" but "how much of this
+  # is prior" -- which is exactly the data share.
+  #
+  # THE 1/3 CUT IS NBA-MEASURED, NOT INHERITED. WNBA set 1/3 on 430 players; NBA has 582 over
+  # 82-game seasons, so it was re-examined against NBA's distribution (tools/
+  # measure_rapm_exposure.R): share deciles run 0.043 (p10) / 0.209 (p30) / 0.391 (p50) /
+  # 0.600 (p90), and the cut flags 199 (34.2%) at 0.25, 226 (38.8%) at 0.30, 245 (42.1%) at
+  # 1/3, 297 (51.0%) at 0.40. 1/3 survives the re-examination because it is a claim about the
+  # ESTIMATOR, not about the league: 0.25 would leave players who are 70-75% prior unflagged,
+  # contradicting the flag's own definition, and 0.40 would flag a majority while the median
+  # NBA player (share 0.391, 61% prior) is not a "mostly prior" number. The jump from the old
+  # 87/582 (14.9%) to 245/582 (42.1%) is the old rule having been far too permissive, not the
+  # new one being harsh: 582 rated rows include the whole two-way / 10-day tail. Flag, never drop.
+  RAPM_MIN_DATA_SHARE <- 1 / 3
+
+  # Leaderboard eligibility is a SEPARATE mechanism from the honesty flag above.
+  # `low_sample_flag` answers "how much of this one number is prior?"; `leaderboard_eligible`
+  # answers "should this row compete for a top-N rank at all?". Conflating them forces a
+  # dataset-level claim ("half the league is untrustworthy") in order to clean what is really a
+  # presentation-level ranking.
+  #
+  # Threshold re-measured on NBA's exposure distribution rather than reusing WNBA's 1,000.
+  # Per-side (weaker-side) possession quantiles on the 2025-26 fit: 134 (p10), 598 (p25), 1,927
+  # (p50), 3,342 (p75), 4,493 (p90). 2,000 is the round number at NBA's median and lands on an
+  # NBA rotation -- 285 of 582 eligible (49.0%), 9.5 players per team. WNBA's 1,000 sits at
+  # NBA's p33 (935) and would pass 383 (12.8 per team), i.e. the deep bench. Resulting top ten
+  # by total_rapm: Gilgeous-Alexander, Wembanyama, Holmgren, Leonard, Daniels, Jokic, White,
+  # Butler III, Adebayo, Smart -- identical to the unfiltered top ten, so unlike WNBA's case
+  # this cut is insurance against a thin or partial season, not a fix for a broken leaderboard.
+  # Consumers that rank or sort should filter on this column; consumers that display a single
+  # player's rating should use `low_sample_flag` instead.
+  RAPM_LEADERBOARD_MIN_POSS_PER_SIDE <- 2000L
+
   rapm_df <- rapm_df %>%
     mutate(
-      # Under ~500 combined possessions a rating is mostly the ridge prior, not the player.
-      low_sample_flag = possessions < 500,
+      shrinkage_data_share = pmin(off_possessions / (off_possessions + lambda),
+                                  def_possessions / (def_possessions + lambda)),
+      low_sample_flag      = shrinkage_data_share < RAPM_MIN_DATA_SHARE,
+      leaderboard_eligible = pmin(off_possessions, def_possessions) >=
+                               RAPM_LEADERBOARD_MIN_POSS_PER_SIDE,
       data_source     = .coalesce_null(
         source_tag,
         sprintf("hoopR::load_nba_stats_possessions (%s)", cache$season_label)),
@@ -519,14 +669,19 @@ estimate_rapm_from_possessions <- function(cache, lambda = RAPM_LAMBDA, source_t
       generated_at    = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
     ) %>%
     select(player_id, player_name, team, off_possessions, def_possessions, possessions,
-           orapm, drapm, total_rapm, low_sample_flag, on_current_roster, data_source,
+           orapm, drapm, total_rapm, shrinkage_data_share, low_sample_flag,
+           leaderboard_eligible, on_current_roster, data_source,
            season, season_label, lambda, league_ppp, n_possessions, n_games, generated_at) %>%
     arrange(desc(total_rapm))
 
   out_path <- file.path(.cache_dir, "rapm_ratings.rds")
   saveRDS(rapm_df, out_path)
-  message(sprintf(">>> [RAPM] Saved %d %s ORAPM/DRAPM ratings to %s (%d flagged low-sample).",
-                  nrow(rapm_df), rapm_df$season_label[1], out_path, sum(rapm_df$low_sample_flag)))
+  message(sprintf(paste0(">>> [RAPM] Saved %d %s ORAPM/DRAPM ratings to %s ",
+                         "(%d flagged low-sample at data share < %.3f; %d leaderboard-eligible ",
+                         "at >= %d possessions per side)."),
+                  nrow(rapm_df), rapm_df$season_label[1], out_path,
+                  sum(rapm_df$low_sample_flag), RAPM_MIN_DATA_SHARE,
+                  sum(rapm_df$leaderboard_eligible), RAPM_LEADERBOARD_MIN_POSS_PER_SIDE))
   rapm_df
 }
 
