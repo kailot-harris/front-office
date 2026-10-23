@@ -600,10 +600,63 @@ estimate_rapm_from_possessions <- function(cache, lambda = RAPM_LAMBDA, source_t
 
   rapm_df <- reattribute_to_current_roster(rapm_df)
 
+  # Low-sample-size honesty flag. RULE CHANGED from a raw possession count to a SHRINKAGE
+  # rule (issue #22, backporting WNBA Analytics' issue #71 fix A).
+  #
+  # The old `possessions < 500` cut stated a shrinkage criterion in its comment ("mostly the
+  # ridge prior, not the player") but encoded a fixed count, which is lambda-blind while this
+  # engine's lambda is CV-tunable (RAPM_LAMBDA / RAPM_TUNE_LAMBDA above): at lambda = 3000,
+  # 500 combined possessions is ~250 a side = 250/3250 = 7.7% data, so the number and the
+  # comment were not the same claim, and a re-tune would move the claim again.
+  #
+  # Ridge shrinks each coefficient by roughly s_i = n_i / (n_i + lambda), so `1 - s_i` is the
+  # fraction of the reported rating contributed by the prior rather than by the player's own
+  # possessions. Take the WEAKER of the two sides, not the combined count, so a one-sided
+  # specialist cannot pass on garbage-time minutes at the other end.
+  #
+  # The count-based intuition is also empirically backwards here. Measured sd of total_rapm by
+  # combined-possession band on the 2025-26 fit: 0.61 (<500), 0.86 (500-1k), 1.27 (1-2k), 1.54
+  # (2-3k), 1.75 (3-5k), 2.12 (>5k). The LOWEST-exposure band is the LEAST variable, because
+  # ridge shrinks it hardest. What a reader needs is not "is this noisy" but "how much of this
+  # is prior" -- which is exactly the data share.
+  #
+  # THE 1/3 CUT IS NBA-MEASURED, NOT INHERITED. WNBA set 1/3 on 430 players; NBA has 582 over
+  # 82-game seasons, so it was re-examined against NBA's distribution (tools/
+  # measure_rapm_exposure.R): share deciles run 0.043 (p10) / 0.209 (p30) / 0.391 (p50) /
+  # 0.600 (p90), and the cut flags 199 (34.2%) at 0.25, 226 (38.8%) at 0.30, 245 (42.1%) at
+  # 1/3, 297 (51.0%) at 0.40. 1/3 survives the re-examination because it is a claim about the
+  # ESTIMATOR, not about the league: 0.25 would leave players who are 70-75% prior unflagged,
+  # contradicting the flag's own definition, and 0.40 would flag a majority while the median
+  # NBA player (share 0.391, 61% prior) is not a "mostly prior" number. The jump from the old
+  # 87/582 (14.9%) to 245/582 (42.1%) is the old rule having been far too permissive, not the
+  # new one being harsh: 582 rated rows include the whole two-way / 10-day tail. Flag, never drop.
+  RAPM_MIN_DATA_SHARE <- 1 / 3
+
+  # Leaderboard eligibility is a SEPARATE mechanism from the honesty flag above.
+  # `low_sample_flag` answers "how much of this one number is prior?"; `leaderboard_eligible`
+  # answers "should this row compete for a top-N rank at all?". Conflating them forces a
+  # dataset-level claim ("half the league is untrustworthy") in order to clean what is really a
+  # presentation-level ranking.
+  #
+  # Threshold re-measured on NBA's exposure distribution rather than reusing WNBA's 1,000.
+  # Per-side (weaker-side) possession quantiles on the 2025-26 fit: 134 (p10), 598 (p25), 1,927
+  # (p50), 3,342 (p75), 4,493 (p90). 2,000 is the round number at NBA's median and lands on an
+  # NBA rotation -- 285 of 582 eligible (49.0%), 9.5 players per team. WNBA's 1,000 sits at
+  # NBA's p33 (935) and would pass 383 (12.8 per team), i.e. the deep bench. Resulting top ten
+  # by total_rapm: Gilgeous-Alexander, Wembanyama, Holmgren, Leonard, Daniels, Jokic, White,
+  # Butler III, Adebayo, Smart -- identical to the unfiltered top ten, so unlike WNBA's case
+  # this cut is insurance against a thin or partial season, not a fix for a broken leaderboard.
+  # Consumers that rank or sort should filter on this column; consumers that display a single
+  # player's rating should use `low_sample_flag` instead.
+  RAPM_LEADERBOARD_MIN_POSS_PER_SIDE <- 2000L
+
   rapm_df <- rapm_df %>%
     mutate(
-      # Under ~500 combined possessions a rating is mostly the ridge prior, not the player.
-      low_sample_flag = possessions < 500,
+      shrinkage_data_share = pmin(off_possessions / (off_possessions + lambda),
+                                  def_possessions / (def_possessions + lambda)),
+      low_sample_flag      = shrinkage_data_share < RAPM_MIN_DATA_SHARE,
+      leaderboard_eligible = pmin(off_possessions, def_possessions) >=
+                               RAPM_LEADERBOARD_MIN_POSS_PER_SIDE,
       data_source     = .coalesce_null(
         source_tag,
         sprintf("hoopR::load_nba_stats_possessions (%s)", cache$season_label)),
@@ -616,14 +669,19 @@ estimate_rapm_from_possessions <- function(cache, lambda = RAPM_LAMBDA, source_t
       generated_at    = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
     ) %>%
     select(player_id, player_name, team, off_possessions, def_possessions, possessions,
-           orapm, drapm, total_rapm, low_sample_flag, on_current_roster, data_source,
+           orapm, drapm, total_rapm, shrinkage_data_share, low_sample_flag,
+           leaderboard_eligible, on_current_roster, data_source,
            season, season_label, lambda, league_ppp, n_possessions, n_games, generated_at) %>%
     arrange(desc(total_rapm))
 
   out_path <- file.path(.cache_dir, "rapm_ratings.rds")
   saveRDS(rapm_df, out_path)
-  message(sprintf(">>> [RAPM] Saved %d %s ORAPM/DRAPM ratings to %s (%d flagged low-sample).",
-                  nrow(rapm_df), rapm_df$season_label[1], out_path, sum(rapm_df$low_sample_flag)))
+  message(sprintf(paste0(">>> [RAPM] Saved %d %s ORAPM/DRAPM ratings to %s ",
+                         "(%d flagged low-sample at data share < %.3f; %d leaderboard-eligible ",
+                         "at >= %d possessions per side)."),
+                  nrow(rapm_df), rapm_df$season_label[1], out_path,
+                  sum(rapm_df$low_sample_flag), RAPM_MIN_DATA_SHARE,
+                  sum(rapm_df$leaderboard_eligible), RAPM_LEADERBOARD_MIN_POSS_PER_SIDE))
   rapm_df
 }
 
