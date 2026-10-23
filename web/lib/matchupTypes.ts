@@ -57,6 +57,7 @@
 export type ProjectionBasis =
   | 'logged_model_margin'
   | 'margin_from_logged_win_prob'
+  | 'primary_ensemble'
   | 'team_rating_differential';
 
 export interface MatchupGame {
@@ -101,8 +102,10 @@ export interface MatchupSlate {
   games_total: number;
   /** Games in the slate projected by the logged model (either logged basis). */
   logged_projection_total: number;
-  /** Games in the slate projected from team rating differential. */
+  /** Games in the slate projected from team rating differential or ensemble. */
   ratings_projection_total: number;
+  /** Games in the slate projected from primary 4-model ensemble. */
+  ensemble_projection_total?: number;
   /** Completed, graded games in the slate — the denominator of accuracy_pct. */
   graded_total: number;
   correct_total: number;
@@ -133,8 +136,10 @@ export interface MatchupsDataset {
   games_without_projection: number;
   /** Games projected by the logged model — counted separately, never summed. */
   games_logged_basis: number;
-  /** Games projected from team rating differential. */
+  /** Games projected from team rating differential or ensemble. */
   games_ratings_basis: number;
+  /** Games projected from primary 4-model ensemble. */
+  games_ensemble_basis?: number;
   /** Human-readable description of the ratings-derived computation. */
   ratings_source: string;
   /** Share of scheduled games whose two teams were both found in the ratings table. */

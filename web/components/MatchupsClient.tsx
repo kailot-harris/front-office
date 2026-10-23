@@ -109,7 +109,9 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
       basisLabel:
         top.projection_basis === 'team_rating_differential'
           ? 'Team-ratings basis only'
-          : 'Logged-model basis only',
+          : top.projection_basis === 'primary_ensemble'
+            ? 'Primary ensemble only'
+            : 'Logged-model basis only',
       pooled: pool.length,
     };
   }, [slateGames]);
@@ -281,12 +283,11 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
               </span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-sky-300 inline-block" />
+              <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
               <span>
-                <span className="text-sky-300 font-bold">Team ratings</span> ·{' '}
-                {slateMeta.ratings_projection_total} game
-                {slateMeta.ratings_projection_total === 1 ? '' : 's'} — net-rating difference plus
-                flat home court, not the logged model
+                <span className="text-emerald-300 font-bold">Primary ensemble</span> ·{' '}
+                {slateMeta.ensemble_projection_total ?? slateMeta.ratings_projection_total} game
+                {(slateMeta.ensemble_projection_total ?? slateMeta.ratings_projection_total) === 1 ? '' : 's'} — 4-model blend (35% BPM, 25% RAPM, 20% Shot Quality/Fatigue, 20% Embeddings)
               </span>
             </span>
           </div>
@@ -420,17 +421,21 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                     {/* Which model produced the margin in the cell to the left. */}
                     <td
                       className={`px-3 py-2 whitespace-nowrap ${
-                        m.projection_basis === 'team_rating_differential'
-                          ? 'text-sky-300'
-                          : 'text-accent-400'
+                        m.projection_basis === 'primary_ensemble'
+                          ? 'text-emerald-300'
+                          : m.projection_basis === 'team_rating_differential'
+                            ? 'text-sky-300'
+                            : 'text-accent-400'
                       }`}
                       data-projection-basis={m.projection_basis ?? 'none'}
                     >
                       {m.projection_basis === null
                         ? '—'
-                        : m.projection_basis === 'team_rating_differential'
-                          ? 'Team ratings'
-                          : 'Logged model'}
+                        : m.projection_basis === 'primary_ensemble'
+                          ? 'Primary ensemble'
+                          : m.projection_basis === 'team_rating_differential'
+                            ? 'Team ratings'
+                            : 'Logged model'}
                     </td>
                     <td className="px-3 py-2 text-right text-slate-300 tabular-nums">
                       {m.predicted_home_win_prob === null
