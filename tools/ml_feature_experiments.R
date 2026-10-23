@@ -425,7 +425,20 @@ compute_fold_team_rapm <- function(possessions_train, lambda = 900) {
   val_idx <- rep(1, n_poss * 10)
 
   X_sparse <- sparseMatrix(i = i_idx, j = j_idx, x = val_idx, dims = c(n_poss, 2 * n_players))
-  coefs <- solve_ridge_rapm(X_sparse, poss_clean$points, weights = rep(1, n_poss), lambda = lambda)
+
+  # CENTRED RIDGE TARGET (GitHub issue #76). Mirrors the centring in
+  # rapm_engine.R::build_possession_design_matrix(), which is the SOURCE OF TRUTH for the
+  # design matrix and target: `league_ppp <- mean(poss_clean$points)` and
+  # `y = poss_clean$points - league_ppp`. Without it the penalty parks league-average scoring
+  # (~1.16 pts/possession over 10 players) inside every player coefficient, putting a shared
+  # ~+7 pts/100 offset on both blocks. Kept in sync here by hand because this file deliberately
+  # duplicates the fit to refit per CV train/test fold (same divergence #80 was about).
+  # NO-OP FOR THIS SCRIPT'S OUTPUT: subtracting a constant from y shifts both blocks by the same
+  # amount within a fold, and these fold ratings are consumed only as RELATIVE within-fold
+  # features. Mirrored anyway so the two fits cannot silently diverge.
+  league_ppp <- mean(poss_clean$points)
+  coefs <- solve_ridge_rapm(X_sparse, poss_clean$points - league_ppp,
+                            weights = rep(1, n_poss), lambda = lambda)
 
   # SIGN CONVENTION (GitHub issue #80). This file deliberately duplicates the ridge fit
   # rather than calling rapm_engine.R::fit_rapm_ratings(), because the CV experiment needs
