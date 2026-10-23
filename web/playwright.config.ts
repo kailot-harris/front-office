@@ -3,10 +3,15 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * End-to-end config for the NBA Analytics web app.
  *
- * Runs against a PRODUCTION build (`next build && next start`) rather than
- * `next dev`, because every page here is statically prerendered — dev mode
- * would exercise a different rendering path from the one that ships, and would
- * hide a build-time data error behind an on-demand compile.
+ * Runs against the PRODUCTION export in `out/` rather than `next dev`, because
+ * every page here is statically prerendered — dev mode would exercise a
+ * different rendering path from the one that ships, and would hide a build-time
+ * data error behind an on-demand compile.
+ *
+ * The server is scripts/serve-static-export.mjs, not `next start`: this app
+ * builds with `output: 'export'`, which `next start` refuses to serve outright.
+ * It used to be launched here anyway, so the managed webServer exited on boot
+ * and Playwright reported a passing stage having run zero tests.
  *
  * Set E2E_BASE_URL to point at an already-running server (or a deployment) and
  * the managed webServer is skipped.
@@ -49,11 +54,14 @@ export default defineConfig({
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
-        command: `npx next start -p ${PORT}`,
+        command: `node scripts/serve-static-export.mjs`,
+        env: { E2E_PORT: String(PORT) },
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
-        stdout: 'ignore',
+        // Piped, not ignored: if the export is missing the server says so on
+        // stdout and exits 1, and that message is the whole diagnosis.
+        stdout: 'pipe',
         stderr: 'pipe',
       },
 });
