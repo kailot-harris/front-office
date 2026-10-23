@@ -325,6 +325,26 @@ run_stage("accuracy_tracker.R", "Track Season-to-Date Model Accuracy Trajectory"
           call_fn = "run_accuracy_tracker")
 
 # ------------------------------------------------------------------------------
+# Stage 14: Web data export (TERMINAL stage).
+# ------------------------------------------------------------------------------
+# Regenerates every JSON dataset the Next.js app under web/ consumes, from the caches the
+# stages above just wrote. This was previously a detached tools/ one-off that only ever ran
+# when invoked by hand, which meant a fully successful pipeline run could still leave the
+# published site showing days-old numbers (observed: pipeline fresh, JSON four days stale,
+# publishing a stale active_week). It must stay LAST: it is a pure consumer of every upstream
+# cache and produces nothing any other stage reads.
+#
+# Unlike notify_bets.R / accuracy_tracker.R / bet_tracker.r above (which deliberately omit
+# `output` because a day with nothing new is a legitimate no-op), this stage rewrites all ten
+# files unconditionally on every run, so declaring them is exactly right: the C-2
+# .check_stage_output() staleness assertion will now WARN if the exporter silently no-ops or
+# fails inside one of its own tryCatch() blocks. WEB_DATA_FILES is config.R's single source of
+# truth for that list - do not restate the paths here.
+run_stage("export_web_datasets.R", "Export Web Application JSON Datasets (web/public/data)",
+          call_fn = "run_export_web_datasets",
+          output = WEB_DATA_FILES)
+
+# ------------------------------------------------------------------------------
 # FUTURE STAGES — extension point, not yet implemented (see docs/task_assignments_phase0.md's
 # Constraints section and docs/NFL_REPLICATION_PLAN.md §1's later-phase list). Per that
 # Constraints note, this wave deliberately does NOT add stub run_stage() calls for scripts that

@@ -655,6 +655,58 @@ CACHE_PLAYOFF_ODDS_HISTORY <- file.path(CACHE_DIR, "playoff_odds_history.rds")
 CACHE_TURNOVER_HISTORY <- file.path(CACHE_DIR, "turnover_margin_history.rds")
 
 # ------------------------------------------------------------------------------------------
+# Web application export paths (web/public/...)
+# ------------------------------------------------------------------------------------------
+# Added by export_web_datasets.R when it was promoted from a detached tools/ one-off into a
+# real terminal stage of run_full_pipeline.R's DAG. A narrowly-scoped, documented exception to
+# that script's single-file ownership, exactly the pattern CACHE_EPA_METRICS /
+# CACHE_TEAM_RATINGS / CACHE_PLAYOFF_ODDS above already follow (export_web_datasets.R does not
+# own config.R; it owns only these constants).
+#
+# Why these live here at all: the exporter previously hardcoded
+#   PROJECT_ROOT <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"; setwd(PROJECT_ROOT)
+# and then rebuilt its own file.path(PROJECT_ROOT, "web", "public", "data") literals at the
+# call site. That is the exact class of duplicated-constant drift CLAUDE.md forbids (sibling
+# WNBA repo Finding C-1: a hardcoded home-court-advantage constant silently diverged from
+# config.R's value), and the absolute PROJECT_ROOT additionally made the script unrunnable
+# from any other checkout - including a git worktree. Paths are therefore RELATIVE here, same
+# as CACHE_DIR above, because every script in this flat repo is run with the repo root as the
+# working directory (run_full_pipeline.R's run_stage() source()s siblings by bare filename).
+#
+# WEB_DATA_FILES is the aggregate run_full_pipeline.R passes to run_stage()'s `output =`, so
+# the C-2 staleness assertion (.check_stage_output()) covers every published JSON file. The
+# exporter writes all of these unconditionally on every run, which is what makes declaring
+# them correct here (unlike accuracy_tracker.R / bet_tracker.r, which legitimately no-op on a
+# quiet day and therefore deliberately omit `output =`).
+WEB_PUBLIC_DIR   <- file.path("web", "public")
+WEB_DATA_DIR     <- file.path(WEB_PUBLIC_DIR, "data")
+WEB_ANIM_DIR     <- file.path(WEB_PUBLIC_DIR, "animations")
+
+WEB_JSON_VISUAL_MEDIA_INDEX    <- file.path(WEB_DATA_DIR, "visual_media_index.json")
+WEB_JSON_STANDINGS_PROJECTIONS <- file.path(WEB_DATA_DIR, "standings_projections.json")
+WEB_JSON_MATCHUPS_CURRENT_WEEK <- file.path(WEB_DATA_DIR, "matchups_current_week.json")
+WEB_JSON_TEAM_EPA_PROFILES     <- file.path(WEB_DATA_DIR, "team_epa_profiles.json")
+WEB_JSON_PLAYOFF_PICTURE       <- file.path(WEB_DATA_DIR, "playoff_picture.json")
+WEB_JSON_PLAYER_QB_PROFILES    <- file.path(WEB_DATA_DIR, "player_qb_profiles.json")
+WEB_JSON_MODEL_DIAGNOSTICS     <- file.path(WEB_DATA_DIR, "model_diagnostics.json")
+WEB_JSON_SALARY_CAP_PROFILES   <- file.path(WEB_DATA_DIR, "salary_cap_profiles.json")
+WEB_JSON_COACHING_PROFILES     <- file.path(WEB_DATA_DIR, "coaching_profiles.json")
+WEB_JSON_VALUE_BETS            <- file.path(WEB_DATA_DIR, "value_bets.json")
+
+WEB_DATA_FILES <- c(
+  WEB_JSON_VISUAL_MEDIA_INDEX,
+  WEB_JSON_STANDINGS_PROJECTIONS,
+  WEB_JSON_MATCHUPS_CURRENT_WEEK,
+  WEB_JSON_TEAM_EPA_PROFILES,
+  WEB_JSON_PLAYOFF_PICTURE,
+  WEB_JSON_PLAYER_QB_PROFILES,
+  WEB_JSON_MODEL_DIAGNOSTICS,
+  WEB_JSON_SALARY_CAP_PROFILES,
+  WEB_JSON_COACHING_PROFILES,
+  WEB_JSON_VALUE_BETS
+)
+
+# ------------------------------------------------------------------------------------------
 # API Throttling & Rate-Limiting (sport-agnostic starting defaults)
 # ------------------------------------------------------------------------------------------
 RATE_LIMIT_SLEEP_SEC <- 1.5
