@@ -673,11 +673,27 @@ CACHE_TURNOVER_HISTORY <- file.path(CACHE_DIR, "turnover_margin_history.rds")
 # as CACHE_DIR above, because every script in this flat repo is run with the repo root as the
 # working directory (run_full_pipeline.R's run_stage() source()s siblings by bare filename).
 #
-# WEB_DATA_FILES is the aggregate run_full_pipeline.R passes to run_stage()'s `output =`, so
-# the C-2 staleness assertion (.check_stage_output()) covers every published JSON file. The
-# exporter writes all of these unconditionally on every run, which is what makes declaring
-# them correct here (unlike accuracy_tracker.R / bet_tracker.r, which legitimately no-op on a
-# quiet day and therefore deliberately omit `output =`).
+# WEB_DATA_FILES is the aggregate run_full_pipeline.R passes to run_stage()'s `output =`.
+# It lists the NINE published datasets the exporter genuinely DERIVES from cache/*.rds on
+# every run, which is what makes declaring them correct here (unlike accuracy_tracker.R /
+# bet_tracker.r, which legitimately no-op on a quiet day and therefore deliberately omit
+# `output =`).
+#
+# WEB_JSON_COACHING_PROFILES is deliberately NOT a member. coaching_profiles.json is a
+# hand-seeded static artifact with no upstream source anywhere in this repo - no ingest
+# script, engine or cache/*.rds produces coaching-staff/scheme/pace data - so the exporter
+# can only republish its existing bytes verbatim. The path constant below is still needed
+# (the exporter republishes through it), but declaring it as a stage `output` would be
+# false: .check_stage_output() compares mtimes only, and a verbatim republish always
+# advances the mtime, so the C-2 assertion is structurally incapable of flagging that file
+# as stale. Keeping it out of this list is what keeps the assertion honest; the exporter
+# emits a log_warn() naming the file and the reason on every republish instead.
+#
+# Caveat that applies to one file that IS listed: salary_cap_profiles.json is normally
+# derived live (nflreadr::load_contracts()), but falls back to a verbatim republish if that
+# fetch is unavailable or fails. On a fallback run its mtime still advances, so C-2 cannot
+# detect it either - the exporter's log_warn() in that tryCatch() handler is the real
+# staleness signal for that file, not this assertion.
 WEB_PUBLIC_DIR   <- file.path("web", "public")
 WEB_DATA_DIR     <- file.path(WEB_PUBLIC_DIR, "data")
 WEB_ANIM_DIR     <- file.path(WEB_PUBLIC_DIR, "animations")
@@ -702,7 +718,6 @@ WEB_DATA_FILES <- c(
   WEB_JSON_PLAYER_QB_PROFILES,
   WEB_JSON_MODEL_DIAGNOSTICS,
   WEB_JSON_SALARY_CAP_PROFILES,
-  WEB_JSON_COACHING_PROFILES,
   WEB_JSON_VALUE_BETS
 )
 

@@ -29,6 +29,12 @@ suppressPackageStartupMessages({
 
 source("config.R")
 
+# log_warn()/log_info() live in logging_utils.R. run_full_pipeline.R already source()s it
+# before any stage runs, so this guard only fires when the exporter is invoked directly
+# (e.g. Rscript -e 'source("export_web_datasets.R"); run_export_web_datasets()'). Sourcing
+# logging_utils.R only defines functions - it writes nothing until a log_*() call.
+if (!exists("log_warn", mode = "function")) source("logging_utils.R")
+
 run_export_web_datasets <- function() {
 
   if (!dir.exists(WEB_DATA_DIR)) dir.create(WEB_DATA_DIR, recursive = TRUE)
@@ -47,27 +53,37 @@ run_export_web_datasets <- function() {
   }
 
   # Republish an already-correct file verbatim (byte-identical) so that its mtime
-  # advances on every run. Needed because three of the ten published datasets are
-  # produced by conditional/best-effort blocks (salary cap needs a live
-  # nflreadr::load_contracts() fetch; the coaching and value-bet blocks are
-  # idempotent normalizations that are no-ops once already normalized). Those
-  # blocks legitimately have nothing new to write, but run_stage()'s declared
-  # `output = WEB_DATA_FILES` staleness check (finding C-2) cannot distinguish
-  # "nothing to change" from "silent no-op", so we rewrite the existing bytes
-  # rather than weaken the assertion. Verbatim text, never a re-serialization -
-  # round-tripping these through fromJSON()/toJSON() would reshape nested arrays
-  # and break the JSON contract the Next.js app and its vitest tests consume.
-  republish_json_verbatim <- function(filename) {
+  # advances on every run. Two of the ten published datasets still need this:
+  # salary_cap_profiles.json when its live nflreadr::load_contracts() fetch is
+  # unavailable or fails, and coaching_profiles.json which is a hand-seeded static
+  # artifact with no upstream cache at all (see section 9).
+  #
+  # IMPORTANT, and the reason `reason` is mandatory: run_stage()'s declared
+  # `output = WEB_DATA_FILES` staleness check (finding C-2) compares mtimes only, so a
+  # republished file ALWAYS looks fresh and the C-2 assertion is structurally blind to
+  # it. A republish is therefore a silent fallback unless it announces itself - hence the
+  # log_warn() below, which puts the filename and the reason in logs/nfl_pipeline.log
+  # where an operator reviewing a run can actually see it. coaching_profiles.json is
+  # deliberately no longer a member of WEB_DATA_FILES for exactly this reason.
+  #
+  # Verbatim bytes, never a re-serialization - round-tripping these through
+  # fromJSON()/toJSON() would reshape nested arrays and break the JSON contract the
+  # Next.js app and its vitest tests consume.
+  republish_json_verbatim <- function(filename, reason) {
     target_file <- file.path(WEB_DATA_DIR, filename)
     if (!file.exists(target_file)) {
       cat(sprintf("  -- Skipped republish (absent): %s
 ", filename))
+      log_warn(sprintf("export_web_datasets: cannot republish %s - file absent from %s (reason: %s)",
+                       filename, WEB_DATA_DIR, reason))
       return(invisible(FALSE))
     }
     raw_bytes <- readBin(target_file, what = "raw", n = file.size(target_file))
     writeBin(raw_bytes, target_file)
     cat(sprintf("  OK Republished unchanged: %s (%.1f KB)
 ", filename, file.size(target_file) / 1024))
+    log_warn(sprintf("export_web_datasets: republished %s VERBATIM rather than regenerating it (reason: %s). Its mtime advanced, so run_stage()'s C-2 staleness check cannot flag this file - treat this warning as the staleness signal.",
+                     filename, reason))
     invisible(TRUE)
   }
 
@@ -1011,65 +1027,115 @@ run_export_web_datasets <- function() {
       )
       write_json_clean(salary_cap_data, "salary_cap_profiles.json")
     } else {
-      republish_json_verbatim("salary_cap_profiles.json")
+      log_warn("export_web_datasets: salary_cap_profiles.json NOT refreshed - package nflreadr is not installed, so load_contracts() could not be called. Falling back to republishing the previously published file.")
+      republish_json_verbatim("salary_cap_profiles.json",
+                              reason = "nflreadr not available for load_contracts()")
     }
   }, error = function(e) {
     cat("  !! Failed to refresh salary cap data:", conditionMessage(e), "\n")
-    republish_json_verbatim("salary_cap_profiles.json")
+    log_warn(sprintf("export_web_datasets: salary_cap_profiles.json NOT refreshed - nflreadr::load_contracts() export failed: %s. Falling back to republishing the previously published file, which may now be stale.",
+                     conditionMessage(e)))
+    republish_json_verbatim("salary_cap_profiles.json",
+                            reason = sprintf("load_contracts() export failed: %s", conditionMessage(e)))
   })
 
   # ------------------------------------------------------------------------------
-  # 9. Coaching Profiles Percentile Normalization (DATA-7)
+  # 9. Coaching Profiles (coaching_profiles.json) - STATIC SEEDED ARTIFACT
   # ------------------------------------------------------------------------------
-  coaching_path <- file.path(WEB_DATA_DIR, "coaching_profiles.json")
-  if (file.exists(coaching_path)) {
-    coaches_df <- jsonlite::fromJSON(coaching_path, simplifyDataFrame = TRUE)
-    vals <- as.numeric(coaches_df$fourth_down_aggression_index)
-    if (min(vals, na.rm = TRUE) >= 25) {
-      min_v <- min(vals, na.rm = TRUE)
-      max_v <- max(vals, na.rm = TRUE)
-      coaches_df$fourth_down_aggression_index <- as.integer(round(12 + (vals - min_v) / (max_v - min_v) * (98 - 12)))
-      write_json_clean(coaches_df, "coaching_profiles.json")
-    } else {
-      republish_json_verbatim("coaching_profiles.json")
-    }
-  }
+  # coaching_profiles.json has NO upstream source. "coaching" appears in exactly two
+  # files in this repo: config.R (where it is nothing but the WEB_JSON_COACHING_PROFILES
+  # path constant) and this script. No ingest script, engine or cache/*.rds produces
+  # coaching-staff, scheme, aggression or pace data, so this file is hand-seeded content
+  # committed under web/public/data/ and it can never be "live". It is therefore
+  # deliberately NOT a member of config.R's WEB_DATA_FILES aggregate - declaring a file
+  # the pipeline cannot derive as a pipeline output is how a stale artifact gets
+  # laundered into looking fresh by an mtime-only staleness check.
+  #
+  # The old percentile-normalization branch here (DATA-7) was a one-shot migration: it
+  # rescaled fourth_down_aggression_index onto 12..98 only when min(vals) >= 25, and the
+  # committed file has held the post-migration range (min 12, max 98) ever since. The
+  # guard can therefore never be true again, so the branch was dead code that implied
+  # this file had a derivation step it does not have. It has been removed. If coaching
+  # metrics ever gain a real upstream source, build a numbered section that reads it from
+  # cache/ and add WEB_JSON_COACHING_PROFILES back to WEB_DATA_FILES at that point.
+  cat(">>> [9] Republishing static coaching profiles artifact (no upstream source)...\n")
+  republish_json_verbatim("coaching_profiles.json",
+                          reason = "hand-seeded static artifact with no upstream cache/*.rds source")
 
   # ------------------------------------------------------------------------------
-  # 10. Value Bets Team ID & Positive-EV Slate Normalization (ID-2, DATA-8)
+  # 10. Value Bets (value_bets.json) <- CACHE_LATEST_VALUE_BETS
   # ------------------------------------------------------------------------------
-  vb_path <- file.path(WEB_DATA_DIR, "value_bets.json")
-  if (file.exists(vb_path)) {
-    vb_obj <- jsonlite::fromJSON(vb_path, simplifyDataFrame = TRUE)
-    if (!is.null(vb_obj$active_bets) && nrow(vb_obj$active_bets) > 0) {
-      ab <- vb_obj$active_bets
-      # Filter to positive-EV value bets (DATA-8)
-      ab <- ab[as.numeric(ab$ev_percent) > 0, ]
-      name_to_code <- setNames(names(NFL_TEAMS), as.character(NFL_TEAMS))
-      for (i in seq_len(nrow(ab))) {
-        tm_val <- as.character(ab$team[i])
-        if (tm_val %in% names(name_to_code)) {
-          ab$team[i] <- unname(name_to_code[tm_val])
+  # Derived from cache/latest_value_bets.rds (config.R's CACHE_LATEST_VALUE_BETS), which
+  # market_odds_engine.R rewrites on every pipeline run. This section previously read
+  # web/public/data/value_bets.json back in as its OWN input and rewrote it in place, which
+  # meant the published slate was frozen at whatever had last been written by hand and never
+  # moved when the upstream odds refreshed. The two real transforms it performed (the
+  # positive-EV filter, DATA-8; the full-name -> team-code rewriting, ID-2) are preserved
+  # verbatim below, now applied to the cache instead of to the published output.
+  #
+  # The published JSON contract is unchanged: top level {total_bets, active_bets}, and each
+  # active_bets element carries exactly these 11 fields in this order - matchup,
+  # recommended_bet, team, book, line, model_win_prob, predicted_margin, ev_percent,
+  # exp_clv, bankroll_rec, status. `line` and `bankroll_rec` are intentionally STRINGS
+  # (web/tests/contracts/schemas.ts's valueBetSchema types both z.string()), so they are
+  # cast here even though the cache stores them numerically.
+  cat(">>> [10] Exporting value bets slate from cache/latest_value_bets.rds...\n")
+  if (file.exists(CACHE_LATEST_VALUE_BETS)) {
+    vb_cache <- as.data.frame(readRDS(CACHE_LATEST_VALUE_BETS), stringsAsFactors = FALSE)
+
+    # Positive-EV slate only (DATA-8)
+    vb_cache <- vb_cache[!is.na(vb_cache$EV_Percent) & as.numeric(vb_cache$EV_Percent) > 0, , drop = FALSE]
+
+    # Full team name -> canonical team code (ID-2). config.R's NFL_TEAMS maps code -> full
+    # name, so invert it; the codes themselves are never re-typed here.
+    name_to_code <- setNames(names(NFL_TEAMS), as.character(NFL_TEAMS))
+
+    annotate_matchup <- function(m_str) {
+      m_str <- as.character(m_str)
+      for (full_nm in names(name_to_code)) {
+        code_nm <- unname(name_to_code[full_nm])
+        target_pat <- paste0(full_nm, " (", code_nm, ")")
+        if (grepl(full_nm, m_str, fixed = TRUE) && !grepl(target_pat, m_str, fixed = TRUE)) {
+          m_str <- sub(full_nm, target_pat, m_str, fixed = TRUE)
         }
-        # Annotate full team names in matchup with canonical team codes so both full names and codes match
-        m_str <- as.character(ab$matchup[i])
-        for (full_nm in names(name_to_code)) {
-          code_nm <- unname(name_to_code[full_nm])
-          target_pat <- paste0(full_nm, " (", code_nm, ")")
-          if (grepl(full_nm, m_str, fixed = TRUE) && !grepl(target_pat, m_str, fixed = TRUE)) {
-            m_str <- sub(full_nm, target_pat, m_str, fixed = TRUE)
-          }
-        }
-        ab$matchup[i] <- m_str
       }
-      vb_out <- list(
-        total_bets = nrow(ab),
-        active_bets = ab
-      )
-      write_json_clean(vb_out, "value_bets.json")
-    } else {
-      republish_json_verbatim("value_bets.json")
+      m_str
     }
+
+    to_code <- function(tm_val) {
+      tm_val <- as.character(tm_val)
+      if (tm_val %in% names(name_to_code)) unname(name_to_code[tm_val]) else tm_val
+    }
+
+    active_bets <- lapply(seq_len(nrow(vb_cache)), function(i) {
+      row <- vb_cache[i, , drop = FALSE]
+      list(
+        matchup          = annotate_matchup(row$Matchup),
+        recommended_bet  = as.character(row$Recommended_Bet),
+        team             = to_code(row$Team),
+        book             = as.character(row$Book),
+        line             = as.character(row$Line),
+        model_win_prob   = round(as.numeric(row$Model_Win_Prob), 3),
+        predicted_margin = round(as.numeric(row$predicted_margin), 1),
+        ev_percent       = round(as.numeric(row$EV_Percent), 2),
+        exp_clv          = round(as.numeric(row$Exp_CLV), 2),
+        bankroll_rec     = as.character(row$Bankroll_Rec),
+        status           = as.character(row$Status)
+      )
+    })
+
+    vb_out <- list(
+      total_bets  = length(active_bets),
+      active_bets = active_bets
+    )
+    write_json_clean(vb_out, "value_bets.json")
+    log_info(sprintf("export_web_datasets: value_bets.json built from %s - %d positive-EV bets published.",
+                     CACHE_LATEST_VALUE_BETS, length(active_bets)))
+  } else {
+    log_warn(sprintf("export_web_datasets: value_bets.json NOT refreshed - upstream cache %s is missing, so the positive-EV slate could not be derived. Falling back to republishing the previously published file, which may now be stale.",
+                     CACHE_LATEST_VALUE_BETS))
+    republish_json_verbatim("value_bets.json",
+                            reason = sprintf("upstream cache %s missing", CACHE_LATEST_VALUE_BETS))
   }
 
   cat(sprintf("\n>>> [SUCCESS] Web datasets successfully exported to %s/!\n", WEB_DATA_DIR))

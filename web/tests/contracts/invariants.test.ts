@@ -103,14 +103,37 @@ describe('standings — per-team arithmetic', () => {
     }
   });
 
-  it('every team has played the same number of games (no stale rows)', () => {
-    const played = new Set(teams.map((t) => t.games_played));
+  it('games_played is internally consistent (no stale rows)', () => {
+    // RULE: games_played may span at most 2 games across the league, and no more than
+    // a quarter of teams may sit at the trailing edge of that spread.
+    //
+    // Why 2 and not 1 (the old rule, which was red on most days): three cohorts coexist
+    // legitimately mid-week. If weeks 1..W are complete, teams whose bye has already
+    // passed sit at W-1 while the rest sit at W, and once the first game of week W+1
+    // kicks off its two participants jump to W+1 - a 2-game spread with nothing wrong.
+    // Observed 2026-10-23 (week 7 in progress, 1 of 14 games played, 6 byes taken):
+    // {5: 6 teams, 6: 24 teams, 7: 2 teams}. The old <= 1 rule failed on that, which
+    // would have made this suite useless as a daily pre-deploy gate.
+    //
+    // What it still catches: a genuinely stale row carried over from an earlier export
+    // lags 3+ games behind the live ones, and a partially-refreshed file leaves a LARGE
+    // bloc behind rather than a bye-sized one. At most 6 teams can be on a bye in any
+    // single NFL week, so a trailing cohort bigger than teams/4 (8 of 32) cannot be
+    // explained by byes and is a data-freshness defect.
+    const counts = teams.map((t) => t.games_played);
+    const max = Math.max(...counts);
+    const min = Math.min(...counts);
     expect(
-      Array.from(played).sort(),
-      'teams are mid-week out of sync; byes make a 1-game spread legitimate but not more',
-    ).toHaveLength(played.size <= 2 ? played.size : 1);
-    expect(Math.max(...teams.map((t) => t.games_played)) - Math.min(...teams.map((t) => t.games_played)))
-      .toBeLessThanOrEqual(1);
+      max - min,
+      `games_played spans ${min}..${max}; an in-progress week plus byes explains at most 2`,
+    ).toBeLessThanOrEqual(2);
+
+    const trailing = counts.filter((n) => n <= max - 2);
+    expect(
+      trailing.length,
+      `${trailing.length} teams are 2+ games behind the league leader (${max}); ` +
+        'byes can only account for 6, so this looks like stale or partially-refreshed rows',
+    ).toBeLessThanOrEqual(teams.length / 4);
   });
 
   it('deeper playoff rounds are never more likely than shallower ones', () => {

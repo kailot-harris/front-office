@@ -335,11 +335,20 @@ run_stage("accuracy_tracker.R", "Track Season-to-Date Model Accuracy Trajectory"
 # cache and produces nothing any other stage reads.
 #
 # Unlike notify_bets.R / accuracy_tracker.R / bet_tracker.r above (which deliberately omit
-# `output` because a day with nothing new is a legitimate no-op), this stage rewrites all ten
-# files unconditionally on every run, so declaring them is exactly right: the C-2
-# .check_stage_output() staleness assertion will now WARN if the exporter silently no-ops or
-# fails inside one of its own tryCatch() blocks. WEB_DATA_FILES is config.R's single source of
-# truth for that list - do not restate the paths here.
+# `output` because a day with nothing new is a legitimate no-op), this stage rewrites the nine
+# files in WEB_DATA_FILES on every run, so declaring them is right. WEB_DATA_FILES is
+# config.R's single source of truth for that list - do not restate the paths here.
+#
+# Scope of the C-2 guarantee, stated precisely so nobody over-trusts it: .check_stage_output()
+# compares mtimes only. It will WARN if a declared file is not touched at all - e.g. the
+# exporter dies partway, or a numbered section is removed without updating the list. It CANNOT
+# detect a file whose bytes were merely republished verbatim, because that still advances the
+# mtime. That applies to salary_cap_profiles.json on a run where its live
+# nflreadr::load_contracts() fetch fails and it falls back, and to coaching_profiles.json,
+# which is a hand-seeded static artifact with no upstream source and is therefore excluded
+# from WEB_DATA_FILES entirely. For those paths the exporter's own log_warn() in
+# logs/nfl_pipeline.log - naming the file and the reason - is the staleness signal, not this
+# assertion. See config.R's WEB_* block for the full rationale.
 run_stage("export_web_datasets.R", "Export Web Application JSON Datasets (web/public/data)",
           call_fn = "run_export_web_datasets",
           output = WEB_DATA_FILES)
