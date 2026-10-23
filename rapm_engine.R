@@ -209,8 +209,22 @@ load_or_build_wnba_pbp_cache <- function(seasons = ALL_SEASONS, force_refresh = 
 # build_possession_design_matrix() — turns the real possession table into the sparse
 # RAPM design matrix: offense-lineup columns (1..n_players, +1 each) and defense-lineup
 # columns (n_players+1..2*n_players, +1 each). y = points scored by the offense on that
-# possession. This is the "stint matrix" the brief asked for, at single-possession
-# granularity (the finest real grain wehoop's WNBA Stats loader supports).
+# possession, MINUS the league mean points per possession (`league_ppp`). This is the
+# "stint matrix" the brief asked for, at single-possession granularity (the finest real
+# grain wehoop's WNBA Stats loader supports).
+#
+# WHY y IS CENTRED (GitHub issue #76) ------------------------------------------------------
+# Every possession contributes five +1s to the offensive block and five +1s to the defensive
+# block, so the ridge penalty has nowhere to put league-average scoring (~1.16 pts/possession,
+# spread over 10 players) except the player coefficients themselves. With raw `points` as the
+# target, BOTH blocks therefore acquired the same ~+7.12 pts/100 offset — the origin of the
+# offset that issue #71's post-hoc coefficient centring treated after the fact. Subtracting
+# `league_ppp` from y removes the constant at source, so the raw blocks come out of the solver
+# already sitting at ~0 and 0 means "league average" in the fit itself, not just in the export.
+# PRECEDENT: this mirrors NBA Analytics/rapm_engine.R exactly — `league_ppp <- mean(clean$points)`
+# (NBA `:358`), `y = clean$points - league_ppp` (NBA `:371`), and `league_ppp` returned in the
+# design-matrix list (NBA `:376`). That engine's header (`:102-107`) diagnoses this engine's
+# uncentred-y defect by name.
 # ------------------------------------------------------------------------------
 build_possession_design_matrix <- function(possessions) {
   poss_clean <- possessions %>%
@@ -250,9 +264,16 @@ build_possession_design_matrix <- function(possessions) {
   off_counts <- table(as.vector(off_cols))
   def_counts <- table(as.vector(def_cols))
 
+  # League mean points per possession over the SAME filtered rows that build X (issue #76;
+  # NBA `:358`). Centring y on it is what keeps league-average scoring out of the player
+  # coefficients. Returned below so the gauge is readable from the saved artifact rather
+  # than re-derived by every consumer (NBA `:376`).
+  league_ppp <- mean(poss_clean$points)
+
   list(
     X = X_sparse,
-    y = poss_clean$points,
+    y = poss_clean$points - league_ppp,   # centred target, issue #76; NBA `:371`
+    league_ppp = league_ppp,
     weights = rep(1, n_stints),
     all_players = all_players,
     n_players = n_players,
@@ -536,6 +557,22 @@ fit_rapm_ratings <- function(seasons = ALL_SEASONS, lambda = 900, force_refresh 
   # total_rapm is computed AFTER centering and is unchanged to within float noise, because
   # ridge pins the two raw block means equal: the total shifts by mean(beta_def) -
   # mean(beta_off) ~ 0 (the negation above does not affect this argument).
+  #
+  # KEPT DELIBERATELY AFTER ISSUE #76. As of #76 the ridge target `y` is centred at source in
+  # build_possession_design_matrix() (`y = points - league_ppp`), which is the ROOT fix: the
+  # raw blocks now arrive here at ~0 instead of ~+7.12, so this step has almost nothing left
+  # to remove. It is NOT redundant, and is retained for two reasons:
+  #   1. This frame is centred BEFORE the `dplyr::filter(!is.na(team))` below (and before
+  #      reattribute_to_current_roster_team()), so the EXPORTED, post-filter block means carry
+  #      a ~0.002 residual that centring `y` cannot reach. Only a post-hoc step on the
+  #      exported rows can pin mean(orapm) == mean(drapm) == 0 exactly, which is what
+  #      assert_rapm_centered() checks and what makes "0 == league average" literally true of
+  #      the shipped column.
+  #   2. Centred `y` only gets each block near zero while the penalty stays uniform and
+  #      symmetric across both blocks. Give offence and defence separate lambdas, or shrink
+  #      toward box-score priors instead of toward zero, and the prior silently chooses the
+  #      gauge again. The explicit sum-to-zero side constraint survives that; centred `y`
+  #      does not. NBA Analytics keeps both steps for exactly this reason (its `:98-107`).
   orapm <- orapm - mean(orapm, na.rm = TRUE)
   drapm <- drapm - mean(drapm, na.rm = TRUE)
   # ---------------------------------------------------------------------------------------
@@ -599,6 +636,11 @@ fit_rapm_ratings <- function(seasons = ALL_SEASONS, lambda = 900, force_refresh 
     total_rapm = round(total_rapm, 2),
     n_off_poss = off_n,
     n_def_poss = def_n,
+    # The gauge the ratings are measured against: league mean points per possession, the
+    # constant subtracted from the ridge target in build_possession_design_matrix() (issue
+    # #76). A scalar recycled down the frame, exported so the gauge is readable from the
+    # saved artifact rather than inferred. Mirrors NBA Analytics' `:613`.
+    league_ppp = round(dm$league_ppp, 4),
     data_source = "real_wnba_stats_possessions"
   ) %>%
     dplyr::filter(!is.na(team)) %>%   # drops team_id==0 / unassigned-possession garbage rows
