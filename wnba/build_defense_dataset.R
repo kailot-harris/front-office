@@ -68,7 +68,7 @@ DRAPM_SOURCE_HEURISTIC  <- "heuristic_fallback"
 
 drapm_lookup <- tryCatch({
   rost_file <- file.path(CACHE_DIR, "active_rosters_cache.rds")
-  rapm_file <- file.path(CACHE_DIR, "rapm_ratings.rds")
+  rapm_file <- CACHE_RAPM_RATINGS
   if (!file.exists(rost_file) || !file.exists(rapm_file)) {
     stop("missing active_rosters_cache.rds or rapm_ratings.rds")
   }

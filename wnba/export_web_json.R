@@ -59,7 +59,7 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
   }
 
   # Load secondary engine caches for variants
-  rapm_path <- file.path(CACHE_DIR, "rapm_ratings.rds")
+  rapm_path <- CACHE_RAPM_RATINGS
   rapm_df <- if (file.exists(rapm_path)) readRDS(rapm_path) else NULL
 
   shot_path <- file.path(CACHE_DIR, "team_shot_quality.rds")

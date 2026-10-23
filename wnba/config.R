@@ -236,6 +236,40 @@ CACHE_PBP_RAW               <- file.path(CACHE_DIR, "wnba_espn_pbp_cache.rds")
 CACHE_PLAYER_PBP_FEATURES   <- file.path(CACHE_DIR, "player_pbp_features.rds")
 
 # ------------------------------------------------------------------------------------------
+# RAPM & Opponent Adjustments (GitHub issues #71, #76, #77, #78, #79, #82)
+# ------------------------------------------------------------------------------------------
+# Ridge regression penalty parameter (lambda) for possession-level RAPM.
+# Defaults to 900 (coarse-grid baseline); 5-fold cross-validation via tune_lambda_cv()
+# on the 2019-2025 pooled dataset identifies 5000 as the out-of-sample MSE minimum.
+# Can be overridden via RAPM_LAMBDA environment variable or tuned via RAPM_TUNE_LAMBDA=TRUE.
+RAPM_LAMBDA      <- as.numeric(Sys.getenv("RAPM_LAMBDA", "900"))
+RAPM_TUNE_LAMBDA <- isTRUE(as.logical(Sys.getenv("RAPM_TUNE_LAMBDA", "FALSE")))
+
+# Honesty flag (low_sample_flag) threshold for RAPM ratings.
+# What matters is how much of a rating is data vs prior. Ridge shrinks each coefficient
+# by roughly s_i = n_i / (n_i + lambda), so 1 - s_i is the share contributed by the shrinkage prior.
+# Flag a player when the weaker of their two sides is more than two-thirds prior
+# (shrinkage_data_share < 1/3, i.e. fewer than lambda/2 possessions on that side).
+RAPM_MIN_DATA_SHARE <- 1 / 3
+
+# Leaderboard rank eligibility threshold.
+# Require >= 1,000 possessions on BOTH sides (not combined, which lets a one-sided
+# specialist through on garbage-time minutes).
+RAPM_LEADERBOARD_MIN_POSS_PER_SIDE <- 1000L
+RAPM_MIN_POSS_PER_SIDE_DEFAULT     <- 1000L
+
+# Opponent defensive adjustment slope for player prop projections (Finding M-4).
+# Scaled for the post-#79 additive convention where positive drapm == strong defender.
+# Regressing player points per 40 on opponent defensive dRAPM yields slope -0.0504
+# (t = -7.60, p = 3.0e-14 across 16,657 games 2024-2026).
+OPP_DEF_MU_SLOPE <- -0.0504
+
+# Multiplier clamp bounds (+/- 15%) for adjust_mu_for_opponent().
+# Guards against extreme or degenerate ratings while comfortably clearing the 0.95x - 1.06x
+# empirical range observed across all 15 WNBA team defenses.
+OPP_DEF_MU_CLAMP <- c(0.85, 1.15)
+
+# ------------------------------------------------------------------------------------------
 # API Throttling & Rate-Limiting (carried over from NBA as reasonable starting defaults -
 # sport-agnostic, per WNBA_REPLICATION_PLAN.md)
 # ------------------------------------------------------------------------------------------

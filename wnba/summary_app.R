@@ -359,7 +359,7 @@ join_rapm_to_roster <- if (!is.null(.rapm_join_utils_env) &&
 
 # ---- Tab 6 (Player Ratings / RAPM) cache paths ----
 # Not config.R constants (same convention as the Tab 2/3/5 caches above).
-RAPM_RATINGS_CACHE_PATH <- "cache/rapm_ratings.rds"
+RAPM_RATINGS_CACHE_PATH <- CACHE_RAPM_RATINGS
 ACTIVE_ROSTERS_CACHE_PATH <- "cache/active_rosters_cache.rds"
 
 # Default low-sample cutoff for Tab 6's leaderboard/chart: players with fewer than this many
@@ -373,7 +373,7 @@ ACTIVE_ROSTERS_CACHE_PATH <- "cache/active_rosters_cache.rds"
 # `low_sample_flag` is a per-rating honesty flag (shrinkage-based), while this is the
 # rank-eligibility cut. 1,000 per side leaves 242 of 430 rows eligible and yields a top ten
 # with no sub-1,000-possession player. User-adjustable in the UI; 0 disables it.
-RAPM_MIN_POSS_PER_SIDE_DEFAULT <- 1000
+# RAPM_MIN_POSS_PER_SIDE_DEFAULT defined centrally in config.R (GitHub issue #82)
 
 # ---- Startup-only cache loads for Tab 6 (fail-safe: never crash if a cache is missing) ----
 rapm_ratings_data <- NULL
