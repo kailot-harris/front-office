@@ -121,9 +121,18 @@ reactable_dark_theme <- function(dark) {
   )
 }
 
-# config.R is the single source of truth for WNBA_TEAMS (abbreviation -> full name) and
+# config.R is the single source of truth for WNBA_TEAMS (abbreviation -> full name),
 # WNBA_SEASON_GAMES (needed for Tab 1's 50/50 reference line, at WNBA_SEASON_GAMES / 2
-# wins) -- these are the two constants summary_app.R borrows from config.R; everything
+# wins), CACHE_RAPM_RATINGS and RAPM_MIN_POSS_PER_SIDE_DEFAULT (both Tab 6, adopted for
+# GitHub issue #82) -- these are the four constants summary_app.R borrows from config.R.
+# They must each be lifted out of `config_env` explicitly, as below: config.R is sourced
+# into a private environment, so a bare reference to a config.R symbol elsewhere in this
+# file does not resolve through it. Such a reference may still appear to work -- until
+# 2026-10-23 these two resolved only because rapm_join_utils.R:24's bare source("config.R")
+# (no `local=`) leaks all of config.R into the global env when this file sources that
+# helper above, twelve lines before the first use. That is load-order luck, not an import:
+# the helper's own tryCatch returns NULL silently if it fails, which would take Tab 6 down
+# with "object not found". Adopt new config.R constants here, never bare. Everything
 # else about this app's "no shared code path with app.R" design (see header comment) is
 # unaffected, since config.R is a pure constants file, not app.R itself. Fail-safe
 # tryCatch matches the pattern app.R itself already uses to source config.R.
@@ -137,6 +146,8 @@ reactable_dark_theme <- function(dark) {
 )
 WNBA_TEAMS <- if (!is.null(.config_constants)) get("WNBA_TEAMS", envir = .config_constants) else NULL
 WNBA_SEASON_GAMES <- if (!is.null(.config_constants)) get("WNBA_SEASON_GAMES", envir = .config_constants) else 44
+CACHE_RAPM_RATINGS <- if (!is.null(.config_constants)) get("CACHE_RAPM_RATINGS", envir = .config_constants) else file.path("cache", "rapm_ratings.rds")
+RAPM_MIN_POSS_PER_SIDE_DEFAULT <- if (!is.null(.config_constants)) get("RAPM_MIN_POSS_PER_SIDE_DEFAULT", envir = .config_constants) else 1000L
 
 # ---- Team logo helpers ----
 # Logos live in www/logos/<ABBR>_logo.png (ABBR matches config.R's WNBA_TEAMS names),
