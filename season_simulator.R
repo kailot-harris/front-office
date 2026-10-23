@@ -489,6 +489,13 @@ ens_w_rap <- 0.25
 ens_w_sf  <- 0.20
 ens_w_emb <- 0.20
 
+rating_ensemble <- round(
+  ens_w_bu * rating_bu +
+  ens_w_rap * rating_rapm +
+  ens_w_sf * rating_sf +
+  ens_w_emb * rating_emb, 2
+)
+
 ensemble_wins_matrix <- (ens_w_bu * sim_bottom_up$wins_matrix +
                          ens_w_rap * sim_rapm$wins_matrix +
                          ens_w_sf * sim_shot_fatigue$wins_matrix +
@@ -845,6 +852,7 @@ metadata_obj <- list(
 # no manual copy step (issue #18).
 out_teams_rds    <- file.path(CACHE_DIR, "projections_season_teams.rds")
 out_players_rds  <- file.path(CACHE_DIR, "projections_season_players.rds")
+out_ensemble_ratings_rds <- file.path(CACHE_DIR, "ensemble_team_ratings.rds")
 out_teams_json   <- file.path(CACHE_DIR, "projections_season_teams.json")
 out_players_json <- file.path(CACHE_DIR, "projections_season_players.json")
 out_meta_json    <- file.path(CACHE_DIR, "projections_models_metadata.json")
@@ -856,8 +864,23 @@ web_meta_json    <- file.path(WEB_DATA_DIR, "projections_models_metadata.json")
 # Write RDS
 saveRDS(team_projections, out_teams_rds)
 saveRDS(player_projections, out_players_rds)
+ensemble_ratings_df <- tibble::tibble(
+  team = NBA_TEAMS$team,
+  team_name = NBA_TEAMS$team_name,
+  ensemble_net_rating = rating_ensemble,
+  rating_bottom_up = rating_bu,
+  rating_rapm = rating_rapm,
+  rating_shot_fatigue = rating_sf,
+  rating_embeddings = rating_emb,
+  proj_wins = ensemble_mean_wins,
+  # Uncertainty on the blend, carried so downstream stages can widen a game's
+  # win probability instead of assuming every team's rating is equally certain.
+  proj_wins_sd = ensemble_sd_wins
+)
+saveRDS(ensemble_ratings_df, out_ensemble_ratings_rds)
 cat(sprintf("      Saved: %s (%d rows)\n", out_teams_rds, nrow(team_projections)))
 cat(sprintf("      Saved: %s (%d rows)\n", out_players_rds, nrow(player_projections)))
+cat(sprintf("      Saved: %s (%d teams)\n", out_ensemble_ratings_rds, nrow(ensemble_ratings_df)))
 
 # Write cache JSON (pretty, auto_unbox for clean API ingestion) and publish the
 # exact same payloads to the web data directory.

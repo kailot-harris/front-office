@@ -126,6 +126,11 @@ evaluate_slate_fatigue <- function(schedule_data = NULL) {
   return(results)
 }
 
-if (!interactive()) {
+# Other stages (build_matchups_dataset.R) source this file only for
+# calculate_travel_fatigue() / ARENA_DB and must not trigger the slate export,
+# which would overwrite cache/travel_fatigue_metrics.rds with their own scope.
+# They set FATIGUE_ENGINE_LIBRARY_ONLY <- TRUE before sourcing.
+if (!interactive() &&
+    !(exists("FATIGUE_ENGINE_LIBRARY_ONLY") && isTRUE(FATIGUE_ENGINE_LIBRARY_ONLY))) {
   invisible(evaluate_slate_fatigue())
 }

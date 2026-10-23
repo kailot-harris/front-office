@@ -308,6 +308,26 @@ if (n_log_unmatched > 0) {
   for (k in setdiff(log_season$join_key, schedule$join_key)) cat(sprintf(">>>     %s\n", k))
 }
 
+# JOIN RATE CONTRACT. A logged prediction for a game near today is an ACTIVE
+# SLATE row: it was written off live bookmaker odds, so if it fails to join the
+# ESPN spine the page silently shows the weaker ensemble baseline for a game the
+# model has actually priced. That is a team-naming or home/away-orientation bug
+# in market_odds_engine.R / prediction_accuracy_logger.R, not a data gap, so it
+# is a hard error here. Older unmatched rows only warn above: the log also
+# carries games the spine legitimately does not (preseason, moved fixtures).
+PRED_LOG_ACTIVE_WINDOW_DAYS <- 2L
+active_unmatched <- log_season[
+  !(log_season$join_key %in% schedule$join_key) &
+    abs(as.numeric(log_season$game_date - Sys.Date())) <= PRED_LOG_ACTIVE_WINDOW_DAYS, ]
+if (nrow(active_unmatched) > 0) {
+  stop(sprintf(paste0(
+    "%d active-slate logged prediction(s) within %d day(s) of today failed to ",
+    "join the ESPN schedule spine on date + short team name: %s. Fix the team ",
+    "resolver / home-away orientation in the logger before publishing."),
+    nrow(active_unmatched), PRED_LOG_ACTIVE_WINDOW_DAYS,
+    paste(active_unmatched$join_key, collapse = "; ")))
+}
+
 # ------------------------------------------------------------------------------
 # 2b. RATINGS FALLBACK PROJECTION for games the log has not predicted
 #     (see DESIGN DECISION 2, basis (B)). This is the SAME computation as
@@ -324,32 +344,41 @@ if (n_log_unmatched > 0) {
 # line with it.
 HCA_POINTS <- 2.40
 
-# Resolved from CACHE_DIR (config.R), never from another checkout. The file is a
-# gitignored artifact of an earlier pipeline stage (roster_bottom_up_engine.R),
-# so a fresh worktree will not have it until that stage has run.
-RATINGS_PATH <- file.path(CACHE_DIR, "projected_30_team_standings.rds")
-if (!file.exists(RATINGS_PATH)) {
+# RATINGS SOURCE - the primary 4-model ensemble blend, and nothing else.
+# season_simulator.R writes cache/ensemble_team_ratings.rds as a pipeline stage,
+# carrying each team's blended net rating
+#   0.35 * BPM + 0.25 * RAPM + 0.20 * ShotQuality/Fatigue + 0.20 * Embeddings.
+# The older single-model fallback (cache/projected_30_team_standings.rds,
+# `Net_Rating`, emitted as projection_basis "team_rating_differential") is gone:
+# it produced a second, weaker and non-comparable number for the same games, so
+# this stage now refuses to run rather than quietly emitting it.
+ENSEMBLE_PATH <- file.path(CACHE_DIR, "ensemble_team_ratings.rds")
+if (!file.exists(ENSEMBLE_PATH)) {
   stop(sprintf(paste0(
-    "Team ratings not found at %s - run the earlier pipeline stage first ",
-    "(roster_bottom_up_engine.R writes cache/projected_30_team_standings.rds). ",
-    "Without it the scheduled games the accuracy log has not predicted cannot be ",
-    "projected, and this stage refuses to emit a dataset with invented numbers."),
-    RATINGS_PATH))
+    "Primary ensemble ratings not found at %s - run season_simulator.R first ",
+    "(it writes cache/ensemble_team_ratings.rds). This stage no longer falls ",
+    "back to the single-model projected_30_team_standings.rds ratings."),
+    ENSEMBLE_PATH))
 }
-ratings_df <- as.data.frame(readRDS(RATINGS_PATH))
-if (!all(c("Team", "Net_Rating") %in% names(ratings_df))) {
-  stop(sprintf("%s does not carry the expected `Team` / `Net_Rating` columns.", RATINGS_PATH))
+ens_df <- as.data.frame(readRDS(ENSEMBLE_PATH))
+if (!all(c("team", "team_name", "ensemble_net_rating") %in% names(ens_df))) {
+  stop(sprintf("%s does not carry the expected `team` / `team_name` / `ensemble_net_rating` columns.",
+               ENSEMBLE_PATH))
 }
-team_ratings <- setNames(suppressWarnings(as.numeric(ratings_df$Net_Rating)),
-                         as.character(ratings_df$Team))
-team_ratings <- team_ratings[!is.na(team_ratings)]
-cat(sprintf(">>> Team ratings: %d rated teams from %s (column Net_Rating)\n",
-            length(team_ratings), basename(RATINGS_PATH)))
+team_ratings <- setNames(suppressWarnings(as.numeric(ens_df$ensemble_net_rating)),
+                         as.character(ens_df$team_name))
+abbr_ratings <- setNames(suppressWarnings(as.numeric(ens_df$ensemble_net_rating)),
+                         as.character(ens_df$team))
+cat(sprintf(">>> Primary ensemble ratings: %d rated teams from %s (column ensemble_net_rating)\n",
+            length(team_ratings), basename(ENSEMBLE_PATH)))
 
-# Ratings are keyed by the same team SHORT display names the spine carries, so
-# the match rate is measured, not assumed.
-games$home_rating <- unname(team_ratings[games$home_name])
-games$away_rating <- unname(team_ratings[games$away_name])
+# Key ratings by both short display name and 3-letter abbreviation
+games$home_rating <- unname(ifelse(!is.na(team_ratings[games$home_name]),
+                                   team_ratings[games$home_name],
+                                   abbr_ratings[games$home_team]))
+games$away_rating <- unname(ifelse(!is.na(team_ratings[games$away_name]),
+                                   team_ratings[games$away_name],
+                                   abbr_ratings[games$away_team]))
 n_rated <- sum(!is.na(games$home_rating) & !is.na(games$away_rating))
 rated_pct <- round(100 * n_rated / nrow(games), 1)
 cat(sprintf(">>> Both teams rated for %d of %d scheduled games (%.1f%%)\n",
@@ -361,8 +390,87 @@ if (rated_pct < 90) {
     "Only %.1f%% of scheduled games have both teams present in %s - the ratings ",
     "table's `Team` naming does not match the schedule's short display names. ",
     "Unmatched: %s"),
-    rated_pct, basename(RATINGS_PATH), paste(unmatched, collapse = ", ")))
+    rated_pct, basename(ENSEMBLE_PATH), paste(unmatched, collapse = ", ")))
 }
+
+# ------------------------------------------------------------------------------
+# 2c. SCHEDULE CONTEXT: rest, back-to-backs, travel and altitude, per side.
+# ------------------------------------------------------------------------------
+# The ensemble net ratings are season-long team strength and carry no schedule
+# context, so each game's margin is adjusted by the DIFFERENCE in the two
+# sides' fatigue drag. Both the drag model and the arena coordinates come from
+# fatigue_travel_engine.R (haversine distance, eastward-biased circadian tax,
+# DEN/UTA altitude tax, back-to-back tax) - they are not re-derived here, so the
+# altitude handling the plan calls for is that engine's, applied to every game
+# instead of to a 4-game sample slate. cache/travel_fatigue_metrics.rds is NOT
+# read: it only ever holds the active slate, while this spine needs all 1,200.
+#
+# Rest and the previous venue are read off the spine itself: for each team, the
+# game that precedes this one in date order, and the arena it was played in.
+FATIGUE_ENGINE_LIBRARY_ONLY <- TRUE
+source("fatigue_travel_engine.R")
+
+# One row per team per game, in date order, carrying the arena played in.
+appearances <- rbind(
+  data.frame(team = games$home_team, game_date = games$game_date,
+             venue = games$home_team, stringsAsFactors = FALSE),
+  data.frame(team = games$away_team, game_date = games$game_date,
+             venue = games$home_team, stringsAsFactors = FALSE)
+)
+appearances <- appearances[order(appearances$team, appearances$game_date), ]
+
+# Previous appearance per team: venue played in, and days between the two dates.
+prev_venue <- character(nrow(appearances))
+prev_gap   <- rep(NA_real_, nrow(appearances))
+for (j in seq_len(nrow(appearances))) {
+  if (j > 1 && identical(appearances$team[j], appearances$team[j - 1])) {
+    prev_venue[j] <- appearances$venue[j - 1]
+    prev_gap[j]   <- as.numeric(difftime(appearances$game_date[j],
+                                         appearances$game_date[j - 1], units = "days"))
+  } else {
+    # Season opener: treat the team as rested and already at the venue's origin.
+    prev_venue[j] <- appearances$venue[j]
+    prev_gap[j]   <- NA_real_
+  }
+}
+ctx_key <- paste(appearances$team, format(appearances$game_date, "%Y-%m-%d"), sep = "|")
+ctx_prev_venue <- setNames(prev_venue, ctx_key)
+ctx_prev_gap   <- setNames(prev_gap, ctx_key)
+
+# fatigue_travel_engine.R's convention: days_rest 0 == back-to-back.
+.side_drag <- function(team, game_date, dest) {
+  k <- paste(team, format(game_date, "%Y-%m-%d"), sep = "|")
+  gap <- ctx_prev_gap[[k]]
+  origin <- ctx_prev_venue[[k]]
+  if (is.null(gap) || is.na(gap)) return(0)              # season opener
+  days_rest <- max(0, as.integer(round(gap)) - 1L)
+  fm <- calculate_travel_fatigue(dest, origin,
+                                 days_rest = days_rest,
+                                 is_back_to_back = days_rest == 0L)
+  as.numeric(fm$fatigue_drag_pts)
+}
+
+games$home_fatigue_drag <- vapply(seq_len(nrow(games)), function(i) {
+  .side_drag(games$home_team[i], games$game_date[i], games$home_team[i])
+}, numeric(1))
+games$away_fatigue_drag <- vapply(seq_len(nrow(games)), function(i) {
+  .side_drag(games$away_team[i], games$game_date[i], games$home_team[i])
+}, numeric(1))
+# Positive helps the home side: the visitor's drag minus the host's own.
+games$schedule_adjustment <- round(games$away_fatigue_drag - games$home_fatigue_drag, 2)
+
+cat(sprintf(paste0(
+  ">>> Schedule context: %d of %d games carry a non-zero fatigue differential ",
+  "(mean %+.2f, range %+.2f .. %+.2f points to the home side)\n"),
+  sum(games$schedule_adjustment != 0), nrow(games),
+  mean(games$schedule_adjustment), min(games$schedule_adjustment),
+  max(games$schedule_adjustment)))
+
+ratings_source_desc <- sprintf(paste0(
+  "Primary 4-Model Ensemble Blend (35%% BPM, 25%% RAPM, 20%% Shot Quality/Fatigue, ",
+  "20%% Embeddings) + %.2f HCA + fatigue_travel_engine.R schedule drag ",
+  "(rest, back-to-backs, haversine travel, circadian shift, DEN/UTA altitude), ",
+  "pnorm(margin / %.1f)"), HCA_POINTS, MARGIN_SIGMA)
 
 # ------------------------------------------------------------------------------
 # 3. REAL SCORES: the target season's team box scores, joined on ESPN game_id
@@ -457,11 +565,13 @@ for (i in seq_len(nrow(games))) {
     margin <- qnorm(min(max(win_prob, 1e-6), 1 - 1e-6)) * MARGIN_SIGMA
     basis <- "margin_from_logged_win_prob"
   } else if (!is.na(g$home_rating) && !is.na(g$away_rating)) {
-    # Verbatim prediction_accuracy_logger.R:142-172. A DIFFERENT, simpler model
-    # than the logged one above - labelled as such, never blended with it.
-    margin <- (as.numeric(g$home_rating) - as.numeric(g$away_rating)) + HCA_POINTS
+    # Tier 2: the full ensemble baseline, carried by every scheduled game the
+    # 48-hour logged slate has not reached. Blended net-rating differential,
+    # home-court advantage, then the two sides' fatigue differential (2c).
+    margin <- (as.numeric(g$home_rating) - as.numeric(g$away_rating)) +
+      HCA_POINTS + as.numeric(g$schedule_adjustment)
     win_prob <- pnorm(margin / MARGIN_SIGMA)
-    basis <- "team_rating_differential"
+    basis <- "primary_ensemble"
   }
 
   matchups[[i]] <- list(
@@ -502,14 +612,14 @@ basis_vec <- vapply(matchups,
                     function(m) if (is.null(m$projection_basis)) NA_character_ else m$projection_basis,
                     character(1))
 n_logged_basis <- sum(basis_vec %in% c("logged_model_margin", "margin_from_logged_win_prob"))
+n_ensemble_basis <- sum(basis_vec == "primary_ensemble", na.rm = TRUE)
 n_ratings_basis <- sum(basis_vec == "team_rating_differential", na.rm = TRUE)
+n_unlogged_basis <- n_ensemble_basis + n_ratings_basis
 cat(sprintf(">>> %d graded games, %d pending; %d games carry a model projection, %d carry none\n",
             n_completed, n_pending, n_projected, length(matchups) - n_projected))
-cat(sprintf(">>> projection_basis: %d from the logged model, %d from team rating differential\n",
-            n_logged_basis, n_ratings_basis))
-# Invariant: a projection must never be both bases, and every projected game
-# must name one.
-stopifnot(n_logged_basis + n_ratings_basis == n_projected)
+cat(sprintf(">>> projection_basis: %d from the logged model, %d from primary ensemble, %d from team rating differential\n",
+            n_logged_basis, n_ensemble_basis, n_ratings_basis))
+stopifnot(n_logged_basis + n_unlogged_basis == n_projected)
 
 # ------------------------------------------------------------------------------
 # 6. Slate summaries, including per-slate accuracy over GRADED games only
@@ -546,7 +656,11 @@ slates <- lapply(slate_ids, function(s) {
         m$projection_basis %in% c("logged_model_margin", "margin_from_logged_win_prob")
     }, logical(1)))),
     ratings_projection_total = as.integer(sum(vapply(in_slate, function(m) {
-      identical(m$projection_basis, "team_rating_differential")
+      !is.null(m$projection_basis) &&
+        m$projection_basis %in% c("primary_ensemble", "team_rating_differential")
+    }, logical(1)))),
+    ensemble_projection_total = as.integer(sum(vapply(in_slate, function(m) {
+      identical(m$projection_basis, "primary_ensemble")
     }, logical(1)))),
     graded_total = as.integer(n_graded),
     correct_total = as.integer(n_correct),
@@ -571,11 +685,11 @@ dataset <- list(
   pending_games = as.integer(n_pending),
   games_with_projection = as.integer(n_projected),
   games_without_projection = as.integer(length(matchups) - n_projected),
-  # The two bases, counted separately and never summed into one "model" figure.
+  # Basis counts: logged active slate vs. primary ensemble / ratings
   games_logged_basis = as.integer(n_logged_basis),
-  games_ratings_basis = as.integer(n_ratings_basis),
-  ratings_source = sprintf("%s (Net_Rating) + %.2f HCA, pnorm(margin / %.1f)",
-                           basename(RATINGS_PATH), HCA_POINTS, MARGIN_SIGMA),
+  games_ratings_basis = as.integer(n_unlogged_basis),
+  games_ensemble_basis = as.integer(n_ensemble_basis),
+  ratings_source = ratings_source_desc,
   rating_match_rate_pct = rated_pct,
   # Measured on every run, never assumed (see JOIN KEY above).
   logged_predictions_in_season = as.integer(nrow(log_season)),

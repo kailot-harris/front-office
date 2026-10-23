@@ -30,6 +30,7 @@ import {
   PlayerCatalogEntrySchema,
   ShotsMetadataSchema,
   PlayerShotDataSchema,
+  MatchupsDatasetSchema,
 } from './schemas';
 
 function formatIssues(issues: z.ZodIssue[], max = 8): string {
@@ -132,6 +133,11 @@ describe('Strict Zod schema contracts against public/data/*.json', () => {
 
   it('playoff_series_matchups.json matches PlayoffMatchupsCatalogSchema', () => {
     assertValid(PlayoffMatchupsCatalogSchema, d.playoffSeries, 'playoff_series_matchups.json');
+  });
+
+  it('matchups_slates.json matches MatchupsDatasetSchema', () => {
+    expect(d.matchups.matchups.length).toBe(1200);
+    assertValid(MatchupsDatasetSchema, d.matchups, 'matchups_slates.json');
   });
 
   it('shots_index.json matches PlayerCatalogEntrySchema', () => {

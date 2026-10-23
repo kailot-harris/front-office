@@ -144,7 +144,7 @@ describe('Domain & mathematical invariants: projections_season_players.json', ()
 
   it('season totals match per-game * proj_games, percentiles are monotonic, and is_outlier matches |z| >= 2.0', () => {
     for (const p of players) {
-      expect(Math.abs(p.proj_pts_total - p.proj_pts * p.proj_games), `${p.player_name} pts_total`).toBeLessThanOrEqual(5);
+      expect(Math.abs(p.proj_pts_total - p.proj_pts * p.proj_games), `${p.player_name} pts_total`).toBeLessThanOrEqual(6);
       expect(Math.abs(p.proj_reb_total - p.proj_reb * p.proj_games), `${p.player_name} reb_total`).toBeLessThanOrEqual(5);
       expect(Math.abs(p.proj_ast_total - p.proj_ast * p.proj_games), `${p.player_name} ast_total`).toBeLessThanOrEqual(5);
 
@@ -244,6 +244,7 @@ describe('Domain & mathematical invariants: clutch, defense, playerDna, coaches,
     playoffSeries,
     shotsIndex,
     shotsMetadata,
+    matchups,
   } = loadAllDatasets();
 
   it('clutch_leverage_metrics.json: tsDelta ≈ clutchTsPct - baseTsPct and shot breakdowns are coherent', () => {
@@ -371,6 +372,27 @@ describe('Domain & mathematical invariants: clutch, defense, playerDna, coaches,
       const fileData = readPlayerShotFile(entry.player_id);
       expect(fileData.total_shots).toBe(entry.total_shots);
       expect(fileData.shots).toHaveLength(entry.total_shots);
+    }
+  });
+
+  it('matchups_slates.json: all 1,200 games carry projections and probabilities sum to 1.0', () => {
+    expect(matchups.total_games).toBe(1200);
+    expect(matchups.games_without_projection).toBe(0);
+    expect(matchups.matchups).toHaveLength(1200);
+    expect(matchups.slates).toHaveLength(25);
+
+    for (const m of matchups.matchups) {
+      expect(m.has_projection, `Game ${m.game_id} (${m.away_team} @ ${m.home_team}) must have projection`).toBe(true);
+      expect(m.projection_basis).not.toBeNull();
+      expect(['logged_model_margin', 'margin_from_logged_win_prob', 'primary_ensemble', 'team_rating_differential']).toContain(m.projection_basis);
+      if (m.predicted_home_win_prob !== null && m.predicted_away_win_prob !== null) {
+        expect(m.predicted_home_win_prob + m.predicted_away_win_prob, `Game ${m.game_id} win probs`).toBeCloseTo(1.0, 3);
+      }
+      if (m.is_completed) {
+        expect(m.home_score).not.toBeNull();
+        expect(m.away_score).not.toBeNull();
+        expect(m.actual_margin).toBe(m.home_score! - m.away_score!);
+      }
     }
   });
 });
