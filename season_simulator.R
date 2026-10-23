@@ -45,6 +45,11 @@ get_cache_file <- function(filename) {
 MARGIN_SIGMA  <- if (exists("MARGIN_SIGMA")) MARGIN_SIGMA else 11.8
 HCA_PTS       <- 2.40
 N_SIMS        <- 1000
+# Both Monte Carlo blocks (team ensemble and per-player season) are seeded from this
+# single constant so the stage is reproducible: unchanged inputs must yield identical
+# published projections, otherwise every run churns the committed JSON and leaves
+# downstream datasets referencing a stale draw.
+SIM_SEED      <- 424242
 CURR_SEASON   <- if (exists("CURRENT_SEASON")) CURRENT_SEASON else 2026
 
 cat("\n==================================================================\n")
@@ -474,6 +479,7 @@ simulate_variant <- function(ratings, n_sims = 1000) {
   )
 }
 
+set.seed(SIM_SEED)
 sim_bottom_up   <- simulate_variant(rating_bu, n_sims = N_SIMS)
 sim_rapm        <- simulate_variant(rating_rapm, n_sims = N_SIMS)
 sim_shot_fatigue <- simulate_variant(rating_sf, n_sims = N_SIMS)
@@ -656,7 +662,7 @@ if (!is.null(active_rosters_df)) {
 n_players <- nrow(player_base)
 
 # Stochastic simulation for each player across 1,000 seasons
-set.seed(42)
+set.seed(SIM_SEED)
 sim_games_mat <- matrix(0L, nrow = n_players, ncol = N_SIMS)
 sim_pts_mat   <- matrix(0.0, nrow = n_players, ncol = N_SIMS)
 sim_reb_mat   <- matrix(0.0, nrow = n_players, ncol = N_SIMS)
