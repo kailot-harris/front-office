@@ -566,7 +566,7 @@ fit_rapm_ratings <- function(seasons = ALL_SEASONS, lambda = 900, force_refresh 
   #      reattribute_to_current_roster_team()), so the EXPORTED, post-filter block means carry
   #      a ~0.002 residual that centring `y` cannot reach. Only a post-hoc step on the
   #      exported rows can pin mean(orapm) == mean(drapm) == 0 exactly, which is what
-  #      assert_rapm_centered() checks and what makes "0 == league average" literally true of
+  #      check_rapm_gauge() checks and what makes "0 == league average" literally true of
   #      the shipped column.
   #   2. Centred `y` only gets each block near zero while the penalty stays uniform and
   #      symmetric across both blocks. Give offence and defence separate lambdas, or shrink
@@ -708,13 +708,14 @@ fit_rapm_ratings <- function(seasons = ALL_SEASONS, lambda = 900, force_refresh 
     dplyr::mutate(leaderboard_eligible = pmin(n_off_poss, n_def_poss) >=
                     RAPM_LEADERBOARD_MIN_POSS_PER_SIDE)
 
-  # --- CONTRACT INVARIANT (issue #71, fix A) ---------------------------------------------
+  # --- CONTRACT INVARIANT (issue #71, fix A; tightened & renamed in #77) -----------------
   # On the real-possession path orapm/drapm are league-centered above, so all three rating
-  # columns must have mean ~0. Tolerance 0.02 covers the round(, 2) applied to each column
-  # (max rounding shift of a mean is 0.005) with ample headroom. Skipped, not failed, when
-  # orapm/drapm are all NA (the estimate_rapm_box_plusminus_fallback() path, which never
-  # reaches this line today but is guarded anyway).
-  assert_rapm_centered(rapm_df, tolerance = 0.02)
+  # columns must have mean ~0. Tolerance RAPM_GAUGE_TOL (1e-3) covers the round(, 2) applied
+  # to each column (measured rounding floor ~0.00069 across all caches) while catching any true
+  # gauge shift. Skipped, not failed, when orapm/drapm are all NA (the
+  # estimate_rapm_box_plusminus_fallback() path, which never reaches this line today but is
+  # guarded anyway).
+  check_rapm_gauge(rapm_df, tol = RAPM_GAUGE_TOL)
 
   # --- CONTRACT INVARIANT (issue #79) ----------------------------------------------------
   # The sign convention is now additive: drapm is negated at the fit so that positive == strong
@@ -729,37 +730,110 @@ fit_rapm_ratings <- function(seasons = ALL_SEASONS, lambda = 900, force_refresh 
 }
 
 # ------------------------------------------------------------------------------
-# assert_rapm_centered() — contract invariant for the centering introduced in issue #71.
-# Verifies mean(orapm) ~ 0, mean(drapm) ~ 0 and mean(total_rapm) ~ 0 within `tolerance`.
-# Returns `rapm_df` invisibly so it can be used inline. No-ops (with a message) when
-# orapm/drapm are entirely NA, which is the documented box-score fallback path where absolute
-# O/D splits are not produced at all.
+# check_rapm_gauge() — contract invariant for RAPM block and total centering.
+# Adopted from NBA Analytics (:515-535) in issue #77 (replacing assert_rapm_centered).
+# Verifies mean(orapm) ~ 0, mean(drapm) ~ 0 and mean(total_rapm) ~ 0 within `tol`.
 #
-# NOTE ON SIGNS: this invariant is sign-convention-agnostic (a mean of 0 stays a mean of 0
-# under negation), so issue #79's flip left it untouched. The companion
-# assert_rapm_additive() below is the one that pins the convention itself.
+# TOLERANCE DERIVATION:
+# Tolerance has to clear the rounding noise in the EXPORTED columns, not just the
+# full-precision vectors. orapm/drapm/total_rapm ship rounded to 2dp, which leaves a
+# mean of order 1e-4 across ~145-430 players (measured worst-case on post-#76 caches:
+# 0.000690 in 2020, 0.000387 in 2025, 0.000163 in the pooled 2019-2025 cache). 1e-3
+# sits safely above that ~7e-4 rounding floor and orders of magnitude below any real
+# uncentred gauge drift (e.g. ~7 pts/100 pre-#76), accepting rounding and nothing else.
+#
+# DUAL CALL SHAPES:
+# Supports both check_rapm_gauge(rapm_df, tol = ...) and NBA-style check_rapm_gauge(orapm, drapm, tol = ...).
+#
+# Returns `rapm_df` invisibly (or TRUE invisibly for vector call).
+#
+# WNBA FALLBACK SKIP:
+# No-ops (with a message) when orapm/drapm are entirely NA, which is the documented
+# box-score fallback path where absolute O/D splits are not produced at all.
 # ------------------------------------------------------------------------------
-assert_rapm_centered <- function(rapm_df, tolerance = 0.02) {
-  if (is.null(rapm_df) || nrow(rapm_df) == 0) return(invisible(rapm_df))
-  if (!all(c("orapm", "drapm", "total_rapm") %in% names(rapm_df))) return(invisible(rapm_df))
+RAPM_GAUGE_TOL <- 1e-3
 
-  if (all(is.na(rapm_df$orapm)) && all(is.na(rapm_df$drapm))) {
-    message(">>> [RAPM] Centering invariant skipped: orapm/drapm are all NA (box-score fallback path).")
-    return(invisible(rapm_df))
+check_rapm_gauge <- function(rapm_df, drapm = NULL, tol = RAPM_GAUGE_TOL, tolerance = NULL) {
+  if (!is.null(tolerance)) tol <- tolerance
+
+  if (is.data.frame(rapm_df)) {
+    if (nrow(rapm_df) == 0) return(invisible(rapm_df))
+    if (!all(c("orapm", "drapm") %in% names(rapm_df))) return(invisible(rapm_df))
+
+    if (all(is.na(rapm_df$orapm)) && all(is.na(rapm_df$drapm))) {
+      message(">>> [RAPM] Centering invariant skipped: orapm/drapm are all NA (box-score fallback path).")
+      return(invisible(rapm_df))
+    }
+
+    orapm_vec <- rapm_df$orapm
+    drapm_vec <- rapm_df$drapm
+    total_vec <- if ("total_rapm" %in% names(rapm_df)) rapm_df$total_rapm else (orapm_vec + drapm_vec)
+    ret_obj   <- rapm_df
+  } else {
+    orapm_vec <- rapm_df
+    drapm_vec <- drapm
+    total_vec <- orapm_vec + drapm_vec
+    ret_obj   <- TRUE
   }
 
-  means <- c(
-    orapm      = mean(rapm_df$orapm, na.rm = TRUE),
-    drapm      = mean(rapm_df$drapm, na.rm = TRUE),
-    total_rapm = mean(rapm_df$total_rapm, na.rm = TRUE)
+  offenders <- c(
+    ORAPM = abs(mean(orapm_vec, na.rm = TRUE)),
+    DRAPM = abs(mean(drapm_vec, na.rm = TRUE)),
+    total = abs(mean(total_vec, na.rm = TRUE))
   )
-  bad <- names(means)[!is.finite(means) | abs(means) > tolerance]
+  bad <- offenders[!is.finite(offenders) | offenders > tol]
   if (length(bad) > 0) {
-    stop(sprintf("[RAPM] Centering contract violated (tolerance %.3f): %s. orapm/drapm must be exported centered on their league means (issue #71).",
-                  tolerance,
-                  paste(sprintf("mean(%s) = %.4f", bad, means[bad]), collapse = "; ")))
+    stop(sprintf(paste0("RAPM gauge constraint violated (tolerance %.3g): %s. Each block must ",
+                        "average 0 after centring -- see the IDENTIFIABILITY note in rapm_engine.R. ",
+                        "A non-zero mean here means the O/D split is being read on an arbitrary ",
+                        "scale, so no rating in the output is comparable to 0."),
+                 tol,
+                 paste(sprintf("mean(%s) = %.4f", names(bad), bad), collapse = "; ")))
   }
-  invisible(rapm_df)
+  invisible(ret_obj)
+}
+
+# Backwards compatibility alias for callers/test tools written before #77.
+# Kept self-contained so sanitised_source() can extract it into isolated test
+# environments without external symbol dependencies.
+assert_rapm_centered <- function(rapm_df, drapm = NULL, tol = 1e-3, tolerance = NULL) {
+  if (!is.null(tolerance)) tol <- tolerance
+
+  if (is.data.frame(rapm_df)) {
+    if (nrow(rapm_df) == 0) return(invisible(rapm_df))
+    if (!all(c("orapm", "drapm") %in% names(rapm_df))) return(invisible(rapm_df))
+
+    if (all(is.na(rapm_df$orapm)) && all(is.na(rapm_df$drapm))) {
+      message(">>> [RAPM] Centering invariant skipped: orapm/drapm are all NA (box-score fallback path).")
+      return(invisible(rapm_df))
+    }
+
+    orapm_vec <- rapm_df$orapm
+    drapm_vec <- rapm_df$drapm
+    total_vec <- if ("total_rapm" %in% names(rapm_df)) rapm_df$total_rapm else (orapm_vec + drapm_vec)
+    ret_obj   <- rapm_df
+  } else {
+    orapm_vec <- rapm_df
+    drapm_vec <- drapm
+    total_vec <- orapm_vec + drapm_vec
+    ret_obj   <- TRUE
+  }
+
+  offenders <- c(
+    ORAPM = abs(mean(orapm_vec, na.rm = TRUE)),
+    DRAPM = abs(mean(drapm_vec, na.rm = TRUE)),
+    total = abs(mean(total_vec, na.rm = TRUE))
+  )
+  bad <- offenders[!is.finite(offenders) | offenders > tol]
+  if (length(bad) > 0) {
+    stop(sprintf(paste0("RAPM gauge constraint violated (tolerance %.3g): %s. Each block must ",
+                        "average 0 after centring -- see the IDENTIFIABILITY note in rapm_engine.R. ",
+                        "A non-zero mean here means the O/D split is being read on an arbitrary ",
+                        "scale, so no rating in the output is comparable to 0."),
+                 tol,
+                 paste(sprintf("mean(%s) = %.4f", names(bad), bad), collapse = "; ")))
+  }
+  invisible(ret_obj)
 }
 
 # ------------------------------------------------------------------------------
