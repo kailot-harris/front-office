@@ -245,28 +245,124 @@ CACHE_PLAYER_PBP_FEATURES   <- file.path(CACHE_DIR, "player_pbp_features.rds")
 RAPM_LAMBDA      <- as.numeric(Sys.getenv("RAPM_LAMBDA", "900"))
 RAPM_TUNE_LAMBDA <- isTRUE(as.logical(Sys.getenv("RAPM_TUNE_LAMBDA", "FALSE")))
 
-# Honesty flag (low_sample_flag) threshold for RAPM ratings.
-# What matters is how much of a rating is data vs prior. Ridge shrinks each coefficient
-# by roughly s_i = n_i / (n_i + lambda), so 1 - s_i is the share contributed by the shrinkage prior.
-# Flag a player when the weaker of their two sides is more than two-thirds prior
-# (shrinkage_data_share < 1/3, i.e. fewer than lambda/2 possessions on that side).
+# Low-sample-size honesty flag (rapm_engine.R::fit_rapm_ratings() -> `low_sample_flag`):
+# WNBA's ~44-game seasons and 12-player rosters mean far fewer possessions per player than
+# NBA over the same calendar span. Flag (not drop) the noisiest ratings so downstream
+# consumers/humans know which ones not to trust.
+#
+# RULE CHANGED from a raw possession count to a SHRINKAGE rule (issue #71, fix A).
+#
+# The old `(n_off_poss + n_def_poss) < 300` cut flagged 63 of 430 players (14.7%) and caught
+# NONE of the low-exposure players topping the Total RAPM leaderboard -- Dungee (391
+# combined), Nivar (561), Clouden (1,662), Jaquez (1,931), Park (2,207) all ranked 3rd-10th
+# league-wide while unflagged. But raising the count is the wrong instrument, and the
+# intuition behind it ("low exposure = noisy") is empirically BACKWARDS here: measured sd of
+# total_rapm by combined-possession band is 1.48 (<500), 2.51 (500-1k), 2.87 (1-2k), 3.29
+# (2-3k), 2.71 (>5k). The LOWEST-exposure band is the LEAST variable, because ridge shrinks
+# it hardest. Shrinkage dominates MORE at low exposure, not less. A count-based cut also
+# lands arbitrarily: the league median combined exposure is 2,597, so any threshold near
+# 2,500 flags ~half the league by construction rather than by evidence.
+#
+# What actually matters is HOW MUCH OF A RATING IS DATA vs. PRIOR. Ridge shrinks each
+# coefficient by roughly s_i = n_i / (n_i + lambda), so `1 - s_i` is the fraction of the
+# reported number contributed by the shrinkage prior rather than by the player's own
+# possessions. Flag a player when the weaker of their two sides is more than two-thirds
+# prior (s < 1/3, i.e. fewer than lambda/2 possessions on that side). This is why Dungee
+# ranks 5th at +6.19 on 194 offensive possessions: she is 82% prior, shrunk ~5x toward zero
+# and still top-five, so her unshrunk signal is ~+34/100 -- lineup luck, not a player effect.
+# Measured: flags 124 of 430 (28.8%), catching Dungee (82% prior) and Nivar (76%).
+#
+# Kept as the expression `1 / 3`, not a rounded decimal: the rule is "more than two-thirds
+# prior", and expressing it against `lambda` rather than a hardcoded possession count means
+# it stays correct if lambda is ever re-tuned (see RAPM_LAMBDA above -- issue #78). Flag,
+# never drop.
 RAPM_MIN_DATA_SHARE <- 1 / 3
 
-# Leaderboard rank eligibility threshold.
-# Require >= 1,000 possessions on BOTH sides (not combined, which lets a one-sided
-# specialist through on garbage-time minutes).
+# Leaderboard rank-eligibility cut (rapm_engine.R::fit_rapm_ratings() ->
+# `leaderboard_eligible`, and summary_app.R's Tab 6 "Minimum possessions" UI default, which
+# reads THIS constant so the two can never drift apart again -- the duplication issue #82
+# exists to kill).
+#
+# Eligibility is a SEPARATE mechanism from the honesty flag above (issue #71, fix A).
+# `low_sample_flag` answers "how much of this one number is prior?"; eligibility answers
+# "should this row compete for a top-N rank at all?". Conflating them into one boolean was
+# what forced the earlier 48.8% flag rate -- a dataset-level claim that half the league is
+# untrustworthy, in order to clean a presentation-level ranking.
+#
+# Require >= 1,000 possessions on BOTH sides (not combined, which lets a one-sided specialist
+# through on garbage-time minutes; the previous combined default of 2,500 was also doing the
+# same job as the dataset-level low_sample_flag). Measured: 242 of 430 eligible, and the
+# resulting top ten is Parker, Delle Donne, Park, Prince, Jones, Gray, Miles, Diggins-Smith,
+# Burton, Clark -- no sub-1,000-possession row. Consumers that rank or sort should filter on
+# this column; consumers that display a single player's rating should use `low_sample_flag`
+# instead. Integer (`L`) on purpose, compared against integer possession counts.
 RAPM_LEADERBOARD_MIN_POSS_PER_SIDE <- 1000L
 RAPM_MIN_POSS_PER_SIDE_DEFAULT     <- 1000L
 
-# Opponent defensive adjustment slope for player prop projections (Finding M-4).
-# Scaled for the post-#79 additive convention where positive drapm == strong defender.
-# Regressing player points per 40 on opponent defensive dRAPM yields slope -0.0504
-# (t = -7.60, p = 3.0e-14 across 16,657 games 2024-2026).
+# Fractional change in a player's projected mean per +1.00 of opponent team
+# possession-weighted `drapm` (Finding M-4). DERIVED EMPIRICALLY, not asserted:
+#
+#   Within-player fixed-effects regression on the real cache/player_box_scores_cache.rds,
+#   seasons 2024-2026, 16,657 player-games / 267 players with >= 5 games. Response is
+#   each player's points minus their own mean (so player quality is differenced out);
+#   regressor is the opponent's possession-weighted team drapm, centred on the league
+#   team mean.
+#
+#   RE-DERIVED 2026-10-23 against the post-#76 caches. Reproduce with
+#   tools/rederive_m4_slope.R, which prints all five figures below plus a
+#   significance-gated verdict:
+#
+#     absolute scale   : -0.4987 pts per +1 drapm  (SE 0.0634, |t| = 7.86, p = 3.9e-15)
+#     + minutes control: -0.5475  (SE 0.0588, |t| = 9.31, p = 1.4e-20)
+#                                 (so it is not a playing-time artifact)
+#     / mean points 8.768                        -> -0.0569 fractional per unit
+#     direct within-player FRACTIONAL regression : -0.0504 per unit
+#                                                  (SE 0.0096, |t| = 5.26, p = 1.5e-07)
+#     season-2026-only absolute slope            : -0.4355 (|t| = 4.60, p = 4.3e-06,
+#                                                  n = 5,910) -- same sign
+#
+#   Team-level corroboration (2026, points allowed per game vs. def_rapm):
+#     slope -3.55 pts allowed per +1 def_rapm, r = -0.579 (n = 15 teams).
+#
+#   NEGATIVE because `drapm` is a defensive IMPACT measure (issue #79: higher =
+#   better defender), so facing a higher-drapm opponent SUPPRESSES a player's output.
+#   The signs flipped at #79; the magnitudes did not flip with them -- they GREW.
+#
+#   SUPERSEDED FIGURES, kept so each change stays auditable. Two generations now:
+#
+#     gen 1, original derivation: -0.2591 absolute / -0.0296 via mean points /
+#       -0.0256 direct fractional / -0.2598 for 2026 alone / -2.26 and r = -0.675 at
+#       team level (written up with the opposite signs, pre-#79).
+#     gen 2, re-derived 2026-10-22 on the post-#79/#81 cache: -0.4159 / -0.0474 /
+#       -0.0409 / -0.3676 / -3.13 and r = -0.652. Adopted at 03bb12e. That drift was
+#       NOT a convention or cache artifact -- the identical regression against the
+#       pre-#79, pre-centring cache also returned |0.4160|, so it was accumulated
+#       2026 data since gen 1.
+#
+#   Gen 3 (above) has a DIFFERENT cause, and it is worth not conflating them: the
+#   data is unchanged from gen 2 (same 16,657 player-games, same mean points 8.768),
+#   but issue #76 centred the ridge target, which re-split every player's O/D rating
+#   by exposure and so MOVED THE REGRESSOR ITSELF.
+#
+#   We take the direct fractional estimate, -0.0504, since it is the estimand that
+#   matches the multiplicative form actually used. The absolute-scale estimate
+#   (-0.0569) is the corroborating upper bound; both are the same sign at p < 1e-7.
+#   Adopting -0.0504 over -0.0409 moves a projection by at most 1.14% on a single
+#   team (Dallas Wings, the league's weakest defence on the post-#76 aggregates) and
+#   leaves the clamp binding for 0 of 15 teams, so no projection is clamp-limited by
+#   the change. NOTE that tools/rederive_m4_slope.R's own gate reads "within 25% of
+#   shipped; no action indicated" at this ratio -- adoption here was a deliberate
+#   owner decision to keep the constant matched to the post-#76 regressor rather
+#   than a threshold firing.
 OPP_DEF_MU_SLOPE <- -0.0504
 
 # Multiplier clamp bounds (+/- 15%) for adjust_mu_for_opponent().
-# Guards against extreme or degenerate ratings while comfortably clearing the 0.95x - 1.06x
-# empirical range observed across all 15 WNBA team defenses.
+# Re-measured 2026-10-23 under the -0.0504 slope and the post-#76 cache: the unclamped
+# estimate spans 0.95x (Washington Mystics, the strongest defense) to 1.06x (Dallas Wings,
+# the weakest) across the 15 real 2026 team aggregates, so the clamp still does not bind on
+# real data for any team -- it exists purely so that a future degenerate RAPM cache cannot
+# swing a projection arbitrarily (the OLD formula's raw ratio spanned roughly 0x to 2.2x and
+# would have flipped a projection's sign outright on a negative team aggregate).
 OPP_DEF_MU_CLAMP <- c(0.85, 1.15)
 
 # ------------------------------------------------------------------------------------------
