@@ -53,9 +53,9 @@ export default function MatchupsPage() {
             Projection basis: {dataset.games_logged_basis} game
             {dataset.games_logged_basis === 1 ? '' : 's'} carry the logged slate model&apos;s own
             pre-game projection — the only basis that is graded for accuracy —
-            and {dataset.games_ratings_basis} are projected from team rating differential (
-            {dataset.ratings_source}). The two come from unrelated inputs, are never averaged, and
-            every game is labelled with the one that produced it.
+            and {dataset.games_ensemble_basis ?? dataset.games_ratings_basis} are projected from
+            the primary 4-model ensemble ({dataset.ratings_source}). The two come from unrelated
+            inputs, are never averaged, and every game is labelled with the one that produced it.
           </p>
         </div>
 

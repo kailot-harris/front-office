@@ -495,12 +495,33 @@ ens_w_rap <- 0.25
 ens_w_sf  <- 0.20
 ens_w_emb <- 0.20
 
-rating_ensemble <- round(
+rating_ensemble_raw <-
   ens_w_bu * rating_bu +
   ens_w_rap * rating_rapm +
   ens_w_sf * rating_sf +
-  ens_w_emb * rating_emb, 2
-)
+  ens_w_emb * rating_emb
+rating_ensemble <- round(rating_ensemble_raw, 2)
+
+# RATING-SCALE DISAGREEMENT. How far apart the four models put this team, as a
+# weight-respecting SD around the blend, in the same net-rating points the
+# margin is expressed in. This is NOT the win-total SD (`ensemble_sd_wins`),
+# which is the spread of simulated 82-game outcomes; this is the spread of the
+# four *inputs*, so a team the models agree on gets a narrow number and one they
+# argue over gets a wide one. build_matchups_dataset.R adds the two sides'
+# values in quadrature to MARGIN_SIGMA, widening a game's win probability
+# toward 0.5 exactly where the ensemble is least sure of the teams in it.
+# Weights sum to 1, so this is the weighted variance around the weighted mean.
+rating_variant_mat <- cbind(rating_bu, rating_rapm, rating_sf, rating_emb)
+rating_disagreement_sd <- round(sqrt(as.numeric(
+  ((rating_variant_mat - rating_ensemble_raw)^2) %*%
+    c(ens_w_bu, ens_w_rap, ens_w_sf, ens_w_emb)
+)), 2)
+cat(sprintf(paste0(
+  "      Rating-scale disagreement SD: mean %.2f, range %.2f .. %.2f pts ",
+  "(widest: %s)\n"),
+  mean(rating_disagreement_sd), min(rating_disagreement_sd),
+  max(rating_disagreement_sd),
+  NBA_TEAMS$team[which.max(rating_disagreement_sd)]))
 
 ensemble_wins_matrix <- (ens_w_bu * sim_bottom_up$wins_matrix +
                          ens_w_rap * sim_rapm$wins_matrix +
@@ -900,9 +921,13 @@ ensemble_ratings_df <- tibble::tibble(
   rating_shot_fatigue = rating_sf,
   rating_embeddings = rating_emb,
   proj_wins = ensemble_mean_wins,
-  # Uncertainty on the blend, carried so downstream stages can widen a game's
-  # win probability instead of assuming every team's rating is equally certain.
-  proj_wins_sd = ensemble_sd_wins
+  # Spread of simulated 82-game win totals. Reported, not consumed per game:
+  # it is on the wins scale, not the margin scale.
+  proj_wins_sd = ensemble_sd_wins,
+  # Spread of the four model ratings around the blend, in net-rating points -
+  # the margin-scale uncertainty build_matchups_dataset.R folds into a game's
+  # sigma so the blend's own disagreement reaches the published win probability.
+  rating_disagreement_sd = rating_disagreement_sd
 )
 saveRDS(ensemble_ratings_df, out_ensemble_ratings_rds)
 cat(sprintf("      Saved: %s (%d rows)\n", out_teams_rds, nrow(team_projections)))

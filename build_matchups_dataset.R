@@ -361,9 +361,14 @@ if (!file.exists(ENSEMBLE_PATH)) {
     ENSEMBLE_PATH))
 }
 ens_df <- as.data.frame(readRDS(ENSEMBLE_PATH))
-if (!all(c("team", "team_name", "ensemble_net_rating") %in% names(ens_df))) {
-  stop(sprintf("%s does not carry the expected `team` / `team_name` / `ensemble_net_rating` columns.",
-               ENSEMBLE_PATH))
+if (!all(c("team", "team_name", "ensemble_net_rating", "rating_disagreement_sd")
+         %in% names(ens_df))) {
+  stop(sprintf(paste0(
+    "%s does not carry the expected `team` / `team_name` / `ensemble_net_rating` / ",
+    "`rating_disagreement_sd` columns. If the artifact predates the ",
+    "rating-scale disagreement SD, re-run season_simulator.R to rewrite it ",
+    "rather than projecting games at a fixed sigma."),
+    ENSEMBLE_PATH))
 }
 team_ratings <- setNames(suppressWarnings(as.numeric(ens_df$ensemble_net_rating)),
                          as.character(ens_df$team_name))
@@ -379,6 +384,30 @@ games$home_rating <- unname(ifelse(!is.na(team_ratings[games$home_name]),
 games$away_rating <- unname(ifelse(!is.na(team_ratings[games$away_name]),
                                    team_ratings[games$away_name],
                                    abbr_ratings[games$away_team]))
+
+# PER-TEAM RATING UNCERTAINTY, keyed the same two ways. A team missing from the
+# artifact has no rating either and is caught by the coverage contract below; a
+# present team with a non-finite SD contributes nothing extra to the game's
+# sigma, which collapses that game to the plain MARGIN_SIGMA rather than
+# dropping it.
+team_rating_sd <- setNames(suppressWarnings(as.numeric(ens_df$rating_disagreement_sd)),
+                           as.character(ens_df$team_name))
+abbr_rating_sd <- setNames(suppressWarnings(as.numeric(ens_df$rating_disagreement_sd)),
+                           as.character(ens_df$team))
+.sd_for <- function(name, abbr) {
+  v <- ifelse(!is.na(team_rating_sd[name]), team_rating_sd[name], abbr_rating_sd[abbr])
+  v <- unname(as.numeric(v))
+  ifelse(is.finite(v) & v > 0, v, 0)
+}
+games$home_rating_sd <- .sd_for(games$home_name, games$home_team)
+games$away_rating_sd <- .sd_for(games$away_name, games$away_team)
+.sigma_preview <- sqrt(MARGIN_SIGMA^2 + games$home_rating_sd^2 + games$away_rating_sd^2)
+cat(sprintf(paste0(
+  ">>> Rating disagreement SD: %d of %d teams non-zero (mean %.2f pts); ",
+  "per-game sigma %.2f .. %.2f vs flat %.1f\n"),
+  sum(abbr_rating_sd > 0, na.rm = TRUE), nrow(ens_df),
+  mean(abbr_rating_sd, na.rm = TRUE),
+  min(.sigma_preview), max(.sigma_preview), MARGIN_SIGMA))
 n_rated <- sum(!is.na(games$home_rating) & !is.na(games$away_rating))
 rated_pct <- round(100 * n_rated / nrow(games), 1)
 cat(sprintf(">>> Both teams rated for %d of %d scheduled games (%.1f%%)\n",
@@ -470,7 +499,8 @@ ratings_source_desc <- sprintf(paste0(
   "Primary 4-Model Ensemble Blend (35%% BPM, 25%% RAPM, 20%% Shot Quality/Fatigue, ",
   "20%% Embeddings) + %.2f HCA + fatigue_travel_engine.R schedule drag ",
   "(rest, back-to-backs, haversine travel, circadian shift, DEN/UTA altitude), ",
-  "pnorm(margin / %.1f)"), HCA_POINTS, MARGIN_SIGMA)
+  "pnorm(margin / sqrt(%.1f^2 + home rating-disagreement SD^2 + away SD^2))"),
+  HCA_POINTS, MARGIN_SIGMA)
 
 # ------------------------------------------------------------------------------
 # 3. REAL SCORES: the target season's team box scores, joined on ESPN game_id
@@ -570,7 +600,17 @@ for (i in seq_len(nrow(games))) {
     # home-court advantage, then the two sides' fatigue differential (2c).
     margin <- (as.numeric(g$home_rating) - as.numeric(g$away_rating)) +
       HCA_POINTS + as.numeric(g$schedule_adjustment)
-    win_prob <- pnorm(margin / MARGIN_SIGMA)
+    # SIGMA IS PER GAME, not the flat MARGIN_SIGMA. Two independent sources of
+    # error stack on the game's own outcome noise: how far apart the four models
+    # put the home team, and how far apart they put the visitor. Added in
+    # quadrature because they are separate teams' disagreements, not one shared
+    # one. The effect is to pull the win probability toward 0.5 for matchups the
+    # ensemble is least sure about, while a game between two teams the models
+    # agree on still prices at essentially MARGIN_SIGMA.
+    sigma_game <- sqrt(MARGIN_SIGMA^2 +
+                         as.numeric(g$home_rating_sd)^2 +
+                         as.numeric(g$away_rating_sd)^2)
+    win_prob <- pnorm(margin / sigma_game)
     basis <- "primary_ensemble"
   }
 

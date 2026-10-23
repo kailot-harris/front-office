@@ -2,7 +2,7 @@
  * Route smoke tests — every page loads, renders its own data, and logs nothing.
  */
 import { expect, test } from '@playwright/test';
-import { ROUTES, ROUTE_PATHS, isRealConsoleError } from './routes';
+import { ROUTES, ROUTE_PATHS, isRealConsoleError, isSpeculativePrefetchAbort } from './routes';
 
 for (const route of ROUTES) {
   test.describe(`${route.path}`, () => {
@@ -34,9 +34,10 @@ for (const route of ROUTES) {
       page.on('pageerror', (err) => consoleErrors.push(`pageerror: ${err.message}`));
       page.on('requestfailed', (req) => {
         // Exclude external ESPN CDN logo request failures if offline
-        if (new URL(req.url()).origin === new URL(page.url() || 'http://x').origin) {
-          failedRequests.push(`${req.method()} ${req.url()} — ${req.failure()?.errorText}`);
-        }
+        if (new URL(req.url()).origin !== new URL(page.url() || 'http://x').origin) return;
+        // Exclude the router's own cancelled RSC prefetches (see routes.ts).
+        if (isSpeculativePrefetchAbort(req.url(), req.failure()?.errorText)) return;
+        failedRequests.push(`${req.method()} ${req.url()} — ${req.failure()?.errorText}`);
       });
       page.on('response', (res) => {
         if (res.status() >= 400 && new URL(res.url()).origin === new URL(page.url() || 'http://x').origin) {

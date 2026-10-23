@@ -78,6 +78,17 @@ export const ROUTES: RouteSpec[] = [
     expectsSearch: false,
   },
   {
+    path: '/matchups',
+    title: 'Matchups: Weekly Slates',
+    heading: 'Matchup Slates',
+    // Both markers are page-specific on purpose. The site nav renders every
+    // page's label on every page, so "Matchup Slates" alone would pass from any
+    // route and prove nothing; the ribbon's ratings_source string comes from
+    // matchups_slates.json itself, so it only appears once the dataset renders.
+    dataMarkers: ['Projection basis:', 'Primary 4-Model Ensemble Blend'],
+    expectsSearch: true,
+  },
+  {
     path: '/series',
     title: '7-Game Playoff Series',
     heading: '7-Game Playoff Series Matchup Simulator',
@@ -103,4 +114,20 @@ export const IGNORED_CONSOLE_PATTERNS: RegExp[] = [
 
 export function isRealConsoleError(text: string): boolean {
   return !IGNORED_CONSOLE_PATTERNS.some((p) => p.test(text));
+}
+
+/**
+ * Next's client router speculatively prefetches the RSC payload (`?_rsc=`) of
+ * every link on the page, then cancels the ones it decides it no longer needs.
+ * Chrome reports each cancellation as a failed request with net::ERR_ABORTED,
+ * which it is not — the router is working as designed and the target page still
+ * loads. A dozen of these fire on pages carrying the full site nav.
+ *
+ * Narrow on purpose: only an abort, and only on a URL carrying the `_rsc`
+ * marker. A prefetch that actually 404s arrives through the `response` handler
+ * as a 4xx and still fails the test, which is the case that would mean a route
+ * is missing from the export.
+ */
+export function isSpeculativePrefetchAbort(url: string, errorText?: string): boolean {
+  return /[?&]_rsc=/.test(url) && (errorText ?? '').includes('net::ERR_ABORTED');
 }
