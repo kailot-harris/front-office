@@ -225,6 +225,8 @@ CACHE_EMBEDDINGS   <- file.path(PROJECT_DIR, "data", "team_embeddings.csv")
 CACHE_SIMILARITY   <- file.path(PROJECT_DIR, "data", "team_similarity_matrix.csv")
 CACHE_INJURY_DATA  <- file.path(CACHE_DIR, "injury_data_cache.rds")
 CACHE_PLAYER_PROPS <- file.path(CACHE_DIR, "latest_player_props.rds")
+CACHE_PLAYER_ID_CROSSWALK <- file.path(CACHE_DIR, "player_id_crosswalk.rds")
+CACHE_RAPM_RATINGS        <- file.path(CACHE_DIR, "rapm_ratings.rds")
 
 # Promoted from pbp_engine.R's bare literals (2026-09-17): now a two-consumer path
 # (pbp_engine.R writer + run_full_pipeline.R stage + app.R's "Clutch & Shot Profile"

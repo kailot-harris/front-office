@@ -10,7 +10,18 @@
 # Exits 0 only if every check PASSes.
 # ==============================================================================
 
-setwd("C:/Users/kailo/kayceeslices/WNBA Analytics")
+local({
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- sub("^--file=", "", args[grepl("^--file=", args)])
+  root <- if (length(file_arg)) {
+    dirname(dirname(normalizePath(file_arg[1], winslash = "/", mustWork = FALSE)))
+  } else if (file.exists("config.R")) {
+    getwd()
+  } else {
+    "C:/Users/kailo/kayceeslices/front-office/WNBA Analytics"
+  }
+  if (dir.exists(root)) setwd(root)
+})
 
 suppressPackageStartupMessages({
   library(dplyr)
@@ -92,18 +103,24 @@ ok("CHECK 2c (H-2) output carries a numeric total_rapm with no NAs",
 
 # 2d. REGRESSION GUARD for agent_engine (Wave 2): the per-team max total_rapm that
 #     market_odds_engine.R::calculate_matchup_delta() uses must be unchanged vs. the
-#     legacy inline fan-out join it is replacing.
+#     legacy inline fan-out join it is replacing under fallback mode (use_crosswalk = FALSE).
 legacy <- rost |>
   mutate(last_name = tolower(trimws(gsub("[^a-zA-Z ]", "", word(player_name, -1))))) |>
   inner_join(rapm |> mutate(last_name = tolower(trimws(gsub("[^a-zA-Z ]", "", player_name)))),
              by = c("team_name" = "team", "last_name")) |>
   group_by(team_abbreviation) |> summarise(top = max(total_rapm), .groups = "drop")
-newtop <- joined |> group_by(team_abbreviation) |> summarise(top = max(total_rapm), .groups = "drop")
+joined_legacy <- join_rapm_to_roster(rost, rapm, use_crosswalk = FALSE)
+newtop <- joined_legacy |> group_by(team_abbreviation) |> summarise(top = max(total_rapm), .groups = "drop")
 cmp <- full_join(legacy, newtop, by = "team_abbreviation", suffix = c("_legacy", "_helper"))
-ok("CHECK 2d (H-2) per-team top total_rapm identical to legacy market_odds_engine join",
+ok("CHECK 2d (H-2) per-team top total_rapm identical to legacy market_odds_engine join (fallback mode)",
    nrow(cmp) == length(WNBA_TEAMS) && isTRUE(all.equal(cmp$top_legacy, cmp$top_helper)),
    sprintf("max abs diff = %g across %d teams",
            max(abs(cmp$top_legacy - cmp$top_helper)), nrow(cmp)))
+
+# 2d-bis (Issue #91): crosswalk join recovers traded/ambiguous-surname players (>= 200 matched)
+ok("CHECK 2d-bis (#91) crosswalk mode recovers ambiguous-surname players (>= 200 matched)",
+   nrow(joined) >= 200 && all(c("Alanna Smith", "NaLyssa Smith", "Natasha Howard", "Gabby Williams") %in% joined$player_name),
+   sprintf("matched=%d/221 players; Alanna Smith, NaLyssa Smith, Natasha Howard, Gabby Williams all matched", nrow(joined)))
 
 # 2e. fail-safe: bad input warns and returns 0 rows, never errors
 safe <- tryCatch(suppressWarnings(join_rapm_to_roster(NULL, rapm)),

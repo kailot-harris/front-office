@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { describe, it, expect } from 'vitest';
 import { WNBA_TEAMS_METADATA, getTeamLogoUrl, getTeamColors } from '@/lib/teams';
+import { BASE_PATH } from '@/lib/basePath';
 import { PUBLIC_DIR, LOGOS_DIR, WNBA_TEAMS } from '../helpers/datasets';
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -13,9 +14,10 @@ describe('Static logo & image assets contract', () => {
     for (const abbr of WNBA_TEAMS) {
       const url = getTeamLogoUrl(abbr);
       expect(url, `getTeamLogoUrl(${abbr}) returned empty`).toBeTruthy();
-      expect(url).toBe(`/logos/${abbr}_logo.png`);
+      expect(url).toBe(`${BASE_PATH}/logos/${abbr}_logo.png`);
 
-      const filePath = path.join(PUBLIC_DIR, url);
+      const relativePath = url.startsWith(BASE_PATH) ? url.slice(BASE_PATH.length) : url;
+      const filePath = path.join(PUBLIC_DIR, relativePath);
       expect(fs.existsSync(filePath), `Logo file missing: ${filePath}`).toBe(true);
 
       const stat = fs.statSync(filePath);

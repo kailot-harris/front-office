@@ -5,23 +5,15 @@
 # Single source of truth for joining `cache/rapm_ratings.rds` to
 # `cache/active_rosters_cache.rds`.
 #
-# FINDING H-2 (docs/SECURITY_TECHNICAL_REVIEW.md): the two caches use INCOMPATIBLE
-# player identifiers — `rapm_ratings.rds$player_id` is a stats-provider numeric ID
-# stored as <character> (e.g. "201496"), while `active_rosters_cache.rds$player_id`
-# is an ESPN athlete ID stored as <integer> (e.g. 869). There is ZERO overlap even
-# after coercing to a common type, and as of the current caches dplyr refuses the
-# join outright ("Can't join `x$player_id` with `y$player_id` due to incompatible
-# types"), which hard-fails the player_props_engine.R stage nightly behind
-# run_stage()'s fail-safe tryCatch.
+# GitHub issue #91:
+# Upgraded to use cross-source player ID crosswalk (espn_athlete_id <-> wnba_player_id)
+# as the PRIMARY join key, recovering all 21 players previously dropped due to
+# ambiguous surnames or trades (e.g. Alanna Smith, NaLyssa Smith, Natasha Howard,
+# Gabby Williams, Alysha Clark, Haley Jones, Nyara Sabally, Isabelle Harrison).
 #
-# The working join — on (team full name, normalized last name) — was proven in
-# market_odds_engine.R:104-115 (`calculate_matchup_delta()`) but existed in only
-# that one of three call sites. This file extracts it so the next schema change
-# breaks in one place instead of three. Per CLAUDE.md, do not reimplement this
-# join anywhere else; call `join_rapm_to_roster()`.
-#
-# Consumers (wired up in Phase 4 Wave 2): market_odds_engine.R::calculate_matchup_delta(),
-# player_props_engine.R::get_team_def_rapm(), roster_bottom_up_engine.R::compute_team_rapm_ratings().
+# Fail-safe: if the crosswalk is unavailable or a player is not in it, falls back
+# to the proven (team_name, normalized last_name) join with deterministic collision
+# resolution by possession plurality.
 # ==============================================================================
 
 suppressPackageStartupMessages({
@@ -29,11 +21,19 @@ suppressPackageStartupMessages({
   library(stringr)
 })
 
+if (file.exists("config.R")) source("config.R")
+if (file.exists("player_id_crosswalk.R")) source("player_id_crosswalk.R")
+
 # Normalize a roster-style full name ("Nneka Ogwumike") down to the join key that
 # matches rapm_ratings.rds's last-name-only `player_name` ("Ogwumike").
-# Kept byte-identical in behaviour to market_odds_engine.R:104's `norm_last()`.
+# Handles hyphenated names and compound names like "Van Lith" / "Diggins-Smith".
 normalize_rapm_last_name <- function(x, from_full_name = TRUE) {
-  if (from_full_name) x <- word(x, -1)
+  if (from_full_name) {
+    # Check for compound prefix like "Van Lith"
+    x <- ifelse(grepl("\\bvan\\s+", x, ignore.case = TRUE),
+                sub(".*\\b(van\\s+\\S+).*", "\\1", x, ignore.case = TRUE),
+                word(x, -1))
+  }
   tolower(trimws(gsub("[^a-zA-Z ]", "", x)))
 }
 
@@ -45,27 +45,32 @@ normalize_rapm_last_name <- function(x, from_full_name = TRUE) {
 #'   requires `team`, `player_name`, `total_rapm` (and optionally `orapm`,
 #'   `drapm`, `n_off_poss`, `n_def_poss`, `low_sample_flag`).
 #' @param matched_only If TRUE (default) return only roster players that matched a
-#'   RAPM row — inner-join semantics, identical to the proven
-#'   `calculate_matchup_delta()` behaviour. If FALSE, return every roster row with
+#'   RAPM row — inner-join semantics. If FALSE, return every roster row with
 #'   RAPM columns NA-filled (left-join semantics) plus `rapm_matched`.
+#' @param use_crosswalk If TRUE (default), use player ID crosswalk (Issue #91)
+#'   as primary join key before surname fallback. If FALSE, use purely the
+#'   legacy (team_name, normalized last_name) join.
+#' @param crosswalk Optional pre-loaded player ID crosswalk data frame. If NULL,
+#'   attempts to load via load_player_id_crosswalk().
 #'
 #' @return A data frame with ONE ROW PER ROSTER PLAYER, keyed by
 #'   (`team_abbreviation`, `player_id`) — `player_id` here is always the roster/ESPN
 #'   ID — carrying at least `total_rapm`. Also returned: `team_name`, `player_name`
 #'   (roster full name), `last_name` (the join key), `rapm_player_id`,
-#'   `rapm_matched`, `rapm_ambiguous`, and whichever of
+#'   `rapm_matched`, `rapm_ambiguous`, `rapm_match_method`, and whichever of
 #'   `orapm`/`drapm`/`n_off_poss`/`n_def_poss`/`low_sample_flag` exist on `rapm`.
 #'
 #' Fail-safe per repo convention: a missing/NULL/empty input or a missing required
 #' column produces a warning and a zero-row frame of the right shape, never an error.
-join_rapm_to_roster <- function(rost, rapm, matched_only = TRUE) {
+join_rapm_to_roster <- function(rost, rapm, matched_only = TRUE, use_crosswalk = TRUE, crosswalk = NULL) {
 
   empty_result <- function() {
     tibble(
       team_abbreviation = character(0), team_name = character(0),
       player_id = integer(0), player_name = character(0), last_name = character(0),
       rapm_player_id = character(0), total_rapm = numeric(0),
-      rapm_matched = logical(0), rapm_ambiguous = logical(0)
+      rapm_matched = logical(0), rapm_ambiguous = logical(0),
+      rapm_match_method = character(0)
     )
   }
 
@@ -88,62 +93,158 @@ join_rapm_to_roster <- function(rost, rapm, matched_only = TRUE) {
 
   # --- roster side: full name -> normalized last name -------------------------
   r <- rost |>
-    mutate(last_name = normalize_rapm_last_name(.data$player_name, from_full_name = TRUE))
-
-  # --- rapm side: player_name is ALREADY last-name-only ------------------------
-  p <- rapm |>
-    mutate(last_name = normalize_rapm_last_name(.data$player_name, from_full_name = FALSE))
-
-  # --- COLLISION HANDLING (H-2) ------------------------------------------------
-  # CLAUDE.md and market_odds_engine.R's comment describe this key as
-  # "verified collision-free". That is true of the ROSTER side only (0 duplicate
-  # (team_name, last_name) groups across all 209 rostered players — re-verified by
-  # tools/test_phase4_foundation.R). It is NOT true of the RAPM side: rapm_ratings.rds
-  # carries every player who logged possessions for a franchise, so it has 15 duplicate
-  # (team, last_name) groups (e.g. both Ogwumike sisters on the Sparks, two "Jones" on
-  # Connecticut). Left unhandled, the inner join FANS OUT — 121 matched roster players
-  # became 128 joined rows — which is harmless for market_odds_engine's
-  # "max total_rapm per team" use but silently double-counts in the possession-weighted
-  # team aggregates in player_props_engine.R / roster_bottom_up_engine.R.
-  #
-  # Resolution: keep exactly one RAPM row per (team, last_name), choosing the row with
-  # the most total possessions observed — the best available identity signal for "which
-  # player of this surname is the one currently rostered" (it correctly resolves Nneka
-  # over Chiney Ogwumike, Kelsey Mitchell, Jackie Young, Jonquel Jones). Ties are broken
-  # deterministically by total_rapm then player_id so the result is stable run-to-run.
-  # Affected rows are flagged `rapm_ambiguous = TRUE` so callers can audit them.
-  poss <- function(df) {
-    o <- if ("n_off_poss" %in% names(df)) coalesce(as.numeric(df$n_off_poss), 0) else 0
-    d <- if ("n_def_poss" %in% names(df)) coalesce(as.numeric(df$n_def_poss), 0) else 0
-    o + d
-  }
-  p <- p |>
-    mutate(.poss = poss(p)) |>
-    group_by(.data$team, .data$last_name) |>
-    mutate(rapm_ambiguous = n() > 1) |>
-    arrange(desc(.data$.poss), desc(.data$total_rapm), .data$player_id, .by_group = TRUE) |>
-    slice(1) |>
-    ungroup() |>
-    select(-".poss")
-
-  keep <- intersect(c("orapm", "drapm", "n_off_poss", "n_def_poss", "low_sample_flag"),
-                    names(p))
-  p <- p |>
-    rename(rapm_player_id = "player_id") |>
-    select(all_of(c("team", "last_name", "rapm_player_id", "total_rapm", "rapm_ambiguous", keep)))
-
-  out <- r |>
-    left_join(p, by = c("team_name" = "team", "last_name")) |>
     mutate(
-      rapm_matched   = !is.na(.data$total_rapm),
-      rapm_ambiguous = coalesce(.data$rapm_ambiguous, FALSE)
+      last_name = normalize_rapm_last_name(.data$player_name, from_full_name = TRUE),
+      .espn_id  = as.character(.data$player_id)
     )
 
-  if (isTRUE(matched_only)) out <- out |> filter(.data$rapm_matched)
+  # --- rapm side: ensure player_id is character and last_name exists ----------
+  keep_cols <- intersect(c("orapm", "drapm", "n_off_poss", "n_def_poss", "low_sample_flag"),
+                         names(rapm))
+  p <- rapm |>
+    mutate(
+      .rapm_id  = as.character(.data$player_id),
+      last_name = normalize_rapm_last_name(.data$player_name, from_full_name = FALSE)
+    )
+
+  # --- PRIMARY PATH: Cross-source Player ID Crosswalk (#91) -------------------
+  matched_by_id <- FALSE
+  if (isTRUE(use_crosswalk)) {
+    cw_df <- crosswalk
+    if (is.null(cw_df)) {
+      cw_df <- tryCatch({
+        if (exists("load_player_id_crosswalk", mode = "function")) {
+          load_player_id_crosswalk()
+        } else if (exists("CACHE_PLAYER_ID_CROSSWALK") && file.exists(CACHE_PLAYER_ID_CROSSWALK)) {
+          readRDS(CACHE_PLAYER_ID_CROSSWALK)
+        } else {
+          NULL
+        }
+      }, error = function(e) NULL)
+    }
+
+    if (!is.null(cw_df) && is.data.frame(cw_df) &&
+        all(c("espn_athlete_id", "wnba_player_id") %in% names(cw_df)) && nrow(cw_df) > 0) {
+
+      cw_map <- cw_df |>
+        filter(!is.na(.data$espn_athlete_id), !is.na(.data$wnba_player_id),
+               .data$espn_athlete_id != "", .data$wnba_player_id != "") |>
+        mutate(
+          espn_athlete_id = as.character(.data$espn_athlete_id),
+          wnba_player_id  = as.character(.data$wnba_player_id)
+        ) |>
+        distinct(.data$espn_athlete_id, .keep_all = TRUE) |>
+        select("espn_athlete_id", "wnba_player_id")
+
+      p_select <- p |>
+        select(all_of(c(".rapm_id", "total_rapm", keep_cols))) |>
+        distinct(.data$.rapm_id, .keep_all = TRUE)
+
+      r_id_join <- r |>
+        left_join(cw_map, by = c(".espn_id" = "espn_athlete_id")) |>
+        left_join(p_select, by = c("wnba_player_id" = ".rapm_id"))
+
+      # If ID join succeeded in matching rows, use it as base
+      if (any(!is.na(r_id_join$total_rapm))) {
+        matched_by_id <- TRUE
+        r_joined <- r_id_join |>
+          mutate(
+            rapm_player_id    = coalesce(.data$wnba_player_id, NA_character_),
+            rapm_matched      = !is.na(.data$total_rapm),
+            rapm_ambiguous    = FALSE, # ID join is unambiguous
+            rapm_match_method = if_else(.data$rapm_matched, "id_crosswalk", NA_character_)
+          ) |>
+          select(-"wnba_player_id")
+      }
+    }
+  }
+
+  if (!matched_by_id) {
+    # Initialize un-joined frame
+    r_joined <- r |>
+      mutate(
+        rapm_player_id    = NA_character_,
+        total_rapm        = NA_real_,
+        rapm_matched      = FALSE,
+        rapm_ambiguous    = FALSE,
+        rapm_match_method = NA_character_
+      )
+    for (col in keep_cols) {
+      r_joined[[col]] <- if (is.logical(rapm[[col]])) NA else NA_real_
+    }
+  }
+
+  # --- FALLBACK PATH: (team_name, normalized last_name) for unmatched rows ---
+  unmatched_mask <- !r_joined$rapm_matched
+  if (any(unmatched_mask)) {
+    poss <- function(df) {
+      o <- if ("n_off_poss" %in% names(df)) coalesce(as.numeric(df$n_off_poss), 0) else 0
+      d <- if ("n_def_poss" %in% names(df)) coalesce(as.numeric(df$n_def_poss), 0) else 0
+      o + d
+    }
+
+    p_fallback <- p |>
+      mutate(.poss = poss(p)) |>
+      group_by(.data$team, .data$last_name) |>
+      mutate(.collision_ambig = n() > 1) |>
+      arrange(desc(.data$.poss), desc(.data$total_rapm), .data$.rapm_id, .by_group = TRUE) |>
+      slice(1) |>
+      ungroup() |>
+      select(all_of(c("team", "last_name", ".rapm_id", "total_rapm", ".collision_ambig", keep_cols)))
+
+    r_unmatched <- r_joined[unmatched_mask, ]
+    # Drop previous NA join columns before merging
+    cols_to_drop <- intersect(c(".rapm_id", "rapm_player_id", "total_rapm", keep_cols), names(r_unmatched))
+    r_unmatched_clean <- r_unmatched[, setdiff(names(r_unmatched), cols_to_drop)]
+
+    r_fb_join <- r_unmatched_clean |>
+      left_join(p_fallback, by = c("team_name" = "team", "last_name"))
+
+    fb_matched <- !is.na(r_fb_join$total_rapm)
+    r_fb_join <- r_fb_join |>
+      mutate(
+        rapm_player_id    = if_else(fb_matched, .data$.rapm_id, NA_character_),
+        rapm_matched      = fb_matched,
+        rapm_ambiguous    = if_else(fb_matched, coalesce(.data$.collision_ambig, FALSE), FALSE),
+        rapm_match_method = if_else(fb_matched, "surname_team_fallback", NA_character_)
+      )
+
+    # Label remaining unmatched rows with diagnostic reason
+    rapm_last_names <- unique(p$last_name)
+    still_unmatched <- !r_fb_join$rapm_matched
+    if (any(still_unmatched)) {
+      r_fb_join$rapm_match_method[still_unmatched] <- if_else(
+        r_fb_join$last_name[still_unmatched] %in% rapm_last_names,
+        "unmatched_surname_in_rapm",
+        "unmatched_no_data"
+      )
+    }
+
+    # Clean temporary columns
+    r_fb_join <- r_fb_join |> select(-any_of(c(".rapm_id", ".collision_ambig")))
+
+    # Align columns and splice back
+    all_cols <- union(names(r_joined), names(r_fb_join))
+    for (c in setdiff(all_cols, names(r_joined))) r_joined[[c]] <- NA
+    for (c in setdiff(all_cols, names(r_fb_join))) r_fb_join[[c]] <- NA
+
+    r_joined[unmatched_mask, names(r_joined)] <- r_fb_join[, names(r_joined)]
+  }
+
+  # Clean internal helper columns
+  out <- r_joined |>
+    select(-any_of(c(".espn_id", ".rapm_id")))
+
+  if (isTRUE(matched_only)) {
+    out <- out |> filter(.data$rapm_matched)
+  }
+
+  standard_cols <- c("team_abbreviation", "team_name", "player_id", "player_name", "last_name",
+                     "rapm_player_id", "total_rapm", "rapm_matched", "rapm_ambiguous", "rapm_match_method")
+  other_cols <- setdiff(names(out), standard_cols)
 
   out |>
-    relocate("team_abbreviation", "team_name", "player_id", "player_name", "last_name",
-             "rapm_player_id", "total_rapm", "rapm_matched", "rapm_ambiguous")
+    relocate(all_of(standard_cols), all_of(other_cols))
 }
 
 invisible(NULL)
