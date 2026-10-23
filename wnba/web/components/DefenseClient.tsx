@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { DefensiveProfile } from '@/lib/defenseTypes';
+import { DRAPM_POOLED_SEASON_LABEL, dRapmMeta, dRapmColorClass } from '@/lib/defenseTypes';
 import { MatchupHeatmap } from './MatchupHeatmap';
 import { VersatilityScatter } from './VersatilityScatter';
 import { TeamLogo } from '@/components/TeamLogo';
@@ -34,6 +35,15 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
     })
     .sort((a, b) => {
       if (sortKey === 'rimDfgDelta') return a.rimDfgDelta - b.rimDfgDelta; // Lower (more negative) is better
+      if (sortKey === 'dRapm') {
+        // dRapm is zero-centred (0 = league average), so plain descending order is
+        // correct — but a heuristic estimate is not on the same scale as a fitted
+        // dRAPM, so never interleave the two: rank all fitted values first.
+        const aReal = a.dRapmSource !== 'heuristic_fallback';
+        const bReal = b.dRapmSource !== 'heuristic_fallback';
+        if (aReal !== bReal) return aReal ? -1 : 1;
+        return b.dRapm - a.dRapm;
+      }
       return b[sortKey] - a[sortKey];
     });
 
@@ -53,7 +63,15 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
           </h1>
           <p className="text-sm text-slate-300 max-w-2xl mt-1">
             Quantifying 1-through-5 switch entropy across all 15 WNBA rosters, rim contest field goal suppression,
-            point-of-attack screen navigation, and defensive RAPM residuals.
+            point-of-attack screen navigation, and ridge-fitted defensive RAPM.
+          </p>
+          <p className="text-xs text-slate-400 max-w-2xl mt-2">
+            Defensive RAPM comes from the ridge fit over {DRAPM_POOLED_SEASON_LABEL} seasons — a
+            multi-season career-to-date rating, not a 2026-only one — where 0 is league average and
+            higher is better defence. The {' '}
+            <span className="text-amber-400 font-semibold">amber &ldquo;est.&rdquo;</span> players had
+            no matching RAPM row, so they show a heuristic estimate from rebounds and assists instead;
+            that estimate is not RAPM and is not comparable to the fitted values.
           </p>
         </div>
       </div>
@@ -111,7 +129,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                 <option value="versatilityScore">Versatility Score (H_v)</option>
                 <option value="rimDfgDelta">Rim DFG% Delta (Low is Best)</option>
                 <option value="poaNavigation">POA Screen Nav</option>
-                <option value="dRapm">Defensive RAPM</option>
+                <option value="dRapm">Defensive Rating (dRAPM, est. where unmatched)</option>
               </select>
             </div>
           </div>
@@ -148,11 +166,19 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                   <div className="flex items-center gap-2 text-right">
                     <div>
                       <div className="text-[10px] text-slate-400">
-                        {sortKey === 'rimDfgDelta' ? 'Rim Δ' : sortKey === 'poaNavigation' ? 'POA' : 'H_vers'}
+                        {sortKey === 'rimDfgDelta'
+                          ? 'Rim Δ'
+                          : sortKey === 'poaNavigation'
+                          ? 'POA'
+                          : sortKey === 'dRapm'
+                          ? dRapmMeta(p).badge
+                          : 'H_vers'}
                       </div>
                       <div
                         className={`text-xs font-mono font-bold ${
-                          sortKey === 'rimDfgDelta' && p.rimDfgDelta <= -5
+                          sortKey === 'dRapm'
+                            ? dRapmColorClass(p)
+                            : sortKey === 'rimDfgDelta' && p.rimDfgDelta <= -5
                             ? 'text-emerald-400'
                             : 'text-indigo-400'
                         }`}
@@ -161,6 +187,8 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                           ? `${p.rimDfgDelta}%`
                           : sortKey === 'poaNavigation'
                           ? p.poaNavigation
+                          : sortKey === 'dRapm'
+                          ? `${p.dRapm > 0 ? '+' : ''}${p.dRapm.toFixed(2)}`
                           : p.versatilityScore}
                       </div>
                     </div>
@@ -242,16 +270,26 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
               <div className="p-3 bg-surface/50 rounded-xl border border-slate-800">
                 <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
                   <Activity className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Defensive RAPM</span>
+                  <span>{dRapmMeta(selectedProfile).label}</span>
                 </div>
-                <div
-                  className={`text-base font-bold ${
-                    selectedProfile.dRapm >= 0 ? 'text-indigo-400' : 'text-rose-400'
-                  }`}
-                >
-                  {selectedProfile.dRapm >= 0 ? `+${selectedProfile.dRapm}` : selectedProfile.dRapm}
+                <div className={`text-base font-bold ${dRapmColorClass(selectedProfile)}`}>
+                  {selectedProfile.dRapm > 0
+                    ? `+${selectedProfile.dRapm.toFixed(2)}`
+                    : selectedProfile.dRapm.toFixed(2)}
+                  {!dRapmMeta(selectedProfile).isReal && (
+                    <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-400">
+                      est.
+                    </span>
+                  )}
+                  {selectedProfile.dRapmAmbiguous && (
+                    <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                      shared surname
+                    </span>
+                  )}
                 </div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Pts saved / 100 poss</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">
+                  Pts saved / 100 poss · {dRapmMeta(selectedProfile).caption}
+                </div>
               </div>
 
               <div className="p-3 bg-surface/50 rounded-xl border border-slate-800">

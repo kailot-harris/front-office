@@ -372,6 +372,16 @@ export const DefensiveProfileSchema = z
     rimDeterrenceIndex: finiteNumber.min(0),
     poaNavigation: pct,
     dRapm: finiteNumber,
+    // Provenance of dRapm (issue #83): the real pooled-2019-2026 ridge fit, or
+    // the clearly-labelled rebound/assist heuristic for players the RAPM join
+    // cannot match.
+    dRapmSource: z.enum([
+      'rapm_ridge_pooled',
+      'rapm_ridge_pooled_low_sample',
+      'heuristic_fallback',
+    ]),
+    dRapmLowSample: z.boolean(),
+    dRapmAmbiguous: z.boolean(),
     matchupDist: z
       .object({
         pgPct: pct,
