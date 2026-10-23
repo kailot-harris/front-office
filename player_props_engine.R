@@ -176,7 +176,7 @@ pzinb_over_vec <- Vectorize(pzinb_over)
 # by the same gap after), so the team aggregates are NOT automatically mean-zero just
 # because the player column is.
 get_team_def_rapm <- function(active_rosters) {
-  rapm_path <- "cache/rapm_ratings.rds"
+  rapm_path <- CACHE_RAPM_RATINGS
 
   neutral <- function(v) {
     out <- tibble(team_name = unname(WNBA_TEAMS), def_rapm = as.numeric(v))
@@ -285,7 +285,7 @@ get_team_def_rapm <- function(active_rosters) {
 #   shipped; no action indicated" at this ratio — adoption here was a deliberate
 #   owner decision to keep the constant matched to the post-#76 regressor rather
 #   than a threshold firing.
-OPP_DEF_MU_SLOPE  <- -0.0504
+# OPP_DEF_MU_SLOPE defined centrally in config.R (GitHub issue #82)
 # Clamp bounds: +/-15%. Re-measured 2026-10-23 under the -0.0504 slope and the
 # post-#76 cache: the unclamped estimate spans 0.95x (Washington Mystics, the
 # strongest defense) to 1.06x (Dallas Wings, the weakest) across the 15 real 2026
@@ -293,7 +293,7 @@ OPP_DEF_MU_SLOPE  <- -0.0504
 # — it exists purely so that a future degenerate RAPM cache cannot swing a
 # projection arbitrarily (the OLD formula's raw ratio spanned roughly 0x to 2.2x and
 # would have flipped a projection's sign outright on a negative team aggregate).
-OPP_DEF_MU_CLAMP  <- c(0.85, 1.15)
+# OPP_DEF_MU_CLAMP defined centrally in config.R (GitHub issue #82)
 
 adjust_mu_for_opponent <- function(base_mu, opp_def_rapm, league_avg_def) {
   # FINDING M-4 (docs/SECURITY_TECHNICAL_REVIEW.md). The previous implementation was

@@ -121,6 +121,52 @@ solve_ridge_rapm <- function(X, y, weights, lambda = 2000) {
 }
 
 # ------------------------------------------------------------------------------
+# tune_lambda_cv() — 5-fold cross-validation on held-out possessions (Issue #78).
+# Ported from NBA Analytics (:390-432).
+#
+# X'X and X'y depend only on the fold and not on lambda. We build them once per
+# fold and re-solve per lambda, completing the full 5-fold grid search in ~1 second.
+# ------------------------------------------------------------------------------
+tune_lambda_cv <- function(dm,
+                           grid = c(250, 500, 750, 900, 1000, 1500, 2000, 3000, 5000, 8000, 12000, 20000),
+                           k = 5, seed = 20260101) {
+  set.seed(seed)
+  n_poss <- if (!is.null(dm$n_possessions)) dm$n_possessions else nrow(dm$X)
+  folds <- sample(rep_len(seq_len(k), n_poss))
+  p <- ncol(dm$X)
+
+  message(sprintf(">>> [RAPM] Running %d-fold cross-validation across %d lambdas (%s possessions)...",
+                  k, length(grid), format(n_poss, big.mark = ",")))
+
+  parts <- lapply(seq_len(k), function(f) {
+    tr <- folds != f
+    Xtr <- dm$X[tr, , drop = FALSE]
+    ytr <- dm$y[tr]
+    list(XtX = Matrix::crossprod(Xtr), Xty = Matrix::crossprod(Xtr, ytr),
+         Xte = dm$X[!tr, , drop = FALSE], yte = as.vector(dm$y[!tr]))
+  })
+
+  mse <- numeric(length(grid))
+  for (gi in seq_along(grid)) {
+    lam <- grid[gi]
+    sse <- 0
+    n_held <- 0
+    for (f in seq_len(k)) {
+      beta <- as.vector(solve(parts[[f]]$XtX + Matrix::Diagonal(p, lam), parts[[f]]$Xty))
+      pred <- as.vector(parts[[f]]$Xte %*% beta)
+      sse <- sse + sum((parts[[f]]$yte - pred)^2)
+      n_held <- n_held + length(pred)
+    }
+    mse[gi] <- sse / n_held
+    message(sprintf(">>> [RAPM]   lambda = %7.0f  ->  held-out MSE %.6f", lam, mse[gi]))
+  }
+
+  best <- grid[which.min(mse)]
+  message(sprintf(">>> [RAPM] %d-fold CV selected lambda = %g (MSE: %.6f).", k, best, min(mse)))
+  best
+}
+
+# ------------------------------------------------------------------------------
 # load_or_build_wnba_pbp_cache() — real ingestion step. Pulls
 # wehoop::load_wnba_stats_possessions() for every season in `seasons`, tags each pulled row's
 # provenance, and caches the combined result to cache/wnba_pbp_cache.rds so repeat runs don't
@@ -274,6 +320,7 @@ build_possession_design_matrix <- function(possessions) {
     X = X_sparse,
     y = poss_clean$points - league_ppp,   # centred target, issue #76; NBA `:371`
     league_ppp = league_ppp,
+    n_possessions = n_stints,
     weights = rep(1, n_stints),
     all_players = all_players,
     n_players = n_players,
@@ -488,7 +535,7 @@ reattribute_to_current_roster_team <- function(rapm_df) {
 # artifact (0.06 at lambda=50, 0.77 at lambda=900, 0.99 at lambda=30,000), NOT an O/D encoding
 # bug. It is deliberately NOT addressed here; lambda stays 900.
 # ------------------------------------------------------------------------------
-fit_rapm_ratings <- function(seasons = ALL_SEASONS, lambda = 900, force_refresh = FALSE,
+fit_rapm_ratings <- function(seasons = ALL_SEASONS, lambda = RAPM_LAMBDA, force_refresh = FALSE,
                               team_attribution = c("current_roster", "season_pooled")) {
   team_attribution <- match.arg(team_attribution)
 
@@ -525,6 +572,11 @@ fit_rapm_ratings <- function(seasons = ALL_SEASONS, lambda = 900, force_refresh 
   }
 
   dm <- build_possession_design_matrix(pbp_cache$possessions)
+
+  if (isTRUE(RAPM_TUNE_LAMBDA)) {
+    lambda <- tune_lambda_cv(dm)
+  }
+
   message(sprintf(">>> [RAPM] Solving REAL possession-level Ridge across %d possessions & %d player parameters (lambda = %g)...",
                    nrow(dm$X), 2 * dm$n_players, lambda))
 
@@ -636,6 +688,7 @@ fit_rapm_ratings <- function(seasons = ALL_SEASONS, lambda = 900, force_refresh 
     total_rapm = round(total_rapm, 2),
     n_off_poss = off_n,
     n_def_poss = def_n,
+    lambda = lambda,
     # The gauge the ratings are measured against: league mean points per possession, the
     # constant subtracted from the ridge target in build_possession_design_matrix() (issue
     # #76). A scalar recycled down the frame, exported so the gauge is readable from the
@@ -682,7 +735,7 @@ fit_rapm_ratings <- function(seasons = ALL_SEASONS, lambda = 900, force_refresh 
   # Expressing the rule against `lambda` rather than a hardcoded possession count means it
   # stays correct if lambda is ever re-tuned (see this function's header: lambda = 900 came
   # from a coarse grid search and a CV pass is a known follow-up). Flag, never drop.
-  RAPM_MIN_DATA_SHARE <- 1 / 3
+  # RAPM_MIN_DATA_SHARE defined in config.R (GitHub issue #82)
   rapm_df <- rapm_df %>%
     dplyr::mutate(
       shrinkage_data_share = pmin(
@@ -703,7 +756,7 @@ fit_rapm_ratings <- function(seasons = ALL_SEASONS, lambda = 900, force_refresh 
   # is Parker, Delle Donne, Park, Prince, Jones, Gray, Miles, Diggins-Smith, Burton, Clark —
   # no sub-1,000-possession row. Consumers that rank or sort should filter on this column;
   # consumers that display a single player's rating should use `low_sample_flag` instead.
-  RAPM_LEADERBOARD_MIN_POSS_PER_SIDE <- 1000L
+  # RAPM_LEADERBOARD_MIN_POSS_PER_SIDE defined in config.R (GitHub issue #82)
   rapm_df <- rapm_df %>%
     dplyr::mutate(leaderboard_eligible = pmin(n_off_poss, n_def_poss) >=
                     RAPM_LEADERBOARD_MIN_POSS_PER_SIDE)
@@ -881,23 +934,24 @@ assert_rapm_additive <- function(rapm_df, tolerance = 0.015) {
 # no-op for the live path (see fit_rapm_ratings()'s header comment for the season-filter fix,
 # which is also a no-op at seasons = ALL_SEASONS).
 # ------------------------------------------------------------------------------
-estimate_rapm_ratings <- function(lambda = 900, seasons = ALL_SEASONS, force_refresh = FALSE) {
+estimate_rapm_ratings <- function(lambda = RAPM_LAMBDA, seasons = ALL_SEASONS, force_refresh = FALSE,
+                                   out_path = CACHE_RAPM_RATINGS) {
   rapm_df <- fit_rapm_ratings(seasons = seasons, lambda = lambda, force_refresh = force_refresh,
                                team_attribution = "current_roster")
 
-  saveRDS(rapm_df, "cache/rapm_ratings.rds")
+  saveRDS(rapm_df, out_path)
 
   if (identical(rapm_df$data_source[1], "real_box_score_plusminus_fallback")) {
     # Fallback path already logged its own warning inside estimate_rapm_box_plusminus_fallback().
     return(rapm_df)
   }
 
-  message(sprintf(">>> [RAPM] Saved %d REAL possession-level RAPM ratings to cache/rapm_ratings.rds (%d flagged low-sample).",
-                   nrow(rapm_df), sum(rapm_df$low_sample_flag)))
+  message(sprintf(">>> [RAPM] Saved %d REAL possession-level RAPM ratings to %s (%d flagged low-sample).",
+                   nrow(rapm_df), out_path, sum(rapm_df$low_sample_flag)))
   log_info(sprintf("Saved %d real possession-level RAPM ratings (%d flagged low-sample).",
                     nrow(rapm_df), sum(rapm_df$low_sample_flag)),
            call = "estimate_rapm_ratings()", rows = nrow(rapm_df), low_sample_count = sum(rapm_df$low_sample_flag),
-           out_path = "cache/rapm_ratings.rds", data_source = "real_wnba_stats_possessions")
+           out_path = out_path, data_source = "real_wnba_stats_possessions")
   return(rapm_df)
 }
 

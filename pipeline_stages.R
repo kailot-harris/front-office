@@ -246,7 +246,7 @@ PIPELINE_STAGES <- list(
     description = "Estimate Real Possession-Level RAPM (L2 Ridge Regression)",
     call_fn     = NULL,
     entry_fn    = "estimate_rapm_ratings",
-    output      = "cache/rapm_ratings.rds",
+    output      = CACHE_RAPM_RATINGS,
     # inputs: primary path is a live wehoop::load_wnba_stats_possessions() pull (no file
     # input); its own PBP possessions cache (cache/wnba_pbp_cache.rds, rapm_engine.R:134-138)
     # is self-produced/self-consumed, not counted as upstream. The documented fallback,
@@ -300,7 +300,7 @@ PIPELINE_STAGES <- list(
     # (roster_bottom_up_engine.R:511-525); active_rosters_cache.rds
     # (roster_bottom_up_engine.R:519, 589-595, falls back to GLOBAL_ACTIVE_ROSTERS);
     # CACHE_INJURY_DATA (roster_bottom_up_engine.R:606, `readRDS(CACHE_INJURY_DATA)`).
-    inputs      = c(CACHE_TEAM_BOX, "cache/rapm_ratings.rds", CACHE_PLAYER_BOX, CACHE_FEATURES,
+    inputs      = c(CACHE_TEAM_BOX, CACHE_RAPM_RATINGS, CACHE_PLAYER_BOX, CACHE_FEATURES,
                      file.path(CACHE_DIR, "active_rosters_cache.rds"), CACHE_INJURY_DATA),
     group       = NULL
   ),
@@ -322,7 +322,7 @@ PIPELINE_STAGES <- list(
     # (market_odds_engine.R:438, if present); its own prior odds_history.rds
     # (market_odds_engine.R:547) is self-produced/self-consumed (append-only history), not
     # counted as upstream.
-    inputs      = c("cache/rapm_ratings.rds", file.path(CACHE_DIR, "active_rosters_cache.rds"),
+    inputs      = c(CACHE_RAPM_RATINGS, file.path(CACHE_DIR, "active_rosters_cache.rds"),
                      "cache/projected_wnba_standings.rds", file.path(CACHE_DIR, "team_shot_quality.rds"),
                      file.path(CACHE_DIR, "travel_fatigue_metrics.rds")),
     group       = NULL
@@ -373,7 +373,7 @@ PIPELINE_STAGES <- list(
     # (player_props_engine.R:424-425, real stat means); active_rosters_cache.rds
     # (player_props_engine.R:518, 524, falls back to GLOBAL_ACTIVE_ROSTERS at line 558);
     # latest_value_bets.rds (player_props_engine.R:557-558, 584, today's real matchups).
-    inputs      = c("cache/rapm_ratings.rds", CACHE_PLAYER_PBP_FEATURES, CACHE_PLAYER_BOX,
+    inputs      = c(CACHE_RAPM_RATINGS, CACHE_PLAYER_PBP_FEATURES, CACHE_PLAYER_BOX,
                      file.path(CACHE_DIR, "active_rosters_cache.rds"),
                      file.path(CACHE_DIR, "latest_value_bets.rds")),
     group       = "props_engines"
@@ -412,7 +412,7 @@ PIPELINE_STAGES <- list(
     # back to a hand-set bump if missing); projected_wnba_standings.rds
     # (playoff_simulator.R:199-201, seeds the bracket, falls back to a placeholder 4-team
     # slate if missing).
-    inputs      = c("cache/rapm_ratings.rds", "cache/projected_wnba_standings.rds"),
+    inputs      = c(CACHE_RAPM_RATINGS, "cache/projected_wnba_standings.rds"),
     group       = NULL
   ),
 

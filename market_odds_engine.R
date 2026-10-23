@@ -86,7 +86,7 @@ apply_rating_limits <- function(rating) {
 
 calculate_matchup_delta <- function(h_abbr, a_abbr) {
   # Player-Player matchup specifics: Star Power Delta
-  rapm_path <- file.path(CACHE_DIR, "rapm_ratings.rds")
+  rapm_path <- CACHE_RAPM_RATINGS
   rost_path <- file.path(CACHE_DIR, "active_rosters_cache.rds")
 
   if (!file.exists(rapm_path) || !file.exists(rost_path)) return(0.0)

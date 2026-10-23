@@ -27,12 +27,13 @@
 # Per tools/ convention: resolve the project root so the script runs from anywhere.
 if (!dir.exists("cache") && dir.exists(file.path("..", "cache"))) setwd("..")
 stopifnot(dir.exists("cache"), file.exists("rapm_engine.R"))
+if (file.exists("config.R")) source("config.R")
 
 OLD_THRESHOLD      <- 300L    # the cut that shipped before issue #71
 REJECTED_THRESHOLD <- 2500L   # count-based cut considered and rejected (flagged 48.8%)
-LAMBDA             <- 900     # must match fit_rapm_ratings()'s default lambda
-MIN_DATA_SHARE     <- 1 / 3   # rapm_engine.R::RAPM_MIN_DATA_SHARE
-MIN_POSS_PER_SIDE  <- 1000L   # rapm_engine.R::RAPM_LEADERBOARD_MIN_POSS_PER_SIDE
+LAMBDA             <- RAPM_LAMBDA
+MIN_DATA_SHARE     <- RAPM_MIN_DATA_SHARE
+MIN_POSS_PER_SIDE  <- RAPM_LEADERBOARD_MIN_POSS_PER_SIDE
 TOL_TOTAL          <- 0.01    # round(, 2) on each of orapm/drapm -> total can move by <= 0.01
 TOL_CENTER         <- 1e-3    # rapm_engine.R::RAPM_GAUGE_TOL (tightened in issue #77)
 
@@ -65,7 +66,7 @@ assert_rapm_centered <- eng$check_rapm_gauge
 cat("Sourced check_rapm_gauge() from a sanitised temp copy of rapm_engine.R ",
     "(trailing auto-run block stripped; production cache untouched).\n", sep = "")
 
-r <- readRDS("cache/rapm_ratings.rds")
+r <- readRDS(CACHE_RAPM_RATINGS)
 cat(sprintf("Loaded cache/rapm_ratings.rds: %d rows, %d cols\n", nrow(r), ncol(r)))
 
 verdicts <- logical(0)

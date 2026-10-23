@@ -32,25 +32,10 @@ suppressPackageStartupMessages({
 source("config.R")
 source("rapm_join_utils.R")
 
-# OPP_DEF_MU_SLOPE / OPP_DEF_MU_CLAMP live in player_props_engine.R, not config.R
-# (that gap is issue #82). Sourcing that file would execute its trailing
-# !interactive() block and rewrite the props cache, so extract just these two
-# constant assignments and evaluate them in isolation — no side effects.
-local({
-  src <- parse("player_props_engine.R")
-  wanted <- c("OPP_DEF_MU_SLOPE", "OPP_DEF_MU_CLAMP")
-  for (expr in src) {
-    if (is.call(expr) && identical(as.character(expr[[1]]), "<-") &&
-        is.name(expr[[2]]) && as.character(expr[[2]]) %in% wanted) {
-      assign(as.character(expr[[2]]), eval(expr[[3]]), envir = globalenv())
-    }
-  }
-  missing <- setdiff(wanted, ls(globalenv()))
-  if (length(missing))
-    stop("could not extract: ", paste(missing, collapse = ", "))
-})
+# OPP_DEF_MU_SLOPE / OPP_DEF_MU_CLAMP defined centrally in config.R (GitHub issue #82).
+stopifnot(exists("OPP_DEF_MU_SLOPE"), exists("OPP_DEF_MU_CLAMP"))
 
-rapm <- readRDS(file.path(CACHE_DIR, "rapm_ratings.rds"))
+rapm <- readRDS(CACHE_RAPM_RATINGS)
 ros  <- readRDS(file.path(CACHE_DIR, "active_rosters_cache.rds"))
 pb   <- readRDS(CACHE_PLAYER_BOX)
 
