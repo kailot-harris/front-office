@@ -5,6 +5,16 @@
 # Exact (non-simulated) probability distribution over playoff series length
 # (best-of-3 / best-of-5 / best-of-7), e.g. "P(semifinal series goes 4 games)".
 #
+# ORPHANED PRODUCER (declared 2026-10-23): its only consumer has retired. The
+# summary app's bracket tab, which read this script's
+# `cache/series_length_predictions.rds`, now lives in a separate repository
+# (`kailot-harris/DATA-607-Agentic_Coding-WNBA-Summary`), and that app's stale
+# fork in THIS repo has been deleted. So that cache is currently produced here
+# and consumed by nothing in this repo. This is expected, not a bug -- the
+# orphaned-cache-audit skill will flag the artifact and this note is the answer.
+# The producer is kept
+# deliberately: it is the only exact (non-Monte-Carlo) series-length model here.
+#
 # This is deliberately NOT built on top of playoff_simulator.R's Monte Carlo
 # loop. The series-length state space is tiny (at most win_threshold^2 states,
 # <=16 for a bo7), so it is computed exactly via dynamic programming over
@@ -352,9 +362,10 @@ run_series_length_demo <- function() {
          distribution = dist, crossvalidation = xval, bo3_breakdown = breakdown,
          # Full series object (p_high_seed_win, fair_ml_high/low, avg_series_games,
          # format_label, exact_outcomes) -- same shape playoff_simulator.R's own
-         # demo suite produces -- so a consumer (e.g. summary_app.R's bracket tab)
-         # can read a real win probability for this REAL confirmed matchup
-         # without re-simulating.
+         # demo suite produces -- so a consumer (e.g. the summary app's bracket
+         # tab, which now lives in the sibling repo
+         # `kailot-harris/DATA-607-Agentic_Coding-WNBA-Summary`) can read a real
+         # win probability for this REAL confirmed matchup without re-simulating.
          series = xval$mc_result)
   }
 

@@ -52,7 +52,7 @@ roster_cache_backup <- file.path(CACHE_DIR, "active_rosters_cache.rds.probe_back
 # project_dir launches the EXISTING app.R (the shinydashboard viewer), not control_panel_app.R,
 # silently (no error, just the wrong app with no #stage_id element at all, which is what
 # produced the "0 options" / "no input binding" failures below). Point it at a throwaway
-# wrapper dir instead, matching the pattern used for summary_app.R's own probe.
+# wrapper dir instead, matching the pattern used for the other app probes in this directory.
 wrapper_dir <- file.path(tempdir(), "control_panel_probe_app")
 dir.create(wrapper_dir, showWarnings = FALSE)
 writeLines(
