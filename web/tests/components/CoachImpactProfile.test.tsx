@@ -23,12 +23,17 @@ describe('CoachImpactProfile', () => {
       screen.getByText(`Coaching Impact Profile: ${coach.headCoach.name}`),
     ).toBeInTheDocument();
     expect(screen.getByText(/Projection gap/)).toBeInTheDocument();
+    // getAllBy*, not getBy*: the two variants are independent projections of
+    // the same team and may land on the same win total, in which case a
+    // single-match query throws on its own success. A zero gap is a legitimate
+    // reading of the model, not a rendering bug, so this asserts each figure is
+    // present rather than that the two differ.
     expect(
-      screen.getByText(`${coach.metrics.talentExpectedWins} W`),
-    ).toBeInTheDocument();
+      screen.getAllByText(`${coach.metrics.talentExpectedWins} W`).length,
+    ).toBeGreaterThanOrEqual(1);
     expect(
-      screen.getByText(`${coach.metrics.actualProjectedWins} W`),
-    ).toBeInTheDocument();
+      screen.getAllByText(`${coach.metrics.actualProjectedWins} W`).length,
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it('states that the tactical indicators do not sum to the gap', () => {

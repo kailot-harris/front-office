@@ -697,6 +697,14 @@ for (p in 1:n_players) {
 }
 
 # Aggregate player distributions
+# Unrounded simulation means, taken once so the published per-game rates and
+# season totals below are derived from the SAME numbers rather than computed
+# independently and reconciled afterwards.
+mean_games     <- rowMeans(sim_games_mat)
+mean_pts_total <- rowMeans(sim_pts_mat)
+mean_reb_total <- rowMeans(sim_reb_mat)
+mean_ast_total <- rowMeans(sim_ast_mat)
+
 player_projections <- tibble(
   player_id       = player_base$player_id,
   player_name     = player_base$player_name,
@@ -704,19 +712,32 @@ player_projections <- tibble(
   position        = player_base$position,
   
   # Projected games & minutes
-  proj_games      = round(rowMeans(sim_games_mat), 1),
+  proj_games      = round(mean_games, 1),
   proj_mpg        = round(rowMeans(sim_mpg_mat), 1),
   proj_min_total  = round(rowMeans(sim_games_mat * sim_mpg_mat), 1),
   
-  # Projected per-game stats
-  proj_pts        = round(rowMeans(sim_pts_mat / sim_games_mat), 1),
-  proj_reb        = round(rowMeans(sim_reb_mat / sim_games_mat), 1),
-  proj_ast        = round(rowMeans(sim_ast_mat / sim_games_mat), 1),
-  
-  # Projected season totals
-  proj_pts_total  = round(rowMeans(sim_pts_mat), 1),
-  proj_reb_total  = round(rowMeans(sim_reb_mat), 1),
-  proj_ast_total  = round(rowMeans(sim_ast_mat), 1),
+  # Projected per-game stats.
+  #
+  # These are the SEASON RATE, mean(total) / mean(games), not the mean of each
+  # simulation's own per-game ratio. The two are different statistics: a player
+  # whose minutes and availability are correlated across simulations has
+  # E[pts/games] != E[pts]/E[games] (Jensen), and the published totals below are
+  # E[pts]. Publishing the mean-of-ratios here left season totals that did not
+  # reconcile with per_game * games by up to 5.3 points - a real inconsistency
+  # between two numbers on the same row of the same page, not a rounding
+  # artifact. The rate is also what a "per game" figure on a season projection
+  # means: total production divided by games played.
+  proj_pts        = round(mean_pts_total / mean_games, 1),
+  proj_reb        = round(mean_reb_total / mean_games, 1),
+  proj_ast        = round(mean_ast_total / mean_games, 1),
+
+  # Projected season totals, straight off the unrounded simulation. These are
+  # the source of truth; the per-game rates above are derived from them, so the
+  # identity total == per_game * games now holds exactly before publishing and
+  # the only residual is the 1-decimal rounding of the three published figures.
+  proj_pts_total  = round(mean_pts_total, 1),
+  proj_reb_total  = round(mean_reb_total, 1),
+  proj_ast_total  = round(mean_ast_total, 1),
   
   # Quantile distributions: Points
   pts_p10         = round(apply(sim_pts_mat / sim_games_mat, 1, quantile, 0.10), 1),

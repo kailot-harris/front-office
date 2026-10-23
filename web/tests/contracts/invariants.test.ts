@@ -144,9 +144,28 @@ describe('Domain & mathematical invariants: projections_season_players.json', ()
 
   it('season totals match per-game * proj_games, percentiles are monotonic, and is_outlier matches |z| >= 2.0', () => {
     for (const p of players) {
-      expect(Math.abs(p.proj_pts_total - p.proj_pts * p.proj_games), `${p.player_name} pts_total`).toBeLessThanOrEqual(6);
-      expect(Math.abs(p.proj_reb_total - p.proj_reb * p.proj_games), `${p.player_name} reb_total`).toBeLessThanOrEqual(5);
-      expect(Math.abs(p.proj_ast_total - p.proj_ast * p.proj_games), `${p.player_name} ast_total`).toBeLessThanOrEqual(5);
+      // season_simulator.R derives the per-game rate from the same unrounded
+      // simulation means as the total, so total == per_game * games holds
+      // EXACTLY before publishing. All three figures are then published to one
+      // decimal, and multiplying two independently rounded numbers inflates the
+      // error by their magnitudes: a half-unit of the last decimal on each of
+      // per_game and games is +/- 0.05 * (games + per_game). That product, not
+      // a flat constant, is the contract - it is far tighter than a magic 5 for
+      // a bench player and correctly looser for a 70-game, 26-point starter.
+      const totalTolerance = (perGame: number) => 0.05 * (p.proj_games + perGame) + 0.1;
+
+      expect(
+        Math.abs(p.proj_pts_total - p.proj_pts * p.proj_games),
+        `${p.player_name} pts_total`,
+      ).toBeLessThanOrEqual(totalTolerance(p.proj_pts));
+      expect(
+        Math.abs(p.proj_reb_total - p.proj_reb * p.proj_games),
+        `${p.player_name} reb_total`,
+      ).toBeLessThanOrEqual(totalTolerance(p.proj_reb));
+      expect(
+        Math.abs(p.proj_ast_total - p.proj_ast * p.proj_games),
+        `${p.player_name} ast_total`,
+      ).toBeLessThanOrEqual(totalTolerance(p.proj_ast));
 
       expect(p.pts_p10).toBeLessThanOrEqual(p.pts_p25);
       expect(p.pts_p25).toBeLessThanOrEqual(p.pts_p50);
