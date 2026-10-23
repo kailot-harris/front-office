@@ -18,6 +18,9 @@ suppressPackageStartupMessages({
 })
 
 source("config.R")
+# `resolve_team_name()` - the single shared 30-branch nickname resolver. This
+# file used to carry its own byte-identical copy (issue 24); two copies drift.
+source("team_name_resolver.R")
 
 `%||%` <- function(a, b) if (!is.null(a) && length(a) > 0 && !is.na(a)) a else b
 
@@ -42,43 +45,6 @@ calculate_kelly <- function(prob, decimal_odds, fraction = 0.25, max_cap_pct = 3
   raw_kelly <- (b * prob - q) / b
   pct <- round(pmax(0, raw_kelly * fraction * 100), 2)
   pmin(pct, max_cap_pct)
-}
-
-resolve_team_name <- function(tm_raw) {
-  s <- tolower(trimws(as.character(tm_raw)))
-  case_when(
-    grepl("celtic|\\bbos\\b|boston", s)                       ~ "Celtics",
-    grepl("thunder|\\bokc\\b|oklahoma", s)                    ~ "Thunder",
-    grepl("cavalier|\\bcle\\b|cleveland|cavs", s)             ~ "Cavaliers",
-    grepl("spur|\\bsas?\\b|san antonio", s)                   ~ "Spurs",
-    grepl("warrior|\\bgsw?\\b|golden state|dubs", s)          ~ "Warriors",
-    grepl("rocket|\\bhou\\b|houston", s)                      ~ "Rockets",
-    grepl("knick|\\bnyk?\\b|new york", s)                     ~ "Knicks",
-    grepl("piston|\\bdet\\b|detroit", s)                      ~ "Pistons",
-    grepl("nugget|\\bden\\b|denver", s)                       ~ "Nuggets",
-    grepl("heat|\\bmia\\b|miami", s)                          ~ "Heat",
-    grepl("76er|sixer|\\bphi\\b|philadelphia", s)             ~ "76ers",
-    grepl("pacer|\\bind\\b|indiana", s)                       ~ "Pacers",
-    grepl("blazer|\\bpor\\b|portland", s)                     ~ "Trail Blazers",
-    grepl("timberwolv|\\bmin\\b|minnesota|wolves", s)         ~ "Timberwolves",
-    grepl("magic|\\borl\\b|orlando", s)                       ~ "Magic",
-    grepl("grizzl|\\bmem\\b|memphis", s)                      ~ "Grizzlies",
-    grepl("laker|\\blal\\b|los angeles lakers", s)            ~ "Lakers",
-    grepl("raptor|\\btor\\b|toronto", s)                      ~ "Raptors",
-    grepl("hawk|\\batl\\b|atlanta", s)                        ~ "Hawks",
-    grepl("maverick|\\bdal\\b|dallas|mavs", s)                ~ "Mavericks",
-    grepl("clipper|\\blac\\b|los angeles clippers", s)        ~ "Clippers",
-    grepl("buck|\\bmil\\b|milwaukee", s)                      ~ "Bucks",
-    grepl("sun|\\bphx\\b|phoenix", s)                         ~ "Suns",
-    grepl("jazz|\\butah?\\b", s)                              ~ "Jazz",
-    grepl("hornet|\\bcha\\b|charlotte", s)                    ~ "Hornets",
-    grepl("net|\\bbkn?\\b|brooklyn", s)                       ~ "Nets",
-    grepl("bull|\\bchi\\b|chicago", s)                        ~ "Bulls",
-    grepl("pelican|\\bnop?\\b|new orleans", s)                ~ "Pelicans",
-    grepl("wizard|\\bwas\\b|\\bwsh\\b|washington", s)         ~ "Wizards",
-    grepl("king|\\bsac\\b|sacramento", s)                     ~ "Kings",
-    TRUE                                                      ~ as.character(tm_raw)
-  )
 }
 
 # ------------------------------------------------------------------------------

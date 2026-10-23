@@ -21,10 +21,60 @@ suppressPackageStartupMessages({
 
 source("config.R")
 source("live_calibration.R")
+# `resolve_team_name()` - the single shared 30-branch nickname resolver. This
+# file used to carry its own byte-identical copy as `.resolve_team_name`
+# (issue 24); two copies of a 30-branch lookup table drift.
+source("team_name_resolver.R")
 
 PRED_LOG_RDS <- if (exists("CACHE_PREDICTION_LOG")) CACHE_PREDICTION_LOG else file.path(CACHE_DIR, "prediction_accuracy_log.rds")
 PRED_LOG_CSV <- file.path(CACHE_DIR, "prediction_accuracy_log.csv")
 PRED_LOG_UNRESOLVABLE_AFTER_DAYS <- 7L
+
+# --- SCHEDULE SPINE CONTRACT (issue 24) -------------------------------------
+# The active slate is parsed out of bookmaker feeds (market_odds_engine.R). A
+# bookmaker feed can mis-pair teams: issue 24 logged four rows whose
+# (date, home, away) triple was NOT a scheduled game at all - one of the two
+# teams had been swapped for a team from a DIFFERENT game that night. Nothing
+# checked the triple, so the fabricated pairing was written to the log, and
+# build_matchups_dataset.R then hard-failed its join-rate contract.
+#
+# Every slate row must therefore be checked against the authoritative ESPN
+# schedule spine (the SAME artifact build_matchups_dataset.R joins against)
+# before it is written.
+#
+# NOTE: the orientation check is DELIBERATELY strict - home must be home and
+# away must be away. A "bidirectional" join that also accepts the reversed
+# orientation was proposed on issue 24 and is actively wrong: it would not have
+# matched any of the four bad rows (the pairings were fabricated, not inverted)
+# and it would let a genuinely home/away-inverted row match the spine, silently
+# publishing a prediction with home-court advantage applied to the wrong side.
+
+# hoopR end-year season numbering, matching build_matchups_dataset.R's
+# MATCHUPS_HOOPR_SEASON. Overridable by the same env var so the two stages
+# cannot be pointed at different seasons.
+PRED_LOG_SPINE_SEASON <- {
+  env <- Sys.getenv("NBA_MATCHUPS_SEASON", unset = "")
+  if (nzchar(env)) as.integer(env) else 2027L
+}
+
+# Columns the spine must supply. See build_matchups_dataset.R:238-247, which
+# reads exactly these.
+PRED_LOG_SPINE_COLUMNS <- c("game_id", "game_date",
+                            "home_short_display_name", "away_short_display_name")
+
+# ESPN ships unseeded NBA Cup knockout slots as TBD vs TBD. They are not games.
+PRED_LOG_SPINE_PLACEHOLDER <- "TBD"
+
+# FALSE: a slate row absent from the spine is dropped and reported loudly, so a
+# bad pairing can never reach the log while the rest of the slate still
+# publishes. build_matchups_dataset.R:311-335 remains the hard backstop for
+# anything that is already in the log.
+# TRUE: abort the run on the first rejection instead.
+PRED_LOG_SPINE_STRICT <- FALSE
+
+# predicted_winner is derived as if_else(prob >= PRED_LOG_WINNER_PROB_CUTOFF,
+# home, away). Anything else in that column is corruption.
+PRED_LOG_WINNER_PROB_CUTOFF <- 0.50
 
 # Canonical empty schema for prediction log
 .empty_prediction_log <- function() {
@@ -49,43 +99,251 @@ PRED_LOG_UNRESOLVABLE_AFTER_DAYS <- 7L
   )
 }
 
-# Canonical team resolver to short franchise nickname (matching box_scores_cache.rds)
-.resolve_team_name <- function(tm_raw) {
-  s <- tolower(trimws(as.character(tm_raw)))
-  case_when(
-    grepl("celtic|\\bbos\\b|boston", s)                       ~ "Celtics",
-    grepl("thunder|\\bokc\\b|oklahoma", s)                    ~ "Thunder",
-    grepl("cavalier|\\bcle\\b|cleveland|cavs", s)             ~ "Cavaliers",
-    grepl("spur|\\bsas?\\b|san antonio", s)                   ~ "Spurs",
-    grepl("warrior|\\bgsw?\\b|golden state|dubs", s)          ~ "Warriors",
-    grepl("rocket|\\bhou\\b|houston", s)                      ~ "Rockets",
-    grepl("knick|\\bnyk?\\b|new york", s)                     ~ "Knicks",
-    grepl("piston|\\bdet\\b|detroit", s)                      ~ "Pistons",
-    grepl("nugget|\\bden\\b|denver", s)                       ~ "Nuggets",
-    grepl("heat|\\bmia\\b|miami", s)                          ~ "Heat",
-    grepl("76er|sixer|\\bphi\\b|philadelphia", s)             ~ "76ers",
-    grepl("pacer|\\bind\\b|indiana", s)                       ~ "Pacers",
-    grepl("blazer|\\bpor\\b|portland", s)                     ~ "Trail Blazers",
-    grepl("timberwolv|\\bmin\\b|minnesota|wolves", s)         ~ "Timberwolves",
-    grepl("magic|\\borl\\b|orlando", s)                       ~ "Magic",
-    grepl("grizzl|\\bmem\\b|memphis", s)                      ~ "Grizzlies",
-    grepl("laker|\\blal\\b|los angeles lakers", s)            ~ "Lakers",
-    grepl("raptor|\\btor\\b|toronto", s)                      ~ "Raptors",
-    grepl("hawk|\\batl\\b|atlanta", s)                        ~ "Hawks",
-    grepl("maverick|\\bdal\\b|dallas|mavs", s)                ~ "Mavericks",
-    grepl("clipper|\\blac\\b|los angeles clippers", s)        ~ "Clippers",
-    grepl("buck|\\bmil\\b|milwaukee", s)                      ~ "Bucks",
-    grepl("sun|\\bphx\\b|phoenix", s)                         ~ "Suns",
-    grepl("jazz|\\butah?\\b", s)                              ~ "Jazz",
-    grepl("hornet|\\bcha\\b|charlotte", s)                    ~ "Hornets",
-    grepl("net|\\bbkn?\\b|brooklyn", s)                       ~ "Nets",
-    grepl("bull|\\bchi\\b|chicago", s)                        ~ "Bulls",
-    grepl("pelican|\\bnop?\\b|new orleans", s)                ~ "Pelicans",
-    grepl("wizard|\\bwas\\b|\\bwsh\\b|washington", s)         ~ "Wizards",
-    grepl("king|\\bsac\\b|sacramento", s)                     ~ "Kings",
-    TRUE                                                      ~ as.character(tm_raw)
+# ------------------------------------------------------------------------------
+# Schedule spine validation (issue 24)
+# ------------------------------------------------------------------------------
+
+# Normalize a raw hoopR/ESPN schedule pull into the minimal
+# (game_id, game_date, home_team, away_team) spine this module checks against,
+# with team names pushed through the shared resolver so spine and slate are
+# compared in the same vocabulary.
+#
+# `spine` is a data frame, NOT a path: the caller injects it. That is what makes
+# this testable with an in-memory fixture - `cache/` is gitignored, so no
+# checkout is guaranteed to have the real artifact.
+.normalize_schedule_spine <- function(spine) {
+  if (is.null(spine) || !is.data.frame(spine) || nrow(spine) == 0) {
+    return(tibble(game_id = character(), game_date = as.Date(character()),
+                  home_team = character(), away_team = character()))
+  }
+
+  missing_cols <- setdiff(PRED_LOG_SPINE_COLUMNS, names(spine))
+  if (length(missing_cols) > 0) {
+    stop(sprintf(
+      "Schedule spine is missing required column(s): %s. Expected: %s.",
+      paste(missing_cols, collapse = ", "),
+      paste(PRED_LOG_SPINE_COLUMNS, collapse = ", ")))
+  }
+
+  out <- tibble(
+    game_id   = as.character(spine[["game_id"]]),
+    game_date = as.Date(spine[["game_date"]]),
+    home_team = resolve_team_name(spine[["home_short_display_name"]]),
+    away_team = resolve_team_name(spine[["away_short_display_name"]])
   )
+
+  placeholder <- out$home_team == PRED_LOG_SPINE_PLACEHOLDER |
+                 out$away_team == PRED_LOG_SPINE_PLACEHOLDER
+  out <- out[!is.na(out$game_date) & !(placeholder %in% TRUE), , drop = FALSE]
+  distinct(out)
 }
+
+# Read the real spine from cache. Returns NULL when the artifact is absent, so
+# a fresh checkout without `cache/` degrades to a loud warning instead of an
+# error. Exists purely as the seam that supplies the default `spine` argument.
+.load_schedule_spine <- function(season = PRED_LOG_SPINE_SEASON) {
+  path <- if (exists("CACHE_MATCHUPS_SCHEDULE")) {
+    CACHE_MATCHUPS_SCHEDULE(season)
+  } else {
+    file.path(CACHE_DIR, sprintf("matchups_schedule_%d.rds", season))
+  }
+  if (!file.exists(path)) {
+    cat(sprintf("[PREDICTION LOG] Schedule spine not found at %s.\n", path))
+    return(NULL)
+  }
+  readRDS(path)
+}
+
+# Split candidate prediction rows into those whose (game_date, home_team,
+# away_team) triple IS a scheduled game and those whose triple is not.
+#
+# Returns list(accepted, rejected, spine_available). When no spine is available
+# nothing can be checked, so everything is accepted and the caller reports it.
+.validate_slate_against_spine <- function(candidate_rows, spine) {
+  empty <- candidate_rows[0, , drop = FALSE]
+
+  if (is.null(candidate_rows) || nrow(candidate_rows) == 0) {
+    return(list(accepted = candidate_rows, rejected = empty, spine_available = FALSE))
+  }
+
+  sp <- .normalize_schedule_spine(spine)
+  if (nrow(sp) == 0) {
+    return(list(accepted = candidate_rows, rejected = empty, spine_available = FALSE))
+  }
+
+  spine_keys <- paste(format(sp$game_date), sp$home_team, sp$away_team)
+  cand_keys  <- paste(format(as.Date(candidate_rows$game_date)),
+                      candidate_rows$home_team, candidate_rows$away_team)
+  ok <- cand_keys %in% spine_keys
+
+  list(accepted        = candidate_rows[ok, , drop = FALSE],
+       rejected        = candidate_rows[!ok, , drop = FALSE],
+       spine_available = TRUE)
+}
+
+# Loudly report rows the spine rejected, and (in strict mode) refuse to go on.
+.report_spine_rejections <- function(rejected, strict = PRED_LOG_SPINE_STRICT) {
+  if (is.null(rejected) || nrow(rejected) == 0) return(invisible(0L))
+
+  keys <- paste(format(as.Date(rejected$game_date)),
+                "home", rejected$home_team, "away", rejected$away_team)
+
+  cat(sprintf(paste0(
+    "[PREDICTION LOG] SPINE CONTRACT VIOLATION: %d parsed slate row(s) are not a ",
+    "scheduled game and were NOT written:\n"), nrow(rejected)))
+  for (i in seq_along(keys)) {
+    cat(sprintf("[PREDICTION LOG]   REJECTED  game_id %s  %s\n",
+                rejected$game_id[i], keys[i]))
+  }
+  cat(paste0("[PREDICTION LOG]   Cause is upstream in market_odds_engine.R: the ",
+             "bookmaker matchup string paired teams that are not playing each ",
+             "other. Do NOT 'fix' this with a reversed home/away join.\n"))
+
+  if (isTRUE(strict)) {
+    stop(sprintf(paste0(
+      "%d parsed slate row(s) failed the schedule spine contract on ",
+      "(game_date, home_team, away_team): %s. Refusing to write a prediction ",
+      "for a game that is not on the schedule."),
+      nrow(rejected), paste(keys, collapse = "; ")))
+  }
+
+  invisible(nrow(rejected))
+}
+
+# ------------------------------------------------------------------------------
+# Derived-column self-consistency guard (issue 24)
+# ------------------------------------------------------------------------------
+# predicted_winner is derived from predicted_home_win_prob and the two team
+# slots, so it can only ever be home_team or away_team, on the correct side of
+# PRED_LOG_WINNER_PROB_CUTOFF. A row that breaks that was written (or hand-
+# repaired) incorrectly. Issue 24 left exactly one such row live:
+#   game_id 7469a7f48dbb77001b3148829f80c97b, 2026-10-23, home Jazz,
+#   away Pelicans, prob 0.339, predicted_winner "Magic"
+# - a team in neither slot. Nothing in the code would have caught it.
+#
+# Returns the offending rows (zero-row tibble when clean). `strict = TRUE`
+# aborts; that is for rows this process is about to write, where an
+# inconsistency is a code bug. The stored log is reported, not rewritten.
+.check_predicted_winner_consistency <- function(df, label = "prediction log",
+                                                strict = FALSE) {
+  needed <- c("game_id", "home_team", "away_team",
+              "predicted_home_win_prob", "predicted_winner")
+  if (is.null(df) || !is.data.frame(df) || nrow(df) == 0 ||
+      !all(needed %in% names(df))) {
+    return(df[0, , drop = FALSE])
+  }
+
+  prob   <- suppressWarnings(as.numeric(df$predicted_home_win_prob))
+  winner <- as.character(df$predicted_winner)
+  home   <- as.character(df$home_team)
+  away   <- as.character(df$away_team)
+
+  not_a_slot  <- !is.na(winner) & winner != home & winner != away
+  expected    <- if_else(prob >= PRED_LOG_WINNER_PROB_CUTOFF, home, away)
+  wrong_side  <- !is.na(winner) & !is.na(prob) & !not_a_slot & winner != expected
+
+  bad <- not_a_slot | wrong_side
+  bad[is.na(bad)] <- FALSE
+  if (!any(bad)) return(df[0, , drop = FALSE])
+
+  cat(sprintf(paste0(
+    "[PREDICTION LOG] WINNER CONSISTENCY VIOLATION: %d row(s) in the %s have a ",
+    "predicted_winner that is not derivable from their own teams and ",
+    "probability:\n"), sum(bad), label))
+  for (i in which(bad)) {
+    cat(sprintf(paste0(
+      "[PREDICTION LOG]   game_id %s  home %s  away %s  prob %.3f  ",
+      "predicted_winner %s  (expected %s)%s\n"),
+      df$game_id[i], home[i], away[i], prob[i], winner[i], expected[i],
+      if (not_a_slot[i]) "  [winner is in NEITHER team slot]" else "  [wrong side of cutoff]"))
+  }
+
+  if (isTRUE(strict)) {
+    stop(sprintf(paste0(
+      "%d row(s) in the %s have a predicted_winner inconsistent with their ",
+      "home_team / away_team and predicted_home_win_prob. Refusing to publish."),
+      sum(bad), label))
+  }
+
+  df[bad, , drop = FALSE]
+}
+
+# ------------------------------------------------------------------------------
+# Correcting upsert (issue 24)
+# ------------------------------------------------------------------------------
+# The old insertion path deduplicated with
+#   new_rows |> anti_join(existing_log, by = "game_id")
+# which made corruption PERMANENT: once a row existed for a game_id, a later run
+# carrying the CORRECTED teams for that same game_id was dropped as a duplicate.
+# That is why issue 24's four bad rows survived many daily runs.
+#
+# Insertion now upserts: a still-PENDING stored row whose teams disagree with a
+# spine-validated slate row for the same game_id is REPLACED. RESOLVED /
+# UNRESOLVABLE rows carry grading and are never overwritten - a disagreement
+# there is reported instead.
+#
+# Returns list(log, n_inserted, n_corrected, n_unchanged, n_locked).
+.upsert_predictions <- function(existing_log, new_rows) {
+  if (is.null(new_rows) || nrow(new_rows) == 0) {
+    return(list(log = existing_log, n_inserted = 0L, n_corrected = 0L,
+                n_unchanged = 0L, n_locked = 0L))
+  }
+  if (is.null(existing_log) || nrow(existing_log) == 0) {
+    return(list(log = new_rows, n_inserted = nrow(new_rows), n_corrected = 0L,
+                n_unchanged = 0L, n_locked = 0L))
+  }
+
+  existing_ids <- as.character(existing_log$game_id)
+  new_ids      <- as.character(new_rows$game_id)
+
+  is_new <- !(new_ids %in% existing_ids)
+
+  # For each already-logged slate row, decide: correctable, locked, unchanged.
+  correct_idx <- integer(0)
+  locked_idx  <- integer(0)
+  for (i in which(!is_new)) {
+    j <- match(new_ids[i], existing_ids)
+    teams_differ <-
+      !identical(as.character(existing_log$home_team[j]), as.character(new_rows$home_team[i])) ||
+      !identical(as.character(existing_log$away_team[j]), as.character(new_rows$away_team[i]))
+    if (!teams_differ) next
+    stored_status <- as.character(existing_log$status[j])
+    if (!is.na(stored_status) && stored_status == "PENDING") {
+      cat(sprintf(paste0(
+        "[PREDICTION LOG] CORRECTING game_id %s: stored home %s / away %s -> ",
+        "spine-validated home %s / away %s\n"),
+        new_ids[i], existing_log$home_team[j], existing_log$away_team[j],
+        new_rows$home_team[i], new_rows$away_team[i]))
+      correct_idx <- c(correct_idx, i)
+    } else {
+      cat(sprintf(paste0(
+        "[PREDICTION LOG] NOT correcting game_id %s: stored row is %s (graded) ",
+        "with home %s / away %s but the slate says home %s / away %s. Needs a ",
+        "manual repair.\n"),
+        new_ids[i], stored_status,
+        existing_log$home_team[j], existing_log$away_team[j],
+        new_rows$home_team[i], new_rows$away_team[i]))
+      locked_idx <- c(locked_idx, i)
+    }
+  }
+
+  write_idx    <- sort(c(which(is_new), correct_idx))
+  replaced_ids <- new_ids[correct_idx]
+
+  updated <- bind_rows(
+    existing_log[!(existing_ids %in% replaced_ids), , drop = FALSE],
+    new_rows[write_idx, , drop = FALSE]
+  ) |>
+    arrange(game_date, game_id)
+
+  list(log         = updated,
+       n_inserted  = length(which(is_new)),
+       n_corrected = length(correct_idx),
+       n_unchanged = sum(!is_new) - length(correct_idx) - length(locked_idx),
+       n_locked    = length(locked_idx))
+}
+
+
 
 # Sweep stale PENDING rows older than PRED_LOG_UNRESOLVABLE_AFTER_DAYS to UNRESOLVABLE
 .sweep_unresolvable <- function(df, persist = TRUE) {
@@ -230,17 +488,13 @@ get_prediction_log <- function() {
 # ------------------------------------------------------------------------------
 # 3. Log Today's Predictions from Active Slate
 # ------------------------------------------------------------------------------
-log_todays_predictions <- function() {
-  val_path <- file.path(CACHE_DIR, "latest_value_bets.rds")
-  if (!file.exists(val_path)) {
-    cat("[PREDICTION LOG] latest_value_bets.rds not found; skipping prediction logging.\n")
-    return(invisible(NULL))
-  }
 
-  slate <- readRDS(val_path)
-  if (nrow(slate) == 0) {
-    cat("[PREDICTION LOG] 0 games in latest_value_bets.rds; skipping prediction logging.\n")
-    return(invisible(NULL))
+# Parse a `latest_value_bets.rds` slate into candidate prediction-log rows.
+# Pure: no file IO, no spine check, no dedup - so it can be unit-tested with an
+# in-memory slate. Returns a zero-row log-schema tibble when nothing parses.
+.build_slate_rows <- function(slate) {
+  if (is.null(slate) || !is.data.frame(slate) || nrow(slate) == 0) {
+    return(.empty_prediction_log())
   }
 
   parsed    <- str_split_fixed(slate$Matchup, " vs\\. ", 2)
@@ -256,12 +510,12 @@ log_todays_predictions <- function() {
 
   if (nrow(slate) == 0) {
     cat("[PREDICTION LOG] No valid Matchup strings found in slate.\n")
-    return(invisible(NULL))
+    return(.empty_prediction_log())
   }
 
-  home_short <- vapply(home_full, .resolve_team_name, character(1), USE.NAMES = FALSE)
-  away_short <- vapply(away_full, .resolve_team_name, character(1), USE.NAMES = FALSE)
-  team_short <- vapply(slate$Team, .resolve_team_name, character(1), USE.NAMES = FALSE)
+  home_short <- resolve_team_name(home_full)
+  away_short <- resolve_team_name(away_full)
+  team_short <- resolve_team_name(slate$Team)
 
   # Derive home win probability based on whether slate$Team is the home or away side
   pred_home_prob <- if_else(
@@ -270,7 +524,7 @@ log_todays_predictions <- function() {
     1.0 - as.double(slate$Model_Win_Prob)
   )
 
-  new_rows <- tibble(
+  tibble(
     game_id                 = as.character(slate$game_id),
     game_date               = as.Date(slate$game_date),
     season                  = as.integer(CURRENT_SEASON),
@@ -279,7 +533,8 @@ log_todays_predictions <- function() {
     prediction_timestamp    = Sys.time(),
     predicted_home_win_prob = round(as.double(pred_home_prob), 4),
     .pred_Win               = round(as.double(pred_home_prob), 4),
-    predicted_winner        = if_else(pred_home_prob >= 0.50, home_short, away_short),
+    predicted_winner        = if_else(pred_home_prob >= PRED_LOG_WINNER_PROB_CUTOFF,
+                                      home_short, away_short),
     predicted_margin        = NA_real_,
     target_home_win         = NA_character_,
     actual_winner           = NA_character_,
@@ -289,22 +544,77 @@ log_todays_predictions <- function() {
     status                  = "PENDING",
     resolved_timestamp      = as.POSIXct(NA)
   )
+}
 
-  existing_log <- get_prediction_log()
+# `slate`, `spine` and `existing_log` default to the cached artifacts but can be
+# injected, which is how this path is tested without a `cache/` directory.
+log_todays_predictions <- function(slate = NULL, spine = NULL,
+                                   existing_log = NULL, persist = TRUE) {
+  if (is.null(slate)) {
+    val_path <- file.path(CACHE_DIR, "latest_value_bets.rds")
+    if (!file.exists(val_path)) {
+      cat("[PREDICTION LOG] latest_value_bets.rds not found; skipping prediction logging.\n")
+      return(invisible(NULL))
+    }
+    slate <- readRDS(val_path)
+  }
 
-  # Idempotent deduplication on game_id
-  dedup_rows <- new_rows |> anti_join(existing_log, by = "game_id")
+  if (nrow(slate) == 0) {
+    cat("[PREDICTION LOG] 0 games in latest_value_bets.rds; skipping prediction logging.\n")
+    return(invisible(NULL))
+  }
 
-  if (nrow(dedup_rows) == 0) {
+  new_rows <- .build_slate_rows(slate)
+  if (nrow(new_rows) == 0) return(invisible(NULL))
+
+  # GUARD 1: predicted_winner must be derivable from this row's own teams and
+  # probability. These rows were just computed here, so a violation is a code
+  # bug and must not be published.
+  .check_predicted_winner_consistency(new_rows, label = "parsed active slate",
+                                      strict = TRUE)
+
+  # GUARD 2: the (game_date, home_team, away_team) triple must be a real
+  # scheduled game. See the SCHEDULE SPINE CONTRACT note at the top of this file.
+  if (is.null(spine)) spine <- .load_schedule_spine()
+  checked <- .validate_slate_against_spine(new_rows, spine)
+  if (!isTRUE(checked$spine_available)) {
+    cat(paste0("[PREDICTION LOG] WARNING: no schedule spine available - slate ",
+               "rows written WITHOUT the (date, home, away) contract check.\n"))
+  }
+  .report_spine_rejections(checked$rejected)
+  new_rows <- checked$accepted
+
+  if (nrow(new_rows) > 0) {
+    cat(sprintf("[PREDICTION LOG] %d slate row(s) validated against the schedule spine.\n",
+                nrow(new_rows)))
+  }
+  if (nrow(new_rows) == 0) {
+    cat("[PREDICTION LOG] No slate rows survived the schedule spine contract; nothing logged.\n")
+    return(invisible(existing_log))
+  }
+
+  if (is.null(existing_log)) existing_log <- get_prediction_log()
+
+  # Correcting upsert, NOT anti_join(by = "game_id"): a stored PENDING row with
+  # the wrong teams has to be repairable on the next run (issue 24).
+  res         <- .upsert_predictions(existing_log, new_rows)
+  updated_log <- res$log
+
+  if (res$n_inserted == 0L && res$n_corrected == 0L) {
     cat("[PREDICTION LOG] All active slate predictions are already logged.\n")
     return(invisible(existing_log))
   }
 
-  updated_log <- bind_rows(existing_log, dedup_rows)
-  saveRDS(updated_log, PRED_LOG_RDS)
-  utils::write.csv(updated_log, PRED_LOG_CSV, row.names = FALSE, na = "")
+  if (isTRUE(persist)) {
+    saveRDS(updated_log, PRED_LOG_RDS)
+    utils::write.csv(updated_log, PRED_LOG_CSV, row.names = FALSE, na = "")
+  }
 
-  cat(sprintf("[PREDICTION LOG] Logged %d new PENDING predictions to %s.\n", nrow(dedup_rows), PRED_LOG_RDS))
+  cat(sprintf(paste0(
+    "[PREDICTION LOG] Logged %d new PENDING prediction(s), corrected %d stored ",
+    "row(s), left %d unchanged%s.\n"),
+    res$n_inserted, res$n_corrected, res$n_unchanged,
+    if (res$n_locked > 0) sprintf(", %d graded row(s) need manual repair", res$n_locked) else ""))
   invisible(updated_log)
 }
 
@@ -395,6 +705,18 @@ run_prediction_accuracy_logger <- function() {
 
   cat(sprintf("[PREDICTION LOG] Total records: %d (Resolved: %d, Pending: %d)\n",
               nrow(final_log), n_resolved, n_pending))
+
+  # Audit the STORED log, report-only: the hand-repair that fixed issue 24's four
+  # bad pairings edited home_team / away_team without recomputing
+  # predicted_winner, and nothing would have surfaced the leftover. Rewriting a
+  # cached artifact the pipeline owns is deliberately not done here.
+  bad_winner <- .check_predicted_winner_consistency(final_log,
+                                                    label = "stored prediction log")
+  if (nrow(bad_winner) > 0) {
+    cat(sprintf(paste0(
+      "[PREDICTION LOG] %d stored row(s) need a manual repair of ",
+      "predicted_winner (not rewritten automatically).\n"), nrow(bad_winner)))
+  }
 
   # Re-persist to guarantee fresh mtime for run_full_pipeline's staleness check
   saveRDS(final_log, PRED_LOG_RDS)
