@@ -42,6 +42,13 @@ REM relying on that, as the sibling wrappers do.
 REM ------------------------------------------------------------------------------
 set PROJECT_DIR=c:\Users\kailo\kayceeslices\front-office\nfl analytics
 
+REM Testing/worktree escape hatch: if NFL_PROJECT_DIR is set in the environment, it
+REM wins. This lets the wrapper be exercised from a git worktree (or a relocated
+REM checkout) without editing the file and without writing logs into the main
+REM checkout. The registered scheduled tasks do NOT set it, so production always
+REM uses the path above. No secret is involved -- it is a directory path only.
+if defined NFL_PROJECT_DIR set PROJECT_DIR=%NFL_PROJECT_DIR%
+
 REM Wrapper log lives under logs\ so .gitignore's existing "logs/*.log" rule (line 56)
 REM covers it. It is intentionally a DIFFERENT file from logging_utils.R:15's
 REM logs\nfl_pipeline.log, which the R code writes: this one captures wrapper-level

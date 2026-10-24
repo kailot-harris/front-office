@@ -67,6 +67,10 @@ schedule_publish.bat            :: dry run
 schedule_publish.bat publish    :: live  -- only after #42 is proven
 ```
 
+`NFL_PROJECT_DIR` overrides the project root if set, which is how the wrappers can be
+exercised from a git worktree without writing into the main checkout. The registered
+tasks do not set it.
+
 ---
 
 ## Reading the log
