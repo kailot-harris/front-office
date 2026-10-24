@@ -19,7 +19,40 @@
 # ==============================================================================
 
 # Working and Cache Directories
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
+# ------------------------------------------------------------------------------------------
+# PROJECT_DIR is the ONE definition of the project root in this repo's pipeline scripts
+# (GitHub issue #43). It is deliberately NOT an absolute path.
+#
+# PREVIOUS BEHAVIOR (through 2026-10-23): this line hardcoded the absolute path of the
+# author's main checkout (the "front-office/nfl analytics" directory named in this file's
+# `# Path:` header above), and the same absolute literal was re-typed in
+# run_full_pipeline.R, logging_utils.R,
+# market_odds_engine.R and bet_tracker.r (that last copy pointing at the PRE-MOVE
+# "NFL Analytics" location, i.e. already stale and silently no-op'd by its dir.exists()
+# guard). Because CACHE_DIR - and therefore every CACHE_* constant - hangs off this value,
+# any run from a different checkout of this repo (most importantly a git worktree, which is
+# how subagent work is isolated here) read and WROTE the MAIN tree's cache/ instead of its
+# own. That made worktree work unverifiable: during Phase 1b it was impossible to
+# demonstrate the cache-to-JSON link by editing a cache file, because the exporter was
+# reading a different file than the one being edited. It also left config.R internally
+# inconsistent, since the newer WEB_* path constants near the bottom of this file are
+# already correctly relative for exactly this reason.
+#
+# NOW: the root is the working directory the code is actually running in. Every script in
+# this flat repo is run with the repo root as its cwd (run_full_pipeline.R setwd()s there
+# before sourcing anything, and run_stage() source()s siblings by bare filename), and both
+# Task Scheduler wrappers `cd /d` to the root before calling Rscript - so getwd() is the
+# root by construction, and a worktree run now resolves its own cache/.
+#
+# NFL_PROJECT_DIR is an escape hatch (empty-string default, same pattern as DISCORD_WEBHOOK
+# below) for a caller that genuinely cannot set its working directory. Nothing in this repo
+# sets it today; it exists so such a caller never needs to re-introduce a literal here.
+.nfl_project_dir_env <- Sys.getenv("NFL_PROJECT_DIR", "")
+PROJECT_DIR <- normalizePath(
+  if (nzchar(.nfl_project_dir_env)) .nfl_project_dir_env else getwd(),
+  winslash = "/", mustWork = FALSE
+)
+rm(.nfl_project_dir_env)
 CACHE_DIR   <- file.path(PROJECT_DIR, "cache")
 if (!dir.exists(CACHE_DIR)) dir.create(CACHE_DIR, recursive = TRUE)
 
@@ -664,7 +697,7 @@ CACHE_TURNOVER_HISTORY <- file.path(CACHE_DIR, "turnover_margin_history.rds")
 # own config.R; it owns only these constants).
 #
 # Why these live here at all: the exporter previously hardcoded
-#   PROJECT_ROOT <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"; setwd(PROJECT_ROOT)
+#   PROJECT_ROOT <- "<absolute path of the author's main checkout>"; setwd(PROJECT_ROOT)
 # and then rebuilt its own file.path(PROJECT_ROOT, "web", "public", "data") literals at the
 # call site. That is the exact class of duplicated-constant drift CLAUDE.md forbids (sibling
 # WNBA repo Finding C-1: a hardcoded home-court-advantage constant silently diverged from

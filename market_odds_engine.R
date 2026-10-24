@@ -65,8 +65,13 @@
 #      8-stage convention is call_fn-style explicit invocation only.
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
-if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
+# No PROJECT_DIR definition and no setwd() here (GitHub issue #43). This script PREVIOUSLY
+# re-typed config.R's then-hardcoded absolute project root and setwd() into it, which meant
+# sourcing it from any other checkout silently jumped into the author's main tree and used
+# that tree's caches. config.R now derives PROJECT_DIR from the working directory, which is
+# the repo root by convention for every script in this flat repo (run_full_pipeline.R sets
+# it before sourcing any stage; the Task Scheduler wrappers cd there) - so the source() calls
+# below resolve by bare filename exactly as export_web_datasets.R already does.
 
 suppressPackageStartupMessages({
   library(httr2)
