@@ -156,8 +156,17 @@ run_export_web_datasets <- function() {
 
   # Compute true forward projected wins: current completed wins + remaining scheduled win probabilities
   sch_raw <- readRDS(CACHE_SCHEDULES)
-  sch_2026 <- sch_raw[sch_raw$season == 2026, ]
-  completed_games <- sch_2026[!is.na(sch_2026$home_score), ]
+  sch_current <- sch_raw[sch_raw$season == CURRENT_SEASON, ]
+  # Same definition of "a completed game" as the schedule_games_completed derivation below
+  # (see this file's sched_completed_df block): CURRENT_SEASON regular-season rows only, with
+  # BOTH scores present. Without the game_type guard, postseason wins would be folded into
+  # "current wins" while games_played stays regular-season-scoped; without the away_score
+  # guard, a half-scored in-progress row would count as a decided game.
+  completed_games <- sch_current[
+    sch_current$game_type == "REG" &
+      !is.na(sch_current$home_score) &
+      !is.na(sch_current$away_score),
+  ]
 
   home_w <- aggregate(home_score > away_score ~ home_team, data = completed_games, sum)
   names(home_w) <- c("team", "w_h")
@@ -521,8 +530,8 @@ run_export_web_datasets <- function() {
     # Check if in future projected matchups
     proj_match <- matchups_df[matchups_df$game_id == gid, ]
   
-    # Check if in historical graded map: target key: "2026|wk|away_name|home_name"
-    hist_key <- paste0("2026|", wk, "|", a_name, "|", h_name)
+    # Check if in historical graded map: target key: "<CURRENT_SEASON>|wk|away_name|home_name"
+    hist_key <- paste0(CURRENT_SEASON, "|", wk, "|", a_name, "|", h_name)
     hist_record <- graded_map[[hist_key]]
   
     if (nrow(proj_match) > 0 && !is_done) {
@@ -1007,7 +1016,6 @@ run_export_web_datasets <- function() {
       })
 
       all_teams <- sort(unique(unname(otc_team_map)))
-      NFL_CAP_CEILING_2026 <- 301.2
 
       teams_cap_list <- lapply(all_teams, function(tm) {
         tm_contracts <- c_active[c_active$team_clean == tm, ]
@@ -1037,7 +1045,7 @@ run_export_web_datasets <- function() {
         })
 
         est_dead_money <- round(runif(1, min = 8.5, max = 28.0), 1)
-        est_cap_space <- round(max(0, NFL_CAP_CEILING_2026 - (min(total_active_apy * 0.90, 285) + est_dead_money)), 1)
+        est_cap_space <- round(max(0, NFL_CAP_CEILING - (min(total_active_apy * 0.90, 285) + est_dead_money)), 1)
 
         list(
           team = tm,
@@ -1053,8 +1061,8 @@ run_export_web_datasets <- function() {
       })
 
       salary_cap_data <- list(
-        season = 2026,
-        cap_ceiling = NFL_CAP_CEILING_2026,
+        season = CURRENT_SEASON,
+        cap_ceiling = NFL_CAP_CEILING,
         source = "OverTheCap (OTC) via nflreadr",
         last_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
         teams = teams_cap_list,

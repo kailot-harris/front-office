@@ -223,6 +223,35 @@ NFL_MARGIN_SIGMA <- 14.60
 NFL_HCA <- 1.93
 
 # ------------------------------------------------------------------------------------------
+# Salary-Cap Ceiling (per-club CURRENT_SEASON cap limit, $ millions)
+# ------------------------------------------------------------------------------------------
+# SINGLE SOURCE; do not restate this literal at a call site. Moved here 2026-10-24 (issue #46)
+# out of export_web_datasets.R, where it lived as a bare, undocumented local
+# `NFL_CAP_CEILING_2026 <- 301.2` inside the salary-cap payload builder - exactly the
+# duplicated-constant pattern CLAUDE.md forbids and that the WNBA sibling repo's Finding C-1
+# documents as a real, result-corrupting bug.
+#
+# Derivation / provenance: this is NOT an empirically derived figure in the sense that
+# NFL_MARGIN_SIGMA and NFL_HCA are - there is no script in tools/ that computes it, because it
+# is an administrative league-announced number, not a statistic estimated from game data. The
+# value 301.2 ($301.2M per club) is the figure that was already in use in the exporter's
+# published salary_cap_profiles.json for CURRENT_SEASON (2026); it is carried over verbatim so
+# that moving it here changes no published output. Its original source was NOT recorded by the
+# code that introduced it, and it has NOT been re-verified live against an NFL/NFLPA cap
+# announcement or against nflreadr's contracts data by this change.
+#
+# Why no year in the name: the cap ceiling is re-announced every league year, so a
+# `NFL_CAP_CEILING_2026`-style name guarantees a stale symbol the moment CURRENT_SEASON is
+# bumped (the same trap issue #46 fixed in the exporter's literal `2026` filters). The name is
+# season-agnostic and the VALUE is what must be re-derived per season.
+#
+# ACTION REQUIRED EACH LEAGUE YEAR: when CURRENT_SEASON is bumped, update this value to the
+# newly announced per-club cap and record the source and date here. A cap ceiling left at a
+# prior season's number silently overstates every team's estimated_cap_space in
+# web/public/data/salary_cap_profiles.json without erroring.
+NFL_CAP_CEILING <- 301.2
+
+# ------------------------------------------------------------------------------------------
 # Rolling Window & Modeling Hyperparameters
 # ------------------------------------------------------------------------------------------
 # Carried over as reasonable Phase 0 starting defaults, sport-agnostic pending real
