@@ -241,9 +241,9 @@ export interface TeamCapProfile {
   total_active_contracts: number;
   total_active_apy: number;
   total_guaranteed: number;
-  estimated_cap_space: number;
-  dead_money: number;
-  cap_health_rating: 'Healthy' | 'Moderate' | 'Constrained';
+  // `estimated_cap_space`, `dead_money` and `cap_health_rating` were removed by
+  // issue #48: the exporter generated them from an unseeded random draw rather
+  // than from any real cap data, so they are no longer published.
   positional_spending: Record<string, PositionalSpendingItem>;
   top_paid_players: TopPaidPlayer[];
 }

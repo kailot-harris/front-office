@@ -287,9 +287,6 @@ export const teamCapProfileSchema = z.object({
   total_active_contracts: z.number().int().min(0).max(120),
   total_active_apy: z.number().min(0),
   total_guaranteed: z.number().min(0),
-  estimated_cap_space: z.number(),
-  dead_money: z.number().min(0),
-  cap_health_rating: z.enum(['Healthy', 'Moderate', 'Constrained']),
   positional_spending: z.record(z.string(), positionalSpendingItemSchema),
   top_paid_players: z.array(topPaidPlayerSchema),
 }).strict();
