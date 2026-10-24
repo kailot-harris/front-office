@@ -18,7 +18,9 @@
 #     WIN PROBABILITIES ARE NEVER RE-DERIVED INLINE.
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/MLB Analytics"
+if (!exists("PROJECT_DIR", inherits = FALSE)) {
+  PROJECT_DIR <- if (exists("MLB_ROOT_DIR", inherits = FALSE)) MLB_ROOT_DIR else getwd()
+}
 if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({

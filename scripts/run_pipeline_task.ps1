@@ -3,7 +3,7 @@
 # Used for Windows Task Scheduler, Cron/Automation, or standalone daemon runs.
 # ==============================================================================
 
-$ProjectDir = "c:\Users\kailo\kayceeslices\MLB Analytics"
+$ProjectDir = "c:\Users\kailo\kayceeslices\front-office\MLB Analytics"
 Set-Location -Path $ProjectDir
 
 $LogFile = Join-Path $ProjectDir "logs\scheduled_runs.log"

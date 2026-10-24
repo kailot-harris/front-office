@@ -19,7 +19,7 @@
 # ==============================================================================
 
 if (!exists("PROJECT_DIR", inherits = FALSE)) {
-  PROJECT_DIR <- if (exists("MLB_ROOT_DIR", inherits = FALSE)) MLB_ROOT_DIR else "c:/Users/kailo/kayceeslices/MLB Analytics"
+  PROJECT_DIR <- if (exists("MLB_ROOT_DIR", inherits = FALSE)) MLB_ROOT_DIR else getwd()
 }
 if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
 
@@ -163,10 +163,10 @@ run_stage <- function(script_name, description, call_fn = NULL, output = NULL, r
 
 #' Run the Complete MLB Analytics Pipeline
 #'
-#' @param season Current season integer (defaults to 2024 or current year)
+#' @param season Current season integer (defaults to 2026 or current year)
 #' @param force_refresh If TRUE, forces re-fetching all data stages bypassing caches
 #' @return A summary data.frame of all stage runs and their statuses
-run_full_pipeline <- function(season = 2024, force_refresh = FALSE) {
+run_full_pipeline <- function(season = 2026, force_refresh = FALSE) {
   pipeline_start_time <- Sys.time()
   .pipeline_stages_run <<- list()
   

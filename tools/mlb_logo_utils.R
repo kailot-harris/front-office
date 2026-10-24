@@ -22,8 +22,8 @@ if (file.exists("config.R")) {
   source("../../config.R")
   source("../../logging_utils.R")
 } else {
-  source("c:/Users/kailo/kayceeslices/MLB Analytics/config.R")
-  source("c:/Users/kailo/kayceeslices/MLB Analytics/logging_utils.R")
+  source(file.path(if (exists("MLB_ROOT_DIR", inherits = FALSE)) MLB_ROOT_DIR else getwd(), "config.R"))
+  source(file.path(if (exists("MLB_ROOT_DIR", inherits = FALSE)) MLB_ROOT_DIR else getwd(), "logging_utils.R"))
 }
 .LOG_SCRIPT <- "mlb_logo_utils.R"
 
