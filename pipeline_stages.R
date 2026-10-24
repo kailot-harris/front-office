@@ -451,6 +451,35 @@ PIPELINE_STAGES <- list(
   ),
 
   # ---------------------------------------------------------------------------------------
+  # 6c. Finals per-game predictions (#94).
+  #
+  # Runs strictly AFTER playoff_bracket_current above: the Finals matchup and the played
+  # Finals results are read off that stage's artifact, so placing this earlier (or in a
+  # parallel group beside it) would read a stale or absent bracket. Serial for the same
+  # reason, and because, like 6b, it is a seconds-long reshape whose only heavy dependency
+  # (the series-length DP) is exact rather than simulated.
+  #
+  # entry_fn (not call_fn): the script self-runs via its own `if (!interactive())` guard,
+  # so entry_fn verifies the entry point exists without invoking it a second time.
+  # ---------------------------------------------------------------------------------------
+  finals_game_predictions = list(
+    id          = "finals_game_predictions",
+    script      = "build_finals_game_predictions.R",
+    description = "Build Finals Per-Game Predictions (home court, rest, P(game played))",
+    call_fn     = NULL,
+    entry_fn    = "build_finals_game_predictions",
+    output      = CACHE_FINALS_GAME_PREDICTIONS,
+    # inputs: the #92 bracket artifact (the Finals matchup and its played results),
+    # CACHE_TEAM_BOX (the season_type == 2 ratings behind both sides' net rating), and the
+    # #93 schedule cache (per-game days_rest / is_back_to_back, including for games not yet
+    # played). A missing bracket or missing seeds yields an empty, clearly labeled artifact
+    # and the web route's empty state; a missing schedule degrades the section to
+    # home-court-advantage only rather than crashing.
+    inputs      = c(CACHE_PLAYOFF_BRACKET_CURRENT, CACHE_TEAM_BOX, CACHE_WNBA_SCHEDULE),
+    group       = NULL
+  ),
+
+  # ---------------------------------------------------------------------------------------
   # 7. Portfolio Risk Management & Capital Preservation
   # ---------------------------------------------------------------------------------------
   risk_management_engine = list(

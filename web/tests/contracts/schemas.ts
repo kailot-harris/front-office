@@ -777,6 +777,120 @@ export const PlayoffBracketSeasonSchema = z
   })
   .strict();
 
+// ------------------------------------------------------------------------------
+// 13c. finals_game_predictions_2026.json -> FinalsGamePredictionSet
+//      (lib/playoffTypes.ts, GitHub issue #94)
+//
+// Grain is one row per GAME of the Finals, not per series, so BracketSeriesSchema
+// is deliberately not reused. The rules that matter here and have no analogue
+// above are the two probability fields: every game carries a conditional win
+// probability AND a P(game played), and the rest fields are all-or-nothing per
+// game (`restApplied` false => every rest field null).
+// ------------------------------------------------------------------------------
+export const FinalsGamePredictionSchema = z
+  .object({
+    game: z.number().int().min(1).max(7),
+    gameDate: z.string(),
+    hostAbbr: z.string().min(2),
+    hostName: z.string().min(2),
+    hostIsHighSeed: z.boolean(),
+    hcaSignForHighSeed: z.union([z.literal(1), z.literal(-1)]),
+    pHighSeedWinHca: prob,
+    pLowSeedWinHca: prob,
+    pGamePlayed: prob,
+    restApplied: z.boolean(),
+    daysRestHigh: finiteNumber.min(0).nullable(),
+    daysRestLow: finiteNumber.min(0).nullable(),
+    backToBackHigh: z.boolean(),
+    backToBackLow: z.boolean(),
+    travelMilesHigh: finiteNumber.min(0).nullable(),
+    travelMilesLow: finiteNumber.min(0).nullable(),
+    fatigueDragHigh: finiteNumber.min(0).nullable(),
+    fatigueDragLow: finiteNumber.min(0).nullable(),
+    pHighSeedWinWithRest: prob.nullable(),
+    pLowSeedWinWithRest: prob.nullable(),
+    resultAvailable: z.boolean(),
+    scheduleCompleted: z.boolean(),
+    scoreHigh: z.number().int().positive().nullable(),
+    scoreLow: z.number().int().positive().nullable(),
+    resultStatus: z.enum(['correct', 'incorrect', 'pending']),
+  })
+  .strict()
+  // The host flag and the HCA sign are two views of one fact; a disagreement
+  // means the host assignment and the probability have come apart.
+  .refine((g) => g.hcaSignForHighSeed === (g.hostIsHighSeed ? 1 : -1), {
+    message: 'hcaSignForHighSeed must follow hostIsHighSeed',
+  })
+  // The two conditional probabilities are complements, as are the rest-adjusted pair.
+  .refine((g) => Math.abs(g.pHighSeedWinHca + g.pLowSeedWinHca - 1) < 1e-6, {
+    message: 'pHighSeedWinHca and pLowSeedWinHca must sum to 1',
+  })
+  // Rest is all-or-nothing per game: no half-populated rest block.
+  .refine(
+    (g) =>
+      g.restApplied
+        ? g.pHighSeedWinWithRest !== null &&
+          g.pLowSeedWinWithRest !== null &&
+          g.fatigueDragHigh !== null &&
+          g.fatigueDragLow !== null
+        : g.pHighSeedWinWithRest === null &&
+          g.pLowSeedWinWithRest === null &&
+          g.fatigueDragHigh === null &&
+          g.fatigueDragLow === null,
+    { message: 'rest fields must all be present when restApplied, and all null otherwise' }
+  )
+  // A result and a verdict must agree: no score without a verdict, none with 'pending'.
+  .refine(
+    (g) =>
+      g.resultAvailable
+        ? g.scoreHigh !== null && g.scoreLow !== null && g.resultStatus !== 'pending'
+        : g.scoreHigh === null && g.scoreLow === null && g.resultStatus === 'pending',
+    { message: 'scores and resultStatus must agree with resultAvailable' }
+  );
+
+export const FinalsMatchupSchema = z
+  .object({
+    teamHigh: z.string().min(2),
+    teamHighAbbr: z.string().min(2),
+    teamLow: z.string().min(2),
+    teamLowAbbr: z.string().min(2),
+    seedHigh: z.number().int().min(1),
+    seedLow: z.number().int().min(1),
+    netHighAdj: finiteNumber,
+    netLowAdj: finiteNumber,
+    winsHigh: z.number().int().min(0).max(4),
+    winsLow: z.number().int().min(0).max(4),
+    seriesComplete: z.boolean(),
+    winThreshold: z.number().int().min(2).max(4),
+    expectedGames: finiteNumber.min(1).max(7),
+  })
+  .strict();
+
+export const FinalsGamePredictionSetSchema = z
+  .object({
+    season: z.number().int().min(1997).max(2100),
+    generatedAt: z.string(),
+    sourceNote: z.string(),
+    formatKey: z.string(),
+    formatLabel: z.string(),
+    restApplied: z.boolean(),
+    restNote: z.string(),
+    matchup: FinalsMatchupSchema.nullable(),
+    lengthDistribution: z.array(BracketLengthProbSchema),
+    games: z.array(FinalsGamePredictionSchema),
+  })
+  .strict()
+  // Empty state is a real state, but it is all-or-nothing: an undetermined
+  // matchup must not ship games, and games must not ship without a matchup.
+  .refine((s) => (s.matchup === null ? s.games.length === 0 : s.games.length > 0), {
+    message: 'games must be empty when matchup is null, and non-empty when it is not',
+  })
+  // Payload-level restApplied must agree with at least one game carrying rest.
+  .refine(
+    (s) => s.games.length === 0 || s.restApplied === s.games.some((g) => g.restApplied),
+    { message: 'restApplied must match whether any game carries rest' }
+  );
+
 // 14. shots_index.json -> PlayerCatalogEntry[] (lib/shotTypes.ts)
 export const PlayerCatalogEntrySchema = z
   .object({

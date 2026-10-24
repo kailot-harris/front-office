@@ -232,6 +232,7 @@ describe('Domain & mathematical invariants: clutch, defense, playerDna, coaches,
     offseasonTeams,
     playoffSeries,
     playoffBracket2026,
+    finalsGamePredictions,
     shotsIndex,
     shotsMetadata,
   } = loadAllDatasets();
@@ -410,6 +411,146 @@ describe('Domain & mathematical invariants: clutch, defense, playerDna, coaches,
     expect(haystack, 'a prediction label claims a held-out sample').not.toMatch(
       /out[-\s]of[-\s]sample/
     );
+  });
+
+  // --------------------------------------------------------------------------
+  // finals_game_predictions_2026.json (GitHub issue #94)
+  //
+  // The whole point of this payload is that each game carries TWO numbers that
+  // answer different questions, so these guard the relationship between them --
+  // that is where a producer change would silently break the section's meaning.
+  // --------------------------------------------------------------------------
+  it('finals_game_predictions_2026.json: P(game played) is 1 through game 4, then strictly decreasing, and matches the series-length tail', () => {
+    const f = finalsGamePredictions;
+    if (f.matchup === null) {
+      expect(f.games, 'no matchup must mean no games').toHaveLength(0);
+      return;
+    }
+    expect(f.games, 'a best-of-7 has seven game rows').toHaveLength(7);
+    expect(f.games.map((g) => g.game)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+
+    for (const g of f.games.slice(0, 4)) {
+      expect(g.pGamePlayed, `game ${g.game} is always played in a best-of-7`).toBeCloseTo(1, 9);
+    }
+    for (const g of f.games.slice(4)) {
+      expect(g.pGamePlayed, `game ${g.game} may never be played`).toBeLessThan(1);
+    }
+    // Strictly decreasing across 5, 6, 7: each further game needs the series to
+    // have stayed alive one game longer.
+    const tail = f.games.slice(4).map((g) => g.pGamePlayed);
+    for (let i = 1; i < tail.length; i++) {
+      expect(tail[i], `P(game ${i + 6} played) must be below P(game ${i + 5} played)`).toBeLessThan(
+        tail[i - 1]
+      );
+    }
+
+    // The consistency relation the DP guarantees by construction:
+    //   P(game g played) == sum of P(series length >= g).
+    for (const g of f.games) {
+      const expected = f.lengthDistribution
+        .filter((d) => d.length >= g.game)
+        .reduce((acc, d) => acc + d.probability, 0);
+      expect(
+        g.pGamePlayed,
+        `game ${g.game}: P(played) must equal P(series length >= ${g.game})`
+      ).toBeCloseTo(expected, 6);
+    }
+  });
+
+  it('finals_game_predictions_2026.json: host assignment follows the 2-2-1-1-1 pattern and the HCA sign flips with it', () => {
+    const f = finalsGamePredictions;
+    if (f.matchup === null) return;
+
+    // PLAYOFF_FORMATS$bo7$home_flags = c(TRUE, TRUE, FALSE, FALSE, TRUE, FALSE, TRUE).
+    expect(f.games.map((g) => g.hostIsHighSeed)).toEqual([
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+    ]);
+    for (const g of f.games) {
+      const expectedHost = g.hostIsHighSeed ? f.matchup.teamHighAbbr : f.matchup.teamLowAbbr;
+      expect(g.hostAbbr, `game ${g.game} host`).toBe(expectedHost);
+    }
+
+    // Home court is worth something: the home-court side's win probability must be
+    // strictly higher in the games it hosts than in the games it does not.
+    const hosted = f.games.filter((g) => g.hostIsHighSeed).map((g) => g.pHighSeedWinHca);
+    const away = f.games.filter((g) => !g.hostIsHighSeed).map((g) => g.pHighSeedWinHca);
+    expect(Math.min(...hosted), 'hosting must help the home-court side').toBeGreaterThan(
+      Math.max(...away)
+    );
+    // Within a basis, every hosted game shares one probability and every away game
+    // another: the only per-game input to the HCA-only figure is the host flag.
+    expect(new Set(hosted.map((p) => p.toFixed(9))).size).toBe(1);
+    expect(new Set(away.map((p) => p.toFixed(9))).size).toBe(1);
+  });
+
+  it('finals_game_predictions_2026.json: played games carry a result and a verdict, unplayed games carry neither', () => {
+    const f = finalsGamePredictions;
+    if (f.matchup === null) return;
+
+    const played = f.games.filter((g) => g.resultAvailable);
+    const unplayed = f.games.filter((g) => !g.resultAvailable);
+
+    for (const g of played) {
+      expect(g.scoreHigh, `game ${g.game} score`).not.toBeNull();
+      expect(g.scoreLow, `game ${g.game} score`).not.toBeNull();
+      expect(g.resultStatus, `game ${g.game} verdict`).not.toBe('pending');
+      expect(g.gameDate, `game ${g.game} date`).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      // The verdict must follow from the score and the forecast, not float free.
+      const highWon = (g.scoreHigh as number) > (g.scoreLow as number);
+      const highFavoured = g.pHighSeedWinHca >= 0.5;
+      expect(g.resultStatus).toBe(highWon === highFavoured ? 'correct' : 'incorrect');
+    }
+    for (const g of unplayed) {
+      expect(g.scoreHigh, `game ${g.game} must have no score`).toBeNull();
+      expect(g.scoreLow, `game ${g.game} must have no score`).toBeNull();
+      expect(g.resultStatus, `game ${g.game} must have no verdict`).toBe('pending');
+    }
+    // Games resolve in order, so the played games are a prefix of the seven.
+    expect(played.map((g) => g.game)).toEqual(
+      Array.from({ length: played.length }, (_, i) => i + 1)
+    );
+    // Wins on record must add up to the games actually resolved.
+    expect(f.matchup.winsHigh + f.matchup.winsLow).toBeGreaterThanOrEqual(played.length);
+  });
+
+  it('finals_game_predictions_2026.json: the rest adjustment is applied per game and only moves the probability when the two sides differ', () => {
+    const f = finalsGamePredictions;
+    if (f.matchup === null || !f.restApplied) return;
+
+    for (const g of f.games.filter((x) => x.restApplied)) {
+      expect(g.fatigueDragHigh, `game ${g.game} drag`).not.toBeNull();
+      expect(g.fatigueDragLow, `game ${g.game} drag`).not.toBeNull();
+      expect(g.pHighSeedWinWithRest, `game ${g.game} rest-adjusted p`).not.toBeNull();
+
+      const equalDrag =
+        Math.abs((g.fatigueDragHigh as number) - (g.fatigueDragLow as number)) < 1e-9;
+      if (equalDrag) {
+        // Symmetric fatigue cancels in the rating difference, so it must not move
+        // the number at all -- a drift here would mean rest is being double-counted.
+        expect(
+          g.pHighSeedWinWithRest as number,
+          `game ${g.game}: equal fatigue must not change the probability`
+        ).toBeCloseTo(g.pHighSeedWinHca, 6);
+      } else {
+        // Whichever side is less fatigued must be the side the adjustment helps.
+        const highIsFresher = (g.fatigueDragHigh as number) < (g.fatigueDragLow as number);
+        const moved = (g.pHighSeedWinWithRest as number) - g.pHighSeedWinHca;
+        expect(
+          highIsFresher ? moved : -moved,
+          `game ${g.game}: rest must favour the fresher side`
+        ).toBeGreaterThan(0);
+      }
+      expect((g.pHighSeedWinWithRest as number) + (g.pLowSeedWinWithRest as number)).toBeCloseTo(
+        1,
+        6
+      );
+    }
   });
 
   it('shots_metadata.json & shots_index.json: 14 canonical zones and player shot file lengths match catalog total_shots', () => {
