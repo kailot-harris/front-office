@@ -8,7 +8,7 @@
 # ==============================================================================
 
 if (!exists("PROJECT_DIR", inherits = FALSE)) {
-  PROJECT_DIR <- if (exists("MLB_ROOT_DIR", inherits = FALSE)) MLB_ROOT_DIR else "c:/Users/kailo/kayceeslices/MLB Analytics"
+  PROJECT_DIR <- if (exists("MLB_ROOT_DIR", inherits = FALSE)) MLB_ROOT_DIR else getwd()
 }
 
 LOG_DIR       <- file.path(PROJECT_DIR, "logs")

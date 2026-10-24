@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import Link from 'next/link';
 import { PostseasonOpsData } from '@/lib/types';
 import {
   Trophy,
@@ -12,6 +13,7 @@ import {
   Award,
   TrendingUp,
   Download,
+  Swords,
 } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { exportToCsv } from '@/lib/exportToCsv';
@@ -205,6 +207,59 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
               <div className="text-lg font-bold text-emerald-400 mt-0.5">Traditional Rules</div>
               <div className="text-xs text-slate-400 mt-0.5">
                 No automatic ghost runner on 2nd in postseason play
+              </div>
+            </div>
+          </div>
+
+                    {/* 2026 World Series Spotlight Banner */}
+          <div className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-surface-raised to-accent-500/10 p-6 shadow-2xl">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  <Trophy className="w-8 h-8" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">
+                      Official 2026 Fall Classic
+                    </span>
+                    <span className="text-xs text-slate-400 font-mono">Best-of-7 · Oct 23 – Oct 31</span>
+                  </div>
+                  <h2 className="text-2xl font-black text-white mt-1">
+                    2026 World Series: Tampa Bay Rays vs. Milwaukee Brewers
+                  </h2>
+                  <p className="text-xs text-slate-300 mt-1 max-w-2xl">
+                    AL Champions Tampa Bay Rays face NL Champions Milwaukee Brewers in the 122nd World Series. Games 1, 2, 6, and 7 hosted at American Family Field (MIL HCA), Games 3, 4, and 5 at Tropicana Field.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 flex-shrink-0">
+                <div className="flex items-center gap-3 bg-surface/80 border border-slate-800 rounded-xl px-4 py-3">
+                  <div className="flex items-center gap-2 text-center">
+                    <TeamLogo team="TB" size="md" />
+                    <div className="text-left">
+                      <div className="text-xs font-bold text-white">Rays</div>
+                      <div className="text-[10px] text-slate-400 font-mono">AL Champs</div>
+                    </div>
+                  </div>
+                  <div className="text-xs font-black text-amber-400 px-2 font-mono">VS</div>
+                  <div className="flex items-center gap-2 text-center">
+                    <TeamLogo team="MIL" size="md" />
+                    <div className="text-left">
+                      <div className="text-xs font-bold text-white">Brewers</div>
+                      <div className="text-[10px] text-slate-400 font-mono">NL Champs</div>
+                    </div>
+                  </div>
+                </div>
+
+                <Link
+                  href="/series"
+                  className="flex items-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-amber-500/20 whitespace-nowrap"
+                >
+                  <Swords className="w-4 h-4" />
+                  <span>Simulate Series</span>
+                </Link>
               </div>
             </div>
           </div>
