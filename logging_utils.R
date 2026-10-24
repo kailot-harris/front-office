@@ -7,14 +7,35 @@
 # and (2) A DuckDB relational store for analytical auditing and pipeline health.
 # ==============================================================================
 
+# Fallback for standalone use (this file is sourced before config.R by run_full_pipeline.R,
+# so PROJECT_DIR may not exist yet). It PREVIOUSLY hardcoded the absolute path of the
+# author's main checkout, a second copy of config.R's then-hardcoded value; see config.R's
+# PROJECT_DIR comment for why that is now derived from the working directory (issue #43).
+# This mirrors that derivation rather than restating a path, so logs land in the checkout
+# actually being run.
 if (!exists("PROJECT_DIR", inherits = FALSE)) {
-  PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
+  .nfl_project_dir_env <- Sys.getenv("NFL_PROJECT_DIR", "")
+  PROJECT_DIR <- normalizePath(
+    if (nzchar(.nfl_project_dir_env)) .nfl_project_dir_env else getwd(),
+    winslash = "/", mustWork = FALSE
+  )
+  rm(.nfl_project_dir_env)
 }
 
 LOG_DIR       <- file.path(PROJECT_DIR, "logs")
 LOG_FILE      <- file.path(LOG_DIR, "nfl_pipeline.log")
 LOG_DB_FILE   <- file.path(LOG_DIR, "logs.duckdb")
 LOG_MAX_BYTES <- 5 * 1024 * 1024  # 5 MB rotation threshold
+
+# Created eagerly, exactly as config.R does for CACHE_DIR, because the DuckDB log store is
+# opened at this file's top level (below) - BEFORE any log_*() call reaches
+# .log_ensure_dir(). That ordering was invisible while PROJECT_DIR was a hardcoded path to a
+# long-lived checkout whose logs/ already existed; once PROJECT_DIR follows the actual
+# checkout (issue #43), a fresh clone or worktree has no logs/ yet and the DB init failed
+# with "[LOG DB ERROR] init failed: IO Error: Cannot open file ...logs.duckdb". Text logging
+# still worked (.log_ensure_dir() creates the dir later), but the relational log store was
+# silently unavailable for the whole run.
+if (!dir.exists(LOG_DIR)) dir.create(LOG_DIR, recursive = TRUE)
 
 suppressPackageStartupMessages({
   library(duckdb)

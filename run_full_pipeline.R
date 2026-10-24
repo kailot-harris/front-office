@@ -27,8 +27,42 @@
 # would leave every stage a no-op here.
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
-if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
+# ------------------------------------------------------------------------------------------
+# Working-directory bootstrap (GitHub issue #43).
+#
+# This setwd() is load-bearing: run_stage() source()s every stage script by BARE FILENAME,
+# so the repo root must be the working directory before the first source() below. It has to
+# happen HERE, before config.R is sourced, which is why the root cannot simply be read from
+# config.R's PROJECT_DIR at this point.
+#
+# PREVIOUSLY this block hardcoded the absolute path of the author's main checkout (the
+# directory named in this file's `# Path:` header above) - a second copy of what was then
+# config.R's hardcoded PROJECT_DIR, i.e. precisely the duplicated-constant pattern CLAUDE.md
+# forbids. Worse, it meant that running this orchestrator from any other checkout silently
+# jumped into the main tree and ran the main tree's code and caches instead of its own.
+#
+# NOW the root is derived from where this very script lives, so the orchestrator can be
+# invoked by absolute path from any cwd (Task Scheduler's original action did exactly that,
+# with an empty WorkingDirectory) and still lands in the checkout it was actually run from.
+# NFL_PROJECT_DIR overrides it, same escape hatch config.R documents. The interactive
+# fallback is getwd(), because commandArgs() carries no --file= under source().
+# config.R then derives PROJECT_DIR (and all CACHE_* paths) from this working directory.
+# ------------------------------------------------------------------------------------------
+local({
+  env_root <- Sys.getenv("NFL_PROJECT_DIR", "")
+  file_arg <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
+  root <- if (nzchar(env_root)) {
+    env_root
+  } else if (length(file_arg) == 1L) {
+    dirname(normalizePath(sub("^--file=", "", file_arg), winslash = "/", mustWork = FALSE))
+  } else {
+    getwd()
+  }
+  if (!dir.exists(root)) {
+    stop(sprintf("run_full_pipeline.R: resolved project root does not exist: %s", root))
+  }
+  setwd(root)
+})
 
 # Sourced before anything else so every stage's source()'d script can also call
 # log_info()/log_warn()/log_error() if it has been wired to do so.
@@ -323,6 +357,35 @@ run_stage("notify_bets.R", "Dispatch NFL Discord Alpha & CLV Bet Alerts",
 # above, for the same "last stage, no unconditional per-run write" reason).
 run_stage("accuracy_tracker.R", "Track Season-to-Date Model Accuracy Trajectory",
           call_fn = "run_accuracy_tracker")
+
+# ------------------------------------------------------------------------------
+# Stage 14: Web data export (TERMINAL stage).
+# ------------------------------------------------------------------------------
+# Regenerates every JSON dataset the Next.js app under web/ consumes, from the caches the
+# stages above just wrote. This was previously a detached tools/ one-off that only ever ran
+# when invoked by hand, which meant a fully successful pipeline run could still leave the
+# published site showing days-old numbers (observed: pipeline fresh, JSON four days stale,
+# publishing a stale active_week). It must stay LAST: it is a pure consumer of every upstream
+# cache and produces nothing any other stage reads.
+#
+# Unlike notify_bets.R / accuracy_tracker.R / bet_tracker.r above (which deliberately omit
+# `output` because a day with nothing new is a legitimate no-op), this stage rewrites the nine
+# files in WEB_DATA_FILES on every run, so declaring them is right. WEB_DATA_FILES is
+# config.R's single source of truth for that list - do not restate the paths here.
+#
+# Scope of the C-2 guarantee, stated precisely so nobody over-trusts it: .check_stage_output()
+# compares mtimes only. It will WARN if a declared file is not touched at all - e.g. the
+# exporter dies partway, or a numbered section is removed without updating the list. It CANNOT
+# detect a file whose bytes were merely republished verbatim, because that still advances the
+# mtime. That applies to salary_cap_profiles.json on a run where its live
+# nflreadr::load_contracts() fetch fails and it falls back, and to coaching_profiles.json,
+# which is a hand-seeded static artifact with no upstream source and is therefore excluded
+# from WEB_DATA_FILES entirely. For those paths the exporter's own log_warn() in
+# logs/nfl_pipeline.log - naming the file and the reason - is the staleness signal, not this
+# assertion. See config.R's WEB_* block for the full rationale.
+run_stage("export_web_datasets.R", "Export Web Application JSON Datasets (web/public/data)",
+          call_fn = "run_export_web_datasets",
+          output = WEB_DATA_FILES)
 
 # ------------------------------------------------------------------------------
 # FUTURE STAGES — extension point, not yet implemented (see docs/task_assignments_phase0.md's

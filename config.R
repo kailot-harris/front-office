@@ -19,7 +19,40 @@
 # ==============================================================================
 
 # Working and Cache Directories
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
+# ------------------------------------------------------------------------------------------
+# PROJECT_DIR is the ONE definition of the project root in this repo's pipeline scripts
+# (GitHub issue #43). It is deliberately NOT an absolute path.
+#
+# PREVIOUS BEHAVIOR (through 2026-10-23): this line hardcoded the absolute path of the
+# author's main checkout (the "front-office/nfl analytics" directory named in this file's
+# `# Path:` header above), and the same absolute literal was re-typed in
+# run_full_pipeline.R, logging_utils.R,
+# market_odds_engine.R and bet_tracker.r (that last copy pointing at the PRE-MOVE
+# "NFL Analytics" location, i.e. already stale and silently no-op'd by its dir.exists()
+# guard). Because CACHE_DIR - and therefore every CACHE_* constant - hangs off this value,
+# any run from a different checkout of this repo (most importantly a git worktree, which is
+# how subagent work is isolated here) read and WROTE the MAIN tree's cache/ instead of its
+# own. That made worktree work unverifiable: during Phase 1b it was impossible to
+# demonstrate the cache-to-JSON link by editing a cache file, because the exporter was
+# reading a different file than the one being edited. It also left config.R internally
+# inconsistent, since the newer WEB_* path constants near the bottom of this file are
+# already correctly relative for exactly this reason.
+#
+# NOW: the root is the working directory the code is actually running in. Every script in
+# this flat repo is run with the repo root as its cwd (run_full_pipeline.R setwd()s there
+# before sourcing anything, and run_stage() source()s siblings by bare filename), and both
+# Task Scheduler wrappers `cd /d` to the root before calling Rscript - so getwd() is the
+# root by construction, and a worktree run now resolves its own cache/.
+#
+# NFL_PROJECT_DIR is an escape hatch (empty-string default, same pattern as DISCORD_WEBHOOK
+# below) for a caller that genuinely cannot set its working directory. Nothing in this repo
+# sets it today; it exists so such a caller never needs to re-introduce a literal here.
+.nfl_project_dir_env <- Sys.getenv("NFL_PROJECT_DIR", "")
+PROJECT_DIR <- normalizePath(
+  if (nzchar(.nfl_project_dir_env)) .nfl_project_dir_env else getwd(),
+  winslash = "/", mustWork = FALSE
+)
+rm(.nfl_project_dir_env)
 CACHE_DIR   <- file.path(PROJECT_DIR, "cache")
 if (!dir.exists(CACHE_DIR)) dir.create(CACHE_DIR, recursive = TRUE)
 
@@ -188,6 +221,35 @@ NFL_MARGIN_SIGMA <- 14.60
 # The recent-10-season figure is used as the config default: large enough sample to be stable,
 # recent enough to reflect the current (compressed) HCA regime rather than the 2000s-era level.
 NFL_HCA <- 1.93
+
+# ------------------------------------------------------------------------------------------
+# Salary-Cap Ceiling (per-club CURRENT_SEASON cap limit, $ millions)
+# ------------------------------------------------------------------------------------------
+# SINGLE SOURCE; do not restate this literal at a call site. Moved here 2026-10-24 (issue #46)
+# out of export_web_datasets.R, where it lived as a bare, undocumented local
+# `NFL_CAP_CEILING_2026 <- 301.2` inside the salary-cap payload builder - exactly the
+# duplicated-constant pattern CLAUDE.md forbids and that the WNBA sibling repo's Finding C-1
+# documents as a real, result-corrupting bug.
+#
+# Derivation / provenance: this is NOT an empirically derived figure in the sense that
+# NFL_MARGIN_SIGMA and NFL_HCA are - there is no script in tools/ that computes it, because it
+# is an administrative league-announced number, not a statistic estimated from game data. The
+# value 301.2 ($301.2M per club) is the figure that was already in use in the exporter's
+# published salary_cap_profiles.json for CURRENT_SEASON (2026); it is carried over verbatim so
+# that moving it here changes no published output. Its original source was NOT recorded by the
+# code that introduced it, and it has NOT been re-verified live against an NFL/NFLPA cap
+# announcement or against nflreadr's contracts data by this change.
+#
+# Why no year in the name: the cap ceiling is re-announced every league year, so a
+# `NFL_CAP_CEILING_2026`-style name guarantees a stale symbol the moment CURRENT_SEASON is
+# bumped (the same trap issue #46 fixed in the exporter's literal `2026` filters). The name is
+# season-agnostic and the VALUE is what must be re-derived per season.
+#
+# ACTION REQUIRED EACH LEAGUE YEAR: when CURRENT_SEASON is bumped, update this value to the
+# newly announced per-club cap and record the source and date here. A cap ceiling left at a
+# prior season's number silently overstates every team's estimated_cap_space in
+# web/public/data/salary_cap_profiles.json without erroring.
+NFL_CAP_CEILING <- 301.2
 
 # ------------------------------------------------------------------------------------------
 # Rolling Window & Modeling Hyperparameters
@@ -653,6 +715,73 @@ CACHE_PLAYOFF_ODDS_HISTORY <- file.path(CACHE_DIR, "playoff_odds_history.rds")
 # giveaways, turnover_margin, cumulative_margin. No turnover data existed anywhere in this
 # repo's caches before this phase (issue #19).
 CACHE_TURNOVER_HISTORY <- file.path(CACHE_DIR, "turnover_margin_history.rds")
+
+# ------------------------------------------------------------------------------------------
+# Web application export paths (web/public/...)
+# ------------------------------------------------------------------------------------------
+# Added by export_web_datasets.R when it was promoted from a detached tools/ one-off into a
+# real terminal stage of run_full_pipeline.R's DAG. A narrowly-scoped, documented exception to
+# that script's single-file ownership, exactly the pattern CACHE_EPA_METRICS /
+# CACHE_TEAM_RATINGS / CACHE_PLAYOFF_ODDS above already follow (export_web_datasets.R does not
+# own config.R; it owns only these constants).
+#
+# Why these live here at all: the exporter previously hardcoded
+#   PROJECT_ROOT <- "<absolute path of the author's main checkout>"; setwd(PROJECT_ROOT)
+# and then rebuilt its own file.path(PROJECT_ROOT, "web", "public", "data") literals at the
+# call site. That is the exact class of duplicated-constant drift CLAUDE.md forbids (sibling
+# WNBA repo Finding C-1: a hardcoded home-court-advantage constant silently diverged from
+# config.R's value), and the absolute PROJECT_ROOT additionally made the script unrunnable
+# from any other checkout - including a git worktree. Paths are therefore RELATIVE here, same
+# as CACHE_DIR above, because every script in this flat repo is run with the repo root as the
+# working directory (run_full_pipeline.R's run_stage() source()s siblings by bare filename).
+#
+# WEB_DATA_FILES is the aggregate run_full_pipeline.R passes to run_stage()'s `output =`.
+# It lists the NINE published datasets the exporter genuinely DERIVES from cache/*.rds on
+# every run, which is what makes declaring them correct here (unlike accuracy_tracker.R /
+# bet_tracker.r, which legitimately no-op on a quiet day and therefore deliberately omit
+# `output =`).
+#
+# WEB_JSON_COACHING_PROFILES is deliberately NOT a member. coaching_profiles.json is a
+# hand-seeded static artifact with no upstream source anywhere in this repo - no ingest
+# script, engine or cache/*.rds produces coaching-staff/scheme/pace data - so the exporter
+# can only republish its existing bytes verbatim. The path constant below is still needed
+# (the exporter republishes through it), but declaring it as a stage `output` would be
+# false: .check_stage_output() compares mtimes only, and a verbatim republish always
+# advances the mtime, so the C-2 assertion is structurally incapable of flagging that file
+# as stale. Keeping it out of this list is what keeps the assertion honest; the exporter
+# emits a log_warn() naming the file and the reason on every republish instead.
+#
+# Caveat that applies to one file that IS listed: salary_cap_profiles.json is normally
+# derived live (nflreadr::load_contracts()), but falls back to a verbatim republish if that
+# fetch is unavailable or fails. On a fallback run its mtime still advances, so C-2 cannot
+# detect it either - the exporter's log_warn() in that tryCatch() handler is the real
+# staleness signal for that file, not this assertion.
+WEB_PUBLIC_DIR   <- file.path("web", "public")
+WEB_DATA_DIR     <- file.path(WEB_PUBLIC_DIR, "data")
+WEB_ANIM_DIR     <- file.path(WEB_PUBLIC_DIR, "animations")
+
+WEB_JSON_VISUAL_MEDIA_INDEX    <- file.path(WEB_DATA_DIR, "visual_media_index.json")
+WEB_JSON_STANDINGS_PROJECTIONS <- file.path(WEB_DATA_DIR, "standings_projections.json")
+WEB_JSON_MATCHUPS_CURRENT_WEEK <- file.path(WEB_DATA_DIR, "matchups_current_week.json")
+WEB_JSON_TEAM_EPA_PROFILES     <- file.path(WEB_DATA_DIR, "team_epa_profiles.json")
+WEB_JSON_PLAYOFF_PICTURE       <- file.path(WEB_DATA_DIR, "playoff_picture.json")
+WEB_JSON_PLAYER_QB_PROFILES    <- file.path(WEB_DATA_DIR, "player_qb_profiles.json")
+WEB_JSON_MODEL_DIAGNOSTICS     <- file.path(WEB_DATA_DIR, "model_diagnostics.json")
+WEB_JSON_SALARY_CAP_PROFILES   <- file.path(WEB_DATA_DIR, "salary_cap_profiles.json")
+WEB_JSON_COACHING_PROFILES     <- file.path(WEB_DATA_DIR, "coaching_profiles.json")
+WEB_JSON_VALUE_BETS            <- file.path(WEB_DATA_DIR, "value_bets.json")
+
+WEB_DATA_FILES <- c(
+  WEB_JSON_VISUAL_MEDIA_INDEX,
+  WEB_JSON_STANDINGS_PROJECTIONS,
+  WEB_JSON_MATCHUPS_CURRENT_WEEK,
+  WEB_JSON_TEAM_EPA_PROFILES,
+  WEB_JSON_PLAYOFF_PICTURE,
+  WEB_JSON_PLAYER_QB_PROFILES,
+  WEB_JSON_MODEL_DIAGNOSTICS,
+  WEB_JSON_SALARY_CAP_PROFILES,
+  WEB_JSON_VALUE_BETS
+)
 
 # ------------------------------------------------------------------------------------------
 # API Throttling & Rate-Limiting (sport-agnostic starting defaults)

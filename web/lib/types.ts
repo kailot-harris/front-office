@@ -7,6 +7,13 @@ export interface TeamStanding {
   division: string;
   rank: number;
   games_played: number;
+  /**
+   * Completed CURRENT_SEASON regular-season games for this team, counted independently
+   * off CACHE_SCHEDULES by the R exporter (issue #44). `games_played` comes from the
+   * model's team-stats path; this one comes from the schedule. They must be equal, and
+   * `tests/contracts/invariants.test.ts` asserts that per team as a staleness gate.
+   */
+  schedule_games_completed: number;
   power_rating: number;
   prior_season_rating: number;
   off_epa_roll: number;
@@ -234,9 +241,9 @@ export interface TeamCapProfile {
   total_active_contracts: number;
   total_active_apy: number;
   total_guaranteed: number;
-  estimated_cap_space: number;
-  dead_money: number;
-  cap_health_rating: 'Healthy' | 'Moderate' | 'Constrained';
+  // `estimated_cap_space`, `dead_money` and `cap_health_rating` were removed by
+  // issue #48: the exporter generated them from an unseeded random draw rather
+  // than from any real cap data, so they are no longer published.
   positional_spending: Record<string, PositionalSpendingItem>;
   top_paid_players: TopPaidPlayer[];
 }

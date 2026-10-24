@@ -74,3 +74,12 @@ docs/internal/
 
 # Claude Code skills/config (kept locally, not published)
 /.claude/
+
+# Scheduler wrapper logs (schedule_daily.bat / schedule_publish.bat).
+# logs/*.log above already covers logs/pipeline_execution.log, but NOT the
+# rotated generation: schedule_daily.bat renames it to .log.old above
+# LOG_MAX_BYTES, and "logs/*.log" does not match a .log.old suffix. Without the
+# rule below, a rotation would drop an untracked multi-MB file into git status --
+# the same bloat the WNBA repo had to untrack after one commit added 3,755 lines
+# of this exact file.
+logs/*.log.old

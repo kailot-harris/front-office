@@ -13,7 +13,7 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { REPO_WEB_ROOT, coaching, matchups, media, qbs, salaryCap, standings, teamEpa } from '../helpers/datasets';
+import { REPO_WEB_ROOT, coaching, matchups, media, qbs, standings, teamEpa } from '../helpers/datasets';
 
 const TYPES_SRC = fs.readFileSync(path.join(REPO_WEB_ROOT, 'lib', 'types.ts'), 'utf-8');
 
@@ -56,12 +56,6 @@ describe('lib/types.ts string unions cover every value in the data', () => {
     const defDeclared = declaredUnion('defensive_play_caller');
     expect(distinct(coaching().map((c) => c.offensive_play_caller)).filter((v) => !offDeclared.includes(v))).toEqual([]);
     expect(distinct(coaching().map((c) => c.defensive_play_caller)).filter((v) => !defDeclared.includes(v))).toEqual([]);
-  });
-
-  it('TeamCapProfile.cap_health_rating', () => {
-    const declared = declaredUnion('cap_health_rating');
-    const actual = distinct(salaryCap().teams.map((t) => t.cap_health_rating));
-    expect(actual.filter((v) => !declared.includes(v))).toEqual([]);
   });
 
   it('VisualMediaItem.category and .type', () => {
