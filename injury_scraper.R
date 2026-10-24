@@ -67,7 +67,10 @@ suppressPackageStartupMessages({
   library(tibble)
 })
 
-if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
+# No setwd() here (GitHub issue #43). This PREVIOUSLY setwd()'d to PROJECT_DIR, which was a
+# hardcoded absolute path to the author's main tree and so relocated any other checkout's run
+# into it. config.R now derives PROJECT_DIR from the working directory, making a setwd() to it
+# a no-op by construction; the repo root is the cwd for every script in this flat repo.
 
 # ESPN site-API injuries feed. No API key required (confirmed live, see
 # docs/NFL_REPLICATION_PLAN.md §2 / CLAUDE.md's quirks section).

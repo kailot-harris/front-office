@@ -27,8 +27,42 @@
 # would leave every stage a no-op here.
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
-if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
+# ------------------------------------------------------------------------------------------
+# Working-directory bootstrap (GitHub issue #43).
+#
+# This setwd() is load-bearing: run_stage() source()s every stage script by BARE FILENAME,
+# so the repo root must be the working directory before the first source() below. It has to
+# happen HERE, before config.R is sourced, which is why the root cannot simply be read from
+# config.R's PROJECT_DIR at this point.
+#
+# PREVIOUSLY this block hardcoded the absolute path of the author's main checkout (the
+# directory named in this file's `# Path:` header above) - a second copy of what was then
+# config.R's hardcoded PROJECT_DIR, i.e. precisely the duplicated-constant pattern CLAUDE.md
+# forbids. Worse, it meant that running this orchestrator from any other checkout silently
+# jumped into the main tree and ran the main tree's code and caches instead of its own.
+#
+# NOW the root is derived from where this very script lives, so the orchestrator can be
+# invoked by absolute path from any cwd (Task Scheduler's original action did exactly that,
+# with an empty WorkingDirectory) and still lands in the checkout it was actually run from.
+# NFL_PROJECT_DIR overrides it, same escape hatch config.R documents. The interactive
+# fallback is getwd(), because commandArgs() carries no --file= under source().
+# config.R then derives PROJECT_DIR (and all CACHE_* paths) from this working directory.
+# ------------------------------------------------------------------------------------------
+local({
+  env_root <- Sys.getenv("NFL_PROJECT_DIR", "")
+  file_arg <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
+  root <- if (nzchar(env_root)) {
+    env_root
+  } else if (length(file_arg) == 1L) {
+    dirname(normalizePath(sub("^--file=", "", file_arg), winslash = "/", mustWork = FALSE))
+  } else {
+    getwd()
+  }
+  if (!dir.exists(root)) {
+    stop(sprintf("run_full_pipeline.R: resolved project root does not exist: %s", root))
+  }
+  setwd(root)
+})
 
 # Sourced before anything else so every stage's source()'d script can also call
 # log_info()/log_warn()/log_error() if it has been wired to do so.

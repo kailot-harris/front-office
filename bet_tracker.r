@@ -51,8 +51,11 @@
 # documented here rather than silently mislabeled as true closing-line value.
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics"
-if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
+# No PROJECT_DIR definition and no setwd() here (GitHub issue #43). This script PREVIOUSLY
+# hardcoded the repo's PRE-MOVE absolute location, which no longer exists - the setwd() was
+# therefore already a silent no-op, saved only by its dir.exists() guard. config.R now
+# derives PROJECT_DIR from the working directory (the repo root by convention for every
+# script in this flat repo), so nothing needs to be re-typed or re-pointed here.
 
 suppressPackageStartupMessages({
   library(dplyr)
