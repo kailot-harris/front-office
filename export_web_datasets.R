@@ -336,6 +336,40 @@ run_export_web_datasets <- function() {
 
   prob_map <- setNames(split(standings_calc_df, seq_len(nrow(standings_calc_df))), standings_calc_df$team)
 
+  # ---- Schedule-derived completed-game count (issue #44) ----
+  # schedule_games_completed: how many CURRENT_SEASON regular-season games each of the 32
+  # NFL_TEAMS has actually finished, counted straight off CACHE_SCHEDULES (a game counts once
+  # both final scores are non-NA; postseason rows are excluded via game_type == "REG" so the
+  # value stays comparable to games_played, which is regular-season-scoped).
+  #
+  # Why this is published at all: `games_played` below arrives via ratings_df out of
+  # team_ratings_engine.R, i.e. through the model's team-stats path. The web contract tests
+  # (web/tests/contracts/) can only read web/public/data/*.json - they cannot open cache/*.rds -
+  # so without a schedule-derived figure in the payload they had no ground truth to check
+  # games_played against, and had to fall back on a league-wide spread heuristic that byes and
+  # in-progress weeks make unreliable later in the season.
+  #
+  # This is deliberately a SECOND, INDEPENDENT derivation, not a copy of games_played: the two
+  # must agree exactly, and invariants.test.ts asserts that per team. A mismatch means one of the
+  # upstream caches is stale relative to the other (e.g. ratings exported from last week's run
+  # against this week's schedule), which is precisely the data-freshness defect that must block
+  # the daily 09:00 redeploy.
+  sched_completed_df <- sch_raw[
+    sch_raw$season == CURRENT_SEASON &
+      sch_raw$game_type == "REG" &
+      !is.na(sch_raw$home_score) &
+      !is.na(sch_raw$away_score),
+  ]
+  sched_completed_counts <- table(c(sched_completed_df$home_team, sched_completed_df$away_team))
+  # Every team in NFL_TEAMS gets an entry; a team with no completed games (preseason, or a
+  # franchise on a week-1 bye in a hypothetical format) must publish 0, not go missing.
+  sched_games_lookup <- setNames(
+    as.integer(sched_completed_counts[names(NFL_TEAMS)]),
+    names(NFL_TEAMS)
+  )
+  sched_games_lookup[is.na(sched_games_lookup)] <- 0L
+
+
   standings_list <- list()
   for (i in seq_len(nrow(ratings_df))) {
     row <- ratings_df[i, ]
@@ -365,6 +399,7 @@ run_export_web_datasets <- function() {
       division            = div,
       rank                = row$rank,
       games_played        = as.integer(row$games_played),
+      schedule_games_completed = as.integer(sched_games_lookup[[tm]]),
       power_rating        = round(row$power_rating, 2),
       prior_season_rating = round(row$prior_season_rating, 2),
       off_epa_roll        = round(row$off_epa_per_play_roll, 3),
@@ -386,7 +421,7 @@ run_export_web_datasets <- function() {
   }
 
   standings_data <- list(
-    season       = 2026,
+    season       = CURRENT_SEASON,
     generated_at = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"),
     total_teams  = length(standings_list),
     teams        = standings_list

@@ -12,6 +12,7 @@
  *      shows up as a test failure rather than silently going unrendered.
  */
 import { z } from 'zod';
+import { LEAGUE } from '../helpers/datasets';
 
 const prob = z.number().min(0).max(1);
 const pct100 = z.number().min(0).max(100);
@@ -38,7 +39,10 @@ export const teamStandingSchema = z.object({
   conference,
   division,
   rank: z.number().int().min(1).max(32),
-  games_played: z.number().int().min(0).max(17),
+  games_played: z.number().int().min(0).max(LEAGUE.SEASON_GAMES),
+  // Schedule-derived twin of games_played (issue #44), published by export_web_datasets.R
+  // straight off CACHE_SCHEDULES. Same bounds; invariants.test.ts asserts the two are equal.
+  schedule_games_completed: z.number().int().min(0).max(LEAGUE.SEASON_GAMES),
   power_rating: z.number().finite(),
   prior_season_rating: z.number().finite(),
   off_epa_roll: z.number().min(-1).max(1),
