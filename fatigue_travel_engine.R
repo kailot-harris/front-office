@@ -18,6 +18,12 @@ suppressPackageStartupMessages({
 
 if (!dir.exists("cache")) dir.create("cache", recursive = TRUE)
 
+# config.R owns every structural constant and cache path used below
+# (CACHE_WNBA_SCHEDULE for the real schedule path, WNBA_TEAMS for the franchise filter).
+# Sourced defensively so a bare `source("fatigue_travel_engine.R")` from a tool script
+# still resolves them, without re-sourcing inside a pipeline run that already has them.
+if (!exists("CACHE_WNBA_SCHEDULE")) source("config.R")
+
 message(">>> [FATIGUE] Initializing Circadian & Travel Distance Engine (WNBA, 15 teams)...")
 
 # ------------------------------------------------------------------------------
@@ -138,10 +144,126 @@ calculate_travel_fatigue <- function(team_code, origin_team_code, days_rest = 1,
   )
 }
 
-# Evaluate a slate of road teams. Per agent4.md / REPO_MAP.md §1, this remains a
-# SYNTHETIC/DEMO sample schedule (like the NBA original) — no real WNBA schedule
-# feed is wired into this script. Swapped in 4 real 2026 WNBA team codes.
-evaluate_slate_fatigue <- function() {
+# ------------------------------------------------------------------------------
+# 3b. REAL (UNPLAYED-GAME) SLATE — GitHub issue #93.
+#
+# Reads the schedule cache written by daily_ingest.R's daily_schedule_ingest(), which
+# already carries per-team `days_rest`, `is_back_to_back` and `last_played_at` (the
+# previous game's venue = this trip's travel origin). Nothing in
+# calculate_travel_fatigue() changes: this is a real CALLER for the arguments it has
+# always accepted, replacing nothing.
+#
+# FAIL-SAFE: file.exists()-guarded, readRDS wrapped, schema-checked. Any miss returns
+# NULL and the caller falls back to the original hand-coded demo slate.
+# ------------------------------------------------------------------------------
+load_unplayed_schedule_slate <- function(schedule_path = CACHE_WNBA_SCHEDULE) {
+  if (!file.exists(schedule_path)) {
+    message(sprintf(">>> [FATIGUE] Schedule cache not found at %s — no real slate available.",
+                    schedule_path))
+    return(NULL)
+  }
+  sched <- tryCatch(readRDS(schedule_path), error = function(e) {
+    message(sprintf(">>> [FATIGUE] Schedule cache unreadable (%s) — no real slate available.",
+                    conditionMessage(e)))
+    NULL
+  })
+  if (is.null(sched) || !is.data.frame(sched) || nrow(sched) == 0) return(NULL)
+
+  needed <- c("game_id", "game_date", "team_abbreviation", "opponent_team_abbreviation",
+              "is_home", "is_completed", "days_rest", "is_back_to_back", "last_played_at")
+  if (!all(needed %in% names(sched))) {
+    message(">>> [FATIGUE] Schedule cache is missing rest columns — no real slate available.")
+    return(NULL)
+  }
+
+  slate <- sched %>%
+    filter(!is_completed) %>%
+    filter(team_abbreviation %in% names(WNBA_TEAMS)) %>%
+    arrange(game_date, game_id, desc(is_home))
+
+  if (nrow(slate) == 0) {
+    message(">>> [FATIGUE] Schedule cache holds no unplayed games — no real slate available.")
+    return(NULL)
+  }
+  slate
+}
+
+evaluate_unplayed_slate_fatigue <- function(schedule_path = CACHE_WNBA_SCHEDULE) {
+  slate <- load_unplayed_schedule_slate(schedule_path)
+  if (is.null(slate)) return(NULL)
+
+  slate %>%
+    mutate(
+      # destination = the venue of the scheduled game (its home team's arena);
+      # days_rest NA (team's first game of the season) is treated as "rested" for the
+      # model argument only — is_back_to_back stays FALSE, so no penalty is invented.
+      venue_code = if_else(is_home, team_abbreviation, opponent_team_abbreviation),
+      model_days_rest = dplyr::coalesce(as.numeric(days_rest), 1)
+    ) %>%
+    rowwise() %>%
+    mutate(
+      fatigue_metrics = list(calculate_travel_fatigue(
+        venue_code, last_played_at, model_days_rest, is_back_to_back
+      )),
+      travel_miles = fatigue_metrics$travel_miles,
+      tz_shift = fatigue_metrics$timezone_shift,
+      point_spread_drag = fatigue_metrics$fatigue_drag_pts
+    ) %>%
+    ungroup() %>%
+    select(-fatigue_metrics, -model_days_rest)
+}
+
+# Evaluate a slate of road teams. Per agent4.md / REPO_MAP.md §1, the frame below
+# remains a SYNTHETIC/DEMO sample schedule (like the NBA original). As of issue #93 it
+# is the FALLBACK only: evaluate_slate_fatigue() prefers the real unplayed-game slate
+# derived from the schedule cache and drops back to this frame when that cache is
+# absent, unreadable, or empty of unplayed games.
+#' Collapse the per-team fatigue rows to the one-row-per-game, demo-compatible schema.
+#'
+#' SCHEMA CONTRACT: market_odds_engine.R:474-477 filters this cache on
+#' `away_team` / `home_team` and reads `point_spread_drag`, with drag semantics
+#' "fatigue carried by the AWAY (traveling) team, added to the home fair margin"
+#' (market_odds_engine.R:490). The real path must therefore emit the same columns and
+#' the same meaning as the demo frame, or that consumer errors on a missing column.
+#' Per-team detail for the home side is kept alongside under `home_*` names.
+unplayed_slate_by_game <- function(per_team) {
+  away <- per_team %>% filter(!is_home)
+  home <- per_team %>%
+    filter(is_home) %>%
+    select(game_id,
+           home_days_rest = days_rest,
+           home_is_b2b = is_back_to_back,
+           home_last_played_at = last_played_at,
+           home_travel_miles = travel_miles,
+           home_point_spread_drag = point_spread_drag)
+
+  away %>%
+    transmute(game_date, game_id,
+              away_team = team_abbreviation,
+              home_team = opponent_team_abbreviation,
+              last_played_at, days_rest,
+              is_b2b = is_back_to_back,
+              travel_miles, tz_shift, point_spread_drag) %>%
+    left_join(home, by = "game_id")
+}
+
+evaluate_slate_fatigue <- function(schedule_path = CACHE_WNBA_SCHEDULE) {
+  real <- tryCatch(evaluate_unplayed_slate_fatigue(schedule_path),
+                   error = function(e) {
+                     message(sprintf(">>> [FATIGUE] Real schedule path errored (%s); using demo slate.",
+                                     conditionMessage(e)))
+                     NULL
+                   })
+  if (!is.null(real) && nrow(real) > 0) {
+    by_game <- unplayed_slate_by_game(real)
+    saveRDS(by_game, "cache/travel_fatigue_metrics.rds")
+    message(sprintf(paste0(">>> [FATIGUE] Successfully computed travel fatigue vectors for ",
+                           "%d unplayed games / %d team-game rows (WNBA, REAL schedule slate)."),
+                    nrow(by_game), nrow(real)))
+    return(by_game)
+  }
+
+  message(">>> [FATIGUE] Falling back to SYNTHETIC/DEMO slate (no usable schedule cache).")
   sample_schedule <- tibble(
     away_team = c("LA", "SEA", "NY", "CHI"),
     home_team = c("LV", "PHX", "CON", "ATL"),
