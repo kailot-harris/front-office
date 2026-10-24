@@ -1150,13 +1150,21 @@ build_matchup_slates <- function(schedule, elo_history, team_ratings, season = 2
     ) %>%
     dplyr::arrange(.data$game_date, .data$game_pk)
 
-  # Active slate: the week holding the most recent date with results.
-  latest_result <- if (nrow(elo_history) > 0) {
-    as.Date(substr(as.character(max(elo_history$game_date, na.rm = TRUE)), 1, 10))
+  # Active slate: the week holding the current date (if within season) or the most recent date with results.
+  today <- as.Date(Sys.Date())
+  min_date <- min(games$game_date, na.rm = TRUE)
+  max_date <- max(games$game_date, na.rm = TRUE)
+
+  if (!is.na(today) && today >= min_date && today <= max_date) {
+    active_week <- compute_season_week(today, anchor_monday)
   } else {
-    min(games$game_date, na.rm = TRUE)
+    latest_result <- if (nrow(elo_history) > 0) {
+      as.Date(substr(as.character(max(elo_history$game_date, na.rm = TRUE)), 1, 10))
+    } else {
+      min_date
+    }
+    active_week <- compute_season_week(latest_result, anchor_monday)
   }
-  active_week <- compute_season_week(latest_result, anchor_monday)
 
   week_summary <- matchups %>%
     dplyr::group_by(week = .data$week) %>%
