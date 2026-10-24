@@ -71,6 +71,30 @@ message(">>> [SERIES LENGTH] Initializing Exact Series-Length Distribution Engin
 # sum(length_probs) == 1 exactly (up to floating point) with no leftover mass,
 # since every format's win_threshold/max_games pairing forces the series to
 # finish by max_games.
+#
+# ---- PER-GAME BREAKDOWN, attached as attr(result, "per_game") (issue #94) ----
+# The loop below already computes, for every game number g, BOTH quantities a
+# game-by-game table needs, and used to throw both away once the series-length
+# totals were accumulated:
+#
+#   * the conditional win probability for game g -- `p_g`, which is
+#     p_high_home or p_high_away purely according to home_high_flags[g]. It is
+#     "conditional" in the sense that it is the probability the high-seed side
+#     wins game g GIVEN that game g is played at all.
+#   * the probability game g is played -- the total dp mass sitting in LIVE
+#     (not-yet-decided) states whose wins sum to g - 1. Because dp only ever
+#     holds undecided states, that sum is exactly P(series is still alive after
+#     g - 1 games) = P(series length >= g). In a best-of-7 that is 1 for games
+#     1-4 and strictly below 1 for games 5-7.
+#
+# Both are read straight out of the existing exact enumeration: no Monte Carlo,
+# no second pass, no new model. The identity
+#   p_game_played[g] == sum(probability[length >= g])
+# is therefore true by construction, and is asserted below rather than assumed.
+#
+# It is attached as an attribute instead of changing the return type because
+# build_playoff_bracket_2026.R and the callers further down this file consume
+# the returned value as a plain tibble.
 series_length_distribution <- function(team_high, team_low, net_high, net_low,
                                         format = "bo7", hca_pts = WNBA_HCA) {
   if (!format %in% names(PLAYOFF_FORMATS)) {
@@ -91,6 +115,10 @@ series_length_distribution <- function(team_high, team_low, net_high, net_low,
   dp[1, 1] <- 1
   length_probs <- setNames(numeric(max_games), as.character(seq_len(max_games)))
 
+  # Per-game accumulators (issue #94). Filled from the same loop, never recomputed.
+  p_game_played   <- numeric(max_games)
+  p_game_win_high <- rep(NA_real_, max_games)
+
   for (w_high in 0:(win_threshold - 1)) {
     for (w_low in 0:(win_threshold - 1)) {
       p_mass <- dp[w_high + 1, w_low + 1]
@@ -99,6 +127,12 @@ series_length_distribution <- function(team_high, team_low, net_high, net_low,
       g <- w_high + w_low + 1
       if (g > max_games) next # unreachable given win_threshold/max_games pairing; defensive only
       p_g <- if (home_high_flags[g]) p_high_home else p_high_away
+
+      # Live mass reaching game g: every state visited here is by definition an
+      # undecided state about to play game g, so summing p_mass over the states
+      # with w_high + w_low == g - 1 IS P(game g is played).
+      p_game_played[g]   <- p_game_played[g] + p_mass
+      p_game_win_high[g] <- p_g
 
       if (w_high + 1 == win_threshold) {
         len <- as.character(w_high + 1 + w_low)
@@ -120,13 +154,41 @@ series_length_distribution <- function(team_high, team_low, net_high, net_low,
   # unlike the file-missing fail-safes elsewhere in this repo.
   stopifnot(abs(sum(length_probs) - 1) < 1e-9)
 
+  # Per-game table, built from the loop's accumulators before length_probs is
+  # filtered down to its non-zero support. A game number that is unreachable for
+  # this format carries p_game_played == 0 and keeps its host flag, so the table
+  # always has exactly one row per game the format allows (7 for a bo7).
+  per_game <- tibble(
+    game = seq_len(max_games),
+    host_is_high_seed = home_high_flags,
+    # Which side's pnorm() applies is the host flag's only effect: the HCA term
+    # enters with a + sign when the high seed hosts and a - sign when it does not.
+    hca_sign_for_high_seed = ifelse(home_high_flags, 1L, -1L),
+    p_high_seed_win = round(ifelse(is.na(p_game_win_high),
+                                   ifelse(home_high_flags, p_high_home, p_high_away),
+                                   p_game_win_high), 6),
+    p_game_played = round(p_game_played, 6)
+  ) %>%
+    mutate(p_low_seed_win = round(1 - .data$p_high_seed_win, 6))
+
+  # Consistency invariant, not a data fail-safe: P(game g played) must equal the
+  # tail mass P(series length >= g) from the very same DP. A hard stop is the
+  # right behaviour if the two ever disagree, as with the sum check above.
+  tail_mass <- vapply(seq_len(max_games),
+                      function(g) sum(length_probs[as.integer(names(length_probs)) >= g]),
+                      numeric(1))
+  stopifnot(all(abs(per_game$p_game_played - round(tail_mass, 6)) < 1e-6))
+
   length_probs <- length_probs[length_probs > 0]
-  tibble(
+  out <- tibble(
     length = as.integer(names(length_probs)),
     label = paste0(names(length_probs), " games"),
     probability = round(as.numeric(length_probs), 6)
   ) %>%
     arrange(length)
+
+  attr(out, "per_game") <- per_game
+  out
 }
 
 # ------------------------------------------------------------------------------

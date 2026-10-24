@@ -267,6 +267,30 @@ CACHE_WNBA_SCHEDULE         <- file.path(CACHE_DIR, "wnba_schedule_cache.rds")
 CACHE_PLAYOFF_BRACKET_CURRENT <- file.path(
   CACHE_DIR, sprintf("playoff_bracket_%d.rds", CURRENT_SEASON)
 )
+# Finals-only per-game predictions for the current season (GitHub issue #94).
+#
+# DERIVATION / WHY A SEPARATE ARTIFACT FROM CACHE_PLAYOFF_BRACKET_CURRENT:
+#   * Different grain. CACHE_PLAYOFF_BRACKET_CURRENT is one row per SERIES across every
+#     round; this is one row per GAME (1..7) of a single series. Folding a 7-row game
+#     table into that artifact's `prediction` list-column would make one payload carry
+#     two grains, and would mean the Finals row shipped a per-game table while every
+#     other round's row shipped an empty one.
+#   * Different inputs. This artifact is the only consumer of CACHE_WNBA_SCHEDULE on the
+#     prediction side (rest/back-to-back for games that have NOT been played cannot come
+#     from box scores), and the only place the series-length DP's per-game breakdown --
+#     attr(series_length_distribution(...), "per_game") -- is materialised.
+#   * Different volatility. The series-series artifact's archived Semifinal values are
+#     frozen by design; this one is a LIVE forecast that moves every time a Finals game
+#     resolves, so it is rebuilt on its own cadence without touching the frozen record.
+#   * Lives in CACHE_DIR (runtime-generated, derived, disposable) per CACHE_PBP_RAW's rule.
+#   * Season is interpolated from CURRENT_SEASON rather than written as a literal, the same
+#     way CACHE_PLAYOFF_BRACKET_CURRENT above does it, so the constant tracks config.R's
+#     season pointer instead of drifting from it.
+#   * Written by build_finals_game_predictions.R; read by export_web_json.R. Consumers must
+#     read this constant, never the literal filename.
+CACHE_FINALS_GAME_PREDICTIONS <- file.path(
+  CACHE_DIR, sprintf("finals_game_predictions_%d.rds", CURRENT_SEASON)
+)
 
 # ------------------------------------------------------------------------------------------
 # RAPM & Opponent Adjustments (GitHub issues #71, #76, #77, #78, #79, #82)

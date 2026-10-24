@@ -16,7 +16,11 @@ import type {
   OffseasonTeamProfile,
   OffseasonTransaction,
 } from '@/lib/offseasonTypes';
-import type { PlayoffMatchupsCatalog, PlayoffBracketSeason } from '@/lib/playoffTypes';
+import type {
+  PlayoffMatchupsCatalog,
+  PlayoffBracketSeason,
+  FinalsGamePredictionSet,
+} from '@/lib/playoffTypes';
 import type {
   PlayerCatalogEntry,
   PlayerShotData,
@@ -85,6 +89,7 @@ export const EXPECTED_DATA_FILES = [
   'offseason_transactions.json',
   'playoff_series_matchups.json',
   'playoff_bracket_2026.json',
+  'finals_game_predictions_2026.json',
   'shots_index.json',
   'shots_metadata.json',
 ] as const;
@@ -132,6 +137,9 @@ export function loadAllDatasets() {
     offseasonTransactions: readJsonFile<OffseasonTransaction[]>('offseason_transactions.json'),
     playoffSeries: readJsonFile<PlayoffMatchupsCatalog>('playoff_series_matchups.json'),
     playoffBracket2026: readJsonFile<PlayoffBracketSeason>('playoff_bracket_2026.json'),
+    finalsGamePredictions: readJsonFile<FinalsGamePredictionSet>(
+      'finals_game_predictions_2026.json'
+    ),
     shotsIndex: readJsonFile<PlayerCatalogEntry[]>('shots_index.json'),
     shotsMetadata: readJsonFile<ShotsMetadata>('shots_metadata.json'),
   };

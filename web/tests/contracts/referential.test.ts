@@ -21,6 +21,7 @@ describe('Cross-dataset referential integrity', () => {
     offseasonTeams,
     playoffSeries,
     playoffBracket2026,
+    finalsGamePredictions,
     shotsIndex,
   } = loadAllDatasets();
 
@@ -150,6 +151,93 @@ describe('Cross-dataset referential integrity', () => {
     expect(
       missing,
       `playoff_bracket_2026.json references teams with no playoff_series_matchups.json profile: ${missing.join(', ')}`
+    ).toEqual([]);
+  });
+
+  // --------------------------------------------------------------------------
+  // finals_game_predictions_2026.json (GitHub issue #94)
+  //
+  // This payload names the same teams as the Finals row of the bracket payload,
+  // from a different derivation path (seeds, not box-score round inference), so
+  // the two agreeing is a real cross-check rather than a tautology.
+  // --------------------------------------------------------------------------
+  it('finals_game_predictions_2026.json teams resolve against WNBA_TEAMS_METADATA and match the bracket Finals row', () => {
+    const f = finalsGamePredictions;
+    const finalsRow = playoffBracket2026.series.find((s) => s.round === 'Finals');
+
+    if (f.matchup === null) {
+      // Empty state. Legitimate only when the bracket has no Finals row either.
+      expect(finalsRow, 'no Finals forecast, but the bracket has a Finals row').toBeUndefined();
+      return;
+    }
+
+    const canonical = new Set<string>([...WNBA_TEAMS]);
+    const mismatches: string[] = [];
+
+    for (const [abbr, fullName] of [
+      [f.matchup.teamHighAbbr, f.matchup.teamHigh],
+      [f.matchup.teamLowAbbr, f.matchup.teamLow],
+    ] as const) {
+      if (!canonical.has(abbr)) {
+        mismatches.push(`"${abbr}" is not a canonical WNBA abbreviation`);
+        continue;
+      }
+      const expectedFull =
+        WNBA_TEAMS_METADATA[abbr as keyof typeof WNBA_TEAMS_METADATA].fullName;
+      if (fullName !== expectedFull) {
+        mismatches.push(`${abbr} full name = "${fullName}" (expected "${expectedFull}")`);
+      }
+    }
+
+    // Every game's host must be one of the two Finals participants.
+    for (const g of f.games) {
+      if (g.hostAbbr !== f.matchup.teamHighAbbr && g.hostAbbr !== f.matchup.teamLowAbbr) {
+        mismatches.push(`game ${g.game} host ${g.hostAbbr} is not a Finals participant`);
+      }
+      const expectedHostName = g.hostIsHighSeed ? f.matchup.teamHigh : f.matchup.teamLow;
+      if (g.hostName !== expectedHostName) {
+        mismatches.push(`game ${g.game} hostName "${g.hostName}" != "${expectedHostName}"`);
+      }
+    }
+
+    // Same pairing as the bracket's Finals row, reached independently.
+    if (finalsRow) {
+      const forecasted = [f.matchup.teamHigh, f.matchup.teamLow].sort();
+      const resolved = [finalsRow.teamNameA, finalsRow.teamNameB].sort();
+      if (forecasted[0] !== resolved[0] || forecasted[1] !== resolved[1]) {
+        mismatches.push(
+          `per-game forecast covers ${forecasted.join(' / ')} but the bracket Finals is ${resolved.join(' / ')}`
+        );
+      }
+      // Series state must agree across the two payloads.
+      const bracketHighWins =
+        finalsRow.teamA === f.matchup.teamHighAbbr ? finalsRow.winsA : finalsRow.winsB;
+      if (bracketHighWins !== f.matchup.winsHigh) {
+        mismatches.push(
+          `wins for ${f.matchup.teamHighAbbr}: forecast says ${f.matchup.winsHigh}, bracket says ${bracketHighWins}`
+        );
+      }
+      if (finalsRow.seriesComplete !== f.matchup.seriesComplete) {
+        mismatches.push('seriesComplete disagrees between the two payloads');
+      }
+    }
+
+    expect(
+      mismatches,
+      `finals_game_predictions_2026.json referential drift:\n  • ${mismatches.join('\n  • ')}`
+    ).toEqual([]);
+  });
+
+  it('finals_game_predictions_2026.json teams have playoff_series_matchups.json profiles', () => {
+    const f = finalsGamePredictions;
+    if (f.matchup === null) return;
+    const profileAbbrs = new Set(Object.keys(playoffSeries.teams));
+    const missing = [f.matchup.teamHighAbbr, f.matchup.teamLowAbbr].filter(
+      (a) => !profileAbbrs.has(a)
+    );
+    expect(
+      missing,
+      `finals_game_predictions_2026.json references teams with no profile: ${missing.join(', ')}`
     ).toEqual([]);
   });
 
