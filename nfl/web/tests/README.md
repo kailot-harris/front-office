@@ -14,7 +14,7 @@ npm run test:strict    # ignore the known-issues baseline; any failure fails the
 First-time setup on a new machine:
 
 ```bash
-npm install --legacy-peer-deps   # see "npm quirk" below
+npm ci                           # or plain `npm install`; no flags needed
 npm run test:e2e:install         # downloads the Playwright chromium build
 ```
 
@@ -112,11 +112,24 @@ Things that cost time to discover the first time:
 
 ## Environment notes
 
-- **npm quirk:** installing `vitest` on npm 10.9.8 here fails with
-  `Cannot read properties of null (reading 'edgesOut')` because of vitest's
-  circular optional peer dependency on `@vitest/coverage-v8`.
-  `--legacy-peer-deps` works. Pinned to vitest 4 rather than 5 because vitest 5
-  requires `@types/node@^22 || >=24` and this project pins `^20`.
+- **`vitest` is pinned to `4.x` by an `overrides` entry** in `web/package.json`,
+  not only by its devDependency range. Without that override a *fresh* resolve
+  (lockfile absent) crashes on npm 10.9.8 — the npm bundled with Node 22, which
+  is what CI uses — with `Cannot read properties of null (reading 'edgesOut')`
+  in arborist's `#loadPeerSet`. Cause: `@testing-library/jest-dom`
+  peer-depends on `vitest: ">= 0.32"`, which is open-ended, so a fresh resolve
+  reaches vitest 5 and npm 10.9.8 dies loading vitest 5's
+  `@vitest/browser-playwright` peer set. With the override in place,
+  `npm install`, `npm install --package-lock-only` and `npm ci` all succeed on
+  the default npm 10.9.8 with no flags, and **no particular npm version is
+  required to regenerate the lockfile** (verified 2026-10-24, issue #45).
+  Two things to know if you ever edit it: the override spec must stay
+  **character-identical** to the `vitest` devDependency range or npm aborts
+  with `EOVERRIDE`, and the `"vitest": "$vitest"` reference form does *not*
+  resolve on npm 10.9.8 (`Unable to resolve reference $vitest`) — write the
+  range out literally. Vitest stays on 4 rather than 5 independently of all
+  this, because vitest 5 requires `@types/node@^22 || >=24` and this project
+  pins `^20`.
 - **No coverage report.** v8 coverage emits nothing under vitest 4's
   `projects` layout here, and a vitest-only percentage would be misleading
   anyway: the contract/invariant/drift layers assert on JSON and execute almost

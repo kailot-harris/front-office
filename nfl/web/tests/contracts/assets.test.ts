@@ -92,7 +92,18 @@ describe('remote image hosts are allow-listed for next/image', () => {
 
 describe('app shell assets', () => {
   it('a favicon is present', () => {
-    expect(fs.existsSync(path.join(REPO_WEB_ROOT, 'app', 'favicon.ico'))).toBe(true);
+    // Next.js App Router accepts several file-based icon conventions. This repo migrated
+    // from app/favicon.ico to app/icon.png (commits 731e831 / 4ae79fb, the Lombardi Trophy
+    // mark), which is equally valid - Next generates the <link rel="icon"> tag from either.
+    // Assert that AT LEAST ONE is present rather than pinning the test to one filename, so
+    // a future swap back (or to icon.svg) does not produce a false failure while still
+    // failing loudly if the app ships with no icon at all.
+    const candidates = ['icon.png', 'icon.svg', 'icon.ico', 'favicon.ico'];
+    const present = candidates.filter((f) => fs.existsSync(path.join(REPO_WEB_ROOT, 'app', f)));
+    expect(
+      present,
+      `no App Router icon found in web/app/ (looked for ${candidates.join(', ')})`,
+    ).not.toEqual([]);
   });
 
   it('public/ contains no stray large file outside animations/ and data/', () => {
