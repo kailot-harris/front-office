@@ -679,6 +679,104 @@ export const PlayoffMatchupsCatalogSchema = z
   })
   .strict();
 
+// 13b. playoff_bracket_2026.json -> PlayoffBracketSeason (lib/playoffTypes.ts)
+//
+// Deliberately NOT HistoricalSeriesSchema reused. That schema requires
+// gamesPlayed >= 2 and games[].length >= 2, which is right for a completed
+// historical season but wrong here: this payload covers the CURRENT season, and
+// a series still in progress legitimately has one game in it (the 2026 Finals
+// does). The minimums are 1 here, with `seriesComplete` carrying the
+// in-progress/finished distinction instead of it being implied by games count.
+const BracketLengthProbSchema = z
+  .object({
+    length: z.number().int().min(1).max(7),
+    label: z.string().min(2),
+    probability: prob,
+  })
+  .strict();
+
+const BracketForecastSchema = z
+  .object({
+    ratingBasis: z.string().min(5),
+    asOf: z.string(),
+    format: z.enum(['bo3', 'bo5', 'bo7']),
+    formatLabel: z.string().min(5),
+    teamHigh: z.string().min(2),
+    teamHighAbbr: z.string(),
+    teamLow: z.string().min(2),
+    teamLowAbbr: z.string(),
+    seedHigh: z.number().int().min(1).nullable(),
+    seedLow: z.number().int().min(1).nullable(),
+    netHighAdj: finiteNumber,
+    netLowAdj: finiteNumber,
+    pHighSeedWin: prob,
+    pLowSeedWin: prob,
+    predictedWinnerName: z.string().min(2),
+    predictedWinner: z.string(),
+    expectedGames: finiteNumber.min(1).max(7),
+    lengthDistribution: z.array(BracketLengthProbSchema).min(1),
+    resultStatus: z.enum(['correct', 'incorrect', 'pending']),
+    fairMlHigh: z.number().int().optional(),
+    fairMlLow: z.number().int().optional(),
+    avgSeriesGames: finiteNumber.min(1).max(7).optional(),
+  })
+  .strict();
+
+const BracketPredictionSchema = z
+  .object({
+    available: z.boolean(),
+    provenance: z.enum(['round1_reconstruction', 'archived_forecast', 'unavailable']),
+    provenanceLabel: z.string().min(5),
+    forecast: BracketForecastSchema.nullable(),
+  })
+  .strict()
+  // `available` and `forecast` must agree: an available prediction without
+  // numbers, or an unavailable one carrying numbers, is a producer bug.
+  .refine((p) => p.available === (p.forecast !== null), {
+    message: 'prediction.available must match whether forecast is present',
+  });
+
+export const BracketSeriesSchema = z
+  .object({
+    teamA: z.string().min(2),
+    teamNameA: z.string().min(2),
+    teamB: z.string().min(2),
+    teamNameB: z.string().min(2),
+    winner: z.string().min(2),
+    winnerName: z.string().min(2),
+    round: z.string().min(2),
+    gamesPlayed: z.number().int().min(1).max(7),
+    seriesLength: z.number().int().min(1).max(7),
+    games: z
+      .array(
+        z
+          .object({
+            gameDate: z.string().min(4),
+            teamA: z.string().min(2),
+            scoreA: z.number().int().positive(),
+            teamB: z.string().min(2),
+            scoreB: z.number().int().positive(),
+          })
+          .strict()
+      )
+      .min(1)
+      .max(7),
+    winsA: z.number().int().min(0).max(4),
+    winsB: z.number().int().min(0).max(4),
+    seriesComplete: z.boolean(),
+    prediction: BracketPredictionSchema,
+  })
+  .strict();
+
+export const PlayoffBracketSeasonSchema = z
+  .object({
+    season: z.number().int().min(1997).max(2100),
+    generatedAt: z.string(),
+    sourceNote: z.string(),
+    series: z.array(BracketSeriesSchema),
+  })
+  .strict();
+
 // 14. shots_index.json -> PlayerCatalogEntry[] (lib/shotTypes.ts)
 export const PlayerCatalogEntrySchema = z
   .object({

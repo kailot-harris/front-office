@@ -417,6 +417,40 @@ PIPELINE_STAGES <- list(
   ),
 
   # ---------------------------------------------------------------------------------------
+  # 6b. Current-Season Playoff Bracket: results beside predictions (GitHub issue #92)
+  #
+  # Placed immediately after playoff_simulator and well before export_web_json, which is
+  # this artifact's only consumer — the exporter reshapes it into
+  # web/public/data/playoff_bracket_2026.json and must not read a stale copy.
+  #
+  # group = NULL (serial) on purpose, not in a parallel group: the script source()s
+  # tools/series_length_predictor.R, which in turn source()s playoff_simulator.R, and
+  # playoff_simulator.R self-runs a 10,000-sim suite on source. Running that inside a
+  # future_lapply worker alongside the other Monte Carlo stages is exactly the parallel
+  # memory pressure the pipeline's own OOM note warns about, for a stage that takes ~2s
+  # serially.
+  #
+  # entry_fn (not call_fn): the script self-runs via its own `if (!interactive())` guard,
+  # so entry_fn verifies the entry point exists without invoking it a second time — the
+  # double-execution trap documented in run_stage().
+  # ---------------------------------------------------------------------------------------
+  playoff_bracket_current = list(
+    id          = "playoff_bracket_current",
+    script      = "build_playoff_bracket_2026.R",
+    description = "Build Current-Season Playoff Bracket (resolved results + per-series predictions)",
+    call_fn     = NULL,
+    entry_fn    = "build_playoff_bracket_current",
+    output      = CACHE_PLAYOFF_BRACKET_CURRENT,
+    # inputs: box_scores_cache.rds (the resolved series and the season_type == 2 ratings
+    # behind the Round 1 reconstruction; a missing file yields an empty, clearly labeled
+    # artifact rather than a crash). series_length_predictions.rds holds the archived
+    # 2026-10-04 semifinal forecasts, read verbatim and never rewritten; if it is missing,
+    # those rounds are marked prediction-unavailable.
+    inputs      = c(CACHE_TEAM_BOX, file.path(CACHE_DIR, "series_length_predictions.rds")),
+    group       = NULL
+  ),
+
+  # ---------------------------------------------------------------------------------------
   # 7. Portfolio Risk Management & Capital Preservation
   # ---------------------------------------------------------------------------------------
   risk_management_engine = list(

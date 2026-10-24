@@ -94,3 +94,100 @@ export interface PlayoffMatchupsCatalog {
   sampleMatchups: PlayoffSeriesMatchupResult[];
   historicalBrackets?: Record<string, HistoricalSeries[]>;
 }
+
+// ==============================================================================
+// Current-season bracket: prediction beside result (GitHub issue #92)
+// Produced by build_playoff_bracket_2026.R, shipped by export_web_json.R as
+// public/data/playoff_bracket_2026.json.
+// ==============================================================================
+
+/** One point on a series-length distribution, e.g. P(series goes 4 games). */
+export interface BracketLengthProb {
+  length: number;
+  label: string;
+  probability: number;
+}
+
+/**
+ * The numbers behind one series prediction.
+ *
+ * `ratingBasis` is load-bearing and not decoration: the rounds on this page do
+ * NOT share a ratings basis. Round 1 is reconstructed from regular-season games
+ * only; the Semifinals carry the 2026-10-04 archived forecast, whose ratings
+ * pooled regular-season and Round 1 postseason games. Always render it next to
+ * the numbers so a reader knows which they are looking at.
+ */
+export interface BracketForecast {
+  ratingBasis: string;
+  /** Date the forecast was made, for archived rounds. Empty for reconstructions. */
+  asOf: string;
+  format: 'bo3' | 'bo5' | 'bo7';
+  formatLabel: string;
+  teamHigh: string;
+  teamHighAbbr: string;
+  teamLow: string;
+  teamLowAbbr: string;
+  /** Regular-season seed, when the prediction was built from derived seeds. */
+  seedHigh: number | null;
+  seedLow: number | null;
+  netHighAdj: number;
+  netLowAdj: number;
+  pHighSeedWin: number;
+  pLowSeedWin: number;
+  predictedWinnerName: string;
+  predictedWinner: string;
+  expectedGames: number;
+  lengthDistribution: BracketLengthProb[];
+  /** 'pending' while the series is still being played — not a wrong call. */
+  resultStatus: 'correct' | 'incorrect' | 'pending';
+  /** Archived rounds only: fair moneyline and average games as stored. */
+  fairMlHigh?: number;
+  fairMlLow?: number;
+  avgSeriesGames?: number;
+}
+
+/**
+ * `provenance` distinguishes the two deliberately different prediction sources:
+ *   - 'round1_reconstruction' — retrodicted now, no archived forecast existed.
+ *   - 'archived_forecast'     — copied verbatim from the pre-series archive.
+ *   - 'unavailable'           — no prediction recorded; `forecast` is null.
+ */
+export interface BracketPrediction {
+  available: boolean;
+  provenance: 'round1_reconstruction' | 'archived_forecast' | 'unavailable';
+  provenanceLabel: string;
+  forecast: BracketForecast | null;
+}
+
+/**
+ * Carries the same ten fields as `HistoricalSeries` so this payload and the
+ * historical archive speak one shape, plus the current-season extras.
+ *
+ * `seriesComplete` matters: the box-score feed only contains games already
+ * played, so a series in progress is indistinguishable from a short one by
+ * games count alone. When it is false, `winner`/`winnerName` mean "currently
+ * leading", not "won".
+ */
+export interface BracketSeries {
+  teamA: string;
+  teamNameA: string;
+  teamB: string;
+  teamNameB: string;
+  winner: string;
+  winnerName: string;
+  round: string;
+  gamesPlayed: number;
+  seriesLength: number;
+  games: HistoricalGame[];
+  winsA: number;
+  winsB: number;
+  seriesComplete: boolean;
+  prediction: BracketPrediction;
+}
+
+export interface PlayoffBracketSeason {
+  season: number;
+  generatedAt: string;
+  sourceNote: string;
+  series: BracketSeries[];
+}

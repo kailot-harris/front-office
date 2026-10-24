@@ -23,6 +23,7 @@ import {
   OffseasonTeamProfileSchema,
   OffseasonTransactionSchema,
   PlayoffMatchupsCatalogSchema,
+  PlayoffBracketSeasonSchema,
   PlayerCatalogEntrySchema,
   ShotsMetadataSchema,
   PlayerShotDataSchema,
@@ -128,6 +129,10 @@ describe('Strict Zod schema contracts against public/data/*.json', () => {
 
   it('playoff_series_matchups.json matches PlayoffMatchupsCatalogSchema', () => {
     assertValid(PlayoffMatchupsCatalogSchema, d.playoffSeries, 'playoff_series_matchups.json');
+  });
+
+  it('playoff_bracket_2026.json matches PlayoffBracketSeasonSchema', () => {
+    assertValid(PlayoffBracketSeasonSchema, d.playoffBracket2026, 'playoff_bracket_2026.json');
   });
 
   it('shots_index.json matches PlayerCatalogEntrySchema', () => {

@@ -231,6 +231,7 @@ describe('Domain & mathematical invariants: clutch, defense, playerDna, coaches,
     offseasonDraft,
     offseasonTeams,
     playoffSeries,
+    playoffBracket2026,
     shotsIndex,
     shotsMetadata,
   } = loadAllDatasets();
@@ -322,6 +323,93 @@ describe('Domain & mathematical invariants: clutch, defense, playerDna, coaches,
         `${m.teamA} vs ${m.teamB} gameDistributions sum=${distSum.toFixed(1)}`
       ).toBeLessThanOrEqual(1.0);
     }
+  });
+
+  it('playoff_bracket_2026.json: series arithmetic is self-consistent and prediction distributions are proper', () => {
+    const bracket = playoffBracket2026;
+    const maxWinsByRound: Record<string, number> = { 'Round 1': 2, Semifinals: 3, Finals: 4 };
+
+    for (const s of bracket.series) {
+      const label = `${s.teamA} vs ${s.teamB} (${s.round})`;
+
+      // Resolved half: wins must account for every game played, and the
+      // winner/leader column must be the side that actually has more wins.
+      expect(s.winsA + s.winsB, `${label} wins do not sum to gamesPlayed`).toBe(s.gamesPlayed);
+      expect(s.seriesLength, `${label} seriesLength != gamesPlayed`).toBe(s.gamesPlayed);
+      expect(s.games, `${label} games[] length != gamesPlayed`).toHaveLength(s.gamesPlayed);
+      const leader = s.winsA > s.winsB ? s.teamA : s.teamB;
+      expect(s.winner, `${label} winner is not the side with more wins`).toBe(leader);
+
+      // seriesComplete must agree with the round's win threshold rather than
+      // being implied by games played — the in-progress Finals depends on this.
+      const threshold = maxWinsByRound[s.round];
+      expect(threshold, `${label} unexpected round label`).toBeDefined();
+      expect(s.seriesComplete, `${label} seriesComplete disagrees with win threshold`).toBe(
+        Math.max(s.winsA, s.winsB) >= threshold
+      );
+
+      const f = s.prediction.forecast;
+      if (f === null) continue;
+
+      expect(f.pHighSeedWin + f.pLowSeedWin, `${label} win probs do not sum to 1`).toBeCloseTo(1, 6);
+      const distSum = sum(f.lengthDistribution.map((d) => d.probability));
+      expect(distSum, `${label} lengthDistribution sums to ${distSum}`).toBeCloseTo(1, 4);
+
+      // expectedGames must be the mean of the distribution it ships with.
+      const mean = sum(f.lengthDistribution.map((d) => d.length * d.probability));
+      expect(f.expectedGames, `${label} expectedGames != mean of lengthDistribution`).toBeCloseTo(mean, 3);
+
+      // predictedWinner must be whichever side the probability actually favours.
+      const favoured = f.pHighSeedWin >= 0.5 ? f.teamHigh : f.teamLow;
+      expect(f.predictedWinnerName, `${label} predictedWinnerName is not the favoured side`).toBe(favoured);
+
+      // resultStatus must reflect the real outcome, and must be 'pending'
+      // (never 'incorrect') while the series is still being played.
+      const expected = !s.seriesComplete
+        ? 'pending'
+        : f.predictedWinnerName === s.winnerName
+          ? 'correct'
+          : 'incorrect';
+      expect(f.resultStatus, `${label} resultStatus is wrong`).toBe(expected);
+    }
+  });
+
+  it('playoff_bracket_2026.json: each round carries its own prediction provenance, and none claims to be held out', () => {
+    const bracket = playoffBracket2026;
+    expect(bracket.series.length, 'bracket has no series').toBeGreaterThan(0);
+
+    const round1 = bracket.series.filter((s) => s.round === 'Round 1');
+    const semis = bracket.series.filter((s) => s.round === 'Semifinals');
+    expect(round1.length, 'expected 4 Round 1 series').toBe(4);
+    expect(semis.length, 'expected 2 Semifinals series').toBe(2);
+
+    // Round 1 has no archived forecast and is a reconstruction; the Semifinals
+    // carry the dated pre-series archive. The two rounds use different ratings
+    // bases on purpose (the archive pooled postseason games into its ratings),
+    // so each must state its own basis and they must not be interchangeable.
+    for (const s of round1) {
+      expect(s.prediction.provenance, `${s.teamA} vs ${s.teamB}`).toBe('round1_reconstruction');
+      expect(s.prediction.forecast!.asOf, 'a reconstruction has no as-of date').toBe('');
+      expect(s.prediction.forecast!.ratingBasis).toContain('season_type == 2');
+    }
+    for (const s of semis) {
+      expect(s.prediction.provenance, `${s.teamA} vs ${s.teamB}`).toBe('archived_forecast');
+      expect(s.prediction.forecast!.asOf, 'an archived forecast must be dated').toMatch(
+        /^\d{4}-\d{2}-\d{2}$/
+      );
+    }
+    const bases = new Set(bracket.series.filter((s) => s.prediction.forecast).map((s) => s.prediction.forecast!.ratingBasis));
+    expect(bases.size, 'Round 1 and the Semifinals must not share one ratings basis').toBeGreaterThan(1);
+
+    // Neither round is a clean held-out test: Round 1 is retrodicted after the
+    // fact, and the archived semifinal ratings pooled in Round 1's playoff games.
+    // No label in the payload may claim otherwise. The phrase is matched as a
+    // regex rather than written out, so this guard does not itself plant the
+    // very wording it exists to forbid.
+    const haystack = JSON.stringify(bracket).toLowerCase();
+    expect(haystack, 'a prediction label claims a held-out sample').not.toMatch(
+      /out[-\s]of[-\s]sample/
+    );
   });
 
   it('shots_metadata.json & shots_index.json: 14 canonical zones and player shot file lengths match catalog total_shots', () => {

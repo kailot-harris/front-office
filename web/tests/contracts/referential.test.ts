@@ -20,6 +20,7 @@ describe('Cross-dataset referential integrity', () => {
     offseasonDraft,
     offseasonTeams,
     playoffSeries,
+    playoffBracket2026,
     shotsIndex,
   } = loadAllDatasets();
 
@@ -86,6 +87,69 @@ describe('Cross-dataset referential integrity', () => {
     expect(
       mismatches,
       `Franchise display name drift across team datasets:\n  • ${mismatches.join('\n  • ')}`
+    ).toEqual([]);
+  });
+
+  it('playoff_bracket_2026.json abbreviations and full names resolve against WNBA_TEAMS_METADATA', () => {
+    const canonical = new Set<string>([...WNBA_TEAMS]);
+    const mismatches: string[] = [];
+
+    const checkTeam = (abbr: string, fullName: string, where: string) => {
+      if (!canonical.has(abbr)) {
+        mismatches.push(`${where}: "${abbr}" is not a canonical WNBA abbreviation`);
+        return;
+      }
+      const expectedFull = WNBA_TEAMS_METADATA[abbr as keyof typeof WNBA_TEAMS_METADATA].fullName;
+      if (fullName !== expectedFull) {
+        mismatches.push(`${where}: ${abbr} full name = "${fullName}" (expected "${expectedFull}")`);
+      }
+    };
+
+    for (const s of playoffBracket2026.series) {
+      const where = `playoff_bracket_2026.json[${s.round}] ${s.teamA} vs ${s.teamB}`;
+      checkTeam(s.teamA, s.teamNameA, where);
+      checkTeam(s.teamB, s.teamNameB, where);
+      checkTeam(s.winner, s.winnerName, `${where} winner`);
+
+      // Every game must be between the two teams the series says it is between.
+      for (const g of s.games) {
+        for (const abbr of [g.teamA, g.teamB]) {
+          if (abbr !== s.teamA && abbr !== s.teamB) {
+            mismatches.push(`${where}: game on ${g.gameDate} involves ${abbr}, not a series participant`);
+          }
+        }
+      }
+
+      // The prediction's two sides must be the same two teams as the result's.
+      const f = s.prediction.forecast;
+      if (f) {
+        const predicted = [f.teamHigh, f.teamLow].sort();
+        const actual = [s.teamNameA, s.teamNameB].sort();
+        if (predicted[0] !== actual[0] || predicted[1] !== actual[1]) {
+          mismatches.push(
+            `${where}: prediction covers ${predicted.join(' / ')} but the series is ${actual.join(' / ')}`
+          );
+        }
+      }
+    }
+
+    expect(
+      mismatches,
+      `playoff_bracket_2026.json referential drift:\n  • ${mismatches.join('\n  • ')}`
+    ).toEqual([]);
+  });
+
+  it('playoff_bracket_2026.json teams are a subset of the playoff_series_matchups.json team profiles', () => {
+    const profileAbbrs = new Set(Object.keys(playoffSeries.teams));
+    const bracketAbbrs = new Set<string>();
+    for (const s of playoffBracket2026.series) {
+      bracketAbbrs.add(s.teamA);
+      bracketAbbrs.add(s.teamB);
+    }
+    const missing = [...bracketAbbrs].filter((a) => !profileAbbrs.has(a));
+    expect(
+      missing,
+      `playoff_bracket_2026.json references teams with no playoff_series_matchups.json profile: ${missing.join(', ')}`
     ).toEqual([]);
   });
 
