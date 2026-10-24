@@ -1044,17 +1044,22 @@ run_export_web_datasets <- function() {
           )
         })
 
-        est_dead_money <- round(runif(1, min = 8.5, max = 28.0), 1)
-        est_cap_space <- round(max(0, NFL_CAP_CEILING - (min(total_active_apy * 0.90, 285) + est_dead_money)), 1)
-
+        # NOTE (issue #48): `dead_money`, `estimated_cap_space` and `cap_health_rating`
+        # used to be published here. `dead_money` was an unseeded `runif(1, 8.5, 28.0)`
+        # draw and the other two were derived from it, so the payload changed on every
+        # run and asserted figures about real teams that no input data supported.
+        # They were removed rather than re-derived: nflreadr 1.5.1's `load_contracts()`
+        # exposes no dead-money or void-year charge (see this task's investigation
+        # notes), and its nested `season_history$cap_number` cannot distinguish a
+        # release-triggered dead charge from an expired contract's final-year cap
+        # number - summing inactive contracts' current-season `cap_number` yields
+        # $420M-$1.02B per team, i.e. every historical contract, not dead money.
+        # Do not reintroduce these fields without a real per-team dead-money source.
         list(
           team = tm,
           total_active_contracts = nrow(tm_contracts),
           total_active_apy = round(total_active_apy, 1),
           total_guaranteed = round(total_guaranteed, 1),
-          estimated_cap_space = est_cap_space,
-          dead_money = est_dead_money,
-          cap_health_rating = if (est_cap_space > 25) "Healthy" else if (est_cap_space > 10) "Moderate" else "Constrained",
           positional_spending = pos_breakdown,
           top_paid_players = top_paid
         )

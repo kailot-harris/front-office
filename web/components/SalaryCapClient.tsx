@@ -57,9 +57,6 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
         { key: 'total_active_contracts', label: 'Active Contracts' },
         { key: 'total_active_apy', label: 'Active APY ($M)' },
         { key: 'total_guaranteed', label: 'Guaranteed ($M)' },
-        { key: 'estimated_cap_space', label: 'Est Cap Space ($M)' },
-        { key: 'dead_money', label: 'Dead Money ($M)' },
-        { key: 'cap_health_rating', label: 'Cap Health' },
       ],
       'nfl-team-cap-profiles'
     );
@@ -237,20 +234,6 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
                       >
                         Guaranteed ($M) {sortField === 'total_guaranteed' && (sortAsc ? '↑' : '↓')}
                       </th>
-                      <th
-                        className="px-3 py-3 text-right cursor-pointer hover:text-white"
-                        onClick={() => {
-                          if (sortField === 'estimated_cap_space') setSortAsc(!sortAsc);
-                          else {
-                            setSortField('estimated_cap_space');
-                            setSortAsc(false);
-                          }
-                        }}
-                      >
-                        Est Space ($M) {sortField === 'estimated_cap_space' && (sortAsc ? '↑' : '↓')}
-                      </th>
-                      <th className="px-3 py-3 text-right">Dead ($M)</th>
-                      <th className="px-4 py-3 text-center">Cap Health</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
@@ -278,35 +261,6 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
                           </td>
                           <td className="px-3 py-2.5 text-right text-slate-300">
                             ${t.total_guaranteed.toFixed(1)}M
-                          </td>
-                          <td className="px-3 py-2.5 text-right font-bold">
-                            <span
-                              className={
-                                t.estimated_cap_space > 20
-                                  ? 'text-emerald-400'
-                                  : t.estimated_cap_space > 5
-                                  ? 'text-amber-400'
-                                  : 'text-rose-400'
-                              }
-                            >
-                              ${t.estimated_cap_space.toFixed(1)}M
-                            </span>
-                          </td>
-                          <td className="px-3 py-2.5 text-right text-slate-400">
-                            ${t.dead_money.toFixed(1)}M
-                          </td>
-                          <td className="px-4 py-2.5 text-center">
-                            <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-sans font-semibold ${
-                                t.cap_health_rating === 'Healthy'
-                                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                                  : t.cap_health_rating === 'Moderate'
-                                  ? 'bg-amber-950 text-amber-400 border border-amber-800'
-                                  : 'bg-rose-950 text-rose-400 border border-rose-800'
-                              }`}
-                            >
-                              {t.cap_health_rating}
-                            </span>
                           </td>
                         </tr>
                       );
