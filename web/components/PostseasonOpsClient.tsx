@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import Link from 'next/link';
 import { PostseasonOpsData } from '@/lib/types';
 import {
   Trophy,
@@ -12,6 +13,7 @@ import {
   Award,
   TrendingUp,
   Download,
+  Swords,
 } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { exportToCsv } from '@/lib/exportToCsv';
@@ -251,13 +253,13 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
                   </div>
                 </div>
 
-                <a
+                <Link
                   href="/series"
                   className="flex items-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-amber-500/20 whitespace-nowrap"
                 >
                   <Swords className="w-4 h-4" />
                   <span>Simulate Series</span>
-                </a>
+                </Link>
               </div>
             </div>
           </div>
