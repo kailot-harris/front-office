@@ -235,6 +235,23 @@ CACHE_RAPM_RATINGS        <- file.path(CACHE_DIR, "rapm_ratings.rds")
 CACHE_PBP_RAW               <- file.path(CACHE_DIR, "wnba_espn_pbp_cache.rds")
 CACHE_PLAYER_PBP_FEATURES   <- file.path(CACHE_DIR, "player_pbp_features.rds")
 
+# Current-season playoff bracket with per-series model predictions (GitHub issue #92).
+# Derivation of the filename: it is NOT the `playoff_bracket_results_<year>.rds` family
+# written by tools/generate_historical_season_snapshots.R. Those hold resolved actuals ONLY,
+# one file per completed historical season (2022-2025), and are consumed by
+# export_web_json.R's `historicalBrackets` payload. This artifact is a different thing: a
+# single CURRENT_SEASON file that carries the resolved series AND, per series, the prediction
+# the model made (or can reconstruct) for it — so the name says "bracket" (the whole
+# prediction-plus-result object) rather than "bracket_results" (actuals only), and pins the
+# season explicitly because the prediction half's provenance is season-specific and does not
+# generalize backwards (there is no archived prediction record for any season before 2026).
+# Written by build_playoff_bracket_2026.R; read by export_web_json.R.
+# Year is interpolated from CURRENT_SEASON rather than written as a literal 2026, so the
+# constant tracks config.R's own season pointer instead of drifting from it.
+CACHE_PLAYOFF_BRACKET_CURRENT <- file.path(
+  CACHE_DIR, sprintf("playoff_bracket_%d.rds", CURRENT_SEASON)
+)
+
 # ------------------------------------------------------------------------------------------
 # RAPM & Opponent Adjustments (GitHub issues #71, #76, #77, #78, #79, #82)
 # ------------------------------------------------------------------------------------------

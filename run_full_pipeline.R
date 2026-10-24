@@ -403,6 +403,10 @@ future_lapply(props_engines, function(e) {
 # Output: cache/playoff_series_wnba_demo.rds
 run_registered_stage("playoff_simulator")
 
+# 6b. Current-Season Playoff Bracket: resolved results beside per-series predictions (#92)
+# Output: cache/playoff_bracket_2026.rds (CACHE_PLAYOFF_BRACKET_CURRENT)
+run_registered_stage("playoff_bracket_current")
+
 # 7. Portfolio Risk Management & Capital Preservation
 # Output: cache/risk_state.rds
 run_registered_stage("risk_management_engine")

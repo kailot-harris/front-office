@@ -165,6 +165,11 @@ describe('TypeScript interface vs JSON payload key parity', () => {
       optionalFields: ['updatedAt', 'season'],
     },
     {
+      file: 'playoff_bracket_2026.json',
+      tsFile: 'lib/playoffTypes.ts',
+      interfaceName: 'PlayoffBracketSeason',
+    },
+    {
       file: 'shots_metadata.json',
       tsFile: 'lib/shotTypes.ts',
       interfaceName: 'ShotsMetadata',
@@ -193,4 +198,67 @@ describe('TypeScript interface vs JSON payload key parity', () => {
       ).toEqual([]);
     }
   );
+});
+
+/**
+ * playoff_bracket_2026.json is an object whose payload lives in a nested array,
+ * so the arrayCases runner above (which needs an array at the file root) cannot
+ * reach it and the objectCases runner only checks the four top-level keys. These
+ * cases walk the nested interfaces explicitly, which is where the R writer and
+ * the TypeScript interface would otherwise be free to drift.
+ */
+describe('PlayoffBracketSeason nested interface vs JSON key parity', () => {
+  const bracket = readJsonFile<{
+    series: Array<Record<string, unknown> & { prediction: Record<string, unknown> }>;
+  }>('playoff_bracket_2026.json');
+
+  const assertParity = (
+    interfaceName: string,
+    rows: Record<string, unknown>[],
+    optionalFields: string[] = []
+  ) => {
+    expect(rows.length, `no rows to check for ${interfaceName}`).toBeGreaterThan(0);
+    const tsFields = extractInterfaceFields('lib/playoffTypes.ts', interfaceName);
+    const jsonKeys = collectJsonKeys(rows);
+
+    const missingInJson = [...tsFields].filter(
+      (f) => !optionalFields.includes(f) && !jsonKeys.has(f)
+    );
+    const undocumentedInTs = [...jsonKeys].filter((k) => !tsFields.has(k));
+
+    expect(
+      missingInJson,
+      `${interfaceName} declares fields missing from playoff_bracket_2026.json: ${missingInJson.join(', ')}`
+    ).toEqual([]);
+    expect(
+      undocumentedInTs,
+      `playoff_bracket_2026.json ships keys not declared on ${interfaceName}: ${undocumentedInTs.join(', ')}`
+    ).toEqual([]);
+  };
+
+  it('BracketSeries matches the keys of every series row', () => {
+    assertParity('BracketSeries', bracket.series);
+  });
+
+  it('BracketPrediction matches the keys of every prediction block', () => {
+    assertParity(
+      'BracketPrediction',
+      bracket.series.map((s) => s.prediction)
+    );
+  });
+
+  it('BracketForecast matches the keys of every non-null forecast', () => {
+    const forecasts = bracket.series
+      .map((s) => s.prediction.forecast as Record<string, unknown> | null)
+      .filter((f): f is Record<string, unknown> => f !== null);
+    assertParity('BracketForecast', forecasts);
+  });
+
+  it('BracketLengthProb matches the keys of every length-distribution point', () => {
+    const points = bracket.series
+      .map((s) => s.prediction.forecast as { lengthDistribution?: Record<string, unknown>[] } | null)
+      .filter((f): f is { lengthDistribution: Record<string, unknown>[] } => f !== null)
+      .flatMap((f) => f.lengthDistribution);
+    assertParity('BracketLengthProb', points);
+  });
 });

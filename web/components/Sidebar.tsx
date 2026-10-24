@@ -106,6 +106,13 @@ export const Sidebar: React.FC = () => {
       desc: 'Series Monte Carlo simulation',
     },
     {
+      href: '/bracket-2026',
+      label: '2026 Bracket',
+      badge: 'Postseason',
+      icon: Trophy,
+      desc: 'Prediction beside result, per round',
+    },
+    {
       href: '/diagnostics',
       label: 'Diagnostics',
       badge: 'Calibration',
