@@ -235,6 +235,23 @@ CACHE_RAPM_RATINGS        <- file.path(CACHE_DIR, "rapm_ratings.rds")
 CACHE_PBP_RAW               <- file.path(CACHE_DIR, "wnba_espn_pbp_cache.rds")
 CACHE_PLAYER_PBP_FEATURES   <- file.path(CACHE_DIR, "player_pbp_features.rds")
 
+# Schedule cache (GitHub issue #93), added 2026-10-24.
+#
+# DERIVATION / WHY THIS PATH AND NOT A BARE LITERAL:
+#   * Content: one row per TEAM per SCHEDULED GAME (long form, 2x the game count) for
+#     CURRENT_SEASON, written by daily_ingest.R's daily_schedule_ingest() from
+#     wehoop::load_wnba_schedule(seasons = CURRENT_SEASON). Unlike CACHE_TEAM_BOX it
+#     includes games that have NOT been played yet (`status_type_completed == FALSE`),
+#     which is the entire point: rest/back-to-back for an unplayed game cannot be
+#     derived from box scores, only from a schedule.
+#   * Lives in CACHE_DIR (runtime-generated, re-fetched daily, disposable) rather than
+#     data/ (loose hand-curated artifacts), matching CACHE_PBP_RAW's placement rule.
+#   * Filename deliberately differs from wehoop's own `wnba_schedule` object name so a
+#     stale cache is never confused with a live fetch in a log line.
+#   * Consumers (fatigue_travel_engine.R's real/unplayed-slate path) must read this
+#     constant, never the literal "wnba_schedule_cache.rds".
+CACHE_WNBA_SCHEDULE         <- file.path(CACHE_DIR, "wnba_schedule_cache.rds")
+
 # ------------------------------------------------------------------------------------------
 # RAPM & Opponent Adjustments (GitHub issues #71, #76, #77, #78, #79, #82)
 # ------------------------------------------------------------------------------------------
