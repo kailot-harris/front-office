@@ -103,37 +103,42 @@ describe('standings — per-team arithmetic', () => {
     }
   });
 
-  it('games_played is internally consistent (no stale rows)', () => {
-    // RULE: games_played may span at most 2 games across the league, and no more than
-    // a quarter of teams may sit at the trailing edge of that spread.
+  it('games_played equals the schedule-derived completed-game count, per team', () => {
+    // RULE: for every team, games_played === schedule_games_completed. Exactly. No slack.
     //
-    // Why 2 and not 1 (the old rule, which was red on most days): three cohorts coexist
-    // legitimately mid-week. If weeks 1..W are complete, teams whose bye has already
-    // passed sit at W-1 while the rest sit at W, and once the first game of week W+1
-    // kicks off its two participants jump to W+1 - a 2-game spread with nothing wrong.
-    // Observed 2026-10-23 (week 7 in progress, 1 of 14 games played, 6 byes taken):
-    // {5: 6 teams, 6: 24 teams, 7: 2 teams}. The old <= 1 rule failed on that, which
-    // would have made this suite useless as a daily pre-deploy gate.
+    // These are two independent derivations of the same quantity. games_played travels the
+    // model's team-stats path (team_ratings_engine.R -> ratings_df -> export);
+    // schedule_games_completed is counted straight off CACHE_SCHEDULES by the exporter
+    // (CURRENT_SEASON, game_type == 'REG', both final scores non-NA). If the published payload
+    // was assembled from caches that are out of step with each other - the classic case being
+    // ratings carried over from an earlier run while the schedule moved on - the two disagree
+    // and this test names the teams.
     //
-    // What it still catches: a genuinely stale row carried over from an earlier export
-    // lags 3+ games behind the live ones, and a partially-refreshed file leaves a LARGE
-    // bloc behind rather than a bye-sized one. At most 6 teams can be on a bye in any
-    // single NFL week, so a trailing cohort bigger than teams/4 (8 of 32) cannot be
-    // explained by byes and is a data-freshness defect.
-    const counts = teams.map((t) => t.games_played);
-    const max = Math.max(...counts);
-    const min = Math.min(...counts);
+    // Why not the old rule: this check used to be a league-wide spread heuristic (max - min <= 2,
+    // with the trailing cohort capped at teams/4). That was a proxy, and a proxy with a shelf
+    // life - the trailing cohort is every team whose bye has already passed, which grows all
+    // season, so by roughly week 11 the bound would have tripped on perfectly correct data
+    // (issue #44). A test that false-fails cannot gate the daily redeploy. The schedule is
+    // ground truth; compare against it instead of guessing from the shape of the distribution.
+    const mismatched = teams
+      .filter((t) => t.games_played !== t.schedule_games_completed)
+      .map((t) => `${t.team}: games_played=${t.games_played} vs schedule=${t.schedule_games_completed}`);
     expect(
-      max - min,
-      `games_played spans ${min}..${max}; an in-progress week plus byes explains at most 2`,
-    ).toBeLessThanOrEqual(2);
+      mismatched,
+      'games_played disagrees with the schedule-derived completed-game count. One of the ' +
+        'upstream caches is stale relative to the other - re-run the pipeline rather than ' +
+        'relaxing this assertion. Offenders: ' + mismatched.join('; '),
+    ).toEqual([]);
 
-    const trailing = counts.filter((n) => n <= max - 2);
-    expect(
-      trailing.length,
-      `${trailing.length} teams are 2+ games behind the league leader (${max}); ` +
-        'byes can only account for 6, so this looks like stale or partially-refreshed rows',
-    ).toBeLessThanOrEqual(teams.length / 4);
+    // Sanity floor on the ground-truth field itself: a team cannot have played more than the
+    // regular season is long, and all 32 franchises must be represented.
+    expect(teams).toHaveLength(LEAGUE.TEAM_COUNT);
+    for (const t of teams) {
+      expect(t.schedule_games_completed, `${t.team} schedule count out of range`)
+        .toBeGreaterThanOrEqual(0);
+      expect(t.schedule_games_completed, `${t.team} schedule count out of range`)
+        .toBeLessThanOrEqual(LEAGUE.SEASON_GAMES);
+    }
   });
 
   it('deeper playoff rounds are never more likely than shallower ones', () => {

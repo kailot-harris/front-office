@@ -7,6 +7,13 @@ export interface TeamStanding {
   division: string;
   rank: number;
   games_played: number;
+  /**
+   * Completed CURRENT_SEASON regular-season games for this team, counted independently
+   * off CACHE_SCHEDULES by the R exporter (issue #44). `games_played` comes from the
+   * model's team-stats path; this one comes from the schedule. They must be equal, and
+   * `tests/contracts/invariants.test.ts` asserts that per team as a staleness gate.
+   */
+  schedule_games_completed: number;
   power_rating: number;
   prior_season_rating: number;
   off_epa_roll: number;
