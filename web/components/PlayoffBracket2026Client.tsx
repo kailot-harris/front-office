@@ -16,19 +16,29 @@ import type {
  * On the prediction provenance, which is the reason this page is shaped the way
  * it is: the rounds do NOT share a method, deliberately.
  *
- *  - Round 1 has no archived forecast — nothing in this project stored one — so
- *    it is reconstructed after the fact from regular-season ratings only.
+ *  - The Finals bracket row carries no archived forecast at all
+ *    (`prediction.available === false`); the Finals material rendered beside it
+ *    is a walk-forward reconstruction, passed in as `roundExtras` by the page.
  *  - The Semifinals carry the forecast actually recorded on 2026-10-04, before
  *    either series was played. Those are kept exactly as they were recorded,
  *    including the fact that their ratings pooled Round 1's playoff games in.
+ *  - Round 1 has no archived forecast — nothing in this project stored one — so
+ *    it is reconstructed after the fact from regular-season ratings only.
  *
- * Neither round is a clean held-out test, and this component never says it is.
+ * No round is a clean held-out test, and this component never says it is.
  * Every prediction renders its own `provenanceLabel` and `ratingBasis` straight
  * from the payload, so the basis travels with the number instead of being
- * summarised once at the top of the page and lost.
+ * summarised once at the top of the page and lost. Rounds are listed
+ * newest-first (#98), which is presentation order only: nothing about a round's
+ * provenance depends on where it sits on the page.
  */
 
-const ROUND_ORDER = ['Round 1', 'Semifinals', 'Finals'] as const;
+/**
+ * Presentation order: newest round first. Any label not listed here is still
+ * rendered, appended after these (see `rounds` below), so an unexpected round
+ * label is never silently dropped.
+ */
+const ROUND_ORDER = ['Finals', 'Semifinals', 'Round 1'] as const;
 
 function pct(p: number): string {
   return `${(p * 100).toFixed(1)}%`;
@@ -334,8 +344,22 @@ function SeriesCard({ series }: { series: BracketSeries }) {
   );
 }
 
-export function PlayoffBracket2026Client({ bracket }: { bracket: PlayoffBracketSeason }) {
+export function PlayoffBracket2026Client({
+  bracket,
+  roundExtras,
+}: {
+  bracket: PlayoffBracketSeason;
+  /**
+   * Extra, round-specific content rendered immediately after that round's
+   * series cards — used by the page to keep the Finals tables and animation
+   * adjacent to the Finals round section (#98). Keyed by round label; a key
+   * with no matching series is still rendered (after the known rounds), so a
+   * missing or empty bracket artifact never hides the Finals material.
+   */
+  roundExtras?: Record<string, React.ReactNode>;
+}) {
   const { series } = bracket;
+  const extraKeys = Object.keys(roundExtras ?? {});
 
   // Empty state: no artifact, or an artifact with no series. `sourceNote` says
   // which, so the page is never silently blank.
@@ -355,6 +379,12 @@ export function PlayoffBracket2026Client({ bracket }: { bracket: PlayoffBracketS
               'The postseason box-score cache is empty or missing. Run the pipeline to populate it.'}
           </p>
         </div>
+        {/* Fail-safe: the bracket artifact can be missing while the Finals
+            payloads are present, so round extras still render (each with its
+            own empty state) rather than vanishing with the tree. */}
+        {extraKeys.map((k) => (
+          <React.Fragment key={k}>{roundExtras?.[k]}</React.Fragment>
+        ))}
       </div>
     );
   }
@@ -365,7 +395,10 @@ export function PlayoffBracket2026Client({ bracket }: { bracket: PlayoffBracketS
   const extraRounds = Array.from(new Set(series.map((s) => s.round))).filter(
     (r) => !ROUND_ORDER.includes(r as (typeof ROUND_ORDER)[number])
   );
-  const rounds: string[] = [...knownRounds, ...extraRounds];
+  // A round that only has extras (e.g. a missing Finals bracket row) still gets
+  // a section, so the Finals tables are never dropped along with the series.
+  const extrasOnly = extraKeys.filter((k) => !series.some((s) => s.round === k));
+  const rounds: string[] = [...knownRounds, ...extraRounds, ...extrasOnly];
 
   const scored = series.filter((s) => s.prediction.forecast && s.seriesComplete);
   const hits = scored.filter((s) => s.prediction.forecast!.resultStatus === 'correct').length;
@@ -379,10 +412,11 @@ export function PlayoffBracket2026Client({ bracket }: { bracket: PlayoffBracketS
         </h1>
         <p className="text-xs text-slate-400 max-w-3xl leading-relaxed">
           Every {bracket.season} postseason series, with the model&apos;s prediction beside the
-          outcome. The two rounds are predicted on different bases and each card states its own:
-          Round 1 is reconstructed after the fact, because no Round 1 forecast was ever recorded;
-          the Semifinals show the forecast as it stood on the day it was made and are not
-          recomputed.
+          outcome, newest round first. The rounds are predicted on different bases and each card
+          states its own: the Finals bracket row has no recorded forecast, and the Finals
+          material below it is a walk-forward reconstruction; the Semifinals show the forecast as
+          it stood on the day it was made and are not recomputed; Round 1 is reconstructed after
+          the fact, because no Round 1 forecast was ever recorded.
         </p>
         {scored.length > 0 ? (
           <p className="text-xs text-slate-500 font-mono">
@@ -403,11 +437,15 @@ export function PlayoffBracket2026Client({ bracket }: { bracket: PlayoffBracketS
                 {rows[0]?.prediction.provenanceLabel}
               </p>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {rows.map((s) => (
-                <SeriesCard key={`${s.round}-${s.teamA}-${s.teamB}`} series={s} />
-              ))}
-            </div>
+            {rows.length > 0 ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {rows.map((s) => (
+                  <SeriesCard key={`${s.round}-${s.teamA}-${s.teamB}`} series={s} />
+                ))}
+              </div>
+            ) : null}
+            {/* This round's own extra content, inside this round's section. */}
+            {roundExtras?.[round] ?? null}
           </section>
         );
       })}

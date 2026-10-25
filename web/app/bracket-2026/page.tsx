@@ -159,23 +159,38 @@ export default function Bracket2026Page() {
   const backtest = getFinalsBacktest();
   const showTrajectory = hasTrajectoryMedia(backtest.season);
 
+  /**
+   * The page reads newest-round-first (#98): Finals, then Semifinals, then
+   * Round 1. The Finals per-game table, the series backtest and the trajectory
+   * figure are therefore handed to the bracket component as that round's own
+   * content, so they render inside the Finals section instead of sitting below
+   * every other round. They are built here, in the server component, because
+   * they depend on the fail-safe artifact reads above.
+   */
+  const roundExtras = {
+    Finals: (
+      <div className="space-y-10 pt-2">
+        {/* Finals-only, per-GAME section (#94). Sits beside the per-SERIES
+            bracket row above and changes nothing about it. */}
+        <div className="border-t border-slate-800 pt-8">
+          <FinalsGamePredictions finals={finals} />
+        </div>
+        {/* Walk-forward reconstruction of the SERIES-level forecast. Kept after
+            the per-game table: it is the weakest-provenance block on the page. */}
+        <div className="border-t border-slate-800 pt-8">
+          <FinalsSeriesBacktest data={backtest} />
+          {/* The ratings that moved underneath the table above (#96). Rendered
+              immediately after it, inside the same section, because it shares the
+              table's reconstruction disclaimer and means nothing without it. */}
+          {showTrajectory && <NetRatingTrajectory data={backtest} season={backtest.season} />}
+        </div>
+      </div>
+    ),
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
-      <PlayoffBracket2026Client bracket={bracket} />
-      {/* Finals-only, per-GAME section (#94). Sits beside the per-SERIES bracket
-          tree above and changes nothing about it. */}
-      <div className="border-t border-slate-800 pt-8">
-        <FinalsGamePredictions finals={finals} />
-      </div>
-      {/* Walk-forward reconstruction of the SERIES-level forecast. Deliberately
-          last: it is the weakest-provenance block on the page. */}
-      <div className="border-t border-slate-800 pt-8">
-        <FinalsSeriesBacktest data={backtest} />
-        {/* The ratings that moved underneath the table above (#96). Rendered
-            immediately after it, inside the same section, because it shares the
-            table's reconstruction disclaimer and means nothing without it. */}
-        {showTrajectory && <NetRatingTrajectory data={backtest} season={backtest.season} />}
-      </div>
+      <PlayoffBracket2026Client bracket={bracket} roundExtras={roundExtras} />
     </div>
   );
 }
