@@ -16,6 +16,10 @@ source("config.R")
 source("tools/evaluate_season_calibration.R")
 
 test_that("Season calibration check runs, calculates valid scores, and flags status", {
+  # Quality gate on the real season's Elo history; skips where caches don't
+  # exist (CI, fresh clone, worktree). See helper-common.R.
+  skip_if_no_cache("ratings", "mlb_elo_history.rds")
+
   res <- run_season_calibration_check(verbose = FALSE)
 
   expect_true(is.list(res))

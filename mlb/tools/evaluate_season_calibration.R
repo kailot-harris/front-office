@@ -176,7 +176,12 @@ run_season_calibration_check <- function(history_df = NULL, verbose = TRUE) {
   )
 }
 
-if (!interactive()) {
+# Run only when invoked directly (Rscript tools/evaluate_season_calibration.R),
+# not when sourced. The old `!interactive()` guard fired on every source() too,
+# so test-calibration.R hit the missing-cache stop at load time — outside any
+# test_that(), where skip_if_no_cache() cannot reach it. This is the same
+# idiom the sibling tools use (see evaluate_bayes_shrinkage.R).
+if (sys.nframe() == 0) {
   args <- commandArgs(trailingOnly = TRUE)
   if ("--run" %in% args || length(args) == 0) {
     invisible(run_season_calibration_check())
