@@ -23,6 +23,7 @@ re-running the whole pipeline.
 | Action | `schedule_daily.bat` | `schedule_publish.bat <mode>` |
 | What it does | Runs the full `run_full_pipeline.R` DAG | Runs the `tools/publish_web.R` freshness gate, and publishes only if every assertion passes |
 | Working directory | project root (set explicitly) | project root (set explicitly) |
+| `LogonType` | `S4U` | `S4U` |
 | `StartWhenAvailable` | yes | yes |
 | Wake timer (`WakeToRun`) | yes | yes |
 | Exit code | 0 all-clear, 1 if any step failed | 0 gate passed, 1 gate blocked, 2 bad mode argument |
@@ -40,6 +41,35 @@ powershell -NoProfile -File tools\register_scheduled_tasks.ps1
 `tools/register_scheduled_tasks.ps1` is **idempotent** — it updates a task of the same
 name in place rather than creating a duplicate, so it is safe to re-run after changing
 a trigger time. It refuses to register a task whose `.bat` does not exist.
+
+### Why `S4U`, and why it is set explicitly
+
+`Register-ScheduledTask` with no `-Principal` silently defaults to **`LogonType
+Interactive`** — "run only when the user is logged on." Both tasks were registered that
+way on 2026-10-25 before this was caught, which quietly put a login dependency back into
+a job whose whole point is running unattended: a logged-off machine, or a restart nobody
+logs back into, would skip the 09:00 deploy with **no error at all**, at a time nobody
+is watching. That is the exact failure mode issue #42 exists to prevent, arriving by a
+different route.
+
+The registration script therefore sets the principal explicitly:
+
+```powershell
+New-ScheduledTaskPrincipal -UserId <current user> -LogonType S4U -RunLevel Limited
+```
+
+`S4U` ("run whether logged on or not", no stored password) removes the login dependency.
+It is safe here **because #42 proved it on this machine**: a real push from a genuine
+session-0 S4U task succeeded for both repos with `GH_TOKEN`/`GITHUB_TOKEN` unset, so Git
+Credential Manager is reachable from session 0. Had that probe come back red, S4U would
+not have been an option and the login dependency would have been the lesser evil.
+
+`RunLevel Limited`, not `Highest`: these tasks run R and git, neither of which needs
+elevation. *Registering* them needs an elevated session; *running* them does not.
+
+Note the asymmetry when re-registering: updating an existing task you own needs no
+elevation, but applying an S4U principal does. If `-DryRun` shows `LogonType: S4U` and
+the applied task reports `Interactive`, you ran it unelevated.
 
 Why the wrappers set their own working directory: the original task invoked
 `Rscript.exe` directly with an **empty** `WorkingDirectory`, which only worked because
