@@ -28,6 +28,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-renv-
 
+      # renv.lock pins its repository to a DATED Posit Package Manager snapshot
+      # (.../cran/2026-10-20), not .../cran/latest. This is load-bearing on
+      # Windows: P3M only keeps Windows binaries for the versions that were
+      # current at that snapshot. Against "latest", any package whose locked
+      # version has since been superseded falls back to a source build — which
+      # is how duckdb 1.5.6 (superseded by 2.0.0) started compiling from source
+      # here and killed the job before the tests ever ran. If you re-snapshot
+      # the lockfile, move the date forward with it; don't point it at "latest".
       - name: Restore renv environment
         shell: Rscript {0}
         run: |
