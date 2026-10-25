@@ -33,7 +33,7 @@ suppressPackageStartupMessages({
 })
 
 if (!exists("PROJECT_DIR", inherits = FALSE)) {
-  PROJECT_DIR <- "c:/Users/kailo/kayceeslices/WNBA Analytics"
+  PROJECT_DIR <- here::here()   # issue #90: derived portably; never hardcode the repo root
 }
 source("logging_utils.R")
 .LOG_SCRIPT <- "risk_management_engine.R"
