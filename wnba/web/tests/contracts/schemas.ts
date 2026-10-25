@@ -891,6 +891,96 @@ export const FinalsGamePredictionSetSchema = z
     { message: 'restApplied must match whether any game carries rest' }
   );
 
+// 13d. finals_series_backtest_2026.json -> FinalsSeriesBacktestSet
+//
+// Reconstructions, not archived forecasts (see the interface header). Two
+// invariants below are the ones that would actually catch a broken backtest, and
+// both are asserted rather than trusted:
+//   * every length distribution sums to 1 -- the exact DP guarantees it, so a
+//     drift here means mass leaked somewhere;
+//   * an information set's state wins must equal its gamesPlayed, which is what
+//     makes it a WALK-FORWARD set rather than an arbitrary pairing of a score with
+//     a cutoff.
+export const FinalsBacktestInfoSetSchema = z
+  .object({
+    label: z.string().min(1),
+    cutoffDate: z.string().min(8),
+    gamesPlayed: z.number().int().min(0).max(7),
+    stateHigh: z.number().int().min(0).max(3),
+    stateLow: z.number().int().min(0).max(3),
+    nGamesHigh: z.number().int().positive(),
+    nGamesLow: z.number().int().positive(),
+    netRawHigh: finiteNumber,
+    netRawLow: finiteNumber,
+    netAdjHigh: finiteNumber,
+    netAdjLow: finiteNumber,
+    pHighSeries: finiteNumber.min(0).max(1),
+    pLowSeries: finiteNumber.min(0).max(1),
+    fairMlHigh: z.number().int(),
+    fairMlLow: z.number().int(),
+    expectedLength: finiteNumber.min(1).max(7),
+    lengthDistribution: z
+      .array(z.object({ length: z.number().int().min(1).max(7), probability: finiteNumber.min(0).max(1) }).strict())
+      .min(1),
+    pHighSeriesFromZero: finiteNumber.min(0).max(1).nullable(),
+    pHighSeriesRegularSeasonOnly: finiteNumber.min(0).max(1).nullable(),
+  })
+  .strict()
+  .refine((s) => s.stateHigh + s.stateLow === s.gamesPlayed, {
+    message: 'stateHigh + stateLow must equal gamesPlayed',
+  })
+  .refine(
+    (s) => Math.abs(s.lengthDistribution.reduce((a, d) => a + d.probability, 0) - 1) < 1e-6,
+    { message: 'lengthDistribution must sum to 1' }
+  )
+  .refine((s) => Math.abs(s.pHighSeries + s.pLowSeries - 1) < 1e-9, {
+    message: 'pHighSeries and pLowSeries must sum to 1',
+  });
+
+export const FinalsSeriesBacktestSetSchema = z
+  .object({
+    season: z.number().int().min(1997).max(2100),
+    generatedAt: z.string(),
+    sourceNote: z.string(),
+    provenance: z.string(),
+    matchup: z
+      .object({
+        teamHigh: z.string().min(2),
+        teamHighAbbr: z.string().min(2),
+        teamLow: z.string().min(2),
+        teamLowAbbr: z.string().min(2),
+      })
+      .strict()
+      .nullable(),
+    games: z.array(
+      z
+        .object({
+          game: z.number().int().positive(),
+          gameDate: z.string().min(8),
+          scoreHigh: z.number().int().positive(),
+          scoreLow: z.number().int().positive(),
+          highWon: z.boolean(),
+        })
+        .strict()
+    ),
+    infoSets: z.array(FinalsBacktestInfoSetSchema),
+  })
+  .strict()
+  // Same all-or-nothing empty-state rule the per-game payload uses.
+  .refine((s) => (s.matchup === null ? s.infoSets.length === 0 : s.infoSets.length > 0), {
+    message: 'infoSets must be empty when matchup is null, and non-empty when it is not',
+  })
+  // There is exactly one information set per decision point: before G1, then one
+  // after each played game. A mismatch means a cutoff was dropped or duplicated.
+  .refine((s) => s.infoSets.length === 0 || s.infoSets.length === s.games.length + 1, {
+    message: 'infoSets must number one more than the games played',
+  })
+  // A reconstruction that does not say it is one is the single worst failure mode
+  // this artifact has, so an empty provenance string is a schema error.
+  .refine((s) => s.infoSets.length === 0 || s.provenance.trim().length > 0, {
+    message: 'provenance must be non-empty when information sets are shipped',
+  });
+
 // 14. shots_index.json -> PlayerCatalogEntry[] (lib/shotTypes.ts)
 export const PlayerCatalogEntrySchema = z
   .object({

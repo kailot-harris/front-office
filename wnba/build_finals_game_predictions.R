@@ -377,13 +377,16 @@ build_finals_game_predictions <- function(season = CURRENT_SEASON,
     expected_games = round(sum(dist$length * dist$probability), 3)
   )
   attr(out, "length_distribution") <- dist
-  attr(out, "source_note") <- sprintf(paste(
-    "Live Finals forecast. Matchup and played results derived from %s; per-game",
-    "home-court win probabilities and P(game played) read from the exact series-length",
-    "DP (no simulation); %s"),
-    basename(CACHE_PLAYOFF_BRACKET_CURRENT),
-    if (rest_applied) sprintf("rest and travel applied per game from %s.",
-                              basename(CACHE_WNBA_SCHEDULE))
+  # READER-FACING STRING. Rendered verbatim on the public bracket page, so it is
+  # written for a general audience: it says what the numbers are and where they
+  # come from in plain words, with no filenames or field names. The cache paths it
+  # used to name are in the log message below instead, where a maintainer looking
+  # for them will actually be.
+  attr(out, "source_note") <- paste(
+    "Live Finals forecast. The matchup and any played results come from the bracket itself;",
+    "each game's home-court win probability and its chance of being played are calculated",
+    "exactly rather than simulated.",
+    if (rest_applied) "Days of rest and travel are applied game by game from the schedule."
     else rest_note)
 
   saveRDS(out, out_path)

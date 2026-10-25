@@ -20,6 +20,7 @@ import type {
   PlayoffMatchupsCatalog,
   PlayoffBracketSeason,
   FinalsGamePredictionSet,
+  FinalsSeriesBacktestSet,
 } from '@/lib/playoffTypes';
 import type {
   PlayerCatalogEntry,
@@ -32,6 +33,8 @@ export const PUBLIC_DIR = path.join(WEB_ROOT, 'public');
 export const DATA_DIR = path.join(PUBLIC_DIR, 'data');
 export const SHOTS_DIR = path.join(DATA_DIR, 'shots');
 export const LOGOS_DIR = path.join(PUBLIC_DIR, 'logos');
+/** Generated web media artifacts (issue #96) — written by tools/, served by Next. */
+export const MEDIA_DIR = path.join(PUBLIC_DIR, 'media');
 
 export const WNBA_TEAMS = [
   'ATL',
@@ -90,6 +93,7 @@ export const EXPECTED_DATA_FILES = [
   'playoff_series_matchups.json',
   'playoff_bracket_2026.json',
   'finals_game_predictions_2026.json',
+  'finals_series_backtest_2026.json',
   'shots_index.json',
   'shots_metadata.json',
 ] as const;
@@ -139,6 +143,9 @@ export function loadAllDatasets() {
     playoffBracket2026: readJsonFile<PlayoffBracketSeason>('playoff_bracket_2026.json'),
     finalsGamePredictions: readJsonFile<FinalsGamePredictionSet>(
       'finals_game_predictions_2026.json'
+    ),
+    finalsSeriesBacktest: readJsonFile<FinalsSeriesBacktestSet>(
+      'finals_series_backtest_2026.json'
     ),
     shotsIndex: readJsonFile<PlayerCatalogEntry[]>('shots_index.json'),
     shotsMetadata: readJsonFile<ShotsMetadata>('shots_metadata.json'),

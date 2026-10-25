@@ -292,6 +292,64 @@ CACHE_FINALS_GAME_PREDICTIONS <- file.path(
   CACHE_DIR, sprintf("finals_game_predictions_%d.rds", CURRENT_SEASON)
 )
 
+# Walk-forward Finals SERIES-level forecast reconstruction.
+# DERIVATION / WHY A THIRD FINALS ARTIFACT, distinct from the two above:
+#   * Different unit. CACHE_PLAYOFF_BRACKET_CURRENT is one row per series across every
+#     round; CACHE_FINALS_GAME_PREDICTIONS is one row per GAME of the Finals; this is one
+#     row per INFORMATION SET -- the series-level forecast as it stood before G1, then
+#     after each played game. The same series is re-forecast N+1 times, which neither of
+#     the other two artifacts can express.
+#   * Different epistemic status, and this is the load-bearing reason it is not folded
+#     into the bracket artifact. Its rows are RECONSTRUCTIONS, computed after the fact
+#     from a date-cutoff information set -- NOT archived contemporaneous forecasts. The
+#     bracket's Finals row is deliberately prediction$available = FALSE because no Finals
+#     forecast was ever logged (cache/series_length_predictions.rds has finals = NULL),
+#     and that honest gap must survive. Consumers must label these as reconstructions,
+#     the same way build_playoff_bracket_2026.R labels its Round 1 rows.
+#   * Lives in CACHE_DIR (runtime-generated, derived, disposable) per CACHE_PBP_RAW's rule,
+#     with the season interpolated from CURRENT_SEASON rather than written as a literal.
+#   * Written by tools/finals_series_backtest.R; read by export_web_json.R. Consumers must
+#     read this constant, never the literal filename.
+CACHE_FINALS_SERIES_BACKTEST <- file.path(
+  CACHE_DIR, sprintf("finals_series_backtest_%d.rds", CURRENT_SEASON)
+)
+
+# ------------------------------------------------------------------------------------------
+# Generated web MEDIA artifacts (GitHub issue #96), added 2026-10-25.
+# ------------------------------------------------------------------------------------------
+# These are the only non-JSON artifacts this pipeline ships to the site. Every other web
+# artifact is JSON written by export_web_json.R into web/public/data/; a raster animation
+# cannot go through that path, so it gets its own directory and its own constants here.
+#
+# DERIVATION / WHY THESE ARE CONSTANTS AND NOT BARE LITERALS:
+#   * WEB_MEDIA_DIR is a SOURCE-CONTROLLED, SERVED directory, not a cache. It is deliberately
+#     NOT under CACHE_DIR: Next.js's `output: 'export'` only copies what is inside web/public/
+#     at build time, so an artifact written to cache/ would never reach the deployed site.
+#     That also means these files are committed, unlike everything under CACHE_DIR.
+#   * Season is interpolated from CURRENT_SEASON rather than written as a literal, matching
+#     CACHE_FINALS_SERIES_BACKTEST and CACHE_PBP_RAW's rule.
+#   * The GIF and the PNG are a PAIR and must stay one: the PNG is the final frame of the
+#     same render, served to readers whose browser reports `prefers-reduced-motion: reduce`
+#     (a looping GIF has no pause control, so there must be a still to fall back to). A
+#     writer that produces one without the other leaves the site showing a broken image to
+#     exactly the readers who asked for less motion, so the generator writes both or neither.
+#   * NOT created on source() the way CACHE_DIR is. config.R is sourced by every script in
+#     the repo, including ones that never touch the web tree, and an empty web/public/media/
+#     materializing as a side effect of loading constants would be a surprise. The generator
+#     creates the directory itself before writing.
+#
+# Written by tools/build_net_rating_trajectory_gif.R; read by web/app/bracket-2026/page.tsx
+# (as a served URL under Next's basePath, not as a filesystem path). Consumers must read
+# these constants, never the literal filenames.
+WEB_MEDIA_DIR <- file.path(PROJECT_DIR, "web", "public", "media")
+
+MEDIA_NET_RATING_TRAJECTORY_GIF <- file.path(
+  WEB_MEDIA_DIR, sprintf("net_rating_trajectory_%d.gif", CURRENT_SEASON)
+)
+MEDIA_NET_RATING_TRAJECTORY_PNG <- file.path(
+  WEB_MEDIA_DIR, sprintf("net_rating_trajectory_%d.png", CURRENT_SEASON)
+)
+
 # ------------------------------------------------------------------------------------------
 # RAPM & Opponent Adjustments (GitHub issues #71, #76, #77, #78, #79, #82)
 # ------------------------------------------------------------------------------------------
