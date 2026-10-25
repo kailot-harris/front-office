@@ -4,7 +4,7 @@
 # GAP_REMEDIATION_PLAN.md / task_assignments_phase2.md) replaces the synthetic shot
 # distribution with REAL WNBA shot-location data, confirmed available (not assumed) as of
 # 2026-09-12.
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/shot_quality_engine.R
+# Path: shot_quality_engine.R
 #
 # *** UPDATE (P2b): REAL SHOT-LOCATION DATA CONFIRMED AND NOW WIRED IN ***
 # T3's header (kept below, struck through in spirit) claimed "there is no real WNBA

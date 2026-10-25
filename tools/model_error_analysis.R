@@ -7,8 +7,32 @@
 # systemic failure patterns in the probabilistic margin model.
 # ==============================================================================
 
-PROJECT_DIR <- "C:/Users/kailo/kayceeslices/WNBA Analytics"
-if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
+# GitHub issue #90: PROJECT_DIR was a hardcoded absolute path to this repo's pre-move
+# location, which stopped existing when the repo moved under front-office/. Derived from
+# THIS SCRIPT'S own location now, walking up to the directory that holds config.R, so this
+# tools/ script setwd()s to the real project root regardless of where it is invoked from
+# (CLAUDE.md's tools/ convention) and fails loudly instead of silently no-op'ing (the
+# dir.exists() guard) or aborting on a missing directory (the unguarded setwd). The walk-up
+# is depth-agnostic, so it works from tools/<subdir>/ and inside a git worktree too.
+PROJECT_DIR <- local({
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- sub("^--file=", "", args[grepl("^--file=", args)])
+  start <- if (length(file_arg)) {
+    dirname(normalizePath(file_arg[1], winslash = "/", mustWork = FALSE))
+  } else {
+    getwd()   # sourced interactively: start from the caller's cwd
+  }
+  root <- start
+  while (!file.exists(file.path(root, "config.R"))) {
+    parent <- dirname(root)
+    if (identical(parent, root)) {
+      stop(sprintf("model_error_analysis.R: cannot locate the repo root (no config.R at or above '%s')", start))
+    }
+    root <- parent
+  }
+  root
+})
+setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({
   library(tidyverse)

@@ -1,6 +1,6 @@
 # ==============================================================================
 # Live WNBA Roster Synchronizer (Automated Offseason Trade Tracker)
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/sync_rosters.R
+# Path: sync_rosters.R
 #
 # Ported from NBA Analytics/sync_rosters.R. Hits ESPN's WNBA site API instead of the
 # NBA path (same host/JSON shape, per WNBA_REPLICATION_PLAN.md §c). The NBA original's

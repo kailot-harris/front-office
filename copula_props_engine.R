@@ -1,7 +1,7 @@
 # ==============================================================================
 # copula_props_engine.R (WNBA port)
 # Phase 5 (T4) — Multivariate Gaussian Copula Engine for PRA Combination & SGPs
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/copula_props_engine.R
+# Path: copula_props_engine.R
 #
 # Gaussian-copula/ZINB math (qzinb_approx, simulate_joint_player_props) is ported
 # BYTE-FOR-BYTE unchanged from the NBA original — it is sport-agnostic per

@@ -1,6 +1,6 @@
 # ==============================================================================
 # Live WNBA Injury Scraper & Roster Availability Feeder
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/injury_scraper.R
+# Path: injury_scraper.R
 #
 # Ported from NBA Analytics/injury_scraper.R (fetch_live_nba_injuries() renamed to
 # fetch_live_wnba_injuries()). Hits ESPN's WNBA injuries site-API endpoint instead of

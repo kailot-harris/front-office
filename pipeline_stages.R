@@ -1,6 +1,6 @@
 # ==============================================================================
 # pipeline_stages.R
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/pipeline_stages.R
+# Path: pipeline_stages.R
 #
 # GitHub issue #45 (kailot-harris/WNBA_analytics) — Slice 1 of issue #43's tree. Pure
 # representation refactor: this file centralizes the stage metadata that used to be

@@ -1,7 +1,7 @@
 # ==============================================================================
 # app.R (WNBA port)
 # Full Production 8-Tab Quantitative WNBA Sports Trading Terminal
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/app.R
+# Path: app.R
 #
 # Ported from NBA Analytics/app.R (T5 / wnba_live_dashboard_agent). Every cache/*.rds path
 # below was cross-checked against T0-T4's ACTUAL Handoff Notes in task_assignments.md, not

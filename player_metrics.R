@@ -1,6 +1,6 @@
 # ==============================================================================
 # Player-Level Impact Metrics (BPM, Minutes Concentration & Depth) - WNBA
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/player_metrics.R
+# Path: player_metrics.R
 #
 # Ported from NBA Analytics/player_metrics.R. Swaps hoopR::load_nba_player_box() for
 # wehoop::load_wnba_player_box(), same chunked per-season retry/backoff pattern using

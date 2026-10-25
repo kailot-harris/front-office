@@ -1,6 +1,6 @@
 # ==============================================================================
 # Play-by-Play Player Features (Clutch Scoring, Assists, Shot-Mix) - WNBA
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/pbp_engine.R
+# Path: pbp_engine.R
 #
 # WHAT THIS IS
 # ------------

@@ -3,7 +3,7 @@
 # original's inconsistent naming; not "fixed" here since renaming could break the
 # .bat/orchestrator convention T5 is about to wire up, per Ground Rule caution).
 # WNBA Bet Ledger & Automated Rolling Accuracy + CLV Grader
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/bet_tracker.r
+# Path: bet_tracker.r
 #
 # Ported as-is (per task_assignments.md's T4 brief item 4) — only the join
 # keys/date logic needed verification against T1/T2's actual schemas, which was

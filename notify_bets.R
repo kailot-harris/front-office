@@ -1,7 +1,7 @@
 # ==============================================================================
 # notify_bets.R (WNBA port)
 # Phase 5 (T4) — Calibrated Discord Alpha & CLV Webhook Dispatcher
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/notify_bets.R
+# Path: notify_bets.R
 #
 # Ported as-is per task_assignments.md's T4 brief item 6 — only the webhook
 # source changes: reads DISCORD_WEBHOOK from an env var ONLY (per T0's

@@ -1,7 +1,7 @@
 # ==============================================================================
 # fatigue_travel_engine.R
 # Phase 3 (T3): Circadian Rhythm, Altitude & Haversine Travel Vector Engine
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/fatigue_travel_engine.R
+# Path: fatigue_travel_engine.R
 #
 # Ported from the NBA Analytics repo's fatigue_travel_engine.R (see REPO_MAP.md /
 # WNBA_REPLICATION_PLAN.md / agent4.md in this folder). The travel/circadian/altitude/

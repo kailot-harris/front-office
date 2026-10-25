@@ -1,6 +1,6 @@
 # ==============================================================================
 # control_panel_app.R
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/control_panel_app.R
+# Path: control_panel_app.R
 #
 # GitHub issues #46 (Slice 2), #47 (Slice 3), and #48 (Slice 4) of issue #43's tree.
 #

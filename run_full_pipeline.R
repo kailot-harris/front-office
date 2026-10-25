@@ -1,7 +1,7 @@
 # ==============================================================================
 # run_full_pipeline.R (WNBA port)
 # Master Production Quantitative Pipeline (Phases 1 through 5) — WNBA Edition
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/run_full_pipeline.R
+# Path: run_full_pipeline.R
 #
 # Ported from NBA Analytics/run_full_pipeline.R. Same 13-stage run_stage()-wrapped DAG
 # structure and ordering as the NBA original (per the T5 brief), with every script/output

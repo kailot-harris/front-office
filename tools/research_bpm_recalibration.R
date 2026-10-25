@@ -1,6 +1,6 @@
 # ==============================================================================
 # research_bpm_recalibration.R
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/tools/research_bpm_recalibration.R
+# Path: tools/research_bpm_recalibration.R
 #
 # Empirical recalibration of calculate_bpm_components()'s per-stat weights
 # (player_metrics.R), which have carried an NBA-hand-tuned TODO(recalibrate) since
@@ -36,7 +36,32 @@
 # comment's parenthetical -- both addressed here).
 # ==============================================================================
 
-setwd("C:/Users/kailo/kayceeslices/WNBA Analytics")
+# GitHub issue #90: PROJECT_DIR was a hardcoded absolute path to this repo's pre-move
+# location, which stopped existing when the repo moved under front-office/. Derived from
+# THIS SCRIPT'S own location now, walking up to the directory that holds config.R, so this
+# tools/ script setwd()s to the real project root regardless of where it is invoked from
+# (CLAUDE.md's tools/ convention) and fails loudly instead of silently no-op'ing (the
+# dir.exists() guard) or aborting on a missing directory (the unguarded setwd). The walk-up
+# is depth-agnostic, so it works from tools/<subdir>/ and inside a git worktree too.
+PROJECT_DIR <- local({
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- sub("^--file=", "", args[grepl("^--file=", args)])
+  start <- if (length(file_arg)) {
+    dirname(normalizePath(file_arg[1], winslash = "/", mustWork = FALSE))
+  } else {
+    getwd()   # sourced interactively: start from the caller's cwd
+  }
+  root <- start
+  while (!file.exists(file.path(root, "config.R"))) {
+    parent <- dirname(root)
+    if (identical(parent, root)) {
+      stop(sprintf("research_bpm_recalibration.R: cannot locate the repo root (no config.R at or above '%s')", start))
+    }
+    root <- parent
+  }
+  root
+})
+setwd(PROJECT_DIR)
 source("config.R")
 source("player_metrics.R")  # normalize_team_abbreviation()/filter_real_franchises() defs only
 suppressPackageStartupMessages(library(dplyr))

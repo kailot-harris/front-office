@@ -1,7 +1,7 @@
 # ==============================================================================
 # build_offseason_dataset.R
 # 2026 WNBA Offseason Moves, Expansion Draft, Transactions & Rookie Draft Analytics
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/build_offseason_dataset.R
+# Path: build_offseason_dataset.R
 # ==============================================================================
 
 suppressPackageStartupMessages({

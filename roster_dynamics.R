@@ -1,6 +1,6 @@
 # ==============================================================================
 # Offseason Roster Dynamics, Age Curves & Continuity Regression (WNBA)
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/roster_dynamics.R
+# Path: roster_dynamics.R
 #
 # Ported from NBA Analytics/roster_dynamics.R (T2 / wnba_rating_engine_agent). Ports as-is per
 # WNBA_REPLICATION_PLAN.md §(b)/(d) - season-over-season minutes-continuity logic has no

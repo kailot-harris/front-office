@@ -1,6 +1,6 @@
 # ==============================================================================
 # build_clutch_dataset.R
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/build_clutch_dataset.R
+# Path: build_clutch_dataset.R
 #
 # Feature 6: WNBA True Clutch & Leverage Creation Index
 # Analyzes high-leverage late-game performance (Score margin <= 5 pts, <= 5:00 4Q/OT):

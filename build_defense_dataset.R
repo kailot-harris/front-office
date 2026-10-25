@@ -1,6 +1,6 @@
 # ==============================================================================
 # build_defense_dataset.R
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/build_defense_dataset.R
+# Path: build_defense_dataset.R
 #
 # Feature 4: WNBA Defensive Versatility & Coverage Matrix
 # Quantifies:

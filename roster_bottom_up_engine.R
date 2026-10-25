@@ -1,6 +1,6 @@
 # ==============================================================================
 # Bottom-Up Player-Composed WNBA H2H Prediction & Standings Engine
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/roster_bottom_up_engine.R
+# Path: roster_bottom_up_engine.R
 #
 # Ported from NBA Analytics/roster_bottom_up_engine.R (T2 / wnba_rating_engine_agent).
 # This is the single most load-bearing script in the WNBA replication - market odds,

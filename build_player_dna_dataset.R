@@ -1,6 +1,6 @@
 # ==============================================================================
 # build_player_dna_dataset.R
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/build_player_dna_dataset.R
+# Path: build_player_dna_dataset.R
 #
 # Feature 5: High-Dimensional WNBA Player DNA & Nearest Historical Comparables
 # Calculates 16-D skill vectors across Finishing, Shooting, Playmaking, Defense, Rebounding.
