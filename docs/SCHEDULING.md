@@ -321,8 +321,10 @@ powershell -NoProfile -File tools\register_credential_probe_task.ps1         # a
 Start-ScheduledTask -TaskName NFL_analytics_credprobe_interactive   # control FIRST
 Start-ScheduledTask -TaskName NFL_analytics_credprobe_unattended    # the real test
 
-Get-ScheduledTaskInfo NFL_analytics_credprobe_interactive, NFL_analytics_credprobe_unattended |
-    Select-Object TaskName, LastRunTime, LastTaskResult
+# Note the Get-ScheduledTask prefix: Get-ScheduledTaskInfo's -TaskName takes a single
+# string, so passing the pair to it directly fails with a parameter-transformation error.
+Get-ScheduledTask -TaskName NFL_analytics_credprobe_interactive, NFL_analytics_credprobe_unattended |
+    Get-ScheduledTaskInfo | Select-Object TaskName, LastRunTime, LastTaskResult
 Get-Content logs\credential_probe.log -Tail 80
 
 powershell -NoProfile -File tools\register_credential_probe_task.ps1 -Remove  # clean up
