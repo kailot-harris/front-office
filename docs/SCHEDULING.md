@@ -153,9 +153,13 @@ Get-ScheduledTask NFL_analytics_task_01, NFL_analytics_publish_01 | Get-Schedule
 
 ### Alternative: a GitHub Actions cron
 
-The machine dependency can be removed entirely: have the 05:15 run commit and push its
+The **09:00** machine dependency can be removed: have the 05:15 run commit and push its
 artifacts, then let an Actions `schedule` cron in the aggregator deploy at 09:00. No
-laptop needs to be awake.
+laptop needs to be awake *at 09:00*.
+
+Note what this does **not** remove: the 05:15 run still has to push, and it is a
+scheduled task, so that push is still non-interactive and still gated on #42. See the
+correction under "Recommended remedy, and why" below.
 
 **The cost is punctuality.** Actions cron routinely drifts **5–20 minutes** under load
 (it is best-effort, not guaranteed), so "09:00" becomes approximate and the site could
@@ -164,8 +168,9 @@ go live anywhere from ~09:04 to ~09:25. Choose on which you care about more:
 | | Task Scheduler (current) | Actions cron |
 |---|---|---|
 | Punctuality | Good — live ~09:04 | Drifts 5–20 min |
-| Needs the laptop awake | **Yes** | No |
-| Credential story | Unproven unattended (#42) | Uses `GITHUB_TOKEN` in-workflow |
+| Needs the laptop awake at 09:00 | **Yes** | No |
+| Needs an unattended local push | **Yes** (at 09:00) | **Yes** (at ~05:20) |
+| Deploy-step credential | Local, unproven (#42) | In-workflow `GITHUB_TOKEN` |
 
 This is a documented option, **not** currently implemented; #39 does not ask for the
 workflow file and none has been added.
@@ -359,17 +364,28 @@ Justification against the alternatives:
 - **A dedicated credential store** — plausible, but it adds a component to maintain and
   still leaves the same class of fragility (a store that must be reachable from session
   0), so it trades a proven unknown for an unproven one.
-- **Actions cron** — removes the unattended-credential question entirely instead of
-  answering it: the deploy runs on GitHub's runners using the in-workflow
-  `GITHUB_TOKEN`, which needs no local credential, no laptop awake at 09:00, and no
+- **Actions cron** — moves the *deploy* to GitHub's runners using the in-workflow
+  `GITHUB_TOKEN`: no local credential for that step, no laptop awake at 09:00, no
   rotation. The cost is punctuality (cron drifts 5–20 minutes, so "09:00" becomes
-  ~09:04–09:25). Given that the alternative is a deploy whose credential story is
-  *unproven on this hardware and cannot be proven without elevation*, trading a few
-  minutes of punctuality to remove the failure mode is the better bargain.
+  ~09:04–09:25).
+
+  **Correction (2026-10-25): this does NOT remove the unattended-credential question,
+  and an earlier draft of this section wrongly said it did.** The cron design still has
+  the 05:15 pipeline run *commit and push* its artifacts (see "Alternative: a GitHub
+  Actions cron" above) — and that run is `NFL_analytics_task_01`, a scheduled task, so
+  the push happens in exactly the non-interactive session #42 is about. Cron relocates
+  the unproven push from 09:00 to ~05:20; it does not eliminate it, and a silent auth
+  failure at 05:20 is just as unwatched. **#42 therefore cannot be closed as obsolete by
+  adopting cron.** The only designs that genuinely remove the local push credential are
+  (a) running the pipeline itself in CI, so no local artifact ever needs pushing, or
+  (b) accepting a PAT for the push step. Cron is still worth adopting on its own merits
+  — fewer moving parts at deploy time, no 09:00 laptop dependency — but it must be
+  paired with a settled answer for the 05:20 push.
 
 This remedy is a **recommendation, not an implementation**: no workflow file has been
-added, and #39 still owns that decision. Either finish the probe from an elevated
-session and close #42 on evidence, or adopt the cron and close #42 as obsolete — but do
+added, and #39 still owns that decision. Per the correction above, adopting cron does
+*not* dispose of #42 — the 05:20 push still needs an answer, so the probe must either be
+finished from an elevated session or the pipeline must move into CI. But do
 **not** switch the publish task to `--publish` on the strength of the interactive dry
 run above, which proves only that an interactive shell can read.
 
