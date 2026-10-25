@@ -97,6 +97,29 @@ jobs:
               *) echo "::error::unknown sport '$sport'"; exit 1 ;;
             esac
 
+            # Preflight the token against the API before letting git try.
+            # git reports BOTH "token cannot see this repo" and "no such repo"
+            # as the same bare "Repository not found", which is unactionable;
+            # the API distinguishes them, so translate it here once.
+            code="$(curl -sS -o /dev/null -w '%{http_code}' \
+              -H "Authorization: Bearer ${SUBTREE_TOKEN}" \
+              -H 'Accept: application/vnd.github+json' \
+              "https://api.github.com/repos/${{ github.repository_owner }}/${repo}")"
+            case "$code" in
+              200) echo "$sport: token can read $repo" ;;
+              404) echo "::error::SUBTREE_TOKEN cannot see ${repo} (HTTP 404)."
+                   echo '::error::A fine-grained PAT returns 404, not 403, for a repo'
+                   echo '::error::outside its selected set. Check: resource owner is the'
+                   echo "::error::repo owner, ${repo} is in Repository access, and"
+                   echo '::error::Contents is Read-only. A CLASSIC PAT needs the full'
+                   echo '::error::"repo" scope -- "public_repo" alone also yields 404.'
+                   exit 1 ;;
+              401) echo '::error::SUBTREE_TOKEN rejected (HTTP 401) -- expired, revoked,'
+                   echo '::error::or the secret holds a truncated paste. Regenerate it.'
+                   exit 1 ;;
+              *)   echo "::error::Unexpected HTTP $code checking ${repo}."; exit 1 ;;
+            esac
+
             remote="${sport}-origin"
             # Token in the remote URL rather than an extraheader so it is never
             # written into .git/config of the pushed tree. Actions masks the
