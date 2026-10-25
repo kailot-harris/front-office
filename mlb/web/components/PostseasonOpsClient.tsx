@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { PostseasonOpsData } from '@/lib/types';
+import { PostseasonOpsData, WorldSeriesData } from '@/lib/types';
 import {
   Trophy,
   Flame,
@@ -20,9 +20,19 @@ import { exportToCsv } from '@/lib/exportToCsv';
 
 interface PostseasonOpsClientProps {
   data: PostseasonOpsData;
+  worldSeries?: WorldSeriesData | null;
 }
 
-export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }) => {
+/** "Oct 23" — the banner never needs the year, every game is in-season. */
+const formatSeriesDate = (iso: string): string =>
+  new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+
+export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data, worldSeries }) => {
+  const ws = worldSeries ?? null;
   const [activeTab, setActiveTab] = useState<'bracket' | 'bullpen' | 'market'>('bracket');
   const [bullpenLeague, setBullpenLeague] = useState<'All' | 'AL' | 'NL'>('All');
 
@@ -44,6 +54,30 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
   const wsLeader = useMemo(() => {
     return [...data.bracket].sort((a, b) => b.pct_ws - a.pct_ws)[0];
   }, [data.bracket]);
+
+  const wsSummaryLine = useMemo(() => {
+    if (!ws) return '';
+    const { home_field: hfa, challenger: chal } = ws;
+    const hostLine = `Games 1, 2, 6, and 7 at ${ws.games[0]?.venue_name} (${hfa.team} HCA), Games 3, 4, and 5 at ${
+      ws.games.find((g) => g.home_team === chal.team)?.venue_name ?? 'the challenger’s park'
+    }.`;
+
+    if (ws.status === 'scheduled') {
+      return `${chal.team_name} face ${hfa.team_name} in the ${ws.format.toLowerCase()} Fall Classic. ${hostLine}`;
+    }
+
+    const champ = ws.champion === hfa.team ? hfa : ws.champion === chal.team ? chal : null;
+    if (champ) {
+      const runnerUp = champ.team === hfa.team ? chal : hfa;
+      return `${champ.team_name} win the ${ws.title} ${champ.wins}–${runnerUp.wins} over the ${runnerUp.team_name}.`;
+    }
+
+    const leader = hfa.wins === chal.wins ? null : hfa.wins > chal.wins ? hfa : chal;
+    const state = leader
+      ? `${leader.team_name} lead ${Math.max(hfa.wins, chal.wins)}–${Math.min(hfa.wins, chal.wins)}`
+      : `Series tied ${hfa.wins}–${chal.wins}`;
+    return `${state} after ${ws.games_played} of up to ${ws.games_scheduled} games. ${hostLine}`;
+  }, [ws]);
 
   const bracketColumns = [
     { key: 'seed', label: 'Seed' },
@@ -211,58 +245,116 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data }
             </div>
           </div>
 
-                    {/* 2026 World Series Spotlight Banner */}
-          <div className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-surface-raised to-accent-500/10 p-6 shadow-2xl">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                  <Trophy className="w-8 h-8" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">
-                      Official 2026 Fall Classic
-                    </span>
-                    <span className="text-xs text-slate-400 font-mono">Best-of-7 · Oct 23 – Oct 31</span>
+          {/* World Series Spotlight Banner — live series state from world_series.json */}
+          {ws && (
+            <div className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-surface-raised to-accent-500/10 p-6 shadow-2xl">
+              <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                    <Trophy className="w-8 h-8" />
                   </div>
-                  <h2 className="text-2xl font-black text-white mt-1">
-                    2026 World Series: Tampa Bay Rays vs. Milwaukee Brewers
-                  </h2>
-                  <p className="text-xs text-slate-300 mt-1 max-w-2xl">
-                    AL Champions Tampa Bay Rays face NL Champions Milwaukee Brewers in the 122nd World Series. Games 1, 2, 6, and 7 hosted at American Family Field (MIL HCA), Games 3, 4, and 5 at Tropicana Field.
-                  </p>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">
+                        Official {ws.season} Fall Classic
+                      </span>
+                      <span className={`text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full border font-mono ${
+                        ws.status === 'complete'
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                          : ws.status === 'in_progress'
+                            ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                            : 'bg-slate-700/40 text-slate-300 border-slate-600/40'
+                      }`}>
+                        {ws.status === 'complete' ? 'Final' : ws.status === 'in_progress' ? 'Series Underway' : 'Upcoming'}
+                      </span>
+                      <span className="text-xs text-slate-400 font-mono">
+                        {ws.format} · {formatSeriesDate(ws.start_date)} – {formatSeriesDate(ws.end_date)}
+                      </span>
+                    </div>
+                    <h2 className="text-2xl font-black text-white mt-1">
+                      {ws.title}: {ws.challenger.team_name} vs. {ws.home_field.team_name}
+                    </h2>
+                    <p className="text-xs text-slate-300 mt-1 max-w-2xl">{wsSummaryLine}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 flex-shrink-0">
+                  <div className="flex items-center gap-3 bg-surface/80 border border-slate-800 rounded-xl px-4 py-3">
+                    {[ws.challenger, ws.home_field].map((side, i) => (
+                      <React.Fragment key={side.team}>
+                        {i === 1 && <div className="text-xs font-black text-amber-400 px-1 font-mono">VS</div>}
+                        <div className="flex items-center gap-2">
+                          <TeamLogo team={side.team} size="md" />
+                          <div className="text-left">
+                            <div className="text-xs font-bold text-white">{side.team}</div>
+                            <div className={`text-lg font-black font-mono leading-none ${
+                              ws.champion === side.team ? 'text-amber-400' : 'text-slate-200'
+                            }`}>
+                              {side.wins}
+                            </div>
+                          </div>
+                        </div>
+                      </React.Fragment>
+                    ))}
+                  </div>
+
+                  <Link
+                    href="/series"
+                    className="flex items-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-amber-500/20 whitespace-nowrap"
+                  >
+                    <Swords className="w-4 h-4" />
+                    <span>Simulate Series</span>
+                  </Link>
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 flex-shrink-0">
-                <div className="flex items-center gap-3 bg-surface/80 border border-slate-800 rounded-xl px-4 py-3">
-                  <div className="flex items-center gap-2 text-center">
-                    <TeamLogo team="TB" size="md" />
-                    <div className="text-left">
-                      <div className="text-xs font-bold text-white">Rays</div>
-                      <div className="text-[10px] text-slate-400 font-mono">AL Champs</div>
+              {/* Game-by-game strip: resolved games show the final line, the rest stay dimmed */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2 mt-5">
+                {ws.games.map((g) => {
+                  const resolved = g.is_completed && g.home_score !== null && g.away_score !== null;
+                  const winScore = resolved ? Math.max(g.home_score!, g.away_score!) : null;
+                  const loseScore = resolved ? Math.min(g.home_score!, g.away_score!) : null;
+                  const loser = resolved ? (g.winner === g.home_team ? g.away_team : g.home_team) : null;
+                  return (
+                    <div
+                      key={g.game_pk}
+                      className={`rounded-xl border px-3 py-2 ${
+                        resolved
+                          ? 'border-amber-500/30 bg-surface/80'
+                          : 'border-slate-800 bg-surface/40 opacity-70'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 font-mono">
+                          Gm {g.game_number}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-mono">{formatSeriesDate(g.game_date)}</span>
+                      </div>
+                      {resolved ? (
+                        <>
+                          <div className="mt-1 text-sm font-black text-white font-mono">
+                            <span className="text-amber-400">{g.winner}</span> {winScore}
+                            <span className="text-slate-500"> – </span>
+                            {loseScore} <span className="text-slate-400">{loser}</span>
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">Final · {g.venue_name}</div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="mt-1 text-sm font-bold text-slate-300 font-mono">
+                            {g.away_team} @ {g.home_team}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {g.status_detail} · {(g.home_win_prob * 100).toFixed(0)}% {g.home_team}
+                          </div>
+                        </>
+                      )}
                     </div>
-                  </div>
-                  <div className="text-xs font-black text-amber-400 px-2 font-mono">VS</div>
-                  <div className="flex items-center gap-2 text-center">
-                    <TeamLogo team="MIL" size="md" />
-                    <div className="text-left">
-                      <div className="text-xs font-bold text-white">Brewers</div>
-                      <div className="text-[10px] text-slate-400 font-mono">NL Champs</div>
-                    </div>
-                  </div>
-                </div>
-
-                <Link
-                  href="/series"
-                  className="flex items-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-amber-500/20 whitespace-nowrap"
-                >
-                  <Swords className="w-4 h-4" />
-                  <span>Simulate Series</span>
-                </Link>
+                  );
+                })}
               </div>
             </div>
-          </div>
+          )}
 
           {/* AL & NL Bracket Matchup Cards */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
