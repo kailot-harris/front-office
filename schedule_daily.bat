@@ -18,6 +18,28 @@ REM guard below that skips the pipeline run (and logs why) outside the season wi
 REM than relying on whoever configures Task Scheduler to remember to disable/re-enable the task
 REM by hand every year.
 REM
+REM ------------------------------------------------------------------------------
+REM SCHEDULED START TIME -- must stay AFTER the upstream wehoop data publish.
+REM Every load_wnba_*() call in this repo reads pre-built release assets from
+REM github.com/sportsdataverse/sportsdataverse-data (tags espn_wnba_team_boxscores,
+REM espn_wnba_player_boxscores, espn_wnba_schedules, espn_wnba_pbp). Those assets are
+REM rebuilt by a ONCE-DAILY BATCH JOB, not in near-real-time after each game:
+REM sportsdataverse/wehoop-wnba-data's "Update WNBA Data" workflow (daily_wnba.yml)
+REM is triggered by a repository_dispatch pinned at ~10:36 UTC every day, with a second
+REM scheduled backstop run landing ~09:20-12:40 UTC. Verified 2026-10-25 over 130 runs
+REM spanning 2026-06-18..2026-10-25: exactly two runs/day, never an overnight refresh.
+REM Release assets finish uploading ~10:39-11:20 UTC (worst observed run 45 min).
+REM => A game that ends at 22:00 ET appears in wehoop the NEXT MORNING, ~06:40-07:20 ET.
+REM
+REM The task was originally registered at 05:30 local (= 09:30 UTC during EDT), i.e. about
+REM an hour BEFORE the publish, so every in-season run silently consumed the PREVIOUS day's
+REM build -- last night's finals games were missing until the following day. Registered start
+REM time was changed to 08:00 local on 2026-10-25, which clears the worst observed publish
+REM completion by >30 min in both EDT (12:00 UTC) and EST (13:00 UTC). If this is ever
+REM re-registered, keep it at or after 08:00 local; do not move it earlier.
+REM   schtasks /change /tn "WNBA Analytics Schedule Daily" /st 08:00   (needs elevation)
+REM ------------------------------------------------------------------------------
+REM
 REM IMPORTANT: the season window below (05-01 through 10-31, a small buffer around the exact
 REM 05-08/09-27 dates above to comfortably cover variable year-to-year start dates and a
 REM full postseason) is a MANUAL constant in this .bat file, not read from config.R (batch
