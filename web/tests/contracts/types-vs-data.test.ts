@@ -175,6 +175,11 @@ describe('TypeScript interface vs JSON payload key parity', () => {
       interfaceName: 'FinalsGamePredictionSet',
     },
     {
+      file: 'finals_series_backtest_2026.json',
+      tsFile: 'lib/playoffTypes.ts',
+      interfaceName: 'FinalsSeriesBacktestSet',
+    },
+    {
       file: 'shots_metadata.json',
       tsFile: 'lib/shotTypes.ts',
       interfaceName: 'ShotsMetadata',

@@ -1071,6 +1071,128 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
   )
 
   # ----------------------------------------------------------------------------
+  # 5d. Finals walk-forward series backtest
+  #
+  # Pure reshape of CACHE_FINALS_SERIES_BACKTEST, which tools/finals_series_backtest.R
+  # produces. Nothing is modeled here.
+  #
+  # READ THE EPISTEMIC LABEL BEFORE CHANGING THIS BLOCK. Unlike 5b's archived
+  # Semifinal forecasts, every row here is a RECONSTRUCTION computed after the fact
+  # from a date-cutoff information set. It exists precisely because no contemporaneous
+  # Finals forecast was ever logged. `provenance` carries that disclaimer from the
+  # artifact's attribute straight through to the page, and the UI is required to show
+  # it -- this payload must never be rendered as if it were an archived forecast, and
+  # 5b's `prediction.available = FALSE` on the Finals row stays FALSE regardless.
+  #
+  # Two series of numbers ship per information set: `actualState` (the live forecast,
+  # conditioned on the real series score at that moment) and `fromZero` (the same
+  # ratings replayed from 0-0). The difference between them is what separates "the
+  # ratings moved" from "the scoreboard moved", which is the whole point of the
+  # backtest and cannot be recovered downstream if only one is shipped.
+  #
+  # Fail-safe: a missing or unreadable artifact yields an empty `infoSets` array with a
+  # labeled sourceNote, which the web route renders as its empty state. The file is
+  # written either way so the contract tests always find real JSON.
+  # ----------------------------------------------------------------------------
+  bt_season     <- CURRENT_SEASON
+  bt_infosets   <- list()
+  bt_games      <- list()
+  bt_note       <- ""
+  bt_provenance <- ""
+  bt_generated  <- ""
+  bt_teams      <- NULL
+
+  if (file.exists(CACHE_FINALS_SERIES_BACKTEST)) {
+    bt <- tryCatch(readRDS(CACHE_FINALS_SERIES_BACKTEST), error = function(e) NULL)
+    if (is.null(bt) || !is.data.frame(bt) || nrow(bt) == 0) {
+      bt_note <- "The Finals series backtest could not be read."
+      message(sprintf(">>> [EXPORT_WEB_JSON] WARNING: %s exists but could not be read as a non-empty table — %s",
+                      basename(CACHE_FINALS_SERIES_BACKTEST), bt_note))
+    } else {
+      bt_provenance <- as.character(attr(bt, "provenance") %||% "")
+      bt_generated  <- as.character(attr(bt, "generated_at") %||% "")
+      bt_teams <- list(
+        teamHigh     = as.character(bt$team_high[1]),
+        teamHighAbbr = as.character(bt$team_high_abb[1]),
+        teamLow      = as.character(bt$team_low[1]),
+        teamLowAbbr  = as.character(bt$team_low_abb[1])
+      )
+
+      fgames <- attr(bt, "finals_games")
+      if (!is.null(fgames) && is.data.frame(fgames) && nrow(fgames) > 0) {
+        bt_games <- lapply(seq_len(nrow(fgames)), function(i) list(
+          game      = as.integer(fgames$game[i]),
+          gameDate  = as.character(fgames$game_day[i]),
+          scoreHigh = as.integer(fgames$score_high[i]),
+          scoreLow  = as.integer(fgames$score_low[i]),
+          highWon   = isTRUE(fgames$high_won[i])
+        ))
+      }
+
+      # One object per information set, in chronological order. `main` is the
+      # all-games-to-date information set (the honest walk-forward one);
+      # `regularSeasonOnly` is the leak-free comparison baseline kept per issue #92.
+      pick <- function(label, info, cond) {
+        r <- bt[bt$info_set == label & bt$information == info & bt$conditioning == cond, ]
+        if (nrow(r) == 0) return(NULL)
+        r[1, ]
+      }
+      ordered_labels <- unique(bt$info_set[order(bt$games_played)])
+      for (lbl in ordered_labels) {
+        main <- pick(lbl, "all games to date", "actual_state")
+        if (is.null(main)) next
+        zero <- pick(lbl, "all games to date", "from_0_0")
+        rego <- pick(lbl, "regular season only", "actual_state")
+        dist <- main$distribution[[1]]
+        bt_infosets[[length(bt_infosets) + 1L]] <- list(
+          label          = as.character(main$info_set),
+          cutoffDate     = as.character(main$cutoff_date),
+          gamesPlayed    = as.integer(main$games_played),
+          stateHigh      = as.integer(main$state_high),
+          stateLow       = as.integer(main$state_low),
+          nGamesHigh     = as.integer(main$n_games_high),
+          nGamesLow      = as.integer(main$n_games_low),
+          netRawHigh     = as.numeric(main$net_raw_high),
+          netRawLow      = as.numeric(main$net_raw_low),
+          netAdjHigh     = as.numeric(main$net_adj_high),
+          netAdjLow      = as.numeric(main$net_adj_low),
+          pHighSeries    = as.numeric(main$p_high_series),
+          pLowSeries     = as.numeric(main$p_low_series),
+          fairMlHigh     = as.integer(main$fair_ml_high),
+          fairMlLow      = as.integer(main$fair_ml_low),
+          expectedLength = as.numeric(main$expected_length),
+          lengthDistribution = lapply(seq_len(nrow(dist)), function(i) list(
+            length      = as.integer(dist$length[i]),
+            probability = as.numeric(dist$probability[i])
+          )),
+          # Counterfactuals, both optional: a consumer that only wants the headline
+          # number can ignore them, but they cannot be re-derived from it.
+          pHighSeriesFromZero = if (is.null(zero)) NULL else as.numeric(zero$p_high_series),
+          pHighSeriesRegularSeasonOnly = if (is.null(rego)) NULL else as.numeric(rego$p_high_series)
+        )
+      }
+      # Reader-facing: `sourceNote` is what the page shows when it has nothing else
+      # to display, so it says what is missing in plain words. The filename stays in
+      # the console message below for whoever is actually debugging it.
+      bt_note <- "Walk-forward series forecasts, replayed from the games available at each point."
+    }
+  } else {
+    bt_note <- "The Finals series backtest has not been generated yet."
+    message(sprintf(">>> [EXPORT_WEB_JSON] WARNING: %s not found — %s",
+                    basename(CACHE_FINALS_SERIES_BACKTEST), bt_note))
+  }
+
+  backtest_payload <- list(
+    season      = as.integer(bt_season),
+    generatedAt = bt_generated,
+    sourceNote  = bt_note,
+    provenance  = bt_provenance,
+    matchup     = bt_teams,
+    games       = bt_games,
+    infoSets    = bt_infosets
+  )
+
+  # ----------------------------------------------------------------------------
   # 6. Write JSON Files
   # ----------------------------------------------------------------------------
   out_teams_json    <- file.path(output_dir, "projections_season_teams.json")
@@ -1086,6 +1208,9 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
   # CACHE_FINALS_GAME_PREDICTIONS rather than restating the season here.
   out_finals_json   <- file.path(
     output_dir, sub("\\.rds$", ".json", basename(CACHE_FINALS_GAME_PREDICTIONS)))
+  # Same rule again for the walk-forward series backtest.
+  out_backtest_json <- file.path(
+    output_dir, sub("\\.rds$", ".json", basename(CACHE_FINALS_SERIES_BACKTEST)))
 
   write_json(teams_df, out_teams_json, pretty = TRUE, auto_unbox = TRUE)
   write_json(player_projections, out_players_json, pretty = TRUE, auto_unbox = TRUE)
@@ -1112,6 +1237,12 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
   # so P(game played) still matches the series-length tail it was derived from.
   write_json(finals_payload, out_finals_json, pretty = TRUE, auto_unbox = TRUE,
              null = "null", na = "null", digits = NA)
+  # Same three options once more. `null = "null"` matters most here: an information set
+  # whose counterfactual rows are absent must still ship the key as an explicit null, so
+  # the shipped key set does not vary row to row and the TypeScript-interface parity
+  # check stays meaningful.
+  write_json(backtest_payload, out_backtest_json, pretty = TRUE, auto_unbox = TRUE,
+             null = "null", na = "null", digits = NA)
 
   message(sprintf(">>> [EXPORT_WEB_JSON] Saved %s (%d teams)", out_teams_json, nrow(teams_df)))
   message(sprintf(">>> [EXPORT_WEB_JSON] Saved %s (%d players)", out_players_json, nrow(player_projections)))
@@ -1122,6 +1253,8 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
                    length(bracket_series), bracket_season))
   message(sprintf(">>> [EXPORT_WEB_JSON] Saved %s (%d Finals games, rest applied = %s)",
                    out_finals_json, length(finals_games), finals_rest))
+  message(sprintf(">>> [EXPORT_WEB_JSON] Saved %s (%d information sets)",
+                   out_backtest_json, length(bt_infosets)))
 
   # Sync to cache/ for local scripts
   if (sync_cache && dir.exists(CACHE_DIR)) {
