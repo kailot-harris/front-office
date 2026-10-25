@@ -62,8 +62,23 @@ jobs:
           # refresh upstream. The others are dispatch-only, so a sibling repo
           # mid-change can never drag the site into a broken build on its own.
           SPORTS: ${{ inputs.sports || 'mlb' }}
+          # The sport repos are PRIVATE and live outside this repo, and
+          # GITHUB_TOKEN is scoped to this repo alone -- an anonymous clone of a
+          # private sibling fails with the misleading "Repository not found"
+          # (proven: run 40241008321). Reading them needs a PAT with read-only
+          # Contents on the four sport repos, stored here as SUBTREE_TOKEN.
+          SUBTREE_TOKEN: ${{ secrets.SUBTREE_TOKEN }}
         run: |
           set -euo pipefail
+
+          if [ -z "${SUBTREE_TOKEN:-}" ]; then
+            echo '::error::SUBTREE_TOKEN is not set. Create a fine-grained PAT with'
+            echo '::error::read-only Contents on the sport repos and add it under'
+            echo '::error::Settings -> Secrets and variables -> Actions. GITHUB_TOKEN'
+            echo '::error::cannot read another repository, so this cannot be skipped.'
+            exit 1
+          fi
+
           git config user.name  'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
 
@@ -83,7 +98,11 @@ jobs:
             esac
 
             remote="${sport}-origin"
-            git remote add "$remote" "https://github.com/${{ github.repository_owner }}/${repo}.git"
+            # Token in the remote URL rather than an extraheader so it is never
+            # written into .git/config of the pushed tree. Actions masks the
+            # secret in logs, but keep it out of any `git remote -v` echo too.
+            git remote add "$remote" \
+              "https://x-access-token:${SUBTREE_TOKEN}@github.com/${{ github.repository_owner }}/${repo}.git"
 
             sport_before="$(git rev-parse HEAD)"
             # No --squash: matches the existing merge style in this repo's
