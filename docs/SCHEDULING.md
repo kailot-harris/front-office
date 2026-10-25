@@ -3,9 +3,10 @@
 Operator reference for the two Windows Task Scheduler jobs that keep the public site
 current. Written for GitHub issue #39 ("Phase 3: trigger the daily 09:00 redeploy").
 
-> **Read this first:** the publish task ships in **dry-run mode on purpose** and must
-> stay that way until issue #42 is proven. See
-> [Do not enable `--publish` until #42 is proven](#do-not-enable---publish-until-42-is-proven).
+> **Read this first:** issue #42 is **settled green as of 2026-10-25** — a real push
+> from a genuine session-0, non-interactive scheduled task succeeded for both repos. The
+> publish task may now be registered in live mode. See
+> [Issue #42: settled](#issue-42-the-unattended-push-probe-settled-green-2026-10-25).
 
 ---
 
@@ -170,36 +171,33 @@ go live anywhere from ~09:04 to ~09:25. Choose on which you care about more:
 | Punctuality | Good — live ~09:04 | Drifts 5–20 min |
 | Needs the laptop awake at 09:00 | **Yes** | No |
 | Needs an unattended local push | **Yes** (at 09:00) | **Yes** (at ~05:20) |
-| Deploy-step credential | Local, unproven (#42) | In-workflow `GITHUB_TOKEN` |
+| Deploy-step credential | Local GCM — **proven** unattended (#42) | In-workflow `GITHUB_TOKEN` |
+
+Since #42 came back green, the credential row is no longer a reason to prefer cron: the
+local unattended push works. The choice is now purely punctuality (Task Scheduler) vs.
+no-laptop-dependency (cron).
 
 This is a documented option, **not** currently implemented; #39 does not ask for the
 workflow file and none has been added.
 
 ---
 
-## Do not enable `--publish` until #42 is proven
+## Enabling `--publish` (unblocked 2026-10-25)
 
-Issue **#42 is open and blocks live publishing.** A push-capable credential exists on
-this machine (gh CLI OS keyring, plus `credential.helper=manager` in both repos) — but
-that only proves credentials work for an **interactive terminal session**.
+Issue **#42 is settled green** — see
+[Issue #42](#issue-42-the-unattended-push-probe--settled-green-2026-10-25). A real push
+from a session-0, non-interactive scheduled task succeeded for both `NFL_analytics` and
+`front-office`, so the credential story that previously blocked live publishing is
+proven, not assumed.
 
-Git Credential Manager normally stores credentials for the interactive user session. A
-task configured "run whether logged on or not" runs in a **non-interactive session** and
-can silently fail to reach GCM. The failure would surface as the 09:00 publish hanging
-on an auth prompt, or failing with no obvious cause, **at a time nobody is watching.**
+The publish task still ships in **`dryrun`** mode by default, and the recommended order
+is unchanged:
 
-Therefore:
-
-1. The publish task is registered in **`dryrun`** mode. Leave it there.
-2. Let it run that way for a few days and read the gate's assertion output in the log.
-   A dry run exercises everything except the push, so it is the cheap way to find
-   artifact problems first.
-3. **Prove #42 separately**: execute one real push *from a scheduled-task context* (not
-   an interactive shell) to both `NFL_analytics` and `front-office`. If GCM turns out to
-   be unreachable non-interactively, pick and document a remedy — a PAT in the task's
-   environment, a dedicated credential store, or a different auth mechanism — rather
-   than leaving it to chance.
-4. **Only after #42 closes**, re-register the publish task in live mode:
+1. Let the task run in `dryrun` for a few days first and read the gate's assertion
+   output in the log. A dry run exercises everything except the push, so it remains the
+   cheap way to find *artifact* problems — which are a separate failure class from the
+   credential question #42 answered.
+2. Then re-register in live mode:
 
    ```powershell
    powershell -NoProfile -File tools\register_scheduled_tasks.ps1 -PublishMode publish
@@ -207,20 +205,61 @@ Therefore:
 
    The script warns when you do this.
 
-The honest status until then is "credentials exist for an interactive user", not
-"credentials work unattended".
+**The residual risk is real and does not go away with a green probe.** S4U credential
+reachability depends on the user's DPAPI-protected store, so it can break **with no code
+change** on a Windows password change, a credential-manager or keyring reset, or a GCM
+upgrade that changes its store backend. The probe result is point-in-time. Treat a push
+failure at publish time as an expected, alertable condition rather than an
+impossibility — that is what issue #40 (deploy observability) is for.
 
 ---
 
-## Issue #42: the unattended-push probe, and why it is still unproven
+## Issue #42: the unattended-push probe — SETTLED GREEN (2026-10-25)
 
-**Status as of 2026-10-25: NOT SETTLED — blocked on local elevation, not on a
-credential.** Read this whole section before touching the publish task's mode. The
-short version: the probe tooling is finished and verified as far as an unelevated
-session can take it, but the one measurement that answers #42 — a real push from a
-non-interactive scheduled-task session — could not be executed on this machine by an
-unelevated agent, so the honest verdict is still "unknown": not "works", and not
-"broken".
+**Status: SETTLED. Credentials ARE reachable from a non-interactive scheduled-task
+session, for both repos.** The probe pair was run from an elevated PowerShell at
+14:58 on 2026-10-25 and both tasks exited 0.
+
+The measurement that settles it, from `logs/credential_probe.log` (the unattended run,
+PID 11140):
+
+```
+    Environment.UserInteractive: False
+    SESSIONNAME                :
+    Process session id         : 0
+    => NON-INTERACTIVE session. This is the context #42 is about.
+    GH_TOKEN                   : (not set)
+    GITHUB_TOKEN               : (not set)
+...
+    NFL_analytics   PUSH OK
+    front-office    PUSH OK
+```
+
+Why this is the real thing and not a disguised interactive run: `UserInteractive: False`
+with `Process session id: 0` and an empty `SESSIONNAME` is the signature of a session-0
+"run whether logged on or not" task — the interactive control run 31 seconds earlier
+logged `session id: 1` for contrast. Both `GH_TOKEN` and `GITHUB_TOKEN` were unset, so
+authentication went through Git Credential Manager, not an ambient token — which is
+precisely the mechanism #42 doubted would be reachable from session 0.
+
+Full results, both logon types:
+
+| Task | LogonType | LastTaskResult | NFL_analytics | front-office |
+|---|---|---|---|---|
+| `NFL_analytics_credprobe_interactive` | Interactive (control) | 0 | READ + WRITE + CLEANUP OK | READ + WRITE + CLEANUP OK |
+| `NFL_analytics_credprobe_unattended` | **S4U (session 0)** | 0 | **READ + WRITE + CLEANUP OK** | **READ + WRITE + CLEANUP OK** |
+
+That is the `interactive PASS + unattended PASS` case in the interpretation table below.
+Cleanup verified independently afterwards: `git ls-remote --heads origin
+"refs/heads/cred-probe/*"` is empty in both repos, and both `main` refs are unchanged
+(`843a27d` NFL_analytics, `231ef7c` front-office), so the probe left no trace.
+
+**The earlier blocked attempt is still worth knowing about.** On the first run, an
+unelevated agent session could not register the S4U principal at all —
+`Register-ScheduledTask` failed with `0x80070005 Access is denied`, because the account
+is in `BUILTIN\Administrators` only as a *deny-only* SID on a filtered token. S4U
+registration needs real elevation, and UAC needs a desktop, so this probe cannot be
+completed by a background agent. Run it from an elevated PowerShell yourself.
 
 ### The tooling
 
@@ -309,10 +348,12 @@ Both probe tasks were then unregistered via
 as found. No commit was created in either repo, and no credential value was read,
 logged or committed.
 
-### What a future agent must do to finish this
+### How to re-run the probe
 
-The probe is ready; it needs a session that can register and start an S4U task. From an
-**elevated** PowerShell on this machine:
+This is the sequence that produced the green result above, and the one to re-run if the
+residual risk ever fires (password change, keyring reset, GCM store-backend change) and
+you need to re-confirm the credential. It needs a session that can register and start an
+S4U task, so run it from an **elevated** PowerShell on this machine:
 
 ```
 powershell -NoProfile -File tools\register_credential_probe_task.ps1 -DryRun  # read the plan
@@ -347,14 +388,20 @@ keyring reset, or a GCM upgrade that changes its store backend. A green probe is
 point-in-time result, not a permanent guarantee. The 09:00 publish should therefore
 treat a push failure as an expected, alertable condition rather than an impossibility.
 
-### Recommended remedy, and why
+### Remedies considered while #42 was open — now moot
 
-Of the three remedies #42 names, the recommendation for #39 is the **third: commit at
-~05:20 and let a GitHub Actions `schedule` cron in the aggregator deploy**, rather than
-pushing from Task Scheduler at all. See "Alternative: a GitHub Actions cron" above for
-the already-documented trade-off.
+**None of the three remedies below is needed.** They were weighed on the assumption that
+the unattended push might be broken; it is not, so this subsection is kept only as a
+record of the reasoning (and so the options are already scoped if the residual risk ever
+fires and the credential stops working).
 
-Justification against the alternatives:
+For the record, the recommendation while #42 was open was the third option — commit at
+~05:20 and let a GitHub Actions `schedule` cron deploy. **That is now an architecture
+choice, not a remedy**: with the local push proven, cron buys only "no laptop awake at
+09:00" and costs 5–20 minutes of punctuality. See "Alternative: a GitHub Actions cron"
+above.
+
+Justification against the alternatives, as assessed:
 
 - **A PAT in the task's environment** — works, but puts a long-lived push-capable
   credential in a Task Scheduler action or a machine environment variable, readable by
@@ -384,12 +431,11 @@ Justification against the alternatives:
   — fewer moving parts at deploy time, no 09:00 laptop dependency — but it must be
   paired with a settled answer for the 05:20 push.
 
-This remedy is a **recommendation, not an implementation**: no workflow file has been
-added, and #39 still owns that decision. Per the correction above, adopting cron does
-*not* dispose of #42 — the 05:20 push still needs an answer, so the probe must either be
-finished from an elevated session or the pipeline must move into CI. But do
-**not** switch the publish task to `--publish` on the strength of the interactive dry
-run above, which proves only that an interactive shell can read.
+No workflow file has been added and #39 still owns the Task-Scheduler-vs-cron decision.
+Note for whoever makes it: adopting cron would *not* have disposed of #42 even while it
+was open, because the ~05:20 push is itself a scheduled-task push — the correction above
+explains why. That no longer matters for unblocking, but it is the kind of reasoning
+error worth not repeating.
 
 ---
 
@@ -400,7 +446,7 @@ run above, which proves only that an interactive shell can read.
 | #38 | `tools/publish_web.R`, the freshness gate these wrappers call. |
 | #39 | This work: the wrappers, the two tasks, the 09:00 redeploy. |
 | #41 | Staggering schedules, because `deploy.yml` cancels in-progress Pages deploys. |
-| #42 | **Blocks live publish.** Unattended push credential is still unproven — see "Issue #42: the unattended-push probe" above for the probe tooling, what was run on 2026-10-25, why it could not be finished without elevation, and the recommended remedy. |
+| #42 | **Settled green 2026-10-25, no longer blocking.** A real push from a session-0 non-interactive task succeeded for both repos — see "Issue #42: the unattended-push probe" above for the log evidence, the probe tooling, and the residual DPAPI risk that survives a green result. |
 | #43 | `config.R` hardcodes `PROJECT_DIR`; the wrappers set a working directory rather than relying on it. |
 
 No secret, token or webhook URL appears in any scheduling file. `config.R`'s
