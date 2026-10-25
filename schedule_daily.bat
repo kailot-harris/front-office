@@ -26,7 +26,13 @@ REM MM values below at the start of each new WNBA season if the league's actual 
 REM shifts meaningfully outside this window.
 REM ==============================================================================
 
-set PROJECT_DIR=c:\Users\kailo\kayceeslices\WNBA Analytics
+REM Issue #90: derived from this script's own location (%~dp0) instead of a hardcoded
+REM absolute path. The old literal pointed at the repo's pre-move location, which still
+REM exists as a logs-only stub, so Task Scheduler kept running the pipeline against a
+REM directory holding none of the stage scripts -- 26 of 30 stages silently skipped while
+REM the run still reported success. %~dp0 always resolves to the folder holding this file.
+set PROJECT_DIR=%~dp0
+if "%PROJECT_DIR:~-1%"=="\" set PROJECT_DIR=%PROJECT_DIR:~0,-1%
 set LOG_FILE=%PROJECT_DIR%\pipeline_execution.log
 set LOG_MAX_BYTES=5242880
 

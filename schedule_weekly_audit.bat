@@ -20,10 +20,15 @@ REM part of the daily data pipeline's DAG, and don't need to run more than weekl
 REM
 REM One-time setup (not run automatically by anything in this repo -- register by
 REM hand once, matching how schedule_daily.bat is registered):
-REM   schtasks /create /tn "WNBA Weekly Audit" /tr "\"c:\Users\kailo\kayceeslices\WNBA Analytics\schedule_weekly_audit.bat\"" /sc weekly /d SUN /st 08:00
+REM   schtasks /create /tn "WNBA Weekly Audit" /tr "\"<repo root>\schedule_weekly_audit.bat\"" /sc weekly /d SUN /st 08:00
 REM ==============================================================================
 
-set PROJECT_DIR=c:\Users\kailo\kayceeslices\WNBA Analytics
+REM Derive the project root from this file's own location rather than a hardcoded
+REM absolute path (same fix as schedule_daily.bat): the old literal pointed at the
+REM repo's pre-move location, which still exists as a logs-only stub, so every stage
+REM script would be missing while the run still reported success.
+set PROJECT_DIR=%~dp0
+if "%PROJECT_DIR:~-1%"=="\" set PROJECT_DIR=%PROJECT_DIR:~0,-1%
 set LOG_FILE=%PROJECT_DIR%\logs\weekly_audit.log
 
 cd /d "%PROJECT_DIR%"

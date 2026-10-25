@@ -17,7 +17,7 @@
 # place regardless (Ground Rule 5) as the correct fail-safe if the file is ever removed again.
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/WNBA Analytics"
+PROJECT_DIR <- here::here()   # issue #90: derived portably; never hardcode the repo root
 if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
 
 # Task P5 (wnba_logging_agent): structured logging utility. Sourced before anything else so

@@ -57,7 +57,7 @@
 # reconcile-then-log, for convenient standalone/manual use.
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/WNBA Analytics"
+PROJECT_DIR <- here::here()   # issue #90: derived portably; never hardcode the repo root
 if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({
