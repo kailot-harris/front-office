@@ -808,6 +808,15 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
     }
   }
 
+  # NOTE (GitHub issue #92): the 2022:2025 bound below is deliberate and the current
+  # season is deliberately NOT added to it. `historicalBrackets` feeds the "Historical
+  # Postseason Series Archive" section of /series, which carries resolved actuals only and
+  # which #92 explicitly leaves untouched. The current season needs a per-series prediction
+  # block alongside the result, and its Finals is still in progress (1 game played), which
+  # the historicalBrackets schema does not allow — its gamesPlayed and games[] both require
+  # a minimum of 2. So the current season ships as its own artifact instead; see
+  # build_playoff_bracket_2026.R and the export block further down. Extending this loop to
+  # 2026 would both break that schema and change a section that is out of scope.
   historical_brackets <- list()
   for (yr in 2022:2025) {
     b_file <- file.path(CACHE_DIR, sprintf("playoff_bracket_results_%d.rds", yr))
@@ -862,6 +871,206 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
   )
 
   # ----------------------------------------------------------------------------
+  # 5b. Current-season playoff bracket: result + prediction per series (#92)
+  #
+  # Pure reshape of CACHE_PLAYOFF_BRACKET_CURRENT, which build_playoff_bracket_2026.R
+  # produces. Nothing is modeled here -- in particular the archived Semifinal forecast
+  # values are passed straight through, never recomputed.
+  #
+  # Fail-safe: a missing artifact yields an empty `series` array with a labeled
+  # sourceNote, which the web route renders as its empty state. The file is written
+  # either way so the contract tests and the page always find real JSON.
+  # ----------------------------------------------------------------------------
+  bracket_season <- CURRENT_SEASON
+  bracket_series <- list()
+  bracket_note   <- ""
+  bracket_generated <- ""
+
+  if (file.exists(CACHE_PLAYOFF_BRACKET_CURRENT)) {
+    cur <- tryCatch(readRDS(CACHE_PLAYOFF_BRACKET_CURRENT), error = function(e) NULL)
+    if (is.null(cur)) {
+      bracket_note <- sprintf("FALLBACK: %s exists but could not be read.",
+                              basename(CACHE_PLAYOFF_BRACKET_CURRENT))
+      message(sprintf(">>> [EXPORT_WEB_JSON] WARNING: %s", bracket_note))
+    } else {
+      bracket_note      <- as.character(attr(cur, "source_note") %||% "")
+      bracket_generated <- as.character(attr(cur, "generated_at") %||% "")
+      if (!is.null(attr(cur, "season"))) bracket_season <- as.integer(attr(cur, "season"))
+
+      for (r in seq_len(nrow(cur))) {
+        row <- cur[r, ]
+        games_raw <- row$games[[1]]
+        games_list <- list()
+        if (is.list(games_raw)) {
+          for (g in seq_along(games_raw)) {
+            gm <- games_raw[[g]]
+            games_list[[g]] <- list(
+              gameDate = as.character(gm$game_date %||% ""),
+              teamA    = team_name_to_abbr[[gm$team_a %||% ""]] %||% (gm$team_a %||% ""),
+              scoreA   = as.integer(gm$score_a %||% 0),
+              teamB    = team_name_to_abbr[[gm$team_b %||% ""]] %||% (gm$team_b %||% ""),
+              scoreB   = as.integer(gm$score_b %||% 0)
+            )
+          }
+        }
+
+        # Same ten fields as a historicalBrackets entry, so the two payloads speak
+        # one shape, plus the current-season-only extras.
+        bracket_series[[r]] <- list(
+          teamA          = as.character(row$team_a_abb),
+          teamNameA      = as.character(row$team_a),
+          teamB          = as.character(row$team_b_abb),
+          teamNameB      = as.character(row$team_b),
+          winner         = as.character(row$winner_abb),
+          winnerName     = as.character(row$winner),
+          round          = as.character(row$round),
+          gamesPlayed    = as.integer(row$games_played),
+          seriesLength   = as.integer(row$series_length),
+          games          = games_list,
+          winsA          = as.integer(row$wins_a),
+          winsB          = as.integer(row$wins_b),
+          seriesComplete = isTRUE(row$series_complete),
+          prediction     = row$prediction[[1]]
+        )
+      }
+    }
+  } else {
+    bracket_note <- sprintf("FALLBACK: %s not found — no current-season bracket available.",
+                            basename(CACHE_PLAYOFF_BRACKET_CURRENT))
+    message(sprintf(">>> [EXPORT_WEB_JSON] WARNING: %s", bracket_note))
+  }
+
+  bracket_payload <- list(
+    season      = as.integer(bracket_season),
+    generatedAt = bracket_generated,
+    sourceNote  = bracket_note,
+    series      = bracket_series
+  )
+
+  # ----------------------------------------------------------------------------
+  # 5c. Finals per-game predictions (#94)
+  #
+  # Pure reshape of CACHE_FINALS_GAME_PREDICTIONS, which
+  # build_finals_game_predictions.R produces. Nothing is modeled here: the per-game
+  # home-court probabilities and P(game played) come from the exact series-length DP
+  # and the rest/travel figures from calculate_travel_fatigue(), both already baked
+  # into that artifact.
+  #
+  # Separate from 5b on purpose -- this payload is one row per GAME of a single
+  # series, where 5b is one row per SERIES across every round, and #92's bracket
+  # tree (including the frozen archived Semifinal values) is not touched by it.
+  #
+  # Fail-safe: a missing or unreadable artifact, or one with no Finals matchup,
+  # yields an empty `games` array and a null `matchup` with a labeled sourceNote,
+  # which the web route renders as its empty state rather than inventing a pairing.
+  # The file is written either way so the contract tests always find real JSON.
+  # ----------------------------------------------------------------------------
+  finals_season    <- CURRENT_SEASON
+  finals_games     <- list()
+  finals_matchup   <- NULL
+  finals_lengths   <- list()
+  finals_note      <- ""
+  finals_generated <- ""
+  finals_rest      <- FALSE
+  finals_rest_note <- ""
+  finals_fmt_key   <- ""
+  finals_fmt_label <- ""
+
+  if (file.exists(CACHE_FINALS_GAME_PREDICTIONS)) {
+    fg <- tryCatch(readRDS(CACHE_FINALS_GAME_PREDICTIONS), error = function(e) NULL)
+    if (is.null(fg)) {
+      finals_note <- sprintf("FALLBACK: %s exists but could not be read.",
+                             basename(CACHE_FINALS_GAME_PREDICTIONS))
+      message(sprintf(">>> [EXPORT_WEB_JSON] WARNING: %s", finals_note))
+    } else {
+      finals_note      <- as.character(attr(fg, "source_note") %||% "")
+      finals_generated <- as.character(attr(fg, "generated_at") %||% "")
+      finals_rest      <- isTRUE(attr(fg, "rest_applied"))
+      finals_rest_note <- as.character(attr(fg, "rest_note") %||% "")
+      finals_fmt_key   <- as.character(attr(fg, "format_key") %||% "")
+      finals_fmt_label <- as.character(attr(fg, "format_label") %||% "")
+      if (!is.null(attr(fg, "season"))) finals_season <- as.integer(attr(fg, "season"))
+
+      m <- attr(fg, "matchup")
+      if (!is.null(m)) {
+        finals_matchup <- list(
+          teamHigh       = as.character(m$team_high),
+          teamHighAbbr   = as.character(m$team_high_abbr),
+          teamLow        = as.character(m$team_low),
+          teamLowAbbr    = as.character(m$team_low_abbr),
+          seedHigh       = as.integer(m$seed_high),
+          seedLow        = as.integer(m$seed_low),
+          netHighAdj     = as.numeric(m$net_high_adj),
+          netLowAdj      = as.numeric(m$net_low_adj),
+          winsHigh       = as.integer(m$wins_high),
+          winsLow        = as.integer(m$wins_low),
+          seriesComplete = isTRUE(m$series_complete),
+          winThreshold   = as.integer(m$win_threshold),
+          expectedGames  = as.numeric(m$expected_games)
+        )
+      }
+
+      ld <- attr(fg, "length_distribution")
+      if (!is.null(ld) && is.data.frame(ld) && nrow(ld) > 0) {
+        finals_lengths <- lapply(seq_len(nrow(ld)), function(i) list(
+          length      = as.integer(ld$length[i]),
+          label       = as.character(ld$label[i]),
+          probability = as.numeric(ld$probability[i])
+        ))
+      }
+
+      for (r in seq_len(nrow(fg))) {
+        row <- fg[r, ]
+        finals_games[[r]] <- list(
+          game                = as.integer(row$game),
+          gameDate            = as.character(row$game_date),
+          hostAbbr            = as.character(row$host_abbr),
+          hostName            = as.character(row$host_name),
+          hostIsHighSeed      = isTRUE(row$host_is_high_seed),
+          hcaSignForHighSeed  = as.integer(row$hca_sign_for_high_seed),
+          pHighSeedWinHca     = as.numeric(row$p_high_seed_win_hca),
+          pLowSeedWinHca      = as.numeric(row$p_low_seed_win_hca),
+          pGamePlayed         = as.numeric(row$p_game_played),
+          restApplied         = isTRUE(row$rest_applied),
+          daysRestHigh        = as.numeric(row$days_rest_high),
+          daysRestLow         = as.numeric(row$days_rest_low),
+          backToBackHigh      = isTRUE(row$b2b_high),
+          backToBackLow       = isTRUE(row$b2b_low),
+          travelMilesHigh     = as.numeric(row$travel_miles_high),
+          travelMilesLow      = as.numeric(row$travel_miles_low),
+          fatigueDragHigh     = as.numeric(row$fatigue_drag_high),
+          fatigueDragLow      = as.numeric(row$fatigue_drag_low),
+          pHighSeedWinWithRest = as.numeric(row$p_high_seed_win_rest),
+          pLowSeedWinWithRest  = as.numeric(row$p_low_seed_win_rest),
+          resultAvailable     = isTRUE(row$result_available),
+          scheduleCompleted   = isTRUE(row$schedule_completed),
+          scoreHigh           = as.integer(row$score_high),
+          scoreLow            = as.integer(row$score_low),
+          resultStatus        = as.character(row$result_status)
+        )
+      }
+    }
+  } else {
+    finals_note <- sprintf(
+      "FALLBACK: %s not found — no Finals per-game forecast available.",
+      basename(CACHE_FINALS_GAME_PREDICTIONS))
+    message(sprintf(">>> [EXPORT_WEB_JSON] WARNING: %s", finals_note))
+  }
+
+  finals_payload <- list(
+    season             = as.integer(finals_season),
+    generatedAt        = finals_generated,
+    sourceNote         = finals_note,
+    formatKey          = finals_fmt_key,
+    formatLabel        = finals_fmt_label,
+    restApplied        = finals_rest,
+    restNote           = finals_rest_note,
+    matchup            = finals_matchup,
+    lengthDistribution = finals_lengths,
+    games              = finals_games
+  )
+
+  # ----------------------------------------------------------------------------
   # 6. Write JSON Files
   # ----------------------------------------------------------------------------
   out_teams_json    <- file.path(output_dir, "projections_season_teams.json")
@@ -869,18 +1078,50 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
   out_meta_json     <- file.path(output_dir, "projections_models_metadata.json")
   out_diag_json     <- file.path(output_dir, "projections_diagnostics.json")
   out_playoffs_json <- file.path(output_dir, "playoff_series_matchups.json")
+  # Filename tracks the cache artifact's own name (and so CURRENT_SEASON through
+  # config.R's CACHE_PLAYOFF_BRACKET_CURRENT) instead of restating the year here.
+  out_bracket_json  <- file.path(
+    output_dir, sub("\\.rds$", ".json", basename(CACHE_PLAYOFF_BRACKET_CURRENT)))
+  # Same rule for the Finals per-game payload: the filename tracks
+  # CACHE_FINALS_GAME_PREDICTIONS rather than restating the season here.
+  out_finals_json   <- file.path(
+    output_dir, sub("\\.rds$", ".json", basename(CACHE_FINALS_GAME_PREDICTIONS)))
 
   write_json(teams_df, out_teams_json, pretty = TRUE, auto_unbox = TRUE)
   write_json(player_projections, out_players_json, pretty = TRUE, auto_unbox = TRUE)
   write_json(metadata_obj, out_meta_json, pretty = TRUE, auto_unbox = TRUE)
   write_json(diagnostics_obj, out_diag_json, pretty = TRUE, auto_unbox = TRUE)
   write_json(playoff_catalog, out_playoffs_json, pretty = TRUE, auto_unbox = TRUE)
+  # Three non-default jsonlite options here, each load-bearing:
+  #   null = "null"  -- an unavailable prediction's `forecast` ships as an explicit
+  #     null instead of being dropped, so the shipped keys do not vary row to row
+  #     (which would break the TypeScript-interface parity check).
+  #   na = "null"    -- an absent seed ships as null, not the STRING "NA". jsonlite's
+  #     default coerces NA to "NA" inside a mixed list, which silently turns a
+  #     numeric field into a string.
+  #   digits = NA    -- full double precision. jsonlite defaults to 4 significant
+  #     decimals, which both broke the "length distribution sums to 1" invariant and,
+  #     more importantly, meant the ARCHIVED semifinal probabilities were being
+  #     rounded on the way out. Those are supposed to ship verbatim; rounding them is
+  #     exactly the kind of quiet edit this artifact exists to prevent.
+  write_json(bracket_payload, out_bracket_json, pretty = TRUE, auto_unbox = TRUE,
+             null = "null", na = "null", digits = NA)
+  # Same three non-default options, for the same three reasons: an undetermined
+  # matchup must ship as an explicit null rather than a dropped key, an absent rest
+  # figure as null rather than the STRING "NA", and probabilities at full precision
+  # so P(game played) still matches the series-length tail it was derived from.
+  write_json(finals_payload, out_finals_json, pretty = TRUE, auto_unbox = TRUE,
+             null = "null", na = "null", digits = NA)
 
   message(sprintf(">>> [EXPORT_WEB_JSON] Saved %s (%d teams)", out_teams_json, nrow(teams_df)))
   message(sprintf(">>> [EXPORT_WEB_JSON] Saved %s (%d players)", out_players_json, nrow(player_projections)))
   message(sprintf(">>> [EXPORT_WEB_JSON] Saved %s", out_meta_json))
   message(sprintf(">>> [EXPORT_WEB_JSON] Saved %s", out_diag_json))
   message(sprintf(">>> [EXPORT_WEB_JSON] Saved %s (%d sample matchups)", out_playoffs_json, length(sample_matchups)))
+  message(sprintf(">>> [EXPORT_WEB_JSON] Saved %s (%d %d series)", out_bracket_json,
+                   length(bracket_series), bracket_season))
+  message(sprintf(">>> [EXPORT_WEB_JSON] Saved %s (%d Finals games, rest applied = %s)",
+                   out_finals_json, length(finals_games), finals_rest))
 
   # Sync to cache/ for local scripts
   if (sync_cache && dir.exists(CACHE_DIR)) {

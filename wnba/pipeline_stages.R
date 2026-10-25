@@ -417,6 +417,69 @@ PIPELINE_STAGES <- list(
   ),
 
   # ---------------------------------------------------------------------------------------
+  # 6b. Current-Season Playoff Bracket: results beside predictions (GitHub issue #92)
+  #
+  # Placed immediately after playoff_simulator and well before export_web_json, which is
+  # this artifact's only consumer — the exporter reshapes it into
+  # web/public/data/playoff_bracket_2026.json and must not read a stale copy.
+  #
+  # group = NULL (serial) on purpose, not in a parallel group: the script source()s
+  # tools/series_length_predictor.R, which in turn source()s playoff_simulator.R, and
+  # playoff_simulator.R self-runs a 10,000-sim suite on source. Running that inside a
+  # future_lapply worker alongside the other Monte Carlo stages is exactly the parallel
+  # memory pressure the pipeline's own OOM note warns about, for a stage that takes ~2s
+  # serially.
+  #
+  # entry_fn (not call_fn): the script self-runs via its own `if (!interactive())` guard,
+  # so entry_fn verifies the entry point exists without invoking it a second time — the
+  # double-execution trap documented in run_stage().
+  # ---------------------------------------------------------------------------------------
+  playoff_bracket_current = list(
+    id          = "playoff_bracket_current",
+    script      = "build_playoff_bracket_2026.R",
+    description = "Build Current-Season Playoff Bracket (resolved results + per-series predictions)",
+    call_fn     = NULL,
+    entry_fn    = "build_playoff_bracket_current",
+    output      = CACHE_PLAYOFF_BRACKET_CURRENT,
+    # inputs: box_scores_cache.rds (the resolved series and the season_type == 2 ratings
+    # behind the Round 1 reconstruction; a missing file yields an empty, clearly labeled
+    # artifact rather than a crash). series_length_predictions.rds holds the archived
+    # 2026-10-04 semifinal forecasts, read verbatim and never rewritten; if it is missing,
+    # those rounds are marked prediction-unavailable.
+    inputs      = c(CACHE_TEAM_BOX, file.path(CACHE_DIR, "series_length_predictions.rds")),
+    group       = NULL
+  ),
+
+  # ---------------------------------------------------------------------------------------
+  # 6c. Finals per-game predictions (#94).
+  #
+  # Runs strictly AFTER playoff_bracket_current above: the Finals matchup and the played
+  # Finals results are read off that stage's artifact, so placing this earlier (or in a
+  # parallel group beside it) would read a stale or absent bracket. Serial for the same
+  # reason, and because, like 6b, it is a seconds-long reshape whose only heavy dependency
+  # (the series-length DP) is exact rather than simulated.
+  #
+  # entry_fn (not call_fn): the script self-runs via its own `if (!interactive())` guard,
+  # so entry_fn verifies the entry point exists without invoking it a second time.
+  # ---------------------------------------------------------------------------------------
+  finals_game_predictions = list(
+    id          = "finals_game_predictions",
+    script      = "build_finals_game_predictions.R",
+    description = "Build Finals Per-Game Predictions (home court, rest, P(game played))",
+    call_fn     = NULL,
+    entry_fn    = "build_finals_game_predictions",
+    output      = CACHE_FINALS_GAME_PREDICTIONS,
+    # inputs: the #92 bracket artifact (the Finals matchup and its played results),
+    # CACHE_TEAM_BOX (the season_type == 2 ratings behind both sides' net rating), and the
+    # #93 schedule cache (per-game days_rest / is_back_to_back, including for games not yet
+    # played). A missing bracket or missing seeds yields an empty, clearly labeled artifact
+    # and the web route's empty state; a missing schedule degrades the section to
+    # home-court-advantage only rather than crashing.
+    inputs      = c(CACHE_PLAYOFF_BRACKET_CURRENT, CACHE_TEAM_BOX, CACHE_WNBA_SCHEDULE),
+    group       = NULL
+  ),
+
+  # ---------------------------------------------------------------------------------------
   # 7. Portfolio Risk Management & Capital Preservation
   # ---------------------------------------------------------------------------------------
   risk_management_engine = list(

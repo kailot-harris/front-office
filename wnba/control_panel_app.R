@@ -404,7 +404,7 @@ render_stage_preview <- function(stage_id) {
 # ------------------------------------------------------------------------------------------
 # GitHub issue #48's cross-session run lock.
 #
-# shiny::runApp() (how this app is launched, same as app.R / summary_app.R elsewhere in this
+# shiny::runApp() (how this app is launched, same as app.R elsewhere in this
 # repo) serves EVERY browser tab/session from ONE single-threaded R process -- there is no
 # per-session process isolation. That means a per-session reactiveVal/reactiveValues object
 # (scoped to one server(input, output, session) closure) is invisible to a second tab: it

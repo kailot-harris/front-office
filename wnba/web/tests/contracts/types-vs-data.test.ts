@@ -165,6 +165,16 @@ describe('TypeScript interface vs JSON payload key parity', () => {
       optionalFields: ['updatedAt', 'season'],
     },
     {
+      file: 'playoff_bracket_2026.json',
+      tsFile: 'lib/playoffTypes.ts',
+      interfaceName: 'PlayoffBracketSeason',
+    },
+    {
+      file: 'finals_game_predictions_2026.json',
+      tsFile: 'lib/playoffTypes.ts',
+      interfaceName: 'FinalsGamePredictionSet',
+    },
+    {
       file: 'shots_metadata.json',
       tsFile: 'lib/shotTypes.ts',
       interfaceName: 'ShotsMetadata',
@@ -193,4 +203,133 @@ describe('TypeScript interface vs JSON payload key parity', () => {
       ).toEqual([]);
     }
   );
+});
+
+/**
+ * playoff_bracket_2026.json is an object whose payload lives in a nested array,
+ * so the arrayCases runner above (which needs an array at the file root) cannot
+ * reach it and the objectCases runner only checks the four top-level keys. These
+ * cases walk the nested interfaces explicitly, which is where the R writer and
+ * the TypeScript interface would otherwise be free to drift.
+ */
+describe('PlayoffBracketSeason nested interface vs JSON key parity', () => {
+  const bracket = readJsonFile<{
+    series: Array<Record<string, unknown> & { prediction: Record<string, unknown> }>;
+  }>('playoff_bracket_2026.json');
+
+  const assertParity = (
+    interfaceName: string,
+    rows: Record<string, unknown>[],
+    optionalFields: string[] = []
+  ) => {
+    expect(rows.length, `no rows to check for ${interfaceName}`).toBeGreaterThan(0);
+    const tsFields = extractInterfaceFields('lib/playoffTypes.ts', interfaceName);
+    const jsonKeys = collectJsonKeys(rows);
+
+    const missingInJson = [...tsFields].filter(
+      (f) => !optionalFields.includes(f) && !jsonKeys.has(f)
+    );
+    const undocumentedInTs = [...jsonKeys].filter((k) => !tsFields.has(k));
+
+    expect(
+      missingInJson,
+      `${interfaceName} declares fields missing from playoff_bracket_2026.json: ${missingInJson.join(', ')}`
+    ).toEqual([]);
+    expect(
+      undocumentedInTs,
+      `playoff_bracket_2026.json ships keys not declared on ${interfaceName}: ${undocumentedInTs.join(', ')}`
+    ).toEqual([]);
+  };
+
+  it('BracketSeries matches the keys of every series row', () => {
+    assertParity('BracketSeries', bracket.series);
+  });
+
+  it('BracketPrediction matches the keys of every prediction block', () => {
+    assertParity(
+      'BracketPrediction',
+      bracket.series.map((s) => s.prediction)
+    );
+  });
+
+  it('BracketForecast matches the keys of every non-null forecast', () => {
+    const forecasts = bracket.series
+      .map((s) => s.prediction.forecast as Record<string, unknown> | null)
+      .filter((f): f is Record<string, unknown> => f !== null);
+    assertParity('BracketForecast', forecasts);
+  });
+
+  it('BracketLengthProb matches the keys of every length-distribution point', () => {
+    const points = bracket.series
+      .map((s) => s.prediction.forecast as { lengthDistribution?: Record<string, unknown>[] } | null)
+      .filter((f): f is { lengthDistribution: Record<string, unknown>[] } => f !== null)
+      .flatMap((f) => f.lengthDistribution);
+    assertParity('BracketLengthProb', points);
+  });
+});
+
+/**
+ * finals_game_predictions_2026.json has the same shape problem as the bracket
+ * payload: the objectCases runner above only reaches its ten top-level keys, and
+ * the interesting fields -- the 25 per-game ones the R writer emits -- live in a
+ * nested array. These walk the nested interfaces explicitly, which is the only
+ * thing stopping build_finals_game_predictions.R and playoffTypes.ts from drifting
+ * apart silently (GitHub issue #94).
+ */
+describe('FinalsGamePredictionSet nested interface vs JSON key parity', () => {
+  const finals = readJsonFile<{
+    matchup: Record<string, unknown> | null;
+    games: Array<Record<string, unknown>>;
+    lengthDistribution: Array<Record<string, unknown>>;
+  }>('finals_game_predictions_2026.json');
+
+  const assertParity = (
+    interfaceName: string,
+    rows: Record<string, unknown>[],
+    optionalFields: string[] = []
+  ) => {
+    expect(rows.length, `no rows to check for ${interfaceName}`).toBeGreaterThan(0);
+    const tsFields = extractInterfaceFields('lib/playoffTypes.ts', interfaceName);
+    const jsonKeys = collectJsonKeys(rows);
+
+    const missingInJson = [...tsFields].filter(
+      (f) => !optionalFields.includes(f) && !jsonKeys.has(f)
+    );
+    const undocumentedInTs = [...jsonKeys].filter((k) => !tsFields.has(k));
+
+    expect(
+      missingInJson,
+      `${interfaceName} declares fields missing from finals_game_predictions_2026.json: ${missingInJson.join(', ')}`
+    ).toEqual([]);
+    expect(
+      undocumentedInTs,
+      `finals_game_predictions_2026.json ships keys not declared on ${interfaceName}: ${undocumentedInTs.join(', ')}`
+    ).toEqual([]);
+  };
+
+  it('FinalsGamePrediction matches the keys of every game row', () => {
+    // An empty-state payload has no games to check, which is a legitimate state
+    // rather than a failure; it is covered by the schema and invariant specs.
+    if (finals.games.length === 0) {
+      expect(finals.matchup).toBeNull();
+      return;
+    }
+    assertParity('FinalsGamePrediction', finals.games);
+  });
+
+  it('FinalsMatchup matches the keys of the matchup block', () => {
+    if (finals.matchup === null) {
+      expect(finals.games).toHaveLength(0);
+      return;
+    }
+    assertParity('FinalsMatchup', [finals.matchup]);
+  });
+
+  it('BracketLengthProb matches the keys of every Finals length-distribution point', () => {
+    if (finals.lengthDistribution.length === 0) {
+      expect(finals.matchup).toBeNull();
+      return;
+    }
+    assertParity('BracketLengthProb', finals.lengthDistribution);
+  });
 });

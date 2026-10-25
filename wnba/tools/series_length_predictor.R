@@ -5,6 +5,16 @@
 # Exact (non-simulated) probability distribution over playoff series length
 # (best-of-3 / best-of-5 / best-of-7), e.g. "P(semifinal series goes 4 games)".
 #
+# ORPHANED PRODUCER (declared 2026-10-23): its only consumer has retired. The
+# summary app's bracket tab, which read this script's
+# `cache/series_length_predictions.rds`, now lives in a separate repository
+# (`kailot-harris/DATA-607-Agentic_Coding-WNBA-Summary`), and that app's stale
+# fork in THIS repo has been deleted. So that cache is currently produced here
+# and consumed by nothing in this repo. This is expected, not a bug -- the
+# orphaned-cache-audit skill will flag the artifact and this note is the answer.
+# The producer is kept
+# deliberately: it is the only exact (non-Monte-Carlo) series-length model here.
+#
 # This is deliberately NOT built on top of playoff_simulator.R's Monte Carlo
 # loop. The series-length state space is tiny (at most win_threshold^2 states,
 # <=16 for a bo7), so it is computed exactly via dynamic programming over
@@ -19,8 +29,18 @@
 # WNBA_MARGIN_SIGMA / WNBA_HCA from config.R.
 # ==============================================================================
 
-PROJECT_DIR <- "C:/Users/kailo/kayceeslices/WNBA Analytics"
-if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
+# GitHub issue #90: this used to be a hardcoded absolute path to the repo's pre-move
+# location, which stopped existing once the repo moved under front-office/ (see that issue
+# for the exact string). Because it was guarded by `if (dir.exists(PROJECT_DIR))` it silently
+# no-op'd instead of erroring, so the script only ran at all when the caller's CWD already
+# happened to be the project root. Derived portably now, the same way
+# tools/generate_historical_season_snapshots.R does it, so this tools/ script setwd()s to the
+# real project root regardless of where it is invoked from (CLAUDE.md's tools/ convention).
+if (!requireNamespace("here", quietly = TRUE)) {
+  stop("Package 'here' is required to derive PROJECT_DIR portably. Install it with install.packages('here').")
+}
+PROJECT_DIR <- here::here()
+setwd(PROJECT_DIR)
 
 if (!dir.exists("cache")) dir.create("cache", recursive = TRUE)
 
@@ -51,6 +71,30 @@ message(">>> [SERIES LENGTH] Initializing Exact Series-Length Distribution Engin
 # sum(length_probs) == 1 exactly (up to floating point) with no leftover mass,
 # since every format's win_threshold/max_games pairing forces the series to
 # finish by max_games.
+#
+# ---- PER-GAME BREAKDOWN, attached as attr(result, "per_game") (issue #94) ----
+# The loop below already computes, for every game number g, BOTH quantities a
+# game-by-game table needs, and used to throw both away once the series-length
+# totals were accumulated:
+#
+#   * the conditional win probability for game g -- `p_g`, which is
+#     p_high_home or p_high_away purely according to home_high_flags[g]. It is
+#     "conditional" in the sense that it is the probability the high-seed side
+#     wins game g GIVEN that game g is played at all.
+#   * the probability game g is played -- the total dp mass sitting in LIVE
+#     (not-yet-decided) states whose wins sum to g - 1. Because dp only ever
+#     holds undecided states, that sum is exactly P(series is still alive after
+#     g - 1 games) = P(series length >= g). In a best-of-7 that is 1 for games
+#     1-4 and strictly below 1 for games 5-7.
+#
+# Both are read straight out of the existing exact enumeration: no Monte Carlo,
+# no second pass, no new model. The identity
+#   p_game_played[g] == sum(probability[length >= g])
+# is therefore true by construction, and is asserted below rather than assumed.
+#
+# It is attached as an attribute instead of changing the return type because
+# build_playoff_bracket_2026.R and the callers further down this file consume
+# the returned value as a plain tibble.
 series_length_distribution <- function(team_high, team_low, net_high, net_low,
                                         format = "bo7", hca_pts = WNBA_HCA) {
   if (!format %in% names(PLAYOFF_FORMATS)) {
@@ -71,6 +115,10 @@ series_length_distribution <- function(team_high, team_low, net_high, net_low,
   dp[1, 1] <- 1
   length_probs <- setNames(numeric(max_games), as.character(seq_len(max_games)))
 
+  # Per-game accumulators (issue #94). Filled from the same loop, never recomputed.
+  p_game_played   <- numeric(max_games)
+  p_game_win_high <- rep(NA_real_, max_games)
+
   for (w_high in 0:(win_threshold - 1)) {
     for (w_low in 0:(win_threshold - 1)) {
       p_mass <- dp[w_high + 1, w_low + 1]
@@ -79,6 +127,12 @@ series_length_distribution <- function(team_high, team_low, net_high, net_low,
       g <- w_high + w_low + 1
       if (g > max_games) next # unreachable given win_threshold/max_games pairing; defensive only
       p_g <- if (home_high_flags[g]) p_high_home else p_high_away
+
+      # Live mass reaching game g: every state visited here is by definition an
+      # undecided state about to play game g, so summing p_mass over the states
+      # with w_high + w_low == g - 1 IS P(game g is played).
+      p_game_played[g]   <- p_game_played[g] + p_mass
+      p_game_win_high[g] <- p_g
 
       if (w_high + 1 == win_threshold) {
         len <- as.character(w_high + 1 + w_low)
@@ -100,13 +154,41 @@ series_length_distribution <- function(team_high, team_low, net_high, net_low,
   # unlike the file-missing fail-safes elsewhere in this repo.
   stopifnot(abs(sum(length_probs) - 1) < 1e-9)
 
+  # Per-game table, built from the loop's accumulators before length_probs is
+  # filtered down to its non-zero support. A game number that is unreachable for
+  # this format carries p_game_played == 0 and keeps its host flag, so the table
+  # always has exactly one row per game the format allows (7 for a bo7).
+  per_game <- tibble(
+    game = seq_len(max_games),
+    host_is_high_seed = home_high_flags,
+    # Which side's pnorm() applies is the host flag's only effect: the HCA term
+    # enters with a + sign when the high seed hosts and a - sign when it does not.
+    hca_sign_for_high_seed = ifelse(home_high_flags, 1L, -1L),
+    p_high_seed_win = round(ifelse(is.na(p_game_win_high),
+                                   ifelse(home_high_flags, p_high_home, p_high_away),
+                                   p_game_win_high), 6),
+    p_game_played = round(p_game_played, 6)
+  ) %>%
+    mutate(p_low_seed_win = round(1 - .data$p_high_seed_win, 6))
+
+  # Consistency invariant, not a data fail-safe: P(game g played) must equal the
+  # tail mass P(series length >= g) from the very same DP. A hard stop is the
+  # right behaviour if the two ever disagree, as with the sum check above.
+  tail_mass <- vapply(seq_len(max_games),
+                      function(g) sum(length_probs[as.integer(names(length_probs)) >= g]),
+                      numeric(1))
+  stopifnot(all(abs(per_game$p_game_played - round(tail_mass, 6)) < 1e-6))
+
   length_probs <- length_probs[length_probs > 0]
-  tibble(
+  out <- tibble(
     length = as.integer(names(length_probs)),
     label = paste0(names(length_probs), " games"),
     probability = round(as.numeric(length_probs), 6)
   ) %>%
     arrange(length)
+
+  attr(out, "per_game") <- per_game
+  out
 }
 
 # ------------------------------------------------------------------------------
@@ -203,81 +285,128 @@ crossvalidate_series_length <- function(team_high, team_low, net_high, net_low,
 }
 
 # ------------------------------------------------------------------------------
-# Real confirmed 2026 playoff field (NOT cache/projected_wnba_standings.rds —
-# per WNBA_2026_Postseason_Predictions.qmd lines 217-224, that cache is a
-# forward-looking MID-SEASON projection, and does not reflect which 8 teams
-# actually made the playoffs or Round 1's real results. Once games have
-# actually been played, net rating should come from real per-game point
-# differential in CACHE_TEAM_BOX (data/box_scores_cache.rds), the same source
-# and formula the postseason report uses (qmd lines 226-245).
+# Playoff seeding, DERIVED from regular-season standings (GitHub issue #92).
 #
-# Seeds/abbreviations below are the verified 2026 bracket (qmd lines 211-213,
-# cross-checked against Yahoo/CBS/NBC Sports): #1 MIN, #2 GS, #3 LV, #4 ATL,
-# #5 WSH, #6 IND, #7 DAL, #8 NY. Round 1 is complete; the real confirmed
-# semifinal pairings (qmd lines 335-336) are (4) Atlanta Dream vs (8) New York
-# Liberty, and (2) Golden State Valkyries vs (3) Las Vegas Aces — NOT a
-# generic "seed 2 vs seed 3" pairing, since Round 1 upsets (Minnesota, the #1
-# seed, lost) mean the bracket's fixed #1-vs-#8 / #4-vs-#5 and #2-vs-#7 /
-# #3-vs-#6 halves do not collapse to adjacent seed numbers.
+# This replaces two hand-maintained constants that used to live here: a
+# seed-to-abbreviation tibble for the 2026 field, and a hardcoded list of the
+# 2026 Round 1 scorelines (see GitHub issue #92 for the names). Both were
+# frozen as of 2026-10-04 -- i.e. at Round 1 -- so by the time the real bracket
+# had reached the Finals, anything reading them still rendered a Round-1-era
+# bracket with a "Finals (TBD)" box. They were also kept in sync by hand against
+# a .qmd, on the premise (recorded in the old comment, and in config.R's own
+# CURRENT_SEASON note) that the wehoop feed carried no playoff flag. That premise
+# is now false: data/box_scores_cache.rds does carry `season_type`, with 2 =
+# regular season and 3 = postseason, empirically verified in
+# tools/generate_historical_season_snapshots.R's header. So both the field and
+# the results are derivable, and are derived -- here for seeds, and in
+# build_playoff_bracket_2026.R for the resolved series.
+#
+# Seeding rule, applied to `season_type == season_type_filter` games only:
+#   1. Win percentage, descending.
+#   2. Ties broken by head-to-head record among the tied teams -- this is the
+#      WNBA's own first tiebreaker, and it is reconstructable from team-level box
+#      scores (unlike the division/conference-record tiebreakers further down the
+#      real rulebook, which is why the historical-snapshot script settles for
+#      alphabetical instead). It matters in 2026: Indiana and Washington both
+#      finished 28-16, and head-to-head (WSH 2-1) is what separates them into the
+#      #5 and #6 seeds. Ordering them alphabetically instead would hand out seed
+#      numbers that contradict the bracket the league actually played.
+#   3. Remaining ties broken by net rating, descending, then team name ascending,
+#      so the result is always fully deterministic with no randomness.
+#
+# The field is the set of teams that actually appear in that season's postseason
+# rows, so the bracket size is read off the data rather than assumed to be 8.
 # ------------------------------------------------------------------------------
-REAL_2026_BRACKET <- tibble(
-  seed = 1:8,
-  abbr = c("MIN", "GS", "LV", "ATL", "WSH", "IND", "DAL", "NY")
-)
-
-# ------------------------------------------------------------------------------
-# Real, confirmed Round 1 results (NOT a prediction -- all four series have
-# actually been played and decided). Matches
-# WNBA_2026_Postseason_Predictions.qmd's own `{r round1-actual}` tribble
-# (lines ~297-303) verbatim -- restated here, not re-derived, since no cache in
-# this repo reliably flags which box-score rows are playoff games (see
-# config.R:102-103's own note that the wehoop feed doesn't carry a playoff
-# season_type as of validation). If a future session adds that flag, this
-# table should be replaced with a live read instead of kept in sync by hand.
-# (1) Minnesota Lynx lost to (8) New York Liberty 0-2 -- the round's one real
-# upset; the other three higher seeds all advanced.
-# ------------------------------------------------------------------------------
-REAL_2026_ROUND1_RESULTS <- list(
-  list(seed_high = 1, seed_low = 8, team_high = "Minnesota Lynx", team_low = "New York Liberty",
-       wins_high = 0, wins_low = 2, winner = "New York Liberty"),
-  list(seed_high = 2, seed_low = 7, team_high = "Golden State Valkyries", team_low = "Dallas Wings",
-       wins_high = 2, wins_low = 1, winner = "Golden State Valkyries"),
-  list(seed_high = 3, seed_low = 6, team_high = "Las Vegas Aces", team_low = "Indiana Fever",
-       wins_high = 2, wins_low = 1, winner = "Las Vegas Aces"),
-  list(seed_high = 4, seed_low = 5, team_high = "Atlanta Dream", team_low = "Washington Mystics",
-       wins_high = 2, wins_low = 0, winner = "Atlanta Dream")
-)
-
-load_real_2026_playoff_seeds <- function() {
-  if (file.exists(CACHE_TEAM_BOX)) {
-    box <- readRDS(CACHE_TEAM_BOX)
-    net_real <- box %>%
-      filter(season == 2026) %>%
-      group_by(team_abbreviation) %>%
-      summarise(net_rating = mean(team_score - opponent_team_score), .groups = "drop")
-
-    seeds <- REAL_2026_BRACKET %>%
-      mutate(team = unname(WNBA_TEAMS[abbr])) %>%
-      left_join(net_real, by = c("abbr" = "team_abbreviation"))
-
-    if (!any(is.na(seeds$net_rating))) {
-      seeds <- seeds %>%
-        rowwise() %>%
-        mutate(net_adj = get_playoff_adjusted_rating(team, net_rating)) %>%
-        ungroup()
-      message(sprintf(">>> [SERIES LENGTH] Loaded real 2026 net ratings from %s for all 8 playoff teams.", CACHE_TEAM_BOX))
-      return(seeds)
-    }
-    warning(">>> [SERIES LENGTH] CACHE_TEAM_BOX is missing 2026 rows for one or more of the 8 real playoff teams — falling back to a plausible placeholder slate instead.")
-  } else {
-    warning(sprintf(">>> [SERIES LENGTH] %s not found — falling back to a plausible placeholder slate instead.", CACHE_TEAM_BOX))
+derive_playoff_seeds <- function(season_yr = CURRENT_SEASON, season_type_filter = 2L) {
+  if (!file.exists(CACHE_TEAM_BOX)) {
+    warning(sprintf(">>> [SERIES LENGTH] %s not found — cannot derive playoff seeds.", CACHE_TEAM_BOX))
+    return(NULL)
   }
 
+  box <- readRDS(CACHE_TEAM_BOX)
+  # CLAUDE.md: normalize CONN -> CON and drop non-franchise exhibition rows BEFORE
+  # aggregating, via daily_ingest.R's shared helper (never a local reimplementation).
+  if (!exists("filter_real_franchises")) source("daily_ingest.R")
+  box <- filter_real_franchises(box)
+
+  reg  <- box %>% filter(season == season_yr, season_type == season_type_filter)
+  post <- box %>% filter(season == season_yr, season_type == 3L)
+
+  if (nrow(reg) == 0 || nrow(post) == 0) {
+    warning(sprintf(
+      ">>> [SERIES LENGTH] No %d rows for season_type %s / 3 in %s — cannot derive playoff seeds.",
+      season_yr, season_type_filter, CACHE_TEAM_BOX))
+    return(NULL)
+  }
+
+  playoff_abbrs <- sort(unique(post$team_abbreviation))
+
+  standings <- reg %>%
+    group_by(team_abbreviation) %>%
+    summarise(
+      team       = dplyr::first(team_display_name),
+      wins       = sum(team_winner == TRUE, na.rm = TRUE),
+      losses     = sum(team_winner == FALSE, na.rm = TRUE),
+      net_rating = mean(team_score - opponent_team_score),
+      .groups = "drop"
+    ) %>%
+    mutate(win_pct = wins / (wins + losses)) %>%
+    filter(team_abbreviation %in% playoff_abbrs)
+
+  # Head-to-head win pct against the other teams tied on win_pct with this team.
+  h2h_win_pct <- vapply(standings$team_abbreviation, function(abbr) {
+    my_pct <- standings$win_pct[standings$team_abbreviation == abbr]
+    tied <- setdiff(standings$team_abbreviation[standings$win_pct == my_pct], abbr)
+    if (length(tied) == 0) return(NA_real_)
+    g <- reg %>% filter(team_abbreviation == abbr, opponent_team_abbreviation %in% tied)
+    if (nrow(g) == 0) return(NA_real_)
+    sum(g$team_winner == TRUE, na.rm = TRUE) / nrow(g)
+  }, numeric(1))
+
+  seeds <- standings %>%
+    mutate(h2h = coalesce(unname(h2h_win_pct), 0)) %>%
+    arrange(desc(win_pct), desc(h2h), desc(net_rating), team) %>%
+    mutate(seed = row_number()) %>%
+    rowwise() %>%
+    mutate(net_adj = get_playoff_adjusted_rating(team, net_rating)) %>%
+    ungroup() %>%
+    select(seed, abbr = team_abbreviation, team, wins, losses, win_pct, net_rating, net_adj)
+
+  message(sprintf(
+    ">>> [SERIES LENGTH] Derived %d %d playoff seeds from regular-season standings (season_type == %s): %s.",
+    nrow(seeds), season_yr, season_type_filter,
+    paste(sprintf("#%d %s", seeds$seed, seeds$abbr), collapse = ", ")))
+  seeds
+}
+
+# ------------------------------------------------------------------------------
+# Backwards-compatible wrapper for the old name. Fail-safe per repo convention:
+# the derived path is tried first, and the clearly-labeled placeholder slate is
+# kept as the fallback rather than removed, so a missing/empty box-score cache
+# degrades instead of crashing.
+#
+# NOTE ON THE `season_type_filter` DEFAULT (GitHub issue #92): this function used
+# to compute net ratings as `filter(season == 2026)` with NO season_type filter,
+# so postseason games were pooled into the ratings used to predict postseason
+# series. The default is now 2 (regular season only), which is leak-free. The
+# archived figures in cache/series_length_predictions.rds were produced by the
+# older pooled path and are deliberately NOT regenerated — they are the only
+# record of what the model actually said before those series were played, and
+# build_playoff_bracket_2026.R copies them verbatim for that reason.
+# ------------------------------------------------------------------------------
+load_real_2026_playoff_seeds <- function(season_yr = CURRENT_SEASON, season_type_filter = 2L) {
+  seeds <- derive_playoff_seeds(season_yr = season_yr, season_type_filter = season_type_filter)
+  if (!is.null(seeds) && nrow(seeds) > 0 && !any(is.na(seeds$net_rating))) {
+    return(seeds)
+  }
+
+  warning(">>> [SERIES LENGTH] FALLBACK: playoff seeds could not be derived from real data — using a clearly-labeled placeholder slate. Any number downstream of this is synthetic.")
   tibble(
     seed = 1:8,
     abbr = c("MIN", "GS", "LV", "ATL", "WSH", "IND", "DAL", "NY"),
     team = c("Minnesota Lynx", "Golden State Valkyries", "Las Vegas Aces", "Atlanta Dream",
              "Washington Mystics", "Indiana Fever", "Dallas Wings", "New York Liberty"),
+    wins = rep(NA_integer_, 8), losses = rep(NA_integer_, 8), win_pct = rep(NA_real_, 8),
     net_rating = c(12.1, 8.4, 6.0, 4.2, 1.5, 3.0, -2.0, 5.5),
     net_adj = c(12.1, 8.4, 6.0, 4.2, 1.5, 3.0, -2.0, 5.5)
   )
@@ -314,7 +443,7 @@ predict_series_length <- function(seed_high, seed_low, format = "bo7", hca_pts =
 # matchup is genuinely undetermined pending the semifinals, so it is reported
 # as TBD rather than fabricated.
 # ------------------------------------------------------------------------------
-run_series_length_demo <- function() {
+run_series_length_demo <- function(overwrite = FALSE) {
   seeds <- load_real_2026_playoff_seeds()
 
   seed_row <- function(s) {
@@ -352,9 +481,10 @@ run_series_length_demo <- function() {
          distribution = dist, crossvalidation = xval, bo3_breakdown = breakdown,
          # Full series object (p_high_seed_win, fair_ml_high/low, avg_series_games,
          # format_label, exact_outcomes) -- same shape playoff_simulator.R's own
-         # demo suite produces -- so a consumer (e.g. summary_app.R's bracket tab)
-         # can read a real win probability for this REAL confirmed matchup
-         # without re-simulating.
+         # demo suite produces -- so a consumer (e.g. the summary app's bracket
+         # tab, which now lives in the sibling repo
+         # `kailot-harris/DATA-607-Agentic_Coding-WNBA-Summary`) can read a real
+         # win probability for this REAL confirmed matchup without re-simulating.
          series = xval$mc_result)
   }
 
@@ -369,7 +499,14 @@ run_series_length_demo <- function() {
   cat(">>> pending both semifinal series, so it is NOT simulated here (no fabricated matchup).\n")
 
   results <- list(
-    round1_results      = REAL_2026_ROUND1_RESULTS,
+    # `round1_results` used to be a hardcoded list of 2026 Round 1 scorelines. Resolved
+    # results are no longer this script's job: they are derived from box scores by
+    # build_playoff_bracket_2026.R into CACHE_PLAYOFF_BRACKET_CURRENT, which stays current
+    # as the bracket advances instead of freezing at whatever round it was written in.
+    round1_results      = NULL,
+    round1_results_note = sprintf(
+      "Resolved series results are derived from box scores into %s by build_playoff_bracket_2026.R.",
+      basename(CACHE_PLAYOFF_BRACKET_CURRENT)),
     first_round_example = run_round(s4, s5, "bo3", "Round 1 example (Bo3): Atlanta Dream vs Washington Mystics"),
     semifinal_atl_ny    = run_round(s4, s8, "bo5", "Semifinals (Bo5): Atlanta Dream vs New York Liberty"),
     semifinal_gs_lv     = run_round(s2, s3, "bo5", "Semifinals (Bo5): Golden State Valkyries vs Las Vegas Aces"),
@@ -378,12 +515,30 @@ run_series_length_demo <- function() {
   results$finals_note <- "Finals matchup undetermined pending both semifinal series — not simulated."
   results$generated_at <- Sys.time()
 
-  saveRDS(results, "cache/series_length_predictions.rds")
-  message(">>> [SERIES LENGTH] Saved cache/series_length_predictions.rds (list: $round1_results, $first_round_example, $semifinal_atl_ny, $semifinal_gs_lv, $finals=NULL, $finals_note).")
+  # ARCHIVE PROTECTION (GitHub issue #92). cache/series_length_predictions.rds holds the
+  # ONLY archived record in this repo of what the model said about a series BEFORE it was
+  # played: the two 2026 semifinal forecasts, generated 2026-10-04. This function overwrites
+  # that file in place and keeps no history, so re-running it after the series resolved would
+  # silently replace a genuine pre-game forecast with a post-hoc recomputation. That record
+  # is the point, so the overwrite is now opt-in rather than the default.
+  out_path <- "cache/series_length_predictions.rds"
+  if (file.exists(out_path) && !isTRUE(overwrite)) {
+    message(sprintf(
+      paste0(">>> [SERIES LENGTH] NOT writing %s — it already exists and holds the archived ",
+             "pre-game forecast record. Pass overwrite = TRUE to replace it deliberately."),
+      out_path))
+  } else {
+    saveRDS(results, out_path)
+    message(">>> [SERIES LENGTH] Saved cache/series_length_predictions.rds (list: $round1_results=NULL, $round1_results_note, $first_round_example, $semifinal_atl_ny, $semifinal_gs_lv, $finals=NULL, $finals_note).")
+  }
 
   invisible(results)
 }
 
-if (!interactive()) {
+# Auto-run guard. Sourcing this file for its functions alone (e.g.
+# build_playoff_bracket_2026.R needs series_length_distribution()) must not fire the demo,
+# which re-simulates every series and -- see ARCHIVE PROTECTION above -- targets the archived
+# forecast file. Set WNBA_SERIES_LENGTH_NO_AUTORUN=1 to source this as a library.
+if (!interactive() && !identical(Sys.getenv("WNBA_SERIES_LENGTH_NO_AUTORUN"), "1")) {
   invisible(run_series_length_demo())
 }

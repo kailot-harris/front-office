@@ -750,7 +750,8 @@ project_all_wnba_teams <- function() {
   # other n_teams-1 opponents (the same per-opponent home/away split project_all_wnba_teams()
   # already uses for the expectation above), so Var(total wins) = sum over all opponents j of
   # [ (games_per_opponent/2)*p_home*(1-p_home) + (games_per_opponent/2)*p_away*(1-p_away) ],
-  # by independence-of-sum-of-independent-Bernoullis. summary_app.R turns this into a +/-1.96 SD
+  # by independence-of-sum-of-independent-Bernoullis. The summary app (now in the sibling repo
+  # `kailot-harris/DATA-607-Agentic_Coding-WNBA-Summary`) turns this into a +/-1.96 SD
   # (~95%) interval via a normal approximation to the resulting Poisson-binomial-like sum, which
   # is standard for this many near-independent trials (44 games across 14 opponents).
   expected_wins_var <- numeric(n_teams)
@@ -801,8 +802,9 @@ project_all_wnba_teams <- function() {
       # done at display time by app.R (scales::percent()), per the Phase 4 interface contract.
       Win_Pct     = round(Proj_Wins / WNBA_SEASON_GAMES, 4),
       # See the expected_wins_var derivation comment above the i/j loop -- an analytic
-      # standard deviation on the win total, not a placeholder, consumed by summary_app.R's
-      # Tab 1 uncertainty-bar chart.
+      # standard deviation on the win total, not a placeholder, consumed by the summary app's
+      # Tab 1 uncertainty-bar chart -- that app now lives in the sibling repo
+      # `kailot-harris/DATA-607-Agentic_Coding-WNBA-Summary`, not here.
       Proj_Wins_SD = round(sqrt(expected_wins_var), 2)
     ) |>
     arrange(desc(Proj_Wins)) |>

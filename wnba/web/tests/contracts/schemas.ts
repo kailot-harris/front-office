@@ -679,6 +679,218 @@ export const PlayoffMatchupsCatalogSchema = z
   })
   .strict();
 
+// 13b. playoff_bracket_2026.json -> PlayoffBracketSeason (lib/playoffTypes.ts)
+//
+// Deliberately NOT HistoricalSeriesSchema reused. That schema requires
+// gamesPlayed >= 2 and games[].length >= 2, which is right for a completed
+// historical season but wrong here: this payload covers the CURRENT season, and
+// a series still in progress legitimately has one game in it (the 2026 Finals
+// does). The minimums are 1 here, with `seriesComplete` carrying the
+// in-progress/finished distinction instead of it being implied by games count.
+const BracketLengthProbSchema = z
+  .object({
+    length: z.number().int().min(1).max(7),
+    label: z.string().min(2),
+    probability: prob,
+  })
+  .strict();
+
+const BracketForecastSchema = z
+  .object({
+    ratingBasis: z.string().min(5),
+    asOf: z.string(),
+    format: z.enum(['bo3', 'bo5', 'bo7']),
+    formatLabel: z.string().min(5),
+    teamHigh: z.string().min(2),
+    teamHighAbbr: z.string(),
+    teamLow: z.string().min(2),
+    teamLowAbbr: z.string(),
+    seedHigh: z.number().int().min(1).nullable(),
+    seedLow: z.number().int().min(1).nullable(),
+    netHighAdj: finiteNumber,
+    netLowAdj: finiteNumber,
+    pHighSeedWin: prob,
+    pLowSeedWin: prob,
+    predictedWinnerName: z.string().min(2),
+    predictedWinner: z.string(),
+    expectedGames: finiteNumber.min(1).max(7),
+    lengthDistribution: z.array(BracketLengthProbSchema).min(1),
+    resultStatus: z.enum(['correct', 'incorrect', 'pending']),
+    fairMlHigh: z.number().int().optional(),
+    fairMlLow: z.number().int().optional(),
+    avgSeriesGames: finiteNumber.min(1).max(7).optional(),
+  })
+  .strict();
+
+const BracketPredictionSchema = z
+  .object({
+    available: z.boolean(),
+    provenance: z.enum(['round1_reconstruction', 'archived_forecast', 'unavailable']),
+    provenanceLabel: z.string().min(5),
+    forecast: BracketForecastSchema.nullable(),
+  })
+  .strict()
+  // `available` and `forecast` must agree: an available prediction without
+  // numbers, or an unavailable one carrying numbers, is a producer bug.
+  .refine((p) => p.available === (p.forecast !== null), {
+    message: 'prediction.available must match whether forecast is present',
+  });
+
+export const BracketSeriesSchema = z
+  .object({
+    teamA: z.string().min(2),
+    teamNameA: z.string().min(2),
+    teamB: z.string().min(2),
+    teamNameB: z.string().min(2),
+    winner: z.string().min(2),
+    winnerName: z.string().min(2),
+    round: z.string().min(2),
+    gamesPlayed: z.number().int().min(1).max(7),
+    seriesLength: z.number().int().min(1).max(7),
+    games: z
+      .array(
+        z
+          .object({
+            gameDate: z.string().min(4),
+            teamA: z.string().min(2),
+            scoreA: z.number().int().positive(),
+            teamB: z.string().min(2),
+            scoreB: z.number().int().positive(),
+          })
+          .strict()
+      )
+      .min(1)
+      .max(7),
+    winsA: z.number().int().min(0).max(4),
+    winsB: z.number().int().min(0).max(4),
+    seriesComplete: z.boolean(),
+    prediction: BracketPredictionSchema,
+  })
+  .strict();
+
+export const PlayoffBracketSeasonSchema = z
+  .object({
+    season: z.number().int().min(1997).max(2100),
+    generatedAt: z.string(),
+    sourceNote: z.string(),
+    series: z.array(BracketSeriesSchema),
+  })
+  .strict();
+
+// ------------------------------------------------------------------------------
+// 13c. finals_game_predictions_2026.json -> FinalsGamePredictionSet
+//      (lib/playoffTypes.ts, GitHub issue #94)
+//
+// Grain is one row per GAME of the Finals, not per series, so BracketSeriesSchema
+// is deliberately not reused. The rules that matter here and have no analogue
+// above are the two probability fields: every game carries a conditional win
+// probability AND a P(game played), and the rest fields are all-or-nothing per
+// game (`restApplied` false => every rest field null).
+// ------------------------------------------------------------------------------
+export const FinalsGamePredictionSchema = z
+  .object({
+    game: z.number().int().min(1).max(7),
+    gameDate: z.string(),
+    hostAbbr: z.string().min(2),
+    hostName: z.string().min(2),
+    hostIsHighSeed: z.boolean(),
+    hcaSignForHighSeed: z.union([z.literal(1), z.literal(-1)]),
+    pHighSeedWinHca: prob,
+    pLowSeedWinHca: prob,
+    pGamePlayed: prob,
+    restApplied: z.boolean(),
+    daysRestHigh: finiteNumber.min(0).nullable(),
+    daysRestLow: finiteNumber.min(0).nullable(),
+    backToBackHigh: z.boolean(),
+    backToBackLow: z.boolean(),
+    travelMilesHigh: finiteNumber.min(0).nullable(),
+    travelMilesLow: finiteNumber.min(0).nullable(),
+    fatigueDragHigh: finiteNumber.min(0).nullable(),
+    fatigueDragLow: finiteNumber.min(0).nullable(),
+    pHighSeedWinWithRest: prob.nullable(),
+    pLowSeedWinWithRest: prob.nullable(),
+    resultAvailable: z.boolean(),
+    scheduleCompleted: z.boolean(),
+    scoreHigh: z.number().int().positive().nullable(),
+    scoreLow: z.number().int().positive().nullable(),
+    resultStatus: z.enum(['correct', 'incorrect', 'pending']),
+  })
+  .strict()
+  // The host flag and the HCA sign are two views of one fact; a disagreement
+  // means the host assignment and the probability have come apart.
+  .refine((g) => g.hcaSignForHighSeed === (g.hostIsHighSeed ? 1 : -1), {
+    message: 'hcaSignForHighSeed must follow hostIsHighSeed',
+  })
+  // The two conditional probabilities are complements, as are the rest-adjusted pair.
+  .refine((g) => Math.abs(g.pHighSeedWinHca + g.pLowSeedWinHca - 1) < 1e-6, {
+    message: 'pHighSeedWinHca and pLowSeedWinHca must sum to 1',
+  })
+  // Rest is all-or-nothing per game: no half-populated rest block.
+  .refine(
+    (g) =>
+      g.restApplied
+        ? g.pHighSeedWinWithRest !== null &&
+          g.pLowSeedWinWithRest !== null &&
+          g.fatigueDragHigh !== null &&
+          g.fatigueDragLow !== null
+        : g.pHighSeedWinWithRest === null &&
+          g.pLowSeedWinWithRest === null &&
+          g.fatigueDragHigh === null &&
+          g.fatigueDragLow === null,
+    { message: 'rest fields must all be present when restApplied, and all null otherwise' }
+  )
+  // A result and a verdict must agree: no score without a verdict, none with 'pending'.
+  .refine(
+    (g) =>
+      g.resultAvailable
+        ? g.scoreHigh !== null && g.scoreLow !== null && g.resultStatus !== 'pending'
+        : g.scoreHigh === null && g.scoreLow === null && g.resultStatus === 'pending',
+    { message: 'scores and resultStatus must agree with resultAvailable' }
+  );
+
+export const FinalsMatchupSchema = z
+  .object({
+    teamHigh: z.string().min(2),
+    teamHighAbbr: z.string().min(2),
+    teamLow: z.string().min(2),
+    teamLowAbbr: z.string().min(2),
+    seedHigh: z.number().int().min(1),
+    seedLow: z.number().int().min(1),
+    netHighAdj: finiteNumber,
+    netLowAdj: finiteNumber,
+    winsHigh: z.number().int().min(0).max(4),
+    winsLow: z.number().int().min(0).max(4),
+    seriesComplete: z.boolean(),
+    winThreshold: z.number().int().min(2).max(4),
+    expectedGames: finiteNumber.min(1).max(7),
+  })
+  .strict();
+
+export const FinalsGamePredictionSetSchema = z
+  .object({
+    season: z.number().int().min(1997).max(2100),
+    generatedAt: z.string(),
+    sourceNote: z.string(),
+    formatKey: z.string(),
+    formatLabel: z.string(),
+    restApplied: z.boolean(),
+    restNote: z.string(),
+    matchup: FinalsMatchupSchema.nullable(),
+    lengthDistribution: z.array(BracketLengthProbSchema),
+    games: z.array(FinalsGamePredictionSchema),
+  })
+  .strict()
+  // Empty state is a real state, but it is all-or-nothing: an undetermined
+  // matchup must not ship games, and games must not ship without a matchup.
+  .refine((s) => (s.matchup === null ? s.games.length === 0 : s.games.length > 0), {
+    message: 'games must be empty when matchup is null, and non-empty when it is not',
+  })
+  // Payload-level restApplied must agree with at least one game carrying rest.
+  .refine(
+    (s) => s.games.length === 0 || s.restApplied === s.games.some((g) => g.restApplied),
+    { message: 'restApplied must match whether any game carries rest' }
+  );
+
 // 14. shots_index.json -> PlayerCatalogEntry[] (lib/shotTypes.ts)
 export const PlayerCatalogEntrySchema = z
   .object({
