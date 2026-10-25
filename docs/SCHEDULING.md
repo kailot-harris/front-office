@@ -207,6 +207,174 @@ The honest status until then is "credentials exist for an interactive user", not
 
 ---
 
+## Issue #42: the unattended-push probe, and why it is still unproven
+
+**Status as of 2026-10-25: NOT SETTLED — blocked on local elevation, not on a
+credential.** Read this whole section before touching the publish task's mode. The
+short version: the probe tooling is finished and verified as far as an unelevated
+session can take it, but the one measurement that answers #42 — a real push from a
+non-interactive scheduled-task session — could not be executed on this machine by an
+unelevated agent, so the honest verdict is still "unknown": not "works", and not
+"broken".
+
+### The tooling
+
+Two scripts, both committed, both on-demand only (neither adds nor changes a trigger,
+so the daily schedule is untouched):
+
+| Script | Role |
+|---|---|
+| `tools/test_unattended_push.ps1` | The probe. Pushes the existing `HEAD` to a throwaway `refs/heads/cred-probe/<timestamp>-<pid>` in each repo, then deletes it. Creates no commit, writes nothing local, never touches `main`. Every git call is bounded by `-TimeoutSec` via `Start-Process`, so an auth prompt fails fast as exit 124 instead of hanging. Sets `GIT_TERMINAL_PROMPT=0` / `GCM_INTERACTIVE=never`. Never runs `git credential fill`, so no secret can reach the log. |
+| `tools/register_credential_probe_task.ps1` | Registers two on-demand tasks differing in **exactly one** respect, the principal's `LogonType`: `NFL_analytics_credprobe_interactive` (`Interactive`) and `NFL_analytics_credprobe_unattended` (`S4U` — "run whether logged on or not", no stored password). |
+
+**Why the pair matters.** Git Credential Manager stores credentials per interactive
+user session. S4U runs in session 0 with no interactive desktop and can silently fail
+to reach GCM. A single passing run proves nothing — only the *difference* between the
+two logon types is evidence. The interactive task is the control; a pass there does not
+close #42.
+
+### What was actually run, 2026-10-25
+
+All commands were run from the issue-42 worktree (`_worktrees/issue42`, branch
+`wt/issue42-unattended-push`, HEAD `0c846cd`), with `-AggregatorDir` pointed at the
+aggregator checkout on its normal path.
+
+**1. Read-only dry run, interactive shell — PASSED for both repos.**
+
+```
+powershell -NoProfile -File tools\test_unattended_push.ps1 \
+    -ProjectDir <worktree> -AggregatorDir <aggregator> -DryRun
+```
+
+Exit 0. Session context captured: `Environment.UserInteractive: True`,
+`SESSIONNAME=Console`, process session id 1, and `GH_TOKEN` / `GITHUB_TOKEN` both
+`(not set)`. `READ probe: git ls-remote --heads origin` returned `[OK]` for
+`NFL_analytics` (`https://github.com/kailot-harris/NFL_analytics.git`) and for
+`front-office` (`https://github.com/kailot-harris/front-office.git`). The WRITE probe
+was skipped by design. **This establishes read auth from an interactive session only.
+It does not bear on #42**, which asks about write auth in a *non-interactive* session.
+
+**2. Task registration — the control registered; the S4U task was REFUSED.**
+
+```
+powershell -NoProfile -File tools\register_credential_probe_task.ps1 \
+    -ProjectDir <worktree> -AggregatorDir <aggregator> -DryRun   # plan only, exit 0
+powershell -NoProfile -File tools\register_credential_probe_task.ps1 \
+    -ProjectDir <worktree> -AggregatorDir <aggregator>           # apply
+```
+
+Result: `[UPDATED] NFL_analytics_credprobe_interactive`, then
+
+```
+Register-ScheduledTask : Access is denied.
+    + CategoryInfo : PermissionDenied: ... [Register-ScheduledTask], CimException
+    + FullyQualifiedErrorId : HRESULT 0x80070005,Register-ScheduledTask
+```
+
+Cause, confirmed rather than assumed:
+
+```
+[Security.Principal.WindowsIdentity]::GetCurrent().Name          # KAILOT_HP\kailo
+IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator) # False
+whoami /groups   # BUILTIN\Administrators -> "Group used for deny only"
+```
+
+The account **is** in `BUILTIN\Administrators`, but the running token is the filtered,
+unelevated one, so that membership is deny-only. Registering an **S4U** principal
+requires elevation; updating an `Interactive` task the same user already owns does not.
+That asymmetry is exactly why one call succeeded and the other did not — it is a local
+privilege limit, **not** evidence about the credential.
+
+**3. Neither probe task was ever executed.** `Start-ScheduledTask` was also unavailable
+to the agent session, so no scheduled-task run of the probe happened in either logon
+context. `Get-ScheduledTaskInfo` for the control reported `LastTaskResult 267011`
+(`SCHED_S_TASK_HAS_NOT_RUN`) throughout.
+
+**4. Clean-up verified.** Because no WRITE probe ever ran, nothing was pushed:
+
+```
+git ls-remote --heads origin "refs/heads/cred-probe/*"   # empty, both repos
+git ls-remote origin refs/heads/main   # NFL_analytics 843a27d5... (unchanged)
+                                       # front-office  231ef7cf... (unchanged)
+git -C <aggregator> status --porcelain  # empty
+```
+
+Both probe tasks were then unregistered via
+`register_credential_probe_task.ps1 -Remove`, leaving the machine's scheduled-task set
+as found. No commit was created in either repo, and no credential value was read,
+logged or committed.
+
+### What a future agent must do to finish this
+
+The probe is ready; it needs a session that can register and start an S4U task. From an
+**elevated** PowerShell on this machine:
+
+```
+powershell -NoProfile -File tools\register_credential_probe_task.ps1 -DryRun  # read the plan
+powershell -NoProfile -File tools\register_credential_probe_task.ps1         # apply both
+
+Start-ScheduledTask -TaskName NFL_analytics_credprobe_interactive   # control FIRST
+Start-ScheduledTask -TaskName NFL_analytics_credprobe_unattended    # the real test
+
+Get-ScheduledTaskInfo NFL_analytics_credprobe_interactive, NFL_analytics_credprobe_unattended |
+    Select-Object TaskName, LastRunTime, LastTaskResult
+Get-Content logs\credential_probe.log -Tail 80
+
+powershell -NoProfile -File tools\register_credential_probe_task.ps1 -Remove  # clean up
+```
+
+Read the pair, not either run alone. In the unattended log, confirm
+`Environment.UserInteractive: False` before trusting it as the non-interactive data
+point — that line is the discriminator.
+
+- **interactive PASS + unattended PASS** → credentials are reachable unattended. #42
+  closes; record the residual risk below.
+- **interactive PASS + unattended FAIL** → GCM is unreachable non-interactively, as #42
+  predicts. Apply the recommended remedy.
+- **interactive FAIL** → the problem is not logon type at all; fix the credential first.
+
+If #42 does close green, the residual risk is real and worth writing on the issue: S4U
+credential reachability depends on the user's DPAPI-protected store, so it can break
+**without any code change** on a Windows password change, a credential-manager or
+keyring reset, or a GCM upgrade that changes its store backend. A green probe is a
+point-in-time result, not a permanent guarantee. The 09:00 publish should therefore
+treat a push failure as an expected, alertable condition rather than an impossibility.
+
+### Recommended remedy, and why
+
+Of the three remedies #42 names, the recommendation for #39 is the **third: commit at
+~05:20 and let a GitHub Actions `schedule` cron in the aggregator deploy**, rather than
+pushing from Task Scheduler at all. See "Alternative: a GitHub Actions cron" above for
+the already-documented trade-off.
+
+Justification against the alternatives:
+
+- **A PAT in the task's environment** — works, but puts a long-lived push-capable
+  credential in a Task Scheduler action or a machine environment variable, readable by
+  anything running as that user, and that is the one thing this repo's
+  no-hardcoded-secrets convention exists to prevent. It also needs manual rotation, and
+  a silently-expired PAT reproduces the original failure (a deploy that stops at a time
+  nobody is watching) with an extra layer to debug. **Not recommended.** No PAT was
+  created, requested or written anywhere during this work.
+- **A dedicated credential store** — plausible, but it adds a component to maintain and
+  still leaves the same class of fragility (a store that must be reachable from session
+  0), so it trades a proven unknown for an unproven one.
+- **Actions cron** — removes the unattended-credential question entirely instead of
+  answering it: the deploy runs on GitHub's runners using the in-workflow
+  `GITHUB_TOKEN`, which needs no local credential, no laptop awake at 09:00, and no
+  rotation. The cost is punctuality (cron drifts 5–20 minutes, so "09:00" becomes
+  ~09:04–09:25). Given that the alternative is a deploy whose credential story is
+  *unproven on this hardware and cannot be proven without elevation*, trading a few
+  minutes of punctuality to remove the failure mode is the better bargain.
+
+This remedy is a **recommendation, not an implementation**: no workflow file has been
+added, and #39 still owns that decision. Either finish the probe from an elevated
+session and close #42 on evidence, or adopt the cron and close #42 as obsolete — but do
+**not** switch the publish task to `--publish` on the strength of the interactive dry
+run above, which proves only that an interactive shell can read.
+
+---
+
 ## Related issues
 
 | Issue | Why it matters here |
@@ -214,7 +382,7 @@ The honest status until then is "credentials exist for an interactive user", not
 | #38 | `tools/publish_web.R`, the freshness gate these wrappers call. |
 | #39 | This work: the wrappers, the two tasks, the 09:00 redeploy. |
 | #41 | Staggering schedules, because `deploy.yml` cancels in-progress Pages deploys. |
-| #42 | **Blocks live publish.** Unattended push credential is unproven. |
+| #42 | **Blocks live publish.** Unattended push credential is still unproven — see "Issue #42: the unattended-push probe" above for the probe tooling, what was run on 2026-10-25, why it could not be finished without elevation, and the recommended remedy. |
 | #43 | `config.R` hardcodes `PROJECT_DIR`; the wrappers set a working directory rather than relying on it. |
 
 No secret, token or webhook URL appears in any scheduling file. `config.R`'s
