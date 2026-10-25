@@ -44,6 +44,43 @@ if (file.exists(CACHE_BETS_PATH)) {
   bets_df <- evaluate_betting_slate()
 }
 
+# 1b. PROVENANCE GUARD — never broadcast bets priced off a synthetic slate.
+# On 2026-10-25 a pipeline run whose odds-API call returned HTTP 401 fell through
+# to market_odds_engine.R's labeled fixture slate (market_data_source ==
+# "SYNTHETIC_FALLBACK") and this script dispatched one of those rows to Discord as
+# "calibrated live WNBA bets" — a +43% EV pick no real book would post. The
+# fixture fallback itself is deliberate and stays intact (ADR.md Principle III:
+# never hard-crash the pipeline); what was missing was a check between the
+# fallback and the outward-facing webhook.
+#
+# Only rows positively provenanced as live market data are dispatchable. A row
+# whose market_data_source is "SYNTHETIC_FALLBACK", NA, or absent entirely (older
+# caches predating the column) counts as unverified and is withheld from Discord.
+# Withheld rows are still previewed on the console, clearly labeled — same
+# preview-but-do-not-publish behavior this script already uses when
+# DISCORD_WEBHOOK is unset.
+LIVE_PROVENANCE <- "LIVE_ODDS_API"
+
+if ("market_data_source" %in% names(bets_df)) {
+  is_live_bet <- dplyr::coalesce(bets_df$market_data_source == LIVE_PROVENANCE, FALSE)
+} else {
+  message("[PROVENANCE WARNING] latest_value_bets.rds has no market_data_source column - ",
+          "cannot verify these bets came from live odds. Withholding all rows from Discord.")
+  is_live_bet <- rep(FALSE, nrow(bets_df))
+}
+
+bets_withheld <- bets_df[!is_live_bet, , drop = FALSE]
+bets_df       <- bets_df[is_live_bet, , drop = FALSE]
+
+if (nrow(bets_withheld) > 0) {
+  withheld_src <- if ("market_data_source" %in% names(bets_withheld)) {
+    paste(sort(unique(dplyr::coalesce(bets_withheld$market_data_source, "<NA>"))), collapse = ", ")
+  } else "<column absent>"
+  message(sprintf(
+    "[PROVENANCE GUARD] Withholding %d non-live bet row(s) from Discord dispatch (market_data_source: %s).",
+    nrow(bets_withheld), withheld_src))
+}
+
 # 2. Filter for Real Institutional Edge (EV >= 3.0% and Non-Negative CLV)
 # NOTE: per the plan's risk #2 (thinner WNBA book coverage), expect this
 # threshold to qualify fewer games per slate than it would for NBA — that is a
@@ -92,6 +129,34 @@ for (i in seq_len(min(4, nrow(actionable_bets)))) {
   cat(sprintf("   STAKE: %s\n", stake_val))
 }
 
+# 3b. Console-only preview of withheld (non-live) rows, so the operator still
+# sees what the model priced without any of it reaching Discord.
+if (nrow(bets_withheld) > 0) {
+  cat("
+------------------------------------------------------------------
+")
+  cat("  WITHHELD - priced off a non-live slate, NOT dispatched to Discord
+")
+  cat("------------------------------------------------------------------
+")
+  for (i in seq_len(min(4, nrow(bets_withheld)))) {
+    b <- bets_withheld[i, ]
+    src <- if ("market_data_source" %in% names(b)) {
+      dplyr::coalesce(as.character(b$market_data_source), "<NA>")
+    } else "<column absent>"
+    cat(sprintf("
+[WITHHELD: %s] MATCHUP: %s
+", src, b$Matchup))
+    cat(sprintf("   PICK: %s | BOOK: %s (%+d)
+", b$Recommended_Bet, b$Book, as.integer(b$Line)))
+    cat(sprintf("   STATS: Model Win: %.1f%% | EV: %+.2f%% | Exp CLV: %+.2f%%
+",
+                b$Model_Win_Prob * 100, b$EV_Percent, b$Exp_CLV))
+  }
+  cat("
+")
+}
+
 # 4. Construct Discord Webhook Payload
 payload <- list(
   username = "WNBA Quant Terminal",
@@ -109,7 +174,13 @@ payload <- list(
 
 # 5. Broadcast to Discord — ONLY if a real env var is set. No hardcoded/dummy
 # URL check needed since there is no hardcoded fallback to guard against.
-if (nzchar(DISCORD_WEBHOOK_URL)) {
+if (nrow(actionable_bets) == 0) {
+  # No live-provenanced bets survived the guard: construct nothing, send nothing.
+  message("
+[NO DISPATCH] No bets with verified live-odds provenance for this slate - ",
+          "Discord dispatch skipped. This is the provenance guard working as intended, ",
+          "not a failure; check ODDS_API_KEY if a live slate was expected.")
+} else if (nzchar(DISCORD_WEBHOOK_URL)) {
   res <- tryCatch(
     POST(DISCORD_WEBHOOK_URL, body = payload, encode = "json", timeout(6)),
     error = function(e) list(status_code = 500, message = e$message)

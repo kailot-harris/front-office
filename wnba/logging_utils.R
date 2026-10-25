@@ -8,7 +8,7 @@
 # ==============================================================================
 
 if (!exists("PROJECT_DIR", inherits = FALSE)) {
-  PROJECT_DIR <- "c:/Users/kailo/kayceeslices/WNBA Analytics"
+  PROJECT_DIR <- here::here()   # issue #90: derived portably; never hardcode the repo root
 }
 
 LOG_DIR       <- file.path(PROJECT_DIR, "logs")
