@@ -1,0 +1,133 @@
+name: Sync sport subtrees and deploy
+
+# Closes the "deploy hop": each sport repo can update itself (MLB's
+# refresh-results.yml patches finished game scores into web/public/data every
+# morning), but pushing there deploys nothing — the live site is built from
+# THIS repo, which has to subtree-pull first. Without this workflow a human ran
+# that sync by hand and the site sat a day behind the data.
+#
+# What it does: `git subtree pull` each requested sport, push if that produced a
+# new commit, then explicitly dispatch deploy.yml.
+#
+# THE TRAP THIS WORKS AROUND: a push made with GITHUB_TOKEN does NOT trigger
+# other workflows (GitHub suppresses it to avoid recursive runs), so deploy.yml
+# will NOT fire on its own from the push below. The dispatch step is not
+# belt-and-braces — it is the only thing that publishes. A `workflow_dispatch`
+# IS permitted with GITHUB_TOKEN, because a dispatch is not a push event, so no
+# PAT is needed. If you ever delete the dispatch step, the sync silently stops
+# deploying while still looking green.
+
+on:
+  schedule:
+    # 11:30 UTC, half an hour after MLB's refresh-results.yml runs at 11:00 UTC,
+    # which is long enough for that job to finish and push. Cron is UTC-only and
+    # does not shift with DST. If that job's schedule moves, move this with it.
+    - cron: '30 11 * * *'
+  workflow_dispatch:
+    inputs:
+      sports:
+        description: Space-separated sports to sync (e.g. "mlb" or "mlb nba")
+        required: false
+        default: mlb
+      deploy:
+        description: Dispatch deploy.yml when a sync produced a new commit
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: write # push the subtree merge commit
+  actions: write  # dispatch deploy.yml
+
+concurrency:
+  # Never let two syncs race on the same history; a queued one still runs after.
+  group: sync-sports
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # subtree pull replays the prefix's history; a shallow clone cannot do
+          # it ("fatal: refusing to merge unrelated histories" at best).
+          fetch-depth: 0
+
+      - name: Sync requested sport subtrees
+        id: sync
+        env:
+          # Only MLB is scheduled: it is the one sport with an automated data
+          # refresh upstream. The others are dispatch-only, so a sibling repo
+          # mid-change can never drag the site into a broken build on its own.
+          SPORTS: ${{ inputs.sports || 'mlb' }}
+        run: |
+          set -euo pipefail
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          before="$(git rev-parse HEAD)"
+          synced=''
+
+          for sport in $SPORTS; do
+            # The upstream repo names are not uniform (MLB-Analytics is
+            # hyphenated, the rest use an underscore), so they are mapped
+            # explicitly rather than interpolated from the slug.
+            case "$sport" in
+              mlb)  repo=MLB-Analytics  ;;
+              nba)  repo=NBA_analytics  ;;
+              wnba) repo=WNBA_analytics ;;
+              nfl)  repo=NFL_analytics  ;;
+              *) echo "::error::unknown sport '$sport'"; exit 1 ;;
+            esac
+
+            remote="${sport}-origin"
+            git remote add "$remote" "https://github.com/${{ github.repository_owner }}/${repo}.git"
+
+            sport_before="$(git rev-parse HEAD)"
+            # No --squash: matches the existing merge style in this repo's
+            # history, which keeps each sport's original commits reachable.
+            git subtree pull --prefix="$sport" "$remote" main \
+              -m "chore: subtree-pull ${sport} (automated sync)"
+
+            if [ "$(git rev-parse HEAD)" != "$sport_before" ]; then
+              echo "$sport: new commits pulled"
+              synced="${synced}${synced:+, }${sport}"
+            else
+              echo "$sport: already up to date"
+            fi
+          done
+
+          if [ "$(git rev-parse HEAD)" = "$before" ]; then
+            echo 'Nothing to sync; no push, no deploy.'
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+          else
+            # Pushes the ref the job was dispatched on, not a hardcoded main, so
+            # the whole path (pull, commit, push) can be rehearsed on a scratch
+            # branch without main ever carrying the result.
+            git push origin "HEAD:${{ github.ref_name }}"
+            echo "Pushed subtree merge(s) for: $synced"
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+            echo "synced=$synced" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Dispatch deploy
+        # Skipped when nothing was pulled: the deployed site already matches.
+        # The `schedule` arm is not redundant: on a scheduled run `inputs` is
+        # empty, and an empty string coerces to 0 == false in GitHub's
+        # expression casting, so testing the input alone would skip every
+        # nightly deploy.
+        if: |
+          steps.sync.outputs.changed == 'true' &&
+          (github.event_name == 'schedule' || inputs.deploy)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Required because the push above, being GITHUB_TOKEN-authored, does
+          # not trigger deploy.yml's `on: push` (see the header note).
+          gh workflow run deploy.yml --ref main
+          echo "Dispatched deploy.yml for: ${{ steps.sync.outputs.synced }}"
+          echo 'Verify the run, then curl the published page — a green build does'
+          echo 'not prove client-side fetches resolve under the production basePath.'
