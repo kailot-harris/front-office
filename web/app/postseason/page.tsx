@@ -1,8 +1,9 @@
-import { getPostseasonOpsData } from '@/lib/data';
+import { getPostseasonOpsData, getWorldSeriesData } from '@/lib/data';
 import { PostseasonOpsClient } from '@/components/PostseasonOpsClient';
 
 export default function PostseasonPage() {
   const data = getPostseasonOpsData();
+  const worldSeries = getWorldSeriesData();
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -20,7 +21,7 @@ export default function PostseasonPage() {
         </div>
       </div>
 
-      <PostseasonOpsClient data={data} />
+      <PostseasonOpsClient data={data} worldSeries={worldSeries} />
     </div>
   );
 }

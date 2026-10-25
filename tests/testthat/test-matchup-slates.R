@@ -304,3 +304,79 @@ test_that("the export splits into an index plus one file per slate", {
   wk1 <- jsonlite::read_json(file.path(out_dir, "matchups", "week-01.json"))
   expect_true(all(vapply(wk1, function(m) m$week, numeric(1)) == 1))
 })
+
+# ------------------------------------------------------------------------------
+# World Series summary (postseason banner)
+# ------------------------------------------------------------------------------
+
+make_ws_matchups_fixture <- function(scores) {
+  # Game 1 home club owns home-field advantage; scores is a list of
+  # c(home, away) pairs or NA for games not yet played.
+  dates <- c("2026-10-23", "2026-10-24", "2026-10-26", "2026-10-27",
+             "2026-10-28", "2026-10-30", "2026-10-31")
+  home <- c("MIL", "MIL", "TB", "TB", "TB", "MIL", "MIL")
+  data.frame(
+    game_pk        = 8001:8007,
+    game_date      = dates,
+    week           = c(31L, 31L, rep(32L, 5)),
+    game_type      = rep("W", 7),
+    series_description = rep("World Series", 7),
+    status_detail  = vapply(scores, function(s) if (all(is.na(s))) "Scheduled" else "Final", character(1)),
+    venue_name     = ifelse(home == "MIL", "American Family Field", "Tropicana Field"),
+    home_team      = home,
+    home_team_name = ifelse(home == "MIL", "Milwaukee Brewers", "Tampa Bay Rays"),
+    away_team      = ifelse(home == "MIL", "TB", "MIL"),
+    away_team_name = ifelse(home == "MIL", "Tampa Bay Rays", "Milwaukee Brewers"),
+    home_score     = vapply(scores, function(s) as.integer(s[1]), integer(1)),
+    away_score     = vapply(scores, function(s) as.integer(s[2]), integer(1)),
+    is_completed   = vapply(scores, function(s) !all(is.na(s)), logical(1)),
+    home_win_prob  = ifelse(home == "MIL", 0.5712, 0.4712),
+    stringsAsFactors = FALSE
+  )
+}
+
+test_that("build_world_series_summary() tallies resolved games", {
+  # MIL wins both home games, the rest are unplayed.
+  scores <- list(c(3L, 2L), c(5L, 4L), NA, NA, NA, NA, NA)
+  ws <- build_world_series_summary(make_ws_matchups_fixture(scores), season = 2026)
+
+  expect_equal(ws$status, "in_progress")
+  expect_equal(ws$games_played, 2L)
+  expect_equal(ws$games_scheduled, 7L)
+  expect_true(is.na(ws$champion))
+  expect_equal(ws$home_field$team, "MIL")
+  expect_equal(ws$home_field$wins, 2L)
+  expect_equal(ws$challenger$team, "TB")
+  expect_equal(ws$challenger$wins, 0L)
+
+  expect_equal(ws$games[[1]]$winner, "MIL")
+  expect_equal(ws$games[[1]]$game_number, 1)
+  expect_true(is.na(ws$games[[3]]$winner))
+  expect_true(is.na(ws$games[[3]]$home_score))
+})
+
+test_that("build_world_series_summary() crowns a champion at four wins", {
+  # TB sweeps games 1-2 on the road and 3-4 at home.
+  scores <- list(c(2L, 3L), c(1L, 4L), c(6L, 1L), c(5L, 0L), NA, NA, NA)
+  ws <- build_world_series_summary(make_ws_matchups_fixture(scores), season = 2026)
+
+  expect_equal(ws$status, "complete")
+  expect_equal(ws$champion, "TB")
+  expect_equal(ws$challenger$wins, 4L)
+  expect_equal(ws$home_field$wins, 0L)
+})
+
+test_that("build_world_series_summary() returns NULL without World Series games", {
+  m <- make_ws_matchups_fixture(list(NA, NA, NA, NA, NA, NA, NA))
+  m$game_type <- "R"
+  expect_null(build_world_series_summary(m, season = 2026))
+})
+
+test_that("build_world_series_summary() reports an unplayed series as scheduled", {
+  ws <- build_world_series_summary(
+    make_ws_matchups_fixture(list(NA, NA, NA, NA, NA, NA, NA)),
+    season = 2026
+  )
+  expect_equal(ws$status, "scheduled")
+  expect_equal(ws$games_played, 0L)
+})

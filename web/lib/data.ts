@@ -8,6 +8,7 @@ import {
   PostseasonOpsData,
   StatcastSpatialData,
   PlayerSpatialDictionary,
+  WorldSeriesData,
 } from './types';
 
 export function getTeamsData(): TeamProjection[] {
@@ -38,6 +39,13 @@ export function getPostseasonOpsData(): PostseasonOpsData {
   const filePath = path.join(process.cwd(), 'public', 'data', 'projections_postseason_ops.json');
   const fileContent = fs.readFileSync(filePath, 'utf-8');
   return JSON.parse(fileContent) as PostseasonOpsData;
+}
+
+export function getWorldSeriesData(): WorldSeriesData | null {
+  const filePath = path.join(process.cwd(), 'public', 'data', 'world_series.json');
+  if (!fs.existsSync(filePath)) return null;
+  const fileContent = fs.readFileSync(filePath, 'utf-8');
+  return JSON.parse(fileContent) as WorldSeriesData;
 }
 
 export function getSpatialData(): StatcastSpatialData {

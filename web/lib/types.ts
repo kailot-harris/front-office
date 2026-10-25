@@ -291,6 +291,44 @@ export interface PostseasonOpsData {
   risk_state: RiskStateSummary;
 }
 
+export interface WorldSeriesGame {
+  game_number: number;
+  game_pk: number;
+  game_date: string;
+  venue_name: string;
+  status_detail: string;
+  is_completed: boolean;
+  home_team: string;
+  home_team_name: string;
+  home_score: number | null;
+  away_team: string;
+  away_team_name: string;
+  away_score: number | null;
+  home_win_prob: number;
+  winner: string | null;
+}
+
+export interface WorldSeriesSide {
+  team: string;
+  team_name: string;
+  wins: number;
+}
+
+export interface WorldSeriesData {
+  season: number;
+  title: string;
+  format: string;
+  start_date: string;
+  end_date: string;
+  status: 'scheduled' | 'in_progress' | 'complete';
+  games_played: number;
+  games_scheduled: number;
+  champion: string | null;
+  home_field: WorldSeriesSide;
+  challenger: WorldSeriesSide;
+  games: WorldSeriesGame[];
+}
+
 // ----------------------------------------------------------------------------
 // Statcast 4-Tier Spatial Analytics Interfaces
 // ----------------------------------------------------------------------------
