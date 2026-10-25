@@ -38,6 +38,13 @@ jobs:
       # the lockfile, move the date forward with it; don't point it at "latest".
       - name: Restore renv environment
         shell: Rscript {0}
+        # RENV_CONFIG_REPOS_OVERRIDE is exported into this job's environment
+        # pointing at .../cran/latest, and it beats the lockfile's own
+        # Repositories entry — so pinning the snapshot in renv.lock alone was
+        # silently ignored (run 40227674728). Set it here to the same dated
+        # snapshot the lockfile uses; the two must stay in step.
+        env:
+          RENV_CONFIG_REPOS_OVERRIDE: https://packagemanager.posit.co/cran/2026-10-20
         run: |
           if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv")
           renv::restore()
