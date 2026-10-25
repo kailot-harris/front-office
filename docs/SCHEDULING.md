@@ -12,6 +12,19 @@ current. Written for GitHub issue #39 ("Phase 3: trigger the daily 09:00 redeplo
 
 ## The two tasks
 
+**Both are registered and live as of 2026-10-25.** Verified on the machine:
+
+| Task | LogonType | RunLevel | Trigger | Action |
+|---|---|---|---|---|
+| `NFL_analytics_task_01` | `S4U` | Limited | 05:15 daily | `schedule_daily.bat` |
+| `NFL_analytics_publish_01` | `S4U` | Limited | 09:00 daily | `schedule_publish.bat dryrun` |
+
+Both carry `StartWhenAvailable`, `WakeToRun`, `MultipleInstances: IgnoreNew` and a 2-hour
+execution limit. The publish task is in **`dryrun`** mode on purpose — not because
+anything blocks it (#42 is settled), but so the freshness gate's assertions get exercised
+against real artifacts for a few days before a push happens. Its first run is 09:00 on
+2026-10-26.
+
 Two tasks, not one (#39 scope item 3). Keeping them separate means a long pipeline
 overrun cannot silently delay the deploy, and a publish can be re-run without
 re-running the whole pipeline.
