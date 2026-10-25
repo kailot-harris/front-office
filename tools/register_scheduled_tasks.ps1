@@ -183,7 +183,7 @@ function Register-NflScheduledTasks {
     }
 
     if ($PublishMode -like 'publish*') {
-        Write-Warning ("Registering the publish task in LIVE mode '{0}'. Issue #42 (unattended push credential) must be proven first -- see docs/SCHEDULING.md." -f $PublishMode)
+        Write-Warning ("Registering the publish task in LIVE mode '{0}'. This pushes for real. Issue #42 (unattended push credential) was proven green on 2026-10-25, so this is permitted -- but that result is point-in-time: S4U credential reachability rides on the user's DPAPI store and can break with no code change on a password change, keyring reset or GCM store-backend change. Treat a push failure as alertable, not impossible. See docs/SCHEDULING.md." -f $PublishMode)
     }
 
     foreach ($t in $plan) {
