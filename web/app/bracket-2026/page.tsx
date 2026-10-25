@@ -1,8 +1,14 @@
 import fs from 'fs';
 import path from 'path';
-import { PlayoffBracketSeason, FinalsGamePredictionSet } from '@/lib/playoffTypes';
+import {
+  PlayoffBracketSeason,
+  FinalsGamePredictionSet,
+  FinalsSeriesBacktestSet,
+} from '@/lib/playoffTypes';
 import { PlayoffBracket2026Client } from '@/components/PlayoffBracket2026Client';
 import { FinalsGamePredictions } from '@/components/FinalsGamePredictions';
+import { FinalsSeriesBacktest } from '@/components/FinalsSeriesBacktest';
+import { NetRatingTrajectory } from '@/components/NetRatingTrajectory';
 
 export const metadata = {
   title: '2026 Playoff Bracket: Prediction vs Result | WNBA Analytics',
@@ -86,9 +92,72 @@ function getFinalsGames(): FinalsGamePredictionSet {
   }
 }
 
+/**
+ * Walk-forward series backtest, read with the same fail-safe contract as the two
+ * artifacts above: a missing or unparseable file returns an empty `infoSets` array
+ * with a labeled `sourceNote`, and the section renders its empty state.
+ *
+ * This payload is a RECONSTRUCTION, not an archived forecast — see the header on
+ * FinalsSeriesBacktestSet. It is rendered BELOW the per-game section and changes
+ * nothing about the bracket tree, whose Finals row stays `available: false`.
+ */
+function getFinalsBacktest(): FinalsSeriesBacktestSet {
+  const filePath = path.join(
+    process.cwd(),
+    'public',
+    'data',
+    'finals_series_backtest_2026.json'
+  );
+
+  const empty = (note: string): FinalsSeriesBacktestSet => ({
+    season: 2026,
+    generatedAt: '',
+    sourceNote: note,
+    provenance: '',
+    matchup: null,
+    games: [],
+    infoSets: [],
+  });
+
+  if (!fs.existsSync(filePath)) {
+    return empty('The Finals series backtest has not been generated yet.');
+  }
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const parsed = JSON.parse(content) as FinalsSeriesBacktestSet;
+    if (!parsed || !Array.isArray(parsed.infoSets)) {
+      return empty('The Finals series backtest could not be read.');
+    }
+    return parsed;
+  } catch (err) {
+    console.error('Failed to load finals_series_backtest_2026.json:', err);
+    return empty('The Finals series backtest could not be read.');
+  }
+}
+
+/**
+ * Net-rating trajectory media (issue #96), checked at build time rather than
+ * assumed: this is a generated artifact like every JSON payload above, and it is
+ * produced by a tools/ script that is not part of the daily pipeline, so a
+ * checkout can legitimately be missing it. Both the animation and its
+ * reduced-motion still must be present — the generator writes the pair or
+ * neither, and rendering half of it would show a broken image to exactly the
+ * readers who asked for less motion. Missing either one simply omits the chart;
+ * the backtest table it illustrates stands on its own.
+ */
+function hasTrajectoryMedia(season: number): boolean {
+  const dir = path.join(process.cwd(), 'public', 'media');
+  return (
+    fs.existsSync(path.join(dir, `net_rating_trajectory_${season}.gif`)) &&
+    fs.existsSync(path.join(dir, `net_rating_trajectory_${season}.png`))
+  );
+}
+
 export default function Bracket2026Page() {
   const bracket = getBracket();
   const finals = getFinalsGames();
+  const backtest = getFinalsBacktest();
+  const showTrajectory = hasTrajectoryMedia(backtest.season);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
@@ -97,6 +166,15 @@ export default function Bracket2026Page() {
           tree above and changes nothing about it. */}
       <div className="border-t border-slate-800 pt-8">
         <FinalsGamePredictions finals={finals} />
+      </div>
+      {/* Walk-forward reconstruction of the SERIES-level forecast. Deliberately
+          last: it is the weakest-provenance block on the page. */}
+      <div className="border-t border-slate-800 pt-8">
+        <FinalsSeriesBacktest data={backtest} />
+        {/* The ratings that moved underneath the table above (#96). Rendered
+            immediately after it, inside the same section, because it shares the
+            table's reconstruction disclaimer and means nothing without it. */}
+        {showTrajectory && <NetRatingTrajectory data={backtest} season={backtest.season} />}
       </div>
     </div>
   );

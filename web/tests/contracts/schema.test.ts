@@ -25,6 +25,7 @@ import {
   PlayoffMatchupsCatalogSchema,
   PlayoffBracketSeasonSchema,
   FinalsGamePredictionSetSchema,
+  FinalsSeriesBacktestSetSchema,
   PlayerCatalogEntrySchema,
   ShotsMetadataSchema,
   PlayerShotDataSchema,
@@ -141,6 +142,14 @@ describe('Strict Zod schema contracts against public/data/*.json', () => {
       FinalsGamePredictionSetSchema,
       d.finalsGamePredictions,
       'finals_game_predictions_2026.json'
+    );
+  });
+
+  it('finals_series_backtest_2026.json matches FinalsSeriesBacktestSetSchema', () => {
+    assertValid(
+      FinalsSeriesBacktestSetSchema,
+      d.finalsSeriesBacktest,
+      'finals_series_backtest_2026.json'
     );
   });
 

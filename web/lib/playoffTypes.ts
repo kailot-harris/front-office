@@ -300,3 +300,91 @@ export interface FinalsGamePredictionSet {
   lengthDistribution: BracketLengthProb[];
   games: FinalsGamePrediction[];
 }
+
+/**
+ * ---------------------------------------------------------------------------
+ * Finals walk-forward series backtest.
+ *
+ * READ THIS BEFORE RENDERING ANY OF IT. These are RECONSTRUCTIONS, not archived
+ * forecasts. No contemporaneous Finals forecast was ever logged — the archived
+ * record (series_length_predictions.rds, written 2026-10-04) has `finals = NULL`
+ * because the matchup did not exist yet, which is why the bracket's Finals row
+ * ships `prediction.available = false` and must keep doing so. Each information
+ * set below was computed after the fact from a date-cutoff: it sees only games
+ * played strictly before its `cutoffDate`, so it cannot see the outcome it
+ * forecasts, but it is still a replay rather than a contemporaneous call. Any UI
+ * that shows these numbers must also show `provenance`.
+ * ---------------------------------------------------------------------------
+ */
+export interface FinalsBacktestLengthProb {
+  length: number;
+  probability: number;
+}
+
+/** One played Finals game, from box scores. Scores are high-seed-first. */
+export interface FinalsBacktestGame {
+  game: number;
+  gameDate: string;
+  scoreHigh: number;
+  scoreLow: number;
+  highWon: boolean;
+}
+
+/**
+ * The forecast as it stood at one decision point: before Game 1, then after each
+ * played game.
+ */
+export interface FinalsBacktestInfoSet {
+  /** 'pre-series', 'after G1', ... */
+  label: string;
+  /** Games strictly before this date are in the information set. */
+  cutoffDate: string;
+  gamesPlayed: number;
+  /** Actual series score at this point, high seed first. */
+  stateHigh: number;
+  stateLow: number;
+  /** Games behind each team's net rating at this cutoff. */
+  nGamesHigh: number;
+  nGamesLow: number;
+  netRawHigh: number;
+  netRawLow: number;
+  /** Net rating after playoff_simulator.R's get_playoff_adjusted_rating(). */
+  netAdjHigh: number;
+  netAdjLow: number;
+  /** Live forecast: conditioned on the real series state at this moment. */
+  pHighSeries: number;
+  pLowSeries: number;
+  fairMlHigh: number;
+  fairMlLow: number;
+  expectedLength: number;
+  lengthDistribution: FinalsBacktestLengthProb[];
+  /**
+   * Counterfactual: the same ratings replayed from 0-0. The gap between this and
+   * `pHighSeries` separates "the ratings moved" from "the scoreboard moved".
+   * Null when that row is absent from the artifact.
+   */
+  pHighSeriesFromZero: number | null;
+  /**
+   * Counterfactual: regular-season-only ratings, the leak-free baseline kept per
+   * issue #92. Null when that row is absent.
+   */
+  pHighSeriesRegularSeasonOnly: number | null;
+}
+
+export interface FinalsBacktestMatchup {
+  teamHigh: string;
+  teamHighAbbr: string;
+  teamLow: string;
+  teamLowAbbr: string;
+}
+
+export interface FinalsSeriesBacktestSet {
+  season: number;
+  generatedAt: string;
+  sourceNote: string;
+  /** The reconstruction disclaimer. The UI is required to surface this. */
+  provenance: string;
+  matchup: FinalsBacktestMatchup | null;
+  games: FinalsBacktestGame[];
+  infoSets: FinalsBacktestInfoSet[];
+}
