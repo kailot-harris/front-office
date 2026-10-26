@@ -1,6 +1,6 @@
 # ==============================================================================
 # mlb_pythag_baseline.R — Pythagorean Win-Expectation Baseline Engine
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/mlb_pythag_baseline.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/mlb_pythag_baseline.R
 #
 # Implements the foundational sabermetric win-expectation baselines
 # (docs/MLB_REPLICATION_PLAN.md §3):

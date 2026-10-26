@@ -1,7 +1,7 @@
 # ==============================================================================
 # mlb_clutch_leverage_engine.R
 # Phase 3 / Sprint 3: True Clutch & Leverage Index Engine
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/mlb_clutch_leverage_engine.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/mlb_clutch_leverage_engine.R
 #
 # Formulates Tom Tango's Leverage Index (LI), Win Probability Added (WPA),
 # high-stakes RISP pressure resilience for batters, and inherited runners

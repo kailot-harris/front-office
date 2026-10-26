@@ -1,6 +1,6 @@
 # ==============================================================================
 # tools/viz_postseason_odds.R — 12-Team Postseason Advancement & Championship Odds
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/tools/viz_postseason_odds.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/tools/viz_postseason_odds.R
 #
 # Phase 9: Quantitative Visualization Suite (Issue #24)
 # Visualizes Monte Carlo simulated probabilities across all 12 MLB postseason teams:

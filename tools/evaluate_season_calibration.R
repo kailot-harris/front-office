@@ -1,6 +1,6 @@
 # ==============================================================================
 # tools/evaluate_season_calibration.R — Automated In-Season Model Calibration Monitor
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/tools/evaluate_season_calibration.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/tools/evaluate_season_calibration.R
 #
 # Evaluates probability calibration, predictive accuracy, and edge integrity across
 # walk-forward game predictions. Models evaluated:

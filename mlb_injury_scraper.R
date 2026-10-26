@@ -1,6 +1,6 @@
 # ==============================================================================
 # mlb_injury_scraper.R — ESPN MLB injury feed scraper with Player-Card ID parsing
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/mlb_injury_scraper.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/mlb_injury_scraper.R
 #
 # Scrapes active MLB injuries from ESPN's public site-API feed:
 #   https://site.web.api.espn.com/apis/site/v2/sports/baseball/mlb/injuries

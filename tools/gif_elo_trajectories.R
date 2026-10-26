@@ -1,6 +1,6 @@
 # ==============================================================================
 # tools/gif_elo_trajectories.R — 30-Team MLB Elo Race Trajectory Animation
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/tools/gif_elo_trajectories.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/tools/gif_elo_trajectories.R
 #
 # Phase 9: Quantitative Visualization Suite (Issue #24 / Animated Trajectories)
 # Converts game-by-game Elo rating trajectories into an animated race GIF across

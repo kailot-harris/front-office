@@ -1,6 +1,6 @@
 # ==============================================================================
 # mlb_bayes_pooling.R — Closed-Form Hierarchical Empirical Bayes Partial Pooling
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/mlb_bayes_pooling.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/mlb_bayes_pooling.R
 #
 # Phase 3 Specialty Models (Issue #25)
 #

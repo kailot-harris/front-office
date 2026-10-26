@@ -1,6 +1,6 @@
 # ==============================================================================
 # tools/mlb_logo_utils.R — MLB Team Logo Fetcher, Caching, and Grid Annotations
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/tools/mlb_logo_utils.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/tools/mlb_logo_utils.R
 #
 # Provides utilities to:
 #   1. Fetch and locally cache official MLB team logos (120px PNGs from midfield.mlbstatic.com).

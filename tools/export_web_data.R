@@ -1,6 +1,6 @@
 # ==============================================================================
 # tools/export_web_data.R — MLB Analytics Web Platform JSON Exporter
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/tools/export_web_data.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/tools/export_web_data.R
 #
 # Synthesizes cached MLB R pipeline outputs across Stages 1-13 into static JSON
 # artifacts for the Next.js 14 web dashboard (web/public/data/*.json).

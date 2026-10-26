@@ -6,7 +6,7 @@ proj_dir <- if (file.exists("../../config.R")) {
 } else if (file.exists("config.R")) {
   getwd()
 } else {
-  "c:/Users/kailo/kayceeslices/MLB Analytics"
+  stop("Cannot locate the project root: no config.R at ./ or ../../. Run tests from the repo root or from tests/testthat/.", call. = FALSE)
 }
 
 # Set working directory to project root so all source() and relative paths resolve

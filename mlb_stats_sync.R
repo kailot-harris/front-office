@@ -1,6 +1,6 @@
 # ==============================================================================
 # mlb_stats_sync.R — FanGraphs Leaderboard Sync & Advanced Metrics
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/mlb_stats_sync.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/mlb_stats_sync.R
 #
 # Syncs advanced batter and pitcher metrics from FanGraphs leaderboards via
 # baseballr wrapper functions (docs/MLB_REPLICATION_PLAN.md §2a, §3):

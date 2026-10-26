@@ -1,6 +1,6 @@
 # ==============================================================================
 # mlb_notify_bets.R
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/mlb_notify_bets.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/mlb_notify_bets.R
 # Phase 7 — MLB Discord Alpha & CLV Webhook Dispatcher (Issue #22)
 #
 # Ported from the NFL Analytics sibling repo's notify_bets.R (sport-agnostic

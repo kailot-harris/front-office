@@ -1,6 +1,6 @@
 # ==============================================================================
 # tools/viz_theme.R — Publication-Ready Dark Theme & Palettes for MLB Viz Suite
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/tools/viz_theme.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/tools/viz_theme.R
 #
 # Phase 9: Shared Visual Theme & Utilities (Issue #24)
 # Minimal dark aesthetic inspired by modern analytics dashboards:

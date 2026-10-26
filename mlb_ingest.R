@@ -1,6 +1,6 @@
 # ==============================================================================
 # mlb_ingest.R — MLB Stats API & Statcast Ingestion Engine
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/mlb_ingest.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/mlb_ingest.R
 #
 # Ingestion pipeline for official MLB game schedules, box scores, and Statcast
 # pitch-level data.

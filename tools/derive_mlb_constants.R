@@ -1,6 +1,6 @@
 # ==============================================================================
 # tools/derive_mlb_constants.R — Empirical Constant Derivation for MLB Analytics
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/tools/derive_mlb_constants.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/tools/derive_mlb_constants.R
 #
 # Phase 2, Wave 2 (Issue #17): Empirically derive every modeling constant flagged
 # in docs/MLB_REPLICATION_PLAN.md §3, §4, §6 as needing empirical derivation:

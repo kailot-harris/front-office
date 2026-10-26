@@ -1,6 +1,6 @@
 # ==============================================================================
 # tools/export_player_spatial_maps.R — Player Dropdown Spatial Maps Exporter
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/tools/export_player_spatial_maps.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/tools/export_player_spatial_maps.R
 #
 # Generates high-density per-player spatial maps for all 1,279 players:
 #   - Batters: Comprehensive Field Spray Charts (75+ Batted Balls, full hit breakdowns,

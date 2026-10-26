@@ -1,6 +1,6 @@
 # ==============================================================================
 # tools/export_spatial_analytics.R — Statcast 4-Tier Spatial Analytics Exporter
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/tools/export_spatial_analytics.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/tools/export_spatial_analytics.R
 #
 # Processes Statcast 3D coordinates, pitch flight trajectories, and batted ball
 # vectors into static JSON artifacts for the Next.js web application:
