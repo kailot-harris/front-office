@@ -129,6 +129,6 @@ jobs:
 
       # parse() only: no package is loaded and no file is evaluated, so this
       # cannot reach an API, touch cache/ or need a dependency install.
-      # Measured on main 2026-10-26: 79 tracked .R files, 0 failures.
+      # Measured 2026-10-26: 80 tracked .R files, 0 failures.
       - name: Parse every tracked R file
         run: Rscript .github/scripts/parse-all.R
