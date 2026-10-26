@@ -16,7 +16,7 @@
 # assertion => publish nothing, exit non-zero, leave yesterday's correct site up
 # rather than a half-updated one.
 #
-# THE FOUR ASSERTIONS
+# THE FIVE ASSERTIONS
 #   A  mtime freshness - every entry of config.R's WEB_DATA_FILES has an mtime
 #      later than the run start. The nine filenames are NEVER re-typed here; they
 #      are read from config.R, per CLAUDE.md's single-source-of-truth convention.
@@ -32,6 +32,15 @@
 #      during the issue-#38 Phase 0 audit: web/public/data was CLEAN against HEAD
 #      with 2026-10-19 mtimes despite a "successful" run, so a publish without
 #      this assertion reports success while pushing nothing.
+#   E  publish branch  - HEAD must be on the branch the aggregator's
+#      sync-sports.yml actually subtree-pulls (main). Added after the gate's
+#      own silent-no-op was found on 2026-10-26: the commit+push below pushes
+#      `origin HEAD`, so running this from a feature branch committed the data
+#      to that branch, pushed it, and returned published = TRUE while
+#      sync-sports.yml went on pulling `main` and the site never changed. That
+#      is precisely the failure class this file exists to prevent, reproduced
+#      one layer up in the gate itself. Fatal, and deliberately checked BEFORE
+#      anything is committed.
 #   D  log scan        - surfaces every [WARN] line attributable to
 #      export_web_datasets.R in the run window. NOT redundant with A: the
 #      exporter's verbatim-republish fallbacks (export_web_datasets.R:77, :85,
@@ -39,6 +48,24 @@
 #      mtime. An mtime check is structurally incapable of catching a stale
 #      salary_cap_profiles.json or value_bets.json; the log_warn() is the only
 #      staleness signal for those. See config.R:676-711.
+#
+# ONE DEPLOY PATH (2026-10-26)
+# -----------------------------
+# This script used to finish by subtree-pulling into a local
+# front-office-aggregator checkout and pushing front-office main itself. The
+# aggregator's own .github/workflows/sync-sports.yml does the same thing in CI,
+# so both mechanisms pushed the same branch and whichever ran second hit a
+# non-fast-forward or an avoidable merge. The CI one is now the only one: it
+# needs no workstation awake, and its comments encode three hard-won findings
+# (persist-credentials: false, the explicit `gh workflow run` dispatch because a
+# GITHUB_TOKEN push does not trigger another workflow, and the API preflight
+# because a fine-grained PAT returns 404 rather than 403).
+#
+# What remains here is the part that was never duplicated: the assertions, and
+# the commit + push of NFL_analytics itself. Pushing NFL_analytics triggers no
+# deploy on its own -- it makes the artifacts available for sync-sports.yml to
+# pull on its next run or dispatch. This script no longer deploys, and no longer
+# pretends to.
 #
 # PATH / WORKTREE NOTE (tracked as issue #43, deliberately NOT fixed here)
 # -----------------------------------------------------------------------
@@ -76,6 +103,16 @@
 #   Zero-mutation variant of the same comparison, exercising the recomputation
 #   against a deliberately wrong published value:
 #     Rscript -e "source('tools/publish_web.R'); stopifnot(.compute_active_week_from_schedules() != 99L)"
+#
+# E (publish branch) FAILS:
+#     git switch -c scratch/anything
+#     Rscript -e "source('tools/publish_web.R'); publish_web(dry_run = TRUE)"
+#   Reports [FAIL] E ... HEAD=scratch/anything expected=main and blocks. Before
+#   E existed this combination published "successfully" to the scratch branch and
+#   left the site untouched.
+#     Restore:  git switch main && git branch -d scratch/anything
+#   Zero-mutation variant, asserting against a branch that is not the real one:
+#     Rscript -e "source('tools/publish_web.R'); print(publish_web(dry_run = TRUE, publish_branch = 'no-such-branch')$assertions_failed)"
 #
 # C (non-empty diff) FAILS:
 #   This is the DEFAULT state of a checkout whose web/ tree is already committed -
@@ -301,22 +338,46 @@ source("logging_utils.R")
 }
 
 # ------------------------------------------------------------------------------
-# Commit / push sequence. ONLY reached when dry_run = FALSE and every fatal
-# assertion passed. Per issue #38: commit the two published trees -> push
-# NFL_analytics -> subtree-pull into the front-office aggregator -> push
-# front-office main. Only the aggregator carries deploy.yml, so pushing
-# NFL_analytics alone triggers no deploy; the aggregator push IS the deploy.
-# The aggregator is located as a sibling of the NFL repo root at runtime
-# (overridable), again so no second absolute path is baked in.
-# NOTE: unattended credentials are unproven (issue #42) - a scheduled run may not
-# reach Git Credential Manager, which is why each step's failure is fatal here.
+# ASSERTION E - publish branch.
+# `.pw_do_publish` pushes `origin HEAD`, while the aggregator's sync-sports.yml
+# subtree-pulls a fixed branch. If those disagree the push lands on a ref CI
+# never reads: the commit succeeds, the push succeeds, published = TRUE is
+# returned, and the site does not move. The branch name is a parameter rather
+# than a constant so the mismatch can be exercised without switching branches,
+# but its default must stay in step with the ref sync-sports.yml pulls.
 # ------------------------------------------------------------------------------
-.pw_default_aggregator <- function(repo_root) {
-  cand <- file.path(dirname(repo_root), "front-office-aggregator")
-  if (file.exists(file.path(cand, ".git"))) cand else NA_character_
+.pw_current_branch <- function(repo_root) {
+  if (is.na(repo_root)) return(NA_character_)
+  r <- .pw_git(repo_root, c("rev-parse", "--abbrev-ref", "HEAD"))
+  if (!r$ok || !length(r$out)) return(NA_character_)
+  b <- trimws(r$out[1])
+  if (!nzchar(b) || identical(b, "HEAD")) NA_character_ else b
 }
 
-.pw_do_publish <- function(repo_root, aggregator_dir, commit_message) {
+.assert_publish_branch <- function(repo_root, publish_branch) {
+  branch <- .pw_current_branch(repo_root)
+  pass <- !is.na(branch) && identical(branch, publish_branch)
+  list(id = "E", name = "publish branch (HEAD is the ref the aggregator pulls)",
+       pass = pass, fatal = TRUE, branch = branch,
+       detail = c(sprintf("    HEAD is on                 : %s",
+                          ifelse(is.na(branch), "<detached HEAD or no repo>", branch)),
+                  sprintf("    sync-sports.yml pulls      : %s", publish_branch),
+                  if (!pass)
+                    "    note: `push origin HEAD` would land on a ref CI never reads - the push would succeed and the site would not change."),
+       summary = sprintf("HEAD=%s expected=%s",
+                         ifelse(is.na(branch), "<NA>", branch), publish_branch))
+}
+
+# ------------------------------------------------------------------------------
+# Commit / push sequence. ONLY reached when dry_run = FALSE and every fatal
+# assertion passed. Commits the two published trees and pushes NFL_analytics --
+# nothing more. The deploy belongs to the aggregator's sync-sports.yml (see "ONE
+# DEPLOY PATH" in the header); this function deliberately does not push
+# front-office, so there is exactly one mechanism that can.
+# Assertion E guarantees HEAD is the branch sync-sports.yml pulls, so `push
+# origin HEAD` reaches the ref that CI will actually read.
+# ------------------------------------------------------------------------------
+.pw_do_publish <- function(repo_root, commit_message) {
   steps <- list()
   record <- function(label, res) {
     steps[[length(steps) + 1L]] <<- list(label = label, ok = res$ok, out = res$out)
@@ -330,14 +391,6 @@ source("logging_utils.R")
          .pw_git(repo_root, c("commit", "-m", shQuote(commit_message))))
   record("git push origin HEAD (NFL_analytics)",
          .pw_git(repo_root, c("push", "origin", "HEAD")))
-  if (is.na(aggregator_dir)) {
-    stop("publish_web: aggregator checkout not found; front-office carries deploy.yml, so the deploy cannot complete without it.")
-  }
-  record("git subtree pull --prefix=nfl nfl-origin main (aggregator)",
-         .pw_git(aggregator_dir, c("subtree", "pull", "--prefix=nfl", "nfl-origin", "main",
-                                   "-m", shQuote(commit_message))))
-  record("git push origin main (front-office -> triggers deploy.yml)",
-         .pw_git(aggregator_dir, c("push", "origin", "main")))
   steps
 }
 
@@ -352,16 +405,13 @@ source("logging_utils.R")
 # ------------------------------------------------------------------------------
 publish_web <- function(dry_run = TRUE,
                         run_start = NULL,
-                        aggregator_dir = NULL,
+                        publish_branch = "main",
                         fail_on_exporter_warnings = FALSE,
                         commit_message = NULL) {
 
   repo_root <- .pw_repo_root()
   log_lines <- if (file.exists(LOG_FILE)) readLines(LOG_FILE, warn = FALSE) else character(0)
   if (is.null(run_start)) run_start <- .pw_detect_run_start(log_lines)
-  if (is.null(aggregator_dir)) {
-    aggregator_dir <- if (is.na(repo_root)) NA_character_ else .pw_default_aggregator(repo_root)
-  }
   if (is.null(commit_message)) {
     commit_message <- sprintf("Publish NFL web artifacts from the %s pipeline run",
                               if (is.na(run_start)) format(Sys.Date()) else format(run_start, "%Y-%m-%d %H:%M"))
@@ -371,6 +421,7 @@ publish_web <- function(dry_run = TRUE,
     .assert_mtime_freshness(run_start),
     .assert_week_agreement(),
     .assert_nonempty_diff(repo_root),
+    .assert_publish_branch(repo_root, publish_branch),
     .assert_log_scan(log_lines, run_start, fail_on_exporter_warnings)
   )
 
@@ -384,7 +435,7 @@ publish_web <- function(dry_run = TRUE,
               if (dry_run) "DRY RUN - nothing will be published" else "LIVE PUBLISH"))
   cat("================================================================\n")
   cat(sprintf("  repo root        : %s\n", ifelse(is.na(repo_root), "<not a git repo>", repo_root)))
-  cat(sprintf("  aggregator       : %s\n", ifelse(is.na(aggregator_dir), "<not found>", aggregator_dir)))
+  cat(sprintf("  publish branch   : %s\n", publish_branch))
   cat(sprintf("  pipeline log     : %s (%d lines)\n", LOG_FILE, length(log_lines)))
   cat(sprintf("  run start        : %s\n",
               ifelse(is.na(run_start), "<undetected>", format(run_start, "%Y-%m-%d %H:%M:%S"))))
@@ -403,7 +454,8 @@ publish_web <- function(dry_run = TRUE,
   anim <- if (dir.exists(WEB_ANIM_DIR)) list.files(WEB_ANIM_DIR) else character(0)
   cat(sprintf("  %d visual-media file(s) from %s\n", length(anim), WEB_ANIM_DIR))
   cat(sprintf("  commit message   : %s\n", commit_message))
-  cat("  push sequence    : commit -> push NFL_analytics -> subtree pull into aggregator -> push front-office main\n")
+  cat(sprintf("  push sequence    : commit -> push NFL_analytics %s (deploy belongs to the aggregator's sync-sports.yml)\n",
+              publish_branch))
 
   cat("\n-- Verdict -----------------------------------------------------\n")
   if (blocked) {
@@ -422,21 +474,23 @@ publish_web <- function(dry_run = TRUE,
 
   result <- list(
     dry_run = dry_run, blocked = blocked, run_start = run_start,
-    repo_root = repo_root, aggregator_dir = aggregator_dir,
+    repo_root = repo_root, publish_branch = publish_branch,
     assertions_passed = as.character(vapply(checks[passed], function(ch) ch$id, character(1))),
     assertions_failed = as.character(vapply(checks[!passed], function(ch) ch$id, character(1))),
     active_week_computed = checks[[2]]$computed,
     active_week_published = checks[[2]]$published,
-    exporter_warnings = checks[[4]]$warnings,
+    publish_branch_actual = checks[[4]]$branch,
+    exporter_warnings = checks[[5]]$warnings,
     pending_changes = checks[[3]]$changed,
     checks = checks, published = FALSE, steps = list()
   )
 
   if (blocked || dry_run) return(invisible(result))
 
-  result$steps <- .pw_do_publish(repo_root, aggregator_dir, commit_message)
+  result$steps <- .pw_do_publish(repo_root, commit_message)
   result$published <- TRUE
-  log_info("publish_web: web artifacts committed and pushed; front-office main updated (deploy triggered).")
+  log_info(sprintf("publish_web: web artifacts committed and pushed to NFL_analytics %s. The site changes when the aggregator's sync-sports.yml next pulls; this script no longer deploys.",
+                   publish_branch))
   invisible(result)
 }
 
