@@ -139,8 +139,16 @@ if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 # Save league metadata
 meta_path <- "web/public/data/shots_metadata.json"
 meta_obj <- list(
+  # First in the object, for assertion F's 4096-byte head scan. ShotsMetadataSchema
+  # in web/tests/contracts/schemas.ts is .strict(), so the key is declared there
+  # in the same change.
+  generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
   season = 2026,
-  updated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ"),
+  # tz = "UTC" added: the trailing Z asserts UTC but format() defaults to local
+  # time, so this field has been publishing EDT/EST values labelled as UTC --
+  # off by 4-5 hours. Same defect class as NBA's matchups_slates stamp. The
+  # string shape is unchanged, so the contract schema is unaffected.
+  updated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
   total_shots_sampled = nrow(clean_fga),
   league_averages = league_averages,
   zones = c(

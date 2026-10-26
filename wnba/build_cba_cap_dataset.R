@@ -235,6 +235,11 @@ build_cba_cap_dataset <- function() {
   max_space_count <- sum(sapply(franchise_profiles, function(f) f$cbaTier == "Maximum Cap Space"))
 
   league_overview <- list(
+    # First in the object, for assertion F's 4096-byte head scan, and UTC with
+    # a trailing Z -- the only form .pw_payload_generated_at() parses.
+    # WnbaCbaLeagueOverviewSchema in web/tests/contracts/schemas.ts is
+    # .strict(), so the key is declared there in the same change.
+    generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
     season = "2026",
     hardSalaryCap = WNBA_HARD_CAP,
     capFloor = WNBA_CAP_FLOOR,

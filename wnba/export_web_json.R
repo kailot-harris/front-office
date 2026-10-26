@@ -865,6 +865,12 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
   }
 
   playoff_catalog <- list(
+    # First in the object, for assertion F's 4096-byte head scan, and UTC with
+    # a trailing Z -- the only form .pw_payload_generated_at() parses. Matches
+    # metadata_obj's stamp at line 414. web/tests/contracts/schemas.ts's
+    # PlayoffMatchupsCatalogSchema is .strict(), so this key is declared there
+    # in the same change or the contract suite (and assertion G) rejects it.
+    generated_at       = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
     teams              = team_profiles,
     sampleMatchups     = sample_matchups,
     historicalBrackets = historical_brackets
@@ -941,6 +947,12 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
   }
 
   bracket_payload <- list(
+    # Assertion F reads `generated_at`, snake_case, UTC, with a trailing Z.
+    # `generatedAt` below is NOT that: it is the cache artifact's own timestamp
+    # passed through as as.character(Sys.time()) -- local time, space-separated,
+    # and keyed camelCase -- which F's regex does not match and its parser
+    # could not read if it did. The web app renders generatedAt, so both stay.
+    generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
     season      = as.integer(bracket_season),
     generatedAt = bracket_generated,
     sourceNote  = bracket_note,
@@ -1058,6 +1070,8 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
   }
 
   finals_payload <- list(
+    # See bracket_payload above for why this is separate from `generatedAt`.
+    generated_at       = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
     season             = as.integer(finals_season),
     generatedAt        = finals_generated,
     sourceNote         = finals_note,
@@ -1183,6 +1197,8 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
   }
 
   backtest_payload <- list(
+    # See bracket_payload above for why this is separate from `generatedAt`.
+    generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
     season      = as.integer(bt_season),
     generatedAt = bt_generated,
     sourceNote  = bt_note,
@@ -1217,6 +1233,15 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
   out_bracket_json  <- .out(WEB_JSON_PLAYOFF_BRACKET_CURRENT)
   out_finals_json   <- .out(WEB_JSON_FINALS_GAME_PREDICTIONS)
   out_backtest_json <- .out(WEB_JSON_FINALS_SERIES_BACKTEST)
+
+  # diagnostics_obj is built in one of two branches above (measured, and the
+  # fallback when no resolved games are cached). The assertion-F stamp is
+  # prepended here rather than added to both literals so the branches cannot
+  # drift, and PREpended because F only scans the first 4096 bytes.
+  diagnostics_obj <- c(
+    list(generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")),
+    diagnostics_obj
+  )
 
   write_json(teams_df, out_teams_json, pretty = TRUE, auto_unbox = TRUE)
   write_json(player_projections, out_players_json, pretty = TRUE, auto_unbox = TRUE)
