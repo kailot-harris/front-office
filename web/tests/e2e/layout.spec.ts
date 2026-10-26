@@ -2,10 +2,10 @@
  * Layout regression tests for the app shell.
  *
  * `app/layout.tsx` lays the body out as `flex md:flex-row` with <Sidebar />
- * as the first child, which reads as though the sidebar occupies a column.
- * It does not: at `lg:` and up the sidebar is `position: fixed; left: 0;
- * width: 16rem; z-index: 30`, so it is taken out of flow and the content
- * column is never offset by its width.
+ * as the first child. The desktop sidebar is `hidden md:flex ... sticky top-0
+ * z-30` with a `w-64 lg:w-72` fixed basis, so from the `md:` breakpoint up it
+ * does occupy a column — but it is sticky and high z-index, so anything the
+ * content column positions on top of that strip is still unreachable.
  *
  * These tests assert the invariant that actually matters to a visitor: no
  * interactive control may sit underneath the fixed sidebar, because clicking
@@ -13,14 +13,18 @@
  * at.
  */
 import { expect, test } from '@playwright/test';
-import { ROUTES } from './routes';
+import { ROUTES, linkHref } from './routes';
 
-/** Viewport widths at or above the sidebar's `lg:` breakpoint. */
+/** Viewport widths at or above the sidebar's `md:` breakpoint. */
 const DESKTOP_WIDTHS = [1024, 1280, 1366, 1440, 1600, 1920];
 
 test.describe('the fixed sidebar must not overlap page content', () => {
   for (const width of DESKTOP_WIDTHS) {
     test(`content clears the sidebar at ${width}px`, async ({ page }) => {
+      // Ten full page loads to networkidle per width — over the default 45s on a
+      // loaded machine, which showed up as timeouts on the wider viewports rather
+      // than as a layout result.
+      test.slow();
       await page.setViewportSize({ width, height: 900 });
       const overlaps: string[] = [];
 
@@ -30,7 +34,7 @@ test.describe('the fixed sidebar must not overlap page content', () => {
           const aside = document.querySelector('aside');
           if (!aside) return null;
           const asideBox = aside.getBoundingClientRect();
-          if (asideBox.width === 0) return null; // collapsed below lg:
+          if (asideBox.width === 0) return null; // collapsed below md:
           const content = document.querySelector('main > div');
           if (!content) return null;
           return {
@@ -88,8 +92,13 @@ test.describe('the fixed sidebar must not overlap page content', () => {
 });
 
 test.describe('the sidebar itself stays usable', () => {
-  test('is hidden below the lg breakpoint', async ({ page }) => {
-    await page.setViewportSize({ width: 820, height: 1180 });
+  // components/Sidebar.tsx switches at `md:` (768px), not `lg:` — the desktop
+  // <aside> is `hidden md:flex` and the mobile header is `md:hidden`. 820px,
+  // which this test used to assert on, is ABOVE that breakpoint, so the sidebar
+  // was correctly on screen and the assertion was simply measuring the wrong
+  // viewport.
+  test('is hidden below the md breakpoint', async ({ page }) => {
+    await page.setViewportSize({ width: 720, height: 1180 });
     await page.goto('/', { waitUntil: 'networkidle' });
     const width = await page.evaluate(() => {
       const aside = document.querySelector('aside');
@@ -113,10 +122,10 @@ test.describe('the sidebar itself stays usable', () => {
     await page.goto('/teams', { waitUntil: 'networkidle' });
     const activeHrefs = await page.locator('aside a').evaluateAll((els) =>
       els
-        .filter((el) => /bg-emerald|text-emerald|border-emerald/.test(el.className))
+        .filter((el) => /bg-emerald|text-emerald|border-emerald|bg-accent|text-accent|border-accent/.test(el.className))
         .map((el) => el.getAttribute('href')),
     );
-    expect(activeHrefs, '/teams is not highlighted in the sidebar').toContain('/teams');
+    expect(activeHrefs, `${linkHref('/teams')} is not highlighted in the sidebar`).toContain(linkHref('/teams'));
   });
 });
 

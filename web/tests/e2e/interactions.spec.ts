@@ -42,15 +42,20 @@ test.describe('search inputs are live after hydration', () => {
   }
 });
 
+/**
+ * The three view switchers in StandingsClient.tsx are <button role="tab">. The
+ * explicit role wins, so getByRole('button') never matches them and the two
+ * tests that click a tab timed out rather than failing with a useful message.
+ */
 test.describe('home page standings dashboard', () => {
   test('the three view tabs each render their own layout', async ({ page }) => {
     await page.goto('/', { waitUntil: 'networkidle' });
 
-    await page.getByRole('button', { name: /Full 32 Table/i }).click();
+    await page.getByRole('tab', { name: /Full 32 Table/i }).click();
     await expect(page.locator('table')).toBeVisible();
     await expect(page.locator('tbody tr')).toHaveCount(32);
 
-    await page.getByRole('button', { name: /8 Divisions/i }).click();
+    await page.getByRole('tab', { name: /8 Divisions/i }).click();
     // The division group labels are <span>s, not headings (see the
     // heading-level finding in a11y-and-assets.spec.ts), and "AFC East" also
     // appears in the hidden <option> list of the division <select>.
@@ -59,13 +64,13 @@ test.describe('home page standings dashboard', () => {
       'the divisions view did not render an AFC East group label',
     ).toBeVisible();
 
-    await page.getByRole('button', { name: /Distribution Visualizer/i }).click();
+    await page.getByRole('tab', { name: /Distribution Visualizer/i }).click();
     await expect(page.locator('h1')).toBeVisible();
   });
 
   test('the active tab is written to the URL and survives a reload', async ({ page }) => {
     await page.goto('/', { waitUntil: 'networkidle' });
-    await page.getByRole('button', { name: /Full 32 Table/i }).click();
+    await page.getByRole('tab', { name: /Full 32 Table/i }).click();
     await expect(page).toHaveURL(/view=table/);
 
     await page.reload({ waitUntil: 'networkidle' });
