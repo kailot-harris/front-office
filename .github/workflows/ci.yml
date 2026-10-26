@@ -72,14 +72,11 @@ jobs:
       # mobile-chromium project; both are Chromium device profiles, so one
       # browser download covers the whole e2e stage.
       #
-      # KNOWN HOLE, measured locally 2026-10-26: the e2e stage currently runs
-      # ZERO tests and still reports PASS 0/0. playwright.config.ts's managed
-      # webServer is `npx next start`, which cannot run against this app --
-      # web/next.config.mjs sets `output: 'export'`, so next start exits 1 with
-      # "does not work with output: export". The six specs in web/tests/e2e/
-      # never execute. This step is kept because it is what the gate needs the
-      # moment that is fixed (serve the exported `out/` dir instead), but until
-      # then do NOT read a green web job as e2e coverage.
+      # The e2e stage reports real coverage as of 2026-10-26: 213 tests across the
+      # two projects. It previously ran ZERO and still said PASS 0/0, because the
+      # managed webServer was `npx next start`, which exits 1 against this app
+      # (web/next.config.mjs sets `output: 'export'`). It now serves the exported
+      # `out/` dir via web/scripts/serve-export.mjs.
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 

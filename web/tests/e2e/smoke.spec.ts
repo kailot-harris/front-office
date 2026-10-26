@@ -5,7 +5,14 @@
  * failure a visitor would see.
  */
 import { expect, test } from '@playwright/test';
-import { ROUTES, ROUTE_PATHS, isRealConsoleError } from './routes';
+import {
+  BASE_PATH,
+  ROUTES,
+  ROUTE_HREFS,
+  isRealConsoleError,
+  isRealRequestFailure,
+  linkHref,
+} from './routes';
 
 for (const route of ROUTES) {
   test.describe(`${route.path}`, () => {
@@ -41,7 +48,9 @@ for (const route of ROUTES) {
       });
       page.on('pageerror', (err) => consoleErrors.push(`pageerror: ${err.message}`));
       page.on('requestfailed', (req) => {
-        failedRequests.push(`${req.method()} ${req.url()} — ${req.failure()?.errorText}`);
+        const failure = req.failure()?.errorText ?? '';
+        if (!isRealRequestFailure(req.url(), failure)) return;
+        failedRequests.push(`${req.method()} ${req.url()} — ${failure}`);
       });
       page.on('response', (res) => {
         if (res.status() >= 400 && new URL(res.url()).origin === new URL(page.url() || 'http://x').origin) {
@@ -106,17 +115,27 @@ test.describe('navigation', () => {
     const hrefs = await page.locator('nav a, aside a').evaluateAll((els) =>
       els.map((el) => el.getAttribute('href')).filter((h): h is string => Boolean(h && h.startsWith('/'))),
     );
-    for (const path of ROUTE_PATHS) {
-      expect([...new Set(hrefs)], `no navigation link to ${path}`).toContain(path);
+    // Compared against the basePath-prefixed, trailing-slashed form, because
+    // that is what Next renders into the markup — see linkHref in routes.ts.
+    for (const href of ROUTE_HREFS) {
+      expect([...new Set(hrefs)], `no navigation link to ${href}`).toContain(href);
     }
   });
 
   test('every navigation link leads to a working page', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
+    // Scoped to links inside this app's basePath. The sidebar also links to the
+    // sibling sports (/nba/, /mlb/, /wnba/), which only exist once every sport's
+    // export is assembled into the combined Pages site — they are correctly
+    // unreachable against this app's own `out/` and are not this suite's to assert.
     const hrefs = [
       ...new Set(
-        await page.locator('a').evaluateAll((els) =>
-          els.map((el) => el.getAttribute('href')).filter((h): h is string => Boolean(h && h.startsWith('/'))),
+        await page.locator('a').evaluateAll(
+          (els, base) =>
+            els
+              .map((el) => el.getAttribute('href'))
+              .filter((h): h is string => Boolean(h && h.startsWith(`${base}/`))),
+          BASE_PATH,
         ),
       ),
     ];
@@ -139,12 +158,12 @@ test.describe('navigation', () => {
     await page.goto('/', { waitUntil: 'networkidle' });
     const link = (href: string) => page.locator(`a[href="${href}"]:visible`).first();
 
-    if (!(await link('/teams').count())) {
+    if (!(await link(linkHref('/teams')).count())) {
       // Mobile: open the drawer first.
       await page.locator('button:visible').first().click();
       await page.waitForTimeout(300);
     }
-    await link('/teams').click();
+    await link(linkHref('/teams')).click();
     await expect(page.locator('h1').first()).toContainText(/Team Ratings/i);
   });
 });
