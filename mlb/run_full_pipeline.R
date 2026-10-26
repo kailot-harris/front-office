@@ -166,7 +166,7 @@ run_stage <- function(script_name, description, call_fn = NULL, output = NULL, r
 #' @param season Current season integer (defaults to 2026 or current year)
 #' @param force_refresh If TRUE, forces re-fetching all data stages bypassing caches
 #' @return A summary data.frame of all stage runs and their statuses
-run_full_pipeline <- function(season = 2026, force_refresh = FALSE) {
+run_full_pipeline <- function(season = MLB_CURRENT_SEASON, force_refresh = FALSE) {
   pipeline_start_time <- Sys.time()
   .pipeline_stages_run <<- list()
   
@@ -367,12 +367,15 @@ run_full_pipeline <- function(season = 2026, force_refresh = FALSE) {
     script_name   = "tools/export_web_data.R",
     description   = "Export Next.js Web Dashboard JSON Artifacts (web/public/data)",
     call_fn       = "run_web_export",
+    # Named from config.R's WEB_* constants, never rebuilt from string parts:
+    # tools/publish_web.R asserts over the same WEB_DATA_FILES aggregate, and a
+    # path assembled twice is a path free to drift.
     output        = c(
-      file.path(MLB_ROOT_DIR, "web", "public", "data", "projections_season_teams.json"),
-      file.path(MLB_ROOT_DIR, "web", "public", "data", "projections_season_players.json"),
-      file.path(MLB_ROOT_DIR, "web", "public", "data", "projections_models_metadata.json"),
-      file.path(MLB_ROOT_DIR, "web", "public", "data", "projections_diagnostics.json"),
-      file.path(MLB_ROOT_DIR, "web", "public", "data", "projections_postseason_ops.json")
+      WEB_JSON_PROJECTIONS_SEASON_TEAMS,
+      WEB_JSON_PROJECTIONS_SEASON_PLAYERS,
+      WEB_JSON_PROJECTIONS_MODELS_METADATA,
+      WEB_JSON_PROJECTIONS_DIAGNOSTICS,
+      WEB_JSON_PROJECTIONS_POSTSEASON_OPS
     ),
     require_fresh = force_refresh,
     season        = season
@@ -385,7 +388,7 @@ run_full_pipeline <- function(season = 2026, force_refresh = FALSE) {
     script_name   = "mlb_series_simulator.R",
     description   = "Simulate 3/5/7-Game Postseason Series Matchups Catalog",
     call_fn       = "run_mlb_series_simulator",
-    output        = file.path(MLB_ROOT_DIR, "web", "public", "data", "playoff_series_matchups.json"),
+    output        = WEB_JSON_PLAYOFF_SERIES_MATCHUPS,
     require_fresh = force_refresh
   )
   
@@ -396,7 +399,7 @@ run_full_pipeline <- function(season = 2026, force_refresh = FALSE) {
     script_name   = "mlb_player_dna_engine.R",
     description   = "Compute 16-D Skill Vectors & Cosine Historical Comps",
     call_fn       = "run_mlb_player_dna_engine",
-    output        = file.path(MLB_ROOT_DIR, "web", "public", "data", "player_dna_profiles.json"),
+    output        = WEB_JSON_PLAYER_DNA_PROFILES,
     require_fresh = force_refresh
   )
   
@@ -407,7 +410,7 @@ run_full_pipeline <- function(season = 2026, force_refresh = FALSE) {
     script_name   = "mlb_clutch_leverage_engine.R",
     description   = "Compute Tango Leverage Index, WPA & Reliever Fireman Ratings",
     call_fn       = "run_mlb_clutch_engine",
-    output        = file.path(MLB_ROOT_DIR, "web", "public", "data", "clutch_leverage_metrics.json"),
+    output        = WEB_JSON_CLUTCH_LEVERAGE_METRICS,
     require_fresh = force_refresh
   )
   
@@ -418,7 +421,7 @@ run_full_pipeline <- function(season = 2026, force_refresh = FALSE) {
     script_name   = "mlb_cbt_payroll_engine.R",
     description   = "Compute 30-Team CBT Luxury Tax, Payrolls & Contract Surplus",
     call_fn       = "run_mlb_cbt_payroll_engine",
-    output        = file.path(MLB_ROOT_DIR, "web", "public", "data", "cbt_payroll_sheet.json"),
+    output        = WEB_JSON_CBT_PAYROLL_SHEET,
     require_fresh = force_refresh
   )
   

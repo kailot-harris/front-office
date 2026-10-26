@@ -1023,11 +1023,13 @@ run_web_export <- function(season = 2026, n_sims = 1000L, out_dir = file.path(ML
 # result yet carry a forward-looking projection from current team Elo.
 # ==============================================================================
 
-# Game types that count as "the season": regular season plus the four postseason
-# rounds. Spring training ("S"), exhibitions ("E", which include non-MLB college
-# opponents) and the All-Star Game ("A") are excluded -- they have no Elo rating
-# basis and are not season games.
-MATCHUP_GAME_TYPES <- c("R", "F", "D", "L", "W")
+# MATCHUP_GAME_TYPES -- regular season plus the four postseason rounds; spring
+# training ("S"), exhibitions ("E", which include non-MLB college opponents) and
+# the All-Star Game ("A") are excluded, having no Elo rating basis. It used to be
+# defined here. It moved to config.R on 2026-10-26 because tools/publish_web.R
+# has to filter the schedule the same way to recompute a slate independently, and
+# a second copy of the vector would be free to drift from this one.
+stopifnot(exists("MATCHUP_GAME_TYPES"))
 
 #' Monday that starts the ISO week containing each date
 monday_of_week <- function(d) {

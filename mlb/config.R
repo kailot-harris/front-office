@@ -287,5 +287,94 @@ MLB_RUN_ENVIRONMENT_SIGMA <- 4.416
 MLB_DISCORD_WEBHOOK <- Sys.getenv("MLB_DISCORD_WEBHOOK", Sys.getenv("DISCORD_WEBHOOK_URL", ""))
 
 # ---------------------------------------------------------------------------
+# 6. Season scope
+# ---------------------------------------------------------------------------
+# The season the pipeline, the exporter and the publish gate all operate on.
+# Added 2026-10-26: this number previously existed only as `season = 2026`,
+# run_full_pipeline()'s default argument, and was re-typed at several other
+# call sites. A constant that lives in a function signature is not a single
+# source of truth -- tools/publish_web.R needs the same value to recompute a
+# slate independently, and reading it out of another script's default argument
+# would couple the gate to that script's interface. Bump this at the turn of
+# each season; nothing else should carry a literal season number.
+MLB_CURRENT_SEASON <- 2026L
+
+# Season schedule cache written by mlb_ingest.R. Promoted here from the
+# `cache_path("ingest", sprintf("mlb_schedule_%d.rds", season))` expression that
+# several stages build by hand, so the publish gate and the engines name the
+# same file by the same symbol.
+CACHE_MLB_SCHEDULE <- function(season = MLB_CURRENT_SEASON) {
+  cache_path("ingest", sprintf("mlb_schedule_%d.rds", as.integer(season)))
+}
+
+# Game types that make up a published slate: regular season plus the four
+# postseason rounds (F wild card, D division, L league championship, W World
+# Series). Spring training (S), the All-Star game (A) and exhibitions (E) are
+# excluded -- they are scheduled but are not part of the season the site
+# reports on. Previously a local constant inside tools/export_web_data.R;
+# tools/publish_web.R has to filter the schedule the same way to recompute a
+# game count, and a second copy of this vector is exactly the drift CLAUDE.md
+# forbids. The gate reads this constant and reimplements the *logic*
+# (dedupe + week arithmetic) independently -- that is what makes its
+# cross-check a check rather than an echo.
+MATCHUP_GAME_TYPES <- c("R", "F", "D", "L", "W")
+
+# ---------------------------------------------------------------------------
+# 7. Published web artifacts (web/public/data)
+# ---------------------------------------------------------------------------
+# WEB_DATA_FILES is the set of JSON artifacts that EVERY pipeline run is
+# expected to regenerate. It is the list tools/publish_web.R's assertion A
+# walks, and it is the aggregate that run_full_pipeline.R's web stages pass to
+# run_stage()'s `output =`. Ported from NFL Analytics' config.R, which
+# established the convention.
+#
+# Deliberate NON-members, each for a stated reason:
+#   * statcast_spatial_analytics.json and player_spatial_maps.json -- written
+#     by tools/export_spatial_analytics.R / tools/export_player_spatial_maps.R
+#     behind a `file.exists()` test and a tryCatch that logs non-fatally
+#     (tools/export_web_data.R:982-990). They are legitimately absent on a run
+#     without Statcast caches, so a run-start mtime assertion over them would
+#     be red on a healthy pipeline. Assertion D surfaces their failure instead.
+#   * world_series.json -- not produced by the R pipeline at all. It is written
+#     by tools/refresh_live_results.R, which runs on a hosted runner in
+#     .github/workflows/refresh-results.yml, so its mtime has no relationship
+#     to a local run start.
+#   * matchups/week-NN.json -- one file per slate, a variable-length set rather
+#     than a fixed manifest. matchups_index.json is written in the same step
+#     and is the member that stands for them; WEB_MATCHUPS_DIR is published
+#     alongside it by the gate's git add.
+WEB_PUBLIC_DIR   <- file.path(MLB_ROOT_DIR, "web", "public")
+WEB_DATA_DIR     <- file.path(WEB_PUBLIC_DIR, "data")
+WEB_MATCHUPS_DIR <- file.path(WEB_DATA_DIR, "matchups")
+
+WEB_JSON_PROJECTIONS_SEASON_TEAMS    <- file.path(WEB_DATA_DIR, "projections_season_teams.json")
+WEB_JSON_PROJECTIONS_SEASON_PLAYERS  <- file.path(WEB_DATA_DIR, "projections_season_players.json")
+WEB_JSON_PROJECTIONS_MODELS_METADATA <- file.path(WEB_DATA_DIR, "projections_models_metadata.json")
+WEB_JSON_PROJECTIONS_DIAGNOSTICS     <- file.path(WEB_DATA_DIR, "projections_diagnostics.json")
+WEB_JSON_PROJECTIONS_POSTSEASON_OPS  <- file.path(WEB_DATA_DIR, "projections_postseason_ops.json")
+WEB_JSON_PLAYOFF_SERIES_MATCHUPS     <- file.path(WEB_DATA_DIR, "playoff_series_matchups.json")
+WEB_JSON_PLAYER_DNA_PROFILES         <- file.path(WEB_DATA_DIR, "player_dna_profiles.json")
+WEB_JSON_CLUTCH_LEVERAGE_METRICS     <- file.path(WEB_DATA_DIR, "clutch_leverage_metrics.json")
+WEB_JSON_CBT_PAYROLL_SHEET           <- file.path(WEB_DATA_DIR, "cbt_payroll_sheet.json")
+WEB_JSON_MATCHUPS_INDEX              <- file.path(WEB_DATA_DIR, "matchups_index.json")
+# Non-members of WEB_DATA_FILES (see above), named here so no caller re-types them.
+WEB_JSON_STATCAST_SPATIAL_ANALYTICS  <- file.path(WEB_DATA_DIR, "statcast_spatial_analytics.json")
+WEB_JSON_PLAYER_SPATIAL_MAPS         <- file.path(WEB_DATA_DIR, "player_spatial_maps.json")
+WEB_JSON_WORLD_SERIES                <- file.path(WEB_DATA_DIR, "world_series.json")
+
+WEB_DATA_FILES <- c(
+  WEB_JSON_PROJECTIONS_SEASON_TEAMS,
+  WEB_JSON_PROJECTIONS_SEASON_PLAYERS,
+  WEB_JSON_PROJECTIONS_MODELS_METADATA,
+  WEB_JSON_PROJECTIONS_DIAGNOSTICS,
+  WEB_JSON_PROJECTIONS_POSTSEASON_OPS,
+  WEB_JSON_PLAYOFF_SERIES_MATCHUPS,
+  WEB_JSON_PLAYER_DNA_PROFILES,
+  WEB_JSON_CLUTCH_LEVERAGE_METRICS,
+  WEB_JSON_CBT_PAYROLL_SHEET,
+  WEB_JSON_MATCHUPS_INDEX
+)
+
+# ---------------------------------------------------------------------------
 # End of config.R
 # ---------------------------------------------------------------------------
