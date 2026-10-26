@@ -100,7 +100,10 @@ writeLines(c(
   "create_user(args[[1]], args[[2]])"
 ), worker_script)
 
-rscript_bin <- file.path(R.home("bin"), "Rscript.exe")
+# "Rscript", not "Rscript.exe": R.home("bin") already points at the running
+# interpreter's bin dir, and Windows resolves the extension itself. Spelling
+# it out failed this whole file on the Linux CI runner added 2026-10-26.
+rscript_bin <- file.path(R.home("bin"), "Rscript")
 
 p1 <- sys::exec_background(rscript_bin, c(worker_script, concurrent_user_a, "passwordA123"))
 p2 <- sys::exec_background(rscript_bin, c(worker_script, concurrent_user_b, "passwordB123"))

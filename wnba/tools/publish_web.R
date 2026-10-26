@@ -31,7 +31,7 @@
 # by hand. That is the gap 3b closes, and this file is the gate it closes it
 # behind.
 #
-# THE SIX ASSERTIONS
+# THE SEVEN ASSERTIONS
 #   A  mtime freshness - every entry of config.R's WEB_DATA_FILES has an mtime
 #      later than the run start. The eighteen filenames are NEVER re-typed
 #      here; they are read from config.R, which is now also where
@@ -79,6 +79,15 @@
 #      lines rather than implying it has checked them. Stamping every payload is
 #      an exporter change, not a gate change, and is left as follow-up; it is
 #      the single highest-value follow-up this port leaves behind.
+#
+#   G  web contracts - runs the web suite's `contracts` stage against the
+#      UNCOMMITTED payload. A to F ask when a file was written, whether its
+#      bytes changed, what the log said, whose branch it is on and when the
+#      payload says it was generated; none of them reads the numbers inside
+#      and asks whether they agree with each other. Added 2026-10-26 after
+#      all six passed at 08:01 over a payload whose projected wins summed to
+#      331 against the 330 published beside them. Fatal, with
+#      web/tests/known-issues.json as the documented escape valve.
 #
 # SEASONAL SCOPE
 # --------------
@@ -557,6 +566,108 @@ source("config.R")
 }
 
 # ------------------------------------------------------------------------------
+# ASSERTION G - web dataset contracts.
+#
+# THE GAP THIS CLOSES, measured 2026-10-26. That morning the gate reported all
+# six assertions PASS at 08:01 over payloads the web contract suite REJECTS:
+# web/tests/contracts/invariants.test.ts' zero-sum check reads
+# sum(proj_wins) = 331.00 against the total_schedule_games = 330 published in
+# the same payload set.
+#
+# A to F ask WHEN a file was written, WHETHER its bytes changed, WHAT the log
+# said, WHOSE branch it is on and WHEN the payload says it was generated. Not
+# one of them reads the numbers inside and asks whether they agree with each
+# other. A fresh, diffed, correctly-stamped payload full of wrong numbers
+# passes all six.
+#
+# The suite that does ask already exists, and as of today it runs in CI - but
+# CI runs over the COMMITTED tree, i.e. after a publish, which is too late to
+# stop one. Pointing its `contracts` stage at the uncommitted payload is the
+# whole of this assertion. It is vitest over JSON: no browser, no build,
+# about three seconds.
+#
+# ONLY the `contracts` stage. typecheck, lint, build and e2e are claims about
+# the code, and the code is not what this gate is deciding about.
+#
+# FATAL, with a documented escape valve: web/tests/known-issues.json. The
+# runner reports a listed failure as KNOWN and still exits 0, so a defect
+# judged shippable stays shippable - once someone has written down its id,
+# severity, title and fix. An UNDOCUMENTED contract failure blocks the
+# publish. That is the policy the merge gate already runs on; this reuses it
+# rather than inventing a second one.
+#
+# "Cannot verify" is fatal too, not a silent pass: an absent web/node_modules
+# means the check did not run, which is not the same as the check passing.
+# --skip-contracts overrides that deliberately and says so in the report.
+# ------------------------------------------------------------------------------
+.PW_WEB_DIR     <- "web"
+.PW_WEB_RUNNER  <- file.path("scripts", "run-test-suite.mjs")
+
+.pw_contract_result <- function(pass, fatal, summary, detail) {
+  list(id = "G", name = "web dataset contracts (vitest node project)",
+       pass = pass, fatal = fatal, summary = summary, detail = detail)
+}
+
+.assert_web_contracts <- function(skip = FALSE) {
+  if (isTRUE(skip)) {
+    return(.pw_contract_result(
+      TRUE, FALSE, "skipped at the caller's request (--skip-contracts)",
+      "    [SKIP]    the payload's internal consistency was NOT checked this run"))
+  }
+
+  web_dir <- normalizePath(.PW_WEB_DIR, winslash = "/", mustWork = FALSE)
+  runner  <- file.path(web_dir, .PW_WEB_RUNNER)
+
+  if (!file.exists(runner)) {
+    return(.pw_contract_result(
+      FALSE, TRUE, sprintf("no contract runner at %s - cannot verify", runner),
+      "    [BLOCK]   expected web/scripts/run-test-suite.mjs; this repo has no suite to point at"))
+  }
+  if (!dir.exists(file.path(web_dir, "node_modules"))) {
+    return(.pw_contract_result(
+      FALSE, TRUE, "web/node_modules is absent - cannot verify",
+      c("    [BLOCK]   run `npm ci` in web/ once on this machine, then re-run the gate.",
+        "    [BLOCK]   Not verifying is not the same as verifying: pass --skip-contracts",
+        "    [BLOCK]   to publish anyway, and the report will say the check was skipped.")))
+  }
+  node <- Sys.which("node")
+  if (!nzchar(node)) {
+    return(.pw_contract_result(
+      FALSE, TRUE, "node is not on PATH - cannot verify",
+      "    [BLOCK]   the contract suite needs node; install it or pass --skip-contracts"))
+  }
+
+  # The runner resolves its own paths from import.meta.dirname, but it spawns
+  # npx vitest, which does not - so the working directory has to be web/.
+  old_wd <- getwd()
+  on.exit(setwd(old_wd), add = TRUE)
+  setwd(web_dir)
+  out <- suppressWarnings(system2(node, c(shQuote(.PW_WEB_RUNNER), "--only=contracts"),
+                                  stdout = TRUE, stderr = TRUE))
+  st  <- attr(out, "status")
+  setwd(old_wd)
+  status <- if (is.null(st)) 0L else as.integer(st)
+  out <- if (is.null(out)) character(0) else as.character(out)
+
+  # The runner's own summary block is the report; quoting it beats
+  # re-describing it, and it already distinguishes KNOWN from NEW.
+  start <- grep("TEST SUITE SUMMARY", out, fixed = TRUE)
+  tail_lines <- if (length(start)) out[seq(max(start), length(out))] else tail(out, 20)
+  tail_lines <- tail_lines[nzchar(trimws(tail_lines))]
+  detail <- paste0("    ", tail_lines)
+
+  counts <- grep("passed", out, fixed = TRUE, value = TRUE)
+  counts <- trimws(counts[length(counts)])
+
+  .pw_contract_result(
+    status == 0L, TRUE,
+    sprintf("%s - %s", if (status == 0L) "no undocumented contract failures" else
+            "payload FAILS the contract suite; publishing it would ship the defect",
+            if (length(counts) && nzchar(counts)) counts else sprintf("runner exit %d", status)),
+    detail)
+}
+
+# ------------------------------------------------------------------------------
 # Commit / push sequence. ONLY reached when dry_run = FALSE and every fatal
 # assertion passed. Commits the published trees and pushes WNBA_analytics --
 # nothing more. The deploy belongs to the aggregator's sync-sports.yml.
@@ -594,6 +705,7 @@ publish_web <- function(dry_run = TRUE,
                         season = CURRENT_SEASON,
                         publish_branch = "main",
                         fail_on_exporter_warnings = FALSE,
+                        skip_contracts = FALSE,
                         commit_message = NULL) {
 
   repo_root <- .pw_repo_root()
@@ -610,7 +722,8 @@ publish_web <- function(dry_run = TRUE,
     .assert_nonempty_diff(repo_root),
     .assert_publish_branch(repo_root, publish_branch),
     .assert_log_scan(log_lines, run_start, fail_on_exporter_warnings),
-    .assert_payload_provenance(run_start)
+    .assert_payload_provenance(run_start),
+    .assert_web_contracts(skip_contracts)
   )
 
   passed  <- vapply(checks, function(ch) isTRUE(ch$pass), logical(1))
@@ -673,6 +786,7 @@ publish_web <- function(dry_run = TRUE,
     synthetic_fallbacks = checks[[5]]$synthetic,
     stale_payloads = checks[[6]]$stale,
     unstamped_payloads = checks[[6]]$unstamped,
+    contracts_pass = isTRUE(checks[[7]]$pass),
     pending_changes = checks[[3]]$changed,
     checks = checks, published = FALSE, steps = list()
   )
@@ -694,6 +808,7 @@ publish_web <- function(dry_run = TRUE,
 #   Rscript tools/publish_web.R                  # dry run (default)
 #   Rscript tools/publish_web.R --publish        # live publish
 #   Rscript tools/publish_web.R --strict-warnings
+#   Rscript tools/publish_web.R --skip-contracts   # G cannot run; say so loudly
 # Exit status: 0 only when nothing fatal failed; 1 on any fatal failure, so a
 # scheduled caller can branch on it.
 # ------------------------------------------------------------------------------
@@ -703,6 +818,7 @@ local({
   if (!any(grepl("publish_web\\.R$", files))) return(invisible(NULL))
   opts <- commandArgs(trailingOnly = TRUE)
   res <- publish_web(dry_run = !("--publish" %in% opts),
-                     fail_on_exporter_warnings = "--strict-warnings" %in% opts)
+                     fail_on_exporter_warnings = "--strict-warnings" %in% opts,
+                     skip_contracts = "--skip-contracts" %in% opts)
   quit(status = if (isTRUE(res$blocked)) 1L else 0L)
 })

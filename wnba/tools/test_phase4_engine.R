@@ -279,7 +279,11 @@ touched <- file.path(CACHE_DIR, c("latest_value_bets.rds", "odds_history.rds"))
 backups <- paste0(touched, ".p4a_bak")
 for (i in seq_along(touched)) if (file.exists(touched[i])) file.copy(touched[i], backups[i], overwrite = TRUE)
 
-rscript <- "C:/Program Files/R/R-4.5.2/bin/Rscript.exe"
+# Derived from the running interpreter, not hardcoded: this script is a CI
+# gate as of 2026-10-26, and the literal Windows path failed the whole file on
+# a Linux runner with a bare "error in running command". Resolves to
+# Rscript.exe on Windows without naming it.
+rscript <- file.path(R.home("bin"), "Rscript")
 run_out <- suppressWarnings(system2(rscript, shQuote(ENGINE_FILE), stdout = TRUE, stderr = TRUE))
 run_status <- attr(run_out, "status"); if (is.null(run_status)) run_status <- 0L
 
