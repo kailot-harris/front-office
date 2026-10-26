@@ -47,6 +47,43 @@ source("logging_utils.R")
 #' Used when CACHE_LATEST_VALUE_BETS is absent or empty, enabling end-to-end
 #' testing and verification of the Discord formatting engine without requiring
 #' a live Odds API query.
+# ------------------------------------------------------------------------------
+# filter_live_provenance() -- the provenance gate, as a pure function.
+#
+# Two upstream paths can put fabricated rows into the value-bets data frame: the
+# generate_synthetic_mlb_slate() fallback below, and mlb_market_odds_engine.R's
+# own fallback, which writes SYNTHETIC_FALLBACK rows into the value-bets cache
+# when the live odds feed returns nothing. On 2026-10-25 the second path put six
+# invented bets -- invented game_ids and prices, on teams already eliminated --
+# into the cache, and run_notify_bets() broadcast three of them to Discord
+# (status 204). The rows were correctly labelled; nothing downstream read the
+# label. This is that check.
+#
+# Fails CLOSED: a row whose market_data_source is missing, NA or anything other
+# than LIVE_ODDS_API is treated as untrusted and dropped. A bet whose provenance
+# cannot be established is exactly the kind that must not be sent.
+#
+# Kept separate from run_notify_bets() so the decision is unit-testable without
+# a cache, a webhook or log scraping -- see tests/testthat/test-notify-provenance.R.
+LIVE_PROVENANCE <- "LIVE_ODDS_API"
+
+filter_live_provenance <- function(df) {
+  if (is.null(df) || nrow(df) == 0) {
+    return(list(kept = df, n_before = 0L, n_dropped = 0L, dropped_sources = character(0)))
+  }
+  n_before <- nrow(df)
+  src <- if ("market_data_source" %in% names(df)) as.character(df$market_data_source) else rep(NA_character_, n_before)
+  is_live <- !is.na(src) & src == LIVE_PROVENANCE
+  dropped <- src[!is_live]
+  dropped[is.na(dropped)] <- "<missing>"
+  list(
+    kept = df[is_live, , drop = FALSE],
+    n_before = n_before,
+    n_dropped = n_before - sum(is_live),
+    dropped_sources = dropped
+  )
+}
+
 generate_synthetic_mlb_slate <- function() {
   data.frame(
     Matchup = c(
@@ -271,6 +308,37 @@ run_notify_bets <- function() {
   if (is.null(bets_df) || nrow(bets_df) == 0) {
     log_error("No value-bet rows available to notify on (empty/NULL slate).", script = .LOG_SCRIPT)
     return(FALSE)
+  }
+
+  # 1b. Provenance gate -- never broadcast bets that are not real market data.
+  # See filter_live_provenance() above for why this exists and why it fails closed.
+  if (nzchar(Sys.getenv("MLB_NOTIFY_ALLOW_SYNTHETIC", unset = ""))) {
+    log_warn("MLB_NOTIFY_ALLOW_SYNTHETIC is set -- provenance gate DISABLED; synthetic bets may be dispatched.",
+             script = .LOG_SCRIPT)
+  } else {
+    gate <- filter_live_provenance(bets_df)
+    bets_df <- gate$kept
+
+    if (gate$n_dropped > 0) {
+      tab <- table(gate$dropped_sources)
+      log_warn(sprintf(
+        "Provenance gate dropped %d/%d bet(s) that are not %s (%s). These are model/synthetic rows and will NOT be broadcast.",
+        gate$n_dropped, gate$n_before, LIVE_PROVENANCE,
+        paste(sprintf("%s=%d", names(tab), as.integer(tab)), collapse = ", ")
+      ), script = .LOG_SCRIPT)
+    }
+
+    if (nrow(bets_df) == 0) {
+      msg <- sprintf(
+        "0 bets with live market provenance (all %d row(s) were synthetic/model fallback). Skipping Discord dispatch this run.",
+        gate$n_before)
+      log_warn(msg, script = .LOG_SCRIPT)
+      cat(sprintf("\n>>> [SKIP] %s\n", msg))
+      # TRUE, not FALSE: declining to send fabricated advice is this function
+      # working, not failing. Returning FALSE would fail the pipeline stage and
+      # train everyone to ignore it.
+      return(TRUE)
+    }
   }
 
   # 2. Exclude Insufficient-Sample Rows (Early Season Sample Gating)
