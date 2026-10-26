@@ -32,6 +32,7 @@ if "%PIPELINE_EXIT%"=="0" (
     ) else (
         echo Static export successfully refreshed. >> "%LOG_FILE%"
     )
+    call :commit_outputs
 ) else (
     echo PIPELINE RUN FAILED WITH EXIT CODE %PIPELINE_EXIT%: %DATE% %TIME% >> "%LOG_FILE%"
 )
@@ -39,3 +40,38 @@ echo ================================================================== >> "%LOG
 echo. >> "%LOG_FILE%"
 
 exit /b %PIPELINE_EXIT%
+
+REM ------------------------------------------------------------------
+REM Commit the refreshed web data so the published site tracks the run.
+REM Never fails the pipeline: logs whatever goes wrong and returns 0.
+REM ------------------------------------------------------------------
+:commit_outputs
+where git >nul 2>&1
+if errorlevel 1 (
+    echo git not found on PATH; skipping commit of refreshed data. >> "%LOG_FILE%"
+    exit /b 0
+)
+
+echo Committing refreshed pipeline outputs... >> "%LOG_FILE%"
+git add -A -- web/public/data >> "%LOG_FILE%" 2>&1
+git diff --cached --quiet -- web/public/data
+if not errorlevel 1 (
+    echo No data changes to commit. >> "%LOG_FILE%"
+    exit /b 0
+)
+
+git commit -m "data: automated pipeline refresh %DATE%" >> "%LOG_FILE%" 2>&1
+if errorlevel 1 (
+    echo Commit of refreshed data failed! >> "%LOG_FILE%"
+    exit /b 0
+)
+echo Refreshed data committed. >> "%LOG_FILE%"
+
+echo Pushing refreshed data to origin... >> "%LOG_FILE%"
+git push origin HEAD >> "%LOG_FILE%" 2>&1
+if errorlevel 1 (
+    echo Push of refreshed data failed! >> "%LOG_FILE%"
+) else (
+    echo Refreshed data pushed. >> "%LOG_FILE%"
+)
+exit /b 0
