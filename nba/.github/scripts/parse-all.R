@@ -4,8 +4,20 @@
 # Tracked files only (via git ls-files), which keeps vendored JavaScript under
 # the Quarto presentation directories and anything untracked out of scope.
 
-files <- system2("git", c("ls-files", "*.R", "*.r"), stdout = TRUE)
+# `git ls-files '*.R' '*.r'` looks like the obvious call and is WRONG here.
+# It matches every directory on a Windows checkout and only the repository
+# ROOT on a Linux runner, so this step graded a fraction of the tree and still
+# printed a confident count. Measured on run 40319647733 (main, 2026-10-26):
+# "Parsed 40 file(s)" against 51 tracked here. The 11 it never saw include
+# scripts/, tools/ (publish_web.R, the gate itself), tests/, and all three of
+# .github/scripts/. NFL and WNBA inherited the same bug and are fixed the
+# same way.
+#
+# So: list every tracked path and filter on the extension in R, where the
+# semantics do not depend on the platform or on core.ignorecase.
+files <- system2("git", "ls-files", stdout = TRUE)
 files <- files[nzchar(files)]
+files <- files[grepl("[.][Rr]$", files)]
 # Rmd/qmd are not parsed here: they are prose documents with chunks, and
 # knitr - not R's parser - decides what is code.
 files <- files[!grepl("node_modules/", files, fixed = TRUE)]
