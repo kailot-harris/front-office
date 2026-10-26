@@ -57,9 +57,16 @@ jobs:
       - name: Refresh results from the MLB Stats API
         run: Rscript tools/refresh_live_results.R ${{ inputs.season || '2026' }}
 
+      # NOTE on permissions: this repo's default GITHUB_TOKEN scope is read-only
+      # (Settings > Actions > Workflow permissions). The workflow-level
+      # `permissions: contents: write` above is what lets this step push.
+      # Don't drop it.
       - name: Commit any changes
         run: |
-          if git diff --quiet -- web/public/data; then
+          # --porcelain, not `git diff`: diff only sees tracked files, so a
+          # newly created JSON (world_series.json on a season that had none)
+          # would read as "nothing to commit" and vanish silently.
+          if [ -z "$(git status --porcelain -- web/public/data)" ]; then
             echo "No newly finished games; nothing to commit."
             exit 0
           fi
