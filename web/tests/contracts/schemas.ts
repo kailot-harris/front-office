@@ -659,6 +659,18 @@ export const PlayoffSeriesMatchupResultSchema = z
 
 export const PlayoffMatchupsCatalogSchema = z
   .object({
+    // Written by playoff_simulator.R for tools/publish_web.R's assertion F
+    // (payload provenance). Declared here because this schema is .strict() --
+    // without it the stamp would fail contracts and block the publish via
+    // assertion G. .datetime() enforces the trailing Z that F's parser needs.
+    //
+    // .optional() is TRANSITIONAL, same as the other generated_at fields in
+    // this file. The payload on disk predates the stamp, and contracts run
+    // against whatever is on disk, so requiring it now turns assertion G red
+    // before any run can ship a stamped copy.
+    // TODO: drop .optional() once one pipeline run has written a stamped
+    // playoff_series_matchups.json.
+    generated_at: z.string().datetime().optional(),
     teams: z.record(teamEnum, TeamPlayoffProfileSchema),
     sampleMatchups: z.array(PlayoffSeriesMatchupResultSchema).min(1),
   })

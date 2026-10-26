@@ -358,6 +358,19 @@ message(sprintf(">>> Successfully simulated %d marquee postseason series matchup
 # 4. Export JSON & RDS Caches
 # ------------------------------------------------------------------------------
 output_catalog <- list(
+  # First in the object, for assertion F's 4096-byte head scan, and UTC with a
+  # trailing Z because that is the only form .pw_payload_generated_at() parses.
+  # PlayoffMatchupsCatalogSchema in web/tests/contracts/schemas.ts is .strict(),
+  # so this key is declared there in the same change.
+  #
+  # This payload needs the stamp more than any other in the repo: the series
+  # simulation is seeded per matchup (set.seed(42 + i * 10) above), so it is
+  # deterministic and rewrites byte-identical content on every run. Its mtime
+  # advances each run while its bytes have not changed since 2026-10-25, which
+  # means assertion A -- an mtime check -- reports it FRESH on the strength of a
+  # rewrite that carried no new information. A is structurally unable to tell
+  # the difference. F now can.
+  generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
   teams = team_profiles,
   sampleMatchups = sample_matchup_results
 )
