@@ -34,6 +34,8 @@
 #   httr        market_odds_engine.R
 #   jsonlite    market_odds_engine.R
 #   ranger      market_odds_engine.R
+#   sys         test_auth_utils.R uses sys::exec_background() for its
+#               concurrent-writer check
 here
 bcrypt
 tidyverse
@@ -46,3 +48,4 @@ httr2
 httr
 jsonlite
 ranger
+sys

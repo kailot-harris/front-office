@@ -101,6 +101,12 @@ if (length(vanished)) {
 
 # ------------------------------------------------------------------- run -----
 
+# logs/ is gitignored, so a fresh clone has no such directory and every
+# logging_utils.R call prints "[LOG DB ERROR] init failed: ... No such file or
+# directory" before degrading. The degradation is correct behaviour; the noise
+# is not informative. A developer machine always has this directory.
+dir.create("logs", showWarnings = FALSE)
+
 rscript <- file.path(R.home("bin"), "Rscript")
 results <- data.frame(file = RUN, status = NA_integer_, pass = NA_integer_,
                       fail = NA_integer_, stringsAsFactors = FALSE)
