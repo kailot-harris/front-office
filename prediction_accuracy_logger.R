@@ -1,6 +1,5 @@
 # ==============================================================================
 # prediction_accuracy_logger.R
-# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/prediction_accuracy_logger.R
 #
 # Daily, structured, append-only log of the model's pre-game win-probability
 # predictions vs. realized game outcomes — distinct from bet_tracker.r's betting
@@ -12,19 +11,46 @@
 # Follows the proven sibling design from WNBA Analytics & NFL Analytics.
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/NBA Analytics"
-if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
+# This file's own directory, derived rather than hardcoded. It used to be
+# `PROJECT_DIR <- "c:/Users/..."` followed by `setwd(PROJECT_DIR)`, which ran
+# before config.R got a say and so defeated the worktree-safe derivation in
+# config.R: from a git worktree on the authoring machine the hardcoded path
+# still exists, so setwd() silently relocated execution into the main checkout
+# and this stage read that checkout's config and caches. Every path below is
+# absolute (CACHE_DIR / PROJECT_DIR), so nothing needs the working directory.
+# Bootstrap has to live in each entrypoint - it is what finds config.R - but it
+# is the same two cases config.R handles: `Rscript this_file.R` (--file=) and
+# `source("this_file.R")` (the `ofile` of an enclosing source() frame).
+.THIS_DIR <- local({
+  args <- commandArgs(trailingOnly = FALSE)
+  f <- sub("^--file=", "", args[grepl("^--file=", args)])
+  ofile <- NULL
+  for (fr in sys.frames()) {
+    cand <- tryCatch(get("ofile", envir = fr, inherits = FALSE), error = function(e) NULL)
+    if (is.character(cand) && length(cand) == 1L && nzchar(cand)) ofile <- cand
+  }
+  base <- if (!is.null(ofile)) dirname(ofile)
+          else if (length(f) == 1L && nzchar(f)) dirname(f)
+          else getwd()
+  normalizePath(base, winslash = "/", mustWork = FALSE)
+})
 
 suppressPackageStartupMessages({
   library(tidyverse)
 })
 
-source("config.R")
-source("live_calibration.R")
+# Sourced by absolute path: config.R defines PROJECT_DIR and CACHE_DIR from its
+# own location, so it resolves to this checkout, worktree or not. `local = TRUE`
+# puts those definitions in whatever environment this file is being loaded into
+# rather than always the global one - identical under run_stage() (which sources
+# this file into the global environment anyway) and what lets a test load the
+# whole stage into a throwaway environment.
+source(file.path(.THIS_DIR, "config.R"), local = TRUE)
+source(file.path(.THIS_DIR, "live_calibration.R"), local = TRUE)
 # `resolve_team_name()` - the single shared 30-branch nickname resolver. This
 # file used to carry its own byte-identical copy as `.resolve_team_name`
 # (issue 24); two copies of a 30-branch lookup table drift.
-source("team_name_resolver.R")
+source(file.path(.THIS_DIR, "team_name_resolver.R"), local = TRUE)
 
 PRED_LOG_RDS <- if (exists("CACHE_PREDICTION_LOG")) CACHE_PREDICTION_LOG else file.path(CACHE_DIR, "prediction_accuracy_log.rds")
 PRED_LOG_CSV <- file.path(CACHE_DIR, "prediction_accuracy_log.csv")
@@ -725,5 +751,12 @@ run_prediction_accuracy_logger <- function() {
   invisible(final_log)
 }
 
-# Auto-execute when run standalone or sourced by run_stage()
-run_prediction_accuracy_logger()
+# Auto-execute when run standalone or sourced by run_stage(), which relies on
+# this call (run_full_pipeline.R passes no `call_fn` for this stage and its
+# `.check_stage_output` staleness check would catch a guard that silently
+# no-ops). Set NBA_SKIP_STAGE_AUTORUN=1 to source this file for its definitions
+# alone - that is what tests/test_prediction_log_spine_validation.R does, so it
+# exercises the real bootstrap above instead of stepping over it.
+if (!nzchar(Sys.getenv("NBA_SKIP_STAGE_AUTORUN"))) {
+  run_prediction_accuracy_logger()
+}

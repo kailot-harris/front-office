@@ -10,10 +10,15 @@
 # in-memory fixture injected through the seams in prediction_accuracy_logger.R
 # (`spine`, `slate`, `existing_log`, `persist = FALSE`).
 #
-# The logger auto-executes `run_prediction_accuracy_logger()` on source and
-# needs ODDS_API_KEY-dependent artifacts, so it is NOT sourced. Instead its
-# top-level definitions are parsed and evaluated selectively (see
-# `load_logger_definitions` below) - no pipeline stage runs, no API is called.
+# The logger is SOURCED for real, with NBA_SKIP_STAGE_AUTORUN=1 so its trailing
+# `run_prediction_accuracy_logger()` does not fire - no pipeline stage runs and
+# no API is called, but config.R, live_calibration.R and team_name_resolver.R
+# load exactly as they do in production. An earlier version of this file instead
+# parsed the logger and evaluated only top-level `name <- value` forms, which
+# stepped over its `setwd()` / `source()` lines by construction - so it could
+# not see that those lines made the file unloadable from a git worktree. The
+# sourcing happens from a working directory that is NOT the repo root, which is
+# what makes that class of defect fail here (see "loads from any directory").
 #
 # Usage: Rscript tests/test_prediction_log_spine_validation.R
 # ==============================================================================
@@ -48,27 +53,65 @@ section <- function(title) cat(sprintf("\n== %s ==\n", title))
 
 # ------------------------------------------------------------------------------
 # Load the units under test without executing the pipeline.
+#
+# A real source() of the real file, from a scratch working directory, so the
+# file's own bootstrap (finding config.R relative to itself) is under test too.
 # ------------------------------------------------------------------------------
-load_logger_definitions <- function(path, env) {
-  exprs <- parse(path)
-  for (e in exprs) {
-    # Keep only top-level `name <- value` assignments (constants and function
-    # definitions). Skips setwd(), source(), library(), the `if (dir.exists())`
-    # guard and the trailing run_prediction_accuracy_logger() call.
-    if (is.call(e) && length(e) == 3L &&
-        as.character(e[[1]]) %in% c("<-", "=") && is.name(e[[2]])) {
-      tryCatch(eval(e, envir = env), error = function(err) invisible(NULL))
-    }
-  }
-  invisible(env)
-}
+LOGGER_PATH <- file.path(REPO_ROOT, "prediction_accuracy_logger.R")
 
 env <- new.env(parent = globalenv())
-source(file.path(REPO_ROOT, "team_name_resolver.R"), local = env)
-# Constants normally supplied by config.R.
+WD_BEFORE_LOAD <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+local({
+  old_env <- Sys.getenv("NBA_SKIP_STAGE_AUTORUN", unset = NA)
+  scratch <- file.path(tempdir(), "logger-load-scratch")
+  dir.create(scratch, showWarnings = FALSE, recursive = TRUE)
+  Sys.setenv(NBA_SKIP_STAGE_AUTORUN = "1")
+  setwd(scratch)
+  on.exit({
+    setwd(WD_BEFORE_LOAD)
+    if (is.na(old_env)) Sys.unsetenv("NBA_SKIP_STAGE_AUTORUN")
+    else Sys.setenv(NBA_SKIP_STAGE_AUTORUN = old_env)
+  }, add = TRUE)
+  # The scratch cwd is the point: nothing here is the repo root, so a file that
+  # depends on the working directory to find config.R cannot load.
+  WD_DURING_LOAD <<- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+  LOAD_OUTPUT <<- capture.output(source(LOGGER_PATH, local = env))
+  WD_AFTER_SOURCE <<- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+})
+
+section("Logger loads from any working directory")
+canon <- function(x) normalizePath(x, winslash = "/", mustWork = FALSE)
+envget <- function(nm) get(nm, envir = env)
+
+ok("the load really happened from outside the repo root",
+   !identical(WD_DURING_LOAD, canon(REPO_ROOT)))
+ok("sourcing the logger from a scratch cwd defines its pipeline entrypoint",
+   is.function(envget("run_prediction_accuracy_logger")))
+# The defect this guards: a hardcoded PROJECT_DIR + setwd() resolved to the main
+# checkout, so a worktree silently ran against the wrong tree's config and cache.
+ok("PROJECT_DIR resolves to this checkout, not a hardcoded path",
+   identical(canon(envget("PROJECT_DIR")), canon(REPO_ROOT)))
+ok("CACHE_DIR sits under this checkout",
+   identical(canon(envget("CACHE_DIR")), canon(file.path(REPO_ROOT, "cache"))))
+ok("CACHE_TEAM_BOX sits under this checkout",
+   identical(canon(envget("CACHE_TEAM_BOX")),
+             canon(file.path(REPO_ROOT, "box_scores_cache.rds"))))
+ok("sourcing left the working directory where it found it",
+   identical(WD_AFTER_SOURCE, WD_DURING_LOAD))
+ok("no absolute authoring path is hardcoded in the logger",
+   !any(grepl("kayceeslices", readLines(LOGGER_PATH, warn = FALSE), fixed = TRUE)))
+# Loading must not run the stage: the banner run_prediction_accuracy_logger()
+# prints is absent, so no reconciliation touched the real prediction log.
+ok("NBA_SKIP_STAGE_AUTORUN suppressed the pipeline run",
+   !any(grepl("RECONCILING OUTCOMES", LOAD_OUTPUT, fixed = TRUE)))
+
+# Fixtures below are injected in memory through the logger's seams (`spine`,
+# `slate`, `existing_log`, `persist = FALSE`), so point the log constants at a
+# temp dir: `cache/` is gitignored and a worktree has no prediction log.
+env$CACHE_DIR     <- tempdir()
+env$PRED_LOG_RDS  <- file.path(tempdir(), "prediction_accuracy_log.rds")
+env$PRED_LOG_CSV  <- file.path(tempdir(), "prediction_accuracy_log.csv")
 env$CURRENT_SEASON <- 2027L
-env$CACHE_DIR      <- tempdir()
-load_logger_definitions(file.path(REPO_ROOT, "prediction_accuracy_logger.R"), env)
 
 for (nm in c("resolve_team_name", ".empty_prediction_log", ".build_slate_rows",
              ".normalize_schedule_spine", ".validate_slate_against_spine",
@@ -76,7 +119,7 @@ for (nm in c("resolve_team_name", ".empty_prediction_log", ".build_slate_rows",
              ".check_predicted_winner_consistency", "log_todays_predictions",
              "PRED_LOG_WINNER_PROB_CUTOFF")) {
   if (!exists(nm, envir = env, inherits = FALSE)) {
-    stop(sprintf("Fixture load failed: %s not defined after selective eval.", nm))
+    stop(sprintf("Fixture load failed: %s not defined after sourcing the logger.", nm))
   }
 }
 attach_env <- function(nm) get(nm, envir = env)
