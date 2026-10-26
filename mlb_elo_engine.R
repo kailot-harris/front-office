@@ -1,6 +1,6 @@
 # ==============================================================================
 # mlb_elo_engine.R — MLB Elo Rating Engine with Starting Pitcher Adjustment
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/mlb_elo_engine.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/mlb_elo_engine.R
 #
 # Phase 2, Wave 1 (Issue #16): Team Elo rating engine with the 4-factor pregame
 # adjustments per FiveThirtyEight methodology (docs/MLB_REPLICATION_PLAN.md §4):

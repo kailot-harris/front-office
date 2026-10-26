@@ -1,7 +1,7 @@
 # ==============================================================================
 # mlb_series_simulator.R
 # Phase 1 / Sprint 1: Interactive Playoff Series Matchup Simulator Engine
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/mlb_series_simulator.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/mlb_series_simulator.R
 #
 # Incorporates starting pitcher rotation scheduling (Game 1 Ace vs Ace, SP2, SP3, SP4),
 # bullpen leverage fatigue modeling, tactical mismatch adjustments, and

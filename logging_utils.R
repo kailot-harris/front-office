@@ -1,6 +1,6 @@
 # ==============================================================================
 # logging_utils.R (MLB port — sport-agnostic structured logging utility)
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/logging_utils.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/logging_utils.R
 #
 # Structured logging utility for the MLB pipeline.
 # Implements dual-logging: (1) Standard append-only text logs for fast tailing,

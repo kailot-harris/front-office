@@ -1,6 +1,6 @@
 # ==============================================================================
 # tools/evaluate_bayes_shrinkage.R — Verification & Evaluation of Bayes Shrinkage
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/tools/evaluate_bayes_shrinkage.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/tools/evaluate_bayes_shrinkage.R
 #
 # Issue #25 Verification Suite:
 # Evaluates closed-form hierarchical empirical Bayes partial pooling,

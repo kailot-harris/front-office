@@ -1,6 +1,6 @@
 # ==============================================================================
 # tools/viz_pythag_luck.R — Actual vs Pythagenpat Win% Quadrant Analysis
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/tools/viz_pythag_luck.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/tools/viz_pythag_luck.R
 #
 # Phase 9: Quantitative Visualization Suite (Issue #24)
 # Visualizes Actual Win% vs. Pythagenpat Expected Win% in a 4-quadrant layout:

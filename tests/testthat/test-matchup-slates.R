@@ -2,7 +2,7 @@ if (!file.exists("config.R")) {
   proj_dir <- if (file.exists("../../config.R")) {
     normalizePath("../..", winslash = "/")
   } else {
-    "c:/Users/kailo/kayceeslices/MLB Analytics"
+    stop("Cannot locate the project root: no config.R at ./ or ../../. Run tests from the repo root or from tests/testthat/.", call. = FALSE)
   }
   setwd(proj_dir)
 }

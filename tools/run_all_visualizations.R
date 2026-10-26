@@ -1,6 +1,6 @@
 # ==============================================================================
 # tools/run_all_visualizations.R — Master MLB Visualization Suite Orchestrator
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/tools/run_all_visualizations.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/tools/run_all_visualizations.R
 #
 # Phase 9: Quantitative Visualization Suite (Issue #24)
 # Master callable runner executing all 4 quantitative visualization tools:

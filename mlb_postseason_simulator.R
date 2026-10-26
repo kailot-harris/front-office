@@ -1,6 +1,6 @@
 # ==============================================================================
 # mlb_postseason_simulator.R — MLB 12-Team Postseason Monte Carlo Bracket Simulator
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/mlb_postseason_simulator.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/mlb_postseason_simulator.R
 #
 # Phase 4: Postseason Bracket Simulator (Issue #19)
 #

@@ -1,6 +1,6 @@
 # ==============================================================================
 # tools/viz_elo_trajectories.R — 30-Team MLB Elo Rating Trajectories Over Season
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/tools/viz_elo_trajectories.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/tools/viz_elo_trajectories.R
 #
 # Phase 9: Quantitative Visualization Suite (Issue #24)
 # Visualizes the daily evolution of Elo ratings across all 30 MLB franchises,

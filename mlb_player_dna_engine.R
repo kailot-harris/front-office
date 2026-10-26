@@ -1,7 +1,7 @@
 # ==============================================================================
 # mlb_player_dna_engine.R
 # Phase 2 / Sprint 2: High-Dimensional Player DNA & Historical Twins (1980–2026)
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/mlb_player_dna_engine.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/mlb_player_dna_engine.R
 #
 # Generates 16-D skill vectors, 5-factor category scores, 2D stylistic manifold
 # coordinates, and cosine similarity matches against 1980–2026 historical peaks
