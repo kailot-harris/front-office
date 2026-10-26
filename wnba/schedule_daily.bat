@@ -33,11 +33,27 @@ REM => A game that ends at 22:00 ET appears in wehoop the NEXT MORNING, ~06:40-0
 REM
 REM The task was originally registered at 05:30 local (= 09:30 UTC during EDT), i.e. about
 REM an hour BEFORE the publish, so every in-season run silently consumed the PREVIOUS day's
-REM build -- last night's finals games were missing until the following day. Registered start
-REM time was changed to 08:00 local on 2026-10-25, which clears the worst observed publish
-REM completion by >30 min in both EDT (12:00 UTC) and EST (13:00 UTC). If this is ever
-REM re-registered, keep it at or after 08:00 local; do not move it earlier.
-REM   schtasks /change /tn "WNBA Analytics Schedule Daily" /st 08:00   (needs elevation)
+REM build -- last night's finals games were missing until the following day. It was moved to
+REM 08:00 local on 2026-10-25.
+REM
+REM 08:00 WAS STILL TOO EARLY, and the 2026-10-26 four-sport cadence review is what caught
+REM it. 08:00 local is 12:00 UTC during EDT, and the publish-completion window measured
+REM above ends at ~12:07 UTC in the ordinary case -- so 08:00 cleared the TRIGGER (~10:36
+REM UTC) but raced the UPLOAD it actually depends on, by about seven minutes. The sibling
+REM NBA repo had the identical defect against hoopR, whose equivalent window ends ~12:19
+REM UTC; taking the later of the two as the binding constraint puts the floor at ~12:20 UTC
+REM for both sports.
+REM
+REM TARGET: 09:00 local = 13:00 UTC (EDT) / 14:00 UTC (EST). That is slot A of the
+REM three-slot cadence -- all four sports run the full pipeline and publish, and the
+REM aggregator's sync-sports.yml subtree-pulls and deploys 30 minutes later at 13:30 UTC.
+REM It clears ~12:20 UTC by 40 minutes in EDT and by 100 in EST. If this is ever
+REM re-registered, keep it at or after 09:00 local; do not move it earlier.
+REM   schtasks /change /tn "WNBA Analytics Schedule Daily" /st 09:00   (needs elevation)
+REM
+REM NOT YET APPLIED as of 2026-10-26: the change above requires an elevated shell and the
+REM registered trigger is still 08:00. Until it is run, every in-season WNBA run has a
+REM ~7-minute chance of consuming the previous day's wehoop build.
 REM ------------------------------------------------------------------------------
 REM
 REM IMPORTANT: the season window below (05-01 through 10-31, a small buffer around the exact
@@ -157,6 +173,93 @@ set STEP3_RC=%ERRORLEVEL%
 if not "%STEP3_RC%"=="0" (
     set PIPELINE_FAILED=1
     echo [ERROR] Step 3/3 - market_odds_engine.R - FAILED with exit code %STEP3_RC% >> "%LOG_FILE%"
+)
+
+REM ------------------------------------------------------------------------------
+REM 4. Publish gate (2026-10-26). Commits and pushes web/public/{data,media} to
+REM    WNBA_analytics -- but only when tools/publish_web.R's six assertions all
+REM    pass.
+REM
+REM    WHY THIS STEP DID NOT EXIST BEFORE: it simply did not. Steps 1-3 produced
+REM    eighteen JSON payloads and a trajectory GIF and then stopped; every byte
+REM    of this repo's output reached the live site only when a human ran a sync
+REM    by hand. This is the step that closes that, and the gate is why it is safe
+REM    to close it automatically.
+REM
+REM    WHY A GATE RATHER THAN A BARE `git add`: an exit code is not evidence
+REM    about the artifacts. Per CLAUDE.md every script here is deliberately
+REM    fail-safe -- "check file.exists(), fall back to a clearly labeled
+REM    synthetic value, never hard-crash the pipeline" -- which is right for an
+REM    unattended run and means a run that substituted synthetic data for
+REM    everything still exits 0. The 2026-10-25 run did exactly that for the odds
+REM    slate (two SYNTHETIC_FALLBACK lines, surfaced by the gate's assertion D).
+REM    The artifact looks structurally perfect either way.
+REM
+REM    It runs even when PIPELINE_FAILED=1, and that is deliberate: steps 2 and 3
+REM    are bet grading and the +EV slate, and a failure in either says nothing
+REM    about whether step 1's web payloads are publishable. The gate decides that
+REM    on the artifacts themselves. What a step failure DOES do is show up in
+REM    assertion A or D, which is where it belongs.
+REM
+REM MODE (argument 1), the same vocabulary as NFL's schedule_publish.bat and
+REM NBA's schedule_daily.bat so the four sports take the same words:
+REM   (none) / dryrun   -> every assertion runs, NOTHING is published  [DEFAULT]
+REM   publish           -> live: commit + push WNBA_analytics main only
+REM   strict            -> dry run, SYNTHETIC_FALLBACK/[WARN] lines fatal
+REM   publish-strict    -> live publish, those lines fatal
+REM
+REM Dry run is the DEFAULT ON PURPOSE. The unattended push is UNPROVEN on this
+REM machine: credentials work in an interactive terminal (gh keyring plus
+REM credential.helper=manager), but Task Scheduler's non-interactive session may
+REM not reach Git Credential Manager, which would make a scheduled publish hang
+REM on an auth prompt or fail obscurely at a time nobody is watching. That is
+REM NFL Analytics issue #42, still open, and it applies verbatim here.
+REM
+REM   >>> Leave the registered task on `dryrun` until the unattended push is <<<
+REM   >>> proven. Read the dry-run reports for a few days first.             <<<
+REM
+REM Note the seasonal interaction: outside the May-October window this file
+REM exits at :offseason long before here, so the gate never runs out of season.
+REM It carries no season window of its own -- a second copy of these month
+REM numbers is a second thing to drift. See tools/publish_web.R's header.
+REM ------------------------------------------------------------------------------
+set MODE=%~1
+if "%MODE%"=="" set MODE=dryrun
+
+REM One `if` per assignment, never `if cond set A=x& set B=y`: in batch `&` ends
+REM the conditional, so the second `set` would run even when the test is false.
+set PW_ARGS=
+set MODE_LABEL=
+if /i "%MODE%"=="dryrun" set MODE_LABEL=DRY RUN
+if /i "%MODE%"=="strict" set MODE_LABEL=DRY RUN (strict warnings)
+if /i "%MODE%"=="strict" set PW_ARGS=--strict-warnings
+if /i "%MODE%"=="publish" set MODE_LABEL=LIVE PUBLISH
+if /i "%MODE%"=="publish" set PW_ARGS=--publish
+if /i "%MODE%"=="publish-strict" set MODE_LABEL=LIVE PUBLISH (strict warnings)
+if /i "%MODE%"=="publish-strict" set PW_ARGS=--publish --strict-warnings
+
+set PUBLISH_RC=0
+if "%MODE_LABEL%"=="" (
+    echo [ERROR] schedule_daily.bat: unknown publish mode "%MODE%". >> "%LOG_FILE%"
+    echo [ERROR] Valid modes: dryrun ^(default^), strict, publish, publish-strict. >> "%LOG_FILE%"
+    echo [ERROR] Steps 1-3 already ran; only the publish step is being skipped. >> "%LOG_FILE%"
+    set PUBLISH_RC=2
+)
+
+if "%PUBLISH_RC%"=="0" (
+    echo [Step 4/4] WNBA Web Publish Gate ^(%MODE_LABEL%^)... >> "%LOG_FILE%"
+)
+if "%PUBLISH_RC%"=="0" %RSCRIPT% "%PROJECT_DIR%\tools\publish_web.R" %PW_ARGS% >> "%LOG_FILE%" 2>&1
+if "%PUBLISH_RC%"=="0" set PUBLISH_RC=%ERRORLEVEL%
+
+if not "%PUBLISH_RC%"=="0" (
+    echo [ERROR] Step 4/4 - publish gate - exit code %PUBLISH_RC% in mode %MODE_LABEL% >> "%LOG_FILE%"
+    echo [ERROR] NOTHING WAS PUBLISHED. Yesterday's correct site stays up rather >> "%LOG_FILE%"
+    echo [ERROR] than a half-updated one. Read the "-- Assertions --" block above: >> "%LOG_FILE%"
+    echo [ERROR] every failing assertion is on a "[FAIL]" line with its id, name, >> "%LOG_FILE%"
+    echo [ERROR] summary and the offending file or value in its detail lines. >> "%LOG_FILE%"
+) else (
+    echo [OK] Step 4/4 - publish gate passed in mode %MODE_LABEL%. >> "%LOG_FILE%"
 )
 
 echo ================================================================== >> "%LOG_FILE%"
