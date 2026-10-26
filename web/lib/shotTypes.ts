@@ -31,6 +31,17 @@ export interface ZoneLeagueAverage {
 }
 
 export interface ShotsMetadata {
+  /**
+   * UTC ISO-8601 stamp written by the R exporter for publish_web.R's assertion
+   * F. Optional because payloads written before the stamp landed do not carry
+   * it; declared here because tests/contracts/types-vs-data.test.ts fails any
+   * payload key absent from this interface, so an undeclared stamp would turn
+   * the contract suite -- and therefore the fatal publish gate -- red the first
+   * time a stamped payload was written. Distinct from the camelCase
+   * `generatedAt` some of these payloads already carry: assertion F only ever
+   * matches the snake_case key.
+   */
+  generated_at?: string;
   season?: number;
   updated_at: string;
   total_shots_sampled: number;
