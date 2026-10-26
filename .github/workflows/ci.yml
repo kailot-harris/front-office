@@ -124,7 +124,7 @@ jobs:
 
       # Cheap and needs no packages, so it runs before the long install and
       # fails fast on a syntax error anywhere in the pipeline. Measured on
-      # main 2026-10-26: 99 tracked .R files, 0 failures.
+      # main 2026-10-26: 102 tracked .R files, 0 failures.
       - name: Parse every tracked R file
         run: Rscript .github/scripts/parse-all.R
 
