@@ -1,11 +1,29 @@
 # ==============================================================================
 # market_odds_engine.R
 # Phase 5: Timezone-Aware Date Preservation & Multi-Factor Market Valuation
-# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/market_odds_engine.R
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/NBA Analytics"
-if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
+# This file's own directory, derived rather than hardcoded. A hardcoded
+# PROJECT_DIR plus setwd() ran ahead of config.R's worktree-safe derivation, so
+# from a git worktree this stage silently relocated into the main checkout and
+# read that tree's config, caches and siblings. Siblings below are sourced by
+# absolute path; `local = TRUE` is a no-op under run_stage() (which sources
+# stages into the global environment) and lets a test load this file into a
+# throwaway environment. The block is identical in every stage entrypoint and
+# tests/test_stage_bootstrap.R asserts that.
+.THIS_DIR <- local({
+  args <- commandArgs(trailingOnly = FALSE)
+  f <- sub("^--file=", "", args[grepl("^--file=", args)])
+  ofile <- NULL
+  for (fr in sys.frames()) {
+    cand <- tryCatch(get("ofile", envir = fr, inherits = FALSE), error = function(e) NULL)
+    if (is.character(cand) && length(cand) == 1L && nzchar(cand)) ofile <- cand
+  }
+  base <- if (!is.null(ofile)) dirname(ofile)
+          else if (length(f) == 1L && nzchar(f)) dirname(f)
+          else getwd()
+  normalizePath(base, winslash = "/", mustWork = FALSE)
+})
 
 suppressPackageStartupMessages({
   library(ranger)
@@ -17,7 +35,10 @@ suppressPackageStartupMessages({
   library(stringr)
 })
 
-source("config.R")
+source(file.path(.THIS_DIR, "config.R"), local = TRUE)
+# `resolve_team_name()` - the single shared 30-branch nickname resolver. This
+# file used to carry its own byte-identical copy (issue 24); two copies drift.
+source(file.path(.THIS_DIR, "team_name_resolver.R"), local = TRUE)
 
 `%||%` <- function(a, b) if (!is.null(a) && length(a) > 0 && !is.na(a)) a else b
 
@@ -42,43 +63,6 @@ calculate_kelly <- function(prob, decimal_odds, fraction = 0.25, max_cap_pct = 3
   raw_kelly <- (b * prob - q) / b
   pct <- round(pmax(0, raw_kelly * fraction * 100), 2)
   pmin(pct, max_cap_pct)
-}
-
-resolve_team_name <- function(tm_raw) {
-  s <- tolower(trimws(as.character(tm_raw)))
-  case_when(
-    grepl("celtic|\\bbos\\b|boston", s)                       ~ "Celtics",
-    grepl("thunder|\\bokc\\b|oklahoma", s)                    ~ "Thunder",
-    grepl("cavalier|\\bcle\\b|cleveland|cavs", s)             ~ "Cavaliers",
-    grepl("spur|\\bsas?\\b|san antonio", s)                   ~ "Spurs",
-    grepl("warrior|\\bgsw?\\b|golden state|dubs", s)          ~ "Warriors",
-    grepl("rocket|\\bhou\\b|houston", s)                      ~ "Rockets",
-    grepl("knick|\\bnyk?\\b|new york", s)                     ~ "Knicks",
-    grepl("piston|\\bdet\\b|detroit", s)                      ~ "Pistons",
-    grepl("nugget|\\bden\\b|denver", s)                       ~ "Nuggets",
-    grepl("heat|\\bmia\\b|miami", s)                          ~ "Heat",
-    grepl("76er|sixer|\\bphi\\b|philadelphia", s)             ~ "76ers",
-    grepl("pacer|\\bind\\b|indiana", s)                       ~ "Pacers",
-    grepl("blazer|\\bpor\\b|portland", s)                     ~ "Trail Blazers",
-    grepl("timberwolv|\\bmin\\b|minnesota|wolves", s)         ~ "Timberwolves",
-    grepl("magic|\\borl\\b|orlando", s)                       ~ "Magic",
-    grepl("grizzl|\\bmem\\b|memphis", s)                      ~ "Grizzlies",
-    grepl("laker|\\blal\\b|los angeles lakers", s)            ~ "Lakers",
-    grepl("raptor|\\btor\\b|toronto", s)                      ~ "Raptors",
-    grepl("hawk|\\batl\\b|atlanta", s)                        ~ "Hawks",
-    grepl("maverick|\\bdal\\b|dallas|mavs", s)                ~ "Mavericks",
-    grepl("clipper|\\blac\\b|los angeles clippers", s)        ~ "Clippers",
-    grepl("buck|\\bmil\\b|milwaukee", s)                      ~ "Bucks",
-    grepl("sun|\\bphx\\b|phoenix", s)                         ~ "Suns",
-    grepl("jazz|\\butah?\\b", s)                              ~ "Jazz",
-    grepl("hornet|\\bcha\\b|charlotte", s)                    ~ "Hornets",
-    grepl("net|\\bbkn?\\b|brooklyn", s)                       ~ "Nets",
-    grepl("bull|\\bchi\\b|chicago", s)                        ~ "Bulls",
-    grepl("pelican|\\bnop?\\b|new orleans", s)                ~ "Pelicans",
-    grepl("wizard|\\bwas\\b|\\bwsh\\b|washington", s)         ~ "Wizards",
-    grepl("king|\\bsac\\b|sacramento", s)                     ~ "Kings",
-    TRUE                                                      ~ as.character(tm_raw)
-  )
 }
 
 # ------------------------------------------------------------------------------
@@ -228,7 +212,12 @@ parse_multi_book_feed <- function(games_df) {
 # ------------------------------------------------------------------------------
 get_model_slate_probabilities <- function(slate_df) {
   standings_path <- file.path(CACHE_DIR, "projected_30_team_standings.rds")
-  if (!file.exists(standings_path)) standings_path <- "projected_30_team_standings.rds"
+  # Legacy location: the file used to live at the repo root, not under cache/.
+  # Anchored on PROJECT_DIR rather than the working directory, which this file
+  # no longer controls.
+  if (!file.exists(standings_path)) {
+    standings_path <- file.path(PROJECT_DIR, "projected_30_team_standings.rds")
+  }
   
   sq_path <- file.path(CACHE_DIR, "team_shot_quality.rds")
   fatigue_path <- file.path(CACHE_DIR, "travel_fatigue_metrics.rds")
@@ -388,4 +377,8 @@ evaluate_betting_slate <- function() {
   return(output_table)
 }
 
-evaluate_betting_slate()
+# Set NBA_SKIP_STAGE_AUTORUN=1 to source this file for its definitions alone;
+# run_full_pipeline.R relies on this call, so it stays on by default.
+if (!nzchar(Sys.getenv("NBA_SKIP_STAGE_AUTORUN"))) {
+  evaluate_betting_slate()
+}
