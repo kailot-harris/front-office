@@ -713,7 +713,14 @@ slates <- lapply(slate_ids, function(s) {
 dataset <- list(
   season = as.integer(MATCHUPS_HOOPR_SEASON),
   season_label = MATCHUPS_SEASON_LABEL,
-  generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
+  # UTC with the trailing Z, NOT local time. tools/publish_web.R's assertion F
+  # parses this stamp with tz = "UTC" unconditionally, so a local-time stamp is
+  # read as four or five hours earlier than it was actually written. This
+  # payload is generated ~2 minutes after the 09:00 run start, and the
+  # local-time form made F compare 09:02 EDT-as-UTC against a 13:00 UTC run
+  # start and report the file STALE -- a fatal assertion failing over a
+  # perfectly fresh payload. Matches projections_models_metadata.json's stamp.
+  generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
   slate_granularity = "week_of_season",
   season_start_date = format(season_start, "%Y-%m-%d"),
   season_end_date = format(season_end, "%Y-%m-%d"),

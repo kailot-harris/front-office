@@ -270,6 +270,18 @@ export const FranchiseCbaProfileSchema = z
 
 export const CbaLeagueOverviewSchema = z
   .object({
+    // Written by build_cba_cap_dataset.R for tools/publish_web.R's assertion F
+    // (payload provenance). Declared here because this schema is .strict() --
+    // without it the stamp would fail contracts and block the publish via
+    // assertion G. .datetime() enforces the trailing Z that F's parser needs.
+    //
+    // .optional() is TRANSITIONAL, not the intended end state. The payload
+    // currently on disk predates the stamp, and contracts run against whatever
+    // is on disk, so requiring it here would turn assertion G red immediately
+    // and block the very publish that would ship the first stamped copy.
+    // TODO: drop .optional() once one pipeline run has written a stamped
+    // cba_cap_sheet.json -- at that point a missing stamp is a real defect.
+    generated_at: z.string().datetime().optional(),
     season: z.string().regex(/^\d{4}-\d{4}$/),
     cbaThresholdSources: z.string().min(2).optional(),
     salaryCap: num.positive(),

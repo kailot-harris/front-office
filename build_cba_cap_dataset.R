@@ -462,6 +462,12 @@ tax_count <- sum(sapply(franchise_profiles, function(x) x$totalPayroll2026 > LUX
 cap_room_count <- sum(sapply(franchise_profiles, function(x) x$capSpace2026 > 0))
 
 cap_sheet_export <- list(
+  # First in the object, for assertion F's 4096-byte head scan, and UTC with a
+  # trailing Z because that is the only form .pw_payload_generated_at() parses.
+  # web/tests/contracts/schemas.ts's CbaLeagueOverviewSchema is .strict(), so
+  # this key had to be added there in the same change or the contract suite --
+  # and therefore assertion G, which is fatal -- would reject the payload.
+  generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
   season = "2026-2027",
   cbaThresholdSources = "Spotrac, Basketball-Reference, Hoops Rumors, RealGM, NBA CBA Official Audit",
   salaryCap = SALARY_CAP,
