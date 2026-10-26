@@ -54,6 +54,17 @@ jobs:
           # subtree pull replays the prefix's history; a shallow clone cannot do
           # it ("fatal: refusing to merge unrelated histories" at best).
           fetch-depth: 0
+          # MUST stay false. Left on, checkout writes an
+          # `http.https://github.com/.extraheader` Basic-auth header carrying
+          # GITHUB_TOKEN into .git/config, and that header applies to EVERY
+          # github.com URL -- it silently overrides the credentials in the
+          # sport remote's URL below, so the fetch goes out as the
+          # front-office-scoped token and the private sibling answers 404.
+          # That cost three rehearsals to find: the API preflight returned 200
+          # for the same repo the very next git command "could not find"
+          # (run 40247192528). Both remotes are given explicit credentials
+          # below instead.
+          persist-credentials: false
 
       - name: Sync requested sport subtrees
         id: sync
@@ -68,6 +79,9 @@ jobs:
           # (proven: run 40241008321). Reading them needs a PAT with read-only
           # Contents on the four sport repos, stored here as SUBTREE_TOKEN.
           SUBTREE_TOKEN: ${{ secrets.SUBTREE_TOKEN }}
+          # Pushing back to THIS repo is all the built-in token is needed for,
+          # and with persist-credentials off it has to be supplied explicitly.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
 
@@ -81,6 +95,9 @@ jobs:
 
           git config user.name  'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          git remote set-url origin \
+            "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
 
           before="$(git rev-parse HEAD)"
           synced=''
