@@ -1,7 +1,7 @@
 # ==============================================================================
 # mlb_market_odds_engine.R — MLB Market Odds & Value-Betting Engine
 # Phase 6 (Issue #21): Ingest Odds, Compute Devigged Consensus, & Sizing (+EV Kelly)
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/mlb_market_odds_engine.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/mlb_market_odds_engine.R
 #
 # Architectural overview & precedent:
 #   - Ported from NFL Analytics / WNBA Analytics market_odds_engine.R.

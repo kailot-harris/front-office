@@ -1,6 +1,6 @@
 # ==============================================================================
 # mlb_marcel_baseline.R — Tom Tango's Marcel Projection System
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/mlb_marcel_baseline.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/mlb_marcel_baseline.R
 #
 # Phase 3: Specialty Models (Issue #18)
 #

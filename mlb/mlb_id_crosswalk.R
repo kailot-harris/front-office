@@ -1,6 +1,6 @@
 # ==============================================================================
 # mlb_id_crosswalk.R — Cross-Vendor MLB Player-ID Crosswalk
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/mlb_id_crosswalk.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/mlb_id_crosswalk.R
 #
 # Builds and persists a canonical join table across the 5 primary player ID schemes:
 #   1. MLB Stats API person ID (`mlb_id` / `mlbam_id`)

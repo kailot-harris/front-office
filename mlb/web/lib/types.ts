@@ -267,6 +267,19 @@ export interface ValueBetRow {
   fatigue_adj: number;
 }
 
+// Written by build_value_bets_payload() in tools/export_web_data.R. Rows whose
+// market_data_source is not LIVE_ODDS_API are dropped from value_bets rather
+// than published, because a fabricated bet renders identically to a real one;
+// this is the record of what was withheld so the page can say so. Optional:
+// JSON exported before 2026-10-25 has no such field.
+export interface ValueBetsProvenance {
+  live_source: string;
+  n_total: number;
+  n_published: number;
+  n_withheld: number;
+  withheld_sources: string[];
+}
+
 export interface RiskStateSummary {
   current_bankroll: number;
   current_dd_units: number;
@@ -288,6 +301,7 @@ export interface PostseasonOpsData {
   bracket: PostseasonBracketTeam[];
   bullpen_status: BullpenStatusRow[];
   value_bets: ValueBetRow[];
+  value_bets_provenance?: ValueBetsProvenance;
   risk_state: RiskStateSummary;
 }
 

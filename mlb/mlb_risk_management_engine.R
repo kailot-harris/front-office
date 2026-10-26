@@ -1,7 +1,7 @@
 # ==============================================================================
 # mlb_risk_management_engine.R (MLB port of NFL / WNBA risk_management_engine.R)
 # Phase 5, Issue #20: Bankroll Drawdown Monitor & Dynamic Kelly Stop-Loss Engine
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/mlb_risk_management_engine.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/mlb_risk_management_engine.R
 #
 # Ported AS-IS per docs/MLB_IMPLEMENTATION_PLAN.md Phase 5 and Issue #20:
 # The risk management engine is entirely sport-agnostic (bankroll drawdown monitor

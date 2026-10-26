@@ -1,6 +1,6 @@
 # ==============================================================================
 # run_full_pipeline.R — MLB Analytics Pipeline Orchestrator (Phase 1 Skeleton)
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/run_full_pipeline.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/run_full_pipeline.R
 #
 # Orchestrates the staged execution of the MLB quantitative analytics pipeline.
 #

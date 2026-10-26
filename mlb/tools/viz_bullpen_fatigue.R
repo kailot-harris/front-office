@@ -1,6 +1,6 @@
 # ==============================================================================
 # tools/viz_bullpen_fatigue.R — Reliever High-Stress Workload & Bullpen Vulnerability
-# Path: c:/Users/kailo/kayceeslices/MLB Analytics/tools/viz_bullpen_fatigue.R
+# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/tools/viz_bullpen_fatigue.R
 #
 # Phase 9: Quantitative Visualization Suite (Issue #24)
 # Visualizes reliever arm stress and bullpen vulnerability scores across all 30 teams:
