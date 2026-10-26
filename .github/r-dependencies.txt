@@ -1,0 +1,22 @@
+# R packages the test jobs need, one per line (blank lines and # comments ignored).
+# Single-sourced here because .github/workflows/ci.yml both installs from this
+# file and keys its package cache on its hash -- editing the list invalidates the
+# cache automatically.
+#
+# Derived from the library() calls in the stage entrypoints the R tests source:
+#   tidyverse   config/live_calibration/logger/bet_tracker/roster/sync/injury
+#   httr2       injury_scraper, market_odds_engine, sync_rosters
+#   httr        market_odds_engine
+#   jsonlite    injury_scraper, market_odds_engine, sync_rosters
+#   ranger      market_odds_engine
+#   knitr       injury_scraper, market_odds_engine, roster_bottom_up_engine
+#
+# enhanced_model.R's tidymodels/xgboost stack is deliberately absent: that file
+# is a straight-line training script, the tests only check it statically, and
+# nothing here sources it.
+tidyverse
+httr2
+httr
+jsonlite
+ranger
+knitr
