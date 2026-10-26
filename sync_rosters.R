@@ -1,10 +1,28 @@
 # ==============================================================================
 # Live NBA Roster Synchronizer (Automated Offseason Trade Tracker)
-# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/sync_rosters.R
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/NBA Analytics"
-if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
+# This file's own directory, derived rather than hardcoded. A hardcoded
+# PROJECT_DIR plus setwd() ran ahead of config.R's worktree-safe derivation, so
+# from a git worktree this stage silently relocated into the main checkout and
+# read that tree's config, caches and siblings. Siblings below are sourced by
+# absolute path; `local = TRUE` is a no-op under run_stage() (which sources
+# stages into the global environment) and lets a test load this file into a
+# throwaway environment. The block is identical in every stage entrypoint and
+# tests/test_stage_bootstrap.R asserts that.
+.THIS_DIR <- local({
+  args <- commandArgs(trailingOnly = FALSE)
+  f <- sub("^--file=", "", args[grepl("^--file=", args)])
+  ofile <- NULL
+  for (fr in sys.frames()) {
+    cand <- tryCatch(get("ofile", envir = fr, inherits = FALSE), error = function(e) NULL)
+    if (is.character(cand) && length(cand) == 1L && nzchar(cand)) ofile <- cand
+  }
+  base <- if (!is.null(ofile)) dirname(ofile)
+          else if (length(f) == 1L && nzchar(f)) dirname(f)
+          else getwd()
+  normalizePath(base, winslash = "/", mustWork = FALSE)
+})
 
 suppressPackageStartupMessages({
   library(tidyverse)
@@ -12,7 +30,7 @@ suppressPackageStartupMessages({
   library(jsonlite)
 })
 
-source("config.R")
+source(file.path(.THIS_DIR, "config.R"), local = TRUE)
 
 sync_active_rosters <- function() {
   cat("\n==================================================================\n")
@@ -90,4 +108,8 @@ sync_active_rosters <- function() {
   return(active_rosters)
 }
 
-sync_active_rosters()
+# Set NBA_SKIP_STAGE_AUTORUN=1 to source this file for its definitions alone;
+# run_full_pipeline.R relies on this call, so it stays on by default.
+if (!nzchar(Sys.getenv("NBA_SKIP_STAGE_AUTORUN"))) {
+  sync_active_rosters()
+}

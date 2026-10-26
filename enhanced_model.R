@@ -1,10 +1,30 @@
 # ==============================================================================
 # NBA Analytics Enhanced Model: Feature Fusion & Out-of-Sample Benchmark
-# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/enhanced_model.R
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/NBA Analytics"
-if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
+# This file's own directory, derived rather than hardcoded. A hardcoded
+# PROJECT_DIR plus setwd() ran ahead of config.R's worktree-safe derivation, so
+# from a git worktree this stage silently relocated into the main checkout and
+# read that tree's config, caches and siblings. Siblings below are sourced by
+# absolute path; `local = TRUE` is a no-op under run_stage() (which sources
+# stages into the global environment). The block is identical in every stage
+# entrypoint and tests/test_stage_bootstrap.R asserts that. Unlike the other
+# entrypoints this file is a top-to-bottom training script with no entrypoint
+# function, so there is nothing to put behind NBA_SKIP_STAGE_AUTORUN and no way
+# to load it without training; its bootstrap is checked statically only.
+.THIS_DIR <- local({
+  args <- commandArgs(trailingOnly = FALSE)
+  f <- sub("^--file=", "", args[grepl("^--file=", args)])
+  ofile <- NULL
+  for (fr in sys.frames()) {
+    cand <- tryCatch(get("ofile", envir = fr, inherits = FALSE), error = function(e) NULL)
+    if (is.character(cand) && length(cand) == 1L && nzchar(cand)) ofile <- cand
+  }
+  base <- if (!is.null(ofile)) dirname(ofile)
+          else if (length(f) == 1L && nzchar(f)) dirname(f)
+          else getwd()
+  normalizePath(base, winslash = "/", mustWork = FALSE)
+})
 
 suppressPackageStartupMessages({
   library(tidyverse)
@@ -18,9 +38,9 @@ cat("\n==================================================================\n")
 cat("       NBA ENHANCED MODEL: MULTI-LAYER FEATURE FUSION TRAINING     \n")
 cat("==================================================================\n\n")
 
-source("config.R")
-source("injury_load_tracker.R")
-source("load_embeddings.R")
+source(file.path(.THIS_DIR, "config.R"), local = TRUE)
+source(file.path(.THIS_DIR, "injury_load_tracker.R"), local = TRUE)
+source(file.path(.THIS_DIR, "load_embeddings.R"), local = TRUE)
 
 # ------------------------------------------------------------------------------
 # 1. Base Rolling Differential Features (18-Game Fresh Reset)
