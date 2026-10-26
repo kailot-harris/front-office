@@ -1,0 +1,146 @@
+# ==============================================================================
+# CI for WNBA Analytics
+#
+# This repo had no .github/ directory at all and no Actions run, ever. Lifted
+# from NBA Analytics's .github/workflows/ci.yml, which is a proven live model
+# rather than a template, and adapted where this repo differs -- each
+# difference is argued below rather than left for the reader to infer.
+#
+#   web  - the Next.js app. Delegates to `npm test`, i.e.
+#          web/scripts/run-test-suite.mjs, which runs typecheck -> lint ->
+#          vitest(node) -> vitest(components) -> build -> playwright in
+#          cheapest-first order and reconciles failures against
+#          web/tests/known-issues.json. CI calls that one command rather than
+#          re-listing the stages, so the merge gate and the local command
+#          cannot drift apart.
+#   r    - the R pipeline. Parses every tracked .R file (syntax only, nothing
+#          is executed), then runs the subset of this repo's own test scripts
+#          that can run on a hosted runner.
+#
+# DIFFERENCES FROM NBA'S:
+#
+#  1. No Playwright install. This repo has @playwright/test and a
+#     playwright.config.ts but ZERO spec files, so the e2e stage reports
+#     SKIPPED and downloading a browser for it would be pure cost. The day a
+#     spec lands, add NBA's "Install Playwright Chromium" step back -- and fix
+#     the managed webServer first, which is `npx next start` and cannot serve
+#     an `output: 'export'` app.
+#
+#  2. No NBA_SKIP_STAGE_AUTORUN equivalent. There is no such guard in this
+#     repo. The protection here is the explicit RUN/SKIP list in
+#     .github/scripts/run-tests.R: three of the 14 test scripts spawn the real
+#     pipeline or a real engine, and they are excluded by name. Read that file
+#     before adding anything to the R job.
+#
+#  3. RENV_CONFIG_AUTOLOADER_ENABLED=FALSE. .Rprofile here sources
+#     renv/activate.R, which on a runner would try to bootstrap the whole
+#     lockfile before any step gets to run. Dependencies come from
+#     .github/r-dependencies.txt instead; that file explains the trade-off.
+#
+# Nothing here runs the pipeline itself: every stage hits live sports-data
+# APIs and takes hours.
+#
+# No secrets are used or needed. Do not add ODDS_API_KEY or DISCORD_WEBHOOK
+# here: a workflow that can reach them is a workflow a pull request from a
+# fork could be made to reach them through.
+# ==============================================================================
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A new push to a PR makes the in-flight run obsolete. Runs on main are left
+# alone so the default branch keeps a complete history of results.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Web suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The suite's own exit code is the gate: a failure listed in
+      # known-issues.json is reported as KNOWN and tolerated, anything else is
+      # a REGRESSION and fails. The baseline is currently empty on purpose --
+      # measured green on main at 8a98d89, 2026-10-26.
+      - name: Run the web test suite
+        run: npm test
+
+      - name: Publish the suite summary
+        if: always()
+        run: |
+          if [ -f test-results/SUMMARY.md ]; then
+            cat test-results/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "The suite produced no test-results/SUMMARY.md." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-test-results
+          path: web/test-results
+          retention-days: 14
+          if-no-files-found: warn
+
+  r:
+    name: R pipeline tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # See difference 3 in the header.
+      RENV_CONFIG_AUTOLOADER_ENABLED: 'FALSE'
+      R_LIBS_USER: ${{ github.workspace }}/.rlib
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5'
+          use-public-rspm: true
+
+      # Cheap and needs no packages, so it runs before the long install and
+      # fails fast on a syntax error anywhere in the pipeline. Measured on
+      # main 2026-10-26: 99 tracked .R files, 0 failures.
+      - name: Parse every tracked R file
+        run: Rscript .github/scripts/parse-all.R
+
+      - name: Cache R library
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.R_LIBS_USER }}
+          key: rlib-${{ runner.os }}-R4.5-${{ hashFiles('.github/r-dependencies.txt') }}
+
+      - name: Install R dependencies
+        run: |
+          mkdir -p "$R_LIBS_USER"
+          Rscript .github/scripts/install-deps.R
+
+      # 4 of this repo's 14 tools/test_*.R run here; the other 10 are excluded
+      # by name and by reason in the script. Measured on main 2026-10-26:
+      # 74 assertions, 0 failures, twice.
+      - name: Run R tests
+        run: Rscript .github/scripts/run-tests.R

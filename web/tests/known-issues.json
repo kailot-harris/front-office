@@ -1,0 +1,33 @@
+{
+  "$comment": [
+    "Baseline of tests that are CURRENTLY FAILING because they have found a real",
+    "defect that has not been fixed yet. `npm test` compares each run against",
+    "this file:",
+    "",
+    "  - a failure listed here         -> reported as KNOWN, does not fail the run",
+    "  - a failure NOT listed here     -> reported as NEW REGRESSION, fails the run",
+    "  - a listed test that now PASSES -> reported as FIXED; delete its entry",
+    "",
+    "This keeps the suite usable as a merge gate while documented defects are",
+    "still open, without ever hiding them. Every entry must name the defect and",
+    "where the fix belongs -- an entry with no `fix` is not allowed to be added.",
+    "",
+    "Match is on the test's full name (suite path + test title), substring-matched.",
+    "",
+    "THE LIST IS DELIBERATELY EMPTY. scripts/run-test-suite.mjs already treated a",
+    "missing file as an empty baseline, so adding it changes no behaviour today --",
+    "it exists so the mechanism is discoverable, and so CI has something to point",
+    "at. Measured on main at 8a98d89 on 2026-10-26: typecheck, lint and 126/126",
+    "node tests pass, components is 0/0 (no component specs), build passes and e2e",
+    "skips for want of specs. An empty baseline is the honest state, not an",
+    "oversight.",
+    "",
+    "Known NOT to belong here, for the avoidance of a future mistake: the",
+    "'zero-sum schedule conservation' invariant fails against the pipeline output",
+    "sitting UNCOMMITTED in the working tree on 2026-10-26 (sum(proj_wins)=331.00",
+    "against total_schedule_games=330). It passes at HEAD. That is a live exporter",
+    "defect in a fresh run, not a standing one, and baselining it would be exactly",
+    "the suppression this file is designed to prevent."
+  ],
+  "issues": []
+}

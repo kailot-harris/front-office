@@ -1,0 +1,39 @@
+# R packages the R job needs, one per line (blank lines and # comments ignored).
+# Single-sourced here because .github/workflows/ci.yml both installs from this
+# file and keys its package cache on its hash -- editing the list invalidates
+# the cache automatically.
+#
+# THIS IS NOT renv.lock, ON PURPOSE. This repo does have a renv.lock, and
+# .Rprofile sources renv/activate.R, but the CI job disables the autoloader
+# (RENV_CONFIG_AUTOLOADER_ENABLED=FALSE) and installs from this list instead.
+# Reason: the lockfile pins the full interactive/Shiny/modelling environment --
+# shinytest2, chromote, tidymodels, the lot -- and the R job runs four test
+# scripts that need a small fraction of it. Restoring the lockfile would be the
+# slowest step in CI by a wide margin to gain nothing the tests check.
+# (MLB's ci.yml documents the other half of this trade-off: a lockfile restore
+# must pin a DATED P3M snapshot rather than `latest`, and RENV_CONFIG_REPOS_
+# OVERRIDE beats the lockfile's own repo entry. Read it before switching.)
+#
+# Derived from the library() calls reachable from the four files in
+# .github/scripts/run-tests.R's RUN list, including everything they source():
+#   tidyverse   prediction_accuracy_logger, player_metrics, and the dplyr /
+#               stringr / tidyr / tibble calls in the tests themselves
+#   wehoop      player_metrics.R  (sourced by test_pure_functions.R)
+#   slider      player_metrics.R
+#   duckdb      logging_utils.R   (sourced by all four, transitively)
+#   DBI         the duckdb and RSQLite call sites
+#   RSQLite     auth_utils.R      (test_auth_utils, test_create_account_*)
+#   httr2       test_phase4_engine.R, market_odds_engine.R
+#   httr        market_odds_engine.R
+#   jsonlite    market_odds_engine.R
+#   ranger      market_odds_engine.R
+tidyverse
+wehoop
+slider
+duckdb
+DBI
+RSQLite
+httr2
+httr
+jsonlite
+ranger

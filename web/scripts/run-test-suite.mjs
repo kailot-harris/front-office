@@ -109,6 +109,27 @@ const STAGES = [
     cmd: ['npx', 'playwright', 'test'],
     resultFile: 'playwright-results.json',
     parse: parsePlaywright,
+    // `tests/e2e/` holds no spec files in this repo, so there is nothing for
+    // Playwright to run. Without this guard the stage printed `PASS 0/0` --
+    // a green tick with nothing behind it. Worse, it printed it even though
+    // its managed webServer had failed to start at all: playwright still
+    // writes a `{"suites": []}` report, which parses to zero tests, which is
+    // zero regressions, which is a pass.
+    //
+    // Reported as SKIPPED instead, so the absence is visible rather than
+    // disguised, and the suite is not failed merely for having no specs.
+    // The moment a spec lands the stage runs for real -- and will then need
+    // the webServer fixed first: `npx next start` cannot serve this app
+    // (next.config.mjs sets `output: 'export'`), which is the reason the
+    // stage was dead. NFL Analytics' web/scripts/serve-export.mjs is the
+    // fix; it is not ported here because there is nothing yet to exercise it.
+    skip: () => {
+      const dir = path.join(ROOT, 'tests', 'e2e');
+      const specs = fs.existsSync(dir)
+        ? fs.readdirSync(dir).filter((f) => /\.spec\.[cm]?[jt]sx?$/.test(f))
+        : [];
+      return specs.length ? null : 'no spec files in tests/e2e -- nothing to run';
+    },
   },
 ];
 
@@ -222,6 +243,17 @@ const allRegressions = [];
 const allFixed = [];
 
 for (const stage of stagesToRun) {
+  // An explicit --only= asks for this stage by name, so report why it cannot
+  // run rather than silently obeying the skip.
+  const skipped = stage.skip?.();
+  if (skipped) {
+    process.stdout.write(`
+${paint('yellow', '•')} ${paint('bold', stage.label)} ${paint('dim', `— skipped: ${skipped}`)}
+`);
+    report.push({ id: stage.id, label: stage.label, kind: stage.kind, durationMs: 0, ok: true, skipped });
+    continue;
+  }
+
   const { exitCode, durationMs } = runStage(stage);
   const entry = { id: stage.id, label: stage.label, exitCode, durationMs, kind: stage.kind };
 
@@ -284,6 +316,10 @@ const line = '─'.repeat(74);
 console.log(`\n${line}\n${paint('bold', 'TEST SUITE SUMMARY')}\n${line}`);
 
 for (const s of report) {
+  if (s.skipped) {
+    console.log(`${paint('yellow', 'SKIP')}  ${s.label.padEnd(50)} ${paint('dim', s.skipped)}`);
+    continue;
+  }
   if (s.kind === 'gate') {
     const tag = s.ok ? paint('green', 'PASS') : paint('red', 'FAIL');
     console.log(`${tag}  ${s.label.padEnd(50)} ${paint('dim', dur(s.durationMs))}`);
@@ -334,6 +370,10 @@ md.push(`Mode: ${STRICT ? 'strict (baseline ignored)' : 'baseline-aware'}${FAST 
 md.push('| Stage | Result | Passed | Known | New | Time |');
 md.push('| --- | --- | --- | --- | --- | --- |');
 for (const s of report) {
+  if (s.skipped) {
+    md.push(`| ${s.label} | skipped — ${s.skipped} | — | — | — | — |`);
+    continue;
+  }
   md.push(
     `| ${s.label} | ${s.ok ? 'pass' : 'fail'} | ${s.kind === 'gate' ? '—' : `${s.passed}/${s.total}`} | ` +
       `${s.known?.length ?? '—'} | ${s.regressions?.length ?? '—'} | ${dur(s.durationMs)} |`,
