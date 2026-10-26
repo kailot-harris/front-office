@@ -144,13 +144,13 @@ config_path <- if (file.exists("config.R")) "config.R" else "../config.R"
 source(config_path)
 
 # The one season switch (hoopR end-year numbering; see SEASON SCOPE above).
-MATCHUPS_HOOPR_SEASON <- {
-  env <- Sys.getenv("NBA_MATCHUPS_SEASON", unset = "")
-  if (nzchar(env)) as.integer(env) else 2027L
-}
-# Human-facing label: hoopR season 2027 -> "2026-2027".
-MATCHUPS_SEASON_LABEL <- sprintf("%d-%d", MATCHUPS_HOOPR_SEASON - 1L,
-                                 MATCHUPS_HOOPR_SEASON)
+# MATCHUPS_HOOPR_SEASON and MATCHUPS_SEASON_LABEL moved to config.R on
+# 2026-10-26 (tools/publish_web.R needs the same value to find the schedule
+# cache it cross-checks this page against). The NBA_MATCHUPS_SEASON override
+# still works; it is read there now. Everything the SEASON SCOPE note above
+# says still holds -- in particular that this is NOT config.R's CURRENT_SEASON
+# and must not be made to follow it.
+stopifnot(exists("MATCHUPS_HOOPR_SEASON"), exists("MATCHUPS_SEASON_LABEL"))
 
 if (!dir.exists(CACHE_DIR)) dir.create(CACHE_DIR, recursive = TRUE)
 if (!dir.exists(dirname(CACHE_MATCHUPS_JSON))) {

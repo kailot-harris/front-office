@@ -15,10 +15,17 @@ suppressPackageStartupMessages({
   library(tibble)
 })
 
+# Source global config (same idiom as build_cba_cap_dataset.R / playoff_simulator.R).
+# Needed because this script names its input and output from config.R's WEB_JSON_*
+# constants and is also run standalone, not only via run_full_pipeline.R's
+# run_stage(), which sources config.R into the global environment first.
+config_path <- if (file.exists("config.R")) "config.R" else "../config.R"
+source(config_path)
+
 cat(">>> [DEFENSIVE METRICS] Initializing Defensive Versatility & Coverage Engine...\n")
 
 # Load existing player projections
-proj_players_file <- "web/public/data/projections_season_players.json"
+proj_players_file <- WEB_JSON_PROJECTIONS_SEASON_PLAYERS  # config.R
 if (!file.exists(proj_players_file)) {
   stop("Missing projections_season_players.json")
 }
@@ -227,7 +234,7 @@ for (i in seq_len(nrow(players_df))) {
 # ------------------------------------------------------------------------------
 # Export JSON & RDS
 # ------------------------------------------------------------------------------
-output_json <- "web/public/data/defensive_metrics.json"
+output_json <- WEB_JSON_DEFENSIVE_METRICS  # config.R; was a bare relative path
 jsonlite::write_json(defensive_profiles, output_json, pretty = TRUE, auto_unbox = TRUE)
 cat(sprintf(">>> [SUCCESS] Wrote %d Defensive profiles to '%s'.\n", length(defensive_profiles), output_json))
 

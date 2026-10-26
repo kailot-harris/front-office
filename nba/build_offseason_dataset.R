@@ -22,10 +22,17 @@ suppressPackageStartupMessages({
   library(jsonlite)
 })
 
+# Source global config (same idiom as build_cba_cap_dataset.R / playoff_simulator.R).
+# Needed because this script names its input and output from config.R's WEB_JSON_*
+# constants and is also run standalone, not only via run_full_pipeline.R's
+# run_stage(), which sources config.R into the global environment first.
+config_path <- if (file.exists("config.R")) "config.R" else "../config.R"
+source(config_path)
+
 cat(">>> [OFFSEASON BUILDER] Initializing 2026-2027 NBA Offseason Analytics Pipeline...\n")
 
 teams_file         <- "web/public/data/projections_season_teams.json"
-transactions_file  <- "web/public/data/offseason_transactions.json"
+transactions_file  <- WEB_JSON_OFFSEASON_TRANSACTIONS  # config.R: an input catalog, not an output
 teams_profile_file <- "web/public/data/offseason_teams.json"
 out_dir            <- "web/public/data"
 
