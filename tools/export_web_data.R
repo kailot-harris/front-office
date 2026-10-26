@@ -19,7 +19,44 @@ if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
 
 source("logging_utils.R")
 source("config.R")
+source("market_provenance.R")
 .LOG_SCRIPT <- "export_web_data.R"
+
+# ------------------------------------------------------------------------------
+# build_value_bets_payload() -- the provenance gate on the web export path.
+#
+# mlb_market_odds_engine.R falls back to a SYNTHETIC_FALLBACK fixture slate when
+# the live odds feed returns nothing, and writes those rows into the value-bets
+# cache. They are correctly labelled, but the bets table in web/ renders a
+# fabricated row exactly like a real one, so publishing them unfiltered would
+# put invented prices on eliminated teams onto the live site. The notifier was
+# gated for the same reason on 2026-10-25 (4fe73db); this is the same decision,
+# via the same pure function in market_provenance.R, on the other consumer.
+#
+# Non-live rows are dropped rather than labelled: an empty value_bets array is
+# obviously empty, whereas six plausible-looking picks are not. What was
+# withheld is reported in value_bets_provenance so the page can say so instead
+# of claiming there were simply no +EV bets today.
+#
+# Pure, and separate from run_web_export(), so it is testable from a fixture
+# without cache/ -- see tests/testthat/test-value-bets-export.R.
+# ------------------------------------------------------------------------------
+build_value_bets_payload <- function(bets_df) {
+  gate <- filter_live_provenance(bets_df)
+  kept <- gate$kept
+  if (is.null(kept)) kept <- data.frame()
+  withheld <- sort(unique(gate$dropped_sources))
+  list(
+    value_bets = kept,
+    value_bets_provenance = list(
+      live_source  = LIVE_PROVENANCE,
+      n_total      = as.integer(gate$n_before),
+      n_published  = as.integer(gate$n_before - gate$n_dropped),
+      n_withheld   = as.integer(gate$n_dropped),
+      withheld_sources = if (length(withheld)) as.character(withheld) else character(0)
+    )
+  )
+}
 
 #' Canonical 30-Team MLB Reference Table (AL/NL, Divisions, FanGraphs & Full Names)
 get_canonical_mlb_teams <- function() {
@@ -897,12 +934,24 @@ run_web_export <- function(season = 2026, n_sims = 1000L, out_dir = file.path(ML
     total_bets_audited      = coalesce(risk_raw$total_bets_audited, 120L)
   )
 
+  bets_payload <- build_value_bets_payload(bets_df)
+  if (bets_payload$value_bets_provenance$n_withheld > 0) {
+    log_warn(sprintf(
+      "Provenance gate withheld %d/%d value bet(s) from the web export (sources: %s); publishing %d.",
+      bets_payload$value_bets_provenance$n_withheld,
+      bets_payload$value_bets_provenance$n_total,
+      paste(bets_payload$value_bets_provenance$withheld_sources, collapse = ", "),
+      bets_payload$value_bets_provenance$n_published
+    ), script = .LOG_SCRIPT)
+  }
+
   postseason_ops_obj <- list(
     season         = season,
     n_sims         = 10000L,
     bracket        = ps_bracket,
     bullpen_status = bp_status_full,
-    value_bets     = bets_df,
+    value_bets     = bets_payload$value_bets,
+    value_bets_provenance = bets_payload$value_bets_provenance,
     risk_state     = risk_summary
   )
 

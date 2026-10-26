@@ -116,6 +116,12 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data, 
     );
   };
 
+  // Bets withheld by the export-side provenance gate (tools/export_web_data.R).
+  // Absent on JSON exported before that gate existed, which is treated as
+  // "nothing withheld" rather than "unknown" -- the rows that are present still
+  // carry market_data_source and are flagged individually in the table.
+  const withheldBets = data.value_bets_provenance?.n_withheld ?? 0;
+
   const handleExportValueBets = () => {
     exportToCsv(
       data.value_bets as unknown as Record<string, unknown>[],
@@ -641,6 +647,26 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data, 
               </button>
             </div>
 
+            {/* Provenance notice. tools/export_web_data.R withholds any bet whose
+                market_data_source is not LIVE_ODDS_API, because the odds engine
+                invents a plausible-looking fixture slate when the live feed is
+                empty. Without this line the table would be indistinguishable
+                from a day that genuinely had no +EV edges. */}
+            {withheldBets > 0 && (
+              <div className="px-4 py-2.5 bg-amber-500/10 border-b border-amber-500/30 text-xs text-amber-200 flex items-start gap-2">
+                <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                <span>
+                  {withheldBets} of {data.value_bets_provenance?.n_total} recommendation
+                  {withheldBets === 1 ? '' : 's'} withheld &mdash; no live market provenance
+                  {data.value_bets_provenance?.withheld_sources?.length
+                    ? ` (${data.value_bets_provenance.withheld_sources.join(', ')})`
+                    : ''}
+                  . The live odds feed returned no markets, so these were generated from a
+                  fixture slate and are not real prices.
+                </span>
+              </div>
+            )}
+
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -658,7 +684,9 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data, 
                   {data.value_bets.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="py-6 text-center text-slate-400 text-xs">
-                        No active +EV value bets in current slate cache.
+                        {withheldBets > 0
+                          ? 'No publishable +EV value bets: every recommendation in the current slate cache failed the live-provenance check.'
+                          : 'No active +EV value bets in current slate cache.'}
                       </td>
                     </tr>
                   ) : (
@@ -667,7 +695,18 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data, 
                         <td className="py-3.5 px-4">
                           <div className="font-bold text-white">{bet.Matchup}</div>
                           <div className="text-[11px] text-slate-400 font-mono">
-                            Date: {bet.game_date} • Source: {bet.market_data_source}
+                            Date: {bet.game_date} • Source:{' '}
+                            {/* Belt and braces: the export already drops non-live rows,
+                                but JSON committed before that gate existed can still
+                                carry them, and a fabricated price must never read as
+                                real just because it is rendered in the same grey. */}
+                            {bet.market_data_source === 'LIVE_ODDS_API' ? (
+                              bet.market_data_source
+                            ) : (
+                              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold not-italic">
+                                {bet.market_data_source || 'UNKNOWN'} — NOT LIVE ODDS
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="py-3.5 px-3 font-mono font-bold text-emerald-400">

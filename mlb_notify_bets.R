@@ -48,41 +48,12 @@ source("logging_utils.R")
 #' testing and verification of the Discord formatting engine without requiring
 #' a live Odds API query.
 # ------------------------------------------------------------------------------
-# filter_live_provenance() -- the provenance gate, as a pure function.
-#
-# Two upstream paths can put fabricated rows into the value-bets data frame: the
-# generate_synthetic_mlb_slate() fallback below, and mlb_market_odds_engine.R's
-# own fallback, which writes SYNTHETIC_FALLBACK rows into the value-bets cache
-# when the live odds feed returns nothing. On 2026-10-25 the second path put six
-# invented bets -- invented game_ids and prices, on teams already eliminated --
-# into the cache, and run_notify_bets() broadcast three of them to Discord
-# (status 204). The rows were correctly labelled; nothing downstream read the
-# label. This is that check.
-#
-# Fails CLOSED: a row whose market_data_source is missing, NA or anything other
-# than LIVE_ODDS_API is treated as untrusted and dropped. A bet whose provenance
-# cannot be established is exactly the kind that must not be sent.
-#
-# Kept separate from run_notify_bets() so the decision is unit-testable without
-# a cache, a webhook or log scraping -- see tests/testthat/test-notify-provenance.R.
-LIVE_PROVENANCE <- "LIVE_ODDS_API"
-
-filter_live_provenance <- function(df) {
-  if (is.null(df) || nrow(df) == 0) {
-    return(list(kept = df, n_before = 0L, n_dropped = 0L, dropped_sources = character(0)))
-  }
-  n_before <- nrow(df)
-  src <- if ("market_data_source" %in% names(df)) as.character(df$market_data_source) else rep(NA_character_, n_before)
-  is_live <- !is.na(src) & src == LIVE_PROVENANCE
-  dropped <- src[!is_live]
-  dropped[is.na(dropped)] <- "<missing>"
-  list(
-    kept = df[is_live, , drop = FALSE],
-    n_before = n_before,
-    n_dropped = n_before - sum(is_live),
-    dropped_sources = dropped
-  )
-}
+# The provenance gate. filter_live_provenance() and LIVE_PROVENANCE live in
+# market_provenance.R because tools/export_web_data.R needs the same decision
+# for the web JSON -- see that file's header for the 2026-10-25 incident this
+# guards against. Do not re-inline it here; one implementation only.
+# ------------------------------------------------------------------------------
+source("market_provenance.R")
 
 generate_synthetic_mlb_slate <- function() {
   data.frame(
@@ -311,7 +282,7 @@ run_notify_bets <- function() {
   }
 
   # 1b. Provenance gate -- never broadcast bets that are not real market data.
-  # See filter_live_provenance() above for why this exists and why it fails closed.
+  # See filter_live_provenance() in market_provenance.R for why this exists and why it fails closed.
   if (nzchar(Sys.getenv("MLB_NOTIFY_ALLOW_SYNTHETIC", unset = ""))) {
     log_warn("MLB_NOTIFY_ALLOW_SYNTHETIC is set -- provenance gate DISABLED; synthetic bets may be dispatched.",
              script = .LOG_SCRIPT)
