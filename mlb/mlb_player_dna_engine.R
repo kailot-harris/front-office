@@ -404,6 +404,11 @@ run_mlb_player_dna_engine <- function() {
   pitcher_archs <- unique(pitcher_comps$archetype)
   
   output_catalog <- list(
+    # generated_at is what tools/publish_web.R's assertion F reads: UTC, ISO-8601,
+    # and FIRST in the object because F only scans the first 4096 bytes of the
+    # file (this payload is ~935 KB). `updatedAt` is kept for the web app, which
+    # already renders it; it is local-time and not a format F can parse.
+    generated_at     = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
     updatedAt        = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
     eraBaseline      = "1980-2026",
     totalPlayers     = length(profile_list),

@@ -499,6 +499,11 @@ run_mlb_series_simulator <- function() {
   message(sprintf(">>> Successfully simulated %d head-to-head franchise pairings across 3/5/7 game formats.", pair_count))
   
   output_catalog <- list(
+    # generated_at is what tools/publish_web.R's assertion F reads: UTC, ISO-8601,
+    # and FIRST in the object because F only scans the first 4096 bytes of the
+    # file (this payload is ~1.2 MB). `updatedAt` is kept for the web app, which
+    # already renders it; it is local-time and not a format F can parse.
+    generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
     updatedAt   = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
     nSims       = 10000,
     teams       = profiles,
