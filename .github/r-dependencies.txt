@@ -16,6 +16,13 @@
 #
 # Derived from the library() calls reachable from the four files in
 # .github/scripts/run-tests.R's RUN list, including everything they source():
+#   here        config.R, which hard-stops without it. Every test sources
+#               config.R, so missing this failed all four at once on the
+#               job's first run -- it was installed locally and invisible.
+#   bcrypt      auth_utils.R, same shape: a requireNamespace() hard stop
+#               rather than a library() call, so a grep for library() misses
+#               it. config.R and auth_utils.R are the only two files here
+#               that gate on requireNamespace(); both are covered now.
 #   tidyverse   prediction_accuracy_logger, player_metrics, and the dplyr /
 #               stringr / tidyr / tibble calls in the tests themselves
 #   wehoop      player_metrics.R  (sourced by test_pure_functions.R)
@@ -27,6 +34,8 @@
 #   httr        market_odds_engine.R
 #   jsonlite    market_odds_engine.R
 #   ranger      market_odds_engine.R
+here
+bcrypt
 tidyverse
 wehoop
 slider
