@@ -99,7 +99,7 @@ the registration script sets `WorkingDirectory`, so neither depends on that.
 |---|---|---|
 | *(none)* / `dryrun` | *(nothing)* | **Default.** Runs every assertion, publishes nothing. |
 | `strict` | `--strict-warnings` | Dry run, but exporter `[WARN]` lines are fatal. |
-| `publish` | `--publish` | Live publish: commit, push `NFL_analytics`, subtree-pull into the aggregator, push `front-office` main. |
+| `publish` | `--publish` | Live publish: commit and push `NFL_analytics` only. The deploy is the aggregator's `sync-sports.yml`. |
 | `publish-strict` | `--publish --strict-warnings` | Live publish with warnings fatal. |
 
 An unrecognised mode exits **2** and runs nothing, rather than silently falling back.
@@ -167,10 +167,23 @@ Budget accordingly: if someone needs fresh numbers by 09:00 sharp, move the publ
 task earlier, not the deadline later.
 
 `deploy.yml` lives only in the `front-office` aggregator, so **the final push must land
-on `front-office` main** — pushing `NFL_analytics` alone triggers no deploy. It uses
-`concurrency: group: pages` with `cancel-in-progress: true`, which is harmless today
-because nothing else auto-pushes, but any additional auto-publishing repo must stagger
-its schedule or it will cancel this deploy mid-flight (#41).
+on `front-office` main** — pushing `NFL_analytics` alone triggers no deploy.
+
+**Since 2026-10-26, `publish_web.R` no longer makes that final push.** It used to
+subtree-pull into a local aggregator checkout and push `front-office` main itself, which
+duplicated the aggregator's own `sync-sports.yml`; two mechanisms pushing one branch meant
+whichever ran second hit a non-fast-forward. `sync-sports.yml` is now the only one, because
+it does not need this workstation awake. So a `--publish` run makes the artifacts
+*available*; the site changes when `sync-sports.yml` next runs or is dispatched.
+
+`publish_web.R` gained **assertion E** in the same change: `HEAD` must be on the branch
+`sync-sports.yml` subtree-pulls (`main`). Without it, a `--publish` from a feature branch
+pushed that branch, reported success, and left the site untouched — the gate's own
+silent-no-op.
+
+`deploy.yml` uses `concurrency: group: pages` with `cancel-in-progress: true`, which is
+harmless today because nothing else auto-pushes, but any additional auto-publishing repo
+must stagger its schedule or it will cancel this deploy mid-flight (#41).
 
 ---
 

@@ -18,8 +18,10 @@ REM MODE (argument 1):
 REM   (none) / dryrun   -> Rscript tools/publish_web.R                 [DEFAULT]
 REM                        Runs every assertion, publishes NOTHING.
 REM   publish           -> Rscript tools/publish_web.R --publish
-REM                        Live publish: commit + push + subtree pull + push
-REM                        front-office main (the push that triggers deploy.yml).
+REM                        Live publish: commit + push NFL_analytics main ONLY.
+REM                        It does NOT deploy -- the aggregator's sync-sports.yml
+REM                        subtree-pulls and dispatches deploy.yml (2026-10-26:
+REM                        one deploy path, so nothing here races it).
 REM   strict            -> dry run with --strict-warnings (exporter [WARN] lines
 REM                        are treated as fatal).
 REM   publish-strict    -> live publish with --strict-warnings.
