@@ -1,7 +1,7 @@
 # ==============================================================================
 # live_game_listener.R (WNBA port)
 # Phase 5 (T5 / wnba_live_dashboard_agent): In-Play Live Steam Sniper & Discord Alert Engine
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/live_game_listener.R
+# Path: live_game_listener.R
 #
 # Ported from NBA Analytics/live_game_listener.R. Per the T5 brief:
 #   - `total_seconds <- 2880` (48 min) -> `total_seconds <- 2400` (WNBA's 40-minute game,

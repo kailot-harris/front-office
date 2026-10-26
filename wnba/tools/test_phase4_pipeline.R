@@ -19,7 +19,31 @@
 # logs.duckdb here would force every one of that child's log rows into the M-7 spill path.
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/WNBA Analytics"
+# GitHub issue #90: PROJECT_DIR was a hardcoded absolute path to this repo's pre-move
+# location, which stopped existing when the repo moved under front-office/. Derived from
+# THIS SCRIPT'S own location now, walking up to the directory that holds config.R, so this
+# tools/ script setwd()s to the real project root regardless of where it is invoked from
+# (CLAUDE.md's tools/ convention) and fails loudly instead of silently no-op'ing (the
+# dir.exists() guard) or aborting on a missing directory (the unguarded setwd). The walk-up
+# is depth-agnostic, so it works from tools/<subdir>/ and inside a git worktree too.
+PROJECT_DIR <- local({
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- sub("^--file=", "", args[grepl("^--file=", args)])
+  start <- if (length(file_arg)) {
+    dirname(normalizePath(file_arg[1], winslash = "/", mustWork = FALSE))
+  } else {
+    getwd()   # sourced interactively: start from the caller's cwd
+  }
+  root <- start
+  while (!file.exists(file.path(root, "config.R"))) {
+    parent <- dirname(root)
+    if (identical(parent, root)) {
+      stop(sprintf("test_phase4_pipeline.R: cannot locate the repo root (no config.R at or above '%s')", start))
+    }
+    root <- parent
+  }
+  root
+})
 setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({
@@ -234,7 +258,11 @@ fixture_py <- "_tmp_phase4_fail_stage.py"
 writeLines(c("import sys", "print('fixture: simulating a torch import failure')", "sys.exit(1)"), fixture_py)
 fixture_r <- "_tmp_phase4_pyexit_probe.R"
 writeLines(c(
-  'setwd("c:/Users/kailo/kayceeslices/WNBA Analytics")',
+  # Issue #90: this used to emit a hardcoded setwd() to the repo's pre-move location, so the
+  # child probe aborted on a missing directory before it could source anything and CHECK 5
+  # reported nothing useful. Pass the root this script already resolved, encodeString()'d the
+  # same way tools/test_auth_utils.R does it.
+  sprintf('setwd(%s)', encodeString(PROJECT_DIR, quote = '"')),
   'source("logging_utils.R"); source("config.R")',
   'exprs <- parse("run_full_pipeline.R")',
   'for (e in exprs) {',

@@ -1,6 +1,6 @@
 # ==============================================================================
 # rapm_join_utils.R (WNBA)
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/rapm_join_utils.R
+# Path: rapm_join_utils.R
 #
 # Single source of truth for joining `cache/rapm_ratings.rds` to
 # `cache/active_rosters_cache.rds`.

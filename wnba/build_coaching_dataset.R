@@ -1,6 +1,6 @@
 # ==============================================================================
 # build_coaching_dataset.R
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/build_coaching_dataset.R
+# Path: build_coaching_dataset.R
 #
 # Compiles official 15-team WNBA coaching staff registries, ATO (After-Timeout)
 # execution metrics, challenge/clock leverage, talent vs system win residuals,

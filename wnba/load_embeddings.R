@@ -1,6 +1,6 @@
 # ==============================================================================
 # Embedding Loader & Tidy Joining Helper (WNBA port)
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/load_embeddings.R
+# Path: load_embeddings.R
 #
 # Ported AS-IS from the NBA Analytics repo's load_embeddings.R — this is a trivial
 # CSV loader with no team-count-specific logic beyond reading whatever

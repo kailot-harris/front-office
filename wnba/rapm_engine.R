@@ -1,7 +1,7 @@
 # ==============================================================================
 # rapm_engine.R (WNBA — NEW FILE, never existed in this repo before this task)
 # Task P2a (wnba_rapm_shotquality_agent, GAP_REMEDIATION_PLAN.md / task_assignments_phase2.md)
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/rapm_engine.R
+# Path: rapm_engine.R
 #
 # STATUS: REAL possession-level Regularized Adjusted Plus-Minus, not synthetic.
 #

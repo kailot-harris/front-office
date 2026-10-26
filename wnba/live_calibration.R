@@ -1,7 +1,7 @@
 # ==============================================================================
 # live_calibration.R (WNBA port)
 # Live In-Play Simulation, Market Odds Conversion & Calibration
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/live_calibration.R
+# Path: live_calibration.R
 #
 # Not an explicit T4 deliverable per agent5.md, but required: bet_tracker.r
 # `source()`s this file for its odds-conversion helpers (american_to_prob,

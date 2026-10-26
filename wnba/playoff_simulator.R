@@ -1,7 +1,7 @@
 # ==============================================================================
 # playoff_simulator.R (WNBA port)
 # Phase 5 (T5 / wnba_live_dashboard_agent): Monte Carlo Playoff Series & Bracket Simulator
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/playoff_simulator.R
+# Path: playoff_simulator.R
 #
 # Ported from NBA Analytics/playoff_simulator.R. The NBA original assumes best-of-7
 # (2-2-1-1-1) for every playoff round, which per WNBA_REPLICATION_PLAN.md §(b) Tier 3 is

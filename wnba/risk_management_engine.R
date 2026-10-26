@@ -1,7 +1,7 @@
 # ==============================================================================
 # risk_management_engine.R (WNBA port)
 # Phase 4 (T4) — Dynamic Bankroll Drawdown Monitor & Stop-Loss Engine
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/risk_management_engine.R
+# Path: risk_management_engine.R
 #
 # Ported AS-IS per task_assignments.md's T4 brief item 5: bankroll/drawdown/
 # Kelly-tier math is entirely sport-agnostic (bankroll units, not points or any

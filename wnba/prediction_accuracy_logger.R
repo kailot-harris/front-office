@@ -1,6 +1,6 @@
 # ==============================================================================
 # prediction_accuracy_logger.R (WNBA — NEW FILE, standalone feature build)
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/prediction_accuracy_logger.R
+# Path: prediction_accuracy_logger.R
 #
 # Daily, structured, append-only log of the model's OWN pre-game win-probability
 # predictions vs. real outcomes — distinct from bet_tracker.r's betting ledger

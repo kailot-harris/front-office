@@ -1,7 +1,7 @@
 # ==============================================================================
 # export_web_json.R
 # Static JSON Export Stage for Next.js Web App (WNBA Analytics)
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/export_web_json.R
+# Path: export_web_json.R
 #
 # Generates static JSON files in web/public/data/ consumed by the Next.js frontend:
 #   1. projections_season_teams.json   - Team projected standings, 4 model variants & ensemble

@@ -1,6 +1,6 @@
 # ==============================================================================
 # Lineup Synergy, Combinatorics & Staggering Metrics (WNBA)
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/lineup_synergy.R
+# Path: lineup_synergy.R
 #
 # Ported from NBA Analytics/lineup_synergy.R (T2 / wnba_rating_engine_agent). Per
 # WNBA_REPLICATION_PLAN.md §(b)/(d), this ports as-is: none of its logic hardcodes NBA-specific

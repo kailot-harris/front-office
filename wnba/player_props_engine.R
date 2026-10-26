@@ -1,7 +1,7 @@
 # ==============================================================================
 # player_props_engine.R (WNBA port)
 # Phase 4 (T4) — Zero-Inflated Negative Binomial (ZINB) & PRA Alpha Engine
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/player_props_engine.R
+# Path: player_props_engine.R
 #
 # ZINB pricing math (dzinb/pzinb/pzinb_over/price_prop_zinb) is ported BYTE-FOR-BYTE
 # unchanged from the NBA original — it is sport-agnostic count-model math with no

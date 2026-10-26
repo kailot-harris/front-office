@@ -1,6 +1,6 @@
 # ==============================================================================
 # Automated Daily Box Score Ingestion Pipeline (WNBA)
-# Path: c:/Users/kailo/kayceeslices/WNBA Analytics/daily_ingest.R
+# Path: daily_ingest.R
 #
 # Ported from NBA Analytics/daily_ingest.R. Swaps hoopR::load_nba_team_box() for
 # wehoop::load_wnba_team_box() (same call idiom, sportsdataverse team). Dedupe-on-
