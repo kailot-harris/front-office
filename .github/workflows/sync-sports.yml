@@ -19,16 +19,31 @@ name: Sync sport subtrees and deploy
 
 on:
   schedule:
-    # 11:30 UTC, half an hour after MLB's refresh-results.yml runs at 11:00 UTC,
-    # which is long enough for that job to finish and push. Cron is UTC-only and
-    # does not shift with DST. If that job's schedule moves, move this with it.
-    - cron: '30 11 * * *'
+    # 13:30 UTC = slot A + 30 minutes. Cron is UTC-only and does not shift with
+    # DST, so this drifts an hour against local time twice a year, which is
+    # tolerable here only because of how much slack slot A leaves (below).
+    #
+    # WHY 13:30 AND NOT THE OLD 11:30. The binding constraint is upstream data,
+    # not this repo. Measured from the providers' own Actions history on
+    # 2026-10-26:
+    #   NBA   sportsdataverse/hoopR-nba-data     ~11:17-11:56, ~12:08-12:19 UTC
+    #   WNBA  sportsdataverse/wehoop-wnba-data   ~10:33,       ~11:40-12:07 UTC
+    #   NFL   nflverse/nflverse-pbp              ~00:00, 04:30, 09:00,
+    #                                            13:00-13:40, 21:00 UTC
+    #   MLB   MLB Stats API                      continuous
+    # NBA and WNBA both finish by ~12:20 UTC and nothing before that has seen
+    # last night's games. The four sport pipelines run at 09:00 local (13:00 UTC
+    # during EDT) -- slot A -- and each publishes behind its own
+    # tools/publish_web.R gate; this job pulls what they published 30 minutes
+    # later. The old 11:30 was pinned to MLB's refresh-results.yml at 11:00 and
+    # predates the other three sports being scheduled at all.
+    - cron: '30 13 * * *'
   workflow_dispatch:
     inputs:
       sports:
         description: Space-separated sports to sync (e.g. "mlb" or "mlb nba")
         required: false
-        default: mlb
+        default: mlb nfl nba wnba
       deploy:
         description: Dispatch deploy.yml when a sync produced a new commit
         type: boolean
@@ -69,10 +84,24 @@ jobs:
       - name: Sync requested sport subtrees
         id: sync
         env:
-          # Only MLB is scheduled: it is the one sport with an automated data
-          # refresh upstream. The others are dispatch-only, so a sibling repo
-          # mid-change can never drag the site into a broken build on its own.
-          SPORTS: ${{ inputs.sports || 'mlb' }}
+          # ALL FOUR sports are scheduled as of 2026-10-26.
+          #
+          # This was 'mlb' alone, with the stated reason that the other three
+          # were dispatch-only "so a sibling repo mid-change can never drag the
+          # site into a broken build on its own". That reasoning was sound and it
+          # is what has now been retired, deliberately rather than forgotten:
+          # each sport repo publishes behind its own tools/publish_web.R gate,
+          # which asserts on the ARTIFACTS (mtimes, an independently recomputed
+          # slate, a real diff, the publish branch, exporter warnings, and the
+          # generated_at stamp inside each payload) and commits NOTHING when any
+          # fatal assertion fails. A sibling mid-change now blocks its own
+          # publish rather than shipping, so there is nothing for this job to
+          # pull and nothing to drag the site into.
+          #
+          # Order matters only for log readability, not correctness: each sport
+          # is an independent subtree pull, and one deploy is dispatched after
+          # all of them.
+          SPORTS: ${{ inputs.sports || 'mlb nfl nba wnba' }}
           # The sport repos are PRIVATE and live outside this repo, and
           # GITHUB_TOKEN is scoped to this repo alone -- an anonymous clone of a
           # private sibling fails with the misleading "Repository not found"
