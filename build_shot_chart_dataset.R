@@ -144,7 +144,11 @@ meta_obj <- list(
   # in the same change.
   generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
   season = 2026,
-  updated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ"),
+  # tz = "UTC" added: the trailing Z asserts UTC but format() defaults to local
+  # time, so this field has been publishing EDT/EST values labelled as UTC --
+  # off by 4-5 hours. Same defect class as NBA's matchups_slates stamp. The
+  # string shape is unchanged, so the contract schema is unaffected.
+  updated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
   total_shots_sampled = nrow(clean_fga),
   league_averages = league_averages,
   zones = c(
