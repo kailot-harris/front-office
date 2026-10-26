@@ -89,14 +89,36 @@
 #      seeing -- and the two gates are stronger together than either rule
 #      ported alone.
 #
-#      KNOWN GAP, deliberately reported rather than silently tolerated: only
-#      three of MLB's published payloads carry a `generated_at` at all
-#      (projections_models_metadata, matchups_index, and the non-member
-#      statcast_spatial_analytics). The other seven carry no provenance stamp,
-#      so F cannot speak for them and says so by name in its detail lines.
-#      Stamping every payload is an exporter change, not a gate change, and is
-#      left as follow-up work; what matters here is that the gate does not
-#      report confidence it does not have.
+#      REMAINING GAP, deliberately reported rather than silently tolerated:
+#      8 of the 10 WEB_DATA_FILES now carry a stamp. The follow-up work named
+#      here is done for every payload that can take one -- see the exporter
+#      sites listed below -- and the two that remain unstamped are unstamped
+#      for a STRUCTURAL reason, not an unfinished one:
+#
+#        projections_season_teams.json     top-level JSON ARRAY
+#        projections_season_players.json   top-level JSON ARRAY
+#
+#      Both are jsonlite::write_json() of a data frame, so the document root is
+#      `[...]`, which has nowhere to hang a scalar key. Stamping them means
+#      either wrapping the array in an object (a breaking change for every web
+#      reader, and MLB is the one sport with no web test suite to catch it) or
+#      repeating the stamp on all ~1000 rows. Neither is worth it: assertion A
+#      already covers both files on mtime, and these two are regenerated in the
+#      same write block as the metadata payload F does speak for, three lines
+#      apart, so a run that staled them would stale that one too.
+#
+#      F names both in its detail lines, so the gate still does not report
+#      confidence it does not have.
+#
+#      Stamp-writing sites, all `format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ",
+#      tz = "UTC")` and all FIRST in their object because .pw_payload_
+#      generated_at() reads only the first 4096 bytes:
+#        tools/export_web_data.R       metadata, matchups_index, diagnostics,
+#                                      postseason_ops
+#        mlb_series_simulator.R        playoff_series_matchups
+#        mlb_player_dna_engine.R       player_dna_profiles
+#        mlb_clutch_leverage_engine.R  clutch_leverage_metrics
+#        mlb_cbt_payroll_engine.R      cbt_payroll_sheet
 #
 # ONE DEPLOY PATH
 # ---------------

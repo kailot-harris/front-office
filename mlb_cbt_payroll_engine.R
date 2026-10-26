@@ -357,6 +357,11 @@ run_mlb_cbt_payroll_engine <- function() {
   franchise_profiles <- franchise_profiles[order(sapply(franchise_profiles, function(x) x$payroll2026), decreasing = TRUE)]
   
   catalog <- list(
+    # generated_at is what tools/publish_web.R's assertion F reads: UTC, ISO-8601,
+    # and FIRST in the object because F only scans the first 4096 bytes of the
+    # file (this payload is ~195 KB). This engine does not source config.R, so
+    # the format string is inline here, matching tools/export_web_data.R.
+    generated_at            = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
     season                  = "2026",
     baseThreshold           = BASE_THRESHOLD,
     tier1Threshold          = TIER1_THRESHOLD,

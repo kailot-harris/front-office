@@ -264,6 +264,11 @@ run_mlb_clutch_engine <- function() {
   pitcher_leaders <- sapply(head(pitcher_sub[pitcher_order], 10), function(x) x$playerName)
     
   output_catalog <- list(
+    # generated_at is what tools/publish_web.R's assertion F reads: UTC, ISO-8601,
+    # and FIRST in the object because F only scans the first 4096 bytes of the
+    # file (this payload is ~287 KB). `updatedAt` is kept for the web app, which
+    # already renders it; it is local-time and not a format F can parse.
+    generated_at         = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
     updatedAt            = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
     totalProfiles        = length(profile_list),
     clutchLeaderBatters  = batter_leaders,

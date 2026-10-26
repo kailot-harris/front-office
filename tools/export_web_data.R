@@ -946,6 +946,10 @@ run_web_export <- function(season = 2026, n_sims = 1000L, out_dir = file.path(ML
   }
 
   postseason_ops_obj <- list(
+    # First in the object, for assertion F's 4096-byte head scan. Same format
+    # as metadata_obj's stamp above -- that is the one format .pw_payload_
+    # generated_at() parses, so do not "improve" it to include an offset.
+    generated_at   = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
     season         = season,
     n_sims         = 10000L,
     bracket        = ps_bracket,
@@ -953,6 +957,16 @@ run_web_export <- function(season = 2026, n_sims = 1000L, out_dir = file.path(ML
     value_bets     = bets_payload$value_bets,
     value_bets_provenance = bets_payload$value_bets_provenance,
     risk_state     = risk_summary
+  )
+
+  # diagnostics_obj is built in two branches above (measured, and the hardcoded
+  # fallback when no resolved games are cached). The stamp is prepended here
+  # instead of being added to both literals so the two branches cannot drift,
+  # and PREpended rather than appended because assertion F only scans the first
+  # 4096 bytes of the file.
+  diagnostics_obj <- c(
+    list(generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")),
+    diagnostics_obj
   )
 
   # Write all JSON files to web/public/data/
