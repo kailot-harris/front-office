@@ -21,7 +21,7 @@ if (!dir.exists(CACHE_DIR)) dir.create(CACHE_DIR, recursive = TRUE)
 message(">>> [PLAYOFFS] Initializing Monte Carlo Playoff Series Simulator Engine...")
 
 # Load baseline team and player projections
-teams_file <- file.path(PROJECT_DIR, "web", "public", "data", "projections_season_teams.json")
+teams_file <- WEB_JSON_PROJECTIONS_SEASON_TEAMS  # config.R
 players_file <- file.path(PROJECT_DIR, "web", "public", "data", "projections_season_players.json")
 
 if (!file.exists(teams_file) || !file.exists(players_file)) {
@@ -363,7 +363,7 @@ output_catalog <- list(
 )
 
 out_rds <- if (exists("CACHE_PLAYOFF_SERIES")) CACHE_PLAYOFF_SERIES else file.path(CACHE_DIR, "playoff_series_cache.rds")
-out_json <- if (exists("CACHE_PLAYOFF_MATCHUPS")) CACHE_PLAYOFF_MATCHUPS else file.path(PROJECT_DIR, "web", "public", "data", "playoff_series_matchups.json")
+out_json <- WEB_JSON_PLAYOFF_SERIES_MATCHUPS  # config.R; the exists() fallback duplicated the path
 
 message(sprintf(">>> Saving playoff simulation cache to: %s", out_rds))
 saveRDS(output_catalog, out_rds)

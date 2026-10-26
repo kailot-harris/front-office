@@ -478,7 +478,7 @@ cap_sheet_export <- list(
 )
 
 # Export to Web JSON
-output_json <- file.path(PROJECT_DIR, "web", "public", "data", "cba_cap_sheet.json")
+output_json <- WEB_JSON_CBA_CAP_SHEET  # config.R
 write_json(cap_sheet_export, output_json, pretty = TRUE, auto_unbox = TRUE)
 message(sprintf(">>> [SUCCESS] Calibrated 2026-27 CBA Cap Sheet dataset exported to: %s", output_json))
 

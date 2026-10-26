@@ -1,4 +1,37 @@
 @echo off
+REM ==============================================================================
+REM schedule_daily.bat -- Windows Task Scheduler target for the NBA pipeline.
+REM
+REM ------------------------------------------------------------------------------
+REM SCHEDULED START TIME -- must stay AFTER the upstream hoopR data publish.
+REM
+REM Every load_nba_*() call in this repo reads pre-built release assets from
+REM sportsdataverse/hoopR-nba-data, rebuilt by a batch job, NOT in near-real-time
+REM after each game. Measured from that repo's own Actions history on 2026-10-26:
+REM two runs a day, ~11:17-11:56 UTC and ~12:08-12:19 UTC. A game that ends at
+REM 22:00 ET therefore appears in hoopR the NEXT MORNING, and not before ~12:20 UTC.
+REM
+REM The task was registered at 08:00 local, which is 12:00 UTC during EDT -- about
+REM twenty minutes BEFORE the later window closes. So on any day the second run
+REM lands late, this pipeline silently consumed YESTERDAY's build: last night's
+REM games simply missing, with nothing anywhere reporting a problem. The WNBA
+REM sibling repo found and documented the identical defect against wehoop (see
+REM "WNBA Analytics\schedule_daily.bat"'s own note); this is the same bug, and it
+REM was still live here when the four-sport cadence review found it on 2026-10-26.
+REM
+REM TARGET: 09:00 local = 13:00 UTC (EDT) / 14:00 UTC (EST). That is slot A of the
+REM three-slot cadence -- all four sports run the full pipeline and publish, and
+REM the aggregator's sync-sports.yml subtree-pulls and deploys 30 minutes later at
+REM 13:30 UTC. It clears ~12:20 UTC by 40 minutes in EDT and by 100 in EST. If this
+REM is ever re-registered, keep it at or after 09:00 local; do not move it earlier.
+REM   schtasks /change /tn "NBA Analytics Daily Pipeline" /st 09:00
+REM
+REM NOT YET APPLIED as of 2026-10-26. This task is registered with RunLevel=Highest,
+REM so changing its trigger needs an ELEVATED shell; a non-elevated
+REM Set-ScheduledTask returns "Access is denied". The registered trigger is still
+REM 08:00, so the race above is still live until the command is run.
+REM ------------------------------------------------------------------------------
+REM ==============================================================================
 set PROJECT_DIR=c:\Users\kailo\kayceeslices\front-office\NBA Analytics
 set LOG_FILE=%PROJECT_DIR%\pipeline_execution.log
 
@@ -32,46 +65,117 @@ if "%PIPELINE_EXIT%"=="0" (
     ) else (
         echo Static export successfully refreshed. >> "%LOG_FILE%"
     )
-    call :commit_outputs
+    set RUN_PUBLISH=1
 ) else (
     echo PIPELINE RUN FAILED WITH EXIT CODE %PIPELINE_EXIT%: %DATE% %TIME% >> "%LOG_FILE%"
 )
 echo ================================================================== >> "%LOG_FILE%"
 echo. >> "%LOG_FILE%"
 
-exit /b %PIPELINE_EXIT%
-
 REM ------------------------------------------------------------------
-REM Commit the refreshed web data so the published site tracks the run.
-REM Never fails the pipeline: logs whatever goes wrong and returns 0.
+REM Publish gate (2026-10-26). This REPLACES the inline
+REM "git add / git commit / git push origin HEAD" subroutine that lived here.
+REM
+REM Why it was replaced the same day it was written: that subroutine pushed on
+REM one condition only -- run_full_pipeline.R exited 0 -- and an exit code is
+REM not evidence about the artifacts. run_stage() catches a stage failure and
+REM the pipeline carries on, every engine in this repo falls back to a labelled
+REM synthetic value rather than failing, and run_full_pipeline.R's own
+REM provenance guard covers 3 of the 12 published payloads. A stale
+REM cba_cap_sheet.json or matchups_slates.json therefore shipped without a word.
+REM It also pushed `origin HEAD`, so run from a feature branch it would commit
+REM the data there, push it, report success, and leave the site untouched --
+REM sync-sports.yml pulls main.
+REM
+REM tools/publish_web.R makes all six of those checks (A mtime, B slate,
+REM C real diff, D stage warnings, E publish branch, F embedded generated_at)
+REM and commits and pushes ONLY when every fatal one passes. It is the single
+REM publish mechanism for this repo now; nothing else here touches git.
+REM
+REM It is called at TOP LEVEL, not with `call :label` from inside the
+REM parenthesised block above, and RUN_PUBLISH is what carries the decision out.
+REM A block-local ERRORLEVEL/label dance is the delayed-expansion trap this
+REM file's own sibling wrappers document, and the publish step is the last thing
+REM that should be fragile.
+REM
+REM MODE (argument 1), mirroring NFL's schedule_publish.bat so the four sports
+REM take the same words:
+REM   (none) / dryrun   -> every assertion runs, NOTHING is published  [DEFAULT]
+REM   publish           -> live: commit + push NBA_analytics main only
+REM   strict            -> dry run, stage warnings fatal
+REM   publish-strict    -> live publish, stage warnings fatal
+REM
+REM Dry run is the DEFAULT ON PURPOSE, and this is the same gate NFL is sitting
+REM behind: the unattended push is UNPROVEN on this machine. Credentials work in
+REM an interactive terminal (gh keyring plus credential.helper=manager), but
+REM Task Scheduler's non-interactive session may not reach Git Credential
+REM Manager, which would make a scheduled publish hang on an auth prompt or fail
+REM obscurely at a time nobody is watching. That is NFL Analytics issue #42,
+REM still open, and it applies verbatim here -- the git step this replaced was
+REM written on 2026-10-26 and had never executed even once, so nothing about it
+REM constitutes proof.
+REM
+REM   >>> Leave the registered task on `dryrun` until the unattended push is <<<
+REM   >>> proven. Read the dry-run reports for a few days first.             <<<
 REM ------------------------------------------------------------------
-:commit_outputs
-where git >nul 2>&1
-if errorlevel 1 (
-    echo git not found on PATH; skipping commit of refreshed data. >> "%LOG_FILE%"
-    exit /b 0
+set MODE=%~1
+if "%MODE%"=="" set MODE=dryrun
+
+REM One `if` per assignment, never `if cond set A=x& set B=y`: in batch `&` ends
+REM the conditional, so the second `set` would run even when the test is false.
+set PW_ARGS=
+set MODE_LABEL=
+if /i "%MODE%"=="dryrun" set MODE_LABEL=DRY RUN
+if /i "%MODE%"=="strict" set MODE_LABEL=DRY RUN (strict warnings)
+if /i "%MODE%"=="strict" set PW_ARGS=--strict-warnings
+if /i "%MODE%"=="publish" set MODE_LABEL=LIVE PUBLISH
+if /i "%MODE%"=="publish" set PW_ARGS=--publish
+if /i "%MODE%"=="publish-strict" set MODE_LABEL=LIVE PUBLISH (strict warnings)
+if /i "%MODE%"=="publish-strict" set PW_ARGS=--publish --strict-warnings
+
+if "%MODE_LABEL%"=="" (
+    echo [ERROR] schedule_daily.bat: unknown publish mode "%MODE%". >> "%LOG_FILE%"
+    echo [ERROR] Valid modes: dryrun ^(default^), strict, publish, publish-strict. >> "%LOG_FILE%"
+    echo [ERROR] The pipeline already ran; only the publish step is being skipped. >> "%LOG_FILE%"
+    exit /b 2
 )
 
-echo Committing refreshed pipeline outputs... >> "%LOG_FILE%"
-git add -A -- web/public/data >> "%LOG_FILE%" 2>&1
-git diff --cached --quiet -- web/public/data
-if not errorlevel 1 (
-    echo No data changes to commit. >> "%LOG_FILE%"
-    exit /b 0
+if not "%RUN_PUBLISH%"=="1" (
+    echo [SKIPPED] Publish gate not run: the pipeline did not succeed. >> "%LOG_FILE%"
+    echo. >> "%LOG_FILE%"
+    exit /b %PIPELINE_EXIT%
 )
 
-git commit -m "data: automated pipeline refresh %DATE%" >> "%LOG_FILE%" 2>&1
-if errorlevel 1 (
-    echo Commit of refreshed data failed! >> "%LOG_FILE%"
-    exit /b 0
-)
-echo Refreshed data committed. >> "%LOG_FILE%"
+echo ================================================================== >> "%LOG_FILE%"
+echo NBA WEB PUBLISH GATE: %DATE% %TIME% >> "%LOG_FILE%"
+echo Mode: %MODE_LABEL%  (argument: %MODE%) >> "%LOG_FILE%"
+echo ================================================================== >> "%LOG_FILE%"
 
-echo Pushing refreshed data to origin... >> "%LOG_FILE%"
-git push origin HEAD >> "%LOG_FILE%" 2>&1
-if errorlevel 1 (
-    echo Push of refreshed data failed! >> "%LOG_FILE%"
+REM publish_web.R exits 0 only when nothing fatal failed, 1 on any fatal
+REM failure, so a scheduled caller can branch on it. PUBLISH_RC is captured
+REM OUTSIDE any parenthesised block before being tested.
+%RSCRIPT% "%PROJECT_DIR%\tools\publish_web.R" %PW_ARGS% >> "%LOG_FILE%" 2>&1
+set PUBLISH_RC=%ERRORLEVEL%
+
+echo ------------------------------------------------------------------ >> "%LOG_FILE%"
+if not "%PUBLISH_RC%"=="0" (
+    echo [ERROR] Publish gate FAILED with exit code %PUBLISH_RC% in mode %MODE_LABEL%. >> "%LOG_FILE%"
+    echo [ERROR] At least one fatal assertion failed - NOTHING WAS PUBLISHED. >> "%LOG_FILE%"
+    echo [ERROR] Yesterday's correct site stays up rather than a half-updated one. >> "%LOG_FILE%"
+    echo [ERROR] Read the "-- Assertions --" block above: every failing assertion >> "%LOG_FILE%"
+    echo [ERROR] is on a "[FAIL]" line with its id, name, summary and the >> "%LOG_FILE%"
+    echo [ERROR] offending file or value in its detail lines. >> "%LOG_FILE%"
+    echo NBA WEB PUBLISH GATE BLOCKED: %DATE% %TIME% >> "%LOG_FILE%"
 ) else (
-    echo Refreshed data pushed. >> "%LOG_FILE%"
+    echo [OK] Publish gate passed in mode %MODE_LABEL%. >> "%LOG_FILE%"
+    echo NBA WEB PUBLISH GATE COMPLETED: %DATE% %TIME% >> "%LOG_FILE%"
 )
-exit /b 0
+echo ================================================================== >> "%LOG_FILE%"
+echo. >> "%LOG_FILE%"
+
+REM The pipeline's own exit code is what Task Scheduler's "Last Run Result"
+REM should reflect: a blocked publish on good-but-unchanged data is not a
+REM pipeline failure, and conflating the two would train whoever reads that
+REM column to ignore it. The gate's own verdict is in the log above, and in
+REM PUBLISH_RC for anyone chaining off this file.
+exit /b %PIPELINE_EXIT%
