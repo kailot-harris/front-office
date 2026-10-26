@@ -542,7 +542,7 @@ PIPELINE_STAGES <- list(
     description = "Export Static JSON Datasets for Next.js Web App",
     call_fn     = NULL,
     entry_fn    = "export_web_json",
-    output      = file.path("web", "public", "data", "projections_season_teams.json"),
+    output      = WEB_JSON_PROJECTIONS_SEASON_TEAMS,
     inputs      = c(file.path(CACHE_DIR, "projected_wnba_standings.rds"),
                     file.path(CACHE_DIR, "rapm_ratings.rds"),
                     file.path(CACHE_DIR, "team_shot_quality.rds"),
@@ -562,9 +562,9 @@ PIPELINE_STAGES <- list(
     description = "Extract WNBA Shot Locations & 14-Zone Baselines for Web App",
     call_fn     = NULL,
     entry_fn    = NULL,
-    output      = file.path("web", "public", "data", "shots_index.json"),
+    output      = WEB_JSON_SHOTS_INDEX,
     inputs      = c(file.path(CACHE_DIR, "wnba_espn_pbp_cache.rds"),
-                    file.path("web", "public", "data", "projections_season_players.json")),
+                    WEB_JSON_PROJECTIONS_SEASON_PLAYERS),
     group       = NULL
   ),
 
@@ -577,9 +577,9 @@ PIPELINE_STAGES <- list(
     description = "Compile Offseason Roster Moves, Cap Space & Draft Board",
     call_fn     = NULL,
     entry_fn    = NULL,
-    output      = file.path("web", "public", "data", "offseason_transactions.json"),
-    inputs      = c(file.path("web", "public", "data", "projections_season_players.json"),
-                    file.path("web", "public", "data", "projections_season_teams.json")),
+    output      = WEB_JSON_OFFSEASON_TRANSACTIONS,
+    inputs      = c(WEB_JSON_PROJECTIONS_SEASON_PLAYERS,
+                    WEB_JSON_PROJECTIONS_SEASON_TEAMS),
     group       = NULL
   ),
 
@@ -592,8 +592,8 @@ PIPELINE_STAGES <- list(
     description = "Compile Coaching Staffs, ATO Efficiency & Tactical Ratings",
     call_fn     = NULL,
     entry_fn    = NULL,
-    output      = file.path("web", "public", "data", "coaching_metrics.json"),
-    inputs      = c(file.path("web", "public", "data", "projections_season_teams.json")),
+    output      = WEB_JSON_COACHING_METRICS,
+    inputs      = c(WEB_JSON_PROJECTIONS_SEASON_TEAMS),
     group       = NULL
   ),
 
@@ -606,8 +606,8 @@ PIPELINE_STAGES <- list(
     description = "Compile Defensive Versatility Entropy & Rim Suppression Matrix",
     call_fn     = NULL,
     entry_fn    = NULL,
-    output      = file.path("web", "public", "data", "defensive_metrics.json"),
-    inputs      = c(file.path("web", "public", "data", "projections_season_players.json")),
+    output      = WEB_JSON_DEFENSIVE_METRICS,
+    inputs      = c(WEB_JSON_PROJECTIONS_SEASON_PLAYERS),
     group       = NULL
   ),
 
@@ -620,8 +620,8 @@ PIPELINE_STAGES <- list(
     description = "Compile 16-D Skill Vectors & Cosine Historical Archetype Twins",
     call_fn     = NULL,
     entry_fn    = NULL,
-    output      = file.path("web", "public", "data", "player_dna_profiles.json"),
-    inputs      = c(file.path("web", "public", "data", "projections_season_players.json")),
+    output      = WEB_JSON_PLAYER_DNA_PROFILES,
+    inputs      = c(WEB_JSON_PROJECTIONS_SEASON_PLAYERS),
     group       = NULL
   ),
 
@@ -634,8 +634,8 @@ PIPELINE_STAGES <- list(
     description = "Compile True Clutch Shot Creation, Pressure TS% & c-dWPA",
     call_fn     = NULL,
     entry_fn    = NULL,
-    output      = file.path("web", "public", "data", "clutch_leverage_metrics.json"),
-    inputs      = c(file.path("web", "public", "data", "projections_season_players.json"),
+    output      = WEB_JSON_CLUTCH_LEVERAGE_METRICS,
+    inputs      = c(WEB_JSON_PROJECTIONS_SEASON_PLAYERS,
                     file.path(CACHE_DIR, "player_pbp_features.rds")),
     group       = NULL
   ),
@@ -649,8 +649,8 @@ PIPELINE_STAGES <- list(
     description = "Compile WNBA Hard Salary Cap Sheets, Supermax Tags & 11-vs-12 Crunch",
     call_fn     = NULL,
     entry_fn    = NULL,
-    output      = file.path("web", "public", "data", "cba_cap_sheet.json"),
-    inputs      = c(file.path("web", "public", "data", "projections_season_players.json")),
+    output      = WEB_JSON_CBA_CAP_SHEET,
+    inputs      = c(WEB_JSON_PROJECTIONS_SEASON_PLAYERS),
     group       = NULL
   )
 )

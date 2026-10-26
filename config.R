@@ -351,6 +351,76 @@ MEDIA_NET_RATING_TRAJECTORY_PNG <- file.path(
 )
 
 # ------------------------------------------------------------------------------------------
+# Published web data artifacts (web/public/data) -- GitHub issue, 2026-10-26
+# ------------------------------------------------------------------------------------------
+# WEB_DATA_FILES is the set of JSON artifacts that EVERY in-season pipeline run is expected
+# to regenerate. It is the list tools/publish_web.R's assertion A walks.
+#
+# DERIVATION / WHY THESE EIGHTEEN AND NOT A HAND-TYPED GUESS:
+#   * The first ten are export_web_json.R's own writes (export_web_json.R:1198-1245).
+#   * The other eight are the `output =` fields that pipeline_stages.R already declares
+#     for the build_*_dataset.R stages (pipeline_stages.R:545-653). Those declarations
+#     were, until this block existed, the only place the names appeared -- as
+#     file.path("web", "public", "data", "...") expressions built fresh at each stage.
+#     They now name these constants instead, so a renamed artifact cannot be renamed in
+#     one of the two places.
+#   * Nothing is excluded. Unlike the NBA and MLB siblings, every JSON in
+#     web/public/data here is written by a stage this pipeline runs: the shot-chart
+#     builder IS a registered stage (it is not, in NBA), and offseason_transactions.json
+#     IS a declared output (it is an input catalog, in NBA). The two repos look alike
+#     and their contracts differ; this comment exists so the next port does not assume
+#     otherwise.
+#
+# The three season-keyed filenames track their cache artifacts' own basenames, the same
+# rule export_web_json.R:1204-1213 uses and for the same reason: the season appears once,
+# in CURRENT_SEASON, and never as a literal year inside a filename.
+WEB_PUBLIC_DIR <- file.path(PROJECT_DIR, "web", "public")
+WEB_DATA_DIR   <- file.path(WEB_PUBLIC_DIR, "data")
+
+WEB_JSON_PROJECTIONS_SEASON_TEAMS    <- file.path(WEB_DATA_DIR, "projections_season_teams.json")
+WEB_JSON_PROJECTIONS_SEASON_PLAYERS  <- file.path(WEB_DATA_DIR, "projections_season_players.json")
+WEB_JSON_PROJECTIONS_MODELS_METADATA <- file.path(WEB_DATA_DIR, "projections_models_metadata.json")
+WEB_JSON_PROJECTIONS_DIAGNOSTICS     <- file.path(WEB_DATA_DIR, "projections_diagnostics.json")
+WEB_JSON_PLAYOFF_SERIES_MATCHUPS     <- file.path(WEB_DATA_DIR, "playoff_series_matchups.json")
+WEB_JSON_PLAYOFF_BRACKET_CURRENT     <- file.path(
+  WEB_DATA_DIR, sub("\\.rds$", ".json", basename(CACHE_PLAYOFF_BRACKET_CURRENT)))
+WEB_JSON_FINALS_GAME_PREDICTIONS     <- file.path(
+  WEB_DATA_DIR, sub("\\.rds$", ".json", basename(CACHE_FINALS_GAME_PREDICTIONS)))
+WEB_JSON_FINALS_SERIES_BACKTEST      <- file.path(
+  WEB_DATA_DIR, sub("\\.rds$", ".json", basename(CACHE_FINALS_SERIES_BACKTEST)))
+WEB_JSON_SHOTS_INDEX                 <- file.path(WEB_DATA_DIR, "shots_index.json")
+WEB_JSON_SHOTS_METADATA              <- file.path(WEB_DATA_DIR, "shots_metadata.json")
+WEB_JSON_OFFSEASON_TRANSACTIONS      <- file.path(WEB_DATA_DIR, "offseason_transactions.json")
+WEB_JSON_OFFSEASON_TEAMS             <- file.path(WEB_DATA_DIR, "offseason_teams.json")
+WEB_JSON_OFFSEASON_DRAFT             <- file.path(WEB_DATA_DIR, "offseason_draft.json")
+WEB_JSON_COACHING_METRICS            <- file.path(WEB_DATA_DIR, "coaching_metrics.json")
+WEB_JSON_DEFENSIVE_METRICS           <- file.path(WEB_DATA_DIR, "defensive_metrics.json")
+WEB_JSON_PLAYER_DNA_PROFILES         <- file.path(WEB_DATA_DIR, "player_dna_profiles.json")
+WEB_JSON_CLUTCH_LEVERAGE_METRICS     <- file.path(WEB_DATA_DIR, "clutch_leverage_metrics.json")
+WEB_JSON_CBA_CAP_SHEET               <- file.path(WEB_DATA_DIR, "cba_cap_sheet.json")
+
+WEB_DATA_FILES <- c(
+  WEB_JSON_PROJECTIONS_SEASON_TEAMS,
+  WEB_JSON_PROJECTIONS_SEASON_PLAYERS,
+  WEB_JSON_PROJECTIONS_MODELS_METADATA,
+  WEB_JSON_PROJECTIONS_DIAGNOSTICS,
+  WEB_JSON_PLAYOFF_SERIES_MATCHUPS,
+  WEB_JSON_PLAYOFF_BRACKET_CURRENT,
+  WEB_JSON_FINALS_GAME_PREDICTIONS,
+  WEB_JSON_FINALS_SERIES_BACKTEST,
+  WEB_JSON_SHOTS_INDEX,
+  WEB_JSON_SHOTS_METADATA,
+  WEB_JSON_OFFSEASON_TRANSACTIONS,
+  WEB_JSON_OFFSEASON_TEAMS,
+  WEB_JSON_OFFSEASON_DRAFT,
+  WEB_JSON_COACHING_METRICS,
+  WEB_JSON_DEFENSIVE_METRICS,
+  WEB_JSON_PLAYER_DNA_PROFILES,
+  WEB_JSON_CLUTCH_LEVERAGE_METRICS,
+  WEB_JSON_CBA_CAP_SHEET
+)
+
+# ------------------------------------------------------------------------------------------
 # RAPM & Opponent Adjustments (GitHub issues #71, #76, #77, #78, #79, #82)
 # ------------------------------------------------------------------------------------------
 # Ridge regression penalty parameter (lambda) for possession-level RAPM.

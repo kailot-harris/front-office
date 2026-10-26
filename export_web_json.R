@@ -1195,22 +1195,28 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
   # ----------------------------------------------------------------------------
   # 6. Write JSON Files
   # ----------------------------------------------------------------------------
-  out_teams_json    <- file.path(output_dir, "projections_season_teams.json")
-  out_players_json  <- file.path(output_dir, "projections_season_players.json")
-  out_meta_json     <- file.path(output_dir, "projections_models_metadata.json")
-  out_diag_json     <- file.path(output_dir, "projections_diagnostics.json")
-  out_playoffs_json <- file.path(output_dir, "playoff_series_matchups.json")
-  # Filename tracks the cache artifact's own name (and so CURRENT_SEASON through
-  # config.R's CACHE_PLAYOFF_BRACKET_CURRENT) instead of restating the year here.
-  out_bracket_json  <- file.path(
-    output_dir, sub("\\.rds$", ".json", basename(CACHE_PLAYOFF_BRACKET_CURRENT)))
-  # Same rule for the Finals per-game payload: the filename tracks
-  # CACHE_FINALS_GAME_PREDICTIONS rather than restating the season here.
-  out_finals_json   <- file.path(
-    output_dir, sub("\\.rds$", ".json", basename(CACHE_FINALS_GAME_PREDICTIONS)))
-  # Same rule again for the walk-forward series backtest.
-  out_backtest_json <- file.path(
-    output_dir, sub("\\.rds$", ".json", basename(CACHE_FINALS_SERIES_BACKTEST)))
+  # Output paths come from config.R's WEB_JSON_* constants, which tools/publish_web.R
+  # also reads as WEB_DATA_FILES -- one name per artifact, in one place. The
+  # season-keyed three still track their cache artifacts' own basenames; that rule
+  # moved into config.R alongside the constants rather than being restated here.
+  #
+  # `output_dir` is still honoured so a caller can export elsewhere (a test fixture
+  # tree, a scratch dir). At the default it uses the constants as-is; when it is
+  # overridden the basenames are re-rooted onto it. Dropping the parameter would have
+  # been simpler and would have broken every caller that exports to a temp directory.
+  .out <- function(const) {
+    same <- identical(normalizePath(output_dir, winslash = "/", mustWork = FALSE),
+                      normalizePath(WEB_DATA_DIR, winslash = "/", mustWork = FALSE))
+    if (same) const else file.path(output_dir, basename(const))
+  }
+  out_teams_json    <- .out(WEB_JSON_PROJECTIONS_SEASON_TEAMS)
+  out_players_json  <- .out(WEB_JSON_PROJECTIONS_SEASON_PLAYERS)
+  out_meta_json     <- .out(WEB_JSON_PROJECTIONS_MODELS_METADATA)
+  out_diag_json     <- .out(WEB_JSON_PROJECTIONS_DIAGNOSTICS)
+  out_playoffs_json <- .out(WEB_JSON_PLAYOFF_SERIES_MATCHUPS)
+  out_bracket_json  <- .out(WEB_JSON_PLAYOFF_BRACKET_CURRENT)
+  out_finals_json   <- .out(WEB_JSON_FINALS_GAME_PREDICTIONS)
+  out_backtest_json <- .out(WEB_JSON_FINALS_SERIES_BACKTEST)
 
   write_json(teams_df, out_teams_json, pretty = TRUE, auto_unbox = TRUE)
   write_json(player_projections, out_players_json, pretty = TRUE, auto_unbox = TRUE)
