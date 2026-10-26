@@ -139,6 +139,8 @@ function Show-NflTaskPlan {
         Write-Host ("  Arguments         : {0}" -f $argDisplay)
         Write-Host ("  WorkingDirectory  : {0}" -f $t.WorkingDirectory)
         Write-Host ("  Trigger           : Daily at {0}" -f $t.At)
+        Write-Host  "  LogonType         : S4U    (run whether logged on or not; no stored password)"
+        Write-Host  "  RunLevel          : Limited"
         Write-Host  "  StartWhenAvailable: True   (run ASAP after a missed start)"
         Write-Host  "  WakeToRun         : True   (wake the machine for this run)"
         Write-Host  "  ExecutionTimeLimit: 2 hours"
@@ -183,8 +185,26 @@ function Register-NflScheduledTasks {
     }
 
     if ($PublishMode -like 'publish*') {
-        Write-Warning ("Registering the publish task in LIVE mode '{0}'. Issue #42 (unattended push credential) must be proven first -- see docs/SCHEDULING.md." -f $PublishMode)
+        Write-Warning ("Registering the publish task in LIVE mode '{0}'. This pushes for real. Issue #42 (unattended push credential) was proven green on 2026-10-25, so this is permitted -- but that result is point-in-time: S4U credential reachability rides on the user's DPAPI store and can break with no code change on a password change, keyring reset or GCM store-backend change. Treat a push failure as alertable, not impossible. See docs/SCHEDULING.md." -f $PublishMode)
     }
+
+    # Principal. Set EXPLICITLY rather than left to the default: Register-ScheduledTask
+    # with no -Principal silently yields LogonType Interactive, i.e. "run only when the
+    # user is logged on" -- which quietly reintroduces a login dependency into a job
+    # whose entire purpose is running unattended. A logged-off machine (or a restart
+    # nobody logs back into) would simply skip the 09:00 deploy, with no error, at a
+    # time nobody is watching. That is the failure mode issue #42 exists to prevent.
+    #
+    # S4U ("run whether logged on or not", no stored password) removes that dependency.
+    # It is safe to use here because issue #42 PROVED it on this machine on 2026-10-25:
+    # a real push from a genuine session-0 S4U task succeeded for both NFL_analytics and
+    # front-office, with GH_TOKEN/GITHUB_TOKEN unset, so Git Credential Manager is
+    # reachable from session 0. See docs/SCHEDULING.md for the log evidence.
+    #
+    # RunLevel Limited, not Highest: these tasks run R and git, neither of which needs
+    # elevation. Registering them is what needs an elevated session, not running them.
+    $userId    = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+    $principal = New-ScheduledTaskPrincipal -UserId $userId -LogonType S4U -RunLevel Limited
 
     foreach ($t in $plan) {
         # New-ScheduledTaskAction rejects an empty -Argument, so splat it
@@ -213,13 +233,14 @@ function Register-NflScheduledTasks {
         if ($existing) {
             # Idempotent path: update the existing task in place, no duplicate.
             if ($PSCmdlet.ShouldProcess($t.Name, 'Update scheduled task')) {
-                Set-ScheduledTask -TaskName $t.Name -Action $action -Trigger $trigger -Settings $settings | Out-Null
+                Set-ScheduledTask -TaskName $t.Name -Action $action -Trigger $trigger `
+                    -Settings $settings -Principal $principal | Out-Null
                 Write-Host "  [UPDATED]    $($t.Name)"
             }
         } else {
             if ($PSCmdlet.ShouldProcess($t.Name, 'Register scheduled task')) {
                 Register-ScheduledTask -TaskName $t.Name -Action $action -Trigger $trigger `
-                    -Settings $settings -Description $t.Description -Force | Out-Null
+                    -Settings $settings -Principal $principal -Description $t.Description -Force | Out-Null
                 Write-Host "  [REGISTERED] $($t.Name)"
             }
         }
