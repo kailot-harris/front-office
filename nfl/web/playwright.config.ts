@@ -3,10 +3,16 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * End-to-end config.
  *
- * Runs against a PRODUCTION build (`next build && next start`) rather than
- * `next dev`, because every page here is statically prerendered — dev mode
- * would exercise a different rendering path from the one that ships, and would
- * hide a build-time data error behind an on-demand compile.
+ * Runs against the PRODUCTION EXPORT (`next build` -> `out/`, served statically)
+ * rather than `next dev`, because every page here is statically prerendered —
+ * dev mode would exercise a different rendering path from the one that ships,
+ * and would hide a build-time data error behind an on-demand compile.
+ *
+ * NOT `next start`: next.config.mjs sets `output: 'export'`, and next start
+ * refuses to run against that ("does not work with output: export"), exiting 1.
+ * While this config pointed at it the managed server never came up and the whole
+ * e2e stage reported PASS 0/0 — six specs that never executed. scripts/serve-export.mjs
+ * serves `out/` instead, which is also literally what GitHub Pages serves.
  *
  * Set E2E_BASE_URL to point at an already-running server (or a deployment) and
  * the managed webServer is skipped.
@@ -59,11 +65,15 @@ export default defineConfig({
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
-        command: `npx next start -p ${PORT}`,
+        // Serves the exported out/ dir. The specs navigate to bare paths ('/',
+        // '/matchups'), so the server accepts page URLs with or without the
+        // '/nfl' basePath while still requiring it on build-emitted assets —
+        // see the header of scripts/serve-export.mjs for why that asymmetry.
+        command: `node scripts/serve-export.mjs ${PORT}`,
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
-        // Not piped: buffering next start's output through the driver is what
+        // Not piped: buffering the server's output through the driver is what
         // provokes the protocol error noted above.
         stdout: 'ignore',
         stderr: 'pipe',

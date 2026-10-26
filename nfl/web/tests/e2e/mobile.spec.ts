@@ -4,33 +4,45 @@
  * Two things make mobile selectors subtle here, and both are encoded below
  * rather than guessed at:
  *
- *  1. Navigation is rendered TWICE — a `lg:`-only <aside> for desktop and a
- *     separate `lg:hidden` slide-in panel for small screens — so an
+ *  1. Navigation is rendered TWICE — a `md:`-only <aside> for desktop and a
+ *     separate `md:hidden` drawer overlay for small screens — so an
  *     unqualified `a[href=...]` grabs whichever copy comes first in the DOM.
- *  2. The drawer is hidden with `-translate-x-full`, not `display: none`. It
- *     keeps a non-empty bounding box, so Playwright still reports it as
- *     "visible". Open/closed has to be decided on GEOMETRY: is the panel
- *     inside the viewport or parked off the left edge?
+ *     The drawer copy is the one with no <aside> ancestor.
+ *  2. The drawer is CONDITIONALLY RENDERED (`{isOpen && ...}` in Sidebar.tsx),
+ *     not parked off-screen with a transform. Closed means absent from the
+ *     DOM, so "is it open?" is `does a non-<aside> nav link exist, on screen?`
+ *     and not a question about its x offset alone.
  */
 import { devices, expect, test, type Page } from '@playwright/test';
-import { ROUTES } from './routes';
+import { ROUTES, linkHref } from './routes';
 
 test.use({ ...devices['Pixel 7'] });
 
-const toggle = (page: Page) => page.locator('button[class*="fixed"][class*="top-4"]').first();
+const toggle = (page: Page) => page.locator('div[class*="md:hidden"] button').first();
 
-/** The drawer's own copy of a nav link, identified by its x position. */
-async function drawerLinkX(page: Page, href: string): Promise<number | null> {
-  return page.evaluate((h) => {
-    const links = Array.from(document.querySelectorAll(`a[href="${h}"]`));
-    // The drawer copy is the one inside a fixed-position panel that is either
-    // parked at a negative x or sitting at the left edge of the viewport.
-    // The mobile drawer is an <aside class="lg:hidden fixed ... w-72 ...">,
-    // distinct from the desktop <aside class="hidden lg:flex ... w-64 ...">.
-    const panelLink = links.find((a) => a.closest('aside[class*="w-72"]'));
-    if (!panelLink) return null;
-    return Math.round(panelLink.getBoundingClientRect().x);
-  }, href);
+/**
+ * The drawer panel. Sidebar.tsx renders the same <NavContent /> in the desktop
+ * <aside> and in the drawer, and the home page ALSO links to several routes from
+ * its own content cards, so a nav link has to be matched by its panel ancestor
+ * and not by "the first one" or "the one outside the <aside>". `max-w-[85vw]` is
+ * what makes the panel's class list unique: the desktop aside is `lg:w-72` and a
+ * tooltip elsewhere in the sidebar is `w-72 sm:w-80`.
+ */
+const PANEL = 'div[class*="max-w-[85vw]"]';
+
+/**
+ * The x position of the drawer's own copy of a nav link, or null when the drawer
+ * is not rendered at all.
+ */
+async function drawerLinkX(page: Page, path: string): Promise<number | null> {
+  return page.evaluate(
+    ([h, panel]) => {
+      const panelLink = document.querySelector(`${panel} a[href="${h}"]`);
+      if (!panelLink) return null;
+      return Math.round(panelLink.getBoundingClientRect().x);
+    },
+    [linkHref(path), PANEL],
+  );
 }
 
 const isDrawerOpen = async (page: Page) => {
@@ -39,11 +51,12 @@ const isDrawerOpen = async (page: Page) => {
 };
 
 test.describe('mobile navigation drawer', () => {
-  test('the drawer is parked off-screen until it is opened', async ({ page }) => {
+  test('is not rendered until the hamburger is tapped', async ({ page }) => {
     await page.goto('/', { waitUntil: 'networkidle' });
-    const x = await drawerLinkX(page, '/teams');
-    expect(x, 'no drawer nav panel found on a phone viewport').not.toBeNull();
-    expect(x!, `the drawer is already on screen at x=${x} before being opened`).toBeLessThan(0);
+    expect(
+      await drawerLinkX(page, '/teams'),
+      'a drawer nav panel is in the DOM before the hamburger was tapped',
+    ).toBeNull();
   });
 
   test('the hamburger toggle has an accessible name', async ({ page }) => {
@@ -54,17 +67,17 @@ test.describe('mobile navigation drawer', () => {
     expect(name, 'the mobile menu button is icon-only with no accessible name').not.toBe('');
   });
 
-  test('the hamburger slides the drawer in and reveals every route', async ({ page }) => {
+  test('the hamburger opens the drawer and reveals every route', async ({ page }) => {
     await page.goto('/', { waitUntil: 'networkidle' });
     await toggle(page).click();
     await page.waitForTimeout(400);
 
-    expect(await isDrawerOpen(page), 'the drawer did not slide into the viewport').toBe(true);
+    expect(await isDrawerOpen(page), 'the drawer did not open').toBe(true);
 
     for (const route of ROUTES) {
       const x = await drawerLinkX(page, route.path);
       expect(x, `${route.path} is not present in the mobile drawer`).not.toBeNull();
-      expect(x!, `${route.path} is in the drawer but still off-screen at x=${x}`).toBeGreaterThanOrEqual(0);
+      expect(x!, `${route.path} is in the drawer but off-screen at x=${x}`).toBeGreaterThanOrEqual(0);
     }
   });
 
@@ -73,7 +86,7 @@ test.describe('mobile navigation drawer', () => {
     await toggle(page).click();
     await page.waitForTimeout(400);
 
-    await page.locator('aside[class*="w-72"] a[href="/matchups"]').first().click();
+    await page.locator(`${PANEL} a[href="${linkHref('/matchups')}"]`).first().click();
     await expect(page.locator('h1').first()).toContainText(/Weekly Matchup/i);
     await page.waitForTimeout(400);
     expect(await isDrawerOpen(page), 'the drawer stayed open over the destination page').toBe(false);
@@ -91,27 +104,22 @@ test.describe('mobile navigation drawer', () => {
     expect(await isDrawerOpen(page), 'tapping the backdrop did not dismiss the drawer').toBe(false);
   });
 
-  test('the toggle is still tappable once the drawer is open', async ({ page }) => {
-    // The toggle is `fixed top-4 left-4 z-50` and the drawer panel is
-    // `fixed top-0 left-0 w-72 z-50`. Equal z-index means DOM order decides,
-    // and the drawer is rendered after the button — so the open drawer paints
-    // over its own close control. The X icon is visible but not hittable, and
-    // the drawer has no close button of its own, leaving the backdrop as the
-    // only way out.
+  test('the drawer has a close control that is actually hittable', async ({ page }) => {
+    // The panel renders its own X at `absolute top-3 right-3`, inside the
+    // panel and above the backdrop. The hamburger in the page header is NOT
+    // the way back out — the overlay is `fixed inset-0 z-50` and covers it —
+    // so this X is the only affordance other than the backdrop, and it has to
+    // be the element that actually receives the tap at its own centre.
     await page.goto('/', { waitUntil: 'networkidle' });
     await toggle(page).click();
     await page.waitForTimeout(400);
+    expect(await isDrawerOpen(page)).toBe(true);
 
-    const covering = await page.evaluate(() => {
-      const t = document.querySelector('button[class*="fixed"][class*="top-4"]');
-      if (!t) return 'toggle not found';
-      const r = t.getBoundingClientRect();
-      const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
-      if (!top || t === top || t.contains(top)) return null;
-      const panel = top.closest('aside[class*="w-72"]');
-      return panel ? 'the open drawer panel' : `${top.tagName.toLowerCase()}`;
-    });
-    expect(covering, 'something is painted over the drawer toggle while the drawer is open').toBeNull();
+    const close = page.locator(`${PANEL} button`).first();
+    await expect(close, 'the open drawer has no close button').toBeVisible();
+    await close.click();
+    await page.waitForTimeout(400);
+    expect(await isDrawerOpen(page), 'the drawer close button did not dismiss the drawer').toBe(false);
   });
 
   test('the drawer can be dismissed without reloading the page', async ({ page }) => {

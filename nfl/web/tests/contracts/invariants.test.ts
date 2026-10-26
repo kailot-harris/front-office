@@ -978,10 +978,19 @@ describe('value bets', () => {
   });
 
   it('EV and expected CLV are broadly aligned across the slate', () => {
+    // An empty slate is a legitimate state — no bet clears the threshold on a
+    // bye week, between seasons, or whenever the engine recommends nothing —
+    // and a mean over no rows is not a claim this invariant can test. The
+    // `Math.max(1, n)` that used to guard the divide turned that case into a
+    // mean of exactly 0 and then failed the `> 0` assertion, so an empty slate
+    // read as a defect. The other assertions in this block degrade to a
+    // vacuous pass over an empty slate; this one now does the same.
+    if (d.active_bets.length === 0) return;
+
     // A single row can legitimately pair positive EV with negative expected
     // CLV (they measure different things), but the slate as a whole should not
     // recommend bets whose average expected closing-line value is negative.
-    const mean = sumBy(d.active_bets, (b) => b.exp_clv) / Math.max(1, d.active_bets.length);
+    const mean = sumBy(d.active_bets, (b) => b.exp_clv) / d.active_bets.length;
     expect(mean, 'the recommended slate has negative mean expected CLV').toBeGreaterThan(0);
   });
 });

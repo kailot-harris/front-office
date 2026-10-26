@@ -39,15 +39,21 @@ test.describe('accessibility baseline', () => {
         expect(await page.locator('main').count()).toBeGreaterThan(0);
       });
 
-      test('every image has alt text', async ({ page }) => {
+      test('every image declares alt text', async ({ page }) => {
         await page.goto(route.path, { waitUntil: 'networkidle' });
+        // The defect is a MISSING alt attribute, which makes a screen reader
+        // announce the filename. An explicit `alt=""` is the correct markup for
+        // a decorative image and must pass: the sport icons in the sidebar sit
+        // directly beside their own text label, so announcing them again would
+        // be noise. Asserting on a non-empty alt instead failed all ten routes
+        // on those icons while flagging nothing a user would notice.
         const missing = await page.locator('img').evaluateAll((imgs) =>
           imgs
-            .filter((img) => !(img as HTMLImageElement).alt?.trim())
+            .filter((img) => !img.hasAttribute('alt'))
             .map((img) => (img as HTMLImageElement).currentSrc || (img as HTMLImageElement).src)
             .slice(0, 5),
         );
-        expect(missing, `${route.path} has images with no alt text`).toEqual([]);
+        expect(missing, `${route.path} has images with no alt attribute`).toEqual([]);
       });
 
       test('every form control has an accessible name', async ({ page }) => {
