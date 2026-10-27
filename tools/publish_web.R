@@ -194,7 +194,7 @@ source("logging_utils.R")
     if (!nzchar(user_name) || !nzchar(user_email)) {
       cfg <- suppressWarnings(system2("git", c("-C", shQuote(repo), "config", "--global", "--get-regexp", "^user\\."),
                                        stdout = TRUE, stderr = TRUE,
-                                       env = paste0("HOME=", shQuote(Sys.getenv("USERPROFILE", Sys.getenv("HOME"))))))
+                                       env = paste0("HOME=", Sys.getenv("USERPROFILE", Sys.getenv("HOME")))))
       if (is.null(attr(cfg, "status"))) {
         for (line in cfg) {
           if (startsWith(line, "user.name ")) user_name <- sub("^user\\.name ", "", line)
