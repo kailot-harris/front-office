@@ -87,6 +87,14 @@ if "%MODE_LABEL%"=="" (
     exit /b 2
 )
 
+REM Issue #53: cmd.exe (and Task Scheduler's non-interactive session, which also
+REM launches through cmd.exe/.bat) does not set HOME the way Git Bash does, so git
+REM calls made via R's system2() can't find ~/.gitconfig and refuse to commit with
+REM "unable to auto-detect email address". tools/publish_web.R's .pw_git() now
+REM passes identity explicitly via `git -c user.name=... -c user.email=...` for the
+REM commit step regardless of HOME, but set HOME here too as defense-in-depth.
+if not defined HOME set HOME=%USERPROFILE%
+
 cd /d "%PROJECT_DIR%"
 
 REM Resolve Rscript exactly as the sibling wrappers do. WHERE_RC keeps %ERRORLEVEL%

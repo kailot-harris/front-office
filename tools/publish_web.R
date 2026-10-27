@@ -184,6 +184,29 @@ source("logging_utils.R")
 # Small helpers
 # ------------------------------------------------------------------------------
 .pw_git <- function(repo, args) {
+  # cmd.exe (and Task Scheduler's .bat-launched non-interactive session) does not
+  # resolve HOME the way Git Bash does, so git can't find ~/.gitconfig and refuses
+  # to commit with "unable to auto-detect email address". Pass identity explicitly
+  # via -c so commits don't depend on HOME/USERPROFILE resolution in the invoking shell.
+  if (identical(args[1], "commit")) {
+    user_name <- Sys.getenv("GIT_AUTHOR_NAME", Sys.getenv("GIT_COMMITTER_NAME", ""))
+    user_email <- Sys.getenv("GIT_AUTHOR_EMAIL", Sys.getenv("GIT_COMMITTER_EMAIL", ""))
+    if (!nzchar(user_name) || !nzchar(user_email)) {
+      cfg <- suppressWarnings(system2("git", c("-C", shQuote(repo), "config", "--global", "--get-regexp", "^user\\."),
+                                       stdout = TRUE, stderr = TRUE,
+                                       env = paste0("HOME=", shQuote(Sys.getenv("USERPROFILE", Sys.getenv("HOME"))))))
+      if (is.null(attr(cfg, "status"))) {
+        for (line in cfg) {
+          if (startsWith(line, "user.name ")) user_name <- sub("^user\\.name ", "", line)
+          if (startsWith(line, "user.email ")) user_email <- sub("^user\\.email ", "", line)
+        }
+      }
+    }
+    if (nzchar(user_name) && nzchar(user_email)) {
+      args <- c("-c", shQuote(paste0("user.name=", user_name)),
+                "-c", shQuote(paste0("user.email=", user_email)), args)
+    }
+  }
   out <- suppressWarnings(system2("git", c("-C", shQuote(repo), args),
                                   stdout = TRUE, stderr = TRUE))
   status <- attr(out, "status")
