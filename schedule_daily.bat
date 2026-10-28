@@ -12,8 +12,9 @@ REM      exactly this on 2026-10-01 (renv breakage hard-failed its steps 2 and 3
 REM      with "Execution halted" while the log still claimed success).
 REM   2. Single-generation log rotation, so the wrapper log stays bounded.
 REM
-REM Deliberately NOT ported: the WNBA wrapper's seasonal month guard. The NFL
-REM season window is different and nothing in #39 asks for one.
+REM   3. Seasonal month guard (NFL_analytics#41): only run during the NFL season
+REM      window (September through February, months 09,10,11,12,01,02), skipping
+REM      March through August (03..08) unless NFL_IGNORE_SEASON_GUARD=1 is set.
 REM
 REM Step count differs from NBA/WNBA on purpose. Those wrappers run 3 steps because
 REM their bet-grading and +EV steps live outside their DAG. NFL's run_full_pipeline.R
@@ -76,6 +77,34 @@ if exist "%LOG_FILE%" (
     )
 )
 
+REM ------------------------------------------------------------------------------
+REM Seasonal guard (NFL_analytics#41): only run during the NFL season window
+REM (September through February: months 09, 10, 11, 12, 01, 02, covering Kickoff
+REM through Super Bowl). Outside this window (March through August: 03..08), log
+REM and exit 0 without churning caches against an inactive league. Set
+REM NFL_IGNORE_SEASON_GUARD=1 in the environment to force an out-of-season run.
+REM ------------------------------------------------------------------------------
+for /f "usebackq" %%I in (`powershell -NoProfile -Command "(Get-Date).ToString('MM')"`) do set CUR_MM=%%I
+
+if defined NFL_IGNORE_SEASON_GUARD goto :inseason
+if "%CUR_MM%"=="03" goto :offseason
+if "%CUR_MM%"=="04" goto :offseason
+if "%CUR_MM%"=="05" goto :offseason
+if "%CUR_MM%"=="06" goto :offseason
+if "%CUR_MM%"=="07" goto :offseason
+if "%CUR_MM%"=="08" goto :offseason
+goto :inseason
+
+:offseason
+echo ================================================================== >> "%LOG_FILE%"
+echo NFL PIPELINE AUTOMATED RUN CHECK: %DATE% %TIME% (month=%CUR_MM%) >> "%LOG_FILE%"
+echo ================================================================== >> "%LOG_FILE%"
+echo [SKIPPED] Current month %CUR_MM% is outside the NFL season window (September-February). >> "%LOG_FILE%"
+echo [SKIPPED] Pipeline NOT run - avoiding stale/off-season cache churn (set NFL_IGNORE_SEASON_GUARD=1 to override). >> "%LOG_FILE%"
+echo. >> "%LOG_FILE%"
+exit /b 0
+
+:inseason
 cd /d "%PROJECT_DIR%"
 
 REM Resolve Rscript the same way the sibling wrappers do: prefer one already on

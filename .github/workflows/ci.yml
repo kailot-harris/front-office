@@ -13,18 +13,13 @@
 #          command rather than re-listing the stages here, so the merge gate and
 #          the local command cannot drift apart.
 #
-#   r    - the R pipeline, PARSE ONLY. This repo has zero R test files -- not
-#          a `tests/` directory, not a `testthat` suite, nothing -- so the R
-#          job is NBA's cheap parse-everything syntax check and nothing else.
-#          A test-running step here would have no tests to run; rather than
-#          fabricate a suite to fill the slot, the job does the one real check
-#          available and says so. If R tests are ever written, copy NBA's
-#          .github/scripts/run-tests.R and add a step.
-#
-#          Because nothing is evaluated, the job needs no R packages at all,
-#          so it has no install step, no library cache and no
-#          r-dependencies.txt. That is why it finishes in under a minute and
-#          why this repo lacking a renv.lock does not block it.
+#   r    - the R pipeline syntax check + foundational pure-R unit tests.
+#          Runs .github/scripts/parse-all.R across every tracked .R file and
+#          .github/scripts/run-tests.R across tests/test_*.R. The unit tests
+#          exercise pure functions from config.R, logging_utils.R,
+#          market_odds_engine.R, tools/refresh_live_results.R, and
+#          tools/publish_web.R using base R only, so the job needs no CRAN
+#          install step and finishes in under a minute.
 #
 # Nothing in CI will ever run the pipeline itself: every stage hits paid
 # sports-data APIs and takes hours.
@@ -116,7 +111,7 @@ jobs:
           if-no-files-found: warn
 
   r:
-    name: R syntax
+    name: R pipeline tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -129,6 +124,9 @@ jobs:
 
       # parse() only: no package is loaded and no file is evaluated, so this
       # cannot reach an API, touch cache/ or need a dependency install.
-      # Measured 2026-10-26: 80 tracked .R files, 0 failures.
       - name: Parse every tracked R file
         run: Rscript .github/scripts/parse-all.R
+
+      # Offline pure-R unit tests (base R only, zero external packages or APIs).
+      - name: Run R unit tests
+        run: Rscript .github/scripts/run-tests.R

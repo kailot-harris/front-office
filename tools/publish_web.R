@@ -48,7 +48,10 @@
 #      mtime. An mtime check is structurally incapable of catching a stale
 #      salary_cap_profiles.json or value_bets.json; the log_warn() is the only
 #      staleness signal for those. See config.R:676-711.
-#
+#   F  payload provenance - reads the embedded ISO-8601 UTC `generated_at`
+#      stamp out of every WEB_DATA_FILES payload and requires it to be no older
+#      than the run start. Catches verbatim-republish fallbacks and file copies
+#      that advance mtime without regenerating the payload content.
 #   G  web contracts  - runs the web suite's `contracts` stage against the
 #      UNCOMMITTED payload, so a payload whose numbers disagree with each
 #      other cannot be published. Every other assertion here asks when a file
@@ -408,6 +411,64 @@ source("logging_utils.R")
 }
 
 # ------------------------------------------------------------------------------
+# ASSERTION F - payload provenance.
+#
+# Reads the `generated_at` stamp out of each WEB_DATA_FILES payload that has
+# one and requires it to be no older than the run start. Verbatim republish
+# fallbacks (republish_json_verbatim) advance the file's mtime while preserving
+# the older embedded `generated_at`, so Assertion F structurally catches what
+# an mtime check (Assertion A) cannot.
+#
+# Only the top of each file is read. `generated_at` is written as the first
+# key of the root object (or first array element), so reading the first 4096
+# bytes avoids slurping large JSON documents through jsonlite.
+# ------------------------------------------------------------------------------
+.pw_payload_generated_at <- function(path, head_bytes = 4096L) {
+  if (!file.exists(path)) return(NA)
+  con <- file(path, open = "rb")
+  on.exit(close(con), add = TRUE)
+  raw <- readBin(con, "raw", n = head_bytes)
+  txt <- rawToChar(raw[raw != as.raw(0)])
+  Encoding(txt) <- "UTF-8"
+  m <- regmatches(txt, regexpr('"generated_at"[[:space:]]*:[[:space:]]*"[^"]+"', txt))
+  if (!length(m)) return(NA)
+  val <- sub('^.*:[[:space:]]*"([^"]+)".*$', "\\1", m[1])
+  as.POSIXct(val, format = "%Y-%m-%dT%H:%M:%S", tz = "UTC")
+}
+
+.assert_payload_provenance <- function(run_start) {
+  files <- WEB_DATA_FILES
+  rows <- character(0)
+  stale <- character(0)
+  unstamped <- character(0)
+  for (f in files) {
+    g <- .pw_payload_generated_at(f)
+    if (is.na(g)) {
+      unstamped <- c(unstamped, basename(f))
+      next
+    }
+    fresh <- !is.na(run_start) && g >= run_start
+    if (!fresh) stale <- c(stale, basename(f))
+    rows <- c(rows, sprintf("    %-9s %-40s generated_at=%s",
+                            if (fresh) "[FRESH]" else "[STALE]", basename(f),
+                            format(g, "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")))
+  }
+  if (length(unstamped)) {
+    rows <- c(rows,
+              sprintf("    [NO STAMP] %d payload(s) carry no generated_at, so F cannot speak for them:",
+                      length(unstamped)),
+              paste0("               ", unstamped))
+  }
+  list(id = "F", name = "payload provenance (embedded generated_at at or after run start)",
+       pass = length(stale) == 0 && length(unstamped) == 0, fatal = TRUE,
+       stale = stale, unstamped = unstamped,
+       detail = rows,
+       summary = sprintf("%d stamped payload(s) fresh, %d stale, %d carry no stamp",
+                         length(files) - length(stale) - length(unstamped),
+                         length(stale), length(unstamped)))
+}
+
+# ------------------------------------------------------------------------------
 # ASSERTION G - web dataset contracts.
 #
 # Ported from WNBA Analytics' tools/publish_web.R on 2026-10-26, the same day
@@ -666,6 +727,7 @@ publish_web <- function(dry_run = TRUE,
     .assert_nonempty_diff(repo_root),
     .assert_publish_branch(repo_root, publish_branch),
     .assert_log_scan(log_lines, run_start, fail_on_exporter_warnings),
+    .assert_payload_provenance(run_start),
     .assert_web_contracts(skip_contracts)
   )
 
@@ -726,6 +788,8 @@ publish_web <- function(dry_run = TRUE,
     publish_branch_actual = checks[[4]]$branch,
     exporter_warnings = checks[[5]]$warnings,
     pending_changes = checks[[3]]$changed,
+    stale_payloads = checks[[6]]$stale,
+    unstamped_payloads = checks[[6]]$unstamped,
     value_bets_published = .pw_value_bet_count(),
     contracts_pass = isTRUE(checks[[length(checks)]]$pass),
     checks = checks, published = FALSE, steps = list()

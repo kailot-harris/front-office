@@ -23,6 +23,7 @@ const division = z.enum([
   'NFC East', 'NFC North', 'NFC South', 'NFC West',
 ]);
 const isoishDate = z.string().regex(/^\d{4}-\d{2}-\d{2}/, 'expected a YYYY-MM-DD prefix');
+const isoUtcStamp = z.string().datetime();
 
 /**
  * Full letter-grade ladder the upstream coaching export can emit, including
@@ -63,8 +64,8 @@ export const teamStandingSchema = z.object({
 }).strict();
 
 export const standingsDatasetSchema = z.object({
+  generated_at: isoUtcStamp,
   season: z.number().int().min(2020).max(2100),
-  generated_at: z.string().min(10),
   total_teams: z.number().int(),
   teams: z.array(teamStandingSchema),
 }).strict();
@@ -106,6 +107,7 @@ export const matchupGameSchema = z.object({
 }).strict();
 
 export const matchupsDatasetSchema = z.object({
+  generated_at: isoUtcStamp,
   active_week: z.number().int().min(1).max(22),
   available_weeks: z.array(z.number().int().min(1).max(22)).nonempty(),
   total_games: z.number().int().min(0),
@@ -113,6 +115,7 @@ export const matchupsDatasetSchema = z.object({
 }).strict();
 
 export const teamEpaProfileSchema = z.object({
+  generated_at: isoUtcStamp,
   team: teamCode,
   team_name: z.string().min(3),
   conference,
@@ -159,8 +162,8 @@ export const playoffBubbleSchema = z.object({
 }).strict();
 
 export const playoffDatasetSchema = z.object({
+  generated_at: isoUtcStamp,
   season: z.number().int(),
-  generated_at: z.string().min(10),
   n_simulations: z.number().int().min(1),
   seeding_method: z.string().min(1),
   afc_seeds: z.array(playoffSeedSchema).length(7),
@@ -170,6 +173,7 @@ export const playoffDatasetSchema = z.object({
 }).strict();
 
 export const qbProfileSchema = z.object({
+  generated_at: isoUtcStamp,
   player_name: z.string().min(2),
   team: teamCode,
   jersey_number: z.number().int().min(0).max(99),
@@ -201,6 +205,7 @@ const numberOrArray = z.union([z.number(), z.array(z.number()).nonempty()]);
 const stringOrArray = z.union([z.string(), z.array(z.string()).nonempty()]);
 
 export const diagnosticsDatasetSchema = z.object({
+  generated_at: isoUtcStamp,
   season: z.union([z.number().int(), z.array(z.number().int()).nonempty()]),
   last_evaluated: stringOrArray,
   n_games_graded: numberOrArray,
@@ -234,11 +239,13 @@ export const valueBetSchema = z.object({
 }).strict();
 
 export const valueBetsDatasetSchema = z.object({
+  generated_at: isoUtcStamp,
   total_bets: z.number().int().min(0),
   active_bets: z.array(valueBetSchema),
 }).strict();
 
 export const visualMediaItemSchema = z.object({
+  generated_at: isoUtcStamp,
   filename: z.string().regex(/^[\w.\-]+\.(gif|png|jpg|jpeg|webp)$/i, 'unsafe or unexpected filename'),
   title: z.string().min(1),
   category: z.enum(['standings', 'epa', 'elo', 'heatmaps', 'players', 'general']),
@@ -305,6 +312,7 @@ export const leagueTopContractSchema = z.object({
 }).strict();
 
 export const salaryCapDatasetSchema = z.object({
+  generated_at: isoUtcStamp,
   season: z.number().int(),
   cap_ceiling: z.number().min(100).max(1000),
   source: z.string().min(1),

@@ -13,7 +13,7 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { REPO_WEB_ROOT, coaching, matchups, media, qbs, standings, teamEpa } from '../helpers/datasets';
+import { DATASET_FILES, REPO_WEB_ROOT, coaching, loadRaw, matchups, media, qbs, standings, teamEpa } from '../helpers/datasets';
 
 const TYPES_SRC = fs.readFileSync(path.join(REPO_WEB_ROOT, 'lib', 'types.ts'), 'utf-8');
 
@@ -130,5 +130,81 @@ describe('lib/types.ts optional fields reflect real optionality', () => {
           'declares `home_score?: number` (no null). Widen the type.'
         : 'lib/types.ts now admits null but the data no longer ships it — tighten the type back.',
     ).toBe(true);
+  });
+});
+
+function extractInterfaceFields(name: string): { all: Set<string>; optional: Set<string> } {
+  const m = new RegExp(`export interface ${name}\\s*\\{`).exec(TYPES_SRC);
+  if (!m) throw new Error(`Interface ${name} not found in lib/types.ts`);
+  let depth = 1;
+  let i = m.index + m[0].length;
+  let top = '';
+  while (i < TYPES_SRC.length && depth > 0) {
+    const ch = TYPES_SRC[i];
+    if (ch === '{') depth++;
+    else if (ch === '}') depth--;
+    else if (depth === 1) top += ch;
+    i++;
+  }
+  const all = new Set<string>();
+  const optional = new Set<string>();
+  for (const line of top.split('\n')) {
+    const t = line.trim();
+    if (!t || t.startsWith('//') || t.startsWith('/*') || t.startsWith('*')) continue;
+    const f = t.match(/^([A-Za-z0-9_]+)(\?)?\s*:/);
+    if (f) {
+      all.add(f[1]);
+      if (f[2]) optional.add(f[1]);
+    }
+  }
+  return { all, optional };
+}
+
+const keysOf = (rows: Record<string, unknown>[]) => {
+  const s = new Set<string>();
+  for (const r of rows) for (const k of Object.keys(r)) s.add(k);
+  return s;
+};
+
+interface ParityCase {
+  file: (typeof DATASET_FILES)[keyof typeof DATASET_FILES];
+  iface: string;
+  pick?: (json: unknown) => Record<string, unknown>[];
+}
+
+const parityCases: ParityCase[] = [
+  { file: 'standings_projections.json', iface: 'StandingsDataset', pick: (j) => [j as Record<string, unknown>] },
+  { file: 'standings_projections.json', iface: 'TeamStanding', pick: (j) => (j as { teams: Record<string, unknown>[] }).teams },
+  { file: 'matchups_current_week.json', iface: 'MatchupsDataset', pick: (j) => [j as Record<string, unknown>] },
+  { file: 'matchups_current_week.json', iface: 'MatchupGame', pick: (j) => (j as { matchups: Record<string, unknown>[] }).matchups },
+  { file: 'team_epa_profiles.json', iface: 'TeamEpaProfile' },
+  { file: 'playoff_picture.json', iface: 'PlayoffDataset', pick: (j) => [j as Record<string, unknown>] },
+  { file: 'playoff_picture.json', iface: 'PlayoffSeed', pick: (j) => (j as { afc_seeds: Record<string, unknown>[] }).afc_seeds },
+  { file: 'playoff_picture.json', iface: 'PlayoffBubbleTeam', pick: (j) => (j as { afc_bubble: Record<string, unknown>[] }).afc_bubble },
+  { file: 'player_qb_profiles.json', iface: 'QbProfile' },
+  { file: 'model_diagnostics.json', iface: 'DiagnosticsDataset', pick: (j) => [j as Record<string, unknown>] },
+  { file: 'model_diagnostics.json', iface: 'CalibrationBin', pick: (j) => (j as { calibration_curve: Record<string, unknown>[] }).calibration_curve },
+  { file: 'value_bets.json', iface: 'ValueBetsDataset', pick: (j) => [j as Record<string, unknown>] },
+  { file: 'value_bets.json', iface: 'ValueBet', pick: (j) => (j as { active_bets: Record<string, unknown>[] }).active_bets },
+  { file: 'visual_media_index.json', iface: 'VisualMediaItem' },
+  { file: 'coaching_profiles.json', iface: 'CoachProfile' },
+  { file: 'salary_cap_profiles.json', iface: 'SalaryCapDataset', pick: (j) => [j as Record<string, unknown>] },
+  { file: 'salary_cap_profiles.json', iface: 'TeamCapProfile', pick: (j) => (j as { teams: Record<string, unknown>[] }).teams },
+  { file: 'salary_cap_profiles.json', iface: 'LeagueTopContract', pick: (j) => (j as { top_league_contracts: Record<string, unknown>[] }).top_league_contracts },
+];
+
+describe('TypeScript interface vs JSON payload key parity', () => {
+  it.each(parityCases)('$iface (lib/types.ts) matches keys in $file', ({ file, iface, pick }) => {
+    const { all, optional } = extractInterfaceFields(iface);
+    const json = loadRaw(file);
+    const rows = pick ? pick(json) : (json as Record<string, unknown>[]);
+    if (rows.length === 0) return;
+    const jsonKeys = keysOf(rows);
+
+    const missingInJson = [...all].filter((f) => !optional.has(f) && !jsonKeys.has(f));
+    const undocumented = [...jsonKeys].filter((k) => !all.has(k));
+
+    expect(missingInJson, `${iface} declares required fields absent from ${file}: ${missingInJson.join(', ')}`).toEqual([]);
+    expect(undocumented, `${file} ships keys not declared on ${iface} in lib/types.ts: ${undocumented.join(', ')}`).toEqual([]);
   });
 });
