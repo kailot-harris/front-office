@@ -319,9 +319,9 @@ grade_walkforward_games <- function(epa, sch, fatigue, season) {
     left_join(qb_flags |> rename(home_qb_backup = qb_backup_started), by = c("season", "week", "home_team" = "team")) |>
     left_join(qb_flags |> rename(away_qb_backup = qb_backup_started), by = c("season", "week", "away_team" = "team"))
 
-  imp_h <- american_to_prob(games$home_ml)
-  imp_a <- american_to_prob(games$away_ml)
-  games$market_prob <- ifelse(is.na(games$home_ml) | is.na(games$away_ml), NA_real_, imp_h / (imp_h + imp_a))
+  # Devigged market odds removed per Phase 0/4 delinking
+  # games$market_prob removed
+  games$market_prob <- NA_real_
 
   # Elo run sequentially across full history THROUGH `season` (unlike model_backtest_harness.R's
   # historical-calibration run, which stops at season - 1 on purpose) so its sequential state is
@@ -336,9 +336,7 @@ grade_walkforward_games <- function(epa, sch, fatigue, season) {
     select(game_id, elo_margin_pts, fatigue_adj)
   games <- games |> left_join(elo_results, by = "game_id")
 
-  blend_with_market <- function(model_prob, market_prob, weight) {
-    ifelse(is.na(market_prob), model_prob, weight * market_prob + (1 - weight) * model_prob)
-  }
+
 
   home_adj <- ifelse(is.na(games$home_qb_backup), 0, as.integer(games$home_qb_backup))
   away_adj <- ifelse(is.na(games$away_qb_backup), 0, as.integer(games$away_qb_backup))
@@ -348,8 +346,8 @@ grade_walkforward_games <- function(epa, sch, fatigue, season) {
   elo_margin <- games$elo_margin_pts + games$fatigue_adj -
     QB_INJURY_RATING_PENALTY_PTS * home_adj + QB_INJURY_RATING_PENALTY_PTS * away_adj
 
-  ridge_prob <- blend_with_market(pnorm(ridge_margin / NFL_MARGIN_SIGMA), games$market_prob, MARKET_BLEND_WEIGHT)
-  elo_prob   <- blend_with_market(pnorm(elo_margin / NFL_MARGIN_SIGMA), games$market_prob, MARKET_BLEND_WEIGHT)
+  ridge_prob <- pnorm(ridge_margin / NFL_MARGIN_SIGMA)
+  elo_prob   <- pnorm(elo_margin / NFL_MARGIN_SIGMA)
   games$home_win_prob_prod <- 0.5 * ridge_prob + 0.5 * elo_prob
 
   games <- games |>
