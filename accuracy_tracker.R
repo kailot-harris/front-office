@@ -46,7 +46,6 @@ source("config.R")
 source("logging_utils.R")
 
 source("team_ratings_engine.R")      # -> compute_power_rating_points()
-source("market_odds_engine.R")       # -> american_to_prob()
 source("tools/backtest_common.R")    # -> grade_walkforward_games(), accuracy-history cache helpers
 source("tools/qb_injury_features.R")
 source("tools/ridge_massey_model.R") # -> predict_ridge_massey_walkforward()
