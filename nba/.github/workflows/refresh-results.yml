@@ -1,0 +1,98 @@
+name: Refresh live results
+
+# Fills finished game scores into the committed web JSON (web/public/data) so
+# the dashboard does not carry last night's games as "pending" between full
+# pipeline runs. This is slots B and C of the converged schedule; slot A
+# (13:00 UTC) is the full DAG on the workstation and remains the authority on
+# everything else.
+#
+# This job deliberately does NOT run the R pipeline. It needs no renv restore,
+# no API key and no cache/ directory: tools/refresh_live_results.R patches the
+# already-committed JSON from ESPN's public scoreboard. See the header of that
+# script for what it will and will not touch - in particular that it grades but
+# never re-predicts, and that it reconciles the slate counts because the web
+# contract suite checks them.
+#
+# WHY ESPN AND NOT hoopR HERE: the whole reason this job can be cheap is that
+# the payload carries ESPN game_ids, so no package set and no 12:20 UTC
+# upstream wait is involved. A job that restored renv to call hoopR would be
+# slot A again, on worse hardware.
+#
+# IT DOES NOT DEPLOY. Pushing here only updates this repo; the live site is
+# built from the front-office aggregator, which subtree-pulls this repo first.
+# The aggregator's sync-sports.yml runs 30 minutes behind each slot and does
+# that hop, so no human is in the path - but the two crons are coupled, and
+# moving one without the other means publishing into a window nothing reads.
+
+on:
+  schedule:
+    # Slot C - overnight. 05:00 UTC = 01:00 ET. Late West Coast tip-offs are
+    # routinely still running at 04:30 UTC, so this is the first hour at which
+    # a full night's slate is reliably final. Cron is UTC-only; it does not
+    # shift with DST, which is why the margin is an hour rather than minutes.
+    - cron: '0 5 * * *'
+    # Slot B - afternoon. 22:00 UTC = 18:00 ET: picks up afternoon games before
+    # the evening slate starts, and catches anything slot C missed.
+    - cron: '0 22 * * *'
+  workflow_dispatch:
+    inputs:
+      lookback_days:
+        description: How many days back to sweep (ESPN is queried one date at a time)
+        required: false
+        default: '3'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-results
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.2'
+          use-public-rspm: true
+
+      # jsonlite only. This repo has no renv.lock to restore from
+      # (FOUR_REPO_COMPARISON section 5.4) and deliberately does not need one
+      # here: the script's entire dependency surface is jsonlite plus base R's
+      # url() connection.
+      - name: Install jsonlite
+        run: install.packages("jsonlite")
+        shell: Rscript {0}
+
+      - name: Refresh results from the ESPN scoreboard
+        run: Rscript tools/refresh_live_results.R ${{ inputs.lookback_days || '3' }}
+
+      # NOTE on permissions: a repo whose default GITHUB_TOKEN scope is
+      # read-only (Settings > Actions > Workflow permissions) cannot push from
+      # here. The workflow-level `permissions: contents: write` above is what
+      # lets this step work. Don't drop it.
+      - name: Commit any changes
+        run: |
+          # --porcelain scoped to the one file the script owns, not `git diff`:
+          # diff only sees tracked files, and scoping the path means an
+          # unrelated dirty file can never be swept into a data commit.
+          if [ -z "$(git status --porcelain -- web/public/data/matchups_slates.json)" ]; then
+            echo "No newly finished games; nothing to commit."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web/public/data/matchups_slates.json
+          git commit -m "chore(data): refresh finished game results
+
+          Written by .github/workflows/refresh-results.yml from ESPN's public
+          scoreboard. Scores, plus the grading and slate counts that follow
+          mechanically from them - no prediction was recomputed and no model
+          was re-fit."
+          git push
