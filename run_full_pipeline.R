@@ -328,6 +328,16 @@ run_full_pipeline <- function(season = MLB_CURRENT_SEASON, force_refresh = FALSE
 
   # Stages 11-13 (market odds, risk management, notify bets) pruned per Phase 1 (Issue #14).
   # ----------------------------------------------------------------------------
+  # Stage 13.5: Forecast Accuracy Governance Engine (accuracy_governance.R)
+  # ----------------------------------------------------------------------------
+  run_stage(
+    script_name   = "accuracy_governance.R",
+    description   = "Compute Model Forecast Governance and Calibration Metrics",
+    call_fn       = "run_mlb_accuracy_governance",
+    output        = file.path(CACHE_DIR, "accuracy_governance.rds")
+  )
+
+  # ----------------------------------------------------------------------------
   # Stage 14: Next.js Web Dashboard JSON Exporter (tools/export_web_data.R)
   # ----------------------------------------------------------------------------
   run_stage(
