@@ -281,7 +281,7 @@ export const CbaLeagueOverviewSchema = z
     // and block the very publish that would ship the first stamped copy.
     // TODO: drop .optional() once one pipeline run has written a stamped
     // cba_cap_sheet.json -- at that point a missing stamp is a real defect.
-    generated_at: z.string().datetime().optional(),
+    generated_at: z.string().datetime(),
     season: z.string().regex(/^\d{4}-\d{4}$/),
     cbaThresholdSources: z.string().min(2).optional(),
     salaryCap: num.positive(),
@@ -670,7 +670,7 @@ export const PlayoffMatchupsCatalogSchema = z
     // before any run can ship a stamped copy.
     // TODO: drop .optional() once one pipeline run has written a stamped
     // playoff_series_matchups.json.
-    generated_at: z.string().datetime().optional(),
+    generated_at: z.string().datetime(),
     teams: z.record(teamEnum, TeamPlayoffProfileSchema),
     sampleMatchups: z.array(PlayoffSeriesMatchupResultSchema).min(1),
   })
@@ -790,7 +790,7 @@ export const MatchupsDatasetSchema = z
   .object({
     season: z.number().int().positive(),
     season_label: seasonSpan,
-    generated_at: z.string(),
+    generated_at: z.string().datetime(),
     slate_granularity: z.literal('week_of_season'),
     season_start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     season_end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

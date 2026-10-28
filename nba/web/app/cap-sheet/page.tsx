@@ -12,6 +12,7 @@ function getCbaData(): CbaLeagueOverview {
   const filePath = path.join(process.cwd(), 'public', 'data', 'cba_cap_sheet.json');
   if (!fs.existsSync(filePath)) {
     return {
+      generated_at: new Date().toISOString(),
       season: '2026-2027',
       cbaThresholdSources: 'Fallback values; live cba_cap_sheet.json was not found.',
       salaryCap: 165.0,
@@ -33,6 +34,7 @@ function getCbaData(): CbaLeagueOverview {
   } catch (err) {
     console.error('Failed to load cba_cap_sheet.json:', err);
     return {
+      generated_at: new Date().toISOString(),
       season: '2026-2027',
       cbaThresholdSources: 'Fallback values; live cba_cap_sheet.json was not found.',
       salaryCap: 165.0,

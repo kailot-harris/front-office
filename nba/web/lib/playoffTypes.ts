@@ -76,7 +76,7 @@ export interface PlayoffMatchupsCatalog {
    * the contract suite -- and therefore the fatal publish gate -- red the first
    * time a stamped payload was written.
    */
-  generated_at?: string;
+  generated_at: string;
   teams: Record<string, TeamPlayoffProfile>;
   sampleMatchups: PlayoffSeriesMatchupResult[];
 }
