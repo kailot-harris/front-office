@@ -174,6 +174,10 @@ run_stage("playoff_simulator.R", "Execute 8-Man Playoff Series Monte Carlo (10,0
 run_stage("prediction_accuracy_logger.R", "Reconcile Outcomes & Log Pre-Game Win Probabilities",
           output = file.path(CACHE_DIR, "prediction_accuracy_log.rds"))
 
+# 8.5. Forecast Accuracy Governance & Calibration Engine (Issue #17)
+run_stage("accuracy_governance.R", "Compute Forecast Accuracy Governance & Calibration Diagnostics",
+          output = file.path(CACHE_DIR, "accuracy_governance.rds"))
+
 # 9. Web-Facing Per-Game Slates (must run AFTER prediction_accuracy_logger.R, which
 # writes the graded prediction log this stage reads, and after the box-score cache
 # ingestion that supplies the real final scores it joins on game_id.)
