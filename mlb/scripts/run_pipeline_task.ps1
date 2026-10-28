@@ -57,6 +57,14 @@ $ErrorActionPreference = 'Continue'
 $ProjectDir = "c:\Users\kailo\kayceeslices\front-office\MLB Analytics"
 Set-Location -Path $ProjectDir
 
+# Defense-in-depth for git commit identity resolution under Task Scheduler
+# (cf. NFL_analytics#53): Windows PowerShell / Task Scheduler sessions do not
+# set HOME by default, so git invoked from R's system2() can fail to locate
+# ~/.gitconfig unless HOME is populated or publish_web.R passes -c user.name/email.
+if (-not $env:HOME -and $env:USERPROFILE) {
+    $env:HOME = $env:USERPROFILE
+}
+
 $LogFile = Join-Path $ProjectDir "logs\scheduled_runs.log"
 function Write-Log([string]$Message) {
     Add-Content -Path $LogFile -Value ("[{0}] {1}" -f (Get-Date).ToString("yyyy-MM-dd HH:mm:ss"), $Message) -Encoding utf8
@@ -172,12 +180,20 @@ if ($PipelineExit -eq 0) {
 # the only evidence that answers the question. A pipeline failure still shows up
 # in the gate's own assertion A or D, which is where it belongs.
 # ------------------------------------------------------------------------------
-$PublishArgs = switch ($Mode) {
+#Explicitly typed [string[]] and wrapped in @(...). Without both, PowerShell
+# 5.1's `switch` unrolls a single-element array block (`{ @('--publish') }`)
+# into a scalar System.String, and splatting `@PublishArgs` onto a native
+# executable then iterates System.String as IEnumerable<char> -- passing
+# `'-' '-' 'p' 'u' 'b' 'l' 'i' 's' 'h'` as nine separate argv tokens.
+# publish_web.R saw `"--publish" %in% opts == FALSE`, ran in DRY RUN mode, and
+# exited 0 while this wrapper logged "Publish gate passed in mode LIVE PUBLISH"
+# (root cause of the 2026-10-27 15:50 silent no-op).
+[string[]]$PublishArgs = @(switch ($Mode) {
     'dryrun'         { @() }
-    'strict'         { @('--strict-warnings') }
-    'publish'        { @('--publish') }
-    'publish-strict' { @('--publish', '--strict-warnings') }
-}
+    'strict'         { '--strict-warnings' }
+    'publish'        { '--publish' }
+    'publish-strict' { '--publish'; '--strict-warnings' }
+})
 $ModeLabel = switch ($Mode) {
     'dryrun'         { 'DRY RUN' }
     'strict'         { 'DRY RUN (strict warnings)' }
@@ -204,6 +220,17 @@ if (-not (Test-Path $PublishScript)) {
 $PublishOutput = & $Rscript $PublishScript @PublishArgs 2>&1
 $PublishExit = if ($null -eq $LASTEXITCODE) { -1 } else { $LASTEXITCODE }
 Add-NativeOutputToLog $PublishOutput
+
+# Belt-and-braces check against the 2026-10-27 silent dry-run defect: if the
+# caller asked for a live publish and the gate exited 0, the gate's own banner
+# MUST confirm LIVE PUBLISH rather than DRY RUN.
+if ($PublishExit -eq 0 -and ($Mode -eq 'publish' -or $Mode -eq 'publish-strict')) {
+    $JoinedOut = ($PublishOutput | ForEach-Object { $_.ToString() }) -join "`n"
+    if ($JoinedOut -match 'DRY RUN - nothing will be published' -or $JoinedOut -notmatch 'proceeding to commit and push') {
+        $PublishExit = 2
+        Write-Log "[ERROR] [Step 2/2] Mode '$Mode' requested LIVE PUBLISH, but publish_web.R ran in DRY RUN mode (argument passing failure)."
+    }
+}
 
 # publish_web.R exits 0 only when nothing fatal failed and 1 on any fatal
 # failure, "so a scheduled caller can branch on it". This is that caller.

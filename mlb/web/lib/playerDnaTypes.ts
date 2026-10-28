@@ -97,6 +97,7 @@ export interface PlayerDnaProfile {
 }
 
 export interface PlayerDnaCatalog {
+  generated_at: string;
   updatedAt: string;
   eraBaseline: string; // "1980-2026"
   totalPlayers: number;

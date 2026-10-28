@@ -55,6 +55,7 @@ export interface ClutchProfile {
 }
 
 export interface ClutchCatalog {
+  generated_at: string;
   updatedAt: string;
   totalProfiles: number;
   clutchLeaderBatters: string[];

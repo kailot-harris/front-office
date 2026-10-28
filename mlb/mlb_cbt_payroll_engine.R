@@ -64,10 +64,10 @@ run_mlb_cbt_payroll_engine <- function() {
     TOR = list(p26 = 248.5, p27 = 205.0, p28 = 160.0),
     ATL = list(p26 = 236.0, p27 = 215.0, p28 = 190.0),
     TEX = list(p26 = 232.0, p27 = 195.0, p28 = 165.0),
-    SFG = list(p26 = 224.0, p27 = 190.0, p28 = 150.0),
+    SF  = list(p26 = 224.0, p27 = 190.0, p28 = 150.0),
     BOS = list(p26 = 218.0, p27 = 185.0, p28 = 145.0),
     CHC = list(p26 = 215.0, p27 = 180.0, p28 = 140.0),
-    SDP = list(p26 = 210.0, p27 = 185.0, p28 = 160.0),
+    SD  = list(p26 = 210.0, p27 = 185.0, p28 = 160.0),
     ARI = list(p26 = 195.0, p27 = 165.0, p28 = 135.0),
     SEA = list(p26 = 186.0, p27 = 155.0, p28 = 130.0),
     BAL = list(p26 = 182.0, p27 = 160.0, p28 = 145.0),
@@ -76,13 +76,13 @@ run_mlb_cbt_payroll_engine <- function() {
     DET = list(p26 = 154.0, p27 = 135.0, p28 = 110.0),
     MIL = list(p26 = 148.0, p27 = 120.0, p28 = 95.0),
     CIN = list(p26 = 142.0, p27 = 118.0, p28 = 92.0),
-    KCR = list(p26 = 138.0, p27 = 115.0, p28 = 90.0),
+    KC  = list(p26 = 138.0, p27 = 115.0, p28 = 90.0),
     CLE = list(p26 = 126.0, p27 = 102.0, p28 = 82.0),
     WSH = list(p26 = 122.0, p27 = 98.0,  p28 = 78.0),
     COL = list(p26 = 118.0, p27 = 92.0,  p28 = 72.0),
     LAA = list(p26 = 115.0, p27 = 90.0,  p28 = 70.0),
     PIT = list(p26 = 98.0,  p27 = 82.0,  p28 = 65.0),
-    TBR = list(p26 = 95.0,  p27 = 78.0,  p28 = 62.0),
+    TB  = list(p26 = 95.0,  p27 = 78.0,  p28 = 62.0),
     MIA = list(p26 = 88.0,  p27 = 72.0,  p28 = 58.0),
     CHW = list(p26 = 82.0,  p27 = 68.0,  p28 = 52.0),
     ATH = list(p26 = 78.0,  p27 = 64.0,  p28 = 50.0) # Athletics (Sacramento/Vegas)
@@ -130,10 +130,10 @@ run_mlb_cbt_payroll_engine <- function() {
     if (tm == "OAK") return("ATH")
     if (tm == "WAS") return("WSH")
     if (tm == "CHW" || tm == "CWS") return("CHW")
-    if (tm == "SF") return("SFG")
-    if (tm == "KC") return("KCR")
-    if (tm == "SD") return("SDP")
-    if (tm == "TB") return("TBR")
+    if (tm == "SFG") return("SF")
+    if (tm == "KCR") return("KC")
+    if (tm == "SDP") return("SD")
+    if (tm == "TBR") return("TB")
     tm
   }
   

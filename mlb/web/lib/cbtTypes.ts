@@ -59,6 +59,7 @@ export interface FranchiseCbtProfile {
 }
 
 export interface CbtLeagueOverview {
+  generated_at: string;
   season: string;
   baseThreshold: number;
   tier1Threshold: number;
