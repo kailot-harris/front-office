@@ -6,12 +6,10 @@ import { PostseasonOpsData, WorldSeriesData } from '@/lib/types';
 import {
   Trophy,
   Flame,
-  DollarSign,
   ShieldCheck,
   AlertTriangle,
   Activity,
   Award,
-  TrendingUp,
   Download,
   Swords,
 } from 'lucide-react';
@@ -33,7 +31,7 @@ const formatSeriesDate = (iso: string): string =>
 
 export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data, worldSeries }) => {
   const ws = worldSeries ?? null;
-  const [activeTab, setActiveTab] = useState<'bracket' | 'bullpen' | 'market'>('bracket');
+  const [activeTab, setActiveTab] = useState<'bracket' | 'bullpen' | 'tactical'>('bracket');
   const [bullpenLeague, setBullpenLeague] = useState<'All' | 'AL' | 'NL'>('All');
 
   const alSeeds = useMemo(
@@ -116,28 +114,58 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data, 
     );
   };
 
-  // Bets withheld by the export-side provenance gate (tools/export_web_data.R).
-  // Absent on JSON exported before that gate existed, which is treated as
-  // "nothing withheld" rather than "unknown" -- the rows that are present still
-  // carry market_data_source and are flagged individually in the table.
-  const withheldBets = data.value_bets_provenance?.n_withheld ?? 0;
+  // Tactical Matchup Advantage & Upset Vulnerability derived from bracket and bullpen status
+  const tacticalTeams = useMemo(() => {
+    const bpMap = new Map(data.bullpen_status.map((b) => [b.team, b]));
+    return data.bracket.map((team) => {
+      const bp = bpMap.get(team.team);
+      const fatigue = bp?.avg_bullpen_fatigue ?? 25;
+      const vuln = bp?.bullpen_vulnerability ?? 20;
+      const elo = team.elo_rating;
+      // Normal win prob vs average league opponent (Elo 1500)
+      const winProbVsAvg = 1 / (1 + Math.pow(10, (1500 - elo) / 400));
+      // Game Quality / Excitement Index
+      const qualityIndex = Math.max(10, Math.min(99, Math.round((elo / 1500) * (1 - 2 * Math.abs(winProbVsAvg - 0.5)) * 100)));
+      // Upset Vulnerability Score: based on high elo coupled with bullpen fatigue
+      const upsetVulnerability = Math.max(5, Math.min(95, Math.round(((elo - 1450) / 100) * 0.4 * vuln + (fatigue * 0.6))));
+      const riskTier = upsetVulnerability > 60 ? 'HIGH' : upsetVulnerability > 40 ? 'MODERATE' : 'STABLE';
 
-  const handleExportValueBets = () => {
+      return {
+        ...team,
+        avg_fatigue: fatigue,
+        bullpen_vuln: vuln,
+        workload_grade: bp?.vulnerability_grade ?? 'Well Rested',
+        win_prob_vs_avg: winProbVsAvg,
+        quality_index: qualityIndex,
+        upset_vulnerability: upsetVulnerability,
+        risk_tier: riskTier,
+        high_lev_arms: bp?.active_relievers ?? 0,
+        fatigued_arms: bp?.relievers_fatigued ?? 0,
+      };
+    }).sort((a, b) => b.upset_vulnerability - a.upset_vulnerability);
+  }, [data.bracket, data.bullpen_status]);
+
+  const handleExportTactical = () => {
     exportToCsv(
-      data.value_bets as unknown as Record<string, unknown>[],
+      tacticalTeams as unknown as Record<string, unknown>[],
       [
-        { key: 'Matchup', label: 'Matchup' },
-        { key: 'game_date', label: 'Date' },
-        { key: 'Recommended_Bet', label: 'Recommended Bet' },
-        { key: 'Book', label: 'Sportsbook' },
-        { key: 'Line', label: 'Moneyline' },
-        { key: 'Model_Win_Prob', label: 'Model Win %' },
-        { key: 'EV_Percent', label: 'EV %' },
-        { key: 'Bankroll_Rec', label: 'Kelly Bankroll %' },
+        { key: 'team_name', label: 'Club' },
+        { key: 'seed', label: 'Seed' },
+        { key: 'league', label: 'League' },
+        { key: 'elo_rating', label: 'Elo Rating' },
+        { key: 'quality_index', label: 'Excitement Index' },
+        { key: 'upset_vulnerability', label: 'Upset Vulnerability' },
+        { key: 'risk_tier', label: 'Vulnerability Tier' },
+        { key: 'avg_fatigue', label: 'Bullpen Fatigue' },
+        { key: 'workload_grade', label: 'Workload Status' },
       ],
-      'market-edge-value-bets'
+      'tactical-matchup-vulnerability'
     );
   };
+
+  const highRiskCount = tacticalTeams.filter((t) => t.risk_tier === 'HIGH').length;
+  const avgPostseasonElo = Math.round(data.bracket.reduce((acc, t) => acc + t.elo_rating, 0) / data.bracket.length);
+  const avgFatigue = (tacticalTeams.reduce((acc, t) => acc + t.avg_fatigue, 0) / tacticalTeams.length).toFixed(1);
 
   return (
     <div className="space-y-6">
@@ -185,21 +213,21 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data, 
 
         <button
           type="button"
-          onClick={() => setActiveTab('market')}
+          onClick={() => setActiveTab('tactical')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
-            activeTab === 'market'
+            activeTab === 'tactical'
               ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
               : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
-          <DollarSign className="w-4 h-4" />
-          <span>Market Edge (+EV) & Kelly Risk</span>
+          <Swords className="w-4 h-4" />
+          <span>Tactical Matchups & Upset Vulnerability</span>
           <span
             className={`text-xs font-mono px-2 py-0.5 rounded-full ${
-              activeTab === 'market' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
+              activeTab === 'tactical' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
             }`}
           >
-            {data.risk_state.risk_status}
+            {highRiskCount} Elevated
           </span>
         </button>
       </div>
@@ -564,82 +592,80 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data, 
         </div>
       )}
 
-      {/* TAB 3: Market Edge (+EV Bets) & Kelly Risk Monitor */}
-      {activeTab === 'market' && (
+      {/* TAB 3: Tactical Matchup Advantage & Upset Vulnerability Index */}
+      {activeTab === 'tactical' && (
         <div className="space-y-6">
-          {/* Risk Management KPI Cards */}
+          {/* Tactical KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4">
               <div className="flex items-center justify-between text-xs text-slate-400 uppercase font-semibold">
-                <span>Bankroll & Stop-Loss Status</span>
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>Elevated Upset Risk Clubs</span>
+                <AlertTriangle className="w-4 h-4 text-red-400" />
               </div>
-              <div className="text-2xl font-extrabold text-emerald-400 mt-1">
-                {data.risk_state.risk_status}
+              <div className="text-2xl font-extrabold text-red-400 mt-1 font-mono">
+                {highRiskCount} Teams
               </div>
-              <div className="text-xs text-slate-400 mt-1 font-mono">
-                Bankroll: {data.risk_state.current_bankroll.toFixed(1)}u (Max DD{' '}
-                {data.risk_state.max_dd_pct.toFixed(2)}%)
+              <div className="text-xs text-slate-400 mt-1">
+                High fatigue & high leverage strain
               </div>
             </div>
 
             <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4">
               <div className="flex items-center justify-between text-xs text-slate-400 uppercase font-semibold">
-                <span>Active Kelly Multiplier</span>
+                <span>Mean Field Elo Rating</span>
                 <Activity className="w-4 h-4 text-indigo-400" />
               </div>
               <div className="text-2xl font-extrabold text-white mt-1 font-mono">
-                {data.risk_state.active_kelly_multiplier.toFixed(3)}x Kelly
+                {avgPostseasonElo}
               </div>
               <div className="text-xs text-slate-400 mt-1">
-                Tiers: 0.250 / 0.175 / 0.100 / 0.000 Halt
+                Postseason field baseline
               </div>
             </div>
 
             <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4">
               <div className="flex items-center justify-between text-xs text-slate-400 uppercase font-semibold">
-                <span>Beat Closing Line (CLV)</span>
-                <TrendingUp className="w-4 h-4 text-amber-400" />
+                <span>Avg Bullpen Fatigue</span>
+                <Flame className="w-4 h-4 text-amber-400" />
               </div>
               <div className="text-2xl font-extrabold text-amber-400 mt-1 font-mono">
-                {data.risk_state.beat_clv_rate_pct.toFixed(1)}%
+                {avgFatigue} / 100
               </div>
-              <div className="text-xs text-slate-400 mt-1 font-mono">
-                7d CLV: +{data.risk_state.rolling_7d_clv_pct.toFixed(2)}% ({data.risk_state.total_bets_audited}{' '}
-                bets)
+              <div className="text-xs text-slate-400 mt-1">
+                Weighted reliever workload index
               </div>
             </div>
 
             <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4">
               <div className="flex items-center justify-between text-xs text-slate-400 uppercase font-semibold">
-                <span>Current Drawdown</span>
-                <AlertTriangle className="w-4 h-4 text-sky-400" />
+                <span>Tactical Governance Status</span>
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
               </div>
-              <div className="text-2xl font-extrabold text-sky-400 mt-1 font-mono">
-                -{data.risk_state.current_dd_pct.toFixed(2)}%
+              <div className="text-2xl font-extrabold text-emerald-400 mt-1">
+                ACTIVE
               </div>
               <div className="text-xs text-slate-400 mt-1 truncate">
-                {data.risk_state.status_message}
+                100% Endogenous Matchup Analytics
               </div>
             </div>
           </div>
 
-          {/* +EV Value Bets Table */}
+          {/* Tactical Matchups & Vulnerability Table */}
           <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
             <div className="p-4 bg-surface/80 border-b border-slate-800 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-bold text-white">
-                  Devigged Market Odds & +EV Kelly Value Recommendations
+                  Tactical Matchup Advantage & Upset Vulnerability Index
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Generated by mlb_market_odds_engine.R comparing 4-Factor Pitcher Elo probabilities against devigged sportsbook lines.
+                  Evaluates team quality, projected win probability curves, and bullpen exhaustion risks for postseason contenders.
                 </p>
               </div>
               <button
                 type="button"
-                onClick={handleExportValueBets}
+                onClick={handleExportTactical}
                 title="Export CSV"
-                aria-label="Export table as CSV"
+                aria-label="Export tactical metrics as CSV"
                 data-export-exclude
                 className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors flex-shrink-0"
               >
@@ -647,89 +673,66 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data, 
               </button>
             </div>
 
-            {/* Provenance notice. tools/export_web_data.R withholds any bet whose
-                market_data_source is not LIVE_ODDS_API, because the odds engine
-                invents a plausible-looking fixture slate when the live feed is
-                empty. Without this line the table would be indistinguishable
-                from a day that genuinely had no +EV edges. */}
-            {withheldBets > 0 && (
-              <div className="px-4 py-2.5 bg-amber-500/10 border-b border-amber-500/30 text-xs text-amber-200 flex items-start gap-2">
-                <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                <span>
-                  {withheldBets} of {data.value_bets_provenance?.n_total} recommendation
-                  {withheldBets === 1 ? '' : 's'} withheld &mdash; no live market provenance
-                  {data.value_bets_provenance?.withheld_sources?.length
-                    ? ` (${data.value_bets_provenance.withheld_sources.join(', ')})`
-                    : ''}
-                  . The live odds feed returned no markets, so these were generated from a
-                  fixture slate and are not real prices.
-                </span>
-              </div>
-            )}
-
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-800 bg-surface/90 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                    <th className="py-3.5 px-4">Matchup</th>
-                    <th className="py-3.5 px-3">Recommended Bet</th>
-                    <th className="py-3.5 px-3">Sportsbook</th>
-                    <th className="py-3.5 px-3 text-right">Moneyline</th>
-                    <th className="py-3.5 px-3 text-right">Model Win%</th>
-                    <th className="py-3.5 px-3 text-right">Expected Value (+EV%)</th>
-                    <th className="py-3.5 px-4 text-right">Fractional Kelly Stake</th>
+                    <th className="py-3.5 px-4">Club</th>
+                    <th className="py-3.5 px-3">Seed</th>
+                    <th className="py-3.5 px-3 text-right">Elo Rating</th>
+                    <th className="py-3.5 px-3 text-right">Win Prob vs Avg</th>
+                    <th className="py-3.5 px-3 text-right">Excitement Index</th>
+                    <th className="py-3.5 px-3 text-right">Bullpen Fatigue</th>
+                    <th className="py-3.5 px-3 text-right">Upset Vulnerability</th>
+                    <th className="py-3.5 px-4 text-right">Vulnerability Tier</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 text-sm">
-                  {data.value_bets.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="py-6 text-center text-slate-400 text-xs">
-                        {withheldBets > 0
-                          ? 'No publishable +EV value bets: every recommendation in the current slate cache failed the live-provenance check.'
-                          : 'No active +EV value bets in current slate cache.'}
+                  {tacticalTeams.map((team) => (
+                    <tr key={team.team} className="hover:bg-slate-800/40">
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2">
+                          <TeamLogo team={team.team} size="sm" />
+                          <div>
+                            <div className="font-bold text-white">{team.team_name}</div>
+                            <div className="text-[11px] text-slate-400">{team.division} &bull; {team.wins} Wins</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-3 font-mono text-slate-300">
+                        {team.league} #{team.seed}
+                      </td>
+                      <td className="py-3.5 px-3 text-right font-mono text-slate-200">
+                        {team.elo_rating.toFixed(0)}
+                      </td>
+                      <td className="py-3.5 px-3 text-right font-mono text-indigo-300 font-semibold">
+                        {(team.win_prob_vs_avg * 100).toFixed(1)}%
+                      </td>
+                      <td className="py-3.5 px-3 text-right font-mono text-emerald-400 font-bold">
+                        {team.quality_index}/100
+                      </td>
+                      <td className="py-3.5 px-3 text-right font-mono text-slate-300">
+                        {team.avg_fatigue.toFixed(1)}
+                        <span className="text-[10px] text-slate-500 ml-1">({team.workload_grade})</span>
+                      </td>
+                      <td className="py-3.5 px-3 text-right font-mono font-bold text-amber-300">
+                        {team.upset_vulnerability}/100
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <span
+                          className={`px-2 py-0.5 rounded text-xs font-bold ${
+                            team.risk_tier === 'HIGH'
+                              ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                              : team.risk_tier === 'MODERATE'
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                              : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          }`}
+                        >
+                          {team.risk_tier}
+                        </span>
                       </td>
                     </tr>
-                  ) : (
-                    data.value_bets.map((bet, idx) => (
-                      <tr key={idx} className="hover:bg-slate-800/40">
-                        <td className="py-3.5 px-4">
-                          <div className="font-bold text-white">{bet.Matchup}</div>
-                          <div className="text-[11px] text-slate-400 font-mono">
-                            Date: {bet.game_date} • Source:{' '}
-                            {/* Belt and braces: the export already drops non-live rows,
-                                but JSON committed before that gate existed can still
-                                carry them, and a fabricated price must never read as
-                                real just because it is rendered in the same grey. */}
-                            {bet.market_data_source === 'LIVE_ODDS_API' ? (
-                              bet.market_data_source
-                            ) : (
-                              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold not-italic">
-                                {bet.market_data_source || 'UNKNOWN'} — NOT LIVE ODDS
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-3 font-mono font-bold text-emerald-400">
-                          {bet.Recommended_Bet}
-                        </td>
-                        <td className="py-3.5 px-3 text-slate-300">{bet.Book}</td>
-                        <td className="py-3.5 px-3 text-right font-mono text-white">
-                          {bet.Line > 0 ? `+${bet.Line}` : bet.Line}
-                        </td>
-                        <td className="py-3.5 px-3 text-right font-mono text-indigo-300 font-semibold">
-                          {(bet.Model_Win_Prob * 100).toFixed(1)}%
-                        </td>
-                        <td className="py-3.5 px-3 text-right font-mono font-bold text-emerald-400">
-                          +{bet.EV_Percent.toFixed(1)}%
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-mono">
-                          <span className="px-2.5 py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold text-xs">
-                            {bet.Bankroll_Rec.toFixed(2)}% Bankroll
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
+                  ))}
                 </tbody>
               </table>
             </div>
