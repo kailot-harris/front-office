@@ -357,6 +357,15 @@ run_full_pipeline <- function(season = MLB_CURRENT_SEASON, force_refresh = FALSE
     require_fresh = force_refresh,
     season        = season
   )
+
+  # ----------------------------------------------------------------------------
+  # Stage 15: Front-Office Operations Alert Dispatcher (notify_pipeline_ops.R)
+  # ----------------------------------------------------------------------------
+  run_stage(
+    script_name   = "notify_pipeline_ops.R",
+    description   = "Dispatch Front-Office Operations & Calibration Telemetry",
+    call_fn       = "run_notify_pipeline_ops"
+  )
   
   # ----------------------------------------------------------------------------
   # Stage 15: Interactive Playoff Series Matchup Simulator Catalog
