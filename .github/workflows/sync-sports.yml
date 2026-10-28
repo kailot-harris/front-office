@@ -38,6 +38,32 @@ on:
     # later. The old 11:30 was pinned to MLB's refresh-results.yml at 11:00 and
     # predates the other three sports being scheduled at all.
     - cron: '30 13 * * *'
+    # Slots B and C, added 2026-10-27. These pull the output of the sport
+    # repos' own refresh-results.yml jobs, which are scheduled at 22:00 and
+    # 05:00 UTC -- the same 30-minute lag as slot A, for the same reason.
+    #
+    # Those jobs are cheap by design: jsonlite only, no renv, no API key, no
+    # pipeline cache. They patch finished scores (and the counts that summarise
+    # them) into the already-committed JSON, so between slot A runs the site
+    # carries last night's results instead of yesterday's. They do NOT refresh
+    # projections, ratings or anything model-derived -- only slot A does that.
+    #
+    # WHICH REPOS ACTUALLY HAVE SOMETHING TO PULL AT B AND C:
+    #   MLB   yes - refresh_live_results.R, MLB Stats API
+    #   NFL   yes - refresh_live_results.R, nflverse games.csv
+    #   NBA   yes - refresh_live_results.R, ESPN scoreboard
+    #   WNBA  NO  - the 2026 season is over and its payload has no slate file
+    #               to patch (no matchups_*.json; playoff_series_matchups.json
+    #               is static reference data). Syncing it here is a no-op that
+    #               costs nothing, so it stays in SPORTS rather than being
+    #               special-cased -- but do not go looking for a WNBA
+    #               refresh-results.yml, it does not exist yet. It needs
+    #               writing when the season restarts (~May 2027).
+    #
+    # A no-op sync is already handled: the job only dispatches deploy.yml when
+    # a subtree pull produced a new commit, so a quiet night publishes nothing.
+    - cron: '30 22 * * *'
+    - cron: '30 5 * * *'
   workflow_dispatch:
     inputs:
       sports:
