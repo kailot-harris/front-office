@@ -410,6 +410,9 @@ run_registered_stage("finals_game_predictions")
 
 # 9. Next.js Static Web JSON Export (Phase 1)
 # Output: web/public/data/projections_season_teams.json (+ players, metadata, diagnostics, playoffs)
+# 8.5. Forecast Accuracy Governance (Issue #17)
+run_registered_stage("accuracy_governance")
+
 run_registered_stage("export_web_json")
 
 # 10. WNBA 14-Zone Shot Chart Spatial Extraction (Phase 3)
@@ -446,6 +449,9 @@ run_registered_stage("cba_cap_dataset")
 # box scores (stage 2), the reconciled accuracy log (stages 7 and 11) and the projected
 # standings (stage 10). See the ordering note in pipeline_stages.R.
 run_registered_stage("matchups_dataset")
+
+# 16. Front-Office Operations Alert Dispatcher (Issue #18)
+run_registered_stage("notify_pipeline_ops")
 
 # Reset parallel plan to sequential. This also shuts the multisession workers down, so by the
 # time the spill merge below runs, no other process holds logs.duckdb.
