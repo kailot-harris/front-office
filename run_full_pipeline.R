@@ -334,6 +334,12 @@ run_stage("export_web_datasets.R", "Export Web Application JSON Datasets (web/pu
           output = WEB_DATA_FILES)
 
 # ------------------------------------------------------------------------------
+# Stage 15: Front-Office Operations Alert Dispatcher (notify_pipeline_ops.R)
+# ------------------------------------------------------------------------------
+run_stage("notify_pipeline_ops.R", "Dispatch Front-Office Operations & Calibration Telemetry",
+          call_fn = "run_notify_pipeline_ops")
+
+# ------------------------------------------------------------------------------
 # FUTURE STAGES — extension point, not yet implemented (see docs/task_assignments_phase0.md's
 # Constraints section and docs/NFL_REPLICATION_PLAN.md §1's later-phase list). Per that
 # Constraints note, this wave deliberately does NOT add stub run_stage() calls for scripts that
