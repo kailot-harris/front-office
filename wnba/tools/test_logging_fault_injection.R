@@ -252,9 +252,13 @@ cat("\n--- SCENARIO 3: run_stage() deliberate stage failure + continuation ---\n
 marker3 <- sprintf("SCENARIO3_%s", format(Sys.time(), "%Y%m%d%H%M%OS3"))
 log_marker(marker3)
 
-# Extract the REAL run_stage() definition from run_full_pipeline.R by parsing (not sourcing
-# the whole file, which would run the entire real pipeline against live network/cache state).
+# Extract the REAL .check_stage_output() and run_stage() definitions from run_full_pipeline.R
+# by parsing (not sourcing the whole file, which would run the entire real pipeline against
+# live network/cache state).
 rfp_exprs <- parse(file = "run_full_pipeline.R")
+check_stage_output_def <- extract_fun_def(rfp_exprs, ".check_stage_output")
+stopifnot(!is.null(check_stage_output_def))
+eval(check_stage_output_def, envir = .GlobalEnv)
 run_stage_def <- extract_fun_def(rfp_exprs, "run_stage")
 stopifnot(!is.null(run_stage_def))
 eval(run_stage_def, envir = .GlobalEnv)

@@ -722,6 +722,97 @@ source("config.R")
 }
 
 # ------------------------------------------------------------------------------
+# Deploy observability notification (ported from NFL_analytics#40 / #41).
+#
+# Posts the publish gate outcome to WNBA_DISCORD_WEBHOOK (with fallback to
+# DISCORD_WEBHOOK_URL and DISCORD_WEBHOOK, read via Sys.getenv, never hardcoded):
+#   * On success or dry-run pass: season, completed_games, and any fallback /
+#     exporter [WARN] lines surfaced during the run window.
+#   * On blocked gate: the specific assertion(s) that failed plus any fallback /
+#     exporter [WARN] lines.
+# ------------------------------------------------------------------------------
+.pw_notify_discord <- function(result) {
+  webhook_url <- Sys.getenv("WNBA_DISCORD_WEBHOOK",
+                            Sys.getenv("DISCORD_WEBHOOK_URL",
+                                       Sys.getenv("DISCORD_WEBHOOK", "")))
+  season_val <- if (!is.null(result$coverage_published)) result$coverage_published$season else result$season
+  comp_games <- if (!is.null(result$coverage_computed)) result$coverage_computed$completed_games else NA
+  warns <- result$fallback_warnings
+
+  status_label <- if (isTRUE(result$blocked)) {
+    "BLOCKED (Assertion Failed)"
+  } else if (isTRUE(result$published)) {
+    "PUBLISHED TO MAIN"
+  } else {
+    "DRY RUN PASSED"
+  }
+
+  color <- if (isTRUE(result$blocked)) 15158332L else if (isTRUE(result$published)) 3066993L else 3447003L
+
+  failed_checks <- Filter(function(ch) !isTRUE(ch$pass) && isTRUE(ch$fatal), result$checks)
+  failed_text <- if (length(failed_checks)) {
+    paste(vapply(failed_checks, function(ch) sprintf("**%s (%s):** %s", ch$id, ch$name, ch$summary), character(1)),
+          collapse = "\n")
+  } else {
+    "None (all fatal assertions passed)"
+  }
+
+  warn_text <- if (length(warns)) {
+    paste(head(warns, 5), collapse = "\n")
+  } else {
+    "None in run window"
+  }
+  if (nchar(warn_text) > 950) warn_text <- paste0(substr(warn_text, 1, 950), "...")
+
+  fields <- list(
+    list(name = "Status", value = sprintf("`%s`", status_label), inline = TRUE),
+    list(name = "Season", value = sprintf("`%s`", ifelse(is.na(season_val), "<NA>", season_val)), inline = TRUE),
+    list(name = "Completed Games", value = sprintf("`%s`", ifelse(is.na(comp_games), "<NA>", comp_games)), inline = TRUE),
+    list(name = "Fatal Gate Failures", value = failed_text, inline = FALSE),
+    list(name = "Exporter / Fallback [WARN] Lines", value = paste0("```\n", warn_text, "\n```"), inline = FALSE)
+  )
+
+  payload <- list(
+    username = "WNBA Quant Terminal",
+    embeds = list(
+      list(
+        title = paste("WNBA Web Publish Gate \u2022", status_label),
+        description = sprintf("Run start: `%s` | Passed: `%s`",
+                              if (is.na(result$run_start)) "<undetected>" else format(result$run_start, "%Y-%m-%d %H:%M:%S"),
+                              paste(result$assertions_passed, collapse = ", ")),
+        color = color,
+        fields = fields,
+        footer = list(text = paste("tools/publish_web.R \u2022", format(Sys.time(), "%Y-%m-%d %H:%M:%S")))
+      )
+    )
+  )
+
+  if (!nzchar(webhook_url)) {
+    log_info(sprintf("publish_web: WNBA_DISCORD_WEBHOOK / DISCORD_WEBHOOK_URL not set; skipping Discord notification (status=%s, season=%s, completed_games=%s, warnings=%d).",
+                     status_label, ifelse(is.na(season_val), "NA", season_val), ifelse(is.na(comp_games), "NA", comp_games), length(warns)),
+             script = .PW_LOG_SCRIPT)
+    return(invisible(FALSE))
+  }
+
+  if (!requireNamespace("httr", quietly = TRUE)) {
+    log_warn("publish_web: httr not installed; cannot post Discord notification.", script = .PW_LOG_SCRIPT)
+    return(invisible(FALSE))
+  }
+
+  res <- tryCatch(
+    httr::POST(webhook_url, body = payload, encode = "json", httr::timeout(6)),
+    error = function(e) list(status_code = 500L, message = conditionMessage(e))
+  )
+  ok <- !is.null(res$status_code) && res$status_code %in% c(200L, 204L)
+  if (ok) {
+    log_info("publish_web: posted deploy outcome to WNBA_DISCORD_WEBHOOK.", script = .PW_LOG_SCRIPT, status_code = res$status_code)
+  } else {
+    log_warn("publish_web: Discord webhook POST did not return 200/204.", script = .PW_LOG_SCRIPT, status_code = res$status_code)
+  }
+  invisible(ok)
+}
+
+# ------------------------------------------------------------------------------
 # publish_web() - the explicitly-callable entry point.
 #
 # Deliberately NOT guarded by a `sys.nframe() == 0`-style top-level-only check:
@@ -823,12 +914,16 @@ publish_web <- function(dry_run = TRUE,
     checks = checks, published = FALSE, steps = list()
   )
 
-  if (blocked || dry_run) return(invisible(result))
+  if (blocked || dry_run) {
+    if (blocked && !dry_run) .pw_notify_discord(result)
+    return(invisible(result))
+  }
 
   result$steps <- .pw_do_publish(repo_root, checks[[3]]$paths, commit_message)
   result$published <- TRUE
   log_info(sprintf("publish_web: web artifacts committed and pushed to WNBA_analytics %s. The site changes when the aggregator's sync-sports.yml next pulls; this script does not deploy.",
                    publish_branch), script = .PW_LOG_SCRIPT)
+  .pw_notify_discord(result)
   invisible(result)
 }
 

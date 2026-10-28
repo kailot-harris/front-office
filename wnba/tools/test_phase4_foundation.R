@@ -150,7 +150,20 @@ ok("CHECK 3b (H-1) Discord webhook path scrubbed",
    !grepl(SECRET, hook_red, fixed = TRUE) && grepl("REDACTED", hook_red))
 
 # Full end-to-end: the line written to console/text log/DuckDB.
-before_n <- tryCatch(DBI::dbGetQuery(.log_get_con(), "SELECT COUNT(*) n FROM logs")$n, error = function(e) NA)
+# Isolate LOG_DB_FILE to a per-process temp DuckDB so concurrent processes cannot
+# lock logs/logs.duckdb, and force GC before pinning c1 so R's garbage collector
+# cannot finalize an unreferenced earlier connection mid-assertion.
+orig_log_db_file <- LOG_DB_FILE
+.log_disconnect()
+LOG_DB_FILE <- tempfile("phase4_logs_", fileext = ".duckdb")
+on.exit({
+  .log_disconnect()
+  unlink(LOG_DB_FILE)
+  LOG_DB_FILE <<- orig_log_db_file
+}, add = TRUE)
+gc()
+c_init <- .log_get_con()
+before_n <- tryCatch(DBI::dbGetQuery(c_init, "SELECT COUNT(*) n FROM logs")$n, error = function(e) NA)
 cat("  -- log_error() end-to-end (line below is the real logger output) --\n")
 line <- log_error("PHASE4 FOUNDATION TEST (H-1 redaction probe).",
                   script = "test_phase4_foundation.R",
@@ -171,10 +184,12 @@ ok("CHECK 3c (H-1) secret absent from text log AND logs.duckdb row",
 # ------------------------------------------------------------------------------
 # CHECK 3d (M-7): one connection reused for the process lifetime
 # ------------------------------------------------------------------------------
-c1 <- .log_get_con(); invisible(log_info("PHASE4 M-7 connection reuse probe.", script = "test_phase4_foundation.R"))
+gc()
+c1 <- .log_get_con()
+invisible(log_info("PHASE4 M-7 connection reuse probe.", script = "test_phase4_foundation.R"))
 c2 <- .log_get_con()
 ok("CHECK 3d (M-7) .log_write() reuses one process-lifetime DuckDB connection",
-   identical(c1, c2) && DBI::dbIsValid(c2) && !is.na(after_n) && after_n == before_n + 1,
+   identical(c_init, c1) && identical(c1, c2) && DBI::dbIsValid(c2) && !is.na(after_n) && after_n == before_n + 1,
    sprintf("same connection object = %s; rows %s -> %s across one log_error()",
            identical(c1, c2), before_n, after_n))
 
