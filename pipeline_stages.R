@@ -436,6 +436,21 @@ PIPELINE_STAGES <- list(
   # ---------------------------------------------------------------------------------------
   # 9. Next.js Static Web JSON Export (Phase 1)
   # ---------------------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------------------
+    # 8.5. Forecast Accuracy Governance & Calibration Engine (Issue #17)
+    # ---------------------------------------------------------------------------------------
+    accuracy_governance = list(
+      id          = "accuracy_governance",
+      script      = "accuracy_governance.R",
+      description = "Compute Model Forecast Governance & Calibration Diagnostics",
+      call_fn     = "run_wnba_accuracy_governance",
+      entry_fn    = NULL,
+      output      = file.path(CACHE_DIR, "accuracy_governance.rds"),
+      inputs      = c(file.path(CACHE_DIR, "model_calibration_input.rds"),
+                      file.path(CACHE_DIR, "prediction_accuracy_log.rds")),
+      group       = NULL
+    ),
+
   export_web_json = list(
     id          = "export_web_json",
     script      = "export_web_json.R",

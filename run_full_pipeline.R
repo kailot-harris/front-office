@@ -410,6 +410,9 @@ run_registered_stage("finals_game_predictions")
 
 # 9. Next.js Static Web JSON Export (Phase 1)
 # Output: web/public/data/projections_season_teams.json (+ players, metadata, diagnostics, playoffs)
+# 8.5. Forecast Accuracy Governance (Issue #17)
+run_registered_stage("accuracy_governance")
+
 run_registered_stage("export_web_json")
 
 # 10. WNBA 14-Zone Shot Chart Spatial Extraction (Phase 3)
