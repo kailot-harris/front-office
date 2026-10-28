@@ -29,7 +29,10 @@ RUN <- c(
   "tools/test_pure_functions.R",
   "tools/test_phase4_engine.R",
   "tools/test_auth_utils.R",
-  "tools/test_create_account_if_authorized.R"
+  "tools/test_create_account_if_authorized.R",
+  "tools/test_phase4_foundation.R",
+  "tools/test_logging_fault_injection.R",
+  "tools/test_db_logs.R"
 )
 
 # Deliberately not run, and why. Every entry here is a measured reason, not a
@@ -46,28 +49,10 @@ SKIP <- c(
     "drives a real Chrome through shinytest2/chromote via a Windows CHROMOTE_CHROME path",
   "tools/test_phase4_cleanup.R" =
     "spawns tools/ml_cv_benchmark.R, a full cross-validation run",
-  "tools/test_db_logs.R" =
-    "reads logs/logs.duckdb, which is gitignored and so does not exist in a fresh clone",
   "tools/test_db_embeddings.R" =
-    "reads logs/analytics.duckdb, same -- gitignored, absent in a fresh clone",
+    "spawns python team_embeddings.py and reads logs/analytics.duckdb (gitignored, absent in a fresh clone)",
   "tools/test_pipeline_db.R" =
-    "reads both of the above duckdb files",
-  "tools/test_phase4_foundation.R" =
-    paste("FLAKY, not broken: 13 of its 14 checks are fine, but CHECK 3d",
-          "(.log_write() reuses one process-lifetime DuckDB connection) was",
-          "observed both PASS and FAIL at an IDENTICAL database state (rows",
-          "2 -> 3) across repeated runs on 2026-10-26. The connection is",
-          "re-created between the check's two log_error() calls whenever R's",
-          "GC finalizes it first, so the assertion is a garbage-collection",
-          "race. A gate that fails at random teaches people to re-run it;",
-          "out until CHECK 3d pins the connection it is asserting about."),
-  "tools/test_logging_fault_injection.R" =
-    paste("RED on main as of 2026-10-26: 3 of its 4 scenarios pass, scenario 3",
-          "fails with 'could not find function \".check_stage_output\"'. The test",
-          "carries its own copy of run_stage()'s environment and has not been",
-          "updated for the helper run_full_pipeline.R now calls. It is a stale",
-          "test, not an app defect -- but a red test is not a gate, so it is out",
-          "until it is fixed.")
+    "spawns Rscript run_full_pipeline.R and reads logs/analytics.duckdb"
 )
 
 # ------------------------------------------------------------------- guard ---

@@ -117,3 +117,43 @@ rsconnect/
 
 # Agent-written planning/handoff docs (kept locally, not published)
 docs/internal/
+# ------------------------------------------------------------------------------
+# Ephemeral runtime cache/data artifacts & scratch (untracked 2026-10-28, #88).
+# Foundational caches required by offline CI tests (active_rosters_cache.rds,
+# rapm_ratings.rds, player_id_crosswalk.rds, window_sweep_3_25_results.*) remain
+# tracked; daily pipeline outputs that churn on every run are gitignored.
+# ------------------------------------------------------------------------------
+HANDOFF.md
+tmp/
+logs/*.log.old
+pipeline_execution.log.old
+cache/auth_users.sqlite
+cache/betting_ledger.rds
+cache/cba_cap_sheet.rds
+cache/coaching_metrics.rds
+cache/copula_wilson_pra.rds
+cache/finals_game_predictions_2026.rds
+cache/injury_data_cache.rds
+cache/latest_player_props.rds
+cache/latest_value_bets.rds
+cache/matchups_cache.rds
+cache/odds_history.rds
+cache/playoff_bracket_2026.rds
+cache/playoff_series_matchups.json
+cache/playoff_series_wnba_demo.rds
+cache/prediction_accuracy_log.csv
+cache/prediction_accuracy_log.rds
+cache/projected_wnba_standings.rds
+cache/projections_diagnostics.json
+cache/projections_models_metadata.json
+cache/projections_season_players.json
+cache/projections_season_teams.json
+cache/risk_state.rds
+cache/shots_metadata.json
+cache/team_shot_quality.rds
+cache/travel_fatigue_metrics.rds
+cache/value_bets_history.rds
+cache/wnba_schedule_cache.rds
+data/box_scores_cache.rds
+data/team_embeddings.csv
+data/team_similarity_matrix.csv

@@ -162,6 +162,23 @@ ok("CHECK 2f (H-4) unrecognized-but-long inputs return NA, not the raw input pas
    sprintf("'Unknown FC' -> %s, 'Toronto Raptors' -> %s",
            ifelse(is.na(unk[1]), "NA", unk[1]), ifelse(is.na(unk[2]), "NA", unk[2])))
 
+# Ensure a minimal projected_wnba_standings.rds exists when running in a clean CI
+# checkout (where cache/*.rds runtime artifacts are untracked).
+standings_fixture_path <- file.path(CACHE_DIR, "projected_wnba_standings.rds")
+created_standings_fixture <- FALSE
+if (!file.exists(standings_fixture_path)) {
+  saveRDS(
+    data.frame(
+      team = unname(WNBA_TEAMS),
+      net_rating = seq(5, -5, length.out = length(WNBA_TEAMS)),
+      stringsAsFactors = FALSE
+    ),
+    standings_fixture_path
+  )
+  created_standings_fixture <- TRUE
+  on.exit(if (created_standings_fixture && file.exists(standings_fixture_path)) unlink(standings_fixture_path), add = TRUE)
+}
+
 # The one caller must survive an NA team name (routes into its consensus fallback).
 caller_ok <- tryCatch({
   standings <- readRDS(file.path(CACHE_DIR, "projected_wnba_standings.rds"))

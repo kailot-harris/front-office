@@ -24,16 +24,18 @@ if (!file.exists(db_path)) {
   stop("Log DB file not found! DB writing failed.")
 }
 
-con <- dbConnect(duckdb(), db_path)
+con <- .log_get_con()
 logs <- dbGetQuery(con, "SELECT * FROM logs ORDER BY timestamp DESC LIMIT 3")
-dbDisconnect(con, immediate = TRUE)
+.log_disconnect()
 
 cat("\nRecent Log Entries from DB:\n")
 print(logs)
 
 # 3. Validation
 if (nrow(logs) >= 3) {
-  cat("\n[SUCCESS] Log DB is capturing events correctly.\n")
+  cat("\n[PASS] Log DB captured INFO, WARN, and ERROR events (>= 3 rows).\n")
+  cat("[SUCCESS] Log DB is capturing events correctly.\n")
 } else {
+  cat(sprintf("\n[FAIL] Log DB only captured %d events. Expected >= 3.\n", nrow(logs)))
   stop(sprintf("Log DB only captured %d events. Expected >= 3.", nrow(logs)))
 }
