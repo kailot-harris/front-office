@@ -205,6 +205,14 @@ source("config.R")
   # set HOME the way Git Bash does, so git can fail to find ~/.gitconfig and
   # refuse to commit with "unable to auto-detect email address" (cf. NFL #53).
   # Pass identity explicitly via -c so commits do not depend on HOME resolution.
+  # R on Windows rewrites HOME to "<USERPROFILE>/Documents", while Git for
+  # Windows stores ~/.gitconfig at "<USERPROFILE>/.gitconfig". Point HOME at
+  # USERPROFILE when .gitconfig lives there so both git config and git commit
+  # resolve the user's global git config and credential helper.
+  up <- Sys.getenv("USERPROFILE", "")
+  if (nzchar(up) && file.exists(file.path(up, ".gitconfig"))) {
+    Sys.setenv(HOME = up)
+  }
   if (identical(args[1], "commit")) {
     user_name <- Sys.getenv("GIT_AUTHOR_NAME", Sys.getenv("GIT_COMMITTER_NAME", ""))
     user_email <- Sys.getenv("GIT_AUTHOR_EMAIL", Sys.getenv("GIT_COMMITTER_EMAIL", ""))
