@@ -174,6 +174,30 @@ source("config.R")
 # Small helpers
 # ------------------------------------------------------------------------------
 .pw_git <- function(repo, args) {
+  # cmd.exe (and Task Scheduler's .bat-launched non-interactive session) does not
+  # resolve HOME the way Git Bash does, so git can't find ~/.gitconfig and refuses
+  # to commit with "unable to auto-detect email address" (NFL_analytics#53). Pass
+  # identity explicitly via -c so commits don't depend on HOME/USERPROFILE
+  # resolution in the invoking shell.
+  if (identical(args[1], "commit")) {
+    user_name <- Sys.getenv("GIT_AUTHOR_NAME", Sys.getenv("GIT_COMMITTER_NAME", ""))
+    user_email <- Sys.getenv("GIT_AUTHOR_EMAIL", Sys.getenv("GIT_COMMITTER_EMAIL", ""))
+    if (!nzchar(user_name) || !nzchar(user_email)) {
+      cfg <- suppressWarnings(system2("git", c("-C", shQuote(repo), "config", "--global", "--get-regexp", "^user\\."),
+                                       stdout = TRUE, stderr = TRUE,
+                                       env = paste0("HOME=", Sys.getenv("USERPROFILE", Sys.getenv("HOME")))))
+      if (is.null(attr(cfg, "status"))) {
+        for (line in cfg) {
+          if (startsWith(line, "user.name ")) user_name <- sub("^user\\.name ", "", line)
+          if (startsWith(line, "user.email ")) user_email <- sub("^user\\.email ", "", line)
+        }
+      }
+    }
+    if (nzchar(user_name) && nzchar(user_email)) {
+      args <- c("-c", shQuote(paste0("user.name=", user_name)),
+                "-c", shQuote(paste0("user.email=", user_email)), args)
+    }
+  }
   out <- suppressWarnings(system2("git", c("-C", shQuote(repo), args),
                                   stdout = TRUE, stderr = TRUE))
   status <- attr(out, "status")
@@ -817,6 +841,15 @@ local({
   files <- sub("^--file=", "", argv[grepl("^--file=", argv)])
   if (!any(grepl("publish_web\\.R$", files))) return(invisible(NULL))
   opts <- commandArgs(trailingOnly = TRUE)
+  known_opts <- c("--publish", "--strict-warnings", "--skip-contracts")
+  unknown_opts <- setdiff(opts, known_opts)
+  if (length(unknown_opts)) {
+    stop(sprintf(
+      "publish_web.R: unknown CLI option(s): %s. Valid options: %s",
+      paste(shQuote(unknown_opts), collapse = ", "),
+      paste(known_opts, collapse = ", ")
+    ), call. = FALSE)
+  }
   res <- publish_web(dry_run = !("--publish" %in% opts),
                      fail_on_exporter_warnings = "--strict-warnings" %in% opts,
                      skip_contracts = "--skip-contracts" %in% opts)

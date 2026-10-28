@@ -178,7 +178,7 @@ export interface ModelDiagnostics {
    * `generatedAt` some of these payloads already carry: assertion F only ever
    * matches the snake_case key.
    */
-  generated_at?: string;
+  generated_at: string;
   totalResolvedGames: number;
   overallAccuracy: number;
   brierScore: number;

@@ -100,7 +100,7 @@ export interface PlayoffMatchupsCatalog {
    * `generatedAt` some of these payloads already carry: assertion F only ever
    * matches the snake_case key.
    */
-  generated_at?: string;
+  generated_at: string;
   teams: Record<string, TeamPlayoffProfile>;
   sampleMatchups: PlayoffSeriesMatchupResult[];
   historicalBrackets?: Record<string, HistoricalSeries[]>;
@@ -207,7 +207,7 @@ export interface PlayoffBracketSeason {
    * `generatedAt` some of these payloads already carry: assertion F only ever
    * matches the snake_case key.
    */
-  generated_at?: string;
+  generated_at: string;
   season: number;
   generatedAt: string;
   sourceNote: string;
@@ -316,7 +316,7 @@ export interface FinalsGamePredictionSet {
    * `generatedAt` some of these payloads already carry: assertion F only ever
    * matches the snake_case key.
    */
-  generated_at?: string;
+  generated_at: string;
   season: number;
   generatedAt: string;
   sourceNote: string;
@@ -422,7 +422,7 @@ export interface FinalsSeriesBacktestSet {
    * `generatedAt` some of these payloads already carry: assertion F only ever
    * matches the snake_case key.
    */
-  generated_at?: string;
+  generated_at: string;
   season: number;
   generatedAt: string;
   sourceNote: string;

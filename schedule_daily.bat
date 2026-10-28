@@ -121,6 +121,7 @@ echo. >> "%LOG_FILE%"
 exit /b 0
 
 :inseason
+if not defined HOME set HOME=%USERPROFILE%
 cd /d "%PROJECT_DIR%"
 
 where Rscript >nul 2>&1
