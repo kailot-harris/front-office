@@ -302,9 +302,6 @@ export interface PostseasonOpsData {
   n_sims: number;
   bracket: PostseasonBracketTeam[];
   bullpen_status: BullpenStatusRow[];
-  value_bets: ValueBetRow[];
-  value_bets_provenance?: ValueBetsProvenance;
-  risk_state: RiskStateSummary;
 }
 
 export interface WorldSeriesGame {

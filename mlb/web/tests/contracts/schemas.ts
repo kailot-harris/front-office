@@ -287,33 +287,6 @@ export const PostseasonOpsDataSchema = z
     n_sims: z.number().int().positive(),
     bracket: z.array(PostseasonBracketTeamSchema).length(12),
     bullpen_status: z.array(BullpenStatusRowSchema).length(30),
-    value_bets: z.array(z.record(z.string(), z.unknown())),
-    value_bets_provenance: z
-      .object({
-        live_source: z.string().min(1),
-        n_total: z.number().int().min(0),
-        n_published: z.number().int().min(0),
-        n_withheld: z.number().int().min(0),
-        withheld_sources: z.union([z.string(), z.array(z.string())]),
-      })
-      .strict()
-      .optional(),
-    risk_state: z
-      .object({
-        current_bankroll: num,
-        current_dd_units: num,
-        current_dd_pct: num,
-        max_dd_units: num,
-        max_dd_pct: num,
-        active_kelly_multiplier: nonNeg,
-        risk_status: z.string().min(1),
-        status_message: z.string().min(1),
-        rolling_7d_clv_pct: num,
-        rolling_30d_clv_pct: num,
-        beat_clv_rate_pct: num,
-        total_bets_audited: z.number().int().min(0),
-      })
-      .strict(),
   })
   .strict();
 

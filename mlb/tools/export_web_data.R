@@ -911,52 +911,13 @@ run_web_export <- function(season = 2026, n_sims = 1000L, out_dir = file.path(ML
     ) %>%
     dplyr::arrange(dplyr::desc(bullpen_vulnerability), dplyr::desc(avg_bullpen_fatigue))
 
-  # Market value bets
-  bets_file <- if (exists("CACHE_LATEST_VALUE_BETS")) CACHE_LATEST_VALUE_BETS else cache_path("market", "latest_value_bets.rds", create = FALSE)
-  if (!file.exists(bets_file)) bets_file <- file.path(MLB_CACHE_ROOT, "market", "latest_value_bets.rds")
-  bets_df <- if (file.exists(bets_file)) readRDS(bets_file) else data.frame()
-
-  # Risk state
-  risk_file <- cache_path("risk", "mlb_risk_state.rds", create = FALSE)
-  risk_raw <- if (file.exists(risk_file)) readRDS(risk_file) else list()
-  risk_summary <- list(
-    current_bankroll        = coalesce(risk_raw$current_bankroll, 117.0),
-    current_dd_units        = coalesce(risk_raw$current_dd_units, 1.18),
-    current_dd_pct          = coalesce(risk_raw$current_dd_pct, 1.0),
-    max_dd_units            = coalesce(risk_raw$max_dd_units, 6.52),
-    max_dd_pct              = coalesce(risk_raw$max_dd_pct, 6.17),
-    active_kelly_multiplier = coalesce(risk_raw$active_kelly_multiplier, 0.25),
-    risk_status             = coalesce(risk_raw$risk_status, "OPTIMAL"),
-    status_message          = coalesce(risk_raw$status_message, "NORMAL OPERATION: Bankroll within 1-sigma bounds (0.25 Kelly)."),
-    rolling_7d_clv_pct      = coalesce(risk_raw$rolling_7d_clv_pct, 3.34),
-    rolling_30d_clv_pct     = coalesce(risk_raw$rolling_30d_clv_pct, 2.57),
-    beat_clv_rate_pct       = coalesce(risk_raw$beat_clv_rate_pct, 76.7),
-    total_bets_audited      = coalesce(risk_raw$total_bets_audited, 120L)
-  )
-
-  bets_payload <- build_value_bets_payload(bets_df)
-  if (bets_payload$value_bets_provenance$n_withheld > 0) {
-    log_warn(sprintf(
-      "Provenance gate withheld %d/%d value bet(s) from the web export (sources: %s); publishing %d.",
-      bets_payload$value_bets_provenance$n_withheld,
-      bets_payload$value_bets_provenance$n_total,
-      paste(bets_payload$value_bets_provenance$withheld_sources, collapse = ", "),
-      bets_payload$value_bets_provenance$n_published
-    ), script = .LOG_SCRIPT)
-  }
-
+  # Betting & risk state stripped per Phase 2 (Issue #19)
   postseason_ops_obj <- list(
-    # First in the object, for assertion F's 4096-byte head scan. Same format
-    # as metadata_obj's stamp above -- that is the one format .pw_payload_
-    # generated_at() parses, so do not "improve" it to include an offset.
     generated_at   = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
     season         = season,
     n_sims         = 10000L,
     bracket        = ps_bracket,
-    bullpen_status = bp_status_full,
-    value_bets     = bets_payload$value_bets,
-    value_bets_provenance = bets_payload$value_bets_provenance,
-    risk_state     = risk_summary
+    bullpen_status = bp_status_full
   )
 
   # diagnostics_obj is built in two branches above (measured, and the hardcoded
