@@ -25,7 +25,11 @@ import {
 } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
 
-export const Sidebar: React.FC = () => {
+export interface SidebarProps {
+  generatedAt?: string;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [showSigmaExplainer, setShowSigmaExplainer] = useState(false);
@@ -296,6 +300,12 @@ export const Sidebar: React.FC = () => {
           <ShieldCheck className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
           <span className="truncate">ADR-I Frozen Reference Compliant</span>
         </div>
+        {generatedAt && (
+          <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono px-1">
+            <span>Updated</span>
+            <time dateTime={generatedAt}>{generatedAt.slice(0, 16).replace('T', ' ')} UTC</time>
+          </div>
+        )}
       </div>
     </div>
   );
