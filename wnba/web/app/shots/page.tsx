@@ -23,6 +23,7 @@ function getShotsMetadata(): ShotsMetadata {
   const filePath = path.join(process.cwd(), 'public', 'data', 'shots_metadata.json');
   if (!fs.existsSync(filePath)) {
     return {
+      generated_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       total_shots_sampled: 0,
       league_averages: [],
@@ -34,6 +35,7 @@ function getShotsMetadata(): ShotsMetadata {
     return JSON.parse(content) as ShotsMetadata;
   } catch {
     return {
+      generated_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       total_shots_sampled: 0,
       league_averages: [],

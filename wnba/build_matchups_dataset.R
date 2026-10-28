@@ -632,7 +632,7 @@ weeks <- lapply(week_ids, function(w) {
 
 payload <- list(
   season = as.integer(CURRENT_SEASON),
-  generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
+  generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
   season_start = format(season_start),
   season_end   = format(season_end),
   active_week  = as.integer(active_week),

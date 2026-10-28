@@ -13,6 +13,7 @@ export const metadata: Metadata = {
 
 async function getCbaData(): Promise<WnbaCbaLeagueOverview> {
   const defaultOverview: WnbaCbaLeagueOverview = {
+    generated_at: new Date().toISOString(),
     season: '2026',
     hardSalaryCap: 1.52,
     capFloor: 1.368,

@@ -152,43 +152,37 @@ describe('TypeScript interface vs JSON payload key parity', () => {
       file: 'projections_diagnostics.json',
       tsFile: 'lib/types.ts',
       interfaceName: 'ModelDiagnostics',
-      optionalFields: ['generated_at'],
     },
     {
       file: 'cba_cap_sheet.json',
       tsFile: 'lib/cbaTypes.ts',
       interfaceName: 'WnbaCbaLeagueOverview',
-      optionalFields: ['generated_at'],
     },
     {
       file: 'playoff_series_matchups.json',
       tsFile: 'lib/playoffTypes.ts',
       interfaceName: 'PlayoffMatchupsCatalog',
-      optionalFields: ['updatedAt', 'season', 'generated_at'],
+      optionalFields: ['updatedAt', 'season'],
     },
     {
       file: 'playoff_bracket_2026.json',
       tsFile: 'lib/playoffTypes.ts',
       interfaceName: 'PlayoffBracketSeason',
-      optionalFields: ['generated_at'],
     },
     {
       file: 'finals_game_predictions_2026.json',
       tsFile: 'lib/playoffTypes.ts',
       interfaceName: 'FinalsGamePredictionSet',
-      optionalFields: ['generated_at'],
     },
     {
       file: 'finals_series_backtest_2026.json',
       tsFile: 'lib/playoffTypes.ts',
       interfaceName: 'FinalsSeriesBacktestSet',
-      optionalFields: ['generated_at'],
     },
     {
       file: 'shots_metadata.json',
       tsFile: 'lib/shotTypes.ts',
       interfaceName: 'ShotsMetadata',
-      optionalFields: ['generated_at'],
     },
   ];
 

@@ -12,6 +12,7 @@ function getPlayoffCatalog(): PlayoffMatchupsCatalog {
   const filePath = path.join(process.cwd(), 'public', 'data', 'playoff_series_matchups.json');
   if (!fs.existsSync(filePath)) {
     return {
+      generated_at: new Date().toISOString(),
       teams: {},
       sampleMatchups: [],
       historicalBrackets: {},
@@ -23,6 +24,7 @@ function getPlayoffCatalog(): PlayoffMatchupsCatalog {
   } catch (err) {
     console.error('Failed to load playoff_series_matchups.json:', err);
     return {
+      generated_at: new Date().toISOString(),
       teams: {},
       sampleMatchups: [],
       historicalBrackets: {},

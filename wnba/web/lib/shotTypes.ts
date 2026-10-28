@@ -41,7 +41,7 @@ export interface ShotsMetadata {
    * `generatedAt` some of these payloads already carry: assertion F only ever
    * matches the snake_case key.
    */
-  generated_at?: string;
+  generated_at: string;
   season?: number;
   updated_at: string;
   total_shots_sampled: number;

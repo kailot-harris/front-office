@@ -143,7 +143,7 @@ export const ModelMetadataSchema = z
   .object({
     schema_version: z.string().min(1),
     pipeline_stage: z.string().min(1),
-    generated_at: z.string().min(1),
+    generated_at: z.string().datetime(),
     season: z.number().int().min(2020).max(2035),
     n_simulations: z.number().int().positive(),
     margin_sigma: finiteNumber.positive(),
@@ -207,18 +207,13 @@ export const ResidualBucketSchema = z
 // assertion G runs that suite as a fatal pre-publish check, so an undeclared
 // stamp would block the publish it is meant to make verifiable.
 //
-// .optional() is TRANSITIONAL on all of them. The payloads currently on disk
-// predate the stamp and contracts run against whatever is on disk, so making it
-// required now would turn G red before any run could ship a stamped copy.
-// TODO: drop .optional() once one pipeline run has written stamped payloads.
-//
 // Note `generated_at` is NOT the existing camelCase `generatedAt` on the
 // bracket/finals/backtest schemas: that one is the upstream cache artifact's own
 // local-time timestamp, passed through for display, in a format F cannot parse.
 // ----------------------------------------------------------------------------
 export const ModelDiagnosticsSchema = z
   .object({
-    generated_at: z.string().datetime().optional(),
+    generated_at: z.string().datetime(),
     totalResolvedGames: z.number().int().positive(),
     overallAccuracy: prob,
     brierScore: finiteNumber.min(0).max(1),
@@ -273,7 +268,7 @@ export const WnbaFranchiseCbaProfileSchema = z
 
 export const WnbaCbaLeagueOverviewSchema = z
   .object({
-    generated_at: z.string().datetime().optional(), // see note above ModelDiagnosticsSchema
+    generated_at: z.string().datetime(), // see note above ModelDiagnosticsSchema
     season: z.string().min(4),
     hardSalaryCap: finiteNumber.positive(),
     capFloor: finiteNumber.positive(),
@@ -694,7 +689,7 @@ const HistoricalSeriesSchema = z
 
 export const PlayoffMatchupsCatalogSchema = z
   .object({
-    generated_at: z.string().datetime().optional(), // see note above ModelDiagnosticsSchema
+    generated_at: z.string().datetime(), // see note above ModelDiagnosticsSchema
     teams: z.record(teamEnum, TeamPlayoffProfileSchema),
     sampleMatchups: z.array(PlayoffSeriesMatchupResultSchema).min(1),
     historicalBrackets: z.record(z.string(), z.array(HistoricalSeriesSchema)).optional(),
@@ -792,7 +787,7 @@ export const BracketSeriesSchema = z
 
 export const PlayoffBracketSeasonSchema = z
   .object({
-    generated_at: z.string().datetime().optional(), // see note above ModelDiagnosticsSchema
+    generated_at: z.string().datetime(), // see note above ModelDiagnosticsSchema
     season: z.number().int().min(1997).max(2100),
     generatedAt: z.string(),
     sourceNote: z.string(),
@@ -891,7 +886,7 @@ export const FinalsMatchupSchema = z
 
 export const FinalsGamePredictionSetSchema = z
   .object({
-    generated_at: z.string().datetime().optional(), // see note above ModelDiagnosticsSchema
+    generated_at: z.string().datetime(), // see note above ModelDiagnosticsSchema
     season: z.number().int().min(1997).max(2100),
     generatedAt: z.string(),
     sourceNote: z.string(),
@@ -963,7 +958,7 @@ export const FinalsBacktestInfoSetSchema = z
 
 export const FinalsSeriesBacktestSetSchema = z
   .object({
-    generated_at: z.string().datetime().optional(), // see note above ModelDiagnosticsSchema
+    generated_at: z.string().datetime(), // see note above ModelDiagnosticsSchema
     season: z.number().int().min(1997).max(2100),
     generatedAt: z.string(),
     sourceNote: z.string(),
@@ -1028,7 +1023,7 @@ export const ZoneLeagueAverageSchema = z
 
 export const ShotsMetadataSchema = z
   .object({
-    generated_at: z.string().datetime().optional(), // see note above ModelDiagnosticsSchema
+    generated_at: z.string().datetime(), // see note above ModelDiagnosticsSchema
     season: z.number().int().optional(),
     updated_at: z.string().min(1),
     total_shots_sampled: z.number().int().positive(),
@@ -1212,7 +1207,7 @@ export const MatchupWeekSchema = z
 export const MatchupsPayloadSchema = z
   .object({
     season: z.number().int().min(2019).max(2100),
-    generated_at: z.string().min(10),
+    generated_at: z.string().datetime(),
     season_start: isoDate,
     season_end: isoDate,
     active_week: z.number().int().min(1).max(40),
