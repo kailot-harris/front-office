@@ -1,33 +1,15 @@
 # ==============================================================================
 # live_calibration.R (WNBA port)
-# Live In-Play Simulation, Market Odds Conversion & Calibration
+# Statistical Calibration Analysis & Live In-Play Simulation Engine (WNBA)
 # Path: live_calibration.R
-#
-# Not an explicit T4 deliverable per agent5.md, but required: bet_tracker.r
-# `source()`s this file for its odds-conversion helpers (american_to_prob,
-# remove_vig) exactly as the NBA original does. Per task_assignments.md's T2
-# Handoff Notes ("T4 should port live_calibration.R itself... it's sport-agnostic
-# math with no NBA-specific constants, so it should port with no logic changes
-# beyond a header comment"), this is ported byte-for-byte below — no logic
-# changes, only this header comment. `load_market_odds()`'s 10-game stub remains
-# clearly synthetic/placeholder, same as the NBA original.
+# Sanitized per Phase 0 (Issue #9): removed odds conversion & market comparison.
 # ==============================================================================
 
 suppressPackageStartupMessages({
   library(tidyverse)
 })
 
-# 1. Odds Conversion Utilities
-american_to_prob <- function(odds) {
-  if_else(odds > 0, 100 / (odds + 100), abs(odds) / (abs(odds) + 100))
-}
-
-remove_vig <- function(p_home, p_away) {
-  overround <- p_home + p_away
-  list(fair_home = p_home / overround, fair_away = p_away / overround)
-}
-
-# 2. Calibration Analysis Framework
+# 1. Calibration Analysis Framework (Pure Statistical Evaluation)
 calibration_analysis <- function(predictions_df) {
   # predictions_df must contain target_home_win ('Win'/'Loss') and .pred_Win
   cal_df <- predictions_df |>
@@ -66,43 +48,7 @@ calibration_analysis <- function(predictions_df) {
   list(table = cal_df, brier = brier, bss = bss, log_loss = log_loss, plot = cal_plot)
 }
 
-# 3. Market Odds Comparison Stub — clearly synthetic, unchanged from NBA original.
-load_market_odds <- function() {
-  tibble(
-    game_id = paste0("401", 1001:1010),
-    game_date = Sys.Date() - 1:10,
-    home_team = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
-    away_team = c(11, 12, 13, 14, 15, 16, 17, 18, 19, 20),
-    home_moneyline = c(-150, +130, -210, -110, +175, -140, +105, -180, +220, -125),
-    away_moneyline = c(+130, -150, +175, -110, -210, +120, -125, +155, -270, +105)
-  )
-}
-
-# 4. Model vs. Market Edge & Backtesting
-compare_model_vs_market <- function(model_preds, market_odds) {
-  joined <- model_preds |>
-    inner_join(market_odds, by = "game_id") |>
-    mutate(
-      market_implied_raw = american_to_prob(home_moneyline),
-      market_prob_fair = market_implied_raw / (market_implied_raw + american_to_prob(away_moneyline)),
-      edge = .pred_Win - market_prob_fair,
-      model_pick = if_else(.pred_Win > 0.50, "Home", "Away"),
-      market_favorite = if_else(market_prob_fair > 0.50, "Home", "Away"),
-      disagreement = model_pick != market_favorite
-    )
-
-  list(
-    correlation = cor(joined$.pred_Win, joined$market_prob_fair),
-    mean_abs_diff = mean(abs(joined$edge)),
-    disagreement_count = sum(joined$disagreement),
-    comparison_df = joined
-  )
-}
-
-# 5. Live In-Play Simulation Engine (Quarter Updates) — sport-agnostic; note this
-# NBA-derived version still uses a 4-quarter game-clock loop, which is structurally
-# fine for WNBA (also 4 quarters, just 10 vs 12 minutes each) since this function
-# operates on QUARTER INDEX, not minutes, so no change needed.
+# 2. Live In-Play Simulation Engine (Quarter Updates)
 simulate_live_game <- function(pre_game_home_win_prob, n_sims = 1000) {
   quarters <- paste0("Q", 1:4)
   cur_prob <- pre_game_home_win_prob

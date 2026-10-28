@@ -309,24 +309,6 @@ PIPELINE_STAGES <- list(
   # 4. Market Arbitrage & Limits (depends on roster_bottom_up_engine.R, shot_quality_engine.R,
   # fatigue_travel_engine.R)
   # ---------------------------------------------------------------------------------------
-  market_odds_engine = list(
-    id          = "market_odds_engine",
-    script      = "market_odds_engine.R",
-    description = "Benchmark Live WNBA Books vs Sharp Limits & Kelly Stakes",
-    call_fn     = NULL,
-    entry_fn    = NULL,
-    output      = file.path(CACHE_DIR, c("latest_value_bets.rds", "odds_history.rds")),
-    # inputs: rapm_ratings.rds (market_odds_engine.R:94); active_rosters_cache.rds
-    # (market_odds_engine.R:95); projected_wnba_standings.rds (market_odds_engine.R:432);
-    # team_shot_quality.rds (market_odds_engine.R:437, if present); travel_fatigue_metrics.rds
-    # (market_odds_engine.R:438, if present); its own prior odds_history.rds
-    # (market_odds_engine.R:547) is self-produced/self-consumed (append-only history), not
-    # counted as upstream.
-    inputs      = c(CACHE_RAPM_RATINGS, file.path(CACHE_DIR, "active_rosters_cache.rds"),
-                     "cache/projected_wnba_standings.rds", file.path(CACHE_DIR, "team_shot_quality.rds"),
-                     file.path(CACHE_DIR, "travel_fatigue_metrics.rds")),
-    group       = NULL
-  ),
 
   # ---------------------------------------------------------------------------------------
   # 4.5. Prediction-Accuracy Logging -- Log Today's Predictions. Second of the two distinct
@@ -356,47 +338,7 @@ PIPELINE_STAGES <- list(
   # 5. Advanced Proposition Distributions -- Parallel Group 2 (future_lapply,
   # depends on market_odds_engine.R)
   # ---------------------------------------------------------------------------------------
-  player_props_engine = list(
-    id          = "player_props_engine",
-    script      = "player_props_engine.R",
-    description = "Price ZINB Overdispersed WNBA Player Props",
-    call_fn     = NULL,
-    entry_fn    = "generate_active_props_table",
-    # Declared output is config.R's CACHE_PLAYER_PROPS (= cache/latest_player_props.rds).
-    # This stage used to write TWO copies; agent_props collapsed that to one canonical write
-    # (finding L-6), leaving data/latest_player_props.rds an orphan -- declaring the stale
-    # data/ path here would make the freshness assertion cry wolf every night.
-    output      = CACHE_PLAYER_PROPS,
-    # inputs: rapm_ratings.rds (player_props_engine.R:160, 172, opponent adjustment, neutral
-    # fallback if missing); CACHE_PLAYER_PBP_FEATURES (player_props_engine.R:360-366, shot-mix
-    # adjustment, neutral fallback if missing); CACHE_PLAYER_BOX
-    # (player_props_engine.R:424-425, real stat means); active_rosters_cache.rds
-    # (player_props_engine.R:518, 524, falls back to GLOBAL_ACTIVE_ROSTERS at line 558);
-    # latest_value_bets.rds (player_props_engine.R:557-558, 584, today's real matchups).
-    inputs      = c(CACHE_RAPM_RATINGS, CACHE_PLAYER_PBP_FEATURES, CACHE_PLAYER_BOX,
-                     file.path(CACHE_DIR, "active_rosters_cache.rds"),
-                     file.path(CACHE_DIR, "latest_value_bets.rds")),
-    group       = "props_engines"
-  ),
 
-  copula_props_engine = list(
-    id          = "copula_props_engine",
-    script      = "copula_props_engine.R",
-    description = "Simulate Joint Multivariate Gaussian Copula (PRA / SGPs)",
-    call_fn     = NULL,
-    entry_fn    = "run_copula_suite",
-    output      = "cache/copula_wilson_pra.rds",
-    # inputs: NONE despite the file header's comment claiming the A'ja Wilson marquee test's
-    # per-game means are "computed directly from T1's live cache/player_box_scores_cache.rds"
-    # (copula_props_engine.R:118-120) -- run_copula_suite() (copula_props_engine.R:121-135)
-    # actually calls simulate_joint_player_props() with HARDCODED literal means
-    # (mu_pts = 26.00, mu_reb = 9.43, mu_ast = 3.16), not a readRDS() of that cache anywhere
-    # in the file. Flagging for the orchestrator as a real discrepancy between the file's own
-    # documentation and its behavior -- out of this slice's scope to fix (individual stage
-    # scripts are out of scope per the brief).
-    inputs      = character(0),
-    group       = "props_engines"
-  ),
 
   # ---------------------------------------------------------------------------------------
   # 6. Postseason Simulation
@@ -482,56 +424,14 @@ PIPELINE_STAGES <- list(
   # ---------------------------------------------------------------------------------------
   # 7. Portfolio Risk Management & Capital Preservation
   # ---------------------------------------------------------------------------------------
-  risk_management_engine = list(
-    id          = "risk_management_engine",
-    script      = "risk_management_engine.R",
-    description = "Audit Drawdown State & Set Dynamic Kelly Multiplier",
-    call_fn     = NULL,
-    entry_fn    = "compute_risk_state",
-    output      = "cache/risk_state.rds",
-    # inputs: betting_ledger.rds (risk_management_engine.R:80-92,
-    # `load_real_ledger("cache/betting_ledger.rds")`, falls back to a synthetic seed ledger
-    # if missing).
-    inputs      = c("cache/betting_ledger.rds"),
-    group       = NULL
-  ),
 
   # ---------------------------------------------------------------------------------------
   # 8. Notification & Settlement
   # ---------------------------------------------------------------------------------------
-  notify_bets = list(
-    id          = "notify_bets",
-    script      = "notify_bets.R",
-    description = "Dispatch Filtered Discord Webhooks (EV >= 3.0%, CLV >= -0.5%)",
-    call_fn     = NULL,
-    entry_fn    = NULL,
-    output      = NULL,
-    # inputs: latest_value_bets.rds (notify_bets.R:35-41, CACHE_BETS_PATH = file.path(CACHE_DIR,
-    # "latest_value_bets.rds"), with a literal "cache/latest_value_bets.rds" fallback if that
-    # path is missing). Discord webhook itself is read via Sys.getenv("DISCORD_WEBHOOK", ""),
-    # not a file input.
-    inputs      = c(file.path(CACHE_DIR, "latest_value_bets.rds")),
-    group       = NULL
-  ),
 
   # Output: cache/rolling_bet_metrics.rds (every run) and cache/betting_ledger.rds
   # (CONDITIONAL -- only rewritten when at least one pending bet actually grades). Only the
   # unconditional output is declared for the freshness assertion.
-  bet_tracker = list(
-    id          = "bet_tracker",
-    script      = "bet_tracker.r",
-    description = "Grade Previous Completed WNBA Events & Update Rolling CLV%",
-    call_fn     = NULL,
-    entry_fn    = NULL,
-    output      = file.path(CACHE_DIR, "rolling_bet_metrics.rds"),
-    # inputs: betting_ledger.rds (bet_tracker.r:29, 35, LEDGER_FILE = file.path(CACHE_DIR,
-    # "betting_ledger.rds")); latest_value_bets.rds (bet_tracker.r:75, 78, val_path, today's
-    # picks to grade); CACHE_TEAM_BOX (bet_tracker.r:135, `if (file.exists(CACHE_TEAM_BOX))
-    # readRDS(CACHE_TEAM_BOX)`, completed-game results for grading).
-    inputs      = c(file.path(CACHE_DIR, "betting_ledger.rds"),
-                     file.path(CACHE_DIR, "latest_value_bets.rds"), CACHE_TEAM_BOX),
-    group       = NULL
-  ),
 
   # ---------------------------------------------------------------------------------------
   # 9. Next.js Static Web JSON Export (Phase 1)
