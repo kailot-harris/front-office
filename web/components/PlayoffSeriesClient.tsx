@@ -554,18 +554,18 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-4 shadow">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block font-bold">
-                    Fair Series Moneyline
+                    Series Win Probability
                   </span>
                   <div className="flex items-center justify-between mt-1">
                     <span className="font-mono text-lg font-black text-amber-400">
-                      {result.fairMlA > 0 ? `+${result.fairMlA}` : result.fairMlA}
+                      {(result.winProbA * 100).toFixed(1)}%
                     </span>
                     <span className="text-xs text-slate-500">vs</span>
                     <span className="font-mono text-lg font-black text-sky-400">
-                      {result.fairMlB > 0 ? `+${result.fairMlB}` : result.fairMlB}
+                      {(result.winProbB * 100).toFixed(1)}%
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-500 mt-1 block">Zero-vig implied probability</span>
+                  <span className="text-[10px] text-slate-500 mt-1 block">Model-projected series advance rate</span>
                 </div>
 
                 <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-4 shadow">
@@ -625,8 +625,6 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                     winProbB={result.winProbB}
                     avgGames={result.avgGames}
                     gameDistributions={result.gameDistributions}
-                    fairMlA={result.fairMlA}
-                    fairMlB={result.fairMlB}
                   />
 
                   {/* Scoreline Distribution Table */}
