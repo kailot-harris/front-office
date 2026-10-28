@@ -652,6 +652,41 @@ PIPELINE_STAGES <- list(
     output      = WEB_JSON_CBA_CAP_SHEET,
     inputs      = c(WEB_JSON_PROJECTIONS_SEASON_PLAYERS),
     group       = NULL
+  ),
+
+  # ---------------------------------------------------------------------------------------
+  # 17. Per-game Matchups dataset (#74): week ribbon, graded past weeks, pending future.
+  #
+  # ORDERING. This stage reads four artifacts and must run after ALL of their producers,
+  # which is why it sits here at the end rather than beside the other schedule-fed stages:
+  #   * CACHE_WNBA_SCHEDULE + CACHE_TEAM_BOX   <- daily_ingest (stage 2)
+  #   * cache/prediction_accuracy_log.rds      <- prediction_accuracy_logger_log (stage 11)
+  #       AND prediction_accuracy_logger_reconcile (stage 7), which is what turns a logged
+  #       prediction into a GRADED one. Running before the reconcile would publish a week
+  #       as ungraded that had in fact just been graded.
+  #   * cache/projected_wnba_standings.rds     <- roster_bottom_up_engine (stage 10, written
+  #       at roster_bottom_up_engine.R:838). This is the fallback projection basis for every
+  #       game the accuracy log never predicted -- 311 of 355 for the 2026 season -- so a
+  #       stale or missing standings file degrades most of the page. export_web_json already
+  #       hard-stops without it (export_web_json.R:58); this stage does the same.
+  #
+  # It does NOT depend on export_web_json: it writes its own payload directly, like the
+  # other build_*_dataset stages above, and shares no artifact with that stage.
+  #
+  # entry_fn (not call_fn): the script self-runs under its own `if (!interactive())` guard,
+  # so entry_fn only verifies the entry point exists rather than invoking it a second time.
+  # ---------------------------------------------------------------------------------------
+  matchups_dataset = list(
+    id          = "matchups_dataset",
+    script      = "build_matchups_dataset.R",
+    description = "Build Per-Game Matchups Dataset (week ribbon, scores, graded predictions)",
+    call_fn     = NULL,
+    entry_fn    = "build_matchups_dataset",
+    output      = WEB_JSON_MATCHUPS_SLATES,
+    inputs      = c(CACHE_WNBA_SCHEDULE, CACHE_TEAM_BOX,
+                    file.path(CACHE_DIR, "prediction_accuracy_log.rds"),
+                    file.path(CACHE_DIR, "projected_wnba_standings.rds")),
+    group       = NULL
   )
 )
 

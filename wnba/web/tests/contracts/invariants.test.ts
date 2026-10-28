@@ -567,3 +567,192 @@ describe('Domain & mathematical invariants: clutch, defense, playerDna, coaches,
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// matchups_slates.json (build_matchups_dataset.R, issue #74).
+//
+// The Zod schema in schemas.ts already enforces per-record shape and the
+// within-record consistency rules. What is here instead is the arithmetic that
+// crosses records: the summary and per-week rollups must be RECOMPUTABLE from
+// the matchups array, so a rollup can never drift away from the games it
+// claims to describe.
+// ---------------------------------------------------------------------------
+describe('Domain & mathematical invariants: matchups_slates.json', () => {
+  const { matchups: m } = loadAllDatasets();
+
+  it('summary counts are exactly recomputable from the matchups array', () => {
+    const completed = m.matchups.filter((g) => g.is_completed);
+    const graded = m.matchups.filter((g) => g.is_graded);
+    const correct = graded.filter((g) => g.prediction_correct === true);
+
+    expect(m.summary.total_games).toBe(m.matchups.length);
+    expect(m.summary.completed_games).toBe(completed.length);
+    expect(m.summary.pending_games).toBe(m.matchups.length - completed.length);
+    expect(m.summary.graded_games).toBe(graded.length);
+
+    if (graded.length > 0) {
+      expect(m.summary.correct_games).toBe(correct.length);
+      expect(m.summary.accuracy_pct).toBeCloseTo((100 * correct.length) / graded.length, 1);
+    } else {
+      expect(m.summary.correct_games).toBeNull();
+      expect(m.summary.accuracy_pct).toBeNull();
+    }
+
+    // The honest-coverage figure the page renders. If this drifts, the page
+    // understates how much of the season the model never predicted.
+    expect(m.summary.played_without_logged_prediction).toBe(
+      completed.filter((g) => !g.has_logged_prediction).length
+    );
+  });
+
+  it('every week rollup is recomputable from that week\'s games, and the weeks partition the games exactly', () => {
+    const weekNumbers = m.weeks.map((w) => w.week);
+    expect(new Set(weekNumbers).size).toBe(m.weeks.length);
+    expect(weekNumbers).toEqual([...weekNumbers].sort((a, b) => a - b));
+
+    // available_weeks must be exactly the weeks that have games -- no phantom
+    // entries, nothing missing. This is what lets the ribbon iterate it.
+    const weeksInGames = [...new Set(m.matchups.map((g) => g.week))].sort((a, b) => a - b);
+    expect(m.available_weeks).toEqual(weeksInGames);
+    expect(weekNumbers).toEqual(weeksInGames);
+
+    let covered = 0;
+    for (const w of m.weeks) {
+      const games = m.matchups.filter((g) => g.week === w.week);
+      covered += games.length;
+      const completed = games.filter((g) => g.is_completed);
+      const graded = games.filter((g) => g.is_graded);
+      const correct = graded.filter((g) => g.prediction_correct === true);
+
+      expect(w.total_games, `week ${w.week} total_games`).toBe(games.length);
+      expect(w.completed_games, `week ${w.week} completed_games`).toBe(completed.length);
+      expect(w.pending_games, `week ${w.week} pending_games`).toBe(
+        games.length - completed.length
+      );
+      expect(w.graded_games, `week ${w.week} graded_games`).toBe(graded.length);
+
+      if (graded.length > 0) {
+        expect(w.correct_games, `week ${w.week} correct_games`).toBe(correct.length);
+        expect(w.accuracy_pct, `week ${w.week} accuracy_pct`).toBeCloseTo(
+          (100 * correct.length) / graded.length,
+          1
+        );
+      } else {
+        expect(w.correct_games, `week ${w.week} correct_games`).toBeNull();
+        expect(w.accuracy_pct, `week ${w.week} accuracy_pct`).toBeNull();
+      }
+
+      const dates = games.map((g) => g.game_date).sort();
+      expect(w.start_date, `week ${w.week} start_date`).toBe(dates[0]);
+      expect(w.end_date, `week ${w.week} end_date`).toBe(dates[dates.length - 1]);
+      expect(
+        [...w.season_types].sort(),
+        `week ${w.week} season_types`
+      ).toEqual([...new Set(games.map((g) => g.season_type))].sort());
+    }
+    // Partition, not merely a cover: every game belongs to exactly one week.
+    expect(covered).toBe(m.matchups.length);
+  });
+
+  it('the week bucket of every game follows floor((date - season_start) / 7) + 1', () => {
+    // The definition in build_matchups_dataset.R (DESIGN DECISION 1). Pinned
+    // here because the ribbon, the rollups and active_week all assume it.
+    const start = Date.parse(`${m.season_start}T00:00:00Z`);
+    for (const g of m.matchups) {
+      const days = (Date.parse(`${g.game_date}T00:00:00Z`) - start) / 86_400_000;
+      expect(g.week, `${g.game_date} ${g.away_team}@${g.home_team}`).toBe(
+        Math.floor(days / 7) + 1
+      );
+    }
+  });
+
+  it('season_start and season_end bound every game date', () => {
+    const dates = m.matchups.map((g) => g.game_date).sort();
+    expect(m.season_start).toBe(dates[0]);
+    expect(m.season_end).toBe(dates[dates.length - 1]);
+  });
+
+  it('active_week is the last week containing a played game', () => {
+    const playedWeeks = m.matchups.filter((g) => g.is_completed).map((g) => g.week);
+    if (playedWeeks.length > 0) {
+      expect(m.active_week).toBe(Math.max(...playedWeeks));
+    } else {
+      expect(m.active_week).toBe(Math.min(...m.available_weeks));
+    }
+  });
+
+  it('provenance basis_counts and logged-prediction count match the games', () => {
+    const counts: Record<string, number> = {
+      logged_model: 0,
+      logged_model_prob_only: 0,
+      team_rating_differential: 0,
+      none: 0,
+    };
+    for (const g of m.matchups) {
+      counts[g.projection_basis ?? 'none'] += 1;
+    }
+    for (const [basis, n] of Object.entries(counts)) {
+      expect(m.provenance.basis_counts[basis] ?? 0, `basis ${basis}`).toBe(n);
+    }
+    // Every game is accounted for by exactly one basis (or none).
+    expect(Object.values(m.provenance.basis_counts).reduce((a, b) => a + b, 0)).toBe(
+      m.matchups.length
+    );
+
+    expect(m.provenance.games_with_logged_prediction).toBe(
+      m.matchups.filter((g) => g.has_logged_prediction).length
+    );
+    expect(m.provenance.log_match_pct).toBeCloseTo(
+      (100 * m.provenance.logged_predictions_matched) /
+        m.provenance.logged_predictions_in_window,
+      1
+    );
+  });
+
+  it('only the logged model basis is ever graded, and every graded game is a logged one', () => {
+    // The central honesty invariant of this payload: the rating-differential
+    // fill is weaker and must never enter the accuracy figure. Asserted in
+    // aggregate here as well as per-record in the Zod schema, because this is
+    // the property that would silently inflate the published accuracy.
+    for (const g of m.matchups) {
+      if (g.projection_basis === 'team_rating_differential') {
+        expect(g.is_graded, `${g.game_id} graded on the rating basis`).toBe(false);
+        expect(g.prediction_correct, `${g.game_id} graded on the rating basis`).toBeNull();
+      }
+    }
+    expect(m.summary.graded_games).toBe(
+      m.matchups.filter((g) => g.is_graded && g.has_logged_prediction).length
+    );
+  });
+
+  it('scores, margins and winners are mutually consistent for every played game', () => {
+    for (const g of m.matchups.filter((x) => x.is_completed)) {
+      const label = `${g.game_date} ${g.away_team}@${g.home_team}`;
+      expect(g.actual_margin, label).toBe((g.home_score as number) - (g.away_score as number));
+      expect(g.actual_winner, label).toBe(
+        (g.actual_margin as number) > 0 ? g.home_team : g.away_team
+      );
+    }
+  });
+
+  it('predicted_winner agrees with the sign of projected_margin and names one of the two teams', () => {
+    for (const g of m.matchups) {
+      if (g.predicted_winner === null) continue;
+      const label = `${g.game_date} ${g.away_team}@${g.home_team}`;
+      expect([g.home_team, g.away_team], label).toContain(g.predicted_winner);
+      // Only checked for the rating basis: a LOGGED predicted_winner is copied
+      // verbatim from the accuracy log and is the log's own call, so a
+      // disagreement there is the logger's to explain, not this stage's.
+      if (g.projection_basis === 'team_rating_differential' && g.projected_margin !== null) {
+        expect(g.predicted_winner, label).toBe(
+          g.projected_margin > 0 ? g.home_team : g.away_team
+        );
+      }
+    }
+  });
+
+  it('game_ids are unique, so no fixture is double-counted in any rollup', () => {
+    const ids = m.matchups.map((g) => g.game_id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+});

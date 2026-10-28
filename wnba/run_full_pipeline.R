@@ -457,6 +457,13 @@ run_registered_stage("clutch_dataset")
 # Output: web/public/data/cba_cap_sheet.json (+ cache/cba_cap_sheet.rds)
 run_registered_stage("cba_cap_dataset")
 
+# 17. Per-game Matchups: week ribbon, graded past weeks, pending future weeks (#74)
+# Output: web/public/data/matchups_slates.json (+ cache/matchups_cache.rds)
+# Last of the dataset stages because it depends on the most producers -- the schedule and
+# box scores (stage 2), the reconciled accuracy log (stages 7 and 11) and the projected
+# standings (stage 10). See the ordering note in pipeline_stages.R.
+run_registered_stage("matchups_dataset")
+
 # Reset parallel plan to sequential. This also shuts the multisession workers down, so by the
 # time the spill merge below runs, no other process holds logs.duckdb.
 plan(sequential)

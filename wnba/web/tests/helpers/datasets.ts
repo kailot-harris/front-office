@@ -27,6 +27,7 @@ import type {
   PlayerShotData,
   ShotsMetadata,
 } from '@/lib/shotTypes';
+import { MatchupsPayload } from '@/lib/matchupTypes';
 
 export const WEB_ROOT = path.resolve(__dirname, '../..');
 export const PUBLIC_DIR = path.join(WEB_ROOT, 'public');
@@ -96,6 +97,7 @@ export const EXPECTED_DATA_FILES = [
   'finals_series_backtest_2026.json',
   'shots_index.json',
   'shots_metadata.json',
+  'matchups_slates.json',
 ] as const;
 
 export type DataFileName = (typeof EXPECTED_DATA_FILES)[number];
@@ -149,5 +151,6 @@ export function loadAllDatasets() {
     ),
     shotsIndex: readJsonFile<PlayerCatalogEntry[]>('shots_index.json'),
     shotsMetadata: readJsonFile<ShotsMetadata>('shots_metadata.json'),
+    matchups: readJsonFile<MatchupsPayload>('matchups_slates.json'),
   };
 }

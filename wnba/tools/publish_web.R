@@ -33,7 +33,7 @@
 #
 # THE SEVEN ASSERTIONS
 #   A  mtime freshness - every entry of config.R's WEB_DATA_FILES has an mtime
-#      later than the run start. The eighteen filenames are NEVER re-typed
+#      later than the run start. The nineteen filenames are NEVER re-typed
 #      here; they are read from config.R, which is now also where
 #      pipeline_stages.R's stage `output =` fields and export_web_json.R's
 #      write targets get their paths. Unlike the NBA and MLB ports, WNBA has no
@@ -217,7 +217,7 @@ source("config.R")
 # ASSERTION A - mtime freshness
 # ------------------------------------------------------------------------------
 .assert_mtime_freshness <- function(run_start) {
-  files <- WEB_DATA_FILES          # <- the eighteen names come from config.R ONLY
+  files <- WEB_DATA_FILES          # <- the nineteen names come from config.R ONLY
   info  <- file.info(files)
   stale <- character(0)
   rows  <- vector("list", length(files))

@@ -20,6 +20,7 @@ import {
   Flame,
   Coins,
   CheckCircle2,
+  CalendarDays,
 } from 'lucide-react';
 
 
@@ -34,6 +35,13 @@ export const Sidebar: React.FC = () => {
       badge: '15 Teams',
       icon: Trophy,
       desc: 'Win distributions & franchise table',
+    },
+    {
+      href: '/matchups',
+      label: 'Matchups',
+      badge: 'By Week',
+      icon: CalendarDays,
+      desc: 'Week slate, scores & graded picks',
     },
     {
       href: '/variants',
