@@ -221,6 +221,51 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
     teams_list[[length(teams_list) + 1]] <- team_entry
   }
 
+  # ----------------------------------------------------------------------------
+  # Zero-sum schedule conservation. variant_bottom_up_mean_wins is schedule-
+  # balanced by construction (see roster_bottom_up_engine.R), but rapm_adj/
+  # shot_adj/emb_adj are each computed independently per team and are not
+  # individually zero-sum, so the weighted ensemble blend can drift away from
+  # total_schedule_games (330 = WNBA_SEASON_GAMES * 15 / 2). Redistribute any
+  # drift equally across all teams and re-derive every ensemble_mean_wins-
+  # dependent field from the corrected mean, so proj_wins/ensemble_mean_wins
+  # sum to exactly total_schedule_games (not just within the test's ±0.5).
+  # ----------------------------------------------------------------------------
+  n_teams <- length(teams_list)
+  total_schedule_games <- WNBA_SEASON_GAMES * n_teams / 2
+  ens_wins_total <- sum(sapply(teams_list, function(e) e$ensemble_mean_wins))
+  drift_per_team <- (ens_wins_total - total_schedule_games) / n_teams
+
+  corrected_means <- sapply(teams_list, function(e) round(e$ensemble_mean_wins - drift_per_team, 1))
+  rounding_leftover <- round(total_schedule_games - sum(corrected_means), 1)
+  if (rounding_leftover != 0) {
+    # Absorb any residual rounding error (at most a few * 0.1) into the single
+    # team whose mean is furthest from a round number, so the published sum is
+    # exact rather than merely within the test's tolerance.
+    adjust_idx <- which.max(abs(corrected_means - round(corrected_means)))
+    corrected_means[adjust_idx] <- round(corrected_means[adjust_idx] + rounding_leftover, 1)
+  }
+
+  teams_list <- lapply(seq_len(n_teams), function(i) {
+    e <- teams_list[[i]]
+    m <- corrected_means[i]
+    s <- e$ensemble_sd_wins
+    q <- q_helper(m, s)
+    e$proj_wins <- m
+    e$proj_losses <- round(WNBA_SEASON_GAMES - m, 1)
+    e$win_pct <- round(m / WNBA_SEASON_GAMES, 3)
+    e$ensemble_mean_wins <- m
+    e$ensemble_median_wins <- q$p50
+    e$ensemble_p10 <- q$p10
+    e$ensemble_p25 <- q$p25
+    e$ensemble_p50 <- q$p50
+    e$ensemble_p75 <- q$p75
+    e$ensemble_p90 <- q$p90
+    e$ensemble_playoff_prob <- playoff_prob(m, s)
+    e$ensemble_title_prob <- title_prob(m)
+    e
+  })
+
   teams_df <- bind_rows(lapply(teams_list, as.data.frame, stringsAsFactors = FALSE))
   teams_df <- teams_df %>%
     arrange(desc(ensemble_mean_wins)) %>%
