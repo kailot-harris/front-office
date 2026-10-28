@@ -93,6 +93,34 @@ REM calls made via R's system2() can't find ~/.gitconfig and refuse to commit wi
 REM "unable to auto-detect email address". tools/publish_web.R's .pw_git() now
 REM passes identity explicitly via `git -c user.name=... -c user.email=...` for the
 REM commit step regardless of HOME, but set HOME here too as defense-in-depth.
+REM ------------------------------------------------------------------------------
+REM Seasonal guard (NFL_analytics#41): mirror schedule_daily.bat's September-
+REM February active window (months 09,10,11,12,01,02) so the 09:00 publish gate
+REM does not fire false-alarm blocked alerts during the March-August off-season
+REM when schedule_daily.bat deliberately skipped the 05:15 pipeline run. Set
+REM NFL_IGNORE_SEASON_GUARD=1 in the environment to override.
+REM ------------------------------------------------------------------------------
+for /f "usebackq" %%I in (`powershell -NoProfile -Command "(Get-Date).ToString('MM')"`) do set CUR_MM=%%I
+
+if defined NFL_IGNORE_SEASON_GUARD goto :inseason
+if "%CUR_MM%"=="03" goto :offseason
+if "%CUR_MM%"=="04" goto :offseason
+if "%CUR_MM%"=="05" goto :offseason
+if "%CUR_MM%"=="06" goto :offseason
+if "%CUR_MM%"=="07" goto :offseason
+if "%CUR_MM%"=="08" goto :offseason
+goto :inseason
+
+:offseason
+echo ================================================================== >> "%LOG_FILE%"
+echo NFL WEB PUBLISH GATE CHECK: %DATE% %TIME% (month=%CUR_MM%) >> "%LOG_FILE%"
+echo ================================================================== >> "%LOG_FILE%"
+echo [SKIPPED] Current month %CUR_MM% is outside the NFL season window (September-February). >> "%LOG_FILE%"
+echo [SKIPPED] Publish gate NOT run (set NFL_IGNORE_SEASON_GUARD=1 to override). >> "%LOG_FILE%"
+echo. >> "%LOG_FILE%"
+exit /b 0
+
+:inseason
 if not defined HOME set HOME=%USERPROFILE%
 
 cd /d "%PROJECT_DIR%"

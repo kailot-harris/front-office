@@ -72,6 +72,7 @@ export interface MatchupGame {
 }
 
 export interface MatchupsDataset {
+  generated_at: string;
   active_week: number;
   available_weeks: number[];
   total_games: number;
@@ -79,6 +80,7 @@ export interface MatchupsDataset {
 }
 
 export interface TeamEpaProfile {
+  generated_at: string;
   team: string;
   team_name: string;
   conference: 'AFC' | 'NFC';
@@ -133,6 +135,7 @@ export interface PlayoffDataset {
 }
 
 export interface QbProfile {
+  generated_at: string;
   player_name: string;
   team: string;
   jersey_number: number;
@@ -155,6 +158,7 @@ export interface CalibrationBin {
 }
 
 export interface DiagnosticsDataset {
+  generated_at: string;
   season: number | number[];
   last_evaluated: string | string[];
   n_games_graded: number | number[];
@@ -188,11 +192,13 @@ export interface ValueBet {
 }
 
 export interface ValueBetsDataset {
+  generated_at: string;
   total_bets: number;
   active_bets: ValueBet[];
 }
 
 export interface VisualMediaItem {
+  generated_at: string;
   filename: string;
   title: string;
   category: 'standings' | 'epa' | 'elo' | 'heatmaps' | 'players' | 'general';
@@ -262,6 +268,7 @@ export interface LeagueTopContract {
 }
 
 export interface SalaryCapDataset {
+  generated_at: string;
   season: number;
   cap_ceiling: number;
   source: string;

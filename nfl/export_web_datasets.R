@@ -91,6 +91,7 @@ run_export_web_datasets <- function() {
   # 1. Copy Animated GIFs and Heatmaps to config.R's WEB_ANIM_DIR
   # ------------------------------------------------------------------------------
   cat(">>> [1/8] Syncing visual media artifacts...\n")
+  generated_at_utc <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
   gif_files <- list.files(CACHE_DIR, pattern = "\\.(gif|png)$", full.names = TRUE)
   media_index <- list()
 
@@ -130,6 +131,7 @@ run_export_web_datasets <- function() {
     }
   
     media_index[[length(media_index) + 1]] <- list(
+      generated_at = generated_at_utc,
       filename    = bname,
       title       = meta$title,
       category    = meta$category,
@@ -430,8 +432,8 @@ run_export_web_datasets <- function() {
   }
 
   standings_data <- list(
+    generated_at = generated_at_utc,
     season       = CURRENT_SEASON,
-    generated_at = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"),
     total_teams  = length(standings_list),
     teams        = standings_list
   )
@@ -618,6 +620,7 @@ run_export_web_datasets <- function() {
   }
 
   matchups_data <- list(
+    generated_at    = generated_at_utc,
     active_week     = active_week,
     available_weeks = available_weeks,
     total_games     = length(all_matchups_list),
@@ -645,6 +648,7 @@ run_export_web_datasets <- function() {
       last_row <- sub[nrow(sub), ]
     
       team_epa_list[[length(team_epa_list) + 1]] <- list(
+        generated_at         = generated_at_utc,
         team                 = tm,
         team_name            = as.character(NFL_TEAMS[tm]),
         conference           = conf,
@@ -722,8 +726,8 @@ run_export_web_datasets <- function() {
   }
 
   playoff_data <- list(
+    generated_at   = generated_at_utc,
     season         = playoff_sim_obj$season,
-    generated_at   = as.character(playoff_sim_obj$generated_at),
     n_simulations  = playoff_sim_obj$n_simulations,
     seeding_method = playoff_sim_obj$seeding_method,
     afc_seeds      = format_seed_list(afc_field),
@@ -874,6 +878,7 @@ run_export_web_datasets <- function() {
       }
 
       qb_list[[length(qb_list) + 1]] <- list(
+        generated_at    = generated_at_utc,
         player_name     = full_name,
         team            = tm,
         jersey_number   = if (!is.na(q$jersey_number)) as.integer(q$jersey_number) else 0L,
@@ -941,6 +946,7 @@ run_export_web_datasets <- function() {
     }
 
   diagnostics_data <- list(
+    generated_at       = generated_at_utc,
     season             = acc_obj$season,
     last_evaluated     = as.character(acc_obj$run_timestamp),
     n_games_graded     = as.integer(acc_obj$n_games_graded),
@@ -1066,6 +1072,7 @@ run_export_web_datasets <- function() {
       })
 
       salary_cap_data <- list(
+        generated_at = generated_at_utc,
         season = CURRENT_SEASON,
         cap_ceiling = NFL_CAP_CEILING,
         source = "OverTheCap (OTC) via nflreadr",
@@ -1173,6 +1180,7 @@ run_export_web_datasets <- function() {
     })
 
     vb_out <- list(
+      generated_at = generated_at_utc,
       total_bets  = length(active_bets),
       active_bets = active_bets
     )

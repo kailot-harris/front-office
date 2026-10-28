@@ -83,3 +83,23 @@ docs/internal/
 # the same bloat the WNBA repo had to untrack after one commit added 3,755 lines
 # of this exact file.
 logs/*.log.old
+# ------------------------------------------------------------------------------
+# Ephemeral runtime cache artifacts & handoff scratch (untracked 2026-10-28).
+# Static derivation artifacts (tools/derive_nfl_constants.R, backtests) remain
+# tracked; daily pipeline outputs and animation renders are gitignored so
+# scheduled runs do not leave git status permanently dirty.
+# ------------------------------------------------------------------------------
+HANDOFF.md
+cache/accuracy_history.rds
+cache/gif_*
+cache/injury_data_cache.rds
+cache/latest_value_bets.rds
+cache/odds_history.rds
+cache/playoff_odds.rds
+cache/playoff_simulation.rds
+cache/projected_matchups.rds
+cache/risk_state.rds
+cache/rosters_cache.rds
+cache/schedules_cache.rds
+cache/team_epa_metrics.rds
+cache/team_ratings.rds
