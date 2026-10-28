@@ -16,8 +16,20 @@ name: Refresh live results
 
 on:
   schedule:
-    # 11:00 UTC = 07:00 ET, after any North American night game has finished
-    # and been marked Final. Cron is UTC-only; this does not shift with DST.
+    # Slot C - overnight. 05:00 UTC = 01:00 ET: the first hour at which a full
+    # night of North American games is reliably Final. Added 2026-10-27 when
+    # the three-slot converged schedule was adopted; its sibling repos (NBA,
+    # NFL) run their own refresh-results.yml on the same two crons, and the
+    # aggregator's sync-sports.yml pulls 30 minutes behind each.
+    - cron: '0 5 * * *'
+    # Slot B - afternoon. 22:00 UTC = 18:00 ET: catches afternoon finals before
+    # primetime.
+    - cron: '0 22 * * *'
+    # 11:00 UTC = 07:00 ET. This one PREDATES the converged schedule and is
+    # kept deliberately: it is the only cron that fires before slot A's
+    # 13:00 UTC pipeline run, so the postseason banner is already correct on
+    # the site if that run is late or does not happen. It costs one jsonlite
+    # install. Cron is UTC-only; none of these shift with DST.
     - cron: '0 11 * * *'
   workflow_dispatch:
     inputs:
