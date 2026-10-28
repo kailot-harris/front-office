@@ -293,68 +293,9 @@ run_stage("playoff_odds_engine.R", "Compute NFL Playoff-Clinching Probabilities 
           call_fn = "run_playoff_odds_engine",
           output   = CACHE_PLAYOFF_ODDS)
 
-# 8. Market odds / value-betting engine (Phase 6, task P6-B; engine itself built under P6-A).
-# Writes CACHE_LATEST_VALUE_BETS and CACHE_ODDS_HISTORY (config.R) — two outputs from one stage,
-# declared together per the daily_ingest.R / team_ratings_engine.R stages' multi-output precedent
-# above. Reads cache/projected_matchups.rds (stage 5, team_ratings_engine.R) as its sole model-
-# probability source and cache/fatigue_metrics.rds (stage 6, fatigue_engine.R) for the fatigue
-# adjustment layered on top — must therefore come after both.
-run_stage("market_odds_engine.R", "Fetch Live NFL Odds & Identify +EV Value Bets",
-          call_fn = "run_market_odds_engine",
-          output   = c(CACHE_LATEST_VALUE_BETS, CACHE_ODDS_HISTORY))
-
-# 9. Real bet ledger writer/grader (model-quality remediation, Known Issue #2).
-# Writes CACHE_BETTING_LEDGER (config.R). Reads cache/latest_value_bets.rds (stage 8 above) to
-# record today's real, staked value picks as PENDING, and cache/schedules_cache.rds (stage 1)
-# to grade any already-recorded picks whose games have since completed — must therefore come
-# after stage 8.
-#
-# EXPECTED BENIGN C-2 WARNING: unlike every other stage, bet_tracker.r only rewrites
-# CACHE_BETTING_LEDGER when there is a real new pick to append OR a real pending bet whose
-# game has completed to grade - on a run with neither (no staked value bets this slate, and
-# nothing outstanding to resolve), the file is legitimately untouched and
-# .check_stage_output() will WARN it as possibly-stale. That is a true "nothing changed"
-# report, not the silent-no-op failure mode C-2 exists to catch - do not "fix" it by forcing
-# a write every run just to silence the WARN.
-run_stage("bet_tracker.r", "Record & Grade Real Value-Bet Ledger (CLV tracking)",
-          call_fn = "run_bet_tracker",
-          output   = CACHE_BETTING_LEDGER)
-
-# 9.5. Risk management engine (Phase 5, task P5-B; engine itself built under P5-A).
-# Writes CACHE_RISK_STATE (config.R). Reads CACHE_BETTING_LEDGER (stage 9 above) — falls back to a
-# clearly-labeled SYNTHETIC_FALLBACK ledger if it doesn't exist or has zero RESOLVED bets yet (see
-# risk_management_engine.R header and docs/task_assignments_phase4.md). Deliberately moved to run
-# AFTER stage 9 (was stage 8, before market_odds_engine.R/bet_tracker.r) so that any bet graded
-# earlier in THIS SAME pipeline invocation is reflected in this run's risk state immediately,
-# instead of one cycle behind — this closes the ordering gap documented in docs/HANDOFF.md's Known
-# Issue #3. No other stage reads CACHE_RISK_STATE, so this reorder has no other dependency impact.
-run_stage("risk_management_engine.R", "Compute Bankroll Drawdown / Kelly-Tier Risk State",
-          call_fn = "run_risk_management",
-          output   = CACHE_RISK_STATE)
-
-# 10. Discord alpha/CLV alert dispatcher (Phase 7, task P7-B; engine itself built under P7-A).
-# Terminal notification stage — no cache output of its own (matches WNBA's own run_stage() call
-# for notify_bets.R, which also declares no `output`), so it is intentionally absent from the
-# pipeline-freshness-audit skill's manifest (.claude/skills/pipeline-freshness-audit) — nothing to
-# track, not a gap. Reads cache/latest_value_bets.rds (stage 9, market_odds_engine.R) as its sole
-# input — must therefore come after it. Dispatches to NFL_DISCORD_WEBHOOK if visible to this R
-# process, else cleanly falls back to a console-only preview (see notify_bets.R header).
-run_stage("notify_bets.R", "Dispatch NFL Discord Alpha & CLV Bet Alerts",
-          call_fn = "run_notify_bets")
-
-# 11. Season-to-date model accuracy trajectory tracker (issue #7; engine itself built under
-# issue #5, Discord dispatch under issue #6). Detects newly-completed/graded CURRENT_SEASON games
-# since the last recorded run and appends one row to CACHE_ACCURACY_HISTORY (config.R) — see
-# accuracy_tracker.R's own header and docs/SPEC_accuracy_trajectory_monitoring.md decisions #3-#5.
-# No `output` declared here, deliberately, same rationale as stage 10's bet_tracker.r comment
-# above: run_accuracy_tracker() only appends to CACHE_ACCURACY_HISTORY when there is at least one
-# newly-graded game since the last run — on a normal no-new-games day (bye weeks, mid-week, or a
-# day with no games completed since the last run) it is a clean no-op that returns without
-# touching the file at all, which is indistinguishable from the C-2 "possibly stale/silent no-op"
-# case .check_stage_output() warns about. Declaring `output = CACHE_ACCURACY_HISTORY` would make
-# that legitimate every-day-without-new-games outcome throw a false-positive staleness WARN, so
-# `output` is intentionally omitted (matches notify_bets.R's own no-`output` convention directly
-# above, for the same "last stage, no unconditional per-run write" reason).
+# 8. Season-to-date model accuracy trajectory tracker (issue #7).
+# Note: Betting stages (market_odds_engine, bet_tracker, risk_management_engine, notify_bets)
+# pruned per Phase 1 (Issue #13).
 run_stage("accuracy_tracker.R", "Track Season-to-Date Model Accuracy Trajectory",
           call_fn = "run_accuracy_tracker")
 
