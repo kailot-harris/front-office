@@ -59,8 +59,4 @@ describe('declared counts match actual array lengths', () => {
     expect(d.total_games).toBe(d.matchups.length);
   });
 
-  it('value_bets.total_bets === active_bets.length', () => {
-    const d = loadRaw('value_bets.json') as { total_bets: number; active_bets: unknown[] };
-    expect(d.total_bets).toBe(d.active_bets.length);
-  });
 });

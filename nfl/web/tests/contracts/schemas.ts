@@ -224,26 +224,6 @@ export const diagnosticsDatasetSchema = z.object({
   calibration_curve: z.array(calibrationBinSchema).nonempty(),
 }).strict();
 
-export const valueBetSchema = z.object({
-  matchup: z.string().min(1),
-  recommended_bet: z.string().min(1),
-  team: z.string().min(1),
-  book: z.string().min(1),
-  line: z.string(),
-  model_win_prob: prob,
-  predicted_margin: z.number().finite(),
-  ev_percent: z.number().finite(),
-  exp_clv: z.number().finite(),
-  bankroll_rec: z.string(),
-  status: z.string().min(1),
-}).strict();
-
-export const valueBetsDatasetSchema = z.object({
-  generated_at: isoUtcStamp,
-  total_bets: z.number().int().min(0),
-  active_bets: z.array(valueBetSchema),
-}).strict();
-
 export const visualMediaItemSchema = z.object({
   generated_at: isoUtcStamp,
   filename: z.string().regex(/^[\w.\-]+\.(gif|png|jpg|jpeg|webp)$/i, 'unsafe or unexpected filename'),
@@ -329,7 +309,6 @@ export const DATASET_SCHEMAS = {
   'playoff_picture.json': playoffDatasetSchema,
   'player_qb_profiles.json': z.array(qbProfileSchema),
   'model_diagnostics.json': diagnosticsDatasetSchema,
-  'value_bets.json': valueBetsDatasetSchema,
   'visual_media_index.json': z.array(visualMediaItemSchema),
   'coaching_profiles.json': z.array(coachProfileSchema),
   'salary_cap_profiles.json': salaryCapDatasetSchema,

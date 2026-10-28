@@ -7,7 +7,6 @@ import {
   PlayoffDataset,
   QbProfile,
   DiagnosticsDataset,
-  ValueBetsDataset,
   VisualMediaItem,
   CoachProfile,
   SalaryCapDataset,
@@ -46,9 +45,6 @@ export function getDiagnosticsData(): DiagnosticsDataset {
   return readJsonFile<DiagnosticsDataset>('model_diagnostics.json');
 }
 
-export function getValueBets(): ValueBetsDataset {
-  return readJsonFile<ValueBetsDataset>('value_bets.json');
-}
 
 export function getVisualMediaIndex(): VisualMediaItem[] {
   return readJsonFile<VisualMediaItem[]>('visual_media_index.json');

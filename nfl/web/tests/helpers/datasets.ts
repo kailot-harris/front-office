@@ -15,7 +15,6 @@ import type {
   PlayoffDataset,
   QbProfile,
   DiagnosticsDataset,
-  ValueBetsDataset,
   VisualMediaItem,
   CoachProfile,
   SalaryCapDataset,
@@ -33,7 +32,6 @@ export const DATASET_FILES = {
   getPlayoffPicture: 'playoff_picture.json',
   getQbProfiles: 'player_qb_profiles.json',
   getDiagnosticsData: 'model_diagnostics.json',
-  getValueBets: 'value_bets.json',
   getVisualMediaIndex: 'visual_media_index.json',
   getCoachingProfiles: 'coaching_profiles.json',
   getSalaryCapData: 'salary_cap_profiles.json',
@@ -53,7 +51,6 @@ export const teamEpa = () => loadRaw(DATASET_FILES.getTeamEpaProfiles) as TeamEp
 export const playoffs = () => loadRaw(DATASET_FILES.getPlayoffPicture) as PlayoffDataset;
 export const qbs = () => loadRaw(DATASET_FILES.getQbProfiles) as QbProfile[];
 export const diagnostics = () => loadRaw(DATASET_FILES.getDiagnosticsData) as DiagnosticsDataset;
-export const valueBets = () => loadRaw(DATASET_FILES.getValueBets) as ValueBetsDataset;
 export const media = () => loadRaw(DATASET_FILES.getVisualMediaIndex) as VisualMediaItem[];
 export const coaching = () => loadRaw(DATASET_FILES.getCoachingProfiles) as CoachProfile[];
 export const salaryCap = () => loadRaw(DATASET_FILES.getSalaryCapData) as SalaryCapDataset;

@@ -19,7 +19,6 @@ import {
   salaryCap,
   standings,
   teamEpa,
-  valueBets,
 } from '../helpers/datasets';
 
 const KNOWN = new Set(Object.keys(NFL_TEAMS_METADATA));
@@ -106,19 +105,6 @@ describe('the datasets agree with each other on team identity', () => {
     expect(diffs).toEqual([]);
   });
 
-  it('value_bets.team uses the same ID space as every other dataset', () => {
-    // ValueBet.team is typed as a bare `string` in lib/types.ts, which hides
-    // the fact that this file carries FULL TEAM NAMES while every other
-    // dataset carries 2-3 letter codes. Wiring value_bets into a component
-    // that renders <TeamLogo team={bet.team}> would break on all 32 teams.
-    const codes = [...new Set(valueBets().active_bets.map((b) => b.team))];
-    const nonCodes = codes.filter((c) => !KNOWN.has(c));
-    expect(
-      nonCodes.slice(0, 5),
-      `value_bets.json identifies teams by full name (e.g. ${JSON.stringify(nonCodes[0] ?? '')}) ` +
-        `rather than by the abbreviation used everywhere else.`,
-    ).toEqual([]);
-  });
 });
 
 describe('lib/teams.ts internal consistency', () => {

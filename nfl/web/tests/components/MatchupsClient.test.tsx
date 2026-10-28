@@ -257,7 +257,7 @@ describe('MatchupsClient result badges agree with the projection on the same car
 });
 
 describe('MatchupsClient resilience', () => {
-  const empty = { active_week: 99, available_weeks: [99] as [number], total_games: 0, matchups: [] };
+  const empty = { generated_at: '2026-10-28T00:00:00Z', active_week: 99, available_weeks: [99] as [number], total_games: 0, matchups: [] };
 
   it('renders a week with no games without throwing', () => {
     expect(() => render(<MatchupsClient dataset={empty} />)).not.toThrow();
