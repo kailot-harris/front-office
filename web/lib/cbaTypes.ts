@@ -64,7 +64,7 @@ export interface CbaLeagueOverview {
    * the contract suite -- and therefore the fatal publish gate -- red the first
    * time a stamped payload was written.
    */
-  generated_at?: string;
+  generated_at: string;
   /** League year in full-year form, e.g. '2026-2027'. */
   season: string;
   /** Where the cap/apron thresholds were cross-checked. */

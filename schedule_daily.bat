@@ -39,6 +39,7 @@ echo ================================================================== >> "%LOG
 echo NBA PIPELINE AUTOMATED RUN: %DATE% %TIME% >> "%LOG_FILE%"
 echo ================================================================== >> "%LOG_FILE%"
 
+if not defined HOME set HOME=%USERPROFILE%
 cd /d "%PROJECT_DIR%"
 
 where Rscript >nul 2>&1
