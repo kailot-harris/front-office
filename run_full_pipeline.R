@@ -326,40 +326,7 @@ run_full_pipeline <- function(season = MLB_CURRENT_SEASON, force_refresh = FALSE
     force_refresh = force_refresh
   )
 
-  # ----------------------------------------------------------------------------
-  # Stage 11: Market Odds & +EV Value Betting Engine (The Odds API)
-  # ----------------------------------------------------------------------------
-  run_stage(
-    script_name   = "mlb_market_odds_engine.R",
-    description   = "Ingest MLB Market Odds & Compute +EV Kelly Value Bets",
-    call_fn       = "run_market_odds_engine",
-    output        = CACHE_LATEST_VALUE_BETS,
-    require_fresh = force_refresh,
-    force_refresh = force_refresh
-  )
-
-  # ----------------------------------------------------------------------------
-  # Stage 12: Risk Management & Dynamic Kelly Sizing Engine
-  # ----------------------------------------------------------------------------
-  run_stage(
-    script_name   = "mlb_risk_management_engine.R",
-    description   = "Monitor Bankroll Drawdown & Enforce Dynamic Kelly Stop-Loss",
-    call_fn       = "run_risk_management",
-    output        = cache_path("risk", "mlb_risk_state.rds", create = FALSE),
-    require_fresh = force_refresh
-  )
-
-  # ----------------------------------------------------------------------------
-  # Stage 13: Discord Bet Alert Dispatcher (Phase 7, Issue #22)
-  # ----------------------------------------------------------------------------
-  run_stage(
-    script_name   = "mlb_notify_bets.R",
-    description   = "Dispatch MLB Value Bet & Line Movement Alerts to Discord",
-    call_fn       = "run_notify_bets",
-    output        = NULL, # Terminal notification stage
-    require_fresh = FALSE
-  )
-
+  # Stages 11-13 (market odds, risk management, notify bets) pruned per Phase 1 (Issue #14).
   # ----------------------------------------------------------------------------
   # Stage 14: Next.js Web Dashboard JSON Exporter (tools/export_web_data.R)
   # ----------------------------------------------------------------------------
