@@ -276,7 +276,6 @@ N_SIMULATIONS       <- 10000
 # each do far more work (full remaining-schedule simulation + real standings/tiebreaker logic),
 # so the two are independently tunable and must not be conflated even though both are "some
 # number of Monte Carlo trials" (same discipline as RATING_SHRINKAGE_GAMES_K vs.
-# MIN_SAMPLE_GAMES_FOR_STAKE above - two "games" constants that look similar but gate different
 # things).
 #
 # EMPIRICALLY DERIVED 2026-10-05 - see tools/time_playoff_odds_engine.R (GitHub issue #16,
@@ -359,7 +358,6 @@ RATING_SHRINKAGE_GAMES_K <- 3.6
 # this one gates STAKING only (whether a real bankroll recommendation is ever issued for a game),
 # and the two must not be conflated into a single constant even though both are "some number of
 # games" (per the Constraints section of docs/task_assignments_phase7.md). When either team in a
-# matchup has played fewer than MIN_SAMPLE_GAMES_FOR_STAKE real current-season games,
 # market_odds_engine.R forces Bankroll_Rec to 0 and marks the row's Status as an insufficient-
 # sample flag, regardless of how large the model's computed EV looks - a well-calibrated model
 # still should not drive a real stake off 1-2 games of noisy current-season data.
@@ -385,14 +383,11 @@ RATING_SHRINKAGE_GAMES_K <- 3.6
 # that is a modeling problem this constant cannot fix, and real-money staking should stay paused
 # (per docs/HANDOFF.md Known Issue #5) until a model revision is separately backtested to
 # real, positive Sharpe against closing lines, not just re-tuned on this one threshold.
-MIN_SAMPLE_GAMES_FOR_STAKE <- 9
 
 # Added by team_ratings_engine.R (Phase 9/model-quality remediation, "Phase 1" of
 # docs/HANDOFF.md's post-backtest roadmap) - a narrowly-scoped, documented exception
 # (team_ratings_engine.R does not own config.R; it owns only these two new constants).
 # Weight given to devigged historical market probability when blended with the EPA
-# power-rating model's own probability: blended_prob = MARKET_BLEND_WEIGHT * market_prob +
-# (1 - MARKET_BLEND_WEIGHT) * model_prob. Written into CACHE_PROJECTED_MATCHUPS.home_win_prob
 # directly (market_odds_engine.R's consumption contract - "home_win_prob is the sole model-
 # probability source" - is unchanged; the blend happens upstream, not in that file).
 #
@@ -418,7 +413,6 @@ MIN_SAMPLE_GAMES_FOR_STAKE <- 9
 # and this session's Phase 4/5 findings (situational EPA, Kalman state-space) both showed Brier
 # improvements can come with Sharpe REGRESSIONS - so the question was worth asking directly
 # against the deployed ensemble_ridge_elo formula and its real staking gates
-# (MIN_SAMPLE_GAMES_FOR_STAKE + LONGSHOT_DECIMAL_ODDS_CAP). Result: Sharpe is NEGATIVE across the
 # ENTIRE [0, 1] weight grid (walk-forward, 2010-2025, n=4,009 games with real moneylines) -
 # roughly -0.05 to -0.06 for w in [0, 0.9], degrading further as w -> 1 (n=0 bets at w=1.00 - a
 # model identical to the market has no edge over its own devigged price, so no positive-EV bet
@@ -428,7 +422,6 @@ MIN_SAMPLE_GAMES_FOR_STAKE <- 9
 # over this window), not a fix. NOT changed as a result of this check: w=0.97's very thin bet
 # volume is arguably the safer property given no real edge exists at any weight, not a flaw to
 # correct. Real-money staking should stay paused regardless (Known Issue #4).
-MARKET_BLEND_WEIGHT <- 0.97
 
 # QB-injury/backup-starter rating adjustment: rating points subtracted from a team's power
 # rating (added to its opponent's relative margin) when tools/qb_injury_features.R's real,
@@ -478,7 +471,6 @@ ELO_K_FACTOR <- 28
 # regardless of how large the model's computed EV looks for them.
 #
 # ROOT CAUSE this mitigates (see tools/investigate_ev_clustering.R's output, run 2026-09-17):
-# home_ev/away_ev = model_prob * decimal_odds - 1. Since MARKET_BLEND_WEIGHT=0.97 anchors 97%
 # of model_prob to the SAME game's own devigged market probability used to derive decimal_odds
 # here, apparent EV is driven almost entirely by the model's remaining 3% disagreement with the
 # market - a roughly fixed absolute probability delta. decimal_odds scales inversely with market
@@ -502,9 +494,7 @@ ELO_K_FACTOR <- 28
 #
 # EMPIRICALLY BACKTESTED 2026-09-17 - see tools/derive_longshot_odds_cap.R and
 # cache/longshot_odds_cap_derivation.rds. Walk-forward, out-of-sample, quarter-Kelly staking
-# simulation against REAL historical closing moneylines, MIN_SAMPLE_GAMES_FOR_STAKE gate
 # applied, production ensemble_ridge_elo formula, seasons 2010-2025 (same window as
-# MARKET_BLEND_WEIGHT/MIN_SAMPLE_GAMES_FOR_STAKE - real moneylines only from 2010 onward),
 # n=56 Kelly-positive bets at this staking gate before any odds cap, optimized via
 # stats::optimize() (golden-section search, not a grid search) maximizing Sharpe over the cap
 # in [1.5, 15] decimal odds.
@@ -515,11 +505,9 @@ ELO_K_FACTOR <- 28
 #   (Sharpe=+0.0069) that is not distinguishable from noise at that sample size.
 #
 # IMPORTANT - READ BEFORE STAKING REAL MONEY: same honesty discipline as
-# MIN_SAMPLE_GAMES_FOR_STAKE's own comment - Sharpe is NEGATIVE at every cap tested. This is a
 # MITIGATION (removes the odds range where the EV formula's own artifact concentrates,
 # roughly halving cumulative loss vs. no cap) not a validated edge. Real-money staking should
 # stay paused (docs/HANDOFF.md Known Issue #4) regardless of this constant's value.
-LONGSHOT_DECIMAL_ODDS_CAP <- 9.7
 
 # ------------------------------------------------------------------------------------------
 # Situational EPA Feature Thresholds (Phase 4 model-quality remediation: situational-feature
@@ -637,21 +625,16 @@ CACHE_RISK_STATE <- file.path(CACHE_DIR, "risk_state.rds")
 # "Constants note" pattern - same narrowly-scoped, documented exception as CACHE_EPA_METRICS /
 # CACHE_TEAM_RATINGS / CACHE_FATIGUE_METRICS / CACHE_PLAYOFF_SIMULATION / CACHE_RISK_STATE above
 # (market_odds_engine.R does not own config.R; it owns only these two new constants).
-CACHE_LATEST_VALUE_BETS <- file.path(CACHE_DIR, "latest_value_bets.rds")
-CACHE_ODDS_HISTORY      <- file.path(CACHE_DIR, "odds_history.rds")
 # Added by bet_tracker.r (model-quality remediation, Known Issue #2) - a narrowly-scoped,
 # documented exception (bet_tracker.r does not own config.R; it owns only this one new
 # constant). Per risk_management_engine.R's own header comment (written when it was built,
 # before a real ledger existed): "the placeholder path ... should become a real
-# CACHE_BETTING_LEDGER constant in config.R" once bet_tracker.r exists and writes it - this is
 # that promised follow-through, not a new decision. risk_management_engine.R's
 # load_real_ledger()/run_risk_management() now read this constant instead of a literal
 # "cache/betting_ledger.rds" string.
-CACHE_BETTING_LEDGER <- file.path(CACHE_DIR, "betting_ledger.rds")
 # Added per docs/SPEC_accuracy_trajectory_monitoring.md decision #6 (GitHub issue #4,
 # "Accuracy Tracker 2") - prep infrastructure for the future accuracy_tracker.R pipeline stage
 # (issue #5) and its grading logic (issue #2's grade_walkforward_games()). A narrowly-scoped,
-# documented exception, same pattern as CACHE_EPA_METRICS / CACHE_BETTING_LEDGER above (the
 # init/append helpers in tools/backtest_common.R do not own config.R; they own only this one
 # new constant).
 #
@@ -769,7 +752,6 @@ WEB_JSON_PLAYER_QB_PROFILES    <- file.path(WEB_DATA_DIR, "player_qb_profiles.js
 WEB_JSON_MODEL_DIAGNOSTICS     <- file.path(WEB_DATA_DIR, "model_diagnostics.json")
 WEB_JSON_SALARY_CAP_PROFILES   <- file.path(WEB_DATA_DIR, "salary_cap_profiles.json")
 WEB_JSON_COACHING_PROFILES     <- file.path(WEB_DATA_DIR, "coaching_profiles.json")
-WEB_JSON_VALUE_BETS            <- file.path(WEB_DATA_DIR, "value_bets.json")
 
 WEB_DATA_FILES <- c(
   WEB_JSON_VISUAL_MEDIA_INDEX,
@@ -779,8 +761,7 @@ WEB_DATA_FILES <- c(
   WEB_JSON_PLAYOFF_PICTURE,
   WEB_JSON_PLAYER_QB_PROFILES,
   WEB_JSON_MODEL_DIAGNOSTICS,
-  WEB_JSON_SALARY_CAP_PROFILES,
-  WEB_JSON_VALUE_BETS
+  WEB_JSON_SALARY_CAP_PROFILES
 )
 
 # ------------------------------------------------------------------------------------------
@@ -801,7 +782,5 @@ MAX_RETRIES          <- 3
 # Deliberately namespaced NFL_DISCORD_WEBHOOK, NOT the plain DISCORD_WEBHOOK name the WNBA
 # repo's config.R uses - both repos' Sys.getenv() calls can share one machine's environment
 # (a single user-level .Renviron), and a plain DISCORD_WEBHOOK name would silently let one
-# repo's pipeline post notifications to the other sport's Discord channel. ODDS_API_KEY is
-# NOT namespaced the same way (still just ODDS_API_KEY) because both repos legitimately share
 # one real Odds API account/key - that collision is intentional, not a bug.
 NFL_DISCORD_WEBHOOK <- Sys.getenv("NFL_DISCORD_WEBHOOK", "")

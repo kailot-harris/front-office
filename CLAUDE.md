@@ -1,8 +1,10 @@
 # NFL Analytics — Working Notes
 
 ## Environment
-- Repo root: `C:\Users\kailo\kayceeslices\NFL Analytics` (Bash path
-  `/c/Users/kailo/kayceeslices/NFL Analytics`). This is a git repo (initialized during Phase 0),
+- Repo root: `C:\Users\kailo\kayceeslices\front-office\NFL Analytics` (Bash path
+  `/c/Users/kailo/kayceeslices/front-office/NFL Analytics`). Note the `front-office\` segment —
+  this file omitted it until 2026-10-26, and the sibling sport repos sit alongside this one under
+  that same parent. This is a git repo (initialized during Phase 0),
   unlike the WNBA sibling repo's own early history.
 - R invocation path and the "write R to a temp `.R` file, don't inline `Rscript -e`" caution from
   the WNBA sibling repo have not yet been independently re-verified against this machine/repo — a

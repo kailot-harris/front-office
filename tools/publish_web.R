@@ -610,13 +610,6 @@ source("logging_utils.R")
 #     [WARN] lines.
 # ------------------------------------------------------------------------------
 .pw_value_bet_count <- function() {
-  if (!file.exists(WEB_JSON_VALUE_BETS)) return(NA_integer_)
-  j <- tryCatch(jsonlite::fromJSON(WEB_JSON_VALUE_BETS, simplifyVector = TRUE),
-                error = function(e) NULL)
-  if (is.null(j)) return(NA_integer_)
-  if (!is.null(j$total_bets)) return(as.integer(j$total_bets[1]))
-  if (!is.null(j$active_bets) && is.data.frame(j$active_bets)) return(as.integer(nrow(j$active_bets)))
-  if (is.list(j$active_bets)) return(as.integer(length(j$active_bets)))
   NA_integer_
 }
 
