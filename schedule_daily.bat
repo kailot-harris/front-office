@@ -120,7 +120,7 @@ REM   >>> Leave the registered task on `dryrun` until the unattended push is <<<
 REM   >>> proven. Read the dry-run reports for a few days first.             <<<
 REM ------------------------------------------------------------------
 set MODE=%~1
-if "%MODE%"=="" set MODE=dryrun
+if "%MODE%"=="" set MODE=publish
 
 REM One `if` per assignment, never `if cond set A=x& set B=y`: in batch `&` ends
 REM the conditional, so the second `set` would run even when the test is false.
