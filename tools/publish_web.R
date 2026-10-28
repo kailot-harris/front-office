@@ -540,6 +540,86 @@ source("config.R")
 }
 
 # ------------------------------------------------------------------------------
+# ASSERTION G - web dataset contracts.
+#
+# Runs the vitest node contract suite (`web/scripts/run-test-suite.mjs
+# --only=contracts`) over the uncommitted `web/public/data/*.json` payloads
+# before a publish commit can happen. Seconds: vitest over JSON, no browser and
+# no build.
+#
+# FATAL, with a documented escape valve: web/tests/known-issues.json. The
+# runner reports a listed failure as KNOWN and still exits 0, so a defect
+# judged shippable stays shippable - once someone has written down its id,
+# severity, title and fix. An UNDOCUMENTED contract failure blocks the
+# publish.
+#
+# "Cannot verify" is fatal too, not a silent pass: an absent web/node_modules
+# means the check did not run, which is not the same as the check passing.
+# --skip-contracts overrides that deliberately and says so in the report.
+# ------------------------------------------------------------------------------
+.PW_WEB_DIR     <- "web"
+.PW_WEB_RUNNER  <- file.path("scripts", "run-test-suite.mjs")
+
+.pw_contract_result <- function(pass, fatal, summary, detail) {
+  list(id = "G", name = "web dataset contracts (vitest node project)",
+       pass = pass, fatal = fatal, summary = summary, detail = detail)
+}
+
+.assert_web_contracts <- function(skip = FALSE) {
+  if (isTRUE(skip)) {
+    return(.pw_contract_result(
+      TRUE, FALSE, "skipped at the caller's request (--skip-contracts)",
+      "    [SKIP]    the payload's internal consistency was NOT checked this run"))
+  }
+
+  web_dir <- normalizePath(.PW_WEB_DIR, winslash = "/", mustWork = FALSE)
+  runner  <- file.path(web_dir, .PW_WEB_RUNNER)
+
+  if (!file.exists(runner)) {
+    return(.pw_contract_result(
+      FALSE, TRUE, sprintf("no contract runner at %s - cannot verify", runner),
+      "    [BLOCK]   expected web/scripts/run-test-suite.mjs; this repo has no suite to point at"))
+  }
+  if (!dir.exists(file.path(web_dir, "node_modules"))) {
+    return(.pw_contract_result(
+      FALSE, TRUE, "web/node_modules is absent - cannot verify",
+      c("    [BLOCK]   run `npm ci` in web/ once on this machine, then re-run the gate.",
+        "    [BLOCK]   Not verifying is not the same as verifying: pass --skip-contracts",
+        "    [BLOCK]   to publish anyway, and the report will say the check was skipped.")))
+  }
+  node <- Sys.which("node")
+  if (!nzchar(node)) {
+    return(.pw_contract_result(
+      FALSE, TRUE, "node is not on PATH - cannot verify",
+      "    [BLOCK]   the contract suite needs node; install it or pass --skip-contracts"))
+  }
+
+  old_wd <- getwd()
+  on.exit(setwd(old_wd), add = TRUE)
+  setwd(web_dir)
+  out <- suppressWarnings(system2(node, c(shQuote(.PW_WEB_RUNNER), "--only=contracts"),
+                                  stdout = TRUE, stderr = TRUE))
+  st  <- attr(out, "status")
+  setwd(old_wd)
+  status <- if (is.null(st)) 0L else as.integer(st)
+  out <- if (is.null(out)) character(0) else as.character(out)
+
+  start <- grep("TEST SUITE SUMMARY", out, fixed = TRUE)
+  tail_lines <- if (length(start)) out[seq(max(start), length(out))] else tail(out, 20)
+  tail_lines <- tail_lines[nzchar(trimws(tail_lines))]
+  detail <- paste0("    ", tail_lines)
+
+  counts <- grep("passed", out, fixed = TRUE, value = TRUE)
+  counts <- trimws(counts[length(counts)])
+
+  .pw_contract_result(
+    status == 0L, TRUE,
+    sprintf("%s - %s", if (status == 0L) "no undocumented contract failures" else
+            "payload FAILS the contract suite; publishing it would ship the defect",
+            if (length(counts) && nzchar(counts)) counts else sprintf("runner exit %d", status)),
+    detail)
+}
+# ------------------------------------------------------------------------------
 # ASSERTION E - publish branch.
 # ------------------------------------------------------------------------------
 .pw_current_branch <- function(repo_root) {
@@ -602,6 +682,7 @@ publish_web <- function(dry_run = TRUE,
                         season = MLB_CURRENT_SEASON,
                         publish_branch = "main",
                         fail_on_exporter_warnings = FALSE,
+                        skip_contracts = FALSE,
                         commit_message = NULL) {
 
   repo_root <- .pw_repo_root()
@@ -618,7 +699,8 @@ publish_web <- function(dry_run = TRUE,
     .assert_nonempty_diff(repo_root),
     .assert_publish_branch(repo_root, publish_branch),
     .assert_log_scan(log_lines, run_start, fail_on_exporter_warnings),
-    .assert_payload_provenance(run_start)
+    .assert_payload_provenance(run_start),
+    .assert_web_contracts(skip_contracts)
   )
 
   passed  <- vapply(checks, function(ch) isTRUE(ch$pass), logical(1))
@@ -682,6 +764,7 @@ publish_web <- function(dry_run = TRUE,
     stale_payloads = checks[[6]]$stale,
     unstamped_payloads = checks[[6]]$unstamped,
     pending_changes = checks[[3]]$changed,
+    contracts_pass = isTRUE(checks[[length(checks)]]$pass),
     checks = checks, published = FALSE, steps = list()
   )
 
@@ -711,13 +794,14 @@ local({
   files <- sub("^--file=", "", argv[grepl("^--file=", argv)])
   if (!any(grepl("publish_web\\.R$", files))) return(invisible(NULL))
   opts <- commandArgs(trailingOnly = TRUE)
-  unknown <- setdiff(opts, c("--publish", "--strict-warnings"))
+  unknown <- setdiff(opts, c("--publish", "--strict-warnings", "--skip-contracts"))
   if (length(unknown) > 0) {
-    cat(sprintf("[ERROR] publish_web.R: unknown CLI option(s): %s (allowed: --publish, --strict-warnings)\n",
+    cat(sprintf("[ERROR] publish_web.R: unknown CLI option(s): %s (allowed: --publish, --strict-warnings, --skip-contracts)\n",
                 paste(unknown, collapse = ", ")), file = stderr())
     quit(status = 2L)
   }
   res <- publish_web(dry_run = !("--publish" %in% opts),
-                     fail_on_exporter_warnings = "--strict-warnings" %in% opts)
+                     fail_on_exporter_warnings = "--strict-warnings" %in% opts,
+                     skip_contracts = "--skip-contracts" %in% opts)
   quit(status = if (isTRUE(res$blocked)) 1L else 0L)
 })

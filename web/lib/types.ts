@@ -187,6 +187,7 @@ export interface ResidualBucket {
 }
 
 export interface ModelDiagnostics {
+  generated_at: string;
   totalResolvedGames: number;
   overallAccuracy: number;
   brierScore: number;
@@ -296,6 +297,7 @@ export interface RiskStateSummary {
 }
 
 export interface PostseasonOpsData {
+  generated_at: string;
   season: number;
   n_sims: number;
   bracket: PostseasonBracketTeam[];

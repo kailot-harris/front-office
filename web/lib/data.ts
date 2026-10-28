@@ -101,6 +101,7 @@ export function getPlayoffSeriesCatalog(): PlayoffMatchupsCatalog {
   const filePath = path.join(process.cwd(), 'public', 'data', 'playoff_series_matchups.json');
   if (!fs.existsSync(filePath)) {
     return {
+      generated_at: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       nSims: 10000,
       teams: {},
@@ -115,6 +116,7 @@ export function getPlayerDnaCatalog(): PlayerDnaCatalog {
   const filePath = path.join(process.cwd(), 'public', 'data', 'player_dna_profiles.json');
   if (!fs.existsSync(filePath)) {
     return {
+      generated_at: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       eraBaseline: '1980-2026',
       totalPlayers: 0,
@@ -134,6 +136,7 @@ export function getClutchCatalog(): ClutchCatalog {
   const filePath = path.join(process.cwd(), 'public', 'data', 'clutch_leverage_metrics.json');
   if (!fs.existsSync(filePath)) {
     return {
+      generated_at: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       totalProfiles: 0,
       clutchLeaderBatters: [],
@@ -149,6 +152,7 @@ export function getCbtPayrollOverview(): CbtLeagueOverview {
   const filePath = path.join(process.cwd(), 'public', 'data', 'cbt_payroll_sheet.json');
   if (!fs.existsSync(filePath)) {
     return {
+      generated_at: new Date().toISOString(),
       season: '2026',
       baseThreshold: 244.0,
       tier1Threshold: 264.0,
