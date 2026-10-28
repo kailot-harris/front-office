@@ -61,6 +61,7 @@ describe('lib/teams.ts metadata helpers', () => {
     expect(getTeamLogoUrl('NYY')).toContain('/logos/147.png');
     expect(getTeamColors('lad').primary).toBe('#005A9C');
     expect(getTeamColors('UNKNOWN').primary).toBe('#6366f1');
-    expect(Object.keys(MLB_TEAMS_METADATA)).toHaveLength(30);
+    expect(Object.keys(MLB_TEAMS_METADATA)).toHaveLength(31);
+    expect(MLB_TEAMS_METADATA.OAK.abbr).toBe('ATH');
   });
 });
