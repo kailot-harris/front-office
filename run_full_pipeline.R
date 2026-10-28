@@ -378,26 +378,12 @@ run_registered_stage("roster_bottom_up_engine")
 # 4. Market Arbitrage & Limits
 # depends on roster_bottom_up_engine.R, shot_quality_engine.R, fatigue_travel_engine.R
 # Output: cache/latest_value_bets.rds, cache/odds_history.rds
-run_registered_stage("market_odds_engine")
 
 # 4.5. Prediction-Accuracy Logging — Log Today's Predictions
 run_registered_stage("prediction_accuracy_logger_log")
 
 # 5. Advanced Proposition Distributions - Parallel Group 2
 # depends on market_odds_engine.R
-message("\n>>> [PARALLEL] Launching Props Engines Group...")
-# Issue #45: group membership (player_props_engine.R / copula_props_engine.R) now comes from
-# pipeline_stages.R's PIPELINE_STAGES registry (each entry's group = "props_engines") instead
-# of this inline list literal. See each entry's own comment there (carried over from here) for
-# the CACHE_PLAYER_PROPS / data/latest_player_props.rds orphan-path rationale (finding L-6).
-props_engines <- get_pipeline_stage_group("props_engines")
-
-# FINDING M-7: future.seed = TRUE — see the latent-engines group above. This is the group the
-# review's "UNRELIABLE VALUE" warning ('future_lapply-2') actually came from: both scripts here
-# are Monte Carlo (ZINB draws / Gaussian copula simulation).
-future_lapply(props_engines, function(e) {
-  run_stage(e$script, e$description, call_fn = e$call_fn, entry_fn = e$entry_fn, output = e$output)
-}, future.seed = TRUE)
 
 # 6. Postseason Simulation
 # Output: cache/playoff_series_wnba_demo.rds
@@ -414,16 +400,13 @@ run_registered_stage("finals_game_predictions")
 
 # 7. Portfolio Risk Management & Capital Preservation
 # Output: cache/risk_state.rds
-run_registered_stage("risk_management_engine")
 
 # 8. Notification & Settlement
 # Discord: reads Sys.getenv("DISCORD_WEBHOOK", "") only
-run_registered_stage("notify_bets")
 # Output: cache/rolling_bet_metrics.rds (every run) and cache/betting_ledger.rds (CONDITIONAL —
 # only rewritten when at least one pending bet actually grades; on a slate where every bet is
 # still unresolved the ledger is legitimately untouched). Only the unconditional output is
 # declared for the freshness assertion, so a quiet night does not produce a false staleness WARN.
-run_registered_stage("bet_tracker")
 
 # 9. Next.js Static Web JSON Export (Phase 1)
 # Output: web/public/data/projections_season_teams.json (+ players, metadata, diagnostics, playoffs)
