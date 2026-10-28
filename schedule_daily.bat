@@ -1,4 +1,5 @@
 @echo off
+setlocal EnableDelayedExpansion
 REM ==============================================================================
 REM schedule_daily.bat -- Windows Task Scheduler target for the NBA pipeline.
 REM
@@ -33,11 +34,46 @@ REM 08:00, so the race above is still live until the command is run.
 REM ------------------------------------------------------------------------------
 REM ==============================================================================
 set PROJECT_DIR=c:\Users\kailo\kayceeslices\front-office\NBA Analytics
+if defined NBA_PROJECT_DIR set PROJECT_DIR=%NBA_PROJECT_DIR%
 set LOG_FILE=%PROJECT_DIR%\pipeline_execution.log
+set LOG_MAX_BYTES=5242880
+
+REM ------------------------------------------------------------------------------
+REM Single-generation 5 MiB log rotation (.log -> .log.old), matching NFL and WNBA.
+REM ------------------------------------------------------------------------------
+if exist "%LOG_FILE%" (
+    for %%F in ("%LOG_FILE%") do set LOG_SIZE=%%~zF
+    if !LOG_SIZE! GTR %LOG_MAX_BYTES% (
+        move /y "%LOG_FILE%" "%LOG_FILE%.old" >nul
+    )
+)
+
+REM ------------------------------------------------------------------------------
+REM Seasonal guard (NFL_analytics#41): only run during the NBA season window
+REM (October through June: months 10, 11, 12, 01, 02, 03, 04, 05, 06, covering
+REM preseason/regular season through the NBA Finals). Outside this window (July
+REM through September: 07, 08, 09), log and exit 0 without churning caches
+REM against an inactive league. Set NBA_IGNORE_SEASON_GUARD=1 to override.
+REM ------------------------------------------------------------------------------
+for /f "usebackq" %%I in (`powershell -NoProfile -Command "(Get-Date).ToString('MM')"`) do set CUR_MM=%%I
 
 echo ================================================================== >> "%LOG_FILE%"
-echo NBA PIPELINE AUTOMATED RUN: %DATE% %TIME% >> "%LOG_FILE%"
+echo NBA PIPELINE AUTOMATED RUN: %DATE% %TIME% (month=%CUR_MM%) >> "%LOG_FILE%"
 echo ================================================================== >> "%LOG_FILE%"
+
+if defined NBA_IGNORE_SEASON_GUARD goto :inseason
+if "%CUR_MM%"=="07" goto :offseason
+if "%CUR_MM%"=="08" goto :offseason
+if "%CUR_MM%"=="09" goto :offseason
+goto :inseason
+
+:offseason
+echo [SKIPPED] Current month %CUR_MM% is outside the NBA season window (October-June). >> "%LOG_FILE%"
+echo [SKIPPED] Pipeline NOT run - avoiding stale/off-season cache churn (set NBA_IGNORE_SEASON_GUARD=1 to override). >> "%LOG_FILE%"
+echo. >> "%LOG_FILE%"
+exit /b 0
+
+:inseason
 
 if not defined HOME set HOME=%USERPROFILE%
 cd /d "%PROJECT_DIR%"
