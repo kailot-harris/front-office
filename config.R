@@ -251,6 +251,12 @@ CACHE_PLAYER_PBP_FEATURES   <- file.path(CACHE_DIR, "player_pbp_features.rds")
 #   * Consumers (fatigue_travel_engine.R's real/unplayed-slate path) must read this
 #     constant, never the literal "wnba_schedule_cache.rds".
 CACHE_WNBA_SCHEDULE         <- file.path(CACHE_DIR, "wnba_schedule_cache.rds")
+# Per-game Matchups dataset backing web/app/matchups (GitHub issue #74). Written by
+# build_matchups_dataset.R, which joins CACHE_WNBA_SCHEDULE (spine) to CACHE_TEAM_BOX
+# (final scores) and cache/prediction_accuracy_log.rds (model predictions and grades).
+# One row per game for CURRENT_SEASON, not per team per game - unlike CACHE_WNBA_SCHEDULE,
+# which is long format. The .rds is the debugging artifact; the page reads the JSON.
+CACHE_MATCHUPS              <- file.path(CACHE_DIR, "matchups_cache.rds")
 # Current-season playoff bracket with per-series model predictions (GitHub issue #92).
 # Derivation of the filename: it is NOT the `playoff_bracket_results_<year>.rds` family
 # written by tools/generate_historical_season_snapshots.R. Those hold resolved actuals ONLY,
@@ -398,6 +404,11 @@ WEB_JSON_DEFENSIVE_METRICS           <- file.path(WEB_DATA_DIR, "defensive_metri
 WEB_JSON_PLAYER_DNA_PROFILES         <- file.path(WEB_DATA_DIR, "player_dna_profiles.json")
 WEB_JSON_CLUTCH_LEVERAGE_METRICS     <- file.path(WEB_DATA_DIR, "clutch_leverage_metrics.json")
 WEB_JSON_CBA_CAP_SHEET               <- file.path(WEB_DATA_DIR, "cba_cap_sheet.json")
+# Named `matchups_slates.json` to match the NBA sibling's payload of the same shape,
+# so the two sports' Matchups pages stay portable between repos. The "slates" in the
+# name are the week-of-season buckets build_matchups_dataset.R derives; there is no
+# per-day slate in this repo.
+WEB_JSON_MATCHUPS_SLATES             <- file.path(WEB_DATA_DIR, "matchups_slates.json")
 
 WEB_DATA_FILES <- c(
   WEB_JSON_PROJECTIONS_SEASON_TEAMS,
@@ -417,7 +428,8 @@ WEB_DATA_FILES <- c(
   WEB_JSON_DEFENSIVE_METRICS,
   WEB_JSON_PLAYER_DNA_PROFILES,
   WEB_JSON_CLUTCH_LEVERAGE_METRICS,
-  WEB_JSON_CBA_CAP_SHEET
+  WEB_JSON_CBA_CAP_SHEET,
+  WEB_JSON_MATCHUPS_SLATES
 )
 
 # ------------------------------------------------------------------------------------------

@@ -317,3 +317,48 @@ describe('Cross-dataset referential integrity', () => {
     }
   });
 });
+
+describe('Cross-dataset referential integrity: matchups_slates.json', () => {
+  const { matchups: m, metadata, teams } = loadAllDatasets();
+
+  it('every team abbreviation and display name resolves against canonical WNBA_TEAMS_METADATA', () => {
+    // The 2026 payload needs NO abbreviation fixup table -- the ESPN
+    // abbreviations in the schedule cache, the box scores and this web app's
+    // canonical set are identical. This test is what keeps that true: if ESPN
+    // renames a franchise or the canonical set diverges, the page would
+    // otherwise silently render fallback initials instead of a logo.
+    for (const g of m.matchups) {
+      for (const [abbr, name] of [
+        [g.home_team, g.home_team_name],
+        [g.away_team, g.away_team_name],
+      ] as const) {
+        const meta = WNBA_TEAMS_METADATA[abbr];
+        expect(meta, `${abbr} is not in WNBA_TEAMS_METADATA`).toBeDefined();
+        expect(name, `${abbr} display name`).toBe(meta.fullName);
+      }
+    }
+  });
+
+  it('the projection constants match projections_models_metadata.json', () => {
+    // build_matchups_dataset.R reads WNBA_HCA and WNBA_MARGIN_SIGMA from
+    // config.R and restates neither; export_web_json.R publishes the same two
+    // constants into the metadata payload. They must therefore agree exactly.
+    // A mismatch means one of the two stages ran against a different config,
+    // which would make the rating-differential projections incomparable with
+    // every other probability on the site.
+    expect(m.provenance.hca_points).toBeCloseTo(metadata.home_court_advantage, 6);
+    expect(m.provenance.margin_sigma).toBeCloseTo(metadata.margin_sigma, 6);
+  });
+
+  it('the season matches the rest of the published datasets', () => {
+    expect(m.season).toBe(metadata.season);
+  });
+
+  it('every team in the league appears in the schedule, and no non-league team does', () => {
+    const inSchedule = new Set(
+      m.matchups.flatMap((g) => [g.home_team, g.away_team])
+    );
+    const canonical = new Set(teams.map((t) => t.team));
+    expect([...inSchedule].sort()).toEqual([...canonical].sort());
+  });
+});

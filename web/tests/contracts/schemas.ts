@@ -1061,3 +1061,236 @@ export const PlayerShotDataSchema = z
     shots: z.array(ShotRecordSchema).min(1),
   })
   .strict();
+
+// ---------------------------------------------------------------------------
+// matchups_slates.json -> MatchupsPayload (lib/matchupTypes.ts)
+// Written by the repo root's build_matchups_dataset.R (issue #74).
+//
+// EVERY nullable field below is `.nullable()` rather than `.optional()` on
+// purpose: the builder emits an explicit JSON `null`, never omits the key. That
+// distinction is load-bearing -- jsonlite RETAINS a NULL list element and
+// serialises it as `{}`, so a field that regressed to an empty object would
+// still be "present" and would pass an `.optional()` check while breaking the
+// page at render time. `.nullable()` rejects `{}`. This exact regression
+// happened while building the page, so the contract is here to catch it again.
+// ---------------------------------------------------------------------------
+const projectionBasisEnum = z.enum([
+  'logged_model',
+  'logged_model_prob_only',
+  'team_rating_differential',
+]);
+
+// Labelled by the builder from ESPN's season_type. An unrecognised value is
+// passed through as "unknown_<n>" rather than silently relabelled, so the
+// contract accepts that shape instead of failing closed on a new ESPN type.
+const seasonTypeLabel = z.union([
+  z.enum(['regular', 'postseason']),
+  z.string().regex(/^unknown_\d+$/),
+]);
+
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+export const MatchupSchema = z
+  .object({
+    game_id: z.string().regex(/^\d+$/, 'ESPN event id must be numeric'),
+    game_date: isoDate,
+    week: z.number().int().min(1).max(40),
+    season_type: seasonTypeLabel,
+    home_team: teamEnum,
+    away_team: teamEnum,
+    home_team_name: z.string().min(2),
+    away_team_name: z.string().min(2),
+    is_completed: z.boolean(),
+    home_score: z.number().int().min(0).max(200).nullable(),
+    away_score: z.number().int().min(0).max(200).nullable(),
+    // Never 0: basketball plays overtime, so a completed game cannot be tied.
+    actual_margin: z
+      .number()
+      .int()
+      .refine((n) => n !== 0, 'a completed game cannot be tied')
+      .nullable(),
+    actual_winner: teamEnum.nullable(),
+    has_prediction: z.boolean(),
+    has_logged_prediction: z.boolean(),
+    projection_basis: projectionBasisEnum.nullable(),
+    projected_margin: finiteNumber.min(-60).max(60).nullable(),
+    home_win_prob: prob.nullable(),
+    predicted_winner: teamEnum.nullable(),
+    is_graded: z.boolean(),
+    prediction_correct: z.boolean().nullable(),
+  })
+  .strict()
+  .refine((g) => g.home_team !== g.away_team, 'a team cannot play itself')
+  // A completed game must carry a full scoreline, and an incomplete one none of
+  // it -- a half-populated score is the shape a partially applied patch leaves.
+  .refine(
+    (g) =>
+      g.is_completed
+        ? g.home_score !== null && g.away_score !== null && g.actual_winner !== null
+        : g.home_score === null && g.away_score === null && g.actual_winner === null,
+    'is_completed must agree with the presence of scores and a winner'
+  )
+  .refine(
+    (g) => !g.is_graded || (g.is_completed && g.has_logged_prediction),
+    'a graded game must be completed and carry a logged prediction'
+  )
+  .refine(
+    (g) => (g.is_graded ? g.prediction_correct !== null : g.prediction_correct === null),
+    'prediction_correct must be present exactly when is_graded'
+  )
+  // The rating-differential basis is NEVER graded (see build_matchups_dataset.R,
+  // PROJECTION BASES). This is the contract that keeps the weaker model out of
+  // the published accuracy figure.
+  .refine(
+    (g) => !(g.projection_basis === 'team_rating_differential' && g.is_graded),
+    'the team_rating_differential basis must never be graded'
+  )
+  .refine(
+    (g) =>
+      g.has_logged_prediction ===
+      (g.projection_basis === 'logged_model' ||
+        g.projection_basis === 'logged_model_prob_only'),
+    'has_logged_prediction must agree with the projection basis'
+  )
+  .refine(
+    (g) =>
+      g.has_prediction
+        ? g.projection_basis !== null &&
+          g.projected_margin !== null &&
+          g.home_win_prob !== null
+        : g.projection_basis === null &&
+          g.projected_margin === null &&
+          g.home_win_prob === null,
+    'has_prediction must agree with the presence of projection fields'
+  )
+  // The margin and the win probability must point the same way, or a card shows
+  // a favourite with a sub-50% chance.
+  .refine(
+    (g) =>
+      g.projected_margin === null ||
+      g.home_win_prob === null ||
+      g.projected_margin === 0 ||
+      g.projected_margin > 0 === g.home_win_prob > 0.5,
+    'projected_margin and home_win_prob disagree on who is favoured'
+  );
+
+export const MatchupWeekSchema = z
+  .object({
+    week: z.number().int().min(1).max(40),
+    start_date: isoDate,
+    end_date: isoDate,
+    season_types: z.array(seasonTypeLabel).min(1),
+    total_games: z.number().int().min(1),
+    completed_games: z.number().int().min(0),
+    pending_games: z.number().int().min(0),
+    graded_games: z.number().int().min(0),
+    correct_games: z.number().int().min(0).nullable(),
+    accuracy_pct: pct.nullable(),
+  })
+  .strict()
+  .refine(
+    (w) => w.completed_games + w.pending_games === w.total_games,
+    'completed + pending must equal total'
+  )
+  .refine(
+    (w) => w.graded_games <= w.completed_games,
+    'a week cannot grade more games than were played'
+  )
+  .refine(
+    (w) =>
+      w.graded_games > 0
+        ? w.correct_games !== null && w.accuracy_pct !== null
+        : w.correct_games === null && w.accuracy_pct === null,
+    'correct_games/accuracy_pct must be present exactly when graded_games > 0'
+  )
+  .refine(
+    (w) => w.correct_games === null || w.correct_games <= w.graded_games,
+    'correct_games cannot exceed graded_games'
+  )
+  .refine((w) => w.start_date <= w.end_date, 'start_date must not follow end_date');
+
+export const MatchupsPayloadSchema = z
+  .object({
+    season: z.number().int().min(2019).max(2100),
+    generated_at: z.string().min(10),
+    season_start: isoDate,
+    season_end: isoDate,
+    active_week: z.number().int().min(1).max(40),
+    available_weeks: z.array(z.number().int().min(1).max(40)).min(1),
+    summary: z
+      .object({
+        total_games: z.number().int().min(1),
+        completed_games: z.number().int().min(0),
+        pending_games: z.number().int().min(0),
+        graded_games: z.number().int().min(0),
+        correct_games: z.number().int().min(0).nullable(),
+        accuracy_pct: pct.nullable(),
+        graded_games_available: z.boolean(),
+        grading_state: z.enum(['no_games_graded_yet', 'partial', 'complete']),
+        played_without_logged_prediction: z.number().int().min(0),
+      })
+      .strict()
+      .refine(
+        (s) => s.completed_games + s.pending_games === s.total_games,
+        'completed + pending must equal total'
+      )
+      .refine(
+        (s) => s.graded_games_available === s.graded_games > 0,
+        'graded_games_available must agree with graded_games'
+      )
+      .refine(
+        (s) =>
+          s.graded_games > 0
+            ? s.correct_games !== null && s.accuracy_pct !== null
+            : s.correct_games === null && s.accuracy_pct === null,
+        'correct_games/accuracy_pct must be present exactly when graded_games > 0'
+      )
+      .refine(
+        (s) =>
+          s.grading_state ===
+          (s.graded_games === 0
+            ? 'no_games_graded_yet'
+            : s.graded_games === s.completed_games
+              ? 'complete'
+              : 'partial'),
+        'grading_state must follow from graded_games vs completed_games'
+      ),
+    provenance: z
+      .object({
+        logged_predictions_in_window: z.number().int().min(0),
+        logged_predictions_matched: z.number().int().min(0),
+        logged_predictions_unmatched: z.number().int().min(0),
+        log_match_pct: pct,
+        games_with_logged_prediction: z.number().int().min(0),
+        hca_points: finiteNumber,
+        margin_sigma: finiteNumber.positive(),
+        ratings_source: z.string().min(4),
+        basis_counts: z.record(z.string(), z.number().int().min(0)),
+      })
+      .strict()
+      .refine(
+        (p) =>
+          p.logged_predictions_matched + p.logged_predictions_unmatched ===
+          p.logged_predictions_in_window,
+        'matched + unmatched must equal the predictions in the window'
+      ),
+    weeks: z.array(MatchupWeekSchema).min(1),
+    matchups: z.array(MatchupSchema).min(1),
+  })
+  .strict()
+  .refine(
+    (p) => p.matchups.length === p.summary.total_games,
+    'summary.total_games must equal the matchups array length'
+  )
+  .refine(
+    (p) => p.available_weeks.includes(p.active_week),
+    'active_week must be one of available_weeks'
+  )
+  .refine(
+    (p) => p.available_weeks.every((w, i, a) => i === 0 || a[i - 1] < w),
+    'available_weeks must be strictly ascending'
+  )
+  .refine(
+    (p) => p.season_start <= p.season_end,
+    'season_start must not follow season_end'
+  );

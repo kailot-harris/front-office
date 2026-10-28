@@ -26,6 +26,7 @@ import {
   PlayoffBracketSeasonSchema,
   FinalsGamePredictionSetSchema,
   FinalsSeriesBacktestSetSchema,
+  MatchupsPayloadSchema,
   PlayerCatalogEntrySchema,
   ShotsMetadataSchema,
   PlayerShotDataSchema,
@@ -160,6 +161,10 @@ describe('Strict Zod schema contracts against public/data/*.json', () => {
 
   it('shots_metadata.json matches ShotsMetadataSchema', () => {
     assertValid(ShotsMetadataSchema, d.shotsMetadata, 'shots_metadata.json');
+  });
+
+  it('matchups_slates.json matches MatchupsPayloadSchema', () => {
+    assertValid(MatchupsPayloadSchema, d.matchups, 'matchups_slates.json');
   });
 
   it('sampled public/data/shots/<player_id>.json files match PlayerShotDataSchema', () => {

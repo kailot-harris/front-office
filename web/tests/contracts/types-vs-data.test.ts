@@ -344,3 +344,57 @@ describe('FinalsGamePredictionSet nested interface vs JSON key parity', () => {
     assertParity('BracketLengthProb', finals.lengthDistribution);
   });
 });
+
+// matchups_slates.json is an OBJECT payload with nested arrays, not a flat
+// array, so it cannot go through arrayCases above. Each interface is checked
+// against the keys of the corresponding node.
+//
+// Key parity is a real contract here rather than a formality: the builder emits
+// an explicit null for every absent value instead of omitting the key, so a key
+// missing from the JSON means the field was genuinely dropped, not merely empty.
+describe('TypeScript interface vs JSON payload key parity: matchups_slates.json', () => {
+  const payload = readJsonFile<Record<string, unknown>>('matchups_slates.json');
+
+  const assertParity = (
+    interfaceName: string,
+    rows: Record<string, unknown>[],
+    optionalFields: string[] = []
+  ) => {
+    const tsFields = extractInterfaceFields('lib/matchupTypes.ts', interfaceName);
+    const jsonKeys = collectJsonKeys(rows);
+
+    const missingInJson = [...tsFields].filter(
+      (f) => !optionalFields.includes(f) && !jsonKeys.has(f)
+    );
+    const undocumentedInTs = [...jsonKeys].filter((k) => !tsFields.has(k));
+
+    expect(
+      missingInJson,
+      `${interfaceName} declares fields missing from matchups_slates.json: ${missingInJson.join(', ')}`
+    ).toEqual([]);
+    expect(
+      undocumentedInTs,
+      `matchups_slates.json ships keys not declared on ${interfaceName}: ${undocumentedInTs.join(', ')}`
+    ).toEqual([]);
+  };
+
+  it('MatchupsPayload matches the top-level keys', () => {
+    assertParity('MatchupsPayload', [payload]);
+  });
+
+  it('Matchup matches the keys of every game row', () => {
+    assertParity('Matchup', payload.matchups as Record<string, unknown>[]);
+  });
+
+  it('MatchupWeek matches the keys of every week row', () => {
+    assertParity('MatchupWeek', payload.weeks as Record<string, unknown>[]);
+  });
+
+  it('MatchupSummary matches the keys of the summary block', () => {
+    assertParity('MatchupSummary', [payload.summary as Record<string, unknown>]);
+  });
+
+  it('MatchupProvenance matches the keys of the provenance block', () => {
+    assertParity('MatchupProvenance', [payload.provenance as Record<string, unknown>]);
+  });
+});
