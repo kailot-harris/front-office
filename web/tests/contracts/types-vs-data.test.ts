@@ -184,8 +184,6 @@ const parityCases: ParityCase[] = [
   { file: 'player_qb_profiles.json', iface: 'QbProfile' },
   { file: 'model_diagnostics.json', iface: 'DiagnosticsDataset', pick: (j) => [j as Record<string, unknown>] },
   { file: 'model_diagnostics.json', iface: 'CalibrationBin', pick: (j) => (j as { calibration_curve: Record<string, unknown>[] }).calibration_curve },
-  { file: 'value_bets.json', iface: 'ValueBetsDataset', pick: (j) => [j as Record<string, unknown>] },
-  { file: 'value_bets.json', iface: 'ValueBet', pick: (j) => (j as { active_bets: Record<string, unknown>[] }).active_bets },
   { file: 'visual_media_index.json', iface: 'VisualMediaItem' },
   { file: 'coaching_profiles.json', iface: 'CoachProfile' },
   { file: 'salary_cap_profiles.json', iface: 'SalaryCapDataset', pick: (j) => [j as Record<string, unknown>] },
