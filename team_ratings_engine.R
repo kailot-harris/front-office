@@ -119,14 +119,12 @@ source("config.R")
 source("logging_utils.R")
 .LOG_SCRIPT <- "team_ratings_engine.R"
 
-# Phase 1 (model-quality remediation, docs/HANDOFF.md's post-backtest roadmap): market-blend +
-# QB-injury adjustment. Both scripts are source()-safe (no top-level side effects beyond
-# function/constant definitions). market_odds_engine.R gives fetch_devigged_market_probs()/
-# resolve_team_name(); tools/qb_injury_features.R gives get_qb_starter_table()/
-# compute_qb_backup_flags() - the SAME functions tools/derive_market_blend_weight.R and
-# tools/derive_qb_injury_penalty.R used to derive MARKET_BLEND_WEIGHT/QB_INJURY_RATING_
-# PENALTY_PTS, never a second, independently-typed copy of either.
-source("market_odds_engine.R")
+# Model inputs & features:
+# QB-injury adjustments (tools/qb_injury_features.R), historical walkforward
+# games (tools/backtest_common.R), Ridge-Massey model (tools/ridge_massey_model.R),
+# and Elo model (tools/elo_model.R).
+# Note: Market odds blending has been decommissioned (Issue #8). Predictions are
+# 100% endogenous and market-independent.
 source("tools/qb_injury_features.R")
 source("tools/backtest_common.R")     # -> build_walkforward_games() (Phase 2 training data)
 source("tools/ridge_massey_model.R")  # -> fit_ridge_massey()/build_ridge_features() (Phase 2)
@@ -476,22 +474,12 @@ run_team_ratings <- function() {
       project_elo_rating(unname(r), unname(s), season)
     }
 
-    # ---- Phase 1 (model-quality remediation): QB-injury flags + devigged market probs ----
-    # Computed ONCE for the whole upcoming slate, not per-game (one load_depth_charts() call,
-    # one Odds API call - see fetch_devigged_market_probs()'s header for the added-API-call
-    # cost this incurs and why it's accepted rather than reordering the pipeline).
+    # QB-injury adjustment lookup table for upcoming games
     qb_backup_lookup <- get_live_qb_backup_flags()
-    market_probs <- tryCatch(fetch_devigged_market_probs(), error = function(e) {
-      log_warn("fetch_devigged_market_probs() failed - market blend skipped this run (model-only probabilities used).",
-               call = "run_team_ratings()", error_message = conditionMessage(e))
-      tibble(home_team = character(0), away_team = character(0),
-             market_home_prob = numeric(0), market_data_source = character(0))
-    })
 
     projected_rows <- vector("list", nrow(upcoming))
     n_skipped <- 0L
     n_qb_adjusted <- 0L
-    n_market_blended <- 0L
     n_elo_ensembled <- 0L
 
     for (i in seq_len(nrow(upcoming))) {
@@ -550,46 +538,16 @@ run_team_ratings <- function() {
         elo_model_prob <- pnorm(elo_margin / NFL_MARGIN_SIGMA)
       }
 
-      # Market blend (config.R's MARKET_BLEND_WEIGHT, empirically derived via
-      # tools/derive_market_blend_weight.R), applied to ridge's and (if available) Elo's
-      # probabilities SEPARATELY before averaging - matches exactly how tools/model_backtest_
-      # harness.R's validated ensemble_ridge_elo candidate was scored (see docs/HANDOFF.md), not
-      # a different, untested blend-then-average order. Only blends against a REAL live odds
-      # slate - never against the SYNTHETIC_FALLBACK fixture (fetch_market_odds()'s own no-API-
-      # key/no-live-data fallback), which would silently corrupt real predictions with
-      # fabricated numbers.
-      mrow <- market_probs |> filter(home_team == home, away_team == away)
-      has_real_market <- nrow(mrow) > 0 && !is.na(mrow$market_data_source[1]) &&
-        mrow$market_data_source[1] != "SYNTHETIC_FALLBACK" && !is.na(mrow$market_home_prob[1])
-      if (has_real_market) n_market_blended <- n_market_blended + 1L
-
-      blend_one <- function(model_prob) {
-        if (has_real_market) MARKET_BLEND_WEIGHT * mrow$market_home_prob[1] + (1 - MARKET_BLEND_WEIGHT) * model_prob
-        else model_prob
-      }
-      ridge_final <- blend_one(ridge_model_prob)
+      # Pure endogenous ensemble: 50% Ridge-Massey margin + 50% Elo margin (or 100% Ridge if Elo unavailable)
+      # Win probability computed directly via normal CDF: pnorm(projected_margin / NFL_MARGIN_SIGMA)
       if (elo_available) {
-        home_win_prob <- 0.5 * ridge_final + 0.5 * blend_one(elo_model_prob)
+        projected_margin <- 0.5 * ridge_margin + 0.5 * elo_margin
+        home_win_prob <- pnorm(projected_margin / NFL_MARGIN_SIGMA)
         n_elo_ensembled <- n_elo_ensembled + 1L
       } else {
-        home_win_prob <- ridge_final
+        projected_margin <- ridge_margin
+        home_win_prob <- ridge_model_prob
       }
-
-      # FIX (found while wiring Phase 3): market_odds_engine.R's get_model_slate_probabilities()
-      # reads `projected_margin` (base_margin + its own fatigue_adj -> pnorm()) - it does NOT
-      # read `home_win_prob` from this cache directly, despite this file's own header claiming
-      # home_win_prob is "the sole model-probability source". Before this fix, `projected_margin`
-      # only ever carried the pre-market-blend ridge margin, so Phase 1's market blend (and now
-      # Phase 3's Elo ensemble) never actually reached market_odds_engine.R's EV math - silently
-      # dead as far as that stage was concerned. Re-expressing the FINAL home_win_prob as an
-      # equivalent point margin here keeps `projected_margin` the single canonical carrier both
-      # columns are built from (self-consistent by construction: home_win_prob ==
-      # pnorm(projected_margin/NFL_MARGIN_SIGMA) always holds), so market_odds_engine.R's
-      # existing margin+fatigue-only re-derivation now correctly incorporates every upstream
-      # adjustment, adding just its own incremental fatigue layer on top - no changes needed in
-      # that file at all.
-      home_win_prob_clipped <- min(max(home_win_prob, 1e-4), 1 - 1e-4)
-      projected_margin <- qnorm(home_win_prob_clipped) * NFL_MARGIN_SIGMA
 
       projected_rows[[i]] <- data.frame(
         game_id            = g$game_id,
@@ -608,8 +566,8 @@ run_team_ratings <- function() {
     }
 
     projected_matchups <- bind_rows(projected_rows)
-    log_info(sprintf("Phase 1/3 adjustments applied: %d games with a QB-backup adjustment, %d games blended with real market odds, %d games ensembled with a live Elo rating.",
-                      n_qb_adjusted, n_market_blended, n_elo_ensembled), call = "run_team_ratings()")
+    log_info(sprintf("Adjustments applied: %d games with a QB-backup adjustment, %d games ensembled with a live Elo rating.",
+                      n_qb_adjusted, n_elo_ensembled), call = "run_team_ratings()")
 
     if (n_skipped > 0) {
       log_warn(sprintf("Skipped %d of %d upcoming games due to missing team ratings.",
