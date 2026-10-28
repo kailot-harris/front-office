@@ -450,6 +450,19 @@ PIPELINE_STAGES <- list(
                       file.path(CACHE_DIR, "prediction_accuracy_log.rds")),
       group       = NULL
     ),
+    # ---------------------------------------------------------------------------------------
+    # 8.6. Front-Office Operations Alert Dispatcher (Issue #18)
+    # ---------------------------------------------------------------------------------------
+    notify_pipeline_ops = list(
+      id          = "notify_pipeline_ops",
+      script      = "notify_pipeline_ops.R",
+      description = "Dispatch Front-Office Operations & Calibration Telemetry",
+      call_fn     = "run_notify_pipeline_ops",
+      entry_fn    = NULL,
+      output      = NULL,
+      inputs      = c(file.path(CACHE_DIR, "accuracy_governance.rds")),
+      group       = NULL
+    ),
 
   export_web_json = list(
     id          = "export_web_json",

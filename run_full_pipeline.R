@@ -450,6 +450,9 @@ run_registered_stage("cba_cap_dataset")
 # standings (stage 10). See the ordering note in pipeline_stages.R.
 run_registered_stage("matchups_dataset")
 
+# 16. Front-Office Operations Alert Dispatcher (Issue #18)
+run_registered_stage("notify_pipeline_ops")
+
 # Reset parallel plan to sequential. This also shuts the multisession workers down, so by the
 # time the spill merge below runs, no other process holds logs.duckdb.
 plan(sequential)
