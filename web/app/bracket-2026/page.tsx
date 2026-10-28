@@ -26,6 +26,7 @@ function getBracket(): PlayoffBracketSeason {
   const filePath = path.join(process.cwd(), 'public', 'data', 'playoff_bracket_2026.json');
 
   const empty = (note: string): PlayoffBracketSeason => ({
+    generated_at: '',
     season: 2026,
     generatedAt: '',
     sourceNote: note,
@@ -64,6 +65,7 @@ function getFinalsGames(): FinalsGamePredictionSet {
   );
 
   const empty = (note: string): FinalsGamePredictionSet => ({
+    generated_at: '',
     season: 2026,
     generatedAt: '',
     sourceNote: note,
@@ -110,6 +112,7 @@ function getFinalsBacktest(): FinalsSeriesBacktestSet {
   );
 
   const empty = (note: string): FinalsSeriesBacktestSet => ({
+    generated_at: '',
     season: 2026,
     generatedAt: '',
     sourceNote: note,

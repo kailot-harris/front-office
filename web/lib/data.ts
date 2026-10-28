@@ -72,6 +72,7 @@ export function getDiagnostics(): ModelDiagnostics {
   const filePath = path.join(process.cwd(), 'public', 'data', 'projections_diagnostics.json');
   if (!fs.existsSync(filePath)) {
     return {
+      generated_at: new Date().toISOString(),
       totalResolvedGames: 0,
       overallAccuracy: 0,
       brierScore: 0,
