@@ -3,6 +3,7 @@ import { GeistSans, GeistMono } from 'geist/font';
 import './globals.css';
 import { Sidebar } from '@/components/Sidebar';
 import { SportSwitcher } from '@/components/SportSwitcher';
+import { getMetadata } from '@/lib/data';
 
 export const metadata: Metadata = {
   title: 'MLB Sabermetric Projections | 162-Game & 10,000-Sim Postseason Engine',
@@ -15,12 +16,13 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const { generated_at } = getMetadata();
   return (
     <html lang="en" className={`dark ${GeistSans.variable} ${GeistMono.variable}`}>
       <body
         className={`${GeistSans.className} font-sans bg-surface text-slate-100 min-h-screen flex flex-col md:flex-row antialiased selection:bg-indigo-600 selection:text-white`}
       >
-        <Sidebar />
+        <Sidebar generatedAt={generated_at} />
         <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
           <SportSwitcher current="mlb" />
           <main className="flex-1 pb-10">{children}</main>
