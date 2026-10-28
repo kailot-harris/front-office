@@ -298,6 +298,11 @@ run_stage("playoff_odds_engine.R", "Compute NFL Playoff-Clinching Probabilities 
 # pruned per Phase 1 (Issue #13).
 run_stage("accuracy_tracker.R", "Track Season-to-Date Model Accuracy Trajectory",
           call_fn = "run_accuracy_tracker")
+# 8.5. Forecast Accuracy Governance & Calibration Engine (Issue #17)
+run_stage("accuracy_governance.R", "Compute Forecast Accuracy Governance & Calibration Diagnostics",
+          call_fn = "run_nfl_accuracy_governance",
+          output = file.path(CACHE_DIR, "accuracy_governance.rds"))
+
 
 # ------------------------------------------------------------------------------
 # Stage 14: Web data export (TERMINAL stage).
@@ -327,6 +332,12 @@ run_stage("accuracy_tracker.R", "Track Season-to-Date Model Accuracy Trajectory"
 run_stage("export_web_datasets.R", "Export Web Application JSON Datasets (web/public/data)",
           call_fn = "run_export_web_datasets",
           output = WEB_DATA_FILES)
+
+# ------------------------------------------------------------------------------
+# Stage 15: Front-Office Operations Alert Dispatcher (notify_pipeline_ops.R)
+# ------------------------------------------------------------------------------
+run_stage("notify_pipeline_ops.R", "Dispatch Front-Office Operations & Calibration Telemetry",
+          call_fn = "run_notify_pipeline_ops")
 
 # ------------------------------------------------------------------------------
 # FUTURE STAGES — extension point, not yet implemented (see docs/task_assignments_phase0.md's
