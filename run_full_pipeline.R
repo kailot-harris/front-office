@@ -184,6 +184,10 @@ run_stage("accuracy_governance.R", "Compute Forecast Accuracy Governance & Calib
 run_stage("build_matchups_dataset.R", "Assemble Weekly Matchup Slates, Projections & Graded Results",
           output = file.path(CACHE_DIR, "matchups_cache.rds"))
 
+# 10. Front-Office Operations Alert Dispatcher (Issue #18)
+run_stage("notify_pipeline_ops.R", "Dispatch Front-Office Operations & Calibration Telemetry",
+          call_fn = "run_notify_pipeline_ops")
+
 # Final projection publish guard (issue #18). Every page above reads these three
 # files; assert the scheduled run actually left fresh copies and that the
 # metadata's generated_at/season_label describe this run -- not a previous one.
