@@ -58,9 +58,6 @@ MLB_CACHE_STAGES <- list(
   ratings       = "ratings",       # mlb_elo_engine.R      (Elo ratings w/ pitcher adjustment)
   specialty     = "specialty",     # mlb_marcel_baseline.R, mlb_bullpen_fatigue.R
   postseason    = "postseason",    # mlb_postseason_simulator.R (Phase 4 bracket simulator)
-  risk          = "risk",          # mlb_risk_management_engine.R (Phase 5 bankroll & Kelly monitor)
-  market        = "market",        # mlb_market_odds_engine.R (Phase 6 market odds & value bets)
-  notify        = "notify",        # mlb_notify_bets.R (Phase 7 Discord alert dispatcher)
   viz           = "viz"            # tools/viz_*.R (Phase 9 quantitative visualization suite)
 )
 
@@ -92,15 +89,6 @@ cache_path <- function(stage, ..., create = TRUE) {
   normalizePath(file.path(stage_dir, do.call(file.path, as.list(extra))),
                 winslash = "/", mustWork = FALSE)
 }
-
-# Canonical cache references for Risk Management (Phase 5, Issue #20)
-CACHE_RISK_STATE     <- cache_path("risk", "mlb_risk_state.rds")
-CACHE_BETTING_LEDGER <- cache_path("risk", "betting_ledger.rds")
-
-# Canonical cache references for Market Odds & Value Bets (Phase 6 & 7, Issues #21, #22)
-CACHE_LATEST_VALUE_BETS <- file.path(MLB_CACHE_ROOT, "latest_value_bets.rds")
-CACHE_MARKET_ODDS       <- file.path(MLB_CACHE_ROOT, "market_odds.rds")
-MLB_ODDS_SPORT_KEY      <- "baseball_mlb"
 
 # ---------------------------------------------------------------------------
 # 2. WAR source (Phase 1's one open decision this phase actually resolves)
