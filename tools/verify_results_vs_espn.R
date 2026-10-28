@@ -54,61 +54,12 @@ local({
 })
 source("config.R")
 
-# ------------------------------------------------------------------------------
-# Team abbreviation dialect. ESPN's scoreboard feed and the hoopR-derived payload
-# disagree on a handful of codes; these are spelling differences, not mismatches,
-# and treating them as mismatches would make the check cry wolf on every run.
-# ------------------------------------------------------------------------------
-ESPN_ALIAS <- c(UTAH = "UTA", NY = "NYK", WSH = "WAS", GS = "GSW",
-                SA = "SAS", NO = "NOP", PHO = "PHX", NOLA = "NOP")
-.vr_norm <- function(x) {
-  x <- toupper(trimws(as.character(x)))
-  hit <- x %in% names(ESPN_ALIAS)
-  x[hit] <- ESPN_ALIAS[x[hit]]
-  x
-}
-
-ESPN_SCOREBOARD <- "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=%s"
-
-# ESPN rejects a default R user agent with 403, so a browser UA is required rather than
-# cosmetic. One request per date; the feed is keyed by a single YYYYMMDD.
-.vr_fetch_date <- function(d) {
-  url <- sprintf(ESPN_SCOREBOARD, format(as.Date(d), "%Y%m%d"))
-  txt <- tryCatch({
-    con <- url(url, open = "rb", headers = c("User-Agent" = "Mozilla/5.0"))
-    on.exit(close(con), add = TRUE)
-    paste(readLines(con, warn = FALSE), collapse = "")
-  }, error = function(e) {
-    warning(sprintf("ESPN fetch failed for %s: %s", d, conditionMessage(e)), call. = FALSE)
-    NULL
-  })
-  if (is.null(txt) || !nzchar(txt)) return(NULL)
-  j <- tryCatch(jsonlite::fromJSON(txt, simplifyVector = FALSE),
-                error = function(e) NULL)
-  if (is.null(j) || !length(j$events)) return(NULL)
-
-  rows <- lapply(j$events, function(e) {
-    comp <- e$competitions[[1]]
-    home <- away <- NA_character_
-    hs <- as_ <- NA_integer_
-    for (t in comp$competitors) {
-      ab <- .vr_norm(t$team$abbreviation)
-      sc <- suppressWarnings(as.integer(t$score))
-      if (identical(t$homeAway, "home")) { home <- ab; hs <- sc } else { away <- ab; as_ <- sc }
-    }
-    data.frame(
-      game_id    = as.character(e$id),
-      game_date  = as.character(as.Date(d)),
-      away_team  = away, away_score = as_,
-      home_team  = home, home_score = hs,
-      is_final   = isTRUE(comp$status$type$completed),
-      state      = as.character(comp$status$type$name %||% NA_character_),
-      stringsAsFactors = FALSE
-    )
-  })
-  do.call(rbind, rows)
-}
-`%||%` <- function(a, b) if (is.null(a)) b else a
+# The ESPN client - the alias table, the browser-UA requirement and the
+# per-date fetch - lives in tools/espn_scoreboard.R, shared with
+# tools/refresh_live_results.R. It used to be inline here; it moved out
+# unchanged when that second consumer arrived, so that the two cannot disagree
+# about which team "WSH" is.
+source("tools/espn_scoreboard.R")
 
 # ------------------------------------------------------------------------------
 # Comparison. Three distinct defects are reported separately because they have
@@ -151,7 +102,7 @@ main <- function() {
               min(dates), max(dates)))
   cat(sprintf("  arbiter          : ESPN scoreboard (hoopR's own upstream)\n\n"))
 
-  truth <- do.call(rbind, lapply(dates, .vr_fetch_date))
+  truth <- espn_fetch_dates(dates)
   if (is.null(truth) || !nrow(truth)) {
     cat("  [FAIL] ESPN returned no games for any requested date - cannot verify.\n")
     return(1L)
@@ -167,8 +118,8 @@ main <- function() {
   for (i in seq_len(nrow(cmp))) {
     r <- cmp[i, ]
     tags <- character(0)
-    if (!identical(.vr_norm(r$away_team_pay), r$away_team_espn) ||
-        !identical(.vr_norm(r$home_team_pay), r$home_team_espn)) tags <- c(tags, "TEAMS")
+    if (!identical(.espn_norm(r$away_team_pay), r$away_team_espn) ||
+        !identical(.espn_norm(r$home_team_pay), r$home_team_espn)) tags <- c(tags, "TEAMS")
 
     pay_done <- isTRUE(r$is_completed)
     if (r$is_final && !pay_done) { tags <- c(tags, "MISSING_RESULT"); missing_final <- missing_final + 1L }
@@ -179,7 +130,7 @@ main <- function() {
       if (!identical(as.integer(r$home_score_pay), r$home_score_espn) ||
           !identical(as.integer(r$away_score_pay), r$away_score_espn)) bad <- c(bad, "SCORE")
       exp_win <- if (r$home_score_espn > r$away_score_espn) r$home_team_espn else r$away_team_espn
-      if (!identical(.vr_norm(r$actual_winner), exp_win)) bad <- c(bad, "WINNER")
+      if (!identical(.espn_norm(r$actual_winner), exp_win)) bad <- c(bad, "WINNER")
       exp_margin <- r$home_score_espn - r$away_score_espn
       if (!identical(as.integer(r$actual_margin), as.integer(exp_margin))) bad <- c(bad, "MARGIN")
       if (length(bad)) { tags <- c(tags, bad); wrong <- wrong + 1L }
