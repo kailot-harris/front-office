@@ -298,6 +298,11 @@ run_stage("playoff_odds_engine.R", "Compute NFL Playoff-Clinching Probabilities 
 # pruned per Phase 1 (Issue #13).
 run_stage("accuracy_tracker.R", "Track Season-to-Date Model Accuracy Trajectory",
           call_fn = "run_accuracy_tracker")
+# 8.5. Forecast Accuracy Governance & Calibration Engine (Issue #17)
+run_stage("accuracy_governance.R", "Compute Forecast Accuracy Governance & Calibration Diagnostics",
+          call_fn = "run_nfl_accuracy_governance",
+          output = file.path(CACHE_DIR, "accuracy_governance.rds"))
+
 
 # ------------------------------------------------------------------------------
 # Stage 14: Web data export (TERMINAL stage).
