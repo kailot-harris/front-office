@@ -167,25 +167,10 @@ run_stage("build_defense_dataset.R", "Compute Positional Versatility Entropy & R
 run_stage("build_clutch_dataset.R", "Analyze Leverage Index Filtering & Unassisted Shot Creation (USCI)",
           output = file.path(CACHE_DIR, "clutch_leverage_metrics.rds"))
 
-# 4. Risk Management & Capital Allocation
-run_stage("risk_management_engine.R", "Audit Drawdown State & Set Dynamic Kelly Multiplier",
-          output = file.path(CACHE_DIR, "risk_state.rds"))
-
-# 5. Market Arbitrage & Limits
-run_stage("market_odds_engine.R", "Benchmark Live Books vs Pinnacle Limits & Kelly Stakes",
-          output = file.path(CACHE_DIR, "latest_value_bets.rds"))
-
-# 6. Advanced Proposition Distributions
-run_stage("player_props_engine.R", "Price ZINB Overdispersed Player Props (PTS, REB, AST, BLK, STL)",
-          output = file.path(CACHE_DIR, "latest_player_props.rds"))
-run_stage("copula_props_engine.R", "Simulate Joint Multivariate Gaussian Copula (PRA / SGPs)")
-
 # 7. Postseason Simulation
 run_stage("playoff_simulator.R", "Execute 8-Man Playoff Series Monte Carlo (10,000 Iterations)")
 
-# 8. Notification & Settlement
-run_stage("notify_bets.R", "Dispatch Filtered Discord Webhooks (EV >= 5.0%, CLV > 0)")
-run_stage("bet_tracker.R", "Grade Previous Completed Events & Update Rolling CLV%")
+# 8. Forecast Accuracy Governance & Logging (betting stages pruned per Phase 1, Issue #15)
 run_stage("prediction_accuracy_logger.R", "Reconcile Outcomes & Log Pre-Game Win Probabilities",
           output = file.path(CACHE_DIR, "prediction_accuracy_log.rds"))
 
