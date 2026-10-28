@@ -31,7 +31,11 @@ import { BASE_PATH } from '@/lib/basePath';
 const withoutTrailingSlash = (path: string) =>
   path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
 
-export const Sidebar: React.FC = () => {
+export interface SidebarProps {
+  generatedAt?: string;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [showSigmaExplainer, setShowSigmaExplainer] = useState(false);
@@ -277,6 +281,12 @@ export const Sidebar: React.FC = () => {
           </span>
           <span className="font-mono text-[11px] text-slate-400">NFL Season 2026</span>
         </div>
+        {generatedAt && (
+          <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono px-1">
+            <span>Updated</span>
+            <time dateTime={generatedAt}>{generatedAt.slice(0, 16).replace('T', ' ')} UTC</time>
+          </div>
+        )}
       </div>
     </div>
   );

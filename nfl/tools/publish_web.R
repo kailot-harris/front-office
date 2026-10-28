@@ -188,6 +188,14 @@ source("logging_utils.R")
   # resolve HOME the way Git Bash does, so git can't find ~/.gitconfig and refuses
   # to commit with "unable to auto-detect email address". Pass identity explicitly
   # via -c so commits don't depend on HOME/USERPROFILE resolution in the invoking shell.
+  # R on Windows rewrites HOME to "<USERPROFILE>/Documents", while Git for
+  # Windows stores ~/.gitconfig at "<USERPROFILE>/.gitconfig". Point HOME at
+  # USERPROFILE when .gitconfig lives there so both git config and git commit
+  # resolve the user's global git config and credential helper.
+  up <- Sys.getenv("USERPROFILE", "")
+  if (nzchar(up) && file.exists(file.path(up, ".gitconfig"))) {
+    Sys.setenv(HOME = up)
+  }
   if (identical(args[1], "commit")) {
     user_name <- Sys.getenv("GIT_AUTHOR_NAME", Sys.getenv("GIT_COMMITTER_NAME", ""))
     user_email <- Sys.getenv("GIT_AUTHOR_EMAIL", Sys.getenv("GIT_COMMITTER_EMAIL", ""))
@@ -531,6 +539,104 @@ source("logging_utils.R")
 }
 
 # ------------------------------------------------------------------------------
+# Deploy observability notification (GitHub issue #40).
+#
+# Posts the publish gate outcome to NFL_DISCORD_WEBHOOK (read via Sys.getenv,
+# never hardcoded):
+#   * On success or dry-run pass: active_week, published value-bet count, and
+#     any exporter [WARN] lines surfaced during the run window.
+#   * On blocked gate: the specific assertion(s) that failed plus any exporter
+#     [WARN] lines.
+# ------------------------------------------------------------------------------
+.pw_value_bet_count <- function() {
+  if (!file.exists(WEB_JSON_VALUE_BETS)) return(NA_integer_)
+  j <- tryCatch(jsonlite::fromJSON(WEB_JSON_VALUE_BETS, simplifyVector = TRUE),
+                error = function(e) NULL)
+  if (is.null(j)) return(NA_integer_)
+  if (!is.null(j$total_bets)) return(as.integer(j$total_bets[1]))
+  if (!is.null(j$active_bets) && is.data.frame(j$active_bets)) return(as.integer(nrow(j$active_bets)))
+  if (is.list(j$active_bets)) return(as.integer(length(j$active_bets)))
+  NA_integer_
+}
+
+.pw_notify_discord <- function(result) {
+  webhook_url <- Sys.getenv("NFL_DISCORD_WEBHOOK", "")
+  vb_count <- .pw_value_bet_count()
+  wk <- result$active_week_published
+  warns <- result$exporter_warnings
+
+  status_label <- if (isTRUE(result$blocked)) {
+    "BLOCKED (Assertion Failed)"
+  } else if (isTRUE(result$published)) {
+    "PUBLISHED TO MAIN"
+  } else {
+    "DRY RUN PASSED"
+  }
+
+  color <- if (isTRUE(result$blocked)) 15158332L else if (isTRUE(result$published)) 3066993L else 3447003L
+
+  failed_checks <- Filter(function(ch) !isTRUE(ch$pass) && isTRUE(ch$fatal), result$checks)
+  failed_text <- if (length(failed_checks)) {
+    paste(vapply(failed_checks, function(ch) sprintf("**%s (%s):** %s", ch$id, ch$name, ch$summary), character(1)),
+          collapse = "\n")
+  } else {
+    "None (all fatal assertions passed)"
+  }
+
+  warn_text <- if (length(warns)) {
+    paste(head(warns, 5), collapse = "\n")
+  } else {
+    "None in run window"
+  }
+  if (nchar(warn_text) > 950) warn_text <- paste0(substr(warn_text, 1, 950), "...")
+
+  fields <- list(
+    list(name = "Status", value = sprintf("`%s`", status_label), inline = TRUE),
+    list(name = "Active Week", value = sprintf("`%s`", ifelse(is.na(wk), "<NA>", wk)), inline = TRUE),
+    list(name = "Value Bets Published", value = sprintf("`%s`", ifelse(is.na(vb_count), "<NA>", vb_count)), inline = TRUE),
+    list(name = "Fatal Gate Failures", value = failed_text, inline = FALSE),
+    list(name = "Exporter [WARN] Lines", value = paste0("```\n", warn_text, "\n```"), inline = FALSE)
+  )
+
+  payload <- list(
+    username = "NFL Quant Terminal",
+    embeds = list(
+      list(
+        title = paste("NFL Web Publish Gate \u2022", status_label),
+        description = sprintf("Run start: `%s` | Passed: `%s`",
+                              if (is.na(result$run_start)) "<undetected>" else format(result$run_start, "%Y-%m-%d %H:%M:%S"),
+                              paste(result$assertions_passed, collapse = ", ")),
+        color = color,
+        fields = fields,
+        footer = list(text = paste("tools/publish_web.R \u2022", format(Sys.time(), "%Y-%m-%d %H:%M:%S")))
+      )
+    )
+  )
+
+  if (!nzchar(webhook_url)) {
+    log_info(sprintf("publish_web: NFL_DISCORD_WEBHOOK not set; skipping Discord notification (status=%s, week=%s, value_bets=%s, warnings=%d).",
+                     status_label, ifelse(is.na(wk), "NA", wk), ifelse(is.na(vb_count), "NA", vb_count), length(warns)))
+    return(invisible(FALSE))
+  }
+
+  if (!requireNamespace("httr", quietly = TRUE)) {
+    log_warn("publish_web: httr not installed; cannot post Discord notification.")
+    return(invisible(FALSE))
+  }
+
+  res <- tryCatch(
+    httr::POST(webhook_url, body = payload, encode = "json", httr::timeout(6)),
+    error = function(e) list(status_code = 500L, message = conditionMessage(e))
+  )
+  ok <- !is.null(res$status_code) && res$status_code %in% c(200L, 204L)
+  if (ok) {
+    log_info("publish_web: posted deploy outcome to NFL_DISCORD_WEBHOOK.", status_code = res$status_code)
+  } else {
+    log_warn("publish_web: Discord webhook POST did not return 200/204.", status_code = res$status_code)
+  }
+  invisible(ok)
+}
+# ------------------------------------------------------------------------------
 # publish_web() - the explicitly-callable entry point.
 #
 # Deliberately NOT guarded by a `sys.nframe() == 0`-style top-level-only check:
@@ -620,16 +726,21 @@ publish_web <- function(dry_run = TRUE,
     publish_branch_actual = checks[[4]]$branch,
     exporter_warnings = checks[[5]]$warnings,
     pending_changes = checks[[3]]$changed,
+    value_bets_published = .pw_value_bet_count(),
     contracts_pass = isTRUE(checks[[length(checks)]]$pass),
     checks = checks, published = FALSE, steps = list()
   )
 
-  if (blocked || dry_run) return(invisible(result))
+  if (blocked || dry_run) {
+    if (blocked && !dry_run) .pw_notify_discord(result)
+    return(invisible(result))
+  }
 
   result$steps <- .pw_do_publish(repo_root, commit_message)
   result$published <- TRUE
   log_info(sprintf("publish_web: web artifacts committed and pushed to NFL_analytics %s. The site changes when the aggregator's sync-sports.yml next pulls; this script no longer deploys.",
                    publish_branch))
+  .pw_notify_discord(result)
   invisible(result)
 }
 
