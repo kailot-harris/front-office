@@ -21,6 +21,7 @@ import {
   Award,
   Coins,
   CalendarDays,
+  Sparkles,
 } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
 
@@ -119,6 +120,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       badge: 'Brier 0.2449',
       icon: Activity,
       desc: 'Reliability curve & walk-forward drift',
+    },
+    {
+      href: '/retrospective',
+      label: '2026 Retrospective',
+      badge: 'WS Debrief',
+      icon: Sparkles,
+      desc: 'Postseason audit, champions and model postmortem',
     },
   ];
 
