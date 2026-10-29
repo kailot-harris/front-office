@@ -65,6 +65,12 @@ graph TD
 | **#27** | Phase 5 | Remove secrets from CI/CD workflows | Removed commented `ODDS_API_KEY` in `deploy.yml`; confirmed zero active betting secrets across all workflows and repositories. |
 | **#28** | Phase 5 | Sanitize & re-verify scheduled task definitions | Sanitized `mlb_pipeline_task.xml` and NFL `schedule_daily.bat`. Executed both scheduled task wrappers end-to-end on Windows host with exit code 0. |
 | **#29** | Phase 5 | Declare platform betting-free in docs | Updated `README.md` and `HANDOFF.md` across the aggregator and all 4 sport repositories to formally declare betting-free status and document replacements. |
+| **#30** | Phase 5 | Rollout verification gate for betting decommission | Verified full 4-sport pipeline runs, static builds, and live deployment. Closed. |
+| **#33** | Master Epic | Restore active tab sidebar navigation highlighting | Restored active sidebar tab highlighting across NBA, WNBA, and MLB next.config trailingSlash subroutes. Closed. |
+| **#34** | Phase 1 | Restore active tab sidebar highlighting in NBA | Normalized trailing slash in `components/Sidebar.tsx` and preserved `/teams` fallback. Closed. |
+| **#35** | Phase 2 | Restore active tab sidebar highlighting in WNBA | Normalized trailing slash in `components/Sidebar.tsx` and preserved `/teams` fallback; added vitest tests. Closed. |
+| **#36** | Phase 3 | Restore active tab sidebar highlighting in MLB | Normalized trailing slash in `components/Sidebar.tsx` and preserved `/teams` fallback. Closed. |
+| **#37** | Phase 4 | Verification — Aggregator subtree sync and live rollout gate | Subtrees pulled (NBA f003d83, WNBA 623da89, MLB 2c17dc1), static builds verified, deploy workflow 40818391375 green, verified live at https://kailot-harris.github.io/front-office/. Closed. |
 
 ---
 
