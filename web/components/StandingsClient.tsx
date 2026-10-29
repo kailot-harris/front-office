@@ -5,6 +5,7 @@ import { TeamProjection, ModelMetadata } from '@/lib/types';
 import { Trophy, TrendingUp, Filter, ArrowUpDown, ArrowUp, ArrowDown, ShieldAlert, Award, BarChart2, Table, ArrowRight, Download } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { PlayoffContendersBoxWhisker } from '@/components/PlayoffContendersBoxWhisker';
+import { AnimatedMediaCard } from '@/components/AnimatedMediaCard';
 import { exportToCsv } from '@/lib/exportToCsv';
 
 interface StandingsClientProps {
@@ -273,6 +274,22 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
         /* Tab 1: Playoff Contenders Box-Whisker Visualization */
         <div className="space-y-4">
           <PlayoffContendersBoxWhisker teams={teams} />
+
+          {/* Dynamic Trajectory and Race Visualizations */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+            <AnimatedMediaCard
+              name="gif_elo_rank_bump"
+              title="League-Wide Elo Rating and Rank Evolution"
+              alt="Animated bump chart illustrating all 30 NBA teams Elo rating movements and ranking transitions across the season"
+              caption="Tracks daily Elo rating oscillations and divisional rank transitions across all 30 NBA franchises, with reduced-motion static final standing support."
+            />
+            <AnimatedMediaCard
+              name="gif_point_diff_race"
+              title="Cumulative Point Differential Race"
+              alt="Animated race chart displaying cumulative scoring differential trajectories across all 30 NBA franchises"
+              caption="Cumulative game-by-game point margin trajectories showing true underlying scoring strength and separation between elite contenders and lottery teams."
+            />
+          </div>
           <div className="flex justify-end pt-1">
             <button
               type="button"

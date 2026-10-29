@@ -11,6 +11,7 @@ import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
 import { SEASON_SOURCES } from '@/lib/season';
 import { SeriesProbRing } from '@/components/SeriesProbRing';
 import { TacticalMismatchRadar } from '@/components/TacticalMismatchRadar';
+import { AnimatedMediaCard } from '@/components/AnimatedMediaCard';
 import {
   Trophy,
   Swords,
@@ -434,6 +435,22 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
             tacticalEdges={matchupResult.tacticalEdges}
           />
         </div>
+      </div>
+
+      {/* Postseason Trajectory & Playoff Leverage Visualizations */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <AnimatedMediaCard
+          name="build_series_trajectory_gif"
+          title="7-Game Series Net Rating Trajectory"
+          alt="Animated 7-game series net rating trajectory showing game-by-game margin swings and series leverage"
+          caption="Game-by-game evolution of postseason net rating margin shifts across 7-game series iterations, tracking swing games and pivotal tactical adjustments."
+        />
+        <AnimatedMediaCard
+          name="gif_playoff_prob_bump"
+          title="Playoff Seed & Play-In Leverage Bump Trajectory"
+          alt="Animated bump chart tracking playoff probability and seed certainty across conference contenders"
+          caption="Playoff seed certainty and play-in tournament threshold trajectories across Eastern and Western conference contenders throughout late-season games."
+        />
       </div>
 
       {/* 8-Man Playoff Rotation Side-by-Side Comparison */}
