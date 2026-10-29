@@ -1,0 +1,55 @@
+﻿name: Bug Report
+description: Create a report to help us improve the front-office analytics platform
+title: "[BUG]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting an issue! Please verify the problem exists on the latest main commit.
+  - type: input
+    id: component
+    attributes:
+      label: Affected Component or Subsystem
+      description: e.g., Pipeline R scripts, web UI, data sync, visualization generator, GitHub Actions.
+      placeholder: "e.g., NBA web dashboard / tools/publish_web.R"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the Bug
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Steps or commands to reproduce the issue.
+      placeholder: |
+        1. Run '...'
+        2. View '...'
+        3. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs or Terminal Output
+      description: Paste any relevant terminal logs, stack traces, or screenshots.
+      render: shell
+  - type: checkboxes
+    id: compliance
+    attributes:
+      label: Policy Compliance
+      options:
+        - label: I confirm this issue conforms to the zero-betting analytics policy (no betting odds or sportsbook references).
+          required: true
