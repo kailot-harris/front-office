@@ -4,15 +4,18 @@
 [![R 4.5.2](https://img.shields.io/badge/R-4.5.2-blue.svg)](https://cran.r-project.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-A production-grade quantitative sports analytics platform for Major League Baseball, joining sibling repos (`NBA Analytics`, `WNBA Analytics`, and `NFL Analytics`).
+A production-grade quantitative sports analytics platform for Major League Baseball, operating as an open front-office research platform alongside sibling repositories (`NBA Analytics`, `WNBA Analytics`, and `NFL Analytics`).
 
-The system implements modern sabermetric win-expectation baselines, a 4-factor starting-pitcher Elo rating engine, Tom Tango's Marcel player projection system, closed-form hierarchical empirical Bayes partial pooling, bullpen fatigue/workload monitoring, 12-team postseason Monte Carlo bracket simulations, sharp market odds devigging, dynamic Kelly stop-loss risk management, and automated Discord bet dispatching.
+> [!NOTE]
+> **Betting-Free Platform Declaration:** This platform is 100% free of commercial betting, gambling apparatuses, odds devigging, Kelly staking, bankroll units, closing line values, and `ODDS_API_KEY`. All pipelines and models operate with pure endogenous statistical mechanics, open-data schedule providers, forecast calibration governance, and operational telemetry.
+
+The system implements modern sabermetric win-expectation baselines, a 4-factor starting-pitcher Elo rating engine, Tom Tango's Marcel player projection system, closed-form hierarchical empirical Bayes partial pooling, bullpen fatigue/workload monitoring, 12-team postseason Monte Carlo bracket simulations, forecast accuracy governance (Straight-Up Accuracy, Brier Skill Score, Log-loss, ECE), and automated Discord operations telemetry.
 
 ---
 
 ## Architecture & Pipeline DAG
 
-The engine executes as a staged DAG orchestrator with staleness validation and deep error logging in [`run_full_pipeline.R`](file:///run_full_pipeline.R):
+The engine executes as a staged DAG orchestrator with staleness validation and deep error logging in [`run_full_pipeline.R`](run_full_pipeline.R):
 
 | Stage | Module | Methodology / Output |
 |:---:|:---|:---|
@@ -26,10 +29,9 @@ The engine executes as a staged DAG orchestrator with staleness validation and d
 | **8** | `mlb_bayes_pooling.R` | Closed-form empirical Bayes partial pooling (Beta-Binomial rates, Normal-Normal continuous stats). |
 | **9** | `mlb_bullpen_fatigue.R` | Relief-pitcher cumulative pitch counts, consecutive-day appearances, and velocity decline tracking. |
 | **10** | `mlb_postseason_simulator.R`| 12-team Monte Carlo bracket simulator (10,000 runs, best-of-3/5/7 series, regular extra-innings rules). |
-| **11** | `mlb_market_odds_engine.R` | The Odds API (`baseball_mlb`), consensus sharp devigging, +EV detection, and fractional Kelly staking. |
-| **12** | `mlb_risk_management_engine.R` | Bankroll drawdown tracking and dynamic Kelly stop-loss tiers (0.250 / 0.175 / 0.100 / 0.000 halt). |
-| **13** | `mlb_notify_bets.R` | Discord webhook notification dispatcher with institutional CLV and sample-size edge filtering. |
-| **14** | `tools/export_web_data.R` | Exports 30-team Monte Carlo projections, 1,279 batter/pitcher Bayes & Marcel profiles, 10,000-sim bracket odds, bullpen status, and calibration JSON to `web/public/data/`. |
+| **11** | `accuracy_governance.R` | Forecast governance engine computing Straight-Up Accuracy, Brier Skill Score against baselines, log-loss, and Expected Calibration Error (ECE). |
+| **12** | `tools/export_web_data.R` | Exports 30-team Monte Carlo projections, 1,279 batter/pitcher Bayes & Marcel profiles, 10,000-sim bracket odds, bullpen status, and calibration JSON to `web/public/data/`. |
+| **13** | `notify_pipeline_ops.R` | Discord front-office operations alert dispatcher broadcasting pipeline telemetry, slate briefings, and availability alerts. |
 
 ---
 
@@ -43,24 +45,23 @@ Clone this repository and restore the exact dependency tree pinned in `renv.lock
 renv::restore()
 ```
 
-### 2. Configuration & Secrets
-Copy or create `.Renviron` in the project root (gitignored) to configure optional API keys and webhooks:
+### 2. Configuration & Operations Telemetry
+Optional environment variables can be configured in `.Renviron` (or system environment):
 
 ```ini
-ODDS_API_KEY="your_the_odds_api_key_here"
-MLB_DISCORD_WEBHOOK="https://discord.com/api/webhooks/..."
+DISCORD_OPS_WEBHOOK_URL="https://discord.com/api/webhooks/..."
 ```
-*(If keys are absent, the system seamlessly operates on calibrated synthetic fallbacks with zero runtime errors).*
+*(If unset, the pipeline runs cleanly with operations telemetry as a silent no-op).*
 
 ### 3. Run the Full Analytics Pipeline
-Execute all 13 stages end-to-end:
+Execute all stages end-to-end:
 
 ```bash
 Rscript run_full_pipeline.R
 ```
 
 ### 4. Run the Unit Test Suite
-Run the 54 automated unit tests covering mathematical shrinkage, Pythagorean monotonicity, Elo formulas, odds devigging, and calibration:
+Run the automated unit tests covering mathematical shrinkage, Pythagorean monotonicity, Elo formulas, calibration, and governance:
 
 ```bash
 Rscript -e "testthat::test_dir('tests/testthat')"
@@ -75,5 +76,5 @@ The pipeline includes pre-configured automation for Windows Task Scheduler and d
 
 ## Detailed Documentation & Research
 - [`docs/HANDOFF.md`](docs/HANDOFF.md): Engineering handoff guide, architectural decisions, and stage contracts.
-- [`reports/Baseball analytics model comparison.md`](reports/Baseball%20analytics%20model%20comparison.md): Comprehensive survey comparing academic literature and production models across win expectation, player projections, and market efficiency.
+- [`reports/Baseball analytics model comparison.md`](reports/Baseball%20analytics%20model%20comparison.md): Comprehensive survey comparing academic literature and production models across win expectation, player projections, and front-office metrics.
 - [`ROADMAP.md`](ROADMAP.md): Post-v1 capabilities, experimental ideas, and infrastructure backlog.
