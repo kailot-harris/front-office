@@ -22,6 +22,7 @@ import {
   Dna,
   Flame,
   CalendarDays,
+  Film,
 } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
 
@@ -134,6 +135,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       badge: 'Brier 0.2282',
       icon: Activity,
       desc: 'Reliability & calibration curve',
+    },
+    {
+      href: '/gallery',
+      label: 'Visual Gallery',
+      badge: '5 Animations',
+      icon: Film,
+      desc: 'Animated races & simulation GIFs',
     },
   ];
 
