@@ -17,10 +17,10 @@ REM      window (September through February, months 09,10,11,12,01,02), skipping
 REM      March through August (03..08) unless NFL_IGNORE_SEASON_GUARD=1 is set.
 REM
 REM Step count differs from NBA/WNBA on purpose. Those wrappers run 3 steps because
-REM their bet-grading and +EV steps live outside their DAG. NFL's run_full_pipeline.R
-REM is self-contained -- bet_tracker.r, market_odds_engine.R and export_web_datasets.R
-REM are all run_stage() entries in it (run_full_pipeline.R:268, :285, :352) -- so
-REM re-invoking them here would duplicate stages that just ran. Hence one step.
+REM NFL's run_full_pipeline.R is self-contained (accuracy_governance.R,
+REM notify_pipeline_ops.R, and export_web_datasets.R are all run_stage() entries in it) --
+REM so re-invoking them here would duplicate stages that just ran. Hence one step.
+REM
 REM Publishing is NOT a step here either: it is a separate 09:00 task
 REM (schedule_publish.bat), per #39 scope item 3, so a long pipeline overrun cannot
 REM silently delay the deploy and a publish can be re-run without re-running the
@@ -140,7 +140,7 @@ REM ----------------------------------------------------------------------------
 set PIPELINE_FAILED=0
 
 REM 1. Run the full NFL DAG (ingest -> rosters/injuries -> EPA -> ratings -> fatigue
-REM    -> playoffs -> market/+EV -> bet ledger -> risk -> notify -> accuracy ->
+REM    -> playoffs -> accuracy governance -> notify ops -> web export; see run_full_pipeline.R).
 REM    web export; see run_full_pipeline.R). Note run_stage() deliberately swallows
 REM    individual stage failures and the pipeline can still exit 0 -- so a 0 here
 REM    means "the orchestrator completed", NOT "every artifact is fresh". That is
