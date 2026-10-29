@@ -8,7 +8,7 @@ export interface VisualMediaItem {
   id: string;
   filename: string;
   title: string;
-  category: 'standings' | 'efficiency' | 'playoffs' | 'shots' | 'predictions';
+  category: 'standings' | 'efficiency' | 'playoffs' | 'shots' | 'predictions' | 'players';
   description: string;
   type: 'gif' | 'image';
   sizeBytes?: number;
@@ -72,6 +72,42 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
     sizeBytes: 299675,
   },
   {
+    id: 'gif_pace_efficiency_quadrant',
+    filename: 'gif_pace_efficiency_quadrant.gif',
+    title: 'Pace vs Net Rating Efficiency Matrix',
+    category: 'efficiency',
+    description: 'Pace (possessions/48 min) vs Net Rating scatter animating team tactical styles from fast & dominant to methodical grinders.',
+    type: 'gif',
+    sizeBytes: 314566,
+  },
+  {
+    id: 'gif_pf_pa_scatter_elo',
+    filename: 'gif_pf_pa_scatter_elo.gif',
+    title: 'Points Scored vs Allowed & Elo Bubble Matrix',
+    category: 'efficiency',
+    description: 'Offensive output vs defensive resistance scatter with team bubbles dynamically scaled by Elo rating and parity diagonal.',
+    type: 'gif',
+    sizeBytes: 351496,
+  },
+  {
+    id: 'gif_turnover_margin_race',
+    filename: 'gif_turnover_margin_race.gif',
+    title: 'Turnover Differential & Ball Security Race',
+    category: 'efficiency',
+    description: 'Cumulative turnover margin bar race tracking ball security and opponent turnovers forced across all 30 NBA teams.',
+    type: 'gif',
+    sizeBytes: 290302,
+  },
+  {
+    id: 'gif_upset_timeline',
+    filename: 'gif_upset_timeline.gif',
+    title: 'Underdog Upset Timeline & Giant-Killer Tracker',
+    category: 'standings',
+    description: 'Chronological timeline of underdog upsets where pre-game win expectation was under 43%, tracking giant-killing franchises.',
+    type: 'gif',
+    sizeBytes: 274186,
+  },
+  {
     id: 'gif_playoff_prob_bump',
     filename: 'gif_playoff_prob_bump.gif',
     title: 'Playoff Seed & Play-In Leverage Bump Trajectory',
@@ -97,6 +133,33 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
     description: 'Stylized game-day projection graphic illustrating model win probability spreads and projected home/away differentials across slate matchups.',
     type: 'image',
     sizeBytes: 128704,
+  },
+  {
+    id: 'gif_rapm_race',
+    filename: 'gif_rapm_race.gif',
+    title: 'Top-10 Offensive & Defensive RAPM Bar Race',
+    category: 'players',
+    description: 'Top-10 Offensive and Defensive Regularized Adjusted Plus-Minus (ORAPM/DRAPM) bar race with ridge shrinkage confidence intervals scaling across sample sizes.',
+    type: 'gif',
+    sizeBytes: 523082,
+  },
+  {
+    id: 'gif_clutch_shot_worm',
+    filename: 'gif_clutch_shot_worm.gif',
+    title: 'Clutch Win Probability Worm & Shot Locations',
+    category: 'shots',
+    description: 'Late-game win probability and score margin worm paired synchronously with half-court shot locations in the final 5 minutes of high-leverage close games.',
+    type: 'gif',
+    sizeBytes: 297650,
+  },
+  {
+    id: 'gif_rookie_impact_race',
+    filename: 'gif_rookie_impact_race.gif',
+    title: 'Rookie Class Scoring Volume & Efficiency Accumulator',
+    category: 'players',
+    description: 'Rookie class scoring volume vs. True Shooting percentage accumulator race with bubbles sized by game appearances.',
+    type: 'gif',
+    sizeBytes: 472331,
   },
 ];
 
