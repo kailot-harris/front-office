@@ -45,15 +45,6 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
     sizeBytes: 299675,
   },
   {
-    id: 'build_series_trajectory_gif',
-    filename: 'build_series_trajectory_gif.gif',
-    title: '7-Game Series Net Rating Trajectory',
-    category: 'playoffs',
-    description: 'Game-by-game evolution of postseason net rating margin shifts across 7-game series iterations.',
-    type: 'gif',
-    sizeBytes: 191437,
-  },
-  {
     id: 'gif_playoff_prob_bump',
     filename: 'gif_playoff_prob_bump.gif',
     title: 'Playoff Seed & Play-In Leverage Bump Trajectory',

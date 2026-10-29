@@ -438,13 +438,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
       </div>
 
       {/* Postseason Trajectory & Playoff Leverage Visualizations */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <AnimatedMediaCard
-          name="build_series_trajectory_gif"
-          title="7-Game Series Net Rating Trajectory"
-          alt="Animated 7-game series net rating trajectory showing game-by-game margin swings and series leverage"
-          caption="Game-by-game evolution of postseason net rating margin shifts across 7-game series iterations, tracking swing games and pivotal tactical adjustments."
-        />
+      <div className="grid grid-cols-1 gap-6">
         <AnimatedMediaCard
           name="gif_playoff_prob_bump"
           title="Playoff Seed & Play-In Leverage Bump Trajectory"
