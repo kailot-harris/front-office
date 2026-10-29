@@ -172,6 +172,10 @@ export interface ResidualBucket {
 }
 
 export interface ModelDiagnostics {
+  generated_at?: string;
+  brierSkillScore?: number;
+  weightedCalibError?: number;
+  calibrationStatus?: string;
   totalResolvedGames: number;
   overallAccuracy: number;
   brierScore: number;

@@ -43,7 +43,7 @@ describe('lib/data.ts server data loaders', () => {
 
   it('getDiagnostics() returns resolved game metrics and calibration bins', () => {
     const diag = getDiagnostics();
-    expect(diag.totalResolvedGames).toBe(2631);
+    expect(diag.totalResolvedGames).toBe(2687);
     expect(diag.calibration.length).toBeGreaterThanOrEqual(5);
     expect(diag.accuracyDrift.length).toBeGreaterThanOrEqual(1);
     expect(diag.residualDistribution.length).toBeGreaterThanOrEqual(3);
