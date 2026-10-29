@@ -51,4 +51,26 @@ describe('AnimatedMediaCard', () => {
     expect(img.getAttribute('src')).toContain('/media/gif_net_rating_quadrant.gif');
     expect(img.getAttribute('alt')).toBe('Net rating quadrant scatter');
   });
+
+  it('renders shot evolution and daily predictions media cards', () => {
+    const { container: shotContainer } = render(
+      <AnimatedMediaCard
+        name="gif_player_shot_chart"
+        title="Shot Chart Evolution"
+        alt="Animated player shot chart"
+      />
+    );
+    expect(shotContainer.querySelector('source')?.getAttribute('srcset')).toContain('/media/gif_player_shot_chart.png');
+    expect(shotContainer.querySelector('img')?.getAttribute('src')).toContain('/media/gif_player_shot_chart.gif');
+
+    const { container: predContainer } = render(
+      <AnimatedMediaCard
+        name="nba_predictions_2026-10-20"
+        title="Daily Matchup Model Predictions"
+        alt="Model projections"
+      />
+    );
+    expect(predContainer.querySelector('source')?.getAttribute('srcset')).toContain('/media/nba_predictions_2026-10-20.png');
+    expect(predContainer.querySelector('img')?.getAttribute('src')).toContain('/media/nba_predictions_2026-10-20.gif');
+  });
 });

@@ -52,8 +52,8 @@ suppressPackageStartupMessages({
 generate_player_shot_chart_gif <- function(shot_data,
                                            player_name = NULL,
                                            team = NULL,
-                                           gif_path = "output/player_shot_evolution.gif",
-                                           png_path = "output/player_shot_evolution.png",
+                                           gif_path = "cache/gif_player_shot_chart.gif",
+                                           png_path = "cache/gif_player_shot_chart.png",
                                            n_frames = 10,
                                            window_mode = c("cumulative", "rolling"),
                                            window_size = 30,
@@ -141,6 +141,13 @@ generate_player_shot_chart_gif <- function(shot_data,
     width = width_px,
     height = height_px
   )
+
+  # Sync to web/public/media if REPO_ROOT/web/public/media exists
+  web_media_dir <- file.path(REPO_ROOT, "web", "public", "media")
+  if (dir.exists(web_media_dir)) {
+    if (file.exists(gif_path)) file.copy(gif_path, file.path(web_media_dir, basename(gif_path)), overwrite = TRUE)
+    if (file.exists(png_path)) file.copy(png_path, file.path(web_media_dir, basename(png_path)), overwrite = TRUE)
+  }
 
   # Clean up temp frames if auto-created
   if (cleanup_temp && dir.exists(temp_dir)) {

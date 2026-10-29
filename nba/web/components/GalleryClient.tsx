@@ -8,7 +8,7 @@ export interface VisualMediaItem {
   id: string;
   filename: string;
   title: string;
-  category: 'standings' | 'efficiency' | 'playoffs';
+  category: 'standings' | 'efficiency' | 'playoffs' | 'shots' | 'predictions';
   description: string;
   type: 'gif' | 'image';
   sizeBytes?: number;
@@ -36,6 +36,33 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
     sizeBytes: 340939,
   },
   {
+    id: 'gif_division_standings_race',
+    filename: 'gif_division_standings_race.gif',
+    title: 'Division Standings Wins Race',
+    category: 'standings',
+    description: 'Animated cumulative regular season wins race faceted across all 6 NBA divisions.',
+    type: 'gif',
+    sizeBytes: 325429,
+  },
+  {
+    id: 'gif_elo_heatmap',
+    filename: 'gif_elo_heatmap.gif',
+    title: 'Elo Rating & Momentum Heatmap Matrix',
+    category: 'standings',
+    description: '2D timeline tile matrix mapping weekly Elo rating evolution and momentum shifts across all 30 NBA teams.',
+    type: 'gif',
+    sizeBytes: 466990,
+  },
+  {
+    id: 'gif_elo_delta_race',
+    filename: 'gif_elo_delta_race.gif',
+    title: 'Week-over-Week Elo Momentum Race',
+    category: 'standings',
+    description: 'Power rankings Elo delta bar race displaying surging risers and fallers over time.',
+    type: 'gif',
+    sizeBytes: 304919,
+  },
+  {
     id: 'gif_net_rating_quadrant',
     filename: 'gif_net_rating_quadrant.gif',
     title: 'Offensive vs Defensive Efficiency Dynamics',
@@ -45,15 +72,6 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
     sizeBytes: 299675,
   },
   {
-    id: 'build_series_trajectory_gif',
-    filename: 'build_series_trajectory_gif.gif',
-    title: '7-Game Series Net Rating Trajectory',
-    category: 'playoffs',
-    description: 'Game-by-game evolution of postseason net rating margin shifts across 7-game series iterations.',
-    type: 'gif',
-    sizeBytes: 191437,
-  },
-  {
     id: 'gif_playoff_prob_bump',
     filename: 'gif_playoff_prob_bump.gif',
     title: 'Playoff Seed & Play-In Leverage Bump Trajectory',
@@ -61,6 +79,24 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
     description: 'Playoff seed certainty and play-in tournament threshold trajectories across Eastern and Western conference contenders.',
     type: 'gif',
     sizeBytes: 291296,
+  },
+  {
+    id: 'gif_player_shot_chart',
+    filename: 'gif_player_shot_chart.gif',
+    title: 'Player Shot Evolution & Spatial Density Progression',
+    category: 'shots',
+    description: 'Animated rolling shot distribution and field goal efficiency evolution on regulation NBA half-court with reduced-motion static PNG fallback.',
+    type: 'gif',
+    sizeBytes: 35689,
+  },
+  {
+    id: 'nba_predictions_today',
+    filename: 'nba_predictions_2026-10-20.png',
+    title: 'Daily Game Model Predictions & Win Probability Spreads',
+    category: 'predictions',
+    description: 'Stylized game-day projection graphic illustrating model win probability spreads and projected home/away differentials across slate matchups.',
+    type: 'image',
+    sizeBytes: 128704,
   },
 ];
 

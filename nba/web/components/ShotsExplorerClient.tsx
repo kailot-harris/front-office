@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { PlayerCatalogEntry, PlayerShotData, ShotsMetadata } from '@/lib/shotTypes';
 import { PlayerShotChart } from '@/components/PlayerShotChart';
+import { AnimatedMediaCard } from '@/components/AnimatedMediaCard';
 import { TeamLogo } from '@/components/TeamLogo';
 import { NBA_TEAMS_METADATA } from '@/lib/teams';
 import { BASE_PATH } from '@/lib/basePath';
@@ -224,6 +225,16 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
         {!loading && !error && playerShotData && (
           <PlayerShotChart playerData={playerShotData} metadata={metadata} initialN={100} />
         )}
+      </div>
+
+      {/* Animated Player Shot Chart & Rolling Evolution */}
+      <div className="pt-2">
+        <AnimatedMediaCard
+          name="gif_player_shot_chart"
+          title="Rolling Shot Chart Evolution & Density Progression"
+          alt="Animated rolling-window player shot evolution chart on regulation NBA half court"
+          caption="Chronological evolution of player field goal attempts and efficiency across rolling temporal windows, with automatic static PNG fallback under prefers-reduced-motion."
+        />
       </div>
     </div>
   );

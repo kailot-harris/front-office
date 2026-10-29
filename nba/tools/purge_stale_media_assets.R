@@ -46,7 +46,9 @@ if (file.exists("config.R")) {
 CANONICAL_MEDIA_ALLOWLIST <- c(
   "^gif_elo_rank_bump",
   "^gif_net_rating_quadrant",
-  "^gif_point_diff_race"
+  "^gif_point_diff_race",
+  "^gif_player_shot_chart",
+  "^nba_predictions_"
 )
 
 is_canonical_asset <- function(filename, allowlist = CANONICAL_MEDIA_ALLOWLIST) {

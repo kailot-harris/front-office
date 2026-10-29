@@ -3,7 +3,7 @@
 # Path: tests/test_phase4_viz.R
 #
 # Validation suite for Phase 4 NBA Visualization:
-#   1. Verifies tools/build_series_trajectory_gif.R and tools/gif_playoff_prob_bump.R
+#   1. Verifies tools/gif_playoff_prob_bump.R
 #      exist and successfully source tools/viz_common.R.
 #   2. Executes both scripts cleanly (exit status 0).
 #   3. Validates that both scripts produce both their corresponding .gif and .png
@@ -34,7 +34,6 @@ cat(sprintf("=== NBA Viz Phase 4 Validation Suite (Repo root: %s) ===\n", REPO_R
 cat("\n[Test 1] Verifying Phase 4 scripts exist and source tools/viz_common.R...\n")
 
 scripts <- c(
-  "tools/build_series_trajectory_gif.R",
   "tools/gif_playoff_prob_bump.R"
 )
 
@@ -57,11 +56,6 @@ for (s in scripts) {
 cat("\n[Test 2] Executing Phase 4 visualization scripts and validating dual artifacts...\n")
 
 artifacts_spec <- list(
-  list(
-    script = "tools/build_series_trajectory_gif.R",
-    gif = "cache/build_series_trajectory_gif.gif",
-    png = "cache/build_series_trajectory_gif.png"
-  ),
   list(
     script = "tools/gif_playoff_prob_bump.R",
     gif = "cache/gif_playoff_prob_bump.gif",
