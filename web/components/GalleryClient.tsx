@@ -8,7 +8,7 @@ export interface VisualMediaItem {
   id: string;
   filename: string;
   title: string;
-  category: 'standings' | 'efficiency' | 'playoffs' | 'shots' | 'predictions';
+  category: 'standings' | 'efficiency' | 'playoffs' | 'shots' | 'predictions' | 'players';
   description: string;
   type: 'gif' | 'image';
   sizeBytes?: number;
@@ -133,6 +133,33 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
     description: 'Stylized game-day projection graphic illustrating model win probability spreads and projected home/away differentials across slate matchups.',
     type: 'image',
     sizeBytes: 128704,
+  },
+  {
+    id: 'gif_rapm_race',
+    filename: 'gif_rapm_race.gif',
+    title: 'Top-10 Offensive & Defensive RAPM Bar Race',
+    category: 'players',
+    description: 'Top-10 Offensive and Defensive Regularized Adjusted Plus-Minus (ORAPM/DRAPM) bar race with ridge shrinkage confidence intervals scaling across sample sizes.',
+    type: 'gif',
+    sizeBytes: 523082,
+  },
+  {
+    id: 'gif_clutch_shot_worm',
+    filename: 'gif_clutch_shot_worm.gif',
+    title: 'Clutch Win Probability Worm & Shot Locations',
+    category: 'shots',
+    description: 'Late-game win probability and score margin worm paired synchronously with half-court shot locations in the final 5 minutes of high-leverage close games.',
+    type: 'gif',
+    sizeBytes: 297650,
+  },
+  {
+    id: 'gif_rookie_impact_race',
+    filename: 'gif_rookie_impact_race.gif',
+    title: 'Rookie Class Scoring Volume & Efficiency Accumulator',
+    category: 'players',
+    description: 'Rookie class scoring volume vs. True Shooting percentage accumulator race with bubbles sized by game appearances.',
+    type: 'gif',
+    sizeBytes: 472331,
   },
 ];
 
