@@ -177,26 +177,6 @@ export interface DiagnosticsDataset {
   calibration_curve: CalibrationBin[];
 }
 
-export interface ValueBet {
-  matchup: string;
-  recommended_bet: string;
-  team: string;
-  book: string;
-  line: string;
-  model_win_prob: number;
-  predicted_margin: number;
-  ev_percent: number;
-  exp_clv: number;
-  bankroll_rec: string;
-  status: string;
-}
-
-export interface ValueBetsDataset {
-  generated_at: string;
-  total_bets: number;
-  active_bets: ValueBet[];
-}
-
 export interface VisualMediaItem {
   generated_at: string;
   filename: string;
