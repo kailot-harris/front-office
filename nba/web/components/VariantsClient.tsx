@@ -5,6 +5,7 @@ import { TeamProjection, ModelMetadata } from '@/lib/types';
 import { GitCompare, Download } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { BrierScoreComparison } from '@/components/BrierScoreComparison';
+import { AnimatedMediaCard } from '@/components/AnimatedMediaCard';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
 import { exportToCsv } from '@/lib/exportToCsv';
 import { formatSeasonLabel } from '@/lib/season';
@@ -304,6 +305,16 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams, metadata 
 
       {/* Historical Cross-Validation: Brier Score Calibration Visualization */}
       <BrierScoreComparison />
+
+      {/* Offensive vs Defensive Efficiency Net Rating Quadrant Scatter Animation */}
+      <div className="pt-2">
+        <AnimatedMediaCard
+          name="gif_net_rating_quadrant"
+          title="Offensive vs Defensive Efficiency Dynamics (Net Rating Quadrant)"
+          alt="Animated scatter plot showing team positions on offensive and defensive efficiency axes with league-average quadrant dividers"
+          caption="Evolution of offensive rating (x-axis) vs defensive rating (y-axis, inverted) throughout the season. Upper-right quadrant represents two-way championship-caliber efficiency."
+        />
+      </div>
 
       {/* Model Divergence & Disagreement Matrix */}
       <div className="space-y-4">

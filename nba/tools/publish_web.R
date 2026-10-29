@@ -154,6 +154,29 @@ suppressPackageStartupMessages({
 })
 source("config.R")
 
+WEB_MEDIA_DIR <- file.path(PROJECT_DIR, "web", "public", "media")
+if (!dir.exists(WEB_MEDIA_DIR)) dir.create(WEB_MEDIA_DIR, recursive = TRUE)
+
+# Synchronize media outputs (cache/*.gif, cache/*.png) into web/public/media/
+.pw_sync_media <- function(dry_run = FALSE) {
+  if (!dir.exists(WEB_MEDIA_DIR)) dir.create(WEB_MEDIA_DIR, recursive = TRUE)
+  source_cache <- if (exists("CACHE_DIR")) CACHE_DIR else file.path(PROJECT_DIR, "cache")
+  if (!dir.exists(source_cache)) return(character(0))
+
+  media_files <- list.files(source_cache, pattern = "\\.(gif|png)$", full.names = TRUE, ignore.case = TRUE)
+  copied <- character(0)
+  for (mf in media_files) {
+    dest <- file.path(WEB_MEDIA_DIR, basename(mf))
+    if (!dry_run) {
+      ok <- file.copy(mf, dest, overwrite = TRUE)
+      if (ok) copied <- c(copied, dest)
+    } else {
+      copied <- c(copied, dest)
+    }
+  }
+  copied
+}
+
 # ------------------------------------------------------------------------------
 # Small helpers
 # ------------------------------------------------------------------------------
@@ -646,8 +669,10 @@ source("config.R")
                               paste(res$out, collapse = "\n")))
     invisible(TRUE)
   }
-  record("git add web/public/data",
-         .pw_git(repo_root, c("add", "--", rel_paths)))
+  rel_media <- .pw_rel_to_repo(WEB_MEDIA_DIR, repo_root)
+  all_paths <- unique(c(rel_paths, rel_media))
+  record("git add web/public/data & web/public/media",
+         .pw_git(repo_root, c("add", "--", all_paths)))
   record("git commit (NBA_analytics)",
          .pw_git(repo_root, c("commit", "-m", shQuote(commit_message))))
   record("git push origin HEAD (NBA_analytics)",
@@ -769,6 +794,8 @@ publish_web <- function(dry_run = TRUE,
                               if (is.na(run_start)) format(Sys.Date()) else format(run_start, "%Y-%m-%d %H:%M"))
   }
 
+  synced_media <- .pw_sync_media(dry_run = dry_run)
+
   checks <- list(
     .assert_mtime_freshness(run_start),
     .assert_slate_agreement(season),
@@ -837,6 +864,7 @@ publish_web <- function(dry_run = TRUE,
     stale_payloads = checks[[6]]$stale,
     unstamped_payloads = checks[[6]]$unstamped,
     pending_changes = checks[[3]]$changed,
+    synced_media = synced_media,
     contracts_pass = isTRUE(checks[[length(checks)]]$pass),
     checks = checks, published = FALSE, steps = list()
   )
