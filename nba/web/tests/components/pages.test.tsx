@@ -71,6 +71,13 @@ describe('Sidebar navigation', () => {
     }
   });
 
+  it('highlights active nav item when pathname has a trailing slash', () => {
+    const { container } = render(<Sidebar />);
+    const activeLinks = container.querySelectorAll('aside a.bg-accent-600, div.space-y-1 a.bg-accent-600');
+    expect(activeLinks.length).toBeGreaterThan(0);
+    expect(activeLinks[0].getAttribute('href')).toBe('/');
+  });
+
   it('toggles margin sigma popover', () => {
     render(<Sidebar />);
     const explainerBtn = screen.getByLabelText(/what does margin sigma mean/i);

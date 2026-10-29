@@ -54,3 +54,15 @@ test.describe('Layout & Viewport Verification', () => {
     });
   }
 });
+
+test.describe('the sidebar active item highlighting', () => {
+  test('highlights the active route item in the sidebar on a subroute', async ({ page }) => {
+    await page.goto('/offseason', { waitUntil: 'networkidle' });
+    const activeHrefs = await page.locator('aside a').evaluateAll((els) =>
+      els
+        .filter((el) => /bg-accent/.test(el.className))
+        .map((el) => el.getAttribute('href'))
+    );
+    expect(activeHrefs.some((h) => h && h.includes('/offseason')), '/offseason is not highlighted in the sidebar').toBe(true);
+  });
+});
