@@ -61,8 +61,8 @@
     first, always.
 
 .PARAMETER Sports
-    Override which sports to refresh. Defaults to the three that have a refresh
-    workflow. WNBA is deliberately absent -- see $SPORT_REPOS below.
+    Override which sports to refresh. Defaults to all four sports (mlb, nfl,
+    nba, wnba).
 
 .PARAMETER LogDir
     Write a transcript of the run to this directory as slot-<Slot>-<stamp>.log.
@@ -103,19 +103,18 @@ $ErrorActionPreference = 'Stop'
 # --- Configuration -------------------------------------------------------
 
 # Sport -> GitHub repo slug. These are NOT uniformly named (MLB uses a hyphen
-# and title case, the other two use an underscore and lowercase 'analytics');
+# and title case, the other three use an underscore and lowercase 'analytics');
 # do not try to derive them from the sport name.
 #
-# WNBA IS ABSENT ON PURPOSE. It has no refresh-results.yml: the 2026 season is
-# over, and until this workspace's 2026-10-28 session it had no slate file to
-# patch at all. It now HAS one (web/public/data/matchups_slates.json, issue
-# #74), so a refresh job for it is finally possible -- but it would have
-# nothing to do until the season restarts (~May 2027). Adding "wnba" here
-# before writing that workflow would fail the dispatch, not no-op.
+# WNBA is formally included now (addressing WNBA_analytics Issue #103 and
+# front-office Issue #38). WNBA has its refresh-results.yml workflow and slate
+# patching in place, so it is dispatched and synchronized along with MLB, NFL,
+# and NBA.
 $SPORT_REPOS = [ordered]@{
-    mlb = 'kailot-harris/MLB-Analytics'
-    nfl = 'kailot-harris/NFL_analytics'
-    nba = 'kailot-harris/NBA_analytics'
+    mlb  = 'kailot-harris/MLB-Analytics'
+    nfl  = 'kailot-harris/NFL_analytics'
+    nba  = 'kailot-harris/NBA_analytics'
+    wnba = 'kailot-harris/WNBA_analytics'
 }
 
 $AGGREGATOR_REPO   = 'kailot-harris/front-office'
@@ -266,19 +265,15 @@ function Get-SlotPlan {
 
     foreach ($s in $selected) {
         if (-not $SPORT_REPOS.Contains($s)) {
-            throw "Unknown sport '$s'. Known: $($SPORT_REPOS.Keys -join ', '). WNBA has no refresh workflow yet -- see `$SPORT_REPOS."
+            throw "Unknown sport '$s'. Known: $($SPORT_REPOS.Keys -join ', ')."
         }
     }
 
-    # Step 1 (refresh) only dispatches $SPORT_REPOS because WNBA has no
-    # refresh-results.yml yet. Step 2 (subtree sync) SHOULD still include wnba
-    # on a full-slot run: an up-to-date wnba subtree is a 1-second no-op in
-    # sync-sports.yml, while omitting it strands any WNBA commit pushed earlier
-    # in the day (proven on 2026-10-28 when WNBA #74 sat un-pulled from 04:49Z
-    # until 11:31Z despite two workstation slot runs at 06:06Z and 06:13Z).
+    # Step 1 (refresh) dispatches each sport in $selected. Step 2 (subtree sync)
+    # syncs all 4 sports on a default full-slot run.
     # When -Sports is passed explicitly for single-sport debugging, narrow the
     # sync to match.
-    $syncList = if ($explicitOverride) { $selected } else { @($selected) + @('wnba') }
+    $syncList = $selected
 
     return [pscustomobject]@{
         Slot       = $Slot
