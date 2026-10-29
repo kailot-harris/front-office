@@ -1,0 +1,77 @@
+﻿version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/mlb/web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 10
+    groups:
+      nextjs:
+        patterns:
+          - "next"
+          - "eslint-config-next"
+    ignore:
+      - dependency-name: "next"
+        versions: ["!=14.2.35"]
+      - dependency-name: "eslint-config-next"
+        versions: ["!=14.2.35"]
+
+  - package-ecosystem: "npm"
+    directory: "/nba/web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 10
+    groups:
+      nextjs:
+        patterns:
+          - "next"
+          - "eslint-config-next"
+    ignore:
+      - dependency-name: "next"
+        versions: ["!=14.2.35"]
+      - dependency-name: "eslint-config-next"
+        versions: ["!=14.2.35"]
+
+  - package-ecosystem: "npm"
+    directory: "/nfl/web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 10
+    groups:
+      nextjs:
+        patterns:
+          - "next"
+          - "eslint-config-next"
+    ignore:
+      - dependency-name: "next"
+        versions: ["!=14.2.35"]
+      - dependency-name: "eslint-config-next"
+        versions: ["!=14.2.35"]
+
+  - package-ecosystem: "npm"
+    directory: "/wnba/web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 10
+    groups:
+      nextjs:
+        patterns:
+          - "next"
+          - "eslint-config-next"
+    ignore:
+      - dependency-name: "next"
+        versions: ["!=14.2.35"]
+      - dependency-name: "eslint-config-next"
+        versions: ["!=14.2.35"]
