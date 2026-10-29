@@ -8,7 +8,7 @@ export interface VisualMediaItem {
   id: string;
   filename: string;
   title: string;
-  category: 'standings' | 'efficiency' | 'playoffs';
+  category: 'standings' | 'efficiency' | 'playoffs' | 'shots' | 'predictions';
   description: string;
   type: 'gif' | 'image';
   sizeBytes?: number;
@@ -79,6 +79,24 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
     description: 'Playoff seed certainty and play-in tournament threshold trajectories across Eastern and Western conference contenders.',
     type: 'gif',
     sizeBytes: 291296,
+  },
+  {
+    id: 'gif_player_shot_chart',
+    filename: 'gif_player_shot_chart.gif',
+    title: 'Player Shot Evolution & Spatial Density Progression',
+    category: 'shots',
+    description: 'Animated rolling shot distribution and field goal efficiency evolution on regulation NBA half-court with reduced-motion static PNG fallback.',
+    type: 'gif',
+    sizeBytes: 35689,
+  },
+  {
+    id: 'nba_predictions_today',
+    filename: 'nba_predictions_2026-10-20.png',
+    title: 'Daily Game Model Predictions & Win Probability Spreads',
+    category: 'predictions',
+    description: 'Stylized game-day projection graphic illustrating model win probability spreads and projected home/away differentials across slate matchups.',
+    type: 'image',
+    sizeBytes: 128704,
   },
 ];
 

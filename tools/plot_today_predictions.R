@@ -2,7 +2,19 @@
 # freshly regenerated CACHE_VALUE_BETS (latest_value_bets.rds — game_date / Matchup / Team /
 # Model_Win_Prob / Line columns per market_odds_engine.R's output schema). Not part of
 # run_full_pipeline.R's DAG - a one-off chart, same category as NFL's tools/plot_week6_projections.R.
-setwd("c:/Users/kailo/kayceeslices/front-office/NBA Analytics")
+PROJECT_ROOT <- local({
+  args <- commandArgs(trailingOnly = FALSE)
+  f <- sub("^--file=", "", args[grepl("^--file=", args)])
+  base <- if (length(f) == 1L) dirname(normalizePath(f)) else getwd()
+  if (file.exists(file.path(base, "config.R"))) {
+    normalizePath(base, winslash = "/", mustWork = FALSE)
+  } else if (file.exists(file.path(base, "..", "config.R"))) {
+    normalizePath(file.path(base, ".."), winslash = "/", mustWork = FALSE)
+  } else {
+    "c:/Users/kailo/kayceeslices/front-office/NBA Analytics"
+  }
+})
+setwd(PROJECT_ROOT)
 source("config.R")
 library(ggplot2)
 library(dplyr)
@@ -75,6 +87,14 @@ p <- ggplot(df, aes(y = matchup)) +
     plot.margin        = margin(20, 30, 16, 16)
   )
 
-out_path <- file.path(CACHE_DIR, "nba_predictions_2026-10-20.png")
+filename <- sprintf("nba_predictions_%s.png", format(TARGET_DATE, "%Y-%m-%d"))
+out_path <- file.path(CACHE_DIR, filename)
 ggsave(out_path, p, width = 10, height = 7, dpi = 200, bg = bg)
 cat("Saved:", out_path, "\n")
+
+# Also sync to web/public/media/
+web_media_dir <- file.path(PROJECT_ROOT, "web", "public", "media")
+if (!dir.exists(web_media_dir)) dir.create(web_media_dir, recursive = TRUE)
+web_out_path <- file.path(web_media_dir, filename)
+file.copy(out_path, web_out_path, overwrite = TRUE)
+cat("Copied to:", web_out_path, "\n")
