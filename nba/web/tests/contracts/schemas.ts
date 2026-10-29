@@ -170,6 +170,10 @@ export const ModelMetadataSchema = z
 // ----------------------------------------------------------------------------
 export const ModelDiagnosticsSchema = z
   .object({
+    generated_at: z.string().optional(),
+    brierSkillScore: z.number().optional(),
+    weightedCalibError: z.number().optional(),
+    calibrationStatus: z.string().optional(),
     totalResolvedGames: z.number().int().positive(),
     overallAccuracy: prob,
     brierScore: num.min(0).max(1),

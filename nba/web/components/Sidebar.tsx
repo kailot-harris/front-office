@@ -122,7 +122,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
     {
       href: '/diagnostics',
       label: 'Diagnostics',
-      badge: 'Brier 0.2284',
+      badge: 'Brier 0.2282',
       icon: Activity,
       desc: 'Reliability & calibration curve',
     },
