@@ -56,10 +56,11 @@ jobs:
           r-version: '4.5.2'
           use-public-rspm: true
 
-      # jsonlite only. The script's entire dependency surface is jsonlite plus
+      # jsonlite and here only. The script's entire dependency surface is
+      # jsonlite, here (required by config.R to derive PROJECT_DIR), plus
       # base R's url() connection.
-      - name: Install jsonlite
-        run: install.packages("jsonlite")
+      - name: Install dependencies
+        run: install.packages(c("jsonlite", "here"))
         shell: Rscript {0}
 
       - name: Refresh results from the ESPN scoreboard
