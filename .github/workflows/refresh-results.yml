@@ -19,15 +19,10 @@ name: Refresh live results
 # moving one without the other means publishing into a window nothing reads.
 
 on:
-  schedule:
-    # Slot C - overnight. 05:00 UTC = 01:00 ET: after nflverse's ~04:30 build
-    # and after every North American night game has finished and been marked
-    # final. Cron is UTC-only; this does not shift with DST, which is why the
-    # margin against the 04:30 build is 30 minutes rather than 5.
-    - cron: '0 5 * * *'
-    # Slot B - afternoon. 22:00 UTC = 18:00 ET: after nflverse's ~21:00 build,
-    # so Sunday afternoon finals are in the payload before primetime.
-    - cron: '0 22 * * *'
+  # Slots B (22:00 UTC) and C (05:00 UTC) schedule crons were removed because
+  # GitHub Actions schedule runners run 5-6 hours late. Workstation Task Scheduler
+  # handles Slots B (18:00 local) and C (01:00 local) unattended via
+  # tools/run_refresh_slot.ps1 which dispatches this workflow explicitly.
   workflow_dispatch:
     inputs:
       season:
