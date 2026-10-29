@@ -24,6 +24,15 @@ import {
 } from 'lucide-react';
 
 
+/**
+ * next.config.mjs sets `trailingSlash: true`, so usePathname() returns '/matchups/'
+ * while the navItems below are written as '/matchups'. Comparing them directly meant
+ * `isActive` was false on every page except the home page, and no nav item was
+ * ever highlighted. Strip the trailing slash from both sides before comparing.
+ */
+const withoutTrailingSlash = (path: string) =>
+  path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
+
 export interface SidebarProps {
   generatedAt?: string;
 }
@@ -155,7 +164,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
           </div>
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href;
+            const isActive =
+              withoutTrailingSlash(pathname ?? '/') === withoutTrailingSlash(item.href) ||
+              (item.href === '/' && withoutTrailingSlash(pathname ?? '/') === '/teams');
             return (
               <Link
                 key={item.href}
