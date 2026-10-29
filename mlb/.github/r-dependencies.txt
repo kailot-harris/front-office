@@ -1,0 +1,29 @@
+# R packages the MLB test jobs need, one per line (blank lines and # comments ignored).
+# Single-sourced here because .github/workflows/ci.yml both installs from this
+# file and keys its package cache on its hash -- editing the list invalidates the
+# cache automatically.
+#
+# THIS IS NOT renv.lock, ON PURPOSE. This repo does have a renv.lock for workstation
+# reproducible builds, but the CI job disables the autoloader and installs from
+# this list instead.
+#
+# Reason: renv.lock pins a large number of heavy dependencies. Installing directly
+# via RSPM binaries on ubuntu-latest using setup-r and actions/cache is orders of
+# magnitude faster, eliminates source compilations, and standardizes CI across
+# NBA, NFL, WNBA, and MLB.
+#
+# Core packages required for MLB testthat suite and offline evaluation:
+testthat
+jsonlite
+dplyr
+tibble
+duckdb
+httr2
+png
+gifski
+scales
+ggplot2
+mlbplotR
+stringr
+tidyr
+DBI
