@@ -1,0 +1,42 @@
+﻿name: Feature Request
+description: Suggest an idea or enhancement for the front-office platform
+title: "[FEAT]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for proposing an enhancement! Front-office focuses on quantitative models, player/team evaluation, and visual analytics.
+  - type: input
+    id: title-summary
+    attributes:
+      label: Feature Summary
+      placeholder: "Brief one-line summary"
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement / Motivation
+      description: Is your feature request related to a problem or gap in analytics?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution or new capability you would like to see.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any alternative solutions or workarounds you have considered.
+  - type: checkboxes
+    id: policy
+    attributes:
+      label: Policy Compliance
+      options:
+        - label: I confirm this feature request complies with the platform's zero-betting policy (no commercial gambling, betting markets, or sportsbook integrations).
+          required: true
