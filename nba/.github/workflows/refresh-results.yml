@@ -25,15 +25,10 @@ name: Refresh live results
 # moving one without the other means publishing into a window nothing reads.
 
 on:
-  schedule:
-    # Slot C - overnight. 05:00 UTC = 01:00 ET. Late West Coast tip-offs are
-    # routinely still running at 04:30 UTC, so this is the first hour at which
-    # a full night's slate is reliably final. Cron is UTC-only; it does not
-    # shift with DST, which is why the margin is an hour rather than minutes.
-    - cron: '0 5 * * *'
-    # Slot B - afternoon. 22:00 UTC = 18:00 ET: picks up afternoon games before
-    # the evening slate starts, and catches anything slot C missed.
-    - cron: '0 22 * * *'
+  # Slots B (22:00 UTC) and C (05:00 UTC) schedule crons were removed because
+  # GitHub Actions schedule runners run 5-6 hours late. Workstation Task Scheduler
+  # handles Slots B (18:00 local) and C (01:00 local) unattended via
+  # tools/run_refresh_slot.ps1 which dispatches this workflow explicitly.
   workflow_dispatch:
     inputs:
       lookback_days:
