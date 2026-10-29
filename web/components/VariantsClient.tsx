@@ -56,9 +56,9 @@ export default function VariantsClient({ data }: VariantsClientProps) {
       description:
         'Consensus opening and midweek market closing lines transformed into implied point differentials and win probabilities via the standard normal CDF (mean μ, σ = 14.6 pts).',
       features: [
-        'Closing line value (CLV) baseline calibration',
+        'Consensus index baseline calibration',
         'Wisdom-of-the-crowd liquidity filter',
-        'Vigorish and margin extraction',
+        'Normalized margin extraction',
         'Bayesian shrinkage prior',
       ],
       pros: 'Prevents rogue algorithmic predictions on games with unquantified late-breaking news.',
