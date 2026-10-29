@@ -1,4 +1,4 @@
-name: R Unit Tests & Web CI
+name: CI
 
 on:
   push:
@@ -55,9 +55,13 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
 
-  test:
-    runs-on: windows-latest
-
+  r:
+    name: R pipeline tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RENV_CONFIG_AUTOLOADER_ENABLED: 'FALSE'
+      R_LIBS_USER: ${{ github.workspace }}/.rlib
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -65,42 +69,24 @@ jobs:
       - name: Set up R
         uses: r-lib/actions/setup-r@v2
         with:
-          r-version: '4.5.2'
+          r-version: '4.5'
+          use-public-rspm: true
 
-      - name: Restore renv cache
+      # Cheap and needs no packages, so it runs before the install step and
+      # fails fast on a syntax error anywhere in the pipeline.
+      - name: Parse every tracked R file
+        run: Rscript .github/scripts/parse-all.R
+
+      - name: Cache R library
         uses: actions/cache@v4
         with:
-          path: renv/library
-          key: ${{ runner.os }}-renv-${{ hashFiles('renv.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-renv-
+          path: ${{ env.R_LIBS_USER }}
+          key: rlib-${{ runner.os }}-R4.5-${{ hashFiles('.github/r-dependencies.txt') }}
 
-      # renv.lock pins its repository to a DATED Posit Package Manager snapshot
-      # (.../cran/2026-10-20), not .../cran/latest. This is load-bearing on
-      # Windows: P3M only keeps Windows binaries for the versions that were
-      # current at that snapshot. Against "latest", any package whose locked
-      # version has since been superseded falls back to a source build — which
-      # is how duckdb 1.5.6 (superseded by 2.0.0) started compiling from source
-      # here and killed the job before the tests ever ran. If you re-snapshot
-      # the lockfile, move the date forward with it; don't point it at "latest".
-      - name: Restore renv environment
-        shell: Rscript {0}
-        # RENV_CONFIG_REPOS_OVERRIDE is exported into this job's environment
-        # pointing at .../cran/latest, and it beats the lockfile's own
-        # Repositories entry — so pinning the snapshot in renv.lock alone was
-        # silently ignored (run 40227674728). Set it here to the same dated
-        # snapshot the lockfile uses; the two must stay in step.
-        env:
-          RENV_CONFIG_REPOS_OVERRIDE: https://packagemanager.posit.co/cran/2026-10-20
+      - name: Install R dependencies
         run: |
-          if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv")
-          renv::restore()
+          mkdir -p "$R_LIBS_USER"
+          Rscript .github/scripts/install-deps.R
 
       - name: Run testthat unit test suite
-        shell: Rscript {0}
-        run: |
-          test_res <- testthat::test_dir('tests/testthat', stop_on_failure = TRUE)
-          df_res <- as.data.frame(test_res)
-          if (any(df_res$failed > 0)) {
-            stop("Unit tests failed!")
-          }
+        run: Rscript .github/scripts/run-tests.R
