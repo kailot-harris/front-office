@@ -148,13 +148,15 @@ PWP_SIGMA <- if (exists("MARGIN_SIGMA")) MARGIN_SIGMA else 11.8
   invisible(NULL)
 }
 
-main <- function() {
-  do_write <- "--write" %in% commandArgs(trailingOnly = TRUE)
+main <- function(do_write = NULL, slate = NULL) {
+  if (is.null(do_write)) {
+    do_write <- "--write" %in% commandArgs(trailingOnly = TRUE)
+  }
   spine <- .pwp_spine()
   season_start <- min(spine$game_date)
   spine$slate <- .pwp_slate_of(spine$game_date, season_start)
 
-  slate_arg <- .pwp_arg("--slate")
+  slate_arg <- if (is.null(slate)) .pwp_arg("--slate") else slate
   today <- Sys.Date()
   slate <- if (!is.null(slate_arg)) {
     as.integer(slate_arg)

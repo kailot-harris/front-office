@@ -572,21 +572,42 @@ get_prediction_log <- function() {
   )
 }
 
-# `slate`, `spine` and `existing_log` default to the cached artifacts but can be
-# injected, which is how this path is tested without a `cache/` directory.
+# `slate`, `spine` and `existing_log` default to NULL.
+# When `slate` is injected (e.g. in tests), it is parsed and validated directly.
+# When `slate` is NULL (scheduled pipeline execution), predictions are projected
+# from the ESPN schedule spine on a Tuesday cadence (Issue #33) via
+# tools/project_week_predictions.R without reading betting caches or calling Odds APIs.
 log_todays_predictions <- function(slate = NULL, spine = NULL,
                                    existing_log = NULL, persist = TRUE) {
   if (is.null(slate)) {
-    val_path <- file.path(CACHE_DIR, "latest_value_bets.rds")
-    if (!file.exists(val_path)) {
-      cat("[PREDICTION LOG] latest_value_bets.rds not found; skipping prediction logging.\n")
-      return(invisible(NULL))
+    today <- Sys.Date()
+    is_tuesday <- identical(weekdays(today), "Tuesday")
+    force_run <- nzchar(Sys.getenv("NBA_FORCE_PROJECT_WEEK"))
+
+    if (!is_tuesday && !force_run) {
+      cat(sprintf("[PREDICTION LOG] Non-Tuesday cadence (%s); weekly schedule projection skipped (runs on Tuesdays).\n",
+                  format(today, "%A")))
+      return(invisible(if (is.null(existing_log)) get_prediction_log() else existing_log))
     }
-    slate <- readRDS(val_path)
+
+    pwp_path <- file.path(PROJECT_DIR, "tools", "project_week_predictions.R")
+    if (!file.exists(pwp_path)) {
+      cat(sprintf("[PREDICTION LOG] %s not found; skipping weekly projection.\n", pwp_path))
+      return(invisible(if (is.null(existing_log)) get_prediction_log() else existing_log))
+    }
+
+    cat(sprintf("[PREDICTION LOG] Running weekly prediction projector (%s cadence)...\n",
+                format(today, "%A")))
+    pwp_env <- new.env(parent = .GlobalEnv)
+    sys.source(pwp_path, envir = pwp_env)
+    if (exists("main", envir = pwp_env, mode = "function")) {
+      pwp_env$main(do_write = isTRUE(persist))
+    }
+    return(invisible(get_prediction_log()))
   }
 
   if (nrow(slate) == 0) {
-    cat("[PREDICTION LOG] 0 games in latest_value_bets.rds; skipping prediction logging.\n")
+    cat("[PREDICTION LOG] 0 games in slate; skipping prediction logging.\n")
     return(invisible(NULL))
   }
 
