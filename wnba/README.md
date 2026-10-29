@@ -1,47 +1,36 @@
-# WNBA_analytics
-Analyzing WNBA games and players to deliver game-level predictions, including a Monte Carlo
-season-simulation pipeline that projects full-season win totals and standings.
+# WNBA Analytics — Quantitative Front-Office Research Platform
 
-## Setup
+Analyzing WNBA games, lineups, and players to deliver pure statistical game projections, Bayesian player evaluations, tactical matchup hubs, and a Monte Carlo season simulation pipeline that projects full-season win totals, playoff seeding, and series outcomes.
 
-1. **Clone and open the repo.** Clone this repository and open/run everything from inside the
-   cloned folder (e.g. open the folder in RStudio, or start an R session with the repo as your
-   working directory). `config.R` derives `PROJECT_DIR` automatically via `here::here()`, which
-   locates the project root from the nearest `.git` directory — there is no path to edit
-   manually, on any machine.
-2. **Install R.** If you don't already have R installed, install it from
-   [CRAN](https://cran.r-project.org/). R/`Rscript` may not be on your system `PATH`; rather than
-   relying on a bare `R`/`Rscript` command, run scripts via RStudio's "Run"/"Knit" buttons, or
-   invoke your R installation's `Rscript` executable directly (e.g.
-   `"C:\Program Files\R\R-4.5.2\bin\Rscript.exe"` on Windows).
+> [!NOTE]
+> **Betting-Free Platform Declaration:** This platform is 100% free of commercial betting, gambling apparatuses, odds devigging, Kelly staking, bankroll units, and `ODDS_API_KEY`. All pipelines and models operate with pure endogenous statistical mechanics, open-data schedule providers, forecast calibration governance (`accuracy_governance.R`), and operational telemetry (`notify_pipeline_ops.R`).
 
-## Installing dependencies
+## Pipeline & Architecture
 
-This project pins its exact package versions with [`renv`](https://rstudio.github.io/renv/)
-(`renv.lock`, `.Rprofile`). After cloning, open an R session in the project directory and run:
+The analytical pipeline executes as a deterministic, reproducible workflow orchestrated by `run_full_pipeline.R`:
+1. **Ingest & Data Sync:** Real-time and historical box-score feeds via `wehoop`.
+2. **Ratings & Models:** Endogenous team ratings, margin projections, and Poisson/normal game models.
+3. **Forecast Governance:** `accuracy_governance.R` calculates Straight-Up Accuracy (STD and rolling 30-game), Brier Skill Score against standard baselines, log-loss, and Expected Calibration Error (ECE) with decile bins.
+4. **Operations Telemetry:** `notify_pipeline_ops.R` dispatches non-betting health reports, slate summaries, and injury/availability alerts via `DISCORD_OPS_WEBHOOK_URL` (clean no-op if unset).
 
-```r
-renv::restore()
+## Setup & Dependencies
+
+1. **Clone and open the repo:** Open the project root in RStudio or your terminal.
+2. **Install R:** Ensure R (>= 4.5.0) is installed.
+3. **Restore environment:** Dependencies are pinned via `renv`:
+   ```r
+   renv::restore()
+   ```
+
+## Running the Pipeline
+
+Execute the full daily quantitative pipeline:
+```bash
+Rscript run_full_pipeline.R
 ```
 
-This bootstraps `renv` itself automatically on first R startup in the project (via `.Rprofile`),
-then installs the exact package versions recorded in `renv.lock` — including `tidyverse`,
-`tidymodels`, `wehoop`, `slider`, `xgboost`, and `ggridges`. No separate manual
-`install.packages()` step is needed.
-
-## Running the analysis
-
-The main deliverable is `WNBA_Analysis_Project.Rmd`. Render it to PDF with:
-
+Render the comprehensive research report:
 ```r
 rmarkdown::render("WNBA_Analysis_Project.Rmd")
 ```
-
-(or use RStudio's "Knit" button). PDF output requires a working TeX toolchain — if you don't
-already have one installed, run `tinytex::install_tinytex()` first.
-
-The Rmd expects a cached box-score data file at `data/box_scores_cache.rds` (referenced via
-`CACHE_TEAM_BOX` in `config.R`). If that cache is present, it's loaded directly; if it's missing,
-the Rmd automatically falls back to a live `wehoop::load_wnba_team_box()` pull from the WNBA
-stats API and writes the cache for next time — so a missing cache isn't a hard blocker, but note
-that a live pull will be slower and depends on the API being reachable.
+*(PDF output requires `tinytex`).*
