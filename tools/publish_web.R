@@ -687,15 +687,6 @@ source("config.R")
 #     [WARN] lines.
 # ------------------------------------------------------------------------------
 .pw_value_bet_count <- function() {
-  if (!file.exists(WEB_JSON_PROJECTIONS_POSTSEASON_OPS)) return(NA_integer_)
-  j <- tryCatch(jsonlite::fromJSON(WEB_JSON_PROJECTIONS_POSTSEASON_OPS, simplifyVector = TRUE),
-                error = function(e) NULL)
-  if (is.null(j)) return(NA_integer_)
-  if (!is.null(j$value_bets_provenance) && !is.null(j$value_bets_provenance$n_published)) {
-    return(as.integer(j$value_bets_provenance$n_published[1]))
-  }
-  if (!is.null(j$value_bets) && is.data.frame(j$value_bets)) return(as.integer(nrow(j$value_bets)))
-  if (is.list(j$value_bets)) return(as.integer(length(j$value_bets)))
   NA_integer_
 }
 

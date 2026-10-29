@@ -241,61 +241,6 @@ export interface BullpenStatusRow {
   vulnerability_grade: string;
 }
 
-export interface ValueBetRow {
-  game_id: string;
-  home_team: string;
-  away_team: string;
-  market: string;
-  bet_on: string;
-  bookmaker: string;
-  odds: number;
-  model_prob: number;
-  ev: number;
-  kelly_stake: number;
-  market_data_source: string;
-  game_date: string;
-  Matchup: string;
-  Recommended_Bet: string;
-  Team: string;
-  Book: string;
-  Line: number;
-  Model_Win_Prob: number;
-  EV_Percent: number;
-  Exp_CLV: number;
-  Bankroll_Rec: number;
-  Status: string;
-  edge_flag: string;
-  fatigue_adj: number;
-}
-
-// Written by build_value_bets_payload() in tools/export_web_data.R. Rows whose
-// market_data_source is not LIVE_ODDS_API are dropped from value_bets rather
-// than published, because a fabricated bet renders identically to a real one;
-// this is the record of what was withheld so the page can say so. Optional:
-// JSON exported before 2026-10-25 has no such field.
-export interface ValueBetsProvenance {
-  live_source: string;
-  n_total: number;
-  n_published: number;
-  n_withheld: number;
-  withheld_sources: string[];
-}
-
-export interface RiskStateSummary {
-  current_bankroll: number;
-  current_dd_units: number;
-  current_dd_pct: number;
-  max_dd_units: number;
-  max_dd_pct: number;
-  active_kelly_multiplier: number;
-  risk_status: string;
-  status_message: string;
-  rolling_7d_clv_pct: number;
-  rolling_30d_clv_pct: number;
-  beat_clv_rate_pct: number;
-  total_bets_audited: number;
-}
-
 export interface PostseasonOpsData {
   generated_at: string;
   season: number;
