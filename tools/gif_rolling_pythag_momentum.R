@@ -170,7 +170,7 @@ generate_gif_rolling_pythag_momentum <- function(season = 2026,
       mlbplotR::geom_mlb_logos(
         data = head_data,
         aes(x = game_num, y = rolling_pythag, team_abbr = team_abbr),
-        width = 0.08
+        width = 0.16
       ) +
       facet_wrap(~division, ncol = 3) +
       scale_color_manual(values = MLB_DIVISION_COLORS, guide = "none") +
