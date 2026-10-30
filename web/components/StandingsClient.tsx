@@ -15,15 +15,18 @@ import {
   Table,
   ArrowRight,
   Download,
+  Film,
 } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { PlayoffContendersBoxWhisker } from '@/components/PlayoffContendersBoxWhisker';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { MLB_VISUAL_MEDIA_ITEMS } from '@/lib/visualMedia';
+import { BASE_PATH } from '@/lib/basePath';
 
 interface StandingsClientProps {
   teams: TeamProjection[];
   metadata?: ModelMetadata;
-  initialTab?: 'visualizer' | 'table';
+  initialTab?: 'visualizer' | 'table' | 'gallery';
 }
 
 export type StandingsSortField =
@@ -43,9 +46,10 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
   teams,
   initialTab = 'visualizer',
 }) => {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'table'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'table' | 'gallery'>(initialTab);
   const [selectedLeague, setSelectedLeague] = useState<'All' | 'AL' | 'NL'>('All');
   const [selectedDivision, setSelectedDivision] = useState<string>('All');
+  const [selectedGifId, setSelectedGifId] = useState<string>(MLB_VISUAL_MEDIA_ITEMS[0].id);
   const [sortBy, setSortBy] = useState<StandingsSortField>('ensemble_mean_wins');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
@@ -272,6 +276,29 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
           <button
             type="button"
             role="tab"
+            id="tab-btn-gallery"
+            aria-selected={activeTab === 'gallery'}
+            onClick={() => setActiveTab('gallery')}
+            className={`cursor-pointer select-none touch-manipulation flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-20 ${
+              activeTab === 'gallery'
+                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
+                : 'text-slate-400 hover:text-white hover:bg-surface-raised'
+            }`}
+          >
+            <Film className="w-4 h-4 pointer-events-none" />
+            <span className="pointer-events-none">Animated GIF Races & Postseason</span>
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
+                activeTab === 'gallery' ? 'bg-white/20 text-white font-bold' : 'bg-slate-800 text-slate-400'
+              }`}
+            >
+              20 GIFs
+            </span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
             id="tab-btn-table"
             aria-selected={activeTab === 'table'}
             onClick={() => setActiveTab('table')}
@@ -304,6 +331,116 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
           </button>
         )}
       </div>
+
+      {/* Tab 3: Animated GIF Visual Media Dropdown & Player */}/
+      {activeTab === 'gallery' && (
+        <div className="space-y-6">
+          <div className="bg-surface-raised/70 border border-slate-800 rounded-xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                  2026 Year-End Media
+                </span>
+                <span className="text-xs text-slate-400">20 Full-Length Animated Loops</span>
+              </div>
+              <h3 className="text-base font-bold text-white">Select Visualizer Animation</h3>
+              <p className="text-xs text-slate-400 max-w-xl">
+                Choose from regular season division races, October postseason paths, macro momentum trends, and sabermetric scatters.
+              </p>
+            </div>
+
+            <div className="w-full md:w-96 flex-shrink-0">
+              <label htmlFor="landing-gif-dropdown" className="block text-[11px] font-mono uppercase font-bold text-slate-400 mb-1.5">
+                Animation Dropdown Selector
+              </label>
+              <select
+                id="landing-gif-dropdown"
+                value={selectedGifId}
+                onChange={(e) => setSelectedGifId(e.target.value)}
+                className="w-full bg-slate-900 border border-sky-500/40 text-white font-semibold text-xs sm:text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-lg cursor-pointer"
+              >
+                <optgroup label="Phase 1: Standings & Team Parity">
+                  {MLB_VISUAL_MEDIA_ITEMS.filter((m) => m.phase === 1).map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.title}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Phase 2: October Postseason & Fall Classic">
+                  {MLB_VISUAL_MEDIA_ITEMS.filter((m) => m.phase === 2).map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.title}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Phase 3: Macro Season Trends">
+                  {MLB_VISUAL_MEDIA_ITEMS.filter((m) => m.phase === 3).map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.title}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Phase 4: Sabermetrics & Player-Tracking">
+                  {MLB_VISUAL_MEDIA_ITEMS.filter((m) => m.phase === 4).map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.title}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Phase 5: Synthesis & Meta Finale">
+                  {MLB_VISUAL_MEDIA_ITEMS.filter((m) => m.phase === 5).map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.title}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
+          </div>
+
+          {/* Player Container */}
+          {(() => {
+            const currentItem = MLB_VISUAL_MEDIA_ITEMS.find((m) => m.id === selectedGifId) || MLB_VISUAL_MEDIA_ITEMS[0];
+            return (
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-6 space-y-4 shadow-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                        {currentItem.categoryLabel}
+                      </span>
+                      <span className="text-xs text-slate-400 font-mono">Phase {currentItem.phase}</span>
+                    </div>
+                    <h4 className="text-lg sm:text-xl font-bold text-white mt-1">{currentItem.title}</h4>
+                    <p className="text-xs sm:text-sm text-slate-300/90 mt-0.5 max-w-2xl">
+                      {currentItem.description}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 self-start sm:self-center">
+                    <a
+                      href={`${BASE_PATH}/media/${currentItem.filename}`}
+                      download={currentItem.filename}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-500/40 transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Download GIF
+                    </a>
+                  </div>
+                </div>
+
+                <div className="relative aspect-[16/9.5] w-full max-w-5xl mx-auto rounded-xl overflow-hidden bg-slate-950 border border-slate-800/80 flex items-center justify-center shadow-2xl">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`${BASE_PATH}/media/${currentItem.filename}`}
+                    alt={currentItem.title}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       {/* Tab 1: Box-Whisker Visualizer */}
       {activeTab === 'visualizer' && <PlayoffContendersBoxWhisker teams={teams} />}

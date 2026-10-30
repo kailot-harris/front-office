@@ -22,6 +22,7 @@ import {
   Coins,
   CalendarDays,
   Sparkles,
+  Film,
 } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
 
@@ -50,6 +51,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       badge: '30 Clubs',
       icon: Trophy,
       desc: '162-game win distributions & WS%',
+    },
+    {
+      href: '/gallery',
+      label: 'Visual Media Gallery',
+      badge: '20 GIFs',
+      icon: Film,
+      desc: 'Year-end animated races, brackets & scatters',
     },
     {
       href: '/retrospective',
