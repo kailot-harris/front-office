@@ -79,7 +79,7 @@ SEASONS <- 2019:2025
 #      Highest round number -> "Finals", one before -> "Semifinals", one before
 #      that -> "Quarterfinals" (only if present), anything earlier -> "Round 1".
 # ------------------------------------------------------------------------------
-assign_bracket_rounds <- function(bracket_df) {
+assign_bracket_rounds <- function(bracket_df, season = NULL) {
   if (nrow(bracket_df) == 0) {
     bracket_df$round <- character(0)
     return(bracket_df)
@@ -92,6 +92,24 @@ assign_bracket_rounds <- function(bracket_df) {
   }, numeric(1))
 
   order_idx <- order(first_game_date)
+  n_series <- nrow(bracket_df)
+
+  # Pre-2022 WNBA playoff format (2016-2021): 8 teams, 7 series with double-byes
+  # for seeds 1-2 and single-byes for seeds 3-4.
+  # Chronological series:
+  #   Series 1-2: Round 1 (seeds 5-8 single elimination)
+  #   Series 3-4: Round 2 (seeds 3-4 join, single elimination)
+  #   Series 5-6: Semifinals (seeds 1-2 join, best of 5)
+  #   Series 7:   Finals (best of 5)
+  if (!is.null(season) && season %in% 2016:2021 && n_series == 7) {
+    rounds <- character(n_series)
+    rounds[order_idx[1:2]] <- "Round 1"
+    rounds[order_idx[3:4]] <- "Round 2"
+    rounds[order_idx[5:6]] <- "Semifinals"
+    rounds[order_idx[7]]   <- "Finals"
+    bracket_df$round <- rounds
+    return(bracket_df)
+  }
 
   wins_so_far <- new.env()
   round_number <- integer(nrow(bracket_df))
@@ -221,18 +239,12 @@ generate_historical_season_snapshots <- function(seasons = SEASONS) {
       ungroup() |>
       select(-pair_key)
 
-    # 2019-2021 used a bye-based playoff format (top 1-2 seeds skipped straight to the
-    # best-of-5 semifinals while seeds 3-6 played two single-elimination rounds to join
-    # them) -- assign_bracket_rounds()'s chronological win-count reconstruction assumes a
-    # balanced bracket with no byes and correctly stop()s rather than mislabeling these
-    # seasons' rounds. Caught here (not fixed) so one season's unreconstructable bracket
-    # shape doesn't abort standings/RAPM generation for every other season; the bracket file
-    # for an affected season is simply not written, same as the existing NULL-safe-missing-
-    # file convention every reader of HISTORICAL_BRACKET already follows downstream.
+    # In 2016-2021, WNBA used a bye-based format; assign_bracket_rounds() handles this
+    # when given season = yr.
     bracket_rounds <- tryCatch(
-      assign_bracket_rounds(bracket),
+      assign_bracket_rounds(bracket, season = yr),
       error = function(e) {
-        message(sprintf(
+        warning(sprintf(
           "Skipping playoff_bracket_results_%d.rds -- assign_bracket_rounds() failed: %s",
           yr, conditionMessage(e)
         ))
