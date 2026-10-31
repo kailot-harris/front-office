@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { TeamProjection, PlayerProjection, ModelMetadata, ModelDiagnostics } from './types';
+import { PlayoffBracketSeason } from './playoffTypes';
+import { OffseasonMonitorDataset } from './offseasonTypes';
 
 export function getTeamsData(): TeamProjection[] {
   const filePath = path.join(process.cwd(), 'public', 'data', 'projections_season_teams.json');
@@ -86,3 +88,41 @@ export function getDiagnostics(): ModelDiagnostics {
   const fileContent = fs.readFileSync(filePath, 'utf-8');
   return JSON.parse(fileContent) as ModelDiagnostics;
 }
+
+export function getCapSheetData(): {
+  hardSalaryCap: number;
+  capFloor: number;
+  teams: Array<{
+    teamAbbr: string;
+    teamName: string;
+    conference: string;
+    totalPayroll2026: number;
+    hardSalaryCap: number;
+    capSpace2026: number;
+    rosterCount: number;
+    cbaTier: string;
+    corePlayer: string;
+    hardCapCrunchIndex: number;
+  }>;
+} | null {
+  const filePath = path.join(process.cwd(), 'public', 'data', 'cba_cap_sheet.json');
+  if (!fs.existsSync(filePath)) return null;
+  const fileContent = fs.readFileSync(filePath, 'utf-8');
+  return JSON.parse(fileContent);
+}
+
+export function getPlayoffBracketData(): (PlayoffBracketSeason & { champion?: string }) | null {
+  const filePath = path.join(process.cwd(), 'public', 'data', 'playoff_bracket_2026.json');
+  if (!fs.existsSync(filePath)) return null;
+  const fileContent = fs.readFileSync(filePath, 'utf-8');
+  return JSON.parse(fileContent);
+}
+
+export function getOffseasonMonitorData(): OffseasonMonitorDataset | null {
+  const filePath = path.join(process.cwd(), 'public', 'data', 'offseason_monitor.json');
+  if (!fs.existsSync(filePath)) return null;
+  const fileContent = fs.readFileSync(filePath, 'utf-8');
+  return JSON.parse(fileContent) as OffseasonMonitorDataset;
+}
+
+

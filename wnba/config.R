@@ -432,6 +432,24 @@ WEB_DATA_FILES <- c(
 )
 
 # ------------------------------------------------------------------------------------------
+# Offseason Dynamics Monitor Artifacts (Issue #121 / Blueprint §6 & §7)
+# ------------------------------------------------------------------------------------------
+WEB_JSON_OFFSEASON_MONITOR <- file.path(WEB_DATA_DIR, "offseason_monitor.json")
+
+# The 5 active off-season JSON artifacts asserted by tools/publish_web.R --mode=offseason
+WEB_DATA_FILES_OFFSEASON <- c(
+  WEB_JSON_OFFSEASON_MONITOR,
+  WEB_JSON_OFFSEASON_TRANSACTIONS,
+  WEB_JSON_OFFSEASON_TEAMS,
+  WEB_JSON_OFFSEASON_DRAFT,
+  WEB_JSON_CBA_CAP_SHEET
+)
+
+# Initialized to NULL until officially confirmed and published by the WNBA
+OFFSEASON_FA_BURST_WINDOW <- NULL
+# Example format once announced: c(start = "YYYY-MM-DD", end = "YYYY-MM-DD")
+
+# ------------------------------------------------------------------------------------------
 # RAPM & Opponent Adjustments (GitHub issues #71, #76, #77, #78, #79, #82)
 # ------------------------------------------------------------------------------------------
 # Ridge regression penalty parameter (lambda) for possession-level RAPM.
