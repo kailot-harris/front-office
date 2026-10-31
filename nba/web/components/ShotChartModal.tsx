@@ -76,15 +76,16 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-surface/80 backdrop-blur-md animate-in fade-in duration-200">
       <div className="relative w-full max-w-5xl max-h-[92vh] bg-surface-raised border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-surface/60">
+        <div className="relative flex items-center justify-between px-6 py-4 bg-surface/60">
           <div className="flex items-center gap-3">
             {playerTeam && <TeamLogo team={playerTeam} size="sm" />}
             <div>
               <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shadow-[0_0_8px_#fb923c]" />
                 <h2 className="text-xl font-bold text-white tracking-tight">
                   {shotData?.player_name || playerName || 'Player'}
                 </h2>
-                <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20">
                   {shotData?.team || playerTeam}
                 </span>
                 <span className="text-xs text-slate-400 font-mono">
@@ -92,7 +93,7 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
-                <Crosshair className="w-3.5 h-3.5 text-indigo-400" />
+                <Crosshair className="w-3.5 h-3.5 text-orange-400" />
                 <span>Spatial Shot Chart & Rolling Hot/Cold Zones</span>
               </p>
             </div>
@@ -104,6 +105,7 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
           >
             <X className="w-5 h-5" />
           </button>
+          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-orange-400 via-orange-500/40 to-transparent" />
         </div>
 
         {/* Modal Body */}

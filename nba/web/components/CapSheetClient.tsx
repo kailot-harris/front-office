@@ -72,19 +72,17 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
   return (
     <div className="space-y-6">
       {/* Top Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-amber-950/70 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-96 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-amber-500/10 via-emerald-500/5 to-transparent pointer-events-none" />
-
+      <div className="bg-surface-raised border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
           <div>
             <div className="flex items-center gap-2.5">
-              <div className="p-2.5 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-600 text-slate-950 shadow-lg shadow-amber-500/20">
+              <div className="p-2.5 rounded-xl bg-orange-500/10 text-orange-400 border border-orange-500/20 shadow-sm">
                 <Coins className="w-6 h-6" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
-                    CBA Salary Cap, Apron & Luxury Tax Architect
+                    <span className="text-orange-400">NBA</span> CBA Salary Cap, Apron & Luxury Tax Architect
                   </h1>
                   <SeasonSourceBadge
                     season={initialData.season}
@@ -109,6 +107,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
             </span>
           </div>
         </div>
+        <div className="w-full h-[2px] bg-gradient-to-r from-orange-400 via-orange-500/40 to-transparent mt-4" />
       </div>
 
       {/* KPI Cards */}
