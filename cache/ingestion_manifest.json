@@ -1,0 +1,24 @@
+{
+  "ingest_timestamp": "2026-10-31T16:18:20Z",
+  "composite_health": "HEALTHY",
+  "adapters": {
+    "league_wire": {
+      "status": "HEALTHY",
+      "http_code": 200,
+      "items_found": 3,
+      "bytes_captured": 436
+    },
+    "team_releases": {
+      "status": "HEALTHY",
+      "feeds_polled": 15,
+      "feeds_succeeded": 15,
+      "items_found": 5
+    },
+    "beat_feeds": {
+      "status": "HEALTHY",
+      "sources_polled": 6,
+      "sources_succeeded": 6,
+      "claims_found": 8
+    }
+  }
+}
