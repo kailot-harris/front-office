@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { TeamProjection, PlayerProjection, ModelMetadata, ModelDiagnostics } from './types';
 import { PlayoffBracketSeason } from './playoffTypes';
+import { OffseasonMonitorDataset } from './offseasonTypes';
 
 export function getTeamsData(): TeamProjection[] {
   const filePath = path.join(process.cwd(), 'public', 'data', 'projections_season_teams.json');
@@ -116,4 +117,12 @@ export function getPlayoffBracketData(): (PlayoffBracketSeason & { champion?: st
   const fileContent = fs.readFileSync(filePath, 'utf-8');
   return JSON.parse(fileContent);
 }
+
+export function getOffseasonMonitorData(): OffseasonMonitorDataset | null {
+  const filePath = path.join(process.cwd(), 'public', 'data', 'offseason_monitor.json');
+  if (!fs.existsSync(filePath)) return null;
+  const fileContent = fs.readFileSync(filePath, 'utf-8');
+  return JSON.parse(fileContent) as OffseasonMonitorDataset;
+}
+
 

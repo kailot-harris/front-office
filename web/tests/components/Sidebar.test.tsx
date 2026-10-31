@@ -54,4 +54,21 @@ describe('Sidebar active tab highlighting', () => {
     expect(homeLink.className).toContain('bg-accent-600');
     expect(homeLink.className).toContain('text-white');
   });
+
+  it('renders and highlights pinned /offseason-monitor tab', () => {
+    mockPathname = '/offseason-monitor/';
+    render(<Sidebar />);
+    const monitorLink = screen.getByRole('link', { name: /2026-2027 Off-Season Monitor/i });
+    expect(monitorLink.className).toContain('bg-accent-600');
+    expect(monitorLink.className).toContain('text-white');
+    expect(screen.getByText('Weekly Pulse')).toBeDefined();
+  });
+
+  it('renders 2026 Championship Archive expandable section', () => {
+    mockPathname = '/offseason-monitor';
+    render(<Sidebar />);
+    expect(screen.getByText(/2026 Championship Archive/i)).toBeDefined();
+    // Archive items are contained
+    expect(screen.getByRole('link', { name: /CBA Cap Sheet/i })).toBeDefined();
+  });
 });

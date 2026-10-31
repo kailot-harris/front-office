@@ -25,8 +25,9 @@ import {
   Calculator,
   ShieldCheck,
   Sparkles,
+  ChevronDown,
+  Archive,
 } from 'lucide-react';
-
 
 /**
  * next.config.mjs sets `trailingSlash: true`, so usePathname() returns '/matchups/'
@@ -46,13 +47,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showSigmaExplainer, setShowSigmaExplainer] = useState(false);
 
-  const navItems = [
+  // Active primary items (2026-2027 Off-Season focus)
+  const primaryNavItems = [
     {
-      href: '/',
-      label: 'Season Standings',
-      badge: '15 Teams',
-      icon: Trophy,
-      desc: 'Win distributions & franchise table',
+      href: '/offseason-monitor',
+      label: '2026-2027 Off-Season Monitor',
+      badge: 'Weekly Pulse',
+      icon: Sparkles,
+      desc: 'State-diff transactions & 2027 CBA intelligence',
+    },
+    {
+      href: '/cap-sheet',
+      label: 'CBA Cap Sheet',
+      badge: 'Hard Cap',
+      icon: Coins,
+      desc: '11-vs-12 crunch & contract book',
     },
     {
       href: '/retrospective',
@@ -61,12 +70,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       icon: Sparkles,
       desc: '2026 Season recap & model audit',
     },
+  ];
+
+  // 2026 In-Season items grouped under expandable "2026 Championship Archive"
+  const inSeasonNavItems = [
     {
-      href: '/bracket-2026',
-      label: '2026 Bracket',
-      badge: 'Postseason',
+      href: '/',
+      label: 'Season Standings',
+      badge: '15 Teams',
       icon: Trophy,
-      desc: 'Prediction beside result, per round',
+      desc: 'Win distributions & franchise table',
     },
     {
       href: '/matchups',
@@ -104,13 +117,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       desc: 'Shot creation & pressure fragility',
     },
     {
-      href: '/cap-sheet',
-      label: 'CBA Cap Sheet',
-      badge: 'Hard Cap',
-      icon: Coins,
-      desc: '11-vs-12 crunch & contract book',
-    },
-    {
       href: '/shots',
       label: 'Shot Charts',
       badge: '14 Zones',
@@ -132,11 +138,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       desc: 'Tactical impact & system lift',
     },
     {
-      href: '/offseason',
-      label: 'Offseason & Moves',
-      badge: 'Trades',
-      icon: ArrowRightLeft,
-      desc: 'Trades, expansion & draft',
+      href: '/bracket-2026',
+      label: '2026 Bracket',
+      badge: 'Postseason',
+      icon: Trophy,
+      desc: 'Prediction beside result, per round',
     },
     {
       href: '/series',
@@ -152,7 +158,75 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       icon: Activity,
       desc: 'Reliability & calibration curve',
     },
+    {
+      href: '/offseason',
+      label: 'Offseason & Moves',
+      badge: 'Trades',
+      icon: ArrowRightLeft,
+      desc: 'Trades, expansion & draft',
+    },
   ];
+
+  // Auto-expand archive if user is viewing an in-season archive page
+  const currentPathClean = withoutTrailingSlash(pathname ?? '/');
+  const isVisitingArchive = inSeasonNavItems.some(
+    (item) =>
+      currentPathClean === withoutTrailingSlash(item.href) ||
+      (item.href === '/' && (currentPathClean === '' || currentPathClean === '/teams'))
+  );
+
+  const [isArchiveOpen, setIsArchiveOpen] = useState<boolean>(isVisitingArchive);
+
+  const renderNavLink = (item: {
+    href: string;
+    label: string;
+    badge: string;
+    icon: React.ComponentType<{ className?: string }>;
+    desc: string;
+  }) => {
+    const Icon = item.icon;
+    const isActive =
+      withoutTrailingSlash(pathname ?? '/') === withoutTrailingSlash(item.href) ||
+      (item.href === '/' && withoutTrailingSlash(pathname ?? '/') === '/teams');
+
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        onClick={() => setIsOpen(false)}
+        className={`group flex items-start gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+          isActive
+            ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
+            : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+        }`}
+      >
+        <Icon
+          className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
+            isActive ? 'text-white' : 'text-slate-400 group-hover:text-accent-400'
+          }`}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold">{item.label}</span>
+            <span
+              className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-medium ${
+                isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
+              }`}
+            >
+              {item.badge}
+            </span>
+          </div>
+          <p
+            className={`text-[11px] truncate ${
+              isActive ? 'text-accent-200' : 'text-slate-500'
+            }`}
+          >
+            {item.desc}
+          </p>
+        </div>
+      </Link>
+    );
+  };
 
   const NavContent = () => (
     <div className="flex flex-col h-full justify-between p-4">
@@ -169,147 +243,135 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
                 <span className="text-violet-400">WNBA</span> ANALYTICS
               </span>
             </div>
-            <div className="w-full h-[2px] bg-gradient-to-r from-violet-400 via-violet-500/40 to-transparent rounded-full mt-1 mb-1" />
-            <p className="text-[10px] text-slate-400 font-mono tracking-tight">Season Projections 2026</p>
+            <div className="w-full h-[2px] bg-gradient-to-r from-violet-400 via-violet-500/40 to-transparent rounded-full mt-1" />
+            <p className="text-[11px] text-slate-400 font-mono mt-0.5">2026-2027 Off-Season</p>
           </div>
         </div>
 
+        {/* 1. Primary Nav (Offseason Intelligence) */}
         <div className="space-y-1">
           <div className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 font-mono">
-            Main Navigation
+            Off-Season Intelligence
           </div>
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive =
-              withoutTrailingSlash(pathname ?? '/') === withoutTrailingSlash(item.href) ||
-              (item.href === '/' && withoutTrailingSlash(pathname ?? '/') === '/teams');
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsOpen(false)}
-                className={`group flex items-start gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  isActive
-                    ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-                }`}
-              >
-                <Icon
-                  className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
-                    isActive ? 'text-white' : 'text-slate-400 group-hover:text-accent-400'
-                  }`}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold">{item.label}</span>
-                    <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-medium ${
-                        isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  </div>
-                  <p
-                    className={`text-[11px] truncate ${
-                      isActive ? 'text-accent-200' : 'text-slate-500'
-                    }`}
-                  >
-                    {item.desc}
-                  </p>
-                </div>
-              </Link>
-            );
-          })}
+          {primaryNavItems.map(renderNavLink)}
         </div>
 
-        {/* Engine Metadata Card */}
-        <div className="bg-surface/70 border border-slate-800/80 rounded-xl p-3.5 space-y-2.5">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-accent-400 uppercase tracking-wide">
-            <Layers className="w-3.5 h-3.5" />
-            <span>Simulation Spec</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50">
-              <span className="text-[10px] text-slate-400 block">Schedule</span>
-              <span className="font-mono font-bold text-slate-200">330 Games</span>
+        {/* 2. Grouped In-Season Section: 2026 Championship Archive */}
+        <div className="space-y-1 pt-2 border-t border-slate-800/80">
+          <button
+            type="button"
+            onClick={() => setIsArchiveOpen(!isArchiveOpen)}
+            className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 transition-colors group"
+          >
+            <div className="flex items-center gap-2">
+              <Archive className="w-3.5 h-3.5 text-slate-500 group-hover:text-violet-400" />
+              <span className="text-[10px] font-bold uppercase tracking-wider font-mono">
+                2026 Championship Archive
+              </span>
             </div>
-            <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50">
-              <span className="text-[10px] text-slate-400 block">Simulations</span>
-              <span className="font-mono font-bold text-slate-200">1,000 Sims</span>
-            </div>
+            <ChevronDown
+              className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 ${
+                isArchiveOpen ? 'rotate-180 text-violet-400' : ''
+              }`}
+            />
+          </button>
 
-            {/* Margin Sigma with ? Explainer Bubble & Compact Popover */}
-            <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50 relative">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] text-slate-400 block">Margin σ</span>
-                <button
-                  type="button"
-                  onClick={() => setShowSigmaExplainer(!showSigmaExplainer)}
-                  className="text-accent-400 hover:text-accent-300 p-0.5 rounded hover:bg-slate-800 transition-colors"
-                  aria-label="What does margin sigma mean?"
-                  title="What does margin sigma mean? Click for explainer."
-                >
-                  <HelpCircle className="w-3 h-3" />
-                </button>
+          {isArchiveOpen && (
+            <div className="space-y-1 pl-1 pt-1 border-l-2 border-slate-800/60 ml-2">
+              {inSeasonNavItems.map(renderNavLink)}
+            </div>
+          )}
+        </div>
+
+        {/* Simulation Spec Footer Box */}
+        <div className="space-y-2 pt-2 border-t border-slate-800/80">
+          <div className="bg-surface/50 rounded-xl p-3 border border-slate-800/80 space-y-2">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
+              <Layers className="w-3.5 h-3.5" />
+              <span>Simulation Spec</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50">
+                <span className="text-[10px] text-slate-400 block">Schedule</span>
+                <span className="font-mono font-bold text-slate-200">330 Games</span>
               </div>
-              <span className="font-mono font-bold text-slate-200">9.8 pts</span>
+              <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50">
+                <span className="text-[10px] text-slate-400 block">Simulations</span>
+                <span className="font-mono font-bold text-slate-200">1,000 Sims</span>
+              </div>
 
-              {/* Localized Compact Popover Card (Not Full Page) */}
-              {showSigmaExplainer && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40 bg-transparent"
-                    onClick={() => setShowSigmaExplainer(false)}
-                  />
-                  <div className="absolute left-0 md:left-full md:ml-3 bottom-full mb-2 md:bottom-auto md:-top-16 z-50 w-72 sm:w-80 bg-surface-raised border border-slate-700 rounded-xl p-3.5 shadow-2xl space-y-2.5 animate-in fade-in zoom-in-95 duration-150 text-slate-200">
-                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-accent-400">
-                        <Calculator className="w-3.5 h-3.5" />
-                        <span>Margin σ = 9.8 pts</span>
+              {/* Margin Sigma with ? Explainer Bubble & Compact Popover */}
+              <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50 relative">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-slate-400 block">Margin σ</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowSigmaExplainer(!showSigmaExplainer)}
+                    className="text-accent-400 hover:text-accent-300 p-0.5 rounded hover:bg-slate-800 transition-colors"
+                    aria-label="What does margin sigma mean?"
+                    title="What does margin sigma mean? Click for explainer."
+                  >
+                    <HelpCircle className="w-3 h-3" />
+                  </button>
+                </div>
+                <span className="font-mono font-bold text-slate-200">9.8 pts</span>
+
+                {/* Localized Compact Popover Card (Not Full Page) */}
+                {showSigmaExplainer && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40 bg-transparent"
+                      onClick={() => setShowSigmaExplainer(false)}
+                    />
+                    <div className="absolute left-0 md:left-full md:ml-3 bottom-full mb-2 md:bottom-auto md:-top-16 z-50 w-72 sm:w-80 bg-surface-raised border border-slate-700 rounded-xl p-3.5 shadow-2xl space-y-2.5 animate-in fade-in zoom-in-95 duration-150 text-slate-200">
+                      <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-accent-400">
+                          <Calculator className="w-3.5 h-3.5" />
+                          <span>Margin σ = 9.8 pts</span>
+                        </div>
+                        <button
+                          onClick={() => setShowSigmaExplainer(false)}
+                          className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
                       </div>
-                      <button
-                        onClick={() => setShowSigmaExplainer(false)}
-                        className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
+
+                      <p className="text-[11px] text-slate-300 leading-relaxed">
+                        Standard deviation of single-game score differentials around expected margin. Converts point margins into game win probabilities:
+                      </p>
+
+                      <div className="bg-surface p-2 rounded border border-slate-800 font-mono text-[10.5px] text-violet-400 font-semibold">
+                        P(Win) = Φ( Expected_Margin / 9.8 )
+                      </div>
+
+                      <div className="space-y-1 font-mono text-[10.5px]">
+                        <div className="flex justify-between text-slate-300">
+                          <span>Pick&apos;em (0.0 pt):</span>
+                          <span className="font-bold text-white">50.0%</span>
+                        </div>
+                        <div className="flex justify-between text-slate-300">
+                          <span>+3.5 pt favorite:</span>
+                          <span className="font-bold text-white">63.9%</span>
+                        </div>
+                        <div className="flex justify-between text-slate-300">
+                          <span>+6.0 pt favorite:</span>
+                          <span className="font-bold text-white">73.0%</span>
+                        </div>
+                        <div className="flex justify-between text-slate-300">
+                          <span>+10.0 pt favorite:</span>
+                          <span className="font-bold text-white">84.6%</span>
+                        </div>
+                      </div>
                     </div>
+                  </>
+                )}
+              </div>
 
-                    <p className="text-[11px] text-slate-300 leading-relaxed">
-                      Standard deviation of single-game score differentials around expected margin. Converts point margins into game win probabilities:
-                    </p>
-
-                    <div className="bg-surface p-2 rounded border border-slate-800 font-mono text-[10.5px] text-violet-400 font-semibold">
-                      P(Win) = Φ( Expected_Margin / 9.8 )
-                    </div>
-
-                    <div className="space-y-1 font-mono text-[10.5px]">
-                      <div className="flex justify-between text-slate-300">
-                        <span>Pick&apos;em (0.0 pt):</span>
-                        <span className="font-bold text-white">50.0%</span>
-                      </div>
-                      <div className="flex justify-between text-slate-300">
-                        <span>+3.5 pt favorite:</span>
-                        <span className="font-bold text-white">63.9%</span>
-                      </div>
-                      <div className="flex justify-between text-slate-300">
-                        <span>+6.0 pt favorite:</span>
-                        <span className="font-bold text-white">73.0%</span>
-                      </div>
-                      <div className="flex justify-between text-slate-300">
-                        <span>+10.0 pt favorite:</span>
-                        <span className="font-bold text-white">84.6%</span>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50">
-              <span className="text-[10px] text-slate-400 block">Variants</span>
-              <span className="font-mono font-bold text-accent-400" title="RAPM, Bottom-Up, Fatigue, Ensemble">4 Blend</span>
+              <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50">
+                <span className="text-[10px] text-slate-400 block">Variants</span>
+                <span className="font-mono font-bold text-accent-400" title="RAPM, Bottom-Up, Fatigue, Ensemble">4 Blend</span>
+              </div>
             </div>
           </div>
         </div>

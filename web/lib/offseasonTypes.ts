@@ -177,4 +177,95 @@ export interface LeagueStateBaseline {
   league: LeagueState;
 }
 
+// ==============================================================================
+// 2026-2027 Off-Season Dynamics Monitor Dataset (Issue #122 / Blueprint §6)
+// ==============================================================================
+
+export interface ConfirmedChange {
+  date: string;
+  entityId: string;
+  entityName: string;
+  field: string;
+  priorValue: string;
+  newValue: string;
+  sourceUrl: string;
+}
+
+export interface ReportedClaim {
+  id: string;
+  entityName: string;
+  claim: string;
+  sourceCategory: 'National Beat' | 'Team Beat Wire' | 'Trade Speculation';
+  firstReportedDate: string;
+  daysPending: number;
+}
+
+export interface ExpiredClaim {
+  entityName: string;
+  claim: string;
+  sourceCategory: string;
+  firstReportedDate: string;
+  expiredDate: string;
+}
+
+export interface UpcomingMilestone {
+  date: string | null;
+  event: string;
+  status: 'Confirmed' | 'Tentative';
+}
+
+export interface ModelPriorImpact {
+  hasChanges: boolean;
+  summary: string;
+  adjustedTeams?: Record<string, { deltaNetRating: number; rationale: string }>;
+}
+
+export interface WinterLeagueNote {
+  playerName: string;
+  wnbaTeam: string;
+  league: 'Unrivaled' | 'EuroLeague' | 'Rehab';
+  healthStatus: string;
+}
+
+export interface OffseasonEdition {
+  weekNumber: number;
+  publishDate: string;
+  isQuietWeek: boolean;
+  stateOfPlay: string;
+  memoMarkdown: string;
+  confirmedChanges: ConfirmedChange[];
+  reportedClaims: ReportedClaim[];
+  expiredClaims: ExpiredClaim[];
+  upcomingMilestones: UpcomingMilestone[];
+  modelPriorImpact: ModelPriorImpact;
+  winterLeagueNotes: WinterLeagueNote[];
+  sourcesVisited: string[];
+}
+
+export interface CurrentStateSummary {
+  totalConfirmedTransactions: number;
+  pendingReportedRumors: number;
+  expiredRumorCount: number;
+  cbaLaborStatus: string;
+}
+
+export interface OffseasonMonitorDataset {
+  version: '2026-2027.1.0';
+  lastPublished: string;
+  currentWeekNumber: number;
+  baselineAsOfDate: string;
+  elapsedDaysSinceLastPublish: number;
+  activePhase:
+    | 'Post-Finals Review'
+    | 'Draft Lottery & Overseas Tracking'
+    | 'Qualifying Offers & Core Window'
+    | 'Free Agency Signings'
+    | 'NCAA Tournament & Draft Prep'
+    | '2027 Draft'
+    | 'Training Camp Transition';
+  editions: OffseasonEdition[];
+  currentStateSummary: CurrentStateSummary;
+}
+
+
 
