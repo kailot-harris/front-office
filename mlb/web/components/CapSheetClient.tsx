@@ -47,6 +47,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ overview }) => {
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Hero Header */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/40 border border-slate-800 p-6 md:p-8 shadow-2xl">
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-sky-400 via-sky-500/40 to-transparent" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold">
@@ -54,7 +55,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ overview }) => {
               <span>MLB Competitive Balance Tax (CBT) & Salary Cap Architect</span>
             </div>
             <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-              Franchise Payrolls & Luxury Tax Surcharges
+              <span className="text-sky-400">MLB</span> Franchise Payrolls & Luxury Tax Surcharges
             </h1>
             <p className="text-slate-400 text-sm max-w-3xl leading-relaxed">
               Explore 2026–2028 multi-year payroll obligations across all 30 MLB clubs. Assess luxury tax liabilities, repeater surcharges, draft pick drop penalties, and contract surplus ROI under the 2022–2026 CBA thresholds ($244M base).

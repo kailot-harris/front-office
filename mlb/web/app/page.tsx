@@ -51,28 +51,31 @@ export default function HomePage() {
         </div>
       </section>
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-3">
-            <span>MLB Season & Postseason Projections</span>
-            <span className="text-sm font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
-              162-Game Slate
-            </span>
-          </h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Probabilistic Monte Carlo simulation results across all 30 MLB franchises combining 4-Factor Pitcher Elo, Empirical Bayes, Pythagenpat, and Marcel/Bullpen models.
-          </p>
-        </div>
-        <div className="flex items-center gap-3 text-xs text-slate-400">
-          <div className="bg-surface-raised border border-slate-800 rounded-lg px-3 py-2 text-right">
-            <span className="text-slate-500 block">Total Simulated Games</span>
-            <span className="text-white font-mono font-bold">2,430,000 Games</span>
+      <div className="relative pb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-3">
+              <span><span className="text-sky-400">MLB</span> Season & Postseason Projections</span>
+              <span className="text-sm font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                162-Game Slate
+              </span>
+            </h1>
+            <p className="text-slate-400 text-sm mt-1">
+              Probabilistic Monte Carlo simulation results across all 30 MLB franchises combining 4-Factor Pitcher Elo, Empirical Bayes, Pythagenpat, and Marcel/Bullpen models.
+            </p>
           </div>
-          <div className="bg-surface-raised border border-slate-800 rounded-lg px-3 py-2 text-right">
-            <span className="text-slate-500 block">Sabermetric Engines</span>
-            <span className="text-white font-mono font-bold">4 Distinct Variants</span>
+          <div className="flex items-center gap-3 text-xs text-slate-400">
+            <div className="bg-surface-raised border border-slate-800 rounded-lg px-3 py-2 text-right">
+              <span className="text-slate-500 block">Total Simulated Games</span>
+              <span className="text-white font-mono font-bold">2,430,000 Games</span>
+            </div>
+            <div className="bg-surface-raised border border-slate-800 rounded-lg px-3 py-2 text-right">
+              <span className="text-slate-500 block">Sabermetric Engines</span>
+              <span className="text-white font-mono font-bold">4 Distinct Variants</span>
+            </div>
           </div>
         </div>
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-sky-400 via-sky-500/40 to-transparent" />
       </div>
 
       <StandingsClient teams={teams} metadata={metadata} initialTab="visualizer" />

@@ -148,14 +148,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
             <img src={`${BASE_PATH}/sport-icons/mlb.png`} alt="" width={44} height={44} className="w-full h-full object-cover" />
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-base tracking-tight bg-gradient-to-r from-sky-400 via-amber-400 to-indigo-400 bg-clip-text text-transparent">
-                MLB ANALYTICS
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_8px_#38bdf8]" />
+              <span className="font-space font-bold text-base text-white tracking-wide">
+                <span className="text-sky-400">MLB</span> ANALYTICS
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium truncate">
-              Sabermetric Engine • 162-Game
-            </p>
+            <div className="w-full h-[2px] bg-gradient-to-r from-sky-400 via-sky-500/40 to-transparent rounded-full mt-1 mb-1" />
+            <p className="text-[10px] text-slate-400 font-mono tracking-tight">Sabermetric Engine • 162-Game</p>
           </div>
         </div>
 
@@ -327,17 +327,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
   return (
     <>
       {/* Mobile Header Bar */}
-      <div className="md:hidden sticky top-0 z-40 bg-surface-raised/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+      <div className="relative md:hidden sticky top-0 z-40 bg-surface-raised/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-sky-400 via-sky-500/40 to-transparent" />
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg overflow-hidden border border-sky-500/30 shadow-md">
+          <div className="w-9 h-9 rounded-lg overflow-hidden border border-sky-500/30 shadow-md flex-shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={`${BASE_PATH}/sport-icons/mlb.png`} alt="" width={36} height={36} className="w-full h-full object-cover" />
           </div>
-          <div>
-            <span className="font-extrabold text-sm tracking-tight text-white">
-              MLB ANALYTICS
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_8px_#38bdf8] flex-shrink-0" />
+            <span className="font-bold text-sm tracking-tight text-white">
+              <span className="text-sky-400">MLB</span> ANALYTICS
             </span>
-            <span className="text-[10px] text-amber-400 font-mono ml-2">162-GAME</span>
+            <span className="text-[10px] text-slate-400 font-mono ml-2">162-GAME</span>
           </div>
         </div>
         <button
