@@ -165,6 +165,8 @@ export interface OffseasonMonitorDataset {
     publishDate: string;
     isQuietWeek: boolean;
     isFrozenWeek: boolean;
+    freezeDayCount?: number | null;
+    freezeStartDate?: string | null;
     stateOfPlay: string;
     confirmedChanges: Array<{
       date: string;

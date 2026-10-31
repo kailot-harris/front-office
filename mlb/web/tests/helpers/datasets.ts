@@ -75,10 +75,11 @@ export const EXPECTED_DATA_FILES = [
   'world_series.json',
 ] as const;
 
-/** Optional Statcast spatial artifacts written when Statcast caches are present. */
+/** Optional Statcast spatial artifacts written when Statcast caches are present, and offseason monitor. */
 export const OPTIONAL_DATA_FILES = [
   'statcast_spatial_analytics.json',
   'player_spatial_maps.json',
+  'offseason_monitor.json',
 ] as const;
 
 export type DataFileName =

@@ -349,6 +349,7 @@ WEB_JSON_MATCHUPS_INDEX              <- file.path(WEB_DATA_DIR, "matchups_index.
 WEB_JSON_STATCAST_SPATIAL_ANALYTICS  <- file.path(WEB_DATA_DIR, "statcast_spatial_analytics.json")
 WEB_JSON_PLAYER_SPATIAL_MAPS         <- file.path(WEB_DATA_DIR, "player_spatial_maps.json")
 WEB_JSON_WORLD_SERIES                <- file.path(WEB_DATA_DIR, "world_series.json")
+WEB_JSON_OFFSEASON_MONITOR           <- file.path(WEB_DATA_DIR, "offseason_monitor.json")
 
 WEB_DATA_FILES <- c(
   WEB_JSON_PROJECTIONS_SEASON_TEAMS,
@@ -361,6 +362,34 @@ WEB_DATA_FILES <- c(
   WEB_JSON_CLUTCH_LEVERAGE_METRICS,
   WEB_JSON_CBT_PAYROLL_SHEET,
   WEB_JSON_MATCHUPS_INDEX
+)
+
+# ---------------------------------------------------------------------------
+# 8. Off-season published web artifacts and burst windows
+# ---------------------------------------------------------------------------
+# Published data files monitored under tools/publish_web.R --mode=offseason
+WEB_DATA_FILES_OFFSEASON <- c(
+  WEB_JSON_OFFSEASON_MONITOR,
+  WEB_JSON_CBT_PAYROLL_SHEET,
+  WEB_JSON_PROJECTIONS_SEASON_TEAMS
+)
+
+# Off-season burst windows for cadence escalation (blueprint §4)
+MLB_OFFSEASON_BURST_WINDOWS <- list(
+  # Nov 2: option deadline, QO deadline, and open market opening at 5pm ET.
+  # Nov 17: QO accept/reject. Both are confirmed dates.
+  option_qo_deadline = c(start = "2026-11-01", end = "2026-11-03"),
+  qo_decisions       = c(start = "2026-11-16", end = "2026-11-18"),
+
+  # PRIMARY: the pre-lockout surge. In 2021 more than $1.9B in contracts
+  # were signed in this window, $1.4B of it on the final day.
+  pre_lockout        = c(start = "2026-11-24", end = "2026-12-01"),
+
+  # CONDITIONAL on no lockout. Guard each at runtime against
+  # leagueOperatingStatus == 'NORMAL' before escalating cadence.
+  winter_meetings    = c(start = "2026-12-07", end = "2026-12-09"),
+  non_tender         = c(start = "2026-11-20", end = "2026-11-23"),
+  arb_exchange       = c(start = "2027-01-08", end = "2027-01-12")
 )
 
 # ---------------------------------------------------------------------------
