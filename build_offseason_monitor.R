@@ -97,7 +97,8 @@ determine_active_phase <- function(current_date, operating_status) {
 build_offseason_monitor <- function(allow_degraded = FALSE,
                                     force_quiet = FALSE,
                                     mock_date = NULL,
-                                    operating_status_override = NULL) {
+                                    operating_status_override = NULL,
+                                    week_number = NULL) {
   
   run_start_time <- Sys.time()
   log_info("MLB Off-Season Dynamics Monitor build started.", script = "build_offseason_monitor.R")
@@ -193,7 +194,9 @@ build_offseason_monitor <- function(allow_degraded = FALSE,
     list()
   }
   
-  current_week_num <- if (!is.null(prior_monitor) && !is.null(prior_monitor$currentWeekNumber)) {
+  current_week_num <- if (!is.null(week_number)) {
+    as.integer(week_number)
+  } else if (!is.null(prior_monitor) && !is.null(prior_monitor$currentWeekNumber)) {
     prior_monitor$currentWeekNumber + 1L
   } else {
     1L
@@ -293,10 +296,14 @@ build_offseason_monitor <- function(allow_degraded = FALSE,
     list()
   }
   
-  # Combine editions history
+  # Combine editions history (deduplicating by weekNumber so re-running current week updates it cleanly)
   all_editions <- list(edition_obj)
   if (!is.null(prior_monitor) && !is.null(prior_monitor$editions)) {
-    all_editions <- c(all_editions, prior_monitor$editions)
+    for (prior_ed in prior_monitor$editions) {
+      if (!identical(prior_ed$weekNumber, current_week_num)) {
+        all_editions[[length(all_editions) + 1L]] <- prior_ed
+      }
+    }
   }
   
   # Partition: Keep active edition + rolling 4 editions in main file (max 5)
@@ -391,7 +398,12 @@ if (!interactive()) {
   force_qt <- "--quiet" %in% args
   frozen <- "--frozen" %in% args
   op_status <- if (frozen) "TRANSACTION_FREEZE" else NULL
+  
+  week_arg <- grep("^--week=", args, value = TRUE)
+  week_val <- if (length(week_arg)) as.integer(sub("^--week=", "", week_arg[1])) else NULL
+  
   build_offseason_monitor(allow_degraded = allow_deg,
                           force_quiet = force_qt,
-                          operating_status_override = op_status)
+                          operating_status_override = op_status,
+                          week_number = week_val)
 }
