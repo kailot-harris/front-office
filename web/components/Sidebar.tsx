@@ -151,10 +151,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
             <img src={`${BASE_PATH}/sport-icons/wnba.png`} alt="" width={44} height={44} className="w-full h-full object-cover" />
           </div>
           <div className="min-w-0">
-            <span className="font-extrabold text-base tracking-tight bg-gradient-to-r from-indigo-400 via-violet-400 to-amber-400 bg-clip-text text-transparent">
-              WNBA ANALYTICS
-            </span>
-            <p className="text-[11px] text-slate-400 font-medium truncate">Season Projections</p>
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-violet-400 shadow-[0_0_8px_#a78bfa]" />
+              <span className="font-bold text-base text-white tracking-wide">
+                <span className="text-violet-400">WNBA</span> ANALYTICS
+              </span>
+            </div>
+            <div className="w-full h-[2px] bg-gradient-to-r from-violet-400 via-violet-500/40 to-transparent rounded-full mt-1 mb-1" />
+            <p className="text-[10px] text-slate-400 font-mono tracking-tight">Season Projections 2026</p>
           </div>
         </div>
 
@@ -180,7 +184,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
               >
                 <Icon
                   className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
-                    isActive ? 'text-white' : 'text-slate-400 group-hover:text-emerald-400'
+                    isActive ? 'text-white' : 'text-slate-400 group-hover:text-accent-400'
                   }`}
                 />
                 <div className="min-w-0 flex-1">
@@ -196,7 +200,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
                   </div>
                   <p
                     className={`text-[11px] truncate ${
-                      isActive ? 'text-emerald-200' : 'text-slate-500'
+                      isActive ? 'text-accent-200' : 'text-slate-500'
                     }`}
                   >
                     {item.desc}
@@ -207,9 +211,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
           })}
         </div>
 
-        <div className="bg-surface/50 border border-emerald-900/30 rounded-xl p-3 space-y-1">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+        <div className="bg-surface/50 border border-accent-900/40 rounded-xl p-3 space-y-1">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-accent-400">
+            <CheckCircle2 className="w-3.5 h-3.5 text-accent-400" />
             <span>Full Analytics Suite Live</span>
           </div>
           <p className="text-[11px] text-slate-500">
@@ -221,7 +225,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       <div className="pt-4 border-t border-slate-800/80 space-y-2">
         <div className="flex items-center justify-between text-xs text-slate-400 px-1">
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-accent-400 animate-pulse" />
             <span>Live Analytics System</span>
           </span>
           <span className="font-mono text-[11px] text-slate-400">v1.0.0</span>
@@ -238,13 +242,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
 
   return (
     <>
-      <div className="md:hidden sticky top-0 z-40 bg-surface-raised/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+      <div className="md:hidden sticky top-0 z-40 bg-surface-raised/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between relative">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg overflow-hidden border border-indigo-500/30 shadow-md">
+          <div className="w-9 h-9 rounded-lg overflow-hidden border border-violet-500/30 shadow-md flex-shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={`${BASE_PATH}/sport-icons/wnba.png`} alt="" width={36} height={36} className="w-full h-full object-cover" />
           </div>
-          <span className="font-extrabold text-sm tracking-tight text-white">WNBA ANALYTICS</span>
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-violet-400 shadow-[0_0_8px_#a78bfa]" />
+            <span className="font-bold text-sm tracking-wide text-white">
+              <span className="text-violet-400">WNBA</span> ANALYTICS
+            </span>
+          </div>
         </div>
         <button
           onClick={() => setIsOpen(!isOpen)}
@@ -253,6 +262,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
         >
           {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-violet-400 via-violet-500/40 to-transparent" />
       </div>
 
       {isOpen && (
