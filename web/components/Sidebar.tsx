@@ -123,12 +123,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
             <img src={`${BASE_PATH}/sport-icons/nfl.png`} alt="" width={44} height={44} className="w-full h-full object-cover" />
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-base tracking-tight bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
-                NFL ANALYTICS
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
+              <span className="font-space font-bold text-base text-white tracking-wide">
+                <span className="text-emerald-400">NFL</span> ANALYTICS
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium truncate">Season Projections 2026</p>
+            <div className="w-full h-[2px] bg-gradient-to-r from-emerald-400 via-emerald-500/40 to-transparent rounded-full mt-1 mb-1" />
+            <p className="text-[10px] text-slate-400 font-mono tracking-tight">Season Projections 2026</p>
           </div>
         </div>
 
@@ -294,15 +296,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
   return (
     <>
       {/* Mobile Header Bar (shown only on small screens) */}
-      <div className="md:hidden sticky top-0 z-40 bg-surface-raised/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+      <div className="md:hidden sticky top-0 z-40 bg-surface-raised/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between relative">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg overflow-hidden border border-emerald-500/30 shadow-md">
+          <div className="w-9 h-9 rounded-lg overflow-hidden border border-emerald-500/30 shadow-md flex-shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={`${BASE_PATH}/sport-icons/nfl.png`} alt="" width={36} height={36} className="w-full h-full object-cover" />
           </div>
-          <div>
-            <span className="font-extrabold text-sm tracking-tight text-white">NFL PROJECTIONS</span>
-            <span className="text-[10px] text-emerald-400 font-mono ml-2">2026</span>
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
+            <span className="font-space font-bold text-sm tracking-tight text-white">
+              <span className="text-emerald-400">NFL</span> ANALYTICS
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono ml-1.5">2026</span>
           </div>
         </div>
         <button
@@ -312,6 +317,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
         >
           {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-emerald-500/40 to-transparent" />
       </div>
 
       {/* Mobile Drawer Overlay */}

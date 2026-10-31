@@ -32,9 +32,12 @@ export const Navbar: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
-                  NFL ANALYTICS
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
+                  <span className="font-space font-bold text-lg text-white tracking-wide">
+                    <span className="text-emerald-400">NFL</span> ANALYTICS
+                  </span>
+                </div>
                 <span className="px-2 py-0.5 text-xs font-semibold uppercase tracking-wider rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                   1,000-Sim Monte Carlo
                 </span>
