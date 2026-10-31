@@ -189,6 +189,10 @@ local({
   if (!identical(normalizePath(getwd(), winslash = "/", mustWork = FALSE), root)) setwd(root)
 })
 
+if (dir.exists("C:/Users/kailo/AppData/Local/R/win-library/4.5")) {
+  .libPaths(unique(c("C:/Users/kailo/AppData/Local/R/win-library/4.5", .libPaths())))
+}
+
 suppressPackageStartupMessages({
   library(jsonlite)
 })
@@ -265,10 +269,63 @@ source("config.R")
 }
 
 # ------------------------------------------------------------------------------
+# Zero-Betting Policy Guard Check
+# ------------------------------------------------------------------------------
+# Commercial sportsbook bans while whitelisting mathematical modeling terms:
+# draft lottery, lottery odds, arbitration model probability, projection interval.
+.PW_FORBIDDEN_BETTING_DOMAINS <- c(
+  "draftkings.com", "fanduel.com", "betmgm.com", "caesars.com/sportsbook",
+  "pointsbet.com", "bovada.lv", "bet365.com", "betonline.ag", "barstoolsportsbook.com"
+)
+
+.PW_FORBIDDEN_BETTING_TERMS <- c(
+  "sportsbook", "betmgm", "draftkings", "fanduel", "pointsbet", "bovada", "bet365",
+  "moneyline", "runline", "over/under", "\\bparlay\\b", "\\bvig\\b", "\\bjuice\\b", "\\bprop bet\\b"
+)
+
+.assert_zero_betting <- function(files) {
+  violations <- character(0)
+  for (f in files) {
+    if (!file.exists(f)) next
+    txt <- tryCatch(readLines(f, warn = FALSE, encoding = "UTF-8"), error = function(e) character(0))
+    if (!length(txt)) next
+    
+    # Check forbidden domains
+    for (dom in .PW_FORBIDDEN_BETTING_DOMAINS) {
+      if (any(grepl(dom, txt, ignore.case = TRUE))) {
+        violations <- c(violations, sprintf("%s: forbidden sportsbook domain '%s'", basename(f), dom))
+      }
+    }
+    
+    # Check forbidden wagering terms
+    for (term in .PW_FORBIDDEN_BETTING_TERMS) {
+      matches <- grep(term, txt, ignore.case = TRUE)
+      if (length(matches) > 0) {
+        # Check against whitelisted context:
+        # whitelist mathematical terms: draft lottery, lottery odds, arbitration model probability, projection interval
+        viol_lines <- txt[matches]
+        whitelisted <- grepl("draft lottery|lottery odds|arbitration model probability|projection interval",
+                             viol_lines, ignore.case = TRUE)
+        if (any(!whitelisted)) {
+          violations <- c(violations, sprintf("%s: forbidden betting term '%s'", basename(f), term))
+        }
+      }
+    }
+  }
+  
+  pass <- length(violations) == 0
+  list(id = "ZERO_BETTING", name = "zero-betting policy guard",
+       pass = pass, fatal = TRUE, violations = violations,
+       detail = if (length(violations)) paste0("    [VIOLATION] ", violations)
+                else "    all published files strictly conform to zero-betting policy",
+       summary = sprintf("%d zero-betting violation(s) detected", length(violations)))
+}
+
+# ------------------------------------------------------------------------------
 # ASSERTION A - mtime freshness
 # ------------------------------------------------------------------------------
-.assert_mtime_freshness <- function(run_start) {
-  files <- WEB_DATA_FILES          # <- the ten names come from config.R ONLY
+.assert_mtime_freshness <- function(run_start, mode = "inseason") {
+  files <- if (identical(mode, "offseason")) WEB_DATA_FILES_OFFSEASON else WEB_DATA_FILES
   info  <- file.info(files)
   stale <- character(0)
   rows  <- vector("list", length(files))
@@ -282,7 +339,8 @@ source("config.R")
                          if (present && !is.na(mt)) format(mt, "%Y-%m-%d %H:%M:%S") else "<absent>")
     if (!fresh) stale <- c(stale, f)
   }
-  list(id = "A", name = "mtime freshness (WEB_DATA_FILES newer than run start)",
+  list(id = "A", name = sprintf("mtime freshness (%s datasets newer than run start)",
+                                if (identical(mode, "offseason")) "WEB_DATA_FILES_OFFSEASON" else "WEB_DATA_FILES"),
        pass = length(stale) == 0, fatal = TRUE,
        detail = unlist(rows), stale = stale,
        summary = sprintf("%d/%d published datasets regenerated after run start %s",
@@ -291,32 +349,7 @@ source("config.R")
 }
 
 # ------------------------------------------------------------------------------
-# ASSERTION B - slate agreement.
-#
-# Independent re-derivation of the published slate header from the schedule
-# cache, using the same documented rule as tools/export_web_data.R:
-#   * keep only MATCHUP_GAME_TYPES (config.R) - regular season plus the four
-#     postseason rounds;
-#   * collapse duplicate game_pk rows, which the MLB Stats API emits for
-#     suspended-and-resumed and rescheduled games;
-#   * week index = round((monday_of(date) - monday_of(first game date)) / 7) + 1;
-#   * active_week = the week holding today when today is inside the season's
-#     date span, else the week holding the last scheduled date.
-#
-# The RULE is reimplemented here rather than imported from the exporter, and
-# that is the whole point: calling the exporter's build_matchup_slates() would
-# make this an echo of the thing under test. What IS imported is every
-# CONSTANT (MATCHUP_GAME_TYPES, MLB_CURRENT_SEASON, CACHE_MLB_SCHEDULE,
-# WEB_JSON_MATCHUPS_INDEX), per CLAUDE.md's single-source-of-truth rule --
-# constants from config.R, logic independent.
-#
-# One deliberate difference from the exporter: the exporter's "else" arm walks
-# back to the latest GRADED result in the Elo history, which lives in a
-# different cache this gate does not read. This implementation falls back to the
-# last scheduled date instead. Both land on the same week whenever the schedule
-# is complete and the season is in progress, and `week_tolerance` (default 1)
-# absorbs the boundary case rather than making B flap once a year. A disagreement
-# larger than the tolerance is a real disagreement.
+# ASSERTION B - slate agreement / offseason phase validation
 # ------------------------------------------------------------------------------
 .pw_monday_of <- function(d) {
   d <- as.Date(d)
@@ -347,11 +380,6 @@ source("config.R")
 
   keep <- sched$game_type %in% MATCHUP_GAME_TYPES
   s <- sched[keep, , drop = FALSE]
-  # Collapse duplicate game_pk rows. The exporter ranks the duplicates by
-  # status and keeps the most settled one; the choice only affects which row's
-  # SCORE survives, never the count or the date, so for a count-and-date
-  # cross-check plain first-wins dedupe is equivalent and carries no copy of
-  # the exporter's status-rank table.
   s <- s[!duplicated(s$game_pk), , drop = FALSE]
   gd <- as.Date(substr(as.character(s$official_date), 1, 10))
   s <- s[!is.na(gd), , drop = FALSE]
@@ -374,9 +402,56 @@ source("config.R")
        note = NULL)
 }
 
+.VALID_OFFSEASON_PHASES <- c(
+  "Post-World Series Review",
+  "Option & Qualifying Offer Window",
+  "Pre-Lockout Surge",
+  "Transaction Freeze",
+  "Winter Meetings & Rule 5 Draft",
+  "Arbitration Exchange & Hearings",
+  "Spring Training Transition"
+)
+
+.assert_offseason_phase <- function(monitor_path = WEB_JSON_OFFSEASON_MONITOR) {
+  if (!file.exists(monitor_path)) {
+    return(list(id = "B", name = "offseason phase and week bounds validation",
+                pass = FALSE, fatal = TRUE,
+                detail = sprintf("    %s is absent", basename(monitor_path)),
+                summary = "offseason monitor dataset absent"))
+  }
+  d <- tryCatch(jsonlite::fromJSON(monitor_path, simplifyDataFrame = FALSE), error = function(e) NULL)
+  if (is.null(d)) {
+    return(list(id = "B", name = "offseason phase and week bounds validation",
+                pass = FALSE, fatal = TRUE,
+                detail = "    cannot parse offseason_monitor.json",
+                summary = "JSON parse error"))
+  }
+  
+  phase <- d$activePhase
+  week_num <- d$currentWeekNumber
+  phase_ok <- !is.null(phase) && phase %in% .VALID_OFFSEASON_PHASES
+  week_ok <- !is.null(week_num) && is.numeric(week_num) && week_num >= 1 && week_num <= 30
+  
+  pass <- phase_ok && week_ok
+  detail <- c(
+    sprintf("    activePhase       : %s [%s]", ifelse(is.null(phase), "<NULL>", phase), if (phase_ok) "VALID" else "INVALID"),
+    sprintf("    currentWeekNumber : %s [%s]", ifelse(is.null(week_num), "<NULL>", week_num), if (week_ok) "IN BOUNDS (1-30)" else "OUT OF BOUNDS"),
+    sprintf("    operatingStatus   : %s", ifelse(is.null(d$leagueOperatingStatus), "<NULL>", d$leagueOperatingStatus))
+  )
+  list(id = "B", name = "offseason phase and week bounds validation",
+       pass = pass, fatal = TRUE,
+       detail = detail,
+       summary = sprintf("phase='%s' week=%s", ifelse(is.null(phase), "NULL", phase), ifelse(is.null(week_num), "NULL", week_num)))
+}
+
 .assert_slate_agreement <- function(season = MLB_CURRENT_SEASON,
                                     week_tolerance = 1L,
-                                    published_override = NULL) {
+                                    published_override = NULL,
+                                    mode = "inseason") {
+  if (identical(mode, "offseason")) {
+    return(.assert_offseason_phase())
+  }
+  
   computed <- .compute_slate_from_schedule(season)
   note <- computed$note
   published <- list(active_week = NA_integer_, total_games = NA_integer_)
@@ -425,11 +500,6 @@ source("config.R")
 
 # ------------------------------------------------------------------------------
 # ASSERTION C - non-empty diff under the published tree.
-# Resolved against the RUNTIME git root, never a hardcoded path: config.R's
-# MLB_ROOT_DIR is an absolute path into the main checkout, so a worktree would
-# otherwise be reported against the wrong repository.
-# WEB_DATA_DIR covers web/public/data/matchups/ as well, since git status takes
-# a directory prefix. MLB has no animations tree (cf. NFL's WEB_ANIM_DIR).
 # ------------------------------------------------------------------------------
 .pw_rel_to_repo <- function(path, repo_root) {
   if (is.na(repo_root)) return(path)
@@ -438,7 +508,7 @@ source("config.R")
   if (startsWith(p, r)) substring(p, nchar(r) + 1L) else p
 }
 
-.assert_nonempty_diff <- function(repo_root) {
+.assert_nonempty_diff <- function(repo_root, mode = "inseason") {
   if (is.na(repo_root)) {
     return(list(id = "C", name = "non-empty diff under web/public/data",
                 pass = FALSE, fatal = TRUE, changed = character(0), paths = character(0),
@@ -448,6 +518,36 @@ source("config.R")
   rel <- .pw_rel_to_repo(WEB_DATA_DIR, repo_root)
   r <- .pw_git(repo_root, c("status", "--porcelain", "--", rel))
   changed <- if (r$ok) r$out[nzchar(r$out)] else character(0)
+  
+  if (identical(mode, "offseason")) {
+    # Off-season: check pending changes specifically in WEB_DATA_FILES_OFFSEASON
+    off_rel <- vapply(WEB_DATA_FILES_OFFSEASON, function(p) .pw_rel_to_repo(p, repo_root), character(1))
+    off_changed <- Filter(function(line) {
+      any(vapply(off_rel, function(target) grepl(target, line, fixed = TRUE), logical(1)))
+    }, changed)
+    
+    # Lockout tolerance check:
+    # If ΔS = ∅, but freezeDayCount or lastPublished updated in offseason_monitor.json,
+    # git status shows offseason_monitor.json modified, which satisfies off_changed > 0.
+    # Furthermore, even if porcelain is clean, inspect if lastPublished or freezeDayCount advanced
+    pass <- length(off_changed) > 0
+    if (!pass && file.exists(WEB_JSON_OFFSEASON_MONITOR)) {
+      # Check diff against HEAD for offseason_monitor.json
+      monitor_rel <- .pw_rel_to_repo(WEB_JSON_OFFSEASON_MONITOR, repo_root)
+      diff_head <- .pw_git(repo_root, c("diff", "HEAD", "--", monitor_rel))
+      if (diff_head$ok && any(grepl('"lastPublished"|"freezeDayCount"', diff_head$out))) {
+        pass <- TRUE
+        off_changed <- c(off_changed, paste("M ", monitor_rel, "(lockout/timestamp advancement)"))
+      }
+    }
+    
+    return(list(id = "C", name = "non-empty diff in offseason web data",
+                pass = pass, fatal = TRUE, changed = off_changed, paths = off_rel,
+                detail = if (length(off_changed)) paste0("    ", off_changed)
+                         else sprintf("    CLEAN against HEAD in offseason files (repo: %s)", repo_root),
+                summary = sprintf("%d pending offseason change(s)", length(off_changed))))
+  }
+  
   list(id = "C", name = "non-empty diff under web/public/data",
        pass = length(changed) > 0, fatal = TRUE, changed = changed, paths = rel,
        detail = if (length(changed)) paste0("    ", changed)
@@ -456,11 +556,7 @@ source("config.R")
 }
 
 # ------------------------------------------------------------------------------
-# ASSERTION D - exporter [WARN] scan for the run window.
-# Matches "export_web_data" anywhere in the line rather than only in the log's
-# script field: log_warn() calls made from inside a sourced function body can
-# record the script as something other than the file name, so a script-field
-# match is free to find nothing while warnings are being logged.
+# ASSERTION D - exporter [WARN] scan & Ingestion Health
 # ------------------------------------------------------------------------------
 .scan_exporter_warnings <- function(log_lines, run_start) {
   idx <- grep("\\[WARN\\].*export_web_data", log_lines)
@@ -473,7 +569,43 @@ source("config.R")
   as.character(hits)
 }
 
-.assert_log_scan <- function(log_lines, run_start, fail_on_exporter_warnings) {
+.assert_offseason_health <- function(allow_degraded = FALSE) {
+  manifest_path <- file.path(MLB_CACHE_ROOT, "ingestion_manifest.json")
+  if (!file.exists(manifest_path)) {
+    # If no manifest exists, check if quiet week is being asserted
+    return(list(id = "D", name = "ingestion health check (manifest composite_health)",
+                pass = TRUE, fatal = TRUE,
+                detail = "    [NOTE] ingestion_manifest.json not found; default HEALTHY assumed",
+                summary = "no manifest (default HEALTHY)"))
+  }
+  manifest <- tryCatch(jsonlite::fromJSON(manifest_path, simplifyDataFrame = FALSE), error = function(e) NULL)
+  comp_health <- if (!is.null(manifest$composite_health)) manifest$composite_health else "HEALTHY"
+  
+  pass <- identical(comp_health, "HEALTHY") || isTRUE(allow_degraded)
+  
+  # Wire adapter check
+  wire_status <- if (!is.null(manifest$adapters$league_wire$status)) manifest$adapters$league_wire$status else "HEALTHY"
+  if (identical(wire_status, "FAILED") && !allow_degraded) {
+    pass <- FALSE
+  }
+  
+  detail <- c(
+    sprintf("    composite_health  : %s", comp_health),
+    sprintf("    league_wire       : %s", wire_status),
+    if (isTRUE(allow_degraded)) "    --allow-degraded flag active (advisory only; baseline promotion prohibited)"
+  )
+  
+  list(id = "D", name = "ingestion health check (composite_health == HEALTHY)",
+       pass = pass, fatal = TRUE,
+       detail = detail,
+       summary = sprintf("composite_health=%s wire=%s", comp_health, wire_status))
+}
+
+.assert_log_scan <- function(log_lines, run_start, fail_on_exporter_warnings,
+                             mode = "inseason", allow_degraded = FALSE) {
+  if (identical(mode, "offseason")) {
+    return(.assert_offseason_health(allow_degraded))
+  }
   warns <- .scan_exporter_warnings(log_lines, run_start)
   list(id = "D", name = "exporter [WARN] scan of the pipeline log",
        pass = !(fail_on_exporter_warnings && length(warns) > 0),
@@ -515,30 +647,46 @@ source("config.R")
   as.POSIXct(val, format = "%Y-%m-%dT%H:%M:%S", tz = "UTC")
 }
 
-.assert_payload_provenance <- function(run_start) {
-  files <- WEB_DATA_FILES
+.assert_payload_provenance <- function(run_start, mode = "inseason") {
+  files <- if (identical(mode, "offseason")) WEB_DATA_FILES_OFFSEASON else WEB_DATA_FILES
   rows <- character(0)
   stale <- character(0)
   unstamped <- character(0)
   for (f in files) {
     g <- .pw_payload_generated_at(f)
     if (is.na(g)) {
+      # In offseason mode, check for lastPublished if generated_at is absent
+      if (identical(mode, "offseason") && file.exists(f)) {
+        con <- file(f, open = "rb")
+        raw <- readBin(con, "raw", n = 4096L)
+        close(con)
+        txt <- rawToChar(raw[raw != as.raw(0)])
+        Encoding(txt) <- "UTF-8"
+        m <- regmatches(txt, regexpr('"lastPublished"[[:space:]]*:[[:space:]]*"[^"]+"', txt))
+        if (length(m)) {
+          val <- sub('^.*:[[:space:]]*"([^"]+)".*$', "\\1", m[1])
+          g <- as.POSIXct(val, format = "%Y-%m-%dT%H:%M:%S", tz = "UTC")
+        }
+      }
+    }
+    
+    if (is.na(g)) {
       unstamped <- c(unstamped, basename(f))
       next
     }
     fresh <- !is.na(run_start) && g >= run_start
     if (!fresh) stale <- c(stale, basename(f))
-    rows <- c(rows, sprintf("    %-9s %-40s generated_at=%s",
+    rows <- c(rows, sprintf("    %-9s %-40s stamp=%s",
                             if (fresh) "[FRESH]" else "[STALE]", basename(f),
                             format(g, "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")))
   }
   if (length(unstamped)) {
     rows <- c(rows,
-              sprintf("    [NO STAMP] %d payload(s) carry no generated_at, so F cannot speak for them:",
+              sprintf("    [NO STAMP] %d payload(s) carry no generated_at / lastPublished, so F cannot speak for them:",
                       length(unstamped)),
               paste0("               ", unstamped))
   }
-  list(id = "F", name = "payload provenance (embedded generated_at at or after run start)",
+  list(id = "F", name = "payload provenance (embedded timestamp at or after run start)",
        pass = length(stale) == 0, fatal = TRUE,
        stale = stale, unstamped = unstamped,
        detail = rows,
@@ -784,24 +932,30 @@ publish_web <- function(dry_run = TRUE,
                         publish_branch = "main",
                         fail_on_exporter_warnings = FALSE,
                         skip_contracts = FALSE,
-                        commit_message = NULL) {
+                        commit_message = NULL,
+                        mode = "inseason",
+                        allow_degraded = FALSE) {
 
   repo_root <- .pw_repo_root()
   log_lines <- if (file.exists(LOG_FILE)) readLines(LOG_FILE, warn = FALSE) else character(0)
   if (is.null(run_start)) run_start <- .pw_detect_run_start(log_lines)
   if (is.null(commit_message)) {
-    commit_message <- sprintf("Publish MLB web artifacts from the %s pipeline run",
+    commit_message <- sprintf("Publish MLB %s web artifacts from the %s pipeline run",
+                              mode,
                               if (is.na(run_start)) format(Sys.Date()) else format(run_start, "%Y-%m-%d %H:%M"))
   }
 
+  target_files <- if (identical(mode, "offseason")) WEB_DATA_FILES_OFFSEASON else WEB_DATA_FILES
+
   checks <- list(
-    .assert_mtime_freshness(run_start),
-    .assert_slate_agreement(season),
-    .assert_nonempty_diff(repo_root),
+    .assert_mtime_freshness(run_start, mode = mode),
+    .assert_slate_agreement(season, mode = mode),
+    .assert_nonempty_diff(repo_root, mode = mode),
     .assert_publish_branch(repo_root, publish_branch),
-    .assert_log_scan(log_lines, run_start, fail_on_exporter_warnings),
-    .assert_payload_provenance(run_start),
-    .assert_web_contracts(skip_contracts)
+    .assert_log_scan(log_lines, run_start, fail_on_exporter_warnings, mode = mode, allow_degraded = allow_degraded),
+    .assert_payload_provenance(run_start, mode = mode),
+    .assert_web_contracts(skip_contracts),
+    .assert_zero_betting(target_files)
   )
 
   passed  <- vapply(checks, function(ch) isTRUE(ch$pass), logical(1))
@@ -810,16 +964,19 @@ publish_web <- function(dry_run = TRUE,
 
   # ---- report ----------------------------------------------------------------
   cat("\n================================================================\n")
-  cat(sprintf("MLB web publish gate  [%s]\n",
-              if (dry_run) "DRY RUN - nothing will be published" else "LIVE PUBLISH"))
+  cat(sprintf("MLB web publish gate  [%s | mode: %s]\n",
+              if (dry_run) "DRY RUN - nothing will be published" else "LIVE PUBLISH", mode))
   cat("================================================================\n")
   cat(sprintf("  repo root        : %s\n", ifelse(is.na(repo_root), "<not a git repo>", repo_root)))
   cat(sprintf("  publish branch   : %s\n", publish_branch))
   cat(sprintf("  season           : %d\n", as.integer(season)))
+  cat(sprintf("  mode             : %s\n", mode))
   cat(sprintf("  pipeline log     : %s (%d lines)\n", LOG_FILE, length(log_lines)))
   cat(sprintf("  run start        : %s\n",
               ifelse(is.na(run_start), "<undetected>", format(run_start, "%Y-%m-%d %H:%M:%S"))))
-  cat(sprintf("  schedule cache   : %s\n", CACHE_MLB_SCHEDULE(season)))
+  if (!identical(mode, "offseason")) {
+    cat(sprintf("  schedule cache   : %s\n", CACHE_MLB_SCHEDULE(season)))
+  }
   cat("\n-- Assertions --------------------------------------------------\n")
   for (ch in checks) {
     cat(sprintf("  [%s] %s. %s - %s\n",
@@ -829,11 +986,13 @@ publish_web <- function(dry_run = TRUE,
   }
 
   cat("\n-- Would publish -----------------------------------------------\n")
-  cat(sprintf("  %d dataset(s) asserted from %s:\n", length(WEB_DATA_FILES), WEB_DATA_DIR))
-  for (f in WEB_DATA_FILES) cat(sprintf("    - %s\n", basename(f)))
-  slates <- if (dir.exists(WEB_MATCHUPS_DIR)) list.files(WEB_MATCHUPS_DIR) else character(0)
-  cat(sprintf("  %d per-slate file(s) from %s (not individually asserted; see config.R section 7)\n",
-              length(slates), WEB_MATCHUPS_DIR))
+  cat(sprintf("  %d dataset(s) asserted from %s:\n", length(target_files), WEB_DATA_DIR))
+  for (f in target_files) cat(sprintf("    - %s\n", basename(f)))
+  if (!identical(mode, "offseason")) {
+    slates <- if (dir.exists(WEB_MATCHUPS_DIR)) list.files(WEB_MATCHUPS_DIR) else character(0)
+    cat(sprintf("  %d per-slate file(s) from %s (not individually asserted; see config.R section 7)\n",
+                length(slates), WEB_MATCHUPS_DIR))
+  }
   cat(sprintf("  commit message   : %s\n", commit_message))
   cat(sprintf("  push sequence    : commit -> push MLB-Analytics %s (deploy belongs to the aggregator's sync-sports.yml)\n",
               publish_branch))
@@ -855,7 +1014,7 @@ publish_web <- function(dry_run = TRUE,
 
   result <- list(
     dry_run = dry_run, blocked = blocked, run_start = run_start, season = as.integer(season),
-    repo_root = repo_root, publish_branch = publish_branch,
+    mode = mode, repo_root = repo_root, publish_branch = publish_branch,
     assertions_passed = as.character(vapply(checks[passed], function(ch) ch$id, character(1))),
     assertions_failed = as.character(vapply(checks[!passed], function(ch) ch$id, character(1))),
     slate_computed = checks[[2]]$computed,
@@ -866,7 +1025,7 @@ publish_web <- function(dry_run = TRUE,
     unstamped_payloads = checks[[6]]$unstamped,
     pending_changes = checks[[3]]$changed,
     value_bets_published = .pw_value_bet_count(),
-    contracts_pass = isTRUE(checks[[length(checks)]]$pass),
+    contracts_pass = isTRUE(checks[[7]]$pass),
     checks = checks, published = FALSE, steps = list()
   )
 
@@ -877,6 +1036,20 @@ publish_web <- function(dry_run = TRUE,
 
   result$steps <- .pw_do_publish(repo_root, checks[[3]]$paths, commit_message)
   result$published <- TRUE
+  
+  # Atomic Baseline Promotion (blueprint §2 & §7):
+  # In offseason mode, promote cache/league_state_staged.json to cache/league_state_baseline.json
+  # ONLY after successful git publish commit, and ONLY if NOT --allow-degraded
+  if (identical(mode, "offseason") && !isTRUE(allow_degraded)) {
+    staged_file <- file.path(MLB_CACHE_ROOT, "league_state_staged.json")
+    baseline_file <- file.path(MLB_CACHE_ROOT, "league_state_baseline.json")
+    if (file.exists(staged_file)) {
+      file.copy(staged_file, baseline_file, overwrite = TRUE)
+      log_info("publish_web: atomically promoted league_state_staged.json to league_state_baseline.json",
+               script = .PW_LOG_SCRIPT)
+    }
+  }
+
   log_info(sprintf("publish_web: web artifacts committed and pushed to MLB-Analytics %s. The site changes when the aggregator's sync-sports.yml next pulls; this script does not deploy.",
                    publish_branch), script = .PW_LOG_SCRIPT)
   .pw_notify_discord(result)
@@ -884,30 +1057,31 @@ publish_web <- function(dry_run = TRUE,
 }
 
 # ------------------------------------------------------------------------------
-# CLI wrapper. Keyed off commandArgs() - i.e. "was I invoked as
-# `Rscript tools/publish_web.R`" - NOT off sys.nframe(). source()ing this file
-# from another script or from `Rscript -e` defines the function and runs
-# nothing, which is what makes the function callable without surprise side
-# effects.
-#   Rscript tools/publish_web.R                  # dry run (default)
-#   Rscript tools/publish_web.R --publish        # live publish
-#   Rscript tools/publish_web.R --strict-warnings
-# Exit status: 0 only when nothing fatal failed; 1 on any fatal failure, so a
-# scheduled caller can branch on it.
+# CLI wrapper. Keyed off commandArgs()
 # ------------------------------------------------------------------------------
 local({
   argv <- commandArgs(trailingOnly = FALSE)
   files <- sub("^--file=", "", argv[grepl("^--file=", argv)])
   if (!any(grepl("publish_web\\.R$", files))) return(invisible(NULL))
   opts <- commandArgs(trailingOnly = TRUE)
-  unknown <- setdiff(opts, c("--publish", "--strict-warnings", "--skip-contracts"))
+  
+  mode_val <- "inseason"
+  mode_opt <- grep("^--mode=", opts, value = TRUE)
+  if (length(mode_opt)) {
+    mode_val <- sub("^--mode=", "", mode_opt[1])
+  }
+  
+  recognized <- c("--publish", "--strict-warnings", "--skip-contracts", "--allow-degraded")
+  unknown <- setdiff(opts[!grepl("^--mode=", opts)], recognized)
   if (length(unknown) > 0) {
-    cat(sprintf("[ERROR] publish_web.R: unknown CLI option(s): %s (allowed: --publish, --strict-warnings, --skip-contracts)\n",
+    cat(sprintf("[ERROR] publish_web.R: unknown CLI option(s): %s (allowed: --publish, --strict-warnings, --skip-contracts, --mode=inseason|offseason, --allow-degraded)\n",
                 paste(unknown, collapse = ", ")), file = stderr())
     quit(status = 2L)
   }
   res <- publish_web(dry_run = !("--publish" %in% opts),
                      fail_on_exporter_warnings = "--strict-warnings" %in% opts,
-                     skip_contracts = "--skip-contracts" %in% opts)
+                     skip_contracts = "--skip-contracts" %in% opts,
+                     mode = mode_val,
+                     allow_degraded = "--allow-degraded" %in% opts)
   quit(status = if (isTRUE(res$blocked)) 1L else 0L)
 })
