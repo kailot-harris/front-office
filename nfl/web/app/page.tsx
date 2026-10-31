@@ -10,37 +10,40 @@ export default function HomePage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
-              Season 2026 Live
-            </span>
-            <span className="text-xs text-slate-400 font-mono">1,000-Sim Monte Carlo</span>
+      <div className="relative pb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
+                Season 2026 Live
+              </span>
+              <span className="text-xs text-slate-400 font-mono">1,000-Sim Monte Carlo</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white flex items-center gap-3">
+              <span><span className="text-emerald-400">NFL</span> Season Projections</span>
+            </h1>
+            <p className="text-slate-400 text-sm mt-1 max-w-2xl">
+              Probabilistic simulation engine across all 32 NFL franchises, synthesizing Ridge regression, Elo ratings, EPA/play efficiency, situational fatigue, and market lines.
+            </p>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white flex items-center gap-3">
-            <span>NFL Season Projections</span>
-          </h1>
-          <p className="text-slate-400 text-sm mt-1 max-w-2xl">
-            Probabilistic simulation engine across all 32 NFL franchises, synthesizing Ridge regression, Elo ratings, EPA/play efficiency, situational fatigue, and market lines.
-          </p>
-        </div>
 
-        {/* Quick Stats Grid */}
-        <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
-          <div className="bg-surface-raised border border-slate-800 rounded-lg px-3 py-2 text-right">
-            <span className="text-slate-500 block text-[10px] uppercase font-mono">Total Simulations</span>
-            <span className="text-white font-mono font-bold text-sm">1,000 Seasons</span>
-          </div>
-          <div className="bg-surface-raised border border-slate-800 rounded-lg px-3 py-2 text-right">
-            <span className="text-slate-500 block text-[10px] uppercase font-mono">Playoff Field</span>
-            <span className="text-emerald-400 font-mono font-bold text-sm">14 Seeds (7/Conf)</span>
-          </div>
-          <div className="bg-surface-raised border border-slate-800 rounded-lg px-3 py-2 text-right">
-            <span className="text-slate-500 block text-[10px] uppercase font-mono">Margin Sigma (σ)</span>
-            <span className="text-white font-mono font-bold text-sm">14.6 pts</span>
+          {/* Quick Stats Grid */}
+          <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
+            <div className="bg-surface-raised border border-slate-800 rounded-lg px-3 py-2 text-right">
+              <span className="text-slate-500 block text-[10px] uppercase font-mono">Total Simulations</span>
+              <span className="text-white font-mono font-bold text-sm">1,000 Seasons</span>
+            </div>
+            <div className="bg-surface-raised border border-slate-800 rounded-lg px-3 py-2 text-right">
+              <span className="text-slate-500 block text-[10px] uppercase font-mono">Playoff Field</span>
+              <span className="text-emerald-400 font-mono font-bold text-sm">14 Seeds (7/Conf)</span>
+            </div>
+            <div className="bg-surface-raised border border-slate-800 rounded-lg px-3 py-2 text-right">
+              <span className="text-slate-500 block text-[10px] uppercase font-mono">Margin Sigma (σ)</span>
+              <span className="text-white font-mono font-bold text-sm">14.6 pts</span>
+            </div>
           </div>
         </div>
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-emerald-500/40 to-transparent" />
       </div>
 
       {/* Feature Highlights Grid */}

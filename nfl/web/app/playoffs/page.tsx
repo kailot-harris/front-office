@@ -15,34 +15,37 @@ export default function PlayoffsPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono flex items-center gap-1.5">
-              <Award className="w-3.5 h-3.5" />
-              <span>Postseason Seeding Engine</span>
-            </span>
-            <span className="text-xs text-slate-400 font-mono">14 Seeds (7 AFC / 7 NFC)</span>
+      <div className="relative pb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-emerald-500/20 font-mono flex items-center gap-1.5">
+                <Award className="w-3.5 h-3.5 text-amber-400" />
+                <span>Postseason Seeding Engine</span>
+              </span>
+              <span className="text-xs text-slate-400 font-mono">14 Seeds (7 AFC / 7 NFC)</span>
+            </div>
+            <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-3">
+              <span><span className="text-emerald-400">NFL</span> Playoff Machine & Bracket Simulator</span>
+            </h1>
+            <p className="text-slate-400 text-sm mt-1 max-w-3xl">
+              Provisional 14-team postseason field resolved via real NFL tiebreakers (head-to-head, division, common games, conference, SOV, and SOS). Includes round-by-round Monte Carlo advancement equity and single-trial simulation.
+            </p>
           </div>
-          <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-3">
-            <span>Playoff Machine & Bracket Simulator</span>
-          </h1>
-          <p className="text-slate-400 text-sm mt-1 max-w-3xl">
-            Provisional 14-team postseason field resolved via real NFL tiebreakers (head-to-head, division, common games, conference, SOV, and SOS). Includes round-by-round Monte Carlo advancement equity and single-trial simulation.
-          </p>
-        </div>
 
-        {/* Quick Context Chips */}
-        <div className="flex items-center gap-2.5 text-xs font-mono">
-          <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
-            <span className="text-slate-500 block text-[10px] uppercase">Simulations</span>
-            <span className="text-white font-bold">{dataset.n_simulations.toLocaleString()} Trials</span>
-          </div>
-          <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
-            <span className="text-slate-500 block text-[10px] uppercase">Seeding Format</span>
-            <span className="text-amber-400 font-bold">14 Teams (4 Div + 3 WC)</span>
+          {/* Quick Context Chips */}
+          <div className="flex items-center gap-2.5 text-xs font-mono">
+            <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
+              <span className="text-slate-500 block text-[10px] uppercase">Simulations</span>
+              <span className="text-white font-bold">{dataset.n_simulations.toLocaleString()} Trials</span>
+            </div>
+            <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
+              <span className="text-slate-500 block text-[10px] uppercase">Seeding Format</span>
+              <span className="text-amber-400 font-bold">14 Teams (4 Div + 3 WC)</span>
+            </div>
           </div>
         </div>
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-emerald-500/40 to-transparent" />
       </div>
 
       {/* Main Interactive Client */}

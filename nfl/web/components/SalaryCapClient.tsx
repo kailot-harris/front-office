@@ -83,22 +83,25 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-mono font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded-full">
-            Salary Cap & Roster Valuation
-          </span>
-          <span className="text-xs font-mono text-slate-400">
-            2026 NFL Cap Ceiling: ${data.cap_ceiling}M (OverTheCap)
-          </span>
+      <div className="relative pb-6">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-mono font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded-full">
+              Salary Cap & Roster Valuation
+            </span>
+            <span className="text-xs font-mono text-slate-400">
+              2026 NFL Cap Ceiling: ${data.cap_ceiling}M (OverTheCap)
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+            <span className="text-emerald-400">NFL</span> Positional Cap Allocation & Contract Valuation
+          </h1>
+          <p className="text-slate-400 text-sm mt-1 max-w-3xl">
+            Comprehensive salary cap analytics across all 32 NFL franchises: active cash APY, positional spending distributions,
+            dead money burdens, and league-wide top contract guarantees.
+          </p>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-          Positional Cap Allocation & Contract Valuation
-        </h1>
-        <p className="text-slate-400 text-sm mt-1 max-w-3xl">
-          Comprehensive salary cap analytics across all 32 NFL franchises: active cash APY, positional spending distributions,
-          dead money burdens, and league-wide top contract guarantees.
-        </p>
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-emerald-500/40 to-transparent" />
       </div>
 
       {/* KPI Stats */}
