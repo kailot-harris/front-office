@@ -1,0 +1,112 @@
+[
+  {
+    "id": "wire_sample_001",
+    "date": "2027-02-01",
+    "source_type": "official_wire",
+    "source_url": "https://www.wnba.com/transactions/2027",
+    "raw_text": "February 1, 2027: Seattle Storm sign forward Nneka Ogwumike to a multi-year contract as an unrestricted free agent.",
+    "expected_deltas": [
+      {
+        "entity_type": "player",
+        "entity_id": "1068",
+        "field": "team",
+        "prior_val": "LA",
+        "new_val": "SEA",
+        "tier": "CONFIRMED"
+      },
+      {
+        "entity_type": "player",
+        "entity_id": "1068",
+        "field": "contractStatus",
+        "prior_val": "UNDER_CONTRACT",
+        "new_val": "UNDER_CONTRACT",
+        "tier": "CONFIRMED"
+      }
+    ]
+  },
+  {
+    "id": "wire_sample_002",
+    "date": "2027-01-15",
+    "source_type": "official_wire",
+    "source_url": "https://www.wnba.com/transactions/2027",
+    "raw_text": "January 15, 2027: Seattle Storm designate center Ezi Magbegor as Core Player.",
+    "expected_deltas": [
+      {
+        "entity_type": "player",
+        "entity_id": "4420318",
+        "field": "designation",
+        "prior_val": "NONE",
+        "new_val": "CORED",
+        "tier": "CONFIRMED"
+      }
+    ]
+  },
+  {
+    "id": "wire_sample_003",
+    "date": "2027-02-03",
+    "source_type": "official_wire",
+    "source_url": "https://www.wnba.com/transactions/2027",
+    "raw_text": "February 3, 2027: New York Liberty complete sign-and-trade transaction sending forward Satou Sabally to Dallas Wings in exchange for 2027 draft assets.",
+    "expected_deltas": [
+      {
+        "entity_type": "player",
+        "entity_id": "4281929",
+        "field": "team",
+        "prior_val": "NY",
+        "new_val": "DAL",
+        "tier": "CONFIRMED"
+      }
+    ]
+  },
+  {
+    "id": "wire_sample_004",
+    "date": "2026-11-10",
+    "source_type": "official_wire",
+    "source_url": "https://www.wnba.com/transactions/2026",
+    "raw_text": "November 10, 2026: Washington Mystics name Teresa Weatherspoon head coach.",
+    "expected_deltas": [
+      {
+        "entity_type": "team",
+        "entity_id": "WSH",
+        "field": "headCoach",
+        "prior_val": null,
+        "new_val": "Teresa Weatherspoon",
+        "tier": "CONFIRMED"
+      }
+    ]
+  },
+  {
+    "id": "wire_sample_005",
+    "date": "2026-11-20",
+    "source_type": "official_wire",
+    "source_url": "https://www.wnba.com/transactions/2026",
+    "raw_text": "November 20, 2026: Washington Mystics hire Curt Miller as general manager.",
+    "expected_deltas": [
+      {
+        "entity_type": "team",
+        "entity_id": "WSH",
+        "field": "generalManager",
+        "prior_val": null,
+        "new_val": "Curt Miller",
+        "tier": "CONFIRMED"
+      }
+    ]
+  },
+  {
+    "id": "wire_sample_006",
+    "date": "2026-12-01",
+    "source_type": "official_wire",
+    "source_url": "https://www.wnba.com/transactions/2026",
+    "raw_text": "December 1, 2026: Chicago Sky exercise contract option on guard DiJonai Carrington through 2027 season.",
+    "expected_deltas": [
+      {
+        "entity_type": "player",
+        "entity_id": "4066548",
+        "field": "contractThroughSeason",
+        "prior_val": 2026,
+        "new_val": 2027,
+        "tier": "CONFIRMED"
+      }
+    ]
+  }
+]
