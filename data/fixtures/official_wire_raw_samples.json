@@ -1,0 +1,114 @@
+[
+  {
+    "id": "wire_fa_alonso",
+    "raw_text": "New York Mets 1B Pete Alonso declared free agency.",
+    "date": "2026-10-29",
+    "source_url": "https://statsapi.mlb.com/api/v1/transactions",
+    "expected_tuples": [
+      {
+        "entity_type": "player",
+        "entity_id": "B_19251",
+        "field": "rosterStatus",
+        "prior_val": "40_MAN",
+        "new_val": "FREE_AGENT",
+        "tier": "CONFIRMED"
+      },
+      {
+        "entity_type": "player",
+        "entity_id": "B_19251",
+        "field": "contractStatus",
+        "prior_val": "GUARANTEED",
+        "new_val": "UNRESTRICTED_FA",
+        "tier": "CONFIRMED"
+      },
+      {
+        "entity_type": "player",
+        "entity_id": "B_19251",
+        "field": "team",
+        "prior_val": "BAL",
+        "new_val": null,
+        "tier": "CONFIRMED"
+      }
+    ]
+  },
+  {
+    "id": "wire_opt_giolito",
+    "raw_text": "San Diego Padres RHP Lucas Giolito exercised his 2027 contract option.",
+    "date": "2026-10-30",
+    "source_url": "https://statsapi.mlb.com/api/v1/transactions",
+    "expected_tuples": [
+      {
+        "entity_type": "player",
+        "entity_id": "P_15474",
+        "field": "contractStatus",
+        "prior_val": "GUARANTEED",
+        "new_val": "GUARANTEED",
+        "tier": "CONFIRMED"
+      }
+    ]
+  },
+  {
+    "id": "wire_trade_cheng",
+    "raw_text": "Boston Red Sox traded SS Tsung-Che Cheng to Detroit Tigers for cash.",
+    "date": "2026-10-29",
+    "source_url": "https://statsapi.mlb.com/api/v1/transactions",
+    "expected_tuples": [
+      {
+        "entity_type": "player",
+        "entity_id": "B_28344",
+        "field": "team",
+        "prior_val": "BOS",
+        "new_val": "DET",
+        "tier": "CONFIRMED"
+      }
+    ]
+  },
+  {
+    "id": "wire_waiver_paris",
+    "raw_text": "New York Mets claimed 2B Kyren Paris off waivers from Los Angeles Angels.",
+    "date": "2026-10-29",
+    "source_url": "https://statsapi.mlb.com/api/v1/transactions",
+    "expected_tuples": [
+      {
+        "entity_type": "player",
+        "entity_id": "B_26420",
+        "field": "team",
+        "prior_val": "LAA",
+        "new_val": "NYM",
+        "tier": "CONFIRMED"
+      }
+    ]
+  },
+  {
+    "id": "wire_trade_multi_eaton",
+    "raw_text": "Athletics traded RHP Jareth Rayo to Boston Red Sox for LF Nate Eaton.",
+    "date": "2026-10-29",
+    "source_url": "https://statsapi.mlb.com/api/v1/transactions",
+    "expected_tuples": [
+      {
+        "entity_type": "player",
+        "entity_id": "B_25055",
+        "field": "team",
+        "prior_val": "BOS",
+        "new_val": "ATH",
+        "tier": "CONFIRMED"
+      }
+    ]
+  },
+  {
+    "id": "wire_fa_peterson",
+    "raw_text": "LHP David Peterson elected free agency.",
+    "date": "2026-10-29",
+    "source_url": "https://statsapi.mlb.com/api/v1/transactions",
+    "expected_tuples": [
+      {
+        "entity_type": "player",
+        "entity_id": "P_20302",
+        "field": "contractStatus",
+        "prior_val": "UNRESTRICTED_FA",
+        "new_val": "UNRESTRICTED_FA",
+        "tier": "CONFIRMED"
+      }
+    ]
+  }
+]
