@@ -34,6 +34,7 @@ source(file.path("tools", "offseason", "ingest_sources.R"))
 source(file.path("tools", "offseason", "extract_regex.R"))
 source(file.path("tools", "offseason", "reconcile_state.R"))
 source(file.path("tools", "offseason", "render_memo.R"))
+source(file.path("tools", "offseason", "check_preseason_trigger.R"))
 
 # Determine active off-season phase based on calendar or week
 determine_active_phase <- function(current_date) {
@@ -64,7 +65,15 @@ build_offseason_monitor_dag <- function(dry_run = FALSE,
   
   log_info("build_offseason_monitor: Initializing Offseason Dynamics Monitor weekly DAG run.", script = "build_offseason_monitor.R")
   
-  # Step 0: Ensure baseline exists
+  # Step 0: Preseason Hand-Off Guard (Phase 7 / Issue #124)
+  trigger_eval <- evaluate_preseason_trigger()
+  if (trigger_eval$triggered) {
+    log_info(sprintf("build_offseason_monitor: Preseason hand-off condition met (%s). Initiating transition...", trigger_eval$trigger_reason), script = "build_offseason_monitor.R")
+    execute_preseason_hand_off(trigger_eval, dry_run = dry_run, baseline_path = baseline_path, monitor_path = output_path)
+    return(invisible(list(status = "PRESEASON_HAND_OFF_EXECUTED", trigger_eval = trigger_eval)))
+  }
+
+  # Step 0b: Ensure baseline exists
   if (!file.exists(baseline_path)) {
     log_info("build_offseason_monitor: Baseline S0 not found; capturing baseline...", script = "build_offseason_monitor.R")
     source(file.path("tools", "offseason", "capture_baseline_s0.R"))

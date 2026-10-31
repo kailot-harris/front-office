@@ -1,24 +1,24 @@
 {
-  "ingest_timestamp": "2026-10-31T17:33:00Z",
-  "composite_health": "DEGRADED",
+  "ingest_timestamp": "2026-10-31T17:50:38Z",
+  "composite_health": "HEALTHY",
   "adapters": {
     "league_wire": {
       "status": "HEALTHY",
       "http_code": 200,
       "items_found": 3,
-      "bytes_captured": 94693
+      "bytes_captured": 436
     },
     "team_releases": {
-      "status": "FAILED",
+      "status": "HEALTHY",
       "feeds_polled": 15,
-      "feeds_succeeded": 0,
-      "items_found": 0
+      "feeds_succeeded": 15,
+      "items_found": 5
     },
     "beat_feeds": {
-      "status": "DEGRADED",
+      "status": "HEALTHY",
       "sources_polled": 6,
-      "sources_succeeded": 5,
-      "claims_found": 61
+      "sources_succeeded": 6,
+      "claims_found": 8
     }
   }
 }
