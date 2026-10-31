@@ -93,22 +93,25 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
   return (
     <div className="space-y-8">
       {/* Page Header */}
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-mono font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded-full">
-            Player & QB Analytics
-          </span>
-          <span className="text-xs font-mono text-slate-400">
-            {initialQbs.length} Active Quarterbacks Tracked
-          </span>
+      <div className="relative pb-6">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-mono font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded-full">
+              Player & QB Analytics
+            </span>
+            <span className="text-xs font-mono text-slate-400">
+              {initialQbs.length} Active Quarterbacks Tracked
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+            <span className="text-emerald-400">NFL</span> Quarterback Composite Ratings & Depth Chart
+          </h1>
+          <p className="text-slate-400 text-sm mt-1 max-w-3xl">
+            Rolling per-dropback Expected Points Added (EPA) and Completion Percentage Over Expected (CPOE)
+            derived from play-by-play tracking. Integrated with backup quarterback injury penalties and rookie usage ramps.
+          </p>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-          Quarterback Composite Ratings & Depth Chart
-        </h1>
-        <p className="text-slate-400 text-sm mt-1 max-w-3xl">
-          Rolling per-dropback Expected Points Added (EPA) and Completion Percentage Over Expected (CPOE)
-          derived from play-by-play tracking. Integrated with backup quarterback injury penalties and rookie usage ramps.
-        </p>
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-emerald-500/40 to-transparent" />
       </div>
 
       {/* Leadership KPI Banners */}

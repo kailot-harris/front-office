@@ -283,6 +283,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
           </span>
           <span className="font-mono text-[11px] text-slate-400">NFL Season 2026</span>
         </div>
+        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 px-1">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+          <span className="truncate">Ridge + Elo Walk-Forward Verified</span>
+        </div>
         {generatedAt && (
           <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono px-1">
             <span>Updated</span>

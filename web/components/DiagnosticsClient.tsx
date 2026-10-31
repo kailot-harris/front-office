@@ -67,22 +67,25 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-mono font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded-full">
-            Model Diagnostics & Calibration
-          </span>
-          <span className="text-xs font-mono text-slate-400">
-            {latestGames} Games Graded Out-of-Sample
-          </span>
+      <div className="relative pb-6">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-mono font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded-full">
+              Model Diagnostics & Calibration
+            </span>
+            <span className="text-xs font-mono text-slate-400">
+              {latestGames} Games Graded Out-of-Sample
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+            <span className="text-emerald-400">NFL</span> Model Calibration, Brier Trajectory & Diagnostics
+          </h1>
+          <p className="text-slate-400 text-sm mt-1 max-w-3xl">
+            Multi-decile probability reliability curves, out-of-sample Brier score trajectories,
+            and statistical loss metrics evaluated continuously against consensus market baselines.
+          </p>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-          Model Calibration, Brier Trajectory & Diagnostics
-        </h1>
-        <p className="text-slate-400 text-sm mt-1 max-w-3xl">
-          Multi-decile probability reliability curves, out-of-sample Brier score trajectories,
-          and statistical loss metrics evaluated continuously against consensus market baselines.
-        </p>
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-emerald-500/40 to-transparent" />
       </div>
 
       {/* KPI Stats Grid */}
