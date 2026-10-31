@@ -29,6 +29,7 @@ export default defineConfig({
             'tests/contracts/**/*.test.ts',
             'tests/unit/**/*.test.ts',
             'tests/drift/**/*.test.ts',
+            'tests/*.test.ts',
           ],
         },
       },

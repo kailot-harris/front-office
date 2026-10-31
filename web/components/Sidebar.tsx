@@ -23,6 +23,8 @@ import {
   CalendarDays,
   Sparkles,
   Film,
+  ChevronDown,
+  Archive,
 } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
 
@@ -44,7 +46,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showEloExplainer, setShowEloExplainer] = useState(false);
 
-  const navItems = [
+  const primaryNavItems = [
+    {
+      href: '/offseason-monitor',
+      label: '2026-2027 Off-Season Monitor',
+      badge: 'Weekly Pulse',
+      icon: Sparkles,
+      desc: 'State-diff transactions & 2027 CBT intelligence',
+      primary: true,
+    },
+    {
+      href: '/cap-sheet',
+      label: 'CBT Payroll Sheet',
+      badge: 'CBT $244M',
+      icon: Coins,
+      desc: 'Luxury tax thresholds & 40-man commitments',
+    },
+  ];
+
+  const inSeasonNavItems = [
     {
       href: '/',
       label: 'Season Standings',
@@ -109,13 +129,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       desc: 'Spray, Strike Zone, IVB & Shift',
     },
     {
-      href: '/cap-sheet',
-      label: 'Cap & Luxury Tax',
-      badge: 'CBT $244M',
-      icon: Coins,
-      desc: 'CBT thresholds, payroll & contract surplus',
-    },
-    {
       href: '/series',
       label: 'Playoff Simulator',
       badge: '10K Sims',
@@ -137,6 +150,78 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       desc: 'Reliability curve & walk-forward drift',
     },
   ];
+
+  // Auto-expand archive if viewing an in-season archive page
+  const currentPathClean = withoutTrailingSlash(pathname ?? '/');
+  const isVisitingArchive = inSeasonNavItems.some(
+    (item) =>
+      currentPathClean === withoutTrailingSlash(item.href) ||
+      (item.href === '/' && (currentPathClean === '' || currentPathClean === '/teams'))
+  );
+
+  const [isArchiveOpen, setIsArchiveOpen] = useState<boolean>(isVisitingArchive);
+
+  const renderNavLink = (item: {
+    href: string;
+    label: string;
+    badge: string;
+    icon: React.ComponentType<{ className?: string }>;
+    desc: string;
+    primary?: boolean;
+  }) => {
+    const Icon = item.icon;
+    const isActive =
+      withoutTrailingSlash(pathname ?? '/') === withoutTrailingSlash(item.href) ||
+      (item.href === '/' && withoutTrailingSlash(pathname ?? '/') === '/teams');
+
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        onClick={() => setIsOpen(false)}
+        className={`group flex items-start gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+          isActive
+            ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
+            : item.primary
+            ? 'text-white bg-slate-800/40 hover:bg-slate-800/80 border border-sky-500/20'
+            : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+        }`}
+      >
+        <Icon
+          className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
+            isActive
+              ? 'text-white'
+              : item.primary
+              ? 'text-sky-400 group-hover:text-sky-300'
+              : 'text-slate-400 group-hover:text-accent-400'
+          }`}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold">{item.label}</span>
+            <span
+              className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-medium ${
+                isActive
+                  ? 'bg-white/20 text-white'
+                  : item.primary
+                  ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                  : 'bg-slate-800 text-slate-400'
+              }`}
+            >
+              {item.badge}
+            </span>
+          </div>
+          <p
+            className={`text-[11px] truncate ${
+              isActive ? 'text-accent-50' : 'text-slate-500'
+            }`}
+          >
+            {item.desc}
+          </p>
+        </div>
+      </Link>
+    );
+  };
 
   const NavContent = () => (
     <div className="flex flex-col h-full justify-between p-4">
@@ -160,53 +245,39 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
         </div>
 
         {/* Navigation Links */}
-        <div className="space-y-1">
-          <div className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 font-mono">
-            Main Navigation
+        <div className="space-y-4">
+          {/* Primary Offseason Navigation */}
+          <div className="space-y-1">
+            <div className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 font-mono">
+              Off-Season Intelligence
+            </div>
+            {primaryNavItems.map(renderNavLink)}
           </div>
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive =
-              withoutTrailingSlash(pathname ?? '/') === withoutTrailingSlash(item.href) ||
-              (item.href === '/' && withoutTrailingSlash(pathname ?? '/') === '/teams');
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsOpen(false)}
-                className={`group flex items-start gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  isActive
-                    ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+
+          {/* Collapsible 2026 Championship Archive */}
+          <div className="pt-2 border-t border-slate-800/60">
+            <button
+              type="button"
+              onClick={() => setIsArchiveOpen(!isArchiveOpen)}
+              className="w-full flex items-center justify-between px-2 py-1.5 text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400 hover:text-white transition-colors group"
+            >
+              <div className="flex items-center gap-1.5">
+                <Archive className="w-3.5 h-3.5 text-sky-400" />
+                <span>2026 Championship Archive</span>
+              </div>
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 transition-transform duration-200 ${
+                  isArchiveOpen ? 'rotate-180' : ''
                 }`}
-              >
-                <Icon
-                  className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
-                    isActive ? 'text-white' : 'text-slate-400 group-hover:text-accent-400'
-                  }`}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold">{item.label}</span>
-                    <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-medium ${
-                        isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  </div>
-                  <p
-                    className={`text-[11px] truncate ${
-                      isActive ? 'text-accent-50' : 'text-slate-500'
-                    }`}
-                  >
-                    {item.desc}
-                  </p>
-                </div>
-              </Link>
-            );
-          })}
+              />
+            </button>
+
+            {isArchiveOpen && (
+              <div className="space-y-1 mt-2 pl-1 border-l-2 border-slate-800/80 ml-2 animate-in fade-in duration-150">
+                {inSeasonNavItems.map(renderNavLink)}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Engine Metadata Card */}
