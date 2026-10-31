@@ -91,90 +91,90 @@ export interface OffseasonDraftProspect {
 // League State Baseline S0 Contract (Issue #117 / Blueprint §3)
 // ==============================================================================
 
+export type Origin =
+  | 'SEASON_END_PULL'
+  | 'TRANSACTION_WIRE'
+  | 'TEAM_RELEASE'
+  | 'FILED_CONTRACT'
+  | 'BACKFILL'
+  | 'UNPOPULATED';
+
 export interface Provenanced<T> {
   value: T;
-  source?: string;
-  origin?: 'POPULATED' | 'UNAVAILABLE' | 'UNPOPULATED' | 'POSTSEASON_CONCLUDED';
-  recorded_at?: string;
+  sourceUrl: string | null;
+  asOfDate: string;
+  confidenceTier: 'CONFIRMED';
+  origin: Origin;
 }
 
 export interface CoverageReport {
-  rosters: 'POPULATED' | 'UNAVAILABLE';
-  capSheet: 'POPULATED' | 'UNAVAILABLE';
-  contracts: 'POPULATED' | 'UNAVAILABLE';
-  serviceYears: 'POPULATED' | 'UNAVAILABLE';
+  rosters: 'POPULATED' | 'PARTIAL' | 'UNAVAILABLE';
+  contracts: 'POPULATED' | 'PARTIAL' | 'UNAVAILABLE';
+  serviceYears: 'POPULATED' | 'PARTIAL' | 'UNAVAILABLE';
+  capSheet: 'POPULATED' | 'PARTIAL' | 'UNAVAILABLE';
+  notes: string;
 }
 
-export interface BaselinePlayerContract {
-  player_id: string;
-  player_name: string;
-  position: string;
-  salary_2026: number;
-  salary_2027: number;
-  contract_type: string;
-  protected: boolean;
-  free_agent_year: number;
+export interface PlayerState {
+  playerId: string;
+  displayName: string;
+  team: Provenanced<string | null>;
+  contractStatus: Provenanced<
+    | 'UNDER_CONTRACT'
+    | 'UNRESTRICTED_FA'
+    | 'RESTRICTED_FA'
+    | 'RESERVED'
+    | 'UNSIGNED'
+    | 'UNKNOWN'
+  >;
+  contractThroughSeason: Provenanced<number | null>;
+  serviceYears: Provenanced<number | null>;
+  coreEligible: Provenanced<boolean | null>;
+  designation: Provenanced<'NONE' | 'CORED' | 'QUALIFYING_OFFER' | 'UNKNOWN'>;
+  winterLeague: Provenanced<{ league: string; team: string } | null>;
+  availabilityStatus: Provenanced<'ACTIVE' | 'REHAB' | 'OUT' | 'UNKNOWN'>;
 }
 
-export interface BaselineTeamProfile {
-  team_abbrev: string;
-  team_name: string;
-  conference: string;
-  total_payroll_2026: number;
-  total_payroll_2027: number;
-  hard_salary_cap: number;
-  cap_floor: number;
-  cap_space_2026: number;
-  projected_cap_space_2027: number;
-  roster_count: number;
-  twelfth_spot_available: boolean;
-  cba_tier: string;
-  hard_cap_crunch_index: number;
-  core_player: string;
-  roster: BaselinePlayerContract[];
+export interface TeamDraftPick {
+  round: 1 | 2 | 3;
+  originTeam: string;
 }
 
-export interface BaselinePlayerProfile {
-  player_id: string;
-  player_name: string;
-  team: string;
-  position: string;
-  age: number;
-  minutes_per_game: number;
-  bpm: number;
-  pts: number;
-  reb: number;
-  ast: number;
-  net_rating: number;
+export interface TeamState {
+  teamAbbrev: string;
+  displayName: string;
+  rosterCount: Provenanced<number>;
+  capCommitted: Provenanced<number | null>;
+  draftPicks2027: Provenanced<TeamDraftPick[]>;
+  headCoach: Provenanced<string | null>;
+  generalManager: Provenanced<string | null>;
 }
 
 export interface CalendarMilestone {
-  date: string;
+  date: string | null;
   event: string;
+  status: 'Confirmed' | 'Tentative' | 'Unannounced';
+}
+
+export interface LeagueState {
+  seasonYear: 2027;
+  cbaStatus: Provenanced<string>;
+  salaryCapCeiling: Provenanced<number | null>;
+  coreEligibilityRule: Provenanced<string>;
+  activeFranchises: Provenanced<number>;
+  calendarMilestones: Provenanced<CalendarMilestone[]>;
 }
 
 export interface LeagueStateBaseline {
+  schemaVersion: '1.0.0';
   asOf: string;
-  seasonStatus: '2026_FINALS_CONCLUDED' | '2026_FINALS_IN_PROGRESS';
+  seasonStatus: '2026_FINALS_CONCLUDED' | '2026_FINALS_IN_PROGRESS' | '2027_OFFSEASON' | '2027_CAMP_OPEN';
   finalsChampion: string;
-  coverageReport: CoverageReport;
-  provenance: {
-    source: string;
-    origin: string;
-    generator: string;
-    recorded_at: string;
-  };
-  cbaConstants: {
-    hardSalaryCap: number;
-    capFloor: number;
-    supermaxSalary: number;
-    vetMaxSalary: number;
-    vetMinSalary: number;
-    rookieMinSalary: number;
-  };
-  draftPicks2027: unknown[];
-  calendarMilestones: CalendarMilestone[];
-  teams: Record<string, BaselineTeamProfile>;
-  players: Record<string, BaselinePlayerProfile>;
+  generatedBy: string;
+  coverage: CoverageReport;
+  players: Record<string, PlayerState>;
+  teams: Record<string, TeamState>;
+  league: LeagueState;
 }
+
 

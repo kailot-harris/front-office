@@ -12,6 +12,7 @@ export default function HomePage() {
   const finalsSeries = bracketData?.series?.find((s: BracketSeries) => s.round === 'Finals');
   const championAbbr = bracketData?.champion || (finalsSeries?.seriesComplete ? finalsSeries.winner : null);
   const isSeriesDecided = Boolean(championAbbr);
+  const championTeamName = championAbbr ? (teams.find((t) => t.team === championAbbr)?.team_name || championAbbr) : '';
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -34,7 +35,7 @@ export default function HomePage() {
               </div>
               <h2 className="text-base sm:text-lg font-semibold text-white tracking-tight mt-1">
                 {isSeriesDecided
-                  ? `${championAbbr === 'GS' ? 'Golden State Valkyries' : 'Atlanta Dream'} capture the 2026 WNBA Championship`
+                  ? `${championTeamName} capture the 2026 WNBA Championship`
                   : 'Golden State Valkyries vs. Atlanta Dream: Game 7 Championship Decider'}
               </h2>
               <p className="text-xs sm:text-sm text-slate-300/90 mt-0.5">
