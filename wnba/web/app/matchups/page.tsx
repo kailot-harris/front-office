@@ -36,7 +36,12 @@ export default async function MatchupsPage() {
   if (!data) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold text-white mb-4">Matchups</h1>
+        <div className="relative pb-6 mb-4">
+          <h1 className="text-3xl font-bold text-white">
+            <span className="text-accent-400">WNBA</span> Matchups
+          </h1>
+          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-violet-400 via-violet-500/40 to-transparent" />
+        </div>
         <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-6">
           <p className="text-slate-300">
             No matchups dataset is available yet.

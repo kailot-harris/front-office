@@ -8,7 +8,7 @@ import { getMetadata } from '@/lib/data';
 export const metadata: Metadata = {
   title: 'WNBA Season-Long Projections',
   description:
-    'Season-long simulation projections for all 15 WNBA teams and rotation players, with RAPM/variant model analysis, player props, playoff bracket simulation, and empirical calibration diagnostics.',
+    'Season-long simulation projections for all 15 WNBA teams and rotation players, with RAPM/variant model analysis, Player DNA & Projections, playoff bracket simulation, and empirical calibration diagnostics.',
 };
 
 export default function RootLayout({
@@ -29,7 +29,7 @@ export default function RootLayout({
           <footer className="border-t border-slate-800 bg-surface-raised/50 py-5 text-center text-xs text-slate-500 font-sans">
             <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
               <span>WNBA Analytics — pipeline-driven season projections</span>
-              <span>Standings &bull; RAPM &bull; Player Props &bull; Playoff Bracket</span>
+              <span>Standings &bull; RAPM &bull; Player DNA & Projections &bull; Playoff Bracket</span>
             </div>
           </footer>
         </div>
