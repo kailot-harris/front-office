@@ -248,8 +248,12 @@ source("config.R")
 # ------------------------------------------------------------------------------
 # ASSERTION A - mtime freshness
 # ------------------------------------------------------------------------------
-.assert_mtime_freshness <- function(run_start) {
-  files <- WEB_DATA_FILES          # <- the nineteen names come from config.R ONLY
+.assert_mtime_freshness <- function(run_start, mode = "inseason") {
+  files <- if (identical(mode, "offseason")) {
+    if (exists("WEB_DATA_FILES_OFFSEASON")) WEB_DATA_FILES_OFFSEASON else file.path(WEB_DATA_DIR, "offseason_monitor.json")
+  } else {
+    WEB_DATA_FILES
+  }
   info  <- file.info(files)
   stale <- character(0)
   rows  <- vector("list", length(files))
@@ -370,6 +374,55 @@ source("config.R")
        path = schedule_path, note = NULL)
 }
 
+.assert_offseason_coverage <- function(monitor_path = WEB_JSON_OFFSEASON_MONITOR) {
+  if (!file.exists(monitor_path)) {
+    return(list(
+      id = "B", name = "off-season schedule coverage (valid week bounds 1-30 and phase tags)",
+      pass = FALSE, fatal = TRUE,
+      detail = sprintf("    [FAIL] Offseason monitor artifact missing: %s", basename(monitor_path)),
+      summary = "offseason_monitor.json missing"
+    ))
+  }
+  
+  ds <- tryCatch(jsonlite::fromJSON(monitor_path, simplifyVector = FALSE), error = function(e) NULL)
+  if (is.null(ds)) {
+    return(list(
+      id = "B", name = "off-season schedule coverage (valid week bounds 1-30 and phase tags)",
+      pass = FALSE, fatal = TRUE,
+      detail = "    [FAIL] Unparseable offseason_monitor.json",
+      summary = "unparseable JSON"
+    ))
+  }
+  
+  valid_phases <- c(
+    "Post-Finals Review",
+    "Draft Lottery & Overseas Tracking",
+    "Qualifying Offers & Core Window",
+    "Free Agency Signings",
+    "NCAA Tournament & Draft Prep",
+    "2027 Draft",
+    "Training Camp Transition"
+  )
+  
+  wk <- ds$currentWeekNumber
+  phase <- ds$activePhase
+  
+  week_ok <- !is.null(wk) && is.numeric(wk) && wk >= 1 && wk <= 30
+  phase_ok <- !is.null(phase) && (phase %in% valid_phases)
+  
+  pass <- week_ok && phase_ok
+  
+  list(
+    id = "B", name = "off-season schedule coverage (valid week bounds 1-30 and phase tags)",
+    pass = pass, fatal = TRUE,
+    detail = c(
+      sprintf("    week number   : %s  %s (bound: 1 to 30)", ifelse(is.null(wk), "<NULL>", wk), if (week_ok) "[OK]" else "[FAIL]"),
+      sprintf("    active phase  : %s  %s", ifelse(is.null(phase), "<NULL>", phase), if (phase_ok) "[OK]" else "[FAIL]")
+    ),
+    summary = sprintf("week=%s phase='%s'", ifelse(is.null(wk), "<NA>", wk), ifelse(is.null(phase), "<NA>", phase))
+  )
+}
+
 .assert_schedule_coverage <- function(season = CURRENT_SEASON,
                                       game_count_tolerance = 8L,
                                       published_override = NULL) {
@@ -454,7 +507,7 @@ source("config.R")
 # WEB_MEDIA_DIR is included alongside WEB_DATA_DIR; see the header note on the
 # bracket page's trajectory GIF.
 # ------------------------------------------------------------------------------
-.assert_nonempty_diff <- function(repo_root) {
+.assert_nonempty_diff <- function(repo_root, mode = "inseason") {
   if (is.na(repo_root)) {
     return(list(id = "C", name = "non-empty diff under web/public/{data,media}",
                 pass = FALSE, fatal = TRUE, changed = character(0), paths = character(0),
@@ -465,7 +518,15 @@ source("config.R")
            .pw_rel_to_repo(WEB_MEDIA_DIR, repo_root))
   r <- .pw_git(repo_root, c("status", "--porcelain", "--", rel))
   changed <- if (r$ok) r$out[nzchar(r$out)] else character(0)
-  list(id = "C", name = "non-empty diff under web/public/{data,media}",
+  if (identical(mode, "offseason") && length(changed) > 0 && exists("WEB_DATA_FILES_OFFSEASON")) {
+    off_bases <- basename(WEB_DATA_FILES_OFFSEASON)
+    # Match lines where changed file matches any off-season file
+    is_off <- vapply(changed, function(line) {
+      any(vapply(off_bases, function(b) grepl(b, line, fixed = TRUE), logical(1)))
+    }, logical(1))
+    changed <- changed[is_off]
+  }
+  list(id = "C", name = if (identical(mode, "offseason")) "non-empty diff under off-season artifacts" else "non-empty diff under web/public/{data,media}",
        pass = length(changed) > 0, fatal = TRUE, changed = changed, paths = rel,
        detail = if (length(changed)) paste0("    ", changed)
                 else sprintf("    CLEAN against HEAD - nothing to publish (repo: %s)", repo_root),
@@ -493,18 +554,52 @@ source("config.R")
   as.character(hits)
 }
 
-.assert_log_scan <- function(log_lines, run_start, fail_on_warnings) {
+.assert_log_scan <- function(log_lines, run_start, fail_on_warnings, mode = "inseason", allow_degraded = FALSE) {
   warns <- .scan_fallback_warnings(log_lines, run_start)
   synth <- grep("SYNTHETIC_FALLBACK", warns, value = TRUE)
-  list(id = "D", name = "synthetic-fallback / [WARN] scan of the pipeline log",
-       pass = !(fail_on_warnings && length(warns) > 0),
-       fatal = fail_on_warnings,
+  
+  manifest_ok <- TRUE
+  manifest_detail <- character(0)
+  if (identical(mode, "offseason")) {
+    manifest_path <- file.path("cache", "ingestion_manifest.json")
+    if (file.exists(manifest_path)) {
+      mf <- tryCatch(jsonlite::fromJSON(manifest_path, simplifyVector = FALSE), error = function(e) NULL)
+      comp_health <- if (!is.null(mf$composite_health)) mf$composite_health else "UNKNOWN"
+      wire_status <- if (!is.null(mf$adapters$league_wire$status)) mf$adapters$league_wire$status else "UNKNOWN"
+      
+      if (identical(wire_status, "FAILED")) {
+        if (allow_degraded) {
+          manifest_detail <- c(manifest_detail, "    [WARN] league_wire is FAILED but publication allowed via --allow-degraded (promotion frozen)")
+        } else {
+          manifest_ok <- FALSE
+          manifest_detail <- c(manifest_detail, "    [FAIL] league_wire is FAILED - publication blocked per Blueprint §2")
+        }
+      } else if (!identical(comp_health, "HEALTHY") && !allow_degraded) {
+        manifest_ok <- FALSE
+        manifest_detail <- c(manifest_detail, sprintf("    [FAIL] Ingestion manifest composite_health is %s (must be HEALTHY for quiet-week)", comp_health))
+      } else {
+        manifest_detail <- c(manifest_detail, sprintf("    [OK] Ingestion manifest composite_health: %s (league_wire: %s)", comp_health, wire_status))
+      }
+    } else {
+      manifest_detail <- c(manifest_detail, "    [WARN] cache/ingestion_manifest.json absent")
+    }
+  }
+  
+  pass <- !(fail_on_warnings && length(warns) > 0) && manifest_ok
+  
+  list(id = "D", name = if (identical(mode, "offseason")) "fallback scan & ingestion health gate" else "synthetic-fallback / [WARN] scan of the pipeline log",
+       pass = pass,
+       fatal = if (identical(mode, "offseason")) TRUE else fail_on_warnings,
        warnings = warns, synthetic = synth,
-       detail = if (length(warns)) paste0("    ", warns)
-                else "    no SYNTHETIC_FALLBACK or [WARN] lines in the run window",
-       summary = sprintf("%d warning(s), %d of them SYNTHETIC_FALLBACK%s",
-                         length(warns), length(synth),
-                         if (fail_on_warnings) " (fatal)" else " (reported, non-fatal)"))
+       detail = c(manifest_detail, if (length(warns)) paste0("    ", warns)
+                else "    no SYNTHETIC_FALLBACK or [WARN] lines in the run window"),
+       summary = if (identical(mode, "offseason")) {
+         sprintf("%d warning(s); health gate %s", length(warns), if (manifest_ok) "HEALTHY" else "FAILED")
+       } else {
+         sprintf("%d warning(s), %d of them SYNTHETIC_FALLBACK%s",
+                 length(warns), length(synth),
+                 if (fail_on_warnings) " (fatal)" else " (reported, non-fatal)")
+       })
 }
 
 # ------------------------------------------------------------------------------
@@ -823,13 +918,81 @@ source("config.R")
 # explicitly; the CLI wrapper at the bottom keys off commandArgs(), not frame
 # depth.
 # ------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
+# Scoped Zero-Betting Guard (Blueprint §7)
+# Whitelists mathematical draft lottery terminology while blocking commercial sportsbook
+# and wagering terms.
+# ------------------------------------------------------------------------------
+.assert_zero_betting_guard <- function() {
+  web_dir <- file.path("web", "public", "data")
+  files_to_scan <- list.files(web_dir, pattern = "\\.json$", full.names = TRUE)
+  
+  forbidden_commercial <- c(
+    "draftkings", "fanduel", "betmgm", "caesars", "pointsbet", "bet365", "sportsbook"
+  )
+  forbidden_wagering <- c(
+    "\bspread\b", "\bmoneyline\b", "\bover/under\b", "\bparlay\b",
+    "\bvig\b", "\bjuice\b", "\bstake\b"
+  )
+  
+  # Terms specifically whitelisted for Draft Lottery
+  lottery_whitelist <- c(
+    "329 chances in 1,000",
+    "draft lottery",
+    "lottery odds",
+    "ping pong ball combinations",
+    "ping pong balls",
+    "lottery seed",
+    "chances in 1,000"
+  )
+  
+  violations <- character(0)
+  
+  for (f in files_to_scan) {
+    txt <- tryCatch(readLines(f, warn = FALSE), error = function(e) character(0))
+    raw_str <- paste(txt, collapse = " ")
+    
+    # Whitelist masking: replace legitimate lottery phrases with safe token
+    clean_str <- raw_str
+    for (wl in lottery_whitelist) {
+      clean_str <- gsub(wl, "[LOTTERY_WHITELISTED]", clean_str, ignore.case = TRUE)
+    }
+    
+    # 1. Commercial domains
+    for (fc in forbidden_commercial) {
+      if (grepl(fc, clean_str, ignore.case = TRUE)) {
+        violations <- c(violations, sprintf("%s contains forbidden commercial domain term '%s'", basename(f), fc))
+      }
+    }
+    # 2. Wagering terminology
+    for (fw in forbidden_wagering) {
+      if (grepl(fw, clean_str, ignore.case = TRUE)) {
+        violations <- c(violations, sprintf("%s contains forbidden wagering term '%s'", basename(f), fw))
+      }
+    }
+  }
+  
+  pass <- length(violations) == 0
+  list(
+    id = "Z",
+    name = "scoped zero-betting guard (wagering term scanner with lottery whitelist)",
+    pass = pass,
+    fatal = TRUE,
+    detail = if (pass) "    no forbidden wagering or commercial sportsbook terms found" else paste0("    [FAIL] ", violations),
+    summary = if (pass) "compliant (lottery terms whitelisted)" else sprintf("%d violation(s) detected", length(violations))
+  )
+}
+
 publish_web <- function(dry_run = TRUE,
                         run_start = NULL,
                         season = CURRENT_SEASON,
                         publish_branch = "main",
                         fail_on_exporter_warnings = FALSE,
                         skip_contracts = FALSE,
-                        commit_message = NULL) {
+                        commit_message = NULL,
+                        mode = "inseason",
+                        allow_degraded = FALSE) {
 
   repo_root <- .pw_repo_root()
   log_lines <- if (file.exists(LOG_FILE)) readLines(LOG_FILE, warn = FALSE) else character(0)
@@ -840,13 +1003,14 @@ publish_web <- function(dry_run = TRUE,
   }
 
   checks <- list(
-    .assert_mtime_freshness(run_start),
-    .assert_schedule_coverage(season),
-    .assert_nonempty_diff(repo_root),
+    .assert_mtime_freshness(run_start, mode = mode),
+    if (identical(mode, "offseason")) .assert_offseason_coverage() else .assert_schedule_coverage(season),
+    .assert_nonempty_diff(repo_root, mode = mode),
     .assert_publish_branch(repo_root, publish_branch),
-    .assert_log_scan(log_lines, run_start, fail_on_exporter_warnings),
+    .assert_log_scan(log_lines, run_start, fail_on_exporter_warnings, mode = mode, allow_degraded = allow_degraded),
     .assert_payload_provenance(run_start),
-    .assert_web_contracts(skip_contracts)
+    .assert_web_contracts(skip_contracts),
+    .assert_zero_betting_guard()
   )
 
   passed  <- vapply(checks, function(ch) isTRUE(ch$pass), logical(1))
@@ -874,8 +1038,13 @@ publish_web <- function(dry_run = TRUE,
   }
 
   cat("\n-- Would publish -----------------------------------------------\n")
-  cat(sprintf("  %d dataset(s) asserted from %s:\n", length(WEB_DATA_FILES), WEB_DATA_DIR))
-  for (f in WEB_DATA_FILES) cat(sprintf("    - %s\n", basename(f)))
+  published_files <- if (identical(mode, "offseason")) {
+    if (exists("WEB_DATA_FILES_OFFSEASON")) WEB_DATA_FILES_OFFSEASON else file.path(WEB_DATA_DIR, "offseason_monitor.json")
+  } else {
+    WEB_DATA_FILES
+  }
+  cat(sprintf("  %d dataset(s) asserted from %s (mode: %s):\n", length(published_files), WEB_DATA_DIR, mode))
+  for (f in published_files) cat(sprintf("    - %s\n", basename(f)))
   media <- if (dir.exists(WEB_MEDIA_DIR)) list.files(WEB_MEDIA_DIR) else character(0)
   cat(sprintf("  %d visual-media file(s) from %s\n", length(media), WEB_MEDIA_DIR))
   cat(sprintf("  commit message   : %s\n", commit_message))
@@ -921,6 +1090,21 @@ publish_web <- function(dry_run = TRUE,
 
   result$steps <- .pw_do_publish(repo_root, checks[[3]]$paths, commit_message)
   result$published <- TRUE
+  
+  # Atomic Baseline Promotion (Blueprint §2 & §7): S_staged -> S_baseline only after commit succeeds
+  if (identical(mode, "offseason")) {
+    if (isTRUE(allow_degraded)) {
+      log_warn("publish_web: --allow-degraded in effect; baseline promotion is FROZEN.", script = .PW_LOG_SCRIPT)
+    } else {
+      staged_file <- file.path("cache", "league_state_staged.json")
+      baseline_file <- file.path("cache", "league_state_baseline.json")
+      if (file.exists(staged_file)) {
+        file.copy(staged_file, baseline_file, overwrite = TRUE)
+        log_info("publish_web: Atomic baseline promotion succeeded (league_state_staged.json -> league_state_baseline.json).", script = .PW_LOG_SCRIPT)
+      }
+    }
+  }
+  
   log_info(sprintf("publish_web: web artifacts committed and pushed to WNBA_analytics %s. The site changes when the aggregator's sync-sports.yml next pulls; this script does not deploy.",
                    publish_branch), script = .PW_LOG_SCRIPT)
   .pw_notify_discord(result)
@@ -944,17 +1128,23 @@ local({
   files <- sub("^--file=", "", argv[grepl("^--file=", argv)])
   if (!any(grepl("publish_web\\.R$", files))) return(invisible(NULL))
   opts <- commandArgs(trailingOnly = TRUE)
-  known_opts <- c("--publish", "--strict-warnings", "--skip-contracts")
-  unknown_opts <- setdiff(opts, known_opts)
+  mode_opt <- grep("^--mode=", opts, value = TRUE)
+  mode_val <- if (length(mode_opt) > 0) sub("^--mode=", "", mode_opt[1]) else "inseason"
+  
+  known_opts <- c("--publish", "--strict-warnings", "--skip-contracts", "--allow-degraded", "--dry-run")
+  opts_without_param <- opts[!grepl("^--mode=", opts)]
+  unknown_opts <- setdiff(opts_without_param, known_opts)
   if (length(unknown_opts)) {
     stop(sprintf(
-      "publish_web.R: unknown CLI option(s): %s. Valid options: %s",
+      "publish_web.R: unknown CLI option(s): %s. Valid options: %s, --mode=<inseason|offseason>",
       paste(shQuote(unknown_opts), collapse = ", "),
       paste(known_opts, collapse = ", ")
     ), call. = FALSE)
   }
   res <- publish_web(dry_run = !("--publish" %in% opts),
                      fail_on_exporter_warnings = "--strict-warnings" %in% opts,
-                     skip_contracts = "--skip-contracts" %in% opts)
+                     skip_contracts = "--skip-contracts" %in% opts,
+                     mode = mode_val,
+                     allow_degraded = "--allow-degraded" %in% opts)
   quit(status = if (isTRUE(res$blocked)) 1L else 0L)
 })
