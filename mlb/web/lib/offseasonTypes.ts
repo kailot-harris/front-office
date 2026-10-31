@@ -141,6 +141,9 @@ export interface OffseasonEditionSummary {
   isArchived: boolean;
 }
 
+export type SeasonMode = 'offseason' | 'inseason';
+
+
 export interface OffseasonMonitorDataset {
   version: '2026-2027.1.0';
   lastPublished: string; // UTC ISO timestamp
