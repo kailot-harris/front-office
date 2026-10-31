@@ -17,6 +17,11 @@
       --nba-accent: #4f46e5;
       --wnba-accent: #7c3aed;
       --mlb-accent: #0284c7;
+      /* Each sport's Hybrid B luminous status pip */
+      --nfl-pip: #34d399;
+      --nba-pip: #fb923c;
+      --wnba-pip: #a78bfa;
+      --mlb-pip: #38bdf8;
     }
     body {
       margin: 0;
@@ -30,13 +35,52 @@
       color: #e7e9ee;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
+    .hero-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.35rem;
+      text-align: center;
+      padding: 0 1rem;
+      box-sizing: border-box;
+    }
+    .hero-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.625rem;
+    }
+    .hero-pip {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px rgba(45, 212, 191, 0.7);
+      flex-shrink: 0;
+    }
     h1 {
       font-size: 1.75rem;
-      font-weight: 700;
-      letter-spacing: 0.02em;
+      font-weight: 800;
+      letter-spacing: 0.04em;
       margin: 0;
-      color: var(--accent);
-      text-shadow: 0 0 24px rgba(45, 212, 191, 0.35);
+      color: #e7e9ee;
+      text-shadow: 0 0 24px rgba(45, 212, 191, 0.25);
+    }
+    .hero-rail {
+      width: 100%;
+      max-width: 320px;
+      height: 2px;
+      border-radius: 9999px;
+      background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 40%, transparent), transparent);
+      margin: 0.15rem 0;
+    }
+    .hero-subheader {
+      margin: 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      color: #94a3b8;
     }
     nav {
       display: grid;
@@ -68,20 +112,21 @@
       transition: border-color 0.15s ease, box-shadow 0.15s ease;
       overflow: hidden;
     }
-    .card[data-sport="nfl"] { --sport-accent: var(--nfl-accent); }
-    .card[data-sport="nba"] { --sport-accent: var(--nba-accent); }
-    .card[data-sport="wnba"] { --sport-accent: var(--wnba-accent); }
-    .card[data-sport="mlb"] { --sport-accent: var(--mlb-accent); }
+    .card[data-sport="nfl"] { --sport-accent: var(--nfl-accent); --sport-pip: var(--nfl-pip); }
+    .card[data-sport="nba"] { --sport-accent: var(--nba-accent); --sport-pip: var(--nba-pip); }
+    .card[data-sport="wnba"] { --sport-accent: var(--wnba-accent); --sport-pip: var(--wnba-pip); }
+    .card[data-sport="mlb"] { --sport-accent: var(--mlb-accent); --sport-pip: var(--mlb-pip); }
     .card:hover {
       border-color: var(--sport-accent);
       box-shadow: 0 0 0 1px var(--sport-accent) inset, 0 0 20px color-mix(in srgb, var(--sport-accent) 40%, transparent);
     }
     .card-header {
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 0.6rem;
-      padding: 1.25rem 2rem;
+      gap: 0.45rem;
+      padding: 1.1rem 1.75rem 0.95rem;
       background: none;
       border: none;
       color: inherit;
@@ -90,8 +135,30 @@
       text-decoration: none;
       font-weight: 600;
       text-align: center;
-      text-shadow: 0 0 18px color-mix(in srgb, var(--sport-accent) 55%, transparent);
       width: 100%;
+      box-sizing: border-box;
+    }
+    .card-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      width: 100%;
+      text-shadow: 0 0 18px color-mix(in srgb, var(--sport-accent) 55%, transparent);
+    }
+    .sport-pip {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--sport-pip);
+      box-shadow: 0 0 8px var(--sport-pip);
+      flex-shrink: 0;
+    }
+    .card-rail {
+      width: 100%;
+      height: 2px;
+      border-radius: 9999px;
+      background: linear-gradient(90deg, var(--sport-pip), color-mix(in srgb, var(--sport-pip) 40%, transparent), transparent);
     }
     .card-header .favicon {
       width: 1.25rem;
@@ -181,10 +248,10 @@
                   0 20px 50px -10px rgba(0, 0, 0, 0.6);
       transition: box-shadow 0.3s ease;
     }
-    .trophy-showcase[data-sport="nfl"] { --sport-accent: var(--nfl-accent); }
-    .trophy-showcase[data-sport="nba"] { --sport-accent: var(--nba-accent); }
-    .trophy-showcase[data-sport="wnba"] { --sport-accent: var(--wnba-accent); }
-    .trophy-showcase[data-sport="mlb"] { --sport-accent: var(--mlb-accent); }
+    .trophy-showcase[data-sport="nfl"] { --sport-accent: var(--nfl-accent); --sport-pip: var(--nfl-pip); }
+    .trophy-showcase[data-sport="nba"] { --sport-accent: var(--nba-accent); --sport-pip: var(--nba-pip); }
+    .trophy-showcase[data-sport="wnba"] { --sport-accent: var(--wnba-accent); --sport-pip: var(--wnba-pip); }
+    .trophy-showcase[data-sport="mlb"] { --sport-accent: var(--mlb-accent); --sport-pip: var(--mlb-pip); }
 
     .trophy-tabs {
       display: flex;
@@ -194,30 +261,54 @@
       border: 1px solid #1c3333;
       border-radius: 0.75rem;
     }
+    .trophy-tab[data-sport="nfl"] { --tab-pip: var(--nfl-pip); }
+    .trophy-tab[data-sport="nba"] { --tab-pip: var(--nba-pip); }
+    .trophy-tab[data-sport="wnba"] { --tab-pip: var(--wnba-pip); }
+    .trophy-tab[data-sport="mlb"] { --tab-pip: var(--mlb-pip); }
+
     .trophy-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
       background: transparent;
-      border: none;
+      border: 1px solid transparent;
       color: #e7e9ee;
-      opacity: 0.6;
-      font: inherit;
+      opacity: 0.65;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       font-size: 0.75rem;
       font-weight: 700;
-      letter-spacing: 0.03em;
-      padding: 0.4rem 0.875rem;
+      letter-spacing: 0.05em;
+      padding: 0.4rem 0.8rem;
       border-radius: 0.5rem;
       cursor: pointer;
-      transition: background 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+      transition: all 0.2s ease;
     }
-    .trophy-tab:hover { opacity: 1; }
+    .trophy-tab:hover {
+      opacity: 1;
+      color: #fff;
+    }
     .trophy-tab:focus-visible {
-      outline: 2px solid var(--sport-accent);
+      outline: 2px solid var(--tab-pip, var(--sport-pip));
       outline-offset: 2px;
+    }
+    .trophy-tab .tab-pip {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--tab-pip, var(--sport-pip));
+      box-shadow: 0 0 6px var(--tab-pip, var(--sport-pip));
+      display: none;
+      flex-shrink: 0;
     }
     .trophy-tab[aria-selected="true"] {
       background: var(--surface-raised);
-      color: var(--sport-accent);
+      color: var(--tab-pip, var(--sport-pip));
       opacity: 1;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--sport-accent);
+      border-color: color-mix(in srgb, var(--tab-pip, var(--sport-pip)) 40%, transparent);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--tab-pip, var(--sport-pip));
+    }
+    .trophy-tab[aria-selected="true"] .tab-pip {
+      display: inline-block;
     }
 
     .trophy-stage {
@@ -241,20 +332,47 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 0.125rem;
+      gap: 0.25rem;
       text-align: center;
+      width: 100%;
+    }
+    .trophy-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    .trophy-pip {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--sport-pip);
+      box-shadow: 0 0 8px var(--sport-pip);
+      flex-shrink: 0;
+      transition: background 0.2s ease, box-shadow 0.2s ease;
     }
     .trophy-title {
       font-size: 0.875rem;
       font-weight: 700;
+      letter-spacing: 0.03em;
       color: #e7e9ee;
     }
+    .trophy-rail {
+      width: 100%;
+      max-width: 160px;
+      height: 2px;
+      border-radius: 9999px;
+      background: linear-gradient(90deg, var(--sport-pip), color-mix(in srgb, var(--sport-pip) 40%, transparent), transparent);
+      transition: background 0.2s ease;
+      margin: 0.1rem 0;
+    }
     .trophy-subtitle {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       font-size: 0.6875rem;
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--sport-accent);
+      letter-spacing: 0.08em;
+      color: var(--sport-pip);
       transition: color 0.2s ease;
     }
 
@@ -278,7 +396,14 @@
   </style>
 </head>
 <body>
-  <h1>Front Office</h1>
+  <header class="hero-header">
+    <div class="hero-title-row">
+      <span class="hero-pip" aria-hidden="true"></span>
+      <h1><span style="color: var(--accent)">FRONT</span> OFFICE</h1>
+    </div>
+    <div class="hero-rail" aria-hidden="true"></div>
+    <p class="hero-subheader">Multi-Sport Probabilistic Engine • 2026 Slate</p>
+  </header>
   <div class="hero-container">
     <!-- ===================== Trophy Hero Showcase ===================== -->
     <section class="trophy-showcase" data-sport="nfl"
@@ -286,10 +411,10 @@
              aria-labelledby="trophy-showcase-heading">
       <h2 id="trophy-showcase-heading" class="sr-only">Championship Trophies</h2>
       <div class="trophy-tabs" role="tablist" aria-label="Select championship sport">
-        <button role="tab" id="tab-nfl" class="trophy-tab" data-sport="nfl" aria-selected="true" aria-controls="trophy-panel" type="button">NFL</button>
-        <button role="tab" id="tab-nba" class="trophy-tab" data-sport="nba" aria-selected="false" aria-controls="trophy-panel" tabindex="-1" type="button">NBA</button>
-        <button role="tab" id="tab-wnba" class="trophy-tab" data-sport="wnba" aria-selected="false" aria-controls="trophy-panel" tabindex="-1" type="button">WNBA</button>
-        <button role="tab" id="tab-mlb" class="trophy-tab" data-sport="mlb" aria-selected="false" aria-controls="trophy-panel" tabindex="-1" type="button">MLB</button>
+        <button role="tab" id="tab-nfl" class="trophy-tab" data-sport="nfl" aria-selected="true" aria-controls="trophy-panel" type="button"><span class="tab-pip" aria-hidden="true"></span>NFL</button>
+        <button role="tab" id="tab-nba" class="trophy-tab" data-sport="nba" aria-selected="false" aria-controls="trophy-panel" tabindex="-1" type="button"><span class="tab-pip" aria-hidden="true"></span>NBA</button>
+        <button role="tab" id="tab-wnba" class="trophy-tab" data-sport="wnba" aria-selected="false" aria-controls="trophy-panel" tabindex="-1" type="button"><span class="tab-pip" aria-hidden="true"></span>WNBA</button>
+        <button role="tab" id="tab-mlb" class="trophy-tab" data-sport="mlb" aria-selected="false" aria-controls="trophy-panel" tabindex="-1" type="button"><span class="tab-pip" aria-hidden="true"></span>MLB</button>
       </div>
       <div id="trophy-panel" class="trophy-stage" role="tabpanel" aria-labelledby="tab-nfl">
         <video id="trophy-video" loop muted playsinline preload="none"
@@ -301,7 +426,11 @@
         </video>
       </div>
       <div class="trophy-meta">
-        <span id="trophy-title" class="trophy-title">Vince Lombardi Trophy</span>
+        <div class="trophy-title-row">
+          <span class="trophy-pip" aria-hidden="true"></span>
+          <span id="trophy-title" class="trophy-title">Vince Lombardi Trophy</span>
+        </div>
+        <div class="trophy-rail" aria-hidden="true"></div>
         <span class="trophy-subtitle">360&deg; Hardware Showcase</span>
       </div>
       <div id="trophy-live-status" class="sr-only" aria-live="polite"></div>
@@ -309,9 +438,13 @@
     <nav>
       <div class="card" data-sport="nba">
         <button class="card-header" type="button" aria-expanded="false">
-          <img class="favicon" src="nba/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
-          <span>NBA</span>
-          <span class="chevron">&#9656;</span>
+          <div class="card-title-row">
+            <img class="favicon" src="nba/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
+            <span class="sport-pip" aria-hidden="true"></span>
+            <span>NBA</span>
+            <span class="chevron">&#9656;</span>
+          </div>
+          <div class="card-rail" aria-hidden="true"></div>
         </button>
         <ul class="tab-list">
           <li><a href="nba/">Season Standings</a></li>
@@ -332,9 +465,13 @@
       </div>
       <div class="card" data-sport="wnba">
         <button class="card-header" type="button" aria-expanded="false">
-          <img class="favicon" src="wnba/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
-          <span>WNBA</span>
-          <span class="chevron">&#9656;</span>
+          <div class="card-title-row">
+            <img class="favicon" src="wnba/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
+            <span class="sport-pip" aria-hidden="true"></span>
+            <span>WNBA</span>
+            <span class="chevron">&#9656;</span>
+          </div>
+          <div class="card-rail" aria-hidden="true"></div>
         </button>
         <ul class="tab-list">
           <li><a href="wnba/">Season Standings</a></li>
@@ -354,9 +491,13 @@
       </div>
       <div class="card" data-sport="mlb">
         <button class="card-header" type="button" aria-expanded="false">
-          <img class="favicon" src="mlb/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
-          <span>MLB</span>
-          <span class="chevron">&#9656;</span>
+          <div class="card-title-row">
+            <img class="favicon" src="mlb/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
+            <span class="sport-pip" aria-hidden="true"></span>
+            <span>MLB</span>
+            <span class="chevron">&#9656;</span>
+          </div>
+          <div class="card-rail" aria-hidden="true"></div>
         </button>
         <ul class="tab-list">
           <li><a href="mlb/">Season Standings</a></li>
@@ -376,9 +517,13 @@
       </div>
       <div class="card" data-sport="nfl">
         <button class="card-header" type="button" aria-expanded="false">
-          <img class="favicon" src="nfl/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
-          <span>NFL</span>
-          <span class="chevron">&#9656;</span>
+          <div class="card-title-row">
+            <img class="favicon" src="nfl/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
+            <span class="sport-pip" aria-hidden="true"></span>
+            <span>NFL</span>
+            <span class="chevron">&#9656;</span>
+          </div>
+          <div class="card-rail" aria-hidden="true"></div>
         </button>
         <ul class="tab-list">
           <li><a href="nfl/">Season Standings</a></li>
