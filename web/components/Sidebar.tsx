@@ -24,6 +24,7 @@ import {
   HelpCircle,
   Calculator,
   ShieldCheck,
+  Sparkles,
 } from 'lucide-react';
 
 
@@ -52,6 +53,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       badge: '15 Teams',
       icon: Trophy,
       desc: 'Win distributions & franchise table',
+    },
+    {
+      href: '/retrospective',
+      label: 'Retrospective',
+      badge: 'Audit',
+      icon: Sparkles,
+      desc: '2026 Season recap & model audit',
+    },
+    {
+      href: '/bracket-2026',
+      label: '2026 Bracket',
+      badge: 'Postseason',
+      icon: Trophy,
+      desc: 'Prediction beside result, per round',
     },
     {
       href: '/matchups',
@@ -129,13 +144,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       badge: 'Bracket',
       icon: Swords,
       desc: 'Series Monte Carlo simulation',
-    },
-    {
-      href: '/bracket-2026',
-      label: '2026 Bracket',
-      badge: 'Postseason',
-      icon: Trophy,
-      desc: 'Prediction beside result, per round',
     },
     {
       href: '/diagnostics',
