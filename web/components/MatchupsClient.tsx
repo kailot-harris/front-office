@@ -139,9 +139,11 @@ const Header: React.FC<{ data: MatchupsPayload }> = ({ data }) => {
   const s = data.summary;
 
   return (
-    <header className="flex flex-col gap-3">
+    <header className="relative flex flex-col gap-3 pb-6">
       <div>
-        <h1 className="text-3xl font-bold text-white">Matchups</h1>
+        <h1 className="text-3xl font-bold text-white">
+          <span className="text-accent-400">WNBA</span> Matchups
+        </h1>
         <p className="text-slate-400 text-sm mt-1">
           {data.season} season · {s.total_games} games · {data.season_start} to{' '}
           {data.season_end}
@@ -193,6 +195,7 @@ const Header: React.FC<{ data: MatchupsPayload }> = ({ data }) => {
           </p>
         </div>
       )}
+      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-violet-400 via-violet-500/40 to-transparent" />
     </header>
   );
 };

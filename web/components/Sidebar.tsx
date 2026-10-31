@@ -19,8 +19,11 @@ import {
   Dna,
   Flame,
   Coins,
-  CheckCircle2,
   CalendarDays,
+  Layers,
+  HelpCircle,
+  Calculator,
+  ShieldCheck,
 } from 'lucide-react';
 
 
@@ -40,6 +43,7 @@ export interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const [showSigmaExplainer, setShowSigmaExplainer] = useState(false);
 
   const navItems = [
     {
@@ -211,14 +215,95 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
           })}
         </div>
 
-        <div className="bg-surface/50 border border-accent-900/40 rounded-xl p-3 space-y-1">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-accent-400">
-            <CheckCircle2 className="w-3.5 h-3.5 text-accent-400" />
-            <span>Full Analytics Suite Live</span>
+        {/* Engine Metadata Card */}
+        <div className="bg-surface/70 border border-slate-800/80 rounded-xl p-3.5 space-y-2.5">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-accent-400 uppercase tracking-wide">
+            <Layers className="w-3.5 h-3.5" />
+            <span>Simulation Spec</span>
           </div>
-          <p className="text-[11px] text-slate-500">
-            All 12 analytics engines & routes operational.
-          </p>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50">
+              <span className="text-[10px] text-slate-400 block">Schedule</span>
+              <span className="font-mono font-bold text-slate-200">330 Games</span>
+            </div>
+            <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50">
+              <span className="text-[10px] text-slate-400 block">Simulations</span>
+              <span className="font-mono font-bold text-slate-200">1,000 Sims</span>
+            </div>
+
+            {/* Margin Sigma with ? Explainer Bubble & Compact Popover */}
+            <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50 relative">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-slate-400 block">Margin σ</span>
+                <button
+                  type="button"
+                  onClick={() => setShowSigmaExplainer(!showSigmaExplainer)}
+                  className="text-accent-400 hover:text-accent-300 p-0.5 rounded hover:bg-slate-800 transition-colors"
+                  aria-label="What does margin sigma mean?"
+                  title="What does margin sigma mean? Click for explainer."
+                >
+                  <HelpCircle className="w-3 h-3" />
+                </button>
+              </div>
+              <span className="font-mono font-bold text-slate-200">9.8 pts</span>
+
+              {/* Localized Compact Popover Card (Not Full Page) */}
+              {showSigmaExplainer && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40 bg-transparent"
+                    onClick={() => setShowSigmaExplainer(false)}
+                  />
+                  <div className="absolute left-0 md:left-full md:ml-3 bottom-full mb-2 md:bottom-auto md:-top-16 z-50 w-72 sm:w-80 bg-surface-raised border border-slate-700 rounded-xl p-3.5 shadow-2xl space-y-2.5 animate-in fade-in zoom-in-95 duration-150 text-slate-200">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-accent-400">
+                        <Calculator className="w-3.5 h-3.5" />
+                        <span>Margin σ = 9.8 pts</span>
+                      </div>
+                      <button
+                        onClick={() => setShowSigmaExplainer(false)}
+                        className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+
+                    <p className="text-[11px] text-slate-300 leading-relaxed">
+                      Standard deviation of single-game score differentials around expected margin. Converts point margins into game win probabilities:
+                    </p>
+
+                    <div className="bg-surface p-2 rounded border border-slate-800 font-mono text-[10.5px] text-violet-400 font-semibold">
+                      P(Win) = Φ( Expected_Margin / 9.8 )
+                    </div>
+
+                    <div className="space-y-1 font-mono text-[10.5px]">
+                      <div className="flex justify-between text-slate-300">
+                        <span>Pick&apos;em (0.0 pt):</span>
+                        <span className="font-bold text-white">50.0%</span>
+                      </div>
+                      <div className="flex justify-between text-slate-300">
+                        <span>+3.5 pt favorite:</span>
+                        <span className="font-bold text-white">63.9%</span>
+                      </div>
+                      <div className="flex justify-between text-slate-300">
+                        <span>+6.0 pt favorite:</span>
+                        <span className="font-bold text-white">73.0%</span>
+                      </div>
+                      <div className="flex justify-between text-slate-300">
+                        <span>+10.0 pt favorite:</span>
+                        <span className="font-bold text-white">84.6%</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50">
+              <span className="text-[10px] text-slate-400 block">Variants</span>
+              <span className="font-mono font-bold text-accent-400" title="RAPM, Bottom-Up, Fatigue, Ensemble">4 Blend</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -229,6 +314,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
             <span>Live Analytics System</span>
           </span>
           <span className="font-mono text-[11px] text-slate-400">v1.0.0</span>
+        </div>
+        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 px-1">
+          <ShieldCheck className="w-3.5 h-3.5 text-accent-400 flex-shrink-0" />
+          <span className="truncate">RAPM Ridge & DAG Verified</span>
         </div>
         {generatedAt && (
           <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono px-1">
