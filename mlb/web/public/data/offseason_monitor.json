@@ -35,29 +35,7 @@
           "transactionType": "FREE_AGENCY",
           "priorValue": "40_MAN",
           "newValue": "FREE_AGENT",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions"
-        },
-        {
-          "date": "2026-10-29",
-          "team": "BAL",
-          "playerName": "Pete Alonso",
-          "playerId": "B_19251",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "FREE_AGENCY",
-          "priorValue": "GUARANTEED",
-          "newValue": "UNRESTRICTED_FA",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions"
-        },
-        {
-          "date": "2026-10-29",
-          "team": "FA",
-          "playerName": "Pete Alonso",
-          "playerId": "B_19251",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "TRADE",
-          "priorValue": "BAL",
-          "newValue": "None",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions"
+          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=110&startDate=2026-10-29&endDate=2026-10-29"
         },
         {
           "date": "2026-10-29",
@@ -68,7 +46,7 @@
           "transactionType": "TRADE",
           "priorValue": "BOS",
           "newValue": "DET",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions"
+          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=116&transactionIds=947461"
         },
         {
           "date": "2026-10-29",
@@ -76,10 +54,10 @@
           "playerName": "Kyren Paris",
           "playerId": "B_26420",
           "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "TRADE",
+          "transactionType": "WAIVER_CLAIM",
           "priorValue": "LAA",
           "newValue": "NYM",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions"
+          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=121&transactionIds=947444"
         },
         {
           "date": "2026-10-29",
@@ -90,7 +68,7 @@
           "transactionType": "TRADE",
           "priorValue": "BOS",
           "newValue": "ATH",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions"
+          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=133&transactionIds=947273"
         }
       ],
       "reportedClaims": [],
@@ -143,7 +121,7 @@
     }
   ],
   "currentStateSummary": {
-    "totalConfirmedTransactions": 6,
+    "totalConfirmedTransactions": 4,
     "pendingReportedRumors": 0,
     "expiredRumorCount": 0,
     "cbtPayrollLeader": "NYM"
