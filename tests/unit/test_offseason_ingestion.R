@@ -12,6 +12,11 @@ if (length(f) == 1 && nzchar(f) && file.exists(f)) {
   cand <- normalizePath(dirname(dirname(dirname(f))), winslash = "/", mustWork = FALSE)
   if (file.exists(file.path(cand, "config.R"))) setwd(cand)
 }
+cur <- getwd()
+while (!file.exists(file.path(cur, "config.R")) && dirname(cur) != cur) {
+  cur <- dirname(cur)
+}
+if (file.exists(file.path(cur, "config.R"))) setwd(cur)
 
 suppressPackageStartupMessages({
   library(testthat)
