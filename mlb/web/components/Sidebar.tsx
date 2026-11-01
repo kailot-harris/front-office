@@ -39,9 +39,10 @@ const withoutTrailingSlash = (path: string) =>
 
 export interface SidebarProps {
   generatedAt?: string;
+  seasonMode?: 'offseason' | 'inseason';
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'offseason' }) => {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [showEloExplainer, setShowEloExplainer] = useState(false);
@@ -246,38 +247,77 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
 
         {/* Navigation Links */}
         <div className="space-y-4">
-          {/* Primary Offseason Navigation */}
-          <div className="space-y-1">
-            <div className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 font-mono">
-              Off-Season Intelligence
-            </div>
-            {primaryNavItems.map(renderNavLink)}
-          </div>
-
-          {/* Collapsible 2026 Championship Archive */}
-          <div className="pt-2 border-t border-slate-800/60">
-            <button
-              type="button"
-              onClick={() => setIsArchiveOpen(!isArchiveOpen)}
-              className="w-full flex items-center justify-between px-2 py-1.5 text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400 hover:text-white transition-colors group"
-            >
-              <div className="flex items-center gap-1.5">
-                <Archive className="w-3.5 h-3.5 text-sky-400" />
-                <span>2026 Championship Archive</span>
-              </div>
-              <ChevronDown
-                className={`w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 transition-transform duration-200 ${
-                  isArchiveOpen ? 'rotate-180' : ''
-                }`}
-              />
-            </button>
-
-            {isArchiveOpen && (
-              <div className="space-y-1 mt-2 pl-1 border-l-2 border-slate-800/80 ml-2 animate-in fade-in duration-150">
+          {seasonMode === 'inseason' ? (
+            <>
+              {/* Daily In-Season Navigation */}
+              <div className="space-y-1">
+                <div className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 font-mono">
+                  Daily Sabermetric Operations
+                </div>
                 {inSeasonNavItems.map(renderNavLink)}
               </div>
-            )}
-          </div>
+
+              {/* Historical Off-Season Monitor in Archive Section */}
+              <div className="pt-2 border-t border-slate-800/60">
+                <button
+                  type="button"
+                  onClick={() => setIsArchiveOpen(!isArchiveOpen)}
+                  className="w-full flex items-center justify-between px-2 py-1.5 text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400 hover:text-white transition-colors group"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Archive className="w-3.5 h-3.5 text-sky-400" />
+                    <span>Historical Archive & Off-Season</span>
+                  </div>
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 transition-transform duration-200 ${
+                      isArchiveOpen ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+
+                {isArchiveOpen && (
+                  <div className="space-y-1 mt-2 pl-1 border-l-2 border-slate-800/80 ml-2 animate-in fade-in duration-150">
+                    {primaryNavItems.map(renderNavLink)}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Primary Offseason Navigation */}
+              <div className="space-y-1">
+                <div className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 font-mono">
+                  Off-Season Intelligence
+                </div>
+                {primaryNavItems.map(renderNavLink)}
+              </div>
+
+              {/* Collapsible 2026 Championship Archive */}
+              <div className="pt-2 border-t border-slate-800/60">
+                <button
+                  type="button"
+                  onClick={() => setIsArchiveOpen(!isArchiveOpen)}
+                  className="w-full flex items-center justify-between px-2 py-1.5 text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400 hover:text-white transition-colors group"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Archive className="w-3.5 h-3.5 text-sky-400" />
+                    <span>2026 Championship Archive</span>
+                  </div>
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 transition-transform duration-200 ${
+                      isArchiveOpen ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+
+                {isArchiveOpen && (
+                  <div className="space-y-1 mt-2 pl-1 border-l-2 border-slate-800/80 ml-2 animate-in fade-in duration-150">
+                    {inSeasonNavItems.map(renderNavLink)}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Engine Metadata Card */}
