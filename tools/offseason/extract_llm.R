@@ -61,9 +61,91 @@ validate_zero_betting <- function(text_vector) {
 # 1. Multi-player trades: "Team A traded Player 1 and Player 2 to Team B for Player 3, cash considerations, and a PTBNL."
 # 2. Rumors and reported claims: "Sources: Team A discussing trade package involving Player 1 with Team B."
 # 3. Contract extension rumors: "Beat report: Player 1 nearing guaranteed extension with Team A."
+OLLAMA_HOST <- Sys.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
+# qwen3.5:4b, not gemma4:12b: on CPU-only Ollama, Ollama's grammar-constrained
+# `format` JSON mode never emits a stop token for either model (runs away
+# generating tokens until the client timeout), and gemma4:12b's plain
+# generation is too slow (~1 tok/s decode) to be usable here. qwen3.5:4b with
+# `think = FALSE` and plain-JSON prompting (no `format`) returns in seconds.
+OLLAMA_MODEL <- Sys.getenv("OLLAMA_MODEL", "qwen3.5:4b")
+
+#' Extract the first top-level {...} JSON object from LLM free-text output
+extract_json_object_mlb <- function(text) {
+  start <- regexpr("\\{", text)[1]
+  if (start == -1) stop("No JSON object found in LLM response")
+  depth <- 0
+  for (i in start:nchar(text)) {
+    ch <- substr(text, i, i)
+    if (ch == "{") depth <- depth + 1
+    if (ch == "}") depth <- depth - 1
+    if (depth == 0) return(substr(text, start, i))
+  }
+  stop("Unterminated JSON object in LLM response")
+}
+
+MLB_LLM_SYSTEM_PROMPT <- "You are an expert MLB front-office intelligence extraction engine.
+Extract state transition deltas from unstructured text (trade wires, press releases, beat
+reporting) covering multi-party trades, cash considerations, and PTBNL structures.
+For each candidate transition output a structured JSON object with:
+- entity_id: player_id or team abbreviation from the provided roster baseline
+- field: attribute mutated (e.g. 'team', 'cbtPayrollCommitted', 'draftPicks2027')
+- prior_val: prior value or null
+- new_val: new value
+- tier: 'CONFIRMED' (official wire/team announcement), 'REPORTED' (beat reporter claim), or 'SPECULATIVE' (rumor)
+- notes: brief explanation of the transition
+Respond with ONLY raw JSON, no markdown fences, no commentary, in the exact shape {\"deltas\": [...]}.
+Never reference betting markets, odds, or sportsbooks."
+
+#' Call local Ollama (qwen3.5:4b by default) for structured delta extraction
+ollama_llm_extract_mlb <- function(raw_text, baseline, as_of_date, source_url) {
+  if (!requireNamespace("httr2", quietly = TRUE)) {
+    stop("httr2 package required for live Ollama extraction")
+  }
+  user_prompt <- sprintf(
+    "As of %s (source: %s), extract state transition deltas from this text:\n\n%s",
+    as_of_date,
+    if (is.null(source_url)) "unknown" else source_url,
+    raw_text
+  )
+  resp <- httr2::request(paste0(OLLAMA_HOST, "/api/chat")) |>
+    httr2::req_body_json(list(
+      model = OLLAMA_MODEL,
+      think = FALSE,
+      messages = list(
+        list(role = "system", content = MLB_LLM_SYSTEM_PROMPT),
+        list(role = "user", content = user_prompt)
+      ),
+      options = list(num_ctx = 4096, num_predict = 800, temperature = 0),
+      stream = FALSE
+    )) |>
+    httr2::req_timeout(90) |>
+    httr2::req_perform()
+
+  body <- httr2::resp_body_json(resp)
+  content <- body$message$content
+  parsed <- jsonlite::fromJSON(extract_json_object_mlb(content), simplifyVector = FALSE)
+  deltas <- parsed$deltas
+  if (is.null(deltas)) deltas <- list()
+  validate_zero_betting(vapply(deltas, function(d) paste(unlist(d), collapse = " "), character(1)))
+  for (i in seq_along(deltas)) {
+    deltas[[i]]$date <- as_of_date
+    deltas[[i]]$source_url <- source_url
+  }
+  deltas
+}
+
 extract_llm_semantic <- function(raw_text, baseline, as_of_date = "2026-10-31", source_url = NULL, mock = TRUE) {
   validate_zero_betting(raw_text)
-  
+
+  if (!mock) {
+    return(tryCatch({
+      ollama_llm_extract_mlb(raw_text, baseline, as_of_date, source_url)
+    }, error = function(e) {
+      warning("Ollama LLM extraction failed, falling back to offline evaluator: ", e$message)
+      extract_llm_semantic(raw_text, baseline, as_of_date, source_url, mock = TRUE)
+    }))
+  }
+
   if (mock) {
     # Offline deterministic semantic extractor
     deltas <- list()
@@ -176,7 +258,4 @@ extract_llm_semantic <- function(raw_text, baseline, as_of_date = "2026-10-31", 
     regex_res <- extract_regex_from_text(raw_text, baseline, as_of_date, source_url)
     return(regex_res)
   }
-  
-  # Live LLM API invocation could be added here if environment variables are set
-  stop("Live LLM API extraction not configured for this offline invocation.")
 }
