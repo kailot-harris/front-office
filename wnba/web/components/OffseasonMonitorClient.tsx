@@ -2,6 +2,8 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   Sparkles,
   CheckCircle2,
@@ -332,9 +334,9 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
         <div className="space-y-6">
           <div className="bg-surface-raised border border-slate-800/80 rounded-2xl p-6 sm:p-8 shadow-xl">
             <div className="prose prose-invert max-w-none prose-headings:text-white prose-a:text-violet-400 hover:prose-a:underline prose-table:border-collapse prose-th:border prose-th:border-slate-800 prose-th:bg-surface prose-th:p-2 prose-td:border prose-td:border-slate-800 prose-td:p-2">
-              <div className="whitespace-pre-wrap font-sans text-sm sm:text-base leading-relaxed text-slate-300">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {currentEdition.memoMarkdown}
-              </div>
+              </ReactMarkdown>
             </div>
           </div>
 
