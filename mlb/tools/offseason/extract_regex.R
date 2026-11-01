@@ -159,10 +159,34 @@ find_player_in_snippet <- function(snippet, baseline_players, player_index = NUL
   NULL
 }
 
+# Builds a wire sourceUrl that identifies the specific transaction when a
+# teamId + transactionId are known, so links are no longer the bare,
+# query-less transactions endpoint. Falls back to a team-scoped link with
+# the as-of date when only the teamId is known, and finally to the raw
+# default_url (e.g. the bare endpoint from a fixture) when neither is known.
+build_wire_source_url <- function(default_url, team_id = NULL, transaction_id = NULL, as_of_date = NULL) {
+  base <- "https://statsapi.mlb.com/api/v1/transactions"
+  if (!is.null(team_id) && !is.null(transaction_id)) {
+    return(sprintf("%s?teamId=%s&transactionIds=%s", base, team_id, transaction_id))
+  }
+  if (!is.null(team_id)) {
+    if (!is.null(as_of_date)) {
+      return(sprintf("%s?teamId=%s&startDate=%s&endDate=%s", base, team_id, as_of_date, as_of_date))
+    }
+    return(sprintf("%s?teamId=%s", base, team_id))
+  }
+  default_url
+}
+
 # Core Layer A regex extraction function
-extract_regex_from_text <- function(raw_text, baseline, as_of_date = "2026-10-31", source_url = NULL, player_index = NULL) {
+# team_id / transaction_id (when known from the raw ingest payload) are used
+# to build a sourceUrl that identifies the specific transaction instead of
+# the bare transactions endpoint.
+extract_regex_from_text <- function(raw_text, baseline, as_of_date = "2026-10-31", source_url = NULL,
+                                     player_index = NULL, team_id = NULL, transaction_id = NULL) {
   validate_zero_betting(raw_text)
   deltas <- list()
+  resolved_source_url <- build_wire_source_url(source_url, team_id, transaction_id, as_of_date)
   
   if (is.null(player_index) && !is.null(baseline$players)) {
     if (is.null(baseline$.player_index)) {
@@ -187,10 +211,16 @@ extract_regex_from_text <- function(raw_text, baseline, as_of_date = "2026-10-31
           new_val = "FREE_AGENT",
           tier = "CONFIRMED",
           date = as_of_date,
-          source_url = source_url
+          source_url = resolved_source_url,
+          transaction_type = "FREE_AGENCY"
         )
       }
-      
+
+      # contractStatus and team are the same underlying free-agency transaction
+      # as rosterStatus above; they still mutate the baseline (so downstream
+      # state is correct) but must not each spawn their own confirmedChanges
+      # row (that produced the Pete Alonso duplicate/phantom rows: 1 signing
+      # must produce exactly 1 reported event, not 3).
       prior_contract <- p$contractStatus$value
       deltas[[length(deltas) + 1]] <- list(
         entity_type = "player",
@@ -200,9 +230,11 @@ extract_regex_from_text <- function(raw_text, baseline, as_of_date = "2026-10-31
         new_val = "UNRESTRICTED_FA",
         tier = "CONFIRMED",
         date = as_of_date,
-        source_url = source_url
+        source_url = resolved_source_url,
+        transaction_type = "FREE_AGENCY",
+        suppress_event = TRUE
       )
-      
+
       prior_team <- p$team$value
       if (!is.null(prior_team)) {
         deltas[[length(deltas) + 1]] <- list(
@@ -213,7 +245,9 @@ extract_regex_from_text <- function(raw_text, baseline, as_of_date = "2026-10-31
           new_val = NULL,
           tier = "CONFIRMED",
           date = as_of_date,
-          source_url = source_url
+          source_url = resolved_source_url,
+          transaction_type = "FREE_AGENCY",
+          suppress_event = TRUE
         )
       }
     }
@@ -236,7 +270,8 @@ extract_regex_from_text <- function(raw_text, baseline, as_of_date = "2026-10-31
         new_val = new_contract,
         tier = "CONFIRMED",
         date = as_of_date,
-        source_url = source_url
+        source_url = resolved_source_url,
+        transaction_type = if (action == "exercised") "OPTION_EXERCISED" else "OPTION_DECLINED"
       )
     }
     return(deltas)
@@ -260,7 +295,8 @@ extract_regex_from_text <- function(raw_text, baseline, as_of_date = "2026-10-31
           new_val = to_team,
           tier = "CONFIRMED",
           date = as_of_date,
-          source_url = source_url
+          source_url = resolved_source_url,
+          transaction_type = "WAIVER_CLAIM"
         )
       }
     }
@@ -286,10 +322,11 @@ extract_regex_from_text <- function(raw_text, baseline, as_of_date = "2026-10-31
           new_val = to_team,
           tier = "CONFIRMED",
           date = as_of_date,
-          source_url = source_url
+          source_url = resolved_source_url,
+          transaction_type = "TRADE"
         )
       }
-      
+
       p2 <- find_player_in_snippet(return_pkg, baseline$players, player_index)
       if (!is.null(p2)) {
         deltas[[length(deltas) + 1]] <- list(
@@ -300,7 +337,8 @@ extract_regex_from_text <- function(raw_text, baseline, as_of_date = "2026-10-31
           new_val = from_team,
           tier = "CONFIRMED",
           date = as_of_date,
-          source_url = source_url
+          source_url = resolved_source_url,
+          transaction_type = "TRADE"
         )
       }
     }

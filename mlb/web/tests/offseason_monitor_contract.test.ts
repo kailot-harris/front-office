@@ -206,4 +206,56 @@ describe('MLB Off-Season Dynamics Monitor Contract Suite', () => {
       expect(raw).not.toContain(term);
     });
   });
+
+  it('wire sourceUrl identifies the specific transaction (teamId + transactionIds), not a bare endpoint', () => {
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const data = JSON.parse(raw) as OffseasonMonitorDataset;
+
+    // A specific-transaction link, e.g.
+    // https://statsapi.mlb.com/api/v1/transactions?teamId=121&transactionIds=947444
+    const specificTransactionPattern = /teamId=\d+&transactionIds=\d+/;
+    // Documented fallback when no specific transactionId is known for the
+    // wire source: a team-scoped link with a date range, e.g.
+    // https://statsapi.mlb.com/api/v1/transactions?teamId=110&startDate=2026-10-29&endDate=2026-10-29
+    const teamLevelFallbackPattern = /teamId=\d+(&startDate=[\d-]+&endDate=[\d-]+)?$/;
+    const bareWireUrl = 'https://statsapi.mlb.com/api/v1/transactions';
+
+    data.editions.forEach((ed) => {
+      ed.confirmedChanges.forEach((c) => {
+        expect(c.sourceUrl).not.toBe(bareWireUrl);
+        const matches =
+          specificTransactionPattern.test(c.sourceUrl) || teamLevelFallbackPattern.test(c.sourceUrl);
+        expect(matches).toBe(true);
+      });
+    });
+  });
+
+  it('classifies a waiver claim as WAIVER_CLAIM, not TRADE', () => {
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const data = JSON.parse(raw) as OffseasonMonitorDataset;
+
+    const parisRows = data.editions
+      .flatMap((ed) => ed.confirmedChanges)
+      .filter((c) => c.playerName === 'Kyren Paris');
+
+    expect(parisRows.length).toBeGreaterThan(0);
+    parisRows.forEach((row) => {
+      expect(row.transactionType).toBe('WAIVER_CLAIM');
+      expect(row.sourceUrl).toMatch(/teamId=121&transactionIds=947444/);
+    });
+  });
+
+  it('collapses Pete Alonso to exactly one FREE_AGENCY row for BAL (no duplicate/phantom rows)', () => {
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const data = JSON.parse(raw) as OffseasonMonitorDataset;
+
+    const alonsoRows = data.editions
+      .flatMap((ed) => ed.confirmedChanges)
+      .filter((c) => c.playerName === 'Pete Alonso');
+
+    expect(alonsoRows.length).toBe(1);
+    expect(alonsoRows[0].transactionType).toBe('FREE_AGENCY');
+    expect(alonsoRows[0].team).toBe('BAL');
+    expect(alonsoRows[0].newValue).not.toBe('None');
+  });
 });
