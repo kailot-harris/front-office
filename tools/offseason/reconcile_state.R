@@ -171,13 +171,40 @@ reconcile_state <- function(baseline_state, confirmed_deltas, as_of_timestamp = 
         }
       }
       
-      # Record confirmed event if value changed and not backfill
-      if (value_changed && !is_backfill) {
+      # Record confirmed event if value changed and not backfill.
+      # A delta tagged suppress_event (e.g. the contractStatus/team
+      # side-effects of a single free-agency declaration) still mutates the
+      # baseline above, but must not spawn its own confirmedChanges row --
+      # otherwise 1 transaction produces several duplicate/phantom rows
+      # (the Pete Alonso bug: 3 rows, including a bogus team: "FA" row,
+      # for what is really 1 FREE_AGENCY transaction).
+      if (value_changed && !is_backfill && !isTRUE(delta$suppress_event)) {
         player_name <- staged$players[[entity_id]]$displayName
-        p_team <- staged$players[[entity_id]]$team$value
-        
-        # Determine transactionType
-        tx_type <- if (identical(field, "rosterStatus") && identical(new_val, "FREE_AGENT")) {
+        # Attribute the event to the club the transaction is filed under, so
+        # that `team` agrees with the teamId carried in sourceUrl and the web
+        # UI's team filter surfaces the row under the acquiring club.
+        #
+        # For a "team" field change that lands somewhere (TRADE, WAIVER_CLAIM)
+        # that is the post-mutation value: Kyren Paris claimed by NYM off LAA
+        # waivers is NYM's transaction (sourceUrl teamId=121), and the origin
+        # club stays visible in priorValue.
+        #
+        # When the new value is empty the player is leaving the league rather
+        # than joining a club (a free-agency declaration), so fall back to the
+        # pre-mutation value -- otherwise the row would report team "FA".
+        p_team <- if (identical(field, "team")) {
+          if (!is.null(new_val) && nzchar(as.character(new_val))) new_val else prior_val
+        } else {
+          staged$players[[entity_id]]$team$value
+        }
+
+        # Determine transactionType. Prefer an explicit transaction_type
+        # carried on the delta (set by the extractor, which knows whether a
+        # "team" field change is a TRADE or a WAIVER_CLAIM, etc.) and fall
+        # back to the old field-based heuristic only when none was supplied.
+        tx_type <- if (!is.null(delta$transaction_type)) {
+          delta$transaction_type
+        } else if (identical(field, "rosterStatus") && identical(new_val, "FREE_AGENT")) {
           "FREE_AGENCY"
         } else if (identical(field, "team")) {
           "TRADE"
@@ -188,7 +215,7 @@ reconcile_state <- function(baseline_state, confirmed_deltas, as_of_timestamp = 
         } else {
           "MAJOR_40_MAN"
         }
-        
+
         confirmed_events[[length(confirmed_events) + 1]] <- list(
           date = as_of_date,
           team = if (!is.null(p_team)) p_team else "FA",
@@ -319,7 +346,8 @@ main <- function() {
     source("tools/offseason/extract_regex.R")
     baseline$.player_index <- build_player_index(baseline$players)
     for (f in fixtures) {
-      ext <- extract_regex_from_text(f$raw_text, baseline, f$date, f$source_url)
+      ext <- extract_regex_from_text(f$raw_text, baseline, f$date, f$source_url,
+                                      team_id = f$team_id, transaction_id = f$transaction_id)
       deltas <- c(deltas, ext)
     }
   }

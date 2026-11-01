@@ -135,7 +135,8 @@ build_offseason_monitor <- function(allow_degraded = FALSE,
       fixtures <- fromJSON(fixture_path, simplifyVector = FALSE)
       baseline$.player_index <- build_player_index(baseline$players)
       for (f in fixtures) {
-        ext <- extract_regex_from_text(f$raw_text, baseline, f$date, f$source_url)
+        ext <- extract_regex_from_text(f$raw_text, baseline, f$date, f$source_url,
+                                        team_id = f$team_id, transaction_id = f$transaction_id)
         deltas <- c(deltas, ext)
       }
     }

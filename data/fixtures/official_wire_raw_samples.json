@@ -4,6 +4,9 @@
     "raw_text": "New York Mets 1B Pete Alonso declared free agency.",
     "date": "2026-10-29",
     "source_url": "https://statsapi.mlb.com/api/v1/transactions",
+    "team_id": 110,
+    "transaction_id": null,
+    "_note": "Alonso's real club is BAL (teamId=110); no specific transactionId was found in the raw wire archive for this entry, so sourceUrl falls back to a team-scoped link (teamId + date) rather than the bare endpoint or the Mets' id.",
     "expected_tuples": [
       {
         "entity_type": "player",
@@ -52,6 +55,8 @@
     "raw_text": "Boston Red Sox traded SS Tsung-Che Cheng to Detroit Tigers for cash.",
     "date": "2026-10-29",
     "source_url": "https://statsapi.mlb.com/api/v1/transactions",
+    "team_id": 116,
+    "transaction_id": 947461,
     "expected_tuples": [
       {
         "entity_type": "player",
@@ -68,6 +73,8 @@
     "raw_text": "New York Mets claimed 2B Kyren Paris off waivers from Los Angeles Angels.",
     "date": "2026-10-29",
     "source_url": "https://statsapi.mlb.com/api/v1/transactions",
+    "team_id": 121,
+    "transaction_id": 947444,
     "expected_tuples": [
       {
         "entity_type": "player",
@@ -84,6 +91,8 @@
     "raw_text": "Athletics traded RHP Jareth Rayo to Boston Red Sox for LF Nate Eaton.",
     "date": "2026-10-29",
     "source_url": "https://statsapi.mlb.com/api/v1/transactions",
+    "team_id": 133,
+    "transaction_id": 947273,
     "expected_tuples": [
       {
         "entity_type": "player",

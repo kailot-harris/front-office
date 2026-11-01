@@ -50,12 +50,17 @@ main <- function() {
   cat(">>> Running Deterministic State Reconciler & 6 Diff Rules Test Suite\n")
   cat("=====================================================================\n")
   
-  baseline_path <- "cache/league_state_baseline.json"
+  # Load the pinned S0 capture, NOT cache/league_state_baseline.json. The cache
+  # is live state that the weekly pipeline advances in place: once week 1's
+  # deltas were applied, Kyren Paris already sat on NYM and Pete Alonso was
+  # already a free agent, so every delta below became a no-op and the
+  # regression tests failed against their own fixed logic.
+  baseline_path <- "data/fixtures/league_state_s0.json"
   if (!file.exists(baseline_path)) {
-    stop("test_reconciler.R: baseline not found at cache/league_state_baseline.json")
+    stop("test_reconciler.R: pinned S0 baseline not found at data/fixtures/league_state_s0.json")
   }
   baseline <- fromJSON(baseline_path, simplifyDataFrame = FALSE)
-  
+
   # ---------------------------------------------------------------------------
   # Test Rule 1: Diffs compare .value. Provenance changes never generate events.
   # ---------------------------------------------------------------------------
@@ -217,8 +222,106 @@ main <- function() {
   unlink(test_staged_path)
   cat("  [PASS] draftPicks2027 and calendarMilestones serialized as arrays.\n")
   
+  # ---------------------------------------------------------------------------
+  # Regression test: Kyren Paris is a waiver claim, not a trade.
+  # A "team" field delta carrying transaction_type = "WAIVER_CLAIM" (as the
+  # extractor now tags waiver-claim text) must be classified as WAIVER_CLAIM
+  # in the resulting confirmedChanges event, not defaulted to TRADE.
+  # ---------------------------------------------------------------------------
+  cat("Regression test: waiver-claim delta is classified WAIVER_CLAIM...\n")
+  delta_paris <- list(
+    list(
+      entity_id = "B_26420",
+      field = "team",
+      prior_val = baseline$players$B_26420$team$value,
+      new_val = "NYM",
+      tier = "CONFIRMED",
+      date = "2026-10-29",
+      source_url = "https://statsapi.mlb.com/api/v1/transactions?teamId=121&transactionIds=947444",
+      transaction_type = "WAIVER_CLAIM"
+    )
+  )
+  res_paris <- reconcile_state(baseline, delta_paris)
+  if (length(res_paris$confirmed_events) != 1) {
+    stop(sprintf("Waiver-claim regression failed: expected exactly 1 event, got %d",
+                 length(res_paris$confirmed_events)))
+  }
+  if (res_paris$confirmed_events[[1]]$transactionType != "WAIVER_CLAIM") {
+    stop(sprintf("Waiver-claim regression failed: expected transactionType WAIVER_CLAIM, got %s",
+                 res_paris$confirmed_events[[1]]$transactionType))
+  }
+  # The claim is NYM's transaction (sourceUrl teamId=121), so the event must be
+  # attributed to the acquiring club, with LAA preserved in priorValue.
+  if (res_paris$confirmed_events[[1]]$team != "NYM") {
+    stop(sprintf("Waiver-claim regression failed: expected team NYM (acquiring club), got %s",
+                 res_paris$confirmed_events[[1]]$team))
+  }
+  if (res_paris$confirmed_events[[1]]$priorValue != "LAA") {
+    stop(sprintf("Waiver-claim regression failed: expected priorValue LAA, got %s",
+                 res_paris$confirmed_events[[1]]$priorValue))
+  }
+  cat("  [PASS] Waiver-claim delta correctly classified as WAIVER_CLAIM (not TRADE), attributed to NYM.\n")
+
+  # ---------------------------------------------------------------------------
+  # Regression test: Pete Alonso free-agency declaration collapses to exactly
+  # 1 confirmedChanges row (not 3), with no phantom team: "FA" / TRADE / "None"
+  # row. The contractStatus and team side-effect deltas must be tagged
+  # suppress_event = TRUE by the extractor and skipped by the reconciler.
+  # ---------------------------------------------------------------------------
+  cat("Regression test: Alonso free-agency declaration dedupes to 1 event...\n")
+  prior_team_alonso <- baseline$players$B_19251$team$value
+  delta_alonso <- list(
+    list(
+      entity_id = "B_19251",
+      field = "rosterStatus",
+      prior_val = baseline$players$B_19251$rosterStatus$value,
+      new_val = "FREE_AGENT",
+      tier = "CONFIRMED",
+      date = "2026-10-29",
+      source_url = "https://statsapi.mlb.com/api/v1/transactions?teamId=110&startDate=2026-10-29&endDate=2026-10-29",
+      transaction_type = "FREE_AGENCY"
+    ),
+    list(
+      entity_id = "B_19251",
+      field = "contractStatus",
+      prior_val = baseline$players$B_19251$contractStatus$value,
+      new_val = "UNRESTRICTED_FA",
+      tier = "CONFIRMED",
+      date = "2026-10-29",
+      source_url = "https://statsapi.mlb.com/api/v1/transactions?teamId=110&startDate=2026-10-29&endDate=2026-10-29",
+      transaction_type = "FREE_AGENCY",
+      suppress_event = TRUE
+    ),
+    list(
+      entity_id = "B_19251",
+      field = "team",
+      prior_val = prior_team_alonso,
+      new_val = NULL,
+      tier = "CONFIRMED",
+      date = "2026-10-29",
+      source_url = "https://statsapi.mlb.com/api/v1/transactions?teamId=110&startDate=2026-10-29&endDate=2026-10-29",
+      transaction_type = "FREE_AGENCY",
+      suppress_event = TRUE
+    )
+  )
+  res_alonso <- reconcile_state(baseline, delta_alonso)
+  if (length(res_alonso$confirmed_events) != 1) {
+    stop(sprintf("Alonso dedup regression failed: expected exactly 1 confirmed event, got %d",
+                 length(res_alonso$confirmed_events)))
+  }
+  alonso_event <- res_alonso$confirmed_events[[1]]
+  if (alonso_event$transactionType != "FREE_AGENCY") {
+    stop(sprintf("Alonso dedup regression failed: expected transactionType FREE_AGENCY, got %s",
+                 alonso_event$transactionType))
+  }
+  if (alonso_event$team != prior_team_alonso || alonso_event$newValue == "None") {
+    stop("Alonso dedup regression failed: expected the real prior team (not 'FA') and no phantom newValue 'None'")
+  }
+  cat(sprintf("  [PASS] Alonso free-agency declaration produced exactly 1 event (team=%s, no phantom rows).\n",
+              alonso_event$team))
+
   cat("\n=====================================================================\n")
-  cat(">>> ALL 6 DIFF RULES VERIFIED CLEANLY (6/6 PASS)\n")
+  cat(">>> ALL 6 DIFF RULES + REGRESSION TESTS VERIFIED CLEANLY\n")
   cat("=====================================================================\n")
 }
 
