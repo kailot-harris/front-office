@@ -160,9 +160,19 @@ describe('MLB Off-Season Dynamics Monitor Contract Suite', () => {
     expect(data.editions.length).toBeGreaterThanOrEqual(1);
     expect(data.availableEditions.length).toBeGreaterThanOrEqual(data.editions.length);
 
+    // Editions are published newest-first: build_offseason_monitor.R emits the
+    // active edition followed by the rolling archive, and OffseasonMonitorClient
+    // falls back to editions[0] as the active edition. The previous assertion
+    // (weekNumber === i + 1) only held while a single edition existed and broke
+    // the moment week 2 was published.
+    expect(data.editions[0].weekNumber).toBe(data.currentWeekNumber);
+    for (let i = 1; i < data.editions.length; i++) {
+      expect(data.editions[i].weekNumber).toBeLessThan(data.editions[i - 1].weekNumber);
+    }
+
     for (let i = 0; i < data.editions.length; i++) {
       const ed = data.editions[i];
-      expect(ed.weekNumber).toBe(i + 1);
+      expect(ed.weekNumber).toBeGreaterThanOrEqual(1);
 
       // Array defense: arrays must never be null or unboxed scalars
       expect(Array.isArray(ed.confirmedChanges)).toBe(true);

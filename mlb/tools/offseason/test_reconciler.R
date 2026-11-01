@@ -50,12 +50,17 @@ main <- function() {
   cat(">>> Running Deterministic State Reconciler & 6 Diff Rules Test Suite\n")
   cat("=====================================================================\n")
   
-  baseline_path <- "cache/league_state_baseline.json"
+  # Load the pinned S0 capture, NOT cache/league_state_baseline.json. The cache
+  # is live state that the weekly pipeline advances in place: once week 1's
+  # deltas were applied, Kyren Paris already sat on NYM and Pete Alonso was
+  # already a free agent, so every delta below became a no-op and the
+  # regression tests failed against their own fixed logic.
+  baseline_path <- "data/fixtures/league_state_s0.json"
   if (!file.exists(baseline_path)) {
-    stop("test_reconciler.R: baseline not found at cache/league_state_baseline.json")
+    stop("test_reconciler.R: pinned S0 baseline not found at data/fixtures/league_state_s0.json")
   }
   baseline <- fromJSON(baseline_path, simplifyDataFrame = FALSE)
-  
+
   # ---------------------------------------------------------------------------
   # Test Rule 1: Diffs compare .value. Provenance changes never generate events.
   # ---------------------------------------------------------------------------
@@ -245,7 +250,17 @@ main <- function() {
     stop(sprintf("Waiver-claim regression failed: expected transactionType WAIVER_CLAIM, got %s",
                  res_paris$confirmed_events[[1]]$transactionType))
   }
-  cat("  [PASS] Waiver-claim delta correctly classified as WAIVER_CLAIM (not TRADE).\n")
+  # The claim is NYM's transaction (sourceUrl teamId=121), so the event must be
+  # attributed to the acquiring club, with LAA preserved in priorValue.
+  if (res_paris$confirmed_events[[1]]$team != "NYM") {
+    stop(sprintf("Waiver-claim regression failed: expected team NYM (acquiring club), got %s",
+                 res_paris$confirmed_events[[1]]$team))
+  }
+  if (res_paris$confirmed_events[[1]]$priorValue != "LAA") {
+    stop(sprintf("Waiver-claim regression failed: expected priorValue LAA, got %s",
+                 res_paris$confirmed_events[[1]]$priorValue))
+  }
+  cat("  [PASS] Waiver-claim delta correctly classified as WAIVER_CLAIM (not TRADE), attributed to NYM.\n")
 
   # ---------------------------------------------------------------------------
   # Regression test: Pete Alonso free-agency declaration collapses to exactly
