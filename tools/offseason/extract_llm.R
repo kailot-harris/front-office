@@ -98,6 +98,61 @@ mock_llm_extract <- function(raw_text, date = NULL, source_url = NULL, baseline_
   deltas
 }
 
+OLLAMA_HOST <- Sys.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
+# qwen3.5:4b, not gemma4:12b: on CPU-only Ollama, Ollama's grammar-constrained
+# `format` JSON mode never emits a stop token for either model (runs away
+# generating tokens until the client timeout), and gemma4:12b's plain
+# generation is too slow (~1 tok/s decode) to be usable here. qwen3.5:4b with
+# `think = FALSE` and plain-JSON prompting (no `format`) returns in seconds.
+OLLAMA_MODEL <- Sys.getenv("OLLAMA_MODEL", "qwen3.5:4b")
+
+#' Extract the first top-level {...} JSON object from LLM free-text output
+extract_json_object <- function(text) {
+  start <- regexpr("\\{", text)[1]
+  if (start == -1) stop("No JSON object found in LLM response")
+  depth <- 0
+  for (i in start:nchar(text)) {
+    ch <- substr(text, i, i)
+    if (ch == "{") depth <- depth + 1
+    if (ch == "}") depth <- depth - 1
+    if (depth == 0) return(substr(text, start, i))
+  }
+  stop("Unterminated JSON object in LLM response")
+}
+
+#' Call local Ollama (qwen3.5:4b by default) for structured delta extraction
+ollama_llm_extract <- function(raw_text, date = NULL, source_url = NULL, baseline_state = NULL) {
+  if (!requireNamespace("httr2", quietly = TRUE)) {
+    stop("httr2 package required for live Ollama extraction")
+  }
+  user_prompt <- sprintf(
+    "Extract state transition deltas from the following text as of %s (source: %s).\nRespond with ONLY raw JSON, no markdown fences, no commentary, in the exact shape {\"deltas\": [...]}.\n\n%s",
+    if (is.null(date)) "unknown date" else date,
+    if (is.null(source_url)) "unknown" else source_url,
+    raw_text
+  )
+  resp <- httr2::request(paste0(OLLAMA_HOST, "/api/chat")) |>
+    httr2::req_body_json(list(
+      model = OLLAMA_MODEL,
+      think = FALSE,
+      messages = list(
+        list(role = "system", content = LLM_SYSTEM_PROMPT),
+        list(role = "user", content = user_prompt)
+      ),
+      options = list(num_ctx = 4096, num_predict = 800, temperature = 0),
+      stream = FALSE
+    )) |>
+    httr2::req_timeout(90) |>
+    httr2::req_perform()
+
+  body <- httr2::resp_body_json(resp)
+  content <- body$message$content
+  parsed <- jsonlite::fromJSON(extract_json_object(content), simplifyVector = FALSE)
+  deltas <- parsed$deltas
+  if (is.null(deltas)) deltas <- list()
+  deltas
+}
+
 #' Extract deltas using LLM (or mock offline harness)
 extract_deltas_llm <- function(raw_text,
                                date = NULL,
@@ -105,17 +160,16 @@ extract_deltas_llm <- function(raw_text,
                                baseline_state = NULL,
                                mock = TRUE,
                                api_key = Sys.getenv("GEMINI_API_KEY")) {
-  if (mock || is.null(api_key) || !nzchar(api_key)) {
+  if (mock) {
     return(mock_llm_extract(raw_text, date, source_url, baseline_state))
   }
-  
-  # In live mode, invoke the Gemini Interactions API or relevant LLM provider
-  # Note: Live call gracefully falls back to mock if network or endpoint fails
+
+  # Live mode: call local Ollama (gemma4:12b). Gracefully falls back to the
+  # offline mock extractor if the Ollama server is unreachable or errors.
   tryCatch({
-    # Stub for live API call if configured
-    mock_llm_extract(raw_text, date, source_url, baseline_state)
+    ollama_llm_extract(raw_text, date, source_url, baseline_state)
   }, error = function(e) {
-    warning("LLM extraction failed, falling back to offline evaluator: ", e$message)
+    warning("Ollama LLM extraction failed, falling back to offline evaluator: ", e$message)
     mock_llm_extract(raw_text, date, source_url, baseline_state)
   })
 }
