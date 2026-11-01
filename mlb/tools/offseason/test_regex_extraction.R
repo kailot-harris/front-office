@@ -47,9 +47,13 @@ main <- function() {
   cat(">>> Running Layer A Deterministic Regex Extraction Test Suite\n")
   cat("=====================================================================\n")
   
-  baseline_path <- "cache/league_state_baseline.json"
+  # Load the pinned S0 capture, NOT cache/league_state_baseline.json. The
+  # expected_tuples in official_wire_raw_samples.json are stated relative to
+  # S0; against the live cache (already advanced past week 1) the extractor
+  # correctly emits fewer deltas and the recall assertion fails spuriously.
+  baseline_path <- "data/fixtures/league_state_s0.json"
   if (!file.exists(baseline_path)) {
-    stop("test_regex_extraction.R: baseline not found at cache/league_state_baseline.json")
+    stop("test_regex_extraction.R: pinned S0 baseline not found at data/fixtures/league_state_s0.json")
   }
   baseline <- fromJSON(baseline_path, simplifyDataFrame = FALSE)
   baseline$.player_index <- build_player_index(baseline$players)

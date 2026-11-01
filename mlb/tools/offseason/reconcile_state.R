@@ -180,10 +180,23 @@ reconcile_state <- function(baseline_state, confirmed_deltas, as_of_timestamp = 
       # for what is really 1 FREE_AGENCY transaction).
       if (value_changed && !is_backfill && !isTRUE(delta$suppress_event)) {
         player_name <- staged$players[[entity_id]]$displayName
-        # Report the team this transaction is attributed to using the
-        # pre-mutation value when available, since fields like "team"
-        # going to NULL (free agency) would otherwise report team "FA".
-        p_team <- if (!is.null(prior_val) && identical(field, "team")) prior_val else staged$players[[entity_id]]$team$value
+        # Attribute the event to the club the transaction is filed under, so
+        # that `team` agrees with the teamId carried in sourceUrl and the web
+        # UI's team filter surfaces the row under the acquiring club.
+        #
+        # For a "team" field change that lands somewhere (TRADE, WAIVER_CLAIM)
+        # that is the post-mutation value: Kyren Paris claimed by NYM off LAA
+        # waivers is NYM's transaction (sourceUrl teamId=121), and the origin
+        # club stays visible in priorValue.
+        #
+        # When the new value is empty the player is leaving the league rather
+        # than joining a club (a free-agency declaration), so fall back to the
+        # pre-mutation value -- otherwise the row would report team "FA".
+        p_team <- if (identical(field, "team")) {
+          if (!is.null(new_val) && nzchar(as.character(new_val))) new_val else prior_val
+        } else {
+          staged$players[[entity_id]]$team$value
+        }
 
         # Determine transactionType. Prefer an explicit transaction_type
         # carried on the delta (set by the extractor, which knows whether a
