@@ -30,13 +30,9 @@ build_cba_cap_dataset <- function() {
   players <- jsonlite::fromJSON(players_json_path)
   teams_data <- if (file.exists(teams_json_path)) jsonlite::fromJSON(teams_json_path) else list()
 
-  # 2026 WNBA CBA Constants (in Millions of USD)
-  WNBA_HARD_CAP <- 1.520       # $1,520,000 Hard Cap
-  WNBA_CAP_FLOOR <- 1.368      # $1,368,000 Minimum Floor (90%)
-  WNBA_SUPERMAX <- 0.2492      # $249,244 Supermax
-  WNBA_VET_MAX <- 0.2153       # $215,340 Regular Veteran Max
-  WNBA_MIN_VET <- 0.0788       # $78,831 3+ Year Vet Minimum / 12th Spot Threshold
-  WNBA_MIN_ROOKIE <- 0.0672    # $67,249 0-2 Year Minimum
+  # 2026 WNBA CBA Constants (in Millions of USD) now sourced from config.R
+  # (WNBA_HARD_CAP, WNBA_CAP_FLOOR, WNBA_SUPERMAX, WNBA_VET_MAX, WNBA_MIN_VET,
+  # WNBA_MIN_ROOKIE) rather than redefined locally -- see config.R for provenance.
 
   # Core / Supermax star player designations
   CORE_STARS <- c(
