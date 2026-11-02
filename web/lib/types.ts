@@ -90,12 +90,6 @@ export interface PlayerProjection {
   ast_p50: number;
   ast_p75: number;
   ast_p90: number;
-  games_p10: number;
-  games_p25: number;
-  games_p50: number;
-  games_p75: number;
-  games_p90: number;
-  games_sd: number;
   pts_sd: number;
   reb_sd: number;
   ast_sd: number;

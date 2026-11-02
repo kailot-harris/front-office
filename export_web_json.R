@@ -330,6 +330,11 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
       player_stats <- all_stats %>%
         left_join(current_stats, by = "athlete_display_name") %>%
         mutate(
+          # season_games preserves the pre-coalesce CURRENT_SEASON-only game count (NA if the
+          # player has no current-season sample) -- used below to derive a same-scale,
+          # same-denominator games-played rate. career_games itself mixes current-season and
+          # all-time counts via coalesce() and is NOT a safe denominator for a rate.
+          season_games = career_games,
           career_games = coalesce(career_games, all_career_games),
           avg_mpg = coalesce(avg_mpg, all_avg_mpg),
           avg_pts = coalesce(avg_pts, all_avg_pts),
@@ -339,7 +344,7 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
           sd_reb = coalesce(sd_reb, all_sd_reb),
           sd_ast = coalesce(sd_ast, all_sd_ast)
         ) %>%
-        select(athlete_display_name, career_games, avg_mpg, avg_pts, avg_reb, avg_ast, sd_pts, sd_reb, sd_ast)
+        select(athlete_display_name, career_games, season_games, avg_mpg, avg_pts, avg_reb, avg_ast, sd_pts, sd_reb, sd_ast)
     } else {
       player_stats <- all_stats %>%
         rename(
@@ -367,6 +372,24 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
     )
   }
 
+  # Real per-player games-played rate for the current season, derived from season_games
+  # (actual CURRENT_SEASON game rows played, see :293-368) rather than a random draw.
+  # league_max_games is the most CURRENT_SEASON games any player has actually played -- i.e.
+  # the number of team-games that have actually elapsed so far this season for an "ironman"
+  # player who missed none -- so season_games / league_max_games is a real, deterministic,
+  # same-scale games-availability rate. Players with no current-season sample (season_games
+  # NA, e.g. rookies/all-time-only fallback rows) get NA here and fall through to the
+  # deterministic mpg-based floor in players_joined below instead.
+  if ("season_games" %in% names(player_stats) && nrow(player_stats) > 0 &&
+      any(!is.na(player_stats$season_games)) &&
+      max(player_stats$season_games, na.rm = TRUE) > 0) {
+    league_max_games <- max(player_stats$season_games, na.rm = TRUE)
+    player_stats <- player_stats %>%
+      mutate(games_rate = pmin(1, season_games / league_max_games))
+  } else {
+    player_stats$games_rate <- NA_real_
+  }
+
   # Build projected player table for all active roster players
   if (nrow(rosters_df) > 0) {
     players_joined <- rosters_df %>%
@@ -378,8 +401,13 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
         proj_pts = round(coalesce(avg_pts, 7.5), 1),
         proj_reb = round(coalesce(avg_reb, 3.2), 1),
         proj_ast = round(coalesce(avg_ast, 1.8), 1),
-        # Games played out of 44
-        proj_games = round(pmin(43, pmax(25, 38.5 + (proj_mpg - 20) * 0.15 + rnorm(n(), 0, 1.5))), 1),
+        # Games played out of WNBA_SEASON_GAMES -- derived from real career_games-based
+        # games_rate (see player_stats build above), with a deterministic mpg-based fallback
+        # (the pre-existing heuristic, minus its random jitter) only for players with no
+        # sample at all. No RNG.
+        proj_games_floor = pmin(WNBA_SEASON_GAMES - 1, pmax(25, 38.5 + (proj_mpg - 20) * 0.15)),
+        proj_games = round(pmin(WNBA_SEASON_GAMES, pmax(1,
+          coalesce(games_rate * WNBA_SEASON_GAMES, proj_games_floor))), 1),
         proj_min_total = round(proj_games * proj_mpg, 1),
         proj_pts_total = round(proj_games * proj_pts, 1),
         proj_reb_total = round(proj_games * proj_reb, 1),
@@ -388,7 +416,6 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
         pts_sd = round(coalesce(sd_pts, pmax(1.0, proj_pts * 0.35)), 1),
         reb_sd = round(coalesce(sd_reb, pmax(0.6, proj_reb * 0.40)), 1),
         ast_sd = round(coalesce(sd_ast, pmax(0.5, proj_ast * 0.45)), 1),
-        games_sd = round(runif(n(), 2.5, 4.5), 1),
         # Quantiles
         pts_p10 = round(pmax(0, proj_pts - 1.28 * pts_sd * 0.4), 1),
         pts_p25 = round(pmax(0, proj_pts - 0.67 * pts_sd * 0.4), 1),
@@ -404,12 +431,7 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
         ast_p25 = round(pmax(0, proj_ast - 0.67 * ast_sd * 0.4), 1),
         ast_p50 = proj_ast,
         ast_p75 = round(proj_ast + 0.67 * ast_sd * 0.4, 1),
-        ast_p90 = round(proj_ast + 1.28 * ast_sd * 0.4, 1),
-        games_p10 = round(pmax(15, proj_games - 1.28 * games_sd), 1),
-        games_p25 = round(pmax(20, proj_games - 0.67 * games_sd), 1),
-        games_p50 = proj_games,
-        games_p75 = round(pmin(44, proj_games + 0.67 * games_sd), 1),
-        games_p90 = round(pmin(44, proj_games + 1.28 * games_sd), 1)
+        ast_p90 = round(proj_ast + 1.28 * ast_sd * 0.4, 1)
       )
 
     # Compute outlier z-scores
@@ -441,8 +463,7 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
         pts_p10, pts_p25, pts_p50, pts_p75, pts_p90,
         reb_p10, reb_p25, reb_p50, reb_p75, reb_p90,
         ast_p10, ast_p25, ast_p50, ast_p75, ast_p90,
-        games_p10, games_p25, games_p50, games_p75, games_p90,
-        games_sd, pts_sd, reb_sd, ast_sd,
+        pts_sd, reb_sd, ast_sd,
         pts_zscore, reb_zscore, ast_zscore, pra_zscore, is_outlier
       ) %>%
       arrange(desc(proj_pts))
