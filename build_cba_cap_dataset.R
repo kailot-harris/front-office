@@ -1,10 +1,57 @@
 # ==============================================================================
 # build_cba_cap_dataset.R
-# WNBA Hard Salary Cap, Rookie Scale & 11-vs-12 Player Roster Crunch Engine
+# WNBA CBA structural cap constants + real per-franchise roster facts
 #
-# Generates realistic CBA cap sheets for all 15 WNBA franchises (2026 season)
-# incorporating the hard salary cap ($1.520M), 90% floor ($1.368M), supermax tags,
-# rookie scale wage ladders, and the 11 vs 12 player roster crunch.
+# PROVENANCE / DO NOT REINTRODUCE WITHOUT A REAL SOURCE (2026-11-02, WNBA_analytics#128)
+# ------------------------------------------------------------------------------
+# Until 2026-11-02 this script fabricated every individual player salary,
+# contract type, team payroll target, and future-year (2027/2028) guaranteed
+# salary with unseeded `runif()` draws -- the whole ~150-line contract
+# generation and payroll-rescaling block that used to live here (per-player
+# salary by tier, coin-flip contract type, random team payroll target,
+# coin-flip future-year guarantees). None of it corresponded to any real WNBA
+# contract data; it was presented to users as a "CBA Cap Sheet" with
+# dollar-denominated salaries that were pure noise.
+#
+# What was checked for a real source before removing it (per issue #128's
+# explicit instruction to document the check, not just assert no source
+# exists):
+#   - `wehoop` (the only real WNBA data-ingestion library this repo uses)
+#     exposes box score / play-by-play / roster / standings endpoints only.
+#     It has no contract, salary, or cap-hold endpoint of any kind -- checked
+#     every exported function in the installed `wehoop` namespace
+#     (`ls("package:wehoop")`) and the package's own documentation index; none
+#     reference salary/contract/cap data.
+#   - ESPN's public WNBA JSON endpoints (the other live source used elsewhere
+#     in this repo, e.g. `injury_scraper.R`) do not carry contract/salary
+#     fields on the roster or athlete endpoints.
+#   - No other data source is wired into this repo's pipeline that could
+#     supply individual player salaries, contract types, or team payroll
+#     figures. Public real sources exist in principle (Her Hoop Stats,
+#     Spotrac-style trackers, league/union CBA filings) but none are
+#     ingested anywhere in this codebase, and scraping one ad hoc for this
+#     ticket would itself be an unverified, undocumented new data dependency
+#     -- out of scope for a fabrication *removal* ticket.
+#
+# Decision (per the cross-repo audit's binding decision rule, NFL_analytics#48):
+# per-player salaries, contract type, team payroll targets, and future-year
+# guarantees cannot be derived from any real source available to this repo,
+# so they are REMOVED end-to-end (JSON payload, `web/lib/cbaTypes.ts`,
+# `web/tests/contracts/schemas.ts`/`invariants.test.ts`/`schema.test.ts`,
+# `web/tests/drift/content-drift.test.ts`, and the `WnbaFranchiseCapTable.tsx`
+# / `HardCapCrunchMeter.tsx` components that rendered them -- both deleted).
+# The six CBA structural constants below (hard cap, floor, supermax, vet max,
+# vet min, rookie min) are NOT random draws -- they are fixed constants (their
+# *values* are tracked separately by WNBA_analytics#140 and are out of scope
+# here) -- so they are kept. Per-franchise `rosterCount` (a real count of rows
+# in projections_season_players.json) and `corePlayer` (a deterministic lookup
+# against the fixed, hand-curated CORE_STARS list below -- itself out of scope
+# for this ticket) are also kept because neither is a random draw.
+#
+# Do not reintroduce per-player salaries, contract types, payroll targets, or
+# future-year guarantees into this script's output unless a real, ingested
+# data source for them exists -- a "realistic-looking" `runif()` draw is
+# exactly the fabrication this ticket removed.
 # ==============================================================================
 
 suppressPackageStartupMessages({
@@ -35,18 +82,16 @@ build_cba_cap_dataset <- function() {
   # WNBA_MIN_ROOKIE) rather than redefined locally -- see config.R for provenance.
 
   # Core / Supermax star player designations
+  # NOTE: this is a fixed, hand-curated editorial list (not derived from any
+  # random draw) used solely to surface a "designated core player" per
+  # franchise below. Out of scope for the #128 fabrication audit (see
+  # 2026-11-02 audit note at the bottom of this function) -- left as-is.
   CORE_STARS <- c(
     "Breanna Stewart", "A'ja Wilson", "Sabrina Ionescu", "Alyssa Thomas",
     "Napheesa Collier", "Jewell Loyd", "Kelsey Plum", "Arike Ogunbowale",
     "Jackie Young", "DeWanna Bonner", "Chelsea Gray", "Kahleah Copper",
     "Kayla McBride", "Natasha Cloud", "Jonquel Jones", "Brittney Griner",
     "Allisha Gray", "Brionna Jones", "Dearica Hamby", "Kelsey Mitchell"
-  )
-
-  # Top rookie scale phenoms
-  ROOKIE_SCALE_STARS <- c(
-    "Caitlin Clark", "Angel Reese", "Cameron Brink", "Paige Bueckers",
-    "Kamilla Cardoso", "Rickea Jackson", "Aaliyah Edwards", "Jacy Sheldon"
   )
 
   # Group players by team
@@ -68,167 +113,35 @@ build_cba_cap_dataset <- function() {
     east_teams <- c("ATL", "CHI", "CON", "IND", "NY", "WSH", "TOR")
     conf <- if (abbr %in% east_teams) "East" else "West"
 
-    pts <- if ("proj_pts" %in% names(team_players)) team_players$proj_pts else 0
-    reb <- if ("proj_reb" %in% names(team_players)) team_players$proj_reb else 0
-    ast <- if ("proj_ast" %in% names(team_players)) team_players$proj_ast else 0
-    team_players$proj_pra <- ifelse(is.na(pts), 0, pts) + ifelse(is.na(reb), 0, reb) + ifelse(is.na(ast), 0, ast)
-    team_players <- team_players[order(team_players$proj_pra, decreasing = TRUE), ]
     n_players <- nrow(team_players)
 
-    # Generate realistic contract breakdown
-    contracts <- list()
+    # Real roster count -- the number of players this franchise actually has
+    # in projections_season_players.json. This is NOT derived from any salary
+    # or cap-space calculation (see 2026-11-02 audit note below): it is a
+    # plain count of real roster rows.
+    roster_count <- n_players
+
+    # Real, non-random "designated core player" flag: the first name on this
+    # roster that appears in the fixed CORE_STARS editorial list above, if
+    # any. Not a salary figure and not drawn from runif().
     core_player_name <- NA_character_
-
-    for (i in seq_len(n_players)) {
-      p <- team_players[i, ]
-      p_name <- p$player_name
-      p_id <- as.character(p$player_id)
-      p_pos <- p$position
-
-      # Determine salary based on status
-      sal_2026 <- WNBA_MIN_VET
-      c_type <- "Guaranteed"
-      notes <- "Standard Contract"
-
-      if (p_name %in% CORE_STARS) {
-        if (is.na(core_player_name)) {
-          core_player_name <- p_name
-          c_type <- "Core Player"
-          sal_2026 <- round(runif(1, 0.240, WNBA_SUPERMAX), 4)
-          notes <- "Designated Core Franchise Player"
-        } else {
-          c_type <- "Veteran Max"
-          sal_2026 <- round(runif(1, 0.205, WNBA_VET_MAX), 4)
-          notes <- "Protected Veteran Maximum"
-        }
-      } else if (p_name %in% ROOKIE_SCALE_STARS) {
-        c_type <- "Rookie Scale"
-        sal_2026 <- round(runif(1, 0.078, 0.082), 4)
-        notes <- "First-Round Rookie Scale Ladder"
-      } else if (i <= 3) {
-        c_type <- "Veteran Starter"
-        sal_2026 <- round(runif(1, 0.125, 0.170), 4)
-        notes <- "Multi-Year Guaranteed Starter"
-      } else if (i <= 6) {
-        c_type <- "Rotation Core"
-        sal_2026 <- round(runif(1, 0.085, 0.115), 4)
-        notes <- "Rotation Player Agreement"
-      } else if (i >= 10) {
-        c_type <- if (runif(1) > 0.5) "Team Option" else "Minimum"
-        sal_2026 <- round(runif(1, WNBA_MIN_ROOKIE, WNBA_MIN_VET), 4)
-        notes <- "Depth / Minimum Salary Exception"
-      } else {
-        c_type <- "Guaranteed"
-        sal_2026 <- round(runif(1, WNBA_MIN_VET, 0.092), 4)
-        notes <- "Standard Protected Agreement"
+    for (nm in team_players$player_name) {
+      if (nm %in% CORE_STARS) {
+        core_player_name <- nm
+        break
       }
-
-      contracts[[length(contracts) + 1]] <- list(
-        playerId = p_id,
-        playerName = p_name,
-        position = p_pos,
-        salary2026 = sal_2026,
-        salary2027 = 0,
-        salary2028 = 0,
-        contractType = c_type,
-        notes = notes
-      )
     }
-
-    # Strict Hard Cap Normalization:
-    # Target payroll must strictly fall between Floor ($1.368M) and Hard Cap ($1.520M - $0.003M)
-    raw_sum <- sum(sapply(contracts, function(c) c$salary2026))
-    target_payroll <- round(runif(1, WNBA_CAP_FLOOR + 0.020, WNBA_HARD_CAP - 0.003), 4)
-    # Give some rebuilding/expansion teams lower payroll for cap space variety
-    if (abbr %in% c("GS", "POR", "TOR", "WAS", "CHI") && runif(1) > 0.4) {
-      target_payroll <- round(runif(1, WNBA_CAP_FLOOR + 0.005, 1.430), 4)
-    }
-
-    scale_factor <- target_payroll / raw_sum
-    total_payroll_2026 <- 0
-    total_payroll_2027 <- 0
-    total_payroll_2028 <- 0
-
-    for (k in seq_along(contracts)) {
-      c_sal <- round(contracts[[k]]$salary2026 * scale_factor, 4)
-      # enforce minimum bounds
-      c_sal <- max(WNBA_MIN_ROOKIE, min(WNBA_SUPERMAX, c_sal))
-      contracts[[k]]$salary2026 <- c_sal
-
-      c_type <- contracts[[k]]$contractType
-      if (c_type %in% c("Core Player", "Veteran Max")) {
-        contracts[[k]]$salary2027 <- round(c_sal * 1.03, 4)
-        contracts[[k]]$salary2028 <- round(c_sal * 1.06, 4)
-      } else if (c_type == "Rookie Scale") {
-        contracts[[k]]$salary2027 <- round(c_sal * 1.08, 4)
-        contracts[[k]]$salary2028 <- round(c_sal * 1.15, 4)
-      } else if (c_type == "Veteran Starter") {
-        contracts[[k]]$salary2027 <- round(c_sal * 1.03, 4)
-        contracts[[k]]$salary2028 <- if (runif(1) > 0.5) round(c_sal * 1.03, 4) else 0
-      } else if (c_type == "Team Option") {
-        contracts[[k]]$salary2027 <- round(c_sal * 1.04, 4)
-        contracts[[k]]$salary2028 <- 0
-      } else {
-        contracts[[k]]$salary2027 <- if (runif(1) > 0.6) round(c_sal, 4) else 0
-        contracts[[k]]$salary2028 <- 0
-      }
-
-      total_payroll_2026 <- total_payroll_2026 + contracts[[k]]$salary2026
-      total_payroll_2027 <- total_payroll_2027 + contracts[[k]]$salary2027
-      total_payroll_2028 <- total_payroll_2028 + contracts[[k]]$salary2028
-    }
-
-    # Ensure hard cap ceiling is strictly respected
-    if (total_payroll_2026 > WNBA_HARD_CAP - 0.002) {
-      overage <- total_payroll_2026 - (WNBA_HARD_CAP - 0.005)
-      contracts[[length(contracts)]]$salary2026 <- round(contracts[[length(contracts)]]$salary2026 - overage, 4)
-      total_payroll_2026 <- sum(sapply(contracts, function(c) c$salary2026))
-    }
-
-    cap_space_2026 <- round(max(0.001, WNBA_HARD_CAP - total_payroll_2026), 4)
-    twelfth_spot_available <- cap_space_2026 >= WNBA_MIN_VET
-    roster_count <- if (twelfth_spot_available && n_players >= 12) 12 else min(11, n_players)
-
-    # Determine WNBA CBA Tier
-    cba_tier <- if (cap_space_2026 < WNBA_MIN_VET && roster_count == 11) {
-      "Hard Cap Squeeze (11 Roster)"
-    } else if (cap_space_2026 < 0.060) {
-      "Cap Compliant (12 Roster)"
-    } else if (cap_space_2026 < 0.120) {
-      "Flexible Cap Room"
-    } else {
-      "Maximum Cap Space"
-    }
-
-    projected_cap_space_2027 <- round(max(0, (WNBA_HARD_CAP * 1.05) - total_payroll_2027), 4)
-    projected_cap_space_2028 <- round(max(0, (WNBA_HARD_CAP * 1.10) - total_payroll_2028), 4)
 
     franchise_profiles[[length(franchise_profiles) + 1]] <- list(
       teamAbbr = abbr,
       teamName = team_name,
       conference = conf,
-      totalPayroll2026 = round(total_payroll_2026, 4),
-      totalPayroll2027 = round(total_payroll_2027, 4),
-      totalPayroll2028 = round(total_payroll_2028, 4),
       hardSalaryCap = WNBA_HARD_CAP,
       capFloor = WNBA_CAP_FLOOR,
-      capSpace2026 = cap_space_2026,
       rosterCount = roster_count,
-      twelfthSpotAvailable = twelfth_spot_available,
-      cbaTier = cba_tier,
-      corePlayer = if (is.na(core_player_name)) "Unassigned" else core_player_name,
-      projectedCapSpace2027 = projected_cap_space_2027,
-      projectedCapSpace2028 = projected_cap_space_2028,
-      hardCapCrunchIndex = round((total_payroll_2026 / WNBA_HARD_CAP) * 100, 1),
-      contracts = contracts
+      corePlayer = if (is.na(core_player_name)) "Unassigned" else core_player_name
     )
   }
-
-  # Build league summary
-  avg_payroll <- round(mean(sapply(franchise_profiles, function(f) f$totalPayroll2026)), 4)
-  squeeze_count <- sum(sapply(franchise_profiles, function(f) f$cbaTier == "Hard Cap Squeeze (11 Roster)"))
-  full_roster_count <- sum(sapply(franchise_profiles, function(f) f$rosterCount == 12))
-  max_space_count <- sum(sapply(franchise_profiles, function(f) f$cbaTier == "Maximum Cap Space"))
 
   league_overview <- list(
     # First in the object, for assertion F's 4096-byte head scan, and UTC with
@@ -243,10 +156,6 @@ build_cba_cap_dataset <- function() {
     vetMaxSalary = WNBA_VET_MAX,
     vetMinSalary = WNBA_MIN_VET,
     rookieMinSalary = WNBA_MIN_ROOKIE,
-    averagePayroll = avg_payroll,
-    hardCapSqueezeTeamCount = squeeze_count,
-    twelvePlayerTeamCount = full_roster_count,
-    maxCapSpaceTeamCount = max_space_count,
     teams = franchise_profiles
   )
 
@@ -260,7 +169,7 @@ build_cba_cap_dataset <- function() {
   message(sprintf(">>> [SUCCESS] Wrote 15 WNBA Franchise CBA Cap Sheets to '%s'.", out_json_web))
   message(sprintf(">>> [SUCCESS] Cached RDS in '%s'.", out_rds_cache))
   log_info("WNBA CBA Cap Sheet generation complete.", script = "build_cba_cap_dataset.R",
-           teams = length(franchise_profiles), squeeze_count = squeeze_count)
+           teams = length(franchise_profiles))
 
   invisible(TRUE)
 }

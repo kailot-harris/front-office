@@ -6,9 +6,9 @@ import { WnbaCbaLeagueOverview } from '@/lib/cbaTypes';
 import { CapSheetClient } from '@/components/CapSheetClient';
 
 export const metadata: Metadata = {
-  title: 'CBA Salary Cap & Roster Crunch Architect | WNBA Analytics',
+  title: 'CBA Salary Cap Reference | WNBA Analytics',
   description:
-    'Analysis of the 2026 WNBA hard salary cap ($1.520M), team salary floor, supermax player tags, and the 11-vs-12 roster spot crunch.',
+    'The 2026 WNBA hard salary cap ($1.520M), team salary floor, and supermax/rookie wage ladder structural constants.',
 };
 
 async function getCbaData(): Promise<WnbaCbaLeagueOverview> {
@@ -21,10 +21,6 @@ async function getCbaData(): Promise<WnbaCbaLeagueOverview> {
     vetMaxSalary: 0.2153,
     vetMinSalary: 0.0788,
     rookieMinSalary: 0.0672,
-    averagePayroll: 1.46,
-    hardCapSqueezeTeamCount: 8,
-    twelvePlayerTeamCount: 7,
-    maxCapSpaceTeamCount: 1,
     teams: [],
   };
 

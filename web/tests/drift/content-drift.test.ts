@@ -53,26 +53,25 @@ describe('UI copy & fallback constants vs live JSON data drift', () => {
     expect(Number(sigmaMatch![1])).toBeCloseTo(metadata.margin_sigma, 2);
   });
 
-  it('app/cap-sheet/page.tsx defaultOverview fallback matches cba_cap_sheet.json league summary counts', () => {
+  // NOTE (2026-11-02, WNBA_analytics#128): this used to diff
+  // app/cap-sheet/page.tsx's fallback hardCapSqueezeTeamCount/
+  // twelvePlayerTeamCount/maxCapSpaceTeamCount literals against
+  // cba_cap_sheet.json's league summary counts. Those counts were derived
+  // from unseeded runif()-generated payroll/cap-space data with no real WNBA
+  // contract data behind them, and have been removed end-to-end (payload,
+  // types, schemas, and the page's fallback object) per the cross-repo
+  // synthetic-data audit's decision rule -- see build_cba_cap_dataset.R's
+  // provenance comment. The fallback's structural constants (hardSalaryCap,
+  // capFloor, etc.) are checked for internal consistency by
+  // tests/contracts/invariants.test.ts instead.
+  it('app/cap-sheet/page.tsx no longer carries removed fabricated league summary counts', () => {
     const capPageSrc = readWebSource('app/cap-sheet/page.tsx');
-
-    const squeezeMatch = capPageSrc.match(/hardCapSqueezeTeamCount:\s*(\d+)/);
-    const twelveMatch = capPageSrc.match(/twelvePlayerTeamCount:\s*(\d+)/);
-    const maxCapMatch = capPageSrc.match(/maxCapSpaceTeamCount:\s*(\d+)/);
-
-    expect(squeezeMatch).not.toBeNull();
-    expect(twelveMatch).not.toBeNull();
-    expect(maxCapMatch).not.toBeNull();
-
-    expect(
-      Number(squeezeMatch![1]),
-      `app/cap-sheet/page.tsx fallback hardCapSqueezeTeamCount (${squeezeMatch![1]}) != cba_cap_sheet.json (${cbaCapSheet.hardCapSqueezeTeamCount})`
-    ).toBe(cbaCapSheet.hardCapSqueezeTeamCount);
-    expect(
-      Number(twelveMatch![1]),
-      `app/cap-sheet/page.tsx fallback twelvePlayerTeamCount (${twelveMatch![1]}) != cba_cap_sheet.json (${cbaCapSheet.twelvePlayerTeamCount})`
-    ).toBe(cbaCapSheet.twelvePlayerTeamCount);
-    expect(Number(maxCapMatch![1])).toBe(cbaCapSheet.maxCapSpaceTeamCount);
+    expect(capPageSrc).not.toMatch(/hardCapSqueezeTeamCount/);
+    expect(capPageSrc).not.toMatch(/twelvePlayerTeamCount/);
+    expect(capPageSrc).not.toMatch(/maxCapSpaceTeamCount/);
+    expect(cbaCapSheet).not.toHaveProperty('hardCapSqueezeTeamCount');
+    expect(cbaCapSheet).not.toHaveProperty('twelvePlayerTeamCount');
+    expect(cbaCapSheet).not.toHaveProperty('maxCapSpaceTeamCount');
   });
 
   it('app/shots/page.tsx copy "260,000+ tracked WNBA shot attempts" is consistent with shots_metadata.json total_shots_sampled', () => {
