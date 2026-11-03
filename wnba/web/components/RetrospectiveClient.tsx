@@ -4,7 +4,6 @@ import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Trophy,
-  DollarSign,
   Activity,
   Sparkles,
 } from 'lucide-react';
@@ -16,31 +15,22 @@ interface RetrospectiveClientProps {
   teams: TeamProjection[];
   diagnostics: ModelDiagnostics;
   bracketData?: (PlayoffBracketSeason & { champion?: string }) | null;
-  capSheet?: {
-    hardSalaryCap: number;
-    capFloor: number;
-    teams: Array<{
-      teamAbbr: string;
-      teamName: string;
-      conference: string;
-      totalPayroll2026: number;
-      hardSalaryCap: number;
-      capSpace2026: number;
-      rosterCount: number;
-      cbaTier: string;
-      corePlayer: string;
-      hardCapCrunchIndex: number;
-    }>;
-  };
 }
 
+// NOTE (2026-11-02, WNBA_analytics#128): this component used to render a
+// "Roster Cap Efficiency" / payroll-per-win tab sourced from
+// cba_cap_sheet.json's totalPayroll2026/cbaTier/hardCapCrunchIndex fields.
+// Those fields were generated from unseeded runif() draws with no real WNBA
+// contract/salary data behind them and have been removed end-to-end (see
+// build_cba_cap_dataset.R's provenance comment). The tab and its `capSheet`
+// prop were removed rather than fed real-but-partial data, since no real
+// payroll figure exists to replace them with.
 export const RetrospectiveClient: React.FC<RetrospectiveClientProps> = ({
   teams,
   diagnostics,
   bracketData,
-  capSheet,
 }) => {
-  const [activeTab, setActiveTab] = useState<'champions' | 'calibration' | 'payroll' | 'outliers'>('champions');
+  const [activeTab, setActiveTab] = useState<'champions' | 'calibration' | 'outliers'>('champions');
 
   // Find Finals Series & Champion
   const finalsSeries = useMemo(() => {
@@ -105,28 +95,6 @@ export const RetrospectiveClient: React.FC<RetrospectiveClientProps> = ({
       accuracy: '67.5% Regular Season',
     },
   ];
-
-  // Roster Efficiency: Payroll per Win Calculation
-  const efficiencyList = useMemo(() => {
-    if (!capSheet?.teams) return [];
-    return teams
-      .map((t) => {
-        const cba = capSheet.teams.find((c) => c.teamAbbr === t.team);
-        const payroll = cba ? cba.totalPayroll2026 : 1.45;
-        const wins = t.proj_wins || 20;
-        const costPerWin = payroll / wins; // Millions per win
-        return {
-          team: t.team,
-          team_name: t.team_name,
-          payroll,
-          wins,
-          costPerWin,
-          cbaTier: cba?.cbaTier || 'Normal Cap',
-          hardCapCrunchIndex: cba?.hardCapCrunchIndex || 50,
-        };
-      })
-      .sort((a, b) => a.costPerWin - b.costPerWin);
-  }, [teams, capSheet]);
 
   // Outlier Surprises
   const outliers = useMemo(() => {
@@ -220,17 +188,6 @@ export const RetrospectiveClient: React.FC<RetrospectiveClientProps> = ({
         >
           <Activity className="w-4 h-4" />
           Model Calibration
-        </button>
-        <button
-          onClick={() => setActiveTab('payroll')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all ${
-            activeTab === 'payroll'
-              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-          }`}
-        >
-          <DollarSign className="w-4 h-4" />
-          Roster Cap Efficiency
         </button>
         <button
           onClick={() => setActiveTab('outliers')}
@@ -364,46 +321,6 @@ export const RetrospectiveClient: React.FC<RetrospectiveClientProps> = ({
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* Tab: Payroll & Cap Efficiency */}
-      {activeTab === 'payroll' && (
-        <div className="space-y-4">
-          <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-950/10 text-emerald-200 text-xs">
-            Roster cap efficiency rankings. Calculated as Total 2026 Payroll ($M) divided by Projected Wins under the $1.520M WNBA Hard Salary Cap.
-          </div>
-          <div className="overflow-x-auto rounded-xl border border-slate-800">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-900 border-b border-slate-800 text-slate-400 uppercase font-mono text-[10px]">
-                <tr>
-                  <th className="px-4 py-3">Rank</th>
-                  <th className="px-4 py-3">Team</th>
-                  <th className="px-4 py-3 text-right">Payroll ($M)</th>
-                  <th className="px-4 py-3 text-right">Proj. Wins</th>
-                  <th className="px-4 py-3 text-right">Cost / Win ($k)</th>
-                  <th className="px-4 py-3">Cap Crunch Tier</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800 bg-surface-raised/20 font-mono">
-                {efficiencyList.map((row, idx) => (
-                  <tr key={row.team} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="px-4 py-3 text-slate-400">{idx + 1}</td>
-                    <td className="px-4 py-3 text-white font-sans font-bold flex items-center gap-2">
-                      <TeamLogo team={row.team} size="sm" />
-                      <span>{row.team_name}</span>
-                    </td>
-                    <td className="px-4 py-3 text-right text-slate-300">${row.payroll.toFixed(3)}M</td>
-                    <td className="px-4 py-3 text-right text-sky-400 font-bold">{row.wins.toFixed(1)}</td>
-                    <td className="px-4 py-3 text-right text-emerald-400 font-bold">
-                      ${(row.costPerWin * 1000).toFixed(0)}k
-                    </td>
-                    <td className="px-4 py-3 text-slate-400 font-sans text-[11px]">{row.cbaTier}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         </div>
       )}

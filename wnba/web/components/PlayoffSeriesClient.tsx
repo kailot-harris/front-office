@@ -70,7 +70,10 @@ function simulateClientSeries(
   const edges: TacticalEdge[] = [];
 
   // 1. Pull-up vs Drop
-  if (teamA.tacticalRatings.perimeterCreation >= 85 && teamB.tacticalRatings.dropVulnerability >= 65) {
+  // Thresholds recalibrated for the real-data 0-100 min-max scale (see playoffTypes.ts /
+  // export_web_json.R): >=66 is roughly top-tertile real self-created-jumper frequency,
+  // >=58 is moderately above league-median real dRAPM-derived vulnerability.
+  if (teamA.tacticalRatings.perimeterCreation >= 66 && teamB.tacticalRatings.dropVulnerability >= 58) {
     const pts = Number(((teamB.tacticalRatings.dropVulnerability - 50) * 0.03).toFixed(1));
     mismatchDelta += pts;
     edges.push({
@@ -79,7 +82,7 @@ function simulateClientSeries(
       description: `${teamA.teamAbbr}'s perimeter creators exploit ${teamB.teamAbbr}'s drop coverage.`,
       deltaMargin: pts,
     });
-  } else if (teamB.tacticalRatings.perimeterCreation >= 85 && teamA.tacticalRatings.dropVulnerability >= 65) {
+  } else if (teamB.tacticalRatings.perimeterCreation >= 66 && teamA.tacticalRatings.dropVulnerability >= 58) {
     const pts = Number(((teamA.tacticalRatings.dropVulnerability - 50) * 0.03).toFixed(1));
     mismatchDelta -= pts;
     edges.push({
@@ -103,18 +106,9 @@ function simulateClientSeries(
     });
   }
 
-  // 3. Switchability
-  const switchDiff = (teamA.tacticalRatings.switchability - teamB.tacticalRatings.switchability) * 0.02;
-  if (Math.abs(switchDiff) >= 0.3) {
-    const adv = switchDiff > 0 ? teamA.teamAbbr : teamB.teamAbbr;
-    mismatchDelta += switchDiff;
-    edges.push({
-      title: 'Defensive Switchability & Mismatch Neutralization',
-      advantageTeam: adv,
-      description: `${adv}'s switchability extinguishes primary screening actions.`,
-      deltaMargin: Number(Math.abs(switchDiff).toFixed(1)),
-    });
-  }
+  // Switchability edge removed (issue #131): no real tracking/possession data this
+  // repo ingests captures cross-matchup switch rate, so the field itself was deleted
+  // per the audit decision rule rather than kept as a fabricated/synthetic input.
 
   const netMargin = Number((rawDiff + mismatchDelta).toFixed(2));
   const hcaPts = 2.4; // WNBA_HCA

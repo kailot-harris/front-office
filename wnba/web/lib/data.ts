@@ -96,13 +96,9 @@ export function getCapSheetData(): {
     teamAbbr: string;
     teamName: string;
     conference: string;
-    totalPayroll2026: number;
     hardSalaryCap: number;
-    capSpace2026: number;
     rosterCount: number;
-    cbaTier: string;
     corePlayer: string;
-    hardCapCrunchIndex: number;
   }>;
 } | null {
   const filePath = path.join(process.cwd(), 'public', 'data', 'cba_cap_sheet.json');

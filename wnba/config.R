@@ -69,6 +69,28 @@ WNBA_TEAMS <- c(
 )
 WNBA_TEAM_COUNT <- length(WNBA_TEAMS)  # 15 as of the 2026 season
 
+# 2026 WNBA CBA cap-structure constants (in millions of USD unless noted). Moved here from a
+# local block in build_cba_cap_dataset.R:34-39 on 2026-11-02 (issue #137) per this file's own
+# rule that every structural constant has a single definition site — build_cba_cap_dataset.R
+# now sources these rather than redefining them.
+#
+# PROVENANCE CAVEAT FOR FUTURE AGENTS: this move only relocates the values; it does not
+# independently re-verify them. A web search run during the #137 move (2026-11-02) for the
+# actual ratified 2026 WNBA CBA figures returned a materially different structure (~$7M team
+# cap, ~$1.4M supermax, ~$1.22M veteran max, ~$270-300K minimums across herhoopstats.com,
+# swishappeal.com, and others) than the figures below, which instead appear to originate from
+# an earlier/different cap framework used by this repo's synthetic cap-sheet generator. Do NOT
+# treat the presence of a provenance comment here as confirmation these six values are
+# accurate — that reconciliation is explicitly the scope of issue #128, which is blocked on
+# this move landing first. Re-derive/re-verify against a primary CBA source before relying on
+# these for anything beyond keeping the existing synthetic generator internally consistent.
+WNBA_HARD_CAP   <- 1.520       # $1,520,000 Hard Cap
+WNBA_CAP_FLOOR  <- 1.368       # $1,368,000 Minimum Floor (90%)
+WNBA_SUPERMAX   <- 0.2492      # $249,244 Supermax
+WNBA_VET_MAX    <- 0.2153      # $215,340 Regular Veteran Max
+WNBA_MIN_VET    <- 0.0788      # $78,831 3+ Year Vet Minimum / 12th Spot Threshold
+WNBA_MIN_ROOKIE <- 0.0672      # $67,249 0-2 Year Minimum
+
 # Rotation depth (top-N players per team used for team-rating/props aggregation).
 # Originally defined only inside roster_bottom_up_engine.R (T2); centralized here
 # during T4 (wnba_betting_market_agent) because player_props_engine.R also needs

@@ -193,32 +193,23 @@ describe('Domain & mathematical invariants: cba_cap_sheet.json', () => {
     expect(cbaCapSheet.capFloor).toBeCloseTo(cbaCapSheet.hardSalaryCap * 0.9, 3);
   });
 
-  it('every team obeys the WNBA Hard Cap ($1.52M) and contract rollups equal team totals', () => {
+  // NOTE (2026-11-02, WNBA_analytics#128): the two invariants that used to
+  // live here checked contract-sum-vs-payroll and league-wide roster-count
+  // summaries derived from totalPayroll2026/capSpace2026/contracts/
+  // hardCapSqueezeTeamCount/twelvePlayerTeamCount -- all fields generated
+  // from unseeded runif() draws with no real WNBA contract data behind them.
+  // Those fields (and this test's checks on them) were removed end-to-end
+  // per the cross-repo synthetic-data audit's decision rule; see
+  // build_cba_cap_dataset.R's provenance comment for what was checked and
+  // why no real source exists. The remaining real fields (rosterCount,
+  // corePlayer, hardSalaryCap, capFloor) are plain facts/constants with no
+  // further cross-field invariant to assert beyond schema validity.
+  it('every team carries the same structural hard cap and floor as the league summary', () => {
     for (const t of cbaCapSheet.teams) {
-      expect(t.contracts.length).toBeGreaterThanOrEqual(11);
-      expect(t.contracts.length).toBeLessThanOrEqual(18);
-      expect(t.totalPayroll2026, `${t.teamAbbr} exceeds hard cap`).toBeLessThanOrEqual(
-        cbaCapSheet.hardSalaryCap + 0.001
-      );
-
-      const contractSum2026 = sum(t.contracts.map((c) => c.salary2026));
-      expect(contractSum2026, `${t.teamAbbr} contract sum vs totalPayroll2026`).toBeCloseTo(
-        t.totalPayroll2026,
-        2
-      );
-      expect(
-        cbaCapSheet.hardSalaryCap - t.totalPayroll2026,
-        `${t.teamAbbr} capSpace2026`
-      ).toBeCloseTo(t.capSpace2026, 2);
+      expect(t.hardSalaryCap).toBe(cbaCapSheet.hardSalaryCap);
+      expect(t.capFloor).toBe(cbaCapSheet.capFloor);
+      expect(t.rosterCount).toBeGreaterThan(0);
     }
-  });
-
-  it('league summary counts match team roster counts', () => {
-    const elevenCount = cbaCapSheet.teams.filter((t) => t.rosterCount === 11).length;
-    const twelveCount = cbaCapSheet.teams.filter((t) => t.rosterCount === 12).length;
-    expect(elevenCount + twelveCount).toBe(15);
-    expect(cbaCapSheet.hardCapSqueezeTeamCount).toBe(elevenCount);
-    expect(cbaCapSheet.twelvePlayerTeamCount).toBe(twelveCount);
   });
 });
 

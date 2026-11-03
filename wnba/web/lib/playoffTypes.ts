@@ -17,11 +17,13 @@ export interface PlayoffPlayer {
 }
 
 export interface TacticalRatings {
-  perimeterCreation: number;     // 0-100 (Pull-up 3s & ISO shot-making)
-  dropVulnerability: number;     // 0-100 (Susceptibility to pick-and-roll pull-ups)
-  interiorDominance: number;     // 0-100 (Rim pressure & offensive glass)
-  switchability: number;         // 0-100 (Point-of-attack switch equity)
-  clutchExecution: number;       // 0-100 (Half-court late-game PPP)
+  perimeterCreation: number;     // 0-100 (real pct_off_dribble_jumper, min-max normalized across teams)
+  dropVulnerability: number;     // 0-100 (real inverted team dRAPM, min-max normalized across teams)
+  interiorDominance: number;     // 0-100 (real pct_rim, min-max normalized across teams)
+  clutchExecution: number;       // 0-100 (real clutch_fg_pct, min-max normalized across teams)
+  // switchability removed (issue #131): no real tracking/possession data this repo
+  // ingests captures cross-matchup switch rate, so the field was deleted end-to-end
+  // per the synthetic-data audit's decision rule rather than fabricated.
 }
 
 export interface TeamPlayoffProfile {

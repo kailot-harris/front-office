@@ -113,12 +113,6 @@ export const PlayerProjectionSchema = z
     ast_p50: finiteNumber.min(0),
     ast_p75: finiteNumber.min(0),
     ast_p90: finiteNumber.min(0),
-    games_p10: finiteNumber.min(0).max(44),
-    games_p25: finiteNumber.min(0).max(44),
-    games_p50: finiteNumber.min(0).max(44),
-    games_p75: finiteNumber.min(0).max(44),
-    games_p90: finiteNumber.min(0).max(44),
-    games_sd: finiteNumber.min(0),
     pts_sd: finiteNumber.min(0),
     reb_sd: finiteNumber.min(0),
     ast_sd: finiteNumber.min(0),
@@ -226,43 +220,25 @@ export const ModelDiagnosticsSchema = z
   .strict();
 
 // 5. cba_cap_sheet.json -> WnbaCbaLeagueOverview (lib/cbaTypes.ts)
-export const WnbaPlayerContractSchema = z
-  .object({
-    playerId: z.string().min(1),
-    playerName: z.string().min(2),
-    position: positionEnum,
-    salary2026: finiteNumber.min(0),
-    salary2027: finiteNumber.min(0),
-    salary2028: finiteNumber.min(0),
-    contractType: z.string().min(2),
-    notes: z.string(),
-  })
-  .strict();
-
+//
+// NOTE (2026-11-02, WNBA_analytics#128): this used to also define
+// WnbaPlayerContractSchema and a much larger WnbaFranchiseCbaProfileSchema
+// carrying totalPayroll2026/2027/2028, capSpace2026, twelfthSpotAvailable,
+// cbaTier, projectedCapSpace2027/2028, hardCapCrunchIndex, and a `contracts`
+// array. All of those were generated from unseeded runif() draws in
+// build_cba_cap_dataset.R with no real WNBA contract/salary data behind
+// them, and have been removed end-to-end (payload, types, and this schema)
+// per the cross-repo synthetic-data audit's decision rule. Do not
+// reintroduce them here unless build_cba_cap_dataset.R gains a real source.
 export const WnbaFranchiseCbaProfileSchema = z
   .object({
     teamAbbr: teamEnum,
     teamName: z.string().min(3),
     conference: conferenceEnum,
-    totalPayroll2026: finiteNumber.positive(),
-    totalPayroll2027: finiteNumber.min(0),
-    totalPayroll2028: finiteNumber.min(0),
     hardSalaryCap: finiteNumber.positive(),
     capFloor: finiteNumber.positive(),
-    capSpace2026: finiteNumber,
-    rosterCount: z.union([z.literal(11), z.literal(12)]),
-    twelfthSpotAvailable: z.boolean(),
-    cbaTier: z.enum([
-      'Hard Cap Squeeze (11 Roster)',
-      'Cap Compliant (12 Roster)',
-      'Flexible Cap Room',
-      'Maximum Cap Space',
-    ]),
+    rosterCount: z.number().int().min(1).max(20),
     corePlayer: z.string().min(1),
-    projectedCapSpace2027: finiteNumber,
-    projectedCapSpace2028: finiteNumber,
-    hardCapCrunchIndex: finiteNumber.min(0).max(110),
-    contracts: z.array(WnbaPlayerContractSchema).min(10).max(20),
   })
   .strict();
 
@@ -276,10 +252,6 @@ export const WnbaCbaLeagueOverviewSchema = z
     vetMaxSalary: finiteNumber.positive(),
     vetMinSalary: finiteNumber.positive(),
     rookieMinSalary: finiteNumber.positive(),
-    averagePayroll: finiteNumber.positive(),
-    hardCapSqueezeTeamCount: z.number().int().min(0).max(15),
-    twelvePlayerTeamCount: z.number().int().min(0).max(15),
-    maxCapSpaceTeamCount: z.number().int().min(0).max(15),
     teams: z.array(WnbaFranchiseCbaProfileSchema).length(15),
   })
   .strict();
@@ -587,7 +559,6 @@ const TacticalRatingsSchema = z
     perimeterCreation: pct,
     dropVulnerability: pct,
     interiorDominance: pct,
-    switchability: pct,
     clutchExecution: pct,
   })
   .strict();

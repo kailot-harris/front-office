@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { TacticalRatings, TacticalEdge } from '@/lib/playoffTypes';
-import { Zap, Shield, Target, Flame, Layers } from 'lucide-react';
+import { Zap, Shield, Target, Flame } from 'lucide-react';
 
 interface TacticalMismatchRadarProps {
   teamA: string;
@@ -23,7 +23,6 @@ export const TacticalMismatchRadar: React.FC<TacticalMismatchRadarProps> = ({
     { key: 'perimeterCreation', label: 'Perimeter Creation', desc: 'Pull-up 3PT & primary initiator shot-making', icon: Target },
     { key: 'dropVulnerability', label: 'Drop Vulnerability', desc: 'Susceptibility to PnR pull-ups (lower is better)', icon: Shield },
     { key: 'interiorDominance', label: 'Interior Dominance', desc: 'Rim pressure, glass crashes & paint deterrence', icon: Flame },
-    { key: 'switchability', label: '1-to-5 Switchability', desc: 'Point-of-attack switch equity & screen neutralization', icon: Layers },
     { key: 'clutchExecution', label: 'Clutch Half-Court PPP', desc: 'Late-clock execution in high-leverage possessions', icon: Zap },
   ];
 
