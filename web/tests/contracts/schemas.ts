@@ -559,7 +559,6 @@ const TacticalRatingsSchema = z
     perimeterCreation: pct,
     dropVulnerability: pct,
     interiorDominance: pct,
-    switchability: pct,
     clutchExecution: pct,
   })
   .strict();

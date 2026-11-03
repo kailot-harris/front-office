@@ -628,6 +628,98 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
   # Target 8-man playoff rotation minutes for WNBA 40-minute regulation game (200 total team minutes)
   target_playoff_mins <- c(34.0, 32.5, 30.5, 28.5, 26.5, 20.0, 15.5, 12.5)
 
+  # ----------------------------------------------------------------------------
+  # REAL tacticalRatings inputs (issue #131; audit decision rule from NFL_analytics#48).
+  # Previously perim_creation/drop_vuln/interior_dom/switchability/clutch_exec were
+  # hand-typed 3-bucket case_when() lookups on team abbreviation. Per the audit rule:
+  #   1. perimeterCreation <- REAL pct_off_dribble_jumper (self-created jumpers) from
+  #      cache/player_pbp_features.rds (pbp_engine.R, real ESPN PBP), team-aggregated
+  #      weighted by fga_total.
+  #   2. interiorDominance  <- REAL pct_rim (rim shot frequency) from the same real PBP
+  #      cache, weighted by fga_total.
+  #   3. clutchExecution    <- REAL clutch_fg_pct from the same real PBP cache
+  #      (clutch = score margin <= 5, <= 5:00 left, per pbp_engine.R's definition),
+  #      weighted by clutch_fga.
+  #   4. dropVulnerability  <- REAL defensive RAPM (drapm) from cache/rapm_ratings.rds
+  #      (rapm_engine.R's ridge fit on real possession lineups), team-aggregated
+  #      weighted by n_def_poss and inverted (weaker real dRAPM == more vulnerable).
+  #   5. switchability      <- REMOVED. No real tracking/possession data ingested by
+  #      this repo (PBP shot-location splits, RAPM, shot-quality, clutch datasets)
+  #      captures cross-matchup switch rate or screen-navigation outcomes, so per
+  #      decision-rule step 2 the field is deleted end-to-end (JSON, TS types, zod
+  #      schema, UI, and the margin-adjustment edge that consumed it) rather than
+  #      fabricated or shipped as labeled synthetic.
+  #
+  # Each real raw metric is min-max normalized to 0-100 across the 15 current teams
+  # (0 = league-worst on that metric this season, 100 = league-best) so the scale
+  # matches the 0-100 "rating" the simulator and UI already expect. Any team missing
+  # from a real cache (e.g. zero qualifying clutch possessions) falls back to the
+  # league-median value for that metric, clearly a last-resort fallback per CLAUDE.md
+  # -- not a substitute for real sourcing, which is used whenever the cache has rows
+  # for the team.
+  scale_0_100 <- function(x) {
+    x_filled <- ifelse(is.na(x), median(x, na.rm = TRUE), x)
+    rng <- range(x_filled, na.rm = TRUE)
+    if (!is.finite(rng[1]) || !is.finite(rng[2]) || diff(rng) == 0) {
+      return(setNames(rep(50, length(x_filled)), names(x_filled)))
+    }
+    round((x_filled - rng[1]) / diff(rng) * 100, 1)
+  }
+
+  all_team_abbrs <- names(WNBA_TEAMS)
+
+  pbp_feat_path <- if (exists("CACHE_PLAYER_PBP_FEATURES")) CACHE_PLAYER_PBP_FEATURES else file.path(CACHE_DIR, "player_pbp_features.rds")
+  pbp_feat <- if (file.exists(pbp_feat_path)) readRDS(pbp_feat_path) else NULL
+
+  if (!is.null(pbp_feat)) {
+    team_pbp_agg <- pbp_feat %>%
+      dplyr::filter(team_abbreviation %in% all_team_abbrs) %>%
+      dplyr::group_by(team_abbreviation) %>%
+      dplyr::summarise(
+        perim_raw    = stats::weighted.mean(pct_off_dribble_jumper, w = pmax(fga_total, 0.001), na.rm = TRUE),
+        interior_raw = stats::weighted.mean(pct_rim, w = pmax(fga_total, 0.001), na.rm = TRUE),
+        clutch_raw   = if (sum(clutch_fga, na.rm = TRUE) > 0) {
+          stats::weighted.mean(clutch_fg_pct, w = pmax(clutch_fga, 0), na.rm = TRUE)
+        } else {
+          NA_real_
+        },
+        .groups = "drop"
+      )
+  } else {
+    team_pbp_agg <- tibble::tibble(team_abbreviation = character(0), perim_raw = numeric(0),
+                                    interior_raw = numeric(0), clutch_raw = numeric(0))
+    warning("[tacticalRatings] cache/player_pbp_features.rds unavailable -- perimeterCreation/interiorDominance/clutchExecution fall back to league-median for every team.")
+  }
+
+  rapm_path <- if (exists("CACHE_RAPM_RATINGS")) CACHE_RAPM_RATINGS else file.path(CACHE_DIR, "rapm_ratings.rds")
+  rapm_df <- if (file.exists(rapm_path)) readRDS(rapm_path) else NULL
+
+  if (!is.null(rapm_df)) {
+    team_drapm_agg <- rapm_df %>%
+      dplyr::mutate(team_abbr = unname(team_name_to_abbr[.data$team])) %>%
+      dplyr::filter(!is.na(team_abbr)) %>%
+      dplyr::group_by(team_abbr) %>%
+      dplyr::summarise(drapm_raw = stats::weighted.mean(drapm, w = pmax(n_def_poss, 0.001), na.rm = TRUE), .groups = "drop")
+  } else {
+    team_drapm_agg <- tibble::tibble(team_abbr = character(0), drapm_raw = numeric(0))
+    warning("[tacticalRatings] cache/rapm_ratings.rds unavailable -- dropVulnerability falls back to league-median for every team.")
+  }
+
+  perim_raw_v    <- setNames(rep(NA_real_, length(all_team_abbrs)), all_team_abbrs)
+  interior_raw_v <- perim_raw_v
+  clutch_raw_v   <- perim_raw_v
+  drapm_raw_v    <- perim_raw_v
+
+  perim_raw_v[team_pbp_agg$team_abbreviation]    <- team_pbp_agg$perim_raw
+  interior_raw_v[team_pbp_agg$team_abbreviation] <- team_pbp_agg$interior_raw
+  clutch_raw_v[team_pbp_agg$team_abbreviation]   <- team_pbp_agg$clutch_raw
+  drapm_raw_v[team_drapm_agg$team_abbr]          <- team_drapm_agg$drapm_raw
+
+  perim_creation_v   <- scale_0_100(perim_raw_v)
+  interior_dom_v      <- scale_0_100(interior_raw_v)
+  clutch_exec_v       <- scale_0_100(clutch_raw_v)
+  drop_vuln_v         <- scale_0_100(-drapm_raw_v)   # weaker real dRAPM -> more vulnerable
+
   team_profiles <- list()
   for (i in seq_len(nrow(teams_df))) {
     tm_row <- teams_df[i, ]
@@ -669,35 +761,11 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
     reg_net_rtg     <- round((as.numeric(tm_row$ensemble_mean_wins) - (WNBA_SEASON_GAMES / 2)) * 0.75, 2)
     playoff_net_rtg <- round(reg_net_rtg + top3_bump, 2)
 
-    perim_creation <- case_when(
-      tm_abbr %in% c("NY", "IND", "LV", "DAL", "SEA") ~ 92,
-      tm_abbr %in% c("MIN", "PHX", "CON", "ATL", "GS") ~ 82,
-      TRUE ~ 68
-    )
-
-    drop_vuln <- case_when(
-      tm_abbr %in% c("CHI", "DAL", "WSH", "POR", "LA", "TOR") ~ 72,
-      tm_abbr %in% c("MIN", "NY", "CON", "LV", "SEA") ~ 28,
-      TRUE ~ 50
-    )
-
-    interior_dom <- case_when(
-      tm_abbr %in% c("LV", "MIN", "NY", "IND", "PHX", "SEA") ~ 93,
-      tm_abbr %in% c("CHI", "DAL", "ATL", "CON", "GS") ~ 76,
-      TRUE ~ 60
-    )
-
-    switchability <- case_when(
-      tm_abbr %in% c("MIN", "NY", "CON", "LV", "SEA") ~ 94,
-      tm_abbr %in% c("IND", "ATL", "GS", "PHX") ~ 75,
-      TRUE ~ 58
-    )
-
-    clutch_exec <- case_when(
-      tm_abbr %in% c("NY", "MIN", "LV", "CON", "IND") ~ 90,
-      tm_abbr %in% c("SEA", "PHX", "ATL", "GS") ~ 78,
-      TRUE ~ 62
-    )
+    # Real-data-derived (see block above target_playoff_mins); no more hand-typed buckets.
+    perim_creation <- unname(perim_creation_v[tm_abbr])
+    drop_vuln      <- unname(drop_vuln_v[tm_abbr])
+    interior_dom   <- unname(interior_dom_v[tm_abbr])
+    clutch_exec    <- unname(clutch_exec_v[tm_abbr])
 
     team_profiles[[tm_abbr]] <- list(
       teamAbbr        = tm_abbr,
@@ -711,7 +779,6 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
         perimeterCreation = perim_creation,
         dropVulnerability = drop_vuln,
         interiorDominance = interior_dom,
-        switchability     = switchability,
         clutchExecution   = clutch_exec
       ),
       rotation = rotation_list
@@ -727,7 +794,12 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
     edges <- list()
     mismatch_delta <- 0
 
-    if (p_a$tacticalRatings$perimeterCreation >= 85 && p_b$tacticalRatings$dropVulnerability >= 65) {
+    # Thresholds recalibrated for the real-data 0-100 min-max scale (0 = league-worst,
+    # 100 = league-best among the 15 current teams this season) that replaced the old
+    # hand-typed 3-bucket scale: >=66 selects teams in roughly the top tertile on real
+    # self-created-jumper frequency; >=58 selects teams moderately above league-median
+    # real dRAPM-derived vulnerability.
+    if (p_a$tacticalRatings$perimeterCreation >= 66 && p_b$tacticalRatings$dropVulnerability >= 58) {
       edge_pts <- round((p_b$tacticalRatings$dropVulnerability - 50) * 0.03, 1)
       mismatch_delta <- mismatch_delta + edge_pts
       edges[[length(edges) + 1]] <- list(
@@ -736,7 +808,7 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
         description = sprintf("%s's perimeter creators punish %s's drop defense.", team_a_code, team_b_code),
         deltaMargin = edge_pts
       )
-    } else if (p_b$tacticalRatings$perimeterCreation >= 85 && p_a$tacticalRatings$dropVulnerability >= 65) {
+    } else if (p_b$tacticalRatings$perimeterCreation >= 66 && p_a$tacticalRatings$dropVulnerability >= 58) {
       edge_pts <- round((p_a$tacticalRatings$dropVulnerability - 50) * 0.03, 1)
       mismatch_delta <- mismatch_delta - edge_pts
       edges[[length(edges) + 1]] <- list(
@@ -759,17 +831,9 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
       )
     }
 
-    switch_diff <- (p_a$tacticalRatings$switchability - p_b$tacticalRatings$switchability) * 0.02
-    if (abs(switch_diff) >= 0.3) {
-      adv_tm <- if (switch_diff > 0) team_a_code else team_b_code
-      mismatch_delta <- mismatch_delta + switch_diff
-      edges[[length(edges) + 1]] <- list(
-        title = "Defensive Switchability & Mismatch Neutralization",
-        advantageTeam = adv_tm,
-        description = sprintf("%s's switchability extinguishes primary screening actions.", adv_tm),
-        deltaMargin = round(abs(switch_diff), 1)
-      )
-    }
+    # Switchability edge removed (issue #131): no real tracking/possession data this
+    # repo ingests captures cross-matchup switch rate, so the field itself was deleted
+    # per the audit decision rule rather than kept as a fabricated/synthetic input.
 
     net_margin <- round(raw_diff + mismatch_delta, 2)
     hca_pts <- WNBA_HCA
