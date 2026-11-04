@@ -251,6 +251,13 @@ run_export_web_datasets <- function() {
     # publishing playoff_prob 0.857, above the weakest seeded team's 0.629 and far
     # past the documented 0.48 bubble ceiling. A hard clamp here guarantees the
     # invariant regardless of how many iterations convergence would have taken.
+    # Clamping alone would silently shrink this conference's non-seeded total below
+    # 1.50 with nowhere for the shaved-off mass to go (every other non-seeded team
+    # may already be at 0 raw_po) - that's fine for the non-seeded total, but the
+    # conference-total-7.000 reconciliation below must not try to recover that
+    # shortfall by dumping it all onto a single seeded team (that pushed
+    # standings_projections.json's own playoff_prob schema bound of <= 1 over the
+    # top the first time this ran against live data). See the diff_po spread below.
     u_probs <- pmin(u_probs, 0.48)
     standings_calc_df$playoff_prob[u_idx] <- u_probs
 
@@ -279,8 +286,20 @@ run_export_web_datasets <- function() {
     standings_calc_df$playoff_prob[c_idx] <- round(standings_calc_df$playoff_prob[c_idx], 3)
     diff_po <- 7.000 - sum(standings_calc_df$playoff_prob[c_idx])
     if (abs(diff_po) > 0.0001) {
-      top_s <- s_ord[length(s_ord)]
-      standings_calc_df$playoff_prob[top_s] <- round(standings_calc_df$playoff_prob[top_s] + diff_po, 3)
+      # Spread across every seeded team (capped at 0.98 each) rather than dumping the
+      # whole shortfall onto s_ord's single highest-raw_po team - that team is often
+      # already near the 0.96-0.98 ceiling, and a one-team dump can push it past the
+      # schema's own playoff_prob <= 1 bound once the non-seeded clamp above legitimately
+      # shrinks a conference's bubble total below 1.50 (nowhere else for that mass to
+      # reappear from).
+      headroom <- pmax(0.98 - standings_calc_df$playoff_prob[s_idx], 0)
+      if (diff_po > 0 && sum(headroom) > 0) {
+        add <- diff_po * (headroom / sum(headroom))
+        standings_calc_df$playoff_prob[s_idx] <- round(standings_calc_df$playoff_prob[s_idx] + add, 3)
+      } else {
+        top_s <- s_ord[length(s_ord)]
+        standings_calc_df$playoff_prob[top_s] <- round(min(standings_calc_df$playoff_prob[top_s] + diff_po, 0.98), 3)
+      }
     }
   }
 
