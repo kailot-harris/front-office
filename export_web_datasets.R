@@ -1002,7 +1002,7 @@ run_export_web_datasets <- function() {
       }
       c_active$pos_group <- sapply(c_active$position, position_group)
 
-      top_contracts <- head(c_active[order(-c_active$apy), ], 100)
+      top_contracts <- head(c_active[order(-as.numeric(c_active$apy)), ], 100)
       top_contracts_list <- lapply(1:nrow(top_contracts), function(i) {
         row <- top_contracts[i, ]
         val_num <- round(as.numeric(row$value), 2)
@@ -1040,7 +1040,7 @@ run_export_web_datasets <- function() {
           )
         }
 
-        top_tm <- head(tm_contracts[order(-tm_contracts$apy), ], 3)
+        top_tm <- head(tm_contracts[order(-as.numeric(tm_contracts$apy)), ], 3)
         top_paid <- lapply(1:nrow(top_tm), function(j) {
           list(
             player = as.character(top_tm$player[j]),
