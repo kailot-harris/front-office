@@ -244,6 +244,14 @@ run_export_web_datasets <- function() {
     } else {
       u_probs <- rep(1.50 / length(u_idx), length(u_idx))
     }
+    # Safety net: the redistribution loop above can need more than 5 iterations to
+    # converge when raw_po is heavily skewed toward one or two teams (each capped
+    # overflow gets reassigned to the remaining "under" teams, which can itself push
+    # one of them over 0.48, cascading) - observed live as a bubble team (CLE)
+    # publishing playoff_prob 0.857, above the weakest seeded team's 0.629 and far
+    # past the documented 0.48 bubble ceiling. A hard clamp here guarantees the
+    # invariant regardless of how many iterations convergence would have taken.
+    u_probs <- pmin(u_probs, 0.48)
     standings_calc_df$playoff_prob[u_idx] <- u_probs
 
     # Ensure every division in this conference has sum(playoff_prob) >= 1.05
