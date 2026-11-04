@@ -282,21 +282,61 @@ recompute_diagnostics <- function(rows, clamp = 1e-6) {
   p_actual <- ifelse(home_win == 1L, p_clamped, 1 - p_clamped)
 
   list(
-    n_games_graded   = nrow(done),
-    overall_accuracy = round(mean(correct) * 100, 1),
-    overall_brier    = round(mean((p - home_win)^2), 4),
-    overall_logloss  = round(-mean(log(p_actual)), 4)
+    n_games_graded     = nrow(done),
+    overall_accuracy   = round(mean(correct) * 100, 1),
+    overall_brier      = round(mean((p - home_win)^2), 4),
+    overall_logloss    = round(-mean(log(p_actual)), 4),
+    calibration_curve  = recompute_calibration_curve(home_win, p)
   )
+}
+
+#' Recompute the calibration curve from every completed game's own fields
+#'
+#' Same ten 0.1-wide bins over predicted_win_prob as export_web_datasets.R
+#' section 7's calib_curve builder, so the two never disagree on shape - only
+#' this one is a pure function of the payload rows already in hand (no
+#' cache/accuracy_history.rds game_key parsing needed). Ties are already
+#' excluded by `done` upstream in recompute_diagnostics(), matching that same
+#' home_win definition.
+#'
+#' @param home_win Integer 0/1 vector, one per completed game.
+#' @param p Numeric predicted home_win_prob vector, same length as home_win.
+#' @return data.frame with columns bin, predicted_mid, actual_win_rate, count.
+recompute_calibration_curve <- function(home_win, p) {
+  breaks <- seq(0.0, 1.0, by = 0.1)
+  bin_idx <- findInterval(p, breaks, rightmost.closed = TRUE, all.inside = TRUE)
+
+  rows <- lapply(1:10, function(b) {
+    low <- breaks[b]
+    high <- breaks[b + 1]
+    in_bin <- bin_idx == b
+    cnt <- sum(in_bin)
+    mid <- round((low + high) / 2, 2)
+    win_rate <- if (cnt > 0) round(mean(home_win[in_bin]), 2) else round(mid, 2)
+    data.frame(
+      bin = sprintf("%.1f - %.1f", low, high),
+      predicted_mid = mid,
+      actual_win_rate = win_rate,
+      count = cnt,
+      stringsAsFactors = FALSE
+    )
+  })
+  do.call(rbind, rows)
 }
 
 #' Update the last diagnostics row in place to match the patched payload
 #'
 #' The series is one row per pipeline evaluation; a cheap top-up is not an
-#' evaluation, so this overwrites the tail rather than appending. Fields that are
-#' model parameters rather than game counts - margin_sigma, home_field_adv,
-#' ensemble_weights, calibration_curve - are left exactly as the pipeline wrote
-#' them. brier_baseline is a constant (0.25) and brier_improvement is derived
-#' from it rather than assumed.
+#' evaluation, so this overwrites the tail rather than appending. True model
+#' parameters - margin_sigma, home_field_adv, ensemble_weights - are left
+#' exactly as the pipeline wrote them. calibration_curve is NOT a model
+#' parameter, though: it is a pure function of completed games' own
+#' home_win_prob and result, same as overall_accuracy/brier/logloss, so it is
+#' recomputed here too (see recompute_calibration_curve()) - leaving it stale
+#' would otherwise desync it from n_games_graded and fail the contract suite's
+#' "calibration bin counts sum to the number of games actually graded" check
+#' on every top-up run. brier_baseline is a constant (0.25) and
+#' brier_improvement is derived from it rather than assumed.
 #'
 #' @return list(diag, changed)
 reconcile_diagnostics <- function(diag, metrics) {
@@ -314,6 +354,7 @@ reconcile_diagnostics <- function(diag, metrics) {
   diag$overall_accuracy[n] <- metrics$overall_accuracy
   diag$overall_brier[n]    <- metrics$overall_brier
   diag$overall_logloss[n]  <- metrics$overall_logloss
+  diag$calibration_curve   <- metrics$calibration_curve
 
   baseline <- diag$brier_baseline
   baseline_n <- if (length(baseline) >= n) baseline[n] else baseline[1]
