@@ -43,7 +43,19 @@ describe('lib/data.ts server data loaders', () => {
 
   it('getDiagnostics() returns resolved game metrics and calibration bins', () => {
     const diag = getDiagnostics();
-    expect(diag.totalResolvedGames).toBe(2699);
+    // totalResolvedGames grows with every completed game, so assert invariants
+    // rather than today's count: it must be a positive integer, and it cannot
+    // exceed the games already accounted for across the multi-season accuracy
+    // drift history that produced it.
+    expect(Number.isInteger(diag.totalResolvedGames)).toBe(true);
+    expect(diag.totalResolvedGames).toBeGreaterThan(0);
+    expect(diag.totalResolvedGames).toBeLessThanOrEqual(
+      diag.accuracyDrift.reduce((sum, d) => sum + d.games, 0)
+    );
+    // Every resolved game must land in exactly one calibration bin.
+    expect(
+      diag.calibration.reduce((sum, bin) => sum + bin.count, 0)
+    ).toBe(diag.totalResolvedGames);
     expect(diag.calibration.length).toBeGreaterThanOrEqual(5);
     expect(diag.accuracyDrift.length).toBeGreaterThanOrEqual(1);
     expect(diag.residualDistribution.length).toBeGreaterThanOrEqual(3);

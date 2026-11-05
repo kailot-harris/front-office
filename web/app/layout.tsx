@@ -3,7 +3,7 @@ import { GeistSans, GeistMono } from 'geist/font';
 import './globals.css';
 import { Sidebar } from '@/components/Sidebar';
 import { SportSwitcher } from '@/components/SportSwitcher';
-import { getMetadata } from '@/lib/data';
+import { getDiagnostics, getMetadata } from '@/lib/data';
 
 export const metadata: Metadata = {
   title: 'NBA Season-Long Projections | 1,000-Season Monte Carlo',
@@ -17,12 +17,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const { generated_at } = getMetadata();
+  const { brierScore } = getDiagnostics();
   return (
     <html lang="en" className={`dark ${GeistSans.variable} ${GeistMono.variable}`}>
       <body
         className={`${GeistSans.className} font-sans bg-surface text-slate-100 min-h-screen flex flex-col md:flex-row antialiased selection:bg-accent-600 selection:text-white`}
       >
-        <Sidebar generatedAt={generated_at} />
+        <Sidebar generatedAt={generated_at} brierScore={brierScore} />
         <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
           <SportSwitcher current="nba" />
           <main className="flex-1 pb-10">{children}</main>
