@@ -42,7 +42,10 @@ if (!dir.exists("cache")) dir.create("cache", recursive = TRUE)
 # the auto-run guard at the bottom of the file, which meant an analyst who source()d this file
 # and called simulate_single_series() directly hit "object 'WNBA_MARGIN_SIGMA' not found".
 # Guarded so a caller that already sourced config.R does not pay for it twice.
-if (!exists("WNBA_MARGIN_SIGMA") || !exists("WNBA_HCA")) source("config.R")
+# ISSUE #154: WNBA_PLAYOFF_SIM_SEED added to this guard so that a stale session which sourced
+# an older config.R (before the seed block existed) re-sources it rather than hitting
+# "object not found" inside simulate_single_series().
+if (!exists("WNBA_MARGIN_SIGMA") || !exists("WNBA_HCA") || !exists("WNBA_PLAYOFF_SIM_SEED")) source("config.R")
 
 # FINDING M-6 (Phase 4 Wave 4): this file carried its own unhardened scalar %||%
 # (errors on a length>1 vector), identical to the app.R/market_odds_engine.R copies
@@ -121,6 +124,20 @@ simulate_single_series <- function(team_high, team_low, net_high, net_low, n_sim
   # WNBA_REPLICATION_PLAN.md §(b) Tier 3's explicit instruction not to reuse the NBA sigma.
   p_high_home <- pnorm((rating_diff + hca_pts) / WNBA_MARGIN_SIGMA)
   p_high_away <- pnorm((rating_diff - hca_pts) / WNBA_MARGIN_SIGMA)
+
+  # ISSUE #154 — DETERMINISTIC SEEDING of this 10,000-series Monte Carlo.
+  # The runif(1) draw in the game loop below was previously unseeded, so
+  # cache/playoff_series_wnba_demo.rds carried different scoreline probabilities on every
+  # pipeline run. Pattern deliberately copied from export_web_json.R's per-pair series
+  # Monte Carlo (`set.seed(42 + <pair index>)`), which issue #154 names as the model: a seed
+  # that is FIXED across runs but DISTINCT per matchup, so the three rounds do not all replay
+  # the identical random stream (which would be statistically sloppy, not just reproducible).
+  # The base value is config.R's WNBA_PLAYOFF_SIM_SEED; the offset is a deterministic function
+  # of the matchup identity and format, so the same matchup always gets the same stream and a
+  # different matchup gets a different one. Does NOT change the model: p_high_home/p_high_away
+  # above are untouched, only which draws realize them.
+  matchup_offset <- sum(utf8ToInt(paste0(team_high, "|", team_low, "|", format))) %% 100000L
+  set.seed(WNBA_PLAYOFF_SIM_SEED + matchup_offset)
 
   max_games <- length(home_high_flags)
   sim_results <- matrix(0, nrow = n_sims, ncol = 2) # [high_wins, low_wins]
