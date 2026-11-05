@@ -292,8 +292,10 @@ run_registered_stage("injury_scraper")
 # CSVs were stale artifacts nothing in the DAG refreshed (team_embeddings.py only wrote duckdb).
 # RE-CORRECTED 2026-09-17 (orphaned-cache-audit skill run): team_embeddings.py's save_to_db() now
 # writes both CSVs again, additively alongside duckdb — load_embeddings.R and
-# tools/ml_cv_benchmark.R still read the CSVs and app.R's wide-shape fallback path still expects
-# them, so retiring the CSVs instead of restoring their producer would have broken real consumers.
+# tools/ml_cv_benchmark.R still read the CSVs, so retiring the CSVs instead of restoring their
+# producer would have broken real consumers. (app.R's wide-shape fallback path was a third
+# consumer until app.R was retired under issue #142; load_embeddings.R and ml_cv_benchmark.R
+# remain, so the CSVs are still required.)
 run_registered_stage("team_embeddings")
 
 # 1.5. Prediction-Accuracy Logging — Reconciliation

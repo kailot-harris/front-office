@@ -45,8 +45,6 @@ SKIP <- c(
     "spawns the real player_props_engine.R",
   "tools/test_phase4_wave4_verification.R" =
     "spawns player_props_engine.R, and hardcodes C:/Program Files/R/.../Rscript.exe",
-  "tools/test_phase4_dashboard.R" =
-    "drives a real Chrome through shinytest2/chromote via a Windows CHROMOTE_CHROME path",
   "tools/test_phase4_cleanup.R" =
     "spawns tools/ml_cv_benchmark.R, a full cross-validation run",
   "tools/test_db_embeddings.R" =

@@ -6,11 +6,14 @@
 - Inline multi-line `Rscript -e "..."` (or PowerShell `-e` with embedded newlines) **segfaults**
   on this machine. Always write R code to a temp `.R` file and run
   `Rscript.exe path\to\temp.R` instead.
-- Headless browser testing works here: `shinytest2` + `chromote`, driving the real Chrome
-  install at `C:\Program Files\Google\Chrome\Application\chrome.exe`, via
-  `tools/headless_dashboard_probe.R` (clicks through every `app.R` tab, captures real browser
-  console errors/screenshots). Requires `Sys.setenv(NOT_CRAN = "true")` before creating an
-  `AppDriver` or it aborts with `Reason: On CRAN` even outside a test suite.
+- Headless browser testing is **no longer set up here.** `app.R` was retired (issue #142), and
+  `tools/headless_dashboard_probe.R` and the `headless-ui-regression-sweep` skill were removed with
+  it, since both existed only to probe it. If a Shiny UI is ever tested here again, the working
+  recipe was `shinytest2` + `chromote` driving the real Chrome at
+  `C:\Program Files\Google\Chrome\Application\chrome.exe`, and it required
+  `Sys.setenv(NOT_CRAN = "true")` before creating an `AppDriver` or it aborted with
+  `Reason: On CRAN` even outside a test suite. `control_panel_app.R` is still a Shiny app and has
+  never had headless coverage.
 
 ## Data quirks that will silently corrupt results if missed
 - Raw `wehoop::load_wnba_*_box()` data includes non-franchise exhibition/All-Star rows (codes
@@ -25,11 +28,24 @@
 - ESPN's WNBA injuries endpoint has no `athlete.id` field (unlike the NBA endpoint most code
   here was ported from). `injury_scraper.R` extracts the athlete ID from the "Player Card" link
   href instead — don't assume `athlete$id` exists on this feed.
-- `app.R` defines its own `%||%` (near line 50) as a **scalar** null/NA-coalescing operator
-  (`if (!is.null(a) && length(a) > 0 && !is.na(a)) a else b`) — it hard-errors on R 4.3+ if
-  applied to a full column/vector (`!is.na(a)` returns a vector, `&&` requires length 1). Use
-  `dplyr::coalesce()` for any per-row NA-fill on a column; reserve `%||%` for genuinely scalar
-  values.
+- **`%||%` resolves to three different definitions depending on what you source.** This entry
+  used to warn that `app.R` defined a scalar form that hard-errored on vectors; that local copy was
+  deleted under FIX M-6, and `app.R` itself is now retired (#142). The live situation, verified
+  2026-11-05 on R 4.5.2:
+  - `logging_utils.R:32` defines the hardened form, `is.na(a)[1]` — treats a leading-NA value as
+    missing and returns the fallback.
+  - **Base R ≥ 4.4 now ships its own `%||%`**, which is `is.null`-only: it returns `NA` unchanged
+    rather than falling back.
+  - `dashboard_render_helpers.R` uses `%||%` five times but does not source `logging_utils.R`.
+    Under `app.R` it got the hardened form (app.R sourced `logging_utils.R`); under
+    `control_panel_app.R` it gets **base R's**, confirmed by sourcing the control-panel dependency
+    chain alone. So the same helper functions NA-coalesce differently depending on which app loaded
+    them. Retiring `app.R` makes base R's form the only one they see.
+
+  `SECURITY_TECHNICAL_REVIEW.md` M-6's "exactly ONE definition in the repo" invariant is therefore
+  no longer true in effect — base R supplies a third. Tracked as its own issue. Still use
+  `dplyr::coalesce()` for any per-row NA-fill on a column, and do not assume `%||%` falls back on
+  `NA` unless you have sourced `logging_utils.R` in the same scope.
 - `rapm_engine.R`'s `team` column assignment (both the live possession-vote path and the
   `estimate_rapm_box_plusminus_fallback()` path) is pooled across all of `ALL_SEASONS`, so
   without correction it reflects "the team this player has the most historical
@@ -64,9 +80,10 @@ elsewhere (including older revisions of this file), since these get re-benchmark
 ## Cache filenames without a central `config.R` constant
 - The team-standings cache is `cache/projected_wnba_standings.rds` — deliberately not the NBA
   original's filename (`projected_30_team_standings.rds`). Unlike most cache paths this isn't a
-  `config.R` constant, just a literal repeated across every consumer (`app.R`,
-  `market_odds_engine.R`, `roster_bottom_up_engine.R`, `rapm_engine.R`, etc.) — use this exact
-  string in any new script that reads/writes it.
+  `config.R` constant, just a literal repeated across its consumers (`roster_bottom_up_engine.R`,
+  `rapm_engine.R`, etc.) — use this exact string in any new script that reads/writes it. Two
+  consumers named here previously, `app.R` and `market_odds_engine.R`, no longer exist (retired
+  under #142 and the zero-betting policy respectively).
 
 ## Process / conventions
 - No secrets are ever hardcoded in this repo. All keys/webhooks are read via
