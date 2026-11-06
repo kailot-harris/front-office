@@ -75,10 +75,26 @@ describe('UI copy & fallback constants vs live JSON data drift', () => {
     }
   });
 
-  it('Sidebar.tsx Brier score badge matches projections_diagnostics.json', () => {
+  it('Sidebar.tsx Brier score badge derives from projections_diagnostics.json rather than a literal', () => {
     const sidebarSrc = readWebSource('components/Sidebar.tsx');
+    const layoutSrc = readWebSource('app/layout.tsx');
     const { diagnostics } = loadAllDatasets();
-    expect(sidebarSrc).toContain(`Brier ${diagnostics.brierScore.toFixed(4)}`);
+
+    // The dataset must still expose a usable Brier score for the badge to render.
+    expect(typeof diagnostics.brierScore).toBe('number');
+    expect(diagnostics.brierScore).toBeGreaterThan(0);
+    expect(diagnostics.brierScore).toBeLessThan(1);
+
+    // The badge must derive its text from the brierScore prop, and the server
+    // layout must feed that prop from getDiagnostics(). Asserting the
+    // derivation (not today's number) keeps this test green across refreshes.
+    expect(sidebarSrc).toContain('brierScore');
+    expect(sidebarSrc).toContain('`Brier ${brierScore.toFixed(4)}`');
+    expect(layoutSrc).toContain('getDiagnostics');
+    expect(layoutSrc).toContain('brierScore={brierScore}');
+
+    // No hand-typed Brier value may remain in the component.
+    expect(sidebarSrc).not.toMatch(/Brier\s+\d/);
   });
 
   it('app/shots/page.tsx copy matches shots_metadata.json zone count', () => {

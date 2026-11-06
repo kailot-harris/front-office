@@ -37,9 +37,16 @@ const withoutTrailingSlash = (path: string) =>
 
 export interface SidebarProps {
   generatedAt?: string;
+  /**
+   * Live Brier score from projections_diagnostics.json, supplied by the server
+   * layout via getDiagnostics(). The Diagnostics badge derives its text from
+   * this value — never hardcode the number here, it moves on every pipeline
+   * refresh (see tests/drift/content-drift.test.ts).
+   */
+  brierScore?: number;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore }) => {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [showSigmaExplainer, setShowSigmaExplainer] = useState(false);
@@ -132,7 +139,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
     {
       href: '/diagnostics',
       label: 'Diagnostics',
-      badge: 'Brier 0.2279',
+      badge:
+        typeof brierScore === 'number'
+          ? `Brier ${brierScore.toFixed(4)}`
+          : 'Brier n/a',
       icon: Activity,
       desc: 'Reliability & calibration curve',
     },

@@ -15,12 +15,12 @@
 #
 # Two layers of coverage:
 #
-#   1. Static, for all seven entrypoints: no hardcoded authoring path, no
+#   1. Static, for all five entrypoints: no hardcoded authoring path, no
 #      top-level setwd(), no working-directory-relative source(), and a
 #      bootstrap block that is identical (as parsed code) across every file -
 #      the drift guard, since the block has to be duplicated per entrypoint by
 #      nature: it is what finds config.R.
-#   2. Behavioural, for the six with an entrypoint function: source the real
+#   2. Behavioural, for the four with an entrypoint function: source the real
 #      file from a scratch working directory that is not the repo root, with
 #      NBA_SKIP_STAGE_AUTORUN=1, and assert PROJECT_DIR lands on THIS checkout.
 #      This is the layer that actually fails when the defect comes back.
@@ -55,11 +55,15 @@ canon <- function(x) normalizePath(x, winslash = "/", mustWork = FALSE)
 
 # Entrypoint -> the function its trailing guarded call invokes, or NA for a
 # straight-line script that cannot be loaded without doing its work.
+# bet_tracker.R and market_odds_engine.R were listed here until they were
+# removed under the zero-betting policy. Their entries outlived the files, and
+# because the static loop readLines() every entrypoint unconditionally, this
+# whole suite died at the second name - it never reached any behavioural check.
+# A stage that no longer exists is not a stage to bootstrap: drop the entry
+# rather than guarding it, so a genuinely missing file still fails loudly.
 ENTRYPOINTS <- c(
   "prediction_accuracy_logger.R" = "run_prediction_accuracy_logger",
-  "bet_tracker.R"                = "grade_yesterday_bets",
   "injury_scraper.R"             = "fetch_live_nba_injuries",
-  "market_odds_engine.R"         = "evaluate_betting_slate",
   "roster_bottom_up_engine.R"    = "project_all_30_teams",
   "sync_rosters.R"               = "sync_active_rosters",
   "enhanced_model.R"             = NA_character_
