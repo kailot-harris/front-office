@@ -147,7 +147,21 @@ run_stage <- function(script_name, description, call_fn = NULL, entry_fn = NULL,
         # the interpreter is still resolved from PATH as bare "python". A PYTHON_BIN constant in
         # config.R (defaulting to Sys.which("python"), with a startup check) is the remaining half
         # of M-1 and is logged as a follow-up in this wave's Handoff Notes.
+        # ISSUE #154: hand the child process the reproducibility seed. `system2(env = )` is
+        # documented as not supported on Windows (and this repo is Windows-only per CLAUDE.md),
+        # so the value is exported into this process's environment — which the child inherits —
+        # and restored afterwards so no later stage sees a stray variable. config.R's
+        # WNBA_EMBEDDING_SEED stays the single source of truth for the value; team_embeddings.py
+        # carries a matching literal only as its standalone-invocation fallback.
+        prev_seed_env <- Sys.getenv("WNBA_EMBEDDING_SEED", unset = NA_character_)
+        if (exists("WNBA_EMBEDDING_SEED", inherits = TRUE)) {
+          Sys.setenv(WNBA_EMBEDDING_SEED = as.character(as.integer(WNBA_EMBEDDING_SEED)))
+        }
         status <- system2("python", args = script_name)
+        # Restored inline rather than via on.exit(): this block runs inside
+        # withCallingHandlers(), whose frame is not run_stage()'s, and the block also
+        # return()s further down — both make on.exit() placement unintuitive here.
+        if (is.na(prev_seed_env)) Sys.unsetenv("WNBA_EMBEDDING_SEED") else Sys.setenv(WNBA_EMBEDDING_SEED = prev_seed_env)
         if (!is.numeric(status) || length(status) != 1 || is.na(status) || status != 0) {
           stop(sprintf("Python stage %s exited with status %s", script_name, paste(status, collapse = ",")))
         }
@@ -292,8 +306,10 @@ run_registered_stage("injury_scraper")
 # CSVs were stale artifacts nothing in the DAG refreshed (team_embeddings.py only wrote duckdb).
 # RE-CORRECTED 2026-09-17 (orphaned-cache-audit skill run): team_embeddings.py's save_to_db() now
 # writes both CSVs again, additively alongside duckdb — load_embeddings.R and
-# tools/ml_cv_benchmark.R still read the CSVs and app.R's wide-shape fallback path still expects
-# them, so retiring the CSVs instead of restoring their producer would have broken real consumers.
+# tools/ml_cv_benchmark.R still read the CSVs, so retiring the CSVs instead of restoring their
+# producer would have broken real consumers. (app.R's wide-shape fallback path was a third
+# consumer until app.R was retired under issue #142; load_embeddings.R and ml_cv_benchmark.R
+# remain, so the CSVs are still required.)
 run_registered_stage("team_embeddings")
 
 # 1.5. Prediction-Accuracy Logging — Reconciliation
@@ -353,9 +369,15 @@ latent_engines <- get_pipeline_stage_group("latent_engines")
 # set.seed()-based reproducibility guarantee does not hold — props pricing and Monte Carlo output
 # drifted run-to-run for reasons unrelated to code changes. TRUE gives each element a
 # statistically sound L'Ecuyer-CMRG stream derived reproducibly from the parent's RNG state.
+# ISSUE #154: `future.seed = TRUE` is NOT reproducible on its own — it derives the per-element
+# L'Ecuyer-CMRG streams from the PARENT's current RNG state, and R seeds that from the clock/PID
+# at startup, so every run handed the workers different streams. The comment above was therefore
+# half-true: the streams were statistically sound but not stable run-to-run. Passing config.R's
+# fixed WNBA_PARALLEL_STREAM_SEED instead of TRUE keeps the identical L'Ecuyer mechanism (and
+# still silences the "UNRELIABLE VALUE" warning) while making the reproducibility claim real.
 future_lapply(latent_engines, function(e) {
   run_stage(e$script, e$description, call_fn = e$call_fn, entry_fn = e$entry_fn, output = e$output)
-}, future.seed = TRUE)
+}, future.seed = WNBA_PARALLEL_STREAM_SEED)
 
 # 2.5. Play-by-Play Player Features (pbp_engine.R) - deliberately SEQUENTIAL, not folded into
 # the future.apply "Latent Engines" group above. Empirically this machine OOM-killed the whole

@@ -625,6 +625,56 @@ OPP_DEF_MU_SLOPE <- -0.0504
 OPP_DEF_MU_CLAMP <- c(0.85, 1.15)
 
 # ------------------------------------------------------------------------------------------
+# Reproducibility Seeds (GitHub issue #154)
+# ------------------------------------------------------------------------------------------
+# These are NOT modelling hyperparameters — no value in this block changes what any model
+# means. They exist so that every stochastic stage reached by the publishing path draws the
+# SAME sequence on every run, which is the precondition for the "two consecutive runs produce
+# byte-identical JSON" acceptance criterion the audit tickets rely on (#144-#152, #141).
+#
+# Derivation: a seed has no empirical optimum — any fixed integer is as correct as any other,
+# and the only property that matters is that it is fixed, centralized, and never re-rolled.
+# The values below are therefore chosen for continuity with the seeds this repo already had
+# in place, so that landing #154 does not gratuitously move published numbers that were
+# already stable:
+#   - 42 matches the seeds already in build_coaching_dataset.R:69, shot_quality_engine.R:137
+#     and export_web_json.R's per-pair series Monte Carlo (`set.seed(42 + ...)`), which is the
+#     pattern issue #154 explicitly names as the model to follow.
+#   - Once a published artifact has been generated under a given seed, CHANGING these values
+#     is a published-value change, not a refactor. Treat them as frozen.
+
+# Torch/NumPy seed for team_embeddings.py's entity-embedding net. The 16-dim embedding is
+# trained from a RANDOM weight initialization (nn.Embedding/nn.Linear draw from torch's global
+# RNG) for 120 Adam epochs, so without a fixed seed the fitted embedding differs every run even
+# on byte-identical input (confirmed: two back-to-back runs of team_embeddings.py on an unchanged
+# cache/games_for_embeddings.csv produced different data/team_embeddings.csv). That CSV feeds
+# export_web_json.R's `emb_adj`/`emb_wins` variant, which carries 0.20 weight in the published
+# ensemble — this was the root cause of #154's projections drift.
+# team_embeddings.py is Python and cannot read this file; run_full_pipeline.R's run_stage()
+# exports this value to the child process as the WNBA_EMBEDDING_SEED environment variable, and
+# the script's own fallback default is the same literal so that a standalone
+# `python team_embeddings.py` is reproducible too. This constant is the single source of truth.
+WNBA_EMBEDDING_SEED <- 42L
+
+# Seed for playoff_simulator.R's best-of-N series Monte Carlo (10,000 simulated series per
+# matchup). Unseeded, it rewrote cache/playoff_series_wnba_demo.rds with different scoreline
+# probabilities on every run. Nothing under web/public/data/ consumes that cache today, but it
+# is a tracked artifact and the same class of defect as the embeddings one, so it is seeded
+# here rather than left as a latent reproducibility bug for whoever wires it to a payload next.
+WNBA_PLAYOFF_SIM_SEED <- 42L
+
+# Seed for run_full_pipeline.R's future.apply parallel group ("Latent Engines"). That call used
+# `future.seed = TRUE`, whose comment claims the per-worker L'Ecuyer-CMRG streams are "derived
+# reproducibly from the parent's RNG state" — true only if the parent's RNG state is itself
+# fixed, which it was not (R seeds from the clock/PID at startup). So each worker got a
+# different stream on every run. No engine in that group currently draws from it without first
+# calling its own set.seed(), which is why the bisect found rapm_ratings.rds /
+# team_shot_quality.rds byte-stable — but the guarantee the comment asserts did not actually
+# hold, and any future RNG added to one of those engines would silently become irreproducible.
+# Passing a fixed integer instead of TRUE makes the documented behaviour real.
+WNBA_PARALLEL_STREAM_SEED <- 42L
+
+# ------------------------------------------------------------------------------------------
 # API Throttling & Rate-Limiting (carried over from NBA as reasonable starting defaults -
 # sport-agnostic, per WNBA_REPLICATION_PLAN.md)
 # ------------------------------------------------------------------------------------------

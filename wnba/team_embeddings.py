@@ -1,5 +1,6 @@
 import sys
 import os
+import random
 import pandas as pd
 import numpy as np
 import duckdb
@@ -17,6 +18,58 @@ OUTPUT_SIMILARITY_CSV = "data/team_similarity_matrix.csv"
 
 # WNBA has 15 current (2026) franchises vs. the NBA's 30
 WNBA_TEAM_COUNT = 15
+
+# ------------------------------------------------------------------------------
+# REPRODUCIBILITY SEED (GitHub issue #154 — root cause of the published projections drift)
+# ------------------------------------------------------------------------------
+# train_pytorch_model() initializes nn.Embedding/nn.Linear weights from torch's GLOBAL RNG and
+# then runs 120 Adam epochs from that initialization. With the RNG unseeded, every invocation
+# converged to a different point in the embedding space, so data/team_embeddings.csv changed on
+# every run even when cache/games_for_embeddings.csv was byte-identical. That CSV is read by
+# load_embeddings.R and by export_web_json.R's embeddings variant (`emb_adj` -> `emb_wins`),
+# which carries 0.20 weight in the published ensemble — so an unseeded weight init was moving
+# real franchises' `proj_wins` / `win_pct` / `ensemble_*` between runs, and with them
+# coaching_metrics.json's `actualProjectedWins` and playoff_series_matchups.json.
+#
+# The seed VALUE is config.R's WNBA_EMBEDDING_SEED, which is the single source of truth (this
+# repo's convention is that every structural/modelling constant lives there with a derivation
+# comment). Python cannot source config.R, so run_full_pipeline.R's run_stage() exports it to
+# this process as an environment variable before calling `python team_embeddings.py`. The
+# fallback literal below deliberately equals config.R's current value, so running this script
+# standalone (outside the pipeline) is reproducible too — if config.R's constant is ever
+# changed, change this literal to match.
+DEFAULT_EMBEDDING_SEED = 42
+
+
+def _resolve_seed():
+    raw = os.environ.get("WNBA_EMBEDDING_SEED", "")
+    try:
+        return int(str(raw).strip())
+    except (TypeError, ValueError):
+        # Fail-safe, per this repo's convention: an unset/garbled env var must not crash the
+        # stage, and must NOT silently degrade to "unseeded" either — fall back to the
+        # documented constant so the run is still reproducible.
+        return DEFAULT_EMBEDDING_SEED
+
+
+def seed_everything():
+    """Pin every RNG this module can reach, before any draw is taken."""
+    seed = _resolve_seed()
+    random.seed(seed)
+    np.random.seed(seed)      # covers main()'s mock-schema fallback (np.random.randint/choice)
+    try:
+        import torch
+        torch.manual_seed(seed)           # covers nn.Embedding / nn.Linear weight init
+        # Single-threaded CPU math removes the remaining run-to-run variation: torch's parallel
+        # reductions are deterministic only for a fixed thread count, which is machine- and
+        # load-dependent. This model is 15 teams x 16 dims x 120 epochs, so the wall-clock cost
+        # of one thread is negligible next to a reproducibility guarantee.
+        torch.set_num_threads(1)
+    except ImportError:
+        # No torch: the SVD fallback path is used, which is deterministic anyway.
+        pass
+    print(f"[Embedding Agent] RNG seeded with {seed} (config.R's WNBA_EMBEDDING_SEED).")
+    return seed
 
 def train_embeddings_svd_fallback(df):
     """Zero-dependency SVD factorizer when PyTorch is not present."""
@@ -133,6 +186,10 @@ def save_to_db(emb_df, sim_df):
     sim_df.reset_index().rename(columns={"index": "team_id"}).to_csv(OUTPUT_SIMILARITY_CSV, index=False)
 
 def main():
+    # Issue #154: must happen before the mock-schema np.random draws below AND before any
+    # model is constructed, since nn.Embedding/nn.Linear draw at construction time.
+    seed_everything()
+
     if not os.path.exists(CSV_TRAIN_SOURCE):
         print(f"[Embedding Agent] Warning: Source file {CSV_TRAIN_SOURCE} not found. Generating mock schema...")
         df = pd.DataFrame({
