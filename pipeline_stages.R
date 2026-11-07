@@ -499,17 +499,7 @@ PIPELINE_STAGES <- list(
   # ---------------------------------------------------------------------------------------
   # 11. WNBA Offseason Moves & Roster Landscape (Phase 3)
   # ---------------------------------------------------------------------------------------
-  offseason_dataset = list(
-    id          = "offseason_dataset",
-    script      = "build_offseason_dataset.R",
-    description = "Compile Offseason Roster Moves, Cap Space & Draft Board",
-    call_fn     = NULL,
-    entry_fn    = NULL,
-    output      = WEB_JSON_OFFSEASON_TRANSACTIONS,
-    inputs      = c(WEB_JSON_PROJECTIONS_SEASON_PLAYERS,
-                    WEB_JSON_PROJECTIONS_SEASON_TEAMS),
-    group       = NULL
-  ),
+  # offseason_dataset: ARCHIVED pending live feed integration (GitHub #129, #141)
 
   # ---------------------------------------------------------------------------------------
   # 12. WNBA Coaching Staff & Tactical Analytics (Phase 3)
@@ -571,16 +561,7 @@ PIPELINE_STAGES <- list(
   # ---------------------------------------------------------------------------------------
   # 16. WNBA Hard Salary Cap, Rookie Scale & Roster Crunch (Phase 3)
   # ---------------------------------------------------------------------------------------
-  cba_cap_dataset = list(
-    id          = "cba_cap_dataset",
-    script      = "build_cba_cap_dataset.R",
-    description = "Compile WNBA Hard Salary Cap Sheets, Supermax Tags & 11-vs-12 Crunch",
-    call_fn     = NULL,
-    entry_fn    = NULL,
-    output      = WEB_JSON_CBA_CAP_SHEET,
-    inputs      = c(WEB_JSON_PROJECTIONS_SEASON_PLAYERS),
-    group       = NULL
-  ),
+  # cba_cap_dataset: ARCHIVED pending live feed integration (GitHub #128, #140, #141)
 
   # ---------------------------------------------------------------------------------------
   # 17. Per-game Matchups dataset (#74): week ribbon, graded past weeks, pending future.

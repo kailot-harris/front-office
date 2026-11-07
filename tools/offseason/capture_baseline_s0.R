@@ -266,8 +266,8 @@ capture_baseline_s0 <- function(champion = NULL,
 
   league_state <- list(
     seasonYear = 2027L,
-    cbaStatus = make_provenanced("Active (Hard Salary Cap $1.520M / 11-vs-12 Player Crunch)", as_of_date = as_of_day),
-    salaryCapCeiling = make_provenanced(1.520, as_of_date = as_of_day),
+    cbaStatus = make_provenanced("Active (Hard Salary Cap $1.000M / 11-vs-12 Player Crunch)", as_of_date = as_of_day),
+    salaryCapCeiling = make_provenanced(7.000, as_of_date = as_of_day),
     coreEligibilityRule = make_provenanced("CBA 2027 Cliff: Players with 7+ years of service ineligible for Core designation", as_of_date = as_of_day),
     activeFranchises = make_provenanced(15L, as_of_date = as_of_day),
     calendarMilestones = make_provenanced(I(milestones), as_of_date = as_of_day)

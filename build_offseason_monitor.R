@@ -318,7 +318,7 @@ build_offseason_monitor_dag <- function(dry_run = FALSE,
     totalConfirmedTransactions = length(confirmed_changes_list),
     pendingReportedRumors = length(reported_claims_list),
     expiredRumorCount = length(expired_claims_list),
-    cbaLaborStatus = "Active (Hard Salary Cap $1.520M / 11-vs-12 Player Crunch)"
+    cbaLaborStatus = "Active (Hard Salary Cap $1.000M / 11-vs-12 Player Crunch)"
   )
   
   # Final Dataset Object conforming to OffseasonMonitorDataset

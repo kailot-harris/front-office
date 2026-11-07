@@ -401,7 +401,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
             <Coins className="w-4 h-4 text-amber-400" />
           </div>
           <div className="text-xs font-bold text-amber-300 truncate" title={initialDataset.currentStateSummary.cbaLaborStatus}>
-            $1.520M Hard Cap
+            $1.000M Hard Cap
           </div>
           <div className="text-[11px] text-slate-500 mt-1">11-vs-12 player roster crunch</div>
         </div>
