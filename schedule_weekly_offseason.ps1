@@ -3,13 +3,16 @@
 # PowerShell companion for the MLB Offseason Dynamics Monitor.
 # Path: scripts/schedule_weekly_offseason.ps1 or repo root
 #
-# Cadence: Weekly on Mondays at 09:00 local (Slot A).
+# Cadence: Daily at 07:00 local (Slot A).
 # Target task name: "MLB Analytics Schedule Weekly Offseason"
+#   (Note: Task and file names are retained historically to preserve compatibility;
+#   cadence is daily 07:00 local per issue #66, matching the 26h freshness gate).
 #
 # Flow:
 #   1. Runs build_offseason_monitor.R
-#   2. Runs tools/publish_web.R --publish --mode=offseason
-#   3. Direct aggregator workflow dispatch:
+#   2. Runs tools/offseason/test_dag_end_to_end.R (pre-publish regression suite)
+#   3. Runs tools/publish_web.R --publish --mode=offseason
+#   4. Direct aggregator workflow dispatch:
 #      gh workflow run "Sync sport subtrees and deploy" --repo kailot-harris/front-office -f sports="mlb" -f deploy=true
 #
 # Conforms to blueprint §§ 9, 10 and zero-betting policy.
@@ -53,7 +56,7 @@ function Write-PipelineLog([string]$Level, [string]$Message) {
 }
 
 Write-PipelineLog "INFO" "=================================================================="
-Write-PipelineLog "INFO" "Starting weekly offseason monitor pipeline run (Mode=$Mode)..."
+Write-PipelineLog "INFO" "Starting daily offseason monitor pipeline run (Mode=$Mode)..."
 Write-PipelineLog "INFO" "=================================================================="
 
 # Locate Rscript
@@ -98,9 +101,28 @@ if ($buildProcess.ExitCode -ne 0) {
     exit $buildProcess.ExitCode
 }
 
-# Step 2: Publish web artifacts and promote staged baseline
+# Step 2: Run End-to-End DAG Regression Suite prior to publishing (GitHub issue #62)
+Write-PipelineLog "INFO" "Step 2: Running tools/offseason/test_dag_end_to_end.R..."
+$testArgs = @("--vanilla", "tools/offseason/test_dag_end_to_end.R")
+$testProcess = Start-Process -FilePath $Rscript -ArgumentList $testArgs -NoNewWindow -Wait -PassThru -RedirectStandardOutput (Join-Path $LogDir "offseason_test_stdout.tmp") -RedirectStandardError (Join-Path $LogDir "offseason_test_stderr.tmp")
+
+if (Test-Path (Join-Path $LogDir "offseason_test_stdout.tmp")) {
+    Get-Content (Join-Path $LogDir "offseason_test_stdout.tmp") | Add-Content -Path $LogFile -Encoding utf8
+    Remove-Item (Join-Path $LogDir "offseason_test_stdout.tmp") -Force
+}
+if (Test-Path (Join-Path $LogDir "offseason_test_stderr.tmp")) {
+    Get-Content (Join-Path $LogDir "offseason_test_stderr.tmp") | Add-Content -Path $LogFile -Encoding utf8
+    Remove-Item (Join-Path $LogDir "offseason_test_stderr.tmp") -Force
+}
+
+if ($testProcess.ExitCode -ne 0) {
+    Write-PipelineLog "ERROR" "tools/offseason/test_dag_end_to_end.R failed with exit code $($testProcess.ExitCode). Halting publication."
+    exit $testProcess.ExitCode
+}
+
+# Step 3: Publish web artifacts and promote staged baseline
 $publishModeFlag = if ($Mode -eq 'publish') { "--publish" } else { "--dry-run" }
-Write-PipelineLog "INFO" "Step 2: Running tools/publish_web.R $publishModeFlag --mode=offseason..."
+Write-PipelineLog "INFO" "Step 3: Running tools/publish_web.R $publishModeFlag --mode=offseason..."
 $publishArgs = @("--vanilla", "tools/publish_web.R", $publishModeFlag, "--mode=offseason")
 if ($AllowDegraded) {
     $publishArgs += "--allow-degraded"
@@ -122,9 +144,9 @@ if ($publishProcess.ExitCode -ne 0) {
     exit $publishProcess.ExitCode
 }
 
-# Step 3: Direct aggregator workflow dispatch to overcome Winter DST inversion
+# Step 4: Direct aggregator workflow dispatch to overcome Winter DST inversion
 if ($Mode -eq 'publish') {
-    Write-PipelineLog "INFO" "Step 3: Dispatching aggregator sync-sports workflow via GitHub CLI..."
+    Write-PipelineLog "INFO" "Step 4: Dispatching aggregator sync-sports workflow via GitHub CLI..."
     $ghCmd = Get-Command "gh" -ErrorAction SilentlyContinue
     $ghPath = if ($ghCmd) { "gh" } elseif (Test-Path "C:\Program Files\GitHub CLI\gh.exe") { "C:\Program Files\GitHub CLI\gh.exe" } else { $null }
 
@@ -156,5 +178,5 @@ if ($Mode -eq 'publish') {
     }
 }
 
-Write-PipelineLog "INFO" "Weekly offseason monitor pipeline run completed successfully."
+Write-PipelineLog "INFO" "Daily offseason monitor pipeline run completed successfully."
 exit 0

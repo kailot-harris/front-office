@@ -5,21 +5,24 @@ REM schedule_weekly_offseason.bat (MLB Analytics)
 REM Windows Task Scheduler target for the MLB Offseason Dynamics Monitor.
 REM Path: %~dp0schedule_weekly_offseason.bat
 REM
-REM Cadence: Weekly on Mondays at 09:00 local (Slot A).
+REM Cadence: Daily at 07:00 local (Slot A).
 REM Target task name: "MLB Analytics Schedule Weekly Offseason"
+REM   (Note: Task and file names are retained historically to preserve compatibility;
+REM   cadence is daily 07:00 local per issue #66, matching the 26h freshness gate).
 REM
 REM Rationale:
 REM   In the off-season, there are no live games. What moves is roster,
 REM   contract, and organizational state, arriving irregularly as text.
-REM   This weekly script executes build_offseason_monitor.R, runs the pre-publish
+REM   This daily script executes build_offseason_monitor.R, runs the pre-publish
 REM   end-to-end regression test suite (tools/offseason/test_dag_end_to_end.R), and
 REM   publishes web artifacts via tools/publish_web.R --publish --mode=offseason.
 REM
 REM Winter DST Direct Workflow Dispatch:
 REM   sync-sports.yml runs at cron: '30 13 * * *' (13:30 UTC). Under Eastern
-REM   Standard Time (EST), 09:00 local is 14:00 UTC, so the aggregator pull fires
-REM   30 minutes BEFORE the local pipeline starts, causing a 24h deploy lag.
-REM   To solve this across DST boundaries, this script directly dispatches:
+REM   Standard Time (EST), 07:00 local is 12:00 UTC (90 min before the cron);
+REM   under EDT, 07:00 local is 11:00 UTC (2.5h before). To ensure the published
+REM   edition deploys immediately rather than waiting for the scheduled cron,
+REM   this script directly dispatches:
 REM     gh workflow run "Sync sport subtrees and deploy" --repo kailot-harris/front-office -f sports="mlb" -f deploy=true
 REM ==============================================================================
 
@@ -37,7 +40,7 @@ set LOG_FILE=%PROJECT_DIR%\logs\mlb_pipeline.log
 set RUN_LOG=%PROJECT_DIR%\logs\scheduled_runs.log
 
 echo ================================================================== >> "%RUN_LOG%"
-echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Starting weekly offseason monitor pipeline run. >> "%RUN_LOG%"
+echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Starting daily offseason monitor pipeline run. >> "%RUN_LOG%"
 echo ================================================================== >> "%RUN_LOG%"
 
 REM Defense-in-depth for git commit identity resolution under Task Scheduler
@@ -110,5 +113,5 @@ if not "%GH_BIN%"=="" (
     echo [%DATE% %TIME%] [WARN] [schedule_weekly_offseason.bat] GitHub CLI (gh) not found; skipping direct workflow dispatch. >> "%RUN_LOG%"
 )
 
-echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Weekly offseason monitor run completed successfully. >> "%RUN_LOG%"
+echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Daily offseason monitor run completed successfully. >> "%RUN_LOG%"
 exit /b 0

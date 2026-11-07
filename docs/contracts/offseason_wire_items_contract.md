@@ -125,7 +125,7 @@ Return shape — a list with exactly these elements:
 
 ### Chosen threshold: `max_age_hours = 26`
 
-Issue #55 (in flight in parallel) converts this job from a **weekly Monday-09:00** cadence to a **daily 07:00** cadence. The threshold must be set against the daily cadence, not the weekly one in #56's body.
+Issue #66 converts this job from a **weekly Monday-09:00** cadence to a **daily 07:00** cadence (superseding #55's deferred cadence change). The threshold is set against the daily cadence, not the weekly one.
 
 Under a daily 07:00 run, a healthy manifest is at most ~24 hours old at the moment immediately before the next run begins. 26 hours adds two hours of slack to absorb Task Scheduler start jitter and queued-on-wake starts after a missed window, in-run retry/backoff on the statsapi adapters, and the one-hour DST discontinuity. One missed daily run therefore trips the gate on the following morning, which is the intent.
 

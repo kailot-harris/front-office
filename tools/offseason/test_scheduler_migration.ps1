@@ -50,8 +50,9 @@ Run-Test "schedule_weekly_offseason.bat verification" {
     $content = Get-Content -Path $batPath -Raw
     $hasAggregator = $content.Contains("Sync sport subtrees and deploy")
     $hasBuild = $content.Contains("build_offseason_monitor.R")
+    $hasDagTest = $content.Contains("tools/offseason/test_dag_end_to_end.R")
     $hasPublish = $content.Contains("tools/publish_web.R --publish --mode=offseason")
-    return ($hasAggregator -and $hasBuild -and $hasPublish)
+    return ($hasAggregator -and $hasBuild -and $hasDagTest -and $hasPublish)
 }
 
 # Test 2: schedule_weekly_offseason.ps1 exists and contains required targets
@@ -61,16 +62,23 @@ Run-Test "schedule_weekly_offseason.ps1 verification" {
     $content = Get-Content -Path $ps1Path -Raw
     $hasAggregator = $content.Contains("Sync sport subtrees and deploy")
     $hasBuild = $content.Contains("build_offseason_monitor.R")
+    $hasDagTest = $content.Contains("tools/offseason/test_dag_end_to_end.R")
     $hasPublish = $content.Contains("tools/publish_web.R")
-    return ($hasAggregator -and $hasBuild -and $hasPublish)
+    return ($hasAggregator -and $hasBuild -and $hasDagTest -and $hasPublish)
 }
 
-# Test 3: Task Scheduler weekly offseason task is registered
-Run-Test "Task Scheduler weekly offseason task registered" {
-    $taskQuery = schtasks /query /tn "MLB Analytics Schedule Weekly Offseason" /fo LIST 2>&1
-    if ($LASTEXITCODE -ne 0) { return $false }
-    $text = ($taskQuery | Out-String)
-    return ($text.Contains("MLB Analytics Schedule Weekly Offseason") -and ($text.Contains("Ready") -or $text.Contains("Enabled")))
+# Test 3: Task Scheduler daily offseason task is registered (Issue #66)
+Run-Test "Task Scheduler daily offseason task registered (07:00, StartWhenAvailable)" {
+    $task = Get-ScheduledTask -TaskName "MLB Analytics Schedule Weekly Offseason" -ErrorAction SilentlyContinue
+    if (-not $task) { return $false }
+    $isReady = ($task.State -eq 'Ready' -or $task.State -eq 'Running')
+    $trigger = $task.Triggers | Where-Object { $_.CimClass.CimClassName -eq 'MSFT_TaskDailyTrigger' }
+    if (-not $trigger) { return $false }
+    $isDaily = ($trigger.DaysInterval -eq 1)
+    $is0700 = ($trigger.StartBoundary -match "T07:00:00")
+    $startWhenAvail = ($task.Settings.StartWhenAvailable -eq $true)
+    $execLimitOk = ($task.Settings.ExecutionTimeLimit -eq "PT2H" -or $task.Settings.ExecutionTimeLimit -eq "PT1H")
+    return ($isReady -and $isDaily -and $is0700 -and $startWhenAvail -and $execLimitOk)
 }
 
 # Test 4: Task Scheduler daily pipeline task is disabled
