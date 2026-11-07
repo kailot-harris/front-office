@@ -88,6 +88,7 @@ const OffseasonEditionSchema = z.object({
   freezeDayCount: z.number().nullable().optional(),
   freezeStartDate: z.string().nullable().optional(),
   stateOfPlay: z.string(),
+  totalConfirmedCount: z.number().int().nonnegative().optional(),
   confirmedChanges: z.array(ConfirmedChangeSchema),
   reportedClaims: z.array(ReportedClaimSchema),
   expiredClaims: z.array(ExpiredClaimSchema),
@@ -100,6 +101,7 @@ const OffseasonEditionSchema = z.object({
 
 const CurrentStateSummarySchema = z.object({
   totalConfirmedTransactions: z.number().int().nonnegative(),
+  totalConfirmedCount: z.number().int().nonnegative().optional(),
   pendingReportedRumors: z.number().int().nonnegative(),
   expiredRumorCount: z.number().int().nonnegative(),
   cbtPayrollLeader: z.string(),
@@ -267,5 +269,47 @@ describe('MLB Off-Season Dynamics Monitor Contract Suite', () => {
     expect(alonsoRows[0].transactionType).toBe('FREE_AGENCY');
     expect(alonsoRows[0].team).toBe('BAL');
     expect(alonsoRows[0].newValue).not.toBe('None');
+  });
+
+  it('carries totalConfirmedCount to guard against silent truncation (Issue #61)', () => {
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    type EditionWithTotal = OffseasonMonitorDataset['editions'][number] & {
+      totalConfirmedCount?: number;
+    };
+    const data = JSON.parse(raw) as Omit<OffseasonMonitorDataset, 'editions'> & {
+      editions: EditionWithTotal[];
+    };
+
+    expect(data.editions.length).toBeGreaterThanOrEqual(1);
+    data.editions.forEach((ed) => {
+      // If totalConfirmedCount is present, it must be >= confirmedChanges.length
+      if (typeof ed.totalConfirmedCount === 'number') {
+        expect(ed.totalConfirmedCount).toBeGreaterThanOrEqual(ed.confirmedChanges.length);
+      }
+    });
+
+    // Specifically for the published artifact, verify totalConfirmedCount exists on the active edition
+    const activeEdition = data.editions[0];
+    expect(activeEdition.totalConfirmedCount).toBeDefined();
+    expect(activeEdition.totalConfirmedCount).toBe(activeEdition.confirmedChanges.length);
+  });
+
+  it('supports bounded edition payload with totalConfirmedCount exceeding inline subset', () => {
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const data = JSON.parse(raw) as OffseasonMonitorDataset;
+
+    // Simulate high-volume week: 1,401 events on wire, bounded to 100 in inline payload
+    const boundedMockEdition = {
+      ...data.editions[0],
+      totalConfirmedCount: 1401,
+      // confirmedChanges remains bounded (e.g. 4 or 100 items)
+    };
+
+    const parsed = OffseasonEditionSchema.safeParse(boundedMockEdition);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.totalConfirmedCount).toBe(1401);
+      expect(parsed.data.totalConfirmedCount).toBeGreaterThan(parsed.data.confirmedChanges.length);
+    }
   });
 });

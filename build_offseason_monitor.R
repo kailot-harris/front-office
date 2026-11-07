@@ -454,6 +454,7 @@ build_offseason_monitor <- function(allow_degraded = FALSE,
     freezeDayCount = freeze_day_count,
     freezeStartDate = freeze_start_date,
     stateOfPlay = state_of_play_msg,
+    totalConfirmedCount = length(confirmed_events),
     confirmedChanges = confirmed_events,
     reportedClaims = list(),
     expiredClaims = list(),
@@ -479,6 +480,8 @@ build_offseason_monitor <- function(allow_degraded = FALSE,
   )
   
   # Step 6: Render Memo & Validate Zero-Betting
+  state_of_play_msg <- build_state_of_play_summary(edition_obj)
+  edition_obj$stateOfPlay <- state_of_play_msg
   memo_md <- render_memo(edition_obj, operating_status = operating_status)
   validate_zero_betting(memo_md)
   
@@ -547,8 +550,15 @@ build_offseason_monitor <- function(allow_degraded = FALSE,
   }
   
   # Step 8: Assemble final OffseasonMonitorDataset with I() Array Unboxing Defense
-  # Apply I() to array fields on each edition in main_editions
+  # Apply I() to array fields on each edition in main_editions, bounding inline confirmedChanges
+  max_inline_changes <- 100L
   protected_editions <- lapply(main_editions, function(ed) {
+    if (is.null(ed$totalConfirmedCount)) {
+      ed$totalConfirmedCount <- length(ed$confirmedChanges)
+    }
+    if (length(ed$confirmedChanges) > max_inline_changes) {
+      ed$confirmedChanges <- head(ed$confirmedChanges, max_inline_changes)
+    }
     ed$confirmedChanges   <- I(ed$confirmedChanges)
     ed$reportedClaims     <- I(ed$reportedClaims)
     ed$expiredClaims      <- I(ed$expiredClaims)
@@ -572,6 +582,7 @@ build_offseason_monitor <- function(allow_degraded = FALSE,
     editions = I(protected_editions),
     currentStateSummary = list(
       totalConfirmedTransactions = length(confirmed_events),
+      totalConfirmedCount = length(confirmed_events),
       pendingReportedRumors = length(edition_obj$reportedClaims),
       expiredRumorCount = length(edition_obj$expiredClaims),
       cbtPayrollLeader = cbt_leader
