@@ -247,11 +247,19 @@ describe('MLB Off-Season Dynamics Monitor Contract Suite', () => {
     });
   });
 
+  const loadAllEditions = (data: OffseasonMonitorDataset) => {
+    const archivePath = path.join(DATA_DIR, 'archive', 'offseason_2026_editions.json');
+    const archived = fs.existsSync(archivePath)
+      ? (JSON.parse(fs.readFileSync(archivePath, 'utf-8')) as OffseasonMonitorDataset['editions'])
+      : [];
+    return [...data.editions, ...archived];
+  };
+
   it('classifies a waiver claim as WAIVER_CLAIM, not TRADE', () => {
     const raw = fs.readFileSync(filePath, 'utf-8');
     const data = JSON.parse(raw) as OffseasonMonitorDataset;
 
-    const parisRows = data.editions
+    const parisRows = loadAllEditions(data)
       .flatMap((ed) => ed.confirmedChanges)
       .filter((c) => c.playerName === 'Kyren Paris' && c.sourceUrl.includes('947444'));
 
@@ -266,7 +274,7 @@ describe('MLB Off-Season Dynamics Monitor Contract Suite', () => {
     const raw = fs.readFileSync(filePath, 'utf-8');
     const data = JSON.parse(raw) as OffseasonMonitorDataset;
 
-    const alonsoRows = data.editions
+    const alonsoRows = loadAllEditions(data)
       .flatMap((ed) => ed.confirmedChanges)
       .filter((c) => c.playerName === 'Pete Alonso');
 
