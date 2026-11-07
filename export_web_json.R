@@ -239,11 +239,32 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
   corrected_means <- sapply(teams_list, function(e) round(e$ensemble_mean_wins - drift_per_team, 1))
   rounding_leftover <- round(total_schedule_games - sum(corrected_means), 1)
   if (rounding_leftover != 0) {
-    # Absorb any residual rounding error (at most a few * 0.1) into the single
-    # team whose mean is furthest from a round number, so the published sum is
-    # exact rather than merely within the test's tolerance.
-    adjust_idx <- which.max(abs(corrected_means - round(corrected_means)))
-    corrected_means[adjust_idx] <- round(corrected_means[adjust_idx] + rounding_leftover, 1)
+    # Largest-remainder apportionment: distribute the leftover in +-0.1 steps
+    # across the teams whose rounding to corrected_means discarded the most in
+    # that direction, instead of dumping the whole residual onto one team.
+    # Dumping it all on one team (the prior approach) is not bounded by that
+    # team's own rounding error -- the cumulative rounding error across all 15
+    # teams can exceed 0.5 even though each individual team's own rounding is
+    # at most 0.05, which silently breaks the per-team ensemble_mean_wins vs.
+    # weighted-blend invariant (tests/contracts/invariants.test.ts) for
+    # whichever team absorbs it. Confirmed live 2026-11-06: after the WNBA
+    # Finals Game 7 result resolved, the leftover was 0.7 and landed entirely
+    # on ATL (26.5 -> 27.2), overshooting that team's own blend by 0.60 and so
+    # failing the invariant (ensemble_mean_wins=27.2 vs weighted blend=26.60)
+    # while every other team sat within +-0.15 of its own blend. Note the
+    # zero-sum total still came out exact (330.0) in that run -- dumping the
+    # residual on one team breaks only the per-team check, so this shows up as
+    # a single failing contract, not as a visibly unbalanced league total.
+    pre_round <- sapply(teams_list, function(e) e$ensemble_mean_wins - drift_per_team)
+    remainders <- pre_round - corrected_means
+    leftover_units <- round(rounding_leftover * 10)
+    step <- if (leftover_units > 0) 0.1 else -0.1
+    ordering <- if (leftover_units > 0) order(-remainders) else order(remainders)
+    n_steps <- min(abs(leftover_units), n_teams)
+    for (k in seq_len(n_steps)) {
+      idx <- ordering[k]
+      corrected_means[idx] <- round(corrected_means[idx] + step, 1)
+    }
   }
 
   teams_list <- lapply(seq_len(n_teams), function(i) {
