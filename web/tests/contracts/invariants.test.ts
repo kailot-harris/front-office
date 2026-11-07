@@ -260,13 +260,17 @@ describe('Domain & mathematical invariants: clutch, defense, playerDna, coaches,
     }
   });
 
-  it('player_dna_profiles.json: every player has 3 historical twins with similarityPct sorted descending', () => {
+    it('player_dna_profiles.json: every player has valid category scores and skill vector percentiles in [0, 100]', () => {
     for (const p of playerDna) {
-      expect(p.historicalTwins.length).toBeGreaterThanOrEqual(3);
-      for (let i = 1; i < p.historicalTwins.length; i++) {
-        expect(p.historicalTwins[i - 1].similarityPct).toBeGreaterThanOrEqual(
-          p.historicalTwins[i].similarityPct
-        );
+      expect(p.overallRating).toBeGreaterThanOrEqual(0);
+      expect(p.overallRating).toBeLessThanOrEqual(100);
+      for (const val of Object.values(p.skillVector)) {
+        expect(val).toBeGreaterThanOrEqual(0);
+        expect(val).toBeLessThanOrEqual(100);
+      }
+      for (const val of Object.values(p.categoryScores)) {
+        expect(val).toBeGreaterThanOrEqual(0);
+        expect(val).toBeLessThanOrEqual(100);
       }
     }
   });

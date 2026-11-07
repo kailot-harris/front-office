@@ -427,20 +427,6 @@ export const PlayerDnaProfileSchema = z
         rebounding: pct,
       })
       .strict(),
-    historicalTwins: z
-      .array(
-        z
-          .object({
-            compName: z.string().min(2),
-            era: z.string().min(4),
-            archetype: z.string().min(2),
-            position: z.string().min(1),
-            similarityPct: finiteNumber.min(0).max(100),
-            keySharedTrait: z.string().min(2),
-          })
-          .strict()
-      )
-      .min(1),
   })
   .strict();
 

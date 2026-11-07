@@ -50,5 +50,4 @@ export interface PlayerDnaProfile {
   manifoldY: number;
   skillVector: SkillVector;
   categoryScores: CategoryScores;
-  historicalTwins: HistoricalTwin[];
 }
