@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { Sidebar } from '../../components/Sidebar';
 
@@ -67,8 +67,10 @@ describe('Sidebar active tab highlighting', () => {
   it('renders 2026 Championship Archive expandable section', () => {
     mockPathname = '/offseason-monitor';
     render(<Sidebar />);
-    expect(screen.getByText(/2026 Championship Archive/i)).toBeDefined();
-    // Archive items are contained
-    expect(screen.getByRole('link', { name: /CBA Cap Sheet/i })).toBeDefined();
+    const archiveBtn = screen.getByText(/2026 Championship Archive/i);
+    expect(archiveBtn).toBeDefined();
+    // Expand the archive
+    fireEvent.click(archiveBtn);
+    expect(screen.getByRole('link', { name: /Season Standings/i })).toBeDefined();
   });
 });

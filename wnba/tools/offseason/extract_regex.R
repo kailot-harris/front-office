@@ -169,7 +169,7 @@ split_wire_clauses <- function(raw_text) {
   # 2. Periods followed by whitespace: \.\s+
   # 3. Lookahead for known action verbs following a sentence boundary or word:
   #    Signed, Waived, Released, Acquired, Announced, Set, Tendered, Matched, Fired
-  split_pat <- "(?:;\\s*|\\r?\\n+|(?<=[a-z0-9'’\"\\)])\\.\\s+(?=[A-Z])|(?<=[a-z0-9'’\"\\)])\\s+(?=(?:Signed|Waived|Released|Acquired|Announced|Set|Tendered|Matched|Fired)\\b))"
+  split_pat <- "(?:;\\s*|\\r?\\n+|(?<=[a-z0-9'’\"\\)])\\.\\s+(?=[A-Z])|(?<=[a-z0-9'’\"\\)])\\s+(?=(?:(?:Re[- ]?)?Signed|Waived|Released|Acquired|Announced|Set|Tendered|Matched|Fired|Activated|Exercised)\\b))"
   parts <- unlist(strsplit(txt, split_pat, perl = TRUE))
   parts <- trimws(parts)
   parts <- sub("\\.+$", "", parts)
@@ -178,7 +178,7 @@ split_wire_clauses <- function(raw_text) {
 }
 
 # Position tokens supported: C, F, G, G/F, F/G, C/F, and literal CF typo, plus words
-POS_PREFIX_REGEX <- "^(?:(?:G/F|F/G|C/F|CF|center|forward|guard|[CFG])\\b\\s*)+"
+POS_PREFIX_REGEX <- "^(?:(?:G/F|F/G|C/F|CF|centers?|forwards?|guards?|[CFG]s?)\\b\\s*)+"
 
 # Extract position token and player name cleanly
 extract_pos_and_name <- function(text) {
@@ -253,7 +253,7 @@ extract_deltas_regex <- function(raw_text,
     # 1. Multi-player Signing Pattern:
     # "Signed C Kamila Borkowska and F Maria Gakdeng to player development contracts."
     # --------------------------------------------------------------------------
-    m_multi_sign <- regexec("^Signed\\s+(.+?)\\s+and\\s+(.+?)\\s+to\\s+(.+)$", clause, ignore.case = TRUE, perl = TRUE)
+    m_multi_sign <- regexec("^(?:Re[- ]?)?Signed\\s+(.+?)\\s+and\\s+(.+?)\\s+to\\s+(.+)$", clause, ignore.case = TRUE, perl = TRUE)
     r_multi_sign <- regmatches(clause, m_multi_sign)[[1]]
     if (length(r_multi_sign) >= 4) {
       p1_chunk <- trimws(r_multi_sign[2])
@@ -367,15 +367,15 @@ extract_deltas_regex <- function(raw_text,
     # "Signed G Tonie Morgan."
     # Or legacy: "Seattle Storm sign forward Nneka Ogwumike to a multi-year contract..."
     # --------------------------------------------------------------------------
-    if (grepl("^(?:.*?\\s+)?sign(?:s|ed)?\\b", clause, ignore.case = TRUE, perl = TRUE) &&
+    if (grepl("^(?:.*?\\s+)?(?:re[- ]?)?sign(?:s|ed)?\\b", clause, ignore.case = TRUE, perl = TRUE) &&
         !grepl("sign-and-trade", clause, ignore.case = TRUE)) {
       # Extract possible leading team name from clause (e.g. "Seattle Storm sign...")
-      lead_match <- regmatches(clause, regexec("^(.*?)\\s+sign(?:s|ed)?\\b", clause, ignore.case = TRUE, perl = TRUE))[[1]]
+      lead_match <- regmatches(clause, regexec("^(.*?)\\s+(?:re[- ]?)?sign(?:s|ed)?\\b", clause, ignore.case = TRUE, perl = TRUE))[[1]]
       lead_team <- if (length(lead_match) >= 2) trimws(lead_match[2]) else ""
       t_target <- if (nzchar(lead_team) && !is.null(resolve_team_abbr(lead_team))) resolve_team_abbr(lead_team) else effective_team
       
       # Strip leading "team sign(s|ed)" or "Signed"
-      sub_clause <- sub("^(?:.*?\\s+)?sign(?:s|ed)?\\s+", "", clause, ignore.case = TRUE, perl = TRUE)
+      sub_clause <- sub("^(?:.*?\\s+)?(?:re[- ]?)?sign(?:s|ed)?\\s+", "", clause, ignore.case = TRUE, perl = TRUE)
       
       # Split by " to " if present
       to_parts <- unlist(strsplit(sub_clause, "\\s+to\\s+", perl = TRUE))
@@ -893,6 +893,87 @@ extract_deltas_regex <- function(raw_text,
     }
     
     # --------------------------------------------------------------------------
+    # 11j. Option Exercised (Official Wire):
+    # "Exercised the option on F Leonie Fiebich."
+    # "Exercised their option with G Caitlin Clark."
+    if (grepl("^(?:.*?\\s+)?exercise(?:s|d)?\\s+(?:the|their)?\\s*option\\s+(?:on|with)?\\s*", clause, ignore.case = TRUE, perl = TRUE)) {
+      sub_clause <- sub("^(?:.*?\\s+)?exercise(?:s|d)?\\s+(?:the|their)?\\s*option\\s+(?:on|with)?\\s*", "", clause, ignore.case = TRUE, perl = TRUE)
+      parsed <- extract_pos_and_name(sub_clause)
+      if (nzchar(parsed$name)) {
+        pinfo <- find_player_by_name(parsed$name, baseline_state)
+        clause_deltas[[length(clause_deltas) + 1]] <- list(
+          entity_type = "player",
+          entity_id = pinfo$id,
+          entity_name = pinfo$name,
+          field = "contractStatus",
+          prior_val = if (!is.null(pinfo$contractStatus)) pinfo$contractStatus else "UNDER_CONTRACT",
+          new_val = "UNDER_CONTRACT",
+          tier = "CONFIRMED",
+          date = date,
+          source_url = source_url,
+          change_type = "CONTRACT_OFFER",
+          position = parsed$pos
+        )
+        deltas <- c(deltas, clause_deltas)
+        next
+      }
+    }
+    
+    # 11k. Roster Status Activation (Official Wire):
+    # "Activated G Leila Lacan."
+    # "Activated F Leonie Fiebich."
+    if (grepl("^(?:.*?\\s+)?activate(?:s|d)?\\b", clause, ignore.case = TRUE, perl = TRUE)) {
+      sub_clause <- sub("^(?:.*?\\s+)?activate(?:s|d)?\\s+", "", clause, ignore.case = TRUE, perl = TRUE)
+      parsed <- extract_pos_and_name(sub_clause)
+      if (nzchar(parsed$name)) {
+        pinfo <- find_player_by_name(parsed$name, baseline_state)
+        clause_deltas[[length(clause_deltas) + 1]] <- list(
+          entity_type = "player",
+          entity_id = pinfo$id,
+          entity_name = pinfo$name,
+          field = "availabilityStatus",
+          prior_val = if (!is.null(pinfo$availabilityStatus)) pinfo$availabilityStatus else "INACTIVE",
+          new_val = "ACTIVE",
+          tier = "CONFIRMED",
+          date = date,
+          source_url = source_url,
+          change_type = "ROSTER_STATUS",
+          position = parsed$pos
+        )
+        deltas <- c(deltas, clause_deltas)
+        next
+      }
+    }
+    
+    # 11l. Negotiating / Draft Rights (Official Wire):
+    # "Acquired exclusive negotiating rights of F Maria Kliundikova from Toronto."
+    if (grepl("^(?:.*?\\s+)?acquired\\s+(?:exclusive\\s+)?negotiating\\s+rights\\s+of\\s+", clause, ignore.case = TRUE, perl = TRUE)) {
+      sub_clause <- sub("^(?:.*?\\s+)?acquired\\s+(?:exclusive\\s+)?negotiating\\s+rights\\s+of\\s+", "", clause, ignore.case = TRUE, perl = TRUE)
+      from_parts <- unlist(strsplit(sub_clause, "\\s+from\\s+", perl = TRUE))
+      p_chunk <- trimws(from_parts[1])
+      src_chunk <- if (length(from_parts) > 1) trimws(from_parts[2]) else ""
+      from_team <- resolve_team_abbr(src_chunk)
+      parsed <- extract_pos_and_name(p_chunk)
+      if (nzchar(parsed$name)) {
+        pinfo <- find_player_by_name(parsed$name, baseline_state)
+        clause_deltas[[length(clause_deltas) + 1]] <- list(
+          entity_type = "player",
+          entity_id = pinfo$id,
+          entity_name = pinfo$name,
+          field = "team",
+          prior_val = if (!is.null(from_team)) from_team else pinfo$team,
+          new_val = effective_team,
+          tier = "CONFIRMED",
+          date = date,
+          source_url = source_url,
+          change_type = "DRAFT_RIGHTS",
+          position = parsed$pos
+        )
+        deltas <- c(deltas, clause_deltas)
+        next
+      }
+    }
+    
     # 12. Explicit Unclassified Reporting (Requirement 6):
     # Records or clauses that cannot be matched to known transition rules must be
     # reported as unclassified, never silently dropped.
