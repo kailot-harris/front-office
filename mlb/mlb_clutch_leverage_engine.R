@@ -51,6 +51,29 @@ run_mlb_clutch_engine <- function() {
     arrange(desc(composite_zscore), desc(proj_workload)) %>% 
     head(150)
     
+  # Load empirical FanGraphs splits and boxscores
+  fg_batters_file <- file.path(PROJECT_DIR, "cache", "stats_sync", "fg_batters.rds")
+  if (!file.exists(fg_batters_file) && exists("cache_path")) {
+    fg_batters_file <- cache_path("stats_sync", "fg_batters.rds")
+  }
+  fg_batters <- if (file.exists(fg_batters_file)) readRDS(fg_batters_file) else tibble::tibble()
+
+  fg_pitchers_file <- file.path(PROJECT_DIR, "cache", "stats_sync", "fg_pitchers.rds")
+  if (!file.exists(fg_pitchers_file) && exists("cache_path")) {
+    fg_pitchers_file <- cache_path("stats_sync", "fg_pitchers.rds")
+  }
+  fg_pitchers <- if (file.exists(fg_pitchers_file)) readRDS(fg_pitchers_file) else tibble::tibble()
+
+  boxscores_file <- file.path(PROJECT_DIR, "cache", "ingest", "mlb_boxscores_2026.rds")
+  if (!file.exists(boxscores_file) && exists("cache_path")) {
+    boxscores_file <- cache_path("ingest", "mlb_boxscores_2026.rds")
+  }
+  boxscores_df <- if (file.exists(boxscores_file)) {
+    tryCatch(readRDS(boxscores_file), error = function(e) NULL)
+  } else {
+    NULL
+  }
+
   clutch_profiles <- list()
   
   # ----------------------------------------------------------------------------
@@ -65,21 +88,24 @@ run_mlb_clutch_engine <- function() {
     z_score <- coalesce(p$composite_zscore, 1.0)
     pa <- coalesce(p$proj_workload, 500)
     
-    # Pressure wOBA Delta: most players drop ~ -0.012 under high leverage,
-    # elite clutch hitters gain +0.025 to +0.065
-    set.seed(42 + i * 13)
-    clutch_random_walk <- rnorm(1, mean = 0.002, sd = 0.024)
-    clutch_delta <- round(clutch_random_walk + (z_score * 0.008), 3)
+    # Ingest true FanGraphs clutch, WPA, and leverage metrics (cache/stats_sync/fg_batters.rds)
+    fg_b_match <- if (nrow(fg_batters) > 0) {
+      fg_batters %>%
+        filter(as.character(xMLBAMID) == as.character(p$mlbam_id) | PlayerName == p$player_name) %>%
+        head(1)
+    } else {
+      tibble::tibble()
+    }
+
+    # Ingest true empirical values from fg_batters
+    clutch_score <- if (nrow(fg_b_match) > 0 && !is.na(fg_b_match$Clutch)) round(fg_b_match$Clutch, 2) else 0.0
+    wpa_total <- if (nrow(fg_b_match) > 0 && !is.na(fg_b_match$WPA)) round(fg_b_match$WPA, 2) else round((woba - 0.310) * (pa / 100) * 1.35, 2)
+    pli <- if (nrow(fg_b_match) > 0 && !is.na(fg_b_match$pLI)) round(max(0.0, fg_b_match$pLI), 2) else round(max(0.85, min(1.45, 1.00 + (z_score * 0.06))), 2)
+
+    # Pressure wOBA Delta: derived from true FanGraphs Clutch score (~45 pts per win of clutch)
+    clutch_delta <- round(clutch_score / 45, 3)
     clutch_woba <- round(woba + clutch_delta, 3)
-    
-    # Tango Clutch Score: (WPA / pLI) - WPA_base
-    # Standard deviation of season clutch score ~ 0.85
-    clutch_score <- round((clutch_delta * 45) + (z_score * 0.35) + rnorm(1, 0, 0.25), 2)
-    
-    # Cumulative Win Probability Added (WPA)
-    wpa_total <- round((woba - 0.310) * (pa / 100) * 1.35 + rnorm(1, 0, 0.3), 2)
     high_li_wpa <- round(wpa_total * 0.45 + (clutch_delta * 35), 2)
-    pli <- round(pmax(0.85, pmin(1.45, 1.00 + (z_score * 0.06) + rnorm(1, 0, 0.04))), 2)
     
     # Leverage Distribution Breakdown (%)
     # Typical MLB: Low 58%, Med 27%, High 11%, Extreme 4%
@@ -156,31 +182,72 @@ run_mlb_clutch_engine <- function() {
     # Expected wOBA against baseline
     base_woba_against <- round(pmax(0.240, pmin(0.360, (proj_era * 0.055) + 0.110)), 3)
     
+    # Ingest true FanGraphs pitcher metrics (cache/stats_sync/fg_pitchers.rds)
+    fg_p_match <- if (nrow(fg_pitchers) > 0) {
+      fg_pitchers %>%
+        filter(as.character(xMLBAMID) == as.character(p$mlbam_id) | PlayerName == p$player_name) %>%
+        head(1)
+    } else {
+      tibble::tibble()
+    }
+
+    # Ingest true empirical values from fg_pitchers
+    clutch_score <- if (nrow(fg_p_match) > 0 && !is.na(fg_p_match$Clutch)) round(fg_p_match$Clutch, 2) else 0.0
+    wpa_total <- if (nrow(fg_p_match) > 0 && !is.na(fg_p_match$WPA)) round(fg_p_match$WPA, 2) else round((0.315 - base_woba_against) * (workload / 25) * 1.25, 2)
+    gmli <- if (nrow(fg_p_match) > 0 && !is.na(fg_p_match$pLI)) {
+      round(max(0.0, fg_p_match$pLI), 2)
+    } else {
+      round(max(0.80, min(2.15, if (is_reliever) 1.55 + (z_score * 0.12) else 1.05 + (z_score * 0.04))), 2)
+    }
+
     # High-LI wOBA against delta: negative delta means elite suppression under pressure
-    set.seed(104 + j * 17)
-    clutch_walk <- rnorm(1, mean = -0.005, sd = 0.022)
-    clutch_delta <- round(clutch_walk - (z_score * 0.007), 3)
+    # Derived from true FanGraphs Pitcher Clutch score (~50 pts per win of clutch)
+    clutch_delta <- round(-clutch_score / 50, 3)
     clutch_woba_against <- round(base_woba_against + clutch_delta, 3)
-    
-    # WPA & Leverage Index
-    wpa_total <- round((0.315 - base_woba_against) * (workload / 25) * 1.25 + rnorm(1, 0, 0.25), 2)
     high_li_wpa <- round(wpa_total * 0.55 - (clutch_delta * 40), 2)
-    gmli <- round(pmax(0.80, pmin(2.15, if (is_reliever) 1.55 + (z_score * 0.12) else 1.05 + (z_score * 0.04))), 2)
-    
-    # Tango Clutch Score for Pitchers
-    clutch_score <- round((-clutch_delta * 50) + (z_score * 0.30) + rnorm(1, 0, 0.20), 2)
-    
+
     # Leverage Breakdown
     high_pct <- round(pmax(10.0, pmin(35.0, if (is_reliever) 24.0 + (gmli - 1.5) * 20 else 12.0)), 1)
     extreme_pct <- round(pmax(4.0, pmin(15.0, if (is_reliever) 9.0 + (gmli - 1.5) * 10 else 4.0)), 1)
     med_pct <- round(pmax(20.0, pmin(32.0, 26.0)), 1)
     low_pct <- round(100.0 - high_pct - extreme_pct - med_pct, 1)
-    
-    # Reliever Fireman Stats
-    ir <- if (is_reliever) round(pmax(12, runif(1, 20, 48))) else round(runif(1, 3, 10))
-    # Strand rate: 70% is MLB average, elite firemen strand 80-88%
-    strand_rate <- round(pmax(55.0, pmin(90.0, 72.0 - (clutch_delta * 300) + (z_score * 2.5))), 1)
-    inherited_scored <- round(ir * (1 - (strand_rate / 100)))
+
+    # Ingest inherited runners (IR) and inherited scored (IS) from boxscores or set to 0 when absent
+    ir <- 0L
+    inherited_scored <- 0L
+    if (!is.null(boxscores_df) && is.data.frame(boxscores_df)) {
+      p_id_cols <- intersect(c("pitcher_id", "player_id", "mlbam_id", "xMLBAMID"), colnames(boxscores_df))
+      ir_cols <- intersect(c("inherited_runners", "inheritedRunners", "IR", "ir"), colnames(boxscores_df))
+      is_cols <- intersect(c("inherited_runners_scored", "inherited_scored", "inheritedScored", "IS", "is"), colnames(boxscores_df))
+
+      if (length(p_id_cols) > 0 && length(ir_cols) > 0) {
+        pid_col <- p_id_cols[1]
+        ir_col <- ir_cols[1]
+        p_box <- boxscores_df %>%
+          filter(as.character(.data[[pid_col]]) == as.character(p$mlbam_id) |
+                 as.character(.data[[pid_col]]) == as.character(p$player_id))
+        if (nrow(p_box) > 0) {
+          ir <- as.integer(sum(p_box[[ir_col]], na.rm = TRUE))
+          if (length(is_cols) > 0) {
+            is_col <- is_cols[1]
+            inherited_scored <- as.integer(sum(p_box[[is_col]], na.rm = TRUE))
+          }
+        }
+      }
+    }
+
+    # Strand rate: FanGraphs empirical LOB% or derived from inherited runners
+    strand_rate <- if (ir > 0 && inherited_scored >= 0) {
+      round(max(0.0, min(100.0, (1 - (inherited_scored / ir)) * 100)), 1)
+    } else if (nrow(fg_p_match) > 0 && !is.na(fg_p_match$LOB_pct)) {
+      round(max(0.0, min(100.0, fg_p_match$LOB_pct * 100)), 1)
+    } else {
+      round(max(55.0, min(90.0, 72.0 - (clutch_delta * 300) + (z_score * 2.5))), 1)
+    }
+
+    if (ir > 0 && inherited_scored == 0L) {
+      inherited_scored <- round(ir * (1 - (strand_rate / 100)))
+    }
     shutdowns <- round(pmax(8, (workload / 5) * 0.45 + (z_score * 3)))
     meltdowns <- round(pmax(1, 6 - (z_score * 1.5)))
     fireman_idx <- round((strand_rate * 0.5) + (high_li_wpa * 12) + (shutdowns * 1.2) - (meltdowns * 2.5), 1)

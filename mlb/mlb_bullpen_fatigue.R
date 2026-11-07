@@ -47,10 +47,11 @@ FATIGUE_THRESHOLDS <- list(
 #' Extract Relief Pitcher Appearances from Ingested Box Scores
 #'
 #' @param season Season integer (e.g. 2024)
+#' @param force_refresh If TRUE, recomputes from source data
 #' @return Tibble of relief appearances with pitch counts and dates
-extract_bullpen_appearances <- function(season = 2024) {
+extract_bullpen_appearances <- function(season = 2024, force_refresh = FALSE) {
   cache_file <- cache_path("specialty", sprintf("bullpen_appearances_%d.rds", season))
-  if (file.exists(cache_file)) {
+  if (!force_refresh && file.exists(cache_file)) {
     log_info(sprintf("Loading cached bullpen appearances for %d", season), script = .LOG_SCRIPT)
     return(readRDS(cache_file))
   }
@@ -81,95 +82,193 @@ extract_bullpen_appearances <- function(season = 2024) {
 
   starter_keys <- paste(starters$game_pk, starters$pitcher_id, sep = "_")
 
-  # Use Statcast pitches if available to get exact pitch counts and velocities
-  statcast_file <- cache_path("ingest", "statcast_pitches_2024-04-01_2024-04-02.rds")
-  has_statcast <- file.exists(statcast_file)
+  # Build player ID to name lookup from crosswalk and starter records
+  cw_file <- cache_path("id_crosswalk", "mlb_id_crosswalk.rds")
+  id_map <- list()
+  if (file.exists(cw_file)) {
+    cw <- tryCatch(readRDS(cw_file), error = function(e) NULL)
+    if (!is.null(cw) && all(c("mlb_id", "full_name") %in% names(cw))) {
+      valid_cw <- cw[!is.na(cw$mlb_id) & !is.na(cw$full_name), ]
+      id_map <- setNames(as.character(valid_cw$full_name), as.character(valid_cw$mlb_id))
+    }
+  }
+  starter_map <- if ("pitcher_id" %in% names(starters) && "pitcher_name" %in% names(starters)) {
+    setNames(as.character(starters$pitcher_name), as.character(starters$pitcher_id))
+  } else {
+    character(0)
+  }
 
-  # Build appearance logs across games
-  # Pitchers that are not the starter in that game are relief appearances
-  # For games without individual pitch logs, estimate from team stats or Statcast
+  # Ingest official boxscore pitching lines if present
+  box_file <- cache_path("ingest", sprintf("mlb_boxscores_%d.rds", season))
+  box_pitchers <- tibble::tibble()
+  if (file.exists(box_file)) {
+    box_raw <- tryCatch(as.data.frame(readRDS(box_file)), error = function(e) NULL)
+    if (!is.null(box_raw)) {
+      pid_col <- intersect(c("pitcher_id", "pitcher"), names(box_raw))
+      if (length(pid_col) > 0 && "pitches_thrown" %in% names(box_raw)) {
+        p_col <- pid_col[1]
+        box_pitchers <- box_raw %>%
+          dplyr::transmute(
+            game_pk        = as.integer(game_pk),
+            pitcher_id     = as.character(.data[[p_col]]),
+            pitches_thrown = as.integer(pitches_thrown),
+            pitcher_name   = if ("pitcher_name" %in% names(box_raw)) as.character(pitcher_name) else NA_character_,
+            team           = if ("team_name" %in% names(box_raw)) as.character(team_name) else if ("team" %in% names(box_raw)) as.character(team) else NA_character_
+          )
+      }
+    }
+  }
+
+  # Ingest Statcast pitch-level tracking files
+  statcast_files <- list.files(cache_path("ingest"), pattern = "^statcast_pitches_.*\\.rds$", full.names = TRUE)
+  season_statcast <- grep(as.character(season), statcast_files, value = TRUE)
+  files_to_load <- if (length(season_statcast) > 0) season_statcast else statcast_files
+
+  pitches_list <- list()
+  for (sf in files_to_load) {
+    pdf <- tryCatch(as.data.frame(readRDS(sf)), error = function(e) NULL)
+    if (!is.null(pdf) && nrow(pdf) > 0) {
+      pitches_list[[length(pitches_list) + 1]] <- pdf
+    }
+  }
+  pitches <- if (length(pitches_list) > 0) dplyr::bind_rows(pitches_list) else tibble::tibble()
+
   relief_rows <- list()
 
-  if (has_statcast) {
-    pitches <- readRDS(statcast_file)
+  if (nrow(pitches) > 0) {
+    # Compute empirical seasonal baseline fastball velocity per pitcher (FF = 4-seam, SI = sinker)
     fb_pitches <- pitches %>%
-      dplyr::filter(pitch_type %in% c("FF", "SI", "FC")) %>%
+      dplyr::filter(pitch_type %in% c("FF", "SI"), !is.na(release_speed)) %>%
       dplyr::group_by(pitcher) %>%
       dplyr::summarise(
         baseline_velo = mean(release_speed, na.rm = TRUE),
         .groups = "drop"
-      )
+      ) %>%
+      dplyr::mutate(pitcher = as.character(pitcher))
 
+    baseline_map <- setNames(fb_pitches$baseline_velo, fb_pitches$pitcher)
+
+    # Aggregate pitch tracking per game outing
     p_games <- pitches %>%
       dplyr::mutate(
-        game_pk_val = as.integer(game_pk %||% NA_integer_),
-        pitcher_val = as.character(pitcher)
+        game_pk_val = as.integer(game_pk),
+        pitcher_val = as.character(pitcher),
+        side_topbot = as.character(inning_topbot)
       ) %>%
-      dplyr::group_by(game_pk_val, pitcher_val, player_name, home_team, away_team, game_date) %>%
+      dplyr::group_by(game_pk_val, pitcher_val) %>%
       dplyr::summarise(
         pitches_thrown = dplyr::n(),
-        avg_velo = mean(release_speed[pitch_type %in% c("FF", "SI", "FC")], na.rm = TRUE),
-        .groups = "drop"
+        avg_velo       = mean(release_speed[pitch_type %in% c("FF", "SI")], na.rm = TRUE),
+        is_home        = (sum(side_topbot == "Top", na.rm = TRUE) >= sum(side_topbot == "Bot", na.rm = TRUE)),
+        home_team_sc   = dplyr::first(home_team),
+        away_team_sc   = dplyr::first(away_team),
+        game_date      = dplyr::first(game_date),
+        .groups        = "drop"
       )
 
     for (i in seq_len(nrow(p_games))) {
       pg <- p_games[i, ]
       match_key <- paste(pg$game_pk_val, pg$pitcher_val, sep = "_")
-      if (match_key %in% starter_keys) next # Skip starters
+      if (match_key %in% starter_keys) next # Skip starting pitchers
 
-      b_velo <- fb_pitches$baseline_velo[fb_pitches$pitcher == pg$pitcher_val]
-      velo_diff <- if (length(b_velo) > 0 && !is.na(b_velo) && !is.na(pg$avg_velo)) {
-        pg$avg_velo - b_velo[1]
+      # Fastball velocity deviation vs seasonal baseline
+      b_velo <- if (pg$pitcher_val %in% names(baseline_map)) baseline_map[[pg$pitcher_val]] else NA_real_
+      if (!is.na(b_velo) && !is.na(pg$avg_velo)) {
+        velo_diff <- round(pg$avg_velo - b_velo, 2)
       } else {
-        0.0
+        velo_diff <- 0.0
+        log_info(sprintf("Statcast fastball velocity tracking unavailable for pitcher %s in game %d; defaulting velo_delta to 0.0",
+                         pg$pitcher_val, pg$game_pk_val), script = .LOG_SCRIPT)
+      }
+
+      # Resolve official team name and game date from schedule
+      gm <- completed_games[completed_games$game_pk == pg$game_pk_val, ]
+      team_name <- if (nrow(gm) > 0) {
+        if (pg$is_home) gm$home_team_name else gm$away_team_name
+      } else {
+        if (pg$is_home) pg$home_team_sc else pg$away_team_sc
+      }
+      g_date <- if (nrow(gm) > 0) gm$game_date else as.Date(pg$game_date)
+
+      # Resolve pitcher name
+      pname <- if (pg$pitcher_val %in% names(id_map)) id_map[[pg$pitcher_val]] else NA_character_
+      if (is.na(pname) || pname == "") {
+        pname <- if (pg$pitcher_val %in% names(starter_map)) starter_map[[pg$pitcher_val]] else NA_character_
+      }
+      if (is.na(pname) || pname == "") {
+        pname <- sprintf("Pitcher %s", pg$pitcher_val)
       }
 
       relief_rows[[length(relief_rows) + 1]] <- tibble::tibble(
         game_pk        = pg$game_pk_val,
-        game_date      = as.Date(pg$game_date),
+        game_date      = g_date,
         pitcher_id     = pg$pitcher_val,
-        pitcher_name   = as.character(pg$player_name),
-        team           = as.character(pg$home_team),
+        pitcher_name   = pname,
+        team           = team_name,
         pitches_thrown = as.integer(pg$pitches_thrown),
-        velo_delta     = round(velo_diff, 2)
+        velo_delta     = velo_diff
       )
     }
   }
 
-  # Also add synthetic starter-offset relief records for broader calendar coverage
-  # using known completed games and team pitching logs
-  if (length(relief_rows) == 0 || nrow(completed_games) > 100) {
-    # Generate structured workload estimates from completed game schedules
-    # (average MLB bullpen throws ~3.8 innings and ~60-65 pitches across 3-4 relievers)
-    sample_games <- head(completed_games, 250)
-    for (i in seq_len(nrow(sample_games))) {
-      gm <- sample_games[i, ]
-      for (side in c("home", "away")) {
-        tm_id   <- if (side == "home") gm$home_team_id else gm$away_team_id
-        tm_name <- if (side == "home") gm$home_team_name else gm$away_team_name
+  # Ingest any relief appearances from official boxscores not already covered by Statcast
+  if (nrow(box_pitchers) > 0) {
+    existing_keys <- if (length(relief_rows) > 0) {
+      existing_df <- dplyr::bind_rows(relief_rows)
+      paste(existing_df$game_pk, existing_df$pitcher_id, sep = "_")
+    } else {
+      character(0)
+    }
 
-        # Standard 3 relievers per game
-        for (r_idx in 1:3) {
-          pid <- sprintf("reliever_%d_%d", tm_id, r_idx)
-          pname <- sprintf("%s RP %d", tm_name, r_idx)
-          pc <- sample(c(12, 16, 22, 28), 1)
+    box_relievers <- box_pitchers %>%
+      dplyr::filter(!paste(game_pk, pitcher_id, sep = "_") %in% starter_keys) %>%
+      dplyr::filter(!paste(game_pk, pitcher_id, sep = "_") %in% existing_keys)
 
-          relief_rows[[length(relief_rows) + 1]] <- tibble::tibble(
-            game_pk        = gm$game_pk,
-            game_date      = gm$game_date,
-            pitcher_id     = pid,
-            pitcher_name   = pname,
-            team           = tm_name,
-            pitches_thrown = as.integer(pc),
-            velo_delta     = round(runif(1, -0.6, 0.4), 2)
-          )
-        }
+    if (nrow(box_relievers) > 0) {
+      log_info(sprintf("Ingesting %d relief appearances from official boxscores", nrow(box_relievers)),
+               script = .LOG_SCRIPT)
+      for (k in seq_len(nrow(box_relievers))) {
+        br <- box_relievers[k, ]
+        gm <- completed_games[completed_games$game_pk == br$game_pk, ]
+        g_date <- if (nrow(gm) > 0) gm$game_date else as.Date(NA)
+        tm <- if (!is.na(br$team) && br$team != "") br$team else if (nrow(gm) > 0) gm$home_team_name else "Unknown"
+
+        pname <- br$pitcher_name
+        if (is.na(pname) || pname == "") pname <- if (br$pitcher_id %in% names(id_map)) id_map[[br$pitcher_id]] else NA_character_
+        if (is.na(pname) || pname == "") pname <- if (br$pitcher_id %in% names(starter_map)) starter_map[[br$pitcher_id]] else NA_character_
+        if (is.na(pname) || pname == "") pname <- sprintf("Pitcher %s", br$pitcher_id)
+
+        # Outing lacks Statcast tracking; default velo_delta to 0.0 with diagnostic log
+        log_info(sprintf("Statcast pitch velocity tracking unavailable for boxscore outing (pitcher %s, game %d); defaulting velo_delta to 0.0",
+                         br$pitcher_id, br$game_pk), script = .LOG_SCRIPT)
+
+        relief_rows[[length(relief_rows) + 1]] <- tibble::tibble(
+          game_pk        = br$game_pk,
+          game_date      = g_date,
+          pitcher_id     = br$pitcher_id,
+          pitcher_name   = pname,
+          team           = tm,
+          pitches_thrown = as.integer(br$pitches_thrown),
+          velo_delta     = 0.0
+        )
       }
     }
   }
 
-  relief_df <- dplyr::bind_rows(relief_rows) %>%
-    dplyr::arrange(pitcher_id, game_date)
+  relief_df <- if (length(relief_rows) > 0) {
+    dplyr::bind_rows(relief_rows) %>%
+      dplyr::arrange(pitcher_id, game_date)
+  } else {
+    tibble::tibble(
+      game_pk        = integer(),
+      game_date      = as.Date(character()),
+      pitcher_id     = character(),
+      pitcher_name   = character(),
+      team           = character(),
+      pitches_thrown = integer(),
+      velo_delta     = numeric()
+    )
+  }
 
   saveRDS(relief_df, cache_file)
   log_info(sprintf("Extracted %d relief appearances across %d distinct relievers",
@@ -308,7 +407,7 @@ run_bullpen_fatigue <- function(season = 2024, force_refresh = FALSE) {
     ))
   }
 
-  appearances <- extract_bullpen_appearances(season = season)
+  appearances <- extract_bullpen_appearances(season = season, force_refresh = force_refresh)
   daily_df    <- compute_daily_fatigue_metrics(appearances)
   team_df     <- summarise_team_bullpen_status(daily_df)
 
@@ -328,3 +427,8 @@ run_bullpen_fatigue <- function(season = 2024, force_refresh = FALSE) {
     team  = team_df
   ))
 }
+
+if (sys.nframe() == 0) {
+  run_bullpen_fatigue()
+}
+
