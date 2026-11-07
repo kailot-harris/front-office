@@ -22,7 +22,7 @@
 # snapshots raw ingest into cache/raw_ingest_archive/YYYYMMDD/,
 # and implements minor-league vs major-league discrimination (rosterTier).
 #
-# Conforms to docs/internal/offseason_wire_items_contract.md and Zero-Betting Policy.
+# Conforms to docs/contracts/offseason_wire_items_contract.md and Zero-Betting Policy.
 # ==============================================================================
 
 # GitHub issue #90: Project root resolution prelude.

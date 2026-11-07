@@ -1,7 +1,7 @@
 # ==============================================================================
 # test_ingest_freshness.R — Test Suite for Ingest Freshness & Volume Gate
 # ==============================================================================
-# Normative contract reference: docs/internal/offseason_wire_items_contract.md §6
+# Normative contract reference: docs/contracts/offseason_wire_items_contract.md §6
 # Work unit: GitHub issue #59 (closes #59, refs #64)
 #
 # Table-driven test suite over the fault matrix for assert_ingest_freshness().

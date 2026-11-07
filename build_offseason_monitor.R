@@ -14,7 +14,7 @@
 #     assert_ingest_freshness() (issue #59) as well as composite_health.
 #     Step 2 extracts from the live wire-items artifact
 #     cache/offseason_wire_items.json, whose shape is fixed by the issue #56
-#     contract in docs/internal/offseason_wire_items_contract.md and is
+#     contract in docs/contracts/offseason_wire_items_contract.md and is
 #     validated by validate_wire_items() before extraction.
 #   - GitHub issue #58: data/fixtures/official_wire_raw_samples.json is DEMOTED
 #     to a test-only input behind fixture_mode / --fixture-mode. It is a
@@ -258,7 +258,7 @@ build_offseason_monitor <- function(allow_degraded = FALSE,
   # ---------------------------------------------------------------------------
   # Extraction reads the live wire-items artifact that Step 1's ingest run
   # persisted: cache/offseason_wire_items.json, shape fixed by the issue #56
-  # contract (docs/internal/offseason_wire_items_contract.md), produced by
+  # contract (docs/contracts/offseason_wire_items_contract.md), produced by
   # issue #57's ingest_all(). It is validated by validate_wire_items() BEFORE
   # extraction so schema drift fails loudly here instead of degrading into
   # "zero deltas extracted" downstream.

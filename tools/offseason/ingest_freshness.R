@@ -1,7 +1,7 @@
 # ==============================================================================
 # ingest_freshness.R — Ingestion Manifest Freshness & Volume Gate
 # ==============================================================================
-# Normative contract reference: docs/internal/offseason_wire_items_contract.md §6
+# Normative contract reference: docs/contracts/offseason_wire_items_contract.md §6
 # Work unit: GitHub issue #59 (closes #59, refs #64)
 #
 # Asserts that the ingestion manifest (cache/ingestion_manifest.json) is fresh,
