@@ -7,7 +7,7 @@
 # Follows up on tools/research_pbp_granularity.R (read that file for the original
 # exploratory findings; it is NOT modified here). That research confirmed
 # wehoop::load_wnba_pbp() is real, non-empty, event-level (not possession-level)
-# play-by-play with ~67 columns, and established the facts this script depends on:
+# play-by-play with 69 columns, and established the facts this script depends on:
 #
 #   - `athlete_id_1` is in the ESPN athlete-id namespace, i.e. it joins DIRECTLY
 #     (integer == integer) to `cache/active_rosters_cache.rds$player_id`. It does
@@ -20,10 +20,98 @@
 #   - On a made-shot event (`scoring_play == TRUE & shooting_play == TRUE`),
 #     `athlete_id_1`/`athlete_name_1` is the SCORER and `athlete_id_2`/
 #     `athlete_name_2` (populated ~30% of the time) is the ASSISTER.
-#   - `points_attempted` (2 or 3) is populated on EVERY shot attempt including
-#     misses, unlike `score_value` (populated only on makes) — used here for shot
-#     value / 3PA detection instead of score_value.
+#   - `points_attempted` (1, 2, or 3) is populated on EVERY shot attempt including
+#     misses for seasons 2024-2026 (and backfilled via `score_value` / `type_text`
+#     for 2019-2023 historical rows), unlike `score_value` (populated > 0 only on
+#     makes) — used here for shot value / 2PA / 3PA detection.
 #   - `home_score`/`away_score` are RUNNING totals AFTER each event.
+#
+# EMPIRICAL VERIFICATION OF WEHOOP WNBA PBP / POSSESSIONS / SHOTS CACHES (Issue #143)
+# -----------------------------------------------------------------------------------
+# Following the pattern of `shot_quality_engine.R:13-22`, all three `wehoop` play-by-play
+# and shot-tracking caches in `cache/` were empirically verified season-by-season across
+# `ALL_SEASONS` (2019-2026):
+#
+#   1. `cache/wnba_espn_pbp_cache.rds` (`wehoop::load_wnba_pbp()`, ESPN event-level PBP):
+#      - Total: 763,018 event rows across 69 columns (8/8 seasons 2019-2026 non-empty).
+#      - Per-season row counts:
+#          2019:  84,517 | 2020:  56,361 | 2021:  80,485 | 2022:  93,166
+#          2023: 102,191 | 2024: 101,501 | 2025: 121,342 | 2026: 123,455
+#      - Key verified columns: `period`, `clock_minutes`, `clock_seconds`, `clock_display_value`
+#        (alias `time`), `home_score`, `away_score`, `scoring_play`, `shooting_play`,
+#        `score_value`, `points_attempted`, `type_text`, `text`, `athlete_id_1`,
+#        `athlete_id_2`, `coordinate_x`, `coordinate_y`.
+#
+#   2. `cache/wnba_pbp_cache.rds` (`wehoop::load_wnba_stats_possessions()`, WNBA Stats API
+#      possession-level lineup + outcome feed, owned by `rapm_engine.R`):
+#      - Total: 292,569 possession rows across 34 columns in `$possessions` + 429 rows in
+#        `$player_names` (8/8 seasons 2019-2026 non-empty).
+#      - Per-season row counts:
+#          2019: 34,517 | 2020: 23,501 | 2021: 33,099 | 2022: 38,007
+#          2023: 41,350 | 2024: 41,429 | 2025: 48,401 | 2026: 32,265
+#      - Key verified columns: `game_id`, `period`, `start_seconds_remaining`,
+#        `end_seconds_remaining`, `possession_start_type` (includes `"OffTimeout"`,
+#        n = 19,211 ATO possessions), `count_as_possession`, `points`, `fg2a`, `fg2m`,
+#        `fg3a`, `fg3m`, `fta`, `ftm`, `tov`, `off_player_1..5`, `def_player_1..5`.
+#
+#   3. `cache/wnba_shots_cache.rds` (`wehoop::load_wnba_stats_shots()`, WNBA Stats API
+#      spatial shot chart feed, owned by `shot_quality_engine.R`):
+#      - Total: 265,912 field-goal attempt rows across 18 columns (8/8 seasons 2019-2026).
+#      - Per-season row counts:
+#          2019: 30,271 | 2020: 20,076 | 2021: 28,654 | 2022: 32,513
+#          2023: 35,623 | 2024: 35,770 | 2025: 41,856 | 2026: 41,149
+#      - Key verified columns: `game_id`, `season`, `period`, `clock` (ISO-8601 duration),
+#        `person_id`, `player_name`, `action_type` ("Made Shot"/"Missed Shot"), `sub_type`
+#        ("Jump Shot", "Pullup Jump shot", "Driving Layup Shot", "Step Back Jump shot", etc.),
+#        `shot_result`, `shot_value` (2 or 3), `shot_distance` (feet), `x_legacy`, `y_legacy`.
+#      - Note on `shot_zone_basic`: unlike NBA's `hoopR::nba_shotchartdetail()`, WNBA's
+#        `load_wnba_stats_shots()` does NOT ship a pre-labeled `shot_zone_basic` column;
+#        zones (rim <= 4 ft, paint <= 10 ft, mid-range, 3PT) are derived directly from
+#        `shot_distance`, `shot_value`, `points_attempted`, and `type_text` / `sub_type`.
+#
+# SCHEMA CONTRACT: DERIVABLE vs. UNDERIVABLE TARGET FEATURES (Issue #143)
+# -----------------------------------------------------------------------
+#   Feature                   | Status      | Derivation / Why Underivable from Public WNBA PBP
+#   --------------------------+-------------+--------------------------------------------------
+#   clutch_fga                | DERIVED     | Shooting events in period >= 4, clock <= 5:00,
+#                             |             | |home_score - away_score| <= 5 (`player_pbp_features.rds`).
+#   clutch_fgm                | DERIVED     | Made shots (`scoring_play == TRUE`) on `clutch_fga`
+#                             |             | events (`player_pbp_features.rds`).
+#   clutch_points             | DERIVED     | Sum of `score_value` on clutch scoring plays
+#                             |             | (`player_pbp_features.rds`).
+#   clutch_fg_pct             | DERIVED     | `clutch_fgm / clutch_fga` (`NA_real_` when 0 FGA).
+#   clutch_ppp                | DERIVED     | `clutch_points / clutch_fga` (`NA_real_` when 0 FGA).
+#   clutch_scoring_plays      | DERIVED     | Count of clutch scoring events (`player_pbp_features.rds`).
+#   rim_fga / rim_fg_pct      | DERIVED     | 2PA matching `.RIM_KW` (layup/dunk/putback/tip) count
+#                             |             | and make rate (`player_pbp_features.rds`).
+#   paint_fga / paint_fg_pct  | DERIVED     | 2PA matching rim or paint/floater/hook keywords count
+#                             |             | and make rate (`player_pbp_features.rds`).
+#   three_fga / three_fg_pct  | DERIVED     | 3PA count and make rate (`player_pbp_features.rds`).
+#   cns_3p_fga / cns_3p_pct   | DERIVED     | Catch-and-shoot 3PA (`type_text` plain "Jump Shot" on
+#                             |             | 3PA) count and make rate (`player_pbp_features.rds`).
+#   pullup_3p_fga /           | DERIVED     | Off-dribble 3PA (`type_text` matching Pullup/Step Back/
+#     pullup_3p_pct           |             | Running Pullup on 3PA) count and make rate.
+#   ato_off_ppp /             | DERIVED     | Team PPP on `possession_start_type == "OffTimeout"` in
+#     ato_def_ppp_allowed     | (in #145)   | `cache/wnba_pbp_cache.rds$possessions` (`build_coaching_dataset.R`).
+#   challenge_success         | DERIVED     | Regex parse of `"coach's challenge"` / `"overturned"`
+#                             | (in #145)   | in `cache/wnba_espn_pbp_cache.rds$text` (`build_coaching_dataset.R`).
+#   potential_assists         | UNDERIVABLE | Requires Second Spectrum pass-to-missed-shot optical
+#                             |             | tracking; WNBA public PBP records `athlete_id_2` only
+#                             |             | on made shots (`scoring_play == TRUE`), never on misses.
+#   drive_assist_pct          | UNDERIVABLE | Requires optical drive-tracking; public PBP tags shot
+#                             |             | type of the shooter (`Driving Layup`), not whether the
+#                             |             | passer drove before kicking out.
+#   ato_win_pct               | UNDERIVABLE | Timeouts occur multiple times per game by both teams;
+#                             |             | attributing game win% to ATOs conflates team quality
+#                             |             | with timeout execution. Replaced by `ato_off_ppp`.
+#   play_type_diversity       | UNDERIVABLE | Requires Synergy play-type tags (PnR Ball Handler, Iso,
+#                             |             | Post-Up, Spot-Up, Handoff) which are proprietary and
+#                             |             | absent from `wehoop` PBP.
+#   fourth_q_adj_efficiency   | UNDERIVABLE | Per-coach opponent-adjusted 4Q net rating across multi-
+#                             |             | team coaching tenures is not separable from roster
+#                             |             | talent in single-season PBP; replaced by `ato_net`.
+#   switchability (team/match)| UNDERIVABLE | No cross-matchup screen-switch tracking exists in public
+#                             |             | WNBA PBP; removed from `export_web_json.R` (#131/#146).
 #
 # WHAT IS REAL vs. FALLBACK HERE (mirrors the documentary style of rapm_engine.R /
 # shot_quality_engine.R / player_props_engine.R::get_team_def_rapm()'s neutral()):
@@ -84,9 +172,14 @@
 #     forcing them together would either double-count or silently drop 3PA shots
 #     that also carry off-dribble-style type_text (e.g. "Pullup Jump Shot" from
 #     three-point range).
-#   - No join to rapm_ratings.rds (see namespace note above).
-#   - Not wired into run_full_pipeline.R — that is a deliberately separate
-#     follow-up step.
+#   - Player universe: `cache/active_rosters_cache.rds` (ESPN `player_id` namespace).
+#     `athlete_id_1` / `athlete_id_2` are in the same ESPN `player_id` namespace, so
+#     per-player joins here match integer `player_id` directly against the roster.
+#     There is no join to `cache/rapm_ratings.rds` inside this script; any downstream
+#     consumer that needs to combine PBP features with RAPM uses
+#     `rapm_join_utils.R::join_rapm_to_roster()`.
+#   - Not wired into run_full_pipeline.R directly via source() at top-level — it is
+#     invoked as stage `pbp_engine` in `pipeline_stages.R`.
 # ==============================================================================
 
 suppressPackageStartupMessages({
@@ -111,8 +204,12 @@ CACHE_PBP_FEATURES <- CACHE_PLAYER_PBP_FEATURES
 # even in the PBP_UNAVAILABLE fallback path.
 PBP_FEATURE_COLS <- c(
   "player_id", "player_name", "team_abbreviation", "data_source",
-  "fga_total", "clutch_points", "clutch_fga", "clutch_fg_pct", "clutch_scoring_plays",
-  "assists", "pct_rim", "pct_off_dribble_jumper", "pct_catch_shoot_jumper", "pct_three"
+  "fga_total", "clutch_points", "clutch_fga", "clutch_fgm", "clutch_fg_pct",
+  "clutch_ppp", "clutch_scoring_plays",
+  "assists", "pct_rim", "pct_off_dribble_jumper", "pct_catch_shoot_jumper", "pct_three",
+  "rim_fga", "rim_fg_pct", "paint_fga", "paint_fg_pct",
+  "three_fga", "three_fg_pct", "cns_3p_fga", "cns_3p_pct",
+  "pullup_3p_fga", "pullup_3p_pct"
 )
 
 # ------------------------------------------------------------------------------------------
@@ -224,16 +321,23 @@ load_or_build_wnba_espn_pbp_cache <- function(seasons = ALL_SEASONS, force_refre
 #   keyword for every one of the ~120 distinct type_text values.
 # ------------------------------------------------------------------------------------------
 .RIM_KW          <- "(?i)layup|dunk|putback|tip shot|tip-in|tip in"
+.PAINT_KW        <- "(?i)layup|dunk|putback|tip shot|tip-in|tip in|floating|floater|hook"
 .OFF_DRIBBLE_KW  <- "(?i)pullup|pull-up|step ?back|turnaround|driving floating|fade ?away"
 .CATCH_SHOOT_RE  <- "(?i)^jump shot( bank)?$"
+.PULLUP_3P_KW    <- "(?i)pullup|pull-up|step ?back|running|turnaround|fade ?away|driving|floating"
 
 build_pbp_player_features <- function(pbp_subset) {
   empty <- tibble(
     player_id = integer(0), fga_total = integer(0),
-    clutch_points = numeric(0), clutch_fga = integer(0),
-    clutch_fg_pct = numeric(0), clutch_scoring_plays = integer(0),
+    clutch_points = numeric(0), clutch_fga = integer(0), clutch_fgm = integer(0),
+    clutch_fg_pct = numeric(0), clutch_ppp = numeric(0), clutch_scoring_plays = integer(0),
     assists = integer(0), pct_rim = numeric(0), pct_off_dribble_jumper = numeric(0),
-    pct_catch_shoot_jumper = numeric(0), pct_three = numeric(0)
+    pct_catch_shoot_jumper = numeric(0), pct_three = numeric(0),
+    rim_fga = integer(0), rim_fg_pct = numeric(0),
+    paint_fga = integer(0), paint_fg_pct = numeric(0),
+    three_fga = integer(0), three_fg_pct = numeric(0),
+    cns_3p_fga = integer(0), cns_3p_pct = numeric(0),
+    pullup_3p_fga = integer(0), pullup_3p_pct = numeric(0)
   )
   if (is.null(pbp_subset) || nrow(pbp_subset) == 0) return(empty)
 
@@ -245,18 +349,34 @@ build_pbp_player_features <- function(pbp_subset) {
     group_by(player_id = athlete_id_1) |>
     summarise(fga_total = n(), .groups = "drop")
 
-  three_tbl <- shots |>
+  three_shots <- shots |>
     filter(points_attempted == 3) |>
+    mutate(
+      tt_trim      = trimws(type_text),
+      is_cns_3p    = grepl(.CATCH_SHOOT_RE, tt_trim, perl = TRUE),
+      is_pullup_3p = !is_cns_3p & grepl(.PULLUP_3P_KW, tt_trim, perl = TRUE)
+    )
+
+  three_tbl <- three_shots |>
     group_by(player_id = athlete_id_1) |>
-    summarise(three_fga = n(), .groups = "drop")
+    summarise(
+      three_fga     = n(),
+      three_fgm     = sum(scoring_play == TRUE, na.rm = TRUE),
+      cns_3p_fga    = sum(is_cns_3p, na.rm = TRUE),
+      cns_3p_fgm    = sum(is_cns_3p & scoring_play == TRUE, na.rm = TRUE),
+      pullup_3p_fga = sum(is_pullup_3p, na.rm = TRUE),
+      pullup_3p_fgm = sum(is_pullup_3p & scoring_play == TRUE, na.rm = TRUE),
+      .groups = "drop"
+    )
 
   two_pa <- shots |>
     filter(points_attempted == 2) |>
     mutate(
-      tt_trim   = trimws(type_text),
-      is_rim    = grepl(.RIM_KW, tt_trim, perl = TRUE),
+      tt_trim    = trimws(type_text),
+      is_rim     = grepl(.RIM_KW, tt_trim, perl = TRUE),
+      is_paint   = grepl(.PAINT_KW, tt_trim, perl = TRUE),
       is_dribble = !is_rim & grepl(.OFF_DRIBBLE_KW, tt_trim, perl = TRUE),
-      is_catch  = !is_rim & !is_dribble & grepl(.CATCH_SHOOT_RE, tt_trim, perl = TRUE)
+      is_catch   = !is_rim & !is_dribble & grepl(.CATCH_SHOOT_RE, tt_trim, perl = TRUE)
     )
 
   mix_tbl <- two_pa |>
@@ -264,6 +384,9 @@ build_pbp_player_features <- function(pbp_subset) {
     summarise(
       two_pa_total = n(),
       rim_n        = sum(is_rim, na.rm = TRUE),
+      rim_fgm      = sum(is_rim & scoring_play == TRUE, na.rm = TRUE),
+      paint_n      = sum(is_paint, na.rm = TRUE),
+      paint_fgm    = sum(is_paint & scoring_play == TRUE, na.rm = TRUE),
       dribble_n    = sum(is_dribble, na.rm = TRUE),
       catch_n      = sum(is_catch, na.rm = TRUE),
       .groups = "drop"
@@ -281,8 +404,8 @@ build_pbp_player_features <- function(pbp_subset) {
     filter(shooting_play == TRUE, !is.na(athlete_id_1)) |>
     group_by(player_id = athlete_id_1) |>
     summarise(
-      clutch_fga           = n(),
-      clutch_makes_n        = sum(scoring_play == TRUE, na.rm = TRUE),
+      clutch_fga     = n(),
+      clutch_makes_n = sum(scoring_play == TRUE, na.rm = TRUE),
       .groups = "drop"
     )
 
@@ -308,26 +431,48 @@ build_pbp_player_features <- function(pbp_subset) {
     full_join(clutch_pts_tbl, by = "player_id") |>
     full_join(assist_tbl,     by = "player_id") |>
     mutate(
-      fga_total            = coalesce(fga_total, 0L),
-      three_fga            = coalesce(three_fga, 0L),
-      two_pa_total         = coalesce(two_pa_total, 0L),
-      rim_n                = coalesce(rim_n, 0L),
-      dribble_n            = coalesce(dribble_n, 0L),
-      catch_n              = coalesce(catch_n, 0L),
-      clutch_fga           = coalesce(clutch_fga, 0L),
-      clutch_makes_n       = coalesce(clutch_makes_n, 0L),
-      clutch_points        = coalesce(clutch_points, 0),
-      clutch_scoring_plays = coalesce(clutch_scoring_plays, 0L),
-      assists              = coalesce(assists, 0L),
-      clutch_fg_pct        = if_else(clutch_fga > 0, clutch_makes_n / clutch_fga, NA_real_),
-      pct_rim              = if_else(two_pa_total > 0, rim_n / two_pa_total, NA_real_),
+      fga_total              = coalesce(fga_total, 0L),
+      three_fga              = coalesce(three_fga, 0L),
+      three_fgm              = coalesce(three_fgm, 0L),
+      cns_3p_fga             = coalesce(cns_3p_fga, 0L),
+      cns_3p_fgm             = coalesce(cns_3p_fgm, 0L),
+      pullup_3p_fga          = coalesce(pullup_3p_fga, 0L),
+      pullup_3p_fgm          = coalesce(pullup_3p_fgm, 0L),
+      two_pa_total           = coalesce(two_pa_total, 0L),
+      rim_n                  = coalesce(rim_n, 0L),
+      rim_fgm                = coalesce(rim_fgm, 0L),
+      paint_n                = coalesce(paint_n, 0L),
+      paint_fgm              = coalesce(paint_fgm, 0L),
+      dribble_n              = coalesce(dribble_n, 0L),
+      catch_n                = coalesce(catch_n, 0L),
+      clutch_fga             = coalesce(clutch_fga, 0L),
+      clutch_makes_n         = coalesce(clutch_makes_n, 0L),
+      clutch_fgm             = clutch_makes_n,
+      clutch_points          = coalesce(clutch_points, 0),
+      clutch_scoring_plays   = coalesce(clutch_scoring_plays, 0L),
+      assists                = coalesce(assists, 0L),
+      clutch_fg_pct          = if_else(clutch_fga > 0, clutch_makes_n / clutch_fga, NA_real_),
+      clutch_ppp             = if_else(clutch_fga > 0, clutch_points / clutch_fga, NA_real_),
+      pct_rim                = if_else(two_pa_total > 0, rim_n / two_pa_total, NA_real_),
       pct_off_dribble_jumper = if_else(two_pa_total > 0, dribble_n / two_pa_total, NA_real_),
       pct_catch_shoot_jumper = if_else(two_pa_total > 0, catch_n / two_pa_total, NA_real_),
-      pct_three            = if_else(fga_total > 0, three_fga / fga_total, NA_real_)
+      pct_three              = if_else(fga_total > 0, three_fga / fga_total, NA_real_),
+      rim_fga                = rim_n,
+      rim_fg_pct             = if_else(rim_n > 0, rim_fgm / rim_n, NA_real_),
+      paint_fga              = paint_n,
+      paint_fg_pct           = if_else(paint_n > 0, paint_fgm / paint_n, NA_real_),
+      three_fg_pct           = if_else(three_fga > 0, three_fgm / three_fga, NA_real_),
+      cns_3p_pct             = if_else(cns_3p_fga > 0, cns_3p_fgm / cns_3p_fga, NA_real_),
+      pullup_3p_pct          = if_else(pullup_3p_fga > 0, pullup_3p_fgm / pullup_3p_fga, NA_real_)
     ) |>
-    select(player_id, fga_total, clutch_points, clutch_fga, clutch_fg_pct,
-           clutch_scoring_plays, assists, pct_rim, pct_off_dribble_jumper,
-           pct_catch_shoot_jumper, pct_three)
+    select(
+      player_id, fga_total, clutch_points, clutch_fga, clutch_fgm, clutch_fg_pct,
+      clutch_ppp, clutch_scoring_plays, assists, pct_rim, pct_off_dribble_jumper,
+      pct_catch_shoot_jumper, pct_three,
+      rim_fga, rim_fg_pct, paint_fga, paint_fg_pct,
+      three_fga, three_fg_pct, cns_3p_fga, cns_3p_pct,
+      pullup_3p_fga, pullup_3p_pct
+    )
 
   out
 }
@@ -345,19 +490,30 @@ compute_player_pbp_features <- function(pbp = NULL, force_refresh = FALSE) {
       return(tibble(
         player_id = integer(0), player_name = character(0), team_abbreviation = character(0),
         data_source = character(0), fga_total = integer(0), clutch_points = numeric(0),
-        clutch_fga = integer(0), clutch_fg_pct = numeric(0), clutch_scoring_plays = integer(0),
+        clutch_fga = integer(0), clutch_fgm = integer(0), clutch_fg_pct = numeric(0),
+        clutch_ppp = numeric(0), clutch_scoring_plays = integer(0),
         assists = integer(0), pct_rim = numeric(0), pct_off_dribble_jumper = numeric(0),
-        pct_catch_shoot_jumper = numeric(0), pct_three = numeric(0)
+        pct_catch_shoot_jumper = numeric(0), pct_three = numeric(0),
+        rim_fga = integer(0), rim_fg_pct = numeric(0),
+        paint_fga = integer(0), paint_fg_pct = numeric(0),
+        three_fga = integer(0), three_fg_pct = numeric(0),
+        cns_3p_fga = integer(0), cns_3p_pct = numeric(0),
+        pullup_3p_fga = integer(0), pullup_3p_pct = numeric(0)
       ))
     }
     roster_df |>
       distinct(player_id, player_name, team_abbreviation) |>
       mutate(
         data_source = "PBP_UNAVAILABLE",
-        fga_total = 0L, clutch_points = NA_real_, clutch_fga = 0L,
-        clutch_fg_pct = NA_real_, clutch_scoring_plays = 0L, assists = 0L,
+        fga_total = 0L, clutch_points = NA_real_, clutch_fga = 0L, clutch_fgm = 0L,
+        clutch_fg_pct = NA_real_, clutch_ppp = NA_real_, clutch_scoring_plays = 0L, assists = 0L,
         pct_rim = NA_real_, pct_off_dribble_jumper = NA_real_,
-        pct_catch_shoot_jumper = NA_real_, pct_three = NA_real_
+        pct_catch_shoot_jumper = NA_real_, pct_three = NA_real_,
+        rim_fga = 0L, rim_fg_pct = NA_real_,
+        paint_fga = 0L, paint_fg_pct = NA_real_,
+        three_fga = 0L, three_fg_pct = NA_real_,
+        cns_3p_fga = 0L, cns_3p_pct = NA_real_,
+        pullup_3p_fga = 0L, pullup_3p_pct = NA_real_
       ) |>
       select(all_of(PBP_FEATURE_COLS))
   }
@@ -397,9 +553,14 @@ compute_player_pbp_features <- function(pbp = NULL, force_refresh = FALSE) {
     unique(na.omit(pbp$athlete_id_2))
   )
 
-  metric_cols <- c("fga_total", "clutch_points", "clutch_fga", "clutch_fg_pct",
-                    "clutch_scoring_plays", "assists", "pct_rim",
-                    "pct_off_dribble_jumper", "pct_catch_shoot_jumper", "pct_three")
+  metric_cols <- c(
+    "fga_total", "clutch_points", "clutch_fga", "clutch_fgm", "clutch_fg_pct",
+    "clutch_ppp", "clutch_scoring_plays", "assists", "pct_rim",
+    "pct_off_dribble_jumper", "pct_catch_shoot_jumper", "pct_three",
+    "rim_fga", "rim_fg_pct", "paint_fga", "paint_fg_pct",
+    "three_fga", "three_fg_pct", "cns_3p_fga", "cns_3p_pct",
+    "pullup_3p_fga", "pullup_3p_pct"
+  )
 
   names(hist_feats)[names(hist_feats) %in% metric_cols] <-
     paste0(metric_cols[metric_cols %in% names(hist_feats)], "_hist")
@@ -420,13 +581,25 @@ compute_player_pbp_features <- function(pbp = NULL, force_refresh = FALSE) {
       fga_total              = coalesce(fga_total, fga_total_hist, 0L),
       clutch_points          = coalesce(clutch_points, clutch_points_hist, 0),
       clutch_fga             = coalesce(clutch_fga, clutch_fga_hist, 0L),
+      clutch_fgm             = coalesce(clutch_fgm, clutch_fgm_hist, 0L),
       clutch_fg_pct          = coalesce(clutch_fg_pct, clutch_fg_pct_hist),
+      clutch_ppp             = coalesce(clutch_ppp, clutch_ppp_hist),
       clutch_scoring_plays   = coalesce(clutch_scoring_plays, clutch_scoring_plays_hist, 0L),
       assists                = coalesce(assists, assists_hist, 0L),
       pct_rim                = coalesce(pct_rim, pct_rim_hist),
       pct_off_dribble_jumper = coalesce(pct_off_dribble_jumper, pct_off_dribble_jumper_hist),
       pct_catch_shoot_jumper = coalesce(pct_catch_shoot_jumper, pct_catch_shoot_jumper_hist),
-      pct_three              = coalesce(pct_three, pct_three_hist)
+      pct_three              = coalesce(pct_three, pct_three_hist),
+      rim_fga                = coalesce(rim_fga, rim_fga_hist, 0L),
+      rim_fg_pct             = coalesce(rim_fg_pct, rim_fg_pct_hist),
+      paint_fga              = coalesce(paint_fga, paint_fga_hist, 0L),
+      paint_fg_pct           = coalesce(paint_fg_pct, paint_fg_pct_hist),
+      three_fga              = coalesce(three_fga, three_fga_hist, 0L),
+      three_fg_pct           = coalesce(three_fg_pct, three_fg_pct_hist),
+      cns_3p_fga             = coalesce(cns_3p_fga, cns_3p_fga_hist, 0L),
+      cns_3p_pct             = coalesce(cns_3p_pct, cns_3p_pct_hist),
+      pullup_3p_fga          = coalesce(pullup_3p_fga, pullup_3p_fga_hist, 0L),
+      pullup_3p_pct          = coalesce(pullup_3p_pct, pullup_3p_pct_hist)
     ) |>
     select(all_of(PBP_FEATURE_COLS))
 
