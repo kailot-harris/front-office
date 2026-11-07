@@ -6,8 +6,6 @@
 export interface HeadCoachInfo {
   name: string;
   tenureYears: number;
-  careerGames: number;
-  careerWinPct: number;
   coachingTree: string;
   tacticalArchetype: string;
 }
@@ -27,10 +25,6 @@ export interface CoachingMetrics {
   atoOffensivePpp: number;        // Points per possession on ATOs
   atoDefensivePppAllowed: number; // Opponent PPP on ATOs
   challengeSuccessRate: number;   // % challenges overturned
-  challengeWpa: number;           // Win probability added from challenges
-  shotQualityLiftEfg: number;     // eFG% lift over shot quality baseline
-  rotationStaggerScore: number;   // 0-100 score for star staggering
-  playerDevelopmentScore: number; // 0-100 score for young player growth
 }
 
 export interface RadarPercentiles {
