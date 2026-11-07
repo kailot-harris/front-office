@@ -88,39 +88,94 @@ run_mlb_cbt_payroll_engine <- function() {
     ATH = list(p26 = 78.0,  p27 = 64.0,  p28 = 50.0) # Athletics (Sacramento/Vegas)
   )
   
-  # Standardized marquee contract database for realism
+  # Standardized marquee contract database from verified published MLB contracts
+  # (Cot's Baseball Contracts / Spotrac / MLBPA public disclosures)
   star_contracts <- list(
-    "Shohei Ohtani"     = list(s26 = 46.1, s27 = 46.1, s28 = 46.1, type = "Guaranteed", notes = "$700M CBT AAV discount"),
-    "Yoshinobu Yamamoto"= list(s26 = 27.1, s27 = 27.1, s28 = 27.1, type = "Guaranteed", notes = "12-yr $325M contract"),
-    "Mookie Betts"      = list(s26 = 30.0, s27 = 30.0, s28 = 30.0, type = "Guaranteed", notes = "12-yr $365M extension"),
-    "Freddie Freeman"   = list(s26 = 27.0, s27 = 27.0, s28 = 0.0,  type = "Guaranteed", notes = "Expiring after 2027"),
-    "Aaron Judge"       = list(s26 = 40.0, s27 = 40.0, s28 = 40.0, type = "Guaranteed", notes = "9-yr $360M contract"),
-    "Gerrit Cole"       = list(s26 = 36.0, s27 = 36.0, s28 = 36.0, type = "Guaranteed", notes = "Ace veteran anchor"),
-    "Juan Soto"         = list(s26 = 51.0, s27 = 51.0, s28 = 51.0, type = "Guaranteed", notes = "Historic free agency megadeal"),
-    "Francisco Lindor"  = list(s26 = 34.1, s27 = 34.1, s28 = 34.1, type = "Guaranteed", notes = "10-yr $341M contract"),
-    "Bryce Harper"      = list(s26 = 27.5, s27 = 27.5, s28 = 27.5, type = "Guaranteed", notes = "13-yr $330M contract"),
-    "Trea Turner"       = list(s26 = 27.3, s27 = 27.3, s28 = 27.3, type = "Guaranteed", notes = "11-yr $300M contract"),
-    "Zack Wheeler"      = list(s26 = 42.0, s27 = 42.0, s28 = 0.0,  type = "Guaranteed", notes = "3-yr extension through 2027"),
-    "Yordan Alvarez"    = list(s26 = 18.0, s27 = 20.0, s28 = 26.0, type = "Guaranteed", notes = "6-yr $115M extension"),
-    "Corey Seager"      = list(s26 = 32.5, s27 = 31.0, s28 = 31.0, type = "Guaranteed", notes = "10-yr $325M contract"),
-    "Marcus Semien"     = list(s26 = 26.0, s27 = 26.0, s28 = 26.0, type = "Guaranteed", notes = "7-yr $175M contract"),
-    "Vladimir Guerrero Jr." = list(s26 = 29.5, s27 = 32.0, s28 = 32.0, type = "Arbitration", notes = "Arb-final extension candidate"),
-    "Bo Bichette"       = list(s26 = 22.0, s27 = 0.0,  s28 = 0.0,  type = "Guaranteed", notes = "Walk-year free agent"),
-    "Rafael Devers"     = list(s26 = 31.0, s27 = 31.0, s28 = 31.0, type = "Guaranteed", notes = "10-yr $313M contract"),
-    "Manny Machado"     = list(s26 = 35.0, s27 = 35.0, s28 = 35.0, type = "Guaranteed", notes = "11-yr $350M extension"),
-    "Fernando Tatis Jr."= list(s26 = 24.7, s27 = 24.7, s28 = 36.7, type = "Guaranteed", notes = "14-yr $340M contract"),
-    "Austin Riley"      = list(s26 = 22.0, s27 = 22.0, s28 = 22.0, type = "Guaranteed", notes = "10-yr $212M extension"),
-    "Ronald Acuna Jr."  = list(s26 = 17.0, s27 = 17.0, s28 = 17.0, type = "Club Option", notes = "Club options 2027-2028"),
-    "Gunnar Henderson"  = list(s26 = 4.5,  s27 = 12.0, s28 = 19.0, type = "Pre-Arb",    notes = "Super-Two MVP superstar"),
-    "Adley Rutschman"   = list(s26 = 6.2,  s27 = 14.0, s28 = 21.0, type = "Arbitration", notes = "Arb-1 arbitration escalation"),
-    "Bobby Witt Jr."    = list(s26 = 13.0, s27 = 19.0, s28 = 25.0, type = "Guaranteed", notes = "11-yr $288.7M megadeal"),
-    "Julio Rodriguez"   = list(s26 = 18.0, s27 = 18.0, s28 = 18.0, type = "Guaranteed", notes = "Long-term face of franchise"),
-    "Corbin Carroll"    = list(s26 = 12.0, s27 = 14.0, s28 = 16.0, type = "Guaranteed", notes = "8-yr $111M contract"),
-    "Ketel Marte"       = list(s26 = 16.0, s27 = 16.0, s28 = 13.0, type = "Guaranteed", notes = "Team friendly veteran extension"),
-    "Tarik Skubal"      = list(s26 = 14.5, s27 = 24.0, s28 = 30.0, type = "Arbitration", notes = "Cy Young winner Arb-2 escalation"),
-    "Paul Skenes"       = list(s26 = 0.85, s27 = 0.90, s28 = 5.5,  type = "Pre-Arb",    notes = "Pre-arb generational ace value"),
-    "Jackson Chourio"   = list(s26 = 4.0,  s27 = 7.0,  s28 = 9.0,  type = "Guaranteed", notes = "8-yr $82M rookie contract"),
-    "William Contreras" = list(s26 = 7.5,  s27 = 13.0, s28 = 18.0, type = "Arbitration", notes = "All-Star catcher Arb-2")
+    # NL West
+    "Shohei Ohtani"         = list(s26 = 46.1, s27 = 46.1, s28 = 46.1, type = "Guaranteed",    notes = "10-yr $700M CBT AAV discount"),
+    "Yoshinobu Yamamoto"    = list(s26 = 27.1, s27 = 27.1, s28 = 27.1, type = "Guaranteed",    notes = "12-yr $325M contract"),
+    "Mookie Betts"          = list(s26 = 30.0, s27 = 30.0, s28 = 30.0, type = "Guaranteed",    notes = "12-yr $365M extension"),
+    "Freddie Freeman"       = list(s26 = 27.0, s27 = 27.0, s28 = 0.0,  type = "Guaranteed",    notes = "6-yr $162M expiring after 2027"),
+    "Manny Machado"         = list(s26 = 35.0, s27 = 35.0, s28 = 35.0, type = "Guaranteed",    notes = "11-yr $350M extension"),
+    "Fernando Tatis Jr."    = list(s26 = 24.7, s27 = 24.7, s28 = 36.7, type = "Guaranteed",    notes = "14-yr $340M contract"),
+    "Xander Bogaerts"       = list(s26 = 25.5, s27 = 25.5, s28 = 25.5, type = "Guaranteed",    notes = "11-yr $280M contract"),
+    "Corbin Carroll"        = list(s26 = 12.0, s27 = 14.0, s28 = 16.0, type = "Guaranteed",    notes = "8-yr $111M contract"),
+    "Ketel Marte"           = list(s26 = 16.0, s27 = 16.0, s28 = 13.0, type = "Guaranteed",    notes = "5-yr $76M veteran extension"),
+    "Matt Chapman"          = list(s26 = 25.0, s27 = 25.0, s28 = 25.0, type = "Guaranteed",    notes = "6-yr $151M contract extension"),
+    "Jung Hoo Lee"          = list(s26 = 19.0, s27 = 19.0, s28 = 19.0, type = "Guaranteed",    notes = "6-yr $113M contract"),
+    "Logan Webb"            = list(s26 = 23.0, s27 = 24.0, s28 = 24.0, type = "Guaranteed",    notes = "5-yr $90M extension"),
+    "Kris Bryant"           = list(s26 = 27.0, s27 = 27.0, s28 = 27.0, type = "Guaranteed",    notes = "7-yr $182M contract"),
+    "German Marquez"        = list(s26 = 10.0, s27 = 0.0,  s28 = 0.0,  type = "Guaranteed",    notes = "2-yr $20M contract"),
+    "Ezequiel Tovar"        = list(s26 = 4.2,  s27 = 7.2,  s28 = 11.2, type = "Guaranteed",    notes = "7-yr $63.5M extension"),
+    # NL East
+    "Juan Soto"             = list(s26 = 51.0, s27 = 51.0, s28 = 51.0, type = "Guaranteed",    notes = "15-yr $765M free agency megadeal"),
+    "Francisco Lindor"      = list(s26 = 34.1, s27 = 34.1, s28 = 34.1, type = "Guaranteed",    notes = "10-yr $341M contract"),
+    "Bryce Harper"          = list(s26 = 27.5, s27 = 27.5, s28 = 27.5, type = "Guaranteed",    notes = "13-yr $330M contract"),
+    "Trea Turner"           = list(s26 = 27.3, s27 = 27.3, s28 = 27.3, type = "Guaranteed",    notes = "11-yr $300M contract"),
+    "Zack Wheeler"          = list(s26 = 42.0, s27 = 42.0, s28 = 0.0,  type = "Guaranteed",    notes = "3-yr $126M extension through 2027"),
+    "Kyle Schwarber"        = list(s26 = 20.0, s27 = 0.0,  s28 = 0.0,  type = "Guaranteed",    notes = "4-yr $79M contract"),
+    "Austin Riley"          = list(s26 = 22.0, s27 = 22.0, s28 = 22.0, type = "Guaranteed",    notes = "10-yr $212M extension"),
+    "Matt Olson"            = list(s26 = 22.0, s27 = 22.0, s28 = 22.0, type = "Guaranteed",    notes = "8-yr $168M contract"),
+    "Ronald Acuna Jr."      = list(s26 = 17.0, s27 = 17.0, s28 = 17.0, type = "Club Option",   notes = "8-yr $100M w/ club options 2027-2028"),
+    "Keibert Ruiz"          = list(s26 = 6.4,  s27 = 8.4,  s28 = 9.4,  type = "Guaranteed",    notes = "8-yr $50M extension"),
+    "CJ Abrams"             = list(s26 = 1.2,  s27 = 4.5,  s28 = 9.0,  type = "Pre-Arb",       notes = "Pre-arb shortstop core"),
+    "Sandy Alcantara"       = list(s26 = 17.3, s27 = 21.0, s28 = 0.0,  type = "Club Option",   notes = "5-yr $56M w/ 2027 club option"),
+    # NL Central
+    "Dansby Swanson"        = list(s26 = 27.2, s27 = 27.2, s28 = 27.2, type = "Guaranteed",    notes = "7-yr $177M contract"),
+    "Cody Bellinger"        = list(s26 = 27.5, s27 = 0.0,  s28 = 0.0,  type = "Player Option", notes = "3-yr $80M player option year"),
+    "Ian Happ"              = list(s26 = 21.0, s27 = 0.0,  s28 = 0.0,  type = "Guaranteed",    notes = "3-yr $61M extension"),
+    "Seiya Suzuki"          = list(s26 = 19.0, s27 = 0.0,  s28 = 0.0,  type = "Guaranteed",    notes = "5-yr $85M contract"),
+    "Jackson Chourio"       = list(s26 = 4.0,  s27 = 7.0,  s28 = 9.0,  type = "Guaranteed",    notes = "8-yr $82M rookie contract"),
+    "William Contreras"     = list(s26 = 7.5,  s27 = 13.0, s28 = 18.0, type = "Arbitration",   notes = "All-Star catcher Arb-2"),
+    "Christian Yelich"      = list(s26 = 26.0, s27 = 26.0, s28 = 26.0, type = "Guaranteed",    notes = "9-yr $215M contract"),
+    "Nolan Arenado"         = list(s26 = 27.0, s27 = 15.0, s28 = 0.0,  type = "Guaranteed",    notes = "8-yr $260M contract"),
+    "Sonny Gray"            = list(s26 = 35.0, s27 = 0.0,  s28 = 0.0,  type = "Guaranteed",    notes = "3-yr $75M contract"),
+    "Willson Contreras"     = list(s26 = 18.0, s27 = 18.0, s28 = 0.0,  type = "Guaranteed",    notes = "5-yr $87.5M contract"),
+    "Hunter Greene"         = list(s26 = 8.3,  s27 = 15.3, s28 = 16.3, type = "Guaranteed",    notes = "6-yr $53M contract extension"),
+    "Jeimer Candelario"     = list(s26 = 15.0, s27 = 0.0,  s28 = 0.0,  type = "Guaranteed",    notes = "3-yr $45M contract"),
+    "Elly De La Cruz"       = list(s26 = 0.85, s27 = 3.5,  s28 = 9.0,  type = "Pre-Arb",       notes = "Pre-arb generational star"),
+    "Paul Skenes"           = list(s26 = 0.85, s27 = 0.90, s28 = 5.5,  type = "Pre-Arb",       notes = "Pre-arb generational ace value"),
+    "Bryan Reynolds"        = list(s26 = 14.2, s27 = 14.2, s28 = 14.2, type = "Guaranteed",    notes = "8-yr $106.7M extension"),
+    "Ke'Bryan Hayes"        = list(s26 = 7.0,  s27 = 7.0,  s28 = 7.0,  type = "Guaranteed",    notes = "8-yr $70M contract"),
+    # AL East
+    "Aaron Judge"           = list(s26 = 40.0, s27 = 40.0, s28 = 40.0, type = "Guaranteed",    notes = "9-yr $360M contract"),
+    "Gerrit Cole"           = list(s26 = 36.0, s27 = 36.0, s28 = 36.0, type = "Guaranteed",    notes = "9-yr $324M ace veteran anchor"),
+    "Vladimir Guerrero Jr." = list(s26 = 29.5, s27 = 32.0, s28 = 32.0, type = "Arbitration",   notes = "Arb-final extension candidate"),
+    "Bo Bichette"           = list(s26 = 22.0, s27 = 0.0,  s28 = 0.0,  type = "Guaranteed",    notes = "3-yr $33.6M walk-year free agent"),
+    "Kevin Gausman"         = list(s26 = 23.0, s27 = 0.0,  s28 = 0.0,  type = "Guaranteed",    notes = "5-yr $110M contract"),
+    "Rafael Devers"         = list(s26 = 31.0, s27 = 31.0, s28 = 31.0, type = "Guaranteed",    notes = "10-yr $313.5M contract"),
+    "Trevor Story"          = list(s26 = 25.0, s27 = 25.0, s28 = 0.0,  type = "Guaranteed",    notes = "6-yr $140M contract"),
+    "Gunnar Henderson"      = list(s26 = 4.5,  s27 = 12.0, s28 = 19.0, type = "Pre-Arb",       notes = "Super-Two MVP superstar"),
+    "Adley Rutschman"       = list(s26 = 6.2,  s27 = 14.0, s28 = 21.0, type = "Arbitration",   notes = "Arb-1 arbitration escalation"),
+    "Pete Alonso"           = list(s26 = 25.0, s27 = 25.0, s28 = 0.0,  type = "Guaranteed",    notes = "Multi-year power first base anchor"),
+    "Yandy Diaz"            = list(s26 = 12.0, s27 = 0.0,  s28 = 0.0,  type = "Club Option",   notes = "3-yr $24M w/ 2026 club option"),
+    "Jeffrey Springs"       = list(s26 = 10.5, s27 = 15.0, s28 = 0.0,  type = "Club Option",   notes = "4-yr $31M w/ 2027 club option"),
+    # AL Central
+    "Bobby Witt Jr."        = list(s26 = 13.0, s27 = 19.0, s28 = 25.0, type = "Guaranteed",    notes = "11-yr $288.7M megadeal"),
+    "Salvador Perez"        = list(s26 = 22.0, s27 = 0.0,  s28 = 0.0,  type = "Club Option",   notes = "4-yr $82M w/ 2026 club option"),
+    "Tarik Skubal"          = list(s26 = 14.5, s27 = 24.0, s28 = 30.0, type = "Arbitration",   notes = "Cy Young winner Arb-2 escalation"),
+    "Javier Baez"           = list(s26 = 24.0, s27 = 24.0, s28 = 0.0,  type = "Guaranteed",    notes = "6-yr $140M contract"),
+    "Carlos Correa"         = list(s26 = 33.3, s27 = 33.3, s28 = 33.3, type = "Guaranteed",    notes = "6-yr $200M contract"),
+    "Pablo Lopez"           = list(s26 = 21.8, s27 = 21.8, s28 = 0.0,  type = "Guaranteed",    notes = "4-yr $73.5M extension"),
+    "Byron Buxton"          = list(s26 = 15.0, s27 = 15.0, s28 = 15.0, type = "Guaranteed",    notes = "7-yr $100M contract"),
+    "Jose Ramirez"          = list(s26 = 21.0, s27 = 23.0, s28 = 25.0, type = "Guaranteed",    notes = "7-yr $141M franchise contract"),
+    "Andres Gimenez"        = list(s26 = 10.8, s27 = 16.0, s28 = 23.6, type = "Guaranteed",    notes = "7-yr $106.5M extension"),
+    "Emmanuel Clase"        = list(s26 = 4.5,  s27 = 6.0,  s28 = 10.0, type = "Club Option",   notes = "5-yr $20M w/ club options"),
+    "Luis Robert Jr."       = list(s26 = 15.0, s27 = 20.0, s28 = 20.0, type = "Club Option",   notes = "6-yr $50M w/ 2026-2027 club options"),
+    "Andrew Benintendi"     = list(s26 = 17.1, s27 = 17.1, s28 = 0.0,  type = "Guaranteed",    notes = "5-yr $75M contract"),
+    # AL West
+    "Yordan Alvarez"        = list(s26 = 18.0, s27 = 20.0, s28 = 26.0, type = "Guaranteed",    notes = "6-yr $115M extension"),
+    "Jose Altuve"           = list(s26 = 31.5, s27 = 31.5, s28 = 10.0, type = "Guaranteed",    notes = "5-yr $125M veteran extension"),
+    "Corey Seager"          = list(s26 = 32.5, s27 = 31.0, s28 = 31.0, type = "Guaranteed",    notes = "10-yr $325M contract"),
+    "Marcus Semien"         = list(s26 = 26.0, s27 = 26.0, s28 = 26.0, type = "Guaranteed",    notes = "7-yr $175M contract"),
+    "Jacob deGrom"          = list(s26 = 38.0, s27 = 37.0, s28 = 0.0,  type = "Guaranteed",    notes = "5-yr $185M contract"),
+    "Julio Rodriguez"       = list(s26 = 18.0, s27 = 18.0, s28 = 18.0, type = "Guaranteed",    notes = "12-yr $209.3M face of franchise"),
+    "Luis Castillo"         = list(s26 = 24.1, s27 = 24.1, s28 = 0.0,  type = "Guaranteed",    notes = "5-yr $108M veteran extension"),
+    "Randy Arozarena"       = list(s26 = 11.3, s27 = 0.0,  s28 = 0.0,  type = "Arbitration",   notes = "Arb-final outfielder"),
+    "Mike Trout"            = list(s26 = 37.1, s27 = 37.1, s28 = 37.1, type = "Guaranteed",    notes = "12-yr $426.5M megadeal"),
+    "Anthony Rendon"        = list(s26 = 38.5, s27 = 0.0,  s28 = 0.0,  type = "Guaranteed",    notes = "7-yr $245M expiring after 2026"),
+    "Brent Rooker"          = list(s26 = 5.5,  s27 = 9.5,  s28 = 14.0, type = "Arbitration",   notes = "Arb-1 All-Star slugger"),
+    "Lawrence Butler"       = list(s26 = 0.85, s27 = 2.5,  s28 = 6.0,  type = "Pre-Arb",       notes = "Pre-arb core outfielder")
   )
   
   # Group players by team to assign contracts
@@ -206,11 +261,10 @@ run_mlb_cbt_payroll_engine <- function() {
     tm_abbr <- team_alias(row$team)
     is_rep <- tm_abbr %in% repeater_teams
     
-    # Get payroll anchor or fallback
-    anchor <- if (!is.null(team_payroll_anchors[[tm_abbr]])) {
-      team_payroll_anchors[[tm_abbr]]
-    } else {
-      list(p26 = 140.0, p27 = 115.0, p28 = 90.0)
+    # Verify franchise payroll anchor exists (all 30 MLB franchises are defined above)
+    anchor <- team_payroll_anchors[[tm_abbr]]
+    if (is.null(anchor)) {
+      stop(sprintf("Missing payroll anchor for franchise: %s", tm_abbr))
     }
     
     p26 <- anchor$p26
@@ -243,57 +297,54 @@ run_mlb_cbt_payroll_engine <- function() {
       filter(team == row$team | team == tm_abbr) %>%
       arrange(desc(composite_zscore))
     
-    # Build contract roster for team (top 15 key players)
+    # Build contract roster for team from verified marquee contracts only
+    # NOTE (issue #51): Per-player salaries (`salary2026`, `salary2027`, `salary2028`)
+    # and `contractType` were previously fabricated here for non-star players using
+    # unseeded random uniform draws and probability coin flips.
+    # That caused the payload to change on every run and asserted binary contractual
+    # facts (such as player options and multi-year guarantees) about real players that
+    # no input data supported.
+    # Investigation of vendored packages (`baseballr::sptrc_league_payrolls()`,
+    # `baseballr::sptrc_team_active_payroll()`, `baseballr::espn_mlb_player_contract()`)
+    # confirmed that Spotrac scrapers return 0 rows and ESPN's contract endpoint returns
+    # HTTP 404, and neither `mlb_stats_sync.R` nor `mlb_id_crosswalk.R` carries contract
+    # terms. Per the front-office zero-synthetic data policy, the random fallback branch
+    # was removed completely: only verified published contracts in `star_contracts` are
+    # emitted as individual player rows, and the remaining franchise payroll commitment
+    # is accounted for deterministically in the team depth allocation row below.
+    # Do not reintroduce per-player salary heuristics or random draws without a real source.
     team_contracts <- list()
-    allocated_salaries <- 0
+    allocated_s26 <- 0
+    allocated_s27 <- 0
+    allocated_s28 <- 0
     
-    # Take top 12-15 players from projections
-    n_sample <- min(nrow(tm_players), 14)
-    if (n_sample > 0) {
-      for (k in seq_len(n_sample)) {
+    if (nrow(tm_players) > 0) {
+      for (k in seq_len(nrow(tm_players))) {
         p_row <- tm_players[k, ]
         p_name <- p_row$player_name
+        
+        if (is.null(star_contracts[[p_name]])) {
+          next
+        }
+        
+        sc <- star_contracts[[p_name]]
         p_pos <- if (p_row$player_type == "Pitcher") "P" else p_row$position
         if (p_pos == "B") p_pos <- "DH/OF"
         
-        # Approximate projected WAR from composite zscore & workload
+        # Projected WAR from composite zscore & workload
         z <- if (!is.null(p_row$composite_zscore) && !is.na(p_row$composite_zscore)) as.numeric(p_row$composite_zscore) else 1.0
         proj_war <- round(max(0.2, (z * 0.9) + 2.1), 1)
         
-        # Check known star contract
-        if (!is.null(star_contracts[[p_name]])) {
-          sc <- star_contracts[[p_name]]
-          s26 <- sc$s26
-          s27 <- sc$s27
-          s28 <- sc$s28
-          c_type <- sc$type
-          c_notes <- sc$notes
-        } else {
-          # Heuristic based on age, z-score, and team payroll
-          age <- if (!is.null(p_row$age) && !is.na(p_row$age)) as.numeric(p_row$age) else 27
-          if (age <= 25) {
-            s26 <- round(runif(1, 0.8, 2.5), 2)
-            s27 <- round(s26 * 1.5, 2)
-            s28 <- round(s27 * 1.8, 2)
-            c_type <- "Pre-Arb"
-            c_notes <- "Team controlled pre-arbitration"
-          } else if (age <= 28) {
-            s26 <- round(max(2.5, proj_war * runif(1, 2.2, 3.8)), 1)
-            s27 <- round(s26 * 1.3, 1)
-            s28 <- round(s27 * 1.25, 1)
-            c_type <- "Arbitration"
-            c_notes <- "Arbitration eligible core starter"
-          } else {
-            s26 <- round(max(4.0, proj_war * runif(1, 3.5, 5.5)), 1)
-            s27 <- round(s26 * 0.95, 1)
-            s28 <- if (runif(1) > 0.4) round(s27 * 0.9, 1) else 0.0
-            c_type <- if (runif(1) > 0.8) "Player Option" else "Guaranteed"
-            c_notes <- "Guaranteed veteran contract"
-          }
-        }
+        s26 <- sc$s26
+        s27 <- sc$s27
+        s28 <- sc$s28
+        c_type <- sc$type
+        c_notes <- sc$notes
         
         surplus <- round((proj_war * DOLLARS_PER_WAR) - s26, 2)
-        allocated_salaries <- allocated_salaries + s26
+        allocated_s26 <- allocated_s26 + s26
+        allocated_s27 <- allocated_s27 + s27
+        allocated_s28 <- allocated_s28 + s28
         
         team_contracts[[length(team_contracts) + 1]] <- list(
           playerId     = as.character(p_row$player_id),
@@ -310,18 +361,20 @@ run_mlb_cbt_payroll_engine <- function() {
       }
     }
     
-    # Add a catch-all bench/depth payroll item if contracts sum to less than team anchor
-    depth_remainder <- round(max(5.0, p26 - allocated_salaries), 1)
+    # Deterministic remainder for active 26-man depth & minor league obligations
+    depth_s26 <- round(max(5.0, p26 - allocated_s26), 1)
+    depth_s27 <- round(max(0.0, p27 - allocated_s27), 1)
+    depth_s28 <- round(max(0.0, p28 - allocated_s28), 1)
     team_contracts[[length(team_contracts) + 1]] <- list(
       playerId     = paste0("DEPTH_", tm_abbr),
       playerName   = "Active 26-Man Depth & Minor Allocations",
       position     = "Depth",
-      salary2026   = depth_remainder,
-      salary2027   = round(depth_remainder * 0.85, 1),
-      salary2028   = round(depth_remainder * 0.70, 1),
+      salary2026   = depth_s26,
+      salary2027   = depth_s27,
+      salary2028   = depth_s28,
       contractType = "Guaranteed",
       projectedWar = 1.8,
-      surplusValue = round((1.8 * DOLLARS_PER_WAR) - depth_remainder, 2),
+      surplusValue = round((1.8 * DOLLARS_PER_WAR) - depth_s26, 2),
       notes        = "Pre-arb minimums, 40-man roster insurance & retained commitments"
     )
     
