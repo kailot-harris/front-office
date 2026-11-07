@@ -11,8 +11,9 @@ REM
 REM Rationale:
 REM   In the off-season, there are no live games. What moves is roster,
 REM   contract, and organizational state, arriving irregularly as text.
-REM   This weekly script executes build_offseason_monitor.R and publishes web
-REM   artifacts via tools/publish_web.R --publish --mode=offseason.
+REM   This weekly script executes build_offseason_monitor.R, runs the pre-publish
+REM   end-to-end regression test suite (tools/offseason/test_dag_end_to_end.R), and
+REM   publishes web artifacts via tools/publish_web.R --publish --mode=offseason.
 REM
 REM Winter DST Direct Workflow Dispatch:
 REM   sync-sports.yml runs at cron: '30 13 * * *' (13:30 UTC). Under Eastern
@@ -70,16 +71,24 @@ if %ERRORLEVEL% neq 0 (
     exit /b %ERRORLEVEL%
 )
 
-REM Step 2: Publish web artifacts and promote staged baseline
-echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 2: Running tools/publish_web.R --publish --mode=offseason... >> "%RUN_LOG%"
+REM Step 2: Run End-to-End DAG Regression Suite prior to publishing (GitHub issue #62)
+echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 2: Running tools/offseason/test_dag_end_to_end.R... >> "%RUN_LOG%"
+%RSCRIPT% --vanilla tools/offseason/test_dag_end_to_end.R >> "%RUN_LOG%" 2>&1
+if %ERRORLEVEL% neq 0 (
+    echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] tools/offseason/test_dag_end_to_end.R failed with exit code %ERRORLEVEL%. Halting publication. >> "%RUN_LOG%"
+    exit /b %ERRORLEVEL%
+)
+
+REM Step 3: Publish web artifacts and promote staged baseline
+echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 3: Running tools/publish_web.R --publish --mode=offseason... >> "%RUN_LOG%"
 %RSCRIPT% --vanilla tools/publish_web.R --publish --mode=offseason >> "%RUN_LOG%" 2>&1
 if %ERRORLEVEL% neq 0 (
     echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] tools/publish_web.R failed with exit code %ERRORLEVEL%. >> "%RUN_LOG%"
     exit /b %ERRORLEVEL%
 )
 
-REM Step 3: Direct aggregator workflow dispatch to overcome Winter DST inversion
-echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 3: Dispatching aggregator sync-sports workflow... >> "%RUN_LOG%"
+REM Step 4: Direct aggregator workflow dispatch to overcome Winter DST inversion
+echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 4: Dispatching aggregator sync-sports workflow... >> "%RUN_LOG%"
 set GH_BIN=
 where gh >nul 2>&1
 if %ERRORLEVEL% equ 0 (
