@@ -1,13 +1,20 @@
 {
   "version": "2026-2027.1.0",
-  "lastPublished": "2026-11-07T05:46:32Z",
-  "currentWeekNumber": 5,
-  "baselineAsOfDate": "2026-11-07T05:44:06Z",
+  "lastPublished": "2026-11-07T12:00:08Z",
+  "currentWeekNumber": 6,
+  "baselineAsOfDate": "2026-11-07T05:46:32Z",
   "elapsedDaysSinceLastPublish": 0,
   "leagueOperatingStatus": "NORMAL",
   "freezeDayCount": null,
   "activePhase": "Option & Qualifying Offer Window",
   "availableEditions": [
+    {
+      "weekNumber": 6,
+      "publishDate": "2026-11-07",
+      "isQuietWeek": true,
+      "isFrozenWeek": false,
+      "isArchived": false
+    },
     {
       "weekNumber": 5,
       "publishDate": "2026-11-07",
@@ -41,12 +48,12 @@
       "publishDate": "2026-10-31",
       "isQuietWeek": false,
       "isFrozenWeek": false,
-      "isArchived": false
+      "isArchived": true
     }
   ],
   "editions": [
     {
-      "weekNumber": 5,
+      "weekNumber": 6,
       "publishDate": "2026-11-07",
       "isQuietWeek": true,
       "isFrozenWeek": false,
@@ -102,6 +109,60 @@
         "30 Club Official Media Portals",
         "Credited Beat Outlets (MLB Trade Rumors, Athletic, ESPN)"
       ]
+    },
+    {
+      "weekNumber": 5,
+      "publishDate": "2026-11-07",
+      "isQuietWeek": true,
+      "isFrozenWeek": false,
+      "freezeDayCount": null,
+      "freezeStartDate": null,
+      "stateOfPlay": "Quiet week: 0 confirmed state transitions recorded.",
+      "totalConfirmedCount": 0,
+      "confirmedChanges": [],
+      "reportedClaims": [],
+      "expiredClaims": [],
+      "laborEvents": [],
+      "upcomingMilestones": [
+        {
+          "date": "2026-11-02",
+          "event": "Deadline to exercise contract options and extend qualifying offers",
+          "status": "Confirmed"
+        },
+        {
+          "date": "2026-11-17",
+          "event": "Deadline to accept/reject qualifying offers (4:00 p.m. ET)",
+          "status": "Confirmed"
+        },
+        {
+          "date": "2026-11-17",
+          "event": "MLB Owners Meetings begin",
+          "status": "Confirmed"
+        },
+        {
+          "date": "2026-12-01",
+          "event": "Collective Bargaining Agreement expires (11:59 p.m. ET)",
+          "status": "Confirmed"
+        },
+        {
+          "date": "2026-12-07",
+          "event": "Winter Meetings, San Diego (conditional on CBA)",
+          "status": "Tentative"
+        }
+      ],
+      "modelPriorImpact": {
+        "hasChanges": false,
+        "summary": "No change to 2027 baseline Marcel priors."
+      },
+      "winterLeagueNotes": [
+        {
+          "playerName": "Jackson Chourio",
+          "mlbTeam": "MIL",
+          "league": "AFL",
+          "notes": "Participating in instructional development program."
+        }
+      ],
+      "sourcesVisited": ["MLB Official Transaction Wire (statsapi.mlb.com)", "30 Club Official Media Portals", "Credited Beat Outlets (MLB Trade Rumors, Athletic, ESPN)"]
     },
     {
       "weekNumber": 4,
@@ -1320,105 +1381,6 @@
           "priorValue": "MIA",
           "newValue": "CHW",
           "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=145&transactionIds=947639"
-        }
-      ],
-      "reportedClaims": [],
-      "expiredClaims": [],
-      "laborEvents": [],
-      "upcomingMilestones": [
-        {
-          "date": "2026-11-02",
-          "event": "Deadline to exercise contract options and extend qualifying offers",
-          "status": "Confirmed"
-        },
-        {
-          "date": "2026-11-17",
-          "event": "Deadline to accept/reject qualifying offers (4:00 p.m. ET)",
-          "status": "Confirmed"
-        },
-        {
-          "date": "2026-11-17",
-          "event": "MLB Owners Meetings begin",
-          "status": "Confirmed"
-        },
-        {
-          "date": "2026-12-01",
-          "event": "Collective Bargaining Agreement expires (11:59 p.m. ET)",
-          "status": "Confirmed"
-        },
-        {
-          "date": "2026-12-07",
-          "event": "Winter Meetings, San Diego (conditional on CBA)",
-          "status": "Tentative"
-        }
-      ],
-      "modelPriorImpact": {
-        "hasChanges": false,
-        "summary": "No change to 2027 baseline Marcel priors."
-      },
-      "winterLeagueNotes": [
-        {
-          "playerName": "Jackson Chourio",
-          "mlbTeam": "MIL",
-          "league": "AFL",
-          "notes": "Participating in instructional development program."
-        }
-      ],
-      "sourcesVisited": ["MLB Official Transaction Wire (statsapi.mlb.com)", "30 Club Official Media Portals", "Credited Beat Outlets (MLB Trade Rumors, Athletic, ESPN)"]
-    },
-    {
-      "weekNumber": 1,
-      "publishDate": "2026-10-31",
-      "isQuietWeek": false,
-      "isFrozenWeek": false,
-      "freezeDayCount": null,
-      "freezeStartDate": null,
-      "stateOfPlay": "4 confirmed state transitions recorded across 4 club(s) (4 40-man roster moves, 0 minor-league moves). By transaction type: 2 Trade, 1 Free Agency, 1 Waiver Claim. Notable moves: Pete Alonso (BAL, Free Agency), Tsung-Che Cheng (DET, Trade), Kyren Paris (NYM, Waiver Claim).",
-      "totalConfirmedCount": 4,
-      "confirmedChanges": [
-        {
-          "date": "2026-10-29",
-          "team": "BAL",
-          "playerName": "Pete Alonso",
-          "playerId": "B_19251",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "FREE_AGENCY",
-          "priorValue": "40_MAN",
-          "newValue": "FREE_AGENT",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=110&startDate=2026-10-29&endDate=2026-10-29"
-        },
-        {
-          "date": "2026-10-29",
-          "team": "DET",
-          "playerName": "Tsung-Che Cheng",
-          "playerId": "B_28344",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "TRADE",
-          "priorValue": "BOS",
-          "newValue": "DET",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=116&transactionIds=947461"
-        },
-        {
-          "date": "2026-10-29",
-          "team": "NYM",
-          "playerName": "Kyren Paris",
-          "playerId": "B_26420",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "WAIVER_CLAIM",
-          "priorValue": "LAA",
-          "newValue": "NYM",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=121&transactionIds=947444"
-        },
-        {
-          "date": "2026-10-29",
-          "team": "ATH",
-          "playerName": "Nate Eaton",
-          "playerId": "B_25055",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "TRADE",
-          "priorValue": "BOS",
-          "newValue": "ATH",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=133&transactionIds=947273"
         }
       ],
       "reportedClaims": [],
