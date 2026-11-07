@@ -29,15 +29,5 @@
     "defect in a fresh run, not a standing one, and baselining it would be exactly",
     "the suppression this file is designed to prevent."
   ],
-  "issues": [
-    {
-      "id": "WNBA-DEFECT-167",
-      "severity": "low",
-      "title": "offseason_monitor.json has null entityName in reportedClaims for quiet week (#167)",
-      "tests": [
-        "matches OffseasonMonitorDataset JSON schema exactly"
-      ],
-      "fix": "build_offseason_monitor.R emits null entityName from quiet-week ingestion"
-    }
-  ]
+  "issues": []
 }

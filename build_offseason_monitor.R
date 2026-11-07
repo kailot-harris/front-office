@@ -143,13 +143,27 @@ build_offseason_monitor_dag <- function(dry_run = FALSE,
   # Filter Tier 1 confirmed deltas
   confirmed_deltas <- Filter(function(d) {
     tr <- if (!is.null(d$tier)) d$tier else d$confidence_tier
-    identical(as.character(tr), "CONFIRMED")
+    ct <- if (!is.null(d$change_type)) d$change_type else ""
+    identical(as.character(tr), "CONFIRMED") && !identical(as.character(ct), "UNCLASSIFIED")
   }, extracted_deltas)
   
   # Filter Tier 2/3 reported claims
   reported_deltas <- Filter(function(d) {
     tr <- if (!is.null(d$tier)) d$tier else d$confidence_tier
-    !identical(as.character(tr), "CONFIRMED")
+    ct <- if (!is.null(d$change_type)) d$change_type else ""
+    et <- if (!is.null(d$entity_type)) d$entity_type else ""
+    is_rumor_tier <- as.character(tr) %in% c("REPORTED", "SPECULATIVE")
+    is_not_unclass <- !identical(as.character(ct), "UNCLASSIFIED") && !identical(as.character(et), "unclassified")
+    has_entity <- (!is.null(d$entity_name) && !is.na(d$entity_name) && nzchar(trimws(d$entity_name))) ||
+                  (!is.null(d$entity_id) && !is.na(d$entity_id) && nzchar(trimws(d$entity_id)))
+    is_rumor_tier && is_not_unclass && has_entity
+  }, extracted_deltas)
+  
+  # Filter unclassified deltas requiring triage
+  unclassified_deltas <- Filter(function(d) {
+    ct <- if (!is.null(d$change_type)) d$change_type else ""
+    et <- if (!is.null(d$entity_type)) d$entity_type else ""
+    identical(as.character(ct), "UNCLASSIFIED") || identical(as.character(et), "unclassified")
   }, extracted_deltas)
   
   # ----------------------------------------------------------------------------
@@ -187,10 +201,10 @@ build_offseason_monitor_dag <- function(dry_run = FALSE,
     for (rd in reported_deltas) {
       reported_claims_list[[length(reported_claims_list) + 1L]] <- list(
         id = paste0("claim-", length(reported_claims_list) + 1L),
-        entityName = if (!is.null(rd$entity_name)) rd$entity_name else rd$entity_id,
-        claim = paste("Reported move involving", rd$entity_id, rd$field),
-        sourceCategory = "Team Beat Wire",
-        firstReportedDate = format(now_date, "%Y-%m-%d"),
+        entityName = if (!is.null(rd$entity_name) && !is.na(rd$entity_name) && nzchar(trimws(rd$entity_name))) trimws(rd$entity_name) else if (!is.null(rd$entity_id) && !is.na(rd$entity_id) && nzchar(trimws(rd$entity_id))) trimws(rd$entity_id) else "Unknown Entity",
+        claim = if (!is.null(rd$claim) && !is.na(rd$claim) && nzchar(trimws(rd$claim))) trimws(rd$claim) else if (!is.null(rd$rationale) && !is.na(rd$rationale) && nzchar(trimws(rd$rationale))) trimws(rd$rationale) else if (!is.null(rd$new_val) && !is.na(rd$new_val) && nzchar(trimws(rd$new_val))) sprintf("Reported %s: %s", if (!is.null(rd$field)) rd$field else "roster move", rd$new_val) else sprintf("Reported move involving %s", if (!is.null(rd$entity_name)) rd$entity_name else rd$entity_id),
+        sourceCategory = if (!is.null(rd$source_category) && rd$source_category %in% c("National Beat", "Team Beat Wire", "Trade Speculation")) rd$source_category else if (identical(as.character(rd$tier), "SPECULATIVE")) "Trade Speculation" else "Team Beat Wire",
+        firstReportedDate = if (!is.null(rd$date) && !is.na(rd$date) && nzchar(rd$date)) as.character(rd$date) else format(now_date, "%Y-%m-%d"),
         daysPending = 0L
       )
     }
@@ -273,7 +287,8 @@ build_offseason_monitor_dag <- function(dry_run = FALSE,
     upcoming_milestones = upcoming_milestones_list,
     model_prior_impact = model_prior_impact,
     winter_league_notes = winter_league_notes_list,
-    sources_visited = sources_visited_list
+    sources_visited = sources_visited_list,
+    unclassified_count = length(unclassified_deltas)
   )
   
   is_quiet_week <- can_assert_quiet_week(manifest, confirmed_changes = confirmed_changes_list)
