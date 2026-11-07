@@ -422,10 +422,28 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
         proj_pts = round(coalesce(avg_pts, 7.5), 1),
         proj_reb = round(coalesce(avg_reb, 3.2), 1),
         proj_ast = round(coalesce(avg_ast, 1.8), 1),
-        # Games played out of WNBA_SEASON_GAMES -- derived from real career_games-based
+        # Games played out of WNBA_SEASON_GAMES -- derived from real season_games-based
         # games_rate (see player_stats build above), with a deterministic mpg-based fallback
         # (the pre-existing heuristic, minus its random jitter) only for players with no
         # sample at all. No RNG.
+        # NOTE (issue #149 / #158): games_sd and games_p10/p25/p75/p90 were removed in #149
+        # (commit 21b1c5b) because the prior export fabricated games_sd via a uniform random draw
+        # over [2.5, 5.5] and derived quantiles from that synthetic SD. In #158 we evaluated
+        # re-deriving a games-played availability band and confirmed the removal stands:
+        #   1. A player's games-played variance is governed by discrete availability shocks
+        #      (contiguous multi-game injury absences, trades, waivers, and rotation changes),
+        #      not the game-to-game performance process modeled by sd_pts / sd_reb / sd_ast.
+        #   2. A single-season Beta-Binomial interval on (season_games, league_max_games)
+        #      treats 44 correlated daily availability states as i.i.d. Bernoulli trials,
+        #      severely understating multi-week injury spell variance, while cross-season
+        #      games-played SDs conflate role transitions and roster cuts with injury risk.
+        #   3. Caveat on proj_*_total: proj_min_total, proj_pts_total, proj_reb_total, and
+        #      proj_ast_total below are deterministic products (round(proj_games * proj_*, 1))
+        #      conditional on point-estimate proj_games; they inherit unmodeled availability
+        #      variance and intentionally carry no total-stat uncertainty band.
+        #   4. Note on per-game quantiles below: pts/reb/ast p10..p90 apply a 0.4 shrinkage
+        #      multiplier to single-game SD (e.g., 1.28 * pts_sd * 0.4) to approximate
+        #      season-average rate uncertainty rather than single-game dispersion.
         proj_games_floor = pmin(WNBA_SEASON_GAMES - 1, pmax(25, 38.5 + (proj_mpg - 20) * 0.15)),
         proj_games = round(pmin(WNBA_SEASON_GAMES, pmax(1,
           coalesce(games_rate * WNBA_SEASON_GAMES, proj_games_floor))), 1),
