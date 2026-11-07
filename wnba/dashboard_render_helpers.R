@@ -14,9 +14,17 @@
 # context, by just handing them already-computed data.
 #
 # Dependencies: assumes ggplot2, dplyr, tidyr, scales, stringr, DT, and plotly are already
-# attached by the caller (app.R attaches all of these before sourcing this file) - this file
-# does not call library()/require() itself.
+# attached by the caller (control_panel_app.R attaches all of these before sourcing this file)
+# - this file does not call library()/require() itself.
+#
+# ISSUE #153: Explicitly source logging_utils.R so the five `%||%` calls in this file
+# (lines 90-91 and 561-563) resolve to the repo's canonical hardened NA-coalescing operator
+# rather than base R >= 4.4's `is.null`-only `%||%` (which returns NA unchanged). Note:
+# cannot guard with `if (!exists("%||%"))` because base R's `%||%` makes `exists("%||%")`
+# return TRUE in a fresh session.
 # ==============================================================================
+
+if (file.exists("logging_utils.R")) source("logging_utils.R")
 
 # ------------------------------------------------------------------------------
 # Shared internal helper (used by the three Tab 8 diagnostics plotly builders below).

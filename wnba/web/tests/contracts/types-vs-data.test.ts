@@ -217,6 +217,45 @@ describe('TypeScript interface vs JSON payload key parity', () => {
  * cases walk the nested interfaces explicitly, which is where the R writer and
  * the TypeScript interface would otherwise be free to drift.
  */
+describe('PlayoffMatchupsCatalog nested interface vs JSON key parity', () => {
+  const catalog = readJsonFile<{
+    teams: Record<string, Record<string, unknown>>;
+    sampleMatchups: Array<Record<string, unknown>>;
+  }>('playoff_series_matchups.json');
+
+  const assertParity = (
+    interfaceName: string,
+    rows: Record<string, unknown>[],
+    optionalFields: string[] = []
+  ) => {
+    expect(rows.length, `no rows to check for ${interfaceName}`).toBeGreaterThan(0);
+    const tsFields = extractInterfaceFields('lib/playoffTypes.ts', interfaceName);
+    const jsonKeys = collectJsonKeys(rows);
+
+    const missingInJson = [...tsFields].filter(
+      (f) => !optionalFields.includes(f) && !jsonKeys.has(f)
+    );
+    const undocumentedInTs = [...jsonKeys].filter((k) => !tsFields.has(k));
+
+    expect(
+      missingInJson,
+      `${interfaceName} declares fields missing from playoff_series_matchups.json: ${missingInJson.join(', ')}`
+    ).toEqual([]);
+    expect(
+      undocumentedInTs,
+      `playoff_series_matchups.json ships keys not declared on ${interfaceName}: ${undocumentedInTs.join(', ')}`
+    ).toEqual([]);
+  };
+
+  it('PlayoffSeriesMatchupResult matches the keys of every sampleMatchups row', () => {
+    assertParity('PlayoffSeriesMatchupResult', catalog.sampleMatchups);
+  });
+
+  it('TeamPlayoffProfile matches the keys of every team profile', () => {
+    assertParity('TeamPlayoffProfile', Object.values(catalog.teams));
+  });
+});
+
 describe('PlayoffBracketSeason nested interface vs JSON key parity', () => {
   const bracket = readJsonFile<{
     series: Array<Record<string, unknown> & { prediction: Record<string, unknown> }>;

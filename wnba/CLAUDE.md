@@ -28,24 +28,17 @@
 - ESPN's WNBA injuries endpoint has no `athlete.id` field (unlike the NBA endpoint most code
   here was ported from). `injury_scraper.R` extracts the athlete ID from the "Player Card" link
   href instead — don't assume `athlete$id` exists on this feed.
-- **`%||%` resolves to three different definitions depending on what you source.** This entry
-  used to warn that `app.R` defined a scalar form that hard-errored on vectors; that local copy was
-  deleted under FIX M-6, and `app.R` itself is now retired (#142). The live situation, verified
-  2026-11-05 on R 4.5.2:
-  - `logging_utils.R:32` defines the hardened form, `is.na(a)[1]` — treats a leading-NA value as
-    missing and returns the fallback.
-  - **Base R ≥ 4.4 now ships its own `%||%`**, which is `is.null`-only: it returns `NA` unchanged
-    rather than falling back.
-  - `dashboard_render_helpers.R` uses `%||%` five times but does not source `logging_utils.R`.
-    Under `app.R` it got the hardened form (app.R sourced `logging_utils.R`); under
-    `control_panel_app.R` it gets **base R's**, confirmed by sourcing the control-panel dependency
-    chain alone. So the same helper functions NA-coalesce differently depending on which app loaded
-    them. Retiring `app.R` makes base R's form the only one they see.
-
-  `SECURITY_TECHNICAL_REVIEW.md` M-6's "exactly ONE definition in the repo" invariant is therefore
-  no longer true in effect — base R supplies a third. Tracked as its own issue. Still use
-  `dplyr::coalesce()` for any per-row NA-fill on a column, and do not assume `%||%` falls back on
-  `NA` unless you have sourced `logging_utils.R` in the same scope.
+- **`%||%` in `logging_utils.R:32` vs base R ≥ 4.4's `base::`%||%`` (resolved in #153).**
+  - `logging_utils.R:32` defines the repo's canonical hardened form (`!is.null(a) && length(a) > 0 && !is.na(a)[1]`),
+    which treats `NULL`, `character(0)` (e.g. `grep(...)[1]` -> `NA`), and leading-`NA` scalars as missing.
+  - **Base R ≥ 4.4 ships its own `base::`%||%``**, which is `is.null`-only and returns `NA` unchanged.
+    Crucially, because `base::`%||%`` is always in scope on R ≥ 4.4, **`exists("%||%")` is always `TRUE`**
+    in a fresh session — so guarding `if (!exists("%||%")) source("logging_utils.R")` silently
+    no-ops and leaves base R's `is.null`-only version active!
+  - Every script that uses `%||%` (including `dashboard_render_helpers.R`, `playoff_simulator.R`, and
+    `tools/offseason/wire_items_schema.R`) now sources `logging_utils.R` directly (or guards on
+    `!exists("log_info", mode = "function")` rather than `!exists("%||%")`). Still use
+    `dplyr::coalesce()` for any per-row NA-fill on a column.
 - `rapm_engine.R`'s `team` column assignment (both the live possession-vote path and the
   `estimate_rapm_box_plusminus_fallback()` path) is pooled across all of `ALL_SEASONS`, so
   without correction it reflects "the team this player has the most historical

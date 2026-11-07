@@ -1,20 +1,15 @@
 // ==============================================================================
 // coachingTypes.ts
-// Type definitions for WNBA Coaching Staff & Impact Analytics
+// Type definitions for WNBA Coaching Staff & Impact Analytics (Issues #145, #151)
 // ==============================================================================
 
 export interface HeadCoachInfo {
   name: string;
+  tenureStart: number;
   tenureYears: number;
-  coachingTree: string;
-  tacticalArchetype: string;
-}
-
-export interface AssistantsInfo {
-  associateHC: string;
-  offensiveCoord: string;
-  defensiveCoord: string;
-  playerDevLead: string;
+  registrySeason: number;
+  sourceCitation: string;
+  sourceVerifiedDate: string;
 }
 
 export interface CoachingMetrics {
@@ -24,7 +19,10 @@ export interface CoachingMetrics {
   coachingWinsAdded: number;      // Marginal win lift (delta)
   atoOffensivePpp: number;        // Points per possession on ATOs
   atoDefensivePppAllowed: number; // Opponent PPP on ATOs
-  challengeSuccessRate: number;   // % challenges overturned
+  challengeSuccessRate: number;   // % challenges overturned (0-1 rate)
+  atoOffPossessions: number;      // Sample count of offensive ATO possessions
+  atoDefPossessions: number;      // Sample count of defensive ATO possessions
+  challengeAttempts: number;      // Sample count of coach's challenge events
 }
 
 export interface RadarPercentiles {
@@ -40,7 +38,6 @@ export interface CoachingStaffMetric {
   teamAbbr: string;
   teamName: string;
   headCoach: HeadCoachInfo;
-  assistants: AssistantsInfo;
   metrics: CoachingMetrics;
   radarPercentiles: RadarPercentiles;
 }

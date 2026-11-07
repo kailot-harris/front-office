@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-06T19:49:32Z",
+  "generated_at": "2026-11-07T15:42:17Z",
   "teams": {
     "NY": {
       "teamAbbr": "NY",
@@ -1702,6 +1702,8 @@
       "teamA": "NY",
       "teamB": "MIN",
       "hcaTeam": "NY",
+      "format": "bo7",
+      "winThreshold": 4,
       "ratingDiffRaw": 1.02,
       "tacticalMismatchAdjustment": 0.56,
       "netRatingMargin": 1.58,
@@ -1767,6 +1769,8 @@
       "teamA": "LV",
       "teamB": "NY",
       "hcaTeam": "LV",
+      "format": "bo7",
+      "winThreshold": 4,
       "ratingDiffRaw": -2.04,
       "tacticalMismatchAdjustment": -1.73,
       "netRatingMargin": -3.77,
@@ -1832,56 +1836,48 @@
       "teamA": "MIN",
       "teamB": "LV",
       "hcaTeam": "MIN",
+      "format": "bo5",
+      "winThreshold": 3,
       "ratingDiffRaw": 1.02,
       "tacticalMismatchAdjustment": 1.17,
       "netRatingMargin": 2.19,
-      "winProbA": 0.653,
-      "winProbB": 0.347,
-      "fairMlA": -188,
-      "fairMlB": 188,
-      "avgGames": 5.76,
-      "spreadMinus1_5Prob": 0.466,
-      "sweepProb": 13,
+      "winProbA": 0.6337,
+      "winProbB": 0.3663,
+      "fairMlA": -173,
+      "fairMlB": 173,
+      "avgGames": 4.11,
+      "spreadMinus1_5Prob": 0.403,
+      "sweepProb": 26.2,
       "gameDistributions": [
         {
+          "games": 3,
+          "winner": "MIN",
+          "probPct": 18.9
+        },
+        {
           "games": 4,
           "winner": "MIN",
-          "probPct": 9.6
+          "probPct": 21.4
         },
         {
           "games": 5,
           "winner": "MIN",
-          "probPct": 20.1
+          "probPct": 23
         },
         {
-          "games": 6,
-          "winner": "MIN",
-          "probPct": 16.9
-        },
-        {
-          "games": 7,
-          "winner": "MIN",
-          "probPct": 18.7
+          "games": 3,
+          "winner": "LV",
+          "probPct": 7.3
         },
         {
           "games": 4,
           "winner": "LV",
-          "probPct": 3.5
+          "probPct": 15.7
         },
         {
           "games": 5,
           "winner": "LV",
-          "probPct": 7.2
-        },
-        {
-          "games": 6,
-          "winner": "LV",
-          "probPct": 13
-        },
-        {
-          "games": 7,
-          "winner": "LV",
-          "probPct": 11
+          "probPct": 13.7
         }
       ],
       "tacticalEdges": [
@@ -1897,56 +1893,38 @@
       "teamA": "IND",
       "teamB": "CHI",
       "hcaTeam": "IND",
+      "format": "bo3",
+      "winThreshold": 2,
       "ratingDiffRaw": 2.05,
       "tacticalMismatchAdjustment": 0,
       "netRatingMargin": 2.05,
-      "winProbA": 0.6519,
-      "winProbB": 0.3481,
-      "fairMlA": -187,
-      "fairMlB": 187,
-      "avgGames": 5.76,
-      "spreadMinus1_5Prob": 0.467,
-      "sweepProb": 13,
+      "winProbA": 0.6243,
+      "winProbB": 0.3757,
+      "fairMlA": -166,
+      "fairMlB": 166,
+      "avgGames": 2.5,
+      "spreadMinus1_5Prob": 0.309,
+      "sweepProb": 49.9,
       "gameDistributions": [
         {
-          "games": 4,
+          "games": 2,
           "winner": "IND",
-          "probPct": 9.4
+          "probPct": 30.9
         },
         {
-          "games": 5,
+          "games": 3,
           "winner": "IND",
-          "probPct": 20.1
+          "probPct": 31.5
         },
         {
-          "games": 6,
-          "winner": "IND",
-          "probPct": 17.2
-        },
-        {
-          "games": 7,
-          "winner": "IND",
-          "probPct": 18.5
-        },
-        {
-          "games": 4,
+          "games": 2,
           "winner": "CHI",
-          "probPct": 3.6
+          "probPct": 19
         },
         {
-          "games": 5,
+          "games": 3,
           "winner": "CHI",
-          "probPct": 7.6
-        },
-        {
-          "games": 6,
-          "winner": "CHI",
-          "probPct": 12.5
-        },
-        {
-          "games": 7,
-          "winner": "CHI",
-          "probPct": 11.1
+          "probPct": 18.6
         }
       ],
       "tacticalEdges": []
@@ -1955,56 +1933,48 @@
       "teamA": "CON",
       "teamB": "IND",
       "hcaTeam": "CON",
+      "format": "bo5",
+      "winThreshold": 3,
       "ratingDiffRaw": -5.46,
       "tacticalMismatchAdjustment": -0.65,
       "netRatingMargin": -6.11,
-      "winProbA": 0.185,
-      "winProbB": 0.815,
-      "fairMlA": 441,
-      "fairMlB": -441,
-      "avgGames": 5.54,
-      "spreadMinus1_5Prob": 0.096,
-      "sweepProb": 20.4,
+      "winProbA": 0.2237,
+      "winProbB": 0.7763,
+      "fairMlA": 347,
+      "fairMlB": -347,
+      "avgGames": 4,
+      "spreadMinus1_5Prob": 0.109,
+      "sweepProb": 30,
       "gameDistributions": [
         {
-          "games": 4,
-          "winner": "CON",
-          "probPct": 1.2
-        },
-        {
-          "games": 5,
+          "games": 3,
           "winner": "CON",
           "probPct": 3.8
         },
         {
-          "games": 6,
+          "games": 4,
           "winner": "CON",
-          "probPct": 4.6
+          "probPct": 7.1
         },
         {
-          "games": 7,
+          "games": 5,
           "winner": "CON",
-          "probPct": 8.9
+          "probPct": 11.5
+        },
+        {
+          "games": 3,
+          "winner": "IND",
+          "probPct": 26.2
         },
         {
           "games": 4,
           "winner": "IND",
-          "probPct": 19.1
+          "probPct": 32.7
         },
         {
           "games": 5,
           "winner": "IND",
-          "probPct": 24.5
-        },
-        {
-          "games": 6,
-          "winner": "IND",
-          "probPct": 24.1
-        },
-        {
-          "games": 7,
-          "winner": "IND",
-          "probPct": 13.8
+          "probPct": 18.7
         }
       ],
       "tacticalEdges": [
@@ -2020,56 +1990,38 @@
       "teamA": "SEA",
       "teamB": "LV",
       "hcaTeam": "LV",
+      "format": "bo3",
+      "winThreshold": 2,
       "ratingDiffRaw": -5.42,
       "tacticalMismatchAdjustment": 0.84,
       "netRatingMargin": -4.58,
-      "winProbA": 0.2272,
-      "winProbB": 0.7728,
-      "fairMlA": 340,
-      "fairMlB": -340,
-      "avgGames": 5.61,
-      "spreadMinus1_5Prob": 0.145,
-      "sweepProb": 17.4,
+      "winProbA": 0.2829,
+      "winProbB": 0.7171,
+      "fairMlA": 253,
+      "fairMlB": -253,
+      "avgGames": 2.48,
+      "spreadMinus1_5Prob": 0.135,
+      "sweepProb": 51.8,
       "gameDistributions": [
         {
-          "games": 4,
+          "games": 2,
           "winner": "SEA",
-          "probPct": 2.1
+          "probPct": 13.5
         },
         {
-          "games": 5,
+          "games": 3,
           "winner": "SEA",
-          "probPct": 4.1
+          "probPct": 14.8
         },
         {
-          "games": 6,
-          "winner": "SEA",
-          "probPct": 8.3
-        },
-        {
-          "games": 7,
-          "winner": "SEA",
-          "probPct": 8.2
-        },
-        {
-          "games": 4,
+          "games": 2,
           "winner": "LV",
-          "probPct": 15.2
+          "probPct": 38.3
         },
         {
-          "games": 5,
+          "games": 3,
           "winner": "LV",
-          "probPct": 25.6
-        },
-        {
-          "games": 6,
-          "winner": "LV",
-          "probPct": 19.2
-        },
-        {
-          "games": 7,
-          "winner": "LV",
-          "probPct": 17.4
+          "probPct": 33.4
         }
       ],
       "tacticalEdges": [
@@ -2085,56 +2037,38 @@
       "teamA": "PHX",
       "teamB": "MIN",
       "hcaTeam": "MIN",
+      "format": "bo3",
+      "winThreshold": 2,
       "ratingDiffRaw": -4.54,
       "tacticalMismatchAdjustment": -0.46,
       "netRatingMargin": -5,
-      "winProbA": 0.2084,
-      "winProbB": 0.7916,
-      "fairMlA": 380,
-      "fairMlB": -380,
-      "avgGames": 5.6,
-      "spreadMinus1_5Prob": 0.136,
-      "sweepProb": 17.6,
+      "winProbA": 0.2733,
+      "winProbB": 0.7267,
+      "fairMlA": 266,
+      "fairMlB": -266,
+      "avgGames": 2.46,
+      "spreadMinus1_5Prob": 0.132,
+      "sweepProb": 53.5,
       "gameDistributions": [
         {
-          "games": 4,
+          "games": 2,
           "winner": "PHX",
-          "probPct": 1.4
+          "probPct": 13.2
         },
         {
-          "games": 5,
+          "games": 3,
           "winner": "PHX",
-          "probPct": 3.6
+          "probPct": 14.1
         },
         {
-          "games": 6,
-          "winner": "PHX",
-          "probPct": 8.5
-        },
-        {
-          "games": 7,
-          "winner": "PHX",
-          "probPct": 7.3
-        },
-        {
-          "games": 4,
+          "games": 2,
           "winner": "MIN",
-          "probPct": 16.2
+          "probPct": 40.3
         },
         {
-          "games": 5,
+          "games": 3,
           "winner": "MIN",
-          "probPct": 26.3
-        },
-        {
-          "games": 6,
-          "winner": "MIN",
-          "probPct": 18.9
-        },
-        {
-          "games": 7,
-          "winner": "MIN",
-          "probPct": 17.8
+          "probPct": 32.4
         }
       ],
       "tacticalEdges": [
@@ -2150,56 +2084,38 @@
       "teamA": "GS",
       "teamB": "LA",
       "hcaTeam": "GS",
+      "format": "bo3",
+      "winThreshold": 2,
       "ratingDiffRaw": 3.72,
       "tacticalMismatchAdjustment": -0.73,
       "netRatingMargin": 2.99,
-      "winProbA": 0.6937,
-      "winProbB": 0.3063,
-      "fairMlA": -226,
-      "fairMlB": 226,
-      "avgGames": 5.74,
-      "spreadMinus1_5Prob": 0.505,
-      "sweepProb": 13.8,
+      "winProbA": 0.6545,
+      "winProbB": 0.3455,
+      "fairMlA": -189,
+      "fairMlB": 189,
+      "avgGames": 2.49,
+      "spreadMinus1_5Prob": 0.332,
+      "sweepProb": 50.6,
       "gameDistributions": [
         {
-          "games": 4,
+          "games": 2,
           "winner": "GS",
-          "probPct": 10.8
+          "probPct": 33.2
         },
         {
-          "games": 5,
+          "games": 3,
           "winner": "GS",
-          "probPct": 21.5
+          "probPct": 32.2
         },
         {
-          "games": 6,
-          "winner": "GS",
-          "probPct": 18.1
-        },
-        {
-          "games": 7,
-          "winner": "GS",
-          "probPct": 18.9
-        },
-        {
-          "games": 4,
+          "games": 2,
           "winner": "LA",
-          "probPct": 2.9
+          "probPct": 17.4
         },
         {
-          "games": 5,
+          "games": 3,
           "winner": "LA",
-          "probPct": 6
-        },
-        {
-          "games": 6,
-          "winner": "LA",
-          "probPct": 11.5
-        },
-        {
-          "games": 7,
-          "winner": "LA",
-          "probPct": 10.2
+          "probPct": 17.2
         }
       ],
       "tacticalEdges": [
@@ -2215,56 +2131,38 @@
       "teamA": "POR",
       "teamB": "TOR",
       "hcaTeam": "POR",
+      "format": "bo3",
+      "winThreshold": 2,
       "ratingDiffRaw": 1.55,
       "tacticalMismatchAdjustment": 0.44,
       "netRatingMargin": 1.99,
-      "winProbA": 0.6408,
-      "winProbB": 0.3592,
-      "fairMlA": -178,
-      "fairMlB": 178,
-      "avgGames": 5.78,
-      "spreadMinus1_5Prob": 0.448,
-      "sweepProb": 12.7,
+      "winProbA": 0.613,
+      "winProbB": 0.387,
+      "fairMlA": -158,
+      "fairMlB": 158,
+      "avgGames": 2.51,
+      "spreadMinus1_5Prob": 0.301,
+      "sweepProb": 49.1,
       "gameDistributions": [
         {
-          "games": 4,
+          "games": 2,
           "winner": "POR",
-          "probPct": 8.8
+          "probPct": 30.1
         },
         {
-          "games": 5,
+          "games": 3,
           "winner": "POR",
-          "probPct": 19.5
+          "probPct": 31.2
         },
         {
-          "games": 6,
-          "winner": "POR",
-          "probPct": 16.6
-        },
-        {
-          "games": 7,
-          "winner": "POR",
-          "probPct": 19.2
-        },
-        {
-          "games": 4,
+          "games": 2,
           "winner": "TOR",
-          "probPct": 3.9
+          "probPct": 19
         },
         {
-          "games": 5,
+          "games": 3,
           "winner": "TOR",
-          "probPct": 7.6
-        },
-        {
-          "games": 6,
-          "winner": "TOR",
-          "probPct": 13.5
-        },
-        {
-          "games": 7,
-          "winner": "TOR",
-          "probPct": 11
+          "probPct": 19.7
         }
       ],
       "tacticalEdges": [
@@ -2280,56 +2178,48 @@
       "teamA": "NY",
       "teamB": "CON",
       "hcaTeam": "NY",
+      "format": "bo5",
+      "winThreshold": 3,
       "ratingDiffRaw": 10.45,
       "tacticalMismatchAdjustment": 1.23,
       "netRatingMargin": 11.68,
-      "winProbA": 0.9712,
-      "winProbB": 0.0288,
-      "fairMlA": -3372,
-      "fairMlB": 3372,
-      "avgGames": 4.94,
-      "spreadMinus1_5Prob": 0.896,
-      "sweepProb": 39.5,
+      "winProbA": 0.9522,
+      "winProbB": 0.0478,
+      "fairMlA": -1992,
+      "fairMlB": 1992,
+      "avgGames": 3.62,
+      "spreadMinus1_5Prob": 0.818,
+      "sweepProb": 53.8,
       "gameDistributions": [
         {
+          "games": 3,
+          "winner": "NY",
+          "probPct": 53.4
+        },
+        {
           "games": 4,
           "winner": "NY",
-          "probPct": 39.3
+          "probPct": 28.4
         },
         {
           "games": 5,
           "winner": "NY",
-          "probPct": 35.4
+          "probPct": 13.5
         },
         {
-          "games": 6,
-          "winner": "NY",
-          "probPct": 15
-        },
-        {
-          "games": 7,
-          "winner": "NY",
-          "probPct": 7.5
-        },
-        {
-          "games": 4,
-          "winner": "CON",
-          "probPct": 0.2
-        },
-        {
-          "games": 5,
+          "games": 3,
           "winner": "CON",
           "probPct": 0.4
         },
         {
-          "games": 6,
+          "games": 4,
           "winner": "CON",
-          "probPct": 1.1
+          "probPct": 2
         },
         {
-          "games": 7,
+          "games": 5,
           "winner": "CON",
-          "probPct": 1.2
+          "probPct": 2.4
         }
       ],
       "tacticalEdges": [

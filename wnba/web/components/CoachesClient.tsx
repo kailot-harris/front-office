@@ -12,8 +12,8 @@ import {
   Search,
   Award,
   TrendingUp,
-  GitBranch,
   ChevronRight,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface CoachesClientProps {
@@ -21,19 +21,9 @@ interface CoachesClientProps {
 }
 
 export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => {
-  const [activeTab, setActiveTab] = useState<'tierboard' | 'scatter' | 'waterfall' | 'genealogy'>('tierboard');
+  const [activeTab, setActiveTab] = useState<'tierboard' | 'scatter' | 'waterfall'>('tierboard');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTree, setSelectedTree] = useState<string>('All');
   const [selectedCoach, setSelectedCoach] = useState<CoachingStaffMetric>(initialData[0] || null);
-
-  // Distinct coaching trees
-  const coachingTrees = useMemo(() => {
-    const trees = new Set<string>();
-    initialData.forEach((c) => {
-      if (c.headCoach.coachingTree) trees.add(c.headCoach.coachingTree);
-    });
-    return ['All', ...Array.from(trees).sort()];
-  }, [initialData]);
 
   // Filtered coaches
   const filteredCoaches = useMemo(() => {
@@ -42,15 +32,12 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
         const matchesSearch =
           c.headCoach.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           c.teamAbbr.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          c.teamName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          c.assistants.associateHC.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          c.assistants.offensiveCoord.toLowerCase().includes(searchTerm.toLowerCase());
+          c.teamName.toLowerCase().includes(searchTerm.toLowerCase());
 
-        const matchesTree = selectedTree === 'All' || c.headCoach.coachingTree === selectedTree;
-        return matchesSearch && matchesTree;
+        return matchesSearch;
       })
       .sort((a, b) => b.metrics.coachImpactRating - a.metrics.coachImpactRating);
-  }, [initialData, searchTerm, selectedTree]);
+  }, [initialData, searchTerm]);
 
   // Top KPI metrics
   const topCirCoach = useMemo(() => {
@@ -75,18 +62,18 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
             <div className="inline-flex items-center gap-2">
               <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                 <Briefcase className="w-3.5 h-3.5" />
-                <span>WNBA Tactical Staffs & System Impact</span>
+                <span>WNBA Head Coaches & Tactical Impact</span>
               </span>
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
                 2026 Season
               </span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
-              Coaching Staffs & Tactical Impact
+              Head Coaches & Tactical Impact
             </h1>
             <p className="text-sm sm:text-base text-slate-300">
-              Evaluate all 15 WNBA head coaches and coaching trees across After-Timeout (ATO)
-              efficiency, challenge leverage WPA, rotational staggering, and marginal win lift.
+              Evaluate all 15 WNBA head coaches across After-Timeout (ATO) play-by-play
+              efficiency, coach&apos;s challenge overturn rates, and marginal system win lift.
             </p>
           </div>
 
@@ -124,7 +111,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           }`}
         >
           <Award className="w-4 h-4" />
-          Coaching Tierboard (15 Staffs)
+          Coaching Tierboard (15 Head Coaches)
         </button>
 
         <button
@@ -150,18 +137,6 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           <TrendingUp className="w-4 h-4" />
           Talent-to-Wins Bridge
         </button>
-
-        <button
-          onClick={() => setActiveTab('genealogy')}
-          className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
-            activeTab === 'genealogy'
-              ? 'border-accent-600 bg-accent-600 text-white shadow-sm'
-              : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
-          }`}
-        >
-          <GitBranch className="w-4 h-4" />
-          Coaching Tree Genealogy
-        </button>
       </div>
 
       {/* TAB 1: TIERBOARD & PROFILES */}
@@ -173,7 +148,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <input
                 type="text"
-                placeholder="Search coach, assistant, or franchise..."
+                placeholder="Search head coach or franchise..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 bg-surface border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
@@ -181,18 +156,8 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
             </div>
 
             <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
-              <span>Coaching Tree:</span>
-              <select
-                value={selectedTree}
-                onChange={(e) => setSelectedTree(e.target.value)}
-                className="bg-surface border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-              >
-                {coachingTrees.map((tree) => (
-                  <option key={tree} value={tree}>
-                    {tree}
-                  </option>
-                ))}
-              </select>
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>PBP-Verified ATO & Challenge Metrics</span>
             </div>
           </div>
 
@@ -222,7 +187,10 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                             </span>
                           </div>
                           <p className="text-xs text-slate-400 truncate max-w-sm">
-                            {c.headCoach.tacticalArchetype}
+                            Since {c.headCoach.tenureStart} ({c.headCoach.tenureYears} yr
+                            {c.headCoach.tenureYears === 1 ? '' : 's'}) • ATO Off:{' '}
+                            {c.metrics.atoOffensivePpp.toFixed(3)} PPP (n=
+                            {c.metrics.atoOffPossessions})
                           </p>
                         </div>
                       </div>
@@ -272,14 +240,15 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                         {selectedCoach.headCoach.name}
                       </h2>
                       <p className="text-xs text-slate-400">
-                        {selectedCoach.teamName} • {selectedCoach.headCoach.tenureYears} yrs tenure
+                        {selectedCoach.teamName} • Appointed {selectedCoach.headCoach.tenureStart} (
+                        {selectedCoach.headCoach.tenureYears} yrs)
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="text-xs text-slate-400">Tree:</span>
+                    <span className="text-xs text-slate-400">Season:</span>
                     <div className="text-xs font-bold text-indigo-400">
-                      {selectedCoach.headCoach.coachingTree}
+                      {selectedCoach.headCoach.registrySeason}
                     </div>
                   </div>
                 </div>
@@ -291,28 +260,30 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                   size={260}
                 />
 
-                {/* Assistants Staff Box */}
+                {/* PBP Sample & Registry Provenance Box */}
                 <div className="p-3.5 bg-surface/60 rounded-lg border border-slate-800/80 space-y-2 text-xs">
                   <span className="text-[10px] uppercase font-bold text-slate-400 block">
-                    Bench Staff & Tactical Coordinators
+                    PBP Sample & Registry Provenance
                   </span>
                   <div className="grid grid-cols-2 gap-2 text-slate-300">
                     <div>
-                      <span className="text-slate-500 block text-[10px]">Associate HC</span>
-                      <span className="font-semibold">{selectedCoach.assistants.associateHC}</span>
+                      <span className="text-slate-500 block text-[10px]">ATO Off / Def Poss</span>
+                      <span className="font-semibold font-mono">
+                        {selectedCoach.metrics.atoOffPossessions} /{' '}
+                        {selectedCoach.metrics.atoDefPossessions}
+                      </span>
                     </div>
                     <div>
-                      <span className="text-slate-500 block text-[10px]">Offensive Coord</span>
-                      <span className="font-semibold">{selectedCoach.assistants.offensiveCoord}</span>
+                      <span className="text-slate-500 block text-[10px]">Challenge Overturn</span>
+                      <span className="font-semibold font-mono">
+                        {(selectedCoach.metrics.challengeSuccessRate * 100).toFixed(1)}% (n=
+                        {selectedCoach.metrics.challengeAttempts})
+                      </span>
                     </div>
-                    <div>
-                      <span className="text-slate-500 block text-[10px]">Defensive Coord</span>
-                      <span className="font-semibold">{selectedCoach.assistants.defensiveCoord}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 block text-[10px]">Player Dev Lead</span>
-                      <span className="font-semibold">{selectedCoach.assistants.playerDevLead}</span>
-                    </div>
+                  </div>
+                  <div className="pt-1 border-t border-slate-800/60 text-[10px] text-slate-400">
+                    <div>Source: {selectedCoach.headCoach.sourceCitation}</div>
+                    <div>Verified: {selectedCoach.headCoach.sourceVerifiedDate}</div>
                   </div>
                 </div>
               </div>
@@ -337,7 +308,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
 
           {/* Quick Selector Pills */}
           <div className="flex flex-wrap items-center gap-2 p-4 bg-surface-raised/40 rounded-xl border border-slate-800">
-            <span className="text-xs text-slate-400 font-semibold mr-2">Select Staff:</span>
+            <span className="text-xs text-slate-400 font-semibold mr-2">Select Head Coach:</span>
             {initialData.map((c) => (
               <button
                 key={c.teamAbbr}
@@ -353,60 +324,6 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
               </button>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* TAB 4: GENEALOGY */}
-      {activeTab === 'genealogy' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {coachingTrees
-            .filter((t) => t !== 'All')
-            .map((tree) => {
-              const disciples = initialData.filter((c) => c.headCoach.coachingTree === tree);
-              return (
-                <div
-                  key={tree}
-                  className="bg-surface-raised/60 border border-slate-800 rounded-xl p-5 space-y-4 hover:border-slate-700 transition-all"
-                >
-                  <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
-                    <GitBranch className="w-4 h-4 text-indigo-400" />
-                    <h3 className="font-bold text-white text-base">{tree} Tree</h3>
-                  </div>
-
-                  <div className="space-y-2">
-                    {disciples.map((disciple) => (
-                      <div
-                        key={disciple.teamAbbr}
-                        onClick={() => {
-                          setSelectedCoach(disciple);
-                          setActiveTab('tierboard');
-                        }}
-                        className="p-3 bg-surface/60 rounded-lg border border-slate-800/80 hover:border-indigo-500/40 cursor-pointer transition-all flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <TeamLogo team={disciple.teamAbbr} size="sm" />
-                          <div>
-                            <div className="text-xs font-bold text-white">
-                              {disciple.headCoach.name}
-                            </div>
-                            <div className="text-[10px] text-slate-400">
-                              {disciple.teamName} ({disciple.headCoach.tenureYears} yrs)
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="text-right">
-                          <span className="text-[10px] text-slate-400 block">CIR</span>
-                          <span className="text-xs font-bold text-indigo-400">
-                            {disciple.metrics.coachImpactRating}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
         </div>
       )}
     </div>

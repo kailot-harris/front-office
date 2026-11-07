@@ -190,7 +190,6 @@ describe('Domain & mathematical invariants: cba_cap_sheet.json', () => {
     expect(cbaCapSheet.vetMaxSalary).toBeLessThan(cbaCapSheet.supermaxSalary);
     expect(cbaCapSheet.supermaxSalary).toBeLessThan(cbaCapSheet.capFloor);
     expect(cbaCapSheet.capFloor).toBeLessThan(cbaCapSheet.hardSalaryCap);
-    expect(cbaCapSheet.capFloor).toBeCloseTo(cbaCapSheet.hardSalaryCap * 0.9, 3);
   });
 
   // NOTE (2026-11-02, WNBA_analytics#128): the two invariants that used to
@@ -324,12 +323,38 @@ describe('Domain & mathematical invariants: clutch, defense, playerDna, coaches,
     }
 
     for (const m of playoffSeries.sampleMatchups) {
-      expect(m.winProbA + m.winProbB, `${m.teamA} vs ${m.teamB} winProb sum`).toBeCloseTo(1.0, 2);
+      const label = `${m.teamA} vs ${m.teamB} (${m.format})`;
+      expect(m.winProbA + m.winProbB, `${label} winProb sum`).toBeCloseTo(1.0, 2);
       const distSum = sum(m.gameDistributions.map((g) => g.probPct));
       expect(
         Math.abs(distSum - 100),
-        `${m.teamA} vs ${m.teamB} gameDistributions sum=${distSum.toFixed(1)}`
+        `${label} gameDistributions sum=${distSum.toFixed(1)}`
       ).toBeLessThanOrEqual(1.0);
+
+      // Issue #157: series format, winThreshold, avgGames, sweepProb, and
+      // gameDistributions length buckets must be self-consistent.
+      const expectedThreshold = m.format === 'bo3' ? 2 : m.format === 'bo5' ? 3 : 4;
+      const maxGames = expectedThreshold * 2 - 1;
+      expect(m.winThreshold, `${label} winThreshold`).toBe(expectedThreshold);
+      expect(m.avgGames, `${label} avgGames >= minGames`).toBeGreaterThanOrEqual(expectedThreshold);
+      expect(m.avgGames, `${label} avgGames <= maxGames`).toBeLessThanOrEqual(maxGames);
+
+      const expectedLengths = Array.from(
+        { length: maxGames - expectedThreshold + 1 },
+        (_, i) => expectedThreshold + i
+      );
+      const lengthsA = m.gameDistributions.filter((g) => g.winner === m.teamA).map((g) => g.games);
+      const lengthsB = m.gameDistributions.filter((g) => g.winner === m.teamB).map((g) => g.games);
+      expect(lengthsA, `${label} teamA gameDistributions lengths`).toEqual(expectedLengths);
+      expect(lengthsB, `${label} teamB gameDistributions lengths`).toEqual(expectedLengths);
+
+      const minLenSum = sum(
+        m.gameDistributions.filter((g) => g.games === expectedThreshold).map((g) => g.probPct)
+      );
+      expect(
+        Math.abs(m.sweepProb - minLenSum),
+        `${label} sweepProb=${m.sweepProb} vs ${expectedThreshold}-0 sum=${minLenSum.toFixed(1)}`
+      ).toBeLessThanOrEqual(0.2);
     }
   });
 

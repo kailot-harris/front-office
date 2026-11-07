@@ -45,6 +45,7 @@ For each candidate transition, you must output a structured JSON object with:
 
 #' Generate Mock LLM structured response for benchmark / offline evaluation
 mock_llm_extract <- function(raw_text, date = NULL, source_url = NULL, baseline_state = NULL) {
+  warning("[MOCK MODE] mock_llm_extract invoked: returning synthetic offline evaluation deltas.", call. = FALSE)
   # Deterministic semantic parsing simulating LLM reasoning across tiers
   deltas <- list()
   
@@ -153,23 +154,83 @@ ollama_llm_extract <- function(raw_text, date = NULL, source_url = NULL, baselin
   deltas
 }
 
+# Alias for external callers expecting `extract_claims_mock`
+extract_claims_mock <- mock_llm_extract
+
 #' Extract deltas using LLM (or mock offline harness)
 extract_deltas_llm <- function(raw_text,
                                date = NULL,
                                source_url = NULL,
                                baseline_state = NULL,
-                               mock = TRUE,
+                               mock = FALSE,
                                api_key = Sys.getenv("GEMINI_API_KEY")) {
-  if (mock) {
+  if (isTRUE(mock)) {
+    warning("[MOCK MODE] extract_deltas_llm running with mock = TRUE; outputs are synthetic offline evaluation deltas and must not be written to production artifacts.", call. = FALSE)
     return(mock_llm_extract(raw_text, date, source_url, baseline_state))
   }
 
-  # Live mode: call local Ollama (gemma4:12b). Gracefully falls back to the
-  # offline mock extractor if the Ollama server is unreachable or errors.
+  # Live mode: call local Ollama (qwen3.5:4b). Never fall back to synthetic mock
+  # extraction in production mode; if the LLM backend is unreachable or errors,
+  # log a warning and return an empty list.
   tryCatch({
     ollama_llm_extract(raw_text, date, source_url, baseline_state)
   }, error = function(e) {
-    warning("Ollama LLM extraction failed, falling back to offline evaluator: ", e$message)
-    mock_llm_extract(raw_text, date, source_url, baseline_state)
+    warning(
+      "Live LLM extraction failed or no LLM backend reachable (mock = FALSE; refusing to fall back to synthetic mock extractor): ",
+      e$message,
+      call. = FALSE
+    )
+    list()
   })
+}
+
+#' Extract claims from normalized raw items (batch entrypoint, defaults mock = FALSE)
+extract_claims_from_raw <- function(raw_items,
+                                    mock = FALSE,
+                                    baseline_state = NULL,
+                                    api_key = Sys.getenv("GEMINI_API_KEY")) {
+  if (isTRUE(mock)) {
+    warning("[MOCK MODE] extract_claims_from_raw running with mock = TRUE; outputs are synthetic offline evaluation claims.", call. = FALSE)
+  }
+  if (is.null(baseline_state)) {
+    baseline_path <- file.path("cache", "league_state_baseline.json")
+    if (file.exists(baseline_path)) {
+      baseline_state <- tryCatch(
+        jsonlite::fromJSON(baseline_path, simplifyVector = FALSE),
+        error = function(e) NULL
+      )
+    }
+  }
+  all_deltas <- list()
+  for (item in raw_items) {
+    txt <- if (is.list(item)) {
+      if (!is.null(item$raw_text)) item$raw_text else if (!is.null(item$text)) item$text else ""
+    } else {
+      as.character(item)
+    }
+    dt <- if (is.list(item)) {
+      if (!is.null(item$event_date)) item$event_date else item$date
+    } else {
+      NULL
+    }
+    url <- if (is.list(item)) {
+      if (!is.null(item$source_url)) item$source_url else item$url
+    } else {
+      NULL
+    }
+    if (nzchar(trimws(txt))) {
+      item_deltas <- extract_deltas_llm(
+        raw_text = txt,
+        date = dt,
+        source_url = url,
+        baseline_state = baseline_state,
+        mock = mock,
+        api_key = api_key
+      )
+      if (length(item_deltas) > 0) {
+        all_deltas <- c(all_deltas, item_deltas)
+      }
+    }
+  }
+  all_deltas
 }

@@ -397,10 +397,10 @@ build_prediction <- function(provenance, provenance_label, rating_basis, as_of, 
   )
 }
 
-# `%||%` here is jsonlite/rlang's null-coalescing operator, NOT app.R's scalar
-# NA-coalescing redefinition (CLAUDE.md flags that one as vector-unsafe). Defined
-# locally so this script does not depend on which of the two is in scope.
-`%||%` <- function(a, b) if (is.null(a) || length(a) == 0 || (length(a) == 1 && is.na(a))) b else a
+# ISSUE #153 / M-6: `%||%` comes from logging_utils.R (already sourced via
+# tools/series_length_predictor.R -> playoff_simulator.R -> logging_utils.R above);
+# guarded here so there is a single canonical definition repo-wide.
+if (!exists("log_info", mode = "function") && file.exists("logging_utils.R")) source("logging_utils.R")
 
 # ------------------------------------------------------------------------------
 # Main entry point.

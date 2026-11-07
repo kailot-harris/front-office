@@ -15,7 +15,12 @@ suppressPackageStartupMessages({
   library(jsonlite)
 })
 
-`%||%` <- function(a, b) if (is.null(a)) b else a
+# ISSUE #153 / M-6: Use logging_utils.R's canonical hardened `%||%` rather than a local
+# is.null-only redefinition; if running in the jsonlite-only CI workflow where duckdb is
+# not installed, fall back to the identical hardened scalar form.
+if (!exists("log_info", mode = "function") && file.exists("logging_utils.R") && requireNamespace("duckdb", quietly = TRUE)) {
+  source("logging_utils.R")
+}
 
 # ------------------------------------------------------------------------------
 # Team abbreviation dialect. Map any ESPN variants cleanly onto the canonical

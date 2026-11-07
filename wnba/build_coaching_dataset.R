@@ -2,16 +2,41 @@
 # build_coaching_dataset.R
 # Path: build_coaching_dataset.R
 #
-# Compiles official 15-team WNBA coaching staff registries, authentic ATO
+# Compiles official 15-team WNBA head coach registries, authentic ATO
 # (After-Timeout) execution metrics from play-by-play possessions, authentic
 # coach's challenge leverage, talent vs system win residuals, and composite
 # Coach Impact Ratings (CIR).
 #
-# Rectified under Issue #135 / Epic #138:
-#   - Purged all random tactical draws.
-#   - Eliminated synthetic career games and win percentages.
-#   - Replaced placeholder staff entries with authentic personnel.
-#   - Derived ATO PPP and challenge overturn rates directly from real PBP cache.
+# Rectified under Issue #135 / #145 / #151 (Epic #138):
+#   - Zero random uniform draws, normal draws, fixed seeds, or synthetic placeholder strings.
+#   - Issue #145 — 6-Metric Derivability Classification Table:
+#     +----------------------------+-------------------------------------------+-----------------------------------------------------------------+
+#     | Original Metric (#145)     | Status                                    | PBP Derivation / Removal Rationale                              |
+#     +----------------------------+-------------------------------------------+-----------------------------------------------------------------+
+#     | 1. ato_ppp                 | DERIVED (ato_off_ppp, ato_def_ppp_allowed)| Derived from cache/wnba_pbp_cache.rds ($possessions) where      |
+#     |                            |                                           | possession_start_type == "OffTimeout" & count_as_possession;    |
+#     |                            |                                           | reports points/possession and sample counts (ato_off_poss,      |
+#     |                            |                                           | ato_def_poss).                                                  |
+#     | 2. challenge_success       | DERIVED (challenge_success,               | Derived from cache/wnba_espn_pbp_cache.rds ($text matching      |
+#     |                            |   challenge_attempts)                     | "coach's challenge" & "call overturned|overturned"); reports    |
+#     |                            |                                           | overturn rate and sample count (challenge_attempts).            |
+#     | 3. ato_win_pct             | REMOVED (underivable / redundant)         | Single-possession ATO outcomes are measured by PPP (ato_ppp),   |
+#     |                            |                                           | not a binary win/loss percentage; removed per #145 decision rule|
+#     | 4. rotation_stability      | REMOVED (underivable / uncalibrated proxy)| Former stagger_score / rotation_stability had no validated PBP  |
+#     |                            |                                           | substitution counter-model; removed rather than shipping a proxy|
+#     | 5. lineup_adaptability     | REMOVED (underivable counterfactual)      | Former sq_lift / lineup_adaptability requires an unobservable   |
+#     |                            |                                           | coaching scheme counterfactual; removed per #145 decision rule. |
+#     | 6. fourth_q_adj_efficiency | REMOVED (underivable from single-season   | Former dev_score / fourth_q_adj_efficiency was a synthetic draw |
+#     |                            |   coaching PBP without confounders)       | not separable from roster talent; removed per #145 rule.        |
+#     +----------------------------+-------------------------------------------+-----------------------------------------------------------------+
+#   - Issue #151 — Coaching Registry Sourcing & Field Classification:
+#     * KEPT & SOURCED: team_abbr, team_name, head_coach, tenure_start, tenure_years,
+#       registry_season = 2026L, source_citation, source_verified_date.
+#     * REMOVED: career_games, career_win_pct (previously 44 * tenure_years arithmetic),
+#       assoc_head_coach, offensive_coord, defensive_coord, player_dev_lead (unsourced /
+#       duplicated assistant names across franchises), coaching_tree, tactical_archetype.
+#     * STALENESS CHECK: Logs a warning via warning() / log_warn() whenever
+#       CURRENT_SEASON > registry_season (2026L).
 #
 # Generates:
 #   - web/public/data/coaching_metrics.json (Next.js public data)
@@ -29,35 +54,58 @@ suppressPackageStartupMessages({
 # Source global configuration
 config_path <- if (file.exists("config.R")) "config.R" else "../config.R"
 source(config_path)
+if (file.exists("logging_utils.R")) source("logging_utils.R")
 
-cat(">>> [COACHING ENGINE] Initializing 15-Team WNBA Coaching Staff Registry & Analytics...\n")
+cat(">>> [COACHING ENGINE] Initializing 15-Team WNBA Coaching Registry & Analytics...\n")
 
 # Ensure cache directory exists
 if (!dir.exists(CACHE_DIR)) dir.create(CACHE_DIR, recursive = TRUE)
 
 # ------------------------------------------------------------------------------
-# 1. Official 15-Team WNBA Coaching Staff Registry (2026 Landscape)
+# 1. Official 15-Team WNBA Head Coach Registry (2026 Landscape — Issue #151)
 # ------------------------------------------------------------------------------
-cat(">>> Building official 15-team WNBA coaching staff registry (2026 season)...\n")
+cat(">>> Building official 15-team WNBA head coach registry (2026 season)...\n")
+
+REGISTRY_SEASON <- 2026L
+REGISTRY_SOURCE_CITATION <- "WNBA.com Official Team Directories & Basketball-Reference WNBA Head Coach Register (2026 Season)"
+REGISTRY_VERIFIED_DATE <- "2026-11-07"
+
+# Staleness guard (Issue #151): warn if CURRENT_SEASON advances past the verified registry season
+if (exists("CURRENT_SEASON") && as.integer(CURRENT_SEASON) > REGISTRY_SEASON) {
+  stale_msg <- sprintf(
+    "build_coaching_dataset.R: coaching_registry_raw is pinned to registry_season = %d, but CURRENT_SEASON = %d. Re-verify head coaches and tenure_start against official WNBA team directories.",
+    REGISTRY_SEASON, as.integer(CURRENT_SEASON)
+  )
+  warning(stale_msg, call. = FALSE)
+  if (exists("log_warn")) {
+    log_warn(stale_msg, script = "build_coaching_dataset.R")
+  }
+}
 
 coaching_registry_raw <- tribble(
-  ~team_abbr, ~team_name, ~head_coach, ~tenure_years, ~coaching_tree, ~assoc_head_coach, ~offensive_coord, ~defensive_coord, ~player_dev_lead, ~tactical_archetype,
-  "ATL", "Atlanta Dream",          "Karl Smesko",       2, "FGCU / Modern Analytics",  "Kelly Schumacher", "Chelsea Lyles",     "Vickie Johnson",   "Daynia La-Force",  "Spread-and-Rake 3-Point Analytics, 5-Out Inverted Drives & Aggressive Closeouts",
-  "CHI", "Chicago Sky",            "Tyler Marsh",       2, "Becky Hammon",             "Crystal Robinson", "Tanisha Wright",    "Ty Ellis",         "Courtney Paris",   "Relentless Glass Crash, High-Energy Physical Trapping & Post Isolation",
-  "CON", "Connecticut Sun",        "Rachid Meziane",    2, "European Modern / Belgium","Roneeka Hodges",   "Pascal Angillis",   "Maxence Broyer",   "Camille Le Noir",  "Physical Attrition, Smothering Nail Help & High-Leverage Post Feeds",
-  "DAL", "Dallas Wings",           "Jose Fernandez",    1, "South Florida (USF)",      "Brandi Poole",     "Courtney Paris",    "Zak Bross",        "April Phillips",   "Double-Big High-Low Feeds, Interior Rim Protection & Fast Break Flow",
-  "GS",  "Golden State Valkyries", "Natalie Nakase",    2, "Becky Hammon",             "Kelly Schumacher", "Brian Agler",       "Danielle McCray",  "Brittany Boyd",    "Pace-and-Space Spread Motion, Paige Bueckers PnR Hub & Switch Defense",
-  "IND", "Indiana Fever",          "Stephanie White",   4, "Lin Dunn",                 "Briann January",   "Austin Kelly",      "Paul Goriss",      "Karima Christmas", "Turbo-Pace 7-Second Transition, Caitlin Clark Deep Drag Screens & Spaced Floor",
-  "LA",  "Los Angeles Sparks",     "Lynne Roberts",     2, "Utah / Modern Pace & Space","Gavin Petersen",  "Camille Smith",     "Steve Smith",      "Danielle Viglione","Ultra-High Pace Spread Offense, Early Clock 3s & Dynamic Transition Flow",
-  "LV",  "Las Vegas Aces",         "Becky Hammon",      5, "Gregg Popovich",           "Charlene Thomas",  "Sugar Rodgers",     "Larry Blunt",      "Tora Suber",       "Pace-and-Space Spread PnR, Relentless Rim Pressure & Aggressive Blitz",
-  "MIN", "Minnesota Lynx",         "Cheryl Reeve",     17, "Anne Donovan",             "Katie Smith",      "Rebekkah Brunson",  "Elaine Powell",    "Michael Brown",    "High-Post Pinch Hub, Cutters Continuity & Physical Lockdown Containment",
-  "NY",  "New York Liberty",       "Chris DeMarco",     1, "Steve Kerr / Golden State", "Olaf Lange",       "Courtney Paris",    "Zach O'Brien",     "Jack Murphy",      "5-Out Motion Spacing, High-PPO DHO Triggers & Drop-Deterrence",
-  "PHX", "Phoenix Mercury",        "Nate Tibbetts",     3, "Mark Daigneault",          "Kristi Toliver",   "Michael Joiner",    "Megan Vogel",      "Cory McRae",       "Modern NBA 5-Out Drive-and-Kick, Corner Spacing & High Pick Roll Blitz",
-  "POR", "Portland Fire",          "Alex Sarama",       1, "European Constraints-Led", "Alex Jensen",      "Brittni Donaldson", "Ryan Saunders",    "Marcus Davis",     "European Flow Motion, DHO Triggers & Tactical Late-Clock Discipline",
-  "SEA", "Seattle Storm",          "Sonia Raman",       1, "Tara VanDerveer / MIT",    "Pokey Chatman",    "Perry Huang",       "Ebony Hoffman",    "Kyle Reese",       "Spread 4-Out Pick-and-Roll, Early Clock 3s & Wing Switchability",
-  "TOR", "Toronto Tempo",          "Sandy Brondello",   1, "Australian National Team", "Lisa Thomaidis",   "Carly Clarke",      "Fabian McKenzie",  "Roy Rana",         "High-IQ .5-Second Decision Flow, Perimeter Ball Pressure & Multi-Position Wings",
-  "WSH", "Washington Mystics",     "Sydney Johnson",    2, "Princeton / Pete Carril",  "LaToya Sanders",   "Shelley Patterson", "Ashlee McGee",     "Drew Johnson",     "Flow Motion Read-and-React, Backdoor Cutting & Perimeter Containment"
-)
+  ~team_abbr, ~team_name,               ~head_coach,        ~tenure_start,
+  "ATL",      "Atlanta Dream",          "Karl Smesko",      2025L,
+  "CHI",      "Chicago Sky",            "Tyler Marsh",      2025L,
+  "CON",      "Connecticut Sun",        "Rachid Meziane",   2025L,
+  "DAL",      "Dallas Wings",           "Jose Fernandez",   2026L,
+  "GS",       "Golden State Valkyries", "Natalie Nakase",   2025L,
+  "IND",      "Indiana Fever",          "Stephanie White",  2023L,
+  "LA",       "Los Angeles Sparks",     "Lynne Roberts",    2025L,
+  "LV",       "Las Vegas Aces",         "Becky Hammon",     2022L,
+  "MIN",      "Minnesota Lynx",         "Cheryl Reeve",     2010L,
+  "NY",       "New York Liberty",       "Chris DeMarco",    2026L,
+  "PHX",      "Phoenix Mercury",        "Nate Tibbetts",    2024L,
+  "POR",      "Portland Fire",          "Alex Sarama",      2026L,
+  "SEA",      "Seattle Storm",          "Sonia Raman",      2026L,
+  "TOR",      "Toronto Tempo",          "Sandy Brondello",  2026L,
+  "WSH",      "Washington Mystics",     "Sydney Johnson",   2025L
+) %>%
+  mutate(
+    registry_season = REGISTRY_SEASON,
+    tenure_years = as.integer(REGISTRY_SEASON - tenure_start + 1L),
+    source_citation = REGISTRY_SOURCE_CITATION,
+    source_verified_date = REGISTRY_VERIFIED_DATE
+  )
 
 # ------------------------------------------------------------------------------
 # 2. Derive Authentic In-Game Metrics from PBP Possessions & Challenge Events
@@ -72,7 +120,7 @@ stats_team_map <- c(
   "1611661330" = "ATL", "1611661331" = "GS",  "1611661332" = "TOR"
 )
 
-# 2a. ATO Points Per Possession from real possessions cache
+# 2a. ATO Points Per Possession & sample counts from real possessions cache
 pbp_cache_file <- file.path(CACHE_DIR, "wnba_pbp_cache.rds")
 ato_df <- NULL
 
@@ -90,19 +138,27 @@ if (file.exists(pbp_cache_file)) {
     off_ato <- ato_poss %>%
       filter(!is.na(off_team)) %>%
       group_by(off_team) %>%
-      summarise(ato_off_ppp = round(sum(points) / n(), 3), .groups = "drop")
+      summarise(
+        ato_off_poss = as.integer(n()),
+        ato_off_ppp = round(sum(points) / n(), 3),
+        .groups = "drop"
+      )
     
     def_ato <- ato_poss %>%
       filter(!is.na(def_team)) %>%
       group_by(def_team) %>%
-      summarise(ato_def_ppp_allowed = round(sum(points) / n(), 3), .groups = "drop")
+      summarise(
+        ato_def_poss = as.integer(n()),
+        ato_def_ppp_allowed = round(sum(points) / n(), 3),
+        .groups = "drop"
+      )
     
     ato_df <- full_join(off_ato, def_ato, by = c("off_team" = "def_team")) %>%
       rename(team_abbr = off_team)
   }
 }
 
-# 2b. Challenge Overturn Rates from ESPN PBP cache
+# 2b. Challenge Overturn Rates & sample counts from ESPN PBP cache
 espn_cache_file <- file.path(CACHE_DIR, "wnba_espn_pbp_cache.rds")
 ch_df <- NULL
 
@@ -128,24 +184,27 @@ if (file.exists(espn_cache_file)) {
     WSH = c("mystics", "washington", "wsh")
   )
   
-  ch_list <- list()
+  ch_rate_list <- list()
+  ch_attempts_list <- list()
   for (tm in names(team_keywords)) {
     kw <- paste(team_keywords[[tm]], collapse = "|")
     idx <- which(grepl(paste0("\\[.*(", kw, ").*\\]|(", kw, ").*coach's challenge"), tolower(ch_rows$text)))
+    ch_attempts_list[[tm]] <- as.integer(length(idx))
     if (length(idx) >= 5) {
       sub <- ch_rows[idx, ]
       overturned <- sum(grepl("call overturned|overturned", tolower(sub$text)))
-      ch_list[[tm]] <- round(overturned / nrow(sub), 3)
+      ch_rate_list[[tm]] <- round(overturned / nrow(sub), 3)
     } else {
-      # Fallback to overall league overturn rate if under threshold
+      # Fallback to overall league overturn rate if under 5-attempt threshold
       overall_overturned <- sum(grepl("call overturned|overturned", tolower(ch_rows$text)))
-      ch_list[[tm]] <- round(overall_overturned / nrow(ch_rows), 3)
+      ch_rate_list[[tm]] <- round(overall_overturned / nrow(ch_rows), 3)
     }
   }
   
   ch_df <- tibble(
-    team_abbr = names(ch_list),
-    challenge_success = unlist(ch_list)
+    team_abbr = names(ch_rate_list),
+    challenge_attempts = unlist(ch_attempts_list),
+    challenge_success = unlist(ch_rate_list)
   )
 }
 
@@ -163,16 +222,38 @@ compute_wnba_coaching_metrics <- function(reg) {
   
   # Join authentic ATO metrics
   if (!is.null(ato_df)) {
-    metrics_df <- metrics_df %>% left_join(ato_df, by = "team_abbr")
+    metrics_df <- metrics_df %>%
+      left_join(ato_df, by = "team_abbr") %>%
+      mutate(
+        ato_off_poss = coalesce(ato_off_poss, 0L),
+        ato_def_poss = coalesce(ato_def_poss, 0L),
+        ato_off_ppp = coalesce(ato_off_ppp, 0.980),
+        ato_def_ppp_allowed = coalesce(ato_def_ppp_allowed, 0.980)
+      )
   } else {
-    metrics_df <- metrics_df %>% mutate(ato_off_ppp = 0.980, ato_def_ppp_allowed = 0.980)
+    metrics_df <- metrics_df %>%
+      mutate(
+        ato_off_poss = 0L,
+        ato_def_poss = 0L,
+        ato_off_ppp = 0.980,
+        ato_def_ppp_allowed = 0.980
+      )
   }
   
   # Join authentic challenge metrics
   if (!is.null(ch_df)) {
-    metrics_df <- metrics_df %>% left_join(ch_df, by = "team_abbr")
+    metrics_df <- metrics_df %>%
+      left_join(ch_df, by = "team_abbr") %>%
+      mutate(
+        challenge_attempts = coalesce(challenge_attempts, 0L),
+        challenge_success = coalesce(challenge_success, 0.400)
+      )
   } else {
-    metrics_df <- metrics_df %>% mutate(challenge_success = 0.400)
+    metrics_df <- metrics_df %>%
+      mutate(
+        challenge_attempts = 0L,
+        challenge_success = 0.400
+      )
   }
   
   # Join model projections
@@ -219,20 +300,16 @@ compute_wnba_coaching_metrics <- function(reg) {
   for (i in seq_len(nrow(metrics_df))) {
     row <- metrics_df[i, ]
     metrics_list[[i]] <- list(
-      season = 2026,
+      season = row$registry_season,
       teamAbbr = row$team_abbr,
       teamName = row$team_name,
       headCoach = list(
         name = row$head_coach,
+        tenureStart = row$tenure_start,
         tenureYears = row$tenure_years,
-        coachingTree = row$coaching_tree,
-        tacticalArchetype = row$tactical_archetype
-      ),
-      assistants = list(
-        associateHC = row$assoc_head_coach,
-        offensiveCoord = row$offensive_coord,
-        defensiveCoord = row$defensive_coord,
-        playerDevLead = row$player_dev_lead
+        registrySeason = row$registry_season,
+        sourceCitation = row$source_citation,
+        sourceVerifiedDate = row$source_verified_date
       ),
       metrics = list(
         coachImpactRating = cir_vec[i],
@@ -241,7 +318,10 @@ compute_wnba_coaching_metrics <- function(reg) {
         coachingWinsAdded = row$coaching_wins_added,
         atoOffensivePpp = row$ato_off_ppp,
         atoDefensivePppAllowed = row$ato_def_ppp_allowed,
-        challengeSuccessRate = row$challenge_success
+        challengeSuccessRate = row$challenge_success,
+        atoOffPossessions = row$ato_off_poss,
+        atoDefPossessions = row$ato_def_poss,
+        challengeAttempts = row$challenge_attempts
       ),
       radarPercentiles = list(
         atoMastery = p_ato_vec[i],

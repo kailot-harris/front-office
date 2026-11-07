@@ -18,6 +18,11 @@ suppressPackageStartupMessages({
 
 source("config.R")
 if (file.exists("logging_utils.R")) source("logging_utils.R")
+# ISSUE #157: Source PLAYOFF_FORMATS from playoff_simulator.R (without auto-running
+# its 30,000-series demo) so marquee-matchup simulations use the single canonical
+# format table rather than hardcoding bo7 flags and thresholds.
+Sys.setenv(WNBA_PLAYOFF_SIM_NO_AUTORUN = "1")
+if (!exists("PLAYOFF_FORMATS")) source("playoff_simulator.R")
 
 WNBA_TEAM_METADATA <- list(
   ATL = list(id = 20, name = "Dream", fullName = "Atlanta Dream", conf = "East", div = "Eastern"),
@@ -422,10 +427,28 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
         proj_pts = round(coalesce(avg_pts, 7.5), 1),
         proj_reb = round(coalesce(avg_reb, 3.2), 1),
         proj_ast = round(coalesce(avg_ast, 1.8), 1),
-        # Games played out of WNBA_SEASON_GAMES -- derived from real career_games-based
+        # Games played out of WNBA_SEASON_GAMES -- derived from real season_games-based
         # games_rate (see player_stats build above), with a deterministic mpg-based fallback
         # (the pre-existing heuristic, minus its random jitter) only for players with no
         # sample at all. No RNG.
+        # NOTE (issue #149 / #158): games_sd and games_p10/p25/p75/p90 were removed in #149
+        # (commit 21b1c5b) because the prior export fabricated games_sd via a uniform random draw
+        # over [2.5, 5.5] and derived quantiles from that synthetic SD. In #158 we evaluated
+        # re-deriving a games-played availability band and confirmed the removal stands:
+        #   1. A player's games-played variance is governed by discrete availability shocks
+        #      (contiguous multi-game injury absences, trades, waivers, and rotation changes),
+        #      not the game-to-game performance process modeled by sd_pts / sd_reb / sd_ast.
+        #   2. A single-season Beta-Binomial interval on (season_games, league_max_games)
+        #      treats 44 correlated daily availability states as i.i.d. Bernoulli trials,
+        #      severely understating multi-week injury spell variance, while cross-season
+        #      games-played SDs conflate role transitions and roster cuts with injury risk.
+        #   3. Caveat on proj_*_total: proj_min_total, proj_pts_total, proj_reb_total, and
+        #      proj_ast_total below are deterministic products (round(proj_games * proj_*, 1))
+        #      conditional on point-estimate proj_games; they inherit unmodeled availability
+        #      variance and intentionally carry no total-stat uncertainty band.
+        #   4. Note on per-game quantiles below: pts/reb/ast p10..p90 apply a 0.4 shrinkage
+        #      multiplier to single-game SD (e.g., 1.28 * pts_sd * 0.4) to approximate
+        #      season-average rate uncertainty rather than single-game dispersion.
         proj_games_floor = pmin(WNBA_SEASON_GAMES - 1, pmax(25, 38.5 + (proj_mpg - 20) * 0.15)),
         proj_games = round(pmin(WNBA_SEASON_GAMES, pmax(1,
           coalesce(games_rate * WNBA_SEASON_GAMES, proj_games_floor))), 1),
@@ -806,10 +829,18 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
     )
   }
 
-  simulate_web_matchup <- function(team_a_code, team_b_code, hca_team_code, profiles, n_sims = 10000) {
+  simulate_web_matchup <- function(team_a_code, team_b_code, hca_team_code, profiles, format = "bo7", n_sims = 10000) {
     p_a <- profiles[[team_a_code]]
     p_b <- profiles[[team_b_code]]
     if (is.null(p_a) || is.null(p_b)) return(NULL)
+    if (!format %in% names(PLAYOFF_FORMATS)) {
+      stop(sprintf("Unknown playoff format '%s' -- must be one of: %s", format, paste(names(PLAYOFF_FORMATS), collapse = ", ")))
+    }
+    fmt <- PLAYOFF_FORMATS[[format]]
+    home_flags    <- fmt$home_flags
+    win_threshold <- as.integer(fmt$win_threshold)
+    min_games     <- win_threshold
+    max_games     <- as.integer(win_threshold * 2L - 1L)
 
     raw_diff <- p_a$playoffNetRtg - p_b$playoffNetRtg
     edges <- list()
@@ -859,16 +890,16 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
     net_margin <- round(raw_diff + mismatch_delta, 2)
     hca_pts <- WNBA_HCA
     hca_is_a <- (hca_team_code == team_a_code)
-    home_hca_flags <- c(TRUE, TRUE, FALSE, FALSE, TRUE, FALSE, TRUE)
     sigma <- WNBA_MARGIN_SIGMA
 
     p_a_home <- pnorm((net_margin + hca_pts) / sigma)
     p_a_away <- pnorm((net_margin - hca_pts) / sigma)
 
     sim_a_wins <- 0
-    game_counts <- list(
-      "A_4" = 0, "A_5" = 0, "A_6" = 0, "A_7" = 0,
-      "B_4" = 0, "B_5" = 0, "B_6" = 0, "B_7" = 0
+    possible_lengths <- seq.int(min_games, max_games)
+    game_counts <- setNames(
+      as.list(rep(0L, length(possible_lengths) * 2L)),
+      c(paste0("A_", possible_lengths), paste0("B_", possible_lengths))
     )
     total_games <- 0
     cover_minus_1_5 <- 0
@@ -876,30 +907,30 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
     set.seed(42 + which(names(profiles) == team_a_code) * 7 + which(names(profiles) == team_b_code))
 
     for (s in seq_len(n_sims)) {
-      w_a <- 0
-      w_b <- 0
-      g <- 1
-      while (w_a < 4 && w_b < 4) {
-        is_hca_home <- home_hca_flags[g]
+      w_a <- 0L
+      w_b <- 0L
+      g <- 1L
+      while (w_a < win_threshold && w_b < win_threshold) {
+        is_hca_home <- home_flags[g]
         is_a_home <- if (hca_is_a) is_hca_home else !is_hca_home
         prob_a <- if (is_a_home) p_a_home else p_a_away
         if (runif(1) < prob_a) {
-          w_a <- w_a + 1
+          w_a <- w_a + 1L
         } else {
-          w_b <- w_b + 1
+          w_b <- w_b + 1L
         }
-        g <- g + 1
+        g <- g + 1L
       }
       tot_g <- w_a + w_b
       total_games <- total_games + tot_g
-      if (w_a == 4) {
+      if (w_a == win_threshold) {
         sim_a_wins <- sim_a_wins + 1
         k <- paste0("A_", tot_g)
-        game_counts[[k]] <- game_counts[[k]] + 1
-        if (tot_g <= 6) cover_minus_1_5 <- cover_minus_1_5 + 1
+        game_counts[[k]] <- game_counts[[k]] + 1L
+        if (tot_g <= (max_games - 1L)) cover_minus_1_5 <- cover_minus_1_5 + 1
       } else {
         k <- paste0("B_", tot_g)
-        game_counts[[k]] <- game_counts[[k]] + 1
+        game_counts[[k]] <- game_counts[[k]] + 1L
       }
     }
 
@@ -908,21 +939,24 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
     fair_ml_a <- if (win_prob_a >= 0.5) round(-100 * win_prob_a / (1 - win_prob_a)) else round(100 * (1 - win_prob_a) / win_prob_a)
     fair_ml_b <- if (win_prob_b >= 0.5) round(-100 * win_prob_b / (1 - win_prob_b)) else round(100 * (1 - win_prob_b) / win_prob_b)
 
-    dist_list <- list(
-      list(games = 4, winner = team_a_code, probPct = round(game_counts$A_4 / n_sims * 100, 1)),
-      list(games = 5, winner = team_a_code, probPct = round(game_counts$A_5 / n_sims * 100, 1)),
-      list(games = 6, winner = team_a_code, probPct = round(game_counts$A_6 / n_sims * 100, 1)),
-      list(games = 7, winner = team_a_code, probPct = round(game_counts$A_7 / n_sims * 100, 1)),
-      list(games = 4, winner = team_b_code, probPct = round(game_counts$B_4 / n_sims * 100, 1)),
-      list(games = 5, winner = team_b_code, probPct = round(game_counts$B_5 / n_sims * 100, 1)),
-      list(games = 6, winner = team_b_code, probPct = round(game_counts$B_6 / n_sims * 100, 1)),
-      list(games = 7, winner = team_b_code, probPct = round(game_counts$B_7 / n_sims * 100, 1))
+    dist_list <- c(
+      lapply(possible_lengths, function(len) {
+        list(games = as.integer(len), winner = team_a_code, probPct = round(game_counts[[paste0("A_", len)]] / n_sims * 100, 1))
+      }),
+      lapply(possible_lengths, function(len) {
+        list(games = as.integer(len), winner = team_b_code, probPct = round(game_counts[[paste0("B_", len)]] / n_sims * 100, 1))
+      })
     )
+
+    sweep_key_a <- paste0("A_", min_games)
+    sweep_key_b <- paste0("B_", min_games)
 
     list(
       teamA                      = team_a_code,
       teamB                      = team_b_code,
       hcaTeam                    = hca_team_code,
+      format                     = format,
+      winThreshold               = win_threshold,
       ratingDiffRaw              = round(raw_diff, 2),
       tacticalMismatchAdjustment = round(mismatch_delta, 2),
       netRatingMargin            = net_margin,
@@ -932,28 +966,31 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
       fairMlB                    = fair_ml_b,
       avgGames                   = round(total_games / n_sims, 2),
       spreadMinus1_5Prob         = round(cover_minus_1_5 / n_sims, 3),
-      sweepProb                  = round((game_counts$A_4 + game_counts$B_4) / n_sims * 100, 1),
+      sweepProb                  = round((game_counts[[sweep_key_a]] + game_counts[[sweep_key_b]]) / n_sims * 100, 1),
       gameDistributions          = dist_list,
       tacticalEdges              = edges
     )
   }
 
+  # ISSUE #157: Each marquee pairing carries its explicit postseason round format
+  # (bo3 First Round, bo5 Semifinals, bo7 WNBA Finals) matching PLAYOFF_FORMATS
+  # in playoff_simulator.R and the quick-select buttons in PlayoffSeriesClient.tsx.
   marquee_pairs <- list(
-    list(a = "NY",  b = "MIN", hca = "NY"),
-    list(a = "LV",  b = "NY",  hca = "LV"),
-    list(a = "MIN", b = "LV",  hca = "MIN"),
-    list(a = "IND", b = "CHI", hca = "IND"),
-    list(a = "CON", b = "IND", hca = "CON"),
-    list(a = "SEA", b = "LV",  hca = "LV"),
-    list(a = "PHX", b = "MIN", hca = "MIN"),
-    list(a = "GS",  b = "LA",  hca = "GS"),
-    list(a = "POR", b = "TOR", hca = "POR"),
-    list(a = "NY",  b = "CON", hca = "NY")
+    list(a = "NY",  b = "MIN", hca = "NY",  format = "bo7"),
+    list(a = "LV",  b = "NY",  hca = "LV",  format = "bo7"),
+    list(a = "MIN", b = "LV",  hca = "MIN", format = "bo5"),
+    list(a = "IND", b = "CHI", hca = "IND", format = "bo3"),
+    list(a = "CON", b = "IND", hca = "CON", format = "bo5"),
+    list(a = "SEA", b = "LV",  hca = "LV",  format = "bo3"),
+    list(a = "PHX", b = "MIN", hca = "MIN", format = "bo3"),
+    list(a = "GS",  b = "LA",  hca = "GS",  format = "bo3"),
+    list(a = "POR", b = "TOR", hca = "POR", format = "bo3"),
+    list(a = "NY",  b = "CON", hca = "NY",  format = "bo5")
   )
 
   sample_matchups <- list()
   for (pair in marquee_pairs) {
-    res <- simulate_web_matchup(pair$a, pair$b, pair$hca, team_profiles)
+    res <- simulate_web_matchup(pair$a, pair$b, pair$hca, team_profiles, format = pair$format)
     if (!is.null(res)) {
       sample_matchups[[length(sample_matchups) + 1]] <- res
     }
