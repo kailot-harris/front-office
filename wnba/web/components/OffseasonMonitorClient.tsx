@@ -181,13 +181,14 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
       const ct = getTransactionChangeType(item);
       const tm = getTransactionTeam(item);
 
-      const matchSearch =
-        item.entityName.toLowerCase().includes(confirmedSearch.toLowerCase()) ||
-        item.newValue.toLowerCase().includes(confirmedSearch.toLowerCase()) ||
-        item.priorValue.toLowerCase().includes(confirmedSearch.toLowerCase()) ||
-        item.field.toLowerCase().includes(confirmedSearch.toLowerCase()) ||
-        ct.toLowerCase().includes(confirmedSearch.toLowerCase()) ||
-        tm.toLowerCase().includes(confirmedSearch.toLowerCase());
+      const term = confirmedSearch.toLowerCase();
+      const matchSearch = !term ||
+        (item.entityName ? item.entityName.toLowerCase().includes(term) : false) ||
+        (item.newValue ? item.newValue.toLowerCase().includes(term) : false) ||
+        (item.priorValue ? item.priorValue.toLowerCase().includes(term) : false) ||
+        (item.field ? item.field.toLowerCase().includes(term) : false) ||
+        (ct ? ct.toLowerCase().includes(term) : false) ||
+        (tm ? tm.toLowerCase().includes(term) : false);
 
       const matchField =
         confirmedFieldFilter === 'all' || item.field === confirmedFieldFilter;
@@ -226,9 +227,10 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
   const filteredReported = useMemo(() => {
     if (!currentEdition) return [];
     return currentEdition.reportedClaims.filter((claim) => {
-      const matchSearch =
-        claim.entityName.toLowerCase().includes(reportedSearch.toLowerCase()) ||
-        claim.claim.toLowerCase().includes(reportedSearch.toLowerCase());
+      const term = reportedSearch.toLowerCase();
+      const matchSearch = !term ||
+        (claim.entityName ? claim.entityName.toLowerCase().includes(term) : false) ||
+        (claim.claim ? claim.claim.toLowerCase().includes(term) : false);
       const matchCat =
         reportedCatFilter === 'all' || claim.sourceCategory === reportedCatFilter;
       return matchSearch && matchCat;
