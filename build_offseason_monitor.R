@@ -31,6 +31,7 @@ if (file.exists("config.R")) source("config.R")
 if (file.exists("logging_utils.R")) source("logging_utils.R")
 
 source(file.path("tools", "offseason", "ingest_sources.R"))
+source(file.path("tools", "offseason", "ingest_freshness.R"))
 source(file.path("tools", "offseason", "extract_regex.R"))
 source(file.path("tools", "offseason", "reconcile_state.R"))
 source(file.path("tools", "offseason", "render_memo.R"))
@@ -102,27 +103,34 @@ build_offseason_monitor_dag <- function(dry_run = FALSE,
   # Step 1: Ingest Sources
   # ----------------------------------------------------------------------------
   log_info("build_offseason_monitor: Step 1 - Ingesting upstream feeds...", script = "build_offseason_monitor.R")
-  manifest <- run_ingestion(dry_run = dry_run, allow_degraded = allow_degraded)
+  ingest_res <- run_ingestion(dry_run = dry_run, allow_degraded = allow_degraded)
   
-  gate_eval <- check_publication_gate(manifest, allow_degraded = allow_degraded)
+  manifest <- if (is.list(ingest_res) && !is.null(ingest_res$manifest)) ingest_res$manifest else ingest_res
+  wire_items <- if (is.list(ingest_res) && !is.null(ingest_res$items)) ingest_res$items else list()
+  
+  gate_eval <- evaluate_ingestion_gate(manifest, allow_degraded = allow_degraded)
   if (!gate_eval$allowed) {
     stop("Ingestion health gate FAILED: ", gate_eval$reason)
+  }
+  if (isTRUE(gate_eval$advisory)) {
+    log_info(paste("build_offseason_monitor: [GATE ADVISORY]", gate_eval$reason), script = "build_offseason_monitor.R")
   }
   
   # ----------------------------------------------------------------------------
   # Step 2: Extract Deltas
   # ----------------------------------------------------------------------------
   log_info("build_offseason_monitor: Step 2 - Extracting candidate deltas...", script = "build_offseason_monitor.R")
-  # Use archived wire snapshot if present, else fallback
-  raw_samples_path <- file.path("data", "fixtures", "official_wire_raw_samples.json")
+  # Parse deltas from validated wire items produced by run_ingestion()
+
   extracted_deltas <- list()
   
-  # If wire text available in fixture, parse
-  if (file.exists(raw_samples_path)) {
-    wire_samples <- jsonlite::fromJSON(raw_samples_path, simplifyVector = FALSE)
-    for (s in wire_samples) {
-      if (!is.null(s$raw_text)) {
-        deltas <- extract_deltas_regex(s$raw_text, date = s$date, source_url = s$source_url, baseline_state = s_last)
+  if (length(wire_items) > 0) {
+    for (item in wire_items) {
+      item_text <- if (!is.null(item$raw_text)) item$raw_text else item$text
+      item_date <- if (!is.null(item$event_date)) item$event_date else item$date
+      item_url <- if (!is.null(item$source_url)) item$source_url else item$url
+      if (!is.null(item_text) && nzchar(trimws(item_text))) {
+        deltas <- extract_deltas_regex(item_text, date = item_date, source_url = item_url, baseline_state = s_last)
         if (length(deltas) > 0) extracted_deltas <- c(extracted_deltas, deltas)
       }
     }
@@ -264,7 +272,7 @@ build_offseason_monitor_dag <- function(dry_run = FALSE,
     sources_visited = sources_visited_list
   )
   
-  is_quiet_week <- (length(confirmed_changes_list) == 0L)
+  is_quiet_week <- can_assert_quiet_week(manifest, confirmed_changes = confirmed_changes_list)
   
   # Assemble Edition Object with Array Unboxing Defense per Blueprint §6
   current_edition <- list(
@@ -311,6 +319,7 @@ build_offseason_monitor_dag <- function(dry_run = FALSE,
   
   # Final Dataset Object conforming to OffseasonMonitorDataset
   dataset <- list(
+    generated_at = now_iso,
     version = "2026-2027.1.0",
     lastPublished = now_iso,
     currentWeekNumber = week_num,
