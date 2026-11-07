@@ -24,7 +24,9 @@ import {
   OffseasonEditionSummary,
 } from '@/lib/offseasonTypes';
 
-type EditionData = OffseasonMonitorDataset['editions'][number];
+type EditionData = OffseasonMonitorDataset['editions'][number] & {
+  totalConfirmedCount?: number;
+};
 
 interface Props {
   initialDataset: OffseasonMonitorDataset | null;
@@ -34,6 +36,10 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
   const dataset = initialDataset;
   const [archivedEditions, setArchivedEditions] = useState<Record<number, EditionData>>({});
   const [isLoadingArchive, setIsLoadingArchive] = useState(false);
+
+  // Pagination for Confirmed Transactions Ledger (bounds render volume)
+  const CONFIRMED_PAGE_SIZE = 25;
+  const [confirmedPage, setConfirmedPage] = useState<number>(1);
 
   const availableEditions: OffseasonEditionSummary[] = useMemo(() => {
     return dataset?.availableEditions || [];
@@ -56,6 +62,11 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
   const [confirmedSearch, setConfirmedSearch] = useState('');
   const [confirmedTeamFilter, setConfirmedTeamFilter] = useState('all');
   const [confirmedTypeFilter, setConfirmedTypeFilter] = useState('all');
+
+  // Reset pagination to page 1 whenever filters or selected week change
+  useEffect(() => {
+    setConfirmedPage(1);
+  }, [confirmedSearch, confirmedTeamFilter, confirmedTypeFilter, selectedWeek]);
 
   // Filters for Reported Radar
   const [reportedSearch, setReportedSearch] = useState('');
@@ -105,7 +116,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
     return dataset.editions[0] || null;
   }, [dataset, selectedWeek, archivedEditions]);
 
-  // Unique teams & transaction types for confirmed filters
+  // Unique teams & transaction types for confirmed filters, memoized with distribution counts
   const confirmedTeams = useMemo(() => {
     if (!currentEdition) return [];
     const set = new Set<string>();
@@ -124,6 +135,28 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
     return Array.from(set).sort();
   }, [currentEdition]);
 
+  const confirmedTypeCounts = useMemo(() => {
+    if (!currentEdition) return {};
+    const counts: Record<string, number> = {};
+    currentEdition.confirmedChanges.forEach((c) => {
+      if (c.transactionType) {
+        counts[c.transactionType] = (counts[c.transactionType] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [currentEdition]);
+
+  const confirmedTeamCounts = useMemo(() => {
+    if (!currentEdition) return {};
+    const counts: Record<string, number> = {};
+    currentEdition.confirmedChanges.forEach((c) => {
+      if (c.team) {
+        counts[c.team] = (counts[c.team] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [currentEdition]);
+
   // Filtered confirmed changes
   const filteredConfirmed = useMemo(() => {
     if (!currentEdition) return [];
@@ -140,6 +173,13 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
       return matchSearch && matchTeam && matchType;
     });
   }, [currentEdition, confirmedSearch, confirmedTeamFilter, confirmedTypeFilter]);
+
+  // Bounded pagination slicing for confirmed changes table (bounds render volume)
+  const totalConfirmedPages = Math.max(1, Math.ceil(filteredConfirmed.length / CONFIRMED_PAGE_SIZE));
+  const paginatedConfirmed = useMemo(() => {
+    const start = (confirmedPage - 1) * CONFIRMED_PAGE_SIZE;
+    return filteredConfirmed.slice(start, start + CONFIRMED_PAGE_SIZE);
+  }, [filteredConfirmed, confirmedPage, CONFIRMED_PAGE_SIZE]);
 
   // Filtered reported claims
   const filteredReported = useMemo(() => {
@@ -180,6 +220,11 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
 
   const isFrozen = currentEdition.isFrozenWeek || dataset.leagueOperatingStatus === 'TRANSACTION_FREEZE';
   const freezeDays = currentEdition.freezeDayCount ?? dataset.freezeDayCount ?? 0;
+  const totalConfirmedCount = currentEdition.totalConfirmedCount ?? currentEdition.confirmedChanges.length;
+  const isConfirmedBounded = Boolean(
+    currentEdition.totalConfirmedCount &&
+    currentEdition.totalConfirmedCount > currentEdition.confirmedChanges.length
+  );
 
   return (
     <div className="space-y-6">
@@ -246,7 +291,10 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 text-xs font-mono">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
               <span className="font-bold">NORMAL LEAGUE MOVEMENT</span>
-              <span className="text-emerald-200">· {currentEdition.confirmedChanges.length} confirmed transitions recorded</span>
+              <span className="text-emerald-200">
+                · {totalConfirmedCount.toLocaleString()} confirmed transition{totalConfirmedCount === 1 ? '' : 's'} recorded
+                {isConfirmedBounded && ` (${currentEdition.confirmedChanges.length} in view)`}
+              </span>
             </div>
           )}
         </div>
@@ -348,7 +396,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
           <CheckCircle2 className="w-3.5 h-3.5" />
           <span>Confirmed Transactions</span>
           <span className="px-1.5 py-0.2 rounded bg-black/30 font-mono text-[10px]">
-            {currentEdition.confirmedChanges.length}
+            {totalConfirmedCount.toLocaleString()}
           </span>
         </button>
 
@@ -542,10 +590,10 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                 onChange={(e) => setConfirmedTeamFilter(e.target.value)}
                 className="bg-surface border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-sky-400 font-mono"
               >
-                <option value="all">All Clubs</option>
+                <option value="all">All Clubs ({currentEdition.confirmedChanges.length})</option>
                 {confirmedTeams.map((tm) => (
                   <option key={tm} value={tm}>
-                    {tm}
+                    {tm} ({confirmedTeamCounts[tm] || 0})
                   </option>
                 ))}
               </select>
@@ -558,73 +606,145 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                 <option value="all">All Types</option>
                 {confirmedTypes.map((t) => (
                   <option key={t} value={t}>
-                    {t.replace(/_/g, ' ')}
+                    {t.replace(/_/g, ' ')} ({confirmedTypeCounts[t] || 0})
                   </option>
                 ))}
               </select>
             </div>
           </div>
 
+          {/* Non-silent Bounded Payload Notice */}
+          {isConfirmedBounded && (
+            <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs font-mono">
+              <Info className="w-4 h-4 text-amber-400 flex-shrink-0" />
+              <div>
+                <strong className="font-semibold text-white">Bounded Artifact View:</strong> Displaying{' '}
+                <span className="text-amber-200 font-bold">{currentEdition.confirmedChanges.length}</span> most recent inlined transitions of{' '}
+                <span className="text-amber-200 font-bold">{totalConfirmedCount.toLocaleString()}</span> total verified wire events for initial load efficiency. Full historical ledger is archived.
+              </div>
+            </div>
+          )}
+
           {filteredConfirmed.length === 0 ? (
             <div className="text-center py-10 text-slate-500 text-xs">
               No confirmed transactions match the active filter criteria.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-800 text-[11px] font-mono text-slate-400 uppercase tracking-wider">
-                    <th className="py-2.5 px-3">Date</th>
-                    <th className="py-2.5 px-3">Club</th>
-                    <th className="py-2.5 px-3">Player</th>
-                    <th className="py-2.5 px-3">Tier</th>
-                    <th className="py-2.5 px-3">Transaction</th>
-                    <th className="py-2.5 px-3">Prior ($S_0$)</th>
-                    <th className="py-2.5 px-3">New ($S_t$)</th>
-                    <th className="py-2.5 px-3">Terms / AAV</th>
-                    <th className="py-2.5 px-3 text-right">Source</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60 font-mono">
-                  {filteredConfirmed.map((tx, idx) => (
-                    <tr key={idx} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="py-2 px-3 text-slate-400">{tx.date}</td>
-                      <td className="py-2 px-3 font-bold text-white">{tx.team}</td>
-                      <td className="py-2 px-3 text-slate-200 font-sans font-semibold">{tx.playerName}</td>
-                      <td className="py-2 px-3 text-[10px]">
-                        <span
-                          className={`px-1.5 py-0.2 rounded ${
-                            tx.rosterTier === 'MAJOR_40_MAN'
-                              ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
-                              : 'bg-slate-800 text-slate-400'
-                          }`}
-                        >
-                          {tx.rosterTier === 'MAJOR_40_MAN' ? '40-Man' : 'Minor'}
-                        </span>
-                      </td>
-                      <td className="py-2 px-3 text-amber-300">{tx.transactionType.replace(/_/g, ' ')}</td>
-                      <td className="py-2 px-3 text-slate-400">{tx.priorValue}</td>
-                      <td className="py-2 px-3 text-emerald-400 font-semibold">{tx.newValue}</td>
-                      <td className="py-2 px-3 text-slate-300 font-sans">{tx.contractTerms || '—'}</td>
-                      <td className="py-2 px-3 text-right">
-                        {tx.sourceUrl ? (
-                          <a
-                            href={tx.sourceUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sky-400 hover:text-sky-300 inline-flex items-center gap-1"
-                          >
-                            <span>Wire</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
-                        ) : (
-                          <span className="text-slate-600">—</span>
-                        )}
-                      </td>
+            <div className="space-y-3">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-[11px] font-mono text-slate-400 uppercase tracking-wider">
+                      <th className="py-2.5 px-3">Date</th>
+                      <th className="py-2.5 px-3">Club</th>
+                      <th className="py-2.5 px-3">Player</th>
+                      <th className="py-2.5 px-3">Tier</th>
+                      <th className="py-2.5 px-3">Transaction</th>
+                      <th className="py-2.5 px-3">Prior ($S_0$)</th>
+                      <th className="py-2.5 px-3">New ($S_t$)</th>
+                      <th className="py-2.5 px-3">Terms / AAV</th>
+                      <th className="py-2.5 px-3 text-right">Source</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 font-mono">
+                    {paginatedConfirmed.map((tx, idx) => (
+                      <tr key={idx} className="hover:bg-slate-800/30 transition-colors">
+                        <td className="py-2 px-3 text-slate-400">{tx.date}</td>
+                        <td className="py-2 px-3 font-bold text-white">{tx.team}</td>
+                        <td className="py-2 px-3 text-slate-200 font-sans font-semibold">{tx.playerName}</td>
+                        <td className="py-2 px-3 text-[10px]">
+                          <span
+                            className={`px-1.5 py-0.2 rounded ${
+                              tx.rosterTier === 'MAJOR_40_MAN'
+                                ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
+                                : 'bg-slate-800 text-slate-400'
+                            }`}
+                          >
+                            {tx.rosterTier === 'MAJOR_40_MAN' ? '40-Man' : 'Minor'}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3 text-amber-300">{tx.transactionType.replace(/_/g, ' ')}</td>
+                        <td className="py-2 px-3 text-slate-400">{tx.priorValue}</td>
+                        <td className="py-2 px-3 text-emerald-400 font-semibold">{tx.newValue}</td>
+                        <td className="py-2 px-3 text-slate-300 font-sans">{tx.contractTerms || '—'}</td>
+                        <td className="py-2 px-3 text-right">
+                          {tx.sourceUrl ? (
+                            <a
+                              href={tx.sourceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sky-400 hover:text-sky-300 inline-flex items-center gap-1"
+                            >
+                              <span>Wire</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          ) : (
+                            <span className="text-slate-600">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Bounded Pagination Controls */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-800 text-xs font-mono text-slate-400">
+                <div>
+                  Showing{' '}
+                  <span className="text-white font-bold">
+                    {(confirmedPage - 1) * CONFIRMED_PAGE_SIZE + 1}–{Math.min(confirmedPage * CONFIRMED_PAGE_SIZE, filteredConfirmed.length)}
+                  </span>{' '}
+                  of <span className="text-white font-bold">{filteredConfirmed.length}</span> matching
+                  {filteredConfirmed.length !== currentEdition.confirmedChanges.length && (
+                    <span> (filtered from {currentEdition.confirmedChanges.length} in view)</span>
+                  )}
+                  {isConfirmedBounded && (
+                    <span className="text-amber-400/80"> · {totalConfirmedCount.toLocaleString()} total wire transactions</span>
+                  )}
+                </div>
+
+                {totalConfirmedPages > 1 && (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmedPage(1)}
+                      disabled={confirmedPage === 1}
+                      className="px-2 py-1 rounded bg-surface border border-slate-700 text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      « First
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmedPage((p) => Math.max(1, p - 1))}
+                      disabled={confirmedPage === 1}
+                      className="px-2.5 py-1 rounded bg-surface border border-slate-700 text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      ‹ Prev
+                    </button>
+                    <span className="px-2.5 py-1 text-slate-300">
+                      Page <strong className="text-white">{confirmedPage}</strong> of{' '}
+                      <strong className="text-white">{totalConfirmedPages}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmedPage((p) => Math.min(totalConfirmedPages, p + 1))}
+                      disabled={confirmedPage === totalConfirmedPages}
+                      className="px-2.5 py-1 rounded bg-surface border border-slate-700 text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      Next ›
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmedPage(totalConfirmedPages)}
+                      disabled={confirmedPage === totalConfirmedPages}
+                      className="px-2 py-1 rounded bg-surface border border-slate-700 text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      Last »
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
