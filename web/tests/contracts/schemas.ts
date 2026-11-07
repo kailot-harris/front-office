@@ -416,22 +416,25 @@ export const PlayerDnaProfileSchema = z
   .strict();
 
 // 10. offseason_draft.json -> OffseasonDraftProspect[] (lib/offseasonTypes.ts)
+// Draft-order slots only (derived from real power ratings); no prospect data exists.
 export const OffseasonDraftProspectSchema = z
   .object({
     pick: z.number().int().min(1).max(30),
-    player_name: z.string().min(2),
     team: teamEnum,
-    position: positionEnum,
-    school_or_club: z.string().min(2),
-    height: z.string().min(3),
-    archetype: z.string().min(2),
-    projected_bpm_prior: finiteNumber,
-    projected_mpg: finiteNumber.min(0).max(40),
-    upside_tier: z.string().min(2),
-    trade_note: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
-    strengths: z.array(z.string().min(2)).min(1),
-    swing_skills: z.array(z.string().min(2)).min(1),
-    comp: z.string().min(2),
+    team_name: z.string().min(3),
+    conference: conferenceEnum,
+    proj_wins: finiteNumber.min(0).max(44),
+    proj_losses: finiteNumber.min(0).max(44),
+    win_pct: finiteNumber.min(0).max(1),
+    prospect_status: z.literal('UNPOPULATED_NO_SCOUTING_FEED'),
+  })
+  .strict();
+
+const offseasonMoveSchema = z
+  .object({
+    name: z.string().min(2),
+    type: z.string().min(2),
+    pos: positionEnum,
   })
   .strict();
 
@@ -445,41 +448,11 @@ export const OffseasonTeamProfileSchema = z
     baseline_wins: finiteNumber.min(0).max(44),
     projected_wins_with_moves: finiteNumber.min(0).max(44),
     net_wins_change: finiteNumber,
-    net_bpm_added: finiteNumber,
-    roster_continuity_pct: pct,
-    grade: z.string().min(1),
-    strategic_posture: z.string().min(2),
-    additions: z.array(
-      z
-        .object({
-          name: z.string().min(2),
-          type: z.string().min(2),
-          bpm: finiteNumber,
-          pos: positionEnum,
-        })
-        .strict()
-    ),
-    departures: z.array(
-      z
-        .object({
-          name: z.string().min(2),
-          type: z.string().min(2),
-          bpm: finiteNumber,
-          pos: positionEnum,
-        })
-        .strict()
-    ),
-    draft_picks: z.array(
-      z
-        .object({
-          name: z.string().min(2),
-          pick: z.number().int().min(1).max(30),
-          school: z.string().min(2),
-          archetype: z.string().min(2),
-        })
-        .strict()
-    ),
-    offseason_verdict: z.string().min(5),
+    roster_count: z.number().int().min(0),
+    confirmed_transactions_count: z.number().int().min(0),
+    additions: z.array(offseasonMoveSchema),
+    departures: z.array(offseasonMoveSchema),
+    draft_picks: z.array(z.object({}).passthrough()),
   })
   .strict();
 
@@ -487,7 +460,7 @@ export const OffseasonTeamProfileSchema = z
 export const OffseasonTransactionSchema = z
   .object({
     id: z.string().min(1),
-    type: z.enum(['trade', 'free_agency', 'extension', 'expansion_draft', 'draft']),
+    type: z.enum(['trade', 'free_agency', 'waiver', 'release', 'waiver_claim']),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     player_name: z.string().min(2),
     player_id: z.string().optional(),
@@ -495,32 +468,8 @@ export const OffseasonTransactionSchema = z
     from_team: teamEnum.nullable().optional(),
     to_team: teamEnum,
     contract_terms: z.string().min(2),
-    trade_details: z
-      .object({
-        counterparts_received: z.array(z.string()).optional(),
-        draft_assets: z.string().optional(),
-      })
-      .strict()
-      .optional(),
-    player_bpm: finiteNumber,
-    player_pts: finiteNumber.min(0),
-    player_reb: finiteNumber.min(0),
-    player_ast: finiteNumber.min(0),
-    projected_minutes: finiteNumber.min(0).max(40),
-    delta_net_rating: finiteNumber,
-    delta_projected_wins: finiteNumber,
-    impact_tier: z.enum(['superstar', 'all_star', 'starter', 'rotation']),
-    fit_score: pct,
-    age: z.number().int().min(18).max(45),
     headline: z.string().min(5),
-    analysis: z
-      .object({
-        summary: z.string().min(5),
-        offensive_impact: z.string().min(5),
-        defensive_impact: z.string().min(5),
-        risk_factor: z.string().min(5),
-      })
-      .strict(),
+    source_url: z.string().min(5),
   })
   .strict();
 

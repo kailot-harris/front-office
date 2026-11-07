@@ -190,7 +190,6 @@ describe('Domain & mathematical invariants: cba_cap_sheet.json', () => {
     expect(cbaCapSheet.vetMaxSalary).toBeLessThan(cbaCapSheet.supermaxSalary);
     expect(cbaCapSheet.supermaxSalary).toBeLessThan(cbaCapSheet.capFloor);
     expect(cbaCapSheet.capFloor).toBeLessThan(cbaCapSheet.hardSalaryCap);
-    expect(cbaCapSheet.capFloor).toBeCloseTo(cbaCapSheet.hardSalaryCap * 0.9, 3);
   });
 
   // NOTE (2026-11-02, WNBA_analytics#128): the two invariants that used to

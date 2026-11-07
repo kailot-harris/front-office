@@ -1,6 +1,6 @@
 export interface OffseasonTransaction {
   id: string;
-  type: 'trade' | 'free_agency' | 'extension' | 'expansion_draft';
+  type: 'trade' | 'free_agency' | 'waiver' | 'release' | 'waiver_claim';
   date: string;
   player_name: string;
   player_id?: string;
@@ -8,48 +8,14 @@ export interface OffseasonTransaction {
   from_team?: string | null;
   to_team: string;
   contract_terms: string;
-  trade_details?: {
-    counterparts_received?: string[];
-    draft_assets?: string;
-  };
-  player_bpm: number;
-  player_pts: number;
-  player_reb: number;
-  player_ast: number;
-  projected_minutes: number;
-  delta_net_rating: number;
-  delta_projected_wins: number;
-  impact_tier: 'superstar' | 'all_star' | 'starter' | 'rotation';
-  fit_score: number;
-  age: number;
   headline: string;
-  analysis: {
-    summary: string;
-    offensive_impact: string;
-    defensive_impact: string;
-    risk_factor: string;
-  };
+  source_url: string;
 }
 
-export interface OffseasonTeamAddition {
+export interface OffseasonTeamMove {
   name: string;
   type: string;
-  bpm: number;
   pos: string;
-}
-
-export interface OffseasonTeamDeparture {
-  name: string;
-  type: string;
-  bpm: number;
-  pos: string;
-}
-
-export interface OffseasonTeamDraftPick {
-  name: string;
-  pick: number;
-  school: string;
-  archetype: string;
 }
 
 export interface OffseasonTeamProfile {
@@ -60,33 +26,24 @@ export interface OffseasonTeamProfile {
   baseline_wins: number;
   projected_wins_with_moves: number;
   net_wins_change: number;
-  net_bpm_added: number;
-  roster_continuity_pct: number;
-  grade: string;
-  strategic_posture: string;
-  additions: OffseasonTeamAddition[];
-  departures: OffseasonTeamDeparture[];
-  draft_picks: OffseasonTeamDraftPick[];
-  offseason_verdict: string;
+  roster_count: number;
+  confirmed_transactions_count: number;
+  additions: OffseasonTeamMove[];
+  departures: OffseasonTeamMove[];
+  draft_picks: Record<string, unknown>[];
 }
 
+/** Draft-order slot only; no prospect data (no real scouting feed). */
 export interface OffseasonDraftProspect {
   pick: number;
-  player_name: string;
   team: string;
-  position: string;
-  school_or_club: string;
-  height: string;
-  archetype: string;
-  projected_bpm_prior: number;
-  projected_mpg: number;
-  upside_tier: string;
-  trade_note?: string;
-  strengths: string[];
-  swing_skills: string[];
-  comp: string;
+  team_name: string;
+  conference: string;
+  proj_wins: number;
+  proj_losses: number;
+  win_pct: number;
+  prospect_status: 'UNPOPULATED_NO_SCOUTING_FEED';
 }
-
 // ==============================================================================
 // League State Baseline S0 Contract (Issue #117 / Blueprint §3)
 // ==============================================================================
