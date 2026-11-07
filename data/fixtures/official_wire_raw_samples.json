@@ -119,5 +119,207 @@
         "tier": "CONFIRMED"
       }
     ]
+  },
+  {
+    "id": "wire_dfa_sanmartin",
+    "raw_text": "San Francisco Giants designated LHP Reiver Sanmartin for assignment.",
+    "date": "2026-10-31",
+    "source_url": "https://statsapi.mlb.com/api/v1/transactions",
+    "team_id": 137,
+    "transaction_id": 947751,
+    "_note": "Issue #60 state-mutating class: Designated for Assignment (40_MAN -> DFA).",
+    "expected_tuples": [
+      {
+        "entity_type": "player",
+        "entity_id": "P_19754",
+        "field": "rosterStatus",
+        "prior_val": "40_MAN",
+        "new_val": "DFA",
+        "tier": "CONFIRMED"
+      }
+    ]
+  },
+  {
+    "id": "wire_outright_foley",
+    "raw_text": "San Francisco Giants sent RHP Jason Foley outright to Sacramento River Cats.",
+    "date": "2026-10-31",
+    "source_url": "https://statsapi.mlb.com/api/v1/transactions",
+    "team_id": 137,
+    "_note": "Issue #60 state-mutating class: Outrighted (40_MAN -> MINOR_LEAGUE).",
+    "expected_tuples": [
+      {
+        "entity_type": "player",
+        "entity_id": "P_19531",
+        "field": "rosterStatus",
+        "prior_val": "40_MAN",
+        "new_val": "MINOR_LEAGUE",
+        "tier": "CONFIRMED"
+      }
+    ]
+  },
+  {
+    "id": "wire_rel_beck",
+    "raw_text": "San Francisco Giants released RHP Tristan Beck.",
+    "date": "2026-10-31",
+    "source_url": "https://statsapi.mlb.com/api/v1/transactions",
+    "team_id": 137,
+    "transaction_id": 947656,
+    "_note": "Issue #60 state-mutating class: Released (40_MAN -> FREE_AGENT).",
+    "expected_tuples": [
+      {
+        "entity_type": "player",
+        "entity_id": "P_21584",
+        "field": "rosterStatus",
+        "prior_val": "40_MAN",
+        "new_val": "FREE_AGENT",
+        "tier": "CONFIRMED"
+      },
+      {
+        "entity_type": "player",
+        "entity_id": "P_21584",
+        "field": "contractStatus",
+        "prior_val": "GUARANTEED",
+        "new_val": "UNRESTRICTED_FA",
+        "tier": "CONFIRMED"
+      },
+      {
+        "entity_type": "player",
+        "entity_id": "P_21584",
+        "field": "team",
+        "prior_val": "SF",
+        "new_val": null,
+        "tier": "CONFIRMED"
+      }
+    ]
+  },
+  {
+    "id": "wire_selected_taylor",
+    "raw_text": "Houston Astros selected the contract of OF Tyrone Taylor from Sugar Land Space Cowboys.",
+    "date": "2026-10-31",
+    "source_url": "https://statsapi.mlb.com/api/v1/transactions",
+    "team_id": 117,
+    "_note": "Issue #60 state-mutating class: Selected (CONTRACT_SELECTED, non-40 -> 40_MAN).",
+    "expected_tuples": [
+      {
+        "entity_type": "player",
+        "entity_id": "B_13675",
+        "field": "rosterStatus",
+        "prior_val": "FREE_AGENT",
+        "new_val": "40_MAN",
+        "tier": "CONFIRMED"
+      },
+      {
+        "entity_type": "player",
+        "entity_id": "B_13675",
+        "field": "team",
+        "prior_val": null,
+        "new_val": "HOU",
+        "tier": "CONFIRMED"
+      }
+    ]
+  },
+  {
+    "id": "wire_sfa_grichuk",
+    "raw_text": "Detroit Tigers signed free agent OF Randal Grichuk.",
+    "date": "2026-10-31",
+    "source_url": "https://statsapi.mlb.com/api/v1/transactions",
+    "team_id": 116,
+    "_note": "Issue #60 state-mutating class: Signed as Free Agent (FREE_AGENT_SIGNING, FA -> 40_MAN).",
+    "expected_tuples": [
+      {
+        "entity_type": "player",
+        "entity_id": "B_10243",
+        "field": "rosterStatus",
+        "prior_val": "FREE_AGENT",
+        "new_val": "40_MAN",
+        "tier": "CONFIRMED"
+      },
+      {
+        "entity_type": "player",
+        "entity_id": "B_10243",
+        "field": "team",
+        "prior_val": null,
+        "new_val": "DET",
+        "tier": "CONFIRMED"
+      },
+      {
+        "entity_type": "player",
+        "entity_id": "B_10243",
+        "field": "contractStatus",
+        "prior_val": "UNRESTRICTED_FA",
+        "new_val": "GUARANTEED",
+        "tier": "CONFIRMED"
+      }
+    ]
+  },
+  {
+    "id": "wire_trade_nofor_furman",
+    "raw_text": "San Francisco Giants traded 2B Nate Furman to Washington Nationals.",
+    "date": "2026-10-31",
+    "source_url": "https://statsapi.mlb.com/api/v1/transactions",
+    "team_id": 120,
+    "_note": "Issue #60 state-mutating class: Trade without a for clause.",
+    "expected_tuples": [
+      {
+        "entity_type": "player",
+        "entity_id": "B_31988",
+        "field": "team",
+        "prior_val": "SF",
+        "new_val": "WSH",
+        "tier": "CONFIRMED"
+      }
+    ]
+  },
+  {
+    "id": "wire_waiver_parker",
+    "raw_text": "Atlanta Braves claimed LHP Mitchell Parker off waivers from Washington Nationals.",
+    "date": "2026-10-31",
+    "source_url": "https://statsapi.mlb.com/api/v1/transactions",
+    "team_id": 144,
+    "transaction_id": 947815,
+    "_note": "Issue #60 state-mutating class: Claimed Off Waivers.",
+    "expected_tuples": [
+      {
+        "entity_type": "player",
+        "entity_id": "P_27636",
+        "field": "team",
+        "prior_val": "WSH",
+        "new_val": "ATL",
+        "tier": "CONFIRMED"
+      }
+    ]
+  },
+  {
+    "id": "wire_fa_suarez_utf8",
+    "raw_text": "DH Eugenio Suárez elected free agency.",
+    "date": "2026-10-31",
+    "source_url": "https://statsapi.mlb.com/api/v1/transactions",
+    "_note": "Issue #60 UTF-8 accented name resolution (Suárez -> B_12552).",
+    "expected_tuples": [
+      {
+        "entity_type": "player",
+        "entity_id": "B_12552",
+        "field": "rosterStatus",
+        "prior_val": "40_MAN",
+        "new_val": "FREE_AGENT",
+        "tier": "CONFIRMED"
+      },
+      {
+        "entity_type": "player",
+        "entity_id": "B_12552",
+        "field": "contractStatus",
+        "prior_val": "GUARANTEED",
+        "new_val": "UNRESTRICTED_FA",
+        "tier": "CONFIRMED"
+      },
+      {
+        "entity_type": "player",
+        "entity_id": "B_12552",
+        "field": "team",
+        "prior_val": "CIN",
+        "new_val": null,
+        "tier": "CONFIRMED"
+      }
+    ]
   }
 ]
