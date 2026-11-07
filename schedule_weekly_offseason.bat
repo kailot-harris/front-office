@@ -27,11 +27,17 @@ if "%PROJECT_DIR:~-1%"=="\" set PROJECT_DIR=%PROJECT_DIR:~0,-1%
 cd /d "%PROJECT_DIR%"
 
 if not exist "logs" mkdir "logs"
+REM LOG_FILE is the R-side structured text sink, owned exclusively by
+REM logging_utils.R. cmd.exe must NEVER redirect into it: holding an open write
+REM handle here makes the R-side `cat(file = LOG_FILE, append = TRUE)` fail with
+REM "cannot open the connection" and halts the pipeline (issue #55). All child
+REM process transcripts and this script's own echo lines go to RUN_LOG instead.
 set LOG_FILE=%PROJECT_DIR%\logs\mlb_pipeline.log
+set RUN_LOG=%PROJECT_DIR%\logs\scheduled_runs.log
 
-echo ================================================================== >> "%LOG_FILE%"
-echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Starting weekly offseason monitor pipeline run. >> "%LOG_FILE%"
-echo ================================================================== >> "%LOG_FILE%"
+echo ================================================================== >> "%RUN_LOG%"
+echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Starting weekly offseason monitor pipeline run. >> "%RUN_LOG%"
+echo ================================================================== >> "%RUN_LOG%"
 
 REM Defense-in-depth for git commit identity resolution under Task Scheduler
 if not defined HOME if defined USERPROFILE set HOME=%USERPROFILE%
@@ -52,28 +58,28 @@ if %ERRORLEVEL% equ 0 (
 )
 
 if "%RSCRIPT%"=="" (
-    echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] Rscript not found on PATH or in C:\Program Files\R. Aborting. >> "%LOG_FILE%"
+    echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] Rscript not found on PATH or in C:\Program Files\R. Aborting. >> "%RUN_LOG%"
     exit /b 1
 )
 
 REM Step 1: Build Offseason Monitor dataset and reconcile state
-echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 1: Running build_offseason_monitor.R... >> "%LOG_FILE%"
-%RSCRIPT% --vanilla build_offseason_monitor.R >> "%LOG_FILE%" 2>&1
+echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 1: Running build_offseason_monitor.R... >> "%RUN_LOG%"
+%RSCRIPT% --vanilla build_offseason_monitor.R >> "%RUN_LOG%" 2>&1
 if %ERRORLEVEL% neq 0 (
-    echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] build_offseason_monitor.R failed with exit code %ERRORLEVEL%. >> "%LOG_FILE%"
+    echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] build_offseason_monitor.R failed with exit code %ERRORLEVEL%. >> "%RUN_LOG%"
     exit /b %ERRORLEVEL%
 )
 
 REM Step 2: Publish web artifacts and promote staged baseline
-echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 2: Running tools/publish_web.R --publish --mode=offseason... >> "%LOG_FILE%"
-%RSCRIPT% --vanilla tools/publish_web.R --publish --mode=offseason >> "%LOG_FILE%" 2>&1
+echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 2: Running tools/publish_web.R --publish --mode=offseason... >> "%RUN_LOG%"
+%RSCRIPT% --vanilla tools/publish_web.R --publish --mode=offseason >> "%RUN_LOG%" 2>&1
 if %ERRORLEVEL% neq 0 (
-    echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] tools/publish_web.R failed with exit code %ERRORLEVEL%. >> "%LOG_FILE%"
+    echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] tools/publish_web.R failed with exit code %ERRORLEVEL%. >> "%RUN_LOG%"
     exit /b %ERRORLEVEL%
 )
 
 REM Step 3: Direct aggregator workflow dispatch to overcome Winter DST inversion
-echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 3: Dispatching aggregator sync-sports workflow... >> "%LOG_FILE%"
+echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 3: Dispatching aggregator sync-sports workflow... >> "%RUN_LOG%"
 set GH_BIN=
 where gh >nul 2>&1
 if %ERRORLEVEL% equ 0 (
@@ -85,15 +91,15 @@ if %ERRORLEVEL% equ 0 (
 )
 
 if not "%GH_BIN%"=="" (
-    %GH_BIN% workflow run "Sync sport subtrees and deploy" --repo kailot-harris/front-office -f sports="mlb" -f deploy=true >> "%LOG_FILE%" 2>&1
+    %GH_BIN% workflow run "Sync sport subtrees and deploy" --repo kailot-harris/front-office -f sports="mlb" -f deploy=true >> "%RUN_LOG%" 2>&1
     if !ERRORLEVEL! equ 0 (
-        echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Workflow dispatch successfully triggered. >> "%LOG_FILE%"
+        echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Workflow dispatch successfully triggered. >> "%RUN_LOG%"
     ) else (
-        echo [%DATE% %TIME%] [WARN] [schedule_weekly_offseason.bat] Workflow dispatch returned exit code !ERRORLEVEL!. >> "%LOG_FILE%"
+        echo [%DATE% %TIME%] [WARN] [schedule_weekly_offseason.bat] Workflow dispatch returned exit code !ERRORLEVEL!. >> "%RUN_LOG%"
     )
 ) else (
-    echo [%DATE% %TIME%] [WARN] [schedule_weekly_offseason.bat] GitHub CLI (gh) not found; skipping direct workflow dispatch. >> "%LOG_FILE%"
+    echo [%DATE% %TIME%] [WARN] [schedule_weekly_offseason.bat] GitHub CLI (gh) not found; skipping direct workflow dispatch. >> "%RUN_LOG%"
 )
 
-echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Weekly offseason monitor run completed successfully. >> "%LOG_FILE%"
+echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Weekly offseason monitor run completed successfully. >> "%RUN_LOG%"
 exit /b 0

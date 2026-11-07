@@ -73,6 +73,8 @@ suppressPackageStartupMessages({
 .log_state <- new.env(parent = emptyenv())
 .log_state$con <- NULL
 .log_state$last_db_error_at <- 0
+.log_state$last_file_error_at <- 0
+.log_state$last_rotate_error_at <- 0
 
 .log_disconnect <- function() {
   con <- .log_state$con
@@ -127,15 +129,30 @@ LOG_SPILL_FILE <- function() file.path(LOG_DIR, sprintf("logs_pending_%s.tsv", S
   invisible(NULL)
 }
 
+# Rotation is strictly best-effort. On Windows the text log may be held open by a
+# parent cmd.exe redirect (or be read-only), in which case the rename fails. A
+# logging subsystem must never be able to kill a pipeline, so every step here is
+# guarded and failure simply means we keep appending to the current file.
 .log_rotate_if_needed <- function() {
-  .log_ensure_dir()
-  if (file.exists(LOG_FILE)) {
-    sz <- tryCatch(file.info(LOG_FILE)$size, error = function(e) 0)
-    if (!is.na(sz) && sz > LOG_MAX_BYTES) {
-      backup <- file.path(LOG_DIR, sprintf("mlb_pipeline_%s.log", format(Sys.time(), "%Y%m%d_%H%M%S")))
-      file.rename(LOG_FILE, backup)
+  tryCatch({
+    .log_ensure_dir()
+    if (file.exists(LOG_FILE)) {
+      sz <- tryCatch(file.info(LOG_FILE)$size, error = function(e) 0)
+      if (length(sz) == 1 && !is.na(sz) && sz > LOG_MAX_BYTES) {
+        backup <- file.path(LOG_DIR, sprintf("mlb_pipeline_%s.log", format(Sys.time(), "%Y%m%d_%H%M%S")))
+        ok <- tryCatch(suppressWarnings(file.rename(LOG_FILE, backup)), error = function(e) FALSE)
+        if (!isTRUE(ok)) {
+          now <- as.numeric(Sys.time())
+          if (now - .log_state$last_rotate_error_at > 60) {
+            .log_state$last_rotate_error_at <- now
+            cat(sprintf("[LOG ROTATE WARN] cannot rotate %s (file locked or read-only); continuing to append.\n",
+                        LOG_FILE), sep = "")
+          }
+        }
+      }
     }
-  }
+  }, error = function(e) invisible(NULL))
+  invisible(NULL)
 }
 
 .log_script_name <- function(script = NULL) {
@@ -168,8 +185,18 @@ LOG_SPILL_FILE <- function() file.path(LOG_DIR, sprintf("logs_pending_%s.tsv", S
   # 1. Console output
   cat(line, "\n", sep = "")
 
-  # 2. Text file append
-  cat(line, "\n", sep = "", file = LOG_FILE, append = TRUE)
+  # 2. Text file append (non-fatal: a locked or read-only log file must not halt
+  #    the pipeline, so degrade to console + DuckDB with a throttled diagnostic).
+  tryCatch({
+    suppressWarnings(cat(line, "\n", sep = "", file = LOG_FILE, append = TRUE))
+  }, error = function(e) {
+    now <- as.numeric(Sys.time())
+    if (now - .log_state$last_file_error_at > 60) {
+      .log_state$last_file_error_at <- now
+      cat(sprintf("[LOG FILE WARN] text sink unavailable (%s); continuing with console + DuckDB.\n",
+                  .log_redact(conditionMessage(e))), sep = "")
+    }
+  })
 
   # Convert extra_list to a simple string
   extra_json <- if (length(extra_list) > 0) {
