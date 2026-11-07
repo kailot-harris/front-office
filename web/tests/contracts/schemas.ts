@@ -257,14 +257,6 @@ export const WnbaCbaLeagueOverviewSchema = z
   .strict();
 
 // 6. clutch_leverage_metrics.json -> ClutchProfile[] (lib/clutchTypes.ts)
-const ShotZoneStatsSchema = z
-  .object({
-    fga: z.number().int().min(0),
-    fgm: z.number().int().min(0),
-    pct: pct,
-  })
-  .strict();
-
 export const ClutchProfileSchema = z
   .object({
     season: z.number().int().optional(),
@@ -273,24 +265,12 @@ export const ClutchProfileSchema = z
     team: teamEnum,
     position: positionEnum,
     clutchArchetype: z.string().min(2),
-    clutchMpg: finiteNumber.min(0).max(10),
-    clutchUsgPct: pct,
-    clutchTsPct: pct,
-    baseTsPct: pct,
-    tsDelta: finiteNumber,
-    usciScore: finiteNumber.min(0),
-    unassistedFgmPct: pct,
-    clutchPpp: finiteNumber.min(0),
-    tovFragility: finiteNumber,
-    cDwpa: finiteNumber,
-    shotBreakdown: z
-      .object({
-        totalClutchFga: z.number().int().min(0),
-        rim: ShotZoneStatsSchema,
-        mid: ShotZoneStatsSchema,
-        three: ShotZoneStatsSchema,
-      })
-      .strict(),
+    clutchFga: z.number().int().min(0),
+    clutchPoints: z.number().int().min(0).nullable(),
+    clutchFgPct: pct.nullable(),
+    clutchScoringPlays: z.number().int().min(0).nullable(),
+    clutchPpp: finiteNumber.min(0).nullable(),
+    provenance: z.string().min(2),
   })
   .strict();
 

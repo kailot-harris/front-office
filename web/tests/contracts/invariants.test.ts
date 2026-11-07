@@ -228,23 +228,25 @@ describe('Domain & mathematical invariants: clutch, defense, playerDna, coaches,
     shotsMetadata,
   } = loadAllDatasets();
 
-  it('clutch_leverage_metrics.json: shotBreakdown zone fga/fgm and pct ranges are valid', () => {
+  it('clutch_leverage_metrics.json: clutch volume, efficiency, and provenance are valid', () => {
     for (const p of clutch) {
-      expect(p.tsDelta).toBeDefined();
-      expect(Number.isFinite(p.tsDelta)).toBe(true);
-
-      const zones = [
-        ['rim', p.shotBreakdown.rim],
-        ['mid', p.shotBreakdown.mid],
-        ['three', p.shotBreakdown.three],
-      ] as const;
-      for (const [_, split] of zones) {
-        expect(split.fga).toBeGreaterThanOrEqual(0);
-        expect(split.fgm).toBeGreaterThanOrEqual(0);
-        expect(split.fgm).toBeLessThanOrEqual(split.fga);
-        expect(split.pct).toBeGreaterThanOrEqual(0);
-        expect(split.pct).toBeLessThanOrEqual(100);
+      expect(p.clutchFga).toBeGreaterThanOrEqual(0);
+      if (p.clutchPoints !== null) {
+        expect(p.clutchPoints).toBeGreaterThanOrEqual(0);
       }
+      if (p.clutchFgPct !== null) {
+        expect(p.clutchFgPct).toBeGreaterThanOrEqual(0);
+        expect(p.clutchFgPct).toBeLessThanOrEqual(100);
+      }
+      if (p.clutchPpp !== null) {
+        expect(p.clutchPpp).toBeGreaterThanOrEqual(0);
+      }
+      if (p.clutchScoringPlays !== null) {
+        expect(p.clutchScoringPlays).toBeGreaterThanOrEqual(0);
+      }
+      expect(['REAL_CURRENT_SEASON', 'REAL_HISTORICAL_FALLBACK', 'INSUFFICIENT_SAMPLE']).toContain(p.provenance);
+      expect(typeof p.clutchArchetype).toBe('string');
+      expect(p.clutchArchetype.length).toBeGreaterThanOrEqual(2);
     }
   });
 
