@@ -333,6 +333,9 @@ run_postseason_simulator <- function(season = 2024, n_sims = 10000, force_refres
   log_info(sprintf("Running %d Monte Carlo postseason bracket simulations...", n_sims), script = .LOG_SCRIPT)
   start_sim_time <- Sys.time()
 
+  # Set seed for reproducible Monte Carlo simulation (remediates Issue #53 Bucket D defect)
+  set.seed(as.integer(season) * 1000L + 42L)
+
   for (i in seq_len(n_sims)) {
     sim <- simulate_single_bracket(seeds)
 
