@@ -283,6 +283,8 @@ simulate_playoff_suite <- function() {
 # Dropping the sys.nframe() clause leaves `!interactive()` — the guard style already proven
 # correct in copula_props_engine.R / rapm_engine.R / risk_management_engine.R.
 # (config.R is now sourced at the top of this file rather than here.)
-if (!interactive()) {
+# ISSUE #157: WNBA_PLAYOFF_SIM_NO_AUTORUN allows library callers (e.g. export_web_json.R)
+# to source PLAYOFF_FORMATS without running the 30,000-series demo and writing cache/playoff_series_wnba_demo.rds.
+if (!interactive() && !nzchar(Sys.getenv("WNBA_PLAYOFF_SIM_NO_AUTORUN"))) {
   invisible(simulate_playoff_suite())
 }

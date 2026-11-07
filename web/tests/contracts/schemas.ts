@@ -577,7 +577,8 @@ export const PlayoffSeriesMatchupResultSchema = z
     teamA: teamEnum,
     teamB: teamEnum,
     hcaTeam: teamEnum,
-    format: z.enum(['bo3', 'bo5', 'bo7']).optional(),
+    format: z.enum(['bo3', 'bo5', 'bo7']),
+    winThreshold: z.union([z.literal(2), z.literal(3), z.literal(4)]),
     ratingDiffRaw: finiteNumber,
     tacticalMismatchAdjustment: finiteNumber,
     netRatingMargin: finiteNumber,
@@ -588,10 +589,17 @@ export const PlayoffSeriesMatchupResultSchema = z
     avgGames: finiteNumber.min(2).max(7),
     spreadMinus1_5Prob: prob,
     sweepProb: pct,
-    gameDistributions: z.array(GameOutcomeProbSchema).min(4),
+    gameDistributions: z.array(GameOutcomeProbSchema).min(4).max(8),
     tacticalEdges: z.array(TacticalEdgeSchema),
   })
-  .strict();
+  .strict()
+  .refine(
+    (m) =>
+      (m.format === 'bo3' && m.winThreshold === 2) ||
+      (m.format === 'bo5' && m.winThreshold === 3) ||
+      (m.format === 'bo7' && m.winThreshold === 4),
+    { message: 'winThreshold must match format (bo3=2, bo5=3, bo7=4)' }
+  );
 
 const HistoricalSeriesSchema = z
   .object({

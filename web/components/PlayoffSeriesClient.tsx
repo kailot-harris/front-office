@@ -219,6 +219,7 @@ function simulateClientSeries(
     teamB: teamB.teamAbbr,
     hcaTeam,
     format,
+    winThreshold,
     ratingDiffRaw: Number(rawDiff.toFixed(2)),
     tacticalMismatchAdjustment: Number(mismatchDelta.toFixed(2)),
     netRatingMargin: netMargin,
@@ -254,11 +255,21 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
   const teamA = catalog.teams[teamACode];
   const teamB = catalog.teams[teamBCode];
 
-  // Run simulation
+  // Prefer the deterministic seeded R Monte Carlo from catalog.sampleMatchups
+  // whenever the selected (teamA, teamB, hcaTeam, format) matches a pre-computed
+  // marquee pairing; fall back to client-side Monte Carlo for custom pairings.
   const result = useMemo(() => {
     if (!teamA || !teamB) return null;
+    const precomputed = catalog.sampleMatchups?.find(
+      (m) =>
+        m.teamA === teamACode &&
+        m.teamB === teamBCode &&
+        m.hcaTeam === hcaTeam &&
+        m.format === format
+    );
+    if (precomputed) return precomputed;
     return simulateClientSeries(teamA, teamB, hcaTeam, format);
-  }, [teamA, teamB, hcaTeam, format]);
+  }, [catalog.sampleMatchups, teamA, teamB, teamACode, teamBCode, hcaTeam, format]);
 
   const handleSwap = () => {
     const oldA = teamACode;

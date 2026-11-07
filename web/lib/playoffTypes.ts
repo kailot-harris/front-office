@@ -55,7 +55,8 @@ export interface PlayoffSeriesMatchupResult {
   teamA: string;
   teamB: string;
   hcaTeam: string;
-  format?: 'bo3' | 'bo5' | 'bo7';
+  format: 'bo3' | 'bo5' | 'bo7';
+  winThreshold: number;
   ratingDiffRaw: number;
   tacticalMismatchAdjustment: number;
   netRatingMargin: number;
