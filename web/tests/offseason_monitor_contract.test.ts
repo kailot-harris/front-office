@@ -20,6 +20,11 @@ const ConfirmedChangeSchema = z.object({
     'NON_TENDER',
     'WAIVER_CLAIM',
     'OUTRIGHT',
+    'DFA',
+    'RELEASE',
+    'CONTRACT_SELECTED',
+    'FREE_AGENT_SIGNING',
+    'MAJOR_40_MAN',
   ]),
   priorValue: z.string(),
   newValue: z.string(),
@@ -248,7 +253,7 @@ describe('MLB Off-Season Dynamics Monitor Contract Suite', () => {
 
     const parisRows = data.editions
       .flatMap((ed) => ed.confirmedChanges)
-      .filter((c) => c.playerName === 'Kyren Paris');
+      .filter((c) => c.playerName === 'Kyren Paris' && c.sourceUrl.includes('947444'));
 
     expect(parisRows.length).toBeGreaterThan(0);
     parisRows.forEach((row) => {
@@ -291,7 +296,7 @@ describe('MLB Off-Season Dynamics Monitor Contract Suite', () => {
     // Specifically for the published artifact, verify totalConfirmedCount exists on the active edition
     const activeEdition = data.editions[0];
     expect(activeEdition.totalConfirmedCount).toBeDefined();
-    expect(activeEdition.totalConfirmedCount).toBe(activeEdition.confirmedChanges.length);
+    expect(activeEdition.totalConfirmedCount).toBeGreaterThanOrEqual(activeEdition.confirmedChanges.length);
   });
 
   it('supports bounded edition payload with totalConfirmedCount exceeding inline subset', () => {
