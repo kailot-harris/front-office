@@ -99,25 +99,15 @@ if %ERRORLEVEL% neq 0 (
 
 REM Step 4: Direct aggregator workflow dispatch to overcome Winter DST inversion
 echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 4: Dispatching aggregator sync-sports workflow... >> "%RUN_LOG%"
-set "GH_BIN="
 where gh >nul 2>&1
-if %ERRORLEVEL% equ 0 (
-    set "GH_BIN=gh"
-) else (
-    if exist "C:\Program Files\GitHub CLI\gh.exe" (
-        set "GH_BIN=C:\Program Files\GitHub CLI\gh.exe"
-    )
+if errorlevel 1 (
+    if exist "C:\Program Files\GitHub CLI\gh.exe" set "PATH=%PATH%;C:\Program Files\GitHub CLI"
 )
-
-if defined GH_BIN (
-    "%GH_BIN%" workflow run "Sync sport subtrees and deploy" --repo kailot-harris/front-office -f sports="mlb" -f deploy=true >> "%RUN_LOG%" 2>&1
-    if !ERRORLEVEL! equ 0 (
-        echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Workflow dispatch successfully triggered. >> "%RUN_LOG%"
-    ) else (
-        echo [%DATE% %TIME%] [WARN] [schedule_weekly_offseason.bat] Workflow dispatch returned exit code !ERRORLEVEL!. >> "%RUN_LOG%"
-    )
+gh workflow run "Sync sport subtrees and deploy" --repo kailot-harris/front-office -f sports="mlb" -f deploy=true >> "%RUN_LOG%" 2>&1
+if errorlevel 1 (
+    echo [%DATE% %TIME%] [WARN] [schedule_weekly_offseason.bat] Workflow dispatch returned non-zero exit code. >> "%RUN_LOG%"
 ) else (
-    echo [%DATE% %TIME%] [WARN] [schedule_weekly_offseason.bat] GitHub CLI (gh) not found; skipping direct workflow dispatch. >> "%RUN_LOG%"
+    echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Workflow dispatch successfully triggered. >> "%RUN_LOG%"
 )
 
 echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Daily offseason monitor run completed successfully. >> "%RUN_LOG%"
