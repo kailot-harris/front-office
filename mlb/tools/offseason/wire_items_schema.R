@@ -3,7 +3,7 @@
 # ==============================================================================
 # Shared validation seam for the offseason wire-items artifact
 # (cache/offseason_wire_items.json). The contract itself is specified in
-# docs/internal/offseason_wire_items_contract.md.
+# docs/contracts/offseason_wire_items_contract.md.
 #
 # Producer side (issue #57): validate the in-memory item list BEFORE persisting
 # the artifact, and abort the ingest stage on failure.

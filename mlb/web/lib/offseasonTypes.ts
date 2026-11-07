@@ -185,7 +185,12 @@ export interface OffseasonMonitorDataset {
         | 'QUALIFYING_OFFER'
         | 'NON_TENDER'
         | 'WAIVER_CLAIM'
-        | 'OUTRIGHT';
+        | 'OUTRIGHT'
+        | 'DFA'
+        | 'RELEASE'
+        | 'CONTRACT_SELECTED'
+        | 'FREE_AGENT_SIGNING'
+        | 'MAJOR_40_MAN';
       priorValue: string;
       newValue: string;
       contractTerms?: string;

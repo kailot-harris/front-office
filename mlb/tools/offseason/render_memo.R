@@ -26,6 +26,9 @@ PROJECT_DIR <- local({
   while (!file.exists(file.path(root, "config.R"))) {
     parent <- dirname(root)
     if (identical(parent, root)) {
+      if (file.exists(file.path(getwd(), "config.R"))) {
+        return(getwd())
+      }
       stop(sprintf("render_memo.R: cannot locate repo root (no config.R at or above '%s')", start))
     }
     root <- parent
@@ -63,19 +66,109 @@ validate_zero_betting <- function(text_vector) {
   format(d, "%A, %d %B %Y")
 }
 
+build_state_of_play_summary <- function(edition) {
+  # 1. Transaction freeze handling
+  if (isTRUE(edition$isFrozenWeek) || identical(edition$leagueOperatingStatus, "TRANSACTION_FREEZE")) {
+    freeze_count <- if (!is.null(edition$freezeDayCount)) edition$freezeDayCount else 1
+    minor_league_count <- 0
+    if (!is.null(edition$confirmedChanges) && length(edition$confirmedChanges) > 0) {
+      for (ch in edition$confirmedChanges) {
+        if (identical(ch$rosterTier, "MINOR_LEAGUE")) {
+          minor_league_count <- minor_league_count + 1
+        }
+      }
+    }
+    summary_text <- sprintf("Transactions frozen by lockout, day %d. No major-league state transitions are possible. Minor-league signings this window: %d (does not affect 40-man state).",
+                            freeze_count, minor_league_count)
+    validate_zero_betting(summary_text)
+    return(summary_text)
+  }
+
+  # 2. Quiet week handling
+  if (isTRUE(edition$isQuietWeek) || is.null(edition$confirmedChanges) || length(edition$confirmedChanges) == 0) {
+    summary_text <- "Quiet week: 0 confirmed state transitions recorded."
+    validate_zero_betting(summary_text)
+    return(summary_text)
+  }
+
+  # 3. Active normal window with structured aggregation
+  changes <- edition$confirmedChanges
+  total_count <- if (!is.null(edition$totalConfirmedCount)) as.integer(edition$totalConfirmedCount) else length(changes)
+  
+  # Roster tier counts
+  n_40man <- sum(vapply(changes, function(ch) identical(ch$rosterTier, "MAJOR_40_MAN"), integer(1)))
+  n_minor <- sum(vapply(changes, function(ch) identical(ch$rosterTier, "MINOR_LEAGUE"), integer(1)))
+  
+  # Unique clubs involved
+  clubs <- unique(vapply(changes, function(ch) if (!is.null(ch$team) && nzchar(ch$team)) ch$team else "FA", character(1)))
+  n_clubs <- length(clubs)
+  
+  # Transaction type breakdown
+  tx_types <- vapply(changes, function(ch) {
+    if (!is.null(ch$transactionType) && nzchar(ch$transactionType)) ch$transactionType else "OTHER"
+  }, character(1))
+  tx_table <- sort(table(tx_types), decreasing = TRUE)
+  
+  format_type_name <- function(t) {
+    lookup <- c(
+      "FREE_AGENCY"        = "Free Agency",
+      "TRADE"              = "Trade",
+      "WAIVER_CLAIM"       = "Waiver Claim",
+      "OUTRIGHT"           = "Outright",
+      "DFA"                = "Designated for Assignment",
+      "OPTION_EXERCISED"   = "Option Exercised",
+      "OPTION_DECLINED"    = "Option Declined",
+      "QUALIFYING_OFFER"   = "Qualifying Offer",
+      "NON_TENDER"         = "Non-Tender",
+      "RELEASE"            = "Release",
+      "CONTRACT_EXTENSION" = "Extension"
+    )
+    if (t %in% names(lookup)) lookup[[t]] else gsub("_", " ", tools::toTitleCase(tolower(t)))
+  }
+  
+  type_items <- vapply(names(tx_table), function(nm) {
+    sprintf("%d %s", tx_table[[nm]], format_type_name(nm))
+  }, character(1))
+  type_summary <- paste(type_items, collapse = ", ")
+  
+  # Notable moves (prioritize 40-man tier, limit to top 3)
+  major_moves <- Filter(function(ch) identical(ch$rosterTier, "MAJOR_40_MAN"), changes)
+  candidate_moves <- if (length(major_moves) > 0) major_moves else changes
+  
+  notable_list <- character(0)
+  for (ch in candidate_moves) {
+    if (length(notable_list) >= 3) break
+    pl <- if (!is.null(ch$playerName) && nzchar(ch$playerName)) ch$playerName else "Player"
+    tm <- if (!is.null(ch$team) && nzchar(ch$team)) ch$team else "FA"
+    tx <- if (!is.null(ch$transactionType)) format_type_name(ch$transactionType) else ""
+    notable_list <- c(notable_list, sprintf("%s (%s, %s)", pl, tm, tx))
+  }
+  notable_summary <- if (length(notable_list) > 0) paste(notable_list, collapse = ", ") else "None"
+  
+  lead_sentence <- sprintf("%s confirmed state transitions recorded across %d club(s) (%s 40-man roster moves, %s minor-league moves).",
+                           format(total_count, big.mark = ","),
+                           n_clubs,
+                           format(n_40man, big.mark = ","),
+                           format(n_minor, big.mark = ","))
+  
+  summary_text <- sprintf("%s By transaction type: %s. Notable moves: %s.",
+                          lead_sentence, type_summary, notable_summary)
+  
+  validate_zero_betting(summary_text)
+  return(summary_text)
+}
+
 render_memo_normal <- function(edition) {
   week_num <- if (!is.null(edition$weekNumber)) edition$weekNumber else 1
   pub_date <- if (!is.null(edition$publishDate)) edition$publishDate else format(Sys.Date(), "%Y-%m-%d")
   date_heading <- .format_date_heading(pub_date)
   
-  state_of_play <- if (!is.null(edition$stateOfPlay) && nzchar(trimws(edition$stateOfPlay))) {
+  state_of_play <- if (!is.null(edition$stateOfPlay) && nzchar(trimws(edition$stateOfPlay)) &&
+                       !grepl("free agency declarations, contract option filings", edition$stateOfPlay, fixed = TRUE)) {
+    validate_zero_betting(edition$stateOfPlay)
     edition$stateOfPlay
   } else {
-    if (isTRUE(edition$isQuietWeek)) {
-      "Quiet week: 0 confirmed state transitions recorded."
-    } else {
-      "Off-season transactions active."
-    }
+    build_state_of_play_summary(edition)
   }
   
   lines <- character(0)
@@ -88,9 +181,11 @@ render_memo_normal <- function(edition) {
   if (is.null(changes) || length(changes) == 0) {
     lines <- c(lines, "*No confirmed changes recorded this window.*", "")
   } else {
+    max_table_rows <- 50L
+    displayed_changes <- head(changes, max_table_rows)
     lines <- c(lines, "| Date | Team | Player | Transaction | Prior (S_last) | New (S_t) | Terms / AAV | Source |")
     lines <- c(lines, "|---|---|---|---|---|---|---|---|")
-    for (ch in changes) {
+    for (ch in displayed_changes) {
       dt <- if (!is.null(ch$date)) ch$date else ""
       tm <- if (!is.null(ch$team)) ch$team else ""
       pl <- if (!is.null(ch$playerName)) ch$playerName else ""
@@ -102,6 +197,10 @@ render_memo_normal <- function(edition) {
       lines <- c(lines, sprintf("| %s | %s | %s | %s | %s | %s | %s | %s |", dt, tm, pl, tx, pr, nw, tr, src))
     }
     lines <- c(lines, "")
+    if (length(changes) > max_table_rows) {
+      lines <- c(lines, sprintf("*Showing first %d of %d confirmed changes in memo. Full ledger available in the Off-Season Dynamics Monitor.*",
+                                length(displayed_changes), length(changes)), "")
+    }
   }
   
   # Block 2. Reported (Unconfirmed)
@@ -225,11 +324,12 @@ render_memo_frozen <- function(edition) {
     }
   }
   
-  state_of_play <- if (!is.null(edition$stateOfPlay) && nzchar(trimws(edition$stateOfPlay))) {
+  state_of_play <- if (!is.null(edition$stateOfPlay) && nzchar(trimws(edition$stateOfPlay)) &&
+                       !grepl("free agency declarations, contract option filings", edition$stateOfPlay, fixed = TRUE)) {
+    validate_zero_betting(edition$stateOfPlay)
     edition$stateOfPlay
   } else {
-    sprintf("Transactions frozen by lockout, day %d. No major-league state transitions are possible. Minor-league signings this window: %d (does not affect 40-man state).",
-            freeze_count, minor_league_count)
+    build_state_of_play_summary(edition)
   }
   
   lines <- character(0)
