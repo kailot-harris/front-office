@@ -18,15 +18,88 @@ import {
   Globe,
   Radio,
   History,
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  Layers,
 } from 'lucide-react';
 import {
   OffseasonMonitorDataset,
   OffseasonEdition,
+  ConfirmedChange,
+  OffseasonChangeType,
 } from '@/lib/offseasonTypes';
 
 interface Props {
   initialDataset: OffseasonMonitorDataset | null;
 }
+
+const WNBA_TEAM_CODES = [
+  'ATL', 'CHI', 'CON', 'DAL', 'GSV', 'IND', 'LA', 'LVA', 'MIN', 'NY', 'PHX', 'POR', 'SEA', 'TOR', 'WAS'
+];
+
+const ALL_CHANGE_TYPES: OffseasonChangeType[] = [
+  OffseasonChangeType.SIGNING,
+  OffseasonChangeType.WAIVER,
+  OffseasonChangeType.RELEASE,
+  OffseasonChangeType.TRADE,
+  OffseasonChangeType.WAIVER_CLAIM,
+  OffseasonChangeType.CONTRACT_OFFER,
+  OffseasonChangeType.OFFER_MATCH,
+  OffseasonChangeType.ROSTER_STATUS,
+  OffseasonChangeType.FRONT_OFFICE,
+  OffseasonChangeType.CORE_DESIGNATION,
+  OffseasonChangeType.RESERVED_PLAYER,
+  OffseasonChangeType.QUALIFYING_OFFER,
+  OffseasonChangeType.PRIORITIZATION,
+  OffseasonChangeType.RETIREMENT,
+  OffseasonChangeType.SUSPENSION,
+  OffseasonChangeType.DRAFT_RIGHTS,
+  OffseasonChangeType.EXPANSION_DRAFT,
+  OffseasonChangeType.UNCLASSIFIED,
+];
+
+const getTransactionChangeType = (item: ConfirmedChange): string => {
+  if (item.changeType) return item.changeType;
+  const raw = item as unknown as Record<string, unknown>;
+  if (typeof raw.change_type === 'string') return raw.change_type;
+  if (item.field && item.field.toUpperCase() === 'UNCLASSIFIED') return 'UNCLASSIFIED';
+  return 'UNCLASSIFIED';
+};
+
+const getTransactionTeam = (item: ConfirmedChange): string => {
+  if (item.team) return item.team.toUpperCase();
+  const raw = item as unknown as Record<string, unknown>;
+  if (typeof raw.team_abbr === 'string') return raw.team_abbr.toUpperCase();
+  const upperEntityId = item.entityId ? item.entityId.toUpperCase() : '';
+  if (WNBA_TEAM_CODES.includes(upperEntityId)) return upperEntityId;
+  
+  if (item.entityName) {
+    const upperName = item.entityName.toUpperCase();
+    for (const code of WNBA_TEAM_CODES) {
+      if (upperName.includes(code)) return code;
+    }
+  }
+
+  if (item.field && item.field.toLowerCase() === 'team') {
+    if (item.newValue && item.newValue !== 'None') {
+      const val = item.newValue.toUpperCase();
+      if (WNBA_TEAM_CODES.includes(val)) return val;
+    }
+    if (item.priorValue && item.priorValue !== 'None') {
+      const val = item.priorValue.toUpperCase();
+      if (WNBA_TEAM_CODES.includes(val)) return val;
+    }
+  }
+
+  if (item.newValue && WNBA_TEAM_CODES.includes(item.newValue.toUpperCase())) {
+    return item.newValue.toUpperCase();
+  }
+  if (item.priorValue && WNBA_TEAM_CODES.includes(item.priorValue.toUpperCase())) {
+    return item.priorValue.toUpperCase();
+  }
+  return 'LEAGUE';
+};
 
 export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
   const editions = useMemo(() => initialDataset?.editions || [], [initialDataset]);
@@ -40,45 +113,114 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
     'memo' | 'confirmed' | 'reported' | 'expired' | 'cap'
   >('memo');
 
-  // Confirmed Changes filter state
+  // Confirmed Changes filter and pagination state
   const [confirmedSearch, setConfirmedSearch] = useState('');
   const [confirmedFieldFilter, setConfirmedFieldFilter] = useState('all');
+  const [confirmedChangeTypeFilter, setConfirmedChangeTypeFilter] = useState('all');
+  const [confirmedTeamFilter, setConfirmedTeamFilter] = useState('all');
+  const [confirmedGroupBy, setConfirmedGroupBy] = useState<'none' | 'team' | 'changeType'>('none');
+  const [confirmedPage, setConfirmedPage] = useState(1);
+  const [confirmedPageSize, setConfirmedPageSize] = useState(25);
 
-  // Reported Claims search filter
+  // Reported Claims search, filter and pagination state
   const [reportedSearch, setReportedSearch] = useState('');
   const [reportedCatFilter, setReportedCatFilter] = useState('all');
+  const [reportedPage, setReportedPage] = useState(1);
+  const [reportedPageSize, setReportedPageSize] = useState(25);
 
-  // Expired Claims filter
+  // Expired Claims filter and per-category slice state
   const [expiredCatFilter, setExpiredCatFilter] = useState('all');
+  const [expiredSliceSize, setExpiredSliceSize] = useState(25);
 
   const currentEdition: OffseasonEdition | null = useMemo(() => {
     return editions.find((ed) => ed.weekNumber === selectedWeek) || latestEdition;
   }, [editions, selectedWeek, latestEdition]);
 
-  // Unique fields for confirmed filter
-  const confirmedFields = useMemo(() => {
-    if (!currentEdition) return [];
+  // Iteration site 1: confirmedChanges.forEach with bounded processing and metadata extraction
+  const { confirmedFields, confirmedChangeTypes, confirmedTeams, unclassifiedCount } = useMemo(() => {
+    if (!currentEdition) {
+      return { confirmedFields: [], confirmedChangeTypes: [], confirmedTeams: [], unclassifiedCount: 0 };
+    }
     const fields = new Set<string>();
+    const changeTypes = new Set<string>();
+    const teams = new Set<string>();
+    let unclassified = 0;
+
     currentEdition.confirmedChanges.forEach((c) => {
       if (c.field) fields.add(c.field);
+      const ct = getTransactionChangeType(c);
+      if (ct) changeTypes.add(ct);
+      if (ct === 'UNCLASSIFIED') unclassified++;
+      const tm = getTransactionTeam(c);
+      if (tm && tm !== 'LEAGUE') teams.add(tm);
     });
-    return Array.from(fields);
+
+    return {
+      confirmedFields: Array.from(fields).sort(),
+      confirmedChangeTypes: Array.from(changeTypes).sort(),
+      confirmedTeams: Array.from(teams).sort(),
+      unclassifiedCount: unclassified,
+    };
   }, [currentEdition]);
+
+  // Combined options for dropdowns
+  const availableChangeTypes = useMemo(() => {
+    const list = Array.from(new Set<string>([...ALL_CHANGE_TYPES, ...confirmedChangeTypes]));
+    return list.sort();
+  }, [confirmedChangeTypes]);
+
+  const availableTeams = useMemo(() => {
+    const list = Array.from(new Set<string>([...WNBA_TEAM_CODES, ...confirmedTeams]));
+    return list.sort();
+  }, [confirmedTeams]);
 
   // Filtered confirmed changes
   const filteredConfirmed = useMemo(() => {
     if (!currentEdition) return [];
     return currentEdition.confirmedChanges.filter((item) => {
+      const ct = getTransactionChangeType(item);
+      const tm = getTransactionTeam(item);
+
       const matchSearch =
         item.entityName.toLowerCase().includes(confirmedSearch.toLowerCase()) ||
         item.newValue.toLowerCase().includes(confirmedSearch.toLowerCase()) ||
         item.priorValue.toLowerCase().includes(confirmedSearch.toLowerCase()) ||
-        item.field.toLowerCase().includes(confirmedSearch.toLowerCase());
+        item.field.toLowerCase().includes(confirmedSearch.toLowerCase()) ||
+        ct.toLowerCase().includes(confirmedSearch.toLowerCase()) ||
+        tm.toLowerCase().includes(confirmedSearch.toLowerCase());
+
       const matchField =
         confirmedFieldFilter === 'all' || item.field === confirmedFieldFilter;
-      return matchSearch && matchField;
+
+      const matchChangeType =
+        confirmedChangeTypeFilter === 'all' || ct === confirmedChangeTypeFilter;
+
+      const matchTeam =
+        confirmedTeamFilter === 'all' || tm === confirmedTeamFilter;
+
+      return matchSearch && matchField && matchChangeType && matchTeam;
     });
-  }, [currentEdition, confirmedSearch, confirmedFieldFilter]);
+  }, [currentEdition, confirmedSearch, confirmedFieldFilter, confirmedChangeTypeFilter, confirmedTeamFilter]);
+
+  // Paged slice for confirmed changes
+  const totalConfirmed = filteredConfirmed.length;
+  const totalConfirmedPages = Math.max(1, Math.ceil(totalConfirmed / confirmedPageSize));
+  const confirmedStartIndex = (confirmedPage - 1) * confirmedPageSize;
+  const displayedConfirmed = useMemo(() => {
+    return filteredConfirmed.slice(confirmedStartIndex, confirmedStartIndex + confirmedPageSize);
+  }, [filteredConfirmed, confirmedStartIndex, confirmedPageSize]);
+
+  // Grouped confirmed changes when groupBy is selected
+  const groupedConfirmed = useMemo(() => {
+    if (confirmedGroupBy === 'none') return null;
+    const groups: Record<string, ConfirmedChange[]> = {};
+    filteredConfirmed.forEach((item) => {
+      const key = confirmedGroupBy === 'changeType' ? getTransactionChangeType(item) : getTransactionTeam(item);
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(item);
+    });
+    return groups;
+  }, [filteredConfirmed, confirmedGroupBy]);
 
   // Filtered reported claims
   const filteredReported = useMemo(() => {
@@ -92,6 +234,14 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
       return matchSearch && matchCat;
     });
   }, [currentEdition, reportedSearch, reportedCatFilter]);
+
+  // Paged slice for reported claims
+  const totalReported = filteredReported.length;
+  const totalReportedPages = Math.max(1, Math.ceil(totalReported / reportedPageSize));
+  const reportedStartIndex = (reportedPage - 1) * reportedPageSize;
+  const displayedReported = useMemo(() => {
+    return filteredReported.slice(reportedStartIndex, reportedStartIndex + reportedPageSize);
+  }, [filteredReported, reportedStartIndex, reportedPageSize]);
 
   // Expired claims grouped by source category
   const groupedExpired = useMemo(() => {
@@ -134,7 +284,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
               <span className="text-xs text-slate-400 font-mono">
                 Phase: <strong className="text-slate-200">{initialDataset.activePhase}</strong>
               </span>
-              <span className="text-slate-600">â€¢</span>
+              <span className="text-slate-600">•</span>
               <span className="text-xs text-slate-400 font-mono">
                 Baseline: {initialDataset.baselineAsOfDate}
               </span>
@@ -158,7 +308,11 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                 return (
                   <button
                     key={ed.weekNumber}
-                    onClick={() => setSelectedWeek(ed.weekNumber)}
+                    onClick={() => {
+                      setSelectedWeek(ed.weekNumber);
+                      setConfirmedPage(1);
+                      setReportedPage(1);
+                    }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
                       isSelected
                         ? 'bg-violet-600 text-white shadow-md shadow-violet-600/30'
@@ -282,6 +436,11 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
           <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 font-mono">
             {currentEdition.confirmedChanges.length}
           </span>
+          {unclassifiedCount > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold font-mono">
+              Unclassified: {unclassifiedCount}
+            </span>
+          )}
         </button>
 
         <button
@@ -411,98 +570,315 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
       {/* ------------------------------------------------------------- */}
       {activeTab === 'confirmed' && (
         <div className="space-y-4">
-          {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between bg-surface-raised p-4 rounded-xl border border-slate-800/80">
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={confirmedSearch}
-                onChange={(e) => setConfirmedSearch(e.target.value)}
-                placeholder="Search transactions by player, team, value..."
-                className="w-full bg-surface border border-slate-700/60 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 flex-shrink-0">Field:</span>
-              <select
-                value={confirmedFieldFilter}
-                onChange={(e) => setConfirmedFieldFilter(e.target.value)}
-                className="bg-surface border border-slate-700/60 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-violet-500"
+          {/* Unclassified Transactions Alert Banner */}
+          {unclassifiedCount > 0 && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0" />
+                <div>
+                  <span className="text-xs sm:text-sm font-bold text-amber-200">
+                    {unclassifiedCount} Unclassified Transaction{unclassifiedCount === 1 ? '' : 's'} Detected
+                  </span>
+                  <p className="text-xs text-amber-300/80">
+                    Records requiring manual classification review or dictionary vocabulary alignment.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setConfirmedChangeTypeFilter('UNCLASSIFIED');
+                  setConfirmedPage(1);
+                }}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/40 transition-colors whitespace-nowrap self-start sm:self-center"
               >
-                <option value="all">All Fields</option>
-                {confirmedFields.map((f) => (
-                  <option key={f} value={f}>{f}</option>
-                ))}
-              </select>
+                Filter Unclassified ({unclassifiedCount})
+              </button>
+            </div>
+          )}
+
+          {/* Filters & Grouping Bar */}
+          <div className="bg-surface-raised p-4 rounded-xl border border-slate-800/80 space-y-3">
+            <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+              {/* Search input */}
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={confirmedSearch}
+                  onChange={(e) => {
+                    setConfirmedSearch(e.target.value);
+                    setConfirmedPage(1);
+                  }}
+                  placeholder="Search transactions by player, team, value, type..."
+                  className="w-full bg-surface border border-slate-700/60 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500"
+                />
+              </div>
+
+              {/* Controls: Change Type, Team, Field, GroupBy */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Change Type Filter */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-slate-400 flex-shrink-0">Type:</span>
+                  <select
+                    value={confirmedChangeTypeFilter}
+                    onChange={(e) => {
+                      setConfirmedChangeTypeFilter(e.target.value);
+                      setConfirmedPage(1);
+                    }}
+                    className="bg-surface border border-slate-700/60 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-violet-500"
+                  >
+                    <option value="all">All Types</option>
+                    {availableChangeTypes.map((ct) => (
+                      <option key={ct} value={ct}>
+                        {ct} {ct === 'UNCLASSIFIED' && unclassifiedCount > 0 ? `(${unclassifiedCount})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Team Filter */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-slate-400 flex-shrink-0">Team:</span>
+                  <select
+                    value={confirmedTeamFilter}
+                    onChange={(e) => {
+                      setConfirmedTeamFilter(e.target.value);
+                      setConfirmedPage(1);
+                    }}
+                    className="bg-surface border border-slate-700/60 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-violet-500"
+                  >
+                    <option value="all">All Teams</option>
+                    {availableTeams.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Field Filter */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-slate-400 flex-shrink-0">Field:</span>
+                  <select
+                    value={confirmedFieldFilter}
+                    onChange={(e) => {
+                      setConfirmedFieldFilter(e.target.value);
+                      setConfirmedPage(1);
+                    }}
+                    className="bg-surface border border-slate-700/60 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-violet-500"
+                  >
+                    <option value="all">All Fields</option>
+                    {confirmedFields.map((f) => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Group By selector */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-slate-400 flex-shrink-0">Group:</span>
+                  <select
+                    value={confirmedGroupBy}
+                    onChange={(e) => {
+                      setConfirmedGroupBy(e.target.value as 'none' | 'team' | 'changeType');
+                      setConfirmedPage(1);
+                    }}
+                    className="bg-surface border border-slate-700/60 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-violet-500"
+                  >
+                    <option value="none">Flat Table</option>
+                    <option value="changeType">By Change Type</option>
+                    <option value="team">By Team</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Explicit Count Label and Page Size */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-slate-800/60 text-xs">
+              <div className="text-slate-400 font-mono flex items-center gap-2">
+                <span>
+                  Showing {displayedConfirmed.length} of {totalConfirmed} transactions
+                </span>
+                {totalConfirmed !== currentEdition.confirmedChanges.length && (
+                  <span className="text-slate-500">
+                    (filtered from {currentEdition.confirmedChanges.length} total)
+                  </span>
+                )}
+              </div>
+
+              {/* Pagination controls for flat table */}
+              {confirmedGroupBy === 'none' && totalConfirmed > 0 && (
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-500 text-[11px]">Rows:</span>
+                    <select
+                      value={confirmedPageSize}
+                      onChange={(e) => {
+                        setConfirmedPageSize(Number(e.target.value));
+                        setConfirmedPage(1);
+                      }}
+                      className="bg-surface border border-slate-700/60 rounded px-2 py-0.5 text-xs text-slate-300"
+                    >
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setConfirmedPage((p) => Math.max(1, p - 1))}
+                      disabled={confirmedPage <= 1}
+                      className="p-1 rounded bg-surface border border-slate-700/60 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-800"
+                      title="Previous Page"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="text-slate-400 text-xs font-mono px-1">
+                      {confirmedPage} / {totalConfirmedPages}
+                    </span>
+                    <button
+                      onClick={() => setConfirmedPage((p) => Math.min(totalConfirmedPages, p + 1))}
+                      disabled={confirmedPage >= totalConfirmedPages}
+                      className="p-1 rounded bg-surface border border-slate-700/60 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-800"
+                      title="Next Page"
+                    >
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Table */}
-          <div className="bg-surface-raised border border-slate-800/80 rounded-xl overflow-hidden shadow-lg">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="bg-surface border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
-                    <th className="py-3 px-4">Date</th>
-                    <th className="py-3 px-4">Entity</th>
-                    <th className="py-3 px-4">Field</th>
-                    <th className="py-3 px-4">Prior State (S_last)</th>
-                    <th className="py-3 px-4">New State (S_t)</th>
-                    <th className="py-3 px-4">Source</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {filteredConfirmed.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-8 text-center text-slate-500">
-                        No confirmed transactions match the current filter.
-                      </td>
+          {/* Table View (Flat) */}
+          {confirmedGroupBy === 'none' && (
+            <div className="bg-surface-raised border border-slate-800/80 rounded-xl overflow-hidden shadow-lg">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="bg-surface border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
+                      <th className="py-3 px-4">Date</th>
+                      <th className="py-3 px-4">Entity</th>
+                      <th className="py-3 px-4">Type</th>
+                      <th className="py-3 px-4">Field</th>
+                      <th className="py-3 px-4">Prior State (S_last)</th>
+                      <th className="py-3 px-4">New State (S_t)</th>
+                      <th className="py-3 px-4">Source</th>
                     </tr>
-                  ) : (
-                    filteredConfirmed.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-slate-800/30 transition-colors">
-                        <td className="py-3 px-4 font-mono text-slate-400 whitespace-nowrap">
-                          {item.date || 'â€”'}
-                        </td>
-                        <td className="py-3 px-4 font-bold text-white whitespace-nowrap">
-                          {item.entityName || item.entityId}
-                        </td>
-                        <td className="py-3 px-4 text-violet-400 font-mono">
-                          {item.field}
-                        </td>
-                        <td className="py-3 px-4 text-slate-400">
-                          <span className="px-2 py-0.5 rounded bg-slate-800 font-mono">
-                            {item.priorValue}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-emerald-400 font-semibold">
-                          <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 font-mono">
-                            {item.newValue}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-slate-400 whitespace-nowrap">
-                          {item.sourceUrl ? (
-                            <a
-                              href={item.sourceUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-violet-400 hover:text-violet-300 inline-flex items-center gap-1"
-                            >
-                              <span>Wire</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-                          ) : (
-                            'Official Wire'
-                          )}
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {displayedConfirmed.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-8 text-center text-slate-500">
+                          No confirmed transactions match the current filter.
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      /* Iteration site 2: filteredConfirmed.map bounded via displayedConfirmed slice */
+                      displayedConfirmed.map((item, idx) => {
+                        const ct = getTransactionChangeType(item);
+                        return (
+                          <tr key={idx} className="hover:bg-slate-800/30 transition-colors">
+                            <td className="py-3 px-4 font-mono text-slate-400 whitespace-nowrap">
+                              {item.date || '—'}
+                            </td>
+                            <td className="py-3 px-4 font-bold text-white whitespace-nowrap">
+                              {item.entityName || item.entityId}
+                            </td>
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold ${
+                                ct === 'UNCLASSIFIED'
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                  : 'bg-violet-500/10 text-violet-300 border border-violet-500/20'
+                              }`}>
+                                {ct}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-violet-400 font-mono">
+                              {item.field}
+                            </td>
+                            <td className="py-3 px-4 text-slate-400">
+                              <span className="px-2 py-0.5 rounded bg-slate-800 font-mono">
+                                {item.priorValue}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-emerald-400 font-semibold">
+                              <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 font-mono">
+                                {item.newValue}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-slate-400 whitespace-nowrap">
+                              {item.sourceUrl ? (
+                                <a
+                                  href={item.sourceUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-violet-400 hover:text-violet-300 inline-flex items-center gap-1"
+                                >
+                                  <span>Wire</span>
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              ) : (
+                                'Official Wire'
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Grouped View (by Team or Change Type) */}
+          {confirmedGroupBy !== 'none' && groupedConfirmed && (
+            <div className="space-y-4">
+              {Object.keys(groupedConfirmed).length === 0 ? (
+                <div className="bg-surface-raised border border-slate-800/80 rounded-xl p-8 text-center text-slate-500">
+                  No confirmed transactions match the current filter.
+                </div>
+              ) : (
+                Object.entries(groupedConfirmed).map(([groupKey, groupItems]) => {
+                  const displayedGroupItems = groupItems.slice(0, 25);
+                  return (
+                    <div key={groupKey} className="bg-surface-raised border border-slate-800/80 rounded-xl p-5 space-y-3">
+                      <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                        <div className="flex items-center gap-2">
+                          <Layers className="w-4 h-4 text-violet-400" />
+                          <h4 className="text-sm font-bold text-white uppercase tracking-wider">{groupKey}</h4>
+                        </div>
+                        <span className="text-xs font-mono text-slate-400">
+                          Showing {displayedGroupItems.length} of {groupItems.length} transactions
+                        </span>
+                      </div>
+
+                      <div className="divide-y divide-slate-800/60">
+                        {displayedGroupItems.map((item, idx) => (
+                          <div key={idx} className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                            <div className="space-y-0.5">
+                              <span className="font-bold text-white mr-2">{item.entityName || item.entityId}</span>
+                              <span className="text-violet-400 font-mono text-[11px] mr-2">({item.field})</span>
+                              <span className="text-slate-400">{item.priorValue} → </span>
+                              <span className="text-emerald-400 font-semibold">{item.newValue}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] font-mono text-slate-500 flex-shrink-0">
+                              <span>{item.date}</span>
+                              {item.sourceUrl && (
+                                <a href={item.sourceUrl} target="_blank" rel="noreferrer" className="text-violet-400 hover:text-violet-300">
+                                  Wire
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -517,7 +893,10 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
               <input
                 type="text"
                 value={reportedSearch}
-                onChange={(e) => setReportedSearch(e.target.value)}
+                onChange={(e) => {
+                  setReportedSearch(e.target.value);
+                  setReportedPage(1);
+                }}
                 placeholder="Search rumors by entity or claim..."
                 className="w-full bg-surface border border-slate-700/60 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500"
               />
@@ -526,7 +905,10 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
               <span className="text-xs text-slate-400 flex-shrink-0">Category:</span>
               <select
                 value={reportedCatFilter}
-                onChange={(e) => setReportedCatFilter(e.target.value)}
+                onChange={(e) => {
+                  setReportedCatFilter(e.target.value);
+                  setReportedPage(1);
+                }}
                 className="bg-surface border border-slate-700/60 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-violet-500"
               >
                 <option value="all">All Categories</option>
@@ -537,15 +919,65 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
             </div>
           </div>
 
-          {filteredReported.length === 0 ? (
+          {/* Explicit Counter and Pagination Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs px-1">
+            <div className="text-slate-400 font-mono">
+              Showing {displayedReported.length} of {totalReported} rumors
+            </div>
+
+            {totalReported > 0 && (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-500 text-[11px]">Rows:</span>
+                  <select
+                    value={reportedPageSize}
+                    onChange={(e) => {
+                      setReportedPageSize(Number(e.target.value));
+                      setReportedPage(1);
+                    }}
+                    className="bg-surface border border-slate-700/60 rounded px-2 py-0.5 text-xs text-slate-300"
+                  >
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setReportedPage((p) => Math.max(1, p - 1))}
+                    disabled={reportedPage <= 1}
+                    className="p-1 rounded bg-surface border border-slate-700/60 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-800"
+                    title="Previous Page"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-slate-400 text-xs font-mono px-1">
+                    {reportedPage} / {totalReportedPages}
+                  </span>
+                  <button
+                    onClick={() => setReportedPage((p) => Math.min(totalReportedPages, p + 1))}
+                    disabled={reportedPage >= totalReportedPages}
+                    className="p-1 rounded bg-surface border border-slate-700/60 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-800"
+                    title="Next Page"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {totalReported === 0 ? (
             <div className="bg-surface-raised border border-slate-800/80 rounded-xl p-8 text-center text-slate-400">
               <Radio className="w-8 h-8 text-violet-400 mx-auto mb-2 opacity-60" />
               <p className="text-sm font-semibold text-slate-300">No active rumors currently pending.</p>
               <p className="text-xs text-slate-500 mt-1">Pending items are aged out after a 28-day TTL if unconfirmed.</p>
             </div>
           ) : (
+            /* Iteration site 3: filteredReported.map bounded via displayedReported slice */
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredReported.map((claim) => {
+              {displayedReported.map((claim) => {
                 const ttlPct = Math.min(100, Math.round((claim.daysPending / 28) * 100));
                 const daysRemaining = Math.max(0, 28 - claim.daysPending);
                 return (
@@ -632,33 +1064,47 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
             </div>
           ) : (
             <div className="space-y-4">
-              {Object.entries(groupedExpired).map(([category, items]) => (
-                <div key={category} className="bg-surface-raised border border-slate-800/80 rounded-xl p-5 space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">
-                      {category}
-                    </span>
-                    <span className="text-[11px] font-mono text-slate-500">
-                      {items.length} claim{items.length === 1 ? '' : 's'}
-                    </span>
-                  </div>
-                  <div className="divide-y divide-slate-800/60">
-                    {items.map((item, idx) => (
-                      <div key={idx} className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                        <div className="space-y-0.5">
-                          <span className="font-bold text-white mr-2">{item.entityName}:</span>
-                          <span className="text-slate-300">&ldquo;{item.claim}&rdquo;</span>
+              {Object.entries(groupedExpired).map(([category, items]) => {
+                const displayedExpiredItems = items.slice(0, expiredSliceSize);
+                return (
+                  <div key={category} className="bg-surface-raised border border-slate-800/80 rounded-xl p-5 space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+                        {category}
+                      </span>
+                      <span className="text-[11px] font-mono text-slate-400">
+                        Showing {displayedExpiredItems.length} of {items.length} claims
+                      </span>
+                    </div>
+                    <div className="divide-y divide-slate-800/60">
+                      {/* Iteration site 4: items.map bounded with displayedExpiredItems slice */}
+                      {displayedExpiredItems.map((item, idx) => (
+                        <div key={idx} className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                          <div className="space-y-0.5">
+                            <span className="font-bold text-white mr-2">{item.entityName}:</span>
+                            <span className="text-slate-300">&ldquo;{item.claim}&rdquo;</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[11px] font-mono text-slate-500 flex-shrink-0">
+                            <span>Reported: {item.firstReportedDate}</span>
+                            <span>→</span>
+                            <span className="text-rose-400">Expired: {item.expiredDate}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 text-[11px] font-mono text-slate-500 flex-shrink-0">
-                          <span>Reported: {item.firstReportedDate}</span>
-                          <span>â†’</span>
-                          <span className="text-rose-400">Expired: {item.expiredDate}</span>
-                        </div>
+                      ))}
+                    </div>
+                    {items.length > displayedExpiredItems.length && (
+                      <div className="pt-2 text-center">
+                        <button
+                          onClick={() => setExpiredSliceSize((s) => s + 25)}
+                          className="px-3 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                        >
+                          Show more claims ({items.length - displayedExpiredItems.length} remaining)
+                        </button>
                       </div>
-                    ))}
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

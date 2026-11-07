@@ -57,8 +57,21 @@ generate_state_of_play <- function(num_confirmed, elapsed_days, baseline_date, c
 }
 
 #' Render Block 1: Confirmed Changes
-render_block_1_confirmed <- function(confirmed_changes) {
+render_block_1_confirmed <- function(confirmed_changes, max_items = 25L, unclassified_count = NULL) {
   lines <- c("### 1. Confirmed Changes")
+  
+  if (is.null(unclassified_count)) {
+    unclassified_count <- sum(vapply(confirmed_changes, function(item) {
+      ct <- if (!is.null(item$change_type)) item$change_type else if (!is.null(item$changeType)) item$changeType else ""
+      fld <- if (!is.null(item$field)) item$field else ""
+      if (identical(as.character(ct), "UNCLASSIFIED") || identical(as.character(fld), "UNCLASSIFIED")) 1L else 0L
+    }, integer(1)))
+  }
+  
+  if (unclassified_count > 0L) {
+    lines <- c(lines, sprintf("*Unclassified transactions requiring triage: %d*", as.integer(unclassified_count)))
+  }
+
   if (length(confirmed_changes) == 0) {
     lines <- c(lines, "| Date | Entity | Field | Prior State (S_last) | New State (S_t) | Source |",
                       "|---|---|---|---|---|---|",
@@ -69,7 +82,10 @@ render_block_1_confirmed <- function(confirmed_changes) {
   lines <- c(lines, "| Date | Entity | Field | Prior State (S_last) | New State (S_t) | Source |",
                     "|---|---|---|---|---|---|")
   
-  for (item in confirmed_changes) {
+  total_items <- length(confirmed_changes)
+  items_to_render <- if (total_items > max_items) confirmed_changes[seq_len(max_items)] else confirmed_changes
+  
+  for (item in items_to_render) {
     dt <- if (!is.null(item$date) && nzchar(as.character(item$date))) as.character(item$date) else "—"
     ent <- if (!is.null(item$entityName) && nzchar(as.character(item$entityName))) {
       as.character(item$entityName)
@@ -96,11 +112,16 @@ render_block_1_confirmed <- function(confirmed_changes) {
     lines <- c(lines, sprintf("| %s | %s | %s | %s | %s | %s |", dt, ent, fld, prior_v, new_v, src))
   }
   
+  if (total_items > max_items) {
+    lines <- c(lines, sprintf("\n*Showing %d of %d confirmed transactions (%d omitted from memo preview).* ",
+                              as.integer(max_items), as.integer(total_items), as.integer(total_items - max_items)))
+  }
+  
   paste(lines, collapse = "\n")
 }
 
 #' Render Block 2: Reported (Unconfirmed)
-render_block_2_reported <- function(reported_claims) {
+render_block_2_reported <- function(reported_claims, max_items = 25L) {
   lines <- c("### 2. Reported (Unconfirmed)",
              "| Entity | Claim | Source Category | First Reported | Status |",
              "|---|---|---|---|---|")
@@ -110,7 +131,10 @@ render_block_2_reported <- function(reported_claims) {
     return(paste(lines, collapse = "\n"))
   }
   
-  for (item in reported_claims) {
+  total_items <- length(reported_claims)
+  items_to_render <- if (total_items > max_items) reported_claims[seq_len(max_items)] else reported_claims
+  
+  for (item in items_to_render) {
     ent <- if (!is.null(item$entityName)) as.character(item$entityName) else "—"
     clm <- if (!is.null(item$claim)) as.character(item$claim) else "—"
     cat <- if (!is.null(item$sourceCategory)) as.character(item$sourceCategory) else "National Beat"
@@ -121,11 +145,16 @@ render_block_2_reported <- function(reported_claims) {
     lines <- c(lines, sprintf("| %s | %s | %s | %s | %s |", ent, clm, cat, fr, stat))
   }
   
+  if (total_items > max_items) {
+    lines <- c(lines, sprintf("\n*Showing %d of %d reported claims (%d omitted from memo preview).* ",
+                              as.integer(max_items), as.integer(total_items), as.integer(total_items - max_items)))
+  }
+  
   paste(lines, collapse = "\n")
 }
 
 #' Render Block 3: Expired Claims (Aged Out > 28 Days)
-render_block_3_expired <- function(expired_claims) {
+render_block_3_expired <- function(expired_claims, max_items = 25L) {
   lines <- c("### 3. Expired Claims (Aged Out > 28 Days)",
              "| Entity | Original Claim | Source Category | First Reported | Expired Date |",
              "|---|---|---|---|---|")
@@ -135,7 +164,10 @@ render_block_3_expired <- function(expired_claims) {
     return(paste(lines, collapse = "\n"))
   }
   
-  for (item in expired_claims) {
+  total_items <- length(expired_claims)
+  items_to_render <- if (total_items > max_items) expired_claims[seq_len(max_items)] else expired_claims
+  
+  for (item in items_to_render) {
     ent <- if (!is.null(item$entityName)) as.character(item$entityName) else "—"
     clm <- if (!is.null(item$claim)) as.character(item$claim) else "—"
     cat <- if (!is.null(item$sourceCategory)) as.character(item$sourceCategory) else "National Beat"
@@ -143,6 +175,11 @@ render_block_3_expired <- function(expired_claims) {
     ex <- if (!is.null(item$expiredDate)) as.character(item$expiredDate) else "—"
     
     lines <- c(lines, sprintf("| %s | %s | %s | %s | %s |", ent, clm, cat, fr, ex))
+  }
+  
+  if (total_items > max_items) {
+    lines <- c(lines, sprintf("\n*Showing %d of %d expired claims (%d omitted from memo preview).* ",
+                              as.integer(max_items), as.integer(total_items), as.integer(total_items - max_items)))
   }
   
   paste(lines, collapse = "\n")
@@ -249,7 +286,9 @@ render_7_block_memo <- function(week_number,
                                 upcoming_milestones = list(),
                                 model_prior_impact = list(hasChanges = FALSE, summary = "No change to 2027 baseline Bayesian priors."),
                                 winter_league_notes = list(),
-                                sources_visited = list()) {
+                                sources_visited = list(),
+                                max_display_items = 25L,
+                                unclassified_count = NULL) {
   
   date_header_str <- format_memo_date(publish_date)
   num_confirmed <- length(confirmed_changes)
@@ -258,9 +297,9 @@ render_7_block_memo <- function(week_number,
   header <- sprintf("## Week %d — %s\n\n**State of Play:** %s",
                     as.integer(week_number), date_header_str, sop_str)
   
-  b1 <- render_block_1_confirmed(confirmed_changes)
-  b2 <- render_block_2_reported(reported_claims)
-  b3 <- render_block_3_expired(expired_claims)
+  b1 <- render_block_1_confirmed(confirmed_changes, max_items = max_display_items, unclassified_count = unclassified_count)
+  b2 <- render_block_2_reported(reported_claims, max_items = max_display_items)
+  b3 <- render_block_3_expired(expired_claims, max_items = max_display_items)
   b4 <- render_block_4_milestones(upcoming_milestones)
   b5 <- render_block_5_model(model_prior_impact)
   b6 <- render_block_6_winter(winter_league_notes)

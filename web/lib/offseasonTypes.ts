@@ -181,6 +181,27 @@ export interface LeagueStateBaseline {
 // 2026-2027 Off-Season Dynamics Monitor Dataset (Issue #122 / Blueprint §6)
 // ==============================================================================
 
+export enum OffseasonChangeType {
+  SIGNING = 'SIGNING',
+  WAIVER = 'WAIVER',
+  RELEASE = 'RELEASE',
+  TRADE = 'TRADE',
+  WAIVER_CLAIM = 'WAIVER_CLAIM',
+  CONTRACT_OFFER = 'CONTRACT_OFFER',
+  OFFER_MATCH = 'OFFER_MATCH',
+  ROSTER_STATUS = 'ROSTER_STATUS',
+  FRONT_OFFICE = 'FRONT_OFFICE',
+  CORE_DESIGNATION = 'CORE_DESIGNATION',
+  RESERVED_PLAYER = 'RESERVED_PLAYER',
+  QUALIFYING_OFFER = 'QUALIFYING_OFFER',
+  PRIORITIZATION = 'PRIORITIZATION',
+  RETIREMENT = 'RETIREMENT',
+  SUSPENSION = 'SUSPENSION',
+  DRAFT_RIGHTS = 'DRAFT_RIGHTS',
+  EXPANSION_DRAFT = 'EXPANSION_DRAFT',
+  UNCLASSIFIED = 'UNCLASSIFIED',
+}
+
 export interface ConfirmedChange {
   date: string;
   entityId: string;
@@ -189,6 +210,8 @@ export interface ConfirmedChange {
   priorValue: string;
   newValue: string;
   sourceUrl: string;
+  changeType?: OffseasonChangeType;
+  team?: string;
 }
 
 export interface ReportedClaim {
