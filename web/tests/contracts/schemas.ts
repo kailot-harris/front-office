@@ -283,17 +283,11 @@ export const CoachingStaffMetricSchema = z
     headCoach: z
       .object({
         name: z.string().min(2),
-        tenureYears: z.number().int().min(0),
-        coachingTree: z.string().min(2),
-        tacticalArchetype: z.string().min(2),
-      })
-      .strict(),
-    assistants: z
-      .object({
-        associateHC: z.string().min(2),
-        offensiveCoord: z.string().min(2),
-        defensiveCoord: z.string().min(2),
-        playerDevLead: z.string().min(2),
+        tenureStart: z.number().int().min(2000).max(2035),
+        tenureYears: z.number().int().min(1),
+        registrySeason: z.number().int().min(2020).max(2035),
+        sourceCitation: z.string().min(5),
+        sourceVerifiedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
       })
       .strict(),
     metrics: z
@@ -304,7 +298,10 @@ export const CoachingStaffMetricSchema = z
         coachingWinsAdded: finiteNumber,
         atoOffensivePpp: finiteNumber.positive(),
         atoDefensivePppAllowed: finiteNumber.positive(),
-        challengeSuccessRate: pct,
+        challengeSuccessRate: prob,
+        atoOffPossessions: z.number().int().min(0),
+        atoDefPossessions: z.number().int().min(0),
+        challengeAttempts: z.number().int().min(0),
       })
       .strict(),
     radarPercentiles: z
@@ -375,19 +372,30 @@ export const PlayerDnaProfileSchema = z
     overallRating: pct,
     manifoldX: finiteNumber,
     manifoldY: finiteNumber,
+    // Issue #148: 12 real dimensions; optical-tracking-only keys dropped.
+    dnaSource: z.enum(['observed_pbp_box', 'projection_prior_fallback']),
+    similarPlayers: z
+      .array(
+        z
+          .object({
+            playerId: z.string().min(1),
+            playerName: z.string().min(2),
+            team: teamEnum,
+            position: positionEnum,
+            similarityPct: pct,
+          })
+          .strict(),
+      )
+      .length(3),
     skillVector: z
       .object({
         rim_fg: pct,
         paint_power: pct,
-        paint_touches: pct,
         cns_3p: pct,
         pullup_3p: pct,
         ft_pct: pct,
         ast_pct: pct,
-        pot_ast: pct,
         tov_control: pct,
-        drive_ast: pct,
-        switchability: pct,
         rim_protection: pct,
         perimeter_havoc: pct,
         d_rapm: pct,
