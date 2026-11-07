@@ -18,7 +18,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
     initialProfiles.find((p) => p.playerName.includes("A'ja Wilson")) || initialProfiles[0]
   );
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('ALL');
-  const [sortKey, setSortKey] = useState<'versatilityScore' | 'rimDfgDelta' | 'dRapm' | 'poaNavigation'>('versatilityScore');
+  const [sortKey, setSortKey] = useState<'versatilityScore' | 'rimDfgDelta' | 'dRapm'>('versatilityScore');
 
   const filteredProfiles = initialProfiles
     .filter((p) => {
@@ -63,7 +63,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
           </h1>
           <p className="text-sm text-slate-300 max-w-2xl mt-1">
             Quantifying 1-through-5 switch entropy across all 15 WNBA rosters, rim contest field goal suppression,
-            point-of-attack screen navigation, and ridge-fitted defensive RAPM.
+            rim deterrence, and ridge-fitted defensive RAPM.
           </p>
           <p className="text-xs text-slate-400 max-w-2xl mt-2">
             Defensive RAPM comes from the ridge fit over {DRAPM_POOLED_SEASON_LABEL} seasons — a
@@ -121,14 +121,13 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                 value={sortKey}
                 onChange={(e) =>
                   setSortKey(
-                    e.target.value as 'versatilityScore' | 'rimDfgDelta' | 'dRapm' | 'poaNavigation'
+                    e.target.value as 'versatilityScore' | 'rimDfgDelta' | 'dRapm'
                   )
                 }
                 className="bg-surface border border-slate-800 rounded px-2 py-0.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
               >
                 <option value="versatilityScore">Versatility Score (H_v)</option>
                 <option value="rimDfgDelta">Rim DFG% Delta (Low is Best)</option>
-                <option value="poaNavigation">POA Screen Nav</option>
                 <option value="dRapm">Defensive Rating (dRAPM, est. where unmatched)</option>
               </select>
             </div>
@@ -168,8 +167,6 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                       <div className="text-[10px] text-slate-400">
                         {sortKey === 'rimDfgDelta'
                           ? 'Rim Δ'
-                          : sortKey === 'poaNavigation'
-                          ? 'POA'
                           : sortKey === 'dRapm'
                           ? dRapmMeta(p).badge
                           : 'H_vers'}
@@ -185,8 +182,6 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                       >
                         {sortKey === 'rimDfgDelta'
                           ? `${p.rimDfgDelta}%`
-                          : sortKey === 'poaNavigation'
-                          ? p.poaNavigation
                           : sortKey === 'dRapm'
                           ? `${p.dRapm > 0 ? '+' : ''}${p.dRapm.toFixed(2)}`
                           : p.versatilityScore}
@@ -252,10 +247,10 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
               <div className="p-3 bg-surface/50 rounded-xl border border-slate-800">
                 <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
                   <Shield className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>POA Screen Nav</span>
+                  <span>Rim Contest Sample</span>
                 </div>
-                <div className="text-base font-bold text-slate-100">{selectedProfile.poaNavigation} / 100</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Pick-and-roll navigation</div>
+                <div className="text-base font-bold text-slate-100">{selectedProfile.rimDefenseSample} FGA</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">{selectedProfile.rimDefenseSource === 'wehoop_shots_lineups' ? 'Real tracked shots' : 'Positional prior'}</div>
               </div>
 
               <div className="p-3 bg-surface/50 rounded-xl border border-slate-800">

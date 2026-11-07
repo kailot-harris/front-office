@@ -260,6 +260,16 @@ describe('Domain & mathematical invariants: clutch, defense, playerDna, coaches,
     }
   });
 
+  it('defensive_metrics.json: every profile has valid rim and matchup provenance metadata', () => {
+    for (const p of defense) {
+      expect(['wehoop_shots_lineups', 'insufficient_sample', 'position_prior_fallback']).toContain(p.rimDefenseSource);
+      expect(['wehoop_possession_lineups', 'position_prior_fallback']).toContain(p.matchupSource);
+      expect(p.rimDefenseSample).toBeGreaterThanOrEqual(0);
+      expect(p.matchupSample).toBeGreaterThanOrEqual(0);
+      expect(['rapm_ridge_pooled', 'rapm_ridge_pooled_low_sample', 'heuristic_fallback']).toContain(p.dRapmSource);
+    }
+  });
+
   it('player_dna_profiles.json: every player has 3 historical twins with similarityPct sorted descending', () => {
     for (const p of playerDna) {
       expect(p.historicalTwins.length).toBeGreaterThanOrEqual(3);
