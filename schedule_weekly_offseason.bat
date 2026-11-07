@@ -46,6 +46,13 @@ echo ================================================================== >> "%RUN
 REM Defense-in-depth for git commit identity resolution under Task Scheduler
 if not defined HOME if defined USERPROFILE set HOME=%USERPROFILE%
 
+REM Resolve MLB_DISCORD_WEBHOOK from ~/.Renviron for notifications under --vanilla
+if not defined MLB_DISCORD_WEBHOOK if exist "%USERPROFILE%\.Renviron" (
+    for /f "usebackq tokens=1,* delims==" %%i in ("%USERPROFILE%\.Renviron") do (
+        if "%%i"=="MLB_DISCORD_WEBHOOK" set "MLB_DISCORD_WEBHOOK=%%~j"
+    )
+)
+
 REM Resolve Rscript executable
 set RSCRIPT=
 where Rscript >nul 2>&1

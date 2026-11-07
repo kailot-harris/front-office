@@ -38,6 +38,14 @@ if (-not $env:HOME -and $env:USERPROFILE) {
     $env:HOME = $env:USERPROFILE
 }
 
+# Resolve MLB_DISCORD_WEBHOOK from ~/.Renviron for notifications under --vanilla
+if (-not $env:MLB_DISCORD_WEBHOOK -and (Test-Path "$HOME\.Renviron")) {
+    $whMatch = Get-Content "$HOME\.Renviron" | Select-String -Pattern '^MLB_DISCORD_WEBHOOK="?([^"\r\n]+)"?'
+    if ($whMatch.Matches.Groups.Count -gt 1) {
+        $env:MLB_DISCORD_WEBHOOK = $whMatch.Matches.Groups[1].Value
+    }
+}
+
 $LogDir = Join-Path $ProjectDir "logs"
 if (-not (Test-Path $LogDir)) {
     New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
