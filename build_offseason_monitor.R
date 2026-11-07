@@ -135,7 +135,11 @@ build_offseason_monitor_dag <- function(dry_run = FALSE,
         } else {
           extract_deltas_regex(item_text, date = item_date, source_url = item_url, baseline_state = s_last)
         }
-        if (length(deltas) > 0) extracted_deltas <- c(extracted_deltas, deltas)
+        if (length(deltas) > 0) {
+          sf <- if (is.list(item) && !is.null(item$source_family)) item$source_family else "league_wire"
+          deltas <- lapply(deltas, function(d) { d$source_family <- sf; d })
+          extracted_deltas <- c(extracted_deltas, deltas)
+        }
       }
     }
   }
@@ -163,7 +167,8 @@ build_offseason_monitor_dag <- function(dry_run = FALSE,
   unclassified_deltas <- Filter(function(d) {
     ct <- if (!is.null(d$change_type)) d$change_type else ""
     et <- if (!is.null(d$entity_type)) d$entity_type else ""
-    identical(as.character(ct), "UNCLASSIFIED") || identical(as.character(et), "unclassified")
+    sf <- if (!is.null(d$source_family)) d$source_family else "league_wire"
+    (identical(as.character(ct), "UNCLASSIFIED") || identical(as.character(et), "unclassified")) && !identical(as.character(sf), "beat_feeds")
   }, extracted_deltas)
   
   # ----------------------------------------------------------------------------

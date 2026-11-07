@@ -253,12 +253,12 @@ extract_deltas_regex <- function(raw_text,
     # 1. Multi-player Signing Pattern:
     # "Signed C Kamila Borkowska and F Maria Gakdeng to player development contracts."
     # --------------------------------------------------------------------------
-    m_multi_sign <- regexec("^(?:Re[- ]?)?Signed\\s+(.+?)\\s+and\\s+(.+?)(?:\\s+to\\s+(.+))?$", clause, ignore.case = TRUE, perl = TRUE)
+    m_multi_sign <- regexec("^(?:Re[- ]?)?Signed\\s+(.+?)\\s+and\\s+(.+?)\\s+to\\s+(.+)$", clause, ignore.case = TRUE, perl = TRUE)
     r_multi_sign <- regmatches(clause, m_multi_sign)[[1]]
-    if (length(r_multi_sign) >= 3) {
+    if (length(r_multi_sign) >= 4) {
       p1_chunk <- trimws(r_multi_sign[2])
       p2_chunk <- trimws(r_multi_sign[3])
-      contract_str <- if (length(r_multi_sign) >= 4 && nzchar(r_multi_sign[4])) trimws(r_multi_sign[4]) else "Standard Contract"
+      contract_str <- trimws(r_multi_sign[4])
       
       for (pchunk in c(p1_chunk, p2_chunk)) {
         parsed <- extract_pos_and_name(pchunk)
