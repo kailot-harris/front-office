@@ -10,6 +10,13 @@
 #   4. Degraded secondary feeds (team_releases or beat_feeds) transition to "DEGRADED"
 #      while preserving non-quiet week execution.
 #   5. All raw_items receive valid rosterTier discrimination ('MAJOR_40_MAN' | 'MINOR_LEAGUE').
+#   6. Stale-snapshot laundering fallback is removed: an unreachable endpoint
+#      with the Oct 31 snapshot present returns FAILED with true http_code (0L / non-200),
+#      never HEALTHY and never a fabricated 200.
+#   7. Persisted artifact (cache/offseason_wire_items.json) passes contract
+#      validator (validate_wire_items), with unique transaction IDs and honest volume.
+#   8. Explicit replay-snapshot opt-in reports status "DEGRADED" and http_code 0L.
+#   9. Baseline-derived start_date dynamically resolves from baseline asOf.
 # ==============================================================================
 
 # GitHub issue #90: Project root resolution prelude.
@@ -84,6 +91,66 @@ stopifnot(healthy_res$can_assert_quiet_week == TRUE)
 stopifnot(all(healthy_res$raw_items$rosterTier %in% c("MAJOR_40_MAN", "MINOR_LEAGUE")))
 message("  [PASS] Healthy ingestion run validated with 100% rosterTier coverage.")
 
+# Test 6: Removed laundering fallback — simulated network failure with snapshot present
+message("Test 6: Laundering fallback removal with snapshot present on disk...")
+snap_file <- file.path(PROJECT_DIR, "cache", "raw_ingest_archive", "20261031", "mlb_transactions_catchup.json")
+stopifnot(file.exists(snap_file))
+
+# 6a. mock_fail returns FAILED with 500, never 200, never HEALTHY
+fail_wire <- fetch_league_wire(mock_fail = TRUE)
+stopifnot(identical(fail_wire$status, "FAILED"))
+stopifnot(identical(fail_wire$http_code, 500L))
+stopifnot(identical(fail_wire$items_found, 0L))
+
+# 6b. unreachable endpoint returns FAILED with http_code 0L, never 200, never HEALTHY
+unreach_wire <- fetch_league_wire(timeout_secs = 0.0001)
+stopifnot(identical(unreach_wire$status, "FAILED"))
+stopifnot(identical(unreach_wire$http_code, 0L))
+stopifnot(identical(unreach_wire$items_found, 0L))
+message("  [PASS] Network failure yields FAILED with true http_code (0L / 500L); snapshot is not consulted.")
+
+# Test 7: Persisted wire items artifact validation & contract conformance
+message("Test 7: Wire items artifact validation (contract conformance)...")
+artifact_path <- file.path(PROJECT_DIR, "cache", "offseason_wire_items.json")
+stopifnot(file.exists(artifact_path))
+
+items <- jsonlite::fromJSON(artifact_path, simplifyVector = FALSE, encoding = "UTF-8")
+stopifnot(is.list(items) && length(items) > 0)
+
+val_res <- validate_wire_items(items, require_unique_transaction_ids = TRUE, allow_unknown_fields = FALSE)
+stopifnot(val_res$pass == TRUE)
+stopifnot(val_res$n_errors == 0L)
+message(sprintf("  [PASS] Artifact passes contract validation (%s).", val_res$summary))
+
+# Verify honest volume: manifest items_found equals artifact record count
+manifest_path <- file.path(PROJECT_DIR, "cache", "ingestion_manifest.json")
+manifest <- jsonlite::fromJSON(manifest_path, simplifyVector = FALSE)
+stopifnot(identical(as.integer(manifest$adapters$league_wire$items_found), length(items)))
+message(sprintf("  [PASS] Honest volume verified: manifest items_found (%d) == artifact length (%d).",
+                manifest$adapters$league_wire$items_found, length(items)))
+
+# Verify trade dedup: transaction_id must be strictly unique
+tids <- vapply(items, function(x) x$transaction_id, integer(1))
+stopifnot(length(tids) == length(unique(tids)))
+message("  [PASS] Unique transaction_id enforcement verified (mirrored trades collapsed).")
+
+# Test 8: Replay snapshot opt-in governance
+message("Test 8: Explicit snapshot replay opt-in governance...")
+replay_wire <- fetch_league_wire(replay_snapshot = snap_file)
+stopifnot(identical(replay_wire$status, "DEGRADED"))
+stopifnot(identical(replay_wire$http_code, 0L))
+stopifnot(replay_wire$items_found == 276L)
+message("  [PASS] Replay snapshot reports status 'DEGRADED' and http_code 0L, never fabricated 200.")
+
+# Test 9: Dynamic baseline-derived start_date
+message("Test 9: Baseline-derived start_date resolution...")
+derived_start <- derive_default_start_date()
+baseline <- jsonlite::fromJSON(file.path(PROJECT_DIR, "cache", "league_state_baseline.json"), simplifyVector = FALSE)
+expected_date <- substr(baseline$asOf, 1, 10)
+stopifnot(identical(derived_start, expected_date))
+message(sprintf("  [PASS] Default start_date correctly resolved to %s from baseline asOf (%s).",
+                derived_start, baseline$asOf))
+
 message("=====================================================================")
-message(">>> ALL INGESTION HEALTH TESTS PASSED CLEANLY (5/5)")
+message(">>> ALL INGESTION HEALTH TESTS PASSED CLEANLY (9/9)")
 message("=====================================================================")

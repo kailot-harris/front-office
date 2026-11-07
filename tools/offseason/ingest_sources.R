@@ -8,12 +8,21 @@
 #   2. team_releases: 30 MLB team transaction feeds
 #   3. beat_feeds: National & team beat news / rumor RSS feeds
 #
-# Generates cache/ingestion_manifest.json with multilateral health checks,
-# enforces block-vs-degrade governance and quiet-week preconditions,
+# CLI usage:
+#   Rscript --vanilla tools/offseason/ingest_sources.R [options]
+#   Options:
+#     --start-date=YYYY-MM-DD   Override start date (default derived from baseline asOf)
+#     --end-date=YYYY-MM-DD     Override end date (default Sys.Date())
+#     --allow-degraded          Allow execution past feed failures without fatal exit
+#     --replay-snapshot=<path>  Explicit snapshot replay (reports status DEGRADED)
+#
+# Generates cache/offseason_wire_items.json with contract-validated normalized
+# wire transactions, and cache/ingestion_manifest.json with multilateral health
+# checks. Enforces block-vs-degrade governance and quiet-week preconditions,
 # snapshots raw ingest into cache/raw_ingest_archive/YYYYMMDD/,
 # and implements minor-league vs major-league discrimination (rosterTier).
 #
-# Conforms to blueprint §§ 2, 4, 10, and Zero-Betting Policy.
+# Conforms to docs/internal/offseason_wire_items_contract.md and Zero-Betting Policy.
 # ==============================================================================
 
 # GitHub issue #90: Project root resolution prelude.
@@ -47,6 +56,29 @@ suppressPackageStartupMessages({
   library(httr)
   library(xml2)
 })
+
+# Source contract schema validator and URL derivation helper
+source(file.path(PROJECT_DIR, "tools", "offseason", "wire_items_schema.R"))
+source(file.path(PROJECT_DIR, "tools", "offseason", "extract_regex.R"))
+
+# Derives the default start date dynamically from baseline asOf state
+# (cache/league_state_baseline.json -> asOf, e.g. "2026-10-31T18:29:51Z").
+# Re-fetch overlap: truncating the timestamp to its calendar date (2026-10-31)
+# provides an intraday overlap of ~18.5 hours of transactions prior to baseline
+# reconciliation to capture any back-dated wire items, while downstream reconcilers dedup.
+derive_default_start_date <- function(baseline_path = file.path(PROJECT_DIR, "cache", "league_state_baseline.json"),
+                                      overlap_days = 0L) {
+  if (file.exists(baseline_path)) {
+    tryCatch({
+      baseline <- jsonlite::fromJSON(baseline_path, simplifyVector = FALSE)
+      if (!is.null(baseline$asOf) && nzchar(baseline$asOf)) {
+        base_date <- as.Date(substr(baseline$asOf, 1, 10))
+        return(format(base_date - as.integer(overlap_days), "%Y-%m-%d"))
+      }
+    }, error = function(e) NULL)
+  }
+  format(Sys.Date() - 7L, "%Y-%m-%d")
+}
 
 # Zero-betting policy guard check
 FORBIDDEN_BETTING_TERMS <- c("sportsbook", "betmgm", "draftkings", "fanduel",
@@ -85,15 +117,47 @@ MLB_TEAMS_30 <- data.frame(
 # ------------------------------------------------------------------------------
 # Adapter 1: League Transaction Wire (MLB Stats API)
 # ------------------------------------------------------------------------------
-fetch_league_wire <- function(start_date = "2026-10-29", end_date = Sys.Date(),
-                              mock_fail = FALSE, timeout_secs = 10) {
+fetch_league_wire <- function(start_date = derive_default_start_date(), end_date = Sys.Date(),
+                              mock_fail = FALSE, timeout_secs = 10,
+                              replay_snapshot = NULL) {
+  # Explicit snapshot replay opt-in: reports status DEGRADED, http_code 0L,
+  # never auto-selected, and never claims HEALTHY or http_code 200.
+  if (!is.null(replay_snapshot)) {
+    if (file.exists(replay_snapshot)) {
+      raw_txt <- readLines(replay_snapshot, warn = FALSE, encoding = "UTF-8")
+      combined_txt <- paste(raw_txt, collapse = "\n")
+      parsed <- jsonlite::fromJSON(combined_txt)
+      tx_count <- if (!is.null(parsed$transactions)) nrow(parsed$transactions) else 0L
+      return(list(
+        status = "DEGRADED",
+        http_code = 0L,
+        items_found = as.integer(tx_count),
+        bytes_captured = nchar(combined_txt),
+        raw_json = parsed,
+        raw_text = combined_txt,
+        error = "Snapshot replay mode explicitly requested"
+      ))
+    } else {
+      return(list(
+        status = "FAILED",
+        http_code = 0L,
+        items_found = 0L,
+        bytes_captured = 0L,
+        raw_json = NULL,
+        raw_text = NULL,
+        error = sprintf("Replay snapshot file not found: %s", replay_snapshot)
+      ))
+    }
+  }
+
   if (mock_fail) {
     return(list(
       status = "FAILED",
-      http_code = 500,
-      items_found = 0,
-      bytes_captured = 0,
+      http_code = 500L,
+      items_found = 0L,
+      bytes_captured = 0L,
       raw_json = NULL,
+      raw_text = NULL,
       error = "Simulated network failure"
     ))
   }
@@ -106,32 +170,19 @@ fetch_league_wire <- function(start_date = "2026-10-29", end_date = Sys.Date(),
     NULL
   })
   
-  # Fallback to local snapshot if live network is unreachable
-  if (is.null(res) || httr::status_code(res) != 200) {
-    snapshot_file <- file.path(PROJECT_DIR, "cache", "raw_ingest_archive", "20261031", "mlb_transactions_catchup.json")
-    if (file.exists(snapshot_file)) {
-      raw_txt <- readLines(snapshot_file, warn = FALSE, encoding = "UTF-8")
-      combined_txt <- paste(raw_txt, collapse = "\n")
-      parsed <- jsonlite::fromJSON(combined_txt)
-      tx_count <- if (!is.null(parsed$transactions)) nrow(parsed$transactions) else 0
-      return(list(
-        status = "HEALTHY",
-        http_code = 200,
-        items_found = tx_count,
-        bytes_captured = nchar(combined_txt),
-        raw_json = parsed,
-        raw_text = combined_txt
-      ))
-    } else {
-      return(list(
-        status = "FAILED",
-        http_code = if (!is.null(res)) httr::status_code(res) else 0,
-        items_found = 0,
-        bytes_captured = 0,
-        raw_json = NULL,
-        error = "Network error and no fallback snapshot found"
-      ))
-    }
+  # Fail closed: network failure or non-200 yields FAILED with true http_code
+  # (0L when no response received). Stale snapshot laundering fallback removed.
+  if (is.null(res) || httr::status_code(res) != 200L) {
+    code <- if (!is.null(res)) as.integer(httr::status_code(res)) else 0L
+    return(list(
+      status = "FAILED",
+      http_code = code,
+      items_found = 0L,
+      bytes_captured = 0L,
+      raw_json = NULL,
+      raw_text = NULL,
+      error = if (is.null(res)) "Network unreachable or request timed out" else sprintf("HTTP %d from statsapi", code)
+    ))
   }
   
   raw_txt <- httr::content(res, as = "text", encoding = "UTF-8")
@@ -142,10 +193,11 @@ fetch_league_wire <- function(start_date = "2026-10-29", end_date = Sys.Date(),
   if (is.null(parsed) || is.null(parsed$transactions)) {
     return(list(
       status = "FAILED",
-      http_code = httr::status_code(res),
-      items_found = 0,
+      http_code = as.integer(httr::status_code(res)),
+      items_found = 0L,
       bytes_captured = nchar(raw_txt),
       raw_json = NULL,
+      raw_text = NULL,
       error = "Failed to parse API response as JSON transactions"
     ))
   }
@@ -153,8 +205,8 @@ fetch_league_wire <- function(start_date = "2026-10-29", end_date = Sys.Date(),
   tx_count <- nrow(parsed$transactions)
   list(
     status = "HEALTHY",
-    http_code = httr::status_code(res),
-    items_found = tx_count,
+    http_code = as.integer(httr::status_code(res)),
+    items_found = as.integer(tx_count),
     bytes_captured = nchar(raw_txt),
     raw_json = parsed,
     raw_text = raw_txt
@@ -164,14 +216,14 @@ fetch_league_wire <- function(start_date = "2026-10-29", end_date = Sys.Date(),
 # ------------------------------------------------------------------------------
 # Adapter 2: Team Press Releases / Announcement Feeds (30 Clubs)
 # ------------------------------------------------------------------------------
-fetch_team_releases <- function(start_date = "2026-10-29", end_date = Sys.Date(),
+fetch_team_releases <- function(start_date = derive_default_start_date(), end_date = Sys.Date(),
                                 mock_fail = FALSE, timeout_secs = 5) {
   if (mock_fail) {
     return(list(
       status = "DEGRADED",
-      feeds_polled = 30,
-      feeds_succeeded = 0,
-      items_found = 0,
+      feeds_polled = 30L,
+      feeds_succeeded = 0L,
+      items_found = 0L,
       team_records = list()
     ))
   }
@@ -207,25 +259,11 @@ fetch_team_releases <- function(start_date = "2026-10-29", end_date = Sys.Date()
       }
     }
     
-    # If network call failed, check fallback or mark team
-    team_records[[tm$abbrev]] <- list(team = tm$abbrev, id = tm$id, name = tm$name, tx_count = 0)
+    # If network call failed, mark team
+    team_records[[tm$abbrev]] <- list(team = tm$abbrev, id = tm$id, name = tm$name, tx_count = 0L)
   }
   
-  # If at least 25 of 30 succeeded, HEALTHY; if between 1 and 24, DEGRADED; if 0, FAILED
-  # If network was offline completely, fallback to local wire partitioning across 30 teams
-  if (feeds_succeeded == 0) {
-    snapshot_file <- file.path(PROJECT_DIR, "cache", "raw_ingest_archive", "20261031", "mlb_transactions_catchup.json")
-    if (file.exists(snapshot_file)) {
-      snap <- jsonlite::fromJSON(snapshot_file)
-      feeds_succeeded <- 30
-      items_found <- nrow(snap$transactions)
-      for (i in seq_len(feeds_polled)) {
-        tm <- MLB_TEAMS_30[i, ]
-        team_records[[tm$abbrev]] <- list(team = tm$abbrev, id = tm$id, name = tm$name, tx_count = floor(items_found / 30))
-      }
-    }
-  }
-  
+  # Status: HEALTHY if >= 25; DEGRADED if 1..24; FAILED if 0. Stale snapshot fallback removed.
   status <- if (feeds_succeeded >= 25) {
     "HEALTHY"
   } else if (feeds_succeeded > 0) {
@@ -393,22 +431,25 @@ discriminate_roster_tier <- function(tx_row, mlb_team_names, baseline_40_mlbam_i
 # ------------------------------------------------------------------------------
 # Core Ingestion Orchestrator
 # ------------------------------------------------------------------------------
-ingest_all <- function(start_date = "2026-10-29", end_date = Sys.Date(),
+ingest_all <- function(start_date = derive_default_start_date(), end_date = Sys.Date(),
                        allow_degraded = FALSE,
+                       replay_snapshot = NULL,
                        mock_wire_fail = FALSE,
                        mock_teams_fail = FALSE,
                        mock_beat_fail = FALSE) {
-  message(">>> [Ingestion Subsystem] Starting multi-source ingestion run...")
+  message(sprintf(">>> [Ingestion Subsystem] Starting multi-source ingestion run for window %s to %s...",
+                  start_date, end_date))
   
   # 1. Fetch 3 feeds
-  wire_res <- fetch_league_wire(start_date = start_date, end_date = end_date, mock_fail = mock_wire_fail)
+  wire_res <- fetch_league_wire(start_date = start_date, end_date = end_date,
+                                mock_fail = mock_wire_fail, replay_snapshot = replay_snapshot)
   teams_res <- fetch_team_releases(start_date = start_date, end_date = end_date, mock_fail = mock_teams_fail)
   beat_res <- fetch_beat_feeds(mock_fail = mock_beat_fail)
   
   # 2. Compute composite health & block-vs-degrade policy
   composite_health <- if (wire_res$status == "FAILED") {
     "FAILED"
-  } else if (teams_res$status == "DEGRADED" || beat_res$status == "DEGRADED") {
+  } else if (wire_res$status == "DEGRADED" || teams_res$status == "DEGRADED" || beat_res$status == "DEGRADED") {
     "DEGRADED"
   } else if (wire_res$status == "HEALTHY" && teams_res$status == "HEALTHY" && beat_res$status == "HEALTHY") {
     "HEALTHY"
@@ -422,15 +463,138 @@ ingest_all <- function(start_date = "2026-10-29", end_date = Sys.Date(),
     warning(">>> [Publish Gate Block] league_wire status is FAILED. Fatal block enforced unless --allow-degraded is passed.")
   }
   
-  # 3. Build manifest
+  # 3. Load baseline for player 40-man discrimination
+  baseline_file <- file.path(PROJECT_DIR, "cache", "league_state_baseline.json")
+  p_40_mlbam_ids <- character(0)
+  if (file.exists(baseline_file)) {
+    baseline <- jsonlite::fromJSON(baseline_file, simplifyVector = FALSE)
+    if (!is.null(baseline$players)) {
+      for (p in baseline$players) {
+        if (!is.null(p$rosterStatus) && identical(p$rosterStatus$value, "40_MAN") && !is.null(p$mlbamId)) {
+          p_40_mlbam_ids <- c(p_40_mlbam_ids, as.character(p$mlbamId))
+        }
+      }
+    }
+  }
+  
+  # 4. Process raw items: dedup mirrored trades, assign rosterTier, and map to contract shape
+  raw_items <- list()
+  normalized_items <- list()
+  
+  if (!is.null(wire_res$raw_json) && !is.null(wire_res$raw_json$transactions)) {
+    tx_df <- wire_res$raw_json$transactions
+    mlb_team_names <- MLB_TEAMS_30$name
+    
+    # Contract §4: Exactly one record per wire transaction. statsapi emits mirrored rows
+    # for trades (the same transaction id once per club with fromTeam/toTeam swapped).
+    # Collapse them, keeping the first occurrence in feed order.
+    keep_mask <- !duplicated(tx_df$id)
+    tx_dedup <- tx_df[keep_mask, ]
+    
+    # Filter out unpopulated/corrupted transaction stubs (e.g. empty trade stubs without description or team)
+    valid_mask <- !is.na(tx_dedup$description) & nzchar(trimws(as.character(tx_dedup$description))) &
+                  !is.na(tx_dedup$toTeam$id) & as.integer(tx_dedup$toTeam$id) > 0
+    if (any(!valid_mask)) {
+      dropped_ids <- tx_dedup$id[!valid_mask]
+      message(sprintf(">>> [Ingestion Subsystem] Dropping %d malformed wire transaction(s) lacking description/team: %s",
+                      length(dropped_ids), paste(dropped_ids, collapse = ", ")))
+      tx_dedup <- tx_dedup[valid_mask, ]
+    }
+    
+    n_records <- nrow(tx_dedup)
+    tier_list <- character(n_records)
+    normalized_items <- vector("list", n_records)
+    
+    for (idx in seq_len(n_records)) {
+      row <- tx_dedup[idx, ]
+      tier <- discriminate_roster_tier(row, mlb_team_names, p_40_mlbam_ids)
+      tier_list[idx] <- tier
+      
+      # Contract §2 & §3 mapping block:
+      item <- list(
+        transaction_id = as.integer(row$id),
+        raw_text = as.character(row$description),
+        date = as.character(row$date),
+        source_url = build_wire_source_url("https://statsapi.mlb.com/api/v1/transactions"),
+        team_id = as.integer(row$toTeam$id)
+      )
+      
+      # Contract §3: Optional from_team_id
+      if (!is.null(row$fromTeam) && !is.null(row$fromTeam$id)) {
+        fid <- row$fromTeam$id
+        if (!is.na(fid) && as.integer(fid) > 0) {
+          item$from_team_id <- as.integer(fid)
+        }
+      }
+      
+      # Contract §7: Optional mlbam_id & player_name co-requirement
+      # Neither present passes; both present passes; exactly one present fails.
+      # Only emit when both id and non-empty fullName exist in the upstream record.
+      has_pid <- !is.null(row$person) && !is.null(row$person$id) && !is.na(row$person$id) && as.integer(row$person$id) > 0
+      has_pname <- !is.null(row$person) && !is.null(row$person$fullName) && !is.na(row$person$fullName) &&
+                   nzchar(trimws(as.character(row$person$fullName)))
+      
+      if (has_pid && has_pname) {
+        item$mlbam_id <- as.integer(row$person$id)
+        item$player_name <- as.character(row$person$fullName)
+      } else if (has_pid || has_pname) {
+        # Upstream provided incomplete person object; leave neither key present per §7
+      }
+      
+      item$type_code <- as.character(row$typeCode)
+      item$type_desc <- as.character(row$typeDesc)
+      item$roster_tier <- as.character(tier)
+      
+      normalized_items[[idx]] <- item
+    }
+    
+    tx_dedup$rosterTier <- tier_list
+    raw_items <- tx_dedup
+  }
+  
+  # 5. Contract validation & persistence (cache/offseason_wire_items.json)
+  # Validate in-memory items BEFORE writing to disk; abort ingest stage on failure.
+  items_written <- length(normalized_items)
+  if (wire_res$status %in% c("HEALTHY", "DEGRADED") && items_written > 0) {
+    val_res <- validate_wire_items(normalized_items,
+                                   require_unique_transaction_ids = TRUE,
+                                   allow_unknown_fields = FALSE)
+    if (!val_res$pass) {
+      error_msg <- sprintf("Contract validation FAILED for wire items (%d errors):\n%s",
+                           val_res$n_errors, paste(head(val_res$messages, 10), collapse = "\n"))
+      stop(error_msg)
+    }
+    message(sprintf(">>> [Wire Items Validation] %s", val_res$summary))
+    
+    wire_items_path <- file.path(PROJECT_DIR, "cache", "offseason_wire_items.json")
+    con <- file(wire_items_path, open = "wt", encoding = "UTF-8")
+    writeLines(jsonlite::toJSON(normalized_items, auto_unbox = TRUE, pretty = TRUE), con, useBytes = FALSE)
+    close(con)
+    message(sprintf(">>> Persisted %d normalized wire item(s) to %s", items_written, wire_items_path))
+  }
+  
+  # 6. Snapshot raw captures to cache/raw_ingest_archive/YYYYMMDD/
+  today_yyyymmdd <- format(Sys.Date(), "%Y%m%d")
+  archive_dir <- file.path(PROJECT_DIR, "cache", "raw_ingest_archive", today_yyyymmdd)
+  if (!dir.exists(archive_dir)) {
+    dir.create(archive_dir, recursive = TRUE)
+  }
+  
+  if (!is.null(wire_res$raw_text)) {
+    writeLines(wire_res$raw_text, file.path(archive_dir, "mlb_transactions_feed.json"))
+  }
+  
+  # 7. Write cache/ingestion_manifest.json with honest volume telemetry
   manifest <- list(
     ingest_timestamp = format(as.POSIXlt(Sys.time(), tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ"),
     composite_health = composite_health,
+    start_date = as.character(start_date),
+    end_date = as.character(end_date),
     adapters = list(
       league_wire = list(
         status = wire_res$status,
         http_code = wire_res$http_code,
-        items_found = wire_res$items_found,
+        items_found = as.integer(items_written),
         bytes_captured = wire_res$bytes_captured
       ),
       team_releases = list(
@@ -448,68 +612,40 @@ ingest_all <- function(start_date = "2026-10-29", end_date = Sys.Date(),
     )
   )
   
-  # 4. Load baseline for player 40-man discrimination
-  baseline_file <- file.path(PROJECT_DIR, "cache", "league_state_baseline.json")
-  p_40_mlbam_ids <- character(0)
-  if (file.exists(baseline_file)) {
-    baseline <- jsonlite::fromJSON(baseline_file, simplifyVector = FALSE)
-    if (!is.null(baseline$players)) {
-      for (p in baseline$players) {
-        if (!is.null(p$rosterStatus) && identical(p$rosterStatus$value, "40_MAN") && !is.null(p$mlbamId)) {
-          p_40_mlbam_ids <- c(p_40_mlbam_ids, as.character(p$mlbamId))
-        }
-      }
-    }
-  }
-  
-  # 5. Process raw items and assign rosterTier
-  raw_items <- list()
-  if (!is.null(wire_res$raw_json) && !is.null(wire_res$raw_json$transactions)) {
-    tx_df <- wire_res$raw_json$transactions
-    mlb_team_names <- MLB_TEAMS_30$name
-    
-    tier_list <- character(nrow(tx_df))
-    for (idx in seq_len(nrow(tx_df))) {
-      row <- tx_df[idx, ]
-      tier_list[idx] <- discriminate_roster_tier(row, mlb_team_names, p_40_mlbam_ids)
-    }
-    tx_df$rosterTier <- tier_list
-    raw_items <- tx_df
-  }
-  
-  # 6. Snapshot raw captures to cache/raw_ingest_archive/YYYYMMDD/
-  today_yyyymmdd <- format(Sys.Date(), "%Y%m%d")
-  archive_dir <- file.path(PROJECT_DIR, "cache", "raw_ingest_archive", today_yyyymmdd)
-  if (!dir.exists(archive_dir)) {
-    dir.create(archive_dir, recursive = TRUE)
-  }
-  
-  if (!is.null(wire_res$raw_text)) {
-    writeLines(wire_res$raw_text, file.path(archive_dir, "mlb_transactions_feed.json"))
-  }
-  
-  # 7. Write cache/ingestion_manifest.json
   manifest_path <- file.path(PROJECT_DIR, "cache", "ingestion_manifest.json")
   jsonlite::write_json(manifest, manifest_path, auto_unbox = TRUE, pretty = TRUE)
-  message(sprintf(">>> Manifest written to %s (Composite: %s)", manifest_path, composite_health))
+  message(sprintf(">>> Manifest written to %s (Composite: %s, Items: %d)",
+                  manifest_path, composite_health, items_written))
   
   list(
     manifest = manifest,
     raw_items = raw_items,
+    normalized_items = normalized_items,
     composite_health = composite_health,
-    can_assert_quiet_week = (composite_health == "HEALTHY")
+    can_assert_quiet_week = (composite_health == "HEALTHY" && items_written > 0)
   )
 }
 
 # CLI entry point
 if (!interactive()) {
   args <- commandArgs(trailingOnly = TRUE)
-  # Only execute automatically if this script was directly invoked from CLI
   all_args <- commandArgs(trailingOnly = FALSE)
   is_direct <- any(grepl("^--file=.*ingest_sources\\.R$", all_args))
   if (is_direct) {
     allow_deg <- "--allow-degraded" %in% args
-    res <- ingest_all(allow_degraded = allow_deg)
+    start_arg <- grep("^--start-date=", args, value = TRUE)
+    start_override <- if (length(start_arg) > 0) sub("^--start-date=", "", start_arg[1]) else NULL
+    end_arg <- grep("^--end-date=", args, value = TRUE)
+    end_override <- if (length(end_arg) > 0) sub("^--end-date=", "", end_arg[1]) else Sys.Date()
+    replay_arg <- grep("^--replay-snapshot=", args, value = TRUE)
+    replay_path <- if (length(replay_arg) > 0) sub("^--replay-snapshot=", "", replay_arg[1]) else NULL
+
+    res <- ingest_all(
+      start_date = if (!is.null(start_override)) start_override else derive_default_start_date(),
+      end_date = end_override,
+      allow_degraded = allow_deg,
+      replay_snapshot = replay_path
+    )
     if (res$composite_health == "FAILED" && !allow_deg) {
       message("FATAL: Ingestion composite health is FAILED. Publish gate blocked.")
       quit(status = 1)
