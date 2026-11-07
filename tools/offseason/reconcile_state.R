@@ -104,6 +104,7 @@ apply_deltas_to_state <- function(baseline_state, confirmed_deltas) {
     
     ent_type <- delta$entity_type
     ent_id <- as.character(delta$entity_id)
+    if (length(ent_id) == 0 || !nzchar(ent_id)) next
     field <- delta$field
     new_val <- delta$new_val
     src_url <- delta$source_url

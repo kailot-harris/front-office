@@ -243,6 +243,11 @@ extract_deltas_regex <- function(raw_text,
     clause_deltas <- list()
     clause_team <- resolve_team_abbr(clause)
     effective_team <- if (!is.null(team_abbr) && !is.na(team_abbr) && nzchar(trimws(team_abbr))) team_abbr else clause_team
+    if ((is.null(effective_team) || !nzchar(trimws(effective_team))) && !is.null(source_url) && nzchar(trimws(source_url))) {
+      m_url <- regexec("/(?:name|team)/([a-z]{2,4})", source_url, ignore.case = TRUE)
+      r_url <- regmatches(source_url, m_url)[[1]]
+      if (length(r_url) >= 2) effective_team <- toupper(r_url[2])
+    }
     
     # --------------------------------------------------------------------------
     # 1. Multi-player Signing Pattern:

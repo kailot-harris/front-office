@@ -130,7 +130,11 @@ build_offseason_monitor_dag <- function(dry_run = FALSE,
       item_date <- if (!is.null(item$event_date)) item$event_date else item$date
       item_url <- if (!is.null(item$source_url)) item$source_url else item$url
       if (!is.null(item_text) && nzchar(trimws(item_text))) {
-        deltas <- extract_deltas_regex(item_text, date = item_date, source_url = item_url, baseline_state = s_last)
+        deltas <- if (is.list(item)) {
+          extract_deltas_regex(item, baseline_state = s_last)
+        } else {
+          extract_deltas_regex(item_text, date = item_date, source_url = item_url, baseline_state = s_last)
+        }
         if (length(deltas) > 0) extracted_deltas <- c(extracted_deltas, deltas)
       }
     }
