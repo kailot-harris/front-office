@@ -89,10 +89,10 @@ message(">>> [FINALS GAMES] Building Finals per-game predictions (HCA + rest + P
 # never restated in this file.
 FINALS_FORMAT_KEY <- "bo7"
 
-# jsonlite/rlang-style null coalescing, defined locally so this script does not
-# depend on which `%||%` happens to be in scope (CLAUDE.md flags app.R's scalar
-# redefinition as vector-unsafe).
-`%||%` <- function(a, b) if (is.null(a) || length(a) == 0 || (length(a) == 1 && is.na(a))) b else a
+# ISSUE #153 / M-6: `%||%` comes from logging_utils.R (already sourced via
+# tools/series_length_predictor.R -> playoff_simulator.R -> logging_utils.R above);
+# guarded here so there is a single canonical definition repo-wide.
+if (!exists("log_info", mode = "function") && file.exists("logging_utils.R")) source("logging_utils.R")
 
 # ------------------------------------------------------------------------------
 # Empty artifact, written (not skipped) so downstream readers always find real

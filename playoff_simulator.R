@@ -51,7 +51,9 @@ if (!exists("WNBA_MARGIN_SIGMA") || !exists("WNBA_HCA") || !exists("WNBA_PLAYOFF
 # (errors on a length>1 vector), identical to the app.R/market_odds_engine.R copies
 # M-6 fixed. Source the single canonical hardened definition instead of restating it;
 # guarded the same way as the config.R source() just above.
-if (!exists("%||%")) source("logging_utils.R")
+# ISSUE #153: Do not guard with `if (!exists("%||%"))` -- on R >= 4.4 base::`%||%` makes
+# exists("%||%") TRUE in every fresh session, which silently bypassed logging_utils.R.
+if (!exists("log_info", mode = "function")) source("logging_utils.R")
 
 message(">>> [WNBA PLAYOFFS] Initializing Monte Carlo Playoff Series Simulator...")
 

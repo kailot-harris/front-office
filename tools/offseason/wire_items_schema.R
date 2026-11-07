@@ -17,6 +17,7 @@ while (!file.exists(file.path(cur, "config.R")) && dirname(cur) != cur) {
   cur <- dirname(cur)
 }
 if (file.exists(file.path(cur, "config.R"))) setwd(cur)
+if (!exists("log_info", mode = "function") && file.exists("logging_utils.R")) source("logging_utils.R")
 
 suppressPackageStartupMessages({
   if (!requireNamespace("jsonlite", quietly = TRUE)) {
