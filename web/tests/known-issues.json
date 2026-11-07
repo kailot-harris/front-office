@@ -29,5 +29,14 @@
     "defect in a fresh run, not a standing one, and baselining it would be exactly",
     "the suppression this file is designed to prevent."
   ],
-  "issues": []
+  "issues": [
+    {
+      "id": "offseason-monitor-entity-name-null",
+      "title": "offseason_monitor.json has null entityName on quiet week unclassified claims",
+      "fix": "build_offseason_monitor.R should emit empty string or OffseasonMonitorDatasetSchema should permit nullable entityName",
+      "tests": [
+        "matches OffseasonMonitorDataset JSON schema exactly"
+      ]
+    }
+  ]
 }

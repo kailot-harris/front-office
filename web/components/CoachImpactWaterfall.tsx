@@ -16,11 +16,16 @@ export const CoachImpactWaterfall: React.FC<CoachImpactWaterfallProps> = ({ coac
   const finalWins = metrics.actualProjectedWins;
   const netLift = metrics.coachingWinsAdded;
 
-  // Breakdown sub-components calibrated to WNBA metrics
-  const schemeLift = +(metrics.shotQualityLiftEfg * 0.35).toFixed(1);
-  const atoLift = +((metrics.atoOffensivePpp - 0.95) * 8 - (metrics.atoDefensivePppAllowed - 0.88) * 6).toFixed(1);
-  const staggerLift = +((metrics.rotationStaggerScore - 70) * 0.03).toFixed(1);
-  const challengeLift = +(metrics.challengeWpa * 2.5).toFixed(1);
+  // Breakdown sub-components calibrated to authentic WNBA metrics
+  // Net ATO efficiency impact (Offensive PPP vs Defensive PPP allowed)
+  const atoNet = metrics.atoOffensivePpp - metrics.atoDefensivePppAllowed;
+  const atoLift = +(atoNet * 6.0).toFixed(1);
+
+  // In-game review leverage (relative to ~40% league average challenge success)
+  const challengeLift = +((metrics.challengeSuccessRate - 0.40) * 2.0).toFixed(1);
+
+  // System tactical residual (spacing, rotations, and synergy beyond roster talent)
+  const systemResidual = +(netLift - atoLift - challengeLift).toFixed(1);
 
   const steps = [
     {
@@ -32,36 +37,28 @@ export const CoachImpactWaterfall: React.FC<CoachImpactWaterfallProps> = ({ coac
       color: 'bg-indigo-600',
     },
     {
-      label: 'Tactical Scheme (xSQ Lift)',
-      subtext: 'Spacing & 3P/rim generation above shooter baseline',
-      val: schemeLift,
-      delta: schemeLift >= 0 ? `+${schemeLift}` : `${schemeLift}`,
-      type: schemeLift >= 0 ? 'positive' : 'negative',
-      color: schemeLift >= 0 ? 'bg-emerald-500' : 'bg-rose-500',
-    },
-    {
       label: 'ATO & Set Execution',
-      subtext: 'Point differential on post-timeout plays',
+      subtext: 'Net point differential on post-timeout half-court plays',
       val: atoLift,
       delta: atoLift >= 0 ? `+${atoLift}` : `${atoLift}`,
       type: atoLift >= 0 ? 'positive' : 'negative',
       color: atoLift >= 0 ? 'bg-emerald-500' : 'bg-rose-500',
     },
     {
-      label: 'Rotation & Staggering',
-      subtext: 'Star staggering to avoid non-star bench bleed',
-      val: staggerLift,
-      delta: staggerLift >= 0 ? `+${staggerLift}` : `${staggerLift}`,
-      type: staggerLift >= 0 ? 'positive' : 'negative',
-      color: staggerLift >= 0 ? 'bg-emerald-500' : 'bg-rose-500',
-    },
-    {
-      label: 'In-Game Challenge WPA',
-      subtext: 'Late-game clock & review leverage equity',
+      label: 'In-Game Challenge Leverage',
+      subtext: 'Win equity added from official review overturns',
       val: challengeLift,
       delta: challengeLift >= 0 ? `+${challengeLift}` : `${challengeLift}`,
       type: challengeLift >= 0 ? 'positive' : 'negative',
       color: challengeLift >= 0 ? 'bg-emerald-500' : 'bg-rose-500',
+    },
+    {
+      label: 'System & Tactical Residual',
+      subtext: 'Scheme spacing, rotation synergy & pace adjustments',
+      val: systemResidual,
+      delta: systemResidual >= 0 ? `+${systemResidual}` : `${systemResidual}`,
+      type: systemResidual >= 0 ? 'positive' : 'negative',
+      color: systemResidual >= 0 ? 'bg-emerald-500' : 'bg-rose-500',
     },
     {
       label: 'Final Projected Wins',

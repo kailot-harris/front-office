@@ -304,8 +304,6 @@ export const CoachingStaffMetricSchema = z
       .object({
         name: z.string().min(2),
         tenureYears: z.number().int().min(0),
-        careerGames: z.number().int().min(0),
-        careerWinPct: prob,
         coachingTree: z.string().min(2),
         tacticalArchetype: z.string().min(2),
       })
@@ -327,10 +325,6 @@ export const CoachingStaffMetricSchema = z
         atoOffensivePpp: finiteNumber.positive(),
         atoDefensivePppAllowed: finiteNumber.positive(),
         challengeSuccessRate: pct,
-        challengeWpa: finiteNumber,
-        shotQualityLiftEfg: finiteNumber,
-        rotationStaggerScore: pct,
-        playerDevelopmentScore: pct,
       })
       .strict(),
     radarPercentiles: z
