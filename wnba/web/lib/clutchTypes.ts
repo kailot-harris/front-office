@@ -18,15 +18,10 @@ export interface ClutchProfile {
   team: string;
   position: string;
   clutchArchetype: string;
-  clutchMpg: number;
-  clutchUsgPct: number;
-  clutchTsPct: number;
-  baseTsPct: number;
-  tsDelta: number;
-  usciScore: number; // Unassisted Shot Creation Index
-  unassistedFgmPct: number;
-  clutchPpp: number;
-  tovFragility: number; // Delta TOV% under pressure
-  cDwpa: number; // Clutch Defensive Win Probability Added (%)
-  shotBreakdown: ClutchShotBreakdown;
+  clutchFga: number;
+  clutchPoints: number | null;
+  clutchFgPct: number | null;
+  clutchScoringPlays: number | null;
+  clutchPpp: number | null;
+  provenance: string;
 }

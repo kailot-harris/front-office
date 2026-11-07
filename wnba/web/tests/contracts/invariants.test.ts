@@ -228,23 +228,25 @@ describe('Domain & mathematical invariants: clutch, defense, playerDna, coaches,
     shotsMetadata,
   } = loadAllDatasets();
 
-  it('clutch_leverage_metrics.json: shotBreakdown zone fga/fgm and pct ranges are valid', () => {
+  it('clutch_leverage_metrics.json: clutch volume, efficiency, and provenance are valid', () => {
     for (const p of clutch) {
-      expect(p.tsDelta).toBeDefined();
-      expect(Number.isFinite(p.tsDelta)).toBe(true);
-
-      const zones = [
-        ['rim', p.shotBreakdown.rim],
-        ['mid', p.shotBreakdown.mid],
-        ['three', p.shotBreakdown.three],
-      ] as const;
-      for (const [_, split] of zones) {
-        expect(split.fga).toBeGreaterThanOrEqual(0);
-        expect(split.fgm).toBeGreaterThanOrEqual(0);
-        expect(split.fgm).toBeLessThanOrEqual(split.fga);
-        expect(split.pct).toBeGreaterThanOrEqual(0);
-        expect(split.pct).toBeLessThanOrEqual(100);
+      expect(p.clutchFga).toBeGreaterThanOrEqual(0);
+      if (p.clutchPoints !== null) {
+        expect(p.clutchPoints).toBeGreaterThanOrEqual(0);
       }
+      if (p.clutchFgPct !== null) {
+        expect(p.clutchFgPct).toBeGreaterThanOrEqual(0);
+        expect(p.clutchFgPct).toBeLessThanOrEqual(100);
+      }
+      if (p.clutchPpp !== null) {
+        expect(p.clutchPpp).toBeGreaterThanOrEqual(0);
+      }
+      if (p.clutchScoringPlays !== null) {
+        expect(p.clutchScoringPlays).toBeGreaterThanOrEqual(0);
+      }
+      expect(['REAL_CURRENT_SEASON', 'REAL_HISTORICAL_FALLBACK', 'INSUFFICIENT_SAMPLE']).toContain(p.provenance);
+      expect(typeof p.clutchArchetype).toBe('string');
+      expect(p.clutchArchetype.length).toBeGreaterThanOrEqual(2);
     }
   });
 
@@ -260,13 +262,27 @@ describe('Domain & mathematical invariants: clutch, defense, playerDna, coaches,
     }
   });
 
-  it('player_dna_profiles.json: every player has 3 historical twins with similarityPct sorted descending', () => {
+  it('defensive_metrics.json: every profile has valid rim and matchup provenance metadata', () => {
+    for (const p of defense) {
+      expect(['wehoop_shots_lineups', 'insufficient_sample', 'position_prior_fallback']).toContain(p.rimDefenseSource);
+      expect(['wehoop_possession_lineups', 'position_prior_fallback']).toContain(p.matchupSource);
+      expect(p.rimDefenseSample).toBeGreaterThanOrEqual(0);
+      expect(p.matchupSample).toBeGreaterThanOrEqual(0);
+      expect(['rapm_ridge_pooled', 'rapm_ridge_pooled_low_sample', 'heuristic_fallback']).toContain(p.dRapmSource);
+    }
+  });
+
+  it('player_dna_profiles.json: every player has valid category scores and skill vector percentiles in [0, 100]', () => {
     for (const p of playerDna) {
-      expect(p.historicalTwins.length).toBeGreaterThanOrEqual(3);
-      for (let i = 1; i < p.historicalTwins.length; i++) {
-        expect(p.historicalTwins[i - 1].similarityPct).toBeGreaterThanOrEqual(
-          p.historicalTwins[i].similarityPct
-        );
+      expect(p.overallRating).toBeGreaterThanOrEqual(0);
+      expect(p.overallRating).toBeLessThanOrEqual(100);
+      for (const val of Object.values(p.skillVector)) {
+        expect(val).toBeGreaterThanOrEqual(0);
+        expect(val).toBeLessThanOrEqual(100);
+      }
+      for (const val of Object.values(p.categoryScores)) {
+        expect(val).toBeGreaterThanOrEqual(0);
+        expect(val).toBeLessThanOrEqual(100);
       }
     }
   });

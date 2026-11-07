@@ -257,14 +257,6 @@ export const WnbaCbaLeagueOverviewSchema = z
   .strict();
 
 // 6. clutch_leverage_metrics.json -> ClutchProfile[] (lib/clutchTypes.ts)
-const ShotZoneStatsSchema = z
-  .object({
-    fga: z.number().int().min(0),
-    fgm: z.number().int().min(0),
-    pct: pct,
-  })
-  .strict();
-
 export const ClutchProfileSchema = z
   .object({
     season: z.number().int().optional(),
@@ -273,24 +265,12 @@ export const ClutchProfileSchema = z
     team: teamEnum,
     position: positionEnum,
     clutchArchetype: z.string().min(2),
-    clutchMpg: finiteNumber.min(0).max(10),
-    clutchUsgPct: pct,
-    clutchTsPct: pct,
-    baseTsPct: pct,
-    tsDelta: finiteNumber,
-    usciScore: finiteNumber.min(0),
-    unassistedFgmPct: pct,
-    clutchPpp: finiteNumber.min(0),
-    tovFragility: finiteNumber,
-    cDwpa: finiteNumber,
-    shotBreakdown: z
-      .object({
-        totalClutchFga: z.number().int().min(0),
-        rim: ShotZoneStatsSchema,
-        mid: ShotZoneStatsSchema,
-        three: ShotZoneStatsSchema,
-      })
-      .strict(),
+    clutchFga: z.number().int().min(0),
+    clutchPoints: z.number().int().min(0).nullable(),
+    clutchFgPct: pct.nullable(),
+    clutchScoringPlays: z.number().int().min(0).nullable(),
+    clutchPpp: finiteNumber.min(0).nullable(),
+    provenance: z.string().min(2),
   })
   .strict();
 
@@ -304,8 +284,6 @@ export const CoachingStaffMetricSchema = z
       .object({
         name: z.string().min(2),
         tenureYears: z.number().int().min(0),
-        careerGames: z.number().int().min(0),
-        careerWinPct: prob,
         coachingTree: z.string().min(2),
         tacticalArchetype: z.string().min(2),
       })
@@ -327,10 +305,6 @@ export const CoachingStaffMetricSchema = z
         atoOffensivePpp: finiteNumber.positive(),
         atoDefensivePppAllowed: finiteNumber.positive(),
         challengeSuccessRate: pct,
-        challengeWpa: finiteNumber,
-        shotQualityLiftEfg: finiteNumber,
-        rotationStaggerScore: pct,
-        playerDevelopmentScore: pct,
       })
       .strict(),
     radarPercentiles: z
@@ -358,7 +332,6 @@ export const DefensiveProfileSchema = z
     versatilityScore: pct,
     rimDfgDelta: finiteNumber,
     rimDeterrenceIndex: finiteNumber.min(0),
-    poaNavigation: pct,
     dRapm: finiteNumber,
     // Provenance of dRapm (issue #83): the real pooled-2019-2026 ridge fit, or
     // the clearly-labelled rebound/assist heuristic for players the RAPM join
@@ -370,6 +343,10 @@ export const DefensiveProfileSchema = z
     ]),
     dRapmLowSample: z.boolean(),
     dRapmAmbiguous: z.boolean(),
+    rimDefenseSource: z.string().min(2),
+    rimDefenseSample: z.number().int().min(0),
+    matchupSource: z.string().min(2),
+    matchupSample: z.number().int().min(0),
     matchupDist: z
       .object({
         pgPct: pct,
@@ -427,20 +404,6 @@ export const PlayerDnaProfileSchema = z
         rebounding: pct,
       })
       .strict(),
-    historicalTwins: z
-      .array(
-        z
-          .object({
-            compName: z.string().min(2),
-            era: z.string().min(4),
-            archetype: z.string().min(2),
-            position: z.string().min(1),
-            similarityPct: finiteNumber.min(0).max(100),
-            keySharedTrait: z.string().min(2),
-          })
-          .strict()
-      )
-      .min(1),
   })
   .strict();
 

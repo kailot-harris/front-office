@@ -3,10 +3,9 @@
 import React, { useState } from 'react';
 import { PlayerDnaProfile } from '@/lib/playerDnaTypes';
 import { SkillFingerprintPolygon } from './SkillFingerprintPolygon';
-import { HistoricalTwinCard } from './HistoricalTwinCard';
 import { DnaManifoldScatter } from './DnaManifoldScatter';
 import { TeamLogo } from '@/components/TeamLogo';
-import { Search, Dna, Crosshair, BarChart3, ChevronRight } from 'lucide-react';
+import { Search, Dna, BarChart3, ChevronRight } from 'lucide-react';
 
 interface PlayerDnaClientProps {
   initialProfiles: PlayerDnaProfile[];
@@ -40,11 +39,11 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
             <span className="text-xs text-slate-500 font-mono">16-D Manifold Embedding</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-            Player DNA & Nearest Historical Comparables
+            Player DNA & Skill Fingerprints
           </h1>
           <p className="text-sm text-slate-300 max-w-2xl mt-1">
             Multivariate stylistic fingerprinting quantifying finishing, perimeter gravity, playmaking leverage,
-            switchability, and rim deterrence with cosine-similarity matching against all-time WNBA legends.
+            switchability, and rim deterrence.
           </p>
         </div>
       </div>
@@ -202,23 +201,6 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
                     </div>
                   ))}
                 </div>
-              </div>
-            </div>
-
-            {/* Bottom Section: Nearest Historical Twins */}
-            <div className="space-y-3 border-t border-slate-800 pt-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <Crosshair className="w-4 h-4 text-emerald-400" />
-                  Nearest Historical Archetype Twins (Cosine Similarity)
-                </h4>
-                <span className="text-[11px] text-slate-500 font-mono">1997–2025 Legend Baseline</span>
-              </div>
-
-              <div className="grid grid-cols-1 gap-2.5">
-                {selectedPlayer.historicalTwins.map((twin, idx) => (
-                  <HistoricalTwinCard key={idx} twin={twin} rank={idx + 1} />
-                ))}
               </div>
             </div>
           </div>

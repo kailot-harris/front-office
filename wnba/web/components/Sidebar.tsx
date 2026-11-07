@@ -57,13 +57,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       desc: 'State-diff transactions & 2027 CBA intelligence',
     },
     {
-      href: '/cap-sheet',
-      label: 'CBA Cap Sheet',
-      badge: 'Hard Cap',
-      icon: Coins,
-      desc: '11-vs-12 crunch & contract book',
-    },
-    {
       href: '/retrospective',
       label: 'Retrospective',
       badge: 'Audit',
@@ -157,13 +150,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       badge: 'Calibration',
       icon: Activity,
       desc: 'Reliability & calibration curve',
-    },
-    {
-      href: '/offseason',
-      label: 'Offseason & Moves',
-      badge: 'Trades',
-      icon: ArrowRightLeft,
-      desc: 'Trades, expansion & draft',
     },
   ];
 

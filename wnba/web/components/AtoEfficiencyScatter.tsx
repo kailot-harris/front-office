@@ -29,10 +29,10 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
   // Bounds for axes in WNBA
   // Offense PPP: 0.82 to 1.15
   // Defense PPP Allowed: 0.76 to 0.98 (Invert X so Right = Lower Allowed / Better Defense)
-  const xMin = 0.98; // Left (weaker defense allowed)
-  const xMax = 0.76; // Right (elite defense allowed)
+  const xMin = 1.10; // Left (weaker defense allowed)
+  const xMax = 0.88; // Right (elite defense allowed)
   const yMin = 0.82; // Bottom (lower offensive PPP)
-  const yMax = 1.15; // Top (elite offensive PPP)
+  const yMax = 1.18; // Top (elite offensive PPP) // Top (elite offensive PPP)
 
   const width = 760;
   const height = 480;
@@ -50,8 +50,8 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
     return innerHeight - ((val - yMin) / (yMax - yMin)) * innerHeight;
   };
 
-  const midX = scaleX(0.88); // WNBA median defensive PPP allowed
-  const midY = scaleY(0.95); // WNBA median offensive PPP
+  const midX = scaleX(0.98); // WNBA median defensive PPP allowed
+  const midY = scaleY(0.98); // WNBA median offensive PPP // WNBA median offensive PPP
 
   return (
     <div ref={containerRef} className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg p-5">

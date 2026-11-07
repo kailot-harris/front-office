@@ -74,22 +74,21 @@ WNBA_TEAM_COUNT <- length(WNBA_TEAMS)  # 15 as of the 2026 season
 # rule that every structural constant has a single definition site — build_cba_cap_dataset.R
 # now sources these rather than redefining them.
 #
-# PROVENANCE CAVEAT FOR FUTURE AGENTS: this move only relocates the values; it does not
-# independently re-verify them. A web search run during the #137 move (2026-11-02) for the
-# actual ratified 2026 WNBA CBA figures returned a materially different structure (~$7M team
-# cap, ~$1.4M supermax, ~$1.22M veteran max, ~$270-300K minimums across herhoopstats.com,
-# swishappeal.com, and others) than the figures below, which instead appear to originate from
-# an earlier/different cap framework used by this repo's synthetic cap-sheet generator. Do NOT
-# treat the presence of a provenance comment here as confirmation these six values are
-# accurate — that reconciliation is explicitly the scope of issue #128, which is blocked on
-# this move landing first. Re-derive/re-verify against a primary CBA source before relying on
-# these for anything beyond keeping the existing synthetic generator internally consistent.
-WNBA_HARD_CAP   <- 1.520       # $1,520,000 Hard Cap
-WNBA_CAP_FLOOR  <- 1.368       # $1,368,000 Minimum Floor (90%)
-WNBA_SUPERMAX   <- 0.2492      # $249,244 Supermax
-WNBA_VET_MAX    <- 0.2153      # $215,340 Regular Veteran Max
-WNBA_MIN_VET    <- 0.0788      # $78,831 3+ Year Vet Minimum / 12th Spot Threshold
-WNBA_MIN_ROOKIE <- 0.0672      # $67,249 0-2 Year Minimum
+# PROVENANCE: WNBA CBA cap-structure constants reconciled against the ratified 2026 WNBA CBA
+# (Issue #140). Verified from primary CBA term sheets and reporting (Sportico, Swish Appeal,
+# Rotowire, Her Hoop Stats, accessed Nov 2026). Figures expressed in millions ($M):
+# - Team Hard Salary Cap: $7.000M (raised from prior-CBA $1.5M scale)
+# - Minimum Team Payroll Floor: $5.859M (83.7% of cap floor)
+# - Supermax Salary Ceiling: $1.400M (20% of cap; MVP/All-WNBA qualifying criteria)
+# - Regular Veteran Max: $1.190M (17.0% of cap; All-WNBA 1st/2nd team criteria)
+# - 10+ Year Veteran Minimum: $0.300M ($300,000 floor for 10+ year veterans)
+# - Rookie Minimum Scale: $0.270M ($270,000 floor for 0-2 year service tier)
+WNBA_HARD_CAP   <- 7.000       # $7,000,000 Hard Cap
+WNBA_CAP_FLOOR  <- 5.859       # $5,859,000 Minimum Floor (83.7%)
+WNBA_SUPERMAX   <- 1.400       # $1,400,000 Supermax
+WNBA_VET_MAX    <- 1.190       # $1,190,000 Regular Veteran Max
+WNBA_MIN_VET    <- 0.300       # $300,000 10+ Year Vet Minimum
+WNBA_MIN_ROOKIE <- 0.270       # $270,000 0-2 Year Minimum
 
 # Rotation depth (top-N players per team used for team-rating/props aggregation).
 # Originally defined only inside roster_bottom_up_engine.R (T2); centralized here
@@ -443,32 +442,24 @@ WEB_DATA_FILES <- c(
   WEB_JSON_FINALS_SERIES_BACKTEST,
   WEB_JSON_SHOTS_INDEX,
   WEB_JSON_SHOTS_METADATA,
-  WEB_JSON_OFFSEASON_TRANSACTIONS,
-  WEB_JSON_OFFSEASON_TEAMS,
-  WEB_JSON_OFFSEASON_DRAFT,
   WEB_JSON_COACHING_METRICS,
   WEB_JSON_DEFENSIVE_METRICS,
   WEB_JSON_PLAYER_DNA_PROFILES,
   WEB_JSON_CLUTCH_LEVERAGE_METRICS,
-  WEB_JSON_CBA_CAP_SHEET,
   WEB_JSON_MATCHUPS_SLATES
 )
 
 # ------------------------------------------------------------------------------------------
-# Offseason Dynamics Monitor Artifacts (Issue #121 / Blueprint §6 & §7)
+# Offseason Dynamics Monitor Artifacts (Issue #121 / Blueprint Â§6 & Â§7)
 # ------------------------------------------------------------------------------------------
 WEB_JSON_OFFSEASON_MONITOR <- file.path(WEB_DATA_DIR, "offseason_monitor.json")
 
-# The 5 active off-season JSON artifacts asserted by tools/publish_web.R --mode=offseason
+# The active off-season JSON artifacts asserted by tools/publish_web.R --mode=offseason
+# (cba_cap_sheet.json and offseason_*.json archived under Issue #141)
 WEB_DATA_FILES_OFFSEASON <- c(
-  WEB_JSON_OFFSEASON_MONITOR,
-  WEB_JSON_OFFSEASON_TRANSACTIONS,
-  WEB_JSON_OFFSEASON_TEAMS,
-  WEB_JSON_OFFSEASON_DRAFT,
-  WEB_JSON_CBA_CAP_SHEET
+  WEB_JSON_OFFSEASON_MONITOR
 )
 
-# Initialized to NULL until officially confirmed and published by the WNBA
 OFFSEASON_FA_BURST_WINDOW <- NULL
 # Example format once announced: c(start = "YYYY-MM-DD", end = "YYYY-MM-DD")
 

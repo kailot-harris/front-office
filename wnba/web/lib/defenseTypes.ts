@@ -22,7 +22,6 @@ export interface DefensiveProfile {
   versatilityScore: number; // Shannon Entropy [0-100]
   rimDfgDelta: number; // Opponent Rim FG% delta (negative is elite)
   rimDeterrenceIndex: number; // Rim attempts suppressed
-  poaNavigation: number; // Screen navigation [0-100]
   dRapm: number;
   /**
    * Provenance of `dRapm` (issue #83):
@@ -36,6 +35,14 @@ export interface DefensiveProfile {
   dRapmLowSample: boolean;
   /** Matched through a same-surname collision resolved by possession count. */
   dRapmAmbiguous: boolean;
+  /** Provenance of rim protection metrics (Issue #133) */
+  rimDefenseSource: string;
+  /** Sample size of rim attempts defended on-court */
+  rimDefenseSample: number;
+  /** Provenance of matchup distribution (Issue #133) */
+  matchupSource: string;
+  /** Sample size of opponent attempts tracked */
+  matchupSample: number;
   matchupDist: MatchupDist;
 }
 

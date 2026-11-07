@@ -3,15 +3,15 @@
 import React, { useState, useMemo } from 'react';
 import { ClutchProfile } from '@/lib/clutchTypes';
 import { PressureResiliencePlot } from '@/components/PressureResiliencePlot';
-import { ClutchShotBreakdownCard } from '@/components/ClutchShotBreakdownCard';
 import {
   Flame,
   Search,
   SlidersHorizontal,
-  Sparkles,
-  Zap,
   Award,
   Download,
+  Zap,
+  CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react';
 import { exportToCsv } from '@/lib/exportToCsv';
 
@@ -20,25 +20,25 @@ interface ClutchClientProps {
 }
 
 type SortField =
-  | 'usciScore'
-  | 'clutchTsPct'
-  | 'tsDelta'
-  | 'tovFragility'
-  | 'cDwpa'
-  | 'clutchMpg'
-  | 'clutchUsgPct';
+  | 'clutchPoints'
+  | 'clutchFga'
+  | 'clutchFgPct'
+  | 'clutchPpp'
+  | 'clutchScoringPlays';
 
 export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) => {
   const [search, setSearch] = useState('');
   const [selectedTeam, setSelectedTeam] = useState('ALL');
   const [selectedPos, setSelectedPos] = useState('ALL');
-  const [sortField, setSortField] = useState<SortField>('usciScore');
+  const [sortField, setSortField] = useState<SortField>('clutchPoints');
   const [sortAsc, setSortAsc] = useState(false);
 
-  // Default selection: highest USCI player
+  // Default selection: highest clutch points player
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>(() => {
     if (!initialProfiles || initialProfiles.length === 0) return '';
-    const sorted = [...initialProfiles].sort((a, b) => b.usciScore - a.usciScore);
+    const sorted = [...initialProfiles].sort(
+      (a, b) => (b.clutchPoints ?? -1) - (a.clutchPoints ?? -1)
+    );
     return sorted[0]?.playerId || '';
   });
 
@@ -65,13 +65,9 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
         return true;
       })
       .sort((a, b) => {
-        let diff = 0;
-        if (sortField === 'tovFragility') {
-          // Lower fragility is better
-          diff = a.tovFragility - b.tovFragility;
-        } else {
-          diff = (b[sortField] ?? 0) - (a[sortField] ?? 0);
-        }
+        const valA = a[sortField] ?? -Infinity;
+        const valB = b[sortField] ?? -Infinity;
+        const diff = (valB as number) - (valA as number);
         return sortAsc ? -diff : diff;
       });
   }, [initialProfiles, selectedTeam, selectedPos, search, sortField, sortAsc]);
@@ -89,7 +85,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
       setSortAsc(!sortAsc);
     } else {
       setSortField(field);
-      setSortAsc(field === 'tovFragility'); // default ascending for fragility
+      setSortAsc(false); // default descending for points, fga, fg%, etc.
     }
   };
 
@@ -101,17 +97,21 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
         { key: 'team', label: 'Team' },
         { key: 'position', label: 'Pos' },
         { key: 'clutchArchetype', label: 'Clutch Archetype' },
-        { key: 'usciScore', label: 'USCI' },
-        { key: 'clutchTsPct', label: 'Clutch TS%' },
-        { key: 'tsDelta', label: 'Delta TS%' },
-        { key: 'tovFragility', label: 'Delta TOV%' },
-        { key: 'clutchUsgPct', label: 'Clutch USG%' },
-        { key: 'cDwpa', label: 'Clutch dWPA' },
-        { key: 'clutchMpg', label: 'Clutch MPG' },
+        { key: 'clutchFga', label: 'Clutch FGA' },
+        { key: 'clutchPoints', label: 'Clutch Points' },
+        { key: 'clutchFgPct', label: 'Clutch FG%' },
+        { key: 'clutchPpp', label: 'Clutch PPP' },
+        { key: 'clutchScoringPlays', label: 'Scoring Plays' },
+        { key: 'provenance', label: 'Provenance' },
       ],
       'clutch-leaderboard'
     );
   };
+
+  const qualifiedClosersCount = useMemo(
+    () => initialProfiles.filter((p) => p.clutchFga >= 5 && p.clutchFgPct !== null).length,
+    [initialProfiles]
+  );
 
   return (
     <div className="space-y-6">
@@ -121,21 +121,24 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
           <div className="space-y-1.5">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold">
               <Flame className="w-3.5 h-3.5 text-rose-400" />
-              WNBA True Clutch Index (TCI)
+              WNBA True Clutch Performance
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
               High-Leverage Execution & Pressure Resilience
             </h1>
             <p className="text-sm text-slate-300 max-w-2xl">
-              Decomposing isolation shot generation, unassisted True Shooting delta (&Delta;TS%),
-              turnover fragility, and win probability added during the final 5:00 of tight contests (&le; 5 pt margin).
+              Real play-by-play scoring volume, efficiency (Clutch FG%), points per attempt, and scoring plays during the final 5:00 of tight contests (&le; 5 pt margin). Low-sample players (&lt; 5 FGA) emit typed NA to maintain statistical integrity.
             </p>
           </div>
 
           <div className="flex flex-wrap md:flex-nowrap gap-3">
             <div className="px-4 py-3 rounded-xl bg-surface/80 border border-slate-800 text-center min-w-[110px]">
-              <div className="text-[11px] text-slate-400 uppercase font-semibold">Tracked Closers</div>
+              <div className="text-[11px] text-slate-400 uppercase font-semibold">Tracked Roster</div>
               <div className="text-xl font-black text-rose-400">{initialProfiles.length}</div>
+            </div>
+            <div className="px-4 py-3 rounded-xl bg-surface/80 border border-slate-800 text-center min-w-[110px]">
+              <div className="text-[11px] text-slate-400 uppercase font-semibold">Active Closers</div>
+              <div className="text-xl font-black text-emerald-400">{qualifiedClosersCount}</div>
             </div>
             <div className="px-4 py-3 rounded-xl bg-surface/80 border border-slate-800 text-center min-w-[110px]">
               <div className="text-[11px] text-slate-400 uppercase font-semibold">Leverage Margin</div>
@@ -143,7 +146,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
             </div>
             <div className="px-4 py-3 rounded-xl bg-surface/80 border border-slate-800 text-center min-w-[110px]">
               <div className="text-[11px] text-slate-400 uppercase font-semibold">Time Window</div>
-              <div className="text-xl font-black text-emerald-400">Final 5:00</div>
+              <div className="text-xl font-black text-indigo-400">Final 5:00</div>
             </div>
           </div>
         </div>
@@ -185,80 +188,79 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                 </div>
 
                 <div className="text-right">
-                  <div className="text-[10px] uppercase font-bold text-slate-400">USCI Rating</div>
+                  <div className="text-[10px] uppercase font-bold text-slate-400">Clutch PTS</div>
                   <div className="text-2xl font-black text-rose-400 font-mono">
-                    {selectedProfile.usciScore.toFixed(0)}
+                    {selectedProfile.clutchPoints !== null ? selectedProfile.clutchPoints : '—'}
                   </div>
-                  <div className="text-[10px] text-slate-500">Percentile 90+</div>
+                  <div className="text-[10px] text-slate-500">{selectedProfile.clutchFga} FGA</div>
                 </div>
               </div>
 
               {/* Metric Badges */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
                 <div className="p-2.5 rounded-lg bg-surface border border-slate-800/80 text-center">
-                  <div className="text-[10px] text-slate-400 uppercase font-medium">Clutch TS%</div>
+                  <div className="text-[10px] text-slate-400 uppercase font-medium">Clutch FG%</div>
                   <div className="text-base font-extrabold text-emerald-400">
-                    {selectedProfile.clutchTsPct.toFixed(1)}%
+                    {selectedProfile.clutchFgPct !== null ? `${selectedProfile.clutchFgPct.toFixed(1)}%` : 'N/A'}
                   </div>
-                  <div className={`text-[10px] font-mono font-bold ${selectedProfile.tsDelta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {selectedProfile.tsDelta >= 0 ? `+${selectedProfile.tsDelta.toFixed(1)}%` : `${selectedProfile.tsDelta.toFixed(1)}%`} vs Reg
+                  <div className="text-[10px] text-slate-500 font-mono">
+                    {selectedProfile.clutchFga >= 5 ? 'Qualified' : 'Low Sample'}
                   </div>
                 </div>
 
                 <div className="p-2.5 rounded-lg bg-surface border border-slate-800/80 text-center">
-                  <div className="text-[10px] text-slate-400 uppercase font-medium">Clutch USG%</div>
+                  <div className="text-[10px] text-slate-400 uppercase font-medium">Points / Shot</div>
                   <div className="text-base font-extrabold text-amber-400">
-                    {selectedProfile.clutchUsgPct.toFixed(1)}%
+                    {selectedProfile.clutchPpp !== null ? selectedProfile.clutchPpp.toFixed(2) : 'N/A'}
                   </div>
                   <div className="text-[10px] text-slate-500 font-mono">
-                    {selectedProfile.clutchMpg.toFixed(1)} Clutch MPG
+                    Clutch PPP
                   </div>
                 </div>
 
                 <div className="p-2.5 rounded-lg bg-surface border border-slate-800/80 text-center">
-                  <div className="text-[10px] text-slate-400 uppercase font-medium">Turnover Fragility</div>
-                  <div className={`text-base font-extrabold ${selectedProfile.tovFragility <= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {selectedProfile.tovFragility >= 0 ? `+${selectedProfile.tovFragility.toFixed(1)}%` : `${selectedProfile.tovFragility.toFixed(1)}%`}
+                  <div className="text-[10px] text-slate-400 uppercase font-medium">Scoring Plays</div>
+                  <div className="text-base font-extrabold text-indigo-400">
+                    {selectedProfile.clutchScoringPlays !== null ? selectedProfile.clutchScoringPlays : '—'}
                   </div>
                   <div className="text-[10px] text-slate-500 font-mono">
-                    ΔTOV% Pressure
+                    Total Plays
                   </div>
                 </div>
 
                 <div className="p-2.5 rounded-lg bg-surface border border-slate-800/80 text-center">
-                  <div className="text-[10px] text-slate-400 uppercase font-medium">Clutch dWPA</div>
-                  <div className={`text-base font-extrabold ${selectedProfile.cDwpa >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {selectedProfile.cDwpa >= 0 ? `+${selectedProfile.cDwpa.toFixed(2)}%` : `${selectedProfile.cDwpa.toFixed(2)}%`}
+                  <div className="text-[10px] text-slate-400 uppercase font-medium">Clutch FGA</div>
+                  <div className="text-base font-extrabold text-white">
+                    {selectedProfile.clutchFga}
                   </div>
-                  <div className="text-[10px] text-slate-500 font-mono">Defensive Win Prob</div>
+                  <div className="text-[10px] text-slate-500 font-mono">
+                    Attempts
+                  </div>
                 </div>
               </div>
 
-              {/* Unassisted Shot Creation Bar */}
-              <div className="p-3 bg-surface/80 rounded-xl border border-slate-800/80 space-y-1.5">
+              {/* Provenance & Sample Badge */}
+              <div className="p-3 bg-surface/80 rounded-xl border border-slate-800/80 space-y-2">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-300 font-medium flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                    Unassisted Shot Creation Rate
-                  </span>
-                  <span className="font-mono font-bold text-indigo-400">
-                    {selectedProfile.unassistedFgmPct.toFixed(1)}%
+                  <span className="text-slate-400 font-medium">Data Provenance:</span>
+                  <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-200 border border-slate-700">
+                    {selectedProfile.provenance}
                   </span>
                 </div>
-                <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
-                  <div
-                    className="bg-indigo-500 h-full rounded-full transition-all duration-300"
-                    style={{ width: `${Math.min(100, selectedProfile.unassistedFgmPct)}%` }}
-                  />
-                </div>
-                <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                  <span>Assisted / Catch-and-Shoot</span>
-                  <span>Self-Created Iso / Dribble Pullup</span>
+                <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                  {selectedProfile.clutchFga >= 5 ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span>Sufficient real sample ({selectedProfile.clutchFga} clutch FGA) from official ESPN PBP.</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span>Insufficient sample ({selectedProfile.clutchFga} clutch FGA). Rate metrics emit typed null.</span>
+                    </>
+                  )}
                 </div>
               </div>
-
-              {/* Shot Breakdown Card */}
-              <ClutchShotBreakdownCard breakdown={selectedProfile.shotBreakdown} />
             </div>
           ) : (
             <div className="p-12 text-center text-slate-500 bg-surface-raised/40 rounded-xl border border-slate-800">
@@ -322,13 +324,11 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                 onChange={(e) => handleSort(e.target.value as SortField)}
                 className="bg-surface border border-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-rose-500 font-mono"
               >
-                <option value="usciScore">USCI Rating</option>
-                <option value="clutchTsPct">Clutch TS%</option>
-                <option value="tsDelta">TS% Delta</option>
-                <option value="tovFragility">Turnover Fragility</option>
-                <option value="cDwpa">Clutch dWPA</option>
-                <option value="clutchUsgPct">Clutch USG%</option>
-                <option value="clutchMpg">Clutch MPG</option>
+                <option value="clutchPoints">Clutch PTS</option>
+                <option value="clutchFga">Clutch FGA</option>
+                <option value="clutchFgPct">Clutch FG%</option>
+                <option value="clutchPpp">Points / FGA (PPP)</option>
+                <option value="clutchScoringPlays">Scoring Plays</option>
               </select>
             </div>
 
@@ -356,45 +356,40 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                 <th className="py-2.5 px-3 font-semibold">Pos</th>
                 <th className="py-2.5 px-3 font-semibold">Clutch Archetype</th>
                 <th
-                  onClick={() => handleSort('usciScore')}
+                  onClick={() => handleSort('clutchFga')}
                   className="py-2.5 px-3 font-semibold text-right cursor-pointer hover:text-white"
                 >
-                  USCI {sortField === 'usciScore' && (sortAsc ? '↑' : '↓')}
+                  Clutch FGA {sortField === 'clutchFga' && (sortAsc ? '↑' : '↓')}
                 </th>
                 <th
-                  onClick={() => handleSort('clutchTsPct')}
+                  onClick={() => handleSort('clutchPoints')}
                   className="py-2.5 px-3 font-semibold text-right cursor-pointer hover:text-white"
                 >
-                  Clutch TS% {sortField === 'clutchTsPct' && (sortAsc ? '↑' : '↓')}
+                  Clutch PTS {sortField === 'clutchPoints' && (sortAsc ? '↑' : '↓')}
                 </th>
                 <th
-                  onClick={() => handleSort('tsDelta')}
+                  onClick={() => handleSort('clutchFgPct')}
                   className="py-2.5 px-3 font-semibold text-right cursor-pointer hover:text-white"
                 >
-                  ΔTS% {sortField === 'tsDelta' && (sortAsc ? '↑' : '↓')}
+                  Clutch FG% {sortField === 'clutchFgPct' && (sortAsc ? '↑' : '↓')}
                 </th>
                 <th
-                  onClick={() => handleSort('tovFragility')}
+                  onClick={() => handleSort('clutchPpp')}
                   className="py-2.5 px-3 font-semibold text-right cursor-pointer hover:text-white"
                 >
-                  ΔTOV% {sortField === 'tovFragility' && (sortAsc ? '↑' : '↓')}
+                  Points/FGA {sortField === 'clutchPpp' && (sortAsc ? '↑' : '↓')}
                 </th>
                 <th
-                  onClick={() => handleSort('clutchUsgPct')}
+                  onClick={() => handleSort('clutchScoringPlays')}
                   className="py-2.5 px-3 font-semibold text-right cursor-pointer hover:text-white"
                 >
-                  Clutch USG% {sortField === 'clutchUsgPct' && (sortAsc ? '↑' : '↓')}
+                  Scoring Plays {sortField === 'clutchScoringPlays' && (sortAsc ? '↑' : '↓')}
                 </th>
-                <th
-                  onClick={() => handleSort('cDwpa')}
-                  className="py-2.5 px-3 font-semibold text-right cursor-pointer hover:text-white"
-                >
-                  c-dWPA {sortField === 'cDwpa' && (sortAsc ? '↑' : '↓')}
-                </th>
+                <th className="py-2.5 px-3 font-semibold text-right">Provenance</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono">
-              {filteredProfiles.slice(0, 40).map((p, idx) => {
+              {filteredProfiles.slice(0, 50).map((p, idx) => {
                 const isSelected = p.playerId === selectedProfile?.playerId;
                 return (
                   <tr
@@ -418,43 +413,23 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                     <td className="py-2.5 px-3 font-sans text-[11px] text-indigo-400">
                       {p.clutchArchetype}
                     </td>
+                    <td className="py-2.5 px-3 text-right font-black text-white">
+                      {p.clutchFga}
+                    </td>
                     <td className="py-2.5 px-3 text-right font-black text-rose-400">
-                      {p.usciScore.toFixed(0)}
+                      {p.clutchPoints !== null ? p.clutchPoints : '—'}
                     </td>
                     <td className="py-2.5 px-3 text-right text-emerald-400">
-                      {p.clutchTsPct.toFixed(1)}%
-                    </td>
-                    <td className="py-2.5 px-3 text-right">
-                      <span
-                        className={`px-1.5 py-0.5 rounded text-[10px] ${
-                          p.tsDelta >= 0
-                            ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                            : 'bg-rose-950 text-rose-400 border border-rose-800'
-                        }`}
-                      >
-                        {p.tsDelta >= 0 ? `+${p.tsDelta.toFixed(1)}%` : `${p.tsDelta.toFixed(1)}%`}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-right">
-                      <span
-                        className={`text-[11px] ${
-                          p.tovFragility <= 0 ? 'text-emerald-400' : 'text-rose-400'
-                        }`}
-                      >
-                        {p.tovFragility >= 0 ? `+${p.tovFragility.toFixed(1)}%` : `${p.tovFragility.toFixed(1)}%`}
-                      </span>
+                      {p.clutchFgPct !== null ? `${p.clutchFgPct.toFixed(1)}%` : 'N/A'}
                     </td>
                     <td className="py-2.5 px-3 text-right text-amber-400">
-                      {p.clutchUsgPct.toFixed(1)}%
+                      {p.clutchPpp !== null ? p.clutchPpp.toFixed(2) : 'N/A'}
                     </td>
-                    <td className="py-2.5 px-3 text-right">
-                      <span
-                        className={
-                          p.cDwpa >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                        }
-                      >
-                        {p.cDwpa >= 0 ? `+${p.cDwpa.toFixed(2)}%` : `${p.cDwpa.toFixed(2)}%`}
-                      </span>
+                    <td className="py-2.5 px-3 text-right text-slate-300">
+                      {p.clutchScoringPlays !== null ? p.clutchScoringPlays : '—'}
+                    </td>
+                    <td className="py-2.5 px-3 text-right text-[10px] text-slate-500">
+                      {p.provenance}
                     </td>
                   </tr>
                 );
