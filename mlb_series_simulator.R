@@ -39,6 +39,50 @@ build_mlb_playoff_profiles <- function(teams_df, players_df, post_ops) {
     }
   }
   
+  # Aggregate empirical team defense and catcher framing from FanGraphs fielding data
+  defense_lookup <- list()
+  fg_file <- cache_path("stats_sync", "fg_batters.rds", create = FALSE)
+  if (!file.exists(fg_file)) {
+    alt_file <- file.path(PROJECT_DIR, "..", "MLB Analytics", "cache", "stats_sync", "fg_batters.rds")
+    if (file.exists(alt_file)) {
+      fg_file <- alt_file
+    } else if (file.exists("cache/stats_sync/fg_batters.rds")) {
+      fg_file <- "cache/stats_sync/fg_batters.rds"
+    }
+  }
+  
+  if (file.exists(fg_file)) {
+    fg_df <- readRDS(fg_file)
+    field_col <- if ("Defense" %in% names(fg_df)) "Defense" else "Fielding"
+    framing_col <- if ("CFraming" %in% names(fg_df)) "CFraming" else NULL
+    
+    recode_tms <- c(
+      "KCR" = "KC", "SDP" = "SD", "SFG" = "SF", "TBR" = "TB", "WSN" = "WSH",
+      "OAK" = "ATH", "CWS" = "CHW"
+    )
+    raw_tm <- as.character(fg_df$team_name)
+    clean_tm <- ifelse(raw_tm %in% names(recode_tms), recode_tms[raw_tm], raw_tm)
+    
+    team_def_df <- fg_df %>%
+      mutate(team_code = clean_tm) %>%
+      filter(!is.na(team_code), team_code %in% teams_df$team) %>%
+      group_by(team_code) %>%
+      summarize(
+        team_defense = sum(.data[[field_col]], na.rm = TRUE),
+        catcher_framing = if (!is.null(framing_col)) sum(.data[[framing_col]], na.rm = TRUE) else 0,
+        .groups = "drop"
+      ) %>%
+      mutate(
+        team_defense_percentile = percent_rank(team_defense) * 100,
+        catcher_framing_percentile = percent_rank(catcher_framing) * 100,
+        def_composite = pmin(99, pmax(1, round(0.65 * team_defense_percentile + 0.35 * catcher_framing_percentile)))
+      )
+    
+    for (d in seq_len(nrow(team_def_df))) {
+      defense_lookup[[team_def_df$team_code[d]]] <- team_def_df$def_composite[d]
+    }
+  }
+  
   for (i in seq_len(nrow(teams_df))) {
     tm_row <- teams_df[i, ]
     tm_code <- tm_row$team
@@ -187,13 +231,8 @@ build_mlb_playoff_profiles <- function(teams_df, players_df, post_ops) {
     mean_k <- mean(sapply(lineup_list, function(x) x$kPct))
     contact_rating <- pmin(99, pmax(30, round((25.0 - mean_k) * 3.8 + 50)))
     
-    # 5. Defensive Efficiency & Catcher Framing
-    def_rating <- case_when(
-      tm_code %in% c("MIL", "TOR", "CLE", "SEA", "TEX", "KC") ~ round(runif(1, 86, 96)),
-      tm_code %in% c("NYY", "LAD", "PHI", "HOU", "ATL", "BAL") ~ round(runif(1, 74, 85)),
-      tm_code %in% c("BOS", "CHW", "COL", "MIA", "ATH") ~ round(runif(1, 40, 58)),
-      TRUE ~ round(runif(1, 60, 75))
-    )
+    # 5. Defensive Efficiency & Catcher Framing (Empirical composite from fg_batters.rds)
+    def_rating <- if (!is.null(defense_lookup[[tm_code]])) defense_lookup[[tm_code]] else 50
     
     profiles[[tm_code]] <- list(
       teamAbbr        = tm_code,
