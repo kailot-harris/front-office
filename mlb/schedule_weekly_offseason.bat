@@ -54,16 +54,16 @@ if not defined MLB_DISCORD_WEBHOOK if exist "%USERPROFILE%\.Renviron" (
 )
 
 REM Resolve Rscript executable
-set RSCRIPT=
+set "RSCRIPT="
 where Rscript >nul 2>&1
 if %ERRORLEVEL% equ 0 (
-    set RSCRIPT=Rscript
+    set "RSCRIPT=Rscript"
 ) else (
     if exist "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" (
-        set RSCRIPT="C:\Program Files\R\R-4.5.2\bin\Rscript.exe"
+        set "RSCRIPT=C:\Program Files\R\R-4.5.2\bin\Rscript.exe"
     ) else (
         for /d %%i in ("C:\Program Files\R\R-*") do (
-            if exist "%%i\bin\Rscript.exe" set RSCRIPT="%%i\bin\Rscript.exe"
+            if exist "%%i\bin\Rscript.exe" set "RSCRIPT=%%i\bin\Rscript.exe"
         )
     )
 )
@@ -75,7 +75,7 @@ if "%RSCRIPT%"=="" (
 
 REM Step 1: Build Offseason Monitor dataset and reconcile state
 echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 1: Running build_offseason_monitor.R... >> "%RUN_LOG%"
-%RSCRIPT% --vanilla build_offseason_monitor.R >> "%RUN_LOG%" 2>&1
+"%RSCRIPT%" --vanilla build_offseason_monitor.R >> "%RUN_LOG%" 2>&1
 if %ERRORLEVEL% neq 0 (
     echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] build_offseason_monitor.R failed with exit code %ERRORLEVEL%. >> "%RUN_LOG%"
     exit /b %ERRORLEVEL%
@@ -83,7 +83,7 @@ if %ERRORLEVEL% neq 0 (
 
 REM Step 2: Run End-to-End DAG Regression Suite prior to publishing (GitHub issue #62)
 echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 2: Running tools/offseason/test_dag_end_to_end.R... >> "%RUN_LOG%"
-%RSCRIPT% --vanilla tools/offseason/test_dag_end_to_end.R >> "%RUN_LOG%" 2>&1
+"%RSCRIPT%" --vanilla tools/offseason/test_dag_end_to_end.R >> "%RUN_LOG%" 2>&1
 if %ERRORLEVEL% neq 0 (
     echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] tools/offseason/test_dag_end_to_end.R failed with exit code %ERRORLEVEL%. Halting publication. >> "%RUN_LOG%"
     exit /b %ERRORLEVEL%
@@ -91,7 +91,7 @@ if %ERRORLEVEL% neq 0 (
 
 REM Step 3: Publish web artifacts and promote staged baseline
 echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 3: Running tools/publish_web.R --publish --mode=offseason... >> "%RUN_LOG%"
-%RSCRIPT% --vanilla tools/publish_web.R --publish --mode=offseason >> "%RUN_LOG%" 2>&1
+"%RSCRIPT%" --vanilla tools/publish_web.R --publish --mode=offseason >> "%RUN_LOG%" 2>&1
 if %ERRORLEVEL% neq 0 (
     echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] tools/publish_web.R failed with exit code %ERRORLEVEL%. >> "%RUN_LOG%"
     exit /b %ERRORLEVEL%
@@ -99,18 +99,18 @@ if %ERRORLEVEL% neq 0 (
 
 REM Step 4: Direct aggregator workflow dispatch to overcome Winter DST inversion
 echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 4: Dispatching aggregator sync-sports workflow... >> "%RUN_LOG%"
-set GH_BIN=
+set "GH_BIN="
 where gh >nul 2>&1
 if %ERRORLEVEL% equ 0 (
-    set GH_BIN=gh
+    set "GH_BIN=gh"
 ) else (
     if exist "C:\Program Files\GitHub CLI\gh.exe" (
-        set GH_BIN="C:\Program Files\GitHub CLI\gh.exe"
+        set "GH_BIN=C:\Program Files\GitHub CLI\gh.exe"
     )
 )
 
-if not "%GH_BIN%"=="" (
-    %GH_BIN% workflow run "Sync sport subtrees and deploy" --repo kailot-harris/front-office -f sports="mlb" -f deploy=true >> "%RUN_LOG%" 2>&1
+if defined GH_BIN (
+    "%GH_BIN%" workflow run "Sync sport subtrees and deploy" --repo kailot-harris/front-office -f sports="mlb" -f deploy=true >> "%RUN_LOG%" 2>&1
     if !ERRORLEVEL! equ 0 (
         echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Workflow dispatch successfully triggered. >> "%RUN_LOG%"
     ) else (
