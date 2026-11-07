@@ -332,7 +332,6 @@ export const DefensiveProfileSchema = z
     versatilityScore: pct,
     rimDfgDelta: finiteNumber,
     rimDeterrenceIndex: finiteNumber.min(0),
-    poaNavigation: pct,
     dRapm: finiteNumber,
     // Provenance of dRapm (issue #83): the real pooled-2019-2026 ridge fit, or
     // the clearly-labelled rebound/assist heuristic for players the RAPM join
@@ -344,6 +343,10 @@ export const DefensiveProfileSchema = z
     ]),
     dRapmLowSample: z.boolean(),
     dRapmAmbiguous: z.boolean(),
+    rimDefenseSource: z.string().min(2),
+    rimDefenseSample: z.number().int().min(0),
+    matchupSource: z.string().min(2),
+    matchupSample: z.number().int().min(0),
     matchupDist: z
       .object({
         pgPct: pct,
