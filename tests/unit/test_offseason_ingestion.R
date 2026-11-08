@@ -24,6 +24,7 @@ suppressPackageStartupMessages({
 })
 
 # Source schema and ingestion code
+source(file.path("tests", "helpers", "offseason_fixtures.R"))
 source(file.path("tools", "offseason", "wire_items_schema.R"))
 source(file.path("tools", "offseason", "ingest_sources.R"))
 
@@ -97,7 +98,7 @@ test_that("run_ingestion() returns both manifest and validated wire items", {
 # ------------------------------------------------------------------------------
 test_that("league_wire record counting reflects transaction row count and reports parse failure", {
   # 1. Test parsing official 2026-11-06 payload
-  fixture_path <- file.path("cache", "raw_ingest_archive", "20261106", "league_wire_espn_114245.json")
+  fixture_path <- offseason_league_wire_raw_fixture()
   expect_true(file.exists(fixture_path))
   
   payload_raw <- readBin(fixture_path, "raw", file.info(fixture_path)$size)

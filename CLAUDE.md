@@ -77,6 +77,16 @@ elsewhere (including older revisions of this file), since these get re-benchmark
   `rapm_engine.R`, etc.) — use this exact string in any new script that reads/writes it. Two
   consumers named here previously, `app.R` and `market_odds_engine.R`, no longer exist (retired
   under #142 and the zero-betting policy respectively).
+- **Never read a test fixture out of `cache/`.** Everything under `cache/` is gitignored runtime
+  output, and the `raw_ingest_archive/<YYYYMMDD>/` dirs are named for the ingest date, so such a
+  path exists only on a machine that happened to run that day's ingest — not in a fresh clone, a
+  new git worktree, or CI. Four off-season tests hardcoded
+  `cache/raw_ingest_archive/20261106/league_wire_espn_114245.json` and all failed on their
+  opening `file.exists()` outside the original checkout. Frozen real captures belong in
+  `data/fixtures/` (tracked), resolved through `tests/helpers/offseason_fixtures.R`'s
+  `offseason_league_wire_raw_fixture()`. These fixtures are byte-stable on purpose — tests assert
+  exact counts and field values against them — so never re-capture one in place; a new capture
+  gets a new filename.
 
 ## Process / conventions
 - No secrets are ever hardcoded in this repo. All keys/webhooks are read via
