@@ -229,11 +229,26 @@ export interface MediaSentimentPulse {
   reason?: string | null;
   articleCount: number;
   beatItemsSeen?: number;
+  /**
+   * Beat-feed items dropped by sentiment_pulse.R's WNBA relevance filter. The
+   * `beat_feeds` sources are women's-sports outlets, not WNBA-only (23 of 70
+   * items on 2026-11-07 were WTA/PWHL/NCAA/FIBA), so this is the visible
+   * evidence the filter added in #156 is doing work.
+   */
+  offTopicExcluded?: number;
   meanSentiment?: number | null;
   scrapedCount: number;
   fallbackCount: number;
   mostPositive?: MediaSentimentHeadline | null;
   mostNegative?: MediaSentimentHeadline | null;
+  /** Word-count floor an article must clear to be eligible as an extreme. */
+  extremesMinWords?: number;
+  /** TRUE when at least one article cleared `extremesMinWords`. */
+  extremesFloorApplied?: boolean;
+  /** Articles that cleared the floor; all `articleCount` still feed the mean. */
+  extremesEligibleCount?: number;
+  /** TRUE when franchise names were masked before lexical scoring. */
+  teamNamesMasked?: boolean;
   wordBreakdown?: {
     available: boolean;
     reason?: string | null;
