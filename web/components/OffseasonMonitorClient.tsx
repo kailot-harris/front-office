@@ -26,6 +26,7 @@ import {
   Check,
   ShieldCheck,
 } from 'lucide-react';
+import { MediaSentimentPulseCard } from './MediaSentimentPulseCard';
 import {
   OffseasonMonitorDataset,
   OffseasonEdition,
@@ -1164,6 +1165,11 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                 </div>
               </div>
             </div>
+
+            {/* MEDIA SENTIMENT PULSE — unnumbered on purpose: render_7_block_memo()'s
+                seven blocks are a Phase 4 spec artifact and the R renderer emits this
+                as an unnumbered `### Media Sentiment Pulse` (#169). */}
+            <MediaSentimentPulseCard pulse={currentEdition.mediaSentimentPulse} />
           </div>
         </div>
       )}
