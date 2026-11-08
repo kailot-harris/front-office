@@ -51,6 +51,7 @@ suppressPackageStartupMessages({
 })
 
 # Source pipeline modules
+source(file.path("tests", "helpers", "offseason_fixtures.R"))
 source(file.path("tools", "offseason", "wire_items_schema.R"))
 source(file.path("tools", "offseason", "ingest_sources.R"))
 source(file.path("tools", "offseason", "ingest_freshness.R"))
@@ -101,7 +102,7 @@ baseline_data <- jsonlite::fromJSON(baseline_path, simplifyVector = FALSE)
 # Real archived bytes containing N transactions deliver N records to extraction.
 # ==============================================================================
 test_that("Property 1: Ingest output reaches extraction edge without data loss", {
-  archive_file <- file.path("cache", "raw_ingest_archive", "20261106", "league_wire_espn_114245.json")
+  archive_file <- offseason_league_wire_raw_fixture()
   expect_true(file.exists(archive_file))
   
   sz <- file.info(archive_file)$size
@@ -358,7 +359,7 @@ test_that("Property 4: Freshness gating blocks stale, missing, or unparseable ti
 # non-zero confirmed or reported counts.
 # ==============================================================================
 test_that("Property 5: Real 2026-11-06 archived capture fed end-to-end emerges into non-zero counts", {
-  archive_file <- file.path("cache", "raw_ingest_archive", "20261106", "league_wire_espn_114245.json")
+  archive_file <- offseason_league_wire_raw_fixture()
   expect_true(file.exists(archive_file))
   
   raw_bytes <- readBin(archive_file, "raw", file.info(archive_file)$size)
