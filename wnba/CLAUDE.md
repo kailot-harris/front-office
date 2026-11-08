@@ -28,6 +28,17 @@
 - ESPN's WNBA injuries endpoint has no `athlete.id` field (unlike the NBA endpoint most code
   here was ported from). `injury_scraper.R` extracts the athlete ID from the "Player Card" link
   href instead — don't assume `athlete$id` exists on this feed.
+- The `beat_feeds` wire items from `ingest_sources.R`'s `DEFAULT_BEAT_SOURCES` are **not
+  WNBA-only**. These are women's-basketball / women's-sports outlets, so a normal week's
+  ingest carries WTA tennis, PWHL and ECAC hockey, NCAA game recaps and FIBA coverage: 23–24
+  of 70 items on 2026-11-07. Any consumer that treats a beat item as a WNBA item will
+  silently mix other sports into its output (the Media Sentiment Pulse published an NCAA
+  Florida–UCF recap as the week's most negative *WNBA* story before this was caught). Filter
+  with `sentiment_pulse.R`'s `filter_wnba_relevant_items()` / `item_is_wnba_relevant()`, which
+  key off `wnba_team_vocabulary()` derived from `config.R`'s `WNBA_TEAMS` — don't hardcode a
+  team-name list. Note also that franchise names are ordinary English words to a sentiment
+  lexicon (`liberty`, `golden`, `fever`, `storm`, `sun`, `dream`, `fire`, `sparks`, `aces`),
+  so any lexical scoring of this text must mask them first via `mask_team_names()`.
 - **`%||%` in `logging_utils.R:32` vs base R ≥ 4.4's `base::`%||%`` (resolved in #153).**
   - `logging_utils.R:32` defines the repo's canonical hardened form (`!is.null(a) && length(a) > 0 && !is.na(a)[1]`),
     which treats `NULL`, `character(0)` (e.g. `grep(...)[1]` -> `NA`), and leading-`NA` scalars as missing.
@@ -77,6 +88,16 @@ elsewhere (including older revisions of this file), since these get re-benchmark
   `rapm_engine.R`, etc.) — use this exact string in any new script that reads/writes it. Two
   consumers named here previously, `app.R` and `market_odds_engine.R`, no longer exist (retired
   under #142 and the zero-betting policy respectively).
+- **Never read a test fixture out of `cache/`.** Everything under `cache/` is gitignored runtime
+  output, and the `raw_ingest_archive/<YYYYMMDD>/` dirs are named for the ingest date, so such a
+  path exists only on a machine that happened to run that day's ingest — not in a fresh clone, a
+  new git worktree, or CI. Four off-season tests hardcoded
+  `cache/raw_ingest_archive/20261106/league_wire_espn_114245.json` and all failed on their
+  opening `file.exists()` outside the original checkout. Frozen real captures belong in
+  `data/fixtures/` (tracked), resolved through `tests/helpers/offseason_fixtures.R`'s
+  `offseason_league_wire_raw_fixture()`. These fixtures are byte-stable on purpose — tests assert
+  exact counts and field values against them — so never re-capture one in place; a new capture
+  gets a new filename.
 
 ## Process / conventions
 - No secrets are ever hardcoded in this repo. All keys/webhooks are read via

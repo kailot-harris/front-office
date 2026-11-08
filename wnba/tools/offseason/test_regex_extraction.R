@@ -36,6 +36,9 @@ suppressPackageStartupMessages({
   library(jsonlite)
 })
 
+# Shared fixture-path resolution (tracked fixture, not gitignored runtime cache)
+source(file.path("tests", "helpers", "offseason_fixtures.R"))
+
 # Source the regex extractor under test
 source(file.path("tools", "offseason", "extract_regex.R"))
 
@@ -45,7 +48,7 @@ start_time <- Sys.time()
 # Criterion 1: Multi-Event Splitting on Real Archived Payloads
 # ==============================================================================
 test_that("Criterion 1: Real 20261106 payload extracts >= 35 candidate deltas from 25 rows", {
-  archive_path <- file.path("cache", "raw_ingest_archive", "20261106", "league_wire_espn_114245.json")
+  archive_path <- offseason_league_wire_raw_fixture()
   expect_true(file.exists(archive_path), info = "20261106 archive payload must exist")
   
   wire_json <- jsonlite::fromJSON(archive_path, simplifyVector = FALSE)

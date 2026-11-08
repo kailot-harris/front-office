@@ -35,6 +35,7 @@ source(file.path("tools", "offseason", "ingest_freshness.R"))
 source(file.path("tools", "offseason", "extract_regex.R"))
 source(file.path("tools", "offseason", "reconcile_state.R"))
 source(file.path("tools", "offseason", "render_memo.R"))
+source(file.path("tools", "offseason", "sentiment_pulse.R"))
 source(file.path("tools", "offseason", "check_preseason_trigger.R"))
 
 # Determine active off-season phase based on calendar or week
@@ -281,6 +282,17 @@ build_offseason_monitor_dag <- function(dry_run = FALSE,
   # Step 4: Render 7-Block Memo
   # ----------------------------------------------------------------------------
   log_info("build_offseason_monitor: Step 4 - Rendering 7-block markdown memo...", script = "build_offseason_monitor.R")
+
+  # Media Sentiment Pulse (Issue #156): scores the beat_feeds items already ingested in
+  # Step 1. Wrapped so any failure degrades to an omitted section, never a failed publish.
+  sentiment_pulse <- tryCatch({
+    compute_media_sentiment_pulse(wire_items, scrape = !isTRUE(dry_run))
+  }, error = function(e) {
+    log_warn(paste("build_offseason_monitor: Media Sentiment Pulse errored; section omitted:", e$message),
+             script = "build_offseason_monitor.R")
+    NULL
+  })
+
   memo_render <- render_7_block_memo(
     week_number = week_num,
     publish_date = now_date,
@@ -293,7 +305,8 @@ build_offseason_monitor_dag <- function(dry_run = FALSE,
     model_prior_impact = model_prior_impact,
     winter_league_notes = winter_league_notes_list,
     sources_visited = sources_visited_list,
-    unclassified_count = length(unclassified_deltas)
+    unclassified_count = length(unclassified_deltas),
+    media_sentiment_pulse = sentiment_pulse
   )
   
   is_quiet_week <- can_assert_quiet_week(manifest, confirmed_changes = confirmed_changes_list)
@@ -311,7 +324,8 @@ build_offseason_monitor_dag <- function(dry_run = FALSE,
     upcomingMilestones = I(upcoming_milestones_list),
     modelPriorImpact = model_prior_impact,
     winterLeagueNotes = I(winter_league_notes_list),
-    sourcesVisited = I(as.character(unlist(sources_visited_list)))
+    sourcesVisited = I(as.character(unlist(sources_visited_list))),
+    mediaSentimentPulse = sentiment_pulse
   )
   
   # Read existing dataset to preserve historical editions if present
