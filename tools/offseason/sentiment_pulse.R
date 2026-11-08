@@ -61,6 +61,103 @@ if (!exists("log_warn", mode = "function")) log_warn <- function(...) invisible(
 .sp_min_body_chars <- function() {
   if (exists("OFFSEASON_SENTIMENT_MIN_BODY_CHARS")) OFFSEASON_SENTIMENT_MIN_BODY_CHARS else 400L
 }
+.sp_min_extreme_words <- function() {
+  if (exists("OFFSEASON_SENTIMENT_MIN_EXTREME_WORDS")) OFFSEASON_SENTIMENT_MIN_EXTREME_WORDS else 40L
+}
+
+# ------------------------------------------------------------------------------
+# WNBA vocabulary (derived from config.R's WNBA_TEAMS -- never a local copy)
+# ------------------------------------------------------------------------------
+
+#' Lowercase team-name vocabulary: full names, city phrases, and nicknames
+#'
+#' Derived from WNBA_TEAMS so an expansion franchise needs no edit here. Returns
+#' the three forms separately because they are used differently: relevance
+#' testing accepts any of them, masking replaces longest-first.
+#'
+#' @return list(full =, city =, nickname =, all =) character vectors, lowercase
+wnba_team_vocabulary <- function() {
+  if (!exists("WNBA_TEAMS")) {
+    return(list(full = character(0), city = character(0),
+                nickname = character(0), all = character(0)))
+  }
+  full <- tolower(unname(WNBA_TEAMS))
+  parts <- strsplit(full, " ", fixed = TRUE)
+  nickname <- vapply(parts, function(p) p[length(p)], character(1))
+  city <- vapply(parts, function(p) paste(p[-length(p)], collapse = " "), character(1))
+  city <- city[nzchar(city)]
+  all_terms <- unique(c(full, city, nickname))
+  # Longest first so "golden state valkyries" is consumed before "golden state".
+  all_terms <- all_terms[order(nchar(all_terms), decreasing = TRUE)]
+  list(full = full, city = city, nickname = nickname, all = all_terms)
+}
+
+# Perl lookarounds, not \\b: they do not consume the surrounding character, so
+# adjacent team references ("Liberty Sky") both mask in a single pass.
+.sp_term_pattern <- function(term) {
+  paste0("(?<![[:alpha:]])", term, "(?![[:alpha:]])")
+}
+
+#' Replace WNBA team names, cities and nicknames with a neutral placeholder
+#'
+#' Team names are proper nouns that general-English polarity lexicons score as
+#' ordinary words: on the 2026-11-07 live run "liberty" (40 occurrences) and
+#' "golden" (19) were the largest positive terms in the bing breakdown, and
+#' masking moved the weekly syuzhet mean from +0.0265 to +0.0217 (-18%). Both
+#' the score and the word breakdown therefore read masked text.
+#'
+#' Known tradeoff: nicknames are common nouns, so a non-team use ("a fire sale")
+#' is masked too. In beat coverage of this league those tokens overwhelmingly
+#' denote the franchise, and leaving them scored is the larger error.
+#'
+#' @param txt character vector
+#' @return character vector with team vocabulary replaced by a single space
+mask_team_names <- function(txt) {
+  if (is.null(txt) || length(txt) == 0) return(txt)
+  vocab <- wnba_team_vocabulary()
+  if (length(vocab$all) == 0) return(txt)
+  out <- txt
+  for (term in vocab$all) {
+    out <- gsub(.sp_term_pattern(term), " ", out, perl = TRUE, ignore.case = TRUE)
+  }
+  gsub("[[:space:]]{2,}", " ", out)
+}
+
+#' Does this item actually concern the WNBA?
+#'
+#' The beat outlets in DEFAULT_BEAT_SOURCES are women's-basketball and
+#' women's-sports feeds, not WNBA-only wires. On the 2026-11-07 live run 24 of
+#' 70 ingested items were off-topic -- WTA tennis, PWHL and ECAC hockey, NCAA
+#' game recaps, FIBA World Cup -- and one of them (a Florida-UCF college recap)
+#' was published as the week's most negative WNBA story. An item counts as
+#' relevant when it names the league or any franchise, city or nickname.
+#'
+#' Accepted false negative: a WNBA-adjacent item that names neither (e.g. an
+#' Unrivaled roster story, or a Hall-of-Fame class item naming only players) is
+#' excluded. Excluding it is the conservative error; the count is reported so a
+#' reader can see how much was filtered.
+#'
+#' @param item one wire item
+#' @return TRUE/FALSE
+item_is_wnba_relevant <- function(item) {
+  txt <- tolower(paste(
+    as.character(item$raw_text %||% ""),
+    as.character(item$source_url %||% "")
+  ))
+  if (!nzchar(trimws(txt))) return(FALSE)
+  if (grepl(.sp_term_pattern("wnba"), txt, perl = TRUE)) return(TRUE)
+  vocab <- wnba_team_vocabulary()
+  for (term in vocab$all) {
+    if (grepl(.sp_term_pattern(term), txt, perl = TRUE)) return(TRUE)
+  }
+  FALSE
+}
+
+#' Keep only the WNBA-relevant items
+filter_wnba_relevant_items <- function(items) {
+  if (is.null(items) || length(items) == 0) return(list())
+  Filter(item_is_wnba_relevant, items)
+}
 
 # ------------------------------------------------------------------------------
 # Item helpers
@@ -238,14 +335,32 @@ compute_media_sentiment_pulse <- function(wire_items,
       mostPositive = NULL,
       mostNegative = NULL,
       wordBreakdown = list(available = FALSE, positive = list(), negative = list()),
+      beatItemsSeen = 0L,
+      offTopicExcluded = 0L,
+      extremesMinWords = as.integer(.sp_min_extreme_words()),
+      extremesFloorApplied = FALSE,
+      teamNamesMasked = TRUE,
       lexicon = "syuzhet + bing",
       method = "syuzhet"
     )
   }
 
-  items <- filter_beat_feed_items(wire_items)
-  if (length(items) == 0) {
+  beat_items <- filter_beat_feed_items(wire_items)
+  if (length(beat_items) == 0) {
     return(unavailable("no beat_feeds wire items were ingested this run"))
+  }
+
+  items <- filter_wnba_relevant_items(beat_items)
+  off_topic <- length(beat_items) - length(items)
+  if (off_topic > 0) {
+    log_info(sprintf("sentiment_pulse: Excluded %d of %d beat items as off-topic (no WNBA or franchise mention).",
+                     off_topic, length(beat_items)),
+             script = "sentiment_pulse.R")
+  }
+  if (length(items) == 0) {
+    return(unavailable(sprintf(
+      "none of the %d beat_feeds items this run mentioned the WNBA or any franchise",
+      length(beat_items))))
   }
 
   if (!requireNamespace("syuzhet", quietly = TRUE)) {
@@ -276,6 +391,12 @@ compute_media_sentiment_pulse <- function(wire_items,
     if (!nzchar(text_used)) next
     if (!is.null(body)) scraped <- scraped + 1L else fallback <- fallback + 1L
 
+    # Score the masked text, not the raw text: franchise proper nouns are
+    # lexicon-scored otherwise (see mask_team_names()). The same masked string
+    # feeds the bing breakdown, so the memo's words and its number agree.
+    text_used <- mask_team_names(text_used)
+    if (!nzchar(trimws(text_used))) next
+
     sc <- score_text_sentiment(text_used)
     if (is.null(sc)) {
       log_warn(sprintf("sentiment_pulse: scoring returned no usable value for %s; item skipped.",
@@ -303,8 +424,23 @@ compute_media_sentiment_pulse <- function(wire_items,
 
   norm <- vapply(rows, function(r) r$normalized, numeric(1))
   mean_norm <- mean(norm)
-  idx_pos <- which.max(norm)
-  idx_neg <- which.min(norm)
+
+  # Extremes come only from items long enough for a per-word mean to be stable
+  # (OFFSEASON_SENTIMENT_MIN_EXTREME_WORDS). Every item still counts toward the
+  # mean. If nothing clears the floor, fall back to the full set and say so
+  # rather than reporting no extreme at all.
+  words_vec <- vapply(rows, function(r) as.integer(r$words), integer(1))
+  floor_words <- as.integer(.sp_min_extreme_words())
+  eligible <- which(words_vec >= floor_words)
+  floor_applied <- length(eligible) > 0
+  pool <- if (floor_applied) eligible else seq_along(rows)
+  if (!floor_applied) {
+    log_warn(sprintf("sentiment_pulse: no item reached the %d-word extreme floor; extremes drawn from all %d scored items.",
+                     floor_words, length(rows)),
+             script = "sentiment_pulse.R")
+  }
+  idx_pos <- pool[which.max(norm[pool])]
+  idx_neg <- pool[which.min(norm[pool])]
 
   mk <- function(r) list(
     headline = r$headline,
@@ -319,20 +455,25 @@ compute_media_sentiment_pulse <- function(wire_items,
   breakdown <- summarize_bing_words(vapply(rows, function(r) r$text, character(1)),
                                     top_n = top_n_words)
 
-  log_info(sprintf("sentiment_pulse: Scored %d beat-feed articles (%d scraped, %d RSS fallback); mean normalized sentiment %.4f.",
-                   length(rows), scraped, fallback, mean_norm),
+  log_info(sprintf("sentiment_pulse: Scored %d WNBA-relevant beat articles of %d ingested (%d off-topic excluded; %d scraped, %d RSS fallback); mean normalized sentiment %.4f.",
+                   length(rows), length(beat_items), off_topic, scraped, fallback, mean_norm),
            script = "sentiment_pulse.R")
 
   list(
     available = TRUE,
     reason = NULL,
     articleCount = length(rows),
-    beatItemsSeen = length(items),
+    beatItemsSeen = length(beat_items),
+    offTopicExcluded = as.integer(off_topic),
     meanSentiment = round(mean_norm, 4),
     scrapedCount = scraped,
     fallbackCount = fallback,
     mostPositive = mk(rows[[idx_pos]]),
     mostNegative = mk(rows[[idx_neg]]),
+    extremesMinWords = floor_words,
+    extremesFloorApplied = floor_applied,
+    extremesEligibleCount = length(eligible),
+    teamNamesMasked = TRUE,
     wordBreakdown = breakdown,
     lexicon = "syuzhet + bing",
     method = "syuzhet"

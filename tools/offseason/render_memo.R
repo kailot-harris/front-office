@@ -26,6 +26,13 @@ if (length(f) == 1 && nzchar(f) && file.exists(f)) {
   if (file.exists(file.path(cand, "config.R"))) setwd(cand)
 }
 
+# This file uses %||%. Base R >= 4.4 ships an is.null-only base::`%||%` that is
+# always in scope, so exists("%||%") can never gate this source() (CLAUDE.md /
+# issue #153) -- guard on log_info() to get the repo's hardened operator.
+if (!exists("log_info", mode = "function") && file.exists("logging_utils.R")) {
+  source("logging_utils.R")
+}
+
 suppressPackageStartupMessages({
   library(jsonlite)
 })
@@ -295,12 +302,21 @@ render_block_media_sentiment <- function(pulse) {
     return(paste(lines, collapse = "\n"))
   }
 
-  lines <- c(lines, sprintf(
+  scored_line <- sprintf(
     "- **Articles scored:** %d (%d full-text scraped, %d scored from RSS summary)",
     as.integer(pulse$articleCount), as.integer(pulse$scrapedCount), as.integer(pulse$fallbackCount)
-  ))
+  )
+  off_topic <- as.integer(pulse$offTopicExcluded %||% 0L)
+  if (!is.na(off_topic) && off_topic > 0) {
+    scored_line <- sprintf(
+      "%s; %d off-topic item%s excluded of %d ingested",
+      scored_line, off_topic, if (off_topic == 1L) "" else "s",
+      as.integer(pulse$beatItemsSeen %||% pulse$articleCount)
+    )
+  }
+  lines <- c(lines, scored_line)
   lines <- c(lines, sprintf(
-    "- **Mean sentiment:** %+.4f per word (syuzhet lexicon, word-count normalized)",
+    "- **Mean sentiment:** %+.4f per word (syuzhet lexicon, word-count normalized, team names masked)",
     as.numeric(pulse$meanSentiment)
   ))
 
@@ -311,7 +327,31 @@ render_block_media_sentiment <- function(pulse) {
     sprintf("- **%s:** \"%s\"%s (%+.4f)%s", label, it$headline, src, as.numeric(it$score), url)
   }
   lines <- c(lines, fmt_item("Most positive", pulse$mostPositive))
-  lines <- c(lines, fmt_item("Most negative", pulse$mostNegative))
+  # When every scored article is positive, the minimum is not a negative story --
+  # it is the least positive one. The 2026-11-07 run's "most negative" was
+  # +0.0043, which reads as a damning headline unless the label says otherwise.
+  neg_score <- if (!is.null(pulse$mostNegative)) as.numeric(pulse$mostNegative$score) else NA_real_
+  neg_label <- if (!is.na(neg_score) && neg_score >= 0) "Least positive" else "Most negative"
+  lines <- c(lines, fmt_item(neg_label, pulse$mostNegative))
+
+  # Say which pool the extremes were drawn from: a per-word score is unstable on
+  # short items, so they are excluded from extreme selection (never from the mean).
+  min_words <- as.integer(pulse$extremesMinWords %||% NA_integer_)
+  if (!is.na(min_words)) {
+    if (isTRUE(pulse$extremesFloorApplied)) {
+      n_elig <- as.integer(pulse$extremesEligibleCount %||% 0L)
+      lines <- c(lines, sprintf(
+        "- *Extremes drawn from the %d article%s of at least %d words; all %d count toward the mean.*",
+        n_elig, if (identical(n_elig, 1L)) "" else "s",
+        min_words, as.integer(pulse$articleCount)
+      ))
+    } else {
+      lines <- c(lines, sprintf(
+        "- *No article reached the %d-word floor this week, so the extremes come from all %d scored items and are noise-prone.*",
+        min_words, as.integer(pulse$articleCount)
+      ))
+    }
+  }
 
   wb <- pulse$wordBreakdown
   if (!is.null(wb) && isTRUE(wb$available)) {

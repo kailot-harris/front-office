@@ -28,6 +28,17 @@
 - ESPN's WNBA injuries endpoint has no `athlete.id` field (unlike the NBA endpoint most code
   here was ported from). `injury_scraper.R` extracts the athlete ID from the "Player Card" link
   href instead — don't assume `athlete$id` exists on this feed.
+- The `beat_feeds` wire items from `ingest_sources.R`'s `DEFAULT_BEAT_SOURCES` are **not
+  WNBA-only**. These are women's-basketball / women's-sports outlets, so a normal week's
+  ingest carries WTA tennis, PWHL and ECAC hockey, NCAA game recaps and FIBA coverage: 23–24
+  of 70 items on 2026-11-07. Any consumer that treats a beat item as a WNBA item will
+  silently mix other sports into its output (the Media Sentiment Pulse published an NCAA
+  Florida–UCF recap as the week's most negative *WNBA* story before this was caught). Filter
+  with `sentiment_pulse.R`'s `filter_wnba_relevant_items()` / `item_is_wnba_relevant()`, which
+  key off `wnba_team_vocabulary()` derived from `config.R`'s `WNBA_TEAMS` — don't hardcode a
+  team-name list. Note also that franchise names are ordinary English words to a sentiment
+  lexicon (`liberty`, `golden`, `fever`, `storm`, `sun`, `dream`, `fire`, `sparks`, `aces`),
+  so any lexical scoring of this text must mask them first via `mask_team_names()`.
 - **`%||%` in `logging_utils.R:32` vs base R ≥ 4.4's `base::`%||%`` (resolved in #153).**
   - `logging_utils.R:32` defines the repo's canonical hardened form (`!is.null(a) && length(a) > 0 && !is.na(a)[1]`),
     which treats `NULL`, `character(0)` (e.g. `grep(...)[1]` -> `NA`), and leading-`NA` scalars as missing.

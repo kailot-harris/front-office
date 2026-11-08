@@ -61,11 +61,15 @@ test_that("Happy path scores beat-feed items and ignores other source families",
   res <- compute_media_sentiment_pulse(happy_items, scrape = FALSE)
 
   expect_true(res$available)
-  expect_equal(res$articleCount, 3L)          # the league_wire item is excluded
+  # beat_003 ("Draft lottery order set - The league confirmed...") names neither
+  # the WNBA nor any franchise, so the relevance gate excludes it; the
+  # league_wire item was never a beat item to begin with.
+  expect_equal(res$articleCount, 2L)
   expect_equal(res$beatItemsSeen, 3L)
+  expect_equal(res$offTopicExcluded, 1L)
   expect_true(is.numeric(res$meanSentiment))
   expect_equal(res$scrapedCount, 0L)          # scrape = FALSE: no network at all
-  expect_equal(res$fallbackCount, 3L)
+  expect_equal(res$fallbackCount, 2L)
 
   expect_true(grepl("Liberty", res$mostPositive$headline))
   expect_true(grepl("Mystics", res$mostNegative$headline))
@@ -117,10 +121,10 @@ test_that("Missing syuzhet degrades to a labelled unavailable result (no placeho
 test_that("Unreachable source_url fails soft and falls back to the item's RSS text", {
   bad_items <- list(
     mk_item("beat_bad_1", "espn_wnba_beat",
-            "Dominant win sparks optimism - A superb and encouraging performance delighted the home crowd.",
+            "Aces dominant win lifts optimism - A superb and encouraging WNBA performance delighted the home crowd.",
             url = "http://this-host-does-not-exist.invalid/article/1"),
     mk_item("beat_bad_2", "winsidr",
-            "Injury setback clouds outlook - A terrible, worrying diagnosis frustrated the training staff.",
+            "Fever injury setback clouds outlook - A terrible, worrying diagnosis frustrated the Indiana training staff.",
             url = "http://127.0.0.1:9/unreachable")
   )
 
@@ -152,7 +156,8 @@ test_that("Memo renderer stays additive: absent argument changes nothing", {
   pulse <- compute_media_sentiment_pulse(happy_items, scrape = FALSE)
   after <- do.call(render_7_block_memo, c(base_args, list(media_sentiment_pulse = pulse)))
   expect_true(grepl("### Media Sentiment Pulse", after$markdown, fixed = TRUE))
-  expect_true(grepl("Articles scored:** 3", after$markdown, fixed = TRUE))
+  # 2, not 3: happy_items' beat_003 is excluded by the relevance gate
+  expect_true(grepl("Articles scored:** 2", after$markdown, fixed = TRUE))
   # The pre-existing 7 blocks are unchanged; the new section is strictly appended.
   expect_true(startsWith(after$markdown, before$markdown))
 })
@@ -161,4 +166,187 @@ test_that("Unavailable pulse renders an explicit unavailable line, never a numbe
   blk <- render_block_media_sentiment(compute_media_sentiment_pulse(list(), scrape = FALSE))
   expect_true(grepl("unavailable", blk, fixed = TRUE))
   expect_false(grepl("Mean sentiment", blk, fixed = TRUE))
+})
+
+# ==============================================================================
+# Relevance gate, team-name masking, extreme word floor
+# Added after the 2026-11-07 live run published a WTA/NCAA/PWHL-contaminated
+# pulse whose extremes were short RSS titles and whose top "positive" words were
+# franchise names.
+# ==============================================================================
+
+test_that("Team-name vocabulary is derived from config.R's WNBA_TEAMS, not a local list", {
+  skip_if_not(exists("WNBA_TEAMS"), "config.R not loaded")
+  vocab <- wnba_team_vocabulary()
+
+  expect_equal(length(vocab$full), length(WNBA_TEAMS))
+  expect_true(all(tolower(unname(WNBA_TEAMS)) %in% vocab$full))
+  # Nicknames and cities are split off the same source strings
+  expect_true("liberty" %in% vocab$nickname)
+  expect_true("valkyries" %in% vocab$nickname)
+  expect_true("new york" %in% vocab$city)
+  expect_true("golden state" %in% vocab$city)
+  # Longest-first ordering so a full name is consumed before its city prefix
+  expect_true(which(vocab$all == "golden state valkyries") <
+                which(vocab$all == "golden state"))
+})
+
+test_that("mask_team_names strips franchise vocabulary and nothing else", {
+  masked <- mask_team_names("The New York Liberty beat the Golden State Valkyries in a brilliant game")
+  expect_false(grepl("liberty", masked, ignore.case = TRUE))
+  expect_false(grepl("valkyries", masked, ignore.case = TRUE))
+  expect_false(grepl("new york", masked, ignore.case = TRUE))
+  # Genuine sentiment vocabulary survives untouched
+  expect_true(grepl("brilliant", masked, ignore.case = TRUE))
+
+  # Adjacent team references both mask in one pass (lookaround, not \\b)
+  both <- mask_team_names("Liberty Sky doubleheader")
+  expect_false(grepl("liberty", both, ignore.case = TRUE))
+  expect_false(grepl("sky", both, ignore.case = TRUE))
+
+  # Substrings of longer words are not touched
+  expect_true(grepl("liberties", mask_team_names("civil liberties"), ignore.case = TRUE))
+  expect_true(grepl("firearm", mask_team_names("firearm"), ignore.case = TRUE))
+})
+
+test_that("Masking removes the franchise-name contribution to the score", {
+  skip_if_not_installed("syuzhet")
+  # "liberty" and "golden" are bing/syuzhet positives and were the two largest
+  # positive terms in the live run, with no sentiment meaning here.
+  txt <- "Liberty and Golden State met again"
+  unmasked <- score_text_sentiment(txt)
+  masked <- score_text_sentiment(mask_team_names(txt))
+
+  expect_false(is.null(unmasked))
+  expect_gt(unmasked$raw, 0)                 # scored positive purely on team names
+  if (!is.null(masked)) expect_lt(masked$raw, unmasked$raw)
+})
+
+test_that("Off-topic items are excluded and counted, never scored", {
+  items <- list(
+    mk_item("rel_1", "espn_wnba_beat",
+            "Storm extend their veteran guard - Seattle completed a strong and welcome re-signing."),
+    mk_item("off_1", "just_womens_sports",
+            "Elena Rybakina leads tennis's elite into the 2026 WTA Finals - a superb season."),
+    mk_item("off_2", "the_next_hoops",
+            "PWHL Detroit's guide to the world championship - hockey preview."),
+    mk_item("off_3", "just_womens_sports",
+            "Sienna Betts posts career-best 17 points as UCLA cruises past UC Irvine.")
+  )
+
+  expect_true(item_is_wnba_relevant(items[[1]]))
+  expect_false(item_is_wnba_relevant(items[[2]]))
+  expect_false(item_is_wnba_relevant(items[[3]]))
+  expect_false(item_is_wnba_relevant(items[[4]]))
+
+  res <- compute_media_sentiment_pulse(items, scrape = FALSE)
+  expect_true(res$available)
+  expect_equal(res$beatItemsSeen, 4L)
+  expect_equal(res$articleCount, 1L)
+  expect_equal(res$offTopicExcluded, 3L)
+  # The tennis item was the most positive text in the set; it must not surface
+  expect_false(grepl("Rybakina", res$mostPositive$headline, fixed = TRUE))
+  expect_true(grepl("Storm", res$mostPositive$headline, fixed = TRUE))
+})
+
+test_that("An all-off-topic week is labelled unavailable, not scored", {
+  items <- list(
+    mk_item("off_1", "just_womens_sports", "Tennis finals preview - a superb field assembles."),
+    mk_item("off_2", "the_next_hoops", "Hockey East monthly recap: October 2026.")
+  )
+  res <- compute_media_sentiment_pulse(items, scrape = FALSE)
+  expect_false(res$available)
+  expect_null(res$meanSentiment)
+  expect_null(res$mostPositive)
+  expect_true(grepl("mentioned the WNBA", res$reason))
+})
+
+test_that("Extremes respect the word floor but every item still feeds the mean", {
+  skip_if_not_installed("syuzhet")
+  long_text <- paste(
+    "Fever front office review -",
+    "Indiana spent the week completing a steady and constructive set of roster moves that",
+    "the staff described as a good outcome for the group, with a calm and favourable",
+    "response from players, a positive tone around the facility, and a solid plan for the",
+    "coming months that most observers called a reasonable and welcome direction overall."
+  )
+  items <- list(
+    # Short, extreme per-word score: exactly the shape that won the live run
+    mk_item("short_1", "her_hoop_stats", "Aces wonderful triumphant brilliant"),
+    mk_item("long_1", "espn_wnba_beat", long_text),
+    mk_item("long_2", "winsidr", paste("Mystics collapse review -",
+            paste(rep("a bad and disappointing week for the roster and the staff overall", 6),
+                  collapse = " ")))
+  )
+
+  res <- compute_media_sentiment_pulse(items, scrape = FALSE)
+  expect_true(res$available)
+  expect_equal(res$articleCount, 3L)                 # short item still counted
+  expect_true(res$extremesFloorApplied)
+  expect_equal(res$extremesMinWords, as.integer(OFFSEASON_SENTIMENT_MIN_EXTREME_WORDS))
+  expect_equal(res$extremesEligibleCount, 2L)
+
+  # The 4-word item has the highest normalized score but is floor-ineligible
+  expect_false(grepl("wonderful", res$mostPositive$headline, fixed = TRUE))
+  expect_gte(res$mostPositive$words, as.integer(OFFSEASON_SENTIMENT_MIN_EXTREME_WORDS))
+  expect_gte(res$mostNegative$words, as.integer(OFFSEASON_SENTIMENT_MIN_EXTREME_WORDS))
+})
+
+test_that("When nothing clears the floor the memo says so instead of hiding it", {
+  skip_if_not_installed("syuzhet")
+  items <- list(
+    mk_item("s1", "espn_wnba_beat", "Liberty win again - a great result"),
+    mk_item("s2", "winsidr", "Mystics lose again - a bad result")
+  )
+  res <- compute_media_sentiment_pulse(items, scrape = FALSE)
+  expect_true(res$available)
+  expect_false(res$extremesFloorApplied)
+  expect_false(is.null(res$mostPositive))            # still reported, not dropped
+
+  blk <- render_block_media_sentiment(res)
+  expect_true(grepl("noise-prone", blk, fixed = TRUE))
+})
+
+test_that("An all-positive week labels its minimum 'Least positive', not 'Most negative'", {
+  mk_pulse <- function(neg_score) list(
+    available = TRUE, reason = NULL, articleCount = 10L, beatItemsSeen = 10L,
+    offTopicExcluded = 0L, meanSentiment = 0.02, scrapedCount = 5L, fallbackCount = 5L,
+    mostPositive = list(headline = "High", score = 0.06, rawScore = 2, words = 100L,
+                        sourceId = "espn_wnba_beat", url = NA_character_, bodyScraped = TRUE),
+    mostNegative = list(headline = "Low", score = neg_score, rawScore = 1, words = 100L,
+                        sourceId = "winsidr", url = NA_character_, bodyScraped = TRUE),
+    extremesMinWords = 40L, extremesFloorApplied = TRUE, extremesEligibleCount = 8L,
+    teamNamesMasked = TRUE,
+    wordBreakdown = list(available = TRUE, positive = list(), negative = list())
+  )
+
+  # Minimum is still positive -> the label must not claim a negative story
+  blk_pos <- render_block_media_sentiment(mk_pulse(0.0043))
+  expect_true(grepl("**Least positive:**", blk_pos, fixed = TRUE))
+  expect_false(grepl("**Most negative:**", blk_pos, fixed = TRUE))
+
+  # Genuinely negative minimum keeps the original label
+  blk_neg <- render_block_media_sentiment(mk_pulse(-0.0210))
+  expect_true(grepl("**Most negative:**", blk_neg, fixed = TRUE))
+  expect_false(grepl("**Least positive:**", blk_neg, fixed = TRUE))
+})
+
+test_that("Memo block reports the exclusion count and the masking caveat", {
+  skip_if_not_installed("syuzhet")
+  pulse <- list(
+    available = TRUE, reason = NULL, articleCount = 46L, beatItemsSeen = 70L,
+    offTopicExcluded = 24L, meanSentiment = 0.0217, scrapedCount = 25L,
+    fallbackCount = 21L,
+    mostPositive = list(headline = "A", score = 0.05, rawScore = 2, words = 120L,
+                        sourceId = "winsidr", url = NA_character_, bodyScraped = TRUE),
+    mostNegative = list(headline = "B", score = -0.03, rawScore = -1.5, words = 90L,
+                        sourceId = "espn_wnba_beat", url = NA_character_, bodyScraped = TRUE),
+    extremesMinWords = 40L, extremesFloorApplied = TRUE, extremesEligibleCount = 33L,
+    teamNamesMasked = TRUE,
+    wordBreakdown = list(available = TRUE, positive = list(), negative = list())
+  )
+  blk <- render_block_media_sentiment(pulse)
+  expect_true(grepl("24 off-topic items excluded of 70 ingested", blk, fixed = TRUE))
+  expect_true(grepl("team names masked", blk, fixed = TRUE))
+  expect_true(grepl("at least 40 words", blk, fixed = TRUE))
 })
