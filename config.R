@@ -494,6 +494,20 @@ OFFSEASON_SENTIMENT_TOP_WORDS <- 8L
 # i.e. longer than any RSS description this pipeline sees, so the longer text always wins.
 OFFSEASON_SENTIMENT_MIN_BODY_CHARS <- 400L
 
+# Minimum word count for an item to be eligible as the week's most-positive/most-negative
+# extreme. The score is a per-word mean, so short texts have high-variance normalized scores
+# and win the extremes on noise: the 2026-11-07 live run (70 beat items, the first real run
+# of this path) published a 9-word RSS title at +0.1278/word as "most positive", while no
+# full-length article can reach that magnitude. Derivation: syuzhet's per-word polarity tops
+# out near 1.0, so a single strong word in a 40-word item moves the normalized score by at
+# most ~0.025 -- the same order as the observed weekly mean (+0.0282) rather than 5x it.
+# Measured on that run's items: word counts ran 7 / 39 / 257 (min/median/max), so 40 keeps
+# roughly the longer half of RSS-only items plus every scraped body. The floor applies ONLY
+# to extreme selection; every relevant item still contributes to the mean, and if no item
+# clears the floor the extremes fall back to the full set with eligibleForExtremes reported
+# so the memo can say so.
+OFFSEASON_SENTIMENT_MIN_EXTREME_WORDS <- 40L
+
 # ------------------------------------------------------------------------------------------
 # RAPM & Opponent Adjustments (GitHub issues #71, #76, #77, #78, #79, #82)
 # ------------------------------------------------------------------------------------------
