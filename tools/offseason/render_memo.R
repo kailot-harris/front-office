@@ -275,6 +275,61 @@ render_block_7_sources <- function(sources_visited) {
   paste(lines, collapse = "\n")
 }
 
+#' Render Optional Media Sentiment Pulse Section (Issue #156)
+#'
+#' Strictly additive: returns NULL when no pulse object is supplied, so
+#' render_7_block_memo()'s existing 7-block output is byte-identical to before.
+#' Never prints a fabricated number — when the pulse is unavailable it says so
+#' and names the reason.
+#'
+#' @param pulse Result of compute_media_sentiment_pulse(), or NULL.
+#' @return markdown string, or NULL if nothing should be rendered.
+render_block_media_sentiment <- function(pulse) {
+  if (is.null(pulse)) return(NULL)
+
+  lines <- c("### Media Sentiment Pulse")
+
+  if (!isTRUE(pulse$available)) {
+    reason <- if (!is.null(pulse$reason)) as.character(pulse$reason) else "scoring unavailable"
+    lines <- c(lines, sprintf("- Sentiment scoring unavailable this week (%s). No score is reported.", reason))
+    return(paste(lines, collapse = "\n"))
+  }
+
+  lines <- c(lines, sprintf(
+    "- **Articles scored:** %d (%d full-text scraped, %d scored from RSS summary)",
+    as.integer(pulse$articleCount), as.integer(pulse$scrapedCount), as.integer(pulse$fallbackCount)
+  ))
+  lines <- c(lines, sprintf(
+    "- **Mean sentiment:** %+.4f per word (syuzhet lexicon, word-count normalized)",
+    as.numeric(pulse$meanSentiment)
+  ))
+
+  fmt_item <- function(label, it) {
+    if (is.null(it)) return(sprintf("- **%s:** none", label))
+    src <- if (!is.null(it$sourceId) && nzchar(it$sourceId)) sprintf(" — %s", it$sourceId) else ""
+    url <- if (!is.null(it$url) && !is.na(it$url) && nzchar(it$url)) sprintf(" ([link](%s))", it$url) else ""
+    sprintf("- **%s:** \"%s\"%s (%+.4f)%s", label, it$headline, src, as.numeric(it$score), url)
+  }
+  lines <- c(lines, fmt_item("Most positive", pulse$mostPositive))
+  lines <- c(lines, fmt_item("Most negative", pulse$mostNegative))
+
+  wb <- pulse$wordBreakdown
+  if (!is.null(wb) && isTRUE(wb$available)) {
+    fmt_words <- function(ws) {
+      if (length(ws) == 0) return("none matched")
+      paste(vapply(ws, function(w) sprintf("%s (%d)", w$word, as.integer(w$n)), character(1)),
+            collapse = ", ")
+    }
+    lines <- c(lines, sprintf("- **Top positive words (bing):** %s", fmt_words(wb$positive)))
+    lines <- c(lines, sprintf("- **Top negative words (bing):** %s", fmt_words(wb$negative)))
+  } else if (!is.null(wb)) {
+    wb_reason <- if (!is.null(wb$reason)) as.character(wb$reason) else "unavailable"
+    lines <- c(lines, sprintf("- **Word breakdown:** unavailable (%s)", wb_reason))
+  }
+
+  paste(lines, collapse = "\n")
+}
+
 #' Render Full 7-Block Memo in Markdown
 render_7_block_memo <- function(week_number,
                                 publish_date,
@@ -288,7 +343,8 @@ render_7_block_memo <- function(week_number,
                                 winter_league_notes = list(),
                                 sources_visited = list(),
                                 max_display_items = 25L,
-                                unclassified_count = NULL) {
+                                unclassified_count = NULL,
+                                media_sentiment_pulse = NULL) {
   
   date_header_str <- format_memo_date(publish_date)
   num_confirmed <- length(confirmed_changes)
@@ -306,7 +362,13 @@ render_7_block_memo <- function(week_number,
   b7 <- render_block_7_sources(sources_visited)
   
   full_memo <- paste(header, b1, b2, b3, b4, b5, b6, b7, sep = "\n\n")
-  
+
+  # Optional additive section (Issue #156). Absent argument => output unchanged.
+  b_sent <- render_block_media_sentiment(media_sentiment_pulse)
+  if (!is.null(b_sent)) {
+    full_memo <- paste(full_memo, b_sent, sep = "\n\n")
+  }
+
   list(
     state_of_play = sop_str,
     markdown = full_memo

@@ -464,6 +464,37 @@ OFFSEASON_FA_BURST_WINDOW <- NULL
 # Example format once announced: c(start = "YYYY-MM-DD", end = "YYYY-MM-DD")
 
 # ------------------------------------------------------------------------------------------
+# Media Sentiment Pulse (Issue #156) — bounds on the weekly beat-feed sentiment pass
+# ------------------------------------------------------------------------------------------
+# tools/offseason/sentiment_pulse.R scores the beat_feeds wire items already ingested by
+# tools/offseason/ingest_sources.R, optionally enriching each with a scraped article body.
+# The scrape is pure upside: every failure falls back to the item's RSS title+description.
+# These bounds exist so the weekly job's runtime stays predictable even when outlets hang.
+#
+# Cap on how many beat items get a live HTTP body fetch per run. DEFAULT_BEAT_SOURCES holds
+# 6 outlets; their RSS windows run ~10-25 items each, so an uncapped run could issue >100
+# sequential requests. 25 covers roughly the newest week of cross-outlet coverage (the memo's
+# own max_display_items is 25) while bounding worst-case scrape time to
+# 25 * OFFSEASON_SENTIMENT_SCRAPE_TIMEOUT_SEC = 200s. Items beyond the cap are still scored,
+# just from their RSS text rather than a scraped body, so no article is silently dropped.
+OFFSEASON_SENTIMENT_MAX_ARTICLES <- 25L
+
+# Per-request timeout (seconds) for one article body fetch. Matches the "a slow outlet must
+# not stall the weekly publish" requirement; 8s is comfortably above observed first-byte
+# latency for the six beat outlets while keeping the capped worst case under ~3.5 minutes.
+OFFSEASON_SENTIMENT_SCRAPE_TIMEOUT_SEC <- 8L
+
+# Number of bing-lexicon words reported per polarity in the memo's word breakdown. 8 keeps
+# the rendered block to two readable one-line lists; it has no effect on any score.
+OFFSEASON_SENTIMENT_TOP_WORDS <- 8L
+
+# Minimum character length for a scraped body to be preferred over the item's RSS text.
+# Below this, the "body" is almost always a paywall/consent interstitial or a nav-only shell
+# rather than article prose, which would bias polarity toward 0. 400 chars is ~60-70 words,
+# i.e. longer than any RSS description this pipeline sees, so the longer text always wins.
+OFFSEASON_SENTIMENT_MIN_BODY_CHARS <- 400L
+
+# ------------------------------------------------------------------------------------------
 # RAPM & Opponent Adjustments (GitHub issues #71, #76, #77, #78, #79, #82)
 # ------------------------------------------------------------------------------------------
 # Ridge regression penalty parameter (lambda) for possession-level RAPM.

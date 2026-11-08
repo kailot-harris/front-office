@@ -207,6 +207,44 @@ export interface WinterLeagueNote {
   healthStatus: string;
 }
 
+// Issue #156: optional weekly beat-feed sentiment summary. Absent on editions
+// published before #156 and on any week where scoring was unavailable.
+export interface MediaSentimentWord {
+  word: string;
+  n: number;
+}
+
+export interface MediaSentimentHeadline {
+  headline: string;
+  score: number;
+  rawScore?: number;
+  words?: number;
+  sourceId?: string;
+  url?: string | null;
+  bodyScraped?: boolean;
+}
+
+export interface MediaSentimentPulse {
+  available: boolean;
+  reason?: string | null;
+  articleCount: number;
+  beatItemsSeen?: number;
+  meanSentiment?: number | null;
+  scrapedCount: number;
+  fallbackCount: number;
+  mostPositive?: MediaSentimentHeadline | null;
+  mostNegative?: MediaSentimentHeadline | null;
+  wordBreakdown?: {
+    available: boolean;
+    reason?: string | null;
+    positive: MediaSentimentWord[];
+    negative: MediaSentimentWord[];
+    matchedWords?: number;
+  };
+  lexicon?: string;
+  method?: string;
+}
+
 export interface OffseasonEdition {
   weekNumber: number;
   publishDate: string;
@@ -220,6 +258,7 @@ export interface OffseasonEdition {
   modelPriorImpact: ModelPriorImpact;
   winterLeagueNotes: WinterLeagueNote[];
   sourcesVisited: string[];
+  mediaSentimentPulse?: MediaSentimentPulse;
 }
 
 export interface CurrentStateSummary {
