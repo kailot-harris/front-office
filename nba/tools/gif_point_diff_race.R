@@ -185,7 +185,7 @@ for (s in all_steps) {
       subtitle = sprintf("Cumulative point differential trajectory through %s (Points For minus Points Against)", cur_label),
       x = "Date",
       y = "Cumulative Point Differential",
-      caption = "Antigravity NBA Quantitative Engine \u00b7 Box Score Engine"
+      caption = "Box Score Engine"
     )
 
   frame_path <- file.path(tmp_frame_dir, sprintf("frame_%03d.png", s))

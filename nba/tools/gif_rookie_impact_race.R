@@ -247,7 +247,7 @@ for (f_idx in seq_along(milestone_dates)) {
                          format(cut_date, "%B %d, %Y")),
       x = "Cumulative Points Scored",
       y = "True Shooting Percentage (TS %)",
-      caption = "Antigravity NBA Quantitative Engine \u00b7 2026-27 Rookie Draft Class Tracking (#59)"
+      caption = "2026-27 Rookie Draft Class Tracking (#59)"
     )
 
   frame_path <- file.path(tmp_frame_dir, sprintf("frame_%03d.png", f_idx))

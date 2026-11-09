@@ -218,7 +218,7 @@ for (s in all_steps) {
       subtitle = sprintf("Offensive vs. Defensive Rating per 100 Possessions through %s (Top-Right is Elite)", cur_label),
       x = "Offensive Rating (Pts Scored / 100 Poss)",
       y = "Defensive Rating (Pts Allowed / 100 Poss \u2014 Inverted: Lower is Better)",
-      caption = "Antigravity NBA Quantitative Engine \u00b7 Dashed lines indicate current league averages"
+      caption = "Dashed lines indicate current league averages"
     )
 
   frame_path <- file.path(tmp_frame_dir, sprintf("frame_%03d.png", s))

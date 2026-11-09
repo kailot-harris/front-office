@@ -219,7 +219,7 @@ for (s in all_steps) {
       subtitle = sprintf("Cumulative regular season wins through %s across all 6 NBA divisions", cur_label),
       x = "Date",
       y = "Cumulative Wins",
-      caption = "Antigravity NBA Quantitative Engine \u00b7 Standings & Box Score Engine"
+      caption = "Standings & Box Score Engine"
     )
 
   frame_path <- file.path(tmp_frame_dir, sprintf("frame_%03d.png", s))

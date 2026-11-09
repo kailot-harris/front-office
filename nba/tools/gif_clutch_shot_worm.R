@@ -263,7 +263,7 @@ for (s in seq_len(total_steps)) {
   combined <- p_worm + p_court + plot_layout(widths = c(1.35, 1.0)) +
     plot_annotation(
       title = "NBA Clutch Leverage & Shot Selection Trajectory (Issue #58)",
-      caption = "Antigravity NBA Quantitative Engine \u00b7 Win Probability & Spatial Shot Engine",
+      caption = "Win Probability & Spatial Shot Engine",
       theme = theme(
         plot.background = element_rect(fill = NBA_COLORS$bg, color = NA),
         plot.title = element_text(size = 13, face = "bold", color = NBA_COLORS$text),
