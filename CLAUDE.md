@@ -15,42 +15,6 @@
   `Reason: On CRAN` even outside a test suite. `control_panel_app.R` is still a Shiny app and has
   never had headless coverage.
 
-## `renv` libraries are PER-WORKTREE — a green test run in a worktree proves nothing about `main`
-`renv/.gitignore` ignores `library/`, so **every git worktree gets its own, initially empty renv
-library**, while `renv/settings.json`'s `use.cache: true` means the package *cache* is global and
-shared. Nothing under `renv/library/` is tracked by git, so a library difference is invisible to
-`git status`, `git diff` and any merge.
-
-This created a real published-value near-miss in `#171`:
-1. A subagent working in a worktree installed `sentimentr` and `udpipe` there and committed the
-   `renv.lock` change, so the lockfile travelled with the branch but the installed packages did not.
-2. Every test it ran passed — in that worktree, with those packages.
-3. The branch merged. `main`'s lockfile now named packages `main`'s library had never linked.
-4. On `main` the off-season suite went red, and `sentiment_pulse.R`'s fail-safe correctly returned
-   `available = FALSE` — so the pipeline did **not** crash and would simply have published no
-   sentiment number that week.
-
-Step 4 is the trap worth internalising: **this repo's fail-safe design converts a missing package
-into a missing *feature*, which no exit code reports.** A graceful fallback plus an un-restored
-library is a silent publishing defect, not a safe state.
-
-Rules:
-- **After merging any branch that touched `renv.lock`, run the check and then restore in the
-  real checkout:** `Rscript.exe tools/check_renv_library_sync.R` (exit 1 lists what is missing and
-  prints the exact `renv::restore(packages = c(...))` call). Restoring is nearly free because the
-  cache is global — `#171`'s 7 packages linked from cache in 44ms with no downloads.
-- **Re-run a merged branch's test suites on the merge target, never only on the branch.** This is
-  the only thing that catches a library gap, and it is already the handoff's standing rule.
-- **Never run `renv::snapshot()` in a worktree.** A sparse library makes `snapshot()` *delete* the
-  lockfile records for everything not installed there — 7,763 lines in `#171`, caught only by
-  reading the diff. Remember the direction: `snapshot()` writes the library into the lockfile,
-  `restore()` writes the lockfile into the library. After a merge you almost always want `restore()`.
-- To run a suite inside a worktree without a full restore, point `RENV_CONFIG_EXTERNAL_LIBRARIES`
-  at the main checkout's library. Treat that as a convenience for iterating, **not** as
-  verification — it borrows `main`'s packages and so cannot reveal this class of gap.
-- `tools/check_renv_library_sync.R` deliberately parses `renv.lock` with base-R regex rather than
-  `jsonlite`, because `jsonlite` is itself among the packages missing from a fresh worktree.
-
 ## Data quirks that will silently corrupt results if missed
 - Raw `wehoop::load_wnba_*_box()` data includes non-franchise exhibition/All-Star rows (codes
   vary by season: `DEL`, `WIL`, `ALL`, `USA`, `STE`, `CLA`, `COL`, `COOP`, `SPO`, etc.). Always
