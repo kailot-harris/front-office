@@ -209,6 +209,96 @@ test_that("mask_team_names strips franchise vocabulary and nothing else", {
   expect_true(grepl("firearm", mask_team_names("firearm"), ignore.case = TRUE))
 })
 
+test_that("mask_basketball_jargon strips the unambiguous stat-sheet vocabulary", {
+  txt <- paste("Her defensive instincts are brilliant: 3 steals, 2 blocks and a block",
+               "plus an offensive foul, strong offense and defense, and one steal.")
+  masked <- mask_basketball_jargon(txt)
+  for (w in c("defensive", "steals", "offensive", "steal", "foul",
+              "offense", "defense", "block", "blocks")) {
+    expect_false(grepl(paste0("(?<![[:alpha:]])", w, "(?![[:alpha:]])"),
+                       masked, perl = TRUE, ignore.case = TRUE),
+                 info = paste("token survived masking:", w))
+  }
+  # Genuine sentiment vocabulary survives untouched
+  expect_true(grepl("brilliant", masked, ignore.case = TRUE))
+  expect_true(grepl("strong", masked, ignore.case = TRUE))
+  # Whitespace runs are collapsed
+  expect_false(grepl("  ", masked, fixed = TRUE))
+})
+
+test_that("mask_basketball_jargon is phrase-first with the longest match winning", {
+  # "offensive rebound" is consumed as a phrase, not twice as two singles
+  expect_false(grepl("rebound", mask_basketball_jargon("an offensive rebound"),
+                     ignore.case = TRUE))
+  # Line-wrapped phrases still mask as phrases
+  expect_false(grepl("guard", mask_basketball_jargon("a point\nguard"), ignore.case = TRUE))
+  # Adjacent terms both mask in one pass (lookaround, not \\b)
+  both <- mask_basketball_jargon("steals blocks")
+  expect_false(grepl("steals", both, ignore.case = TRUE))
+  expect_false(grepl("blocks", both, ignore.case = TRUE))
+  # Substrings of longer words are untouched
+  expect_true(grepl("defensively", mask_basketball_jargon("defensively"), ignore.case = TRUE))
+  expect_true(grepl("blockade", mask_basketball_jargon("blockade"), ignore.case = TRUE))
+})
+
+test_that("The five ambiguous singles follow their documented dispositions", {
+  # guard / shot: masked bare
+  expect_false(grepl("guard", mask_basketball_jargon("the veteran guard"), ignore.case = TRUE))
+  expect_false(grepl("shot", mask_basketball_jargon("she shot well"), ignore.case = TRUE))
+  # break / cut: phrase-only -- bare uses survive, jargon phrases do not
+  expect_true(grepl("break", mask_basketball_jargon("after the FIBA break"), ignore.case = TRUE))
+  expect_false(grepl("break", mask_basketball_jargon("off a fast break"), ignore.case = TRUE))
+  expect_true(grepl("cut", mask_basketball_jargon("saw her time cut"), ignore.case = TRUE))
+  # miss: left scored entirely
+  expect_true(grepl("miss", mask_basketball_jargon("she will miss the season"),
+                    ignore.case = TRUE))
+})
+
+test_that("mask_basketball_jargon is fail-safe and never raises", {
+  expect_null(mask_basketball_jargon(NULL))
+  expect_identical(mask_basketball_jargon(character(0)), character(0))
+  expect_identical(mask_basketball_jargon(""), "")
+  # A broken term list degrades to unmasked text rather than aborting the pulse
+  env <- environment(mask_basketball_jargon)
+  saved <- get("SP_JARGON_SINGLES", envir = env)
+  on.exit(assign("SP_JARGON_SINGLES", saved, envir = env), add = TRUE)
+  assign("SP_JARGON_SINGLES", c("((("), envir = env)
+  # suppressWarnings: the bad pattern also emits a PCRE compile warning, which is
+  # deliberately left visible in production and only muted for this assertion.
+  expect_identical(suppressWarnings(mask_basketball_jargon("a defensive stand")),
+                   "a defensive stand")
+})
+
+test_that("A failure inside jargon masking does not crash the pulse", {
+  skip_if_not_installed("syuzhet")
+  items <- list(
+    mk_item("fs_1", "espn_wnba_beat",
+            "Storm re-sign their veteran guard - a strong and welcome defensive addition."),
+    mk_item("fs_2", "winsidr",
+            "Liberty add offensive depth - the front office is pleased with the steals numbers.")
+  )
+  env <- environment(mask_basketball_jargon)
+  saved <- get("SP_JARGON_SINGLES", envir = env)
+  on.exit(assign("SP_JARGON_SINGLES", saved, envir = env), add = TRUE)
+  assign("SP_JARGON_SINGLES", c("((("), envir = env)
+
+  res <- suppressWarnings(compute_media_sentiment_pulse(items, scrape = FALSE))
+  expect_true(res$available)
+  expect_equal(res$articleCount, 2L)
+  expect_true(is.numeric(res$meanSentiment))
+  expect_true(res$jargonMasked)
+})
+
+test_that("Jargon masking removes the stat-sheet contribution to the score", {
+  skip_if_not_installed("syuzhet")
+  txt <- "She had three steals, two blocks, and a defensive foul in a strong offensive stretch."
+  unmasked <- score_text_sentiment(txt)
+  masked <- score_text_sentiment(mask_basketball_jargon(txt))
+  expect_false(is.null(unmasked))
+  expect_lt(unmasked$raw, 0)   # scored negative purely on box-score vocabulary
+  if (!is.null(masked)) expect_gt(masked$raw, unmasked$raw)
+})
+
 test_that("Masking removes the franchise-name contribution to the score", {
   skip_if_not_installed("syuzhet")
   # "liberty" and "golden" are bing/syuzhet positives and were the two largest
@@ -316,7 +406,7 @@ test_that("An all-positive week labels its minimum 'Least positive', not 'Most n
     mostNegative = list(headline = "Low", score = neg_score, rawScore = 1, words = 100L,
                         sourceId = "winsidr", url = NA_character_, bodyScraped = TRUE),
     extremesMinWords = 40L, extremesFloorApplied = TRUE, extremesEligibleCount = 8L,
-    teamNamesMasked = TRUE,
+    teamNamesMasked = TRUE, jargonMasked = TRUE,
     wordBreakdown = list(available = TRUE, positive = list(), negative = list())
   )
 
@@ -342,11 +432,11 @@ test_that("Memo block reports the exclusion count and the masking caveat", {
     mostNegative = list(headline = "B", score = -0.03, rawScore = -1.5, words = 90L,
                         sourceId = "espn_wnba_beat", url = NA_character_, bodyScraped = TRUE),
     extremesMinWords = 40L, extremesFloorApplied = TRUE, extremesEligibleCount = 33L,
-    teamNamesMasked = TRUE,
+    teamNamesMasked = TRUE, jargonMasked = TRUE,
     wordBreakdown = list(available = TRUE, positive = list(), negative = list())
   )
   blk <- render_block_media_sentiment(pulse)
   expect_true(grepl("24 off-topic items excluded of 70 ingested", blk, fixed = TRUE))
-  expect_true(grepl("team names masked", blk, fixed = TRUE))
+  expect_true(grepl("team names and basketball jargon masked", blk, fixed = TRUE))
   expect_true(grepl("at least 40 words", blk, fixed = TRUE))
 })

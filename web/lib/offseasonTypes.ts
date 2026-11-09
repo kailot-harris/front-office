@@ -249,6 +249,8 @@ export interface MediaSentimentPulse {
   extremesEligibleCount?: number;
   /** TRUE when franchise names were masked before lexical scoring. */
   teamNamesMasked?: boolean;
+  /** TRUE when basketball stat-sheet jargon was masked before lexical scoring. */
+  jargonMasked?: boolean;
   wordBreakdown?: {
     available: boolean;
     reason?: string | null;

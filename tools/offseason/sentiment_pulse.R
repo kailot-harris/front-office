@@ -123,6 +123,139 @@ mask_team_names <- function(txt) {
   gsub("[[:space:]]{2,}", " ", out)
 }
 
+# ------------------------------------------------------------------------------
+# Basketball stat-sheet jargon (Issue #170)
+#
+# Genuinely new vocabulary with no upstream source, used by exactly one tool, and
+# whose longest-first ordering is an implementation detail of the masker below --
+# so it lives here rather than in config.R or a tracked data file (issue #170
+# design decision 3). CLAUDE.md's "never hardcode a parallel team list" rule
+# binds team vocabulary only; that still derives from WNBA_TEAMS via
+# wnba_team_vocabulary() above.
+# ------------------------------------------------------------------------------
+
+#' Multi-word basketball phrases, masked before the single-token pass
+#'
+#' Ordered longest-first at use time so "offensive rebound" is consumed before
+#' "offensive"/"rebound" and "point guard" before "guard".
+SP_JARGON_PHRASES <- c(
+  "effective field goal", "true shooting percentage", "full-court press",
+  "offensive rebound", "offensive rebounds", "offensive rebounding",
+  "defensive rebound", "defensive rebounds", "defensive rebounding",
+  "offensive rating", "defensive rating", "offensive efficiency",
+  "defensive efficiency", "assisted shot rate", "shot creation",
+  "shot selection", "shot profile", "shot attempt", "shot attempts",
+  "shot clock", "jump shot", "jump shots", "free throw", "free throws",
+  "free-throw", "fast break", "fast breaks", "field goal", "field goals",
+  "three-point", "three-pointer", "three-pointers", "point guard",
+  "shooting guard", "combo guard", "wing guard", "personal foul",
+  "personal fouls", "technical foul", "technical fouls", "flagrant foul",
+  "double-double", "triple-double", "all-star break", "pick and roll",
+  "double team", "backdoor cut", "turnover rate", "usage rate",
+  "steals per game", "blocks per game", "points per game"
+)
+
+#' Unambiguous single-token stat-sheet vocabulary, masked bare
+#'
+#' Every term here denotes a box-score concept in beat prose with no realistic
+#' non-basketball reading, so a phrase-only pass would leave it scoring (issue
+#' #170 design decision 4: `defensive`, `steals` and `offensive` appear bare in
+#' the corpus, which is exactly why the published chips showed them).
+SP_JARGON_SINGLES <- c(
+  "offensive", "offense", "defensive", "defense", "defend", "defending",
+  "steal", "steals", "stealing",
+  "block", "blocks", "blocked", "blocking",
+  "foul", "fouls", "fouled", "fouling",
+  "rebound", "rebounds", "rebounding",
+  "assist", "assists", "assisted",
+  "turnover", "turnovers",
+  "layup", "layups", "dunk", "dunks", "jumper", "jumpers",
+  "guard", "guards", "shot", "shots"
+)
+
+#' Replace basketball stat-sheet jargon with a neutral placeholder
+#'
+#' General-English polarity lexicons score box-score vocabulary as emotion:
+#' syuzhet and bing both read `defensive`/`offensive` as negative affect and
+#' `steal`/`steals` as theft, so a routine scouting paragraph reads as hostile.
+#' On the 2026-11-09 live run (47 WNBA-relevant beat items, 25 with scraped
+#' bodies) the unmasked corpus carried `defense` 53x, `guard` 41x, `defensive`
+#' 39x, `offense` 37x, `rebounds` 35x, `steals` 22x, `shot` 22x, `shots` 19x,
+#' `offensive` 18x and `assists` 24x -- and `defensive`, `steals` and
+#' `offensive` were three of the published card's top negative words.
+#'
+#' Measured effect, scoring that one captured live corpus twice -- once through
+#' mask_team_names() alone, once through mask_team_names() + this masker:
+#' masking jargon moved the weekly syuzhet mean from +0.0273 to +0.0282 (+3.4%),
+#' and cleared `defensive` (39), `steals` (22) and `offensive` (18) out of the
+#' bing negative chips entirely.
+#'
+#' Mechanics: phrases first with the longest match winning, then a single-token
+#' pass; case-insensitive; each match becomes a single space and whitespace runs
+#' collapse. Patterns come from .sp_term_pattern()'s Perl lookarounds rather than
+#' \\b so adjacent jargon terms ("offensive rebound steal") all mask in one pass.
+#'
+#' Known tradeoff (shared with mask_team_names()): masking removes tokens from
+#' .sp_word_count()'s denominator as well as the numerator, so every surviving
+#' token weighs more in the per-article normalized mean. That is accepted rather
+#' than engineered around -- the alternative, neutralizing in place, would
+#' require forking the lexicon, and mask_team_names() already took this
+#' tradeoff. It is also why the measured shift above is a small *rise* rather
+#' than a drop: the removed vocabulary was net-negative, and a smaller
+#' denominator amplifies the (net-positive) tokens that survive.
+#'
+#' The five ambiguous singles, decided against the 2026-11-09 corpus above:
+#'   - `guard` (41 occurrences): MASKED BARE. All 41 uses are basketball --
+#'     positional ("point guard", "combo guard", "a guard out of Kentucky") or
+#'     verbal ("able to guard without fouling"); the only idiomatic use, "old
+#'     guard", is a single instance. `guard` is in syuzhet but absent from bing,
+#'     so it moved the headline mean while never appearing in the chips.
+#'   - `shot` (22) / `shots` (19): MASKED BARE. 18 of 22 `shot` uses are
+#'     shooting ("she shot 40%", "shot profile", "individual shot creation")
+#'     against 4 of the "a shot at the title" kind. Also syuzhet-only, not bing.
+#'   - `break` (18): PHRASE-ONLY. The dominant use is the calendar, not the
+#'     stat sheet -- 15 of 18 are "All-Star break", "the FIBA/World Cup break",
+#'     "she took the break to unplug". Only "fast break" is jargon, so `break`
+#'     is masked just inside the phrases above.
+#'   - `cut` (6): PHRASE-ONLY. 5 of 6 are roster/minutes cuts ("getting cut
+#'     from the W", "saw her time cut"), which are real negative news a reader
+#'     should see scored; only "they cut down passing lanes" is jargon.
+#'   - `miss` (1): LEFT SCORED, not masked at all. Its single occurrence ("saw
+#'     her miss the whole of") is an injury absence, genuinely negative, and one
+#'     token cannot justify suppressing a word with heavy non-basketball use.
+#'
+#' Discourse filler (`like`, `right`) is deliberately out of scope here and
+#' tracked separately as issue #171.
+#'
+#' Fail-safe: any error inside the substitution returns the input unchanged, so
+#' a bad pattern degrades to unmasked scoring rather than aborting the pulse.
+#'
+#' @param txt character vector
+#' @return character vector with basketball jargon replaced by a single space
+mask_basketball_jargon <- function(txt) {
+  if (is.null(txt) || length(txt) == 0) return(txt)
+  tryCatch({
+    out <- txt
+    phrases <- SP_JARGON_PHRASES[order(nchar(SP_JARGON_PHRASES), decreasing = TRUE)]
+    for (term in phrases) {
+      # Allow a newline or run of spaces wherever the phrase has one, so a
+      # line-wrapped "offensive\nrebound" still masks as a phrase.
+      flexible <- gsub(" ", "[[:space:]]+", term, fixed = TRUE)
+      out <- gsub(.sp_term_pattern(flexible), " ", out, perl = TRUE, ignore.case = TRUE)
+    }
+    singles <- SP_JARGON_SINGLES[order(nchar(SP_JARGON_SINGLES), decreasing = TRUE)]
+    for (term in singles) {
+      out <- gsub(.sp_term_pattern(term), " ", out, perl = TRUE, ignore.case = TRUE)
+    }
+    gsub("[[:space:]]{2,}", " ", out)
+  }, error = function(e) {
+    log_warn(paste("sentiment_pulse: jargon masking failed; scoring unmasked text -",
+                   conditionMessage(e)),
+             script = "sentiment_pulse.R")
+    txt
+  })
+}
+
 #' Does this item actually concern the WNBA?
 #'
 #' The beat outlets in DEFAULT_BEAT_SOURCES are women's-basketball and
@@ -340,6 +473,7 @@ compute_media_sentiment_pulse <- function(wire_items,
       extremesMinWords = as.integer(.sp_min_extreme_words()),
       extremesFloorApplied = FALSE,
       teamNamesMasked = TRUE,
+      jargonMasked = TRUE,
       lexicon = "syuzhet + bing",
       method = "syuzhet"
     )
@@ -394,7 +528,9 @@ compute_media_sentiment_pulse <- function(wire_items,
     # Score the masked text, not the raw text: franchise proper nouns are
     # lexicon-scored otherwise (see mask_team_names()). The same masked string
     # feeds the bing breakdown, so the memo's words and its number agree.
-    text_used <- mask_team_names(text_used)
+    # Basketball stat-sheet vocabulary is masked in the same breath and on the
+    # same string (issue #170), so the mean and the bing chips stay in agreement.
+    text_used <- mask_basketball_jargon(mask_team_names(text_used))
     if (!nzchar(trimws(text_used))) next
 
     sc <- score_text_sentiment(text_used)
@@ -474,6 +610,7 @@ compute_media_sentiment_pulse <- function(wire_items,
     extremesFloorApplied = floor_applied,
     extremesEligibleCount = length(eligible),
     teamNamesMasked = TRUE,
+    jargonMasked = TRUE,
     wordBreakdown = breakdown,
     lexicon = "syuzhet + bing",
     method = "syuzhet"
