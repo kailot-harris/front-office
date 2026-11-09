@@ -243,7 +243,7 @@ for (s in active_steps) {
       subtitle = sprintf("Power rankings Elo shift through %s (Ranked from Biggest Drop to Highest Surge)", cur_label),
       x = "Elo Rating Delta (\u0394)",
       y = "NBA Franchise",
-      caption = "Antigravity NBA Quantitative Engine \u00b7 Elo Delta Momentum"
+      caption = "Elo Delta Momentum"
     )
 
   frame_path <- file.path(tmp_frame_dir, sprintf("frame_%03d.png", s))

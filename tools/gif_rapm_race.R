@@ -188,7 +188,7 @@ for (f_idx in seq_along(sample_pcts)) {
                          round(pct * 100), round(9000 * pct)),
       x = "Points per 100 Possessions (RAPM \u00b1 90% Shrinkage Confidence Interval)",
       y = NULL,
-      caption = "Antigravity NBA Quantitative Engine \u00b7 Ridge Regression RAPM Engine (#57)"
+      caption = "Ridge Regression RAPM Engine (#57)"
     )
 
   frame_path <- file.path(tmp_frame_dir, sprintf("frame_%03d.png", f_idx))

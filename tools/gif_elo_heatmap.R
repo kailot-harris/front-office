@@ -226,7 +226,7 @@ for (s in all_steps) {
       subtitle = sprintf("2D matrix of team Elo trajectory through %s (Ranked by Current Elo)", cur_label),
       x = "Season Calendar / Timeline",
       y = "Team (Sorted by Final Elo)",
-      caption = "Antigravity NBA Quantitative Engine \u00b7 Elo Momentum Heatmap"
+      caption = "Elo Momentum Heatmap"
     )
 
   frame_path <- file.path(tmp_frame_dir, sprintf("frame_%03d.png", s))

@@ -267,7 +267,7 @@ for (s in all_steps) {
       subtitle = sprintf("Points For vs. Points Against per game through %s (Bubble size proportional to Elo)", cur_label),
       x = "Points For Per Game (Offensive Output)",
       y = "Points Allowed Per Game (Inverted: Lower is Better Defense)",
-      caption = "Antigravity NBA Quantitative Engine \u00b7 Dotted diagonal: Even Differential \u00b7 Bubble: Elo Rating"
+      caption = "Dotted diagonal: Even Differential \u00b7 Bubble: Elo Rating"
     )
 
   frame_path <- file.path(tmp_frame_dir, sprintf("frame_%03d.png", s))

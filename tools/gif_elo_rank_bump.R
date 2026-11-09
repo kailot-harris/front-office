@@ -212,7 +212,7 @@ for (s in all_steps) {
       subtitle = sprintf("Daily team power trajectory through %s (Rank 1 = Highest Elo)", cur_label),
       x = "Date",
       y = "Elo Rank (1 to 30)",
-      caption = "Antigravity NBA Quantitative Engine \u00b7 Elo Model"
+      caption = "Elo Model"
     )
 
   frame_path <- file.path(tmp_frame_dir, sprintf("frame_%03d.png", s))

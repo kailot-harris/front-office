@@ -292,7 +292,7 @@ for (s in all_steps) {
       subtitle = sprintf("Dynamic playoff probability bump through %s \u00b7 Clutch leverage index integrated", cur_label),
       x = "Timeline",
       y = "Playoff Probability",
-      caption = "Antigravity NBA Quantitative Engine \u00b7 Season Standings & Clutch Leverage Simulator"
+      caption = "Season Standings & Clutch Leverage Simulator"
     )
 
   frame_path <- file.path(tmp_frame_dir, sprintf("frame_%03d.png", s))

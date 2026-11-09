@@ -220,7 +220,7 @@ for (s in all_steps) {
       subtitle = sprintf("Possessions per 48 Min vs Net Rating (+/- per 100 poss) through %s", cur_label),
       x = "Pace (Estimated Possessions / 48 Min)",
       y = "Net Rating (Points Differential / 100 Possessions)",
-      caption = "Antigravity NBA Quantitative Engine \u00b7 Vertical line: Mean Pace \u00b7 Horizontal line: Net Zero"
+      caption = "Vertical line: Mean Pace \u00b7 Horizontal line: Net Zero"
     )
 
   frame_path <- file.path(tmp_frame_dir, sprintf("frame_%03d.png", s))

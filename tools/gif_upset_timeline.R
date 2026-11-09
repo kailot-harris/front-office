@@ -268,7 +268,7 @@ for (s in active_steps) {
       subtitle = sprintf("Through %s \u2014 %s", cur_label, cur_highlight),
       x = "Underdog Upset Wins (Pre-Game Model Win Probability < 43%)",
       y = "NBA Franchise",
-      caption = "Antigravity NBA Quantitative Engine \u00b7 Pre-game win expectation derived from dynamic Elo ratings"
+      caption = "Pre-game win expectation derived from dynamic Elo ratings"
     )
 
   frame_path <- file.path(tmp_frame_dir, sprintf("frame_%03d.png", s))

@@ -208,7 +208,7 @@ for (s in active_steps) {
       subtitle = sprintf("Cumulative Turnover Margin (Forced Opponent TOVs minus Committed TOVs) through %s", cur_label),
       x = "Cumulative Turnover Margin (+/-)",
       y = "NBA Franchise",
-      caption = "Antigravity NBA Quantitative Engine \u00b7 Positive indicates more opponent turnovers forced than given"
+      caption = "Positive indicates more opponent turnovers forced than given"
     )
 
   frame_path <- file.path(tmp_frame_dir, sprintf("frame_%03d.png", s))
