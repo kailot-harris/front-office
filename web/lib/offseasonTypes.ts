@@ -251,6 +251,19 @@ export interface MediaSentimentPulse {
   teamNamesMasked?: boolean;
   /** TRUE when basketball stat-sheet jargon was masked before lexical scoring. */
   jargonMasked?: boolean;
+  /**
+   * Issue #171: TRUE when udpipe POS tagging decided which tokens were eligible
+   * to carry polarity, so `like`-as-preposition and `right`-as-adverb are
+   * excluded from both the mean and the chips. Absent/false on editions
+   * published under the old syuzhet/bing scorer.
+   */
+  posDisambiguated?: boolean;
+  /**
+   * Pinned udpipe model version behind this edition's score. A model bump is a
+   * published-value change, so two editions with different `modelVersion` are
+   * not strictly comparable even when `method` matches.
+   */
+  modelVersion?: string;
   wordBreakdown?: {
     available: boolean;
     reason?: string | null;
