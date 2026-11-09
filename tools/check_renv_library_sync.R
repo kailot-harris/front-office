@@ -5,30 +5,21 @@
 # Reports packages that renv.lock records but the CURRENT checkout's renv
 # library does not have installed, and exits non-zero if any are missing.
 #
-# Why this exists (issue #171, 2026-11-09). `renv/.gitignore` ignores
-# `library/`, so every git worktree gets its own EMPTY renv library while
-# `renv/settings.json`'s `use.cache: true` means the package *cache* is global
-# and shared. The consequence is a silent, merge-shaped trap:
+# Mechanism: `renv/.gitignore` ignores `library/`, so every git worktree gets
+# its own EMPTY renv library, while `renv/settings.json`'s `use.cache: true`
+# keeps the package *cache* global and shared. Nothing under `renv/library/` is
+# tracked, so a library difference is invisible to git status, git diff and any
+# merge.
 #
-#   1. An agent works in a worktree and installs new packages there. They land
-#      in the worktree's library and in the global cache. `renv.lock` is
-#      updated and committed, so the lockfile change travels with the branch.
-#   2. Every test the agent runs passes, because it runs in that worktree.
-#   3. The branch merges. `main` now has a lockfile naming packages its own
-#      library has never had a symlink to. NOTHING in git tracks the library,
-#      so the merge looks complete and clean.
-#   4. The next run on `main` fails -- or worse, degrades gracefully. #171
-#      merged with `sentimentr` and `udpipe` present only in the worktree;
-#      `sentiment_pulse.R` correctly fell back to `available = FALSE`, so the
-#      pipeline did not crash and would simply have published no sentiment
-#      number that week.
+# So a branch can install packages, commit the renv.lock change, and pass every
+# test in its own worktree, while the checkout it merges into never links those
+# packages. Because scripts here are written to degrade gracefully rather than
+# crash, the result is not necessarily a visible error: a missing package can
+# surface as a missing *feature* that no exit code reports. This script makes
+# that state explicit.
 #
-# Step 4 is the dangerous one: a fail-safe design converts a missing-package
-# error into a missing *feature*, which no exit code reports. This script makes
-# that state loud and cheap to check.
-#
-# The remedy is nearly free because the cache is global -- restoring the 7
-# packages #171 added took 44ms, all "linked from cache", with no downloads.
+# Restoring is usually cheap -- the cache is global, so packages normally link
+# rather than download.
 #
 # Run after merging any branch that touched renv.lock, and in a fresh worktree
 # before trusting a green test run:
@@ -69,10 +60,9 @@ if (!file.exists(lock_path)) {
   quit(status = 2)
 }
 
-# Parsed with base R regex, NOT jsonlite, deliberately. The sparse-library case
-# this script exists to detect is exactly the case where jsonlite may not be
-# installed either -- the first version of this script segfaulted in a fresh
-# worktree for that reason. Base R only means it always runs where it is needed.
+# Parsed with base R regex, NOT jsonlite, deliberately: jsonlite is itself one
+# of the packages absent from a fresh worktree's library, so depending on it
+# would make this script fail in precisely the case it exists to detect.
 # renv writes one `"Package": "<name>"` line immediately followed by
 # `"Version": "<ver>"` per record, which is stable enough to match directly.
 lines <- readLines(lock_path, warn = FALSE)
@@ -109,10 +99,21 @@ for (p in sort(missing)) {
   cat(sprintf("  - %-24s %s\n", p, recorded[[p]]))
 }
 cat("\nRemedy (cheap - the renv cache is global, so these usually link rather than download):\n")
-cat(sprintf("  renv::restore(packages = c(%s), prompt = FALSE)\n",
-            paste(sprintf('"%s"', sort(missing)), collapse = ", ")))
+# Naming 170 packages explicitly is unusable advice. Past a handful missing the
+# library is wholesale unpopulated (a fresh worktree), and a bare restore is
+# both shorter and what you actually want.
+if (length(missing) > 12) {
+  cat("  renv::restore(prompt = FALSE)\n")
+  cat(sprintf("  # %d of %d recorded packages are missing - this library is unpopulated,\n",
+              length(missing), length(recorded)))
+  cat("  # so restore everything rather than naming packages individually.\n")
+} else {
+  cat(sprintf("  renv::restore(packages = c(%s), prompt = FALSE)\n",
+              paste(sprintf('"%s"', sort(missing)), collapse = ", ")))
+}
 cat("\nDo NOT run renv::snapshot() to 'fix' this, especially in a worktree: a sparse\n")
-cat("library makes snapshot() DELETE the lockfile records for everything not installed.\n")
-cat("In #171 that was 7,763 lines. snapshot() writes the library into the lockfile;\n")
-cat("restore() writes the lockfile into the library. Here you want restore().\n")
+cat("library makes snapshot() DELETE the lockfile records for everything not installed,\n")
+cat("which can silently drop thousands of lines. Remember the direction - snapshot()\n")
+cat("writes the library into the lockfile, restore() writes the lockfile into the\n")
+cat("library. Here you want restore().\n")
 quit(status = 1)
