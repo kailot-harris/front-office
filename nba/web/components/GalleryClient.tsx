@@ -127,12 +127,12 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
   },
   {
     id: 'nba_predictions_today',
-    filename: 'nba_predictions_2026-10-20.png',
+    filename: 'nba_predictions_today.png',
     title: 'Daily Game Model Predictions & Win Probability Spreads',
     category: 'predictions',
     description: 'Stylized game-day projection graphic illustrating model win probability spreads and projected home/away differentials across slate matchups.',
     type: 'image',
-    sizeBytes: 128704,
+    sizeBytes: 204425,
   },
   {
     id: 'gif_rapm_race',

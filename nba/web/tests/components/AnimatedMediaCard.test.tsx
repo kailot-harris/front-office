@@ -65,12 +65,12 @@ describe('AnimatedMediaCard', () => {
 
     const { container: predContainer } = render(
       <AnimatedMediaCard
-        name="nba_predictions_2026-10-20"
+        name="nba_predictions_today"
         title="Daily Matchup Model Predictions"
         alt="Model projections"
       />
     );
-    expect(predContainer.querySelector('source')?.getAttribute('srcset')).toContain('/media/nba_predictions_2026-10-20.png');
-    expect(predContainer.querySelector('img')?.getAttribute('src')).toContain('/media/nba_predictions_2026-10-20.gif');
+    expect(predContainer.querySelector('source')?.getAttribute('srcset')).toContain('/media/nba_predictions_today.png');
+    expect(predContainer.querySelector('img')?.getAttribute('src')).toContain('/media/nba_predictions_today.gif');
   });
 });
