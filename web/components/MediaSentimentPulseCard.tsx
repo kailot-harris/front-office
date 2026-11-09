@@ -250,6 +250,11 @@ export function MediaSentimentPulseCard({ pulse, trendSlot }: Props) {
           {pulse.teamNamesMasked
             ? 'Franchise names masked before scoring'
             : 'Franchise names NOT masked before scoring'}
+          {pulse.jargonMasked === undefined
+            ? ''
+            : pulse.jargonMasked
+              ? ' • basketball jargon masked before scoring'
+              : ' • basketball jargon NOT masked before scoring'}
           {pulse.lexicon ? ` • lexicon: ${pulse.lexicon}` : ''}
           {pulse.method ? ` • method: ${pulse.method}` : ''}
         </p>

@@ -34,6 +34,7 @@ function availablePulse(overrides: Partial<MediaSentimentPulse> = {}): MediaSent
     extremesFloorApplied: true,
     extremesEligibleCount: 27,
     teamNamesMasked: true,
+    jargonMasked: true,
     wordBreakdown: {
       available: true,
       reason: null,
@@ -74,6 +75,7 @@ describe('MediaSentimentPulseCard — available state', () => {
     expect(link.getAttribute('target')).toBe('_blank');
 
     expect(screen.getByText(/Franchise names masked before scoring/)).toBeTruthy();
+    expect(screen.getByText(/basketball jargon masked before scoring/)).toBeTruthy();
     expect(screen.getByText(/syuzhet \+ bing/)).toBeTruthy();
     expect(
       screen.getByText(/Extremes drawn from the 27 articles of at least 40 words/)

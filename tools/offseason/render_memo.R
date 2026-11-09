@@ -316,7 +316,7 @@ render_block_media_sentiment <- function(pulse) {
   }
   lines <- c(lines, scored_line)
   lines <- c(lines, sprintf(
-    "- **Mean sentiment:** %+.4f per word (syuzhet lexicon, word-count normalized, team names masked)",
+    "- **Mean sentiment:** %+.4f per word (syuzhet lexicon, word-count normalized, team names and basketball jargon masked)",
     as.numeric(pulse$meanSentiment)
   ))
 
