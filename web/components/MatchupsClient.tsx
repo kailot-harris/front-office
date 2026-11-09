@@ -480,7 +480,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
       {/* Daily Predictions & Model Win Probability Spreads Graphic */}
       <div className="pt-2">
         <AnimatedMediaCard
-          name="nba_predictions_2026-10-20"
+          name="nba_predictions_today"
           title="Daily Matchup Model Predictions & Win Probability Spreads"
           alt="Visual chart of model win probability projections and home/away spreads across daily matchups"
           caption="Model win probability distribution across daily game slates, illustrating home vs away edges and model certainty across all scheduled matchups."

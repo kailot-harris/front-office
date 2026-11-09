@@ -1,7 +1,6 @@
-# Ad-hoc visualization: stylized PNG of today's (Sys.Date()) NBA game predictions, built from the
-# freshly regenerated CACHE_VALUE_BETS (latest_value_bets.rds — game_date / Matchup / Team /
-# Model_Win_Prob / Line columns per market_odds_engine.R's output schema). Not part of
-# run_full_pipeline.R's DAG - a one-off chart, same category as NFL's tools/plot_week6_projections.R.
+# Ad-hoc & pipeline visualization: stylized graphic of today's (Sys.Date()) NBA game predictions,
+# built from prediction_accuracy_log.rds (or latest_value_bets.rds if available).
+# Generates both date-stamped and canonical today PNG and GIF artifacts.
 PROJECT_ROOT <- local({
   args <- commandArgs(trailingOnly = FALSE)
   f <- sub("^--file=", "", args[grepl("^--file=", args)])
@@ -18,24 +17,65 @@ setwd(PROJECT_ROOT)
 source("config.R")
 library(ggplot2)
 library(dplyr)
+library(magick)
 
-TARGET_DATE <- as.Date("2026-10-20")
+# Determine target date: CLI arg --date=YYYY-MM-DD, or Sys.Date()
+TARGET_DATE <- Sys.Date()
+for (arg in commandArgs(trailingOnly = TRUE)) {
+  if (grepl("^--date=", arg)) {
+    TARGET_DATE <- as.Date(sub("^--date=", "", arg))
+  }
+}
 
-vb <- readRDS(file.path(CACHE_DIR, "latest_value_bets.rds"))
-today_games <- vb |> filter(game_date == TARGET_DATE)
+# Source data: prefer prediction_accuracy_log.rds, fallback to latest_value_bets.rds
+pred_log_file <- file.path(CACHE_DIR, "prediction_accuracy_log.rds")
+val_bets_file <- file.path(CACHE_DIR, "latest_value_bets.rds")
 
-df <- today_games |>
-  mutate(
-    away_team = trimws(sub(".*vs\\.\\s*", "", Matchup)),
-    home_team = trimws(sub("\\s*vs\\..*", "", Matchup)),
-    picked_home = Team == home_team,
-    home_win_prob = ifelse(picked_home, Model_Win_Prob, 1 - Model_Win_Prob),
-    home_prob_pct = home_win_prob * 100,
-    matchup = paste0(away_team, " @ ", home_team),
-    pick_label = sprintf("Model pick: %s (%.1f%% win prob) \u00b7 %s", Team, Model_Win_Prob * 100, Status)
-  ) |>
-  arrange(home_win_prob) |>
-  mutate(matchup = factor(matchup, levels = matchup))
+if (file.exists(pred_log_file)) {
+  pred_log <- readRDS(pred_log_file)
+  today_games <- pred_log |> filter(as.Date(game_date) == TARGET_DATE)
+  if (nrow(today_games) == 0 && !is.null(TARGET_DATE)) {
+    # If no games on TARGET_DATE, find closest date with games
+    all_dates <- sort(unique(as.Date(pred_log$game_date)))
+    future_dates <- all_dates[all_dates >= TARGET_DATE]
+    fallback_date <- if (length(future_dates) > 0) future_dates[1] else tail(all_dates, 1)
+    message(sprintf("No games on %s; falling back to %s", TARGET_DATE, fallback_date))
+    TARGET_DATE <- fallback_date
+    today_games <- pred_log |> filter(as.Date(game_date) == TARGET_DATE)
+  }
+  
+  df <- today_games |>
+    mutate(
+      home_win_prob = predicted_home_win_prob,
+      home_prob_pct = home_win_prob * 100,
+      matchup = paste0(away_team, " @ ", home_team),
+      picked_winner_prob = ifelse(predicted_winner == home_team, home_win_prob, 1 - home_win_prob),
+      pick_label = sprintf("Model pick: %s (%.1f%% win prob) \u00b7 %s", predicted_winner, picked_winner_prob * 100, status)
+    ) |>
+    arrange(home_win_prob) |>
+    mutate(matchup = factor(matchup, levels = matchup))
+} else if (file.exists(val_bets_file)) {
+  vb <- readRDS(val_bets_file)
+  today_games <- vb |> filter(as.Date(game_date) == TARGET_DATE)
+  df <- today_games |>
+    mutate(
+      away_team = trimws(sub(".*vs\\.\\s*", "", Matchup)),
+      home_team = trimws(sub("\\s*vs\\..*", "", Matchup)),
+      picked_home = Team == home_team,
+      home_win_prob = ifelse(picked_home, Model_Win_Prob, 1 - Model_Win_Prob),
+      home_prob_pct = home_win_prob * 100,
+      matchup = paste0(away_team, " @ ", home_team),
+      pick_label = sprintf("Model pick: %s (%.1f%% win prob) \u00b7 %s", Team, Model_Win_Prob * 100, Status)
+    ) |>
+    arrange(home_win_prob) |>
+    mutate(matchup = factor(matchup, levels = matchup))
+} else {
+  stop("Neither prediction_accuracy_log.rds nor latest_value_bets.rds found.")
+}
+
+if (nrow(df) == 0) {
+  stop(sprintf("No games found for date %s", TARGET_DATE))
+}
 
 bg        <- "#0b1120"
 panel_bg  <- "#111a2e"
@@ -87,14 +127,35 @@ p <- ggplot(df, aes(y = matchup)) +
     plot.margin        = margin(20, 30, 16, 16)
   )
 
-filename <- sprintf("nba_predictions_%s.png", format(TARGET_DATE, "%Y-%m-%d"))
-out_path <- file.path(CACHE_DIR, filename)
-ggsave(out_path, p, width = 10, height = 7, dpi = 200, bg = bg)
-cat("Saved:", out_path, "\n")
+date_str <- format(TARGET_DATE, "%Y-%m-%d")
+filename_png <- sprintf("nba_predictions_%s.png", date_str)
+filename_gif <- sprintf("nba_predictions_%s.gif", date_str)
 
-# Also sync to web/public/media/
+out_path_png <- file.path(CACHE_DIR, filename_png)
+out_path_gif <- file.path(CACHE_DIR, filename_gif)
+
+# 1. Save Date-stamped PNG
+ggsave(out_path_png, p, width = 10, height = max(6, 1.2 + 0.7 * nrow(df)), dpi = 200, bg = bg)
+cat("Saved PNG:", out_path_png, "\n")
+
+# 2. Save Date-stamped GIF via magick
+img <- magick::image_read(out_path_png)
+magick::image_write(img, out_path_gif, format = "gif")
+cat("Saved GIF:", out_path_gif, "\n")
+
+# 3. Also write canonical "nba_predictions_today" PNG and GIF to cache
+today_png <- file.path(CACHE_DIR, "nba_predictions_today.png")
+today_gif <- file.path(CACHE_DIR, "nba_predictions_today.gif")
+file.copy(out_path_png, today_png, overwrite = TRUE)
+file.copy(out_path_gif, today_gif, overwrite = TRUE)
+
+# 4. Sync all to web/public/media/
 web_media_dir <- file.path(PROJECT_ROOT, "web", "public", "media")
 if (!dir.exists(web_media_dir)) dir.create(web_media_dir, recursive = TRUE)
-web_out_path <- file.path(web_media_dir, filename)
-file.copy(out_path, web_out_path, overwrite = TRUE)
-cat("Copied to:", web_out_path, "\n")
+
+file.copy(out_path_png, file.path(web_media_dir, filename_png), overwrite = TRUE)
+file.copy(out_path_gif, file.path(web_media_dir, filename_gif), overwrite = TRUE)
+file.copy(today_png, file.path(web_media_dir, "nba_predictions_today.png"), overwrite = TRUE)
+file.copy(today_gif, file.path(web_media_dir, "nba_predictions_today.gif"), overwrite = TRUE)
+
+cat("Synced all prediction graphics to:", web_media_dir, "\n")
