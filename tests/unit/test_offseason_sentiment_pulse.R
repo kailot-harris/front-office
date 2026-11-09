@@ -254,6 +254,25 @@ test_that("The five ambiguous singles follow their documented dispositions", {
                     ignore.case = TRUE))
 })
 
+test_that("`free` is masked as roster jargon but survives in ordinary English", {
+  # Free-agency vocabulary is masked, including the restricted/unrestricted
+  # qualifiers, which the longest-first phrase pass consumes with the phrase.
+  for (p in c("she is a free agent", "two cheap free agents", "during free agency",
+              "an unrestricted free agent", "is a restricted free agent",
+              "the free agency period", "a free-agent splash")) {
+    masked <- mask_basketball_jargon(p)
+    expect_false(grepl("free", masked, ignore.case = TRUE),
+                 info = paste("`free` survived in:", p))
+  }
+  expect_false(grepl("unrestricted", mask_basketball_jargon("an unrestricted free agent"),
+                     ignore.case = TRUE))
+  # Ordinary English uses are left scored (phrase-only, like `break` and `cut`)
+  expect_true(grepl("free", mask_basketball_jargon("moves to free up space"),
+                    ignore.case = TRUE))
+  expect_true(grepl("free", mask_basketball_jargon("they are free to negotiate"),
+                    ignore.case = TRUE))
+})
+
 test_that("mask_basketball_jargon is fail-safe and never raises", {
   expect_null(mask_basketball_jargon(NULL))
   expect_identical(mask_basketball_jargon(character(0)), character(0))

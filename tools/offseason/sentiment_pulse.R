@@ -139,6 +139,12 @@ mask_team_names <- function(txt) {
 #' Ordered longest-first at use time so "offensive rebound" is consumed before
 #' "offensive"/"rebound" and "point guard" before "guard".
 SP_JARGON_PHRASES <- c(
+  "unrestricted free agent", "unrestricted free agents",
+  "restricted free agent", "restricted free agents",
+  "reserved free agent", "reserved free agents",
+  "free agent market", "free agency period",
+  "free agent", "free agents", "free agency",
+  "free-agent", "free-agents", "free-agency",
   "effective field goal", "true shooting percentage", "full-court press",
   "offensive rebound", "offensive rebounds", "offensive rebounding",
   "defensive rebound", "defensive rebounds", "defensive rebounding",
@@ -186,9 +192,10 @@ SP_JARGON_SINGLES <- c(
 #'
 #' Measured effect, scoring that one captured live corpus twice -- once through
 #' mask_team_names() alone, once through mask_team_names() + this masker:
-#' masking jargon moved the weekly syuzhet mean from +0.0273 to +0.0282 (+3.4%),
-#' and cleared `defensive` (39), `steals` (22) and `offensive` (18) out of the
-#' bing negative chips entirely.
+#' masking jargon moved the weekly syuzhet mean from +0.0273 to +0.0280 (+2.7%),
+#' cleared `defensive` (39), `steals` (22) and `offensive` (18) out of the bing
+#' negative chips entirely, and dropped `free` from 36 occurrences (the #5
+#' positive chip) to 4, off the list.
 #'
 #' Mechanics: phrases first with the longest match winning, then a single-token
 #' pass; case-insensitive; each match becomes a single space and whitespace runs
@@ -223,6 +230,16 @@ SP_JARGON_SINGLES <- c(
 #'   - `miss` (1): LEFT SCORED, not masked at all. Its single occurrence ("saw
 #'     her miss the whole of") is an injury absence, genuinely negative, and one
 #'     token cannot justify suppressing a word with heavy non-basketball use.
+#'
+#' `free` (36 bare occurrences, +0.50 in syuzhet and positive in bing, the #5
+#' positive chip before this change) is PHRASE-ONLY, by the same standard as
+#' `break` and `cut`. 31 of the 36 are roster vocabulary -- "free agent" /
+#' "free agents" (20, of which 4 unrestricted and 2 restricted) and "free
+#' agency" (11) -- plus one "free throws"; the remaining 4 are ordinary English
+#' and are left scored ("moves to free up space", "UFAs are free to discuss
+#' terms", "player are free to negotiate", one bare possessive). Masking the
+#' phrases alone therefore takes `free` off the chips without suppressing a
+#' word whose plain-English sense really does appear in beat prose.
 #'
 #' Discourse filler (`like`, `right`) is deliberately out of scope here and
 #' tracked separately as issue #171.
