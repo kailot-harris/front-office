@@ -58,6 +58,9 @@ happy_items <- list(
 
 # ------------------------------------------------------------------------------
 test_that("Happy path scores beat-feed items and ignores other source families", {
+  skip_if_not_installed("udpipe")
+  skip_if_not_installed("sentimentr")
+  skip_if(is.null(.sp_udpipe_model()), "pinned udpipe model not present")
   res <- compute_media_sentiment_pulse(happy_items, scrape = FALSE)
 
   expect_true(res$available)
@@ -74,12 +77,15 @@ test_that("Happy path scores beat-feed items and ignores other source families",
   expect_true(grepl("Liberty", res$mostPositive$headline))
   expect_true(grepl("Mystics", res$mostNegative$headline))
   expect_gt(res$mostPositive$score, res$mostNegative$score)
-  expect_identical(res$method, "syuzhet")
+  expect_identical(res$method, "sentimentr + udpipe")
+  expect_identical(res$lexicon, "jockers_rinker")
+  expect_true(res$posDisambiguated)
+  expect_identical(res$modelVersion, SP_UDPIPE_MODEL_VERSION)
 
   # Headline derivation stops at the RSS " - " separator
   expect_identical(res$mostPositive$headline, "Liberty extend star forward")
 
-  if (requireNamespace("tidytext", quietly = TRUE)) {
+  if (requireNamespace("lexicon", quietly = TRUE)) {
     expect_true(res$wordBreakdown$available)
     expect_gt(length(res$wordBreakdown$positive) + length(res$wordBreakdown$negative), 0)
   }
@@ -98,24 +104,233 @@ test_that("Zero beat-feed items returns a labelled empty result with no fabricat
   expect_null(res_other$meanSentiment)
 })
 
-test_that("Missing syuzhet degrades to a labelled unavailable result (no placeholder number)", {
+test_that("Missing udpipe degrades to a labelled unavailable result (no placeholder number)", {
   # Simulate an uninstalled package by shadowing requireNamespace within the
-  # function's lexical scope.
-  fake_env <- new.env(parent = environment(compute_media_sentiment_pulse))
+  # scorer-gate's lexical scope.
+  fake_env <- new.env(parent = environment(.sp_scorer_unavailable_reason))
   assign("requireNamespace", function(pkg, ...) {
-    if (pkg %in% c("syuzhet", "tidytext")) return(FALSE)
+    if (pkg %in% c("udpipe", "sentimentr")) return(FALSE)
     base::requireNamespace(pkg, ...)
   }, envir = fake_env)
 
+  gate <- .sp_scorer_unavailable_reason
+  environment(gate) <- fake_env
+
+  fn_env <- new.env(parent = environment(compute_media_sentiment_pulse))
+  assign(".sp_scorer_unavailable_reason", gate, envir = fn_env)
   fn <- compute_media_sentiment_pulse
-  environment(fn) <- fake_env
+  environment(fn) <- fn_env
 
   res <- fn(happy_items, scrape = FALSE)
   expect_false(res$available)
   expect_null(res$meanSentiment)
   expect_null(res$mostPositive)
-  expect_true(grepl("syuzhet", res$reason))
+  expect_true(grepl("udpipe", res$reason))
   expect_false(res$wordBreakdown$available)
+})
+
+# ------------------------------------------------------------------------------
+# Issue #171: the pinned-model fail-safe, with NO syuzhet fallback
+# ------------------------------------------------------------------------------
+
+test_that("A missing pinned udpipe model yields unavailable, never a fallback number", {
+  # Point the model resolver at a path that does not exist. This is the
+  # fresh-clone-without-the-artifact case and the corrupted-download case.
+  env <- environment(.sp_scorer_unavailable_reason)
+  saved <- get(".sp_udpipe_model_path", envir = env)
+  on.exit(assign(".sp_udpipe_model_path", saved, envir = env), add = TRUE)
+  assign(".sp_udpipe_model_path",
+         function() file.path(tempdir(), "no-such-model.udpipe"), envir = env)
+
+  res <- compute_media_sentiment_pulse(happy_items, scrape = FALSE)
+
+  expect_false(res$available)
+  expect_null(res$meanSentiment)
+  expect_null(res$mostPositive)
+  expect_null(res$mostNegative)
+  expect_true(is.character(res$reason) && nzchar(res$reason))
+  expect_true(grepl("missing", res$reason))
+  expect_true(grepl(SP_UDPIPE_MODEL_VERSION, res$reason, fixed = TRUE))
+  expect_false(res$wordBreakdown$available)
+  # The published method string must never silently become the old scorer's.
+  expect_false(grepl("syuzhet", res$method))
+  expect_false(isTRUE(res$posDisambiguated))
+})
+
+test_that("An unreadable pinned udpipe model yields unavailable, not a fallback number", {
+  # A file that exists but is not a udpipe model: udpipe_load_model() raises,
+  # and the scorer must degrade rather than reach for syuzhet.
+  bad <- file.path(tempdir(), "corrupt-model.udpipe")
+  writeLines("this is not a udpipe model", bad)
+  on.exit(unlink(bad), add = TRUE)
+
+  env <- environment(.sp_scorer_unavailable_reason)
+  saved <- get(".sp_udpipe_model_path", envir = env)
+  on.exit(assign(".sp_udpipe_model_path", saved, envir = env), add = TRUE)
+  assign(".sp_udpipe_model_path", function() bad, envir = env)
+
+  res <- suppressWarnings(compute_media_sentiment_pulse(happy_items, scrape = FALSE))
+
+  expect_false(res$available)
+  expect_null(res$meanSentiment)
+  expect_true(grepl("could not be loaded", res$reason))
+  expect_false(grepl("syuzhet", res$method))
+})
+
+test_that("There is no syuzhet or bing scoring path left in the scorer", {
+  src <- readLines(file.path("tools", "offseason", "sentiment_pulse.R"), warn = FALSE)
+  code <- src[!grepl("^\\s*#", src)]   # drop comments/roxygen: history may name them
+  expect_false(any(grepl("syuzhet::", code, fixed = TRUE)))
+  expect_false(any(grepl("tidytext::", code, fixed = TRUE)))
+  expect_false(any(grepl("get_sentiments", code, fixed = TRUE)))
+  # And the real scorer is actually wired in.
+  expect_true(any(grepl("sentimentr::sentiment", code, fixed = TRUE)))
+  expect_true(any(grepl("udpipe::udpipe_annotate", code, fixed = TRUE)))
+})
+
+# ------------------------------------------------------------------------------
+# Issue #171: negation / valence shifting -- the half sentimentr owns
+# ------------------------------------------------------------------------------
+
+test_that("Negation flips the sign, which syuzhet could not do at all", {
+  skip_if_not_installed("udpipe")
+  skip_if_not_installed("sentimentr")
+  skip_if(is.null(.sp_udpipe_model()), "pinned udpipe model not present")
+
+  norm <- function(t) {
+    s <- score_text_sentiment(t)
+    expect_false(is.null(s))
+    s$normalized
+  }
+
+  # "not good": a plain negator over a positive adjective.
+  expect_gt(norm("The move is good for the roster."), 0)
+  expect_lt(norm("The move is not good for the roster."), 0)
+
+  # "hardly ideal": a negative-polarity adverb. sentimentr's stock table types
+  # `hardly` as a de-amplifier, which left this POSITIVE (+0.0667); the
+  # SP_NEGATOR_RETYPED correction is what makes the sign right.
+  expect_gt(norm("The situation is ideal."), 0)
+  expect_lt(norm("The situation is hardly ideal."), 0)
+
+  # "never been better": negator over a comparative positive.
+  expect_gt(norm("She has been better."), 0)
+  expect_lt(norm("She has never been better."), 0)
+})
+
+test_that("Negators and de-amplifiers survive the POS filter", {
+  skip_if_not_installed("udpipe")
+  skip_if(is.null(.sp_udpipe_model()), "pinned udpipe model not present")
+  # `not` is PART and `no` is DET -- both in SP_POS_FUNCTION_CLASSES. If the
+  # valence-shifter exemption regressed, they would be dropped before
+  # sentimentr ever saw them and negation would silently stop working.
+  out <- .sp_pos_filter_text("The move is not good. There is no depth.")
+  expect_false(is.null(out))
+  expect_true("not" %in% out$tokens$token)
+  expect_true("no" %in% out$tokens$token)
+})
+
+test_that("SP_NEGATOR_RETYPED is applied to the valence-shifter table", {
+  skip_if_not_installed("sentimentr")
+  skip_if_not_installed("lexicon")
+  dt <- .sp_valence_shifter_table()
+  skip_if(is.null(dt), "valence shifter table unavailable")
+  df <- as.data.frame(dt)
+  names(df)[1:2] <- c("x", "y")
+  # Every retyped term the shifter table carries must be a negator. `scarcely`
+  # is deliberately absent: the polarity lexicon claims it, and sentimentr
+  # requires the two tables to be mutually exclusive.
+  present <- intersect(SP_NEGATOR_RETYPED, df$x)
+  expect_true(length(present) >= 4)
+  for (w in present) {
+    expect_identical(as.integer(df$y[df$x == w]), 1L,
+                     info = paste(w, "must be typed as a negator"))
+  }
+  expect_false("scarcely" %in% df$x)
+  # The stock table types these 3; this test fails loudly if a sentimentr
+  # upgrade changes them, because that would silently move published numbers.
+  stock <- as.data.frame(lexicon::hash_valence_shifters)
+  names(stock)[1:2] <- c("x", "y")
+  expect_identical(as.integer(stock$y[stock$x == "hardly"]), 3L)
+})
+
+# ------------------------------------------------------------------------------
+# Issue #171: word sense -- the half udpipe owns, and the defect #171 was opened for
+# ------------------------------------------------------------------------------
+
+test_that("`like` scores as a verb but not as a preposition or conjunction", {
+  skip_if_not_installed("udpipe")
+  skip_if(is.null(.sp_udpipe_model()), "pinned udpipe model not present")
+
+  # ADP: a comparison, not an opinion. This single conflation made `like` the
+  # #1 positive chip (107 occurrences) on the 2026-11-09 corpus.
+  prep <- .sp_pos_filter_text("She played like a veteran out there.")
+  expect_false("like" %in% prep$tokens$token)
+
+  # SCONJ: a discourse marker.
+  conj <- .sp_pos_filter_text("It was the move, like I said earlier.")
+  expect_false("like" %in% conj$tokens$token)
+
+  # VERB: a genuine opinion, which must still score.
+  verb <- .sp_pos_filter_text("I like what I saw from the rookie.")
+  expect_true("like" %in% verb$tokens$token)
+})
+
+test_that("`right` scores as an adjective but not as an adverb", {
+  skip_if_not_installed("udpipe")
+  skip_if(is.null(.sp_udpipe_model()), "pinned udpipe model not present")
+
+  # ADV: a temporal/degree intensifier. `right` is +0.80 in jockers_rinker and
+  # was the #5 positive chip (38 occurrences).
+  expect_false("right" %in% .sp_pos_filter_text("Right now the roster is unsettled.")$tokens$token)
+  expect_false("right" %in% .sp_pos_filter_text("She was right there from the start.")$tokens$token)
+
+  # ADJ: a real evaluation, which must still score.
+  expect_true("right" %in% .sp_pos_filter_text("She made the right call in the fourth.")$tokens$token)
+})
+
+test_that("Discourse-marker `well` is dropped but adverbial `well` still scores", {
+  skip_if_not_installed("udpipe")
+  skip_if(is.null(.sp_udpipe_model()), "pinned udpipe model not present")
+  # INTJ, caught by the generic function-class rule with no entry in
+  # SP_POS_POLAR_SENSE -- which is the point of preferring a POS rule to a list.
+  expect_false("well" %in% .sp_pos_filter_text("Well, the roster is young.")$tokens$token)
+  expect_true("well" %in% .sp_pos_filter_text("The team is playing well.")$tokens$token)
+})
+
+test_that("The published chips come from the POS-filtered tokens, so `like` cannot reappear", {
+  skip_if_not_installed("udpipe")
+  skip_if_not_installed("sentimentr")
+  skip_if(is.null(.sp_udpipe_model()), "pinned udpipe model not present")
+
+  items <- list(
+    mk_item("ws_1", "espn_wnba_beat",
+            "Liberty extend star forward - She played like a veteran, like I said all year, and it looks like a good deal."),
+    mk_item("ws_2", "winsidr",
+            "Mystics shake up the front office - Right now it is unsettled, but they got the right coach right away.")
+  )
+  res <- compute_media_sentiment_pulse(items, scrape = FALSE)
+  expect_true(res$available)
+  pos_words <- vapply(res$wordBreakdown$positive, function(w) w$word, character(1))
+
+  # `like` appears 3x in ws_1: ADP, SCONJ, and "looks like" -- none an opinion.
+  expect_false("like" %in% pos_words)
+  # `right` appears 3x in ws_2, of which exactly one ("the right coach") is ADJ,
+  # so if it charts at all it must be at n = 1, never 3.
+  right_n <- vapply(res$wordBreakdown$positive, function(w) w$n, integer(1))[pos_words == "right"]
+  if (length(right_n) == 1) expect_equal(right_n[[1]], 1L)
+})
+
+test_that("Scoring the same text twice is bit-identical (no RNG on this path)", {
+  skip_if_not_installed("udpipe")
+  skip_if_not_installed("sentimentr")
+  skip_if(is.null(.sp_udpipe_model()), "pinned udpipe model not present")
+  txt <- "The move is not good, but the young core looks like a real strength right now."
+  a <- score_text_sentiment(txt)
+  b <- score_text_sentiment(txt)
+  expect_false(is.null(a))
+  expect_identical(a$normalized, b$normalized)
+  expect_identical(a$raw, b$raw)
 })
 
 test_that("Unreachable source_url fails soft and falls back to the item's RSS text", {
@@ -209,8 +424,123 @@ test_that("mask_team_names strips franchise vocabulary and nothing else", {
   expect_true(grepl("firearm", mask_team_names("firearm"), ignore.case = TRUE))
 })
 
+test_that("mask_basketball_jargon strips the unambiguous stat-sheet vocabulary", {
+  txt <- paste("Her defensive instincts are brilliant: 3 steals, 2 blocks and a block",
+               "plus an offensive foul, strong offense and defense, and one steal.")
+  masked <- mask_basketball_jargon(txt)
+  for (w in c("defensive", "steals", "offensive", "steal", "foul",
+              "offense", "defense", "block", "blocks")) {
+    expect_false(grepl(paste0("(?<![[:alpha:]])", w, "(?![[:alpha:]])"),
+                       masked, perl = TRUE, ignore.case = TRUE),
+                 info = paste("token survived masking:", w))
+  }
+  # Genuine sentiment vocabulary survives untouched
+  expect_true(grepl("brilliant", masked, ignore.case = TRUE))
+  expect_true(grepl("strong", masked, ignore.case = TRUE))
+  # Whitespace runs are collapsed
+  expect_false(grepl("  ", masked, fixed = TRUE))
+})
+
+test_that("mask_basketball_jargon is phrase-first with the longest match winning", {
+  # "offensive rebound" is consumed as a phrase, not twice as two singles
+  expect_false(grepl("rebound", mask_basketball_jargon("an offensive rebound"),
+                     ignore.case = TRUE))
+  # Line-wrapped phrases still mask as phrases
+  expect_false(grepl("guard", mask_basketball_jargon("a point\nguard"), ignore.case = TRUE))
+  # Adjacent terms both mask in one pass (lookaround, not \\b)
+  both <- mask_basketball_jargon("steals blocks")
+  expect_false(grepl("steals", both, ignore.case = TRUE))
+  expect_false(grepl("blocks", both, ignore.case = TRUE))
+  # Substrings of longer words are untouched
+  expect_true(grepl("defensively", mask_basketball_jargon("defensively"), ignore.case = TRUE))
+  expect_true(grepl("blockade", mask_basketball_jargon("blockade"), ignore.case = TRUE))
+})
+
+test_that("The five ambiguous singles follow their documented dispositions", {
+  # guard / shot: masked bare
+  expect_false(grepl("guard", mask_basketball_jargon("the veteran guard"), ignore.case = TRUE))
+  expect_false(grepl("shot", mask_basketball_jargon("she shot well"), ignore.case = TRUE))
+  # break / cut: phrase-only -- bare uses survive, jargon phrases do not
+  expect_true(grepl("break", mask_basketball_jargon("after the FIBA break"), ignore.case = TRUE))
+  expect_false(grepl("break", mask_basketball_jargon("off a fast break"), ignore.case = TRUE))
+  expect_true(grepl("cut", mask_basketball_jargon("saw her time cut"), ignore.case = TRUE))
+  # miss: left scored entirely
+  expect_true(grepl("miss", mask_basketball_jargon("she will miss the season"),
+                    ignore.case = TRUE))
+})
+
+test_that("`free` is masked as roster jargon but survives in ordinary English", {
+  # Free-agency vocabulary is masked, including the restricted/unrestricted
+  # qualifiers, which the longest-first phrase pass consumes with the phrase.
+  for (p in c("she is a free agent", "two cheap free agents", "during free agency",
+              "an unrestricted free agent", "is a restricted free agent",
+              "the free agency period", "a free-agent splash")) {
+    masked <- mask_basketball_jargon(p)
+    expect_false(grepl("free", masked, ignore.case = TRUE),
+                 info = paste("`free` survived in:", p))
+  }
+  expect_false(grepl("unrestricted", mask_basketball_jargon("an unrestricted free agent"),
+                     ignore.case = TRUE))
+  # Ordinary English uses are left scored (phrase-only, like `break` and `cut`)
+  expect_true(grepl("free", mask_basketball_jargon("moves to free up space"),
+                    ignore.case = TRUE))
+  expect_true(grepl("free", mask_basketball_jargon("they are free to negotiate"),
+                    ignore.case = TRUE))
+})
+
+test_that("mask_basketball_jargon is fail-safe and never raises", {
+  expect_null(mask_basketball_jargon(NULL))
+  expect_identical(mask_basketball_jargon(character(0)), character(0))
+  expect_identical(mask_basketball_jargon(""), "")
+  # A broken term list degrades to unmasked text rather than aborting the pulse
+  env <- environment(mask_basketball_jargon)
+  saved <- get("SP_JARGON_SINGLES", envir = env)
+  on.exit(assign("SP_JARGON_SINGLES", saved, envir = env), add = TRUE)
+  assign("SP_JARGON_SINGLES", c("((("), envir = env)
+  # suppressWarnings: the bad pattern also emits a PCRE compile warning, which is
+  # deliberately left visible in production and only muted for this assertion.
+  expect_identical(suppressWarnings(mask_basketball_jargon("a defensive stand")),
+                   "a defensive stand")
+})
+
+test_that("A failure inside jargon masking does not crash the pulse", {
+  skip_if_not_installed("udpipe")
+  skip_if_not_installed("sentimentr")
+  skip_if(is.null(.sp_udpipe_model()), "pinned udpipe model not present")
+  items <- list(
+    mk_item("fs_1", "espn_wnba_beat",
+            "Storm re-sign their veteran guard - a strong and welcome defensive addition."),
+    mk_item("fs_2", "winsidr",
+            "Liberty add offensive depth - the front office is pleased with the steals numbers.")
+  )
+  env <- environment(mask_basketball_jargon)
+  saved <- get("SP_JARGON_SINGLES", envir = env)
+  on.exit(assign("SP_JARGON_SINGLES", saved, envir = env), add = TRUE)
+  assign("SP_JARGON_SINGLES", c("((("), envir = env)
+
+  res <- suppressWarnings(compute_media_sentiment_pulse(items, scrape = FALSE))
+  expect_true(res$available)
+  expect_equal(res$articleCount, 2L)
+  expect_true(is.numeric(res$meanSentiment))
+  expect_true(res$jargonMasked)
+})
+
+test_that("Jargon masking removes the stat-sheet contribution to the score", {
+  skip_if_not_installed("udpipe")
+  skip_if_not_installed("sentimentr")
+  skip_if(is.null(.sp_udpipe_model()), "pinned udpipe model not present")
+  txt <- "She had three steals, two blocks, and a defensive foul in a strong offensive stretch."
+  unmasked <- score_text_sentiment(txt)
+  masked <- score_text_sentiment(mask_basketball_jargon(txt))
+  expect_false(is.null(unmasked))
+  expect_lt(unmasked$raw, 0)   # scored negative purely on box-score vocabulary
+  if (!is.null(masked)) expect_gt(masked$raw, unmasked$raw)
+})
+
 test_that("Masking removes the franchise-name contribution to the score", {
-  skip_if_not_installed("syuzhet")
+  skip_if_not_installed("udpipe")
+  skip_if_not_installed("sentimentr")
+  skip_if(is.null(.sp_udpipe_model()), "pinned udpipe model not present")
   # "liberty" and "golden" are bing/syuzhet positives and were the two largest
   # positive terms in the live run, with no sentiment meaning here.
   txt <- "Liberty and Golden State met again"
@@ -262,20 +592,29 @@ test_that("An all-off-topic week is labelled unavailable, not scored", {
 })
 
 test_that("Extremes respect the word floor but every item still feeds the mean", {
-  skip_if_not_installed("syuzhet")
+  skip_if_not_installed("udpipe")
+  skip_if_not_installed("sentimentr")
+  skip_if(is.null(.sp_udpipe_model()), "pinned udpipe model not present")
+  # NOTE (issue #171): `words` is the POS-FILTERED token count -- the same
+  # denominator the normalized score uses -- so these fixtures carry well over
+  # 40 surface words to clear a 40-word floor once function words are dropped.
   long_text <- paste(
     "Fever front office review -",
     "Indiana spent the week completing a steady and constructive set of roster moves that",
     "the staff described as a good outcome for the group, with a calm and favourable",
     "response from players, a positive tone around the facility, and a solid plan for the",
-    "coming months that most observers called a reasonable and welcome direction overall."
+    "coming months that most observers called a reasonable and welcome direction overall.",
+    "Veteran leaders praised the clear communication, the honest feedback, the thoughtful",
+    "scheduling, and the genuine respect shown throughout a productive and encouraging",
+    "stretch that strengthened morale, improved conditioning, and delivered real progress."
   )
   items <- list(
     # Short, extreme per-word score: exactly the shape that won the live run
     mk_item("short_1", "her_hoop_stats", "Aces wonderful triumphant brilliant"),
     mk_item("long_1", "espn_wnba_beat", long_text),
     mk_item("long_2", "winsidr", paste("Mystics collapse review -",
-            paste(rep("a bad and disappointing week for the roster and the staff overall", 6),
+            paste(rep("a bad and disappointing week for the tired roster and the frustrated staff overall",
+                      10),
                   collapse = " ")))
   )
 
@@ -293,7 +632,9 @@ test_that("Extremes respect the word floor but every item still feeds the mean",
 })
 
 test_that("When nothing clears the floor the memo says so instead of hiding it", {
-  skip_if_not_installed("syuzhet")
+  skip_if_not_installed("udpipe")
+  skip_if_not_installed("sentimentr")
+  skip_if(is.null(.sp_udpipe_model()), "pinned udpipe model not present")
   items <- list(
     mk_item("s1", "espn_wnba_beat", "Liberty win again - a great result"),
     mk_item("s2", "winsidr", "Mystics lose again - a bad result")
@@ -316,7 +657,7 @@ test_that("An all-positive week labels its minimum 'Least positive', not 'Most n
     mostNegative = list(headline = "Low", score = neg_score, rawScore = 1, words = 100L,
                         sourceId = "winsidr", url = NA_character_, bodyScraped = TRUE),
     extremesMinWords = 40L, extremesFloorApplied = TRUE, extremesEligibleCount = 8L,
-    teamNamesMasked = TRUE,
+    teamNamesMasked = TRUE, jargonMasked = TRUE,
     wordBreakdown = list(available = TRUE, positive = list(), negative = list())
   )
 
@@ -332,7 +673,9 @@ test_that("An all-positive week labels its minimum 'Least positive', not 'Most n
 })
 
 test_that("Memo block reports the exclusion count and the masking caveat", {
-  skip_if_not_installed("syuzhet")
+  skip_if_not_installed("udpipe")
+  skip_if_not_installed("sentimentr")
+  skip_if(is.null(.sp_udpipe_model()), "pinned udpipe model not present")
   pulse <- list(
     available = TRUE, reason = NULL, articleCount = 46L, beatItemsSeen = 70L,
     offTopicExcluded = 24L, meanSentiment = 0.0217, scrapedCount = 25L,
@@ -342,11 +685,11 @@ test_that("Memo block reports the exclusion count and the masking caveat", {
     mostNegative = list(headline = "B", score = -0.03, rawScore = -1.5, words = 90L,
                         sourceId = "espn_wnba_beat", url = NA_character_, bodyScraped = TRUE),
     extremesMinWords = 40L, extremesFloorApplied = TRUE, extremesEligibleCount = 33L,
-    teamNamesMasked = TRUE,
+    teamNamesMasked = TRUE, jargonMasked = TRUE,
     wordBreakdown = list(available = TRUE, positive = list(), negative = list())
   )
   blk <- render_block_media_sentiment(pulse)
   expect_true(grepl("24 off-topic items excluded of 70 ingested", blk, fixed = TRUE))
-  expect_true(grepl("team names masked", blk, fixed = TRUE))
+  expect_true(grepl("team names and basketball jargon masked", blk, fixed = TRUE))
   expect_true(grepl("at least 40 words", blk, fixed = TRUE))
 })
