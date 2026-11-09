@@ -18,9 +18,15 @@
 #     available = FALSE with a reason string and NULL scores (issues #129,
 #     #133-#135, epic #138 treat placeholder values as a publishing defect).
 #
-# Method: syuzhet::get_sentiment(method = "syuzhet") summed polarity per
-# article, normalized by the article's word count, plus a tidytext `bing`
-# lexicon word-frequency breakdown. See
+# Method (issue #171, replaces the syuzhet/bing scorer): udpipe POS tagging
+# feeds sentimentr. udpipe owns word sense (which tokens are eligible to carry
+# polarity at all), sentimentr owns valence (negators, amplifiers, de-amplifiers)
+# and therefore the mean. Summed valence-adjusted polarity per article,
+# normalized by the POS-filtered word count, plus a `jockers_rinker`
+# word-frequency breakdown drawn from the same filtered token stream so the
+# memo's words and its number always agree. The udpipe model is a tracked,
+# version-pinned artifact under data/udpipe/ -- there is no download at runtime
+# and no fallback to syuzhet/bing. See
 # docs/internal/offseason_media_sentiment_pulse.md.
 # ==============================================================================
 
@@ -241,8 +247,34 @@ SP_JARGON_SINGLES <- c(
 #' phrases alone therefore takes `free` off the chips without suppressing a
 #' word whose plain-English sense really does appear in beat prose.
 #'
-#' Discourse filler (`like`, `right`) is deliberately out of scope here and
-#' tracked separately as issue #171.
+#' Discourse filler (`like`, `right`) was deliberately out of scope here and was
+#' handled by issue #171, which replaced the scorer: udpipe POS tagging now
+#' separates `like`-as-preposition from `like`-as-verb structurally, so no
+#' filler term was ever added to the lists above (see SP_POS_FUNCTION_CLASSES).
+#'
+#' RETAINED UNDER sentimentr/jockers_rinker -- measured, not assumed (issue #171
+#' design decision 8). POS tagging cannot fix this masker's problem, because
+#' box-score vocabulary is a lexicon-VALUE error, not a word-sense one: the
+#' tokens are correctly tagged NOUN/ADJ and still carry the wrong polarity.
+#' `jockers_rinker` in fact mis-scores this vocabulary more severely than
+#' syuzhet/bing did -- `steal` -0.75, `stealing` -0.75, `foul` -0.75, `blocks`
+#' -0.60, `defensive` -0.50, `offensive` -0.50, `offense` -0.50, `block`/
+#' `blocked` -0.40, `shot` -0.40, `guard` -0.25 -- while scoring `defense`,
+#' `defend` and `defending` at +0.25. The same concept therefore lands on
+#' opposite chip lists by inflection, which is decisive on its own: on the
+#' team-masked-but-jargon-unmasked run below, `defense` (54) was the #3 POSITIVE
+#' chip while `defensive` (40) was the #3 NEGATIVE chip in the same table.
+#'
+#' Measured on the 2026-11-09 captured corpus (46 WNBA-relevant items, 25
+#' scraped bodies), scored three ways under the new scorer:
+#'   unmasked            +0.0644
+#'   + mask_team_names() +0.0571  (-11.4%)   <- #156 still earns its place
+#'   + this masker       +0.0590  (+3.4%)    <- #170 still earns its place
+#' Neither masker is redundant, so both are retained. The jargon pass also
+#' clears `guard` (41), `defensive` (40), `offense` (36), `shot` (22) and
+#' `defense` (54) out of the published chips; the team pass clears `dream`
+#' (133), `liberty` (120) and `golden` (111) from the positives and `fever`
+#' (11) from the negatives.
 #'
 #' Fail-safe: any error inside the substitution returns the input unchanged, so
 #' a bad pattern degrades to unmasked scoring rather than aborting the pulse.
@@ -390,64 +422,399 @@ scrape_article_body <- function(url, timeout_sec = .sp_timeout_sec()) {
   length(toks[nzchar(toks)])
 }
 
-#' Normalized syuzhet polarity for one text blob
+# ------------------------------------------------------------------------------
+# The udpipe model: a tracked, version-pinned artifact (Issue #171)
+#
+# renv pins packages, not model files, so the English model needs a deliberate
+# home or the weekly job breaks in a fresh clone and in CI. It is committed under
+# data/udpipe/ for the same reasons .gitignore:88 keeps cache/ and data/ tracked
+# on purpose. There is deliberately NO udpipe_download_model() call at runtime:
+# a download-on-first-use path would make the published method depend on whether
+# a fetch happened to succeed, which is the audit's Class C "substitutes
+# silently" defect (issue #171 design decision 4).
+#
+# A model version bump is a published-value change and must be treated with the
+# same care as changing a config.R seed (docs/REPRODUCIBILITY.md).
+# ------------------------------------------------------------------------------
+
+#' Pinned udpipe model version. Changing this changes published numbers.
+SP_UDPIPE_MODEL_VERSION <- "english-ewt-ud-2.5-191206"
+
+#' Absolute path to the pinned, tracked udpipe model artifact
+.sp_udpipe_model_path <- function() {
+  file.path("data", "udpipe", paste0(SP_UDPIPE_MODEL_VERSION, ".udpipe"))
+}
+
+# Loading the model costs ~0.5s, so it is memoized per session. The cache is
+# keyed on the resolved path so a test that points at a missing file is not
+# served a previously-loaded model.
+.sp_model_cache <- new.env(parent = emptyenv())
+
+#' Load the pinned udpipe model, or NULL if it cannot be loaded
 #'
-#' @return list(raw =, words =, normalized =) or NULL if syuzhet is unavailable
-score_text_sentiment <- function(txt) {
-  if (!requireNamespace("syuzhet", quietly = TRUE)) return(NULL)
+#' Never raises and never downloads. A missing or unreadable model means the
+#' pulse is unavailable for the week (issue #171 design decision 5) -- it does
+#' NOT mean a silent fall back to the old syuzhet scorer.
+#'
+#' @return a udpipe model object, or NULL
+.sp_udpipe_model <- function(path = .sp_udpipe_model_path()) {
+  if (!requireNamespace("udpipe", quietly = TRUE)) return(NULL)
+  key <- paste0("m:", path)
+  if (!is.null(.sp_model_cache[[key]])) return(.sp_model_cache[[key]])
+  if (!file.exists(path)) return(NULL)
+  mod <- tryCatch(udpipe::udpipe_load_model(path), error = function(e) NULL)
+  if (is.null(mod)) return(NULL)
+  .sp_model_cache[[key]] <- mod
+  mod
+}
+
+#' Is the full scorer (package + pinned model) usable right now?
+#'
+#' @return NULL when usable, or a reason string explaining why not
+.sp_scorer_unavailable_reason <- function() {
+  if (!requireNamespace("udpipe", quietly = TRUE)) {
+    return("package 'udpipe' is not installed; no sentiment score can be computed")
+  }
+  if (!requireNamespace("sentimentr", quietly = TRUE)) {
+    return("package 'sentimentr' is not installed; no sentiment score can be computed")
+  }
+  path <- .sp_udpipe_model_path()
+  if (!file.exists(path)) {
+    return(sprintf("pinned udpipe model '%s' is missing at %s; no sentiment score can be computed",
+                   SP_UDPIPE_MODEL_VERSION, path))
+  }
+  mod <- .sp_udpipe_model(path)
+  if (is.null(mod)) {
+    return(sprintf("pinned udpipe model '%s' at %s could not be loaded; no sentiment score can be computed",
+                   SP_UDPIPE_MODEL_VERSION, path))
+  }
+  # udpipe_load_model() accepts a file that is not actually a model and only
+  # fails later, per article, which would degrade to the much vaguer "no item
+  # yielded a scorable body". One tiny probe annotation up front turns a
+  # corrupted or truncated artifact into an accurate reason string.
+  probe <- tryCatch(
+    .sp_pos_filter_text("The move is good for the roster.", model = mod),
+    error = function(e) NULL
+  )
+  if (is.null(probe) || !nzchar(probe$text %||% "")) {
+    return(sprintf("pinned udpipe model '%s' at %s could not be loaded; it did not tag a probe sentence (truncated or corrupt artifact?)",
+                   SP_UDPIPE_MODEL_VERSION, path))
+  }
+  NULL
+}
+
+# ------------------------------------------------------------------------------
+# Word sense: which tokens are eligible to carry polarity (Issue #171)
+#
+# This is the half of the ticket udpipe owns, and it is what actually fixes the
+# defect #171 was opened for. The old scorer was a bare lexicon lookup, so every
+# occurrence of `like` scored +0.50 regardless of whether it meant "I like what
+# I saw" (an opinion) or "played like a veteran" (a comparison). On the
+# 2026-11-09 corpus that single conflation made `like` the #1 positive chip at
+# 107 occurrences, ahead of `best` (77).
+#
+# The mechanism is a POS rule, NOT a word list. Issue #170's hand-maintained
+# jargon list was the right tool for box-score vocabulary (a lexicon-VALUE
+# problem); it is the wrong tool here, and #171 design decision 1 explicitly
+# supersedes a third such list. The rule below enumerates grammatical classes,
+# so it generalizes to words nobody has looked at yet.
+# ------------------------------------------------------------------------------
+
+#' Universal POS tags whose members never carry evaluative polarity
+#'
+#' Function words. A polarity lexicon that matches on surface form alone scores
+#' them anyway, which is exactly how `like`-as-preposition ("played like a
+#' veteran", ADP) and `like`-as-conjunction ("like I said", SCONJ) got counted
+#' as opinions, and how a discourse-marker `well` ("Well, the team is young",
+#' INTJ) scored +0.80. Verbal `like` is VERB and survives, so a genuine opinion
+#' still scores.
+#'
+#' Valence shifters are exempt from this filter (see .sp_pos_filter_text): `not`
+#' is PART and `no` is DET, and dropping them would destroy the negation
+#' handling that is the whole point of using sentimentr.
+SP_POS_FUNCTION_CLASSES <- c(
+  "ADP", "SCONJ", "CCONJ", "DET", "PRON", "AUX", "PART",
+  "INTJ", "PUNCT", "SYM", "NUM", "X"
+)
+
+#' Lemmas whose polarity is real in one POS and spurious in another
+#'
+#' The function-class rule above is the primary mechanism and needs no entries
+#' here. This table covers the residue: a lemma whose evaluative sense belongs
+#' to one content class while another content class is a degree/temporal
+#' modifier. Each entry records a POS fact, not a sentiment judgement, which is
+#' what keeps this from being the hand-maintained word list #171 ruled out.
+#'
+#' `right` (+0.80 in jockers_rinker -- tied for the highest positive value of
+#' any word in the 2026-11-09 corpus, and the #5 positive chip at 38
+#' occurrences) is evaluative only as an adjective: "she made the right call",
+#' "her read was right" (ADJ). As an adverb it is a pure intensifier with no
+#' opinion content -- "right now", "right there", "right from the start"
+#' (ADV) -- which is every one of its high-frequency uses in beat prose.
+#'
+#' `well` deliberately gets NO entry: adverbial `well` ("the team is playing
+#' well") really is evaluative, and its spurious discourse use is INTJ, which
+#' SP_POS_FUNCTION_CLASSES already removes. Head-POS was tried as a generic
+#' substitute for this table and rejected on measurement: udpipe attaches
+#' "Right now the roster is unsettled" to the ADJ `unsettled`, so a head-POS
+#' rule keeps the very token it was meant to drop.
+SP_POS_POLAR_SENSE <- list(
+  right = c("ADJ")
+)
+
+#' Tag one text blob and drop the tokens that cannot carry polarity
+#'
+#' Neutralized tokens are dropped rather than replaced in place. That keeps the
+#' POS-filtered token count as both the scoring input and the normalization
+#' denominator, so this matches the tradeoff mask_team_names() and
+#' mask_basketball_jargon() already took (see their roxygen): a removed token
+#' leaves the denominator as well as the numerator.
+#'
+#' @param txt character(1)
+#' @param model a loaded udpipe model
+#' @return list(text =, tokens = data.frame(token, lemma, upos)) or NULL
+.sp_pos_filter_text <- function(txt, model = .sp_udpipe_model()) {
+  if (is.null(model)) return(NULL)
   if (is.null(txt) || !nzchar(trimws(txt))) return(NULL)
   tryCatch({
-    sentences <- syuzhet::get_sentences(txt)
-    vals <- syuzhet::get_sentiment(sentences, method = "syuzhet")
-    vals <- vals[is.finite(vals)]
-    if (length(vals) == 0) return(NULL)
-    raw <- sum(vals)
-    n_words <- .sp_word_count(txt)
-    if (n_words == 0) return(NULL)
-    list(raw = raw, words = n_words, normalized = raw / n_words)
+    ann <- as.data.frame(udpipe::udpipe_annotate(model, x = as.character(txt)[1],
+                                                 doc_id = "a"))
+    if (nrow(ann) == 0) return(NULL)
+    ann <- ann[!is.na(ann$token) & nzchar(ann$token), , drop = FALSE]
+    if (nrow(ann) == 0) return(NULL)
+
+    lemma_lc <- tolower(ifelse(is.na(ann$lemma), ann$token, ann$lemma))
+    token_lc <- tolower(ann$token)
+    upos <- ifelse(is.na(ann$upos), "X", ann$upos)
+
+    # Valence shifters survive every filter: sentimentr needs them in place to
+    # flip or scale the polar word they govern.
+    shifters <- .sp_valence_shifter_words()
+    is_shifter <- lemma_lc %in% shifters | token_lc %in% shifters
+
+    keep <- is_shifter | !(upos %in% SP_POS_FUNCTION_CLASSES)
+
+    # Per-lemma POS-sense dispositions (SP_POS_POLAR_SENSE).
+    sense_hit <- !is_shifter & lemma_lc %in% names(SP_POS_POLAR_SENSE)
+    if (any(sense_hit)) {
+      allowed <- lapply(lemma_lc[sense_hit], function(l) SP_POS_POLAR_SENSE[[l]])
+      ok <- mapply(function(u, a) u %in% a, upos[sense_hit], allowed)
+      keep[sense_hit] <- keep[sense_hit] & ok
+    }
+
+    kept <- ann[keep, , drop = FALSE]
+    if (nrow(kept) == 0) return(NULL)
+
+    # Rebuild sentence-delimited text so sentimentr still sees sentence
+    # boundaries (its valence window does not reach across them).
+    sent_key <- paste(kept$doc_id, kept$paragraph_id, kept$sentence_id)
+    sentences <- vapply(split(kept$token, factor(sent_key, levels = unique(sent_key))),
+                        function(tk) paste(tk, collapse = " "), character(1))
+    sentences <- trimws(sentences)
+    sentences <- sentences[nzchar(sentences)]
+    if (length(sentences) == 0) return(NULL)
+
+    list(
+      text = paste0(sentences, collapse = ". "),
+      tokens = data.frame(
+        token = tolower(kept$token),
+        lemma = tolower(ifelse(is.na(kept$lemma), kept$token, kept$lemma)),
+        upos = ifelse(is.na(kept$upos), "X", kept$upos),
+        stringsAsFactors = FALSE
+      )
+    )
   }, error = function(e) NULL)
 }
 
-#' bing-lexicon positive/negative word frequency breakdown
+# ------------------------------------------------------------------------------
+# Valence shifters: the half of the ticket sentimentr owns (Issue #171)
+# ------------------------------------------------------------------------------
+
+#' Negative-polarity adverbs reclassified from de-amplifier to negator
 #'
+#' sentimentr's `hash_valence_shifters` types these 3 (de-amplifier), which only
+#' shrinks the magnitude of the word they govern: "hardly ideal" came out
+#' **+0.0667** on the default table, i.e. still positive. In English these are
+#' negative-polarity items -- "hardly ideal" means "not ideal", "barely adequate"
+#' means "inadequate" -- so a downtoner reading gives the wrong sign, not merely
+#' a smaller number. Retyping them 1 (negator) makes the contract uniform:
+#' a negator governing a positive word yields a negative score.
+#'
+#' This is a correction to a general-English table, not a domain word list; it
+#' is pinned here because it changes published numbers.
+SP_NEGATOR_RETYPED <- c("hardly", "barely", "scarcely", "rarely", "seldom")
+
+#' sentimentr's valence-shifter table with SP_NEGATOR_RETYPED applied
+#'
+#' Memoized: rebuilding it per article would dominate the scoring cost.
+.sp_valence_shifter_table <- function() {
+  if (!is.null(.sp_model_cache[["vs_dt"]])) return(.sp_model_cache[["vs_dt"]])
+  if (!requireNamespace("lexicon", quietly = TRUE) ||
+      !requireNamespace("sentimentr", quietly = TRUE)) {
+    return(NULL)
+  }
+  out <- tryCatch({
+    vs <- as.data.frame(lexicon::hash_valence_shifters,
+                        stringsAsFactors = FALSE)
+    names(vs)[1:2] <- c("x", "y")
+    vs$x <- tolower(as.character(vs$x))
+    vs$y <- as.integer(vs$y)
+    vs$y[vs$x %in% SP_NEGATOR_RETYPED] <- 1L
+    # `scarcely` is absent from the stock shifter table entirely. It can only be
+    # added if it is not also a polarity word: sentimentr requires polarity_dt
+    # and valence_shifters_dt to be mutually exclusive and errors out if a term
+    # appears in both ("`polarity_dt` & `valence_shifters_dt` not mutually
+    # exclusive"). Terms the polarity lexicon already claims are left to it.
+    pol <- tryCatch(
+      tolower(as.character(as.data.frame(lexicon::hash_sentiment_jockers_rinker)[[1]])),
+      error = function(e) character(0)
+    )
+    addable <- setdiff(setdiff(SP_NEGATOR_RETYPED, vs$x), pol)
+    if (length(addable) > 0) {
+      vs <- rbind(vs, data.frame(x = addable, y = 1L, stringsAsFactors = FALSE))
+    }
+    vs <- vs[order(vs$x), , drop = FALSE]
+    sentimentr::as_key(vs, comparison = NULL, sentiment = FALSE)
+  }, error = function(e) NULL)
+  if (is.null(out)) return(NULL)
+  .sp_model_cache[["vs_dt"]] <- out
+  out
+}
+
+#' The valence-shifter surface forms sentimentr recognizes
+.sp_valence_shifter_words <- function() {
+  if (!requireNamespace("lexicon", quietly = TRUE)) {
+    # Minimal negator set so negation survives even without the lexicon package.
+    return(c("not", "no", "never", "none", "nobody", "nothing", "neither",
+             "nowhere", "cannot", "cant", "can't", "don't", "dont", "isn't",
+             "isnt", "wasn't", "wasnt", "aren't", "arent", "hardly", "barely",
+             "scarcely", "seldom", "rarely", "very", "really", "extremely"))
+  }
+  tryCatch({
+    vs <- as.data.frame(lexicon::hash_valence_shifters)
+    tolower(as.character(vs[[1]]))
+  }, error = function(e) c("not", "no", "never", "hardly", "barely", "very"))
+}
+
+#' Valence-adjusted polarity for one text blob, POS-filtered first
+#'
+#' udpipe decides which tokens may carry polarity (.sp_pos_filter_text), then
+#' sentimentr scores the survivors with its valence shifters applied, which is
+#' what makes "not good" negative -- something syuzhet could not do at all.
+#'
+#' `raw` is the summed valence-adjusted polarity across sentences. sentimentr
+#' reports each sentence as sum(polarity) / sqrt(word_count), so the sqrt is
+#' multiplied back out to recover a summed-polarity quantity comparable in kind
+#' to what the old scorer returned; `normalized` then divides by the article's
+#' POS-filtered word count, exactly as before.
+#'
+#' Measured effect of replacing the scorer, on one live `scrape = TRUE` run of
+#' 2026-11-09 (72 beat items ingested, 46 WNBA-relevant after
+#' filter_wnba_relevant_items(), 25 with scraped bodies and 21 on RSS
+#' fallback). Because scrape_article_body() never persists a body, the corpus
+#' was captured ONCE to a temp file outside the repo and then scored TWICE --
+#' once through the old syuzhet/bing path, once through this one -- so the two
+#' numbers describe the same 46 articles rather than two different corpora:
+#'
+#'   syuzhet + bing  +0.0286  ->  sentimentr + udpipe  +0.0590  (+106%)
+#'
+#' Both figures are post-masking (mask_team_names() + mask_basketball_jargon()),
+#' i.e. measured against the post-#170 baseline as issue #171's dependency note
+#' requires. The earlier RSS-archive-only "+1.7%" figure is NOT comparable and
+#' is not cited here: re-scoring cache/raw_ingest_archive/ yields RSS text for
+#' every item, which is a different corpus from one with 25 scraped bodies.
+#'
+#' The rise is expected and is not the scorer "getting more positive": the old
+#' mean was depressed by function-word and word-sense noise scoring in both
+#' directions, and sentimentr normalizes per sentence before summing. The
+#' headline result of the change is the chips, not the mean -- `like` (107
+#' occurrences, the #1 positive chip under bing) and `right` (38, #5) both leave
+#' the breakdown entirely because udpipe tags their high-frequency uses ADP /
+#' SCONJ / ADV. Top positive chips went
+#'   like 107, best 77, win 54, good 40, right 38, won 37, work 35, well 31
+#' to
+#'   league 88, best 77, win 52, new 45, good 40, young 36, deal 35, work 35.
+#'
+#' Determinism (issue #171 acceptance 8, docs/REPRODUCIBILITY.md): the captured
+#' corpus scored twice in one session returned 0.0590003121 both times,
+#' identical() == TRUE. There is no RNG on this path; udpipe tagging and the
+#' sentimentr lookup are both deterministic given the pinned model.
+#'
+#' @return list(raw =, words =, normalized =, text =, tokens =) or NULL
+score_text_sentiment <- function(txt, model = .sp_udpipe_model()) {
+  if (!requireNamespace("sentimentr", quietly = TRUE)) return(NULL)
+  if (is.null(txt) || !nzchar(trimws(txt))) return(NULL)
+  filtered <- .sp_pos_filter_text(txt, model = model)
+  if (is.null(filtered)) return(NULL)
+  tryCatch({
+    vs_dt <- .sp_valence_shifter_table()
+    sent <- as.data.frame(if (is.null(vs_dt)) {
+      sentimentr::sentiment(filtered$text)
+    } else {
+      sentimentr::sentiment(filtered$text, valence_shifters_dt = vs_dt)
+    })
+    if (nrow(sent) == 0) return(NULL)
+    vals <- sent$sentiment * sqrt(pmax(as.numeric(sent$word_count), 0))
+    vals <- vals[is.finite(vals)]
+    if (length(vals) == 0) return(NULL)
+    raw <- sum(vals)
+    n_words <- .sp_word_count(filtered$text)
+    if (n_words == 0) return(NULL)
+    list(raw = raw, words = n_words, normalized = raw / n_words,
+         text = filtered$text, tokens = filtered$tokens)
+  }, error = function(e) NULL)
+}
+
+#' jockers_rinker positive/negative word frequency breakdown
+#'
+#' Counts only tokens udpipe left eligible to carry polarity, so the chips are
+#' drawn from precisely the token stream that produced the mean. This is why
+#' `like`-as-preposition and `right`-as-adverb cannot reappear in the chips
+#' while being excluded from the number, or the reverse.
+#'
+#' @param token_frames list of per-article token data.frames from score_text_sentiment()
 #' @return list(available =, reason =, positive = list of {word, n}, negative = ...)
-summarize_bing_words <- function(texts, top_n = .sp_top_words()) {
-  if (!requireNamespace("tidytext", quietly = TRUE)) {
-    return(list(available = FALSE, reason = "package 'tidytext' is not installed",
+summarize_sentiment_words <- function(token_frames, top_n = .sp_top_words()) {
+  if (!requireNamespace("lexicon", quietly = TRUE)) {
+    return(list(available = FALSE, reason = "package 'lexicon' is not installed",
                 positive = list(), negative = list()))
   }
-  texts <- texts[!is.na(texts) & nzchar(texts)]
-  if (length(texts) == 0) {
-    return(list(available = FALSE, reason = "no text to tokenize",
+  token_frames <- Filter(function(d) is.data.frame(d) && nrow(d) > 0, token_frames %||% list())
+  if (length(token_frames) == 0) {
+    return(list(available = FALSE, reason = "no POS-tagged tokens to summarize",
                 positive = list(), negative = list()))
   }
 
   tryCatch({
-    bing <- as.data.frame(tidytext::get_sentiments("bing"))
-    words <- tolower(unlist(strsplit(paste(texts, collapse = " "), "[^A-Za-z']+")))
+    lex <- as.data.frame(lexicon::hash_sentiment_jockers_rinker)
+    names(lex)[1:2] <- c("word", "y")
+    lex$word <- tolower(as.character(lex$word))
+
+    words <- unlist(lapply(token_frames, function(d) d$token), use.names = FALSE)
     words <- words[nzchar(words)]
     if (length(words) == 0) {
       return(list(available = FALSE, reason = "no tokens",
                   positive = list(), negative = list()))
     }
-    joined <- merge(data.frame(word = words, stringsAsFactors = FALSE), bing, by = "word")
+    joined <- merge(data.frame(word = words, stringsAsFactors = FALSE), lex, by = "word")
+    joined <- joined[is.finite(joined$y) & joined$y != 0, , drop = FALSE]
     if (nrow(joined) == 0) {
       return(list(available = TRUE, reason = NULL, positive = list(),
                   negative = list(), matchedWords = 0L))
     }
-    pick <- function(pol) {
-      sub <- joined[joined$sentiment == pol, , drop = FALSE]
+    pick <- function(positive) {
+      sub <- if (positive) joined[joined$y > 0, , drop = FALSE] else joined[joined$y < 0, , drop = FALSE]
       if (nrow(sub) == 0) return(list())
       tb <- sort(table(sub$word), decreasing = TRUE)
       tb <- tb[seq_len(min(length(tb), as.integer(top_n)))]
       lapply(seq_along(tb), function(i) list(word = names(tb)[i], n = as.integer(tb[[i]])))
     }
     list(available = TRUE, reason = NULL,
-         positive = pick("positive"), negative = pick("negative"),
+         positive = pick(TRUE), negative = pick(FALSE),
          matchedWords = nrow(joined))
   }, error = function(e) {
     list(available = FALSE,
-         reason = paste("bing breakdown failed:", conditionMessage(e)),
+         reason = paste("word breakdown failed:", conditionMessage(e)),
          positive = list(), negative = list())
   })
 }
@@ -463,6 +830,16 @@ summarize_bing_words <- function(texts, top_n = .sp_top_words()) {
 #' @param timeout_sec Per-request scrape timeout, seconds.
 #' @param scrape Logical; FALSE scores RSS raw_text only (no network at all).
 #' @param top_n_words Size of the bing word breakdown per polarity.
+#' Note on `words` (changed by issue #171): per-item word counts, and therefore
+#' the `extremesMinWords` eligibility floor, are counted on the POS-FILTERED
+#' token stream -- the same denominator the normalized score divides by. An
+#' article's reported `words` is consequently lower than its surface word count
+#' by roughly the share of function words, and the floor is correspondingly
+#' stricter than it was under the old scorer. Keeping the floor and the
+#' normalization on one quantity is deliberate: the floor exists because a
+#' per-word mean is unstable when the denominator is small, so it has to be the
+#' denominator that is tested.
+#'
 #' @return list with: available (logical), reason (chr or NULL), articleCount (int),
 #'   meanSentiment (num or NULL), scrapedCount, fallbackCount, mostPositive /
 #'   mostNegative (list(headline, score, sourceId, url) or NULL), wordBreakdown.
@@ -491,8 +868,10 @@ compute_media_sentiment_pulse <- function(wire_items,
       extremesFloorApplied = FALSE,
       teamNamesMasked = TRUE,
       jargonMasked = TRUE,
-      lexicon = "syuzhet + bing",
-      method = "syuzhet"
+      posDisambiguated = FALSE,
+      modelVersion = SP_UDPIPE_MODEL_VERSION,
+      lexicon = "jockers_rinker",
+      method = "sentimentr + udpipe"
     )
   }
 
@@ -514,9 +893,14 @@ compute_media_sentiment_pulse <- function(wire_items,
       length(beat_items))))
   }
 
-  if (!requireNamespace("syuzhet", quietly = TRUE)) {
-    return(unavailable("package 'syuzhet' is not installed; no sentiment score can be computed"))
-  }
+  # Packages AND the pinned model are checked up front, before any scraping, so
+  # an unusable scorer costs no network traffic. There is deliberately no
+  # fallback to syuzhet/bing here (issue #171 design decision 5): an unreadable
+  # model means no sentiment number this week, which is preferred over a number
+  # whose method varies by runtime conditions.
+  scorer_reason <- .sp_scorer_unavailable_reason()
+  if (!is.null(scorer_reason)) return(unavailable(scorer_reason))
+  model <- .sp_udpipe_model()
 
   n_cap <- max(0L, as.integer(max_articles))
   scraped <- 0L
@@ -546,11 +930,13 @@ compute_media_sentiment_pulse <- function(wire_items,
     # lexicon-scored otherwise (see mask_team_names()). The same masked string
     # feeds the bing breakdown, so the memo's words and its number agree.
     # Basketball stat-sheet vocabulary is masked in the same breath and on the
-    # same string (issue #170), so the mean and the bing chips stay in agreement.
+    # same string (issue #170), so the mean and the chips stay in agreement.
+    # Masking is still required under jockers_rinker -- see this file's
+    # measurement note in mask_basketball_jargon()'s roxygen.
     text_used <- mask_basketball_jargon(mask_team_names(text_used))
     if (!nzchar(trimws(text_used))) next
 
-    sc <- score_text_sentiment(text_used)
+    sc <- score_text_sentiment(text_used, model = model)
     if (is.null(sc)) {
       log_warn(sprintf("sentiment_pulse: scoring returned no usable value for %s; item skipped.",
                        as.character(item$item_id %||% "?")),
@@ -564,6 +950,7 @@ compute_media_sentiment_pulse <- function(wire_items,
       url = if (is.null(item$source_url)) NA_character_ else as.character(item$source_url)[1],
       headline = sentiment_item_headline(item),
       text = text_used,
+      tokens = sc$tokens,
       scraped = !is.null(body),
       raw = sc$raw,
       words = sc$words,
@@ -605,8 +992,11 @@ compute_media_sentiment_pulse <- function(wire_items,
     bodyScraped = isTRUE(r$scraped)
   )
 
-  breakdown <- summarize_bing_words(vapply(rows, function(r) r$text, character(1)),
-                                    top_n = top_n_words)
+  # Chips come from the POS-filtered tokens the scorer already produced, not a
+  # re-tokenization of the text: re-tokenizing would discard the word-sense work
+  # and let `like`-as-preposition back into the breakdown.
+  breakdown <- summarize_sentiment_words(lapply(rows, function(r) r$tokens),
+                                         top_n = top_n_words)
 
   log_info(sprintf("sentiment_pulse: Scored %d WNBA-relevant beat articles of %d ingested (%d off-topic excluded; %d scraped, %d RSS fallback); mean normalized sentiment %.4f.",
                    length(rows), length(beat_items), off_topic, scraped, fallback, mean_norm),
@@ -628,8 +1018,10 @@ compute_media_sentiment_pulse <- function(wire_items,
     extremesEligibleCount = length(eligible),
     teamNamesMasked = TRUE,
     jargonMasked = TRUE,
+    posDisambiguated = TRUE,
+    modelVersion = SP_UDPIPE_MODEL_VERSION,
     wordBreakdown = breakdown,
-    lexicon = "syuzhet + bing",
-    method = "syuzhet"
+    lexicon = "jockers_rinker",
+    method = "sentimentr + udpipe"
   )
 }
