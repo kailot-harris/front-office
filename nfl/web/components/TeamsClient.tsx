@@ -21,6 +21,7 @@ import { exportToCsv } from '@/lib/exportToCsv';
 
 interface TeamsClientProps {
   teams: TeamEpaProfile[];
+  generatedAt?: string;
 }
 
 export type EpaSortField =
@@ -36,7 +37,7 @@ export type EpaSortField =
   | 'off_redzone_success'
   | 'off_explosive_rate';
 
-export const TeamsClient: React.FC<TeamsClientProps> = ({ teams }) => {
+export const TeamsClient: React.FC<TeamsClientProps> = ({ teams, generatedAt }) => {
   const [selectedConf, setSelectedConf] = useState<'All' | 'AFC' | 'NFC'>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<EpaSortField>('net_epa_per_play');
@@ -220,6 +221,7 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams }) => {
         teams={teams}
         selectedTeam={selectedTeam?.team}
         onSelectTeam={(team) => setSelectedTeam(team)}
+        generatedAt={generatedAt}
       />
 
       {/* Advanced EPA Table Toolbar */}

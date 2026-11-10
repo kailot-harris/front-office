@@ -23,7 +23,7 @@ export default function RootLayout({
         className={`${GeistSans.className} font-sans bg-surface text-slate-100 min-h-screen flex flex-col md:flex-row antialiased selection:bg-accent-600 selection:text-white`}
       >
         <Sidebar generatedAt={generated_at} />
-        <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden lg:pl-64">
+        <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden lg:pl-72">
           <SportSwitcher current="nfl" />
           <main className="flex-1 pb-10">{children}</main>
           <footer className="border-t border-slate-800 bg-surface-raised/50 py-5 text-center text-xs text-slate-500 font-sans">
