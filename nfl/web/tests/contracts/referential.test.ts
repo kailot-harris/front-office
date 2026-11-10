@@ -9,16 +9,21 @@
  * here rather than being trusted to "just work".
  */
 import { describe, expect, it } from 'vitest';
+import fs from 'fs';
 import { NFL_TEAMS_METADATA, getTeamColors, getTeamLogoUrl } from '../../lib/teams';
 import {
   LEAGUE,
+  PASSING_DIR,
   coaching,
+  dnaProfiles,
   matchups,
+  passingIndex,
   playoffs,
   qbs,
   salaryCap,
   standings,
   teamEpa,
+  clutch,
 } from '../helpers/datasets';
 
 const KNOWN = new Set(Object.keys(NFL_TEAMS_METADATA));
@@ -34,9 +39,14 @@ const TEAM_CODE_SOURCES: Array<[string, () => string[]]> = [
   ['playoff_picture.afc_bubble[].team', () => playoffs().afc_bubble.map((b) => b.team)],
   ['playoff_picture.nfc_bubble[].team', () => playoffs().nfc_bubble.map((b) => b.team)],
   ['player_qb_profiles[].team', () => qbs().map((q) => q.team)],
+  ['player_dna_profiles[].team', () => dnaProfiles().map((p) => p.team)],
   ['coaching_profiles[].team', () => coaching().map((c) => c.team)],
   ['salary_cap_profiles.teams[].team', () => salaryCap().teams.map((t) => t.team)],
   ['salary_cap_profiles.top_league_contracts[].team', () => salaryCap().top_league_contracts.map((c) => c.team)],
+['passing_index.json[].team', () => passingIndex().map((q) => q.team)],
+
+['clutch_leverage_metrics[].team', () => clutch().map((c) => c.team)],
+
 ];
 
 describe('every team code resolves against lib/teams.ts', () => {
@@ -203,5 +213,18 @@ describe('lib/teams.ts helper behaviour', () => {
     // Documents the user-facing consequence of the LA/LAR code mismatch on
     // /salary-cap: the Rams render in the generic emerald fallback.
     expect(getTeamColors('LAR')).not.toEqual(NFL_TEAMS_METADATA.LA.colors);
+  });
+});
+
+describe('passing charts chunked file referential integrity', () => {
+  it('every entry in passing_index.json has a corresponding public/data/passing/<player_id>.json and no orphans exist', () => {
+    const catalog = passingIndex();
+    const indexIds = new Set(catalog.map((c) => c.player_id));
+    expect(indexIds.size).toBe(catalog.length);
+    const onDisk = fs.readdirSync(PASSING_DIR).filter((f) => f.endsWith('.json')).map((f) => f.replace('.json', ''));
+    const missing = catalog.map((c) => c.player_id).filter((id) => !onDisk.includes(id));
+    const orphans = onDisk.filter((id) => !indexIds.has(id));
+    expect(missing, `Missing passing JSON files on disk: ${missing.join(', ')}`).toEqual([]);
+    expect(orphans, `Orphan passing JSON files on disk: ${orphans.join(', ')}`).toEqual([]);
   });
 });

@@ -301,6 +301,154 @@ export const salaryCapDatasetSchema = z.object({
   top_league_contracts: z.array(leagueTopContractSchema),
 }).strict();
 
+// -----------------------------------------------------------------------------
+// Passing Charts & Throw Maps (NextGenStats Empirical Analytics)
+// -----------------------------------------------------------------------------
+
+export const EXPECTED_PASSING_ZONES = [
+  'Deep Left',
+  'Deep Middle',
+  'Deep Right',
+  'Intermediate Left',
+  'Intermediate Middle',
+  'Intermediate Right',
+  'Short Left',
+  'Short Middle',
+  'Short Right',
+  'Behind LOS Left',
+  'Behind LOS Middle',
+  'Behind LOS Right',
+] as const;
+
+export const passingZoneEnum = z.enum(EXPECTED_PASSING_ZONES);
+
+export const passingZoneMetricSchema = z.object({
+  zone: passingZoneEnum,
+  attempts: z.number().int().min(0),
+  completions: z.number().int().min(0),
+  comp_pct: z.number().min(0).max(1),
+  avg_cpoe: z.number(),
+  avg_epa: z.number(),
+  pct_of_passes: z.number().min(0).max(1),
+}).strict();
+
+export const passRecordSchema = z.object({
+  air_yards: z.number(),
+  pass_location: z.enum(['left', 'middle', 'right']),
+  complete_pass: z.union([z.literal(0), z.literal(1)]),
+  epa: z.number(),
+  cpoe: z.number().nullable().optional(),
+  zone: passingZoneEnum,
+  week: z.number().int().min(1).max(22),
+  down: z.number().int().min(1).max(4).nullable().optional(),
+  ydstogo: z.number().int().min(0).max(99).nullable().optional(),
+  defteam: z.string().nullable().optional(),
+  game_id: z.string().min(5),
+}).strict();
+
+export const passingCatalogEntrySchema = z.object({
+  player_id: z.string().min(5),
+  player_name: z.string().min(2),
+  team: z.string().min(2).max(3),
+  jersey_number: z.number().int().nullable(),
+  headshot_url: z.string().nullable(),
+  total_passes: z.number().int().positive(),
+  completions: z.number().int().min(0),
+  comp_pct: z.number().min(0).max(1),
+  avg_cpoe: z.number(),
+  avg_epa: z.number(),
+}).strict();
+
+export const PassingChartSchema = z.object({
+  player_id: z.string().min(5),
+  player_name: z.string().min(2),
+  team: z.string().min(2).max(3),
+  jersey_number: z.number().int().nullable(),
+  headshot_url: z.string().nullable(),
+  total_passes: z.number().int().positive(),
+  completions: z.number().int().min(0),
+  comp_pct: z.number().min(0).max(1),
+  avg_cpoe: z.number(),
+  avg_epa: z.number(),
+  zones: z.array(passingZoneMetricSchema).length(12),
+  passes: z.array(passRecordSchema).min(1),
+}).strict();
+
+export const passingMetadataSchema = z.object({
+  updated_at: isoUtcStamp,
+  season: z.number().int().min(2020).max(2030),
+  total_passes_sampled: z.number().int().positive(),
+  zones: z.array(passingZoneEnum).length(12),
+  league_averages: z.array(passingZoneMetricSchema).length(12),
+}).strict();
+
+export const playerDnaHistoricalTwinSchema = z.object({
+  compName: z.string().min(2),
+  era: z.string().min(2),
+  archetype: z.string().min(2),
+  similarityPct: z.number().min(0).max(100),
+  keySharedTrait: z.string().min(2),
+}).strict();
+
+export const playerDnaRadarAxisSchema = z.object({
+  axis: z.string().min(1),
+  label: z.string().min(1),
+  value: z.number().min(0).max(100),
+}).strict();
+
+export const playerDnaStatsSummarySchema = z.object({
+  games: z.number().int().min(1),
+  passYards: z.number().int().optional(),
+  passTds: z.number().int().optional(),
+  interceptions: z.number().int().optional(),
+  rushYards: z.number().int().optional(),
+  rushTds: z.number().int().optional(),
+  receptions: z.number().int().optional(),
+  recYards: z.number().int().optional(),
+  recTds: z.number().int().optional(),
+  epaPerPlay: z.number().finite(),
+}).strict();
+
+export const playerDnaProfileSchema = z.object({
+  playerId: z.string().min(1),
+  playerName: z.string().min(2),
+  team: teamCode,
+  position: z.enum(['QB', 'WR', 'RB', 'TE']),
+  archetype: z.string().min(2),
+  overallRating: z.number().min(0).max(100),
+  statsSummary: playerDnaStatsSummarySchema,
+  manifoldX: z.number().finite(),
+  manifoldY: z.number().finite(),
+  radarAxes: z.array(playerDnaRadarAxisSchema).min(3),
+  skillVector: z.record(z.string(), z.number().min(0).max(100)),
+  categoryScores: z.record(z.string(), z.number().min(0).max(100)),
+  historicalTwins: z.array(playerDnaHistoricalTwinSchema).min(1),
+}).strict();
+
+export const ClutchProfileSchema = z.object({
+  playerId: z.string().min(1),
+  playerName: z.string().min(2),
+  team: teamCode,
+  position: z.literal('QB'),
+  isStarter: z.boolean(),
+  headshotUrl: z.string(),
+  clutchAttempts: z.number().int().min(0),
+  clutchPlays: z.number().int().min(0),
+  baselineAttempts: z.number().int().min(0),
+  baselinePlays: z.number().int().min(0),
+  clutchEpa: z.number().nullable(),
+  baselineEpa: z.number().nullable(),
+  clutchEpaDelta: z.number().nullable(),
+  clutchSuccessRate: pct100.nullable(),
+  baselineSuccessRate: pct100.nullable(),
+  clutchCpoe: z.number().nullable(),
+  turnoverFragility: z.number().nullable(),
+  fourthDownAggressiveness: pct100.nullable(),
+  clutchArchetype: z.string().min(1),
+  provenance: z.enum(['REAL_CURRENT_SEASON', 'INSUFFICIENT_SAMPLE']),
+
+}).strict();
+
 /** Filename -> schema, so one test can iterate every shipped dataset. */
 export const DATASET_SCHEMAS = {
   'standings_projections.json': standingsDatasetSchema,
@@ -312,4 +460,12 @@ export const DATASET_SCHEMAS = {
   'visual_media_index.json': z.array(visualMediaItemSchema),
   'coaching_profiles.json': z.array(coachProfileSchema),
   'salary_cap_profiles.json': salaryCapDatasetSchema,
+'passing_index.json': z.array(passingCatalogEntrySchema),
+  'passing_metadata.json': passingMetadataSchema,
+
+'player_dna_profiles.json': z.array(playerDnaProfileSchema),
+
+
+'clutch_leverage_metrics.json': z.array(ClutchProfileSchema),
+
 } as const;

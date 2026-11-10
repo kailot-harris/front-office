@@ -255,3 +255,23 @@ describe('StandingsClient resilience', () => {
     expect(container.textContent).not.toMatch(/NaN/);
   });
 });
+
+describe('StandingsClient Projections vs. Reality tracker', () => {
+  it('renders overperformer and underperformer callouts banner', () => {
+    render(<StandingsClient dataset={dataset} />);
+    expect(screen.getByText(/league overperformers/i)).toBeInTheDocument();
+    expect(screen.getByText(/league underperformers/i)).toBeInTheDocument();
+  });
+
+  it('toggles Projections vs. Reality sub-view in table and renders delta headers', () => {
+    const { container } = renderTable();
+    const realityBtn = screen.getByRole('button', { name: /projections vs\. reality/i });
+    expect(realityBtn).toBeInTheDocument();
+    fireEvent.click(realityBtn);
+
+    expect(screen.getByText(/actual record \(w-l-t\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/current win pace/i)).toBeInTheDocument();
+    expect(screen.getByText(/performance delta/i)).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/NaN|undefined/);
+  });
+});

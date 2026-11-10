@@ -256,3 +256,136 @@ export interface SalaryCapDataset {
   teams: TeamCapProfile[];
   top_league_contracts: LeagueTopContract[];
 }
+
+// -----------------------------------------------------------------------------
+// Passing Charts & Throw Maps (NextGenStats Empirical Analytics)
+// -----------------------------------------------------------------------------
+
+export interface PassingZoneMetric {
+  zone: string;
+  attempts: number;
+  completions: number;
+  comp_pct: number;
+  avg_cpoe: number;
+  avg_epa: number;
+  pct_of_passes: number;
+}
+
+export interface PassRecord {
+  air_yards: number;
+  pass_location: 'left' | 'middle' | 'right';
+  complete_pass: 0 | 1;
+  epa: number;
+  cpoe?: number | null;
+  zone: string;
+  week: number;
+  down?: number | null;
+  ydstogo?: number | null;
+  defteam?: string | null;
+  game_id: string;
+}
+
+export interface PassingCatalogEntry {
+  player_id: string;
+  player_name: string;
+  team: string;
+  jersey_number: number | null;
+  headshot_url: string | null;
+  total_passes: number;
+  completions: number;
+  comp_pct: number;
+  avg_cpoe: number;
+  avg_epa: number;
+}
+
+export interface PassingChartData {
+  player_id: string;
+  player_name: string;
+  team: string;
+  jersey_number: number | null;
+  headshot_url: string | null;
+  total_passes: number;
+  completions: number;
+  comp_pct: number;
+  avg_cpoe: number;
+  avg_epa: number;
+  zones: PassingZoneMetric[];
+  passes: PassRecord[];
+}
+
+export interface PassingMetadata {
+  updated_at: string;
+  season: number;
+  total_passes_sampled: number;
+  zones: string[];
+  league_averages: PassingZoneMetric[];
+}
+
+export interface PlayerDnaHistoricalTwin {
+  compName: string;
+  era: string;
+  archetype: string;
+  similarityPct: number;
+  keySharedTrait: string;
+}
+
+export interface PlayerDnaRadarAxis {
+  axis: string;
+  label: string;
+  value: number;
+}
+
+export interface PlayerDnaStatsSummary {
+  games: number;
+  passYards?: number;
+  passTds?: number;
+  interceptions?: number;
+  rushYards?: number;
+  rushTds?: number;
+  receptions?: number;
+  recYards?: number;
+  recTds?: number;
+  epaPerPlay: number;
+}
+
+export interface PlayerDnaProfile {
+  playerId: string;
+  playerName: string;
+  team: string;
+  position: 'QB' | 'WR' | 'RB' | 'TE';
+  archetype: string;
+  overallRating: number;
+  statsSummary: PlayerDnaStatsSummary;
+  manifoldX: number;
+  manifoldY: number;
+  radarAxes: PlayerDnaRadarAxis[];
+  skillVector: Record<string, number>;
+  categoryScores: Record<string, number>;
+  historicalTwins: PlayerDnaHistoricalTwin[];
+
+}
+
+export interface ClutchProfile {
+  playerId: string;
+  playerName: string;
+  team: string;
+  position: string;
+  isStarter: boolean;
+  headshotUrl: string;
+  clutchAttempts: number;
+  clutchPlays: number;
+  baselineAttempts: number;
+  baselinePlays: number;
+  clutchEpa: number | null;
+  baselineEpa: number | null;
+  clutchEpaDelta: number | null;
+  clutchSuccessRate: number | null;
+  baselineSuccessRate: number | null;
+  clutchCpoe: number | null;
+  turnoverFragility: number | null;
+  fourthDownAggressiveness: number | null;
+  clutchArchetype: string;
+  provenance: string;
+}
+
+
