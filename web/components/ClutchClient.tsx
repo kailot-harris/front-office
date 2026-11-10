@@ -33,7 +33,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
         (selectedArchetypeFilter === 'C' && p.position === 'C');
       return matchesSearch && matchesPos;
     })
-    .sort((a, b) => b[sortKey] - a[sortKey]);
+    .sort((a, b) => ((b[sortKey] ?? -Infinity) as number) - ((a[sortKey] ?? -Infinity) as number));
 
   return (
     <div className="space-y-6">
@@ -157,10 +157,10 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                     <div className="text-right">
                       <div className="text-xs font-bold text-rose-400">
                         {sortKey === 'usciScore'
-                          ? `${profile.usciScore}`
+                          ? (profile.usciScore != null ? `${profile.usciScore}` : 'N/A')
                           : sortKey === 'clutchTsPct'
-                          ? `${profile.clutchTsPct}%`
-                          : `+${profile.cDwpa}%`}
+                          ? (profile.clutchTsPct != null ? `${profile.clutchTsPct}%` : 'N/A')
+                          : (profile.cDwpa != null ? `+${profile.cDwpa}%` : 'N/A')}
                       </div>
                       <div className="text-[9px] text-zinc-500 uppercase">
                         {sortKey === 'usciScore' ? 'USCI' : sortKey === 'clutchTsPct' ? 'TS%' : 'c-dWPA'}
@@ -185,7 +185,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                     {selectedProfile.team} · {selectedProfile.position}
                   </span>
                   <span className="text-xs font-medium text-zinc-400">
-                    {selectedProfile.clutchMpg} Clutch MPG · {selectedProfile.clutchUsgPct}% USG
+                    {selectedProfile.clutchMpg != null ? `${selectedProfile.clutchMpg} Clutch MPG` : 'N/A'} · {selectedProfile.clutchUsgPct != null ? `${selectedProfile.clutchUsgPct}% USG` : 'N/A'}
                   </span>
                 </div>
                 <h2 className="text-2xl font-bold text-zinc-100 tracking-tight">
@@ -200,21 +200,21 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
               <div className="flex items-center gap-2.5">
                 <div className="px-3 py-2 rounded-xl bg-zinc-950/80 border border-zinc-800 text-center">
                   <div className="text-[11px] text-zinc-400 font-medium">USCI</div>
-                  <div className="text-base font-bold text-rose-400">{selectedProfile.usciScore}</div>
+                  <div className="text-base font-bold text-rose-400">{selectedProfile.usciScore != null ? selectedProfile.usciScore : 'N/A'}</div>
                 </div>
                 <div className="px-3 py-2 rounded-xl bg-zinc-950/80 border border-zinc-800 text-center">
                   <div className="text-[11px] text-zinc-400 font-medium">CLUTCH TS%</div>
-                  <div className="text-base font-bold text-zinc-100">{selectedProfile.clutchTsPct}%</div>
+                  <div className="text-base font-bold text-zinc-100">{selectedProfile.clutchTsPct != null ? `${selectedProfile.clutchTsPct}%` : 'N/A'}</div>
                 </div>
                 <div className="px-3 py-2 rounded-xl bg-zinc-950/80 border border-zinc-800 text-center">
                   <div className="text-[11px] text-zinc-400 font-medium">TS DELTA</div>
-                  <div className={`text-base font-bold ${selectedProfile.tsDelta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {selectedProfile.tsDelta >= 0 ? `+${selectedProfile.tsDelta}` : selectedProfile.tsDelta}%
+                  <div className={`text-base font-bold ${selectedProfile.tsDelta != null && selectedProfile.tsDelta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {selectedProfile.tsDelta != null ? (selectedProfile.tsDelta >= 0 ? `+${selectedProfile.tsDelta}%` : `${selectedProfile.tsDelta}%`) : 'N/A'}
                   </div>
                 </div>
                 <div className="px-3 py-2 rounded-xl bg-rose-950/60 border border-rose-800/80 text-center">
                   <div className="text-[11px] text-rose-400 font-medium">c-dWPA</div>
-                  <div className="text-base font-bold text-rose-200">+{selectedProfile.cDwpa}%</div>
+                  <div className="text-base font-bold text-rose-200">{selectedProfile.cDwpa != null ? `+${selectedProfile.cDwpa}%` : 'N/A'}</div>
                 </div>
               </div>
             </div>
@@ -237,7 +237,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
             <div className="p-3.5 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
               <div className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5 mb-1">
                 <Crosshair className="w-3.5 h-3.5 text-rose-400" />
-                Unassisted FGM%: {selectedProfile.unassistedFgmPct}%
+                Unassisted FGM%: {selectedProfile.unassistedFgmPct != null ? `${selectedProfile.unassistedFgmPct}%` : 'N/A'}
               </div>
               <p className="text-[11px] text-zinc-400 leading-relaxed">
                 Percentage of clutch baskets scored without a teammate assist, measuring pure late-game isolation engine capacity.
@@ -246,7 +246,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
             <div className="p-3.5 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
               <div className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5 mb-1">
                 <Activity className="w-3.5 h-3.5 text-sky-400" />
-                Turnover Fragility: {selectedProfile.tovFragility > 0 ? `+${selectedProfile.tovFragility}` : selectedProfile.tovFragility}%
+                Turnover Fragility: {selectedProfile.tovFragility != null ? (selectedProfile.tovFragility > 0 ? `+${selectedProfile.tovFragility}%` : `${selectedProfile.tovFragility}%`) : 'N/A'}
               </div>
               <p className="text-[11px] text-zinc-400 leading-relaxed">
                 Shift in turnover rate in 4th-quarter clutch moments. Negative values indicate elite, ice-cold ball security.
@@ -255,7 +255,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
             <div className="p-3.5 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
               <div className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5 mb-1">
                 <Shield className="w-3.5 h-3.5 text-emerald-400" />
-                Clutch dWPA: +{selectedProfile.cDwpa}%
+                Clutch dWPA: {selectedProfile.cDwpa != null ? `+${selectedProfile.cDwpa}%` : 'N/A'}
               </div>
               <p className="text-[11px] text-zinc-400 leading-relaxed">
                 Net team win probability added exclusively through late-game defensive stops, contests, deflections, and rebounds.

@@ -269,6 +269,7 @@ describe('Domain & mathematical invariants: clutch, defense, playerDna, coaches,
   it('clutch_leverage_metrics.json: tsDelta ≈ clutchTsPct - baseTsPct and shot breakdowns are coherent', () => {
     const mismatches: string[] = [];
     for (const p of clutch) {
+      if (p.clutchTsPct === null || p.tsDelta === null) continue;
       const expectedTsDelta = p.clutchTsPct - p.baseTsPct;
       if (Math.abs(p.tsDelta - expectedTsDelta) > 0.25) {
         mismatches.push(`${p.playerName}: tsDelta=${p.tsDelta} vs ${expectedTsDelta.toFixed(1)}`);
