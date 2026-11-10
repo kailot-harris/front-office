@@ -271,6 +271,8 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
               viewBox="0 0 500 470"
               className="w-full h-auto drop-shadow-md rounded-lg"
               style={{ background: '#0b1120' }}
+              role="img"
+              aria-label={`Half-court shot chart for ${playerData.player_name}`}
             >
               <defs>
                 {/* Court Hardwood grid lines */}

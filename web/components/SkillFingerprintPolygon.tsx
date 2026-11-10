@@ -7,10 +7,12 @@ import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 
 interface SkillFingerprintPolygonProps {
   categoryScores: CategoryScores;
+  playerName?: string;
 }
 
 export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = ({
   categoryScores,
+  playerName,
 }) => {
   // 5 axes: Finishing (Top), Shooting (Top-Right), Playmaking (Bottom-Right), Defense (Bottom-Left), Rebounding (Top-Left)
   const axes = [
@@ -66,7 +68,13 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
           <Download className="w-3.5 h-3.5" />
         </button>
       </div>
-      <svg width={size} height={size} className="overflow-visible select-none">
+      <svg
+        width={size}
+        height={size}
+        className="overflow-visible select-none"
+        role="img"
+        aria-label={`Skill fingerprint radar chart${playerName ? ` for ${playerName}` : ''}`}
+      >
         {/* Background Concentric Rings (25%, 50%, 75%, 100%) */}
         {[0.25, 0.5, 0.75, 1.0].map((level) => {
           const points = axes

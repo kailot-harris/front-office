@@ -208,7 +208,10 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
             {/* Middle Section: Radar Polygon + 12-D Skill Breakdown */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
               <div className="md:col-span-5 flex justify-center">
-                <SkillFingerprintPolygon categoryScores={selectedPlayer.categoryScores} />
+                <SkillFingerprintPolygon
+                  categoryScores={selectedPlayer.categoryScores}
+                  playerName={selectedPlayer.playerName}
+                />
               </div>
 
               <div className="md:col-span-7 space-y-3">
