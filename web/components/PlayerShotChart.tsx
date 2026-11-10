@@ -272,6 +272,8 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
               viewBox="0 0 500 470"
               className="w-full h-full drop-shadow-lg select-none"
               style={{ background: '#0b0f17' }}
+              role="img"
+              aria-label={`Shot chart for ${playerData.player_name}`}
             >
               {/* Defs for gradients & patterns */}
               <defs>

@@ -201,8 +201,7 @@ export const CoachImpactProfile: React.FC<CoachImpactProfileProps> = ({ coach })
         {provenance.observedSeasons && (
           <p className="text-[11px] text-slate-500 mt-3">
             Observed play-by-play indicators cover the {provenance.observedSeasons} season. All
-            metrics are empirically grounded in cached play-by-play events or model residuals with
-            zero synthetic estimates.
+            metrics are grounded in cached play-by-play events or model residuals.
           </p>
         )}
       </div>

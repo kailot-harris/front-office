@@ -75,7 +75,13 @@ export const CoachRadarProfile: React.FC<CoachRadarProfileProps> = ({
         </button>
       </div>
       <div className="relative">
-        <svg width={size} height={size} className="overflow-visible select-none">
+        <svg
+          width={size}
+          height={size}
+          className="overflow-visible select-none"
+          role="img"
+          aria-label={`5D tactical radar profile for ${coachName}`}
+        >
           <defs>
             <radialGradient id="radarFill" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stopColor="#6366f1" stopOpacity="0.45" />

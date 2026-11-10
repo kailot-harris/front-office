@@ -178,6 +178,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
             <div className="md:col-span-5">
               <SkillFingerprintPolygon
                 categoryScores={selectedPlayer.categoryScores}
+                playerName={selectedPlayer.playerName}
               />
             </div>
 
