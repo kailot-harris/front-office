@@ -30,8 +30,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
 
   // The ATO and challenge figures on this page fall back to the last completed
   // season because the 2026-2027 play-by-play sample is too small. Taken from
-  // whichever cards actually carry observed data; absent entirely when every card
-  // is a synthetic coach band.
+  // whichever cards actually carry observed data; absent entirely when unobserved.
   const observedSeasons = useMemo(() => {
     const spans = new Set<string>();
     initialData.forEach((c) => {

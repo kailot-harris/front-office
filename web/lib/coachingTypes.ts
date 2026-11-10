@@ -27,10 +27,9 @@ export interface CoachingMetrics {
   atoOffensivePpp: number;        // Points per possession on ATOs
   atoDefensivePppAllowed: number; // Opponent PPP on ATOs
   challengeSuccessRate: number;   // % challenges overturned
-  challengeWpa: number;           // Win probability added from challenges
-  shotQualityLiftEfg: number;     // eFG% lift over shot quality baseline
-  rotationStaggerScore: number;   // 0-100 score for star staggering
-  playerDevelopmentScore: number; // 0-100 score for young player growth
+  atoOffPossessions: number;      // Sample count of offensive ATO possessions
+  atoDefPossessions: number;      // Sample count of defensive ATO possessions
+  challengeAttempts: number;      // Sample count of coach's challenge events
 }
 
 export interface RadarPercentiles {
@@ -45,21 +44,19 @@ export interface RadarPercentiles {
  * Where each metric block actually came from, emitted by build_coaching_dataset.R.
  *
  * `observed_pbp` means the field was measured from cache/pbp_timeout_cache.rds.
- * `synthetic_coach_band` means it was drawn from a hand-assigned per-coach range
- * and is not an observation. `coachingWinsAdded` is always a residual between two
- * of the project's own model variants, never a measured coach effect.
+ * `model_residual_ensemble_minus_bottom_up` is the residual between two of the
+ * project's own model variants, never a measured coach effect.
+ * `unobserved` indicates fallback to league average when play-by-play is unavailable.
  */
 export type CoachingProvenanceTag =
   | 'observed_pbp'
-  | 'synthetic_coach_band'
-  | 'model_residual_ensemble_minus_bottom_up';
+  | 'model_residual_ensemble_minus_bottom_up'
+  | 'unobserved';
 
 export interface CoachingProvenance {
   atoMetrics: CoachingProvenanceTag;
   challengeMetrics: CoachingProvenanceTag;
   coachingWinsAdded: CoachingProvenanceTag;
-  shotQualityLift: CoachingProvenanceTag;
-  rotationAndDevelopment: CoachingProvenanceTag;
   /**
    * Season span the `observed_pbp` fields were measured over, e.g. '2025-2026' or
    * '2025-2026 + 2026-2027'. Absent when nothing on the card is observed — the pooled

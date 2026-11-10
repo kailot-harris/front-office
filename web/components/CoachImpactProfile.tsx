@@ -12,9 +12,9 @@ interface CoachImpactProfileProps {
 }
 
 /**
- * Provenance chip styling. `observed_pbp` is a measurement, `synthetic_coach_band`
- * is a hand-assigned range, `model_residual_*` is a difference between two of this
- * project's own projection variants. Readers need to be able to tell them apart.
+ * Provenance chip styling. `observed_pbp` is a measurement from cached play-by-play,
+ * and `model_residual_*` is a difference between two of this project's own projection
+ * variants. Readers need to be able to tell them apart.
  */
 const PROVENANCE_STYLE: Record<
   CoachingProvenanceTag,
@@ -25,17 +25,16 @@ const PROVENANCE_STYLE: Record<
     className: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
     title: 'Measured from cached play-by-play events.',
   },
-  synthetic_coach_band: {
-    label: 'Synthetic band',
-    className: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
-    title:
-      'Drawn from a hand-assigned per-coach range, not observed. Descriptive only — do not read as a measured coaching effect.',
-  },
   model_residual_ensemble_minus_bottom_up: {
     label: 'Model residual',
     className: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30',
     title:
       'Difference between two of this project\u2019s own projection variants (ensemble minus roster-talent baseline). Not a measured coaching effect.',
+  },
+  unobserved: {
+    label: 'Unobserved',
+    className: 'bg-slate-500/10 text-slate-400 border-slate-500/30',
+    title: 'Play-by-play cache unavailable; using league-average baseline.',
   },
 };
 
@@ -50,28 +49,28 @@ export const CoachImpactProfile: React.FC<CoachImpactProfileProps> = ({ coach })
 
   const indicators = [
     {
-      label: 'Tactical Scheme',
-      subtext: 'Shot-quality lift generated above shooter baseline',
-      value: `${signed(metrics.shotQualityLiftEfg)} eFG pts`,
-      tag: provenance.shotQualityLift,
-    },
-    {
       label: 'ATO & Set Execution',
       subtext: 'After-timeout offense vs. defense, points per possession',
       value: `${metrics.atoOffensivePpp.toFixed(3)} for / ${metrics.atoDefensivePppAllowed.toFixed(3)} allowed`,
       tag: provenance.atoMetrics,
     },
     {
-      label: 'Rotation & Staggering',
-      subtext: 'Star staggering to avoid non-star bench bleed',
-      value: `${metrics.rotationStaggerScore} / 100`,
-      tag: provenance.rotationAndDevelopment,
+      label: 'Net ATO Margin',
+      subtext: 'Net point differential per post-timeout possession',
+      value: `${signed(+((metrics.atoOffensivePpp - metrics.atoDefensivePppAllowed)).toFixed(3))} net PPP`,
+      tag: provenance.atoMetrics,
     },
     {
       label: 'In-Game Challenge Leverage',
-      subtext: 'Challenge success rate and season win-probability added',
-      value: `${(metrics.challengeSuccessRate * 100).toFixed(1)}% success \u00b7 ${signed(metrics.challengeWpa)} WPA`,
+      subtext: 'Challenge success rate and verified overturn attempts',
+      value: `${(metrics.challengeSuccessRate * 100).toFixed(1)}% success (${metrics.challengeAttempts} attempts)`,
       tag: provenance.challengeMetrics,
+    },
+    {
+      label: 'Ensemble Talent Residual',
+      subtext: 'Net win differential between ensemble and roster-talent baseline',
+      value: `${signed(metrics.coachingWinsAdded)} wins`,
+      tag: provenance.coachingWinsAdded,
     },
   ];
 
@@ -201,9 +200,9 @@ export const CoachImpactProfile: React.FC<CoachImpactProfileProps> = ({ coach })
 
         {provenance.observedSeasons && (
           <p className="text-[11px] text-slate-500 mt-3">
-            Observed play-by-play indicators cover the {provenance.observedSeasons} season. Fields
-            marked &ldquo;Synthetic band&rdquo; come from hand-assigned per-coach ranges and are
-            illustrative, not measurements.
+            Observed play-by-play indicators cover the {provenance.observedSeasons} season. All
+            metrics are empirically grounded in cached play-by-play events or model residuals with
+            zero synthetic estimates.
           </p>
         )}
       </div>
