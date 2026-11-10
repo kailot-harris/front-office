@@ -562,6 +562,87 @@ SP_POS_POLAR_SENSE <- list(
   right = c("ADJ")
 )
 
+# ------------------------------------------------------------------------------
+# Never + comparative polarity inversion fix (Issue #172)
+#
+# sentimentr applies a generic polarity flip when a negator precedes a polar
+# word. That is correct for "not good" (negative) and "never good" (negative),
+# but inverts negative-polarity comparative idioms built on "never" + comparative
+# (e.g. "never been better", "never looked better", "never been worse"), where
+# the negation asserts an emphatic maximum or nadir rather than reversing the sign.
+# "She has never been better" means she is at her best (positive), but scored
+# -0.8000; "She has never been worse" means she is at her worst (negative), but
+# scored +0.7500; "The roster has never looked better" scored -0.8000.
+#
+# udpipe identifies comparative words via Degree=Cmp in feats, xpos in JJR/RBR,
+# or irregular comparative lemmas/tokens (better, worse).
+#
+# When "never" governs a comparative in the same clause (within 1 to 4 tokens
+# without intervening punctuation or coordinating conjunctions), "never" is
+# replaced with "ever" in the scoring text tokens passed to sentimentr. "ever"
+# is neither in lexicon::hash_sentiment_jockers_rinker nor
+# lexicon::hash_valence_shifters, preserving token count and sentence structure
+# while letting the comparative retain its true polarity sign.
+# ------------------------------------------------------------------------------
+
+#' Neutralize 'never' when governing a comparative to prevent polarity inversion (Issue #172)
+#'
+#' @param ann annotated data.frame from udpipe::udpipe_annotate()
+#' @return character vector of scoring tokens with 'never' neutralized before comparatives
+.sp_neutralize_never_comparatives <- function(ann) {
+  lemma_lc <- tolower(ifelse(is.na(ann$lemma), ann$token, ann$lemma))
+  token_lc <- tolower(ann$token)
+  upos <- ifelse(is.na(ann$upos), "X", ann$upos)
+  feats <- ifelse(is.na(ann$feats), "", ann$feats)
+  xpos <- ifelse(is.na(ann$xpos), "", ann$xpos)
+
+  is_comp <- grepl("Degree=Cmp", feats) |
+             xpos %in% c("JJR", "RBR") |
+             lemma_lc %in% c("better", "worse") |
+             token_lc %in% c("better", "worse")
+
+  # Polar word vocabulary from jockers_rinker to detect direct non-comparative targets
+  pol_words <- if (requireNamespace("lexicon", quietly = TRUE)) {
+    tryCatch(
+      tolower(as.character(as.data.frame(lexicon::hash_sentiment_jockers_rinker)[[1]])),
+      error = function(e) character(0)
+    )
+  } else {
+    character(0)
+  }
+
+  text_tokens <- ann$token
+  sent_key <- paste(ann$doc_id, ann$paragraph_id, ann$sentence_id)
+
+  for (sk in unique(sent_key)) {
+    sub_idx <- which(sent_key == sk)
+    never_pos <- which(token_lc[sub_idx] == "never" | lemma_lc[sub_idx] == "never")
+    if (length(never_pos) > 0) {
+      for (np in never_pos) {
+        actual_i <- sub_idx[np]
+        if (np < length(sub_idx)) {
+          ahead <- seq(np + 1, min(np + 4, length(sub_idx)))
+          for (j in ahead) {
+            actual_j <- sub_idx[j]
+            # Clause boundary or conjunction terminates lookahead
+            if (upos[actual_j] %in% c("PUNCT", "CCONJ", "SCONJ")) break
+            # Comparative word found: neutralize 'never' to 'ever' for sentiment text
+            if (is_comp[actual_j]) {
+              text_tokens[actual_i] <- "ever"
+              break
+            }
+            # Non-comparative polar word encountered: 'never' directly modifies that word
+            if (length(pol_words) > 0 && token_lc[actual_j] %in% pol_words && !is_comp[actual_j]) {
+              break
+            }
+          }
+        }
+      }
+    }
+  }
+  text_tokens
+}
+
 #' Tag one text blob and drop the tokens that cannot carry polarity
 #'
 #' Neutralized tokens are dropped rather than replaced in place. That keeps the
@@ -587,6 +668,9 @@ SP_POS_POLAR_SENSE <- list(
     token_lc <- tolower(ann$token)
     upos <- ifelse(is.na(ann$upos), "X", ann$upos)
 
+    # Neutralize 'never' when governing a comparative (Issue #172)
+    text_tokens <- .sp_neutralize_never_comparatives(ann)
+
     # Valence shifters survive every filter: sentimentr needs them in place to
     # flip or scale the polar word they govern.
     shifters <- .sp_valence_shifter_words()
@@ -603,12 +687,13 @@ SP_POS_POLAR_SENSE <- list(
     }
 
     kept <- ann[keep, , drop = FALSE]
+    kept_text_tokens <- text_tokens[keep]
     if (nrow(kept) == 0) return(NULL)
 
     # Rebuild sentence-delimited text so sentimentr still sees sentence
     # boundaries (its valence window does not reach across them).
     sent_key <- paste(kept$doc_id, kept$paragraph_id, kept$sentence_id)
-    sentences <- vapply(split(kept$token, factor(sent_key, levels = unique(sent_key))),
+    sentences <- vapply(split(kept_text_tokens, factor(sent_key, levels = unique(sent_key))),
                         function(tk) paste(tk, collapse = " "), character(1))
     sentences <- trimws(sentences)
     sentences <- sentences[nzchar(sentences)]

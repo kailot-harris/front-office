@@ -213,9 +213,53 @@ test_that("Negation flips the sign, which syuzhet could not do at all", {
   expect_gt(norm("The situation is ideal."), 0)
   expect_lt(norm("The situation is hardly ideal."), 0)
 
-  # "never been better": negator over a comparative positive.
+  # "never been better": emphatic comparative positive (Issue #172).
   expect_gt(norm("She has been better."), 0)
-  expect_lt(norm("She has never been better."), 0)
+  expect_gt(norm("She has never been better."), 0)
+})
+
+# ------------------------------------------------------------------------------
+# Issue #172: 'never' + comparative polarity preservation
+# ------------------------------------------------------------------------------
+
+test_that("Issue #172: 'never' + comparative scores with expected polarity sign", {
+  skip_if_not_installed("udpipe")
+  skip_if_not_installed("sentimentr")
+  skip_if(is.null(.sp_udpipe_model()), "pinned udpipe model not present")
+
+  norm <- function(t) {
+    s <- score_text_sentiment(t)
+    expect_false(is.null(s))
+    s$normalized
+  }
+  raw <- function(t) {
+    s <- score_text_sentiment(t)
+    expect_false(is.null(s))
+    s$raw
+  }
+
+  # Fixed cases:
+  # "never been better" and "never looked better" score positive
+  expect_gt(norm("She has never been better."), 0)
+  expect_gt(raw("She has never been better."), 0)
+  expect_gt(norm("The roster has never looked better."), 0)
+  expect_gt(raw("The roster has never looked better."), 0)
+
+  # "never been worse" scores negative
+  expect_lt(norm("She has never been worse."), 0)
+  expect_lt(raw("She has never been worse."), 0)
+
+  # Controls:
+  # Non-comparative negations maintain standard negative sign
+  expect_lt(norm("The move is not good for the roster."), 0)
+  expect_lt(norm("The situation is hardly ideal."), 0)
+  expect_lt(norm("She has never been good."), 0)
+
+  # Litotes / other comparative idioms maintain correct positive signs
+  expect_gt(norm("The timing couldn't be better."), 0)
+  expect_gt(norm("The coach couldn't be happier."), 0)
+  expect_gt(norm("The season was not bad."), 0)
+  expect_gt(norm("She has never been bad."), 0)
 })
 
 test_that("Negators and de-amplifiers survive the POS filter", {
