@@ -8,6 +8,8 @@ import {
   PostseasonOpsData,
   StatcastSpatialData,
   PlayerSpatialDictionary,
+  PlayerSpatialMap,
+  PlayerSpatialIndexEntry,
   WorldSeriesData,
 } from './types';
 
@@ -52,6 +54,20 @@ export function getSpatialData(): StatcastSpatialData {
   const filePath = path.join(process.cwd(), 'public', 'data', 'statcast_spatial_analytics.json');
   const fileContent = fs.readFileSync(filePath, 'utf-8');
   return JSON.parse(fileContent) as StatcastSpatialData;
+}
+
+export function getSpatialIndex(): PlayerSpatialIndexEntry[] {
+  const filePath = path.join(process.cwd(), 'public', 'data', 'spatial_index.json');
+  if (!fs.existsSync(filePath)) return [];
+  const fileContent = fs.readFileSync(filePath, 'utf-8');
+  return JSON.parse(fileContent) as PlayerSpatialIndexEntry[];
+}
+
+export function getPlayerSpatialMap(playerId: string): PlayerSpatialMap | null {
+  const filePath = path.join(process.cwd(), 'public', 'data', 'spatial', `${playerId}.json`);
+  if (!fs.existsSync(filePath)) return null;
+  const fileContent = fs.readFileSync(filePath, 'utf-8');
+  return JSON.parse(fileContent) as PlayerSpatialMap;
 }
 
 export function getPlayerSpatialMaps(): PlayerSpatialDictionary {

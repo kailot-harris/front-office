@@ -372,21 +372,56 @@ export_player_spatial_maps <- function(out_dir = file.path(MLB_ROOT_DIR, "web", 
     }
   }
 
-  out_file <- file.path(out_dir, "player_spatial_maps.json")
-  cat(sprintf("Serializing %d player spatial maps to JSON...\n", length(spatial_maps)))
-  jsonlite::write_json(spatial_maps, out_file, pretty = FALSE, auto_unbox = TRUE)
+  # ----------------------------------------------------------------------------
+  # Chunk per-player spatial maps and write lightweight index (Issue #72)
+  # ----------------------------------------------------------------------------
+  spatial_dir <- file.path(out_dir, "spatial")
+  if (!dir.exists(spatial_dir)) {
+    dir.create(spatial_dir, recursive = TRUE, showWarnings = FALSE)
+  }
+
+  cat(sprintf("Serializing %d individual player spatial coordinate files to %s...\n",
+              length(spatial_maps), spatial_dir))
+  for (pid in names(spatial_maps)) {
+    p_file <- file.path(spatial_dir, sprintf("%s.json", pid))
+    jsonlite::write_json(spatial_maps[[pid]], p_file, pretty = FALSE, auto_unbox = TRUE)
+  }
+
+  cat("Building lightweight spatial index...\n")
+  spatial_index <- lapply(spatial_maps, function(sm) {
+    list(
+      player_id = sm$player_id,
+      player_name = sm$player_name,
+      player_type = sm$player_type,
+      team = sm$team,
+      position = sm$position,
+      is_statcast_tracked = sm$is_statcast_tracked,
+      sample_size = sm$sample_size
+    )
+  })
+  spatial_index <- unname(spatial_index)
+
+  index_file <- file.path(out_dir, "spatial_index.json")
+  jsonlite::write_json(spatial_index, index_file, pretty = FALSE, auto_unbox = TRUE)
+
+  # Remove legacy monolithic player_spatial_maps.json if present
+  old_monolith <- file.path(out_dir, "player_spatial_maps.json")
+  if (file.exists(old_monolith)) {
+    unlink(old_monolith)
+  }
 
   elapsed <- as.numeric(difftime(Sys.time(), start_time, units = "secs"))
-  file_size_mb <- file.info(out_file)$size / (1024 * 1024)
-  cat(sprintf("      Saved: %s (%.2f MB)\n", out_file, file_size_mb))
+  index_size_kb <- file.info(index_file)$size / 1024
+  cat(sprintf("      Saved %d player spatial files to: %s\n", length(spatial_maps), spatial_dir))
+  cat(sprintf("      Saved spatial index to: %s (%.1f KB)\n", index_file, index_size_kb))
   cat(sprintf(">>> EMPIRICAL SPATIAL MAPS EXPORT COMPLETED IN %.2f SECONDS\n", elapsed))
   cat("==================================================================\n")
 
-  log_info(sprintf("Exported empirical player spatial maps in %.2fs (%.2f MB, %s).",
-                   elapsed, file_size_mb, out_file),
+  log_info(sprintf("Exported %d chunked spatial maps and index (%.1f KB) in %.2fs.",
+                   length(spatial_maps), index_size_kb, elapsed),
            script = .LOG_SCRIPT)
 
-  invisible(out_file)
+  invisible(index_file)
 }
 
 if (sys.nframe() == 0) {

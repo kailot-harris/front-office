@@ -348,6 +348,8 @@ WEB_JSON_MATCHUPS_INDEX              <- file.path(WEB_DATA_DIR, "matchups_index.
 # Non-members of WEB_DATA_FILES (see above), named here so no caller re-types them.
 WEB_JSON_STATCAST_SPATIAL_ANALYTICS  <- file.path(WEB_DATA_DIR, "statcast_spatial_analytics.json")
 WEB_JSON_PLAYER_SPATIAL_MAPS         <- file.path(WEB_DATA_DIR, "player_spatial_maps.json")
+WEB_JSON_SPATIAL_INDEX               <- file.path(WEB_DATA_DIR, "spatial_index.json")
+WEB_DIR_SPATIAL                      <- file.path(WEB_DATA_DIR, "spatial")
 WEB_JSON_WORLD_SERIES                <- file.path(WEB_DATA_DIR, "world_series.json")
 WEB_JSON_OFFSEASON_MONITOR           <- file.path(WEB_DATA_DIR, "offseason_monitor.json")
 

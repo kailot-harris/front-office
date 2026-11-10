@@ -78,6 +78,7 @@ export const EXPECTED_DATA_FILES = [
 /** Optional Statcast spatial artifacts written when Statcast caches are present, and offseason monitor. */
 export const OPTIONAL_DATA_FILES = [
   'statcast_spatial_analytics.json',
+  'spatial_index.json',
   'player_spatial_maps.json',
   'offseason_monitor.json',
 ] as const;
