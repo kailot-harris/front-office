@@ -178,7 +178,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore }) => 
 
         {/* Navigation Links */}
         <div className="space-y-1">
-          <div className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 font-mono">
+          <div className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 font-mono">
             Main Navigation
           </div>
           {navItems.map((item) => {

@@ -50,7 +50,7 @@ export default function MatchupsPage() {
               here, and labelling every card and table row with its basis, is what
               keeps the page from implying the two numbers are comparable.
             */}
-            <p className="text-slate-500 text-xs mt-2 max-w-3xl font-mono">
+            <p className="text-slate-400 text-xs mt-2 max-w-3xl font-mono">
               Projection basis: {dataset.games_logged_basis} game
               {dataset.games_logged_basis === 1 ? '' : 's'} carry the logged slate model&apos;s own
               pre-game projection — the only basis that is graded for accuracy —
