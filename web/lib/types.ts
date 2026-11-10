@@ -256,3 +256,68 @@ export interface SalaryCapDataset {
   teams: TeamCapProfile[];
   top_league_contracts: LeagueTopContract[];
 }
+
+
+// -----------------------------------------------------------------------------
+// Passing Charts & Throw Maps (NextGenStats Empirical Analytics)
+// -----------------------------------------------------------------------------
+
+export interface PassingZoneMetric {
+  zone: string;
+  attempts: number;
+  completions: number;
+  comp_pct: number;
+  avg_cpoe: number;
+  avg_epa: number;
+  pct_of_passes: number;
+}
+
+export interface PassRecord {
+  air_yards: number;
+  pass_location: 'left' | 'middle' | 'right';
+  complete_pass: 0 | 1;
+  epa: number;
+  cpoe?: number | null;
+  zone: string;
+  week: number;
+  down?: number | null;
+  ydstogo?: number | null;
+  defteam?: string | null;
+  game_id: string;
+}
+
+export interface PassingCatalogEntry {
+  player_id: string;
+  player_name: string;
+  team: string;
+  jersey_number: number | null;
+  headshot_url: string | null;
+  total_passes: number;
+  completions: number;
+  comp_pct: number;
+  avg_cpoe: number;
+  avg_epa: number;
+}
+
+export interface PassingChartData {
+  player_id: string;
+  player_name: string;
+  team: string;
+  jersey_number: number | null;
+  headshot_url: string | null;
+  total_passes: number;
+  completions: number;
+  comp_pct: number;
+  avg_cpoe: number;
+  avg_epa: number;
+  zones: PassingZoneMetric[];
+  passes: PassRecord[];
+}
+
+export interface PassingMetadata {
+  updated_at: string;
+  season: number;
+  total_passes_sampled: number;
+  zones: string[];
+  league_averages: PassingZoneMetric[];
+}

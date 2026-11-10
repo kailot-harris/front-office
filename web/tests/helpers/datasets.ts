@@ -18,11 +18,15 @@ import type {
   VisualMediaItem,
   CoachProfile,
   SalaryCapDataset,
+  PassingCatalogEntry,
+  PassingChartData,
+  PassingMetadata,
 } from '../../lib/types';
 
 export const REPO_WEB_ROOT = path.resolve(__dirname, '..', '..');
 export const DATA_DIR = path.join(REPO_WEB_ROOT, 'public', 'data');
 export const ANIMATIONS_DIR = path.join(REPO_WEB_ROOT, 'public', 'animations');
+export const PASSING_DIR = path.join(REPO_WEB_ROOT, 'public', 'data', 'passing');
 
 /** Every dataset file the site reads, keyed by the `lib/data.ts` getter name. */
 export const DATASET_FILES = {
@@ -35,6 +39,8 @@ export const DATASET_FILES = {
   getVisualMediaIndex: 'visual_media_index.json',
   getCoachingProfiles: 'coaching_profiles.json',
   getSalaryCapData: 'salary_cap_profiles.json',
+  getPassingIndex: 'passing_index.json',
+  getPassingMetadata: 'passing_metadata.json',
 } as const;
 
 export function loadRaw(filename: string): unknown {
@@ -54,6 +60,16 @@ export const diagnostics = () => loadRaw(DATASET_FILES.getDiagnosticsData) as Di
 export const media = () => loadRaw(DATASET_FILES.getVisualMediaIndex) as VisualMediaItem[];
 export const coaching = () => loadRaw(DATASET_FILES.getCoachingProfiles) as CoachProfile[];
 export const salaryCap = () => loadRaw(DATASET_FILES.getSalaryCapData) as SalaryCapDataset;
+export const passingIndex = () => loadRaw(DATASET_FILES.getPassingIndex) as PassingCatalogEntry[];
+export const passingMetadata = () => loadRaw(DATASET_FILES.getPassingMetadata) as PassingMetadata;
+
+export function readQbPassingFile(qbId: string): PassingChartData {
+  const filePath = path.join(PASSING_DIR, `${qbId}.json`);
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`Passing file missing: ${filePath}`);
+  }
+  return JSON.parse(fs.readFileSync(filePath, 'utf-8')) as PassingChartData;
+}
 
 /** Sum helper that keeps float noise out of the assertion messages. */
 export const sumBy = <T,>(rows: readonly T[], f: (row: T) => number): number =>
