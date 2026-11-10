@@ -274,4 +274,14 @@ describe('StandingsClient Projections vs. Reality tracker', () => {
     expect(screen.getByText(/performance delta/i)).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/NaN|undefined/);
   });
+
+  it('updates 8 Divisions view when Projections vs. Reality mode is toggled', () => {
+    const { container } = render(<StandingsClient dataset={dataset} initialTab="divisions" />);
+    const realityBtn = screen.getByRole('button', { name: /projections vs\. reality/i });
+    fireEvent.click(realityBtn);
+
+    expect(screen.getByText(/benchmarked against 17-game pace/i)).toBeInTheDocument();
+    expect(container.textContent).toMatch(/pace/i);
+    expect(container.textContent).not.toMatch(/NaN|undefined/);
+  });
 });
