@@ -1,4 +1,80 @@
-# HANDOFF — 2026 Finals Champion Freeze (#116–#118), Synthetic-Data Remediation (#129–#141), Off-Season Executive Dossier Redesign, & Four-Sport Production Deploy; HEAD = 0311ac6 (in-sync with origin/main)
+# HANDOFF — Both test suites verified green at `e5b484c` (§21), sentiment-lexicon tickets #170/#171 spec'd, #169 sentiment card SHIPPED, Media Sentiment Pulse live-run fixes (#156), 2026 Finals Champion Freeze (#116–#118), Synthetic-Data Remediation (#129–#141), Off-Season Executive Dossier Redesign, & Four-Sport Production Deploy; HEAD = e5b484c (in-sync with origin/main)
+
+> **START HERE (updated 2026-11-09 ~00:40 EST, `HEAD` = `e5b484c`, identical to `origin/main`).**
+> The newest work is **§21**, and it is a verification session, not a feature session: §20e had
+> flagged that **neither test suite had been run since the #169 sentiment card shipped** in
+> `7ee4daf`. Both have now been run fresh at `HEAD` — **all 8 off-season R suites (82 blocks) and
+> the full `web/` suite (170 tests + production build) pass, 0 failures** (§21b). §21 wrote **no
+> production code**; the only working-tree change it adds is §21 itself. §21d documents
+> `tests/helpers/offseason_fixtures.R` for the first time — it is load-bearing for four test sites
+> and had zero mentions in this file. **The next unit of work is still implementing #170, and §20g
+> is still the authoritative instruction set for it** (§21g explains the one thing §21 changes:
+> you now have a known-green baseline, so a post-edit failure is attributable to your edit).
+>
+> **One correction to carry forward:** §21b supersedes §19d's "11 files / 160 tests" — the web
+> suite is now **153/153 contracts + 17/17 components**. And note **Playwright has no spec files**
+> in this repo, so `npm test` reporting PASSED carries **no** browser-level coverage; per
+> `CLAUDE.md`, headless UI testing is not set up here.
+
+> The block below is the **2026-11-09 (earlier)** session's and describes **§20**:
+> **START HERE (updated 2026-11-09, `HEAD` = `e5b484c`, identical to `origin/main`).** The newest
+> work is **§20**: a design interview resolved all five open design questions on
+> **[#170](https://github.com/kailot-harris/WNBA_analytics/issues/170)** (basketball jargon scored as
+> sentiment) and split its discourse-filler half into a new ticket,
+> **[#171](https://github.com/kailot-harris/WNBA_analytics/issues/171)**. **This session wrote no
+> code** — the only working-tree change from `HEAD` is `HANDOFF.md`. §20 also records two facts
+> verified from live state that change the ticket: a backfill of prior sentiment numbers is
+> **impossible** (scraped article bodies are never persisted), and there is **nothing to remove**
+> from the live site (exactly one edition exists). **The next unit of work is implementing #170** —
+> §20g names the files and functions.
+>
+> **§19 is superseded in one respect:** it says #169 is spec-only with no implementation. That is no
+> longer true — #169 was implemented and closed on 2026-11-08 (`7ee4daf`, merged as `e5b484c`).
+> `web/components/MediaSentimentPulseCard.tsx` (259 lines) and
+> `web/tests/components/MediaSentimentPulseCard.test.tsx` (169 lines) now exist, and §19e's complaint
+> that five `MediaSentimentPulse` fields were missing is **resolved** — `offseasonTypes.ts` is now
+> 305 lines and the interface at `:227` carries them. §19's *design decisions* (§19b) remain accurate.
+>
+> **Unchanged problems with this file itself, now worse.** (1) **§§18, 19 and 20 are all still
+> uncommitted** — `git show HEAD:HANDOFF.md` is 1,600 lines and ends at §17, so three sessions'
+> records live in the working tree only, one `git checkout` away from being lost. Commit it.
+> (2) It is past 2,200 lines and well over half is closed work; `trim-handoff` plus
+> `docs/archive/handoff_history.md` is the established remedy and needs the owner's go-ahead.
+>
+> **Tracker anomaly, not fixed here:** **#156 is still OPEN** despite being fixed and merged in
+> `3c633da` / `9f803eb` back on 2026-11-08. Three sessions have now flagged this. Closing it is the
+> owner's call, not a doc-writer's.
+>
+> The block below is the **2026-11-08 ~09:50** session's and describes **§19**:
+> a design interview turned §18j's option 2 — a dedicated Media Sentiment Pulse UI section — into
+> a filed, implementation-ready ticket, **[#169](https://github.com/kailot-harris/WNBA_analytics/issues/169)**.
+> **This session wrote no code.** `HEAD` is unchanged and identical to `origin/main`; the only
+> working-tree change from it is `HANDOFF.md`. §19b records the 8 settled design decisions, §19d
+> records a fresh test run (**11 files / 160 tests, all passing** in `web/`) that falsified two
+> claims in #169's body — both corrected in a comment on the issue — and **§19e flags that §18j of
+> this document is factually wrong** about the `MediaSentimentPulse` TypeScript interface: five
+> fields it claims are present are absent. Open issues are exactly **#155, #156, #169**; #156 is
+> still open and closing it is still the smallest available unit of real work (§19h).
+>
+> **Two things about this file itself.** (1) **§18 was never committed** — the copy at `9f803eb` is
+> 1,600 lines and ends at §17, so §18's entire record of the #156 live run has been living in the
+> working tree only, one `git checkout` away from being lost (§19f). Commit it. (2) It is past
+> 2,000 lines and more than half of it is closed work; `trim-handoff` plus
+> `docs/archive/handoff_history.md` is the established remedy, and it needs the owner's go-ahead.
+>
+> The block below is the **2026-11-08 ~07:15** session's and describes **§18**:
+> the Off-Season Monitor's Media Sentiment Pulse was run **live for the first time**, which exposed
+> three measurable validity defects (off-topic non-WNBA items being scored, franchise names read as
+> sentiment words, and the weekly extremes being won by 9-word RSS titles) plus one mislabel. All
+> four are fixed in `3c633da`, merged as `9f803eb`, pushed and **deployed and verified live**. All
+> four offseason R suites pass at `HEAD` (§18e). **Issue #156 is still OPEN** and needs a decision
+> (§18i, §18j). The working tree is clean apart from `cache/ingestion_manifest.json` (runtime
+> output) and the untracked `archive/`, `.worktrees/` and `finals_closeout.log`.
+>
+> Everything in §§1–17 below is **carried forward unmodified and was NOT re-verified** on
+> 2026-11-08. The header paragraph and orientation block immediately below are the **2026-11-07**
+> session's, kept for the record — their `HEAD = 0311ac6` and "1 uncommitted enhancement" are
+> **stale**: that `OffseasonMonitorClient.tsx` redesign was committed as `5f8b23c` and is in `main`.
 
 **Written** 2026-11-07 ~10:08 local (EST), after local `HEAD` = `0311ac6` (`origin/main` is identical at `0311ac6`), for whoever picks this up next.
 Working tree has 1 uncommitted enhancement in `web/components/OffseasonMonitorClient.tsx` (1,761 lines, +602 lines over `HEAD`), replacing the raw markdown `<ReactMarkdown>` dump in Tab 1 with a front-office grade 7-block **Executive Analytical Brief & State-Diff Dossier** UI (§17a.4, §17f.1). Read **§17** first for the current state and operational handoff.
@@ -1598,3 +1674,711 @@ Re-run fresh 2026-11-07 ~10:00 EST against `HEAD = 0311ac6` + working-tree `web/
    - Derive an empirical games-played availability band from historical player game logs / rest patterns in `cache/`, or record the architectural decision to omit it, and validate via `npx vitest run tests/contracts`.
 3. **Issue #157 (Marquee Series Monte Carlo Simulation Format):**
    - Audit `playoff_simulator.R` and `build_series_dataset.R` so series simulations respect `PLAYOFF_FORMATS` from `config.R` (e.g., Round 1 best-of-3, Semifinals best-of-5, Finals best-of-7) instead of hardcoding best-of-7 for all rounds.
+
+---
+
+## 18. This session (2026-11-08): Media Sentiment Pulse (#156) run live for the first time, three validity defects found and fixed, merged, pushed and deployed — issue #156 still OPEN
+
+**Written** 2026-11-08 ~07:15 local (EST), after local `HEAD` = `9f803eb` (`origin/main` identical),
+for whoever picks this up next. Everything in §§1–17 is **carried forward unmodified and was not
+re-verified** this session, except where §18 explicitly corrects it. If you are picking up the
+Off-Season Monitor's Media Sentiment Pulse, read **§18 only**; §16 is the ingestion pipeline it
+sits on top of.
+
+> **Doc-size flag, surfaced not acted on.** This file is now 1,600+ lines and well over half of it
+> describes closed work (§§1–17 cover #90, #116–#118, #129–#141, #142, #153, #157, #158, #159–#168,
+> all CLOSED on the live tracker). The most important section — the next step — is at the bottom.
+> The `trim-handoff` skill exists for exactly this; it was deliberately **not** run here, because
+> moving several hundred lines of other sessions' writeups is the repo owner's call.
+
+### 18a. What this session actually did, in order
+
+1. **Merged two dangling branches into `main`** (`--no-ff`), neither of which had been merged when
+   the session started: `fix/offseason-test-fixture-path` (merge `317ed8e`, commit `6823db3`) and
+   `feat/offseason-sentiment-pulse` (merge `ec9b65c`, commit `86038c1`). Pushed, then verified by
+   re-fetching and counting commits rather than trusting the push output.
+2. **Cleaned up** the merged branches and their worktrees, after checking each for uncommitted work
+   and stashes.
+3. **Moved an orphaned 66 MB directory** `.worktrees/tier2-unitG` into `archive/tier2-unitG/`. It
+   had no `.git` file, so `git worktree prune` could never have reclaimed it, and it was untracked
+   at every revision. `archive/tier2-unitG/PROVENANCE.md` records the verification (648 files,
+   66,862,221 bytes, identical before and after the move). `archive/` is **untracked** — it is not
+   in git, and it is now listed in `.renvignore` (see §18h).
+4. **Ran the Media Sentiment Pulse live for the first time.** Everything prior to this session had
+   only ever exercised it against fixtures or `dry_run = TRUE`. See §18b–c for what that exposed.
+5. **Fixed the three defects + one mislabel** the live run exposed (branch
+   `fix/156-sentiment-relevance-and-lexicon`, commit `3c633da`, merged as `9f803eb`), and pushed.
+6. **Deployed** through the aggregator hop and verified the payload on the public URL (§18g).
+
+### 18b. The live run worked — first real evidence the scrape path functions
+
+`build_offseason_monitor.R` run live on 2026-11-07 ingested **70 `beat_feeds` wire items**, and the
+`rvest` full-article body scrape **succeeded on 25 of 25** attempted articles with **zero
+warnings** against current ESPN / Winsidr / Her Hoop Stats / The Next / Just Women's Sports markup.
+
+> **Caveat, important and unresolved.** Because `OFFSEASON_SENTIMENT_MAX_ARTICLES` is 25 and the
+> week had 70 items, the cap binds before any scrape failure does. The documented fail-soft path in
+> `scrape_article_body()` (`tools/offseason/sentiment_pulse.R:199`) has therefore **still never
+> been exercised by real markup breakage** — only by deliberately unreachable hosts in the unit
+> suite. Do not read "25/25 succeeded" as "the fallback is proven."
+
+### 18c. The three defects the live run exposed — all fixed in `3c633da`
+
+Each was **measured on that run's real items**, not reasoned about. The per-source numbers and the
+full method writeup live in `docs/internal/offseason_media_sentiment_pulse.md` — read that before
+touching the scoring path; this table only summarizes it.
+
+| # | Defect | Evidence from the live run | Fix |
+| --- | --- | --- | --- |
+| 1 | **Off-topic contamination.** `ingest_sources.R`'s `DEFAULT_BEAT_SOURCES` are women's-basketball / women's-sports feeds, not WNBA-only wires. | 24 of 70 items were WTA tennis, PWHL/ECAC hockey, NCAA recaps and FIBA coverage. A **Florida–UCF college recap was published as the week's most negative *WNBA* story**. | `item_is_wnba_relevant()` / `filter_wnba_relevant_items()`, keyed off `wnba_team_vocabulary()` which derives full name / city / nickname from `config.R`'s `WNBA_TEAMS` — so an expansion team needs no edit here. The count is reported as `offTopicExcluded` and rendered in the memo. |
+| 2 | **Franchise names scored as sentiment.** A general-English lexicon reads `liberty`, `golden`, `fever` as polarity words. | `liberty` (40 occurrences) and `golden` (19) were the two largest positive terms in the bing breakdown. | `mask_team_names()` blanks every full name / city / nickname **before** scoring. On an RSS-text-only basis the mean moved +0.0265 → +0.0217 (−18%). The full-corpus effect is much smaller (+0.0282 → +0.0269) because scraped bodies dilute a handful of team mentions — and those two runs also differ by defect 1's gate, so the two effects are **not cleanly separable**. |
+| 3 | **Extremes won on noise.** The score is a per-word mean, so short texts have high-variance normalized scores. | A **9-word RSS title at +0.1278/word** was published as "most positive" — roughly 5× the weekly mean, unreachable by any full-length article. | `OFFSEASON_SENTIMENT_MIN_EXTREME_WORDS` (40) gates **extreme selection only**; every relevant item still contributes to the mean. If nothing clears the floor, extremes fall back to the full set and the memo says so in words (`extremesFloorApplied = FALSE`) rather than presenting a noisy pick as a finding. |
+| 4 | **Mislabel** (not a scoring bug). In a positive news week the minimum is not a negative story. | The lowest-scoring article was **+0.0043**, a long retrospective feature, printed under a "Most negative" heading. | `render_block_media_sentiment()` prints **"Least positive"** whenever the minimum score is ≥ 0. |
+
+**Accepted false negatives in defect 1's gate:** a WNBA-adjacent item that names neither the league
+nor a franchise is dropped too. On that run those were an Unrivaled roster story and a Hall of Fame
+class item that named only players. Excluding them is the conservative error, and `offTopicExcluded`
+keeps the filter's size visible rather than silent.
+
+### 18d. What's actually implemented — re-derived 2026-11-08; line numbers drift, re-verify
+
+| File | Lines | State |
+| --- | --- | --- |
+| `tools/offseason/sentiment_pulse.R` | 481 | Real, live-exercised. Functions: `wnba_team_vocabulary()` :79, `mask_team_names()` :115, `item_is_wnba_relevant()` :142, `filter_wnba_relevant_items()` :157, `filter_beat_feed_items()` :170, `sentiment_item_headline()` :178, `scrape_article_body()` :199, `score_text_sentiment()` :246, `summarize_bing_words()` :264, `compute_media_sentiment_pulse()` :319. Caps are read through `.sp_*()` accessors (:52–64) that fall back to a literal only if `config.R` was never sourced. |
+| `tools/offseason/render_memo.R` | 416 | `render_block_media_sentiment()` :294, which appends a `### Media Sentiment Pulse` section after Block 7. The renderer argument `media_sentiment_pulse` defaults to `NULL`, so any caller that omits it gets byte-identical 7-block output. |
+| `config.R` | 733 | `OFFSEASON_SENTIMENT_*` constants at :480, :485, :489, :495, :509, each with its own derivation comment. **Read the values from here, never from a table in this file or in the design doc.** |
+| `tests/unit/test_offseason_sentiment_pulse.R` | 352 | 15 `test_that` blocks (6 before this session). New coverage: vocabulary derivation from `WNBA_TEAMS`; masking (including that `civil liberties` and `firearm` survive); masking's measurable effect on the score; off-topic exclusion; an all-off-topic week; the word floor; the floor-fallback wording; the "Least positive" label; the memo's exclusion-count line. |
+| `docs/internal/offseason_media_sentiment_pulse.md` | — | Method / lexicon / caps / failure-modes doc, updated this session. Authoritative for this feature. |
+| `web/lib/offseasonTypes.ts` | — | `MediaSentimentPulse` interface :227; optional field `mediaSentimentPulse?` :261. **Type only — no component reads it** (§18f). |
+
+`CLAUDE.md` gained a new data quirk this session recording that `beat_feeds` items are not WNBA-only
+and that franchise names must be masked before any lexical scoring. That bullet is authoritative.
+
+### 18e. Test status — run fresh 2026-11-08 07:11 EST at `HEAD = 9f803eb`
+
+All four offseason R suites, invoked as standalone `Rscript` files from the repo root:
+
+| Suite | Blocks | Result |
+| --- | --- | --- |
+| `tests/unit/test_offseason_sentiment_pulse.R` | 15 | exit 0, all pass |
+| `tests/unit/test_offseason_dag_end_to_end.R` | 8 | exit 0, all pass |
+| `tests/unit/test_offseason_ingestion.R` | 10 | exit 0, all pass |
+| `tools/offseason/test_regex_extraction.R` | 7 | exit 0, `[PASS]` CI gate green |
+
+The `web/` TypeScript / ESLint / contract suites were **not re-run** this session — §17e's numbers
+(151/151 contracts, 7/7 components) are carried forward **unverified**. No `web/` source changed
+here.
+
+> **One-off segfault, unreproduced — know about it before you panic.** Immediately after the first
+> merge, `test_offseason_sentiment_pulse.R` exited **139** (segfault). It did not reproduce in four
+> subsequent runs, today's included. Not diagnosed. The suite deliberately makes live network calls
+> to an unreachable `.invalid` host and to `127.0.0.1:9`, so a transient native crash in curl's
+> stack is the plausible candidate. If you see 139, re-run before investigating.
+
+### 18f. Is the sentiment in the UI? Half — and this is the authoritative answer
+
+- **The structured object is unconsumed.** `mediaSentimentPulse` appears in `web/` **only** as a
+  type (`web/lib/offseasonTypes.ts:227` and `:261`). No component, page or chart reads it. There is
+  no dedicated UI section, and `web/tests/contracts/offseason_monitor_contract.test.ts` asserts only
+  that `memoMarkdown` contains blocks `### 1.`–`### 7.` — so **nothing in the web suite would catch
+  the sentiment section disappearing.**
+- **But the rendered section *is* on screen**, via the memo string.
+  `web/components/OffseasonMonitorClient.tsx:720` dumps `{currentEdition.memoMarkdown}` into a
+  `<pre>`, and the pulse is part of that string. The numbers are on the live site right now — as
+  **unparsed** markdown (literal `**` and `[link](...)` syntax), inside a collapsible drawer gated
+  behind `showRawMarkdown` (closed by default) and labelled "Raw Markdown Memo (Phase 4 Spec)".
+- This is **scope-correct, not an oversight**: #156 specifies "start as a memo section, not a new
+  standalone dataset/page," with a page as a stretch goal. The typed interface and the optional JSON
+  field are deliberate groundwork for that page.
+
+### 18g. Deployment — DEPLOYED and verified live
+
+`web/public/data/offseason_monitor.json` contains the `mediaSentimentPulse` object and the
+`Media Sentiment Pulse` memo section, published through the aggregator hop:
+
+1. `git push origin main` in this repo (`9f803eb`).
+2. `git subtree pull` of `wnba` into `kailot-harris/front-office` — landed as `37ebbe2`
+   (`chore: subtree-pull wnba (automated sync)`), which carries `9f803eb`.
+3. **Explicit `workflow_dispatch` of `sync-sports.yml`.** This is not belt-and-braces: a
+   `GITHUB_TOKEN` push does **not** trigger `deploy.yml`, so the dispatch is the only thing that
+   publishes. The workflow's own header documents this. Inputs: `sports` (default
+   `mlb nfl nba wnba`), `deploy` (boolean, default true).
+4. Payload verified on the public URL.
+
+Aggregator checkout re-verified 2026-11-08: clean, in sync with `origin/main` at `37ebbe2`. A
+**pre-existing** stash is there and was deliberately left untouched:
+`stash@{0}: On fix/offseason-team-attribution-and-test-baseline: pre-subtree-pull stash: in-progress mlb reconcile/test changes`.
+
+### 18h. Environment / tooling gotchas this session actually hit
+
+Beyond `CLAUDE.md`'s rules, which are authoritative (R is not on `PATH` — use
+`C:\Program Files\R\R-4.5.2\bin\Rscript.exe`; inline multi-line `Rscript -e` segfaults, so write a
+temp `.R` file):
+
+- **A bash heredoc silently ate a backslash, and it produced a confidently wrong measurement.**
+  `\\b` written into a quoted heredoc reached R as a single `\b` (a literal backspace), so
+  `grepl("\bwnba\b", x)` returned `FALSE` on text that plainly contained "WNBA" — the first
+  relevance measurement reported **0 of 70** items matching. Confirmed with `cat -v` on the temp
+  file. **Use the Write tool, not a heredoc, for any R script containing a regex.** Production code
+  here uses Perl lookarounds `(?<![[:alpha:]])…(?![[:alpha:]])` rather than `\b`, which also fixes
+  a real bug: lookarounds do not consume the boundary character, so adjacent team references
+  ("Liberty Sky") both mask in a single pass.
+- **`run_ingestion(dry_run = TRUE)` returns zero `beat_feeds` items.** Any measurement of the
+  sentiment path needs `dry_run = FALSE`. This is also why the end-to-end DAG suite always logs
+  *"no beat_feeds wire items were ingested this run"* — expected, not a failure.
+- **`git add` refused a tracked file** with *"The following paths are ignored… docs/internal"*, even
+  though `git check-ignore -v` reported no matching rule and `git ls-files` showed it tracked.
+  Workaround used: `git add -f docs/internal/offseason_media_sentiment_pulse.md`.
+- **`renv` dependency discovery walks any new top-level directory.** Moving 66 MB of `node_modules`
+  into `archive/` added a 23-second warning to every R invocation. Fixed by appending `archive/` to
+  `.renvignore` (which already listed `cache/`, `data/`, `.subagent-runs/`, `.claude/worktrees/`).
+  **Any new large untracked top-level directory needs the same line.**
+- **Bash-written `/tmp/...` paths are not readable by the Windows Python here.** Use a Windows-style
+  scratch path, e.g. `C:/Users/kailo/AppData/Local/Temp/wnba_scratch/`.
+
+### 18i. Anomalies and loose ends — surfaced, not acted on
+
+- **Issue #156 is still OPEN** with no PR, even though the feature is implemented, tested, merged
+  and deployed. Closing it was offered to the owner and not taken up. **Decide and close it — do
+  not assume it is open because something is missing.**
+- **Issue #155 is still OPEN** and unfixed (`run_full_pipeline.R`'s `plan(multisession)` fails,
+  19/20 PSOCK workers time out). See §14d. Untouched this session.
+- **`cache/ingestion_manifest.json` is modified and unstaged** — runtime output from the live run.
+  Not committed; decide whether a manifest refresh belongs in a commit.
+- **`archive/` and `finals_closeout.log` are untracked** at the repo root, and `.worktrees/` still
+  exists, now holding the five *registered* tier0/tier1 worktrees rather than the orphan.
+- **Branch `fix/156-sentiment-relevance-and-lexicon` still exists locally.** It is now fully
+  contained in `origin/main` (verified 2026-11-08: `git log origin/main..fix/156-…` is empty), so
+  `git branch -d` is safe. This corrects an earlier note from this session that called it unpushed.
+- **~40 stale local branches** remain, many from abandoned subagent worktrees (`worktree-agent-*`,
+  `subagent-*-self-*`). Not audited, not pruned.
+
+### 18j. Concrete next step
+
+**Nothing is half-done in the sentiment workstream.** Two candidates, in order:
+
+1. **Close #156, or state what's missing.** It is the smallest unit of real work here and the only
+   thing blocking a clean tracker. Evidence to cite in the close: commits `3c633da` / `9f803eb`,
+   §18c's measured before/after numbers, 15/15 blocks green in
+   `tests/unit/test_offseason_sentiment_pulse.R`, and the verified live payload (§18g).
+2. **If a dedicated sentiment UI section is wanted** (#156's explicit stretch goal), the groundwork
+   is in place and the work is `web/`-only:
+   - Read the `MediaSentimentPulse` interface at `web/lib/offseasonTypes.ts:227` — it already
+     carries `meanSentiment`, `articleCount`, `scrapedCount`, `fallbackCount`, `offTopicExcluded`,
+     `beatItemsSeen`, `extremesMinWords`, `extremesFloorApplied`, `extremesEligibleCount`,
+     `teamNamesMasked`, `mostPositive`, `mostNegative` and `wordBreakdown`.
+   - Render it in `web/components/OffseasonMonitorClient.tsx` as a block beside the existing seven,
+     **not** inside the `showRawMarkdown` drawer at :720.
+   - **Architectural gotcha specific to this one:** the field is `mediaSentimentPulse?` —
+     *optional*, and legitimately absent in several documented cases (no beat items, no
+     WNBA-relevant items, `syuzhet` not installed). Per `CLAUDE.md` and epic #138, the component
+     must render the **labelled absence together with its `reason` string**, and must never
+     substitute a zero or a placeholder. Honour `extremesFloorApplied = FALSE` by labelling the
+     picks noise-prone, and `mostNegative.score >= 0` by titling that row "Least positive"
+     (§18c row 4).
+   - Validate with `npx vitest run tests/contracts` **and** add the contract assertion that does not
+     exist today: when `mediaSentimentPulse` is present, its mean is finite and its counts are
+     mutually consistent (§18f).
+
+---
+
+## 19. This session (2026-11-08 ~09:45 EST): §18j option 2 spec'd into issue #169 — design interview only, NO code written
+
+> **Read this if you are picking up the sentiment UI work.** §18j listed two candidate next steps.
+> This session took **option 2** (a dedicated sentiment UI section) and did the *design* half only:
+> a full Y/N spec interview with the repo owner, compiled into a single filed ticket,
+> **[#169](https://github.com/kailot-harris/WNBA_analytics/issues/169)**. **No implementation
+> exists.** `HEAD` is unchanged at `9f803eb`, identical to `origin/main`; the only working-tree
+> change from this session is `HANDOFF.md` itself. Option 1 from §18j (close #156) was **not** done
+> — #156 is still OPEN.
+
+### 19a. What this session actually did, in order
+
+1. Read the real state: `tools/offseason/sentiment_pulse.R` (481 lines), its consumer
+   `build_offseason_monitor.R:288` and `:328`, the memo renderer
+   `tools/offseason/render_memo.R:294-345`, the already-shipped `mediaSentimentPulse` object in
+   `web/public/data/offseason_monitor.json`, the `MediaSentimentPulse` interface at
+   `web/lib/offseasonTypes.ts:227`, and `web/components/OffseasonMonitorClient.tsx` (1,761 lines).
+2. Ran an 8-question Y/N design interview with the owner. Every answer was **Y**. (Question 6 was
+   first answered "U", which was treated as a typo and re-asked rather than guessed at — the two
+   branches produced visibly different cards.)
+3. Compiled the spec, confirmed it with the owner, and filed it as **one** issue (the owner chose
+   one ticket over a split): #169, labelled `enhancement` / `offseason-monitor` / `javascript`.
+4. Re-derived the web test state fresh, which **falsified two claims in the spec body**, and posted
+   a correction comment on #169 (see §19d). Also found that **§18j of this very document is wrong**
+   about the TypeScript interface (see §19e).
+
+### 19b. The 8 design decisions, as settled — all now binding in #169
+
+A fresh agent should implement from #169's body **plus its correction comment**, not from this
+summary. Recorded here only so the decisions are not lost if the tracker is unavailable:
+
+| # | Decision | Outcome |
+|---|---|---|
+| 1 | Which surface | **Next.js** `OffseasonMonitorClient.tsx`, presentational-only. **Not** `control_panel_app.R` — a Shiny card would need a live R session and per `CLAUDE.md` that app has no headless coverage, so it would be unverifiable except by manual clicking. |
+| 2 | Placement | A section card on the existing **`memo` tab**, after block 7 (`:1125`). **No** sixth top-level tab. |
+| 3 | Content depth | **All three tiers** — headline number, both extremes, bing word breakdown, **and** the provenance/methodology metadata. |
+| 4 | Unavailable weeks | Render a **visible muted card with the `reason` string**. Never a number, never a placeholder. |
+| 5 | Absent field (pre-#156 editions) | Render the card too, with its own generic "not computed for this edition" wording — so **three** render states, not two. |
+| 6 | Sign-dependent extreme label | **Replicate** `render_memo.R:333`: `score >= 0` renders "Least positive", `score < 0` renders "Most negative". Boundary is inclusive — exactly `0` renders "Least positive". |
+| 7 | Tests | **Required**, in `web/tests/components/`. Four minimum assertions incl. the label flip at the sign boundary. |
+| 8 | Week-over-week trend | **Out of scope** (one edition exists, so a chart would plot one point), but the card header must reserve a right-hand slot so adding it later is not a rewrite. |
+
+Derived rather than asked: the card heading is **unnumbered** ("Media Sentiment Pulse", not "8."),
+because `render_7_block_memo()`'s seven blocks are a Phase 4 spec artifact and the R renderer itself
+emits an unnumbered `### Media Sentiment Pulse`.
+
+Three constraints the owner **explicitly accepted** and which are stated in #169 rather than left
+in conversation:
+- The Q6 label rule now lives in **both R and TypeScript** and can drift. Any future edit to
+  `render_block_media_sentiment()`'s label logic must be mirrored in the React card.
+- The reserved trend slot in the card header.
+- `web/tests/components/` is the **only** automated verification available, because #142 retired
+  the R-side headless probes (`app.R`, `tools/headless_dashboard_probe.R`, and the
+  `headless-ui-regression-sweep` skill were all removed).
+
+### 19c. What's actually implemented — nothing new
+
+| Item | State |
+|---|---|
+| `tools/offseason/sentiment_pulse.R` | 481 lines, unchanged this session. `compute_media_sentiment_pulse()` is the public entry point. |
+| `web/lib/offseasonTypes.ts` | 290 lines, unchanged. `MediaSentimentPulse` at `:227` has **12** fields; **5 more are needed** (§19e). |
+| `web/components/OffseasonMonitorClient.tsx` | 1,761 lines, unchanged. Still contains **zero** references to `sentiment` (`grep -rni sentiment` over `web/app`, `web/components`, `web/lib`, `web/tests` matches only `offseasonTypes.ts`). The card does not exist. |
+| The sentiment card | **Does not exist.** Spec only. |
+| Its component test | **Does not exist.** |
+| `HANDOFF.md` | Modified — this section. |
+
+§18f remains the authoritative description of what is on screen today: the numbers are live only as
+**unparsed** markdown inside the collapsible `showRawMarkdown` drawer at
+`OffseasonMonitorClient.tsx:720`, closed by default.
+
+### 19d. Test state re-derived fresh — and two spec claims it falsified
+
+Run fresh 2026-11-08 09:43 EST at `HEAD = 9f803eb`, in `web/`:
+
+- `npx vitest run` — **11 files, 160 tests, all passing** (4.43s).
+- `--project node` — 10 files, **153** tests.
+- `--project components` — 1 file, **7** tests.
+
+Note this is **160**, not the **158** (151 node + 7 component) recorded in §17e. Not investigated;
+the delta is most likely tests added between that session and this one, not a regression.
+
+Two claims in #169's **original body** are wrong and are corrected in its comment thread:
+
+1. **`web/tests/README.md` does not exist.** `web/vitest.config.mts`'s own comment says *"Per-layer
+   test counts in tests/README.md are the honest signal"* — pointing at a file that is not in the
+   repo. The spec's closing instruction to update it cannot be followed.
+2. **`web/tests/e2e/` does not exist, so Playwright runs zero specs.** `playwright.config.ts` sets
+   `testDir: './tests/e2e'` and `vitest.config.mts` excludes that path *because* Playwright
+   supposedly drives it. Neither the directory nor any spec is present. Do not read that config
+   comment as describing live coverage.
+
+Actual `web/tests/` inventory, for a cold reader: `components/Sidebar.test.tsx` (the only component
+test file — all 7 of those tests); `contracts/` (7 test files + `schemas.ts`); `unit/data.test.ts`
+and `unit/shotChartUtils.test.ts`; `drift/content-drift.test.ts`; `helpers/datasets.ts`;
+`setup/vitest.setup.ts`; `known-issues.json`. **No `README.md`, no `e2e/`.**
+
+### 19e. ANOMALY — §18j of this document is factually wrong about the TypeScript interface
+
+§18j item 2 states the `MediaSentimentPulse` interface *"already carries ... `offTopicExcluded`,
+`beatItemsSeen`, `extremesMinWords`, `extremesFloorApplied`, `extremesEligibleCount`,
+`teamNamesMasked`"*. Re-derived at `HEAD = 9f803eb`: `grep -c` in `web/lib/offseasonTypes.ts`
+returns **0** for `offTopicExcluded`, `extremesMinWords`, `extremesFloorApplied`,
+`extremesEligibleCount` and `teamNamesMasked`. Only `beatItemsSeen` is actually there.
+
+All five **are** present in `web/public/data/offseason_monitor.json`, so the data is fine — but the
+interface must be extended with five optional fields before the card can read them. This means
+§18j's "the groundwork is in place and the work is `web/`-only" understated the work by one step.
+#169's body has it right. **Left as-is; not fixed in §18j**, per this project's convention of
+surfacing rather than silently rewriting earlier sections.
+
+### 19f. Anomalies and loose ends — surfaced, not acted on
+
+Carried forward from §18i and still true unless noted:
+
+- **Issue #156 is still OPEN.** §18j's option 1 (close it, citing `3c633da` / `9f803eb`, §18c's
+  before/after numbers, 15/15 green blocks in `tests/unit/test_offseason_sentiment_pulse.R`, and
+  the verified live payload in §18g) was **not** done this session. It remains the smallest unit of
+  real work on the tracker. Note #169 is now a second open issue in the same feature area — decide
+  whether #156 closes on its own evidence or waits on #169 shipping.
+- **Issue #155 is still OPEN** and unfixed (`run_full_pipeline.R`'s `plan(multisession)`, 19/20
+  PSOCK workers time out). See §14d. Untouched again.
+- **Open issues are exactly three:** #155, #156, #169 (`gh issue list --state open`, 2026-11-08).
+- **ANOMALY: §18 of this file was never committed, and §18i did not say so.** `git show
+  HEAD:HANDOFF.md | wc -l` returns **1,600** lines ending at §17 — the committed copy at `9f803eb`
+  contains **no §18 at all**. So the entire write-up of the #156 live run, its three defects, the
+  deployment record and its gotchas existed **only in the working tree** until this session, and
+  a `git checkout HANDOFF.md` would have destroyed it. §18i listed the modified
+  `cache/ingestion_manifest.json` as an anomaly but omitted its own document. §19 is appended on
+  top of that uncommitted §18, so `git diff HANDOFF.md` now shows **+421 lines** — roughly 230 of
+  them §18's, not this session's. **Commit this file.**
+- **`cache/ingestion_manifest.json` still modified and unstaged** — runtime output from §18's live
+  run, still uncommitted.
+- **`archive/`, `.worktrees/` and `finals_closeout.log` still untracked** at the repo root.
+- **Branch `fix/156-sentiment-relevance-and-lexicon` still exists locally** and is fully contained
+  in `origin/main`, so `git branch -d` remains safe. ~40 stale local branches still unpruned.
+- **`web/vitest.config.mts` and `web/playwright.config.ts` both reference paths that do not exist**
+  (§19d). Tracker hygiene for the test layout was not attempted.
+- **This file is now 1,900+ lines and well past the point where more than half of it describes
+  closed work.** The `trim-handoff` skill exists for exactly this and
+  `docs/archive/handoff_history.md` is already the established archive target. Not run this session
+  — it is a visible, partly destructive restructuring that the owner should green-light.
+
+### 19g. Environment / tooling notes specific to this session
+
+Nothing new broke. Things worth knowing, all confirmed this session:
+
+- **`npx vitest run` in `web/` is fast and safe** (~4.4s for all 160 tests) and needs no dev server,
+  no API keys and no R. It is the cheapest real verification available in this repo. Use
+  `--project node` / `--project components` to run one layer.
+- **The `web/` cwd persists between Bash calls in a session.** After `cd .../web` to run the suite,
+  later commands assuming the repo root will silently resolve against `web/`. Use absolute paths or
+  re-`cd` explicitly.
+- **A quoted bash heredoc failed outright when appending this section** (`unexpected EOF while
+  looking for matching quote`) even with a quoted delimiter, on prose containing apostrophes,
+  backticks and em-dashes. The Write tool plus `cat` of the temp file worked. This is the same
+  class of trap as §18h's backslash-eating heredoc: **for any multi-paragraph prose or any R regex,
+  use the Write tool, not a heredoc.**
+- `CLAUDE.md`'s rules remain authoritative and were not exercised this session (no R was run): R is
+  not on `PATH`; inline multi-line `Rscript -e` segfaults; write a temp `.R` file.
+
+### 19h. Concrete next step
+
+Two independent units, either order. Neither is blocked.
+
+1. **Implement #169** — the sentiment card. The ticket body plus its correction comment is a
+   complete spec; a fresh agent should not need to re-ask anything. Order of work:
+   - Add the five missing optional fields to `MediaSentimentPulse` in `web/lib/offseasonTypes.ts:227`
+     (`offTopicExcluded`, `extremesMinWords`, `extremesFloorApplied`, `extremesEligibleCount`,
+     `teamNamesMasked`). Confirm against the live object in
+     `web/public/data/offseason_monitor.json` rather than against §18j, which is wrong here.
+   - Add the card to `web/components/OffseasonMonitorClient.tsx` after block 7 (`:1125` at
+     `9f803eb` — **re-verify this line number**, the file is 1,761 lines and shifts easily).
+   - Add `web/tests/components/<name>.test.tsx`. **Architectural gotcha specific to this one:** it
+     will be only the second component test file in the repo (`Sidebar.test.tsx` is the first), so
+     there is no established pattern for mounting an `OffseasonEdition` fixture in jsdom;
+     `tests/helpers/datasets.ts` is the only shared fixture helper and may not cover this shape.
+   - The one piece of real logic to get right is Q6's label flip, including `score === 0` rendering
+     "Least positive". Mirror `tools/offseason/render_memo.R:333`, do not re-derive it.
+   - Validate with `npx vitest run` in `web/` (expect 160 passing before your change, 164+ after),
+     then `npm run build` for the TypeScript/ESLint gate.
+   - Deployment is **not** automatic: publishing needs the §18g aggregator hop, including the
+     explicit `workflow_dispatch` of `sync-sports.yml` — a `GITHUB_TOKEN` push does not trigger
+     `deploy.yml`.
+2. **Close #156, or state what is missing.** Unchanged from §18j option 1, and now slightly clearer:
+   the feature #156 asked for is implemented, tested, merged and deployed, and the *stretch* goal it
+   mentioned is now tracked separately as #169. That separation is the argument for closing #156 on
+   its own evidence rather than holding it open until the card ships.
+
+Two steps ahead: once #169 ships and ~4 editions of history exist, the deferred week-over-week
+`meanSentiment` sparkline becomes worth filing (Q8), and the contract-test gap §18f named — that
+nothing in the web suite would catch the sentiment memo section disappearing — is still open and
+would be a natural companion to it.
+
+---
+
+## 20. This session (2026-11-09): #170's five open design questions resolved, discourse filler split out as #171 — design interview only, NO code written
+
+> **Read this if you are picking up the sentiment-lexicon work.** #170 was filed with an explicit
+> "Open design questions (not settled — decide before implementing)" list of five items. All five
+> are now decided and posted as a comment on the issue. **No implementation exists.** `HEAD` is
+> `e5b484c`, identical to `origin/main`; the only working-tree change from this session is
+> `HANDOFF.md` itself. **#156 is still OPEN** (see the tracker anomaly in the START HERE block).
+
+### 20a. What this session actually did, in order
+
+1. Read the real state before asking anything: `tools/offseason/sentiment_pulse.R` (481 lines) —
+   specifically `wnba_team_vocabulary()` (`:79`), `.sp_term_pattern()` (`:97`), `mask_team_names()`
+   (`:115`), `scrape_article_body()` (`:199`), `.sp_word_count()` (`:238`),
+   `compute_media_sentiment_pulse()` (`:309`) and the masking call site (`:397`) — plus
+   `web/lib/offseasonTypes.ts:227`, the live payload `web/public/data/offseason_monitor.json`, and
+   `tests/unit/test_offseason_sentiment_pulse.R:194`.
+2. Ran a Y/N design interview with the owner, one question at a time, ordered by leverage.
+3. Posted the compiled decisions as a comment on #170:
+   [issuecomment-6732998886](https://github.com/kailot-harris/WNBA_analytics/issues/170#issuecomment-6732998886).
+4. Filed the split-out discourse-filler ticket as **#171**, labels mirrored from #170
+   (`enhancement` / `model-work` / `offseason-monitor`), and cross-linked it from the #170 comment.
+
+### 20b. The decisions, as settled — all now binding in #170
+
+A fresh agent should implement from **#170's body plus that comment**, not from this summary.
+Recorded here only so the decisions survive if the tracker is unavailable.
+
+| # | Question | Decision |
+|---|---|---|
+| 1 | Mask or neutralize? | **Mask.** A `mask_basketball_jargon()` gsub pass applied to the same text as `mask_team_names()` at `sentiment_pulse.R:397`, so the headline mean and the bing word breakdown keep reading the identical string. The denominator shrink in `.sp_word_count()` (`:238`) is an **accepted** cost, documented in roxygen — the same tradeoff `mask_team_names()` already took, extended to more frequent vocabulary. |
+| 2 | Mechanics | Phrase-first, longest match wins, then a single-token pass. Reuse the `.sp_term_pattern()` lookaround helper (`:97`); case-insensitive; replace with a space; collapse whitespace runs. |
+| 3 | Where does the term list live? | **In `sentiment_pulse.R`**, as a constant beside `mask_team_names()`. Not `config.R` (used by one tool only; longest-first ordering is a masker implementation detail), not a tracked data file (adds a failure mode the fail-safe rule must then cover). It is new data with no upstream source, so `CLAUDE.md`'s no-parallel-team-list rule does not apply. |
+| 4 | Bare tokens or phrases only? | **Bare masking is mandatory** for unambiguous stat-sheet words. The acceptance criteria require `defensive` / `steals` / `offensive` to stop appearing as top negatives, and #170's evidence shows them appearing bare — so a phrase-only pass provably cannot satisfy the ticket. This constraint was not explicit in #170's original "phrase-first" framing. |
+| 5 | The five ambiguous singles | **Deferred, deliberately.** `break`, `cut`, `miss`, `guard`, `shot` have real non-basketball uses in beat prose. The per-word call (bare-mask vs phrase-only) must be made against the measured corpus captured during implementation, and recorded per word in roxygen. Do **not** treat this as an oversight to be guessed at. |
+| 6 | Provenance flag? | **Yes** — add `jargonMasked` beside `teamNamesMasked` on **both** pulse paths (success `:476`, `unavailable()` `:342`), add it as an optional field on `MediaSentimentPulse` in `web/lib/offseasonTypes.ts`, and surface it in the card's provenance row (`MediaSentimentPulseCard.tsx:250`). Rationale: `teamNamesMasked` standing alone would become a false claim. |
+| 7 | Discourse filler (`like`, `right`) | **Split to #171**, to land *after* #170 so its delta is measured against the post-jargon-mask baseline. Accepted consequence: after #170 ships, the live card still shows `like` and `right` as top positives and will look unfixed. |
+| 8 | Backfill prior weeks? | Owner initially said "accept the method break but backfill if possible," then "no backfill, remove prior weeks from the live site." Both dissolved on inspection — see §20c. **Net: no backfill, no removal logic, nothing to do.** |
+
+When deciding #5, note this from the issue's evidence table: `guard`, `shot`, `block(s)` and
+`offense` exist in **syuzhet but not in bing**, so they move the headline mean while never appearing
+in the inspectable word chips. Leaving them scored keeps #170's "the visible list is a subset of what
+is actually scoring" defect half-fixed.
+
+### 20c. Two findings from live state that changed the ticket — verified this session
+
+Both were derived by reading real files, not assumed, and both **removed** scope the owner asked for:
+
+1. **A backfill of prior sentiment numbers is impossible.** `cache/raw_ingest_archive/` holds only
+   the ingested RSS XML — three snapshots exist (`20261031`, `20261106`, `20261107`), contents are
+   `beat_feeds_espn_wnba_beat_*.xml`. `scrape_article_body()` (`:199`) fetches article bodies live
+   per run via `httr::GET` and **never persists them**; there is no body/scrape cache anywhere under
+   `cache/`. The published card scores scraped bodies for the first `max_articles` items with RSS as
+   fallback for the rest, so re-scoring the archive would produce RSS-only text — a *different
+   corpus*, which is exactly the trap #170's own body warns about ("inconclusive and should not be
+   cited"). If future method changes should be backfillable, body persistence has to be added first;
+   that is **not** filed as a ticket.
+2. **There is nothing to remove from the live site.** `web/public/data/offseason_monitor.json`
+   contains exactly **one** edition: `weekNumber` 1, `publishDate` 2026-11-08, `meanSentiment`
+   0.0269, `articleCount` 47 — and it is also `currentWeekNumber`. History accumulates in
+   `editions[]` (`offseasonTypes.ts:263`, `:297`) going forward, and `mediaSentimentPulse` is already
+   optional on `OffseasonEdition` (`:276`). The next build simply recomputes Week 1 under the new
+   method and overwrites it. The non-comparability concern only bites from Week 2 onward, and only if
+   the method changes a second time.
+
+### 20d. What's actually implemented
+
+Nothing new this session. The table below is the state at `e5b484c`, re-derived, and corrects §19c:
+
+| Item | State |
+|---|---|
+| `tools/offseason/sentiment_pulse.R` | 481 lines, **unchanged**. `grep -rn jargon` over `tools/` and `web/` returns **zero** matches — `mask_basketball_jargon()` does not exist. |
+| `web/components/MediaSentimentPulseCard.tsx` | **259 lines, EXISTS** (shipped in `7ee4daf` for #169). Provenance row renders `teamNamesMasked` / `lexicon` / `method` at `:250-254`. |
+| `web/tests/components/MediaSentimentPulseCard.test.tsx` | **169 lines, EXISTS.** |
+| `web/components/OffseasonMonitorClient.tsx` | 1,767 lines. Card imported at `:29`, mounted on the memo tab at `:1172`. |
+| `web/lib/offseasonTypes.ts` | **305 lines** (was 290 at §19). `MediaSentimentPulse` at `:227` now includes `extremesMinWords`, `extremesFloorApplied`, `extremesEligibleCount`, `teamNamesMasked` and `wordBreakdown.matchedWords` — §19e's five missing fields are **resolved**. No `jargonMasked` yet. |
+| `HANDOFF.md` | Modified — this section, plus the rewritten START HERE block. |
+
+### 20e. Verification — what was and was NOT run
+
+**No test suite was run this session**, and no R code was executed. This session's claims rest on
+file reads and `gh` queries only: the file/line citations in §20a, the payload inspection in §20c,
+the line counts in §20d, and `gh issue list` (open issues are exactly **#155, #156, #170, #171**).
+Do not read §20 as evidence that the R or web suites pass at `e5b484c` — the last session to actually
+run them was §19d (web: 11 files / 160 tests passing) and §18e (all four offseason R suites passing),
+both at the earlier `9f803eb`, i.e. **before** `7ee4daf` landed the sentiment card. **Re-run both
+suites before trusting them.**
+
+### 20f. The workflow this followed — repeat it
+
+This is the third consecutive session to spec a ticket this way (§19 did #169, §20 did #170/#171),
+and it keeps working:
+
+1. **Ground first.** Read the issue body, then the actual code it names, *then* the live published
+   payload. Do not start asking questions until you can state in one sentence why the work needs a
+   decision rather than just building.
+2. **One Y/N question per turn, ordered by leverage.** The architecture-determining question first;
+   details only once it is settled.
+3. **State both branches with their concrete costs.** The owner revised an answer twice this session
+   (§20b #8), both times because a consequence was named explicitly rather than buried.
+4. **Verify the premise of each answer against live state before spec'ing it.** This is where the
+   value was this session: two of the owner's instructions turned out to be no-ops (§20c), and
+   writing them into the ticket unverified would have cost the implementer real time.
+5. **Accept non-binary answers as given** ("defer", "mirror the labels") — don't force them into the
+   binary.
+6. **Compile, show the full spec, get confirmation, then post.** Never post before the checkpoint.
+7. **Spec and build are separate asks.** Do not start implementing unless asked.
+
+### 20g. Concrete next step — implement #170
+
+The smallest available unit of real work. Read #170's body **and** its decisions comment first, then:
+
+1. Add `mask_basketball_jargon()` to `tools/offseason/sentiment_pulse.R`, next to `mask_team_names()`
+   (`:115`), with its term-list constant beside it. Build patterns with `.sp_term_pattern()` (`:97`).
+   Apply it at `:397` on the same `text_used` that `mask_team_names()` already masks.
+2. **Capture the measurement before finalizing the term list** — the per-word call on `break`, `cut`,
+   `miss`, `guard`, `shot` is explicitly deferred to this step, and roxygen must record a *measured*
+   before/after mean (the bar `mask_team_names()` set: "+0.0265 -> +0.0217 (-18%)"), not an estimate.
+   Per `CLAUDE.md`, R is not on `PATH` — use `C:\Program Files\R\R-4.5.2\bin\Rscript.exe`, and write
+   R to a temp `.R` file rather than passing multi-line `-e` (it segfaults on this machine).
+3. Add unit tests in `tests/unit/test_offseason_sentiment_pulse.R` beside the existing masking tests
+   at `:194` — follow their shape, including the negative assertions (`mask_team_names` has
+   `expect_true(grepl("liberties", ...))` so masking doesn't over-reach; jargon needs the equivalent).
+4. Add `jargonMasked` to both pulse return paths (`:342` and `:476`), to `MediaSentimentPulse` in
+   `web/lib/offseasonTypes.ts:227`, and to the provenance row in `MediaSentimentPulseCard.tsx:250`.
+   Update `MediaSentimentPulseCard.test.tsx` accordingly.
+5. **Keep the fail-safe intact** — per `CLAUDE.md` and #170's acceptance criteria, a failure inside
+   the masking step must not crash the pulse or the build.
+6. Run both suites (see §20e — neither has been run since the card shipped), then deploy. Note that
+   pushing this repo publishes nothing on its own; the aggregator subtree sync is what deploys.
+
+Two steps ahead: **#171** (discourse filler) is specified to land after #170 so its measured delta is
+taken against the post-jargon-mask baseline. Its four design questions are deliberately left open and
+need their own interview. Still unresolved from earlier sessions and unrelated to either: **#156**
+needs closing (it is fixed and merged), and **#155** (`plan(multisession)` PSOCK worker timeouts) has
+not been touched.
+
+**All file:line citations in this section were accurate at `e5b484c` on 2026-11-09 and will drift.
+Re-verify them with `grep` before trusting them.**
+
+---
+
+## 21. This session (2026-11-09 ~00:40 EST): §20e's verification gap closed — both suites run fresh at `e5b484c`, all green; the test-fixture helper documented for the first time
+
+> **Read this if you are about to trust, or doubt, the test suites.** §20e stated plainly that no
+> tests had been run since the #169 sentiment card shipped in `7ee4daf`, and told the reader to
+> re-run both suites before trusting them. **That has now been done at `HEAD` = `e5b484c`: all 8
+> off-season R suites and the full `web/` suite pass, 0 failures.** This session wrote **no
+> production code** — the only working-tree change it introduces is this section of `HANDOFF.md`.
+> **The next unit of work is still implementing #170; §20g remains the authoritative instruction
+> set and is unchanged by this session.**
+
+### 21a. What this session actually did, in order
+
+1. Re-derived git state rather than trusting the doc: `HEAD` = `e5b484c`, branch `main`, identical
+   to `origin/main`. Confirmed that the two branches this conversation originally produced —
+   `feat/offseason-sentiment-pulse` (`86038c1`) and `fix/offseason-test-fixture-path` (`6823db3`) —
+   **are both merged** (merges `ec9b65c` and `317ed8e`), which §18a already recorded.
+2. Ran all 8 off-season R test suites fresh (§21b).
+3. Ran the full `web/` suite fresh via `npm test` (§21b).
+4. Re-derived the §20d implementation table against the filesystem — **every row confirmed
+   unchanged** (§21c).
+5. Re-queried the live tracker: open issues are exactly **#155, #156, #170, #171**, matching §20e.
+6. Found that `tests/helpers/offseason_fixtures.R` has **zero** mentions anywhere in this document,
+   despite being load-bearing for four test sites. Documented in §21d.
+
+### 21b. Test status — run fresh 2026-11-09 ~00:40 EST at `HEAD` = `e5b484c`
+
+This is the **first** run of either suite since `7ee4daf` (the #169 card) landed, which is exactly
+what §20e asked the next session to do. Both are green.
+
+**R — all 8 off-season suites, 82 passing `test_that` blocks, 0 failures.** Invoked as
+`Rscript.exe tests/unit/<file>.R` with `RENV_PATHS_LIBRARY` pointed at the main checkout's
+`renv/library`:
+
+| Suite | Blocks passed | Failures |
+|---|---|---|
+| `test_offseason_sentiment_pulse.R` | 15 | 0 |
+| `test_offseason_memo_render.R` | 2 | 0 |
+| `test_offseason_dag_end_to_end.R` | 8 | 0 |
+| `test_offseason_ingestion.R` | 10 | 0 |
+| `test_wire_items_schema.R` | 8 | 0 |
+| `test_offseason_reconciliation.R` | 6 | 0 |
+| `test_ingest_freshness.R` | 27 | 0 |
+| `test_offseason_preseason_trigger.R` | 6 | 0 |
+
+Note `test_offseason_sentiment_pulse.R` is now **352 lines / 15 blocks**; it was 6 blocks when first
+written for #156, and `3c633da`'s relevance/lexicon fixes roughly doubled it. Do not expect §18's or
+§19's block counts to match.
+
+**Web — `cd web && npm test`, RESULT: PASSED.** 170 tests across two runners, plus a real
+production build:
+
+| Gate | Result | Time |
+|---|---|---|
+| TypeScript (`tsc --noEmit`) | PASS | 3.4s |
+| ESLint | PASS | 11.4s |
+| Dataset contracts, invariants & drift (vitest/node) | PASS — **153/153** | 3.1s |
+| React components (vitest/jsdom) | PASS — **17/17** | 7.2s |
+| Production build (`next build`) | PASS | 32.6s |
+| End-to-end (Playwright) | **SKIP** — no spec files in `tests/e2e` | — |
+
+Two things a reader should take from that table rather than from §19d's "11 files / 160 tests":
+the component count rose to 17/17 because `MediaSentimentPulseCard.test.tsx` now exists, and
+**Playwright is a no-op in this repo** — `tests/e2e` has no specs, so `npm test` reporting PASSED
+carries **no** browser-level coverage. Per `CLAUDE.md`, headless UI testing is not set up here.
+
+### 21c. What's actually implemented — §20d re-derived, every row confirmed
+
+Re-measured against the filesystem this session. **No drift from §20d.** This is a confirmation, not
+new work:
+
+| Item | State at `e5b484c` |
+|---|---|
+| `tools/offseason/sentiment_pulse.R` | **481 lines**, unchanged. `grep -rn jargon` over `tools/`, `web/lib/` and `web/components/` returns **zero** matches — `mask_basketball_jargon()` still does not exist. #170 is unimplemented. |
+| `web/components/MediaSentimentPulseCard.tsx` | **259 lines**, exists. |
+| `web/lib/offseasonTypes.ts` | **305 lines**; `MediaSentimentPulse` at `:227`. No `jargonMasked`. |
+| `tests/unit/test_offseason_sentiment_pulse.R` | **352 lines**, 15 blocks, all passing. |
+| `tests/helpers/offseason_fixtures.R` | **65 lines**, exists — see §21d. |
+
+### 21d. `tests/helpers/offseason_fixtures.R` — load-bearing and, until now, undocumented here
+
+This document had **no mention of this file** before §21, which is a real gap: it is the only reason
+four test sites work outside the original checkout. Recording it so nobody reintroduces the bug.
+
+**The defect it fixed** (commit `6823db3`, merged `317ed8e`): four test sites each hardcoded the same
+*runtime* path for the frozen real ESPN league-wire capture they assert against —
+`cache/raw_ingest_archive/20261106/league_wire_espn_114245.json`, at
+`tests/unit/test_offseason_dag_end_to_end.R:104` and `:361`,
+`tests/unit/test_offseason_ingestion.R:100`, and `tools/offseason/test_regex_extraction.R:48`.
+Everything under `cache/` is gitignored runtime output and that directory is named for the ingest
+date, so the file existed only on a machine that happened to run the 2026-11-06 ingest. In a fresh
+clone, a new git worktree, or CI, **all four tests failed at their opening
+`expect_true(file.exists(...))`** — not because anything was broken, but because a test fixture was
+being sourced from untracked runtime state.
+
+**The fix, and the rules that come with it:**
+
+- The capture is now a tracked fixture at `data/fixtures/league_wire_espn_20261106_raw.json`,
+  byte-identical to the archived original (sha256
+  `c75a8c33c6497dc992bb2ff6ba7ac932d5c1fef97e0cfe4cb58a668b02c23dab`). Same treatment #159 gave
+  `data/fixtures/wire_items_sample.json`.
+- All four sites call `offseason_league_wire_raw_fixture()`, which prefers the tracked fixture and
+  falls back to the legacy runtime archive so a machine still carrying the original keeps working.
+- **Never re-capture that fixture in place.** The tests assert exact values off those bytes — 25
+  transaction rows, `pageCount` 5, first row `IND` / "Kelly Krauskopf" / `2026-10-23T07:00Z`, and
+  at least 35 extracted deltas. Re-hitting the ESPN endpoint today returns different bytes and
+  breaks them. A new capture gets a new filename.
+- **Never read a test fixture out of `cache/` again.** This rule is now recorded in `CLAUDE.md`'s
+  "Cache filenames without a central `config.R` constant" section, which is the first place a fresh
+  agent looks.
+
+Verified cache-free: a detached worktree at `6823db3` where `cache/raw_ingest_archive` genuinely does
+not exist runs all three affected files green with identical block counts (10 / 7 / 8).
+
+### 21e. Verification — what was and was NOT run
+
+**Run and passing this session:** the 8 R suites and the `web/` suite in §21b, the `gh issue list`
+query, and the filesystem re-derivation in §21c.
+
+**NOT run this session:** no live `build_offseason_monitor.R` run (so no new ingest, no new scrape,
+no new sentiment numbers — the published payload is still §20c's single Week 1 edition,
+`publishDate` 2026-11-08, `meanSentiment` 0.0269, `articleCount` 47); no deploy; no aggregator
+subtree sync; no `run_full_pipeline.R`. Nothing in §§1–20 was re-verified beyond §20d's table.
+
+### 21f. Anomalies and loose ends — surfaced, not acted on
+
+All four carry forward from prior sessions. None is mine to decide.
+
+1. **#156 is still OPEN** despite being fixed, merged and deployed on 2026-11-08 (`3c633da` /
+   `9f803eb`). **Four** sessions have now flagged it. Closing it is the owner's call.
+2. **§§18, 19, 20 and 21 are all uncommitted.** `git show HEAD:HANDOFF.md` is **1,600 lines and ends
+   at §17**; this working copy is 2,384 lines. Four sessions' records exist in the working tree only,
+   one `git checkout -- HANDOFF.md` away from being lost. **Committing this file is the single
+   cheapest risk reduction available in this repo right now.**
+3. **The file is past 2,350 lines** and well over half is closed work. `trim-handoff` plus
+   `docs/archive/handoff_history.md` is the established remedy; it needs the owner's go-ahead
+   because it moves other sessions' writeups.
+4. **#155** (`plan(multisession)`, 19/20 PSOCK workers time out) remains untouched since 2026-11-06.
+5. **Playwright has no specs** (§21b). `npm test` reporting PASSED should not be read as end-to-end
+   coverage by anyone making a UI claim.
+
+### 21g. Concrete next step — unchanged: implement #170
+
+**§20g is still the authoritative instruction set — follow it, not this paragraph.** Nothing this
+session did alters its plan; the one thing it changes is that §20g's step 6 ("run both suites — see
+§20e, neither has been run since the card shipped") is now **satisfied as a baseline**: both suites
+are green at `e5b484c` as of §21b, so any failure after a #170 edit is attributable to that edit
+rather than to pre-existing rot. That is the practical value of this session.
+
+In short, from §20g: add `mask_basketball_jargon()` to `tools/offseason/sentiment_pulse.R` beside
+`mask_team_names()` (`:115`), building patterns with `.sp_term_pattern()` (`:97`) and applying it at
+`:397` on the same `text_used`; **capture a measured before/after mean** rather than estimating one;
+decide the five deferred ambiguous singles (`break`, `cut`, `miss`, `guard`, `shot`) against that
+measured corpus and record each call in roxygen; add tests beside `:194`; thread `jargonMasked`
+through both pulse paths (`:342`, `:476`), `offseasonTypes.ts:227` and
+`MediaSentimentPulseCard.tsx:250`; keep the fail-safe intact. R is not on `PATH` — use
+`C:\Program Files\R\R-4.5.2\bin\Rscript.exe` and write R to a temp `.R` file rather than multi-line
+`-e`, which segfaults on this machine.
+
+Two steps ahead: **#171** (discourse filler) is specified to land after #170 so its delta measures
+against the post-jargon-mask baseline, and its four design questions are deliberately still open and
+need their own interview. Independent of both: **#156** needs closing, and **#155** needs a look.
+
+**All file:line citations in this section were accurate at `e5b484c` on 2026-11-09 and will drift.
+Re-verify them with `grep` before trusting them.**

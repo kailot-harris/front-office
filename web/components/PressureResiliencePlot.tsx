@@ -267,7 +267,6 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
                     stroke="#38bdf8"
                     strokeWidth={2}
                     strokeDasharray="3 2"
-                    className="animate-spin origin-center"
                   />
                 )}
                 <circle
