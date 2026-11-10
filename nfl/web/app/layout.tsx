@@ -26,7 +26,7 @@ export default function RootLayout({
         <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
           <SportSwitcher current="nfl" />
           <main className="flex-1 pb-10">{children}</main>
-          <footer className="border-t border-slate-800 bg-surface-raised/50 py-5 text-center text-xs text-slate-500 font-sans">
+          <footer className="border-t border-slate-800 bg-surface-raised/50 py-5 text-center text-xs text-slate-400 font-sans">
             <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
               <span>NFL Season Projections System • 1,000-Season Monte Carlo</span>
               <span>Ensemble Architecture (Ridge Massey + Elo + EPA Situational + Market Blend)</span>
