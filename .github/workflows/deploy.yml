@@ -44,7 +44,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  predeploy-gate:
+    # Pre-publish gate (#98, #94 Phase 3.2): hard-blocks the deploy on
+    # uncommitted drift in the checked-out tree (sport subtrees or
+    # aggregator) or on an explicit synthetic-data flag found in tracked
+    # source. See scripts/predeploy_gate.mjs for exactly what runs and why
+    # it is a repo-local reimplementation rather than a call into the
+    # untracked `.agents/skills/front-office-audit` tooling (which lives
+    # outside this repo and is unreachable from a GitHub Actions runner).
+    # Accessibility is explicitly NOT checked here — treated as warn-only
+    # per #98's acceptance criteria, so it never blocks from this job.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - name: Run pre-publish gate (drift / synthetic-data)
+        run: node scripts/predeploy_gate.mjs
+
   build:
+    needs: predeploy-gate
     strategy:
       fail-fast: false
       matrix:
@@ -81,7 +101,7 @@ jobs:
           path: ${{ matrix.sport }}/web/out
 
   assemble-and-deploy:
-    needs: build
+    needs: [predeploy-gate, build]
     runs-on: ubuntu-latest
     environment:
       name: github-pages
