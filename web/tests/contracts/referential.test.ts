@@ -13,6 +13,7 @@ import { NFL_TEAMS_METADATA, getTeamColors, getTeamLogoUrl } from '../../lib/tea
 import {
   LEAGUE,
   coaching,
+  dnaProfiles,
   matchups,
   playoffs,
   qbs,
@@ -34,6 +35,7 @@ const TEAM_CODE_SOURCES: Array<[string, () => string[]]> = [
   ['playoff_picture.afc_bubble[].team', () => playoffs().afc_bubble.map((b) => b.team)],
   ['playoff_picture.nfc_bubble[].team', () => playoffs().nfc_bubble.map((b) => b.team)],
   ['player_qb_profiles[].team', () => qbs().map((q) => q.team)],
+  ['player_dna_profiles[].team', () => dnaProfiles().map((p) => p.team)],
   ['coaching_profiles[].team', () => coaching().map((c) => c.team)],
   ['salary_cap_profiles.teams[].team', () => salaryCap().teams.map((t) => t.team)],
   ['salary_cap_profiles.top_league_contracts[].team', () => salaryCap().top_league_contracts.map((c) => c.team)],

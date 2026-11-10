@@ -256,3 +256,47 @@ export interface SalaryCapDataset {
   teams: TeamCapProfile[];
   top_league_contracts: LeagueTopContract[];
 }
+
+
+export interface PlayerDnaHistoricalTwin {
+  compName: string;
+  era: string;
+  archetype: string;
+  similarityPct: number;
+  keySharedTrait: string;
+}
+
+export interface PlayerDnaRadarAxis {
+  axis: string;
+  label: string;
+  value: number;
+}
+
+export interface PlayerDnaStatsSummary {
+  games: number;
+  passYards?: number;
+  passTds?: number;
+  interceptions?: number;
+  rushYards?: number;
+  rushTds?: number;
+  receptions?: number;
+  recYards?: number;
+  recTds?: number;
+  epaPerPlay: number;
+}
+
+export interface PlayerDnaProfile {
+  playerId: string;
+  playerName: string;
+  team: string;
+  position: 'QB' | 'WR' | 'RB' | 'TE';
+  archetype: string;
+  overallRating: number;
+  statsSummary: PlayerDnaStatsSummary;
+  manifoldX: number;
+  manifoldY: number;
+  radarAxes: PlayerDnaRadarAxis[];
+  skillVector: Record<string, number>;
+  categoryScores: Record<string, number>;
+  historicalTwins: PlayerDnaHistoricalTwin[];
+}

@@ -301,6 +301,49 @@ export const salaryCapDatasetSchema = z.object({
   top_league_contracts: z.array(leagueTopContractSchema),
 }).strict();
 
+export const playerDnaHistoricalTwinSchema = z.object({
+  compName: z.string().min(2),
+  era: z.string().min(2),
+  archetype: z.string().min(2),
+  similarityPct: z.number().min(0).max(100),
+  keySharedTrait: z.string().min(2),
+}).strict();
+
+export const playerDnaRadarAxisSchema = z.object({
+  axis: z.string().min(1),
+  label: z.string().min(1),
+  value: z.number().min(0).max(100),
+}).strict();
+
+export const playerDnaStatsSummarySchema = z.object({
+  games: z.number().int().min(1),
+  passYards: z.number().int().optional(),
+  passTds: z.number().int().optional(),
+  interceptions: z.number().int().optional(),
+  rushYards: z.number().int().optional(),
+  rushTds: z.number().int().optional(),
+  receptions: z.number().int().optional(),
+  recYards: z.number().int().optional(),
+  recTds: z.number().int().optional(),
+  epaPerPlay: z.number().finite(),
+}).strict();
+
+export const playerDnaProfileSchema = z.object({
+  playerId: z.string().min(1),
+  playerName: z.string().min(2),
+  team: teamCode,
+  position: z.enum(['QB', 'WR', 'RB', 'TE']),
+  archetype: z.string().min(2),
+  overallRating: z.number().min(0).max(100),
+  statsSummary: playerDnaStatsSummarySchema,
+  manifoldX: z.number().finite(),
+  manifoldY: z.number().finite(),
+  radarAxes: z.array(playerDnaRadarAxisSchema).min(3),
+  skillVector: z.record(z.string(), z.number().min(0).max(100)),
+  categoryScores: z.record(z.string(), z.number().min(0).max(100)),
+  historicalTwins: z.array(playerDnaHistoricalTwinSchema).min(1),
+}).strict();
+
 /** Filename -> schema, so one test can iterate every shipped dataset. */
 export const DATASET_SCHEMAS = {
   'standings_projections.json': standingsDatasetSchema,
@@ -312,4 +355,5 @@ export const DATASET_SCHEMAS = {
   'visual_media_index.json': z.array(visualMediaItemSchema),
   'coaching_profiles.json': z.array(coachProfileSchema),
   'salary_cap_profiles.json': salaryCapDatasetSchema,
+  'player_dna_profiles.json': z.array(playerDnaProfileSchema),
 } as const;

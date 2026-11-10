@@ -10,6 +10,7 @@ import {
   VisualMediaItem,
   CoachProfile,
   SalaryCapDataset,
+  PlayerDnaProfile,
 } from './types';
 
 function readJsonFile<T>(filename: string): T {
@@ -45,7 +46,6 @@ export function getDiagnosticsData(): DiagnosticsDataset {
   return readJsonFile<DiagnosticsDataset>('model_diagnostics.json');
 }
 
-
 export function getVisualMediaIndex(): VisualMediaItem[] {
   return readJsonFile<VisualMediaItem[]>('visual_media_index.json');
 }
@@ -56,4 +56,8 @@ export function getCoachingProfiles(): CoachProfile[] {
 
 export function getSalaryCapData(): SalaryCapDataset {
   return readJsonFile<SalaryCapDataset>('salary_cap_profiles.json');
+}
+
+export function getPlayerDnaProfiles(): PlayerDnaProfile[] {
+  return readJsonFile<PlayerDnaProfile[]>('player_dna_profiles.json');
 }

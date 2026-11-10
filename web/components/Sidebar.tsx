@@ -19,6 +19,7 @@ import {
   Zap,
   Briefcase,
   DollarSign,
+  Dna,
 } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
 
@@ -89,6 +90,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       badge: 'EPA & CPOE',
       icon: Users,
       desc: 'QB composite & rookie snap ramp',
+    },
+    {
+      href: '/dna',
+      label: 'Player DNA',
+      badge: 'Radar & Twins',
+      icon: Dna,
+      desc: 'Empirical skill vectors & radar',
     },
     {
       href: '/variants',

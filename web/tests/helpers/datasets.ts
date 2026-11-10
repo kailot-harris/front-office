@@ -18,6 +18,7 @@ import type {
   VisualMediaItem,
   CoachProfile,
   SalaryCapDataset,
+  PlayerDnaProfile,
 } from '../../lib/types';
 
 export const REPO_WEB_ROOT = path.resolve(__dirname, '..', '..');
@@ -35,6 +36,7 @@ export const DATASET_FILES = {
   getVisualMediaIndex: 'visual_media_index.json',
   getCoachingProfiles: 'coaching_profiles.json',
   getSalaryCapData: 'salary_cap_profiles.json',
+  getPlayerDnaProfiles: 'player_dna_profiles.json',
 } as const;
 
 export function loadRaw(filename: string): unknown {
@@ -54,6 +56,7 @@ export const diagnostics = () => loadRaw(DATASET_FILES.getDiagnosticsData) as Di
 export const media = () => loadRaw(DATASET_FILES.getVisualMediaIndex) as VisualMediaItem[];
 export const coaching = () => loadRaw(DATASET_FILES.getCoachingProfiles) as CoachProfile[];
 export const salaryCap = () => loadRaw(DATASET_FILES.getSalaryCapData) as SalaryCapDataset;
+export const dnaProfiles = () => loadRaw(DATASET_FILES.getPlayerDnaProfiles) as PlayerDnaProfile[];
 
 /** Sum helper that keeps float noise out of the assertion messages. */
 export const sumBy = <T,>(rows: readonly T[], f: (row: T) => number): number =>
