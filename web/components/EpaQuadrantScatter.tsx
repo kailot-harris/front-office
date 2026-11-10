@@ -3,18 +3,20 @@
 import React, { useState, useMemo } from 'react';
 import { TeamEpaProfile } from '@/lib/types';
 import { TeamLogo } from '@/components/TeamLogo';
-import { Layers } from 'lucide-react';
+import { Layers, Clock } from 'lucide-react';
 
 interface EpaQuadrantScatterProps {
   teams: TeamEpaProfile[];
   onSelectTeam?: (team: TeamEpaProfile) => void;
   selectedTeam?: string | null;
+  generatedAt?: string;
 }
 
 export const EpaQuadrantScatter: React.FC<EpaQuadrantScatterProps> = ({
   teams,
   onSelectTeam,
   selectedTeam,
+  generatedAt,
 }) => {
   const [selectedConf, setSelectedConf] = useState<'All' | 'AFC' | 'NFC'>('All');
   const [hoveredTeam, setHoveredTeam] = useState<TeamEpaProfile | null>(null);
@@ -65,21 +67,29 @@ export const EpaQuadrantScatter: React.FC<EpaQuadrantScatterProps> = ({
           </div>
         </div>
 
-        {/* Conference Filter */}
-        <div className="inline-flex rounded-lg bg-surface-raised p-1 border border-slate-800">
-          {(['All', 'AFC', 'NFC'] as const).map((conf) => (
-            <button
-              key={conf}
-              onClick={() => setSelectedConf(conf)}
-              className={`cursor-pointer select-none px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
-                selectedConf === conf
-                  ? 'bg-accent-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              {conf}
-            </button>
-          ))}
+        {/* Conference Filter & Timestamp */}
+        <div className="flex flex-wrap items-center gap-3">
+          {generatedAt && (
+            <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono bg-surface px-2.5 py-1 rounded-lg border border-slate-800">
+              <Clock className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Data generated: {new Date(generatedAt).toLocaleString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}</span>
+            </div>
+          )}
+          <div className="inline-flex rounded-lg bg-surface-raised p-1 border border-slate-800">
+            {(['All', 'AFC', 'NFC'] as const).map((conf) => (
+              <button
+                key={conf}
+                onClick={() => setSelectedConf(conf)}
+                className={`cursor-pointer select-none px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                  selectedConf === conf
+                    ? 'bg-accent-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {conf}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -170,46 +180,53 @@ export const EpaQuadrantScatter: React.FC<EpaQuadrantScatterProps> = ({
           })}
 
           {/* Hover Tooltip Card */}
-          {hoveredTeam && (
-            <div
-              className="absolute z-40 bg-surface-raised/95 border border-emerald-500/50 rounded-xl p-3 shadow-2xl backdrop-blur-md pointer-events-none text-xs space-y-1.5 min-w-[200px]"
-              style={{
-                left: `${Math.min(75, Math.max(5, getXPercent(hoveredTeam.off_epa_per_play)))}%`,
-                top: `${Math.min(75, Math.max(5, getYPercent(hoveredTeam.def_epa_per_play)))}%`,
-                transform: 'translate(-50%, -120%)',
-              }}
-            >
-              <div className="flex items-center gap-2 border-b border-slate-800 pb-1.5">
-                <TeamLogo team={hoveredTeam.team} size="xs" />
-                <span className="font-bold text-white text-xs">{hoveredTeam.team_name}</span>
-                <span className="text-[10px] font-mono text-slate-400 ml-auto">{hoveredTeam.division}</span>
+          {hoveredTeam && (() => {
+            const x = getXPercent(hoveredTeam.off_epa_per_play);
+            const y = getYPercent(hoveredTeam.def_epa_per_play);
+            const translateX = x > 72 ? '-92%' : x < 28 ? '-8%' : '-50%';
+            const translateY = y < 35 ? '20%' : '-115%';
+
+            return (
+              <div
+                className="absolute z-40 bg-surface-raised/95 border border-emerald-500/50 rounded-xl p-3 shadow-2xl backdrop-blur-md pointer-events-none text-xs space-y-1.5 min-w-[200px]"
+                style={{
+                  left: `${Math.min(92, Math.max(8, x))}%`,
+                  top: `${Math.min(92, Math.max(8, y))}%`,
+                  transform: `translate(${translateX}, ${translateY})`,
+                }}
+              >
+                <div className="flex items-center gap-2 border-b border-slate-800 pb-1.5">
+                  <TeamLogo team={hoveredTeam.team} size="xs" />
+                  <span className="font-bold text-white text-xs">{hoveredTeam.team_name}</span>
+                  <span className="text-[10px] font-mono text-slate-400 ml-auto">{hoveredTeam.division}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 font-mono text-[11px] pt-0.5">
+                  <div>
+                    <span className="text-[10px] text-slate-500 block">Offense EPA</span>
+                    <strong className={hoveredTeam.off_epa_per_play > 0 ? 'text-emerald-400' : 'text-red-400'}>
+                      {hoveredTeam.off_epa_per_play > 0 ? `+${hoveredTeam.off_epa_per_play.toFixed(3)}` : hoveredTeam.off_epa_per_play.toFixed(3)}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 block">Defense EPA</span>
+                    <strong className={hoveredTeam.def_epa_per_play < 0 ? 'text-emerald-400' : 'text-red-400'}>
+                      {hoveredTeam.def_epa_per_play > 0 ? `+${hoveredTeam.def_epa_per_play.toFixed(3)}` : hoveredTeam.def_epa_per_play.toFixed(3)}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 block">Net EPA/Play</span>
+                    <strong className={hoveredTeam.net_epa_per_play > 0 ? 'text-emerald-400' : 'text-red-400'}>
+                      {hoveredTeam.net_epa_per_play > 0 ? `+${hoveredTeam.net_epa_per_play.toFixed(3)}` : hoveredTeam.net_epa_per_play.toFixed(3)}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 block">Success Rate</span>
+                    <strong className="text-white">{hoveredTeam.off_success_rate.toFixed(1)}%</strong>
+                  </div>
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 font-mono text-[11px] pt-0.5">
-                <div>
-                  <span className="text-[10px] text-slate-500 block">Offense EPA</span>
-                  <strong className={hoveredTeam.off_epa_per_play > 0 ? 'text-emerald-400' : 'text-red-400'}>
-                    {hoveredTeam.off_epa_per_play > 0 ? `+${hoveredTeam.off_epa_per_play.toFixed(3)}` : hoveredTeam.off_epa_per_play.toFixed(3)}
-                  </strong>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-500 block">Defense EPA</span>
-                  <strong className={hoveredTeam.def_epa_per_play < 0 ? 'text-emerald-400' : 'text-red-400'}>
-                    {hoveredTeam.def_epa_per_play > 0 ? `+${hoveredTeam.def_epa_per_play.toFixed(3)}` : hoveredTeam.def_epa_per_play.toFixed(3)}
-                  </strong>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-500 block">Net EPA/Play</span>
-                  <strong className={hoveredTeam.net_epa_per_play > 0 ? 'text-emerald-400' : 'text-red-400'}>
-                    {hoveredTeam.net_epa_per_play > 0 ? `+${hoveredTeam.net_epa_per_play.toFixed(3)}` : hoveredTeam.net_epa_per_play.toFixed(3)}
-                  </strong>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-500 block">Success Rate</span>
-                  <strong className="text-white">{hoveredTeam.off_success_rate.toFixed(1)}%</strong>
-                </div>
-              </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       </div>
     </div>

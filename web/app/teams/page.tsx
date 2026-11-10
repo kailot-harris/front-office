@@ -11,6 +11,7 @@ export const metadata = {
 
 export default function TeamsPage() {
   const teams = getTeamEpaProfiles();
+  const generatedAt = teams[0]?.generated_at;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -49,7 +50,7 @@ export default function TeamsPage() {
       </div>
 
       {/* Main Interactive Client */}
-      <TeamsClient teams={teams} />
+      <TeamsClient teams={teams} generatedAt={generatedAt} />
     </div>
   );
 }

@@ -346,7 +346,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       )}
 
       {/* Desktop Persistent Sidebar */}
-      <aside className="hidden md:flex w-64 lg:w-72 flex-col flex-shrink-0 h-screen sticky top-0 bg-surface-raised/90 backdrop-blur-md border-r border-slate-800 z-30">
+      <aside className="hidden md:flex w-72 flex-col flex-shrink-0 h-screen sticky top-0 bg-surface-raised/90 backdrop-blur-md border-r border-slate-800 z-30">
         <NavContent />
       </aside>
     </>
