@@ -88,3 +88,23 @@ describe('StandingsClient division filter', () => {
     }
   });
 });
+
+describe('StandingsClient Projections vs. Actual tracker', () => {
+  it('renders overperformer and underperformer callouts banner', () => {
+    render(<StandingsClient teams={teams} metadata={metadata} />);
+    expect(screen.getByText(/league overperformers/i)).toBeInTheDocument();
+    expect(screen.getByText(/league underperformers/i)).toBeInTheDocument();
+  });
+
+  it('toggles Projections vs. Actual sub-view in table and renders delta headers', () => {
+    const { container } = renderTable();
+    const realityBtn = screen.getByRole('button', { name: /projections vs\. actual/i });
+    expect(realityBtn).toBeInTheDocument();
+    fireEvent.click(realityBtn);
+
+    expect(screen.getByText(/actual rec \(w-l\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/current win pace/i)).toBeInTheDocument();
+    expect(screen.getByText(/performance delta/i)).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/NaN|undefined/);
+  });
+});
