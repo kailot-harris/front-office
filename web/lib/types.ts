@@ -502,6 +502,16 @@ export interface PitcherSpatialSummary {
   arsenal: PitcherArsenalItem[];
 }
 
+export interface PlayerSpatialIndexEntry {
+  player_id: string;
+  player_name: string;
+  player_type: 'Batter' | 'Pitcher';
+  team: string;
+  position: string;
+  is_statcast_tracked: boolean;
+  sample_size: number;
+}
+
 export interface PlayerSpatialMap {
   player_id: string;
   player_name: string;
@@ -517,4 +527,5 @@ export interface PlayerSpatialMap {
 }
 
 export type PlayerSpatialDictionary = Record<string, PlayerSpatialMap>;
+
 

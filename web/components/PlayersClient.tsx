@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { PlayerProjection, PlayerSpatialMap } from '@/lib/types';
+import { PlayerProjection, PlayerSpatialMap, PlayerSpatialIndexEntry } from '@/lib/types';
 import {
   Search,
   AlertTriangle,
@@ -40,23 +40,47 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
   const [sortBy, setSortBy] = useState<keyof PlayerProjection>('stat1_pooled');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  // Expanded dropdown map state & spatial telemetry dictionary
+  // Expanded dropdown map state & on-demand spatial telemetry cache (Issue #72)
   const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
+  const [spatialIndex, setSpatialIndex] = useState<Record<string, PlayerSpatialIndexEntry>>({});
   const [spatialMaps, setSpatialMaps] = useState<Record<string, PlayerSpatialMap>>(
     initialSpatialMaps || {}
   );
 
   useEffect(() => {
-    if (!initialSpatialMaps || Object.keys(initialSpatialMaps).length === 0) {
-      fetch(`${BASE_PATH}/data/player_spatial_maps.json`)
+    fetch(`${BASE_PATH}/data/spatial_index.json`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch spatial index');
+        return res.json();
+      })
+      .then((data: PlayerSpatialIndexEntry[]) => {
+        const indexMap: Record<string, PlayerSpatialIndexEntry> = {};
+        for (const item of data) {
+          indexMap[item.player_id] = item;
+        }
+        setSpatialIndex(indexMap);
+      })
+      .catch((err) => console.warn('Could not load spatial index:', err));
+  }, []);
+
+  const handleToggleExpand = (playerId: string) => {
+    if (expandedPlayerId === playerId) {
+      setExpandedPlayerId(null);
+      return;
+    }
+    setExpandedPlayerId(playerId);
+    if (!spatialMaps[playerId]) {
+      fetch(`${BASE_PATH}/data/spatial/${playerId}.json`)
         .then((res) => {
-          if (!res.ok) throw new Error('Failed to fetch player spatial maps');
+          if (!res.ok) throw new Error(`Failed to fetch spatial coordinates for ${playerId}`);
           return res.json();
         })
-        .then((data: Record<string, PlayerSpatialMap>) => setSpatialMaps(data))
-        .catch((err) => console.warn('Could not load player spatial maps:', err));
+        .then((data: PlayerSpatialMap) => {
+          setSpatialMaps((prev) => ({ ...prev, [playerId]: data }));
+        })
+        .catch((err) => console.warn(`Could not load spatial coordinates for ${playerId}:`, err));
     }
-  }, [initialSpatialMaps]);
+  };
 
 
   const batters = useMemo(() => players.filter((p) => p.player_type === 'Batter'), [players]);
@@ -538,7 +562,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                 return (
                   <React.Fragment key={p.player_id}>
                     <tr
-                      onClick={() => setExpandedPlayerId(isExpanded ? null : p.player_id)}
+                      onClick={() => handleToggleExpand(p.player_id)}
                       className={`hover:bg-slate-800/40 transition-colors cursor-pointer ${
                         isExpanded ? 'bg-indigo-950/25 border-l-2 border-indigo-500' : ''
                       }`}
@@ -546,7 +570,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                       <td className="py-3 px-4">
                         <div className="font-bold text-white flex items-center gap-1.5">
                           <span>{p.player_name}</span>
-                          {spatialMaps[p.player_id]?.is_statcast_tracked && (
+                          {(spatialIndex[p.player_id]?.is_statcast_tracked ?? spatialMaps[p.player_id]?.is_statcast_tracked) && (
                             <span
                               className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"
                               title="Verified Statcast Tracked"
@@ -563,7 +587,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setExpandedPlayerId(isExpanded ? null : p.player_id);
+                            handleToggleExpand(p.player_id);
                           }}
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all ${
                             isExpanded
