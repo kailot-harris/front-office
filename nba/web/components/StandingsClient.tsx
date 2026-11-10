@@ -19,6 +19,7 @@ import {
   Flame,
   Snowflake,
   Activity,
+  Grid,
 } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { PlayoffContendersBoxWhisker } from '@/components/PlayoffContendersBoxWhisker';
@@ -29,7 +30,7 @@ import { NBA_ACTUAL_TEAM_RECORDS, ActualTeamRecord } from '@/lib/actualRecords';
 interface StandingsClientProps {
   teams: TeamProjection[];
   metadata?: ModelMetadata;
-  initialTab?: 'visualizer' | 'table';
+  initialTab?: 'visualizer' | 'table' | 'divisions';
 }
 
 export type StandingsSortField =
@@ -58,7 +59,7 @@ export interface EnrichedNbaTeam extends TeamProjection {
 }
 
 export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initialTab = 'visualizer' }) => {
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'table'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'table' | 'divisions'>(initialTab);
   const [selectedConference, setSelectedConference] = useState<'All' | 'East' | 'West'>('All');
   const [selectedDivision, setSelectedDivision] = useState<string>('All');
   const [tableMode, setTableMode] = useState<'projections' | 'reality'>('projections');
@@ -69,7 +70,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get('view') || params.get('tab');
-      if (tabParam === 'table' || tabParam === 'visualizer') {
+      if (tabParam === 'table' || tabParam === 'visualizer' || tabParam === 'divisions') {
         setActiveTab(tabParam);
       }
       const modeParam = params.get('mode');
@@ -79,7 +80,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
     }
   }, []);
 
-  const handleTabChange = (tab: 'visualizer' | 'table') => {
+  const handleTabChange = (tab: 'visualizer' | 'table' | 'divisions') => {
     setActiveTab(tab);
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
@@ -490,12 +491,59 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
               30 Teams
             </span>
           </button>
+
+          <button
+            type="button"
+            role="tab"
+            id="tab-btn-divisions"
+            aria-selected={activeTab === 'divisions'}
+            onClick={() => handleTabChange('divisions')}
+            className={`cursor-pointer select-none touch-manipulation flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-20 ${
+              activeTab === 'divisions'
+                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
+                : 'text-slate-400 hover:text-white hover:bg-surface-raised'
+            }`}
+          >
+            <Grid className="w-4 h-4 pointer-events-none text-emerald-400" />
+            <span className="pointer-events-none">6 Divisions</span>
+          </button>
+        </div>
+
+        {/* Global Projections vs Reality Mode Toggle Pill */}
+        <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800 self-start md:self-auto">
+          <button
+            type="button"
+            onClick={() => handleModeChange('projections')}
+            className={`cursor-pointer select-none px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+              tableMode === 'projections'
+                ? 'bg-accent-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Model Projections
+          </button>
+          <button
+            type="button"
+            onClick={() => handleModeChange('reality')}
+            className={`cursor-pointer select-none px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+              tableMode === 'reality'
+                ? 'bg-accent-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Activity className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Projections vs. Actual</span>
+          </button>
         </div>
 
         <div className="text-xs text-slate-400 flex items-center gap-2 px-2">
           <span>Active View:</span>
           <span className="font-semibold text-slate-200">
-            {activeTab === 'visualizer' ? 'Playoff Contenders Distribution Snapshot' : 'All 30 NBA Franchises (Sortable Metrics)'}
+            {activeTab === 'visualizer'
+              ? 'Playoff Contenders Distribution Snapshot'
+              : activeTab === 'divisions'
+              ? '6 Divisions (Divisional Landscape)'
+              : 'All 30 NBA Franchises (Sortable Metrics)'}
           </span>
         </div>
       </div>
@@ -531,37 +579,20 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
             </button>
           </div>
         </div>
-      ) : (
+      ) : activeTab === 'table' ? (
         /* Tab 2: Full Standings Table */
         <div className="space-y-4">
-          {/* Sub-view View Toggle & Filter and Control Bar */}
+          {/* Filter and Control Bar */}
           <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3">
-              {/* Projections vs Reality Mode Toggle Pill */}
-              <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => handleModeChange('projections')}
-                  className={`cursor-pointer select-none px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                    tableMode === 'projections'
-                      ? 'bg-accent-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Model Projections
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleModeChange('reality')}
-                  className={`cursor-pointer select-none px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
-                    tableMode === 'reality'
-                      ? 'bg-accent-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <Activity className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Projections vs. Actual</span>
-                </button>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-200">
+                  {tableMode === 'reality' ? 'Projections vs. Actual Table' : 'Model Projections Table'}
+                </span>
+                <span className="text-slate-600">•</span>
+                <span className="text-xs text-slate-400 font-mono">
+                  {tableMode === 'reality' ? '82-Game Pace Benchmarking' : 'Ensemble Monte Carlo Projections'}
+                </span>
               </div>
 
               <div className="h-4 w-px bg-slate-800 hidden sm:block" />
@@ -990,6 +1021,130 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
               <BarChart2 className="w-3.5 h-3.5 pointer-events-none" />
               <span className="pointer-events-none">Switch to Playoff Contenders Visualizer</span>
             </button>
+          </div>
+        </div>
+      ) : (
+        /* Tab 3: 6 Divisions View */
+        <div className="space-y-6">
+          <div className="flex items-center justify-between text-xs text-slate-400 font-mono px-1">
+            <span>
+              {tableMode === 'reality'
+                ? 'Sorted by Actual Win % • Benchmarked against 82-Game Pace'
+                : 'Sorted by Ensemble Projected Wins'}
+            </span>
+            <span>6 Divisions • 30 Franchises</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {divisions.map((divName) => {
+              const divTeams = enrichedTeams
+                .filter((t) => t.division === divName)
+                .sort((a, b) => {
+                  if (tableMode === 'reality') {
+                    return (
+                      b.actual_win_pct - a.actual_win_pct ||
+                      b.current_pace - a.current_pace ||
+                      b.point_diff - a.point_diff
+                    );
+                  }
+                  return b.ensemble_mean_wins - a.ensemble_mean_wins;
+                });
+              const isEast = divTeams[0]?.conference === 'East';
+
+              return (
+                <div
+                  key={divName}
+                  className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-md flex flex-col justify-between"
+                >
+                  <div className="p-3 bg-surface/80 border-b border-slate-800 flex items-center justify-between">
+                    <span className="font-bold text-xs text-white font-mono flex items-center gap-1.5">
+                      <span className={`w-2 h-2 rounded-full ${isEast ? 'bg-blue-500' : 'bg-red-500'}`} />
+                      {divName} Division
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-500">5 Teams</span>
+                  </div>
+
+                  <div className="p-2 space-y-1.5 divide-y divide-slate-800/40">
+                    {divTeams.map((team, idx) => (
+                      <div
+                        key={team.team}
+                        className="pt-1.5 first:pt-0 flex items-center justify-between hover:bg-slate-800/40 p-1.5 rounded-lg transition-colors"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-[10px] font-mono text-slate-500 font-bold w-3">
+                            {idx + 1}
+                          </span>
+                          <TeamLogo team={team.team} size="sm" />
+                          <div className="min-w-0">
+                            <span className="font-semibold text-xs text-white block truncate">
+                              {team.team_name}
+                            </span>
+                            {tableMode === 'reality' ? (
+                              <span className="text-[10px] font-mono text-slate-400">
+                                {team.actual.wins}-{team.actual.losses} • Diff:{' '}
+                                <strong
+                                  className={
+                                    team.point_diff > 0
+                                      ? 'text-cyan-400'
+                                      : team.point_diff < 0
+                                      ? 'text-amber-400'
+                                      : 'text-slate-400'
+                                  }
+                                >
+                                  {team.point_diff > 0 ? `+${team.point_diff}` : team.point_diff}
+                                </strong>
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-mono text-slate-400">
+                                PO: {(team.ensemble_playoff_prob * 100).toFixed(0)}% • Title:{' '}
+                                {(team.ensemble_title_prob * 100).toFixed(0)}%
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="text-right flex-shrink-0">
+                          {tableMode === 'reality' ? (
+                            <>
+                              <span className="text-xs font-mono font-bold text-white block">
+                                {team.current_pace.toFixed(1)}W pace
+                              </span>
+                              <span
+                                className={`inline-flex items-center gap-0.5 text-[10px] font-mono font-bold ${
+                                  team.performance_delta > 0
+                                    ? 'text-emerald-400'
+                                    : team.performance_delta < 0
+                                    ? 'text-rose-400'
+                                    : 'text-slate-400'
+                                }`}
+                              >
+                                {team.performance_delta > 0 ? (
+                                  <Flame className="w-2.5 h-2.5" />
+                                ) : team.performance_delta < 0 ? (
+                                  <Snowflake className="w-2.5 h-2.5" />
+                                ) : null}
+                                {team.performance_delta > 0
+                                  ? `+${team.performance_delta.toFixed(1)}W`
+                                  : `${team.performance_delta.toFixed(1)}W`}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-xs font-mono font-bold text-white block">
+                                {team.ensemble_mean_wins.toFixed(1)}W
+                              </span>
+                              <span className="text-[10px] font-mono text-indigo-400">
+                                {(team.win_pct * 100).toFixed(1)}% win
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
