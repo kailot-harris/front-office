@@ -535,6 +535,33 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
           </button>
         </div>
 
+        {/* Global Model Projections vs Projections vs. Reality Pill */}
+        <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800 self-start md:self-auto">
+          <button
+            type="button"
+            onClick={() => handleModeChange('projections')}
+            className={`cursor-pointer select-none px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+              tableMode === 'projections'
+                ? 'bg-accent-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Model Projections
+          </button>
+          <button
+            type="button"
+            onClick={() => handleModeChange('reality')}
+            className={`cursor-pointer select-none px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+              tableMode === 'reality'
+                ? 'bg-accent-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Activity className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Projections vs. Reality</span>
+          </button>
+        </div>
+
         {/* Filter Controls */}
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Search box */}
@@ -674,38 +701,19 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
       {/* Tab 2: Full 32 Table */}
       {activeTab === 'table' && (
         <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
-          {/* Sub-view View Switcher (Model Projections vs Reality) + CSV Export */}
+          {/* Sub-view View Switcher info bar & CSV Export */}
           <div className="flex flex-wrap items-center justify-between px-4 py-3 border-b border-slate-800 gap-3">
-            <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
-              <button
-                type="button"
-                onClick={() => handleModeChange('projections')}
-                className={`cursor-pointer select-none px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                  tableMode === 'projections'
-                    ? 'bg-accent-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Model Projections
-              </button>
-              <button
-                type="button"
-                onClick={() => handleModeChange('reality')}
-                className={`cursor-pointer select-none px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
-                  tableMode === 'reality'
-                    ? 'bg-accent-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Activity className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Projections vs. Reality</span>
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-200">
+                {tableMode === 'reality' ? 'Projections vs. Reality Table' : 'Model Projections Table'}
+              </span>
+              <span className="text-slate-600">•</span>
               <span className="text-xs text-slate-400 font-mono">
                 {tableMode === 'reality' ? '17-Game Pace Benchmarking' : 'Monte Carlo 1,000 Sim Outcomes'}
               </span>
+            </div>
+
+            <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={handleExportCsv}
@@ -1037,11 +1045,30 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
       {/* Tab 3: 8 Divisions View */}
       {activeTab === 'divisions' && (
         <div className="space-y-6">
+          <div className="flex items-center justify-between text-xs text-slate-400 font-mono px-1">
+            <span>
+              {tableMode === 'reality'
+                ? 'Sorted by Actual Win % • Benchmarked against 17-Game Pace'
+                : 'Sorted by Monte Carlo Projected Wins'}
+            </span>
+            <span>8 Divisions • 32 Franchises</span>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {divisions.map((divName) => {
-              const divTeams = teams
+              const divTeams = enrichedTeams
                 .filter((t) => t.division === divName)
-                .sort((a, b) => b.projected_wins - a.projected_wins);
+                .sort((a, b) => {
+                  if (tableMode === 'reality') {
+                    // Sort by actual win pct descending, then current pace
+                    return (
+                      b.actual_win_pct - a.actual_win_pct ||
+                      b.current_pace - a.current_pace ||
+                      b.actual_pt_diff - a.actual_pt_diff
+                    );
+                  }
+                  return b.projected_wins - a.projected_wins;
+                });
               const isAfc = divName.startsWith('AFC');
 
               return (
@@ -1072,23 +1099,68 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                             <span className="font-semibold text-xs text-white block truncate">
                               {team.team_name}
                             </span>
-                            <span className="text-[10px] font-mono text-slate-400">
-                              PO: {(team.playoff_prob * 100).toFixed(0)}% • Div: {(team.division_title_prob * 100).toFixed(0)}%
-                            </span>
+                            {tableMode === 'reality' ? (
+                              <span className="text-[10px] font-mono text-slate-400">
+                                {team.actual.wins}-{team.actual.losses}-{team.actual.ties} • Diff:{' '}
+                                <strong
+                                  className={
+                                    team.actual_pt_diff > 0
+                                      ? 'text-cyan-400'
+                                      : team.actual_pt_diff < 0
+                                      ? 'text-amber-400'
+                                      : 'text-slate-400'
+                                  }
+                                >
+                                  {team.actual_pt_diff > 0 ? `+${team.actual_pt_diff}` : team.actual_pt_diff}
+                                </strong>
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-mono text-slate-400">
+                                PO: {(team.playoff_prob * 100).toFixed(0)}% • Div: {(team.division_title_prob * 100).toFixed(0)}%
+                              </span>
+                            )}
                           </div>
                         </div>
 
                         <div className="text-right flex-shrink-0">
-                          <span className="text-xs font-mono font-bold text-white block">
-                            {team.projected_wins.toFixed(1)}W
-                          </span>
-                          <span
-                            className={`text-[10px] font-mono ${
-                              team.power_rating > 0 ? 'text-emerald-400' : 'text-red-400'
-                            }`}
-                          >
-                            {(team.power_rating ?? 0) > 0 ? `+${(team.power_rating ?? 0).toFixed(1)}` : (team.power_rating ?? 0).toFixed(1)}
-                          </span>
+                          {tableMode === 'reality' ? (
+                            <>
+                              <span className="text-xs font-mono font-bold text-white block">
+                                {team.current_pace.toFixed(1)}W pace
+                              </span>
+                              <span
+                                className={`inline-flex items-center gap-0.5 text-[10px] font-mono font-bold ${
+                                  team.performance_delta > 0
+                                    ? 'text-emerald-400'
+                                    : team.performance_delta < 0
+                                    ? 'text-rose-400'
+                                    : 'text-slate-400'
+                                }`}
+                              >
+                                {team.performance_delta > 0 ? (
+                                  <TrendingUp className="w-2.5 h-2.5" />
+                                ) : team.performance_delta < 0 ? (
+                                  <TrendingDown className="w-2.5 h-2.5" />
+                                ) : null}
+                                {team.performance_delta > 0
+                                  ? `+${team.performance_delta.toFixed(1)}W`
+                                  : `${team.performance_delta.toFixed(1)}W`}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-xs font-mono font-bold text-white block">
+                                {team.projected_wins.toFixed(1)}W
+                              </span>
+                              <span
+                                className={`text-[10px] font-mono ${
+                                  team.power_rating > 0 ? 'text-emerald-400' : 'text-red-400'
+                                }`}
+                              >
+                                {(team.power_rating ?? 0) > 0 ? `+${(team.power_rating ?? 0).toFixed(1)}` : (team.power_rating ?? 0).toFixed(1)}
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}
