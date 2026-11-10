@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { StandingsDataset } from '@/lib/types';
+import { StandingsDataset, TeamStanding } from '@/lib/types';
 import {
   Trophy,
   Filter,
@@ -14,12 +14,17 @@ import {
   Grid,
   Zap,
   TrendingUp,
+  TrendingDown,
   Search,
   Download,
+  Flame,
+  Snowflake,
+  Activity,
 } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { WinDistributionBoxWhisker } from '@/components/WinDistributionBoxWhisker';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { NFL_ACTUAL_TEAM_RECORDS, NflActualTeamRecord } from '@/lib/actualRecords';
 
 interface StandingsClientProps {
   dataset: StandingsDataset;
@@ -36,13 +41,29 @@ export type StandingsSortField =
   | 'net_epa_roll'
   | 'playoff_prob'
   | 'division_title_prob'
-  | 'super_bowl_prob';
+  | 'super_bowl_prob'
+  | 'actual_record'
+  | 'actual_win_pct'
+  | 'points_for'
+  | 'points_against'
+  | 'current_pace'
+  | 'performance_delta';
+
+export interface EnrichedNflTeam extends TeamStanding {
+  actual: NflActualTeamRecord;
+  actual_gp: number;
+  actual_win_pct: number;
+  current_pace: number;
+  performance_delta: number;
+  actual_pt_diff: number;
+}
 
 export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initialTab = 'visualizer' }) => {
   const [activeTab, setActiveTab] = useState<'visualizer' | 'table' | 'divisions'>(initialTab);
   const [selectedConference, setSelectedConference] = useState<'All' | 'AFC' | 'NFC'>('All');
   const [selectedDivision, setSelectedDivision] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [tableMode, setTableMode] = useState<'projections' | 'reality'>('projections');
   const [sortBy, setSortBy] = useState<StandingsSortField>('projected_wins');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
@@ -54,6 +75,10 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
       const tabParam = params.get('view') || params.get('tab');
       if (tabParam === 'table' || tabParam === 'visualizer' || tabParam === 'divisions') {
         setActiveTab(tabParam);
+      }
+      const modeParam = params.get('mode');
+      if (modeParam === 'reality' || modeParam === 'projections') {
+        setTableMode(modeParam);
       }
     }
   }, []);
@@ -68,13 +93,72 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
     }
   };
 
+  const handleModeChange = (mode: 'projections' | 'reality') => {
+    setTableMode(mode);
+    if (mode === 'reality') {
+      setSortBy('performance_delta');
+      setSortOrder('desc');
+    } else {
+      setSortBy('projected_wins');
+      setSortOrder('desc');
+    }
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('mode', mode);
+      window.history.replaceState(null, '', url.toString());
+    }
+  };
+
   const divisions = useMemo(() => {
     const set = new Set(teams.map((t) => t.division));
     return Array.from(set).sort();
   }, [teams]);
 
+  // Enrich teams with actual record and win pace (17 games)
+  const enrichedTeams: EnrichedNflTeam[] = useMemo(() => {
+    return teams.map((team) => {
+      const actual = NFL_ACTUAL_TEAM_RECORDS[team.team] || {
+        wins: 0,
+        losses: 0,
+        ties: 0,
+        pointsFor: team.points_for,
+        pointsAgainst: team.points_against,
+      };
+      const actual_gp = actual.wins + actual.losses + actual.ties;
+      const actual_win_pct = actual_gp > 0 ? (actual.wins + 0.5 * actual.ties) / actual_gp : 0;
+      const current_pace = actual_win_pct * 17;
+      const performance_delta = current_pace - team.projected_wins;
+      const actual_pt_diff = actual.pointsFor - actual.pointsAgainst;
+
+      return {
+        ...team,
+        actual,
+        actual_gp,
+        actual_win_pct,
+        current_pace,
+        performance_delta,
+        actual_pt_diff,
+      };
+    });
+  }, [teams]);
+
+  // Overperformer & Underperformer callouts
+  const topOverperformers = useMemo(() => {
+    return [...enrichedTeams]
+      .filter((t) => t.actual_gp > 0)
+      .sort((a, b) => b.performance_delta - a.performance_delta)
+      .slice(0, 3);
+  }, [enrichedTeams]);
+
+  const topUnderperformers = useMemo(() => {
+    return [...enrichedTeams]
+      .filter((t) => t.actual_gp > 0)
+      .sort((a, b) => a.performance_delta - b.performance_delta)
+      .slice(0, 3);
+  }, [enrichedTeams]);
+
   const filteredTeams = useMemo(() => {
-    return teams
+    return enrichedTeams
       .filter((t) => {
         if (selectedConference !== 'All' && t.conference !== selectedConference) return false;
         if (selectedDivision !== 'All' && t.division !== selectedDivision) return false;
@@ -95,14 +179,28 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
           cmp = a.division.localeCompare(b.division) || b.projected_wins - a.projected_wins;
         } else if (sortBy === 'rank') {
           cmp = a.rank - b.rank;
+        } else if (sortBy === 'actual_record') {
+          const diffA = a.actual.wins - a.actual.losses;
+          const diffB = b.actual.wins - b.actual.losses;
+          cmp = diffA - diffB;
+        } else if (sortBy === 'actual_win_pct') {
+          cmp = a.actual_win_pct - b.actual_win_pct;
+        } else if (sortBy === 'points_for') {
+          cmp = a.actual.pointsFor - b.actual.pointsFor;
+        } else if (sortBy === 'points_against') {
+          cmp = a.actual.pointsAgainst - b.actual.pointsAgainst;
+        } else if (sortBy === 'current_pace') {
+          cmp = a.current_pace - b.current_pace;
+        } else if (sortBy === 'performance_delta') {
+          cmp = a.performance_delta - b.performance_delta;
         } else {
-          const valA = (a[sortBy] as number) ?? 0;
-          const valB = (b[sortBy] as number) ?? 0;
+          const valA = (a[sortBy as keyof TeamStanding] as number) ?? 0;
+          const valB = (b[sortBy as keyof TeamStanding] as number) ?? 0;
           cmp = valA - valB;
         }
         return sortOrder === 'desc' ? -cmp : cmp;
       });
-  }, [teams, selectedConference, selectedDivision, searchQuery, sortBy, sortOrder]);
+  }, [enrichedTeams, selectedConference, selectedDivision, searchQuery, sortBy, sortOrder]);
 
   const handleSort = (field: StandingsSortField) => {
     if (sortBy === field) {
@@ -135,24 +233,60 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
   const topPlayoffLock = useMemo(() => [...teams].sort((a, b) => b.playoff_prob - a.playoff_prob)[0], [teams]);
 
   const handleExportCsv = () => {
-    exportToCsv(
-      filteredTeams as unknown as Record<string, unknown>[],
-      [
-        { key: 'rank', label: 'Rank' },
-        { key: 'team_name', label: 'Team' },
-        { key: 'division', label: 'Division' },
-        { key: 'power_rating', label: 'Power Rating' },
-        { key: 'net_epa_roll', label: 'Net EPA/Play' },
-        { key: 'point_diff', label: 'Point Diff' },
-        { key: 'projected_wins', label: 'Projected Wins' },
-        { key: 'wins_p10', label: 'Wins P10' },
-        { key: 'wins_p90', label: 'Wins P90' },
-        { key: 'playoff_prob', label: 'Playoff %' },
-        { key: 'division_title_prob', label: 'Division Title %' },
-        { key: 'super_bowl_prob', label: 'Super Bowl %' },
-      ],
-      'nfl-standings'
-    );
+    if (tableMode === 'reality') {
+      exportToCsv(
+        filteredTeams.map((t) => ({
+          rank: t.rank,
+          team: t.team,
+          team_name: t.team_name,
+          division: t.division,
+          conference: t.conference,
+          actual_record: `${t.actual.wins}-${t.actual.losses}-${t.actual.ties}`,
+          actual_win_pct: (t.actual_win_pct * 100).toFixed(1) + '%',
+          points_for: t.actual.pointsFor,
+          points_against: t.actual.pointsAgainst,
+          point_diff: t.actual_pt_diff > 0 ? `+${t.actual_pt_diff}` : `${t.actual_pt_diff}`,
+          projected_wins: t.projected_wins.toFixed(1),
+          current_pace_17g: t.current_pace.toFixed(1),
+          performance_delta: (t.performance_delta > 0 ? '+' : '') + t.performance_delta.toFixed(1),
+        })),
+        [
+          { key: 'rank', label: 'Rank' },
+          { key: 'team', label: 'Code' },
+          { key: 'team_name', label: 'Team' },
+          { key: 'division', label: 'Division' },
+          { key: 'conference', label: 'Conference' },
+          { key: 'actual_record', label: 'Record (W-L-T)' },
+          { key: 'actual_win_pct', label: 'Win %' },
+          { key: 'points_for', label: 'PF' },
+          { key: 'points_against', label: 'PA' },
+          { key: 'point_diff', label: 'Point Diff' },
+          { key: 'projected_wins', label: 'Preseason Proj (17G)' },
+          { key: 'current_pace_17g', label: 'Current Pace (17G)' },
+          { key: 'performance_delta', label: 'Performance Delta' },
+        ],
+        'nfl-projections-vs-reality'
+      );
+    } else {
+      exportToCsv(
+        filteredTeams as unknown as Record<string, unknown>[],
+        [
+          { key: 'rank', label: 'Rank' },
+          { key: 'team_name', label: 'Team' },
+          { key: 'division', label: 'Division' },
+          { key: 'power_rating', label: 'Power Rating' },
+          { key: 'net_epa_roll', label: 'Net EPA/Play' },
+          { key: 'point_diff', label: 'Point Diff' },
+          { key: 'projected_wins', label: 'Projected Wins' },
+          { key: 'wins_p10', label: 'Wins P10' },
+          { key: 'wins_p90', label: 'Wins P90' },
+          { key: 'playoff_prob', label: 'Playoff %' },
+          { key: 'division_title_prob', label: 'Division Title %' },
+          { key: 'super_bowl_prob', label: 'Super Bowl %' },
+        ],
+        'nfl-standings'
+      );
+    }
   };
 
   return (
@@ -252,6 +386,97 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
             <div className="text-xs text-slate-400 font-mono">
               {topPlayoffLock ? `Bye: ${(topPlayoffLock.first_round_bye_prob * 100).toFixed(0)}%` : '—'}
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* League Overperformer & Underperformer Callouts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Outperformers Podium */}
+        <div className="bg-gradient-to-br from-emerald-950/30 via-surface-raised/80 to-surface-raised/60 border border-emerald-500/30 rounded-2xl p-4 shadow-lg">
+          <div className="flex items-center justify-between mb-3 border-b border-emerald-500/20 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+                <Flame className="w-4 h-4" />
+              </div>
+              <h3 className="text-xs font-bold font-mono uppercase tracking-wider text-emerald-300">
+                League Overperformers (Actual Pace vs Preseason Model)
+              </h3>
+            </div>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              Win Pace Delta &gt; 0
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            {topOverperformers.map((t, idx) => (
+              <div
+                key={t.team}
+                className="bg-surface/70 border border-slate-800/90 rounded-xl p-3 flex flex-col justify-between hover:border-emerald-500/40 transition-colors shadow-sm"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] font-mono font-bold text-slate-500 w-3">#{idx + 1}</span>
+                  <TeamLogo team={t.team} size="sm" />
+                  <div className="min-w-0">
+                    <span className="font-bold text-xs text-white block truncate">{t.team_name}</span>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      {t.actual.wins}-{t.actual.losses}{t.actual.ties > 0 ? `-${t.actual.ties}` : ''} ({(t.actual_win_pct * 100).toFixed(0)}%)
+                    </span>
+                  </div>
+                </div>
+                <div className="pt-1.5 border-t border-slate-800/80 flex items-center justify-between font-mono text-xs">
+                  <span className="text-[10px] text-slate-400">Pace: {t.current_pace.toFixed(1)}W</span>
+                  <span className="font-bold text-emerald-400 flex items-center gap-0.5">
+                    <TrendingUp className="w-3 h-3" />
+                    +{t.performance_delta.toFixed(1)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Underperformers Podium */}
+        <div className="bg-gradient-to-br from-rose-950/30 via-surface-raised/80 to-surface-raised/60 border border-rose-500/30 rounded-2xl p-4 shadow-lg">
+          <div className="flex items-center justify-between mb-3 border-b border-rose-500/20 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-rose-500/20 text-rose-400">
+                <Snowflake className="w-4 h-4" />
+              </div>
+              <h3 className="text-xs font-bold font-mono uppercase tracking-wider text-rose-300">
+                League Underperformers (Actual Pace vs Preseason Model)
+              </h3>
+            </div>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">
+              Win Pace Delta &lt; 0
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            {topUnderperformers.map((t, idx) => (
+              <div
+                key={t.team}
+                className="bg-surface/70 border border-slate-800/90 rounded-xl p-3 flex flex-col justify-between hover:border-rose-500/40 transition-colors shadow-sm"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] font-mono font-bold text-slate-500 w-3">#{idx + 1}</span>
+                  <TeamLogo team={t.team} size="sm" />
+                  <div className="min-w-0">
+                    <span className="font-bold text-xs text-white block truncate">{t.team_name}</span>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      {t.actual.wins}-{t.actual.losses}{t.actual.ties > 0 ? `-${t.actual.ties}` : ''} ({(t.actual_win_pct * 100).toFixed(0)}%)
+                    </span>
+                  </div>
+                </div>
+                <div className="pt-1.5 border-t border-slate-800/80 flex items-center justify-between font-mono text-xs">
+                  <span className="text-[10px] text-slate-400">Pace: {t.current_pace.toFixed(1)}W</span>
+                  <span className="font-bold text-rose-400 flex items-center gap-0.5">
+                    <TrendingDown className="w-3 h-3" />
+                    {t.performance_delta.toFixed(1)}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -449,18 +674,51 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
       {/* Tab 2: Full 32 Table */}
       {activeTab === 'table' && (
         <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
-          <div className="flex items-center justify-end px-3 py-2 border-b border-slate-800">
-            <button
-              type="button"
-              onClick={handleExportCsv}
-              title="Export CSV"
-              aria-label="Export standings table as CSV"
-              data-export-exclude
-              className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
-            >
-              <Download className="w-3.5 h-3.5" />
-            </button>
+          {/* Sub-view View Switcher (Model Projections vs Reality) + CSV Export */}
+          <div className="flex flex-wrap items-center justify-between px-4 py-3 border-b border-slate-800 gap-3">
+            <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
+              <button
+                type="button"
+                onClick={() => handleModeChange('projections')}
+                className={`cursor-pointer select-none px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                  tableMode === 'projections'
+                    ? 'bg-accent-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Model Projections
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModeChange('reality')}
+                className={`cursor-pointer select-none px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                  tableMode === 'reality'
+                    ? 'bg-accent-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Activity className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Projections vs. Reality</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-slate-400 font-mono">
+                {tableMode === 'reality' ? '17-Game Pace Benchmarking' : 'Monte Carlo 1,000 Sim Outcomes'}
+              </span>
+              <button
+                type="button"
+                onClick={handleExportCsv}
+                title="Export CSV"
+                aria-label="Export standings table as CSV"
+                data-export-exclude
+                className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
+
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-surface/90 text-[11px] font-mono uppercase tracking-wider text-slate-400 border-b border-slate-800">
@@ -492,72 +750,154 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                       {renderSortIndicator('division')}
                     </div>
                   </th>
-                  <th
-                    onClick={() => handleSort('power_rating')}
-                    className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
-                  >
-                    <div className="flex items-center justify-end gap-1.5">
-                      <span>Power Rating</span>
-                      {renderSortIndicator('power_rating')}
-                    </div>
-                  </th>
-                  <th
-                    onClick={() => handleSort('net_epa_roll')}
-                    className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
-                  >
-                    <div className="flex items-center justify-end gap-1.5">
-                      <span>Net EPA/Play</span>
-                      {renderSortIndicator('net_epa_roll')}
-                    </div>
-                  </th>
-                  <th
-                    onClick={() => handleSort('point_diff')}
-                    className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
-                  >
-                    <div className="flex items-center justify-end gap-1.5">
-                      <span>Point Diff</span>
-                      {renderSortIndicator('point_diff')}
-                    </div>
-                  </th>
-                  <th
-                    onClick={() => handleSort('projected_wins')}
-                    className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
-                  >
-                    <div className="flex items-center justify-end gap-1.5">
-                      <span>Proj Wins</span>
-                      {renderSortIndicator('projected_wins')}
-                    </div>
-                  </th>
-                  <th className="py-3.5 px-3 font-semibold text-center">
-                    <span>p10 - p90 Range</span>
-                  </th>
-                  <th
-                    onClick={() => handleSort('playoff_prob')}
-                    className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
-                  >
-                    <div className="flex items-center justify-end gap-1.5">
-                      <span>Playoff %</span>
-                      {renderSortIndicator('playoff_prob')}
-                    </div>
-                  </th>
-                  <th
-                    onClick={() => handleSort('division_title_prob')}
-                    className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
-                  >
-                    <div className="flex items-center justify-end gap-1.5">
-                      <span>Div Title %</span>
-                      {renderSortIndicator('division_title_prob')}
-                    </div>
-                  </th>
-                  <th
-                    onClick={() => handleSort('super_bowl_prob')}
-                    className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
-                  >
-                    <div className="flex items-center justify-end gap-1.5">
-                      <span>Super Bowl %</span>
-                      {renderSortIndicator('super_bowl_prob')}
-                    </div>
-                  </th>
+
+                  {tableMode === 'reality' ? (
+                    /* Projections vs. Reality Comparison Columns */
+                    <>
+                      <th
+                        onClick={() => handleSort('actual_record')}
+                        className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-center"
+                      >
+                        <div className="flex items-center justify-center gap-1.5">
+                          <span>Actual Record (W-L-T)</span>
+                          {renderSortIndicator('actual_record')}
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleSort('actual_win_pct')}
+                        className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
+                      >
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span>Win %</span>
+                          {renderSortIndicator('actual_win_pct')}
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleSort('points_for')}
+                        className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
+                      >
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span>PF</span>
+                          {renderSortIndicator('points_for')}
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleSort('points_against')}
+                        className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
+                      >
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span>PA</span>
+                          {renderSortIndicator('points_against')}
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleSort('point_diff')}
+                        className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
+                      >
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span>Point Diff</span>
+                          {renderSortIndicator('point_diff')}
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleSort('projected_wins')}
+                        className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
+                      >
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span>Preseason Proj (17G)</span>
+                          {renderSortIndicator('projected_wins')}
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleSort('current_pace')}
+                        className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
+                      >
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span>Current Win Pace</span>
+                          {renderSortIndicator('current_pace')}
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleSort('performance_delta')}
+                        className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
+                      >
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span>Performance Delta</span>
+                          {renderSortIndicator('performance_delta')}
+                        </div>
+                      </th>
+                    </>
+                  ) : (
+                    /* Default Model Output Columns */
+                    <>
+                      <th
+                        onClick={() => handleSort('power_rating')}
+                        className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
+                      >
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span>Power Rating</span>
+                          {renderSortIndicator('power_rating')}
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleSort('net_epa_roll')}
+                        className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
+                      >
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span>Net EPA/Play</span>
+                          {renderSortIndicator('net_epa_roll')}
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleSort('point_diff')}
+                        className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
+                      >
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span>Point Diff</span>
+                          {renderSortIndicator('point_diff')}
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleSort('projected_wins')}
+                        className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
+                      >
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span>Proj Wins</span>
+                          {renderSortIndicator('projected_wins')}
+                        </div>
+                      </th>
+                      <th className="py-3.5 px-3 font-semibold text-center">
+                        <span>p10 - p90 Range</span>
+                      </th>
+                      <th
+                        onClick={() => handleSort('playoff_prob')}
+                        className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
+                      >
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span>Playoff %</span>
+                          {renderSortIndicator('playoff_prob')}
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleSort('division_title_prob')}
+                        className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
+                      >
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span>Div Title %</span>
+                          {renderSortIndicator('division_title_prob')}
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleSort('super_bowl_prob')}
+                        className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
+                      >
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span>Super Bowl %</span>
+                          {renderSortIndicator('super_bowl_prob')}
+                        </div>
+                      </th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-sans">
@@ -585,46 +925,107 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                     <td className="py-3 px-3 font-mono text-slate-400">
                       {team.division}
                     </td>
-                    <td className="py-3 px-3 text-right font-mono font-bold">
-                      <span className={(team.power_rating ?? 0) > 0 ? 'text-emerald-400' : 'text-red-400'}>
-                        {(team.power_rating ?? 0) > 0 ? `+${(team.power_rating ?? 0).toFixed(2)}` : (team.power_rating ?? 0).toFixed(2)}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono">
-                      <span className={team.net_epa_roll > 0 ? 'text-emerald-400' : 'text-red-400'}>
-                        {team.net_epa_roll > 0 ? `+${team.net_epa_roll.toFixed(3)}` : team.net_epa_roll.toFixed(3)}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono">
-                      <span className={team.point_diff > 0 ? 'text-cyan-400' : team.point_diff < 0 ? 'text-amber-400' : 'text-slate-400'}>
-                        {team.point_diff > 0 ? `+${team.point_diff}` : team.point_diff}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono font-bold text-white text-sm">
-                      {team.projected_wins.toFixed(1)}
-                    </td>
-                    <td className="py-3 px-3 text-center font-mono text-slate-400 text-[11px]">
-                      {team.wins_p10.toFixed(0)} - {team.wins_p90.toFixed(0)} W
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono font-bold">
-                      <span
-                        className={
-                          team.playoff_prob >= 0.70
-                            ? 'text-emerald-400'
-                            : team.playoff_prob >= 0.40
-                            ? 'text-cyan-400'
-                            : 'text-amber-400'
-                        }
-                      >
-                        {(team.playoff_prob * 100).toFixed(1)}%
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono text-slate-300">
-                      {(team.division_title_prob * 100).toFixed(1)}%
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono font-bold text-amber-400">
-                      {(team.super_bowl_prob * 100).toFixed(1)}%
-                    </td>
+
+                    {tableMode === 'reality' ? (
+                      /* Reality vs Projections Row Data */
+                      <>
+                        <td className="py-3 px-3 text-center font-mono font-bold text-white">
+                          {team.actual.wins}-{team.actual.losses}-{team.actual.ties}
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono font-medium text-slate-300">
+                          {(team.actual_win_pct * 100).toFixed(1)}%
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono text-slate-300">
+                          {team.actual.pointsFor}
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono text-slate-400">
+                          {team.actual.pointsAgainst}
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono font-bold">
+                          <span
+                            className={
+                              team.actual_pt_diff > 0
+                                ? 'text-cyan-400'
+                                : team.actual_pt_diff < 0
+                                ? 'text-amber-400'
+                                : 'text-slate-400'
+                            }
+                          >
+                            {team.actual_pt_diff > 0 ? `+${team.actual_pt_diff}` : team.actual_pt_diff}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono font-semibold text-slate-300">
+                          {team.projected_wins.toFixed(1)}W
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono font-bold text-white text-sm">
+                          {team.current_pace.toFixed(1)}W
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono font-bold">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono font-bold ${
+                              team.performance_delta > 0
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                : team.performance_delta < 0
+                                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                : 'bg-slate-800 text-slate-400'
+                            }`}
+                          >
+                            {team.performance_delta > 0 ? (
+                              <TrendingUp className="w-3 h-3 text-emerald-400" />
+                            ) : team.performance_delta < 0 ? (
+                              <TrendingDown className="w-3 h-3 text-rose-400" />
+                            ) : null}
+                            {team.performance_delta > 0
+                              ? `+${team.performance_delta.toFixed(1)}`
+                              : team.performance_delta.toFixed(1)}
+                          </span>
+                        </td>
+                      </>
+                    ) : (
+                      /* Standard Projections Row Data */
+                      <>
+                        <td className="py-3 px-3 text-right font-mono font-bold">
+                          <span className={(team.power_rating ?? 0) > 0 ? 'text-emerald-400' : 'text-red-400'}>
+                            {(team.power_rating ?? 0) > 0 ? `+${(team.power_rating ?? 0).toFixed(2)}` : (team.power_rating ?? 0).toFixed(2)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono">
+                          <span className={team.net_epa_roll > 0 ? 'text-emerald-400' : 'text-red-400'}>
+                            {team.net_epa_roll > 0 ? `+${team.net_epa_roll.toFixed(3)}` : team.net_epa_roll.toFixed(3)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono">
+                          <span className={team.point_diff > 0 ? 'text-cyan-400' : team.point_diff < 0 ? 'text-amber-400' : 'text-slate-400'}>
+                            {team.point_diff > 0 ? `+${team.point_diff}` : team.point_diff}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono font-bold text-white text-sm">
+                          {team.projected_wins.toFixed(1)}
+                        </td>
+                        <td className="py-3 px-3 text-center font-mono text-slate-400 text-[11px]">
+                          {team.wins_p10.toFixed(0)} - {team.wins_p90.toFixed(0)} W
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono font-bold">
+                          <span
+                            className={
+                              team.playoff_prob >= 0.70
+                                ? 'text-emerald-400'
+                                : team.playoff_prob >= 0.40
+                                ? 'text-cyan-400'
+                                : 'text-amber-400'
+                            }
+                          >
+                            {(team.playoff_prob * 100).toFixed(1)}%
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono text-slate-300">
+                          {(team.division_title_prob * 100).toFixed(1)}%
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono font-bold text-amber-400">
+                          {(team.super_bowl_prob * 100).toFixed(1)}%
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ))}
               </tbody>
