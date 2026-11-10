@@ -12,6 +12,7 @@ import {
   SalaryCapDataset,
   PassingCatalogEntry,
   PassingMetadata,
+  PlayerDnaProfile,
 } from './types';
 
 function readJsonFile<T>(filename: string): T {
@@ -65,4 +66,8 @@ export function getPassingIndex(): PassingCatalogEntry[] {
 
 export function getPassingMetadata(): PassingMetadata {
   return readJsonFile<PassingMetadata>('passing_metadata.json');
+}
+
+export function getPlayerDnaProfiles(): PlayerDnaProfile[] {
+  return readJsonFile<PlayerDnaProfile[]>('player_dna_profiles.json');
 }

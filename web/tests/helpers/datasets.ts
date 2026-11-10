@@ -21,6 +21,7 @@ import type {
   PassingCatalogEntry,
   PassingChartData,
   PassingMetadata,
+  PlayerDnaProfile,
 } from '../../lib/types';
 
 export const REPO_WEB_ROOT = path.resolve(__dirname, '..', '..');
@@ -41,6 +42,7 @@ export const DATASET_FILES = {
   getSalaryCapData: 'salary_cap_profiles.json',
   getPassingIndex: 'passing_index.json',
   getPassingMetadata: 'passing_metadata.json',
+  getPlayerDnaProfiles: 'player_dna_profiles.json',
 } as const;
 
 export function loadRaw(filename: string): unknown {
@@ -70,6 +72,9 @@ export function readQbPassingFile(qbId: string): PassingChartData {
   }
   return JSON.parse(fs.readFileSync(filePath, 'utf-8')) as PassingChartData;
 }
+
+export const dnaProfiles = () => loadRaw(DATASET_FILES.getPlayerDnaProfiles) as PlayerDnaProfile[];
+
 
 /** Sum helper that keeps float noise out of the assertion messages. */
 export const sumBy = <T,>(rows: readonly T[], f: (row: T) => number): number =>
