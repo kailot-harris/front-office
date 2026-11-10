@@ -133,7 +133,7 @@ export const DnaManifoldScatter: React.FC<DnaManifoldScatterProps> = ({
         </svg>
       </div>
 
-      <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 pt-2 border-t border-slate-800/80">
+      <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 pt-2 border-t border-slate-800/80">
         <span>Click any dot to load player DNA & historical twins</span>
         <span className="text-sky-400 font-bold">Selected: {selectedPlayer.playerName}</span>
       </div>
