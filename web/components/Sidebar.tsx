@@ -21,6 +21,7 @@ import {
   DollarSign,
   Target,
   Dna,
+  Flame,
 } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
 
@@ -105,6 +106,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       badge: 'Radar & Twins',
       icon: Dna,
       desc: 'Empirical skill vectors & radar',
+    },
+    {
+      href: '/clutch',
+      label: 'True Clutch Index',
+      badge: '4Q Leverage',
+      icon: Flame,
+      desc: 'High-leverage EPA, CPOE & go-for-it rates',
     },
     {
       href: '/variants',

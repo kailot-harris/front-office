@@ -13,6 +13,7 @@ import {
   PassingCatalogEntry,
   PassingMetadata,
   PlayerDnaProfile,
+  ClutchProfile,
 } from './types';
 
 function readJsonFile<T>(filename: string): T {
@@ -71,3 +72,7 @@ export function getPassingMetadata(): PassingMetadata {
 export function getPlayerDnaProfiles(): PlayerDnaProfile[] {
   return readJsonFile<PlayerDnaProfile[]>('player_dna_profiles.json');
 }
+export function getClutchData(): ClutchProfile[] {
+  return readJsonFile<ClutchProfile[]>('clutch_leverage_metrics.json');
+}
+

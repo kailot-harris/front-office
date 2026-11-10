@@ -22,6 +22,7 @@ import {
   standings,
   sumBy,
   teamEpa,
+  clutch,
 } from '../helpers/datasets';
 
 /** Tolerance for probabilities the export rounds to 3-4 decimals, per team. */
@@ -955,4 +956,40 @@ describe('model diagnostics', () => {
     expect(d.home_field_adv).toBeLessThan(4);
   });
 });
+
+describe('clutch — leverage and EPA delta invariants', () => {
+  const profiles = clutch();
+
+  it('contains at least 25 QBs', () => {
+    expect(profiles.length).toBeGreaterThanOrEqual(25);
+  });
+
+  it('preserves mathematical invariant: clutchEpaDelta = clutchEpa - baselineEpa for qualified samples', () => {
+    const qualified = profiles.filter(
+      (p) => p.clutchEpa !== null && p.baselineEpa !== null && p.clutchEpaDelta !== null
+    );
+    expect(qualified.length).toBeGreaterThan(0);
+
+    for (const p of qualified) {
+      const expectedDelta = (p.clutchEpa as number) - (p.baselineEpa as number);
+      expect(
+        Math.abs((p.clutchEpaDelta as number) - expectedDelta),
+        `clutchEpaDelta mismatch for ${p.playerName}: delta=${p.clutchEpaDelta}, expected=${expectedDelta}`
+      ).toBeLessThanOrEqual(0.001);
+    }
+  });
+
+  it('low-sample QBs have typed null for rate and efficiency metrics with INSUFFICIENT_SAMPLE provenance', () => {
+    const lowSample = profiles.filter((p) => p.provenance === 'INSUFFICIENT_SAMPLE');
+    for (const p of lowSample) {
+      expect(p.clutchEpa).toBeNull();
+      expect(p.baselineEpa).toBeNull();
+      expect(p.clutchEpaDelta).toBeNull();
+      expect(p.clutchSuccessRate).toBeNull();
+      expect(p.clutchCpoe).toBeNull();
+      expect(p.turnoverFragility).toBeNull();
+    }
+  });
+});
+
 

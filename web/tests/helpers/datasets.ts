@@ -22,6 +22,7 @@ import type {
   PassingChartData,
   PassingMetadata,
   PlayerDnaProfile,
+  ClutchProfile,
 } from '../../lib/types';
 
 export const REPO_WEB_ROOT = path.resolve(__dirname, '..', '..');
@@ -43,6 +44,7 @@ export const DATASET_FILES = {
   getPassingIndex: 'passing_index.json',
   getPassingMetadata: 'passing_metadata.json',
   getPlayerDnaProfiles: 'player_dna_profiles.json',
+  getClutchData: 'clutch_leverage_metrics.json',
 } as const;
 
 export function loadRaw(filename: string): unknown {
@@ -74,6 +76,9 @@ export function readQbPassingFile(qbId: string): PassingChartData {
 }
 
 export const dnaProfiles = () => loadRaw(DATASET_FILES.getPlayerDnaProfiles) as PlayerDnaProfile[];
+
+
+export const clutch = () => loadRaw(DATASET_FILES.getClutchData) as ClutchProfile[];
 
 
 /** Sum helper that keeps float noise out of the assertion messages. */

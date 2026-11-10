@@ -257,7 +257,6 @@ export interface SalaryCapDataset {
   top_league_contracts: LeagueTopContract[];
 }
 
-
 // -----------------------------------------------------------------------------
 // Passing Charts & Throw Maps (NextGenStats Empirical Analytics)
 // -----------------------------------------------------------------------------
@@ -320,6 +319,7 @@ export interface PassingMetadata {
   total_passes_sampled: number;
   zones: string[];
   league_averages: PassingZoneMetric[];
+}
 
 export interface PlayerDnaHistoricalTwin {
   compName: string;
@@ -364,3 +364,28 @@ export interface PlayerDnaProfile {
   historicalTwins: PlayerDnaHistoricalTwin[];
 
 }
+
+export interface ClutchProfile {
+  playerId: string;
+  playerName: string;
+  team: string;
+  position: string;
+  isStarter: boolean;
+  headshotUrl: string;
+  clutchAttempts: number;
+  clutchPlays: number;
+  baselineAttempts: number;
+  baselinePlays: number;
+  clutchEpa: number | null;
+  baselineEpa: number | null;
+  clutchEpaDelta: number | null;
+  clutchSuccessRate: number | null;
+  baselineSuccessRate: number | null;
+  clutchCpoe: number | null;
+  turnoverFragility: number | null;
+  fourthDownAggressiveness: number | null;
+  clutchArchetype: string;
+  provenance: string;
+}
+
+
