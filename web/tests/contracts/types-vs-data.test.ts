@@ -189,6 +189,7 @@ const parityCases: ParityCase[] = [
   { file: 'salary_cap_profiles.json', iface: 'SalaryCapDataset', pick: (j) => [j as Record<string, unknown>] },
   { file: 'salary_cap_profiles.json', iface: 'TeamCapProfile', pick: (j) => (j as { teams: Record<string, unknown>[] }).teams },
   { file: 'salary_cap_profiles.json', iface: 'LeagueTopContract', pick: (j) => (j as { top_league_contracts: Record<string, unknown>[] }).top_league_contracts },
+  { file: 'passing_index.json', iface: 'PassingCatalogEntry' },
 ];
 
 describe('TypeScript interface vs JSON payload key parity', () => {

@@ -19,6 +19,7 @@ import {
   Zap,
   Briefcase,
   DollarSign,
+  Target,
 } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
 
@@ -89,6 +90,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       badge: 'EPA & CPOE',
       icon: Users,
       desc: 'QB composite & rookie snap ramp',
+    },
+    {
+      href: '/passing',
+      label: 'Passing Charts',
+      badge: 'Throw Map',
+      icon: Target,
+      desc: 'NextGenStats throw charts & depth zones',
     },
     {
       href: '/variants',

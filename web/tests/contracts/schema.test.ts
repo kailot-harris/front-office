@@ -8,8 +8,8 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { DATASET_SCHEMAS } from './schemas';
-import { DATA_DIR, DATASET_FILES, loadRaw } from '../helpers/datasets';
+import { DATASET_SCHEMAS, PassingChartSchema } from './schemas';
+import { DATA_DIR, DATASET_FILES, PASSING_DIR, loadRaw, passingIndex, readQbPassingFile } from '../helpers/datasets';
 
 describe('dataset files exist and are well-formed JSON', () => {
   it.each(Object.entries(DATASET_FILES))(
@@ -58,5 +58,20 @@ describe('declared counts match actual array lengths', () => {
     const d = loadRaw('matchups_current_week.json') as { total_games: number; matchups: unknown[] };
     expect(d.total_games).toBe(d.matchups.length);
   });
+});
 
+describe('per-QB passing chart chunk validation', () => {
+  it('every public/data/passing/<qb_id>.json matches PassingChartSchema', () => {
+    expect(fs.existsSync(PASSING_DIR)).toBe(true);
+    const catalog = passingIndex();
+    expect(catalog.length).toBeGreaterThanOrEqual(25);
+    for (const qb of catalog) {
+      const qbData = readQbPassingFile(qb.player_id);
+      const res = PassingChartSchema.safeParse(qbData);
+      if (!res.success) {
+        throw new Error(`passing/${qb.player_id}.json failed: ${JSON.stringify(res.error.issues)}`);
+      }
+      expect(res.success).toBe(true);
+    }
+  });
 });
