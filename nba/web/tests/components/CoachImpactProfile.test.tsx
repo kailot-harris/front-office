@@ -57,12 +57,13 @@ describe('CoachImpactProfile', () => {
     expect(screen.queryByText(/Decomposing roster baseline/i)).toBeNull();
   });
 
-  it('surfaces per-field provenance, including synthetic bands', () => {
+  it('surfaces per-field provenance with zero synthetic bands', () => {
     const coach = coaches[0];
     render(<CoachImpactProfile coach={coach} />);
 
     expect(screen.getAllByText('Observed PBP').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Synthetic band').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Model residual').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Synthetic band')).toBeNull();
   });
 
   it('reports the ATO and challenge values from the dataset verbatim', () => {

@@ -358,9 +358,9 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
                 </span>
               </div>
               <div className="p-1.5 bg-surface-raised/80 rounded border border-slate-800/80">
-                <span className="text-[9px] text-slate-400 block">Scheme Lift (xSQ)</span>
+                <span className="text-[9px] text-slate-400 block">Coaching Win Lift</span>
                 <span className="font-mono font-bold text-indigo-400">
-                  +{hoveredCoach.metrics.shotQualityLiftEfg}% eFG
+                  {hoveredCoach.metrics.coachingWinsAdded > 0 ? `+${hoveredCoach.metrics.coachingWinsAdded}` : hoveredCoach.metrics.coachingWinsAdded} W
                 </span>
               </div>
             </div>

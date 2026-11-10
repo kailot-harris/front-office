@@ -17,15 +17,15 @@ export interface ClutchProfile {
   team: string;
   position: string;
   clutchArchetype: string;
-  clutchMpg: number;
-  clutchUsgPct: number;
-  clutchTsPct: number;
+  clutchMpg: number | null;
+  clutchUsgPct: number | null;
+  clutchTsPct: number | null;
   baseTsPct: number;
-  tsDelta: number;
-  usciScore: number; // Unassisted Shot Creation Index
-  unassistedFgmPct: number;
-  clutchPpp: number;
-  tovFragility: number; // Delta TOV% under pressure
-  cDwpa: number; // Clutch Defensive Win Probability Added (%)
+  tsDelta: number | null;
+  usciScore: number | null; // Unassisted Shot Creation Index
+  unassistedFgmPct: number | null;
+  clutchPpp: number | null;
+  tovFragility: number | null; // Delta TOV% under pressure
+  cDwpa: number | null; // Clutch Defensive Win Probability Added (%)
   shotBreakdown: ClutchShotBreakdown;
 }

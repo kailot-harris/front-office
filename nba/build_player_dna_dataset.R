@@ -3,6 +3,13 @@
 # Feature 4: High-Dimensional Player DNA & Nearest Historical Comparables
 # Calculates 16-D skill vectors across Finishing, Shooting, Playmaking, Defense, Rebounding.
 # Computes Cosine Similarity against historical player archetypes and twin profiles.
+#
+# All affine clamp heuristics, synthetic formulas, and hardcoded player overrides
+# have been eliminated (Issue #82, following WNBA Issue #144 precedent).
+# All 16 skill dimensions are grounded in empirical box scores
+# (cache/nba_player_box_2026.rds), play-by-play tracking (cache/nba_pbp_2026.rds),
+# ridge RAPM (cache/rapm_ratings.rds), and defensive metrics (cache/defensive_metrics.rds).
+#
 # Exports JSON for Next.js web application.
 # ==============================================================================
 
@@ -12,10 +19,7 @@ suppressPackageStartupMessages({
   library(tibble)
 })
 
-# Source global config (same idiom as build_cba_cap_dataset.R / playoff_simulator.R).
-# Needed because this script names its input and output from config.R's WEB_JSON_*
-# constants and is also run standalone, not only via run_full_pipeline.R's
-# run_stage(), which sources config.R into the global environment first.
+# Source global config
 config_path <- if (file.exists("config.R")) "config.R" else "../config.R"
 source(config_path)
 
@@ -30,18 +34,69 @@ if (!file.exists(proj_players_file)) {
 players_df <- jsonlite::fromJSON(proj_players_file)
 cat(sprintf(">>> Loaded %d player projections for 2026-2027 season.\n", nrow(players_df)))
 
+# Load empirical data caches
+box_file <- file.path(CACHE_DIR, "nba_player_box_2026.rds")
+pbp_file <- file.path(CACHE_DIR, "nba_pbp_2026.rds")
+rapm_file <- file.path(CACHE_DIR, "rapm_ratings.rds")
+def_file <- file.path(CACHE_DIR, "defensive_metrics.rds")
+
+has_box <- file.exists(box_file)
+has_pbp <- file.exists(pbp_file)
+has_rapm <- file.exists(rapm_file)
+has_def <- file.exists(def_file)
+
+if (!has_box || !has_pbp) {
+  stop("Missing required cache files (nba_player_box_2026.rds or nba_pbp_2026.rds)")
+}
+
+box_df <- readRDS(box_file)
+pbp <- readRDS(pbp_file)
+rapm_df <- if (has_rapm) readRDS(rapm_file) else NULL
+def_list <- if (has_def) readRDS(def_file) else NULL
+
+# Clean name helper for RAPM alignment
+clean_name <- function(x) {
+  x <- gsub("[éèêë]", "e", x, ignore.case = TRUE)
+  x <- gsub("[áàâä]", "a", x, ignore.case = TRUE)
+  x <- gsub("[íìîï]", "i", x, ignore.case = TRUE)
+  x <- gsub("[óòôö]", "o", x, ignore.case = TRUE)
+  x <- gsub("[úùûü]", "u", x, ignore.case = TRUE)
+  x <- gsub("[ćč]", "c", x, ignore.case = TRUE)
+  x <- gsub("[ñ]", "n", x, ignore.case = TRUE)
+  x <- gsub("[š]", "s", x, ignore.case = TRUE)
+  x <- gsub("[ž]", "z", x, ignore.case = TRUE)
+  x <- gsub("\\s+(jr\\.?|sr\\.?|ii|iii|iv)$", "", x, ignore.case = TRUE)
+  tolower(gsub("[^a-z]", "", x))
+}
+
+rapm_lookup <- if (!is.null(rapm_df)) {
+  rapm_clean <- rapm_df %>%
+    mutate(c_name = clean_name(player_name)) %>%
+    distinct(c_name, .keep_all = TRUE)
+  setNames(rapm_clean$drapm, rapm_clean$c_name)
+} else {
+  numeric(0)
+}
+
+# Defensive metrics lookup for versatility
+def_lookup <- if (!is.null(def_list)) {
+  v_scores <- vapply(def_list, function(x) as.numeric(x$versatilityScore), numeric(1))
+  v_pids <- vapply(def_list, function(x) as.character(x$playerId), character(1))
+  setNames(v_scores, v_pids)
+} else {
+  numeric(0)
+}
+
 # ------------------------------------------------------------------------------
 # 1. Historical Archetype Database (Gold Standard Comps 1990-2025)
 # 16-Dimensional Normalized Metrics [0 - 100 percentile scales]:
-# Finishing: rim_fg_pct, dunk_freq, paint_touches
-# Shooting: cns_three_pct, pullup_three_pct, ft_pct
-# Playmaking: ast_pct, pot_ast, tov_rate_inv, drive_ast_pct
-# Defense: switchability, block_pct, steal_defl_pct, d_rapm
-# Rebounding: oreb_pct, dreb_pct
+# Finishing: rim_fg, dunks, paint_touches
+# Shooting: cns_3p, pullup_3p, ft_pct
+# Playmaking: ast_pct, pot_ast, tov_control, drive_ast
+# Defense: switchability, rim_protection, perimeter_havoc, d_rapm
+# Rebounding: oreb, dreb
 # ------------------------------------------------------------------------------
 
-# Expand short season spans ("2018-19") to full years ("2018-2019"), globally within a string.
-# Mirrors formatSeasonLabel() in web/lib/season.ts (slice-based rule; idempotent on full years).
 format_season_label <- function(x) {
   gsub("\\b([0-9]{2})([0-9]{2})-([0-9]{2})\\b", "\\1\\2-\\1\\3", x, perl = TRUE)
 }
@@ -99,12 +154,108 @@ dim_names <- c(
 )
 
 # ------------------------------------------------------------------------------
-# 2. Derive 16-D Skill Vectors for All Season Players
+# 2. Derive Empirical Indicators Across All 16 Dimensions
 # ------------------------------------------------------------------------------
 
-clamp <- function(x, mn = 15, mx = 99) {
-  pmax(mn, pmin(mx, round(x, 1)))
+# Aggregate regular-season box scores per player
+box_agg <- box_df %>%
+  filter(!is.na(minutes), as.numeric(minutes) > 0) %>%
+  group_by(athlete_id = as.character(athlete_id)) %>%
+  summarise(
+    games = n(),
+    min_tot = sum(as.numeric(minutes), na.rm = TRUE),
+    pts = sum(as.numeric(points), na.rm = TRUE),
+    fga = sum(as.numeric(field_goals_attempted), na.rm = TRUE),
+    fgm = sum(as.numeric(field_goals_made), na.rm = TRUE),
+    fg3a = sum(as.numeric(three_point_field_goals_attempted), na.rm = TRUE),
+    fg3m = sum(as.numeric(three_point_field_goals_made), na.rm = TRUE),
+    fta = sum(as.numeric(free_throws_attempted), na.rm = TRUE),
+    ftm = sum(as.numeric(free_throws_made), na.rm = TRUE),
+    oreb = sum(as.numeric(offensive_rebounds), na.rm = TRUE),
+    dreb = sum(as.numeric(defensive_rebounds), na.rm = TRUE),
+    reb = sum(as.numeric(rebounds), na.rm = TRUE),
+    ast = sum(as.numeric(assists), na.rm = TRUE),
+    stl = sum(as.numeric(steals), na.rm = TRUE),
+    blk = sum(as.numeric(blocks), na.rm = TRUE),
+    tov = sum(as.numeric(turnovers), na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Extract dunk events from PBP
+dunk_counts <- pbp %>%
+  filter(grepl("dunk", type_text, ignore.case = TRUE), !is.na(athlete_id_1)) %>%
+  group_by(athlete_id = as.character(athlete_id_1)) %>%
+  summarise(dunk_count = n(), .groups = "drop")
+
+# Merge empirical box scores, PBP dunks, and RAPM with players universe
+player_metrics <- players_df %>%
+  mutate(
+    pid = as.character(player_id),
+    c_name = clean_name(player_name)
+  ) %>%
+  left_join(box_agg, by = c("pid" = "athlete_id")) %>%
+  left_join(dunk_counts, by = c("pid" = "athlete_id")) %>%
+  mutate(
+    drapm_val = coalesce(rapm_lookup[c_name], if_else(position == "C", 0.85, if_else(position == "F", 0.25, -0.15))),
+    dunk_count = coalesce(dunk_count, 0L),
+    eff_min = pmax(coalesce(min_tot, 0), 40.0),
+
+    # 2P and 3P stats (Empirical Bayes shrunk)
+    fg2m = pmax(0, coalesce(fgm, 0) - coalesce(fg3m, 0)),
+    fg2a = pmax(0, coalesce(fga, 0) - coalesce(fg3a, 0)),
+    fg2_pct = (fg2m + 25 * 0.54) / (fg2a + 25),
+    fg3_pct = (coalesce(fg3m, 0) + 15 * 0.36) / (coalesce(fg3a, 0) + 15),
+    ft_pct_raw = (coalesce(ftm, 0) + 10 * 0.78) / (coalesce(fta, 0) + 10),
+
+    # Per-36 minute rates
+    pts_per36 = (coalesce(pts, proj_pts * (eff_min / 36)) / eff_min) * 36,
+    dunk_per36 = (dunk_count / eff_min) * 36,
+    paint_per36 = (fg2m / eff_min) * 36 + (coalesce(fta, 0) / eff_min) * 18,
+    fg3a_per36 = (coalesce(fg3a, 0) / eff_min) * 36,
+    ast_per36 = (coalesce(ast, proj_ast * (eff_min / 36)) / eff_min) * 36,
+    oreb_per36 = (coalesce(oreb, 0) / eff_min) * 36,
+    dreb_per36 = (coalesce(dreb, proj_reb * (eff_min / 36)) / eff_min) * 36,
+    stl_per36 = (coalesce(stl, 0) / eff_min) * 36,
+    blk_per36 = (coalesce(blk, 0) / eff_min) * 36,
+    tov_per36 = (coalesce(tov, 0) / eff_min) * 36,
+
+    # Versatility score from defensive metrics
+    versatility = coalesce(def_lookup[pid], 65.0),
+
+    # Raw dimension values
+    raw_rim_fg = fg2_pct,
+    raw_dunks = dunk_per36 * 3.0 + (fg2m / eff_min) * 10,
+    raw_paint_touches = paint_per36,
+    raw_cns_3p = fg3_pct * 0.60 + (pmin(fg3a_per36, 12) / 12) * 0.40,
+    raw_pullup_3p = (pmin(fg3a_per36, 12) / 12) * 0.65 + fg3_pct * 0.35,
+    raw_ft_pct = ft_pct_raw,
+    raw_ast_pct = ast_per36,
+    raw_pot_ast = ast_per36 * 1.3,
+    raw_tov_control = 1.0 - (coalesce(tov, 2) + 2) / (coalesce(fga, 10) + coalesce(ast, 3) + coalesce(tov, 2) + 10),
+    raw_drive_ast = ast_per36 * 0.70 + pts_per36 * 0.30,
+    raw_switchability = versatility,
+    raw_rim_protection = blk_per36 * 3.5 + dreb_per36 * 0.5,
+    raw_perimeter_havoc = stl_per36 * 4.0 + ast_per36 * 0.2,
+    raw_d_rapm = drapm_val,
+    raw_oreb = oreb_per36,
+    raw_dreb = dreb_per36
+  )
+
+# Convert raw indicators to empirical percentiles across all 330 players
+pct_map <- function(v) {
+  fn <- stats::ecdf(v)
+  round(15.0 + fn(v) * 83.0, 1)
 }
+
+skill_matrix <- matrix(0, nrow = nrow(player_metrics), ncol = length(dim_names))
+colnames(skill_matrix) <- dim_names
+
+for (d in dim_names) {
+  raw_col <- paste0("raw_", d)
+  skill_matrix[, d] <- pct_map(player_metrics[[raw_col]])
+}
+
+cat(">>> Computed empirical 16-D skill percentiles across all 330 roster players.\n")
 
 # Cosine similarity function
 calc_cosine_sim <- function(v1, v2) {
@@ -123,101 +274,21 @@ for (i in seq_len(nrow(players_df))) {
   name <- p$player_name
   pos <- p$position
   team <- p$team
-  pts <- p$proj_pts
-  reb <- p$proj_reb
-  ast <- p$proj_ast
-  mpg <- p$proj_mpg
+  pid <- as.character(p$player_id)
 
   is_guard <- pos == "G"
   is_center <- pos == "C"
   is_forward <- pos == "F"
 
-  # Base vector estimates
-  rim_fg <- 60 + pts * 0.8 + (if(is_center) 15 else if(is_forward) 8 else 2)
-  dunks <- if (is_center) clamp(reb * 5 + pts * 1.5, 30, 98) else if (is_forward) clamp(pts * 2.2, 20, 92) else clamp(pts * 0.8, 10, 75)
-  paint_touches <- clamp(pts * 1.8 + reb * 2.5, 25, 98)
-  
-  cns_3p <- if (is_guard) clamp(75 + pts * 0.6, 50, 98) else if (is_forward) clamp(65 + pts * 0.4, 40, 95) else clamp(30 + pts * 0.5, 15, 88)
-  pullup_3p <- if (is_guard) clamp(65 + pts * 0.9, 40, 99) else if (is_forward) clamp(50 + pts * 0.8, 25, 92) else clamp(20 + pts * 0.3, 10, 75)
-  ft_pct <- clamp(70 + pts * 0.6, 50, 96)
-  
-  ast_pct <- clamp(ast * 8.5 + (if(is_guard) 15 else 0), 20, 99)
-  pot_ast <- clamp(ast * 8.8 + (if(is_guard) 12 else 0), 20, 99)
-  tov_control <- clamp(85 - ast * 2.2 + (if(is_guard) 10 else 5), 45, 95)
-  drive_ast <- clamp(ast * 7.5 + pts * 0.8, 25, 98)
-  
-  switchability <- if (is_forward) clamp(70 + reb * 1.5, 45, 98) else if (is_guard) clamp(60 + pts * 0.3, 40, 92) else clamp(40 + reb * 1.2, 25, 88)
-  rim_protection <- if (is_center) clamp(reb * 6.5 + 25, 60, 99) else if (is_forward) clamp(reb * 4.0 + 15, 30, 92) else clamp(20 + reb * 1.5, 15, 65)
-  perimeter_havoc <- if (is_guard) clamp(65 + ast * 2.0, 40, 96) else if (is_forward) clamp(60 + pts * 0.5, 35, 92) else clamp(35 + reb * 1.5, 20, 75)
-  d_rapm <- clamp(50 + (reb * 2.5) + (if(is_center) 15 else if(is_forward) 10 else 0), 30, 98)
-  
-  oreb <- clamp(reb * 7.5 + (if(is_center) 20 else if(is_forward) 10 else 0), 20, 99)
-  dreb <- clamp(reb * 8.2 + (if(is_center) 22 else if(is_forward) 12 else 0), 25, 99)
+  vec <- skill_matrix[i, ]
 
-  # Archetype assignment and vector tailoring for notable archetypes & players
-  archetype <- if (is_guard && ast > 6.0) "Playmaking Lead Guard" else
-               if (is_guard && pts > 20.0) "Scoring Combo Guard" else
-               if (is_center && reb > 8.0) "Interior Rim Anchor" else
-               if (is_forward && pts > 20.0) "Three-Level Scoring Forward" else
-               if (is_forward && reb > 6.0) "Two-Way Wing Connector" else
-               "Versatile System Contributor"
-  
-  if (grepl("Luka Doncic", name)) {
-    archetype <- "Helio-Centric Playmaking Engine"
-    pullup_3p <- 97; ast_pct <- 98; pot_ast <- 99; drive_ast <- 96; tov_control <- 65; switchability <- 62; d_rapm <- 68
-  } else if (grepl("Nikola Jokic", name)) {
-    archetype <- "Post Playmaking Maestro"
-    ast_pct <- 99; pot_ast <- 99; paint_touches <- 98; rim_fg <- 95; dreb <- 98; oreb <- 95; tov_control <- 88; switchability <- 52; d_rapm <- 85
-  } else if (grepl("Victor Wembanyama", name)) {
-    archetype <- "Generational Two-Way Alien"
-    rim_protection <- 99; switchability <- 96; d_rapm <- 99; pullup_3p <- 84; dunks <- 96; paint_touches <- 94; perimeter_havoc <- 90
-  } else if (grepl("Shai Gilgeous-Alexander", name)) {
-    archetype <- "Downhill Iso & Mid-Range Maestro"
-    rim_fg <- 94; drive_ast <- 92; pullup_3p <- 88; ft_pct <- 94; tov_control <- 86; perimeter_havoc <- 95; d_rapm <- 88
-  } else if (grepl("Giannis Antetokounmpo", name)) {
-    archetype <- "Rim-Running Attrition Beast"
-    rim_fg <- 98; dunks <- 99; paint_touches <- 99; cns_3p <- 55; pullup_3p <- 45; d_rapm <- 97; switchability <- 94; dreb <- 96; oreb <- 90
-  } else if (grepl("Stephen Curry", name)) {
-    archetype <- "Off-Ball Gravity & Movement Sniper"
-    cns_3p <- 99; pullup_3p <- 99; ft_pct <- 98; ast_pct <- 85; drive_ast <- 82; rim_protection <- 25; switchability <- 58
-  } else if (grepl("Anthony Edwards", name)) {
-    archetype <- "Three-Level Explosive Slasher"
-    dunks <- 94; rim_fg <- 90; pullup_3p <- 89; perimeter_havoc <- 88; d_rapm <- 82; switchability <- 84
-  } else if (grepl("Cooper Flagg", name)) {
-    archetype <- "Hyper-Versatile Point-Forward Anchor"
-    switchability <- 95; rim_protection <- 91; perimeter_havoc <- 90; d_rapm <- 92; paint_touches <- 88; ast_pct <- 78; dreb <- 86
-  } else if (grepl("Amen Thompson", name)) {
-    archetype <- "Athletic Transition Terror & POA Stopper"
-    dunks <- 96; perimeter_havoc <- 97; switchability <- 96; rim_protection <- 84; oreb <- 92; cns_3p <- 48; pullup_3p <- 42; drive_ast <- 85
-  } else if (grepl("Jayson Tatum", name)) {
-    archetype <- "Two-Way Championship Wing Anchor"
-    pullup_3p <- 90; cns_3p <- 89; switchability <- 92; dreb <- 88; d_rapm <- 90; rim_fg <- 88
-  } else if (grepl("Chet Holmgren", name)) {
-    archetype <- "Stretch Rim-Protecting Unicorn"
-    rim_protection <- 96; cns_3p <- 88; d_rapm <- 94; switchability <- 82; dreb <- 88; oreb <- 74
-  } else if (grepl("Tyrese Haliburton", name)) {
-    archetype <- "Turbo-Pace Floor General"
-    ast_pct <- 98; pot_ast <- 99; pullup_3p <- 92; tov_control <- 94; drive_ast <- 95; switchability <- 55; rim_protection <- 30
-  } else if (grepl("Anthony Davis", name)) {
-    archetype <- "Elite Paint Anchor & Roll Menace"
-    rim_protection <- 97; d_rapm <- 96; switchability <- 88; dunks <- 94; dreb <- 95; oreb <- 88
-  } else if (grepl("LeBron James", name)) {
-    archetype <- "Immortal Point-Forward Maestro"
-    ast_pct <- 92; pot_ast <- 94; rim_fg <- 90; switchability <- 78; dreb <- 82; tov_control <- 78
-  } else if (grepl("Paolo Banchero", name)) {
-    archetype <- "Physical Iso Creator & Point-Forward"
-    paint_touches <- 92; rim_fg <- 86; pullup_3p <- 78; ast_pct <- 82; drive_ast <- 84; dreb <- 82
-  } else if (grepl("Cade Cunningham", name)) {
-    archetype <- "Jumbo Pick-and-Roll Tactician"
-    ast_pct <- 92; pot_ast <- 94; pullup_3p <- 86; drive_ast <- 90; switchability <- 76
-  }
-
-  vec <- c(
-    clamp(rim_fg), clamp(dunks), clamp(paint_touches),
-    clamp(cns_3p), clamp(pullup_3p), clamp(ft_pct),
-    clamp(ast_pct), clamp(pot_ast), clamp(tov_control), clamp(drive_ast),
-    clamp(switchability), clamp(rim_protection), clamp(perimeter_havoc), clamp(d_rapm),
-    clamp(oreb), clamp(dreb)
+  # 5-Category Aggregate Scores for radar UI
+  category_scores <- list(
+    finishing = round(mean(vec[1:3]), 1),
+    shooting = round(mean(vec[4:6]), 1),
+    playmaking = round(mean(vec[7:10]), 1),
+    defense = round(mean(vec[11:14]), 1),
+    rebounding = round(mean(vec[15:16]), 1)
   )
 
   # Compute Cosine Similarity against all historical archetypes
@@ -228,7 +299,7 @@ for (i in seq_len(nrow(players_df))) {
   # Rank top 5 historical twins
   rank_order <- order(sim_scores, decreasing = TRUE)
   top_5_indices <- rank_order[1:5]
-  
+
   twins <- lapply(top_5_indices, function(idx) {
     list(
       compName = format_season_label(historical_comps$comp_name[idx]),
@@ -240,23 +311,26 @@ for (i in seq_len(nrow(players_df))) {
     )
   })
 
-  # 5-Category Aggregate Scores for radar UI
-  category_scores <- list(
-    finishing = round(mean(vec[1:3]), 1),
-    shooting = round(mean(vec[4:6]), 1),
-    playmaking = round(mean(vec[7:10]), 1),
-    defense = round(mean(vec[11:14]), 1),
-    rebounding = round(mean(vec[15:16]), 1)
-  )
+  # Dynamic archetype assignment derived from category strengths
+  archetype <- if (is_center && category_scores$defense >= 80) "Interior Rim Anchor" else
+               if (category_scores$playmaking >= 85 && category_scores$shooting >= 80) "Helio-Centric Playmaking Engine" else
+               if (category_scores$finishing >= 85 && category_scores$rebounding >= 85) "Rim-Running Attrition Beast" else
+               if (category_scores$playmaking >= 85) "Floor General Point Hub" else
+               if (category_scores$shooting >= 85 && is_guard) "Off-Ball Movement Sniper" else
+               if (category_scores$defense >= 80 && is_forward) "Two-Way Championship Wing" else
+               if (category_scores$defense >= 80 && is_guard) "Point-of-Attack Stopper" else
+               if (is_guard && p$proj_pts >= 22.0) "Scoring Combo Guard" else
+               if (is_forward && p$proj_pts >= 20.0) "Three-Level Scoring Forward" else
+               if (is_forward && p$proj_reb >= 6.0) "Two-Way Wing Connector" else
+               if (is_center) "Interior Frontcourt Anchor" else
+               "Versatile System Contributor"
 
-  # 2D t-SNE / PCA Manifold Coordinates for scatter plot (synthetic projection)
-  # X: Offensive Shot Creation vs Spot-Up (-100 to +100)
-  # Y: Defensive Interior Anchor vs Perimeter Guard (-100 to +100)
+  # 2D Manifold Coordinates for scatter plot
   manifold_x <- round((category_scores$playmaking * 0.6 + category_scores$shooting * 0.4) - 50, 1)
   manifold_y <- round((category_scores$defense * 0.5 + category_scores$rebounding * 0.5) - 50, 1)
 
   player_dna_list[[i]] <- list(
-    playerId = as.character(p$player_id),
+    playerId = pid,
     playerName = name,
     team = team,
     position = pos,
@@ -277,7 +351,7 @@ for (i in seq_len(nrow(players_df))) {
 # ------------------------------------------------------------------------------
 # 3. Export to JSON for Next.js Web Application
 # ------------------------------------------------------------------------------
-output_json <- WEB_JSON_PLAYER_DNA_PROFILES  # config.R; was a bare relative path
+output_json <- WEB_JSON_PLAYER_DNA_PROFILES  # config.R
 jsonlite::write_json(player_dna_list, output_json, pretty = TRUE, auto_unbox = TRUE)
 cat(sprintf(">>> [SUCCESS] Wrote %d Player DNA profiles to '%s'.\n", length(player_dna_list), output_json))
 

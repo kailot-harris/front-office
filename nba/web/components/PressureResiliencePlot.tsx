@@ -38,6 +38,11 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
     }
   };
 
+  const validProfiles = profiles.filter(
+    (p): p is ClutchProfile & { clutchTsPct: number; tovFragility: number } =>
+      p.clutchTsPct != null && p.tovFragility != null
+  );
+
   return (
     <div ref={containerRef} className="flex flex-col p-4 bg-zinc-950/60 rounded-xl border border-zinc-800/80">
       <div className="flex items-center justify-between mb-2">
@@ -53,7 +58,7 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
         </div>
         <div className="text-right flex items-center gap-2">
           <span className="text-[10px] font-mono bg-zinc-900 border border-zinc-800 text-rose-400 px-2 py-0.5 rounded">
-            N = {profiles.length} Closers
+            N = {validProfiles.length} Closers
           </span>
           <button
             type="button"
@@ -102,7 +107,7 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
           </text>
 
           {/* Scatter Points */}
-          {profiles.map((p) => {
+          {validProfiles.map((p) => {
             const isSelected = p.playerId === selectedProfile.playerId;
             const cx = scaleX(p.tovFragility);
             const cy = scaleY(p.clutchTsPct);
@@ -127,16 +132,18 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
           })}
 
           {/* Selected Player Pin */}
-          <g transform={`translate(${scaleX(selectedProfile.tovFragility)}, ${scaleY(selectedProfile.clutchTsPct)})`}>
-            <circle r="8" fill="none" stroke="#f43f5e" strokeWidth="1.5" className="animate-ping" opacity="0.6" />
-            <text
-              y="-12"
-              textAnchor="middle"
-              className="text-[10px] font-bold fill-rose-400 select-none pointer-events-none drop-shadow-md"
-            >
-              {selectedProfile.playerName} ({selectedProfile.clutchTsPct}%)
-            </text>
-          </g>
+          {selectedProfile.tovFragility != null && selectedProfile.clutchTsPct != null && (
+            <g transform={`translate(${scaleX(selectedProfile.tovFragility)}, ${scaleY(selectedProfile.clutchTsPct)})`}>
+              <circle r="8" fill="none" stroke="#f43f5e" strokeWidth="1.5" className="animate-ping" opacity="0.6" />
+              <text
+                y="-12"
+                textAnchor="middle"
+                className="text-[10px] font-bold fill-rose-400 select-none pointer-events-none drop-shadow-md"
+              >
+                {selectedProfile.playerName} ({selectedProfile.clutchTsPct}%)
+              </text>
+            </g>
+          )}
         </svg>
       </div>
 

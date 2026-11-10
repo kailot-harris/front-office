@@ -32,8 +32,8 @@ const wins = num.min(0).max(82);
 // set means a builder started emitting a label the site does not know how to show.
 const provenanceTag = z.enum([
   'observed_pbp',
-  'synthetic_coach_band',
   'model_residual_ensemble_minus_bottom_up',
+  'unobserved',
 ]);
 // A season span an artifact's inputs were observed in: one 'YYYY-YY' label, or
 // several joined by ' + ' where a builder pools seasons. This is deliberately NOT
@@ -316,16 +316,16 @@ export const ClutchProfileSchema = z
     team: teamEnum,
     position: positionEnum,
     clutchArchetype: z.string().min(2),
-    clutchMpg: num.min(0).max(5),
-    clutchUsgPct: pct,
-    clutchTsPct: pct,
+    clutchMpg: num.min(0).max(5).nullable(),
+    clutchUsgPct: pct.nullable(),
+    clutchTsPct: pct.nullable(),
     baseTsPct: pct,
-    tsDelta: num,
-    usciScore: num.min(0).max(150),
-    unassistedFgmPct: pct,
-    clutchPpp: nonNeg,
-    tovFragility: num,
-    cDwpa: num,
+    tsDelta: num.nullable(),
+    usciScore: num.min(0).max(150).nullable(),
+    unassistedFgmPct: pct.nullable(),
+    clutchPpp: nonNeg.nullable(),
+    tovFragility: num.nullable(),
+    cDwpa: num.nullable(),
     shotBreakdown: z
       .object({
         totalClutchFga: z.number().int().min(0),
@@ -371,10 +371,9 @@ export const CoachingStaffMetricSchema = z
         atoOffensivePpp: num.positive(),
         atoDefensivePppAllowed: num.positive(),
         challengeSuccessRate: prob,
-        challengeWpa: num,
-        shotQualityLiftEfg: num,
-        rotationStaggerScore: pct,
-        playerDevelopmentScore: pct,
+        atoOffPossessions: z.number().int().min(0),
+        atoDefPossessions: z.number().int().min(0),
+        challengeAttempts: z.number().int().min(0),
       })
       .strict(),
     radarPercentiles: z
@@ -386,15 +385,12 @@ export const CoachingStaffMetricSchema = z
         playerDevelopment: pct,
       })
       .strict(),
-    // Per-field provenance emitted by build_coaching_dataset.R. `synthetic_coach_band`
-    // marks a value drawn from a hand-assigned per-coach range rather than measured.
+    // Per-field provenance emitted by build_coaching_dataset.R.
     provenance: z
       .object({
         atoMetrics: provenanceTag,
         challengeMetrics: provenanceTag,
         coachingWinsAdded: provenanceTag,
-        shotQualityLift: provenanceTag,
-        rotationAndDevelopment: provenanceTag,
         // Season span the observed_pbp fields were measured over, e.g. '2025-2026'.
         // Omitted entirely when nothing on the card is observed, so optional.
         observedSeasons: seasonSpan.nullable().optional(),
