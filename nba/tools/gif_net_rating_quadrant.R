@@ -27,6 +27,7 @@ suppressPackageStartupMessages({
   library(dplyr)
   library(tidyr)
   library(ggplot2)
+  library(ggimage)
 })
 
 # Locate root directory and source visualization foundations
@@ -169,6 +170,11 @@ team_colors <- setNames(
   all_teams
 )
 
+team_logos <- setNames(
+  get_nba_logo_path(all_teams),
+  all_teams
+)
+
 # ------------------------------------------------------------------------------
 # 2. Render Animation Frames
 # ------------------------------------------------------------------------------
@@ -186,6 +192,7 @@ y_max <- ceiling(max(quad_df$def_rtg) + 2)
 
 for (s in all_steps) {
   frame_data <- quad_df %>% filter(step == s)
+  frame_data$logo <- unname(team_logos[frame_data$team])
   cur_label <- frame_data$date_label[1]
 
   mean_off <- mean(frame_data$off_rtg)
@@ -205,13 +212,11 @@ for (s in all_steps) {
              color = NBA_COLORS$subtext, fontface = "italic", size = 3.3, hjust = 1) +
     annotate("text", x = x_min + 0.5, y = y_max - 0.6, label = "Rebuilding (Low Off / Porous Def)",
              color = NBA_COLORS$negative, fontface = "bold", size = 3.3, hjust = 0) +
-    # Team bubbles
-    geom_point(aes(fill = team), shape = 21, size = 5.2, color = NBA_COLORS$text, stroke = 1.1) +
-    geom_text(aes(label = team), color = NBA_COLORS$text, vjust = -1.15, fontface = "bold", size = 2.8) +
+    # Team logos in place of bubble dots & team IDs
+    geom_image(aes(image = logo), size = 0.052, by = "width") +
     scale_x_continuous(limits = c(x_min, x_max), breaks = seq(90, 130, by = 5)) +
     # Invert Y so lower points allowed (better defense) is at the top
     scale_y_reverse(limits = c(y_max, y_min), breaks = seq(90, 130, by = 5)) +
-    scale_fill_manual(values = team_colors, guide = "none") +
     theme_nba_dark() +
     labs(
       title = "NBA Efficiency Landscape \u2014 Net Rating Quadrant",
