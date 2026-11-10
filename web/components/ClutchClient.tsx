@@ -206,7 +206,7 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
               True Clutch Index & Pressure Resilience
             </h1>
             <p className="text-sm text-slate-400 leading-relaxed">
-              Empirical play-by-play execution in high-leverage late-game scenarios: one-score margins (≤ 8 points) in 4Q/OT or 10–90% win probability in the final 5 minutes. Zero synthetic estimates.
+              Empirical play-by-play execution in high-leverage late-game scenarios: one-score margins (≤ 8 points) in 4Q/OT or 10–90% win probability in the final 5 minutes.
             </p>
           </div>
 
