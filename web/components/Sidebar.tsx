@@ -426,7 +426,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
           <span className="truncate">Empirical Bayes & Walk-Forward Verified</span>
         </div>
         {generatedAt && (
-          <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono px-1">
+          <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono px-1">
             <span>Updated</span>
             <time dateTime={generatedAt}>{generatedAt.slice(0, 16).replace('T', ' ')} UTC</time>
           </div>
