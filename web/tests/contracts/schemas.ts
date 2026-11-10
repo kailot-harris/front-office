@@ -301,6 +301,29 @@ export const salaryCapDatasetSchema = z.object({
   top_league_contracts: z.array(leagueTopContractSchema),
 }).strict();
 
+export const ClutchProfileSchema = z.object({
+  playerId: z.string().min(1),
+  playerName: z.string().min(2),
+  team: teamCode,
+  position: z.literal('QB'),
+  isStarter: z.boolean(),
+  headshotUrl: z.string(),
+  clutchAttempts: z.number().int().min(0),
+  clutchPlays: z.number().int().min(0),
+  baselineAttempts: z.number().int().min(0),
+  baselinePlays: z.number().int().min(0),
+  clutchEpa: z.number().nullable(),
+  baselineEpa: z.number().nullable(),
+  clutchEpaDelta: z.number().nullable(),
+  clutchSuccessRate: pct100.nullable(),
+  baselineSuccessRate: pct100.nullable(),
+  clutchCpoe: z.number().nullable(),
+  turnoverFragility: z.number().nullable(),
+  fourthDownAggressiveness: pct100.nullable(),
+  clutchArchetype: z.string().min(1),
+  provenance: z.enum(['REAL_CURRENT_SEASON', 'INSUFFICIENT_SAMPLE']),
+}).strict();
+
 /** Filename -> schema, so one test can iterate every shipped dataset. */
 export const DATASET_SCHEMAS = {
   'standings_projections.json': standingsDatasetSchema,
@@ -312,4 +335,5 @@ export const DATASET_SCHEMAS = {
   'visual_media_index.json': z.array(visualMediaItemSchema),
   'coaching_profiles.json': z.array(coachProfileSchema),
   'salary_cap_profiles.json': salaryCapDatasetSchema,
+  'clutch_leverage_metrics.json': z.array(ClutchProfileSchema),
 } as const;

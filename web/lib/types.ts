@@ -256,3 +256,27 @@ export interface SalaryCapDataset {
   teams: TeamCapProfile[];
   top_league_contracts: LeagueTopContract[];
 }
+
+export interface ClutchProfile {
+  playerId: string;
+  playerName: string;
+  team: string;
+  position: string;
+  isStarter: boolean;
+  headshotUrl: string;
+  clutchAttempts: number;
+  clutchPlays: number;
+  baselineAttempts: number;
+  baselinePlays: number;
+  clutchEpa: number | null;
+  baselineEpa: number | null;
+  clutchEpaDelta: number | null;
+  clutchSuccessRate: number | null;
+  baselineSuccessRate: number | null;
+  clutchCpoe: number | null;
+  turnoverFragility: number | null;
+  fourthDownAggressiveness: number | null;
+  clutchArchetype: string;
+  provenance: string;
+}
+

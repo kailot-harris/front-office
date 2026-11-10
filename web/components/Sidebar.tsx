@@ -19,6 +19,7 @@ import {
   Zap,
   Briefcase,
   DollarSign,
+  Flame,
 } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
 
@@ -89,6 +90,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       badge: 'EPA & CPOE',
       icon: Users,
       desc: 'QB composite & rookie snap ramp',
+    },
+    {
+      href: '/clutch',
+      label: 'True Clutch Index',
+      badge: '4Q Leverage',
+      icon: Flame,
+      desc: 'High-leverage EPA, CPOE & go-for-it rates',
     },
     {
       href: '/variants',

@@ -10,6 +10,7 @@ import {
   VisualMediaItem,
   CoachProfile,
   SalaryCapDataset,
+  ClutchProfile,
 } from './types';
 
 function readJsonFile<T>(filename: string): T {
@@ -57,3 +58,8 @@ export function getCoachingProfiles(): CoachProfile[] {
 export function getSalaryCapData(): SalaryCapDataset {
   return readJsonFile<SalaryCapDataset>('salary_cap_profiles.json');
 }
+
+export function getClutchData(): ClutchProfile[] {
+  return readJsonFile<ClutchProfile[]>('clutch_leverage_metrics.json');
+}
+
