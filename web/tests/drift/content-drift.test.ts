@@ -274,8 +274,8 @@ describe('no component re-derives a constant the data already carries', () => {
 
   it('the VariantsClient ensemble formula caption matches the live weights', () => {
     // The weight bars above the caption are driven by data.ensemble_weights,
-    // but the caption restates the same three numbers as a literal string:
-    //   "Formula: P(final) = 0.40 · P(Ridge) + 0.35 · P(Elo) + 0.25 · P(Market)"
+    // but the caption restates the same two numbers as a literal string:
+    //   "Formula: P(final) = 0.50 · P(Ridge) + 0.50 · P(Elo) (100% Ridge when live Elo is unavailable)"
     // Change the weights upstream and the bars move while the caption lies.
     const src = read('components', 'VariantsClient.tsx');
     const caption = src.match(/Formula:\s*P\(final\)\s*=\s*([\s\S]{0,160}?)<\/span>/);
@@ -285,9 +285,9 @@ describe('no component re-derives a constant the data already carries', () => {
     expect(
       printed,
       `the formula caption prints ${JSON.stringify(printed)} but model_diagnostics.json reports ` +
-        `${JSON.stringify([w.ridge_massey, w.elo_dynamic, w.market_blend])}. Interpolate the weights ` +
+        `${JSON.stringify([w.ridge_massey, w.elo_dynamic])}. Interpolate the weights ` +
         `instead of re-typing them.`,
-    ).toEqual([w.ridge_massey, w.elo_dynamic, w.market_blend]);
+    ).toEqual([w.ridge_massey, w.elo_dynamic]);
   });
 
   it('the VariantsClient fallback weights still sum to 1', () => {
@@ -297,7 +297,7 @@ describe('no component re-derives a constant the data already carries', () => {
     const fallback = src.match(/ensemble_weights\s*\|\|\s*\{([\s\S]{0,200}?)\}/);
     expect(fallback, 'VariantsClient no longer declares a fallback weight object').not.toBeNull();
     const nums = (fallback![1].match(/\d+\.\d+/g) ?? []).map(Number);
-    expect(nums, 'expected three fallback weights').toHaveLength(3);
+    expect(nums, 'expected two fallback weights').toHaveLength(2);
     expect(nums.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 6);
   });
 

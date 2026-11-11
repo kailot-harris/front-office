@@ -847,7 +847,7 @@ describe('model diagnostics', () => {
 
   it('ensemble weights sum to 1', () => {
     const w = d.ensemble_weights;
-    expect(w.ridge_massey + w.elo_dynamic + w.market_blend).toBeCloseTo(1, 6);
+    expect(w.ridge_massey + w.elo_dynamic).toBeCloseTo(1, 6);
   });
 
   it('every trajectory series has the same length', () => {
