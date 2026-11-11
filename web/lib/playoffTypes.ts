@@ -66,6 +66,16 @@ export interface PlayoffSeriesMatchupResult {
   sweepProb: number;
   gameDistributions: GameOutcomeProb[];
   tacticalEdges: TacticalEdge[];
+  /**
+   * True when one or both teams' `playoffNetRtg` was missing or non-finite
+   * (issue #111): a NaN rating makes every `Math.random() < probA` comparison
+   * false, which used to silently report a 100% opponent-win series instead of
+   * flagging the missing input. When this is true, the simulation never ran and
+   * every numeric field above is NaN/empty rather than a real probability — the
+   * UI must check this flag before rendering win-probability stats.
+   */
+  insufficientData?: boolean;
+  insufficientDataReason?: string;
 }
 
 export interface HistoricalGame {

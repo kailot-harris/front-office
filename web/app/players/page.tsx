@@ -1,5 +1,12 @@
+import { Metadata } from 'next';
 import { getPlayersData } from '@/lib/data';
 import { PlayersClient } from '@/components/PlayersClient';
+
+export const metadata: Metadata = {
+  title: 'Player Projections & Outliers',
+  description:
+    'Season-long per-game and total projections for every active WNBA roster player, with statistical outlier flags and uncertainty bands.',
+};
 
 export default function PlayersPage() {
   const players = getPlayersData();

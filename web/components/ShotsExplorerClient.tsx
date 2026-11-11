@@ -129,7 +129,7 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
               >
                 <TeamLogo team={star.team} size="xs" />
                 <span>{star.player_name}</span>
-                <span className="text-[10px] opacity-75 font-mono">({star.total_shots})</span>
+                <span className="text-[11px] sm:text-[10px] opacity-75 font-mono">({star.total_shots})</span>
               </button>
             );
           })}
@@ -205,7 +205,7 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
 
           <div className="flex items-center gap-3 self-end sm:self-center">
             <div className="text-right">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 block font-bold">
+              <span className="text-[11px] sm:text-[10px] font-mono uppercase tracking-wider text-slate-500 block font-bold">
                 Telemetry Baseline
               </span>
               <span className="text-xs font-mono font-bold text-emerald-400">

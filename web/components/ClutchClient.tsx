@@ -171,7 +171,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30">
+                    <span className="px-2 py-0.5 rounded text-[11px] sm:text-[10px] font-mono font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30">
                       {selectedProfile.team}
                     </span>
                     <span className="text-xs font-mono text-slate-400">
@@ -188,52 +188,52 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                 </div>
 
                 <div className="text-right">
-                  <div className="text-[10px] uppercase font-bold text-slate-400">Clutch PTS</div>
+                  <div className="text-[11px] sm:text-[10px] uppercase font-bold text-slate-400">Clutch PTS</div>
                   <div className="text-2xl font-black text-rose-400 font-mono">
                     {selectedProfile.clutchPoints !== null ? selectedProfile.clutchPoints : '—'}
                   </div>
-                  <div className="text-[10px] text-slate-500">{selectedProfile.clutchFga} FGA</div>
+                  <div className="text-[11px] sm:text-[10px] text-slate-500">{selectedProfile.clutchFga} FGA</div>
                 </div>
               </div>
 
               {/* Metric Badges */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
                 <div className="p-2.5 rounded-lg bg-surface border border-slate-800/80 text-center">
-                  <div className="text-[10px] text-slate-400 uppercase font-medium">Clutch FG%</div>
+                  <div className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-medium">Clutch FG%</div>
                   <div className="text-base font-extrabold text-emerald-400">
                     {selectedProfile.clutchFgPct !== null ? `${selectedProfile.clutchFgPct.toFixed(1)}%` : 'N/A'}
                   </div>
-                  <div className="text-[10px] text-slate-500 font-mono">
+                  <div className="text-[11px] sm:text-[10px] text-slate-500 font-mono">
                     {selectedProfile.clutchFga >= 5 ? 'Qualified' : 'Low Sample'}
                   </div>
                 </div>
 
                 <div className="p-2.5 rounded-lg bg-surface border border-slate-800/80 text-center">
-                  <div className="text-[10px] text-slate-400 uppercase font-medium">Points / Shot</div>
+                  <div className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-medium">Points / Shot</div>
                   <div className="text-base font-extrabold text-amber-400">
                     {selectedProfile.clutchPpp !== null ? selectedProfile.clutchPpp.toFixed(2) : 'N/A'}
                   </div>
-                  <div className="text-[10px] text-slate-500 font-mono">
+                  <div className="text-[11px] sm:text-[10px] text-slate-500 font-mono">
                     Clutch PPP
                   </div>
                 </div>
 
                 <div className="p-2.5 rounded-lg bg-surface border border-slate-800/80 text-center">
-                  <div className="text-[10px] text-slate-400 uppercase font-medium">Scoring Plays</div>
+                  <div className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-medium">Scoring Plays</div>
                   <div className="text-base font-extrabold text-indigo-400">
                     {selectedProfile.clutchScoringPlays !== null ? selectedProfile.clutchScoringPlays : '—'}
                   </div>
-                  <div className="text-[10px] text-slate-500 font-mono">
+                  <div className="text-[11px] sm:text-[10px] text-slate-500 font-mono">
                     Total Plays
                   </div>
                 </div>
 
                 <div className="p-2.5 rounded-lg bg-surface border border-slate-800/80 text-center">
-                  <div className="text-[10px] text-slate-400 uppercase font-medium">Clutch FGA</div>
+                  <div className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-medium">Clutch FGA</div>
                   <div className="text-base font-extrabold text-white">
                     {selectedProfile.clutchFga}
                   </div>
-                  <div className="text-[10px] text-slate-500 font-mono">
+                  <div className="text-[11px] sm:text-[10px] text-slate-500 font-mono">
                     Attempts
                   </div>
                 </div>
@@ -428,7 +428,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                     <td className="py-2.5 px-3 text-right text-slate-300">
                       {p.clutchScoringPlays !== null ? p.clutchScoringPlays : '—'}
                     </td>
-                    <td className="py-2.5 px-3 text-right text-[10px] text-slate-500">
+                    <td className="py-2.5 px-3 text-right text-[11px] sm:text-[10px] text-slate-500">
                       {p.provenance}
                     </td>
                   </tr>

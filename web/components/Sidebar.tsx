@@ -193,7 +193,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
           <div className="flex items-center justify-between">
             <span className="font-semibold">{item.label}</span>
             <span
-              className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-medium ${
+              className={`text-[11px] sm:text-[10px] px-1.5 py-0.2 rounded font-mono font-medium ${
                 isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
               }`}
             >
@@ -234,7 +234,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
 
         {/* 1. Primary Nav (Offseason Intelligence) */}
         <div className="space-y-1">
-          <div className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 font-mono">
+          <div className="px-2 text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 font-mono">
             Off-Season Intelligence
           </div>
           {primaryNavItems.map(renderNavLink)}
@@ -249,7 +249,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
           >
             <div className="flex items-center gap-2">
               <Archive className="w-3.5 h-3.5 text-slate-500 group-hover:text-violet-400" />
-              <span className="text-[10px] font-bold uppercase tracking-wider font-mono">
+              <span className="text-[11px] sm:text-[10px] font-bold uppercase tracking-wider font-mono">
                 2026 Championship Archive
               </span>
             </div>
@@ -276,18 +276,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50">
-                <span className="text-[10px] text-slate-400 block">Schedule</span>
+                <span className="text-[11px] sm:text-[10px] text-slate-400 block">Schedule</span>
                 <span className="font-mono font-bold text-slate-200">330 Games</span>
               </div>
               <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50">
-                <span className="text-[10px] text-slate-400 block">Simulations</span>
+                <span className="text-[11px] sm:text-[10px] text-slate-400 block">Simulations</span>
                 <span className="font-mono font-bold text-slate-200">1,000 Sims</span>
               </div>
 
               {/* Margin Sigma with ? Explainer Bubble & Compact Popover */}
               <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50 relative">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-slate-400 block">Margin σ</span>
+                  <span className="text-[11px] sm:text-[10px] text-slate-400 block">Margin σ</span>
                   <button
                     type="button"
                     onClick={() => setShowSigmaExplainer(!showSigmaExplainer)}
@@ -353,7 +353,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
               </div>
 
               <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50">
-                <span className="text-[10px] text-slate-400 block">Variants</span>
+                <span className="text-[11px] sm:text-[10px] text-slate-400 block">Variants</span>
                 <span className="font-mono font-bold text-accent-400" title="RAPM, Bottom-Up, Fatigue, Ensemble">4 Blend</span>
               </div>
             </div>
@@ -374,7 +374,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
           <span className="truncate">RAPM Ridge & DAG Verified</span>
         </div>
         {generatedAt && (
-          <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono px-1">
+          <div className="flex items-center justify-between text-[11px] sm:text-[10px] text-slate-500 font-mono px-1">
             <span>Updated</span>
             <time dateTime={generatedAt}>{generatedAt.slice(0, 16).replace('T', ' ')} UTC</time>
           </div>

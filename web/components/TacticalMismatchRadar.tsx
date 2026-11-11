@@ -32,7 +32,7 @@ export const TacticalMismatchRadar: React.FC<TacticalMismatchRadarProps> = ({
         <div>
           <h3 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
             <span>Tactical Profile Comparison</span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
+            <span className="text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
               0-100 Ratings
             </span>
           </h3>
@@ -117,7 +117,7 @@ export const TacticalMismatchRadar: React.FC<TacticalMismatchRadarProps> = ({
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span
-                        className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-black ${
+                        className={`text-[11px] sm:text-[10px] font-mono px-1.5 py-0.5 rounded font-black ${
                           isA ? 'bg-amber-500 text-slate-950' : 'bg-sky-500 text-slate-950'
                         }`}
                       >

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Coins, ArrowLeft, ShieldAlert } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'CBA Salary Cap Reference (Archived) | WNBA Analytics',
+  title: 'CBA Salary Cap Reference (Archived)',
   description:
     'The 2026 WNBA CBA salary cap sheet is currently archived pending integration with verified contract feeds.',
 };

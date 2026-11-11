@@ -1,8 +1,15 @@
 import Link from 'next/link';
+import { Metadata } from 'next';
 import { getTeamsData, getMetadata, getPlayoffBracketData } from '@/lib/data';
 import { StandingsClient } from '@/components/StandingsClient';
 import { TeamLogo } from '@/components/TeamLogo';
 import { BracketSeries } from '@/lib/playoffTypes';
+
+export const metadata: Metadata = {
+  title: 'Standings & Playoff Contenders',
+  description:
+    'Season-long WNBA standings, playoff contender distributions, and championship odds for all 15 franchises, projected from a 1,000-season Monte Carlo ensemble.',
+};
 
 export default function HomePage() {
   const teams = getTeamsData();

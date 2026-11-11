@@ -60,7 +60,7 @@ export const CoachRadarProfile: React.FC<CoachRadarProfileProps> = ({
   return (
     <div ref={containerRef} className="flex flex-col items-center" title={`5D Tactical Profile: ${coachName}`}>
       <div className="w-full flex items-center justify-between mb-1">
-        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">
+        <span className="text-[11px] sm:text-[10px] font-bold text-slate-300 uppercase tracking-wider">
           {coachName} — 5D Radar Profile
         </span>
         <button

@@ -152,7 +152,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                     <div>
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm font-bold text-slate-100">{p.playerName}</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">
+                        <span className="text-[11px] sm:text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">
                           {p.position}
                         </span>
                       </div>
@@ -164,7 +164,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
 
                   <div className="flex items-center gap-2 text-right">
                     <div>
-                      <div className="text-[10px] text-slate-400">
+                      <div className="text-[11px] sm:text-[10px] text-slate-400">
                         {sortKey === 'rimDfgDelta'
                           ? 'Rim Δ'
                           : sortKey === 'dRapm'
@@ -226,11 +226,11 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
 
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-xl bg-surface/80 border border-slate-800 text-center min-w-[90px]">
-                  <div className="text-[10px] text-slate-400 uppercase font-semibold">Versatility H_v</div>
+                  <div className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-semibold">Versatility H_v</div>
                   <div className="text-lg font-black text-indigo-400">{selectedProfile.versatilityScore}</div>
                 </div>
                 <div className="p-3 rounded-xl bg-surface/80 border border-slate-800 text-center min-w-[90px]">
-                  <div className="text-[10px] text-slate-400 uppercase font-semibold">Rim DFG Δ</div>
+                  <div className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-semibold">Rim DFG Δ</div>
                   <div
                     className={`text-lg font-black ${
                       selectedProfile.rimDfgDelta <= -5.0 ? 'text-emerald-400' : 'text-slate-200'
@@ -250,7 +250,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                   <span>Rim Contest Sample</span>
                 </div>
                 <div className="text-base font-bold text-slate-100">{selectedProfile.rimDefenseSample} FGA</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">{selectedProfile.rimDefenseSource === 'wehoop_shots_lineups' ? 'Real tracked shots' : 'Positional prior'}</div>
+                <div className="text-[11px] sm:text-[10px] text-slate-500 mt-0.5">{selectedProfile.rimDefenseSource === 'wehoop_shots_lineups' ? 'Real tracked shots' : 'Positional prior'}</div>
               </div>
 
               <div className="p-3 bg-surface/50 rounded-xl border border-slate-800">
@@ -259,7 +259,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                   <span>Rim Deterrence</span>
                 </div>
                 <div className="text-base font-bold text-emerald-400">+{selectedProfile.rimDeterrenceIndex}</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Attempts suppressed/100</div>
+                <div className="text-[11px] sm:text-[10px] text-slate-500 mt-0.5">Attempts suppressed/100</div>
               </div>
 
               <div className="p-3 bg-surface/50 rounded-xl border border-slate-800">
@@ -272,17 +272,17 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                     ? `+${selectedProfile.dRapm.toFixed(2)}`
                     : selectedProfile.dRapm.toFixed(2)}
                   {!dRapmMeta(selectedProfile).isReal && (
-                    <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-400">
+                    <span className="ml-1.5 text-[11px] sm:text-[10px] font-semibold uppercase tracking-wide text-amber-400">
                       est.
                     </span>
                   )}
                   {selectedProfile.dRapmAmbiguous && (
-                    <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                    <span className="ml-1.5 text-[11px] sm:text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                       shared surname
                     </span>
                   )}
                 </div>
-                <div className="text-[10px] text-slate-500 mt-0.5">
+                <div className="text-[11px] sm:text-[10px] text-slate-500 mt-0.5">
                   Pts saved / 100 poss · {dRapmMeta(selectedProfile).caption}
                 </div>
               </div>
@@ -290,7 +290,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
               <div className="p-3 bg-surface/50 rounded-xl border border-slate-800">
                 <div className="text-xs text-slate-400 mb-1">Projected MPG</div>
                 <div className="text-base font-bold text-slate-100">{selectedProfile.projMpg} MPG</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Rotation workload</div>
+                <div className="text-[11px] sm:text-[10px] text-slate-500 mt-0.5">Rotation workload</div>
               </div>
             </div>
 

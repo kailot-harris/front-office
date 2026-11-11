@@ -80,7 +80,7 @@ function ExtremeRow({
   return (
     <div className="p-3.5 rounded-xl bg-surface border border-slate-800/70 space-y-1.5">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        <span className="text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400">
           {label}
         </span>
         <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-slate-800 text-slate-200 border border-slate-700">
@@ -122,7 +122,7 @@ function WordChips({
       : 'bg-rose-500/10 text-rose-300 border-rose-500/30';
   return (
     <div className="space-y-2">
-      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+      <span className="text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400">
         {title}
       </span>
       <div className="flex flex-wrap gap-1.5">

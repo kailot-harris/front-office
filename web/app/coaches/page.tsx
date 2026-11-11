@@ -6,7 +6,7 @@ import { CoachingStaffMetric } from '@/lib/coachingTypes';
 import { CoachesClient } from '@/components/CoachesClient';
 
 export const metadata: Metadata = {
-  title: 'Coaching Staffs & Tactical Impact | WNBA Analytics',
+  title: 'Coaching Staffs & Tactical Impact',
   description:
     'Evaluate 15 WNBA coaching staffs across ATO execution, in-game challenge leverage, rotational staggering, and system win lift.',
 };

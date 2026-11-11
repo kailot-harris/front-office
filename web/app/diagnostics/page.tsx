@@ -1,5 +1,12 @@
+import { Metadata } from 'next';
 import { getDiagnostics, getMetadata } from '@/lib/data';
 import { DiagnosticsClient } from '@/components/DiagnosticsClient';
+
+export const metadata: Metadata = {
+  title: 'Modeling Analysis & Diagnostics',
+  description:
+    'Calibration and accuracy diagnostics for the WNBA projection model: backtests, residuals, and prediction-interval coverage.',
+};
 
 export default function DiagnosticsPage() {
   const diagnostics = getDiagnostics();

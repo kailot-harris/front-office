@@ -160,7 +160,7 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
               x={lx}
               y={ly + 4}
               textAnchor={anchor}
-              className="fill-slate-300 text-[10px] font-semibold select-none"
+              className="fill-slate-300 text-[11px] sm:text-[10px] font-semibold select-none"
             >
               {axis.label} ({axis.value})
             </text>
