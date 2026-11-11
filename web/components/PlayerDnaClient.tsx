@@ -1,14 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PlayerDnaProfile, SkillVector } from '@/lib/playerDnaTypes';
 import { SkillFingerprintPolygon } from './SkillFingerprintPolygon';
 import { DnaManifoldScatter } from './DnaManifoldScatter';
 import { TeamLogo } from '@/components/TeamLogo';
-import { Search, Dna, BarChart3, ChevronRight, Users } from 'lucide-react';
+import { BASE_PATH } from '@/lib/basePath';
+import { GlossaryTerm } from '@/components/GlossaryTerm';
+import { HowToRead } from '@/components/HowToRead';
+import { Search, Dna, BarChart3, ChevronRight, Users, Loader2 } from 'lucide-react';
 
 interface PlayerDnaClientProps {
   initialProfiles: PlayerDnaProfile[];
+  // Issue #134: total row count across the full dataset, so the UI can show
+  // "loading the rest" state while only `initialProfiles` (the first screen)
+  // has been embedded in the static HTML.
+  totalProfileCount?: number;
 }
 
 const SKILL_DIMENSION_LABELS: Record<keyof SkillVector, string> = {
@@ -26,14 +33,54 @@ const SKILL_DIMENSION_LABELS: Record<keyof SkillVector, string> = {
   dreb: 'Def. Rebounding',
 };
 
-export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfiles }) => {
+export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfiles, totalProfileCount }) => {
+  // Issue #134: `profiles` starts as just the first-screen slice embedded in
+  // the static HTML and is swapped for the full dataset once it's fetched
+  // client-side, rather than serializing every player's DNA profile into
+  // the page itself (that inflated this route's generated HTML to ~608 KB).
+  const [profiles, setProfiles] = useState<PlayerDnaProfile[]>(initialProfiles);
+  const [isLoadingFull, setIsLoadingFull] = useState(
+    Boolean(totalProfileCount && totalProfileCount > initialProfiles.length)
+  );
+
+  useEffect(() => {
+    if (!totalProfileCount || totalProfileCount <= initialProfiles.length) return;
+    let cancelled = false;
+    fetch(`${BASE_PATH}/data/player_dna_profiles.json`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
+      .then((full: PlayerDnaProfile[]) => {
+        if (!cancelled && Array.isArray(full) && full.length > 0) {
+          setProfiles(full);
+        }
+      })
+      .catch((err) => console.error('Failed to fetch full player DNA dataset:', err))
+      .finally(() => {
+        if (!cancelled) setIsLoadingFull(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Only ever re-fetch if the initial screen itself changes (it doesn't in practice).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerDnaProfile>(
     initialProfiles.find((p) => p.playerName.includes("A'ja Wilson")) || initialProfiles[0]
   );
   const [selectedPosFilter, setSelectedPosFilter] = useState<string>('ALL');
 
-  const filteredPlayers = initialProfiles.filter((p) => {
+  // Once the full dataset has loaded, keep the selected player's full record
+  // (e.g. similarPlayers resolved against the complete pool) in sync.
+  useEffect(() => {
+    const refreshed = profiles.find((p) => p.playerId === selectedPlayer.playerId);
+    if (refreshed && refreshed !== selectedPlayer) {
+      setSelectedPlayer(refreshed);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profiles]);
+
+  const filteredPlayers = profiles.filter((p) => {
     const matchesSearch =
       p.playerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.team.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -60,8 +107,15 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
           </h1>
           <p className="text-sm text-slate-300 max-w-2xl mt-1">
             Multivariate stylistic fingerprinting across 12 empirical PBP, box-score, defensive tracking,
-            and ridge RAPM skill percentiles with current-roster cosine similarity matching.
+            and ridge <GlossaryTerm termKey="rapm" className="text-sm text-slate-300" /> skill percentiles
+            with current-roster cosine similarity matching.
           </p>
+          <div className="mt-2">
+            <HowToRead pageKey="player-dna">
+              Search or tap a player on the left to see their 12-dimensional skill fingerprint,
+              projected stats, and the current-roster peers most stylistically similar to them.
+            </HowToRead>
+          </div>
         </div>
       </div>
 
@@ -80,6 +134,15 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
                 className="w-full pl-9 pr-3 py-2 text-sm bg-surface border border-slate-800 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
               />
             </div>
+
+            {isLoadingFull && (
+              <div className="flex items-center gap-1.5 text-[11px] sm:text-[10px] text-slate-500 font-mono">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span>
+                  Loading full roster ({initialProfiles.length} of {totalProfileCount} shown)...
+                </span>
+              </div>
+            )}
 
             {/* Position Filter Buttons */}
             <div className="flex items-center gap-1.5">
@@ -118,7 +181,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
                     <div>
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm font-bold text-slate-100">{player.playerName}</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">
+                        <span className="text-[11px] sm:text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">
                           {player.position}
                         </span>
                       </div>
@@ -130,7 +193,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
 
                   <div className="flex items-center gap-2 text-right">
                     <div>
-                      <div className="text-[10px] text-slate-400">Overall</div>
+                      <div className="text-[11px] sm:text-[10px] text-slate-400">Overall</div>
                       <div className="text-xs font-mono font-bold text-indigo-400">
                         {player.overallRating}
                       </div>
@@ -164,7 +227,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
                       {selectedPlayer.team} • {selectedPlayer.position}
                     </span>
                     <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold border ${
+                      className={`px-2 py-0.5 rounded text-[11px] sm:text-[10px] font-mono font-semibold border ${
                         isObserved
                           ? 'bg-emerald-950/60 text-emerald-400 border-emerald-800/60'
                           : 'bg-amber-950/60 text-amber-400 border-amber-800/60'
@@ -185,19 +248,19 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
               {/* Quick Stat Badges */}
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-xl bg-surface/80 border border-slate-800 text-center min-w-[70px]">
-                  <div className="text-[10px] text-slate-400 uppercase font-semibold">PTS</div>
+                  <div className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-semibold">PTS</div>
                   <div className="text-base font-bold text-slate-100">{selectedPlayer.projPts}</div>
                 </div>
                 <div className="p-3 rounded-xl bg-surface/80 border border-slate-800 text-center min-w-[70px]">
-                  <div className="text-[10px] text-slate-400 uppercase font-semibold">REB</div>
+                  <div className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-semibold">REB</div>
                   <div className="text-base font-bold text-slate-100">{selectedPlayer.projReb}</div>
                 </div>
                 <div className="p-3 rounded-xl bg-surface/80 border border-slate-800 text-center min-w-[70px]">
-                  <div className="text-[10px] text-slate-400 uppercase font-semibold">AST</div>
+                  <div className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-semibold">AST</div>
                   <div className="text-base font-bold text-slate-100">{selectedPlayer.projAst}</div>
                 </div>
                 <div className="p-3 rounded-xl bg-indigo-950/40 border border-indigo-800/60 text-center min-w-[75px]">
-                  <div className="text-[10px] text-indigo-300 uppercase font-semibold">DNA Rtg</div>
+                  <div className="text-[11px] sm:text-[10px] text-indigo-300 uppercase font-semibold">DNA Rtg</div>
                   <div className="text-base font-extrabold text-indigo-400">
                     {selectedPlayer.overallRating}
                   </div>
@@ -243,13 +306,14 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                     <Users className="w-4 h-4 text-emerald-400" />
-                    Nearest Active WNBA Stylistic Peers (12-D Cosine Similarity)
+                    <span>Nearest Active WNBA Stylistic Peers</span>
+                    <GlossaryTerm termKey="cosineSimilarity" className="text-[11px] font-mono normal-case" />
                   </h4>
                   <span className="text-[11px] text-slate-500 font-mono">2026 Active Roster Pool</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   {selectedPlayer.similarPlayers.map((peer) => {
-                    const matchedProfile = initialProfiles.find((p) => p.playerId === peer.playerId);
+                    const matchedProfile = profiles.find((p) => p.playerId === peer.playerId);
                     return (
                       <div
                         key={peer.playerId}
@@ -260,7 +324,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
                           <TeamLogo team={peer.team} size="sm" />
                           <div>
                             <div className="text-xs font-bold text-slate-100">{peer.playerName}</div>
-                            <div className="text-[10px] text-slate-400 font-mono">
+                            <div className="text-[11px] sm:text-[10px] text-slate-400 font-mono">
                               {peer.team} • {peer.position}
                             </div>
                           </div>

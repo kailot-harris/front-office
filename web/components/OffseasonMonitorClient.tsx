@@ -407,7 +407,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                   >
                     Week {ed.weekNumber}
                     {ed.isQuietWeek && (
-                      <span className="ml-1 text-[10px] text-slate-400 opacity-70">
+                      <span className="ml-1 text-[11px] sm:text-[10px] text-slate-400 opacity-70">
                         (Quiet)
                       </span>
                     )}
@@ -519,11 +519,11 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
         >
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           <span>Confirmed Transactions</span>
-          <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 font-mono">
+          <span className="px-1.5 py-0.5 rounded-full text-[11px] sm:text-[10px] bg-slate-800 text-slate-300 font-mono">
             {currentEdition.confirmedChanges.length}
           </span>
           {unclassifiedCount > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold font-mono">
+            <span className="px-1.5 py-0.5 rounded-full text-[11px] sm:text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold font-mono">
               Unclassified: {unclassifiedCount}
             </span>
           )}
@@ -539,7 +539,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
         >
           <Radio className="w-4 h-4 text-violet-400" />
           <span>Reported & Pending Radar</span>
-          <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 font-mono">
+          <span className="px-1.5 py-0.5 rounded-full text-[11px] sm:text-[10px] bg-slate-800 text-slate-300 font-mono">
             {currentEdition.reportedClaims.length}
           </span>
         </button>
@@ -554,7 +554,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
         >
           <Archive className="w-4 h-4 text-slate-400" />
           <span>Expired Claims Graveyard</span>
-          <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 font-mono">
+          <span className="px-1.5 py-0.5 rounded-full text-[11px] sm:text-[10px] bg-slate-800 text-slate-300 font-mono">
             {currentEdition.expiredClaims.length}
           </span>
         </button>
@@ -597,12 +597,12 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                   </span>
                   <span className="text-slate-600">•</span>
                   {currentEdition.isQuietWeek ? (
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                    <span className="px-2 py-0.5 rounded text-[11px] sm:text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30 flex items-center gap-1">
                       <Clock className="w-3 h-3 text-amber-400" />
                       Quiet Week
                     </span>
                   ) : (
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                    <span className="px-2 py-0.5 rounded text-[11px] sm:text-[10px] font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3 text-emerald-400" />
                       {currentEdition.confirmedChanges.length} Active Transitions
                     </span>
@@ -671,28 +671,28 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
               {/* Executive Mini Metric Strip */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-slate-800/80">
                 <div className="space-y-0.5">
-                  <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Confirmed Diffs</span>
+                  <span className="text-[11px] sm:text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Confirmed Diffs</span>
                   <div className="text-sm sm:text-base font-extrabold text-white flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                     <span>{currentEdition.confirmedChanges.length} Filed</span>
                   </div>
                 </div>
                 <div className="space-y-0.5">
-                  <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Radar Volume</span>
+                  <span className="text-[11px] sm:text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Radar Volume</span>
                   <div className="text-sm sm:text-base font-extrabold text-white flex items-center gap-1.5">
                     <Radio className="w-3.5 h-3.5 text-violet-400" />
                     <span>{currentEdition.reportedClaims.length} Tracked</span>
                   </div>
                 </div>
                 <div className="space-y-0.5">
-                  <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Cap Pressure</span>
+                  <span className="text-[11px] sm:text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Cap Pressure</span>
                   <div className="text-sm sm:text-base font-extrabold text-amber-300 flex items-center gap-1.5">
                     <Coins className="w-3.5 h-3.5 text-amber-400" />
                     <span>$1.000M Hard Cap</span>
                   </div>
                 </div>
                 <div className="space-y-0.5">
-                  <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Bayesian Priors</span>
+                  <span className="text-[11px] sm:text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Bayesian Priors</span>
                   <div className="text-sm sm:text-base font-extrabold text-slate-200 flex items-center gap-1.5">
                     <Layers className="w-3.5 h-3.5 text-indigo-400" />
                     <span>0.0 Δ Net Rating</span>
@@ -788,7 +788,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="bg-surface border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
+                    <tr className="bg-surface border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider text-[11px] sm:text-[10px]">
                       <th className="py-2.5 px-3">Date</th>
                       <th className="py-2.5 px-3">Entity</th>
                       <th className="py-2.5 px-3">Type</th>
@@ -806,7 +806,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                           <td className="py-2.5 px-3 font-mono text-slate-400 whitespace-nowrap">{item.date || '—'}</td>
                           <td className="py-2.5 px-3 font-bold text-white whitespace-nowrap">{formatEntityName(item.entityName, item.entityId)}</td>
                           <td className="py-2.5 px-3 whitespace-nowrap">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold border ${getChangeTypeBadge(ct)}`}>
+                            <span className={`px-2 py-0.5 rounded text-[11px] sm:text-[10px] font-mono font-semibold border ${getChangeTypeBadge(ct)}`}>
                               {ct}
                             </span>
                           </td>
@@ -891,7 +891,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                     className="p-4 rounded-xl bg-surface border border-slate-800/80 hover:border-slate-700/80 transition-all space-y-2.5"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${getSourceCategoryBadge(claim.sourceCategory)}`}>
+                      <span className={`px-2 py-0.5 rounded text-[11px] sm:text-[10px] font-semibold border ${getSourceCategoryBadge(claim.sourceCategory)}`}>
                         {claim.sourceCategory}
                       </span>
                       <div className="flex items-center gap-1.5 text-[11px] font-mono text-slate-400">
@@ -1021,7 +1021,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                           {m.event}
                         </span>
                       </div>
-                      <span className={`px-2.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0 ${
+                      <span className={`px-2.5 py-0.5 rounded text-[11px] sm:text-[10px] font-semibold flex-shrink-0 ${
                         m.status === 'Confirmed'
                           ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                           : 'bg-amber-500/10 text-amber-300 border border-amber-500/30'
@@ -1097,7 +1097,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-white text-sm">{note.playerName}</span>
                           {note.wnbaTeam && (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                            <span className="px-1.5 py-0.5 rounded text-[11px] sm:text-[10px] font-mono font-bold bg-slate-800 text-slate-300 border border-slate-700">
                               {note.wnbaTeam}
                             </span>
                           )}
@@ -1107,7 +1107,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                           <span>{note.healthStatus}</span>
                         </div>
                       </div>
-                      <span className="px-2.5 py-0.5 rounded text-[10px] font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/30 flex-shrink-0">
+                      <span className="px-2.5 py-0.5 rounded text-[11px] sm:text-[10px] font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/30 flex-shrink-0">
                         {note.league}
                       </span>
                     </div>
@@ -1150,7 +1150,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                           </span>
                         </div>
                       </div>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                      <span className="px-2 py-0.5 rounded text-[11px] sm:text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
                         Verified
                       </span>
                     </a>
@@ -1364,7 +1364,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="bg-surface border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
+                    <tr className="bg-surface border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider text-[11px] sm:text-[10px]">
                       <th className="py-3 px-4">Date</th>
                       <th className="py-3 px-4">Entity</th>
                       <th className="py-3 px-4">Type</th>
@@ -1394,7 +1394,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                               {formatEntityName(item.entityName, item.entityId)}
                             </td>
                             <td className="py-3 px-4 whitespace-nowrap">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold ${
+                              <span className={`px-2 py-0.5 rounded text-[11px] sm:text-[10px] font-mono font-semibold ${
                                 ct === 'UNCLASSIFIED'
                                   ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                                   : 'bg-violet-500/10 text-violet-300 border border-violet-500/20'
@@ -1596,7 +1596,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                        <span className="px-2 py-0.5 rounded text-[11px] sm:text-[10px] font-semibold bg-violet-500/20 text-violet-300 border border-violet-500/30">
                           {claim.sourceCategory}
                         </span>
                         <h4 className="text-base font-bold text-white mt-1.5">{formatEntityName(claim.entityName, claim.id)}</h4>

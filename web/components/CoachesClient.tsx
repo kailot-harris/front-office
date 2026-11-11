@@ -262,26 +262,26 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
 
                 {/* PBP Sample & Registry Provenance Box */}
                 <div className="p-3.5 bg-surface/60 rounded-lg border border-slate-800/80 space-y-2 text-xs">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                  <span className="text-[11px] sm:text-[10px] uppercase font-bold text-slate-400 block">
                     PBP Sample & Registry Provenance
                   </span>
                   <div className="grid grid-cols-2 gap-2 text-slate-300">
                     <div>
-                      <span className="text-slate-500 block text-[10px]">ATO Off / Def Poss</span>
+                      <span className="text-slate-500 block text-[11px] sm:text-[10px]">ATO Off / Def Poss</span>
                       <span className="font-semibold font-mono">
                         {selectedCoach.metrics.atoOffPossessions} /{' '}
                         {selectedCoach.metrics.atoDefPossessions}
                       </span>
                     </div>
                     <div>
-                      <span className="text-slate-500 block text-[10px]">Challenge Overturn</span>
+                      <span className="text-slate-500 block text-[11px] sm:text-[10px]">Challenge Overturn</span>
                       <span className="font-semibold font-mono">
                         {(selectedCoach.metrics.challengeSuccessRate * 100).toFixed(1)}% (n=
                         {selectedCoach.metrics.challengeAttempts})
                       </span>
                     </div>
                   </div>
-                  <div className="pt-1 border-t border-slate-800/60 text-[10px] text-slate-400">
+                  <div className="pt-1 border-t border-slate-800/60 text-[11px] sm:text-[10px] text-slate-400">
                     <div>Source: {selectedCoach.headCoach.sourceCitation}</div>
                     <div>Verified: {selectedCoach.headCoach.sourceVerifiedDate}</div>
                   </div>
@@ -320,7 +320,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                 }`}
               >
                 <span>{c.teamAbbr}</span>
-                <span className="text-[10px] opacity-75">({c.headCoach.name.split(' ')[1]})</span>
+                <span className="text-[11px] sm:text-[10px] opacity-75">({c.headCoach.name.split(' ')[1]})</span>
               </button>
             ))}
           </div>

@@ -45,7 +45,7 @@ export const ClutchShotBreakdownCard: React.FC<ClutchShotBreakdownCardProps> = (
           <Target className="w-3.5 h-3.5 text-rose-400" />
           Clutch Shot Generation Breakdown (High-Leverage &le; 5 pts)
         </h4>
-        <span className="text-[10px] text-slate-500 font-mono">
+        <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">
           N = {breakdown.totalClutchFga} FGA (Season)
         </span>
       </div>

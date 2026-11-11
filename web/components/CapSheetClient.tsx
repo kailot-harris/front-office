@@ -71,25 +71,25 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             <div className="px-3 py-2.5 rounded-xl bg-surface/80 border border-slate-800 text-center">
-              <div className="text-[10px] text-slate-400 uppercase font-semibold">Hard Cap</div>
+              <div className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-semibold">Hard Cap</div>
               <div className="text-base font-black text-white font-mono">
                 ${(initialData.hardSalaryCap * 1_000_000).toLocaleString()}
               </div>
             </div>
             <div className="px-3 py-2.5 rounded-xl bg-surface/80 border border-slate-800 text-center">
-              <div className="text-[10px] text-slate-400 uppercase font-semibold">Salary Floor (90%)</div>
+              <div className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-semibold">Salary Floor (90%)</div>
               <div className="text-base font-black text-amber-400 font-mono">
                 ${(initialData.capFloor * 1_000_000).toLocaleString()}
               </div>
             </div>
             <div className="px-3 py-2.5 rounded-xl bg-surface/80 border border-slate-800 text-center">
-              <div className="text-[10px] text-slate-400 uppercase font-semibold">Supermax</div>
+              <div className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-semibold">Supermax</div>
               <div className="text-base font-black text-rose-400 font-mono">
                 ${(initialData.supermaxSalary * 1_000_000).toLocaleString()}
               </div>
             </div>
             <div className="px-3 py-2.5 rounded-xl bg-surface/80 border border-slate-800 text-center">
-              <div className="text-[10px] text-slate-400 uppercase font-semibold">Rookie Min</div>
+              <div className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-semibold">Rookie Min</div>
               <div className="text-base font-black text-sky-400 font-mono">
                 ${(initialData.rookieMinSalary * 1_000_000).toLocaleString()}
               </div>
@@ -160,7 +160,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                   <div>
                     <div className="text-sm font-bold text-white flex items-center gap-2">
                       {t.teamName}
-                      <span className="text-[10px] font-mono text-slate-500 font-normal">
+                      <span className="text-[11px] sm:text-[10px] font-mono text-slate-500 font-normal">
                         ({t.conference})
                       </span>
                     </div>

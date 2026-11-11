@@ -183,7 +183,7 @@ const TeamRow: React.FC<TeamRowProps> = ({
         {name}
       </span>
       {isHome && (
-        <span className="text-[10px] text-slate-500 font-mono flex-shrink-0" title="Home team">
+        <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono flex-shrink-0" title="Home team">
           HOME
         </span>
       )}

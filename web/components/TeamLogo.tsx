@@ -34,7 +34,7 @@ export const TeamLogo: React.FC<TeamLogoProps> = ({
     if (!showFallbackText) return null;
     return (
       <span
-        className={`${sizeClass} rounded bg-slate-800 border border-slate-700/80 flex items-center justify-center font-bold text-[10px] tracking-wider text-amber-400 font-mono flex-shrink-0 ${className}`}
+        className={`${sizeClass} rounded bg-slate-800 border border-slate-700/80 flex items-center justify-center font-bold text-[11px] sm:text-[10px] tracking-wider text-amber-400 font-mono flex-shrink-0 ${className}`}
         title={meta?.fullName || team}
       >
         {normalized?.slice(0, 3)}

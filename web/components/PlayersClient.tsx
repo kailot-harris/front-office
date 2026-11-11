@@ -357,7 +357,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                         {isOutlier && (
                           <span
                             title="Statistical Outlier (|z| > 2.0)"
-                            className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                            className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] sm:text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30"
                           >
                             OUTLIER
                           </span>

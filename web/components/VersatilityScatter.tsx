@@ -53,7 +53,7 @@ export const VersatilityScatter: React.FC<VersatilityScatterProps> = ({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono bg-surface-raised border border-slate-800 text-indigo-400 px-2 py-0.5 rounded">
+          <span className="text-[11px] sm:text-[10px] font-mono bg-surface-raised border border-slate-800 text-indigo-400 px-2 py-0.5 rounded">
             N = {profiles.length} Defenders
           </span>
           <button
@@ -94,7 +94,7 @@ export const VersatilityScatter: React.FC<VersatilityScatterProps> = ({
             x={width - padding - 8}
             y={padding + 16}
             textAnchor="end"
-            className="fill-indigo-400 text-[10px] font-bold tracking-tight opacity-70"
+            className="fill-indigo-400 text-[11px] sm:text-[10px] font-bold tracking-tight opacity-70"
           >
             Universal Disruptors (High Switch + Rim)
           </text>
@@ -102,7 +102,7 @@ export const VersatilityScatter: React.FC<VersatilityScatterProps> = ({
             x={padding + 8}
             y={padding + 16}
             textAnchor="start"
-            className="fill-emerald-400 text-[10px] font-bold tracking-tight opacity-70"
+            className="fill-emerald-400 text-[11px] sm:text-[10px] font-bold tracking-tight opacity-70"
           >
             Traditional Anchors (Elite Paint Wall)
           </text>
@@ -110,7 +110,7 @@ export const VersatilityScatter: React.FC<VersatilityScatterProps> = ({
             x={width - padding - 8}
             y={height - padding - 8}
             textAnchor="end"
-            className="fill-amber-400 text-[10px] font-bold tracking-tight opacity-70"
+            className="fill-amber-400 text-[11px] sm:text-[10px] font-bold tracking-tight opacity-70"
           >
             Switchable Perimeter Guards
           </text>

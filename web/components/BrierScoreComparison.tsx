@@ -117,7 +117,7 @@ export const BrierScoreComparison: React.FC = () => {
       {/* Visual Brier Score Horizontal Gauge */}
       <div className="space-y-4">
         {/* Scale Axis */}
-        <div className="relative h-6 text-[10px] font-mono text-slate-400 select-none">
+        <div className="relative h-6 text-[11px] sm:text-[10px] font-mono text-slate-400 select-none">
           <div className="relative w-full h-full">
             {[0.215, 0.22, 0.225, 0.23, 0.235, 0.24, 0.245, 0.25].map((tick) => {
               const pos = getPositionPct(tick);

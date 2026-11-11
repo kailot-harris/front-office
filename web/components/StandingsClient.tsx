@@ -6,6 +6,8 @@ import { Trophy, TrendingUp, Filter, ArrowUpDown, ArrowUp, ArrowDown, ShieldAler
 import { TeamLogo } from '@/components/TeamLogo';
 import { PlayoffContendersBoxWhisker } from '@/components/PlayoffContendersBoxWhisker';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { GlossaryTerm } from '@/components/GlossaryTerm';
+import { HowToRead } from '@/components/HowToRead';
 
 interface StandingsClientProps {
   teams: TeamProjection[];
@@ -150,6 +152,13 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
 
   return (
     <div className="space-y-6">
+      <HowToRead pageKey="standings">
+        Each team shows its <GlossaryTerm termKey="ensembleWins" /> (mean projected wins across 4
+        model variants), <GlossaryTerm termKey="playoffProb" />, and <GlossaryTerm termKey="titleProb" />
+        {' '}— all derived from 1,000 simulated seasons. Switch to the table view for every franchise,
+        or sort any column by clicking its header.
+      </HowToRead>
+
       {/* Top Stat Highlights */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
@@ -245,7 +254,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
             <BarChart2 className="w-4 h-4 text-amber-400 pointer-events-none" />
             <span className="pointer-events-none">Playoff Contenders (Box-Whisker)</span>
             <span
-              className={`text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
+              className={`text-[11px] sm:text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
                 activeTab === 'visualizer' ? 'bg-white/20 text-white font-bold' : 'bg-slate-800 text-slate-400'
               }`}
             >
@@ -268,7 +277,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
             <Table className="w-4 h-4 text-indigo-300 pointer-events-none" />
             <span className="pointer-events-none">Full Standings Table</span>
             <span
-              className={`text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
+              className={`text-[11px] sm:text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
                 activeTab === 'table' ? 'bg-white/20 text-white font-bold' : 'bg-slate-800 text-slate-400'
               }`}
             >
@@ -416,9 +425,10 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                       title="Click to sort by projected ensemble wins"
                     >
                       <div className="flex items-center gap-1.5">
-                        <span className={sortBy === 'ensemble_mean_wins' ? 'text-indigo-400 font-bold' : ''}>
-                          Ensemble Wins
-                        </span>
+                        <GlossaryTerm
+                          termKey="ensembleWins"
+                          className={sortBy === 'ensemble_mean_wins' ? 'text-indigo-400 font-bold' : ''}
+                        />
                         {renderSortIndicator('ensemble_mean_wins')}
                       </div>
                     </th>
@@ -438,9 +448,10 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                       title="Click to sort by distribution width (p90 - p10 variance)"
                     >
                       <div className="flex items-center gap-1.5">
-                        <span className={sortBy === 'percentile_range' ? 'text-indigo-400 font-bold' : ''}>
-                          10th - 90th Percentile Range
-                        </span>
+                        <GlossaryTerm
+                          termKey="percentileRange"
+                          className={sortBy === 'percentile_range' ? 'text-indigo-400 font-bold' : ''}
+                        />
                         {renderSortIndicator('percentile_range')}
                       </div>
                     </th>
@@ -450,9 +461,10 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                       title="Click to sort by playoff probability"
                     >
                       <div className="flex items-center justify-end gap-1.5">
-                        <span className={sortBy === 'ensemble_playoff_prob' ? 'text-indigo-400 font-bold' : ''}>
-                          Playoffs
-                        </span>
+                        <GlossaryTerm
+                          termKey="playoffProb"
+                          className={sortBy === 'ensemble_playoff_prob' ? 'text-indigo-400 font-bold' : ''}
+                        />
                         {renderSortIndicator('ensemble_playoff_prob')}
                       </div>
                     </th>
@@ -462,9 +474,10 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                       title="Click to sort by title probability"
                     >
                       <div className="flex items-center justify-end gap-1.5">
-                        <span className={sortBy === 'ensemble_title_prob' ? 'text-indigo-400 font-bold' : ''}>
-                          Title Prob
-                        </span>
+                        <GlossaryTerm
+                          termKey="titleProb"
+                          className={sortBy === 'ensemble_title_prob' ? 'text-indigo-400 font-bold' : ''}
+                        />
                         {renderSortIndicator('ensemble_title_prob')}
                       </div>
                     </th>
@@ -499,7 +512,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                             <div>
                               <div className="font-semibold text-white group-hover:text-indigo-400 transition-colors flex items-center gap-2">
                                 <span>{team.team_name}</span>
-                                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800/80 text-amber-400 border border-slate-700/60 font-semibold">
+                                <span className="text-[11px] sm:text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800/80 text-amber-400 border border-slate-700/60 font-semibold">
                                   {team.team}
                                 </span>
                               </div>

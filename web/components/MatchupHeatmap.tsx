@@ -31,7 +31,7 @@ export const MatchupHeatmap: React.FC<MatchupHeatmapProps> = ({ dist }) => {
         <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
           Defensive Matchup Distribution (Tracking Shares)
         </h4>
-        <span className="text-[10px] text-slate-500 font-mono">100% Normalized</span>
+        <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">100% Normalized</span>
       </div>
 
       <div className="grid grid-cols-5 gap-2">
@@ -44,7 +44,7 @@ export const MatchupHeatmap: React.FC<MatchupHeatmapProps> = ({ dist }) => {
           >
             <div className="text-xs font-bold uppercase">{pos.label}</div>
             <div className="text-sm font-extrabold mt-0.5">{pos.val.toFixed(1)}%</div>
-            <div className="text-[9px] opacity-75 mt-0.5 truncate max-w-full text-center">
+            <div className="text-[11px] sm:text-[9px] opacity-75 mt-0.5 truncate max-w-full text-center">
               {pos.name}
             </div>
           </div>
