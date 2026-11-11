@@ -352,6 +352,11 @@ WEB_JSON_SPATIAL_INDEX               <- file.path(WEB_DATA_DIR, "spatial_index.j
 WEB_DIR_SPATIAL                      <- file.path(WEB_DATA_DIR, "spatial")
 WEB_JSON_WORLD_SERIES                <- file.path(WEB_DATA_DIR, "world_series.json")
 WEB_JSON_OFFSEASON_MONITOR           <- file.path(WEB_DATA_DIR, "offseason_monitor.json")
+# Older weekly editions, split out of offseason_monitor.json by build_offseason_monitor.R
+# and fetched on demand by the site. Written only when an edition rolls into the archive,
+# so it is NOT in WEB_DATA_FILES_OFFSEASON (assertion A would be red on a normal week).
+# tools/publish_web.R stages it alongside those files whenever it exists.
+WEB_JSON_OFFSEASON_ARCHIVE           <- file.path(WEB_DATA_DIR, "archive", "offseason_2026_editions.json")
 
 WEB_DATA_FILES <- c(
   WEB_JSON_PROJECTIONS_SEASON_TEAMS,
