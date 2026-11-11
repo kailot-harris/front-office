@@ -46,11 +46,11 @@ export default function MatchupsPage() {
           {/* Context Chips */}
           <div className="flex items-center gap-2.5 text-xs font-mono flex-shrink-0">
             <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
-              <span className="text-slate-500 block text-[10px] uppercase">Active Slate</span>
+              <span className="text-slate-500 block text-[11px] sm:text-[10px] uppercase">Active Slate</span>
               <span className="text-white font-bold">Week {dataset.active_week}</span>
             </div>
             <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
-              <span className="text-slate-500 block text-[10px] uppercase">Season Record</span>
+              <span className="text-slate-500 block text-[11px] sm:text-[10px] uppercase">Season Record</span>
               <span className="text-emerald-400 font-bold">
                 {dataset.correct_picks} / {dataset.graded_games} ({accuracyPct})
               </span>

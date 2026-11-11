@@ -265,7 +265,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
             <BarChart2 className="w-4 h-4 pointer-events-none" />
             <span className="pointer-events-none">Postseason Contenders (Box-Whisker)</span>
             <span
-              className={`text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
+              className={`text-[11px] sm:text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
                 activeTab === 'visualizer'
                   ? 'bg-white/20 text-white font-bold'
                   : 'bg-slate-800 text-slate-400'
@@ -290,7 +290,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
             <Film className="w-4 h-4 pointer-events-none" />
             <span className="pointer-events-none">Animated GIF Races & Postseason</span>
             <span
-              className={`text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
+              className={`text-[11px] sm:text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
                 activeTab === 'gallery' ? 'bg-white/20 text-white font-bold' : 'bg-slate-800 text-slate-400'
               }`}
             >
@@ -313,7 +313,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
             <Table className="w-4 h-4 pointer-events-none" />
             <span className="pointer-events-none">Full MLB Standings (30 Clubs)</span>
             <span
-              className={`text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
+              className={`text-[11px] sm:text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
                 activeTab === 'table' ? 'bg-white/20 text-white font-bold' : 'bg-slate-800 text-slate-400'
               }`}
             >
@@ -408,7 +408,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                      <span className="text-[11px] sm:text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
                         {currentItem.categoryLabel}
                       </span>
                       <span className="text-xs text-slate-400 font-mono">Phase {currentItem.phase}</span>
@@ -465,7 +465,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                       setSelectedLeague(lg);
                       setSelectedDivision('All');
                     }}
-                    className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                    className={`px-3 py-1 min-h-[24px] min-w-[24px] flex items-center justify-center text-xs font-semibold rounded-md transition-all ${
                       selectedLeague === lg
                         ? 'bg-accent-600 text-white shadow-sm'
                         : 'text-slate-400 hover:text-white'
@@ -501,7 +501,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                 title="Export CSV"
                 aria-label="Export table as CSV"
                 data-export-exclude
-                className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+                className="p-1.5 min-h-[24px] min-w-[24px] flex items-center justify-center rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
               >
                 <Download className="w-3.5 h-3.5" />
               </button>
@@ -635,7 +635,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                             <div>
                               <div className="font-bold text-white flex items-center gap-1.5">
                                 <span>{team.full_name}</span>
-                                <span className="text-[10px] font-mono text-slate-400">
+                                <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">
                                   ({team.team})
                                 </span>
                               </div>
@@ -672,7 +672,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                           <div className="text-white font-semibold">
                             {team.elo_rating.toFixed(0)}
                           </div>
-                          <div className="text-[10px] text-slate-400">
+                          <div className="text-[11px] sm:text-[10px] text-slate-400">
                             rGS {team.team_rgs.toFixed(1)}
                           </div>
                         </td>
@@ -701,7 +701,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                                 style={{ left: `${medianPct}%` }}
                               />
                             </div>
-                            <div className="flex justify-between text-[10px] font-mono text-slate-400">
+                            <div className="flex justify-between text-[11px] sm:text-[10px] font-mono text-slate-400">
                               <span>p10: {team.ensemble_p10.toFixed(0)}W</span>
                               <span className="text-amber-400 font-semibold">
                                 p50: {team.ensemble_p50.toFixed(0)}W

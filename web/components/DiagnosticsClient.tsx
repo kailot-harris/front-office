@@ -323,13 +323,13 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
                 </div>
                 <div className="flex items-center gap-4 text-right font-mono">
                   <div>
-                    <span className="text-[10px] text-slate-400 block">Accuracy</span>
+                    <span className="text-[11px] sm:text-[10px] text-slate-400 block">Accuracy</span>
                     <span className="text-sm font-bold text-emerald-400">
                       {(split.accuracy * 100).toFixed(1)}%
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block">Brier Score</span>
+                    <span className="text-[11px] sm:text-[10px] text-slate-400 block">Brier Score</span>
                     <span className="text-sm font-bold text-indigo-400">
                       {split.brierScore.toFixed(4)}
                     </span>

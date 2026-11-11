@@ -55,7 +55,7 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
           </p>
         </div>
         <div className="text-right flex items-center gap-2">
-          <span className="text-[10px] font-mono bg-surface-raised border border-slate-800 text-rose-400 px-2 py-0.5 rounded font-bold">
+          <span className="text-[11px] sm:text-[10px] font-mono bg-surface-raised border border-slate-800 text-rose-400 px-2 py-0.5 rounded font-bold">
             N = {profiles.length} {playerType}s
           </span>
           <button
@@ -140,7 +140,7 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
         </svg>
       </div>
 
-      <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 pt-2 border-t border-slate-800/80">
+      <div className="flex items-center justify-between text-[11px] sm:text-[10px] font-mono text-slate-400 pt-2 border-t border-slate-800/80">
         <span>Click any dot to load player clutch profile</span>
         <span className="text-rose-400 font-bold">Selected: {selectedProfile.playerName}</span>
       </div>

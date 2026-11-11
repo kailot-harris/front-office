@@ -22,7 +22,7 @@ export const LeverageDistributionBar: React.FC<LeverageDistributionBarProps> = (
           <p className="text-[11px] text-slate-400">Share of Season Plate Appearances / Batters Faced</p>
         </div>
         <div className="text-right font-mono">
-          <span className="text-[10px] text-slate-400 block">Avg Leverage</span>
+          <span className="text-[11px] sm:text-[10px] text-slate-400 block">Avg Leverage</span>
           <span className="text-sm font-black text-rose-400">{avgLeverageIndex.toFixed(2)} LI</span>
         </div>
       </div>

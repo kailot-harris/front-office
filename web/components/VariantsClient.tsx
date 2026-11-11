@@ -333,7 +333,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
                       <TeamLogo team={t.team} size="sm" />
                       <div>
                         <span className="font-bold text-white">{t.team_name}</span>
-                        <span className="text-[10px] font-mono text-slate-400 ml-1.5">
+                        <span className="text-[11px] sm:text-[10px] font-mono text-slate-400 ml-1.5">
                           ({t.league})
                         </span>
                       </div>

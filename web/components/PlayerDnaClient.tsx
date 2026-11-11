@@ -173,7 +173,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-xs text-white truncate">{p.playerName}</span>
-                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">
+                          <span className="text-[11px] sm:text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">
                             {p.position}
                           </span>
                         </div>
@@ -184,7 +184,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <div className="text-right font-mono">
                         <span className="text-xs font-bold text-sky-400 block">{p.overallRating} OVR</span>
-                        <span className="text-[10px] text-slate-500">z: {p.compositeZscore}</span>
+                        <span className="text-[11px] sm:text-[10px] text-slate-500">z: {p.compositeZscore}</span>
                       </div>
                       <ChevronRight className={`w-4 h-4 ${isSelected ? 'text-sky-400' : 'text-slate-600'}`} />
                     </div>
@@ -216,14 +216,14 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
 
               <div className="text-right font-mono">
                 <span className="text-2xl font-black text-white">{selectedPlayer.overallRating}</span>
-                <span className="text-[10px] text-sky-400 block font-bold">DNA SCORE</span>
+                <span className="text-[11px] sm:text-[10px] text-sky-400 block font-bold">DNA SCORE</span>
               </div>
             </div>
 
             {/* Archetype Badge */}
             <div className="p-3 bg-surface/80 rounded-xl border border-sky-500/30 flex items-center justify-between">
               <div>
-                <span className="text-[10px] uppercase font-mono font-bold text-slate-400 block">Classified Archetype</span>
+                <span className="text-[11px] sm:text-[10px] uppercase font-mono font-bold text-slate-400 block">Classified Archetype</span>
                 <span className="text-sm font-bold text-sky-300 font-mono">{selectedPlayer.archetype}</span>
               </div>
               <Sparkles className="w-5 h-5 text-amber-400 flex-shrink-0" />
@@ -232,19 +232,19 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
             {/* Headline Key Stats Grid */}
             <div className="grid grid-cols-4 gap-2 text-center font-mono text-xs">
               <div className="bg-surface p-2 rounded-lg border border-slate-800">
-                <span className="text-[10px] text-slate-400 block">{selectedPlayer.headlineStats.stat1Label}</span>
+                <span className="text-[11px] sm:text-[10px] text-slate-400 block">{selectedPlayer.headlineStats.stat1Label}</span>
                 <span className="font-bold text-white text-xs">{selectedPlayer.headlineStats.stat1Val}</span>
               </div>
               <div className="bg-surface p-2 rounded-lg border border-slate-800">
-                <span className="text-[10px] text-slate-400 block">{selectedPlayer.headlineStats.stat2Label}</span>
+                <span className="text-[11px] sm:text-[10px] text-slate-400 block">{selectedPlayer.headlineStats.stat2Label}</span>
                 <span className="font-bold text-white text-xs">{selectedPlayer.headlineStats.stat2Val}</span>
               </div>
               <div className="bg-surface p-2 rounded-lg border border-slate-800">
-                <span className="text-[10px] text-slate-400 block">{selectedPlayer.headlineStats.stat3Label}</span>
+                <span className="text-[11px] sm:text-[10px] text-slate-400 block">{selectedPlayer.headlineStats.stat3Label}</span>
                 <span className="font-bold text-white text-xs">{selectedPlayer.headlineStats.stat3Val}</span>
               </div>
               <div className="bg-surface p-2 rounded-lg border border-slate-800">
-                <span className="text-[10px] text-slate-400 block">{selectedPlayer.headlineStats.countLabel}</span>
+                <span className="text-[11px] sm:text-[10px] text-slate-400 block">{selectedPlayer.headlineStats.countLabel}</span>
                 <span className="font-bold text-amber-400 text-xs">{selectedPlayer.headlineStats.countVal}</span>
               </div>
             </div>
@@ -291,7 +291,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
                 </h3>
                 <p className="text-xs text-slate-400">Cosine Similarity (1980–2026 Era)</p>
               </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+              <span className="text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
                 Cosine Comps
               </span>
             </div>

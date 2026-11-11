@@ -29,9 +29,28 @@ interface PlayersClientProps {
 }
 
 export const PlayersClient: React.FC<PlayersClientProps> = ({
-  players,
+  players: initialPlayers,
   initialSpatialMaps,
 }) => {
+  // `initialPlayers` is just the first screen's worth of rows (see players/page.tsx,
+  // issue #134). Upgrade to the full roster client-side once it's fetched, so search/
+  // filter/sort work across all players without inlining the whole dataset into HTML.
+  const [players, setPlayers] = useState<PlayerProjection[]>(initialPlayers);
+  const [isLoadingFullRoster, setIsLoadingFullRoster] = useState(true);
+
+  useEffect(() => {
+    fetch(`${BASE_PATH}/data/projections_season_players.json`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch full player roster');
+        return res.json();
+      })
+      .then((data: PlayerProjection[]) => {
+        setPlayers(data);
+      })
+      .catch((err) => console.warn('Could not load full player roster:', err))
+      .finally(() => setIsLoadingFullRoster(false));
+  }, []);
+
   const [activeGroup, setActiveGroup] = useState<'Batter' | 'Pitcher'>('Batter');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTeam, setSelectedTeam] = useState<string>('All');
@@ -634,7 +653,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                             {p.team}
                           </span>
                           <span
-                            className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${
+                            className={`text-[11px] sm:text-[10px] font-mono px-1.5 py-0.2 rounded ${
                               p.position === 'B'
                                 ? 'bg-indigo-500/15 text-indigo-300'
                                 : p.position === 'SP'
@@ -666,7 +685,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                                 ? `.${Math.round(p.stat1_pooled * 1000).toString().padStart(3, '0')}`
                                 : p.stat1_pooled.toFixed(2)}
                             </div>
-                            <div className="text-[10px] text-slate-400 font-normal">
+                            <div className="text-[11px] sm:text-[10px] text-slate-400 font-normal">
                               [{p.stat1_p10.toFixed(p.player_type === 'Batter' ? 3 : 2)}–
                               {p.stat1_p90.toFixed(p.player_type === 'Batter' ? 3 : 2)}]
                             </div>
@@ -724,7 +743,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                               : `${p.composite_zscore.toFixed(2)}σ`}
                           </span>
                           {p.is_outlier && (
-                            <span className="px-1.5 py-0.5 text-[10px] rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold">
+                            <span className="px-1.5 py-0.5 text-[11px] sm:text-[10px] rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold">
                               OUTLIER
                             </span>
                           )}
@@ -756,7 +775,12 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
             aria-hidden="true"
           />
         )}
-        {filteredPlayers.length > 150 && (
+        {isLoadingFullRoster && (
+          <div className="p-3 bg-surface/80 border-t border-slate-800 text-center text-xs text-slate-400 font-mono animate-pulse">
+            Loading full {activeGroup === 'Batter' ? 'batter' : 'pitcher'} roster…
+          </div>
+        )}
+        {!isLoadingFullRoster && filteredPlayers.length > 150 && (
           <div className="p-3 bg-surface/80 border-t border-slate-800 text-center text-xs text-slate-400 font-mono">
             Showing top 150 of {filteredPlayers.length} matching {activeGroup.toLowerCase()}s — use search or club filter to narrow further.
           </div>

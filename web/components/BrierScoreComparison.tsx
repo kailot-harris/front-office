@@ -122,7 +122,7 @@ export const BrierScoreComparison: React.FC = () => {
 
         <div className="flex items-center gap-2 text-xs">
           <div className="bg-surface px-3 py-1.5 rounded-lg border border-slate-800 text-right font-mono">
-            <span className="text-[10px] text-slate-400 block font-sans">Walk-Forward Sample</span>
+            <span className="text-[11px] sm:text-[10px] text-slate-400 block font-sans">Walk-Forward Sample</span>
             <span className="text-white font-bold">2,430 MLB Games</span>
           </div>
         </div>
@@ -131,7 +131,7 @@ export const BrierScoreComparison: React.FC = () => {
       {/* Main Visualization Bars */}
       <div className="space-y-3.5">
         {/* Scale Header */}
-        <div className="relative h-5 text-[10px] font-mono text-slate-400 select-none pl-44 sm:pl-56 pr-24 sm:pr-28">
+        <div className="relative h-5 text-[11px] sm:text-[10px] font-mono text-slate-400 select-none pl-44 sm:pl-56 pr-24 sm:pr-28">
           <div className="relative w-full h-full">
             <span className="absolute left-0 -translate-x-1/2 text-emerald-400 font-bold">
               0.2410 (Sharp)
@@ -167,11 +167,11 @@ export const BrierScoreComparison: React.FC = () => {
                     <span className={`text-xs font-bold ${model.color} truncate`}>
                       {model.shortName}
                     </span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">
+                    <span className="text-[11px] sm:text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">
                       {model.weight}
                     </span>
                   </div>
-                  <p className="text-[10px] text-slate-400 truncate mt-0.5" title={model.notes}>
+                  <p className="text-[11px] sm:text-[10px] text-slate-400 truncate mt-0.5" title={model.notes}>
                     {model.notes}
                   </p>
                 </div>
@@ -193,7 +193,7 @@ export const BrierScoreComparison: React.FC = () => {
                 {/* Right Metrics */}
                 <div className="w-24 sm:w-28 text-right font-mono flex-shrink-0">
                   <div className="text-xs font-bold text-white">{model.brierScore.toFixed(4)}</div>
-                  <div className="text-[10px] text-slate-400">
+                  <div className="text-[11px] sm:text-[10px] text-slate-400">
                     Acc {(model.accuracy * 100).toFixed(1)}%
                   </div>
                 </div>

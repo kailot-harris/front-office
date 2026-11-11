@@ -220,7 +220,7 @@ export const FranchisePayrollTable: React.FC<FranchisePayrollTableProps> = ({
                         {c.playerName}
                       </div>
                       {c.notes && (
-                        <div className="text-[10px] text-slate-400 font-sans truncate max-w-xs">
+                        <div className="text-[11px] sm:text-[10px] text-slate-400 font-sans truncate max-w-xs">
                           {c.notes}
                         </div>
                       )}
