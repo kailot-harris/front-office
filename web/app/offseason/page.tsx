@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ArrowRightLeft, ArrowLeft, ShieldAlert } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Offseason Moves & Expansion Hub (Archived) | WNBA Analytics',
+  title: 'Offseason Moves & Expansion Hub (Archived)',
   description:
     'The 2026 WNBA offseason moves and draft board are currently archived pending integration with live transaction feeds.',
 };

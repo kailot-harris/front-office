@@ -20,6 +20,7 @@ import {
   ChevronRight,
   ChevronDown,
   Download,
+  AlertTriangle,
 } from 'lucide-react';
 import { exportToCsv } from '@/lib/exportToCsv';
 
@@ -58,13 +59,42 @@ const FORMAT_CONFIGS: Record<SeriesFormat, FormatConfig> = {
 };
 
 // Client-side Monte Carlo simulator for arbitrary pairings & formats
-function simulateClientSeries(
+export function simulateClientSeries(
   teamA: TeamPlayoffProfile,
   teamB: TeamPlayoffProfile,
   hcaTeam: string,
   format: SeriesFormat = 'bo7',
   nSims = 10000
 ): PlayoffSeriesMatchupResult {
+  // Issue #111: a missing/non-numeric playoffNetRtg makes every probability
+  // NaN downstream, and since `Math.random() < NaN` is always false, the
+  // simulator used to silently report the opponent winning 100% of series
+  // instead of flagging missing data. Validate both inputs before running
+  // any simulation and return a clearly flagged "insufficient data" result —
+  // never a probability — when either rating is not a finite number.
+  if (!Number.isFinite(teamA?.playoffNetRtg) || !Number.isFinite(teamB?.playoffNetRtg)) {
+    const fmt = FORMAT_CONFIGS[format];
+    return {
+      teamA: teamA?.teamAbbr,
+      teamB: teamB?.teamAbbr,
+      hcaTeam,
+      format,
+      winThreshold: fmt.winThreshold,
+      ratingDiffRaw: NaN,
+      tacticalMismatchAdjustment: NaN,
+      netRatingMargin: NaN,
+      winProbA: NaN,
+      winProbB: NaN,
+      avgGames: NaN,
+      sweepProb: NaN,
+      gameDistributions: [],
+      tacticalEdges: [],
+      insufficientData: true,
+      insufficientDataReason:
+        'Missing or invalid playoff net rating for one or both teams — simulation not run.',
+    };
+  }
+
   const rawDiff = teamA.playoffNetRtg - teamB.playoffNetRtg;
   let mismatchDelta = 0;
   const edges: TacticalEdge[] = [];
@@ -537,7 +567,20 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
             </div>
           </div>
 
-          {result && (
+          {result && result.insufficientData && (
+            <div className="bg-rose-950/20 border border-rose-500/30 rounded-2xl p-6 shadow-xl flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-rose-400 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-bold text-rose-300">Insufficient Data</p>
+                <p className="text-xs text-rose-200/80 mt-0.5">
+                  {result.insufficientDataReason ||
+                    'One or both teams are missing a playoff net rating, so no simulation was run.'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {result && !result.insufficientData && (
             <>
               {/* Stat Highlights Bar */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

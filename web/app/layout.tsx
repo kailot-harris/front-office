@@ -17,7 +17,14 @@ const SOCIAL_IMAGE = `${BASE_PATH}/social/og-card.png`;
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://kailot-harris.github.io'),
-  title: 'WNBA Season-Long Projections',
+  // Issue #122: a route-level `export const metadata` without its own
+  // `title` falls back to this template rather than silently inheriting the
+  // bare default string, so every route's <title> stays distinct in browser
+  // tabs, search results, and link previews.
+  title: {
+    template: '%s | WNBA Front Office',
+    default: 'WNBA Season-Long Projections',
+  },
   description:
     'Season-long simulation projections for all 15 WNBA teams and rotation players, with RAPM/variant model analysis, Player DNA & Projections, playoff bracket simulation, and empirical calibration diagnostics.',
   openGraph: {

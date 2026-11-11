@@ -11,7 +11,7 @@ import { FinalsSeriesBacktest } from '@/components/FinalsSeriesBacktest';
 import { NetRatingTrajectory } from '@/components/NetRatingTrajectory';
 
 export const metadata = {
-  title: '2026 Playoff Bracket: Prediction vs Result | WNBA Analytics',
+  title: '2026 Playoff Bracket: Prediction vs Result',
   description:
     "The 2026 WNBA postseason round by round, with the model's prediction for each series shown beside how that series actually resolved.",
 };

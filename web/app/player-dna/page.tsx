@@ -6,7 +6,7 @@ import { PlayerDnaProfile } from '@/lib/playerDnaTypes';
 import { PlayerDnaClient } from '@/components/PlayerDnaClient';
 
 export const metadata: Metadata = {
-  title: 'Player DNA & Historical Twins | WNBA Analytics',
+  title: 'Player DNA & Historical Twins',
   description:
     'High-dimensional 16-D player skill vectors, multivariate fingerprints, and cosine-similarity matching against all-time WNBA legends.',
 };

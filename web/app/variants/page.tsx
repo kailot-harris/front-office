@@ -1,5 +1,12 @@
+import { Metadata } from 'next';
 import { getTeamsData, getMetadata } from '@/lib/data';
 import { VariantsClient } from '@/components/VariantsClient';
+
+export const metadata: Metadata = {
+  title: 'Model Variants Breakout',
+  description:
+    'Compare the 4 underlying WNBA projection model variants and the ensemble blend across projected wins and playoff/title probabilities.',
+};
 
 export default function VariantsPage() {
   const teams = getTeamsData();

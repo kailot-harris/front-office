@@ -6,7 +6,7 @@ import { ClutchProfile } from '@/lib/clutchTypes';
 import { ClutchClient } from '@/components/ClutchClient';
 
 export const metadata: Metadata = {
-  title: 'True Clutch Index & Leverage | WNBA Analytics',
+  title: 'True Clutch Index & Leverage',
   description:
     'High-leverage execution analysis, unassisted shot creation index (USCI), turnover fragility, and defensive win probability added in tight contests.',
 };

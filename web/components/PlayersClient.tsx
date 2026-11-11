@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { PlayerProjection } from '@/lib/types';
 import { Search, AlertTriangle, ArrowUpDown, Filter, Sparkles, UserCheck, Download } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
@@ -61,6 +61,25 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
       setSortOrder('desc');
     }
   };
+
+  // Issue #118: at narrow (375px) viewports, 500-750px of this table was
+  // off-screen with no signal that more columns existed. The scroll container
+  // ref drives a right-edge fade that hides itself once the user has scrolled
+  // to the end (or if the table never overflows in the first place).
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollState = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollRight(el.scrollWidth - el.clientWidth - el.scrollLeft > 4);
+  }, []);
+
+  useEffect(() => {
+    updateScrollState();
+    window.addEventListener('resize', updateScrollState);
+    return () => window.removeEventListener('resize', updateScrollState);
+  }, [updateScrollState, filteredPlayers]);
 
   const handleExportCsv = () => {
     exportToCsv(
@@ -236,18 +255,18 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
       </div>
 
       {/* Players Projections Table */}
-      <div className="bg-surface-raised/70 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
+      <div className="bg-surface-raised/70 border border-slate-800 rounded-xl overflow-hidden shadow-xl relative">
+        <div ref={scrollRef} onScroll={updateScrollState} className="overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse">
             <thead>
               <tr className="bg-surface/80 border-b border-slate-800 text-slate-400 text-xs">
-                <th className="py-3 px-4 w-12 text-center">Rank</th>
-                <th className="py-3 px-4">Player</th>
+                <th className="py-3 px-4 w-12 text-center hidden sm:table-cell">Rank</th>
+                <th className="py-3 px-4 sticky left-0 z-20 bg-surface border-r border-slate-700">Player</th>
                 <th className="py-3 px-3 text-center">Team</th>
                 <th className="py-3 px-3 text-center">Pos</th>
                 <th
                   onClick={() => handleSort('proj_games')}
-                  className="py-3 px-3 text-center cursor-pointer hover:text-white"
+                  className="py-3 px-3 text-center cursor-pointer hover:text-white hidden sm:table-cell"
                 >
                   <div className="flex items-center justify-center gap-1">
                     <span>Games</span>
@@ -256,7 +275,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                 </th>
                 <th
                   onClick={() => handleSort('proj_mpg')}
-                  className="py-3 px-3 text-center cursor-pointer hover:text-white"
+                  className="py-3 px-3 text-center cursor-pointer hover:text-white hidden sm:table-cell"
                 >
                   <div className="flex items-center justify-center gap-1">
                     <span>MPG</span>
@@ -298,7 +317,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                 </th>
                 <th
                   onClick={() => handleSort('pra_zscore')}
-                  className="py-3 px-3 text-center cursor-pointer hover:text-white"
+                  className="py-3 px-3 text-center cursor-pointer hover:text-white hidden sm:table-cell"
                 >
                   <div className="flex items-center justify-center gap-1">
                     <span>PRA z-score</span>
@@ -306,7 +325,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                   </div>
                 </th>
                 <th className="py-3 px-4 text-center">Status / Outlier</th>
-                <th className="py-3 px-4 text-center">Uncertainty</th>
+                <th className="py-3 px-4 text-center hidden sm:table-cell">Uncertainty</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-sans">
@@ -319,17 +338,20 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                 const astDisplay =
                   statMode === 'per_game' ? player.proj_ast.toFixed(1) : player.proj_ast_total.toFixed(0);
 
+                const rowBg = isOutlier ? 'bg-rose-950/10' : '';
+                const stickyRowBg = isOutlier ? 'bg-rose-950/40' : 'bg-surface-raised';
+
                 return (
                   <tr
                     key={player.player_id}
-                    className={`hover:bg-slate-800/40 transition-colors text-slate-200 ${
-                      isOutlier ? 'bg-rose-950/10' : ''
-                    }`}
+                    className={`hover:bg-slate-800/40 transition-colors text-slate-200 group ${rowBg}`}
                   >
-                    <td className="py-3 px-4 text-center text-xs font-mono text-slate-500">
+                    <td className="py-3 px-4 text-center text-xs font-mono text-slate-500 hidden sm:table-cell">
                       {idx + 1}
                     </td>
-                    <td className="py-3 px-4">
+                    <td
+                      className={`py-3 px-4 sticky left-0 z-10 border-r border-slate-800 group-hover:bg-slate-800/40 ${stickyRowBg}`}
+                    >
                       <div className="font-semibold text-white flex items-center gap-2">
                         <span>{player.player_name}</span>
                         {isOutlier && (
@@ -354,10 +376,10 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                     <td className="py-3 px-3 text-center text-xs font-semibold text-slate-300">
                       {player.position}
                     </td>
-                    <td className="py-3 px-3 text-center font-mono text-xs text-slate-300">
+                    <td className="py-3 px-3 text-center font-mono text-xs text-slate-300 hidden sm:table-cell">
                       {player.proj_games.toFixed(1)}
                     </td>
-                    <td className="py-3 px-3 text-center font-mono text-xs text-slate-300">
+                    <td className="py-3 px-3 text-center font-mono text-xs text-slate-300 hidden sm:table-cell">
                       {player.proj_mpg.toFixed(1)}
                     </td>
                     <td className="py-3 px-4 text-right font-mono font-bold text-white text-sm">
@@ -369,7 +391,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                     <td className="py-3 px-4 text-right font-mono font-medium text-slate-300 text-sm">
                       {astDisplay}
                     </td>
-                    <td className="py-3 px-3 text-center font-mono text-xs">
+                    <td className="py-3 px-3 text-center font-mono text-xs hidden sm:table-cell">
                       <span
                         className={`font-semibold ${
                           player.pra_zscore > 2.0
@@ -394,7 +416,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                         <span className="text-xs text-slate-500">Normal</span>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-center text-xs text-slate-400 font-mono">
+                    <td className="py-3 px-4 text-center text-xs text-slate-400 font-mono hidden sm:table-cell">
                       ±{player.pts_sd.toFixed(1)} PTS
                     </td>
                   </tr>
@@ -403,6 +425,12 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
             </tbody>
           </table>
         </div>
+        {canScrollRight && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute top-0 right-0 bottom-0 w-10 bg-gradient-to-l from-surface-raised via-surface-raised/70 to-transparent"
+          />
+        )}
       </div>
     </div>
   );
