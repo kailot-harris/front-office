@@ -100,6 +100,11 @@ jobs:
         run: |
           mkdir -p site
           cp index.html site/
+          # GitHub Pages only serves a root-level 404.html; without this,
+          # any mistyped or stale link at any depth falls through to GitHub's
+          # own default "Page not found" page instead of a styled one with
+          # navigation back into the site.
+          cp 404.html site/
           # The landing page's own assets (trophy clips and posters). These are
           # not part of any sport's Next build, so they have to be copied in
           # explicitly or every asset URL on the landing page 404s.
@@ -108,6 +113,32 @@ jobs:
             mkdir -p "site/$sport"
             cp -r "artifacts/site-$sport/." "site/$sport/"
           done
+
+      - name: Generate sitemap.xml
+        run: |
+          set -euo pipefail
+          # front-office issue #135: GET /front-office/sitemap.xml returned 404
+          # because nothing generated one. Built here, after assembly, by
+          # walking the ACTUAL assembled site/ output rather than hardcoding a
+          # route list, so it can't silently go stale when a sport adds or
+          # removes a page -- every sport here has trailingSlash: true in its
+          # next.config.mjs, so each static route is an index.html under its
+          # own directory (e.g. site/nba/cap-sheet/index.html), which is what
+          # the walk below assumes.
+          BASE_URL="https://kailot-harris.github.io/front-office"
+          {
+            echo '<?xml version="1.0" encoding="UTF-8"?>'
+            echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            echo "  <url><loc>${BASE_URL}/</loc></url>"
+            for sport in nba wnba mlb nfl; do
+              find "site/$sport" -name 'index.html' | sort | while IFS= read -r f; do
+                route="${f#site/}"
+                route="${route%index.html}"
+                echo "  <url><loc>${BASE_URL}/${route}</loc></url>"
+              done
+            done
+            echo '</urlset>'
+          } > site/sitemap.xml
 
       - uses: actions/configure-pages@v5
 

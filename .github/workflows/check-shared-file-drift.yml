@@ -1,0 +1,32 @@
+name: Check shared file drift
+
+# Low-risk first step from front-office issue #130: of 95 component/lib files
+# across the four sport repos, only three (web/lib/exportSvgAsPng.ts,
+# web/lib/exportToCsv.ts, web/lib/basePath.ts) are byte-identical apart from
+# the sport name. This keeps those three from silently drifting apart again,
+# without attempting the full cross-sport merge the issue explicitly defers.
+#
+# Runs on push/PR against main because the subtree mirrors (mlb/, nba/, nfl/,
+# wnba/) can change via either a direct push here or a subtree-sync PR, and a
+# divergence introduced by either path should fail CI the same way.
+#
+# No dependencies: tools/check_shared_file_drift.mjs is plain Node, so this
+# doesn't need npm ci / a sport's package-lock.json.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check shared file drift (issue #130)
+        run: node tools/check_shared_file_drift.mjs
