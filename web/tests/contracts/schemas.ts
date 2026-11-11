@@ -219,7 +219,7 @@ export const diagnosticsDatasetSchema = z.object({
   ensemble_weights: z.object({
     ridge_massey: prob,
     elo_dynamic: prob,
-    market_blend: prob,
+    ridge_massey_fallback: prob.optional(),
   }).strict(),
   calibration_curve: z.array(calibrationBinSchema).nonempty(),
 }).strict();

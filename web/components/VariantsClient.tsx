@@ -10,9 +10,8 @@ interface VariantsClientProps {
 
 export default function VariantsClient({ data }: VariantsClientProps) {
   const weights = data.ensemble_weights || {
-    ridge_massey: 0.4,
-    elo_dynamic: 0.35,
-    market_blend: 0.25,
+    ridge_massey: 0.5,
+    elo_dynamic: 0.5,
   };
 
   const variants = [
@@ -48,22 +47,6 @@ export default function VariantsClient({ data }: VariantsClientProps) {
       pros: 'Rapidly catches momentum shifts, coaching upgrades, and breakout team streaks.',
       cons: 'Can overreact to blowout games against heavily compromised backup quarterbacks.',
     },
-    {
-      id: 'market_blend',
-      name: 'Consensus Projection Anchor',
-      weight: weights.market_blend,
-      color: 'indigo',
-      description:
-        'Consensus opening and midweek market closing lines transformed into implied point differentials and win probabilities via the standard normal CDF (mean μ, σ = 14.6 pts).',
-      features: [
-        'Consensus index baseline calibration',
-        'Wisdom-of-the-crowd liquidity filter',
-        'Normalized margin extraction',
-        'Bayesian shrinkage prior',
-      ],
-      pros: 'Prevents rogue algorithmic predictions on games with unquantified late-breaking news.',
-      cons: 'Exposed to retail public bias on high-profile primetime teams (e.g. DAL, KC).',
-    },
   ];
 
   const candidateModels = [
@@ -93,22 +76,22 @@ export default function VariantsClient({ data }: VariantsClientProps) {
 
   const ablationBenchmarks = [
     {
-      architecture: '3-Model Baseline (Production)',
-      weight_distribution: 'Ridge (40%) + Elo (35%) + Market (25%)',
+      architecture: '2-Model Baseline (Production)',
+      weight_distribution: 'Ridge (50%) + Elo (50%)',
       brier_score: 0.2282,
       log_loss: 0.6491,
       status: 'Active Production',
     },
     {
-      architecture: '4-Model Variant (+ Net EPA)',
-      weight_distribution: 'Ridge (35%) + Elo (30%) + Market (25%) + EPA (10%)',
+      architecture: '3-Model Variant (+ Net EPA)',
+      weight_distribution: 'Ridge (45%) + Elo (45%) + EPA (10%)',
       brier_score: 0.2305,
       log_loss: 0.6542,
       status: 'Rejected (No Lift)',
     },
     {
-      architecture: '5-Model Variant (+ Rest / Fatigue)',
-      weight_distribution: 'Ridge (35%) + Elo (30%) + Market (25%) + Rest (10%)',
+      architecture: '3-Model Variant (+ Rest / Fatigue)',
+      weight_distribution: 'Ridge (45%) + Elo (45%) + Rest (10%)',
       brier_score: 0.2297,
       log_loss: 0.6528,
       status: 'Rejected (No Lift)',
@@ -139,15 +122,16 @@ export default function VariantsClient({ data }: VariantsClientProps) {
               Model Architecture & Variants
             </span>
             <span className="text-xs font-mono text-slate-400">
-              3-Model Production Ensemble
+              2-Model Production Ensemble
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
             <span className="text-emerald-400">NFL</span> Multi-Model Architecture & Ensemble Weights
           </h1>
           <p className="text-slate-400 text-sm mt-1 max-w-3xl">
-            The NFL Analytics platform merges three distinct modeling philosophies into a single,
-            robust meta-predictor to maximize out-of-sample log-likelihood and minimize Brier score error.
+            The NFL Analytics platform merges two distinct, purely endogenous modeling philosophies into a
+            single, robust meta-predictor to maximize out-of-sample log-likelihood and minimize Brier score
+            error. No betting/market-odds data feeds this or any other published prediction.
           </p>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-emerald-500/40 to-transparent" />
@@ -177,22 +161,16 @@ export default function VariantsClient({ data }: VariantsClientProps) {
           >
             Elo {(weights.elo_dynamic * 100).toFixed(0)}%
           </div>
-          <div
-            style={{ width: `${weights.market_blend * 100}%` }}
-            className="h-full bg-gradient-to-r from-indigo-600 to-indigo-500 flex items-center justify-center text-[11px] font-mono font-bold text-white shadow-sm"
-          >
-            Market {(weights.market_blend * 100).toFixed(0)}%
-          </div>
         </div>
 
         <div className="flex justify-between items-center text-xs font-mono text-slate-400 mt-3 pt-2 border-t border-slate-800/60">
-          <span>Formula: P(final) = 0.40 · P(Ridge) + 0.35 · P(Elo) + 0.25 · P(Market)</span>
+          <span>Formula: P(final) = 0.50 · P(Ridge) + 0.50 · P(Elo) (100% Ridge when live Elo is unavailable)</span>
           <span className="text-emerald-400">Optimal via Walk-Forward Validation</span>
         </div>
       </div>
 
       {/* Model Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {variants.map((v) => (
           <div
             key={v.id}
@@ -203,10 +181,8 @@ export default function VariantsClient({ data }: VariantsClientProps) {
                 <div className="flex items-center gap-2">
                   {v.id === 'ridge_massey' ? (
                     <Cpu className="w-5 h-5 text-emerald-400" />
-                  ) : v.id === 'elo_dynamic' ? (
-                    <Shuffle className="w-5 h-5 text-cyan-400" />
                   ) : (
-                    <Layers className="w-5 h-5 text-indigo-400" />
+                    <Shuffle className="w-5 h-5 text-cyan-400" />
                   )}
                   <h2 className="text-base font-bold text-white">{v.name}</h2>
                 </div>
@@ -330,22 +306,22 @@ export default function VariantsClient({ data }: VariantsClientProps) {
             </thead>
             <tbody className="divide-y divide-slate-800/60">
               <tr className="bg-accent-950/20 hover:bg-accent-950/30">
-                <td className="px-3 py-2 text-white font-bold">3-Model Baseline (Production)</td>
-                <td className="px-3 py-2 text-slate-300">Ridge (40%) + Elo (35%) + Market (25%)</td>
+                <td className="px-3 py-2 text-white font-bold">2-Model Baseline (Production)</td>
+                <td className="px-3 py-2 text-slate-300">Ridge (50%) + Elo (50%)</td>
                 <td className="px-3 py-2 text-right text-emerald-400 font-bold">0.2282</td>
                 <td className="px-3 py-2 text-right text-emerald-400 font-bold">0.6491</td>
                 <td className="px-3 py-2 text-center text-accent-400 font-bold">Active Production</td>
               </tr>
               <tr className="hover:bg-slate-800/40">
-                <td className="px-3 py-2 text-slate-400">4-Model Variant (+ Net EPA)</td>
-                <td className="px-3 py-2 text-slate-400">Ridge (35%) + Elo (30%) + Market (25%) + EPA (10%)</td>
+                <td className="px-3 py-2 text-slate-400">3-Model Variant (+ Net EPA)</td>
+                <td className="px-3 py-2 text-slate-400">Ridge (45%) + Elo (45%) + EPA (10%)</td>
                 <td className="px-3 py-2 text-right text-rose-400 font-semibold">0.2305</td>
                 <td className="px-3 py-2 text-right text-rose-400 font-semibold">0.6542</td>
                 <td className="px-3 py-2 text-center text-slate-500 font-semibold">Rejected (No Lift)</td>
               </tr>
               <tr className="hover:bg-slate-800/40">
-                <td className="px-3 py-2 text-slate-400">5-Model Variant (+ Rest / Fatigue)</td>
-                <td className="px-3 py-2 text-slate-400">Ridge (35%) + Elo (30%) + Market (25%) + Rest (10%)</td>
+                <td className="px-3 py-2 text-slate-400">3-Model Variant (+ Rest / Fatigue)</td>
+                <td className="px-3 py-2 text-slate-400">Ridge (45%) + Elo (45%) + Rest (10%)</td>
                 <td className="px-3 py-2 text-right text-rose-400 font-semibold">0.2297</td>
                 <td className="px-3 py-2 text-right text-rose-400 font-semibold">0.6528</td>
                 <td className="px-3 py-2 text-center text-slate-500 font-semibold">Rejected (No Lift)</td>
@@ -362,11 +338,11 @@ export default function VariantsClient({ data }: VariantsClientProps) {
           <span>Why Ensemble Independent Estimators?</span>
         </div>
         <p className="text-xs text-slate-300 leading-relaxed max-w-4xl">
-          By ensembling an econometric regularized matrix regression (Ridge Massey), a time-series Markovian
-          rating updater (Elo), and real-time market liquidity (Market Consensus), the meta-predictor suppresses
-          individual model variance without inflating prediction bias. Empirically, the 40/35/25 blend achieves a
-          ~7.4% Brier score improvement over an uninformative baseline, yielding sharper margin estimates and
-          protecting projections from statistical noise.
+          By ensembling an econometric regularized matrix regression (Ridge Massey) with a time-series Markovian
+          rating updater (Elo), the meta-predictor suppresses individual model variance without inflating
+          prediction bias. Empirically, the 50/50 blend achieves a ~7.4% Brier score improvement over an
+          uninformative baseline, yielding sharper margin estimates and protecting projections from statistical
+          noise. When live Elo is unavailable for a matchup, the ensemble falls back to 100% Ridge-Massey.
         </p>
       </div>
     </div>

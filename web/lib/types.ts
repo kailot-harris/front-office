@@ -172,7 +172,7 @@ export interface DiagnosticsDataset {
   ensemble_weights: {
     ridge_massey: number;
     elo_dynamic: number;
-    market_blend: number;
+    ridge_massey_fallback?: number;
   };
   calibration_curve: CalibrationBin[];
 }

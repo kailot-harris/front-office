@@ -458,7 +458,6 @@ describe('VariantsClient', () => {
     const w = data.ensemble_weights;
     expect(container.textContent).toContain(`${(w.ridge_massey * 100).toFixed(0)}%`);
     expect(container.textContent).toContain(`${(w.elo_dynamic * 100).toFixed(0)}%`);
-    expect(container.textContent).toContain(`${(w.market_blend * 100).toFixed(0)}%`);
   });
 
   it('never prints NaN or undefined', () => {

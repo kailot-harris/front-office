@@ -351,6 +351,16 @@ N_SEASON_SIMULATIONS <- 1000
 # season and update this value/comment if the recommendation shifts materially.
 RATING_SHRINKAGE_GAMES_K <- 3.6
 
+# HISTORICAL / SUPERSEDED (Issue #137, 2026-11-11): market_odds_engine.R was deleted as part of
+# the zero-betting-data removal (Phase 1, Issue #13) and is not called anywhere in
+# run_full_pipeline.R's DAG. Neither constant documented below is read by any live code path -
+# there is no `MARKET_BLEND_WEIGHT <-` (or equivalent) assignment anywhere in this file. The two
+# comment blocks that follow are kept only for their empirical-derivation research value (real
+# backtests run against real historical closing lines); do not mistake them for live
+# configuration. The real, live ensemble (team_ratings_engine.R) is a pure endogenous blend -
+# 50% Ridge-Massey margin + 50% Elo margin (100% Ridge when Elo is unavailable) - with no market
+# term of any kind.
+#
 # Added by market_odds_engine.R (Phase 8, task P8-B) per docs/task_assignments_phase7.md's
 # "Constants note" pattern - a narrowly-scoped, documented exception (market_odds_engine.R does
 # not own config.R; it owns only this one new constant). Distinct from RATING_SHRINKAGE_GAMES_K
