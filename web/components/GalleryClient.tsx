@@ -152,15 +152,10 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
     type: 'gif',
     sizeBytes: 297650,
   },
-  {
-    id: 'gif_rookie_impact_race',
-    filename: 'gif_rookie_impact_race.gif',
-    title: 'Rookie Class Scoring Volume & Efficiency Accumulator',
-    category: 'players',
-    description: 'Rookie class scoring volume vs. True Shooting percentage accumulator race with bubbles sized by game appearances.',
-    type: 'gif',
-    sizeBytes: 472331,
-  },
+  // gif_rookie_impact_race is intentionally absent. The only copy ever published
+  // was drawn from simulated box scores (tools/gif_rookie_impact_race.R had no
+  // real nba_player_box_2027.rds to read). Add the entry back once that script
+  // has rendered from real rookie-season data.
 ];
 
 export interface GalleryClientProps {
