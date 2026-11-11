@@ -135,4 +135,78 @@ check_case("+$25M (rep)",       25, TRUE)
 
 cat("  PASS: All pinned tax bills match hand-computed values.\n")
 
+
+# ------------------------------------------------------------------------------
+# Test 3 (#125): edge-case inputs must not crash -- NULL, NA, NaN, Inf
+# payroll, an NA repeater flag, and vector payroll input.
+# ------------------------------------------------------------------------------
+cat("\n[Test 3] #125 edge cases do not crash (NULL/NA/NaN/Inf payroll, NA repeater, vectors)...\n")
+
+run_safe <- function(label, expr) {
+  result <- tryCatch(expr, error = function(e) e)
+  cat(sprintf("  %-45s -> %s\n", label, paste(utils::capture.output(print(result)), collapse = " ")))
+  if (inherits(result, "error")) {
+    stop(sprintf("%s must not raise an error (got: %s)", label, conditionMessage(result)))
+  }
+  result
+}
+
+# NULL payroll: nothing to compute.
+r_null <- run_safe("compute_luxury_tax(NULL)", compute_luxury_tax(NULL))
+stopifnot("NULL payroll must return NA_real_" = length(r_null) == 1L && is.na(r_null))
+
+# NA / NaN payroll (is.na() is TRUE for both in R).
+r_na <- run_safe("compute_luxury_tax(NA_real_)", compute_luxury_tax(NA_real_))
+stopifnot("NA payroll must return NA_real_" = is.na(r_na))
+r_nan <- run_safe("compute_luxury_tax(NaN)", compute_luxury_tax(NaN))
+stopifnot("NaN payroll must return NA_real_" = is.na(r_nan))
+
+# Inf payroll: sensible (non-error, non-NaN) result -- infinite overage
+# produces an infinite tax bill.
+r_inf <- run_safe("compute_luxury_tax(Inf)", compute_luxury_tax(Inf))
+stopifnot("Inf payroll must not be NA" = !is.na(r_inf))
+stopifnot("Inf payroll must return Inf, not throw/NaN" = is.infinite(r_inf) && r_inf > 0)
+
+# NA repeater flag: treated as FALSE (standard rate) with a warning, not an error.
+na_rep_warnings <- character(0)
+r_na_rep <- withCallingHandlers(
+  run_safe("compute_luxury_tax(210, NA)", compute_luxury_tax(210, NA)),
+  warning = function(w) {
+    na_rep_warnings <<- c(na_rep_warnings, conditionMessage(w))
+    invokeRestart("muffleWarning")
+  }
+)
+stopifnot("NA repeater flag must log a warning" = length(na_rep_warnings) >= 1L)
+stopifnot(
+  "NA repeater flag must be treated as FALSE (standard-rate bill)" =
+    isTRUE(all.equal(r_na_rep, compute_luxury_tax(210, FALSE)))
+)
+
+# Vector payroll input (mix of valid, NA, NaN, Inf) -- must not error, and
+# must match the scalar result element-by-element.
+payroll_vec <- c(195, 205, NA_real_, NaN, Inf, 230)
+r_vec <- run_safe("compute_luxury_tax(<vector>)", compute_luxury_tax(payroll_vec, is_repeater = FALSE))
+stopifnot("vector payroll must return a value per element" = length(r_vec) == length(payroll_vec))
+for (i in seq_along(payroll_vec)) {
+  scalar_i <- compute_luxury_tax(payroll_vec[i], is_repeater = FALSE)
+  if (is.na(payroll_vec[i])) {
+    if (!is.na(r_vec[i])) stop(sprintf("vector element %d (NA/NaN) must be NA_real_", i))
+  } else {
+    if (!isTRUE(all.equal(r_vec[i], scalar_i))) {
+      stop(sprintf("vector element %d must match the scalar result", i))
+    }
+  }
+}
+
+# Vector payroll with a vector (recycled) repeater flag.
+r_vec_rep <- run_safe(
+  "compute_luxury_tax(<vector>, <vector is_repeater>)",
+  compute_luxury_tax(c(210, 215), is_repeater = c(FALSE, TRUE))
+)
+stopifnot("vector repeater flags must produce 2 results" = length(r_vec_rep) == 2L)
+stopifnot(isTRUE(all.equal(r_vec_rep[1], compute_luxury_tax(210, FALSE))))
+stopifnot(isTRUE(all.equal(r_vec_rep[2], compute_luxury_tax(215, TRUE))))
+
+cat("  PASS: NULL/NA/NaN/Inf payroll, NA repeater flag, and vector input all handled without error.\n")
+
 cat("\n=== ALL TESTS PASSED ===\n")

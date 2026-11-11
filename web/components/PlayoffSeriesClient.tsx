@@ -18,6 +18,7 @@ import {
   Sparkles,
   ArrowRightLeft,
   ShieldCheck,
+  Shuffle,
 } from 'lucide-react';
 
 interface PlayoffSeriesClientProps {
@@ -27,12 +28,53 @@ interface PlayoffSeriesClientProps {
 const isFiniteNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
 
+// #128: deterministic seeding so the same matchup gives the same answer
+// every click, instead of a fresh `Math.random()` draw each render. Seeded
+// from a hash of both team IDs + series length (+ an explicit reroll
+// counter so a user-triggered "re-roll" can still get a fresh draw on
+// demand). mulberry32 is a standard, widely-used ~10-line 32-bit PRNG.
+function mulberry32(seed: number): () => number {
+  let state = seed | 0;
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Simple deterministic string hash (djb2-ish) to turn the matchup key into
+// a 32-bit integer seed for mulberry32.
+function hashSeed(key: string): number {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) {
+    h = (Math.imul(31, h) + key.charCodeAt(i)) | 0;
+  }
+  return h;
+}
+
+/**
+ * Builds the matchup key a given pairing's seed is derived from. Exported so
+ * tests/consumers can confirm two calls for the "same matchup" really do
+ * share a seed, and that a different `rerollNonce` produces a different one.
+ */
+export function playoffSeriesSeedKey(
+  teamAAbbr: string,
+  teamBAbbr: string,
+  hcaTeam: string,
+  seriesLength: number,
+  rerollNonce: number
+): string {
+  return `${teamAAbbr}|${teamBAbbr}|${hcaTeam}|${seriesLength}|${rerollNonce}`;
+}
+
 // Client-side Monte Carlo simulator for arbitrary pairings
 export function simulateClientSeries(
   teamA: TeamPlayoffProfile,
   teamB: TeamPlayoffProfile,
   hcaTeam: string,
-  nSims = 10000
+  nSims = 10000,
+  rerollNonce = 0
 ): PlayoffSeriesMatchupResult {
   // #111: a missing or non-numeric playoffNetRtg makes every probability
   // NaN downstream, and `Math.random() < NaN` is always false -- so the
@@ -124,6 +166,9 @@ export function simulateClientSeries(
   const pAHome = normalCdf((netMargin + hcaPts) / sigma);
   const pAAway = normalCdf((netMargin - hcaPts) / sigma);
 
+  const seedKey = playoffSeriesSeedKey(teamA.teamAbbr, teamB.teamAbbr, hcaTeam, 7, rerollNonce);
+  const rng = mulberry32(hashSeed(seedKey));
+
   let aWins = 0;
   const counts: Record<string, number> = {
     A_4: 0, A_5: 0, A_6: 0, A_7: 0,
@@ -141,7 +186,7 @@ export function simulateClientSeries(
       const isAHome = hcaIsA ? isHcaHome : !isHcaHome;
       const probA = isAHome ? pAHome : pAAway;
 
-      if (Math.random() < probA) {
+      if (rng() < probA) {
         wA++;
       } else {
         wB++;
@@ -195,6 +240,10 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
   const [teamACode, setTeamACode] = useState<string>('OKC');
   const [teamBCode, setTeamBCode] = useState<string>('BOS');
   const [hcaTeam, setHcaTeam] = useState<string>('OKC');
+  // #128: bumped by the "Re-roll" control to get a fresh seeded draw for the
+  // same matchup. Left at 0 otherwise, so the same matchup always reproduces
+  // the same result until the user explicitly asks for a new one.
+  const [rerollNonce, setRerollNonce] = useState<number>(0);
 
   const profileA = catalog.teams[teamACode] || teamList[0];
   const profileB = catalog.teams[teamBCode] || teamList[1];
@@ -222,14 +271,24 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
     }
 
     // Run client-side simulation
-    return simulateClientSeries(profileA, profileB, hcaTeam);
-  }, [catalog.sampleMatchups, teamACode, teamBCode, hcaTeam, profileA, profileB]);
+    return simulateClientSeries(profileA, profileB, hcaTeam, 10000, rerollNonce);
+  }, [catalog.sampleMatchups, teamACode, teamBCode, hcaTeam, profileA, profileB, rerollNonce]);
+
+  // #128: this matchup used a live simulation (not a precomputed sample), so
+  // the Re-roll control actually changes the seed/result here.
+  const isLiveSimulation = !catalog.sampleMatchups.some(
+    (m) =>
+      (m.teamA === teamACode && m.teamB === teamBCode && m.hcaTeam === hcaTeam) ||
+      (m.teamA === teamBCode && m.teamB === teamACode && m.hcaTeam === hcaTeam)
+  );
 
   const swapTeams = () => {
     setTeamACode(teamBCode);
     setTeamBCode(teamACode);
     setHcaTeam(teamBCode);
   };
+
+  const reroll = () => setRerollNonce((n) => n + 1);
 
   const marqueePresets = [
     { label: 'Finals Preview', a: 'OKC', b: 'BOS', hca: 'OKC' },
@@ -367,6 +426,23 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               {hcaTeam}
             </button>
           </div>
+          <button
+            onClick={reroll}
+            disabled={!isLiveSimulation}
+            title={
+              isLiveSimulation
+                ? 'Re-roll: draw a fresh random result for this matchup'
+                : 'This matchup uses a precomputed sample; re-roll only affects live-simulated matchups'
+            }
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition-all ${
+              isLiveSimulation
+                ? 'bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/20 cursor-pointer'
+                : 'bg-slate-800/50 text-slate-500 border border-slate-800 cursor-not-allowed'
+            }`}
+          >
+            <Shuffle className="w-3 h-3" />
+            Re-roll
+          </button>
         </div>
 
         {/* Team B Picker (5 cols) */}
