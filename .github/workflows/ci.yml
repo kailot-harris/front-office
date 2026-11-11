@@ -130,6 +130,16 @@ jobs:
           path: ${{ env.R_LIBS_USER }}
           key: rlib-${{ runner.os }}-${{ env.RUNNER_IMAGE }}-R4.5-${{ hashFiles('.github/r-dependencies.txt') }}
 
+      # ggimage (tools/gif_net_rating_quadrant.R) loads magick, whose prebuilt
+      # binary links against the image's ImageMagick C++ runtime
+      # (libMagick++-7.Q16.so.5 on ubuntu26). The runner does not ship it. The
+      # -dev package is used because its name is stable across images and it
+      # pulls in whichever runtime version the image carries.
+      - name: Install ImageMagick for the magick R package
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libmagick++-dev
+
       - name: Install R dependencies
         run: |
           mkdir -p "$R_LIBS_USER"
