@@ -131,7 +131,7 @@ export default function VariantsClient({ data }: VariantsClientProps) {
           <p className="text-slate-400 text-sm mt-1 max-w-3xl">
             The NFL Analytics platform merges two distinct, purely endogenous modeling philosophies into a
             single, robust meta-predictor to maximize out-of-sample log-likelihood and minimize Brier score
-            error. No betting/market-odds data feeds this or any other published prediction.
+            error. Every published prediction is built only from on-field game results.
           </p>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-emerald-500/40 to-transparent" />
