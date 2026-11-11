@@ -17,8 +17,7 @@
 #          Runs .github/scripts/parse-all.R across every tracked .R file and
 #          .github/scripts/run-tests.R across tests/test_*.R. The unit tests
 #          exercise pure functions from config.R, logging_utils.R,
-#          market_odds_engine.R, tools/refresh_live_results.R, and
-#          tools/publish_web.R using base R only, so the job needs no CRAN
+#          tools/refresh_live_results.R, and tools/publish_web.R using base R only, so the job needs no CRAN
 #          install step and finishes in under a minute.
 #
 # Nothing in CI will ever run the pipeline itself: every stage hits paid

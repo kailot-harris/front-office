@@ -255,9 +255,6 @@ export default function PlayerDnaClient({ initialProfiles }: PlayerDnaClientProp
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1 font-mono">
                 <Dna className="w-3.5 h-3.5" /> High-Dimensional Player DNA
               </span>
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-800 text-slate-300 border border-slate-700 font-mono">
-                Zero Synthetic Data
-              </span>
               <span className="text-xs text-slate-400 font-mono">
                 {initialProfiles.length} Empirical Skill Profiles
               </span>
