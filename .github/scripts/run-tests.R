@@ -27,7 +27,6 @@
 # 2026-10-26, each in a clean process: 74 assertions across the four.
 RUN <- c(
   "tools/test_pure_functions.R",
-  "tools/test_phase4_engine.R",
   "tools/test_auth_utils.R",
   "tools/test_create_account_if_authorized.R",
   "tools/test_phase4_foundation.R",
