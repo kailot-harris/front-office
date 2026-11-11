@@ -65,7 +65,7 @@ function ProvenanceBadge({ series }: { series: BracketSeries }) {
   return (
     <span
       title={provenanceLabel}
-      className={`inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${style}`}
+      className={`inline-flex items-center gap-1 text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${style}`}
     >
       <Info className="w-3 h-3" />
       {short}
@@ -77,7 +77,7 @@ function ProvenanceBadge({ series }: { series: BracketSeries }) {
 function ResultStatusBadge({ status }: { status: BracketForecast['resultStatus'] }) {
   if (status === 'pending') {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border bg-amber-500/10 text-amber-300 border-amber-500/30">
+      <span className="inline-flex items-center gap-1 text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border bg-amber-500/10 text-amber-300 border-amber-500/30">
         <CalendarClock className="w-3 h-3" />
         Series in progress
       </span>
@@ -86,7 +86,7 @@ function ResultStatusBadge({ status }: { status: BracketForecast['resultStatus']
   const hit = status === 'correct';
   return (
     <span
-      className={`inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+      className={`inline-flex items-center gap-1 text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
         hit
           ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
           : 'bg-rose-500/10 text-rose-300 border-rose-500/30'
@@ -104,7 +104,7 @@ function ResultPanel({ series }: { series: BracketSeries }) {
 
   return (
     <div className="space-y-3">
-      <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500">
+      <h4 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500">
         Result
       </h4>
 
@@ -163,7 +163,7 @@ function PredictionPanel({ series }: { series: BracketSeries }) {
   if (!f) {
     return (
       <div className="space-y-3">
-        <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500">
+        <h4 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500">
           Prediction
         </h4>
         <p className="text-xs text-slate-400 leading-relaxed">
@@ -178,10 +178,10 @@ function PredictionPanel({ series }: { series: BracketSeries }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500">
+        <h4 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500">
           Prediction
         </h4>
-        <span className="text-[10px] font-mono text-slate-500">{f.formatLabel}</span>
+        <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">{f.formatLabel}</span>
       </div>
 
       {[
@@ -210,7 +210,7 @@ function PredictionPanel({ series }: { series: BracketSeries }) {
             >
               {t.name}
               {t.seed !== null ? (
-                <span className="text-[10px] font-mono text-slate-500 ml-1">#{t.seed}</span>
+                <span className="text-[11px] sm:text-[10px] font-mono text-slate-500 ml-1">#{t.seed}</span>
               ) : null}
             </span>
             <span
@@ -287,7 +287,7 @@ function SeriesCard({ series }: { series: BracketSeries }) {
       {open ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-1">
           <div className="space-y-1">
-            <h5 className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500 mb-2">
+            <h5 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500 mb-2">
               Games played
             </h5>
             {series.games.map((g, i) => (
@@ -303,7 +303,7 @@ function SeriesCard({ series }: { series: BracketSeries }) {
           </div>
 
           <div className="space-y-1">
-            <h5 className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500 mb-2">
+            <h5 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500 mb-2">
               Predicted series length
             </h5>
             {f ? (
@@ -325,7 +325,7 @@ function SeriesCard({ series }: { series: BracketSeries }) {
               <p className="text-[11px] text-slate-500">No predicted distribution for this round.</p>
             )}
             {f && series.seriesComplete ? (
-              <p className="text-[10px] text-slate-500 pt-2">
+              <p className="text-[11px] sm:text-[10px] text-slate-500 pt-2">
                 Highlighted bar is the length the series actually ran.
               </p>
             ) : null}
@@ -446,7 +446,7 @@ export function PlayoffBracket2026Client({
         <footer className="border-t border-slate-800 pt-4">
           <p className="text-[11px] text-slate-500 leading-relaxed">{bracket.sourceNote}</p>
           {bracket.generatedAt ? (
-            <p className="text-[10px] text-slate-600 font-mono mt-1">
+            <p className="text-[11px] sm:text-[10px] text-slate-600 font-mono mt-1">
               Artifact generated {bracket.generatedAt}
             </p>
           ) : null}

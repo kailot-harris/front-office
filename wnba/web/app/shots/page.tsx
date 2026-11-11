@@ -4,7 +4,7 @@ import { PlayerCatalogEntry, ShotsMetadata } from '@/lib/shotTypes';
 import { ShotsExplorerClient } from '@/components/ShotsExplorerClient';
 
 export const metadata = {
-  title: 'Player Shot Charts & Hot Zones | WNBA Analytics',
+  title: 'Player Shot Charts & Hot Zones',
   description: 'Dynamic half-court spatial analytics: Empirical Bayes shrinkage, Binomial z-scores, and thermal hot/cold 14-zone classification for WNBA rotation players.',
 };
 

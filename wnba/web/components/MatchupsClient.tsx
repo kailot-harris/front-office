@@ -73,7 +73,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ data }) => {
                 }`}
               >
                 <span className="font-mono">{w}</span>
-                <span className="block text-[10px] leading-tight mt-0.5">
+                <span className="block text-[11px] sm:text-[10px] leading-tight mt-0.5">
                   {nonePlayed ? (
                     <span className="text-sky-400">Upcoming</span>
                   ) : allPlayed ? (

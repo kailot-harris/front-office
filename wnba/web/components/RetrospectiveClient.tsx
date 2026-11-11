@@ -303,7 +303,7 @@ export const RetrospectiveClient: React.FC<RetrospectiveClientProps> = ({
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="text-white font-bold text-sm">{m.name}</span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+                    <span className="text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
                       Blend Weight: {m.weight}
                     </span>
                   </div>
@@ -311,11 +311,11 @@ export const RetrospectiveClient: React.FC<RetrospectiveClientProps> = ({
                 </div>
                 <div className="flex items-center gap-4 text-right self-end sm:self-center shrink-0">
                   <div>
-                    <span className="text-[10px] text-slate-500 uppercase tracking-wider block">Calibration</span>
+                    <span className="text-[11px] sm:text-[10px] text-slate-500 uppercase tracking-wider block">Calibration</span>
                     <span className="text-xs font-mono text-sky-300 font-semibold">{m.calibration}</span>
                   </div>
                   <div className="border-l border-slate-800 pl-4">
-                    <span className="text-[10px] text-slate-500 uppercase tracking-wider block">Accuracy</span>
+                    <span className="text-[11px] sm:text-[10px] text-slate-500 uppercase tracking-wider block">Accuracy</span>
                     <span className="text-xs font-mono text-emerald-400 font-semibold">{m.accuracy}</span>
                   </div>
                 </div>
@@ -343,7 +343,7 @@ export const RetrospectiveClient: React.FC<RetrospectiveClientProps> = ({
                     <TeamLogo team={o.team} size="md" />
                     <div>
                       <h4 className="font-bold text-white text-sm">{o.teamName}</h4>
-                      <span className="text-[10px] text-slate-400 font-mono">
+                      <span className="text-[11px] sm:text-[10px] text-slate-400 font-mono">
                         {o.preseasonWins} Preseason &rarr; {o.actualWins} Final
                       </span>
                     </div>

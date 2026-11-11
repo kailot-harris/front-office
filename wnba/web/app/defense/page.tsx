@@ -6,7 +6,7 @@ import { DefensiveProfile } from '@/lib/defenseTypes';
 import { DefenseClient } from '@/components/DefenseClient';
 
 export const metadata: Metadata = {
-  title: 'Defensive Versatility & Matchup Matrix | WNBA Analytics',
+  title: 'Defensive Versatility & Matchup Matrix',
   description:
     'Evaluate WNBA defensive versatility (Shannon Entropy), rim contest field goal suppression, and positional matchup tracking shares across 15 franchises.',
 };

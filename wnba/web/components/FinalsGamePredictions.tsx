@@ -108,7 +108,7 @@ function GameRow({
             Game {g.game}
           </span>
           <span className="text-[11px] font-mono text-slate-500">{g.gameDate || 'date TBD'}</span>
-          <span className="inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-slate-400">
+          <span className="inline-flex items-center gap-1 text-[11px] sm:text-[10px] font-mono uppercase tracking-wider text-slate-400">
             <Home className="w-3 h-3" />
             <TeamLogo team={g.hostAbbr} size="sm" />
             hosts
@@ -116,12 +116,12 @@ function GameRow({
         </div>
 
         {played ? (
-          <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border bg-slate-800 text-slate-200 border-slate-600">
+          <span className="inline-flex items-center gap-1 text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border bg-slate-800 text-slate-200 border-slate-600">
             <CheckCircle2 className="w-3 h-3" />
             Played
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border bg-amber-500/10 text-amber-300 border-amber-500/30">
+          <span className="inline-flex items-center gap-1 text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border bg-amber-500/10 text-amber-300 border-amber-500/30">
             <CalendarClock className="w-3 h-3" />
             {g.pGamePlayed >= 0.9999 ? 'Forecast only' : 'If necessary'}
           </span>
@@ -131,7 +131,7 @@ function GameRow({
       {/* ---- the two numbers every row carries ---- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
-          <h5 className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500">
+          <h5 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500">
             {played ? 'Pre-game prediction' : 'Forecast'}
           </h5>
           <div className="flex items-center gap-2">
@@ -141,17 +141,17 @@ function GameRow({
               {pct(pHigh >= 0.5 ? pHigh : 1 - pHigh)}
             </span>
           </div>
-          <p className="text-[10px] text-slate-500 font-mono">
+          <p className="text-[11px] sm:text-[10px] text-slate-500 font-mono">
             Conditional on the game being played.
           </p>
         </div>
 
         <div className="space-y-1">
-          <h5 className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500">
+          <h5 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500">
             Chance this game is played
           </h5>
           <PlayedChance p={g.pGamePlayed} />
-          <p className="text-[10px] text-slate-500 font-mono">
+          <p className="text-[11px] sm:text-[10px] text-slate-500 font-mono">
             P(series reaches game {g.game}).
           </p>
         </div>
@@ -207,7 +207,7 @@ function GameRow({
       {/* ---- the result, only when there is one ---- */}
       {played ? (
         <div className="border-t border-slate-800 pt-2 space-y-1">
-          <h5 className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500">
+          <h5 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500">
             Actual result
           </h5>
           <div className="flex items-center gap-3 flex-wrap">
@@ -219,7 +219,7 @@ function GameRow({
               <TeamLogo team={lowAbbr} size="sm" />
             </div>
             <span
-              className={`inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+              className={`inline-flex items-center gap-1 text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
                 g.resultStatus === 'correct'
                   ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
                   : 'bg-rose-500/10 text-rose-300 border-rose-500/30'
@@ -233,7 +233,7 @@ function GameRow({
               {g.resultStatus === 'correct' ? 'Favoured side won' : 'Favoured side lost'}
             </span>
             {hostWonIt !== null ? (
-              <span className="text-[10px] font-mono text-slate-500">
+              <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">
                 {hostWonIt ? 'Host held serve.' : 'Road team stole it.'}
               </span>
             ) : null}

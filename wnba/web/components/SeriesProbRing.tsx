@@ -48,7 +48,7 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
   return (
     <div ref={containerRef} className="flex flex-col items-center select-none">
       <div className="w-full flex items-center justify-between mb-1">
-        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">
+        <span className="text-[11px] sm:text-[10px] font-bold text-slate-300 uppercase tracking-wider">
           {teamA} vs {teamB} — Series Probabilities
         </span>
         <button
@@ -101,11 +101,11 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
 
         {/* Center Badge */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
-          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Series Duration</span>
+          <span className="text-[11px] sm:text-[10px] text-slate-400 uppercase tracking-wider font-bold">Series Duration</span>
           <span className="font-mono text-2xl font-black text-white">{avgGames}</span>
-          <span className="text-[10px] font-mono text-slate-400">Avg Games</span>
+          <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">Avg Games</span>
           {mostLikely && (
-            <span className="mt-1 text-[9px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-amber-400 border border-slate-700 font-bold truncate max-w-[180px]">
+            <span className="mt-1 text-[11px] sm:text-[9px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-amber-400 border border-slate-700 font-bold truncate max-w-[180px]">
               Peak: {mostLikely.winner} in {mostLikely.games} ({mostLikely.probPct}%)
             </span>
           )}

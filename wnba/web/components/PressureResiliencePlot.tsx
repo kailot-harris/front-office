@@ -303,19 +303,19 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
           >
             <div className="font-bold text-white flex items-center justify-between gap-3">
               <span>{hoveredProfile.playerName}</span>
-              <span className="text-slate-400 font-mono text-[10px]">
+              <span className="text-slate-400 font-mono text-[11px] sm:text-[10px]">
                 {hoveredProfile.team} &middot; {hoveredProfile.position}
               </span>
             </div>
             <div className="text-[11px] text-indigo-400 font-medium">
               {hoveredProfile.clutchArchetype}
             </div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-slate-300 pt-1 font-mono text-[10px]">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-slate-300 pt-1 font-mono text-[11px] sm:text-[10px]">
               <div>Clutch FG%: <span className="text-emerald-400 font-bold">{hoveredProfile.clutchFgPct !== null ? `${hoveredProfile.clutchFgPct.toFixed(1)}%` : 'N/A'}</span></div>
               <div>Clutch PTS: <span className="text-amber-400 font-bold">{hoveredProfile.clutchPoints ?? 'N/A'}</span></div>
               <div>Clutch FGA: <span className="text-slate-100 font-bold">{hoveredProfile.clutchFga}</span></div>
               <div>Points / FGA: <span className="text-indigo-300 font-bold">{hoveredProfile.clutchPpp !== null ? hoveredProfile.clutchPpp.toFixed(2) : 'N/A'}</span></div>
-              <div className="col-span-2 text-[9px] text-slate-500">Source: {hoveredProfile.provenance}</div>
+              <div className="col-span-2 text-[11px] sm:text-[9px] text-slate-500">Source: {hoveredProfile.provenance}</div>
             </div>
           </div>
         )}

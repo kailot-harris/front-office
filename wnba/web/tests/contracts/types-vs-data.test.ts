@@ -248,7 +248,14 @@ describe('PlayoffMatchupsCatalog nested interface vs JSON key parity', () => {
   };
 
   it('PlayoffSeriesMatchupResult matches the keys of every sampleMatchups row', () => {
-    assertParity('PlayoffSeriesMatchupResult', catalog.sampleMatchups);
+    // insufficientData/insufficientDataReason (issue #111) are populated only by
+    // the client-side simulateClientSeries() missing-rating guard, never by the R
+    // exporter — every precomputed sampleMatchups row has real ratings and so never
+    // carries them.
+    assertParity('PlayoffSeriesMatchupResult', catalog.sampleMatchups, [
+      'insufficientData',
+      'insufficientDataReason',
+    ]);
   });
 
   it('TeamPlayoffProfile matches the keys of every team profile', () => {

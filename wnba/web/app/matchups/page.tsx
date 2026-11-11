@@ -6,7 +6,7 @@ import { MatchupsPayload } from '@/lib/matchupTypes';
 import { MatchupsClient } from '@/components/MatchupsClient';
 
 export const metadata: Metadata = {
-  title: 'Matchups | WNBA Analytics',
+  title: 'Matchups',
   description:
     'Per-game WNBA matchups by week: model projections for upcoming games, final scores for played games, and graded predictions where the model logged one.',
 };

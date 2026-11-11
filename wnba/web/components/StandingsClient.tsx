@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { TeamProjection, ModelMetadata } from '@/lib/types';
 import { Trophy, TrendingUp, Filter, ArrowUpDown, ArrowUp, ArrowDown, ShieldAlert, Award, BarChart2, Table, ArrowRight, Download } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { PlayoffContendersBoxWhisker } from '@/components/PlayoffContendersBoxWhisker';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { GlossaryTerm } from '@/components/GlossaryTerm';
+import { HowToRead } from '@/components/HowToRead';
 
 interface StandingsClientProps {
   teams: TeamProjection[];
@@ -84,6 +86,25 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
       });
   }, [teams, selectedConference, selectedDivision, sortBy, sortOrder]);
 
+  // Issue #118: at narrow (375px) viewports, 500-750px of this table was
+  // off-screen with no signal that more columns existed. The scroll container
+  // ref drives a right-edge fade that hides itself once the user has scrolled
+  // to the end (or if the table never overflows in the first place).
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollState = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollRight(el.scrollWidth - el.clientWidth - el.scrollLeft > 4);
+  }, []);
+
+  useEffect(() => {
+    updateScrollState();
+    window.addEventListener('resize', updateScrollState);
+    return () => window.removeEventListener('resize', updateScrollState);
+  }, [updateScrollState, filteredTeams]);
+
   const handleExportCsv = () => {
     exportToCsv(
       filteredTeams as unknown as Record<string, unknown>[],
@@ -131,6 +152,13 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
 
   return (
     <div className="space-y-6">
+      <HowToRead pageKey="standings">
+        Each team shows its <GlossaryTerm termKey="ensembleWins" /> (mean projected wins across 4
+        model variants), <GlossaryTerm termKey="playoffProb" />, and <GlossaryTerm termKey="titleProb" />
+        {' '}— all derived from 1,000 simulated seasons. Switch to the table view for every franchise,
+        or sort any column by clicking its header.
+      </HowToRead>
+
       {/* Top Stat Highlights */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
@@ -226,7 +254,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
             <BarChart2 className="w-4 h-4 text-amber-400 pointer-events-none" />
             <span className="pointer-events-none">Playoff Contenders (Box-Whisker)</span>
             <span
-              className={`text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
+              className={`text-[11px] sm:text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
                 activeTab === 'visualizer' ? 'bg-white/20 text-white font-bold' : 'bg-slate-800 text-slate-400'
               }`}
             >
@@ -249,7 +277,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
             <Table className="w-4 h-4 text-indigo-300 pointer-events-none" />
             <span className="pointer-events-none">Full Standings Table</span>
             <span
-              className={`text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
+              className={`text-[11px] sm:text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
                 activeTab === 'table' ? 'bg-white/20 text-white font-bold' : 'bg-slate-800 text-slate-400'
               }`}
             >
@@ -346,14 +374,14 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
           </div>
 
           {/* Main Standings Table */}
-          <div className="bg-surface-raised/70 border border-slate-800 rounded-xl shadow-xl overflow-hidden">
-            <div className="overflow-x-auto">
+          <div className="bg-surface-raised/70 border border-slate-800 rounded-xl shadow-xl overflow-hidden relative">
+            <div ref={scrollRef} onScroll={updateScrollState} className="overflow-x-auto">
               <table className="w-full text-left text-sm border-collapse">
                 <thead>
                   <tr className="bg-surface/80 border-b border-slate-800 text-slate-400 font-medium text-xs select-none">
                     <th
                       onClick={() => handleSort('rank')}
-                      className="py-3.5 px-4 w-14 text-center cursor-pointer hover:text-white transition-colors group"
+                      className="py-3.5 px-4 w-14 text-center cursor-pointer hover:text-white transition-colors group hidden sm:table-cell"
                       title="Click to sort by rank"
                     >
                       <div className="flex items-center justify-center gap-1">
@@ -363,7 +391,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                     </th>
                     <th
                       onClick={() => handleSort('team')}
-                      className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors group"
+                      className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors group sticky left-0 z-20 bg-surface border-r border-slate-700"
                       title="Click to sort alphabetically by team name"
                     >
                       <div className="flex items-center gap-1.5">
@@ -373,7 +401,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                     </th>
                     <th
                       onClick={() => handleSort('conference')}
-                      className="py-3.5 px-3 text-center cursor-pointer hover:text-white transition-colors group"
+                      className="py-3.5 px-3 text-center cursor-pointer hover:text-white transition-colors group hidden sm:table-cell"
                       title="Click to sort by conference"
                     >
                       <div className="flex items-center justify-center gap-1">
@@ -383,7 +411,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                     </th>
                     <th
                       onClick={() => handleSort('division')}
-                      className="py-3.5 px-3 text-center cursor-pointer hover:text-white transition-colors group"
+                      className="py-3.5 px-3 text-center cursor-pointer hover:text-white transition-colors group hidden sm:table-cell"
                       title="Click to sort by division"
                     >
                       <div className="flex items-center justify-center gap-1">
@@ -397,15 +425,16 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                       title="Click to sort by projected ensemble wins"
                     >
                       <div className="flex items-center gap-1.5">
-                        <span className={sortBy === 'ensemble_mean_wins' ? 'text-indigo-400 font-bold' : ''}>
-                          Ensemble Wins
-                        </span>
+                        <GlossaryTerm
+                          termKey="ensembleWins"
+                          className={sortBy === 'ensemble_mean_wins' ? 'text-indigo-400 font-bold' : ''}
+                        />
                         {renderSortIndicator('ensemble_mean_wins')}
                       </div>
                     </th>
                     <th
                       onClick={() => handleSort('win_pct')}
-                      className="py-3.5 px-3 cursor-pointer hover:text-white transition-colors text-right group"
+                      className="py-3.5 px-3 cursor-pointer hover:text-white transition-colors text-right group hidden sm:table-cell"
                       title="Click to sort by win percentage"
                     >
                       <div className="flex items-center justify-end gap-1.5">
@@ -415,13 +444,14 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                     </th>
                     <th
                       onClick={() => handleSort('percentile_range')}
-                      className="py-3.5 px-4 min-w-[200px] cursor-pointer hover:text-white transition-colors group"
+                      className="py-3.5 px-4 min-w-[200px] cursor-pointer hover:text-white transition-colors group hidden sm:table-cell"
                       title="Click to sort by distribution width (p90 - p10 variance)"
                     >
                       <div className="flex items-center gap-1.5">
-                        <span className={sortBy === 'percentile_range' ? 'text-indigo-400 font-bold' : ''}>
-                          10th - 90th Percentile Range
-                        </span>
+                        <GlossaryTerm
+                          termKey="percentileRange"
+                          className={sortBy === 'percentile_range' ? 'text-indigo-400 font-bold' : ''}
+                        />
                         {renderSortIndicator('percentile_range')}
                       </div>
                     </th>
@@ -431,9 +461,10 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                       title="Click to sort by playoff probability"
                     >
                       <div className="flex items-center justify-end gap-1.5">
-                        <span className={sortBy === 'ensemble_playoff_prob' ? 'text-indigo-400 font-bold' : ''}>
-                          Playoffs
-                        </span>
+                        <GlossaryTerm
+                          termKey="playoffProb"
+                          className={sortBy === 'ensemble_playoff_prob' ? 'text-indigo-400 font-bold' : ''}
+                        />
                         {renderSortIndicator('ensemble_playoff_prob')}
                       </div>
                     </th>
@@ -443,9 +474,10 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                       title="Click to sort by title probability"
                     >
                       <div className="flex items-center justify-end gap-1.5">
-                        <span className={sortBy === 'ensemble_title_prob' ? 'text-indigo-400 font-bold' : ''}>
-                          Title Prob
-                        </span>
+                        <GlossaryTerm
+                          termKey="titleProb"
+                          className={sortBy === 'ensemble_title_prob' ? 'text-indigo-400 font-bold' : ''}
+                        />
                         {renderSortIndicator('ensemble_title_prob')}
                       </div>
                     </th>
@@ -469,10 +501,10 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                         key={team.team}
                         className="hover:bg-slate-800/40 transition-colors group text-slate-200"
                       >
-                        <td className="py-3 px-4 text-center text-xs font-mono text-slate-400">
+                        <td className="py-3 px-4 text-center text-xs font-mono text-slate-400 hidden sm:table-cell">
                           {idx + 1}
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4 sticky left-0 z-10 bg-surface-raised border-r border-slate-800 group-hover:bg-slate-800/40">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-lg bg-surface/80 border border-slate-800 p-1 flex items-center justify-center flex-shrink-0 group-hover:border-slate-700 transition-colors">
                               <TeamLogo team={team.team} size="md" />
@@ -480,7 +512,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                             <div>
                               <div className="font-semibold text-white group-hover:text-indigo-400 transition-colors flex items-center gap-2">
                                 <span>{team.team_name}</span>
-                                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800/80 text-amber-400 border border-slate-700/60 font-semibold">
+                                <span className="text-[11px] sm:text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800/80 text-amber-400 border border-slate-700/60 font-semibold">
                                   {team.team}
                                 </span>
                               </div>
@@ -490,7 +522,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                             </div>
                           </div>
                         </td>
-                        <td className="py-3 px-3 text-center">
+                        <td className="py-3 px-3 text-center hidden sm:table-cell">
                           <span
                             className={`px-2 py-0.5 rounded text-xs font-semibold ${
                               team.conference === 'East'
@@ -501,7 +533,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                             {team.conference}
                           </span>
                         </td>
-                        <td className="py-3 px-3 text-center text-xs text-slate-400">{team.division}</td>
+                        <td className="py-3 px-3 text-center text-xs text-slate-400 hidden sm:table-cell">{team.division}</td>
                         <td className="py-3 px-4">
                           <div className="font-bold text-white text-base">
                             {team.ensemble_mean_wins.toFixed(1)}
@@ -510,10 +542,10 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                             SD: ±{team.ensemble_sd_wins.toFixed(1)}
                           </div>
                         </td>
-                        <td className="py-3 px-3 text-right font-mono font-medium text-slate-300">
+                        <td className="py-3 px-3 text-right font-mono font-medium text-slate-300 hidden sm:table-cell">
                           {(team.win_pct * 100).toFixed(1)}%
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4 hidden sm:table-cell">
                           <div className="space-y-1">
                             <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
                               <span>p10: {team.ensemble_p10.toFixed(0)}</span>
@@ -564,6 +596,12 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                 </tbody>
               </table>
             </div>
+            {canScrollRight && (
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute top-0 right-0 bottom-0 w-10 bg-gradient-to-l from-surface-raised via-surface-raised/70 to-transparent"
+              />
+            )}
           </div>
 
           <div className="flex justify-end pt-1">

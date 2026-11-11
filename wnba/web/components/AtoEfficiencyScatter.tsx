@@ -142,7 +142,7 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
             x={padding.left + innerWidth - 10}
             y={padding.top + 20}
             textAnchor="end"
-            className="fill-emerald-400/60 text-[10px] font-bold uppercase tracking-wider"
+            className="fill-emerald-400/60 text-[11px] sm:text-[10px] font-bold uppercase tracking-wider"
           >
             Dual Master (Top Offense & Lockdown Defense)
           </text>
@@ -150,7 +150,7 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
             x={padding.left + 10}
             y={padding.top + 20}
             textAnchor="start"
-            className="fill-indigo-400/60 text-[10px] font-bold uppercase tracking-wider"
+            className="fill-indigo-400/60 text-[11px] sm:text-[10px] font-bold uppercase tracking-wider"
           >
             Offensive Wizardry (High Shootout Risk)
           </text>
@@ -158,7 +158,7 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
             x={padding.left + innerWidth - 10}
             y={padding.top + innerHeight - 12}
             textAnchor="end"
-            className="fill-amber-400/60 text-[10px] font-bold uppercase tracking-wider"
+            className="fill-amber-400/60 text-[11px] sm:text-[10px] font-bold uppercase tracking-wider"
           >
             Grind-It-Out Lockdown (Stagnant Sets)
           </text>
@@ -259,7 +259,7 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
                   x={cx}
                   y={cy + 3.5}
                   textAnchor="middle"
-                  className={`text-[9px] font-mono font-bold select-none pointer-events-none ${
+                  className={`text-[11px] sm:text-[9px] font-mono font-bold select-none pointer-events-none ${
                     isSelected ? 'fill-white' : 'fill-slate-200'
                   }`}
                 >
@@ -283,7 +283,7 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
                       x={cx}
                       y={cy - 20}
                       textAnchor="middle"
-                      className="fill-white text-[10px] font-bold select-none"
+                      className="fill-white text-[11px] sm:text-[10px] font-bold select-none"
                     >
                       {c.headCoach.name} ({c.metrics.atoOffensivePpp} / {c.metrics.atoDefensivePppAllowed})
                     </text>

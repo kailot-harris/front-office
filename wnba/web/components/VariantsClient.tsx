@@ -331,23 +331,23 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
                   </th>
                   <th className="py-3 px-3 text-center">
                     <div>Bottom-Up BPM</div>
-                    <div className="text-[10px] text-slate-500 font-normal">35% Weight</div>
+                    <div className="text-[11px] sm:text-[10px] text-slate-500 font-normal">35% Weight</div>
                   </th>
                   <th className="py-3 px-3 text-center">
                     <div>Bayesian RAPM</div>
-                    <div className="text-[10px] text-slate-500 font-normal">25% Weight</div>
+                    <div className="text-[11px] sm:text-[10px] text-slate-500 font-normal">25% Weight</div>
                   </th>
                   <th className="py-3 px-3 text-center">
                     <div>Shot & Fatigue</div>
-                    <div className="text-[10px] text-slate-500 font-normal">20% Weight</div>
+                    <div className="text-[11px] sm:text-[10px] text-slate-500 font-normal">20% Weight</div>
                   </th>
                   <th className="py-3 px-3 text-center">
                     <div>16-D Embeddings</div>
-                    <div className="text-[10px] text-slate-500 font-normal">20% Weight</div>
+                    <div className="text-[11px] sm:text-[10px] text-slate-500 font-normal">20% Weight</div>
                   </th>
                   <th className="py-3 px-4 text-center">
                     <div>Variant Spread</div>
-                    <div className="text-[10px] text-slate-500 font-normal">Max - Min Δ</div>
+                    <div className="text-[11px] sm:text-[10px] text-slate-500 font-normal">Max - Min Δ</div>
                   </th>
                   <th className="py-3 px-4">Model Consensus & Disagreement</th>
                 </tr>
@@ -375,7 +375,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
                           </div>
                           <div>
                             <span className="font-semibold text-white block leading-tight">{team.team_name}</span>
-                            <span className="text-[10px] font-mono text-amber-400 font-semibold">{team.team}</span>
+                            <span className="text-[11px] sm:text-[10px] font-mono text-amber-400 font-semibold">{team.team}</span>
                           </div>
                         </div>
                       </td>

@@ -4,7 +4,7 @@ import { PlayoffMatchupsCatalog } from '@/lib/playoffTypes';
 import { PlayoffSeriesClient } from '@/components/PlayoffSeriesClient';
 
 export const metadata = {
-  title: 'Playoff Series Simulator | WNBA Analytics',
+  title: 'Playoff Series Simulator',
   description: '10,000-sim Monte Carlo playoff series simulator with 8-man rotation shortening (200 team-minute WNBA regulation scale), pairwise tactical mismatch adjustments, and historical bracket analysis.',
 };
 

@@ -2,7 +2,7 @@ import { getTeamsData, getDiagnostics, getPlayoffBracketData } from '@/lib/data'
 import { RetrospectiveClient } from '@/components/RetrospectiveClient';
 
 export const metadata = {
-  title: '2026 Season Retrospective & Championship Audit | WNBA Analytics',
+  title: '2026 Season Retrospective & Championship Audit',
   description:
     'Comprehensive model audit, championship resolution, and predictive variant benchmarks across the 2026 season.',
 };
