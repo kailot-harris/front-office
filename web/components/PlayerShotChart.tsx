@@ -173,7 +173,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
       {/* KPI Cards Overview */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-3">
-          <div className="text-[10px] text-slate-400 uppercase font-semibold">Field Goal %</div>
+          <div className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-semibold">Field Goal %</div>
           <div className="text-xl font-bold font-mono text-white">
             {(overall.fgPct * 100).toFixed(1)}%
           </div>
@@ -183,7 +183,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
         </div>
 
         <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-3">
-          <div className="text-[10px] text-slate-400 uppercase font-semibold">Effective FG (eFG%)</div>
+          <div className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-semibold">Effective FG (eFG%)</div>
           <div className="text-xl font-bold font-mono text-indigo-400">
             {(overall.eFgPct * 100).toFixed(1)}%
           </div>
@@ -191,7 +191,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
         </div>
 
         <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-3">
-          <div className="text-[10px] text-slate-400 uppercase font-semibold">Rim Frequency</div>
+          <div className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-semibold">Rim Frequency</div>
           <div className="text-xl font-bold font-mono text-amber-400">
             {(overall.rimFreq * 100).toFixed(1)}%
           </div>
@@ -199,7 +199,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
         </div>
 
         <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-3">
-          <div className="text-[10px] text-slate-400 uppercase font-semibold">3-Point Frequency</div>
+          <div className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-semibold">3-Point Frequency</div>
           <div className="text-xl font-bold font-mono text-cyan-400">
             {(overall.threeFreq * 100).toFixed(1)}%
           </div>
@@ -210,7 +210,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
 
         <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
           <div>
-            <div className="text-[10px] text-slate-400 uppercase font-semibold">Hot Zones</div>
+            <div className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-semibold">Hot Zones</div>
             <div className="text-xl font-bold font-mono text-rose-400 flex items-center gap-1">
               <span>{overall.hotCount}</span>
               <Flame className="w-4 h-4 text-rose-500 animate-pulse" />
@@ -221,7 +221,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
 
         <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
           <div>
-            <div className="text-[10px] text-slate-400 uppercase font-semibold">Cold Zones</div>
+            <div className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-semibold">Cold Zones</div>
             <div className="text-xl font-bold font-mono text-cyan-400 flex items-center gap-1">
               <span>{overall.coldCount}</span>
               <Snowflake className="w-4 h-4 text-cyan-500" />
@@ -622,13 +622,13 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
                       <div className="flex flex-col">
                         <span className="font-semibold text-slate-200">{displayName.name}</span>
                         {displayName.subtitle && (
-                          <span className="text-[10px] text-slate-400 font-normal">
+                          <span className="text-[11px] sm:text-[10px] text-slate-400 font-normal">
                             {displayName.subtitle}
                           </span>
                         )}
                       </div>
                       <span
-                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold border ${badge.bg}`}
+                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] sm:text-[10px] font-bold border ${badge.bg}`}
                       >
                         <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`}></span>
                         <span>{badge.label}</span>
@@ -637,21 +637,21 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
 
                     <div className="grid grid-cols-4 gap-1 text-[11px] font-mono text-slate-400 mt-1">
                       <div>
-                        <div className="text-[9px] uppercase text-slate-500">Vol (FGA)</div>
+                        <div className="text-[11px] sm:text-[9px] uppercase text-slate-500">Vol (FGA)</div>
                         <div className="text-slate-200 font-semibold">{zm.fgm}/{zm.fga}</div>
                       </div>
                       <div>
-                        <div className="text-[9px] uppercase text-slate-500">Player %</div>
+                        <div className="text-[11px] sm:text-[9px] uppercase text-slate-500">Player %</div>
                         <div className="text-white font-bold">
                           {zm.fga > 0 ? `${(zm.fgPct * 100).toFixed(0)}%` : '0%'}
                         </div>
                       </div>
                       <div>
-                        <div className="text-[9px] uppercase text-slate-500">Lg Avg</div>
+                        <div className="text-[11px] sm:text-[9px] uppercase text-slate-500">Lg Avg</div>
                         <div>{(zm.lgPct * 100).toFixed(0)}%</div>
                       </div>
                       <div>
-                        <div className="text-[9px] uppercase text-slate-500">Delta</div>
+                        <div className="text-[11px] sm:text-[9px] uppercase text-slate-500">Delta</div>
                         <div
                           className={`font-semibold ${
                             isPositive ? 'text-emerald-400' : 'text-rose-400'

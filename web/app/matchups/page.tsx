@@ -62,12 +62,12 @@ export default function MatchupsPage() {
 
           <div className="flex items-center gap-2.5 text-xs font-mono">
             <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
-              <span className="text-slate-500 block text-[10px] uppercase">Active Slate</span>
+              <span className="text-slate-500 block text-[11px] sm:text-[10px] uppercase">Active Slate</span>
               <span className="text-white font-bold">Week {dataset.active_slate}</span>
             </div>
             {/* With nothing graded yet, say so instead of printing a bare "0 /". */}
             <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
-              <span className="text-slate-500 block text-[10px] uppercase">
+              <span className="text-slate-500 block text-[11px] sm:text-[10px] uppercase">
                 {dataset.graded_games_available ? 'Graded / Pending' : 'Grading'}
               </span>
               <span className="text-accent-400 font-bold">
@@ -78,7 +78,7 @@ export default function MatchupsPage() {
             </div>
             {activeSlate && (
               <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
-                <span className="text-slate-500 block text-[10px] uppercase">Window</span>
+                <span className="text-slate-500 block text-[11px] sm:text-[10px] uppercase">Window</span>
                 <span className="text-white font-bold">{activeSlate.start_date}</span>
               </div>
             )}

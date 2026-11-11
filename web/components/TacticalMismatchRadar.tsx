@@ -33,7 +33,7 @@ export const TacticalMismatchRadar: React.FC<TacticalMismatchRadarProps> = ({
         <div>
           <h3 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
             <span>Tactical Profile Comparison</span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
+            <span className="text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
               0-100 Ratings
             </span>
           </h3>
@@ -110,7 +110,7 @@ export const TacticalMismatchRadar: React.FC<TacticalMismatchRadarProps> = ({
                 className="p-2.5 rounded-lg bg-surface/70 border border-slate-800/90 flex items-start gap-2.5"
               >
                 <span
-                  className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded mt-0.5 flex-shrink-0 ${
+                  className={`text-[11px] sm:text-[10px] font-mono font-bold px-1.5 py-0.5 rounded mt-0.5 flex-shrink-0 ${
                     edge.advantageTeam === teamA
                       ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                       : 'bg-sky-500/10 text-sky-400 border border-sky-500/20'

@@ -177,7 +177,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
               <span className="font-bold text-white text-sm truncate">{topCirCoach?.headCoach.name}</span>
               <span className="text-xs font-mono font-bold text-emerald-400">{topCirCoach?.metrics.coachImpactRating} CIR</span>
             </div>
-            <span className="text-[10px] text-slate-500 font-mono">{topCirCoach?.teamAbbr} • {topCirCoach?.headCoach.coachingTree}</span>
+            <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">{topCirCoach?.teamAbbr} • {topCirCoach?.headCoach.coachingTree}</span>
           </div>
         </div>
 
@@ -191,7 +191,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
               <span className="font-bold text-white text-sm truncate">{topAtoCoach?.headCoach.name}</span>
               <span className="text-xs font-mono font-bold text-indigo-400">{topAtoCoach?.metrics.atoOffensivePpp} PPP</span>
             </div>
-            <span className="text-[10px] text-slate-500 font-mono">{topAtoCoach?.teamAbbr}</span>
+            <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">{topAtoCoach?.teamAbbr}</span>
           </div>
         </div>
 
@@ -205,7 +205,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
               <span className="font-bold text-white text-sm truncate">{topDefAtoCoach?.headCoach.name}</span>
               <span className="text-xs font-mono font-bold text-sky-400">{topDefAtoCoach?.metrics.atoDefensivePppAllowed} PPP</span>
             </div>
-            <span className="text-[10px] text-slate-500 font-mono">{topDefAtoCoach?.teamAbbr}</span>
+            <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">{topDefAtoCoach?.teamAbbr}</span>
           </div>
         </div>
 
@@ -221,7 +221,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                 {(topChallengeCoach?.metrics.challengeSuccessRate * 100).toFixed(1)}%
               </span>
             </div>
-            <span className="text-[10px] text-slate-500 font-mono">{topChallengeCoach?.teamAbbr}</span>
+            <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">{topChallengeCoach?.teamAbbr}</span>
           </div>
         </div>
       </div>
@@ -288,7 +288,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                           <h4 className="text-sm font-bold text-white tracking-tight truncate">
                             {c.headCoach.name}
                           </h4>
-                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                          <span className="text-[11px] sm:text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700">
                             {c.teamAbbr}
                           </span>
                         </div>
@@ -301,7 +301,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                     <div className="flex items-center gap-4 flex-shrink-0">
                       {/* Win Lift Badge */}
                       <div className="text-right hidden sm:block">
-                        <span className="text-[10px] text-slate-400 block font-sans">Marginal Lift</span>
+                        <span className="text-[11px] sm:text-[10px] text-slate-400 block font-sans">Marginal Lift</span>
                         <span
                           className={`text-xs font-mono font-bold ${
                             netLift >= 0 ? 'text-emerald-400' : 'text-rose-400'
@@ -313,7 +313,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
 
                       {/* CIR Score Pill */}
                       <div className="text-right">
-                        <span className="text-[10px] text-slate-400 block font-sans">CIR</span>
+                        <span className="text-[11px] sm:text-[10px] text-slate-400 block font-sans">CIR</span>
                         <span className="text-sm font-mono font-extrabold text-amber-400">
                           {cir.toFixed(1)}
                         </span>
@@ -350,7 +350,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                   </div>
 
                   <div className="text-right">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-bold">
+                    <span className="text-[11px] sm:text-[10px] text-slate-400 uppercase tracking-wider block font-bold">
                       Impact Rating
                     </span>
                     <span className="text-xl font-mono font-extrabold text-amber-400">
@@ -369,7 +369,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                 <div>
                   <div className="text-xs font-bold text-slate-300 mb-2 flex items-center justify-between">
                     <span>Tactical & Skill Percentiles</span>
-                    <span className="text-[10px] font-mono text-slate-500">League Normalized</span>
+                    <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">League Normalized</span>
                   </div>
                   <CoachRadarProfile
                     percentiles={selectedCoach.radarPercentiles}
@@ -385,25 +385,25 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                   </span>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="p-2 bg-surface/60 rounded border border-slate-800">
-                      <span className="text-[10px] text-slate-500 block">Associate HC</span>
+                      <span className="text-[11px] sm:text-[10px] text-slate-500 block">Associate HC</span>
                       <span className="text-slate-200 font-medium truncate block">
                         {selectedCoach.assistants.associateHC}
                       </span>
                     </div>
                     <div className="p-2 bg-surface/60 rounded border border-slate-800">
-                      <span className="text-[10px] text-slate-500 block">Offensive Lead</span>
+                      <span className="text-[11px] sm:text-[10px] text-slate-500 block">Offensive Lead</span>
                       <span className="text-slate-200 font-medium truncate block">
                         {selectedCoach.assistants.offensiveCoord}
                       </span>
                     </div>
                     <div className="p-2 bg-surface/60 rounded border border-slate-800">
-                      <span className="text-[10px] text-slate-500 block">Defensive Lead</span>
+                      <span className="text-[11px] sm:text-[10px] text-slate-500 block">Defensive Lead</span>
                       <span className="text-slate-200 font-medium truncate block">
                         {selectedCoach.assistants.defensiveCoord}
                       </span>
                     </div>
                     <div className="p-2 bg-surface/60 rounded border border-slate-800">
-                      <span className="text-[10px] text-slate-500 block">Player Dev / Shooting</span>
+                      <span className="text-[11px] sm:text-[10px] text-slate-500 block">Player Dev / Shooting</span>
                       <span className="text-slate-200 font-medium truncate block">
                         {selectedCoach.assistants.playerDevLead}
                       </span>
@@ -485,10 +485,10 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                   <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
                     <div>
                       <h4 className="text-sm font-bold text-white">{treeName} Tree</h4>
-                      <span className="text-[10px] text-slate-400">{treeMembers.length} Active Head Coaches</span>
+                      <span className="text-[11px] sm:text-[10px] text-slate-400">{treeMembers.length} Active Head Coaches</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-[9px] text-slate-500 uppercase block">Avg CIR</span>
+                      <span className="text-[11px] sm:text-[9px] text-slate-500 uppercase block">Avg CIR</span>
                       <span className="text-xs font-mono font-bold text-amber-400">{avgCir}</span>
                     </div>
                   </div>
@@ -509,7 +509,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                             <span className="text-xs font-semibold text-slate-200 block truncate">
                               {member.headCoach.name}
                             </span>
-                            <span className="text-[10px] text-slate-400 truncate block">
+                            <span className="text-[11px] sm:text-[10px] text-slate-400 truncate block">
                               {member.teamName}
                             </span>
                           </div>

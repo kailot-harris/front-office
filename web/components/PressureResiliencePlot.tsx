@@ -69,7 +69,7 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
           </p>
         </div>
         <div className="text-right flex items-center gap-2">
-          <span className="text-[10px] font-mono bg-zinc-900 border border-zinc-800 text-rose-400 px-2 py-0.5 rounded">
+          <span className="text-[11px] sm:text-[10px] font-mono bg-zinc-900 border border-zinc-800 text-rose-400 px-2 py-0.5 rounded">
             N = {validProfiles.length} Closers
           </span>
           <button
@@ -108,13 +108,13 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
           />
 
           {/* Quadrant Labels */}
-          <text x={padding + 8} y={padding + 14} textAnchor="start" className="text-[9px] fill-emerald-500/60 font-semibold uppercase">
+          <text x={padding + 8} y={padding + 14} textAnchor="start" className="text-[11px] sm:text-[9px] fill-emerald-500/60 font-semibold uppercase">
             Ice-Cold Closers (High TS%, Low TOV)
           </text>
-          <text x={width - padding - 8} y={padding + 14} textAnchor="end" className="text-[9px] fill-amber-500/60 font-semibold uppercase">
+          <text x={width - padding - 8} y={padding + 14} textAnchor="end" className="text-[11px] sm:text-[9px] fill-amber-500/60 font-semibold uppercase">
             High-Risk Shotmakers
           </text>
-          <text x={padding + 8} y={height - padding - 8} textAnchor="start" className="text-[9px] fill-sky-500/60 font-semibold uppercase">
+          <text x={padding + 8} y={height - padding - 8} textAnchor="start" className="text-[11px] sm:text-[9px] fill-sky-500/60 font-semibold uppercase">
             Safe Connectors
           </text>
 
@@ -150,7 +150,7 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
               <text
                 y="-12"
                 textAnchor="middle"
-                className="text-[10px] font-bold fill-rose-400 select-none pointer-events-none drop-shadow-md"
+                className="text-[11px] sm:text-[10px] font-bold fill-rose-400 select-none pointer-events-none drop-shadow-md"
               >
                 {selectedProfile.playerName} ({selectedProfile.clutchTsPct}%)
               </text>

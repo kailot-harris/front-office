@@ -319,7 +319,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
           <div className="flex items-center gap-3 min-w-0">
             <TeamLogo team={teamACode} size="lg" />
             <div className="min-w-0">
-              <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider block font-mono">
+              <span className="text-[11px] sm:text-[10px] text-amber-400 font-bold uppercase tracking-wider block font-mono">
                 Team A (Designated)
               </span>
               <select
@@ -343,7 +343,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
             </div>
           </div>
           {hcaTeam === teamACode && (
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold whitespace-nowrap">
+            <span className="text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold whitespace-nowrap">
               Home Court (2-2-1-1-1)
             </span>
           )}
@@ -374,7 +374,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
           <div className="flex items-center gap-3 min-w-0">
             <TeamLogo team={teamBCode} size="lg" />
             <div className="min-w-0">
-              <span className="text-[10px] text-sky-400 font-bold uppercase tracking-wider block font-mono">
+              <span className="text-[11px] sm:text-[10px] text-sky-400 font-bold uppercase tracking-wider block font-mono">
                 Team B (Opponent)
               </span>
               <select
@@ -398,7 +398,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
             </div>
           </div>
           {hcaTeam === teamBCode && (
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold whitespace-nowrap">
+            <span className="text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold whitespace-nowrap">
               Home Court (2-2-1-1-1)
             </span>
           )}
@@ -489,11 +489,11 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
 
           <div className="flex items-center gap-4 text-xs font-mono">
             <div className="text-right">
-              <span className="text-slate-400 block text-[10px]">Top-3 Boost ({teamACode})</span>
+              <span className="text-slate-400 block text-[11px] sm:text-[10px]">Top-3 Boost ({teamACode})</span>
               <span className="font-bold text-amber-400">+{profileA.top3TalentBump} PTS/100</span>
             </div>
             <div className="text-right">
-              <span className="text-slate-400 block text-[10px]">Top-3 Boost ({teamBCode})</span>
+              <span className="text-slate-400 block text-[11px] sm:text-[10px]">Top-3 Boost ({teamBCode})</span>
               <span className="font-bold text-sky-400">+{profileB.top3TalentBump} PTS/100</span>
             </div>
           </div>
@@ -518,15 +518,15 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-slate-800 text-slate-300">
+                      <span className="text-[11px] sm:text-[10px] font-mono px-1 py-0.2 rounded bg-slate-800 text-slate-300">
                         {p.position}
                       </span>
                       <span className="font-semibold text-white truncate">{p.playerName}</span>
-                      <span className="text-[9px] text-slate-400 italic hidden sm:inline">
+                      <span className="text-[11px] sm:text-[9px] text-slate-400 italic hidden sm:inline">
                         • {p.role}
                       </span>
                     </div>
-                    <span className="text-[10px] text-slate-400 font-mono mt-0.5 block">
+                    <span className="text-[11px] sm:text-[10px] text-slate-400 font-mono mt-0.5 block">
                       {p.pts} PPG • {p.reb} RPG • {p.ast} APG • {p.praZscore > 0 ? `+${p.praZscore}` : p.praZscore} PRA z
                     </span>
                   </div>
@@ -555,15 +555,15 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-slate-800 text-slate-300">
+                      <span className="text-[11px] sm:text-[10px] font-mono px-1 py-0.2 rounded bg-slate-800 text-slate-300">
                         {p.position}
                       </span>
                       <span className="font-semibold text-white truncate">{p.playerName}</span>
-                      <span className="text-[9px] text-slate-400 italic hidden sm:inline">
+                      <span className="text-[11px] sm:text-[9px] text-slate-400 italic hidden sm:inline">
                         • {p.role}
                       </span>
                     </div>
-                    <span className="text-[10px] text-slate-400 font-mono mt-0.5 block">
+                    <span className="text-[11px] sm:text-[10px] text-slate-400 font-mono mt-0.5 block">
                       {p.pts} PPG • {p.reb} RPG • {p.ast} APG • {p.praZscore > 0 ? `+${p.praZscore}` : p.praZscore} PRA z
                     </span>
                   </div>

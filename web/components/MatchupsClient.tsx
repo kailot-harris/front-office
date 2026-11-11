@@ -178,16 +178,16 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
               >
                 <span>Wk {s}</span>
                 {meta?.status === 'active' && (
-                  <span className="text-amber-400 text-[10px]">★ Active</span>
+                  <span className="text-amber-400 text-[11px] sm:text-[10px]">★ Active</span>
                 )}
                 {/* A past week with nothing graded says so rather than "Final". */}
                 {meta?.status === 'past' && (
-                  <span className="text-[10px] text-slate-500 font-normal">
+                  <span className="text-[11px] sm:text-[10px] text-slate-500 font-normal">
                     {meta.graded_total > 0 ? 'Final' : 'Ungraded'}
                   </span>
                 )}
                 {meta?.status === 'future' && (
-                  <span className="text-[10px] text-slate-500 font-normal">Upcoming</span>
+                  <span className="text-[11px] sm:text-[10px] text-slate-500 font-normal">Upcoming</span>
                 )}
               </button>
             );
@@ -206,7 +206,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
             )}
           </div>
           <div className="min-w-0">
-            <span className="text-[10px] font-mono uppercase text-slate-400 block font-semibold">
+            <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-400 block font-semibold">
               Model record this slate
             </span>
             <span className="text-sm font-bold block truncate text-white">
@@ -229,7 +229,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
             <Zap className="w-5 h-5 text-accent-400" />
           </div>
           <div className="min-w-0">
-            <span className="text-[10px] font-mono uppercase text-slate-400 block font-semibold">
+            <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-400 block font-semibold">
               Largest projected edge
             </span>
             {biggestSpread ? (
@@ -256,7 +256,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
             <Calendar className="w-5 h-5 text-accent-400" />
           </div>
           <div className="min-w-0">
-            <span className="text-[10px] font-mono uppercase text-slate-400 block font-semibold">
+            <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-400 block font-semibold">
               Slate window
             </span>
             <span className="text-sm font-bold text-white block truncate">
@@ -280,7 +280,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
           className="bg-surface-raised/60 border border-slate-800 rounded-xl p-3 text-[11px] font-mono text-slate-400 space-y-1.5"
           data-testid="projection-basis-legend"
         >
-          <span className="text-[10px] font-mono uppercase text-slate-300 font-bold block">
+          <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-300 font-bold block">
             Two projection bases — not interchangeable
           </span>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -398,7 +398,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-xs font-mono">
-              <thead className="bg-surface text-slate-400 uppercase text-[10px]">
+              <thead className="bg-surface text-slate-400 uppercase text-[11px] sm:text-[10px]">
                 <tr>
                   <th className="text-left px-3 py-2 font-semibold">Date</th>
                   <th className="text-left px-3 py-2 font-semibold">Matchup</th>

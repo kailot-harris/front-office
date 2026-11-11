@@ -116,13 +116,14 @@ describe('Page Clients mount on real data', () => {
   });
 
   it('OffseasonClient mounts without error', () => {
+    // allPlayers is no longer an initial-render prop (#134) — OffseasonClient fetches
+    // the full player projections dataset client-side on demand instead.
     expect(() =>
       render(
         <OffseasonClient
           transactions={offseasonTransactions}
           teams={offseasonTeams}
           draftProspects={offseasonDraft}
-          allPlayers={players}
         />
       )
     ).not.toThrow();

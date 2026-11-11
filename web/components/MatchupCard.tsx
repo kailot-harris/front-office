@@ -63,7 +63,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup: m }) => {
       data-testid="matchup-card"
     >
       {/* Date + status chip */}
-      <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-wider">
+      <div className="flex items-center justify-between text-[11px] sm:text-[10px] font-mono uppercase tracking-wider">
         <span className="text-slate-400">
           {m.weekday} · {m.game_date}
         </span>
@@ -118,7 +118,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup: m }) => {
       {/* Projection + grade footer */}
       <div className="border-t border-slate-800 pt-2.5 flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <span className="text-[10px] font-mono uppercase text-slate-500 block">
+          <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-500 block">
             Projected margin
           </span>
           <span className="text-sm font-bold font-mono text-accent-400">
@@ -127,7 +127,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup: m }) => {
           {/* VISIBLE basis marker — which of the two models produced this number. */}
           {basis !== null && (
             <span
-              className={`mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[9px] font-mono uppercase tracking-wide ${basis.tone}`}
+              className={`mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[11px] sm:text-[9px] font-mono uppercase tracking-wide ${basis.tone}`}
               title={basis.note}
               data-testid="projection-basis-badge"
               data-projection-basis={m.projection_basis}
@@ -137,7 +137,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup: m }) => {
             </span>
           )}
           {basis !== null && (
-            <span className="text-[10px] font-mono text-slate-500 block mt-0.5">{basis.note}</span>
+            <span className="text-[11px] sm:text-[10px] font-mono text-slate-500 block mt-0.5">{basis.note}</span>
           )}
         </div>
 

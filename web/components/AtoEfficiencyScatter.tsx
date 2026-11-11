@@ -212,7 +212,7 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
                     x={-10}
                     y={y + 4}
                     textAnchor="end"
-                    className="fill-slate-500 font-mono text-[10px]"
+                    className="fill-slate-500 font-mono text-[11px] sm:text-[10px]"
                   >
                     {tick.toFixed(2)}
                   </text>
@@ -229,7 +229,7 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
                     x={x}
                     y={innerHeight + 18}
                     textAnchor="middle"
-                    className="fill-slate-500 font-mono text-[10px]"
+                    className="fill-slate-500 font-mono text-[11px] sm:text-[10px]"
                   >
                     {tick.toFixed(2)}
                   </text>
@@ -301,7 +301,7 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
                   <text
                     x="9"
                     y="3"
-                    className={`font-mono text-[9px] font-bold select-none transition-all ${
+                    className={`font-mono text-[11px] sm:text-[9px] font-bold select-none transition-all ${
                       isSelected
                         ? 'fill-amber-400 font-extrabold text-[11px]'
                         : isHovered
@@ -326,12 +326,12 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
                 <div className="text-xs font-bold text-white truncate">
                   {hoveredCoach.headCoach.name}
                 </div>
-                <div className="text-[10px] text-slate-400">
+                <div className="text-[11px] sm:text-[10px] text-slate-400">
                   {hoveredCoach.teamAbbr} • {hoveredCoach.headCoach.coachingTree} Tree
                 </div>
               </div>
               <div className="ml-auto text-right">
-                <span className="text-[10px] text-slate-400 block">CIR</span>
+                <span className="text-[11px] sm:text-[10px] text-slate-400 block">CIR</span>
                 <span className="text-xs font-mono font-bold text-amber-400">
                   {hoveredCoach.metrics.coachImpactRating}
                 </span>
@@ -340,31 +340,31 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
 
             <div className="grid grid-cols-2 gap-2 text-[11px]">
               <div className="p-1.5 bg-surface-raised/80 rounded border border-slate-800/80">
-                <span className="text-[9px] text-slate-400 block">Off ATO PPP</span>
+                <span className="text-[11px] sm:text-[9px] text-slate-400 block">Off ATO PPP</span>
                 <span className="font-mono font-bold text-emerald-400">
                   {hoveredCoach.metrics.atoOffensivePpp.toFixed(3)}
                 </span>
               </div>
               <div className="p-1.5 bg-surface-raised/80 rounded border border-slate-800/80">
-                <span className="text-[9px] text-slate-400 block">Def ATO PPP</span>
+                <span className="text-[11px] sm:text-[9px] text-slate-400 block">Def ATO PPP</span>
                 <span className="font-mono font-bold text-sky-400">
                   {hoveredCoach.metrics.atoDefensivePppAllowed.toFixed(3)}
                 </span>
               </div>
               <div className="p-1.5 bg-surface-raised/80 rounded border border-slate-800/80">
-                <span className="text-[9px] text-slate-400 block">Challenge Win %</span>
+                <span className="text-[11px] sm:text-[9px] text-slate-400 block">Challenge Win %</span>
                 <span className="font-mono font-bold text-amber-400">
                   {(hoveredCoach.metrics.challengeSuccessRate * 100).toFixed(1)}%
                 </span>
               </div>
               <div className="p-1.5 bg-surface-raised/80 rounded border border-slate-800/80">
-                <span className="text-[9px] text-slate-400 block">Coaching Win Lift</span>
+                <span className="text-[11px] sm:text-[9px] text-slate-400 block">Coaching Win Lift</span>
                 <span className="font-mono font-bold text-indigo-400">
                   {hoveredCoach.metrics.coachingWinsAdded > 0 ? `+${hoveredCoach.metrics.coachingWinsAdded}` : hoveredCoach.metrics.coachingWinsAdded} W
                 </span>
               </div>
             </div>
-            <div className="mt-2 text-[9px] text-slate-500 italic text-center">
+            <div className="mt-2 text-[11px] sm:text-[9px] text-slate-500 italic text-center">
               Click marker to inspect full profile
             </div>
           </div>

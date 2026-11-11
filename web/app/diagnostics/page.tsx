@@ -2,6 +2,8 @@ import { getDiagnostics, getMetadata } from '@/lib/data';
 import { DiagnosticsClient } from '@/components/DiagnosticsClient';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
 import { SEASON_SOURCES } from '@/lib/season';
+import { HowToReadDisclosure } from '@/components/HowToReadDisclosure';
+import { GlossaryTerm } from '@/components/GlossaryTerm';
 
 export const metadata = {
   title: 'Modeling Diagnostics & Calibration',
@@ -31,12 +33,19 @@ export default function DiagnosticsPage() {
               />
             </h1>
             <p className="text-slate-400 text-sm mt-1">
-              Empirical reliability curves, Brier score, accuracy drift over time, and residual distributions from historical evaluations.
+              Empirical reliability curves, <GlossaryTerm term="Brier score" />, accuracy drift over time, and residual distributions from historical evaluations.
             </p>
           </div>
         </div>
         <div className="w-full h-[2px] bg-gradient-to-r from-orange-400 via-orange-500/40 to-transparent mt-4" />
       </div>
+
+      <HowToReadDisclosure pageKey="diagnostics">
+        Lower <GlossaryTerm term="Brier score" /> is better calibration (0 is a perfect forecast,
+        0.25 is a coin-flip baseline). The reliability curve compares predicted win probabilities
+        against how often those predictions actually came true — points on the diagonal are
+        well-calibrated.
+      </HowToReadDisclosure>
 
       <DiagnosticsClient diagnostics={diagnostics} metadata={metadata} />
     </div>

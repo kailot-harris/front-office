@@ -145,7 +145,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-sm">{profile.playerName}</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">
+                      <span className="text-[11px] sm:text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">
                         {profile.team} · {profile.position}
                       </span>
                     </div>
@@ -162,7 +162,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                           ? (profile.clutchTsPct != null ? `${profile.clutchTsPct}%` : 'N/A')
                           : (profile.cDwpa != null ? `+${profile.cDwpa}%` : 'N/A')}
                       </div>
-                      <div className="text-[9px] text-zinc-500 uppercase">
+                      <div className="text-[11px] sm:text-[9px] text-zinc-500 uppercase">
                         {sortKey === 'usciScore' ? 'USCI' : sortKey === 'clutchTsPct' ? 'TS%' : 'c-dWPA'}
                       </div>
                     </div>
