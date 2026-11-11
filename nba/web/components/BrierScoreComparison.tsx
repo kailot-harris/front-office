@@ -130,7 +130,7 @@ export const BrierScoreComparison: React.FC = () => {
 
         <div className="flex items-center gap-2 text-xs">
           <div className="bg-surface px-3 py-1.5 rounded-lg border border-slate-800 text-right font-mono">
-            <span className="text-[10px] text-slate-400 block font-sans">Baseline Evaluated</span>
+            <span className="text-[11px] sm:text-[10px] text-slate-400 block font-sans">Baseline Evaluated</span>
             <span className="text-white font-bold">2,631 Games</span>
           </div>
         </div>
@@ -139,7 +139,7 @@ export const BrierScoreComparison: React.FC = () => {
       {/* Main Visualization Bars */}
       <div className="space-y-3.5">
         {/* Scale Header */}
-        <div className="relative h-5 text-[10px] font-mono text-slate-400 select-none pl-44 sm:pl-56 pr-24 sm:pr-28">
+        <div className="relative h-5 text-[11px] sm:text-[10px] font-mono text-slate-400 select-none pl-44 sm:pl-56 pr-24 sm:pr-28">
           <div className="relative w-full h-full">
             <span className="absolute left-0 -translate-x-1/2 text-emerald-400 font-bold">0.2200 (Best)</span>
             <span className="absolute left-[33%] -translate-x-1/2">0.2300</span>
@@ -176,7 +176,7 @@ export const BrierScoreComparison: React.FC = () => {
                       {model.shortName}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono mt-0.5">
+                  <div className="flex items-center gap-2 text-[11px] sm:text-[10px] text-slate-400 font-mono mt-0.5">
                     <span className="text-slate-300 font-semibold">{model.weight}</span>
                     <span>•</span>
                     <span>{(model.accuracy * 100).toFixed(1)}% Acc</span>
@@ -221,12 +221,12 @@ export const BrierScoreComparison: React.FC = () => {
                     <span className={`text-xs font-bold block ${model.isEnsemble ? 'text-indigo-300 text-sm' : 'text-slate-200'}`}>
                       {model.brierScore.toFixed(4)}
                     </span>
-                    <span className="text-[10px] text-emerald-400 block font-semibold">
+                    <span className="text-[11px] sm:text-[10px] text-emerald-400 block font-semibold">
                       -{errorReduction}% MSE
                     </span>
                   </div>
                   {model.isEnsemble && (
-                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 uppercase">
+                    <span className="px-1.5 py-0.5 rounded text-[11px] sm:text-[9px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 uppercase">
                       Best
                     </span>
                   )}

@@ -14,8 +14,12 @@ export const TradeCbaValidator: React.FC<TradeCbaValidatorProps> = ({ profile })
   const [isAggregating, setIsAggregating] = useState<boolean>(false);
   const [sendingCash, setSendingCash] = useState<boolean>(false);
 
-  const outVal = parseFloat(outgoingSalary) || 0;
-  const inVal = parseFloat(incomingSalary) || 0;
+  // #129: `parseFloat(x) || 0` let a negative string (e.g. "-5") through
+  // unchanged (negative numbers are truthy), so a negative salary could
+  // reach the matching-rule math and still show "TRADE LEGAL". Clamp to
+  // >= 0 on top of the existing NaN fallback.
+  const outVal = Math.max(0, parseFloat(outgoingSalary) || 0);
+  const inVal = Math.max(0, parseFloat(incomingSalary) || 0);
 
   const isSecondApron = profile.totalPayroll2026 > profile.secondApron;
   const isFirstApron = profile.totalPayroll2026 > profile.firstApron;
@@ -32,8 +36,15 @@ export const TradeCbaValidator: React.FC<TradeCbaValidatorProps> = ({ profile })
     maxIncomingAllowed = outVal * 1.0;
     matchingPctLabel = '100% Dollar-for-Dollar Rule';
   } else {
+    // #129: this flat 125% + $250K band is a simplified approximation, not
+    // the CBA's actual tiered below-first-apron salary-matching bands
+    // (which scale differently at different outgoing-salary levels). It is
+    // labeled as such below rather than presented as fully CBA-accurate,
+    // since those tiers could not be verified against an authoritative
+    // source here -- do not replace this label with invented tier numbers
+    // without that verification.
     maxIncomingAllowed = outVal * 1.25 + 0.25;
-    matchingPctLabel = '125% + $250K Rule';
+    matchingPctLabel = '125% + $250K (simplified approximation)';
   }
 
   // Legality checks
@@ -73,6 +84,7 @@ export const TradeCbaValidator: React.FC<TradeCbaValidatorProps> = ({ profile })
           <input
             type="number"
             step="0.5"
+            min="0"
             value={outgoingSalary}
             onChange={(e) => setOutgoingSalary(e.target.value)}
             className="w-full bg-surface-raised border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
@@ -85,6 +97,7 @@ export const TradeCbaValidator: React.FC<TradeCbaValidatorProps> = ({ profile })
           <input
             type="number"
             step="0.5"
+            min="0"
             value={incomingSalary}
             onChange={(e) => setIncomingSalary(e.target.value)}
             className="w-full bg-surface-raised border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
@@ -124,6 +137,14 @@ export const TradeCbaValidator: React.FC<TradeCbaValidatorProps> = ({ profile })
           <span className="text-slate-400">Max Legal Incoming:</span>
           <span className="font-mono font-bold text-white">${maxIncomingAllowed.toFixed(1)}M</span>
         </div>
+
+        {!isUnderCap && !isSecondApron && !isFirstApron && (
+          <div className="text-slate-500 text-[10px] pt-1 border-t border-slate-800">
+            Below-first-apron teams use tiered CBA salary-matching bands that
+            scale with outgoing salary; this tool approximates them with a
+            single flat 125% + $250K rule rather than the real tiers.
+          </div>
+        )}
 
         {failsSalaryMatch && (
           <div className="text-rose-400 text-[10px] pt-1 border-t border-slate-800 font-medium">

@@ -148,7 +148,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-sm">{profile.playerName}</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">
+                      <span className="text-[11px] sm:text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">
                         {profile.team} · {profile.position}
                       </span>
                     </div>
@@ -165,7 +165,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                           ? `${profile.dRapm > 0 ? '+' : ''}${profile.dRapm}`
                           : `${profile.versatilityScore}`}
                       </div>
-                      <div className="text-[9px] text-zinc-500 uppercase">
+                      <div className="text-[11px] sm:text-[9px] text-zinc-500 uppercase">
                         {sortKey === 'rimDfgDelta' ? 'Rim Delta' : sortKey === 'dRapm' ? 'D-RAPM' : 'Entropy'}
                       </div>
                     </div>

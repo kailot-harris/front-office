@@ -2,6 +2,14 @@ import { getTeamsData, getMetadata } from '@/lib/data';
 import { VariantsClient } from '@/components/VariantsClient';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
 import { SEASON_SOURCES } from '@/lib/season';
+import { HowToReadDisclosure } from '@/components/HowToReadDisclosure';
+import { GlossaryTerm } from '@/components/GlossaryTerm';
+
+export const metadata = {
+  title: 'Model Variants Breakout',
+  description:
+    'Compare 1,000-season projections across the Production Bottom-Up BPM, Possession-Level RAPM, Shot Quality & Fatigue, and 16-D Embeddings model variants plus the ensemble.',
+};
 
 export default function VariantsPage() {
   const teams = getTeamsData();
@@ -25,12 +33,21 @@ export default function VariantsPage() {
               />
             </h1>
             <p className="text-slate-400 text-sm mt-1">
-              Compare 1,000-season predictions across Production Bottom-Up BPM, Possession-Level RAPM, Shot Quality & Fatigue, and 16-D Embeddings.
+              Compare 1,000-season predictions across Production Bottom-Up <GlossaryTerm term="BPM" />,
+              Possession-Level <GlossaryTerm term="RAPM" />, Shot Quality & Fatigue, and 16-D <GlossaryTerm term="embeddings" />.
             </p>
           </div>
         </div>
         <div className="w-full h-[2px] bg-gradient-to-r from-orange-400 via-orange-500/40 to-transparent mt-4" />
       </div>
+
+      <HowToReadDisclosure pageKey="variants">
+        Each model variant projects the season independently using a different methodology
+        (<GlossaryTerm term="BPM" />-based box score, <GlossaryTerm term="RAPM" /> play-by-play
+        impact, shot-quality/fatigue adjustment, or 16-D <GlossaryTerm term="embeddings" />). The
+        Ensemble column blends all four; large spreads between variants flag teams where the
+        models disagree most.
+      </HowToReadDisclosure>
 
       <VariantsClient teams={teams} metadata={metadata} />
     </div>

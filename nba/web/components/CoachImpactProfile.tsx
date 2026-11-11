@@ -110,14 +110,14 @@ export const CoachImpactProfile: React.FC<CoachImpactProfileProps> = ({ coach })
 
         <div className="flex items-center gap-4 text-xs font-mono">
           <div className="p-2 rounded-lg bg-surface/80 border border-slate-800 text-right">
-            <span className="text-[10px] text-slate-400 block font-sans">
+            <span className="text-[11px] sm:text-[10px] text-slate-400 block font-sans">
               Roster-Talent Baseline
             </span>
             <span className="font-bold text-indigo-400 text-sm">{talentWins} W</span>
           </div>
           <div className="text-slate-600 font-bold text-lg">&rarr;</div>
           <div className="p-2 rounded-lg bg-surface/80 border border-slate-800 text-right">
-            <span className="text-[10px] text-slate-400 block font-sans">
+            <span className="text-[11px] sm:text-[10px] text-slate-400 block font-sans">
               Ensemble Projection
             </span>
             <span className="font-bold text-amber-400 text-sm">{ensembleWins} W</span>
@@ -186,7 +186,7 @@ export const CoachImpactProfile: React.FC<CoachImpactProfileProps> = ({ coach })
                     </span>
                   </div>
                   <span
-                    className={`shrink-0 px-1.5 py-0.5 rounded border text-[10px] font-mono font-bold ${style.className}`}
+                    className={`shrink-0 px-1.5 py-0.5 rounded border text-[11px] sm:text-[10px] font-mono font-bold ${style.className}`}
                     title={style.title}
                   >
                     {style.label}

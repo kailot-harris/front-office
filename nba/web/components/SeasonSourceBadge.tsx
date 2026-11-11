@@ -63,7 +63,7 @@ export const SeasonSourceBadge: React.FC<SeasonSourceBadgeProps> = ({
     <span
       title={title ?? `${KIND_TITLE[kind]} ${formatted}`}
       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold
-        border whitespace-nowrap ${KIND_STYLE[kind]} ${className}`}
+        border max-w-full whitespace-normal sm:whitespace-nowrap ${KIND_STYLE[kind]} ${className}`}
     >
       <CalendarRange className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
       <span>

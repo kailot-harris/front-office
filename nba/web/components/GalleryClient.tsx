@@ -152,15 +152,10 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
     type: 'gif',
     sizeBytes: 297650,
   },
-  {
-    id: 'gif_rookie_impact_race',
-    filename: 'gif_rookie_impact_race.gif',
-    title: 'Rookie Class Scoring Volume & Efficiency Accumulator',
-    category: 'players',
-    description: 'Rookie class scoring volume vs. True Shooting percentage accumulator race with bubbles sized by game appearances.',
-    type: 'gif',
-    sizeBytes: 472331,
-  },
+  // gif_rookie_impact_race is intentionally absent. The only copy ever published
+  // was drawn from simulated box scores (tools/gif_rookie_impact_race.R had no
+  // real nba_player_box_2027.rds to read). Add the entry back once that script
+  // has rendered from real rookie-season data.
 ];
 
 export interface GalleryClientProps {
@@ -273,7 +268,7 @@ export const GalleryClient: React.FC<GalleryClientProps> = ({ mediaItems = NBA_G
 
                   {/* Badge Overlay */}
                   <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
-                    <span className="bg-surface/80 backdrop-blur border border-slate-800 text-[10px] font-mono px-2 py-0.5 rounded text-white flex items-center gap-1">
+                    <span className="bg-surface/80 backdrop-blur border border-slate-800 text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded text-white flex items-center gap-1">
                       {isGif ? <Film className="w-3 h-3 text-cyan-400" /> : <ImageIcon className="w-3 h-3 text-emerald-400" />}
                       {isGif ? 'ANIMATION' : 'STATIC PLOT'}
                     </span>

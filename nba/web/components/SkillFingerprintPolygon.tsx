@@ -160,7 +160,7 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
                 y={labelCoords.y + 12}
                 textAnchor="middle"
                 dominantBaseline="central"
-                className="text-[10px] font-bold fill-sky-400"
+                className="text-[11px] sm:text-[10px] font-bold fill-sky-400"
               >
                 {Math.round(axis.value)}
               </text>

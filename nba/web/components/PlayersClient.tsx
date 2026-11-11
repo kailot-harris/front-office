@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { PlayerProjection } from '@/lib/types';
 import { Search, AlertTriangle, ArrowUpDown, Filter, Sparkles, UserCheck, Crosshair, ChevronUp, Download } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
@@ -20,6 +20,20 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
   const [sortBy, setSortBy] = useState<keyof PlayerProjection>('proj_pts');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
+
+  // #118: at narrow viewports most of this table's 12 columns are off-screen
+  // with nothing to signal that. The first (Player) column is pinned via
+  // `sticky left-0`, and this scroll-fade hint on the right edge disappears
+  // once the container is scrolled to its end so it never looks "stuck".
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [showScrollHint, setShowScrollHint] = useState(true);
+
+  const updateScrollHint = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
+    setShowScrollHint(el.scrollWidth > el.clientWidth && !atEnd);
+  }, []);
 
   const teams = useMemo(() => {
     const set = new Set(players.map((p) => p.team));
@@ -50,6 +64,10 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
         return sortOrder === 'desc' ? valB - valA : valA - valB;
       });
   }, [players, onlyOutliers, selectedTeam, selectedPosition, searchTerm, sortBy, sortOrder]);
+
+  useEffect(() => {
+    updateScrollHint();
+  }, [updateScrollHint, filteredPlayers.length, statMode]);
 
   const handleExportCsv = () => {
     exportToCsv(
@@ -230,18 +248,22 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
       </div>
 
       {/* Players Projections Table */}
-      <div className="bg-surface-raised/70 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
+      <div className="bg-surface-raised/70 border border-slate-800 rounded-xl overflow-hidden shadow-xl relative">
+        <div
+          ref={scrollContainerRef}
+          onScroll={updateScrollHint}
+          className="overflow-x-auto"
+        >
           <table className="w-full text-left text-sm border-collapse">
             <thead>
               <tr className="bg-surface/80 border-b border-slate-800 text-slate-400 text-xs">
-                <th className="py-3 px-4 w-12 text-center">Rank</th>
-                <th className="py-3 px-4">Player</th>
+                <th className="py-3 px-4 w-12 text-center hidden sm:table-cell">Rank</th>
+                <th className="py-3 px-4 sticky left-0 z-10 bg-surface border-r border-slate-800">Player</th>
                 <th className="py-3 px-3 text-center">Team</th>
-                <th className="py-3 px-3 text-center">Pos</th>
+                <th className="py-3 px-3 text-center hidden sm:table-cell">Pos</th>
                 <th
                   onClick={() => handleSort('proj_games')}
-                  className="py-3 px-3 text-center cursor-pointer hover:text-white"
+                  className="py-3 px-3 text-center cursor-pointer hover:text-white hidden sm:table-cell"
                 >
                   <div className="flex items-center justify-center gap-1">
                     <span>Games</span>
@@ -250,7 +272,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                 </th>
                 <th
                   onClick={() => handleSort('proj_mpg')}
-                  className="py-3 px-3 text-center cursor-pointer hover:text-white"
+                  className="py-3 px-3 text-center cursor-pointer hover:text-white hidden sm:table-cell"
                 >
                   <div className="flex items-center justify-center gap-1">
                     <span>MPG</span>
@@ -292,14 +314,14 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                 </th>
                 <th
                   onClick={() => handleSort('pra_zscore')}
-                  className="py-3 px-3 text-center cursor-pointer hover:text-white"
+                  className="py-3 px-3 text-center cursor-pointer hover:text-white hidden sm:table-cell"
                 >
                   <div className="flex items-center justify-center gap-1">
                     <span>PRA z-score</span>
                     <ArrowUpDown className="w-3 h-3" />
                   </div>
                 </th>
-                <th className="py-3 px-4 text-center">Status / Outlier</th>
+                <th className="py-3 px-4 text-center hidden sm:table-cell">Status / Outlier</th>
                 <th className="py-3 px-4 text-center">Shot Telemetry</th>
               </tr>
             </thead>
@@ -325,11 +347,11 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                         : ''
                     }`}
                   >
-                    <td className="py-3 px-4 text-center text-xs font-mono text-slate-500">
+                    <td className="py-3 px-4 text-center text-xs font-mono text-slate-500 hidden sm:table-cell">
                       {idx + 1}
                     </td>
                     <td
-                      className="py-3 px-4 cursor-pointer group"
+                      className="py-3 px-4 cursor-pointer group sticky left-0 z-10 bg-surface-raised border-r border-slate-800"
                       onClick={() =>
                         setExpandedPlayerId((prev) => (prev === player.player_id ? null : player.player_id))
                       }
@@ -339,12 +361,12 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                         {isOutlier && (
                           <span
                             title="Statistical Outlier (|z| > 2.0)"
-                            className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                            className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] sm:text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30"
                           >
                             OUTLIER
                           </span>
                         )}
-                        <span className="text-[10px] text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-[11px] sm:text-[10px] text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">
                           (click to {isExpanded ? 'close' : 'view'} shots)
                         </span>
                       </div>
@@ -358,13 +380,13 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                         <span className="font-mono font-bold text-xs text-amber-400">{player.team}</span>
                       </div>
                     </td>
-                    <td className="py-3 px-3 text-center text-xs font-semibold text-slate-300">
+                    <td className="py-3 px-3 text-center text-xs font-semibold text-slate-300 hidden sm:table-cell">
                       {player.position}
                     </td>
-                    <td className="py-3 px-3 text-center font-mono text-xs text-slate-300">
+                    <td className="py-3 px-3 text-center font-mono text-xs text-slate-300 hidden sm:table-cell">
                       {player.proj_games.toFixed(1)}
                     </td>
-                    <td className="py-3 px-3 text-center font-mono text-xs text-slate-300">
+                    <td className="py-3 px-3 text-center font-mono text-xs text-slate-300 hidden sm:table-cell">
                       {player.proj_mpg.toFixed(1)}
                     </td>
                     <td className="py-3 px-4 text-right font-mono font-bold text-white text-sm">
@@ -376,7 +398,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                     <td className="py-3 px-4 text-right font-mono font-medium text-slate-300 text-sm">
                       {astDisplay}
                     </td>
-                    <td className="py-3 px-3 text-center font-mono text-xs">
+                    <td className="py-3 px-3 text-center font-mono text-xs hidden sm:table-cell">
                       <span
                         className={`font-semibold ${
                           player.pra_zscore > 2.0
@@ -391,7 +413,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                         {player.pra_zscore > 0 ? `+${player.pra_zscore.toFixed(2)}` : player.pra_zscore.toFixed(2)}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-center">
+                    <td className="py-3 px-4 text-center hidden sm:table-cell">
                       {isOutlier ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
                           <AlertTriangle className="w-3 h-3" />
@@ -453,6 +475,12 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
             </tbody>
           </table>
         </div>
+        {showScrollHint && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute top-0 right-0 bottom-0 w-10 bg-gradient-to-l from-surface-raised to-transparent sm:hidden"
+          />
+        )}
       </div>
     </div>
   );

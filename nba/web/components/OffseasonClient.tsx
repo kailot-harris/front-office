@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   OffseasonTransaction,
   TeamOffseasonProfile,
@@ -11,6 +11,7 @@ import { PlayerProjection } from '@/lib/types';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
 import { SEASON_SOURCES } from '@/lib/season';
 import { TeamLogo } from '@/components/TeamLogo';
+import { BASE_PATH } from '@/lib/basePath';
 import {
   ArrowRight,
   TrendingUp,
@@ -36,17 +37,25 @@ interface OffseasonClientProps {
   transactions: OffseasonTransaction[];
   teams: TeamOffseasonProfile[];
   draftProspects: RookieDraftProfile[];
-  allPlayers?: PlayerProjection[];
+  // allPlayers is intentionally NOT accepted as an initial-render prop: the full
+  // projections_season_players.json is ~325 KB and is only needed by the Move Machine
+  // sandbox tab, so it's fetched client-side on demand (see allPlayersLoad effect below)
+  // instead of being serialized into this page's initial HTML (#134).
 }
 
 export const OffseasonClient: React.FC<OffseasonClientProps> = ({
   transactions,
   teams,
   draftProspects,
-  allPlayers = [],
 }) => {
   // Navigation tabs
   const [activeTab, setActiveTab] = useState<'feed' | 'teams' | 'machine' | 'draft'>('feed');
+
+  // Full player projections, lazily fetched client-side only once the Move Machine
+  // sandbox tab (the only consumer) is opened — keeps this dataset out of the initial HTML.
+  const [allPlayers, setAllPlayers] = useState<PlayerProjection[]>([]);
+  const [allPlayersLoading, setAllPlayersLoading] = useState(false);
+  const [allPlayersLoaded, setAllPlayersLoaded] = useState(false);
 
   // Transaction Feed Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -55,6 +64,12 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
   const [tierFilter, setTierFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'wins' | 'nrtg' | 'bpm' | 'date'>('wins');
   const [expandedTransId, setExpandedTransId] = useState<string | null>(transactions[0]?.id || null);
+
+  // Feed pagination: only render the first screen of transaction cards up front (the full,
+  // richly-expandable card markup for all ~180 transactions is what bloated this page's
+  // initial HTML past 1 MB — #134). More cards are revealed client-side via "Load more".
+  const FEED_PAGE_SIZE = 20;
+  const [visibleFeedCount, setVisibleFeedCount] = useState(FEED_PAGE_SIZE);
 
   // Teams Leaderboard Filters
   const [confFilter, setConfFilter] = useState<'all' | 'East' | 'West'>('all');
@@ -103,6 +118,17 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
       });
   }, [transactions, typeFilter, teamFilter, tierFilter, searchQuery, sortBy]);
 
+  // Reset pagination whenever the filtered set changes so a new search/filter starts from
+  // the top instead of leaving the viewer scrolled past a now-irrelevant "Load more" point.
+  useEffect(() => {
+    setVisibleFeedCount(FEED_PAGE_SIZE);
+  }, [typeFilter, teamFilter, tierFilter, searchQuery, sortBy]);
+
+  const visibleTransactions = useMemo(
+    () => filteredTransactions.slice(0, visibleFeedCount),
+    [filteredTransactions, visibleFeedCount]
+  );
+
   // Filtered Teams Leaderboard
   const filteredTeams = useMemo(() => {
     return teams.filter((t) => {
@@ -147,6 +173,34 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
 
   // Summary KPIs
   const totalTrades = useMemo(() => transactions.filter((t) => t.type === 'trade').length, [transactions]);
+  // Fetch the full player projections dataset on demand, the first time the Move
+  // Machine sandbox tab is opened (see #134: this keeps ~325 KB out of the initial HTML).
+  useEffect(() => {
+    if (activeTab !== 'machine' || allPlayersLoaded || allPlayersLoading) return;
+    let isMounted = true;
+    setAllPlayersLoading(true);
+    fetch(`${BASE_PATH}/data/projections_season_players.json`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Player projections unavailable');
+        return res.json();
+      })
+      .then((data: PlayerProjection[]) => {
+        if (isMounted) {
+          setAllPlayers(data);
+          setAllPlayersLoaded(true);
+        }
+      })
+      .catch(() => {
+        // Leave allPlayers empty; sandbox calculations fall back to transaction-derived BPM.
+      })
+      .finally(() => {
+        if (isMounted) setAllPlayersLoading(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [activeTab, allPlayersLoaded, allPlayersLoading]);
+
   const totalFreeAgents = useMemo(() => transactions.filter((t) => t.type === 'free_agency').length, [transactions]);
   const totalDraftPicks = useMemo(() => transactions.filter((t) => t.type === 'draft').length, [transactions]);
   const topGainTeam = teams[0] || null;
@@ -235,14 +289,20 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
       {/* Hero Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
-          <div className="flex items-center gap-2.5 mb-1.5">
-            <span className="p-1.5 rounded-lg bg-orange-500/10 text-orange-400 border border-orange-500/20">
-              <Shuffle className="w-5 h-5" />
-            </span>
-            <h1 className="text-3xl font-black tracking-tight text-white">
-              Offseason Moves & Transaction Analytics
-            </h1>
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2.5 mb-1.5">
+            <div className="flex items-center gap-2.5">
+              <span className="p-1.5 rounded-lg bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                <Shuffle className="w-5 h-5" />
+              </span>
+              <h1 className="text-3xl font-black tracking-tight text-white">
+                Offseason Moves & Transaction Analytics
+              </h1>
+            </div>
+            {/* #119: this pill used to sit inline after the H1 in a single
+                nowrap-friendly flex row, which squeezed the H1 into a
+                cramped multi-line column at 375px. Moving it below the H1
+                on mobile (flex-col above) keeps the H1 at full width. */}
+            <span className="self-start sm:self-auto text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono">
               Trades • Free Agency • Draft
             </span>
           </div>
@@ -263,7 +323,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
         {/* Global KPI Pills */}
         <div className="flex items-center gap-3">
           <div className="bg-surface-raised/90 border border-slate-800 rounded-xl px-3.5 py-2">
-            <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider font-mono">
+            <span className="text-[11px] sm:text-[10px] uppercase font-bold text-slate-400 block tracking-wider font-mono">
               Top Gainer
             </span>
             <div className="flex items-center gap-1.5">
@@ -274,7 +334,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
             </div>
           </div>
           <div className="bg-surface-raised/90 border border-slate-800 rounded-xl px-3.5 py-2">
-            <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider font-mono">
+            <span className="text-[11px] sm:text-[10px] uppercase font-bold text-slate-400 block tracking-wider font-mono">
               Tracked Moves
             </span>
             <span className="font-bold text-white text-sm font-mono">{transactions.length} Major Moves</span>
@@ -296,7 +356,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
             <Layers className="w-4 h-4" />
             <span>Transaction Ledger & Impact Feed</span>
             <span
-              className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
+              className={`text-[11px] sm:text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
                 activeTab === 'feed' ? 'bg-accent-700 text-indigo-100' : 'bg-slate-800 text-slate-400'
               }`}
             >
@@ -315,7 +375,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
             <Trophy className="w-4 h-4" />
             <span>Franchise Winners & Losers (30 Teams)</span>
             <span
-              className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
+              className={`text-[11px] sm:text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
                 activeTab === 'teams' ? 'bg-accent-700 text-indigo-100' : 'bg-slate-800 text-slate-400'
               }`}
             >
@@ -333,7 +393,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
           >
             <Scale className="w-4 h-4 text-amber-400" />
             <span>Interactive Trade Machine (What-If)</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30">
+            <span className="text-[11px] sm:text-[10px] px-1.5 py-0.5 rounded-full font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30">
               Live Calc
             </span>
           </button>
@@ -349,7 +409,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
             <GraduationCap className="w-4 h-4 text-emerald-400" />
             <span>Draft Class & Rookie Projections</span>
             <span
-              className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
+              className={`text-[11px] sm:text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
                 activeTab === 'draft' ? 'bg-accent-700 text-indigo-100' : 'bg-slate-800 text-slate-400'
               }`}
             >
@@ -518,7 +578,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 </button>
               </div>
             ) : (
-              filteredTransactions.map((t) => {
+              visibleTransactions.map((t) => {
                 const isExpanded = expandedTransId === t.id;
                 const isTrade = t.type === 'trade';
                 const isFA = t.type === 'free_agency';
@@ -568,7 +628,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                               {t.position} • Age {t.age}
                             </span>
                             <span
-                              className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full font-mono ${
+                              className={`text-[11px] sm:text-[10px] uppercase font-bold px-2 py-0.5 rounded-full font-mono ${
                                 isTrade
                                   ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
                                   : isFA
@@ -590,12 +650,12 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                             {availableTeams.includes(t.from_team) ? (
                               <TeamLogo team={t.from_team} size="xs" />
                             ) : (
-                              <span className="text-[10px] text-slate-400 font-mono">FA / Draft</span>
+                              <span className="text-[11px] sm:text-[10px] text-slate-400 font-mono">FA / Draft</span>
                             )}
                             <span className="text-xs font-bold text-slate-300">{t.from_team}</span>
                           </div>
                         ) : (
-                          <span className="text-[10px] text-slate-400 font-mono">Free Agent</span>
+                          <span className="text-[11px] sm:text-[10px] text-slate-400 font-mono">Free Agent</span>
                         )}
 
                         <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
@@ -609,7 +669,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                       {/* Right: Analytical KPIs */}
                       <div className="flex items-center gap-4 sm:gap-6 self-end md:self-center">
                         <div className="text-right">
-                          <span className="text-[10px] uppercase font-mono text-slate-400 block">Win Impact</span>
+                          <span className="text-[11px] sm:text-[10px] uppercase font-mono text-slate-400 block">Win Impact</span>
                           <span className="font-mono font-black text-emerald-400 text-sm flex items-center gap-0.5 justify-end">
                             <TrendingUp className="w-3.5 h-3.5" />
                             +{t.delta_projected_wins}W
@@ -617,14 +677,14 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                         </div>
 
                         <div className="text-right">
-                          <span className="text-[10px] uppercase font-mono text-slate-400 block">Net Rtg Delta</span>
+                          <span className="text-[11px] sm:text-[10px] uppercase font-mono text-slate-400 block">Net Rtg Delta</span>
                           <span className="font-mono font-bold text-indigo-300 text-sm">
                             +{t.delta_net_rating} pts
                           </span>
                         </div>
 
                         <div className="text-right hidden sm:block">
-                          <span className="text-[10px] uppercase font-mono text-slate-400 block">Player BPM</span>
+                          <span className="text-[11px] sm:text-[10px] uppercase font-mono text-slate-400 block">Player BPM</span>
                           <span
                             className={`font-mono font-bold text-sm ${
                               t.player_bpm >= 2.0
@@ -657,7 +717,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                           </div>
 
                           <div className="bg-surface-raised/90 border border-slate-800/80 rounded-xl p-3.5 space-y-2 text-xs">
-                            <div className="text-[10px] font-bold uppercase text-slate-400 font-mono">
+                            <div className="text-[11px] sm:text-[10px] font-bold uppercase text-slate-400 font-mono">
                               Terms & Asset Details
                             </div>
                             <div className="font-mono font-medium text-amber-300">
@@ -666,7 +726,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
 
                             {t.trade_details && t.trade_details.counterparts_received && (
                               <div className="pt-2 border-t border-slate-800">
-                                <span className="text-[10px] text-slate-400 block mb-1">Exchange Outgoing:</span>
+                                <span className="text-[11px] sm:text-[10px] text-slate-400 block mb-1">Exchange Outgoing:</span>
                                 <ul className="space-y-0.5 text-[11px] text-slate-300 font-mono">
                                   {t.trade_details.counterparts_received.map((c, idx) => (
                                     <li key={idx}>• {c}</li>
@@ -677,7 +737,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
 
                             {t.draft_pick && (
                               <div className="pt-2 border-t border-slate-800">
-                                <span className="text-[10px] text-slate-400 block">Draft Pedigree:</span>
+                                <span className="text-[11px] sm:text-[10px] text-slate-400 block">Draft Pedigree:</span>
                                 <span className="font-mono text-emerald-400">
                                   Round {t.draft_pick.round}, Pick #{t.draft_pick.pick} ({t.draft_pick.school_or_club})
                                 </span>
@@ -746,6 +806,17 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                   </div>
                 );
               })
+            )}
+            {visibleFeedCount < filteredTransactions.length && (
+              <div className="flex justify-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => setVisibleFeedCount((c) => c + FEED_PAGE_SIZE)}
+                  className="min-h-6 text-xs font-semibold text-indigo-400 hover:text-indigo-300 bg-surface-raised border border-slate-800 px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors shadow"
+                >
+                  Load more ({filteredTransactions.length - visibleFeedCount} remaining)
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -820,7 +891,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
             <div className="lg:col-span-7 bg-surface-raised/90 border border-slate-800 rounded-2xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-surface/80 border-b border-slate-800 text-slate-400 uppercase font-mono text-[10px]">
+                  <thead className="bg-surface/80 border-b border-slate-800 text-slate-400 uppercase font-mono text-[11px] sm:text-[10px]">
                     <tr>
                       <th className="py-3 px-3">Franchise</th>
                       <th className="py-3 px-2 text-center">Grade</th>
@@ -848,7 +919,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                         >
                           <td className="py-2.5 px-3">
                             <div className="flex items-center gap-2">
-                              <span className="text-slate-500 text-[10px] w-4">{idx + 1}</span>
+                              <span className="text-slate-500 text-[11px] sm:text-[10px] w-4">{idx + 1}</span>
                               <TeamLogo team={tm.team} size="xs" />
                               <span className="font-bold text-white font-sans">{tm.team}</span>
                               <span className="text-[11px] text-slate-400 hidden sm:inline font-sans truncate">
@@ -859,7 +930,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
 
                           <td className="py-2.5 px-2 text-center">
                             <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              className={`px-2 py-0.5 rounded text-[11px] sm:text-[10px] font-bold ${
                                 tm.grade.startsWith('A')
                                   ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                                   : tm.grade.startsWith('B')
@@ -928,14 +999,14 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                   {/* Stat Metrics Grid */}
                   <div className="grid grid-cols-3 gap-2 text-center text-xs">
                     <div className="bg-surface p-2.5 rounded-xl border border-slate-800/80">
-                      <span className="text-[10px] text-slate-400 block font-mono">Baseline Wins</span>
+                      <span className="text-[11px] sm:text-[10px] text-slate-400 block font-mono">Baseline Wins</span>
                       <span className="font-mono font-bold text-slate-300 text-sm">
                         {activeTeamDetail.baseline_wins}
                       </span>
                     </div>
 
                     <div className="bg-surface p-2.5 rounded-xl border border-slate-800/80">
-                      <span className="text-[10px] text-slate-400 block font-mono">Net Win Delta</span>
+                      <span className="text-[11px] sm:text-[10px] text-slate-400 block font-mono">Net Win Delta</span>
                       <span
                         className={`font-mono font-bold text-sm ${
                           activeTeamDetail.net_wins_change >= 0 ? 'text-emerald-400' : 'text-rose-400'
@@ -948,7 +1019,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                     </div>
 
                     <div className="bg-surface p-2.5 rounded-xl border border-slate-800/80">
-                      <span className="text-[10px] text-slate-400 block font-mono">Continuity</span>
+                      <span className="text-[11px] sm:text-[10px] text-slate-400 block font-mono">Continuity</span>
                       <span className="font-mono font-bold text-indigo-300 text-sm">
                         {Math.round(activeTeamDetail.roster_continuity_pct * 100)}%
                       </span>
@@ -957,7 +1028,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
 
                   {/* Offseason Verdict */}
                   <div className="bg-surface/70 border border-slate-800/80 rounded-xl p-3.5 space-y-1.5">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+                    <div className="text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
                       Analytical Verdict
                     </div>
                     <p className="text-xs text-slate-200 leading-relaxed font-sans">
@@ -967,7 +1038,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
 
                   {/* Incoming Additions */}
                   <div className="space-y-2">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 font-mono flex items-center justify-between">
+                    <div className="text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-emerald-400 font-mono flex items-center justify-between">
                       <span>Additions ({activeTeamDetail.additions.length})</span>
                       <span className="text-slate-500">BPM</span>
                     </div>
@@ -990,7 +1061,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
 
                   {/* Departures */}
                   <div className="space-y-2">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400 font-mono flex items-center justify-between">
+                    <div className="text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-rose-400 font-mono flex items-center justify-between">
                       <span>Departures ({activeTeamDetail.departures.length})</span>
                       <span className="text-slate-500">BPM</span>
                     </div>
@@ -1014,7 +1085,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                   {/* Draft Picks */}
                   {activeTeamDetail.draft_picks.length > 0 && (
                     <div className="space-y-2 pt-2 border-t border-slate-800">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 font-mono">
+                      <div className="text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-indigo-400 font-mono">
                         Draft Capital Added
                       </div>
                       <div className="space-y-1.5">
@@ -1057,6 +1128,9 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
               rotation, weights player BPM contributions, and propagates net margin shifts through the calibrated{' '}
               <span className="font-mono text-amber-400">MARGIN_SIGMA = 11.8</span> model.
             </p>
+            {allPlayersLoading && (
+              <p className="text-xs text-slate-500">Loading full roster data&hellip;</p>
+            )}
           </div>
 
           {/* Trade Setup Controls Grid */}
@@ -1083,7 +1157,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 </div>
 
                 <div className="text-right">
-                  <span className="text-[10px] text-slate-400 font-mono block">Baseline Proj</span>
+                  <span className="text-[11px] sm:text-[10px] text-slate-400 font-mono block">Baseline Proj</span>
                   <span className="font-mono font-bold text-white text-sm">
                     {sandboxCalculation.teamA.baseWins} Wins
                   </span>
@@ -1219,7 +1293,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 </div>
 
                 <div className="text-right">
-                  <span className="text-[10px] text-slate-400 font-mono block">Baseline Proj</span>
+                  <span className="text-[11px] sm:text-[10px] text-slate-400 font-mono block">Baseline Proj</span>
                   <span className="font-mono font-bold text-white text-sm">
                     {sandboxCalculation.teamB.baseWins} Wins
                   </span>
@@ -1298,13 +1372,13 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
 
                 <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                   <div className="bg-surface-raised p-2 rounded-lg">
-                    <span className="text-[10px] text-slate-400 block">Post-Trade Wins</span>
+                    <span className="text-[11px] sm:text-[10px] text-slate-400 block">Post-Trade Wins</span>
                     <span className="font-bold text-white text-sm">
                       {sandboxCalculation.teamA.newWins} Wins
                     </span>
                   </div>
                   <div className="bg-surface-raised p-2 rounded-lg">
-                    <span className="text-[10px] text-slate-400 block">Net Rating Shift</span>
+                    <span className="text-[11px] sm:text-[10px] text-slate-400 block">Net Rating Shift</span>
                     <span
                       className={`font-bold text-sm ${
                         sandboxCalculation.teamA.netRatingShift >= 0 ? 'text-emerald-400' : 'text-rose-400'
@@ -1339,13 +1413,13 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
 
                 <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                   <div className="bg-surface-raised p-2 rounded-lg">
-                    <span className="text-[10px] text-slate-400 block">Post-Trade Wins</span>
+                    <span className="text-[11px] sm:text-[10px] text-slate-400 block">Post-Trade Wins</span>
                     <span className="font-bold text-white text-sm">
                       {sandboxCalculation.teamB.newWins} Wins
                     </span>
                   </div>
                   <div className="bg-surface-raised p-2 rounded-lg">
-                    <span className="text-[10px] text-slate-400 block">Net Rating Shift</span>
+                    <span className="text-[11px] sm:text-[10px] text-slate-400 block">Net Rating Shift</span>
                     <span
                       className={`font-bold text-sm ${
                         sandboxCalculation.teamB.netRatingShift >= 0 ? 'text-emerald-400' : 'text-rose-400'
@@ -1533,7 +1607,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                         R{prospect.round || (prospect.pick <= 30 ? 1 : 2)} • PICK #{prospect.pick}
                       </span>
                       {prospect.trade_note && (
-                        <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-mono text-[10px] font-semibold flex items-center gap-1">
+                        <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-mono text-[11px] sm:text-[10px] font-semibold flex items-center gap-1">
                           <span>⇄</span>
                           <span className="truncate max-w-[160px]">{prospect.trade_note}</span>
                         </span>
@@ -1559,7 +1633,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
 
                   {/* Archetype & Upside Tier */}
                   <div className="space-y-1 bg-surface/70 p-2.5 rounded-xl border border-slate-800/80">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 font-mono block">
+                    <span className="text-[11px] sm:text-[10px] uppercase font-bold text-slate-400 font-mono block">
                       Role Archetype
                     </span>
                     <span className="font-bold text-amber-300 text-xs">{prospect.archetype}</span>
@@ -1568,24 +1642,24 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                   {/* Metrics Strip: Prior BPM & Proj MPG */}
                   <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                     <div className="bg-surface p-2 rounded-lg border border-slate-800/60">
-                      <span className="text-[10px] text-slate-400 block">Rookie BPM Prior</span>
+                      <span className="text-[11px] sm:text-[10px] text-slate-400 block">Rookie BPM Prior</span>
                       <span className="font-bold text-emerald-400">{prospect.projected_bpm_prior}</span>
                     </div>
                     <div className="bg-surface p-2 rounded-lg border border-slate-800/60">
-                      <span className="text-[10px] text-slate-400 block">Proj Minutes</span>
+                      <span className="text-[11px] sm:text-[10px] text-slate-400 block">Proj Minutes</span>
                       <span className="font-bold text-indigo-300">{prospect.projected_mpg} mpg</span>
                     </div>
                   </div>
 
                   {/* Strengths */}
                   <div className="space-y-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 font-mono block">
+                    <span className="text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-emerald-400 font-mono block">
                       Core Strengths:
                     </span>
                     <ul className="text-xs text-slate-300 space-y-0.5 font-sans">
                       {prospect.strengths.map((s, idx) => (
                         <li key={idx} className="flex items-start gap-1.5">
-                          <span className="text-emerald-400 text-[10px] mt-0.5">✓</span>
+                          <span className="text-emerald-400 text-[11px] sm:text-[10px] mt-0.5">✓</span>
                           <span>{s}</span>
                         </li>
                       ))}
@@ -1594,13 +1668,13 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
 
                   {/* Swing Skills */}
                   <div className="space-y-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 font-mono block">
+                    <span className="text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-amber-400 font-mono block">
                       Swing Skill / Risk:
                     </span>
                     <ul className="text-xs text-slate-400 space-y-0.5 font-sans">
                       {prospect.swing_skills.map((sw, idx) => (
                         <li key={idx} className="flex items-start gap-1.5">
-                          <span className="text-amber-400 text-[10px] mt-0.5">⚠</span>
+                          <span className="text-amber-400 text-[11px] sm:text-[10px] mt-0.5">⚠</span>
                           <span>{sw}</span>
                         </li>
                       ))}
@@ -1610,7 +1684,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
 
                 {/* NBA Player Comp Footnote */}
                 <div className="pt-3 border-t border-slate-800 text-xs font-mono text-slate-400">
-                  <span className="text-slate-500 block text-[10px] uppercase">Style Comp:</span>
+                  <span className="text-slate-500 block text-[11px] sm:text-[10px] uppercase">Style Comp:</span>
                   <span className="text-indigo-300 font-medium">{prospect.comp}</span>
                 </div>
               </div>

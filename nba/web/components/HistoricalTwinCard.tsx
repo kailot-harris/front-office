@@ -29,7 +29,7 @@ export const HistoricalTwinCard: React.FC<HistoricalTwinCardProps> = ({ twin, ra
             <span className="font-semibold text-sm text-zinc-100">
               {formatSeasonLabel(twin.compName) ?? twin.compName}
             </span>
-            <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-medium">
+            <span className="text-[11px] sm:text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-medium">
               {twin.position}
             </span>
           </div>

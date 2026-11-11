@@ -18,19 +18,89 @@ import {
   Sparkles,
   ArrowRightLeft,
   ShieldCheck,
+  Shuffle,
 } from 'lucide-react';
 
 interface PlayoffSeriesClientProps {
   catalog: PlayoffMatchupsCatalog;
 }
 
+const isFiniteNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
+
+// #128: deterministic seeding so the same matchup gives the same answer
+// every click, instead of a fresh `Math.random()` draw each render. Seeded
+// from a hash of both team IDs + series length (+ an explicit reroll
+// counter so a user-triggered "re-roll" can still get a fresh draw on
+// demand). mulberry32 is a standard, widely-used ~10-line 32-bit PRNG.
+function mulberry32(seed: number): () => number {
+  let state = seed | 0;
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Simple deterministic string hash (djb2-ish) to turn the matchup key into
+// a 32-bit integer seed for mulberry32.
+function hashSeed(key: string): number {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) {
+    h = (Math.imul(31, h) + key.charCodeAt(i)) | 0;
+  }
+  return h;
+}
+
+/**
+ * Builds the matchup key a given pairing's seed is derived from. Exported so
+ * tests/consumers can confirm two calls for the "same matchup" really do
+ * share a seed, and that a different `rerollNonce` produces a different one.
+ */
+export function playoffSeriesSeedKey(
+  teamAAbbr: string,
+  teamBAbbr: string,
+  hcaTeam: string,
+  seriesLength: number,
+  rerollNonce: number
+): string {
+  return `${teamAAbbr}|${teamBAbbr}|${hcaTeam}|${seriesLength}|${rerollNonce}`;
+}
+
 // Client-side Monte Carlo simulator for arbitrary pairings
-function simulateClientSeries(
+export function simulateClientSeries(
   teamA: TeamPlayoffProfile,
   teamB: TeamPlayoffProfile,
   hcaTeam: string,
-  nSims = 10000
+  nSims = 10000,
+  rerollNonce = 0
 ): PlayoffSeriesMatchupResult {
+  // #111: a missing or non-numeric playoffNetRtg makes every probability
+  // NaN downstream, and `Math.random() < NaN` is always false -- so the
+  // simulator used to silently report the opponent winning every single
+  // game of the series (100%) instead of flagging missing data. Guard
+  // before any math runs and return an explicitly flagged result instead.
+  if (!isFiniteNumber(teamA?.playoffNetRtg) || !isFiniteNumber(teamB?.playoffNetRtg)) {
+    return {
+      teamA: teamA?.teamAbbr,
+      teamB: teamB?.teamAbbr,
+      hcaTeam,
+      ratingDiffRaw: 0,
+      tacticalMismatchAdjustment: 0,
+      netRatingMargin: 0,
+      winProbA: 0,
+      winProbB: 0,
+      avgGames: 0,
+      sweepProb: 0,
+      gameDistributions: [],
+      tacticalEdges: [],
+      insufficientData: true,
+      insufficientDataReason:
+        'playoffNetRtg is missing or not a finite number for one or both teams; cannot simulate.',
+    } as PlayoffSeriesMatchupResult;
+  }
+
   const rawDiff = teamA.playoffNetRtg - teamB.playoffNetRtg;
   let mismatchDelta = 0;
   const edges: { title: string; advantageTeam: string; description: string; deltaMargin: number }[] = [];
@@ -96,6 +166,9 @@ function simulateClientSeries(
   const pAHome = normalCdf((netMargin + hcaPts) / sigma);
   const pAAway = normalCdf((netMargin - hcaPts) / sigma);
 
+  const seedKey = playoffSeriesSeedKey(teamA.teamAbbr, teamB.teamAbbr, hcaTeam, 7, rerollNonce);
+  const rng = mulberry32(hashSeed(seedKey));
+
   let aWins = 0;
   const counts: Record<string, number> = {
     A_4: 0, A_5: 0, A_6: 0, A_7: 0,
@@ -113,7 +186,7 @@ function simulateClientSeries(
       const isAHome = hcaIsA ? isHcaHome : !isHcaHome;
       const probA = isAHome ? pAHome : pAAway;
 
-      if (Math.random() < probA) {
+      if (rng() < probA) {
         wA++;
       } else {
         wB++;
@@ -167,6 +240,10 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
   const [teamACode, setTeamACode] = useState<string>('OKC');
   const [teamBCode, setTeamBCode] = useState<string>('BOS');
   const [hcaTeam, setHcaTeam] = useState<string>('OKC');
+  // #128: bumped by the "Re-roll" control to get a fresh seeded draw for the
+  // same matchup. Left at 0 otherwise, so the same matchup always reproduces
+  // the same result until the user explicitly asks for a new one.
+  const [rerollNonce, setRerollNonce] = useState<number>(0);
 
   const profileA = catalog.teams[teamACode] || teamList[0];
   const profileB = catalog.teams[teamBCode] || teamList[1];
@@ -194,14 +271,24 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
     }
 
     // Run client-side simulation
-    return simulateClientSeries(profileA, profileB, hcaTeam);
-  }, [catalog.sampleMatchups, teamACode, teamBCode, hcaTeam, profileA, profileB]);
+    return simulateClientSeries(profileA, profileB, hcaTeam, 10000, rerollNonce);
+  }, [catalog.sampleMatchups, teamACode, teamBCode, hcaTeam, profileA, profileB, rerollNonce]);
+
+  // #128: this matchup used a live simulation (not a precomputed sample), so
+  // the Re-roll control actually changes the seed/result here.
+  const isLiveSimulation = !catalog.sampleMatchups.some(
+    (m) =>
+      (m.teamA === teamACode && m.teamB === teamBCode && m.hcaTeam === hcaTeam) ||
+      (m.teamA === teamBCode && m.teamB === teamACode && m.hcaTeam === hcaTeam)
+  );
 
   const swapTeams = () => {
     setTeamACode(teamBCode);
     setTeamBCode(teamACode);
     setHcaTeam(teamBCode);
   };
+
+  const reroll = () => setRerollNonce((n) => n + 1);
 
   const marqueePresets = [
     { label: 'Finals Preview', a: 'OKC', b: 'BOS', hca: 'OKC' },
@@ -291,7 +378,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
           <div className="flex items-center gap-3 min-w-0">
             <TeamLogo team={teamACode} size="lg" />
             <div className="min-w-0">
-              <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider block font-mono">
+              <span className="text-[11px] sm:text-[10px] text-amber-400 font-bold uppercase tracking-wider block font-mono">
                 Team A (Designated)
               </span>
               <select
@@ -315,7 +402,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
             </div>
           </div>
           {hcaTeam === teamACode && (
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold whitespace-nowrap">
+            <span className="text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold whitespace-nowrap">
               Home Court (2-2-1-1-1)
             </span>
           )}
@@ -339,6 +426,23 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               {hcaTeam}
             </button>
           </div>
+          <button
+            onClick={reroll}
+            disabled={!isLiveSimulation}
+            title={
+              isLiveSimulation
+                ? 'Re-roll: draw a fresh random result for this matchup'
+                : 'This matchup uses a precomputed sample; re-roll only affects live-simulated matchups'
+            }
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition-all ${
+              isLiveSimulation
+                ? 'bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/20 cursor-pointer'
+                : 'bg-slate-800/50 text-slate-500 border border-slate-800 cursor-not-allowed'
+            }`}
+          >
+            <Shuffle className="w-3 h-3" />
+            Re-roll
+          </button>
         </div>
 
         {/* Team B Picker (5 cols) */}
@@ -346,7 +450,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
           <div className="flex items-center gap-3 min-w-0">
             <TeamLogo team={teamBCode} size="lg" />
             <div className="min-w-0">
-              <span className="text-[10px] text-sky-400 font-bold uppercase tracking-wider block font-mono">
+              <span className="text-[11px] sm:text-[10px] text-sky-400 font-bold uppercase tracking-wider block font-mono">
                 Team B (Opponent)
               </span>
               <select
@@ -370,7 +474,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
             </div>
           </div>
           {hcaTeam === teamBCode && (
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold whitespace-nowrap">
+            <span className="text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold whitespace-nowrap">
               Home Court (2-2-1-1-1)
             </span>
           )}
@@ -381,34 +485,47 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Series Outcome Probabilities Ring (5 cols) */}
         <div className="lg:col-span-5 bg-surface-raised/80 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
-              <div className="flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-amber-400" />
-                <h3 className="text-sm font-bold text-white tracking-tight">
-                  10,000-Sim Series Probabilities
-                </h3>
-              </div>
-              <span className="text-xs font-mono font-bold text-amber-400">
-                {teamACode} {(matchupResult.winProbA * 100).toFixed(1)}%
-              </span>
+          {matchupResult.insufficientData ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 py-8">
+              <ShieldCheck className="w-6 h-6 text-amber-400" />
+              <h3 className="text-sm font-bold text-white tracking-tight">Insufficient Data</h3>
+              <p className="text-xs text-slate-400 max-w-xs">
+                {matchupResult.insufficientDataReason ||
+                  'One or both teams are missing a playoff net rating, so this matchup cannot be simulated.'}
+              </p>
             </div>
+          ) : (
+            <>
+              <div>
+                <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-amber-400" />
+                    <h3 className="text-sm font-bold text-white tracking-tight">
+                      10,000-Sim Series Probabilities
+                    </h3>
+                  </div>
+                  <span className="text-xs font-mono font-bold text-amber-400">
+                    {teamACode} {(matchupResult.winProbA * 100).toFixed(1)}%
+                  </span>
+                </div>
 
-            <SeriesProbRing
-              teamA={teamACode}
-              teamB={teamBCode}
-              winProbA={matchupResult.winProbA}
-              winProbB={matchupResult.winProbB}
-              avgGames={matchupResult.avgGames}
-              gameDistributions={matchupResult.gameDistributions}
-              size={230}
-            />
-          </div>
+                <SeriesProbRing
+                  teamA={teamACode}
+                  teamB={teamBCode}
+                  winProbA={matchupResult.winProbA}
+                  winProbB={matchupResult.winProbB}
+                  avgGames={matchupResult.avgGames}
+                  gameDistributions={matchupResult.gameDistributions}
+                  size={230}
+                />
+              </div>
 
-          <div className="pt-3 border-t border-slate-800/80 mt-4 flex items-center justify-between text-xs font-mono">
-            <span className="text-slate-400">Sweep Probability:</span>
-            <span className="font-bold text-white">{matchupResult.sweepProb}%</span>
-          </div>
+              <div className="pt-3 border-t border-slate-800/80 mt-4 flex items-center justify-between text-xs font-mono">
+                <span className="text-slate-400">Sweep Probability:</span>
+                <span className="font-bold text-white">{matchupResult.sweepProb}%</span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Right: Tactical Mismatch Analysis (7 cols) */}
@@ -448,11 +565,11 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
 
           <div className="flex items-center gap-4 text-xs font-mono">
             <div className="text-right">
-              <span className="text-slate-400 block text-[10px]">Top-3 Boost ({teamACode})</span>
+              <span className="text-slate-400 block text-[11px] sm:text-[10px]">Top-3 Boost ({teamACode})</span>
               <span className="font-bold text-amber-400">+{profileA.top3TalentBump} PTS/100</span>
             </div>
             <div className="text-right">
-              <span className="text-slate-400 block text-[10px]">Top-3 Boost ({teamBCode})</span>
+              <span className="text-slate-400 block text-[11px] sm:text-[10px]">Top-3 Boost ({teamBCode})</span>
               <span className="font-bold text-sky-400">+{profileB.top3TalentBump} PTS/100</span>
             </div>
           </div>
@@ -477,15 +594,15 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-slate-800 text-slate-300">
+                      <span className="text-[11px] sm:text-[10px] font-mono px-1 py-0.2 rounded bg-slate-800 text-slate-300">
                         {p.position}
                       </span>
                       <span className="font-semibold text-white truncate">{p.playerName}</span>
-                      <span className="text-[9px] text-slate-400 italic hidden sm:inline">
+                      <span className="text-[11px] sm:text-[9px] text-slate-400 italic hidden sm:inline">
                         • {p.role}
                       </span>
                     </div>
-                    <span className="text-[10px] text-slate-400 font-mono mt-0.5 block">
+                    <span className="text-[11px] sm:text-[10px] text-slate-400 font-mono mt-0.5 block">
                       {p.pts} PPG • {p.reb} RPG • {p.ast} APG • {p.praZscore > 0 ? `+${p.praZscore}` : p.praZscore} PRA z
                     </span>
                   </div>
@@ -514,15 +631,15 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-slate-800 text-slate-300">
+                      <span className="text-[11px] sm:text-[10px] font-mono px-1 py-0.2 rounded bg-slate-800 text-slate-300">
                         {p.position}
                       </span>
                       <span className="font-semibold text-white truncate">{p.playerName}</span>
-                      <span className="text-[9px] text-slate-400 italic hidden sm:inline">
+                      <span className="text-[11px] sm:text-[9px] text-slate-400 italic hidden sm:inline">
                         • {p.role}
                       </span>
                     </div>
-                    <span className="text-[10px] text-slate-400 font-mono mt-0.5 block">
+                    <span className="text-[11px] sm:text-[10px] text-slate-400 font-mono mt-0.5 block">
                       {p.pts} PPG • {p.reb} RPG • {p.ast} APG • {p.praZscore > 0 ? `+${p.praZscore}` : p.praZscore} PRA z
                     </span>
                   </div>

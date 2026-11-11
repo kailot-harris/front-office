@@ -9,7 +9,7 @@ export interface RouteSpec {
 export const ROUTES: RouteSpec[] = [
   {
     path: '/',
-    title: 'NBA Season Projections',
+    title: 'Season Projections & Standings',
     heading: 'NBA Season Projections',
     dataMarkers: ['1,000-season Monte Carlo simulation', 'Total Simulated Games'],
     expectsSearch: false,
@@ -97,7 +97,7 @@ export const ROUTES: RouteSpec[] = [
   },
   {
     path: '/diagnostics',
-    title: 'Modeling Analysis & Diagnostics',
+    title: 'Modeling Diagnostics & Calibration',
     heading: 'Modeling Diagnostics',
     dataMarkers: ['Empirical reliability curves', 'Brier score'],
     expectsSearch: false,
