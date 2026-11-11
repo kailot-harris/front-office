@@ -192,6 +192,8 @@ elo_min <- round(min(full_elo_df$elo) - 10)
 elo_max <- round(max(full_elo_df$elo) + 10)
 mid_elo <- 1500
 
+TEAM_LOGOS <- viz_logo_map(script = "tools/gif_elo_heatmap.R")
+
 for (s in all_steps) {
   # All cells exist up to max_step, but only revealed (or highlighted) up to current step s
   revealed_df <- full_elo_df %>% filter(step <= s)
@@ -200,10 +202,12 @@ for (s in all_steps) {
   p_frame <- ggplot(revealed_df, aes(x = step, y = team, fill = elo)) +
     geom_tile(color = NBA_COLORS$panel, linewidth = 0.5) +
     geom_text(aes(label = round(elo)), color = NBA_COLORS$text, size = 2.4, fontface = "bold") +
+    ggimage::geom_image(data = dplyr::distinct(full_elo_df, team), aes(x = -1.05, y = team, image = TEAM_LOGOS[as.character(team)]),
+                        size = 0.027, by = "height", inherit.aes = FALSE) +
     scale_x_continuous(
       breaks = all_steps,
       labels = step_labels,
-      limits = c(-0.5, max_step + 0.5),
+      limits = c(-1.6, max_step + 0.5),
       expand = c(0, 0)
     ) +
     scale_fill_gradient2(
@@ -217,7 +221,7 @@ for (s in all_steps) {
     theme_nba_dark(base_size = 10) +
     theme(
       axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
-      axis.text.y = element_text(size = 7.5, face = "bold"),
+      axis.text.y = element_blank(), axis.ticks.y = element_blank(),
       panel.grid = element_blank(),
       legend.position = "right"
     ) +

@@ -189,6 +189,8 @@ x_max <- ceiling(max(quad_df$pace) + 2)
 y_min <- floor(min(quad_df$net_rtg) - 3)
 y_max <- ceiling(max(quad_df$net_rtg) + 3)
 
+TEAM_LOGOS <- viz_logo_map(script = "tools/gif_pace_efficiency_quadrant.R")
+
 for (s in all_steps) {
   frame_data <- quad_df %>% filter(step == s)
   cur_label <- frame_data$date_label[1]
@@ -209,8 +211,7 @@ for (s in all_steps) {
     annotate("text", x = x_min + 0.5, y = y_min + 0.8, label = "Grind & Rebuild (Slow Pace / Low Net)",
              color = NBA_COLORS$negative, fontface = "bold", size = 3.2, hjust = 0) +
     # Team bubbles
-    geom_point(aes(fill = team), shape = 21, size = 5.2, color = NBA_COLORS$text, stroke = 1.1) +
-    geom_text(aes(label = team), color = NBA_COLORS$text, vjust = -1.15, fontface = "bold", size = 2.8) +
+    ggimage::geom_image(aes(image = TEAM_LOGOS[team]), size = 0.055, by = "width") +
     scale_x_continuous(limits = c(x_min, x_max), breaks = scales::pretty_breaks(n = 6)) +
     scale_y_continuous(limits = c(y_min, y_max), breaks = scales::pretty_breaks(n = 7)) +
     scale_fill_manual(values = team_colors, guide = "none") +

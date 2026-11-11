@@ -192,6 +192,8 @@ frame_files <- character(0)
 max_wins <- max(race_df$cum_wins)
 y_max <- max(max_wins + 1L, 4L)
 
+TEAM_LOGOS <- viz_logo_map(script = "tools/gif_division_standings_race.R")
+
 for (s in all_steps) {
   frame_lines <- race_df %>% filter(step <= s)
   frame_pts   <- race_df %>% filter(step == s)
@@ -202,8 +204,8 @@ for (s in all_steps) {
     geom_line(linewidth = 1.05, alpha = 0.85) +
     geom_point(data = frame_pts, aes(x = step, y = cum_wins, fill = team),
                shape = 21, size = 3.0, color = NBA_COLORS$text, stroke = 1.0) +
-    geom_text(data = frame_pts, aes(x = step + 0.15, y = cum_wins, label = team),
-              hjust = 0, vjust = 0.4, color = NBA_COLORS$text, fontface = "bold", size = 2.4) +
+    ggimage::geom_image(data = frame_pts, aes(x = step + 0.5, y = cum_wins, image = TEAM_LOGOS[team]),
+               size = 0.085, by = "height", inherit.aes = FALSE) +
     scale_x_continuous(breaks = all_steps, labels = step_labels, limits = c(-0.2, max_step + 0.95)) +
     scale_y_continuous(breaks = seq(0, y_max, by = 2), limits = c(-0.2, y_max + 0.5)) +
     scale_color_manual(values = team_colors, guide = "none") +

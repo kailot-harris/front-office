@@ -172,6 +172,8 @@ x_max <- max(race_df$cum_margin) + 5
 if (x_min > -10) x_min <- -10
 if (x_max < 10) x_max <- 10
 
+TEAM_LOGOS <- viz_logo_map(script = "tools/gif_turnover_margin_race.R")
+
 for (s in active_steps) {
   frame_data <- race_df %>%
     filter(step == s) %>%
@@ -186,6 +188,7 @@ for (s in active_steps) {
   p_frame <- ggplot(frame_data, aes(x = cum_margin, y = reorder(team, bar_order), fill = team)) +
     geom_vline(xintercept = 0, color = NBA_COLORS$grid, linewidth = 0.8, linetype = "dashed") +
     geom_col(width = 0.75, alpha = 0.9, color = NBA_COLORS$border) +
+    ggimage::geom_image(aes(x = x_min - 0.035 * (x_max - x_min), image = TEAM_LOGOS[team]), size = 0.027, by = "height") +
     geom_text(
       aes(
         x = ifelse(cum_margin >= 0, cum_margin + 0.4, cum_margin - 0.4),
@@ -196,18 +199,18 @@ for (s in active_steps) {
       size = 2.6,
       fontface = "bold"
     ) +
-    scale_x_continuous(limits = c(x_min, x_max), breaks = scales::pretty_breaks(n = 6)) +
+    scale_x_continuous(limits = c(x_min - 0.07 * (x_max - x_min), x_max), breaks = scales::pretty_breaks(n = 6)) +
     scale_fill_manual(values = team_colors, guide = "none") +
     theme_nba_dark(base_size = 10) +
     theme(
-      axis.text.y = element_text(size = 7.5, face = "bold"),
+      axis.text.y = element_blank(), axis.ticks.y = element_blank(),
       panel.grid.major.y = element_blank()
     ) +
     labs(
       title = "NBA Turnover Differential & Ball Security Margin Race",
       subtitle = sprintf("Cumulative Turnover Margin (Forced Opponent TOVs minus Committed TOVs) through %s", cur_label),
       x = "Cumulative Turnover Margin (+/-)",
-      y = "NBA Franchise",
+      y = NULL,
       caption = "Positive indicates more opponent turnovers forced than given"
     )
 

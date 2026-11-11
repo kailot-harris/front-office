@@ -190,6 +190,8 @@ dir.create(tmp_frame_dir, recursive = TRUE)
 frame_files <- character(0)
 max_step <- max(all_steps)
 
+TEAM_LOGOS <- viz_logo_map(script = "tools/gif_elo_rank_bump.R")
+
 for (s in all_steps) {
   frame_lines <- hist_df %>% filter(step <= s)
   frame_pts   <- hist_df %>% filter(step == s)
@@ -200,8 +202,8 @@ for (s in all_steps) {
     geom_line(linewidth = 1.05, alpha = 0.85) +
     geom_point(data = frame_pts, aes(x = step, y = rank, fill = team),
                shape = 21, size = 3.6, color = NBA_COLORS$text, stroke = 1.1) +
-    geom_text(data = frame_pts, aes(x = step + 0.12, y = rank, label = team),
-              hjust = 0, vjust = 0.35, color = NBA_COLORS$text, fontface = "bold", size = 2.7) +
+    ggimage::geom_image(data = frame_pts, aes(x = step + 0.38, y = rank, image = TEAM_LOGOS[team]),
+               size = 0.031, by = "height", inherit.aes = FALSE) +
     scale_y_reverse(breaks = c(1, 5, 10, 15, 20, 25, 30), limits = c(30.6, 0.4)) +
     scale_x_continuous(breaks = all_steps, labels = step_labels, limits = c(-0.3, max_step + 0.8)) +
     scale_color_manual(values = team_colors, guide = "none") +
