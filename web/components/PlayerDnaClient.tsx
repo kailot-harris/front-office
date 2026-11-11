@@ -8,6 +8,8 @@ import { DnaManifoldScatter } from './DnaManifoldScatter';
 import { Search, Dna, Activity, Crosshair, BarChart3, ChevronRight } from 'lucide-react';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
 import { SEASON_SOURCES } from '@/lib/season';
+import { HowToReadDisclosure } from '@/components/HowToReadDisclosure';
+import { GlossaryTerm } from '@/components/GlossaryTerm';
 
 interface PlayerDnaClientProps {
   initialProfiles: PlayerDnaProfile[];
@@ -55,6 +57,12 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
           </p>
         </div>
       </div>
+
+      <HowToReadDisclosure pageKey="player-dna">
+        Each player&rsquo;s 16-D skill vector is projected onto a shared <GlossaryTerm term="manifold" /> and
+        matched by cosine similarity to find historical &ldquo;twins&rdquo; with the closest stylistic
+        fingerprint, not necessarily the closest box-score stats.
+      </HowToReadDisclosure>
 
       {/* Main Grid: Left Directory / Right Focus Profile */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -107,7 +115,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-sm">{player.playerName}</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">
+                      <span className="text-[11px] sm:text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">
                         {player.team} · {player.position}
                       </span>
                     </div>
@@ -118,7 +126,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
                   <div className="flex items-center gap-2">
                     <div className="text-right">
                       <div className="text-xs font-bold text-sky-400">{player.overallRating}</div>
-                      <div className="text-[9px] text-zinc-500 uppercase">Rating</div>
+                      <div className="text-[11px] sm:text-[9px] text-zinc-500 uppercase">Rating</div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-zinc-500" />
                   </div>
@@ -189,7 +197,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
                   <Activity className="w-3.5 h-3.5 text-sky-400" />
                   Top Historical Stylistic Twins (Cosine Metric)
                 </h3>
-                <span className="text-[10px] text-zinc-500">1990–2025 Era</span>
+                <span className="text-[11px] sm:text-[10px] text-zinc-500">1990–2025 Era</span>
               </div>
               <div className="space-y-2">
                 {selectedPlayer.historicalTwins.map((twin, idx) => (

@@ -121,9 +121,9 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
             <span className="text-[11px] text-slate-400 font-medium block truncate">Total League Tax Revenue</span>
             <div className="flex items-baseline gap-1.5 mt-0.5">
               <span className="font-mono text-base font-bold text-white">${initialData.totalLeagueTaxRevenue}M</span>
-              <span className="text-[10px] text-slate-500 font-mono">({initialData.taxTeamCount} teams)</span>
+              <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">({initialData.taxTeamCount} teams)</span>
             </div>
-            <span className="text-[10px] text-slate-500 font-mono">Avg Payroll: ${initialData.averagePayroll}M</span>
+            <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">Avg Payroll: ${initialData.averagePayroll}M</span>
           </div>
         </div>
 
@@ -136,7 +136,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
             <div className="flex items-baseline gap-1.5 mt-0.5">
               <span className="font-mono text-base font-bold text-rose-400">{initialData.secondApronTeamCount} Franchises</span>
             </div>
-            <span className="text-[10px] text-slate-500 font-mono">Frozen 7-yr picks & no aggregation</span>
+            <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">Frozen 7-yr picks & no aggregation</span>
           </div>
         </div>
 
@@ -149,7 +149,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
             <div className="flex items-baseline gap-1.5 mt-0.5">
               <span className="font-mono text-base font-bold text-emerald-400">{initialData.capRoomTeamCount} Franchises</span>
             </div>
-            <span className="text-[10px] text-slate-500 font-mono">Sub-${initialData.salaryCap}M flexible payrolls</span>
+            <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">Sub-${initialData.salaryCap}M flexible payrolls</span>
           </div>
         </div>
 
@@ -161,9 +161,9 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
             <span className="text-[11px] text-slate-400 font-medium block truncate">Top Tax Bill: {topTaxTeam?.teamAbbr}</span>
             <div className="flex items-baseline gap-1.5 mt-0.5">
               <span className="font-mono text-base font-bold text-amber-400">${topTaxTeam?.luxuryTaxBill}M</span>
-              <span className="text-[10px] text-slate-500 font-mono">Tax</span>
+              <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">Tax</span>
             </div>
-            <span className="text-[10px] text-slate-500 font-mono">Total: ${topTaxTeam?.totalFinancialCommitment}M</span>
+            <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">Total: ${topTaxTeam?.totalFinancialCommitment}M</span>
           </div>
         </div>
       </div>
@@ -223,12 +223,12 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                         <span className="font-bold text-white text-xs truncate">
                           {t.teamName}
                         </span>
-                        <span className="font-mono text-[10px] text-slate-400">
+                        <span className="font-mono text-[11px] sm:text-[10px] text-slate-400">
                           {t.teamAbbr}
                         </span>
                       </div>
                       <span
-                        className={`text-[9px] font-mono px-1.5 py-0.2 rounded border font-semibold inline-block mt-0.5 ${getTierBadge(
+                        className={`text-[11px] sm:text-[9px] font-mono px-1.5 py-0.2 rounded border font-semibold inline-block mt-0.5 ${getTierBadge(
                           t.cbaTier
                         )}`}
                       >
@@ -239,14 +239,14 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
 
                   <div className="flex items-center gap-4 flex-shrink-0 text-right font-mono">
                     <div>
-                      <span className="text-[10px] text-slate-400 block font-sans">Payroll</span>
+                      <span className="text-[11px] sm:text-[10px] text-slate-400 block font-sans">Payroll</span>
                       <span className="text-xs font-bold text-white">
                         {money(t.totalPayroll2026)}
                       </span>
                     </div>
 
                     <div className="min-w-[60px]">
-                      <span className="text-[10px] text-slate-400 block font-sans">Tax Bill</span>
+                      <span className="text-[11px] sm:text-[10px] text-slate-400 block font-sans">Tax Bill</span>
                       <span
                         className={`text-xs font-bold ${
                           t.luxuryTaxBill > 0 ? 'text-amber-400' : 'text-slate-600'
@@ -280,7 +280,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                     <h3 className="text-base font-extrabold text-white tracking-tight flex items-center gap-2">
                       <span>{selectedTeam.teamName} Financial Dossier</span>
                       {selectedTeam.isRepeaterTax && (
-                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
+                        <span className="text-[11px] sm:text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
                           REPEATER
                         </span>
                       )}

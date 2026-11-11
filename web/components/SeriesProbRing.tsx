@@ -53,7 +53,7 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
   return (
     <div ref={containerRef} className="flex flex-col items-center select-none">
       <div className="w-full flex items-center justify-between mb-1">
-        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">
+        <span className="text-[11px] sm:text-[10px] font-bold text-slate-300 uppercase tracking-wider">
           {teamA} vs {teamB} — Series Probabilities
         </span>
         <button
@@ -106,11 +106,11 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
 
         {/* Center Badge */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Series Length</span>
+          <span className="text-[11px] sm:text-[10px] text-slate-400 uppercase tracking-wider font-bold">Series Length</span>
           <span className="font-mono text-2xl font-black text-white">{avgGames}</span>
-          <span className="text-[10px] font-mono text-slate-400">Avg Games</span>
+          <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">Avg Games</span>
           {mostLikely && (
-            <span className="mt-1 text-[9px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-amber-400 border border-slate-700 font-bold">
+            <span className="mt-1 text-[11px] sm:text-[9px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-amber-400 border border-slate-700 font-bold">
               Peak: {mostLikely.winner} in {mostLikely.games} ({mostLikely.probPct}%)
             </span>
           )}
@@ -140,13 +140,13 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
 
       {/* Game-by-Game Probabilities Breakdown */}
       <div className="w-full mt-4 space-y-2 pt-3 border-t border-slate-800/80">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block text-center">
+        <span className="text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 block text-center">
           Exact Outcome Distribution (10,000 Sims)
         </span>
         <div className="grid grid-cols-2 gap-2 text-xs font-mono">
           {/* Team A */}
           <div className="space-y-1 p-2 rounded-lg bg-surface/60 border border-slate-800/80">
-            <span className="text-[10px] text-amber-400 font-bold block mb-1">{teamA} Wins</span>
+            <span className="text-[11px] sm:text-[10px] text-amber-400 font-bold block mb-1">{teamA} Wins</span>
             {distA.map((d) => (
               <div key={`a-${d.games}`} className="flex items-center justify-between text-[11px]">
                 <span className="text-slate-400">in {d.games} G:</span>
@@ -157,7 +157,7 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
 
           {/* Team B */}
           <div className="space-y-1 p-2 rounded-lg bg-surface/60 border border-slate-800/80">
-            <span className="text-[10px] text-sky-400 font-bold block mb-1">{teamB} Wins</span>
+            <span className="text-[11px] sm:text-[10px] text-sky-400 font-bold block mb-1">{teamB} Wins</span>
             {distB.map((d) => (
               <div key={`b-${d.games}`} className="flex items-center justify-between text-[11px]">
                 <span className="text-slate-400">in {d.games} G:</span>

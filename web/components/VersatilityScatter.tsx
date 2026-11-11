@@ -53,7 +53,7 @@ export const VersatilityScatter: React.FC<VersatilityScatterProps> = ({
           </p>
         </div>
         <div className="text-right flex items-center gap-2">
-          <span className="text-[10px] font-mono bg-zinc-900 border border-zinc-800 text-sky-400 px-2 py-0.5 rounded">
+          <span className="text-[11px] sm:text-[10px] font-mono bg-zinc-900 border border-zinc-800 text-sky-400 px-2 py-0.5 rounded">
             N = {profiles.length} Defenders
           </span>
           <button
@@ -92,13 +92,13 @@ export const VersatilityScatter: React.FC<VersatilityScatterProps> = ({
           />
 
           {/* Quadrant Labels */}
-          <text x={width - padding - 8} y={padding + 14} textAnchor="end" className="text-[9px] fill-emerald-500/60 font-semibold uppercase">
+          <text x={width - padding - 8} y={padding + 14} textAnchor="end" className="text-[11px] sm:text-[9px] fill-emerald-500/60 font-semibold uppercase">
             Switch & Rim Unicorns
           </text>
-          <text x={padding + 8} y={padding + 14} textAnchor="start" className="text-[9px] fill-sky-500/60 font-semibold uppercase">
+          <text x={padding + 8} y={padding + 14} textAnchor="start" className="text-[11px] sm:text-[9px] fill-sky-500/60 font-semibold uppercase">
             Paint Fortresses
           </text>
-          <text x={width - padding - 8} y={height - padding - 8} textAnchor="end" className="text-[9px] fill-amber-500/60 font-semibold uppercase">
+          <text x={width - padding - 8} y={height - padding - 8} textAnchor="end" className="text-[11px] sm:text-[9px] fill-amber-500/60 font-semibold uppercase">
             Perimeter Chameleons
           </text>
 
@@ -133,7 +133,7 @@ export const VersatilityScatter: React.FC<VersatilityScatterProps> = ({
             <text
               y="-12"
               textAnchor="middle"
-              className="text-[10px] font-bold fill-rose-400 select-none pointer-events-none drop-shadow-md"
+              className="text-[11px] sm:text-[10px] font-bold fill-rose-400 select-none pointer-events-none drop-shadow-md"
             >
               {selectedProfile.playerName} ({selectedProfile.rimDfgDelta > 0 ? `+${selectedProfile.rimDfgDelta}` : selectedProfile.rimDfgDelta}%)
             </text>
