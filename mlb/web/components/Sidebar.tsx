@@ -92,7 +92,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
       label: 'Postseason & Bullpen',
       badge: '12-Team Ops',
       icon: Award,
-      desc: '12-team bracket, bullpen & +EV bets',
+      desc: '12-team bracket & bullpen leverage',
     },
     {
       href: '/matchups',
