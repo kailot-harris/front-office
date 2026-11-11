@@ -58,10 +58,7 @@ export interface PlayoffSeriesMatchupResult {
   netRatingMargin: number;
   winProbA: number;
   winProbB: number;
-  fairMlA: number;
-  fairMlB: number;
   avgGames: number;
-  spreadMinus1_5Prob: number;
   sweepProb: number;
   gameDistributions: GameOutcomeProb[];
   tacticalEdges: TacticalEdge[];
