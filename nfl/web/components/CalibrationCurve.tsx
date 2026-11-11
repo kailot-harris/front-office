@@ -83,7 +83,7 @@ export default function CalibrationCurve({ bins }: CalibrationCurveProps) {
       <div className="relative w-full aspect-[5/3.5] max-h-[380px] select-none">
         <svg
           viewBox={`0 0 ${width} ${height}`}
-          className="w-full h-full overflow-visible font-mono text-[10px]"
+          className="w-full h-full overflow-visible font-mono text-[11px] sm:text-[10px]"
         >
           {/* Grid lines */}
           {[0, 0.2, 0.4, 0.6, 0.8, 1.0].map((tick) => (

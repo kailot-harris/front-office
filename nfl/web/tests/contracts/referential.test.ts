@@ -198,14 +198,18 @@ describe('lib/teams.ts helper behaviour', () => {
     expect(() => getTeamLogoUrl(undefined as unknown as string)).not.toThrow();
   });
 
-  it('getTeamColors returns the real palette for a known team', () => {
-    expect(getTeamColors('KC')).toEqual(NFL_TEAMS_METADATA.KC.colors);
-    expect(getTeamColors('kc')).toEqual(NFL_TEAMS_METADATA.KC.colors);
+  it('getTeamColors returns the real palette for a known team, plus onDark (#133)', () => {
+    // onDark is additive (#133): the base primary/secondary/accent palette is unchanged,
+    // getTeamColors just also exposes a dark-surface-safe text/stroke variant.
+    expect(getTeamColors('KC')).toMatchObject(NFL_TEAMS_METADATA.KC.colors);
+    expect(getTeamColors('kc')).toMatchObject(NFL_TEAMS_METADATA.KC.colors);
+    expect(getTeamColors('KC').onDark).toMatch(/^#[0-9A-F]{6}$/i);
   });
 
   it('getTeamColors falls back to a neutral palette for an unknown team', () => {
     const fallback = getTeamColors('ZZZ');
-    expect(fallback).toEqual({ primary: '#10b981', secondary: '#059669', accent: '#022c22' });
+    expect(fallback).toMatchObject({ primary: '#10b981', secondary: '#059669', accent: '#022c22' });
+    expect(fallback.onDark).toBeTruthy();
     expect(getTeamColors(undefined as unknown as string)).toEqual(fallback);
   });
 

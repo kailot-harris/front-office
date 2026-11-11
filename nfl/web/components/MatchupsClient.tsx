@@ -130,8 +130,8 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                 }`}
               >
                 <span>Week {wk}</span>
-                {isActive && <span className="text-amber-400 text-[10px]">★ Active</span>}
-                {isPast && <span className="text-[10px] text-slate-500 font-normal">Final</span>}
+                {isActive && <span className="text-amber-400 text-[11px] sm:text-[10px]">★ Active</span>}
+                {isPast && <span className="text-[11px] sm:text-[10px] text-slate-500 font-normal">Final</span>}
               </button>
             );
           })}
@@ -147,7 +147,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                 <CheckCircle2 className="w-5 h-5 text-emerald-400" />
               </div>
               <div className="min-w-0">
-                <span className="text-[10px] font-mono uppercase text-slate-400 block font-semibold">
+                <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-400 block font-semibold">
                   Model Prediction Record
                 </span>
                 <span className="text-sm font-bold text-emerald-400 block truncate">
@@ -164,7 +164,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                 <Shield className="w-5 h-5 text-amber-400" />
               </div>
               <div className="min-w-0">
-                <span className="text-[10px] font-mono uppercase text-slate-400 block font-semibold">
+                <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-400 block font-semibold">
                   Rest Differential
                 </span>
                 <span className="text-sm font-bold text-white block truncate">
@@ -187,7 +187,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
               <Zap className="w-5 h-5 text-emerald-400" />
             </div>
             <div className="min-w-0">
-              <span className="text-[10px] font-mono uppercase text-slate-400 block font-semibold">
+              <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-400 block font-semibold">
                 Largest Favorite
               </span>
               <span className="text-sm font-bold text-white block truncate">
@@ -207,7 +207,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
               <Swords className="w-5 h-5 text-cyan-400" />
             </div>
             <div className="min-w-0">
-              <span className="text-[10px] font-mono uppercase text-slate-400 block font-semibold">
+              <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-400 block font-semibold">
                 Closest Projection
               </span>
               <span className="text-sm font-bold text-white block truncate">
@@ -332,7 +332,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                         <div className="flex items-center gap-2">
                           <TeamLogo team={m.away_team} size="xs" />
                           <span className="font-bold text-white">{m.away_team}</span>
-                          <span className="text-[10px] font-mono text-slate-500">
+                          <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">
                             {m.away_power_rating > 0 ? `+${m.away_power_rating.toFixed(1)}` : m.away_power_rating.toFixed(1)}
                           </span>
                         </div>
@@ -342,7 +342,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                         <div className="flex items-center gap-2">
                           <TeamLogo team={m.home_team} size="xs" />
                           <span className="font-bold text-white">{m.home_team}</span>
-                          <span className="text-[10px] font-mono text-slate-500">
+                          <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">
                             {m.home_power_rating > 0 ? `+${m.home_power_rating.toFixed(1)}` : m.home_power_rating.toFixed(1)}
                           </span>
                         </div>
@@ -362,11 +362,11 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                       <td className="py-2.5 px-3 text-center font-mono text-xs">
                         {m.is_completed ? (
                           m.prediction_correct === true ? (
-                            <span className="text-emerald-400 font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[10px]">
+                            <span className="text-emerald-400 font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[11px] sm:text-[10px]">
                               ✓ Correct
                             </span>
                           ) : m.prediction_correct === false ? (
-                            <span className="text-amber-400 font-bold px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-[10px]">
+                            <span className="text-amber-400 font-bold px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-[11px] sm:text-[10px]">
                               ✗ Upset
                             </span>
                           ) : (
@@ -397,7 +397,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                       </td>
                       <td className="py-2.5 px-3 text-center font-mono text-xs">
                         {m.key_number_flag !== 'Standard' ? (
-                          <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold text-[10px]">
+                          <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold text-[11px] sm:text-[10px]">
                             {m.key_number_flag}
                           </span>
                         ) : (

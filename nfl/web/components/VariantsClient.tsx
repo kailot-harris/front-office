@@ -50,7 +50,7 @@ export default function VariantsClient({ data }: VariantsClientProps) {
     },
     {
       id: 'market_blend',
-      name: 'Consensus Market Line Anchor',
+      name: 'Consensus Projection Anchor',
       weight: weights.market_blend,
       color: 'indigo',
       description:

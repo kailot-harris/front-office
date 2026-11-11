@@ -2,7 +2,7 @@ import { getDiagnosticsData } from '@/lib/data';
 import DiagnosticsClient from '@/components/DiagnosticsClient';
 
 export const metadata = {
-  title: 'Model Diagnostics & Calibration | NFL Analytics',
+  title: 'Model Diagnostics & Calibration',
   description: 'Out-of-sample Brier score trajectories, calibration curves, and statistical loss tracking.',
 };
 

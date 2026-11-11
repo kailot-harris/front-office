@@ -2,7 +2,7 @@ import { getSalaryCapData } from '@/lib/data';
 import SalaryCapClient from '@/components/SalaryCapClient';
 
 export const metadata = {
-  title: 'Salary Cap & Positional Allocation | NFL Analytics',
+  title: 'Salary Cap & Positional Allocation',
   description: 'NFL salary cap tracker, positional cash spending breakdown, and top 100 contracts from OverTheCap.',
 };
 

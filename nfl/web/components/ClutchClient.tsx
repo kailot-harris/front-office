@@ -382,16 +382,16 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
             </svg>
 
             {/* Axis Labels */}
-            <div className="absolute bottom-2 left-6 text-[10px] font-mono text-slate-500">
+            <div className="absolute bottom-2 left-6 text-[11px] sm:text-[10px] font-mono text-slate-500">
               ← Slower Baseline EPA (-0.35)
             </div>
-            <div className="absolute bottom-2 right-6 text-[10px] font-mono text-slate-500">
+            <div className="absolute bottom-2 right-6 text-[11px] sm:text-[10px] font-mono text-slate-500">
               Higher Baseline EPA (+0.45) →
             </div>
-            <div className="absolute top-2 left-3 text-[10px] font-mono text-emerald-400">
+            <div className="absolute top-2 left-3 text-[11px] sm:text-[10px] font-mono text-emerald-400">
               ↑ Elite Clutch EPA (+0.45)
             </div>
-            <div className="absolute bottom-6 left-3 text-[10px] font-mono text-rose-400">
+            <div className="absolute bottom-6 left-3 text-[11px] sm:text-[10px] font-mono text-rose-400">
               ↓ Lower Clutch EPA (-0.35)
             </div>
           </div>
@@ -435,7 +435,7 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
                     {selectedProfile.team} • QB
                   </span>
                   {selectedProfile.isStarter && (
-                    <span className="text-[10px] font-mono bg-accent-600/30 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded">
+                    <span className="text-[11px] sm:text-[10px] font-mono bg-accent-600/30 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded">
                       Starter
                     </span>
                   )}
@@ -686,7 +686,7 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
                           <div className="font-bold text-white flex items-center gap-1.5">
                             {p.playerName}
                             {p.isStarter && (
-                              <span className="text-[9px] font-mono bg-emerald-950 text-emerald-400 border border-emerald-800 px-1 rounded">
+                              <span className="text-[11px] sm:text-[9px] font-mono bg-emerald-950 text-emerald-400 border border-emerald-800 px-1 rounded">
                                 QB1
                               </span>
                             )}
@@ -697,7 +697,7 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
                     </td>
                     <td className="py-2.5 px-3">
                       <span
-                        className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${getArchetypeBadgeClass(
+                        className={`text-[11px] sm:text-[10px] font-semibold px-2 py-0.5 rounded border ${getArchetypeBadgeClass(
                           p.clutchArchetype
                         )}`}
                       >

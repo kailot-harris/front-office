@@ -175,7 +175,7 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs font-mono">
-                <thead className="bg-surface/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+                <thead className="bg-surface/80 text-slate-400 uppercase text-[11px] sm:text-[10px] tracking-wider border-b border-slate-800">
                   <tr>
                     <th className="px-2 py-2">Bin</th>
                     <th className="px-2 py-2 text-right">Pred</th>
@@ -258,7 +258,7 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-mono">
-            <thead className="bg-surface/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+            <thead className="bg-surface/80 text-slate-400 uppercase text-[11px] sm:text-[10px] tracking-wider border-b border-slate-800">
               <tr>
                 <th className="px-3 py-2.5">Evaluation Checkpoint</th>
                 <th className="px-3 py-2.5">Slate / Trigger Event</th>

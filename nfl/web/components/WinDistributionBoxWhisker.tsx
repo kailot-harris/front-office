@@ -136,7 +136,7 @@ export const WinDistributionBoxWhisker: React.FC<WinDistributionBoxWhiskerProps>
           {/* Team Rows */}
           <div className="space-y-2.5 pt-1">
             {/* Axis Ruler Header */}
-            <div className="grid grid-cols-12 items-center gap-2 text-[10px] font-mono text-slate-400 select-none pb-1">
+            <div className="grid grid-cols-12 items-center gap-2 text-[11px] sm:text-[10px] font-mono text-slate-400 select-none pb-1">
               <div className="col-span-4 sm:col-span-3 font-semibold uppercase tracking-wider">Franchise</div>
               <div className="col-span-8 sm:col-span-9 relative h-4">
                 {winTicks.map((tick) => (
@@ -178,11 +178,11 @@ export const WinDistributionBoxWhisker: React.FC<WinDistributionBoxWhiskerProps>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         <span className="font-bold text-xs text-slate-100 truncate">{team.team_name}</span>
-                        <span className="text-[10px] font-mono text-slate-400 font-semibold hidden md:inline">
+                        <span className="text-[11px] sm:text-[10px] font-mono text-slate-400 font-semibold hidden md:inline">
                           {team.team}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono">
+                      <div className="flex items-center gap-1.5 text-[11px] sm:text-[10px] text-slate-400 font-mono">
                         <span>{team.division}</span>
                         <span>•</span>
                         <span className="text-emerald-400 font-semibold">{mean.toFixed(1)} W</span>
@@ -242,7 +242,7 @@ export const WinDistributionBoxWhisker: React.FC<WinDistributionBoxWhiskerProps>
                     {/* Badges Floating on the Right */}
                     <div className="absolute right-0 flex items-center gap-1.5 z-30">
                       <span
-                        className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold ${
+                        className={`text-[11px] sm:text-[10px] font-mono px-1.5 py-0.5 rounded font-bold ${
                           team.playoff_prob >= 0.70
                             ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                             : team.playoff_prob >= 0.40
@@ -255,7 +255,7 @@ export const WinDistributionBoxWhisker: React.FC<WinDistributionBoxWhiskerProps>
                       </span>
                       {team.super_bowl_prob >= 0.05 && (
                         <span
-                          className="text-[10px] font-mono px-1.5 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-0.5"
+                          className="text-[11px] sm:text-[10px] font-mono px-1.5 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-0.5"
                           title="Super Bowl Win Probability"
                         >
                           <Award className="w-2.5 h-2.5" />

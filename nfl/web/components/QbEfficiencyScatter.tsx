@@ -147,28 +147,28 @@ export default function QbEfficiencyScatter({
           <div className="text-xs font-bold font-mono tracking-wider text-emerald-400/30 uppercase">
             Elite Playmakers
           </div>
-          <div className="text-[10px] text-slate-500/40 font-mono">+EPA / +CPOE</div>
+          <div className="text-[11px] sm:text-[10px] text-slate-500/40 font-mono">+EPA / +CPOE</div>
         </div>
 
         <div className="absolute top-4 left-4 text-left pointer-events-none">
           <div className="text-xs font-bold font-mono tracking-wider text-cyan-400/30 uppercase">
             Ball Placement Artists
           </div>
-          <div className="text-[10px] text-slate-500/40 font-mono">-EPA / +CPOE</div>
+          <div className="text-[11px] sm:text-[10px] text-slate-500/40 font-mono">-EPA / +CPOE</div>
         </div>
 
         <div className="absolute bottom-4 right-4 text-right pointer-events-none">
           <div className="text-xs font-bold font-mono tracking-wider text-amber-400/30 uppercase">
             Scheme & Deep Shot Drivers
           </div>
-          <div className="text-[10px] text-slate-500/40 font-mono">+EPA / -CPOE</div>
+          <div className="text-[11px] sm:text-[10px] text-slate-500/40 font-mono">+EPA / -CPOE</div>
         </div>
 
         <div className="absolute bottom-4 left-4 text-left pointer-events-none">
           <div className="text-xs font-bold font-mono tracking-wider text-rose-400/30 uppercase">
             Struggling / Low Margin
           </div>
-          <div className="text-[10px] text-slate-500/40 font-mono">-EPA / -CPOE</div>
+          <div className="text-[11px] sm:text-[10px] text-slate-500/40 font-mono">-EPA / -CPOE</div>
         </div>
 
         {/* Quadrant Divider Grid Lines */}
@@ -176,7 +176,7 @@ export default function QbEfficiencyScatter({
           className="absolute top-0 bottom-0 border-l border-dashed border-slate-700/60"
           style={{ left: `${zeroEpaX}%` }}
         >
-          <span className="absolute top-1 -translate-x-1/2 bg-surface-raised border border-slate-700 px-1.5 py-0.5 rounded text-[9px] font-mono text-slate-400">
+          <span className="absolute top-1 -translate-x-1/2 bg-surface-raised border border-slate-700 px-1.5 py-0.5 rounded text-[11px] sm:text-[9px] font-mono text-slate-400">
             0.0 EPA
           </span>
         </div>
@@ -184,7 +184,7 @@ export default function QbEfficiencyScatter({
           className="absolute left-0 right-0 border-t border-dashed border-slate-700/60"
           style={{ top: `${zeroCpoeY}%` }}
         >
-          <span className="absolute left-1 -translate-y-1/2 bg-surface-raised border border-slate-700 px-1.5 py-0.5 rounded text-[9px] font-mono text-slate-400">
+          <span className="absolute left-1 -translate-y-1/2 bg-surface-raised border border-slate-700 px-1.5 py-0.5 rounded text-[11px] sm:text-[9px] font-mono text-slate-400">
             0.0% CPOE
           </span>
         </div>
@@ -238,7 +238,7 @@ export default function QbEfficiencyScatter({
               {/* Point Label (Visible on Hover/Selected or for Tier 1 Elite) */}
               {(isHovered || isSelected || isElite) && (
                 <div
-                  className={`absolute ${labelAlignClass} mt-1 px-2 py-0.5 rounded text-[10px] font-mono whitespace-nowrap border pointer-events-none shadow-xl ${
+                  className={`absolute ${labelAlignClass} mt-1 px-2 py-0.5 rounded text-[11px] sm:text-[10px] font-mono whitespace-nowrap border pointer-events-none shadow-xl ${
                     isSelected
                       ? 'bg-accent-950 text-emerald-200 border-accent-600 z-50'
                       : isHovered
@@ -247,7 +247,7 @@ export default function QbEfficiencyScatter({
                   }`}
                 >
                   <span className="font-semibold">{qb.player_name.split(' ').pop()}</span>
-                  <span className="ml-1 opacity-80 text-[9px]">
+                  <span className="ml-1 opacity-80 text-[11px] sm:text-[9px]">
                     ({qb.off_epa_roll > 0 ? '+' : ''}
                     {qb.off_epa_roll.toFixed(2)})
                   </span>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { TeamEpaProfile } from '@/lib/types';
 import { EpaQuadrantScatter } from '@/components/EpaQuadrantScatter';
 import { TeamLogo } from '@/components/TeamLogo';
@@ -43,6 +43,25 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams, generatedAt }) 
   const [sortBy, setSortBy] = useState<EpaSortField>('net_epa_per_play');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedTeam, setSelectedTeam] = useState<TeamEpaProfile | null>(null);
+  const [showScrollHint, setShowScrollHint] = useState(false);
+  const tableScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const updateScrollHint = useCallback(() => {
+    const el = tableScrollRef.current;
+    if (!el) return;
+    const hasMoreToScroll = el.scrollWidth - el.clientWidth - el.scrollLeft > 4;
+    setShowScrollHint(hasMoreToScroll);
+  }, []);
+
+  const tableScrollContainerRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      tableScrollRef.current = el;
+      if (el) {
+        setShowScrollHint(el.scrollWidth - el.clientWidth > 4);
+      }
+    },
+    []
+  );
 
   const filteredTeams = useMemo(() => {
     return teams
@@ -277,165 +296,178 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams, generatedAt }) 
             <Download className="w-3.5 h-3.5" />
           </button>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-surface/90 text-[11px] font-mono uppercase tracking-wider text-slate-400 border-b border-slate-800">
-              <tr>
-                <th
-                  onClick={() => handleSort('team')}
-                  className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span>Franchise</span>
-                    {renderSortIndicator('team')}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('division')}
-                  className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span>Division</span>
-                    {renderSortIndicator('division')}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('net_epa_per_play')}
-                  className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
-                >
-                  <div className="flex items-center justify-end gap-1.5">
-                    <span>Net EPA/Play</span>
-                    {renderSortIndicator('net_epa_per_play')}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('off_epa_per_play')}
-                  className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
-                >
-                  <div className="flex items-center justify-end gap-1.5">
-                    <span>Off EPA</span>
-                    {renderSortIndicator('off_epa_per_play')}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('def_epa_per_play')}
-                  className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
-                >
-                  <div className="flex items-center justify-end gap-1.5">
-                    <span>Def EPA Allowed</span>
-                    {renderSortIndicator('def_epa_per_play')}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('off_success_rate')}
-                  className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
-                >
-                  <div className="flex items-center justify-end gap-1.5">
-                    <span>Success %</span>
-                    {renderSortIndicator('off_success_rate')}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('off_cpoe')}
-                  className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
-                >
-                  <div className="flex items-center justify-end gap-1.5">
-                    <span>CPOE</span>
-                    {renderSortIndicator('off_cpoe')}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('off_money_down_epa')}
-                  className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
-                >
-                  <div className="flex items-center justify-end gap-1.5">
-                    <span>3rd/4th Down EPA</span>
-                    {renderSortIndicator('off_money_down_epa')}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('off_redzone_success')}
-                  className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
-                >
-                  <div className="flex items-center justify-end gap-1.5">
-                    <span>Red Zone %</span>
-                    {renderSortIndicator('off_redzone_success')}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('off_explosive_rate')}
-                  className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
-                >
-                  <div className="flex items-center justify-end gap-1.5">
-                    <span>Explosive %</span>
-                    {renderSortIndicator('off_explosive_rate')}
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 font-sans">
-              {filteredTeams.map((t) => (
-                <tr
-                  key={t.team}
-                  onClick={() => setSelectedTeam(t)}
-                  className={`hover:bg-slate-800/40 transition-colors cursor-pointer group ${
-                    selectedTeam?.team === t.team ? 'bg-accent-950/20' : ''
-                  }`}
-                >
-                  <td className="py-2.5 px-3">
-                    <div className="flex items-center gap-2.5">
-                      <TeamLogo team={t.team} size="sm" />
-                      <div>
-                        <span className="font-bold text-white group-hover:text-emerald-400 transition-colors block">
-                          {t.team_name}
-                        </span>
-                        <span className="text-[10px] font-mono text-slate-500">
-                          {t.team}
-                        </span>
-                      </div>
+        <div className="relative">
+          <div
+            ref={tableScrollContainerRef}
+            onScroll={updateScrollHint}
+            className="overflow-x-auto"
+          >
+            <table className="w-full text-left text-xs">
+              <thead className="bg-surface/90 text-[11px] font-mono uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                <tr>
+                  <th
+                    onClick={() => handleSort('team')}
+                    className="sticky left-0 z-10 bg-surface/95 cursor-pointer py-3.5 px-3 font-semibold hover:text-white border-r border-slate-800"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Franchise</span>
+                      {renderSortIndicator('team')}
                     </div>
-                  </td>
-                  <td className="py-2.5 px-3 font-mono text-slate-400">
-                    {t.division}
-                  </td>
-                  <td className="py-2.5 px-3 text-right font-mono font-bold">
-                    <span className={t.net_epa_per_play > 0 ? 'text-emerald-400' : 'text-red-400'}>
-                      {t.net_epa_per_play > 0 ? `+${t.net_epa_per_play.toFixed(3)}` : t.net_epa_per_play.toFixed(3)}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-3 text-right font-mono">
-                    <span className={t.off_epa_per_play > 0 ? 'text-emerald-400' : 'text-red-400'}>
-                      {t.off_epa_per_play > 0 ? `+${t.off_epa_per_play.toFixed(3)}` : t.off_epa_per_play.toFixed(3)}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-3 text-right font-mono">
-                    <span className={t.def_epa_per_play < 0 ? 'text-emerald-400' : 'text-red-400'}>
-                      {t.def_epa_per_play > 0 ? `+${t.def_epa_per_play.toFixed(3)}` : t.def_epa_per_play.toFixed(3)}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-3 text-right font-mono text-white">
-                    {t.off_success_rate.toFixed(1)}%
-                  </td>
-                  <td className="py-2.5 px-3 text-right font-mono font-bold">
-                    <span className={t.off_cpoe > 0 ? 'text-emerald-400' : t.off_cpoe < 0 ? 'text-amber-400' : 'text-slate-400'}>
-                      {t.off_cpoe > 0 ? `+${t.off_cpoe.toFixed(1)}` : t.off_cpoe.toFixed(1)}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-3 text-right font-mono">
-                    <span className={t.off_money_down_epa > 0 ? 'text-emerald-400' : 'text-red-400'}>
-                      {t.off_money_down_epa > 0 ? `+${t.off_money_down_epa.toFixed(3)}` : t.off_money_down_epa.toFixed(3)}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-3 text-right font-mono text-slate-300">
-                    {t.off_redzone_success.toFixed(1)}%
-                  </td>
-                  <td className="py-2.5 px-3 text-right font-mono text-amber-400 font-semibold">
-                    {t.off_explosive_rate.toFixed(1)}%
-                  </td>
+                  </th>
+                  <th
+                    onClick={() => handleSort('division')}
+                    className="hidden sm:table-cell cursor-pointer py-3.5 px-3 font-semibold hover:text-white"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Division</span>
+                      {renderSortIndicator('division')}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('net_epa_per_play')}
+                    className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
+                  >
+                    <div className="flex items-center justify-end gap-1.5">
+                      <span>Net EPA/Play</span>
+                      {renderSortIndicator('net_epa_per_play')}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('off_epa_per_play')}
+                    className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
+                  >
+                    <div className="flex items-center justify-end gap-1.5">
+                      <span>Off EPA</span>
+                      {renderSortIndicator('off_epa_per_play')}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('def_epa_per_play')}
+                    className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
+                  >
+                    <div className="flex items-center justify-end gap-1.5">
+                      <span>Def EPA Allowed</span>
+                      {renderSortIndicator('def_epa_per_play')}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('off_success_rate')}
+                    className="hidden sm:table-cell cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
+                  >
+                    <div className="flex items-center justify-end gap-1.5">
+                      <span>Success %</span>
+                      {renderSortIndicator('off_success_rate')}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('off_cpoe')}
+                    className="hidden sm:table-cell cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
+                  >
+                    <div className="flex items-center justify-end gap-1.5">
+                      <span>CPOE</span>
+                      {renderSortIndicator('off_cpoe')}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('off_money_down_epa')}
+                    className="hidden sm:table-cell cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
+                  >
+                    <div className="flex items-center justify-end gap-1.5">
+                      <span>3rd/4th Down EPA</span>
+                      {renderSortIndicator('off_money_down_epa')}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('off_redzone_success')}
+                    className="hidden sm:table-cell cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
+                  >
+                    <div className="flex items-center justify-end gap-1.5">
+                      <span>Red Zone %</span>
+                      {renderSortIndicator('off_redzone_success')}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('off_explosive_rate')}
+                    className="hidden sm:table-cell cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
+                  >
+                    <div className="flex items-center justify-end gap-1.5">
+                      <span>Explosive %</span>
+                      {renderSortIndicator('off_explosive_rate')}
+                    </div>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60 font-sans">
+                {filteredTeams.map((t) => (
+                  <tr
+                    key={t.team}
+                    onClick={() => setSelectedTeam(t)}
+                    className={`hover:bg-slate-800/40 transition-colors cursor-pointer group ${
+                      selectedTeam?.team === t.team ? 'bg-accent-950/20' : ''
+                    }`}
+                  >
+                    <td className="sticky left-0 z-10 bg-surface-raised group-hover:bg-slate-800/40 py-2.5 px-3 border-r border-slate-800">
+                      <div className="flex items-center gap-2.5">
+                        <TeamLogo team={t.team} size="sm" />
+                        <div>
+                          <span className="font-bold text-white group-hover:text-emerald-400 transition-colors block">
+                            {t.team_name}
+                          </span>
+                          <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">
+                            {t.team}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="hidden sm:table-cell py-2.5 px-3 font-mono text-slate-400">
+                      {t.division}
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-mono font-bold">
+                      <span className={t.net_epa_per_play > 0 ? 'text-emerald-400' : 'text-red-400'}>
+                        {t.net_epa_per_play > 0 ? `+${t.net_epa_per_play.toFixed(3)}` : t.net_epa_per_play.toFixed(3)}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-mono">
+                      <span className={t.off_epa_per_play > 0 ? 'text-emerald-400' : 'text-red-400'}>
+                        {t.off_epa_per_play > 0 ? `+${t.off_epa_per_play.toFixed(3)}` : t.off_epa_per_play.toFixed(3)}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-mono">
+                      <span className={t.def_epa_per_play < 0 ? 'text-emerald-400' : 'text-red-400'}>
+                        {t.def_epa_per_play > 0 ? `+${t.def_epa_per_play.toFixed(3)}` : t.def_epa_per_play.toFixed(3)}
+                      </span>
+                    </td>
+                    <td className="hidden sm:table-cell py-2.5 px-3 text-right font-mono text-white">
+                      {t.off_success_rate.toFixed(1)}%
+                    </td>
+                    <td className="hidden sm:table-cell py-2.5 px-3 text-right font-mono font-bold">
+                      <span className={t.off_cpoe > 0 ? 'text-emerald-400' : t.off_cpoe < 0 ? 'text-amber-400' : 'text-slate-400'}>
+                        {t.off_cpoe > 0 ? `+${t.off_cpoe.toFixed(1)}` : t.off_cpoe.toFixed(1)}
+                      </span>
+                    </td>
+                    <td className="hidden sm:table-cell py-2.5 px-3 text-right font-mono">
+                      <span className={t.off_money_down_epa > 0 ? 'text-emerald-400' : 'text-red-400'}>
+                        {t.off_money_down_epa > 0 ? `+${t.off_money_down_epa.toFixed(3)}` : t.off_money_down_epa.toFixed(3)}
+                      </span>
+                    </td>
+                    <td className="hidden sm:table-cell py-2.5 px-3 text-right font-mono text-slate-300">
+                      {t.off_redzone_success.toFixed(1)}%
+                    </td>
+                    <td className="hidden sm:table-cell py-2.5 px-3 text-right font-mono text-amber-400 font-semibold">
+                      {t.off_explosive_rate.toFixed(1)}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Right-edge scroll affordance: fades to nothing once scrolled to the end */}
+          <div
+            aria-hidden="true"
+            className={`pointer-events-none absolute top-0 right-0 bottom-0 w-10 bg-gradient-to-l from-surface-raised to-transparent transition-opacity duration-200 ${
+              showScrollHint ? 'opacity-100' : 'opacity-0'
+            }`}
+          />
         </div>
       </div>
 
@@ -475,7 +507,7 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams, generatedAt }) 
               {/* Primary Metric Chips */}
               <div className="grid grid-cols-3 gap-3 font-mono text-center">
                 <div className="bg-surface/70 p-3 rounded-xl border border-slate-800">
-                  <span className="text-[10px] text-slate-500 uppercase block">Net EPA/Play</span>
+                  <span className="text-[11px] sm:text-[10px] text-slate-500 uppercase block">Net EPA/Play</span>
                   <span
                     className={`text-lg font-black ${
                       selectedTeam.net_epa_per_play > 0 ? 'text-emerald-400' : 'text-red-400'
@@ -487,13 +519,13 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams, generatedAt }) 
                   </span>
                 </div>
                 <div className="bg-surface/70 p-3 rounded-xl border border-slate-800">
-                  <span className="text-[10px] text-slate-500 uppercase block">Offense Success</span>
+                  <span className="text-[11px] sm:text-[10px] text-slate-500 uppercase block">Offense Success</span>
                   <span className="text-lg font-black text-white">
                     {selectedTeam.off_success_rate.toFixed(1)}%
                   </span>
                 </div>
                 <div className="bg-surface/70 p-3 rounded-xl border border-slate-800">
-                  <span className="text-[10px] text-slate-500 uppercase block">Passing CPOE</span>
+                  <span className="text-[11px] sm:text-[10px] text-slate-500 uppercase block">Passing CPOE</span>
                   <span
                     className={`text-lg font-black ${
                       selectedTeam.off_cpoe > 0 ? 'text-emerald-400' : 'text-amber-400'
