@@ -182,6 +182,17 @@ main <- function(do_write = NULL, slate = NULL) {
               slate, format(min(wk$game_date)), format(max(wk$game_date)), nrow(wk)))
 
   log_df <- as.data.frame(readRDS(CACHE_PREDICTION_LOG))
+  # log_source distinguishes a genuine pre-game forecast from a hindsight-
+  # seeded backfill row (prediction_accuracy_logger.R's .classify_log_source
+  # heuristic). A log written before this column existed needs it backfilled
+  # here too, since this script reads CACHE_PREDICTION_LOG directly rather
+  # than through get_prediction_log()'s migration seam.
+  if (!"log_source" %in% names(log_df)) {
+    pt <- as.Date(log_df$prediction_timestamp)
+    gd <- as.Date(log_df$game_date)
+    log_df$log_source <- ifelse(!is.na(pt) & !is.na(gd) & pt < gd,
+                                 "LOGGED_PREGAME", "SEEDED_HINDSIGHT")
+  }
   .pwp_check_previous(log_df, spine, season_start, slate)
 
   r <- .pwp_ratings()
@@ -215,6 +226,7 @@ main <- function(do_write = NULL, slate = NULL) {
     log_loss_component      = NA_real_,
     status                  = "PENDING",
     resolved_timestamp      = as.POSIXct(NA),
+    log_source              = "LOGGED_PREGAME",
     .sigma_game             = round(as.numeric(sigma_game), 2)
   ) %>% arrange(.data$game_date, .data$game_id)
 
