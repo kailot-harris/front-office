@@ -984,10 +984,13 @@ run_export_web_datasets <- function() {
     brier_improvement  = round((0.2500 - acc_obj$overall_brier) / 0.2500 * 100, 2),
     margin_sigma       = NFL_MARGIN_SIGMA,
     home_field_adv     = NFL_HCA,
+    # Pure endogenous ensemble (see team_ratings_engine.R's projected_margin calc): 50% Ridge-Massey
+    # margin + 50% Elo margin when live Elo is available for both teams, falling back to 100% Ridge
+    # when it is not. There is no market/odds-derived weight in the live model.
     ensemble_weights   = list(
-      ridge_massey = 0.40,
-      elo_dynamic  = 0.35,
-      market_blend = 0.25
+      ridge_massey           = 0.50,
+      elo_dynamic            = 0.50,
+      ridge_massey_fallback  = 1.00
     ),
     calibration_curve  = calib_curve
   )

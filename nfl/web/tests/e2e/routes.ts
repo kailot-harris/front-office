@@ -73,7 +73,7 @@ export const ROUTES: RouteSpec[] = [
     path: '/variants',
     title: 'Model Variants',
     heading: 'Multi-Model Architecture',
-    dataMarkers: ['Ridge', 'Elo', 'Market'],
+    dataMarkers: ['Ridge', 'Elo', 'Production Ensemble'],
     expectsSearch: false,
   },
   {
