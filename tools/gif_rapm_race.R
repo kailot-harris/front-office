@@ -77,29 +77,7 @@ rapm_file <- find_cache_file("rapm_ratings.rds")
 if (!is.null(rapm_file)) {
   rapm_raw <- readRDS(rapm_file)
 } else {
-  # Synthetic fallback with realistic star ratings and possessions
-  set.seed(42)
-  rapm_raw <- tibble(
-    player_id = as.character(1:30),
-    player_name = c(
-      "Nikola Jokić", "Shai Gilgeous-Alexander", "Luka Dončić", "Giannis Antetokounmpo",
-      "Jayson Tatum", "Stephen Curry", "Tyrese Haliburton", "Jalen Brunson",
-      "Victor Wembanyama", "Rudy Gobert", "Chet Holmgren", "Anthony Davis",
-      "Bam Adebayo", "Draymond Green", "Dyson Daniels", "Alex Caruso",
-      "OG Anunoby", "Jrue Holiday", "Herb Jones", "Evan Mobley"
-    ),
-    team = c(
-      "DEN", "OKC", "LAL", "MIL", "BOS", "GSW", "IND", "NYK",
-      "SAS", "MIN", "OKC", "LAL", "MIA", "GSW", "ATL", "OKC",
-      "NYK", "BOS", "NOP", "CLE"
-    ),
-    possessions = c(rep(9000, 8), rep(8500, 12)),
-    off_possessions = c(rep(4500, 8), rep(4250, 12)),
-    def_possessions = c(rep(4500, 8), rep(4250, 12)),
-    orapm = c(4.8, 4.3, 4.5, 3.9, 3.8, 3.7, 3.5, 3.4, 1.8, -0.8, 1.5, 1.9, 0.8, 0.4, 2.2, 1.1, 1.2, 1.0, 0.5, 0.8),
-    drapm = c(0.4, 2.3, -0.6, 1.8, 1.2, -1.2, -1.8, -0.9, 4.5, 4.2, 4.3, 3.8, 3.5, 3.6, 2.7, 3.2, 2.9, 2.4, 2.6, 3.1),
-    total_rapm = c(5.2, 6.6, 3.9, 5.7, 5.0, 2.5, 1.7, 2.5, 6.3, 3.4, 5.8, 5.7, 4.3, 4.0, 4.9, 4.3, 4.1, 3.4, 3.1, 3.9)
-  )
+  viz_stop_no_data("tools/gif_rapm_race.R", "cache file rapm_ratings.rds was not found.")
 }
 
 # Clean team abbreviations and filter top contenders

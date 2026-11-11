@@ -75,7 +75,7 @@ web_media_dir <- file.path(SCRIPT_DIR, "web", "public", "media")
 if (!dir.exists(web_media_dir)) dir.create(web_media_dir, recursive = TRUE)
 
 # ------------------------------------------------------------------------------
-# 1. Load Clutch Game Data (Target: LAL vs DEN close finish Game 401810829 or fallback)
+# 1. Load Clutch Game Data (Target: LAL vs DEN close finish, Game 401810829)
 # ------------------------------------------------------------------------------
 shots_file <- find_cache_file("nba_shots_2026.rds")
 pbp_file   <- find_cache_file("nba_pbp_2026.rds")
@@ -104,23 +104,12 @@ if (has_real_data) {
   g_shots <- tibble()
 }
 
-# If less than 10 shots in real data, synthesize standard close clutch timeline
+# Fewer than 8 real fourth-quarter shots is not enough to draw the chart.
 if (nrow(g_shots) < 8) {
-  set.seed(123)
-  sim_seconds <- sort(sample(10:290, 18), decreasing = TRUE)
-  sim_teams <- sample(c("LAL", "DEN"), length(sim_seconds), replace = TRUE)
-  sim_makes <- sample(c(TRUE, FALSE), length(sim_seconds), replace = TRUE, prob = c(0.48, 0.52))
-  sim_x <- runif(length(sim_seconds), -22, 22)
-  sim_y <- runif(length(sim_seconds), 4, 26)
-  g_shots <- tibble(
-    sec_left = sim_seconds,
-    clock_display_value = sprintf("%02d:%02d", sim_seconds %/% 60, sim_seconds %% 60),
-    team_abbrev = sim_teams,
-    athlete_name_1 = ifelse(sim_teams == "LAL", "L. Doncic", "N. Jokic"),
-    coordinate_x = sim_x,
-    coordinate_y = sim_y,
-    scoring_play = sim_makes,
-    score_value = ifelse(sim_makes, sample(c(2, 3), length(sim_seconds), replace = TRUE, prob = c(0.65, 0.35)), 0)
+  viz_stop_no_data(
+    "tools/gif_clutch_shot_worm.R",
+    if (has_real_data) sprintf("only %d clutch shots were found for game 401810829 in nba_shots_2026.rds.", nrow(g_shots))
+    else "cache file nba_shots_2026.rds was not found."
   )
 }
 
