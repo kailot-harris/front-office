@@ -102,7 +102,6 @@ function simulateClientSeries(
     B_4: 0, B_5: 0, B_6: 0, B_7: 0,
   };
   let totalGames = 0;
-  let coverMinus15 = 0;
 
   for (let s = 0; s < nSims; s++) {
     let wA = 0;
@@ -126,7 +125,6 @@ function simulateClientSeries(
     if (wA === 4) {
       aWins++;
       counts[`A_${g}`]++;
-      if (g <= 6) coverMinus15++;
     } else {
       counts[`B_${g}`]++;
     }
@@ -134,13 +132,6 @@ function simulateClientSeries(
 
   const winProbA = Number((aWins / nSims).toFixed(4));
   const winProbB = Number((1 - winProbA).toFixed(4));
-
-  const fairMlA = winProbA >= 0.5
-    ? Math.round(-100 * winProbA / (1 - winProbA))
-    : Math.round(100 * (1 - winProbA) / winProbA);
-  const fairMlB = winProbB >= 0.5
-    ? Math.round(-100 * winProbB / (1 - winProbB))
-    : Math.round(100 * (1 - winProbB) / winProbB);
 
   return {
     teamA: teamA.teamAbbr,
@@ -151,10 +142,7 @@ function simulateClientSeries(
     netRatingMargin: netMargin,
     winProbA,
     winProbB,
-    fairMlA,
-    fairMlB,
     avgGames: Number((totalGames / nSims).toFixed(2)),
-    spreadMinus1_5Prob: Number((coverMinus15 / nSims).toFixed(3)),
     sweepProb: Number(((counts.A_4 + counts.B_4) / nSims * 100).toFixed(1)),
     gameDistributions: [
       { games: 4, winner: teamA.teamAbbr, probPct: Number((counts.A_4 / nSims * 100).toFixed(1)) },
@@ -200,8 +188,6 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
         teamB: teamBCode,
         winProbA: precomputed.winProbB,
         winProbB: precomputed.winProbA,
-        fairMlA: precomputed.fairMlB,
-        fairMlB: precomputed.fairMlA,
         netRatingMargin: -precomputed.netRatingMargin,
         ratingDiffRaw: -precomputed.ratingDiffRaw,
       };
@@ -404,7 +390,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                 </h3>
               </div>
               <span className="text-xs font-mono font-bold text-amber-400">
-                Fair ML: {matchupResult.fairMlA > 0 ? `+${matchupResult.fairMlA}` : matchupResult.fairMlA}
+                {teamACode} {(matchupResult.winProbA * 100).toFixed(1)}%
               </span>
             </div>
 
