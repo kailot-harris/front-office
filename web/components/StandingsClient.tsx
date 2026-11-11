@@ -403,7 +403,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                 League Overperformers (Actual Pace vs Preseason Model)
               </h3>
             </div>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span className="text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
               Win Pace Delta &gt; 0
             </span>
           </div>
@@ -415,17 +415,17 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                 className="bg-surface/70 border border-slate-800/90 rounded-xl p-3 flex flex-col justify-between hover:border-emerald-500/40 transition-colors shadow-sm"
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[10px] font-mono font-bold text-slate-500 w-3">#{idx + 1}</span>
+                  <span className="text-[11px] sm:text-[10px] font-mono font-bold text-slate-500 w-3">#{idx + 1}</span>
                   <TeamLogo team={t.team} size="sm" />
                   <div className="min-w-0">
                     <span className="font-bold text-xs text-white block truncate">{t.team_name}</span>
-                    <span className="text-[10px] font-mono text-slate-400">
+                    <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">
                       {t.actual.wins}-{t.actual.losses}{t.actual.ties > 0 ? `-${t.actual.ties}` : ''} ({(t.actual_win_pct * 100).toFixed(0)}%)
                     </span>
                   </div>
                 </div>
                 <div className="pt-1.5 border-t border-slate-800/80 flex items-center justify-between font-mono text-xs">
-                  <span className="text-[10px] text-slate-400">Pace: {t.current_pace.toFixed(1)}W</span>
+                  <span className="text-[11px] sm:text-[10px] text-slate-400">Pace: {t.current_pace.toFixed(1)}W</span>
                   <span className="font-bold text-emerald-400 flex items-center gap-0.5">
                     <TrendingUp className="w-3 h-3" />
                     +{t.performance_delta.toFixed(1)}
@@ -447,7 +447,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                 League Underperformers (Actual Pace vs Preseason Model)
               </h3>
             </div>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">
+            <span className="text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">
               Win Pace Delta &lt; 0
             </span>
           </div>
@@ -459,17 +459,17 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                 className="bg-surface/70 border border-slate-800/90 rounded-xl p-3 flex flex-col justify-between hover:border-rose-500/40 transition-colors shadow-sm"
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[10px] font-mono font-bold text-slate-500 w-3">#{idx + 1}</span>
+                  <span className="text-[11px] sm:text-[10px] font-mono font-bold text-slate-500 w-3">#{idx + 1}</span>
                   <TeamLogo team={t.team} size="sm" />
                   <div className="min-w-0">
                     <span className="font-bold text-xs text-white block truncate">{t.team_name}</span>
-                    <span className="text-[10px] font-mono text-slate-400">
+                    <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">
                       {t.actual.wins}-{t.actual.losses}{t.actual.ties > 0 ? `-${t.actual.ties}` : ''} ({(t.actual_win_pct * 100).toFixed(0)}%)
                     </span>
                   </div>
                 </div>
                 <div className="pt-1.5 border-t border-slate-800/80 flex items-center justify-between font-mono text-xs">
-                  <span className="text-[10px] text-slate-400">Pace: {t.current_pace.toFixed(1)}W</span>
+                  <span className="text-[11px] sm:text-[10px] text-slate-400">Pace: {t.current_pace.toFixed(1)}W</span>
                   <span className="font-bold text-rose-400 flex items-center gap-0.5">
                     <TrendingDown className="w-3 h-3" />
                     {t.performance_delta.toFixed(1)}
@@ -637,7 +637,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                       <TeamLogo team={team.team} size="md" />
                       <div className="min-w-0">
                         <span className="font-bold text-sm text-white block truncate">{team.team_name}</span>
-                        <span className="text-[10px] text-slate-400 font-mono">
+                        <span className="text-[11px] sm:text-[10px] text-slate-400 font-mono">
                           {team.division} • Rank #{team.rank}
                         </span>
                       </div>
@@ -655,14 +655,14 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
 
                   <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                     <div className="bg-surface/60 p-2 rounded-lg border border-slate-800/60">
-                      <span className="text-[10px] text-slate-500 block uppercase">Proj Wins</span>
+                      <span className="text-[11px] sm:text-[10px] text-slate-500 block uppercase">Proj Wins</span>
                       <span className="text-white font-bold text-sm">{team.projected_wins.toFixed(1)}W</span>
-                      <span className="text-[10px] text-slate-500 block">
+                      <span className="text-[11px] sm:text-[10px] text-slate-500 block">
                         ({team.wins_p10.toFixed(0)} - {team.wins_p90.toFixed(0)})
                       </span>
                     </div>
                     <div className="bg-surface/60 p-2 rounded-lg border border-slate-800/60">
-                      <span className="text-[10px] text-slate-500 block uppercase">Playoff Prob</span>
+                      <span className="text-[11px] sm:text-[10px] text-slate-500 block uppercase">Playoff Prob</span>
                       <span
                         className={`font-bold text-sm ${
                           team.playoff_prob >= 0.7
@@ -674,7 +674,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                       >
                         {(team.playoff_prob * 100).toFixed(0)}%
                       </span>
-                      <span className="text-[10px] text-slate-500 block">
+                      <span className="text-[11px] sm:text-[10px] text-slate-500 block">
                         Div: {(team.division_title_prob * 100).toFixed(0)}%
                       </span>
                     </div>
@@ -924,7 +924,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                           <span className="font-bold text-white group-hover:text-emerald-400 transition-colors block">
                             {team.team_name}
                           </span>
-                          <span className="text-[10px] font-mono text-slate-500">
+                          <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">
                             {team.team}
                           </span>
                         </div>
@@ -1081,7 +1081,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                       <span className={`w-2 h-2 rounded-full ${isAfc ? 'bg-red-500' : 'bg-blue-500'}`} />
                       {divName}
                     </span>
-                    <span className="text-[10px] font-mono text-slate-500">4 Teams</span>
+                    <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">4 Teams</span>
                   </div>
 
                   <div className="p-2 space-y-1.5 divide-y divide-slate-800/40">
@@ -1091,7 +1091,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                         className="pt-1.5 first:pt-0 flex items-center justify-between hover:bg-slate-800/40 p-1.5 rounded-lg transition-colors"
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-[10px] font-mono text-slate-500 font-bold w-3">
+                          <span className="text-[11px] sm:text-[10px] font-mono text-slate-500 font-bold w-3">
                             {idx + 1}
                           </span>
                           <TeamLogo team={team.team} size="sm" />
@@ -1100,7 +1100,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                               {team.team_name}
                             </span>
                             {tableMode === 'reality' ? (
-                              <span className="text-[10px] font-mono text-slate-400">
+                              <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">
                                 {team.actual.wins}-{team.actual.losses}-{team.actual.ties} • Diff:{' '}
                                 <strong
                                   className={
@@ -1115,7 +1115,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                                 </strong>
                               </span>
                             ) : (
-                              <span className="text-[10px] font-mono text-slate-400">
+                              <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">
                                 PO: {(team.playoff_prob * 100).toFixed(0)}% • Div: {(team.division_title_prob * 100).toFixed(0)}%
                               </span>
                             )}
@@ -1129,7 +1129,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                                 {team.current_pace.toFixed(1)}W pace
                               </span>
                               <span
-                                className={`inline-flex items-center gap-0.5 text-[10px] font-mono font-bold ${
+                                className={`inline-flex items-center gap-0.5 text-[11px] sm:text-[10px] font-mono font-bold ${
                                   team.performance_delta > 0
                                     ? 'text-emerald-400'
                                     : team.performance_delta < 0
@@ -1153,7 +1153,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                                 {team.projected_wins.toFixed(1)}W
                               </span>
                               <span
-                                className={`text-[10px] font-mono ${
+                                className={`text-[11px] sm:text-[10px] font-mono ${
                                   team.power_rating > 0 ? 'text-emerald-400' : 'text-red-400'
                                 }`}
                               >

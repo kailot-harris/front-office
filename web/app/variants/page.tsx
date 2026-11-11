@@ -2,7 +2,7 @@ import { getDiagnosticsData } from '@/lib/data';
 import VariantsClient from '@/components/VariantsClient';
 
 export const metadata = {
-  title: 'Model Variants & Architecture | NFL Analytics',
+  title: 'Model Variants & Architecture',
   description: 'Ridge Massey, Dynamic Elo, and Market Blend ensemble weighting and divergence analysis.',
 };
 

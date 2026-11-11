@@ -31,7 +31,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
           </span>
           <span className="text-slate-600">•</span>
           {matchup.is_completed ? (
-            <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-bold text-[10px] tracking-wide border border-slate-700">
+            <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-bold text-[11px] sm:text-[10px] tracking-wide border border-slate-700">
               FINAL
             </span>
           ) : (
@@ -45,25 +45,25 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
         {/* Prediction Result or Key Margin Badge */}
         {matchup.is_completed ? (
           matchup.prediction_correct === true ? (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+            <span className="text-[11px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
               ✓ Model Correct
             </span>
           ) : matchup.prediction_correct === false ? (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1">
+            <span className="text-[11px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1">
               ✗ Upset
             </span>
           ) : (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/50">
+            <span className="text-[11px] sm:text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/50">
               Week {matchup.week}
             </span>
           )
         ) : matchup.key_number_flag !== 'Standard' ? (
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1">
+          <span className="text-[11px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1">
             <Zap className="w-2.5 h-2.5" />
             {matchup.key_number_flag.replace('Key', 'Margin')}
           </span>
         ) : (
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/50">
+          <span className="text-[11px] sm:text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/50">
             Week {matchup.week}
           </span>
         )}
@@ -77,7 +77,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
           <div className="col-span-2 flex items-center gap-3">
             <TeamLogo team={matchup.away_team} size="lg" />
             <div className="min-w-0">
-              <span className="text-[10px] font-mono text-slate-400 block uppercase">Away</span>
+              <span className="text-[11px] sm:text-[10px] font-mono text-slate-400 block uppercase">Away</span>
               <span className="text-sm font-bold text-white block truncate leading-tight">
                 {matchup.away_team_name}
               </span>
@@ -100,7 +100,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
           <div className="col-span-1 flex flex-col items-center justify-center text-center px-1">
             {matchup.is_completed ? (
               <>
-                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-bold mb-0.5">
+                <span className="text-[11px] sm:text-[10px] font-mono uppercase tracking-wider text-slate-500 font-bold mb-0.5">
                   Final
                 </span>
                 <div className="bg-surface px-2 py-1 rounded-md border border-slate-800 text-xs font-mono font-black text-white shadow-inner whitespace-nowrap">
@@ -112,19 +112,19 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
                     {matchup.home_score}
                   </span>
                 </div>
-                <span className="text-[9px] font-mono text-slate-500 mt-1 truncate max-w-full">
+                <span className="text-[11px] sm:text-[9px] font-mono text-slate-500 mt-1 truncate max-w-full">
                   Proj: {marginDisplay}
                 </span>
               </>
             ) : (
               <>
-                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-bold mb-0.5">
+                <span className="text-[11px] sm:text-[10px] font-mono uppercase tracking-wider text-slate-500 font-bold mb-0.5">
                   Proj Margin
                 </span>
                 <div className="bg-surface px-2 py-1 rounded-md border border-slate-800 text-xs font-mono font-black text-emerald-400 shadow-inner whitespace-nowrap">
                   {marginDisplay}
                 </div>
-                <span className="text-[10px] font-mono text-slate-400 mt-1">Total {matchup.projected_total.toFixed(1)}</span>
+                <span className="text-[11px] sm:text-[10px] font-mono text-slate-400 mt-1">Total {matchup.projected_total.toFixed(1)}</span>
               </>
             )}
           </div>
@@ -132,7 +132,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
           {/* Home Team (Col 4-5) */}
           <div className="col-span-2 flex items-center justify-end gap-3 text-right">
             <div className="min-w-0">
-              <span className="text-[10px] font-mono text-slate-400 block uppercase">Home</span>
+              <span className="text-[11px] sm:text-[10px] font-mono text-slate-400 block uppercase">Home</span>
               <span className="text-sm font-bold text-white block truncate leading-tight">
                 {matchup.home_team_name}
               </span>
@@ -159,7 +159,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
             <span className={`font-bold ${!isHomeFavored ? 'text-emerald-400' : 'text-slate-400'}`}>
               {(matchup.away_win_prob * 100).toFixed(1)}% Win
             </span>
-            <span className="text-[10px] text-slate-400 uppercase font-semibold">Model Win Probability</span>
+            <span className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-semibold">Model Win Probability</span>
             <span className={`font-bold ${isHomeFavored ? 'text-emerald-400' : 'text-slate-400'}`}>
               {(matchup.home_win_prob * 100).toFixed(1)}% Win
             </span>
@@ -226,7 +226,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
 
         {/* Short week warning */}
         {(matchup.home_rest_days < 7 || matchup.away_rest_days < 7) && (
-          <div className="flex items-center gap-1 text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded">
+          <div className="flex items-center gap-1 text-[11px] sm:text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded">
             <AlertCircle className="w-3 h-3" />
             <span>Short Week</span>
           </div>

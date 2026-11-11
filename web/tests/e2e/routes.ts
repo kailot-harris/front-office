@@ -22,7 +22,7 @@ export interface RouteSpec {
 export const ROUTES: RouteSpec[] = [
   {
     path: '/',
-    title: 'NFL Analytics',
+    title: 'Season Projections & Standings',
     heading: 'NFL Season Projections',
     dataMarkers: ['Super Bowl Favorite', 'Power Rating'],
     expectsSearch: true,

@@ -2,8 +2,8 @@ import { getQbProfiles } from '@/lib/data';
 import PlayersClient from '@/components/PlayersClient';
 
 export const metadata = {
-  title: 'Quarterback & Player Analytics | NFL Analytics',
-  description: 'Rolling per-dropback EPA and CPOE tracking, backup QB spread impact, and player efficiency tiers.',
+  title: 'Quarterback & Player Analytics',
+  description: 'Rolling per-dropback EPA and CPOE tracking, backup QB projected margin impact, and player efficiency tiers.',
 };
 
 export default function PlayersPage() {

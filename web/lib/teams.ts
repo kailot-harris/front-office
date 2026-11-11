@@ -1,3 +1,5 @@
+import { findOnDarkColor } from './colorContrast';
+
 export interface TeamMetadata {
   abbr: string;
   name: string;
@@ -357,9 +359,40 @@ export const getTeamLogoUrl = (teamAbbr: string): string => {
   return `https://a.espncdn.com/i/teamlogos/nfl/500/${code}.png`;
 };
 
+/**
+ * Dark app-surface tokens text/strokes may render against (see globals.css `bg-surface` /
+ * `bg-surface-raised`). Team primaries are tuned for logos/swatches, not text-on-dark, and
+ * 28/32 fail 4.5:1 here — see `onDark` below (#133).
+ */
+export const DARK_SURFACE_TOKENS = ['#04140f', '#0a2018'] as const;
+
+/**
+ * Per-team `primary` lightened just enough to clear 4.5:1 contrast against both
+ * `DARK_SURFACE_TOKENS`, for any future use of a team color as text/stroke on a dark
+ * surface. Purely additive — nothing reads this yet (#133 flags the raw primaries are unsafe
+ * for that use, not that anything currently misuses them). Computed once at module load
+ * rather than hand-picked, so it can't silently drift from `DARK_SURFACE_TOKENS` or a team's
+ * `primary` if either changes later.
+ */
+export const TEAM_ON_DARK_COLORS: Record<string, string> = Object.fromEntries(
+  Object.entries(NFL_TEAMS_METADATA).map(([abbr, meta]) => [
+    abbr,
+    findOnDarkColor(meta.colors.primary, [...DARK_SURFACE_TOKENS]),
+  ])
+);
+
 export const getTeamColors = (teamAbbr: string) => {
-  const meta = NFL_TEAMS_METADATA[teamAbbr?.toUpperCase()];
-  return meta?.colors || { primary: '#10b981', secondary: '#059669', accent: '#022c22' };
+  const abbr = teamAbbr?.toUpperCase();
+  const meta = NFL_TEAMS_METADATA[abbr];
+  if (!meta) {
+    return {
+      primary: '#10b981',
+      secondary: '#059669',
+      accent: '#022c22',
+      onDark: '#10b981',
+    };
+  }
+  return { ...meta.colors, onDark: TEAM_ON_DARK_COLORS[abbr] };
 };
 
 export const getAllTeams = (): TeamMetadata[] => {

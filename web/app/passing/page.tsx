@@ -2,7 +2,7 @@ import { getPassingIndex, getPassingMetadata } from '@/lib/data';
 import PassingExplorerClient from '@/components/PassingExplorerClient';
 
 export const metadata = {
-  title: 'QB Passing Charts & Throw Maps | NFL Analytics',
+  title: 'QB Passing Charts & Throw Maps',
   description:
     'Interactive NextGenStats-style QB passing charts, depth sectors, CPOE, and EPA/pass throw distribution grounded in empirical play-by-play tracking.',
 };

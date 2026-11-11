@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { PlayerDnaProfile } from '@/lib/types';
 import { TeamLogo } from './TeamLogo';
+import { BASE_PATH } from '@/lib/basePath';
 import {
   Search,
   Dna,
@@ -14,6 +15,8 @@ import {
 
 interface PlayerDnaClientProps {
   initialProfiles: PlayerDnaProfile[];
+  /** Total number of profiles in the full dataset, if more than `initialProfiles` were shipped. */
+  totalCount?: number;
 }
 
 /**
@@ -206,7 +209,39 @@ const RadarChart: React.FC<RadarChartProps> = ({ playerA, playerB, size = 320 })
   );
 };
 
-export default function PlayerDnaClient({ initialProfiles }: PlayerDnaClientProps) {
+export default function PlayerDnaClient({ initialProfiles, totalCount }: PlayerDnaClientProps) {
+  // #134: the server only sends the first screen of rows (see app/dna/page.tsx). If more exist,
+  // fetch the rest from the same JSON file the server read, client-side, so search/filter/compare
+  // still work across the full roster without inlining ~900 KB of HTML on every page load.
+  const [profiles, setProfiles] = useState<PlayerDnaProfile[]>(initialProfiles);
+  const [isLoadingRest, setIsLoadingRest] = useState(
+    typeof totalCount === 'number' && totalCount > initialProfiles.length
+  );
+
+  useEffect(() => {
+    if (!isLoadingRest) return;
+    let cancelled = false;
+    fetch(`${BASE_PATH}/data/player_dna_profiles.json`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Failed to load player DNA dataset: ${res.status}`);
+        return res.json() as Promise<PlayerDnaProfile[]>;
+      })
+      .then((full) => {
+        if (!cancelled) setProfiles(full);
+      })
+      .catch(() => {
+        // Keep the initial (partial) set rendered rather than blanking the page.
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingRest(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Only ever needs to run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPos, setSelectedPos] = useState<string>('ALL');
   const [selectedTeam, setSelectedTeam] = useState<string>('ALL');
@@ -218,12 +253,12 @@ export default function PlayerDnaClient({ initialProfiles }: PlayerDnaClientProp
 
   // Unique sorted teams list
   const teams = useMemo(() => {
-    return Array.from(new Set(initialProfiles.map((p) => p.team))).sort();
-  }, [initialProfiles]);
+    return Array.from(new Set(profiles.map((p) => p.team))).sort();
+  }, [profiles]);
 
   // Filtered players
   const filteredPlayers = useMemo(() => {
-    return initialProfiles.filter((p) => {
+    return profiles.filter((p) => {
       const q = searchQuery.toLowerCase();
       const matchesSearch =
         p.playerName.toLowerCase().includes(q) ||
@@ -233,17 +268,17 @@ export default function PlayerDnaClient({ initialProfiles }: PlayerDnaClientProp
       const matchesTeam = selectedTeam === 'ALL' || p.team === selectedTeam;
       return matchesSearch && matchesPos && matchesTeam;
     });
-  }, [initialProfiles, searchQuery, selectedPos, selectedTeam]);
+  }, [profiles, searchQuery, selectedPos, selectedTeam]);
 
   // Selected player objects
   const selectedPlayer = useMemo(() => {
-    return initialProfiles.find((p) => p.playerId === selectedPlayerId) || filteredPlayers[0] || initialProfiles[0];
-  }, [initialProfiles, selectedPlayerId, filteredPlayers]);
+    return profiles.find((p) => p.playerId === selectedPlayerId) || filteredPlayers[0] || profiles[0];
+  }, [profiles, selectedPlayerId, filteredPlayers]);
 
   const comparePlayer = useMemo(() => {
     if (!comparePlayerId) return null;
-    return initialProfiles.find((p) => p.playerId === comparePlayerId) || null;
-  }, [initialProfiles, comparePlayerId]);
+    return profiles.find((p) => p.playerId === comparePlayerId) || null;
+  }, [profiles, comparePlayerId]);
 
   return (
     <div className="space-y-6">
@@ -256,7 +291,7 @@ export default function PlayerDnaClient({ initialProfiles }: PlayerDnaClientProp
                 <Dna className="w-3.5 h-3.5" /> High-Dimensional Player DNA
               </span>
               <span className="text-xs text-slate-400 font-mono">
-                {initialProfiles.length} Empirical Skill Profiles
+                {profiles.length} Empirical Skill Profiles{isLoadingRest ? ' (loading full roster…)' : ''}
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white font-space">
@@ -379,7 +414,7 @@ export default function PlayerDnaClient({ initialProfiles }: PlayerDnaClientProp
                         <span className="font-semibold text-sm text-slate-100 truncate">
                           {player.playerName}
                         </span>
-                        <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-300">
+                        <span className="px-1.5 py-0.2 rounded text-[11px] sm:text-[10px] font-mono font-bold bg-slate-800 text-slate-300">
                           {player.position}
                         </span>
                       </div>
@@ -391,7 +426,7 @@ export default function PlayerDnaClient({ initialProfiles }: PlayerDnaClientProp
                     <span className="text-xs font-bold font-mono text-emerald-400 block">
                       {player.overallRating.toFixed(1)}
                     </span>
-                    <span className="text-[10px] text-slate-500 font-mono uppercase">Rating</span>
+                    <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono uppercase">Rating</span>
                   </div>
                 </button>
               );
@@ -424,7 +459,7 @@ export default function PlayerDnaClient({ initialProfiles }: PlayerDnaClientProp
 
               <div className="flex items-center gap-4">
                 <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center min-w-[90px]">
-                  <span className="text-[10px] text-slate-400 uppercase font-mono block">
+                  <span className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-mono block">
                     DNA Overall
                   </span>
                   <span className="text-2xl font-black font-mono text-emerald-400">
@@ -437,7 +472,7 @@ export default function PlayerDnaClient({ initialProfiles }: PlayerDnaClientProp
             {/* Empirical Box Stats Summary Pills */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-4">
               <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800/60">
-                <span className="text-[10px] text-slate-400 uppercase font-mono block">Games</span>
+                <span className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-mono block">Games</span>
                 <span className="text-sm font-bold font-mono text-slate-200">
                   {selectedPlayer.statsSummary.games}
                 </span>
@@ -446,7 +481,7 @@ export default function PlayerDnaClient({ initialProfiles }: PlayerDnaClientProp
               {selectedPlayer.position === 'QB' ? (
                 <>
                   <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800/60">
-                    <span className="text-[10px] text-slate-400 uppercase font-mono block">
+                    <span className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-mono block">
                       Pass Yards / TDs
                     </span>
                     <span className="text-sm font-bold font-mono text-slate-200">
@@ -454,7 +489,7 @@ export default function PlayerDnaClient({ initialProfiles }: PlayerDnaClientProp
                     </span>
                   </div>
                   <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800/60">
-                    <span className="text-[10px] text-slate-400 uppercase font-mono block">
+                    <span className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-mono block">
                       Rush Yards / TDs
                     </span>
                     <span className="text-sm font-bold font-mono text-slate-200">
@@ -465,7 +500,7 @@ export default function PlayerDnaClient({ initialProfiles }: PlayerDnaClientProp
               ) : (
                 <>
                   <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800/60">
-                    <span className="text-[10px] text-slate-400 uppercase font-mono block">
+                    <span className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-mono block">
                       Rush / Rec Yards
                     </span>
                     <span className="text-sm font-bold font-mono text-slate-200">
@@ -473,7 +508,7 @@ export default function PlayerDnaClient({ initialProfiles }: PlayerDnaClientProp
                     </span>
                   </div>
                   <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800/60">
-                    <span className="text-[10px] text-slate-400 uppercase font-mono block">
+                    <span className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-mono block">
                       Receptions / TDs
                     </span>
                     <span className="text-sm font-bold font-mono text-slate-200">
@@ -484,7 +519,7 @@ export default function PlayerDnaClient({ initialProfiles }: PlayerDnaClientProp
               )}
 
               <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800/60">
-                <span className="text-[10px] text-slate-400 uppercase font-mono block">
+                <span className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-mono block">
                   EPA / Play
                 </span>
                 <span
@@ -552,7 +587,7 @@ export default function PlayerDnaClient({ initialProfiles }: PlayerDnaClientProp
                         <span className="text-emerald-400 font-bold">{axis.value.toFixed(1)}</span>
                         {delta !== null && (
                           <span
-                            className={`text-[10px] font-bold ${
+                            className={`text-[11px] sm:text-[10px] font-bold ${
                               delta > 0
                                 ? 'text-emerald-400'
                                 : delta < 0
@@ -616,7 +651,7 @@ export default function PlayerDnaClient({ initialProfiles }: PlayerDnaClientProp
                       <span className="text-sm font-bold font-mono text-emerald-300">
                         {twin.similarityPct.toFixed(1)}%
                       </span>
-                      <span className="block text-[9px] text-slate-500 uppercase font-mono">
+                      <span className="block text-[11px] sm:text-[9px] text-slate-500 uppercase font-mono">
                         Match
                       </span>
                     </div>
@@ -666,10 +701,10 @@ export default function PlayerDnaClient({ initialProfiles }: PlayerDnaClientProp
               <div className="absolute inset-x-0 top-1/2 h-px bg-slate-800" />
 
               {/* Quadrant labels */}
-              <span className="absolute top-2 right-2 text-[10px] font-mono text-slate-600 uppercase">
+              <span className="absolute top-2 right-2 text-[11px] sm:text-[10px] font-mono text-slate-600 uppercase">
                 {selectedPlayer.position === 'QB' ? 'Gunslinger / Dynamic' : 'High Volume / Explosive'}
               </span>
-              <span className="absolute bottom-2 left-2 text-[10px] font-mono text-slate-600 uppercase">
+              <span className="absolute bottom-2 left-2 text-[11px] sm:text-[10px] font-mono text-slate-600 uppercase">
                 {selectedPlayer.position === 'QB' ? 'Rhythm / Pocket' : 'Possession / Situational'}
               </span>
 

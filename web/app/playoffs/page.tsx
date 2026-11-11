@@ -4,7 +4,7 @@ import { PlayoffsClient } from '@/components/PlayoffsClient';
 import { Award } from 'lucide-react';
 
 export const metadata = {
-  title: 'NFL Playoff Machine & 14-Team Bracket Simulator | NFL Analytics',
+  title: 'NFL Playoff Machine & 14-Team Bracket Simulator',
   description:
     '14-team provisional NFL playoff field (Seeds 1–7), official tiebreaker resolution, bubble contenders, and 10,000-trial Monte Carlo bracket simulation from Wild Card through the Super Bowl.',
 };
@@ -36,11 +36,11 @@ export default function PlayoffsPage() {
           {/* Quick Context Chips */}
           <div className="flex items-center gap-2.5 text-xs font-mono">
             <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
-              <span className="text-slate-500 block text-[10px] uppercase">Simulations</span>
+              <span className="text-slate-500 block text-[11px] sm:text-[10px] uppercase">Simulations</span>
               <span className="text-white font-bold">{dataset.n_simulations.toLocaleString()} Trials</span>
             </div>
             <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
-              <span className="text-slate-500 block text-[10px] uppercase">Seeding Format</span>
+              <span className="text-slate-500 block text-[11px] sm:text-[10px] uppercase">Seeding Format</span>
               <span className="text-amber-400 font-bold">14 Teams (4 Div + 3 WC)</span>
             </div>
           </div>

@@ -2,7 +2,7 @@ import { getCoachingProfiles } from '@/lib/data';
 import CoachingClient from '@/components/CoachingClient';
 
 export const metadata = {
-  title: 'Coaching Analysis & Decision Matrix | NFL Analytics',
+  title: 'Coaching Analysis & Decision Matrix',
   description: 'Head coach 4th-down aggression percentiles, pass rate over expected, pace of play, and staff scheme profiles.',
 };
 
