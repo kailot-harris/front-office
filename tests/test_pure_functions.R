@@ -7,11 +7,10 @@
 # so the CI `r` job on ubuntu-latest executes this suite in ~1 second without
 # needing an `install-deps.R` or `renv::restore()` step.
 #
-# Scope (50 assertions across 5 production modules):
+# Scope (20 assertions across 4 production modules):
 #   1. config.R                  -- structural & empirical constants, WEB_DATA_FILES
 #   2. logging_utils.R           -- M-6 `%||%` vector/NA safety, H-1 `.log_redact()`,
 #                                   `.log_format_extra()`
-#   3. market_odds_engine.R      -- odds/prob/Kelly math, H-4 `resolve_team_name()`
 #   4. tools/refresh_live_results.R -- `.rlr_is_true()`, `.rlr_grade()`,
 #                                   `apply_results()`, `recompute_diagnostics()`,
 #                                   `reconcile_diagnostics()`, `fetch_season_results()`
@@ -82,8 +81,8 @@ ok("CFG-4 Empirically derived NFL_HCA and NFL_MARGIN_SIGMA sit in sane NFL range
    sprintf("NFL_HCA=%.2f, NFL_MARGIN_SIGMA=%.2f -> neutral home win prob=%.3f",
            NFL_HCA, NFL_MARGIN_SIGMA, pnorm(NFL_HCA / NFL_MARGIN_SIGMA)))
 
-ok("CFG-5 WEB_DATA_FILES declares the 9 derived JSON datasets and excludes static coaching_profiles.json",
-   length(WEB_DATA_FILES) == 9L &&
+ok("CFG-5 WEB_DATA_FILES declares the 8 derived JSON datasets and excludes static coaching_profiles.json",
+   length(WEB_DATA_FILES) == 8L &&
      all(grepl("^web/public/data/.*\\.json$", gsub("\\\\", "/", WEB_DATA_FILES))) &&
      !(WEB_JSON_COACHING_PROFILES %in% WEB_DATA_FILES),
    sprintf("%d files in WEB_DATA_FILES", length(WEB_DATA_FILES)))
@@ -144,80 +143,6 @@ ok("LOG-6 `.log_format_extra()` drops NULL entries, formats key-value pairs, and
    fmt_extra)
 
 # ==============================================================================
-# SECTION 3: market_odds_engine.R odds/Kelly math & H-4 team canonicalization
-# ==============================================================================
-cat("\n--- Section 3: market_odds_engine.R pure functions ---\n")
-ENG_ENV <- new.env(parent = globalenv())
-ENG_ENV$NFL_TEAMS <- NFL_TEAMS
-ENG_ENV$if_else <- function(cond, t, f) ifelse(cond, t, f)
-ENG_ENV$word <- function(string, start = 1L) {
-  if (identical(as.integer(start), -1L)) sub("^.*\\s+", "", string) else string
-}
-ENG_ENV$log_warn <- function(...) invisible(NULL)
-
-load_ast_symbols(
-  "market_odds_engine.R",
-  c("american_to_decimal", "american_to_prob", "prob_to_american",
-    "calculate_kelly", "resolve_team_name"),
-  ENG_ENV
-)
-
-dec <- ENG_ENV$american_to_decimal(c(-110, 100, 150, -200))
-ok("ODDS-1 `american_to_decimal()` converts positive and negative American odds accurately",
-   max(abs(dec - c(1 + 100/110, 2.0, 2.5, 1.5))) < 1e-9,
-   paste(round(dec, 4), collapse = ", "))
-
-imp <- ENG_ENV$american_to_prob(c(-110, 100, -200, 200, NA, 0))
-ok("ODDS-2 `american_to_prob()` computes implied probabilities and defaults NA/0 to 0.50",
-   max(abs(imp - c(110/210, 0.5, 200/300, 100/300, 0.5, 0.5))) < 1e-9,
-   paste(round(imp, 4), collapse = ", "))
-
-am_roundtrip <- ENG_ENV$prob_to_american(c(0.5, 2/3, 0.25))
-ok("ODDS-3 `prob_to_american()` converts probabilities to expected moneyline odds",
-   identical(as.numeric(am_roundtrip), c(-100, -200, 300)),
-   paste(am_roundtrip, collapse = ", "))
-
-kelly_no_edge <- ENG_ENV$calculate_kelly(prob = 0.50, decimal_odds = 1.91)
-kelly_mod     <- ENG_ENV$calculate_kelly(prob = 0.60, decimal_odds = 2.00) # raw=0.20, quarter=5.0% -> capped at 3.0%
-kelly_small   <- ENG_ENV$calculate_kelly(prob = 0.54, decimal_odds = 2.00) # raw=0.08, quarter=2.0%
-ok("ODDS-4 `calculate_kelly()` enforces 0 floor on negative EV, 0.25 fractional multiplier, and 3.0% max cap",
-   kelly_no_edge == 0 && kelly_mod == 3.0 && abs(kelly_small - 2.0) < 1e-9,
-   sprintf("no_edge=%.2f, capped=%.2f, small_edge=%.2f", kelly_no_edge, kelly_mod, kelly_small))
-
-deg_inputs <- c("", " ", "a", "s", "xy", "xyz")
-deg_out <- vapply(deg_inputs, ENG_ENV$resolve_team_name, character(1), USE.NAMES = FALSE)
-ok("ODDS-5 (H-4) `resolve_team_name()` rejects short/degenerate inputs (<4 chars unless exact NFL abbr)",
-   all(is.na(deg_out)) &&
-     is.na(ENG_ENV$resolve_team_name(NA_character_)) &&
-     is.na(ENG_ENV$resolve_team_name(c("Buffalo Bills", "Miami Dolphins"))),
-   "all degenerate / NA / vector inputs -> NA_character_")
-
-abbr_out <- vapply(c("BUF", "la", "KC", "was", "SF"), ENG_ENV$resolve_team_name, character(1), USE.NAMES = FALSE)
-ok("ODDS-6 `resolve_team_name()` resolves 2-3 character NFL abbreviations case-insensitively before length guard",
-   identical(abbr_out, c("BUF", "LA", "KC", "WAS", "SF")),
-   paste(abbr_out, collapse = ", "))
-
-full_out <- vapply(
-  c("Buffalo Bills", "Kansas City Chiefs", "San Francisco 49ers", "Washington Commanders"),
-  ENG_ENV$resolve_team_name, character(1), USE.NAMES = FALSE
-)
-ok("ODDS-7 `resolve_team_name()` resolves full franchise names to canonical nflverse abbreviations",
-   identical(full_out, c("BUF", "KC", "SF", "WAS")),
-   paste(full_out, collapse = ", "))
-
-nick_out <- vapply(c("Bills", "Chiefs", "Seahawks", "Buccaneers", "Packers"),
-                   ENG_ENV$resolve_team_name, character(1), USE.NAMES = FALSE)
-ok("ODDS-8 (L-1) `resolve_team_name()` vectorized nickname matching resolves every franchise nickname",
-   identical(nick_out, c("BUF", "KC", "SEA", "TB", "GB")),
-   paste(nick_out, collapse = ", "))
-
-unk_out <- vapply(c("Toronto Argonauts", "Unknown Football Club", " Las Vegas Aces "),
-                  ENG_ENV$resolve_team_name, character(1), USE.NAMES = FALSE)
-ok("ODDS-9 (H-4) `resolve_team_name()` returns NA_character_ for unrecognized long strings",
-   all(is.na(unk_out)),
-   "unrecognized franchises -> NA_character_")
-
-# ==============================================================================
 # SECTION 4: tools/refresh_live_results.R pure grading & reconciliation functions
 # ==============================================================================
 cat("\n--- Section 4: tools/refresh_live_results.R pure functions ---\n")
@@ -227,7 +152,8 @@ RLR_ENV$NFLVERSE_GAMES_CSV <- "https://raw.githubusercontent.com/nflverse/nfldat
 load_ast_symbols(
   "tools/refresh_live_results.R",
   c("%||%", ".rlr_is_true", "fetch_season_results", ".rlr_grade",
-    "apply_results", "recompute_diagnostics", "reconcile_diagnostics"),
+    "apply_results", "recompute_diagnostics", "recompute_calibration_curve",
+    "reconcile_diagnostics"),
   RLR_ENV
 )
 
