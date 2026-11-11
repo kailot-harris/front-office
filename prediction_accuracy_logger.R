@@ -121,8 +121,64 @@ PRED_LOG_WINNER_PROB_CUTOFF <- 0.50
     brier_component         = double(),
     log_loss_component      = double(),
     status                  = character(),
-    resolved_timestamp      = as.POSIXct(numeric(), origin = "1970-01-01")
+    resolved_timestamp      = as.POSIXct(numeric(), origin = "1970-01-01"),
+    # Row provenance (see .classify_log_source() below). Distinguishes a
+    # genuine pre-game forecast (written before the game happened, by
+    # .build_slate_rows() / project_week_predictions.R) from a row
+    # seed_prediction_log() backfilled from box scores AFTER the game, using a
+    # rating model computed with the benefit of hindsight. Every published
+    # accuracy/calibration figure must key off this column instead of
+    # re-deriving the heuristic each time.
+    log_source              = character()
   )
+}
+
+# LOGGED_PREGAME:    a genuine forecast - prediction_timestamp strictly
+#                    precedes game_date. Written by .build_slate_rows() (daily
+#                    betting-slate path, now dead) or project_week_predictions.R
+#                    (the live weekly ESPN-schedule-spine path, issue #33).
+# SEEDED_HINDSIGHT:  prediction_timestamp == game_date (seed_prediction_log()
+#                    hardcodes `paste(game_date, "12:00:00")`). The model that
+#                    produced the "prediction" already knew the outcome existed
+#                    in box_scores_cache.rds; it is a historical backtest, not
+#                    a forecast. See accuracy_governance.R, which must not
+#                    average these two populations into one headline figure.
+#
+# Used both to label rows as they are written and to migrate rows written
+# before this column existed (every row in the log as of 2026-11-11).
+.classify_log_source <- function(prediction_timestamp, game_date) {
+  pt <- as.Date(prediction_timestamp)
+  gd <- as.Date(game_date)
+  dplyr::if_else(!is.na(pt) & !is.na(gd) & pt < gd,
+                 "LOGGED_PREGAME", "SEEDED_HINDSIGHT")
+}
+
+# One-time migration seam: a stored log written before `log_source` existed
+# gets the column backfilled from the same heuristic, then persisted so this
+# only ever runs once per cache. Pure w.r.t. its argument; the persistence
+# side effect is gated by `persist` so tests can call this on an in-memory
+# fixture without touching disk.
+.ensure_log_source_column <- function(df, persist = TRUE) {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) {
+    if (is.data.frame(df) && !("log_source" %in% names(df))) {
+      df$log_source <- character(0)
+    }
+    return(df)
+  }
+  if ("log_source" %in% names(df)) return(df)
+
+  df$log_source <- .classify_log_source(df$prediction_timestamp, df$game_date)
+  cat(sprintf(paste0(
+    "[PREDICTION LOG] Migrated stored log: added log_source column ",
+    "(%d LOGGED_PREGAME, %d SEEDED_HINDSIGHT, backfilled from the ",
+    "prediction_timestamp-vs-game_date heuristic).\n"),
+    sum(df$log_source == "LOGGED_PREGAME"), sum(df$log_source == "SEEDED_HINDSIGHT")))
+
+  if (isTRUE(persist)) {
+    saveRDS(df, PRED_LOG_RDS)
+    utils::write.csv(df, PRED_LOG_CSV, row.names = FALSE, na = "")
+  }
+  df
 }
 
 # ------------------------------------------------------------------------------
@@ -489,7 +545,9 @@ seed_prediction_log <- function() {
     brier_component         = round(as.double(brier_comp), 6),
     log_loss_component      = round(as.double(logloss_comp), 6),
     status                  = "RESOLVED",
-    resolved_timestamp      = as.POSIXct(paste(games$game_date, "23:59:59"))
+    resolved_timestamp      = as.POSIXct(paste(games$game_date, "23:59:59")),
+    # Backfilled from box scores AFTER the fact - hindsight, not a forecast.
+    log_source              = "SEEDED_HINDSIGHT"
   ) |>
     arrange(game_date, game_id)
 
@@ -504,11 +562,12 @@ seed_prediction_log <- function() {
 # 2. Load or Get Prediction Log
 # ------------------------------------------------------------------------------
 get_prediction_log <- function() {
-  if (file.exists(PRED_LOG_RDS)) {
+  df <- if (file.exists(PRED_LOG_RDS)) {
     readRDS(PRED_LOG_RDS)
   } else {
     seed_prediction_log()
   }
+  .ensure_log_source_column(df)
 }
 
 # ------------------------------------------------------------------------------
@@ -568,7 +627,9 @@ get_prediction_log <- function() {
     brier_component         = NA_real_,
     log_loss_component      = NA_real_,
     status                  = "PENDING",
-    resolved_timestamp      = as.POSIXct(NA)
+    resolved_timestamp      = as.POSIXct(NA),
+    # Written before the game happened - a genuine forecast.
+    log_source              = "LOGGED_PREGAME"
   )
 }
 

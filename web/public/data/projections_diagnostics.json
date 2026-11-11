@@ -1,135 +1,396 @@
 {
-  "generated_at": "2026-11-11T14:01:31Z",
-  "totalResolvedGames": 2791,
-  "overallAccuracy": 0.6302,
-  "brierScore": 0.2267,
-  "brierSkillScore": 0.0932,
-  "logLoss": 0.6474,
-  "homeWinRate": 0.5482,
-  "weightedCalibError": 0.0693,
+  "generated_at": "2026-11-11T23:46:48Z",
+  "totalResolvedGames": 135,
+  "overallAccuracy": 0.6519,
+  "brierScore": 0.2022,
+  "brierSkillScore": 0.1912,
+  "logLoss": 0.584,
+  "homeWinRate": 0.5185,
+  "weightedCalibError": 0.0806,
   "calibrationStatus": "OPTIMAL",
   "calibration": [
     {
       "bin": "0-10%",
       "midpoint": 0.05,
-      "count": 5,
-      "meanPredictedProb": 0.0948,
+      "count": 0,
+      "meanPredictedProb": 0.05,
       "empiricalWinRate": 0
     },
     {
       "bin": "10-20%",
       "midpoint": 0.15,
-      "count": 146,
-      "meanPredictedProb": 0.1543,
-      "empiricalWinRate": 0.1918
+      "count": 3,
+      "meanPredictedProb": 0.1764,
+      "empiricalWinRate": 0
     },
     {
       "bin": "20-30%",
       "midpoint": 0.25,
-      "count": 286,
-      "meanPredictedProb": 0.2557,
-      "empiricalWinRate": 0.3601
+      "count": 16,
+      "meanPredictedProb": 0.2565,
+      "empiricalWinRate": 0.25
     },
     {
       "bin": "30-40%",
       "midpoint": 0.35,
-      "count": 296,
-      "meanPredictedProb": 0.3539,
-      "empiricalWinRate": 0.4054
+      "count": 17,
+      "meanPredictedProb": 0.3454,
+      "empiricalWinRate": 0.2941
     },
     {
       "bin": "40-50%",
       "midpoint": 0.45,
-      "count": 362,
-      "meanPredictedProb": 0.4501,
-      "empiricalWinRate": 0.5028
+      "count": 16,
+      "meanPredictedProb": 0.4532,
+      "empiricalWinRate": 0.5
     },
     {
       "bin": "50-60%",
       "midpoint": 0.55,
-      "count": 352,
-      "meanPredictedProb": 0.545,
-      "empiricalWinRate": 0.4886
+      "count": 16,
+      "meanPredictedProb": 0.537,
+      "empiricalWinRate": 0.375
     },
     {
       "bin": "60-70%",
       "midpoint": 0.65,
-      "count": 390,
-      "meanPredictedProb": 0.6477,
-      "empiricalWinRate": 0.6077
+      "count": 23,
+      "meanPredictedProb": 0.6454,
+      "empiricalWinRate": 0.5217
     },
     {
       "bin": "70-80%",
       "midpoint": 0.75,
-      "count": 451,
-      "meanPredictedProb": 0.7486,
-      "empiricalWinRate": 0.6408
+      "count": 25,
+      "meanPredictedProb": 0.7437,
+      "empiricalWinRate": 0.68
     },
     {
       "bin": "80-90%",
       "midpoint": 0.85,
-      "count": 361,
-      "meanPredictedProb": 0.8496,
-      "empiricalWinRate": 0.7729
+      "count": 16,
+      "meanPredictedProb": 0.8499,
+      "empiricalWinRate": 0.9375
     },
     {
       "bin": "90-100%",
       "midpoint": 0.95,
-      "count": 142,
-      "meanPredictedProb": 0.9266,
-      "empiricalWinRate": 0.8451
+      "count": 3,
+      "meanPredictedProb": 0.9333,
+      "empiricalWinRate": 1
     }
   ],
   "accuracyDrift": [
     {
-      "season": "2025",
-      "games": 1315,
-      "accuracy": 0.6129,
-      "brierScore": 0.2355
-    },
-    {
       "season": "2026",
-      "games": 1451,
-      "accuracy": 0.6478,
-      "brierScore": 0.2185
+      "games": 125,
+      "accuracy": 0.672,
+      "brierScore": 0.1958
     },
     {
       "season": "2027",
-      "games": 25,
-      "accuracy": 0.52,
-      "brierScore": 0.2384
+      "games": 10,
+      "accuracy": 0.4,
+      "brierScore": 0.2828
     }
   ],
   "residualDistribution": [
     {
       "bucket": "< -0.4",
-      "count": 605,
+      "count": 23,
       "label": "Large Under-forecast"
     },
     {
       "bucket": "-0.4 to -0.2",
-      "count": 526,
+      "count": 29,
       "label": "Moderate Under-forecast"
     },
     {
       "bucket": "-0.2 to 0.0",
-      "count": 399,
+      "count": 18,
       "label": "Slight Under-forecast"
     },
     {
       "bucket": "0.0 to 0.2",
-      "count": 123,
+      "count": 3,
       "label": "Slight Over-forecast"
     },
     {
       "bucket": "0.2 to 0.4",
-      "count": 359,
+      "count": 24,
       "label": "Moderate Over-forecast"
     },
     {
       "bucket": "> 0.4",
-      "count": 779,
+      "count": 38,
       "label": "Large Over-forecast"
     }
-  ]
+  ],
+  "genuineForecast": {
+    "totalGames": 135,
+    "overallAccuracy": 0.6519,
+    "brierScore": 0.2022,
+    "brierSkillScore": 0.1912,
+    "logLoss": 0.584,
+    "homeWinRate": 0.5185,
+    "weightedCalibError": 0.0806,
+    "calibrationStatus": "OPTIMAL",
+    "calibration": [
+      {
+        "bin": "0-10%",
+        "midpoint": 0.05,
+        "count": 0,
+        "meanPredictedProb": 0.05,
+        "empiricalWinRate": 0
+      },
+      {
+        "bin": "10-20%",
+        "midpoint": 0.15,
+        "count": 3,
+        "meanPredictedProb": 0.1764,
+        "empiricalWinRate": 0
+      },
+      {
+        "bin": "20-30%",
+        "midpoint": 0.25,
+        "count": 16,
+        "meanPredictedProb": 0.2565,
+        "empiricalWinRate": 0.25
+      },
+      {
+        "bin": "30-40%",
+        "midpoint": 0.35,
+        "count": 17,
+        "meanPredictedProb": 0.3454,
+        "empiricalWinRate": 0.2941
+      },
+      {
+        "bin": "40-50%",
+        "midpoint": 0.45,
+        "count": 16,
+        "meanPredictedProb": 0.4532,
+        "empiricalWinRate": 0.5
+      },
+      {
+        "bin": "50-60%",
+        "midpoint": 0.55,
+        "count": 16,
+        "meanPredictedProb": 0.537,
+        "empiricalWinRate": 0.375
+      },
+      {
+        "bin": "60-70%",
+        "midpoint": 0.65,
+        "count": 23,
+        "meanPredictedProb": 0.6454,
+        "empiricalWinRate": 0.5217
+      },
+      {
+        "bin": "70-80%",
+        "midpoint": 0.75,
+        "count": 25,
+        "meanPredictedProb": 0.7437,
+        "empiricalWinRate": 0.68
+      },
+      {
+        "bin": "80-90%",
+        "midpoint": 0.85,
+        "count": 16,
+        "meanPredictedProb": 0.8499,
+        "empiricalWinRate": 0.9375
+      },
+      {
+        "bin": "90-100%",
+        "midpoint": 0.95,
+        "count": 3,
+        "meanPredictedProb": 0.9333,
+        "empiricalWinRate": 1
+      }
+    ],
+    "accuracyDrift": [
+      {
+        "season": "2026",
+        "games": 125,
+        "accuracy": 0.672,
+        "brierScore": 0.1958
+      },
+      {
+        "season": "2027",
+        "games": 10,
+        "accuracy": 0.4,
+        "brierScore": 0.2828
+      }
+    ],
+    "residualDistribution": [
+      {
+        "bucket": "< -0.4",
+        "count": 23,
+        "label": "Large Under-forecast"
+      },
+      {
+        "bucket": "-0.4 to -0.2",
+        "count": 29,
+        "label": "Moderate Under-forecast"
+      },
+      {
+        "bucket": "-0.2 to 0.0",
+        "count": 18,
+        "label": "Slight Under-forecast"
+      },
+      {
+        "bucket": "0.0 to 0.2",
+        "count": 3,
+        "label": "Slight Over-forecast"
+      },
+      {
+        "bucket": "0.2 to 0.4",
+        "count": 24,
+        "label": "Moderate Over-forecast"
+      },
+      {
+        "bucket": "> 0.4",
+        "count": 38,
+        "label": "Large Over-forecast"
+      }
+    ]
+  },
+  "historicalBacktest": {
+    "totalGames": 2656,
+    "overallAccuracy": 0.6291,
+    "brierScore": 0.228,
+    "brierSkillScore": 0.0882,
+    "logLoss": 0.6507,
+    "homeWinRate": 0.5497,
+    "weightedCalibError": 0.0711,
+    "calibrationStatus": "OPTIMAL",
+    "calibration": [
+      {
+        "bin": "0-10%",
+        "midpoint": 0.05,
+        "count": 5,
+        "meanPredictedProb": 0.0948,
+        "empiricalWinRate": 0
+      },
+      {
+        "bin": "10-20%",
+        "midpoint": 0.15,
+        "count": 143,
+        "meanPredictedProb": 0.1538,
+        "empiricalWinRate": 0.1958
+      },
+      {
+        "bin": "20-30%",
+        "midpoint": 0.25,
+        "count": 270,
+        "meanPredictedProb": 0.2556,
+        "empiricalWinRate": 0.3667
+      },
+      {
+        "bin": "30-40%",
+        "midpoint": 0.35,
+        "count": 279,
+        "meanPredictedProb": 0.3544,
+        "empiricalWinRate": 0.4122
+      },
+      {
+        "bin": "40-50%",
+        "midpoint": 0.45,
+        "count": 346,
+        "meanPredictedProb": 0.45,
+        "empiricalWinRate": 0.5029
+      },
+      {
+        "bin": "50-60%",
+        "midpoint": 0.55,
+        "count": 336,
+        "meanPredictedProb": 0.5453,
+        "empiricalWinRate": 0.494
+      },
+      {
+        "bin": "60-70%",
+        "midpoint": 0.65,
+        "count": 367,
+        "meanPredictedProb": 0.6479,
+        "empiricalWinRate": 0.6131
+      },
+      {
+        "bin": "70-80%",
+        "midpoint": 0.75,
+        "count": 426,
+        "meanPredictedProb": 0.7489,
+        "empiricalWinRate": 0.6385
+      },
+      {
+        "bin": "80-90%",
+        "midpoint": 0.85,
+        "count": 345,
+        "meanPredictedProb": 0.8496,
+        "empiricalWinRate": 0.7652
+      },
+      {
+        "bin": "90-100%",
+        "midpoint": 0.95,
+        "count": 139,
+        "meanPredictedProb": 0.9265,
+        "empiricalWinRate": 0.8417
+      }
+    ],
+    "accuracyDrift": [
+      {
+        "season": "2025",
+        "games": 1315,
+        "accuracy": 0.6129,
+        "brierScore": 0.2355
+      },
+      {
+        "season": "2026",
+        "games": 1326,
+        "accuracy": 0.6456,
+        "brierScore": 0.2207
+      },
+      {
+        "season": "2027",
+        "games": 15,
+        "accuracy": 0.6,
+        "brierScore": 0.2088
+      }
+    ],
+    "residualDistribution": [
+      {
+        "bucket": "< -0.4",
+        "count": 582,
+        "label": "Large Under-forecast"
+      },
+      {
+        "bucket": "-0.4 to -0.2",
+        "count": 497,
+        "label": "Moderate Under-forecast"
+      },
+      {
+        "bucket": "-0.2 to 0.0",
+        "count": 381,
+        "label": "Slight Under-forecast"
+      },
+      {
+        "bucket": "0.0 to 0.2",
+        "count": 120,
+        "label": "Slight Over-forecast"
+      },
+      {
+        "bucket": "0.2 to 0.4",
+        "count": 335,
+        "label": "Moderate Over-forecast"
+      },
+      {
+        "bucket": "> 0.4",
+        "count": 741,
+        "label": "Large Over-forecast"
+      }
+    ]
+  },
+  "rowCounts": {
+    "resolvedTotal": 2791,
+    "genuinePregame": 135,
+    "seededHindsight": 2656
+  }
 }
