@@ -1,5 +1,12 @@
+import { Metadata } from 'next';
 import { getTeamsData, getMetadata } from '@/lib/data';
 import { StandingsClient } from '@/components/StandingsClient';
+
+export const metadata: Metadata = {
+  title: 'Full Standings Table',
+  description:
+    'Expected 162-game win distributions, 4-Factor Pitcher Elo ratings, Pythagenpat luck differentials, and World Series equity for all 30 MLB franchises.',
+};
 
 export default function TeamsPage() {
   const teams = getTeamsData();

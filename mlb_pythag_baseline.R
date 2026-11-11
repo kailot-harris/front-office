@@ -68,9 +68,15 @@ calc_pythagorean_win_pct <- function(rs, ra, games = NULL, method = "pythagenpat
       },
       "pythagenport" = {
         # Pythagenport formula: 1.50 * log10((RS + RA) / G) + 0.45
+        # In very low run environments (< ~0.5 combined runs/game) this
+        # exponent goes negative, which inverts the projection (the better
+        # team projects under .500) and can blow up to NaN/Inf at 0-0.
+        # Clamp to a floor of 1 (equivalent to a simple run-differential
+        # ratio) so the exponent always stays sane.
         rpg <- (rs + ra) / games
         rpg <- pmax(rpg, 0.1)
-        1.50 * log10(rpg) + 0.45
+        exp_val <- 1.50 * log10(rpg) + 0.45
+        pmax(exp_val, 1)
       },
       "fixed_1.83" = 1.83,
       "fixed_2"    = 2.00,
@@ -83,10 +89,12 @@ calc_pythagorean_win_pct <- function(rs, ra, games = NULL, method = "pythagenpat
     )
   }
   
-  # Protect against 0/0
+  # Protect against 0/0 (and NaN/Inf fallout from degenerate exponents)
   total_power <- (rs^exp_val) + (ra^exp_val)
-  win_pct <- ifelse(total_power > 0, (rs^exp_val) / total_power, 0.500)
-  
+  win_pct <- ifelse(is.nan(total_power) | !is.finite(total_power) | total_power <= 0,
+                     0.500,
+                     (rs^exp_val) / total_power)
+
   pmin(pmax(win_pct, 0.0), 1.0)
 }
 

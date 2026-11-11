@@ -1,5 +1,12 @@
+import { Metadata } from 'next';
 import { getPostseasonOpsData, getWorldSeriesData } from '@/lib/data';
 import { PostseasonOpsClient } from '@/components/PostseasonOpsClient';
+
+export const metadata: Metadata = {
+  title: 'Postseason Bracket, Bullpen & Tactical Hub',
+  description:
+    '12-team MLB Postseason Monte Carlo advancement probabilities (WC/DS/LCS/WS), bullpen workload diagnostics, and tactical matchup advantage metrics.',
+};
 
 export default function PostseasonPage() {
   const data = getPostseasonOpsData();

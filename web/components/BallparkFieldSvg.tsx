@@ -64,7 +64,7 @@ export const BallparkFieldSvg: React.FC<BallparkFieldSvgProps> = ({
                 <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
                   {park.team}
                 </span>
-                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+                <span className="text-[11px] sm:text-[10px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
                   {park.roofType}
                 </span>
               </div>

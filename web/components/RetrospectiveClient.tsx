@@ -396,11 +396,11 @@ export const RetrospectiveClient: React.FC<RetrospectiveClientProps> = ({
                   </div>
                   <div className="flex items-center gap-4 text-xs font-mono">
                     <div className="text-right">
-                      <span className="text-slate-500 block text-[10px]">Pinnacle Team</span>
+                      <span className="text-slate-500 block text-[11px] sm:text-[10px]">Pinnacle Team</span>
                       <span className="text-amber-300 font-semibold">{m.topTeam}</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-slate-500 block text-[10px]">Game Accuracy</span>
+                      <span className="text-slate-500 block text-[11px] sm:text-[10px]">Game Accuracy</span>
                       <span className="text-white font-semibold">{m.accuracy}</span>
                     </div>
                   </div>
@@ -454,12 +454,12 @@ export const RetrospectiveClient: React.FC<RetrospectiveClientProps> = ({
                           <TeamLogo team={row.team} size="sm" />
                           <span>{row.fullName}</span>
                           {row.team === 'MIL' && (
-                            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            <span className="text-[11px] sm:text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
                               WS Champ
                             </span>
                           )}
                           {row.team === 'TB' && (
-                            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                            <span className="text-[11px] sm:text-[10px] font-mono px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
                               AL Champ
                             </span>
                           )}
@@ -510,14 +510,14 @@ export const RetrospectiveClient: React.FC<RetrospectiveClientProps> = ({
                       <TeamLogo team={t.team} size="sm" />
                       <div>
                         <span className="font-semibold text-white block">{t.full_name}</span>
-                        <span className="text-[10px] text-slate-400 font-mono">
+                        <span className="text-[11px] sm:text-[10px] text-slate-400 font-mono">
                           RD: {t.run_differential > 0 ? `+${t.run_differential}` : t.run_differential}
                         </span>
                       </div>
                     </div>
                     <div className="text-right font-mono">
                       <span className="text-emerald-400 font-bold block">+{t.luck_wins.toFixed(1)} Wins</span>
-                      <span className="text-[10px] text-slate-400">{(t.pythag_win_pct * 100).toFixed(1)}% Exp</span>
+                      <span className="text-[11px] sm:text-[10px] text-slate-400">{(t.pythag_win_pct * 100).toFixed(1)}% Exp</span>
                     </div>
                   </div>
                 ))}
@@ -543,14 +543,14 @@ export const RetrospectiveClient: React.FC<RetrospectiveClientProps> = ({
                         <TeamLogo team={t.team} size="sm" />
                         <div>
                           <span className="font-semibold text-white block">{t.full_name}</span>
-                          <span className="text-[10px] text-slate-400 font-mono">
+                          <span className="text-[11px] sm:text-[10px] text-slate-400 font-mono">
                             RD: {t.run_differential > 0 ? `+${t.run_differential}` : t.run_differential}
                           </span>
                         </div>
                       </div>
                       <div className="text-right font-mono">
                         <span className="text-rose-400 font-bold block">{t.luck_wins.toFixed(1)} Wins</span>
-                        <span className="text-[10px] text-slate-400">{(t.pythag_win_pct * 100).toFixed(1)}% Exp</span>
+                        <span className="text-[11px] sm:text-[10px] text-slate-400">{(t.pythag_win_pct * 100).toFixed(1)}% Exp</span>
                       </div>
                     </div>
                   ))}

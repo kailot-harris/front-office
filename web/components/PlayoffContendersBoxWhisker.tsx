@@ -110,7 +110,7 @@ export const PlayoffContendersBoxWhisker: React.FC<PlayoffContendersBoxWhiskerPr
           </div>
 
           {/* Scale Axis Labels */}
-          <div className="relative h-6 text-[10px] font-mono text-slate-400 select-none pl-36 sm:pl-48 pr-28 sm:pr-36">
+          <div className="relative h-6 text-[11px] sm:text-[10px] font-mono text-slate-400 select-none pl-36 sm:pl-48 pr-28 sm:pr-36">
             <div className="relative w-full h-full">
               {winTicks.map((tick) => {
                 const pos = toPct(tick);
@@ -164,7 +164,7 @@ export const PlayoffContendersBoxWhisker: React.FC<PlayoffContendersBoxWhiskerPr
                           {team.team_name}
                         </span>
                         <span
-                          className={`text-[9px] px-1 rounded font-mono ${
+                          className={`text-[11px] sm:text-[9px] px-1 rounded font-mono ${
                             team.league === 'AL'
                               ? 'bg-sky-500/10 text-sky-400'
                               : 'bg-amber-500/10 text-amber-400'
@@ -173,7 +173,7 @@ export const PlayoffContendersBoxWhisker: React.FC<PlayoffContendersBoxWhiskerPr
                           {team.league}
                         </span>
                       </div>
-                      <span className="text-[10px] font-mono text-slate-400 block">
+                      <span className="text-[11px] sm:text-[10px] font-mono text-slate-400 block">
                         {team.ensemble_mean_wins.toFixed(1)}W – {team.proj_losses.toFixed(1)}L
                       </span>
                     </div>
@@ -228,7 +228,7 @@ export const PlayoffContendersBoxWhisker: React.FC<PlayoffContendersBoxWhiskerPr
 
                   {/* Right Stats Summary (p10-p90 & Playoff/WS Prob) */}
                   <div className="w-28 sm:w-36 flex items-center justify-end gap-2 text-right font-mono flex-shrink-0">
-                    <div className="hidden sm:block text-[10px] text-slate-400">
+                    <div className="hidden sm:block text-[11px] sm:text-[10px] text-slate-400">
                       {team.ensemble_p10.toFixed(0)}–{team.ensemble_p90.toFixed(0)}W
                     </div>
                     <span

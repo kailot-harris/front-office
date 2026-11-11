@@ -1,5 +1,12 @@
+import { Metadata } from 'next';
 import { getTeamsData, getMetadata } from '@/lib/data';
 import { VariantsClient } from '@/components/VariantsClient';
+
+export const metadata: Metadata = {
+  title: 'Sabermetric Model Variants Breakout',
+  description:
+    'Compare 162-game Monte Carlo projections across 4-Factor Starting-Pitcher Elo, Hierarchical Empirical Bayes Talent, Pythagenpat Run-Expectation, and Marcel/Bullpen Fatigue.',
+};
 
 export default function VariantsPage() {
   const teams = getTeamsData();

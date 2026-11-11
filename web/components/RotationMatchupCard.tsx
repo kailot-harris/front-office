@@ -93,7 +93,7 @@ export const RotationMatchupCard: React.FC<RotationMatchupCardProps> = ({
                         <span className="text-[10.5px] font-mono text-slate-400">rGS {g.starterArGS}</span>
                       </div>
                       <p className="font-semibold text-white truncate text-xs">{g.starterA}</p>
-                      <div className="text-[10px] text-slate-400 font-mono">
+                      <div className="text-[11px] sm:text-[10px] text-slate-400 font-mono">
                         Win Prob: <strong className="text-sky-300">{(g.winProbA * 100).toFixed(1)}%</strong>
                       </div>
                     </div>
@@ -105,7 +105,7 @@ export const RotationMatchupCard: React.FC<RotationMatchupCardProps> = ({
                         <span className="text-[10.5px] font-mono text-slate-400">rGS {g.starterBrGS}</span>
                       </div>
                       <p className="font-semibold text-white truncate text-xs">{g.starterB}</p>
-                      <div className="text-[10px] text-slate-400 font-mono">
+                      <div className="text-[11px] sm:text-[10px] text-slate-400 font-mono">
                         Win Prob: <strong className="text-amber-300">{(g.winProbB * 100).toFixed(1)}%</strong>
                       </div>
                     </div>
@@ -138,7 +138,7 @@ export const RotationMatchupCard: React.FC<RotationMatchupCardProps> = ({
               {profileA.starters.map((sp, idx) => (
                 <div key={idx} className="flex items-center justify-between bg-surface-raised/60 p-1.5 rounded border border-slate-800/50">
                   <div className="truncate">
-                    <span className="text-[10px] text-slate-400 mr-2">{sp.role}:</span>
+                    <span className="text-[11px] sm:text-[10px] text-slate-400 mr-2">{sp.role}:</span>
                     <span className="text-white font-semibold">{sp.playerName}</span>
                   </div>
                   <div className="flex items-center gap-2 text-[10.5px]">
@@ -155,7 +155,7 @@ export const RotationMatchupCard: React.FC<RotationMatchupCardProps> = ({
               {profileA.relievers.map((rp, idx) => (
                 <div key={idx} className="flex items-center justify-between bg-surface-raised/60 p-1.5 rounded border border-slate-800/50">
                   <div className="truncate">
-                    <span className="text-[10px] text-slate-400 mr-2">{rp.role}:</span>
+                    <span className="text-[11px] sm:text-[10px] text-slate-400 mr-2">{rp.role}:</span>
                     <span className="text-white font-semibold">{rp.playerName}</span>
                   </div>
                   <div className="flex items-center gap-2 text-[10.5px]">
@@ -179,7 +179,7 @@ export const RotationMatchupCard: React.FC<RotationMatchupCardProps> = ({
               {profileB.starters.map((sp, idx) => (
                 <div key={idx} className="flex items-center justify-between bg-surface-raised/60 p-1.5 rounded border border-slate-800/50">
                   <div className="truncate">
-                    <span className="text-[10px] text-slate-400 mr-2">{sp.role}:</span>
+                    <span className="text-[11px] sm:text-[10px] text-slate-400 mr-2">{sp.role}:</span>
                     <span className="text-white font-semibold">{sp.playerName}</span>
                   </div>
                   <div className="flex items-center gap-2 text-[10.5px]">
@@ -196,7 +196,7 @@ export const RotationMatchupCard: React.FC<RotationMatchupCardProps> = ({
               {profileB.relievers.map((rp, idx) => (
                 <div key={idx} className="flex items-center justify-between bg-surface-raised/60 p-1.5 rounded border border-slate-800/50">
                   <div className="truncate">
-                    <span className="text-[10px] text-slate-400 mr-2">{rp.role}:</span>
+                    <span className="text-[11px] sm:text-[10px] text-slate-400 mr-2">{rp.role}:</span>
                     <span className="text-white font-semibold">{rp.playerName}</span>
                   </div>
                   <div className="flex items-center gap-2 text-[10.5px]">

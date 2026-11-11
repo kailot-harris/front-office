@@ -344,7 +344,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                   {spatialData.batter_summary?.avg_ev ?? 0}{' '}
                   <span className="text-xs text-slate-400 font-normal">mph</span>
                 </div>
-                <div className="text-[10px] text-amber-400 font-mono">
+                <div className="text-[11px] sm:text-[10px] text-amber-400 font-mono">
                   Hard Hit: {spatialData.batter_summary?.hard_hit_pct ?? 0}% (≥95 mph)
                 </div>
               </div>
@@ -358,7 +358,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                   {spatialData.batter_summary?.max_ev ?? 0}{' '}
                   <span className="text-xs text-slate-400 font-normal">mph</span>
                 </div>
-                <div className="text-[10px] text-slate-400 font-mono">Max projected barrel</div>
+                <div className="text-[11px] sm:text-[10px] text-slate-400 font-mono">Max projected barrel</div>
               </div>
 
               <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-3.5 space-y-1">
@@ -370,7 +370,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                   {spatialData.batter_summary?.max_dist ?? 0}{' '}
                   <span className="text-xs text-slate-400 font-normal">ft</span>
                 </div>
-                <div className="text-[10px] text-sky-400 font-mono">
+                <div className="text-[11px] sm:text-[10px] text-sky-400 font-mono">
                   Avg LA: {spatialData.batter_summary?.avg_la ?? 0}°
                 </div>
               </div>
@@ -386,7 +386,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                     ({spatialData.batter_summary?.home_runs ?? 0} HR)
                   </span>
                 </div>
-                <div className="text-[10px] text-slate-400 font-mono">
+                <div className="text-[11px] sm:text-[10px] text-slate-400 font-mono">
                   Sample: {spatialData.batter_summary?.total_balls ?? 0} balls
                 </div>
               </div>
@@ -423,19 +423,19 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                   <div className="text-indigo-400 font-bold">
                     {spatialData.batter_summary?.pull_pct ?? 0}%
                   </div>
-                  <div className="text-[10px] text-slate-400">Pull Field</div>
+                  <div className="text-[11px] sm:text-[10px] text-slate-400">Pull Field</div>
                 </div>
                 <div>
                   <div className="text-sky-400 font-bold">
                     {spatialData.batter_summary?.center_pct ?? 0}%
                   </div>
-                  <div className="text-[10px] text-slate-400">Center Field</div>
+                  <div className="text-[11px] sm:text-[10px] text-slate-400">Center Field</div>
                 </div>
                 <div>
                   <div className="text-emerald-400 font-bold">
                     {spatialData.batter_summary?.oppo_pct ?? 0}%
                   </div>
-                  <div className="text-[10px] text-slate-400">Opposite Field</div>
+                  <div className="text-[11px] sm:text-[10px] text-slate-400">Opposite Field</div>
                 </div>
               </div>
             </div>
@@ -444,7 +444,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
             <div className="bg-surface-raised/80 border border-slate-800/80 rounded-xl p-3.5 text-xs space-y-2">
               <div className="flex items-center justify-between text-slate-300 font-semibold">
                 <span>Selected Batted Ball Telemetry</span>
-                <span className="text-[10px] font-mono text-slate-500">Hover or click any dot</span>
+                <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">Hover or click any dot</span>
               </div>
               {hoveredBall ? (
                 <div className="p-2.5 rounded-lg bg-surface border border-slate-800 font-mono text-xs space-y-1">
@@ -667,7 +667,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                   >
                     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colorConfig.fill }} />
                     <span className="text-slate-300">{a.pitch_type}</span>
-                    <span className="text-[10px] text-slate-500 font-mono">({a.avg_velo} mph)</span>
+                    <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">({a.avg_velo} mph)</span>
                   </button>
                 );
               })}
@@ -687,7 +687,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                   {spatialData.pitcher_summary?.avg_velo ?? 0}{' '}
                   <span className="text-xs text-slate-400 font-normal">mph</span>
                 </div>
-                <div className="text-[10px] text-rose-400 font-mono">
+                <div className="text-[11px] sm:text-[10px] text-rose-400 font-mono">
                   Peak: {spatialData.pitcher_summary?.max_velo ?? 0} mph
                 </div>
               </div>
@@ -700,7 +700,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 <div className="text-xl font-mono font-bold text-emerald-400">
                   {spatialData.pitcher_summary?.strike_pct ?? 0}%
                 </div>
-                <div className="text-[10px] text-slate-400 font-mono">
+                <div className="text-[11px] sm:text-[10px] text-slate-400 font-mono">
                   Called: {spatialData.pitcher_summary?.called_strike_pct ?? 0}%
                 </div>
               </div>
@@ -713,7 +713,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 <div className="text-xl font-mono font-bold text-indigo-300">
                   {spatialData.pitcher_summary?.zone_pct ?? 0}%
                 </div>
-                <div className="text-[10px] text-slate-400 font-mono">Rulebook 3x3 boundaries</div>
+                <div className="text-[11px] sm:text-[10px] text-slate-400 font-mono">Rulebook 3x3 boundaries</div>
               </div>
 
               <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-3.5 space-y-1">
@@ -724,7 +724,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                 <div className="text-xl font-mono font-bold text-amber-300">
                   {spatialData.pitcher_summary?.whiff_pct ?? 0}%
                 </div>
-                <div className="text-[10px] text-amber-400/80 font-mono">Swinging strike rate</div>
+                <div className="text-[11px] sm:text-[10px] text-amber-400/80 font-mono">Swinging strike rate</div>
               </div>
             </div>
 
@@ -776,7 +776,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                                 style={{ backgroundColor: colorConfig.fill }}
                               />
                               <span className="text-white font-semibold">{a.pitch_name}</span>
-                              <span className="text-[10px] text-slate-400">({a.pitch_type})</span>
+                              <span className="text-[11px] sm:text-[10px] text-slate-400">({a.pitch_type})</span>
                             </div>
                           </td>
                           <td className="py-2 px-2 text-right text-slate-200">{a.pct}%</td>
@@ -800,7 +800,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
             <div className="bg-surface-raised/80 border border-slate-800/80 rounded-xl p-3.5 text-xs space-y-2">
               <div className="flex items-center justify-between text-slate-300 font-semibold">
                 <span>Selected Pitch Telemetry</span>
-                <span className="text-[10px] font-mono text-slate-500">Hover or click any pitch</span>
+                <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">Hover or click any pitch</span>
               </div>
               {hoveredPitch ? (
                 <div className="p-2.5 rounded-lg bg-surface border border-slate-800 font-mono text-xs space-y-1">

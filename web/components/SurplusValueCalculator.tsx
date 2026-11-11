@@ -44,7 +44,7 @@ export const SurplusValueCalculator: React.FC = () => {
             aria-label="Annual Salary (AAV)"
             className="w-full accent-sky-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
           />
-          <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+          <div className="flex justify-between text-[11px] sm:text-[10px] text-slate-400 mt-1">
             <span>$0.8M (Min)</span>
             <span>$25M</span>
             <span>$55M (Max)</span>
@@ -67,7 +67,7 @@ export const SurplusValueCalculator: React.FC = () => {
             aria-label="Projected WAR"
             className="w-full accent-sky-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
           />
-          <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+          <div className="flex justify-between text-[11px] sm:text-[10px] text-slate-400 mt-1">
             <span>0.0</span>
             <span>4.0 (All-Star)</span>
             <span>8.0+ (MVP)</span>
@@ -90,7 +90,7 @@ export const SurplusValueCalculator: React.FC = () => {
             aria-label="Market Cost / Win"
             className="w-full accent-amber-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
           />
-          <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+          <div className="flex justify-between text-[11px] sm:text-[10px] text-slate-400 mt-1">
             <span>$7.0M (2020)</span>
             <span>$8.5M (2026)</span>
             <span>$11.0M (Top FA)</span>

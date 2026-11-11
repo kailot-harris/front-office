@@ -3,6 +3,7 @@
 import React from 'react';
 import { ShieldAlert, AlertTriangle, CheckCircle2, DollarSign } from 'lucide-react';
 import { FranchiseCbtProfile } from '@/lib/cbtTypes';
+import { money } from '@/lib/format';
 
 interface CbtThermometerProps {
   team: FranchiseCbtProfile;
@@ -44,7 +45,7 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
-            2026 Tax Threshold: ${baseT.toFixed(1)}M • Tax Bill: ${team.cbtTaxBill.toFixed(2)}M
+            2026 Tax Threshold: {money(baseT)} • Tax Bill: {money(team.cbtTaxBill, 2)}
           </p>
         </div>
 
@@ -55,9 +56,9 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
             </span>
           )}
           <div className="text-right">
-            <span className="text-[10px] text-slate-400 block uppercase tracking-wider">Total Commit</span>
+            <span className="text-[11px] sm:text-[10px] text-slate-400 block uppercase tracking-wider">Total Commit</span>
             <span className="font-mono font-extrabold text-base text-white">
-              ${team.totalCommitment.toFixed(1)}M
+              {money(team.totalCommitment)}
             </span>
           </div>
         </div>
@@ -92,7 +93,7 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
         </div>
 
         {/* Marker Labels */}
-        <div className="relative w-full h-8 mt-2 text-[10px] font-mono text-slate-400">
+        <div className="relative w-full h-8 mt-2 text-[11px] sm:text-[10px] font-mono text-slate-400">
           {/* Base CBT */}
           <div
             className="absolute -translate-x-1/2 flex flex-col items-center"
@@ -100,7 +101,7 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
           >
             <div className="w-0.5 h-2 bg-slate-600 mb-0.5" />
             <span className="text-slate-300 font-semibold">${baseT}M</span>
-            <span className="text-[9px] text-slate-400">Base</span>
+            <span className="text-[11px] sm:text-[9px] text-slate-400">Base</span>
           </div>
 
           {/* Tier 1 */}
@@ -110,7 +111,7 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
           >
             <div className="w-0.5 h-2 bg-amber-500/60 mb-0.5" />
             <span className="text-amber-400/90">${t1}M</span>
-            <span className="text-[9px] text-amber-400/70">T1</span>
+            <span className="text-[11px] sm:text-[9px] text-amber-400/70">T1</span>
           </div>
 
           {/* Tier 2 */}
@@ -120,7 +121,7 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
           >
             <div className="w-0.5 h-2 bg-rose-500/60 mb-0.5" />
             <span className="text-rose-400/90">${t2}M</span>
-            <span className="text-[9px] text-rose-400/70">Draft -10</span>
+            <span className="text-[11px] sm:text-[9px] text-rose-400/70">Draft -10</span>
           </div>
 
           {/* Tier 3 */}
@@ -130,7 +131,7 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
           >
             <div className="w-0.5 h-2 bg-red-500 mb-0.5" />
             <span className="text-red-400 font-bold">${t3}M</span>
-            <span className="text-[9px] text-red-400">Cohen</span>
+            <span className="text-[11px] sm:text-[9px] text-red-400">Cohen</span>
           </div>
         </div>
       </div>
@@ -140,7 +141,7 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
         <div className="flex items-center gap-2 p-2.5 rounded-lg bg-surface/60 border border-slate-800">
           <DollarSign className="w-4 h-4 text-emerald-400 flex-shrink-0" />
           <div className="min-w-0">
-            <div className="text-[10px] text-slate-400">CBT Tax Rate Applied</div>
+            <div className="text-[11px] sm:text-[10px] text-slate-400">CBT Tax Rate Applied</div>
             <div className="font-semibold text-slate-200 truncate">{team.penalties.taxRateDescription}</div>
           </div>
         </div>
@@ -152,7 +153,7 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
             <CheckCircle2 className="w-4 h-4 text-slate-400 flex-shrink-0" />
           )}
           <div className="min-w-0">
-            <div className="text-[10px] text-slate-400">Draft Selection Status</div>
+            <div className="text-[11px] sm:text-[10px] text-slate-400">Draft Selection Status</div>
             <div className={`font-semibold truncate ${team.penalties.draftPickDrop10 ? 'text-amber-300' : 'text-slate-400'}`}>
               {team.penalties.draftPickDrop10 ? 'Top Pick Dropped 10 Spots' : 'Protected (No Penalty)'}
             </div>
@@ -166,7 +167,7 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
             <CheckCircle2 className="w-4 h-4 text-slate-400 flex-shrink-0" />
           )}
           <div className="min-w-0">
-            <div className="text-[10px] text-slate-400">Intl Pool & Rev Sharing</div>
+            <div className="text-[11px] sm:text-[10px] text-slate-400">Intl Pool & Rev Sharing</div>
             <div className={`font-semibold truncate ${team.penalties.internationalPoolReduction ? 'text-rose-400' : 'text-slate-300'}`}>
               {team.penalties.internationalPoolReduction ? '-$1.0M Intl Pool Slashed' : (team.penalties.revenueShareEligible ? 'Revenue Share Eligible' : 'Standard')}
             </div>

@@ -22,6 +22,7 @@ import { PlayoffContendersBoxWhisker } from '@/components/PlayoffContendersBoxWh
 import { exportToCsv } from '@/lib/exportToCsv';
 import { MLB_VISUAL_MEDIA_ITEMS } from '@/lib/visualMedia';
 import { BASE_PATH } from '@/lib/basePath';
+import { useTableScrollHint } from '@/lib/useTableScrollHint';
 
 interface StandingsClientProps {
   teams: TeamProjection[];
@@ -52,6 +53,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
   const [selectedGifId, setSelectedGifId] = useState<string>(MLB_VISUAL_MEDIA_ITEMS[0].id);
   const [sortBy, setSortBy] = useState<StandingsSortField>('ensemble_mean_wins');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const { scrollRef: tableScrollRef, showScrollHint, onScroll: handleTableScroll } = useTableScrollHint<HTMLDivElement>();
 
   const divisions = useMemo(() => {
     const set = new Set(teams.map((t) => t.division));
@@ -263,7 +265,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
             <BarChart2 className="w-4 h-4 pointer-events-none" />
             <span className="pointer-events-none">Postseason Contenders (Box-Whisker)</span>
             <span
-              className={`text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
+              className={`text-[11px] sm:text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
                 activeTab === 'visualizer'
                   ? 'bg-white/20 text-white font-bold'
                   : 'bg-slate-800 text-slate-400'
@@ -288,7 +290,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
             <Film className="w-4 h-4 pointer-events-none" />
             <span className="pointer-events-none">Animated GIF Races & Postseason</span>
             <span
-              className={`text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
+              className={`text-[11px] sm:text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
                 activeTab === 'gallery' ? 'bg-white/20 text-white font-bold' : 'bg-slate-800 text-slate-400'
               }`}
             >
@@ -311,7 +313,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
             <Table className="w-4 h-4 pointer-events-none" />
             <span className="pointer-events-none">Full MLB Standings (30 Clubs)</span>
             <span
-              className={`text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
+              className={`text-[11px] sm:text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
                 activeTab === 'table' ? 'bg-white/20 text-white font-bold' : 'bg-slate-800 text-slate-400'
               }`}
             >
@@ -406,7 +408,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                      <span className="text-[11px] sm:text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
                         {currentItem.categoryLabel}
                       </span>
                       <span className="text-xs text-slate-400 font-mono">Phase {currentItem.phase}</span>
@@ -463,7 +465,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                       setSelectedLeague(lg);
                       setSelectedDivision('All');
                     }}
-                    className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                    className={`px-3 py-1 min-h-[24px] min-w-[24px] flex items-center justify-center text-xs font-semibold rounded-md transition-all ${
                       selectedLeague === lg
                         ? 'bg-accent-600 text-white shadow-sm'
                         : 'text-slate-400 hover:text-white'
@@ -499,7 +501,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                 title="Export CSV"
                 aria-label="Export table as CSV"
                 data-export-exclude
-                className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+                className="p-1.5 min-h-[24px] min-w-[24px] flex items-center justify-center rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
               >
                 <Download className="w-3.5 h-3.5" />
               </button>
@@ -507,14 +509,14 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
           </div>
 
           {/* Main Standings Table */}
-          <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
-            <div className="overflow-x-auto">
+          <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl relative">
+            <div className="overflow-x-auto" ref={tableScrollRef} onScroll={handleTableScroll}>
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-800 bg-surface/80 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                     <th
                       onClick={() => handleSort('rank')}
-                      className="py-3.5 px-3 cursor-pointer hover:text-white group select-none"
+                      className="py-3.5 px-3 cursor-pointer hover:text-white group select-none hidden sm:table-cell"
                     >
                       <div className="flex items-center gap-1">
                         <span>Rk</span>
@@ -523,7 +525,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                     </th>
                     <th
                       onClick={() => handleSort('team')}
-                      className="py-3.5 px-4 cursor-pointer hover:text-white group select-none"
+                      className="py-3.5 px-4 cursor-pointer hover:text-white group select-none sticky left-0 z-20 bg-surface border-r border-slate-800"
                     >
                       <div className="flex items-center gap-1">
                         <span>Franchise</span>
@@ -532,7 +534,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                     </th>
                     <th
                       onClick={() => handleSort('division')}
-                      className="py-3.5 px-3 cursor-pointer hover:text-white group select-none"
+                      className="py-3.5 px-3 cursor-pointer hover:text-white group select-none hidden sm:table-cell"
                     >
                       <div className="flex items-center gap-1">
                         <span>Div</span>
@@ -559,7 +561,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                     </th>
                     <th
                       onClick={() => handleSort('elo_rating')}
-                      className="py-3.5 px-3 text-right cursor-pointer hover:text-white group select-none"
+                      className="py-3.5 px-3 text-right cursor-pointer hover:text-white group select-none hidden sm:table-cell"
                     >
                       <div className="flex items-center justify-end gap-1">
                         <span>Elo (rGS)</span>
@@ -568,7 +570,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                     </th>
                     <th
                       onClick={() => handleSort('luck_wins')}
-                      className="py-3.5 px-3 text-right cursor-pointer hover:text-white group select-none"
+                      className="py-3.5 px-3 text-right cursor-pointer hover:text-white group select-none hidden sm:table-cell"
                     >
                       <div className="flex items-center justify-end gap-1">
                         <span>Pythag Luck</span>
@@ -577,7 +579,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                     </th>
                     <th
                       onClick={() => handleSort('percentile_range')}
-                      className="py-3.5 px-4 text-center cursor-pointer hover:text-white group select-none min-w-[170px]"
+                      className="py-3.5 px-4 text-center cursor-pointer hover:text-white group select-none min-w-[170px] hidden sm:table-cell"
                     >
                       <div className="flex items-center justify-center gap-1">
                         <span>10th – 90th Pct Range</span>
@@ -624,16 +626,16 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                         key={team.team}
                         className="hover:bg-slate-800/40 transition-colors"
                       >
-                        <td className="py-3 px-3 font-mono text-xs text-slate-400">
+                        <td className="py-3 px-3 font-mono text-xs text-slate-400 hidden sm:table-cell">
                           #{team.rank}
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4 sticky left-0 z-10 bg-surface-raised border-r border-slate-800">
                           <div className="flex items-center gap-3">
                             <TeamLogo team={team.team} size="md" />
                             <div>
                               <div className="font-bold text-white flex items-center gap-1.5">
                                 <span>{team.full_name}</span>
-                                <span className="text-[10px] font-mono text-slate-400">
+                                <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">
                                   ({team.team})
                                 </span>
                               </div>
@@ -644,7 +646,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                             </div>
                           </div>
                         </td>
-                        <td className="py-3 px-3">
+                        <td className="py-3 px-3 hidden sm:table-cell">
                           <span
                             className={`text-xs font-mono px-2 py-0.5 rounded border ${
                               team.league === 'AL'
@@ -666,15 +668,15 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                         <td className="py-3 px-3 text-right font-mono text-slate-300">
                           .{Math.round(team.win_pct * 1000).toString().padStart(3, '0')}
                         </td>
-                        <td className="py-3 px-3 text-right font-mono">
+                        <td className="py-3 px-3 text-right font-mono hidden sm:table-cell">
                           <div className="text-white font-semibold">
                             {team.elo_rating.toFixed(0)}
                           </div>
-                          <div className="text-[10px] text-slate-400">
+                          <div className="text-[11px] sm:text-[10px] text-slate-400">
                             rGS {team.team_rgs.toFixed(1)}
                           </div>
                         </td>
-                        <td className="py-3 px-3 text-right font-mono text-xs">
+                        <td className="py-3 px-3 text-right font-mono text-xs hidden sm:table-cell">
                           <span
                             className={
                               team.luck_wins > 1.5
@@ -687,7 +689,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                             {team.luck_wins > 0 ? `+${team.luck_wins.toFixed(1)}` : team.luck_wins.toFixed(1)}W
                           </span>
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4 hidden sm:table-cell">
                           <div className="flex flex-col gap-1">
                             <div className="relative h-2 bg-surface rounded-full overflow-hidden border border-slate-800">
                               <div
@@ -699,7 +701,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                                 style={{ left: `${medianPct}%` }}
                               />
                             </div>
-                            <div className="flex justify-between text-[10px] font-mono text-slate-400">
+                            <div className="flex justify-between text-[11px] sm:text-[10px] font-mono text-slate-400">
                               <span>p10: {team.ensemble_p10.toFixed(0)}W</span>
                               <span className="text-amber-400 font-semibold">
                                 p50: {team.ensemble_p50.toFixed(0)}W
@@ -740,6 +742,12 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                 </tbody>
               </table>
             </div>
+            {showScrollHint && (
+              <div
+                className="pointer-events-none absolute top-0 right-0 bottom-0 w-10 bg-gradient-to-l from-surface-raised to-transparent transition-opacity"
+                aria-hidden="true"
+              />
+            )}
           </div>
         </div>
       )}

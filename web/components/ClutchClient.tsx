@@ -6,6 +6,8 @@ import { PressureResiliencePlot } from './PressureResiliencePlot';
 import { LeverageDistributionBar } from './LeverageDistributionBar';
 import { FiremanLeaderboardCard } from './FiremanLeaderboardCard';
 import { TeamLogo } from '@/components/TeamLogo';
+import { HowToRead } from '@/components/HowToRead';
+import { GlossaryTerm } from '@/components/Glossary';
 import {
   Flame,
   Search,
@@ -90,9 +92,16 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
               Late-Game Shot Creation, Pressure Resilience & Firemen
             </h1>
             <p className="text-sm text-slate-300 max-w-2xl mt-1">
-              Filtering blowout garbage time to evaluate batter pressure wOBA resilience, 2-out RISP conversion,
-              Win Probability Added (WPA), and reliever inherited runner stranding (IRS%).
+              Filtering blowout garbage time to evaluate batter pressure <GlossaryTerm term="wOBA" /> resilience, 2-out RISP conversion,
+              Win Probability Added (<GlossaryTerm term="WPA" />), and reliever inherited runner stranding (IRS%).
             </p>
+            <div className="max-w-xl mt-2">
+              <HowToRead pageKey="clutch">
+                Players are ranked by performance in high-<GlossaryTerm term="Leverage Index" /> moments
+                only — low-pressure blowout at-bats are filtered out. Switch between Batter and
+                Pitcher to compare rosters, and select a name to see their full pressure profile.
+              </HowToRead>
+            </div>
           </div>
 
           {/* Batter / Pitcher Toggle */}
@@ -193,7 +202,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-xs text-white truncate">{p.playerName}</span>
-                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">
+                          <span className="text-[11px] sm:text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">
                             {p.position}
                           </span>
                         </div>
@@ -207,7 +216,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
                           {p.clutchScore > 0 ? `+${p.clutchScore}` : p.clutchScore} CLUTCH
                         </span>
                         <span
-                          className={`text-[10px] font-bold ${
+                          className={`text-[11px] sm:text-[10px] font-bold ${
                             isGoodDelta ? 'text-emerald-400' : 'text-slate-500'
                           }`}
                         >
@@ -246,14 +255,14 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
                 <span className="text-2xl font-black text-rose-400">
                   {selectedProfile.clutchScore > 0 ? `+${selectedProfile.clutchScore}` : selectedProfile.clutchScore}
                 </span>
-                <span className="text-[10px] text-slate-400 block font-bold">TANGO CLUTCH</span>
+                <span className="text-[11px] sm:text-[10px] text-slate-400 block font-bold">TANGO CLUTCH</span>
               </div>
             </div>
 
             {/* Archetype Badge */}
             <div className="p-3 bg-surface/80 rounded-xl border border-rose-500/30 flex items-center justify-between">
               <div>
-                <span className="text-[10px] uppercase font-mono font-bold text-slate-400 block">Classified Leverage Role</span>
+                <span className="text-[11px] sm:text-[10px] uppercase font-mono font-bold text-slate-400 block">Classified Leverage Role</span>
                 <span className="text-sm font-bold text-rose-300 font-mono">{selectedProfile.clutchArchetype}</span>
               </div>
               <Sparkles className="w-5 h-5 text-rose-400 flex-shrink-0" />
@@ -262,15 +271,15 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
             {/* Base vs High-LI Metric Comparison Grid */}
             <div className="grid grid-cols-3 gap-2 text-center font-mono text-xs">
               <div className="bg-surface p-2 rounded-lg border border-slate-800">
-                <span className="text-[10px] text-slate-400 block">{selectedProfile.baseMetricLabel}</span>
+                <span className="text-[11px] sm:text-[10px] text-slate-400 block">{selectedProfile.baseMetricLabel}</span>
                 <span className="font-bold text-white text-xs">{selectedProfile.baseMetricVal.toFixed(3)}</span>
               </div>
               <div className="bg-surface p-2 rounded-lg border border-slate-800">
-                <span className="text-[10px] text-slate-400 block">{selectedProfile.clutchMetricLabel}</span>
+                <span className="text-[11px] sm:text-[10px] text-slate-400 block">{selectedProfile.clutchMetricLabel}</span>
                 <span className="font-bold text-sky-400 text-xs">{selectedProfile.clutchMetricVal.toFixed(3)}</span>
               </div>
               <div className="bg-surface p-2 rounded-lg border border-slate-800">
-                <span className="text-[10px] text-slate-400 block">Pressure Delta</span>
+                <span className="text-[11px] sm:text-[10px] text-slate-400 block">Pressure Delta</span>
                 <span
                   className={`font-black text-xs ${
                     (isBatter ? selectedProfile.deltaClutch >= 0 : selectedProfile.deltaClutch <= 0)
@@ -286,13 +295,13 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
             {/* Total WPA & High-LI WPA Breakdown */}
             <div className="grid grid-cols-2 gap-2 text-xs font-mono">
               <div className="bg-surface/80 p-2.5 rounded-xl border border-slate-800/60">
-                <span className="text-[10px] text-slate-400 block">Total Season WPA</span>
+                <span className="text-[11px] sm:text-[10px] text-slate-400 block">Total Season WPA</span>
                 <span className="text-base font-bold text-white">
                   {selectedProfile.wpaTotal > 0 ? `+${selectedProfile.wpaTotal.toFixed(2)}` : selectedProfile.wpaTotal.toFixed(2)} Wins
                 </span>
               </div>
               <div className="bg-surface/80 p-2.5 rounded-xl border border-slate-800/60">
-                <span className="text-[10px] text-slate-400 block">High-Leverage WPA (LI &ge; 1.5)</span>
+                <span className="text-[11px] sm:text-[10px] text-slate-400 block">High-Leverage WPA (LI &ge; 1.5)</span>
                 <span className="text-base font-bold text-rose-400">
                   {selectedProfile.highLiWpa > 0 ? `+${selectedProfile.highLiWpa.toFixed(2)}` : selectedProfile.highLiWpa.toFixed(2)} Wins
                 </span>

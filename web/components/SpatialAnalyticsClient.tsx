@@ -820,25 +820,25 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                     {/* Stat Grid */}
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div className="bg-surface p-2.5 rounded-lg border border-slate-800">
-                        <div className="text-slate-400 text-[10px] uppercase font-semibold">Exit Velocity</div>
+                        <div className="text-slate-400 text-[11px] sm:text-[10px] uppercase font-semibold">Exit Velocity</div>
                         <div className="text-base font-bold text-white font-mono mt-0.5">
                           {selectedBall.exit_velocity.toFixed(1)} <span className="text-xs text-slate-400">mph</span>
                         </div>
                       </div>
                       <div className="bg-surface p-2.5 rounded-lg border border-slate-800">
-                        <div className="text-slate-400 text-[10px] uppercase font-semibold">Launch Angle</div>
+                        <div className="text-slate-400 text-[11px] sm:text-[10px] uppercase font-semibold">Launch Angle</div>
                         <div className="text-base font-bold text-white font-mono mt-0.5">
                           {selectedBall.launch_angle}°
                         </div>
                       </div>
                       <div className="bg-surface p-2.5 rounded-lg border border-slate-800">
-                        <div className="text-slate-400 text-[10px] uppercase font-semibold">Est. Distance</div>
+                        <div className="text-slate-400 text-[11px] sm:text-[10px] uppercase font-semibold">Est. Distance</div>
                         <div className="text-base font-bold text-sky-400 font-mono mt-0.5">
                           {selectedBall.dist.toFixed(0)} <span className="text-xs text-slate-400">ft</span>
                         </div>
                       </div>
                       <div className="bg-surface p-2.5 rounded-lg border border-slate-800">
-                        <div className="text-slate-400 text-[10px] uppercase font-semibold">Spray Bearing</div>
+                        <div className="text-slate-400 text-[11px] sm:text-[10px] uppercase font-semibold">Spray Bearing</div>
                         <div className="text-base font-bold text-slate-200 font-mono mt-0.5">
                           {selectedBall.bearing > 0 ? `+${selectedBall.bearing.toFixed(1)}°` : `${selectedBall.bearing.toFixed(1)}°`}
                         </div>
@@ -880,7 +880,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
               <div className="bg-surface-raised border border-slate-800 rounded-2xl p-4 shadow-xl">
                 <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2.5 flex items-center justify-between">
                   <span>Sample HR Leaders</span>
-                  <span className="text-[10px] text-slate-500">Actual vs 30-Pk Exp</span>
+                  <span className="text-[11px] sm:text-[10px] text-slate-500">Actual vs 30-Pk Exp</span>
                 </h4>
                 <div className="space-y-2">
                   {data.tier1_spray.hr_hitters.slice(0, 5).map((hitter) => (
@@ -896,7 +896,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                       </div>
                       <div className="text-right font-mono flex-shrink-0">
                         <div className="text-rose-400 font-bold">{hitter.actual_hrs} HR</div>
-                        <div className="text-[10px] text-slate-500">
+                        <div className="text-[11px] sm:text-[10px] text-slate-500">
                           {hitter.expected_hrs_30_park_avg.toFixed(1)} xHR
                         </div>
                       </div>
@@ -1146,26 +1146,26 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div className="bg-surface p-2.5 rounded-lg border border-slate-800">
-                        <div className="text-slate-400 text-[10px] uppercase font-semibold">Pitch Count</div>
+                        <div className="text-slate-400 text-[11px] sm:text-[10px] uppercase font-semibold">Pitch Count</div>
                         <div className="text-base font-bold text-white font-mono mt-0.5">
                           {selectedZone.pitch_count}{' '}
                           <span className="text-xs text-slate-400">({selectedZone.pct_of_zone}%)</span>
                         </div>
                       </div>
                       <div className="bg-surface p-2.5 rounded-lg border border-slate-800">
-                        <div className="text-slate-400 text-[10px] uppercase font-semibold">Whiff Rate</div>
+                        <div className="text-slate-400 text-[11px] sm:text-[10px] uppercase font-semibold">Whiff Rate</div>
                         <div className="text-base font-bold text-rose-400 font-mono mt-0.5">
                           {selectedZone.whiff_rate}%
                         </div>
                       </div>
                       <div className="bg-surface p-2.5 rounded-lg border border-slate-800">
-                        <div className="text-slate-400 text-[10px] uppercase font-semibold">Swing Rate</div>
+                        <div className="text-slate-400 text-[11px] sm:text-[10px] uppercase font-semibold">Swing Rate</div>
                         <div className="text-base font-bold text-sky-400 font-mono mt-0.5">
                           {selectedZone.swing_rate}%
                         </div>
                       </div>
                       <div className="bg-surface p-2.5 rounded-lg border border-slate-800">
-                        <div className="text-slate-400 text-[10px] uppercase font-semibold">Called Strike %</div>
+                        <div className="text-slate-400 text-[11px] sm:text-[10px] uppercase font-semibold">Called Strike %</div>
                         <div className="text-base font-bold text-emerald-400 font-mono mt-0.5">
                           {selectedZone.called_strike_rate}%
                         </div>
@@ -1198,18 +1198,18 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
 
                 <div className="grid grid-cols-2 gap-3 text-xs mb-4">
                   <div className="bg-surface p-3 rounded-xl border border-slate-800">
-                    <div className="text-slate-400 text-[10px] uppercase font-semibold">Taken Borderline Pitches</div>
+                    <div className="text-slate-400 text-[11px] sm:text-[10px] uppercase font-semibold">Taken Borderline Pitches</div>
                     <div className="text-lg font-black text-white font-mono mt-0.5">
                       {data.tier2_zone.framing_summary.total_shadow_taken.toLocaleString()}
                     </div>
-                    <div className="text-[10px] text-slate-500 mt-0.5">Statcast sample</div>
+                    <div className="text-[11px] sm:text-[10px] text-slate-500 mt-0.5">Statcast sample</div>
                   </div>
                   <div className="bg-surface p-3 rounded-xl border border-slate-800">
-                    <div className="text-slate-400 text-[10px] uppercase font-semibold">Called Strike Rate</div>
+                    <div className="text-slate-400 text-[11px] sm:text-[10px] uppercase font-semibold">Called Strike Rate</div>
                     <div className="text-lg font-black text-indigo-400 font-mono mt-0.5">
                       {data.tier2_zone.framing_summary.shadow_strike_rate}%
                     </div>
-                    <div className="text-[10px] text-slate-500 mt-0.5">
+                    <div className="text-[11px] sm:text-[10px] text-slate-500 mt-0.5">
                       Baseline: {data.tier2_zone.framing_summary.league_baseline_rate}%
                     </div>
                   </div>
@@ -1435,13 +1435,13 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
 
                 <div className="grid grid-cols-2 gap-2 text-xs mb-4">
                   <div className="bg-surface p-2.5 rounded-xl border border-slate-800">
-                    <div className="text-slate-400 text-[10px] uppercase font-semibold">Horiz Release (X)</div>
+                    <div className="text-slate-400 text-[11px] sm:text-[10px] uppercase font-semibold">Horiz Release (X)</div>
                     <div className="text-base font-bold text-white font-mono mt-0.5">
                       {activePitcher.avg_release_x > 0 ? `+${activePitcher.avg_release_x}` : activePitcher.avg_release_x} ft
                     </div>
                   </div>
                   <div className="bg-surface p-2.5 rounded-xl border border-slate-800">
-                    <div className="text-slate-400 text-[10px] uppercase font-semibold">Vertical Release (Z)</div>
+                    <div className="text-slate-400 text-[11px] sm:text-[10px] uppercase font-semibold">Vertical Release (Z)</div>
                     <div className="text-base font-bold text-white font-mono mt-0.5">
                       {activePitcher.avg_release_z} ft
                     </div>
@@ -1596,7 +1596,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-800 text-[10px] uppercase font-bold text-slate-400">
+                    <tr className="border-b border-slate-800 text-[11px] sm:text-[10px] uppercase font-bold text-slate-400">
                       <th className="py-2.5 px-3">Batter</th>
                       <th className="py-2.5 px-3">Direction</th>
                       <th className="py-2.5 px-3 text-right">Batted Balls</th>
@@ -1613,7 +1613,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                         <tr key={idx} className="hover:bg-slate-800/30 transition-colors">
                           <td className="py-2.5 px-3 font-sans">
                             <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              className={`px-2 py-0.5 rounded text-[11px] sm:text-[10px] font-bold ${
                                 row.stand === 'L'
                                   ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
                                   : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'

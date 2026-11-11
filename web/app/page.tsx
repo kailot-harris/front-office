@@ -1,7 +1,14 @@
 import Link from 'next/link';
+import { Metadata } from 'next';
 import { getTeamsData, getMetadata } from '@/lib/data';
 import { StandingsClient } from '@/components/StandingsClient';
 import { TeamLogo } from '@/components/TeamLogo';
+
+export const metadata: Metadata = {
+  title: 'Standings & Visualizer',
+  description:
+    'Live 2026 MLB standings, 162-game win projections, and the division/wild-card race visualizer across all 30 franchises.',
+};
 
 export default function HomePage() {
   const teams = getTeamsData();

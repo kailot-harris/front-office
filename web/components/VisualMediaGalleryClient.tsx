@@ -19,7 +19,10 @@ export const VisualMediaGalleryClient: React.FC<VisualMediaGalleryClientProps> =
   const [selectedItem, setSelectedItem] = useState<VisualMediaItem>(
     MLB_VISUAL_MEDIA_ITEMS.find((m) => m.id === initialSelectedId) || MLB_VISUAL_MEDIA_ITEMS[0]
   );
-  const [isPaused, setIsPaused] = useState(false);
+  // Start paused (poster shown, no GIF fetched) so first load doesn't pull
+  // down every animation's multi-MB payload. The showcase GIF only loads
+  // once the visitor explicitly hits "Resume GIF" or picks a card.
+  const [isPaused, setIsPaused] = useState(true);
 
   const categories = [
     { id: 'all', label: 'All 20 Animations', count: 20 },
@@ -52,7 +55,7 @@ export const VisualMediaGalleryClient: React.FC<VisualMediaGalleryClientProps> =
           <div className="lg:col-span-8 flex flex-col space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono uppercase tracking-wider font-bold px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                <span className="text-[11px] sm:text-[10px] font-mono uppercase tracking-wider font-bold px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
                   {selectedItem.categoryLabel}
                 </span>
                 <span className="text-xs text-slate-400 font-mono">
@@ -131,7 +134,7 @@ export const VisualMediaGalleryClient: React.FC<VisualMediaGalleryClientProps> =
                       <div className="text-xs font-bold text-white truncate">
                         {item.title}
                       </div>
-                      <div className="text-[10px] text-slate-400 truncate mt-0.5 font-mono">
+                      <div className="text-[11px] sm:text-[10px] text-slate-400 truncate mt-0.5 font-mono">
                         {item.categoryLabel}
                       </div>
                     </div>
@@ -160,7 +163,7 @@ export const VisualMediaGalleryClient: React.FC<VisualMediaGalleryClientProps> =
               >
                 <span>{cat.label}</span>
                 <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                  className={`text-[11px] sm:text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
                     isCatActive ? 'bg-sky-600 text-white' : 'bg-slate-800 text-slate-400'
                   }`}
                 >
@@ -205,9 +208,12 @@ export const VisualMediaGalleryClient: React.FC<VisualMediaGalleryClientProps> =
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
                 >
+                  {/* Static poster only — the full animated GIF loads lazily,
+                      and only for the single item selected into the showcase
+                      above, not for all cards in this grid. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={`${BASE_PATH}/media/${item.filename}`}
+                    src={`${BASE_PATH}/media/${item.previewPng}`}
                     alt={item.title}
                     className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-[1.02]"
                     loading="lazy"
@@ -218,7 +224,7 @@ export const VisualMediaGalleryClient: React.FC<VisualMediaGalleryClientProps> =
                     </span>
                   </div>
                   <div className="absolute top-2 left-2">
-                    <span className="text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded bg-slate-950/80 text-sky-300 border border-sky-500/30">
+                    <span className="text-[11px] sm:text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded bg-slate-950/80 text-sky-300 border border-sky-500/30">
                       Phase {item.phase}
                     </span>
                   </div>
@@ -229,7 +235,7 @@ export const VisualMediaGalleryClient: React.FC<VisualMediaGalleryClientProps> =
                     <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wide">
                       {item.categoryLabel}
                     </span>
-                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                    <span className="text-[11px] sm:text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
                       Animated Loop
                     </span>
                   </div>
