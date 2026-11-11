@@ -632,10 +632,7 @@ export const PlayoffSeriesMatchupResultSchema = z
     netRatingMargin: num,
     winProbA: prob,
     winProbB: prob,
-    fairMlA: z.number().int(),
-    fairMlB: z.number().int(),
     avgGames: num.min(4).max(7),
-    spreadMinus1_5Prob: prob,
     sweepProb: pct,
     gameDistributions: z
       .array(

@@ -98,7 +98,7 @@ export const ROUTES: RouteSpec[] = [
   {
     path: '/diagnostics',
     title: 'Modeling Analysis & Diagnostics',
-    heading: 'Modeling Analysis & Diagnostics',
+    heading: 'Modeling Diagnostics',
     dataMarkers: ['Empirical reliability curves', 'Brier score'],
     expectsSearch: false,
   },

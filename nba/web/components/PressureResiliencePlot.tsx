@@ -22,10 +22,22 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
 
   // X-axis: Turnover Fragility Delta TOV% (-5.0% to +5.0%) -> Lower/Negative is better ball security
   // Y-axis: Clutch True Shooting % (42% to 68%) -> Higher is better
-  const xMin = -4.5;
-  const xMax = 4.5;
-  const yMin = 44;
-  const yMax = 68;
+  //
+  // The domain is taken from the data. It used to be fixed at +/-4.5 and 44-68,
+  // which fitted the old placeholder values; the play-by-play-derived metrics
+  // range far wider, so a third of the points were drawn outside the chart and
+  // past the edge of the page. The old bounds are kept as a minimum so a narrow
+  // dataset does not zoom in misleadingly, and x stays symmetric about zero so
+  // the "no change" line sits in the middle.
+  const finite = (v: number | null | undefined): v is number =>
+    typeof v === 'number' && Number.isFinite(v);
+  const xValues = profiles.map((p) => p.tovFragility).filter(finite);
+  const yValues = profiles.map((p) => p.clutchTsPct).filter(finite);
+  const xExtent = Math.max(4.5, Math.ceil(Math.max(0, ...xValues.map(Math.abs))));
+  const xMin = -xExtent;
+  const xMax = xExtent;
+  const yMin = Math.min(44, Math.floor(Math.min(44, ...yValues)));
+  const yMax = Math.max(68, Math.ceil(Math.max(68, ...yValues)));
 
   const scaleX = (val: number) => padding + ((val - xMin) / (xMax - xMin)) * (width - 2 * padding);
   const scaleY = (val: number) => height - padding - ((val - yMin) / (yMax - yMin)) * (height - 2 * padding);

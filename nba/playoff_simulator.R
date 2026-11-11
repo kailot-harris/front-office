@@ -234,7 +234,6 @@ simulate_matchup <- function(team_a_code, team_b_code, hca_team_code, profiles, 
     "B_4" = 0, "B_5" = 0, "B_6" = 0, "B_7" = 0
   )
   total_games <- 0
-  cover_minus_1_5 <- 0
   
   set.seed(42 + which(names(profiles) == team_a_code) * 10)
   
@@ -264,7 +263,6 @@ simulate_matchup <- function(team_a_code, team_b_code, hca_team_code, profiles, 
       sim_a_wins <- sim_a_wins + 1
       key <- paste0("A_", total_g)
       game_counts[[key]] <- game_counts[[key]] + 1
-      if (total_g <= 6) cover_minus_1_5 <- cover_minus_1_5 + 1
     } else {
       key <- paste0("B_", total_g)
       game_counts[[key]] <- game_counts[[key]] + 1
@@ -274,8 +272,6 @@ simulate_matchup <- function(team_a_code, team_b_code, hca_team_code, profiles, 
   win_prob_a <- round(sim_a_wins / n_sims, 4)
   win_prob_b <- round(1 - win_prob_a, 4)
   
-  fair_ml_a <- if (win_prob_a >= 0.5) round(-100 * win_prob_a / (1 - win_prob_a)) else round(100 * (1 - win_prob_a) / win_prob_a)
-  fair_ml_b <- if (win_prob_b >= 0.5) round(-100 * win_prob_b / (1 - win_prob_b)) else round(100 * (1 - win_prob_b) / win_prob_b)
   
   # Format game distribution array
   dist_list <- list(
@@ -298,10 +294,7 @@ simulate_matchup <- function(team_a_code, team_b_code, hca_team_code, profiles, 
     netRatingMargin = net_margin,
     winProbA = win_prob_a,
     winProbB = win_prob_b,
-    fairMlA = fair_ml_a,
-    fairMlB = fair_ml_b,
     avgGames = round(total_games / n_sims, 2),
-    spreadMinus1_5Prob = round(cover_minus_1_5 / n_sims, 3),
     sweepProb = round((game_counts$A_4 + game_counts$B_4) / n_sims * 100, 1),
     gameDistributions = dist_list,
     tacticalEdges = edges

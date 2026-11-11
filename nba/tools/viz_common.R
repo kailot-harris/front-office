@@ -272,6 +272,22 @@ read_nba_logo_grob <- function(team, dest_dir = NULL) {
 #   1. gif_path: Animated sequence encoded with gifski
 #   2. png_path: Static final frame for prefers-reduced-motion compliance
 # ------------------------------------------------------------------------------
+# Marker a chart script emits when its real input data is unavailable. The
+# scripts used to fall back to invented data at that point (hand-typed player
+# ratings, simulated shots, simulated rookie box scores) and write the result
+# into web/public/media. They now stop instead: no data, no chart.
+#
+# stop() rather than quit(): these scripts are also source()d by pipeline
+# stages, where quit() would end the whole session. Run through Rscript this is
+# a non-zero exit, and the tests recognise the marker and report a skip rather
+# than a failure.
+VIZ_NO_DATA_MARKER <- "[SKIP-NO-DATA]"
+
+viz_stop_no_data <- function(script, reason) {
+  stop(sprintf("%s %s: %s Nothing was rendered.", VIZ_NO_DATA_MARKER, script, reason),
+       call. = FALSE)
+}
+
 render_animated_artifact <- function(frame_paths, gif_path, png_path = NULL,
                                      fps = 2, hold_last_frames = 6,
                                      width = 1000, height = 600) {
