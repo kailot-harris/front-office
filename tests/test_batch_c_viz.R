@@ -84,12 +84,22 @@ artifacts_spec <- list(
   )
 )
 
+skipped <- character(0)
 for (item in artifacts_spec) {
   cat(sprintf("\n--- Executing %s ---\n", item$script))
   script_full <- file.path(REPO_ROOT, item$script)
   res <- system2("Rscript", args = c(script_full), stdout = TRUE, stderr = TRUE)
   status <- attr(res, "status")
   if (!is.null(status) && status != 0) {
+    # These scripts refuse to draw without their real input data (they no longer
+    # fall back to invented data). A fresh clone or a CI runner has no cache/, so
+    # that is an expected skip here, reported as such and not counted as a pass.
+    no_data <- grep("[SKIP-NO-DATA]", res, fixed = TRUE, value = TRUE)
+    if (length(no_data)) {
+      cat(sprintf("  SKIP: %s\n", sub("^Error: ", "", no_data[1])))
+      skipped <- c(skipped, item$script)
+      next
+    }
     cat(paste(res, collapse = "\n"), "\n")
     stop(sprintf("FAILED: %s exited with non-zero status %d", item$script, status))
   }
@@ -120,6 +130,11 @@ for (item in artifacts_spec) {
               item$png, file.info(png_full)$size,
               item$media_gif, file.info(media_gif_full)$size,
               item$media_png, file.info(media_png_full)$size))
+}
+
+if (length(skipped)) {
+  cat(sprintf("\n%d of %d script(s) skipped for lack of input data (NOT verified): %s\n",
+              length(skipped), length(artifacts_spec), paste(skipped, collapse = ", ")))
 }
 
 cat("\n=======================================================\n")

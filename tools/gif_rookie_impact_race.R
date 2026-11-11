@@ -108,28 +108,8 @@ if (!is.null(draft_json_path)) {
   })
 }
 
-# Fallback 2026-2027 Rookie Class Metadata if JSON not found
 if (is.null(rookie_meta)) {
-  rookie_meta <- tibble(
-    athlete_display_name = c(
-      "AJ Dybantsa", "Darryn Peterson", "Cameron Boozer", "Caleb Wilson",
-      "Keaton Wagler", "Mikel Brown Jr.", "Darius Acuff Jr.", "Kingston Flemings",
-      "Morez Johnson Jr.", "Brayden Burries", "Yaxel Lendeborg", "Aday Mara",
-      "Nate Ament", "Hannes Steinbach", "Dailyn Swain", "Bennett Stirtz",
-      "Ebuka Okorie", "Christian Anderson Jr.", "Allen Graves", "Jayden Quaintance"
-    ),
-    team = c(
-      "WAS", "UTA", "MEM", "CHI", "DET", "BKN", "SAC", "ATL",
-      "DAL", "MIL", "GSW", "OKC", "MIL", "CHA", "CHI", "OKC",
-      "DET", "CHA", "TOR", "SAS"
-    ),
-    projected_mpg = c(
-      29.5, 28.5, 28.0, 26.0, 25.0, 26.0, 25.0, 24.5,
-      23.5, 24.0, 22.0, 21.0, 24.0, 20.0, 20.5, 19.5,
-      19.0, 18.5, 18.0, 22.5
-    ),
-    pick = 1:20
-  )
+  viz_stop_no_data("tools/gif_rookie_impact_race.R", "the draft class JSON was not found or could not be read.")
 }
 
 rookie_names <- rookie_meta$athlete_display_name
@@ -156,33 +136,7 @@ if (!is.null(pbox)) {
     filter(!is.na(points), !is.na(game_date)) %>%
     arrange(game_date)
 } else {
-  # Calibrated synthetic 2026-2027 rookie season dataset using draft projections
-  set.seed(42)
-  dates <- seq(as.Date("2026-10-20"), as.Date("2027-04-14"), by = "3 days")
-  rows <- list()
-  for (i in seq_len(nrow(rookie_meta))) {
-    rn <- rookie_meta$athlete_display_name[i]
-    tm <- rookie_meta$team[i]
-    mpg <- rookie_meta$projected_mpg[i]
-    
-    mean_pts <- round((mpg / 30) * (18 - (rookie_meta$pick[i] * 0.3)))
-    mean_pts <- max(6, mean_pts)
-    pts_per_gm <- rnorm(length(dates), mean = mean_pts, sd = 3.5)
-    pts_per_gm <- pmax(2, round(pts_per_gm))
-    
-    fga_per_gm <- pmax(3, round(pts_per_gm * 0.78 + rnorm(length(dates), 0, 0.8)))
-    fta_per_gm <- pmax(0, round(pts_per_gm * 0.28 + rnorm(length(dates), 0, 0.4)))
-    
-    rows[[rn]] <- tibble(
-      athlete_display_name = rn,
-      game_date = dates,
-      points = pts_per_gm,
-      fga = fga_per_gm,
-      fta = fta_per_gm,
-      team_clean = resolve_team_abbr(tm)
-    )
-  }
-  rookie_box <- bind_rows(rows)
+  viz_stop_no_data("tools/gif_rookie_impact_race.R", "cache file nba_player_box_2027.rds was not found or has too few rows.")
 }
 
 # Create 8 progressive milestone cutoffs across the season
