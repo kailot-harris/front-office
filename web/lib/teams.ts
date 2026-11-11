@@ -333,8 +333,11 @@ export const getTeamLogoUrl = (teamAbbr: string): string => {
   if (meta?.teamId) {
     return `${BASE_PATH}/logos/${meta.teamId}.png`;
   }
-  const code = meta?.espnCode || teamAbbr?.toLowerCase();
-  return `https://a.espncdn.com/i/teamlogos/mlb/500/${code}.png`;
+  // Unknown/missing team abbreviation (e.g. a player with no team code).
+  // Previously this built an ESPN URL from the raw abbreviation, which 404s
+  // for anything that isn't a real team code (e.g. "mlb.png" doesn't exist).
+  // Fall back to a bundled local asset instead of guessing a remote URL.
+  return `${BASE_PATH}/sport-icons/mlb.png`;
 };
 
 export const getTeamColors = (teamAbbr: string) => {

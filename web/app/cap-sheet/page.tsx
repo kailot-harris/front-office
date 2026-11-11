@@ -3,7 +3,7 @@ import { getCbtPayrollOverview } from '@/lib/data';
 import { CapSheetClient } from '@/components/CapSheetClient';
 
 export const metadata = {
-  title: 'MLB Luxury Tax (CBT) & Payroll Architect | MLB Analytics',
+  title: { absolute: 'MLB Luxury Tax (CBT) & Payroll Architect | MLB Analytics' },
   description:
     'Comprehensive 2026 Competitive Balance Tax (CBT) thresholds, repeater penalties, luxury tax surcharge calculation, and 3-year franchise payroll commitments across all 30 MLB clubs.',
 };

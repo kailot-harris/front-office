@@ -21,6 +21,7 @@ import { TeamLogo } from '@/components/TeamLogo';
 import { PlayerSpatialDropdown } from '@/components/PlayerSpatialDropdown';
 import { BASE_PATH } from '@/lib/basePath';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { useTableScrollHint } from '@/lib/useTableScrollHint';
 
 interface PlayersClientProps {
   players: PlayerProjection[];
@@ -46,6 +47,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
   const [spatialMaps, setSpatialMaps] = useState<Record<string, PlayerSpatialMap>>(
     initialSpatialMaps || {}
   );
+  const { scrollRef: tableScrollRef, showScrollHint, onScroll: handleTableScroll } = useTableScrollHint<HTMLDivElement>();
 
   useEffect(() => {
     fetch(`${BASE_PATH}/data/spatial_index.json`)
@@ -428,17 +430,17 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
       </div>
 
       {/* Player Projections Table */}
-      <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
+      <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl relative">
+        <div className="overflow-x-auto" ref={tableScrollRef} onScroll={handleTableScroll}>
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-800 bg-surface/90 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                <th className="py-3.5 px-4">Player</th>
-                <th className="py-3.5 px-3 text-center">Spatial Map</th>
+                <th className="py-3.5 px-4 sticky left-0 z-20 bg-surface border-r border-slate-800">Player</th>
+                <th className="py-3.5 px-3 text-center hidden sm:table-cell">Spatial Map</th>
                 <th className="py-3.5 px-3">Club / Role</th>
                 <th
                   onClick={() => handleSort('proj_workload')}
-                  className="py-3.5 px-3 text-right cursor-pointer hover:text-white"
+                  className="py-3.5 px-3 text-right cursor-pointer hover:text-white hidden sm:table-cell"
                 >
                   <div className="flex items-center justify-end gap-1">
                     <span>{activeGroup === 'Batter' ? 'Proj PA' : 'Proj IP'}</span>
@@ -447,7 +449,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                 </th>
                 <th
                   onClick={() => handleSort('park_factor')}
-                  className="py-3.5 px-3 text-right cursor-pointer hover:text-white"
+                  className="py-3.5 px-3 text-right cursor-pointer hover:text-white hidden sm:table-cell"
                 >
                   <div className="flex items-center justify-end gap-1">
                     <span>Park Factor</span>
@@ -567,7 +569,11 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                         isExpanded ? 'bg-indigo-950/25 border-l-2 border-indigo-500' : ''
                       }`}
                     >
-                      <td className="py-3 px-4">
+                      <td
+                        className={`py-3 px-4 sticky left-0 z-10 border-r border-slate-800 ${
+                          isExpanded ? 'bg-indigo-950/25' : 'bg-surface-raised'
+                        }`}
+                      >
                         <div className="font-bold text-white flex items-center gap-1.5">
                           <span>{p.player_name}</span>
                           {(spatialIndex[p.player_id]?.is_statcast_tracked ?? spatialMaps[p.player_id]?.is_statcast_tracked) && (
@@ -582,7 +588,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                           {p.player_type === 'Batter' ? 'PA' : 'IP'}
                         </div>
                       </td>
-                      <td className="py-3 px-3 text-center">
+                      <td className="py-3 px-3 text-center hidden sm:table-cell">
                         <button
                           type="button"
                           onClick={(e) => {
@@ -640,10 +646,10 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                           </span>
                         </div>
                       </td>
-                      <td className="py-3 px-3 text-right font-mono text-slate-200">
+                      <td className="py-3 px-3 text-right font-mono text-slate-200 hidden sm:table-cell">
                         {p.proj_workload}
                       </td>
-                      <td className="py-3 px-3 text-right font-mono text-xs text-slate-400">
+                      <td className="py-3 px-3 text-right font-mono text-xs text-slate-400 hidden sm:table-cell">
                         {p.park_factor.toFixed(3)}
                       </td>
 
@@ -744,6 +750,12 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
             </tbody>
           </table>
         </div>
+        {showScrollHint && (
+          <div
+            className="pointer-events-none absolute top-0 right-0 bottom-0 w-10 bg-gradient-to-l from-surface-raised to-transparent transition-opacity"
+            aria-hidden="true"
+          />
+        )}
         {filteredPlayers.length > 150 && (
           <div className="p-3 bg-surface/80 border-t border-slate-800 text-center text-xs text-slate-400 font-mono">
             Showing top 150 of {filteredPlayers.length} matching {activeGroup.toLowerCase()}s — use search or club filter to narrow further.

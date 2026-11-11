@@ -3,6 +3,7 @@
 import React from 'react';
 import { ShieldAlert, AlertTriangle, CheckCircle2, DollarSign } from 'lucide-react';
 import { FranchiseCbtProfile } from '@/lib/cbtTypes';
+import { money } from '@/lib/format';
 
 interface CbtThermometerProps {
   team: FranchiseCbtProfile;
@@ -44,7 +45,7 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
-            2026 Tax Threshold: ${baseT.toFixed(1)}M • Tax Bill: ${team.cbtTaxBill.toFixed(2)}M
+            2026 Tax Threshold: {money(baseT)} • Tax Bill: {money(team.cbtTaxBill, 2)}
           </p>
         </div>
 
@@ -57,7 +58,7 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
           <div className="text-right">
             <span className="text-[10px] text-slate-400 block uppercase tracking-wider">Total Commit</span>
             <span className="font-mono font-extrabold text-base text-white">
-              ${team.totalCommitment.toFixed(1)}M
+              {money(team.totalCommitment)}
             </span>
           </div>
         </div>

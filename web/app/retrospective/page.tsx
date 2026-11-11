@@ -3,7 +3,7 @@ import { getTeamsData, getDiagnostics, getPostseasonOpsData, getCbtPayrollOvervi
 import { RetrospectiveClient } from '@/components/RetrospectiveClient';
 
 export const metadata: Metadata = {
-  title: '2026 Season Retrospective & Calibration Audit | MLB Analytics',
+  title: { absolute: '2026 Season Retrospective & Calibration Audit | MLB Analytics' },
   description:
     'Full 2026 MLB season debrief evaluating Milwaukee Brewers championship metrics, walk-forward Brier scores, model variant accuracy, and payroll efficiency.',
 };

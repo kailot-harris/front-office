@@ -17,7 +17,10 @@ const SOCIAL_IMAGE = `${BASE_PATH}/social/og-card.png`;
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://kailot-harris.github.io'),
-  title: 'MLB Sabermetric Projections | 162-Game & 10,000-Sim Postseason Engine',
+  title: {
+    template: '%s | MLB Front Office',
+    default: 'MLB Sabermetric Projections | 162-Game & 10,000-Sim Postseason Engine',
+  },
   description:
     'Quantitative MLB projections across all 30 franchises, 630 batters, and 649 pitchers featuring 4-Factor Starting-Pitcher Elo, Hierarchical Empirical Bayes Partial Pooling, Pythagenpat Run-Expectation, Marcel 3-Year Projections, Bullpen Fatigue Diagnostics, and 12-Team Postseason Monte Carlo Simulations.',
   openGraph: {

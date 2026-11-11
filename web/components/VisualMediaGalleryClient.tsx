@@ -19,7 +19,10 @@ export const VisualMediaGalleryClient: React.FC<VisualMediaGalleryClientProps> =
   const [selectedItem, setSelectedItem] = useState<VisualMediaItem>(
     MLB_VISUAL_MEDIA_ITEMS.find((m) => m.id === initialSelectedId) || MLB_VISUAL_MEDIA_ITEMS[0]
   );
-  const [isPaused, setIsPaused] = useState(false);
+  // Start paused (poster shown, no GIF fetched) so first load doesn't pull
+  // down every animation's multi-MB payload. The showcase GIF only loads
+  // once the visitor explicitly hits "Resume GIF" or picks a card.
+  const [isPaused, setIsPaused] = useState(true);
 
   const categories = [
     { id: 'all', label: 'All 20 Animations', count: 20 },
@@ -205,9 +208,12 @@ export const VisualMediaGalleryClient: React.FC<VisualMediaGalleryClientProps> =
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
                 >
+                  {/* Static poster only — the full animated GIF loads lazily,
+                      and only for the single item selected into the showcase
+                      above, not for all cards in this grid. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={`${BASE_PATH}/media/${item.filename}`}
+                    src={`${BASE_PATH}/media/${item.previewPng}`}
                     alt={item.title}
                     className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-[1.02]"
                     loading="lazy"

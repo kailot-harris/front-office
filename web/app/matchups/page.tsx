@@ -5,7 +5,7 @@ import { MatchupsClient } from '@/components/MatchupsClient';
 import { Swords } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Weekly Matchups & Elo Projections | MLB Analytics',
+  title: { absolute: 'Weekly Matchups & Elo Projections | MLB Analytics' },
   description:
     'Every game of the season grouped into weekly slates, with pre-game Elo win probabilities graded against results.',
 };

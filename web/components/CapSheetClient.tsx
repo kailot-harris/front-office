@@ -9,6 +9,7 @@ import { CbtLeagueOverview } from '@/lib/cbtTypes';
 import { CbtThermometer } from '@/components/CbtThermometer';
 import { FranchisePayrollTable } from '@/components/FranchisePayrollTable';
 import { SurplusValueCalculator } from '@/components/SurplusValueCalculator';
+import { money } from '@/lib/format';
 
 interface CapSheetClientProps {
   overview: CbtLeagueOverview;
@@ -76,7 +77,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ overview }) => {
             </div>
             <div className="bg-surface/70 border border-slate-800 rounded-xl p-3 col-span-2 sm:col-span-1">
               <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Total Tax Pool</span>
-              <span className="font-mono font-bold text-base text-rose-400">${overview.totalLuxuryTaxCollected.toFixed(1)}M</span>
+              <span className="font-mono font-bold text-base text-rose-400">{money(overview.totalLuxuryTaxCollected)}</span>
               <span className="text-[10px] text-slate-400 block mt-0.5">Est. Revenue Share</span>
             </div>
           </div>
@@ -178,16 +179,16 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ overview }) => {
 
                     <div className="text-right flex-shrink-0">
                       <div className="font-mono font-bold text-sm text-white">
-                        ${team.payroll2026.toFixed(1)}M
+                        {money(team.payroll2026)}
                       </div>
                       <div className="text-[11px] font-mono">
                         {isOver ? (
                           <span className="text-rose-400 font-semibold">
-                            +${team.cbtTaxBill.toFixed(1)}M tax
+                            +{money(team.cbtTaxBill)} tax
                           </span>
                         ) : (
                           <span className="text-emerald-400 font-medium">
-                            ${team.cbtSpace2026.toFixed(1)}M space
+                            {money(team.cbtSpace2026)} space
                           </span>
                         )}
                       </div>

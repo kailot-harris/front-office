@@ -4,6 +4,8 @@ import React, { useState, useMemo } from 'react';
 import { Search, ArrowUpDown, TrendingUp, TrendingDown, DollarSign, Download } from 'lucide-react';
 import { MlbPlayerContract } from '@/lib/cbtTypes';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { num, money } from '@/lib/format';
+import { useTableScrollHint } from '@/lib/useTableScrollHint';
 
 interface FranchisePayrollTableProps {
   contracts: MlbPlayerContract[];
@@ -20,6 +22,7 @@ export const FranchisePayrollTable: React.FC<FranchisePayrollTableProps> = ({
   const [contractTypeFilter, setContractTypeFilter] = useState<string>('ALL');
   const [sortField, setSortField] = useState<SortField>('salary2026');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
+  const { scrollRef: tableScrollRef, showScrollHint, onScroll: handleTableScroll } = useTableScrollHint<HTMLDivElement>();
 
   const contractTypes = ['ALL', 'Guaranteed', 'Arbitration', 'Pre-Arb', 'Player Option', 'Club Option'];
 
@@ -141,140 +144,148 @@ export const FranchisePayrollTable: React.FC<FranchisePayrollTableProps> = ({
       </div>
 
       {/* Roster Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
-          <thead>
-            <tr className="bg-surface/80 border-b border-slate-800 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-              <th className="py-3 px-4">
-                <button
-                  onClick={() => toggleSort('playerName')}
-                  className="flex items-center gap-1 hover:text-slate-200"
-                >
-                  Player / Commitment
-                  <ArrowUpDown className="w-3 h-3" />
-                </button>
-              </th>
-              <th className="py-3 px-3">Position</th>
-              <th className="py-3 px-3">Status</th>
-              <th className="py-3 px-3 text-right">
-                <button
-                  onClick={() => toggleSort('salary2026')}
-                  className="flex items-center gap-1 ml-auto hover:text-slate-200"
-                >
-                  2026 Salary
-                  <ArrowUpDown className="w-3 h-3" />
-                </button>
-              </th>
-              <th className="py-3 px-3 text-right">
-                <button
-                  onClick={() => toggleSort('salary2027')}
-                  className="flex items-center gap-1 ml-auto hover:text-slate-200"
-                >
-                  2027
-                  <ArrowUpDown className="w-3 h-3" />
-                </button>
-              </th>
-              <th className="py-3 px-3 text-right">
-                <button
-                  onClick={() => toggleSort('salary2028')}
-                  className="flex items-center gap-1 ml-auto hover:text-slate-200"
-                >
-                  2028
-                  <ArrowUpDown className="w-3 h-3" />
-                </button>
-              </th>
-              <th className="py-3 px-3 text-right">
-                <button
-                  onClick={() => toggleSort('projectedWar')}
-                  className="flex items-center gap-1 ml-auto hover:text-slate-200"
-                >
-                  Proj WAR
-                  <ArrowUpDown className="w-3 h-3" />
-                </button>
-              </th>
-              <th className="py-3 px-4 text-right">
-                <button
-                  onClick={() => toggleSort('surplusValue')}
-                  className="flex items-center gap-1 ml-auto hover:text-slate-200"
-                >
-                  Surplus ROI
-                  <ArrowUpDown className="w-3 h-3" />
-                </button>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800/60 font-mono">
-            {filteredContracts.map((c) => {
-              const isSurplusPositive = c.surplusValue >= 0;
-              return (
-                <tr
-                  key={c.playerId}
-                  className="hover:bg-slate-800/30 transition-colors group"
-                >
-                  <td className="py-3 px-4 font-sans">
-                    <div className="font-semibold text-white group-hover:text-sky-300 transition-colors">
-                      {c.playerName}
-                    </div>
-                    {c.notes && (
-                      <div className="text-[10px] text-slate-400 font-sans truncate max-w-xs">
-                        {c.notes}
+      <div className="overflow-hidden relative">
+        <div className="overflow-x-auto" ref={tableScrollRef} onScroll={handleTableScroll}>
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="bg-surface/80 border-b border-slate-800 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <th className="py-3 px-4 sticky left-0 z-20 bg-surface border-r border-slate-800">
+                  <button
+                    onClick={() => toggleSort('playerName')}
+                    className="flex items-center gap-1 hover:text-slate-200"
+                  >
+                    Player / Commitment
+                    <ArrowUpDown className="w-3 h-3" />
+                  </button>
+                </th>
+                <th className="py-3 px-3 hidden sm:table-cell">Position</th>
+                <th className="py-3 px-3">Status</th>
+                <th className="py-3 px-3 text-right">
+                  <button
+                    onClick={() => toggleSort('salary2026')}
+                    className="flex items-center gap-1 ml-auto hover:text-slate-200"
+                  >
+                    2026 Salary
+                    <ArrowUpDown className="w-3 h-3" />
+                  </button>
+                </th>
+                <th className="py-3 px-3 text-right hidden sm:table-cell">
+                  <button
+                    onClick={() => toggleSort('salary2027')}
+                    className="flex items-center gap-1 ml-auto hover:text-slate-200"
+                  >
+                    2027
+                    <ArrowUpDown className="w-3 h-3" />
+                  </button>
+                </th>
+                <th className="py-3 px-3 text-right hidden sm:table-cell">
+                  <button
+                    onClick={() => toggleSort('salary2028')}
+                    className="flex items-center gap-1 ml-auto hover:text-slate-200"
+                  >
+                    2028
+                    <ArrowUpDown className="w-3 h-3" />
+                  </button>
+                </th>
+                <th className="py-3 px-3 text-right">
+                  <button
+                    onClick={() => toggleSort('projectedWar')}
+                    className="flex items-center gap-1 ml-auto hover:text-slate-200"
+                  >
+                    Proj WAR
+                    <ArrowUpDown className="w-3 h-3" />
+                  </button>
+                </th>
+                <th className="py-3 px-4 text-right">
+                  <button
+                    onClick={() => toggleSort('surplusValue')}
+                    className="flex items-center gap-1 ml-auto hover:text-slate-200"
+                  >
+                    Surplus ROI
+                    <ArrowUpDown className="w-3 h-3" />
+                  </button>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60 font-mono">
+              {filteredContracts.map((c) => {
+                const isSurplusPositive = c.surplusValue >= 0;
+                return (
+                  <tr
+                    key={c.playerId}
+                    className="hover:bg-slate-800/30 transition-colors group"
+                  >
+                    <td className="py-3 px-4 font-sans sticky left-0 z-10 bg-surface-raised border-r border-slate-800">
+                      <div className="font-semibold text-white group-hover:text-sky-300 transition-colors">
+                        {c.playerName}
                       </div>
-                    )}
-                  </td>
-                  <td className="py-3 px-3 font-sans">
-                    <span className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[10.5px]">
-                      {c.position}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 font-sans">
-                    <span className={`px-2 py-0.5 rounded text-[10.5px] border font-medium ${getContractBadge(c.contractType)}`}>
-                      {c.contractType}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-right font-bold text-slate-200">
-                    ${c.salary2026.toFixed(1)}M
-                  </td>
-                  <td className="py-3 px-3 text-right text-slate-400">
-                    {c.salary2027 > 0 ? `$${c.salary2027.toFixed(1)}M` : <span className="text-slate-400">FA</span>}
-                  </td>
-                  <td className="py-3 px-3 text-right text-slate-400">
-                    {c.salary2028 > 0 ? `$${c.salary2028.toFixed(1)}M` : <span className="text-slate-400">FA</span>}
-                  </td>
-                  <td className="py-3 px-3 text-right text-sky-400 font-bold">
-                    {c.projectedWar.toFixed(1)}
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] font-semibold ${
-                        isSurplusPositive
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                          : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                      }`}
-                    >
-                      {isSurplusPositive ? (
-                        <TrendingUp className="w-3 h-3 text-emerald-400" />
-                      ) : (
-                        <TrendingDown className="w-3 h-3 text-rose-400" />
+                      {c.notes && (
+                        <div className="text-[10px] text-slate-400 font-sans truncate max-w-xs">
+                          {c.notes}
+                        </div>
                       )}
-                      {isSurplusPositive ? '+' : ''}${c.surplusValue.toFixed(1)}M
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    </td>
+                    <td className="py-3 px-3 font-sans hidden sm:table-cell">
+                      <span className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[10.5px]">
+                        {c.position}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 font-sans">
+                      <span className={`px-2 py-0.5 rounded text-[10.5px] border font-medium ${getContractBadge(c.contractType)}`}>
+                        {c.contractType}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 text-right font-bold text-slate-200">
+                      {money(c.salary2026)}
+                    </td>
+                    <td className="py-3 px-3 text-right text-slate-400 hidden sm:table-cell">
+                      {c.salary2027 > 0 ? money(c.salary2027) : <span className="text-slate-400">FA</span>}
+                    </td>
+                    <td className="py-3 px-3 text-right text-slate-400 hidden sm:table-cell">
+                      {c.salary2028 > 0 ? money(c.salary2028) : <span className="text-slate-400">FA</span>}
+                    </td>
+                    <td className="py-3 px-3 text-right text-sky-400 font-bold">
+                      {num(c.projectedWar)}
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] font-semibold ${
+                          isSurplusPositive
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                        }`}
+                      >
+                        {isSurplusPositive ? (
+                          <TrendingUp className="w-3 h-3 text-emerald-400" />
+                        ) : (
+                          <TrendingDown className="w-3 h-3 text-rose-400" />
+                        )}
+                        {isSurplusPositive ? '+' : ''}{money(c.surplusValue)}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {showScrollHint && (
+          <div
+            className="pointer-events-none absolute top-0 right-0 bottom-0 w-10 bg-gradient-to-l from-surface-raised to-transparent transition-opacity"
+            aria-hidden="true"
+          />
+        )}
       </div>
 
       {/* Footer Summary Bar */}
       <div className="p-3 bg-surface/80 border-t border-slate-800 flex flex-wrap items-center justify-between text-xs text-slate-400 px-4">
         <div className="flex items-center gap-4">
           <span>Market Baseline: <strong className="text-slate-200 font-mono">$8.5M / WAR</strong></span>
-          <span>Guaranteed Total: <strong className="text-white font-mono">${contracts.reduce((sum, c) => sum + c.salary2026, 0).toFixed(1)}M</strong></span>
+          <span>Guaranteed Total: <strong className="text-white font-mono">{money(contracts.reduce((sum, c) => sum + (c.salary2026 ?? 0), 0))}</strong></span>
         </div>
         <div className="flex items-center gap-1.5 text-sky-400 font-mono">
           <DollarSign className="w-3.5 h-3.5" />
-          <span>Net Surplus: <strong>{contracts.reduce((sum, c) => sum + c.surplusValue, 0) >= 0 ? '+' : ''}${contracts.reduce((sum, c) => sum + c.surplusValue, 0).toFixed(1)}M</strong></span>
+          <span>Net Surplus: <strong>{contracts.reduce((sum, c) => sum + (c.surplusValue ?? 0), 0) >= 0 ? '+' : ''}{money(contracts.reduce((sum, c) => sum + (c.surplusValue ?? 0), 0))}</strong></span>
         </div>
       </div>
     </div>

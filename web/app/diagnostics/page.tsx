@@ -1,5 +1,12 @@
+import { Metadata } from 'next';
 import { getDiagnostics, getMetadata } from '@/lib/data';
 import { DiagnosticsClient } from '@/components/DiagnosticsClient';
+
+export const metadata: Metadata = {
+  title: 'Walk-Forward Calibration & Diagnostics',
+  description:
+    'Empirical reliability curves, walk-forward Brier score, Early/Mid/Late season progression drift, and residual distributions.',
+};
 
 export default function DiagnosticsPage() {
   const diagnostics = getDiagnostics();

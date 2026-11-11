@@ -1,5 +1,12 @@
+import { Metadata } from 'next';
 import { getPlayersData } from '@/lib/data';
 import { PlayersClient } from '@/components/PlayersClient';
+
+export const metadata: Metadata = {
+  title: 'Batter & Pitcher Projections',
+  description:
+    '630 batters and 649 pitchers with Hierarchical Empirical Bayes pooled rates, Marcel counting projections, and spatial spray/strike-zone maps.',
+};
 
 export default function PlayersPage() {
   const players = getPlayersData();
