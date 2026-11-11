@@ -3,7 +3,27 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Front Office</title>
+  <title>Front Office — NFL, NBA, WNBA &amp; MLB Probabilistic Analytics</title>
+  <meta name="description" content="52 interactive analytics modules across the NFL, NBA, WNBA and MLB: season simulations, cap sheets, player projections, clutch indexes and playoff simulators." />
+  <meta name="theme-color" content="#041313" />
+  <link rel="canonical" href="https://kailot-harris.github.io/front-office/" />
+  <link rel="icon" href="nfl/icon.png" type="image/png" />
+  <!-- Link-preview scrapers do not resolve relative URLs, so og:url and
+       og:image must stay absolute. If the repo is renamed, change these along
+       with PAGES_BASE_PATH in .github/workflows/deploy.yml. -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Front Office" />
+  <meta property="og:url" content="https://kailot-harris.github.io/front-office/" />
+  <meta property="og:title" content="Front Office — Multi-Sport Probabilistic Engine" />
+  <meta property="og:description" content="52 interactive analytics modules across the NFL, NBA, WNBA and MLB: season simulations, cap sheets, player projections and playoff simulators." />
+  <meta property="og:image" content="https://kailot-harris.github.io/front-office/assets/social/og-card.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Front Office: multi-sport probabilistic engine covering the NFL, NBA, WNBA and MLB" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Front Office — Multi-Sport Probabilistic Engine" />
+  <meta name="twitter:description" content="52 interactive analytics modules across the NFL, NBA, WNBA and MLB." />
+  <meta name="twitter:image" content="https://kailot-harris.github.io/front-office/assets/social/og-card.png" />
   <style>
     :root {
       color-scheme: dark;
@@ -86,7 +106,60 @@
       display: grid;
       grid-template-columns: repeat(2, minmax(200px, 1fr));
       gap: 1rem;
+      /* Without this a collapsed card stretches to the height of an expanded
+         neighbour in its row and shows as an empty dark box. */
+      align-items: start;
     }
+    .nav-column {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      min-width: 0;
+    }
+    .module-filter {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .module-filter input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.55rem 2.25rem 0.55rem 0.85rem;
+      background: var(--surface-raised);
+      border: 1px solid #1c3333;
+      border-radius: 0.6rem;
+      color: #e7e9ee;
+      font: inherit;
+      font-size: 0.85rem;
+    }
+    .module-filter input::placeholder { color: #94a3b8; }
+    .module-filter input:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+    .module-filter kbd {
+      position: absolute;
+      right: 0.6rem;
+      padding: 0.05rem 0.4rem;
+      border: 1px solid #2a4a4a;
+      border-radius: 0.3rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.6875rem;
+      color: #94a3b8;
+      pointer-events: none;
+    }
+    .module-filter input:focus + kbd,
+    .module-filter input:not(:placeholder-shown) + kbd { display: none; }
+    .filter-status {
+      margin: 0;
+      min-height: 1.2em;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.6875rem;
+      letter-spacing: 0.04em;
+      color: #94a3b8;
+    }
+    nav.filtering .card.no-match,
+    nav.filtering .tab-list li.no-match { display: none; }
     /* Two 200px tracks plus the gap need 416px, which is wider than a 375px
        phone viewport minus the hero's 1rem gutters — the grid refuses to
        shrink past its minimum and the page scrolls sideways instead. Stack
@@ -164,6 +237,38 @@
       width: 1.25rem;
       height: 1.25rem;
       flex-shrink: 0;
+      /* The icons are PNGs with a baked-in dark square; round it and ring it
+         so it reads as a tile instead of a hard-edged box. */
+      border-radius: 0.3rem;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+    }
+    .card-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.15rem 0.5rem;
+      border: 1px solid color-mix(in srgb, var(--sport-pip) 35%, transparent);
+      border-radius: 9999px;
+      background: color-mix(in srgb, var(--sport-pip) 12%, transparent);
+      color: var(--sport-pip);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.625rem;
+      font-weight: 600;
+      line-height: 1.4;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .card-count {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #94a3b8;
+      text-shadow: none;
+    }
+    .card-header:focus-visible {
+      outline: 2px solid var(--sport-pip);
+      outline-offset: -3px;
+      border-radius: 0.6rem;
     }
     .card-header .chevron {
       margin-left: 0.25rem;
@@ -174,25 +279,38 @@
     .card.expanded .card-header .chevron {
       transform: rotate(90deg);
     }
+    /* Collapse with a 0fr -> 1fr grid row rather than a max-height cap: the
+       list opens to whatever height it needs, so adding a module can never
+       clip the last entry the way the old fixed 34rem cap did. */
+    .tab-wrap {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows 0.2s ease;
+    }
+    .card.expanded .tab-wrap {
+      grid-template-rows: 1fr;
+    }
     .tab-list {
       list-style: none;
       margin: 0;
       padding: 0;
-      max-height: 0;
+      min-height: 0;
       overflow: hidden;
-      transition: max-height 0.2s ease;
-      border-top: 1px solid color-mix(in srgb, var(--sport-accent) 25%, transparent);
+      /* Keeps collapsed links out of the tab order and the accessibility tree. */
+      visibility: hidden;
+      transition: visibility 0.2s;
     }
     .card.expanded .tab-list {
-      /* Must clear the longest list (NBA, 13 items ~= 31rem) or the overflow
-         rule above silently swallows the last entries. */
-      max-height: 34rem;
+      visibility: visible;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .tab-wrap, .tab-list { transition: none; }
     }
     .tab-list li {
       border-top: 1px solid color-mix(in srgb, var(--sport-accent) 15%, transparent);
     }
     .tab-list li:first-child {
-      border-top: none;
+      border-top-color: color-mix(in srgb, var(--sport-accent) 25%, transparent);
     }
     .tab-list a {
       display: block;
@@ -202,6 +320,10 @@
       font-size: 0.9rem;
       font-weight: 500;
       opacity: 0.9;
+    }
+    .tab-list a:focus-visible {
+      outline: 2px solid var(--sport-pip);
+      outline-offset: -2px;
     }
     .tab-list a:hover {
       background: color-mix(in srgb, var(--sport-accent) 15%, transparent);
@@ -316,10 +438,14 @@
       width: 100%;
       max-width: 320px;
       aspect-ratio: 1;
-      border-radius: 22%;
+      /* The poster art has its own rounded frame baked in, inset ~8% with an
+         ~8% corner. 16% keeps this outer corner concentric with it; the old
+         22% cut across the baked frame's corners. */
+      border-radius: 16%;
       overflow: hidden;
       background: #000 var(--trophy-poster) center / cover no-repeat;
-      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7);
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--sport-pip) 18%, transparent),
+                  0 12px 28px rgba(0, 0, 0, 0.45);
     }
     .trophy-stage video {
       width: 100%;
@@ -435,18 +561,55 @@
       </div>
       <div id="trophy-live-status" class="sr-only" aria-live="polite"></div>
     </section>
-    <nav>
+    <div class="nav-column">
+      <div class="module-filter" role="search">
+        <label class="sr-only" for="module-filter">Filter modules across all four leagues</label>
+        <input id="module-filter" type="search" placeholder="Filter 52 modules&hellip;" autocomplete="off" spellcheck="false" aria-describedby="filter-status" />
+        <kbd aria-hidden="true">/</kbd>
+      </div>
+      <p id="filter-status" class="filter-status" role="status" aria-live="polite"></p>
+      <nav aria-label="Leagues and modules">
+      <div class="card" data-sport="nfl">
+        <button class="card-header" type="button" aria-expanded="false" aria-controls="modules-nfl">
+          <span class="card-badge">In-Season (Live Slate)</span>
+          <div class="card-title-row">
+            <img class="favicon" src="nfl/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
+            <span class="sport-pip" aria-hidden="true"></span>
+            <span>NFL</span>
+            <span class="card-count" aria-label="10 modules">(10)</span>
+            <span class="chevron" aria-hidden="true">&#9656;</span>
+          </div>
+          <div class="card-rail" aria-hidden="true"></div>
+        </button>
+        <div class="tab-wrap">
+        <ul class="tab-list" id="modules-nfl">
+          <li><a href="nfl/">Season Standings</a></li>
+          <li><a href="nfl/matchups/">Weekly Matchups</a></li>
+          <li><a href="nfl/teams/">Team Ratings &amp; EPA</a></li>
+          <li><a href="nfl/coaching/">Coaching Analysis</a></li>
+          <li><a href="nfl/salary-cap/">Salary Cap &amp; OTC</a></li>
+          <li><a href="nfl/playoffs/">Playoff Machine</a></li>
+          <li><a href="nfl/players/">QB &amp; Player Ratings</a></li>
+          <li><a href="nfl/variants/">Model Variants</a></li>
+          <li><a href="nfl/diagnostics/">Diagnostics</a></li>
+          <li><a href="nfl/gallery/">Visual Gallery</a></li>
+        </ul>
+        </div>
+      </div>
       <div class="card" data-sport="nba">
-        <button class="card-header" type="button" aria-expanded="false">
+        <button class="card-header" type="button" aria-expanded="false" aria-controls="modules-nba">
+          <span class="card-badge">In-Season (Live Slate)</span>
           <div class="card-title-row">
             <img class="favicon" src="nba/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
             <span class="sport-pip" aria-hidden="true"></span>
             <span>NBA</span>
-            <span class="chevron">&#9656;</span>
+            <span class="card-count" aria-label="14 modules">(14)</span>
+            <span class="chevron" aria-hidden="true">&#9656;</span>
           </div>
           <div class="card-rail" aria-hidden="true"></div>
         </button>
-        <ul class="tab-list">
+        <div class="tab-wrap">
+        <ul class="tab-list" id="modules-nba">
           <li><a href="nba/">Season Standings</a></li>
           <li><a href="nba/offseason/">Offseason Moves</a></li>
           <li><a href="nba/cap-sheet/">Cap &amp; Aprons</a></li>
@@ -462,19 +625,22 @@
           <li><a href="nba/diagnostics/">Diagnostics</a></li>
           <li><a href="nba/gallery/">Visual Gallery</a></li>
         </ul>
+        </div>
       </div>
       <div class="card" data-sport="wnba">
-        <button class="card-header" type="button" aria-expanded="false">
+        <button class="card-header" type="button" aria-expanded="false" aria-controls="modules-wnba">
           <span class="card-badge">Off-Season (Weekly Monitor)</span>
           <div class="card-title-row">
             <img class="favicon" src="wnba/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
             <span class="sport-pip" aria-hidden="true"></span>
             <span>WNBA</span>
-            <span class="chevron">&#9656;</span>
+            <span class="card-count" aria-label="14 modules">(14)</span>
+            <span class="chevron" aria-hidden="true">&#9656;</span>
           </div>
           <div class="card-rail" aria-hidden="true"></div>
         </button>
-        <ul class="tab-list">
+        <div class="tab-wrap">
+        <ul class="tab-list" id="modules-wnba">
           <li><a href="wnba/offseason-monitor/">Off-Season Monitor</a></li>
           <li><a href="wnba/">Season Standings</a></li>
           <li><a href="wnba/variants/">Model Variants</a></li>
@@ -490,19 +656,22 @@
           <li><a href="wnba/series/">Playoff Simulator</a></li>
           <li><a href="wnba/diagnostics/">Diagnostics</a></li>
         </ul>
+        </div>
       </div>
       <div class="card" data-sport="mlb">
-        <button class="card-header" type="button" aria-expanded="false">
+        <button class="card-header" type="button" aria-expanded="false" aria-controls="modules-mlb">
           <span class="card-badge">Off-Season (Weekly Monitor)</span>
           <div class="card-title-row">
             <img class="favicon" src="mlb/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
             <span class="sport-pip" aria-hidden="true"></span>
             <span>MLB</span>
-            <span class="chevron">&#9656;</span>
+            <span class="card-count" aria-label="14 modules">(14)</span>
+            <span class="chevron" aria-hidden="true">&#9656;</span>
           </div>
           <div class="card-rail" aria-hidden="true"></div>
         </button>
-        <ul class="tab-list">
+        <div class="tab-wrap">
+        <ul class="tab-list" id="modules-mlb">
           <li><a href="mlb/offseason-monitor/">2026-2027 Off-Season Monitor</a></li>
           <li><a href="mlb/">Season Standings</a></li>
           <li><a href="mlb/retrospective/">2026 Season Retrospective</a></li>
@@ -518,41 +687,12 @@
           <li><a href="mlb/diagnostics/">Diagnostics</a></li>
           <li><a href="mlb/gallery/">Visual Gallery</a></li>
         </ul>
+        </div>
       </div>
-      <div class="card" data-sport="nfl">
-        <button class="card-header" type="button" aria-expanded="false">
-          <div class="card-title-row">
-            <img class="favicon" src="nfl/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
-            <span class="sport-pip" aria-hidden="true"></span>
-            <span>NFL</span>
-            <span class="chevron">&#9656;</span>
-          </div>
-          <div class="card-rail" aria-hidden="true"></div>
-        </button>
-        <ul class="tab-list">
-          <li><a href="nfl/">Season Standings</a></li>
-          <li><a href="nfl/matchups/">Weekly Matchups</a></li>
-          <li><a href="nfl/teams/">Team Ratings &amp; EPA</a></li>
-          <li><a href="nfl/coaching/">Coaching Analysis</a></li>
-          <li><a href="nfl/salary-cap/">Salary Cap &amp; OTC</a></li>
-          <li><a href="nfl/playoffs/">Playoff Machine</a></li>
-          <li><a href="nfl/players/">QB &amp; Player Ratings</a></li>
-          <li><a href="nfl/variants/">Model Variants</a></li>
-          <li><a href="nfl/diagnostics/">Diagnostics</a></li>
-          <li><a href="nfl/gallery/">Visual Gallery</a></li>
-        </ul>
-      </div>
-    </nav>
+      </nav>
+    </div>
   </div>
   <script>
-    document.querySelectorAll('.card-header').forEach(function (header) {
-      header.addEventListener('click', function () {
-        var card = header.closest('.card');
-        var isExpanded = card.classList.toggle('expanded');
-        header.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
-      });
-    });
-
     (function initTrophyShowcase() {
       var showcase = document.querySelector('.trophy-showcase');
       if (!showcase) return;
@@ -666,6 +806,9 @@
         }, { threshold: 0.25 }).observe(showcase);
       }
 
+      // Lets the league cards drive the showcase (see initLeagueCards below).
+      window.selectTrophySport = function (sport) { selectSport(sport, false); };
+
       // Respond if the viewer flips the reduced-motion setting mid-visit.
       motionQuery.addEventListener('change', function () {
         if (stillOnly()) {
@@ -677,6 +820,87 @@
           video.load();
           if (inView) video.play().catch(function () {});
         }
+      });
+    })();
+
+    (function initLeagueCards() {
+      var nav = document.querySelector('nav');
+      var cards = Array.prototype.slice.call(nav.querySelectorAll('.card'));
+      var input = document.getElementById('module-filter');
+      var status = document.getElementById('filter-status');
+
+      function setExpanded(card, expanded) {
+        card.classList.toggle('expanded', expanded);
+        card.querySelector('.card-header').setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      }
+
+      cards.forEach(function (card) {
+        card.querySelector('.card-header').addEventListener('click', function () {
+          var expanded = !card.classList.contains('expanded');
+          setExpanded(card, expanded);
+          // Opening a league also turns the showcase to that league's trophy.
+          if (expanded && window.selectTrophySport) window.selectTrophySport(card.dataset.sport);
+        });
+      });
+
+      // Remember which cards the viewer opened by hand, so clearing the filter
+      // puts the page back the way they left it.
+      var before = null;
+
+      function applyFilter() {
+        var query = input.value.trim().toLowerCase();
+        if (!query) {
+          nav.classList.remove('filtering');
+          cards.forEach(function (card, i) {
+            card.classList.remove('no-match');
+            card.querySelectorAll('li').forEach(function (li) { li.classList.remove('no-match'); });
+            if (before) setExpanded(card, before[i]);
+          });
+          before = null;
+          status.textContent = '';
+          return;
+        }
+        if (!before) before = cards.map(function (card) { return card.classList.contains('expanded'); });
+        nav.classList.add('filtering');
+        var total = 0, leagues = 0;
+        cards.forEach(function (card) {
+          // A league name ("nba") matches every module in that league.
+          var leagueHit = card.dataset.sport.indexOf(query) === 0;
+          var hits = 0;
+          card.querySelectorAll('li').forEach(function (li) {
+            var hit = leagueHit || li.textContent.toLowerCase().indexOf(query) !== -1;
+            li.classList.toggle('no-match', !hit);
+            if (hit) hits++;
+          });
+          card.classList.toggle('no-match', hits === 0);
+          setExpanded(card, hits > 0);
+          total += hits;
+          if (hits) leagues++;
+        });
+        status.textContent = total
+          ? total + (total === 1 ? ' module' : ' modules') + ' in ' + leagues + (leagues === 1 ? ' league' : ' leagues')
+          : 'No modules match "' + input.value.trim() + '"';
+      }
+
+      input.addEventListener('input', applyFilter);
+      input.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+          input.value = '';
+          applyFilter();
+          input.blur();
+        } else if (event.key === 'Enter' && input.value.trim()) {
+          // Enter opens the first match.
+          var first = nav.querySelector('.card:not(.no-match) li:not(.no-match) a');
+          if (first) window.location.href = first.href;
+        }
+      });
+      document.addEventListener('keydown', function (event) {
+        if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey) return;
+        var el = document.activeElement;
+        if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
+        event.preventDefault();
+        input.focus();
+        input.select();
       });
     })();
   </script>
