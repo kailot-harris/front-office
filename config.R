@@ -719,7 +719,7 @@ CACHE_TURNOVER_HISTORY <- file.path(CACHE_DIR, "turnover_margin_history.rds")
 # working directory (run_full_pipeline.R's run_stage() source()s siblings by bare filename).
 #
 # WEB_DATA_FILES is the aggregate run_full_pipeline.R passes to run_stage()'s `output =`.
-# It lists the NINE published datasets the exporter genuinely DERIVES from cache/*.rds on
+# It lists the EIGHT published datasets the exporter genuinely DERIVES from cache/*.rds on
 # every run, which is what makes declaring them correct here (unlike accuracy_tracker.R /
 # bet_tracker.r, which legitimately no-op on a quiet day and therefore deliberately omit
 # `output =`).
