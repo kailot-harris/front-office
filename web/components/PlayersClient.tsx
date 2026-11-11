@@ -7,6 +7,8 @@ import QbEfficiencyScatter from './QbEfficiencyScatter';
 import { Search, Award, TrendingUp, Download } from 'lucide-react';
 import { exportToCsv } from '@/lib/exportToCsv';
 import { headshotSrc } from '@/lib/format';
+import { GlossaryButton, GlossaryTerm } from './Glossary';
+import { HowToRead } from './HowToRead';
 
 interface PlayersClientProps {
   initialQbs: QbProfile[];
@@ -108,12 +110,24 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
             <span className="text-emerald-400">NFL</span> Quarterback Composite Ratings & Depth Chart
           </h1>
           <p className="text-slate-400 text-sm mt-1 max-w-3xl">
-            Rolling per-dropback Expected Points Added (EPA) and Completion Percentage Over Expected (CPOE)
-            derived from play-by-play tracking. Integrated with backup quarterback injury penalties and rookie usage ramps.
+            Rolling per-dropback <GlossaryTerm term="EPA" className="text-slate-300" /> and{' '}
+            <GlossaryTerm term="CPOE" className="text-slate-300" /> derived from play-by-play tracking. Integrated
+            with backup quarterback injury penalties and rookie usage ramps.
           </p>
+          <div className="mt-2">
+            <GlossaryButton />
+          </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-emerald-500/40 to-transparent" />
       </div>
+
+      <HowToRead pageKey="players-qb">
+        <p>
+          <strong>EPA/dropback</strong> is the average points added per pass attempt or sack, relative to the
+          situation-adjusted expectation. <strong>CPOE</strong> strips out throw difficulty to isolate accuracy.
+          Both are rolling windows, so they reflect recent form rather than full-season totals.
+        </p>
+      </HowToRead>
 
       {/* Leadership KPI Banners */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -141,9 +155,9 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
                   <div>
                     <div className="text-xs font-medium text-white flex items-center gap-1.5">
                       {qb.player_name}
-                      <span className="text-[10px] font-mono text-slate-400">({qb.team})</span>
+                      <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">({qb.team})</span>
                     </div>
-                    <div className="text-[10px] text-slate-400 font-mono">
+                    <div className="text-[11px] sm:text-[10px] text-slate-400 font-mono">
                       Exp: {qb.years_exp}y • {qb.college || 'N/A'}
                     </div>
                   </div>
@@ -152,7 +166,7 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
                   <span className="text-xs font-mono font-bold text-emerald-400">
                     +{qb.off_epa_roll.toFixed(3)}
                   </span>
-                  <div className="text-[10px] font-mono text-slate-400">
+                  <div className="text-[11px] sm:text-[10px] font-mono text-slate-400">
                     CPOE: {qb.off_cpoe_roll > 0 ? '+' : ''}
                     {qb.off_cpoe_roll.toFixed(1)}%
                   </div>
@@ -186,9 +200,9 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
                   <div>
                     <div className="text-xs font-medium text-white flex items-center gap-1.5">
                       {qb.player_name}
-                      <span className="text-[10px] font-mono text-slate-400">({qb.team})</span>
+                      <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">({qb.team})</span>
                     </div>
-                    <div className="text-[10px] text-slate-400 font-mono">
+                    <div className="text-[11px] sm:text-[10px] text-slate-400 font-mono">
                       Exp: {qb.years_exp}y • {qb.college || 'N/A'}
                     </div>
                   </div>
@@ -197,7 +211,7 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
                   <span className="text-xs font-mono font-bold text-cyan-400">
                     +{qb.off_cpoe_roll.toFixed(1)}%
                   </span>
-                  <div className="text-[10px] font-mono text-slate-400">
+                  <div className="text-[11px] sm:text-[10px] font-mono text-slate-400">
                     EPA: {qb.off_epa_roll > 0 ? '+' : ''}
                     {qb.off_epa_roll.toFixed(3)}
                   </div>
@@ -262,7 +276,7 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-surface/80 text-slate-400 font-mono uppercase text-[10px] tracking-wider border-b border-slate-800">
+            <thead className="bg-surface/80 text-slate-400 font-mono uppercase text-[11px] sm:text-[10px] tracking-wider border-b border-slate-800">
               <tr>
                 <th className="px-4 py-3">Player</th>
                 <th className="px-3 py-3">Team</th>
@@ -331,18 +345,18 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
                             />
                           </div>
                         ) : (
-                          <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 text-[10px] font-sans font-bold">
+                          <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 text-[11px] sm:text-[10px] font-sans font-bold">
                             {qb.player_name.slice(0, 2)}
                           </div>
                         )}
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-sans font-medium text-white">{qb.player_name}</span>
                           {qb.is_starter ? (
-                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+                            <span className="px-1.5 py-0.2 rounded text-[11px] sm:text-[9px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
                               Starter
                             </span>
                           ) : (
-                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-slate-800 text-slate-400 border border-slate-700/60 font-normal">
+                            <span className="px-1.5 py-0.2 rounded text-[11px] sm:text-[9px] font-mono bg-slate-800 text-slate-400 border border-slate-700/60 font-normal">
                               Backup
                             </span>
                           )}
@@ -377,7 +391,7 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
                       </span>
                     </td>
                     <td className="px-4 py-2.5 text-center">
-                      <span className="inline-block px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-950/60 border border-emerald-800 text-emerald-400">
+                      <span className="inline-block px-2 py-0.5 rounded text-[11px] sm:text-[10px] font-mono bg-emerald-950/60 border border-emerald-800 text-emerald-400">
                         {qb.status || 'ACT'}
                       </span>
                     </td>
@@ -483,27 +497,27 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
             <div className="bg-surface/60 p-3 rounded-lg border border-slate-800">
-              <span className="text-[10px] font-mono uppercase text-slate-500 block">Offensive EPA / Play</span>
+              <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-500 block">Offensive EPA / Play</span>
               <span className="text-base font-mono font-bold text-emerald-400">
                 {(selectedQb.off_epa_roll ?? 0) > 0 ? '+' : ''}
                 {(selectedQb.off_epa_roll ?? 0).toFixed(3)}
               </span>
             </div>
             <div className="bg-surface/60 p-3 rounded-lg border border-slate-800">
-              <span className="text-[10px] font-mono uppercase text-slate-500 block">Completion % Over Expected</span>
+              <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-500 block">Completion % Over Expected</span>
               <span className="text-base font-mono font-bold text-cyan-400">
                 {(selectedQb.off_cpoe_roll ?? 0) > 0 ? '+' : ''}
                 {(selectedQb.off_cpoe_roll ?? 0).toFixed(1)}%
               </span>
             </div>
             <div className="bg-surface/60 p-3 rounded-lg border border-slate-800">
-              <span className="text-[10px] font-mono uppercase text-slate-500 block">Backup WAR Penalty</span>
+              <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-500 block">Backup WAR Penalty</span>
               <span className="text-base font-mono font-bold text-amber-400">
                 -3.2 Pts Margin
               </span>
             </div>
             <div className="bg-surface/60 p-3 rounded-lg border border-slate-800">
-              <span className="text-[10px] font-mono uppercase text-slate-500 block">Roster Depth</span>
+              <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-500 block">Roster Depth</span>
               <span className="text-base font-mono font-bold text-white">
                 Starter (Tier {selectedQb.off_epa_roll > 0.08 ? '1' : selectedQb.off_epa_roll > 0 ? '2' : '3'})
               </span>

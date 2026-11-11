@@ -211,7 +211,7 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs font-mono">
-                  <thead className="bg-surface/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+                  <thead className="bg-surface/80 text-slate-400 uppercase text-[11px] sm:text-[10px] tracking-wider border-b border-slate-800">
                     <tr>
                       <th className="px-4 py-3">Team</th>
                       <th
@@ -255,7 +255,7 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
                             <div className="flex items-center gap-2">
                               <TeamLogo team={t.team} size="xs" />
                               <span className="font-bold text-white">{t.team}</span>
-                              <span className="text-[10px] text-slate-500 font-sans">
+                              <span className="text-[11px] sm:text-[10px] text-slate-500 font-sans">
                                 ({t.total_active_contracts} deals)
                               </span>
                             </div>
@@ -294,7 +294,7 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
 
                   {/* Positional Bars */}
                   <div className="space-y-3">
-                    <span className="text-[10px] font-mono uppercase text-slate-500 font-bold block">
+                    <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-500 font-bold block">
                       Spending by Position Group
                     </span>
 
@@ -304,7 +304,7 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
                         <div key={pos} className="space-y-1">
                           <div className="flex justify-between items-center text-xs">
                             <span className="text-slate-300 font-medium">
-                              {pos} <span className="text-[10px] text-slate-500 font-mono">({item.count})</span>
+                              {pos} <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">({item.count})</span>
                             </span>
                             <span className="font-mono text-slate-300">
                               {money(item.apy)} ({item.pct}%)
@@ -322,7 +322,7 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
 
                   {/* Top 3 Highest Paid on Team */}
                   <div className="mt-5 pt-4 border-t border-slate-800 space-y-2">
-                    <span className="text-[10px] font-mono uppercase text-slate-500 font-bold block">
+                    <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-500 font-bold block">
                       Top Paid Cornerstones
                     </span>
                     {selectedTeam.top_paid_players.map((p, i) => (
@@ -333,7 +333,7 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
                         <div className="flex items-center gap-2">
                           <span className="text-slate-500 font-bold">#{i + 1}</span>
                           <span className="text-white font-sans font-medium">{p.player}</span>
-                          <span className="text-[10px] text-slate-400">({p.position})</span>
+                          <span className="text-[11px] sm:text-[10px] text-slate-400">({p.position})</span>
                         </div>
                         <span className="text-emerald-400 font-bold">${p.apy}M/yr</span>
                       </div>
@@ -367,7 +367,7 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-mono">
-              <thead className="bg-surface/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+              <thead className="bg-surface/80 text-slate-400 uppercase text-[11px] sm:text-[10px] tracking-wider border-b border-slate-800">
                 <tr>
                   <th className="px-4 py-3">Rank</th>
                   <th className="px-4 py-3">Player</th>

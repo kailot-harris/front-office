@@ -78,7 +78,7 @@ function GalleryMediaThumb({
           ) : (
             <ImageIcon className="w-8 h-8 text-emerald-400/50" />
           )}
-          <span className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
+          <span className="text-[11px] sm:text-[10px] font-mono text-slate-500 flex items-center gap-1">
             <Play className="w-3 h-3" /> Click to load preview
           </span>
         </div>
@@ -189,7 +189,7 @@ export default function GalleryClient({ mediaItems }: GalleryClientProps) {
 
                   {/* Badge Overlay */}
                   <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 pointer-events-none">
-                    <span className="bg-surface/80 backdrop-blur border border-slate-800 text-[10px] font-mono px-2 py-0.5 rounded text-white flex items-center gap-1">
+                    <span className="bg-surface/80 backdrop-blur border border-slate-800 text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded text-white flex items-center gap-1">
                       {isGif ? <Film className="w-3 h-3 text-cyan-400" /> : <ImageIcon className="w-3 h-3 text-emerald-400" />}
                       {isGif ? 'ANIMATION' : 'STATIC PLOT'}
                     </span>

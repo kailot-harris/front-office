@@ -99,28 +99,28 @@ export const EpaQuadrantScatter: React.FC<EpaQuadrantScatterProps> = ({
           {/* Quadrant Background Tints */}
           {/* Top-Right: Elite Tier (Good Offense, Good Defense) */}
           <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-emerald-500/5 border-b border-l border-slate-800/60 pointer-events-none">
-            <span className="absolute top-3 right-3 text-[10px] font-mono uppercase tracking-widest text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+            <span className="absolute top-3 right-3 text-[11px] sm:text-[10px] font-mono uppercase tracking-widest text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
               Contenders (Elite Off & Def)
             </span>
           </div>
 
           {/* Top-Left: Defensive Grinders (Poor Offense, Good Defense) */}
           <div className="absolute top-0 left-0 w-1/2 h-1/2 bg-cyan-500/5 border-b border-r border-slate-800/60 pointer-events-none">
-            <span className="absolute top-3 left-3 text-[10px] font-mono uppercase tracking-widest text-cyan-400 font-bold bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
+            <span className="absolute top-3 left-3 text-[11px] sm:text-[10px] font-mono uppercase tracking-widest text-cyan-400 font-bold bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
               Defensive Grinders
             </span>
           </div>
 
           {/* Bottom-Right: High-Flying Shootouts (Good Offense, Vulnerable Def) */}
           <div className="absolute bottom-0 right-0 w-1/2 h-1/2 bg-amber-500/5 border-t border-l border-slate-800/60 pointer-events-none">
-            <span className="absolute bottom-3 right-3 text-[10px] font-mono uppercase tracking-widest text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+            <span className="absolute bottom-3 right-3 text-[11px] sm:text-[10px] font-mono uppercase tracking-widest text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
               High-Flying Shootouts
             </span>
           </div>
 
           {/* Bottom-Left: Rebuilding Tiers (Poor Offense & Defense) */}
           <div className="absolute bottom-0 left-0 w-1/2 h-1/2 bg-red-500/5 border-t border-r border-slate-800/60 pointer-events-none">
-            <span className="absolute bottom-3 left-3 text-[10px] font-mono uppercase tracking-widest text-red-400 font-bold bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
+            <span className="absolute bottom-3 left-3 text-[11px] sm:text-[10px] font-mono uppercase tracking-widest text-red-400 font-bold bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
               Rebuilding Tiers
             </span>
           </div>
@@ -130,7 +130,7 @@ export const EpaQuadrantScatter: React.FC<EpaQuadrantScatterProps> = ({
             className="absolute top-0 bottom-0 w-px bg-slate-700/80 pointer-events-none z-0"
             style={{ left: `${getXPercent(0)}%` }}
           >
-            <span className="absolute bottom-1 left-1.5 text-[9px] font-mono text-slate-500">
+            <span className="absolute bottom-1 left-1.5 text-[11px] sm:text-[9px] font-mono text-slate-500">
               0.00 Offense
             </span>
           </div>
@@ -138,7 +138,7 @@ export const EpaQuadrantScatter: React.FC<EpaQuadrantScatterProps> = ({
             className="absolute left-0 right-0 h-px bg-slate-700/80 pointer-events-none z-0"
             style={{ top: `${getYPercent(0)}%` }}
           >
-            <span className="absolute top-1.5 left-2 text-[9px] font-mono text-slate-500">
+            <span className="absolute top-1.5 left-2 text-[11px] sm:text-[9px] font-mono text-slate-500">
               0.00 Defense
             </span>
           </div>
@@ -198,29 +198,29 @@ export const EpaQuadrantScatter: React.FC<EpaQuadrantScatterProps> = ({
                 <div className="flex items-center gap-2 border-b border-slate-800 pb-1.5">
                   <TeamLogo team={hoveredTeam.team} size="xs" />
                   <span className="font-bold text-white text-xs">{hoveredTeam.team_name}</span>
-                  <span className="text-[10px] font-mono text-slate-400 ml-auto">{hoveredTeam.division}</span>
+                  <span className="text-[11px] sm:text-[10px] font-mono text-slate-400 ml-auto">{hoveredTeam.division}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 font-mono text-[11px] pt-0.5">
                   <div>
-                    <span className="text-[10px] text-slate-500 block">Offense EPA</span>
+                    <span className="text-[11px] sm:text-[10px] text-slate-500 block">Offense EPA</span>
                     <strong className={hoveredTeam.off_epa_per_play > 0 ? 'text-emerald-400' : 'text-red-400'}>
                       {hoveredTeam.off_epa_per_play > 0 ? `+${hoveredTeam.off_epa_per_play.toFixed(3)}` : hoveredTeam.off_epa_per_play.toFixed(3)}
                     </strong>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-500 block">Defense EPA</span>
+                    <span className="text-[11px] sm:text-[10px] text-slate-500 block">Defense EPA</span>
                     <strong className={hoveredTeam.def_epa_per_play < 0 ? 'text-emerald-400' : 'text-red-400'}>
                       {hoveredTeam.def_epa_per_play > 0 ? `+${hoveredTeam.def_epa_per_play.toFixed(3)}` : hoveredTeam.def_epa_per_play.toFixed(3)}
                     </strong>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-500 block">Net EPA/Play</span>
+                    <span className="text-[11px] sm:text-[10px] text-slate-500 block">Net EPA/Play</span>
                     <strong className={hoveredTeam.net_epa_per_play > 0 ? 'text-emerald-400' : 'text-red-400'}>
                       {hoveredTeam.net_epa_per_play > 0 ? `+${hoveredTeam.net_epa_per_play.toFixed(3)}` : hoveredTeam.net_epa_per_play.toFixed(3)}
                     </strong>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-500 block">Success Rate</span>
+                    <span className="text-[11px] sm:text-[10px] text-slate-500 block">Success Rate</span>
                     <strong className="text-white">{hoveredTeam.off_success_rate.toFixed(1)}%</strong>
                   </div>
                 </div>

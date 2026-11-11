@@ -2,6 +2,8 @@ import React from 'react';
 import { getTeamEpaProfiles } from '@/lib/data';
 import { TeamsClient } from '@/components/TeamsClient';
 import { ShieldCheck } from 'lucide-react';
+import { GlossaryButton, GlossaryTerm } from '@/components/Glossary';
+import { HowToRead } from '@/components/HowToRead';
 
 export const metadata = {
   title: 'Team Power Ratings & EPA Profiles',
@@ -30,24 +32,36 @@ export default function TeamsPage() {
               <span><span className="text-emerald-400">NFL</span> Team Ratings & EPA Profiles</span>
             </h1>
             <p className="text-slate-400 text-sm mt-1 max-w-3xl">
-              Granular down-by-down and situational efficiency: Expected Points Added (EPA) per play, Success Rate, Completion Percentage Over Expected (CPOE), and 4-quadrant efficiency mapping.
+              Granular down-by-down and situational efficiency: <GlossaryTerm term="EPA" className="text-slate-300" /> per play,
+              Success Rate, <GlossaryTerm term="CPOE" className="text-slate-300" />, and 4-quadrant efficiency mapping.
             </p>
           </div>
 
           {/* Quick Context Chips */}
           <div className="flex items-center gap-2.5 text-xs font-mono">
+            <GlossaryButton />
             <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
-              <span className="text-slate-500 block text-[10px] uppercase">Evaluation Window</span>
+              <span className="text-slate-500 block text-[11px] sm:text-[10px] uppercase">Evaluation Window</span>
               <span className="text-white font-bold">Rolling 4 Games</span>
             </div>
             <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
-              <span className="text-slate-500 block text-[10px] uppercase">Efficiency Model</span>
+              <span className="text-slate-500 block text-[11px] sm:text-[10px] uppercase">Efficiency Model</span>
               <span className="text-emerald-400 font-bold">nflverse PBP Engine</span>
             </div>
           </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-emerald-500/40 to-transparent" />
       </div>
+
+      <HowToRead pageKey="teams-epa">
+        <p>
+          <strong>EPA/play</strong> measures how many points each play was worth relative to the average outcome in
+          that situation &mdash; positive is good offense, negative is good defense. The quadrant scatter plots
+          offensive EPA against defensive EPA, so the top-right corner is the league&apos;s best all-around teams.
+          <strong> CPOE</strong> isolates quarterback accuracy from the QB&apos;s decision-making, independent of
+          how hard the throw was.
+        </p>
+      </HowToRead>
 
       {/* Main Interactive Client */}
       <TeamsClient teams={teams} generatedAt={generatedAt} />

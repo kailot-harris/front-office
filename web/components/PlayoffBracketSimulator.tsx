@@ -13,17 +13,51 @@ interface PlayoffBracketSimulatorProps {
 interface SimulatedGameResult {
   winner: PlayoffSeed;
   loser: PlayoffSeed;
-  winnerScore: number;
-  loserScore: number;
+  /** Simulated margin for the winner, derived from the simulated outcome itself (never the raw rating gap). */
+  margin: number;
+}
+
+/**
+ * mulberry32 — small, fast, deterministic PRNG. Seeded from the matchup key (plus a re-roll
+ * counter) so selecting the same matchup/re-roll combination always reproduces identical results
+ * (see #128: the previous implementation called Math.random() directly, so nothing was
+ * reproducible, and it invented a displayed score margin from the *absolute* rating gap
+ * regardless of which side actually won — an upset winner showed the favorite's margin).
+ */
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Deterministic 32-bit hash of a string, used to turn a matchup key into a PRNG seed. */
+function hashStringToSeed(str: string): number {
+  let h = 2166136261 >>> 0; // FNV-1a offset basis
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
 }
 
 export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = ({ dataset }) => {
   const [isSimulated, setIsSimulated] = useState(false);
   const [champion, setChampion] = useState<PlayoffSeed | null>(null);
   const [superBowlMatchup, setSuperBowlMatchup] = useState<{ afc: PlayoffSeed; nfc: PlayoffSeed } | null>(null);
+  const [championMargin, setChampionMargin] = useState<number | null>(null);
+  // Bumped on every "Re-roll" click so a fresh seed (still deterministic for that roll number)
+  // produces a different, but still reproducible, outcome.
+  const [rerollCount, setRerollCount] = useState(0);
 
-  // Helper to simulate a matchup between team A and team B based on power ratings + home field
-  const simulateGame = (teamA: PlayoffSeed, teamB: PlayoffSeed, isNeutral = false): SimulatedGameResult => {
+  // Helper to simulate a matchup between team A and team B based on power ratings + home field.
+  // `rng` is a seeded PRNG so the same matchup key + re-roll number always reproduces identical
+  // results (acceptance criterion for #128).
+  const simulateGame = (teamA: PlayoffSeed, teamB: PlayoffSeed, rng: () => number, isNeutral = false): SimulatedGameResult => {
     // Higher seed is teamA (home unless neutral)
     const hca = isNeutral ? 0 : 1.93;
     const diff = teamA.power_rating - teamB.power_rating + hca;
@@ -31,26 +65,35 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
     const z = diff / 14.6;
     const winProbA = 0.5 * (1 + Math.sign(z) * Math.sqrt(1 - Math.exp(-2 * z * z / Math.PI)));
 
-    const rand = Math.random();
+    const rand = rng();
     const aWins = rand < winProbA;
     const winner = aWins ? teamA : teamB;
     const loser = aWins ? teamB : teamA;
 
-    // Generate realistic NFL scores
-    const baseScore = 20 + Math.floor(Math.random() * 14);
-    const margin = Math.max(1, Math.min(28, Math.floor(Math.abs(diff) + Math.random() * 10)));
-    const winnerScore = baseScore + margin;
-    const loserScore = baseScore;
+    // Simulated margin depends on which side actually won, never on the absolute rating gap
+    // alone — that was the #128 bug (an upset winner displayed the favorite's larger margin,
+    // because the old code computed margin from Math.abs(diff) regardless of winner). When the
+    // favored side wins, the margin scales with the model's edge; when the lower-rated side
+    // upsets the favorite, the margin is a smaller, independent draw that never reuses the
+    // favorite's edge-based figure.
+    const favoriteWon = (aWins && diff >= 0) || (!aWins && diff < 0);
+    const margin = favoriteWon
+      ? Math.max(1, Math.round(Math.abs(diff) * 0.4 + rng() * 9))
+      : Math.max(1, Math.round(rng() * 6) + 1);
 
-    return { winner, loser, winnerScore, loserScore };
+    return { winner, loser, margin };
   };
 
-  const handleSimulateBracket = () => {
+  const handleSimulateBracket = (rollNumber: number) => {
+    const seedKey = `${dataset.afc_seeds.map((s) => s.team).join(',')}|${dataset.nfc_seeds
+      .map((s) => s.team)
+      .join(',')}|roll:${rollNumber}`;
+    const rng = mulberry32(hashStringToSeed(seedKey));
     // AFC Wild Card: 2 vs 7, 3 vs 6, 4 vs 5 (1 has Bye)
     const afc1 = dataset.afc_seeds[0];
-    const afcWc1 = simulateGame(dataset.afc_seeds[1], dataset.afc_seeds[6]).winner;
-    const afcWc2 = simulateGame(dataset.afc_seeds[2], dataset.afc_seeds[5]).winner;
-    const afcWc3 = simulateGame(dataset.afc_seeds[3], dataset.afc_seeds[4]).winner;
+    const afcWc1 = simulateGame(dataset.afc_seeds[1], dataset.afc_seeds[6], rng).winner;
+    const afcWc2 = simulateGame(dataset.afc_seeds[2], dataset.afc_seeds[5], rng).winner;
+    const afcWc3 = simulateGame(dataset.afc_seeds[3], dataset.afc_seeds[4], rng).winner;
 
     // Reseed AFC Divisional: lowest remaining plays #1
     const afcDivTeams = [afcWc1, afcWc2, afcWc3].sort((a, b) => b.seed - a.seed); // lowest seed first
@@ -58,23 +101,25 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
     const otherAfc1 = afcDivTeams[1];
     const otherAfc2 = afcDivTeams[2];
 
-    const afcDivWinner1 = simulateGame(afc1, lowestAfc).winner;
+    const afcDivWinner1 = simulateGame(afc1, lowestAfc, rng).winner;
     const afcDivWinner2 = simulateGame(
       otherAfc2.seed < otherAfc1.seed ? otherAfc2 : otherAfc1,
-      otherAfc2.seed < otherAfc1.seed ? otherAfc1 : otherAfc2
+      otherAfc2.seed < otherAfc1.seed ? otherAfc1 : otherAfc2,
+      rng
     ).winner;
 
     // AFC Championship
     const afcChamp = simulateGame(
       afcDivWinner1.seed < afcDivWinner2.seed ? afcDivWinner1 : afcDivWinner2,
-      afcDivWinner1.seed < afcDivWinner2.seed ? afcDivWinner2 : afcDivWinner1
+      afcDivWinner1.seed < afcDivWinner2.seed ? afcDivWinner2 : afcDivWinner1,
+      rng
     ).winner;
 
     // NFC Wild Card: 2 vs 7, 3 vs 6, 4 vs 5 (1 has Bye)
     const nfc1 = dataset.nfc_seeds[0];
-    const nfcWc1 = simulateGame(dataset.nfc_seeds[1], dataset.nfc_seeds[6]).winner;
-    const nfcWc2 = simulateGame(dataset.nfc_seeds[2], dataset.nfc_seeds[5]).winner;
-    const nfcWc3 = simulateGame(dataset.nfc_seeds[3], dataset.nfc_seeds[4]).winner;
+    const nfcWc1 = simulateGame(dataset.nfc_seeds[1], dataset.nfc_seeds[6], rng).winner;
+    const nfcWc2 = simulateGame(dataset.nfc_seeds[2], dataset.nfc_seeds[5], rng).winner;
+    const nfcWc3 = simulateGame(dataset.nfc_seeds[3], dataset.nfc_seeds[4], rng).winner;
 
     // Reseed NFC Divisional
     const nfcDivTeams = [nfcWc1, nfcWc2, nfcWc3].sort((a, b) => b.seed - a.seed);
@@ -82,30 +127,39 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
     const otherNfc1 = nfcDivTeams[1];
     const otherNfc2 = nfcDivTeams[2];
 
-    const nfcDivWinner1 = simulateGame(nfc1, lowestNfc).winner;
+    const nfcDivWinner1 = simulateGame(nfc1, lowestNfc, rng).winner;
     const nfcDivWinner2 = simulateGame(
       otherNfc2.seed < otherNfc1.seed ? otherNfc2 : otherNfc1,
-      otherNfc2.seed < otherNfc1.seed ? otherNfc1 : otherNfc2
+      otherNfc2.seed < otherNfc1.seed ? otherNfc1 : otherNfc2,
+      rng
     ).winner;
 
     // NFC Championship
     const nfcChamp = simulateGame(
       nfcDivWinner1.seed < nfcDivWinner2.seed ? nfcDivWinner1 : nfcDivWinner2,
-      nfcDivWinner1.seed < nfcDivWinner2.seed ? nfcDivWinner2 : nfcDivWinner1
+      nfcDivWinner1.seed < nfcDivWinner2.seed ? nfcDivWinner2 : nfcDivWinner1,
+      rng
     ).winner;
 
     setSuperBowlMatchup({ afc: afcChamp, nfc: nfcChamp });
 
     // Super Bowl (Neutral Site)
-    const sbResult = simulateGame(afcChamp, nfcChamp, true);
+    const sbResult = simulateGame(afcChamp, nfcChamp, rng, true);
     setChampion(sbResult.winner);
+    setChampionMargin(sbResult.margin);
     setIsSimulated(true);
+    setRerollCount(rollNumber);
   };
 
   const handleReset = () => {
     setIsSimulated(false);
     setChampion(null);
     setSuperBowlMatchup(null);
+    setChampionMargin(null);
+  };
+
+  const handleReroll = () => {
+    handleSimulateBracket(rerollCount + 1);
   };
 
   return (
@@ -124,20 +178,31 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
 
         <div className="flex items-center gap-2.5">
           <button
-            onClick={handleSimulateBracket}
+            onClick={() => handleSimulateBracket(0)}
             className="cursor-pointer px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold font-mono transition-all flex items-center gap-2 shadow-lg shadow-emerald-600/20 active:scale-95"
           >
             <Sparkles className="w-4 h-4" />
             <span>Simulate Bracket</span>
           </button>
           {isSimulated && (
-            <button
-              onClick={handleReset}
-              className="cursor-pointer p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white text-xs font-mono transition-colors"
-              title="Reset to Model Probabilities"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
+            <>
+              <button
+                onClick={handleReroll}
+                className="cursor-pointer min-w-[24px] min-h-[24px] px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold font-mono transition-colors flex items-center gap-1.5"
+                title="Re-roll: same matchups, new deterministic seed"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Re-roll</span>
+              </button>
+              <button
+                onClick={handleReset}
+                className="cursor-pointer min-w-[24px] min-h-[24px] p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white text-xs font-mono transition-colors"
+                title="Reset to Model Probabilities"
+                aria-label="Reset to model probabilities"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -150,18 +215,19 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
               <TeamLogo team={champion.team} size="lg" />
             </div>
             <div>
-              <span className="text-[10px] font-mono uppercase text-amber-400 font-bold flex items-center gap-1">
+              <span className="text-[11px] sm:text-[10px] font-mono uppercase text-amber-400 font-bold flex items-center gap-1">
                 <Trophy className="w-3.5 h-3.5" /> Simulated Super Bowl Champion
               </span>
               <h3 className="text-lg font-black text-white">{champion.team_name}</h3>
               <p className="text-xs text-slate-300 font-mono">
-                Defeated {superBowlMatchup.afc.team === champion.team ? superBowlMatchup.nfc.team_name : superBowlMatchup.afc.team_name} in the Super Bowl!
+                Defeated {superBowlMatchup.afc.team === champion.team ? superBowlMatchup.nfc.team_name : superBowlMatchup.afc.team_name} in the Super Bowl
+                {championMargin != null && <> by a simulated {championMargin} pts</>}!
               </p>
             </div>
           </div>
 
           <div className="text-right font-mono text-xs text-slate-400">
-            <span className="block text-slate-500 text-[10px] uppercase">Model Probability</span>
+            <span className="block text-slate-500 text-[11px] sm:text-[10px] uppercase">Model Probability</span>
             <span className="text-amber-400 font-bold text-sm">
               {percent(champion.super_bowl_win_prob, 1)} Super Bowl Equity
             </span>
@@ -178,7 +244,7 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
               <span className="w-2 h-2 rounded-full bg-red-500" />
               AFC Postseason Field (Seeds 1–7)
             </span>
-            <span className="text-[10px] font-mono text-slate-500">10,000 MC Trials</span>
+            <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">10,000 MC Trials</span>
           </div>
 
           <div className="space-y-2">
@@ -206,12 +272,12 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
                     <div className="flex items-center gap-1.5">
                       <span className="font-bold text-xs text-white truncate">{s.team_name}</span>
                       {s.seed === 1 && (
-                        <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold">
+                        <span className="text-[11px] sm:text-[9px] font-mono px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold">
                           1ST BYE
                         </span>
                       )}
                     </div>
-                    <span className="text-[10px] font-mono text-slate-500">
+                    <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">
                       {s.division} • Pwr: {typeof s.power_rating === 'number' && s.power_rating > 0 ? `+${num(s.power_rating)}` : num(s.power_rating)}
                     </span>
                   </div>
@@ -220,19 +286,19 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
                 {/* Advancement Probabilities */}
                 <div className="flex items-center gap-3 text-right font-mono text-[11px] flex-shrink-0">
                   <div>
-                    <span className="text-[9px] text-slate-500 block uppercase">Divisional</span>
+                    <span className="text-[11px] sm:text-[9px] text-slate-500 block uppercase">Divisional</span>
                     <span className="font-semibold text-slate-300">
                       {percent(s.divisional_win_prob)}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[9px] text-slate-500 block uppercase">Conf Champ</span>
+                    <span className="text-[11px] sm:text-[9px] text-slate-500 block uppercase">Conf Champ</span>
                     <span className="font-semibold text-cyan-400">
                       {percent(s.conf_champ_win_prob)}
                     </span>
                   </div>
                   <div className="min-w-[48px]">
-                    <span className="text-[9px] text-slate-500 block uppercase">Super Bowl</span>
+                    <span className="text-[11px] sm:text-[9px] text-slate-500 block uppercase">Super Bowl</span>
                     <span className="font-bold text-amber-400">
                       {percent(s.super_bowl_win_prob, 1)}
                     </span>
@@ -250,7 +316,7 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
               <span className="w-2 h-2 rounded-full bg-blue-500" />
               NFC Postseason Field (Seeds 1–7)
             </span>
-            <span className="text-[10px] font-mono text-slate-500">10,000 MC Trials</span>
+            <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">10,000 MC Trials</span>
           </div>
 
           <div className="space-y-2">
@@ -278,12 +344,12 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
                     <div className="flex items-center gap-1.5">
                       <span className="font-bold text-xs text-white truncate">{s.team_name}</span>
                       {s.seed === 1 && (
-                        <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold">
+                        <span className="text-[11px] sm:text-[9px] font-mono px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold">
                           1ST BYE
                         </span>
                       )}
                     </div>
-                    <span className="text-[10px] font-mono text-slate-500">
+                    <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">
                       {s.division} • Pwr: {typeof s.power_rating === 'number' && s.power_rating > 0 ? `+${num(s.power_rating)}` : num(s.power_rating)}
                     </span>
                   </div>
@@ -292,19 +358,19 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
                 {/* Advancement Probabilities */}
                 <div className="flex items-center gap-3 text-right font-mono text-[11px] flex-shrink-0">
                   <div>
-                    <span className="text-[9px] text-slate-500 block uppercase">Divisional</span>
+                    <span className="text-[11px] sm:text-[9px] text-slate-500 block uppercase">Divisional</span>
                     <span className="font-semibold text-slate-300">
                       {percent(s.divisional_win_prob)}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[9px] text-slate-500 block uppercase">Conf Champ</span>
+                    <span className="text-[11px] sm:text-[9px] text-slate-500 block uppercase">Conf Champ</span>
                     <span className="font-semibold text-cyan-400">
                       {percent(s.conf_champ_win_prob)}
                     </span>
                   </div>
                   <div className="min-w-[48px]">
-                    <span className="text-[9px] text-slate-500 block uppercase">Super Bowl</span>
+                    <span className="text-[11px] sm:text-[9px] text-slate-500 block uppercase">Super Bowl</span>
                     <span className="font-bold text-amber-400">
                       {percent(s.super_bowl_win_prob, 1)}
                     </span>

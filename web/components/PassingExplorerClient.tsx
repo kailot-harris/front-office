@@ -314,7 +314,7 @@ export const PassingExplorerClient: React.FC<PassingExplorerClientProps> = ({
               >
                 <TeamLogo team={qb.team} size="xs" />
                 <span>{qb.player_name}</span>
-                <span className="text-[10px] text-slate-500 font-mono">({qb.total_passes})</span>
+                <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">({qb.total_passes})</span>
               </button>
             );
           })}
@@ -681,19 +681,19 @@ export const PassingExplorerClient: React.FC<PassingExplorerClientProps> = ({
 
                   <div className="grid grid-cols-2 gap-3 pt-2">
                     <div className="bg-slate-900/90 rounded p-2.5 text-center">
-                      <div className="text-[10px] text-slate-500 uppercase font-semibold">Attempts (Share)</div>
+                      <div className="text-[11px] sm:text-[10px] text-slate-500 uppercase font-semibold">Attempts (Share)</div>
                       <div className="text-base font-bold font-mono text-white mt-0.5">
                         {activeZoneMetric.attempts} ({((activeZoneMetric.pct_of_passes || 0) * 100).toFixed(1)}%)
                       </div>
                     </div>
                     <div className="bg-slate-900/90 rounded p-2.5 text-center">
-                      <div className="text-[10px] text-slate-500 uppercase font-semibold">Completion %</div>
+                      <div className="text-[11px] sm:text-[10px] text-slate-500 uppercase font-semibold">Completion %</div>
                       <div className="text-base font-bold font-mono text-emerald-400 mt-0.5">
                         {(activeZoneMetric.comp_pct * 100).toFixed(1)}%
                       </div>
                     </div>
                     <div className="bg-slate-900/90 rounded p-2.5 text-center">
-                      <div className="text-[10px] text-slate-500 uppercase font-semibold">CPOE vs Baseline</div>
+                      <div className="text-[11px] sm:text-[10px] text-slate-500 uppercase font-semibold">CPOE vs Baseline</div>
                       <div
                         className={`text-base font-bold font-mono mt-0.5 ${
                           activeZoneMetric.avg_cpoe >= 0 ? 'text-emerald-400' : 'text-rose-400'
@@ -704,7 +704,7 @@ export const PassingExplorerClient: React.FC<PassingExplorerClientProps> = ({
                       </div>
                     </div>
                     <div className="bg-slate-900/90 rounded p-2.5 text-center">
-                      <div className="text-[10px] text-slate-500 uppercase font-semibold">EPA / Pass</div>
+                      <div className="text-[11px] sm:text-[10px] text-slate-500 uppercase font-semibold">EPA / Pass</div>
                       <div
                         className={`text-base font-bold font-mono mt-0.5 ${
                           activeZoneMetric.avg_epa >= 0 ? 'text-emerald-400' : 'text-rose-400'
@@ -820,7 +820,7 @@ export const PassingExplorerClient: React.FC<PassingExplorerClientProps> = ({
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-white truncate">{zoneName}</span>
                   <span
-                    className="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
+                    className="text-[11px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
                     style={{ backgroundColor: heat.fill, color: heat.stroke, border: `1px solid ${heat.stroke}` }}
                   >
                     {heat.label}
@@ -829,17 +829,17 @@ export const PassingExplorerClient: React.FC<PassingExplorerClientProps> = ({
 
                 <div className="mt-2.5 grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <span className="text-[10px] text-slate-500 block">Volume</span>
+                    <span className="text-[11px] sm:text-[10px] text-slate-500 block">Volume</span>
                     <span className="font-mono font-bold text-slate-200">
-                      {cmp}/{att} <span className="text-[10px] text-slate-400 font-normal">({share}%)</span>
+                      {cmp}/{att} <span className="text-[11px] sm:text-[10px] text-slate-400 font-normal">({share}%)</span>
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-500 block">Comp %</span>
+                    <span className="text-[11px] sm:text-[10px] text-slate-500 block">Comp %</span>
                     <span className="font-mono font-bold text-emerald-400">{pct}%</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-500 block">CPOE</span>
+                    <span className="text-[11px] sm:text-[10px] text-slate-500 block">CPOE</span>
                     <span
                       className={`font-mono font-bold ${
                         cpoe >= 0 ? 'text-emerald-400' : 'text-rose-400'
@@ -849,7 +849,7 @@ export const PassingExplorerClient: React.FC<PassingExplorerClientProps> = ({
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-500 block">EPA / Pass</span>
+                    <span className="text-[11px] sm:text-[10px] text-slate-500 block">EPA / Pass</span>
                     <span
                       className={`font-mono font-bold ${
                         epa >= 0 ? 'text-emerald-400' : 'text-rose-400'

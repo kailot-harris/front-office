@@ -115,7 +115,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
               <Zap className="w-4 h-4 text-emerald-400" />
               <h2 className="text-sm font-semibold text-white">4th-Down Aggression Leaders</h2>
             </div>
-            <span className="text-[10px] font-mono text-slate-400">Percentile</span>
+            <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">Percentile</span>
           </div>
           <div className="space-y-2">
             {topAggressive.map((c, i) => (
@@ -129,7 +129,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
                   <TeamLogo team={c.team} size="sm" />
                   <div>
                     <div className="text-xs font-medium text-white">{c.head_coach}</div>
-                    <div className="text-[10px] text-slate-400 font-mono">{c.team} • {c.offensive_scheme.split('/')[0]}</div>
+                    <div className="text-[11px] sm:text-[10px] text-slate-400 font-mono">{c.team} • {c.offensive_scheme.split('/')[0]}</div>
                   </div>
                 </div>
                 <span className="text-xs font-mono font-bold text-emerald-400">
@@ -147,7 +147,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
               <SlidersHorizontal className="w-4 h-4 text-cyan-400" />
               <h2 className="text-sm font-semibold text-white">Pass Rate Over Expected</h2>
             </div>
-            <span className="text-[10px] font-mono text-slate-400">Air Raid / Spread</span>
+            <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">Air Raid / Spread</span>
           </div>
           <div className="space-y-2">
             {topProe.map((c, i) => (
@@ -161,7 +161,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
                   <TeamLogo team={c.team} size="sm" />
                   <div>
                     <div className="text-xs font-medium text-white">{c.head_coach}</div>
-                    <div className="text-[10px] text-slate-400 font-mono">{c.team} • {c.play_caller} Calls</div>
+                    <div className="text-[11px] sm:text-[10px] text-slate-400 font-mono">{c.team} • {c.play_caller} Calls</div>
                   </div>
                 </div>
                 <span className="text-xs font-mono font-bold text-cyan-400">
@@ -179,7 +179,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
               <Clock className="w-4 h-4 text-indigo-400" />
               <h2 className="text-sm font-semibold text-white">Franchise Stability</h2>
             </div>
-            <span className="text-[10px] font-mono text-slate-400">Tenure</span>
+            <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">Tenure</span>
           </div>
           <div className="space-y-2">
             {longestTenured.map((c, i) => (
@@ -193,7 +193,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
                   <TeamLogo team={c.team} size="sm" />
                   <div>
                     <div className="text-xs font-medium text-white">{c.head_coach}</div>
-                    <div className="text-[10px] text-slate-400 font-mono">{c.team} • {c.super_bowl_wins} Rings</div>
+                    <div className="text-[11px] sm:text-[10px] text-slate-400 font-mono">{c.team} • {c.super_bowl_wins} Rings</div>
                   </div>
                 </div>
                 <span className="text-xs font-mono font-bold text-indigo-400">
@@ -251,7 +251,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-mono">
-            <thead className="bg-surface/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+            <thead className="bg-surface/80 text-slate-400 uppercase text-[11px] sm:text-[10px] tracking-wider border-b border-slate-800">
               <tr>
                 <th className="px-4 py-3">Team</th>
                 <th className="px-3 py-3">Head Coach</th>
@@ -320,7 +320,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
                     </td>
                     <td className="px-3 py-3">
                       <span
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-sans font-medium ${
+                        className={`px-1.5 py-0.5 rounded text-[11px] sm:text-[10px] font-sans font-medium ${
                           (c.offensive_play_caller || c.play_caller) === 'Head Coach'
                             ? 'bg-purple-950/80 border border-purple-800 text-purple-300'
                             : 'bg-emerald-950/80 border border-emerald-800 text-emerald-300'
@@ -331,7 +331,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
                     </td>
                     <td className="px-3 py-3">
                       <span
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-sans font-medium ${
+                        className={`px-1.5 py-0.5 rounded text-[11px] sm:text-[10px] font-sans font-medium ${
                           (c.defensive_play_caller || 'Defensive Coordinator') === 'Head Coach'
                             ? 'bg-purple-950/80 border border-purple-800 text-purple-300'
                             : 'bg-blue-950/80 border border-blue-800 text-blue-300'
@@ -372,7 +372,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
                     </td>
                     <td className="px-3 py-3 text-center">
                       <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        className={`px-2 py-0.5 rounded text-[11px] sm:text-[10px] font-bold ${
                           c.timeout_management_grade.startsWith('A')
                             ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
                             : c.timeout_management_grade.startsWith('B')
@@ -411,10 +411,10 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
                   Career Record: {selectedCoach.career_record} • {selectedCoach.super_bowl_wins} Super Bowl Titles
                 </p>
                 <div className="flex items-center gap-2 mt-2">
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-surface border border-slate-800 text-slate-300">
+                  <span className="text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded bg-surface border border-slate-800 text-slate-300">
                     <strong className="text-slate-400">Offense Calls:</strong> {selectedCoach.offensive_play_caller || selectedCoach.play_caller} ({selectedCoach.offensive_play_caller === 'Head Coach' ? selectedCoach.head_coach : selectedCoach.offensive_coordinator})
                   </span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-surface border border-slate-800 text-slate-300">
+                  <span className="text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded bg-surface border border-slate-800 text-slate-300">
                     <strong className="text-slate-400">Defense Calls:</strong> {selectedCoach.defensive_play_caller || 'Defensive Coordinator'} ({selectedCoach.defensive_play_caller === 'Head Coach' ? selectedCoach.head_coach : selectedCoach.defensive_coordinator})
                   </span>
                 </div>
@@ -431,25 +431,25 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
             <div className="bg-surface/60 p-3 rounded-lg border border-slate-800">
-              <span className="text-[10px] font-mono uppercase text-slate-500 block">Offensive Scheme</span>
+              <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-500 block">Offensive Scheme</span>
               <span className="text-xs font-sans font-semibold text-white block mt-0.5">
                 {selectedCoach.offensive_scheme}
               </span>
             </div>
             <div className="bg-surface/60 p-3 rounded-lg border border-slate-800">
-              <span className="text-[10px] font-mono uppercase text-slate-500 block">Defensive Scheme</span>
+              <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-500 block">Defensive Scheme</span>
               <span className="text-xs font-sans font-semibold text-white block mt-0.5">
                 {selectedCoach.defensive_scheme}
               </span>
             </div>
             <div className="bg-surface/60 p-3 rounded-lg border border-slate-800">
-              <span className="text-[10px] font-mono uppercase text-slate-500 block">Play-Action Rate</span>
+              <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-500 block">Play-Action Rate</span>
               <span className="text-sm font-mono font-bold text-emerald-400 block mt-0.5">
                 {selectedCoach.play_action_rate.toFixed(1)}%
               </span>
             </div>
             <div className="bg-surface/60 p-3 rounded-lg border border-slate-800">
-              <span className="text-[10px] font-mono uppercase text-slate-500 block">Challenge Win %</span>
+              <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-500 block">Challenge Win %</span>
               <span className="text-sm font-mono font-bold text-cyan-400 block mt-0.5">
                 {selectedCoach.challenge_win_pct.toFixed(1)}%
               </span>

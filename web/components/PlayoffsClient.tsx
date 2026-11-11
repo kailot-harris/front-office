@@ -128,7 +128,7 @@ export const PlayoffsClient: React.FC<PlayoffsClientProps> = ({ dataset }) => {
                 <span className="w-2 h-2 rounded-full bg-red-500" />
                 AFC Bubble Contenders
               </span>
-              <span className="text-[10px] font-mono text-slate-500">Playoff Equity</span>
+              <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">Playoff Equity</span>
             </div>
             <div className="space-y-2">
               {dataset.afc_bubble.map((team, idx) => (
@@ -143,7 +143,7 @@ export const PlayoffsClient: React.FC<PlayoffsClientProps> = ({ dataset }) => {
                     <TeamLogo team={team.team} size="sm" />
                     <div className="min-w-0">
                       <span className="font-bold text-xs text-white block truncate">{team.team_name}</span>
-                      <span className="text-[10px] font-mono text-slate-500">{team.division}</span>
+                      <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">{team.division}</span>
                     </div>
                   </div>
                   <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
@@ -161,7 +161,7 @@ export const PlayoffsClient: React.FC<PlayoffsClientProps> = ({ dataset }) => {
                 <span className="w-2 h-2 rounded-full bg-blue-500" />
                 NFC Bubble Contenders
               </span>
-              <span className="text-[10px] font-mono text-slate-500">Playoff Equity</span>
+              <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">Playoff Equity</span>
             </div>
             <div className="space-y-2">
               {dataset.nfc_bubble.map((team, idx) => (
@@ -176,7 +176,7 @@ export const PlayoffsClient: React.FC<PlayoffsClientProps> = ({ dataset }) => {
                     <TeamLogo team={team.team} size="sm" />
                     <div className="min-w-0">
                       <span className="font-bold text-xs text-white block truncate">{team.team_name}</span>
-                      <span className="text-[10px] font-mono text-slate-500">{team.division}</span>
+                      <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">{team.division}</span>
                     </div>
                   </div>
                   <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
@@ -201,27 +201,27 @@ export const PlayoffsClient: React.FC<PlayoffsClientProps> = ({ dataset }) => {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-1 text-[11px] font-mono">
           <div className="bg-surface p-2 rounded-lg border border-slate-800/80">
             <span className="text-emerald-400 font-bold block">1. Head-to-Head</span>
-            <span className="text-slate-500 text-[10px]">Direct game sweeps</span>
+            <span className="text-slate-500 text-[11px] sm:text-[10px]">Direct game sweeps</span>
           </div>
           <div className="bg-surface p-2 rounded-lg border border-slate-800/80">
             <span className="text-emerald-400 font-bold block">2. Division Record</span>
-            <span className="text-slate-500 text-[10px]">Within division</span>
+            <span className="text-slate-500 text-[11px] sm:text-[10px]">Within division</span>
           </div>
           <div className="bg-surface p-2 rounded-lg border border-slate-800/80">
             <span className="text-emerald-400 font-bold block">3. Common Games</span>
-            <span className="text-slate-500 text-[10px]">Min 4 common opponents</span>
+            <span className="text-slate-500 text-[11px] sm:text-[10px]">Min 4 common opponents</span>
           </div>
           <div className="bg-surface p-2 rounded-lg border border-slate-800/80">
             <span className="text-emerald-400 font-bold block">4. Conf Record</span>
-            <span className="text-slate-500 text-[10px]">Intra-conference</span>
+            <span className="text-slate-500 text-[11px] sm:text-[10px]">Intra-conference</span>
           </div>
           <div className="bg-surface p-2 rounded-lg border border-slate-800/80">
             <span className="text-emerald-400 font-bold block">5. SOV</span>
-            <span className="text-slate-500 text-[10px]">Strength of victory</span>
+            <span className="text-slate-500 text-[11px] sm:text-[10px]">Strength of victory</span>
           </div>
           <div className="bg-surface p-2 rounded-lg border border-slate-800/80">
             <span className="text-emerald-400 font-bold block">6. SOS</span>
-            <span className="text-slate-500 text-[10px]">Strength of schedule</span>
+            <span className="text-slate-500 text-[11px] sm:text-[10px]">Strength of schedule</span>
           </div>
         </div>
       </div>

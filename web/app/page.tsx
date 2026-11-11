@@ -4,6 +4,8 @@ import { getStandingsData } from '@/lib/data';
 import { StandingsClient } from '@/components/StandingsClient';
 import { Swords, Activity, Award } from 'lucide-react';
 import Link from 'next/link';
+import { GlossaryButton, GlossaryTerm } from '@/components/Glossary';
+import { HowToRead } from '@/components/HowToRead';
 
 export const metadata: Metadata = {
   title: 'Season Projections & Standings | NFL Front Office',
@@ -30,28 +32,39 @@ export default function HomePage() {
               <span><span className="text-emerald-400">NFL</span> Season Projections</span>
             </h1>
             <p className="text-slate-400 text-sm mt-1 max-w-2xl">
-              Probabilistic simulation engine across all 32 NFL franchises, synthesizing Ridge regression, Elo ratings, EPA/play efficiency, situational fatigue, and projected margins.
+              Probabilistic simulation engine across all 32 NFL franchises, synthesizing Ridge regression, <GlossaryTerm term="Elo" className="text-slate-300" /> ratings, <GlossaryTerm term="EPA" className="text-slate-300" />/play efficiency, situational fatigue, and projected margins.
             </p>
           </div>
 
           {/* Quick Stats Grid */}
           <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
+            <GlossaryButton />
             <div className="bg-surface-raised border border-slate-800 rounded-lg px-3 py-2 text-right">
-              <span className="text-slate-500 block text-[10px] uppercase font-mono">Total Simulations</span>
+              <span className="text-slate-500 block text-[11px] sm:text-[10px] uppercase font-mono">Total Simulations</span>
               <span className="text-white font-mono font-bold text-sm">1,000 Seasons</span>
             </div>
             <div className="bg-surface-raised border border-slate-800 rounded-lg px-3 py-2 text-right">
-              <span className="text-slate-500 block text-[10px] uppercase font-mono">Playoff Field</span>
+              <span className="text-slate-500 block text-[11px] sm:text-[10px] uppercase font-mono">Playoff Field</span>
               <span className="text-emerald-400 font-mono font-bold text-sm">14 Seeds (7/Conf)</span>
             </div>
             <div className="bg-surface-raised border border-slate-800 rounded-lg px-3 py-2 text-right">
-              <span className="text-slate-500 block text-[10px] uppercase font-mono">Margin Sigma (σ)</span>
+              <span className="text-slate-500 block text-[11px] sm:text-[10px] uppercase font-mono">Margin Sigma (σ)</span>
               <span className="text-white font-mono font-bold text-sm">14.6 pts</span>
             </div>
           </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-emerald-500/40 to-transparent" />
       </div>
+
+      <HowToRead pageKey="home">
+        <p>
+          Each team&apos;s row shows a <strong>projected win total</strong> built from 1,000 simulated seasons, not
+          just this week&apos;s record. <strong>Playoff odds</strong> and <strong>Super Bowl odds</strong> are the
+          share of those simulations in which a team makes the postseason or wins it all. Switch to the Table or
+          Division tabs for the full 32-team breakdown, or use Model Projections vs. Reality to compare the
+          model&apos;s view against what has actually happened this season.
+        </p>
+      </HowToRead>
 
       {/* Feature Highlights Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

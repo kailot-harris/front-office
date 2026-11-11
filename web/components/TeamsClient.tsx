@@ -413,7 +413,7 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams, generatedAt }) 
                           <span className="font-bold text-white group-hover:text-emerald-400 transition-colors block">
                             {t.team_name}
                           </span>
-                          <span className="text-[10px] font-mono text-slate-500">
+                          <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">
                             {t.team}
                           </span>
                         </div>
@@ -507,7 +507,7 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams, generatedAt }) 
               {/* Primary Metric Chips */}
               <div className="grid grid-cols-3 gap-3 font-mono text-center">
                 <div className="bg-surface/70 p-3 rounded-xl border border-slate-800">
-                  <span className="text-[10px] text-slate-500 uppercase block">Net EPA/Play</span>
+                  <span className="text-[11px] sm:text-[10px] text-slate-500 uppercase block">Net EPA/Play</span>
                   <span
                     className={`text-lg font-black ${
                       selectedTeam.net_epa_per_play > 0 ? 'text-emerald-400' : 'text-red-400'
@@ -519,13 +519,13 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams, generatedAt }) 
                   </span>
                 </div>
                 <div className="bg-surface/70 p-3 rounded-xl border border-slate-800">
-                  <span className="text-[10px] text-slate-500 uppercase block">Offense Success</span>
+                  <span className="text-[11px] sm:text-[10px] text-slate-500 uppercase block">Offense Success</span>
                   <span className="text-lg font-black text-white">
                     {selectedTeam.off_success_rate.toFixed(1)}%
                   </span>
                 </div>
                 <div className="bg-surface/70 p-3 rounded-xl border border-slate-800">
-                  <span className="text-[10px] text-slate-500 uppercase block">Passing CPOE</span>
+                  <span className="text-[11px] sm:text-[10px] text-slate-500 uppercase block">Passing CPOE</span>
                   <span
                     className={`text-lg font-black ${
                       selectedTeam.off_cpoe > 0 ? 'text-emerald-400' : 'text-amber-400'
