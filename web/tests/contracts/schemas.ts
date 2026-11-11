@@ -497,8 +497,6 @@ export const SeriesSimulationResultSchema = z
     tacticalMismatchAdjustment: num,
     winProbA: prob,
     winProbB: prob,
-    fairMlA: z.number().int(),
-    fairMlB: z.number().int(),
     avgGames: num.min(2).max(7),
     sweepProb: pct,
     gameDistributions: z

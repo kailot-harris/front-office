@@ -430,17 +430,6 @@ simulate_mlb_series <- function(team_a_code, team_b_code, hca_team_code, profile
   prob_a <- round(sim_a_wins / n_sims, 3)
   prob_b <- round(1 - prob_a, 3)
   
-  # Fair American Moneyline
-  calc_ml <- function(prob) {
-    if (prob <= 0.001) return(9999)
-    if (prob >= 0.999) return(-9999)
-    if (prob >= 0.50) {
-      round(-(prob / (1 - prob)) * 100)
-    } else {
-      round(((1 - prob) / prob) * 100)
-    }
-  }
-  
   game_dist_list <- list()
   for (k in names(dist_counts)) {
     parts <- strsplit(k, "_")[[1]]
@@ -467,8 +456,6 @@ simulate_mlb_series <- function(team_a_code, team_b_code, hca_team_code, profile
     tacticalMismatchAdjustment = round(mismatch_elo, 1),
     winProbA                  = prob_a,
     winProbB                  = prob_b,
-    fairMlA                   = calc_ml(prob_a),
-    fairMlB                   = calc_ml(prob_b),
     avgGames                  = round(total_games_played / n_sims, 2),
     sweepProb                 = sweep_prob,
     gameDistributions         = game_dist_list,
