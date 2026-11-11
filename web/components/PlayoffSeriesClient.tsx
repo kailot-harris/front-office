@@ -142,7 +142,6 @@ function simulateClientSeries(
   let aWins = 0;
   const gameCounts: Record<string, number> = {};
   let totalGames = 0;
-  let coverMinus1_5 = 0;
 
   for (let s = 0; s < nSims; s++) {
     let wA = 0;
@@ -169,9 +168,6 @@ function simulateClientSeries(
       aWins++;
       const k = `A_${seriesLen}`;
       gameCounts[k] = (gameCounts[k] || 0) + 1;
-      if (seriesLen <= winThreshold * 2 - 2) {
-        coverMinus1_5++;
-      }
     } else {
       const k = `B_${seriesLen}`;
       gameCounts[k] = (gameCounts[k] || 0) + 1;
@@ -180,15 +176,6 @@ function simulateClientSeries(
 
   const winProbA = Number((aWins / nSims).toFixed(4));
   const winProbB = Number((1 - winProbA).toFixed(4));
-
-  const fairMlA =
-    winProbA >= 0.5
-      ? Math.round((-100 * winProbA) / (1 - winProbA))
-      : Math.round((100 * (1 - winProbA)) / winProbA);
-  const fairMlB =
-    winProbB >= 0.5
-      ? Math.round((-100 * winProbB) / (1 - winProbB))
-      : Math.round((100 * (1 - winProbB)) / winProbB);
 
   const distList: GameOutcomeProb[] = [];
   const minGames = winThreshold;
@@ -225,10 +212,7 @@ function simulateClientSeries(
     netRatingMargin: netMargin,
     winProbA,
     winProbB,
-    fairMlA,
-    fairMlB,
     avgGames: Number((totalGames / nSims).toFixed(2)),
-    spreadMinus1_5Prob: Number((coverMinus1_5 / nSims).toFixed(3)),
     sweepProb: Number(((sweepCount / nSims) * 100).toFixed(1)),
     gameDistributions: distList,
     tacticalEdges: edges,
