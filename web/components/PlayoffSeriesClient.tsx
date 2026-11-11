@@ -14,39 +14,165 @@ import {
   Swords,
   ArrowRightLeft,
   Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 
 interface PlayoffSeriesClientProps {
   catalog: PlayoffMatchupsCatalog;
 }
 
-// Client simulation fallback in case a non-precomputed matchup is selected
-function simulateClientFallback(
+const VALID_SERIES_LENGTHS = [3, 5, 7] as const;
+
+/**
+ * Seeded PRNG (mulberry32) so a given (matchup, series length, reroll nonce)
+ * always produces identical simulation output -- re-rolling just bumps the
+ * nonce to get a new, still-reproducible, draw. See issue #128.
+ */
+function mulberry32(seed: number): () => number {
+  let s = seed >>> 0;
+  return function next() {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Deterministic string -> 32-bit seed (FNV-1a) used to seed mulberry32. */
+function hashStringToSeed(str: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash >>> 0;
+}
+
+/** Builds a "insufficient data" result shape when inputs can't be simulated
+ * safely (non-finite baseElo, unsupported seriesLength) -- flags the issue
+ * via tacticalEdges rather than crashing or silently defaulting. See #127. */
+function buildInsufficientDataResult(
   pA: TeamPlayoffProfile,
   pB: TeamPlayoffProfile,
   hcaTeam: string,
   seriesLength: number,
-  nSims = 5000
+  reason: string
 ): SeriesSimulationResult {
+  const safeSeriesLength = (VALID_SERIES_LENGTHS as readonly number[]).includes(seriesLength)
+    ? seriesLength
+    : 7;
+  return {
+    teamA: pA.teamAbbr,
+    teamB: pB.teamAbbr,
+    hcaTeam,
+    seriesLength: safeSeriesLength,
+    winsToClinch: Math.ceil(safeSeriesLength / 2),
+    baseEloDiff: 0,
+    tacticalMismatchAdjustment: 0,
+    winProbA: 0.5,
+    winProbB: 0.5,
+    avgGames: 0,
+    sweepProb: 0,
+    gameDistributions: [],
+    tacticalEdges: [
+      {
+        title: 'Insufficient Data',
+        advantageTeam: pA.teamAbbr,
+        description: reason,
+        deltaElo: 0,
+      },
+    ],
+    gameSchedule: [],
+  };
+}
+
+// Client simulation fallback in case a non-precomputed matchup is selected.
+// Exported for unit testing (see tests/unit/playoffSeriesClient.test.ts).
+export function simulateClientFallback(
+  pA: TeamPlayoffProfile,
+  pB: TeamPlayoffProfile,
+  hcaTeam: string,
+  seriesLength: number,
+  nSims = 5000,
+  rerollNonce = 0
+): SeriesSimulationResult {
+  // Guard: seriesLength must be 3, 5, or 7 -- reject/flag anything else
+  // rather than silently reusing the 7-game home schedule (issue #127).
+  if (!(VALID_SERIES_LENGTHS as readonly number[]).includes(seriesLength)) {
+    return buildInsufficientDataResult(
+      pA,
+      pB,
+      hcaTeam,
+      seriesLength,
+      `Unsupported series length (${seriesLength}); expected 3, 5, or 7 games.`
+    );
+  }
+
+  // Guard: a missing/non-finite baseElo makes every downstream probability
+  // NaN -- bail out with an explicit insufficient-data result (issue #127).
+  if (!Number.isFinite(pA.baseElo) || !Number.isFinite(pB.baseElo)) {
+    const culprit = !Number.isFinite(pA.baseElo) ? pA.teamAbbr : pB.teamAbbr;
+    return buildInsufficientDataResult(
+      pA,
+      pB,
+      hcaTeam,
+      seriesLength,
+      `Missing or non-finite base Elo rating for ${culprit}; cannot simulate this matchup.`
+    );
+  }
+
   const winsToClinch = Math.ceil(seriesLength / 2);
-  const homeScheduleHca = seriesLength === 3 
-    ? [true, true, true] 
-    : seriesLength === 5 
-    ? [true, true, false, false, true] 
+  const homeScheduleHca = seriesLength === 3
+    ? [true, true, true]
+    : seriesLength === 5
+    ? [true, true, false, false, true]
     : [true, true, false, false, false, true, true];
 
   const hcaIsA = hcaTeam === pA.teamAbbr;
   const aIsHome = hcaIsA ? homeScheduleHca : homeScheduleHca.map((h) => !h);
 
-  const spSlot = seriesLength === 3 
-    ? [0, 1, 2] 
-    : seriesLength === 5 
-    ? [0, 1, 2, 3, 0] 
+  const spSlot = seriesLength === 3
+    ? [0, 1, 2]
+    : seriesLength === 5
+    ? [0, 1, 2, 3, 0]
     : [0, 1, 2, 3, 0, 1, 2];
 
   const baseEloDiff = pA.baseElo - pB.baseElo;
   const hfaElo = 24.0;
   const mismatchElo = (pA.tacticalRatings.rotationDepth - pB.tacticalRatings.rotationDepth) * 0.15;
+
+  // League-average rGS, derived from whatever starters both rosters actually
+  // have, used as the fallback value when a team has no listed starter for
+  // a given slot (issue #127). Falls back to a league-typical constant if
+  // neither roster has any usable starter data at all.
+  const knownStarterRGS = [...pA.starters, ...pB.starters]
+    .filter((s) => s && Number.isFinite(s.rGS))
+    .map((s) => s.rGS);
+  const leagueAvgRGS =
+    knownStarterRGS.length > 0
+      ? knownStarterRGS.reduce((sum, v) => sum + v, 0) / knownStarterRGS.length
+      : 4.5;
+
+  function resolveStarter(team: TeamPlayoffProfile, slot: number) {
+    const starter = team.starters[slot] || team.starters[0];
+    if (starter) {
+      return { starter, isFallback: false };
+    }
+    return {
+      starter: {
+        playerId: 'fallback-league-average',
+        mlbamId: 'fallback-league-average',
+        playerName: 'League Average (fallback)',
+        rGS: leagueAvgRGS,
+        projEra: 0,
+        xFip: 0,
+        kPct: 0,
+        bbPct: 0,
+        role: 'SP',
+      },
+      isFallback: true,
+    };
+  }
 
   const gameProbA: number[] = [];
   const gameDetails = [];
@@ -54,8 +180,8 @@ function simulateClientFallback(
   for (let g = 0; g < seriesLength; g++) {
     const isHome = aIsHome[g];
     const hfaAdj = isHome ? hfaElo : -hfaElo;
-    const spA = pA.starters[spSlot[g]] || pA.starters[0];
-    const spB = pB.starters[spSlot[g]] || pB.starters[0];
+    const { starter: spA, isFallback: spAIsFallback } = resolveStarter(pA, spSlot[g]);
+    const { starter: spB, isFallback: spBIsFallback } = resolveStarter(pB, spSlot[g]);
     const rgsDiff = 4.7 * (spA.rGS - spB.rGS);
 
     const totalDiff = baseEloDiff + hfaAdj + rgsDiff + mismatchElo;
@@ -66,10 +192,12 @@ function simulateClientFallback(
       gameNumber: g + 1,
       homeTeam: isHome ? pA.teamAbbr : pB.teamAbbr,
       awayTeam: isHome ? pB.teamAbbr : pA.teamAbbr,
-      starterA: spA.playerName,
-      starterB: spB.playerName,
+      starterA: spAIsFallback ? `${spA.playerName} (fallback)` : spA.playerName,
+      starterB: spBIsFallback ? `${spB.playerName} (fallback)` : spB.playerName,
       starterArGS: spA.rGS,
       starterBrGS: spB.rGS,
+      starterAIsFallback: spAIsFallback,
+      starterBIsFallback: spBIsFallback,
       winProbA: Number(pWin.toFixed(3)),
       winProbB: Number((1 - pWin).toFixed(3)),
     });
@@ -84,13 +212,19 @@ function simulateClientFallback(
 
   let totalGamesPlayed = 0;
 
+  // Seeded from the matchup key + series length + reroll nonce so the same
+  // selection always reproduces identical numbers, and "re-roll" (which
+  // bumps the nonce) deliberately produces a new draw (issue #128).
+  const seed = hashStringToSeed(`${pA.teamAbbr}_vs_${pB.teamAbbr}_${seriesLength}_${rerollNonce}`);
+  const rng = mulberry32(seed);
+
   for (let sim = 0; sim < nSims; sim++) {
     let wA = 0;
     let wB = 0;
     let gIdx = 0;
 
     while (wA < winsToClinch && wB < winsToClinch) {
-      if (Math.random() < gameProbA[gIdx]) {
+      if (rng() < gameProbA[gIdx]) {
         wA++;
       } else {
         wB++;
@@ -157,6 +291,10 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
   const [teamBCode, setTeamBCode] = useState<string>('LAD');
   const [seriesLength, setSeriesLength] = useState<3 | 5 | 7>(7);
   const [hcaOverride, setHcaOverride] = useState<'A' | 'B'>('A');
+  // Bumped by the "Re-roll" control; mixed into the client-fallback seed so
+  // the same matchup is reproducible, but a reroll deliberately changes it.
+  const [rerollNonce, setRerollNonce] = useState(0);
+  const handleReroll = () => setRerollNonce((n) => n + 1);
 
   const profileA = catalog.teams[teamACode] || teamsList[0];
   const profileB = catalog.teams[teamBCode] || teamsList[1];
@@ -204,8 +342,14 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
     }
 
     // Dynamic client simulation fallback
-    return simulateClientFallback(profileA, profileB, hcaTeam, seriesLength);
-  }, [catalog.matchups, teamACode, teamBCode, seriesLength, hcaTeam, profileA, profileB]);
+    return simulateClientFallback(profileA, profileB, hcaTeam, seriesLength, 5000, rerollNonce);
+  }, [catalog.matchups, teamACode, teamBCode, seriesLength, hcaTeam, profileA, profileB, rerollNonce]);
+
+  // Whether re-roll has any effect for the current selection (only the
+  // client-fallback path consumes rerollNonce; precomputed matchups don't).
+  const isClientSimulated = !(
+    catalog.matchups[`${teamACode}_vs_${teamBCode}`] || catalog.matchups[`${teamBCode}_vs_${teamACode}`]
+  );
 
   return (
     <div className="space-y-6">
@@ -303,8 +447,8 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
           </div>
         </div>
 
-        {/* Swap Button */}
-        <div className="md:col-span-2 flex justify-center">
+        {/* Swap / Re-roll Buttons */}
+        <div className="md:col-span-2 flex justify-center gap-2">
           <button
             type="button"
             onClick={handleSwap}
@@ -312,6 +456,19 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
             title="Swap Home/Away & Matchup Positions"
           >
             <ArrowRightLeft className="w-5 h-5 group-hover:rotate-180 transition-transform duration-300" />
+          </button>
+          <button
+            type="button"
+            onClick={handleReroll}
+            disabled={!isClientSimulated}
+            className="p-3 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all shadow-md group disabled:opacity-40 disabled:cursor-not-allowed"
+            title={
+              isClientSimulated
+                ? 'Re-roll the client-side simulation (new reproducible draw)'
+                : 'This matchup uses precomputed results; re-roll has no effect'
+            }
+          >
+            <RefreshCw className="w-5 h-5 group-hover:rotate-180 transition-transform duration-300" />
           </button>
         </div>
 
