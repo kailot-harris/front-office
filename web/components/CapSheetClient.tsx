@@ -8,6 +8,7 @@ import { TeamLogo } from '@/components/TeamLogo';
 import { ApronThermometer } from '@/components/ApronThermometer';
 import { TradeCbaValidator } from '@/components/TradeCbaValidator';
 import { FranchiseCapTable } from '@/components/FranchiseCapTable';
+import { money } from '@/lib/format';
 import {
   Coins,
   ShieldAlert,
@@ -240,7 +241,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                     <div>
                       <span className="text-[10px] text-slate-400 block font-sans">Payroll</span>
                       <span className="text-xs font-bold text-white">
-                        ${t.totalPayroll2026.toFixed(1)}M
+                        {money(t.totalPayroll2026)}
                       </span>
                     </div>
 
@@ -251,7 +252,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                           t.luxuryTaxBill > 0 ? 'text-amber-400' : 'text-slate-600'
                         }`}
                       >
-                        {t.luxuryTaxBill > 0 ? `$${t.luxuryTaxBill.toFixed(1)}M` : '$0.0M'}
+                        {t.luxuryTaxBill > 0 ? money(t.luxuryTaxBill) : '$0.0M'}
                       </span>
                     </div>
 
@@ -285,7 +286,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                       )}
                     </h3>
                     <div className="text-xs text-slate-400 mt-0.5">
-                      Total Commitment: <span className="font-mono text-amber-400 font-bold">${selectedTeam.totalFinancialCommitment.toFixed(1)}M</span> (Payroll + Tax)
+                      Total Commitment: <span className="font-mono text-amber-400 font-bold">{money(selectedTeam.totalFinancialCommitment)}</span> (Payroll + Tax)
                     </div>
                   </div>
                 </div>

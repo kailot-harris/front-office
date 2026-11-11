@@ -235,14 +235,20 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
       {/* Hero Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
-          <div className="flex items-center gap-2.5 mb-1.5">
-            <span className="p-1.5 rounded-lg bg-orange-500/10 text-orange-400 border border-orange-500/20">
-              <Shuffle className="w-5 h-5" />
-            </span>
-            <h1 className="text-3xl font-black tracking-tight text-white">
-              Offseason Moves & Transaction Analytics
-            </h1>
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2.5 mb-1.5">
+            <div className="flex items-center gap-2.5">
+              <span className="p-1.5 rounded-lg bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                <Shuffle className="w-5 h-5" />
+              </span>
+              <h1 className="text-3xl font-black tracking-tight text-white">
+                Offseason Moves & Transaction Analytics
+              </h1>
+            </div>
+            {/* #119: this pill used to sit inline after the H1 in a single
+                nowrap-friendly flex row, which squeezed the H1 into a
+                cramped multi-line column at 375px. Moving it below the H1
+                on mobile (flex-col above) keeps the H1 at full width. */}
+            <span className="self-start sm:self-auto text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono">
               Trades • Free Agency • Draft
             </span>
           </div>

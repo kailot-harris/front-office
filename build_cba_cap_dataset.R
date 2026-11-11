@@ -37,17 +37,40 @@ CAP_PROJ_2028    <- 199.6
 # ------------------------------------------------------------------------------
 # Luxury Tax Calculation Function (Progressive Brackets + Repeater Penalties)
 # ------------------------------------------------------------------------------
+#' #117: the rates below were the pre-2023-CBA schedule (1.50/1.75/2.50/3.25
+#' standard, 2.50/2.75/3.50/4.25 repeater) -- stale for the 2026-27 season this
+#' dataset represents. Verified against the 2023 CBA's tax-rate schedule for
+#' 2025-26-and-later (Article VII; the rate *multipliers* are fixed from
+#' 2025-26 onward, only the dollar bracket widths grow with the cap each
+#' year) via the Hoops Rumors CBA glossary, which cites the CBA directly:
+#' https://www.hoopsrumors.com/2024/11/hoops-rumors-glossary-luxury-tax-penalties-4.html
+#' Standard: $1.00 / $1.25 / $3.50 / $4.75 per dollar in brackets 1-4, +$0.50
+#' per bracket thereafter. Repeater: $3.00 / $3.25 / $5.50 / $6.75, +$0.50 per
+#' bracket thereafter (always $2.00 above the standard rate here).
+#' Bracket *width* in the live CBA scales with the salary cap rather than
+#' being a fixed $5M; this dataset's cap/threshold constants above are
+#' already stylized round numbers rather than the officially reported
+#' figures, so the fixed $5M-wide brackets below are kept as the existing
+#' structural approach -- only the per-dollar rates were wrong and are fixed
+#' here. Revisiting bracket width to scale with SALARY_CAP is a larger,
+#' separate change and is left out of this fix.
 compute_luxury_tax <- function(payroll, is_repeater = FALSE) {
+  # #117: a single NA payroll used to propagate into `payroll <= LUXURY_TAX`,
+  # which returns NA and takes the `if` branch that errors ("missing value
+  # where TRUE/FALSE needed") instead of producing a usable result. Vector
+  # input is still out of scope (this function remains scalar-only); only the
+  # NA case needed to stop erroring.
+  if (is.na(payroll)) return(NA_real_)
   if (payroll <= LUXURY_TAX) return(0.0)
-  
+
   overage <- payroll - LUXURY_TAX
   tax_bill <- 0
-  
+
   # Standard vs Repeater rates per bracket ($0-5M, $5-10M, $10-15M, $15-20M, >$20M)
   rates <- if (!is_repeater) {
-    c(1.50, 1.75, 2.50, 3.25, 3.75)
+    c(1.00, 1.25, 3.50, 4.75, 5.25)
   } else {
-    c(2.50, 2.75, 3.50, 4.25, 4.75)
+    c(3.00, 3.25, 5.50, 6.75, 7.25)
   }
   
   # Bracket 1: $0 - $5M

@@ -4,6 +4,12 @@ import { PlayerCatalogEntry, ShotsMetadata } from '@/lib/shotTypes';
 import { ShotsExplorerClient } from '@/components/ShotsExplorerClient';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
 
+export const metadata = {
+  title: 'Player Shot Charts & Hot Zones',
+  description:
+    'Half-court spatial shot analytics with Empirical Bayes shrinkage, binomial z-scores, and thermal hot/cold zone classification for every rotation player.',
+};
+
 function getShotsCatalog(): PlayerCatalogEntry[] {
   const filePath = path.join(process.cwd(), 'public', 'data', 'shots_index.json');
   if (!fs.existsSync(filePath)) return [];

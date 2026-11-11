@@ -62,6 +62,15 @@ export interface PlayoffSeriesMatchupResult {
   sweepProb: number;
   gameDistributions: GameOutcomeProb[];
   tacticalEdges: TacticalEdge[];
+  /**
+   * Set when a team's playoffNetRtg was missing or non-numeric, so the
+   * simulation could not run. winProbA/winProbB are not meaningful
+   * probabilities in this case -- UI should show the flagged state instead
+   * of a percentage (see #111: a missing rating must never silently render
+   * as a 100% opponent win).
+   */
+  insufficientData?: boolean;
+  insufficientDataReason?: string;
 }
 
 export interface PlayoffMatchupsCatalog {

@@ -3,6 +3,12 @@ import { VariantsClient } from '@/components/VariantsClient';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
 import { SEASON_SOURCES } from '@/lib/season';
 
+export const metadata = {
+  title: 'Model Variants Breakout',
+  description:
+    'Compare 1,000-season projections across the Production Bottom-Up BPM, Possession-Level RAPM, Shot Quality & Fatigue, and 16-D Embeddings model variants plus the ensemble.',
+};
+
 export default function VariantsPage() {
   const teams = getTeamsData();
   const metadata = getMetadata();

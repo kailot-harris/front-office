@@ -24,13 +24,41 @@ interface PlayoffSeriesClientProps {
   catalog: PlayoffMatchupsCatalog;
 }
 
+const isFiniteNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
+
 // Client-side Monte Carlo simulator for arbitrary pairings
-function simulateClientSeries(
+export function simulateClientSeries(
   teamA: TeamPlayoffProfile,
   teamB: TeamPlayoffProfile,
   hcaTeam: string,
   nSims = 10000
 ): PlayoffSeriesMatchupResult {
+  // #111: a missing or non-numeric playoffNetRtg makes every probability
+  // NaN downstream, and `Math.random() < NaN` is always false -- so the
+  // simulator used to silently report the opponent winning every single
+  // game of the series (100%) instead of flagging missing data. Guard
+  // before any math runs and return an explicitly flagged result instead.
+  if (!isFiniteNumber(teamA?.playoffNetRtg) || !isFiniteNumber(teamB?.playoffNetRtg)) {
+    return {
+      teamA: teamA?.teamAbbr,
+      teamB: teamB?.teamAbbr,
+      hcaTeam,
+      ratingDiffRaw: 0,
+      tacticalMismatchAdjustment: 0,
+      netRatingMargin: 0,
+      winProbA: 0,
+      winProbB: 0,
+      avgGames: 0,
+      sweepProb: 0,
+      gameDistributions: [],
+      tacticalEdges: [],
+      insufficientData: true,
+      insufficientDataReason:
+        'playoffNetRtg is missing or not a finite number for one or both teams; cannot simulate.',
+    } as PlayoffSeriesMatchupResult;
+  }
+
   const rawDiff = teamA.playoffNetRtg - teamB.playoffNetRtg;
   let mismatchDelta = 0;
   const edges: { title: string; advantageTeam: string; description: string; deltaMargin: number }[] = [];
@@ -381,34 +409,47 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Series Outcome Probabilities Ring (5 cols) */}
         <div className="lg:col-span-5 bg-surface-raised/80 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
-              <div className="flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-amber-400" />
-                <h3 className="text-sm font-bold text-white tracking-tight">
-                  10,000-Sim Series Probabilities
-                </h3>
-              </div>
-              <span className="text-xs font-mono font-bold text-amber-400">
-                {teamACode} {(matchupResult.winProbA * 100).toFixed(1)}%
-              </span>
+          {matchupResult.insufficientData ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 py-8">
+              <ShieldCheck className="w-6 h-6 text-amber-400" />
+              <h3 className="text-sm font-bold text-white tracking-tight">Insufficient Data</h3>
+              <p className="text-xs text-slate-400 max-w-xs">
+                {matchupResult.insufficientDataReason ||
+                  'One or both teams are missing a playoff net rating, so this matchup cannot be simulated.'}
+              </p>
             </div>
+          ) : (
+            <>
+              <div>
+                <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-amber-400" />
+                    <h3 className="text-sm font-bold text-white tracking-tight">
+                      10,000-Sim Series Probabilities
+                    </h3>
+                  </div>
+                  <span className="text-xs font-mono font-bold text-amber-400">
+                    {teamACode} {(matchupResult.winProbA * 100).toFixed(1)}%
+                  </span>
+                </div>
 
-            <SeriesProbRing
-              teamA={teamACode}
-              teamB={teamBCode}
-              winProbA={matchupResult.winProbA}
-              winProbB={matchupResult.winProbB}
-              avgGames={matchupResult.avgGames}
-              gameDistributions={matchupResult.gameDistributions}
-              size={230}
-            />
-          </div>
+                <SeriesProbRing
+                  teamA={teamACode}
+                  teamB={teamBCode}
+                  winProbA={matchupResult.winProbA}
+                  winProbB={matchupResult.winProbB}
+                  avgGames={matchupResult.avgGames}
+                  gameDistributions={matchupResult.gameDistributions}
+                  size={230}
+                />
+              </div>
 
-          <div className="pt-3 border-t border-slate-800/80 mt-4 flex items-center justify-between text-xs font-mono">
-            <span className="text-slate-400">Sweep Probability:</span>
-            <span className="font-bold text-white">{matchupResult.sweepProb}%</span>
-          </div>
+              <div className="pt-3 border-t border-slate-800/80 mt-4 flex items-center justify-between text-xs font-mono">
+                <span className="text-slate-400">Sweep Probability:</span>
+                <span className="font-bold text-white">{matchupResult.sweepProb}%</span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Right: Tactical Mismatch Analysis (7 cols) */}

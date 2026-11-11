@@ -17,7 +17,10 @@ const SOCIAL_IMAGE = `${BASE_PATH}/social/og-card.png`;
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://kailot-harris.github.io'),
-  title: 'NBA Season-Long Projections | 1,000-Season Monte Carlo',
+  title: {
+    template: '%s | NBA Front Office',
+    default: 'NBA Season-Long Projections | 1,000-Season Monte Carlo',
+  },
   description:
     '1,000-season Monte Carlo simulation projections for all 30 NBA teams and 330 rotation players with multi-model variant analysis, divergence metrics, outlier flags, and empirical calibration diagnostics.',
   openGraph: {

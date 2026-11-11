@@ -3,6 +3,12 @@ import { StandingsClient } from '@/components/StandingsClient';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
 import { SEASON_SOURCES } from '@/lib/season';
 
+export const metadata = {
+  title: 'Season Projections & Standings',
+  description:
+    'Probabilistic 1,000-season Monte Carlo simulation results across all 30 NBA teams and a 4-variant model blend, with playoff and title odds.',
+};
+
 export default function HomePage() {
   const teams = getTeamsData();
   const metadata = getMetadata();

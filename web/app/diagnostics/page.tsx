@@ -3,6 +3,12 @@ import { DiagnosticsClient } from '@/components/DiagnosticsClient';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
 import { SEASON_SOURCES } from '@/lib/season';
 
+export const metadata = {
+  title: 'Modeling Diagnostics & Calibration',
+  description:
+    'Empirical reliability curves, Brier score, accuracy drift over time, and residual distributions from historical backtests of the NBA projection model.',
+};
+
 export default function DiagnosticsPage() {
   const diagnostics = getDiagnostics();
   const metadata = getMetadata();
