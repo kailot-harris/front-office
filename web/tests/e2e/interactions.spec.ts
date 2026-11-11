@@ -242,7 +242,10 @@ test.describe('salary cap tabs', () => {
 test.describe('gallery', () => {
   test('category chips filter the grid', async ({ page }) => {
     await page.goto('/gallery', { waitUntil: 'networkidle' });
-    const tiles = () => page.locator('img');
+    // Count the tile frames, not <img>: thumbnails mount their image only once
+    // scrolled near the viewport, so the image count changes as the grid
+    // re-renders even when the set of tiles is the same.
+    const tiles = () => page.locator('.grid .aspect-video');
     const before = await tiles().count();
     expect(before).toBeGreaterThan(0);
 
