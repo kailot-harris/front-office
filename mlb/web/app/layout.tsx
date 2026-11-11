@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { GeistSans, GeistMono } from 'geist/font';
 import './globals.css';
 import { BASE_PATH } from '@/lib/basePath';
@@ -17,9 +17,12 @@ const SOCIAL_IMAGE = `${BASE_PATH}/social/og-card.png`;
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://kailot-harris.github.io'),
-  title: 'MLB Sabermetric Projections | 162-Game & 10,000-Sim Postseason Engine',
+  title: {
+    template: '%s | MLB Front Office',
+    default: 'MLB Sabermetric Projections | 162-Game & 10,000-Sim Postseason Engine',
+  },
   description:
-    'Quantitative MLB projections across all 30 franchises, 630 batters, and 649 pitchers featuring 4-Factor Starting-Pitcher Elo, Hierarchical Empirical Bayes Partial Pooling, Pythagenpat Run-Expectation, Marcel 3-Year Projections, Bullpen Fatigue Diagnostics, and 12-Team Postseason Monte Carlo Simulations.',
+    'Explore MLB projections for 30 teams, 630 batters, and 649 pitchers using pitcher Elo, empirical Bayes, Pythagenpat, and a 10,000-run postseason simulator.',
   openGraph: {
     type: 'website',
     siteName: 'Front Office',
@@ -35,6 +38,10 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: '#040a1a',
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -46,10 +53,16 @@ export default function RootLayout({
       <body
         className={`${GeistSans.className} font-sans bg-surface text-slate-100 min-h-screen flex flex-col md:flex-row antialiased selection:bg-accent-600 selection:text-white`}
       >
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-[100] focus:rounded-lg focus:bg-accent-600 focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-white focus:shadow-xl"
+        >
+          Skip to content
+        </a>
         <Sidebar generatedAt={generated_at} />
         <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
           <SportSwitcher current="mlb" />
-          <main className="flex-1 pb-10">{children}</main>
+          <main id="main-content" className="flex-1 pb-10">{children}</main>
           <footer className="border-t border-slate-800 bg-surface-raised/50 py-5 text-center text-xs text-slate-500 font-sans">
             <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
               <span>MLB Quantitative Sabermetric Engine • 162-Game & 10,000-Sim Postseason Monte Carlo</span>

@@ -3,7 +3,7 @@ import { PlayerDnaClient } from '@/components/PlayerDnaClient';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Player DNA & Historical Twins (1980–2026) | MLB Analytics',
+  title: { absolute: 'Player DNA & Historical Twins (1980–2026) | MLB Analytics' },
   description: '16-D Statcast skill manifold, archetype clustering, and cosine similarity historical twins.',
 };
 

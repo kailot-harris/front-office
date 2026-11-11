@@ -2,11 +2,12 @@ import React from 'react';
 
 const repoBase = process.env.PAGES_BASE_PATH ?? '';
 
+// Order matches the landing page's sport order (issue #131): NFL, NBA, WNBA, MLB.
 const SPORTS = [
   { slug: 'nfl', label: 'NFL' },
   { slug: 'nba', label: 'NBA' },
-  { slug: 'mlb', label: 'MLB' },
   { slug: 'wnba', label: 'WNBA' },
+  { slug: 'mlb', label: 'MLB' },
 ] as const;
 
 const SPORT_PIPS: Record<string, string> = {

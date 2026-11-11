@@ -3,7 +3,7 @@ import { getOffseasonMonitorData } from '@/lib/offseasonData';
 import { OffseasonMonitorClient } from '@/components/OffseasonMonitorClient';
 
 export const metadata: Metadata = {
-  title: '2026-2027 Off-Season Dynamics Monitor | MLB Analytics',
+  title: { absolute: '2026-2027 Off-Season Dynamics Monitor | MLB Analytics' },
   description:
     'Weekly state-diff intelligence engine tracking 40-man roster moves, free agent signings, CBT luxury tax commitments, and 2027 Marcel baseline priors.',
 };

@@ -9,6 +9,9 @@ import { CbtLeagueOverview } from '@/lib/cbtTypes';
 import { CbtThermometer } from '@/components/CbtThermometer';
 import { FranchisePayrollTable } from '@/components/FranchisePayrollTable';
 import { SurplusValueCalculator } from '@/components/SurplusValueCalculator';
+import { money } from '@/lib/format';
+import { HowToRead } from '@/components/HowToRead';
+import { GlossaryTerm } from '@/components/Glossary';
 
 interface CapSheetClientProps {
   overview: CbtLeagueOverview;
@@ -52,7 +55,9 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ overview }) => {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold">
               <Coins className="w-3.5 h-3.5" />
-              <span>MLB Competitive Balance Tax (CBT) & Salary Cap Architect</span>
+              <span>
+                MLB Competitive Balance Tax (<GlossaryTerm term="CBT" />) & Salary Cap Architect
+              </span>
             </div>
             <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
               <span className="text-sky-400">MLB</span> Franchise Payrolls & Luxury Tax Surcharges
@@ -60,24 +65,31 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ overview }) => {
             <p className="text-slate-400 text-sm max-w-3xl leading-relaxed">
               Explore 2026–2028 multi-year payroll obligations across all 30 MLB clubs. Assess luxury tax liabilities, repeater surcharges, draft pick drop penalties, and contract surplus ROI under the 2022–2026 CBA thresholds ($244M base).
             </p>
+            <div className="max-w-xl">
+              <HowToRead pageKey="cap-sheet">
+                Each team card shows its 2026 payroll against the base{' '}
+                <GlossaryTerm term="CBT" /> threshold. Select a club on the left to see its
+                multi-year commitments, tax tier, and surplus-value breakdown on the right.
+              </HowToRead>
+            </div>
           </div>
 
           {/* League Macro Metrics */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:min-w-[340px]">
             <div className="bg-surface/70 border border-slate-800 rounded-xl p-3">
-              <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Base CBT Line</span>
+              <span className="text-[11px] sm:text-[10px] text-slate-400 uppercase tracking-wider block">Base CBT Line</span>
               <span className="font-mono font-bold text-base text-white">${overview.baseThreshold}M</span>
-              <span className="text-[10px] text-emerald-400 block mt-0.5">2026 Benchmark</span>
+              <span className="text-[11px] sm:text-[10px] text-emerald-400 block mt-0.5">2026 Benchmark</span>
             </div>
             <div className="bg-surface/70 border border-slate-800 rounded-xl p-3">
-              <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Tax Payers</span>
+              <span className="text-[11px] sm:text-[10px] text-slate-400 uppercase tracking-wider block">Tax Payers</span>
               <span className="font-mono font-bold text-base text-amber-400">{totalTaxPayingTeams} / 30</span>
-              <span className="text-[10px] text-slate-400 block mt-0.5">Clubs Above Base</span>
+              <span className="text-[11px] sm:text-[10px] text-slate-400 block mt-0.5">Clubs Above Base</span>
             </div>
             <div className="bg-surface/70 border border-slate-800 rounded-xl p-3 col-span-2 sm:col-span-1">
-              <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Total Tax Pool</span>
-              <span className="font-mono font-bold text-base text-rose-400">${overview.totalLuxuryTaxCollected.toFixed(1)}M</span>
-              <span className="text-[10px] text-slate-400 block mt-0.5">Est. Revenue Share</span>
+              <span className="text-[11px] sm:text-[10px] text-slate-400 uppercase tracking-wider block">Total Tax Pool</span>
+              <span className="font-mono font-bold text-base text-rose-400">{money(overview.totalLuxuryTaxCollected)}</span>
+              <span className="text-[11px] sm:text-[10px] text-slate-400 block mt-0.5">Est. Revenue Share</span>
             </div>
           </div>
         </div>
@@ -170,7 +182,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ overview }) => {
                         <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
                           <span>{team.division}</span>
                           {team.isRepeater && (
-                            <span className="text-[10px] text-amber-400 font-semibold">• Repeater</span>
+                            <span className="text-[11px] sm:text-[10px] text-amber-400 font-semibold">• Repeater</span>
                           )}
                         </div>
                       </div>
@@ -178,16 +190,16 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ overview }) => {
 
                     <div className="text-right flex-shrink-0">
                       <div className="font-mono font-bold text-sm text-white">
-                        ${team.payroll2026.toFixed(1)}M
+                        {money(team.payroll2026)}
                       </div>
                       <div className="text-[11px] font-mono">
                         {isOver ? (
                           <span className="text-rose-400 font-semibold">
-                            +${team.cbtTaxBill.toFixed(1)}M tax
+                            +{money(team.cbtTaxBill)} tax
                           </span>
                         ) : (
                           <span className="text-emerald-400 font-medium">
-                            ${team.cbtSpace2026.toFixed(1)}M space
+                            {money(team.cbtSpace2026)} space
                           </span>
                         )}
                       </div>

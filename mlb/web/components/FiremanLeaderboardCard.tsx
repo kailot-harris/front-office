@@ -23,14 +23,14 @@ export const FiremanLeaderboardCard: React.FC<FiremanLeaderboardCardProps> = ({ 
               High-Leverage Relief Fireman Metrics
             </h4>
           </div>
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-300 border border-rose-500/20 font-bold">
+          <span className="text-[11px] sm:text-[10px] px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-300 border border-rose-500/20 font-bold">
             Fireman Index {fireman.firemanIndex}
           </span>
         </div>
 
         <div className="grid grid-cols-2 gap-3 text-xs">
           <div className="bg-surface-raised/80 p-2.5 rounded-xl border border-slate-800/60 space-y-1">
-            <span className="text-[10px] text-slate-400 uppercase block">Inherited Strand Rate</span>
+            <span className="text-[11px] sm:text-[10px] text-slate-400 uppercase block">Inherited Strand Rate</span>
             <div className="flex items-baseline justify-between">
               <span className="text-xl font-black text-emerald-400">{fireman.strandRatePct}%</span>
               <span className="text-[11px] text-slate-400">
@@ -43,12 +43,12 @@ export const FiremanLeaderboardCard: React.FC<FiremanLeaderboardCardProps> = ({ 
           </div>
 
           <div className="bg-surface-raised/80 p-2.5 rounded-xl border border-slate-800/60 space-y-1">
-            <span className="text-[10px] text-slate-400 uppercase block">Shutdowns vs Meltdowns</span>
+            <span className="text-[11px] sm:text-[10px] text-slate-400 uppercase block">Shutdowns vs Meltdowns</span>
             <div className="flex items-baseline justify-between">
               <span className="text-xl font-black text-sky-400">{fireman.shutdowns} SD</span>
               <span className="text-xs font-bold text-rose-400">{fireman.meltdowns} MD</span>
             </div>
-            <span className="text-[10px] text-slate-500 block">
+            <span className="text-[11px] sm:text-[10px] text-slate-500 block">
               Ratio: {((fireman.shutdowns / Math.max(1, fireman.meltdowns))).toFixed(1)}:1
             </span>
           </div>
@@ -72,26 +72,26 @@ export const FiremanLeaderboardCard: React.FC<FiremanLeaderboardCardProps> = ({ 
             High-Stakes 2-Out RISP Conversion Split
           </h4>
         </div>
-        <span className="text-[10px] text-slate-400">
+        <span className="text-[11px] sm:text-[10px] text-slate-400">
           N = {risp.pa} Plate Appearances
         </span>
       </div>
 
       <div className="grid grid-cols-4 gap-2 text-center text-xs">
         <div className="bg-surface-raised/80 p-2 rounded-xl border border-slate-800/60">
-          <span className="text-[10px] text-slate-400 block">AVG</span>
+          <span className="text-[11px] sm:text-[10px] text-slate-400 block">AVG</span>
           <span className="text-sm font-black text-white">{risp.avg.toFixed(3)}</span>
         </div>
         <div className="bg-surface-raised/80 p-2 rounded-xl border border-slate-800/60">
-          <span className="text-[10px] text-slate-400 block">OBP</span>
+          <span className="text-[11px] sm:text-[10px] text-slate-400 block">OBP</span>
           <span className="text-sm font-black text-sky-400">{risp.obp.toFixed(3)}</span>
         </div>
         <div className="bg-surface-raised/80 p-2 rounded-xl border border-slate-800/60">
-          <span className="text-[10px] text-slate-400 block">SLG</span>
+          <span className="text-[11px] sm:text-[10px] text-slate-400 block">SLG</span>
           <span className="text-sm font-black text-amber-400">{risp.slg.toFixed(3)}</span>
         </div>
         <div className="bg-surface-raised/80 p-2 rounded-xl border border-slate-800/60">
-          <span className="text-[10px] text-slate-400 block">OPS</span>
+          <span className="text-[11px] sm:text-[10px] text-slate-400 block">OPS</span>
           <span className="text-sm font-black text-rose-400">{risp.ops.toFixed(3)}</span>
         </div>
       </div>

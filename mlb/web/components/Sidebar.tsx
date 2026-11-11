@@ -201,7 +201,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
           <div className="flex items-center justify-between">
             <span className="font-semibold">{item.label}</span>
             <span
-              className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-medium ${
+              className={`text-[11px] sm:text-[10px] px-1.5 py-0.2 rounded font-mono font-medium ${
                 isActive
                   ? 'bg-white/20 text-white'
                   : item.primary
@@ -241,7 +241,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
               </span>
             </div>
             <div className="w-full h-[2px] bg-gradient-to-r from-sky-400 via-sky-500/40 to-transparent rounded-full mt-1 mb-1" />
-            <p className="text-[10px] text-slate-400 font-mono tracking-tight">Sabermetric Engine • 162-Game</p>
+            <p className="text-[11px] sm:text-[10px] text-slate-400 font-mono tracking-tight">Sabermetric Engine • 162-Game</p>
           </div>
         </div>
 
@@ -251,7 +251,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
             <>
               {/* Daily In-Season Navigation */}
               <div className="space-y-1">
-                <div className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 font-mono">
+                <div className="px-2 text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 font-mono">
                   Daily Sabermetric Operations
                 </div>
                 {inSeasonNavItems.map(renderNavLink)}
@@ -286,7 +286,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
             <>
               {/* Primary Offseason Navigation */}
               <div className="space-y-1">
-                <div className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 font-mono">
+                <div className="px-2 text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 font-mono">
                   Off-Season Intelligence
                 </div>
                 {primaryNavItems.map(renderNavLink)}
@@ -328,22 +328,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50">
-              <span className="text-[10px] text-slate-400 block">Bracket / Season</span>
+              <span className="text-[11px] sm:text-[10px] text-slate-400 block">Bracket / Season</span>
               <span className="font-mono font-bold text-slate-200">10K / 1K Sims</span>
             </div>
             <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50">
-              <span className="text-[10px] text-slate-400 block">Schedule</span>
+              <span className="text-[11px] sm:text-[10px] text-slate-400 block">Schedule</span>
               <span className="font-mono font-bold text-slate-200">2,430 Games</span>
             </div>
 
             {/* Pitcher rGS & Pythagenpat Explainer Popover */}
             <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50 relative">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-slate-400 block">Starter rGS</span>
+                <span className="text-[11px] sm:text-[10px] text-slate-400 block">Starter rGS</span>
                 <button
                   type="button"
                   onClick={() => setShowEloExplainer(!showEloExplainer)}
-                  className="text-amber-400 hover:text-amber-300 p-0.5 rounded hover:bg-slate-800 transition-colors"
+                  className="text-amber-400 hover:text-amber-300 p-0.5 min-h-[24px] min-w-[24px] flex items-center justify-center rounded hover:bg-slate-800 transition-colors"
                   aria-label="How does Starter rGS & Pythagenpat work?"
                   title="How does Starter rGS & Pythagenpat work? Click for math explainer."
                 >
@@ -366,7 +366,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
                       </div>
                       <button
                         onClick={() => setShowEloExplainer(false)}
-                        className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800"
+                        className="p-1 min-h-[24px] min-w-[24px] flex items-center justify-center rounded text-slate-400 hover:text-white hover:bg-slate-800"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -405,7 +405,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
             </div>
 
             <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50">
-              <span className="text-[10px] text-slate-400 block">Pythagenpat</span>
+              <span className="text-[11px] sm:text-[10px] text-slate-400 block">Pythagenpat</span>
               <span className="font-mono font-bold text-indigo-400">γ = 1.79</span>
             </div>
           </div>
@@ -426,7 +426,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
           <span className="truncate">Empirical Bayes & Walk-Forward Verified</span>
         </div>
         {generatedAt && (
-          <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono px-1">
+          <div className="flex items-center justify-between text-[11px] sm:text-[10px] text-slate-400 font-mono px-1">
             <span>Updated</span>
             <time dateTime={generatedAt}>{generatedAt.slice(0, 16).replace('T', ' ')} UTC</time>
           </div>
@@ -450,7 +450,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
             <span className="font-bold text-sm tracking-tight text-white">
               <span className="text-sky-400">MLB</span> ANALYTICS
             </span>
-            <span className="text-[10px] text-slate-400 font-mono ml-2">162-GAME</span>
+            <span className="text-[11px] sm:text-[10px] text-slate-400 font-mono ml-2">162-GAME</span>
           </div>
         </div>
         <button

@@ -160,7 +160,7 @@ export const TacticalMismatchRadar: React.FC<TacticalMismatchRadarProps> = ({
                 y={y}
                 textAnchor="middle"
                 dominantBaseline="central"
-                className="text-[10px] font-mono fill-slate-300 font-semibold"
+                className="text-[11px] sm:text-[10px] font-mono fill-slate-300 font-semibold"
               >
                 {axis.label}
               </text>

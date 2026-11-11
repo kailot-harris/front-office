@@ -1,8 +1,21 @@
+import { Metadata } from 'next';
 import { getPlayersData } from '@/lib/data';
 import { PlayersClient } from '@/components/PlayersClient';
 
+export const metadata: Metadata = {
+  title: 'Batter & Pitcher Projections',
+  description:
+    '630 batters and 649 pitchers with Hierarchical Empirical Bayes pooled rates, Marcel counting projections, and spatial spray/strike-zone maps.',
+};
+
+// Only the first screen's worth of rows is serialized into the generated HTML
+// (issue #134 — inlining the full ~1,279-player dataset ballooned the route to
+// 1.6+ MB of HTML). PlayersClient fetches the full dataset client-side from
+// /data/projections_season_players.json once the page is interactive.
+const INITIAL_PLAYER_ROWS = 60;
+
 export default function PlayersPage() {
-  const players = getPlayersData();
+  const players = getPlayersData().slice(0, INITIAL_PLAYER_ROWS);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">

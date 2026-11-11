@@ -26,10 +26,10 @@ export const HistoricalTwinCard: React.FC<HistoricalTwinCardProps> = ({ twin, ra
         <div>
           <div className="flex items-center gap-2">
             <span className="font-bold text-sm text-white">{twin.compName}</span>
-            <span className="text-[10px] uppercase font-mono tracking-wider px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-medium">
+            <span className="text-[11px] sm:text-[10px] uppercase font-mono tracking-wider px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-medium">
               {twin.position}
             </span>
-            <span className="text-[10px] font-mono text-slate-500">
+            <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">
               {twin.era}
             </span>
           </div>

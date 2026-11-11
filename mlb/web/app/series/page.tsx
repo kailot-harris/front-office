@@ -3,7 +3,7 @@ import { PlayoffSeriesClient } from '@/components/PlayoffSeriesClient';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Interactive Playoff Series Simulator | MLB Analytics',
+  title: { absolute: 'Interactive Playoff Series Simulator | MLB Analytics' },
   description: '10,000 Monte Carlo series simulations with rotation matchups and tactical radars.',
 };
 

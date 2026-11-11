@@ -3,7 +3,7 @@ import { ClutchClient } from '@/components/ClutchClient';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'True Clutch & Leverage Index Engine | MLB Analytics',
+  title: { absolute: 'True Clutch & Leverage Index Engine | MLB Analytics' },
   description: 'Tango Leverage Index (LI >= 1.50), pressure wOBA resilience, and relief Fireman strand ratings.',
 };
 

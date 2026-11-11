@@ -1,7 +1,7 @@
 import { VisualMediaGalleryClient } from '@/components/VisualMediaGalleryClient';
 
 export const metadata = {
-  title: 'Visual Media Gallery & Year-End Race Animations | MLB Analytics',
+  title: { absolute: 'Visual Media Gallery & Year-End Race Animations | MLB Analytics' },
   description: '20 automated animated races, division trajectory plots, October postseason brackets, and sabermetric scatters.',
 };
 
