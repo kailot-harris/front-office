@@ -23,6 +23,107 @@ suppressPackageStartupMessages({
   library(dplyr)
 })
 
+# Standard 2026 CBA CBT Thresholds (in Millions) -- module-level so
+# compute_cbt_tax()/get_cbt_tier() are usable (and testable) standalone,
+# outside of run_mlb_cbt_payroll_engine().
+CBT_BASE_THRESHOLD  <- 244.0
+CBT_TIER1_THRESHOLD <- 264.0
+CBT_TIER2_THRESHOLD <- 284.0
+CBT_TIER3_THRESHOLD <- 304.0
+
+# Function to calculate CBT Tax Bill based on CBA tier schedule.
+# Vectorised over `payroll`/`is_repeater`; guards against NA/NaN/Inf payroll
+# and an NA repeater flag so it never errors on bad input (issue #125).
+compute_cbt_tax <- function(payroll, is_repeater) {
+  if (is.null(payroll) || length(payroll) == 0 ||
+      is.null(is_repeater) || length(is_repeater) == 0) {
+    return(NA_real_)
+  }
+
+  n <- max(length(payroll), length(is_repeater))
+  payroll <- rep_len(payroll, n)
+  is_repeater <- rep_len(is_repeater, n)
+
+  vapply(seq_len(n), function(i) {
+    p <- payroll[i]
+    rep_flag <- is_repeater[i]
+
+    if (length(p) == 0 || is.na(p) || !is.finite(p)) {
+      return(NA_real_)
+    }
+
+    if (is.na(rep_flag)) {
+      warning("compute_cbt_tax(): NA repeater flag treated as FALSE")
+      rep_flag <- FALSE
+    }
+    rep_flag <- isTRUE(rep_flag)
+
+    if (p <= CBT_BASE_THRESHOLD) {
+      return(0.0)
+    }
+
+    overage <- p - CBT_BASE_THRESHOLD
+    tax <- 0.0
+
+    # Base overage (Up to $20M over = Tier 1)
+    # 20% first time, 30% second time, 50% repeater
+    t1_cap <- min(overage, 20.0)
+    t1_rate <- if (rep_flag) 0.50 else 0.20
+    tax <- tax + t1_cap * t1_rate
+
+    # Tier 2 overage ($20M to $40M over)
+    # +12% surcharge (32% first-time, 62% repeater)
+    if (overage > 20.0) {
+      t2_cap <- min(overage - 20.0, 20.0)
+      t2_rate <- if (rep_flag) 0.62 else 0.32
+      tax <- tax + t2_cap * t2_rate
+    }
+
+    # Tier 3 overage ($40M to $60M over)
+    # +42.5% to +45% surcharge (62.5% first-time, 95% repeater)
+    if (overage > 40.0) {
+      t3_cap <- min(overage - 40.0, 20.0)
+      t3_rate <- if (rep_flag) 0.95 else 0.625
+      tax <- tax + t3_cap * t3_rate
+    }
+
+    # Tier 4 overage (> $60M over = Cohen Tax Tier)
+    # 80% first-time, 110% repeater
+    if (overage > 60.0) {
+      t4_cap <- overage - 60.0
+      t4_rate <- if (rep_flag) 1.10 else 0.80
+      tax <- tax + t4_cap * t4_rate
+    }
+
+    round(tax, 2)
+  }, numeric(1))
+}
+
+# Categorize CBT Tier. Vectorised over `payroll`; NA/NaN/Inf payroll yields
+# "Unknown" instead of erroring (issue #125).
+get_cbt_tier <- function(payroll) {
+  if (is.null(payroll) || length(payroll) == 0) {
+    return(character(0))
+  }
+
+  vapply(payroll, function(p) {
+    if (length(p) == 0 || is.na(p) || !is.finite(p)) {
+      return("Unknown")
+    }
+    if (p <= CBT_BASE_THRESHOLD) {
+      "Under CBT Threshold"
+    } else if (p <= CBT_TIER1_THRESHOLD) {
+      "Tier 1 Surcharge ($244M-$264M)"
+    } else if (p <= CBT_TIER2_THRESHOLD) {
+      "Tier 2 Draft Penalty ($264M-$284M)"
+    } else if (p <= CBT_TIER3_THRESHOLD) {
+      "Tier 3 Cohen Tax ($284M-$304M)"
+    } else {
+      "Tier 4 Mega Tax (> $304M)"
+    }
+  }, character(1))
+}
+
 run_mlb_cbt_payroll_engine <- function() {
   message(">>> [CBT Engine] Initializing 2026 MLB Payroll & Luxury Tax Architect...")
   
@@ -192,63 +293,11 @@ run_mlb_cbt_payroll_engine <- function() {
     tm
   }
   
-  # Function to calculate CBT Tax Bill based on CBA tier schedule
-  compute_cbt_tax <- function(payroll, is_repeater) {
-    if (payroll <= BASE_THRESHOLD) {
-      return(0.0)
-    }
-    
-    overage <- payroll - BASE_THRESHOLD
-    tax <- 0.0
-    
-    # Base overage (Up to $20M over = Tier 1)
-    # 20% first time, 30% second time, 50% repeater
-    t1_cap <- min(overage, 20.0)
-    t1_rate <- if (is_repeater) 0.50 else 0.20
-    tax <- tax + t1_cap * t1_rate
-    
-    # Tier 2 overage ($20M to $40M over)
-    # +12% surcharge (32% first-time, 62% repeater)
-    if (overage > 20.0) {
-      t2_cap <- min(overage - 20.0, 20.0)
-      t2_rate <- if (is_repeater) 0.62 else 0.32
-      tax <- tax + t2_cap * t2_rate
-    }
-    
-    # Tier 3 overage ($40M to $60M over)
-    # +42.5% to +45% surcharge (62.5% first-time, 95% repeater)
-    if (overage > 40.0) {
-      t3_cap <- min(overage - 40.0, 20.0)
-      t3_rate <- if (is_repeater) 0.95 else 0.625
-      tax <- tax + t3_cap * t3_rate
-    }
-    
-    # Tier 4 overage (> $60M over = Cohen Tax Tier)
-    # 80% first-time, 110% repeater
-    if (overage > 60.0) {
-      t4_cap <- overage - 60.0
-      t4_rate <- if (is_repeater) 1.10 else 0.80
-      tax <- tax + t4_cap * t4_rate
-    }
-    
-    return(round(tax, 2))
-  }
-  
-  # Categorize CBT Tier
-  get_cbt_tier <- function(payroll) {
-    if (payroll <= BASE_THRESHOLD) {
-      return("Under CBT Threshold")
-    } else if (payroll <= TIER1_THRESHOLD) {
-      return("Tier 1 Surcharge ($244M-$264M)")
-    } else if (payroll <= TIER2_THRESHOLD) {
-      return("Tier 2 Draft Penalty ($264M-$284M)")
-    } else if (payroll <= TIER3_THRESHOLD) {
-      return("Tier 3 Cohen Tax ($284M-$304M)")
-    } else {
-      return("Tier 4 Mega Tax (> $304M)")
-    }
-  }
-  
+  # compute_cbt_tax() / get_cbt_tier() are now defined at module level
+  # (top of file) so they are vectorised, guarded against bad input, and
+  # independently testable. They use the module-level CBT_*_THRESHOLD
+  # constants (same values as the local thresholds above).
+
   # Process all 30 teams
   franchise_profiles <- list()
   total_league_payroll <- 0
