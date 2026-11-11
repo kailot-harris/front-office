@@ -1,14 +1,38 @@
 import type { Metadata } from 'next';
 import { GeistSans, GeistMono } from 'geist/font';
 import './globals.css';
+import { BASE_PATH } from '@/lib/basePath';
 import { Sidebar } from '@/components/Sidebar';
 import { SportSwitcher } from '@/components/SportSwitcher';
 import { getMetadata } from '@/lib/data';
 
+// Link previews (Discord, X, iMessage) need absolute URLs. metadataBase supplies
+// the origin; BASE_PATH supplies /front-office/mlb, because Next's basePath does
+// not rewrite hand-written paths like the image below. No canonical or og:url is
+// set here: this layout wraps every route, and both would point them all at home.
+const SOCIAL_TITLE = 'MLB Analytics: Sabermetric Projections & Postseason Simulator';
+const SOCIAL_DESCRIPTION =
+  '162-game projections for all 30 MLB clubs, 1,279 player forecasts, luxury tax sheets, spatial analytics and a 10,000-run postseason simulator.';
+const SOCIAL_IMAGE = `${BASE_PATH}/social/og-card.png`;
+
 export const metadata: Metadata = {
+  metadataBase: new URL('https://kailot-harris.github.io'),
   title: 'MLB Sabermetric Projections | 162-Game & 10,000-Sim Postseason Engine',
   description:
     'Quantitative MLB projections across all 30 franchises, 630 batters, and 649 pitchers featuring 4-Factor Starting-Pitcher Elo, Hierarchical Empirical Bayes Partial Pooling, Pythagenpat Run-Expectation, Marcel 3-Year Projections, Bullpen Fatigue Diagnostics, and 12-Team Postseason Monte Carlo Simulations.',
+  openGraph: {
+    type: 'website',
+    siteName: 'Front Office',
+    title: SOCIAL_TITLE,
+    description: SOCIAL_DESCRIPTION,
+    images: [{ url: SOCIAL_IMAGE, width: 1200, height: 630, alt: SOCIAL_TITLE }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: SOCIAL_TITLE,
+    description: SOCIAL_DESCRIPTION,
+    images: [SOCIAL_IMAGE],
+  },
 };
 
 export default function RootLayout({
