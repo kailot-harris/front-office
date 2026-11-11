@@ -95,7 +95,13 @@ export const TacticalMismatchRadar: React.FC<TacticalMismatchRadarProps> = ({
       </div>
 
       <div className="flex items-center justify-center my-1 relative">
-        <svg width={size} height={size} className="overflow-visible">
+        <svg
+          width={size}
+          height={size}
+          className="overflow-visible"
+          role="img"
+          aria-label={`Tactical mismatch radar chart comparing ${teamA} and ${teamB}`}
+        >
           {/* Concentric grid circles */}
           {gridLevels.map((level, idx) => (
             <circle

@@ -93,8 +93,6 @@ export interface SeriesSimulationResult {
   tacticalMismatchAdjustment: number;
   winProbA: number;
   winProbB: number;
-  fairMlA: number;
-  fairMlB: number;
   avgGames: number;
   sweepProb: number;
   gameDistributions: GameOutcomeProb[];

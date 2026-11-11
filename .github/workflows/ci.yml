@@ -77,11 +77,20 @@ jobs:
       - name: Parse every tracked R file
         run: Rscript .github/scripts/parse-all.R
 
+      # The cached library holds compiled packages linked against the runner
+      # image's system libraries. runner.os is just "Linux", so when
+      # ubuntu-latest moved from 24.04 to 26.04 the old cache was restored onto
+      # the new image and stringi failed to load (libicui18n.so.74 missing),
+      # taking tidyverse and most of the suite with it. Keying on the image
+      # (ImageOS, e.g. "ubuntu26") rebuilds the library when the image changes.
+      - name: Record the runner image for the cache key
+        run: echo "RUNNER_IMAGE=${ImageOS:-unknown}" >> "$GITHUB_ENV"
+
       - name: Cache R library
         uses: actions/cache@v4
         with:
           path: ${{ env.R_LIBS_USER }}
-          key: rlib-${{ runner.os }}-R4.5-${{ hashFiles('.github/r-dependencies.txt') }}
+          key: rlib-${{ runner.os }}-${{ env.RUNNER_IMAGE }}-R4.5-${{ hashFiles('.github/r-dependencies.txt') }}
 
       - name: Install R dependencies
         run: |

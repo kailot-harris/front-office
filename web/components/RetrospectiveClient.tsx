@@ -227,29 +227,29 @@ export const RetrospectiveClient: React.FC<RetrospectiveClientProps> = ({
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
                 <div className="p-3 rounded-lg bg-surface border border-slate-800">
-                  <span className="text-[11px] text-slate-500 font-mono block">Pre-Season Elo</span>
+                  <span className="text-[11px] text-slate-400 font-mono block">Pre-Season Elo</span>
                   <span className="text-base font-mono font-bold text-white">{mil?.elo_rating.toFixed(1)}</span>
                 </div>
                 <div className="p-3 rounded-lg bg-surface border border-slate-800">
-                  <span className="text-[11px] text-slate-500 font-mono block">Net Talent Score</span>
+                  <span className="text-[11px] text-slate-400 font-mono block">Net Talent Score</span>
                   <span className="text-base font-mono font-bold text-emerald-400">+{mil?.net_talent_score.toFixed(2)}</span>
                 </div>
                 <div className="p-3 rounded-lg bg-surface border border-slate-800">
-                  <span className="text-[11px] text-slate-500 font-mono block">Run Differential</span>
+                  <span className="text-[11px] text-slate-400 font-mono block">Run Differential</span>
                   <span className="text-base font-mono font-bold text-white">+{mil?.run_differential}</span>
                 </div>
                 <div className="p-3 rounded-lg bg-surface border border-slate-800">
-                  <span className="text-[11px] text-slate-500 font-mono block">2026 CBT Payroll</span>
+                  <span className="text-[11px] text-slate-400 font-mono block">2026 CBT Payroll</span>
                   <span className="text-base font-mono font-bold text-amber-400">${milPayroll?.payroll2026 ?? 148}M</span>
                 </div>
                 <div className="p-3 rounded-lg bg-surface border border-slate-800">
-                  <span className="text-[11px] text-slate-500 font-mono block">Cost / Win</span>
+                  <span className="text-[11px] text-slate-400 font-mono block">Cost / Win</span>
                   <span className="text-base font-mono font-bold text-emerald-400">
                     ${((milPayroll?.payroll2026 ?? 148) / (mil?.proj_wins ?? 97.4)).toFixed(2)}M
                   </span>
                 </div>
                 <div className="p-3 rounded-lg bg-surface border border-slate-800">
-                  <span className="text-[11px] text-slate-500 font-mono block">Sim WS Odds</span>
+                  <span className="text-[11px] text-slate-400 font-mono block">Sim WS Odds</span>
                   <span className="text-base font-mono font-bold text-amber-300">
                     {((milPost?.pct_ws ?? 24.11)).toFixed(1)}%
                   </span>
@@ -278,29 +278,29 @@ export const RetrospectiveClient: React.FC<RetrospectiveClientProps> = ({
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
                 <div className="p-3 rounded-lg bg-surface border border-slate-800">
-                  <span className="text-[11px] text-slate-500 font-mono block">Pre-Season Elo</span>
+                  <span className="text-[11px] text-slate-400 font-mono block">Pre-Season Elo</span>
                   <span className="text-base font-mono font-bold text-white">{tb?.elo_rating.toFixed(1)}</span>
                 </div>
                 <div className="p-3 rounded-lg bg-surface border border-slate-800">
-                  <span className="text-[11px] text-slate-500 font-mono block">Rotation GameScore</span>
+                  <span className="text-[11px] text-slate-400 font-mono block">Rotation GameScore</span>
                   <span className="text-base font-mono font-bold text-sky-400">{tb?.team_rgs.toFixed(1)}</span>
                 </div>
                 <div className="p-3 rounded-lg bg-surface border border-slate-800">
-                  <span className="text-[11px] text-slate-500 font-mono block">Team xFIP (Bayes)</span>
+                  <span className="text-[11px] text-slate-400 font-mono block">Team xFIP (Bayes)</span>
                   <span className="text-base font-mono font-bold text-white">{tb?.team_xfip_pooled.toFixed(2)}</span>
                 </div>
                 <div className="p-3 rounded-lg bg-surface border border-slate-800">
-                  <span className="text-[11px] text-slate-500 font-mono block">2026 CBT Payroll</span>
+                  <span className="text-[11px] text-slate-400 font-mono block">2026 CBT Payroll</span>
                   <span className="text-base font-mono font-bold text-sky-400">${tbPayroll?.payroll2026 ?? 95}M</span>
                 </div>
                 <div className="p-3 rounded-lg bg-surface border border-slate-800">
-                  <span className="text-[11px] text-slate-500 font-mono block">Cost / Win</span>
+                  <span className="text-[11px] text-slate-400 font-mono block">Cost / Win</span>
                   <span className="text-base font-mono font-bold text-emerald-400">
                     ${((tbPayroll?.payroll2026 ?? 95) / (tb?.proj_wins ?? 88.5)).toFixed(2)}M
                   </span>
                 </div>
                 <div className="p-3 rounded-lg bg-surface border border-slate-800">
-                  <span className="text-[11px] text-slate-500 font-mono block">Pennant Prob</span>
+                  <span className="text-[11px] text-slate-400 font-mono block">Pennant Prob</span>
                   <span className="text-base font-mono font-bold text-sky-300">
                     {((tbPost?.pct_pennant ?? 18.45)).toFixed(1)}%
                   </span>
@@ -517,7 +517,7 @@ export const RetrospectiveClient: React.FC<RetrospectiveClientProps> = ({
                     </div>
                     <div className="text-right font-mono">
                       <span className="text-emerald-400 font-bold block">+{t.luck_wins.toFixed(1)} Wins</span>
-                      <span className="text-[10px] text-slate-500">{(t.pythag_win_pct * 100).toFixed(1)}% Exp</span>
+                      <span className="text-[10px] text-slate-400">{(t.pythag_win_pct * 100).toFixed(1)}% Exp</span>
                     </div>
                   </div>
                 ))}
@@ -550,7 +550,7 @@ export const RetrospectiveClient: React.FC<RetrospectiveClientProps> = ({
                       </div>
                       <div className="text-right font-mono">
                         <span className="text-rose-400 font-bold block">{t.luck_wins.toFixed(1)} Wins</span>
-                        <span className="text-[10px] text-slate-500">{(t.pythag_win_pct * 100).toFixed(1)}% Exp</span>
+                        <span className="text-[10px] text-slate-400">{(t.pythag_win_pct * 100).toFixed(1)}% Exp</span>
                       </div>
                     </div>
                   ))}

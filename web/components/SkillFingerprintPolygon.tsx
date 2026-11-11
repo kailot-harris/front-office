@@ -83,7 +83,13 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
         16-D Skill Fingerprint ({playerType})
       </div>
 
-      <svg width={size} height={size} className="overflow-visible my-1">
+      <svg
+        width={size}
+        height={size}
+        className="overflow-visible my-1"
+        role="img"
+        aria-label={`Player skill fingerprint radar chart for ${playerType}`}
+      >
         {/* Concentric Grid Rings */}
         {[0.25, 0.5, 0.75, 1.0].map((level) => {
           const points = axes

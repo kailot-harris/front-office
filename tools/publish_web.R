@@ -541,8 +541,17 @@ source("config.R")
       }
     }
     
+    # The edition archive is published with the monitor but is not one of the
+    # freshness-checked files, so it has to be added to the staged paths here.
+    # It used to be left out, which is why it stayed untracked: the live site
+    # 404'd on it and the contract tests that read it failed in a fresh clone.
+    stage_rel <- off_rel
+    if (file.exists(WEB_JSON_OFFSEASON_ARCHIVE)) {
+      stage_rel <- c(stage_rel, .pw_rel_to_repo(WEB_JSON_OFFSEASON_ARCHIVE, repo_root))
+    }
+
     return(list(id = "C", name = "non-empty diff in offseason web data",
-                pass = pass, fatal = TRUE, changed = off_changed, paths = off_rel,
+                pass = pass, fatal = TRUE, changed = off_changed, paths = stage_rel,
                 detail = if (length(off_changed)) paste0("    ", off_changed)
                          else sprintf("    CLEAN against HEAD in offseason files (repo: %s)", repo_root),
                 summary = sprintf("%d pending offseason change(s)", length(off_changed))))
