@@ -238,14 +238,6 @@ function PredictionPanel({ series }: { series: BracketSeries }) {
           {(f.netHighAdj - f.netLowAdj >= 0 ? '+' : '') +
             (f.netHighAdj - f.netLowAdj).toFixed(2)}
         </dd>
-        {typeof f.fairMlHigh === 'number' ? (
-          <>
-            <dt className="text-slate-500">Fair moneyline</dt>
-            <dd className="text-right font-mono text-slate-300">
-              {f.fairMlHigh > 0 ? `+${f.fairMlHigh}` : f.fairMlHigh}
-            </dd>
-          </>
-        ) : null}
       </dl>
     </div>
   );

@@ -13,8 +13,6 @@ interface SeriesProbRingProps {
   winProbB: number;
   avgGames: number;
   gameDistributions: GameOutcomeProb[];
-  fairMlA?: number;
-  fairMlB?: number;
   size?: number;
 }
 
@@ -25,8 +23,6 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
   winProbB,
   avgGames,
   gameDistributions,
-  fairMlA,
-  fairMlB,
   size = 240,
 }) => {
   const strokeWidth = 18;
@@ -124,11 +120,6 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
             <span className="text-xs font-bold text-white block">{teamA}</span>
             <div className="flex items-center gap-1">
               <span className="text-sm font-black font-mono text-amber-400">{pctA}%</span>
-              {fairMlA !== undefined && (
-                <span className="text-[10px] font-mono text-slate-400">
-                  ({fairMlA > 0 ? `+${fairMlA}` : fairMlA})
-                </span>
-              )}
             </div>
           </div>
         </div>
@@ -143,11 +134,6 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
             <span className="text-xs font-bold text-white block">{teamB}</span>
             <div className="flex items-center gap-1 justify-end">
               <span className="text-sm font-black font-mono text-sky-400">{pctB}%</span>
-              {fairMlB !== undefined && (
-                <span className="text-[10px] font-mono text-slate-400">
-                  ({fairMlB > 0 ? `+${fairMlB}` : fairMlB})
-                </span>
-              )}
             </div>
           </div>
         </div>

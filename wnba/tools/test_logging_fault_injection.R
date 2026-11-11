@@ -14,19 +14,11 @@
 #
 # Scenarios:
 #   1. Broken URL / unreachable host  -> real connection error captured by log_error().
-#   2. Corrupted cache file           -> load_real_ledger() logs a real readRDS() error via
-#                                         log_error(), AND compute_risk_state() with a missing
-#                                         ledger path logs the SYNTHETIC_FALLBACK trigger via
-#                                         log_warn() (not silently absorbed with no trace).
+#   2. (removed) Exercised risk_management_engine.R's ledger loading. That script was
+#      deleted under the zero-betting policy, so the scenario had nothing left to test.
 #   3. run_stage() catching a deliberately-thrown error from a dummy stage script -> log_error()
 #      captures the real message/stage name, run_stage() returns FALSE (fail-safe), and the
 #      pipeline (this test) successfully proceeds to run a subsequent stage afterward.
-#
-# IMPORTANT: this script does NOT touch the real cache/betting_ledger.rds or cache/risk_state.rds
-# files — scenario 2's "missing ledger" case is exercised by running compute_risk_state() from a
-# temporary empty working directory (so its hardcoded "cache/betting_ledger.rds" relative path
-# resolves to a location that provably does not exist), and the "corrupted file" case uses a
-# throwaway temp .rds path, never the real production cache.
 # ==============================================================================
 
 # GitHub issue #90: PROJECT_DIR was a hardcoded absolute path to this repo's pre-move
@@ -125,26 +117,9 @@ record(
   else sprintf("Expected ERROR line with real condition not found. Captured lines: %s", paste(s1_after, collapse = " || "))
 )
 
-# ------------------------------------------------------------------------------
-# SCENARIO 2a: corrupted cache file -> load_real_ledger() logs a real readRDS() error
-# ------------------------------------------------------------------------------
-cat("\n--- SCENARIO 2a: corrupted cache file (garbage bytes) ---\n")
-marker2a <- sprintf("SCENARIO2A_%s", format(Sys.time(), "%Y%m%d%H%M%OS3"))
-log_marker(marker2a)
-
-# risk_management_engine.R's own top-level `library(dplyr); library(tidyr)` calls are NOT
-# re-run here (only the two function bodies below are extracted/eval'd, not the whole file) --
-# but compute_risk_state()'s synthetic-fallback branch also calls tibble(), which in normal
-# full-pipeline execution is already attached transitively (earlier DAG stages `library(tidyverse)`
-# in the same R session before risk_management_engine.R ever sources). Load it explicitly here so
-# this test isolates the missing-ledger fault under test, not an unrelated missing-package error.
-suppressPackageStartupMessages({ library(dplyr); library(tidyr); library(tibble) })
-
-# Extract load_real_ledger() and compute_risk_state() from risk_management_engine.R by parsing
-# (not sourcing the whole file, which would auto-run compute_risk_state() against the REAL
-# production ledger at the bottom via `if (!interactive())`). This tests the actual production
-# function bodies, not a re-typed copy.
-rme_exprs <- parse(file = "risk_management_engine.R")
+# Pull one top-level `name <- function(...)` definition out of a parsed file, so a
+# scenario can evaluate the real production function body without sourcing (and
+# thereby running) the whole script.
 extract_fun_def <- function(exprs, fun_name) {
   for (e in as.list(exprs)) {
     if (is.call(e) && length(e) >= 2 && identical(e[[1]], as.name("<-"))) {
@@ -154,94 +129,6 @@ extract_fun_def <- function(exprs, fun_name) {
   }
   NULL
 }
-load_real_ledger_def <- extract_fun_def(rme_exprs, "load_real_ledger")
-compute_risk_state_def <- extract_fun_def(rme_exprs, "compute_risk_state")
-stopifnot(!is.null(load_real_ledger_def), !is.null(compute_risk_state_def))
-eval(load_real_ledger_def, envir = .GlobalEnv)
-eval(compute_risk_state_def, envir = .GlobalEnv)
-
-# Write deliberately garbage (non-RDS) bytes to a throwaway temp path — never the real
-# production cache/betting_ledger.rds.
-corrupt_path <- file.path(tempdir(), "corrupted_betting_ledger_TEST.rds")
-writeBin(as.raw(sample(0:255, 200, replace = TRUE)), corrupt_path)
-
-# load_real_ledger()/compute_risk_state() (like every other production engine in this repo)
-# tag their own log lines via the sourcing script's `.LOG_SCRIPT` global rather than passing
-# `script=` on every call (see logging_utils.R's `.log_script_name()`). Since this test script
-# extracted those function BODIES directly rather than sourcing risk_management_engine.R itself,
-# temporarily set `.LOG_SCRIPT` to match what real production execution would set, so the
-# resulting log lines are tagged correctly for this assertion (and restore this script's own tag
-# afterward so later scenarios aren't mis-tagged).
-.LOG_SCRIPT <- "risk_management_engine.R"
-s2a_result <- tryCatch(load_real_ledger(corrupt_path), error = function(e) "threw")
-.LOG_SCRIPT <- "test_logging_fault_injection.R"
-
-s2a_log <- read_log_tail()
-s2a_marker_idx <- which(grepl(marker2a, s2a_log, fixed = TRUE))
-s2a_after <- if (length(s2a_marker_idx) > 0) s2a_log[(max(s2a_marker_idx) + 1):length(s2a_log)] else character(0)
-s2a_error_lines <- s2a_after[grepl("\\[ERROR\\] \\[risk_management_engine.R\\].*corrupted", s2a_after)]
-
-s2a_pass <- identical(s2a_result, "threw") &&
-  length(s2a_error_lines) >= 1 &&
-  any(grepl("condition_message:", s2a_error_lines)) &&
-  any(grepl(corrupt_path, s2a_error_lines, fixed = TRUE))
-
-record(
-  "2a. Corrupted cache file -> load_real_ledger() log_error()",
-  s2a_pass,
-  if (s2a_pass) sprintf("log_error() captured real readRDS() corruption error. Line: %s", s2a_error_lines[1])
-  else sprintf("Expected ERROR line for corrupted file not found. Captured lines: %s", paste(s2a_after, collapse = " || "))
-)
-unlink(corrupt_path)
-
-# ------------------------------------------------------------------------------
-# SCENARIO 2b: missing cache file -> compute_risk_state() exercises AND logs the
-# SYNTHETIC_FALLBACK path via log_warn() (not silently absorbed with no trace).
-# ------------------------------------------------------------------------------
-cat("\n--- SCENARIO 2b: missing cache file -> synthetic fallback ---\n")
-marker2b <- sprintf("SCENARIO2B_%s", format(Sys.time(), "%Y%m%d%H%M%OS3"))
-log_marker(marker2b)
-
-# Run from a temp working directory with no "cache/" subfolder at all, so
-# compute_risk_state()'s hardcoded relative path "cache/betting_ledger.rds" provably does not
-# exist -- forcing the missing-ledger fallback branch, never touching the real production cache.
-tmp_wd <- file.path(tempdir(), paste0("risk_fault_test_", as.integer(Sys.time())))
-# compute_risk_state() saveRDS()'s its result to a relative "cache/risk_state.rds" path (that
-# write behavior is unrelated to the fault under test here -- the missing ledger -- so create an
-# empty "cache/" dir under the temp working dir to isolate the one fault we're injecting).
-dir.create(file.path(tmp_wd, "cache"), recursive = TRUE)
-old_wd <- getwd()
-setwd(tmp_wd)
-.LOG_SCRIPT <- "risk_management_engine.R"
-s2b_report <- tryCatch(compute_risk_state(), error = function(e) {
-  log_error("Unexpected error in compute_risk_state() during missing-ledger fault test.", condition = e,
-            call = "compute_risk_state()", script = "test_logging_fault_injection.R")
-  NULL
-})
-.LOG_SCRIPT <- "test_logging_fault_injection.R"
-setwd(old_wd)
-unlink(tmp_wd, recursive = TRUE)
-
-s2b_log <- read_log_tail()
-s2b_marker_idx <- which(grepl(marker2b, s2b_log, fixed = TRUE))
-s2b_after <- if (length(s2b_marker_idx) > 0) s2b_log[(max(s2b_marker_idx) + 1):length(s2b_log)] else character(0)
-s2b_warn_lines <- s2b_after[grepl("\\[WARN\\] \\[risk_management_engine.R\\].*betting_ledger.rds does not exist", s2b_after)]
-s2b_seed_warn_lines <- s2b_after[grepl("\\[WARN\\] \\[risk_management_engine.R\\].*SYNTHETIC_FALLBACK 120-bet seed ledger", s2b_after)]
-
-s2b_pass <- !is.null(s2b_report) &&
-  identical(s2b_report$total_bets_audited, 120L) &&
-  length(s2b_warn_lines) >= 1 &&
-  length(s2b_seed_warn_lines) >= 1
-
-record(
-  "2b. Missing cache file -> compute_risk_state() SYNTHETIC_FALLBACK log_warn()",
-  s2b_pass,
-  if (s2b_pass) sprintf("Fallback exercised (total_bets_audited=%s) AND logged. Lines: %s | %s",
-                         s2b_report$total_bets_audited, s2b_warn_lines[1], s2b_seed_warn_lines[1])
-  else sprintf("Expected WARN fallback lines/report not found. report_null=%s, bets_audited=%s, captured=%s",
-               is.null(s2b_report), if (is.null(s2b_report)) NA else s2b_report$total_bets_audited,
-               paste(s2b_after, collapse = " || "))
-)
 
 # ------------------------------------------------------------------------------
 # SCENARIO 3: run_stage() catches a deliberately-thrown error from a dummy stage script,

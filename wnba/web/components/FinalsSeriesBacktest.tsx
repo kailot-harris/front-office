@@ -38,10 +38,6 @@ function pct(p: number): string {
   return `${(p * 100).toFixed(1)}%`;
 }
 
-function ml(v: number): string {
-  return v >= 0 ? `+${v}` : `${v}`;
-}
-
 /**
  * The artifact's `provenance` string opens with its own "RECONSTRUCTION, not an
  * archived forecast." sentence, because it has to stand alone for consumers that
@@ -122,7 +118,7 @@ function InfoSetRow({
             {pct(s.pHighSeries)}
           </span>
           <span className="font-mono text-[11px] text-slate-500">
-            {ml(s.fairMlHigh)} / {ml(s.fairMlLow)}
+            {lowAbbr} {pct(s.pLowSeries)}
           </span>
         </div>
         {move !== null && (

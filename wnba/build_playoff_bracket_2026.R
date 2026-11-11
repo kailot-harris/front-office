@@ -349,8 +349,6 @@ predict_semifinal_from_archive <- function(row, archive) {
     series_complete = isTRUE(row$series_complete)
   )
   # Archived extras that only exist for the archived rounds, kept verbatim.
-  pred$forecast$fairMlHigh <- as.integer(e$series$fair_ml_high)
-  pred$forecast$fairMlLow  <- as.integer(e$series$fair_ml_low)
   pred$forecast$avgSeriesGames <- round(as.numeric(e$series$avg_series_games), 3)
   pred
 }

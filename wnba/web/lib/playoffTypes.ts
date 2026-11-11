@@ -62,10 +62,7 @@ export interface PlayoffSeriesMatchupResult {
   netRatingMargin: number;
   winProbA: number;
   winProbB: number;
-  fairMlA: number;
-  fairMlB: number;
   avgGames: number;
-  spreadMinus1_5Prob: number;
   sweepProb: number;
   gameDistributions: GameOutcomeProb[];
   tacticalEdges: TacticalEdge[];
@@ -154,9 +151,7 @@ export interface BracketForecast {
   lengthDistribution: BracketLengthProb[];
   /** 'pending' while the series is still being played — not a wrong call. */
   resultStatus: 'correct' | 'incorrect' | 'pending';
-  /** Archived rounds only: fair moneyline and average games as stored. */
-  fairMlHigh?: number;
-  fairMlLow?: number;
+  /** Archived rounds only: average games as stored. */
   avgSeriesGames?: number;
 }
 
@@ -390,8 +385,6 @@ export interface FinalsBacktestInfoSet {
   /** Live forecast: conditioned on the real series state at this moment. */
   pHighSeries: number;
   pLowSeries: number;
-  fairMlHigh: number;
-  fairMlLow: number;
   expectedLength: number;
   lengthDistribution: FinalsBacktestLengthProb[];
   /**
