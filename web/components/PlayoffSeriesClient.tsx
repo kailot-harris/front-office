@@ -112,13 +112,6 @@ function simulateClientFallback(
   const probA = Number((simAWins / nSims).toFixed(3));
   const probB = Number((1 - probA).toFixed(3));
 
-  const calcMl = (prob: number) => {
-    if (prob <= 0.01) return 9999;
-    if (prob >= 0.99) return -9999;
-    if (prob >= 0.5) return Math.round(-(prob / (1 - prob)) * 100);
-    return Math.round(((1 - prob) / prob) * 100);
-  };
-
   const gameDistList = Object.keys(distCounts).map((k) => {
     const parts = k.split('_');
     const winner = parts[0] === 'A' ? pA.teamAbbr : pB.teamAbbr;
@@ -139,8 +132,6 @@ function simulateClientFallback(
     tacticalMismatchAdjustment: Number(mismatchElo.toFixed(1)),
     winProbA: probA,
     winProbB: probB,
-    fairMlA: calcMl(probA),
-    fairMlB: calcMl(probB),
     avgGames: Number((totalGamesPlayed / nSims).toFixed(2)),
     sweepProb: Number(((distCounts[`A_${winsToClinch}`] + distCounts[`B_${winsToClinch}`]) / nSims * 100).toFixed(1)),
     gameDistributions: gameDistList,
@@ -206,8 +197,6 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
           teamB: teamBCode,
           winProbA: match.winProbB,
           winProbB: match.winProbA,
-          fairMlA: match.fairMlB,
-          fairMlB: match.fairMlA,
           baseEloDiff: -match.baseEloDiff,
           tacticalMismatchAdjustment: -match.tacticalMismatchAdjustment,
         };
@@ -368,8 +357,6 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
             teamB={teamBCode}
             winProbA={seriesResult.winProbA}
             winProbB={seriesResult.winProbB}
-            fairMlA={seriesResult.fairMlA}
-            fairMlB={seriesResult.fairMlB}
             sweepProb={seriesResult.sweepProb}
             avgGames={seriesResult.avgGames}
             gameDistributions={seriesResult.gameDistributions}

@@ -10,8 +10,6 @@ interface SeriesProbRingProps {
   teamB: string;
   winProbA: number;
   winProbB: number;
-  fairMlA: number;
-  fairMlB: number;
   sweepProb: number;
   avgGames: number;
   gameDistributions: GameOutcomeProb[];
@@ -23,8 +21,6 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
   teamB,
   winProbA,
   winProbB,
-  fairMlA,
-  fairMlB,
   sweepProb,
   avgGames,
   gameDistributions,
@@ -39,8 +35,6 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffsetA = circumference - (winProbA * circumference);
-
-  const formatMl = (ml: number) => (ml > 0 ? `+${ml}` : `${ml}`);
 
   const sortedDists = [...gameDistributions].sort((a, b) => {
     if (a.winner === b.winner) return a.games - b.games;
@@ -125,22 +119,20 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
           <div className="bg-surface/80 border border-sky-500/30 rounded-xl p-2.5 flex items-center justify-between">
             <div>
               <span className="text-xs font-bold text-sky-400 block font-mono">{teamA}</span>
-              <span className="text-[11px] text-slate-400">Fair Line</span>
+              <span className="text-[11px] text-slate-400">Series win</span>
             </div>
             <div className="text-right">
               <span className="text-base font-black text-white font-mono">{pctA}%</span>
-              <span className="text-[11px] font-mono text-sky-300 block">{formatMl(fairMlA)}</span>
             </div>
           </div>
 
           <div className="bg-surface/80 border border-amber-500/30 rounded-xl p-2.5 flex items-center justify-between">
             <div>
               <span className="text-xs font-bold text-amber-400 block font-mono">{teamB}</span>
-              <span className="text-[11px] text-slate-400">Fair Line</span>
+              <span className="text-[11px] text-slate-400">Series win</span>
             </div>
             <div className="text-right">
               <span className="text-base font-black text-white font-mono">{pctB}%</span>
-              <span className="text-[11px] font-mono text-amber-300 block">{formatMl(fairMlB)}</span>
             </div>
           </div>
 
