@@ -902,7 +902,6 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
       c(paste0("A_", possible_lengths), paste0("B_", possible_lengths))
     )
     total_games <- 0
-    cover_minus_1_5 <- 0
 
     set.seed(42 + which(names(profiles) == team_a_code) * 7 + which(names(profiles) == team_b_code))
 
@@ -927,7 +926,6 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
         sim_a_wins <- sim_a_wins + 1
         k <- paste0("A_", tot_g)
         game_counts[[k]] <- game_counts[[k]] + 1L
-        if (tot_g <= (max_games - 1L)) cover_minus_1_5 <- cover_minus_1_5 + 1
       } else {
         k <- paste0("B_", tot_g)
         game_counts[[k]] <- game_counts[[k]] + 1L
@@ -936,8 +934,6 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
 
     win_prob_a <- round(sim_a_wins / n_sims, 4)
     win_prob_b <- round(1 - win_prob_a, 4)
-    fair_ml_a <- if (win_prob_a >= 0.5) round(-100 * win_prob_a / (1 - win_prob_a)) else round(100 * (1 - win_prob_a) / win_prob_a)
-    fair_ml_b <- if (win_prob_b >= 0.5) round(-100 * win_prob_b / (1 - win_prob_b)) else round(100 * (1 - win_prob_b) / win_prob_b)
 
     dist_list <- c(
       lapply(possible_lengths, function(len) {
@@ -962,10 +958,7 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
       netRatingMargin            = net_margin,
       winProbA                   = win_prob_a,
       winProbB                   = win_prob_b,
-      fairMlA                    = fair_ml_a,
-      fairMlB                    = fair_ml_b,
       avgGames                   = round(total_games / n_sims, 2),
-      spreadMinus1_5Prob         = round(cover_minus_1_5 / n_sims, 3),
       sweepProb                  = round((game_counts[[sweep_key_a]] + game_counts[[sweep_key_b]]) / n_sims * 100, 1),
       gameDistributions          = dist_list,
       tacticalEdges              = edges
@@ -1360,8 +1353,6 @@ export_web_json <- function(output_dir = file.path("web", "public", "data"), syn
           netAdjLow      = as.numeric(main$net_adj_low),
           pHighSeries    = as.numeric(main$p_high_series),
           pLowSeries     = as.numeric(main$p_low_series),
-          fairMlHigh     = as.integer(main$fair_ml_high),
-          fairMlLow      = as.integer(main$fair_ml_low),
           expectedLength = as.numeric(main$expected_length),
           lengthDistribution = lapply(seq_len(nrow(dist)), function(i) list(
             length      = as.integer(dist$length[i]),

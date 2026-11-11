@@ -541,10 +541,7 @@ export const PlayoffSeriesMatchupResultSchema = z
     netRatingMargin: finiteNumber,
     winProbA: prob,
     winProbB: prob,
-    fairMlA: z.number().int(),
-    fairMlB: z.number().int(),
     avgGames: finiteNumber.min(2).max(7),
-    spreadMinus1_5Prob: prob,
     sweepProb: pct,
     gameDistributions: z.array(GameOutcomeProbSchema).min(4).max(8),
     tacticalEdges: z.array(TacticalEdgeSchema),
@@ -632,8 +629,6 @@ const BracketForecastSchema = z
     expectedGames: finiteNumber.min(1).max(7),
     lengthDistribution: z.array(BracketLengthProbSchema).min(1),
     resultStatus: z.enum(['correct', 'incorrect', 'pending']),
-    fairMlHigh: z.number().int().optional(),
-    fairMlLow: z.number().int().optional(),
     avgSeriesGames: finiteNumber.min(1).max(7).optional(),
   })
   .strict();
@@ -834,8 +829,6 @@ export const FinalsBacktestInfoSetSchema = z
     netAdjLow: finiteNumber,
     pHighSeries: finiteNumber.min(0).max(1),
     pLowSeries: finiteNumber.min(0).max(1),
-    fairMlHigh: z.number().int(),
-    fairMlLow: z.number().int(),
     expectedLength: finiteNumber.min(1).max(7),
     lengthDistribution: z
       .array(z.object({ length: z.number().int().min(1).max(7), probability: finiteNumber.min(0).max(1) }).strict())
