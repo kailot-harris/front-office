@@ -5,6 +5,7 @@ import { SalaryCapDataset, TeamCapProfile } from '@/lib/types';
 import { TeamLogo } from './TeamLogo';
 import { Search, DollarSign, PieChart, Layers, Award, Download } from 'lucide-react';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { money } from '@/lib/format';
 
 interface SalaryCapClientProps {
   data: SalaryCapDataset;
@@ -123,7 +124,7 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
             <PieChart className="w-4 h-4 text-cyan-400" />
           </div>
           <div className="text-2xl font-bold font-mono text-cyan-400">
-            ${avgTeamApy.toFixed(1)}M
+            {money(avgTeamApy)}
           </div>
           <p className="text-[11px] text-slate-400 mt-1">Average annualized commitments</p>
         </div>
@@ -260,10 +261,10 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
                             </div>
                           </td>
                           <td className="px-3 py-2.5 text-right font-bold text-white">
-                            ${t.total_active_apy.toFixed(1)}M
+                            {money(t.total_active_apy)}
                           </td>
                           <td className="px-3 py-2.5 text-right text-slate-300">
-                            ${t.total_guaranteed.toFixed(1)}M
+                            {money(t.total_guaranteed)}
                           </td>
                         </tr>
                       );
@@ -285,7 +286,7 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
                           {selectedTeam.team} Cap Allocation
                         </h2>
                         <p className="text-xs text-slate-400 font-mono">
-                          Active Cash APY: ${selectedTeam.total_active_apy.toFixed(1)}M
+                          Active Cash APY: {money(selectedTeam.total_active_apy)}
                         </p>
                       </div>
                     </div>
@@ -306,7 +307,7 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
                               {pos} <span className="text-[10px] text-slate-500 font-mono">({item.count})</span>
                             </span>
                             <span className="font-mono text-slate-300">
-                              ${item.apy.toFixed(1)}M ({item.pct}%)
+                              {money(item.apy)} ({item.pct}%)
                             </span>
                           </div>
                           <div className="h-1.5 w-full bg-surface rounded-full overflow-hidden border border-slate-800">
@@ -341,7 +342,7 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
                 </div>
 
                 <div className="pt-4 border-t border-slate-800 text-[11px] text-slate-500 font-mono">
-                  Guaranteed Liabilities: ${selectedTeam.total_guaranteed.toFixed(1)}M
+                  Guaranteed Liabilities: {money(selectedTeam.total_guaranteed)}
                 </div>
               </div>
             )}
@@ -393,13 +394,13 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
                       </div>
                     </td>
                     <td className="px-3 py-2.5 text-right font-bold text-emerald-400">
-                      ${c.apy.toFixed(2)}M
+                      {money(c.apy, 2)}
                     </td>
                     <td className="px-3 py-2.5 text-right text-slate-300">
-                      ${c.value.toFixed(1)}M
+                      {money(c.value)}
                     </td>
                     <td className="px-3 py-2.5 text-right text-slate-300">
-                      ${c.guaranteed.toFixed(1)}M
+                      {money(c.guaranteed)}
                     </td>
                     <td className="px-3 py-2.5 text-right font-bold text-indigo-400">
                       {c.apy_cap_pct}%

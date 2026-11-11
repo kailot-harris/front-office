@@ -2,7 +2,7 @@ import { getVisualMediaIndex } from '@/lib/data';
 import GalleryClient from '@/components/GalleryClient';
 
 export const metadata = {
-  title: 'Visual Media Gallery & Race Animations | NFL Analytics',
+  title: 'Visual Media Gallery & Race Animations',
   description: '17+ automated animated races, division trajectory plots, and point differential heatmaps.',
 };
 

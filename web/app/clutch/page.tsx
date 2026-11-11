@@ -3,7 +3,7 @@ import { getClutchData } from '@/lib/data';
 import ClutchClient from '@/components/ClutchClient';
 
 export const metadata: Metadata = {
-  title: 'True Clutch Index & Leverage | NFL Analytics',
+  title: 'True Clutch Index & Leverage',
   description:
     '4th Quarter and overtime high-leverage execution, clutch EPA/play vs baseline, situational CPOE, turnover fragility under pressure, and 4th-down decision making.',
 };

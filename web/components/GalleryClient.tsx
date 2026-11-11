@@ -1,13 +1,90 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { VisualMediaItem } from '@/lib/types';
-import { Image as ImageIcon, Search, Film, Download, Maximize2, X } from 'lucide-react';
+import { Image as ImageIcon, Search, Film, Download, Maximize2, X, Play } from 'lucide-react';
 import Image from 'next/image';
 import { BASE_PATH } from '@/lib/basePath';
 
 interface GalleryClientProps {
   mediaItems: VisualMediaItem[];
+}
+
+/**
+ * Animated-media thumbnail that defers downloading the (often multi-MB) GIF
+ * until the card is clicked or scrolled into view. Shows a lightweight
+ * static poster (icon + label, no network request) until then.
+ */
+function GalleryMediaThumb({
+  mediaUrl,
+  title,
+  isGif,
+  onActivate,
+}: {
+  mediaUrl: string;
+  title: string;
+  isGif: boolean;
+  onActivate: () => void;
+}) {
+  const [loaded, setLoaded] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (loaded) return;
+    const el = containerRef.current;
+    // Environments without IntersectionObserver (older browsers, test/SSR
+    // environments) fall back to rendering the real media immediately
+    // rather than getting stuck on the poster forever.
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setLoaded(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setLoaded(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loaded]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative w-full aspect-video bg-surface border-b border-slate-800 cursor-pointer overflow-hidden flex items-center justify-center"
+      onClick={() => {
+        setLoaded(true);
+        onActivate();
+      }}
+    >
+      {loaded ? (
+        <Image
+          src={mediaUrl}
+          alt={title}
+          fill
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          className="object-cover group-hover:scale-105 transition-transform duration-300"
+          unoptimized
+          loading="lazy"
+        />
+      ) : (
+        <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-surface-raised to-surface">
+          {isGif ? (
+            <Film className="w-8 h-8 text-cyan-400/50" />
+          ) : (
+            <ImageIcon className="w-8 h-8 text-emerald-400/50" />
+          )}
+          <span className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
+            <Play className="w-3 h-3" /> Click to load preview
+          </span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function GalleryClient({ mediaItems }: GalleryClientProps) {
@@ -102,21 +179,16 @@ export default function GalleryClient({ mediaItems }: GalleryClientProps) {
             >
               <div>
                 {/* Media Preview Box */}
-                <div
-                  className="relative w-full aspect-video bg-surface border-b border-slate-800 cursor-pointer overflow-hidden flex items-center justify-center"
-                  onClick={() => setActiveMedia(item)}
-                >
-                  <Image
-                    src={mediaUrl}
-                    alt={item.title}
-                    fill
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    unoptimized
+                <div className="relative">
+                  <GalleryMediaThumb
+                    mediaUrl={mediaUrl}
+                    title={item.title}
+                    isGif={isGif}
+                    onActivate={() => setActiveMedia(item)}
                   />
 
                   {/* Badge Overlay */}
-                  <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
+                  <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 pointer-events-none">
                     <span className="bg-surface/80 backdrop-blur border border-slate-800 text-[10px] font-mono px-2 py-0.5 rounded text-white flex items-center gap-1">
                       {isGif ? <Film className="w-3 h-3 text-cyan-400" /> : <ImageIcon className="w-3 h-3 text-emerald-400" />}
                       {isGif ? 'ANIMATION' : 'STATIC PLOT'}
@@ -124,7 +196,7 @@ export default function GalleryClient({ mediaItems }: GalleryClientProps) {
                   </div>
 
                   {/* Hover Maximizer Icon */}
-                  <div className="absolute inset-0 bg-surface/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <div className="absolute inset-0 bg-surface/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
                     <span className="p-2.5 rounded-full bg-surface-raised/90 text-white border border-slate-700 shadow-xl flex items-center gap-1.5 text-xs font-mono">
                       <Maximize2 className="w-4 h-4 text-emerald-400" /> Fullscreen
                     </span>

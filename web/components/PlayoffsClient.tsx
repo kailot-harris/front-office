@@ -10,6 +10,7 @@ import {
   Shield,
   HelpCircle,
 } from 'lucide-react';
+import { num, percent } from '@/lib/format';
 
 interface PlayoffsClientProps {
   dataset: PlayoffDataset;
@@ -48,7 +49,7 @@ export const PlayoffsClient: React.FC<PlayoffsClientProps> = ({ dataset }) => {
               </span>
             </div>
             <div className="text-xs text-slate-400 font-mono">
-              Div: {afc1?.division} • Pwr: +{afc1?.power_rating.toFixed(1)}
+              Div: {afc1?.division} • Pwr: +{num(afc1?.power_rating)}
             </div>
           </div>
         </div>
@@ -74,7 +75,7 @@ export const PlayoffsClient: React.FC<PlayoffsClientProps> = ({ dataset }) => {
               </span>
             </div>
             <div className="text-xs text-slate-400 font-mono">
-              Div: {nfc1?.division} • Pwr: +{nfc1?.power_rating.toFixed(1)}
+              Div: {nfc1?.division} • Pwr: +{num(nfc1?.power_rating)}
             </div>
           </div>
         </div>
@@ -94,11 +95,11 @@ export const PlayoffsClient: React.FC<PlayoffsClientProps> = ({ dataset }) => {
             <div className="text-base font-bold text-white flex items-baseline gap-2 truncate">
               <span className="truncate">{topSbFav?.team_name}</span>
               <span className="text-xs font-semibold text-amber-400 flex-shrink-0 font-mono">
-                {(topSbFav?.super_bowl_win_prob * 100).toFixed(1)}% SB
+                {percent(topSbFav?.super_bowl_win_prob, 1)} SB
               </span>
             </div>
             <div className="text-xs text-slate-400 font-mono">
-              Conf: {(topSbFav?.conf_champ_win_prob * 100).toFixed(0)}% • Div: {(topSbFav?.divisional_win_prob * 100).toFixed(0)}%
+              Conf: {percent(topSbFav?.conf_champ_win_prob)} • Div: {percent(topSbFav?.divisional_win_prob)}
             </div>
           </div>
         </div>
@@ -146,7 +147,7 @@ export const PlayoffsClient: React.FC<PlayoffsClientProps> = ({ dataset }) => {
                     </div>
                   </div>
                   <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                    {(team.playoff_prob * 100).toFixed(1)}% Playoff Prob
+                    {percent(team.playoff_prob, 1)} Playoff Prob
                   </span>
                 </div>
               ))}
@@ -179,7 +180,7 @@ export const PlayoffsClient: React.FC<PlayoffsClientProps> = ({ dataset }) => {
                     </div>
                   </div>
                   <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                    {(team.playoff_prob * 100).toFixed(1)}% Playoff Prob
+                    {percent(team.playoff_prob, 1)} Playoff Prob
                   </span>
                 </div>
               ))}

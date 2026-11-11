@@ -2,7 +2,7 @@ import { getPlayerDnaProfiles } from '@/lib/data';
 import PlayerDnaClient from '@/components/PlayerDnaClient';
 
 export const metadata = {
-  title: 'Player DNA & Skill Fingerprints | NFL Analytics',
+  title: 'Player DNA & Skill Fingerprints',
   description: 'Empirical multivariate player skill profiles, interactive SVG radar charts, and nearest historical twin comparables across NFL starters.',
 };
 

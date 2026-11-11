@@ -17,7 +17,10 @@ const SOCIAL_IMAGE = `${BASE_PATH}/social/og-card.png`;
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://kailot-harris.github.io'),
-  title: 'NFL Analytics & Season Projections | 1,000-Sim Monte Carlo',
+  title: {
+    template: '%s | NFL Front Office',
+    default: 'NFL Analytics & Season Projections | 1,000-Sim Monte Carlo',
+  },
   description:
     '1,000-season Monte Carlo simulation projections for all 32 NFL teams, weekly matchup projections, EPA/play efficiency, 14-team playoff machine, and model diagnostics.',
   openGraph: {

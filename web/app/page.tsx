@@ -1,8 +1,15 @@
 import React from 'react';
+import type { Metadata } from 'next';
 import { getStandingsData } from '@/lib/data';
 import { StandingsClient } from '@/components/StandingsClient';
 import { Swords, Activity, Award } from 'lucide-react';
 import Link from 'next/link';
+
+export const metadata: Metadata = {
+  title: 'Season Projections & Standings | NFL Front Office',
+  description:
+    '1,000-season Monte Carlo simulation projections for all 32 NFL teams: live standings, weekly matchups, EPA efficiency, and playoff odds.',
+};
 
 export default function HomePage() {
   const dataset = getStandingsData();
@@ -23,7 +30,7 @@ export default function HomePage() {
               <span><span className="text-emerald-400">NFL</span> Season Projections</span>
             </h1>
             <p className="text-slate-400 text-sm mt-1 max-w-2xl">
-              Probabilistic simulation engine across all 32 NFL franchises, synthesizing Ridge regression, Elo ratings, EPA/play efficiency, situational fatigue, and market lines.
+              Probabilistic simulation engine across all 32 NFL franchises, synthesizing Ridge regression, Elo ratings, EPA/play efficiency, situational fatigue, and projected margins.
             </p>
           </div>
 

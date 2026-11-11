@@ -4,7 +4,7 @@ import { PlayoffsClient } from '@/components/PlayoffsClient';
 import { Award } from 'lucide-react';
 
 export const metadata = {
-  title: 'NFL Playoff Machine & 14-Team Bracket Simulator | NFL Analytics',
+  title: 'NFL Playoff Machine & 14-Team Bracket Simulator',
   description:
     '14-team provisional NFL playoff field (Seeds 1–7), official tiebreaker resolution, bubble contenders, and 10,000-trial Monte Carlo bracket simulation from Wild Card through the Super Bowl.',
 };

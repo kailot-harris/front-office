@@ -4,7 +4,7 @@ import { MatchupsClient } from '@/components/MatchupsClient';
 import { Swords } from 'lucide-react';
 
 export const metadata = {
-  title: 'Weekly NFL Matchups & Projections | NFL Analytics',
+  title: 'Weekly NFL Matchups & Projections',
   description:
     'Game-by-game projected margins, totals, win probabilities, and situational fatigue adjustments for all weekly NFL matchups.',
 };

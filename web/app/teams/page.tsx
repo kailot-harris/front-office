@@ -4,7 +4,7 @@ import { TeamsClient } from '@/components/TeamsClient';
 import { ShieldCheck } from 'lucide-react';
 
 export const metadata = {
-  title: 'Team Power Ratings & EPA Profiles | NFL Analytics',
+  title: 'Team Power Ratings & EPA Profiles',
   description:
     'Expected Points Added (EPA) per play, passing CPOE, early vs. money down splits, red zone efficiency, and 2D quadrant scatter for all 32 NFL franchises.',
 };

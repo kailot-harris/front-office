@@ -6,6 +6,7 @@ import { TeamLogo } from './TeamLogo';
 import QbEfficiencyScatter from './QbEfficiencyScatter';
 import { Search, Award, TrendingUp, Download } from 'lucide-react';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { headshotSrc } from '@/lib/format';
 
 interface PlayersClientProps {
   initialQbs: QbProfile[];
@@ -317,10 +318,12 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
                           <div className="w-7 h-7 rounded-full overflow-hidden bg-slate-800 flex-shrink-0 border border-slate-700">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
-                              src={qb.headshot_url}
+                              src={headshotSrc(qb.headshot_url, 56)}
                               alt={qb.player_name}
                               loading="lazy"
                               decoding="async"
+                              width={28}
+                              height={28}
                               className="w-full h-full object-cover object-top"
                               onError={(e) => {
                                 (e.target as HTMLElement).style.display = 'none';
@@ -442,8 +445,12 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
                 <div className="relative w-14 h-14 rounded-full overflow-hidden bg-slate-800 border-2 border-emerald-500/60">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={selectedQb.headshot_url}
+                    src={headshotSrc(selectedQb.headshot_url, 112)}
                     alt={selectedQb.player_name}
+                    loading="lazy"
+                    decoding="async"
+                    width={56}
+                    height={56}
                     className="w-full h-full object-cover object-top"
                     onError={(e) => {
                       (e.target as HTMLElement).style.display = 'none';
@@ -492,7 +499,7 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
             <div className="bg-surface/60 p-3 rounded-lg border border-slate-800">
               <span className="text-[10px] font-mono uppercase text-slate-500 block">Backup WAR Penalty</span>
               <span className="text-base font-mono font-bold text-amber-400">
-                -3.2 Pts Spread
+                -3.2 Pts Margin
               </span>
             </div>
             <div className="bg-surface/60 p-3 rounded-lg border border-slate-800">

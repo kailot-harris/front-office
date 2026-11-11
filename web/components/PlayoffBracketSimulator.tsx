@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { PlayoffDataset, PlayoffSeed } from '@/lib/types';
 import { TeamLogo } from '@/components/TeamLogo';
 import { Trophy, Swords, RotateCcw, Sparkles } from 'lucide-react';
+import { num, percent } from '@/lib/format';
 
 interface PlayoffBracketSimulatorProps {
   dataset: PlayoffDataset;
@@ -162,7 +163,7 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
           <div className="text-right font-mono text-xs text-slate-400">
             <span className="block text-slate-500 text-[10px] uppercase">Model Probability</span>
             <span className="text-amber-400 font-bold text-sm">
-              {(champion.super_bowl_win_prob * 100).toFixed(1)}% Super Bowl Equity
+              {percent(champion.super_bowl_win_prob, 1)} Super Bowl Equity
             </span>
           </div>
         </div>
@@ -211,7 +212,7 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
                       )}
                     </div>
                     <span className="text-[10px] font-mono text-slate-500">
-                      {s.division} • Pwr: {s.power_rating > 0 ? `+${s.power_rating.toFixed(1)}` : s.power_rating.toFixed(1)}
+                      {s.division} • Pwr: {typeof s.power_rating === 'number' && s.power_rating > 0 ? `+${num(s.power_rating)}` : num(s.power_rating)}
                     </span>
                   </div>
                 </div>
@@ -221,19 +222,19 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
                   <div>
                     <span className="text-[9px] text-slate-500 block uppercase">Divisional</span>
                     <span className="font-semibold text-slate-300">
-                      {(s.divisional_win_prob * 100).toFixed(0)}%
+                      {percent(s.divisional_win_prob)}
                     </span>
                   </div>
                   <div>
                     <span className="text-[9px] text-slate-500 block uppercase">Conf Champ</span>
                     <span className="font-semibold text-cyan-400">
-                      {(s.conf_champ_win_prob * 100).toFixed(0)}%
+                      {percent(s.conf_champ_win_prob)}
                     </span>
                   </div>
                   <div className="min-w-[48px]">
                     <span className="text-[9px] text-slate-500 block uppercase">Super Bowl</span>
                     <span className="font-bold text-amber-400">
-                      {(s.super_bowl_win_prob * 100).toFixed(1)}%
+                      {percent(s.super_bowl_win_prob, 1)}
                     </span>
                   </div>
                 </div>
@@ -283,7 +284,7 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
                       )}
                     </div>
                     <span className="text-[10px] font-mono text-slate-500">
-                      {s.division} • Pwr: {s.power_rating > 0 ? `+${s.power_rating.toFixed(1)}` : s.power_rating.toFixed(1)}
+                      {s.division} • Pwr: {typeof s.power_rating === 'number' && s.power_rating > 0 ? `+${num(s.power_rating)}` : num(s.power_rating)}
                     </span>
                   </div>
                 </div>
@@ -293,19 +294,19 @@ export const PlayoffBracketSimulator: React.FC<PlayoffBracketSimulatorProps> = (
                   <div>
                     <span className="text-[9px] text-slate-500 block uppercase">Divisional</span>
                     <span className="font-semibold text-slate-300">
-                      {(s.divisional_win_prob * 100).toFixed(0)}%
+                      {percent(s.divisional_win_prob)}
                     </span>
                   </div>
                   <div>
                     <span className="text-[9px] text-slate-500 block uppercase">Conf Champ</span>
                     <span className="font-semibold text-cyan-400">
-                      {(s.conf_champ_win_prob * 100).toFixed(0)}%
+                      {percent(s.conf_champ_win_prob)}
                     </span>
                   </div>
                   <div className="min-w-[48px]">
                     <span className="text-[9px] text-slate-500 block uppercase">Super Bowl</span>
                     <span className="font-bold text-amber-400">
-                      {(s.super_bowl_win_prob * 100).toFixed(1)}%
+                      {percent(s.super_bowl_win_prob, 1)}
                     </span>
                   </div>
                 </div>
