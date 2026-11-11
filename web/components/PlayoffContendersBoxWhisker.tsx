@@ -110,7 +110,7 @@ export const PlayoffContendersBoxWhisker: React.FC<PlayoffContendersBoxWhiskerPr
           </div>
 
           {/* Scale Axis Labels */}
-          <div className="relative h-6 text-[10px] font-mono text-slate-400 select-none pl-36 sm:pl-48 pr-28 sm:pr-36">
+          <div className="relative h-6 text-[11px] sm:text-[10px] font-mono text-slate-400 select-none pl-36 sm:pl-48 pr-28 sm:pr-36">
             <div className="relative w-full h-full">
               {winTicks.map((tick) => {
                 const pos = toPct(tick);
@@ -161,7 +161,7 @@ export const PlayoffContendersBoxWhisker: React.FC<PlayoffContendersBoxWhiskerPr
                       <div className="font-semibold text-white text-xs truncate group-hover:text-indigo-400 transition-colors">
                         {team.team_name}
                       </div>
-                      <div className="text-[10px] font-mono text-slate-400 flex items-center gap-1.5">
+                      <div className="text-[11px] sm:text-[10px] font-mono text-slate-400 flex items-center gap-1.5">
                         <span className="text-amber-400 font-bold">{team.team}</span>
                         <span>•</span>
                         <span className={team.conference === 'East' ? 'text-blue-400' : 'text-red-400'}>
@@ -228,7 +228,7 @@ export const PlayoffContendersBoxWhisker: React.FC<PlayoffContendersBoxWhiskerPr
                       {team.ensemble_mean_wins.toFixed(1)}W
                     </span>
                     <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                      className={`text-[11px] sm:text-[10px] px-1.5 py-0.5 rounded font-bold ${
                         isPlayoffLock
                           ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                           : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'

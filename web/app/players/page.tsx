@@ -3,6 +3,12 @@ import { PlayersClient } from '@/components/PlayersClient';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
 import { SEASON_SOURCES } from '@/lib/season';
 
+export const metadata = {
+  title: 'Player Projections & Outliers',
+  description:
+    'Projected 2026-2027 games, minutes, points, rebounds, assists, and statistical outlier flags for all 330 active rotation players.',
+};
+
 export default function PlayersPage() {
   const players = getPlayersData();
 

@@ -37,48 +37,78 @@ CAP_PROJ_2028    <- 199.6
 # ------------------------------------------------------------------------------
 # Luxury Tax Calculation Function (Progressive Brackets + Repeater Penalties)
 # ------------------------------------------------------------------------------
+#' #117: the rates below were the pre-2023-CBA schedule (1.50/1.75/2.50/3.25
+#' standard, 2.50/2.75/3.50/4.25 repeater) -- stale for the 2026-27 season this
+#' dataset represents. Verified against the 2023 CBA's tax-rate schedule for
+#' 2025-26-and-later (Article VII; the rate *multipliers* are fixed from
+#' 2025-26 onward, only the dollar bracket widths grow with the cap each
+#' year) via the Hoops Rumors CBA glossary, which cites the CBA directly:
+#' https://www.hoopsrumors.com/2024/11/hoops-rumors-glossary-luxury-tax-penalties-4.html
+#' Standard: $1.00 / $1.25 / $3.50 / $4.75 per dollar in brackets 1-4, +$0.50
+#' per bracket thereafter. Repeater: $3.00 / $3.25 / $5.50 / $6.75, +$0.50 per
+#' bracket thereafter (always $2.00 above the standard rate here).
+#' Bracket *width* in the live CBA scales with the salary cap rather than
+#' being a fixed $5M; this dataset's cap/threshold constants above are
+#' already stylized round numbers rather than the officially reported
+#' figures, so the fixed $5M-wide brackets below are kept as the existing
+#' structural approach -- only the per-dollar rates were wrong and are fixed
+#' here. Revisiting bracket width to scale with SALARY_CAP is a larger,
+#' separate change and is left out of this fix.
 compute_luxury_tax <- function(payroll, is_repeater = FALSE) {
-  if (payroll <= LUXURY_TAX) return(0.0)
-  
-  overage <- payroll - LUXURY_TAX
-  tax_bill <- 0
-  
+  # #125 (supersedes the narrower #117 fix below): rewritten with
+  # pmin()/pmax() so the function vectorises directly over `payroll`
+  # instead of using scalar `if()`, which used to raise "missing value
+  # where TRUE/FALSE needed" on a single NA and "the condition has length
+  # > 1" on any vector input.
+  #   - NULL / length-0 payroll: nothing to compute -> NA_real_.
+  #   - NA/NaN payroll (scalar or any element of a vector): pmin()/pmax()
+  #     propagate NA/NaN through arithmetic without erroring, so that
+  #     element's tax bill is NA_real_ instead of crashing the whole call.
+  #   - Inf payroll: an infinite overage correctly yields an infinite (not
+  #     NaN, not an error) tax bill -- the dollar amount owed on unbounded
+  #     overage is itself unbounded, so Inf is the sensible result here.
+  #   - NA repeater flag: treated as FALSE (standard rate) with a logged
+  #     warning, rather than guessing silently or erroring.
+  payroll <- as.numeric(payroll)
+  if (length(payroll) == 0L) return(NA_real_)
+  # Normalise NaN to NA_real_ up front so NaN and NA payroll both yield the
+  # same NA_real_ result (both satisfy is.na(), but are distinct bit
+  # patterns in R and would otherwise print differently downstream).
+  payroll[is.nan(payroll)] <- NA_real_
+
+  is_repeater <- as.logical(is_repeater)
+  if (length(is_repeater) == 0L) is_repeater <- FALSE
+  if (anyNA(is_repeater)) {
+    warning(
+      "compute_luxury_tax(): NA repeater flag encountered; treating as FALSE (standard rate)",
+      call. = FALSE
+    )
+    is_repeater[is.na(is_repeater)] <- FALSE
+  }
+  is_repeater <- rep_len(is_repeater, length(payroll))
+
+  overage <- pmax(payroll - LUXURY_TAX, 0)
+
   # Standard vs Repeater rates per bracket ($0-5M, $5-10M, $10-15M, $15-20M, >$20M)
-  rates <- if (!is_repeater) {
-    c(1.50, 1.75, 2.50, 3.25, 3.75)
-  } else {
-    c(2.50, 2.75, 3.50, 4.25, 4.75)
+  std_rates <- c(1.00, 1.25, 3.50, 4.75, 5.25)
+  rep_rates <- c(3.00, 3.25, 5.50, 6.75, 7.25)
+
+  # Bracket widths: $5M each for brackets 1-4, uncapped (whatever remains)
+  # for bracket 5. Equivalent to the original scalar bracket-by-bracket
+  # `if` chain, just computed for every element at once.
+  b1 <- pmin(overage, 5.0)
+  b2 <- pmin(pmax(overage - 5.0, 0), 5.0)
+  b3 <- pmin(pmax(overage - 10.0, 0), 5.0)
+  b4 <- pmin(pmax(overage - 15.0, 0), 5.0)
+  b5 <- pmax(overage - 20.0, 0)
+
+  bracket_bill <- function(rates) {
+    b1 * rates[1] + b2 * rates[2] + b3 * rates[3] + b4 * rates[4] + b5 * rates[5]
   }
-  
-  # Bracket 1: $0 - $5M
-  b1 <- min(overage, 5.0)
-  tax_bill <- tax_bill + b1 * rates[1]
-  
-  # Bracket 2: $5 - $10M
-  if (overage > 5.0) {
-    b2 <- min(overage - 5.0, 5.0)
-    tax_bill <- tax_bill + b2 * rates[2]
-  }
-  
-  # Bracket 3: $10 - $15M
-  if (overage > 10.0) {
-    b3 <- min(overage - 10.0, 5.0)
-    tax_bill <- tax_bill + b3 * rates[3]
-  }
-  
-  # Bracket 4: $15 - $20M
-  if (overage > 15.0) {
-    b4 <- min(overage - 15.0, 5.0)
-    tax_bill <- tax_bill + b4 * rates[4]
-  }
-  
-  # Bracket 5: > $20M
-  if (overage > 20.0) {
-    b5 <- overage - 20.0
-    tax_bill <- tax_bill + b5 * rates[5]
-  }
-  
-  return(round(tax_bill, 1))
+
+  tax_bill <- ifelse(is_repeater, bracket_bill(rep_rates), bracket_bill(std_rates))
+
+  round(tax_bill, 1)
 }
 
 # ------------------------------------------------------------------------------

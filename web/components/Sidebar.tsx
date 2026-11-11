@@ -172,13 +172,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore }) => 
               </span>
             </div>
             <div className="w-full h-[2px] bg-gradient-to-r from-orange-400 via-orange-500/40 to-transparent rounded-full mt-1 mb-1" />
-            <p className="text-[10px] text-slate-400 font-mono tracking-tight">Season Projections 2026-2027</p>
+            <p className="text-[11px] sm:text-[10px] text-slate-400 font-mono tracking-tight">Season Projections 2026-2027</p>
           </div>
         </div>
 
         {/* Navigation Links */}
         <div className="space-y-1">
-          <div className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 font-mono">
+          <div className="px-2 text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 font-mono">
             Main Navigation
           </div>
           {navItems.map((item) => {
@@ -206,7 +206,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore }) => 
                   <div className="flex items-center justify-between">
                     <span className="font-semibold">{item.label}</span>
                     <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-medium ${
+                      className={`text-[11px] sm:text-[10px] px-1.5 py-0.2 rounded font-mono font-medium ${
                         isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
                       }`}
                     >
@@ -234,22 +234,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore }) => 
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50">
-              <span className="text-[10px] text-slate-400 block">Monte Carlo</span>
+              <span className="text-[11px] sm:text-[10px] text-slate-400 block">Monte Carlo</span>
               <span className="font-mono font-bold text-slate-200">1,000 Sims</span>
             </div>
             <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50">
-              <span className="text-[10px] text-slate-400 block">Total Games</span>
+              <span className="text-[11px] sm:text-[10px] text-slate-400 block">Total Games</span>
               <span className="font-mono font-bold text-slate-200">1.23M</span>
             </div>
             
             {/* Margin Sigma with ? Explainer Bubble & Compact Popover */}
             <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50 relative">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-slate-400 block">Margin σ</span>
+                <span className="text-[11px] sm:text-[10px] text-slate-400 block">Margin σ</span>
                 <button
                   type="button"
                   onClick={() => setShowSigmaExplainer(!showSigmaExplainer)}
-                  className="text-amber-400 hover:text-amber-300 p-0.5 rounded hover:bg-slate-800 transition-colors"
+                  className="min-w-6 min-h-6 flex items-center justify-center text-amber-400 hover:text-amber-300 p-0.5 rounded hover:bg-slate-800 transition-colors"
                   aria-label="What does margin sigma mean?"
                   title="What does margin sigma mean? Click for explainer."
                 >
@@ -273,7 +273,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore }) => 
                       </div>
                       <button
                         onClick={() => setShowSigmaExplainer(false)}
-                        className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800"
+                        className="min-w-6 min-h-6 flex items-center justify-center p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -311,7 +311,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore }) => 
             </div>
 
             <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/50">
-              <span className="text-[10px] text-slate-400 block">Variants</span>
+              <span className="text-[11px] sm:text-[10px] text-slate-400 block">Variants</span>
               <span className="font-mono font-bold text-indigo-400">4 Blend</span>
             </div>
           </div>
@@ -332,7 +332,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore }) => 
           <span className="truncate">ADR-I Frozen Reference Compliant</span>
         </div>
         {generatedAt && (
-          <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono px-1">
+          <div className="flex items-center justify-between text-[11px] sm:text-[10px] text-slate-500 font-mono px-1">
             <span>Updated</span>
             <time dateTime={generatedAt}>{generatedAt.slice(0, 16).replace('T', ' ')} UTC</time>
           </div>
@@ -356,7 +356,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore }) => 
               <span className="font-space font-bold text-sm tracking-wide text-white">
                 <span className="text-orange-400">NBA</span> ANALYTICS
               </span>
-              <span className="text-[10px] text-slate-400 font-mono ml-1.5">2026-2027</span>
+              <span className="text-[11px] sm:text-[10px] text-slate-400 font-mono ml-1.5">2026-2027</span>
             </div>
           </div>
         </div>

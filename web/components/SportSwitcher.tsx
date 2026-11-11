@@ -1,10 +1,13 @@
 const repoBase = process.env.PAGES_BASE_PATH ?? '';
 
+// #131: match the landing page's league order (cards + trophy tabs, in the
+// aggregator repo) instead of the previous NFL/NBA/MLB/WNBA ordering, so the
+// in-app sport switcher and landing page agree.
 const SPORTS = [
   { slug: 'nfl', label: 'NFL' },
   { slug: 'nba', label: 'NBA' },
-  { slug: 'mlb', label: 'MLB' },
   { slug: 'wnba', label: 'WNBA' },
+  { slug: 'mlb', label: 'MLB' },
 ] as const;
 
 const PIP_HEX: Record<(typeof SPORTS)[number]['slug'], string> = {

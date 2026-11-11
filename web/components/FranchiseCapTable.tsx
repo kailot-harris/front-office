@@ -4,6 +4,7 @@ import React from 'react';
 import { Download } from 'lucide-react';
 import { FranchiseCbaProfile } from '@/lib/cbaTypes';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { money } from '@/lib/format';
 
 interface FranchiseCapTableProps {
   profile: FranchiseCbaProfile;
@@ -34,7 +35,7 @@ export const FranchiseCapTable: React.FC<FranchiseCapTableProps> = ({ profile })
           <h4 className="text-xs font-bold text-white tracking-tight">
             3-Year Salary Cap Book & Option Sheet
           </h4>
-          <span className="text-[10px] text-slate-400">
+          <span className="text-[11px] sm:text-[10px] text-slate-400">
             Player salary commitments, player options (PO), and team options (TO). Sourced from official Spotrac & Basketball-Reference 2026-2027 CBA filings.
           </span>
         </div>
@@ -49,15 +50,15 @@ export const FranchiseCapTable: React.FC<FranchiseCapTableProps> = ({ profile })
             <Download className="w-3.5 h-3.5" />
           </button>
           <div>
-            <span className="text-slate-400 text-[10px] mr-1">2027 Room:</span>
+            <span className="text-slate-400 text-[11px] sm:text-[10px] mr-1">2027 Room:</span>
             <span className={`font-bold ${projectedCapSpace2027 > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
-              {projectedCapSpace2027 > 0 ? `+$${projectedCapSpace2027}M` : '$0.0M'}
+              {projectedCapSpace2027 > 0 ? `+${money(projectedCapSpace2027)}` : '$0.0M'}
             </span>
           </div>
           <div>
-            <span className="text-slate-400 text-[10px] mr-1">2028 Room:</span>
+            <span className="text-slate-400 text-[11px] sm:text-[10px] mr-1">2028 Room:</span>
             <span className={`font-bold ${projectedCapSpace2028 > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
-              {projectedCapSpace2028 > 0 ? `+$${projectedCapSpace2028}M` : '$0.0M'}
+              {projectedCapSpace2028 > 0 ? `+${money(projectedCapSpace2028)}` : '$0.0M'}
             </span>
           </div>
         </div>
@@ -67,7 +68,7 @@ export const FranchiseCapTable: React.FC<FranchiseCapTableProps> = ({ profile })
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead>
-            <tr className="border-b border-slate-800 text-[10px] font-mono text-slate-400 uppercase tracking-wider">
+            <tr className="border-b border-slate-800 text-[11px] sm:text-[10px] font-mono text-slate-400 uppercase tracking-wider">
               <th className="pb-2 font-semibold">Player</th>
               <th className="pb-2 font-semibold text-center">Pos</th>
               <th className="pb-2 font-semibold text-right">2026-2027 ($M)</th>
@@ -82,21 +83,21 @@ export const FranchiseCapTable: React.FC<FranchiseCapTableProps> = ({ profile })
                 <td className="py-2 font-sans font-medium text-white truncate max-w-[140px]">
                   {c.playerName}
                 </td>
-                <td className="py-2 text-center text-[10px] text-slate-400">
+                <td className="py-2 text-center text-[11px] sm:text-[10px] text-slate-400">
                   {c.position}
                 </td>
                 <td className="py-2 text-right font-bold text-slate-200">
-                  ${c.salary2026.toFixed(1)}M
+                  {money(c.salary2026)}
                 </td>
                 <td className="py-2 text-right text-slate-300">
-                  {c.salary2027 > 0 ? `$${c.salary2027.toFixed(1)}M` : <span className="text-slate-600">UFA</span>}
+                  {c.salary2027 > 0 ? money(c.salary2027) : <span className="text-slate-600">UFA</span>}
                 </td>
                 <td className="py-2 text-right text-slate-300">
-                  {c.salary2028 > 0 ? `$${c.salary2028.toFixed(1)}M` : <span className="text-slate-600">UFA</span>}
+                  {c.salary2028 > 0 ? money(c.salary2028) : <span className="text-slate-600">UFA</span>}
                 </td>
                 <td className="py-2 text-center">
                   <span
-                    className={`text-[9px] px-1.5 py-0.5 rounded font-sans font-semibold ${
+                    className={`text-[11px] sm:text-[9px] px-1.5 py-0.5 rounded font-sans font-semibold ${
                       c.contractType === 'Guaranteed'
                         ? 'bg-slate-800 text-slate-300 border border-slate-700'
                         : c.contractType === 'Player Option'
@@ -114,9 +115,9 @@ export const FranchiseCapTable: React.FC<FranchiseCapTableProps> = ({ profile })
             <tr className="border-t-2 border-slate-800 font-mono font-bold text-xs bg-surface-raised/80">
               <td className="py-2.5 font-sans text-white">Total Guaranteed Payroll</td>
               <td className="py-2.5 text-center text-slate-500">—</td>
-              <td className="py-2.5 text-right text-amber-400">${totalPayroll2026.toFixed(1)}M</td>
-              <td className="py-2.5 text-right text-slate-200">${totalPayroll2027.toFixed(1)}M</td>
-              <td className="py-2.5 text-right text-slate-200">${totalPayroll2028.toFixed(1)}M</td>
+              <td className="py-2.5 text-right text-amber-400">{money(totalPayroll2026)}</td>
+              <td className="py-2.5 text-right text-slate-200">{money(totalPayroll2027)}</td>
+              <td className="py-2.5 text-right text-slate-200">{money(totalPayroll2028)}</td>
               <td className="py-2.5 text-center text-slate-500">—</td>
             </tr>
           </tfoot>

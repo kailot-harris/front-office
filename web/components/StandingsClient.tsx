@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { TeamProjection, ModelMetadata } from '@/lib/types';
 import {
   Trophy,
@@ -65,6 +65,19 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
   const [tableMode, setTableMode] = useState<'projections' | 'reality'>('projections');
   const [sortBy, setSortBy] = useState<StandingsSortField>('ensemble_mean_wins');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // #118: at narrow viewports most of this 9-column table is off-screen with
+  // no affordance. The Team column is pinned via `sticky left-0`, and this
+  // scroll-fade hint on the right edge disappears once scrolled to the end.
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [showScrollHint, setShowScrollHint] = useState(true);
+
+  const updateScrollHint = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
+    setShowScrollHint(el.scrollWidth > el.clientWidth && !atEnd);
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -192,6 +205,10 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
         return sortOrder === 'desc' ? -cmp : cmp;
       });
   }, [enrichedTeams, selectedConference, selectedDivision, sortBy, sortOrder]);
+
+  useEffect(() => {
+    updateScrollHint();
+  }, [updateScrollHint, filteredTeams.length, tableMode, activeTab]);
 
   const handleExportCsv = () => {
     if (tableMode === 'reality') {
@@ -365,7 +382,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                 League Overperformers (vs Preseason Projections)
               </h3>
             </div>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span className="text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
               Win Pace Delta &gt; 0
             </span>
           </div>
@@ -377,17 +394,17 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                 className="bg-surface/70 border border-slate-800/90 rounded-xl p-3 flex flex-col justify-between hover:border-emerald-500/40 transition-colors shadow-sm"
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[10px] font-mono font-bold text-slate-500 w-3">#{idx + 1}</span>
+                  <span className="text-[11px] sm:text-[10px] font-mono font-bold text-slate-500 w-3">#{idx + 1}</span>
                   <TeamLogo team={t.team} size="sm" />
                   <div className="min-w-0">
                     <span className="font-bold text-xs text-white block truncate">{t.team_name}</span>
-                    <span className="text-[10px] font-mono text-slate-400">
+                    <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">
                       {t.actual.wins}-{t.actual.losses} ({(t.actual_win_pct * 100).toFixed(0)}%)
                     </span>
                   </div>
                 </div>
                 <div className="pt-1.5 border-t border-slate-800/80 flex items-center justify-between font-mono text-xs">
-                  <span className="text-[10px] text-slate-400">Pace: {t.current_pace.toFixed(1)}W</span>
+                  <span className="text-[11px] sm:text-[10px] text-slate-400">Pace: {t.current_pace.toFixed(1)}W</span>
                   <span className="font-bold text-emerald-400 flex items-center gap-0.5">
                     <TrendingUp className="w-3 h-3" />
                     +{t.performance_delta.toFixed(1)}
@@ -409,7 +426,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                 League Underperformers (vs Preseason Projections)
               </h3>
             </div>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">
+            <span className="text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">
               Win Pace Delta &lt; 0
             </span>
           </div>
@@ -421,17 +438,17 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                 className="bg-surface/70 border border-slate-800/90 rounded-xl p-3 flex flex-col justify-between hover:border-rose-500/40 transition-colors shadow-sm"
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[10px] font-mono font-bold text-slate-500 w-3">#{idx + 1}</span>
+                  <span className="text-[11px] sm:text-[10px] font-mono font-bold text-slate-500 w-3">#{idx + 1}</span>
                   <TeamLogo team={t.team} size="sm" />
                   <div className="min-w-0">
                     <span className="font-bold text-xs text-white block truncate">{t.team_name}</span>
-                    <span className="text-[10px] font-mono text-slate-400">
+                    <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">
                       {t.actual.wins}-{t.actual.losses} ({(t.actual_win_pct * 100).toFixed(0)}%)
                     </span>
                   </div>
                 </div>
                 <div className="pt-1.5 border-t border-slate-800/80 flex items-center justify-between font-mono text-xs">
-                  <span className="text-[10px] text-slate-400">Pace: {t.current_pace.toFixed(1)}W</span>
+                  <span className="text-[11px] sm:text-[10px] text-slate-400">Pace: {t.current_pace.toFixed(1)}W</span>
                   <span className="font-bold text-rose-400 flex items-center gap-0.5">
                     <TrendingDown className="w-3 h-3" />
                     {t.performance_delta.toFixed(1)}
@@ -461,7 +478,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
             <BarChart2 className="w-4 h-4 pointer-events-none text-amber-400" />
             <span className="pointer-events-none">Playoff Contenders (Box-Whisker)</span>
             <span
-              className={`text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
+              className={`text-[11px] sm:text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
                 activeTab === 'visualizer' ? 'bg-white/20 text-white font-bold' : 'bg-slate-800 text-slate-400'
               }`}
             >
@@ -484,7 +501,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
             <Table className="w-4 h-4 pointer-events-none text-indigo-300" />
             <span className="pointer-events-none">Full Standings Table</span>
             <span
-              className={`text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
+              className={`text-[11px] sm:text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
                 activeTab === 'table' ? 'bg-white/20 text-white font-bold' : 'bg-slate-800 text-slate-400'
               }`}
             >
@@ -647,7 +664,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                 onClick={handleExportCsv}
                 title="Export CSV"
                 aria-label="Export standings table as CSV"
-                className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+                className="min-w-6 min-h-6 p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors flex items-center justify-center"
               >
                 <Download className="w-3.5 h-3.5" />
               </button>
@@ -655,14 +672,14 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
           </div>
 
           {/* Main Standings Table */}
-          <div className="bg-surface-raised/70 border border-slate-800 rounded-xl shadow-xl overflow-hidden">
-            <div className="overflow-x-auto">
+          <div className="bg-surface-raised/70 border border-slate-800 rounded-xl shadow-xl overflow-hidden relative">
+            <div ref={scrollContainerRef} onScroll={updateScrollHint} className="overflow-x-auto">
               <table className="w-full text-left text-sm border-collapse">
                 <thead>
                   <tr className="bg-surface/80 border-b border-slate-800 text-slate-400 font-medium text-xs select-none">
                     <th
                       onClick={() => handleSort('rank')}
-                      className="py-3.5 px-4 w-14 text-center cursor-pointer hover:text-white transition-colors group"
+                      className="py-3.5 px-4 w-14 text-center cursor-pointer hover:text-white transition-colors group hidden sm:table-cell"
                       title="Click to sort by rank"
                     >
                       <div className="flex items-center justify-center gap-1">
@@ -672,7 +689,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                     </th>
                     <th
                       onClick={() => handleSort('team')}
-                      className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors group"
+                      className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors group sticky left-0 z-10 bg-surface border-r border-slate-800"
                       title="Click to sort alphabetically by team name"
                     >
                       <div className="flex items-center gap-1.5">
@@ -682,7 +699,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                     </th>
                     <th
                       onClick={() => handleSort('conference')}
-                      className="py-3.5 px-3 text-center cursor-pointer hover:text-white transition-colors group"
+                      className="py-3.5 px-3 text-center cursor-pointer hover:text-white transition-colors group hidden sm:table-cell"
                       title="Click to sort by conference"
                     >
                       <div className="flex items-center justify-center gap-1">
@@ -692,7 +709,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                     </th>
                     <th
                       onClick={() => handleSort('division')}
-                      className="py-3.5 px-3 text-center cursor-pointer hover:text-white transition-colors group"
+                      className="py-3.5 px-3 text-center cursor-pointer hover:text-white transition-colors group hidden sm:table-cell"
                       title="Click to sort by division"
                     >
                       <div className="flex items-center justify-center gap-1">
@@ -860,10 +877,10 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                         key={team.team}
                         className="hover:bg-slate-800/40 transition-colors group text-slate-200"
                       >
-                        <td className="py-3 px-4 text-center text-xs font-mono text-slate-400">
+                        <td className="py-3 px-4 text-center text-xs font-mono text-slate-400 hidden sm:table-cell">
                           {idx + 1}
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4 sticky left-0 z-10 bg-surface-raised border-r border-slate-800">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-lg bg-surface/80 border border-slate-800 p-1 flex items-center justify-center flex-shrink-0 group-hover:border-slate-700 transition-colors">
                               <TeamLogo team={team.team} size="md" />
@@ -871,7 +888,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                             <div>
                               <div className="font-semibold text-white group-hover:text-indigo-400 transition-colors flex items-center gap-2">
                                 <span>{team.team_name}</span>
-                                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800/80 text-amber-400 border border-slate-700/60 font-semibold">
+                                <span className="text-[11px] sm:text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800/80 text-amber-400 border border-slate-700/60 font-semibold">
                                   {team.team}
                                 </span>
                               </div>
@@ -881,7 +898,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                             </div>
                           </div>
                         </td>
-                        <td className="py-3 px-3 text-center">
+                        <td className="py-3 px-3 text-center hidden sm:table-cell">
                           <span
                             className={`px-2 py-0.5 rounded text-xs font-semibold ${
                               team.conference === 'East'
@@ -892,7 +909,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                             {team.conference}
                           </span>
                         </td>
-                        <td className="py-3 px-3 text-center text-xs text-slate-400">{team.division}</td>
+                        <td className="py-3 px-3 text-center text-xs text-slate-400 hidden sm:table-cell">{team.division}</td>
 
                         {tableMode === 'reality' ? (
                           /* Projections vs Reality Table Cells */
@@ -1010,6 +1027,12 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                 </tbody>
               </table>
             </div>
+            {showScrollHint && (
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute top-0 right-0 bottom-0 w-10 bg-gradient-to-l from-surface-raised to-transparent sm:hidden"
+              />
+            )}
           </div>
 
           <div className="flex justify-end pt-1">
@@ -1061,7 +1084,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                       <span className={`w-2 h-2 rounded-full ${isEast ? 'bg-blue-500' : 'bg-red-500'}`} />
                       {divName} Division
                     </span>
-                    <span className="text-[10px] font-mono text-slate-500">5 Teams</span>
+                    <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">5 Teams</span>
                   </div>
 
                   <div className="p-2 space-y-1.5 divide-y divide-slate-800/40">
@@ -1071,7 +1094,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                         className="pt-1.5 first:pt-0 flex items-center justify-between hover:bg-slate-800/40 p-1.5 rounded-lg transition-colors"
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-[10px] font-mono text-slate-500 font-bold w-3">
+                          <span className="text-[11px] sm:text-[10px] font-mono text-slate-500 font-bold w-3">
                             {idx + 1}
                           </span>
                           <TeamLogo team={team.team} size="sm" />
@@ -1080,7 +1103,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                               {team.team_name}
                             </span>
                             {tableMode === 'reality' ? (
-                              <span className="text-[10px] font-mono text-slate-400">
+                              <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">
                                 {team.actual.wins}-{team.actual.losses} • Diff:{' '}
                                 <strong
                                   className={
@@ -1095,7 +1118,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                                 </strong>
                               </span>
                             ) : (
-                              <span className="text-[10px] font-mono text-slate-400">
+                              <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">
                                 PO: {(team.ensemble_playoff_prob * 100).toFixed(0)}% • Title:{' '}
                                 {(team.ensemble_title_prob * 100).toFixed(0)}%
                               </span>
@@ -1110,7 +1133,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                                 {team.current_pace.toFixed(1)}W pace
                               </span>
                               <span
-                                className={`inline-flex items-center gap-0.5 text-[10px] font-mono font-bold ${
+                                className={`inline-flex items-center gap-0.5 text-[11px] sm:text-[10px] font-mono font-bold ${
                                   team.performance_delta > 0
                                     ? 'text-emerald-400'
                                     : team.performance_delta < 0
@@ -1133,7 +1156,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                               <span className="text-xs font-mono font-bold text-white block">
                                 {team.ensemble_mean_wins.toFixed(1)}W
                               </span>
-                              <span className="text-[10px] font-mono text-indigo-400">
+                              <span className="text-[11px] sm:text-[10px] font-mono text-indigo-400">
                                 {(team.win_pct * 100).toFixed(1)}% win
                               </span>
                             </>

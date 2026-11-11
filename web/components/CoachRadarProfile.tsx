@@ -60,7 +60,7 @@ export const CoachRadarProfile: React.FC<CoachRadarProfileProps> = ({
   return (
     <div ref={containerRef} className="flex flex-col items-center" title={`5D Tactical Profile: ${coachName}`}>
       <div className="w-full flex items-center justify-between mb-1">
-        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">
+        <span className="text-[11px] sm:text-[10px] font-bold text-slate-300 uppercase tracking-wider">
           {coachName} — 5D Radar Profile
         </span>
         <button
@@ -178,7 +178,7 @@ export const CoachRadarProfile: React.FC<CoachRadarProfileProps> = ({
                   x="0"
                   y="-4"
                   textAnchor={textAnchor}
-                  className="fill-slate-300 text-[10px] font-bold tracking-tight"
+                  className="fill-slate-300 text-[11px] sm:text-[10px] font-bold tracking-tight"
                 >
                   {axis.label}
                 </text>
@@ -186,7 +186,7 @@ export const CoachRadarProfile: React.FC<CoachRadarProfileProps> = ({
                   x="0"
                   y="8"
                   textAnchor={textAnchor}
-                  className="fill-amber-400 font-mono text-[10px] font-semibold"
+                  className="fill-amber-400 font-mono text-[11px] sm:text-[10px] font-semibold"
                 >
                   {axis.value}th %ile
                 </text>
@@ -204,11 +204,11 @@ export const CoachRadarProfile: React.FC<CoachRadarProfileProps> = ({
             className="p-2 rounded-lg bg-surface-raised/60 border border-slate-800 flex flex-col justify-between"
             title={a.desc}
           >
-            <span className="text-[10px] text-slate-400 font-medium truncate">{a.label}</span>
+            <span className="text-[11px] sm:text-[10px] text-slate-400 font-medium truncate">{a.label}</span>
             <div className="flex items-baseline justify-between mt-1">
               <span className="font-mono text-xs font-bold text-white">{a.value}%</span>
               <span
-                className={`text-[9px] font-mono font-semibold px-1 py-0.2 rounded ${
+                className={`text-[11px] sm:text-[9px] font-mono font-semibold px-1 py-0.2 rounded ${
                   a.value >= 80
                     ? 'bg-emerald-500/10 text-emerald-400'
                     : a.value >= 50

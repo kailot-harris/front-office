@@ -52,7 +52,7 @@ export const DnaManifoldScatter: React.FC<DnaManifoldScatterProps> = ({
           </p>
         </div>
         <div className="text-right flex items-center gap-2">
-          <span className="text-[10px] font-mono bg-zinc-900 border border-zinc-800 text-sky-400 px-2 py-0.5 rounded">
+          <span className="text-[11px] sm:text-[10px] font-mono bg-zinc-900 border border-zinc-800 text-sky-400 px-2 py-0.5 rounded">
             N = {players.length} Players
           </span>
           <button
@@ -106,7 +106,7 @@ export const DnaManifoldScatter: React.FC<DnaManifoldScatterProps> = ({
             <text
               y="-12"
               textAnchor="middle"
-              className="text-[10px] font-bold fill-rose-400 select-none pointer-events-none drop-shadow-md"
+              className="text-[11px] sm:text-[10px] font-bold fill-rose-400 select-none pointer-events-none drop-shadow-md"
             >
               {selectedPlayer.playerName}
             </text>
