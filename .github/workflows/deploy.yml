@@ -100,6 +100,11 @@ jobs:
         run: |
           mkdir -p site
           cp index.html site/
+          # GitHub Pages only serves a root-level 404.html; without this,
+          # any mistyped or stale link at any depth falls through to GitHub's
+          # own default "Page not found" page instead of a styled one with
+          # navigation back into the site.
+          cp 404.html site/
           # The landing page's own assets (trophy clips and posters). These are
           # not part of any sport's Next build, so they have to be copied in
           # explicitly or every asset URL on the landing page 404s.

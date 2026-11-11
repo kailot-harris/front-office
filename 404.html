@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Page Not Found — Front Office</title>
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#041313" />
+  <link rel="icon" href="/front-office/nfl/icon.png" type="image/png" />
+  <style>
+    :root {
+      color-scheme: dark;
+      /* Teal Current — matches the landing page's own colorway, per
+         docs-internal/COLORWAY_IMPLEMENTATION_PLAN.md §1/§4 */
+      --surface: #041313;
+      --surface-raised: #0a2424;
+      --accent: #2dd4bf;
+      --nfl-accent: #059669;
+      --nba-accent: #4f46e5;
+      --wnba-accent: #7c3aed;
+      --mlb-accent: #0284c7;
+      --nfl-pip: #34d399;
+      --nba-pip: #fb923c;
+      --wnba-pip: #a78bfa;
+      --mlb-pip: #38bdf8;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      background: var(--surface);
+      color: #e7e9ee;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 2rem 1rem;
+      box-sizing: border-box;
+    }
+    .hero-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.35rem;
+      text-align: center;
+      padding: 0 1rem;
+      box-sizing: border-box;
+    }
+    .hero-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.625rem;
+    }
+    .hero-pip {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px rgba(45, 212, 191, 0.7);
+      flex-shrink: 0;
+    }
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      margin: 0;
+      color: #e7e9ee;
+      text-shadow: 0 0 24px rgba(45, 212, 191, 0.25);
+    }
+    .hero-rail {
+      width: 100%;
+      max-width: 320px;
+      height: 2px;
+      border-radius: 9999px;
+      background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 40%, transparent), transparent);
+      margin: 0.15rem 0;
+    }
+    .status-code {
+      margin: 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+    .hero-subheader {
+      margin: 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      color: #94a3b8;
+      max-width: 28rem;
+    }
+    .home-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.25rem;
+      border: 1px solid #1c3333;
+      border-radius: 0.6rem;
+      background: var(--surface-raised);
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-decoration: none;
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent) inset;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .home-link:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent) inset, 0 0 20px color-mix(in srgb, var(--accent) 40%, transparent);
+    }
+    nav.leagues {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(140px, 1fr));
+      gap: 0.75rem;
+      width: 100%;
+      max-width: 420px;
+    }
+    @media (max-width: 420px) {
+      nav.leagues {
+        grid-template-columns: 1fr;
+      }
+    }
+    .card {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.8rem 1rem;
+      border: 1px solid #1c3333;
+      border-top: 3px solid var(--sport-accent);
+      border-radius: 0.75rem;
+      background: var(--surface-raised);
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--sport-accent) 25%, transparent) inset;
+      color: inherit;
+      text-decoration: none;
+      font-weight: 600;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .card[data-sport="nfl"] { --sport-accent: var(--nfl-accent); --sport-pip: var(--nfl-pip); }
+    .card[data-sport="nba"] { --sport-accent: var(--nba-accent); --sport-pip: var(--nba-pip); }
+    .card[data-sport="wnba"] { --sport-accent: var(--wnba-accent); --sport-pip: var(--wnba-pip); }
+    .card[data-sport="mlb"] { --sport-accent: var(--mlb-accent); --sport-pip: var(--mlb-pip); }
+    .card:hover {
+      border-color: var(--sport-accent);
+      box-shadow: 0 0 0 1px var(--sport-accent) inset, 0 0 20px color-mix(in srgb, var(--sport-accent) 40%, transparent);
+    }
+    .sport-pip {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--sport-pip);
+      box-shadow: 0 0 8px var(--sport-pip);
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <header class="hero-header">
+    <div class="hero-title-row">
+      <span class="hero-pip" aria-hidden="true"></span>
+      <h1><span style="color: var(--accent)">FRONT</span> OFFICE</h1>
+    </div>
+    <div class="hero-rail" aria-hidden="true"></div>
+    <p class="status-code">404 &middot; Page Not Found</p>
+    <p class="hero-subheader">That link doesn&rsquo;t match anything on the site. Head back to the landing page or jump straight into a league below.</p>
+  </header>
+  <a class="home-link" href="/front-office/">
+    <span class="hero-pip" aria-hidden="true" style="box-shadow:none;"></span>
+    Back to Front Office
+  </a>
+  <nav class="leagues" aria-label="Leagues">
+    <a class="card" data-sport="nfl" href="/front-office/nfl/">
+      <span class="sport-pip" aria-hidden="true"></span>
+      NFL
+    </a>
+    <a class="card" data-sport="nba" href="/front-office/nba/">
+      <span class="sport-pip" aria-hidden="true"></span>
+      NBA
+    </a>
+    <a class="card" data-sport="wnba" href="/front-office/wnba/">
+      <span class="sport-pip" aria-hidden="true"></span>
+      WNBA
+    </a>
+    <a class="card" data-sport="mlb" href="/front-office/mlb/">
+      <span class="sport-pip" aria-hidden="true"></span>
+      MLB
+    </a>
+  </nav>
+</body>
+</html>
