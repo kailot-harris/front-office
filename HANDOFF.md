@@ -1,26 +1,35 @@
-# HANDOFF — WNBA Gallery phases 2, 3 AND 4 (issues #145, #146, #147) COMPLETE locally: all 12/12 charts merged+tested, /gallery route live, aggregator landing-page link added — NOT YET PUSHED; plus everything below from the 2026-11-09 sessions (test suites green §21, sentiment-lexicon tickets #170/#171 spec'd, #169 shipped, 2026 Finals Champion Freeze, Synthetic-Data Remediation, Off-Season Dossier, Four-Sport Deploy); local HEAD = `02e0d9d`, **33 commits ahead of `origin/main` and NOT YET PUSHED**
+# HANDOFF — WNBA Visual Gallery epic (#140, #144-#147) FULLY SHIPPED: pushed, deployed, live-verified at /wnba/gallery/, all 5 tracker issues CLOSED; plus everything below from the 2026-11-09 sessions (test suites green §21, sentiment-lexicon tickets #170/#171 spec'd, #169 shipped, 2026 Finals Champion Freeze, Synthetic-Data Remediation, Off-Season Dossier, Four-Sport Deploy); local HEAD = `1710606`, in sync with `origin/main` (0 ahead, 0 behind)
 
-> **START HERE (updated 2026-11-12 ~16:50 EST, local `HEAD` = `02e0d9d`, 33 commits ahead of
-> `origin/main` — NOT pushed).**
-> **Read this if you are picking up the WNBA visual gallery (issues #145/#146/#147).** This is a
-> **disjoint workstream** from everything below it in this file — §§1–21 are all about the
-> off-season monitor / sentiment-pulse / betting-decommission line of work in a different issue
-> tracker (`kailot-harris/WNBA_analytics`'s own issues). The gallery work is tracked instead in the
-> **aggregator repo's tracker**, `kailot-harris/front-office` — issues
+> **START HERE (updated 2026-11-12 ~17:30 EST, local `HEAD` = `1710606`, 0 ahead / 0 behind
+> `origin/main` — pushed and deployed).**
+> **The WNBA visual gallery epic is done.** This was a **disjoint workstream** from everything below
+> it in this file — §§1–21 are all about the off-season monitor / sentiment-pulse /
+> betting-decommission line of work in a different issue tracker
+> (`kailot-harris/WNBA_analytics`'s own issues). The gallery work was tracked in the **aggregator
+> repo's tracker**, `kailot-harris/front-office`, and all five issues are now **CLOSED**:
 > [#140](https://github.com/kailot-harris/front-office/issues/140) (epic),
-> [#144](https://github.com/kailot-harris/front-office/issues/144) (phase 1, merged),
-> [#145](https://github.com/kailot-harris/front-office/issues/145) (phase 2, all 10 charts merged),
-> **[#146](https://github.com/kailot-harris/front-office/issues/146) (phase 3, both postseason charts
-> merged)**, and **[#147](https://github.com/kailot-harris/front-office/issues/147) (phase 4, `/gallery`
-> route — NOT started)**. None of #140/#144/#145/#146/#147 is closed on the tracker yet, and closing
-> them is premature until this work is actually pushed and deployed. Full detail for phase 2 is in
-> **§22**; phase 3 is in the new **§23** at the end of this document. The short version: **all 12 of
-> 12 gallery-chart scripts are merged to local `main` and registered in
-> `tests/test_gallery_viz.R`'s `SCRIPTS` registry — the full suite passes 11/12 rendered + 1 honest
-> `[SKIP-NO-DATA]` (chart #12, a real upstream data-ingestion lag, not a bug) — and **none of this has
-> been pushed to `origin/main` yet**. Do not assume `git push` is a no-op here. **Phase 4 (#147) is
-> the next unit of work once pushed/deployed** — it needs a `web/` change (`/gallery` route, sidebar,
-> landing page), which nothing in phases 1-3 has touched.
+> [#144](https://github.com/kailot-harris/front-office/issues/144) (phase 1, plumbing),
+> [#145](https://github.com/kailot-harris/front-office/issues/145) (phase 2, charts 1-10),
+> [#146](https://github.com/kailot-harris/front-office/issues/146) (phase 3, postseason charts 11-12),
+> and [#147](https://github.com/kailot-harris/front-office/issues/147) (phase 4, `/gallery` route,
+> sidebar, landing-page link). Each closing comment cites the live-verification evidence directly —
+> read the tracker, not just this file, for that evidence.
+>
+> **Live and verified at <https://kailot-harris.github.io/front-office/wnba/gallery/>**: all 11
+> rendered charts serve real images (HTTP 200), the 12th (`gif_finals_closing_stretch`, chart #12)
+> correctly shows as not-yet-rendered rather than a broken image, the aggregator landing page links
+> to it, and the WNBA app's own sidebar has a working `/gallery` entry. Full detail is in **§22**
+> (phase 2), **§23** (phase 3), and **§24** (phase 4 plus the push/deploy/close-out). **If you are
+> picking up fresh WNBA gallery work, there is currently no known next phase** — #140's own
+> acceptance checklist is fully satisfied and nothing in its body or any closed issue references a
+> phase 5 beyond what #147 already shipped. The only still-open thread is re-rendering chart #12
+> once wehoop ingests the relevant game's data (§23c/§24e item 2) — no code change needed for that,
+> just a re-run.
+>
+> **This file has grown to ~2,900 lines and more than half of it (§§22-24 plus most of §§1-21) is now
+> closed, historical work.** Consider running the companion `trim-handoff` skill before adding much
+> more to this file — it moves closed-work writeups into an archive and leaves pointers, so the
+> next-step section doesn't keep sinking further from the top.
 >
 > The block immediately below (unchanged, still accurate for its own workstream) is the previous
 > session's:
@@ -2844,13 +2853,14 @@ lands and the script is re-run; the new asset-contract test's paired assertion (
 hasPng`) treats its current "neither file" state as a legitimate pass, same pattern as the
 pre-existing net-rating-trajectory contract it was modeled on.
 
-### 24c. Note for whoever runs the actual push/deploy
+### 24c. Note for whoever runs the actual push/deploy — RESOLVED, see §24e
 
-Both `main` branches (`WNBA Analytics` and `front-office-aggregator`) now have real, uncommitted-
-until-now content ready to go out, but **nothing has been pushed from either repo yet** — same
-as §§22-23 left it. The aggregator's new `wnba/gallery/` link will 404 until `WNBA Analytics`'s
-`main` is pushed, pulled into the aggregator via its `wnba` subtree, and the aggregator itself is
-redeployed (see §6 for the exact sequence) — don't deploy the aggregator link alone first.
+This note originally warned that both `main` branches had content ready to go out but nothing
+pushed yet, and that the order matters (don't deploy the aggregator link before the WNBA subtree
+pull lands). **That sequence has since been run to completion in this same session — see §24e for
+the actual commands, run IDs, and live-verification evidence.** Left here only so the "don't
+deploy the aggregator link alone first" ordering constraint is still visible to a reader who stops
+at §24c without reading further.
 
 ### 24d. Errors and fixes this section
 
@@ -2871,31 +2881,65 @@ redeployed (see §6 for the exact sequence) — don't deploy the aggregator link
   `/.subagent-runs/`-style `.gitignore` pattern... actually verify this specific path is gitignored
   before assuming — it was not checked this session).
 
-### 24e. Concrete next step
+### 24e. Push, deploy, and tracker close-out — DONE this same session
 
-**All code-side work for the WNBA gallery effort (#144/#145/#146/#147) is now complete and merged
-locally.** What's left is entirely deploy/ops, not code:
+Everything §24e previously listed as "what's left" has since happened, in this order:
 
-1. **Push and deploy** (carried forward from §§22-23, still not done — now the main blocker). Local
-   `WNBA Analytics` main is 33 commits ahead of `origin/main`. Sequence once approved: `git push
-   origin main` from `WNBA Analytics` → aggregator subtree pull (`git subtree pull --prefix=wnba
-   wnba-origin main -m "..."` in `front-office-aggregator`, which will also pick up the
-   already-committed `wnba/gallery/` link's sibling content) → push `front-office-aggregator`'s
-   `main` → live-verify per §6's 4-step sequence. Only after the gallery is confirmed live should
-   #144/#145/#146/#147 be closed on the `kailot-harris/front-office` tracker.
-2. **Re-run `gif_finals_closing_stretch.R` periodically** (unchanged from §23d item 3) — no code
-   change expected, just a future re-render and a new `cache/`/`web/public/media` commit once Game
-   7's event-level data lands in wehoop. Once it does, re-run `npx vitest run
-   tests/contracts/assets.test.ts` from `web/` to confirm the "is a real, non-trivial image pair"
-   half of the new contract now exercises all 12 charts instead of 11.
-3. **Scratch file cleanup** (owner's call, not yet done, growing list): `batch_issue145_template.md`,
-   `batch_issue145_items.json`, `batch_issue146_template.md`, `batch_issue146_items.json`,
-   `brief_issue147.md`, `result_issue147.json` (all untracked at the repo root), plus the unrelated
-   leftover `brief_issue171.md`. Also resolve the stray `.worktrees/issue147` directory noted in
-   §24d.
-4. There is no remaining phase of the original `#140` gallery epic known to this session — #147 was
-   explicitly phase 4/"the `/gallery` route, sidebar, landing page" and nothing in its own body or
-   #140's references a phase 5. Confirm on the tracker before assuming the epic is fully closed out.
+1. **Pushed**: `git push origin main` from `WNBA Analytics` (`1710606`, 34 commits). Confirmed
+   afterward with `git rev-list --count origin/main..HEAD` → `0`.
+2. **Subtree-pulled**: `git subtree pull --prefix=wnba wnba-origin main -m "chore:
+   subtree-pull WNBA gallery phases 2-4 (#145, #146, #147)"` in `front-office-aggregator`
+   (merge commit `27f42ec`). The remote had also advanced with unrelated automated subtree syncs
+   for other sports in the meantime (`29e700c`, NFL/MLB) — merged cleanly with no conflicts, since
+   they touch entirely different top-level directories (`nfl/`, `mlb/` vs. `wnba/`).
+3. **Pushed the aggregator**: `git push origin main` (`90448eb`) — triggered
+   `.github/workflows/deploy.yml` run
+   [43270626191](https://github.com/kailot-harris/front-office/actions/runs/43270626191), green in
+   ~1m36s (`build (wnba)` 1m1s + `assemble-and-deploy` 35s).
+4. **Live-verified** at <https://kailot-harris.github.io/front-office/wnba/gallery/> (browser,
+   same session): page renders all 12 catalog entries with correct titles/descriptions/categories;
+   `read_network_requests` confirmed all 11 rendered charts' GIFs return **HTTP 200** from
+   `.../wnba/media/gif_*.gif` (not 404 — the exact failure mode §6's "gotcha" warns a green build
+   can hide); `gif_finals_closing_stretch.gif` correctly 404s (no `<picture>` is rendered for it
+   client-side, so this isn't a visible broken image); the landing page's `wnba/gallery/` link
+   resolves; the WNBA app's own sidebar shows the "Visual Gallery" entry.
+5. **Closed all 5 tracker issues** (`gh issue close`, each preceded by a `gh issue comment` citing
+   the specific live-verification evidence above): #145, #146, #147, and the #140 epic itself
+   (#144 was already closed from an earlier session). Read each issue's closing comment on
+   `kailot-harris/front-office` for the full per-issue evidence rather than re-deriving it here.
 
-**All file:line and commit-hash citations in this section were accurate as of 2026-11-12 ~16:50 EST —
-re-verify with `git log` / `grep` before trusting them if more time has passed.**
+**Re-verified fresh in this same `/write-handoff` pass** (not just restated from memory):
+`git rev-list --count` on both repos confirms `0`/`0` ahead/behind `origin/main`;
+`Rscript.exe --vanilla tests/test_gallery_viz.R` re-run fresh → 11 rendered + 1 honest
+`[SKIP-NO-DATA]`, 0 failures, identical skip reason/game as before; `npx vitest run
+tests/contracts/assets.test.ts` from `web/` re-run fresh → 28/28 passing;
+`gh issue list --state all` confirms #140/#144/#145/#146/#147 are all `CLOSED`.
+
+### 24f. What's actually left (not code — housekeeping only)
+
+1. **Re-run `gif_finals_closing_stretch.R` periodically** (unchanged from §23d item 3, still the
+   only open thread on the gallery itself) — no code change expected, just a future re-render once
+   Game 7's event-level data lands in wehoop, plus a new `cache/`/`web/public/media` commit and a
+   fresh subtree-pull/push/deploy cycle (steps 1-4 above, repeated). Once it renders, re-run `npx
+   vitest run tests/contracts/assets.test.ts` to confirm the "is a real, non-trivial image pair"
+   half of the contract now exercises all 12 charts instead of 11.
+2. **Scratch file cleanup** (owner's call, still not done, same list as before plus nothing new):
+   `batch_issue145_template.md`, `batch_issue145_items.json`, `batch_issue146_template.md`,
+   `batch_issue146_items.json`, `brief_issue147.md`, `result_issue147.json` (all untracked at the
+   `WNBA Analytics` repo root), the unrelated leftover `brief_issue171.md`, and the stray
+   `.worktrees/issue147` directory (§24d) that `git worktree remove --force` could not fully delete
+   (permission-denied on the directory itself, even after it was unregistered from `git worktree
+   list` and its branch deleted).
+3. **No further phase of the `#140` epic is known.** Confirmed directly against the tracker this
+   pass (`gh issue list --state all`): #140 and all four of its sub-issues are closed, and #140's
+   own acceptance checklist (12 charts, no fallback paths, `/wnba/gallery/` live and linked, tests
+   green) is fully satisfied. If new gallery work surfaces, it will be a new issue, not a reopened
+   phase.
+4. **This file is ~2,950 lines and mostly historical** (see the START-HERE block's note on
+   `trim-handoff`) — the next session that touches this file should strongly consider running that
+   skill before appending another large section, rather than letting the next-step section keep
+   sinking further down.
+
+**All file:line, commit-hash, and run-id citations in this section were accurate as of 2026-11-12
+~17:30 EST, re-verified fresh in this pass — re-verify again with `git log` / `grep` / the tracker
+before trusting them if more time has passed.**
