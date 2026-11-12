@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { MatchupsPayload, Matchup, MatchupWeek } from '@/lib/matchupTypes';
 import { MatchupCard } from '@/components/MatchupCard';
 import { TeamLogo } from '@/components/TeamLogo';
+import { HowToRead } from '@/components/HowToRead';
 import { LayoutGrid, Table2, Calendar, Check, X, CircleDashed } from 'lucide-react';
 
 interface MatchupsClientProps {
@@ -148,6 +149,15 @@ const Header: React.FC<{ data: MatchupsPayload }> = ({ data }) => {
           {data.season} season · {s.total_games} games · {data.season_start} to{' '}
           {data.season_end}
         </p>
+        <div className="mt-2">
+          <HowToRead pageKey="matchups">
+            Every game of the season is bucketed into a week, including completed games with a
+            final score and upcoming games that only show a prediction. &quot;Graded&quot; games
+            are completed games where the model&apos;s pick has been checked against the actual
+            result, so the accuracy stat only updates as weeks are actually played — it is not a
+            running guess about weeks that haven&apos;t happened yet.
+          </HowToRead>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

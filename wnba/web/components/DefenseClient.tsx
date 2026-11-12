@@ -6,6 +6,8 @@ import { DRAPM_POOLED_SEASON_LABEL, dRapmMeta, dRapmColorClass } from '@/lib/def
 import { MatchupHeatmap } from './MatchupHeatmap';
 import { VersatilityScatter } from './VersatilityScatter';
 import { TeamLogo } from '@/components/TeamLogo';
+import { GlossaryTerm } from '@/components/GlossaryTerm';
+import { HowToRead } from '@/components/HowToRead';
 import { Shield, Search, ChevronRight, Activity, Crosshair } from 'lucide-react';
 
 interface DefenseClientProps {
@@ -73,6 +75,17 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
             no matching RAPM row, so they show a heuristic estimate from rebounds and assists instead;
             that estimate is not RAPM and is not comparable to the fitted values.
           </p>
+          <div className="mt-2">
+            <HowToRead pageKey="defense">
+              Switch entropy (H<sub>v</sub>) measures how evenly a player&apos;s defensive matchups
+              spread across positions 1 through 5 — higher means a true switch-everything
+              defender, lower means a specialist who mostly guards one spot. Defensive{' '}
+              <GlossaryTerm termKey="rapm" /> is the same ridge-regression approach as offensive
+              RAPM, just fit to defensive point prevention instead of scoring, so it carries the
+              same 0-is-average scale. Sort by rim field-goal suppression (more negative is
+              stronger) to find the best rim protectors.
+            </HowToRead>
+          </div>
         </div>
       </div>
 

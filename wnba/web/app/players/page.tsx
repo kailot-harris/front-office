@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { getPlayersData } from '@/lib/data';
 import { PlayersClient } from '@/components/PlayersClient';
+import { HowToRead } from '@/components/HowToRead';
 
 export const metadata: Metadata = {
   title: 'Player Projections & Outliers',
@@ -27,6 +28,15 @@ export default function PlayersPage() {
             <p className="text-slate-400 text-sm mt-1">
               Projected Games, MPG, Points, Rebounds, Assists, and Statistical Outlier Badges (|z| &gt; 2.0).
             </p>
+            <div className="mt-2">
+              <HowToRead pageKey="players">
+                Switch between per-game and season-total views with the toggle above the table;
+                every column re-sorts on click. A player flagged &quot;Outlier&quot; has a
+                projected stat more than 2 standard deviations (|z| &gt; 2.0) from the position
+                average — a signal the projection is unusually extreme, not necessarily wrong, so
+                worth a second look rather than an automatic discount.
+              </HowToRead>
+            </div>
           </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-violet-400 via-violet-500/40 to-transparent" />

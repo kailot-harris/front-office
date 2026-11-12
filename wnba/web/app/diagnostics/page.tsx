@@ -1,6 +1,8 @@
 import { Metadata } from 'next';
 import { getDiagnostics, getMetadata } from '@/lib/data';
 import { DiagnosticsClient } from '@/components/DiagnosticsClient';
+import { GlossaryTerm } from '@/components/GlossaryTerm';
+import { HowToRead } from '@/components/HowToRead';
 
 export const metadata: Metadata = {
   title: 'Modeling Analysis & Diagnostics',
@@ -28,6 +30,18 @@ export default function DiagnosticsPage() {
             <p className="text-slate-400 text-sm mt-1">
               Empirical reliability curves, Brier score, accuracy drift over time, and residual distributions from historical evaluations.
             </p>
+            <div className="mt-2">
+              <HowToRead pageKey="diagnostics">
+                This page scores the model against what actually happened, not against itself.
+                The calibration curve bins every historical forecast by predicted win probability
+                and checks whether that bucket of games was actually won that often — a bucket far
+                off the diagonal means the model is over- or under-confident there.{' '}
+                <GlossaryTerm termKey="brierScore" /> and <GlossaryTerm termKey="logLoss" /> are two
+                different penalties for the same miscalibration, and <GlossaryTerm termKey="hca" />{' '}
+                rate is the empirical share of home teams that actually won, for comparison against
+                the fixed HCA constant used in the projections.
+              </HowToRead>
+            </div>
           </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-violet-400 via-violet-500/40 to-transparent" />
