@@ -50,7 +50,15 @@ SCRIPTS <- list(
   list(script = "tools/gif_rapm_leaders_2026.R",           gif = "cache/gif_rapm_leaders_2026.gif",           png = "cache/gif_rapm_leaders_2026.png"),
   list(script = "tools/gif_rapm_leaders_by_season.R",      gif = "cache/gif_rapm_leaders_by_season.gif",      png = "cache/gif_rapm_leaders_by_season.png"),
   list(script = "tools/gif_upset_timeline.R",              gif = "cache/gif_upset_timeline.gif",              png = "cache/gif_upset_timeline.png"),
-  list(script = "tools/gif_forecast_calibration.R",        gif = "cache/gif_forecast_calibration.gif",        png = "cache/gif_forecast_calibration.png")
+  list(script = "tools/gif_forecast_calibration.R",        gif = "cache/gif_forecast_calibration.gif",        png = "cache/gif_forecast_calibration.png"),
+  # Phase 3 (#146), postseason charts 11-12.
+  list(script = "tools/gif_playoff_bracket_progression.R", gif = "cache/gif_playoff_bracket_progression.gif", png = "cache/gif_playoff_bracket_progression.png"),
+  # gif_finals_closing_stretch.R (#12) is an expected [SKIP-NO-DATA] as of
+  # 2026-11-12: wehoop has not yet ingested the 2026 Finals Game 7
+  # (2026-10-31, ESPN game_id 401918311) play-by-play/shot event logs. The
+  # harness treats this as a pass-through skip, not a failure -- re-run once
+  # that game's event-level data is available upstream.
+  list(script = "tools/gif_finals_closing_stretch.R",       gif = "cache/gif_finals_closing_stretch.gif",      png = "cache/gif_finals_closing_stretch.png")
 )
 
 if (length(SCRIPTS) == 0) {
