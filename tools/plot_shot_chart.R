@@ -58,8 +58,8 @@ create_nba_court_elements <- function(line_color = "#334155", linewidth = 0.6) {
   calc_arc <- function(center = c(0, 5.25), radius = 23.75, from_angle = 0, to_angle = pi, n = 120) {
     theta <- seq(from_angle, to_angle, length.out = n)
     data.frame(
-      x = center[1] + radius * cos(theta),
-      y = center[2] + radius * sin(theta)
+      x = center[1] + radius * cos(theta), # chart-authenticity-allow: sweeps a fixed regulation radius/angle into court-line geometry, not plotted data
+      y = center[2] + radius * sin(theta)  # chart-authenticity-allow: sweeps a fixed regulation radius/angle into court-line geometry, not plotted data
     )
   }
 
@@ -67,13 +67,13 @@ create_nba_court_elements <- function(line_color = "#334155", linewidth = 0.6) {
   hoop <- calc_arc(c(0, 5.25), radius = 0.75, 0, 2 * pi, n = 60)
 
   # Backboard line: x in [-3, 3], y = 4.0
-  backboard <- data.frame(
+  backboard <- data.frame( # chart-authenticity-allow: fixed regulation backboard coordinates, not plotted data
     x = c(-3, 3),
     y = c(4, 4)
   )
 
   # Neck connector between backboard and hoop: x = 0, y from 4 to 4.5
-  neck <- data.frame(
+  neck <- data.frame( # chart-authenticity-allow: fixed regulation neck-connector coordinates, not plotted data
     x = c(0, 0),
     y = c(4, 4.5)
   )
@@ -81,11 +81,11 @@ create_nba_court_elements <- function(line_color = "#334155", linewidth = 0.6) {
   # Restricted area arc (radius 4 ft around hoop at (0, 5.25), for y >= 5.25)
   restricted_arc <- calc_arc(c(0, 5.25), radius = 4.0, 0, pi, n = 60)
   # Restricted area straight segments to backboard plane
-  restricted_straight_l <- data.frame(x = c(-4, -4), y = c(4, 5.25))
-  restricted_straight_r <- data.frame(x = c(4, 4), y = c(4, 5.25))
+  restricted_straight_l <- data.frame(x = c(-4, -4), y = c(4, 5.25)) # chart-authenticity-allow: fixed regulation restricted-area coordinates, not plotted data
+  restricted_straight_r <- data.frame(x = c(4, 4), y = c(4, 5.25)) # chart-authenticity-allow: fixed regulation restricted-area coordinates, not plotted data
 
   # Key outer boundary (16 ft wide, 19 ft deep)
-  key_box <- data.frame(
+  key_box <- data.frame( # chart-authenticity-allow: fixed regulation key-box coordinates, not plotted data
     x = c(-8, -8, 8, 8, -8),
     y = c(0, 19, 19, 0, 0)
   )
@@ -103,17 +103,17 @@ create_nba_court_elements <- function(line_color = "#334155", linewidth = 0.6) {
   angle_corner_l <- pi - angle_corner_r
   arc_3pt <- calc_arc(c(0, 5.25), radius = 23.75, angle_corner_r, angle_corner_l, n = 120)
 
-  corner_3_left <- data.frame(
+  corner_3_left <- data.frame( # chart-authenticity-allow: fixed regulation corner-3 line coordinates, not plotted data
     x = c(-22, -22),
     y = c(0, y_corner_end)
   )
-  corner_3_right <- data.frame(
+  corner_3_right <- data.frame( # chart-authenticity-allow: fixed regulation corner-3 line coordinates, not plotted data
     x = c(22, 22),
     y = c(0, y_corner_end)
   )
 
   # Half-court outer boundary
-  court_perimeter <- data.frame(
+  court_perimeter <- data.frame( # chart-authenticity-allow: fixed regulation half-court boundary coordinates, not plotted data
     x = c(-25, -25, 25, 25, -25),
     y = c(0, 47, 47, 0, 0)
   )
