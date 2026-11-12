@@ -272,17 +272,34 @@ for (i in seq_along(display_steps)) {
   s <- display_steps[i]
   frame_lines <- race_df %>% filter(step <= s)
   frame_pts   <- race_df %>% filter(step == s) %>% arrange(team)
-  frame_pts$logo_y <- jitter_apart(frame_pts$cum_diff, LOGO_MIN_GAP)
-  frame_pts$logo_x <- s + max_step * 0.028
+  frame_pts$logo_y  <- jitter_apart(frame_pts$cum_diff, LOGO_MIN_GAP)
+  # L-shaped connector, not a direct diagonal: a diagonal line from the true
+  # point to a vertically-jittered logo reads as a slope/trend, easy to
+  # confuse with the real race lines (which ARE diagonal and meaningful).
+  # Going horizontal-then-vertical keeps the "this is just a label nudge"
+  # connector visually distinct from "this is data moving."
+  frame_pts$elbow_x <- s + max_step * 0.018
+  frame_pts$logo_x  <- s + max_step * 0.030
   cur_label <- step_labels[[as.character(s)]]
 
   plots[[i]] <- ggplot(frame_lines, aes(x = step, y = cum_diff, group = team, color = team)) +
     geom_hline(yintercept = 0, linetype = "dashed", color = WNBA_COLORS$grid, linewidth = 0.8) +
     geom_line(linewidth = 1.0, alpha = 0.55) +
-    # Thin leader tick from the true value to a jittered logo (only visible
-    # when jitter_apart() actually displaced that team this frame).
-    geom_segment(data = frame_pts, aes(x = step, xend = logo_x, y = cum_diff, yend = logo_y),
-                 linewidth = 0.45, alpha = 0.7, inherit.aes = TRUE) +
+    # L-shaped leader (neutral gray, dotted, not team-colored) from the true
+    # value to its logo: flat segment out to the elbow, then a purely
+    # vertical segment up/down to the jittered logo height. Only visibly bent
+    # when jitter_apart() actually displaced that team this frame.
+    geom_segment(data = frame_pts, aes(x = step, xend = elbow_x, y = cum_diff, yend = cum_diff),
+                 color = WNBA_COLORS$subtext, linetype = "dotted", linewidth = 0.5,
+                 alpha = 0.8, inherit.aes = FALSE) +
+    geom_segment(data = frame_pts, aes(x = elbow_x, xend = elbow_x, y = cum_diff, yend = logo_y),
+                 color = WNBA_COLORS$subtext, linetype = "dotted", linewidth = 0.5,
+                 alpha = 0.8, inherit.aes = FALSE) +
+    # Solid dot at the TRUE value -- the actual end of each line, kept
+    # separate from the (possibly jittered) logo position.
+    geom_point(data = frame_pts, aes(x = step, y = cum_diff, fill = team),
+               shape = 21, size = 2.6, color = WNBA_COLORS$text, stroke = 0.6,
+               inherit.aes = FALSE) +
     # White halo behind each logo so it reads clearly against the other 14
     # lines crossing near it, rather than just a thin colored point.
     geom_point(data = frame_pts, aes(x = logo_x, y = logo_y),
