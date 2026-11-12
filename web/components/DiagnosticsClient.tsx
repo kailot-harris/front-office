@@ -38,8 +38,32 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
     );
   };
 
+  const backtest = diagnostics.historicalBacktest;
+  const rowCounts = diagnostics.rowCounts;
+
   return (
     <div className="space-y-8">
+      {/* Provenance note: the cards/chart below are driven by genuine
+          pre-game forecasts only, not the hindsight-seeded historical
+          backtest rows. See accuracy_governance.R's log_source split. */}
+      {rowCounts && (
+        <div className="bg-surface-raised/40 border border-slate-800 rounded-xl px-4 py-3 text-xs text-slate-400 flex flex-wrap items-center gap-x-6 gap-y-1">
+          <span>
+            <span className="text-slate-200 font-semibold">{rowCounts.genuinePregame.toLocaleString()}</span>{' '}
+            genuine pre-game forecasts drive the figures below.
+          </span>
+          {backtest && (
+            <span>
+              Separately, a {rowCounts.seededHindsight.toLocaleString()}-game historical backtest
+              (hindsight-seeded from box scores) scored{' '}
+              <span className="text-slate-200 font-semibold">{(backtest.overallAccuracy * 100).toFixed(1)}%</span>{' '}
+              accuracy / <span className="text-slate-200 font-semibold">{backtest.brierScore.toFixed(4)}</span>{' '}
+              Brier - shown for context only, never pooled into the headline numbers.
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Top Headline Accuracy & Scoring Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-surface-raised/60 border border-slate-800 rounded-xl p-5">

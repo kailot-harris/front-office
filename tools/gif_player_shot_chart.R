@@ -156,3 +156,87 @@ generate_player_shot_chart_gif <- function(shot_data,
 
   invisible(result)
 }
+
+# ==============================================================================
+# Standalone entry point
+#
+# Allows `Rscript tools/gif_player_shot_chart.R` to run end-to-end: load real
+# cached shot data via load_nba_shots_cache(), pick a real player with enough
+# shots, and render the GIF + PNG via generate_player_shot_chart_gif().
+# ==============================================================================
+is_main <- (function() {
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- sub("^--file=", "", args[grepl("^--file=", args)])
+  if (length(file_arg) != 1L) return(FALSE)
+  # Only treat this as the main entry point if THIS file (not some other
+  # script that merely source()'d it, e.g. tests/test_phase3_viz.R) is the
+  # one actually passed to Rscript via --file=.
+  invoked_path <- normalizePath(file_arg, winslash = "/", mustWork = FALSE)
+  this_path <- normalizePath(file.path(REPO_ROOT, "tools", "gif_player_shot_chart.R"),
+                              winslash = "/", mustWork = FALSE)
+  identical(invoked_path, this_path)
+})()
+
+if (is_main) {
+  MIN_SHOTS_REQUIRED <- 30
+
+  all_shots <- load_nba_shots_cache(
+    season = c(2026, 2027),
+    cache_dirs = c(
+      file.path(REPO_ROOT, "cache"),
+      "cache",
+      "C:/Users/kailo/kayceeslices/front-office/NBA Analytics/cache"
+    )
+  )
+
+  if (nrow(all_shots) == 0) {
+    viz_stop_no_data(
+      "tools/gif_player_shot_chart.R",
+      "no cached shot data was found (nba_shots_2026.rds / nba_shots_2027.rds)."
+    )
+  }
+
+  # Pick the player with the most shots in the cache, provided they clear the
+  # minimum shot threshold needed for a meaningful rolling-window animation.
+  shot_counts <- sort(table(all_shots$player_name), decreasing = TRUE)
+  shot_counts <- shot_counts[names(shot_counts) != "" & names(shot_counts) != "Unknown Player"]
+
+  if (length(shot_counts) == 0 || max(shot_counts) < MIN_SHOTS_REQUIRED) {
+    viz_stop_no_data(
+      "tools/gif_player_shot_chart.R",
+      sprintf("no player in the cached shot data has at least %d shots.", MIN_SHOTS_REQUIRED)
+    )
+  }
+
+  selected_player <- names(shot_counts)[1]
+  player_shots <- all_shots[all_shots$player_name == selected_player, , drop = FALSE]
+  selected_team <- if (nzchar(player_shots$team_abbrev[1])) player_shots$team_abbrev[1] else "NBA"
+
+  cat(sprintf(
+    "[INFO] Selected player '%s' (%s) with %d cached shots for shot chart GIF.\n",
+    selected_player, selected_team, nrow(player_shots)
+  ))
+
+  # Ensure the default relative output directory ("cache/") exists; the
+  # worktree's cache/ dir is gitignored and may not be present yet.
+  out_cache_dir <- file.path(REPO_ROOT, "cache")
+  if (!dir.exists(out_cache_dir)) {
+    dir.create(out_cache_dir, recursive = TRUE, showWarnings = FALSE)
+  }
+
+  result <- generate_player_shot_chart_gif(
+    shot_data = player_shots,
+    player_name = selected_player,
+    team = selected_team
+  )
+
+  gif_out <- file.path(REPO_ROOT, "cache", "gif_player_shot_chart.gif")
+  png_out <- file.path(REPO_ROOT, "cache", "gif_player_shot_chart.png")
+
+  cat(sprintf(
+    "[SUCCESS] Generated Player Shot Chart GIF for %s:\n  Cache GIF: %s (%d bytes)\n  Cache PNG: %s (%d bytes)\n",
+    selected_player,
+    gif_out, if (file.exists(gif_out)) file.info(gif_out)$size else NA,
+    png_out, if (file.exists(png_out)) file.info(png_out)$size else NA
+  ))
+}
