@@ -4,6 +4,7 @@ import { getMatchupsData } from '@/lib/data';
 import { MatchupsClient } from '@/components/MatchupsClient';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
 import { formatSeasonLabel, SEASON_SOURCES } from '@/lib/season';
+import { HowToReadDisclosure } from '@/components/HowToReadDisclosure';
 
 export const metadata = {
   title: 'Matchups: Weekly Slates, Projections & Graded Results | NBA Quantitative Analytics',
@@ -86,6 +87,15 @@ export default function MatchupsPage() {
         </div>
         <div className="w-full h-[2px] bg-gradient-to-r from-orange-400 via-orange-500/40 to-transparent mt-4" />
       </div>
+
+      <HowToReadDisclosure pageKey="matchups">
+        Past weeks show the real final score next to the model&rsquo;s pre-game pick, graded as
+        correct or not. The active week&rsquo;s projections are generated right before tip-off and
+        are the only numbers on this page scored for accuracy; upcoming weeks show a pending
+        projection with no result yet. The projection basis note above tells you whether a given
+        game&rsquo;s number came from the logged slate model or the separate 4-model ensemble —
+        the two are never averaged together.
+      </HowToReadDisclosure>
 
       <MatchupsClient dataset={dataset} />
     </div>

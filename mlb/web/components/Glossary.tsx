@@ -25,6 +25,12 @@ export const GLOSSARY_TERMS: Record<string, string> = {
     'Mean squared error between predicted win probabilities and actual outcomes; lower is better, 0.25 is a coin-flip baseline.',
   'Marcel Projection':
     'A simple, transparent baseline projection system that weights a player’s last three seasons, with regression to the mean for small samples.',
+  xFIP: 'Expected Fielding Independent Pitching — an ERA estimator built from strikeouts and walks plus a league-average home-run-per-fly-ball rate, isolating a pitcher’s performance from the fielders and luck around them.',
+  rGS: 'Tangotiger’s rolling Game Score — a single-number rating of a starting pitcher’s expected performance in a given start, relative to league average.',
+  ISO: 'Isolated Power — slugging percentage minus batting average, a rate stat that measures raw extra-base power on its own.',
+  IVB: 'Induced Vertical Break — how much a pitch’s vertical movement deviates (due to spin, via the Magnus effect) from a theoretical spin-free trajectory.',
+  HB: 'Horizontal Break — how much a pitch moves side-to-side in flight due to spin, relative to a spin-free trajectory.',
+  HCA: 'Home-Field/Court Advantage — the statistical edge given to the team playing at home, applied as a rating or win-probability bonus.',
 };
 
 interface GlossaryTermProps {

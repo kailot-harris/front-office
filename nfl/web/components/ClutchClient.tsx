@@ -17,6 +17,8 @@ import {
   Info,
 } from 'lucide-react';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { GlossaryTerm } from './Glossary';
+import { HowToRead } from './HowToRead';
 
 interface ClutchClientProps {
   initialProfiles: ClutchProfile[];
@@ -219,6 +221,16 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
           </button>
         </div>
       </div>
+
+      <HowToRead pageKey="clutch">
+        <p>
+          &quot;Clutch&quot; is defined narrowly here: plays in one-score games (within 8 points) during the 4th
+          quarter or overtime, or any play in the final 5 minutes where win probability is between 10% and 90%
+          (i.e. the game is genuinely in doubt). The <strong>Clutch Index</strong> compares a player&apos;s{' '}
+          <GlossaryTerm term="EPA" className="text-slate-300" /> in those moments to their own baseline EPA in all
+          other situations, so it measures a shift in performance under pressure, not just raw talent.
+        </p>
+      </HowToRead>
 
       {/* KPI Cards */}
       {kpiHighlights && (

@@ -3,6 +3,8 @@
 import { DiagnosticsDataset } from '@/lib/types';
 import { Layers, Sliders, Cpu, Shuffle, HelpCircle, Download } from 'lucide-react';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { GlossaryTerm } from './Glossary';
+import { HowToRead } from './HowToRead';
 
 interface VariantsClientProps {
   data: DiagnosticsDataset;
@@ -54,23 +56,23 @@ export default function VariantsClient({ data }: VariantsClientProps) {
       id: 'epa_differential',
       number: 'Candidate Model #4',
       name: 'Net EPA / Early-Down Success Rate Regression',
-      evaluatedWeight: '0%',
-      brierImpact: '+0.0023 (Degraded)',
-      liftStatus: 'Non-Productive (0.00% Lift)',
+      evaluatedWeight: 'Unverified',
+      brierImpact: 'Unverified',
+      liftStatus: 'Pending re-evaluation',
       finding:
-        'High collinearity (r = 0.88) with Ridge Massey ratings. In walk-forward testing across 80 graded games, adding EPA efficiency as an independent linear estimator inflated out-of-sample Brier score from 0.2282 to 0.2305 due to garbage-time volatility and sample-size noise.',
-      recommendation: 'Excluded from meta-ensemble; EPA utilized strictly for team diagnostic profiling.',
+        'An earlier one-off study (not saved as a reusable backtest candidate) reported this architecture degraded Brier score; those exact figures traced to a different, now-retired 3-model ensemble (Ridge 40% / Elo 35% / Market 25%) and cannot honestly be attributed to the current 2-model production ensemble. tools/model_backtest_harness.R has no saved predict_fn reconstructing this exact "EPA differential as an independent linear estimator" architecture against today’s Ridge+Elo base, so no number is shown here pending a real re-run (tools/ridge_situational_model.R’s situational-EPA ridge candidate is the closest existing building block, but it blends EPA features INTO the ridge fit rather than testing EPA as a separate estimator, so it is not a faithful substitute).',
+      recommendation: 'Do not cite a Brier/log-loss number for this row until a dedicated walk-forward candidate is built and run against the current production base.',
     },
     {
       id: 'situational_fatigue',
       number: 'Candidate Model #5',
       name: 'Standalone Rest & Travel Circadian Model',
-      evaluatedWeight: '0%',
-      brierImpact: '+0.0015 (Degraded)',
-      liftStatus: 'Non-Productive (0.00% Lift)',
+      evaluatedWeight: 'Unverified',
+      brierImpact: 'Unverified',
+      liftStatus: 'Pending re-evaluation',
       finding:
-        'Rest disparity provides directional value only in extreme edge cases (e.g., 10 days vs. 5 days). Across standard 7-day vs. 7-day slates, blending as a distinct 5% meta-learner diluted baseline probability calibration without improving log loss (0.649 vs 0.648).',
-      recommendation: 'Retained as an additive situational margin penalty ([-1.5, +1.5 pts]) inside the simulation engine rather than a meta-weight.',
+        'An earlier one-off study (not saved as a reusable backtest candidate) reported this architecture degraded log loss; those exact figures traced to the same now-retired 3-model (Ridge/Elo/Market) ensemble, not the current 2-model production ensemble. fatigue_engine.R’s fatigue_drag_pts is already used as an additive term inside the Elo candidate (tools/elo_model.R), but no STANDALONE rest/travel/circadian win-probability model has been built or backtested on its own against today’s base, so no number is shown here pending a real re-run.',
+      recommendation: 'Do not cite a Brier/log-loss number for this row until a dedicated standalone walk-forward candidate is built and run against the current production base.',
     },
   ];
 
@@ -78,23 +80,23 @@ export default function VariantsClient({ data }: VariantsClientProps) {
     {
       architecture: '2-Model Baseline (Production)',
       weight_distribution: 'Ridge (50%) + Elo (50%)',
-      brier_score: 0.2282,
-      log_loss: 0.6491,
+      brier_score: 0.2228,
+      log_loss: 0.6363,
       status: 'Active Production',
     },
     {
       architecture: '3-Model Variant (+ Net EPA)',
       weight_distribution: 'Ridge (45%) + Elo (45%) + EPA (10%)',
-      brier_score: 0.2305,
-      log_loss: 0.6542,
-      status: 'Rejected (No Lift)',
+      brier_score: null,
+      log_loss: null,
+      status: 'Unverified (pending re-run)',
     },
     {
       architecture: '3-Model Variant (+ Rest / Fatigue)',
       weight_distribution: 'Ridge (45%) + Elo (45%) + Rest (10%)',
-      brier_score: 0.2297,
-      log_loss: 0.6528,
-      status: 'Rejected (No Lift)',
+      brier_score: null,
+      log_loss: null,
+      status: 'Unverified (pending re-run)',
     },
   ];
 
@@ -130,12 +132,22 @@ export default function VariantsClient({ data }: VariantsClientProps) {
           </h1>
           <p className="text-slate-400 text-sm mt-1 max-w-3xl">
             The NFL Analytics platform merges two distinct, purely endogenous modeling philosophies into a
-            single, robust meta-predictor to maximize out-of-sample log-likelihood and minimize Brier score
+            single, robust meta-predictor to maximize out-of-sample log-likelihood and minimize <GlossaryTerm term="Brier Score" className="text-slate-300" />
             error. Every published prediction is built only from on-field game results.
           </p>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-emerald-500/40 to-transparent" />
       </div>
+
+      <HowToRead pageKey="variants">
+        <p>
+          The published model is an <strong>ensemble</strong> &mdash; a weighted blend of two independently-built
+          rating systems, not a single algorithm. Weights are tuned to minimize out-of-sample{' '}
+          <GlossaryTerm term="Brier Score" className="text-slate-300" />, so a component only gets more influence
+          if it actually improves prediction accuracy on games the model has not seen. Every input is derived from
+          real on-field results; no synthetic or subjectively-assigned data feeds into any variant.
+        </p>
+      </HowToRead>
 
       {/* Ensemble Weight Visualization Bar */}
       <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-5 shadow-xl">
@@ -197,7 +209,7 @@ export default function VariantsClient({ data }: VariantsClientProps) {
 
               {/* Core Features */}
               <div className="mb-4">
-                <span className="text-[10px] font-mono uppercase text-slate-500 block mb-1.5 font-bold">
+                <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-500 block mb-1.5 font-bold">
                   Core Mathematical Properties
                 </span>
                 <ul className="space-y-1.5">
@@ -253,7 +265,7 @@ export default function VariantsClient({ data }: VariantsClientProps) {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] font-mono text-amber-400 block uppercase font-bold">
+                  <span className="text-[11px] sm:text-[10px] font-mono text-amber-400 block uppercase font-bold">
                     {cand.number}
                   </span>
                   <h3 className="text-sm font-bold text-white">{cand.name}</h3>
@@ -295,7 +307,7 @@ export default function VariantsClient({ data }: VariantsClientProps) {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-mono">
-            <thead className="bg-surface/90 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+            <thead className="bg-surface/90 text-slate-400 uppercase text-[11px] sm:text-[10px] tracking-wider border-b border-slate-800">
               <tr>
                 <th className="px-3 py-2">Ensemble Architecture</th>
                 <th className="px-3 py-2">Weight Distribution</th>
@@ -308,23 +320,23 @@ export default function VariantsClient({ data }: VariantsClientProps) {
               <tr className="bg-accent-950/20 hover:bg-accent-950/30">
                 <td className="px-3 py-2 text-white font-bold">2-Model Baseline (Production)</td>
                 <td className="px-3 py-2 text-slate-300">Ridge (50%) + Elo (50%)</td>
-                <td className="px-3 py-2 text-right text-emerald-400 font-bold">0.2282</td>
-                <td className="px-3 py-2 text-right text-emerald-400 font-bold">0.6491</td>
+                <td className="px-3 py-2 text-right text-emerald-400 font-bold">0.2228</td>
+                <td className="px-3 py-2 text-right text-emerald-400 font-bold">0.6363</td>
                 <td className="px-3 py-2 text-center text-accent-400 font-bold">Active Production</td>
               </tr>
               <tr className="hover:bg-slate-800/40">
                 <td className="px-3 py-2 text-slate-400">3-Model Variant (+ Net EPA)</td>
                 <td className="px-3 py-2 text-slate-400">Ridge (45%) + Elo (45%) + EPA (10%)</td>
-                <td className="px-3 py-2 text-right text-rose-400 font-semibold">0.2305</td>
-                <td className="px-3 py-2 text-right text-rose-400 font-semibold">0.6542</td>
-                <td className="px-3 py-2 text-center text-slate-500 font-semibold">Rejected (No Lift)</td>
+                <td className="px-3 py-2 text-right text-slate-500 font-semibold">&mdash;</td>
+                <td className="px-3 py-2 text-right text-slate-500 font-semibold">&mdash;</td>
+                <td className="px-3 py-2 text-center text-slate-500 font-semibold">Unverified (pending re-run)</td>
               </tr>
               <tr className="hover:bg-slate-800/40">
                 <td className="px-3 py-2 text-slate-400">3-Model Variant (+ Rest / Fatigue)</td>
                 <td className="px-3 py-2 text-slate-400">Ridge (45%) + Elo (45%) + Rest (10%)</td>
-                <td className="px-3 py-2 text-right text-rose-400 font-semibold">0.2297</td>
-                <td className="px-3 py-2 text-right text-rose-400 font-semibold">0.6528</td>
-                <td className="px-3 py-2 text-center text-slate-500 font-semibold">Rejected (No Lift)</td>
+                <td className="px-3 py-2 text-right text-slate-500 font-semibold">&mdash;</td>
+                <td className="px-3 py-2 text-right text-slate-500 font-semibold">&mdash;</td>
+                <td className="px-3 py-2 text-center text-slate-500 font-semibold">Unverified (pending re-run)</td>
               </tr>
             </tbody>
           </table>
@@ -340,9 +352,12 @@ export default function VariantsClient({ data }: VariantsClientProps) {
         <p className="text-xs text-slate-300 leading-relaxed max-w-4xl">
           By ensembling an econometric regularized matrix regression (Ridge Massey) with a time-series Markovian
           rating updater (Elo), the meta-predictor suppresses individual model variance without inflating
-          prediction bias. Empirically, the 50/50 blend achieves a ~7.4% Brier score improvement over an
-          uninformative baseline, yielding sharper margin estimates and protecting projections from statistical
-          noise. When live Elo is unavailable for a matchup, the ensemble falls back to 100% Ridge-Massey.
+          prediction bias. Empirically, the 50/50 blend achieves a ~9.6% Brier score improvement over an
+          uninformative baseline (the home-win base rate&apos;s own Brier score, p(1&minus;p) &asymp; 0.2464,
+          n=5,548 walk-forward games, seasons 2003&ndash;2025 &mdash; re-run this session via tools/model_
+          backtest_harness.R&apos;s &quot;prod_ridge_elo_2model&quot; candidate, Brier 0.2228), yielding sharper
+          margin estimates and protecting projections from statistical noise. When live Elo is unavailable for
+          a matchup, the ensemble falls back to 100% Ridge-Massey.
         </p>
       </div>
     </div>

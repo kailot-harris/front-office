@@ -7,6 +7,8 @@ import { PressureResiliencePlot } from './PressureResiliencePlot';
 import { Flame, Search, ChevronRight, Activity, Crosshair, ArrowUpDown, Shield } from 'lucide-react';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
 import { SEASON_SOURCES } from '@/lib/season';
+import { HowToReadDisclosure } from '@/components/HowToReadDisclosure';
+import { GlossaryTerm } from '@/components/GlossaryTerm';
 
 interface ClutchClientProps {
   initialProfiles: ClutchProfile[];
@@ -61,6 +63,14 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
           </p>
         </div>
       </div>
+
+      <HowToReadDisclosure pageKey="clutch">
+        Only possessions in the final 5 minutes of the 4th quarter (or overtime) with the score
+        within 5 points count as clutch. <GlossaryTerm term="USCI" /> credits a player for shots
+        they created themselves rather than ones a teammate set up, <GlossaryTerm term="c-dWPA" />{' '}
+        does the same on the defensive end, and clutch <GlossaryTerm term="TS%" /> shows whether scoring
+        efficiency holds up or falls off once the game tightens.
+      </HowToReadDisclosure>
 
       {/* Main Grid: Left Roster / Right Focus View */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

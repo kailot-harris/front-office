@@ -2,6 +2,8 @@ import React from 'react';
 import { getPlayoffPicture } from '@/lib/data';
 import { PlayoffsClient } from '@/components/PlayoffsClient';
 import { Award } from 'lucide-react';
+import { GlossaryTerm } from '@/components/Glossary';
+import { HowToRead } from '@/components/HowToRead';
 
 export const metadata = {
   title: 'NFL Playoff Machine & 14-Team Bracket Simulator',
@@ -29,7 +31,7 @@ export default function PlayoffsPage() {
               <span><span className="text-emerald-400">NFL</span> Playoff Machine & Bracket Simulator</span>
             </h1>
             <p className="text-slate-400 text-sm mt-1 max-w-3xl">
-              Provisional 14-team postseason field resolved via real NFL tiebreakers (head-to-head, division, common games, conference, SOV, and SOS). Includes round-by-round Monte Carlo advancement equity and single-trial simulation.
+              Provisional 14-team postseason field resolved via real NFL tiebreakers (head-to-head, division, common games, conference, SOV, and SOS). Includes round-by-round <GlossaryTerm term="Monte Carlo Simulation" className="text-slate-300" /> advancement equity and single-trial simulation.
             </p>
           </div>
 
@@ -47,6 +49,18 @@ export default function PlayoffsPage() {
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-emerald-500/40 to-transparent" />
       </div>
+
+      <HowToRead pageKey="playoffs">
+        <p>
+          Seeding is decided by the <strong>same tiebreaker order the NFL actually uses</strong>: head-to-head
+          record, division record, common games, conference record, then <strong>SOV</strong> (Strength of
+          Victory, the combined record of teams you&apos;ve beaten) and <strong>SOS</strong> (Strength of Schedule,
+          the combined record of everyone you&apos;ve played). The bracket odds come from a{' '}
+          <GlossaryTerm term="Monte Carlo Simulation" className="text-slate-300" /> that replays the remaining
+          schedule and every playoff round thousands of times, so a team&apos;s Super Bowl odds reflect both its
+          seed and its projected strength in each potential matchup, not just its current record.
+        </p>
+      </HowToRead>
 
       {/* Main Interactive Client */}
       <PlayoffsClient dataset={dataset} />

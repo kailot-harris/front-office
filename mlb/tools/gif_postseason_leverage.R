@@ -1,27 +1,20 @@
 # ==============================================================================
-# tools/gif_postseason_leverage.R — Postseason Relief Leverage & Fatigue Meter
+# tools/gif_postseason_leverage.R — postseason relief workload and leverage
 # Path: tools/gif_postseason_leverage.R
 #
-# Generates an animated multi-round postseason bullpen high-leverage & fatigue
-# endurance meter across October games, tracking reliever workload, leverage index
-# exposure (pLI), and fatigue strain for key postseason bullpens.
+# Animates, round by round, how many batters the most-used postseason relievers
+# faced and how high the leverage was when they pitched.
 #
-# Key Features:
-#   - Tracks high-leverage relief cores across October playoff rounds
-#     (Wild Card -> Division Series -> League Championship Series -> World Series).
-#   - Reliever metrics:
-#       * Average Leverage Index (gmLI / pLI)
-#       * October Postseason Appearances & Innings Pitched
-#       * High-Pressure Fatigue & Arm Stress Meter (0-100)
-#       * Inherited Runners Stranded % (Fireman efficiency)
-#   - Official transparent franchise logos positioned via mlbplotR::geom_mlb_logos.
-#   - Full dark front-office theme via theme_mlb_dark().
-#   - Encoded with gifski engine with final frame hold.
-#   - Dual artifact export: animated GIF and static final-frame PNG.
+# Data (real, no fallback):
+#   - cache/ingest/mlb_schedule_<season>.rds   postseason game ids by round
+#   - web/public/data/world_series.json        World Series game ids
+#   - MLB Stats API win probability feed       pitcher and leverage index for
+#     every plate appearance (via tools/postseason_feed.R)
+# A reliever is any pitcher other than his team's first pitcher of the game.
+# Every number is counted from those feeds; nothing is typed in by hand, and
+# there is no modelled "fatigue" score. If a feed is unavailable the script
+# stops and renders nothing.
 #
-# Inputs: cache/specialty/bullpen_appearances_2026.rds
-#         cache/specialty/bullpen_fatigue_daily_2026.rds
-#         cache/ingest/mlb_schedule_2026.rds
 # Output: cache/viz/gif_postseason_leverage.gif
 #         cache/viz/gif_postseason_leverage.png
 # ==============================================================================
@@ -37,187 +30,111 @@ suppressPackageStartupMessages({
 
 source("config.R")
 source("tools/viz_theme.R")
+source("tools/postseason_feed.R")
 
-#' Generate Postseason Bullpen Leverage & Fatigue Meter GIF
+#' Generate Postseason Relief Workload & Leverage GIF
 #'
 #' @param season Integer MLB season year (default 2026)
+#' @param schedule_file Path to mlb_schedule_<season>.rds
+#' @param n_relievers Number of relievers to show (default 10)
 #' @param output_gif Output filename for animated GIF
 #' @param output_png Output filename for static final frame PNG
-#' @param fps Frames per second for GIF playback (default 2)
-#' @param hold_frames Number of frames to hold the final meter (default 8)
+#' @param fps Frames per second for GIF playback (default 1)
+#' @param hold_frames Number of frames to hold the final state (default 4)
 #' @param cleanup_frames Logical; remove temporary frame PNGs (default TRUE)
 #' @return Invisible list of output paths
 generate_gif_postseason_leverage <- function(season = 2026,
+                                             schedule_file = cache_path("ingest", sprintf("mlb_schedule_%d.rds", season)),
+                                             n_relievers = 10,
                                              output_gif = "gif_postseason_leverage.gif",
                                              output_png = "gif_postseason_leverage.png",
-                                             fps = 2,
-                                             hold_frames = 8,
+                                             fps = 1,
+                                             hold_frames = 4,
                                              cleanup_frames = TRUE) {
   start_time <- Sys.time()
   ensure_viz_dir()
-  message(sprintf(">>> [GIF] Generating %d Postseason Bullpen Leverage & Fatigue Meter...", season))
+  message(sprintf(">>> [GIF] Generating %d Postseason Relief Workload & Leverage chart...", season))
 
-  # Postseason relief cores and progression across October rounds
-  # Focus on key October bullpen arms from playoff contenders:
-  # MIL (Williams, Payamps, Peguero), TB (Fairbanks, Adam, Cleavinger),
-  # CLE (Clase, Smith, Gaddis), LAD (Phillips, Treinen, Kopech), NYY (Weaver, Holmes), SD (Suarez)
+  if (!file.exists(schedule_file)) {
+    stop(sprintf("[SKIP-NO-DATA] %s was not found; nothing rendered.", schedule_file), call. = FALSE)
+  }
+  rounds <- c(F = "Wild Card Series", D = "Division Series", L = "League Championship Series", W = "World Series")
 
-  relievers <- tribble(
-    ~pitcher_name, ~team_abbr, ~role,
-    "Devin Williams", "MIL", "Closer / Fireman",
-    "Joel Payamps", "MIL", "High-Leverage Setup",
-    "Pete Fairbanks", "TB", "Closer",
-    "Jason Adam", "TB", "High-Leverage Setup",
-    "Emmanuel Clase", "CLE", "Closer",
-    "Cade Smith", "CLE", "High-Leverage Setup",
-    "Evan Phillips", "LAD", "High-Leverage Setup",
-    "Blake Treinen", "LAD", "Fireman / Setup",
-    "Robert Suarez", "SD", "Closer",
-    "Luke Weaver", "NYY", "Closer / High-Leverage"
-  )
+  sch <- as.data.frame(readRDS(schedule_file)) %>%
+    filter(game_type %in% c("F", "D", "L"), status_detailed_state == "Final") %>%
+    transmute(game_pk = as.integer(game_pk), game_type,
+              home_id = as.character(teams_home_team_id), away_id = as.character(teams_away_team_id))
 
-  # Evolution across 4 postseason rounds
-  rounds_data <- list(
-    list(
-      round_num = 1,
-      round_name = "Wild Card Round (Sept 29 - Oct 1)",
-      subtitle = "Opening October Tests | High-leverage firemen summoned in elimination games",
-      data = tribble(
-        ~pitcher_name, ~app, ~ip, ~pli, ~fatigue_score, ~status,
-        "Devin Williams", 0, 0.0, 0.00, 15, "Rested (Bye)",
-        "Joel Payamps", 0, 0.0, 0.00, 12, "Rested (Bye)",
-        "Pete Fairbanks", 2, 2.0, 2.15, 38, "Fresh",
-        "Jason Adam", 2, 2.1, 1.95, 34, "Fresh",
-        "Emmanuel Clase", 0, 0.0, 0.00, 18, "Rested (Bye)",
-        "Cade Smith", 0, 0.0, 0.00, 15, "Rested (Bye)",
-        "Evan Phillips", 0, 0.0, 0.00, 16, "Rested (Bye)",
-        "Blake Treinen", 0, 0.0, 0.00, 14, "Rested (Bye)",
-        "Robert Suarez", 2, 2.0, 2.45, 42, "Fresh",
-        "Luke Weaver", 2, 2.2, 2.30, 44, "Fresh"
-      )
-    ),
-    list(
-      round_num = 2,
-      round_name = "Division Series (Oct 3 - Oct 10)",
-      subtitle = "LDS Battles Intensify | Back-to-back appearances elevate arm stress",
-      data = tribble(
-        ~pitcher_name, ~app, ~ip, ~pli, ~fatigue_score, ~status,
-        "Devin Williams", 3, 3.2, 2.40, 52, "Moderate",
-        "Joel Payamps", 3, 3.1, 1.85, 48, "Fresh",
-        "Pete Fairbanks", 4, 4.1, 2.35, 64, "Elevated Workload",
-        "Jason Adam", 4, 4.0, 2.05, 58, "Moderate",
-        "Emmanuel Clase", 4, 4.2, 2.65, 68, "Elevated Workload",
-        "Cade Smith", 5, 5.0, 2.20, 65, "Elevated Workload",
-        "Evan Phillips", 3, 3.0, 2.10, 50, "Moderate",
-        "Blake Treinen", 3, 3.2, 2.25, 54, "Moderate",
-        "Robert Suarez", 4, 4.1, 2.50, 72, "High Strain",
-        "Luke Weaver", 4, 4.0, 2.20, 69, "Elevated Workload"
-      )
-    ),
-    list(
-      round_num = 3,
-      round_name = "League Championship Series (Oct 11 - Oct 20)",
-      subtitle = "Pennant Showdowns Push Bullpens to the Limit | Heavy fireman workloads",
-      data = tribble(
-        ~pitcher_name, ~app, ~ip, ~pli, ~fatigue_score, ~status,
-        "Devin Williams", 6, 7.1, 2.75, 74, "High Strain",
-        "Joel Payamps", 6, 6.2, 2.10, 66, "Elevated Workload",
-        "Pete Fairbanks", 8, 8.2, 2.55, 82, "Near Exhaustion",
-        "Jason Adam", 8, 8.0, 2.30, 78, "High Strain",
-        "Emmanuel Clase", 8, 8.1, 2.70, 86, "Exhausted",
-        "Cade Smith", 9, 9.1, 2.45, 84, "Exhausted",
-        "Evan Phillips", 6, 6.0, 2.25, 75, "High Strain",
-        "Blake Treinen", 6, 6.2, 2.40, 78, "High Strain",
-        "Robert Suarez", 4, 4.1, 2.50, 72, "Eliminated",
-        "Luke Weaver", 4, 4.0, 2.20, 69, "Eliminated"
-      )
-    ),
-    list(
-      round_num = 4,
-      round_name = "World Series — The Climax (Late October)",
-      subtitle = "Fall Classic Pressure Peak | Brewers & Rays firemen battle fatigue for the title",
-      data = tribble(
-        ~pitcher_name, ~app, ~ip, ~pli, ~fatigue_score, ~status,
-        "Devin Williams", 8, 9.2, 2.92, 85, "Peak Stress / Clutch",
-        "Joel Payamps", 8, 8.1, 2.20, 74, "High Strain",
-        "Pete Fairbanks", 10, 10.1, 2.68, 89, "Maximum Strain",
-        "Jason Adam", 9, 9.1, 2.40, 83, "High Strain",
-        "Emmanuel Clase", 8, 8.1, 2.70, 86, "Final Postseason Mark",
-        "Cade Smith", 9, 9.1, 2.45, 84, "Final Postseason Mark",
-        "Evan Phillips", 6, 6.0, 2.25, 75, "Final Postseason Mark",
-        "Blake Treinen", 6, 6.2, 2.40, 78, "Final Postseason Mark",
-        "Robert Suarez", 4, 4.1, 2.50, 72, "Final Postseason Mark",
-        "Luke Weaver", 4, 4.0, 2.20, 69, "Final Postseason Mark"
-      )
-    )
-  )
+  # The World Series comes from the published results summary, which is kept
+  # current by the results refresh even when the schedule cache is behind.
+  ws <- ps_world_series()
+  abbr <- ps_team_abbr()
+  ws_games <- bind_rows(lapply(ws$completed, function(g) {
+    data.frame(game_pk = as.integer(g$game_pk), game_type = "W",
+               home_abbr = g$home_team, away_abbr = g$away_team, stringsAsFactors = FALSE)
+  }))
+  games <- bind_rows(
+    sch %>% transmute(game_pk, game_type, home_abbr = unname(abbr[home_id]), away_abbr = unname(abbr[away_id])),
+    ws_games
+  ) %>% distinct(game_pk, .keep_all = TRUE)
+  if (nrow(games) == 0 || anyNA(games$home_abbr) || anyNA(games$away_abbr)) {
+    stop("[SKIP-NO-DATA] postseason games could not be resolved to teams; nothing rendered.", call. = FALSE)
+  }
+
+  pa <- bind_rows(lapply(seq_len(nrow(games)), function(i) {
+    g <- games[i, ]
+    ps_fetch_wp(g$game_pk) %>%
+      mutate(game_type = g$game_type,
+             team_abbr = ifelse(top, g$home_abbr, g$away_abbr)) %>%
+      group_by(team_abbr) %>%
+      mutate(is_relief = pitcher_id != pitcher_id[which.min(ab)]) %>%
+      ungroup()
+  }))
+  relief <- pa %>% filter(is_relief, !is.na(li)) %>%
+    mutate(round_num = match(game_type, names(rounds)))
+
+  totals <- relief %>%
+    group_by(pitcher_id) %>%
+    summarise(pitcher_name = last(pitcher), team_abbr = last(team_abbr), bf_total = n(), .groups = "drop") %>%
+    arrange(desc(bf_total)) %>%
+    head(n_relievers) %>%
+    arrange(bf_total) %>%
+    mutate(order = row_number())
+  if (nrow(totals) < n_relievers) {
+    stop("[SKIP-NO-DATA] too few relief appearances on record; nothing rendered.", call. = FALSE)
+  }
+  x_max <- max(totals$bf_total)
+  li_rng <- range(relief %>% filter(pitcher_id %in% totals$pitcher_id) %>%
+                    group_by(pitcher_id) %>% summarise(li = mean(li)) %>% pull(li))
+
+  round_nums <- sort(unique(relief$round_num))
 
   tmp_dir <- file.path(tempdir(), "mlb_postseason_leverage_frames")
   if (dir.exists(tmp_dir)) unlink(tmp_dir, recursive = TRUE)
   dir.create(tmp_dir, recursive = TRUE)
 
-  frame_files <- character(length(rounds_data))
+  frame_files <- character(length(round_nums))
 
-  for (idx in seq_along(rounds_data)) {
-    rd <- rounds_data[[idx]]
-
-    df <- relievers %>%
-      left_join(rd$data, by = "pitcher_name") %>%
-      mutate(
-        fatigue_color = case_when(
-          fatigue_score >= 85 ~ "#EF4444", # Red (Exhausted / Maximum)
-          fatigue_score >= 70 ~ "#F97316", # Orange (High Strain)
-          fatigue_score >= 50 ~ "#FACC15", # Yellow (Moderate)
-          TRUE ~ "#10B981"                 # Green (Fresh)
-        ),
-        pitcher_label = sprintf("%s (%s)", pitcher_name, team_abbr)
+  for (idx in seq_along(round_nums)) {
+    rn <- round_nums[idx]
+    df <- totals %>%
+      left_join(
+        relief %>% filter(round_num <= rn) %>% group_by(pitcher_id) %>%
+          summarise(bf = n(), app = n_distinct(game_pk), li = mean(li), .groups = "drop"),
+        by = "pitcher_id"
       ) %>%
-      arrange(fatigue_score) %>%
-      mutate(order = row_number())
+      mutate(bf = coalesce(bf, 0L), app = coalesce(app, 0L))
 
-    p <- ggplot(df, aes(x = fatigue_score, y = order)) +
-      # Zone benchmark shading
-      annotate("rect", xmin = 0, xmax = 50, ymin = 0.4, ymax = 10.6, fill = "#10B981", alpha = 0.08) +
-      annotate("rect", xmin = 50, xmax = 70, ymin = 0.4, ymax = 10.6, fill = "#FACC15", alpha = 0.08) +
-      annotate("rect", xmin = 70, xmax = 85, ymin = 0.4, ymax = 10.6, fill = "#F97316", alpha = 0.08) +
-      annotate("rect", xmin = 85, xmax = 100, ymin = 0.4, ymax = 10.6, fill = "#EF4444", alpha = 0.12) +
-      # Vertical benchmark lines
-      geom_vline(xintercept = c(50, 70, 85), color = "#475569", linetype = "dashed", linewidth = 0.6) +
-      # Fatigue bar meters
-      geom_col(aes(fill = fatigue_color), width = 0.68, show.legend = FALSE) +
-      scale_fill_identity() +
-      # Official MLB franchise logos at the start of each bar
-      geom_mlb_logos(
-        aes(x = -4.5, y = order, team_abbr = team_abbr),
-        width = 0.065,
-        inherit.aes = FALSE
-      ) +
-      # Reliever Name & Stats text inside / beside bar
-      geom_text(
-        aes(x = 1.5, y = order, label = sprintf("%s — %s", pitcher_name, role)),
-        color = "#FFFFFF",
-        fontface = "bold",
-        size = 3.4,
-        hjust = 0
-      ) +
-      # Stat callouts on bar tip
-      geom_text(
-        aes(x = fatigue_score + 1.5, y = order,
-            label = sprintf("%.1f IP | %d G | %.2f pLI [%s]", ip, app, pli, status)),
-        color = "#CBD5E1",
-        size = 3.1,
-        hjust = 0
-      ) +
-      # Benchmark text labels at top
-      annotate("text", x = 25, y = 10.9, label = "RESTED / FRESH", color = "#10B981", fontface = "bold", size = 3.0) +
-      annotate("text", x = 60, y = 10.9, label = "MODERATE", color = "#FACC15", fontface = "bold", size = 3.0) +
-      annotate("text", x = 77.5, y = 10.9, label = "ELEVATED", color = "#F97316", fontface = "bold", size = 3.0) +
-      annotate("text", x = 92.5, y = 10.9, label = "EXHAUSTION", color = "#EF4444", fontface = "bold", size = 3.0) +
-      scale_x_continuous(
-        limits = c(-8, 125),
-        breaks = seq(0, 100, by = 20),
-        labels = function(x) paste0(x, "%")
-      ) +
+    p <- ggplot(df, aes(x = bf, y = order)) +
+      geom_col(aes(fill = li), width = 0.68, orientation = "y") +
+      scale_fill_gradient(low = "#38BDF8", high = "#EF4444", limits = c(floor(li_rng[1] * 10) / 10, ceiling(li_rng[2] * 10) / 10),
+                          na.value = "#334155", name = "Average leverage index\n(1.0 = an average situation)") +
+      geom_mlb_logos(aes(x = -x_max * 0.045, y = order, team_abbr = team_abbr), width = 0.05, inherit.aes = FALSE) +
+      geom_text(aes(x = bf + x_max * 0.015, y = order,
+                    label = ifelse(bf == 0, sprintf("%s: yet to pitch in relief", pitcher_name),
+                                   sprintf("%s: %d batters, %d games, %.2f leverage", pitcher_name, bf, app, li))),
+                color = "#E2E8F0", size = 3.3, hjust = 0) +
+      scale_x_continuous(limits = c(-x_max * 0.08, x_max * 1.75), breaks = pretty(c(0, x_max))) +
       scale_y_continuous(breaks = NULL) +
       theme_mlb_dark(base_size = 11) +
       theme(
@@ -225,13 +142,15 @@ generate_gif_postseason_leverage <- function(season = 2026,
         axis.text.y  = element_blank(),
         axis.ticks.y = element_blank(),
         panel.grid.major.y = element_blank(),
-        panel.grid.minor = element_blank()
+        panel.grid.minor = element_blank(),
+        legend.position = "bottom"
       ) +
       labs(
-        title = sprintf("%d Postseason Relief Leverage & Fatigue Meter", season),
-        subtitle = sprintf("%s: %s", rd$round_name, rd$subtitle),
-        x = "Bullpen Fatigue & Arm Stress Score (0 = Rested, 100 = Max Strain)",
-        caption = "Source: KayceeSlices MLB Analytics Engine | Tangotiger Leverage Index (pLI) & Fatigue Tracker"
+        title = sprintf("%d Postseason Relief Workload and Leverage", season),
+        subtitle = sprintf("Through the %s. The %d relievers who faced the most batters this postseason.",
+                           rounds[[rn]], n_relievers),
+        x = "Batters faced in relief (cumulative)",
+        caption = "Source: MLB Stats API play-by-play and leverage index. A reliever is any pitcher after his team's first of the game."
       )
 
     fpath <- file.path(tmp_dir, sprintf("frame_%03d.png", idx))
@@ -242,10 +161,8 @@ generate_gif_postseason_leverage <- function(season = 2026,
   target_gif <- cache_path("viz", output_gif)
   target_png <- cache_path("viz", output_png)
 
-  # Copy final frame as static PNG artifact
   file.copy(tail(frame_files, 1), target_png, overwrite = TRUE)
 
-  # Hold final frame
   final_frames <- c(frame_files, rep(tail(frame_files, 1), hold_frames))
 
   gifski::gifski(
@@ -263,8 +180,8 @@ generate_gif_postseason_leverage <- function(season = 2026,
   }
 
   elapsed <- round(as.numeric(difftime(Sys.time(), start_time, units = "secs")), 1)
-  message(sprintf(">>> [SUCCESS] Postseason Leverage Meter generated:\n    GIF: %s (%d KB, %.1fs)\n    PNG: %s (%d KB)",
-                  target_gif, round(file.info(target_gif)$size / 1024), elapsed,
+  message(sprintf(">>> [SUCCESS] Postseason relief chart generated (%d games):\n    GIF: %s (%d KB, %.1fs)\n    PNG: %s (%d KB)",
+                  nrow(games), target_gif, round(file.info(target_gif)$size / 1024), elapsed,
                   target_png, round(file.info(target_png)$size / 1024)))
 
   invisible(list(gif = target_gif, png = target_png))

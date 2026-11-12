@@ -2,6 +2,8 @@ import React from 'react';
 import { getMatchupsData } from '@/lib/data';
 import { MatchupsClient } from '@/components/MatchupsClient';
 import { Swords } from 'lucide-react';
+import { GlossaryTerm } from '@/components/Glossary';
+import { HowToRead } from '@/components/HowToRead';
 
 export const metadata = {
   title: 'Weekly NFL Matchups & Projections',
@@ -29,7 +31,7 @@ export default function MatchupsPage() {
               <span><span className="text-emerald-400">NFL</span> Weekly Matchup Projections</span>
             </h1>
             <p className="text-slate-400 text-sm mt-1 max-w-3xl">
-              Model-projected victory margins, game totals, and win probabilities powered by Ridge regression, Elo ratings, and situational fatigue adjustments (rest days, short weeks, and travel mileage).
+              Model-projected victory margins, game totals, and win probabilities powered by Ridge regression, <GlossaryTerm term="Elo" className="text-slate-300" /> ratings, and situational fatigue adjustments (rest days, short weeks, and travel mileage).
             </p>
           </div>
 
@@ -47,6 +49,17 @@ export default function MatchupsPage() {
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-emerald-500/40 to-transparent" />
       </div>
+
+      <HowToRead pageKey="matchups">
+        <p>
+          <strong>Projected margin</strong> is the model&apos;s expected point differential for the home team, built
+          from each team&apos;s <GlossaryTerm term="Elo" className="text-slate-300" /> rating plus rest, short-week,
+          and travel-distance adjustments. <strong>Win probability</strong> converts that margin into odds using the
+          league&apos;s <GlossaryTerm term="Margin σ (Sigma)" className="text-slate-300" />, so a 3-point favorite
+          is not nearly as safe as a 14-point favorite even though both are favorites. &quot;Key Margin
+          Alerts&quot; flags games the model sees as close enough to flip on a single fatigue or <GlossaryTerm term="HFA / HCA" className="text-slate-300" /> adjustment.
+        </p>
+      </HowToRead>
 
       {/* Main Interactive Client */}
       <MatchupsClient dataset={dataset} />

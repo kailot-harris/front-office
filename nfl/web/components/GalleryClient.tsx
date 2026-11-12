@@ -5,6 +5,7 @@ import { VisualMediaItem } from '@/lib/types';
 import { Image as ImageIcon, Search, Film, Download, Maximize2, X, Play } from 'lucide-react';
 import Image from 'next/image';
 import { BASE_PATH } from '@/lib/basePath';
+import { HowToRead } from './HowToRead';
 
 interface GalleryClientProps {
   mediaItems: VisualMediaItem[];
@@ -133,6 +134,15 @@ export default function GalleryClient({ mediaItems }: GalleryClientProps) {
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-emerald-500/40 to-transparent" />
       </div>
+
+      <HowToRead pageKey="gallery">
+        <p>
+          These visuals are generated automatically by the R analytical pipeline on every data refresh &mdash;
+          they are a byproduct of the modeling run, not hand-made illustrations. Filter by category to find a
+          specific chart type (race animations, Elo trajectories, standings progressions, heatmaps), or click any
+          item to view it full-size.
+        </p>
+      </HowToRead>
 
       {/* Filter and Category Pills */}
       <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-surface-raised/90 border border-slate-800 p-3.5 rounded-xl">

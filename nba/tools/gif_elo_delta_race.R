@@ -16,7 +16,6 @@
 # Data inputs:
 #   - Reads matchups_team_box_2027.rds (completed regular season games)
 #   - Reads ensemble_team_ratings.rds (preseason baseline seed ratings)
-#   - Falls back gracefully to synthesized progression if cache is missing
 #
 # Usage:
 #   Rscript tools/gif_elo_delta_race.R
@@ -114,15 +113,41 @@ if (!is.null(box_file)) {
   dates <- sort(unique(paired_games$game_date))
   K <- 20
 
-  for (idx in seq_along(dates)) {
-    d <- dates[idx]
-    d_games <- paired_games[paired_games$game_date == d, ]
-    if (nrow(d_games) > 0) {
-      for (g in seq_len(nrow(d_games))) {
-        t1 <- d_games$team_clean[g]
-        t2 <- d_games$opp_clean[g]
-        s1 <- as.numeric(d_games$team_score[g])
-        s2 <- as.numeric(d_games$opponent_team_score[g])
+  # Frames must represent genuine WEEK-over-week Elo movement, not a single
+  # calendar date's worth of games. Only ~10-14 of 30 teams play on any given
+  # night (back-to-backs, rest days, etc.), so snapshotting after every single
+  # date leaves ~16-20 teams mechanically showing delta_elo == 0.0 in that
+  # frame -- not because they lack momentum, but because the frame granularity
+  # (one date) didn't match the "week-over-week" label. Binning dates into
+  # calendar weeks (anchored to the first game date of the loaded data) and
+  # only emitting a frame at each week boundary lets each frame accumulate a
+  # full week of per-game Elo updates per team before it is snapshotted, so
+  # nearly every team (who plays several games per week) shows a real delta.
+  # Weeks are counted back from the most recent game date, so the newest frame
+  # (the one the GIF holds on and the PNG shows) always covers a full 7 days.
+  # Anchoring to opening night instead left a one- or two-day final bin in
+  # which most teams had not played. A leftover opening bin shorter than 4
+  # days is folded into the following week for the same reason.
+  last_date <- max(as.Date(dates))
+  week_ids <- -as.integer(floor(as.numeric(difftime(last_date, as.Date(dates), units = "days")) / 7))
+  first_wk <- min(week_ids)
+  if (length(unique(week_ids)) > 1 &&
+      as.numeric(diff(range(as.Date(dates[week_ids == first_wk])))) + 1 < 4) {
+    week_ids[week_ids == first_wk] <- first_wk + 1L
+  }
+
+  step_counter <- 0L
+  for (wk in sort(unique(week_ids))) {
+    week_dates <- dates[week_ids == wk]
+    week_games <- paired_games[paired_games$game_date %in% week_dates, ]
+    week_games <- week_games[order(as.Date(week_games$game_date), week_games$game_id), ]
+
+    if (nrow(week_games) > 0) {
+      for (g in seq_len(nrow(week_games))) {
+        t1 <- week_games$team_clean[g]
+        t2 <- week_games$opp_clean[g]
+        s1 <- as.numeric(week_games$team_score[g])
+        s2 <- as.numeric(week_games$opponent_team_score[g])
 
         r1 <- elo_cur[t1]
         r2 <- elo_cur[t2]
@@ -141,27 +166,25 @@ if (!is.null(box_file)) {
       }
     }
 
+    step_counter <- step_counter + 1L
+    week_start_label <- format(min(as.Date(week_dates)), "%b %d")
+    week_end_label <- format(max(as.Date(week_dates)), "%b %d")
     history[[length(history) + 1]] <- tibble(
-      step = as.integer(idx),
-      date_label = format(as.Date(d), "%b %d"),
+      step = as.integer(step_counter),
+      date_label = if (week_start_label == week_end_label) {
+        sprintf("Week of %s", week_start_label)
+      } else {
+        sprintf("%s - %s", week_start_label, week_end_label)
+      },
       team = all_teams,
       elo = as.numeric(elo_cur[all_teams])
     )
   }
 }
 
-# Fallback if insufficient history
+# No invented history: without real completed games the chart is not rendered.
 if (length(history) <= 1) {
-  for (i in 1:5) {
-    sim_shift <- setNames(sin(seq_along(all_teams) + i) * 8, all_teams)
-    elo_cur <- elo_cur + sim_shift
-    history[[length(history) + 1]] <- tibble(
-      step = as.integer(i),
-      date_label = sprintf("Day %d", i),
-      team = all_teams,
-      elo = as.numeric(elo_cur[all_teams])
-    )
-  }
+  viz_stop_no_data("tools/gif_elo_delta_race.R", "no completed games were found to build Elo history.")
 }
 
 hist_df <- bind_rows(history)
@@ -206,6 +229,8 @@ x_max <- max(hist_df$delta_elo) + 8
 if (x_min > -15) x_min <- -15
 if (x_max < 15) x_max <- 15
 
+TEAM_LOGOS <- viz_logo_map(script = "tools/gif_elo_delta_race.R")
+
 for (s in active_steps) {
   frame_data <- hist_df %>%
     filter(step == s) %>%
@@ -221,6 +246,7 @@ for (s in active_steps) {
   p_frame <- ggplot(frame_data, aes(x = delta_elo, y = reorder(team, bar_order), fill = team)) +
     geom_vline(xintercept = 0, color = NBA_COLORS$grid, linewidth = 0.8, linetype = "dashed") +
     geom_col(width = 0.75, alpha = 0.9, color = NBA_COLORS$border) +
+    ggimage::geom_image(aes(x = x_min - 0.035 * (x_max - x_min), image = TEAM_LOGOS[team]), size = 0.027, by = "height") +
     geom_text(
       aes(
         x = ifelse(delta_elo >= 0, delta_elo + 0.6, delta_elo - 0.6),
@@ -231,18 +257,18 @@ for (s in active_steps) {
       size = 2.6,
       fontface = "bold"
     ) +
-    scale_x_continuous(limits = c(x_min, x_max), breaks = scales::pretty_breaks(n = 6)) +
+    scale_x_continuous(limits = c(x_min - 0.07 * (x_max - x_min), x_max), breaks = scales::pretty_breaks(n = 6)) +
     scale_fill_manual(values = team_colors, guide = "none") +
     theme_nba_dark(base_size = 10) +
     theme(
-      axis.text.y = element_text(size = 7.5, face = "bold"),
+      axis.text.y = element_blank(), axis.ticks.y = element_blank(),
       panel.grid.major.y = element_blank()
     ) +
     labs(
       title = "NBA Week-over-Week Elo Momentum Race (2026-27)",
       subtitle = sprintf("Power rankings Elo shift through %s (Ranked from Biggest Drop to Highest Surge)", cur_label),
       x = "Elo Rating Delta (\u0394)",
-      y = "NBA Franchise",
+      y = NULL,
       caption = "Elo Delta Momentum"
     )
 

@@ -5,6 +5,8 @@ import { CoachProfile } from '@/lib/types';
 import { TeamLogo } from './TeamLogo';
 import { Search, Zap, Clock, SlidersHorizontal, ChevronRight, Download } from 'lucide-react';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { GlossaryTerm } from './Glossary';
+import { HowToRead } from './HowToRead';
 
 interface CoachingClientProps {
   initialCoaches: CoachProfile[];
@@ -100,11 +102,22 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
           </h1>
           <p className="text-slate-400 text-sm mt-1 max-w-3xl">
             Analytical evaluation of NFL coaching decision tendencies: 4th-down go-for-it aggression percentiles,
-            Pass Rate Over Expected (PROE), play-action frequency, game pace, and timeout leverage.
+            Pass Rate Over Expected (<GlossaryTerm term="PROE" className="text-slate-300" />), play-action frequency, game pace, and timeout leverage.
           </p>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-emerald-500/40 to-transparent" />
       </div>
+
+      <HowToRead pageKey="coaching">
+        <p>
+          <strong>4th-down aggression</strong> is a percentile rank of how often a coach goes for it on 4th down
+          relative to what a points-maximizing model recommends in that situation, not just a raw go-for-it rate.{' '}
+          <GlossaryTerm term="PROE" className="text-slate-300" /> shows whether a staff passes more or less than
+          an average play-caller would given the down, distance, score, and time remaining &mdash; a positive
+          number means a pass-heavy scheme beyond what the situation calls for. &quot;Franchise Stability&quot;
+          tracks tenure and scheme continuity, not performance.
+        </p>
+      </HowToRead>
 
       {/* KPI Cards / Leaders */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -145,7 +158,9 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
           <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
             <div className="flex items-center gap-2">
               <SlidersHorizontal className="w-4 h-4 text-cyan-400" />
-              <h2 className="text-sm font-semibold text-white">Pass Rate Over Expected</h2>
+              <h2 className="text-sm font-semibold text-white">
+                Pass Rate Over Expected (<GlossaryTerm term="PROE" className="text-cyan-300" />)
+              </h2>
             </div>
             <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">Air Raid / Spread</span>
           </div>

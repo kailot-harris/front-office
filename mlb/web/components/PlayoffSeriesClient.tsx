@@ -10,6 +10,8 @@ import { TeamLogo } from '@/components/TeamLogo';
 import { SeriesProbRing } from '@/components/SeriesProbRing';
 import { TacticalMismatchRadar } from '@/components/TacticalMismatchRadar';
 import { RotationMatchupCard } from '@/components/RotationMatchupCard';
+import { HowToRead } from '@/components/HowToRead';
+import { GlossaryTerm } from '@/components/Glossary';
 import {
   Swords,
   ArrowRightLeft,
@@ -370,8 +372,17 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
             </h1>
             <p className="text-sm text-slate-300 max-w-2xl mt-1">
               Pair any two MLB clubs across 3-game (Wild Card), 5-game (Division Series), or 7-game (LCS/World Series) formats.
-              Models scheduled starting pitcher rGS, bullpen fatigue leverage, and tactical mismatch levers.
+              Models scheduled starting pitcher <GlossaryTerm term="rGS" />, bullpen fatigue leverage, and tactical mismatch levers.
             </p>
+            <div className="max-w-xl mt-2">
+              <HowToRead pageKey="series">
+                Pick two teams, a series length, and which club has <GlossaryTerm term="HCA" />, then
+                the engine runs thousands of simulated games from each team&apos;s base{' '}
+                <GlossaryTerm term="Elo" /> rating, the scheduled starters&apos; <GlossaryTerm term="rGS" />,
+                and bullpen fatigue. Re-rolling draws a new random outcome from those same
+                probabilities — it doesn&apos;t change the underlying model inputs.
+              </HowToRead>
+            </div>
           </div>
 
           {/* Series Length Selector */}

@@ -1,6 +1,8 @@
 import { Metadata } from 'next';
 import { getTeamsData, getMetadata } from '@/lib/data';
 import { VariantsClient } from '@/components/VariantsClient';
+import { HowToRead } from '@/components/HowToRead';
+import { GlossaryTerm } from '@/components/Glossary';
 
 export const metadata: Metadata = {
   title: 'Sabermetric Model Variants Breakout',
@@ -24,8 +26,18 @@ export default function VariantsPage() {
               </span>
             </h1>
             <p className="text-slate-400 text-sm mt-1">
-              Compare 162-game Monte Carlo projections across 4-Factor Starting-Pitcher Elo, Hierarchical Empirical Bayes Talent, Pythagenpat Run-Expectation, and Marcel/Bullpen Fatigue.
+              Compare 162-game Monte Carlo projections across 4-Factor Starting-Pitcher <GlossaryTerm term="Elo" />, Hierarchical <GlossaryTerm term="Empirical Bayes" /> Talent, <GlossaryTerm term="Pythagenpat" /> Run-Expectation, and <GlossaryTerm term="Marcel Projection">Marcel</GlossaryTerm>/Bullpen Fatigue.
             </p>
+            <div className="max-w-xl mt-4">
+              <HowToRead pageKey="variants">
+                The site&apos;s headline projections are an ensemble blend of four independent
+                models. This page shows what each model says on its own — <GlossaryTerm term="Elo" /> (built
+                from <GlossaryTerm term="rGS" /> and results), <GlossaryTerm term="Empirical Bayes" /> (pooled{' '}
+                <GlossaryTerm term="wOBA" />/<GlossaryTerm term="xFIP" /> talent), <GlossaryTerm term="Pythagenpat" /> (run differential), and{' '}
+                <GlossaryTerm term="Marcel Projection">Marcel</GlossaryTerm>/Bullpen (recent-weighted rates) — so you can see where
+                the models agree and where one is driving a team&apos;s projection.
+              </HowToRead>
+            </div>
           </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-sky-400 via-sky-500/40 to-transparent" />

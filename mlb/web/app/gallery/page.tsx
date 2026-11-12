@@ -1,4 +1,5 @@
 import { VisualMediaGalleryClient } from '@/components/VisualMediaGalleryClient';
+import { HowToRead } from '@/components/HowToRead';
 
 export const metadata = {
   title: { absolute: 'Visual Media Gallery & Year-End Race Animations | MLB Analytics' },
@@ -20,6 +21,13 @@ export default function GalleryPage() {
             <p className="text-slate-400 text-sm mt-1">
               High-performance animated GIF visualizers powered by <code className="text-sky-300">mlbplotR</code>, official team crests, and quantitative sabermetric tracking engines.
             </p>
+            <div className="max-w-xl mt-4">
+              <HowToRead pageKey="gallery">
+                This page is a visual library, not an interactive dataset. Browse the animated
+                GIFs by category — season races, postseason brackets, and sabermetric scatters —
+                and click any thumbnail to open the full-size animation.
+              </HowToRead>
+            </div>
           </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-sky-400 via-sky-500/40 to-transparent" />

@@ -20,7 +20,6 @@
 # Data inputs:
 #   - Reads matchups_team_box_2027.rds (completed regular season games)
 #   - Reads ensemble_team_ratings.rds (preseason baseline Elo ratings)
-#   - Falls back gracefully to synthesized progression if cache is missing
 #
 # Usage:
 #   Rscript tools/gif_pf_pa_scatter_elo.R
@@ -191,21 +190,9 @@ if (!is.null(box_file)) {
   }
 }
 
+# No invented history: without real completed games the chart is not rendered.
 if (length(scatter_history) == 0) {
-  for (i in 1:5) {
-    scatter_history[[i]] <- tibble(
-      team = all_teams,
-      games = i,
-      pts_for = 112 * i + sin(seq_along(all_teams) + i) * 6,
-      pts_against = 112 * i - sin(seq_along(all_teams) + i) * 5,
-      ppg_for = 112 + sin(seq_along(all_teams) + i) * 5,
-      ppg_against = 112 - cos(seq_along(all_teams) + i) * 5,
-      diff = 10 * sin(seq_along(all_teams) + i),
-      elo = 1500 + sin(seq_along(all_teams) + i) * 80,
-      step = as.integer(i),
-      date_label = sprintf("Day %d", i)
-    )
-  }
+  viz_stop_no_data("tools/gif_pf_pa_scatter_elo.R", "no completed games were found in the cache.")
 }
 
 scatter_df <- bind_rows(scatter_history)
@@ -229,6 +216,8 @@ x_min <- floor(min(scatter_df$ppg_for) - 2)
 x_max <- ceiling(max(scatter_df$ppg_for) + 2)
 y_min <- floor(min(scatter_df$ppg_against) - 2)
 y_max <- ceiling(max(scatter_df$ppg_against) + 2)
+
+TEAM_LOGOS <- viz_logo_map(script = "tools/gif_pf_pa_scatter_elo.R")
 
 for (s in all_steps) {
   frame_data <- scatter_df %>% filter(step == s)
@@ -254,9 +243,9 @@ for (s in all_steps) {
     annotate("text", x = x_min + 0.5, y = y_max - 0.8, label = "Struggling Lottery (Low PF / High PA)",
              color = NBA_COLORS$negative, fontface = "bold", size = 3.2, hjust = 0) +
     # Bubble points scaled by Elo
-    geom_point(aes(fill = team, size = elo), shape = 21, color = NBA_COLORS$text, stroke = 1.0, alpha = 0.9) +
-    scale_size_continuous(range = c(3.5, 9.0), guide = "none") +
-    geom_text(aes(label = team), color = NBA_COLORS$text, vjust = -1.15, fontface = "bold", size = 2.8) +
+    geom_point(aes(fill = team, size = elo), shape = 21, color = NBA_COLORS$text, stroke = 0.6, alpha = 0.3) +
+    scale_size_continuous(range = c(9.0, 20.0), guide = "none") +
+    ggimage::geom_image(aes(image = TEAM_LOGOS[team]), size = 0.045, by = "width") +
     scale_x_continuous(limits = c(x_min, x_max), breaks = scales::pretty_breaks(n = 6)) +
     # Invert Y so lower points allowed (better defense) is at the top
     scale_y_reverse(limits = c(y_max, y_min), breaks = scales::pretty_breaks(n = 6)) +

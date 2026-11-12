@@ -7,10 +7,9 @@
 #
 # Features:
 #   - Sources tools/viz_common.R and uses theme_nba_dark(), NBA_COLORS, and canonical team colors.
-#   - Reads rapm_ratings.rds from cache (or synthesizes based on fitted shrinkage parameters).
-#   - Animates top-10 Offensive RAPM (ORAPM) and Defensive RAPM (DRAPM) across increasing
-#     possession sample sizes (confidence interval narrows as sample sizes grow according to
-#     ridge shrinkage error scaling sigma / sqrt(n + lambda)).
+#   - Reads rapm_ratings.rds from cache. No fallback: without it nothing is rendered.
+#   - Reveals the top-10 Offensive RAPM (ORAPM) and Defensive RAPM (DRAPM) leaders
+#     one rank at a time. Every value is the fitted full-season rating.
 #   - Outputs dual artifacts: cache/gif_rapm_race.gif and cache/gif_rapm_race.png
 #     via render_animated_artifact().
 #   - Syncs artifacts to web/public/media/.
@@ -102,57 +101,42 @@ top_defense <- rapm_clean %>%
 leaders_df <- bind_rows(top_offense, top_defense)
 
 # ------------------------------------------------------------------------------
-# 2. Simulate Progressive Sample Accumulation (Sample Size Growth Frames)
+# 2. Reveal the leaderboard one rank at a time
+#
+# Every bar is the fitted full-season rating from rapm_ratings.rds. The frames
+# only reveal the leaders from 10th to 1st; no intermediate values, sample-size
+# steps or uncertainty bands are estimated here.
 # ------------------------------------------------------------------------------
-# Ridge regression posterior variance scales proportionally with 1 / (effective_n + lambda).
-# As possessions scale from 500 to full season (~9000), confidence interval bounds narrow.
-# Frame steps: 8 milestone sample percentages: 10%, 20%, 35%, 50%, 65%, 80%, 92%, 100%
+leaders_df <- leaders_df %>%
+  group_by(type) %>%
+  mutate(rank_desc = rank(-rating, ties.method = "first")) %>%
+  ungroup()
 
-sample_pcts <- c(0.10, 0.20, 0.35, 0.50, 0.65, 0.80, 0.92, 1.00)
-n_frames <- length(sample_pcts)
+n_frames <- max(leaders_df$rank_desc)
+season_txt <- if ("season_label" %in% names(leaders_df)) leaders_df$season_label[1] else "last season"
+lambda_txt <- if ("lambda" %in% names(leaders_df)) format(leaders_df$lambda[1], big.mark = ",") else NA
+x_max <- max(leaders_df$rating) + 1.2
 
 tmp_frame_dir <- file.path(tempdir(), sprintf("rapm_race_frames_%d", as.integer(Sys.time())))
 if (!dir.exists(tmp_frame_dir)) dir.create(tmp_frame_dir, recursive = TRUE)
 
 frame_files <- character(n_frames)
 
-# Team color mapping
 unique_teams <- unique(leaders_df$team_clean)
 team_colors <- sapply(unique_teams, function(tm) get_nba_team_color(tm, "primary"))
 
-for (f_idx in seq_along(sample_pcts)) {
-  pct <- sample_pcts[f_idx]
-  
-  # For each player, compute progressive rating estimate and confidence interval
-  # Prior shrinkage mean = 0.0, posterior weight = n / (n + 2500)
+for (f_idx in seq_len(n_frames)) {
   frame_data <- leaders_df %>%
-    mutate(
-      curr_poss = round(possessions * pct),
-      shrinkage_weight = curr_poss / (curr_poss + 2000),
-      # Shrunk mean rating at current sample
-      cur_rating = rating * shrinkage_weight,
-      # Error margin (90% CI) narrows as 1 / sqrt(curr_poss + 1000)
-      se = 12.0 / sqrt(curr_poss + 1200),
-      ci_lower = cur_rating - 1.645 * se,
-      ci_upper = cur_rating + 1.645 * se
-    ) %>%
-    group_by(type) %>%
-    arrange(cur_rating) %>%
-    mutate(rank_order = row_number()) %>%
-    ungroup()
+    mutate(shown = rank_desc > n_frames - f_idx,
+           bar = ifelse(shown, rating, NA_real_))
 
-  p_frame <- ggplot(frame_data, aes(x = cur_rating, y = reorder(player_name, cur_rating), fill = team_clean)) +
-    # Shaded confidence interval band
-    geom_errorbar(aes(xmin = ci_lower, xmax = ci_upper),
-                  width = 0.35, color = NBA_COLORS$accent, linewidth = 0.75, alpha = 0.85) +
-    # Central bar
-    geom_col(width = 0.6, alpha = 0.9) +
-    # Value label
-    geom_text(aes(x = pmax(0.2, cur_rating + 0.3), label = sprintf("+%.2f (±%.2f)", cur_rating, 1.645 * se)),
-              hjust = 0, vjust = 0.4, color = NBA_COLORS$text, fontface = "bold", size = 2.8) +
+  p_frame <- ggplot(frame_data, aes(x = bar, y = reorder(player_name, rating), fill = team_clean)) +
+    geom_col(width = 0.6, alpha = 0.9, na.rm = TRUE) +
+    geom_text(aes(x = bar + 0.12, label = ifelse(shown, sprintf("%+.2f", rating), "")),
+              hjust = 0, vjust = 0.4, color = NBA_COLORS$text, fontface = "bold", size = 2.8, na.rm = TRUE) +
     scale_fill_manual(values = team_colors, guide = "none") +
     facet_wrap(~type, scales = "free_y", ncol = 2) +
-    scale_x_continuous(limits = c(-1.0, 7.5), breaks = seq(0, 7, by = 2)) +
+    scale_x_continuous(limits = c(0, x_max)) +
     theme_nba_dark(base_size = 11) +
     theme(
       panel.grid.major.y = element_blank(),
@@ -161,12 +145,12 @@ for (f_idx in seq_along(sample_pcts)) {
       plot.subtitle = element_text(size = 9.5, color = NBA_COLORS$subtext)
     ) +
     labs(
-      title = "NBA Top-10 Offensive & Defensive RAPM Bar Race with Shrinkage CIs",
-      subtitle = sprintf("Sample progress: %d%% of 2025-26 possessions (approx. %d possessions per team) \u00b7 Ridge \u03bb = 3,000",
-                         round(pct * 100), round(9000 * pct)),
-      x = "Points per 100 Possessions (RAPM \u00b1 90% Shrinkage Confidence Interval)",
+      title = sprintf("Top 10 Offensive and Defensive RAPM, %s", season_txt),
+      subtitle = if (is.na(lambda_txt)) "Full-season ridge-regression estimates."
+                 else sprintf("Full-season ridge-regression estimates (\u03bb = %s).", lambda_txt),
+      x = "Points per 100 possessions",
       y = NULL,
-      caption = "Ridge Regression RAPM Engine (#57)"
+      caption = "Source: possession data via hoopR. Fitted values, shown as published in the ratings table."
     )
 
   frame_path <- file.path(tmp_frame_dir, sprintf("frame_%03d.png", f_idx))

@@ -12,7 +12,7 @@
 #   - Glowing Commissioner's Trophy crest silhouette with 30 silver pennant pins
 #   - Milwaukee Brewers franchise logo scaling up into golden laurel wreath
 #   - Shimmering golden & navy celebratory confetti burst particles
-#   - Fall Classic Postseason Record typography (124-77 Regular Season, NL Pennant, WS Crown)
+#   - Fall Classic Postseason Record typography (103-59 regular season, World Series won 4-1)
 #   - Publication-grade minimal dark aesthetic via theme_mlb_dark()
 #   - Dual artifact export: animated GIF and static final-frame PNG
 #
@@ -69,8 +69,9 @@ generate_gif_trophy_lift_champions <- function(season = 2026,
 
   champion_name <- "Milwaukee Brewers"
   runner_up_name <- "Tampa Bay Rays"
-  reg_wins <- 124
-  reg_losses <- 77
+  # Real 2026 regular-season record, from cache/ingest/mlb_schedule_2026.rds.
+  reg_wins <- 103
+  reg_losses <- 59
 
   # Seed random confetti particles for consistent celebration trajectory
   set.seed(20261030)
@@ -200,11 +201,11 @@ generate_gif_trophy_lift_champions <- function(season = 2026,
                label.padding = unit(0.5, "lines"), label.r = unit(0.2, "lines"),
                alpha = 0.95) +
       annotate("text", x = 5.0, y = 8.4,
-               label = sprintf("%s Defeat %s in Historic Fall Classic", toupper(champion_name), toupper(runner_up_name)),
+               label = sprintf("%s defeat %s, 4 games to 1", toupper(champion_name), toupper(runner_up_name)),
                color = "#E6EDF3", fontface = "bold", size = 3.8) +
       # Champion Season Metrics Ribbon
       annotate("label", x = 5.0, y = 1.3,
-               label = sprintf("REGULAR SEASON: %d-%d (.617)  ·  NL CENTRAL CHAMPIONS  ·  OCTOBER IMMORTALITY", reg_wins, reg_losses),
+               label = sprintf("REGULAR SEASON: %d-%d (%s)  ·  WORLD SERIES: WON 4-1", reg_wins, reg_losses, sub("^0", "", sprintf("%.3f", reg_wins / (reg_wins + reg_losses)))),
                fill = "#161B22", color = "#7EE787", fontface = "bold", size = 3.4,
                label.padding = unit(0.4, "lines"), alpha = 0.9) +
       annotate("text", x = 5.0, y = 0.7,
