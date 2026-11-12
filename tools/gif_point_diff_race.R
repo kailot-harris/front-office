@@ -235,13 +235,16 @@ for (i in seq_along(display_steps)) {
 
   plots[[i]] <- ggplot(frame_lines, aes(x = step, y = cum_diff, group = team, color = team)) +
     geom_hline(yintercept = 0, linetype = "dashed", color = WNBA_COLORS$grid, linewidth = 0.8) +
-    geom_line(linewidth = 1.05, alpha = 0.85) +
-    geom_point(data = frame_pts, aes(x = step, y = cum_diff, fill = team),
-               shape = 21, size = 3.6, color = WNBA_COLORS$text, stroke = 1.1) +
-    ggimage::geom_image(data = frame_pts, aes(x = step + max_step * 0.012, y = cum_diff, image = TEAM_LOGOS[team]),
-               size = 0.036, by = "height", inherit.aes = FALSE) +
+    geom_line(linewidth = 1.0, alpha = 0.55) +
+    # White halo behind each logo so it reads clearly against the other 14
+    # lines crossing near it, rather than just a thin colored point.
+    geom_point(data = frame_pts, aes(x = step + max_step * 0.028, y = cum_diff),
+               shape = 21, size = 7.6, fill = WNBA_COLORS$text, color = WNBA_COLORS$text,
+               inherit.aes = FALSE) +
+    ggimage::geom_image(data = frame_pts, aes(x = step + max_step * 0.028, y = cum_diff, image = TEAM_LOGOS[team]),
+               size = 0.062, by = "height", inherit.aes = FALSE) +
     scale_x_continuous(breaks = display_steps, labels = step_labels[as.character(display_steps)],
-                        limits = c(-max_step * 0.01, max_step * 1.05)) +
+                        limits = c(-max_step * 0.01, max_step * 1.12)) +
     scale_y_continuous(limits = c(y_min, y_max)) +
     scale_color_manual(values = team_colors, guide = "none") +
     scale_fill_manual(values = team_colors, guide = "none") +
