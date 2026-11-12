@@ -199,10 +199,13 @@ generate_gif_pennant_showdown <- function(season = 2026,
         )
     } else {
       # Climax World Series Emblem Matchup Banner
+      # Records and series results below are the real 2026 figures, checked against
+      # the regular-season and postseason results in cache/ingest/mlb_schedule_2026.rds
+      # and web/public/data/world_series.json.
       ws_teams <- tribble(
         ~team_abbr, ~league, ~pennant_title, ~seed, ~reg_wins, ~x, ~y,
-        "TB", "American League", "2026 AL CHAMPIONS", "Seed #4 (Wild Card)", 114, 2.8, 4.5,
-        "MIL", "National League", "2026 NL CHAMPIONS", "Seed #1 (NLC Winner)", 124, 7.2, 4.5
+        "TB", "American League", "2026 AL CHAMPIONS", "", 98, 2.8, 4.5,
+        "MIL", "National League", "2026 NL CHAMPIONS", "", 103, 7.2, 4.5
       )
 
       p <- ggplot() +
@@ -222,14 +225,14 @@ generate_gif_pennant_showdown <- function(season = 2026,
         # Team Names & Accolades
         # Rays
         annotate("text", x = 2.8, y = 2.8, label = "TAMPA BAY RAYS", color = "#38BDF8", fontface = "bold", size = 5.2) +
-        annotate("text", x = 2.8, y = 2.3, label = "2026 AL Champions (114-85 Regular Season)\nDefeated: BOS (2-0), NYY (3-0), CLE (4-2)", color = "#CBD5E1", size = 3.2) +
+        annotate("text", x = 2.8, y = 2.3, label = "2026 AL Champions (98-64 Regular Season)\nDefeated: NYY (3-0), CLE (4-2)", color = "#CBD5E1", size = 3.2) +
         # Center VS Crest
         annotate("label", x = 5.0, y = 4.5, label = "VS", fill = "#B45309", color = "#FFFFFF", fontface = "bold", size = 6.5, label.padding = unit(0.5, "lines")) +
         # Brewers
         annotate("text", x = 7.2, y = 2.8, label = "MILWAUKEE BREWERS", color = "#FBBF24", fontface = "bold", size = 5.2) +
-        annotate("text", x = 7.2, y = 2.3, label = "2026 NL Champions (124-77 Regular Season)\nDefeated: SD (3-1), LAD (4-0)", color = "#CBD5E1", size = 3.2) +
+        annotate("text", x = 7.2, y = 2.3, label = "2026 NL Champions (103-59 Regular Season)\nDefeated: SD (3-1), LAD (4-0)", color = "#CBD5E1", size = 3.2) +
         # Bottom Current Status
-        annotate("label", x = 5.0, y = 1.3, label = "Series Status: Brewers lead 2-0 | Game 1: MIL 3-2 TB | Game 2: MIL 5-4 TB", fill = "#1E293B", color = "#F8FAFC", fontface = "bold", size = 3.8) +
+        annotate("label", x = 5.0, y = 1.3, label = "Final: Brewers won the World Series 4-1", fill = "#1E293B", color = "#F8FAFC", fontface = "bold", size = 3.8) +
         scale_x_continuous(limits = c(0.2, 9.8), expand = c(0, 0)) +
         scale_y_continuous(limits = c(0.5, 8.8), expand = c(0, 0)) +
         theme_mlb_dark(base_size = 11) +
