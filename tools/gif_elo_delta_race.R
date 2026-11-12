@@ -124,9 +124,18 @@ if (!is.null(box_file)) {
   # only emitting a frame at each week boundary lets each frame accumulate a
   # full week of per-game Elo updates per team before it is snapshotted, so
   # nearly every team (who plays several games per week) shows a real delta.
-  season_start <- as.Date(dates[1])
-  week_id_of <- function(d) as.integer(floor(as.numeric(difftime(as.Date(d), season_start, units = "days")) / 7))
-  week_ids <- vapply(dates, week_id_of, integer(1))
+  # Weeks are counted back from the most recent game date, so the newest frame
+  # (the one the GIF holds on and the PNG shows) always covers a full 7 days.
+  # Anchoring to opening night instead left a one- or two-day final bin in
+  # which most teams had not played. A leftover opening bin shorter than 4
+  # days is folded into the following week for the same reason.
+  last_date <- max(as.Date(dates))
+  week_ids <- -as.integer(floor(as.numeric(difftime(last_date, as.Date(dates), units = "days")) / 7))
+  first_wk <- min(week_ids)
+  if (length(unique(week_ids)) > 1 &&
+      as.numeric(diff(range(as.Date(dates[week_ids == first_wk])))) + 1 < 4) {
+    week_ids[week_ids == first_wk] <- first_wk + 1L
+  }
 
   step_counter <- 0L
   for (wk in sort(unique(week_ids))) {
@@ -174,18 +183,9 @@ if (!is.null(box_file)) {
   }
 }
 
-# Fallback if insufficient history
+# No invented history: without real completed games the chart is not rendered.
 if (length(history) <= 1) {
-  for (i in 1:5) {
-    sim_shift <- setNames(sin(seq_along(all_teams) + i) * 8, all_teams)
-    elo_cur <- elo_cur + sim_shift
-    history[[length(history) + 1]] <- tibble(
-      step = as.integer(i),
-      date_label = sprintf("Day %d", i),
-      team = all_teams,
-      elo = as.numeric(elo_cur[all_teams])
-    )
-  }
+  viz_stop_no_data("tools/gif_elo_delta_race.R", "no completed games were found to build Elo history.")
 }
 
 hist_df <- bind_rows(history)
