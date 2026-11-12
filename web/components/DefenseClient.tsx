@@ -7,6 +7,8 @@ import { VersatilityScatter } from './VersatilityScatter';
 import { Shield, Search, ChevronRight, Activity, Crosshair, ArrowUpDown } from 'lucide-react';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
 import { SEASON_SOURCES } from '@/lib/season';
+import { HowToReadDisclosure } from '@/components/HowToReadDisclosure';
+import { GlossaryTerm } from '@/components/GlossaryTerm';
 
 interface DefenseClientProps {
   initialProfiles: DefensiveProfile[];
@@ -64,6 +66,15 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
           </p>
         </div>
       </div>
+
+      <HowToReadDisclosure pageKey="defense">
+        Switch <GlossaryTerm term="entropy" /> (H<sub>v</sub>) measures how spread a player&rsquo;s
+        defensive assignments are across positions 1 through 5; a true switch defender has high
+        entropy, while a specialist concentrated on one assignment has low entropy. D-RAPM is the
+        defensive half of <GlossaryTerm term="RAPM" />, and Rim DFG delta shows how much lower (or
+        higher) opponents shoot at the rim against a given defender versus the shot-difficulty
+        expected field-goal baseline — more negative is better defense.
+      </HowToReadDisclosure>
 
       {/* Main Grid: Left Roster / Right Profile View */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

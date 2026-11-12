@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { Film, Image as ImageIcon, Search, Download, Maximize2, X } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
+import { HowToReadDisclosure } from '@/components/HowToReadDisclosure';
 
 export interface VisualMediaItem {
   id: string;
@@ -241,6 +242,13 @@ export const GalleryClient: React.FC<GalleryClientProps> = ({ mediaItems = NBA_G
           and opponent-adjusted heatmaps generated directly by the R analytical pipeline.
         </p>
       </div>
+
+      <HowToReadDisclosure pageKey="gallery">
+        Every visual here is rendered on a schedule directly from the same datasets that power
+        the rest of the site, not hand-picked or manually touched up. The one exception the
+        pipeline explicitly withholds is noted in code: a rookie-impact race that would have been
+        drawn from simulated rather than real box scores is left out until real data exists.
+      </HowToReadDisclosure>
 
       {/* Filter and Category Pills */}
       <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-surface-raised/90 border border-slate-800 p-3.5 rounded-xl">

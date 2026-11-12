@@ -9,6 +9,8 @@ import {
 import { TeamLogo } from '@/components/TeamLogo';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
 import { SEASON_SOURCES } from '@/lib/season';
+import { HowToReadDisclosure } from '@/components/HowToReadDisclosure';
+import { GlossaryTerm } from '@/components/GlossaryTerm';
 import { SeriesProbRing } from '@/components/SeriesProbRing';
 import { TacticalMismatchRadar } from '@/components/TacticalMismatchRadar';
 import { AnimatedMediaCard } from '@/components/AnimatedMediaCard';
@@ -340,6 +342,14 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
           </div>
         </div>
       </div>
+
+      <HowToReadDisclosure pageKey="series">
+        Pick two teams and a <GlossaryTerm term="HCA" /> team and this runs 10,000 simulated
+        best-of-7 series using each team&rsquo;s <GlossaryTerm term="net rating" />, the tactical
+        mismatch adjustments listed below the result, and the standard 2-2-1-1-1 home-court
+        format. Results are seeded deterministically from the matchup itself, so re-opening the
+        same pairing gives the same answer — use the re-roll control to force a fresh draw.
+      </HowToReadDisclosure>
 
       {/* Preset Matchup Pills */}
       <div className="p-3 rounded-xl bg-surface-raised/60 border border-slate-800 flex items-center gap-2 overflow-x-auto">

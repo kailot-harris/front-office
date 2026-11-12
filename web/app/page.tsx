@@ -2,6 +2,8 @@ import { getTeamsData, getMetadata } from '@/lib/data';
 import { StandingsClient } from '@/components/StandingsClient';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
 import { SEASON_SOURCES } from '@/lib/season';
+import { HowToReadDisclosure } from '@/components/HowToReadDisclosure';
+import { GlossaryTerm } from '@/components/GlossaryTerm';
 
 export const metadata = {
   title: 'Season Projections & Standings',
@@ -45,6 +47,15 @@ export default function HomePage() {
         </div>
         <div className="w-full h-[2px] bg-gradient-to-r from-orange-400 via-orange-500/40 to-transparent mt-4" />
       </div>
+
+      <HowToReadDisclosure pageKey="home">
+        Each team&rsquo;s projected wins, playoff odds, and title odds come from a{' '}
+        <GlossaryTerm term="Monte Carlo" /> simulation that replays the rest of the season 1,000
+        times across four independent model variants (see the Variants page for a breakout) and
+        averages the results. The <GlossaryTerm term="Elo" /> bump chart and other visuals track
+        how that strength estimate has moved week to week; switch to the Table tab for the full
+        sortable standings.
+      </HowToReadDisclosure>
 
       <StandingsClient teams={teams} metadata={metadata} initialTab="visualizer" />
     </div>
