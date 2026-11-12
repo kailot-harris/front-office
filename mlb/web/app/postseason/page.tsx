@@ -1,6 +1,8 @@
 import { Metadata } from 'next';
 import { getPostseasonOpsData, getWorldSeriesData } from '@/lib/data';
 import { PostseasonOpsClient } from '@/components/PostseasonOpsClient';
+import { HowToRead } from '@/components/HowToRead';
+import { GlossaryTerm } from '@/components/Glossary';
 
 export const metadata: Metadata = {
   title: 'Postseason Bracket, Bullpen & Tactical Hub',
@@ -26,6 +28,16 @@ export default function PostseasonPage() {
             <p className="text-slate-400 text-sm mt-1">
               12-team MLB Postseason Monte Carlo advancement probabilities (WC/DS/LCS/WS), 30-club bullpen workload diagnostics, and tactical matchup advantage metrics.
             </p>
+            <div className="max-w-xl mt-4">
+              <HowToRead pageKey="postseason">
+                Advancement odds compound round over round, so a team&apos;s World Series
+                probability is always lower than its Wild Card win probability — it&apos;s the
+                chance of winning every round in sequence. The bullpen tab flags relievers at
+                risk of fatigue-driven decline, and the tactical tab breaks down projected
+                matchup edges like <GlossaryTerm term="HCA" /> and starting-pitcher{' '}
+                <GlossaryTerm term="rGS" /> between any two potential playoff opponents.
+              </HowToRead>
+            </div>
           </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-sky-400 via-sky-500/40 to-transparent" />

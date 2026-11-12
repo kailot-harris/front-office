@@ -12,6 +12,8 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
+import { HowToRead } from '@/components/HowToRead';
+import { GlossaryTerm } from '@/components/Glossary';
 import { TeamProjection, ModelDiagnostics, PostseasonOpsData } from '@/lib/types';
 
 interface RetrospectiveClientProps {
@@ -146,6 +148,15 @@ export const RetrospectiveClient: React.FC<RetrospectiveClientProps> = ({
             <p className="text-sm sm:text-base text-slate-300 max-w-2xl leading-relaxed">
               Full postmortem and calibration audit of the 2026 Major League Baseball season. Analysis of the Milwaukee Brewers&apos; championship run, model variant reliability, and roster payroll efficiency.
             </p>
+            <div className="max-w-xl mt-2">
+              <HowToRead pageKey="retrospective">
+                This is a season-end report card. The Calibration tab grades each of the four
+                projection models against what actually happened, using <GlossaryTerm term="Brier Score" /> (lower is
+                better). The Payroll tab ranks teams by cost per projected win under the{' '}
+                <GlossaryTerm term="CBT" /> framework, and the Outliers tab surfaces the teams
+                whose actual record diverged most from their run-differential expectation.
+              </HowToRead>
+            </div>
           </div>
 
           <div className="flex flex-wrap md:flex-col gap-3 min-w-[220px]">
