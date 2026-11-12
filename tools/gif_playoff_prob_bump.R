@@ -2,26 +2,15 @@
 # tools/gif_playoff_prob_bump.R
 # Path: tools/gif_playoff_prob_bump.R
 #
-# NBA Playoff Seed & Play-In Leverage Probability Bump Chart Animation
+# Playoff probability over time
 #
-# Animates the daily/weekly evolution of playoff seed certainty and play-in
-# bubble leverage probabilities across the Eastern and Western conferences.
-# Incorporates clutch leverage metrics and projected team win trajectories to
-# visualize which teams are securing top-6 playoff locks vs fighting through the
-# 7-10 play-in leverage zone.
+# Animates each team's model playoff probability across the projection updates
+# published so far this season, for the teams whose probability moved most.
 #
-# Foundation & Theme:
-#   - sources tools/viz_common.R
-#   - uses theme_nba_dark() and official team primary colors
-#   - renders dual artifacts: cache/gif_playoff_prob_bump.gif and
-#     cache/gif_playoff_prob_bump.png (reduced-motion static final frame)
-#     via render_animated_artifact()
-#
-# Data inputs:
-#   - Reads cache/projected_30_team_standings.rds (baseline projected standings)
-#   - Reads cache/clutch_leverage_metrics.rds (high-leverage clutch metrics)
-#   - Reads cache/matchups_team_box_2027.rds (completed regular season games)
-#   - Falls back gracefully to synthesized baseline if cache files are missing
+# Data (real, no fallback):
+#   - git history of web/public/data/projections_season_teams.json
+#     (ensemble_playoff_prob as published on each update)
+#   With fewer than 3 published snapshots the chart is not rendered.
 #
 # Usage:
 #   Rscript tools/gif_playoff_prob_bump.R
@@ -75,14 +64,28 @@ out_cache_dir <- if (exists("CACHE_DIR")) CACHE_DIR else file.path(SCRIPT_DIR, "
 if (!dir.exists(out_cache_dir)) dir.create(out_cache_dir, recursive = TRUE)
 
 # ------------------------------------------------------------------------------
-# 1. Load Standings, Projections & Clutch Leverage Metrics
+# 1. Load the published playoff-probability history
+#
+# Every point on this chart is a number the site actually published: the
+# ensemble playoff probability in web/public/data/projections_season_teams.json
+# as committed on each projection update. The history is read from git, so
+# nothing is interpolated or adjusted between updates. A shallow clone has no
+# history and the chart is not rendered there.
 # ------------------------------------------------------------------------------
-standings_file <- find_cache_file("projected_30_team_standings.rds")
-clutch_file    <- find_cache_file("clutch_leverage_metrics.rds")
-proj_teams_file <- find_cache_file("projections_season_teams.rds")
-box_file       <- find_cache_file("matchups_team_box_2027.rds")
+SCRIPT_NAME <- "tools/gif_playoff_prob_bump.R"
+PROJ_JSON <- "web/public/data/projections_season_teams.json"
+MIN_SNAPSHOTS <- 3
+N_TEAMS <- 14
 
-# Conference alignment lookup
+q_arg <- function(x) shQuote(x, type = if (.Platform$OS.type == "windows") "cmd" else "sh")
+git_lines <- function(args) {
+  out <- tryCatch(
+    suppressWarnings(system2("git", c("-C", q_arg(SCRIPT_DIR), args), stdout = TRUE, stderr = FALSE)),
+    error = function(e) character(0)
+  )
+  if (!is.null(attr(out, "status")) && attr(out, "status") != 0) character(0) else out
+}
+
 CONFERENCE_MAP <- c(
   ATL = "East", BOS = "East", BKN = "East", CHA = "East", CHI = "East", CLE = "East",
   DET = "East", IND = "East", MIA = "East", MIL = "East", NYK = "East", ORL = "East",
@@ -92,131 +95,59 @@ CONFERENCE_MAP <- c(
   SAC = "West", SAS = "West", UTA = "West"
 )
 
-# Load team clutch leverage adjustment factor
-team_clutch_boost <- setNames(rep(0.0, length(CONFERENCE_MAP)), names(CONFERENCE_MAP))
-if (!is.null(clutch_file)) {
-  clutch_data <- tryCatch(readRDS(clutch_file), error = function(e) NULL)
-  if (!is.null(clutch_data) && is.list(clutch_data)) {
-    c_df <- tryCatch({
-      do.call(rbind, lapply(clutch_data, function(x) {
-        data.frame(team = resolve_team_abbr(x$team), cDwpa = as.numeric(x$cDwpa), stringsAsFactors = FALSE)
-      }))
-    }, error = function(e) NULL)
-    if (!is.null(c_df) && nrow(c_df) > 0) {
-      agg_c <- aggregate(cDwpa ~ team, data = c_df, FUN = mean)
-      for (r in seq_len(nrow(agg_c))) {
-        tm <- agg_c$team[r]
-        if (!is.na(tm) && tm %in% names(team_clutch_boost)) {
-          # High clutch win probability added provides positive playoff leverage resilience
-          team_clutch_boost[tm] <- (agg_c$cDwpa[r] - 1.0) * 0.05
-        }
-      }
-    }
-  }
-}
-
-# Baseline playoff probabilities
-base_playoff_prob <- setNames(rep(0.50, length(CONFERENCE_MAP)), names(CONFERENCE_MAP))
-
-if (!is.null(proj_teams_file)) {
-  pt_data <- tryCatch(readRDS(proj_teams_file), error = function(e) NULL)
-  if (!is.null(pt_data) && "team" %in% names(pt_data) && "ensemble_playoff_prob" %in% names(pt_data)) {
-    for (i in seq_len(nrow(pt_data))) {
-      tm <- resolve_team_abbr(pt_data$team[i])
-      if (!is.na(tm) && tm %in% names(base_playoff_prob)) {
-        base_playoff_prob[tm] <- as.numeric(pt_data$ensemble_playoff_prob[i])
-      }
-    }
-  }
-} else if (!is.null(standings_file)) {
-  std_data <- tryCatch(as.data.frame(readRDS(standings_file)), error = function(e) NULL)
-  if (!is.null(std_data) && "Team" %in% names(std_data)) {
-    for (i in seq_len(nrow(std_data))) {
-      tm <- resolve_team_abbr(std_data$Team[i])
-      rnk <- as.numeric(std_data$Rank[i])
-      if (!is.na(tm) && tm %in% names(base_playoff_prob)) {
-        # Logistic curve mapping rank to playoff probability
-        base_playoff_prob[tm] <- 1 / (1 + exp((rnk - 16) * 0.45))
-      }
-    }
-  }
-}
-
-# Focus on marquee competitive bubble & leverage contenders across conferences (Top 14 contenders in play-in / seed race)
-# Highlight teams navigating playoff seed leverage (locks, play-in race, bubble)
-target_teams <- c("BOS", "NYK", "CLE", "MIA", "DET", "IND", "ORL", "OKC", "SAS", "GSW", "DEN", "HOU", "MIN", "LAL")
-target_teams <- intersect(target_teams, names(CONFERENCE_MAP))
-
-# ------------------------------------------------------------------------------
-# 2. Build Daily / Weekly Leverage Progression Timeline
-# ------------------------------------------------------------------------------
-timeline <- list()
-
-# Step 0: Preseason Baseline
-prob_cur <- base_playoff_prob
-
-timeline[[1]] <- tibble(
-  step       = 0L,
-  date_label = "Preseason",
-  team       = target_teams,
-  conf       = CONFERENCE_MAP[target_teams],
-  prob       = pmax(0.01, pmin(0.99, as.numeric(prob_cur[target_teams])))
+log_lines <- git_lines(c("log", q_arg("--format=%H %ad"), "--date=short", "--", q_arg(PROJ_JSON)))
+commits <- data.frame(
+  sha = sub(" .*$", "", log_lines),
+  date = as.Date(sub("^[^ ]+ ", "", log_lines)),
+  stringsAsFactors = FALSE
 )
+# git log is newest first, so this keeps the last update published on each date.
+commits <- commits[!duplicated(commits$date), , drop = FALSE]
+commits <- commits[order(commits$date), , drop = FALSE]
 
-# Evolve probabilities over completed game dates if box scores are present
-if (!is.null(box_file)) {
-  box <- tryCatch(readRDS(box_file), error = function(e) NULL)
-  if (!is.null(box) && "game_date" %in% names(box)) {
-    box$team_clean <- resolve_team_abbr(box$team_abbreviation)
-    box$opp_clean  <- resolve_team_abbr(box$opponent_team_abbreviation)
-    dates <- sort(unique(as.character(box$game_date)))
+snapshots <- lapply(seq_len(nrow(commits)), function(k) {
+  raw <- git_lines(c("show", q_arg(sprintf("%s:%s", commits$sha[k], PROJ_JSON))))
+  rows <- tryCatch(jsonlite::fromJSON(paste(raw, collapse = "\n")), error = function(e) NULL)
+  if (!is.data.frame(rows) || !all(c("team", "ensemble_playoff_prob") %in% names(rows))) return(NULL)
+  out <- data.frame(
+    date = commits$date[k],
+    team = resolve_team_abbr(rows$team),
+    prob = as.numeric(rows$ensemble_playoff_prob),
+    stringsAsFactors = FALSE
+  )
+  out <- out[!is.na(out$team) & out$team %in% names(CONFERENCE_MAP) & !is.na(out$prob), , drop = FALSE]
+  if (nrow(out) < 30) NULL else out
+})
+history_df <- bind_rows(snapshots)
 
-    for (idx in seq_along(dates)) {
-      d <- dates[idx]
-      d_games <- box[as.character(box$game_date) == d, ]
-      if (nrow(d_games) > 0) {
-        for (g in seq_len(nrow(d_games))) {
-          tm <- d_games$team_clean[g]
-          won <- isTRUE(d_games$team_winner[g])
-          margin <- as.numeric(d_games$team_score[g]) - as.numeric(d_games$opponent_team_score[g])
-
-          if (!is.na(tm) && tm %in% names(prob_cur)) {
-            # Leverage swing proportional to win/loss and clutch profile
-            swing <- (if (won) 0.025 else -0.025) + (margin * 0.001) + team_clutch_boost[tm] * 0.01
-            prob_cur[tm] <- pmax(0.005, pmin(0.995, prob_cur[tm] + swing))
-          }
-        }
-      }
-
-      timeline[[length(timeline) + 1L]] <- tibble(
-        step       = as.integer(idx),
-        date_label = format(as.Date(d), "%b %d"),
-        team       = target_teams,
-        conf       = CONFERENCE_MAP[target_teams],
-        prob       = pmax(0.01, pmin(0.99, as.numeric(prob_cur[target_teams])))
-      )
-    }
-  }
+if (nrow(history_df) == 0 || length(unique(history_df$date)) < MIN_SNAPSHOTS) {
+  viz_stop_no_data(
+    SCRIPT_NAME,
+    sprintf("fewer than %d published snapshots of %s were found in git history.", MIN_SNAPSHOTS, PROJ_JSON)
+  )
 }
 
-# If fewer than 4 steps were generated, synthesize multi-week progression
-if (length(timeline) <= 3) {
-  for (w in (length(timeline)):6) {
-    for (tm in target_teams) {
-      shift <- sin(which(target_teams == tm) + w) * 0.035 + team_clutch_boost[tm] * 0.02
-      prob_cur[tm] <- pmax(0.02, pmin(0.99, prob_cur[tm] + shift))
-    }
-    timeline[[length(timeline) + 1L]] <- tibble(
-      step       = as.integer(w),
-      date_label = sprintf("Week %d", w),
-      team       = target_teams,
-      conf       = CONFERENCE_MAP[target_teams],
-      prob       = pmax(0.01, pmin(0.99, as.numeric(prob_cur[target_teams])))
-    )
-  }
-}
+# ------------------------------------------------------------------------------
+# 2. Pick the teams to draw: the ones whose published probability moved most.
+#    Chosen from the data on every run, not from a fixed list.
+# ------------------------------------------------------------------------------
+movement <- history_df %>%
+  group_by(team) %>%
+  summarise(range = max(prob) - min(prob), .groups = "drop") %>%
+  arrange(desc(range), team)
+target_teams <- head(movement$team, N_TEAMS)
 
-timeline_df <- bind_rows(timeline)
+snap_dates <- sort(unique(history_df$date))
+timeline_df <- history_df %>%
+  filter(team %in% target_teams) %>%
+  mutate(
+    step = match(date, snap_dates) - 1L,
+    date_label = format(date, "%b %d"),
+    conf = CONFERENCE_MAP[team]
+  ) %>%
+  select(step, date_label, team, conf, prob) %>%
+  arrange(step, team)
+
 all_steps <- sort(unique(timeline_df$step))
 max_step  <- max(all_steps)
 
@@ -239,7 +170,7 @@ dir.create(tmp_frame_dir, recursive = TRUE)
 
 frame_files <- character(0)
 
-TEAM_LOGOS <- viz_logo_map(script = "tools/gif_playoff_prob_bump.R")
+TEAM_LOGOS <- viz_logo_map(script = SCRIPT_NAME)
 
 for (s in all_steps) {
   frame_lines <- timeline_df %>% filter(step <= s)
@@ -259,11 +190,11 @@ for (s in all_steps) {
     geom_hline(yintercept = 0.50, linetype = "dotted", color = NBA_COLORS$grid, linewidth = 0.6) +
     geom_hline(yintercept = 0.35, linetype = "dashed", color = "#ef4444", linewidth = 0.5, alpha = 0.7) +
     # Zone text labels
-    annotate("text", x = -0.15, y = 0.93, label = "TOP-6 PLAYOFF LOCK ZONE (\u226585%)",
+    annotate("text", x = -0.15, y = 0.93, label = "LIKELY IN (85% OR HIGHER)",
              color = "#10b981", hjust = 0, size = 2.7, fontface = "bold", alpha = 0.9) +
-    annotate("text", x = -0.15, y = 0.52, label = "PLAY-IN LEVERAGE ZONE (35% - 85%)",
+    annotate("text", x = -0.15, y = 0.52, label = "IN THE RACE (35% TO 85%)",
              color = "#f59e0b", hjust = 0, size = 2.7, fontface = "bold", alpha = 0.9) +
-    annotate("text", x = -0.15, y = 0.18, label = "HIGH LOTTERY LEVERAGE RISK (<35%)",
+    annotate("text", x = -0.15, y = 0.18, label = "LONG SHOT (UNDER 35%)",
              color = "#ef4444", hjust = 0, size = 2.7, fontface = "bold", alpha = 0.9)
 
   if (s > 0) {
@@ -292,11 +223,11 @@ for (s in all_steps) {
     scale_fill_manual(values = team_colors, guide = "none") +
     theme_nba_dark() +
     labs(
-      title = "NBA Playoff Seed & Play-In Leverage Probability Bump (2026-27)",
-      subtitle = sprintf("Dynamic playoff probability bump through %s \u00b7 Clutch leverage index integrated", cur_label),
-      x = "Timeline",
+      title = "Playoff Probability Over Time (2026-27)",
+      subtitle = sprintf("Model playoff probability at each published projection update, through %s. The %d teams whose odds moved most.", cur_label, length(target_teams)),
+      x = "Projection update",
       y = "Playoff Probability",
-      caption = "Season Standings & Clutch Leverage Simulator"
+      caption = "Source: ensemble season projections exactly as published on each date."
     )
 
   frame_path <- file.path(tmp_frame_dir, sprintf("frame_%03d.png", s))

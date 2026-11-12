@@ -544,9 +544,9 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
       <div className="grid grid-cols-1 gap-6">
         <AnimatedMediaCard
           name="gif_playoff_prob_bump"
-          title="Playoff Seed & Play-In Leverage Bump Trajectory"
-          alt="Animated bump chart tracking playoff probability and seed certainty across conference contenders"
-          caption="Playoff seed certainty and play-in tournament threshold trajectories across Eastern and Western conference contenders throughout late-season games."
+          title="Playoff Probability Over Time"
+          alt="Animated line chart of model playoff probability at each published projection update for the 14 teams whose odds moved most"
+          caption="Model playoff probability at each published projection update this season, for the 14 teams whose odds have moved most."
         />
       </div>
 

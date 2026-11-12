@@ -14,7 +14,6 @@
 #
 # Data inputs:
 #   - Reads matchups_team_box_2027.rds (completed regular season games)
-#   - Falls back gracefully to synthesized schedule if cache is missing
 #
 # Usage:
 #   Rscript tools/gif_point_diff_race.R
@@ -122,18 +121,9 @@ if (!is.null(box_file)) {
   }
 }
 
-# Fallback if no games available
+# No invented history: without real completed games the chart is not rendered.
 if (length(race_history) <= 1) {
-  sim_cum <- setNames(rep(0.0, length(all_teams)), all_teams)
-  for (i in 1:4) {
-    sim_cum <- sim_cum + sin(seq_along(all_teams) + i) * 6
-    race_history[[i + 1]] <- tibble(
-      step = as.integer(i),
-      date_label = sprintf("Day %d", i),
-      team = all_teams,
-      cum_diff = as.numeric(sim_cum[all_teams])
-    )
-  }
+  viz_stop_no_data("tools/gif_point_diff_race.R", "no completed games were found in the cache.")
 }
 
 race_df <- bind_rows(race_history)
