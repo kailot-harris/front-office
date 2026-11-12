@@ -1,8 +1,8 @@
-# HANDOFF — WNBA Gallery phases 2 AND 3 (issues #145, #146) COMPLETE locally: all 12/12 charts merged, tested, registered — NOT YET PUSHED; plus everything below from the 2026-11-09 sessions (test suites green §21, sentiment-lexicon tickets #170/#171 spec'd, #169 shipped, 2026 Finals Champion Freeze, Synthetic-Data Remediation, Off-Season Dossier, Four-Sport Deploy); local HEAD = `cc7ada1`, **30 commits ahead of `origin/main` and NOT YET PUSHED**
+# HANDOFF — WNBA Gallery phases 2, 3 AND 4 (issues #145, #146, #147) COMPLETE locally: all 12/12 charts merged+tested, /gallery route live, aggregator landing-page link added — NOT YET PUSHED; plus everything below from the 2026-11-09 sessions (test suites green §21, sentiment-lexicon tickets #170/#171 spec'd, #169 shipped, 2026 Finals Champion Freeze, Synthetic-Data Remediation, Off-Season Dossier, Four-Sport Deploy); local HEAD = `02e0d9d`, **33 commits ahead of `origin/main` and NOT YET PUSHED**
 
-> **START HERE (updated 2026-11-12 ~11:30 EST, local `HEAD` = `cc7ada1`, 30 commits ahead of
+> **START HERE (updated 2026-11-12 ~16:50 EST, local `HEAD` = `02e0d9d`, 33 commits ahead of
 > `origin/main` — NOT pushed).**
-> **Read this if you are picking up the WNBA visual gallery (issues #145/#146).** This is a
+> **Read this if you are picking up the WNBA visual gallery (issues #145/#146/#147).** This is a
 > **disjoint workstream** from everything below it in this file — §§1–21 are all about the
 > off-season monitor / sentiment-pulse / betting-decommission line of work in a different issue
 > tracker (`kailot-harris/WNBA_analytics`'s own issues). The gallery work is tracked instead in the
@@ -2774,4 +2774,128 @@ is half-done on the code side for #144/#145/#146. What's left:
    reviewed — same owner's-call pattern as phase 2.
 
 **All file:line and commit-hash citations in this section were accurate as of 2026-11-12 ~11:30 EST —
+re-verify with `git log` / `grep` before trusting them if more time has passed.**
+
+## 24. Same session, continued (2026-11-12 ~16:50 EST): WNBA Visual Gallery phase 4 — issue #147, `/gallery` route live, plus a real gap found and fixed: 2 batches of chart media binaries were never committed
+
+> **Read this if you are picking up the visual gallery.** Direct continuation of §§22-23's session,
+> same disjoint workstream. After §23 wrapped up phase 3 (#146), the user ran `/subagent-brief issue
+> 147` — **#147 ("gallery phase 4 — `/gallery` route, sidebar, landing page") was the next unblocked
+> issue**, its own body naming the dependency as "phases 2 (#145) and 3 (#146) having produced at
+> least most chart assets," both done. **The WNBA-repo portion of #147 is now merged and independently
+> re-verified; the aggregator landing-page link is committed in a separate repo.** Local `main` is at
+> `02e0d9d`, 33 commits ahead of `origin/main`, still nothing pushed.
+
+### 24a. What this session did, in order
+
+1. Read #147's tracker body directly (`gh issue view 147 --repo kailot-harris/front-office`) to
+   confirm scope: `web/app/gallery/page.tsx` + `GalleryClient.tsx` (port of the NBA pattern), a
+   sidebar entry, an asset-contract test for all 12 chart pairs, and a `wnba/gallery/` link in the
+   aggregator's `index.html` — the last item being in a **different git repo**
+   (`front-office-aggregator`) than the other three.
+2. Split the work along that repo boundary rather than forcing one subagent brief across two repos:
+   a single Tier-1 full-template brief (`brief_issue147.md`, untracked scratch like prior phases'
+   briefs) covered only the three WNBA-repo files; the coordinating session made the aggregator
+   `index.html` one-line edit directly (trivial, single repo, no delegation needed).
+3. Read `../NBA Analytics/web/app/gallery/page.tsx` and `web/components/GalleryClient.tsx` (415
+   lines) as reference before writing the brief, and found this repo's own
+   `web/tests/contracts/assets.test.ts` already had a **working example of the exact "ships both
+   files or neither" contract pattern needed** (a `Net-rating trajectory media pair contract`
+   `describe` block, for a different, already-merged chart pair) — pointed the brief at it directly
+   instead of having the subagent invent a new pattern.
+4. Dispatched one subagent (run `20261112-163815-6812f1`) in a manually-created worktree
+   (`.worktrees/issue147`, branch `feat/147-gallery-route`), with the now-standard explicit
+   "you are expected to `git commit`" language baked into the brief from the start. Flagged in the
+   dispatch message (not the brief itself, since it's an environment fact not a task instruction)
+   that the worktree's `web/node_modules` would be empty and `npm install` was needed first.
+5. Subagent reported `success` on all 6 criteria; independently re-verified every one before
+   merging: re-ran `git diff` on `Sidebar.tsx`, re-ran `npx vitest run tests/contracts/assets.test.ts`
+   (28/28 passed), re-ran `npm run build` (`/gallery` in the route table, zero errors), and confirmed
+   the commit (`455b769`) touched exactly the 4 scope files. Fast-forward merged into `main`.
+6. **The subagent's own result flagged a real gap while verifying criterion 5**: all 11 of phase
+   2-3's rendered chart GIF/PNG pairs in `web/public/media/` were sitting as **untracked** files in
+   both its worktree and the main checkout — never `git add`ed at any point across §§22-23, despite
+   being produced by already-merged scripts. Confirmed independently (`git ls-files
+   web/public/media/` showed only the pre-existing `net_rating_trajectory_2026.*` pair tracked; `git
+   status --porcelain` showed all 22 gallery files as `??`; `git check-ignore` confirmed they aren't
+   gitignored, just never staged). This meant a push today would have shipped a `/gallery` route
+   whose images are entirely absent on the live site. **Fixed by committing all 22 files directly**
+   (`02e0d9d`, 3.5 MB total) — see §24b.
+7. Committed the aggregator's `wnba/gallery/` landing-page link (`front-office-aggregator` commit
+   `c2b5af7`) after reviewing the diff was the expected single `<li>` line, matching the existing
+   NFL/NBA/MLB pattern (gallery link last in each sport's module list).
+8. Ran the skill's single-task closing procedure: `record-result` (fixed the schema on first
+   attempt — see §24d), `set-status --status merged`.
+
+### 24b. What's actually implemented
+
+| File | Repo | Status | Commit |
+|---|---|---|---|
+| `web/app/gallery/page.tsx` | WNBA Analytics | New — thin wrapper, mirrors NBA's shape | `455b769` |
+| `web/components/GalleryClient.tsx` | WNBA Analytics | New — 343 lines, `WNBA_GALLERY_ITEMS` catalog (12 entries) + card grid/search/modal UI | `455b769` |
+| `web/components/Sidebar.tsx` | WNBA Analytics | Modified — 1 new `/gallery` nav entry + 1 new `Film` import, nothing else touched | `455b769` |
+| `web/tests/contracts/assets.test.ts` | WNBA Analytics | Modified — new `Gallery chart media pair contract` `describe` block, 28 tests, all passing | `455b769` |
+| `web/public/media/*.gif`/`*.png` (11 pairs, 22 files) | WNBA Analytics | **Committed for the first time** — previously untracked output from phases 2-3 | `02e0d9d` |
+| `index.html` (`wnba/gallery/` link) | front-office-aggregator | New `<li>`, last entry in the WNBA module list | `c2b5af7` |
+
+The gallery catalog lists all 12 charts, including `gif_finals_closing_stretch` (chart #12, still
+`[SKIP-NO-DATA]` per §23c) — its catalog entry exists so it appears automatically once Game 7's data
+lands and the script is re-run; the new asset-contract test's paired assertion (`hasGif ===
+hasPng`) treats its current "neither file" state as a legitimate pass, same pattern as the
+pre-existing net-rating-trajectory contract it was modeled on.
+
+### 24c. Note for whoever runs the actual push/deploy
+
+Both `main` branches (`WNBA Analytics` and `front-office-aggregator`) now have real, uncommitted-
+until-now content ready to go out, but **nothing has been pushed from either repo yet** — same
+as §§22-23 left it. The aggregator's new `wnba/gallery/` link will 404 until `WNBA Analytics`'s
+`main` is pushed, pulled into the aggregator via its `wnba` subtree, and the aggregator itself is
+redeployed (see §6 for the exact sequence) — don't deploy the aggregator link alone first.
+
+### 24d. Errors and fixes this section
+
+- **`record-result` schema violation, twice**: the first attempt reused a flatter JSON shape from
+  earlier in this session (`criteria[].evidence` as a string, no top-level `summary`/`evidence`/
+  `blocked_reason`/`needed_action`/`changes`/`item_id`) that doesn't match `result.v1.json`'s actual
+  required fields. Read `schema/result.v1.json` directly rather than guessing from memory a second
+  time, and rebuilt the file with `criteria[].text`+`evidence_refs` (pointing at a separate
+  top-level `evidence[]` array with `id`/`type`/`ref`/`excerpt`) plus all six other required
+  top-level keys — second attempt passed clean.
+- **Worktree cleanup left a stray directory**: `git worktree remove .worktrees/issue147 --force`
+  partially succeeded (unregistered the worktree, branch deleted cleanly afterward) but failed with
+  `Permission denied` deleting the directory itself, most likely a lingering file handle from the
+  subagent's `npm install`/`vitest`/`next build` run. The directory's contents are just copies of
+  already-committed source plus the same `web/public/media/*` binaries now committed at `02e0d9d` —
+  nothing unique is at risk there; remove `.worktrees/issue147` by hand once no process holds it
+  open, or ignore it (it's untracked and already excluded from `git status` noise by the
+  `/.subagent-runs/`-style `.gitignore` pattern... actually verify this specific path is gitignored
+  before assuming — it was not checked this session).
+
+### 24e. Concrete next step
+
+**All code-side work for the WNBA gallery effort (#144/#145/#146/#147) is now complete and merged
+locally.** What's left is entirely deploy/ops, not code:
+
+1. **Push and deploy** (carried forward from §§22-23, still not done — now the main blocker). Local
+   `WNBA Analytics` main is 33 commits ahead of `origin/main`. Sequence once approved: `git push
+   origin main` from `WNBA Analytics` → aggregator subtree pull (`git subtree pull --prefix=wnba
+   wnba-origin main -m "..."` in `front-office-aggregator`, which will also pick up the
+   already-committed `wnba/gallery/` link's sibling content) → push `front-office-aggregator`'s
+   `main` → live-verify per §6's 4-step sequence. Only after the gallery is confirmed live should
+   #144/#145/#146/#147 be closed on the `kailot-harris/front-office` tracker.
+2. **Re-run `gif_finals_closing_stretch.R` periodically** (unchanged from §23d item 3) — no code
+   change expected, just a future re-render and a new `cache/`/`web/public/media` commit once Game
+   7's event-level data lands in wehoop. Once it does, re-run `npx vitest run
+   tests/contracts/assets.test.ts` from `web/` to confirm the "is a real, non-trivial image pair"
+   half of the new contract now exercises all 12 charts instead of 11.
+3. **Scratch file cleanup** (owner's call, not yet done, growing list): `batch_issue145_template.md`,
+   `batch_issue145_items.json`, `batch_issue146_template.md`, `batch_issue146_items.json`,
+   `brief_issue147.md`, `result_issue147.json` (all untracked at the repo root), plus the unrelated
+   leftover `brief_issue171.md`. Also resolve the stray `.worktrees/issue147` directory noted in
+   §24d.
+4. There is no remaining phase of the original `#140` gallery epic known to this session — #147 was
+   explicitly phase 4/"the `/gallery` route, sidebar, landing page" and nothing in its own body or
+   #140's references a phase 5. Confirm on the tracker before assuming the epic is fully closed out.
+
+**All file:line and commit-hash citations in this section were accurate as of 2026-11-12 ~16:50 EST —
 re-verify with `git log` / `grep` before trusting them if more time has passed.**
