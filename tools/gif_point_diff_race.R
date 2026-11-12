@@ -303,7 +303,22 @@ for (i in seq_along(display_steps)) {
   # Going horizontal-then-vertical keeps the "this is just a label nudge"
   # connector visually distinct from "this is data moving."
   frame_pts$elbow_x <- s + max_step * 0.018
-  frame_pts$logo_x  <- s + max_step * 0.030
+  # Stagger logos along a diagonal cascade: the top-ranked team's logo sits
+  # furthest right, the bottom-ranked team's sits closest to the line, with
+  # every rank in between interpolated linearly. This spreads a crowded
+  # column of 15 logos across both axes instead of stacking them in one
+  # straight vertical line, and reads as "logos fan out as the pack spreads
+  # top to bottom" rather than conveying any data of its own -- the actual
+  # value is still only ever read off the colored dot + dotted connector.
+  n_pts <- nrow(frame_pts)
+  logo_x_near <- s + max_step * 0.020
+  logo_x_far  <- s + max_step * 0.330
+  rank_top_to_bottom <- rank(-frame_pts$logo_y, ties.method = "first")  # 1 = highest logo_y
+  frame_pts$logo_x <- if (n_pts > 1) {
+    logo_x_far - (logo_x_far - logo_x_near) * (rank_top_to_bottom - 1) / (n_pts - 1)
+  } else {
+    logo_x_far
+  }
   cur_label <- step_labels[[as.character(s)]]
 
   plots[[i]] <- ggplot(frame_lines, aes(x = step, y = cum_diff, group = team, color = team)) +
@@ -319,6 +334,12 @@ for (i in seq_along(display_steps)) {
     geom_segment(data = frame_pts, aes(x = elbow_x, xend = elbow_x, y = cum_diff, yend = logo_y),
                  color = WNBA_COLORS$subtext, linetype = "dotted", linewidth = 0.5,
                  alpha = 0.8, inherit.aes = FALSE) +
+    # Third leg of the connector: horizontal only, from the elbow out to the
+    # staggered logo_x (varies per rank -- see the diagonal-cascade comment
+    # above). Still axis-aligned, so it never reads as a sloped trend.
+    geom_segment(data = frame_pts, aes(x = elbow_x, xend = logo_x, y = logo_y, yend = logo_y),
+                 color = WNBA_COLORS$subtext, linetype = "dotted", linewidth = 0.5,
+                 alpha = 0.8, inherit.aes = FALSE) +
     # Solid dot at the TRUE value -- the actual end of each line, kept
     # separate from the (possibly jittered) logo position.
     geom_point(data = frame_pts, aes(x = step, y = cum_diff, fill = team),
@@ -332,7 +353,7 @@ for (i in seq_along(display_steps)) {
     ggimage::geom_image(data = frame_pts, aes(x = logo_x, y = logo_y, image = TEAM_LOGOS[team]),
                size = 0.062, by = "height", inherit.aes = FALSE) +
     scale_x_continuous(breaks = display_steps, labels = step_labels[as.character(display_steps)],
-                        limits = c(-max_step * 0.01, max_step * 1.12)) +
+                        limits = c(-max_step * 0.01, max_step * 1.42)) +
     scale_y_continuous(limits = c(y_min, y_max)) +
     scale_color_manual(values = team_colors, guide = "none") +
     scale_fill_manual(values = team_colors, guide = "none") +
@@ -357,6 +378,6 @@ viz_render_frames(
   cache_dir  = CACHE_DIR_RESOLVED,
   fps        = 2,
   hold_last_frames = 5,
-  width      = 1000,
+  width      = 1200,
   height     = 680
 )
