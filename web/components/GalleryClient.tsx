@@ -24,7 +24,7 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
     category: 'standings',
     description: 'Animated bump chart illustrating all 30 NBA teams Elo rating movements and ranking transitions across the season.',
     type: 'gif',
-    sizeBytes: 437534,
+    sizeBytes: 905950,
   },
   {
     id: 'gif_point_diff_race',
@@ -33,7 +33,7 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
     category: 'standings',
     description: 'Animated race chart displaying cumulative scoring differential trajectories across all 30 NBA franchises.',
     type: 'gif',
-    sizeBytes: 340939,
+    sizeBytes: 643899,
   },
   {
     id: 'gif_division_standings_race',
@@ -42,7 +42,7 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
     category: 'standings',
     description: 'Animated cumulative regular season wins race faceted across all 6 NBA divisions.',
     type: 'gif',
-    sizeBytes: 325429,
+    sizeBytes: 706708,
   },
   {
     id: 'gif_elo_heatmap',
@@ -51,7 +51,7 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
     category: 'standings',
     description: '2D timeline tile matrix mapping weekly Elo rating evolution and momentum shifts across all 30 NBA teams.',
     type: 'gif',
-    sizeBytes: 466990,
+    sizeBytes: 1039666,
   },
   {
     id: 'gif_elo_delta_race',
@@ -60,7 +60,7 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
     category: 'standings',
     description: 'Power rankings Elo delta bar race displaying surging risers and fallers over time.',
     type: 'gif',
-    sizeBytes: 304919,
+    sizeBytes: 565367,
   },
   {
     id: 'gif_net_rating_quadrant',
@@ -69,7 +69,7 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
     category: 'efficiency',
     description: 'Evolution of offensive rating vs defensive rating across the league with championship quadrant dividers.',
     type: 'gif',
-    sizeBytes: 299675,
+    sizeBytes: 523939,
   },
   {
     id: 'gif_pace_efficiency_quadrant',
@@ -78,7 +78,7 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
     category: 'efficiency',
     description: 'Pace (possessions/48 min) vs Net Rating scatter animating team tactical styles from fast & dominant to methodical grinders.',
     type: 'gif',
-    sizeBytes: 314566,
+    sizeBytes: 506022,
   },
   {
     id: 'gif_pf_pa_scatter_elo',
@@ -87,7 +87,7 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
     category: 'efficiency',
     description: 'Offensive output vs defensive resistance scatter with team bubbles dynamically scaled by Elo rating and parity diagonal.',
     type: 'gif',
-    sizeBytes: 351496,
+    sizeBytes: 833657,
   },
   {
     id: 'gif_turnover_margin_race',
@@ -96,7 +96,7 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
     category: 'efficiency',
     description: 'Cumulative turnover margin bar race tracking ball security and opponent turnovers forced across all 30 NBA teams.',
     type: 'gif',
-    sizeBytes: 290302,
+    sizeBytes: 474808,
   },
   {
     id: 'gif_upset_timeline',
@@ -105,7 +105,7 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
     category: 'standings',
     description: 'Chronological timeline of underdog upsets where pre-game win expectation was under 43%, tracking giant-killing franchises.',
     type: 'gif',
-    sizeBytes: 274186,
+    sizeBytes: 470233,
   },
   {
     id: 'gif_playoff_prob_bump',
@@ -114,7 +114,7 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
     category: 'playoffs',
     description: 'Playoff seed certainty and play-in tournament threshold trajectories across Eastern and Western conference contenders.',
     type: 'gif',
-    sizeBytes: 291296,
+    sizeBytes: 514752,
   },
   {
     id: 'gif_player_shot_chart',
@@ -128,11 +128,11 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
   {
     id: 'nba_predictions_today',
     filename: 'nba_predictions_today.png',
-    title: 'Daily Game Model Predictions & Win Probability Spreads',
+    title: 'Daily Game Model Predictions & Win Probabilities',
     category: 'predictions',
-    description: 'Stylized game-day projection graphic illustrating model win probability spreads and projected home/away differentials across slate matchups.',
+    description: 'Stylized game-day projection graphic illustrating model win probabilities and projected home/away differentials across slate matchups.',
     type: 'image',
-    sizeBytes: 204425,
+    sizeBytes: 239134,
   },
   {
     id: 'gif_rapm_race',
@@ -141,7 +141,7 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
     category: 'players',
     description: 'Top-10 Offensive and Defensive Regularized Adjusted Plus-Minus (ORAPM/DRAPM) bar race with ridge shrinkage confidence intervals scaling across sample sizes.',
     type: 'gif',
-    sizeBytes: 523082,
+    sizeBytes: 524659,
   },
   {
     id: 'gif_clutch_shot_worm',
@@ -150,7 +150,43 @@ export const NBA_GALLERY_ITEMS: VisualMediaItem[] = [
     category: 'shots',
     description: 'Late-game win probability and score margin worm paired synchronously with half-court shot locations in the final 5 minutes of high-leverage close games.',
     type: 'gif',
-    sizeBytes: 297650,
+    sizeBytes: 289263,
+  },
+  {
+    id: 'gif_shot_profile_shift',
+    filename: 'gif_shot_profile_shift.gif',
+    title: 'Team Shot-Profile Shift: Three-Point Share vs Last Season',
+    category: 'shots',
+    description: "Share of each team's field-goal attempts taken from three this season against last season, classified by court location in both years and updated through the latest games.",
+    type: 'gif',
+    sizeBytes: 120114,
+  },
+  {
+    id: 'gif_rotation_minutes_stream',
+    filename: 'gif_rotation_minutes_stream.gif',
+    title: 'Rotation Minutes Stream',
+    category: 'players',
+    description: 'Game-by-game split of minutes among the players on the team whose rotation has changed the most this season, measured by how many minutes change hands between consecutive games.',
+    type: 'gif',
+    sizeBytes: 208146,
+  },
+  {
+    id: 'gif_proj_vs_actual_wins',
+    filename: 'gif_proj_vs_actual_wins.gif',
+    title: 'Pre-Season Projection vs Results So Far',
+    category: 'predictions',
+    description: "Each team's projected win rate as published before opening night against its actual win rate to date, with the average miss across the league.",
+    type: 'gif',
+    sizeBytes: 192704,
+  },
+  {
+    id: 'gif_timeout_effect',
+    filename: 'gif_timeout_effect.gif',
+    title: 'After-Timeout Execution: Offense vs Defense',
+    category: 'efficiency',
+    description: 'Points per possession each team scored on the first possession after its own timeouts against what it allowed after opponent timeouts, across the last completed season.',
+    type: 'gif',
+    sizeBytes: 234477,
   },
   // gif_rookie_impact_race is intentionally absent. The only copy ever published
   // was drawn from simulated box scores (tools/gif_rookie_impact_race.R had no

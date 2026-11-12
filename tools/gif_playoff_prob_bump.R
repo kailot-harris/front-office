@@ -239,6 +239,8 @@ dir.create(tmp_frame_dir, recursive = TRUE)
 
 frame_files <- character(0)
 
+TEAM_LOGOS <- viz_logo_map(script = "tools/gif_playoff_prob_bump.R")
+
 for (s in all_steps) {
   frame_lines <- timeline_df %>% filter(step <= s)
   frame_pts   <- timeline_df %>% filter(step == s)
@@ -271,8 +273,10 @@ for (s in all_steps) {
   p_frame <- p_frame +
     geom_point(data = frame_pts, aes(x = step, y = prob, fill = team),
                shape = 21, size = 3.6, color = NBA_COLORS$text, stroke = 1.0) +
+    ggimage::geom_image(data = frame_pts, aes(x = step + 0.36, y = prob, image = TEAM_LOGOS[team]),
+                        size = 0.034, by = "height", inherit.aes = FALSE) +
     geom_text(data = frame_pts,
-              aes(x = step + 0.14, y = prob, label = sprintf("%s (%.0f%%)", team, prob * 100)),
+              aes(x = step + 0.72, y = prob, label = sprintf("%.0f%%", prob * 100)),
               hjust = 0, vjust = 0.4, fontface = "bold", size = 2.8, color = NBA_COLORS$text) +
     scale_y_continuous(
       limits = c(0.00, 1.03),

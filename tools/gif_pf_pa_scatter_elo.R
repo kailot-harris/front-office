@@ -230,6 +230,8 @@ x_max <- ceiling(max(scatter_df$ppg_for) + 2)
 y_min <- floor(min(scatter_df$ppg_against) - 2)
 y_max <- ceiling(max(scatter_df$ppg_against) + 2)
 
+TEAM_LOGOS <- viz_logo_map(script = "tools/gif_pf_pa_scatter_elo.R")
+
 for (s in all_steps) {
   frame_data <- scatter_df %>% filter(step == s)
   cur_label <- frame_data$date_label[1]
@@ -254,9 +256,9 @@ for (s in all_steps) {
     annotate("text", x = x_min + 0.5, y = y_max - 0.8, label = "Struggling Lottery (Low PF / High PA)",
              color = NBA_COLORS$negative, fontface = "bold", size = 3.2, hjust = 0) +
     # Bubble points scaled by Elo
-    geom_point(aes(fill = team, size = elo), shape = 21, color = NBA_COLORS$text, stroke = 1.0, alpha = 0.9) +
-    scale_size_continuous(range = c(3.5, 9.0), guide = "none") +
-    geom_text(aes(label = team), color = NBA_COLORS$text, vjust = -1.15, fontface = "bold", size = 2.8) +
+    geom_point(aes(fill = team, size = elo), shape = 21, color = NBA_COLORS$text, stroke = 0.6, alpha = 0.3) +
+    scale_size_continuous(range = c(9.0, 20.0), guide = "none") +
+    ggimage::geom_image(aes(image = TEAM_LOGOS[team]), size = 0.045, by = "width") +
     scale_x_continuous(limits = c(x_min, x_max), breaks = scales::pretty_breaks(n = 6)) +
     # Invert Y so lower points allowed (better defense) is at the top
     scale_y_reverse(limits = c(y_max, y_min), breaks = scales::pretty_breaks(n = 6)) +

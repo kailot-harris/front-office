@@ -189,6 +189,8 @@ timeline_history[[1]] <- tibble(
   recent_highlight = "Season Opener"
 )
 
+TEAM_LOGOS <- viz_logo_map(script = "tools/gif_upset_timeline.R")
+
 for (idx in seq_along(dates)) {
   d <- dates[idx]
   d_upsets <- all_upsets %>% filter(game_date == d)
@@ -249,6 +251,7 @@ for (s in active_steps) {
 
   p_frame <- ggplot(top_teams, aes(x = cum_upsets, y = reorder(team, -bar_order), fill = team)) +
     geom_col(width = 0.72, alpha = 0.9, color = NBA_COLORS$border) +
+    ggimage::geom_image(aes(x = -0.035 * x_max_limit, image = TEAM_LOGOS[team]), size = 0.05, by = "height") +
     geom_text(
       aes(x = cum_upsets + 0.1, label = label_str),
       color = NBA_COLORS$text,
@@ -256,18 +259,18 @@ for (s in active_steps) {
       size = 2.9,
       fontface = "bold"
     ) +
-    scale_x_continuous(limits = c(0, x_max_limit), breaks = 0:floor(x_max_limit)) +
+    scale_x_continuous(limits = c(-0.07 * x_max_limit, x_max_limit), breaks = 0:floor(x_max_limit)) +
     scale_fill_manual(values = team_colors, guide = "none") +
     theme_nba_dark(base_size = 10) +
     theme(
-      axis.text.y = element_text(size = 8.5, face = "bold"),
+      axis.text.y = element_blank(), axis.ticks.y = element_blank(),
       panel.grid.major.y = element_blank()
     ) +
     labs(
       title = "NBA Underdog Upset Tracker & Giant-Killer Timeline",
       subtitle = sprintf("Through %s \u2014 %s", cur_label, cur_highlight),
       x = "Underdog Upset Wins (Pre-Game Model Win Probability < 43%)",
-      y = "NBA Franchise",
+      y = NULL,
       caption = "Pre-game win expectation derived from dynamic Elo ratings"
     )
 
