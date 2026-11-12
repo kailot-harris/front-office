@@ -6,6 +6,8 @@ import { TeamLogo } from './TeamLogo';
 import { Search, DollarSign, PieChart, Layers, Award, Download } from 'lucide-react';
 import { exportToCsv } from '@/lib/exportToCsv';
 import { money } from '@/lib/format';
+import { GlossaryTerm } from './Glossary';
+import { HowToRead } from './HowToRead';
 
 interface SalaryCapClientProps {
   data: SalaryCapDataset;
@@ -98,12 +100,23 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
             <span className="text-emerald-400">NFL</span> Positional Cap Allocation & Contract Valuation
           </h1>
           <p className="text-slate-400 text-sm mt-1 max-w-3xl">
-            Comprehensive salary cap analytics across all 32 NFL franchises: active cash APY, positional spending distributions,
+            Comprehensive salary cap analytics across all 32 NFL franchises: active cash <GlossaryTerm term="APY" className="text-slate-300" />, positional spending distributions,
             dead money burdens, and league-wide top contract guarantees.
           </p>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-emerald-500/40 to-transparent" />
       </div>
+
+      <HowToRead pageKey="salary-cap">
+        <p>
+          <strong><GlossaryTerm term="APY" className="text-slate-300" /></strong> (Average Per Year) divides a
+          contract&apos;s total value by its length, so a 1-year deal and a 5-year deal can be compared on equal
+          footing rather than by raw total dollars. <strong>Dead money</strong> is cap space still charged against
+          a team for a player no longer on the roster (e.g. after a cut or trade with remaining guarantees).
+          Positional spending shares show where a team&apos;s cap is allocated relative to the league-wide norm
+          for that position.
+        </p>
+      </HowToRead>
 
       {/* KPI Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -120,7 +133,7 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
 
         <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 shadow-lg">
           <div className="flex items-center justify-between text-slate-400 pb-2">
-            <span className="text-xs font-medium">Avg Active Roster APY</span>
+            <span className="text-xs font-medium">Avg Active Roster <GlossaryTerm term="APY" className="text-slate-300" /></span>
             <PieChart className="w-4 h-4 text-cyan-400" />
           </div>
           <div className="text-2xl font-bold font-mono text-cyan-400">

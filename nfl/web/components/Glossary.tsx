@@ -56,6 +56,26 @@ export const GLOSSARY_TERMS: GlossaryEntry[] = [
     term: 'Market Blend',
     definition: 'The portion of a projection derived from sportsbook market lines rather than this app’s own models.',
   },
+  {
+    term: 'Brier Score',
+    definition:
+      'The average squared error between a predicted win probability and the actual outcome (0 or 1). Lower is better; 0 is a perfect forecast, 0.25 is a coin flip guessed every time.',
+  },
+  {
+    term: 'Log Loss',
+    definition:
+      'Cross-entropy loss: like the Brier score, it grades predicted win probabilities against actual outcomes, but penalizes confident-and-wrong predictions much more heavily. Lower is better.',
+  },
+  {
+    term: 'APY',
+    definition:
+      'Average Per Year: a contract’s total guaranteed and likely-to-be-paid value divided by its length, used to compare deals of different durations on equal footing.',
+  },
+  {
+    term: 'PROE',
+    definition:
+      'Pass Rate Over Expected: how much more (or less) often a team actually passes compared to what down, distance, score, and time situation would predict for a league-average team.',
+  },
 ];
 
 /** Looks up a glossary entry by term (case-insensitive, ignoring parenthetical text). */

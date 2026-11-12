@@ -4,6 +4,8 @@ import { DiagnosticsDataset } from '@/lib/types';
 import CalibrationCurve from './CalibrationCurve';
 import { ShieldCheck, Target, Activity, BarChart2, Download } from 'lucide-react';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { GlossaryTerm } from './Glossary';
+import { HowToRead } from './HowToRead';
 
 interface DiagnosticsClientProps {
   data: DiagnosticsDataset;
@@ -81,12 +83,24 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
             <span className="text-emerald-400">NFL</span> Model Calibration, Brier Trajectory & Diagnostics
           </h1>
           <p className="text-slate-400 text-sm mt-1 max-w-3xl">
-            Multi-decile probability reliability curves, out-of-sample Brier score trajectories,
+            Multi-decile probability reliability curves, out-of-sample <GlossaryTerm term="Brier Score" className="text-slate-300" /> trajectories,
             and statistical loss metrics evaluated continuously against consensus market baselines.
           </p>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-emerald-500/40 to-transparent" />
       </div>
+
+      <HowToRead pageKey="diagnostics">
+        <p>
+          The <strong>calibration curve</strong> buckets every graded game by its predicted win probability decile
+          (0–10%, 10–20%, etc.) and plots how often the favored side actually won in that bucket &mdash; a
+          perfectly calibrated model hugs the diagonal line. <GlossaryTerm term="Brier Score" className="text-slate-300" /> and{' '}
+          <GlossaryTerm term="Log Loss" className="text-slate-300" /> both grade predicted probabilities against
+          actual outcomes (lower is better for each), but Log Loss punishes a confident, wrong call much harder
+          than Brier Score does. Both are compared against an uninformative (always-50%) baseline to show how
+          much the model is actually adding.
+        </p>
+      </HowToRead>
 
       {/* KPI Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -107,7 +121,7 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
         {/* Brier Score */}
         <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 shadow-lg">
           <div className="flex items-center justify-between text-slate-400 pb-2">
-            <span className="text-xs font-medium">Ensemble Brier Score</span>
+            <span className="text-xs font-medium">Ensemble <GlossaryTerm term="Brier Score" className="text-slate-300" /></span>
             <ShieldCheck className="w-4 h-4 text-cyan-400" />
           </div>
           <div className="text-2xl font-bold font-mono text-cyan-400">
@@ -121,7 +135,7 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
         {/* Log Loss */}
         <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 shadow-lg">
           <div className="flex items-center justify-between text-slate-400 pb-2">
-            <span className="text-xs font-medium">Cross-Entropy Log Loss</span>
+            <span className="text-xs font-medium">Cross-Entropy <GlossaryTerm term="Log Loss" className="text-slate-300" /></span>
             <Activity className="w-4 h-4 text-indigo-400" />
           </div>
           <div className="text-2xl font-bold font-mono text-indigo-400">
