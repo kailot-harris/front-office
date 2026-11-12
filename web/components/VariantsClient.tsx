@@ -3,6 +3,8 @@
 import { DiagnosticsDataset } from '@/lib/types';
 import { Layers, Sliders, Cpu, Shuffle, HelpCircle, Download } from 'lucide-react';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { GlossaryTerm } from './Glossary';
+import { HowToRead } from './HowToRead';
 
 interface VariantsClientProps {
   data: DiagnosticsDataset;
@@ -130,12 +132,22 @@ export default function VariantsClient({ data }: VariantsClientProps) {
           </h1>
           <p className="text-slate-400 text-sm mt-1 max-w-3xl">
             The NFL Analytics platform merges two distinct, purely endogenous modeling philosophies into a
-            single, robust meta-predictor to maximize out-of-sample log-likelihood and minimize Brier score
+            single, robust meta-predictor to maximize out-of-sample log-likelihood and minimize <GlossaryTerm term="Brier Score" className="text-slate-300" />
             error. Every published prediction is built only from on-field game results.
           </p>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-emerald-500/40 to-transparent" />
       </div>
+
+      <HowToRead pageKey="variants">
+        <p>
+          The published model is an <strong>ensemble</strong> &mdash; a weighted blend of two independently-built
+          rating systems, not a single algorithm. Weights are tuned to minimize out-of-sample{' '}
+          <GlossaryTerm term="Brier Score" className="text-slate-300" />, so a component only gets more influence
+          if it actually improves prediction accuracy on games the model has not seen. Every input is derived from
+          real on-field results; no synthetic or subjectively-assigned data feeds into any variant.
+        </p>
+      </HowToRead>
 
       {/* Ensemble Weight Visualization Bar */}
       <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-5 shadow-xl">

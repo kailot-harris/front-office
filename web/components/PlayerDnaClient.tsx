@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { PlayerDnaProfile } from '@/lib/types';
 import { TeamLogo } from './TeamLogo';
 import { BASE_PATH } from '@/lib/basePath';
+import { HowToRead } from './HowToRead';
 import {
   Search,
   Dna,
@@ -321,6 +322,16 @@ export default function PlayerDnaClient({ initialProfiles, totalCount }: PlayerD
           </div>
         </div>
       </div>
+
+      <HowToRead pageKey="player-dna">
+        <p>
+          Each player is reduced to a vector of empirical skill traits (deep accuracy, pressure resilience, quick
+          game execution, YAC over expected) measured directly from play-by-play, not scouting grades.{' '}
+          <strong>Nearest comparables</strong> are found by cosine similarity &mdash; the historical player (1995
+          &ndash;2024) whose skill vector points in the most similar direction, regardless of career length or
+          raw volume. Use Compare Mode to place two players&apos; vectors side by side on the same scale.
+        </p>
+      </HowToRead>
 
       {/* Main Filter & Search Control Bar */}
       <div className="p-4 rounded-xl bg-surface-raised/80 border border-slate-800/80 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
