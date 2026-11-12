@@ -23,26 +23,43 @@
 # Game table columns (from build_walkforward_games(), see tools/backtest_common.R, plus this
 # script's own additions below): season, week, game_id, gameday, home_team, away_team,
 # home_raw, away_raw, home_prior, away_prior, home_gp, away_gp, home_win, home_margin,
-# home_ml, away_ml, home_qb_backup, away_qb_backup (NA where unknown), market_prob (devigged
-# historical consensus, NA before 2010 - see tools/derive_market_blend_weight.R's header).
+# home_ml, away_ml, home_qb_backup, away_qb_backup (NA where unknown), market_prob (ALWAYS NA now -
+# market_odds_engine.R, which used to compute this, is deleted; see "MARKET DEPENDENCY REMOVED"
+# below).
 #
 # METRICS (compute_backtest_metrics()): Brier score, log-loss, and a calibration/reliability
-# table are PRIMARY (threshold-free, directly usable for Kelly staking - see the research
-# this harness's design was based on). Accuracy/precision/recall/F1 (threshold=0.5, positive
+# table are PRIMARY (threshold-free). Accuracy/precision/recall/F1 (threshold=0.5, positive
 # class="home team wins" - stated explicitly here, not left implicit) and AUC are SECONDARY/
 # diagnostic, reported because the user asked for them, but never the sole basis for judging a
 # candidate given they're sensitive to an arbitrary threshold/class choice for a problem with
-# no natural positive class. Sharpe/ROI against REAL historical closing moneylines (2010+) is
-# the market-relative check - reused verbatim from backtest_shrinkage_optimizer.R's staking
-# simulation (calculate_kelly()/american_to_decimal()/american_to_prob(), sourced from
-# market_odds_engine.R, never reimplemented).
+# no natural positive class. There is NO market-relative Sharpe/ROI staking check any more - see
+# the "MARKET DEPENDENCY REMOVED" note below for why (that diagnostic required market_odds_
+# engine.R, which is deleted and staying deleted per the zero-betting-data policy).
 #
 # Run with:
 #   "/c/Program Files/R/R-4.5.2/bin/Rscript.exe" tools/model_backtest_harness.R
+#
+# MARKET DEPENDENCY REMOVED (2026-11-11, Issue #137 follow-up - see docs/internal/
+# handoff_history.md's entry of this date for the full writeup): this script used to
+# source("market_odds_engine.R") for american_to_decimal()/american_to_prob()/calculate_kelly(),
+# blend every candidate's model probability with devigged historical market odds via
+# MARKET_BLEND_WEIGHT, and run a quarter-Kelly staking/Sharpe simulation against real closing
+# moneylines. market_odds_engine.R was deleted under the zero-betting-data policy (#137/#13) and
+# MARKET_BLEND_WEIGHT no longer has a live assignment in config.R (see config.R's own comment at
+# the old constant's former location). This script now has NO market/odds input anywhere -
+# blend_with_market() below is kept only as a documented no-op pass-through (never resurrecting
+# market_odds_engine.R) so candidate code that historically called it still reads the same, and
+# the Kelly/Sharpe staking diagnostic has been removed outright from compute_backtest_metrics()
+# rather than faked with no real odds data behind it.
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
-setwd(PROJECT_DIR)
+# PROJECT_DIR: previously hardcoded to the author's main checkout (stale pattern predating
+# config.R's own worktree-safe fix for GitHub issue #43 - see config.R's PROJECT_DIR comment
+# block for the full history). This script is invoked via `Rscript tools/model_backtest_harness.R`
+# from the repo root, same convention every other pipeline entry point uses, so no setwd() of its
+# own is needed - config.R itself derives PROJECT_DIR from getwd() (or NFL_PROJECT_DIR if set),
+# which makes this script correctly worktree-isolated instead of silently reading/writing the
+# main checkout's cache/ from inside a worktree.
 
 suppressPackageStartupMessages({
   library(dplyr)
@@ -53,7 +70,6 @@ source("logging_utils.R")
 .LOG_SCRIPT <- "tools/model_backtest_harness.R"
 
 source("team_ratings_engine.R")   # -> compute_power_rating_points()
-source("market_odds_engine.R")    # -> american_to_decimal(), american_to_prob(), calculate_kelly()
 source("tools/backtest_common.R") # -> build_walkforward_games()
 source("tools/qb_injury_features.R")
 source("tools/ridge_massey_model.R") # -> predict_ridge_massey_walkforward() (Phase 2)
@@ -91,13 +107,15 @@ games <- games |>
   left_join(qb_flags |> rename(home_qb_backup = qb_backup_started), by = c("season", "week", "home_team" = "team")) |>
   left_join(qb_flags |> rename(away_qb_backup = qb_backup_started), by = c("season", "week", "away_team" = "team"))
 
-imp_h <- american_to_prob(games$home_ml)
-imp_a <- american_to_prob(games$away_ml)
-games$market_prob <- ifelse(is.na(games$home_ml) | is.na(games$away_ml), NA_real_, imp_h / (imp_h + imp_a))
+# Devigged market odds removed per the zero-betting-data policy (#137/#13) - market_odds_
+# engine.R's american_to_prob() is gone, so there is no real market-implied probability to
+# compute here. Keep the column (NA throughout) so blend_with_market()'s existing NA fallback
+# path is exercised identically to tools/backtest_common.R's grade_walkforward_games(), which
+# already does the same thing for the same reason.
+games$market_prob <- NA_real_
 
-cat(sprintf("Games with a known QB-backup flag: %d/%d. Games with real historical market odds: %d/%d.\n\n",
-            sum(!is.na(games$home_qb_backup) & !is.na(games$away_qb_backup)), nrow(games),
-            sum(!is.na(games$market_prob)), nrow(games)))
+cat(sprintf("Games with a known QB-backup flag: %d/%d. No market-odds input in this harness (Issue #137 - market_odds_engine.R deleted).\n\n",
+            sum(!is.na(games$home_qb_backup) & !is.na(games$away_qb_backup)), nrow(games)))
 
 # ------------------------------------------------------------------------------------------
 # Phase 3: Elo simulation. Run ONCE across the FULL history (MODERN_ERA_START_SEASON onward,
@@ -165,10 +183,15 @@ baseline_margin <- function(games, k = RATING_SHRINKAGE_GAMES_K) {
   (home_rating - away_rating) + NFL_HCA
 }
 
-# Blend a model probability with historical market probability, falling back to the model-only
-# probability where market data is unavailable (documented fallback, not silently biased NA math).
-blend_with_market <- function(model_prob, market_prob, weight) {
-  ifelse(is.na(market_prob), model_prob, weight * market_prob + (1 - weight) * model_prob)
+# NO-OP (Issue #137 follow-up, 2026-11-11): this used to blend a model probability with
+# historical market probability (weight * market_prob + (1 - weight) * model_prob), falling back
+# to model_prob where market data was unavailable. market_odds_engine.R is deleted and
+# MARKET_BLEND_WEIGHT no longer has a live assignment (zero-betting-data policy, #137/#13) - every
+# caller below now always passes market_prob = NA (see games$market_prob above), so this always
+# takes the fallback branch. Kept as a named pass-through, rather than inlining model_prob at
+# every call site, so the diff against the pre-#137 candidate bodies stays minimal and legible.
+blend_with_market <- function(model_prob, market_prob = NA_real_, weight = 0) {
+  model_prob
 }
 
 # ------------------------------------------------------------------------------------------
@@ -181,7 +204,7 @@ candidates <- list(
   list(name = "baseline_k3.6", params = list(), predict_fn = function(games, params) {
     pnorm(baseline_margin(games) / NFL_MARGIN_SIGMA)
   }),
-  list(name = "market_blend_only", params = list(weight = MARKET_BLEND_WEIGHT), predict_fn = function(games, params) {
+  list(name = "market_blend_only", params = list(weight = 0), predict_fn = function(games, params) {
     model_prob <- pnorm(baseline_margin(games) / NFL_MARGIN_SIGMA)
     blend_with_market(model_prob, games$market_prob, params$weight)
   }),
@@ -191,7 +214,7 @@ candidates <- list(
     margin <- baseline_margin(games) - params$penalty * home_adj + params$penalty * away_adj
     pnorm(margin / NFL_MARGIN_SIGMA)
   }),
-  list(name = "phase1_combined", params = list(weight = MARKET_BLEND_WEIGHT, penalty = QB_INJURY_RATING_PENALTY_PTS),
+  list(name = "phase1_combined", params = list(weight = 0, penalty = QB_INJURY_RATING_PENALTY_PTS),
        predict_fn = function(games, params) {
     home_adj <- ifelse(is.na(games$home_qb_backup), 0, as.integer(games$home_qb_backup))
     away_adj <- ifelse(is.na(games$away_qb_backup), 0, as.integer(games$away_qb_backup))
@@ -208,7 +231,7 @@ candidates <- list(
   list(name = "ridge_only", params = list(), predict_fn = function(games, params) {
     pnorm(predict_ridge_massey_walkforward(games) / NFL_MARGIN_SIGMA)
   }),
-  list(name = "ridge_phase1_combined", params = list(weight = MARKET_BLEND_WEIGHT, penalty = QB_INJURY_RATING_PENALTY_PTS),
+  list(name = "ridge_phase1_combined", params = list(weight = 0, penalty = QB_INJURY_RATING_PENALTY_PTS),
        predict_fn = function(games, params) {
     home_adj <- ifelse(is.na(games$home_qb_backup), 0, as.integer(games$home_qb_backup))
     away_adj <- ifelse(is.na(games$away_qb_backup), 0, as.integer(games$away_qb_backup))
@@ -227,7 +250,7 @@ candidates <- list(
   list(name = "elo_mov", params = list(), predict_fn = function(games, params) {
     pnorm((games$elo_margin_pts + games$fatigue_adj) / NFL_MARGIN_SIGMA)
   }),
-  list(name = "elo_phase1_combined", params = list(weight = MARKET_BLEND_WEIGHT, penalty = QB_INJURY_RATING_PENALTY_PTS),
+  list(name = "elo_phase1_combined", params = list(weight = 0, penalty = QB_INJURY_RATING_PENALTY_PTS),
        predict_fn = function(games, params) {
     home_adj <- ifelse(is.na(games$home_qb_backup), 0, as.integer(games$home_qb_backup))
     away_adj <- ifelse(is.na(games$away_qb_backup), 0, as.integer(games$away_qb_backup))
@@ -243,7 +266,8 @@ candidates <- list(
   # Sharpe REGRESSION (not just "still negative" like Phases 1-2, but meaningfully worse) - see
   # docs/HANDOFF.md for the full comparison and why this candidate was worth checking before
   # deciding what (if anything) replaces ridge in the live pipeline.
-  list(name = "ensemble_ridge_elo", params = list(weight = MARKET_BLEND_WEIGHT, penalty = QB_INJURY_RATING_PENALTY_PTS),
+  list(name = "ensemble_ridge_elo", params = list(weight = 0,  # dead param (Issue #137) - blend_with_market() ignores this now
+                                                   penalty = QB_INJURY_RATING_PENALTY_PTS),
        predict_fn = function(games, params) {
     home_adj <- ifelse(is.na(games$home_qb_backup), 0, as.integer(games$home_qb_backup))
     away_adj <- ifelse(is.na(games$away_qb_backup), 0, as.integer(games$away_qb_backup))
@@ -252,6 +276,41 @@ candidates <- list(
     ridge_prob <- blend_with_market(pnorm(ridge_margin / NFL_MARGIN_SIGMA), games$market_prob, params$weight)
     elo_prob   <- blend_with_market(pnorm(elo_margin / NFL_MARGIN_SIGMA), games$market_prob, params$weight)
     0.5 * ridge_prob + 0.5 * elo_prob
+  }),
+  # TRUE CURRENT PRODUCTION FORMULA (added 2026-11-11 - see docs/internal/handoff_history.md's
+  # entry of this date, and VariantsClient.tsx's "2-Model Baseline (Production)" row, which this
+  # candidate's output is meant to back). "ensemble_ridge_elo" directly above is NOT the same
+  # formula as what team_ratings_engine.R actually deploys for projected matchups, in two ways
+  # verified by reading team_ratings_engine.R's run_team_ratings() (~lines 436-548) directly:
+  #   1) Production averages MARGINS once then takes a single pnorm() (projected_margin <-
+  #      0.5 * ridge_margin + 0.5 * elo_margin; home_win_prob <- pnorm(projected_margin /
+  #      NFL_MARGIN_SIGMA), team_ratings_engine.R:542-544) - NOT an average of two independently-
+  #      pnorm'd probabilities like "ensemble_ridge_elo" computes.
+  #   2) Production's live Elo margin for an upcoming game does NOT add fatigue_adj - the
+  #      run_elo_walkforward() call inside run_team_ratings() (team_ratings_engine.R:450-463) is
+  #      used ONLY to warm up Elo's sequential state (see that function's own comment: "only used
+  #      for warming up Elo's historical state, not for this run's live prediction"); the actual
+  #      per-game elo_margin comes from get_team_elo()/project_elo_rating() + qb_shift only
+  #      (team_ratings_engine.R:531-539). Fatigue was originally meant to be applied once,
+  #      downstream, inside market_odds_engine.R (team_ratings_engine.R:446's own comment) - that
+  #      file is deleted (#137/#13) and nothing else re-applies fatigue to projected_matchups, so
+  #      the live production formula today has NO fatigue term in it at all.
+  # This candidate reproduces that exact formula: no market blend (none exists), QB-injury
+  # shift applied to both margins before averaging, no fatigue_adj, margins averaged once, one
+  # pnorm() at the end - matching grade_walkforward_games()'s formula-parity comment too
+  # (tools/backtest_common.R:278-285), modulo that function's probability-averaging form which
+  # pre-dates this correction and is itself NOT bit-for-bit identical to run_team_ratings()'s
+  # margin-averaging form either (a separate, pre-existing discrepancy between the grading helper
+  # and the live ensemble, out of scope for this candidate - noted here for a future session).
+  list(name = "prod_ridge_elo_2model", params = list(penalty = QB_INJURY_RATING_PENALTY_PTS),
+       predict_fn = function(games, params) {
+    home_adj <- ifelse(is.na(games$home_qb_backup), 0, as.integer(games$home_qb_backup))
+    away_adj <- ifelse(is.na(games$away_qb_backup), 0, as.integer(games$away_qb_backup))
+    qb_shift <- -params$penalty * home_adj + params$penalty * away_adj
+    ridge_margin <- predict_ridge_massey_walkforward(games) + qb_shift
+    elo_margin   <- games$elo_margin_pts + qb_shift   # NOTE: no fatigue_adj - matches live production
+    projected_margin <- 0.5 * ridge_margin + 0.5 * elo_margin
+    pnorm(projected_margin / NFL_MARGIN_SIGMA)
   }),
   # Phase 4: gradient-boosted trees (tools/gbm_model.R) as a STACKING model over Phase 2/3's
   # ridge and Elo margins (raw, unadjusted for QB/market - those are fed in as their own
@@ -278,7 +337,7 @@ candidates <- list(
     pnorm(predict_ridge_situational_walkforward(games) / NFL_MARGIN_SIGMA)
   }),
   list(name = "ridge_situational_phase1_combined",
-       params = list(weight = MARKET_BLEND_WEIGHT, penalty = QB_INJURY_RATING_PENALTY_PTS),
+       params = list(weight = 0, penalty = QB_INJURY_RATING_PENALTY_PTS),
        predict_fn = function(games, params) {
     home_adj <- ifelse(is.na(games$home_qb_backup), 0, as.integer(games$home_qb_backup))
     away_adj <- ifelse(is.na(games$away_qb_backup), 0, as.integer(games$away_qb_backup))
@@ -290,7 +349,7 @@ candidates <- list(
   # for the plain ridge candidate - checks whether situational features help THROUGH the
   # currently-deployed ensemble shape, not just standalone.
   list(name = "ensemble_ridge_situational_elo",
-       params = list(weight = MARKET_BLEND_WEIGHT, penalty = QB_INJURY_RATING_PENALTY_PTS),
+       params = list(weight = 0, penalty = QB_INJURY_RATING_PENALTY_PTS),
        predict_fn = function(games, params) {
     home_adj <- ifelse(is.na(games$home_qb_backup), 0, as.integer(games$home_qb_backup))
     away_adj <- ifelse(is.na(games$away_qb_backup), 0, as.integer(games$away_qb_backup))
@@ -311,7 +370,7 @@ candidates <- list(
     pnorm(games$kalman_margin_pts / sqrt(games$kalman_pred_var))
   }),
   list(name = "kalman_phase1_combined",
-       params = list(weight = MARKET_BLEND_WEIGHT, penalty = QB_INJURY_RATING_PENALTY_PTS),
+       params = list(weight = 0, penalty = QB_INJURY_RATING_PENALTY_PTS),
        predict_fn = function(games, params) {
     home_adj <- ifelse(is.na(games$home_qb_backup), 0, as.integer(games$home_qb_backup))
     away_adj <- ifelse(is.na(games$away_qb_backup), 0, as.integer(games$away_qb_backup))
@@ -324,7 +383,7 @@ candidates <- list(
   # philosophy as ensemble_ridge_elo, extended to a third structurally different candidate rather
   # than re-deriving new ensemble weights this session).
   list(name = "ensemble_ridge_elo_kalman",
-       params = list(weight = MARKET_BLEND_WEIGHT, penalty = QB_INJURY_RATING_PENALTY_PTS),
+       params = list(weight = 0, penalty = QB_INJURY_RATING_PENALTY_PTS),
        predict_fn = function(games, params) {
     home_adj <- ifelse(is.na(games$home_qb_backup), 0, as.integer(games$home_qb_backup))
     away_adj <- ifelse(is.na(games$away_qb_backup), 0, as.integer(games$away_qb_backup))
@@ -345,7 +404,7 @@ candidates <- list(
     pnorm(predict_ridge_participation_walkforward(games) / NFL_MARGIN_SIGMA)
   }),
   list(name = "ridge_participation_phase1_combined",
-       params = list(weight = MARKET_BLEND_WEIGHT, penalty = QB_INJURY_RATING_PENALTY_PTS),
+       params = list(weight = 0, penalty = QB_INJURY_RATING_PENALTY_PTS),
        predict_fn = function(games, params) {
     home_adj <- ifelse(is.na(games$home_qb_backup), 0, as.integer(games$home_qb_backup))
     away_adj <- ifelse(is.na(games$away_qb_backup), 0, as.integer(games$away_qb_backup))
@@ -391,41 +450,19 @@ compute_backtest_metrics <- function(games, prob, tau_grid_max = 12) {
     (sum(r[y == 1]) - n_pos * (n_pos + 1) / 2) / (n_pos * n_neg)
   } else NA_real_
 
-  # Market-relative: quarter-Kelly staking simulation against REAL historical closing
-  # moneylines, reusing calculate_kelly()/american_to_decimal() verbatim (market_odds_engine.R).
-  staking <- games |> mutate(prob = p) |>
-    filter(!is.na(home_ml), !is.na(away_ml))
-  staking <- staking |>
-    mutate(
-      model_away_prob = 1 - prob,
-      home_dec = american_to_decimal(home_ml), away_dec = american_to_decimal(away_ml),
-      home_ev = prob * home_dec - 1, away_ev = model_away_prob * away_dec - 1,
-      pick_home = home_ev > away_ev,
-      best_prob = if_else(pick_home, prob, model_away_prob),
-      best_dec  = if_else(pick_home, home_dec, away_dec),
-      won       = if_else(pick_home, home_win == 1L, home_win == 0L),
-      min_gp    = pmin(home_gp, away_gp),
-      kelly_pct = calculate_kelly(best_prob, best_dec, fraction = 0.25, max_cap_pct = 3.0),
-      bet_return_pct = if_else(won, kelly_pct / 100 * (best_dec - 1), -kelly_pct / 100)
-    )
-
-  sharpe_for_tau <- function(tau) {
-    bets <- staking |> filter(min_gp >= round(tau), kelly_pct > 0)
-    if (nrow(bets) < 2) return(list(sharpe = -Inf, n = nrow(bets), ret = NA_real_))
-    list(sharpe = mean(bets$bet_return_pct) / sd(bets$bet_return_pct), n = nrow(bets),
-         ret = sum(bets$bet_return_pct) * 100)
-  }
-  at_current <- sharpe_for_tau(MIN_SAMPLE_GAMES_FOR_STAKE)
-  opt_tau <- tryCatch(optimize(function(t) -sharpe_for_tau(t)$sharpe, interval = c(0, tau_grid_max), tol = 0.05)$minimum,
-                       error = function(e) NA_real_)
-  at_best <- if (!is.na(opt_tau)) sharpe_for_tau(opt_tau) else list(sharpe = NA_real_, n = NA_integer_, ret = NA_real_)
+  # Market-relative Sharpe/ROI staking simulation REMOVED (2026-11-11, Issue #137 follow-up).
+  # This used to run a quarter-Kelly staking simulation against real historical closing
+  # moneylines, reusing calculate_kelly()/american_to_decimal() verbatim from market_odds_
+  # engine.R. That file is deleted under the zero-betting-data policy (#137/#13) and is staying
+  # deleted - rather than faking a staking diagnostic with no real odds/staking engine behind it,
+  # this metric set is now threshold-free calibration (Brier/log-loss) plus the secondary
+  # accuracy/precision/recall/F1/AUC diagnostics only. tau_grid_max is accordingly unused; kept
+  # as a no-op parameter rather than touching every call site, since removing it carries no
+  # benefit and this function's signature is not part of any other script's contract.
 
   list(
     brier = brier, logloss = logloss, accuracy = accuracy, precision = precision,
     recall = recall, f1 = f1, auc = auc,
-    sharpe_at_current_tau = at_current$sharpe, n_bets_at_current_tau = at_current$n,
-    cumret_pct_at_current_tau = at_current$ret,
-    tau_best = round(opt_tau), sharpe_at_best_tau = at_best$sharpe, n_bets_at_best_tau = at_best$n,
     calibration_table = calib
   )
 }
@@ -444,9 +481,6 @@ for (cand in candidates) {
   results[[cand$name]] <- tibble(
     candidate = cand$name, brier = m$brier, logloss = m$logloss,
     accuracy = m$accuracy, precision = m$precision, recall = m$recall, f1 = m$f1, auc = m$auc,
-    sharpe_at_tau9 = m$sharpe_at_current_tau, n_bets_at_tau9 = m$n_bets_at_current_tau,
-    cumret_pct_at_tau9 = m$cumret_pct_at_current_tau,
-    tau_best = m$tau_best, sharpe_at_best_tau = m$sharpe_at_best_tau, n_bets_at_best_tau = m$n_bets_at_best_tau,
     n_games = nrow(games)
   )
 }
