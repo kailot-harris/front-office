@@ -75,42 +75,111 @@ web_media_dir <- file.path(SCRIPT_DIR, "web", "public", "media")
 if (!dir.exists(web_media_dir)) dir.create(web_media_dir, recursive = TRUE)
 
 # ------------------------------------------------------------------------------
-# 1. Load Clutch Game Data (Target: LAL vs DEN close finish, Game 401810829)
+# 1. Discover a Real Clutch Game (most recent close finish in the current-season
+#    cache) instead of rendering a single frozen, hardcoded matchup every run.
 # ------------------------------------------------------------------------------
-shots_file <- find_cache_file("nba_shots_2026.rds")
-pbp_file   <- find_cache_file("nba_pbp_2026.rds")
 
-# Target matchup configuration
-home_tm <- "LAL"
-away_tm <- "DEN"
-home_col <- get_nba_team_color(home_tm, "primary")
-away_col <- get_nba_team_color(away_tm, "secondary") # Gold/yellow for Denver
+# A "clutch" game is one where the score margin got within this many points at
+# some point during the final 5 minutes of the 4th quarter (period_number == 4,
+# end_quarter_seconds_remaining <= 300). Concrete and checkable, not just "the
+# last row in the cache".
+CLUTCH_MARGIN_THRESHOLD <- 8
+CLUTCH_MIN_SHOTS <- 8
 
-has_real_data <- !is.null(shots_file)
+# Prefer the current season's caches, falling back to the prior season if the
+# current one isn't populated yet.
+shots_file <- find_cache_file("nba_shots_2027.rds")
+if (is.null(shots_file)) shots_file <- find_cache_file("nba_shots_2026.rds")
 
-if (has_real_data) {
-  s26 <- readRDS(shots_file)
-  g_shots <- s26 %>%
-    filter(game_id == 401810829, period_number == 4) %>%
+pbp_file <- find_cache_file("nba_pbp_2027.rds")
+if (is.null(pbp_file)) pbp_file <- find_cache_file("nba_pbp_2026.rds")
+
+has_real_data <- !is.null(shots_file) && !is.null(pbp_file)
+
+selected_game_id <- NA_integer_
+home_tm <- NA_character_
+away_tm <- NA_character_
+g_shots <- tibble()
+
+parse_sec_left <- function(df) {
+  df %>%
     mutate(
       parts = strsplit(clock_display_value, ":"),
       min = as.numeric(sapply(parts, function(x) if (length(x) >= 1) x[1] else NA)),
       sec = as.numeric(sapply(parts, function(x) if (length(x) >= 2) x[2] else 0)),
       sec_left = min * 60 + sec
     ) %>%
-    filter(!is.na(sec_left), sec_left <= 300) %>%
-    arrange(desc(sec_left))
-} else {
-  g_shots <- tibble()
+    select(-parts)
 }
 
-# Fewer than 8 real fourth-quarter shots is not enough to draw the chart.
-if (nrow(g_shots) < 8) {
+if (has_real_data) {
+  shots_all <- readRDS(shots_file)
+  pbp_all   <- readRDS(pbp_file)
+
+  # Candidate clutch games: games whose 4th-quarter margin came within
+  # CLUTCH_MARGIN_THRESHOLD points at some point in the final 5 minutes.
+  clutch_candidates <- pbp_all %>%
+    filter(period_number == 4, end_quarter_seconds_remaining <= 300) %>%
+    group_by(game_id, home_team_abbrev, away_team_abbrev, game_date) %>%
+    summarise(
+      min_margin = min(abs(home_score - away_score), na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    filter(min_margin <= CLUTCH_MARGIN_THRESHOLD) %>%
+    arrange(desc(game_date), min_margin)
+
+  # Walk candidates from most-recent/closest down, picking the first one that
+  # also has enough real shot data in the final 5 minutes to draw the court panel.
+  for (i in seq_len(nrow(clutch_candidates))) {
+    cand <- clutch_candidates[i, ]
+    cand_shots <- shots_all %>%
+      filter(game_id == cand$game_id, period_number == 4) %>%
+      parse_sec_left() %>%
+      filter(!is.na(sec_left), sec_left <= 300) %>%
+      arrange(desc(sec_left))
+
+    if (nrow(cand_shots) >= CLUTCH_MIN_SHOTS) {
+      selected_game_id <- cand$game_id
+      # Normalize through resolve_team_abbr() so these match the standard
+      # abbreviations used by get_nba_team_color() and the shots' team_clean
+      # below (e.g. pbp's "NY" -> "NYK").
+      home_tm <- resolve_team_abbr(cand$home_team_abbrev)
+      away_tm <- resolve_team_abbr(cand$away_team_abbrev)
+      g_shots <- cand_shots
+      break
+    }
+  }
+}
+
+# No qualifying clutch game found (either no cache, or nothing met the margin /
+# shot-volume bar) -- fail the same clear, intentional way as missing-data cases
+# elsewhere in this script rather than crashing.
+if (nrow(g_shots) < CLUTCH_MIN_SHOTS) {
   viz_stop_no_data(
     "tools/gif_clutch_shot_worm.R",
-    if (has_real_data) sprintf("only %d clutch shots were found for game 401810829 in nba_shots_2026.rds.", nrow(g_shots))
-    else "cache file nba_shots_2026.rds was not found."
+    if (has_real_data) sprintf("no game in %s reached a <= %d pt margin in the final 5 minutes with >= %d tracked clutch shots.",
+                                basename(shots_file), CLUTCH_MARGIN_THRESHOLD, CLUTCH_MIN_SHOTS)
+    else "cache files nba_shots_2027.rds/nba_pbp_2027.rds (or their 2026 fallbacks) were not found."
   )
+}
+
+home_col <- get_nba_team_color(home_tm, "primary")
+away_col <- get_nba_team_color(away_tm, "secondary")
+
+# Actual home/away score margin at the start of the clutch window (game clock
+# 5:00 remaining in the 4th), used to seed the win-probability worm below.
+margin_at_start <- pbp_all %>%
+  filter(game_id == selected_game_id, period_number == 4,
+         end_quarter_seconds_remaining >= 300) %>%
+  arrange(end_quarter_seconds_remaining) %>%
+  slice_tail(n = 1)
+
+start_margin <- if (nrow(margin_at_start) > 0) {
+  home_val <- margin_at_start$home_score[1]
+  away_val <- margin_at_start$away_score[1]
+  if (resolve_team_abbr(margin_at_start$home_team_abbrev[1]) == home_tm) home_val - away_val else away_val - home_val
+} else {
+  0
 }
 
 # Normalize shot coordinates to half court (-25 to 25 x, 0 to 47 y)
@@ -128,7 +197,7 @@ g_shots_norm <- g_shots %>%
 time_points <- seq(300, 0, by = -15)
 worm_timeline <- list()
 
-curr_margin <- 2 # Initial home lead +2
+curr_margin <- start_margin # Actual home margin at the 5:00 mark of Q4
 for (t_idx in seq_along(time_points)) {
   t_sec <- time_points[t_idx]
   # Shots that occurred between previous time point and now
@@ -240,7 +309,7 @@ for (s in seq_len(total_steps)) {
       ) +
       scale_color_manual(
         name = "Team",
-        values = c(LAL = home_col, DEN = away_col)
+        values = setNames(c(home_col, away_col), c(home_tm, away_tm))
       ) +
       scale_shape_manual(
         name = "Outcome",
@@ -251,7 +320,7 @@ for (s in seq_len(total_steps)) {
   # Combined dual layout via patchwork
   combined <- p_worm + p_court + plot_layout(widths = c(1.35, 1.0)) +
     plot_annotation(
-      title = "NBA Clutch Leverage & Shot Selection Trajectory (Issue #58)",
+      title = "NBA Clutch Leverage & Shot Selection Trajectory",
       caption = "Win Probability & Spatial Shot Engine",
       theme = theme(
         plot.background = element_rect(fill = NBA_COLORS$bg, color = NA),
