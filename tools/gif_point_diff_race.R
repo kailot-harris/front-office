@@ -224,24 +224,66 @@ step_label_map <- race_df %>% distinct(step, date_label) %>% arrange(step)
 step_labels <- setNames(step_label_map$date_label, step_label_map$step)
 
 # ------------------------------------------------------------------------------
+# 4b. Logo collision avoidance (jitter apart overlapping logos)
+# ------------------------------------------------------------------------------
+# With 15 teams, several finish a given frame within a few points of each
+# other -- their logos would stack directly on top of one another at the true
+# cum_diff value. jitter_apart() nudges only the LOGO's y position (never the
+# line/point, which stay at the real cum_diff) just enough to keep logo
+# centers at least min_gap apart, via one ascending sweep (push up) followed
+# by one descending sweep (push down) so the separation is shared roughly
+# evenly across a cluster rather than cascading everything upward. When a
+# logo is displaced, a thin leader tick connects its true value to the
+# jittered logo so the adjustment reads as a label nudge, not new data.
+jitter_apart <- function(y, min_gap) {
+  n <- length(y)
+  if (n <= 1) return(y)
+  ord <- order(y)
+  y_sorted <- y[ord]
+  # Ascending sweep: push each point up if it's too close to the one below it.
+  for (i in 2:n) {
+    if (y_sorted[i] - y_sorted[i - 1] < min_gap) {
+      y_sorted[i] <- y_sorted[i - 1] + min_gap
+    }
+  }
+  # Descending sweep: push each point down if it's too close to the one
+  # above it, which re-centers clusters that only got pushed upward above.
+  for (i in (n - 1):1) {
+    if (y_sorted[i + 1] - y_sorted[i] < min_gap) {
+      y_sorted[i] <- y_sorted[i + 1] - min_gap
+    }
+  }
+  out <- numeric(n)
+  out[ord] <- y_sorted
+  out
+}
+LOGO_MIN_GAP <- (y_max - y_min) * 0.052
+
+# ------------------------------------------------------------------------------
 # 5. Build one ggplot per animation frame
 # ------------------------------------------------------------------------------
 plots <- vector("list", length(display_steps))
 for (i in seq_along(display_steps)) {
   s <- display_steps[i]
   frame_lines <- race_df %>% filter(step <= s)
-  frame_pts   <- race_df %>% filter(step == s)
+  frame_pts   <- race_df %>% filter(step == s) %>% arrange(team)
+  frame_pts$logo_y <- jitter_apart(frame_pts$cum_diff, LOGO_MIN_GAP)
+  frame_pts$logo_x <- s + max_step * 0.028
   cur_label <- step_labels[[as.character(s)]]
 
   plots[[i]] <- ggplot(frame_lines, aes(x = step, y = cum_diff, group = team, color = team)) +
     geom_hline(yintercept = 0, linetype = "dashed", color = WNBA_COLORS$grid, linewidth = 0.8) +
     geom_line(linewidth = 1.0, alpha = 0.55) +
+    # Thin leader tick from the true value to a jittered logo (only visible
+    # when jitter_apart() actually displaced that team this frame).
+    geom_segment(data = frame_pts, aes(x = step, xend = logo_x, y = cum_diff, yend = logo_y),
+                 linewidth = 0.45, alpha = 0.7, inherit.aes = TRUE) +
     # White halo behind each logo so it reads clearly against the other 14
     # lines crossing near it, rather than just a thin colored point.
-    geom_point(data = frame_pts, aes(x = step + max_step * 0.028, y = cum_diff),
+    geom_point(data = frame_pts, aes(x = logo_x, y = logo_y),
                shape = 21, size = 7.6, fill = WNBA_COLORS$text, color = WNBA_COLORS$text,
                inherit.aes = FALSE) +
-    ggimage::geom_image(data = frame_pts, aes(x = step + max_step * 0.028, y = cum_diff, image = TEAM_LOGOS[team]),
+    ggimage::geom_image(data = frame_pts, aes(x = logo_x, y = logo_y, image = TEAM_LOGOS[team]),
                size = 0.062, by = "height", inherit.aes = FALSE) +
     scale_x_continuous(breaks = display_steps, labels = step_labels[as.character(display_steps)],
                         limits = c(-max_step * 0.01, max_step * 1.12)) +
