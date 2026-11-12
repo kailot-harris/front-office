@@ -27,6 +27,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { MediaSentimentPulseCard } from './MediaSentimentPulseCard';
+import { HowToRead } from '@/components/HowToRead';
 import {
   OffseasonMonitorDataset,
   OffseasonEdition,
@@ -382,6 +383,17 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
             <p className="text-sm text-slate-400 max-w-2xl">
               Deterministic state-diff intelligence engine tracking official roster mutations, reported beat linkage, CBA hard cap pressure, and baseline Bayesian priors.
             </p>
+            <div className="mt-2">
+              <HowToRead pageKey="offseason-monitor">
+                An &quot;Edition&quot; is a snapshot of the off-season as of one week — switch
+                editions to see what the monitor knew at that point in time, not a live-updating
+                view. Confirmed changes are official transactions (signings, waives, trades);
+                reported claims are beat-media rumors the model has linked to a player but not yet
+                verified, so treat them with less confidence than the confirmed roster. The
+                baseline date is the last fully resolved projection snapshot that every
+                confirmed/reported diff on this page is compared against.
+              </HowToRead>
+            </div>
           </div>
 
           {/* Timeline Edition Selector */}

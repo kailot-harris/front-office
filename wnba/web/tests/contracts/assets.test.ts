@@ -104,3 +104,66 @@ describe('Net-rating trajectory media pair contract', () => {
     expect(pngBuf.length, 'trajectory still is suspiciously small').toBeGreaterThan(5_000);
   });
 });
+
+/**
+ * The 12 WNBA gallery charts (issue #147, phase 4), one per `*_GALLERY_ITEMS` entry in
+ * GalleryClient.tsx. Each is rendered by `render_animated_artifact()` to a GIF/PNG pair in
+ * `cache/` and mirrored to `web/public/media/`, except `gif_finals_closing_stretch`, which
+ * legitimately has neither file yet because wehoop has not ingested that game's play-by-play
+ * data — the chart is cataloged so its gallery entry appears once the data lands and the
+ * script is re-run, but a checkout with neither file for that one chart is not a failure.
+ *
+ * Deliberately a PAIRED assertion per chart, not independent `existsSync` checks, for the same
+ * reason as the net-rating trajectory contract above: the <picture> element in GalleryClient.tsx
+ * serves the PNG to `prefers-reduced-motion` readers and the GIF to everyone else, so shipping
+ * one without the other breaks exactly the audience that asked for less motion.
+ */
+describe('Gallery chart media pair contract', () => {
+  const galleryChartIds = [
+    'gif_elo_rank_bump',
+    'gif_point_diff_race',
+    'gif_standings_race',
+    'gif_net_rating_quadrant',
+    'gif_pace_efficiency_quadrant',
+    'gif_shot_profile_shift',
+    'gif_rapm_leaders_2026',
+    'gif_rapm_leaders_by_season',
+    'gif_upset_timeline',
+    'gif_forecast_calibration',
+    'gif_playoff_bracket_progression',
+    'gif_finals_closing_stretch',
+  ];
+
+  it.each(galleryChartIds)('%s ships its GIF and PNG together, or neither', (chartId) => {
+    const gif = path.join(MEDIA_DIR, `${chartId}.gif`);
+    const png = path.join(MEDIA_DIR, `${chartId}.png`);
+    const hasGif = fs.existsSync(gif);
+    const hasPng = fs.existsSync(png);
+    expect(
+      hasGif,
+      hasPng
+        ? `Reduced-motion still exists but the animation is missing: ${gif}`
+        : `Animation exists but the reduced-motion still is missing: ${png}`
+    ).toBe(hasPng);
+  });
+
+  it.each(galleryChartIds)('%s is a real, non-trivial image pair when present', (chartId) => {
+    const gif = path.join(MEDIA_DIR, `${chartId}.gif`);
+    const png = path.join(MEDIA_DIR, `${chartId}.png`);
+    if (!fs.existsSync(gif)) return; // neither-present is a valid checkout (e.g. gif_finals_closing_stretch)
+
+    const gifBuf = fs.readFileSync(gif);
+    expect(gifBuf.length, `${chartId}.gif is suspiciously small`).toBeGreaterThan(0);
+    expect(
+      gifBuf.subarray(0, 6).equals(GIF_MAGIC),
+      `${chartId}.gif does not start with GIF89a magic bytes`
+    ).toBe(true);
+
+    const pngBuf = fs.readFileSync(png);
+    expect(pngBuf.length, `${chartId}.png is suspiciously small`).toBeGreaterThan(0);
+    expect(
+      pngBuf.subarray(0, 8).equals(PNG_MAGIC),
+      `${chartId}.png does not start with valid PNG magic bytes`
+    ).toBe(true);
+  });
+});

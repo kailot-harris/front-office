@@ -6,6 +6,7 @@ import { TeamLogo } from '@/components/TeamLogo';
 import { CoachRadarProfile } from '@/components/CoachRadarProfile';
 import { AtoEfficiencyScatter } from '@/components/AtoEfficiencyScatter';
 import { CoachImpactWaterfall } from '@/components/CoachImpactWaterfall';
+import { HowToRead } from '@/components/HowToRead';
 import {
   Briefcase,
   Crosshair,
@@ -75,6 +76,16 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
               Evaluate all 15 WNBA head coaches across After-Timeout (ATO) play-by-play
               efficiency, coach&apos;s challenge overturn rates, and marginal system win lift.
             </p>
+            <div className="mt-2">
+              <HowToRead pageKey="coaches">
+                CIR (Coach Impact Rating) is a 0-100 composite score summarizing a coach&apos;s
+                tactical value across ATO efficiency, timeout usage, and challenge success. Coaching
+                Wins Added is that same impact translated into a marginal regular-season win total —
+                how many more or fewer wins the system estimates this coach is worth versus a
+                replacement-level staff. ATO Off/Def Poss is the offense&apos;s and defense&apos;s
+                points per possession specifically on possessions immediately following a timeout.
+              </HowToRead>
+            </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3 p-3 bg-surface-raised/80 rounded-xl border border-slate-800/80 backdrop-blur-sm self-start md:self-auto">

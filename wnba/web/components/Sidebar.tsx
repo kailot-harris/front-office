@@ -25,6 +25,7 @@ import {
   Sparkles,
   ChevronDown,
   Archive,
+  Film,
 } from 'lucide-react';
 
 /**
@@ -148,6 +149,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       badge: 'Calibration',
       icon: Activity,
       desc: 'Reliability & calibration curve',
+    },
+    {
+      href: '/gallery',
+      label: 'Visual Gallery',
+      badge: '12 Charts',
+      icon: Film,
+      desc: 'Animated races & pipeline visuals',
     },
   ];
 

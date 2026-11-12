@@ -17,7 +17,6 @@
 #
 # Exports:
 #   - web/public/data/player_dna_profiles.json
-#   - web/public/data/player_dna.json
 #   - cache/player_dna_profiles.rds
 # ==============================================================================
 
@@ -425,10 +424,6 @@ for (i in seq_len(nrow(raw_tbl))) {
 output_json <- file.path(PROJECT_DIR, "web", "public", "data", "player_dna_profiles.json")
 jsonlite::write_json(player_dna_list, output_json, pretty = TRUE, auto_unbox = TRUE)
 cat(sprintf(">>> [SUCCESS] Wrote %d Player DNA profiles to '%s'.\n", length(player_dna_list), output_json))
-
-output_alias_json <- file.path(PROJECT_DIR, "web", "public", "data", "player_dna.json")
-jsonlite::write_json(player_dna_list, output_alias_json, pretty = TRUE, auto_unbox = TRUE)
-cat(sprintf(">>> [SUCCESS] Wrote %d Player DNA profiles to '%s'.\n", length(player_dna_list), output_alias_json))
 
 cache_rds <- file.path(CACHE_DIR, "player_dna_profiles.rds")
 saveRDS(player_dna_list, cache_rds)

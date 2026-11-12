@@ -1,6 +1,8 @@
 import { Metadata } from 'next';
 import { getTeamsData, getMetadata } from '@/lib/data';
 import { VariantsClient } from '@/components/VariantsClient';
+import { GlossaryTerm } from '@/components/GlossaryTerm';
+import { HowToRead } from '@/components/HowToRead';
 
 export const metadata: Metadata = {
   title: 'Model Variants Breakout',
@@ -28,6 +30,17 @@ export default function VariantsPage() {
             <p className="text-slate-400 text-sm mt-1">
               Compare 1,000-season predictions across Production Bottom-Up BPM, Bayesian RAPM, Shot Quality & Fatigue, and 16-D Embeddings.
             </p>
+            <div className="mt-2">
+              <HowToRead pageKey="variants">
+                The Ensemble is not a fifth independent model — it is a fixed-weight blend of the
+                other four (35% Bottom-Up BPM, 25% Bayesian{' '}
+                <GlossaryTerm termKey="rapm" />, 20% Shot Quality/Fatigue, 20% Embeddings), so it
+                will usually track closer to the historical outcome than any single variant.
+                Compare variants by <GlossaryTerm termKey="brierScore" /> to see which one&apos;s
+                probabilities were best calibrated historically, not just which picked the most
+                winners.
+              </HowToRead>
+            </div>
           </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-violet-400 via-violet-500/40 to-transparent" />

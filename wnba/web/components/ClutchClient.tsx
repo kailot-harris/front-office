@@ -14,6 +14,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { HowToRead } from '@/components/HowToRead';
 
 interface ClutchClientProps {
   initialProfiles: ClutchProfile[];
@@ -129,6 +130,15 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
             <p className="text-sm text-slate-300 max-w-2xl">
               Real play-by-play scoring volume, efficiency (Clutch FG%), points per attempt, and scoring plays during the final 5:00 of tight contests (&le; 5 pt margin). Low-sample players (&lt; 5 FGA) emit typed NA to maintain statistical integrity.
             </p>
+            <div className="mt-2">
+              <HowToRead pageKey="clutch">
+                &quot;Clutch&quot; here means the final 5 minutes of a game within 5 points — every
+                number on this page comes only from those possessions, not full-game totals. Points
+                per attempt (PPP) and scoring plays stay typed as unavailable rather than zero for
+                any player under 5 clutch field-goal attempts, so a thin sample never masquerades as
+                a real rate. Click a row to load that player&apos;s pressure-resilience profile on the right.
+              </HowToRead>
+            </div>
           </div>
 
           <div className="flex flex-wrap md:flex-nowrap gap-3">

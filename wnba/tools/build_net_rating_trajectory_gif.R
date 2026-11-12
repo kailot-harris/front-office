@@ -60,6 +60,20 @@
 # FAIL-SAFE (repo convention): a missing box-score cache, a missing backtest
 # artifact, or an absent gifski install each produce a labeled warning and an
 # early return, never a half-written GIF and never a crash.
+#
+# DISPOSITION (issue #144, gallery phase 1): left standalone, not folded into
+# either gallery chart the issue floated as a candidate home. Chart #4 (net
+# rating quadrant) is an all-15-team offense/defense scatter for one point in
+# time; this script is a two-team time series, so folding it in would mean
+# this script's whole shape (frame-per-date, Finals-pair-specific framing and
+# caption) living inside a chart built around a different data shape and
+# audience of teams. Chart #11 (bracket progression) reads
+# playoff_bracket_2026.rds across every series/round; this script reads
+# CACHE_FINALS_SERIES_BACKTEST and is Finals-only, so it isn't the same input
+# either. Genuinely ambiguous either way, so left as its own tools/ one-off
+# per the issue's explicit fallback -- not ported to tools/viz_common.R's
+# conventions (still uses its own local dark_theme/BG_COLOR/etc. and the
+# warning-and-early-return fallback instead of viz_stop_no_data()).
 # ==============================================================================
 
 if (!requireNamespace("here", quietly = TRUE)) {

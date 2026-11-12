@@ -1,4 +1,29 @@
-# HANDOFF — Both test suites verified green at `e5b484c` (§21), sentiment-lexicon tickets #170/#171 spec'd, #169 sentiment card SHIPPED, Media Sentiment Pulse live-run fixes (#156), 2026 Finals Champion Freeze (#116–#118), Synthetic-Data Remediation (#129–#141), Off-Season Executive Dossier Redesign, & Four-Sport Production Deploy; HEAD = e5b484c (in-sync with origin/main)
+# HANDOFF — WNBA Gallery phases 2, 3 AND 4 (issues #145, #146, #147) COMPLETE locally: all 12/12 charts merged+tested, /gallery route live, aggregator landing-page link added — NOT YET PUSHED; plus everything below from the 2026-11-09 sessions (test suites green §21, sentiment-lexicon tickets #170/#171 spec'd, #169 shipped, 2026 Finals Champion Freeze, Synthetic-Data Remediation, Off-Season Dossier, Four-Sport Deploy); local HEAD = `02e0d9d`, **33 commits ahead of `origin/main` and NOT YET PUSHED**
+
+> **START HERE (updated 2026-11-12 ~16:50 EST, local `HEAD` = `02e0d9d`, 33 commits ahead of
+> `origin/main` — NOT pushed).**
+> **Read this if you are picking up the WNBA visual gallery (issues #145/#146/#147).** This is a
+> **disjoint workstream** from everything below it in this file — §§1–21 are all about the
+> off-season monitor / sentiment-pulse / betting-decommission line of work in a different issue
+> tracker (`kailot-harris/WNBA_analytics`'s own issues). The gallery work is tracked instead in the
+> **aggregator repo's tracker**, `kailot-harris/front-office` — issues
+> [#140](https://github.com/kailot-harris/front-office/issues/140) (epic),
+> [#144](https://github.com/kailot-harris/front-office/issues/144) (phase 1, merged),
+> [#145](https://github.com/kailot-harris/front-office/issues/145) (phase 2, all 10 charts merged),
+> **[#146](https://github.com/kailot-harris/front-office/issues/146) (phase 3, both postseason charts
+> merged)**, and **[#147](https://github.com/kailot-harris/front-office/issues/147) (phase 4, `/gallery`
+> route — NOT started)**. None of #140/#144/#145/#146/#147 is closed on the tracker yet, and closing
+> them is premature until this work is actually pushed and deployed. Full detail for phase 2 is in
+> **§22**; phase 3 is in the new **§23** at the end of this document. The short version: **all 12 of
+> 12 gallery-chart scripts are merged to local `main` and registered in
+> `tests/test_gallery_viz.R`'s `SCRIPTS` registry — the full suite passes 11/12 rendered + 1 honest
+> `[SKIP-NO-DATA]` (chart #12, a real upstream data-ingestion lag, not a bug) — and **none of this has
+> been pushed to `origin/main` yet**. Do not assume `git push` is a no-op here. **Phase 4 (#147) is
+> the next unit of work once pushed/deployed** — it needs a `web/` change (`/gallery` route, sidebar,
+> landing page), which nothing in phases 1-3 has touched.
+>
+> The block immediately below (unchanged, still accurate for its own workstream) is the previous
+> session's:
 
 > **START HERE (updated 2026-11-09 ~00:40 EST, `HEAD` = `e5b484c`, identical to `origin/main`).**
 > The newest work is **§21**, and it is a verification session, not a feature session: §20e had
@@ -2382,3 +2407,495 @@ need their own interview. Independent of both: **#156** needs closing, and **#15
 
 **All file:line citations in this section were accurate at `e5b484c` on 2026-11-09 and will drift.
 Re-verify them with `grep` before trusting them.**
+
+---
+
+## 22. This session (2026-11-12): WNBA Visual Gallery phase 2 — issue #145, all 10 gallery-chart scripts MERGED and TESTED — DISJOINT WORKSTREAM from §§1–21, NOT PUSHED
+
+> **Read this if you are picking up the visual gallery.** Everything in §§1–21 above is about a
+> **completely different feature line** (off-season monitor, media sentiment pulse, betting
+> decommission) tracked in `WNBA_analytics`'s own issues. This section's work is tracked in the
+> **aggregator repo's** tracker instead — `kailot-harris/front-office` issues #140/#144/#145/#146/#147
+> — even though all the code lives in this `WNBA_analytics` checkout. **Local `main` is at `e29a636`,
+> 25 commits ahead of `origin/main`, and none of it has been pushed.** §6's deployment chain (push →
+> aggregator subtree pull → aggregator push → verify live) has **not been run once** for this work.
+> **All 10 of 10 gallery charts are now merged, independently re-verified, and registered in
+> `tests/test_gallery_viz.R` — the full suite was run fresh this session and passed 10/10 rendered,
+> 0 skipped, 0 failed.**
+
+### 22a. What this session actually did, in order
+
+1. Read [#144](https://github.com/kailot-harris/front-office/issues/144) and
+   [#145](https://github.com/kailot-harris/front-office/issues/145) (both still **OPEN** on the
+   tracker, part of epic [#140](https://github.com/kailot-harris/front-office/issues/140), which is
+   also OPEN, alongside two not-yet-started follow-on phases,
+   [#146](https://github.com/kailot-harris/front-office/issues/146) "postseason charts 11-12" and
+   [#147](https://github.com/kailot-harris/front-office/issues/147) "`/gallery` route, sidebar,
+   landing page" — **neither #146 nor #147 has been touched this session**).
+2. Phase 1 (#144): ported `tools/viz_common.R` and `tools/viz_gallery_helpers.R` from the sibling
+   `../NBA Analytics` repo, WNBA-themed (committed directly to `main` at `3fff8b1`, no PR — this repo
+   has no CI to wait on, matching §8's established convention).
+3. Phase 2 (#145): used the `subagent-brief` skill's **batch** workflow (batch id
+   `b-20261112-140541-fb130f`, 10 items — the 10 `gif_*.R` chart scripts listed in §22c) to delegate
+   each chart to an isolated subagent, following the skill's brief → dispatch → independently verify
+   → merge cycle for every single one. **Never trusted a subagent's self-report**: for every run, re-
+   grepped the delivered file for the zero-fallback contract, independently re-ran
+   `Rscript.exe --vanilla tools/<script>.R` myself and compared output byte sizes against the
+   subagent's claim, and only then recorded the result and merged.
+4. Ran a 2-item pilot (`gif_elo_rank_bump.R`, `gif_point_diff_race.R`), approved it after owner
+   review, then iterated heavily on `gif_point_diff_race.R`'s visual design per direct owner feedback
+   (logo visibility, collision jitter, L-shaped vs. diagonal connector lines, diagonal cascade
+   staggering — six follow-up commits, §22d) before dispatching the remaining 8 items in two capped
+   waves of 4 (the batch's fixed concurrency cap).
+5. **All 10 items are now merged** (§22c). Four of them (`gif_rapm_leaders_2026.R`,
+   `gif_rapm_leaders_by_season.R`, `gif_upset_timeline.R`, `gif_forecast_calibration.R`) reported
+   `success` but **did not commit their own files** (§22i) — the coordinating session committed each
+   one from its worktree after independently re-verifying it, same as every other item. **0
+   blocked/failed** among dispatched-and-completed items except one superseded false alarm (§22e).
+6. Added all 10 entries to `tests/test_gallery_viz.R`'s `SCRIPTS` registry (`e29a636`) — the one
+   piece deliberately left out of every individual batch item's scope. Also fixed the harness's
+   `system2("Rscript", ...)` call to pass `--vanilla` (it was failing on package load without it,
+   same renv issue as every worktree in this batch — see §22h) and ran the full suite fresh:
+   **10/10 rendered, 0 skipped, 0 failed.**
+7. Ran the batch's standard closing procedure: `batch-sample` (all 10 items were already in
+   `must_check` and had already been independently re-verified before merging — nothing new to
+   check), `batch-report` (confirms 10/10 success, 1 `gif_elo_rank_bump.R` entry correctly flagged
+   under `failed` for the superseded orphaned pilot run, §22e), and `check_storage.py` (2.5 MB total,
+   no milestone crossed, nothing to prune).
+
+### 22b. Why this is tracked in a different repo's issues — read before searching `gh issue list` here
+
+`git remote -v` in this checkout still points at `kailot-harris/WNBA_analytics`, same as every other
+section of this file. But #140/#144/#145/#146/#147 are filed on **`kailot-harris/front-office`** (the
+aggregator), because the gallery is a cross-cutting, site-wide feature (§1's "four-sport platform").
+`gh issue list --repo kailot-harris/front-office` is the query that finds them; `gh issue list` with
+no `--repo` flag (which defaults to this checkout's own remote) will not.
+
+### 22c. What's actually implemented — the 10-item batch, status per item
+
+| # | Item (`tools/gif_*.R`) | Status | Commit(s) | Run id |
+|---|---|---|---|---|
+| 1 | `gif_elo_rank_bump.R` | **Merged** | `8e260a5` / merge `7807706` | `20261112-142007-c496fd` (superseded `20261112-140601-fac390`, see §22e) |
+| 2 | `gif_point_diff_race.R` | **Merged**, then heavily iterated on owner feedback | `b0cdc1d`, `d6c1ba2`, `46b8b0d`, `1616ed1`, `5930cc6`, `810a0db`, `21376b8` | `20261112-140605-73829a` |
+| 3 | `gif_standings_race.R` | **Merged** | `55af9d5` / merge `95ebe62` | `20261112-145236-d33059` |
+| 4 | `gif_net_rating_quadrant.R` | **Merged** | `37ff72b` / merge `29d2438` | `20261112-145239-b96a3d` |
+| 5 | `gif_pace_efficiency_quadrant.R` | **Merged** | `ee0f20f` (merged into `29d2438`'s parent chain) | `20261112-145242-d573ca` |
+| 6 | `gif_shot_profile_shift.R` | **Merged** — ships a known-limitation caveat, see §22f | `0375294` / merge `e15e3d1` | `20261112-145245-513cc0` |
+| 7 | `gif_rapm_leaders_2026.R` | **Merged** — subagent did not commit (§22i), coordinating session committed after independent re-verification | `3220c76` (fast-forward, no merge commit) | `20261112-150956-450772` |
+| 8 | `gif_rapm_leaders_by_season.R` | **Merged** — same pattern as #7 | `24618db` / merge | `20261112-151000-13df30` |
+| 9 | `gif_upset_timeline.R` | **Merged** — same pattern | `1d069e2` / merge | `20261112-151011-90e371` |
+| 10 | `gif_forecast_calibration.R` | **Merged** — same pattern (no NBA counterpart to mirror — #140's design table marks this chart "Planned for NBA" too) | `e064bc3` / merge `fa1e54e` | `20261112-151015-631a91` |
+
+Every one of the 10 scripts was independently re-verified this session before merging: sourced
+`tools/viz_common.R` (directly or via `tools/viz_gallery_helpers.R`), called `viz_stop_no_data()` at
+every real-data gate with **zero hardcoded/synthetic fallback literals**, and — when re-run fresh via
+`Rscript.exe --vanilla` from its own worktree — produced a `.gif`/`.png` pair in `cache/` and
+`web/public/media/` **byte-identical in size** to what the subagent reported. **All 10 are now also
+registered in `tests/test_gallery_viz.R`'s `SCRIPTS` registry** (`e29a636`), and the full harness was
+re-run fresh in the main checkout: **10/10 rendered, 0 skipped, 0 failed.**
+
+### 22d. The `gif_point_diff_race.R` design-iteration thread — now the house style for logo-collision charts
+
+This single chart absorbed six rounds of direct owner feedback and became the reference pattern every
+later chart in the batch (and future ones) should follow for team-logo marker charts:
+
+1. **"hard to see the logos in the spaghetti plot"** → `d6c1ba2`: bigger `geom_image` markers (size
+   0.036 → 0.062), white halo `geom_point` behind each logo, dimmed line alpha 0.85 → 0.55, widened
+   x-axis padding.
+2. **"jitter the overlapping logos apart"** → `46b8b0d`: first `jitter_apart()` (ascending + descending
+   sweep, no bounds) plus a diagonal leader line from true value to jittered position.
+3. **"jittering didn't work, it looks the same"** → `1616ed1`: diagnosed via `png::readPNG`/
+   `writePNG` crops (no ImageMagick available on this machine) that the gap (5.2% of y-range) was
+   *smaller than the logo's own rendered diameter* (~6.2%); widened the minimum gap to 11%.
+4. **"only 9 of 15 logos visible"** → `810a0db`: traced to ggplot's **silent** drop of rows pushed
+   past the axis limits by the push-apart sweep (no warning by default beyond a terse "Removed N
+   rows" message) — `jitter_apart()` now takes explicit `y_lo`/`y_hi` bounds and clamps (shift then
+   compress) after both sweeps.
+5. **"diagonal lines imply upward/downward progression… easy to confuse with real trend lines"** →
+   `5930cc6`: replaced the single diagonal connector with an **L-shaped, axis-aligned** (horizontal
+   then vertical) dotted neutral-gray connector, plus a separate small solid colored dot at the true
+   value — this is now the pattern (also used by `gif_standings_race.R` and the two quadrant charts'
+   `jitter_apart_2d()` variant).
+6. **"stagger the logos from top-right to bottom-left"** → `21376b8`: rank-based diagonal x-offset
+   cascade (`logo_x_far` → `logo_x_near` interpolated by vertical rank), widened to 0.02–0.33 ×
+   `max_step` after a first attempt (0.018–0.095) was too subtle to notice on a debug re-render; owner
+   confirmed **"that works."** after this round.
+
+A standalone 1-D `jitter_apart(y, min_gap, y_lo, y_hi)` (bounds-aware, two-pass push-apart-then-clamp)
+and its 2-D sibling `jitter_apart_2d()` (adapted for scatter charts by `gif_pace_efficiency_quadrant.R`
+and `gif_net_rating_quadrant.R`) now exist only inline in each chart script — **not** factored into
+`tools/viz_common.R` or `tools/viz_gallery_helpers.R` (both explicitly out-of-scope for every batch
+item, to avoid a shared-file merge race). If a future chart needs the same collision-avoidance, either
+copy the pattern from `gif_point_diff_race.R` / `gif_net_rating_quadrant.R`, or — once the whole batch
+has landed — consider promoting it into the shared phase-1 helpers as its own follow-up.
+
+### 22e. One false alarm, resolved — "lost work" that was never actually lost
+
+The `gif_elo_rank_bump.R` pilot (run `20261112-140601-fac390`) initially looked like lost work: the
+subagent's own sandbox worktree (auto-created by the `Agent` tool's `isolation: "worktree"` option)
+was auto-deleted after it finished without committing, which looked like the file had vanished. It
+had not — the same file also existed, uncommitted, in the worktree this session had *manually*
+created and pointed the agent at (`.worktrees/145-elo-rank-bump`), because the agent's Bash tool had
+written to both locations. That copy was independently verified (byte-identical re-run) and committed
+directly (`8e260a5`), under a fresh run id (`20261112-142007-c496fd`); the original orphaned run was
+marked `failed` in the run log, pointing at the superseding run, purely to keep the batch's
+concurrency/early-stop bookkeeping accurate. **No chart was actually lost.** The root cause — the
+`Agent` tool's `isolation: "worktree"` creates its *own* auto-managed worktree that ignores any
+worktree path named in the prompt — recurred on several later dispatches in this batch, including
+`gif_rapm_leaders_2026.R` (§22i), and is now a known, repeatable gotcha (§22h).
+
+### 22f. Known limitation shipped on purpose — `gif_shot_profile_shift.R`'s 3PT threshold
+
+Per its brief's **explicit instruction** to reuse the NBA counterpart's three-point classification
+rule unchanged (dist ≥ 23.75 ft from rim, or corner: `|x| ≥ 22 ft & y ≤ 14 ft`) rather than re-deriving
+one for the WNBA, the shipped chart measures **league three-point share at ~10%** for both 2025 and
+2026 — implausibly low for a real league average (WNBA real-world three-point rates run far higher).
+The subagent flagged this in-code (`tools/gif_shot_profile_shift.R:18-29`): the WNBA's actual top-of-
+arc distance is closer to ~22.1 ft, *inside* the NBA's 23.75 ft threshold ported above, so a real
+material share of WNBA threes are being classified as twos. This was independently re-verified this
+session and **is not a bug to fix under this batch item** — the brief required the unchanged NBA rule
+specifically so this chart's definition matches its NBA sibling. **Flagging as a known limitation for
+whoever scopes a future accuracy pass**, not acted on here.
+
+### 22g. Concrete next step
+
+**All 10 items are merged, registered, and tested. Nothing is half-done on the code side.** What's
+left is entirely about pushing/deploying and closing out tracker/scratch bookkeeping:
+
+1. **Push.** Local `main` is **25 commits ahead of `origin/main`** and none of this is pushed yet.
+   Decide with the owner whether to push now, since the batch is fully merged and the test harness is
+   green — nothing has been lost by waiting so far, but §6's full deployment chain (push → aggregator
+   subtree pull → aggregator push → live verification) has **not been exercised even once** for this
+   feature, and the live site currently shows **none** of these 10 charts. `git push origin main`
+   here, then the aggregator subtree pull, then the aggregator's own push — see §6 for the exact
+   sequence (written for a different workstream, but the mechanics are identical).
+2. **Close #144 and #145 on the tracker once pushed and deployed** (`kailot-harris/front-office`,
+   not this repo's own issues — see §22b). Not done yet because neither has actually shipped to the
+   live site. Do **not** close #140 (the epic) yet — #146 and #147 are still unstarted.
+3. **Close out the scratch files.** `batch_issue145_template.md` and `batch_issue145_items.json` at
+   the repo root are untracked scratch used to drive this batch (not part of repo source) — safe to
+   delete now that `report.md` (`.subagent-runs/batches/b-20261112-140541-fb130f/report.md`) has been
+   written, or leave them as a record; owner's call. Also untracked and unrelated to this workstream:
+   `brief_issue171.md` (leftover scratch from the §20/§21 sentiment-lexicon sessions, not touched or
+   needed by this one).
+4. **Scope #146 (postseason charts 11-12) and #147 (`/gallery` route, sidebar, landing page)** —
+   neither has been touched. #147 in particular needs a `web/` change, which this entire session never
+   made (everything so far is `tools/` R scripts only); the charts exist as `.gif`/`.png` files but are
+   not yet reachable from any page.
+
+Two steps ahead: once all 10 charts are merged, registered in `SCRIPTS`, and pushed/deployed, issues
+[#146](https://github.com/kailot-harris/front-office/issues/146) (postseason charts 11-12) and
+[#147](https://github.com/kailot-harris/front-office/issues/147) (`/gallery` route, sidebar, landing
+page) are the natural next phases — neither has been scoped or started.
+
+### 22h. Environment and tooling notes specific to this session
+
+- **The `Agent` tool's `isolation: "worktree"` option creates its own auto-managed worktree
+  (`.claude/worktrees/agent-<id>`), ignoring any worktree path you name in the prompt.** This bit
+  phase 1's dispatch and the phase-2 pilot. The workaround that works: create the worktree yourself
+  (`git worktree add .worktrees/<name> -b <branch>`), tell the agent its exact path in the prompt, and
+  **after** it completes, run `git worktree list` and check which branch actually advanced — several
+  subagents in this batch reported their sandbox's Bash tool was isolated to a different internal
+  path and refused to `cd` into the brief's target, and worked around it themselves by switching to
+  the PowerShell tool for `git`/file operations (not subject to the same restriction) while still
+  landing the commit on the correct branch in the correct manually-created worktree. Verify the
+  landing spot every time; do not trust the agent's "worktree" field in its own result JSON without
+  cross-checking `git worktree list` / `git log --oneline -1 <branch>`.
+- **This worktree's `renv` library is broken/unpopulated — `Rscript.exe` (no flag) fails on every
+  gallery script with "there is no package called 'dplyr'".** Use `Rscript.exe --vanilla` to bypass
+  renv's autoloader and fall back to the global R library, where the packages are actually installed.
+  This affects every `.worktrees/145-*` worktree, not just one chart — confirmed independently by at
+  least three different subagents in this batch and by this session's own re-verification runs.
+- **A git worktree does not inherit the main checkout's gitignored `data/` directory.** At least one
+  subagent needed `WNBA_VIZ_DATA_DIR` pointed at the main checkout's `data/` to find
+  `box_scores_cache.rds`; `tools/viz_gallery_helpers.R`'s cache-locator climbs ancestor directories and
+  honors that env var as a fallback for exactly this reason (added in phase 1, exercised for real in
+  phase 2's worktrees for the first time).
+- **The `subagent-brief` skill's `result.v1.json` schema is stricter than it looks from the batch
+  template's inline example.** `criteria[].id` is a required **integer**, and `criteria[].met` must be
+  the literal string `"yes"`, `"no"`, or `"unverified"` — **not** a JSON boolean. `summary` has a hard
+  500-character cap. Both tripped `record-result` on the first attempt for more than one item this
+  session; the fix each time was editing the result JSON, never relaxing the schema.
+- **A bash heredoc containing a literal `\|` regex-alternation character inside a JSON string value
+  breaks JSON escaping** (`\|` is not a valid JSON escape) — this is the same class of heredoc/
+  backslash trap §9 already documents for R scripts, now confirmed for hand-written JSON result files
+  too. Use the `Write` tool for any result JSON containing a `grep` command string with special
+  characters, not a bash heredoc.
+- **A subagent dispatched with the no-commit-unless-asked rule it was trained on may decline to
+  `git commit` its own deliverable even when the brief and this skill's workflow require every
+  writer-tier subagent to commit on its branch before reporting.** `gif_rapm_leaders_2026.R`'s
+  subagent built, verified and reported `success`, but explicitly said "No commit was made, per the
+  no-commit-unless-asked rule" (§22i). State the commit requirement explicitly in future briefs for
+  this skill, rather than assuming "writer-tier subagent" implies "will commit."
+- No R test suite and no `web/` test suite were run this session — this workstream has no test
+  coverage of its own yet (`tests/test_gallery_viz.R`'s registry is still empty, §22c), and nothing in
+  §§1–21's R/web suites touches gallery code. Do not read §21's "all green" as covering this work.
+
+### 22i. Four subagents built and verified their chart but did not commit — all four fixed and merged
+
+All four wave-2 subagents (`gif_rapm_leaders_2026.R`, `gif_rapm_leaders_by_season.R`,
+`gif_upset_timeline.R`, `gif_forecast_calibration.R`) independently built and re-verified their chart
+— real data, correct byte sizes, zero synthetic fallback — but **none of them ran `git commit`**,
+each citing some form of the general "don't commit unless asked" rule, which does **not** apply to
+this skill's own writer-subagent contract (every Tier-≥1 subagent is expected to commit on its own
+branch so the coordinating session can merge it). In every case the coordinating session:
+independently re-verified again (grep for `viz_stop_no_data()`/`viz_common.R`, re-ran
+`Rscript.exe --vanilla` and confirmed byte-identical output sizes), committed the file itself from the
+correct worktree, wrote the schema-correct result JSON, `record-result`, merged, and cleaned up the
+worktree/branch — same cycle as every other item in this batch, just with one extra manual commit
+step. Resulting commits: `3220c76` (`gif_rapm_leaders_2026.R`), `24618db`
+(`gif_rapm_leaders_by_season.R`), `1d069e2` (`gif_upset_timeline.R`), `e064bc3`
+(`gif_forecast_calibration.R`). **If this pattern recurs with a future subagent, say so explicitly in
+the brief's "Allowed actions" section** (e.g. "you are expected to `git commit` your file before
+reporting") rather than assuming Tier-1 implies it.
+
+One side effect to be aware of, called out by two of the subagents independently: sourcing
+`rapm_engine.R` (needed by both RAPM chart scripts) regenerates the unrelated ALL_SEASONS
+`cache/rapm_ratings.rds` as a pre-existing top-level side effect of that file (`if (!interactive())
+estimate_rapm_ratings()`), not something either script introduced — both subagents confirmed via
+`git diff`/content comparison that the regenerated content was effectively unchanged. Not a real
+change, nothing to investigate.
+
+**All file:line and commit-hash citations in this section were accurate as of 2026-11-12 ~10:35 EST —
+re-verify with `git log` / `grep` before trusting them if more time has passed.**
+
+---
+
+## 23. Same session, continued (2026-11-12 ~11:30 EST): WNBA Visual Gallery phase 3 — issue #146, both postseason charts MERGED and TESTED
+
+> **Read this if you are picking up the visual gallery.** Direct continuation of §22's session, same
+> day, same disjoint workstream (see §22's own header for why this is tracked on
+> `kailot-harris/front-office`, not this repo's own issues). After §22 wrapped up phase 2 (#145, all
+> 10 charts), the user asked for the next unblocked issue — **#146 is independent of #145** (its own
+> body says so explicitly: "Independent of phase 2 (#145) — can run in parallel, no shared files")
+> and depends only on phase 1 (#144), already merged — so it was picked up next without waiting on a
+> push of phase 2. **Both of #146's charts are now merged, independently re-verified, and registered
+> in `tests/test_gallery_viz.R`.** Local `main` is at `cc7ada1`, 30 commits ahead of `origin/main`,
+> still nothing pushed.
+
+### 23a. What this session did, in order
+
+1. Confirmed #146 was genuinely unblocked by reading its tracker body directly (`gh issue view 146
+   --repo kailot-harris/front-office`) rather than assuming — it names its own data sources
+   (`cache/playoff_bracket_2026.rds` for #11, play-by-play/shots for #12) and explicitly disclaims a
+   dependency on #145.
+2. Built a 2-item batch (`b-20261112-161403-eeef7d`, `batch_issue146_template.md` +
+   `batch_issue146_items.json` in the repo root, both untracked scratch like phase 2's equivalents).
+   2 items is below the pilot threshold (5), so `batch-new` skipped the pilot and both items
+   dispatched immediately, each in its own manually-created worktree.
+3. Before writing the brief, checked `../NBA Analytics/tools/` for a counterpart to port — found
+   **neither chart has one to port literally**: NBA's closest-in-spirit scripts
+   (`gif_playoff_prob_bump.R`, `gif_clutch_shot_worm.R`) read different data (projection-snapshot
+   history, not a bracket-results cache) or depend on `tools/plot_shot_chart.R`, which phase 1 never
+   ported to this repo. The brief told both subagents this explicitly, and to design chart #11's
+   structure from `CACHE_PLAYOFF_BRACKET_CURRENT`'s real schema rather than guessing from the NBA
+   shape.
+4. Baked §22i's lesson into this batch's own brief from the start: an explicit "you are expected to
+   `git commit` your finished script on your own branch before reporting `success`" line, plus a
+   4th success criterion verifying the commit exists. **Both subagents committed on their own this
+   time** — zero manual-commit interventions needed, unlike 4 of phase 2's items.
+5. One subagent (`gif_finals_closing_stretch.R`, run `20261112-161422-ba810c`) hit this account's
+   5-hour API rate limit mid-task and failed with a `429`. Per the task-notification's own guidance,
+   resumed it with `SendMessage` to its agent id (not a fresh `Agent` dispatch, which would have lost
+   all its context and investigation work) — it picked up exactly where it left off and finished
+   cleanly on retry.
+6. Independently re-verified both: re-ran each script fresh with `Rscript.exe --vanilla` from its own
+   worktree, grepped for the zero-fallback contract, compared outcomes against each subagent's
+   report, `record-result`, merged, cleaned up worktrees/branches.
+7. Added both to `tests/test_gallery_viz.R`'s `SCRIPTS` registry (`cc7ada1`) and ran the full
+   12-chart suite fresh: **11 rendered, 1 honest skip, 0 failures.**
+8. Ran the batch's standard closing procedure: `batch-sample` (both items already independently
+   re-verified, nothing new to check), `batch-report` (2/2 success), `check_storage.py` (2.6 MB
+   total, no milestone, nothing to prune).
+
+### 23b. What's actually implemented
+
+| # | Item (`tools/gif_*.R`) | Status | Outcome | Commit(s) | Run id |
+|---|---|---|---|---|---|
+| 11 | `gif_playoff_bracket_progression.R` | **Merged** | Rendered — 16 frames, GIF 74,616 bytes / PNG 37,132 bytes | `8047798` (fast-forward) | `20261112-161422-c80d70` |
+| 12 | `gif_finals_closing_stretch.R` | **Merged** | **Honest `[SKIP-NO-DATA]`** — see §23c | `cd602c9` / merge `6c4eabf` | `20261112-161422-ba810c` |
+
+`gif_playoff_bracket_progression.R` reads `config.R`'s `CACHE_PLAYOFF_BRACKET_CURRENT`
+(`cache/playoff_bracket_2026.rds`), flattens each series' `games` list-column into individual game
+events, and replays them chronologically to animate the bracket tree (Round 1 → Semifinals →
+Finals) — bracket topology is inferred from the real matchup data, never hardcoded. Independently
+re-run and confirmed byte-identical to the subagent's reported output.
+
+### 23c. `gif_finals_closing_stretch.R`'s honest skip — a real upstream data gap, not a bug
+
+This chart needs real play-by-play (score margin) and shot-location data for the deciding game of
+the 2026 WNBA Finals, to pair with half-court shot locations in the closing stretch. The script:
+
+1. Correctly found the series' actual deciding game by reusing `tools/finals_series_backtest.R`'s
+   `load_finals_games()` rather than re-deriving it: **Game 7, Golden State 68 – Atlanta 63,
+   2026-10-31** (ESPN `game_id` 401918311).
+2. Then correctly discovered that **wehoop has not yet ingested that game's event-level data** —
+   neither the ESPN play-by-play feed nor the WNBA Stats API shot feed has rows for it — and stopped
+   via `viz_stop_no_data()` with nothing rendered, per the zero-fallback contract.
+3. This is the **same wehoop ingestion lag** `tools/diagnose_game7_sources.R` and
+   `tools/espn_game7_fallback.R` already document for this exact game's **box score** — confirming
+   this isn't a new or chart-specific problem, it's a known gap in how fast this particular game's
+   data reaches wehoop at all levels (box score, play-by-play, shots).
+4. Independently re-verified this session: re-ran the script fresh and got the **identical**
+   `game_id`, score, date, and skip reason as the subagent's own report — this is a real,
+   reproducible state of the upstream data, not something either run got wrong.
+
+**This chart will start rendering once wehoop catches up on Game 7's event-level feeds** — no code
+change should be needed. Re-run `Rscript.exe --vanilla tools/gif_finals_closing_stretch.R` periodically
+(or whenever updating the WNBA data generally) to check; `tests/test_gallery_viz.R`'s registry entry
+already carries a comment explaining the expected skip so a future `SKIP: ...` line in the test
+output isn't mistaken for a new problem.
+
+### 23d. Concrete next step
+
+**All 12 of 12 gallery charts (phases 1-3) are code-complete, merged, and tested locally.** Nothing
+is half-done on the code side for #144/#145/#146. What's left:
+
+1. **Push and deploy** (unchanged from §22g item 1 — still not done). Local `main` is 30 commits
+   ahead of `origin/main`. Once pushed: aggregator subtree pull, aggregator push, live verification
+   per §6. Only after that is live should #144/#145/#146 be closed on the tracker.
+2. **Phase 4 — issue [#147](https://github.com/kailot-harris/front-office/issues/147)** is the next
+   unit of *code* work, and it is the first piece of this whole gallery effort that touches `web/`:
+   `web/app/gallery/page.tsx` + `GalleryClient.tsx` (mirroring the NBA component — categories, GIF
+   with a reduced-motion PNG fallback, a description of what each chart shows), a sidebar entry, an
+   asset-contract test covering all 12 charts' GIF/PNG pairs, and a landing-page link in the
+   aggregator's `index.html`. #147's own body says it "depends on phases 2 (#145) and 3 (#146) having
+   produced at least most chart assets" — both are now fully done, so #147 is unblocked. Its
+   acceptance criteria explicitly expect **12** charts in the asset-contract test, including the
+   currently-skipped chart #12 — re-check whether #12 has started rendering by the time #147 is
+   worked, since its acceptance criteria may need to accommodate a legitimately-still-skipped chart
+   if Game 7's data still hasn't landed in wehoop.
+3. **Re-run `gif_finals_closing_stretch.R` periodically** to check whether Game 7's play-by-play/shot
+   data has arrived in wehoop yet (§23c) — no code change needed if/when it has, just a fresh render
+   and a `cache/`/`web/public/media` artifact to commit as runtime output (the script itself is
+   already correct and already merged).
+4. **Clean up this session's scratch files** (`batch_issue146_template.md`, `batch_issue146_items.json`,
+   plus the still-outstanding phase-2 scratch files named in §22g item 3) once `report.md` has been
+   reviewed — same owner's-call pattern as phase 2.
+
+**All file:line and commit-hash citations in this section were accurate as of 2026-11-12 ~11:30 EST —
+re-verify with `git log` / `grep` before trusting them if more time has passed.**
+
+## 24. Same session, continued (2026-11-12 ~16:50 EST): WNBA Visual Gallery phase 4 — issue #147, `/gallery` route live, plus a real gap found and fixed: 2 batches of chart media binaries were never committed
+
+> **Read this if you are picking up the visual gallery.** Direct continuation of §§22-23's session,
+> same disjoint workstream. After §23 wrapped up phase 3 (#146), the user ran `/subagent-brief issue
+> 147` — **#147 ("gallery phase 4 — `/gallery` route, sidebar, landing page") was the next unblocked
+> issue**, its own body naming the dependency as "phases 2 (#145) and 3 (#146) having produced at
+> least most chart assets," both done. **The WNBA-repo portion of #147 is now merged and independently
+> re-verified; the aggregator landing-page link is committed in a separate repo.** Local `main` is at
+> `02e0d9d`, 33 commits ahead of `origin/main`, still nothing pushed.
+
+### 24a. What this session did, in order
+
+1. Read #147's tracker body directly (`gh issue view 147 --repo kailot-harris/front-office`) to
+   confirm scope: `web/app/gallery/page.tsx` + `GalleryClient.tsx` (port of the NBA pattern), a
+   sidebar entry, an asset-contract test for all 12 chart pairs, and a `wnba/gallery/` link in the
+   aggregator's `index.html` — the last item being in a **different git repo**
+   (`front-office-aggregator`) than the other three.
+2. Split the work along that repo boundary rather than forcing one subagent brief across two repos:
+   a single Tier-1 full-template brief (`brief_issue147.md`, untracked scratch like prior phases'
+   briefs) covered only the three WNBA-repo files; the coordinating session made the aggregator
+   `index.html` one-line edit directly (trivial, single repo, no delegation needed).
+3. Read `../NBA Analytics/web/app/gallery/page.tsx` and `web/components/GalleryClient.tsx` (415
+   lines) as reference before writing the brief, and found this repo's own
+   `web/tests/contracts/assets.test.ts` already had a **working example of the exact "ships both
+   files or neither" contract pattern needed** (a `Net-rating trajectory media pair contract`
+   `describe` block, for a different, already-merged chart pair) — pointed the brief at it directly
+   instead of having the subagent invent a new pattern.
+4. Dispatched one subagent (run `20261112-163815-6812f1`) in a manually-created worktree
+   (`.worktrees/issue147`, branch `feat/147-gallery-route`), with the now-standard explicit
+   "you are expected to `git commit`" language baked into the brief from the start. Flagged in the
+   dispatch message (not the brief itself, since it's an environment fact not a task instruction)
+   that the worktree's `web/node_modules` would be empty and `npm install` was needed first.
+5. Subagent reported `success` on all 6 criteria; independently re-verified every one before
+   merging: re-ran `git diff` on `Sidebar.tsx`, re-ran `npx vitest run tests/contracts/assets.test.ts`
+   (28/28 passed), re-ran `npm run build` (`/gallery` in the route table, zero errors), and confirmed
+   the commit (`455b769`) touched exactly the 4 scope files. Fast-forward merged into `main`.
+6. **The subagent's own result flagged a real gap while verifying criterion 5**: all 11 of phase
+   2-3's rendered chart GIF/PNG pairs in `web/public/media/` were sitting as **untracked** files in
+   both its worktree and the main checkout — never `git add`ed at any point across §§22-23, despite
+   being produced by already-merged scripts. Confirmed independently (`git ls-files
+   web/public/media/` showed only the pre-existing `net_rating_trajectory_2026.*` pair tracked; `git
+   status --porcelain` showed all 22 gallery files as `??`; `git check-ignore` confirmed they aren't
+   gitignored, just never staged). This meant a push today would have shipped a `/gallery` route
+   whose images are entirely absent on the live site. **Fixed by committing all 22 files directly**
+   (`02e0d9d`, 3.5 MB total) — see §24b.
+7. Committed the aggregator's `wnba/gallery/` landing-page link (`front-office-aggregator` commit
+   `c2b5af7`) after reviewing the diff was the expected single `<li>` line, matching the existing
+   NFL/NBA/MLB pattern (gallery link last in each sport's module list).
+8. Ran the skill's single-task closing procedure: `record-result` (fixed the schema on first
+   attempt — see §24d), `set-status --status merged`.
+
+### 24b. What's actually implemented
+
+| File | Repo | Status | Commit |
+|---|---|---|---|
+| `web/app/gallery/page.tsx` | WNBA Analytics | New — thin wrapper, mirrors NBA's shape | `455b769` |
+| `web/components/GalleryClient.tsx` | WNBA Analytics | New — 343 lines, `WNBA_GALLERY_ITEMS` catalog (12 entries) + card grid/search/modal UI | `455b769` |
+| `web/components/Sidebar.tsx` | WNBA Analytics | Modified — 1 new `/gallery` nav entry + 1 new `Film` import, nothing else touched | `455b769` |
+| `web/tests/contracts/assets.test.ts` | WNBA Analytics | Modified — new `Gallery chart media pair contract` `describe` block, 28 tests, all passing | `455b769` |
+| `web/public/media/*.gif`/`*.png` (11 pairs, 22 files) | WNBA Analytics | **Committed for the first time** — previously untracked output from phases 2-3 | `02e0d9d` |
+| `index.html` (`wnba/gallery/` link) | front-office-aggregator | New `<li>`, last entry in the WNBA module list | `c2b5af7` |
+
+The gallery catalog lists all 12 charts, including `gif_finals_closing_stretch` (chart #12, still
+`[SKIP-NO-DATA]` per §23c) — its catalog entry exists so it appears automatically once Game 7's data
+lands and the script is re-run; the new asset-contract test's paired assertion (`hasGif ===
+hasPng`) treats its current "neither file" state as a legitimate pass, same pattern as the
+pre-existing net-rating-trajectory contract it was modeled on.
+
+### 24c. Note for whoever runs the actual push/deploy
+
+Both `main` branches (`WNBA Analytics` and `front-office-aggregator`) now have real, uncommitted-
+until-now content ready to go out, but **nothing has been pushed from either repo yet** — same
+as §§22-23 left it. The aggregator's new `wnba/gallery/` link will 404 until `WNBA Analytics`'s
+`main` is pushed, pulled into the aggregator via its `wnba` subtree, and the aggregator itself is
+redeployed (see §6 for the exact sequence) — don't deploy the aggregator link alone first.
+
+### 24d. Errors and fixes this section
+
+- **`record-result` schema violation, twice**: the first attempt reused a flatter JSON shape from
+  earlier in this session (`criteria[].evidence` as a string, no top-level `summary`/`evidence`/
+  `blocked_reason`/`needed_action`/`changes`/`item_id`) that doesn't match `result.v1.json`'s actual
+  required fields. Read `schema/result.v1.json` directly rather than guessing from memory a second
+  time, and rebuilt the file with `criteria[].text`+`evidence_refs` (pointing at a separate
+  top-level `evidence[]` array with `id`/`type`/`ref`/`excerpt`) plus all six other required
+  top-level keys — second attempt passed clean.
+- **Worktree cleanup left a stray directory**: `git worktree remove .worktrees/issue147 --force`
+  partially succeeded (unregistered the worktree, branch deleted cleanly afterward) but failed with
+  `Permission denied` deleting the directory itself, most likely a lingering file handle from the
+  subagent's `npm install`/`vitest`/`next build` run. The directory's contents are just copies of
+  already-committed source plus the same `web/public/media/*` binaries now committed at `02e0d9d` —
+  nothing unique is at risk there; remove `.worktrees/issue147` by hand once no process holds it
+  open, or ignore it (it's untracked and already excluded from `git status` noise by the
+  `/.subagent-runs/`-style `.gitignore` pattern... actually verify this specific path is gitignored
+  before assuming — it was not checked this session).
+
+### 24e. Concrete next step
+
+**All code-side work for the WNBA gallery effort (#144/#145/#146/#147) is now complete and merged
+locally.** What's left is entirely deploy/ops, not code:
+
+1. **Push and deploy** (carried forward from §§22-23, still not done — now the main blocker). Local
+   `WNBA Analytics` main is 33 commits ahead of `origin/main`. Sequence once approved: `git push
+   origin main` from `WNBA Analytics` → aggregator subtree pull (`git subtree pull --prefix=wnba
+   wnba-origin main -m "..."` in `front-office-aggregator`, which will also pick up the
+   already-committed `wnba/gallery/` link's sibling content) → push `front-office-aggregator`'s
+   `main` → live-verify per §6's 4-step sequence. Only after the gallery is confirmed live should
+   #144/#145/#146/#147 be closed on the `kailot-harris/front-office` tracker.
+2. **Re-run `gif_finals_closing_stretch.R` periodically** (unchanged from §23d item 3) — no code
+   change expected, just a future re-render and a new `cache/`/`web/public/media` commit once Game
+   7's event-level data lands in wehoop. Once it does, re-run `npx vitest run
+   tests/contracts/assets.test.ts` from `web/` to confirm the "is a real, non-trivial image pair"
+   half of the new contract now exercises all 12 charts instead of 11.
+3. **Scratch file cleanup** (owner's call, not yet done, growing list): `batch_issue145_template.md`,
+   `batch_issue145_items.json`, `batch_issue146_template.md`, `batch_issue146_items.json`,
+   `brief_issue147.md`, `result_issue147.json` (all untracked at the repo root), plus the unrelated
+   leftover `brief_issue171.md`. Also resolve the stray `.worktrees/issue147` directory noted in
+   §24d.
+4. There is no remaining phase of the original `#140` gallery epic known to this session — #147 was
+   explicitly phase 4/"the `/gallery` route, sidebar, landing page" and nothing in its own body or
+   #140's references a phase 5. Confirm on the tracker before assuming the epic is fully closed out.
+
+**All file:line and commit-hash citations in this section were accurate as of 2026-11-12 ~16:50 EST —
+re-verify with `git log` / `grep` before trusting them if more time has passed.**
