@@ -257,7 +257,12 @@ jitter_apart <- function(y, min_gap) {
   out[ord] <- y_sorted
   out
 }
-LOGO_MIN_GAP <- (y_max - y_min) * 0.052
+# The image itself is ~0.062 of the panel height (geom_image size, by =
+# "height"), i.e. roughly 0.062 * (y_max - y_min) in data units -- the first
+# attempt at this gap (0.052) was smaller than that, so logos still touched.
+# Use something clearly bigger than one logo diameter so centers end up a
+# full logo-width-plus-margin apart, not just not-literally-touching.
+LOGO_MIN_GAP <- (y_max - y_min) * 0.11
 
 # ------------------------------------------------------------------------------
 # 5. Build one ggplot per animation frame
