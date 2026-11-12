@@ -1,23 +1,26 @@
-# HANDOFF — WNBA Gallery Phase 2 (issue #145) COMPLETE locally: all 10/10 charts merged, tested, registered — NOT YET PUSHED; plus everything below from the 2026-11-09 sessions (test suites green §21, sentiment-lexicon tickets #170/#171 spec'd, #169 shipped, 2026 Finals Champion Freeze, Synthetic-Data Remediation, Off-Season Dossier, Four-Sport Deploy); local HEAD = `e29a636`, **25 commits ahead of `origin/main` and NOT YET PUSHED**
+# HANDOFF — WNBA Gallery phases 2 AND 3 (issues #145, #146) COMPLETE locally: all 12/12 charts merged, tested, registered — NOT YET PUSHED; plus everything below from the 2026-11-09 sessions (test suites green §21, sentiment-lexicon tickets #170/#171 spec'd, #169 shipped, 2026 Finals Champion Freeze, Synthetic-Data Remediation, Off-Season Dossier, Four-Sport Deploy); local HEAD = `cc7ada1`, **30 commits ahead of `origin/main` and NOT YET PUSHED**
 
-> **START HERE (updated 2026-11-12 ~10:35 EST, local `HEAD` = `e29a636`, 25 commits ahead of
+> **START HERE (updated 2026-11-12 ~11:30 EST, local `HEAD` = `cc7ada1`, 30 commits ahead of
 > `origin/main` — NOT pushed).**
-> **Read this if you are picking up the WNBA visual gallery (issue #145).** This is a **disjoint
-> workstream** from everything below it in this file — §§1–21 are all about the off-season monitor /
-> sentiment-pulse / betting-decommission line of work in a different issue tracker
-> (`kailot-harris/WNBA_analytics`'s own issues). The gallery work is tracked instead in the
+> **Read this if you are picking up the WNBA visual gallery (issues #145/#146).** This is a
+> **disjoint workstream** from everything below it in this file — §§1–21 are all about the
+> off-season monitor / sentiment-pulse / betting-decommission line of work in a different issue
+> tracker (`kailot-harris/WNBA_analytics`'s own issues). The gallery work is tracked instead in the
 > **aggregator repo's tracker**, `kailot-harris/front-office` — issues
 > [#140](https://github.com/kailot-harris/front-office/issues/140) (epic),
 > [#144](https://github.com/kailot-harris/front-office/issues/144) (phase 1, merged),
-> **[#145](https://github.com/kailot-harris/front-office/issues/145) (phase 2 — all 10 charts now
-> merged to local `main` and registered in the test harness; still OPEN on the tracker and NOT yet
-> pushed/deployed, so closing it is premature)**. Full detail, including every commit, every
-> verification command, every batch run-id, and the concrete next step, is in the new **§22** at the
-> end of this document. The short version: **all 10 of 10 gallery-chart scripts are merged to local
-> `main`, all 10 are registered in `tests/test_gallery_viz.R`'s `SCRIPTS` registry and the full suite
-> passes 10/10 rendered with 0 failures**, and **none of this has been pushed to `origin/main` yet**
-> — do not assume `git push` is a no-op here, and do not close #140/#144/#145/#146/#147 until it is
-> actually pushed and deployed per §6's chain.
+> [#145](https://github.com/kailot-harris/front-office/issues/145) (phase 2, all 10 charts merged),
+> **[#146](https://github.com/kailot-harris/front-office/issues/146) (phase 3, both postseason charts
+> merged)**, and **[#147](https://github.com/kailot-harris/front-office/issues/147) (phase 4, `/gallery`
+> route — NOT started)**. None of #140/#144/#145/#146/#147 is closed on the tracker yet, and closing
+> them is premature until this work is actually pushed and deployed. Full detail for phase 2 is in
+> **§22**; phase 3 is in the new **§23** at the end of this document. The short version: **all 12 of
+> 12 gallery-chart scripts are merged to local `main` and registered in
+> `tests/test_gallery_viz.R`'s `SCRIPTS` registry — the full suite passes 11/12 rendered + 1 honest
+> `[SKIP-NO-DATA]` (chart #12, a real upstream data-ingestion lag, not a bug) — and **none of this has
+> been pushed to `origin/main` yet**. Do not assume `git push` is a no-op here. **Phase 4 (#147) is
+> the next unit of work once pushed/deployed** — it needs a `web/` change (`/gallery` route, sidebar,
+> landing page), which nothing in phases 1-3 has touched.
 >
 > The block immediately below (unchanged, still accurate for its own workstream) is the previous
 > session's:
@@ -2654,4 +2657,121 @@ estimate_rapm_ratings()`), not something either script introduced — both subag
 change, nothing to investigate.
 
 **All file:line and commit-hash citations in this section were accurate as of 2026-11-12 ~10:35 EST —
+re-verify with `git log` / `grep` before trusting them if more time has passed.**
+
+---
+
+## 23. Same session, continued (2026-11-12 ~11:30 EST): WNBA Visual Gallery phase 3 — issue #146, both postseason charts MERGED and TESTED
+
+> **Read this if you are picking up the visual gallery.** Direct continuation of §22's session, same
+> day, same disjoint workstream (see §22's own header for why this is tracked on
+> `kailot-harris/front-office`, not this repo's own issues). After §22 wrapped up phase 2 (#145, all
+> 10 charts), the user asked for the next unblocked issue — **#146 is independent of #145** (its own
+> body says so explicitly: "Independent of phase 2 (#145) — can run in parallel, no shared files")
+> and depends only on phase 1 (#144), already merged — so it was picked up next without waiting on a
+> push of phase 2. **Both of #146's charts are now merged, independently re-verified, and registered
+> in `tests/test_gallery_viz.R`.** Local `main` is at `cc7ada1`, 30 commits ahead of `origin/main`,
+> still nothing pushed.
+
+### 23a. What this session did, in order
+
+1. Confirmed #146 was genuinely unblocked by reading its tracker body directly (`gh issue view 146
+   --repo kailot-harris/front-office`) rather than assuming — it names its own data sources
+   (`cache/playoff_bracket_2026.rds` for #11, play-by-play/shots for #12) and explicitly disclaims a
+   dependency on #145.
+2. Built a 2-item batch (`b-20261112-161403-eeef7d`, `batch_issue146_template.md` +
+   `batch_issue146_items.json` in the repo root, both untracked scratch like phase 2's equivalents).
+   2 items is below the pilot threshold (5), so `batch-new` skipped the pilot and both items
+   dispatched immediately, each in its own manually-created worktree.
+3. Before writing the brief, checked `../NBA Analytics/tools/` for a counterpart to port — found
+   **neither chart has one to port literally**: NBA's closest-in-spirit scripts
+   (`gif_playoff_prob_bump.R`, `gif_clutch_shot_worm.R`) read different data (projection-snapshot
+   history, not a bracket-results cache) or depend on `tools/plot_shot_chart.R`, which phase 1 never
+   ported to this repo. The brief told both subagents this explicitly, and to design chart #11's
+   structure from `CACHE_PLAYOFF_BRACKET_CURRENT`'s real schema rather than guessing from the NBA
+   shape.
+4. Baked §22i's lesson into this batch's own brief from the start: an explicit "you are expected to
+   `git commit` your finished script on your own branch before reporting `success`" line, plus a
+   4th success criterion verifying the commit exists. **Both subagents committed on their own this
+   time** — zero manual-commit interventions needed, unlike 4 of phase 2's items.
+5. One subagent (`gif_finals_closing_stretch.R`, run `20261112-161422-ba810c`) hit this account's
+   5-hour API rate limit mid-task and failed with a `429`. Per the task-notification's own guidance,
+   resumed it with `SendMessage` to its agent id (not a fresh `Agent` dispatch, which would have lost
+   all its context and investigation work) — it picked up exactly where it left off and finished
+   cleanly on retry.
+6. Independently re-verified both: re-ran each script fresh with `Rscript.exe --vanilla` from its own
+   worktree, grepped for the zero-fallback contract, compared outcomes against each subagent's
+   report, `record-result`, merged, cleaned up worktrees/branches.
+7. Added both to `tests/test_gallery_viz.R`'s `SCRIPTS` registry (`cc7ada1`) and ran the full
+   12-chart suite fresh: **11 rendered, 1 honest skip, 0 failures.**
+8. Ran the batch's standard closing procedure: `batch-sample` (both items already independently
+   re-verified, nothing new to check), `batch-report` (2/2 success), `check_storage.py` (2.6 MB
+   total, no milestone, nothing to prune).
+
+### 23b. What's actually implemented
+
+| # | Item (`tools/gif_*.R`) | Status | Outcome | Commit(s) | Run id |
+|---|---|---|---|---|---|
+| 11 | `gif_playoff_bracket_progression.R` | **Merged** | Rendered — 16 frames, GIF 74,616 bytes / PNG 37,132 bytes | `8047798` (fast-forward) | `20261112-161422-c80d70` |
+| 12 | `gif_finals_closing_stretch.R` | **Merged** | **Honest `[SKIP-NO-DATA]`** — see §23c | `cd602c9` / merge `6c4eabf` | `20261112-161422-ba810c` |
+
+`gif_playoff_bracket_progression.R` reads `config.R`'s `CACHE_PLAYOFF_BRACKET_CURRENT`
+(`cache/playoff_bracket_2026.rds`), flattens each series' `games` list-column into individual game
+events, and replays them chronologically to animate the bracket tree (Round 1 → Semifinals →
+Finals) — bracket topology is inferred from the real matchup data, never hardcoded. Independently
+re-run and confirmed byte-identical to the subagent's reported output.
+
+### 23c. `gif_finals_closing_stretch.R`'s honest skip — a real upstream data gap, not a bug
+
+This chart needs real play-by-play (score margin) and shot-location data for the deciding game of
+the 2026 WNBA Finals, to pair with half-court shot locations in the closing stretch. The script:
+
+1. Correctly found the series' actual deciding game by reusing `tools/finals_series_backtest.R`'s
+   `load_finals_games()` rather than re-deriving it: **Game 7, Golden State 68 – Atlanta 63,
+   2026-10-31** (ESPN `game_id` 401918311).
+2. Then correctly discovered that **wehoop has not yet ingested that game's event-level data** —
+   neither the ESPN play-by-play feed nor the WNBA Stats API shot feed has rows for it — and stopped
+   via `viz_stop_no_data()` with nothing rendered, per the zero-fallback contract.
+3. This is the **same wehoop ingestion lag** `tools/diagnose_game7_sources.R` and
+   `tools/espn_game7_fallback.R` already document for this exact game's **box score** — confirming
+   this isn't a new or chart-specific problem, it's a known gap in how fast this particular game's
+   data reaches wehoop at all levels (box score, play-by-play, shots).
+4. Independently re-verified this session: re-ran the script fresh and got the **identical**
+   `game_id`, score, date, and skip reason as the subagent's own report — this is a real,
+   reproducible state of the upstream data, not something either run got wrong.
+
+**This chart will start rendering once wehoop catches up on Game 7's event-level feeds** — no code
+change should be needed. Re-run `Rscript.exe --vanilla tools/gif_finals_closing_stretch.R` periodically
+(or whenever updating the WNBA data generally) to check; `tests/test_gallery_viz.R`'s registry entry
+already carries a comment explaining the expected skip so a future `SKIP: ...` line in the test
+output isn't mistaken for a new problem.
+
+### 23d. Concrete next step
+
+**All 12 of 12 gallery charts (phases 1-3) are code-complete, merged, and tested locally.** Nothing
+is half-done on the code side for #144/#145/#146. What's left:
+
+1. **Push and deploy** (unchanged from §22g item 1 — still not done). Local `main` is 30 commits
+   ahead of `origin/main`. Once pushed: aggregator subtree pull, aggregator push, live verification
+   per §6. Only after that is live should #144/#145/#146 be closed on the tracker.
+2. **Phase 4 — issue [#147](https://github.com/kailot-harris/front-office/issues/147)** is the next
+   unit of *code* work, and it is the first piece of this whole gallery effort that touches `web/`:
+   `web/app/gallery/page.tsx` + `GalleryClient.tsx` (mirroring the NBA component — categories, GIF
+   with a reduced-motion PNG fallback, a description of what each chart shows), a sidebar entry, an
+   asset-contract test covering all 12 charts' GIF/PNG pairs, and a landing-page link in the
+   aggregator's `index.html`. #147's own body says it "depends on phases 2 (#145) and 3 (#146) having
+   produced at least most chart assets" — both are now fully done, so #147 is unblocked. Its
+   acceptance criteria explicitly expect **12** charts in the asset-contract test, including the
+   currently-skipped chart #12 — re-check whether #12 has started rendering by the time #147 is
+   worked, since its acceptance criteria may need to accommodate a legitimately-still-skipped chart
+   if Game 7's data still hasn't landed in wehoop.
+3. **Re-run `gif_finals_closing_stretch.R` periodically** to check whether Game 7's play-by-play/shot
+   data has arrived in wehoop yet (§23c) — no code change needed if/when it has, just a fresh render
+   and a `cache/`/`web/public/media` artifact to commit as runtime output (the script itself is
+   already correct and already merged).
+4. **Clean up this session's scratch files** (`batch_issue146_template.md`, `batch_issue146_items.json`,
+   plus the still-outstanding phase-2 scratch files named in §22g item 3) once `report.md` has been
+   reviewed — same owner's-call pattern as phase 2.
+
+**All file:line and commit-hash citations in this section were accurate as of 2026-11-12 ~11:30 EST —
 re-verify with `git log` / `grep` before trusting them if more time has passed.**
