@@ -6,10 +6,10 @@
 # gallery charts (tools/gif_*.R) that phases 2-4 of #140 will add -- separate
 # issues, not part of this plumbing port.
 #
-# As of this writing NO gif_*.R chart script exists yet in this repo (#144 is
-# plumbing only), so `SCRIPTS` below is intentionally empty. This file still
-# runs to completion -- it is meant to be the harness those later issues
-# extend by appending to SCRIPTS, not something they need to rewrite.
+# Phase 2 (#145) has landed all 10 gif_*.R chart scripts; SCRIPTS below
+# registers every one of them. This file is the harness phases 3-4 of #140
+# extend by appending further entries to SCRIPTS, not something they need to
+# rewrite.
 #
 # Validates, for each entry added to SCRIPTS:
 #   - The script exists and sources tools/viz_common.R
@@ -40,13 +40,17 @@ cat(sprintf("=== WNBA Gallery Viz Test Suite (Repo root: %s) ===\n", REPO_ROOT))
 # anywhere else.
 # ------------------------------------------------------------------------------
 SCRIPTS <- list(
-  # Intentionally empty at phase 1 (#144). Example shape for the next chart
-  # to register itself with:
-  #   list(
-  #     script = "tools/gif_<chart_name>.R",
-  #     gif    = "cache/gif_<chart_name>.gif",
-  #     png    = "cache/gif_<chart_name>.png"
-  #   )
+  # Phase 2 (#145), all 10 charts, added once the whole batch landed.
+  list(script = "tools/gif_elo_rank_bump.R",            gif = "cache/gif_elo_rank_bump.gif",            png = "cache/gif_elo_rank_bump.png"),
+  list(script = "tools/gif_point_diff_race.R",           gif = "cache/gif_point_diff_race.gif",           png = "cache/gif_point_diff_race.png"),
+  list(script = "tools/gif_standings_race.R",             gif = "cache/gif_standings_race.gif",             png = "cache/gif_standings_race.png"),
+  list(script = "tools/gif_net_rating_quadrant.R",         gif = "cache/gif_net_rating_quadrant.gif",         png = "cache/gif_net_rating_quadrant.png"),
+  list(script = "tools/gif_pace_efficiency_quadrant.R",    gif = "cache/gif_pace_efficiency_quadrant.gif",    png = "cache/gif_pace_efficiency_quadrant.png"),
+  list(script = "tools/gif_shot_profile_shift.R",          gif = "cache/gif_shot_profile_shift.gif",          png = "cache/gif_shot_profile_shift.png"),
+  list(script = "tools/gif_rapm_leaders_2026.R",           gif = "cache/gif_rapm_leaders_2026.gif",           png = "cache/gif_rapm_leaders_2026.png"),
+  list(script = "tools/gif_rapm_leaders_by_season.R",      gif = "cache/gif_rapm_leaders_by_season.gif",      png = "cache/gif_rapm_leaders_by_season.png"),
+  list(script = "tools/gif_upset_timeline.R",              gif = "cache/gif_upset_timeline.gif",              png = "cache/gif_upset_timeline.png"),
+  list(script = "tools/gif_forecast_calibration.R",        gif = "cache/gif_forecast_calibration.gif",        png = "cache/gif_forecast_calibration.png")
 )
 
 if (length(SCRIPTS) == 0) {
@@ -91,9 +95,13 @@ for (spec in SCRIPTS) {
   if (file.exists(png_path)) unlink(png_path)
 
   cat(sprintf("\n  -> Executing: %s\n", spec$script))
+  # --vanilla bypasses renv's autoloader (this repo's renv project library is
+  # out-of-sync/missing packages per CLAUDE.md) and falls back to the global
+  # R library, where the real dependencies are actually installed. A bare
+  # "Rscript" invocation fails on package load before this fix.
   res <- system2(
     command = "Rscript",
-    args = c(sprintf('"%s"', script_path)),
+    args = c("--vanilla", sprintf('"%s"', script_path)),
     stdout = TRUE,
     stderr = TRUE
   )
