@@ -16,7 +16,6 @@
 # Data inputs:
 #   - Reads matchups_team_box_2027.rds (completed regular season games)
 #   - Reads projected_30_team_standings.rds / ensemble_team_ratings.rds
-#   - Falls back gracefully to synthesized progression if cache is missing
 #
 # Usage:
 #   Rscript tools/gif_division_standings_race.R
@@ -146,21 +145,9 @@ if (!is.null(box_file)) {
   }
 }
 
-# Fallback if no games available or only baseline step
+# No invented history: without real completed games the chart is not rendered.
 if (length(race_history) <= 1) {
-  sim_wins <- setNames(rep(0L, length(all_teams)), all_teams)
-  for (i in 1:5) {
-    # Increment wins randomly/deterministically
-    add_w <- as.integer((seq_along(all_teams) + i) %% 2 == 0)
-    sim_wins <- sim_wins + add_w
-    race_history[[i + 1]] <- tibble(
-      step = as.integer(i),
-      date_label = sprintf("Day %d", i),
-      team = all_teams,
-      division = NBA_DIVISION_MAP[all_teams],
-      cum_wins = as.integer(sim_wins[all_teams])
-    )
-  }
+  viz_stop_no_data("tools/gif_division_standings_race.R", "no completed games were found in the cache.")
 }
 
 race_df <- bind_rows(race_history)

@@ -20,7 +20,6 @@
 # Data inputs:
 #   - Reads matchups_team_box_2027.rds (completed regular season games)
 #   - Reads ensemble_team_ratings.rds or projected_30_team_standings.rds for baseline
-#   - Falls back gracefully to synthesized progression if cache is missing
 #
 # Usage:
 #   Rscript tools/gif_pace_efficiency_quadrant.R
@@ -136,35 +135,9 @@ if (!is.null(box_file)) {
   }
 }
 
+# No invented history: without real completed games the chart is not rendered.
 if (length(quad_history) == 0) {
-  base_net <- setNames(rep(0, length(all_teams)), all_teams)
-  if (!is.null(ens_file)) {
-    ens <- tryCatch(readRDS(ens_file), error = function(e) NULL)
-    if (!is.null(ens) && "team" %in% names(ens) && "ensemble_net_rating" %in% names(ens)) {
-      for (i in seq_len(nrow(ens))) {
-        tm <- resolve_team_abbr(ens$team[i])
-        if (!is.na(tm) && tm %in% all_teams) {
-          base_net[tm] <- as.numeric(ens$ensemble_net_rating[i])
-        }
-      }
-    }
-  }
-
-  for (i in 1:5) {
-    quad_history[[i]] <- tibble(
-      team = all_teams,
-      games = i,
-      pts_for = 110 * i,
-      pts_against = 110 * i,
-      poss = 100 * i,
-      pace = 98 + (seq_along(all_teams) %% 9) + sin(seq_along(all_teams) + i) * 1.5,
-      off_rtg = 112 + base_net / 2,
-      def_rtg = 112 - base_net / 2,
-      net_rtg = base_net + sin(seq_along(all_teams) + i) * 3,
-      step = as.integer(i),
-      date_label = sprintf("Day %d", i)
-    )
-  }
+  viz_stop_no_data("tools/gif_pace_efficiency_quadrant.R", "no completed games were found in the cache.")
 }
 
 quad_df <- bind_rows(quad_history)

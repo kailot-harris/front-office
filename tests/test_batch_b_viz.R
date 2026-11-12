@@ -104,6 +104,14 @@ for (spec in artifacts_spec) {
   res <- system2("Rscript", args = c(script_path), stdout = TRUE, stderr = TRUE)
   status <- attr(res, "status")
   if (!is.null(status) && status != 0) {
+    # A script that refuses to draw without its real input data is an expected
+    # skip on a fresh clone or CI runner (no cache/, shallow git history), not a
+    # pass and not a failure.
+    no_data <- grep("[SKIP-NO-DATA]", res, fixed = TRUE, value = TRUE)
+    if (length(no_data)) {
+      cat(sprintf("  SKIP: %s\n", sub("^Error: ", "", no_data[1])))
+      next
+    }
     cat(paste(res, collapse = "\n"), "\n")
     stop(sprintf("FAILED: %s exited with non-zero status %d", spec$script, status))
   }

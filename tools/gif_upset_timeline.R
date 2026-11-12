@@ -19,7 +19,6 @@
 # Data inputs:
 #   - Reads matchups_team_box_2027.rds (completed regular season games)
 #   - Reads ensemble_team_ratings.rds (preseason baseline Elo ratings)
-#   - Falls back gracefully to synthesized progression if cache is missing
 #
 # Usage:
 #   Rscript tools/gif_upset_timeline.R
@@ -163,18 +162,9 @@ if (!is.null(box_file)) {
 
 all_upsets <- if (length(upsets_list) > 0) bind_rows(upsets_list) else tibble()
 
-# If no upsets recorded, synthesize standard upsets
+# No invented games: with no real upsets on record the chart is not rendered.
 if (nrow(all_upsets) == 0) {
-  dates <- as.character(seq(as.Date("2026-10-20"), by = "day", length.out = 5))
-  all_upsets <- tibble(
-    game_id = paste0("synth_", 1:4),
-    game_date = dates[1:4],
-    winner = c("DET", "POR", "CHA", "UTA"),
-    loser = c("BOS", "OKC", "CLE", "DEN"),
-    winner_prob = c(28.4, 32.1, 35.0, 39.2),
-    score = c("112-108", "109-105", "118-115", "114-111"),
-    upset_leverage = c(21.6, 17.9, 15.0, 10.8)
-  )
+  viz_stop_no_data("tools/gif_upset_timeline.R", "no completed upsets were found in the cache.")
 }
 
 # Cumulative trajectory across dates

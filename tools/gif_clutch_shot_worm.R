@@ -2,14 +2,16 @@
 # tools/gif_clutch_shot_worm.R
 # Path: tools/gif_clutch_shot_worm.R
 #
-# Clutch Margin Win Probability Worm Paired with Shot Locations (Issue #58)
+# Closing-stretch score margin paired with shot locations
 #
 # Features:
 #   - Sources tools/viz_common.R and tools/plot_shot_chart.R.
 #   - Uses theme_nba_dark(), NBA_COLORS, canonical team colors, and regulation court layout.
-#   - Pairs late-game win probability & score margin worm trajectory with half-court
+#   - Pairs the real score margin through the final five minutes with half-court
 #     shot locations in the final 5 minutes of high-leverage close games.
-#   - Reads pbp and shots from cache (or gracefully synthesizes clutch timeline).
+#   - Reads play-by-play and shots from cache. No fallback: with no qualifying
+#     game the chart is not rendered. The margin is the play-by-play score, not
+#     a modelled win probability.
 #   - Outputs dual artifacts: cache/gif_clutch_shot_worm.gif and cache/gif_clutch_shot_worm.png
 #     via render_animated_artifact().
 #   - Syncs artifacts to web/public/media/.
@@ -140,6 +142,7 @@ if (has_real_data) {
 
     if (nrow(cand_shots) >= CLUTCH_MIN_SHOTS) {
       selected_game_id <- cand$game_id
+      selected_game_date <- as.Date(cand$game_date)
       # Normalize through resolve_team_abbr() so these match the standard
       # abbreviations used by get_nba_team_color() and the shots' team_clean
       # below (e.g. pbp's "NY" -> "NYK").
@@ -193,42 +196,32 @@ g_shots_norm <- g_shots %>%
     made_label = ifelse(is_made, "Made", "Missed")
   )
 
-# Build continuous clutch timeline (from t=300 down to t=0)
-time_points <- seq(300, 0, by = -15)
-worm_timeline <- list()
+# Real home-team margin at each 15-second mark of the final five minutes, read
+# from the play-by-play score. Nothing is modelled or estimated here.
+game_pbp <- pbp_all %>%
+  filter(game_id == selected_game_id, period_number == 4,
+         !is.na(home_score), !is.na(away_score), !is.na(end_quarter_seconds_remaining))
 
-curr_margin <- start_margin # Actual home margin at the 5:00 mark of Q4
-for (t_idx in seq_along(time_points)) {
-  t_sec <- time_points[t_idx]
-  # Shots that occurred between previous time point and now
-  prev_sec <- if (t_idx == 1) 310 else time_points[t_idx - 1]
-  sub_shots <- g_shots_norm %>% filter(sec_left <= prev_sec, sec_left > t_sec)
-  
-  if (nrow(sub_shots) > 0) {
-    for (r in seq_len(nrow(sub_shots))) {
-      delta_pts <- sub_shots$score_value[r]
-      if (delta_pts > 0) {
-        if (sub_shots$team_clean[r] == home_tm) curr_margin <- curr_margin + delta_pts
-        else curr_margin <- curr_margin - delta_pts
-      }
-    }
-  }
-  
-  # Standard logistic win probability model given time remaining:
-  # P(Home Win) = 1 / (1 + exp(- (margin * 0.35 + 0.05) * sqrt(300 / max(t_sec, 10))))
-  decay <- sqrt(300 / max(t_sec, 12))
-  p_home <- 1 / (1 + exp(-curr_margin * 0.18 * decay))
-  p_home <- pmax(0.01, pmin(0.99, p_home))
-  
-  worm_timeline[[t_idx]] <- tibble(
-    frame_step = t_idx,
-    sec_left = t_sec,
-    min_label = sprintf("%d:%02d", t_sec %/% 60, t_sec %% 60),
-    margin = curr_margin,
-    win_prob = p_home * 100
-  )
+margin_at <- function(t_sec) {
+  rows <- game_pbp[game_pbp$end_quarter_seconds_remaining >= t_sec, , drop = FALSE]
+  if (nrow(rows) == 0) return(NA_real_)
+  rows <- rows[rows$end_quarter_seconds_remaining == min(rows$end_quarter_seconds_remaining), , drop = FALSE]
+  last <- rows[nrow(rows), ]
+  as.numeric(last$home_score - last$away_score)
 }
-worm_df <- bind_rows(worm_timeline)
+
+time_points <- seq(300, 0, by = -15)
+margins <- vapply(time_points, margin_at, numeric(1))
+if (is.na(margins[1])) margins[1] <- start_margin
+for (k in seq_along(margins)[-1]) if (is.na(margins[k])) margins[k] <- margins[k - 1]
+
+worm_df <- tibble(
+  frame_step = seq_along(time_points),
+  sec_left = time_points,
+  min_label = sprintf("%d:%02d", time_points %/% 60, time_points %% 60),
+  margin = as.integer(margins)
+)
+margin_lim <- max(6, max(abs(worm_df$margin)) + 2)
 
 # ------------------------------------------------------------------------------
 # 2. Render Animation Frames (Paired Win Prob Worm + Half-Court Shot Locations)
@@ -246,16 +239,15 @@ for (s in seq_len(total_steps)) {
   # Shots accumulated up to current time (from t=300 down to cur_time)
   cur_shots <- g_shots_norm %>% filter(sec_left >= cur_time)
   
-  # 1. Left Panel: Win Probability Worm
-  p_worm <- ggplot(cur_worm, aes(x = 300 - sec_left, y = win_prob)) +
-    # 50% neutral probability reference
-    geom_hline(yintercept = 50, linetype = "dashed", color = NBA_COLORS$grid, linewidth = 0.8) +
-    geom_ribbon(aes(ymin = 50, ymax = win_prob),
-                fill = ifelse(cur_worm$win_prob[nrow(cur_worm)] >= 50, home_col, away_col),
+  # 1. Left Panel: real score margin
+  p_worm <- ggplot(cur_worm, aes(x = 300 - sec_left, y = margin)) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = NBA_COLORS$grid, linewidth = 0.8) +
+    geom_ribbon(aes(ymin = 0, ymax = margin),
+                fill = ifelse(cur_worm$margin[nrow(cur_worm)] >= 0, home_col, away_col),
                 alpha = 0.25) +
     geom_line(color = NBA_COLORS$accent, linewidth = 1.3) +
     geom_point(data = cur_worm %>% filter(frame_step == s),
-               aes(x = 300 - sec_left, y = win_prob),
+               aes(x = 300 - sec_left, y = margin),
                color = "#ffffff", fill = home_col, shape = 21, size = 4.0, stroke = 1.5) +
     scale_x_continuous(
       breaks = seq(0, 300, by = 60),
@@ -263,9 +255,8 @@ for (s in seq_len(total_steps)) {
       limits = c(0, 305)
     ) +
     scale_y_continuous(
-      breaks = seq(0, 100, by = 25),
-      labels = c("0%", "25%", "50%", "75%", "100%"),
-      limits = c(0, 100)
+      limits = c(-margin_lim, margin_lim),
+      labels = function(v) sprintf("%+d", as.integer(v))
     ) +
     theme_nba_dark(base_size = 11) +
     theme(
@@ -273,11 +264,11 @@ for (s in seq_len(total_steps)) {
       plot.subtitle = element_text(size = 9, color = NBA_COLORS$subtext)
     ) +
     labs(
-      title = sprintf("Late-Game Leverage: %s vs. %s (Final 5 Min)", home_tm, away_tm),
-      subtitle = sprintf("Home Win Probability (%s): %.1f%% \u00b7 Margin: %+d pts \u00b7 Clock: %s",
-                         home_tm, cur_worm$win_prob[s], cur_worm$margin[s], cur_worm$min_label[s]),
+      title = sprintf("Final Five Minutes: %s at %s", away_tm, home_tm),
+      subtitle = sprintf("%s margin: %+d pts \u00b7 Clock: %s",
+                         home_tm, cur_worm$margin[s], cur_worm$min_label[s]),
       x = "Game Clock Remaining in 4Q",
-      y = sprintf("%s Win Probability (%%)", home_tm)
+      y = sprintf("%s lead (points)", home_tm)
     )
 
   # 2. Right Panel: Half-Court Shot Location Tracker
@@ -320,8 +311,8 @@ for (s in seq_len(total_steps)) {
   # Combined dual layout via patchwork
   combined <- p_worm + p_court + plot_layout(widths = c(1.35, 1.0)) +
     plot_annotation(
-      title = "NBA Clutch Leverage & Shot Selection Trajectory",
-      caption = "Win Probability & Spatial Shot Engine",
+      title = "Closing Stretch: Score Margin and Shot Locations",
+      caption = sprintf("Game played %s. Score and shots from ESPN play-by-play via hoopR.", format(selected_game_date, "%b %d, %Y")),
       theme = theme(
         plot.background = element_rect(fill = NBA_COLORS$bg, color = NA),
         plot.title = element_text(size = 13, face = "bold", color = NBA_COLORS$text),

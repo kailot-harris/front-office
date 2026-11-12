@@ -20,7 +20,6 @@
 # Data inputs:
 #   - Reads matchups_team_box_2027.rds (completed regular season games)
 #   - Reads ensemble_team_ratings.rds (preseason baseline Elo ratings)
-#   - Falls back gracefully to synthesized progression if cache is missing
 #
 # Usage:
 #   Rscript tools/gif_pf_pa_scatter_elo.R
@@ -191,21 +190,9 @@ if (!is.null(box_file)) {
   }
 }
 
+# No invented history: without real completed games the chart is not rendered.
 if (length(scatter_history) == 0) {
-  for (i in 1:5) {
-    scatter_history[[i]] <- tibble(
-      team = all_teams,
-      games = i,
-      pts_for = 112 * i + sin(seq_along(all_teams) + i) * 6,
-      pts_against = 112 * i - sin(seq_along(all_teams) + i) * 5,
-      ppg_for = 112 + sin(seq_along(all_teams) + i) * 5,
-      ppg_against = 112 - cos(seq_along(all_teams) + i) * 5,
-      diff = 10 * sin(seq_along(all_teams) + i),
-      elo = 1500 + sin(seq_along(all_teams) + i) * 80,
-      step = as.integer(i),
-      date_label = sprintf("Day %d", i)
-    )
-  }
+  viz_stop_no_data("tools/gif_pf_pa_scatter_elo.R", "no completed games were found in the cache.")
 }
 
 scatter_df <- bind_rows(scatter_history)

@@ -18,7 +18,6 @@
 #
 # Data inputs:
 #   - Reads matchups_team_box_2027.rds (completed regular season games)
-#   - Falls back gracefully to synthesized progression if cache is missing
 #
 # Usage:
 #   Rscript tools/gif_turnover_margin_race.R
@@ -134,20 +133,9 @@ if (!is.null(box_file)) {
   }
 }
 
+# No invented history: without real completed games the chart is not rendered.
 if (length(race_history) <= 1) {
-  sim_margin <- setNames(rep(0L, length(all_teams)), all_teams)
-  for (i in 1:5) {
-    delta_sim <- as.integer(sin(seq_along(all_teams) + i) * 3)
-    sim_margin <- sim_margin + delta_sim
-    race_history[[i + 1]] <- tibble(
-      step = as.integer(i),
-      date_label = sprintf("Day %d", i),
-      team = all_teams,
-      cum_margin = as.integer(sim_margin[all_teams])
-    ) %>%
-      arrange(cum_margin, team) %>%
-      mutate(rank = row_number())
-  }
+  viz_stop_no_data("tools/gif_turnover_margin_race.R", "no completed games were found in the cache.")
 }
 
 race_df <- bind_rows(race_history)

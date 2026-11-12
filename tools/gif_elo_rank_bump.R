@@ -14,7 +14,6 @@
 # Data inputs:
 #   - Reads matchups_team_box_2027.rds (completed regular season games)
 #   - Reads ensemble_team_ratings.rds (preseason baseline seed ratings)
-#   - Falls back gracefully to synthesized baseline if cache is missing
 #
 # Usage:
 #   Rscript tools/gif_elo_rank_bump.R
@@ -148,19 +147,9 @@ if (!is.null(box_file)) {
   }
 }
 
-# If no games were found or only baseline exists, add mock progression steps for testing
+# No invented history: without real completed games the chart is not rendered.
 if (length(history) <= 1) {
-  for (i in 1:4) {
-    sim_shift <- setNames(sin(seq_along(all_teams) + i) * 8, all_teams)
-    elo_cur <- elo_cur + sim_shift
-    history[[length(history) + 1]] <- data.frame(
-      step = as.integer(i),
-      date_label = sprintf("Day %d", i),
-      team = all_teams,
-      elo = as.numeric(elo_cur[all_teams]),
-      stringsAsFactors = FALSE
-    )
-  }
+  viz_stop_no_data("tools/gif_elo_rank_bump.R", "no completed games were found in the cache.")
 }
 
 hist_df <- do.call(rbind, history)
