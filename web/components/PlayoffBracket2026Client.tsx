@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { CalendarClock, CheckCircle2, ChevronDown, Info, Trophy, XCircle } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
+import { HowToRead } from '@/components/HowToRead';
 import type {
   BracketSeries,
   BracketForecast,
@@ -410,6 +411,14 @@ export function PlayoffBracket2026Client({
           it stood on the day it was made and are not recomputed; Round 1 is reconstructed after
           the fact, because no Round 1 forecast was ever recorded.
         </p>
+        <HowToRead pageKey="bracket-2026">
+          Each card pairs a result with a prediction, but the prediction is not made the same
+          way for every round: some are an archived forecast recorded before the series was
+          played, others are a reconstruction built after the fact from regular-season ratings.
+          Check the provenance badge on a card (and the round-level note above it) before
+          comparing hit rates across rounds — a reconstructed round and an archived-forecast
+          round are not measuring the same thing.
+        </HowToRead>
         {scored.length > 0 ? (
           <p className="text-xs text-slate-500 font-mono">
             Favoured side won {hits} of {scored.length} completed series with a prediction.

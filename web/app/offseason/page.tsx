@@ -2,6 +2,7 @@ import React from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRightLeft, ArrowLeft, ShieldAlert } from 'lucide-react';
+import { HowToRead } from '@/components/HowToRead';
 
 export const metadata: Metadata = {
   title: 'Offseason Moves & Expansion Hub (Archived)',
@@ -24,6 +25,13 @@ export default function OffseasonPage() {
         <p className="text-slate-400 max-w-xl mx-auto text-sm leading-relaxed">
           This feature has been archived pending integration with official WNBA transaction wire feeds. For active weekly off-season transaction reconciliation, visit the 2026–2027 Off-Season Monitor (GitHub issues #129, #141).
         </p>
+        <div className="flex justify-center">
+          <HowToRead pageKey="offseason-hub">
+            This hub was the old static moves/draft board — it has been replaced by the
+            Off-Season Monitor, which diffs confirmed transactions against reported rumors weekly
+            instead of showing a single stale snapshot.
+          </HowToRead>
+        </div>
       </div>
       <div className="pt-4 flex items-center justify-center gap-3">
         <Link

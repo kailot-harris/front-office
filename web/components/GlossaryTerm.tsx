@@ -65,6 +65,16 @@ export const GLOSSARY: Record<string, GlossaryDefinition> = {
     definition:
       "A 0-100% score measuring how closely two players' 12-dimensional skill vectors point in the same direction — higher means more stylistically similar, independent of overall skill level.",
   },
+  brierScore: {
+    term: 'Brier Score',
+    definition:
+      'Mean squared error between a predicted win probability and the actual 0/1 outcome, averaged over every resolved game. 0 is a perfect forecaster; 0.25 is what guessing 50/50 every time scores.',
+  },
+  logLoss: {
+    term: 'Log-Loss',
+    definition:
+      'Cross-entropy loss between predicted win probabilities and actual outcomes. Unlike Brier Score it penalizes confident-and-wrong predictions much more heavily — lower is better.',
+  },
 };
 
 export type GlossaryKey = keyof typeof GLOSSARY;

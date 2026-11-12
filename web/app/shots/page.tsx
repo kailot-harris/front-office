@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { PlayerCatalogEntry, ShotsMetadata } from '@/lib/shotTypes';
 import { ShotsExplorerClient } from '@/components/ShotsExplorerClient';
+import { HowToRead } from '@/components/HowToRead';
 
 export const metadata = {
   title: 'Player Shot Charts & Hot Zones',
@@ -65,6 +66,16 @@ export default function ShotsPage() {
               Dynamic half-court spatial analytics: Empirical Bayes shrinkage, Binomial z-scores,
               and thermal hot/cold classification across 260,000+ tracked WNBA shot attempts.
             </p>
+            <div className="mt-2">
+              <HowToRead pageKey="shots">
+                Pick a player to see their shot chart broken into 14 court zones. Each zone&apos;s
+                color comes from an Empirical Bayes-shrunk field-goal percentage — a raw zone
+                average pulled toward the league rate in proportion to how few shots that player
+                has taken from there, so a zone with only a handful of attempts isn&apos;t painted
+                bright red or blue off noise. The z-score behind that color measures how far the
+                shrunk rate sits from the league average for that zone.
+              </HowToRead>
+            </div>
           </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-violet-400 via-violet-500/40 to-transparent" />

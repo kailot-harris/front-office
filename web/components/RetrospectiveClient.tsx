@@ -8,6 +8,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
+import { GlossaryTerm } from '@/components/GlossaryTerm';
+import { HowToRead } from '@/components/HowToRead';
 import { TeamProjection, ModelDiagnostics } from '@/lib/types';
 import { PlayoffBracketSeason, BracketSeries } from '@/lib/playoffTypes';
 
@@ -147,6 +149,17 @@ export const RetrospectiveClient: React.FC<RetrospectiveClientProps> = ({
             <p className="text-slate-400 text-sm mt-1">
               Comprehensive model audit, championship resolution, CBA cap efficiency, and predictive variant benchmarks across the 2026 season.
             </p>
+            <div className="mt-2">
+              <HowToRead pageKey="retrospective">
+                The Champions tab resolves the season&apos;s actual outcome; the Calibration tab
+                compares each of the four model variants (Ensemble, Bottom-Up BPM,{' '}
+                <GlossaryTerm termKey="rapm" />, Shot Quality/Fatigue) by{' '}
+                <GlossaryTerm termKey="brierScore" /> and accuracy against what really happened,
+                not a held-out test set. Lower Brier Score and higher accuracy mean that variant
+                tracked the season better — the Ensemble blends all of them, so it is not expected
+                to always beat every individual variant on every metric.
+              </HowToRead>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <Link

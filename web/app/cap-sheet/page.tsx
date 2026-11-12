@@ -2,6 +2,7 @@ import React from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { Coins, ArrowLeft, ShieldAlert } from 'lucide-react';
+import { HowToRead } from '@/components/HowToRead';
 
 export const metadata: Metadata = {
   title: 'CBA Salary Cap Reference (Archived)',
@@ -24,6 +25,13 @@ export default function CapSheetPage() {
         <p className="text-slate-400 max-w-xl mx-auto text-sm leading-relaxed">
           This feature has been archived pending integration with official WNBA contract feeds and verified payroll databases. Previously published player salary draws have been retired (GitHub issues #128, #140, #141).
         </p>
+        <div className="flex justify-center">
+          <HowToRead pageKey="cap-sheet">
+            The salary figures this page used to show were simulated placeholders, not real
+            contract data, so they were removed rather than left up looking authoritative. Nothing
+            renders here until a verified payroll feed is wired in.
+          </HowToRead>
+        </div>
       </div>
       <div className="pt-4">
         <Link
