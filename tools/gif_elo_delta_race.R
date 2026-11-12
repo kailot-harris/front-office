@@ -114,15 +114,32 @@ if (!is.null(box_file)) {
   dates <- sort(unique(paired_games$game_date))
   K <- 20
 
-  for (idx in seq_along(dates)) {
-    d <- dates[idx]
-    d_games <- paired_games[paired_games$game_date == d, ]
-    if (nrow(d_games) > 0) {
-      for (g in seq_len(nrow(d_games))) {
-        t1 <- d_games$team_clean[g]
-        t2 <- d_games$opp_clean[g]
-        s1 <- as.numeric(d_games$team_score[g])
-        s2 <- as.numeric(d_games$opponent_team_score[g])
+  # Frames must represent genuine WEEK-over-week Elo movement, not a single
+  # calendar date's worth of games. Only ~10-14 of 30 teams play on any given
+  # night (back-to-backs, rest days, etc.), so snapshotting after every single
+  # date leaves ~16-20 teams mechanically showing delta_elo == 0.0 in that
+  # frame -- not because they lack momentum, but because the frame granularity
+  # (one date) didn't match the "week-over-week" label. Binning dates into
+  # calendar weeks (anchored to the first game date of the loaded data) and
+  # only emitting a frame at each week boundary lets each frame accumulate a
+  # full week of per-game Elo updates per team before it is snapshotted, so
+  # nearly every team (who plays several games per week) shows a real delta.
+  season_start <- as.Date(dates[1])
+  week_id_of <- function(d) as.integer(floor(as.numeric(difftime(as.Date(d), season_start, units = "days")) / 7))
+  week_ids <- vapply(dates, week_id_of, integer(1))
+
+  step_counter <- 0L
+  for (wk in sort(unique(week_ids))) {
+    week_dates <- dates[week_ids == wk]
+    week_games <- paired_games[paired_games$game_date %in% week_dates, ]
+    week_games <- week_games[order(as.Date(week_games$game_date), week_games$game_id), ]
+
+    if (nrow(week_games) > 0) {
+      for (g in seq_len(nrow(week_games))) {
+        t1 <- week_games$team_clean[g]
+        t2 <- week_games$opp_clean[g]
+        s1 <- as.numeric(week_games$team_score[g])
+        s2 <- as.numeric(week_games$opponent_team_score[g])
 
         r1 <- elo_cur[t1]
         r2 <- elo_cur[t2]
@@ -141,9 +158,16 @@ if (!is.null(box_file)) {
       }
     }
 
+    step_counter <- step_counter + 1L
+    week_start_label <- format(min(as.Date(week_dates)), "%b %d")
+    week_end_label <- format(max(as.Date(week_dates)), "%b %d")
     history[[length(history) + 1]] <- tibble(
-      step = as.integer(idx),
-      date_label = format(as.Date(d), "%b %d"),
+      step = as.integer(step_counter),
+      date_label = if (week_start_label == week_end_label) {
+        sprintf("Week of %s", week_start_label)
+      } else {
+        sprintf("%s - %s", week_start_label, week_end_label)
+      },
       team = all_teams,
       elo = as.numeric(elo_cur[all_teams])
     )
