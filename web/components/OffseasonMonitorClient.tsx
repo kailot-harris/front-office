@@ -23,6 +23,8 @@ import {
   OffseasonMonitorDataset,
   OffseasonEditionSummary,
 } from '@/lib/offseasonTypes';
+import { HowToRead } from '@/components/HowToRead';
+import { GlossaryTerm } from '@/components/Glossary';
 
 type EditionData = OffseasonMonitorDataset['editions'][number] & {
   totalConfirmedCount?: number;
@@ -251,9 +253,18 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
             </h1>
 
             <p className="text-slate-400 text-sm mt-1 max-w-3xl">
-              Deterministic weekly state diff tracking 40-man roster transactions, luxury tax payroll commitments,
-              reported rumors with 28-day TTL decay, and 2027 Marcel baseline priors.
+              Deterministic weekly state diff tracking 40-man roster transactions, <GlossaryTerm term="CBT" /> payroll commitments,
+              reported rumors with 28-day TTL decay, and 2027 <GlossaryTerm term="Marcel Projection">Marcel</GlossaryTerm> baseline priors.
             </p>
+            <div className="max-w-xl mt-2">
+              <HowToRead pageKey="offseason-monitor">
+                Each weekly edition is a diff, not a full re-report: &quot;Confirmed&quot; moves are
+                verified transactions, &quot;Reported&quot; rumors are unconfirmed and automatically
+                expire after 28 days if nothing locks them in, and the <GlossaryTerm term="CBT" /> tab
+                tracks each team&apos;s running luxury-tax payroll. Use the week selector to replay
+                past editions.
+              </HowToRead>
+            </div>
           </div>
 
           {/* Quick Context Summary Chips */}

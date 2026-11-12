@@ -3,6 +3,8 @@ import { Metadata } from 'next';
 import { getTeamsData, getMetadata } from '@/lib/data';
 import { StandingsClient } from '@/components/StandingsClient';
 import { TeamLogo } from '@/components/TeamLogo';
+import { HowToRead } from '@/components/HowToRead';
+import { GlossaryTerm } from '@/components/Glossary';
 
 export const metadata: Metadata = {
   title: 'Standings & Visualizer',
@@ -68,8 +70,17 @@ export default function HomePage() {
               </span>
             </h1>
             <p className="text-slate-400 text-sm mt-1">
-              Probabilistic Monte Carlo simulation results across all 30 MLB franchises combining 4-Factor Pitcher Elo, Empirical Bayes, Pythagenpat, and Marcel/Bullpen models.
+              Probabilistic Monte Carlo simulation results across all 30 MLB franchises combining 4-Factor Pitcher <GlossaryTerm term="Elo" />, <GlossaryTerm term="Empirical Bayes" />, <GlossaryTerm term="Pythagenpat" />, and <GlossaryTerm term="Marcel Projection">Marcel</GlossaryTerm>/Bullpen models.
             </p>
+            <div className="max-w-xl mt-4">
+              <HowToRead pageKey="home">
+                Every team&apos;s win total and playoff odds come from running the season 2.43
+                million times, not a single forecast. Each simulation blends four independent
+                models — <GlossaryTerm term="Elo" />, <GlossaryTerm term="Empirical Bayes" />,{' '}
+                <GlossaryTerm term="Pythagenpat" />, and <GlossaryTerm term="Marcel Projection">Marcel</GlossaryTerm>/Bullpen —
+                so the percentages below reflect how often a team won across all those simulated seasons.
+              </HowToRead>
+            </div>
           </div>
           <div className="flex items-center gap-3 text-xs text-slate-400">
             <div className="bg-surface-raised border border-slate-800 rounded-lg px-3 py-2 text-right">

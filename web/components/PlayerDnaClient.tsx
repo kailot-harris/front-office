@@ -6,6 +6,7 @@ import { SkillFingerprintPolygon } from './SkillFingerprintPolygon';
 import { HistoricalTwinCard } from './HistoricalTwinCard';
 import { DnaManifoldScatter } from './DnaManifoldScatter';
 import { TeamLogo } from '@/components/TeamLogo';
+import { HowToRead } from '@/components/HowToRead';
 import {
   Dna,
   Search,
@@ -92,6 +93,15 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
               High-dimensional vector embedding classifying MLB hitters and pitchers into modern tactical archetypes.
               Identifies top nearest historical comparables using cosine similarity against peak seasons from 1980 to 2026.
             </p>
+            <div className="max-w-xl mt-2">
+              <HowToRead pageKey="player-dna">
+                Every player is reduced to a 16-dimension statistical fingerprint built from
+                Statcast data, then grouped into a tactical archetype. The &quot;Historical
+                Twins&quot; panel ranks past seasons by cosine similarity — how closely two
+                skill profiles point in the same direction, regardless of scale — so a 100%
+                match means an (almost) identical skill mix, not an identical outcome.
+              </HowToRead>
+            </div>
           </div>
 
           {/* Batter / Pitcher Toggle */}

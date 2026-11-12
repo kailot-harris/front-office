@@ -21,6 +21,8 @@ import { TeamLogo } from '@/components/TeamLogo';
 import { getBallparkGeometry, generateBallparkSvgData } from '@/lib/ballparks';
 import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { HowToRead } from '@/components/HowToRead';
+import { GlossaryTerm } from '@/components/Glossary';
 
 interface SpatialAnalyticsClientProps {
   data: StatcastSpatialData;
@@ -205,8 +207,18 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
             </h1>
             <p className="text-slate-400 text-sm mt-1 max-w-2xl">
               Trajectory modeling across batted ball spray coordinates, 3D strike zone heatmaps,
-              aerodynamic pitch movement (IVB vs. HB), and defensive shift alignment penalties.
+              aerodynamic pitch movement (<GlossaryTerm term="IVB" /> vs. <GlossaryTerm term="HB" />), and defensive shift alignment penalties.
             </p>
+            <div className="max-w-xl mt-2">
+              <HowToRead pageKey="spatial">
+                Four tabs cover different slices of Statcast tracking data: Spray (where batted
+                balls land, relative to each park&apos;s real dimensions), Zone (how pitches are
+                called and swung at around the strike zone), Movement (how much each pitch breaks
+                via <GlossaryTerm term="IVB" /> and <GlossaryTerm term="HB" />), and Defense (how shifts change
+                batted-ball outcomes). Use each tab&apos;s filters to narrow down to a specific
+                team, player, or pitch type.
+              </HowToRead>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full lg:w-auto">

@@ -3,6 +3,8 @@ import { Metadata } from 'next';
 import { getMatchupsIndex, getMatchupsWeek } from '@/lib/data';
 import { MatchupsClient } from '@/components/MatchupsClient';
 import { Swords } from 'lucide-react';
+import { HowToRead } from '@/components/HowToRead';
+import { GlossaryTerm } from '@/components/Glossary';
 
 export const metadata: Metadata = {
   title: { absolute: 'Weekly Matchups & Elo Projections | MLB Analytics' },
@@ -37,10 +39,18 @@ export default function MatchupsPage() {
             </h1>
             <p className="text-slate-400 text-sm mt-1 max-w-3xl">
               Every {dataset.season} game grouped into Monday-anchored weekly slates. Completed games
-              are graded against the Elo engine&apos;s walk-forward pre-game win probability — the
+              are graded against the <GlossaryTerm term="Elo" /> engine&apos;s walk-forward pre-game win probability — the
               number the model produced before the game, never a hindsight recomputation. Games
-              without a result carry a forward projection from current team Elo.
+              without a result carry a forward projection from current team <GlossaryTerm term="Elo" />.
             </p>
+            <div className="max-w-xl mt-4">
+              <HowToRead pageKey="matchups">
+                Each row is one real game. The win probability on a completed game is what the{' '}
+                <GlossaryTerm term="Elo" /> model projected before first pitch, then graded against
+                what actually happened — it&apos;s never recalculated with hindsight. Games that haven&apos;t
+                been played yet show a forward-looking projection from each team&apos;s current rating.
+              </HowToRead>
+            </div>
           </div>
 
           {/* Context Chips */}
