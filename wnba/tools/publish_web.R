@@ -932,8 +932,8 @@ source("config.R")
     "draftkings", "fanduel", "betmgm", "caesars", "pointsbet", "bet365", "sportsbook"
   )
   forbidden_wagering <- c(
-    "\bspread\b", "\bmoneyline\b", "\bover/under\b", "\bparlay\b",
-    "\bvig\b", "\bjuice\b", "\bstake\b"
+    "\\bspread\\b", "\\bmoneyline\\b", "\\bover/under\\b", "\\bparlay\\b",
+    "\\bvig\\b", "\\bjuice\\b", "\\bstake\\b"
   )
   
   # Terms specifically whitelisted for Draft Lottery
