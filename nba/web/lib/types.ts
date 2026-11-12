@@ -171,11 +171,41 @@ export interface ResidualBucket {
   label: string;
 }
 
+/**
+ * One population's worth of calibration/accuracy figures - either the
+ * genuine pre-game forecasts or the hindsight-seeded historical backtest.
+ * See accuracy_governance.R's `.diag_block()`.
+ */
+export interface DiagnosticsBlock {
+  totalGames: number;
+  overallAccuracy: number;
+  brierScore: number;
+  brierSkillScore?: number;
+  logLoss: number;
+  homeWinRate: number;
+  weightedCalibError?: number;
+  calibrationStatus?: string;
+  calibration: CalibrationBin[];
+  accuracyDrift: AccuracyDrift[];
+  residualDistribution: ResidualBucket[];
+}
+
+export interface DiagnosticsRowCounts {
+  resolvedTotal: number;
+  genuinePregame: number;
+  seededHindsight: number;
+}
+
 export interface ModelDiagnostics {
   generated_at?: string;
   brierSkillScore?: number;
   weightedCalibError?: number;
   calibrationStatus?: string;
+  // NOTE: these flat fields reflect GENUINE pre-game forecasts only
+  // (log_source == "LOGGED_PREGAME" in prediction_accuracy_logger.R), not
+  // every RESOLVED row in the log. See accuracy_governance.R - before this
+  // fix these numbers pooled in ~2,656 hindsight-seeded backtest rows
+  // alongside the genuine forecasts.
   totalResolvedGames: number;
   overallAccuracy: number;
   brierScore: number;
@@ -184,4 +214,9 @@ export interface ModelDiagnostics {
   calibration: CalibrationBin[];
   accuracyDrift: AccuracyDrift[];
   residualDistribution: ResidualBucket[];
+  /** Explicit duplicate of the flat headline fields above, named for clarity. */
+  genuineForecast?: DiagnosticsBlock;
+  /** Hindsight-seeded rows (seed_prediction_log()), reported separately and never pooled into the figures above. */
+  historicalBacktest?: DiagnosticsBlock | null;
+  rowCounts?: DiagnosticsRowCounts;
 }

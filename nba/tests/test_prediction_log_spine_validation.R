@@ -117,7 +117,8 @@ for (nm in c("resolve_team_name", ".empty_prediction_log", ".build_slate_rows",
              ".normalize_schedule_spine", ".validate_slate_against_spine",
              ".report_spine_rejections", ".upsert_predictions",
              ".check_predicted_winner_consistency", "log_todays_predictions",
-             "PRED_LOG_WINNER_PROB_CUTOFF")) {
+             "PRED_LOG_WINNER_PROB_CUTOFF",
+             ".classify_log_source", ".ensure_log_source_column")) {
   if (!exists(nm, envir = env, inherits = FALSE)) {
     stop(sprintf("Fixture load failed: %s not defined after sourcing the logger.", nm))
   }
@@ -132,6 +133,8 @@ resolve_team_name                   <- attach_env("resolve_team_name")
 .upsert_predictions                 <- attach_env(".upsert_predictions")
 .check_predicted_winner_consistency <- attach_env(".check_predicted_winner_consistency")
 log_todays_predictions              <- attach_env("log_todays_predictions")
+.classify_log_source                <- attach_env(".classify_log_source")
+.ensure_log_source_column           <- attach_env(".ensure_log_source_column")
 
 # ------------------------------------------------------------------------------
 # CRITERION 2: resolver deduplication is behaviour-preserving.
@@ -379,6 +382,52 @@ ok("NULL spine yields an empty spine (no check possible)",
 chk_nospine <- .validate_slate_against_spine(good_rows, NULL)
 ok("absent spine accepts rows but reports spine_available = FALSE",
    !isTRUE(chk_nospine$spine_available) && nrow(chk_nospine$accepted) == 1L)
+
+# ------------------------------------------------------------------------------
+# CRITERION (hindsight vs. genuine): rows are labeled by provenance, and a log
+# written before `log_source` existed gets migrated by the same heuristic
+# instead of silently defaulting one way or the other.
+# ------------------------------------------------------------------------------
+section("Genuine-forecast vs. hindsight-seeded row provenance (log_source)")
+
+ok(".build_slate_rows() labels its output LOGGED_PREGAME (a genuine forecast)",
+   identical(good_rows$log_source, "LOGGED_PREGAME"))
+
+ok("the insertion path preserves log_source through the upsert",
+   identical(res_good$log_source, "LOGGED_PREGAME"))
+
+ok(".classify_log_source: prediction before game_date -> LOGGED_PREGAME",
+   identical(.classify_log_source(as.POSIXct("2026-10-20 09:00:00"),
+                                   as.Date("2026-10-21")),
+             "LOGGED_PREGAME"))
+ok(".classify_log_source: prediction ON game_date (seed_prediction_log's hardcoded noon timestamp) -> SEEDED_HINDSIGHT",
+   identical(.classify_log_source(as.POSIXct("2026-10-21 12:00:00"),
+                                   as.Date("2026-10-21")),
+             "SEEDED_HINDSIGHT"))
+ok(".classify_log_source: prediction AFTER game_date (should not happen, but must not be mistaken for a forecast) -> SEEDED_HINDSIGHT",
+   identical(.classify_log_source(as.POSIXct("2026-10-22 09:00:00"),
+                                   as.Date("2026-10-21")),
+             "SEEDED_HINDSIGHT"))
+
+mixed_provenance <- tibble(
+  game_id = c("G1", "G2", "G3"),
+  game_date = as.Date(c("2026-10-21", "2026-10-21", "2026-10-21")),
+  prediction_timestamp = as.POSIXct(c("2026-10-20 09:00:00",  # genuine
+                                       "2026-10-21 12:00:00",  # hindsight (seed_prediction_log's noon hardcode)
+                                       NA))                    # unknown timestamp
+)
+migrated <- .ensure_log_source_column(mixed_provenance, persist = FALSE)
+ok("migration adds log_source to a log that predates the column",
+   "log_source" %in% names(migrated))
+ok("migration classifies a pre-game timestamp as LOGGED_PREGAME",
+   identical(migrated$log_source[1], "LOGGED_PREGAME"))
+ok("migration classifies seed_prediction_log()'s same-day noon timestamp as SEEDED_HINDSIGHT",
+   identical(migrated$log_source[2], "SEEDED_HINDSIGHT"))
+ok("migration treats a missing/NA timestamp as SEEDED_HINDSIGHT (fails closed, not open)",
+   identical(migrated$log_source[3], "SEEDED_HINDSIGHT"))
+
+ok("migration is a no-op when log_source already exists",
+   identical(.ensure_log_source_column(migrated, persist = FALSE), migrated))
 
 # ------------------------------------------------------------------------------
 cat(sprintf("\n%d checks, %d failure(s).\n", checks, failures))
