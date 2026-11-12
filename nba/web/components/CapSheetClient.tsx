@@ -9,6 +9,8 @@ import { ApronThermometer } from '@/components/ApronThermometer';
 import { TradeCbaValidator } from '@/components/TradeCbaValidator';
 import { FranchiseCapTable } from '@/components/FranchiseCapTable';
 import { money } from '@/lib/format';
+import { HowToReadDisclosure } from '@/components/HowToReadDisclosure';
+import { GlossaryTerm } from '@/components/GlossaryTerm';
 import {
   Coins,
   ShieldAlert,
@@ -110,6 +112,15 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
         </div>
         <div className="w-full h-[2px] bg-gradient-to-r from-orange-400 via-orange-500/40 to-transparent mt-4" />
       </div>
+
+      <HowToReadDisclosure pageKey="cap-sheet">
+        The salary cap, luxury tax line, and the <GlossaryTerm term="first apron" /> and{' '}
+        <GlossaryTerm term="second apron" /> are all fixed league-wide thresholds; a team&rsquo;s
+        tier badge reflects where its own total payroll lands relative to those lines. Crossing an{' '}
+        <GlossaryTerm term="apron" /> doesn&rsquo;t cost extra tax by itself — it switches on
+        roster-building restrictions (trade rules, exception access) that get stricter the higher
+        a team sits.
+      </HowToReadDisclosure>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">

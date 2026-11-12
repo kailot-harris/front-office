@@ -348,3 +348,19 @@ render_animated_artifact <- function(frame_paths, gif_path, png_path = NULL,
     fps = fps
   ))
 }
+
+# ------------------------------------------------------------------------------
+# 8. Logo lookup for charts
+# ------------------------------------------------------------------------------
+# Named vector (by team abbreviation) of local logo files for all 30 teams,
+# downloaded once into <cache>/logos. Charts identify teams by logo, not by
+# abbreviation. Stops when any logo is unavailable rather than drawing a chart
+# with teams missing.
+viz_logo_map <- function(cache_dir = Sys.getenv("NBA_VIZ_CACHE_DIR", "cache"), script = "chart") {
+  teams <- sort(names(NBA_TEAM_COLORS))
+  paths <- get_nba_logo_path(teams, dest_dir = file.path(cache_dir, "logos"))
+  if (anyNA(paths)) {
+    viz_stop_no_data(script, sprintf("team logos unavailable for %s.", paste(teams[is.na(paths)], collapse = ", ")))
+  }
+  setNames(paths, teams)
+}

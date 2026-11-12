@@ -16,7 +16,6 @@
 # Data inputs:
 #   - Reads matchups_team_box_2027.rds (completed regular season games)
 #   - Reads ensemble_team_ratings.rds (preseason baseline seed ratings)
-#   - Falls back gracefully to synthesized progression if cache is missing
 #
 # Usage:
 #   Rscript tools/gif_elo_delta_race.R
@@ -230,6 +229,8 @@ x_max <- max(hist_df$delta_elo) + 8
 if (x_min > -15) x_min <- -15
 if (x_max < 15) x_max <- 15
 
+TEAM_LOGOS <- viz_logo_map(script = "tools/gif_elo_delta_race.R")
+
 for (s in active_steps) {
   frame_data <- hist_df %>%
     filter(step == s) %>%
@@ -245,6 +246,7 @@ for (s in active_steps) {
   p_frame <- ggplot(frame_data, aes(x = delta_elo, y = reorder(team, bar_order), fill = team)) +
     geom_vline(xintercept = 0, color = NBA_COLORS$grid, linewidth = 0.8, linetype = "dashed") +
     geom_col(width = 0.75, alpha = 0.9, color = NBA_COLORS$border) +
+    ggimage::geom_image(aes(x = x_min - 0.035 * (x_max - x_min), image = TEAM_LOGOS[team]), size = 0.027, by = "height") +
     geom_text(
       aes(
         x = ifelse(delta_elo >= 0, delta_elo + 0.6, delta_elo - 0.6),
@@ -255,18 +257,18 @@ for (s in active_steps) {
       size = 2.6,
       fontface = "bold"
     ) +
-    scale_x_continuous(limits = c(x_min, x_max), breaks = scales::pretty_breaks(n = 6)) +
+    scale_x_continuous(limits = c(x_min - 0.07 * (x_max - x_min), x_max), breaks = scales::pretty_breaks(n = 6)) +
     scale_fill_manual(values = team_colors, guide = "none") +
     theme_nba_dark(base_size = 10) +
     theme(
-      axis.text.y = element_text(size = 7.5, face = "bold"),
+      axis.text.y = element_blank(), axis.ticks.y = element_blank(),
       panel.grid.major.y = element_blank()
     ) +
     labs(
       title = "NBA Week-over-Week Elo Momentum Race (2026-27)",
       subtitle = sprintf("Power rankings Elo shift through %s (Ranked from Biggest Drop to Highest Surge)", cur_label),
       x = "Elo Rating Delta (\u0394)",
-      y = "NBA Franchise",
+      y = NULL,
       caption = "Elo Delta Momentum"
     )
 

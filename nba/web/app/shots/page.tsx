@@ -3,6 +3,8 @@ import path from 'path';
 import { PlayerCatalogEntry, ShotsMetadata } from '@/lib/shotTypes';
 import { ShotsExplorerClient } from '@/components/ShotsExplorerClient';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
+import { HowToReadDisclosure } from '@/components/HowToReadDisclosure';
+import { GlossaryTerm } from '@/components/GlossaryTerm';
 
 export const metadata = {
   title: 'Player Shot Charts & Hot Zones',
@@ -53,13 +55,22 @@ export default function ShotsPage() {
               />
             </h1>
             <p className="text-slate-400 text-sm mt-1">
-              Dynamic half-court spatial analytics: Empirical Bayes shrinkage, Binomial z-scores, and thermal hot/cold classification.
+              Dynamic half-court spatial analytics: <GlossaryTerm term="Empirical Bayes" /> shrinkage, Binomial <GlossaryTerm term="z-score" />s, and thermal hot/cold classification.
               Showing the completed 2025-2026 season while the 2026-2027 sample accumulates.
             </p>
           </div>
         </div>
         <div className="w-full h-[2px] bg-gradient-to-r from-orange-400 via-orange-500/40 to-transparent mt-4" />
       </div>
+
+      <HowToReadDisclosure pageKey="shots">
+        Raw shooting percentages in small court zones are noisy, so each zone&rsquo;s rate is
+        pulled toward the league average using <GlossaryTerm term="Empirical Bayes" /> shrinkage —
+        a zone with only a few attempts moves closer to average, while a zone with hundreds of
+        attempts keeps closer to its raw number. A zone is colored hot or cold only when its
+        shrunken rate&rsquo;s <GlossaryTerm term="z-score" /> clears a significance threshold, not
+        just because the raw percentage looks high or low.
+      </HowToReadDisclosure>
 
       <ShotsExplorerClient catalog={catalog} metadata={metadata} />
     </div>

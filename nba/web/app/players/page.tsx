@@ -2,6 +2,8 @@ import { getPlayersData } from '@/lib/data';
 import { PlayersClient } from '@/components/PlayersClient';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
 import { SEASON_SOURCES } from '@/lib/season';
+import { HowToReadDisclosure } from '@/components/HowToReadDisclosure';
+import { GlossaryTerm } from '@/components/GlossaryTerm';
 
 export const metadata = {
   title: 'Player Projections & Outliers',
@@ -36,6 +38,14 @@ export default function PlayersPage() {
         </div>
         <div className="w-full h-[2px] bg-gradient-to-r from-orange-400 via-orange-500/40 to-transparent mt-4" />
       </div>
+
+      <HowToReadDisclosure pageKey="players">
+        The PRA (Points + Rebounds + Assists) <GlossaryTerm term="z-score" /> measures how far a
+        player&rsquo;s projected production sits from the league average, in standard deviations.
+        A player flagged as an outlier (|z| &gt; 2.0) is projected unusually far above or below
+        typical production for their role — not necessarily a mistake in the projection, just a
+        statistically rare value worth a second look.
+      </HowToReadDisclosure>
 
       <PlayersClient players={players} />
     </div>

@@ -20,7 +20,6 @@
 # Data inputs:
 #   - Reads matchups_team_box_2027.rds (completed regular season games)
 #   - Reads ensemble_team_ratings.rds or projected_30_team_standings.rds for baseline
-#   - Falls back gracefully to synthesized progression if cache is missing
 #
 # Usage:
 #   Rscript tools/gif_pace_efficiency_quadrant.R
@@ -136,35 +135,9 @@ if (!is.null(box_file)) {
   }
 }
 
+# No invented history: without real completed games the chart is not rendered.
 if (length(quad_history) == 0) {
-  base_net <- setNames(rep(0, length(all_teams)), all_teams)
-  if (!is.null(ens_file)) {
-    ens <- tryCatch(readRDS(ens_file), error = function(e) NULL)
-    if (!is.null(ens) && "team" %in% names(ens) && "ensemble_net_rating" %in% names(ens)) {
-      for (i in seq_len(nrow(ens))) {
-        tm <- resolve_team_abbr(ens$team[i])
-        if (!is.na(tm) && tm %in% all_teams) {
-          base_net[tm] <- as.numeric(ens$ensemble_net_rating[i])
-        }
-      }
-    }
-  }
-
-  for (i in 1:5) {
-    quad_history[[i]] <- tibble(
-      team = all_teams,
-      games = i,
-      pts_for = 110 * i,
-      pts_against = 110 * i,
-      poss = 100 * i,
-      pace = 98 + (seq_along(all_teams) %% 9) + sin(seq_along(all_teams) + i) * 1.5,
-      off_rtg = 112 + base_net / 2,
-      def_rtg = 112 - base_net / 2,
-      net_rtg = base_net + sin(seq_along(all_teams) + i) * 3,
-      step = as.integer(i),
-      date_label = sprintf("Day %d", i)
-    )
-  }
+  viz_stop_no_data("tools/gif_pace_efficiency_quadrant.R", "no completed games were found in the cache.")
 }
 
 quad_df <- bind_rows(quad_history)
@@ -189,6 +162,8 @@ x_max <- ceiling(max(quad_df$pace) + 2)
 y_min <- floor(min(quad_df$net_rtg) - 3)
 y_max <- ceiling(max(quad_df$net_rtg) + 3)
 
+TEAM_LOGOS <- viz_logo_map(script = "tools/gif_pace_efficiency_quadrant.R")
+
 for (s in all_steps) {
   frame_data <- quad_df %>% filter(step == s)
   cur_label <- frame_data$date_label[1]
@@ -209,8 +184,7 @@ for (s in all_steps) {
     annotate("text", x = x_min + 0.5, y = y_min + 0.8, label = "Grind & Rebuild (Slow Pace / Low Net)",
              color = NBA_COLORS$negative, fontface = "bold", size = 3.2, hjust = 0) +
     # Team bubbles
-    geom_point(aes(fill = team), shape = 21, size = 5.2, color = NBA_COLORS$text, stroke = 1.1) +
-    geom_text(aes(label = team), color = NBA_COLORS$text, vjust = -1.15, fontface = "bold", size = 2.8) +
+    ggimage::geom_image(aes(image = TEAM_LOGOS[team]), size = 0.055, by = "width") +
     scale_x_continuous(limits = c(x_min, x_max), breaks = scales::pretty_breaks(n = 6)) +
     scale_y_continuous(limits = c(y_min, y_max), breaks = scales::pretty_breaks(n = 7)) +
     scale_fill_manual(values = team_colors, guide = "none") +

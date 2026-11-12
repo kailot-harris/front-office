@@ -32,6 +32,8 @@ import {
   Download,
 } from 'lucide-react';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { HowToReadDisclosure } from '@/components/HowToReadDisclosure';
+import { GlossaryTerm } from '@/components/GlossaryTerm';
 
 interface OffseasonClientProps {
   transactions: OffseasonTransaction[];
@@ -341,6 +343,14 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
           </div>
         </div>
       </div>
+
+      <HowToReadDisclosure pageKey="offseason">
+        Each transaction&rsquo;s win and <GlossaryTerm term="net rating" /> deltas compare a
+        team&rsquo;s roster before and after the move using the same bottom-up{' '}
+        <GlossaryTerm term="BPM" /> model as the Variants page, not an outcome that has actually
+        happened yet. The Move Machine tab lets you sandbox a hypothetical trade and see the same
+        kind of projected impact instantly, without it affecting the real transaction feed.
+      </HowToReadDisclosure>
 
       {/* Primary Tab Navigation */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-raised/70 p-1.5 rounded-2xl border border-slate-800/80">

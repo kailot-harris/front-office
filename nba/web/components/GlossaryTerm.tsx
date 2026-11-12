@@ -29,6 +29,24 @@ export const GLOSSARY: Record<string, string> = {
     'A learned numerical representation of a player\'s style or skill profile, positioned in a multi-dimensional space so similar players sit close together.',
   manifold:
     'A lower-dimensional surface that high-dimensional player data (e.g. 16-D skill vectors) is projected onto so it can be visualized or compared.',
+  USCI:
+    'Unassisted Shot Creation Index — a clutch-specific rating of how much scoring a player generates on self-created (unassisted) shots in late-game situations, isolating shot creation from simply finishing a teammate\'s pass.',
+  'c-dWPA':
+    'Clutch Defensive Win Probability Added — the estimated swing in win probability a player\'s defensive possessions produce during clutch time, crediting stops and limiting the shots the model expects to go in.',
+  entropy:
+    'Shannon entropy applied to a player\'s minutes spent guarding each position (1 through 5): higher entropy means more evenly split time across positions (a true switch defender), lower entropy means time concentrated on one assignment.',
+  'Empirical Bayes':
+    'A shrinkage technique that pulls a player\'s small-sample shooting percentages toward a league/zone average, proportional to how few attempts they\'ve taken — preventing a handful of makes or misses from reading as an extreme hot or cold zone.',
+  Elo:
+    'A rating system (borrowed from chess) that adjusts a team\'s strength score up or down after each game based on the result and the opponent\'s own rating, used here to track week-to-week power-ranking movement.',
+  'net rating':
+    'A team\'s points scored minus points allowed per 100 possessions — the standard pace-adjusted measure of overall team strength.',
+  'TS%':
+    'True Shooting Percentage — a shooting-efficiency rate that weights field goals, 3-pointers, and free throws together into one number, accounting for the extra value of 3s and the lower cost of free throws.',
+  HCA:
+    'Home Court Advantage — the point bonus added to a team\'s projected margin when it hosts a game, reflecting the historical edge of playing at home.',
+  'coaching tree':
+    'A grouping of head coaches who share a common coaching lineage — typically having worked together as a head coach and an assistant, or under the same mentor — used to compare tactical lineages across the league.',
 };
 
 interface GlossaryTermProps {

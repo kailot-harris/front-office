@@ -9,6 +9,8 @@ import {
 import { TeamLogo } from '@/components/TeamLogo';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
 import { SEASON_SOURCES } from '@/lib/season';
+import { HowToReadDisclosure } from '@/components/HowToReadDisclosure';
+import { GlossaryTerm } from '@/components/GlossaryTerm';
 import { SeriesProbRing } from '@/components/SeriesProbRing';
 import { TacticalMismatchRadar } from '@/components/TacticalMismatchRadar';
 import { AnimatedMediaCard } from '@/components/AnimatedMediaCard';
@@ -341,6 +343,14 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
         </div>
       </div>
 
+      <HowToReadDisclosure pageKey="series">
+        Pick two teams and a <GlossaryTerm term="HCA" /> team and this runs 10,000 simulated
+        best-of-7 series using each team&rsquo;s <GlossaryTerm term="net rating" />, the tactical
+        mismatch adjustments listed below the result, and the standard 2-2-1-1-1 home-court
+        format. Results are seeded deterministically from the matchup itself, so re-opening the
+        same pairing gives the same answer — use the re-roll control to force a fresh draw.
+      </HowToReadDisclosure>
+
       {/* Preset Matchup Pills */}
       <div className="p-3 rounded-xl bg-surface-raised/60 border border-slate-800 flex items-center gap-2 overflow-x-auto">
         <span className="text-xs font-bold text-slate-400 whitespace-nowrap flex items-center gap-1.5 pl-1">
@@ -544,9 +554,9 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
       <div className="grid grid-cols-1 gap-6">
         <AnimatedMediaCard
           name="gif_playoff_prob_bump"
-          title="Playoff Seed & Play-In Leverage Bump Trajectory"
-          alt="Animated bump chart tracking playoff probability and seed certainty across conference contenders"
-          caption="Playoff seed certainty and play-in tournament threshold trajectories across Eastern and Western conference contenders throughout late-season games."
+          title="Playoff Probability Over Time"
+          alt="Animated line chart of model playoff probability at each published projection update for the 14 teams whose odds moved most"
+          caption="Model playoff probability at each published projection update this season, for the 14 teams whose odds have moved most."
         />
       </div>
 

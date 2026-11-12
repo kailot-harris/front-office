@@ -14,7 +14,6 @@
 # Data inputs:
 #   - Reads matchups_team_box_2027.rds (completed regular season games)
 #   - Reads ensemble_team_ratings.rds (preseason baseline seed ratings)
-#   - Falls back gracefully to synthesized baseline if cache is missing
 #
 # Usage:
 #   Rscript tools/gif_elo_rank_bump.R
@@ -148,19 +147,9 @@ if (!is.null(box_file)) {
   }
 }
 
-# If no games were found or only baseline exists, add mock progression steps for testing
+# No invented history: without real completed games the chart is not rendered.
 if (length(history) <= 1) {
-  for (i in 1:4) {
-    sim_shift <- setNames(sin(seq_along(all_teams) + i) * 8, all_teams)
-    elo_cur <- elo_cur + sim_shift
-    history[[length(history) + 1]] <- data.frame(
-      step = as.integer(i),
-      date_label = sprintf("Day %d", i),
-      team = all_teams,
-      elo = as.numeric(elo_cur[all_teams]),
-      stringsAsFactors = FALSE
-    )
-  }
+  viz_stop_no_data("tools/gif_elo_rank_bump.R", "no completed games were found in the cache.")
 }
 
 hist_df <- do.call(rbind, history)
@@ -190,6 +179,8 @@ dir.create(tmp_frame_dir, recursive = TRUE)
 frame_files <- character(0)
 max_step <- max(all_steps)
 
+TEAM_LOGOS <- viz_logo_map(script = "tools/gif_elo_rank_bump.R")
+
 for (s in all_steps) {
   frame_lines <- hist_df %>% filter(step <= s)
   frame_pts   <- hist_df %>% filter(step == s)
@@ -200,8 +191,8 @@ for (s in all_steps) {
     geom_line(linewidth = 1.05, alpha = 0.85) +
     geom_point(data = frame_pts, aes(x = step, y = rank, fill = team),
                shape = 21, size = 3.6, color = NBA_COLORS$text, stroke = 1.1) +
-    geom_text(data = frame_pts, aes(x = step + 0.12, y = rank, label = team),
-              hjust = 0, vjust = 0.35, color = NBA_COLORS$text, fontface = "bold", size = 2.7) +
+    ggimage::geom_image(data = frame_pts, aes(x = step + 0.38, y = rank, image = TEAM_LOGOS[team]),
+               size = 0.031, by = "height", inherit.aes = FALSE) +
     scale_y_reverse(breaks = c(1, 5, 10, 15, 20, 25, 30), limits = c(30.6, 0.4)) +
     scale_x_continuous(breaks = all_steps, labels = step_labels, limits = c(-0.3, max_step + 0.8)) +
     scale_color_manual(values = team_colors, guide = "none") +

@@ -7,6 +7,8 @@ import { CoachRadarProfile } from '@/components/CoachRadarProfile';
 import { AtoEfficiencyScatter } from '@/components/AtoEfficiencyScatter';
 import { CoachImpactProfile } from '@/components/CoachImpactProfile';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
+import { HowToReadDisclosure } from '@/components/HowToReadDisclosure';
+import { GlossaryTerm } from '@/components/GlossaryTerm';
 import {
   Briefcase,
   Crosshair,
@@ -164,6 +166,15 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           </div>
         </div>
       </div>
+
+      <HowToReadDisclosure pageKey="coaches">
+        The Coach Impact Rating compares a team&rsquo;s actual win total against a roster-talent
+        baseline — the gap is a model residual attributed to coaching, not a directly measured
+        effect. ATO (after-timeout) offensive and defensive marks show points per possession on
+        plays drawn up out of a stoppage, and each coach&rsquo;s{' '}
+        <GlossaryTerm term="coaching tree" /> groups them with others who share a tactical
+        lineage.
+      </HowToReadDisclosure>
 
       {/* Top 4 KPI Stat Badges */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">

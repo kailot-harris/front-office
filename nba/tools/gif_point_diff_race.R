@@ -14,7 +14,6 @@
 #
 # Data inputs:
 #   - Reads matchups_team_box_2027.rds (completed regular season games)
-#   - Falls back gracefully to synthesized schedule if cache is missing
 #
 # Usage:
 #   Rscript tools/gif_point_diff_race.R
@@ -122,18 +121,9 @@ if (!is.null(box_file)) {
   }
 }
 
-# Fallback if no games available
+# No invented history: without real completed games the chart is not rendered.
 if (length(race_history) <= 1) {
-  sim_cum <- setNames(rep(0.0, length(all_teams)), all_teams)
-  for (i in 1:4) {
-    sim_cum <- sim_cum + sin(seq_along(all_teams) + i) * 6
-    race_history[[i + 1]] <- tibble(
-      step = as.integer(i),
-      date_label = sprintf("Day %d", i),
-      team = all_teams,
-      cum_diff = as.numeric(sim_cum[all_teams])
-    )
-  }
+  viz_stop_no_data("tools/gif_point_diff_race.R", "no completed games were found in the cache.")
 }
 
 race_df <- bind_rows(race_history)
@@ -161,6 +151,8 @@ frame_files <- character(0)
 y_min <- min(race_df$cum_diff) - 8
 y_max <- max(race_df$cum_diff) + 8
 
+TEAM_LOGOS <- viz_logo_map(script = "tools/gif_point_diff_race.R")
+
 for (s in all_steps) {
   frame_lines <- race_df %>% filter(step <= s)
   frame_pts   <- race_df %>% filter(step == s)
@@ -173,8 +165,8 @@ for (s in all_steps) {
     geom_line(linewidth = 1.05, alpha = 0.85) +
     geom_point(data = frame_pts, aes(x = step, y = cum_diff, fill = team),
                shape = 21, size = 3.6, color = NBA_COLORS$text, stroke = 1.1) +
-    geom_text(data = frame_pts, aes(x = step + 0.12, y = cum_diff, label = team),
-              hjust = 0, vjust = 0.35, color = NBA_COLORS$text, fontface = "bold", size = 2.7) +
+    ggimage::geom_image(data = frame_pts, aes(x = step + 0.38, y = cum_diff, image = TEAM_LOGOS[team]),
+               size = 0.036, by = "height", inherit.aes = FALSE) +
     scale_x_continuous(breaks = all_steps, labels = step_labels, limits = c(-0.3, max_step + 0.85)) +
     scale_y_continuous(limits = c(y_min, y_max)) +
     scale_color_manual(values = team_colors, guide = "none") +
