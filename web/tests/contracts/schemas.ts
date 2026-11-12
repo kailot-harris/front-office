@@ -168,6 +168,60 @@ export const ModelMetadataSchema = z
 // ----------------------------------------------------------------------------
 // 4. projections_diagnostics.json -> ModelDiagnostics (lib/types.ts)
 // ----------------------------------------------------------------------------
+const DiagnosticsCalibrationSchema = z
+  .array(
+    z
+      .object({
+        bin: z.string().min(1),
+        midpoint: prob,
+        count: z.number().int().min(0),
+        meanPredictedProb: prob,
+        empiricalWinRate: prob,
+      })
+      .strict(),
+  )
+  .min(5);
+
+const DiagnosticsAccuracyDriftSchema = z
+  .array(
+    z
+      .object({
+        season: z.string().regex(/^\d{4}$/),
+        games: z.number().int().positive(),
+        accuracy: prob,
+        brierScore: num.min(0).max(1),
+      })
+      .strict(),
+  )
+  .min(1);
+
+const DiagnosticsResidualsSchema = z
+  .array(
+    z
+      .object({ bucket: z.string().min(1), count: z.number().int().min(0), label: z.string().min(1) })
+      .strict(),
+  )
+  .min(3);
+
+// One population of resolved predictions. Genuine pre-game forecasts and
+// hindsight-seeded rows are each reported in a block of this shape and are
+// never pooled.
+const DiagnosticsBlockSchema = z
+  .object({
+    totalGames: z.number().int().positive(),
+    overallAccuracy: prob,
+    brierScore: num.min(0).max(1),
+    brierSkillScore: z.number().optional(),
+    logLoss: num.positive(),
+    homeWinRate: prob,
+    weightedCalibError: z.number().optional(),
+    calibrationStatus: z.string().optional(),
+    calibration: DiagnosticsCalibrationSchema,
+    accuracyDrift: DiagnosticsAccuracyDriftSchema,
+    residualDistribution: DiagnosticsResidualsSchema,
+  })
+  .strict();
+
 export const ModelDiagnosticsSchema = z
   .object({
     generated_at: z.string().optional(),
@@ -179,38 +233,19 @@ export const ModelDiagnosticsSchema = z
     brierScore: num.min(0).max(1),
     logLoss: num.positive(),
     homeWinRate: prob,
-    calibration: z
-      .array(
-        z
-          .object({
-            bin: z.string().min(1),
-            midpoint: prob,
-            count: z.number().int().min(0),
-            meanPredictedProb: prob,
-            empiricalWinRate: prob,
-          })
-          .strict(),
-      )
-      .min(5),
-    accuracyDrift: z
-      .array(
-        z
-          .object({
-            season: z.string().regex(/^\d{4}$/),
-            games: z.number().int().positive(),
-            accuracy: prob,
-            brierScore: num.min(0).max(1),
-          })
-          .strict(),
-      )
-      .min(1),
-    residualDistribution: z
-      .array(
-        z
-          .object({ bucket: z.string().min(1), count: z.number().int().min(0), label: z.string().min(1) })
-          .strict(),
-      )
-      .min(3),
+    calibration: DiagnosticsCalibrationSchema,
+    accuracyDrift: DiagnosticsAccuracyDriftSchema,
+    residualDistribution: DiagnosticsResidualsSchema,
+    genuineForecast: DiagnosticsBlockSchema.optional(),
+    historicalBacktest: DiagnosticsBlockSchema.nullable().optional(),
+    rowCounts: z
+      .object({
+        resolvedTotal: z.number().int().min(0),
+        genuinePregame: z.number().int().min(0),
+        seededHindsight: z.number().int().min(0),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
