@@ -64,7 +64,7 @@ export const TradeCbaValidator: React.FC<TradeCbaValidatorProps> = ({ profile })
           </h4>
         </div>
         <span
-          className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold flex items-center gap-1 border ${
+          className={`px-2 py-0.5 rounded-full text-[11px] sm:text-[10px] font-mono font-bold flex items-center gap-1 border ${
             isLegal
               ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
               : 'bg-rose-500/10 text-rose-400 border-rose-500/30'
@@ -78,7 +78,7 @@ export const TradeCbaValidator: React.FC<TradeCbaValidatorProps> = ({ profile })
       {/* Input Fields */}
       <div className="grid grid-cols-2 gap-3 text-xs">
         <div>
-          <label className="text-[10px] text-slate-400 block mb-1 font-mono">
+          <label className="text-[11px] sm:text-[10px] text-slate-400 block mb-1 font-mono">
             Outgoing Salary ($M)
           </label>
           <input
@@ -91,7 +91,7 @@ export const TradeCbaValidator: React.FC<TradeCbaValidatorProps> = ({ profile })
           />
         </div>
         <div>
-          <label className="text-[10px] text-slate-400 block mb-1 font-mono">
+          <label className="text-[11px] sm:text-[10px] text-slate-400 block mb-1 font-mono">
             Incoming Salary ($M)
           </label>
           <input
@@ -139,7 +139,7 @@ export const TradeCbaValidator: React.FC<TradeCbaValidatorProps> = ({ profile })
         </div>
 
         {!isUnderCap && !isSecondApron && !isFirstApron && (
-          <div className="text-slate-500 text-[10px] pt-1 border-t border-slate-800">
+          <div className="text-slate-500 text-[11px] sm:text-[10px] pt-1 border-t border-slate-800">
             Below-first-apron teams use tiered CBA salary-matching bands that
             scale with outgoing salary; this tool approximates them with a
             single flat 125% + $250K rule rather than the real tiers.
@@ -147,17 +147,17 @@ export const TradeCbaValidator: React.FC<TradeCbaValidatorProps> = ({ profile })
         )}
 
         {failsSalaryMatch && (
-          <div className="text-rose-400 text-[10px] pt-1 border-t border-slate-800 font-medium">
+          <div className="text-rose-400 text-[11px] sm:text-[10px] pt-1 border-t border-slate-800 font-medium">
             ⚠ Salary violation: Incoming exceeds maximum allowed by ${(inVal - maxIncomingAllowed).toFixed(1)}M.
           </div>
         )}
         {failsAggregation && (
-          <div className="text-rose-400 text-[10px] pt-1 border-t border-slate-800 font-medium">
+          <div className="text-rose-400 text-[11px] sm:text-[10px] pt-1 border-t border-slate-800 font-medium">
             ⚠ CBA Second Apron restriction: Cannot combine/aggregate two or more player salaries.
           </div>
         )}
         {failsCash && (
-          <div className="text-rose-400 text-[10px] pt-1 border-t border-slate-800 font-medium">
+          <div className="text-rose-400 text-[11px] sm:text-[10px] pt-1 border-t border-slate-800 font-medium">
             ⚠ CBA Second Apron restriction: Sending cash in trades is strictly prohibited.
           </div>
         )}
