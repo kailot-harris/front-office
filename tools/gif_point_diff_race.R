@@ -232,25 +232,45 @@ step_labels <- setNames(step_label_map$date_label, step_label_map$step)
 # line/point, which stay at the real cum_diff) just enough to keep logo
 # centers at least min_gap apart, via one ascending sweep (push up) followed
 # by one descending sweep (push down) so the separation is shared roughly
-# evenly across a cluster rather than cascading everything upward. When a
-# logo is displaced, a thin leader tick connects its true value to the
-# jittered logo so the adjustment reads as a label nudge, not new data.
-jitter_apart <- function(y, min_gap) {
+# evenly across a cluster rather than cascading everything upward. A thin
+# L-shaped connector marks the gap between a team's true value and its
+# (possibly jittered) logo.
+#
+# BUG FIXED (first version): with 15 teams the required total span,
+# (n-1)*min_gap, can exceed the plot's own y-range -- the push-up/push-down
+# sweeps alone don't account for that, so the top (or bottom) of a crowded
+# cluster got pushed straight past y_hi (or y_lo) and ggplot silently
+# dropped those points as "outside the scale range" (6 of 15 teams vanished
+# off the top edge in the first render, caught only by counting visible
+# logos against WNBA_TEAMS's 15). y_lo/y_hi are now required: after the two
+# sweeps, if anything still lands outside [y_lo, y_hi], shift the whole
+# sorted sequence to pin its low end to y_lo, then uniformly COMPRESS the
+# gaps (preserving sort order, never reordering) just enough to pin the high
+# end to y_hi. This guarantees every logo stays on-plot, at the cost of a
+# smaller effective gap when a cluster is too crowded for min_gap to fit.
+jitter_apart <- function(y, min_gap, y_lo, y_hi) {
   n <- length(y)
   if (n <= 1) return(y)
   ord <- order(y)
   y_sorted <- y[ord]
-  # Ascending sweep: push each point up if it's too close to the one below it.
   for (i in 2:n) {
     if (y_sorted[i] - y_sorted[i - 1] < min_gap) {
       y_sorted[i] <- y_sorted[i - 1] + min_gap
     }
   }
-  # Descending sweep: push each point down if it's too close to the one
-  # above it, which re-centers clusters that only got pushed upward above.
   for (i in (n - 1):1) {
     if (y_sorted[i + 1] - y_sorted[i] < min_gap) {
       y_sorted[i] <- y_sorted[i + 1] - min_gap
+    }
+  }
+  # Clamp into [y_lo, y_hi]: shift to the low bound, then compress to the
+  # high bound if the pushed-apart span still overruns it.
+  if (y_sorted[1] < y_lo) y_sorted <- y_sorted + (y_lo - y_sorted[1])
+  if (y_sorted[n] > y_hi) {
+    span <- y_sorted[n] - y_sorted[1]
+    if (span > 0) {
+      scale <- (y_hi - y_sorted[1]) / span
+      y_sorted <- y_sorted[1] + (y_sorted - y_sorted[1]) * scale
     }
   }
   out <- numeric(n)
@@ -272,7 +292,11 @@ for (i in seq_along(display_steps)) {
   s <- display_steps[i]
   frame_lines <- race_df %>% filter(step <= s)
   frame_pts   <- race_df %>% filter(step == s) %>% arrange(team)
-  frame_pts$logo_y  <- jitter_apart(frame_pts$cum_diff, LOGO_MIN_GAP)
+  # Inset the clamp bounds by half a logo diameter so a logo pinned to the
+  # edge doesn't itself get clipped by the panel border.
+  logo_half <- (y_max - y_min) * 0.031
+  frame_pts$logo_y  <- jitter_apart(frame_pts$cum_diff, LOGO_MIN_GAP,
+                                     y_lo = y_min + logo_half, y_hi = y_max - logo_half)
   # L-shaped connector, not a direct diagonal: a diagonal line from the true
   # point to a vertically-jittered logo reads as a slope/trend, easy to
   # confuse with the real race lines (which ARE diagonal and meaningful).
