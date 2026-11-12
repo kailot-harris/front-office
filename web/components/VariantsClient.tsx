@@ -197,7 +197,7 @@ export default function VariantsClient({ data }: VariantsClientProps) {
 
               {/* Core Features */}
               <div className="mb-4">
-                <span className="text-[10px] font-mono uppercase text-slate-500 block mb-1.5 font-bold">
+                <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-500 block mb-1.5 font-bold">
                   Core Mathematical Properties
                 </span>
                 <ul className="space-y-1.5">
@@ -253,7 +253,7 @@ export default function VariantsClient({ data }: VariantsClientProps) {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] font-mono text-amber-400 block uppercase font-bold">
+                  <span className="text-[11px] sm:text-[10px] font-mono text-amber-400 block uppercase font-bold">
                     {cand.number}
                   </span>
                   <h3 className="text-sm font-bold text-white">{cand.name}</h3>
@@ -295,7 +295,7 @@ export default function VariantsClient({ data }: VariantsClientProps) {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-mono">
-            <thead className="bg-surface/90 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+            <thead className="bg-surface/90 text-slate-400 uppercase text-[11px] sm:text-[10px] tracking-wider border-b border-slate-800">
               <tr>
                 <th className="px-3 py-2">Ensemble Architecture</th>
                 <th className="px-3 py-2">Weight Distribution</th>
