@@ -3,8 +3,8 @@
 # Path: tools/gif_pennant_showdown.R
 #
 # Generates an animated championship series showdown tracking game-by-game
-# progression through the ALCS (Tampa Bay Rays vs Cleveland Guardians) and
-# NLCS (Milwaukee Brewers vs Los Angeles Dodgers), culminating in their pennant
+# progression through the ALCS and
+# NLCS (teams and scores read from real results), culminating in their pennant
 # clinches and a dramatic transition into the 2026 World Series emblem banner.
 #
 # Key Features:
@@ -34,11 +34,11 @@ suppressPackageStartupMessages({
 
 source("config.R")
 source("tools/viz_theme.R")
+source("tools/postseason_feed.R")
 
 #' Generate Pennant Showdown & World Series Matchup Banner GIF
 #'
 #' @param season Integer MLB season year (default 2026)
-#' @param schedule_file Path to mlb_schedule_2026.rds
 #' @param output_gif Output filename for animated GIF
 #' @param output_png Output filename for static final frame PNG
 #' @param fps Frames per second for GIF playback (default 2)
@@ -46,7 +46,6 @@ source("tools/viz_theme.R")
 #' @param cleanup_frames Logical; remove temporary frame PNGs (default TRUE)
 #' @return Invisible list of output paths
 generate_gif_pennant_showdown <- function(season = 2026,
-                                          schedule_file = cache_path("ingest", sprintf("mlb_schedule_%d.rds", season)),
                                           output_gif = "gif_pennant_showdown.gif",
                                           output_png = "gif_pennant_showdown.png",
                                           fps = 2,
@@ -56,68 +55,69 @@ generate_gif_pennant_showdown <- function(season = 2026,
   ensure_viz_dir()
   message(sprintf(">>> [GIF] Generating %d Pennant Showdown & WS Banner Animation...", season))
 
-  # Game progression data for ALCS and NLCS
-  # NLCS: 4 games (MIL sweeps LAD 4-0)
-  # ALCS: 6 games (TB defeats CLE 4-2)
+  # Every score, tally and record below is read from real results.
+  games  <- ps_games(season)
+  series <- ps_series(games)
+  rec    <- ps_records(season)
+  team_names <- ps_team_names(games)
 
-  steps <- list(
-    list(
-      step = 1,
-      title = "Game 1: Championship Series Openers",
-      subtitle = "NLCS G1: MIL 2, LAD 1 | ALCS G1: CLE 7, TB 3",
-      al_tb_wins = 0, al_cle_wins = 1,
-      nl_mil_wins = 1, nl_lad_wins = 0,
-      stage = "series"
-    ),
-    list(
-      step = 2,
-      title = "Game 2: Milwaukee & Tampa Respond",
-      subtitle = "NLCS G2: MIL 7, LAD 4 (MIL 2-0) | ALCS G2: TB 3, CLE 1 (Series tied 1-1)",
-      al_tb_wins = 1, al_cle_wins = 1,
-      nl_mil_wins = 2, nl_lad_wins = 0,
-      stage = "series"
-    ),
-    list(
-      step = 3,
-      title = "Game 3: The Pivotal Road Test",
-      subtitle = "NLCS G3: MIL 6, LAD 2 (MIL 3-0) | ALCS G3: CLE 3, TB 2 (CLE leads 2-1)",
-      al_tb_wins = 1, al_cle_wins = 2,
-      nl_mil_wins = 3, nl_lad_wins = 0,
-      stage = "series"
-    ),
-    list(
-      step = 4,
-      title = "NLCS Sweep! Brewers Clinch National League Pennant",
-      subtitle = "NLCS G4: MIL 6, LAD 4 — MILWAUKEE WINS PENNANT (4-0) | ALCS G4: TB 7, CLE 3 (Tied 2-2)",
-      al_tb_wins = 2, al_cle_wins = 2,
-      nl_mil_wins = 4, nl_lad_wins = 0,
-      stage = "nl_clinch"
-    ),
-    list(
-      step = 5,
-      title = "ALCS Game 5: Tampa Bay Pushes to Match Point",
-      subtitle = "ALCS G5: TB 3, CLE 1 — Rays lead 3-2 heading home to Tropicana Field",
-      al_tb_wins = 3, al_cle_wins = 2,
-      nl_mil_wins = 4, nl_lad_wins = 0,
-      stage = "al_game5"
-    ),
-    list(
-      step = 6,
-      title = "ALCS Game 6 Climax! Rays Clinch American League Pennant",
-      subtitle = "ALCS G6: TB 7, CLE 3 — TAMPA BAY RAYS WIN AL PENNANT (4-2)",
-      al_tb_wins = 4, al_cle_wins = 2,
-      nl_mil_wins = 4, nl_lad_wins = 0,
-      stage = "al_clinch"
-    ),
-    list(
-      step = 7,
-      title = "THE 2026 FALL CLASSIC IS SET",
-      subtitle = "American League Champions TAMPA BAY RAYS vs National League Champions MILWAUKEE BREWERS",
-      al_tb_wins = 4, al_cle_wins = 2,
-      nl_mil_wins = 4, nl_lad_wins = 0,
-      stage = "ws_banner"
+  lcs <- series[series$round == 3, , drop = FALSE]
+  ws  <- series[series$round == 4, , drop = FALSE]
+  if (!all(c("AL", "NL") %in% lcs$league) || nrow(ws) != 1) {
+    stop("[SKIP-NO-DATA] both Championship Series and the World Series must be decided; nothing rendered.",
+         call. = FALSE)
+  }
+  al <- lcs[lcs$league == "AL", , drop = FALSE]
+  nl <- lcs[lcs$league == "NL", , drop = FALSE]
+  lcs_games <- games[games$round == 3, , drop = FALSE]
+
+  # Running tally for one league after its first k games.
+  tally_after <- function(s, k) {
+    g <- lcs_games[lcs_games$series == s$series & lcs_games$game_num <= k, , drop = FALSE]
+    list(winner = sum(g$winner == s$winner), loser = sum(g$winner == s$loser))
+  }
+  # "NLCS G2: MIL 7, LAD 4" for game k, or NULL once that series is over.
+  game_line <- function(s, k) {
+    g <- lcs_games[lcs_games$series == s$series & lcs_games$game_num == k, , drop = FALSE]
+    if (nrow(g) != 1) return(NULL)
+    sprintf("%s G%d: %s %d, %s %d", s$series, k, g$winner, max(g$home_score, g$away_score),
+            g$loser, min(g$home_score, g$away_score))
+  }
+
+  n_steps <- max(lcs_games$game_num)
+  steps <- lapply(seq_len(n_steps), function(k) {
+    a <- tally_after(al, k)
+    n <- tally_after(nl, k)
+    clinched <- c(
+      if (a$winner == 4 && tally_after(al, k - 1)$winner < 4) sprintf("%s win the AL pennant", team_names[[al$winner]]),
+      if (n$winner == 4 && tally_after(nl, k - 1)$winner < 4) sprintf("%s win the NL pennant", team_names[[nl$winner]])
     )
+    list(
+      title = if (length(clinched)) paste0("Game ", k, ": ", paste(clinched, collapse = "; ")) else paste("Game", k),
+      subtitle = paste(c(game_line(nl, k), game_line(al, k)), collapse = "  |  "),
+      al_w = a$winner, al_l = a$loser, nl_w = n$winner, nl_l = n$loser,
+      stage = "series"
+    )
+  })
+  steps[[length(steps) + 1]] <- list(
+    title = "", subtitle = "",
+    al_w = al$winner_wins, al_l = al$loser_wins, nl_w = nl$winner_wins, nl_l = nl$loser_wins,
+    stage = "ws_banner"
   )
+
+  # Banner text: regular-season record and the series each pennant winner won.
+  rec_of <- function(team) {
+    r <- rec[rec$team == team, , drop = FALSE]
+    sprintf("%d-%d", r$wins, r$losses)
+  }
+  path_of <- function(team) {
+    p <- series[series$winner == team & series$round < 4, , drop = FALSE]
+    paste(sprintf("%s (%d-%d)", p$loser, p$winner_wins, p$loser_wins), collapse = ", ")
+  }
+  banner_line <- function(s) {
+    sprintf("%d %s Champions (%s Regular Season)\nDefeated: %s", season, s$league, rec_of(s$winner), path_of(s$winner))
+  }
+  ws_final <- sprintf("Final: %s won the World Series %d-%d", team_names[[ws$winner]], ws$winner_wins, ws$loser_wins)
 
   tmp_dir <- file.path(tempdir(), "mlb_pennant_frames")
   if (dir.exists(tmp_dir)) unlink(tmp_dir, recursive = TRUE)
@@ -130,13 +130,18 @@ generate_gif_pennant_showdown <- function(season = 2026,
 
     if (st$stage != "ws_banner") {
       # Render LCS Series progress view
-      series_df <- tribble(
-        ~league, ~team_abbr, ~team_name, ~wins, ~color, ~x_pos, ~y_pos,
-        "ALCS", "TB", "Tampa Bay Rays", st$al_tb_wins, "#092C5C", 2.2, 5.8,
-        "ALCS", "CLE", "Cleveland Guardians", st$al_cle_wins, "#E31937", 2.2, 3.2,
-        "NLCS", "MIL", "Milwaukee Brewers", st$nl_mil_wins, "#13294B", 6.8, 5.8,
-        "NLCS", "LAD", "Los Angeles Dodgers", st$nl_lad_wins, "#005A9C", 6.8, 3.2
+      # Fixed card positions; the teams and win counts come from the results.
+      series_df <- tibble(
+        team_abbr = c(al$winner, al$loser, nl$winner, nl$loser),
+        team_name = unname(team_names[c(al$winner, al$loser, nl$winner, nl$loser)]),
+        wins      = c(st$al_w, st$al_l, st$nl_w, st$nl_l),
+        lead      = c(TRUE, FALSE, TRUE, FALSE),
+        x_pos     = c(2.2, 2.2, 6.8, 6.8),
+        y_pos     = c(5.8, 3.2, 5.8, 3.2)
       )
+      pips <- series_df %>%
+        tidyr::crossing(pip = 1:4) %>%
+        mutate(x = x_pos + (pip - 1) * 0.5, y = y_pos - 0.5, won = pip <= wins)
 
       p <- ggplot() +
         # Left Panel (ALCS) Background Card
@@ -161,28 +166,15 @@ generate_gif_pennant_showdown <- function(season = 2026,
           size = 4.2,
           hjust = 0
         ) +
-        # Series Wins Meter (Circles / Pips for 4 wins needed)
-        # TB Wins
-        geom_point(data = tibble(x = seq(2.2, 3.7, length.out = 4), y = 5.3, won = 1:4 <= st$al_tb_wins),
-                   aes(x = x, y = y, fill = won), shape = 21, size = 6.5, color = "#F8FAFC", stroke = 1.2) +
-        # CLE Wins
-        geom_point(data = tibble(x = seq(2.2, 3.7, length.out = 4), y = 2.7, won = 1:4 <= st$al_cle_wins),
-                   aes(x = x, y = y, fill = won), shape = 21, size = 6.5, color = "#F8FAFC", stroke = 1.2) +
-        # MIL Wins
-        geom_point(data = tibble(x = seq(6.8, 8.3, length.out = 4), y = 5.3, won = 1:4 <= st$nl_mil_wins),
-                   aes(x = x, y = y, fill = won), shape = 21, size = 6.5, color = "#F8FAFC", stroke = 1.2) +
-        # LAD Wins
-        geom_point(data = tibble(x = seq(6.8, 8.3, length.out = 4), y = 2.7, won = 1:4 <= st$nl_lad_wins),
-                   aes(x = x, y = y, fill = won), shape = 21, size = 6.5, color = "#F8FAFC", stroke = 1.2) +
+        # Series wins meter: four pips per team, filled for each win so far
+        geom_point(data = pips, aes(x = x, y = y, fill = won), shape = 21, size = 6.5, color = "#F8FAFC", stroke = 1.2) +
         scale_fill_manual(values = c("TRUE" = "#FACC15", "FALSE" = "#1F2937"), guide = "none") +
-        # Series Tally Numbers
-        annotate("text", x = 4.0, y = 5.3, label = sprintf("%d W", st$al_tb_wins), color = "#38BDF8", fontface = "bold", size = 4.0) +
-        annotate("text", x = 4.0, y = 2.7, label = sprintf("%d W", st$al_cle_wins), color = "#94A3B8", fontface = "bold", size = 4.0) +
-        annotate("text", x = 8.6, y = 5.3, label = sprintf("%d W", st$nl_mil_wins), color = "#FACC15", fontface = "bold", size = 4.0) +
-        annotate("text", x = 8.6, y = 2.7, label = sprintf("%d W", st$nl_lad_wins), color = "#94A3B8", fontface = "bold", size = 4.0) +
+        geom_text(data = series_df, aes(x = x_pos + 1.8, y = y_pos - 0.5, label = sprintf("%d W", wins), color = lead),
+                  fontface = "bold", size = 4.0) +
+        scale_color_manual(values = c("TRUE" = "#FACC15", "FALSE" = "#94A3B8"), guide = "none") +
         # Clinch Banners
-        { if (st$nl_mil_wins == 4) annotate("label", x = 7.5, y = 1.8, label = "★ NL CHAMPIONS (MIL 4-0) ★", fill = "#B45309", color = "#FFFFFF", fontface = "bold", size = 4.0) } +
-        { if (st$al_tb_wins == 4) annotate("label", x = 2.5, y = 1.8, label = "★ AL CHAMPIONS (TB 4-2) ★", fill = "#0284C7", color = "#FFFFFF", fontface = "bold", size = 4.0) } +
+        { if (st$nl_w == 4) annotate("label", x = 7.5, y = 1.8, label = sprintf("★ NL CHAMPIONS (%s %d-%d) ★", nl$winner, st$nl_w, st$nl_l), fill = "#B45309", color = "#FFFFFF", fontface = "bold", size = 4.0) } +
+        { if (st$al_w == 4) annotate("label", x = 2.5, y = 1.8, label = sprintf("★ AL CHAMPIONS (%s %d-%d) ★", al$winner, st$al_w, st$al_l), fill = "#0284C7", color = "#FFFFFF", fontface = "bold", size = 4.0) } +
         scale_x_continuous(limits = c(0.2, 9.8), expand = c(0, 0)) +
         scale_y_continuous(limits = c(0.8, 8.8), expand = c(0, 0)) +
         theme_mlb_dark(base_size = 11) +
@@ -193,29 +185,23 @@ generate_gif_pennant_showdown <- function(season = 2026,
           panel.grid = element_blank()
         ) +
         labs(
-          title = sprintf("%d League Championship Series Showdown — %s", season, st$title),
+          x = NULL, y = NULL,
+          title = sprintf("%d League Championship Series — %s", season, st$title),
           subtitle = st$subtitle,
-          caption = "Source: KayceeSlices MLB Analytics Engine | Best-of-7 Pennant Series Tracker"
+          caption = "Source: MLB Stats API schedule and results | Best-of-7 series, one frame per game number"
         )
     } else {
       # Climax World Series Emblem Matchup Banner
-      # Records and series results below are the real 2026 figures, checked against
-      # the regular-season and postseason results in cache/ingest/mlb_schedule_2026.rds
-      # and web/public/data/world_series.json.
-      ws_teams <- tribble(
-        ~team_abbr, ~league, ~pennant_title, ~seed, ~reg_wins, ~x, ~y,
-        "TB", "American League", "2026 AL CHAMPIONS", "", 98, 2.8, 4.5,
-        "MIL", "National League", "2026 NL CHAMPIONS", "", 103, 7.2, 4.5
-      )
+      ws_teams <- tibble(team_abbr = c(al$winner, nl$winner), x = c(2.8, 7.2), y = c(4.5, 4.5))
 
       p <- ggplot() +
         # Outer Gold Trim Banner
         annotate("rect", xmin = 0.5, xmax = 9.5, ymin = 0.8, ymax = 8.5, fill = "#0A0E17", color = "#FACC15", linewidth = 2.2, alpha = 0.95) +
         # Header Badge
         annotate("rect", xmin = 2.8, xmax = 7.2, ymin = 7.3, ymax = 8.3, fill = "#1E293B", color = "#FACC15", linewidth = 1.2) +
-        annotate("text", x = 5.0, y = 7.8, label = "THE 2026 WORLD SERIES", color = "#FACC15", fontface = "bold", size = 6.2) +
+        annotate("text", x = 5.0, y = 7.8, label = sprintf("THE %d WORLD SERIES", season), color = "#FACC15", fontface = "bold", size = 6.2) +
         # Subtitle
-        annotate("text", x = 5.0, y = 6.8, label = "THE 122ND FALL CLASSIC • COMMISSIONER'S TROPHY ON THE LINE", color = "#E2E8F0", fontface = "bold", size = 3.8) +
+        annotate("text", x = 5.0, y = 6.8, label = "AMERICAN LEAGUE CHAMPIONS VS NATIONAL LEAGUE CHAMPIONS", color = "#E2E8F0", fontface = "bold", size = 3.8) +
         # Giant Logos
         geom_mlb_logos(
           data = ws_teams,
@@ -224,15 +210,15 @@ generate_gif_pennant_showdown <- function(season = 2026,
         ) +
         # Team Names & Accolades
         # Rays
-        annotate("text", x = 2.8, y = 2.8, label = "TAMPA BAY RAYS", color = "#38BDF8", fontface = "bold", size = 5.2) +
-        annotate("text", x = 2.8, y = 2.3, label = "2026 AL Champions (98-64 Regular Season)\nDefeated: NYY (3-0), CLE (4-2)", color = "#CBD5E1", size = 3.2) +
+        annotate("text", x = 2.8, y = 2.8, label = toupper(team_names[[al$winner]]), color = "#38BDF8", fontface = "bold", size = 5.2) +
+        annotate("text", x = 2.8, y = 2.3, label = banner_line(al), color = "#CBD5E1", size = 3.2) +
         # Center VS Crest
         annotate("label", x = 5.0, y = 4.5, label = "VS", fill = "#B45309", color = "#FFFFFF", fontface = "bold", size = 6.5, label.padding = unit(0.5, "lines")) +
-        # Brewers
-        annotate("text", x = 7.2, y = 2.8, label = "MILWAUKEE BREWERS", color = "#FBBF24", fontface = "bold", size = 5.2) +
-        annotate("text", x = 7.2, y = 2.3, label = "2026 NL Champions (103-59 Regular Season)\nDefeated: SD (3-1), LAD (4-0)", color = "#CBD5E1", size = 3.2) +
+        # NL pennant winner
+        annotate("text", x = 7.2, y = 2.8, label = toupper(team_names[[nl$winner]]), color = "#FBBF24", fontface = "bold", size = 5.2) +
+        annotate("text", x = 7.2, y = 2.3, label = banner_line(nl), color = "#CBD5E1", size = 3.2) +
         # Bottom Current Status
-        annotate("label", x = 5.0, y = 1.3, label = "Final: Brewers won the World Series 4-1", fill = "#1E293B", color = "#F8FAFC", fontface = "bold", size = 3.8) +
+        annotate("label", x = 5.0, y = 1.3, label = ws_final, fill = "#1E293B", color = "#F8FAFC", fontface = "bold", size = 3.8) +
         scale_x_continuous(limits = c(0.2, 9.8), expand = c(0, 0)) +
         scale_y_continuous(limits = c(0.5, 8.8), expand = c(0, 0)) +
         theme_mlb_dark(base_size = 11) +
@@ -243,9 +229,10 @@ generate_gif_pennant_showdown <- function(season = 2026,
           panel.grid = element_blank()
         ) +
         labs(
-          title = "2026 Major League Baseball World Series Showdown",
-          subtitle = "October Climax: The American League Pennant Winner vs National League Pennant Winner",
-          caption = "Source: KayceeSlices MLB Analytics Engine | Official Transparent Franchise Logos"
+          x = NULL, y = NULL,
+          title = sprintf("%d World Series", season),
+          subtitle = "The two pennant winners, their regular-season records, and the series each won to get there",
+          caption = "Source: MLB Stats API schedule and results | Logos: mlbplotR"
         )
     }
 
