@@ -350,9 +350,37 @@ if (is.na(free_mb) || free_mb < MIN_FREE_MB_FOR_PARALLEL) {
                   if (is.na(free_mb)) "UNKNOWN" else sprintf("%.0fMB", free_mb), MIN_FREE_MB_FOR_PARALLEL))
   plan(sequential)
 } else {
-  message(sprintf(">>> [MEMORY] Free RAM %.0fMB clears the %dMB threshold — using plan(multisession) as normal.",
-                  free_mb, MIN_FREE_MB_FOR_PARALLEL))
-  plan(multisession) # Use background R sessions for parallel stages
+  # ISSUE #155 (2026-11-13): `plan(multisession)` previously crashed the pipeline here —
+  # "Cluster setup failed (connectTimeout=125.0 seconds). 19 of 20 workers failed to connect."
+  # — reproduced twice on 2026-11-06. ROOT CAUSE (confirmed by direct repro on this machine,
+  # not guessed): every `Rscript.exe` PSOCK worker this repo spawns re-runs `.Rprofile`'s
+  # `source("renv/activate.R")`, which by default re-validates/activates renv's per-session
+  # SANDBOX (a private copy of the project library renv uses to catch a script writing to the
+  # library mid-run) on every single worker's startup. That sandbox activation step takes
+  # ~30s+ *serialized* under disk/lock contention when it's not already warm. Launching 8+
+  # worker processes at once means 8+ concurrent sandbox activations fighting over the same
+  # sandbox cache/lock: a repro with 8 workers showed 6 finish startup in seconds while the
+  # other 2 spun burning CPU for 280+ seconds straight (never finishing) — i.e. not a random
+  # subset failing (which would point to a flaky firewall/port issue) but a near-total stall
+  # from lock contention, matching the issue's "only 1 of 20 ever connects" symptom. Disabling
+  # the sandbox for worker processes (they only ever READ the already-resolved library paths
+  # future/future.apply set up in the parent; they never need renv's write-guard) removes the
+  # contention entirely: repro'd 20-of-20 and 8-of-8 workers connecting cleanly in <40s with
+  # `RENV_CONFIG_SANDBOX_ENABLED=FALSE` set before `plan(multisession)`, vs. a hard failure at
+  # 125s with it left on. `Sys.setenv()` here is inherited by every `Rscript.exe` child
+  # `makeClusterPSOCK()` subsequently spawns, so this one line fixes all of them.
+  # Defense-in-depth on top of the real fix: cap workers at a headroom-aware size (never more
+  # than 8, leaving >=2 logical cores free for the OS/parent) so a future, much-bigger-core
+  # machine still can't recreate a worker-spawn storm, and raise `connectTimeout` from the
+  # default so a still-cold renv/package cache (e.g. first run after a dependency bump) has
+  # margin instead of racing the clock.
+  Sys.setenv(RENV_CONFIG_SANDBOX_ENABLED = "FALSE")
+  options(parallelly.makeNodePSOCK.connectTimeout = 300,
+          parallelly.makeNodePSOCK.timeout = 300)
+  n_workers <- max(1L, min(8L, parallelly::availableCores(omit = 2L)))
+  message(sprintf(">>> [MEMORY] Free RAM %.0fMB clears the %dMB threshold — using plan(multisession, workers = %d) (capped from %d available cores; renv sandbox disabled for workers; see issue #155).",
+                  free_mb, MIN_FREE_MB_FOR_PARALLEL, n_workers, parallelly::availableCores()))
+  plan(multisession, workers = n_workers) # Use background R sessions for parallel stages
 }
 
 # 2. Physics & Biometric Latent Engines (Phase 3) - Parallel Group 1
