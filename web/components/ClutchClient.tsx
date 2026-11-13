@@ -217,7 +217,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
                         </span>
                         <span
                           className={`text-[11px] sm:text-[10px] font-bold ${
-                            isGoodDelta ? 'text-emerald-400' : 'text-slate-500'
+                            isGoodDelta ? 'text-emerald-400' : 'text-slate-400'
                           }`}
                         >
                           Δ {p.deltaClutch > 0 ? `+${p.deltaClutch}` : p.deltaClutch}

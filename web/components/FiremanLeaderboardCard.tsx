@@ -48,7 +48,7 @@ export const FiremanLeaderboardCard: React.FC<FiremanLeaderboardCardProps> = ({ 
               <span className="text-xl font-black text-sky-400">{fireman.shutdowns} SD</span>
               <span className="text-xs font-bold text-rose-400">{fireman.meltdowns} MD</span>
             </div>
-            <span className="text-[11px] sm:text-[10px] text-slate-500 block">
+            <span className="text-[11px] sm:text-[10px] text-slate-400 block">
               Ratio: {((fireman.shutdowns / Math.max(1, fireman.meltdowns))).toFixed(1)}:1
             </span>
           </div>

@@ -881,7 +881,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                     </div>
                   </div>
                 ) : (
-                  <div className="py-12 text-center text-slate-500 text-xs">
+                  <div className="py-12 text-center text-slate-400 text-xs">
                     <Crosshair className="w-8 h-8 mx-auto mb-2 opacity-40 text-slate-400" />
                     Click any batted ball in the spray chart to inspect its trajectory and 30-park HR count.
                   </div>
@@ -892,7 +892,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
               <div className="bg-surface-raised border border-slate-800 rounded-2xl p-4 shadow-xl">
                 <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2.5 flex items-center justify-between">
                   <span>Sample HR Leaders</span>
-                  <span className="text-[11px] sm:text-[10px] text-slate-500">Actual vs 30-Pk Exp</span>
+                  <span className="text-[11px] sm:text-[10px] text-slate-400">Actual vs 30-Pk Exp</span>
                 </h4>
                 <div className="space-y-2">
                   {data.tier1_spray.hr_hitters.slice(0, 5).map((hitter) => (
@@ -908,7 +908,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                       </div>
                       <div className="text-right font-mono flex-shrink-0">
                         <div className="text-rose-400 font-bold">{hitter.actual_hrs} HR</div>
-                        <div className="text-[11px] sm:text-[10px] text-slate-500">
+                        <div className="text-[11px] sm:text-[10px] text-slate-400">
                           {hitter.expected_hrs_30_park_avg.toFixed(1)} xHR
                         </div>
                       </div>
@@ -1189,7 +1189,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                     </div>
                   </div>
                 ) : (
-                  <div className="py-6 text-center text-slate-500 text-xs">
+                  <div className="py-6 text-center text-slate-400 text-xs">
                     Click any 3×3 zone cell above to view detailed swing and whiff breakdowns.
                   </div>
                 )}
@@ -1214,14 +1214,14 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                     <div className="text-lg font-black text-white font-mono mt-0.5">
                       {data.tier2_zone.framing_summary.total_shadow_taken.toLocaleString()}
                     </div>
-                    <div className="text-[11px] sm:text-[10px] text-slate-500 mt-0.5">Statcast sample</div>
+                    <div className="text-[11px] sm:text-[10px] text-slate-400 mt-0.5">Statcast sample</div>
                   </div>
                   <div className="bg-surface p-3 rounded-xl border border-slate-800">
                     <div className="text-slate-400 text-[11px] sm:text-[10px] uppercase font-semibold">Called Strike Rate</div>
                     <div className="text-lg font-black text-indigo-400 font-mono mt-0.5">
                       {data.tier2_zone.framing_summary.shadow_strike_rate}%
                     </div>
-                    <div className="text-[11px] sm:text-[10px] text-slate-500 mt-0.5">
+                    <div className="text-[11px] sm:text-[10px] text-slate-400 mt-0.5">
                       Baseline: {data.tier2_zone.framing_summary.league_baseline_rate}%
                     </div>
                   </div>
@@ -1490,15 +1490,15 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
 
                         <div className="grid grid-cols-3 gap-2 text-[11px] pt-1.5 border-t border-slate-900 font-mono">
                           <div>
-                            <span className="text-slate-500">IVB: </span>
+                            <span className="text-slate-400">IVB: </span>
                             <span className="text-slate-200">{p.ivb > 0 ? `+${p.ivb}"` : `${p.ivb}"`}</span>
                           </div>
                           <div>
-                            <span className="text-slate-500">HB: </span>
+                            <span className="text-slate-400">HB: </span>
                             <span className="text-slate-200">{p.hb > 0 ? `+${p.hb}"` : `${p.hb}"`}</span>
                           </div>
                           <div className="text-right">
-                            <span className="text-slate-500">Whiff: </span>
+                            <span className="text-slate-400">Whiff: </span>
                             <span className="text-rose-400 font-bold">{p.whiff_rate}%</span>
                           </div>
                         </div>

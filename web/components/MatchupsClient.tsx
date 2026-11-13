@@ -137,7 +137,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ index, initialMa
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 text-accent-400" />
           <span className="text-xs font-mono font-bold uppercase text-slate-300">Select Slate</span>
-          <span className="text-[11px] font-mono text-slate-500">
+          <span className="text-[11px] font-mono text-slate-400">
             {index.available_weeks.length} weeks · {index.total_games} games
           </span>
         </div>
@@ -162,7 +162,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ index, initialMa
                 <span>Wk {wk.week}</span>
                 {wk.status === 'active' && <span className="text-amber-400 text-[11px] sm:text-[10px]">★</span>}
                 {wk.status === 'future' && !isSelected && (
-                  <span className="text-[11px] sm:text-[10px] text-slate-500 font-normal">·</span>
+                  <span className="text-[11px] sm:text-[10px] text-slate-400 font-normal">·</span>
                 )}
               </button>
             );
@@ -273,7 +273,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ index, initialMa
 
         <div className="flex items-center gap-2.5">
           <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder="Filter team..."
@@ -381,7 +381,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ index, initialMa
                           </span>
                         </div>
                       </td>
-                      <td className="py-2.5 px-3 text-center font-mono text-slate-500">@</td>
+                      <td className="py-2.5 px-3 text-center font-mono text-slate-400">@</td>
                       <td className="py-2.5 px-3">
                         <div className="flex items-center gap-2">
                           <TeamLogo team={m.home_team} size="xs" />

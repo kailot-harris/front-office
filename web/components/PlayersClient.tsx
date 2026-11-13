@@ -697,7 +697,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                           </td>
                           <td className="py-3 px-3 text-right font-mono text-xs text-slate-300">
                             <span>{p.k_pct_pooled.toFixed(1)}%</span>
-                            <span className="text-slate-500 mx-1">/</span>
+                            <span className="text-slate-400 mx-1">/</span>
                             <span>{p.bb_pct_pooled.toFixed(1)}%</span>
                           </td>
                           <td className="py-3 px-3 text-right font-mono text-xs text-amber-400">

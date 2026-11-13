@@ -63,7 +63,7 @@ export default function RootLayout({
         <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
           <SportSwitcher current="mlb" />
           <main id="main-content" className="flex-1 pb-10">{children}</main>
-          <footer className="border-t border-slate-800 bg-surface-raised/50 py-5 text-center text-xs text-slate-500 font-sans">
+          <footer className="border-t border-slate-800 bg-surface-raised/50 py-5 text-center text-xs text-slate-400 font-sans">
             <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
               <span>MLB Quantitative Sabermetric Engine • 162-Game & 10,000-Sim Postseason Monte Carlo</span>
               <span>4 Model Variants (Pitcher Elo, Empirical Bayes, Pythagenpat, Marcel/Bullpen) + Ensemble</span>
