@@ -202,7 +202,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                   <div className="text-2xl font-black text-rose-400 font-mono">
                     {selectedProfile.clutchPoints !== null ? selectedProfile.clutchPoints : '—'}
                   </div>
-                  <div className="text-[11px] sm:text-[10px] text-slate-500">{selectedProfile.clutchFga} FGA</div>
+                  <div className="text-[11px] sm:text-[10px] text-slate-400">{selectedProfile.clutchFga} FGA</div>
                 </div>
               </div>
 
@@ -213,7 +213,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                   <div className="text-base font-extrabold text-emerald-400">
                     {selectedProfile.clutchFgPct !== null ? `${selectedProfile.clutchFgPct.toFixed(1)}%` : 'N/A'}
                   </div>
-                  <div className="text-[11px] sm:text-[10px] text-slate-500 font-mono">
+                  <div className="text-[11px] sm:text-[10px] text-slate-400 font-mono">
                     {selectedProfile.clutchFga >= 5 ? 'Qualified' : 'Low Sample'}
                   </div>
                 </div>
@@ -223,7 +223,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                   <div className="text-base font-extrabold text-amber-400">
                     {selectedProfile.clutchPpp !== null ? selectedProfile.clutchPpp.toFixed(2) : 'N/A'}
                   </div>
-                  <div className="text-[11px] sm:text-[10px] text-slate-500 font-mono">
+                  <div className="text-[11px] sm:text-[10px] text-slate-400 font-mono">
                     Clutch PPP
                   </div>
                 </div>
@@ -233,7 +233,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                   <div className="text-base font-extrabold text-indigo-400">
                     {selectedProfile.clutchScoringPlays !== null ? selectedProfile.clutchScoringPlays : '—'}
                   </div>
-                  <div className="text-[11px] sm:text-[10px] text-slate-500 font-mono">
+                  <div className="text-[11px] sm:text-[10px] text-slate-400 font-mono">
                     Total Plays
                   </div>
                 </div>
@@ -243,7 +243,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                   <div className="text-base font-extrabold text-white">
                     {selectedProfile.clutchFga}
                   </div>
-                  <div className="text-[11px] sm:text-[10px] text-slate-500 font-mono">
+                  <div className="text-[11px] sm:text-[10px] text-slate-400 font-mono">
                     Attempts
                   </div>
                 </div>
@@ -273,7 +273,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
               </div>
             </div>
           ) : (
-            <div className="p-12 text-center text-slate-500 bg-surface-raised/40 rounded-xl border border-slate-800">
+            <div className="p-12 text-center text-slate-400 bg-surface-raised/40 rounded-xl border border-slate-800">
               Select a player to view detailed clutch analytics
             </div>
           )}
@@ -411,7 +411,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                         : 'hover:bg-slate-800/40 text-slate-300'
                     }`}
                   >
-                    <td className="py-2.5 px-3 text-slate-500 font-mono">{idx + 1}</td>
+                    <td className="py-2.5 px-3 text-slate-400 font-mono">{idx + 1}</td>
                     <td className="py-2.5 px-3 font-sans font-bold flex items-center gap-1.5">
                       {isSelected && <Zap className="w-3 h-3 text-rose-400 shrink-0" />}
                       <span className={isSelected ? 'text-rose-300' : 'text-slate-100'}>
@@ -438,7 +438,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                     <td className="py-2.5 px-3 text-right text-slate-300">
                       {p.clutchScoringPlays !== null ? p.clutchScoringPlays : '—'}
                     </td>
-                    <td className="py-2.5 px-3 text-right text-[11px] sm:text-[10px] text-slate-500">
+                    <td className="py-2.5 px-3 text-right text-[11px] sm:text-[10px] text-slate-400">
                       {p.provenance}
                     </td>
                   </tr>

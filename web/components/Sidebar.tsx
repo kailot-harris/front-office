@@ -210,7 +210,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
           </div>
           <p
             className={`text-[11px] truncate ${
-              isActive ? 'text-accent-200' : 'text-slate-500'
+              isActive ? 'text-accent-200' : 'text-slate-400'
             }`}
           >
             {item.desc}
@@ -242,7 +242,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
 
         {/* 1. Primary Nav (Offseason Intelligence) */}
         <div className="space-y-1">
-          <div className="px-2 text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 font-mono">
+          <div className="px-2 text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 font-mono">
             Off-Season Intelligence
           </div>
           {primaryNavItems.map(renderNavLink)}
@@ -256,13 +256,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
             className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 transition-colors group"
           >
             <div className="flex items-center gap-2">
-              <Archive className="w-3.5 h-3.5 text-slate-500 group-hover:text-violet-400" />
+              <Archive className="w-3.5 h-3.5 text-slate-400 group-hover:text-violet-400" />
               <span className="text-[11px] sm:text-[10px] font-bold uppercase tracking-wider font-mono">
                 2026 Championship Archive
               </span>
             </div>
             <ChevronDown
-              className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 ${
+              className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${
                 isArchiveOpen ? 'rotate-180 text-violet-400' : ''
               }`}
             />
@@ -382,7 +382,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
           <span className="truncate">RAPM Ridge & DAG Verified</span>
         </div>
         {generatedAt && (
-          <div className="flex items-center justify-between text-[11px] sm:text-[10px] text-slate-500 font-mono px-1">
+          <div className="flex items-center justify-between text-[11px] sm:text-[10px] text-slate-400 font-mono px-1">
             <span>Updated</span>
             <time dateTime={generatedAt}>{generatedAt.slice(0, 16).replace('T', ' ')} UTC</time>
           </div>

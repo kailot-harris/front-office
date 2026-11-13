@@ -58,7 +58,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center gap-1">
               <Shield className="w-3.5 h-3.5" /> Positional Versatility & Coverage Matrix
             </span>
-            <span className="text-xs text-slate-500 font-mono">Shannon Entropy (H<sub>v</sub>) & Tracking Shares</span>
+            <span className="text-xs text-slate-400 font-mono">Shannon Entropy (H<sub>v</sub>) & Tracking Shares</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
             Defensive Versatility & Rim Protection Architecture
@@ -201,7 +201,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                       </div>
                     </div>
                     <ChevronRight
-                      className={`w-4 h-4 text-slate-500 transition-transform ${
+                      className={`w-4 h-4 text-slate-400 transition-transform ${
                         isSelected ? 'text-accent-400 translate-x-0.5' : ''
                       }`}
                     />
@@ -263,7 +263,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                   <span>Rim Contest Sample</span>
                 </div>
                 <div className="text-base font-bold text-slate-100">{selectedProfile.rimDefenseSample} FGA</div>
-                <div className="text-[11px] sm:text-[10px] text-slate-500 mt-0.5">{selectedProfile.rimDefenseSource === 'wehoop_shots_lineups' ? 'Real tracked shots' : 'Positional prior'}</div>
+                <div className="text-[11px] sm:text-[10px] text-slate-400 mt-0.5">{selectedProfile.rimDefenseSource === 'wehoop_shots_lineups' ? 'Real tracked shots' : 'Positional prior'}</div>
               </div>
 
               <div className="p-3 bg-surface/50 rounded-xl border border-slate-800">
@@ -272,7 +272,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                   <span>Rim Deterrence</span>
                 </div>
                 <div className="text-base font-bold text-emerald-400">+{selectedProfile.rimDeterrenceIndex}</div>
-                <div className="text-[11px] sm:text-[10px] text-slate-500 mt-0.5">Attempts suppressed/100</div>
+                <div className="text-[11px] sm:text-[10px] text-slate-400 mt-0.5">Attempts suppressed/100</div>
               </div>
 
               <div className="p-3 bg-surface/50 rounded-xl border border-slate-800">
@@ -295,7 +295,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                     </span>
                   )}
                 </div>
-                <div className="text-[11px] sm:text-[10px] text-slate-500 mt-0.5">
+                <div className="text-[11px] sm:text-[10px] text-slate-400 mt-0.5">
                   Pts saved / 100 poss · {dRapmMeta(selectedProfile).caption}
                 </div>
               </div>
@@ -303,7 +303,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
               <div className="p-3 bg-surface/50 rounded-xl border border-slate-800">
                 <div className="text-xs text-slate-400 mb-1">Projected MPG</div>
                 <div className="text-base font-bold text-slate-100">{selectedProfile.projMpg} MPG</div>
-                <div className="text-[11px] sm:text-[10px] text-slate-500 mt-0.5">Rotation workload</div>
+                <div className="text-[11px] sm:text-[10px] text-slate-400 mt-0.5">Rotation workload</div>
               </div>
             </div>
 

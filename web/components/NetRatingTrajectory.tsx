@@ -76,7 +76,7 @@ export function NetRatingTrajectory({
           />
         </picture>
       </div>
-      <figcaption className="mt-2 text-[12px] leading-relaxed text-slate-500">
+      <figcaption className="mt-2 text-[12px] leading-relaxed text-slate-400">
         The ratings behind the forecasts above, recomputed at every playoff game
         date. Like the table, this is a reconstruction from box scores — not a
         forecast that was published at the time.

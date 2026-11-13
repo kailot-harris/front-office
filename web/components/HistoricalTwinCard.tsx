@@ -34,7 +34,7 @@ export const HistoricalTwinCard: React.FC<HistoricalTwinCardProps> = ({ twin, ra
             <Sparkles className="w-3 h-3 text-indigo-400" />
             <span>{twin.archetype}</span>
           </div>
-          <div className="text-[11px] text-slate-500 mt-0.5">
+          <div className="text-[11px] text-slate-400 mt-0.5">
             {twin.keySharedTrait}
           </div>
         </div>

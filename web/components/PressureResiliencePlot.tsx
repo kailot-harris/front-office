@@ -75,7 +75,7 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="text-[11px] font-mono text-slate-500 bg-surface-raised px-2.5 py-1 rounded border border-slate-800">
+          <div className="text-[11px] font-mono text-slate-400 bg-surface-raised px-2.5 py-1 rounded border border-slate-800">
             Min. 5 Clutch FGA ({qualified.length} closers)
           </div>
           <button
@@ -315,13 +315,13 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
               <div>Clutch PTS: <span className="text-amber-400 font-bold">{hoveredProfile.clutchPoints ?? 'N/A'}</span></div>
               <div>Clutch FGA: <span className="text-slate-100 font-bold">{hoveredProfile.clutchFga}</span></div>
               <div>Points / FGA: <span className="text-indigo-300 font-bold">{hoveredProfile.clutchPpp !== null ? hoveredProfile.clutchPpp.toFixed(2) : 'N/A'}</span></div>
-              <div className="col-span-2 text-[11px] sm:text-[9px] text-slate-500">Source: {hoveredProfile.provenance}</div>
+              <div className="col-span-2 text-[11px] sm:text-[9px] text-slate-400">Source: {hoveredProfile.provenance}</div>
             </div>
           </div>
         )}
       </div>
 
-      <div className="flex items-center gap-2 text-[11px] text-slate-500 pt-1 border-t border-slate-900">
+      <div className="flex items-center gap-2 text-[11px] text-slate-400 pt-1 border-t border-slate-900">
         <AlertCircle className="w-3.5 h-3.5 text-slate-400 shrink-0" />
         <span>
           <strong>Real Play-by-Play Tracking</strong>: Clutch situations defined as 4th quarter or overtime, &le; 5:00 remaining, score margin &le; 5 points. Sourced from <code>cache/player_pbp_features.rds</code>. Players with &lt; 5 clutch FGA emit typed NA to prevent small-sample distortion.

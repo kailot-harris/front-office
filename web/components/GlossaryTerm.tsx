@@ -124,7 +124,7 @@ export const GlossaryTerm: React.FC<GlossaryTermProps> = ({ termKey, className =
         className="touch-manipulation cursor-pointer inline-flex items-center gap-0.5 border-b border-dotted border-slate-500 hover:border-indigo-400 hover:text-indigo-300 transition-colors"
       >
         <span>{entry.term}</span>
-        <HelpCircle className="w-3 h-3 text-slate-500" />
+        <HelpCircle className="w-3 h-3 text-slate-400" />
       </button>
 
       {isOpen && (

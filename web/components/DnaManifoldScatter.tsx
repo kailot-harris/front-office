@@ -45,7 +45,7 @@ export const DnaManifoldScatter: React.FC<DnaManifoldScatterProps> = ({
           <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
             2D Stylistic Manifold Projection (t-SNE / PCA)
           </h4>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[11px] text-slate-400">
             Horizontal: Shot Creation & Playmaking Hub ⟵ Spot-Up / Finisher
             <br />
             Vertical: Paint Anchor & Rebound Engine ⟵ Perimeter Guard

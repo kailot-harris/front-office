@@ -139,7 +139,7 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
       {/* Search and Filters Bar */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-3 bg-surface-raised/60 p-3 rounded-xl border border-slate-800">
         <div className="md:col-span-6 relative">
-          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
+          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
           <input
             type="text"
             placeholder="Search rotation player by name or team..."
@@ -205,7 +205,7 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
 
           <div className="flex items-center gap-3 self-end sm:self-center">
             <div className="text-right">
-              <span className="text-[11px] sm:text-[10px] font-mono uppercase tracking-wider text-slate-500 block font-bold">
+              <span className="text-[11px] sm:text-[10px] font-mono uppercase tracking-wider text-slate-400 block font-bold">
                 Telemetry Baseline
               </span>
               <span className="text-xs font-mono font-bold text-emerald-400">

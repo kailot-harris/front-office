@@ -137,7 +137,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
 
   const renderSortIndicator = (field: StandingsSortField) => {
     if (sortBy !== field) {
-      return <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 opacity-40 group-hover:opacity-100 transition-opacity" />;
+      return <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 opacity-40 group-hover:opacity-100 transition-opacity" />;
     }
     return sortOrder === 'asc' ? (
       <ArrowUp className="w-3.5 h-3.5 text-indigo-400 font-bold" />
