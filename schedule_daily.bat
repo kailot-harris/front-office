@@ -78,6 +78,88 @@ exit /b 0
 if not defined HOME set HOME=%USERPROFILE%
 cd /d "%PROJECT_DIR%"
 
+REM ------------------------------------------------------------------
+REM Checkout-safety guard (front-office issue #105). %PROJECT_DIR% is
+REM the SAME working directory interactive sessions and agents use --
+REM not a dedicated worktree. On 2026-11-10 that caused three same-day
+REM collisions on the NFL sibling: a scheduled run executed
+REM successfully on a stray feature branch a subagent had left checked
+REM out; the 08:00 publish gate correctly refused
+REM (assertion E: "HEAD=chore/nfl-week9-visual-media expected=main");
+REM and a LATER agent then cleared the dirty tree with
+REM `git checkout -- .` before merging -- with no stash first -- and
+REM discarded 8 regenerated JSON files and a cache file. Published
+REM data stayed ~30 hours stale until a manual re-run. The exposure is
+REM identical here: run_full_pipeline.R and tools/publish_web.R both
+REM write into %PROJECT_DIR%, so this guard runs BEFORE either, every
+REM scheduled run, no exceptions.
+REM
+REM   1. If the tree is dirty (tracked OR untracked), `git stash -u`
+REM      it under a labelled message. NOTHING is discarded.
+REM   2. `git checkout main`.
+REM   3. Verify HEAD really is main AND the tree is clean. If either
+REM      check fails, STOP: do not run the pipeline against the wrong
+REM      branch or a tree this guard could not land cleanly. A stash
+REM      created in step 1 is left in `git stash list` for a human or
+REM      agent to inspect and `git stash pop` -- this script never
+REM      drops or clears a stash itself.
+REM
+REM This is the minimum-acceptable fix from issue #105 (stash + land
+REM on main + fail loud), not the "dedicated worktree" best fix, which
+REM needs a second checkout and a Task Scheduler env var this script
+REM cannot provision or verify on its own.
+REM ------------------------------------------------------------------
+set GUARD_TMP=%PROJECT_DIR%\.checkout_guard.tmp
+echo ------------------------------------------------------------------ >> "%LOG_FILE%"
+echo NBA CHECKOUT-SAFETY GUARD: %DATE% %TIME% >> "%LOG_FILE%"
+
+for /f "delims=" %%B in ('git rev-parse --abbrev-ref HEAD 2^>^&1') do set PRE_BRANCH=%%B
+echo [GUARD] Pre-guard branch: %PRE_BRANCH% >> "%LOG_FILE%"
+
+git status --porcelain -u > "%GUARD_TMP%" 2>&1
+set DIRTY=0
+for %%A in ("%GUARD_TMP%") do if %%~zA GTR 0 set DIRTY=1
+
+if "%DIRTY%"=="1" (
+    echo [GUARD] Working tree is dirty on branch "%PRE_BRANCH%" - stashing (git stash -u) before checkout. >> "%LOG_FILE%"
+    git stash push -u -m "schedule_daily.bat auto-stash %DATE% %TIME%" >> "%LOG_FILE%" 2>&1
+    if errorlevel 1 (
+        echo [ERROR] schedule_daily.bat: "git stash -u" FAILED on branch "%PRE_BRANCH%". >> "%LOG_FILE%"
+        echo [ERROR] Refusing to touch this checkout further. Pipeline NOT run. >> "%LOG_FILE%"
+        del "%GUARD_TMP%" >nul 2>&1
+        exit /b 3
+    )
+)
+
+git checkout main >> "%LOG_FILE%" 2>&1
+if errorlevel 1 (
+    echo [ERROR] schedule_daily.bat: "git checkout main" FAILED (was on "%PRE_BRANCH%"). >> "%LOG_FILE%"
+    echo [ERROR] Pipeline NOT run. If a stash was just created above, it is still in >> "%LOG_FILE%"
+    echo [ERROR] the stash list ("git stash list") - nothing was discarded. >> "%LOG_FILE%"
+    del "%GUARD_TMP%" >nul 2>&1
+    exit /b 3
+)
+
+for /f "delims=" %%B in ('git rev-parse --abbrev-ref HEAD 2^>^&1') do set POST_BRANCH=%%B
+git status --porcelain -u > "%GUARD_TMP%" 2>&1
+set POST_DIRTY=0
+for %%A in ("%GUARD_TMP%") do if %%~zA GTR 0 set POST_DIRTY=1
+del "%GUARD_TMP%" >nul 2>&1
+
+if not "%POST_BRANCH%"=="main" (
+    echo [ERROR] schedule_daily.bat: checkout-safety guard FAILED. >> "%LOG_FILE%"
+    echo [ERROR] HEAD=%POST_BRANCH% expected=main after "git checkout main". Pipeline NOT run. >> "%LOG_FILE%"
+    exit /b 3
+)
+if "%POST_DIRTY%"=="1" (
+    echo [ERROR] schedule_daily.bat: checkout-safety guard FAILED. >> "%LOG_FILE%"
+    echo [ERROR] Branch is main but the tree is still dirty after stash+checkout. Pipeline NOT run. >> "%LOG_FILE%"
+    exit /b 3
+)
+
+echo [GUARD] OK - HEAD=main, tree clean. Proceeding with pipeline. >> "%LOG_FILE%"
+echo ------------------------------------------------------------------ >> "%LOG_FILE%"
+
 where Rscript >nul 2>&1
 if %ERRORLEVEL% equ 0 (
     set RSCRIPT=Rscript
