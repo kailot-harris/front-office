@@ -476,6 +476,8 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                 <svg
                   viewBox={`0 0 ${spraySvgWidth} ${spraySvgHeight}`}
                   className="w-full h-full select-none"
+                  role="img"
+                  aria-label={`Batted ball spray chart for ${activeParkDim.team} at ${activeParkDim.park} showing ${filteredBalls.length} batted balls`}
                 >
                   <defs>
                     <radialGradient id="fieldGrad" cx="50%" cy="90%" r="90%">
@@ -986,7 +988,12 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
 
               {/* SVG 3x3 Grid */}
               <div className="w-full max-w-[420px] aspect-square relative">
-                <svg viewBox="0 0 400 400" className="w-full h-full select-none">
+                <svg
+                  viewBox="0 0 400 400"
+                  className="w-full h-full select-none"
+                  role="img"
+                  aria-label={`Statcast 3 by 3 strike zone grid showing ${zoneMetric} rates`}
+                >
                   {/* Home Plate Indicator at Bottom */}
                   <polygon
                     points="200,380 180,365 180,355 220,355 220,365"
@@ -1305,7 +1312,12 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
 
               {/* Movement SVG Chart */}
               <div className="w-full max-w-[460px] aspect-square relative">
-                <svg viewBox="0 0 440 440" className="w-full h-full select-none">
+                <svg
+                  viewBox="0 0 440 440"
+                  className="w-full h-full select-none"
+                  role="img"
+                  aria-label={`Pitch movement profile chart (induced vertical vs horizontal break) for ${activePitcher?.pitcher_name || 'selected pitcher'}`}
+                >
                   {/* Background */}
                   <rect width="440" height="440" fill="#090d16" rx="12" />
 
