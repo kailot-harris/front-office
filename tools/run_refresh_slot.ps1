@@ -34,11 +34,25 @@
     slot completes in about 3.5 minutes. The 30-minute lag it replaces was
     absorbing scheduler jitter, badly, around work that takes minutes.
 
-    WHAT THIS DOES NOT DO: it does not refresh projections, ratings or anything
-    model-derived. Those belong to slot A (09:00 local, the full DAG, on this
-    same box). Each sport's tools/refresh_live_results.R patches finished
-    scores plus the grading and slate counts that follow mechanically from
-    them, into already-committed JSON. See that script's header.
+    MODEL REFRESH ON NEW RESULTS. Each sport's tools/refresh_live_results.R
+    patches finished scores plus the grading and slate counts that follow
+    mechanically from them, into already-committed JSON. It cannot refresh
+    standings, ratings, projections or playoff odds: those need the pipeline
+    caches, which live on this box. Left alone, a Thursday-night final showed
+    its score on the site for hours while standings and playoff odds still
+    described the world before the game.
+
+    So when a sport's refresh run COMMITS something (new finals were written),
+    and that sport is listed in $MODEL_REFRESH below, this script then runs
+    that sport's own daily pipeline and publish wrappers locally, the same
+    ones Task Scheduler runs for slot A, before dispatching the sync. A refresh
+    that found nothing new triggers nothing, so a quiet slot still takes
+    minutes. A slot with new NFL finals takes roughly 10-15 minutes longer.
+
+    A failed model refresh is reported and fails the slot's exit code, but
+    does not withhold the sync: the publish gate inside each sport's wrapper
+    refuses to push a bad payload, so the worst case is the site keeps the
+    patched scores with yesterday's odds, which is what it did before.
 
     WHY IT ALWAYS SYNCS, even when a refresh changed nothing: the aggregator's
     sync-sports.yml only dispatches deploy.yml when a subtree pull produced a
@@ -70,6 +84,10 @@
     exit code, which tells you a slot failed but never why. Start-Transcript
     captures Write-Host, which is why progress goes through Write-Step.
 
+.PARAMETER SkipModelRefresh
+    Do not run any local model pipeline, even when a refresh wrote new
+    results. Restores the old scores-only behaviour for one run.
+
 .PARAMETER SkipSync
     Refresh the sport repos but do not dispatch the aggregator sync, so nothing
     is published. For debugging a single sport's refresh in isolation.
@@ -94,7 +112,9 @@ param(
 
     [string] $LogDir = '',
 
-    [switch] $SkipSync
+    [switch] $SkipSync,
+
+    [switch] $SkipModelRefresh
 )
 
 Set-StrictMode -Version Latest
@@ -140,6 +160,39 @@ $SYNC_WORKFLOW     = 'Sync sport subtrees and deploy'
 # normally satisfied on the first or second attempt.
 $RUN_DISCOVERY_ATTEMPTS = 10
 $RUN_DISCOVERY_DELAY_S  = 3
+
+# Sports whose model outputs (standings, ratings, projections, playoff odds)
+# are rebuilt locally when the score refresh wrote new results. Each step is a
+# wrapper in that sport's checkout plus its arguments, run in order; the first
+# failing step stops that sport. These are the SAME wrappers Task Scheduler
+# runs for slot A, so there is one definition of "run the pipeline" per sport.
+#
+#   nfl: schedule_daily.bat runs the DAG; publishing is a separate wrapper.
+#   nba: schedule_daily.bat runs the DAG and then its own publish gate.
+#
+# MLB and WNBA are not listed: both are out of season and their daily wrappers
+# skip or do offseason work. Add a sport here when its season starts.
+$MODEL_REFRESH = [ordered]@{
+    nfl = @{
+        Dir   = 'NFL Analytics'
+        Steps = @(
+            , @('schedule_daily.bat')
+            , @('schedule_publish.bat', 'publish')
+        )
+    }
+    nba = @{
+        Dir   = 'NBA Analytics'
+        Steps = @(
+            , @('schedule_daily.bat')
+        )
+    }
+}
+
+# The sport checkouts sit beside the aggregator checkout this script lives in:
+#   <workspace>\front-office-aggregator\tools\run_refresh_slot.ps1
+#   <workspace>\NFL Analytics\...
+# Override with FRONT_OFFICE_ROOT when running from a worktree.
+$WORKSPACE_ROOT = if ($env:FRONT_OFFICE_ROOT) { $env:FRONT_OFFICE_ROOT } else { Split-Path -Parent (Split-Path -Parent $PSScriptRoot) }
 
 # --- Helpers -------------------------------------------------------------
 
@@ -254,6 +307,82 @@ function Invoke-WorkflowAndWait {
 
 # --- Plan ----------------------------------------------------------------
 
+function Get-RemoteHead {
+    <#
+        The sha at the tip of a repo's main branch, or '' if it cannot be read.
+        Compared before and after a refresh run to learn whether that run
+        committed new results. An unreadable sha is treated as "unknown" and
+        never triggers a model refresh.
+    #>
+    param([string] $Repo)
+
+    $sha = & gh api "repos/$Repo/commits/main" --jq '.sha'
+    if ($LASTEXITCODE -ne 0 -or -not $sha) { return '' }
+    return ([string] $sha).Trim()
+}
+
+function Invoke-ModelRefresh {
+    <#
+        Runs one sport's local pipeline wrappers so standings, ratings and
+        playoff odds reflect the results the refresh just committed. Returns
+        $true only if every step exited 0.
+    #>
+    param(
+        [string] $Sport,
+        [switch] $WhatIfOnly
+    )
+
+    $cfg = $MODEL_REFRESH[$Sport]
+    $dir = Join-Path $WORKSPACE_ROOT $cfg.Dir
+
+    if ($WhatIfOnly) {
+        Write-Host "  would pull main in '$dir', then run:"
+        foreach ($step in $cfg.Steps) { Write-Host "    $($step -join ' ')" }
+        return $true
+    }
+
+    if (-not (Test-Path (Join-Path $dir '.git'))) {
+        Write-Step "  $Sport model refresh SKIPPED: no checkout at '$dir'"
+        return $false
+    }
+
+    # The publish gate only pushes from main, and the pipeline must start from
+    # the results the refresh just committed, or its push is rejected.
+    $branch = (& git -C $dir rev-parse --abbrev-ref HEAD)
+    if ($LASTEXITCODE -ne 0 -or ([string] $branch).Trim() -ne 'main') {
+        Write-Step "  $Sport model refresh SKIPPED: checkout is on '$branch', not main"
+        return $false
+    }
+    & git -C $dir pull --quiet --rebase --autostash origin main
+    if ($LASTEXITCODE -ne 0) {
+        Write-Step "  $Sport model refresh SKIPPED: could not bring the checkout up to date with origin/main"
+        return $false
+    }
+
+    foreach ($step in $cfg.Steps) {
+        $bat = Join-Path $dir $step[0]
+        if (-not (Test-Path $bat)) {
+            Write-Step "  $Sport model refresh FAILED: missing $bat"
+            return $false
+        }
+        $stepArgs = if ($step.Count -gt 1) { $step[1..($step.Count - 1)] } else { @() }
+        Write-Step "  $Sport model refresh: $($step -join ' ')"
+        Push-Location $dir
+        try {
+            & cmd.exe /c $bat @stepArgs
+            $rc = $LASTEXITCODE
+        }
+        finally { Pop-Location }
+        if ($rc -ne 0) {
+            Write-Step "  $Sport model refresh FAILED: $($step[0]) exited $rc (see that sport's logs)"
+            return $false
+        }
+    }
+
+    Write-Step "  $Sport model refresh completed"
+    return $true
+}
+
 function Get-SlotPlan {
     param(
         [string]   $Slot,
@@ -289,7 +418,8 @@ function Invoke-RefreshSlot {
         [string]   $Slot,
         [switch]   $DryRun,
         [string[]] $Sports,
-        [switch]   $SkipSync
+        [switch]   $SkipSync,
+        [switch]   $SkipModelRefresh
     )
 
     $plan = Get-SlotPlan -Slot $Slot -Sports $Sports
@@ -297,6 +427,7 @@ function Invoke-RefreshSlot {
     Write-Output "=== Refresh slot $($plan.Slot)"
     Write-Output "    sports:        $($plan.Sports -join ', ')"
     Write-Output "    publish:       $(if ($SkipSync) { 'NO (-SkipSync)' } else { 'yes, via ' + $SYNC_WORKFLOW })"
+    Write-Output "    model refresh: $(if ($SkipModelRefresh) { 'NO (-SkipModelRefresh)' } else { 'on new results, for ' + (@($MODEL_REFRESH.Keys) -join ', ') })"
     if ($DryRun) { Write-Output "    MODE:          DRY RUN, nothing will be dispatched" }
     Write-Output ""
 
@@ -304,12 +435,35 @@ function Invoke-RefreshSlot {
 
     foreach ($sport in $plan.Sports) {
         $repo = $SPORT_REPOS[$sport]
+        $wantsModel = (-not $SkipModelRefresh) -and $MODEL_REFRESH.Contains($sport)
+        $headBefore = if ($wantsModel -and -not $DryRun) { Get-RemoteHead -Repo $repo } else { '' }
+
         $ok = Invoke-WorkflowAndWait `
             -Repo $repo `
             -Workflow $REFRESH_WORKFLOW `
             -WhatIfOnly:$DryRun
 
-        if (-not $ok) { $failed += $sport }
+        if (-not $ok) { $failed += $sport; continue }
+        if (-not $wantsModel) { continue }
+
+        if ($DryRun) {
+            Write-Host "  if that run commits new results:"
+            [void] (Invoke-ModelRefresh -Sport $sport -WhatIfOnly)
+            continue
+        }
+
+        # The refresh commits only when it wrote new finals, so a moved tip is
+        # the signal. Another push landing in the same minute would also move
+        # it; the cost of that false positive is one extra pipeline run.
+        $headAfter = Get-RemoteHead -Repo $repo
+        if ($headBefore -and $headAfter -and $headBefore -ne $headAfter) {
+            Write-Step "  $sport has new results ($($headAfter.Substring(0, 7))); refreshing standings and odds"
+            $modelOk = Invoke-ModelRefresh -Sport $sport
+            if (-not $modelOk) { $failed += "$sport-model-refresh" }
+        }
+        else {
+            Write-Step "  $sport has no new results; model refresh not needed"
+        }
     }
 
     # The sync still runs when a sport failed. A failed refresh leaves that
@@ -357,7 +511,8 @@ if ($MyInvocation.InvocationName -ne '.') {
             -Slot $Slot `
             -DryRun:$DryRun `
             -Sports $Sports `
-            -SkipSync:$SkipSync
+            -SkipSync:$SkipSync `
+            -SkipModelRefresh:$SkipModelRefresh
     }
     finally {
         if ($transcribing) { Stop-Transcript | Out-Null }
