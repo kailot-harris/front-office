@@ -126,6 +126,14 @@ jobs:
       - name: Parse every tracked R file
         run: Rscript .github/scripts/parse-all.R
 
+      # Static check (parse() only, no packages, no execution): fails CI if a
+      # tools/gif_*.R or tools/plot_*.R chart script contains an unallowlisted
+      # code path that can draw invented (non-data-derived) plotted values.
+      # See kailot-harris/front-office#142 (ported from the NBA Analytics
+      # pilot). Cheap, no packages needed - placed before package install.
+      - name: Check chart authenticity
+        run: Rscript .github/scripts/check-chart-authenticity.R
+
       # Offline pure-R unit tests (base R only, zero external packages or APIs).
       - name: Run R unit tests
         run: Rscript .github/scripts/run-tests.R
