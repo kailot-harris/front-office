@@ -2,7 +2,8 @@
 # ingest_freshness.R — Ingestion Manifest Freshness & Volume Gate
 # ==============================================================================
 # Normative contract reference: docs/contracts/offseason_wire_items_contract.md §6
-# Work unit: GitHub issue #59 (closes #59, refs #64)
+# Work unit: GitHub issue #59 (closes #59, refs #64); issue #75 adds the FUTURE
+# fault (fail closed on an ingest_timestamp beyond `now`).
 #
 # Asserts that the ingestion manifest (cache/ingestion_manifest.json) is fresh,
 # healthy, and reports live volume (> 0 items) before pipeline promotion.
@@ -80,15 +81,35 @@
 # ------------------------------------------------------------------------------
 # assert_ingest_freshness()
 # ------------------------------------------------------------------------------
-# manifest       : parsed cache/ingestion_manifest.json list or manifest element
-#                  from ingest_all()
-# now            : POSIXct or UTC string instant for recency evaluation
-# max_age_hours  : threshold in hours (default 26 per contract §6)
-# allow_stale    : logical; if FALSE, any non-FRESH verdict stops execution;
-#                  if TRUE, returns the non-FRESH verdict as an advisory pass
+# manifest                : parsed cache/ingestion_manifest.json list or manifest
+#                            element from ingest_all()
+# now                     : POSIXct or UTC string instant for recency evaluation
+# max_age_hours           : threshold in hours (default 26 per contract §6)
+# future_tolerance_hours  : threshold in hours (default 0.05h = 3 minutes) for how
+#                           far *ahead* of `now` an `ingest_timestamp` may sit before
+#                           it is treated as a fault rather than ordinary clock
+#                           jitter (Task Scheduler start skew, NTP correction, the
+#                           sub-second negative ages observed on live manifests).
+#                           Issue #75: a manifest whose ingest_timestamp is beyond
+#                           this many hours in the future returns FUTURE rather than
+#                           silently satisfying the age_hours > max_age_hours check
+#                           (which only ever looks for staleness, not for a clock
+#                           running backwards).
+# allow_stale             : logical; if FALSE, any non-FRESH verdict stops execution;
+#                           if TRUE, returns the non-FRESH verdict as an advisory pass.
+#                           Issue #75 decision: FUTURE is deliberately NOT exempted
+#                           from allow_stale — it is gated through the same
+#                           .build_freshness_verdict() control flow as STALE/MISSING/
+#                           FAILED/DEGRADED (see the FUTURE branch below and
+#                           .build_freshness_verdict() at the top of this file). A
+#                           caller that already opted into --allow-degraded style
+#                           tolerance for the whole gate gets the same loud advisory
+#                           pass for a future-dated manifest as for any other fault;
+#                           FUTURE is not treated as a stricter class that always
+#                           stops regardless of allow_stale.
 #
 # Returns a list with exactly:
-#   $status         : "FRESH" | "STALE" | "MISSING" | "FAILED" | "DEGRADED"
+#   $status         : "FRESH" | "STALE" | "FUTURE" | "MISSING" | "FAILED" | "DEGRADED"
 #   $age_hours      : numeric age in hours (NA_real_ when status == "MISSING")
 #   $max_age_hours  : numeric threshold applied (default 26)
 #   $reason         : single-sentence human-readable diagnostic description
@@ -96,10 +117,17 @@
 assert_ingest_freshness <- function(manifest,
                                     now = Sys.time(),
                                     max_age_hours = 26,
+                                    future_tolerance_hours = 0.05,
                                     allow_stale = FALSE) {
   # Validate threshold parameter
   if (!is.numeric(max_age_hours) || length(max_age_hours) != 1L || is.na(max_age_hours) || max_age_hours <= 0) {
     stop("assert_ingest_freshness: 'max_age_hours' must be a single positive numeric value.", call. = FALSE)
+  }
+
+  # Validate future-tolerance parameter (issue #75)
+  if (!is.numeric(future_tolerance_hours) || length(future_tolerance_hours) != 1L ||
+      is.na(future_tolerance_hours) || future_tolerance_hours < 0) {
+    stop("assert_ingest_freshness: 'future_tolerance_hours' must be a single non-negative numeric value.", call. = FALSE)
   }
 
   # 1. Envelope validation: manifest must be a non-null named list
@@ -184,7 +212,31 @@ assert_ingest_freshness <- function(manifest,
   now_utc <- .resolve_now_utc(now)
   age_hours <- as.numeric(difftime(now_utc, ts_utc, units = "hours"))
 
-  # 5. Recency / Staleness assertion
+  # 5. Future-timestamp assertion (issue #75: fail closed, do not fall through to FRESH)
+  #
+  # age_hours is negative whenever ingest_timestamp is ahead of `now`. Ordinary
+  # clock jitter (Task Scheduler start skew, NTP correction) produces small
+  # negative ages of a fraction of a second up to a few minutes on live
+  # manifests; this is not a fault and must keep passing as FRESH. A grossly
+  # future timestamp (corrupted manifest, bad clock, or a regression fixture
+  # mixed into a live run) is a distinct fault from staleness and must not
+  # reach the age_hours > max_age_hours check below, since a negative number
+  # is never greater than a positive threshold and would otherwise fall
+  # through all the way to FRESH.
+  if (age_hours < -future_tolerance_hours) {
+    return(.build_freshness_verdict(
+      status = "FUTURE",
+      age_hours = age_hours,
+      max_age_hours = max_age_hours,
+      reason = sprintf(
+        "Ingest timestamp is ahead of now by %.1fh (age_hours = %.1f is negative, beyond future-clock tolerance of %.2fh); manifest 'ingest_timestamp' is in the future relative to now (status FUTURE).",
+        abs(age_hours), age_hours, future_tolerance_hours
+      ),
+      allow_stale = allow_stale
+    ))
+  }
+
+  # 6. Recency / Staleness assertion
   if (age_hours > max_age_hours) {
     return(.build_freshness_verdict(
       status = "STALE",
@@ -195,7 +247,7 @@ assert_ingest_freshness <- function(manifest,
     ))
   }
 
-  # 6. Composite health state evaluation
+  # 7. Composite health state evaluation
   health_val <- as.character(raw_health)[1]
   if (identical(health_val, "FAILED")) {
     return(.build_freshness_verdict(
@@ -227,7 +279,7 @@ assert_ingest_freshness <- function(manifest,
     ))
   }
 
-  # 7. Volume assertion on league_wire adapter
+  # 8. Volume assertion on league_wire adapter
   if (!("adapters" %in% names(manifest)) || is.null(manifest$adapters) || !is.list(manifest$adapters)) {
     return(.build_freshness_verdict(
       status = "MISSING",
@@ -291,7 +343,7 @@ assert_ingest_freshness <- function(manifest,
     ))
   }
 
-  # 8. All assertions satisfied -> FRESH
+  # 9. All assertions satisfied -> FRESH
   .build_freshness_verdict(
     status = "FRESH",
     age_hours = age_hours,
