@@ -124,6 +124,60 @@ exit /b 0
 if not defined HOME set HOME=%USERPROFILE%
 cd /d "%PROJECT_DIR%"
 
+REM ------------------------------------------------------------------------------
+REM Issue #105 checkout-safety guard. This directory is the SAME checkout that
+REM interactive sessions and agents use for feature work -- it can be sitting on
+REM a feature branch with uncommitted edits when Task Scheduler fires this job.
+REM The 2026-11-10 front-office incident (issue #105) is what this prevents: a
+REM scheduled run landed on a feature branch left dirty by a subagent, the
+REM publish gate correctly refused, and a LATER agent "fixed" the dirty tree
+REM with `git checkout -- .`, silently discarding 8 regenerated JSON files and a
+REM cache file. See CLAUDE.md's "Shared-checkout safety (issue #105)" section.
+REM
+REM Rule enforced here: stash (never discard) whatever is sitting in the
+REM checkout, land on main, and verify we are actually there and clean before
+REM running a single pipeline stage. Any failure at any step aborts with a
+REM non-zero exit code and a clear [ERROR] log line -- nothing downstream runs,
+REM and nothing is ever cleared with a bare `checkout -- .`.
+REM ------------------------------------------------------------------------------
+git rev-parse --is-inside-work-tree >nul 2>&1
+if not "%ERRORLEVEL%"=="0" (
+    echo [ERROR] Checkout-safety guard: "%PROJECT_DIR%" is not a usable git work tree ^(git not found or not a repo^). Aborting - nothing was run. >> "%LOG_FILE%"
+    exit /b 1
+)
+
+echo [INFO] Checkout-safety guard: stashing any uncommitted work ^(tracked + untracked^) before touching branches... >> "%LOG_FILE%"
+git stash push -u -m "schedule_daily.bat auto-stash %DATE% %TIME%" >> "%LOG_FILE%" 2>&1
+echo [INFO] Checkout-safety guard: git stash push -u exit code %ERRORLEVEL% ^(0 = stashed or nothing to stash, both fine^). >> "%LOG_FILE%"
+
+git checkout main >> "%LOG_FILE%" 2>&1
+set CHECKOUT_RC=%ERRORLEVEL%
+if not "%CHECKOUT_RC%"=="0" (
+    echo [ERROR] Checkout-safety guard: "git checkout main" FAILED with exit code %CHECKOUT_RC%. Aborting - nothing was run, nothing was discarded; any stashed work is still in `git stash list`. >> "%LOG_FILE%"
+    exit /b 1
+)
+
+set CUR_BRANCH=
+for /f "usebackq delims=" %%B in (`git rev-parse --abbrev-ref HEAD`) do set CUR_BRANCH=%%B
+if not "%CUR_BRANCH%"=="main" (
+    echo [ERROR] Checkout-safety guard assertion FAILED: HEAD=%CUR_BRANCH% expected=main. Aborting - nothing was run. >> "%LOG_FILE%"
+    exit /b 1
+)
+
+git diff --quiet
+if not "%ERRORLEVEL%"=="0" (
+    echo [ERROR] Checkout-safety guard assertion FAILED: main has uncommitted tracked changes after checkout - refusing to run the pipeline against an unclean main. Aborting - nothing was run. >> "%LOG_FILE%"
+    exit /b 1
+)
+
+git diff --cached --quiet
+if not "%ERRORLEVEL%"=="0" (
+    echo [ERROR] Checkout-safety guard assertion FAILED: main has staged uncommitted changes after checkout. Aborting - nothing was run. >> "%LOG_FILE%"
+    exit /b 1
+)
+
+echo [OK] Checkout-safety guard: landed cleanly on main ^(HEAD=%CUR_BRANCH%^). Proceeding with the pipeline. >> "%LOG_FILE%"
+
 where Rscript >nul 2>&1
 if %ERRORLEVEL% equ 0 (
     set RSCRIPT=Rscript

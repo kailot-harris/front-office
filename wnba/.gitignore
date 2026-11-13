@@ -57,6 +57,12 @@ logs/*.log
 logs/logs_pending_*.tsv
 pipeline_execution.log
 
+# wnba_weekly_offseason_startup.log (issue #176): schedule_weekly_offseason.bat's
+# pre-cd/mkdir startup-logging guard writes here, at PROJECT_DIR root rather than
+# under logs/, specifically because it must not depend on the "logs" directory
+# existing yet. Same pure-diff-noise rationale as the entries above.
+wnba_weekly_offseason_startup.log
+
 # ------------------------------------------------------------------------------
 # Scratch scripts.
 # ------------------------------------------------------------------------------

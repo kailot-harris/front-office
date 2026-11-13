@@ -24,14 +24,101 @@ REM ============================================================================
 
 set PROJECT_DIR=%~dp0
 if "%PROJECT_DIR:~-1%"=="\" set PROJECT_DIR=%PROJECT_DIR:~0,-1%
+
+REM ------------------------------------------------------------------------------
+REM Issue #176 startup-logging guard: log that the task actually fired to a
+REM sink that is guaranteed to exist (PROJECT_DIR itself, which this script's
+REM own path proves is reachable) BEFORE cd, mkdir, or anything else below that
+REM could fail. Without this, a failure in "cd /d" or "mkdir logs" leaves the
+REM run completely unlogged, which is indistinguishable from the task never
+REM firing at all -- exactly what made #176 hard to triage.
+REM ------------------------------------------------------------------------------
+echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Task fired. PROJECT_DIR=%PROJECT_DIR% >> "%PROJECT_DIR%\wnba_weekly_offseason_startup.log"
+
 cd /d "%PROJECT_DIR%"
+if not "%ERRORLEVEL%"=="0" (
+    echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] "cd /d %PROJECT_DIR%" failed with exit code %ERRORLEVEL%. Aborting - nothing was run. >> "%PROJECT_DIR%\wnba_weekly_offseason_startup.log"
+    exit /b 1
+)
 
 if not exist "logs" mkdir "logs"
-set LOG_FILE=%PROJECT_DIR%\logs\wnba_pipeline.log
+if not exist "logs" (
+    echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] "logs" directory could not be created under %PROJECT_DIR%. Aborting - nothing was run. >> "%PROJECT_DIR%\wnba_weekly_offseason_startup.log"
+    exit /b 1
+)
+
+REM ------------------------------------------------------------------------------
+REM Issue #176 root cause: logging_utils.R hardcodes its OWN internal R-side
+REM log sink to logs\wnba_pipeline.log (see logging_utils.R:15,
+REM `LOG_FILE <- file.path(LOG_DIR, "wnba_pipeline.log")`), which every sourced
+REM pipeline script (including build_offseason_monitor.R) writes to directly
+REM via log_info()/log_error() -> .log_write() -> file(..., "a"). This script
+REM used to ALSO redirect Rscript's own stdout/stderr into that exact same path
+REM with `>>`. On Windows, cmd's append-redirect handle and R's independent
+REM file() open of the identical path collide: R's very first log_info() call
+REM inside build_offseason_monitor_dag() failed with "Permission denied" /
+REM "cannot open the connection", halting the whole script with exit code 1
+REM before it did any real work. Confirmed in logs/wnba_pipeline.log for both
+REM the 2026-11-06 and 2026-11-09 runs (identical stack trace:
+REM `Calls: build_offseason_monitor_dag -> log_info -> .log_write -> cat -> file`,
+REM `cannot open file '...\logs\wnba_pipeline.log': Permission denied`).
+REM Fix: give this script's own stdout/stderr capture a DISTINCT path so the
+REM two writers never target the same file -- the same pattern schedule_daily.bat
+REM already uses (its own redirect target, pipeline_execution.log, is already
+REM distinct from logging_utils.R's wnba_pipeline.log). Do not repoint this at
+REM logs\wnba_pipeline.log again without also changing logging_utils.R's LOG_FILE.
+REM ------------------------------------------------------------------------------
+set LOG_FILE=%PROJECT_DIR%\logs\wnba_weekly_offseason.log
 
 echo ================================================================== >> "%LOG_FILE%"
 echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Starting weekly offseason monitor pipeline run. >> "%LOG_FILE%"
 echo ================================================================== >> "%LOG_FILE%"
+
+REM ------------------------------------------------------------------------------
+REM Issue #105 checkout-safety guard (same logic/rationale as schedule_daily.bat --
+REM see that file's comment block and CLAUDE.md's "Shared-checkout safety (issue
+REM #105)" section). This directory is shared with interactive sessions and agents
+REM doing feature work, so it may be sitting on a dirty feature branch when this
+REM job fires. Stash (never discard) whatever is there, land on main, verify it,
+REM and abort loudly with no pipeline step run if any of that fails.
+REM ------------------------------------------------------------------------------
+git rev-parse --is-inside-work-tree >nul 2>&1
+if not "%ERRORLEVEL%"=="0" (
+    echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] Checkout-safety guard: "%PROJECT_DIR%" is not a usable git work tree ^(git not found or not a repo^). Aborting - nothing was run. >> "%LOG_FILE%"
+    exit /b 1
+)
+
+echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Checkout-safety guard: stashing any uncommitted work ^(tracked + untracked^) before touching branches... >> "%LOG_FILE%"
+git stash push -u -m "schedule_weekly_offseason.bat auto-stash %DATE% %TIME%" >> "%LOG_FILE%" 2>&1
+echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Checkout-safety guard: git stash push -u exit code %ERRORLEVEL% ^(0 = stashed or nothing to stash, both fine^). >> "%LOG_FILE%"
+
+git checkout main >> "%LOG_FILE%" 2>&1
+set CHECKOUT_RC=%ERRORLEVEL%
+if not "%CHECKOUT_RC%"=="0" (
+    echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] Checkout-safety guard: "git checkout main" FAILED with exit code %CHECKOUT_RC%. Aborting - nothing was run, nothing was discarded; any stashed work is still in `git stash list`. >> "%LOG_FILE%"
+    exit /b 1
+)
+
+set CUR_BRANCH=
+for /f "usebackq delims=" %%B in (`git rev-parse --abbrev-ref HEAD`) do set CUR_BRANCH=%%B
+if not "%CUR_BRANCH%"=="main" (
+    echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] Checkout-safety guard assertion FAILED: HEAD=%CUR_BRANCH% expected=main. Aborting - nothing was run. >> "%LOG_FILE%"
+    exit /b 1
+)
+
+git diff --quiet
+if not "%ERRORLEVEL%"=="0" (
+    echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] Checkout-safety guard assertion FAILED: main has uncommitted tracked changes after checkout. Aborting - nothing was run. >> "%LOG_FILE%"
+    exit /b 1
+)
+
+git diff --cached --quiet
+if not "%ERRORLEVEL%"=="0" (
+    echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] Checkout-safety guard assertion FAILED: main has staged uncommitted changes after checkout. Aborting - nothing was run. >> "%LOG_FILE%"
+    exit /b 1
+)
+
+echo [%DATE% %TIME%] [OK] [schedule_weekly_offseason.bat] Checkout-safety guard: landed cleanly on main ^(HEAD=%CUR_BRANCH%^). Proceeding. >> "%LOG_FILE%"
 
 REM Resolve Rscript executable
 set RSCRIPT=

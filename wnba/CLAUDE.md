@@ -10,6 +10,43 @@
   owner.
 - There is no Shiny app in this repo any more. `app.R` was retired earlier (issue #142).
 
+## Shared-checkout safety (issue #105)
+- **This primary checkout is shared.** `schedule_daily.bat` ("WNBA Analytics Schedule Daily")
+  and `schedule_weekly_offseason.bat` ("WNBA Analytics Schedule Weekly Offseason") run here via
+  Windows Task Scheduler, in the *same directory* that interactive sessions and agents use for
+  feature work. There is only one working tree at this path — it is not a dedicated,
+  always-on-main checkout.
+- **Feature work (including agent/subagent work) belongs in its own `git worktree`,
+  never directly in this primary checkout.** Create one under `.wnba-worktrees/<name>` (or
+  wherever the session's own worktree tooling puts it) and do branch work there. The primary
+  checkout at the repo root is reserved for the scheduled tasks and should be left on `main`
+  and clean (`git status --short` empty) when you are done with it — do not leave it parked on
+  a feature branch or with uncommitted changes "for later."
+- **Never clear a dirty primary checkout with `git checkout -- .` (or `git clean -fd`,
+  `git reset --hard`) without stashing first.** That is exactly how the issue #105 incident
+  destroyed real work: on 2026-11-10 a scheduled 04:15 pipeline run landed on a feature branch
+  a subagent had left checked out; the 08:00 publish gate correctly refused
+  (`assertion E FAILED ... HEAD=<feature-branch> expected=main`); but at 08:03 a *different*
+  agent "fixed" the dirty tree with a bare `git checkout -- .` before merging, silently
+  discarding 8 regenerated JSON files and a cache file. Published data stayed stale for ~30
+  hours until a manual re-run. If a checkout needs to be cleaned up, `git stash -u` (or commit
+  to a branch) first — always leave a recovery path.
+- **Never run two builds, pipeline runs, or test suites against this one checkout at the same
+  time.** The same 2026-11-10 incident window also saw a second session switch branches twice
+  mid-merge, and two test/build runs collide in a single `web/.next` directory (a false
+  "Production build" failure plus 7-8 Playwright timeouts). One working directory, one writer
+  at a time.
+- **Both scheduled entrypoints now enforce this mechanically.** `schedule_daily.bat` and
+  `schedule_weekly_offseason.bat` each run a checkout-safety guard right after `cd`-ing into
+  `%PROJECT_DIR%` and before any pipeline stage: `git stash push -u` (never a bare discard),
+  then `git checkout main`, then assert `git rev-parse --abbrev-ref HEAD` is actually `main` and
+  `git diff --quiet` / `git diff --cached --quiet` both report clean. Any failure in that
+  sequence aborts the whole run with a non-zero exit code and an `[ERROR]` log line *before*
+  touching any pipeline stage or the publish gate — it never silently runs from the wrong
+  branch and never discards whatever was sitting in the checkout (recoverable afterward via
+  `git stash list`). If you are extending or porting these scripts, keep this guard as the very
+  first thing that runs after `cd /d "%PROJECT_DIR%"`.
+
 ## Environment
 - R is **not on PATH** on this machine. Use the full path:
   `C:\Program Files\R\R-4.5.2\bin\Rscript.exe`.

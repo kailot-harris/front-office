@@ -450,7 +450,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
               {currentEdition.stateOfPlay}
             </p>
           </div>
-          <div className="text-xs text-slate-500 font-mono self-end sm:self-center">
+          <div className="text-xs text-slate-400 font-mono self-end sm:self-center">
             Published: {currentEdition.publishDate}
           </div>
         </div>
@@ -468,7 +468,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
           <div className="text-2xl font-extrabold text-white">
             {currentEdition.confirmedChanges.length}
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">Tier 1 baseline mutations</div>
+          <div className="text-[11px] text-slate-400 mt-1">Tier 1 baseline mutations</div>
         </div>
 
         <div className="bg-surface-raised border border-slate-800/80 rounded-xl p-4">
@@ -479,7 +479,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
           <div className="text-2xl font-extrabold text-white">
             {currentEdition.reportedClaims.length}
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">Active rumors (28-day TTL)</div>
+          <div className="text-[11px] text-slate-400 mt-1">Active rumors (28-day TTL)</div>
         </div>
 
         <div className="bg-surface-raised border border-slate-800/80 rounded-xl p-4">
@@ -490,7 +490,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
           <div className="text-2xl font-extrabold text-white">
             {currentEdition.expiredClaims.length}
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">Aged out &gt; 28 days unverified</div>
+          <div className="text-[11px] text-slate-400 mt-1">Aged out &gt; 28 days unverified</div>
         </div>
 
         <div className="bg-surface-raised border border-slate-800/80 rounded-xl p-4">
@@ -501,7 +501,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
           <div className="text-xs font-bold text-amber-300 truncate" title={initialDataset.currentStateSummary.cbaLaborStatus}>
             $1.000M Hard Cap
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">11-vs-12 player roster crunch</div>
+          <div className="text-[11px] text-slate-400 mt-1">11-vs-12 player roster crunch</div>
         </div>
       </div>
 
@@ -780,7 +780,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                     <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
                       Zero official contract signings, waivers, releases, or trades were filed with the league office during this interval. All 15 franchise rosters, coaching staffs, and player contracts remain identical to Baseline S0 (2026-11-07).
                     </p>
-                    <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px] font-mono text-slate-500">
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px] font-mono text-slate-400">
                       <span className="px-2 py-0.5 rounded bg-surface-raised border border-slate-800">0 Signings</span>
                       <span className="px-2 py-0.5 rounded bg-surface-raised border border-slate-800">0 Trades</span>
                       <span className="px-2 py-0.5 rounded bg-surface-raised border border-slate-800">0 Waivers</span>
@@ -888,7 +888,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                 <span className="w-2 h-2 rounded-full bg-amber-400" />
                 Trade Speculation: {currentEdition.reportedClaims.filter(c => c.sourceCategory === 'Trade Speculation').length}
               </span>
-              <span className="text-slate-500 text-[11px] ml-auto hidden md:inline">
+              <span className="text-slate-400 text-[11px] ml-auto hidden md:inline">
                 28-day TTL lifecycle • Unconfirmed claims automatically retire
               </span>
             </div>
@@ -921,7 +921,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                       </p>
                     </div>
 
-                    <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 pt-1 border-t border-slate-800/60">
+                    <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-1 border-t border-slate-800/60">
                       <span>Reported: {claim.firstReportedDate}</span>
                       <span>{daysRemaining}d left in TTL window</span>
                     </div>
@@ -980,7 +980,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
 
             {currentEdition.expiredClaims.length === 0 ? (
               <div className="p-4 rounded-xl bg-surface border border-slate-800/80 flex items-center gap-3">
-                <Archive className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                <Archive className="w-4 h-4 text-slate-400 flex-shrink-0" />
                 <p className="text-xs text-slate-400">
                   <strong className="text-slate-300">Graveyard Clear:</strong> Zero claims have aged past the 28-day TTL threshold. All active rumors remain within their valid reporting interval.
                 </p>
@@ -993,7 +993,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                       <span className="font-bold text-white mr-2">{formatEntityName(item.entityName)}</span>
                       <span className="text-slate-400">{formatClaimText(item.claim)}</span>
                     </div>
-                    <span className="text-slate-500 font-mono text-[11px]">Expired: {item.expiredDate}</span>
+                    <span className="text-slate-400 font-mono text-[11px]">Expired: {item.expiredDate}</span>
                   </div>
                 ))}
               </div>
@@ -1017,7 +1017,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
               </div>
 
               {currentEdition.upcomingMilestones.length === 0 ? (
-                <p className="text-xs text-slate-500 py-3">No scheduled calendar events in next 30 days.</p>
+                <p className="text-xs text-slate-400 py-3">No scheduled calendar events in next 30 days.</p>
               ) : (
                 <div className="space-y-2.5">
                   {currentEdition.upcomingMilestones.map((m, idx) => (
@@ -1097,7 +1097,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
               </div>
 
               {currentEdition.winterLeagueNotes.length === 0 ? (
-                <p className="text-xs text-slate-500 py-3">No active winter league notes this week.</p>
+                <p className="text-xs text-slate-400 py-3">No active winter league notes this week.</p>
               ) : (
                 <div className="space-y-2.5">
                   {currentEdition.winterLeagueNotes.map((note, idx) => (
@@ -1157,7 +1157,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                           <span className="font-semibold text-slate-200 group-hover:text-white transition-colors block">
                             {meta.title}
                           </span>
-                          <span className="font-mono text-[11px] text-slate-500 block">
+                          <span className="font-mono text-[11px] text-slate-400 block">
                             {meta.host}
                           </span>
                         </div>
@@ -1319,7 +1319,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                   Showing {displayedConfirmed.length} of {totalConfirmed} transactions
                 </span>
                 {totalConfirmed !== currentEdition.confirmedChanges.length && (
-                  <span className="text-slate-500">
+                  <span className="text-slate-400">
                     (filtered from {currentEdition.confirmedChanges.length} total)
                   </span>
                 )}
@@ -1329,7 +1329,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
               {confirmedGroupBy === 'none' && totalConfirmed > 0 && (
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-slate-500 text-[11px]">Rows:</span>
+                    <span className="text-slate-400 text-[11px]">Rows:</span>
                     <select
                       value={confirmedPageSize}
                       onChange={(e) => {
@@ -1389,7 +1389,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                   <tbody className="divide-y divide-slate-800/60">
                     {displayedConfirmed.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-8 text-center text-slate-500">
+                        <td colSpan={7} className="py-8 text-center text-slate-400">
                           No confirmed transactions match the current filter.
                         </td>
                       </tr>
@@ -1456,7 +1456,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
           {confirmedGroupBy !== 'none' && groupedConfirmed && (
             <div className="space-y-4">
               {Object.keys(groupedConfirmed).length === 0 ? (
-                <div className="bg-surface-raised border border-slate-800/80 rounded-xl p-8 text-center text-slate-500">
+                <div className="bg-surface-raised border border-slate-800/80 rounded-xl p-8 text-center text-slate-400">
                   No confirmed transactions match the current filter.
                 </div>
               ) : (
@@ -1483,7 +1483,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                               <span className="text-slate-400">{item.priorValue} → </span>
                               <span className="text-emerald-400 font-semibold">{item.newValue}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-[11px] font-mono text-slate-500 flex-shrink-0">
+                            <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400 flex-shrink-0">
                               <span>{item.date}</span>
                               {item.sourceUrl && (
                                 <a href={item.sourceUrl} target="_blank" rel="noreferrer" className="text-violet-400 hover:text-violet-300">
@@ -1549,7 +1549,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
             {totalReported > 0 && (
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-slate-500 text-[11px]">Rows:</span>
+                  <span className="text-slate-400 text-[11px]">Rows:</span>
                   <select
                     value={reportedPageSize}
                     onChange={(e) => {
@@ -1593,7 +1593,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
             <div className="bg-surface-raised border border-slate-800/80 rounded-xl p-8 text-center text-slate-400">
               <Radio className="w-8 h-8 text-violet-400 mx-auto mb-2 opacity-60" />
               <p className="text-sm font-semibold text-slate-300">No active rumors currently pending.</p>
-              <p className="text-xs text-slate-500 mt-1">Pending items are aged out after a 28-day TTL if unconfirmed.</p>
+              <p className="text-xs text-slate-400 mt-1">Pending items are aged out after a 28-day TTL if unconfirmed.</p>
             </div>
           ) : (
             /* Iteration site 3: filteredReported.map bounded via displayedReported slice */
@@ -1679,9 +1679,9 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
 
           {Object.keys(groupedExpired).length === 0 ? (
             <div className="bg-surface-raised border border-slate-800/80 rounded-xl p-8 text-center text-slate-400">
-              <Archive className="w-8 h-8 text-slate-500 mx-auto mb-2" />
+              <Archive className="w-8 h-8 text-slate-400 mx-auto mb-2" />
               <p className="text-sm font-semibold text-slate-300">Graveyard is clean.</p>
-              <p className="text-xs text-slate-500 mt-1">No claims have aged out past the 28-day window yet.</p>
+              <p className="text-xs text-slate-400 mt-1">No claims have aged out past the 28-day window yet.</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -1705,7 +1705,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                             <span className="font-bold text-white mr-2">{formatEntityName(item.entityName)}:</span>
                             <span className="text-slate-300">&ldquo;{formatClaimText(item.claim)}&rdquo;</span>
                           </div>
-                          <div className="flex items-center gap-2 text-[11px] font-mono text-slate-500 flex-shrink-0">
+                          <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400 flex-shrink-0">
                             <span>Reported: {item.firstReportedDate}</span>
                             <span>→</span>
                             <span className="text-rose-400">Expired: {item.expiredDate}</span>
@@ -1759,17 +1759,17 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
             <div className="bg-surface p-4 rounded-xl border border-slate-800 space-y-1">
               <span className="text-xs text-slate-400">2027 Salary Cap Ceiling</span>
               <div className="text-xl font-bold text-white">$1,520,000</div>
-              <div className="text-[11px] text-slate-500">Rigid hard cap ceiling (no luxury tax exceptions)</div>
+              <div className="text-[11px] text-slate-400">Rigid hard cap ceiling (no luxury tax exceptions)</div>
             </div>
             <div className="bg-surface p-4 rounded-xl border border-slate-800 space-y-1">
               <span className="text-xs text-slate-400">Supermax Veteran Level</span>
               <div className="text-xl font-bold text-amber-300">~$242,000</div>
-              <div className="text-[11px] text-slate-500">Max allowable salary for cored / veteran franchise players</div>
+              <div className="text-[11px] text-slate-400">Max allowable salary for cored / veteran franchise players</div>
             </div>
             <div className="bg-surface p-4 rounded-xl border border-slate-800 space-y-1">
               <span className="text-xs text-slate-400">Rookie Minimum Scale</span>
               <div className="text-xl font-bold text-emerald-400">~$68,000</div>
-              <div className="text-[11px] text-slate-500">Mandated minimum cap charge for rookie picks 1-12</div>
+              <div className="text-[11px] text-slate-400">Mandated minimum cap charge for rookie picks 1-12</div>
             </div>
           </div>
         </div>

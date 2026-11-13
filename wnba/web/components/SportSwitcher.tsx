@@ -19,7 +19,7 @@ export const SportSwitcher: React.FC<{ current: (typeof SPORTS)[number]['slug'] 
     aria-label="Switch sport"
     className="relative md:sticky md:top-0 z-20 bg-surface-raised/95 backdrop-blur-md border-b border-slate-800 px-4 py-2 flex items-center justify-end gap-2"
   >
-    <span className="hidden sm:inline text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 font-mono mr-1">
+    <span className="hidden sm:inline text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono mr-1">
       Sports
     </span>
     {SPORTS.map(({ slug, label }) => {

@@ -78,7 +78,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ data }) => {
                   {nonePlayed ? (
                     <span className="text-sky-400">Upcoming</span>
                   ) : allPlayed ? (
-                    <span className={isCurrent ? 'text-amber-300' : 'text-slate-500'}>
+                    <span className={isCurrent ? 'text-amber-300' : 'text-slate-400'}>
                       Final
                     </span>
                   ) : (
@@ -215,7 +215,7 @@ const WeekAccuracy: React.FC<{ week: MatchupWeek }> = ({ week }) => {
   // rendering 0%, which would read as "the model got every game wrong".
   if (week.graded_games === 0 || week.accuracy_pct === null) {
     return (
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-slate-400">
         {week.completed_games} of {week.total_games} played · no graded
         predictions this week
       </p>
@@ -238,7 +238,7 @@ const Stat: React.FC<{ label: string; value: React.ReactNode; sub?: string }> = 
   sub,
 }) => (
   <div className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3">
-    <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
+    <p className="text-xs uppercase tracking-wide text-slate-400">{label}</p>
     <p className="text-lg font-bold text-white mt-0.5">{value}</p>
     {sub && <p className="text-xs text-slate-400 mt-0.5">{sub}</p>}
   </div>
@@ -288,7 +288,7 @@ const MatchupTable: React.FC<{ games: Matchup[] }> = ({ games }) => (
               <div className="flex items-center gap-1.5 whitespace-nowrap">
                 <TeamLogo team={g.away_team} size="xs" />
                 <span className="text-slate-300">{g.away_team}</span>
-                <span className="text-slate-500">@</span>
+                <span className="text-slate-400">@</span>
                 <TeamLogo team={g.home_team} size="xs" />
                 <span className="text-slate-300">{g.home_team}</span>
               </div>
@@ -299,7 +299,7 @@ const MatchupTable: React.FC<{ games: Matchup[] }> = ({ games }) => (
                   {g.away_score} – {g.home_score}
                 </span>
               ) : (
-                <span className="text-slate-500">—</span>
+                <span className="text-slate-400">—</span>
               )}
             </td>
             <td className="px-3 py-2 whitespace-nowrap">
@@ -307,7 +307,7 @@ const MatchupTable: React.FC<{ games: Matchup[] }> = ({ games }) => (
                 <span className="text-slate-300">
                   {g.predicted_winner}
                   {g.projected_margin !== null && (
-                    <span className="text-slate-500 font-mono ml-1">
+                    <span className="text-slate-400 font-mono ml-1">
                       by {Math.abs(g.projected_margin).toFixed(1)}
                     </span>
                   )}
@@ -323,7 +323,7 @@ const MatchupTable: React.FC<{ games: Matchup[] }> = ({ games }) => (
                   )}
                 </span>
               ) : (
-                <span className="text-slate-500">—</span>
+                <span className="text-slate-400">—</span>
               )}
             </td>
             <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-400">

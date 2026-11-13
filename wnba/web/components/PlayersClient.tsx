@@ -346,7 +346,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                     key={player.player_id}
                     className={`hover:bg-slate-800/40 transition-colors text-slate-200 group ${rowBg}`}
                   >
-                    <td className="py-3 px-4 text-center text-xs font-mono text-slate-500 hidden sm:table-cell">
+                    <td className="py-3 px-4 text-center text-xs font-mono text-slate-400 hidden sm:table-cell">
                       {idx + 1}
                     </td>
                     <td
@@ -399,7 +399,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                             : player.pra_zscore > 1.0
                             ? 'text-amber-400'
                             : player.pra_zscore < -1.0
-                            ? 'text-slate-500'
+                            ? 'text-slate-400'
                             : 'text-slate-300'
                         }`}
                       >
@@ -413,7 +413,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                           <span>|z| &gt; 2.0</span>
                         </span>
                       ) : (
-                        <span className="text-xs text-slate-500">Normal</span>
+                        <span className="text-xs text-slate-400">Normal</span>
                       )}
                     </td>
                     <td className="py-3 px-4 text-center text-xs text-slate-400 font-mono hidden sm:table-cell">

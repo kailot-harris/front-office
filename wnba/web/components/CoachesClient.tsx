@@ -156,7 +156,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           {/* Controls Bar */}
           <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between bg-surface-raised/60 p-4 rounded-xl border border-slate-800">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 placeholder="Search head coach or franchise..."
@@ -229,7 +229,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                           </div>
                         </div>
                         <ChevronRight
-                          className={`w-4 h-4 text-slate-500 transition-transform ${
+                          className={`w-4 h-4 text-slate-400 transition-transform ${
                             isSelected ? 'text-accent-400 translate-x-0.5' : ''
                           }`}
                         />
@@ -278,14 +278,14 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                   </span>
                   <div className="grid grid-cols-2 gap-2 text-slate-300">
                     <div>
-                      <span className="text-slate-500 block text-[11px] sm:text-[10px]">ATO Off / Def Poss</span>
+                      <span className="text-slate-400 block text-[11px] sm:text-[10px]">ATO Off / Def Poss</span>
                       <span className="font-semibold font-mono">
                         {selectedCoach.metrics.atoOffPossessions} /{' '}
                         {selectedCoach.metrics.atoDefPossessions}
                       </span>
                     </div>
                     <div>
-                      <span className="text-slate-500 block text-[11px] sm:text-[10px]">Challenge Overturn</span>
+                      <span className="text-slate-400 block text-[11px] sm:text-[10px]">Challenge Overturn</span>
                       <span className="font-semibold font-mono">
                         {(selectedCoach.metrics.challengeSuccessRate * 100).toFixed(1)}% (n=
                         {selectedCoach.metrics.challengeAttempts})

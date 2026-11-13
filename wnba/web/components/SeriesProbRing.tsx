@@ -124,7 +124,7 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
           </div>
         </div>
 
-        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
           VS
         </div>
 

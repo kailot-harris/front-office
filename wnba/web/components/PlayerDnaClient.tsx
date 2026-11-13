@@ -100,7 +100,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center gap-1">
               <Dna className="w-3.5 h-3.5" /> High-Dimensional Player DNA
             </span>
-            <span className="text-xs text-slate-500 font-mono">12-D Manifold Embedding</span>
+            <span className="text-xs text-slate-400 font-mono">12-D Manifold Embedding</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
             Player DNA & Skill Fingerprints
@@ -136,7 +136,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
             </div>
 
             {isLoadingFull && (
-              <div className="flex items-center gap-1.5 text-[11px] sm:text-[10px] text-slate-500 font-mono">
+              <div className="flex items-center gap-1.5 text-[11px] sm:text-[10px] text-slate-400 font-mono">
                 <Loader2 className="w-3 h-3 animate-spin" />
                 <span>
                   Loading full roster ({initialProfiles.length} of {totalProfileCount} shown)...
@@ -199,7 +199,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
                       </div>
                     </div>
                     <ChevronRight
-                      className={`w-4 h-4 text-slate-500 transition-transform ${
+                      className={`w-4 h-4 text-slate-400 transition-transform ${
                         isSelected ? 'text-accent-400 translate-x-0.5' : ''
                       }`}
                     />
@@ -309,7 +309,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
                     <span>Nearest Active WNBA Stylistic Peers</span>
                     <GlossaryTerm termKey="cosineSimilarity" className="text-[11px] font-mono normal-case" />
                   </h4>
-                  <span className="text-[11px] text-slate-500 font-mono">2026 Active Roster Pool</span>
+                  <span className="text-[11px] text-slate-400 font-mono">2026 Active Roster Pool</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   {selectedPlayer.similarPlayers.map((peer) => {
