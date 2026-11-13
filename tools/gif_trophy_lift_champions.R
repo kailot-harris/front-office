@@ -5,14 +5,14 @@
 # Generates an animated celebration finale for the 2026 World Series Champions:
 #   - Stage 1: Darkness & Golden Beam Spotlight Reveal (Frames 1-6)
 #   - Stage 2: Commissioner's Trophy Crest & Silver Pennant Rise (Frames 7-14)
-#   - Stage 3: World Champions Milwaukee Brewers Crest & Dynamic Gold Confetti Burst (Frames 15-22)
+#   - Stage 3: World Champions crest & Dynamic Gold Confetti Burst (Frames 15-22)
 #   - Stage 4: Grand Golden Coronet & World Series Champions Finale Hold (Frames 23-32)
 #
 # Visual Elements:
 #   - Glowing Commissioner's Trophy crest silhouette with 30 silver pennant pins
-#   - Milwaukee Brewers franchise logo scaling up into golden laurel wreath
+#   - Champion franchise logo scaling up into golden laurel wreath
 #   - Shimmering golden & navy celebratory confetti burst particles
-#   - Fall Classic Postseason Record typography (103-59 regular season, World Series won 4-1)
+#   - Fall Classic Postseason Record typography (regular-season record and World Series score, both read from results)
 #   - Publication-grade minimal dark aesthetic via theme_mlb_dark()
 #   - Dual artifact export: animated GIF and static final-frame PNG
 #
@@ -33,13 +33,11 @@ suppressPackageStartupMessages({
 
 source("config.R")
 source("tools/viz_theme.R")
+source("tools/postseason_feed.R")
 
 #' Generate World Series Trophy Lift & Champions Celebration GIF
 #'
 #' @param season Integer MLB season year (default 2026)
-#' @param champion_abbr Franchise abbreviation of champions (default "MIL")
-#' @param postseason_file Path to postseason_sim_results_2026.rds
-#' @param schedule_file Path to mlb_schedule_2026.rds
 #' @param output_gif Output filename for animated GIF
 #' @param output_png Output filename for static final frame PNG
 #' @param n_frames Number of animation progression frames (default 22)
@@ -48,9 +46,6 @@ source("tools/viz_theme.R")
 #' @param cleanup_frames Logical; remove temporary frame PNGs (default TRUE)
 #' @return Invisible list of output paths
 generate_gif_trophy_lift_champions <- function(season = 2026,
-                                               champion_abbr = "MIL",
-                                               postseason_file = cache_path("postseason", sprintf("postseason_sim_results_%d.rds", season)),
-                                               schedule_file = cache_path("ingest", sprintf("mlb_schedule_%d.rds", season)),
                                                output_gif = "gif_trophy_lift_champions.gif",
                                                output_png = "gif_trophy_lift_champions.png",
                                                n_frames = 22,
@@ -59,19 +54,22 @@ generate_gif_trophy_lift_champions <- function(season = 2026,
                                                cleanup_frames = TRUE) {
   start_time <- Sys.time()
   ensure_viz_dir()
-  message(sprintf(">>> [GIF] Generating %d World Series Trophy Lift Champions Finale (%s)...", season, champion_abbr))
+  message(sprintf(">>> [GIF] Generating %d World Series Trophy Lift Champions Finale...", season))
 
-  # Locate postseason file with worktree fallback
-  if (!file.exists(postseason_file)) {
-    alt_post <- file.path(MLB_ROOT_DIR, "..", "MLB Analytics", "cache", "postseason", sprintf("postseason_sim_results_%d.rds", season))
-    if (file.exists(alt_post)) postseason_file <- alt_post
+  # Champion, opponent, series score and record all come from real results.
+  games  <- ps_games(season)
+  series <- ps_series(games)
+  ws <- series[series$round == 4, , drop = FALSE]
+  if (nrow(ws) != 1) {
+    stop("[SKIP-NO-DATA] no decided World Series on record; nothing rendered.", call. = FALSE)
   }
-
-  champion_name <- "Milwaukee Brewers"
-  runner_up_name <- "Tampa Bay Rays"
-  # Real 2026 regular-season record, from cache/ingest/mlb_schedule_2026.rds.
-  reg_wins <- 103
-  reg_losses <- 59
+  champion_abbr <- ws$winner
+  team_names <- ps_team_names(games)
+  champion_name <- team_names[[ws$winner]]
+  runner_up_name <- team_names[[ws$loser]]
+  rec <- ps_records(season)
+  reg_wins <- rec$wins[rec$team == champion_abbr]
+  reg_losses <- rec$losses[rec$team == champion_abbr]
 
   # Seed random confetti particles for consistent celebration trajectory
   set.seed(20261030)
@@ -196,16 +194,16 @@ generate_gif_trophy_lift_champions <- function(season = 2026,
     p <- p +
       # Header Crown Banner
       annotate("label", x = 5.0, y = 9.2,
-               label = sprintf("★ 2026 WORLD SERIES CHAMPIONS ★"),
+               label = sprintf("★ %d WORLD SERIES CHAMPIONS ★", season),
                fill = "#161B22", color = "#FACC15", fontface = "bold", size = 5.2,
                label.padding = unit(0.5, "lines"), label.r = unit(0.2, "lines"),
                alpha = 0.95) +
       annotate("text", x = 5.0, y = 8.4,
-               label = sprintf("%s defeat %s, 4 games to 1", toupper(champion_name), toupper(runner_up_name)),
+               label = sprintf("%s defeat %s, %d games to %d", toupper(champion_name), toupper(runner_up_name), ws$winner_wins, ws$loser_wins),
                color = "#E6EDF3", fontface = "bold", size = 3.8) +
       # Champion Season Metrics Ribbon
       annotate("label", x = 5.0, y = 1.3,
-               label = sprintf("REGULAR SEASON: %d-%d (%s)  ·  WORLD SERIES: WON 4-1", reg_wins, reg_losses, sub("^0", "", sprintf("%.3f", reg_wins / (reg_wins + reg_losses)))),
+               label = sprintf("REGULAR SEASON: %d-%d (%s)  ·  WORLD SERIES: WON %d-%d", reg_wins, reg_losses, sub("^0", "", sprintf("%.3f", reg_wins / (reg_wins + reg_losses))), ws$winner_wins, ws$loser_wins),
                fill = "#161B22", color = "#7EE787", fontface = "bold", size = 3.4,
                label.padding = unit(0.4, "lines"), alpha = 0.9) +
       annotate("text", x = 5.0, y = 0.7,

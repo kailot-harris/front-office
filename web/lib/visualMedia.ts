@@ -77,7 +77,7 @@ export const MLB_VISUAL_MEDIA_ITEMS: VisualMediaItem[] = [
     phase: 2,
     category: 'postseason',
     categoryLabel: 'October Postseason',
-    description: 'Complete October tournament tree (Wild Card -> LDS -> LCS -> World Series) animating victorious pathways and franchise logos.',
+    description: 'The real 2026 postseason bracket, round by round. Under each team: its regular-season record, or the score of the series it won to get there.',
     type: 'gif',
   },
   {
@@ -99,7 +99,7 @@ export const MLB_VISUAL_MEDIA_ITEMS: VisualMediaItem[] = [
     phase: 2,
     category: 'postseason',
     categoryLabel: 'October Postseason',
-    description: 'ALCS and NLCS pennant championship duel transitioning into the official 2026 World Series matchup emblem.',
+    description: 'Both League Championship Series game by game with real scores, ending on the two pennant winners, their records and the World Series result.',
     type: 'gif',
   },
   {
