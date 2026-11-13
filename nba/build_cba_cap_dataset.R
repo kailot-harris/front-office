@@ -1,14 +1,31 @@
 # ==============================================================================
 # build_cba_cap_dataset.R
 # 2026-2027 NBA Season Salary Cap, Apron & Luxury Tax Architect Dataset
-# Calibrated with Official 2026-27 League Cap Figures and Spotrac Contracts:
+#
+# League-wide thresholds are the NBA's own officially announced figures for
+# 2026-27 (pr.nba.com, July 2026):
 # - Salary Cap: $165.0M ($164,961,000)
 # - Minimum Team Salary: $148.5M ($148,465,000)
 # - Luxury Tax Line: $200.4M ($200,428,000)
 # - First Apron: $209.0M ($209,015,000)
 # - Second Apron: $221.7M ($221,686,000)
-# - Multi-Year Projections: 2027-28 ($181.5M Cap), 2028-29 ($199.6M Cap) (10% TV-deal cap smoothing)
-# Sources: Spotrac, Basketball-Reference, Hoops Rumors, RealGM, NBA CBA Registry.
+#
+# `team_payrolls` below (#126) holds each team's "Total Cap Allocations" for
+# 2026-27/2027-28/2028-29, read from Spotrac's live NBA Team Salary Cap
+# Tracker (spotrac.com/nba/cap/_/year/{2026,2027,2028}) on 2026-11-12. The
+# 2027-28 and 2028-29 columns are Spotrac's own forward-looking cap
+# projections (the NBA has not yet set those seasons' thresholds), not
+# official figures -- but the dollar totals themselves reflect each team's
+# actual contracts on the books at fetch time, not invented numbers.
+#
+# `verified_contracts` below remains an illustrative, team-by-team allocation
+# of each roster's payroll across its best-known players -- useful for
+# shape/structure (who carries a supermax, who's on a rookie scale, etc.) but
+# the individual salary figures have not been re-verified against Spotrac's
+# per-player contract pages for this update and should not be read as exact.
+# Treat `verified_contracts` as illustrative; `team_payrolls` team totals are
+# the sourced figures backing the cap/apron/tax math and any payroll-based
+# charts.
 # ==============================================================================
 
 suppressPackageStartupMessages({
@@ -112,53 +129,60 @@ compute_luxury_tax <- function(payroll, is_repeater = FALSE) {
 }
 
 # ------------------------------------------------------------------------------
-# 30 NBA Franchises 2026-2027 Payroll & Future Commitments ($M)
-# Benchmarked against Spotrac 2026-27 tracking rankings
+# 30 NBA Franchises: Total Cap Allocations ($M), 2026-27 / 2027-28 / 2028-29
+# Source: Spotrac NBA Team Salary Cap Tracker, fetched 2026-11-12
+# (spotrac.com/nba/cap/_/year/2026, /year/2027, /year/2028 -- "TOTAL CAP
+# ALLOCATIONS" column for each season). These are each team's actual
+# contracted cap totals at fetch time, live and subject to change as trades,
+# signings, and waivers happen over the season.
 # ------------------------------------------------------------------------------
 repeater_teams <- c("GSW", "BOS", "PHX", "DEN", "MIL", "LAC")
 
 team_payrolls <- tribble(
   ~team_abbr, ~team_name, ~conf, ~payroll_2026, ~payroll_2027, ~payroll_2028,
-  # Second Apron (> $221.7M)
-  "GSW", "Warriors", "West", 224.2, 212.5, 198.0,
-  "ORL", "Magic", "East", 223.1, 230.5, 238.0,
-  "NYK", "Knicks", "East", 222.8, 218.4, 210.5,
-  # First Apron Tier ($209.0M - $221.7M)
-  "DEN", "Nuggets", "West", 218.5, 209.4, 198.0,
-  "PHX", "Suns", "West", 216.2, 204.0, 185.0,
-  "OKC", "Thunder", "West", 216.1, 228.0, 242.0,
-  "MIN", "Timberwolves", "West", 215.4, 208.5, 195.0,
-  "PHI", "76ers", "East", 210.5, 202.0, 188.0,
-  "CLE", "Cavaliers", "East", 209.8, 201.5, 190.0,
-  # Luxury Taxpayer Tier ($200.4M - $209.0M)
-  "MIA", "Heat", "East", 207.8, 198.0, 185.0,
-  "IND", "Pacers", "East", 206.5, 198.2, 186.0,
-  "MIL", "Bucks", "East", 205.2, 195.0, 180.0,
-  "HOU", "Rockets", "West", 204.8, 215.0, 228.0,
-  "TOR", "Raptors", "East", 201.8, 192.5, 180.0,
-  "LAL", "Lakers", "West", 201.2, 188.0, 172.0,
-  # Over Cap / Non-Taxpayer ($165.0M - $200.4M)
-  "BOS", "Celtics", "East", 199.5, 192.0, 182.0,
-  "LAC", "Clippers", "West", 196.5, 182.0, 168.0,
-  "MEM", "Grizzlies", "West", 192.0, 198.5, 205.0,
-  "DAL", "Mavericks", "West", 188.5, 194.0, 202.0,
-  "SAC", "Kings", "West", 184.2, 175.0, 162.0,
-  "NOP", "Pelicans", "West", 181.0, 172.5, 158.0,
-  "ATL", "Hawks", "East", 176.5, 165.0, 150.0,
-  "CHI", "Bulls", "East", 172.0, 158.0, 145.0,
-  "CHA", "Hornets", "East", 168.5, 175.0, 182.0,
-  "POR", "Trail Blazers", "West", 166.0, 162.0, 155.0,
-  # Cap Room / Under Cap (< $165.0M)
-  "SAS", "Spurs", "West", 162.0, 178.0, 195.0,
-  "DET", "Pistons", "East", 158.5, 168.0, 182.0,
-  "UTA", "Jazz", "West", 155.0, 148.0, 138.0,
-  "WAS", "Wizards", "East", 152.0, 145.0, 135.0,
-  "BKN", "Nets", "East", 149.5, 142.0, 130.0
+  # Second Apron (> $221.7M, 2026-27)
+  "GSW", "Warriors", "West", 254.3, 287.4, 214.3,
+  "MIN", "Timberwolves", "West", 252.6, 281.6, 293.7,
+  "WAS", "Wizards", "East", 243.3, 268.8, 302.6,
+  "PHX", "Suns", "West", 239.9, 257.9, 273.1,
+  "DEN", "Nuggets", "West", 235.0, 277.9, 249.8,
+  "SAS", "Spurs", "West", 231.2, 247.7, 252.3,
+  "ATL", "Hawks", "East", 230.1, 227.7, 162.2,
+  "CLE", "Cavaliers", "East", 226.1, 253.6, 270.9,
+  "NYK", "Knicks", "East", 223.3, 251.9, 268.4,
+  "ORL", "Magic", "East", 222.5, 258.4, 228.2,
+  # First Apron Tier ($209.0M - $221.7M, 2026-27)
+  "OKC", "Thunder", "West", 219.8, 276.2, 308.0,
+  "PHI", "76ers", "East", 218.9, 229.9, 239.2,
+  "MIA", "Heat", "East", 218.4, 242.2, 234.9,
+  "TOR", "Raptors", "East", 214.2, 255.0, 227.6,
+  "SAC", "Kings", "West", 213.1, 236.0, 192.0,
+  "HOU", "Rockets", "West", 212.4, 249.8, 289.2,
+  "NOP", "Pelicans", "West", 212.2, 261.7, 248.2,
+  # Luxury Taxpayer Tier ($200.4M - $209.0M, 2026-27)
+  "IND", "Pacers", "East", 208.5, 258.4, 282.7,
+  "BOS", "Celtics", "East", 208.0, 232.3, 272.8,
+  "DAL", "Mavericks", "West", 205.6, 241.7, 293.7,
+  "DET", "Pistons", "East", 204.1, 231.6, 249.2,
+  "POR", "Trail Blazers", "West", 203.5, 244.9, 276.8,
+  "LAL", "Lakers", "West", 200.9, 209.6, 228.4,
+  # Over Cap / Non-Taxpayer ($165.0M - $200.4M, 2026-27)
+  "LAC", "Clippers", "West", 200.3, 185.0, 142.1,
+  "MIL", "Bucks", "East", 192.4, 234.9, 141.3,
+  "UTA", "Jazz", "West", 190.9, 229.2, 224.9,
+  "CHA", "Hornets", "East", 173.2, 203.4, 182.4,
+  "CHI", "Bulls", "East", 165.8, 188.0, 213.3,
+  # Cap Room / Under Cap (< $165.0M, 2026-27)
+  "MEM", "Grizzlies", "West", 161.1, 158.1, 177.3,
+  "BKN", "Nets", "East", 160.1, 181.0, 187.0
 )
 
 # ------------------------------------------------------------------------------
-# Verified Spotrac 2026-27 Active Contracts for Marquee Franchises
-# Sources: Spotrac, Basketball-Reference, HoopsRumors Contract Sheets
+# Illustrative per-player contract breakdowns for marquee franchises.
+# Unlike `team_payrolls` above, these individual salary figures have not been
+# re-verified against Spotrac's per-player contract pages for this update --
+# treat them as an illustrative allocation of each team's payroll across its
+# known roster shape, not as exact sourced dollar amounts.
 # ------------------------------------------------------------------------------
 verified_contracts <- list(
   NYK = list(
@@ -499,7 +523,12 @@ cap_sheet_export <- list(
   # and therefore assertion G, which is fatal -- would reject the payload.
   generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
   season = "2026-2027",
-  cbaThresholdSources = "Spotrac, Basketball-Reference, Hoops Rumors, RealGM, NBA CBA Official Audit",
+  cbaThresholdSources = paste(
+    "Cap/tax/apron thresholds: NBA official release (pr.nba.com), July 2026.",
+    "Team payroll totals: Spotrac NBA Team Salary Cap Tracker, fetched 2026-11-12.",
+    "Per-player contract breakdowns shown on this page are illustrative allocations,",
+    "not individually re-verified against Spotrac."
+  ),
   salaryCap = SALARY_CAP,
   luxuryTaxThreshold = LUXURY_TAX,
   firstApron = FIRST_APRON,

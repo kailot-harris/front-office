@@ -1,113 +1,102 @@
-# HANDOFF: NBA Analytics Animated & Static Visualization Suite
+# HANDOFF: NBA Analytics Visualization Suite & Cap-Data Sourcing
 
-**Written:** October 29, 2026 (12:40 PM EDT)  
-**Latest Commits:** 
-- `c07cb03` (`NBA_analytics`): `fix(viz): calibrate rookie impact race to 2026-2027 draft class (#59)`
-- `a9642aa` (`front-office` / aggregator): `chore: subtree-pull nba (update 2026-27 rookie race)`
-**Audience:** Next engineer or autonomous subagent resuming work on the NBA Analytics visualization platform.
+**Written:** November 12, 2026
+**Latest commit on `main`:** `1f94a8a` (`Merge branch 'fix/clutch-chart-title-staleness'`)
+**Uncommitted at time of writing:** `build_cba_cap_dataset.R`, `web/public/data/cba_cap_sheet.json` — see §2 "Not yet committed" before touching either.
+**Audience:** Next engineer or autonomous subagent resuming work on the NBA Analytics visualization/data platform. Zero prior-session context assumed.
 
 ---
 
 ## 1. Project Overview & Boundaries
 
-The **NBA Analytics** project (`C:\Users\kailo\kayceeslices\front-office\NBA Analytics`) is an automated quantitative analytics engine and Next.js static front-office web application (`/nba` route on the aggregator site `https://kailot-harris.github.io/front-office/nba/`).
+The **NBA Analytics** project (`C:\Users\kailo\kayceeslices\front-office\NBA Analytics`) is an automated quantitative analytics engine and Next.js static front-office web app (`/nba` route on `https://kailot-harris.github.io/front-office/nba/`). GitHub repo: `kailot-harris/NBA_analytics`.
 
-### Authoritative Architecture & References
-1. **Pipeline Execution:** `run_full_pipeline.R` (daily scheduled execution of Elo, Four Factors, RAPM, shot charts, predictions, and web sync).
-2. **Aggregator Root:** `C:\Users\kailo\kayceeslices\front-office\front-office-aggregator` embeds `NBA Analytics` as a git subtree under `nba/`.
-3. **Hard Policy Boundary:** **Zero-Betting Policy**. All public assets, documentation, UI badges, and test fixtures must strictly exclude betting terminology (lines, spreads, over/under, moneylines, value bets). Projections are strictly presented as win probabilities, score forecasts, and power ratings.
+### Authoritative architecture & references
+1. **Pipeline execution:** `run_full_pipeline.R` (scheduled via `schedule_daily.bat`) — Elo, Four Factors, RAPM, shot charts, predictions, cap sheet, web sync.
+2. **Aggregator root:** `C:\Users\kailo\kayceeslices\front-office\front-office-aggregator` embeds this repo as a git subtree under `nba/`. Any commit here must be subtree-pulled into the aggregator before it's live (see §4).
+3. **Hard policy boundary — Zero-Betting Policy.** All public assets, docs, UI, and tests must exclude betting terminology (lines, spreads, over/under, moneylines, value bets). Projections are presented as win probabilities / score forecasts / power ratings only.
+4. **Synthetic-data policy (active, repo-wide audit in progress — see §2's `synthetic-data`-labeled issues):** a fabricated-but-plausible value asserted as fact about a real person/team is treated as a defect, not a stylistic nit. The repo's own decision rule (settled on `kailot-harris/NFL_analytics#48`, not to be re-opened here): if a real source exists, derive from it and delete the fabricated draw; if no real source exists, **remove the field** rather than seed-and-label it synthetic. This is the lens this session's work (§2, §3) was conducted under.
 
 ---
 
-## 2. Issue Tracking & Status Matrix
+## 2. Issue Tracking & Status
 
-| Issue # | Status | Description / Asset | Commit / Evidence |
+**Do not trust the previous version of this table** — it only covered issues #34-#59 (the original viz-suite build-out) and none of the synthetic-data-audit or cap-data work below. Cross-checked against live tracker state (`gh issue list --repo kailot-harris/NBA_analytics --state all`) as of this writing.
+
+### This session's work
+
+| Issue # | Status | Description | Evidence |
 |---|---|---|---|
-| **#34** | CLOSED | Phase 1: Core theme (`theme_nba_dark()`), palette, team logo helpers | `66c8d7f` |
-| **#35** | CLOSED | Phase 1: Dual-output renderer (`render_animated_artifact()`) GIF + PNG | `66c8d7f` |
-| **#36** | CLOSED | Phase 2: Elo rank bump chart animation (`gif_elo_rank_bump.R`) | `4d49ad5` |
-| **#37** | CLOSED | Phase 2: Net rating ORtg vs. DRtg quadrant scatter (`gif_net_rating_quadrant.R`) | `4d49ad5` |
-| **#38** | CLOSED | Phase 2: Cumulative point differential line race (`gif_point_diff_race.R`) | `4d49ad5` |
-| **#39** | CLOSED | Phase 3: Player shot chart evolution GIF (`gif_player_shot_chart.R`) | `b3be70a` |
-| **#40** | CLOSED | Phase 3: High-res shot chart exporter (`plot_shot_chart.R`) | `b3be70a` |
-| **#41** | DUP / OBS | Phase 3: Player RAPM & impact trajectory bar race | Re-filed and resolved under **#57** |
-| **#42** | CLOSED | Phase 4: Playoff series net rating trajectory GIF | `035d149` (7-game trajectory removed week 2 per request) |
-| **#43** | CLOSED | Phase 4: Playoff & play-in leverage probability bump (`gif_playoff_prob_bump.R`) | `035d149` |
-| **#44** | CLOSED | Phase 5: Web media asset integration & daily pipeline hook (`publish_web.R`) | `ab23415` |
-| **#45** | CLOSED | Maintenance: Monthly cron job to purge daily generated media older than 30d (`purge_stale_media_assets.R`) | `ab23415` |
-| **#46** | CLOSED | Phase 6: Frontend UI embedding with `prefers-reduced-motion` fallback (`AnimatedMediaCard.tsx`) | `fcd9428` |
-| **#47** | CLOSED | Phase 7: Full pipeline generation, git commit, push, and deployment verification | `f043074` |
-| **#48** | CLOSED | Fix: Embed `gif_player_shot_chart` into `/shots` and `/gallery` | `e98da7c` |
-| **#49** | CLOSED | Fix: Embed `plot_today_predictions` into `/matchups` and `/gallery` | `e98da7c` |
-| **#50** | CLOSED | Batch A: Division standings animated race (`gif_division_standings_race.R`) | `b784308` |
-| **#51** | CLOSED | Batch A: Elo trajectory heatmap grid (`gif_elo_heatmap.R`) | `b784308` |
-| **#52** | CLOSED | Batch A: Week-over-week Elo delta power rankings race (`gif_elo_delta_race.R`) | `b784308` |
-| **#53** | CLOSED | Batch B: Pace vs. Net Rating tactical quadrant scatter (`gif_pace_efficiency_quadrant.R`) | `f5d4ff3` |
-| **#54** | CLOSED | Batch B: Points scored vs. allowed scatter with Elo bubble size (`gif_pf_pa_scatter_elo.R`) | `f5d4ff3` |
-| **#55** | CLOSED | Batch B: Turnover & Four Factors margin race (`gif_turnover_margin_race.R`) | `f5d4ff3` |
-| **#56** | CLOSED | Batch B: Season upset timeline & underdog victory tracker (`gif_upset_timeline.R`) | `f5d4ff3` |
-| **#57** | CLOSED | Batch C: Player RAPM & impact trajectory bar race (`gif_rapm_race.R`) | `483ef7d` |
-| **#58** | CLOSED | Batch C: Clutch margin win probability worm & shot map (`gif_clutch_shot_worm.R`) | `483ef7d` |
-| **#59** | CLOSED | Batch C: Rookie class scoring volume & TS% efficiency race (`gif_rookie_impact_race.R`) | `c07cb03` (Calibrated to 2026-27 draft class) |
-| **#33** | OPEN | Scheduled pipeline: Wire `project_week_predictions.R` into scheduled pipeline (replaces value bets slate) | **Next Up for scheduled pipeline optimization** |
+| **#75** | **OPEN — not yet closed, see flag below** | Confirm/refute: does `build_cba_cap_dataset.R` fabricate salaries? | Confirmed **yes** — the file's own code comments admitted `team_payrolls`/thresholds were "stylized round numbers," not sourced figures. Fixed this session (see "Not yet committed" below) but the fix is **uncommitted** and no closing comment has been posted to #75 yet. |
+| **#97** | OPEN (new) | Cap-data automation Phase 1: verify Basketball-Reference reachability + table structure via `httr2`/`rvest` | Filed, not started |
+| **#98** | OPEN (new) | Phase 2a: `tools/fetch_bbref_player_contracts.R` | Filed, not started. Depends on #97; parallel with #99 |
+| **#99** | OPEN (new) | Phase 2b: `tools/fetch_bbref_salary_cap_history.R` | Filed, not started. Depends on #97; parallel with #98 |
+| **#100** | OPEN (new) | Phase 3: derive team payroll totals from BBRef data, resolve the tax/apron source gap | Filed, not started. Depends on #98+#99 |
+| **#101** | OPEN (new) | Phase 4: integrate automated BBRef sourcing into `build_cba_cap_dataset.R`, wire into `schedule_daily.bat` | Filed, not started. Depends on #100 |
+| **#102** | OPEN (new) | Phase 5: end-to-end verification of the automated pipeline, close out #75 | Filed, not started. Depends on #101 |
+| n/a — no issue filed | done, merged | `tools/gif_player_shot_chart.R` had no entry point; `generate_player_shot_chart_gif()` was defined but never called from anywhere | Commit `c69194e` on `main`. Regression against closed issues #39/#40 (never flagged as an issue of its own — see tracker-hygiene flag below) |
+| n/a — no issue filed | done, merged | `tools/gif_clutch_shot_worm.R` always re-rendered the same hardcoded LAL-DEN game (`game_id == 401810829`) from a past season, and its rendered title carried a stale `"(Issue #58)"` string | Commit `2b5c866` on `main`. Regression against **closed** issue #58 |
+| n/a — no issue filed | done, merged | `tools/gif_elo_delta_race.R`'s "week-over-week" animation snapshotted once per calendar date, not per week, so ~16-24 of 30 teams mechanically showed `+0.0` in most frames | Commit `c402325` on `main`. Regression against **closed** issue #52 |
+
+**⚠ Tracker-hygiene flags (surfaced, not fixed — owner should decide):**
+- Issues #39, #40, #52, #58 are marked **CLOSED** in the tracker but all four had real residual defects fixed in this session, with no issue ever reopened or filed to track the regression. Consider whether this repo's "closed" bar needs tightening, or whether these three ad-hoc fixes should get their own issue numbers filed retroactively for traceability.
+- #75 is still open despite the fabrication it asks about being confirmed and (partially) fixed this session. See "Not yet committed" below — closing/commenting on #75 is appropriately gated on that work actually landing, and #102 (Phase 5) already carries an acceptance criterion to post the closing comment once the automation lands. Don't close #75 prematurely off the interim manual fix alone — it only resolves the symptom (one Spotrac snapshot), not the root cause (no repeatable sourcing), which #97-#102 address.
+
+### Prior work (for context, abbreviated — see git log for full history)
+Issues #1-#59 (original engine build-out + full 7-phase animated viz suite) and #69-#70 (UI header work) are closed and stable; not re-verified this session. Issues #76-#90 are a parallel, still-open synthetic-data audit thread (other builders: coaching, clutch, defense/DNA datasets) — **not touched this session**, listed here only so the next reader doesn't confuse them with #75/#97-#102.
 
 ---
 
-## 3. Implemented Components & Canonical Files
+## 3. What's Actually Implemented / Changed This Session
 
-### R Visualization & Tooling Scripts (`tools/`)
-All visualization generators enforce dark theme standards (`theme_nba_dark()`), canonical franchise colors, and output dual media files (`.gif` + static `.png`):
-- [tools/viz_common.R](file:///c:/Users/kailo/kayceeslices/front-office/NBA%20Analytics/tools/viz_common.R) (356 lines): Central palette (`NBA_COLORS`), team primary/secondary hex maps, `theme_nba_dark()`, and `render_animated_artifact()` using `gifski` and `magick`.
-- [tools/gif_elo_rank_bump.R](file:///c:/Users/kailo/kayceeslices/front-office/NBA%20Analytics/tools/gif_elo_rank_bump.R) (221 lines): Elo rank bump race across season milestones.
-- [tools/gif_net_rating_quadrant.R](file:///c:/Users/kailo/kayceeslices/front-office/NBA%20Analytics/tools/gif_net_rating_quadrant.R) (241 lines): ORtg vs. DRtg tactical quadrant scatter.
-- [tools/gif_point_diff_race.R](file:///c:/Users/kailo/kayceeslices/front-office/NBA%20Analytics/tools/gif_point_diff_race.R) (193 lines): Cumulative point differential progression line chart.
-- [tools/plot_shot_chart.R](file:///c:/Users/kailo/kayceeslices/front-office/NBA%20Analytics/tools/plot_shot_chart.R) (339 lines): Court layout generator and high-res hexbin/scatter PNG shot chart builder.
-- [tools/gif_player_shot_chart.R](file:///c:/Users/kailo/kayceeslices/front-office/NBA%20Analytics/tools/gif_player_shot_chart.R) (165 lines): Cumulative player shot selection and volume animated evolution.
-- [tools/plot_today_predictions.R](file:///c:/Users/kailo/kayceeslices/front-office/NBA%20Analytics/tools/plot_today_predictions.R) (140 lines): Slate match-up win probability and projected score board.
-- [tools/gif_playoff_prob_bump.R](file:///c:/Users/kailo/kayceeslices/front-office/NBA%20Analytics/tools/gif_playoff_prob_bump.R) (310 lines): Playoff seed and play-in leverage trajectory.
-- [tools/gif_division_standings_race.R](file:///c:/Users/kailo/kayceeslices/front-office/NBA%20Analytics/tools/gif_division_standings_race.R) (236 lines): Animated race across 6 NBA divisions.
-- [tools/gif_elo_heatmap.R](file:///c:/Users/kailo/kayceeslices/front-office/NBA%20Analytics/tools/gif_elo_heatmap.R) (218 lines): Team Elo progression heatmap tiles.
-- [tools/gif_elo_delta_race.R](file:///c:/Users/kailo/kayceeslices/front-office/NBA%20Analytics/tools/gif_elo_delta_race.R) (227 lines): Week-over-week Elo momentum bar race.
-- [tools/gif_pace_efficiency_quadrant.R](file:///c:/Users/kailo/kayceeslices/front-office/NBA%20Analytics/tools/gif_pace_efficiency_quadrant.R) (241 lines): Pace vs. Net Rating scatter animation.
-- [tools/gif_pf_pa_scatter_elo.R](file:///c:/Users/kailo/kayceeslices/front-office/NBA%20Analytics/tools/gif_pf_pa_scatter_elo.R) (274 lines): Points scored vs. allowed with Elo bubble sizing.
-- [tools/gif_turnover_margin_race.R](file:///c:/Users/kailo/kayceeslices/front-office/NBA%20Analytics/tools/gif_turnover_margin_race.R) (216 lines): Four Factors turnover margin trajectory.
-- [tools/gif_upset_timeline.R](file:///c:/Users/kailo/kayceeslices/front-office/NBA%20Analytics/tools/gif_upset_timeline.R) (260 lines): Pre-game win probability upset timeline.
-- [tools/gif_rapm_race.R](file:///c:/Users/kailo/kayceeslices/front-office/NBA%20Analytics/tools/gif_rapm_race.R) (221 lines): Top 10 player regularized adjusted plus-minus leaderboard bar race.
-- [tools/gif_clutch_shot_worm.R](file:///c:/Users/kailo/kayceeslices/front-office/NBA%20Analytics/tools/gif_clutch_shot_worm.R) (270 lines): Clutch win probability worm and shot timeline.
-- [tools/gif_rookie_impact_race.R](file:///c:/Users/kailo/kayceeslices/front-office/NBA%20Analytics/tools/gif_rookie_impact_race.R) (284 lines): 2026–2027 rookie draft class scoring volume vs. True Shooting % (cross-referenced with `web/public/data/offseason_draft.json`).
-- [tools/purge_stale_media_assets.R](file:///c:/Users/kailo/kayceeslices/front-office/NBA%20Analytics/tools/purge_stale_media_assets.R) (155 lines): 30-day trailing asset retention maintenance script.
+### Cap sheet data sourcing (`build_cba_cap_dataset.R`, 552 lines) — **UNCOMMITTED**
+- `team_payrolls` tribble: replaced invented "stylized round numbers" with real "Total Cap Allocations" for all 30 teams, 2026-27/2027-28/2028-29, fetched live from Spotrac's cap tracker (`spotrac.com/nba/cap/_/year/{2026,2027,2028}`) via the Claude Browser pane on 2026-11-12 — **not** via a script, since Spotrac returns HTTP 403 (CloudFront bot-protection) to plain `curl`/`httr2`/`WebFetch` requests. This is a one-time manual snapshot; it will not refresh itself. See #97-#102 for the plan to make this unattended via Basketball-Reference instead.
+- League-wide cap/tax/apron constants (`SALARY_CAP`, `LUXURY_TAX`, `FIRST_APRON`, `SECOND_APRON`) were already correct (matched the NBA's official July 2026 announcement) — untouched.
+- `verified_contracts` (per-player breakdowns for ~20 marquee franchises): left as-is but now explicitly labeled **illustrative** (not individually re-verified against Spotrac) in both code comments and the exported `cbaThresholdSources` string, since re-verifying ~150 individual player salaries was out of scope for this fix.
+- **Action needed:** this change (plus the regenerated `web/public/data/cba_cap_sheet.json`) is sitting uncommitted in the working tree. Commit it (and decide whether/how to comment on #75) before starting any of #97-#102, so Phase 4's eventual replacement of this same tribble doesn't conflict with uncommitted work.
 
-### Web Application Components (`web/`)
-- [web/components/AnimatedMediaCard.tsx](file:///c:/Users/kailo/kayceeslices/front-office/NBA%20Analytics/web/components/AnimatedMediaCard.tsx): Accessible media wrapper respecting `prefers-reduced-motion` with toggleable pause/play and PNG fallback.
-- [web/components/GalleryClient.tsx](file:///c:/Users/kailo/kayceeslices/front-office/NBA%20Analytics/web/components/GalleryClient.tsx): Unified `/gallery` catalog showcasing all 14 animated and static visualizations filtered by category (Macro Team, Shot Tracking, Tactical & Matchups, Playoff & Roster).
-- [web/components/Sidebar.tsx](file:///c:/Users/kailo/kayceeslices/front-office/NBA%20Analytics/web/components/Sidebar.tsx): Global sidebar navigation with active model evaluation badge (`Brier 0.2279`) and `Visual Gallery` entry.
+### Three chart fixes (all committed and merged to `main`)
+| File | Lines | What changed | Commit |
+|---|---|---|---|
+| `tools/gif_player_shot_chart.R` | 242 | Added a standalone entry point (`is_main` guard) that loads real cached shot data via `load_nba_shots_cache()`, picks the player with the most cached shots (≥30 threshold), renders GIF+PNG. Previously the file only defined a function nothing called. | `c69194e` |
+| `tools/gif_clutch_shot_worm.R` | 363 | Replaced hardcoded `game_id == 401810829` / LAL-DEN with dynamic selection: scans the current season's pbp cache for 4th-quarter games with ≤8pt margin in the final 5 minutes, picks the most recent one with ≥8 tracked clutch shots. Dropped `"(Issue #58)"` from the rendered `plot_annotation()` title (still present in the file's header comment, which is fine — only the rendered title mattered). | `2b5c866` |
+| `tools/gif_elo_delta_race.R` | 304 | Root cause: frames were snapshotted once per calendar game-date, but only ~10-14/30 teams play on a given night, so most teams showed `+0.0` in a frame that claimed to be "week-over-week." Fixed by binning dates into real 7-day calendar weeks (anchored to the first loaded game date) before each snapshot. Verified independently: flat-delta count dropped from 24/30 (old, mid-season date) to 0/30 (new, complete weeks). | `c402325` |
+
+All three were built and verified via the **`subagent-brief` skill** (`C:\Users\kailo\.claude\skills\subagent-brief`) — each ran as an isolated subagent in its own git worktree under `front-office/.nba-worktrees/`, with a validated brief, independently re-verified by the coordinating session (not just taken on the subagent's word) before merging. Run log/evidence: `.subagent-runs/` in this repo (labels `shot-chart`, `clutch-chart`, `elo-chart` — `python <skill>/scripts/runlog.py labels` to list, `show --label <x>` for detail). Two out-of-scope side effects produced by the subagents' own test runs (a regenerated `gif_rapm_race` artifact and a resurrected `gif_rookie_impact_race` artifact — that chart was deliberately removed earlier for using simulated data, see commit `bf880bd`) were caught and stripped before merging; worth re-checking for the same pattern if `tests/test_batch_c_viz.R` is run again from a worktree.
+
+### Cap-data automation plan (designed, not built)
+A 5-phase plan to replace the uncommitted Spotrac manual-snapshot fix above with an unattended Basketball-Reference scrape, using the same `httr2`+`rvest` approach a sibling project already validated there. Filed as issues #97-#102 (see §2) with explicit dependency ordering: #97 (reachability/structure gate) → #98 ∥ #99 (parallel fetchers) → #100 (team-payroll derivation + tax/apron source gap) → #101 (integration) → #102 (verification, closes #75).
+
+**Known gap this plan must carry forward:** Basketball-Reference's player-contracts page is **active-roster-salary only** (no dead cap, no cap holds) — it will not produce numbers matching Spotrac's "Total Cap Allocations" methodology team-for-team. #100 is scoped specifically to document and label this honestly rather than present it as a drop-in replacement.
 
 ---
 
 ## 4. Environment & Tooling Gotchas
 
-1. **PowerShell Quote & Symbol Escaping**:
-   - In Windows PowerShell, inline commands with `&`, `%`, `$`, and double-quotes frequently fail with syntax errors (`AmpersandNotAllowed` or `ExpectedValueExpression`).
-   - **Fix**: Never pass long R or Python scripts in `powershell -Command "..."`. Write scratch `.R` or `.py` files and execute them directly via `Rscript script.R` or `python script.py`.
-2. **Aggregator Subtree Workflow**:
-   - Upstream GitHub Pages deployment runs from `front-office-aggregator` (`main` branch).
-   - Any commit in `NBA Analytics` must be synchronized to `front-office-aggregator` using:
-     ```bash
-     cd C:\Users\kailo\kayceeslices\front-office\front-office-aggregator
-     git subtree pull --prefix=nba "https://github.com/kailot-harris/NBA_analytics.git" main -m "chore: subtree-pull nba (automated sync)"
-     git push origin main
-     gh workflow run "Build and deploy GitHub Pages"
-     ```
-   - If merge conflicts occur on `GalleryClient.tsx` or `Sidebar.tsx`, resolve using `--theirs` (favoring the NBA analytics child repo) or inspect manually before pushing.
-3. **Vitest Regression Checks**:
-   - `web/tests/unit/data.test.ts` asserts on total games processed and model metrics.
-   - When ESPN scores update regular-season games (e.g. from 2687 to 2699 games), reconcile the test count and `Sidebar.tsx` badge to avoid pipeline blocking.
+1. **Spotrac blocks scripted requests.** `curl`, `httr2`, and the `WebFetch` tool all get blocked (403/402) by Spotrac's CloudFront bot-protection. The only way to read Spotrac data in this session was the Claude Browser pane (a real rendered browser session), which isn't something a cron job can invoke. Do not build automation that tries to defeat this (spoofing fingerprints to evade CloudFront) — that's bypassing anti-bot protection, not scraping a public page. This is *why* the cap-data plan (§3, #97-#102) targets Basketball-Reference instead.
+2. **`cache/` is gitignored, and a git worktree does not get its parent checkout's cache files.** Several `tools/gif_*.R` scripts' `find_cache_file()` helper has a hardcoded absolute-path fallback (`C:/Users/kailo/kayceeslices/front-office/NBA Analytics/cache/<file>`) specifically because of this — when running from a worktree, the relative/local cache lookups miss and it falls through to that absolute path into the *main* checkout. This is pre-existing, not something introduced this session, but it means **worktree-isolated subagent work is implicitly reading real data from the main checkout**, not a self-contained copy. Don't "fix" this fallback away without checking every sibling script that relies on it.
+3. **`subagent-brief` skill worktree hygiene:** running a batch-style test suite (e.g. `tests/test_batch_c_viz.R`) from inside a task-scoped worktree regenerates *all* batch scripts' output artifacts as a side effect, not just the one file in scope. Always `git status` the worktree before committing a subagent's work — strip anything outside the brief's declared scope (see §3's rapm_race/rookie_impact_race example).
+4. **PowerShell quote/symbol escaping** (carried over from prior session): inline `&`, `%`, `$`, and double-quotes in `powershell -Command "..."` frequently fail. Write scratch `.R`/`.py` files and run them directly via `Rscript`/`python` instead of inlining long scripts.
+5. **Aggregator subtree workflow** (carried over, unverified this session): commits here must be subtree-pulled into `front-office-aggregator` before they're live — see that repo's own handoff/docs for the exact command. Local `main` here is currently 5 commits ahead of `origin/main` and not yet pushed (plus 1 commit behind on an unrelated automated data-refresh commit — `6a55c90`, no conflict).
 
 ---
 
-## 5. Verification State
+## 5. The Reusable Workflow (for delegated/parallel work in this repo)
 
-- **Unit Tests**: 158 passed (16 test files) in `web` (`npm run test:unit`).
-- **All Batch Visualizations Generated**: Non-zero `.gif` and `.png` verified in `web/public/media/` and `cache/`.
-- **Git State**: Clean working tree on `main` in both `NBA Analytics` and `front-office-aggregator`.
-- **Live Deployment**: Workflow run dispatched on `front-office` GitHub Actions.
+This session's three chart fixes followed, and validates, this pattern — repeat it rather than improvising:
+1. Diagnose the defect yourself first (read the actual source, don't delegate diagnosis blind) — this session's Elo-chart root-cause hypothesis was written into the brief *as a hypothesis to verify*, not a given, and the subagent was explicitly told to confirm or refute it against real cache data rather than take it on faith.
+2. Write a `subagent-brief`-template brief (`full.md` template) naming exact files in/out of scope, concrete success criteria each with a `Verify:` command, and Tier 0-1 only (no Tier 2/3 needed for file-local R edits).
+3. `git worktree add` a dedicated branch per task, dispatch via the `Agent` tool pointed at that worktree's absolute path (not via the skill's own `isolation: worktree` param, since the worktree was created manually ahead of time here).
+4. **Independently re-run** whatever command the subagent cited as evidence yourself, from the same worktree, before trusting the result — this caught the rapm_race/rookie_impact_race side effect in the clutch-chart task, which the subagent's own report didn't flag as a problem.
+5. Commit on the task's branch (subagents in this session left changes uncommitted — don't assume a "success" report means a commit exists), then `git merge --no-edit <branch>` into `main` from the primary checkout.
+6. `git worktree remove` once merged, then `check_storage.py` to confirm nothing's accumulating unbounded.
+
+---
+
+## 6. Concrete Next Step
+
+**Commit the uncommitted cap-sheet fix first** (`build_cba_cap_dataset.R` + `web/public/data/cba_cap_sheet.json`, currently sitting dirty in the main checkout — see §3) before touching anything else, so it isn't sitting exposed to being clobbered by #101's later rewrite of the same file. Decide at that point whether to also post an interim comment on #75 (confirmed-fabricated, partially fixed, full fix tracked at #97-#102) — #102 already carries the formal closing-comment criterion, but a note now would keep #75 accurate in the meantime.
+
+**Then:** start #97 (Basketball-Reference reachability + structure verification) — it's the gate for #98/#99, which can run in parallel once it's done. See #97's issue body for the exact two URLs and what to check. One step further ahead: #98 and #99 are independent files and are the natural candidates for two parallel subagent-brief dispatches once #97 clears, following the workflow in §5.
+
+Separately, unrelated to this thread but visible in the tracker: #76/#77/#80/#81/#82/#84/#85/#87/#88/#89/#90 are open issues from a parallel synthetic-data-audit effort across other builders (coaching, clutch, defense/DNA) — not part of this session's work, flagged here only so the next reader doesn't conflate them with the cap-data thread above.

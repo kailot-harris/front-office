@@ -46,7 +46,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center gap-1">
               <Flame className="w-3.5 h-3.5" /> True Clutch & Leverage Creation Index
             </span>
-            <span className="text-xs text-zinc-500 font-mono">Leverage Index (LI $\le 5$ pts, $\le 5:00$ 4Q)</span>
+            <span className="text-xs text-zinc-500 font-mono">Leverage Index (LI ≤ 5 pts, ≤ 5:00 4Q)</span>
             <SeasonSourceBadge
               season={SEASON_SOURCES.clutch.season}
               kind="projection"
