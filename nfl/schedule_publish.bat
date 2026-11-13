@@ -125,6 +125,74 @@ if not defined HOME set HOME=%USERPROFILE%
 
 cd /d "%PROJECT_DIR%"
 
+REM ------------------------------------------------------------------------------
+REM Checkout-safety guard (front-office issue #105). %PROJECT_DIR% is the SAME
+REM working directory interactive sessions and subagents use -- the 2026-11-10
+REM incident's 08:00 publish gate correctly refused on a dirty non-main HEAD, but
+REM at 08:03 a different agent cleared the dirty tree with `git checkout -- .`
+REM before merging, silently discarding 8 regenerated JSON files and a cache file.
+REM This guard never discards: any dirty work (tracked AND untracked, via -u) is
+REM `git stash -u`'d -- preserved, recoverable with `git stash pop`, never dropped
+REM -- before the checkout lands on main. If it cannot land cleanly on main for ANY
+REM reason (stash fails, checkout fails, HEAD isn't main afterward, or main is
+REM still dirty afterward), the wrapper fails loudly with a clear [ERROR] log line
+REM and a non-zero exit instead of silently running the publish gate against the
+REM wrong branch or a half-clean tree. This guard is intentionally identical in
+REM shape to schedule_daily.bat's -- see that file's comment for the full
+REM rationale.
+REM ------------------------------------------------------------------------------
+git rev-parse --is-inside-work-tree >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] Checkout guard: "%CD%" is not a git work tree - refusing to run. >> "%LOG_FILE%"
+    exit /b 1
+)
+
+set PRE_BRANCH=
+for /f "usebackq delims=" %%B in (`git rev-parse --abbrev-ref HEAD`) do set PRE_BRANCH=%%B
+echo [GUARD] Checkout guard: starting branch is "%PRE_BRANCH%". >> "%LOG_FILE%"
+
+set GUARD_STATUS_FILE=%TEMP%\nfl_sched_guard_status_%RANDOM%.txt
+git status --porcelain > "%GUARD_STATUS_FILE%" 2>nul
+set GUARD_DIRTY_SIZE=0
+for %%F in ("%GUARD_STATUS_FILE%") do set GUARD_DIRTY_SIZE=%%~zF
+del /q "%GUARD_STATUS_FILE%" >nul 2>&1
+
+if not "%GUARD_DIRTY_SIZE%"=="0" (
+    echo [GUARD] Working tree is dirty on "%PRE_BRANCH%" - stashing tracked+untracked changes before landing on main ^(nothing is discarded; recoverable via "git stash pop"^). >> "%LOG_FILE%"
+    git stash push -u -m "schedule_publish.bat-auto-stash" >> "%LOG_FILE%" 2>&1
+    set STASH_RC=%ERRORLEVEL%
+    if not "!STASH_RC!"=="0" (
+        echo [ERROR] Checkout guard: git stash -u FAILED with exit code !STASH_RC! - refusing to run. Nothing was discarded; the dirty tree on "%PRE_BRANCH%" is untouched. >> "%LOG_FILE%"
+        exit /b 1
+    )
+)
+
+git checkout main >> "%LOG_FILE%" 2>&1
+set CHECKOUT_RC=%ERRORLEVEL%
+if not "%CHECKOUT_RC%"=="0" (
+    echo [ERROR] Checkout guard: git checkout main FAILED with exit code %CHECKOUT_RC% - refusing to run. >> "%LOG_FILE%"
+    exit /b 1
+)
+
+set POST_BRANCH=
+for /f "usebackq delims=" %%B in (`git rev-parse --abbrev-ref HEAD`) do set POST_BRANCH=%%B
+if not "%POST_BRANCH%"=="main" (
+    echo [ERROR] Checkout guard: assertion FAILED - HEAD=%POST_BRANCH% expected=main. Refusing to run. >> "%LOG_FILE%"
+    exit /b 1
+)
+
+set GUARD_STATUS_FILE2=%TEMP%\nfl_sched_guard_status2_%RANDOM%.txt
+git status --porcelain > "%GUARD_STATUS_FILE2%" 2>nul
+set GUARD_DIRTY_SIZE2=0
+for %%F in ("%GUARD_STATUS_FILE2%") do set GUARD_DIRTY_SIZE2=%%~zF
+del /q "%GUARD_STATUS_FILE2%" >nul 2>&1
+if not "%GUARD_DIRTY_SIZE2%"=="0" (
+    echo [ERROR] Checkout guard: main is still dirty after stash+checkout - refusing to run. >> "%LOG_FILE%"
+    exit /b 1
+)
+
+echo [GUARD] Checkout guard: landed cleanly on main (pre-guard branch was "%PRE_BRANCH%"). >> "%LOG_FILE%"
+
 REM Resolve Rscript exactly as the sibling wrappers do. WHERE_RC keeps %ERRORLEVEL%
 REM out of any parenthesized block (see schedule_daily.bat's delayed-expansion note).
 where Rscript >nul 2>&1
