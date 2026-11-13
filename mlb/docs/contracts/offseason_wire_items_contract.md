@@ -107,21 +107,22 @@ build_wire_source_url(default_url, team_id = NULL, transaction_id = NULL, as_of_
 Declared here, **not implemented here**. Do not create `tools/offseason/ingest_freshness.R` as part of this unit; #59 owns it.
 
 ```r
-assert_ingest_freshness(manifest, now = Sys.time(), max_age_hours = 26, allow_stale = FALSE)
+assert_ingest_freshness(manifest, now = Sys.time(), max_age_hours = 26, future_tolerance_hours = 0.05, allow_stale = FALSE)
 ```
 
 * `manifest` — the parsed `cache/ingestion_manifest.json` list, or the `manifest` element of `ingest_all()`'s return value. Its `ingest_timestamp` is already written as UTC ISO-8601 (`"%Y-%m-%dT%H:%M:%SZ"`, `ingest_sources.R:427`); parse it as UTC, not local time.
 * `now` — injectable clock, so tests need no sleep and no system-time mutation.
-* `allow_stale` — when `FALSE` (default), a `STALE` or `MISSING` verdict must `stop()`. When `TRUE`, the same verdict is returned without stopping, for `--allow-degraded` style runs.
+* `future_tolerance_hours` — (added by #75) how far *ahead* of `now` an `ingest_timestamp` may sit before it is treated as a fault rather than ordinary clock jitter (Task Scheduler start skew, NTP correction). Default `0.05` (3 minutes). A manifest whose `age_hours` is more negative than `-future_tolerance_hours` returns `FUTURE` instead of silently satisfying the staleness check and falling through to `FRESH` — the hole #75 closes.
+* `allow_stale` — when `FALSE` (default), a `STALE`, `FUTURE`, or `MISSING` verdict must `stop()`. When `TRUE`, the same verdict is returned without stopping, for `--allow-degraded` style runs. Decision (#75): `FUTURE` is deliberately **not** exempted from `allow_stale` — it is gated through the exact same stop-vs-advisory-warning control flow as every other non-`FRESH` status, so a caller that already opted into `--allow-degraded` tolerance for the whole gate gets a loud advisory pass for a future-dated manifest too, not an unconditional stop.
 
 Return shape — a list with exactly these elements:
 
 | Element | Type | Meaning |
 |:---|:---|:---|
-| `status` | string | `"FRESH"` \| `"STALE"` \| `"MISSING"`. `MISSING` covers an absent manifest, an absent `ingest_timestamp`, or one that will not parse. |
-| `age_hours` | numeric | Age in hours, `NA_real_` when `status == "MISSING"`. |
+| `status` | string | `"FRESH"` \| `"STALE"` \| `"FUTURE"` \| `"MISSING"`. `MISSING` covers an absent manifest, an absent `ingest_timestamp`, or one that will not parse. `FUTURE` (added by #75) covers an `ingest_timestamp` beyond `now + future_tolerance_hours` — distinct from `STALE`, which only ever fires on a positive age past `max_age_hours`. |
+| `age_hours` | numeric | Age in hours, `NA_real_` when `status == "MISSING"`. Negative when `status == "FUTURE"`. |
 | `max_age_hours` | numeric | The threshold applied, echoed back so callers log the decision rather than re-deriving it. |
-| `reason` | string | One human-readable sentence naming the status, the age and the threshold — suitable verbatim for a Discord ops alert. |
+| `reason` | string | One human-readable sentence naming the status, the age and the threshold — suitable verbatim for a Discord ops alert. For `FUTURE`, this sentence explicitly names the timestamp as ahead of `now` and states the negative age, rather than a generic "gate failed" message. |
 
 ### Chosen threshold: `max_age_hours = 26`
 
@@ -130,6 +131,12 @@ Issue #66 converts this job from a **weekly Monday-09:00** cadence to a **daily 
 Under a daily 07:00 run, a healthy manifest is at most ~24 hours old at the moment immediately before the next run begins. 26 hours adds two hours of slack to absorb Task Scheduler start jitter and queued-on-wake starts after a missed window, in-run retry/backoff on the statsapi adapters, and the one-hour DST discontinuity. One missed daily run therefore trips the gate on the following morning, which is the intent.
 
 The weekly-to-daily change is the whole point of stating the number: the equivalent weekly threshold would have been ~170 hours (168 + slack). Leaving anything near a week in place after #55 lands would let **six consecutive silent ingest failures** pass the gate while the monitor happily re-extracted a stale artifact and reported zero deltas as a quiet week.
+
+### Chosen tolerance: `future_tolerance_hours = 0.05` (#75)
+
+Issue #75: the gate's age computation is `difftime(now, ingest_timestamp)`, which goes **negative** whenever `ingest_timestamp` is ahead of `now`. Before #75 that negative value only ever failed the one existing comparison (`age_hours > max_age_hours`), which a negative number can never satisfy — so a future-dated manifest fell through every check and returned `FRESH` unconditionally. This was observed, latent, in `logs/scheduled_runs.log` on 2026-11-09: regression fixtures running inside the scheduled task produced ages of `-216h` and `-192h` (the live manifest itself read a normal `age=0.0002h` both days — not a live misreport, but a real hole in the gate).
+
+0.05h (3 minutes) is chosen as the dividing line between **ordinary clock jitter** — the sub-second-to-low-minute negative ages that Task Scheduler start skew and NTP correction produce on a live manifest, which must keep passing as `FRESH` — and a **fault**, which must not. It is set well above the sub-second drift seen on live manifests and well below any plausible single-run clock error, so it absorbs real jitter without masking a timestamp that is minutes, hours, or days ahead of `now`. It is a named `assert_ingest_freshness()` argument, not a hardcoded magic number, so a caller can widen or narrow it without editing the gate.
 
 ---
 

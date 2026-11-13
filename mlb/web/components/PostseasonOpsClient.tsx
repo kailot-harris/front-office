@@ -362,23 +362,23 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data, 
                         <span className="text-[11px] sm:text-[10px] font-extrabold uppercase tracking-widest text-slate-400 font-mono">
                           Gm {g.game_number}
                         </span>
-                        <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">{formatSeriesDate(g.game_date)}</span>
+                        <span className="text-[11px] sm:text-[10px] text-slate-400 font-mono">{formatSeriesDate(g.game_date)}</span>
                       </div>
                       {resolved ? (
                         <>
                           <div className="mt-1 text-sm font-black text-white font-mono">
                             <span className="text-amber-400">{g.winner}</span> {winScore}
-                            <span className="text-slate-500"> – </span>
+                            <span className="text-slate-400"> – </span>
                             {loseScore} <span className="text-slate-400">{loser}</span>
                           </div>
-                          <div className="text-[11px] sm:text-[10px] text-slate-500 mt-0.5">Final · {g.venue_name}</div>
+                          <div className="text-[11px] sm:text-[10px] text-slate-400 mt-0.5">Final · {g.venue_name}</div>
                         </>
                       ) : (
                         <>
                           <div className="mt-1 text-sm font-bold text-slate-300 font-mono">
                             {g.away_team} @ {g.home_team}
                           </div>
-                          <div className="text-[11px] sm:text-[10px] text-slate-500 mt-0.5">
+                          <div className="text-[11px] sm:text-[10px] text-slate-400 mt-0.5">
                             {g.status_detail} · {(g.home_win_prob * 100).toFixed(0)}% {g.home_team}
                           </div>
                         </>
@@ -713,7 +713,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data, 
                       </td>
                       <td className="py-3.5 px-3 text-right font-mono text-slate-300">
                         {team.avg_fatigue.toFixed(1)}
-                        <span className="text-[11px] sm:text-[10px] text-slate-500 ml-1">({team.workload_grade})</span>
+                        <span className="text-[11px] sm:text-[10px] text-slate-400 ml-1">({team.workload_grade})</span>
                       </td>
                       <td className="py-3.5 px-3 text-right font-mono font-bold text-amber-300">
                         {team.upset_vulnerability}/100

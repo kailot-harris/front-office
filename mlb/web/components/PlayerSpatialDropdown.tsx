@@ -444,7 +444,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
             <div className="bg-surface-raised/80 border border-slate-800/80 rounded-xl p-3.5 text-xs space-y-2">
               <div className="flex items-center justify-between text-slate-300 font-semibold">
                 <span>Selected Batted Ball Telemetry</span>
-                <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">Hover or click any dot</span>
+                <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">Hover or click any dot</span>
               </div>
               {hoveredBall ? (
                 <div className="p-2.5 rounded-lg bg-surface border border-slate-800 font-mono text-xs space-y-1">
@@ -472,7 +472,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="p-3 text-center text-slate-500 font-mono text-[11px]">
+                <div className="p-3 text-center text-slate-400 font-mono text-[11px]">
                   Hover over any dot on the field chart to view Statcast launch vector, exit velocity, and 30-ballpark HR outcome.
                 </div>
               )}
@@ -506,7 +506,12 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
 
             {/* Strike Zone SVG Canvas */}
             <div className="relative w-full max-w-[420px] aspect-[420/400]">
-              <svg viewBox="-2.2 0.3 4.4 4.5" className="w-full h-full overflow-visible select-none">
+              <svg
+                viewBox="-2.2 0.3 4.4 4.5"
+                className="w-full h-full overflow-visible select-none"
+                role="img"
+                aria-label={`Strike zone chart for ${player.player_name} showing pitch locations`}
+              >
                 <defs>
                   {/* Strike Zone Background Gradient */}
                   <linearGradient id="zoneGrad" x1="0" y1="0" x2="0" y2="1">
@@ -667,7 +672,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                   >
                     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colorConfig.fill }} />
                     <span className="text-slate-300">{a.pitch_type}</span>
-                    <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">({a.avg_velo} mph)</span>
+                    <span className="text-[11px] sm:text-[10px] text-slate-400 font-mono">({a.avg_velo} mph)</span>
                   </button>
                 );
               })}
@@ -800,7 +805,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
             <div className="bg-surface-raised/80 border border-slate-800/80 rounded-xl p-3.5 text-xs space-y-2">
               <div className="flex items-center justify-between text-slate-300 font-semibold">
                 <span>Selected Pitch Telemetry</span>
-                <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">Hover or click any pitch</span>
+                <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">Hover or click any pitch</span>
               </div>
               {hoveredPitch ? (
                 <div className="p-2.5 rounded-lg bg-surface border border-slate-800 font-mono text-xs space-y-1">
@@ -832,7 +837,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="p-3 text-center text-slate-500 font-mono text-[11px]">
+                <div className="p-3 text-center text-slate-400 font-mono text-[11px]">
                   Hover over any pitch dot in the strike zone to inspect velocity, horizontal break, induced vertical break, and umpire decision.
                 </div>
               )}

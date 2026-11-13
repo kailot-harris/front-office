@@ -431,6 +431,30 @@ fault_matrix <- list(
     max_age_hours = 26,
     expected_status = "STALE",
     expected_stop = TRUE
+  ),
+  list(
+    label = "Future timestamp within tolerance (ordinary clock jitter, ~10s ahead) passes FRESH",
+    manifest = list(ingest_timestamp = "2026-11-06T11:00:10Z", composite_health = "HEALTHY", adapters = list(league_wire = list(items_found = 10L))),
+    now = "2026-11-06T11:00:00Z",
+    max_age_hours = 26,
+    expected_status = "FRESH",
+    expected_stop = FALSE
+  ),
+  list(
+    label = "Future timestamp just beyond tolerance (4 minutes ahead) blocks as FUTURE",
+    manifest = list(ingest_timestamp = "2026-11-06T11:04:00Z", composite_health = "HEALTHY", adapters = list(league_wire = list(items_found = 10L))),
+    now = "2026-11-06T11:00:00Z",
+    max_age_hours = 26,
+    expected_status = "FUTURE",
+    expected_stop = TRUE
+  ),
+  list(
+    label = "Grossly future timestamp (-216h shape, regression-fixture-in-live-run incident) blocks as FUTURE",
+    manifest = list(ingest_timestamp = "2026-11-18T06:00:00Z", composite_health = "HEALTHY", adapters = list(league_wire = list(items_found = 10L))),
+    now = "2026-11-09T06:00:00Z",
+    max_age_hours = 26,
+    expected_status = "FUTURE",
+    expected_stop = TRUE
   )
 )
 
@@ -469,6 +493,109 @@ for (row in fault_matrix) {
     identical(stopped_row, row$expected_stop)
   )
 }
+
+# ------------------------------------------------------------------------------
+# 9. Future-Timestamp Fault (Issue #75)
+# ------------------------------------------------------------------------------
+cat("\n--- Group 9: Future-Timestamp Fault (Issue #75) ---\n")
+
+future_manifest_gross <- list(
+  ingest_timestamp = "2026-11-18T06:00:00Z", # -216h shape relative to now below
+  composite_health = "HEALTHY",
+  adapters = list(league_wire = list(status = "HEALTHY", items_found = 100L))
+)
+now_future_eval <- "2026-11-09T06:00:00Z"
+
+# 1. allow_stale = FALSE stops on a grossly future manifest
+stopped_future <- FALSE
+err_msg_future <- ""
+tryCatch(
+  assert_ingest_freshness(future_manifest_gross, now = now_future_eval, allow_stale = FALSE),
+  error = function(e) {
+    stopped_future <<- TRUE
+    err_msg_future <<- conditionMessage(e)
+  }
+)
+assert_test(
+  "Grossly future manifest (-216h shape) stops when allow_stale = FALSE",
+  stopped_future,
+  sprintf("Error message: %s", err_msg_future)
+)
+
+# 2. Status is FUTURE, not STALE, and not a generic failure
+res_future_gross <- assert_ingest_freshness(future_manifest_gross, now = now_future_eval, allow_stale = TRUE)
+assert_test(
+  "Grossly future manifest returns status == 'FUTURE' (distinct from STALE)",
+  identical(res_future_gross$status, "FUTURE")
+)
+
+# 3. Reason string names the timestamp as ahead of now and names the negative age
+cat(sprintf("         Verbatim FUTURE reason string (as it would land in the Discord ops alert):\n           %s\n", res_future_gross$reason))
+assert_test(
+  "FUTURE reason string names 'ahead of now' and the negative age (-216.0)",
+  grepl("ahead of now", res_future_gross$reason, fixed = TRUE) &&
+    grepl("FUTURE", res_future_gross$reason) &&
+    grepl("-216\\.0", res_future_gross$reason) &&
+    !grepl("^gate failed", res_future_gross$reason, ignore.case = TRUE),
+  sprintf("reason: %s", res_future_gross$reason)
+)
+
+# 4. allow_stale = TRUE downgrades FUTURE to a loud advisory pass, same as STALE/MISSING/etc
+warned_future <- FALSE
+res_future_advisory <- withCallingHandlers(
+  assert_ingest_freshness(future_manifest_gross, now = now_future_eval, allow_stale = TRUE),
+  warning = function(w) {
+    warned_future <<- TRUE
+    invokeRestart("muffleWarning")
+  }
+)
+assert_test(
+  "FUTURE manifest does NOT stop when allow_stale = TRUE (explicit, documented decision)",
+  !is.null(res_future_advisory)
+)
+assert_test(
+  "allow_stale = TRUE issues an advisory warning for a FUTURE verdict",
+  warned_future
+)
+assert_test(
+  "allow_stale = TRUE preserves status == 'FUTURE'",
+  identical(res_future_advisory$status, "FUTURE")
+)
+
+# 5. Sub-tolerance future timestamp (ordinary clock jitter) still passes FRESH,
+#    using the documented future_tolerance_hours argument (not a magic number)
+manifest_jitter <- list(
+  ingest_timestamp = "2026-11-06T11:00:02Z", # 2 seconds ahead of `now`
+  composite_health = "HEALTHY",
+  adapters = list(league_wire = list(status = "HEALTHY", items_found = 100L))
+)
+res_jitter <- assert_ingest_freshness(
+  manifest_jitter,
+  now = "2026-11-06T11:00:00Z",
+  max_age_hours = 26,
+  future_tolerance_hours = 0.05,
+  allow_stale = FALSE
+)
+assert_test(
+  "Sub-tolerance future timestamp (2s ahead, within default 0.05h tolerance) passes FRESH",
+  identical(res_jitter$status, "FRESH"),
+  sprintf("status was %s, age_hours was %f", res_jitter$status, res_jitter$age_hours)
+)
+
+# 6. Shrinking future_tolerance_hours to 0 makes the same 2-second drift block as FUTURE,
+#    proving the tolerance is a real, documented function argument and not hardcoded.
+res_jitter_zero_tol <- suppressWarnings(assert_ingest_freshness(
+  manifest_jitter,
+  now = "2026-11-06T11:00:00Z",
+  max_age_hours = 26,
+  future_tolerance_hours = 0,
+  allow_stale = TRUE
+))
+assert_test(
+  "future_tolerance_hours = 0 makes the same 2s-ahead manifest block as FUTURE",
+  identical(res_jitter_zero_tol$status, "FUTURE"),
+  sprintf("status was %s, age_hours was %f", res_jitter_zero_tol$status, res_jitter_zero_tol$age_hours)
+)
 
 # ------------------------------------------------------------------------------
 # Final Summary

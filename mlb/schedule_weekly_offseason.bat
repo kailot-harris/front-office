@@ -43,6 +43,75 @@ echo ================================================================== >> "%RUN
 echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Starting daily offseason monitor pipeline run. >> "%RUN_LOG%"
 echo ================================================================== >> "%RUN_LOG%"
 
+REM ==============================================================================
+REM CHECKOUT-SAFETY GUARD (front-office issue #105).
+REM
+REM This machine's working directories are shared between this scheduled task
+REM and interactive/agent sessions. The 2026-11-10 incident (front-office#105):
+REM an agent left a sibling checkout on a feature branch with dirty,
+REM regenerated output; a publish gate correctly refused it, and a THIRD
+REM session then ran `git checkout -- .` to clear the dirty tree before
+REM merging -- discarding 8 regenerated JSON files and a cache file instead
+REM of stashing them. Published data stayed ~30 hours stale.
+REM
+REM Rule this guard enforces (see CLAUDE.md "Shared-checkout discipline"):
+REM feature work happens in a worktree; THIS primary checkout stays on main
+REM and clean for every unattended run; a dirty tree is always
+REM `git stash -u`'d, never `git checkout -- .`'d away. If this checkout
+REM cannot be verified clean on main, NOTHING below this point runs.
+REM ==============================================================================
+where git >nul 2>&1
+if errorlevel 1 (
+    echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] [Checkout Guard] git not found on PATH. Refusing to run against an unverified checkout. Nothing was run or published. >> "%RUN_LOG%"
+    exit /b 97
+)
+
+for /f "delims=" %%b in ('git rev-parse --abbrev-ref HEAD 2^>^&1') do set "CURRENT_BRANCH=%%b"
+echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] [Checkout Guard] HEAD is currently on branch '%CURRENT_BRANCH%'. >> "%RUN_LOG%"
+
+set "GUARD_STATUS_FILE=%TEMP%\mlb_guard_status_%RANDOM%.txt"
+git status --porcelain -uall > "%GUARD_STATUS_FILE%" 2>&1
+for %%A in ("%GUARD_STATUS_FILE%") do set "STATUS_SIZE=%%~zA"
+if not "%STATUS_SIZE%"=="0" (
+    echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] [Checkout Guard] Working tree is dirty. Stashing with 'git stash -u' before touching HEAD -- never discarding with 'git checkout -- .'. >> "%RUN_LOG%"
+    git stash push -u -m "auto-stash by schedule_weekly_offseason.bat checkout guard %DATE% %TIME%" >> "%RUN_LOG%" 2>&1
+    if errorlevel 1 (
+        echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] [Checkout Guard] 'git stash -u' failed, so this wrapper is NOT touching HEAD. Nothing was run or published. >> "%RUN_LOG%"
+        del "%GUARD_STATUS_FILE%" >nul 2>&1
+        exit /b 97
+    )
+) else (
+    echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] [Checkout Guard] Working tree is already clean. >> "%RUN_LOG%"
+)
+del "%GUARD_STATUS_FILE%" >nul 2>&1
+
+if not "%CURRENT_BRANCH%"=="main" (
+    echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] [Checkout Guard] HEAD is on '%CURRENT_BRANCH%', not 'main'. Checking out main. >> "%RUN_LOG%"
+    git checkout main >> "%RUN_LOG%" 2>&1
+    if errorlevel 1 (
+        echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] [Checkout Guard] 'git checkout main' failed. Nothing was run or published. >> "%RUN_LOG%"
+        exit /b 97
+    )
+)
+
+REM Final verification -- do not trust the steps above succeeded just because
+REM they exited 0; re-read the actual landed state before running anything.
+for /f "delims=" %%b in ('git rev-parse --abbrev-ref HEAD 2^>^&1') do set "FINAL_BRANCH=%%b"
+set "GUARD_STATUS_FILE2=%TEMP%\mlb_guard_status2_%RANDOM%.txt"
+git status --porcelain -uall > "%GUARD_STATUS_FILE2%" 2>&1
+for %%A in ("%GUARD_STATUS_FILE2%") do set "FINAL_STATUS_SIZE=%%~zA"
+del "%GUARD_STATUS_FILE2%" >nul 2>&1
+
+if not "%FINAL_BRANCH%"=="main" (
+    echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] [Checkout Guard] Failed to land cleanly on main -- HEAD is '%FINAL_BRANCH%'. Refusing to run the pipeline. Nothing was run or published. >> "%RUN_LOG%"
+    exit /b 97
+)
+if not "%FINAL_STATUS_SIZE%"=="0" (
+    echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] [Checkout Guard] HEAD is on main but the working tree is still dirty after stashing. Refusing to run the pipeline. Nothing was run or published. >> "%RUN_LOG%"
+    exit /b 97
+)
+echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] [Checkout Guard] Verified: HEAD is on 'main' and the working tree is clean. Proceeding. >> "%RUN_LOG%"
+
 REM Defense-in-depth for git commit identity resolution under Task Scheduler
 if not defined HOME if defined USERPROFILE set HOME=%USERPROFILE%
 

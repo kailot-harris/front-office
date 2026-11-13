@@ -86,7 +86,7 @@ export const GlossaryTerm: React.FC<GlossaryTermProps> = ({ term, children, clas
         className="inline-flex items-center gap-0.5 min-h-[24px] min-w-[24px] underline decoration-dotted decoration-slate-500 underline-offset-2 text-inherit touch-manipulation"
       >
         {children ?? term}
-        <Info className="w-3 h-3 text-slate-500" aria-hidden="true" />
+        <Info className="w-3 h-3 text-slate-400" aria-hidden="true" />
       </button>
       {open && (
         <span

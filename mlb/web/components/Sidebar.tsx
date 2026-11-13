@@ -214,7 +214,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
           </div>
           <p
             className={`text-[11px] truncate ${
-              isActive ? 'text-accent-50' : 'text-slate-500'
+              isActive ? 'text-accent-50' : 'text-slate-400'
             }`}
           >
             {item.desc}
@@ -251,7 +251,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
             <>
               {/* Daily In-Season Navigation */}
               <div className="space-y-1">
-                <div className="px-2 text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 font-mono">
+                <div className="px-2 text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 font-mono">
                   Daily Sabermetric Operations
                 </div>
                 {inSeasonNavItems.map(renderNavLink)}
@@ -269,7 +269,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
                     <span>Historical Archive & Off-Season</span>
                   </div>
                   <ChevronDown
-                    className={`w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 transition-transform duration-200 ${
+                    className={`w-3.5 h-3.5 text-slate-400 group-hover:text-slate-300 transition-transform duration-200 ${
                       isArchiveOpen ? 'rotate-180' : ''
                     }`}
                   />
@@ -286,7 +286,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
             <>
               {/* Primary Offseason Navigation */}
               <div className="space-y-1">
-                <div className="px-2 text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 font-mono">
+                <div className="px-2 text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 font-mono">
                   Off-Season Intelligence
                 </div>
                 {primaryNavItems.map(renderNavLink)}
@@ -304,7 +304,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
                     <span>2026 Championship Archive</span>
                   </div>
                   <ChevronDown
-                    className={`w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 transition-transform duration-200 ${
+                    className={`w-3.5 h-3.5 text-slate-400 group-hover:text-slate-300 transition-transform duration-200 ${
                       isArchiveOpen ? 'rotate-180' : ''
                     }`}
                   />

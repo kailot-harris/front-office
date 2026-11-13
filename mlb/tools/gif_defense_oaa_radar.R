@@ -129,12 +129,12 @@ generate_gif_defense_oaa_radar <- function(season = 2026,
     p <- ggplot(frame_data, aes(x = cur_fielding, y = cur_def)) +
       # Diamond coverage concentric radar rings
       annotate("path",
-               x = lg_fielding + 10 * cos(seq(0, 2*pi, length.out = 100)),
-               y = lg_def + 10 * sin(seq(0, 2*pi, length.out = 100)),
+               x = lg_fielding + 10 * cos(seq(0, 2*pi, length.out = 100)), # chart-authenticity-allow: fixed-radius decorative radar-ring geometry, not data
+               y = lg_def + 10 * sin(seq(0, 2*pi, length.out = 100)), # chart-authenticity-allow: fixed-radius decorative radar-ring geometry, not data
                color = "#30363D", linetype = "dotted", linewidth = 0.5) +
       annotate("path",
-               x = lg_fielding + 20 * cos(seq(0, 2*pi, length.out = 100)),
-               y = lg_def + 20 * sin(seq(0, 2*pi, length.out = 100)),
+               x = lg_fielding + 20 * cos(seq(0, 2*pi, length.out = 100)), # chart-authenticity-allow: fixed-radius decorative radar-ring geometry, not data
+               y = lg_def + 20 * sin(seq(0, 2*pi, length.out = 100)), # chart-authenticity-allow: fixed-radius decorative radar-ring geometry, not data
                color = "#30363D", linetype = "dotted", linewidth = 0.5) +
 
       # Quadrant dividing lines

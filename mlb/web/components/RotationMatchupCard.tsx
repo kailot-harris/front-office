@@ -60,7 +60,7 @@ export const RotationMatchupCard: React.FC<RotationMatchupCardProps> = ({
             Lineup Power Cores
           </button>
         </div>
-        <span className="text-xs font-mono text-slate-500 hidden sm:inline">
+        <span className="text-xs font-mono text-slate-400 hidden sm:inline">
           Tangotiger rGS & Pitcher Elo
         </span>
       </div>

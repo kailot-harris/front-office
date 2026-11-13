@@ -449,7 +449,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                 type="button"
                 onClick={() => setHcaOverride('A')}
                 className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
-                  hcaTeam === teamACode ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40' : 'text-slate-500'
+                  hcaTeam === teamACode ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40' : 'text-slate-400'
                 }`}
               >
                 {hcaTeam === teamACode ? '★ Has Home Field' : 'Set as HCA'}
@@ -506,7 +506,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
                 type="button"
                 onClick={() => setHcaOverride('B')}
                 className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
-                  hcaTeam === teamBCode ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'text-slate-500'
+                  hcaTeam === teamBCode ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'text-slate-400'
                 }`}
               >
                 {hcaTeam === teamBCode ? '★ Has Home Field' : 'Set as HCA'}

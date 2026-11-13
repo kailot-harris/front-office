@@ -106,7 +106,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
   const renderSortIndicator = (field: StandingsSortField) => {
     if (sortBy !== field) {
       return (
-        <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 opacity-40 group-hover:opacity-100 transition-opacity" />
+        <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 opacity-40 group-hover:opacity-100 transition-opacity" />
       );
     }
     return sortOrder === 'asc' ? (
@@ -717,7 +717,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                                 ? 'bg-emerald-500/15 text-emerald-400'
                                 : team.ensemble_playoff_prob >= 0.35
                                 ? 'bg-indigo-500/15 text-indigo-300'
-                                : 'text-slate-500'
+                                : 'text-slate-400'
                             }`}
                           >
                             {(team.ensemble_playoff_prob * 100).toFixed(1)}%
@@ -730,7 +730,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                                 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                                 : team.ensemble_title_prob >= 0.03
                                 ? 'text-slate-200'
-                                : 'text-slate-500'
+                                : 'text-slate-400'
                             }`}
                           >
                             {(team.ensemble_title_prob * 100).toFixed(1)}%

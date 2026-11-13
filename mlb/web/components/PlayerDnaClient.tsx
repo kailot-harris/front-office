@@ -194,7 +194,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <div className="text-right font-mono">
                         <span className="text-xs font-bold text-sky-400 block">{p.overallRating} OVR</span>
-                        <span className="text-[11px] sm:text-[10px] text-slate-500">z: {p.compositeZscore}</span>
+                        <span className="text-[11px] sm:text-[10px] text-slate-400">z: {p.compositeZscore}</span>
                       </div>
                       <ChevronRight className={`w-4 h-4 ${isSelected ? 'text-sky-400' : 'text-slate-600'}`} />
                     </div>

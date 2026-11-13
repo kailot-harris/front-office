@@ -69,7 +69,7 @@ export const BallparkFieldSvg: React.FC<BallparkFieldSvgProps> = ({
                 </span>
               </div>
               <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
-                <MapPin className="w-3 h-3 text-slate-500" />
+                <MapPin className="w-3 h-3 text-slate-400" />
                 <span>{park.cityState}</span>
                 <span className="text-slate-600">•</span>
                 <span>{park.surface}</span>
@@ -104,6 +104,8 @@ export const BallparkFieldSvg: React.FC<BallparkFieldSvgProps> = ({
         <svg
           viewBox={`0 0 ${width} ${height}`}
           className="w-full h-full overflow-visible"
+          role="img"
+          aria-label={`Batted ball spray chart overlaid on ${park.parkName} (${park.team}) showing ${battedBalls.length} batted balls`}
         >
           <defs>
             {/* Outfield Grass Radial Gradient */}
