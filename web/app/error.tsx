@@ -36,7 +36,7 @@ export default function GlobalError({
             the dashboard home.
           </p>
           {error?.digest && (
-            <p className="text-[11px] font-mono text-slate-500 mt-2">Digest: {error.digest}</p>
+            <p className="text-[11px] font-mono text-slate-400 mt-2">Digest: {error.digest}</p>
           )}
         </div>
 

@@ -89,7 +89,7 @@ function InfoSetRow({
     <tr className="border-t border-slate-800 align-top">
       <td className="py-3 pr-3">
         <div className="font-semibold text-slate-200">{s.label}</div>
-        <div className="font-mono text-[11px] text-slate-500">
+        <div className="font-mono text-[11px] text-slate-400">
           data through {s.cutoffDate}
         </div>
         <div className="mt-1 font-mono text-[11px] text-slate-400">
@@ -117,7 +117,7 @@ function InfoSetRow({
           <span className="font-mono text-sm font-bold text-violet-300">
             {pct(s.pHighSeries)}
           </span>
-          <span className="font-mono text-[11px] text-slate-500">
+          <span className="font-mono text-[11px] text-slate-400">
             {lowAbbr} {pct(s.pLowSeries)}
           </span>
         </div>
@@ -202,7 +202,7 @@ export function FinalsSeriesBacktest({ data }: { data: FinalsSeriesBacktestSet }
         <span className="text-slate-600">vs</span>
         <TeamLogo team={matchup.teamLowAbbr} size="sm" />
         <span className="font-semibold">{matchup.teamLow}</span>
-        <span className="ml-2 font-mono text-[11px] text-slate-500">
+        <span className="ml-2 font-mono text-[11px] text-slate-400">
           {games.length} game{games.length === 1 ? '' : 's'} played
         </span>
       </div>
@@ -210,7 +210,7 @@ export function FinalsSeriesBacktest({ data }: { data: FinalsSeriesBacktestSet }
       <div className="mt-4 overflow-x-auto rounded-lg border border-slate-800 bg-slate-900/60 p-4">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="text-[11px] uppercase tracking-wide text-slate-500">
+            <tr className="text-[11px] uppercase tracking-wide text-slate-400">
               <th className="pb-2 pr-3 font-medium">Forecast point</th>
               <th className="pb-2 pr-3 font-medium">Net rating</th>
               <th className="pb-2 pr-3 font-medium">

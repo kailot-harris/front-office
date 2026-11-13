@@ -141,7 +141,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
             </select>
           </div>
 
-          <div className="text-[11px] text-slate-500 font-mono flex justify-between items-center px-1">
+          <div className="text-[11px] text-slate-400 font-mono flex justify-between items-center px-1">
             <span>Showing {filteredTeams.length} of {initialData.teams.length} Franchises</span>
           </div>
         </div>
@@ -160,7 +160,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                   <div>
                     <div className="text-sm font-bold text-white flex items-center gap-2">
                       {t.teamName}
-                      <span className="text-[11px] sm:text-[10px] font-mono text-slate-500 font-normal">
+                      <span className="text-[11px] sm:text-[10px] font-mono text-slate-400 font-normal">
                         ({t.conference})
                       </span>
                     </div>

@@ -101,7 +101,7 @@ function ExtremeRow({
         <span className="text-sm font-semibold text-slate-100 block">{item.headline}</span>
       )}
       {item.sourceId && (
-        <span className="font-mono text-[11px] text-slate-500 block">{item.sourceId}</span>
+        <span className="font-mono text-[11px] text-slate-400 block">{item.sourceId}</span>
       )}
     </div>
   );
@@ -127,7 +127,7 @@ function WordChips({
       </span>
       <div className="flex flex-wrap gap-1.5">
         {words.length === 0 ? (
-          <span className="text-xs text-slate-500">none matched</span>
+          <span className="text-xs text-slate-400">none matched</span>
         ) : (
           words.map((w) => (
             <span

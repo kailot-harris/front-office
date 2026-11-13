@@ -105,7 +105,7 @@ function ResultPanel({ series }: { series: BracketSeries }) {
 
   return (
     <div className="space-y-3">
-      <h4 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500">
+      <h4 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400">
         Result
       </h4>
 
@@ -124,7 +124,7 @@ function ResultPanel({ series }: { series: BracketSeries }) {
           </span>
           <span
             className={`text-sm font-mono font-bold ${
-              t.isLeader ? 'text-white' : 'text-slate-500'
+              t.isLeader ? 'text-white' : 'text-slate-400'
             }`}
           >
             {t.wins}
@@ -164,7 +164,7 @@ function PredictionPanel({ series }: { series: BracketSeries }) {
   if (!f) {
     return (
       <div className="space-y-3">
-        <h4 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500">
+        <h4 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400">
           Prediction
         </h4>
         <p className="text-xs text-slate-400 leading-relaxed">
@@ -179,10 +179,10 @@ function PredictionPanel({ series }: { series: BracketSeries }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h4 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500">
+        <h4 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400">
           Prediction
         </h4>
-        <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">{f.formatLabel}</span>
+        <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">{f.formatLabel}</span>
       </div>
 
       {[
@@ -211,12 +211,12 @@ function PredictionPanel({ series }: { series: BracketSeries }) {
             >
               {t.name}
               {t.seed !== null ? (
-                <span className="text-[11px] sm:text-[10px] font-mono text-slate-500 ml-1">#{t.seed}</span>
+                <span className="text-[11px] sm:text-[10px] font-mono text-slate-400 ml-1">#{t.seed}</span>
               ) : null}
             </span>
             <span
               className={`text-sm font-mono font-bold ${
-                t.favoured ? 'text-accent-400' : 'text-slate-500'
+                t.favoured ? 'text-accent-400' : 'text-slate-400'
               }`}
             >
               {pct(t.p)}
@@ -232,9 +232,9 @@ function PredictionPanel({ series }: { series: BracketSeries }) {
       ))}
 
       <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] pt-1">
-        <dt className="text-slate-500">Expected length</dt>
+        <dt className="text-slate-400">Expected length</dt>
         <dd className="text-right font-mono text-slate-300">{f.expectedGames.toFixed(2)} games</dd>
-        <dt className="text-slate-500">Net rating edge</dt>
+        <dt className="text-slate-400">Net rating edge</dt>
         <dd className="text-right font-mono text-slate-300">
           {(f.netHighAdj - f.netLowAdj >= 0 ? '+' : '') +
             (f.netHighAdj - f.netLowAdj).toFixed(2)}
@@ -271,7 +271,7 @@ function SeriesCard({ series }: { series: BracketSeries }) {
 
       {/* The basis of the number, attached to the number. */}
       {f ? (
-        <p className="text-[11px] text-slate-500 leading-relaxed border-t border-slate-800 pt-3">
+        <p className="text-[11px] text-slate-400 leading-relaxed border-t border-slate-800 pt-3">
           <span className="font-bold text-slate-400">{series.prediction.provenanceLabel}</span>{' '}
           {f.ratingBasis}
         </p>
@@ -288,12 +288,12 @@ function SeriesCard({ series }: { series: BracketSeries }) {
       {open ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-1">
           <div className="space-y-1">
-            <h5 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500 mb-2">
+            <h5 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400 mb-2">
               Games played
             </h5>
             {series.games.map((g, i) => (
               <div key={i} className="flex items-center justify-between text-[11px] font-mono">
-                <span className="text-slate-500">
+                <span className="text-slate-400">
                   G{i + 1} · {g.gameDate}
                 </span>
                 <span className="text-slate-300">
@@ -304,13 +304,13 @@ function SeriesCard({ series }: { series: BracketSeries }) {
           </div>
 
           <div className="space-y-1">
-            <h5 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500 mb-2">
+            <h5 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400 mb-2">
               Predicted series length
             </h5>
             {f ? (
               f.lengthDistribution.map((d) => (
                 <div key={d.length} className="flex items-center gap-2 text-[11px] font-mono">
-                  <span className="text-slate-500 w-16">{d.label}</span>
+                  <span className="text-slate-400 w-16">{d.label}</span>
                   <div className="flex-1 h-1.5 rounded bg-slate-800 overflow-hidden">
                     <div
                       className={`h-full rounded ${
@@ -323,10 +323,10 @@ function SeriesCard({ series }: { series: BracketSeries }) {
                 </div>
               ))
             ) : (
-              <p className="text-[11px] text-slate-500">No predicted distribution for this round.</p>
+              <p className="text-[11px] text-slate-400">No predicted distribution for this round.</p>
             )}
             {f && series.seriesComplete ? (
-              <p className="text-[11px] sm:text-[10px] text-slate-500 pt-2">
+              <p className="text-[11px] sm:text-[10px] text-slate-400 pt-2">
                 Highlighted bar is the length the series actually ran.
               </p>
             ) : null}
@@ -367,7 +367,7 @@ export function PlayoffBracket2026Client({
         </header>
         <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-8 text-center space-y-2">
           <p className="text-sm font-bold text-slate-300">No bracket data available yet.</p>
-          <p className="text-xs text-slate-500 max-w-xl mx-auto leading-relaxed">
+          <p className="text-xs text-slate-400 max-w-xl mx-auto leading-relaxed">
             {bracket.sourceNote ||
               'The postseason box-score cache is empty or missing. Run the pipeline to populate it.'}
           </p>
@@ -420,7 +420,7 @@ export function PlayoffBracket2026Client({
           round are not measuring the same thing.
         </HowToRead>
         {scored.length > 0 ? (
-          <p className="text-xs text-slate-500 font-mono">
+          <p className="text-xs text-slate-400 font-mono">
             Favoured side won {hits} of {scored.length} completed series with a prediction.
           </p>
         ) : null}
@@ -434,7 +434,7 @@ export function PlayoffBracket2026Client({
               <h2 className="text-lg font-bold text-white tracking-tight">{round}</h2>
               {/* Round-level provenance, stated once per round and repeated on
                   each card, so a reader landing mid-page cannot miss it. */}
-              <p className="text-[11px] text-slate-500 font-mono">
+              <p className="text-[11px] text-slate-400 font-mono">
                 {rows[0]?.prediction.provenanceLabel}
               </p>
             </div>
@@ -453,7 +453,7 @@ export function PlayoffBracket2026Client({
 
       {bracket.sourceNote ? (
         <footer className="border-t border-slate-800 pt-4">
-          <p className="text-[11px] text-slate-500 leading-relaxed">{bracket.sourceNote}</p>
+          <p className="text-[11px] text-slate-400 leading-relaxed">{bracket.sourceNote}</p>
           {bracket.generatedAt ? (
             <p className="text-[11px] sm:text-[10px] text-slate-600 font-mono mt-1">
               Artifact generated {bracket.generatedAt}

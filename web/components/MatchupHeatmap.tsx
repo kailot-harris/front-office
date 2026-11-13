@@ -22,7 +22,7 @@ export const MatchupHeatmap: React.FC<MatchupHeatmapProps> = ({ dist }) => {
     if (pct >= 25) return 'bg-indigo-700/80 text-indigo-100 font-semibold border-indigo-500';
     if (pct >= 15) return 'bg-indigo-950/80 text-indigo-300 border-indigo-800';
     if (pct >= 8) return 'bg-slate-800/80 text-slate-300 border-slate-700';
-    return 'bg-surface-raised/60 text-slate-500 border-slate-800';
+    return 'bg-surface-raised/60 text-slate-400 border-slate-800';
   };
 
   return (
@@ -31,7 +31,7 @@ export const MatchupHeatmap: React.FC<MatchupHeatmapProps> = ({ dist }) => {
         <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
           Defensive Matchup Distribution (Tracking Shares)
         </h4>
-        <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">100% Normalized</span>
+        <span className="text-[11px] sm:text-[10px] text-slate-400 font-mono">100% Normalized</span>
       </div>
 
       <div className="grid grid-cols-5 gap-2">

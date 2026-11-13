@@ -173,7 +173,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
           </span>
           <div className="flex items-baseline gap-1 mt-0.5">
             <span className="font-mono text-xl font-black text-white">{overall.totalFgm}</span>
-            <span className="font-mono text-xs text-slate-500">/ {overall.totalFga}</span>
+            <span className="font-mono text-xs text-slate-400">/ {overall.totalFga}</span>
           </div>
           <span className="text-xs font-mono font-bold text-amber-400">
             {(overall.fgPct * 100).toFixed(1)}% FG
@@ -189,7 +189,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
               {(overall.eFgPct * 100).toFixed(1)}%
             </span>
           </div>
-          <span className="text-[11px] sm:text-[10px] text-slate-500 block truncate">eFG (3PT adjusted)</span>
+          <span className="text-[11px] sm:text-[10px] text-slate-400 block truncate">eFG (3PT adjusted)</span>
         </div>
 
         <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-3 shadow-sm">
@@ -198,7 +198,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
           </span>
           <div className="flex items-baseline gap-1 mt-0.5">
             <span className="font-mono text-xl font-black text-white">{overall.threeMade}</span>
-            <span className="font-mono text-xs text-slate-500">/ {overall.threeAtt}</span>
+            <span className="font-mono text-xs text-slate-400">/ {overall.threeAtt}</span>
           </div>
           <span className="text-xs font-mono text-sky-400">
             {(overall.threeFreq * 100).toFixed(0)}% of shots
@@ -214,7 +214,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
               {(overall.rimFreq * 100).toFixed(0)}%
             </span>
           </div>
-          <span className="text-[11px] sm:text-[10px] text-slate-500 block truncate">&lt; 4.0 ft Restricted</span>
+          <span className="text-[11px] sm:text-[10px] text-slate-400 block truncate">&lt; 4.0 ft Restricted</span>
         </div>
 
         <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-3 shadow-sm">
@@ -227,7 +227,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
               {overall.hotCount}
             </span>
           </div>
-          <span className="text-[11px] sm:text-[10px] text-slate-500 block truncate">z &gt;= +1.3 vs WNBA</span>
+          <span className="text-[11px] sm:text-[10px] text-slate-400 block truncate">z &gt;= +1.3 vs WNBA</span>
         </div>
 
         <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-3 shadow-sm">
@@ -240,7 +240,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
               {overall.coldCount}
             </span>
           </div>
-          <span className="text-[11px] sm:text-[10px] text-slate-500 block truncate">z &lt;= -1.3 vs WNBA</span>
+          <span className="text-[11px] sm:text-[10px] text-slate-400 block truncate">z &lt;= -1.3 vs WNBA</span>
         </div>
       </div>
 
@@ -550,7 +550,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
                 <div className="text-slate-400 text-[11px] mt-0.5">
                   Dist: {hoveredShot.dist} ft • {hoveredShot.zone}
                 </div>
-                <div className="text-slate-500 text-[11px] sm:text-[10px]">
+                <div className="text-slate-400 text-[11px] sm:text-[10px]">
                   Q{hoveredShot.period} {hoveredShot.clock}
                 </div>
               </div>
@@ -635,21 +635,21 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
 
                   <div className="grid grid-cols-4 gap-2 pt-2 border-t border-slate-800/60 font-mono text-[11px]">
                     <div>
-                      <span className="text-[11px] sm:text-[9px] text-slate-500 uppercase block">FGA</span>
+                      <span className="text-[11px] sm:text-[9px] text-slate-400 uppercase block">FGA</span>
                       <span className="font-bold text-slate-200">
                         {zm.fgm}/{zm.fga}
                       </span>
                     </div>
 
                     <div>
-                      <span className="text-[11px] sm:text-[9px] text-slate-500 uppercase block">FG%</span>
+                      <span className="text-[11px] sm:text-[9px] text-slate-400 uppercase block">FG%</span>
                       <span className="font-bold text-white">
                         {zm.fga > 0 ? `${(zm.fgPct * 100).toFixed(0)}%` : '—'}
                       </span>
                     </div>
 
                     <div>
-                      <span className="text-[11px] sm:text-[9px] text-slate-500 uppercase block">vs WNBA</span>
+                      <span className="text-[11px] sm:text-[9px] text-slate-400 uppercase block">vs WNBA</span>
                       <span
                         className={`font-bold ${
                           zm.deltaPct > 0 ? 'text-rose-400' : zm.deltaPct < 0 ? 'text-cyan-400' : 'text-slate-400'
@@ -660,7 +660,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
                     </div>
 
                     <div>
-                      <span className="text-[11px] sm:text-[9px] text-slate-500 uppercase block">PPS</span>
+                      <span className="text-[11px] sm:text-[9px] text-slate-400 uppercase block">PPS</span>
                       <span className="font-bold text-amber-400">
                         {zm.fga > 0 ? zm.pps.toFixed(2) : '—'}
                       </span>

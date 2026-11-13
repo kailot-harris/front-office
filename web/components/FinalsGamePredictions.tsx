@@ -107,7 +107,7 @@ function GameRow({
           >
             Game {g.game}
           </span>
-          <span className="text-[11px] font-mono text-slate-500">{g.gameDate || 'date TBD'}</span>
+          <span className="text-[11px] font-mono text-slate-400">{g.gameDate || 'date TBD'}</span>
           <span className="inline-flex items-center gap-1 text-[11px] sm:text-[10px] font-mono uppercase tracking-wider text-slate-400">
             <Home className="w-3 h-3" />
             <TeamLogo team={g.hostAbbr} size="sm" />
@@ -131,7 +131,7 @@ function GameRow({
       {/* ---- the two numbers every row carries ---- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
-          <h5 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500">
+          <h5 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400">
             {played ? 'Pre-game prediction' : 'Forecast'}
           </h5>
           <div className="flex items-center gap-2">
@@ -141,17 +141,17 @@ function GameRow({
               {pct(pHigh >= 0.5 ? pHigh : 1 - pHigh)}
             </span>
           </div>
-          <p className="text-[11px] sm:text-[10px] text-slate-500 font-mono">
+          <p className="text-[11px] sm:text-[10px] text-slate-400 font-mono">
             Conditional on the game being played.
           </p>
         </div>
 
         <div className="space-y-1">
-          <h5 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500">
+          <h5 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400">
             Chance this game is played
           </h5>
           <PlayedChance p={g.pGamePlayed} />
-          <p className="text-[11px] sm:text-[10px] text-slate-500 font-mono">
+          <p className="text-[11px] sm:text-[10px] text-slate-400 font-mono">
             P(series reaches game {g.game}).
           </p>
         </div>
@@ -160,7 +160,7 @@ function GameRow({
       {/* ---- home court and rest, per game ---- */}
       <div className="border-t border-slate-800 pt-2 space-y-1">
         <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400 flex-wrap">
-          <Info className="w-3 h-3 text-slate-500" />
+          <Info className="w-3 h-3 text-slate-400" />
           <span>
             Home court {g.hostIsHighSeed ? 'favours' : 'works against'} {highAbbr} here
           </span>
@@ -178,7 +178,7 @@ function GameRow({
         </div>
 
         {restApplied && g.restApplied ? (
-          <div className="flex items-center gap-2 text-[11px] font-mono text-slate-500 flex-wrap">
+          <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400 flex-wrap">
             <Clock className="w-3 h-3" />
             <span>
               {highAbbr} {g.daysRestHigh ?? '?'}d rest{g.backToBackHigh ? ' (B2B)' : ''}
@@ -198,7 +198,7 @@ function GameRow({
             </span>
           </div>
         ) : (
-          <p className="text-[11px] font-mono text-slate-500">
+          <p className="text-[11px] font-mono text-slate-400">
             Rest and travel not applied to this game — home-court advantage only.
           </p>
         )}
@@ -207,7 +207,7 @@ function GameRow({
       {/* ---- the result, only when there is one ---- */}
       {played ? (
         <div className="border-t border-slate-800 pt-2 space-y-1">
-          <h5 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500">
+          <h5 className="text-[11px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400">
             Actual result
           </h5>
           <div className="flex items-center gap-3 flex-wrap">
@@ -233,7 +233,7 @@ function GameRow({
               {g.resultStatus === 'correct' ? 'Favoured side won' : 'Favoured side lost'}
             </span>
             {hostWonIt !== null ? (
-              <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">
+              <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">
                 {hostWonIt ? 'Host held serve.' : 'Road team stole it.'}
               </span>
             ) : null}
@@ -267,7 +267,7 @@ export function FinalsGamePredictions({ finals }: { finals: FinalsGamePrediction
           <p className="text-sm font-bold text-slate-300">
             No Finals matchup is determined yet.
           </p>
-          <p className="text-xs text-slate-500 max-w-xl mx-auto leading-relaxed">
+          <p className="text-xs text-slate-400 max-w-xl mx-auto leading-relaxed">
             {finals.sourceNote ||
               'Game-by-game Finals predictions appear here once both semifinal series have resolved.'}
           </p>
@@ -297,7 +297,7 @@ export function FinalsGamePredictions({ finals }: { finals: FinalsGamePrediction
           <span className="inline-flex items-center gap-1">
             <TeamLogo team={highAbbr} size="sm" />
             <span className="text-white font-bold">#{matchup.seedHigh} {matchup.teamHigh}</span>
-            <span className="text-slate-500">(home court)</span>
+            <span className="text-slate-400">(home court)</span>
           </span>
           <span className="text-slate-600">vs</span>
           <span className="inline-flex items-center gap-1">
@@ -335,7 +335,7 @@ export function FinalsGamePredictions({ finals }: { finals: FinalsGamePrediction
       </div>
 
       {finals.sourceNote ? (
-        <p className="text-[11px] text-slate-500 leading-relaxed">{finals.sourceNote}</p>
+        <p className="text-[11px] text-slate-400 leading-relaxed">{finals.sourceNote}</p>
       ) : null}
     </section>
   );

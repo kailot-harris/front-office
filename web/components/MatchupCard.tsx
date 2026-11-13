@@ -80,7 +80,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ game }) => {
         )}
         {gradeState === 'ungraded' && game.is_completed && (
           <span
-            className="flex items-center gap-1 text-xs text-slate-500"
+            className="flex items-center gap-1 text-xs text-slate-400"
             title={
               game.has_logged_prediction
                 ? 'The accuracy log has not resolved this game yet, so it is not graded.'
@@ -146,7 +146,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ game }) => {
             </div>
           </div>
         ) : (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-400">
             No projection available for this game.
           </p>
         )}
@@ -183,7 +183,7 @@ const TeamRow: React.FC<TeamRowProps> = ({
         {name}
       </span>
       {isHome && (
-        <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono flex-shrink-0" title="Home team">
+        <span className="text-[11px] sm:text-[10px] text-slate-400 font-mono flex-shrink-0" title="Home team">
           HOME
         </span>
       )}
