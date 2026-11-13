@@ -104,6 +104,8 @@ export const BallparkFieldSvg: React.FC<BallparkFieldSvgProps> = ({
         <svg
           viewBox={`0 0 ${width} ${height}`}
           className="w-full h-full overflow-visible"
+          role="img"
+          aria-label={`Batted ball spray chart overlaid on ${park.parkName} (${park.team}) showing ${battedBalls.length} batted balls`}
         >
           <defs>
             {/* Outfield Grass Radial Gradient */}

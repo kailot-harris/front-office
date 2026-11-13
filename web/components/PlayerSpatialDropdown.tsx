@@ -506,7 +506,12 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
 
             {/* Strike Zone SVG Canvas */}
             <div className="relative w-full max-w-[420px] aspect-[420/400]">
-              <svg viewBox="-2.2 0.3 4.4 4.5" className="w-full h-full overflow-visible select-none">
+              <svg
+                viewBox="-2.2 0.3 4.4 4.5"
+                className="w-full h-full overflow-visible select-none"
+                role="img"
+                aria-label={`Strike zone chart for ${player.player_name} showing pitch locations`}
+              >
                 <defs>
                   {/* Strike Zone Background Gradient */}
                   <linearGradient id="zoneGrad" x1="0" y1="0" x2="0" y2="1">
