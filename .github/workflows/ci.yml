@@ -77,6 +77,15 @@ jobs:
       - name: Parse every tracked R file
         run: Rscript .github/scripts/parse-all.R
 
+      # Static analysis (parse-only, no packages, no execution): fails the
+      # build if any tools/gif_*.R or tools/viz_*.R chart script contains a
+      # code path that can draw non-data-derived values (random generators,
+      # hand-typed data tables, or a missing-input fallback that fabricates a
+      # data frame instead of calling viz_stop_no_data()). See
+      # front-office#142 for the incident this guards against.
+      - name: Check chart scripts for non-data-derived values
+        run: Rscript .github/scripts/check-chart-authenticity.R
+
       # The cached library holds compiled packages linked against the runner
       # image's system libraries. runner.os is just "Linux", so when
       # ubuntu-latest moved from 24.04 to 26.04 the old cache was restored onto

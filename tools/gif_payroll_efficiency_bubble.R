@@ -211,6 +211,7 @@ generate_gif_payroll_efficiency_bubble <- function(season = 2026,
   for (f in seq_len(total_frames)) {
     # Progress ratio: easing curve from baseline anchor (frame 1) to final standings
     step_idx <- min(f, n_frames)
+    # chart-authenticity-allow: animation easing curve, not plotted data
     p_prog <- (1 - cos(pi * (step_idx - 1) / (n_frames - 1))) / 2
 
     cur_df <- master_df %>%

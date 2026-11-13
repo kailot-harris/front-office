@@ -74,14 +74,22 @@ generate_gif_trophy_lift_champions <- function(season = 2026,
   # Seed random confetti particles for consistent celebration trajectory
   set.seed(20261030)
   n_confetti <- 140
+  # chart-authenticity-allow: confetti burst animation particles, not plotted data
   confetti_base <- tibble(
     id = 1:n_confetti,
+    # chart-authenticity-allow: confetti origin x, decorative animation only
     x_origin = runif(n_confetti, 4.0, 6.0),
+    # chart-authenticity-allow: confetti origin y, decorative animation only
     y_origin = runif(n_confetti, 3.8, 5.0),
+    # chart-authenticity-allow: confetti x-velocity, decorative animation only
     vx = rnorm(n_confetti, mean = 0, sd = 1.8),
+    # chart-authenticity-allow: confetti y-velocity, decorative animation only
     vy = runif(n_confetti, min = 1.0, max = 3.5),
+    # chart-authenticity-allow: confetti particle size, decorative animation only
     size = runif(n_confetti, 1.8, 4.2),
+    # chart-authenticity-allow: confetti particle shape, decorative animation only
     shape = sample(c(15, 16, 17, 18), n_confetti, replace = TRUE),
+    # chart-authenticity-allow: confetti particle color, decorative animation only
     color = sample(c("#FACC15", "#FEF08A", "#EAB308", "#60A5FA", "#FFFFFF", "#F59E0B"), n_confetti, replace = TRUE)
   )
 
@@ -90,9 +98,13 @@ generate_gif_trophy_lift_champions <- function(season = 2026,
   angles <- seq(pi * 0.12, pi * 0.88, length.out = 30)
   trophy_pennants <- tibble(
     pennant_id = 1:30,
+    # chart-authenticity-allow: fixed pennant-arc layout geometry, not data
     base_x = 5.0 + 1.6 * cos(angles),
+    # chart-authenticity-allow: fixed pennant-arc layout geometry, not data
     base_y = 4.2 + 0.6 * sin(angles),
+    # chart-authenticity-allow: fixed pennant-arc layout geometry, not data
     tip_x  = 5.0 + 2.5 * cos(angles),
+    # chart-authenticity-allow: fixed pennant-arc layout geometry, not data
     tip_y  = 4.6 + 2.6 * sin(angles)
   )
 
@@ -112,6 +124,7 @@ generate_gif_trophy_lift_champions <- function(season = 2026,
     p_prog <- (step_idx - 1) / (n_frames - 1) # 0.0 to 1.0
 
     # Trophy lift elevation: rises from y = 2.8 to y = 4.8
+    # chart-authenticity-allow: animation easing curve, not plotted data
     trophy_y_offset <- 1.4 * (1 - cos(pi * min(1, p_prog * 1.25))) / 2
 
     # Confetti dynamics: burst activates after trophy lift begins (p_prog > 0.45)
@@ -127,6 +140,7 @@ generate_gif_trophy_lift_champions <- function(season = 2026,
 
     # Logo scale and spotlight intensity
     logo_width <- 0.10 + 0.08 * p_prog
+    # chart-authenticity-allow: spotlight pulsing animation intensity, not data
     beam_alpha <- 0.05 + 0.18 * sin(pi * p_prog)
     crest_gold_alpha <- pmin(1.0, p_prog * 1.3)
 
