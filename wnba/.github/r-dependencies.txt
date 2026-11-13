@@ -19,33 +19,26 @@
 #   here        config.R, which hard-stops without it. Every test sources
 #               config.R, so missing this failed all four at once on the
 #               job's first run -- it was installed locally and invisible.
-#   bcrypt      auth_utils.R, same shape: a requireNamespace() hard stop
-#               rather than a library() call, so a grep for library() misses
-#               it. config.R and auth_utils.R are the only two files here
-#               that gate on requireNamespace(); both are covered now.
 #   tidyverse   prediction_accuracy_logger, player_metrics, and the dplyr /
 #               stringr / tidyr / tibble calls in the tests themselves
 #   wehoop      player_metrics.R  (sourced by test_pure_functions.R)
 #   slider      player_metrics.R
 #   duckdb      logging_utils.R   (sourced by all four, transitively)
-#   DBI         the duckdb and RSQLite call sites
-#   RSQLite     auth_utils.R      (test_auth_utils, test_create_account_*)
+#   DBI         the duckdb call sites
 #   httr2       test_phase4_engine.R, market_odds_engine.R
 #   httr        market_odds_engine.R
 #   jsonlite    market_odds_engine.R
 #   ranger      market_odds_engine.R
-#   sys         test_auth_utils.R uses sys::exec_background() for its
-#               concurrent-writer check
+#
+# bcrypt, RSQLite and sys were removed with the control panel login (now in
+# retired/control_panel/); nothing else in the repo uses them.
 here
-bcrypt
 tidyverse
 wehoop
 slider
 duckdb
 DBI
-RSQLite
 httr2
 httr
 jsonlite
 ranger
-sys

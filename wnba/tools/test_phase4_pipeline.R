@@ -261,7 +261,7 @@ writeLines(c(
   # Issue #90: this used to emit a hardcoded setwd() to the repo's pre-move location, so the
   # child probe aborted on a missing directory before it could source anything and CHECK 5
   # reported nothing useful. Pass the root this script already resolved, encodeString()'d the
-  # same way tools/test_auth_utils.R does it.
+  # same way the (now retired) auth test did it.
   sprintf('setwd(%s)', encodeString(PROJECT_DIR, quote = '"')),
   'source("logging_utils.R"); source("config.R")',
   'exprs <- parse("run_full_pipeline.R")',

@@ -295,6 +295,7 @@ jitter_apart_2d <- function(x, y, min_gap, x_lo, x_hi, y_lo, y_hi, iters = 40) {
           moved <- TRUE
           if (d < 1e-6) {
             ang <- (i * 7 + j * 13) %% 360 * (pi / 180)
+            # chart-authenticity-allow: deterministic label-jitter direction for coincident points, not plotted data
             dx <- cos(ang); dy <- sin(ang); d <- 1
           }
           push <- (min_gap - d) / 2

@@ -1,5 +1,15 @@
 # WNBA Analytics — Working Notes
 
+## Retired: the control panel
+- **The control panel is retired (2026-11-12, owner decision).** Its code lives in
+  `retired/control_panel/` for reference only. Do not run, extend, fix, test or re-wire it, and do
+  not open issues or plan work against it. If a task or an old note asks for control panel work, the
+  task is out of date: say so and stop.
+- Its login code (`auth_utils.R`, `auth_login_module.R`, the login demo/probe and the two auth tests)
+  is retired with it and sits in the same folder. Do not add authentication back without asking the
+  owner.
+- There is no Shiny app in this repo any more. `app.R` was retired earlier (issue #142).
+
 ## Environment
 - R is **not on PATH** on this machine. Use the full path:
   `C:\Program Files\R\R-4.5.2\bin\Rscript.exe`.
@@ -12,8 +22,8 @@
   recipe was `shinytest2` + `chromote` driving the real Chrome at
   `C:\Program Files\Google\Chrome\Application\chrome.exe`, and it required
   `Sys.setenv(NOT_CRAN = "true")` before creating an `AppDriver` or it aborted with
-  `Reason: On CRAN` even outside a test suite. `control_panel_app.R` is still a Shiny app and has
-  never had headless coverage.
+  `Reason: On CRAN` even outside a test suite. The control panel is retired too
+  (see the top of this file), so no Shiny UI remains to test.
 
 ## Data quirks that will silently corrupt results if missed
 - Raw `wehoop::load_wnba_*_box()` data includes non-franchise exhibition/All-Star rows (codes
@@ -46,7 +56,7 @@
     Crucially, because `base::`%||%`` is always in scope on R ≥ 4.4, **`exists("%||%")` is always `TRUE`**
     in a fresh session — so guarding `if (!exists("%||%")) source("logging_utils.R")` silently
     no-ops and leaves base R's `is.null`-only version active!
-  - Every script that uses `%||%` (including `dashboard_render_helpers.R`, `playoff_simulator.R`, and
+  - Every script that uses `%||%` (including `playoff_simulator.R` and
     `tools/offseason/wire_items_schema.R`) now sources `logging_utils.R` directly (or guards on
     `!exists("log_info", mode = "function")` rather than `!exists("%||%")`). Still use
     `dplyr::coalesce()` for any per-row NA-fill on a column.

@@ -1,3 +1,6 @@
+# RETIRED. The control panel is retired and must not be run, extended, fixed or tested.
+# Kept for reference only. See retired/control_panel/README.md.
+
 # STALE SINCE ISSUE #54: control_panel_app.R now requires a real login (mod_login_ui/
 # mod_login_server, issue #53) before any of the stage-picker/run_btn/etc. elements this
 # script drives exist in the DOM at all -- this script predates that and does not log in

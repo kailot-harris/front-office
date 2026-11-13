@@ -1,3 +1,6 @@
+# RETIRED. The control panel is retired and must not be run, extended, fixed or tested.
+# Kept for reference only. See retired/control_panel/README.md.
+
 # ==============================================================================
 # WNBA Analytics - Reusable Login/Signup Shiny Module (GitHub issue #53,
 # Slice 3 of #44)

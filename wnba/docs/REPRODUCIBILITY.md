@@ -104,7 +104,7 @@ change, not a refactor.**
 | `build_coaching_dataset.R:69` `set.seed(42)` + the `runif()` block | Already seeded and byte-stable. **It never covered `actualProjectedWins` / `coachingWinsAdded`** — those are read out of `projections_season_teams.json` (`build_coaching_dataset.R:84-89`), so their drift was purely downstream of the embeddings bug. |
 | `rapm_engine.R:133-135` `tune_lambda_cv()` CV folds | Seeded `set.seed(seed)`, default `seed = 20260101`. Also gated behind `RAPM_TUNE_LAMBDA` (default `FALSE`). `cache/rapm_ratings.rds` hashed identical across two runs. |
 | `live_calibration.R:59` `rnorm()` in `simulate_live_game()` | **Not reached.** `live_calibration.R` is not a `run_full_pipeline.R` stage and `simulate_live_game()` has no caller in the repo's publishing path. |
-| `dashboard_render_helpers.R:389` `rnorm()` | **Not reached.** Shiny render helper; `app.R` was retired under #142. Nothing under `web/public/data/` goes through it. |
+| `retired/control_panel/dashboard_render_helpers.R` `rnorm()` | **Not reached.** Render helper for the retired control panel; `app.R` was retired under #142. Nothing under `web/public/data/` goes through it. |
 | `tools/*` (`generate_diagnostic_data.R`, `ml_cv_benchmark.R`, `backtest_margin_hyperparams.R`, `ml_feature_experiments*.R`, `research_*.R`, `test_logging_fault_injection.R`) | **Not reached.** `tools/` is outside `run_full_pipeline.R`'s DAG; each already carries its own fixed seed where it matters. |
 
 ## 6. Known non-reproducibility that is NOT covered here

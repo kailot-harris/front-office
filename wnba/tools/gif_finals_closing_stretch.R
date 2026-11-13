@@ -390,14 +390,18 @@ HOOP_XY <- c(0, 5.25)
 
 arc_pts <- function(center, radius, from_deg = 0, to_deg = 180, n = 120) {
   theta <- seq(from_deg, to_deg, length.out = n) * pi / 180
+  # chart-authenticity-allow: fixed court-geometry arc coordinates, not plotted data
   data.frame(x = center[1] + radius * cos(theta), y = center[2] + radius * sin(theta))
 }
 
 court_three_pt <- arc_pts(HOOP_XY, WNBA_THREE_PT_RADIUS_FT)
+# chart-authenticity-allow: fixed court-geometry key outline coordinates, not plotted data
 court_key <- data.frame(x = c(-8, 8, 8, -8, -8), y = c(0, 0, 19, 19, 0))
 court_ft_circle <- arc_pts(c(0, 19), 6, 0, 360, n = 120)
+# chart-authenticity-allow: fixed court-geometry backboard coordinates, not plotted data
 court_backboard <- data.frame(x = c(-3, 3), y = c(4, 4))
 court_hoop <- arc_pts(HOOP_XY, 0.75, 0, 360, n = 60)
+# chart-authenticity-allow: fixed court-geometry outline coordinates, not plotted data
 court_outline <- data.frame(x = c(-25, 25, 25, -25, -25), y = c(0, 0, 47, 47, 0))
 
 draw_half_court <- function(line_color = "#334155", lw = 0.6) {

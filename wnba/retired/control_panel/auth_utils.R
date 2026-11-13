@@ -1,3 +1,6 @@
+# RETIRED. The control panel is retired and must not be run, extended, fixed or tested.
+# Kept for reference only. See retired/control_panel/README.md.
+
 # ==============================================================================
 # WNBA Analytics - Auth Utilities (Slice 1 of issue #44, GitHub issue #51)
 # Path: <project root>/auth_utils.R

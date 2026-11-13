@@ -128,6 +128,13 @@ jobs:
       - name: Parse every tracked R file
         run: Rscript .github/scripts/parse-all.R
 
+      # Static check (base R only, no packages, no execution) guarding
+      # against front-office#142: a chart script whose real input is
+      # missing silently drawing invented values instead of refusing to
+      # render. Placed here (cheap, before package install) to fail fast.
+      - name: Check chart scripts for non-data-derived values
+        run: Rscript .github/scripts/check-chart-authenticity.R
+
       # The cached library holds compiled packages linked against the runner
       # image's system libraries. runner.os is just "Linux", so when
       # ubuntu-latest moved from 24.04 to 26.04 the old cache was restored onto
