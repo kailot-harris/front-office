@@ -115,6 +115,19 @@ schedule_publish.bat publish    :: live  -- only after #42 is proven
 exercised from a git worktree without writing into the main checkout. The registered
 tasks do not set it.
 
+### Checkout-safety guard (issue #105)
+
+Both wrappers run a guard immediately after `cd`-ing into the project directory, before
+touching R or the publish gate. If the checkout is dirty, it `git stash push -u`s the
+changes (tracked and untracked, never discarded — recoverable with `git stash pop`), then
+`git checkout main`s. If the stash, the checkout, the post-checkout branch, or the
+post-checkout tree state doesn't come out exactly right, the guard fails loudly: a
+`[ERROR] Checkout guard: ...` line in `logs\pipeline_execution.log` and a non-zero exit,
+with no pipeline/gate run and nothing discarded. This exists because the primary checkout
+is shared with interactive sessions and subagents — see `CLAUDE.md`'s "Shared-checkout
+safety (front-office issue #105)" section for the 2026-11-10 incident this fixes and the
+general rule (feature work in a worktree; primary checkout stays on `main` and clean).
+
 ---
 
 ## Reading the log

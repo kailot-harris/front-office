@@ -101,6 +101,54 @@ that touches a modeling/structural constant.
   documented WNBA-repo failure mode (see `docs/NFL_REPLICATION_PLAN.md` §1) to avoid from the
   start here, not fix after the fact.
 
+## Shared-checkout safety (front-office issue #105)
+The repo root (`C:\Users\kailo\kayceeslices\front-office\NFL Analytics`) is the **primary
+checkout** — the same directory Windows Task Scheduler's `NFL_analytics_task_01` (05:15
+pipeline, `schedule_daily.bat`) and `NFL_analytics_publish_01` (09:00 publish gate,
+`schedule_publish.bat`) run in, and the same directory interactive sessions and subagents
+land in by default.
+
+**The rule: feature work happens in a worktree; the primary checkout stays on `main` and
+clean.** Do not leave the primary checkout on a feature branch, and do not leave it dirty.
+If you need to branch, `git worktree add` a sibling directory (see the existing
+`.nfl-worktrees\<name>` / `_worktrees\<name>` siblings for the pattern already in use in
+this project) and do the work there instead of switching the primary checkout's branch.
+
+This is not a hypothetical: on 2026-11-10 a subagent left the primary checkout on
+`chore/nfl-week9-visual-media` with uncommitted changes. The 08:00 publish gate correctly
+refused (`assertion E FAILED ... HEAD=chore/nfl-week9-visual-media expected=main`), but at
+08:03 a different agent ran `git checkout -- .` to force the tree clean before merging,
+which **silently discarded 8 regenerated JSON files and a cache file** — not a merge, a
+checkout, so git gave no conflict warning at all. Published data stayed ~30 hours stale
+until a manual re-run. The same day, two more collisions hit this project from the same
+root cause (one working directory, several writers): a second session switching branches
+twice mid-merge, and two test/build runs colliding in one `web/.next` directory.
+
+Rules that follow from this, in order of how often they matter:
+1. **Never run two builds/test suites against one checkout at the same time.** If a build
+   or test run is already in flight in a directory, use a worktree for the second one
+   rather than sharing the tree.
+2. **Never clear a dirty tree with `git checkout -- .` (or `git reset --hard`) without
+   stashing first.** `git stash -u` preserves tracked and untracked changes and is
+   trivially reversible (`git stash pop`); `git checkout -- .` is not — it throws the
+   changes away with no prompt, no conflict marker, and no record other than the stash you
+   didn't take.
+3. **Scheduled tasks enforce this themselves, in code, not just by convention.**
+   `schedule_daily.bat` and `schedule_publish.bat` each run a checkout-safety guard
+   immediately after `cd`-ing into the project directory and before touching R or the
+   publish gate: if the tree is dirty, the guard `git stash push -u`s it (never discards
+   it), then `git checkout main`s; if the stash, the checkout, the resulting branch, or the
+   resulting tree isn't exactly "clean HEAD on `main`", the guard fails loudly — a clear
+   `[ERROR] Checkout guard: ...` line in `logs\pipeline_execution.log` plus a non-zero exit
+   — instead of silently running the pipeline/gate from the wrong branch or discarding
+   whatever was there. See the comment block at the top of each guard (right after the
+   `:inseason` `cd /d "%PROJECT_DIR%"` line) for the exact steps, and
+   `docs/SCHEDULING.md` for the operator-facing summary.
+4. `NFL_PROJECT_DIR` (both wrappers) only redirects *which* directory a wrapper run targets
+   (e.g. for exercising a wrapper from a worktree without touching the primary checkout's
+   logs) — it does not by itself prevent a shared-checkout collision in whichever directory
+   ends up set, which is why the guard in point 3 exists independently of it.
+
 ## Folder layout
 Repo root holds the pipeline `.R` scripts, deliberately flat: every script `source()`s its
 siblings by bare filename (e.g. `source("config.R")`), and `run_full_pipeline.R`'s `run_stage()`
