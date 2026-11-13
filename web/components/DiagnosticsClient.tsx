@@ -360,7 +360,7 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-mono text-slate-300">
                       {res.bucket}{' '}
-                      <span className="text-slate-500 font-sans">({res.label})</span>
+                      <span className="text-slate-400 font-sans">({res.label})</span>
                     </span>
                     <span className="font-mono font-bold text-white">{res.count} games</span>
                   </div>

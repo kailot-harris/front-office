@@ -407,11 +407,11 @@ export const RetrospectiveClient: React.FC<RetrospectiveClientProps> = ({
                   </div>
                   <div className="flex items-center gap-4 text-xs font-mono">
                     <div className="text-right">
-                      <span className="text-slate-500 block text-[11px] sm:text-[10px]">Pinnacle Team</span>
+                      <span className="text-slate-400 block text-[11px] sm:text-[10px]">Pinnacle Team</span>
                       <span className="text-amber-300 font-semibold">{m.topTeam}</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-slate-500 block text-[11px] sm:text-[10px]">Game Accuracy</span>
+                      <span className="text-slate-400 block text-[11px] sm:text-[10px]">Game Accuracy</span>
                       <span className="text-white font-semibold">{m.accuracy}</span>
                     </div>
                   </div>

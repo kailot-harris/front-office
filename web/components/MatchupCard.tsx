@@ -41,7 +41,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
       {/* Card Header */}
       <div className="p-3 bg-surface/80 border-b border-slate-800 flex items-center justify-between gap-2 text-xs font-mono text-slate-400">
         <div className="flex items-center gap-2 min-w-0">
-          <Calendar className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+          <Calendar className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
           <span className="font-semibold text-slate-300 whitespace-nowrap">
             {formatGameDate(matchup.game_date)}
           </span>
@@ -81,7 +81,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
           <div className="col-span-2 flex items-center gap-2.5 min-w-0">
             <TeamLogo team={matchup.away_team} size="lg" />
             <div className="min-w-0">
-              <span className="text-[11px] sm:text-[10px] font-mono text-slate-500 block uppercase">Away</span>
+              <span className="text-[11px] sm:text-[10px] font-mono text-slate-400 block uppercase">Away</span>
               <span className="text-sm font-bold text-white block truncate leading-tight">
                 {matchup.away_team_name}
               </span>
@@ -99,7 +99,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
           <div className="col-span-1 flex flex-col items-center justify-center text-center px-1">
             {matchup.is_completed ? (
               <>
-                <span className="text-[11px] sm:text-[9px] font-mono uppercase tracking-wider text-slate-500 font-bold mb-0.5">
+                <span className="text-[11px] sm:text-[9px] font-mono uppercase tracking-wider text-slate-400 font-bold mb-0.5">
                   Final
                 </span>
                 <div className="bg-surface px-2 py-1 rounded-md border border-slate-800 text-xs font-mono font-black shadow-inner whitespace-nowrap">
@@ -114,10 +114,10 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
               </>
             ) : (
               <>
-                <span className="text-[11px] sm:text-[9px] font-mono uppercase tracking-wider text-slate-500 font-bold mb-0.5">
+                <span className="text-[11px] sm:text-[9px] font-mono uppercase tracking-wider text-slate-400 font-bold mb-0.5">
                   Proj
                 </span>
-                <span className="text-sm font-black text-slate-500 font-mono">@</span>
+                <span className="text-sm font-black text-slate-400 font-mono">@</span>
               </>
             )}
           </div>
@@ -125,7 +125,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
           {/* Home */}
           <div className="col-span-2 flex items-center gap-2.5 justify-end text-right min-w-0">
             <div className="min-w-0">
-              <span className="text-[11px] sm:text-[10px] font-mono text-slate-500 block uppercase">Home</span>
+              <span className="text-[11px] sm:text-[10px] font-mono text-slate-400 block uppercase">Home</span>
               <span className="text-sm font-bold text-white block truncate leading-tight">
                 {matchup.home_team_name}
               </span>
@@ -150,7 +150,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
             />
             <div className="h-full bg-accent-500" style={{ width: `${matchup.home_win_prob * 100}%` }} />
           </div>
-          <div className="flex items-center justify-between text-[11px] sm:text-[10px] font-mono text-slate-500">
+          <div className="flex items-center justify-between text-[11px] sm:text-[10px] font-mono text-slate-400">
             <span className="flex items-center gap-1 min-w-0 truncate">
               <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
               <span className="truncate">{matchup.venue_name}</span>

@@ -28,7 +28,7 @@ export default function ErrorPage({
           the home page.
         </p>
         {error?.digest && (
-          <p className="text-[11px] font-mono text-slate-500 mt-3">Error ref: {error.digest}</p>
+          <p className="text-[11px] font-mono text-slate-400 mt-3">Error ref: {error.digest}</p>
         )}
 
         <div className="flex items-center justify-center gap-3 mt-6">
