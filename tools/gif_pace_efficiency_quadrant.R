@@ -285,6 +285,7 @@ jitter_apart_2d <- function(x, y, min_gap, x_lo, x_hi, y_lo, y_hi, iters = 40) {
             # direction derived from (i, j) rather than a diagonal that would
             # vary run to run.
             ang <- (j - i) * (pi / max(n, 2))
+            # chart-authenticity-allow: deterministic label-jitter direction for coincident points, not plotted data
             dx <- cos(ang); dy <- sin(ang)
             dist <- 1
           }
