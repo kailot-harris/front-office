@@ -232,7 +232,7 @@ main <- function() {
   if (length(args) > 0) {
     chart_files <- args
   } else {
-    tools_files <- system2("git", "ls-files", "tools", stdout = TRUE)
+    tools_files <- system2("git", c("ls-files", "tools"), stdout = TRUE)
     tools_files <- tools_files[nzchar(tools_files)]
     tools_files <- tools_files[grepl("[.][Rr]$", tools_files)]
     chart_files <- tools_files[grepl("^tools/gif_", tools_files)]
