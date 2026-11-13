@@ -201,7 +201,7 @@ test.describe('players pagination', () => {
 test.describe('playoff bracket simulator', () => {
   test('running a simulation produces a champion', async ({ page }) => {
     await page.goto('/playoffs', { waitUntil: 'networkidle' });
-    const run = page.getByRole('button', { name: /simulat/i }).first();
+    const run = page.getByRole('button', { name: /simulate bracket/i });
     await expect(run).toBeVisible();
     await run.click();
     await page.waitForTimeout(400);
@@ -213,7 +213,7 @@ test.describe('playoff bracket simulator', () => {
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto('/playoffs', { waitUntil: 'networkidle' });
-    const run = page.getByRole('button', { name: /simulat/i }).first();
+    const run = page.getByRole('button', { name: /simulate bracket/i });
     for (let i = 0; i < 10; i++) {
       await run.click();
       await page.waitForTimeout(120);
