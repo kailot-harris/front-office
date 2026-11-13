@@ -1,3 +1,6 @@
+# RETIRED. The control panel is retired and must not be run, extended, fixed or tested.
+# Kept for reference only. See retired/control_panel/README.md.
+
 # ==============================================================================
 # control_panel_app.R
 # Path: control_panel_app.R

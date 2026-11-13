@@ -1,3 +1,6 @@
+# RETIRED. The control panel is retired and must not be run, extended, fixed or tested.
+# Kept for reference only. See retired/control_panel/README.md.
+
 # ==============================================================================
 # tools/test_create_account_if_authorized.R
 # Standalone test/verification script for create_account_if_authorized() in

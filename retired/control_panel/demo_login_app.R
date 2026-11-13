@@ -1,3 +1,6 @@
+# RETIRED. The control panel is retired and must not be run, extended, fixed or tested.
+# Kept for reference only. See retired/control_panel/README.md.
+
 # ==============================================================================
 # tools/demo_login_app.R
 # Throwaway standalone Shiny app used ONLY to demo/QA the reusable login

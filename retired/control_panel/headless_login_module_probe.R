@@ -1,3 +1,6 @@
+# RETIRED. The control panel is retired and must not be run, extended, fixed or tested.
+# Kept for reference only. See retired/control_panel/README.md.
+
 # Headless browser QA for auth_login_module.R / tools/demo_login_app.R (GitHub issue #53),
 # using shinytest2 (chromote-backed, drives real Chrome) -- same pattern as
 # tools/headless_dashboard_probe.R and tools/headless_control_panel_probe.R (NOT_CRAN env var,
