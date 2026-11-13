@@ -1,0 +1,30 @@
+name: Check sport nav sync
+
+# front-office#110: index.html's landing-page accordion is a hand-written
+# mirror of each sport's web/components/Sidebar.tsx nav items, with nothing
+# keeping the two in sync. Runs on push/PR against main because either a
+# direct index.html edit or a subtree-sync PR (which updates the mirrored
+# Sidebar.tsx under mlb/, nba/, nfl/, wnba/) can introduce the divergence,
+# and both paths should fail CI the same way. deploy.yml also runs this
+# guard directly as a pre-deploy gate (see its nav-sync-check job); this
+# workflow exists so the same check surfaces on PRs that never reach deploy.
+#
+# No dependencies: tools/check_sport_nav_sync.mjs is plain Node.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-nav-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check landing-page accordion matches each sport's Sidebar (issue #110)
+        run: node tools/check_sport_nav_sync.mjs
