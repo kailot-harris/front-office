@@ -121,6 +121,13 @@ $AGGREGATOR_REPO   = 'kailot-harris/front-office'
 $REFRESH_WORKFLOW  = 'Refresh live results'
 $SYNC_WORKFLOW     = 'Sync sport subtrees and deploy'
 
+# Resolved from this script's own location, same as register_refresh_tasks.ps1
+# does for $REPO_DIR -- this is the checkout the scheduled task's
+# WorkingDirectory points at, and the one Assert-ScheduledCheckoutSafety (below)
+# has to land on `main`.
+$SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Path
+$REPO_DIR   = Split-Path -Parent $SCRIPT_DIR
+
 # NO DISPATCH INPUTS ARE SENT, and that is a decision, not an omission.
 #
 # The three refresh workflows do NOT share an input name -- MLB and NFL take
@@ -252,6 +259,107 @@ function Invoke-WorkflowAndWait {
     return $ok
 }
 
+# --- Checkout safety ------------------------------------------------------
+
+function Assert-ScheduledCheckoutSafety {
+    <#
+        GUARDS AGAINST THE SHARED-CHECKOUT COLLISION IN front-office issue #105.
+
+        This script's WorkingDirectory IS the same checkout that interactive
+        sessions and agents use for feature work (see register_refresh_tasks.ps1,
+        which sets -WorkingDirectory $REPO_DIR). On 2026-11-10, a scheduled
+        pipeline in a sibling repo ran successfully while a subagent had left
+        that same checkout on a feature branch with uncommitted changes. The
+        downstream publish gate correctly refused
+        ("assertion E FAILED ... HEAD=<branch> expected=main"), but a later
+        cleanup pass discarded 8 regenerated JSON files and a cache file by
+        running `git checkout -- .` without stashing first, instead of landing
+        on main the safe way. Published data stayed stale for ~30 hours.
+
+        So before this script dispatches anything, it forces THIS checkout
+        back onto `main`, stashing (never discarding) whatever a feature
+        branch left behind, and refuses to proceed -- loudly, non-zero exit --
+        if it cannot land cleanly on `main`. Feature work belongs in its own
+        `git worktree`; this checkout is for the scheduled pipeline only and
+        must stay on `main` and clean. See CLAUDE.md, "Scheduled checkouts
+        stay on main".
+    #>
+    param(
+        [Parameter(Mandatory)] [string] $RepoDir,
+        [switch] $WhatIfOnly
+    )
+
+    function Invoke-CheckoutGit {
+        <#
+            Native stderr is deliberately NOT redirected -- same reasoning as
+            Invoke-Gh above: in Windows PowerShell 5.1, redirecting a native
+            command's stderr wraps each line in an ErrorRecord and sets $? to
+            $false even on exit code 0 (e.g. git's routine "LF will be
+            replaced by CRLF" notice on stash/checkout). Only $LASTEXITCODE is
+            trusted for success/failure here.
+        #>
+        param([string[]] $GitArgs)
+        $output = & git -C $RepoDir @GitArgs
+        return [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = ($output -join "`n") }
+    }
+
+    if (-not (Test-Path (Join-Path $RepoDir '.git'))) {
+        throw "CHECKOUT GUARD FAILED: $RepoDir does not look like a git checkout (no .git). Refusing to run a scheduled pipeline here."
+    }
+
+    $branch = Invoke-CheckoutGit @('rev-parse', '--abbrev-ref', 'HEAD')
+    if ($branch.ExitCode -ne 0) {
+        throw "CHECKOUT GUARD FAILED: could not determine current branch in $RepoDir -- $($branch.Output)"
+    }
+    $currentBranch = $branch.Output.Trim()
+
+    $status = Invoke-CheckoutGit @('status', '--porcelain')
+    if ($status.ExitCode -ne 0) {
+        throw "CHECKOUT GUARD FAILED: 'git status' failed in $RepoDir -- $($status.Output)"
+    }
+    $isDirty = -not [string]::IsNullOrWhiteSpace($status.Output)
+
+    if ($currentBranch -eq 'main' -and -not $isDirty) {
+        Write-Step "checkout guard: already on main and clean -- proceeding"
+        return
+    }
+
+    Write-Step "checkout guard: HEAD=$currentBranch dirty=$isDirty -- stashing (if needed) and landing on main"
+
+    if ($WhatIfOnly) {
+        if ($isDirty) { Write-Host "  would run: git -C $RepoDir stash push -u -m 'issue-105 scheduled-checkout-guard'" }
+        Write-Host "  would run: git -C $RepoDir checkout main"
+        return
+    }
+
+    if ($isDirty) {
+        $stash = Invoke-CheckoutGit @('stash', 'push', '-u', '-m', 'issue-105 scheduled-checkout-guard')
+        if ($stash.ExitCode -ne 0) {
+            throw "CHECKOUT GUARD FAILED: 'git stash -u' failed in $RepoDir -- $($stash.Output). Refusing to touch a dirty checkout it could not safely preserve."
+        }
+        Write-Step "  stashed dirty tree: $($stash.Output.Trim())"
+    }
+
+    $checkout = Invoke-CheckoutGit @('checkout', 'main')
+    if ($checkout.ExitCode -ne 0) {
+        throw "CHECKOUT GUARD FAILED: 'git checkout main' failed in $RepoDir -- $($checkout.Output). Refusing to run a scheduled pipeline from a non-main checkout. (Work was stashed, not lost -- see 'git stash list'.)"
+    }
+
+    # Do not trust exit codes alone -- re-verify the landing spot, since this
+    # is exactly the assertion that failed to stop issue #105's bad cleanup.
+    $verifyBranch = (Invoke-CheckoutGit @('rev-parse', '--abbrev-ref', 'HEAD')).Output.Trim()
+    $verifyStatus = (Invoke-CheckoutGit @('status', '--porcelain')).Output
+
+    if ($verifyBranch -ne 'main') {
+        throw "CHECKOUT GUARD FAILED: expected HEAD=main after checkout, got HEAD=$verifyBranch in $RepoDir. Refusing to run."
+    }
+    if (-not [string]::IsNullOrWhiteSpace($verifyStatus)) {
+        throw "CHECKOUT GUARD FAILED: $RepoDir is still dirty after stash+checkout in $RepoDir. Refusing to run. Status:`n$verifyStatus"
+    }
+
+    Write-Step "checkout guard: landed cleanly on main"
+}
+
 # --- Plan ----------------------------------------------------------------
 
 function Get-SlotPlan {
@@ -291,6 +399,8 @@ function Invoke-RefreshSlot {
         [string[]] $Sports,
         [switch]   $SkipSync
     )
+
+    Assert-ScheduledCheckoutSafety -RepoDir $REPO_DIR -WhatIfOnly:$DryRun
 
     $plan = Get-SlotPlan -Slot $Slot -Sports $Sports
 
