@@ -92,6 +92,93 @@ function Add-NativeOutputToLog($OutputLines) {
 }
 
 # ------------------------------------------------------------------------------
+# CHECKOUT-SAFETY GUARD (front-office issue #105).
+#
+# This machine's working directories are shared between this scheduled task
+# and interactive/agent sessions. The 2026-11-10 incident (front-office#105):
+# an agent left this same checkout on a feature branch with dirty, regenerated
+# output; a later 08:00 publish gate correctly refused ("HEAD=<branch>
+# expected=main"), and a THIRD session then ran `git checkout -- .` to clear
+# the dirty tree before merging -- discarding 8 regenerated JSON files and a
+# cache file rather than stashing them first. Published data stayed ~30 hours
+# stale. The fix is not "add a nicer check" -- it is "never let this wrapper
+# see a dirty or non-main tree without stashing it, and never proceed past
+# that without verifying -- not assuming -- that HEAD actually landed on main
+# with nothing left dirty."
+#
+# Rule of thumb this wrapper enforces, and that should also be read as the
+# repo-wide rule (see CLAUDE.md "Shared-checkout discipline"): feature work
+# happens in a worktree; THIS primary checkout stays on main and clean for
+# every unattended run; a dirty tree is always `git stash -u`'d, never
+# `git checkout -- .`'d away.
+# ------------------------------------------------------------------------------
+function Invoke-CheckoutSafetyGuard {
+    $gitCmd = Get-Command git.exe -ErrorAction SilentlyContinue
+    if ($null -eq $gitCmd) {
+        Write-Log "[ERROR] [Checkout Guard] git.exe not found on PATH. Refusing to run against an unverified checkout. Nothing was run or published."
+        return $false
+    }
+
+    $currentBranch = ((& git rev-parse --abbrev-ref HEAD) 2>&1 | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0) {
+        Write-Log "[ERROR] [Checkout Guard] 'git rev-parse --abbrev-ref HEAD' failed: $currentBranch"
+        return $false
+    }
+    Write-Log "[Checkout Guard] HEAD is currently on branch '$currentBranch'."
+
+    # -uall: untracked files count as "dirty" too, same as `git stash -u` below
+    # -- the 2026-11-10 incident's discarded artifacts were regenerated JSON
+    # files that may not have been tracked yet.
+    $porcelain = ((& git status --porcelain -uall) 2>&1 | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0) {
+        Write-Log "[ERROR] [Checkout Guard] 'git status --porcelain -uall' failed: $porcelain"
+        return $false
+    }
+
+    if ($porcelain) {
+        Write-Log "[Checkout Guard] Working tree is dirty (tracked and/or untracked changes present). Stashing with 'git stash -u' before touching HEAD -- never discarding with 'git checkout -- .'."
+        $stashMsg = "auto-stash by run_pipeline_task.ps1 checkout guard $((Get-Date).ToString('o'))"
+        $stashOut = ((& git stash push -u -m $stashMsg) 2>&1 | Out-String).Trim()
+        if ($LASTEXITCODE -ne 0) {
+            Write-Log "[ERROR] [Checkout Guard] 'git stash -u' failed, so this wrapper is NOT touching HEAD: $stashOut"
+            return $false
+        }
+        Write-Log "[Checkout Guard] Stash created ('$stashMsg'): $stashOut"
+    } else {
+        Write-Log "[Checkout Guard] Working tree is already clean."
+    }
+
+    if ($currentBranch -ne "main") {
+        Write-Log "[Checkout Guard] HEAD is on '$currentBranch', not 'main'. Checking out main."
+        $checkoutOut = ((& git checkout main) 2>&1 | Out-String).Trim()
+        if ($LASTEXITCODE -ne 0) {
+            Write-Log "[ERROR] [Checkout Guard] 'git checkout main' failed: $checkoutOut"
+            return $false
+        }
+        Write-Log "[Checkout Guard] $checkoutOut"
+    }
+
+    # Final verification -- do not trust the steps above succeeded just
+    # because they reported exit 0; re-read the actual landed state, which is
+    # what the 2026-11-10 incident's own publish gate (assertion E) did right.
+    $finalBranch = ((& git rev-parse --abbrev-ref HEAD) 2>&1 | Out-String).Trim()
+    $finalPorcelain = ((& git status --porcelain -uall) 2>&1 | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0 -or $finalBranch -ne "main" -or $finalPorcelain) {
+        Write-Log "[ERROR] [Checkout Guard] Failed to land cleanly on main. HEAD='$finalBranch' dirty='$([bool]$finalPorcelain)'. Refusing to run the pipeline. Nothing was run or published."
+        return $false
+    }
+
+    Write-Log "[Checkout Guard] Verified: HEAD is on 'main' and the working tree is clean. Proceeding."
+    return $true
+}
+
+if (-not (Invoke-CheckoutSafetyGuard)) {
+    Write-Log "[ERROR] [Checkout Guard] Scheduled run ABORTED before starting R. The shared checkout could not be verified clean on main."
+    Write-Log "================================================================"
+    exit 97
+}
+
+# ------------------------------------------------------------------------------
 # Seasonal guard. Ported from WNBA's schedule_daily.bat, which the four-repo
 # audit flagged as the one sport that had one -- "add WNBA's seasonal guard to
 # MLB while you are in there. MLB's dead window is Nov-Mar and it has no guard."
