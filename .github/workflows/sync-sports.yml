@@ -46,7 +46,7 @@ on:
   workflow_dispatch:
     inputs:
       sports:
-        description: Space-separated sports to sync (e.g. "mlb" or "mlb nba")
+        description: Space- or comma-separated sports to sync (e.g. "mlb" or "mlb nba" or "nba,nfl")
         required: false
         default: mlb nfl nba wnba
       deploy:
@@ -136,6 +136,11 @@ jobs:
           before="$(git rev-parse HEAD)"
           synced=''
 
+          # Accept comma-separated, space-separated, or mixed comma+space
+          # lists (e.g. "nba,nfl", "nba nfl", "nba, nfl") by normalizing
+          # commas to spaces before word-splitting below.
+          SPORTS="${SPORTS//,/ }"
+
           for sport in $SPORTS; do
             # The upstream repo names are not uniform (MLB-Analytics is
             # hyphenated, the rest use an underscore), so they are mapped
@@ -145,7 +150,7 @@ jobs:
               nba)  repo=NBA_analytics  ;;
               wnba) repo=WNBA_analytics ;;
               nfl)  repo=NFL_analytics  ;;
-              *) echo "::error::unknown sport '$sport'"; exit 1 ;;
+              *) echo "::error::unknown sport '$sport' (allowed: mlb nfl nba wnba)"; exit 1 ;;
             esac
 
             # Preflight the token against the API before letting git try.
