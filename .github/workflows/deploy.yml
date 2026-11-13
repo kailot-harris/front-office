@@ -44,6 +44,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # front-office#110: the landing-page accordion in index.html is a
+  # hand-written mirror of each sport's web/components/Sidebar.tsx nav
+  # items, and nothing kept the two in sync -- NFL's accordion silently
+  # dropped three live Sidebar tabs. This gates the deploy on that guard
+  # script rather than letting a stale accordion ship quietly again.
+  nav-sync-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check landing-page accordion matches each sport's Sidebar (issue #110)
+        run: node tools/check_sport_nav_sync.mjs
+
   build:
     strategy:
       fail-fast: false
@@ -81,7 +100,7 @@ jobs:
           path: ${{ matrix.sport }}/web/out
 
   assemble-and-deploy:
-    needs: build
+    needs: [build, nav-sync-check]
     runs-on: ubuntu-latest
     environment:
       name: github-pages

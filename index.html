@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Front Office — NFL, NBA, WNBA &amp; MLB Probabilistic Analytics</title>
-  <meta name="description" content="52 interactive analytics modules across the NFL, NBA, WNBA and MLB: season simulations, cap sheets, player projections, clutch indexes and playoff simulators." />
+  <meta name="description" content="58 interactive analytics modules across the NFL, NBA, WNBA and MLB: season simulations, cap sheets, player projections, clutch indexes and playoff simulators." />
   <meta name="theme-color" content="#041313" />
   <link rel="canonical" href="https://kailot-harris.github.io/front-office/" />
   <!-- robots.txt can only be honored at the domain root for a GitHub Pages
@@ -20,14 +20,14 @@
   <meta property="og:site_name" content="Front Office" />
   <meta property="og:url" content="https://kailot-harris.github.io/front-office/" />
   <meta property="og:title" content="Front Office — Multi-Sport Probabilistic Engine" />
-  <meta property="og:description" content="52 interactive analytics modules across the NFL, NBA, WNBA and MLB: season simulations, cap sheets, player projections and playoff simulators." />
+  <meta property="og:description" content="58 interactive analytics modules across the NFL, NBA, WNBA and MLB: season simulations, cap sheets, player projections and playoff simulators." />
   <meta property="og:image" content="https://kailot-harris.github.io/front-office/assets/social/og-card.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Front Office: multi-sport probabilistic engine covering the NFL, NBA, WNBA and MLB" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Front Office — Multi-Sport Probabilistic Engine" />
-  <meta name="twitter:description" content="52 interactive analytics modules across the NFL, NBA, WNBA and MLB." />
+  <meta name="twitter:description" content="58 interactive analytics modules across the NFL, NBA, WNBA and MLB." />
   <meta name="twitter:image" content="https://kailot-harris.github.io/front-office/assets/social/og-card.png" />
   <style>
     :root {
@@ -569,7 +569,7 @@
     <div class="nav-column">
       <div class="module-filter" role="search">
         <label class="sr-only" for="module-filter">Filter modules across all four leagues</label>
-        <input id="module-filter" type="search" placeholder="Filter 52 modules&hellip;" autocomplete="off" spellcheck="false" aria-describedby="filter-status" />
+        <input id="module-filter" type="search" placeholder="Filter 58 modules&hellip;" autocomplete="off" spellcheck="false" aria-describedby="filter-status" />
         <kbd aria-hidden="true">/</kbd>
       </div>
       <p id="filter-status" class="filter-status" role="status" aria-live="polite"></p>
@@ -581,7 +581,7 @@
             <img class="favicon" src="nfl/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
             <span class="sport-pip" aria-hidden="true"></span>
             <span>NFL</span>
-            <span class="card-count" aria-label="10 modules">(10)</span>
+            <span class="card-count" aria-label="13 modules">(13)</span>
             <span class="chevron" aria-hidden="true">&#9656;</span>
           </div>
           <div class="card-rail" aria-hidden="true"></div>
@@ -595,6 +595,9 @@
           <li><a href="nfl/salary-cap/">Salary Cap &amp; OTC</a></li>
           <li><a href="nfl/playoffs/">Playoff Machine</a></li>
           <li><a href="nfl/players/">QB &amp; Player Ratings</a></li>
+          <li><a href="nfl/passing/">Passing Charts</a></li>
+          <li><a href="nfl/dna/">Player DNA</a></li>
+          <li><a href="nfl/clutch/">True Clutch Index</a></li>
           <li><a href="nfl/variants/">Model Variants</a></li>
           <li><a href="nfl/diagnostics/">Diagnostics</a></li>
           <li><a href="nfl/gallery/">Visual Gallery</a></li>
@@ -639,28 +642,35 @@
             <img class="favicon" src="wnba/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
             <span class="sport-pip" aria-hidden="true"></span>
             <span>WNBA</span>
-            <span class="card-count" aria-label="14 modules">(14)</span>
+            <span class="card-count" aria-label="17 modules">(17)</span>
             <span class="chevron" aria-hidden="true">&#9656;</span>
           </div>
           <div class="card-rail" aria-hidden="true"></div>
         </button>
         <div class="tab-wrap">
         <ul class="tab-list" id="modules-wnba">
-          <li><a href="wnba/offseason-monitor/">Off-Season Monitor</a></li>
+          <li><a href="wnba/offseason-monitor/">2026-2027 Off-Season Monitor</a></li>
+          <li><a href="wnba/retrospective/">Retrospective</a></li>
           <li><a href="wnba/">Season Standings</a></li>
+          <li><a href="wnba/matchups/">Matchups</a></li>
           <li><a href="wnba/variants/">Model Variants</a></li>
           <li><a href="wnba/players/">Player Projections</a></li>
           <li><a href="wnba/player-dna/">Player DNA &amp; Twins</a></li>
           <li><a href="wnba/clutch/">True Clutch Index</a></li>
-          <li><a href="wnba/cap-sheet/">CBA Cap Sheet</a></li>
           <li><a href="wnba/shots/">Shot Charts</a></li>
           <li><a href="wnba/defense/">Defensive Matrix</a></li>
           <li><a href="wnba/coaches/">Coaching Staffs</a></li>
-          <li><a href="wnba/offseason/">Offseason &amp; Moves</a></li>
-          <li><a href="wnba/bracket-2026/">2026 Playoff Bracket</a></li>
+          <li><a href="wnba/bracket-2026/">2026 Bracket</a></li>
           <li><a href="wnba/series/">Playoff Simulator</a></li>
           <li><a href="wnba/diagnostics/">Diagnostics</a></li>
           <li><a href="wnba/gallery/">Visual Gallery</a></li>
+          <!-- Nav-sync exceptions (see tools/check_sport_nav_sync.mjs NAV_SYNC_EXCEPTIONS):
+               these two pages exist in WNBA's web/app but are not in WNBA's
+               Sidebar.tsx nav yet (front-office#110) -- flagged upstream,
+               not editable from this repo. Kept linked here so the pages
+               stay reachable until WNBA Analytics adds them to its sidebar. -->
+          <li><a href="wnba/cap-sheet/">CBA Cap Sheet</a></li>
+          <li><a href="wnba/offseason/">Offseason &amp; Moves</a></li>
         </ul>
         </div>
       </div>
@@ -680,18 +690,18 @@
         <ul class="tab-list" id="modules-mlb">
           <li><a href="mlb/offseason-monitor/">2026-2027 Off-Season Monitor</a></li>
           <li><a href="mlb/">Season Standings</a></li>
-          <li><a href="mlb/retrospective/">2026 Season Retrospective</a></li>
+          <li><a href="mlb/retrospective/">2026 Retrospective</a></li>
           <li><a href="mlb/postseason/">Postseason &amp; Bullpen</a></li>
           <li><a href="mlb/matchups/">Weekly Matchups</a></li>
           <li><a href="mlb/players/">Player Projections</a></li>
           <li><a href="mlb/player-dna/">Player DNA &amp; Twins</a></li>
           <li><a href="mlb/clutch/">True Clutch Index</a></li>
           <li><a href="mlb/spatial/">Spatial Analytics</a></li>
-          <li><a href="mlb/cap-sheet/">Cap &amp; Luxury Tax</a></li>
+          <li><a href="mlb/cap-sheet/">CBT Payroll Sheet</a></li>
           <li><a href="mlb/series/">Playoff Simulator</a></li>
           <li><a href="mlb/variants/">Model Variants</a></li>
           <li><a href="mlb/diagnostics/">Diagnostics</a></li>
-          <li><a href="mlb/gallery/">Visual Gallery</a></li>
+          <li><a href="mlb/gallery/">Visual Media Gallery</a></li>
         </ul>
         </div>
       </div>
