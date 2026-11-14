@@ -159,6 +159,23 @@ run_stage("build_offseason_dataset.R", "Rebuild Offseason Team Profiles & Draft 
 
 run_stage("build_coaching_dataset.R", "Compile Coaching Staff Registry, Tactical ATOs & CVA Impact",
           output = file.path(CACHE_DIR, "coaching_metrics.rds"))
+# Basketball-Reference cap-data automation (issue #101, Phase 4): refresh the
+# BBRef per-player contracts cache and derive the per-team active-roster
+# payroll aggregate BEFORE build_cba_cap_dataset.R runs, so it can read
+# current data instead of a hardcoded snapshot. Each of these three scripts
+# auto-runs its top-level fetch/derive function on source (no NBA_SKIP_STAGE_AUTORUN
+# set here), matching run_stage()'s "source(script_name, local = FALSE)" pattern used
+# everywhere else in this file. A failure in any of the three is caught by run_stage()
+# and logged as a [FAILED] stage warning (not an aborted pipeline run) --
+# build_cba_cap_dataset.R itself is responsible for falling back gracefully
+# if its upstream caches end up missing/stale as a result (see that file's
+# own header comment and cap_data_phase3_findings.md).
+run_stage("tools/fetch_bbref_player_contracts.R", "Fetch Basketball-Reference Player Contracts",
+          output = file.path(CACHE_DIR, "bbref_player_contracts.rds"))
+run_stage("tools/fetch_bbref_salary_cap_history.R", "Fetch Basketball-Reference Salary Cap History",
+          output = file.path(CACHE_DIR, "bbref_salary_cap_history.rds"))
+run_stage("tools/derive_team_payroll_from_bbref.R", "Derive Per-Team Active-Roster Payroll from BBRef Contracts",
+          output = file.path(CACHE_DIR, "bbref_team_payroll_active_roster.rds"))
 run_stage("build_cba_cap_dataset.R", "Calculate 30-Team CBA Cap Sheets, Aprons & Luxury Tax Penalties")
 run_stage("build_player_dna_dataset.R", "Embed 16-D Player DNA Vectors & Nearest Historical Twins",
           output = file.path(CACHE_DIR, "player_dna_profiles.rds"))

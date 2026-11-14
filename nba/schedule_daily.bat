@@ -121,7 +121,7 @@ set DIRTY=0
 for %%A in ("%GUARD_TMP%") do if %%~zA GTR 0 set DIRTY=1
 
 if "%DIRTY%"=="1" (
-    echo [GUARD] Working tree is dirty on branch "%PRE_BRANCH%" - stashing (git stash -u) before checkout. >> "%LOG_FILE%"
+    echo [GUARD] Working tree is dirty on branch "%PRE_BRANCH%" - stashing ^(git stash -u^) before checkout. >> "%LOG_FILE%"
     git stash push -u -m "schedule_daily.bat auto-stash %DATE% %TIME%" >> "%LOG_FILE%" 2>&1
     if errorlevel 1 (
         echo [ERROR] schedule_daily.bat: "git stash -u" FAILED on branch "%PRE_BRANCH%". >> "%LOG_FILE%"
@@ -133,9 +133,9 @@ if "%DIRTY%"=="1" (
 
 git checkout main >> "%LOG_FILE%" 2>&1
 if errorlevel 1 (
-    echo [ERROR] schedule_daily.bat: "git checkout main" FAILED (was on "%PRE_BRANCH%"). >> "%LOG_FILE%"
+    echo [ERROR] schedule_daily.bat: "git checkout main" FAILED ^(was on "%PRE_BRANCH%"^). >> "%LOG_FILE%"
     echo [ERROR] Pipeline NOT run. If a stash was just created above, it is still in >> "%LOG_FILE%"
-    echo [ERROR] the stash list ("git stash list") - nothing was discarded. >> "%LOG_FILE%"
+    echo [ERROR] the stash list ^("git stash list"^) - nothing was discarded. >> "%LOG_FILE%"
     del "%GUARD_TMP%" >nul 2>&1
     exit /b 3
 )
