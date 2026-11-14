@@ -218,10 +218,9 @@ $MODEL_REFRESH = [ordered]@{
 # checkout (only used to reach its git object store); Paths are the files the
 # refresh may rewrite, and the only ones ever staged. These mirror the "Commit
 # any changes" step of each sport's refresh-results.yml; keep the two in step.
-# Args mirror the workflow's input defaults where the script's own default
-# differs: run bare, the NBA and WNBA scripts sweep only today, while their
-# workflows sweep 3 days back, which is what catches a late final. MLB and NFL
-# default to the current season on their own, so nothing is passed.
+# Args mirror what each workflow passes by default: NBA and WNBA get an
+# explicit 3-day lookback, as their workflows send. MLB and NFL default to
+# the current season inside the script, so nothing is passed.
 $SPORT_REFRESH = [ordered]@{
     mlb  = @{ Dir = 'MLB Analytics';  Args = @();    Paths = @('web/public/data') }
     nfl  = @{ Dir = 'NFL Analytics';  Args = @();    Paths = @('web/public/data/matchups_current_week.json', 'web/public/data/model_diagnostics.json') }
