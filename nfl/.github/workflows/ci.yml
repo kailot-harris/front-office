@@ -29,14 +29,16 @@
 # ==============================================================================
 name: CI
 
+# CI does not run on pushes to main. Nearly every change reaches main through a
+# pull request that has already run this workflow, and the scheduled data
+# publishes are gated locally before they are committed, so the post-merge run
+# only repeated work. Use workflow_dispatch to check main on demand.
 on:
-  push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
 
-# A new push to a PR makes the in-flight run obsolete. Runs on main are left
-# alone so the default branch keeps a complete history of results.
+# A new push to a PR makes the in-flight run obsolete. Manually dispatched runs
+# are left to finish.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
