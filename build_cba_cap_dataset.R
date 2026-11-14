@@ -9,23 +9,44 @@
 # - Luxury Tax Line: $200.4M ($200,428,000)
 # - First Apron: $209.0M ($209,015,000)
 # - Second Apron: $221.7M ($221,686,000)
+# These four thresholds remain MANUALLY-UPDATED CONSTANTS (SALARY_CAP /
+# LUXURY_TAX / FIRST_APRON / SECOND_APRON below) -- a deliberate sourcing
+# decision, not an oversight. Per #100/#101's cap_data_phase3_findings.md: no
+# Basketball-Reference page carries these figures (its salary-cap-history
+# table has only Year / Salary Cap / 2025 Dollars columns), they change once
+# a season via a single official NBA announcement, and the realistic scrape
+# alternative (Spotrac) is the same anti-bot source #97 already ruled out. A
+# human updates these four numbers from the NBA's own press release.
 #
-# `team_payrolls` below (#126) holds each team's "Total Cap Allocations" for
-# 2026-27/2027-28/2028-29, read from Spotrac's live NBA Team Salary Cap
-# Tracker (spotrac.com/nba/cap/_/year/{2026,2027,2028}) on 2026-11-12. The
-# 2027-28 and 2028-29 columns are Spotrac's own forward-looking cap
-# projections (the NBA has not yet set those seasons' thresholds), not
-# official figures -- but the dollar totals themselves reflect each team's
-# actual contracts on the books at fetch time, not invented numbers.
+# `team_payrolls` (#101, Phase 4 of the Basketball-Reference cap-data
+# automation effort) is now AUTOMATED: built each run from
+# cache/bbref_team_payroll_active_roster.rds (tools/derive_team_payroll_from_bbref.R,
+# #100), which sums Basketball-Reference's /contracts/players.html
+# current-season salary (`salary_y1`) per team. `verified_contracts` is
+# likewise built from the raw per-player rows in
+# cache/bbref_player_contracts.rds (tools/fetch_bbref_player_contracts.R,
+# #98) instead of the one-off manual list #75 added, so both now refresh on
+# the daily schedule instead of going stale the moment they're written.
 #
-# `verified_contracts` below remains an illustrative, team-by-team allocation
-# of each roster's payroll across its best-known players -- useful for
-# shape/structure (who carries a supermax, who's on a rookie scale, etc.) but
-# the individual salary figures have not been re-verified against Spotrac's
-# per-player contract pages for this update and should not be read as exact.
-# Treat `verified_contracts` as illustrative; `team_payrolls` team totals are
-# the sourced figures backing the cap/apron/tax math and any payroll-based
-# charts.
+# ACTIVE-ROSTER-ONLY CAVEAT (read before touching the loader below): BBRef's
+# contracts table lists ACTIVE ROSTER SALARIES ONLY -- no dead cap, no cap
+# holds, no non-guaranteed partial-season proration. `team_payrolls` below is
+# therefore BBRef's `active_roster_salary_total`, NOT the Spotrac "Total Cap
+# Allocations" figure #75's interim fix used (which does include those). The
+# two are different quantities and will not match team-for-team -- see
+# cap_data_phase3_findings.md for a quantified, by-team comparison of the
+# gap. `cbaThresholdSources` below states this caveat plainly; never let a
+# downstream consumer imply parity with the old Spotrac methodology.
+#
+# GRACEFUL FALLBACK: if cache/bbref_team_payroll_active_roster.rds and/or
+# cache/bbref_player_contracts.rds are missing, unreadable, or malformed
+# (e.g. an upstream fetch stage failed), this script does NOT crash. It logs
+# a clear [CBA_BBREF_FALLBACK] message and falls back to the last
+# manually-verified snapshot (FALLBACK_team_payrolls / FALLBACK_verified_contracts
+# below -- the Spotrac pull #75 made on 2026-11-12), matching this repo's
+# graceful-failure convention (tools/viz_common.R::viz_stop_no_data() for viz
+# scripts; here, a data stage degrades to last-known-good rather than halting
+# the whole pipeline or exporting garbage).
 # ==============================================================================
 
 suppressPackageStartupMessages({
@@ -40,6 +61,24 @@ config_path <- if (file.exists("config.R")) "config.R" else "../config.R"
 source(config_path)
 
 if (!dir.exists(CACHE_DIR)) dir.create(CACHE_DIR, recursive = TRUE)
+
+# ------------------------------------------------------------------------------
+# BBRef cache paths (#98/#100's outputs) and the BBRef -> this-repo team
+# abbreviation remap. Basketball-Reference uses three team abbreviations that
+# differ from the ones used throughout this repo (cap_data_phase3_findings.md
+# §3): PHO (Suns) -> PHX, CHO (Hornets) -> CHA, BRK (Nets) -> BKN. Applied
+# uniformly to every BBRef team code before use so it matches this repo's own
+# abbreviations (used in repeater_teams, handcuffs, charts, etc.).
+# ------------------------------------------------------------------------------
+CACHE_BBREF_PLAYER_CONTRACTS    <- file.path(CACHE_DIR, "bbref_player_contracts.rds")
+CACHE_BBREF_TEAM_PAYROLL_ACTIVE <- file.path(CACHE_DIR, "bbref_team_payroll_active_roster.rds")
+
+BBREF_TEAM_ABBR_REMAP <- c(PHO = "PHX", CHO = "CHA", BRK = "BKN")
+
+remap_bbref_team_abbr <- function(team_abbr) {
+  hit <- BBREF_TEAM_ABBR_REMAP[team_abbr]
+  ifelse(is.na(hit), team_abbr, hit)
+}
 
 message(">>> [CBA ARCHITECT] Initializing Calibrated 2026-2027 CBA Salary Cap & Apron Analytics Engine...")
 
@@ -129,16 +168,20 @@ compute_luxury_tax <- function(payroll, is_repeater = FALSE) {
 }
 
 # ------------------------------------------------------------------------------
-# 30 NBA Franchises: Total Cap Allocations ($M), 2026-27 / 2027-28 / 2028-29
-# Source: Spotrac NBA Team Salary Cap Tracker, fetched 2026-11-12
-# (spotrac.com/nba/cap/_/year/2026, /year/2027, /year/2028 -- "TOTAL CAP
-# ALLOCATIONS" column for each season). These are each team's actual
-# contracted cap totals at fetch time, live and subject to change as trades,
-# signings, and waivers happen over the season.
+# FALLBACK ONLY -- 30 NBA Franchises: Total Cap Allocations ($M), 2026-27 /
+# 2027-28 / 2028-29. Source: Spotrac NBA Team Salary Cap Tracker, fetched
+# 2026-11-12 (spotrac.com/nba/cap/_/year/2026, /year/2027, /year/2028 --
+# "TOTAL CAP ALLOCATIONS" column for each season). This was #75's interim
+# manual pull; #101 (Phase 4) supersedes it with the automated BBRef pipeline
+# below. It is kept ONLY as `FALLBACK_team_payrolls`, used when the BBRef
+# caches are missing/unreadable (see the GRACEFUL FALLBACK note in this
+# file's header) -- it is intentionally frozen at its 2026-11-12 snapshot and
+# will go stale again if ever relied on for long, which is exactly why it's
+# a fallback and not the primary source anymore.
 # ------------------------------------------------------------------------------
 repeater_teams <- c("GSW", "BOS", "PHX", "DEN", "MIL", "LAC")
 
-team_payrolls <- tribble(
+FALLBACK_team_payrolls <- tribble(
   ~team_abbr, ~team_name, ~conf, ~payroll_2026, ~payroll_2027, ~payroll_2028,
   # Second Apron (> $221.7M, 2026-27)
   "GSW", "Warriors", "West", 254.3, 287.4, 214.3,
@@ -178,13 +221,13 @@ team_payrolls <- tribble(
 )
 
 # ------------------------------------------------------------------------------
-# Illustrative per-player contract breakdowns for marquee franchises.
-# Unlike `team_payrolls` above, these individual salary figures have not been
-# re-verified against Spotrac's per-player contract pages for this update --
-# treat them as an illustrative allocation of each team's payroll across its
-# known roster shape, not as exact sourced dollar amounts.
+# FALLBACK ONLY -- illustrative per-player contract breakdowns for marquee
+# franchises, hand-pulled from Spotrac alongside FALLBACK_team_payrolls
+# above. Used only when cache/bbref_player_contracts.rds is missing/unreadable
+# (see GRACEFUL FALLBACK in this file's header); #101 replaces this as the
+# primary source with real per-player rows read from BBRef every run.
 # ------------------------------------------------------------------------------
-verified_contracts <- list(
+FALLBACK_verified_contracts <- list(
   NYK = list(
     list(playerId = "3102531", playerName = "Karl-Anthony Towns", position = "C", salary2026 = 57.1, salary2027 = 61.0, salary2028 = 0.0, contractType = "Player Option", notes = "Spotrac: 4-yr supermax ($57,078,728 in '26-27, $61.0M PO in '27-28)"),
     list(playerId = "3934672", playerName = "OG Anunoby", position = "F", salary2026 = 42.5, salary2027 = 45.0, salary2028 = 47.5, contractType = "Guaranteed", notes = "Spotrac: 5-yr max extension ($42,500,000 in '26-27)"),
@@ -380,6 +423,162 @@ verified_contracts <- list(
   )
 )
 
+# ------------------------------------------------------------------------------
+# Automated BBRef sourcing (#101, Phase 4). Builds `team_payrolls` from
+# cache/bbref_team_payroll_active_roster.rds (#100) and `verified_contracts`
+# from cache/bbref_player_contracts.rds (#98). Falls back to the manually
+# pulled FALLBACK_team_payrolls / FALLBACK_verified_contracts above -- with a
+# clear logged message, never a crash -- if either cache is missing,
+# unreadable, or doesn't have the columns these loaders expect.
+# ------------------------------------------------------------------------------
+bbref_cba_fallback <- function(reason) {
+  message(sprintf(
+    "[CBA_BBREF_FALLBACK] build_cba_cap_dataset.R: %s Falling back to the last manually-verified snapshot (fetched 2026-11-12); team_payrolls/verified_contracts will NOT reflect current BBRef data this run.",
+    reason
+  ))
+}
+
+#' Build `team_payrolls` (team_abbr, team_name, conf, payroll_2026,
+#' payroll_2027, payroll_2028) from the BBRef active-roster aggregate. BBRef
+#' only carries the CURRENT season's active-roster salary -- there is no
+#' forward-looking 2027-28/2028-29 figure to read, automated or otherwise.
+#' 2027/2028 are therefore projected from the current total using the same
+#' league-wide cap growth rates (CAP_PROJ_2027/SALARY_CAP, CAP_PROJ_2028/SALARY_CAP)
+#' already used elsewhere in this file for projectedCapSpace -- an explicit
+#' modeling assumption (team payroll grows with the league cap), not a
+#' second sourced figure. team_name/conf are looked up from
+#' FALLBACK_team_payrolls, which is just a static team reference list here
+#' (not live financial data), so using it for name/conference lookup carries
+#' none of the staleness risk the payroll dollar figures themselves have.
+build_team_payrolls_from_bbref <- function() {
+  if (!file.exists(CACHE_BBREF_TEAM_PAYROLL_ACTIVE)) {
+    bbref_cba_fallback(sprintf("%s does not exist.", CACHE_BBREF_TEAM_PAYROLL_ACTIVE))
+    return(NULL)
+  }
+  bbref_payroll <- tryCatch(readRDS(CACHE_BBREF_TEAM_PAYROLL_ACTIVE), error = function(e) NULL)
+  required_cols <- c("team_abbr", "active_roster_salary_total")
+  if (is.null(bbref_payroll) || !all(required_cols %in% names(bbref_payroll)) || nrow(bbref_payroll) == 0) {
+    bbref_cba_fallback(sprintf("%s was unreadable, empty, or missing expected column(s).", CACHE_BBREF_TEAM_PAYROLL_ACTIVE))
+    return(NULL)
+  }
+
+  bbref_payroll$team_abbr <- remap_bbref_team_abbr(bbref_payroll$team_abbr)
+  team_ref <- FALLBACK_team_payrolls %>% select(team_abbr, team_name, conf)
+
+  built <- bbref_payroll %>%
+    transmute(team_abbr, payroll_2026 = round(active_roster_salary_total / 1e6, 1)) %>%
+    inner_join(team_ref, by = "team_abbr") %>%
+    mutate(
+      payroll_2027 = round(payroll_2026 * (CAP_PROJ_2027 / SALARY_CAP), 1),
+      payroll_2028 = round(payroll_2026 * (CAP_PROJ_2028 / SALARY_CAP), 1)
+    ) %>%
+    select(team_abbr, team_name, conf, payroll_2026, payroll_2027, payroll_2028)
+
+  if (nrow(built) < nrow(team_ref)) {
+    bbref_cba_fallback(sprintf(
+      "Only %d of %d known teams matched after the BBRef team-abbreviation remap.",
+      nrow(built), nrow(team_ref)
+    ))
+    return(NULL)
+  }
+
+  built
+}
+
+#' Build `verified_contracts` (named list, one element per team, each a list
+#' of per-player rows) from the raw BBRef contracts cache.
+#'
+#' BBRef's contracts table carries no playerId, position, or contractType --
+#' those are JSON-schema-required, non-nullable fields downstream
+#' (web/tests/contracts/schemas.ts's PlayerContractSchema is .strict() with
+#' playerId/position/contractType all required; NA would serialize to a JSON
+#' null and fail that contract test / risk a render crash, per #113's
+#' regression guard in web/tests/components/CapSheetNullFields.test.tsx,
+#' which only tolerates null on the numeric salary fields). So:
+#'   - playerId: a synthetic but stable "bbref-<team>-<rank>" string (BBRef
+#'     has no numeric player id on this page at all).
+#'   - position: looked up by name from the same players catalog
+#'     (projections_season_players.json) the "Proportional Fill" branch below
+#'     already uses, falling back to "F" when no match is found -- noted
+#'     explicitly, never silently guessed without saying so.
+#'   - contractType: BBRef's table has no option/guaranteed flag, so this
+#'     defaults to "Guaranteed" (the modal case league-wide) -- same
+#'     approximate-by-necessity approach the pre-existing "Proportional Fill"
+#'     branch below already uses for non-marquee teams, and disclosed in
+#'     `notes` on every row rather than presented as sourced.
+build_verified_contracts_from_bbref <- function() {
+  if (!file.exists(CACHE_BBREF_PLAYER_CONTRACTS)) {
+    bbref_cba_fallback(sprintf("%s does not exist.", CACHE_BBREF_PLAYER_CONTRACTS))
+    return(NULL)
+  }
+  contracts <- tryCatch(readRDS(CACHE_BBREF_PLAYER_CONTRACTS), error = function(e) NULL)
+  required_cols <- c("player", "team", "salary_y1")
+  if (is.null(contracts) || !all(required_cols %in% names(contracts)) || nrow(contracts) == 0) {
+    bbref_cba_fallback(sprintf("%s was unreadable, empty, or missing expected column(s).", CACHE_BBREF_PLAYER_CONTRACTS))
+    return(NULL)
+  }
+
+  contracts$team <- remap_bbref_team_abbr(contracts$team)
+  contracts <- contracts[!is.na(contracts$team) & trimws(contracts$team) != "", , drop = FALSE]
+  contracts <- contracts[!is.na(contracts$player) & trimws(contracts$player) != "", , drop = FALSE]
+  to_m <- function(x) ifelse(is.na(x), 0.0, round(x / 1e6, 1))
+
+  position_lookup_file <- file.path(PROJECT_DIR, "web", "public", "data", "projections_season_players.json")
+  position_lookup <- NULL
+  if (file.exists(position_lookup_file)) {
+    position_lookup <- tryCatch(fromJSON(position_lookup_file), error = function(e) NULL)
+  }
+  lookup_position <- function(player_name, team_code) {
+    if (is.null(position_lookup)) return(NA_character_)
+    hit <- position_lookup[
+      !is.na(position_lookup$player_name) &
+        tolower(trimws(position_lookup$player_name)) == tolower(trimws(player_name)) &
+        !is.na(position_lookup$team) & position_lookup$team == team_code,
+    ]
+    if (nrow(hit) == 0) return(NA_character_)
+    hit$position[1]
+  }
+
+  out <- list()
+  for (code in unique(contracts$team)) {
+    rows <- contracts[contracts$team == code, , drop = FALSE]
+    rows <- rows[order(-ifelse(is.na(rows$salary_y1), 0, rows$salary_y1)), , drop = FALSE]
+    out[[code]] <- lapply(seq_len(nrow(rows)), function(j) {
+      r <- rows[j, ]
+      pos <- lookup_position(r$player, code)
+      pos_sourced <- !is.na(pos) && nzchar(pos)
+      if (!pos_sourced) pos <- "F"
+      list(
+        playerId = sprintf("bbref-%s-%03d", code, j),
+        playerName = r$player,
+        position = pos,
+        salary2026 = to_m(r$salary_y1),
+        salary2027 = to_m(r$salary_y2),
+        salary2028 = to_m(r$salary_y3),
+        contractType = "Guaranteed",
+        notes = paste(
+          "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1).",
+          if (pos_sourced) {
+            "Position from the projections player catalog."
+          } else {
+            "Position not found in the projections player catalog; defaulted to 'F', not sourced."
+          },
+          "contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        )
+      )
+    })
+  }
+  out
+}
+
+team_payrolls <- build_team_payrolls_from_bbref()
+team_payrolls_sourced_from_bbref <- !is.null(team_payrolls)
+if (is.null(team_payrolls)) team_payrolls <- FALLBACK_team_payrolls
+
+verified_contracts <- build_verified_contracts_from_bbref()
+verified_contracts_sourced_from_bbref <- !is.null(verified_contracts)
+if (is.null(verified_contracts)) verified_contracts <- FALLBACK_verified_contracts
+
 # Load full player catalog
 players_file <- file.path(PROJECT_DIR, "web", "public", "data", "projections_season_players.json")
 has_players <- file.exists(players_file)
@@ -524,10 +723,52 @@ cap_sheet_export <- list(
   generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
   season = "2026-2027",
   cbaThresholdSources = paste(
-    "Cap/tax/apron thresholds: NBA official release (pr.nba.com), July 2026.",
-    "Team payroll totals: Spotrac NBA Team Salary Cap Tracker, fetched 2026-11-12.",
-    "Per-player contract breakdowns shown on this page are illustrative allocations,",
-    "not individually re-verified against Spotrac."
+    "Cap/tax/apron/minimum thresholds (salaryCap/luxuryTaxThreshold/firstApron/secondApron):",
+    "manually-updated constants, sourced from the NBA's own official release",
+    "(pr.nba.com), July 2026 -- no Basketball-Reference page carries these figures",
+    "(see cap_data_phase3_findings.md), and they change only once per season.",
+    if (team_payrolls_sourced_from_bbref) {
+      paste(
+        "Team payroll totals (payroll_2026): automated, from Basketball-Reference's",
+        "/contracts/players.html active-roster current-season salaries, aggregated",
+        "per team by tools/derive_team_payroll_from_bbref.R.",
+        "ACTIVE-ROSTER SALARY ONLY -- excludes dead cap, cap holds, and",
+        "non-guaranteed partial-season proration, so it is NOT the same quantity as",
+        "a 'Total Cap Allocations' figure (e.g. Spotrac's) and will not match one",
+        "team-for-team; see cap_data_phase3_findings.md for the quantified gap.",
+        "payroll_2027/payroll_2028 are not BBRef figures -- they are this season's",
+        "BBRef total projected forward using the league-wide cap growth rate",
+        "(CAP_PROJ_2027/2028 vs. SALARY_CAP), an explicit modeling assumption."
+      )
+    } else {
+      paste(
+        "Team payroll totals (payroll_2026/2027/2028): FALLBACK in effect this run --",
+        "the automated Basketball-Reference cache was missing or unreadable, so this",
+        "export used the last manually-verified Spotrac snapshot fetched 2026-11-12",
+        "instead (see pipeline_execution.log for the [CBA_BBREF_FALLBACK] reason)."
+      )
+    },
+    if (verified_contracts_sourced_from_bbref) {
+      paste(
+        "Per-player contract rows shown for the teams listed in verified_contracts:",
+        "automated, read directly from Basketball-Reference's /contracts/players.html",
+        "(tools/fetch_bbref_player_contracts.R); playerName/salary figures are",
+        "sourced from BBRef, current-season salary only. playerId is a synthetic",
+        "'bbref-<team>-<rank>' string (BBRef has no player id on this page);",
+        "position is looked up from the projections player catalog where possible,",
+        "else defaulted to 'F'; contractType defaults to 'Guaranteed' -- BBRef's",
+        "table carries no option/guaranteed flag. All three are disclosed per-row",
+        "in each contract's own `notes` field. All other teams' per-player rows are",
+        "a proportional-fill estimate, not sourced."
+      )
+    } else {
+      paste(
+        "Per-player contract rows shown for the teams listed in verified_contracts:",
+        "FALLBACK in effect this run -- an illustrative Spotrac-based allocation",
+        "fetched 2026-11-12, not individually re-verified and not automated this run",
+        "(BBRef contracts cache was missing or unreadable)."
+      )
+    }
   ),
   salaryCap = SALARY_CAP,
   luxuryTaxThreshold = LUXURY_TAX,
