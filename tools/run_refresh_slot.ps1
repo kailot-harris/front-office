@@ -1,8 +1,8 @@
 <#
 .SYNOPSIS
     Drives one score-refresh slot (B or C) end to end from this workstation:
-    dispatch each sport's "Refresh live results", wait for each to finish, then
-    dispatch the aggregator's subtree sync, which publishes.
+    run each sport's tools/refresh_live_results.R locally and push what it
+    wrote, then dispatch the aggregator's subtree sync, which publishes.
 
 .DESCRIPTION
     WHY THIS EXISTS -- READ THIS BEFORE "SIMPLIFYING" IT BACK INTO CRON.
@@ -28,11 +28,23 @@
     stops existing.
 
     So the trigger moves here, where it fires in seconds, and ordering becomes
-    sequential rather than hoped-for. The actual work still runs on GitHub's
-    hosted runners -- this script only starts things and waits. Measured
-    end-to-end on 2026-10-28: refresh 1m00s, sync 13s, Pages deploy ~2m, so a
-    slot completes in about 3.5 minutes. The 30-minute lag it replaces was
-    absorbing scheduler jitter, badly, around work that takes minutes.
+    sequential rather than hoped-for. Measured end-to-end on 2026-10-28:
+    refresh 1m00s, sync 13s, Pages deploy ~2m, so a slot completes in about
+    3.5 minutes. The 30-minute lag it replaces was absorbing scheduler jitter,
+    badly, around work that takes minutes.
+
+    THE SCORE REFRESH RUNS ON THIS BOX, NOT ON A HOSTED RUNNER. The sport
+    repos are private, so every hosted "Refresh live results" run drew on the
+    account's Actions minutes: four sports, two slots a day, about 300 minutes
+    a month for a script that needs R, jsonlite and a public scoreboard. This
+    box already has all three. Each sport is refreshed in a dedicated detached
+    worktree under <workspace>\.refresh-worktrees\<sport>, reset to
+    origin/main at the start of every run, so the refresh sees exactly what a
+    hosted runner's fresh clone would see and never touches the sport's
+    primary checkout, whatever branch or state that is in. The sport repos
+    keep their refresh-results.yml as a manual fallback; -HostedRefresh makes
+    this script dispatch those instead. The aggregator is public, so its sync
+    and Pages deploy still run hosted at no cost.
 
     MODEL REFRESH ON NEW RESULTS. Each sport's tools/refresh_live_results.R
     patches finished scores plus the grading and slate counts that follow
@@ -88,6 +100,11 @@
     Do not run any local model pipeline, even when a refresh wrote new
     results. Restores the old scores-only behaviour for one run.
 
+.PARAMETER HostedRefresh
+    Dispatch each sport's hosted "Refresh live results" workflow instead of
+    running the refresh locally. The pre-2026-11-14 behaviour; uses Actions
+    minutes on the private sport repos.
+
 .PARAMETER SkipSync
     Refresh the sport repos but do not dispatch the aggregator sync, so nothing
     is published. For debugging a single sport's refresh in isolation.
@@ -114,7 +131,9 @@ param(
 
     [switch] $SkipSync,
 
-    [switch] $SkipModelRefresh
+    [switch] $SkipModelRefresh,
+
+    [switch] $HostedRefresh
 )
 
 Set-StrictMode -Version Latest
@@ -195,11 +214,29 @@ $MODEL_REFRESH = [ordered]@{
     }
 }
 
+# How each sport's score refresh is run locally. Dir is the sport's primary
+# checkout (only used to reach its git object store); Paths are the files the
+# refresh may rewrite, and the only ones ever staged. These mirror the "Commit
+# any changes" step of each sport's refresh-results.yml; keep the two in step.
+# Args mirror what each workflow passes by default: NBA and WNBA get an
+# explicit 3-day lookback, as their workflows send. MLB and NFL default to
+# the current season inside the script, so nothing is passed.
+$SPORT_REFRESH = [ordered]@{
+    mlb  = @{ Dir = 'MLB Analytics';  Args = @();    Paths = @('web/public/data') }
+    nfl  = @{ Dir = 'NFL Analytics';  Args = @();    Paths = @('web/public/data/matchups_current_week.json', 'web/public/data/model_diagnostics.json') }
+    nba  = @{ Dir = 'NBA Analytics';  Args = @('3'); Paths = @('web/public/data/matchups_slates.json') }
+    wnba = @{ Dir = 'WNBA Analytics'; Args = @('3'); Paths = @('web/public/data/matchups_slates.json') }
+}
+
 # The sport checkouts sit beside the aggregator checkout this script lives in:
 #   <workspace>\front-office-aggregator\tools\run_refresh_slot.ps1
 #   <workspace>\NFL Analytics\...
 # Override with FRONT_OFFICE_ROOT when running from a worktree.
 $WORKSPACE_ROOT = if ($env:FRONT_OFFICE_ROOT) { $env:FRONT_OFFICE_ROOT } else { Split-Path -Parent (Split-Path -Parent $PSScriptRoot) }
+
+# Scratch worktrees owned by this script, one per sport. Outside every repo so
+# they never show up as untracked files in a checkout guard's `git status`.
+$REFRESH_WORKTREE_ROOT = Join-Path $WORKSPACE_ROOT '.refresh-worktrees'
 
 # --- Helpers -------------------------------------------------------------
 
@@ -310,6 +347,151 @@ function Invoke-WorkflowAndWait {
     else      { Write-Step "  run $runId FAILED (see: gh run view $runId -R $Repo --log-failed)" }
 
     return $ok
+}
+
+# --- Local score refresh -------------------------------------------------
+
+function Get-RscriptPath {
+    <#
+        Rscript from PATH, else the newest R under Program Files. Task
+        Scheduler does not always inherit the interactive PATH.
+    #>
+    $cmd = Get-Command Rscript -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+
+    $found = Get-ChildItem 'C:\Program Files\R\R-*\bin\Rscript.exe' -ErrorAction SilentlyContinue |
+        Sort-Object FullName -Descending |
+        Select-Object -First 1
+    if ($found) { return $found.FullName }
+    return ''
+}
+
+function Invoke-LocalRefresh {
+    <#
+        Runs one sport's tools/refresh_live_results.R in that sport's scratch
+        worktree and pushes a commit if it wrote new results. Returns an object
+        with Ok (the refresh ran and anything it wrote is on origin/main) and
+        Committed (new results were pushed). Never throws for a sport-level
+        failure -- the caller decides whether one sport failing stops the slot.
+
+        The worktree is reset hard to origin/main first. That is safe here and
+        nowhere else: it is this script's own scratch space, nothing else
+        writes to it, and anything left in it is a failed earlier run's
+        half-written output.
+
+        Native output is piped to Out-Host for the reason given in Write-Step:
+        anything left on the success stream would become part of the return
+        value.
+    #>
+    param(
+        [string] $Sport,
+        [switch] $WhatIfOnly
+    )
+
+    $cfg     = $SPORT_REFRESH[$Sport]
+    $repoDir = Join-Path $WORKSPACE_ROOT $cfg.Dir
+    $wt      = Join-Path $REFRESH_WORKTREE_ROOT $Sport
+    $result  = [pscustomobject]@{ Ok = $false; Committed = $false }
+
+    if ($WhatIfOnly) {
+        Write-Host "  would reset worktree '$wt' to origin/main of '$repoDir'"
+        Write-Host "  would run: Rscript tools/refresh_live_results.R $($cfg.Args -join ' ')"
+        Write-Host "  would commit and push to main if any of these changed: $($cfg.Paths -join ', ')"
+        $result.Ok = $true
+        return $result
+    }
+
+    Write-Step "refreshing $Sport results locally"
+
+    if (-not (Test-Path (Join-Path $repoDir '.git'))) {
+        Write-Step "  $Sport refresh FAILED: no checkout at '$repoDir'"
+        return $result
+    }
+    $rscript = Get-RscriptPath
+    if (-not $rscript) {
+        Write-Step "  $Sport refresh FAILED: Rscript not found on PATH or under C:\Program Files\R"
+        return $result
+    }
+
+    & git -C $repoDir fetch --quiet origin main | Out-Host
+    if ($LASTEXITCODE -ne 0) {
+        Write-Step "  $Sport refresh FAILED: could not fetch origin/main"
+        return $result
+    }
+
+    if (-not (Test-Path (Join-Path $wt '.git'))) {
+        & git -C $repoDir worktree add --quiet --detach $wt origin/main | Out-Host
+    }
+    else {
+        & git -C $wt reset --quiet --hard | Out-Host
+        & git -C $wt clean -fdq | Out-Host
+        & git -C $wt checkout --quiet --detach origin/main | Out-Host
+    }
+    if ($LASTEXITCODE -ne 0) {
+        Write-Step "  $Sport refresh FAILED: could not prepare worktree '$wt'"
+        return $result
+    }
+
+    # renv's autoloader is switched off for this call, as the sport repos' CI
+    # does: in a fresh worktree it would activate an empty project library and
+    # hide the jsonlite installed in the user library.
+    $refreshArgs = @($cfg.Args)
+    $renvBefore  = $env:RENV_CONFIG_AUTOLOADER_ENABLED
+    $env:RENV_CONFIG_AUTOLOADER_ENABLED = 'FALSE'
+    Push-Location $wt
+    try {
+        & $rscript 'tools/refresh_live_results.R' @refreshArgs | Out-Host
+        $rc = $LASTEXITCODE
+    }
+    finally {
+        Pop-Location
+        $env:RENV_CONFIG_AUTOLOADER_ENABLED = $renvBefore
+    }
+    if ($rc -ne 0) {
+        Write-Step "  $Sport refresh FAILED: refresh_live_results.R exited $rc"
+        return $result
+    }
+
+    $changed = & git -C $wt status --porcelain -- @($cfg.Paths)
+    if ([string]::IsNullOrWhiteSpace(($changed -join ''))) {
+        Write-Step "  ${Sport}: no newly finished games; nothing to commit"
+        $result.Ok = $true
+        return $result
+    }
+
+    & git -C $wt add -- @($cfg.Paths) | Out-Host
+    & git -C $wt commit --quiet `
+        -m 'chore(data): refresh finished game results' `
+        -m 'Written by the aggregator''s tools/run_refresh_slot.ps1 running tools/refresh_live_results.R on the scheduling workstation. Scores, plus the grading and counts that follow mechanically from them - no prediction was recomputed and no model was re-fit.' | Out-Host
+    if ($LASTEXITCODE -ne 0) {
+        Write-Step "  $Sport refresh FAILED: could not commit the refreshed results"
+        return $result
+    }
+
+    & git -C $wt push --quiet origin HEAD:main | Out-Host
+    if ($LASTEXITCODE -ne 0) {
+        # Something else landed on main while the refresh ran. Replay the one
+        # commit on top of it and try once more.
+        Write-Step "  ${Sport}: push rejected; rebasing onto the new origin/main and retrying once"
+        & git -C $wt fetch --quiet origin main | Out-Host
+        & git -C $wt rebase --quiet origin/main | Out-Host
+        if ($LASTEXITCODE -ne 0) {
+            & git -C $wt rebase --abort | Out-Host
+            Write-Step "  $Sport refresh FAILED: refreshed results conflict with a newer commit on main"
+            return $result
+        }
+        & git -C $wt push --quiet origin HEAD:main | Out-Host
+        if ($LASTEXITCODE -ne 0) {
+            Write-Step "  $Sport refresh FAILED: could not push the refreshed results"
+            return $result
+        }
+    }
+
+    $sha = ([string] (& git -C $wt rev-parse --short HEAD)).Trim()
+    Write-Step "  ${Sport}: pushed refreshed results ($sha)"
+    $result.Ok = $true
+    $result.Committed = $true
+    return $result
 }
 
 # --- Checkout safety ------------------------------------------------------
@@ -527,7 +709,8 @@ function Invoke-RefreshSlot {
         [switch]   $DryRun,
         [string[]] $Sports,
         [switch]   $SkipSync,
-        [switch]   $SkipModelRefresh
+        [switch]   $SkipModelRefresh,
+        [switch]   $HostedRefresh
     )
 
     Assert-ScheduledCheckoutSafety -RepoDir $REPO_DIR -WhatIfOnly:$DryRun
@@ -536,7 +719,8 @@ function Invoke-RefreshSlot {
 
     Write-Output "=== Refresh slot $($plan.Slot)"
     Write-Output "    sports:        $($plan.Sports -join ', ')"
-    Write-Output "    publish:       $(if ($SkipSync) { 'NO (-SkipSync)' } else { 'yes, via ' + $SYNC_WORKFLOW })"
+    Write-Output "    refresh:       $(if ($HostedRefresh) { 'hosted workflow (-HostedRefresh)' } else { 'local, in ' + $REFRESH_WORKTREE_ROOT })"
+    Write-Output "    publish:     $(if ($SkipSync) { 'NO (-SkipSync)' } else { 'yes, via ' + $SYNC_WORKFLOW })"
     Write-Output "    model refresh: $(if ($SkipModelRefresh) { 'NO (-SkipModelRefresh)' } else { 'on new results, for ' + (@($MODEL_REFRESH.Keys) -join ', ') })"
     if ($DryRun) { Write-Output "    MODE:          DRY RUN, nothing will be dispatched" }
     Write-Output ""
@@ -546,28 +730,42 @@ function Invoke-RefreshSlot {
     foreach ($sport in $plan.Sports) {
         $repo = $SPORT_REPOS[$sport]
         $wantsModel = (-not $SkipModelRefresh) -and $MODEL_REFRESH.Contains($sport)
-        $headBefore = if ($wantsModel -and -not $DryRun) { Get-RemoteHead -Repo $repo } else { '' }
+        $committed = $false
 
-        $ok = Invoke-WorkflowAndWait `
-            -Repo $repo `
-            -Workflow $REFRESH_WORKFLOW `
-            -WhatIfOnly:$DryRun
+        if ($HostedRefresh) {
+            $headBefore = if ($wantsModel -and -not $DryRun) { Get-RemoteHead -Repo $repo } else { '' }
+
+            $ok = Invoke-WorkflowAndWait `
+                -Repo $repo `
+                -Workflow $REFRESH_WORKFLOW `
+                -WhatIfOnly:$DryRun
+
+            # The hosted refresh commits only when it wrote new finals, so a
+            # moved tip is the signal. Another push landing in the same minute
+            # would also move it; the cost of that false positive is one extra
+            # pipeline run.
+            if ($ok -and $headBefore) {
+                $headAfter = Get-RemoteHead -Repo $repo
+                $committed = [bool] ($headAfter -and $headBefore -ne $headAfter)
+            }
+        }
+        else {
+            $refresh   = Invoke-LocalRefresh -Sport $sport -WhatIfOnly:$DryRun
+            $ok        = $refresh.Ok
+            $committed = $refresh.Committed
+        }
 
         if (-not $ok) { $failed += $sport; continue }
         if (-not $wantsModel) { continue }
 
         if ($DryRun) {
-            Write-Host "  if that run commits new results:"
+            Write-Host "  if that refresh commits new results:"
             [void] (Invoke-ModelRefresh -Sport $sport -WhatIfOnly)
             continue
         }
 
-        # The refresh commits only when it wrote new finals, so a moved tip is
-        # the signal. Another push landing in the same minute would also move
-        # it; the cost of that false positive is one extra pipeline run.
-        $headAfter = Get-RemoteHead -Repo $repo
-        if ($headBefore -and $headAfter -and $headBefore -ne $headAfter) {
-            Write-Step "  $sport has new results ($($headAfter.Substring(0, 7))); refreshing standings and odds"
+        if ($committed) {
+            Write-Step "  $sport has new results; refreshing standings and odds"
             $modelOk = Invoke-ModelRefresh -Sport $sport
             if (-not $modelOk) { $failed += "$sport-model-refresh" }
         }
@@ -622,7 +820,8 @@ if ($MyInvocation.InvocationName -ne '.') {
             -DryRun:$DryRun `
             -Sports $Sports `
             -SkipSync:$SkipSync `
-            -SkipModelRefresh:$SkipModelRefresh
+            -SkipModelRefresh:$SkipModelRefresh `
+            -HostedRefresh:$HostedRefresh
     }
     finally {
         if ($transcribing) { Stop-Transcript | Out-Null }
