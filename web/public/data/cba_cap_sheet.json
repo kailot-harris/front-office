@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-13T15:37:45Z",
+  "generated_at": "2026-11-14T03:32:00Z",
   "season": "2026-2027",
   "cbaThresholdSources": "Cap/tax/apron/minimum thresholds (salaryCap/luxuryTaxThreshold/firstApron/secondApron): manually-updated constants, sourced from the NBA's own official release (pr.nba.com), July 2026 -- no Basketball-Reference page carries these figures (see cap_data_phase3_findings.md), and they change only once per season. Team payroll totals (payroll_2026): automated, from Basketball-Reference's /contracts/players.html active-roster current-season salaries, aggregated per team by tools/derive_team_payroll_from_bbref.R. ACTIVE-ROSTER SALARY ONLY -- excludes dead cap, cap holds, and non-guaranteed partial-season proration, so it is NOT the same quantity as a 'Total Cap Allocations' figure (e.g. Spotrac's) and will not match one team-for-team; see cap_data_phase3_findings.md for the quantified gap. payroll_2027/payroll_2028 are not BBRef figures -- they are this season's BBRef total projected forward using the league-wide cap growth rate (CAP_PROJ_2027/2028 vs. SALARY_CAP), an explicit modeling assumption. Per-player contract rows shown for the teams listed in verified_contracts: automated, read directly from Basketball-Reference's /contracts/players.html (tools/fetch_bbref_player_contracts.R); playerName/salary figures are sourced from BBRef, current-season salary only. playerId is a synthetic 'bbref-<team>-<rank>' string (BBRef has no player id on this page); position is looked up from the projections player catalog where possible, else defaulted to 'F'; contractType defaults to 'Guaranteed' -- BBRef's table carries no option/guaranteed flag. All three are disclosed per-row in each contract's own `notes` field. All other teams' per-player rows are a proportional-fill estimate, not sourced.",
   "salaryCap": 165,
@@ -1931,7 +1931,7 @@
           "salary2027": 0,
           "salary2028": 0,
           "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
         },
         {
           "playerId": "bbref-CLE-009",
@@ -1951,7 +1951,7 @@
           "salary2027": 0,
           "salary2028": 0,
           "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
         },
         {
           "playerId": "bbref-CLE-011",
