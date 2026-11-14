@@ -1,8 +1,10 @@
 name: CI
 
+# CI does not run on pushes to main. Nearly every change reaches main through a
+# pull request that has already run this workflow, and the scheduled data
+# publishes are gated locally before they are committed, so the post-merge run
+# only repeated work. Use workflow_dispatch to check main on demand.
 on:
-  push:
-    branches: [ main ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
