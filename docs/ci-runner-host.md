@@ -389,8 +389,9 @@ both repos started at the same moment):
 - **Peak memory** is Ubuntu's total `used` memory while that job held the
   lock. It includes about 1.4 GiB used with the runners idle, so the job's own
   share is roughly 1.4–2.0 GiB for `web` and about 0.6 GiB for `r`.
-- No swap was used. The lowest `available` memory was 4.4 GiB, during the NFL
+- No swap was used. The highest `used` memory was 3.4 GiB, during the NFL
   `web` job, well under the 8 GB cap and the 6 GB per-job threshold in #154.
+  `available` memory never dropped below 4.4 GiB.
 - **Times** are how long each job held the lock (to within the 2 s sampling).
   GitHub's job duration is longer for a job that waited, because the wait for
   the lock is counted inside the job.
