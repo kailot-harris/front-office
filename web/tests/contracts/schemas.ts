@@ -798,6 +798,8 @@ export const MatchupGameSchema = z
     actual_margin: z.number().int().nullable(),
     actual_winner: teamEnum.nullable(),
     prediction_correct: z.boolean().nullable(),
+    has_box_score: z.boolean(),
+    has_game_detail: z.boolean(),
   })
   .strict();
 
@@ -846,5 +848,242 @@ export const MatchupsDatasetSchema = z
     grading_state: z.enum(['graded', 'no_games_graded_yet']),
     slates: z.array(MatchupSlateSchema),
     matchups: z.array(MatchupGameSchema),
+  })
+  .strict();
+
+// ----------------------------------------------------------------------------
+// 15. games/<game_id>.json -> GameDetailEnvelope (lib/gameDetailTypes.ts)
+// ----------------------------------------------------------------------------
+export const GameTeamSummarySchema = z
+  .object({
+    teamAbbr: teamEnum,
+    teamName: z.string().min(1),
+    score: z.number().int().min(0).nullable(),
+    is_winner: z.boolean().nullable(),
+  })
+  .strict();
+
+export const EfficiencyFactorItemSchema = z
+  .object({
+    key: z.enum(['efg_pct', 'ts_pct', 'tov_pct', 'oreb_pct', 'fta_rate', 'ortg', 'drtg', 'pace']),
+    label: z.string().min(1),
+    away_value: num.nullable(),
+    home_value: num.nullable(),
+    unit: z.enum(['pct', 'per100fga', 'per100poss', 'poss48']),
+    higher_is_better: z.boolean().nullable(),
+    description: z.string().min(1),
+  })
+  .strict();
+
+export const ContextSplitItemSchema = z
+  .object({
+    key: z.string().min(1),
+    label: z.string().min(1),
+    away_value: num.nullable(),
+    home_value: num.nullable(),
+  })
+  .strict();
+
+export const TeamBoxTotalsSchema = z
+  .object({
+    minutes: nonNeg,
+    points: z.number().int().min(0),
+    fgm: z.number().int().min(0),
+    fga: z.number().int().min(0),
+    fg_pct: pct.nullable(),
+    fg3m: z.number().int().min(0),
+    fg3a: z.number().int().min(0),
+    fg3_pct: pct.nullable(),
+    ftm: z.number().int().min(0),
+    fta: z.number().int().min(0),
+    ft_pct: pct.nullable(),
+    oreb: z.number().int().min(0),
+    dreb: z.number().int().min(0),
+    reb: z.number().int().min(0),
+    ast: z.number().int().min(0),
+    stl: z.number().int().min(0),
+    blk: z.number().int().min(0),
+    tov: z.number().int().min(0),
+    team_tov: z.number().int().min(0),
+    total_tov: z.number().int().min(0),
+    pf: z.number().int().min(0),
+    efg_pct: num.gt(0).max(150).nullable(),
+    ts_pct: num.gt(0).max(150).nullable(),
+    possessions_est: num.positive().nullable(),
+    ortg: num.positive().nullable(),
+    drtg: num.positive().nullable(),
+    pace: num.positive().nullable(),
+  })
+  .strict();
+
+export const PlayerBoxRowSchema = z
+  .object({
+    playerId: z.string().min(1),
+    playerName: z.string().min(1),
+    short_name: z.string().min(1),
+    jersey: z.string().min(1).nullable(),
+    position: z.string().min(1).nullable(),
+    starter: z.boolean(),
+    minutes: nonNeg,
+    points: z.number().int().min(0),
+    oreb: z.number().int().min(0),
+    dreb: z.number().int().min(0),
+    reb: z.number().int().min(0),
+    ast: z.number().int().min(0),
+    stl: z.number().int().min(0),
+    blk: z.number().int().min(0),
+    tov: z.number().int().min(0),
+    pf: z.number().int().min(0),
+    plus_minus: num.nullable(),
+    fgm: z.number().int().min(0),
+    fga: z.number().int().min(0),
+    fg_pct: pct.nullable(),
+    fg3m: z.number().int().min(0),
+    fg3a: z.number().int().min(0),
+    fg3_pct: pct.nullable(),
+    ftm: z.number().int().min(0),
+    fta: z.number().int().min(0),
+    ft_pct: pct.nullable(),
+    efg_pct: num.min(0).max(150).nullable(),
+    ts_pct: num.min(0).max(150).nullable(),
+    game_score: num,
+  })
+  .strict();
+
+export const InactivePlayerRowSchema = z
+  .object({
+    playerId: z.string().min(1),
+    playerName: z.string().min(1),
+    position: z.string().min(1).nullable(),
+    reason: z.string().min(1).nullable(),
+  })
+  .strict();
+
+export const TopPerformerItemSchema = z
+  .object({
+    teamAbbr: teamEnum,
+    playerId: z.string().min(1),
+    playerName: z.string().min(1),
+    points: z.number().int().min(0),
+    reb: z.number().int().min(0),
+    ast: z.number().int().min(0),
+    game_score: num,
+  })
+  .strict();
+
+export const MarginWaterfallStepSchema = z
+  .object({
+    key: z.enum(['bottom_up', 'rapm', 'shot_fatigue', 'embeddings', 'home_court', 'schedule', 'rounding']),
+    label: z.string().min(1),
+    points: num,
+    detail: z.string().nullable(),
+  })
+  .strict();
+
+export const EnteringBaselineSchema = z
+  .object({
+    teamAbbr: teamEnum,
+    prior_games_n: z.number().int().min(0),
+    factors: z.array(
+      z
+        .object({
+          key: z.string().min(1),
+          entering: num.nullable(),
+          realized: num.nullable(),
+          difference: num.nullable(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+export const GameExplainabilityPayloadSchema = z
+  .object({
+    projection_basis: z.enum(['primary_ensemble', 'logged_model_margin', 'margin_from_logged_win_prob']).nullable(),
+    predicted_margin: num.nullable(),
+    predicted_home_win_prob: prob.nullable(),
+    sigma_game: num.positive().nullable(),
+    margin_waterfall: z.array(MarginWaterfallStepSchema).nullable(),
+    logged_forecast: z
+      .object({
+        prediction_timestamp: z.string().min(1),
+        log_source: z.enum(['LOGGED_PREGAME', 'BACKTEST_PREWEEK', 'BACKTEST_SEEDED']),
+        brier_component: num.nullable(),
+        log_loss_component: num.nullable(),
+      })
+      .strict()
+      .nullable(),
+    entering_baselines: z.array(EnteringBaselineSchema).nullable(),
+  })
+  .strict();
+
+export const GameFlowPayloadSchema = z
+  .object({
+    linescore: z
+      .object({
+        periods: z.array(z.string().min(1)),
+        away_period_pts: z.array(z.number().int().min(0)),
+        home_period_pts: z.array(z.number().int().min(0)),
+      })
+      .strict(),
+    largest_lead_home: z.number().int().min(0),
+    largest_lead_away: z.number().int().min(0),
+    lead_changes: z.number().int().min(0),
+    times_tied: z.number().int().min(0),
+    timeline: z.array(
+      z
+        .object({
+          elapsed_sec: nonNeg,
+          period: z.number().int().positive(),
+          home_score: z.number().int().min(0),
+          away_score: z.number().int().min(0),
+          margin: z.number().int(),
+          model_home_win_prob: prob.nullable(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+export const GameBoxScoreSchema = z
+  .object({
+    away_totals: TeamBoxTotalsSchema,
+    home_totals: TeamBoxTotalsSchema,
+    away_players: z.array(PlayerBoxRowSchema),
+    home_players: z.array(PlayerBoxRowSchema),
+    away_inactive: z.array(InactivePlayerRowSchema),
+    home_inactive: z.array(InactivePlayerRowSchema),
+    top_performers: z.array(TopPerformerItemSchema),
+  })
+  .strict();
+
+export const GameDetailPayloadSchema = z
+  .object({
+    game_id: z.string().min(1),
+    slate: z.number().int().positive(),
+    slate_label: z.string().min(1),
+    game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    weekday: z.string().min(2),
+    is_completed: z.boolean(),
+    has_box_score: z.boolean(),
+    away_team: GameTeamSummarySchema,
+    home_team: GameTeamSummarySchema,
+    efficiency_factors: z.array(EfficiencyFactorItemSchema).nullable(),
+    context_splits: z.array(ContextSplitItemSchema).nullable(),
+    box_score: GameBoxScoreSchema.nullable(),
+    explainability: GameExplainabilityPayloadSchema.nullable(),
+    game_flow: GameFlowPayloadSchema.nullable(),
+  })
+  .strict();
+
+export const GameDetailEnvelopeSchema = z
+  .object({
+    schema_version: z.literal('1.0'),
+    generated_at: z.string().datetime(),
+    sport: z.enum(['nba', 'wnba', 'nfl', 'mlb']),
+    endpoint: z.literal('game_detail'),
+    season: z.number().int().positive(),
+    season_label: seasonSpan,
+    data: GameDetailPayloadSchema,
   })
   .strict();

@@ -28,11 +28,13 @@ import type {
 import type { PlayoffMatchupsCatalog } from '@/lib/playoffTypes';
 import type { PlayerCatalogEntry, PlayerShotData, ShotsMetadata } from '@/lib/shotTypes';
 import type { MatchupsDataset } from '@/lib/matchupTypes';
+import type { GameDetailEnvelope } from '@/lib/gameDetailTypes';
 
 export const WEB_ROOT = path.resolve(__dirname, '../..');
 export const PUBLIC_DIR = path.join(WEB_ROOT, 'public');
 export const DATA_DIR = path.join(PUBLIC_DIR, 'data');
 export const SHOTS_DIR = path.join(DATA_DIR, 'shots');
+export const GAMES_DIR = path.join(DATA_DIR, 'games');
 
 export const NBA_TEAMS = [
   'ATL', 'BOS', 'BKN', 'CHA', 'CHI', 'CLE', 'DAL', 'DEN', 'DET', 'GSW',
@@ -125,6 +127,25 @@ export function readPlayerShotFile(playerId: string): PlayerShotData {
   const parsed = JSON.parse(
     fs.readFileSync(path.join(SHOTS_DIR, `${playerId}.json`), 'utf-8'),
   ) as PlayerShotData;
+  cache.set(key, parsed);
+  return parsed;
+}
+
+export function listGameDetailIds(): string[] {
+  if (!fs.existsSync(GAMES_DIR)) return [];
+  return fs
+    .readdirSync(GAMES_DIR)
+    .filter((f) => f.endsWith('.json'))
+    .map((f) => f.replace(/\.json$/, ''))
+    .sort();
+}
+
+export function readGameDetailFile(gameId: string): GameDetailEnvelope {
+  const key = `games/${gameId}.json`;
+  if (cache.has(key)) return cache.get(key) as GameDetailEnvelope;
+  const parsed = JSON.parse(
+    fs.readFileSync(path.join(GAMES_DIR, `${gameId}.json`), 'utf-8'),
+  ) as GameDetailEnvelope;
   cache.set(key, parsed);
   return parsed;
 }
