@@ -400,14 +400,14 @@ ok(".classify_log_source: prediction before game_date -> LOGGED_PREGAME",
    identical(.classify_log_source(as.POSIXct("2026-10-20 09:00:00"),
                                    as.Date("2026-10-21")),
              "LOGGED_PREGAME"))
-ok(".classify_log_source: prediction ON game_date (seed_prediction_log's hardcoded noon timestamp) -> SEEDED_HINDSIGHT",
+ok(".classify_log_source: prediction ON game_date (seed_prediction_log's hardcoded noon timestamp) -> BACKTEST_SEEDED",
    identical(.classify_log_source(as.POSIXct("2026-10-21 12:00:00"),
                                    as.Date("2026-10-21")),
-             "SEEDED_HINDSIGHT"))
-ok(".classify_log_source: prediction AFTER game_date (should not happen, but must not be mistaken for a forecast) -> SEEDED_HINDSIGHT",
+             "BACKTEST_SEEDED"))
+ok(".classify_log_source: prediction AFTER game_date (should not happen, but must not be mistaken for a forecast) -> BACKTEST_SEEDED",
    identical(.classify_log_source(as.POSIXct("2026-10-22 09:00:00"),
                                    as.Date("2026-10-21")),
-             "SEEDED_HINDSIGHT"))
+             "BACKTEST_SEEDED"))
 
 mixed_provenance <- tibble(
   game_id = c("G1", "G2", "G3"),
@@ -421,10 +421,10 @@ ok("migration adds log_source to a log that predates the column",
    "log_source" %in% names(migrated))
 ok("migration classifies a pre-game timestamp as LOGGED_PREGAME",
    identical(migrated$log_source[1], "LOGGED_PREGAME"))
-ok("migration classifies seed_prediction_log()'s same-day noon timestamp as SEEDED_HINDSIGHT",
-   identical(migrated$log_source[2], "SEEDED_HINDSIGHT"))
-ok("migration treats a missing/NA timestamp as SEEDED_HINDSIGHT (fails closed, not open)",
-   identical(migrated$log_source[3], "SEEDED_HINDSIGHT"))
+ok("migration classifies seed_prediction_log()'s same-day noon timestamp as BACKTEST_SEEDED",
+   identical(migrated$log_source[2], "BACKTEST_SEEDED"))
+ok("migration treats a missing/NA timestamp as BACKTEST_SEEDED (fails closed, not open)",
+   identical(migrated$log_source[3], "BACKTEST_SEEDED"))
 
 ok("migration is a no-op when log_source already exists",
    identical(.ensure_log_source_column(migrated, persist = FALSE), migrated))

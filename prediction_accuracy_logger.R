@@ -56,6 +56,19 @@ PRED_LOG_RDS <- if (exists("CACHE_PREDICTION_LOG")) CACHE_PREDICTION_LOG else fi
 PRED_LOG_CSV <- file.path(CACHE_DIR, "prediction_accuracy_log.csv")
 PRED_LOG_UNRESOLVABLE_AFTER_DAYS <- 7L
 
+# Component snapshot columns captured at logging time (P2-b). Historical rows
+# logged or seeded before P2-b remain NA_real_ so explainability never plugs
+# later ratings onto an older forecast.
+PRED_LOG_SNAPSHOT_COLS <- c(
+  "comp_bottom_up",
+  "comp_rapm",
+  "comp_shot_fatigue",
+  "comp_embeddings",
+  "comp_home_court",
+  "comp_schedule",
+  "sigma_game"
+)
+
 # --- SCHEDULE SPINE CONTRACT (issue 24) -------------------------------------
 # The active slate is parsed out of bookmaker feeds (market_odds_engine.R). A
 # bookmaker feed can mis-pair teams: issue 24 logged four rows whose
@@ -122,63 +135,215 @@ PRED_LOG_WINNER_PROB_CUTOFF <- 0.50
     log_loss_component      = double(),
     status                  = character(),
     resolved_timestamp      = as.POSIXct(numeric(), origin = "1970-01-01"),
-    # Row provenance (see .classify_log_source() below). Distinguishes a
-    # genuine pre-game forecast (written before the game happened, by
-    # .build_slate_rows() / project_week_predictions.R) from a row
-    # seed_prediction_log() backfilled from box scores AFTER the game, using a
-    # rating model computed with the benefit of hindsight. Every published
-    # accuracy/calibration figure must key off this column instead of
-    # re-deriving the heuristic each time.
-    log_source              = character()
+    # Row provenance (see .classify_log_source() below). Standardized v3 values:
+    #   LOGGED_PREGAME   - genuine forecast recorded before tip-off
+    #   BACKTEST_PREWEEK - honest backtest from pre-week committed ratings
+    #   BACKTEST_SEEDED  - bulk hindsight-seeded row from box_scores_cache.rds
+    log_source              = character(),
+    comp_bottom_up          = double(),
+    comp_rapm               = double(),
+    comp_shot_fatigue       = double(),
+    comp_embeddings         = double(),
+    comp_home_court         = double(),
+    comp_schedule           = double(),
+    sigma_game              = double()
   )
 }
 
-# LOGGED_PREGAME:    a genuine forecast - prediction_timestamp strictly
-#                    precedes game_date. Written by .build_slate_rows() (daily
-#                    betting-slate path, now dead) or project_week_predictions.R
-#                    (the live weekly ESPN-schedule-spine path, issue #33).
-# SEEDED_HINDSIGHT:  prediction_timestamp == game_date (seed_prediction_log()
-#                    hardcodes `paste(game_date, "12:00:00")`). The model that
-#                    produced the "prediction" already knew the outcome existed
-#                    in box_scores_cache.rds; it is a historical backtest, not
-#                    a forecast. See accuracy_governance.R, which must not
-#                    average these two populations into one headline figure.
-#
-# Used both to label rows as they are written and to migrate rows written
-# before this column existed (every row in the log as of 2026-11-11).
-.classify_log_source <- function(prediction_timestamp, game_date) {
-  pt <- as.Date(prediction_timestamp)
-  gd <- as.Date(game_date)
-  dplyr::if_else(!is.na(pt) & !is.na(gd) & pt < gd,
-                 "LOGGED_PREGAME", "SEEDED_HINDSIGHT")
+# Ensure all 7 P2-b component snapshot columns exist as double() without
+# mutating any existing values. Pure and idempotent.
+.ensure_snapshot_columns <- function(df) {
+  if (is.null(df) || !is.data.frame(df)) return(df)
+  n <- nrow(df)
+  for (col in PRED_LOG_SNAPSHOT_COLS) {
+    if (!(col %in% names(df))) {
+      df[[col]] <- if (n == 0L) double() else rep(NA_real_, n)
+    } else if (!identical(typeof(df[[col]]), "double")) {
+      df[[col]] <- as.double(df[[col]])
+    }
+  }
+  df
 }
 
-# One-time migration seam: a stored log written before `log_source` existed
-# gets the column backfilled from the same heuristic, then persisted so this
-# only ever runs once per cache. Pure w.r.t. its argument; the persistence
-# side effect is gated by `persist` so tests can call this on an in-memory
-# fixture without touching disk.
-.ensure_log_source_column <- function(df, persist = TRUE) {
-  if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) {
-    if (is.data.frame(df) && !("log_source" %in% names(df))) {
-      df$log_source <- character(0)
+.parse_log_timestamp <- function(x) {
+  if (is.null(x) || length(x) == 0L) return(as.POSIXct(numeric(), origin = "1970-01-01"))
+  if (inherits(x, "POSIXct")) return(x)
+  if (inherits(x, "POSIXlt")) return(as.POSIXct(x))
+  s <- as.character(x)
+  out <- as.POSIXct(rep(NA_real_, length(s)), origin = "1970-01-01")
+  is_z <- !is.na(s) & grepl("Z$", s)
+  if (any(is_z)) {
+    z_vals <- s[is_z]
+    parsed_z <- suppressWarnings(as.POSIXct(z_vals, format = "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"))
+    need_nosec <- is.na(parsed_z)
+    if (any(need_nosec)) {
+      parsed_z[need_nosec] <- suppressWarnings(as.POSIXct(z_vals[need_nosec], format = "%Y-%m-%dT%H:%MZ", tz = "UTC"))
+    }
+    out[is_z] <- parsed_z
+  }
+  is_local <- !is.na(s) & !is_z
+  if (any(is_local)) {
+    out[is_local] <- suppressWarnings(as.POSIXct(s[is_local]))
+  }
+  out
+}
+
+.local_as_date <- function(x) {
+  if (inherits(x, "POSIXt")) {
+    tz <- attr(x, "tzone")
+    if (is.null(tz) || length(tz) == 0L || !nzchar(tz[1])) tz <- "" else tz <- tz[1]
+    return(as.Date(x, tz = tz))
+  }
+  as.Date(x)
+}
+
+.extract_tip_times <- function(df, spine = NULL) {
+  if (is.null(spine) || !is.data.frame(spine) || nrow(spine) == 0L) return(NULL)
+  if (!all(c("game_date", "home_team", "away_team") %in% names(df))) return(NULL)
+
+  tip_col <- if ("game_date_time" %in% names(spine)) "game_date_time"
+             else if ("start_date" %in% names(spine)) "start_date"
+             else NULL
+  if (is.null(tip_col)) return(NULL)
+  if (!all(c("game_date", "home_short_display_name", "away_short_display_name") %in% names(spine))) {
+    return(NULL)
+  }
+
+  sp_keys <- paste(
+    format(as.Date(spine$game_date)),
+    resolve_team_name(spine$home_short_display_name),
+    resolve_team_name(spine$away_short_display_name)
+  )
+  df_keys <- paste(format(as.Date(df$game_date)), df$home_team, df$away_team)
+  idx <- match(df_keys, sp_keys)
+  tip_vals <- .parse_log_timestamp(spine[[tip_col]])
+  tip_vals[idx]
+}
+
+# Fallback provenance classifier (used ONLY when a row has no explicit
+# `log_source`). Compares `prediction_timestamp` against scheduled `tip_time`
+# when available; otherwise falls back to `< game_date`. Always fails closed to
+# "BACKTEST_SEEDED" and never emits legacy "SEEDED_HINDSIGHT".
+.classify_log_source <- function(prediction_timestamp, game_date, tip_time = NULL) {
+  n <- length(prediction_timestamp)
+  if (n == 0L) return(character(0))
+
+  pt_posix <- .parse_log_timestamp(prediction_timestamp)
+  pt_date  <- .local_as_date(pt_posix)
+  gd       <- as.Date(game_date)
+  if (length(gd) == 1L && n > 1L) gd <- rep(gd, n)
+
+  if (!is.null(tip_time)) {
+    tip_posix <- .parse_log_timestamp(tip_time)
+    if (length(tip_posix) == 1L && n > 1L) tip_posix <- rep(tip_posix, n)
+    has_tip <- !is.na(tip_posix)
+  } else {
+    tip_posix <- as.POSIXct(rep(NA_real_, n), origin = "1970-01-01")
+    has_tip <- rep(FALSE, n)
+  }
+
+  is_pregame <- dplyr::if_else(
+    has_tip,
+    !is.na(pt_posix) & pt_posix < tip_posix,
+    !is.na(pt_date) & !is.na(gd) & pt_date < gd
+  )
+  dplyr::if_else(is_pregame, "LOGGED_PREGAME", "BACKTEST_SEEDED")
+}
+
+# One-time migration seam: a stored log written before `log_source` or the
+# P2-b snapshot columns existed gets those columns backfilled/normalized and
+# optionally persisted. Pure and idempotent when all columns already exist.
+.ensure_log_source_column <- function(df, persist = TRUE, spine = NULL) {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) == 0L) {
+    if (is.data.frame(df)) {
+      if (!("log_source" %in% names(df))) df$log_source <- character(0)
+      df <- .ensure_snapshot_columns(df)
     }
     return(df)
   }
-  if ("log_source" %in% names(df)) return(df)
 
-  df$log_source <- .classify_log_source(df$prediction_timestamp, df$game_date)
-  cat(sprintf(paste0(
-    "[PREDICTION LOG] Migrated stored log: added log_source column ",
-    "(%d LOGGED_PREGAME, %d SEEDED_HINDSIGHT, backfilled from the ",
-    "prediction_timestamp-vs-game_date heuristic).\n"),
-    sum(df$log_source == "LOGGED_PREGAME"), sum(df$log_source == "SEEDED_HINDSIGHT")))
+  changed <- FALSE
+  if (!("log_source" %in% names(df))) {
+    tip_time <- .extract_tip_times(df, spine = spine)
+    df$log_source <- .classify_log_source(df$prediction_timestamp, df$game_date, tip_time = tip_time)
+    changed <- TRUE
+    cat(sprintf(paste0(
+      "[PREDICTION LOG] Migrated stored log: added log_source column ",
+      "(%d LOGGED_PREGAME, %d BACKTEST_SEEDED, backfilled from fallback ",
+      "timestamp classification).\n"),
+      sum(df$log_source == "LOGGED_PREGAME", na.rm = TRUE),
+      sum(df$log_source == "BACKTEST_SEEDED", na.rm = TRUE)))
+  }
 
-  if (isTRUE(persist)) {
+  missing_snap <- setdiff(PRED_LOG_SNAPSHOT_COLS, names(df))
+  if (length(missing_snap) > 0L) {
+    df <- .ensure_snapshot_columns(df)
+    changed <- TRUE
+  }
+
+  if (changed && isTRUE(persist)) {
     saveRDS(df, PRED_LOG_RDS)
     utils::write.csv(df, PRED_LOG_CSV, row.names = FALSE, na = "")
   }
   df
+}
+
+# Idempotent v3 provenance + snapshot-schema migration (Issue #123):
+#   1. Relabels 2026-10-26 backfill rows (2026-10-18 cutoff) to BACKTEST_PREWEEK.
+#   2. Relabels 2026-27 same-day morning forecasts (2026-10-24, 2026-10-25,
+#      2026-10-27, 2026-11-10) from SEEDED_HINDSIGHT to LOGGED_PREGAME.
+#   3. Relabels remaining SEEDED_HINDSIGHT rows to BACKTEST_SEEDED.
+#   4. Initializes the 7 P2-b double() snapshot columns to NA_real_ where absent
+#      without altering any existing predictions, outcomes, or populated snapshots.
+migrate_prediction_log_provenance_v3 <- function(log_df, persist = FALSE) {
+  if (is.null(log_df) || !is.data.frame(log_df)) return(log_df)
+  if (nrow(log_df) == 0L) {
+    if (!("log_source" %in% names(log_df))) log_df$log_source <- character(0)
+    return(.ensure_snapshot_columns(log_df))
+  }
+
+  orig_df <- log_df
+
+  if (!("log_source" %in% names(log_df))) {
+    log_df$log_source <- .classify_log_source(log_df$prediction_timestamp, log_df$game_date)
+  } else {
+    log_df$log_source <- as.character(log_df$log_source)
+  }
+
+  log_df <- .ensure_snapshot_columns(log_df)
+
+  gd      <- as.Date(log_df$game_date)
+  pt_date <- .local_as_date(log_df$prediction_timestamp)
+
+  # 1. Week-1 backfill on 2026-10-26 with pre-week-1 cutoff timestamp 2026-10-18
+  is_preweek <- !is.na(gd) & gd == as.Date("2026-10-26") &
+    !is.na(pt_date) & pt_date == as.Date("2026-10-18")
+  log_df$log_source[is_preweek] <- "BACKTEST_PREWEEK"
+
+  # 2. Same-day morning forecasts in 2026-27 misclassified as SEEDED_HINDSIGHT
+  morning_dates <- as.Date(c("2026-10-24", "2026-10-25", "2026-10-27", "2026-11-10"))
+  is_sameday_pregame <- !is.na(gd) & (gd %in% morning_dates) &
+    !is.na(log_df$log_source) & log_df$log_source == "SEEDED_HINDSIGHT"
+  log_df$log_source[is_sameday_pregame] <- "LOGGED_PREGAME"
+
+  # 3. All remaining legacy SEEDED_HINDSIGHT rows -> BACKTEST_SEEDED
+  is_legacy_seeded <- !is.na(log_df$log_source) & log_df$log_source == "SEEDED_HINDSIGHT"
+  log_df$log_source[is_legacy_seeded] <- "BACKTEST_SEEDED"
+
+  # 4. Any NA log_source fails closed via fallback classifier
+  is_na_src <- is.na(log_df$log_source)
+  if (any(is_na_src)) {
+    log_df$log_source[is_na_src] <- .classify_log_source(
+      log_df$prediction_timestamp[is_na_src],
+      log_df$game_date[is_na_src]
+    )
+  }
+
+  if (isTRUE(persist) && !identical(log_df, orig_df)) {
+    saveRDS(log_df, PRED_LOG_RDS)
+    utils::write.csv(log_df, PRED_LOG_CSV, row.names = FALSE, na = "")
+  }
+  log_df
 }
 
 # ------------------------------------------------------------------------------
@@ -547,7 +712,14 @@ seed_prediction_log <- function() {
     status                  = "RESOLVED",
     resolved_timestamp      = as.POSIXct(paste(games$game_date, "23:59:59")),
     # Backfilled from box scores AFTER the fact - hindsight, not a forecast.
-    log_source              = "SEEDED_HINDSIGHT"
+    log_source              = "BACKTEST_SEEDED",
+    comp_bottom_up          = NA_real_,
+    comp_rapm               = NA_real_,
+    comp_shot_fatigue       = NA_real_,
+    comp_embeddings         = NA_real_,
+    comp_home_court         = NA_real_,
+    comp_schedule           = NA_real_,
+    sigma_game              = NA_real_
   ) |>
     arrange(game_date, game_id)
 
@@ -567,7 +739,13 @@ get_prediction_log <- function() {
   } else {
     seed_prediction_log()
   }
-  .ensure_log_source_column(df)
+  df <- .ensure_log_source_column(df)
+  if (is.data.frame(df) && nrow(df) > 0L &&
+      (("SEEDED_HINDSIGHT" %in% df$log_source) ||
+       length(setdiff(PRED_LOG_SNAPSHOT_COLS, names(df))) > 0L)) {
+    df <- migrate_prediction_log_provenance_v3(df, persist = TRUE)
+  }
+  df
 }
 
 # ------------------------------------------------------------------------------
@@ -629,7 +807,14 @@ get_prediction_log <- function() {
     status                  = "PENDING",
     resolved_timestamp      = as.POSIXct(NA),
     # Written before the game happened - a genuine forecast.
-    log_source              = "LOGGED_PREGAME"
+    log_source              = "LOGGED_PREGAME",
+    comp_bottom_up          = NA_real_,
+    comp_rapm               = NA_real_,
+    comp_shot_fatigue       = NA_real_,
+    comp_embeddings         = NA_real_,
+    comp_home_court         = NA_real_,
+    comp_schedule           = NA_real_,
+    sigma_game              = NA_real_
   )
 }
 

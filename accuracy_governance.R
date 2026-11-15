@@ -133,33 +133,41 @@ compute_forecast_governance <- function(p_pred, y_obs, n_bins = 10L, rolling_win
   )
 }
 
-run_nba_accuracy_governance <- function() {
+run_nba_accuracy_governance <- function(log_df = NULL,
+                                        log_path = NULL,
+                                        out_rds = NULL,
+                                        web_data_dir = NULL,
+                                        persist = TRUE) {
   cat("\n==================================================================\n")
   cat("     FORECAST ACCURACY GOVERNANCE & CALIBRATION ENGINE (NBA)       \n")
   cat("==================================================================\n\n")
 
-  log_path <- if (exists("CACHE_PREDICTION_LOG")) CACHE_PREDICTION_LOG else file.path(CACHE_DIR, "prediction_accuracy_log.rds")
-  if (!file.exists(log_path)) {
-    cat(sprintf("[ACCURACY GOVERNANCE] Prediction log not found: %s\n", log_path))
-    return(invisible(FALSE))
+  if (is.null(log_df)) {
+    if (is.null(log_path)) {
+      log_path <- if (exists("CACHE_PREDICTION_LOG")) CACHE_PREDICTION_LOG else file.path(CACHE_DIR, "prediction_accuracy_log.rds")
+    }
+    if (!file.exists(log_path)) {
+      cat(sprintf("[ACCURACY GOVERNANCE] Prediction log not found: %s\n", log_path))
+      return(invisible(FALSE))
+    }
+    df <- readRDS(log_path)
+  } else {
+    df <- log_df
   }
-
-  df <- readRDS(log_path)
 
   # `log_source` distinguishes a genuine pre-game forecast ("LOGGED_PREGAME",
   # written by .build_slate_rows() / tools/project_week_predictions.R BEFORE
-  # the game happened) from a row seed_prediction_log() backfilled from box
-  # scores AFTER the fact using a rating model that already knew the outcome
-  # ("SEEDED_HINDSIGHT"). See prediction_accuracy_logger.R's
-  # .classify_log_source()/.ensure_log_source_column(). A log written before
-  # that column existed is migrated here too, on the same heuristic, so this
-  # file never silently falls back to averaging the two populations together.
+  # the game happened), a week-1 pre-tip backtest ("BACKTEST_PREWEEK"), and a
+  # historical backtest row seeded after the fact ("BACKTEST_SEEDED", formerly
+  # "SEEDED_HINDSIGHT"). See prediction_accuracy_logger.R. A log written before
+  # that column existed is normalized here using local-date timestamp ordering
+  # so this file never averages distinct populations together.
   if (!"log_source" %in% names(df)) {
-    pt <- as.Date(df$prediction_timestamp)
+    pt <- as.Date(df$prediction_timestamp, tz = "")
     gd <- as.Date(df$game_date)
     df$log_source <- ifelse(!is.na(pt) & !is.na(gd) & pt < gd,
-                             "LOGGED_PREGAME", "SEEDED_HINDSIGHT")
-    cat("[ACCURACY GOVERNANCE] Migrated stored log: added log_source column.\n")
+                             "LOGGED_PREGAME", "BACKTEST_SEEDED")
+    cat("[ACCURACY GOVERNANCE] Normalized stored log: added log_source column.\n")
   }
 
   resolved <- df |> filter(status == "RESOLVED" & !is.na(predicted_home_win_prob) & !is.na(actual_winner))
@@ -169,35 +177,39 @@ run_nba_accuracy_governance <- function() {
     return(invisible(FALSE))
   }
 
-  # The two populations, evaluated SEPARATELY. `genuine` is what the headline
-  # figures and the Diagnostics page calibration chart are built from;
-  # `hindsight` is reported only as a clearly-labeled historical-backtest
-  # context block. Before this change, `resolved` (both populations pooled)
-  # drove every published figure, so ~2,656 of ~2,791 "predictions" behind the
-  # Diagnostics page were actually hindsight, not forecasts.
-  genuine   <- resolved |> filter(log_source == "LOGGED_PREGAME")
-  hindsight <- resolved |> filter(log_source == "SEEDED_HINDSIGHT")
+  # Three populations, strictly separated:
+  # - `genuine` ("LOGGED_PREGAME"): headline genuine pre-game forecasts.
+  # - `preweek_backtest` ("BACKTEST_PREWEEK"): week-1 pre-tip backtest; isolated
+  #   from BOTH headline accuracy and historical backtest.
+  # - `hindsight` ("BACKTEST_SEEDED", plus legacy "SEEDED_HINDSIGHT" if ever
+  #   encountered in older test fixtures): historical backtest context block only.
+  genuine          <- resolved |> filter(log_source == "LOGGED_PREGAME")
+  preweek_backtest <- resolved |> filter(log_source == "BACKTEST_PREWEEK")
+  hindsight        <- resolved |> filter(log_source %in% c("BACKTEST_SEEDED", "SEEDED_HINDSIGHT"))
 
   cat(sprintf(paste0(
     "[ACCURACY GOVERNANCE] Resolved rows: %d total -> %d genuine pre-game ",
-    "forecasts (LOGGED_PREGAME), %d hindsight-seeded backtest rows ",
-    "(SEEDED_HINDSIGHT).\n"), nrow(resolved), nrow(genuine), nrow(hindsight)))
+    "forecasts (LOGGED_PREGAME), %d pre-week backtest isolated ",
+    "(BACKTEST_PREWEEK), %d hindsight-seeded backtest rows (BACKTEST_SEEDED).\n"),
+    nrow(resolved), nrow(genuine), nrow(preweek_backtest), nrow(hindsight)))
 
   # Genuine forecasts are the headline metric this engine exists to govern. If
-  # there are none yet (e.g. a brand-new log before the first weekly
-  # projection has resolved), fall back to the pooled set so the pipeline
-  # still produces a number, but say so loudly rather than silently reporting
-  # hindsight as if it were live forecast accuracy.
-  if (nrow(genuine) > 0) {
-    gov <- compute_forecast_governance(genuine$predicted_home_win_prob,
-                                        as.integer(genuine$actual_winner == genuine$home_team))
-  } else {
+  # there are none yet, never pool BACKTEST_PREWEEK into headline figures: fall
+  # back to hindsight (or non-preweek rows) with an explicit warning.
+  headline_pop <- if (nrow(genuine) > 0) {
+    genuine
+  } else if (nrow(hindsight) > 0) {
     cat(paste0("[ACCURACY GOVERNANCE] WARNING: zero genuine (LOGGED_PREGAME) ",
-               "resolved rows. Headline figures fall back to the pooled/",
-               "hindsight set until the first weekly projection resolves.\n"))
-    gov <- compute_forecast_governance(resolved$predicted_home_win_prob,
-                                        as.integer(resolved$actual_winner == resolved$home_team))
+               "resolved rows. Headline figures fall back to BACKTEST_SEEDED ",
+               "until the first weekly projection resolves.\n"))
+    hindsight
+  } else {
+    non_preweek <- resolved |> filter(log_source != "BACKTEST_PREWEEK")
+    if (nrow(non_preweek) > 0) non_preweek else resolved
   }
+
+  gov <- compute_forecast_governance(headline_pop$predicted_home_win_prob,
+                                     as.integer(headline_pop$actual_winner == headline_pop$home_team))
 
   gov_backtest <- if (nrow(hindsight) > 0) {
     compute_forecast_governance(hindsight$predicted_home_win_prob,
@@ -208,21 +220,25 @@ run_nba_accuracy_governance <- function() {
   gov$historical_backtest <- gov_backtest
 
   # Cache output
-  out_rds <- file.path(CACHE_DIR, "accuracy_governance.rds")
-  saveRDS(gov, out_rds)
-  cat(sprintf("[ACCURACY GOVERNANCE] Saved metrics to %s\n", out_rds))
+  if (isTRUE(persist)) {
+    if (is.null(out_rds)) out_rds <- file.path(CACHE_DIR, "accuracy_governance.rds")
+    saveRDS(gov, out_rds)
+    cat(sprintf("[ACCURACY GOVERNANCE] Saved metrics to %s\n", out_rds))
+  }
   cat(sprintf("  -> Genuine forecasts evaluated: %d | SU Acc: %.1f%% | Rolling 30 SU: %.1f%%\n",
               gov$total_games, gov$su_accuracy * 100, gov$rolling_su_accuracy * 100))
   cat(sprintf("  -> Brier Score: %.4f | BSS(50/50): +%.2f%% | Log-Loss: %.4f | ECE: %.4f\n",
               gov$brier_score, gov$brier_skill_score_tossup * 100, gov$log_loss, gov$ece))
   if (!is.null(gov_backtest)) {
-    cat(sprintf("  -> [Historical backtest, hindsight-seeded] %d games | SU Acc: %.1f%% | Brier: %.4f\n",
+    cat(sprintf("  -> [Historical backtest, BACKTEST_SEEDED] %d games | SU Acc: %.1f%% | Brier: %.4f\n",
                 gov_backtest$total_games, gov_backtest$su_accuracy * 100, gov_backtest$brier_score))
   }
 
   # Sync web diagnostic export: web/public/data/projections_diagnostics.json
-  web_data_dir <- if (exists("WEB_DATA_DIR")) WEB_DATA_DIR else file.path(.THIS_DIR, "web", "public", "data")
-  if (dir.exists(web_data_dir)) {
+  if (is.null(web_data_dir)) {
+    web_data_dir <- if (exists("WEB_DATA_DIR")) WEB_DATA_DIR else file.path(.THIS_DIR, "web", "public", "data")
+  }
+  if (isTRUE(persist) && dir.exists(web_data_dir)) {
 
     # Build the { calibration, accuracyDrift, residualDistribution } block for
     # ONE population (either the genuine forecasts or the hindsight backtest)
@@ -284,9 +300,16 @@ run_nba_accuracy_governance <- function() {
       )
     }
 
-    # The population that actually drove `gov` above (genuine, or the pooled
-    # fallback when there are zero genuine rows yet).
-    headline_pop <- if (nrow(genuine) > 0) genuine else resolved
+    # The population that actually drove `gov` above (genuine, or hindsight if
+    # there are zero genuine rows yet -- never BACKTEST_PREWEEK).
+    headline_pop <- if (nrow(genuine) > 0) {
+      genuine
+    } else if (nrow(hindsight) > 0) {
+      hindsight
+    } else {
+      non_preweek <- resolved |> filter(log_source != "BACKTEST_PREWEEK")
+      if (nrow(non_preweek) > 0) non_preweek else resolved
+    }
     headline_blk <- .diag_block(headline_pop, gov)
 
     diag_payload <- list(
@@ -315,10 +338,10 @@ run_nba_accuracy_governance <- function() {
       # the flat fields' meaning.
       genuineForecast      = headline_blk,
 
-      # Historical backtest: SEEDED_HINDSIGHT rows only - box-score-derived
+      # Historical backtest: BACKTEST_SEEDED rows only - box-score-derived
       # "predictions" computed after the outcome was already known. Reported
       # for transparency about model fit over history, never pooled into the
-      # figures above.
+      # figures above (and never merged with BACKTEST_PREWEEK).
       historicalBacktest   = if (!is.null(gov_backtest)) {
         .diag_block(hindsight, gov_backtest)
       } else {
@@ -340,6 +363,6 @@ run_nba_accuracy_governance <- function() {
   invisible(gov)
 }
 
-if (!interactive()) {
+if (!interactive() && !nzchar(Sys.getenv("NBA_SKIP_STAGE_AUTORUN"))) {
   run_nba_accuracy_governance()
 }
