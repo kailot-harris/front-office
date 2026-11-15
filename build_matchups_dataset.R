@@ -286,15 +286,36 @@ cat(sprintf(">>> %d logged predictions fall inside the %s season window\n",
 
 schedule$join_key <- paste(format(schedule$game_date), schedule$home_name, schedule$away_name)
 
+log_pick_num <- function(df, col) {
+  if (col %in% names(df)) suppressWarnings(as.numeric(df[[col]])) else rep(NA_real_, nrow(df))
+}
+
 games <- schedule %>%
   left_join(
-    log_season %>% transmute(
-      join_key = .data$join_key,
-      log_game_id = as.character(.data$game_id),
-      log_status = as.character(.data$status),
-      predicted_home_win_prob = suppressWarnings(as.numeric(.data$predicted_home_win_prob)),
-      predicted_margin = suppressWarnings(as.numeric(.data$predicted_margin)),
-      log_correct = .data$correct
+    tibble(
+      join_key                = log_season$join_key,
+      log_game_id             = as.character(log_season$game_id),
+      log_status              = as.character(log_season$status),
+      predicted_home_win_prob = suppressWarnings(as.numeric(log_season$predicted_home_win_prob)),
+      predicted_margin        = suppressWarnings(as.numeric(log_season$predicted_margin)),
+      log_correct             = log_season$correct,
+      prediction_timestamp    = if ("prediction_timestamp" %in% names(log_season)) {
+        log_season$prediction_timestamp
+      } else {
+        as.POSIXct(rep(NA_character_, nrow(log_season)))
+      },
+      log_source              = if ("log_source" %in% names(log_season)) {
+        as.character(log_season$log_source)
+      } else {
+        rep(NA_character_, nrow(log_season))
+      },
+      comp_bottom_up          = log_pick_num(log_season, "comp_bottom_up"),
+      comp_rapm               = log_pick_num(log_season, "comp_rapm"),
+      comp_shot_fatigue       = log_pick_num(log_season, "comp_shot_fatigue"),
+      comp_embeddings         = log_pick_num(log_season, "comp_embeddings"),
+      comp_home_court         = log_pick_num(log_season, "comp_home_court"),
+      comp_schedule           = log_pick_num(log_season, "comp_schedule"),
+      log_sigma_game          = log_pick_num(log_season, "sigma_game")
     ),
     by = "join_key"
   )
@@ -578,6 +599,32 @@ if (nrow(team_box) > 0) {
 }
 
 # ------------------------------------------------------------------------------
+# 3c. SECONDARY TREE-SHAP EXPLAINABILITY + TEAM BOX INDEX
+# ------------------------------------------------------------------------------
+shap_cache_path <- CACHE_XGBOOST_GAME_SHAP(MATCHUPS_HOOPR_SEASON)
+xgb_shap_by_game <- if (file.exists(shap_cache_path)) {
+  loaded_shap <- tryCatch(readRDS(shap_cache_path), error = function(e) {
+    cat(sprintf(">>> [WARN] failed to load XGBoost TreeSHAP cache (%s): %s\n",
+                shap_cache_path, conditionMessage(e)))
+    NULL
+  })
+  if (is.list(loaded_shap)) loaded_shap else list()
+} else {
+  cat(sprintf(">>> [WARN] XGBoost TreeSHAP cache not found at %s; xgboost_shap will be null\n",
+              shap_cache_path))
+  list()
+}
+n_shap_nonnull <- if (length(xgb_shap_by_game) > 0L) {
+  sum(!vapply(xgb_shap_by_game, is.null, logical(1)))
+} else 0L
+cat(sprintf(">>> XGBoost TreeSHAP cache: %d entries (%d scored, %d null)\n",
+            length(xgb_shap_by_game), n_shap_nonnull,
+            length(xgb_shap_by_game) - n_shap_nonnull))
+
+tb_gids_all <- if (nrow(team_box) > 0L) as.character(team_box$game_id) else character(0)
+tb_idx_all <- if (length(tb_gids_all) > 0L) split(seq_along(tb_gids_all), tb_gids_all) else list()
+
+# ------------------------------------------------------------------------------
 # 4. Slate assignment (see DESIGN DECISION 1)
 # ------------------------------------------------------------------------------
 games$slate <- as.integer(floor(as.numeric(games$game_date - season_start) / 7) + 1)
@@ -615,9 +662,12 @@ if (!exists("num_or_null", mode = "function")) {
 }
 
 matchups <- vector("list", nrow(games))
+explainability_by_game <- vector("list", nrow(games))
+names(explainability_by_game) <- as.character(games$espn_game_id)
 is_completed_vec <- logical(nrow(games))
 for (i in seq_len(nrow(games))) {
   g <- games[i, ]
+  gid_str <- as.character(g$espn_game_id)
 
   # Graded ONLY when the log resolved it AND a real box score exists.
   is_completed <- identical(as.character(g$log_status), "RESOLVED") &&
@@ -631,6 +681,7 @@ for (i in seq_len(nrow(games))) {
   win_prob <- as.numeric(g$predicted_home_win_prob)
   margin <- as.numeric(g$predicted_margin)
   basis <- NULL
+  sigma_game_val <- NA_real_
   # PRECEDENCE: a logged model prediction always wins and is never overwritten
   # or adjusted by the ratings fallback (see DESIGN DECISION 2).
   if (!is.na(margin)) {
@@ -655,12 +706,72 @@ for (i in seq_len(nrow(games))) {
     sigma_game <- sqrt(MARGIN_SIGMA^2 +
                          as.numeric(g$home_rating_sd)^2 +
                          as.numeric(g$away_rating_sd)^2)
+    sigma_game_val <- sigma_game
     win_prob <- pnorm(margin / sigma_game)
     basis <- "primary_ensemble"
   }
 
+  is_logged_basis <- !is.null(basis) &&
+    basis %in% c("logged_model_margin", "margin_from_logged_win_prob")
+  log_source_out <- if (is_logged_basis) chr_or_null(g$log_source) else NULL
+  log_row_i <- if (is_logged_basis) {
+    list(
+      game_id                 = g$log_game_id,
+      prediction_timestamp    = g$prediction_timestamp,
+      log_source              = g$log_source,
+      predicted_margin        = g$predicted_margin,
+      predicted_home_win_prob = g$predicted_home_win_prob,
+      comp_bottom_up          = g$comp_bottom_up,
+      comp_rapm               = g$comp_rapm,
+      comp_shot_fatigue       = g$comp_shot_fatigue,
+      comp_embeddings         = g$comp_embeddings,
+      comp_home_court         = g$comp_home_court,
+      comp_schedule           = g$comp_schedule,
+      sigma_game              = g$log_sigma_game
+    )
+  } else NULL
+
+  realized_factors_i <- if (is_completed && !is.null(tb_idx_all[[gid_str]])) {
+    compute_game_realized_factors(team_box[tb_idx_all[[gid_str]], , drop = FALSE])
+  } else NULL
+
+  shap_entry_i <- if (gid_str %in% names(xgb_shap_by_game)) {
+    xgb_shap_by_game[[gid_str]]
+  } else NULL
+
+  pred_margin_out <- num_or_null(margin, 2)
+  pred_prob_out <- num_or_null(win_prob, 4)
+  game_row_i <- list(
+    game_id                 = gid_str,
+    game_date               = g$game_date,
+    home_team               = home_abbr,
+    away_team               = away_abbr,
+    home_name               = as.character(g$home_name),
+    away_name               = as.character(g$away_name),
+    is_completed            = is_completed,
+    projection_basis        = basis,
+    predicted_margin        = pred_margin_out,
+    predicted_home_win_prob = pred_prob_out,
+    sigma_game              = sigma_game_val,
+    hca_pts                 = HCA_POINTS,
+    schedule_adjustment     = as.numeric(g$schedule_adjustment),
+    home_fatigue_drag       = as.numeric(g$home_fatigue_drag),
+    away_fatigue_drag       = as.numeric(g$away_fatigue_drag),
+    home_score              = if (is_completed) as.numeric(g$box_home_score) else NA_real_,
+    away_score              = if (is_completed) as.numeric(g$box_away_score) else NA_real_
+  )
+  expl_i <- build_game_explainability(
+    game_row         = game_row_i,
+    ensemble_ratings = ens_df,
+    log_row          = log_row_i,
+    shap_entry       = shap_entry_i,
+    team_box_df      = team_box,
+    realized_factors = realized_factors_i
+  )
+  explainability_by_game[[gid_str]] <- expl_i
+
   matchups[[i]] <- list(
-    game_id = as.character(g$espn_game_id),
+    game_id = gid_str,
     slate = as.integer(g$slate),
     game_date = format(g$game_date, "%Y-%m-%d"),
     weekday = format(g$game_date, "%a"),
@@ -674,8 +785,9 @@ for (i in seq_len(nrow(games))) {
     # is always readable from `projection_basis`.
     has_projection = !is.null(basis),
     projection_basis = basis,
-    predicted_margin = num_or_null(margin, 2),
-    predicted_home_win_prob = num_or_null(win_prob, 4),
+    log_source = log_source_out,
+    predicted_margin = pred_margin_out,
+    predicted_home_win_prob = pred_prob_out,
     predicted_away_win_prob = if (is.na(win_prob)) NULL else round(1 - win_prob, 4),
     predicted_winner = if (is.na(win_prob)) NULL else if (win_prob >= 0.5) home_abbr else away_abbr,
     # Result fields are populated for graded games ONLY; everything else emits null.
@@ -686,7 +798,8 @@ for (i in seq_len(nrow(games))) {
       if (g$box_home_score >= g$box_away_score) home_abbr else away_abbr
     } else NULL,
     # Taken verbatim from the accuracy log's own `correct` column, never regraded.
-    prediction_correct = if (is_completed) as.logical(g$log_correct) else NULL
+    prediction_correct = if (is_completed) as.logical(g$log_correct) else NULL,
+    explainability = expl_i
   )
 }
 
@@ -734,13 +847,14 @@ games_for_detail <- data.frame(
 )
 
 detail_res <- export_game_details(
-  team_box     = team_box,
-  player_box   = player_box,
-  games        = games_for_detail,
-  out_dir      = WEB_GAMES_DIR,
-  season       = MATCHUPS_HOOPR_SEASON,
-  season_label = MATCHUPS_SEASON_LABEL,
-  today_date   = today
+  team_box               = team_box,
+  player_box             = player_box,
+  games                  = games_for_detail,
+  out_dir                = WEB_GAMES_DIR,
+  season                 = MATCHUPS_HOOPR_SEASON,
+  season_label           = MATCHUPS_SEASON_LABEL,
+  today_date             = today,
+  explainability_by_game = explainability_by_game
 )
 
 # Remove any orphan .json files so the bijection with has_game_detail stays strict.

@@ -882,6 +882,374 @@ ok("refresh_live_results() round-trip keeps TRUE/FALSE detail flags intact on co
 unlink(rlr_tmp_dir, recursive = TRUE)
 
 # ------------------------------------------------------------------------------
+section("7. Phase 2 explainability builders: waterfall, logged_forecast, entering_baselines, TreeSHAP")
+# ------------------------------------------------------------------------------
+
+ens_p2 <- data.frame(
+  team                   = c("BOS", "NYK", "LAL"),
+  team_name              = c("Celtics", "Knicks", "Lakers"),
+  ensemble_net_rating    = c(7.37, 2.00, -1.50),
+  rating_bottom_up       = c(7.39, 2.00, -1.40),
+  rating_rapm            = c(7.35, 2.00, -1.50),
+  rating_shot_fatigue    = c(7.36, 2.00, -1.55),
+  rating_embeddings      = c(7.38, 2.00, -1.60),
+  rating_disagreement_sd = c(1.25, 0.80, 1.10),
+  stringsAsFactors = FALSE
+)
+
+# 7a. primary_ensemble waterfall: rounding step <= 0.02, pnorm probability, zero residual drift
+sched_adj_p2 <- 0.42
+expected_margin_p2 <- (7.37 - 2.00) + 2.40 + sched_adj_p2 # 8.19
+expected_sigma_p2 <- round(sqrt(11.8^2 + 1.25^2 + 0.80^2), 4)
+expected_prob_p2 <- round(pnorm(expected_margin_p2 / sqrt(11.8^2 + 1.25^2 + 0.80^2)), 4)
+
+# Note: raw step sum = 1.8865+1.3375+1.0720+1.0760+2.40+0.42 = 8.192 -> rounded steps:
+# 1.89 + 1.34 + 1.07 + 1.08 + 2.40 + 0.42 = 8.20 vs 8.19 -> rounding step = -0.01
+game_ens_row <- list(
+  game_id                 = "8001",
+  game_date               = "2026-11-20",
+  home_team               = "BOS",
+  away_team               = "NYK",
+  home_name               = "Celtics",
+  away_name               = "Knicks",
+  is_completed            = FALSE,
+  projection_basis        = "primary_ensemble",
+  predicted_margin        = round(expected_margin_p2, 2),
+  predicted_home_win_prob = expected_prob_p2,
+  schedule_adjustment     = sched_adj_p2,
+  home_fatigue_drag       = 0.15,
+  away_fatigue_drag       = 0.57
+)
+expl_ens <- mod_env$build_game_explainability(
+  game_row         = game_ens_row,
+  ensemble_ratings = ens_p2
+)
+wf_ens_pts <- vapply(expl_ens$margin_waterfall, `[[`, numeric(1), "points")
+wf_ens_keys <- vapply(expl_ens$margin_waterfall, `[[`, character(1), "key")
+rounding_idx <- which(wf_ens_keys == "rounding")
+ok("primary_ensemble emits 6 components + rounding residual <= 0.02 summing to predicted_margin",
+   length(expl_ens$margin_waterfall) == 7L &&
+     length(rounding_idx) == 1L &&
+     abs(wf_ens_pts[rounding_idx]) <= 0.02 + 1e-9 &&
+     abs(round(sum(wf_ens_pts), 2) - expl_ens$predicted_margin) < 1e-9 &&
+     identical(expl_ens$sigma_game, expected_sigma_p2) &&
+     abs(pnorm(expl_ens$predicted_margin / expl_ens$sigma_game) - expl_ens$predicted_home_win_prob) < 5e-4 &&
+     is.null(expl_ens$logged_forecast) &&
+     is.null(expl_ens$entering_baselines))
+
+# 7b. Hard failure when |residual| > 0.02 (attribution drift guard)
+drifted_row <- game_ens_row
+drifted_row$predicted_margin <- round(expected_margin_p2, 2) + 0.05
+drift_caught <- tryCatch({
+  mod_env$build_margin_waterfall(drifted_row, ensemble_ratings = ens_p2)
+  FALSE
+}, error = function(e) grepl("attribution drift", conditionMessage(e)))
+ok("build_margin_waterfall stops when |residual| > 0.02", isTRUE(drift_caught))
+
+# 7c. Pre-P2-b logged game (NA snapshots): must NOT fall back to current ensemble_ratings
+pre_p2b_log <- list(
+  game_id                 = "log-old-1",
+  prediction_timestamp    = as.POSIXct("2026-10-25 18:00:00", tz = "UTC"),
+  log_source              = "LOGGED_PREGAME",
+  predicted_margin        = 3.50,
+  predicted_home_win_prob = 0.6200,
+  comp_bottom_up          = NA_real_,
+  comp_rapm               = NA_real_,
+  comp_shot_fatigue       = NA_real_,
+  comp_embeddings         = NA_real_,
+  comp_home_court         = NA_real_,
+  comp_schedule           = NA_real_,
+  sigma_game              = NA_real_
+)
+pre_p2b_game <- list(
+  game_id                 = "8002",
+  game_date               = "2026-10-25",
+  home_team               = "BOS",
+  away_team               = "NYK",
+  is_completed            = TRUE,
+  projection_basis        = "logged_model_margin",
+  predicted_margin        = 3.50,
+  predicted_home_win_prob = 0.6200,
+  home_score              = 110L,
+  away_score              = 104L
+)
+expl_pre_p2b <- mod_env$build_game_explainability(
+  game_row         = pre_p2b_game,
+  ensemble_ratings = ens_p2,
+  log_row          = pre_p2b_log
+)
+ok("Pre-P2-b logged game returns margin_waterfall=NULL, sigma_game=NULL, and valid logged_forecast scores",
+   is.null(expl_pre_p2b$margin_waterfall) &&
+     is.null(expl_pre_p2b$sigma_game) &&
+     !is.null(expl_pre_p2b$logged_forecast) &&
+     identical(expl_pre_p2b$logged_forecast$prediction_timestamp, "2026-10-25T18:00:00Z") &&
+     identical(expl_pre_p2b$logged_forecast$log_source, "LOGGED_PREGAME") &&
+     abs(expl_pre_p2b$logged_forecast$brier_component - round((0.62 - 1)^2, 6)) < 1e-9 &&
+     abs(expl_pre_p2b$logged_forecast$log_loss_component - round(-log(0.62), 6)) < 1e-9)
+
+# Pending logged game emits NULL brier_component and log_loss_component
+pending_logged_game <- pre_p2b_game
+pending_logged_game$is_completed <- FALSE
+expl_pending_log <- mod_env$build_game_explainability(
+  game_row = pending_logged_game,
+  log_row  = pre_p2b_log
+)
+ok("Pending logged game keeps logged_forecast metadata with NULL Brier and log_loss",
+   !is.null(expl_pending_log$logged_forecast) &&
+     identical(expl_pending_log$logged_forecast$log_source, "LOGGED_PREGAME") &&
+     is.null(expl_pending_log$logged_forecast$brier_component) &&
+     is.null(expl_pending_log$logged_forecast$log_loss_component))
+
+# 7d. P2-b logged game (finite snapshot cols) emits waterfall from log snapshot, ignoring altered ensemble_ratings
+p2b_log <- list(
+  game_id                 = "log-p2b-1",
+  prediction_timestamp    = as.POSIXct("2026-11-16 14:00:00", tz = "UTC"),
+  log_source              = "LOGGED_PREGAME",
+  predicted_margin        = 4.10,
+  predicted_home_win_prob = 0.6350,
+  comp_bottom_up          = 0.903,
+  comp_rapm               = 0.402,
+  comp_shot_fatigue       = 0.200,
+  comp_embeddings         = 0.100,
+  comp_home_court         = 2.400,
+  comp_schedule           = 0.100,
+  sigma_game              = 12.0125
+)
+p2b_game <- list(
+  game_id                 = "8003",
+  game_date               = "2026-11-16",
+  home_team               = "BOS",
+  away_team               = "NYK",
+  is_completed            = FALSE,
+  projection_basis        = "logged_model_margin",
+  predicted_margin        = 4.10,
+  predicted_home_win_prob = 0.6350
+)
+expl_p2b <- mod_env$build_game_explainability(
+  game_row         = p2b_game,
+  ensemble_ratings = ens_p2,
+  log_row          = p2b_log
+)
+wf_p2b_pts <- vapply(expl_p2b$margin_waterfall, `[[`, numeric(1), "points")
+ok("P2-b logged game emits waterfall from frozen snapshot (not current ratings) with logged sigma_game",
+   !is.null(expl_p2b$margin_waterfall) &&
+     length(expl_p2b$margin_waterfall) == 6L &&
+     abs(expl_p2b$margin_waterfall[[1]]$points - 0.90) < 1e-9 &&
+     abs(sum(wf_p2b_pts) - 4.10) < 1e-9 &&
+     identical(expl_p2b$sigma_game, 12.0125))
+
+# 7e. BACKTEST_PREWEEK & BACKTEST_SEEDED provenance and team_rating_differential guard
+for (bt_src in c("BACKTEST_PREWEEK", "BACKTEST_SEEDED")) {
+  bt_log <- pre_p2b_log
+  bt_log$log_source <- bt_src
+  bt_game <- pre_p2b_game
+  bt_game$projection_basis <- "margin_from_logged_win_prob"
+  expl_bt <- mod_env$build_game_explainability(bt_game, ensemble_ratings = ens_p2, log_row = bt_log)
+  ok(sprintf("%s provenance preserved without substituting current ratings", bt_src),
+     is.null(expl_bt$margin_waterfall) &&
+       !is.null(expl_bt$logged_forecast) &&
+       identical(expl_bt$logged_forecast$log_source, bt_src))
+}
+legacy_row <- list(game_id = "8004", projection_basis = "team_rating_differential", predicted_margin = 2.0)
+ok("team_rating_differential maps projection_basis and margin_waterfall to NULL",
+   is.null(mod_env$build_margin_waterfall(legacy_row, ensemble_ratings = ens_p2)) &&
+     is.null(mod_env$build_game_explainability(legacy_row, ensemble_ratings = ens_p2)$projection_basis))
+
+# 7f. Pooled entering_baselines: distinct from mean of per-game percentages, strictly causal, 0-prior-game NULL
+# Game 1 (2026-11-01): GS (normalizes -> GSW) away vs BOS home -> GSW shot poorly on low FGA
+# Game 2 (2026-11-03): GS away vs LAL home -> GSW shot hot on high FGA
+# Target game (2026-11-10): GSW away vs BOS home; Future game (2026-11-15) must be ignored!
+tb_hist <- data.frame(
+  game_id = c("g1", "g1", "g2", "g2", "g_target", "g_target", "g_future", "g_future"),
+  game_date = as.Date(c("2026-11-01", "2026-11-01", "2026-11-03", "2026-11-03",
+                        "2026-11-10", "2026-11-10", "2026-11-15", "2026-11-15")),
+  team_abbreviation = c("GS", "BOS", "GS", "LAL", "GSW", "BOS", "GSW", "NYK"),
+  team_home_away = c("away", "home", "away", "home", "away", "home", "away", "home"),
+  team_score = c(80, 100, 140, 110, 112, 108, 220, 90),
+  field_goals_made = c(25, 38, 55, 40, 42, 40, 90, 30),
+  field_goals_attempted = c(60, 82, 100, 88, 84, 86, 100, 80),
+  three_point_field_goals_made = c(5, 10, 20, 10, 12, 10, 30, 8),
+  free_throws_made = c(25, 14, 10, 20, 16, 18, 10, 22),
+  free_throws_attempted = c(30, 18, 12, 24, 20, 22, 12, 26),
+  offensive_rebounds = c(10, 8, 15, 10, 9, 10, 25, 6),
+  defensive_rebounds = c(28, 30, 35, 30, 32, 30, 40, 20),
+  total_turnovers = c(20, 12, 10, 14, 12, 13, 1, 30),
+  stringsAsFactors = FALSE
+)
+target_rf <- mod_env$compute_game_realized_factors(tb_hist[tb_hist$game_id == "g_target", ])
+eb_target <- mod_env$build_entering_baselines(
+  game_id          = "g_target",
+  game_date        = "2026-11-10",
+  away_team        = "GSW",
+  home_team        = "BOS",
+  team_box_df      = tb_hist,
+  realized_factors = target_rf
+)
+# Expected GSW pooled across g1+g2:
+# eFG% = 100 * ((25+55) + 0.5*(5+20)) / (60+100) = 100 * 92.5 / 160 = 57.8 (vs mean(45.8, 65.0)=55.4)
+# OREB% = 100 * (10+15) / ((10+15) + (30+30)) = 100 * 25 / 85 = 29.4
+# FTA rate = 100 * (30+12) / (60+100) = 26.25 -> 26.2 or 26.3 via safe_ratio round
+gsw_eb <- eb_target[[1]]
+bos_eb <- eb_target[[2]]
+gsw_factors <- setNames(gsw_eb$factors, vapply(gsw_eb$factors, `[[`, character(1), "key"))
+realized_efg_away <- target_rf[[1]]$away_value
+ok("entering_baselines computes pooled totals (not mean of averages), canonicalizes GS->GSW, excludes future games",
+   !is.null(eb_target) &&
+     length(eb_target) == 2L &&
+     identical(gsw_eb$teamAbbr, "GSW") &&
+     identical(gsw_eb$prior_games_n, 2L) &&
+     identical(bos_eb$teamAbbr, "BOS") &&
+     identical(bos_eb$prior_games_n, 1L) &&
+     identical(vapply(gsw_eb$factors, `[[`, character(1), "key"),
+               c("efg_pct", "tov_pct", "oreb_pct", "fta_rate", "ortg")) &&
+     identical(gsw_factors$efg_pct$entering, round(100 * 92.5 / 160, 1)) &&
+     abs(gsw_factors$efg_pct$entering - mean(c(round(100 * 27.5 / 60, 1), round(100 * 65 / 100, 1)))) > 1.5 &&
+     identical(gsw_factors$oreb_pct$entering, round(100 * 25 / 85, 1)) &&
+     identical(gsw_factors$efg_pct$realized, realized_efg_away) &&
+     identical(gsw_factors$efg_pct$difference, round(realized_efg_away - gsw_factors$efg_pct$entering, 1)))
+
+eb_zero_prior <- mod_env$build_entering_baselines(
+  game_id          = "g1",
+  game_date        = "2026-11-01",
+  away_team        = "GSW",
+  home_team        = "BOS",
+  team_box_df      = tb_hist,
+  realized_factors = target_rf
+)
+ok("entering_baselines returns NULL when either team has 0 prior games", is.null(eb_zero_prior))
+
+# 7g. xgboost_shap attachment + NULL + Phase 2 JSON naming & zero-betting invariants
+mock_shap <- list(
+  model_id = "xgboost_feature_fusion_v1",
+  model_label = "XGBoost Feature Fusion (TreeSHAP)",
+  train_seasons_label = "2018-19..2025-26",
+  window_games = 18L,
+  away_prior_games_n = 2L,
+  home_prior_games_n = 1L,
+  base_value_log_odds = 0.21,
+  total_log_odds = 0.45,
+  predicted_home_win_prob = 0.6106,
+  factors = list(
+    list(feature = "diff_roll_ts", label = "18-Game True Shooting Diff",
+         feature_value = 0.04, z_score = 1.2, shap_log_odds = 0.24, shap_prob_approx = 0.055)
+  )
+)
+tb_g_p2 <- tb_9001
+tb_g_p2$game_id <- 8801L
+pb_g_p2 <- pb_9001
+pb_g_p2$game_id <- 8801L
+expl_full_p2 <- mod_env$build_game_explainability(
+  game_row         = list(
+    game_id = "8801", game_date = "2026-11-10",
+    home_team = "BOS", away_team = "GSW",
+    is_completed = TRUE, projection_basis = "logged_model_margin",
+    predicted_margin = 4.10, predicted_home_win_prob = 0.6350,
+    home_score = 108L, away_score = 112L
+  ),
+  log_row          = p2b_log,
+  shap_entry       = mock_shap,
+  team_box_df      = tb_hist,
+  realized_factors = target_rf
+)
+payload_p2 <- mod_env$build_game_detail_payload(
+  game_id         = "8801",
+  team_box_game   = tb_g_p2,
+  player_box_game = pb_g_p2,
+  slate           = 2L,
+  game_date       = as.Date("2026-11-10"),
+  is_completed    = TRUE,
+  explainability  = expl_full_p2
+)
+json_p2 <- mod_env$serialize_game_detail_json(payload_p2)
+camel_p2 <- collect_keys(payload_p2)
+camel_p2 <- camel_p2[grepl("[A-Z]", camel_p2)]
+ok("Phase 2 GameDetail payload attaches xgboost_shap array, preserves camelCase & zero-betting rules",
+   identical(payload_p2$data$explainability$xgboost_shap$model_id, "xgboost_feature_fusion_v1") &&
+     grepl('"factors"\\s*:\\s*\\[\\s*\\{', json_p2, perl = TRUE) &&
+     setequal(camel_p2, c("teamAbbr", "teamName", "playerId", "playerName")) &&
+     !grepl(betting_re, json_p2, ignore.case = TRUE, perl = TRUE))
+
+expl_no_shap <- mod_env$build_game_explainability(
+  game_row = game_ens_row, ensemble_ratings = ens_p2, shap_entry = NULL
+)
+ok("NULL shap_entry serializes xgboost_shap as null",
+   is.null(expl_no_shap$xgboost_shap) &&
+     grepl('"xgboost_shap"\\s*:\\s*null', mod_env$serialize_game_detail_json(expl_no_shap), perl = TRUE))
+
+# 7h. Phase 2 backfill upgrade of old Phase 1 file + 0-write idempotency on Run #2
+p2_tmp_dir <- file.path(tempdir(), "gbd_p2_backfill_test")
+if (dir.exists(p2_tmp_dir)) unlink(p2_tmp_dir, recursive = TRUE)
+dir.create(p2_tmp_dir, recursive = TRUE)
+
+old_p1_payload <- mod_env$build_game_detail_payload(
+  game_id = "8801", team_box_game = tb_g_p2, player_box_game = pb_g_p2,
+  slate = 1L, game_date = as.Date("2026-10-25"), is_completed = TRUE,
+  generated_at = "2026-10-26T00:00:00Z", explainability = NULL
+)
+invisible(mod_env$write_game_json_if_changed(old_p1_payload, file.path(p2_tmp_dir, "8801.json")))
+
+games_p2_tbl <- data.frame(
+  game_id = "8801", game_date = as.Date("2026-10-25"), slate = 1L,
+  slate_label = "Week 1", is_completed = TRUE,
+  stringsAsFactors = FALSE
+)
+exp_map_p2 <- list("8801" = expl_full_p2)
+bf_run1 <- mod_env$export_game_details(
+  team_box = tb_g_p2, player_box = pb_g_p2, games = games_p2_tbl,
+  out_dir = p2_tmp_dir, today_date = as.Date("2026-11-15"),
+  generated_at = "2026-11-15T12:00:00Z", explainability_by_game = exp_map_p2
+)
+bf_run2 <- mod_env$export_game_details(
+  team_box = tb_g_p2, player_box = pb_g_p2, games = games_p2_tbl,
+  out_dir = p2_tmp_dir, today_date = as.Date("2026-11-15"),
+  generated_at = "2026-11-15T13:00:00Z", explainability_by_game = exp_map_p2
+)
+ok("Phase 2 backfill updates >7d Phase 1 null file once, then skips cleanly on Run #2 (0 written)",
+   bf_run1$written == 1L &&
+     bf_run2$written == 0L &&
+     identical(bf_run2$game_status$action[1], "skipped_window"))
+unlink(p2_tmp_dir, recursive = TRUE)
+
+# ------------------------------------------------------------------------------
+section("8. tools/refresh_live_results.R preserves Phase 2 log_source and explainability")
+# ------------------------------------------------------------------------------
+rlr_p2_dir <- file.path(tempdir(), "gbd_rlr_p2_test")
+if (dir.exists(rlr_p2_dir)) unlink(rlr_p2_dir, recursive = TRUE)
+dir.create(rlr_p2_dir, recursive = TRUE)
+
+rlr_p2_fixture <- rlr_fixture
+rlr_p2_fixture$matchups[[1]]$log_source <- "LOGGED_PREGAME"
+rlr_p2_fixture$matchups[[1]]$explainability <- expl_full_p2
+rlr_p2_fixture$matchups[[2]]$log_source <- "LOGGED_PREGAME"
+rlr_p2_fixture$matchups[[2]]$explainability <- expl_pending_log
+rlr_p2_fixture$matchups[[3]]$projection_basis <- "primary_ensemble"
+rlr_p2_fixture$matchups[[3]]$log_source <- NULL
+rlr_p2_fixture$matchups[[3]]$explainability <- expl_ens
+
+rlr_p2_path <- file.path(rlr_p2_dir, "slates_p2.json")
+jsonlite::write_json(rlr_p2_fixture, rlr_p2_path, pretty = TRUE,
+                     auto_unbox = TRUE, null = "null", digits = NA)
+rlr_p2_res <- rlr_env$refresh_live_results(
+  dates        = "2026-11-15",
+  payload_path = rlr_p2_path,
+  fetcher      = function(d) mock_espn_results,
+  today        = as.Date("2026-11-15")
+)
+rlr_p2_parsed <- jsonlite::fromJSON(mod_env$.read_utf8_text(rlr_p2_path), simplifyVector = FALSE)
+p2_by_id <- setNames(rlr_p2_parsed$matchups, vapply(rlr_p2_parsed$matchups, `[[`, character(1), "game_id"))
+ok("refresh_live_results() preserves log_source and nested explainability payloads intact",
+   rlr_p2_res$n_changed == 1L &&
+     identical(p2_by_id[["1001"]]$log_source, "LOGGED_PREGAME") &&
+     length(p2_by_id[["1001"]]$explainability$margin_waterfall) == 6L &&
+     length(p2_by_id[["1001"]]$explainability$entering_baselines) == 2L &&
+     identical(p2_by_id[["1001"]]$explainability$xgboost_shap$model_id, "xgboost_feature_fusion_v1") &&
+     identical(p2_by_id[["1002"]]$log_source, "LOGGED_PREGAME") &&
+     identical(p2_by_id[["1002"]]$explainability$logged_forecast$log_source, "LOGGED_PREGAME") &&
+     is.null(p2_by_id[["1003"]]$log_source) &&
+     length(p2_by_id[["1003"]]$explainability$margin_waterfall) == 7L)
+unlink(rlr_p2_dir, recursive = TRUE)
+
+# ------------------------------------------------------------------------------
 cat(sprintf("\n%d checks, %d failure(s).\n", checks, failures))
 if (failures > 0L) quit(status = 1L)
 cat("ALL CHECKS PASSED\n")
