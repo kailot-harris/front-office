@@ -37,8 +37,13 @@
 #   hoopR::load_nba_team_box(seasons = MATCHUPS_HOOPR_SEASON)  [REAL SCORES]
 #     - two rows per completed game; the ONLY source of final scores. Joined on
 #       the ESPN game_id the spine already carries.
+#   hoopR::load_nba_player_box(seasons = MATCHUPS_HOOPR_SEASON) [BOX DETAILS]
+#     - per-player box scores paired with team_box to build
+#       web/public/data/games/<game_id>.json via build_game_details.R and
+#       populate `has_box_score` / `has_game_detail` on every MatchupGame.
 #
-# Exports CACHE_MATCHUPS (.rds) and CACHE_MATCHUPS_JSON (web/public/data).
+# Exports CACHE_MATCHUPS (.rds), CACHE_MATCHUPS_JSON (web/public/data), and
+# per-game detail payloads under WEB_GAMES_DIR.
 #
 # ------------------------------------------------------------------------------
 # JOIN KEY - game date + team short display name.
@@ -142,6 +147,7 @@ suppressPackageStartupMessages({
 # ------------------------------------------------------------------------------
 config_path <- if (file.exists("config.R")) "config.R" else "../config.R"
 source(config_path)
+source(file.path(dirname(config_path), "build_game_details.R"))
 
 # The one season switch (hoopR end-year numbering; see SEASON SCOPE above).
 # MATCHUPS_HOOPR_SEASON and MATCHUPS_SEASON_LABEL moved to config.R on
@@ -155,6 +161,9 @@ stopifnot(exists("MATCHUPS_HOOPR_SEASON"), exists("MATCHUPS_SEASON_LABEL"))
 if (!dir.exists(CACHE_DIR)) dir.create(CACHE_DIR, recursive = TRUE)
 if (!dir.exists(dirname(CACHE_MATCHUPS_JSON))) {
   dir.create(dirname(CACHE_MATCHUPS_JSON), recursive = TRUE)
+}
+if (!dir.exists(WEB_GAMES_DIR)) {
+  dir.create(WEB_GAMES_DIR, recursive = TRUE)
 }
 
 cat(sprintf(">>> [PHASE 1] Building NBA Matchups dataset for the %s season (hoopR season %d)...\n",
@@ -538,6 +547,37 @@ n_with_box <- sum(!is.na(games$box_home_score) & !is.na(games$box_away_score))
 cat(sprintf(">>> Real final scores available for %d of %d games\n", n_with_box, nrow(games)))
 
 # ------------------------------------------------------------------------------
+# 3b. PLAYER BOX SCORES: per-player stats for Game Detail JSON payloads
+# ------------------------------------------------------------------------------
+player_box <- fetch_or_cache(
+  sprintf("player box scores (season %d)", MATCHUPS_HOOPR_SEASON),
+  CACHE_MATCHUPS_PLAYER_BOX(MATCHUPS_HOOPR_SEASON),
+  function() hoopR::load_nba_player_box(seasons = MATCHUPS_HOOPR_SEASON)
+)
+
+if (nrow(team_box) > 0) {
+  tb_completed_ids <- games$espn_game_id[
+    !is.na(games$box_home_score) & !is.na(games$box_away_score)
+  ]
+  if (nrow(player_box) > 0) {
+    pb_game_ids <- unique(as.character(player_box$game_id))
+    missing_pb_ids <- setdiff(tb_completed_ids, pb_game_ids)
+    if (length(missing_pb_ids) > 0) {
+      cat(sprintf(
+        ">>> [WARN] player_box returned %d rows (%d games) but is missing %d completed espn_game_id(s) present in team_box: %s\n",
+        nrow(player_box), length(pb_game_ids), length(missing_pb_ids),
+        paste(head(missing_pb_ids, 10), collapse = ", ")
+      ))
+    }
+  } else if (length(tb_completed_ids) > 0) {
+    cat(sprintf(
+      ">>> [WARN] player_box returned 0 rows while team_box has %d completed game(s)\n",
+      length(tb_completed_ids)
+    ))
+  }
+}
+
+# ------------------------------------------------------------------------------
 # 4. Slate assignment (see DESIGN DECISION 1)
 # ------------------------------------------------------------------------------
 games$slate <- as.integer(floor(as.numeric(games$game_date - season_start) / 7) + 1)
@@ -565,13 +605,17 @@ slate_label <- function(s, start_date, end_date) {
 # ------------------------------------------------------------------------------
 today <- Sys.Date()
 
-num_or_null <- function(x, digits = NULL) {
-  if (length(x) != 1 || is.na(x)) return(NULL)
-  if (!is.null(digits)) x <- round(as.numeric(x), digits)
-  as.numeric(x)
+# num_or_null() is provided by build_game_details.R (with finite-value guard).
+if (!exists("num_or_null", mode = "function")) {
+  num_or_null <- function(x, digits = NULL) {
+    if (is.null(x) || length(x) != 1 || is.na(x) || !is.finite(x)) return(NULL)
+    if (!is.null(digits)) x <- round(as.numeric(x), digits)
+    as.numeric(x)
+  }
 }
 
 matchups <- vector("list", nrow(games))
+is_completed_vec <- logical(nrow(games))
 for (i in seq_len(nrow(games))) {
   g <- games[i, ]
 
@@ -579,6 +623,7 @@ for (i in seq_len(nrow(games))) {
   is_completed <- identical(as.character(g$log_status), "RESOLVED") &&
     !is.na(g$log_correct) &&
     !is.na(g$box_home_score) && !is.na(g$box_away_score)
+  is_completed_vec[i] <- is_completed
 
   home_abbr <- g$home_team
   away_abbr <- g$away_team
@@ -660,6 +705,77 @@ cat(sprintf(">>> %d graded games, %d pending; %d games carry a model projection,
 cat(sprintf(">>> projection_basis: %d from the logged model, %d from primary ensemble, %d from team rating differential\n",
             n_logged_basis, n_ensemble_basis, n_ratings_basis))
 stopifnot(n_logged_basis + n_unlogged_basis == n_projected)
+
+# ------------------------------------------------------------------------------
+# 5b. Per-game detail JSONs + has_box_score / has_game_detail flags
+# ------------------------------------------------------------------------------
+slate_label_map <- setNames(
+  vapply(seq_len(nrow(slate_bounds)), function(k) {
+    slate_label(
+      slate_bounds$slate[k],
+      slate_bounds$start_date[k],
+      slate_bounds$end_date[k]
+    )
+  }, character(1)),
+  as.character(slate_bounds$slate)
+)
+
+games_for_detail <- data.frame(
+  game_id        = as.character(games$espn_game_id),
+  game_date      = games$game_date,
+  slate          = as.integer(games$slate),
+  slate_label    = unname(slate_label_map[as.character(games$slate)]),
+  is_completed   = is_completed_vec,
+  away_team      = as.character(games$away_team),
+  home_team      = as.character(games$home_team),
+  away_team_name = as.character(games$away_name),
+  home_team_name = as.character(games$home_name),
+  stringsAsFactors = FALSE
+)
+
+detail_res <- export_game_details(
+  team_box     = team_box,
+  player_box   = player_box,
+  games        = games_for_detail,
+  out_dir      = WEB_GAMES_DIR,
+  season       = MATCHUPS_HOOPR_SEASON,
+  season_label = MATCHUPS_SEASON_LABEL,
+  today_date   = today
+)
+
+# Remove any orphan .json files so the bijection with has_game_detail stays strict.
+detail_status <- detail_res$game_status
+valid_detail_ids <- as.character(detail_status$game_id[
+  !is.na(detail_status$has_game_detail) & detail_status$has_game_detail
+])
+existing_detail_files <- list.files(WEB_GAMES_DIR, pattern = "\\.json$", full.names = TRUE)
+if (length(existing_detail_files) > 0) {
+  existing_stems <- sub("\\.json$", "", basename(existing_detail_files))
+  orphan_files <- existing_detail_files[!(existing_stems %in% valid_detail_ids)]
+  if (length(orphan_files) > 0) {
+    unlink(orphan_files)
+    cat(sprintf(">>> Removed %d orphan game detail file(s) from %s\n",
+                length(orphan_files), WEB_GAMES_DIR))
+  }
+}
+
+status_idx <- match(
+  vapply(matchups, function(m) m$game_id, character(1)),
+  as.character(detail_status$game_id)
+)
+for (i in seq_along(matchups)) {
+  idx <- status_idx[i]
+  hbs <- if (!is.na(idx)) isTRUE(as.logical(detail_status$has_box_score[idx])) else FALSE
+  hgd <- if (!is.na(idx)) isTRUE(as.logical(detail_status$has_game_detail[idx])) else FALSE
+  matchups[[i]]$has_box_score <- as.logical(hbs)
+  matchups[[i]]$has_game_detail <- as.logical(hgd)
+}
+
+cat(sprintf(
+  ">>> Game details: %d with box score (%d written, %d unchanged, %d skipped by window)\n",
+  detail_res$games_with_box_score, detail_res$written, detail_res$unchanged,
+  detail_res$skipped_window
+))
 
 # ------------------------------------------------------------------------------
 # 6. Slate summaries, including per-slate accuracy over GRADED games only

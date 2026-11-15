@@ -98,6 +98,10 @@ export interface MatchupGame {
   actual_winner: string | null;
   /** Copied verbatim from the accuracy log's `correct` column, never regraded. */
   prediction_correct: boolean | null;
+  /** True when the game is completed and present in both team and player box feeds. */
+  has_box_score?: boolean;
+  /** True when a per-game detail file exists under public/data/games/. */
+  has_game_detail?: boolean;
 }
 
 export type SlateStatus = 'past' | 'active' | 'future';

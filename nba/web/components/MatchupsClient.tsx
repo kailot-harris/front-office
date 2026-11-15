@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
-import { MatchupsDataset, ProjectionBasis } from '@/lib/matchupTypes';
-import { MatchupCard } from '@/components/MatchupCard';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { MatchupGame, MatchupsDataset, ProjectionBasis } from '@/lib/matchupTypes';
+import { formatMatchupInspectLabel, MatchupCard } from '@/components/MatchupCard';
+import { GameDetailModal } from '@/components/GameDetailModal';
 import { AnimatedMediaCard } from '@/components/AnimatedMediaCard';
 import { TeamLogo } from '@/components/TeamLogo';
 import { exportToCsv } from '@/lib/exportToCsv';
@@ -10,6 +12,7 @@ import { formatSeasonLabel } from '@/lib/season';
 import {
   Calendar,
   CheckCircle2,
+  ChevronRight,
   Clock,
   Download,
   Grid,
@@ -22,6 +25,22 @@ interface MatchupsClientProps {
   dataset: MatchupsDataset;
 }
 
+function syncGameQueryParam(gameId: string | null): void {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  if (gameId) {
+    url.searchParams.set('game', gameId);
+  } else {
+    url.searchParams.delete('game');
+  }
+  const search = url.searchParams.toString();
+  const nextUrl = `${url.pathname}${search ? `?${search}` : ''}${url.hash}`;
+  const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (nextUrl !== currentUrl) {
+    window.history.replaceState(window.history.state, '', nextUrl);
+  }
+}
+
 /**
  * Slate granularity is week-of-season buckets throughout (see lib/matchupTypes.ts
  * DESIGN DECISION 1); this component never groups by individual date.
@@ -31,6 +50,97 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
   const [selectedDay, setSelectedDay] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [selectedGame, setSelectedGame] = useState<MatchupGame | null>(null);
+  const [returnFocusEl, setReturnFocusEl] = useState<HTMLElement | null>(null);
+  const selectedGameIdRef = useRef<string | null>(null);
+  selectedGameIdRef.current = selectedGame?.game_id ?? null;
+
+  const searchParams = useSearchParams();
+  const searchParamsGameId = searchParams?.get('game') || null;
+  const prevSearchParamsGameIdRef = useRef<string | null | undefined>(undefined);
+
+  const openGameFromQuery = useCallback(
+    (targetGameId: string | null) => {
+      if (!targetGameId) {
+        if (selectedGameIdRef.current !== null) {
+          selectedGameIdRef.current = null;
+          setReturnFocusEl(null);
+          setSelectedGame(null);
+        }
+        return;
+      }
+
+      if (selectedGameIdRef.current === targetGameId) {
+        return;
+      }
+
+      const matched = dataset.matchups.find((m) => m.game_id === targetGameId) ?? null;
+      if (matched) {
+        selectedGameIdRef.current = matched.game_id;
+        setSelectedSlate(matched.slate);
+        setReturnFocusEl(null);
+        setSelectedGame(matched);
+      }
+    },
+    [dataset.matchups],
+  );
+
+  useEffect(() => {
+    const isInitialMount = prevSearchParamsGameIdRef.current === undefined;
+    const searchParamChanged = prevSearchParamsGameIdRef.current !== searchParamsGameId;
+    prevSearchParamsGameIdRef.current = searchParamsGameId;
+
+    if (!isInitialMount && !searchParamChanged) {
+      return;
+    }
+
+    const windowGameId =
+      typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('game') || null
+        : null;
+
+    if (isInitialMount) {
+      const initialGameId = searchParamsGameId ?? windowGameId;
+      if (initialGameId) {
+        openGameFromQuery(initialGameId);
+      }
+      return;
+    }
+
+    const nextGameId = searchParamsGameId ?? windowGameId;
+    openGameFromQuery(nextGameId);
+  }, [searchParamsGameId, openGameFromQuery]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handlePopState = () => {
+      const popGameId = new URLSearchParams(window.location.search).get('game') || null;
+      openGameFromQuery(popGameId);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [openGameFromQuery]);
+
+  const handleSelectGame = useCallback((game: MatchupGame, triggerEl: HTMLElement | null) => {
+    selectedGameIdRef.current = game.game_id;
+    setReturnFocusEl(triggerEl);
+    setSelectedGame(game);
+    syncGameQueryParam(game.game_id);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    selectedGameIdRef.current = null;
+    setSelectedGame(null);
+    setReturnFocusEl(null);
+    syncGameQueryParam(null);
+  }, []);
+
+  const selectedGameSlateLabel = useMemo(() => {
+    if (!selectedGame) return null;
+    return dataset.slates.find((s) => s.slate === selectedGame.slate)?.label ?? null;
+  }, [dataset.slates, selectedGame]);
 
   const slateMeta = useMemo(
     () => dataset.slates.find((s) => s.slate === selectedSlate) ?? null,
@@ -377,7 +487,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
       {viewMode === 'grid' && filteredGames.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredGames.map((m) => (
-            <MatchupCard key={m.game_id} matchup={m} />
+            <MatchupCard key={m.game_id} matchup={m} onSelect={handleSelectGame} />
           ))}
         </div>
       )}
@@ -411,7 +521,19 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
               </thead>
               <tbody>
                 {filteredGames.map((m) => (
-                  <tr key={m.game_id} className="border-t border-slate-800/80">
+                  <tr
+                    key={m.game_id}
+                    tabIndex={0}
+                    aria-label={formatMatchupInspectLabel(m)}
+                    onClick={(e) => handleSelectGame(m, e.currentTarget)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleSelectGame(m, e.currentTarget);
+                      }
+                    }}
+                    className="group border-t border-slate-800/80 cursor-pointer hover:bg-slate-800/50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent-400 transition-colors"
+                  >
                     <td className="px-3 py-2 text-slate-400 whitespace-nowrap">
                       {m.weekday} {m.game_date}
                     </td>
@@ -457,17 +579,23 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                       {m.is_completed ? `${m.away_score}–${m.home_score}` : '—'}
                     </td>
                     <td className="px-3 py-2 text-right whitespace-nowrap">
-                      {m.is_completed && m.prediction_correct !== null ? (
-                        <span
-                          className={
-                            m.prediction_correct ? 'text-accent-400' : 'text-rose-400'
-                          }
-                        >
-                          {m.prediction_correct ? 'Correct' : 'Miss'}
-                        </span>
-                      ) : (
-                        <span className="text-slate-500">Pending</span>
-                      )}
+                      <span className="inline-flex items-center justify-end gap-1">
+                        {m.is_completed && m.prediction_correct !== null ? (
+                          <span
+                            className={
+                              m.prediction_correct ? 'text-accent-400' : 'text-rose-400'
+                            }
+                          >
+                            {m.prediction_correct ? 'Correct' : 'Miss'}
+                          </span>
+                        ) : (
+                          <span className="text-slate-500">Pending</span>
+                        )}
+                        <ChevronRight
+                          className="w-3.5 h-3.5 text-slate-500 group-hover:text-accent-400 transition-colors"
+                          aria-hidden="true"
+                        />
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -486,6 +614,13 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
           caption="Model win probability distribution across daily game slates, illustrating home vs away edges and model certainty across all scheduled matchups."
         />
       </div>
+
+      <GameDetailModal
+        matchup={selectedGame}
+        slateLabel={selectedGameSlateLabel}
+        onClose={handleCloseModal}
+        returnFocusTo={returnFocusEl}
+      />
     </div>
   );
 };

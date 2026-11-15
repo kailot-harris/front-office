@@ -81,6 +81,7 @@ MATCHUPS_SEASON_LABEL <- sprintf("%d-%d", MATCHUPS_HOOPR_SEASON - 1L,
 # SEASON SCOPE note at the top of build_matchups_dataset.R.
 CACHE_MATCHUPS_SCHEDULE <- function(season) file.path(CACHE_DIR, sprintf("matchups_schedule_%d.rds", season))
 CACHE_MATCHUPS_TEAM_BOX <- function(season) file.path(CACHE_DIR, sprintf("matchups_team_box_%d.rds", season))
+CACHE_MATCHUPS_PLAYER_BOX <- function(season) file.path(CACHE_DIR, sprintf("nba_player_box_%d.rds", as.integer(season)))
 
 # Pipeline run log. schedule_daily.bat redirects run_full_pipeline.R's stdout and
 # stderr here, so it is where the ">>> NBA QUANTITATIVE ENGINE ... STARTED: <ts>"
@@ -138,6 +139,7 @@ WEB_JSON_PLAYER_DNA_PROFILES         <- file.path(WEB_DATA_DIR, "player_dna_prof
 WEB_JSON_DEFENSIVE_METRICS           <- file.path(WEB_DATA_DIR, "defensive_metrics.json")
 WEB_JSON_CLUTCH_LEVERAGE_METRICS     <- file.path(WEB_DATA_DIR, "clutch_leverage_metrics.json")
 WEB_JSON_MATCHUPS_SLATES             <- file.path(WEB_DATA_DIR, "matchups_slates.json")
+WEB_GAMES_DIR                        <- file.path(WEB_DATA_DIR, "games")
 WEB_JSON_PLAYOFF_SERIES_MATCHUPS     <- file.path(WEB_DATA_DIR, "playoff_series_matchups.json")
 # Non-members (see above), named so no caller re-types them.
 WEB_JSON_OFFSEASON_TRANSACTIONS      <- file.path(WEB_DATA_DIR, "offseason_transactions.json")
