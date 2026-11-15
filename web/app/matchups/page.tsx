@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Swords } from 'lucide-react';
 import { getMatchupsData } from '@/lib/data';
 import { MatchupsClient } from '@/components/MatchupsClient';
@@ -97,7 +97,9 @@ export default function MatchupsPage() {
         the two are never averaged together.
       </HowToReadDisclosure>
 
-      <MatchupsClient dataset={dataset} />
+      <Suspense fallback={null}>
+        <MatchupsClient dataset={dataset} />
+      </Suspense>
     </div>
   );
 }

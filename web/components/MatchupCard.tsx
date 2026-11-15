@@ -3,10 +3,16 @@
 import React from 'react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { MatchupGame, ProjectionBasis } from '@/lib/matchupTypes';
-import { CheckCircle2, XCircle, Clock, Info } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Info, ChevronRight } from 'lucide-react';
 
-interface MatchupCardProps {
+export interface MatchupCardProps {
   matchup: MatchupGame;
+  onSelect?: (game: MatchupGame, triggerEl: HTMLElement | null) => void;
+}
+
+/** Accessible label shared by clickable matchup cards and table rows. */
+export function formatMatchupInspectLabel(matchup: MatchupGame): string {
+  return `Inspect game detail: ${matchup.away_team_name} (${matchup.away_team}) at ${matchup.home_team_name} (${matchup.home_team}) on ${matchup.game_date}`;
 }
 
 const pct = (p: number | null): string => (p === null ? '—' : `${(p * 100).toFixed(1)}%`);
@@ -45,38 +51,65 @@ const BASIS_BADGE: Record<ProjectionBasis, { short: string; note: string; tone: 
   },
 };
 
-export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup: m }) => {
+export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup: m, onSelect }) => {
   const homeFavored = m.predicted_margin !== null && m.predicted_margin >= 0;
   const favorite = m.predicted_margin === null ? null : homeFavored ? m.home_team : m.away_team;
   const graded = m.is_completed && m.prediction_correct !== null;
   const basis = m.projection_basis === null ? null : BASIS_BADGE[m.projection_basis];
+  const isInteractive = typeof onSelect === 'function';
+  const cardLabel = formatMatchupInspectLabel(m);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!onSelect) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onSelect(m, e.currentTarget);
+    }
+  };
 
   return (
     <div
-      className={`bg-surface-raised/80 border rounded-xl p-4 flex flex-col gap-3 transition-colors ${
+      className={`group bg-surface-raised/80 border rounded-xl p-4 flex flex-col gap-3 transition-colors ${
         graded
           ? m.prediction_correct
             ? 'border-accent-500/40'
             : 'border-rose-500/40'
           : 'border-slate-800 hover:border-accent-500/40'
+      }${
+        isInteractive
+          ? ' cursor-pointer hover:bg-surface-raised hover:border-accent-500/60 focus:outline-none focus:ring-2 focus:ring-accent-400'
+          : ''
       }`}
       data-testid="matchup-card"
+      role={isInteractive ? 'button' : undefined}
+      tabIndex={isInteractive ? 0 : undefined}
+      aria-label={isInteractive ? cardLabel : undefined}
+      onClick={isInteractive ? (e) => onSelect(m, e.currentTarget) : undefined}
+      onKeyDown={isInteractive ? handleKeyDown : undefined}
     >
       {/* Date + status chip */}
       <div className="flex items-center justify-between text-[11px] sm:text-[10px] font-mono uppercase tracking-wider">
         <span className="text-slate-400">
           {m.weekday} · {m.game_date}
         </span>
-        {m.is_completed ? (
-          <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-            Final
-          </span>
-        ) : (
-          <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            <span>Scheduled</span>
-          </span>
-        )}
+        <div className="flex items-center gap-1.5">
+          {m.is_completed ? (
+            <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+              Final
+            </span>
+          ) : (
+            <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              <span>Scheduled</span>
+            </span>
+          )}
+          {isInteractive && (
+            <ChevronRight
+              className="w-3.5 h-3.5 text-slate-500 group-hover:text-accent-400 transition-colors"
+              aria-hidden="true"
+            />
+          )}
+        </div>
       </div>
 
       {/* Teams */}
