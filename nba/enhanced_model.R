@@ -220,6 +220,8 @@ print(knitr::kable(results, format = "simple", caption = "Out-of-Sample Performa
 # ------------------------------------------------------------------------------
 saveRDS(rf_fit, file.path(CACHE_DIR, "enhanced_rf_fit.rds"))
 cat(sprintf("\nSuccessfully saved enhanced model artifact to: %s\n", file.path(CACHE_DIR, "enhanced_rf_fit.rds")))
+saveRDS(xgb_fit, file.path(CACHE_DIR, "enhanced_xgb_fit.rds"))
+cat(sprintf("Successfully saved enhanced XGBoost model artifact to: %s\n", file.path(CACHE_DIR, "enhanced_xgb_fit.rds")))
 
 rf_engine <- extract_fit_engine(rf_fit)
 imp <- rf_engine$variable.importance

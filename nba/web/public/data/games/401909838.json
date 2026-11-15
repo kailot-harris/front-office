@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-11-15T16:59:37Z",
+  "generated_at": "2026-11-15T20:46:44Z",
   "sport": "nba",
   "endpoint": "game_detail",
   "season": 2027,
@@ -945,7 +945,21 @@
         }
       ]
     },
-    "explainability": null,
+    "explainability": {
+      "projection_basis": "margin_from_logged_win_prob",
+      "predicted_margin": 12.18,
+      "predicted_home_win_prob": 0.849,
+      "sigma_game": null,
+      "margin_waterfall": null,
+      "logged_forecast": {
+        "prediction_timestamp": "2026-10-18T02:38:27Z",
+        "log_source": "LOGGED_PREGAME",
+        "brier_component": 0.022801,
+        "log_loss_component": 0.163696
+      },
+      "entering_baselines": null,
+      "xgboost_shap": null
+    },
     "game_flow": null
   }
 }

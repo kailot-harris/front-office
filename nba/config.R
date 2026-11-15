@@ -82,6 +82,8 @@ MATCHUPS_SEASON_LABEL <- sprintf("%d-%d", MATCHUPS_HOOPR_SEASON - 1L,
 CACHE_MATCHUPS_SCHEDULE <- function(season) file.path(CACHE_DIR, sprintf("matchups_schedule_%d.rds", season))
 CACHE_MATCHUPS_TEAM_BOX <- function(season) file.path(CACHE_DIR, sprintf("matchups_team_box_%d.rds", season))
 CACHE_MATCHUPS_PLAYER_BOX <- function(season) file.path(CACHE_DIR, sprintf("nba_player_box_%d.rds", as.integer(season)))
+CACHE_XGBOOST_SHAP_MODEL <- file.path(CACHE_DIR, "xgboost_shap_model.rds")
+CACHE_XGBOOST_GAME_SHAP <- function(season = MATCHUPS_HOOPR_SEASON) file.path(CACHE_DIR, sprintf("xgboost_game_shap_%d.rds", as.integer(season)))
 
 # Pipeline run log. schedule_daily.bat redirects run_full_pipeline.R's stdout and
 # stderr here, so it is where the ">>> NBA QUANTITATIVE ENGINE ... STARTED: <ts>"

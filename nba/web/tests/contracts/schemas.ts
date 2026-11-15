@@ -766,6 +766,100 @@ export const PlayerShotDataSchema = z
   .strict();
 
 // ----------------------------------------------------------------------------
+// Shared Phase 2 explainability schemas (lib/gameDetailTypes.ts)
+// ----------------------------------------------------------------------------
+const matchupLogSourceEnum = z.enum(['LOGGED_PREGAME', 'BACKTEST_PREWEEK', 'BACKTEST_SEEDED']);
+
+export const MarginWaterfallStepSchema = z
+  .object({
+    key: z.enum(['bottom_up', 'rapm', 'shot_fatigue', 'embeddings', 'home_court', 'schedule', 'rounding']),
+    label: z.string().min(1),
+    points: num,
+    detail: z.string().nullable(),
+  })
+  .strict();
+
+export const EnteringBaselineSchema = z
+  .object({
+    teamAbbr: teamEnum,
+    prior_games_n: z.number().int().min(0),
+    factors: z.array(
+      z
+        .object({
+          key: z.string().min(1),
+          entering: num.nullable(),
+          realized: num.nullable(),
+          difference: num.nullable(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+export const XgboostShapFactorKeySchema = z.enum([
+  'diff_roll_pts',
+  'diff_roll_efg',
+  'diff_roll_ts',
+  'diff_roll_tovp',
+  'diff_roll_oreb',
+  'diff_roll_dreb',
+  'diff_roll_ast',
+  'diff_roll_stl',
+  'diff_roll_blk',
+  'diff_days_rest',
+  'diff_fatigue_index',
+  'diff_is_b2b',
+  'style_similarity',
+]);
+
+export const XgboostShapFactorSchema = z
+  .object({
+    feature: XgboostShapFactorKeySchema,
+    label: z.string().min(1),
+    feature_value: num,
+    z_score: num,
+    shap_log_odds: num,
+    shap_prob_approx: num,
+  })
+  .strict();
+
+export const XgboostShapPayloadSchema = z
+  .object({
+    model_id: z.literal('xgboost_feature_fusion_v1'),
+    model_label: z.string().min(1),
+    train_seasons_label: z.string().min(1),
+    window_games: z.number().int().positive(),
+    away_prior_games_n: z.number().int().min(0),
+    home_prior_games_n: z.number().int().min(0),
+    base_value_log_odds: num,
+    total_log_odds: num,
+    predicted_home_win_prob: prob,
+    factors: z.array(XgboostShapFactorSchema),
+  })
+  .strict();
+
+export const GameExplainabilityPayloadSchema = z
+  .object({
+    projection_basis: z.enum(['primary_ensemble', 'logged_model_margin', 'margin_from_logged_win_prob']).nullable(),
+    predicted_margin: num.nullable(),
+    predicted_home_win_prob: prob.nullable(),
+    sigma_game: num.positive().nullable(),
+    margin_waterfall: z.array(MarginWaterfallStepSchema).nullable(),
+    logged_forecast: z
+      .object({
+        prediction_timestamp: z.string().min(1),
+        log_source: matchupLogSourceEnum,
+        brier_component: num.nullable(),
+        log_loss_component: num.nullable(),
+      })
+      .strict()
+      .nullable(),
+    entering_baselines: z.array(EnteringBaselineSchema).nullable(),
+    xgboost_shap: XgboostShapPayloadSchema.nullable().optional(),
+  })
+  .strict();
+
+// ----------------------------------------------------------------------------
 // 14. matchups_slates.json -> MatchupsDataset (lib/matchupTypes.ts)
 // ----------------------------------------------------------------------------
 export const ProjectionBasisSchema = z.enum([
@@ -800,6 +894,8 @@ export const MatchupGameSchema = z
     prediction_correct: z.boolean().nullable(),
     has_box_score: z.boolean(),
     has_game_detail: z.boolean(),
+    log_source: matchupLogSourceEnum.nullable().optional(),
+    explainability: GameExplainabilityPayloadSchema.nullable().optional(),
   })
   .strict();
 
@@ -968,52 +1064,6 @@ export const TopPerformerItemSchema = z
     reb: z.number().int().min(0),
     ast: z.number().int().min(0),
     game_score: num,
-  })
-  .strict();
-
-export const MarginWaterfallStepSchema = z
-  .object({
-    key: z.enum(['bottom_up', 'rapm', 'shot_fatigue', 'embeddings', 'home_court', 'schedule', 'rounding']),
-    label: z.string().min(1),
-    points: num,
-    detail: z.string().nullable(),
-  })
-  .strict();
-
-export const EnteringBaselineSchema = z
-  .object({
-    teamAbbr: teamEnum,
-    prior_games_n: z.number().int().min(0),
-    factors: z.array(
-      z
-        .object({
-          key: z.string().min(1),
-          entering: num.nullable(),
-          realized: num.nullable(),
-          difference: num.nullable(),
-        })
-        .strict(),
-    ),
-  })
-  .strict();
-
-export const GameExplainabilityPayloadSchema = z
-  .object({
-    projection_basis: z.enum(['primary_ensemble', 'logged_model_margin', 'margin_from_logged_win_prob']).nullable(),
-    predicted_margin: num.nullable(),
-    predicted_home_win_prob: prob.nullable(),
-    sigma_game: num.positive().nullable(),
-    margin_waterfall: z.array(MarginWaterfallStepSchema).nullable(),
-    logged_forecast: z
-      .object({
-        prediction_timestamp: z.string().min(1),
-        log_source: z.enum(['LOGGED_PREGAME', 'BACKTEST_PREWEEK', 'BACKTEST_SEEDED']),
-        brier_component: num.nullable(),
-        log_loss_component: num.nullable(),
-      })
-      .strict()
-      .nullable(),
-    entering_baselines: z.array(EnteringBaselineSchema).nullable(),
   })
   .strict();
 

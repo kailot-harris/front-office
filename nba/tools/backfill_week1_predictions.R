@@ -232,6 +232,14 @@ main <- function() {
     log_loss_component      = NA_real_,
     status                  = "PENDING",
     resolved_timestamp      = as.POSIXct(NA),
+    log_source              = "BACKTEST_PREWEEK",
+    comp_bottom_up          = NA_real_,
+    comp_rapm               = NA_real_,
+    comp_shot_fatigue       = NA_real_,
+    comp_embeddings         = NA_real_,
+    comp_home_court         = NA_real_,
+    comp_schedule           = NA_real_,
+    sigma_game              = NA_real_,
     .sigma_game             = round(as.numeric(sigma_game), 2)
   ) %>% arrange(.data$game_date, .data$game_id)
 
