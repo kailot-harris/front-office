@@ -11,7 +11,13 @@
 import fs from 'fs';
 import path from 'path';
 import { describe, it, expect } from 'vitest';
-import { WEB_ROOT, readJsonFile, type DataFileName } from '../helpers/datasets';
+import {
+  WEB_ROOT,
+  listGameDetailIds,
+  readGameDetailFile,
+  readJsonFile,
+  type DataFileName,
+} from '../helpers/datasets';
 
 const readSrc = (rel: string) => fs.readFileSync(path.join(WEB_ROOT, rel), 'utf-8');
 
@@ -112,6 +118,19 @@ const parityCases: ParityCase[] = [
   },
   { file: 'shots_index.json', tsFile: 'lib/shotTypes.ts', iface: 'PlayerCatalogEntry' },
   { file: 'shots_metadata.json', tsFile: 'lib/shotTypes.ts', iface: 'ShotsMetadata', pick: (j) => [j as Record<string, unknown>] },
+  { file: 'matchups_slates.json', tsFile: 'lib/matchupTypes.ts', iface: 'MatchupsDataset', pick: (j) => [j as Record<string, unknown>] },
+  {
+    file: 'matchups_slates.json',
+    tsFile: 'lib/matchupTypes.ts',
+    iface: 'MatchupSlate',
+    pick: (j) => (j as { slates: Record<string, unknown>[] }).slates,
+  },
+  {
+    file: 'matchups_slates.json',
+    tsFile: 'lib/matchupTypes.ts',
+    iface: 'MatchupGame',
+    pick: (j) => (j as { matchups: Record<string, unknown>[] }).matchups,
+  },
 ];
 
 describe('TypeScript interface vs JSON payload key parity', () => {
@@ -127,6 +146,78 @@ describe('TypeScript interface vs JSON payload key parity', () => {
     expect(missingInJson, `${iface} declares required fields absent from ${file}: ${missingInJson.join(', ')}`).toEqual([]);
     expect(undocumented, `${file} ships keys not declared on ${iface} in ${tsFile}: ${undocumented.join(', ')}`).toEqual([]);
   });
+
+  const gameDetails = listGameDetailIds().map((id) => readGameDetailFile(id) as unknown as Record<string, unknown>);
+  const gameDetailCases: {
+    iface: string;
+    pick: (docs: Record<string, unknown>[]) => Record<string, unknown>[];
+  }[] = [
+    { iface: 'GameDetailEnvelope', pick: (docs) => docs },
+    { iface: 'GameDetailPayload', pick: (docs) => docs.map((d) => d.data as Record<string, unknown>) },
+    {
+      iface: 'GameTeamSummary',
+      pick: (docs) =>
+        docs.flatMap((d) => {
+          const p = d.data as Record<string, Record<string, unknown>>;
+          return [p.away_team, p.home_team];
+        }),
+    },
+    {
+      iface: 'EfficiencyFactorItem',
+      pick: (docs) =>
+        docs.flatMap((d) => ((d.data as { efficiency_factors: Record<string, unknown>[] | null }).efficiency_factors ?? [])),
+    },
+    {
+      iface: 'ContextSplitItem',
+      pick: (docs) =>
+        docs.flatMap((d) => ((d.data as { context_splits: Record<string, unknown>[] | null }).context_splits ?? [])),
+    },
+    {
+      iface: 'TeamBoxTotals',
+      pick: (docs) =>
+        docs.flatMap((d) => {
+          const bs = (d.data as { box_score: Record<string, unknown> | null }).box_score;
+          return bs ? [bs.away_totals as Record<string, unknown>, bs.home_totals as Record<string, unknown>] : [];
+        }),
+    },
+    {
+      iface: 'PlayerBoxRow',
+      pick: (docs) =>
+        docs.flatMap((d) => {
+          const bs = (d.data as { box_score: { away_players: Record<string, unknown>[]; home_players: Record<string, unknown>[] } | null }).box_score;
+          return bs ? [...bs.away_players, ...bs.home_players] : [];
+        }),
+    },
+    {
+      iface: 'InactivePlayerRow',
+      pick: (docs) =>
+        docs.flatMap((d) => {
+          const bs = (d.data as { box_score: { away_inactive: Record<string, unknown>[]; home_inactive: Record<string, unknown>[] } | null }).box_score;
+          return bs ? [...bs.away_inactive, ...bs.home_inactive] : [];
+        }),
+    },
+    {
+      iface: 'TopPerformerItem',
+      pick: (docs) =>
+        docs.flatMap((d) => {
+          const bs = (d.data as { box_score: { top_performers: Record<string, unknown>[] } | null }).box_score;
+          return bs ? bs.top_performers : [];
+        }),
+    },
+  ];
+
+  it.each(gameDetailCases)('$iface (lib/gameDetailTypes.ts) matches keys in games/*.json', ({ iface, pick }) => {
+    const { all, optional } = extractInterfaceFields('lib/gameDetailTypes.ts', iface);
+    const rows = pick(gameDetails);
+    expect(rows.length, `Expected at least one ${iface} row in games/*.json`).toBeGreaterThan(0);
+    const jsonKeys = keysOf(rows);
+
+    const missingInJson = [...all].filter((f) => !optional.has(f) && !jsonKeys.has(f));
+    const undocumented = [...jsonKeys].filter((k) => !all.has(k));
+
+    expect(missingInJson, `${iface} declares required fields absent from games/*.json: ${missingInJson.join(', ')}`).toEqual([]);
+    expect(undocumented, `games/*.json ships keys not declared on ${iface} in lib/gameDetailTypes.ts: ${undocumented.join(', ')}`).toEqual([]);
+  });
 });
 
 describe('String-literal unions in lib/*Types.ts cover every value in the data', () => {
@@ -137,6 +228,11 @@ describe('String-literal unions in lib/*Types.ts cover every value in the data',
     offTeams: readJsonFile<{ conference: string; grade: string }[]>('offseason_teams.json'),
     draft: readJsonFile<{ upside_tier: string }[]>('offseason_draft.json'),
     series: readJsonFile<{ teams: Record<string, { conference: string; rotation: { role: string }[] }> }>('playoff_series_matchups.json'),
+    matchups: readJsonFile<{
+      grading_state: string;
+      slates: { status: string }[];
+      matchups: { projection_basis: string | null }[];
+    }>('matchups_slates.json'),
   };
 
   const cases: { label: string; declared: () => string[]; values: () => string[] }[] = [
@@ -159,6 +255,13 @@ describe('String-literal unions in lib/*Types.ts cover every value in the data',
       values: () => Object.values(d.series.teams).flatMap((t) => t.rotation.map((r) => r.role)),
     },
     { label: 'TeamPlayoffProfile.conference', declared: () => extractFieldUnion('lib/playoffTypes.ts', 'TeamPlayoffProfile', 'conference'), values: () => Object.values(d.series.teams).map((t) => t.conference) },
+    { label: 'SlateStatus', declared: () => extractTypeAliasUnion('lib/matchupTypes.ts', 'SlateStatus'), values: () => d.matchups.slates.map((s) => s.status) },
+    { label: 'GradingState', declared: () => extractTypeAliasUnion('lib/matchupTypes.ts', 'GradingState'), values: () => [d.matchups.grading_state] },
+    {
+      label: 'ProjectionBasis',
+      declared: () => extractTypeAliasUnion('lib/matchupTypes.ts', 'ProjectionBasis'),
+      values: () => d.matchups.matchups.map((m) => m.projection_basis).filter((v): v is string => v !== null),
+    },
   ];
 
   it.each(cases)('$label covers every distinct value in the data', ({ label, declared, values }) => {
