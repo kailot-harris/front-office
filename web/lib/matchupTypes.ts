@@ -57,6 +57,8 @@
  * field, never a placeholder number.
  */
 
+import type { GameExplainabilityPayload } from './gameDetailTypes';
+
 /**
  * Which model produced a game's projection. The first two values are the same
  * logged model (the second just derives the margin from its probability); the
@@ -68,6 +70,12 @@ export type ProjectionBasis =
   | 'margin_from_logged_win_prob'
   | 'primary_ensemble'
   | 'team_rating_differential';
+
+/** Accuracy-log row provenance kind when a matchup's projection comes from the log. */
+export type MatchupLogSource =
+  | 'LOGGED_PREGAME'
+  | 'BACKTEST_PREWEEK'
+  | 'BACKTEST_SEEDED';
 
 export interface MatchupGame {
   /** ESPN game id, from the schedule spine. */
@@ -102,6 +110,10 @@ export interface MatchupGame {
   has_box_score?: boolean;
   /** True when a per-game detail file exists under public/data/games/. */
   has_game_detail?: boolean;
+  /** Accuracy-log provenance kind for logged projections; null/omitted otherwise. */
+  log_source?: MatchupLogSource | null;
+  /** Phase 2 explainability payload for modal inspection (including pending games). */
+  explainability?: GameExplainabilityPayload | null;
 }
 
 export type SlateStatus = 'past' | 'active' | 'future';
