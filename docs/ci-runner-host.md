@@ -374,9 +374,28 @@ To be filled in during cutover (#154): wall-clock time per job and peak memory
 inside Ubuntu, per sport repo; results of the overlap test, the fallback drill
 and the host-off test.
 
-| Repo | `web` time | `r` time | Peak memory |
+| Repo | `web` time | `r` time | Peak memory, `web` / `r` |
 | --- | --- | --- | --- |
 | MLB | | | |
 | WNBA | | | |
-| NBA | | | |
-| NFL | | | |
+| NBA | about 3m 12s | about 45s | 2.8 GiB / 2.0 GiB |
+| NFL | about 5m 17s | about 15s | 3.4 GiB / 1.9 GiB |
+
+How the NBA and NFL rows were measured (2026-11-15, manual CI runs on `main`,
+both repos started at the same moment):
+
+- `free -m` sampled every 2 s, together with the owner of the job lock, so
+  each sample belongs to the job holding the lock.
+- **Peak memory** is Ubuntu's total `used` memory while that job held the
+  lock. It includes about 1.4 GiB used with the runners idle, so the job's own
+  share is roughly 1.4–2.0 GiB for `web` and about 0.6 GiB for `r`.
+- No swap was used. The highest `used` memory was 3.4 GiB, during the NFL
+  `web` job, well under the 8 GB cap and the 6 GB per-job threshold in #154.
+  `available` memory never dropped below 4.4 GiB.
+- **Times** are how long each job held the lock (to within the 2 s sampling).
+  GitHub's job duration is longer for a job that waited, because the wait for
+  the lock is counted inside the job.
+
+Overlap: with both repos started together, the four jobs ran one at a time in
+lock order (NFL `r`, NBA `r`, NFL `web`, NBA `web`). NBA `web` waited about
+5.5 minutes for the lock, and both runs passed.
