@@ -8,10 +8,14 @@ import {
   ArrowUpDown,
   Award,
   ChevronDown,
+  ChevronUp,
   Clock,
+  GitBranch,
   Info,
+  Layers,
   Loader2,
   RotateCcw,
+  ShieldCheck,
   X,
 } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
@@ -19,11 +23,16 @@ import { MISSING_VALUE, num } from '@/lib/format';
 import {
   ContextSplitItem,
   EfficiencyFactorItem,
+  EnteringBaseline,
   GameDetailEnvelope,
   GameDetailPayload,
+  GameExplainabilityPayload,
   InactivePlayerRow,
+  MarginWaterfallStep,
   PlayerBoxRow,
   TeamBoxTotals,
+  XgboostShapFactor,
+  XgboostShapPayload,
 } from '@/lib/gameDetailTypes';
 import { MatchupGame, ProjectionBasis } from '@/lib/matchupTypes';
 import { TeamLogo } from '@/components/TeamLogo';
@@ -56,7 +65,7 @@ type SortField =
 
 type SortDirection = 'asc' | 'desc';
 
-type DetailSectionTab = 'box_score' | 'four_factors' | 'context_splits';
+type DetailSectionTab = 'box_score' | 'four_factors' | 'context_splits' | 'attribution';
 
 interface BoxColumnDef {
   key: SortField;
@@ -463,6 +472,598 @@ function renderSortIcon(isSorted: boolean, direction: SortDirection): React.Reac
   );
 }
 
+const PROVENANCE_META: Record<
+  NonNullable<GameExplainabilityPayload['logged_forecast']>['log_source'],
+  { pill: string; badgeClass: string; containerClass: string }
+> = {
+  LOGGED_PREGAME: {
+    pill: 'Logged Pre-Game',
+    badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+    containerClass: 'bg-emerald-500/5 border-emerald-500/25',
+  },
+  BACKTEST_PREWEEK: {
+    pill: 'Backtest · Pre-Week',
+    badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+    containerClass: 'bg-amber-500/5 border-amber-500/25',
+  },
+  BACKTEST_SEEDED: {
+    pill: 'Backtest · Seeded',
+    badgeClass: 'bg-slate-700/70 text-slate-200 border-slate-600',
+    containerClass: 'bg-slate-800/50 border-slate-700',
+  },
+};
+
+const BASELINE_FACTOR_ORDER = ['efg_pct', 'tov_pct', 'oreb_pct', 'fta_rate', 'ortg'] as const;
+
+const BASELINE_FACTOR_META: Record<string, { label: string; isPct: boolean }> = {
+  efg_pct: { label: 'Effective FG% (eFG%)', isPct: true },
+  tov_pct: { label: 'Turnover Rate (TOV%)', isPct: true },
+  oreb_pct: { label: 'Offensive Reb% (OREB%)', isPct: true },
+  fta_rate: { label: 'FT Attempt Rate (FTA/FGA)', isPct: false },
+  ortg: { label: 'Offensive Rating (ORtg)', isPct: false },
+};
+
+/** Formats finite signed decimals without `-0.00` artifacts. */
+function formatSignedNumber(value: number | null | undefined, decimals = 2): string {
+  if (!isFiniteNum(value)) return MISSING_VALUE;
+  const absFixed = Math.abs(value).toFixed(decimals);
+  if (Number(absFixed) === 0) return absFixed;
+  return `${value > 0 ? '+' : '-'}${absFixed}`;
+}
+
+/** Formats probability in `[0, 1]` as percentage string with one decimal. */
+function formatProbPct(value: number | null | undefined): string {
+  if (!isFiniteNum(value)) return MISSING_VALUE;
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+/** Returns verbatim Section 4.2 provenance banner copy for logged/backtest forecasts. */
+function getProvenanceMessage(explainability: GameExplainabilityPayload): string | null {
+  const logged = explainability.logged_forecast;
+  if (!logged) return null;
+
+  switch (logged.log_source) {
+    case 'LOGGED_PREGAME':
+      return explainability.margin_waterfall === null
+        ? 'Forecast recorded before the game. The ratings behind it were not stored, so only the recorded forecast is shown.'
+        : 'Forecast recorded before the game.';
+    case 'BACKTEST_PREWEEK':
+      return 'Backtest. Logging was unavailable that day; this forecast was rebuilt afterwards from ratings published before the game.';
+    case 'BACKTEST_SEEDED':
+      return 'Backtest computed after the game from later ratings. Not a pre-game forecast.';
+  }
+}
+
+function formatBaselineMetric(key: string, value: number | null | undefined): string {
+  if (!isFiniteNum(value)) return MISSING_VALUE;
+  return BASELINE_FACTOR_META[key]?.isPct ? `${value.toFixed(1)}%` : value.toFixed(1);
+}
+
+function formatBaselineDiff(key: string, value: number | null | undefined): string {
+  if (!isFiniteNum(value)) return MISSING_VALUE;
+  const signed = formatSignedNumber(value, 1);
+  return BASELINE_FACTOR_META[key]?.isPct ? `${signed}%` : signed;
+}
+
+function formatShapFeatureValue(value: number): string {
+  if (!isFiniteNum(value)) return MISSING_VALUE;
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
+function sortBaselineFactors(
+  factors: EnteringBaseline['factors'],
+): EnteringBaseline['factors'] {
+  const rankMap = new Map<string, number>(BASELINE_FACTOR_ORDER.map((k, idx) => [k, idx]));
+  return [...factors].sort((a, b) => {
+    const ra = rankMap.get(a.key) ?? BASELINE_FACTOR_ORDER.length;
+    const rb = rankMap.get(b.key) ?? BASELINE_FACTOR_ORDER.length;
+    if (ra !== rb) return ra - rb;
+    return a.key.localeCompare(b.key);
+  });
+}
+
+interface AttributionSectionProps {
+  explainability: GameExplainabilityPayload;
+  awayAbbr: string;
+  homeAbbr: string;
+  isCompleted: boolean;
+  hasBoxScoreData: boolean;
+  missingBoxMessage: string;
+}
+
+const ProvenanceBanner: React.FC<{ explainability: GameExplainabilityPayload }> = ({
+  explainability,
+}) => {
+  const logged = explainability.logged_forecast;
+  const isPrimaryLive = explainability.projection_basis === 'primary_ensemble';
+
+  if (!logged && !isPrimaryLive) return null;
+
+  if (!logged) {
+    return (
+      <section
+        aria-label="Forecast provenance"
+        className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2"
+      >
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-emerald-300 flex-shrink-0" aria-hidden="true" />
+          <span className="px-2 py-0.5 rounded-full text-xs font-mono font-semibold border bg-emerald-500/15 text-emerald-300 border-emerald-500/30">
+            Live Primary Ensemble Ratings
+          </span>
+        </div>
+        <span className="text-xs text-slate-300">
+          Computed directly from active Primary Ensemble team and roster ratings.
+        </span>
+      </section>
+    );
+  }
+
+  const meta = PROVENANCE_META[logged.log_source];
+  const provenanceCopy = getProvenanceMessage(explainability);
+  const hasBrier = isFiniteNum(logged.brier_component);
+  const hasLogLoss = isFiniteNum(logged.log_loss_component);
+
+  return (
+    <section
+      aria-label="Forecast provenance"
+      className={`rounded-xl border px-3.5 py-2.5 space-y-1.5 ${meta.containerClass}`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-slate-200 flex-shrink-0" aria-hidden="true" />
+          <span
+            className={`px-2 py-0.5 rounded-full text-xs font-mono font-semibold border ${meta.badgeClass}`}
+          >
+            {meta.pill}
+          </span>
+          {isPrimaryLive && (
+            <span className="px-2 py-0.5 rounded-full text-xs font-mono border bg-slate-800/80 text-slate-200 border-slate-700">
+              Live Primary Ensemble Ratings
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-3 text-xs font-mono tabular-nums text-slate-300">
+          <span>Recorded: {logged.prediction_timestamp}</span>
+          {hasBrier && <span>Brier: {logged.brier_component!.toFixed(4)}</span>}
+          {hasLogLoss && <span>Log Loss: {logged.log_loss_component!.toFixed(4)}</span>}
+        </div>
+      </div>
+      {provenanceCopy && <p className="text-xs text-slate-200 leading-relaxed">{provenanceCopy}</p>}
+    </section>
+  );
+};
+
+const PrimaryWaterfallCard: React.FC<{
+  explainability: GameExplainabilityPayload;
+  awayAbbr: string;
+  homeAbbr: string;
+}> = ({ explainability, awayAbbr, homeAbbr }) => {
+  const steps: MarginWaterfallStep[] = explainability.margin_waterfall ?? [];
+  const hasSteps = steps.length > 0;
+  const maxAbs = hasSteps ? Math.max(...steps.map((s) => Math.abs(s.points)), 0.5) : 1;
+
+  return (
+    <section
+      aria-labelledby="primary-waterfall-heading"
+      className="bg-surface/60 border border-slate-800 rounded-xl p-3.5 space-y-3"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Layers className="w-4 h-4 text-emerald-400 flex-shrink-0" aria-hidden="true" />
+          <h3 id="primary-waterfall-heading" className="text-sm font-bold text-white">
+            Primary Ensemble Margin Waterfall
+          </h3>
+          <span className="px-2 py-0.5 rounded-full text-xs font-mono font-semibold border bg-emerald-500/15 text-emerald-300 border-emerald-500/30">
+            Primary Ensemble
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 text-xs font-mono tabular-nums">
+          <span className="px-2 py-0.5 rounded bg-slate-900/80 border border-slate-800 text-slate-200">
+            {homeAbbr} Margin: {formatSignedNumber(explainability.predicted_margin, 2)} pts
+          </span>
+          <span className="px-2 py-0.5 rounded bg-slate-900/80 border border-slate-800 text-slate-200">
+            {homeAbbr} Win Prob: {formatProbPct(explainability.predicted_home_win_prob)}
+          </span>
+          <span className="px-2 py-0.5 rounded bg-slate-900/80 border border-slate-800 text-slate-300">
+            σ = {isFiniteNum(explainability.sigma_game) ? explainability.sigma_game.toFixed(1) : MISSING_VALUE}{' '}
+            · Φ(margin / sigma_game)
+          </span>
+        </div>
+      </div>
+
+      {hasSteps ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 px-1">
+            <span>← Toward {awayAbbr}</span>
+            <span>0.0 pts</span>
+            <span>Toward {homeAbbr} →</span>
+          </div>
+
+          <div className="divide-y divide-slate-800/80 border border-slate-800 rounded-lg overflow-hidden bg-slate-950/35">
+            {steps.map((step) => {
+              const widthPct = Math.min(50, (Math.abs(step.points) / maxAbs) * 50);
+              const isPositive = step.points >= 0;
+              const isRounding = step.key === 'rounding';
+
+              return (
+                <div
+                  key={step.key}
+                  aria-label={`${step.label}: ${formatSignedNumber(step.points, 2)} points`}
+                  className="px-3 py-2 grid grid-cols-1 sm:grid-cols-12 items-center gap-2 text-xs"
+                >
+                  <div className="sm:col-span-5 min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="font-semibold text-slate-200">{step.label}</span>
+                      {isRounding && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-slate-300 border border-slate-700">
+                          Arithmetic residual
+                        </span>
+                      )}
+                    </div>
+                    {step.detail && (
+                      <p className="text-[11px] text-slate-400 truncate" title={step.detail}>
+                        {step.detail}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="sm:col-span-5 flex items-center" aria-hidden="true">
+                    <div className="relative w-full h-2.5 rounded-full bg-slate-900 overflow-hidden">
+                      <div className="absolute left-1/2 top-0 bottom-0 w-px bg-slate-700" />
+                      {isPositive ? (
+                        <div
+                          className="absolute top-0 bottom-0 bg-emerald-400/80 rounded-r-full"
+                          style={{ left: '50%', width: `${widthPct}%` }}
+                        />
+                      ) : (
+                        <div
+                          className="absolute top-0 bottom-0 bg-sky-400/80 rounded-l-full"
+                          style={{ left: `${50 - widthPct}%`, width: `${widthPct}%` }}
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  <div
+                    className={`sm:col-span-2 text-right font-mono tabular-nums font-semibold ${
+                      isPositive ? 'text-emerald-300' : 'text-sky-300'
+                    }`}
+                  >
+                    {formatSignedNumber(step.points, 2)} pts
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="px-3 py-2.5 rounded-lg bg-slate-900/60 border border-slate-800 text-xs text-slate-300">
+          Component waterfall steps are unavailable for this projection. The stored{' '}
+          {homeAbbr} margin ({formatSignedNumber(explainability.predicted_margin, 2)} pts) and win
+          probability ({formatProbPct(explainability.predicted_home_win_prob)}) shown above reflect
+          the recorded forecast.
+        </div>
+      )}
+    </section>
+  );
+};
+
+const SecondaryShapCard: React.FC<{
+  xgboostShap: XgboostShapPayload | null | undefined;
+  awayAbbr: string;
+  homeAbbr: string;
+}> = ({ xgboostShap, awayAbbr, homeAbbr }) => {
+  const [showAllShap, setShowAllShap] = useState<boolean>(false);
+
+  const sortedFactors: XgboostShapFactor[] = useMemo(() => {
+    if (!xgboostShap) return [];
+    return [...xgboostShap.factors].sort(
+      (a, b) => Math.abs(b.shap_log_odds) - Math.abs(a.shap_log_odds),
+    );
+  }, [xgboostShap]);
+
+  const maxAbsShap = useMemo(() => {
+    if (sortedFactors.length === 0) return 0.25;
+    return Math.max(...sortedFactors.map((f) => Math.abs(f.shap_log_odds)), 0.05);
+  }, [sortedFactors]);
+
+  const visibleFactors = showAllShap ? sortedFactors : sortedFactors.slice(0, 6);
+
+  return (
+    <section
+      aria-labelledby="secondary-shap-heading"
+      className="bg-surface/60 border border-violet-500/25 rounded-xl p-3.5 space-y-3"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <GitBranch className="w-4 h-4 text-violet-300 flex-shrink-0" aria-hidden="true" />
+          <h3 id="secondary-shap-heading" className="text-sm font-bold text-white">
+            Secondary Diagnostic Model: XGBoost Feature Fusion (TreeSHAP)
+          </h3>
+          <span className="px-2 py-0.5 rounded-full text-xs font-mono font-semibold border bg-violet-500/15 text-violet-300 border-violet-500/30">
+            Secondary Diagnostic Model
+          </span>
+        </div>
+
+        {xgboostShap && (
+          <div className="flex flex-wrap items-center gap-2 text-xs font-mono tabular-nums">
+            <span className="px-2 py-0.5 rounded bg-violet-500/10 border border-violet-500/30 text-violet-200 font-semibold">
+              {homeAbbr} Diagnostic Win Prob: {formatProbPct(xgboostShap.predicted_home_win_prob)}
+            </span>
+          </div>
+        )}
+      </div>
+
+      <p className="px-2.5 py-1.5 rounded-lg bg-violet-500/5 border border-violet-500/20 text-[11px] text-slate-300 leading-relaxed">
+        Independent 13-feature XGBoost diagnostic trained on prior seasons — reported strictly for
+        feature attribution and never blended or averaged into Primary Ensemble projections.
+      </p>
+
+      {xgboostShap ? (
+        <div className="space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono tabular-nums text-slate-300">
+            <span>
+              {xgboostShap.model_label} · Trained: {xgboostShap.train_seasons_label} · L
+              {xgboostShap.window_games} window ({awayAbbr} {xgboostShap.away_prior_games_n}g /{' '}
+              {homeAbbr} {xgboostShap.home_prior_games_n}g)
+            </span>
+            <span>
+              Base logit {formatSignedNumber(xgboostShap.base_value_log_odds, 3)} → Total logit{' '}
+              {formatSignedNumber(xgboostShap.total_log_odds, 3)}
+            </span>
+          </div>
+
+          <div className="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950/35">
+            <table
+              className="w-full text-xs border-collapse"
+              aria-label="Secondary Diagnostic Model TreeSHAP feature contributions"
+            >
+              <thead>
+                <tr className="bg-slate-900/70 text-[11px] font-mono uppercase text-slate-400 border-b border-slate-800">
+                  <th scope="col" className="text-left px-3 py-1.5 font-semibold">
+                    Feature
+                  </th>
+                  <th scope="col" className="text-right px-2.5 py-1.5 font-semibold whitespace-nowrap">
+                    Raw Value
+                  </th>
+                  <th
+                    scope="col"
+                    className="text-center px-2.5 py-1.5 font-semibold hidden sm:table-cell"
+                  >
+                    Direction ({awayAbbr} / {homeAbbr})
+                  </th>
+                  <th scope="col" className="text-right px-2.5 py-1.5 font-semibold whitespace-nowrap">
+                    SHAP Logit
+                  </th>
+                  <th scope="col" className="text-right px-3 py-1.5 font-semibold whitespace-nowrap">
+                    Δ Prob (pp)
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/70">
+                {visibleFactors.map((factor) => {
+                  const widthPct = Math.min(50, (Math.abs(factor.shap_log_odds) / maxAbsShap) * 50);
+                  const isPositive = factor.shap_log_odds >= 0;
+
+                  return (
+                    <tr key={factor.feature} className="hover:bg-slate-800/30">
+                      <td className="px-3 py-1.5 font-medium text-slate-200">{factor.label}</td>
+                      <td className="px-2.5 py-1.5 text-right font-mono tabular-nums text-slate-300 whitespace-nowrap">
+                        {formatShapFeatureValue(factor.feature_value)}
+                      </td>
+                      <td className="px-2.5 py-1.5 hidden sm:table-cell w-36" aria-hidden="true">
+                        <div className="relative w-full h-2 rounded-full bg-slate-900 overflow-hidden">
+                          <div className="absolute left-1/2 top-0 bottom-0 w-px bg-slate-700" />
+                          {isPositive ? (
+                            <div
+                              className="absolute top-0 bottom-0 bg-violet-400/85 rounded-r-full"
+                              style={{ left: '50%', width: `${widthPct}%` }}
+                            />
+                          ) : (
+                            <div
+                              className="absolute top-0 bottom-0 bg-sky-400/85 rounded-l-full"
+                              style={{ left: `${50 - widthPct}%`, width: `${widthPct}%` }}
+                            />
+                          )}
+                        </div>
+                      </td>
+                      <td
+                        className={`px-2.5 py-1.5 text-right font-mono tabular-nums whitespace-nowrap ${
+                          isPositive ? 'text-violet-300' : 'text-sky-300'
+                        }`}
+                      >
+                        {formatSignedNumber(factor.shap_log_odds, 3)}
+                      </td>
+                      <td
+                        className={`px-3 py-1.5 text-right font-mono tabular-nums whitespace-nowrap font-semibold ${
+                          isPositive ? 'text-violet-200' : 'text-sky-200'
+                        }`}
+                      >
+                        {formatSignedNumber(factor.shap_prob_approx * 100, 1)} pp
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {sortedFactors.length > 6 && (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                aria-expanded={showAllShap}
+                onClick={() => setShowAllShap((prev) => !prev)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-xs font-mono text-slate-200 transition-colors focus:outline-none focus:ring-2 focus:ring-accent-400"
+              >
+                {showAllShap ? (
+                  <>
+                    <ChevronUp className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>Show top 6</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>Show all {sortedFactors.length}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="px-3 py-2.5 rounded-lg bg-slate-900/60 border border-slate-800 text-xs text-slate-300">
+          Secondary XGBoost TreeSHAP diagnostic is unavailable for this matchup due to insufficient
+          prior-season or entering-game rolling history (prior_games_n = 0 early in the season).
+        </div>
+      )}
+    </section>
+  );
+};
+
+const EnteringBaselinesCard: React.FC<{
+  baselines: EnteringBaseline[] | null;
+  isCompleted: boolean;
+}> = ({ baselines, isCompleted }) => {
+  const hasBaselines = Boolean(baselines && baselines.length > 0);
+
+  return (
+    <section
+      aria-labelledby="entering-baselines-heading"
+      className="bg-surface/60 border border-slate-800 rounded-xl p-3.5 space-y-2.5"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 id="entering-baselines-heading" className="text-sm font-bold text-white">
+          Entering Baselines vs Realized Four Factors
+        </h3>
+        <span className="text-[11px] font-mono text-slate-400">
+          {isCompleted
+            ? 'Entering pre-game baselines vs realized box-score efficiency'
+            : 'Entering pre-game baselines (realized values fill after final box score)'}
+        </span>
+      </div>
+
+      {hasBaselines && baselines ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {baselines.map((team) => {
+            const orderedFactors = sortBaselineFactors(team.factors);
+            return (
+              <div
+                key={team.teamAbbr}
+                className="border border-slate-800 rounded-lg overflow-hidden bg-slate-950/35"
+              >
+                <div className="px-3 py-1.5 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between">
+                  <span className="text-xs font-bold text-white font-mono">{team.teamAbbr}</span>
+                  <span className="text-[11px] font-mono text-slate-300">
+                    Prior games: {team.prior_games_n}
+                  </span>
+                </div>
+                <table
+                  className="w-full text-xs border-collapse"
+                  aria-label={`${team.teamAbbr} entering baselines vs realized Four Factors`}
+                >
+                  <thead>
+                    <tr className="text-[11px] font-mono uppercase text-slate-400 border-b border-slate-800">
+                      <th scope="col" className="text-left px-3 py-1.5 font-semibold">
+                        Factor
+                      </th>
+                      <th scope="col" className="text-right px-2 py-1.5 font-semibold">
+                        Entering
+                      </th>
+                      <th scope="col" className="text-right px-2 py-1.5 font-semibold">
+                        Realized
+                      </th>
+                      <th scope="col" className="text-right px-3 py-1.5 font-semibold">
+                        Diff
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/70">
+                    {orderedFactors.map((factor) => (
+                      <tr key={factor.key}>
+                        <td className="px-3 py-1.5 text-slate-200 font-medium">
+                          {BASELINE_FACTOR_META[factor.key]?.label ?? factor.key}
+                        </td>
+                        <td className="px-2 py-1.5 text-right font-mono tabular-nums text-slate-300">
+                          {formatBaselineMetric(factor.key, factor.entering)}
+                        </td>
+                        <td className="px-2 py-1.5 text-right font-mono tabular-nums text-white font-semibold">
+                          {formatBaselineMetric(factor.key, factor.realized)}
+                        </td>
+                        <td
+                          className={`px-3 py-1.5 text-right font-mono tabular-nums ${
+                            isFiniteNum(factor.difference)
+                              ? factor.difference > 0
+                                ? 'text-emerald-300'
+                                : factor.difference < 0
+                                  ? 'text-sky-300'
+                                  : 'text-slate-400'
+                              : 'text-slate-500'
+                          }`}
+                        >
+                          {formatBaselineDiff(factor.key, factor.difference)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="px-3 py-2.5 rounded-lg bg-slate-900/60 border border-slate-800 text-xs text-slate-300">
+          Entering baselines are unavailable for season openers or games with zero prior team
+          history (prior_games_n = 0).
+        </div>
+      )}
+    </section>
+  );
+};
+
+const AttributionSection: React.FC<AttributionSectionProps> = ({
+  explainability,
+  awayAbbr,
+  homeAbbr,
+  isCompleted,
+  hasBoxScoreData,
+  missingBoxMessage,
+}) => (
+  <div
+    id="section-panel-attribution"
+    role="tabpanel"
+    aria-labelledby="section-tab-attribution"
+    className="space-y-3"
+  >
+    {!hasBoxScoreData && (
+      <div className="px-3 py-2 rounded-lg bg-surface/60 border border-slate-800 flex items-center gap-2 text-xs text-slate-300">
+        <Info className="w-4 h-4 text-accent-400 flex-shrink-0" aria-hidden="true" />
+        <span>{missingBoxMessage}</span>
+      </div>
+    )}
+
+    <ProvenanceBanner explainability={explainability} />
+
+    <PrimaryWaterfallCard
+      explainability={explainability}
+      awayAbbr={awayAbbr}
+      homeAbbr={homeAbbr}
+    />
+
+    <SecondaryShapCard
+      xgboostShap={explainability.xgboost_shap}
+      awayAbbr={awayAbbr}
+      homeAbbr={homeAbbr}
+    />
+
+    <EnteringBaselinesCard
+      baselines={explainability.entering_baselines}
+      isCompleted={isCompleted}
+    />
+  </div>
+);
+
 /**
  * Accessible modal displaying empirical game box score, efficiency & Four
  * Factors, play-style context splits, and top performers per MatchupGame.
@@ -491,6 +1092,8 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
   const isOpen = matchup !== null;
   const gameId = matchup?.game_id ?? null;
   const hasGameDetail = matchup?.has_game_detail === true;
+  const inlineExplainability = matchup?.explainability ?? null;
+  const hasInlineExplainabilityOnly = Boolean(!hasGameDetail && inlineExplainability);
 
   const restoreOpenerFocus = useCallback(() => {
     if (restoredFocusRef.current) return;
@@ -516,11 +1119,21 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
   useEffect(() => {
     setDetail(null);
     setError(null);
-    setActiveSection('box_score');
+    setActiveSection(hasInlineExplainabilityOnly ? 'attribution' : 'box_score');
     setActiveTeam('away');
     setSortField(null);
     setSortDirection('desc');
-  }, [gameId]);
+  }, [gameId, hasInlineExplainabilityOnly]);
+
+  // If a detail file arrives without box_score while explainability is present,
+  // default cleanly into Attribution & SHAP instead of leaving an empty box view.
+  useEffect(() => {
+    if (hasGameDetail && !loading && !error && detail && !detail.box_score) {
+      if (detail.explainability ?? inlineExplainability) {
+        setActiveSection('attribution');
+      }
+    }
+  }, [hasGameDetail, loading, error, detail, inlineExplainability]);
 
   // Capture opener focus when opening and move focus inside the dialog;
   // restore focus if closed externally via `matchup={null}`.
@@ -714,11 +1327,19 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
         : null;
 
   const basisInfo = matchup.projection_basis ? BASIS_LABEL[matchup.projection_basis] : null;
-  const showSectionTabs = Boolean(hasGameDetail && !loading && !error && detail && detail.box_score);
+  const explainability = detail?.explainability ?? matchup.explainability ?? null;
+  const hasExplainability = explainability !== null;
+  const hasBoxScoreData = Boolean(hasGameDetail && !loading && !error && detail && detail.box_score);
+  const showSectionTabs = Boolean(hasBoxScoreData || (!loading && !error && hasExplainability));
   const hasEfficiencyFactors = Boolean(
-    detail?.efficiency_factors && detail.efficiency_factors.length > 0,
+    hasBoxScoreData && detail?.efficiency_factors && detail.efficiency_factors.length > 0,
   );
-  const hasContextSplits = Boolean(detail?.context_splits && detail.context_splits.length > 0);
+  const hasContextSplits = Boolean(
+    hasBoxScoreData && detail?.context_splits && detail.context_splits.length > 0,
+  );
+  const missingBoxMessage = !isCompleted
+    ? 'Box score appears after the game.'
+    : 'Final score recorded. The full box score is added on a later data refresh, usually within a day.';
   const columnMap = new Map(SORTABLE_COLUMNS.map((c) => [c.key, c]));
 
   const renderSortableHeader = (key: SortField) => {
@@ -987,21 +1608,34 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                   Context Splits
                 </button>
               )}
+              {hasExplainability && (
+                <button
+                  type="button"
+                  role="tab"
+                  id="section-tab-attribution"
+                  aria-selected={activeSection === 'attribution'}
+                  aria-controls="section-panel-attribution"
+                  onClick={() => setActiveSection('attribution')}
+                  className={`px-3.5 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-accent-400 ${
+                    activeSection === 'attribution'
+                      ? 'border-accent-400 text-accent-400 bg-accent-500/10 rounded-t-lg'
+                      : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  }`}
+                >
+                  Attribution &amp; SHAP
+                </button>
+              )}
             </div>
           )}
         </div>
 
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
-          {/* Missing-data states (no fetch issued) */}
-          {!hasGameDetail && (
+          {/* Missing-data states (no fetch issued when explainability is absent) */}
+          {!hasGameDetail && !hasExplainability && (
             <div className="py-12 px-4 flex flex-col items-center justify-center text-center gap-3 bg-surface/50 border border-slate-800 rounded-xl">
               <Info className="w-9 h-9 text-accent-400" aria-hidden="true" />
-              <p className="text-sm font-semibold text-white max-w-md">
-                {!matchup.is_completed
-                  ? 'Box score appears after the game.'
-                  : 'Final score recorded. The full box score is added on a later data refresh, usually within a day.'}
-              </p>
+              <p className="text-sm font-semibold text-white max-w-md">{missingBoxMessage}</p>
             </div>
           )}
 
@@ -1040,15 +1674,24 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
             </div>
           )}
 
-          {/* Defensive fallback when detail file loaded without box_score */}
-          {hasGameDetail && !loading && !error && detail && !detail.box_score && (
+          {/* Defensive fallback when detail file loaded without box_score or explainability */}
+          {hasGameDetail && !loading && !error && detail && !detail.box_score && !hasExplainability && (
             <div className="py-12 px-4 flex flex-col items-center justify-center text-center gap-3 bg-surface/50 border border-slate-800 rounded-xl">
               <Info className="w-9 h-9 text-accent-400" aria-hidden="true" />
-              <p className="text-sm font-semibold text-white max-w-md">
-                {!detail.is_completed
-                  ? 'Box score appears after the game.'
-                  : 'Final score recorded. The full box score is added on a later data refresh, usually within a day.'}
-              </p>
+              <p className="text-sm font-semibold text-white max-w-md">{missingBoxMessage}</p>
+            </div>
+          )}
+
+          {/* Missing Box Score tab panel when explainability enables tabs without box score */}
+          {!loading && !error && !hasBoxScoreData && hasExplainability && activeSection === 'box_score' && (
+            <div
+              id="section-panel-box-score"
+              role="tabpanel"
+              aria-labelledby="section-tab-box-score"
+              className="py-12 px-4 flex flex-col items-center justify-center text-center gap-3 bg-surface/50 border border-slate-800 rounded-xl"
+            >
+              <Info className="w-9 h-9 text-accent-400" aria-hidden="true" />
+              <p className="text-sm font-semibold text-white max-w-md">{missingBoxMessage}</p>
             </div>
           )}
 
@@ -1482,6 +2125,23 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
               )}
             </>
           )}
+
+          {/* Tier 2b Explainability Tab: Attribution & SHAP */}
+          {!loading &&
+            !error &&
+            hasExplainability &&
+            explainability &&
+            activeSection === 'attribution' && (
+              <AttributionSection
+                key={gameId ?? 'none'}
+                explainability={explainability}
+                awayAbbr={awayAbbr}
+                homeAbbr={homeAbbr}
+                isCompleted={isCompleted}
+                hasBoxScoreData={hasBoxScoreData}
+                missingBoxMessage={missingBoxMessage}
+              />
+            )}
         </div>
       </div>
     </div>

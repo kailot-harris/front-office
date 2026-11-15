@@ -4,7 +4,12 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { GameDetailModal } from '@/components/GameDetailModal';
 import { BASE_PATH } from '@/lib/basePath';
-import type { GameDetailEnvelope, PlayerBoxRow } from '@/lib/gameDetailTypes';
+import type {
+  GameDetailEnvelope,
+  GameExplainabilityPayload,
+  PlayerBoxRow,
+  XgboostShapPayload,
+} from '@/lib/gameDetailTypes';
 import type { MatchupGame } from '@/lib/matchupTypes';
 
 function makeMatchup(overrides: Partial<MatchupGame> = {}): MatchupGame {
@@ -405,6 +410,214 @@ function makeDetailEnvelope(overrides: Partial<GameDetailEnvelope['data']> = {})
       game_flow: null,
       ...overrides,
     },
+  };
+}
+
+function makeXgboostShap(overrides: Partial<XgboostShapPayload> = {}): XgboostShapPayload {
+  return {
+    model_id: 'xgboost_feature_fusion_v1',
+    model_label: 'XGBoost Feature Fusion (v1)',
+    train_seasons_label: '2021–24',
+    window_games: 10,
+    away_prior_games_n: 14,
+    home_prior_games_n: 15,
+    base_value_log_odds: 0.125,
+    total_log_odds: 0.742,
+    predicted_home_win_prob: 0.677,
+    factors: [
+      {
+        feature: 'diff_roll_efg',
+        label: 'Rolling eFG% Diff',
+        feature_value: 2.84,
+        z_score: 1.42,
+        shap_log_odds: 0.245,
+        shap_prob_approx: 0.059,
+      },
+      {
+        feature: 'diff_roll_pts',
+        label: 'Rolling Points Diff',
+        feature_value: 4.1,
+        z_score: 1.18,
+        shap_log_odds: 0.192,
+        shap_prob_approx: 0.046,
+      },
+      {
+        feature: 'diff_roll_tovp',
+        label: 'Rolling TOV% Diff',
+        feature_value: -1.65,
+        z_score: 0.91,
+        shap_log_odds: 0.138,
+        shap_prob_approx: 0.033,
+      },
+      {
+        feature: 'diff_fatigue_index',
+        label: 'Fatigue Index Diff',
+        feature_value: 0.75,
+        z_score: -0.64,
+        shap_log_odds: -0.098,
+        shap_prob_approx: -0.024,
+      },
+      {
+        feature: 'diff_roll_ts',
+        label: 'Rolling TS% Diff',
+        feature_value: 1.92,
+        z_score: 0.72,
+        shap_log_odds: 0.084,
+        shap_prob_approx: 0.02,
+      },
+      {
+        feature: 'diff_roll_oreb',
+        label: 'Rolling OREB% Diff',
+        feature_value: 1.3,
+        z_score: 0.55,
+        shap_log_odds: 0.067,
+        shap_prob_approx: 0.016,
+      },
+      {
+        feature: 'diff_roll_dreb',
+        label: 'Rolling DREB% Diff',
+        feature_value: -0.8,
+        z_score: -0.41,
+        shap_log_odds: -0.052,
+        shap_prob_approx: -0.013,
+      },
+      {
+        feature: 'diff_roll_ast',
+        label: 'Rolling Assists Diff',
+        feature_value: 1.45,
+        z_score: 0.36,
+        shap_log_odds: 0.041,
+        shap_prob_approx: 0.01,
+      },
+      {
+        feature: 'diff_days_rest',
+        label: 'Days Rest Diff',
+        feature_value: 1,
+        z_score: 0.5,
+        shap_log_odds: 0.033,
+        shap_prob_approx: 0.008,
+      },
+      {
+        feature: 'diff_is_b2b',
+        label: 'Back-to-Back Indicator Diff',
+        feature_value: 0,
+        z_score: 0,
+        shap_log_odds: 0.018,
+        shap_prob_approx: 0.004,
+      },
+      {
+        feature: 'diff_roll_stl',
+        label: 'Rolling Steals Diff',
+        feature_value: -0.4,
+        z_score: -0.22,
+        shap_log_odds: -0.016,
+        shap_prob_approx: -0.004,
+      },
+      {
+        feature: 'diff_roll_blk',
+        label: 'Rolling Blocks Diff',
+        feature_value: 0.35,
+        z_score: 0.19,
+        shap_log_odds: 0.011,
+        shap_prob_approx: 0.003,
+      },
+      {
+        feature: 'style_similarity',
+        label: 'Matchup Style Similarity',
+        feature_value: 0.84,
+        z_score: 0.14,
+        shap_log_odds: -0.006,
+        shap_prob_approx: -0.001,
+      },
+    ],
+    ...overrides,
+  };
+}
+
+function makeExplainability(
+  overrides: Partial<GameExplainabilityPayload> = {},
+): GameExplainabilityPayload {
+  return {
+    projection_basis: 'logged_model_margin',
+    predicted_margin: 4.4,
+    predicted_home_win_prob: 0.644,
+    sigma_game: 11.8,
+    margin_waterfall: [
+      {
+        key: 'bottom_up',
+        label: 'Bottom-Up Player Net',
+        points: 2.1,
+        detail: 'NYK starters +2.1 net pts',
+      },
+      {
+        key: 'rapm',
+        label: 'Regularized Adjusted Plus-Minus',
+        points: 1.45,
+        detail: 'Lineup priors +1.45 pts',
+      },
+      {
+        key: 'shot_fatigue',
+        label: 'Shot Profile & Fatigue',
+        points: -0.85,
+        detail: 'Away rest edge -0.85 pts',
+      },
+      {
+        key: 'embeddings',
+        label: 'Playstyle Embeddings',
+        points: 0.35,
+        detail: 'Perimeter matchup +0.35 pts',
+      },
+      {
+        key: 'home_court',
+        label: 'Home Court Advantage',
+        points: 1.5,
+        detail: 'Baseline arena factor +1.50 pts',
+      },
+      {
+        key: 'schedule',
+        label: 'Schedule Context',
+        points: -0.16,
+        detail: 'Travel distance adjustment -0.16 pts',
+      },
+      {
+        key: 'rounding',
+        label: 'Display Rounding Adjustment',
+        points: 0.01,
+        detail: 'Sum reconciliation +0.01 pts',
+      },
+    ],
+    logged_forecast: {
+      prediction_timestamp: '2026-10-20T17:15:00Z',
+      log_source: 'LOGGED_PREGAME',
+      brier_component: 0.4147,
+      log_loss_component: 1.0328,
+    },
+    entering_baselines: [
+      {
+        teamAbbr: 'PHI',
+        prior_games_n: 14,
+        factors: [
+          { key: 'efg_pct', entering: 52.4, realized: 54.2, difference: 1.8 },
+          { key: 'tov_pct', entering: 13.8, realized: 12.1, difference: -1.7 },
+          { key: 'oreb_pct', entering: 24.5, realized: 26.0, difference: 1.5 },
+          { key: 'fta_rate', entering: 24.1, realized: 22.0, difference: -2.1 },
+          { key: 'ortg', entering: 112.4, realized: 113.5, difference: 1.1 },
+        ],
+      },
+      {
+        teamAbbr: 'NYK',
+        prior_games_n: 15,
+        factors: [
+          { key: 'efg_pct', entering: 53.9, realized: 49.8, difference: -4.1 },
+          { key: 'tov_pct', entering: 12.6, realized: 14.0, difference: 1.4 },
+          { key: 'oreb_pct', entering: 27.1, realized: 25.0, difference: -2.1 },
+          { key: 'fta_rate', entering: 25.3, realized: 22.6, difference: -2.7 },
+          { key: 'ortg', entering: 116.2, realized: 107.1, difference: -9.1 },
+        ],
+      },
+    ],
+    xgboost_shap: makeXgboostShap(),
+    ...overrides,
   };
 }
 
@@ -865,5 +1078,296 @@ describe('GameDetailModal empirical Phase 1 views & box score sorting', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
     expect(document.activeElement).toBe(opener);
+  });
+
+  it('renders 4 tabs for completed game with explainability, defaulting to Box Score and opening Attribution & SHAP', async () => {
+    const user = userEvent.setup();
+    const explainability = makeExplainability();
+    stubFetchJson(makeDetailEnvelope({ explainability }));
+
+    render(
+      <GameDetailModal
+        matchup={makeMatchup({ has_game_detail: true, explainability })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await screen.findByText('Player Box Score');
+    const boxTab = screen.getByRole('tab', { name: /Box Score/i });
+    const fourTab = screen.getByRole('tab', { name: /Four Factors/i });
+    const contextTab = screen.getByRole('tab', { name: /Context Splits/i });
+    const attributionTab = screen.getByRole('tab', { name: /Attribution & SHAP/i });
+
+    expect(boxTab).toHaveAttribute('aria-selected', 'true');
+    expect(fourTab).toHaveAttribute('aria-selected', 'false');
+    expect(contextTab).toHaveAttribute('aria-selected', 'false');
+    expect(attributionTab).toHaveAttribute('aria-selected', 'false');
+
+    await user.click(attributionTab);
+    expect(attributionTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('Primary Ensemble Margin Waterfall')).toBeInTheDocument();
+    expect(
+      screen.getByText('Secondary Diagnostic Model: XGBoost Feature Fusion (TreeSHAP)'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Entering Baselines vs Realized Four Factors')).toBeInTheDocument();
+  });
+
+  it('displays verbatim provenance banners for LOGGED_PREGAME, missing-waterfall LOGGED_PREGAME, BACKTEST_PREWEEK, BACKTEST_SEEDED, and primary_ensemble basis', async () => {
+    const user = userEvent.setup();
+
+    const pregameExplainability = makeExplainability({
+      logged_forecast: {
+        prediction_timestamp: '2026-10-20T17:15:00Z',
+        log_source: 'LOGGED_PREGAME',
+        brier_component: 0.4147,
+        log_loss_component: 1.0328,
+      },
+    });
+    stubFetchJson(makeDetailEnvelope({ explainability: pregameExplainability }));
+    const { rerender } = render(
+      <GameDetailModal matchup={makeMatchup({ has_game_detail: true })} onClose={vi.fn()} />,
+    );
+
+    await screen.findByText('Player Box Score');
+    await user.click(screen.getByRole('tab', { name: /Attribution & SHAP/i }));
+    expect(screen.getByText('Forecast recorded before the game.')).toBeInTheDocument();
+    expect(screen.getByText('Logged Pre-Game')).toBeInTheDocument();
+    expect(screen.getByText(/Recorded: 2026-10-20T17:15:00Z/)).toBeInTheDocument();
+    expect(screen.getByText(/Brier: 0\.4147/)).toBeInTheDocument();
+    expect(screen.getByText(/Log Loss: 1\.0328/)).toBeInTheDocument();
+
+    // Switch to LOGGED_PREGAME with margin_waterfall: null (still preserves recorded forecast)
+    const missingWaterfallExplainability = makeExplainability({
+      margin_waterfall: null,
+      predicted_margin: 3.75,
+      predicted_home_win_prob: 0.625,
+      logged_forecast: {
+        prediction_timestamp: '2026-10-21T16:00:00Z',
+        log_source: 'LOGGED_PREGAME',
+        brier_component: null,
+        log_loss_component: null,
+      },
+    });
+    rerender(
+      <GameDetailModal
+        matchup={makeMatchup({
+          game_id: '401909090',
+          has_game_detail: false,
+          is_completed: true,
+          explainability: missingWaterfallExplainability,
+        })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        'Forecast recorded before the game. The ratings behind it were not stored, so only the recorded forecast is shown.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/NYK Margin: \+3\.75 pts/)).toBeInTheDocument();
+    expect(screen.getByText(/NYK Win Prob: 62\.5%/)).toBeInTheDocument();
+
+    // Switch to BACKTEST_PREWEEK
+    rerender(
+      <GameDetailModal
+        matchup={makeMatchup({
+          game_id: '401909091',
+          has_game_detail: false,
+          is_completed: false,
+          explainability: makeExplainability({
+            logged_forecast: {
+              prediction_timestamp: '2026-10-22T12:00:00Z',
+              log_source: 'BACKTEST_PREWEEK',
+              brier_component: null,
+              log_loss_component: null,
+            },
+          }),
+        })}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText(
+        'Backtest. Logging was unavailable that day; this forecast was rebuilt afterwards from ratings published before the game.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Backtest · Pre-Week')).toBeInTheDocument();
+
+    // Switch to BACKTEST_SEEDED with projection_basis: 'primary_ensemble'
+    rerender(
+      <GameDetailModal
+        matchup={makeMatchup({
+          game_id: '401909092',
+          has_game_detail: false,
+          is_completed: false,
+          projection_basis: 'primary_ensemble',
+          explainability: makeExplainability({
+            projection_basis: 'primary_ensemble',
+            logged_forecast: {
+              prediction_timestamp: '2026-10-23T09:00:00Z',
+              log_source: 'BACKTEST_SEEDED',
+              brier_component: null,
+              log_loss_component: null,
+            },
+          }),
+        })}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText('Backtest computed after the game from later ratings. Not a pre-game forecast.'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Backtest · Seeded')).toBeInTheDocument();
+    expect(screen.getByText('Live Primary Ensemble Ratings')).toBeInTheDocument();
+  });
+
+  it('renders Primary Ensemble waterfall bars, rounding residual, separate Secondary Diagnostic Model TreeSHAP with 6->13 toggle, Entering Baselines, and passes forbidden copy check', async () => {
+    const user = userEvent.setup();
+    const explainability = makeExplainability();
+    stubFetchJson(makeDetailEnvelope({ explainability }));
+
+    const { container } = render(
+      <GameDetailModal
+        matchup={makeMatchup({ has_game_detail: true, explainability })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await screen.findByText('Player Box Score');
+    await user.click(screen.getByRole('tab', { name: /Attribution & SHAP/i }));
+
+    // Primary Ensemble badge and conversion notation
+    expect(screen.getByText('Primary Ensemble')).toBeInTheDocument();
+    expect(screen.getByText(/σ = 11\.8 · Φ\(margin \/ sigma_game\)/)).toBeInTheDocument();
+    expect(screen.getByText('Bottom-Up Player Net')).toBeInTheDocument();
+    expect(screen.getByText('NYK starters +2.1 net pts')).toBeInTheDocument();
+    expect(screen.getByText('Display Rounding Adjustment')).toBeInTheDocument();
+    expect(screen.getByText('Arithmetic residual')).toBeInTheDocument();
+
+    // Secondary Diagnostic Model distinctly badged and showing its own win prob
+    expect(screen.getByText('Secondary Diagnostic Model')).toBeInTheDocument();
+    expect(screen.getByText(/NYK Diagnostic Win Prob: 67\.7%/)).toBeInTheDocument();
+    expect(screen.getByText(/Trained: 2021–24/)).toBeInTheDocument();
+    expect(screen.getByText(/Base logit \+0\.125 → Total logit \+0\.742/)).toBeInTheDocument();
+
+    const shapTable = screen.getByRole('table', {
+      name: /Secondary Diagnostic Model TreeSHAP feature contributions/i,
+    });
+    // Initially top 6 feature rows + 1 header row = 7
+    expect(within(shapTable).getAllByRole('row')).toHaveLength(7);
+    expect(within(shapTable).getByText('Rolling eFG% Diff')).toBeInTheDocument();
+    expect(within(shapTable).getByText('+5.9 pp')).toBeInTheDocument();
+    expect(within(shapTable).queryByText('Matchup Style Similarity')).not.toBeInTheDocument();
+
+    // Expand all 13 TreeSHAP factors
+    const expandBtn = screen.getByRole('button', { name: /Show all 13/i });
+    expect(expandBtn).toHaveAttribute('aria-expanded', 'false');
+    await user.click(expandBtn);
+    expect(expandBtn).toHaveAttribute('aria-expanded', 'true');
+    expect(within(shapTable).getAllByRole('row')).toHaveLength(14);
+    expect(within(shapTable).getByText('Matchup Style Similarity')).toBeInTheDocument();
+    expect(within(shapTable).getByText('-0.1 pp')).toBeInTheDocument();
+
+    // Collapse back to top 6
+    await user.click(screen.getByRole('button', { name: /Show top 6/i }));
+    expect(within(shapTable).getAllByRole('row')).toHaveLength(7);
+
+    // Expand again before checking full modal text for forbidden terms
+    await user.click(screen.getByRole('button', { name: /Show all 13/i }));
+
+    // Entering Baselines table verification
+    const nykBaselineTable = screen.getByRole('table', {
+      name: /NYK entering baselines vs realized Four Factors/i,
+    });
+    expect(within(nykBaselineTable).getByText('Effective FG% (eFG%)')).toBeInTheDocument();
+    expect(within(nykBaselineTable).getByText('53.9%')).toBeInTheDocument();
+    expect(within(nykBaselineTable).getByText('49.8%')).toBeInTheDocument();
+    expect(within(nykBaselineTable).getByText('-4.1%')).toBeInTheDocument();
+    expect(within(nykBaselineTable).getByText('Offensive Rating (ORtg)')).toBeInTheDocument();
+    expect(screen.getByText('Prior games: 14')).toBeInTheDocument();
+    expect(screen.getByText('Prior games: 15')).toBeInTheDocument();
+
+    expect(container.textContent).not.toMatch(
+      /\b(odds|spread|moneyline|over_under|kelly|sportsbook|sharp_book|implied_probability|market_odds|value_bets|favorite|upset|covered)\b/i,
+    );
+    expect(container.textContent).not.toContain('NaN');
+    expect(container.textContent).not.toContain('undefined');
+  });
+
+  it('opens unplayed games with inline matchup.explainability directly to Attribution & SHAP with zero fetch calls and accessible missing-box notice', async () => {
+    const user = userEvent.setup();
+    const fetchSpy = vi.fn<typeof fetch>();
+    vi.stubGlobal('fetch', fetchSpy);
+
+    const inlineExplainability = makeExplainability({
+      projection_basis: 'primary_ensemble',
+      xgboost_shap: null,
+      entering_baselines: null,
+      logged_forecast: null,
+    });
+
+    const unplayedMatchup = makeMatchup({
+      game_id: '0022600999',
+      is_completed: false,
+      has_box_score: false,
+      has_game_detail: false,
+      projection_basis: 'primary_ensemble',
+      home_score: null,
+      away_score: null,
+      actual_margin: null,
+      actual_winner: null,
+      prediction_correct: null,
+      explainability: inlineExplainability,
+    });
+
+    render(<GameDetailModal matchup={unplayedMatchup} onClose={vi.fn()} />);
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    const attributionTab = screen.getByRole('tab', { name: /Attribution & SHAP/i });
+    const boxTab = screen.getByRole('tab', { name: /Box Score/i });
+    expect(attributionTab).toHaveAttribute('aria-selected', 'true');
+    expect(boxTab).toHaveAttribute('aria-selected', 'false');
+
+    expect(screen.getByText('Box score appears after the game.')).toBeInTheDocument();
+    expect(screen.getByText('Live Primary Ensemble Ratings')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Secondary XGBoost TreeSHAP diagnostic is unavailable/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Entering baselines are unavailable for season openers/i),
+    ).toBeInTheDocument();
+
+    await user.click(boxTab);
+    expect(boxTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('Box score appears after the game.')).toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('keeps Final score recorded notice accessible when completed game lacks box score yet has inline explainability', () => {
+    const fetchSpy = vi.fn<typeof fetch>();
+    vi.stubGlobal('fetch', fetchSpy);
+
+    const completedNoDetail = makeMatchup({
+      game_id: '0022600888',
+      is_completed: true,
+      has_box_score: false,
+      has_game_detail: false,
+      explainability: makeExplainability(),
+    });
+
+    render(<GameDetailModal matchup={completedNoDetail} onClose={vi.fn()} />);
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(screen.getByRole('tab', { name: /Attribution & SHAP/i })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(
+      screen.getByText(
+        'Final score recorded. The full box score is added on a later data refresh, usually within a day.',
+      ),
+    ).toBeInTheDocument();
   });
 });
