@@ -19,6 +19,14 @@
 # No secrets are used or needed. Do not add ODDS_API_KEY or DISCORD_WEBHOOK
 # here: a workflow that can reach them is a workflow a pull request from a fork
 # could be made to reach them through.
+#
+# Runner selection: both jobs read the repository variable CI_RUNNER.
+#   unset or empty - GitHub-hosted ubuntu-latest (the default, and the fallback).
+#   self-hosted    - the self-hosted Linux runner registered for this repo.
+# To switch back to GitHub-hosted runners, delete the variable or clear its
+# value (repo Settings -> Secrets and variables -> Actions -> Variables).
+# A self-hosted runner keeps its work folder between runs; actions/checkout
+# cleans the checkout, so leave its clean option at the default.
 # ==============================================================================
 name: CI
 
@@ -42,7 +50,7 @@ permissions:
 jobs:
   web:
     name: Web suite
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 30
     defaults:
       run:
@@ -97,7 +105,7 @@ jobs:
 
   r:
     name: R pipeline tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 45
     env:
       # Stage entrypoints end in a call that runs the real stage. The tests load
