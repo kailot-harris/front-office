@@ -195,6 +195,11 @@ run_stage("prediction_accuracy_logger.R", "Reconcile Outcomes & Log Pre-Game Win
 run_stage("accuracy_governance.R", "Compute Forecast Accuracy Governance & Calibration Diagnostics",
           output = file.path(CACHE_DIR, "accuracy_governance.rds"))
 
+# 8.6. Secondary XGBoost Feature Fusion & TreeSHAP Explanations (Issue #124)
+run_stage("xgboost_shap_engine.R",
+          "Compute XGBoost Feature Fusion Predictions & TreeSHAP Explanations",
+          output = CACHE_XGBOOST_GAME_SHAP(MATCHUPS_HOOPR_SEASON))
+
 # 9. Web-Facing Per-Game Slates (must run AFTER prediction_accuracy_logger.R, which
 # writes the graded prediction log this stage reads, and after the box-score cache
 # ingestion that supplies the real final scores it joins on game_id.)
