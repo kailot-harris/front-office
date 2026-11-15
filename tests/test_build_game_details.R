@@ -731,6 +731,157 @@ if (file.exists(tb_path) && file.exists(pb_path)) {
 }
 
 # ------------------------------------------------------------------------------
+section("6. tools/refresh_live_results.R preserves has_box_score & has_game_detail")
+# ------------------------------------------------------------------------------
+
+rlr_env <- new.env(parent = globalenv())
+wd_before_rlr <- getwd()
+setwd(REPO_ROOT)
+source(file.path(REPO_ROOT, "tools", "refresh_live_results.R"), local = rlr_env)
+setwd(wd_before_rlr)
+
+rlr_tmp_dir <- file.path(tempdir(), "gbd_rlr_preserve_test")
+if (dir.exists(rlr_tmp_dir)) unlink(rlr_tmp_dir, recursive = TRUE)
+dir.create(rlr_tmp_dir, recursive = TRUE)
+
+rlr_fixture <- list(
+  season = 2027L,
+  season_label = "2026-2027",
+  generated_at = "2026-11-15T10:00:00Z",
+  slate_granularity = "week_of_season",
+  season_start_date = "2026-11-01",
+  season_end_date = "2026-11-16",
+  schedule_source = "hoopR::load_nba_schedule(seasons = 2027)",
+  active_slate = 2L,
+  available_slates = c(1L, 2L),
+  total_games = 3L,
+  completed_games = 1L,
+  pending_games = 2L,
+  games_with_projection = 3L,
+  games_without_projection = 0L,
+  games_logged_basis = 3L,
+  games_ratings_basis = 0L,
+  games_ensemble_basis = 0L,
+  ratings_source = "fixture",
+  rating_match_rate_pct = 100,
+  logged_predictions_in_season = 3L,
+  logged_predictions_matched = 3L,
+  join_match_rate_pct = 100,
+  graded_games_available = TRUE,
+  grading_state = "graded",
+  slates = list(
+    list(
+      slate = 1L, label = "Week 1", start_date = "2026-11-01", end_date = "2026-11-07",
+      status = "past", games_total = 1L, logged_projection_total = 1L,
+      ratings_projection_total = 0L, ensemble_projection_total = 0L,
+      graded_total = 1L, correct_total = 1L, accuracy_pct = 100
+    ),
+    list(
+      slate = 2L, label = "Week 2", start_date = "2026-11-10", end_date = "2026-11-16",
+      status = "active", games_total = 2L, logged_projection_total = 2L,
+      ratings_projection_total = 0L, ensemble_projection_total = 0L,
+      graded_total = 0L, correct_total = 0L, accuracy_pct = NULL
+    )
+  ),
+  matchups = list(
+    list(
+      game_id = "1001", slate = 1L, game_date = "2026-11-05", weekday = "Thu",
+      season = 2027L, home_team = "BOS", away_team = "NYK",
+      home_team_name = "Celtics", away_team_name = "Knicks",
+      is_completed = TRUE, has_projection = TRUE,
+      projection_basis = "logged_model_margin", predicted_margin = 5.5,
+      predicted_home_win_prob = 0.68, predicted_away_win_prob = 0.32,
+      predicted_winner = "BOS", home_score = 112L, away_score = 104L,
+      actual_margin = 8L, actual_winner = "BOS", prediction_correct = TRUE,
+      has_box_score = TRUE, has_game_detail = TRUE
+    ),
+    list(
+      game_id = "1002", slate = 2L, game_date = "2026-11-15", weekday = "Sun",
+      season = 2027L, home_team = "DEN", away_team = "LAL",
+      home_team_name = "Nuggets", away_team_name = "Lakers",
+      is_completed = FALSE, has_projection = TRUE,
+      projection_basis = "logged_model_margin", predicted_margin = 4.2,
+      predicted_home_win_prob = 0.64, predicted_away_win_prob = 0.36,
+      predicted_winner = "DEN", home_score = NULL, away_score = NULL,
+      actual_margin = NULL, actual_winner = NULL, prediction_correct = NULL,
+      has_box_score = FALSE, has_game_detail = FALSE
+    ),
+    list(
+      game_id = "1003", slate = 2L, game_date = "2026-11-15", weekday = "Sun",
+      season = 2027L, home_team = "GSW", away_team = "PHX",
+      home_team_name = "Warriors", away_team_name = "Suns",
+      is_completed = FALSE, has_projection = TRUE,
+      projection_basis = "logged_model_margin", predicted_margin = 2.0,
+      predicted_home_win_prob = 0.56, predicted_away_win_prob = 0.44,
+      predicted_winner = "GSW", home_score = NULL, away_score = NULL,
+      actual_margin = NULL, actual_winner = NULL, prediction_correct = NULL,
+      has_box_score = FALSE, has_game_detail = FALSE
+    )
+  )
+)
+
+rlr_json_direct <- file.path(rlr_tmp_dir, "slates_direct.json")
+jsonlite::write_json(rlr_fixture, rlr_json_direct, pretty = TRUE,
+                     auto_unbox = TRUE, null = "null", digits = NA)
+
+mock_espn_results <- data.frame(
+  game_id    = c("1001", "1002", "1003"),
+  home_score = c(112L, 120L, NA_integer_),
+  away_score = c(104L, 110L, NA_integer_),
+  is_final   = c(TRUE, TRUE, FALSE),
+  stringsAsFactors = FALSE
+)
+
+parsed_direct <- jsonlite::fromJSON(rlr_json_direct, simplifyVector = TRUE)
+parsed_direct$matchups$game_id <- as.character(parsed_direct$matchups$game_id)
+patched_direct <- rlr_env$apply_results(parsed_direct$matchups, mock_espn_results)
+parsed_direct$matchups <- patched_direct$rows
+recomputed_direct <- rlr_env$recompute_summary(parsed_direct)
+
+ok("apply_results() + recompute_summary() patch newly finalized game without altering detail flags",
+   patched_direct$n_changed == 1L &&
+     recomputed_direct$completed_games == 2L &&
+     recomputed_direct$pending_games == 1L &&
+     identical(recomputed_direct$matchups$is_completed, c(TRUE, TRUE, FALSE)) &&
+     identical(recomputed_direct$matchups$has_box_score, c(TRUE, FALSE, FALSE)) &&
+     identical(recomputed_direct$matchups$has_game_detail, c(TRUE, FALSE, FALSE)))
+
+rlr_json_e2e <- file.path(rlr_tmp_dir, "slates_e2e.json")
+jsonlite::write_json(rlr_fixture, rlr_json_e2e, pretty = TRUE,
+                     auto_unbox = TRUE, null = "null", digits = NA)
+
+rlr_res <- rlr_env$refresh_live_results(
+  dates        = "2026-11-15",
+  payload_path = rlr_json_e2e,
+  fetcher      = function(d) mock_espn_results,
+  today        = as.Date("2026-11-15")
+)
+
+e2e_raw <- mod_env$.read_utf8_text(rlr_json_e2e)
+e2e_parsed <- jsonlite::fromJSON(e2e_raw, simplifyVector = FALSE)
+e2e_by_id <- setNames(e2e_parsed$matchups, vapply(e2e_parsed$matchups, `[[`, character(1), "game_id"))
+
+ok("refresh_live_results() round-trip keeps TRUE/FALSE detail flags intact on completed, newly-finalized, and pending rows",
+   rlr_res$n_changed == 1L &&
+     !is.null(rlr_res$file) &&
+     !grepl(':\\s*"NA"', e2e_raw, perl = TRUE) &&
+     identical(e2e_by_id[["1001"]]$is_completed, TRUE) &&
+     identical(e2e_by_id[["1001"]]$has_box_score, TRUE) &&
+     identical(e2e_by_id[["1001"]]$has_game_detail, TRUE) &&
+     identical(e2e_by_id[["1002"]]$is_completed, TRUE) &&
+     identical(e2e_by_id[["1002"]]$home_score, 120L) &&
+     identical(e2e_by_id[["1002"]]$away_score, 110L) &&
+     identical(e2e_by_id[["1002"]]$actual_winner, "DEN") &&
+     identical(e2e_by_id[["1002"]]$prediction_correct, TRUE) &&
+     identical(e2e_by_id[["1002"]]$has_box_score, FALSE) &&
+     identical(e2e_by_id[["1002"]]$has_game_detail, FALSE) &&
+     identical(e2e_by_id[["1003"]]$is_completed, FALSE) &&
+     identical(e2e_by_id[["1003"]]$has_box_score, FALSE) &&
+     identical(e2e_by_id[["1003"]]$has_game_detail, FALSE))
+
+unlink(rlr_tmp_dir, recursive = TRUE)
+
+# ------------------------------------------------------------------------------
 cat(sprintf("\n%d checks, %d failure(s).\n", checks, failures))
 if (failures > 0L) quit(status = 1L)
 cat("ALL CHECKS PASSED\n")
