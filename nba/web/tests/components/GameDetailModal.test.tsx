@@ -452,6 +452,9 @@ describe('GameDetailModal closed & missing-data states', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByText('Box score appears after the game.')).toBeInTheDocument();
     expect(screen.getByText('76ers @ Knicks')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('tablist', { name: /Game detail sections/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('makes no fetch when has_game_detail is omitted (undefined)', () => {
@@ -467,6 +470,9 @@ describe('GameDetailModal closed & missing-data states', () => {
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(screen.getByText('Box score appears after the game.')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('tablist', { name: /Game detail sections/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('makes no fetch and renders delayed box score message when is_completed && !has_box_score && !has_game_detail', () => {
@@ -486,6 +492,9 @@ describe('GameDetailModal closed & missing-data states', () => {
         'Final score recorded. The full box score is added on a later data refresh, usually within a day.',
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('tablist', { name: /Game detail sections/i }),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -518,8 +527,9 @@ describe('GameDetailModal fetch error & retry', () => {
     fireEvent.click(retryBtn);
 
     await waitFor(() => {
-      expect(screen.getByText(/Efficiency & Four Factors/i)).toBeInTheDocument();
+      expect(screen.getByText('Player Box Score')).toBeInTheDocument();
     });
+    expect(screen.getByRole('tab', { name: /Four Factors/i })).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
@@ -646,37 +656,27 @@ describe('GameDetailModal accessibility, focus trap & restoration', () => {
 });
 
 describe('GameDetailModal empirical Phase 1 views & box score sorting', () => {
-  it('renders Four Factors with exact fta_rate label, context splits, <1 min, em-dash nulls, totals, and inactive list', async () => {
+  it('renders 3 section tabs, Box Score by default, Four Factors with exact fta_rate label, context splits, <1 min, em-dash nulls, totals, and collapsible inactive list', async () => {
     stubFetchJson(makeDetailEnvelope());
     const { container } = render(<GameDetailModal matchup={makeMatchup()} onClose={vi.fn()} />);
 
-    await screen.findByText('Efficiency & Four Factors');
+    await screen.findByText('Player Box Score');
 
-    // Four Factors accessible table and verbatim FTA rate label
-    const factorsSection = screen
-      .getByRole('heading', { name: /Efficiency & Four Factors/i })
-      .closest('section')!;
-    const factorsTable = within(factorsSection).getByRole('table');
-    expect(
-      within(factorsTable).getByText(
-        'Free-throw attempt rate (attempts per 100 field-goal attempts)',
-      ),
-    ).toBeInTheDocument();
-    expect(within(factorsTable).getByText('54.2%')).toBeInTheDocument();
-    expect(within(factorsTable).getByText('26.8')).toBeInTheDocument();
-    expect(within(factorsTable).getByText('—')).toBeInTheDocument();
+    // Section tabs: Box Score is active by default alongside Four Factors & Context Splits
+    const sectionTabs = screen.getByRole('tablist', { name: /Game detail sections/i });
+    const boxScoreTab = within(sectionTabs).getByRole('tab', { name: /Box Score/i });
+    const fourFactorsTab = within(sectionTabs).getByRole('tab', { name: /Four Factors/i });
+    const contextSplitsTab = within(sectionTabs).getByRole('tab', { name: /Context Splits/i });
 
-    // All 8 context splits render
-    expect(screen.getByText('Points in the Paint')).toBeInTheDocument();
-    expect(screen.getByText('Fast Break Points')).toBeInTheDocument();
-    expect(screen.getByText('Points Off Turnovers')).toBeInTheDocument();
-    expect(screen.getByText('Bench Points')).toBeInTheDocument();
-    expect(screen.getByText('Largest Lead')).toBeInTheDocument();
-    expect(screen.getByText('Assists')).toBeInTheDocument();
-    expect(screen.getByText('Steals')).toBeInTheDocument();
-    expect(screen.getByText('Blocks')).toBeInTheDocument();
+    expect(boxScoreTab).toHaveAttribute('aria-selected', 'true');
+    expect(fourFactorsTab).toHaveAttribute('aria-selected', 'false');
+    expect(contextSplitsTab).toHaveAttribute('aria-selected', 'false');
 
-    // Model ahead + actual winner copy (without forbidden verdict words)
+    // Non-active section headings are hidden while Box Score tab is selected
+    expect(screen.queryByRole('heading', { name: /Efficiency & Four Factors/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /Play-Style & Context Splits/i })).not.toBeInTheDocument();
+
+    // Model ahead + actual winner copy + Top Performers inside Box Score tab (without forbidden verdict words)
     expect(screen.getByText(/Model had/i)).toBeInTheDocument();
     expect(screen.getByText(/Top Performers/i)).toBeInTheDocument();
     expect(screen.getAllByText('26.2').length).toBeGreaterThanOrEqual(2);
@@ -699,18 +699,54 @@ describe('GameDetailModal empirical Phase 1 views & box score sorting', () => {
     expect(within(mccainRow).getAllByText('—').length).toBeGreaterThanOrEqual(6);
     expect(mccainRow.textContent).not.toContain('0.0%');
 
-    // Inactive list with reason and fallback
+    // Collapsible Inactive / Did Not Play disclosure with reason and fallback
+    const inactiveSummary = screen.getByText(/Inactive \/ Did Not Play \(2\)/i);
+    const inactiveDetails = inactiveSummary.closest('details');
+    expect(inactiveDetails).not.toBeNull();
+    expect(inactiveDetails).not.toHaveAttribute('open');
+    fireEvent.click(inactiveSummary);
     expect(screen.getByText('Joel Embiid')).toBeInTheDocument();
     expect(screen.getByText('Left Knee Management')).toBeInTheDocument();
     expect(screen.getByText('Kyle Lowry')).toBeInTheDocument();
     expect(screen.getByText('No reason listed')).toBeInTheDocument();
 
-    // Switch to Home tab (team_tov === 0, so no team turnover note)
+    // Switch to Home team box score tab (team_tov === 0, so no team turnover note)
     fireEvent.click(screen.getByRole('tab', { name: /NYK · Knicks/i }));
     expect(screen.getAllByText('Jalen Brunson').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Mitchell Robinson')).toBeInTheDocument();
     expect(screen.getByText('Ankle Sprain')).toBeInTheDocument();
     expect(screen.queryByText(/team turnover/i)).not.toBeInTheDocument();
+
+    // Switch to Four Factors section tab
+    fireEvent.click(fourFactorsTab);
+    expect(fourFactorsTab).toHaveAttribute('aria-selected', 'true');
+    expect(boxScoreTab).toHaveAttribute('aria-selected', 'false');
+
+    const factorsSection = screen
+      .getByRole('heading', { name: /Efficiency & Four Factors/i })
+      .closest('section')!;
+    const factorsTable = within(factorsSection).getByRole('table');
+    expect(
+      within(factorsTable).getByText(
+        'Free-throw attempt rate (attempts per 100 field-goal attempts)',
+      ),
+    ).toBeInTheDocument();
+    expect(within(factorsTable).getByText('54.2%')).toBeInTheDocument();
+    expect(within(factorsTable).getByText('26.8')).toBeInTheDocument();
+    expect(within(factorsTable).getByText('—')).toBeInTheDocument();
+
+    // Switch to Context Splits section tab
+    fireEvent.click(contextSplitsTab);
+    expect(contextSplitsTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('heading', { name: /Play-Style & Context Splits/i })).toBeInTheDocument();
+    expect(screen.getByText('Points in the Paint')).toBeInTheDocument();
+    expect(screen.getByText('Fast Break Points')).toBeInTheDocument();
+    expect(screen.getByText('Points Off Turnovers')).toBeInTheDocument();
+    expect(screen.getByText('Bench Points')).toBeInTheDocument();
+    expect(screen.getByText('Largest Lead')).toBeInTheDocument();
+    expect(screen.getByText('Assists')).toBeInTheDocument();
+    expect(screen.getByText('Steals')).toBeInTheDocument();
+    expect(screen.getByText('Blocks')).toBeInTheDocument();
   });
 
   it('supports sortable columns with aria-sort state transitions and proper row ordering', async () => {
@@ -818,6 +854,9 @@ describe('GameDetailModal empirical Phase 1 views & box score sorting', () => {
     fireEvent.click(opener);
 
     await screen.findByText('Player Box Score');
+    expect(screen.getByRole('tab', { name: /Box Score/i })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /Four Factors/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /Context Splits/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/Efficiency & Four Factors/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Play-Style & Context Splits/i)).not.toBeInTheDocument();
 

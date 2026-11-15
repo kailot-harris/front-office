@@ -7,6 +7,7 @@ import {
   ArrowUp,
   ArrowUpDown,
   Award,
+  ChevronDown,
   Clock,
   Info,
   Loader2,
@@ -54,6 +55,8 @@ type SortField =
   | 'game_score';
 
 type SortDirection = 'asc' | 'desc';
+
+type DetailSectionTab = 'box_score' | 'four_factors' | 'context_splits';
 
 interface BoxColumnDef {
   key: SortField;
@@ -237,23 +240,23 @@ const FactorComparisonRow: React.FC<FactorComparisonRowProps> = ({
 
   return (
     <tr className="border-t border-slate-800/80 align-top">
-      <th scope="row" className="py-3 px-3 text-left font-normal">
+      <th scope="row" className="py-2 px-3 text-left font-normal">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold text-white">{resolveFactorLabel(item)}</span>
           <span className="text-xs font-mono text-slate-400 px-1.5 py-0.5 rounded bg-surface border border-slate-800">
             {formatFactorUnit(item.unit)}
           </span>
         </div>
-        <p className="text-xs text-slate-400 mt-1 leading-relaxed">{item.description}</p>
+        <p className="text-xs text-slate-400 mt-0.5 leading-snug">{item.description}</p>
       </th>
       <td
-        className={`py-3 px-3 text-right font-mono text-xs tabular-nums whitespace-nowrap ${
+        className={`py-2 px-3 text-right font-mono text-xs tabular-nums whitespace-nowrap ${
           advantage === 'away' ? 'text-emerald-400 font-bold' : 'text-slate-200'
         }`}
       >
         {formatFactorValue(item.away_value, item.unit)}
       </td>
-      <td className="py-3 px-3 min-w-[150px] sm:min-w-[200px]" aria-hidden="true">
+      <td className="py-2 px-3 min-w-[140px] sm:min-w-[180px]" aria-hidden="true">
         <div className="flex items-center gap-1 h-4 mt-0.5">
           <div className="w-1/2 h-2.5 bg-surface rounded-l-full overflow-hidden flex justify-end border border-slate-800/80 border-r-0">
             <div
@@ -281,13 +284,13 @@ const FactorComparisonRow: React.FC<FactorComparisonRowProps> = ({
             />
           </div>
         </div>
-        <div className="flex justify-between text-xs font-mono text-slate-500 mt-1">
+        <div className="flex justify-between text-xs font-mono text-slate-500 mt-0.5">
           <span>{awayAbbr}</span>
           <span>{homeAbbr}</span>
         </div>
       </td>
       <td
-        className={`py-3 px-3 text-left font-mono text-xs tabular-nums whitespace-nowrap ${
+        className={`py-2 px-3 text-left font-mono text-xs tabular-nums whitespace-nowrap ${
           advantage === 'home' ? 'text-emerald-400 font-bold' : 'text-slate-200'
         }`}
       >
@@ -359,7 +362,7 @@ const PlayerTableRows: React.FC<PlayerTableRowsProps> = ({ players, showStarterT
       <tr key={p.playerId} className="border-t border-slate-800/80 hover:bg-slate-800/30">
         <th
           scope="row"
-          className="sticky left-0 z-10 bg-surface-raised/95 px-3 py-2 text-left font-medium text-white whitespace-nowrap border-r border-slate-800/60"
+          className="sticky left-0 z-10 bg-surface-raised/95 px-2.5 py-1.5 text-left font-medium text-white whitespace-nowrap border-r border-slate-800/60"
         >
           <div className="flex items-center gap-1.5">
             <span>{p.playerName}</span>
@@ -376,56 +379,56 @@ const PlayerTableRows: React.FC<PlayerTableRowsProps> = ({ players, showStarterT
             )}
           </div>
         </th>
-        <td className="px-2 py-2 text-right font-mono tabular-nums text-slate-200 whitespace-nowrap">
+        <td className="px-1.5 py-1.5 text-right font-mono tabular-nums text-slate-200 whitespace-nowrap">
           {formatPlayerMinutes(p.minutes)}
         </td>
-        <td className="px-2 py-2 text-right font-mono tabular-nums font-bold text-white whitespace-nowrap">
+        <td className="px-1.5 py-1.5 text-right font-mono tabular-nums font-bold text-white whitespace-nowrap">
           {p.points}
         </td>
-        <td className="px-2 py-2 text-right font-mono tabular-nums text-slate-300 whitespace-nowrap">
+        <td className="px-1.5 py-1.5 text-right font-mono tabular-nums text-slate-300 whitespace-nowrap">
           {p.fgm}-{p.fga}
         </td>
-        <td className="px-2 py-2 text-right font-mono tabular-nums text-slate-300 whitespace-nowrap">
+        <td className="px-1.5 py-1.5 text-right font-mono tabular-nums text-slate-300 whitespace-nowrap">
           {formatPct(p.fg_pct)}
         </td>
-        <td className="px-2 py-2 text-right font-mono tabular-nums text-slate-300 whitespace-nowrap">
+        <td className="px-1.5 py-1.5 text-right font-mono tabular-nums text-slate-300 whitespace-nowrap">
           {p.fg3m}-{p.fg3a}
         </td>
-        <td className="px-2 py-2 text-right font-mono tabular-nums text-slate-300 whitespace-nowrap">
+        <td className="px-1.5 py-1.5 text-right font-mono tabular-nums text-slate-300 whitespace-nowrap">
           {formatPct(p.fg3_pct)}
         </td>
-        <td className="px-2 py-2 text-right font-mono tabular-nums text-slate-300 whitespace-nowrap">
+        <td className="px-1.5 py-1.5 text-right font-mono tabular-nums text-slate-300 whitespace-nowrap">
           {p.ftm}-{p.fta}
         </td>
-        <td className="px-2 py-2 text-right font-mono tabular-nums text-slate-300 whitespace-nowrap">
+        <td className="px-1.5 py-1.5 text-right font-mono tabular-nums text-slate-300 whitespace-nowrap">
           {formatPct(p.ft_pct)}
         </td>
-        <td className="px-2 py-2 text-right font-mono tabular-nums text-slate-400 whitespace-nowrap">
+        <td className="px-1.5 py-1.5 text-right font-mono tabular-nums text-slate-400 whitespace-nowrap">
           {p.oreb}
         </td>
-        <td className="px-2 py-2 text-right font-mono tabular-nums text-slate-400 whitespace-nowrap">
+        <td className="px-1.5 py-1.5 text-right font-mono tabular-nums text-slate-400 whitespace-nowrap">
           {p.dreb}
         </td>
-        <td className="px-2 py-2 text-right font-mono tabular-nums text-slate-200 whitespace-nowrap">
+        <td className="px-1.5 py-1.5 text-right font-mono tabular-nums text-slate-200 whitespace-nowrap">
           {p.reb}
         </td>
-        <td className="px-2 py-2 text-right font-mono tabular-nums text-slate-200 whitespace-nowrap">
+        <td className="px-1.5 py-1.5 text-right font-mono tabular-nums text-slate-200 whitespace-nowrap">
           {p.ast}
         </td>
-        <td className="px-2 py-2 text-right font-mono tabular-nums text-slate-300 whitespace-nowrap">
+        <td className="px-1.5 py-1.5 text-right font-mono tabular-nums text-slate-300 whitespace-nowrap">
           {p.stl}
         </td>
-        <td className="px-2 py-2 text-right font-mono tabular-nums text-slate-300 whitespace-nowrap">
+        <td className="px-1.5 py-1.5 text-right font-mono tabular-nums text-slate-300 whitespace-nowrap">
           {p.blk}
         </td>
-        <td className="px-2 py-2 text-right font-mono tabular-nums text-slate-300 whitespace-nowrap">
+        <td className="px-1.5 py-1.5 text-right font-mono tabular-nums text-slate-300 whitespace-nowrap">
           {p.tov}
         </td>
-        <td className="px-2 py-2 text-right font-mono tabular-nums text-slate-400 whitespace-nowrap">
+        <td className="px-1.5 py-1.5 text-right font-mono tabular-nums text-slate-400 whitespace-nowrap">
           {p.pf}
         </td>
         <td
-          className={`px-2 py-2 text-right font-mono tabular-nums whitespace-nowrap ${
+          className={`px-1.5 py-1.5 text-right font-mono tabular-nums whitespace-nowrap ${
             !isFiniteNum(p.plus_minus) || p.plus_minus === 0
               ? 'text-slate-400'
               : p.plus_minus > 0
@@ -435,13 +438,13 @@ const PlayerTableRows: React.FC<PlayerTableRowsProps> = ({ players, showStarterT
         >
           {formatPlusMinus(p.plus_minus)}
         </td>
-        <td className="px-2 py-2 text-right font-mono tabular-nums text-slate-300 whitespace-nowrap">
+        <td className="px-1.5 py-1.5 text-right font-mono tabular-nums text-slate-300 whitespace-nowrap">
           {formatPct(p.efg_pct)}
         </td>
-        <td className="px-2 py-2 text-right font-mono tabular-nums text-slate-300 whitespace-nowrap">
+        <td className="px-1.5 py-1.5 text-right font-mono tabular-nums text-slate-300 whitespace-nowrap">
           {formatPct(p.ts_pct)}
         </td>
-        <td className="px-2 py-2 text-right font-mono tabular-nums text-accent-400 font-semibold whitespace-nowrap">
+        <td className="px-1.5 py-1.5 text-right font-mono tabular-nums text-accent-400 font-semibold whitespace-nowrap">
           {num(p.game_score, 1)}
         </td>
       </tr>
@@ -474,6 +477,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [retryToken, setRetryToken] = useState<number>(0);
+  const [activeSection, setActiveSection] = useState<DetailSectionTab>('box_score');
   const [activeTeam, setActiveTeam] = useState<'away' | 'home'>('away');
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -512,6 +516,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
   useEffect(() => {
     setDetail(null);
     setError(null);
+    setActiveSection('box_score');
     setActiveTeam('away');
     setSortField(null);
     setSortDirection('desc');
@@ -709,6 +714,11 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
         : null;
 
   const basisInfo = matchup.projection_basis ? BASIS_LABEL[matchup.projection_basis] : null;
+  const showSectionTabs = Boolean(hasGameDetail && !loading && !error && detail && detail.box_score);
+  const hasEfficiencyFactors = Boolean(
+    detail?.efficiency_factors && detail.efficiency_factors.length > 0,
+  );
+  const hasContextSplits = Boolean(detail?.context_splits && detail.context_splits.length > 0);
   const columnMap = new Map(SORTABLE_COLUMNS.map((c) => [c.key, c]));
 
   const renderSortableHeader = (key: SortField) => {
@@ -725,7 +735,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
         key={key}
         scope="col"
         aria-sort={ariaSort}
-        className="px-2 py-2 text-right font-semibold whitespace-nowrap"
+        className="px-1.5 py-1.5 text-right font-semibold whitespace-nowrap"
       >
         <button
           type="button"
@@ -748,7 +758,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
       onClick={(e) => {
         if (e.target === e.currentTarget) handleClose();
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-surface/85 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-surface/85 backdrop-blur-md"
     >
       <div
         ref={dialogRef}
@@ -756,10 +766,18 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
         aria-modal="true"
         aria-labelledby="game-detail-modal-title"
         tabIndex={-1}
-        className="relative w-full max-w-6xl max-h-[92vh] bg-surface-raised border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col focus:outline-none"
+        className={`relative w-full max-w-4xl ${
+          showSectionTabs
+            ? 'sm:h-[78vh] sm:max-h-[640px] max-h-[88vh]'
+            : 'max-h-[80vh]'
+        } bg-surface-raised border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col focus:outline-none`}
       >
         {/* Modal Header */}
-        <div className="relative px-4 sm:px-6 py-4 bg-surface/70 border-b border-slate-800 space-y-4">
+        <div
+          className={`relative px-4 sm:px-5 pt-3.5 ${
+            showSectionTabs ? 'pb-0' : 'pb-3.5'
+          } bg-surface/70 border-b border-slate-800 space-y-2.5`}
+        >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
               <span className="text-slate-300 font-semibold">
@@ -791,17 +809,17 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
               type="button"
               onClick={handleClose}
               aria-label="Close game detail modal"
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-accent-400"
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-accent-400"
             >
               <X className="w-5 h-5" aria-hidden="true" />
             </button>
           </div>
 
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex-1 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex-1 flex flex-wrap items-center justify-between gap-3">
               {/* Away Team */}
-              <div className="flex items-center gap-3 min-w-0">
-                <TeamLogo team={awayAbbr} size="lg" />
+              <div className="flex items-center gap-2.5 min-w-0">
+                <TeamLogo team={awayAbbr} size="md" />
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono uppercase text-slate-400">Away</span>
@@ -812,7 +830,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                     )}
                   </div>
                   <div
-                    className={`text-base sm:text-lg font-bold truncate ${
+                    className={`text-sm sm:text-base font-bold truncate ${
                       awayIsWinner === true
                         ? 'text-white'
                         : isCompleted
@@ -824,7 +842,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                   </div>
                 </div>
                 <div
-                  className={`text-2xl sm:text-3xl font-black font-mono tabular-nums ml-2 ${
+                  className={`text-xl sm:text-2xl font-black font-mono tabular-nums ml-2 ${
                     awayScore === null
                       ? 'text-slate-600'
                       : awayIsWinner === true
@@ -843,7 +861,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                 >
                   {awayName} @ {homeName}
                 </h2>
-                <div className="text-xs font-mono text-slate-400 mt-1 flex flex-wrap items-center justify-center gap-2">
+                <div className="text-xs font-mono text-slate-400 mt-0.5 flex flex-wrap items-center justify-center gap-1.5">
                   {modelAheadTeam && isFiniteNum(matchup.predicted_margin) ? (
                     <span>
                       Model had <strong className="text-accent-400">{modelAheadTeam}</strong> ahead
@@ -875,9 +893,9 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
               </div>
 
               {/* Home Team */}
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <div
-                  className={`text-2xl sm:text-3xl font-black font-mono tabular-nums mr-2 ${
+                  className={`text-xl sm:text-2xl font-black font-mono tabular-nums mr-2 ${
                     homeScore === null
                       ? 'text-slate-600'
                       : homeIsWinner === true
@@ -897,7 +915,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                     <span className="text-xs font-mono uppercase text-slate-400">Home</span>
                   </div>
                   <div
-                    className={`text-base sm:text-lg font-bold truncate ${
+                    className={`text-sm sm:text-base font-bold truncate ${
                       homeIsWinner === true
                         ? 'text-white'
                         : isCompleted
@@ -908,52 +926,73 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                     {homeName} <span className="text-xs font-mono text-slate-400">({homeAbbr})</span>
                   </div>
                 </div>
-                <TeamLogo team={homeAbbr} size="lg" />
+                <TeamLogo team={homeAbbr} size="md" />
               </div>
             </div>
           </div>
 
-          {/* Top Performers Strip */}
-          {detail?.box_score && detail.box_score.top_performers.length > 0 && (
-            <div className="pt-2 border-t border-slate-800/80 space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-slate-400">
-                <Award className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
-                <span>Top Performers · Hollinger Game Score</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {detail.box_score.top_performers.map((tp) => (
-                  <div
-                    key={`${tp.teamAbbr}-${tp.playerId}`}
-                    className="bg-surface-raised/80 border border-slate-800 rounded-xl px-3 py-2 flex items-center justify-between gap-2"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-mono font-bold text-accent-400">
-                          {tp.teamAbbr}
-                        </span>
-                        <span className="text-xs font-semibold text-white truncate">
-                          {tp.playerName}
-                        </span>
-                      </div>
-                      <div className="text-xs font-mono text-slate-400 tabular-nums mt-0.5">
-                        {tp.points} PTS · {tp.reb} REB · {tp.ast} AST
-                      </div>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="text-xs font-mono text-slate-500">GmSc</div>
-                      <div className="text-sm font-bold font-mono text-amber-400 tabular-nums">
-                        {num(tp.game_score, 1)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+          {/* Section Tabs Bar */}
+          {showSectionTabs && (
+            <div
+              role="tablist"
+              aria-label="Game detail sections"
+              className="flex items-center gap-1 pt-1 -mb-px overflow-x-auto"
+            >
+              <button
+                type="button"
+                role="tab"
+                id="section-tab-box-score"
+                aria-selected={activeSection === 'box_score'}
+                aria-controls="section-panel-box-score"
+                onClick={() => setActiveSection('box_score')}
+                className={`px-3.5 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-accent-400 ${
+                  activeSection === 'box_score'
+                    ? 'border-accent-400 text-accent-400 bg-accent-500/10 rounded-t-lg'
+                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                }`}
+              >
+                Box Score
+              </button>
+              {hasEfficiencyFactors && (
+                <button
+                  type="button"
+                  role="tab"
+                  id="section-tab-four-factors"
+                  aria-selected={activeSection === 'four_factors'}
+                  aria-controls="section-panel-four-factors"
+                  onClick={() => setActiveSection('four_factors')}
+                  className={`px-3.5 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-accent-400 ${
+                    activeSection === 'four_factors'
+                      ? 'border-accent-400 text-accent-400 bg-accent-500/10 rounded-t-lg'
+                      : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  }`}
+                >
+                  Four Factors
+                </button>
+              )}
+              {hasContextSplits && (
+                <button
+                  type="button"
+                  role="tab"
+                  id="section-tab-context-splits"
+                  aria-selected={activeSection === 'context_splits'}
+                  aria-controls="section-panel-context-splits"
+                  onClick={() => setActiveSection('context_splits')}
+                  className={`px-3.5 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-accent-400 ${
+                    activeSection === 'context_splits'
+                      ? 'border-accent-400 text-accent-400 bg-accent-500/10 rounded-t-lg'
+                      : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  }`}
+                >
+                  Context Splits
+                </button>
+              )}
             </div>
           )}
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
           {/* Missing-data states (no fetch issued) */}
           {!hasGameDetail && (
             <div className="py-12 px-4 flex flex-col items-center justify-center text-center gap-3 bg-surface/50 border border-slate-800 rounded-xl">
@@ -1016,9 +1055,348 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
           {/* Empirical Phase 1 Detail */}
           {hasGameDetail && !loading && !error && detail && detail.box_score && (
             <>
-              {/* Efficiency & Four Factors */}
-              {detail.efficiency_factors && detail.efficiency_factors.length > 0 && (
-                <section aria-labelledby="efficiency-factors-heading" className="space-y-3">
+              {/* Tab 1: Box Score + Top Performers */}
+              {activeSection === 'box_score' && (
+                <section
+                  id="section-panel-box-score"
+                  aria-labelledby="section-tab-box-score"
+                  className="space-y-3.5"
+                >
+                  {/* Top Performers Strip */}
+                  {detail.box_score.top_performers && detail.box_score.top_performers.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-slate-400">
+                        <Award className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
+                        <span>Top Performers · Hollinger Game Score</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        {detail.box_score.top_performers.map((tp) => (
+                          <div
+                            key={`${tp.teamAbbr}-${tp.playerId}`}
+                            className="bg-surface/60 border border-slate-800 rounded-xl px-3 py-2 flex items-center justify-between gap-2"
+                          >
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-mono font-bold text-accent-400">
+                                  {tp.teamAbbr}
+                                </span>
+                                <span className="text-xs font-semibold text-white truncate">
+                                  {tp.playerName}
+                                </span>
+                              </div>
+                              <div className="text-xs font-mono text-slate-400 tabular-nums mt-0.5">
+                                {tp.points} PTS · {tp.reb} REB · {tp.ast} AST
+                              </div>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <div className="text-xs font-mono text-slate-500">GmSc</div>
+                              <div className="text-sm font-bold font-mono text-amber-400 tabular-nums">
+                                {num(tp.game_score, 1)}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Player Box Score */}
+                  {activeBoxView && (
+                    <div aria-labelledby="player-box-score-heading" className="space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2.5">
+                        <div>
+                          <h3
+                            id="player-box-score-heading"
+                            className="text-sm font-bold text-white uppercase tracking-wider font-mono"
+                          >
+                            Player Box Score
+                          </h3>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            Click any stat header to sort active players. Active players under 30 seconds appear as &lt;1 min.
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          {sortField !== null && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSortField(null);
+                                setSortDirection('desc');
+                              }}
+                              className="px-2.5 py-1 rounded-lg text-xs font-mono text-slate-300 hover:text-white bg-surface border border-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-accent-400"
+                            >
+                              Group: Starters / Bench
+                            </button>
+                          )}
+
+                          <div
+                            role="tablist"
+                            aria-label="Team box score"
+                            className="inline-flex rounded-lg bg-surface p-1 border border-slate-800"
+                          >
+                            <button
+                              type="button"
+                              role="tab"
+                              id="box-tab-away"
+                              aria-selected={activeTeam === 'away'}
+                              aria-controls="box-score-tabpanel"
+                              onClick={() => setActiveTeam('away')}
+                              className={`px-2.5 py-1 rounded-md text-xs font-mono font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-accent-400 ${
+                                activeTeam === 'away'
+                                  ? 'bg-accent-600 text-white shadow-sm'
+                                  : 'text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              {awayAbbr} · {awayName}
+                            </button>
+                            <button
+                              type="button"
+                              role="tab"
+                              id="box-tab-home"
+                              aria-selected={activeTeam === 'home'}
+                              aria-controls="box-score-tabpanel"
+                              onClick={() => setActiveTeam('home')}
+                              className={`px-2.5 py-1 rounded-md text-xs font-mono font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-accent-400 ${
+                                activeTeam === 'home'
+                                  ? 'bg-accent-600 text-white shadow-sm'
+                                  : 'text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              {homeAbbr} · {homeName}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div
+                        id="box-score-tabpanel"
+                        role="tabpanel"
+                        aria-labelledby={activeTeam === 'away' ? 'box-tab-away' : 'box-tab-home'}
+                        className="space-y-3"
+                      >
+                        <div className="overflow-x-auto border border-slate-800 rounded-xl bg-surface/50">
+                          <table className="w-full text-xs">
+                            <caption className="sr-only">
+                              {activeTeam === 'away' ? awayName : homeName} player box score
+                            </caption>
+                            <thead className="bg-surface text-slate-400 font-mono uppercase">
+                              <tr>
+                                <th
+                                  scope="col"
+                                  className="sticky left-0 z-20 bg-surface px-2.5 py-1.5 text-left font-semibold whitespace-nowrap border-r border-slate-800/60"
+                                >
+                                  Player
+                                </th>
+                                {renderSortableHeader('minutes')}
+                                {renderSortableHeader('points')}
+                                <th scope="col" className="px-1.5 py-1.5 text-right font-semibold whitespace-nowrap">
+                                  FG
+                                </th>
+                                <th scope="col" className="px-1.5 py-1.5 text-right font-semibold whitespace-nowrap">
+                                  FG%
+                                </th>
+                                <th scope="col" className="px-1.5 py-1.5 text-right font-semibold whitespace-nowrap">
+                                  3PT
+                                </th>
+                                <th scope="col" className="px-1.5 py-1.5 text-right font-semibold whitespace-nowrap">
+                                  3P%
+                                </th>
+                                <th scope="col" className="px-1.5 py-1.5 text-right font-semibold whitespace-nowrap">
+                                  FT
+                                </th>
+                                <th scope="col" className="px-1.5 py-1.5 text-right font-semibold whitespace-nowrap">
+                                  FT%
+                                </th>
+                                <th scope="col" className="px-1.5 py-1.5 text-right font-semibold whitespace-nowrap">
+                                  OREB
+                                </th>
+                                <th scope="col" className="px-1.5 py-1.5 text-right font-semibold whitespace-nowrap">
+                                  DREB
+                                </th>
+                                {renderSortableHeader('reb')}
+                                {renderSortableHeader('ast')}
+                                {renderSortableHeader('stl')}
+                                {renderSortableHeader('blk')}
+                                {renderSortableHeader('tov')}
+                                {renderSortableHeader('pf')}
+                                {renderSortableHeader('plus_minus')}
+                                {renderSortableHeader('efg_pct')}
+                                {renderSortableHeader('ts_pct')}
+                                {renderSortableHeader('game_score')}
+                              </tr>
+                            </thead>
+
+                            {activeBoxView.sortedAll ? (
+                              <tbody>
+                                <PlayerTableRows players={activeBoxView.sortedAll} showStarterTag={true} />
+                              </tbody>
+                            ) : (
+                              <>
+                                {activeBoxView.starters.length > 0 && (
+                                  <tbody>
+                                    <tr className="bg-surface/80 border-t border-slate-800">
+                                      <th
+                                        colSpan={21}
+                                        scope="rowgroup"
+                                        className="px-2.5 py-1 text-left text-xs font-mono font-bold uppercase tracking-wider text-accent-400"
+                                      >
+                                        Starters
+                                      </th>
+                                    </tr>
+                                    <PlayerTableRows players={activeBoxView.starters} showStarterTag={false} />
+                                  </tbody>
+                                )}
+                                {activeBoxView.bench.length > 0 && (
+                                  <tbody>
+                                    <tr className="bg-surface/80 border-t border-slate-800">
+                                      <th
+                                        colSpan={21}
+                                        scope="rowgroup"
+                                        className="px-2.5 py-1 text-left text-xs font-mono font-bold uppercase tracking-wider text-slate-400"
+                                      >
+                                        Bench
+                                      </th>
+                                    </tr>
+                                    <PlayerTableRows players={activeBoxView.bench} showStarterTag={false} />
+                                  </tbody>
+                                )}
+                              </>
+                            )}
+
+                            <tfoot className="bg-surface/90 border-t-2 border-slate-700 font-mono tabular-nums font-bold text-white">
+                              <tr>
+                                <th
+                                  scope="row"
+                                  className="sticky left-0 z-10 bg-surface px-2.5 py-2 text-left whitespace-nowrap border-r border-slate-800/60"
+                                >
+                                  Team Totals
+                                </th>
+                                <td className="px-1.5 py-2 text-right whitespace-nowrap">
+                                  {activeBoxView.totals.minutes}
+                                </td>
+                                <td className="px-1.5 py-2 text-right whitespace-nowrap">
+                                  {activeBoxView.totals.points}
+                                </td>
+                                <td className="px-1.5 py-2 text-right whitespace-nowrap">
+                                  {activeBoxView.totals.fgm}-{activeBoxView.totals.fga}
+                                </td>
+                                <td className="px-1.5 py-2 text-right whitespace-nowrap">
+                                  {formatPct(activeBoxView.totals.fg_pct)}
+                                </td>
+                                <td className="px-1.5 py-2 text-right whitespace-nowrap">
+                                  {activeBoxView.totals.fg3m}-{activeBoxView.totals.fg3a}
+                                </td>
+                                <td className="px-1.5 py-2 text-right whitespace-nowrap">
+                                  {formatPct(activeBoxView.totals.fg3_pct)}
+                                </td>
+                                <td className="px-1.5 py-2 text-right whitespace-nowrap">
+                                  {activeBoxView.totals.ftm}-{activeBoxView.totals.fta}
+                                </td>
+                                <td className="px-1.5 py-2 text-right whitespace-nowrap">
+                                  {formatPct(activeBoxView.totals.ft_pct)}
+                                </td>
+                                <td className="px-1.5 py-2 text-right whitespace-nowrap">
+                                  {activeBoxView.totals.oreb}
+                                </td>
+                                <td className="px-1.5 py-2 text-right whitespace-nowrap">
+                                  {activeBoxView.totals.dreb}
+                                </td>
+                                <td className="px-1.5 py-2 text-right whitespace-nowrap">
+                                  {activeBoxView.totals.reb}
+                                </td>
+                                <td className="px-1.5 py-2 text-right whitespace-nowrap">
+                                  {activeBoxView.totals.ast}
+                                </td>
+                                <td className="px-1.5 py-2 text-right whitespace-nowrap">
+                                  {activeBoxView.totals.stl}
+                                </td>
+                                <td className="px-1.5 py-2 text-right whitespace-nowrap">
+                                  {activeBoxView.totals.blk}
+                                </td>
+                                <td className="px-1.5 py-2 text-right whitespace-nowrap">
+                                  {activeBoxView.totals.total_tov}
+                                </td>
+                                <td className="px-1.5 py-2 text-right whitespace-nowrap">
+                                  {activeBoxView.totals.pf}
+                                </td>
+                                <td className="px-1.5 py-2 text-right text-slate-500 whitespace-nowrap">
+                                  {MISSING_VALUE}
+                                </td>
+                                <td className="px-1.5 py-2 text-right whitespace-nowrap">
+                                  {formatPct(activeBoxView.totals.efg_pct)}
+                                </td>
+                                <td className="px-1.5 py-2 text-right whitespace-nowrap">
+                                  {formatPct(activeBoxView.totals.ts_pct)}
+                                </td>
+                                <td className="px-1.5 py-2 text-right text-slate-500 whitespace-nowrap">
+                                  {MISSING_VALUE}
+                                </td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+
+                        {activeBoxView.totals.team_tov > 0 && (
+                          <p className="text-xs font-mono text-slate-400">
+                            Note: Team Totals TOV ({activeBoxView.totals.total_tov}) includes{' '}
+                            {activeBoxView.totals.team_tov} team turnover
+                            {activeBoxView.totals.team_tov === 1 ? '' : 's'} not attributed to an
+                            individual player ({activeBoxView.totals.tov} player +{' '}
+                            {activeBoxView.totals.team_tov} team).
+                          </p>
+                        )}
+
+                        {/* Collapsible Inactive Players List */}
+                        {activeBoxView.inactive.length > 0 && (
+                          <details className="group bg-surface/60 border border-slate-800 rounded-xl overflow-hidden">
+                            <summary className="flex items-center justify-between px-3.5 py-2.5 cursor-pointer select-none text-xs font-mono font-bold uppercase tracking-wider text-slate-400 hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-accent-400">
+                              <span>
+                                Inactive / Did Not Play ({activeBoxView.inactive.length})
+                              </span>
+                              <ChevronDown
+                                className="w-4 h-4 text-slate-500 transition-transform group-open:rotate-180"
+                                aria-hidden="true"
+                              />
+                            </summary>
+                            <div className="px-3.5 pb-3 pt-2 border-t border-slate-800/60">
+                              <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                {activeBoxView.inactive.map((row) => (
+                                  <li
+                                    key={row.playerId}
+                                    className="flex items-center justify-between gap-2 text-xs bg-surface-raised/70 border border-slate-800/80 rounded-lg px-2.5 py-1.5"
+                                  >
+                                    <span className="text-slate-200 font-medium truncate">
+                                      {row.playerName}
+                                      {row.position ? (
+                                        <span className="text-slate-500 font-mono ml-1.5">
+                                          ({row.position})
+                                        </span>
+                                      ) : null}
+                                    </span>
+                                    <span className="text-slate-400 font-mono text-xs flex-shrink-0">
+                                      {row.reason ?? 'No reason listed'}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </details>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {/* Tab 2: Efficiency & Four Factors */}
+              {activeSection === 'four_factors' && hasEfficiencyFactors && detail.efficiency_factors && (
+                <section
+                  id="section-panel-four-factors"
+                  role="tabpanel"
+                  aria-labelledby="section-tab-four-factors"
+                  className="space-y-3"
+                >
                   <div>
                     <h3
                       id="efficiency-factors-heading"
@@ -1038,20 +1416,20 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                       </caption>
                       <thead className="bg-surface text-slate-400 font-mono uppercase">
                         <tr>
-                          <th scope="col" className="py-2.5 px-3 text-left font-semibold">
+                          <th scope="col" className="py-2 px-3 text-left font-semibold">
                             Factor &amp; Formula
                           </th>
-                          <th scope="col" className="py-2.5 px-3 text-right font-semibold">
+                          <th scope="col" className="py-2 px-3 text-right font-semibold">
                             {awayAbbr}
                           </th>
                           <th
                             scope="col"
-                            className="py-2.5 px-3 text-center font-semibold"
+                            className="py-2 px-3 text-center font-semibold"
                             aria-hidden="true"
                           >
                             Comparison
                           </th>
-                          <th scope="col" className="py-2.5 px-3 text-left font-semibold">
+                          <th scope="col" className="py-2 px-3 text-left font-semibold">
                             {homeAbbr}
                           </th>
                         </tr>
@@ -1071,9 +1449,14 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                 </section>
               )}
 
-              {/* Play-Style & Context Splits */}
-              {detail.context_splits && detail.context_splits.length > 0 && (
-                <section aria-labelledby="context-splits-heading" className="space-y-3">
+              {/* Tab 3: Play-Style & Context Splits */}
+              {activeSection === 'context_splits' && hasContextSplits && detail.context_splits && (
+                <section
+                  id="section-panel-context-splits"
+                  role="tabpanel"
+                  aria-labelledby="section-tab-context-splits"
+                  className="space-y-3"
+                >
                   <div>
                     <h3
                       id="context-splits-heading"
@@ -1094,285 +1477,6 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                         homeAbbr={homeAbbr}
                       />
                     ))}
-                  </div>
-                </section>
-              )}
-
-              {/* Player Box Score */}
-              {activeBoxView && (
-                <section aria-labelledby="player-box-score-heading" className="space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <h3
-                        id="player-box-score-heading"
-                        className="text-sm font-bold text-white uppercase tracking-wider font-mono"
-                      >
-                        Player Box Score
-                      </h3>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        Click any stat header to sort active players. Active players under 30 seconds appear as &lt;1 min.
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      {sortField !== null && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSortField(null);
-                            setSortDirection('desc');
-                          }}
-                          className="px-2.5 py-1.5 rounded-lg text-xs font-mono text-slate-300 hover:text-white bg-surface border border-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-accent-400"
-                        >
-                          Group: Starters / Bench
-                        </button>
-                      )}
-
-                      <div
-                        role="tablist"
-                        aria-label="Team box score"
-                        className="inline-flex rounded-lg bg-surface p-1 border border-slate-800"
-                      >
-                        <button
-                          type="button"
-                          role="tab"
-                          id="box-tab-away"
-                          aria-selected={activeTeam === 'away'}
-                          aria-controls="box-score-tabpanel"
-                          onClick={() => setActiveTeam('away')}
-                          className={`px-3 py-1.5 rounded-md text-xs font-mono font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-accent-400 ${
-                            activeTeam === 'away'
-                              ? 'bg-accent-600 text-white shadow-sm'
-                              : 'text-slate-400 hover:text-white'
-                          }`}
-                        >
-                          {awayAbbr} · {awayName}
-                        </button>
-                        <button
-                          type="button"
-                          role="tab"
-                          id="box-tab-home"
-                          aria-selected={activeTeam === 'home'}
-                          aria-controls="box-score-tabpanel"
-                          onClick={() => setActiveTeam('home')}
-                          className={`px-3 py-1.5 rounded-md text-xs font-mono font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-accent-400 ${
-                            activeTeam === 'home'
-                              ? 'bg-accent-600 text-white shadow-sm'
-                              : 'text-slate-400 hover:text-white'
-                          }`}
-                        >
-                          {homeAbbr} · {homeName}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div
-                    id="box-score-tabpanel"
-                    role="tabpanel"
-                    aria-labelledby={activeTeam === 'away' ? 'box-tab-away' : 'box-tab-home'}
-                    className="space-y-4"
-                  >
-                    <div className="overflow-x-auto border border-slate-800 rounded-xl bg-surface/50">
-                      <table className="w-full text-xs">
-                        <caption className="sr-only">
-                          {activeTeam === 'away' ? awayName : homeName} player box score
-                        </caption>
-                        <thead className="bg-surface text-slate-400 font-mono uppercase">
-                          <tr>
-                            <th
-                              scope="col"
-                              className="sticky left-0 z-20 bg-surface px-3 py-2 text-left font-semibold whitespace-nowrap border-r border-slate-800/60"
-                            >
-                              Player
-                            </th>
-                            {renderSortableHeader('minutes')}
-                            {renderSortableHeader('points')}
-                            <th scope="col" className="px-2 py-2 text-right font-semibold whitespace-nowrap">
-                              FG
-                            </th>
-                            <th scope="col" className="px-2 py-2 text-right font-semibold whitespace-nowrap">
-                              FG%
-                            </th>
-                            <th scope="col" className="px-2 py-2 text-right font-semibold whitespace-nowrap">
-                              3PT
-                            </th>
-                            <th scope="col" className="px-2 py-2 text-right font-semibold whitespace-nowrap">
-                              3P%
-                            </th>
-                            <th scope="col" className="px-2 py-2 text-right font-semibold whitespace-nowrap">
-                              FT
-                            </th>
-                            <th scope="col" className="px-2 py-2 text-right font-semibold whitespace-nowrap">
-                              FT%
-                            </th>
-                            <th scope="col" className="px-2 py-2 text-right font-semibold whitespace-nowrap">
-                              OREB
-                            </th>
-                            <th scope="col" className="px-2 py-2 text-right font-semibold whitespace-nowrap">
-                              DREB
-                            </th>
-                            {renderSortableHeader('reb')}
-                            {renderSortableHeader('ast')}
-                            {renderSortableHeader('stl')}
-                            {renderSortableHeader('blk')}
-                            {renderSortableHeader('tov')}
-                            {renderSortableHeader('pf')}
-                            {renderSortableHeader('plus_minus')}
-                            {renderSortableHeader('efg_pct')}
-                            {renderSortableHeader('ts_pct')}
-                            {renderSortableHeader('game_score')}
-                          </tr>
-                        </thead>
-
-                        {activeBoxView.sortedAll ? (
-                          <tbody>
-                            <PlayerTableRows players={activeBoxView.sortedAll} showStarterTag={true} />
-                          </tbody>
-                        ) : (
-                          <>
-                            {activeBoxView.starters.length > 0 && (
-                              <tbody>
-                                <tr className="bg-surface/80 border-t border-slate-800">
-                                  <th
-                                    colSpan={21}
-                                    scope="rowgroup"
-                                    className="px-3 py-1.5 text-left text-xs font-mono font-bold uppercase tracking-wider text-accent-400"
-                                  >
-                                    Starters
-                                  </th>
-                                </tr>
-                                <PlayerTableRows players={activeBoxView.starters} showStarterTag={false} />
-                              </tbody>
-                            )}
-                            {activeBoxView.bench.length > 0 && (
-                              <tbody>
-                                <tr className="bg-surface/80 border-t border-slate-800">
-                                  <th
-                                    colSpan={21}
-                                    scope="rowgroup"
-                                    className="px-3 py-1.5 text-left text-xs font-mono font-bold uppercase tracking-wider text-slate-400"
-                                  >
-                                    Bench
-                                  </th>
-                                </tr>
-                                <PlayerTableRows players={activeBoxView.bench} showStarterTag={false} />
-                              </tbody>
-                            )}
-                          </>
-                        )}
-
-                        <tfoot className="bg-surface/90 border-t-2 border-slate-700 font-mono tabular-nums font-bold text-white">
-                          <tr>
-                            <th
-                              scope="row"
-                              className="sticky left-0 z-10 bg-surface px-3 py-2.5 text-left whitespace-nowrap border-r border-slate-800/60"
-                            >
-                              Team Totals
-                            </th>
-                            <td className="px-2 py-2.5 text-right whitespace-nowrap">
-                              {activeBoxView.totals.minutes}
-                            </td>
-                            <td className="px-2 py-2.5 text-right whitespace-nowrap">
-                              {activeBoxView.totals.points}
-                            </td>
-                            <td className="px-2 py-2.5 text-right whitespace-nowrap">
-                              {activeBoxView.totals.fgm}-{activeBoxView.totals.fga}
-                            </td>
-                            <td className="px-2 py-2.5 text-right whitespace-nowrap">
-                              {formatPct(activeBoxView.totals.fg_pct)}
-                            </td>
-                            <td className="px-2 py-2.5 text-right whitespace-nowrap">
-                              {activeBoxView.totals.fg3m}-{activeBoxView.totals.fg3a}
-                            </td>
-                            <td className="px-2 py-2.5 text-right whitespace-nowrap">
-                              {formatPct(activeBoxView.totals.fg3_pct)}
-                            </td>
-                            <td className="px-2 py-2.5 text-right whitespace-nowrap">
-                              {activeBoxView.totals.ftm}-{activeBoxView.totals.fta}
-                            </td>
-                            <td className="px-2 py-2.5 text-right whitespace-nowrap">
-                              {formatPct(activeBoxView.totals.ft_pct)}
-                            </td>
-                            <td className="px-2 py-2.5 text-right whitespace-nowrap">
-                              {activeBoxView.totals.oreb}
-                            </td>
-                            <td className="px-2 py-2.5 text-right whitespace-nowrap">
-                              {activeBoxView.totals.dreb}
-                            </td>
-                            <td className="px-2 py-2.5 text-right whitespace-nowrap">
-                              {activeBoxView.totals.reb}
-                            </td>
-                            <td className="px-2 py-2.5 text-right whitespace-nowrap">
-                              {activeBoxView.totals.ast}
-                            </td>
-                            <td className="px-2 py-2.5 text-right whitespace-nowrap">
-                              {activeBoxView.totals.stl}
-                            </td>
-                            <td className="px-2 py-2.5 text-right whitespace-nowrap">
-                              {activeBoxView.totals.blk}
-                            </td>
-                            <td className="px-2 py-2.5 text-right whitespace-nowrap">
-                              {activeBoxView.totals.total_tov}
-                            </td>
-                            <td className="px-2 py-2.5 text-right whitespace-nowrap">
-                              {activeBoxView.totals.pf}
-                            </td>
-                            <td className="px-2 py-2.5 text-right text-slate-500 whitespace-nowrap">
-                              {MISSING_VALUE}
-                            </td>
-                            <td className="px-2 py-2.5 text-right whitespace-nowrap">
-                              {formatPct(activeBoxView.totals.efg_pct)}
-                            </td>
-                            <td className="px-2 py-2.5 text-right whitespace-nowrap">
-                              {formatPct(activeBoxView.totals.ts_pct)}
-                            </td>
-                            <td className="px-2 py-2.5 text-right text-slate-500 whitespace-nowrap">
-                              {MISSING_VALUE}
-                            </td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
-
-                    {activeBoxView.totals.team_tov > 0 && (
-                      <p className="text-xs font-mono text-slate-400">
-                        Note: Team Totals TOV ({activeBoxView.totals.total_tov}) includes{' '}
-                        {activeBoxView.totals.team_tov} team turnover
-                        {activeBoxView.totals.team_tov === 1 ? '' : 's'} not attributed to an
-                        individual player ({activeBoxView.totals.tov} player +{' '}
-                        {activeBoxView.totals.team_tov} team).
-                      </p>
-                    )}
-
-                    {/* Inactive Players List */}
-                    {activeBoxView.inactive.length > 0 && (
-                      <div className="bg-surface/60 border border-slate-800 rounded-xl p-3 space-y-2">
-                        <div className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400">
-                          Inactive / Did Not Play ({activeBoxView.inactive.length})
-                        </div>
-                        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                          {activeBoxView.inactive.map((row) => (
-                            <li
-                              key={row.playerId}
-                              className="flex items-center justify-between gap-2 text-xs bg-surface-raised/70 border border-slate-800/80 rounded-lg px-2.5 py-1.5"
-                            >
-                              <span className="text-slate-200 font-medium truncate">
-                                {row.playerName}
-                                {row.position ? (
-                                  <span className="text-slate-500 font-mono ml-1.5">
-                                    ({row.position})
-                                  </span>
-                                ) : null}
-                              </span>
-                              <span className="text-slate-400 font-mono text-xs flex-shrink-0">
-                                {row.reason ?? 'No reason listed'}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
                   </div>
                 </section>
               )}
