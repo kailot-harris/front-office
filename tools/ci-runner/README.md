@@ -68,6 +68,14 @@ The runner service accounts must be able to create and remove directories in
 the lock's parent directory (`/var/lock` by default); if they cannot, set
 `FRONT_OFFICE_CI_LOCK_DIR` to a path they can write.
 
+On many Linux hosts `/var/lock` is a sticky directory (mode `1777`), where only
+the account that created an entry can remove it. That is fine if all four
+runner services run as the same account. If they run as different accounts,
+stale-lock takeover of another account's lock will fail (the hook logs a
+warning and keeps waiting), so either run them as one account or point
+`FRONT_OFFICE_CI_LOCK_DIR` at a directory owned by a shared group without the
+sticky bit (for example mode `2770`).
+
 ## Environment overrides
 
 Set these in each runner's `.env` file (identically on all four) or in the

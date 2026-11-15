@@ -89,6 +89,8 @@ take_over_stale() {
   if mv "$LOCK_DIR" "$grave" 2>/dev/null; then
     rm -rf "$grave"
     log "Removed stale lock held by '$holder' (age ${age}s, stale threshold ${STALE_SECONDS}s)."
+  elif [ -d "$LOCK_DIR" ]; then
+    log "WARNING: could not remove stale lock held by '$holder' (age ${age}s); check that every runner account can remove it (sticky lock parent directory?)."
   fi
 }
 
@@ -133,6 +135,8 @@ while :; do
 
   if [ -n "$age" ] && [ "$age" -ge "$STALE_SECONDS" ]; then
     take_over_stale "$holder" "$age"
+    # A failed takeover leaves the lock in place; back off instead of spinning.
+    [ -d "$LOCK_DIR" ] && sleep "$POLL_SECONDS"
     continue
   fi
 
