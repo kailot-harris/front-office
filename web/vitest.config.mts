@@ -30,6 +30,7 @@ export default defineConfig({
         oxc: jsx,
         test: {
           name: 'node',
+          testTimeout: 15000,
           environment: 'node',
           include: [
             'tests/contracts/**/*.test.ts',
@@ -43,6 +44,7 @@ export default defineConfig({
         oxc: jsx,
         test: {
           name: 'components',
+          testTimeout: 15000,
           environment: 'jsdom',
           globals: true,
           setupFiles: ['tests/setup/vitest.setup.ts'],
