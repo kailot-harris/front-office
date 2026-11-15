@@ -1,8 +1,8 @@
 # ==============================================================================
 # build_game_details.R
 # Purely empirical post-game box score, Four Factors, efficiency metrics,
-# context splits, and Hollinger Game Score payload builder (Matchup Game Detail
-# v3 -- Phase 1).
+# context splits, Hollinger Game Score, and Phase 2 explainability payload
+# builder (Matchup Game Detail v3 -- Phases 1 & 2).
 #
 # Designed to be sourced without side effects by build_matchups_dataset.R and
 # standalone unit/contract tests. Reads only caller-supplied data frames (no
@@ -14,6 +14,23 @@ suppressPackageStartupMessages({
 })
 
 GAME_DETAIL_SCHEMA_VERSION <- "1.0"
+GAME_DETAIL_HCA_POINTS <- 2.40
+GAME_DETAIL_ENSEMBLE_WEIGHTS <- c(
+  bottom_up    = 0.35,
+  rapm         = 0.25,
+  shot_fatigue = 0.20,
+  embeddings   = 0.20
+)
+GAME_DETAIL_LOG_SOURCES <- c("LOGGED_PREGAME", "BACKTEST_PREWEEK", "BACKTEST_SEEDED")
+GAME_DETAIL_WATERFALL_SPECS <- list(
+  list(key = "bottom_up",    label = "Bottom-up BPM"),
+  list(key = "rapm",         label = "Regularized APM"),
+  list(key = "shot_fatigue", label = "Shot quality & fatigue"),
+  list(key = "embeddings",   label = "Player embeddings"),
+  list(key = "home_court",   label = "Home court advantage"),
+  list(key = "schedule",     label = "Schedule & travel")
+)
+GAME_DETAIL_ENTERING_FACTOR_KEYS <- c("efg_pct", "tov_pct", "oreb_pct", "fta_rate", "ortg")
 
 # ESPN uses non-canonical abbreviations in hoopR team_box/player_box for 6 teams.
 ESPN_ABBR_FIXUPS <- c(
@@ -603,6 +620,533 @@ classify_game_players <- function(pb_team, team_abbr = NULL) {
   list(away = empty, home = empty)
 }
 
+# ------------------------------------------------------------------------------
+# Phase 2: Explainability builders (waterfall, entering baselines, TreeSHAP)
+# ------------------------------------------------------------------------------
+
+.get_margin_sigma <- function() {
+  if (exists("MARGIN_SIGMA", inherits = TRUE)) {
+    v <- suppressWarnings(as.numeric(get("MARGIN_SIGMA", inherits = TRUE)))
+    if (length(v) == 1L && is.finite(v) && v > 0) return(v)
+  }
+  11.8
+}
+
+.field_or_null <- function(obj, field) {
+  if (is.null(obj) || !(field %in% names(obj))) return(NULL)
+  v <- obj[[field]]
+  if (is.list(v) && length(v) == 1L) v <- v[[1L]]
+  if (length(v) == 0L) return(NULL)
+  v[1L]
+}
+
+.num_field <- function(obj, field) {
+  v <- .field_or_null(obj, field)
+  if (is.null(v)) return(NA_real_)
+  suppressWarnings(as.numeric(v))
+}
+
+.lookup_ensemble_team <- function(ensemble_ratings, team_abbr = NULL, team_name = NULL) {
+  if (is.null(ensemble_ratings) || !is.data.frame(ensemble_ratings) || nrow(ensemble_ratings) == 0L) {
+    return(NULL)
+  }
+  abbr <- chr_or_null(team_abbr)
+  if (!is.null(abbr) && "team" %in% names(ensemble_ratings)) {
+    canon_tbl <- canonical_nba_abbr(ensemble_ratings$team)
+    idx <- which(!is.na(canon_tbl) & canon_tbl == canonical_nba_abbr(abbr))
+    if (length(idx) >= 1L) return(ensemble_ratings[idx[1L], , drop = FALSE])
+  }
+  nm <- chr_or_null(team_name)
+  if (!is.null(nm) && "team_name" %in% names(ensemble_ratings)) {
+    tbl_nm <- trimws(as.character(ensemble_ratings$team_name))
+    idx <- which(!is.na(tbl_nm) & tbl_nm == nm)
+    if (length(idx) >= 1L) return(ensemble_ratings[idx[1L], , drop = FALSE])
+  }
+  NULL
+}
+
+.assemble_waterfall_steps <- function(step_points, step_details, target_margin,
+                                      context_label = "waterfall") {
+  rounded_pts <- round(as.numeric(step_points), 2L)
+  rounded_pts[abs(rounded_pts) < 1e-12] <- 0
+  steps <- vector("list", 6L)
+  for (idx in seq_len(6L)) {
+    steps[[idx]] <- list(
+      key    = GAME_DETAIL_WATERFALL_SPECS[[idx]]$key,
+      label  = GAME_DETAIL_WATERFALL_SPECS[[idx]]$label,
+      points = unname(rounded_pts[idx]),
+      detail = step_details[[idx]]
+    )
+  }
+
+  target_rounded <- round(as.numeric(target_margin), 2L)
+  if (abs(target_rounded) < 1e-12) target_rounded <- 0
+  step_sum <- round(sum(rounded_pts), 2L)
+  residual <- round(target_rounded - step_sum, 2L)
+  if (abs(residual) < 1e-12) residual <- 0
+
+  if (abs(residual) > 0.02 + 1e-9) {
+    stop(sprintf(
+      "%s attribution drift: |predicted_margin (%.2f) - sum(6 steps) (%.2f)| = %.2f > 0.02",
+      context_label, target_rounded, step_sum, abs(residual)
+    ))
+  }
+  if (abs(residual) >= 0.005) {
+    steps[[7L]] <- list(
+      key    = "rounding",
+      label  = "Component rounding",
+      points = residual,
+      detail = "2-decimal component rounding residual"
+    )
+  }
+  unname(steps)
+}
+
+.split_team_box_sides <- function(tb_g) {
+  away_tb <- if (!is.null(tb_g) && nrow(tb_g) > 0L && "team_home_away" %in% names(tb_g)) {
+    tb_g[tolower(as.character(tb_g$team_home_away)) == "away", , drop = FALSE]
+  } else {
+    data.frame()
+  }
+  home_tb <- if (!is.null(tb_g) && nrow(tb_g) > 0L && "team_home_away" %in% names(tb_g)) {
+    tb_g[tolower(as.character(tb_g$team_home_away)) == "home", , drop = FALSE]
+  } else {
+    data.frame()
+  }
+  if (nrow(away_tb) > 1L) away_tb <- away_tb[1L, , drop = FALSE]
+  if (nrow(home_tb) > 1L) home_tb <- home_tb[1L, , drop = FALSE]
+  list(away = away_tb, home = home_tb)
+}
+
+#' Compute empirical Four Factors + ORtg efficiency factors from a single game's
+#' two-row team_box data frame. Shared by build_game_detail_payload() and
+#' build_matchups_dataset.R so realized factors in entering_baselines match
+#' game details identically.
+compute_game_realized_factors <- function(team_box_game) {
+  sides <- .split_team_box_sides(team_box_game)
+  if (nrow(sides$away) != 1L || nrow(sides$home) != 1L) return(NULL)
+  away_score <- parse_num_or_na(.col_or_default(sides$away, "team_score", NA_real_)[1L])
+  home_score <- parse_num_or_na(.col_or_default(sides$home, "team_score", NA_real_)[1L])
+  if (is.na(away_score) || is.na(home_score)) return(NULL)
+
+  away_stats <- .extract_team_counting_stats(sides$away)
+  home_stats <- .extract_team_counting_stats(sides$home)
+  poss_raw <- .compute_dean_oliver_possessions(away_stats, home_stats)
+  away_totals <- .build_team_box_totals(away_stats, home_stats, 240, poss_raw, 48)
+  home_totals <- .build_team_box_totals(home_stats, away_stats, 240, poss_raw, 48)
+  .build_efficiency_factors(away_totals, home_totals, away_stats, home_stats)
+}
+
+#' Build a strictly attributed 6-step (plus optional rounding residual) margin
+#' waterfall. Never substitutes current ensemble ratings onto a logged forecast.
+build_margin_waterfall <- function(game_row, ensemble_ratings = NULL, log_row = NULL) {
+  basis <- chr_or_null(.field_or_null(game_row, "projection_basis"))
+  if (is.null(basis) || identical(basis, "team_rating_differential")) return(NULL)
+
+  gid_label <- chr_or_null(.field_or_null(game_row, "game_id")) %||%
+    chr_or_null(.field_or_null(game_row, "espn_game_id")) %||% "?"
+
+  if (identical(basis, "primary_ensemble")) {
+    if (is.null(ensemble_ratings) || !is.data.frame(ensemble_ratings) || nrow(ensemble_ratings) == 0L) {
+      return(NULL)
+    }
+    home_abbr <- chr_or_null(.field_or_null(game_row, "home_team"))
+    away_abbr <- chr_or_null(.field_or_null(game_row, "away_team"))
+    home_name <- chr_or_null(.field_or_null(game_row, "home_name")) %||%
+      chr_or_null(.field_or_null(game_row, "home_team_name"))
+    away_name <- chr_or_null(.field_or_null(game_row, "away_name")) %||%
+      chr_or_null(.field_or_null(game_row, "away_team_name"))
+
+    h_row <- .lookup_ensemble_team(ensemble_ratings, home_abbr, home_name)
+    a_row <- .lookup_ensemble_team(ensemble_ratings, away_abbr, away_name)
+    if (is.null(h_row) || is.null(a_row)) return(NULL)
+
+    comp_cols <- c("rating_bottom_up", "rating_rapm", "rating_shot_fatigue", "rating_embeddings")
+    if (!all(comp_cols %in% names(ensemble_ratings))) return(NULL)
+
+    h_vals <- vapply(comp_cols, function(c) .num_field(h_row, c), numeric(1))
+    a_vals <- vapply(comp_cols, function(c) .num_field(a_row, c), numeric(1))
+    if (!all(is.finite(h_vals)) || !all(is.finite(a_vals))) return(NULL)
+
+    hca_pts <- if ("hca_pts" %in% names(game_row) && is.finite(.num_field(game_row, "hca_pts"))) {
+      .num_field(game_row, "hca_pts")
+    } else {
+      GAME_DETAIL_HCA_POINTS
+    }
+
+    away_drag <- .num_field(game_row, "away_fatigue_drag")
+    home_drag <- .num_field(game_row, "home_fatigue_drag")
+    sched_adj <- if ("schedule_adjustment" %in% names(game_row)) {
+      val <- .num_field(game_row, "schedule_adjustment")
+      if (!is.finite(val)) return(NULL)
+      val
+    } else if (is.finite(away_drag) && is.finite(home_drag)) {
+      away_drag - home_drag
+    } else {
+      0
+    }
+
+    raw_steps <- c(
+      GAME_DETAIL_ENSEMBLE_WEIGHTS[["bottom_up"]]    * (h_vals[["rating_bottom_up"]]    - a_vals[["rating_bottom_up"]]),
+      GAME_DETAIL_ENSEMBLE_WEIGHTS[["rapm"]]         * (h_vals[["rating_rapm"]]         - a_vals[["rating_rapm"]]),
+      GAME_DETAIL_ENSEMBLE_WEIGHTS[["shot_fatigue"]] * (h_vals[["rating_shot_fatigue"]] - a_vals[["rating_shot_fatigue"]]),
+      GAME_DETAIL_ENSEMBLE_WEIGHTS[["embeddings"]]   * (h_vals[["rating_embeddings"]]   - a_vals[["rating_embeddings"]]),
+      hca_pts,
+      sched_adj
+    )
+
+    target_margin <- .num_field(game_row, "predicted_margin")
+    if (!is.finite(target_margin)) {
+      h_net <- .num_field(h_row, "ensemble_net_rating")
+      a_net <- .num_field(a_row, "ensemble_net_rating")
+      target_margin <- if (is.finite(h_net) && is.finite(a_net)) {
+        (h_net - a_net) + hca_pts + sched_adj
+      } else {
+        sum(raw_steps)
+      }
+    }
+
+    h_lbl <- canonical_nba_abbr(home_abbr %||% .field_or_null(h_row, "team"))
+    a_lbl <- canonical_nba_abbr(away_abbr %||% .field_or_null(a_row, "team"))
+    details <- list(
+      sprintf("35%% BPM blend (%s %+.2f vs %s %+.2f)", h_lbl, h_vals[["rating_bottom_up"]], a_lbl, a_vals[["rating_bottom_up"]]),
+      sprintf("25%% RAPM blend (%s %+.2f vs %s %+.2f)", h_lbl, h_vals[["rating_rapm"]], a_lbl, a_vals[["rating_rapm"]]),
+      sprintf("20%% Shot/Fatigue blend (%s %+.2f vs %s %+.2f)", h_lbl, h_vals[["rating_shot_fatigue"]], a_lbl, a_vals[["rating_shot_fatigue"]]),
+      sprintf("20%% Embeddings blend (%s %+.2f vs %s %+.2f)", h_lbl, h_vals[["rating_embeddings"]], a_lbl, a_vals[["rating_embeddings"]]),
+      sprintf("%s home-court constant (+%.2f pts)", h_lbl, round(hca_pts, 2L)),
+      if (is.finite(away_drag) && is.finite(home_drag)) {
+        sprintf("%s fatigue %.2f minus %s fatigue %.2f", a_lbl, away_drag, h_lbl, home_drag)
+      } else {
+        "Rest, back-to-back & travel drag differential"
+      }
+    )
+
+    return(.assemble_waterfall_steps(
+      raw_steps, details, target_margin,
+      context_label = sprintf("primary_ensemble game %s", gid_label)
+    ))
+  }
+
+  if (basis %in% c("logged_model_margin", "margin_from_logged_win_prob")) {
+    if (is.null(log_row)) return(NULL)
+    req_cols <- c(
+      "comp_bottom_up", "comp_rapm", "comp_shot_fatigue", "comp_embeddings",
+      "comp_home_court", "comp_schedule", "sigma_game"
+    )
+    vals <- vapply(req_cols, function(c) .num_field(log_row, c), numeric(1))
+    if (!all(is.finite(vals)) || vals[["sigma_game"]] <= 0) return(NULL)
+
+    target_margin <- .num_field(game_row, "predicted_margin")
+    if (!is.finite(target_margin)) target_margin <- .num_field(log_row, "predicted_margin")
+    if (!is.finite(target_margin)) return(NULL)
+
+    details <- list(
+      "Logged pregame 35% BPM blend differential",
+      "Logged pregame 25% RAPM blend differential",
+      "Logged pregame 20% Shot/Fatigue blend differential",
+      "Logged pregame 20% Embeddings blend differential",
+      "Logged pregame home-court constant",
+      "Logged pregame schedule & travel drag differential"
+    )
+    return(.assemble_waterfall_steps(
+      vals[seq_len(6L)], details, target_margin,
+      context_label = sprintf("logged game %s", gid_label)
+    ))
+  }
+
+  NULL
+}
+
+#' Build strictly causal pooled entering Four Factors + ORtg baselines for a
+#' completed game. Returns NULL if realized_factors is NULL or either team has
+#' zero prior games strictly before game_date.
+build_entering_baselines <- function(game_id, game_date, away_team, home_team,
+                                     team_box_df, realized_factors) {
+  if (is.null(realized_factors) || is.null(team_box_df) ||
+      !is.data.frame(team_box_df) || nrow(team_box_df) == 0L) {
+    return(NULL)
+  }
+  cutoff_date <- tryCatch(as.Date(as.character(game_date)), error = function(e) as.Date(NA))
+  if (is.na(cutoff_date)) return(NULL)
+
+  away_abbr <- canonical_nba_abbr(away_team)
+  home_abbr <- canonical_nba_abbr(home_team)
+  if (!nzchar(away_abbr) || !nzchar(home_abbr)) return(NULL)
+
+  req_cols <- c("game_id", "game_date", "team_abbreviation")
+  if (!all(req_cols %in% names(team_box_df))) return(NULL)
+
+  tb_dates <- tryCatch(
+    as.Date(as.character(team_box_df$game_date)),
+    error = function(e) as.Date(rep(NA_character_, nrow(team_box_df)))
+  )
+  tb_gids <- as.character(team_box_df$game_id)
+  tb_scores <- parse_num_or_na(.col_or_default(team_box_df, "team_score", NA_real_))
+  gid_chr <- as.character(game_id)
+
+  keep <- !is.na(tb_dates) & (tb_dates < cutoff_date) & (tb_gids != gid_chr) & !is.na(tb_scores)
+  if (!any(keep)) return(NULL)
+
+  prior_tb <- team_box_df[keep, , drop = FALSE]
+  prior_gids <- as.character(prior_tb$game_id)
+  prior_canon <- canonical_nba_abbr(prior_tb$team_abbreviation)
+
+  realized_keys <- vapply(realized_factors, function(f) as.character(f$key), character(1))
+
+  sum_stat <- function(df, col) {
+    if (!(col %in% names(df))) return(NULL)
+    v <- parse_num_or_na(df[[col]])
+    if (length(v) == 0L || all(is.na(v))) return(NULL)
+    s <- sum(v, na.rm = TRUE)
+    if (!is.finite(s)) return(NULL)
+    s
+  }
+
+  sum_side <- function(df) {
+    list(
+      points    = sum_stat(df, "team_score"),
+      fgm       = sum_stat(df, "field_goals_made"),
+      fga       = sum_stat(df, "field_goals_attempted"),
+      fg3m      = sum_stat(df, "three_point_field_goals_made"),
+      ftm       = sum_stat(df, "free_throws_made"),
+      fta       = sum_stat(df, "free_throws_attempted"),
+      oreb      = sum_stat(df, "offensive_rebounds"),
+      dreb      = sum_stat(df, "defensive_rebounds"),
+      total_tov = sum_stat(df, "total_turnovers")
+    )
+  }
+
+  compute_team_baseline <- function(target_abbr, side_field) {
+    t_idx <- which(!is.na(prior_canon) & prior_canon == target_abbr)
+    if (length(t_idx) == 0L) return(NULL)
+    t_idx <- t_idx[!duplicated(prior_gids[t_idx])]
+
+    opp_mask <- is.na(prior_canon) | (prior_canon != target_abbr)
+    opp_pool <- prior_tb[opp_mask, , drop = FALSE]
+    opp_pool_gids <- prior_gids[opp_mask]
+    opp_match <- match(prior_gids[t_idx], opp_pool_gids)
+    valid <- !is.na(opp_match)
+    if (!any(valid)) return(NULL)
+
+    t_df <- prior_tb[t_idx[valid], , drop = FALSE]
+    o_df <- opp_pool[opp_match[valid], , drop = FALSE]
+    prior_n <- as.integer(nrow(t_df))
+    if (prior_n == 0L) return(NULL)
+
+    ts <- sum_side(t_df)
+    os <- sum_side(o_df)
+
+    efg_num <- if (!is.null(ts$fgm) && !is.null(ts$fg3m)) ts$fgm + 0.5 * ts$fg3m else NULL
+    tov_den <- if (!is.null(ts$fga) && !is.null(ts$fta) && !is.null(ts$total_tov)) {
+      ts$fga + 0.44 * ts$fta + ts$total_tov
+    } else NULL
+    oreb_den <- if (!is.null(ts$oreb) && !is.null(os$dreb)) ts$oreb + os$dreb else NULL
+    poss_pooled <- .compute_dean_oliver_possessions(ts, os)
+
+    entering_vals <- list(
+      efg_pct  = safe_ratio(efg_num, ts$fga, 100, 1L),
+      tov_pct  = safe_ratio(ts$total_tov, tov_den, 100, 1L),
+      oreb_pct = safe_ratio(ts$oreb, oreb_den, 100, 1L),
+      fta_rate = safe_ratio(ts$fta, ts$fga, 100, 1L),
+      ortg     = if (is.finite(poss_pooled) && poss_pooled > 0) safe_ratio(ts$points, poss_pooled, 100, 1L) else NULL
+    )
+
+    realized_vals <- setNames(
+      lapply(realized_factors, function(f) num_or_null(f[[side_field]], 1L)),
+      realized_keys
+    )
+
+    factor_list <- lapply(GAME_DETAIL_ENTERING_FACTOR_KEYS, function(k) {
+      ent <- entering_vals[[k]]
+      real <- realized_vals[[k]]
+      diff_val <- if (!is.null(ent) && !is.null(real) && is.finite(ent) && is.finite(real)) {
+        d <- round(real - ent, 1L)
+        if (abs(d) < 1e-12) 0 else d
+      } else {
+        NULL
+      }
+      list(
+        key        = k,
+        entering   = ent,
+        realized   = real,
+        difference = diff_val
+      )
+    })
+
+    list(
+      teamAbbr      = target_abbr,
+      prior_games_n = prior_n,
+      factors       = unname(factor_list)
+    )
+  }
+
+  away_bl <- compute_team_baseline(away_abbr, "away_value")
+  if (is.null(away_bl)) return(NULL)
+  home_bl <- compute_team_baseline(home_abbr, "home_value")
+  if (is.null(home_bl)) return(NULL)
+
+  unname(list(away_bl, home_bl))
+}
+
+#' Assemble GameExplainabilityPayload for both MatchupGame (slates JSON) and
+#' GameDetailPayload (per-game JSON).
+build_game_explainability <- function(game_row, ensemble_ratings = NULL, log_row = NULL,
+                                      shap_entry = NULL, team_box_df = NULL,
+                                      realized_factors = NULL) {
+  raw_basis <- chr_or_null(.field_or_null(game_row, "projection_basis"))
+  proj_basis <- if (identical(raw_basis, "team_rating_differential")) NULL else raw_basis
+  if (!is.null(proj_basis) &&
+      !(proj_basis %in% c("primary_ensemble", "logged_model_margin", "margin_from_logged_win_prob"))) {
+    stop(sprintf("Unsupported projection_basis in build_game_explainability(): %s", proj_basis))
+  }
+
+  home_abbr <- chr_or_null(.field_or_null(game_row, "home_team"))
+  away_abbr <- chr_or_null(.field_or_null(game_row, "away_team"))
+  home_name <- chr_or_null(.field_or_null(game_row, "home_name")) %||%
+    chr_or_null(.field_or_null(game_row, "home_team_name"))
+  away_name <- chr_or_null(.field_or_null(game_row, "away_name")) %||%
+    chr_or_null(.field_or_null(game_row, "away_team_name"))
+
+  raw_margin <- .num_field(game_row, "predicted_margin")
+  raw_prob <- .num_field(game_row, "predicted_home_win_prob")
+  sigma_out <- NULL
+
+  if (identical(proj_basis, "primary_ensemble")) {
+    sg <- .num_field(game_row, "sigma_game")
+    if (is.finite(sg) && sg > 0) {
+      sigma_out <- num_or_null(sg, 4L)
+    } else if (!is.null(ensemble_ratings) && is.data.frame(ensemble_ratings)) {
+      h_row <- .lookup_ensemble_team(ensemble_ratings, home_abbr, home_name)
+      a_row <- .lookup_ensemble_team(ensemble_ratings, away_abbr, away_name)
+      if (!is.null(h_row) && !is.null(a_row)) {
+        sd_h <- .num_field(h_row, "rating_disagreement_sd")
+        sd_a <- .num_field(a_row, "rating_disagreement_sd")
+        sd_h <- if (is.finite(sd_h) && sd_h > 0) sd_h else 0
+        sd_a <- if (is.finite(sd_a) && sd_a > 0) sd_a else 0
+        sg_calc <- sqrt(.get_margin_sigma()^2 + sd_h^2 + sd_a^2)
+        sigma_out <- num_or_null(sg_calc, 4L)
+
+        if (!is.finite(raw_margin)) {
+          h_net <- .num_field(h_row, "ensemble_net_rating")
+          a_net <- .num_field(a_row, "ensemble_net_rating")
+          hca_pts <- if ("hca_pts" %in% names(game_row) && is.finite(.num_field(game_row, "hca_pts"))) {
+            .num_field(game_row, "hca_pts")
+          } else {
+            GAME_DETAIL_HCA_POINTS
+          }
+          sched_adj <- if ("schedule_adjustment" %in% names(game_row) && is.finite(.num_field(game_row, "schedule_adjustment"))) {
+            .num_field(game_row, "schedule_adjustment")
+          } else {
+            0
+          }
+          if (is.finite(h_net) && is.finite(a_net)) {
+            raw_margin <- (h_net - a_net) + hca_pts + sched_adj
+          }
+        }
+        if (!is.finite(raw_prob) && is.finite(raw_margin)) {
+          raw_prob <- pnorm(raw_margin / sg_calc)
+        }
+      }
+    }
+  } else if (!is.null(proj_basis) &&
+             proj_basis %in% c("logged_model_margin", "margin_from_logged_win_prob") &&
+             !is.null(log_row)) {
+    sg_log <- .num_field(log_row, "sigma_game")
+    if (is.finite(sg_log) && sg_log > 0) {
+      sigma_out <- num_or_null(sg_log, 4L)
+    }
+  }
+
+  pred_margin <- num_or_null(raw_margin, 2L)
+  pred_prob <- num_or_null(raw_prob, 4L)
+
+  waterfall <- build_margin_waterfall(
+    game_row         = game_row,
+    ensemble_ratings = ensemble_ratings,
+    log_row          = log_row
+  )
+
+  is_comp <- isTRUE(as.logical(.field_or_null(game_row, "is_completed")))
+
+  logged_forecast <- NULL
+  if (!is.null(proj_basis) &&
+      proj_basis %in% c("logged_model_margin", "margin_from_logged_win_prob") &&
+      !is.null(log_row)) {
+    ls_val <- chr_or_null(.field_or_null(log_row, "log_source"))
+    if (is.null(ls_val) || !(ls_val %in% GAME_DETAIL_LOG_SOURCES)) {
+      stop(sprintf("Invalid or missing log_source for logged game %s: %s",
+                   chr_or_null(.field_or_null(game_row, "game_id")) %||% "?",
+                   ls_val %||% "NULL"))
+    }
+    ts_raw <- .field_or_null(log_row, "prediction_timestamp")
+    ts_str <- if (inherits(ts_raw, "POSIXt")) {
+      if (is.na(ts_raw)) NULL else format(ts_raw, "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+    } else {
+      chr_or_null(ts_raw)
+    }
+    if (is.null(ts_str)) {
+      stop(sprintf("Missing prediction_timestamp for logged game %s",
+                   chr_or_null(.field_or_null(game_row, "game_id")) %||% "?"))
+    }
+
+    brier_comp <- NULL
+    ll_comp <- NULL
+    if (is_comp && !is.null(pred_prob) && is.finite(pred_prob)) {
+      hs <- .num_field(game_row, "home_score")
+      if (!is.finite(hs)) hs <- .num_field(game_row, "box_home_score")
+      as_val <- .num_field(game_row, "away_score")
+      if (!is.finite(as_val)) as_val <- .num_field(game_row, "box_away_score")
+      if (is.finite(hs) && is.finite(as_val)) {
+        y <- as.numeric(hs > as_val)
+        p <- min(max(as.numeric(pred_prob), 1e-6), 1 - 1e-6)
+        brier_comp <- round((p - y)^2, 6L)
+        ll_comp <- round(-(y * log(p) + (1 - y) * log(1 - p)), 6L)
+      }
+    }
+
+    logged_forecast <- list(
+      prediction_timestamp = ts_str,
+      log_source           = ls_val,
+      brier_component      = brier_comp,
+      log_loss_component   = ll_comp
+    )
+  }
+
+  entering_baselines <- NULL
+  if (is_comp && !is.null(realized_factors)) {
+    gid_val <- chr_or_null(.field_or_null(game_row, "game_id")) %||%
+      chr_or_null(.field_or_null(game_row, "espn_game_id"))
+    gdate_val <- .field_or_null(game_row, "game_date")
+    entering_baselines <- build_entering_baselines(
+      game_id          = gid_val,
+      game_date        = gdate_val,
+      away_team        = away_abbr,
+      home_team        = home_abbr,
+      team_box_df      = team_box_df,
+      realized_factors = realized_factors
+    )
+  }
+
+  shap_out <- NULL
+  if (!is.null(shap_entry) && is.list(shap_entry)) {
+    shap_out <- shap_entry
+    if (!is.null(shap_out$factors)) {
+      shap_out$factors <- unname(shap_out$factors)
+    }
+  }
+
+  list(
+    projection_basis        = proj_basis,
+    predicted_margin        = pred_margin,
+    predicted_home_win_prob = pred_prob,
+    sigma_game              = sigma_out,
+    margin_waterfall        = waterfall,
+    logged_forecast         = logged_forecast,
+    entering_baselines      = entering_baselines,
+    xgboost_shap            = shap_out
+  )
+}
+
 #' Build a GameDetailEnvelope payload for one game.
 #'
 #' Maintains the Phase 1 contract invariant: `box_score`, `efficiency_factors`,
@@ -620,7 +1164,8 @@ build_game_detail_payload <- function(
   away_team_meta = NULL,
   home_team_meta = NULL,
   generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
-  schema_ver = GAME_DETAIL_SCHEMA_VERSION
+  schema_ver = GAME_DETAIL_SCHEMA_VERSION,
+  explainability = NULL
 ) {
   gid <- as.character(game_id)
 
@@ -635,18 +1180,9 @@ build_game_detail_payload <- function(
     player_box_game
   }
 
-  away_tb <- if (!is.null(tb_g) && nrow(tb_g) > 0L && "team_home_away" %in% names(tb_g)) {
-    tb_g[tolower(as.character(tb_g$team_home_away)) == "away", , drop = FALSE]
-  } else {
-    data.frame()
-  }
-  home_tb <- if (!is.null(tb_g) && nrow(tb_g) > 0L && "team_home_away" %in% names(tb_g)) {
-    tb_g[tolower(as.character(tb_g$team_home_away)) == "home", , drop = FALSE]
-  } else {
-    data.frame()
-  }
-  if (nrow(away_tb) > 1L) away_tb <- away_tb[1L, , drop = FALSE]
-  if (nrow(home_tb) > 1L) home_tb <- home_tb[1L, , drop = FALSE]
+  tb_sides <- .split_team_box_sides(tb_g)
+  away_tb <- tb_sides$away
+  home_tb <- tb_sides$home
 
   g_date <- if (!is.null(game_date) && !is.na(game_date)) {
     as.Date(as.character(game_date))
@@ -714,7 +1250,7 @@ build_game_detail_payload <- function(
         efficiency_factors = NULL,
         context_splits     = NULL,
         box_score          = NULL,
-        explainability     = NULL,
+        explainability     = explainability,
         game_flow          = NULL
       )
     ))
@@ -802,7 +1338,7 @@ build_game_detail_payload <- function(
         home_inactive  = home_players_res$inactive,
         top_performers = top_performers
       ),
-      explainability = NULL,
+      explainability = explainability,
       game_flow      = NULL
     )
   )
@@ -830,17 +1366,27 @@ build_game_detail_payload <- function(
   NULL
 }
 
+.json_has_null_explainability <- function(path) {
+  if (!file.exists(path)) return(FALSE)
+  lines <- tryCatch(readLines(path, warn = FALSE, encoding = "UTF-8"),
+                    error = function(e) character(0))
+  if (length(lines) == 0L) return(FALSE)
+  any(grepl('"explainability"\\s*:\\s*null\\b', lines, perl = TRUE))
+}
+
 #' Decide whether a game detail file should be rebuilt on this run.
 #'
 #' Returns TRUE when no file exists, force is TRUE, game_date is within the
-#' 7-day stat-correction window (>= today_date - 7), or the existing file's
-#' schema_version differs from schema_ver.
+#' 7-day stat-correction window (>= today_date - 7), expect_explainability is
+#' TRUE while the on-disk file still has `"explainability": null`, or the
+#' existing file's schema_version differs from schema_ver.
 should_rebuild_game_detail <- function(
   game_date,
   path,
   schema_ver = GAME_DETAIL_SCHEMA_VERSION,
   today_date = Sys.Date(),
-  force = identical(Sys.getenv("NBA_FORCE_REBUILD_GAMES"), "true")
+  force = identical(Sys.getenv("NBA_FORCE_REBUILD_GAMES"), "true"),
+  expect_explainability = FALSE
 ) {
   if (isTRUE(force)) return(TRUE)
   if (!file.exists(path)) return(TRUE)
@@ -851,7 +1397,13 @@ should_rebuild_game_detail <- function(
   if (gd >= (td - 7L)) return(TRUE)
 
   existing_ver <- .read_json_schema_version(path)
-  !identical(existing_ver, as.character(schema_ver))
+  if (!identical(existing_ver, as.character(schema_ver))) return(TRUE)
+
+  if (isTRUE(expect_explainability) && .json_has_null_explainability(path)) {
+    return(TRUE)
+  }
+
+  FALSE
 }
 
 .strip_generated_at_text <- function(txt) {
@@ -976,7 +1528,8 @@ export_game_details <- function(
   today_date = Sys.Date(),
   force = identical(Sys.getenv("NBA_FORCE_REBUILD_GAMES"), "true"),
   schema_ver = GAME_DETAIL_SCHEMA_VERSION,
-  generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+  generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+  explainability_by_game = NULL
 ) {
   if (is.null(games)) {
     games <- .derive_games_from_team_box(team_box)
@@ -1057,13 +1610,18 @@ export_game_details <- function(
       next
     }
 
+    exp_i <- if (!is.null(explainability_by_game) && gid %in% names(explainability_by_game)) {
+      explainability_by_game[[gid]]
+    } else NULL
+
     n_has_box <- n_has_box + 1L
     if (!should_rebuild_game_detail(
-      game_date  = gdates[i],
-      path       = out_path,
-      schema_ver = schema_ver,
-      today_date = today_date,
-      force      = force
+      game_date             = gdates[i],
+      path                  = out_path,
+      schema_ver            = schema_ver,
+      today_date            = today_date,
+      force                 = force,
+      expect_explainability = !is.null(exp_i)
     )) {
       n_skipped_window <- n_skipped_window + 1L
       has_detail_vec[i] <- file.exists(out_path)
@@ -1094,7 +1652,8 @@ export_game_details <- function(
       away_team_meta  = away_meta,
       home_team_meta  = home_meta,
       generated_at    = generated_at,
-      schema_ver      = schema_ver
+      schema_ver      = schema_ver,
+      explainability  = exp_i
     )
 
     changed <- write_game_json_if_changed(payload, out_path)
