@@ -181,6 +181,8 @@ export interface GameExplainabilityPayload {
     log_loss_component: number | null;
   } | null;
   entering_baselines: EnteringBaseline[] | null;
+  /** Secondary diagnostic TreeSHAP attribution payload; optional/nullable until emitted. */
+  xgboost_shap?: XgboostShapPayload | null;
 }
 
 export interface MarginWaterfallStep {
@@ -201,6 +203,46 @@ export interface EnteringBaseline {
     realized: number | null;
     difference: number | null;
   }[];
+}
+
+/** The 13 differential/similarity predictors consumed by the secondary XGBoost model. */
+export type XgboostShapFactorKey =
+  | 'diff_roll_pts'
+  | 'diff_roll_efg'
+  | 'diff_roll_ts'
+  | 'diff_roll_tovp'
+  | 'diff_roll_oreb'
+  | 'diff_roll_dreb'
+  | 'diff_roll_ast'
+  | 'diff_roll_stl'
+  | 'diff_roll_blk'
+  | 'diff_days_rest'
+  | 'diff_fatigue_index'
+  | 'diff_is_b2b'
+  | 'style_similarity';
+
+/** Per-feature TreeSHAP attribution row for a single matchup prediction. */
+export interface XgboostShapFactor {
+  feature: XgboostShapFactorKey;
+  label: string;
+  feature_value: number;
+  z_score: number;
+  shap_log_odds: number;
+  shap_prob_approx: number;
+}
+
+/** Secondary diagnostic XGBoost TreeSHAP decomposition payload (home perspective). */
+export interface XgboostShapPayload {
+  model_id: 'xgboost_feature_fusion_v1';
+  model_label: string;
+  train_seasons_label: string;
+  window_games: number;
+  away_prior_games_n: number;
+  home_prior_games_n: number;
+  base_value_log_odds: number;
+  total_log_odds: number;
+  predicted_home_win_prob: number;
+  factors: XgboostShapFactor[];
 }
 
 export interface GameFlowPayload {
