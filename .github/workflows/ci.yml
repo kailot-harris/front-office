@@ -26,6 +26,15 @@
 # No secrets are used or needed. Do not add ODDS_API_KEY or DISCORD_WEBHOOK
 # here: a workflow that can reach them is a workflow a pull request from a fork
 # could be made to reach them through.
+#
+# Runner selection: both jobs run on `${{ vars.CI_RUNNER || 'ubuntu-latest' }}`.
+#   - CI_RUNNER unset or empty: GitHub-hosted ubuntu-latest (the default, and
+#     the behaviour before this variable existed).
+#   - CI_RUNNER = self-hosted: the self-hosted Linux runner registered for this
+#     repo (see kailot-harris/front-office#151).
+# To switch back to hosted runners, delete the CI_RUNNER variable or clear its
+# value: repo Settings -> Secrets and variables -> Actions -> Variables.
+# refresh-results.yml does not read this variable and always stays hosted.
 # ==============================================================================
 name: CI
 
@@ -49,7 +58,7 @@ permissions:
 jobs:
   web:
     name: Web suite
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 30
     defaults:
       run:
@@ -113,7 +122,7 @@ jobs:
 
   r:
     name: R pipeline tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
