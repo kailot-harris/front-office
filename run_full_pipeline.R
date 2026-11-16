@@ -262,6 +262,13 @@ run_stage("team_ratings_engine.R", "Compute Team Power Ratings & Projected Match
           call_fn = "run_team_ratings",
           output   = c(CACHE_TEAM_RATINGS, CACHE_PROJECTED_MATCHUPS))
 
+# 5.1. Prediction accuracy logger (Issue #111 / Phase 2, Issue 2-2).
+# Writes CACHE_PREDICTION_ACCURACY_LOG (config.R). Persists unplayed game forecasts,
+# points waterfall step values, ridge coefficients, and power ratings before kickoff.
+run_stage("prediction_accuracy_logger.R", "Log Unplayed Game Forecasts & Points Waterfall Steps",
+          call_fn = "run_prediction_accuracy_logger",
+          output   = CACHE_PREDICTION_ACCURACY_LOG)
+
 # 6. Fatigue/travel & short-rest engine (Phase 3, task P3-B; engine itself built under P3-A).
 # Writes CACHE_FATIGUE_METRICS (config.R). Reads CACHE_SCHEDULES from stage 1 above.
 run_stage("fatigue_engine.R", "Compute Travel/Circadian & Short-Rest Fatigue Metrics",

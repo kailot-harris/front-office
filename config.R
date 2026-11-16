@@ -682,6 +682,11 @@ CACHE_RISK_STATE <- file.path(CACHE_DIR, "risk_state.rds")
 # returns (documented there as list(per_game, by_week, overall_accuracy, overall_brier,
 # overall_logloss)) without needing a schema change once that function exists.
 CACHE_ACCURACY_HISTORY <- file.path(CACHE_DIR, "accuracy_history.rds")
+
+# Added per NFL Matchup Game Detail Plan v2 (Section 5.2 & 5.3, Issue #111 / 2-2).
+# Persisted unplayed game forecasts, points waterfall step values, ridge coefficients,
+# sigma, and entering power ratings before kickoff, ensuring logged pregame rows are immutable.
+CACHE_PREDICTION_ACCURACY_LOG <- file.path(CACHE_DIR, "prediction_accuracy_log.rds")
 # Added per docs/SPEC_playoff_odds_table.md decision #5 (GitHub issue #11, "Playoff Odds 1" -
 # first slice of the playoff-clinching probability feature, issues #11-#16) - prep
 # infrastructure for the future playoff_odds_engine.R pipeline stage (issue #12). A narrowly-
