@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { getMatchupsData } from '@/lib/data';
 import { MatchupsClient } from '@/components/MatchupsClient';
 import { Swords } from 'lucide-react';
@@ -61,7 +61,9 @@ export default function MatchupsPage() {
       </HowToRead>
 
       {/* Main Interactive Client */}
-      <MatchupsClient dataset={dataset} />
+      <Suspense fallback={<div className="p-8 text-center text-slate-500 font-mono">Loading matchups...</div>}>
+        <MatchupsClient dataset={dataset} />
+      </Suspense>
     </div>
   );
 }

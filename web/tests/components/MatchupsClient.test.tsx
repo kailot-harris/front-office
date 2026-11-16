@@ -1,10 +1,114 @@
-import { describe, expect, it } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import React from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MatchupsClient } from '../../components/MatchupsClient';
+import { clearGameDetailCache, formatMatchupInspectLabel } from '../../components/MatchupCard';
 import { matchups } from '../helpers/datasets';
+import type { GameDetailEnvelope } from '../../lib/gameDetailTypes';
+
+const { mockUseSearchParams } = vi.hoisted(() => ({
+  mockUseSearchParams: vi.fn(() => new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')),
+}));
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/matchups',
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn(), back: vi.fn() }),
+  useSearchParams: mockUseSearchParams,
+}));
 
 const dataset = matchups();
 const weekGames = (week: number) => dataset.matchups.filter((m) => m.week === week);
+
+function stubDetailFetch() {
+  const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+    const url = typeof input === 'string' ? input : input.toString();
+    const match = url.match(/\/data\/games\/([^/?]+)\.json/);
+    if (match) {
+      const gameId = match[1];
+      const game = dataset.matchups.find((m) => m.game_id === gameId);
+      const awayTeam = game ? game.away_team : 'BUF';
+      const homeTeam = game ? game.home_team : 'MIA';
+      const awayName = game ? game.away_team_name : 'Buffalo Bills';
+      const homeName = game ? game.home_team_name : 'Miami Dolphins';
+
+      const payload: GameDetailEnvelope = {
+        schema_version: '1.0',
+        generated_at: '2026-11-16T00:00:00Z',
+        sport: 'nfl',
+        endpoint: 'game_detail',
+        season: 2026,
+        season_label: '2026-2027',
+        game_id: gameId,
+        data: {
+          game_id: gameId,
+          season: 2026,
+          season_label: '2026-2027',
+          week: game ? game.week : 1,
+          week_label: `Week ${game ? game.week : 1}`,
+          gameday: game ? game.gameday : '2026-09-13',
+          weekday: game ? game.weekday : 'Sunday',
+          gametime: game ? game.gametime : '13:00',
+          is_completed: game ? (game.is_completed ?? true) : true,
+          has_box_score: true,
+          away_team: { teamAbbr: awayTeam, teamName: awayName, score: game?.away_score ?? 24, is_winner: true },
+          home_team: { teamAbbr: homeTeam, teamName: homeName, score: game?.home_score ?? 17, is_winner: false },
+          forecast: null,
+          efficiency_factors: null,
+          team_stats: null,
+          leaders: [
+            {
+              category: 'passing',
+              teamAbbr: awayTeam,
+              playerId: '00-01',
+              playerName: `${awayTeam} Passer`,
+              stat_line: '22/30, 280 YDS, 2 TD',
+            },
+            {
+              category: 'passing',
+              teamAbbr: homeTeam,
+              playerId: '00-02',
+              playerName: `${homeTeam} Passer`,
+              stat_line: '18/28, 210 YDS, 1 TD',
+            },
+          ],
+          box_score: null,
+          injury_designations: null,
+          explainability: null,
+        },
+      };
+
+      return {
+        ok: true,
+        status: 200,
+        json: async () => payload,
+      } as Response;
+    }
+    return {
+      ok: false,
+      status: 404,
+      json: async () => ({ error: 'Not found' }),
+    } as Response;
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+}
+
+const originalFetch = global.fetch;
+
+beforeEach(() => {
+  mockUseSearchParams.mockImplementation(() => new URLSearchParams(typeof window !== 'undefined' ? window.location.search : ''));
+  window.history.replaceState(null, '', '/matchups');
+  clearGameDetailCache();
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  global.fetch = originalFetch;
+  vi.restoreAllMocks();
+  window.history.replaceState(null, '', '/matchups');
+  clearGameDetailCache();
+});
 
 /** The week rail labels buttons "Week 6★ Active" / "Week 5Final", not "6". */
 function clickWeek(week: number) {
@@ -266,5 +370,175 @@ describe('MatchupsClient resilience', () => {
   it('does not print NaN when the slate is empty', () => {
     const { container } = render(<MatchupsClient dataset={empty} />);
     expect(container.textContent).not.toMatch(/NaN/);
+  });
+});
+
+describe('MatchupsClient Grid & Table GameDetailModal integration', () => {
+  it('opens GameDetailModal from completed card click, syncs ?game=, and closes on close button', async () => {
+    const user = userEvent.setup();
+    stubDetailFetch();
+
+    const completedWeek = dataset.available_weeks.find((w) =>
+      weekGames(w).some((g) => g.is_completed)
+    )!;
+    const completedGame = weekGames(completedWeek).find((g) => g.is_completed)!;
+
+    render(<MatchupsClient dataset={dataset} />);
+    if (completedWeek !== dataset.active_week) {
+      clickWeek(completedWeek);
+    }
+
+    const card = screen.getByRole('button', {
+      name: formatMatchupInspectLabel(completedGame),
+    });
+    expect(card).toHaveAttribute('tabindex', '0');
+
+    await user.click(card);
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toBeInTheDocument();
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(within(dialog).getByText(completedGame.away_team_name)).toBeInTheDocument();
+    expect(within(dialog).getByText(completedGame.home_team_name)).toBeInTheDocument();
+    expect(window.location.search).toBe(`?game=${completedGame.game_id}`);
+
+    const closeBtn = screen.getByRole('button', { name: /close modal/i });
+    await user.click(closeBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(window.location.search).toBe('');
+    expect(window.location.href.endsWith('?')).toBe(false);
+  });
+
+  it('opens GameDetailModal via keyboard Enter and Space on focused completed card', async () => {
+    const user = userEvent.setup();
+    stubDetailFetch();
+
+    const completedWeek = dataset.available_weeks.find((w) =>
+      weekGames(w).some((g) => g.is_completed)
+    )!;
+    const completedGame = weekGames(completedWeek).find((g) => g.is_completed)!;
+
+    render(<MatchupsClient dataset={dataset} />);
+    if (completedWeek !== dataset.active_week) {
+      clickWeek(completedWeek);
+    }
+
+    const card = screen.getByRole('button', {
+      name: formatMatchupInspectLabel(completedGame),
+    });
+    card.focus();
+    await user.keyboard('{Enter}');
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(window.location.search).toBe(`?game=${completedGame.game_id}`);
+
+    await user.keyboard('{Escape}');
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(window.location.search).toBe('');
+  });
+
+  it('opens GameDetailModal from completed table row click and syncs ?game=', async () => {
+    const user = userEvent.setup();
+    stubDetailFetch();
+
+    const completedWeek = dataset.available_weeks.find((w) =>
+      weekGames(w).some((g) => g.is_completed)
+    )!;
+    const completedGame = weekGames(completedWeek).find((g) => g.is_completed)!;
+
+    render(<MatchupsClient dataset={dataset} />);
+    if (completedWeek !== dataset.active_week) {
+      clickWeek(completedWeek);
+    }
+
+    // Switch to table view
+    const tableBtn = screen.getByTitle('Compact Table View');
+    await user.click(tableBtn);
+
+    const row = screen.getByRole('row', {
+      name: formatMatchupInspectLabel(completedGame),
+    });
+    expect(row).toHaveAttribute('tabindex', '0');
+
+    fireEvent.click(row);
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByText(completedGame.away_team_name)).toBeInTheDocument();
+    expect(within(dialog).getByText(completedGame.home_team_name)).toBeInTheDocument();
+    expect(window.location.search).toBe(`?game=${completedGame.game_id}`);
+
+    const closeBtn = screen.getByRole('button', { name: /close modal/i });
+    await user.click(closeBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(window.location.search).toBe('');
+  });
+});
+
+describe('MatchupsClient ?game= URL deep-linking', () => {
+  it('switches selectedWeek and opens GameDetailModal when ?game= is in useSearchParams', async () => {
+    stubDetailFetch();
+
+    const targetWeek = dataset.available_weeks.find((w) => w !== dataset.active_week && weekGames(w).length > 0)!;
+    const targetGame = weekGames(targetWeek)[0];
+
+    mockUseSearchParams.mockImplementation(() => new URLSearchParams(`game=${targetGame.game_id}`));
+    window.history.replaceState(null, '', `/matchups?game=${targetGame.game_id}`);
+
+    render(<MatchupsClient dataset={dataset} />);
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByText(targetGame.away_team_name)).toBeInTheDocument();
+    expect(within(dialog).getByText(targetGame.home_team_name)).toBeInTheDocument();
+  });
+
+  it('switches selectedWeek and opens GameDetailModal from window.location.search on initial load', async () => {
+    stubDetailFetch();
+
+    const targetWeek = dataset.available_weeks.find((w) => w !== dataset.active_week && weekGames(w).length > 0)!;
+    const targetGame = weekGames(targetWeek)[0];
+
+    window.history.replaceState(null, '', `/matchups?game=${targetGame.game_id}`);
+
+    render(<MatchupsClient dataset={dataset} />);
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByText(targetGame.away_team_name)).toBeInTheDocument();
+    expect(within(dialog).getByText(targetGame.home_team_name)).toBeInTheDocument();
+  });
+
+  it('responds to popstate events to sync modal state', async () => {
+    stubDetailFetch();
+
+    const targetGame = dataset.matchups[0];
+
+    render(<MatchupsClient dataset={dataset} />);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    act(() => {
+      window.history.replaceState(null, '', `/matchups?game=${targetGame.game_id}`);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+
+    act(() => {
+      window.history.replaceState(null, '', '/matchups');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
   });
 });

@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { MatchupsDataset } from '@/lib/types';
-import { MatchupCard } from '@/components/MatchupCard';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { MatchupsDataset, MatchupGame } from '@/lib/types';
+import { MatchupCard, formatMatchupInspectLabel } from '@/components/MatchupCard';
+import { GameDetailModal } from '@/components/GameDetailModal';
 import { TeamLogo } from '@/components/TeamLogo';
 import {
   Calendar,
@@ -21,11 +23,114 @@ interface MatchupsClientProps {
   dataset: MatchupsDataset;
 }
 
+function syncGameQueryParam(gameId: string | null): void {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  if (gameId) {
+    url.searchParams.set('game', gameId);
+  } else {
+    url.searchParams.delete('game');
+  }
+  const search = url.searchParams.toString();
+  const nextUrl = `${url.pathname}${search ? `?${search}` : ''}${url.hash}`;
+  const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (nextUrl !== currentUrl) {
+    window.history.replaceState(window.history.state, '', nextUrl);
+  }
+}
+
 export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
   const [selectedWeek, setSelectedWeek] = useState<number>(dataset.active_week);
   const [selectedDay, setSelectedDay] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+
+  const [selectedGame, setSelectedGame] = useState<MatchupGame | null>(null);
+  const [returnFocusEl, setReturnFocusEl] = useState<HTMLElement | null>(null);
+  const selectedGameIdRef = useRef<string | null>(null);
+  selectedGameIdRef.current = selectedGame?.game_id ?? null;
+
+  const searchParams = useSearchParams();
+  const searchParamsGameId = searchParams?.get('game') || null;
+  const prevSearchParamsGameIdRef = useRef<string | null | undefined>(undefined);
+
+  const openGameFromQuery = useCallback(
+    (targetGameId: string | null) => {
+      if (!targetGameId) {
+        if (selectedGameIdRef.current !== null) {
+          selectedGameIdRef.current = null;
+          setReturnFocusEl(null);
+          setSelectedGame(null);
+        }
+        return;
+      }
+
+      if (selectedGameIdRef.current === targetGameId) {
+        return;
+      }
+
+      const matched = dataset.matchups.find((m) => m.game_id === targetGameId) ?? null;
+      if (matched) {
+        selectedGameIdRef.current = matched.game_id;
+        setSelectedWeek(matched.week);
+        setReturnFocusEl(null);
+        setSelectedGame(matched);
+      }
+    },
+    [dataset.matchups],
+  );
+
+  useEffect(() => {
+    const isInitialMount = prevSearchParamsGameIdRef.current === undefined;
+    const searchParamChanged = prevSearchParamsGameIdRef.current !== searchParamsGameId;
+    prevSearchParamsGameIdRef.current = searchParamsGameId;
+
+    if (!isInitialMount && !searchParamChanged) {
+      return;
+    }
+
+    const windowGameId =
+      typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('game') || null
+        : null;
+
+    if (isInitialMount) {
+      const initialGameId = searchParamsGameId ?? windowGameId;
+      if (initialGameId) {
+        openGameFromQuery(initialGameId);
+      }
+      return;
+    }
+
+    const nextGameId = searchParamsGameId ?? windowGameId;
+    openGameFromQuery(nextGameId);
+  }, [searchParamsGameId, openGameFromQuery]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handlePopState = () => {
+      const popGameId = new URLSearchParams(window.location.search).get('game') || null;
+      openGameFromQuery(popGameId);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [openGameFromQuery]);
+
+  const handleSelectGame = useCallback((game: MatchupGame, triggerEl: HTMLElement | null) => {
+    selectedGameIdRef.current = game.game_id;
+    setReturnFocusEl(triggerEl);
+    setSelectedGame(game);
+    syncGameQueryParam(game.game_id);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    selectedGameIdRef.current = null;
+    setSelectedGame(null);
+    setReturnFocusEl(null);
+    syncGameQueryParam(null);
+  }, []);
 
   // Filter matchups by selected week, day, and search query
   const weekMatchups = useMemo(() => {
@@ -289,7 +394,11 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
       {viewMode === 'grid' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredMatchups.map((matchup) => (
-            <MatchupCard key={matchup.game_id} matchup={matchup} />
+            <MatchupCard
+              key={matchup.game_id}
+              matchup={matchup}
+              onSelect={handleSelectGame}
+            />
           ))}
         </div>
       )}
@@ -331,9 +440,26 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                   const isHomeFav = hasProj ? m.projected_margin! > 0 : false;
                   const favTeam = hasProj ? (isHomeFav ? m.home_team : m.away_team) : null;
                   const margin = hasProj ? Math.abs(m.projected_margin!).toFixed(1) : null;
+                  const isInteractive = Boolean(m.is_completed);
 
                   return (
-                    <tr key={m.game_id} className="hover:bg-slate-800/40 transition-colors">
+                    <tr
+                      key={m.game_id}
+                      tabIndex={isInteractive ? 0 : undefined}
+                      aria-label={isInteractive ? formatMatchupInspectLabel(m) : undefined}
+                      onClick={isInteractive ? (e) => handleSelectGame(m, e.currentTarget) : undefined}
+                      onKeyDown={isInteractive ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleSelectGame(m, e.currentTarget);
+                        }
+                      } : undefined}
+                      className={`transition-colors ${
+                        isInteractive
+                          ? 'cursor-pointer hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-400'
+                          : 'hover:bg-slate-800/40'
+                      }`}
+                    >
                       <td className="py-2.5 px-3 font-mono text-slate-300 whitespace-nowrap">
                         <span className="text-slate-400">{m.weekday.slice(0, 3)}</span> {m.gameday}
                       </td>
@@ -420,6 +546,13 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
           </div>
         </div>
       )}
+
+      {/* Game Detail Modal */}
+      <GameDetailModal
+        matchup={selectedGame}
+        onClose={handleCloseModal}
+        returnFocusTo={returnFocusEl}
+      />
     </div>
   );
 };

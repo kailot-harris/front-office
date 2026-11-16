@@ -9,18 +9,11 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
-  HelpCircle,
-  Layers,
   Loader2,
-  Shield,
-  UserCheck,
-  UserX,
   X,
 } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
-import { num, percent } from '@/lib/format';
 import type {
-  CategoryLeader,
   GameDetailEnvelope,
   InjuryDesignationRow,
   NflBoxCategory,
