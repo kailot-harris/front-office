@@ -63,6 +63,8 @@ export interface MatchupGame {
   home_travel_miles: number;
   away_travel_miles: number;
   is_completed?: boolean;
+  has_box_score?: boolean;
+  has_game_detail?: boolean;
   home_score?: number | null;
   away_score?: number | null;
   actual_winner?: string | null;

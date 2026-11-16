@@ -149,11 +149,14 @@ cat("\n--- Section 4: tools/refresh_live_results.R pure functions ---\n")
 RLR_ENV <- new.env(parent = globalenv())
 RLR_ENV$CURRENT_SEASON <- CURRENT_SEASON
 RLR_ENV$NFLVERSE_GAMES_CSV <- "https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv"
+RLR_ENV$WEB_JSON_MATCHUPS_CURRENT_WEEK <- WEB_JSON_MATCHUPS_CURRENT_WEEK
+RLR_ENV$WEB_JSON_MODEL_DIAGNOSTICS <- WEB_JSON_MODEL_DIAGNOSTICS
 load_ast_symbols(
   "tools/refresh_live_results.R",
   c("%||%", ".rlr_is_true", "fetch_season_results", ".rlr_grade",
     "apply_results", "recompute_diagnostics", "recompute_calibration_curve",
-    "reconcile_diagnostics"),
+    "reconcile_diagnostics", ".rlr_json_text", "write_json_if_changed",
+    "refresh_live_results"),
   RLR_ENV
 )
 
@@ -266,6 +269,47 @@ fetched <- RLR_ENV$fetch_season_results(season = 2026L, csv_reader = mock_csv)
 ok("RLR-6 `fetch_season_results()` filters to target season and scored finals only",
    nrow(fetched) == 1L && identical(fetched$game_id, "2026_01_A_B") && fetched$home_score == 24L,
    sprintf("rows=%d (%s)", nrow(fetched), fetched$game_id))
+
+# RLR-7: apply_results preserves has_box_score and has_game_detail untouched
+fixture_with_flags <- fixture_rows
+fixture_with_flags$has_box_score <- c(TRUE, FALSE, FALSE)
+fixture_with_flags$has_game_detail <- c(TRUE, FALSE, FALSE)
+patched_flags <- RLR_ENV$apply_results(fixture_with_flags, fixture_results, active_week = 8L)
+ok("RLR-7 `apply_results()` preserves has_box_score and has_game_detail untouched",
+   identical(patched_flags$rows$has_box_score, c(TRUE, FALSE, FALSE)) &&
+     identical(patched_flags$rows$has_game_detail, c(TRUE, FALSE, FALSE)),
+   "has_box_score and has_game_detail flags preserved on both patched and unpatched rows")
+
+# RLR-8: Live score refresh round-trip test is byte-identical when no finished games
+empty_csv <- function(url) {
+  data.frame(
+    game_id = character(0),
+    season = integer(0),
+    home_score = integer(0),
+    away_score = integer(0),
+    stringsAsFactors = FALSE
+  )
+}
+temp_matchups <- tempfile(fileext = ".json")
+temp_diag <- tempfile(fileext = ".json")
+file.copy(WEB_JSON_MATCHUPS_CURRENT_WEEK, temp_matchups)
+file.copy(WEB_JSON_MODEL_DIAGNOSTICS, temp_diag)
+bytes_before <- readBin(temp_matchups, "raw", file.info(temp_matchups)$size)
+
+refresh_res <- RLR_ENV$refresh_live_results(
+  season = CURRENT_SEASON,
+  matchups_path = temp_matchups,
+  diagnostics_path = temp_diag,
+  csv_reader = empty_csv
+)
+bytes_after <- readBin(temp_matchups, "raw", file.info(temp_matchups)$size)
+unlink(c(temp_matchups, temp_diag))
+
+ok("RLR-8 Live score refresh round-trip is byte-identical when no finished games",
+   refresh_res$n_changed == 0L &&
+     length(refresh_res$files) == 0L &&
+     identical(bytes_before, bytes_after),
+   sprintf("n_changed=%d, bytes identical=%s", refresh_res$n_changed, identical(bytes_before, bytes_after)))
 
 # ==============================================================================
 # SECTION 5: tools/publish_web.R pure gate helpers (Assertions B, D, F)

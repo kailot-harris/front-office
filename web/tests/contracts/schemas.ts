@@ -98,6 +98,8 @@ export const matchupGameSchema = z.object({
   // value the declared type says is impossible. Consumers must therefore use
   // `=== true` / `!= null` style guards, never a bare `!== undefined`.
   is_completed: z.boolean().optional(),
+  has_box_score: z.boolean().optional(),
+  has_game_detail: z.boolean().optional(),
   home_score: z.number().int().min(0).max(100).nullable().optional(),
   away_score: z.number().int().min(0).max(100).nullable().optional(),
   actual_winner: z.string().nullable().optional(),

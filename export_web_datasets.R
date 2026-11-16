@@ -638,6 +638,8 @@ run_export_web_datasets <- function() {
       home_travel_miles = h_miles,
       away_travel_miles = a_miles,
       is_completed      = is_done,
+      has_box_score     = file.exists(file.path(WEB_GAMES_DIR, paste0(gid, ".json"))),
+      has_game_detail   = file.exists(file.path(WEB_GAMES_DIR, paste0(gid, ".json"))),
       home_score        = if (is_done) as.integer(h_score) else NULL,
       away_score        = if (is_done) as.integer(a_score) else NULL,
       actual_winner     = act_winner,
