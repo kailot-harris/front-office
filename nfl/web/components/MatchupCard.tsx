@@ -1,27 +1,125 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { MatchupGame } from '@/lib/types';
 import { TeamLogo } from '@/components/TeamLogo';
-import { Clock, Calendar, Plane, Shield, Zap, AlertCircle } from 'lucide-react';
+import { Clock, Calendar, Plane, Shield, AlertCircle, ChevronRight } from 'lucide-react';
+import { BASE_PATH } from '@/lib/basePath';
+import type { GameDetailEnvelope, NflGameDetailPayload } from '@/lib/gameDetailTypes';
 
-interface MatchupCardProps {
+export interface MatchupCardProps {
   matchup: MatchupGame;
+  onSelect?: (matchup: MatchupGame, element: HTMLElement) => void;
 }
 
-export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
-  const isHomeFavored = matchup.projected_margin > 0;
-  const favoredTeam = isHomeFavored ? matchup.home_team : matchup.away_team;
-  const marginValue = Math.abs(matchup.projected_margin);
+/** Accessible label shared by clickable matchup cards and table rows. */
+export function formatMatchupInspectLabel(matchup: MatchupGame): string {
+  return `Inspect game detail: ${matchup.away_team_name} (${matchup.away_team}) at ${matchup.home_team_name} (${matchup.home_team}) on ${matchup.gameday}`;
+}
+
+const gameDetailCache = new Map<string, Promise<NflGameDetailPayload | null>>();
+
+export function clearGameDetailCache(): void {
+  gameDetailCache.clear();
+}
+
+function unwrapEnvelope(raw: unknown): NflGameDetailPayload | null {
+  if (raw && typeof raw === 'object' && 'data' in raw) {
+    const candidate = (raw as GameDetailEnvelope).data;
+    if (candidate && typeof candidate === 'object' && 'game_id' in candidate) {
+      return candidate;
+    }
+  }
+  if (raw && typeof raw === 'object' && 'game_id' in raw) {
+    return raw as NflGameDetailPayload;
+  }
+  return null;
+}
+
+export function fetchGameDetail(gameId: string): Promise<NflGameDetailPayload | null> {
+  const cached = gameDetailCache.get(gameId);
+  if (cached) return cached;
+
+  const promise = (async () => {
+    try {
+      const res = await fetch(`${BASE_PATH}/data/games/${gameId}.json`);
+      if (!res.ok) return null;
+      const json = await res.json();
+      return unwrapEnvelope(json);
+    } catch {
+      return null;
+    }
+  })();
+
+  gameDetailCache.set(gameId, promise);
+  return promise;
+}
+
+export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup, onSelect }) => {
+  const hasProjection = matchup.has_projection !== false && matchup.projected_margin != null;
+  const isHomeFavored = hasProjection ? matchup.projected_margin! > 0 : false;
+  const favoredTeam = hasProjection ? (isHomeFavored ? matchup.home_team : matchup.away_team) : null;
+  const marginValue = hasProjection ? Math.abs(matchup.projected_margin!) : null;
 
   // Margin formatting string (e.g. "KC +3.5")
-  const marginDisplay = `${favoredTeam} +${marginValue.toFixed(1)}`;
+  const marginDisplay = hasProjection && favoredTeam && marginValue != null ? `${favoredTeam} +${marginValue.toFixed(1)}` : null;
 
   // Kickoff time formatter
   const formattedTime = matchup.gametime ? `${matchup.gametime} ET` : 'TBD';
 
+  const isInteractive = Boolean(onSelect && (matchup.is_completed || hasProjection));
+  const cardLabel = formatMatchupInspectLabel(matchup);
+
+  const [detail, setDetail] = useState<NflGameDetailPayload | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (matchup.is_completed && matchup.has_box_score !== false) {
+      fetchGameDetail(matchup.game_id).then((data) => {
+        if (!cancelled && data) {
+          setDetail(data);
+        }
+      });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [matchup.game_id, matchup.is_completed, matchup.has_box_score]);
+
+  const awayPassingLeader = useMemo(() => {
+    return detail?.leaders?.find(
+      (l) => l.category === 'passing' && l.teamAbbr === matchup.away_team
+    ) ?? null;
+  }, [detail, matchup.away_team]);
+
+  const homePassingLeader = useMemo(() => {
+    return detail?.leaders?.find(
+      (l) => l.category === 'passing' && l.teamAbbr === matchup.home_team
+    ) ?? null;
+  }, [detail, matchup.home_team]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!onSelect || !isInteractive) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onSelect(matchup, e.currentTarget);
+    }
+  };
+
   return (
-    <div className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden hover:border-emerald-500/40 transition-all shadow-md group flex flex-col justify-between">
+    <div
+      className={`bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden transition-all shadow-md group flex flex-col justify-between ${
+        isInteractive
+          ? 'cursor-pointer hover:border-emerald-500/60 hover:bg-surface-raised focus:outline-none focus:ring-2 focus:ring-emerald-400'
+          : 'hover:border-emerald-500/40'
+      }`}
+      data-testid="matchup-card"
+      role={isInteractive ? 'button' : undefined}
+      tabIndex={isInteractive ? 0 : undefined}
+      aria-label={isInteractive ? cardLabel : undefined}
+      onClick={isInteractive ? (e) => onSelect?.(matchup, e.currentTarget) : undefined}
+      onKeyDown={isInteractive ? handleKeyDown : undefined}
+    >
       {/* Card Header */}
       <div className="p-3 bg-surface/80 border-b border-slate-800 flex items-center justify-between text-xs font-mono text-slate-400">
         <div className="flex items-center gap-2">
@@ -42,31 +140,34 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
           )}
         </div>
 
-        {/* Prediction Result or Key Margin Badge */}
-        {matchup.is_completed ? (
-          matchup.prediction_correct === true ? (
-            <span className="text-[11px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-              ✓ Model Correct
-            </span>
-          ) : matchup.prediction_correct === false ? (
-            <span className="text-[11px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1">
-              ✗ Upset
-            </span>
+        {/* Prediction Result Badge */}
+        <div className="flex items-center gap-1.5">
+          {matchup.is_completed ? (
+            matchup.prediction_correct === true ? (
+              <span className="text-[11px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                ✓ Model Correct
+              </span>
+            ) : matchup.prediction_correct === false ? (
+              <span className="text-[11px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1">
+                ✗ Upset
+              </span>
+            ) : (
+              <span className="text-[11px] sm:text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/50">
+                Week {matchup.week}
+              </span>
+            )
           ) : (
             <span className="text-[11px] sm:text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/50">
               Week {matchup.week}
             </span>
-          )
-        ) : matchup.key_number_flag !== 'Standard' ? (
-          <span className="text-[11px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1">
-            <Zap className="w-2.5 h-2.5" />
-            {matchup.key_number_flag.replace('Key', 'Margin')}
-          </span>
-        ) : (
-          <span className="text-[11px] sm:text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/50">
-            Week {matchup.week}
-          </span>
-        )}
+          )}
+          {isInteractive && (
+            <ChevronRight
+              className="w-3.5 h-3.5 text-slate-500 group-hover:text-emerald-400 transition-colors"
+              aria-hidden="true"
+            />
+          )}
+        </div>
       </div>
 
       {/* Main Matchup Arena */}
@@ -88,9 +189,13 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
               ) : (
                 <span className="text-[11px] font-mono text-slate-400">
                   Pwr:{' '}
-                  <strong className={matchup.away_power_rating > 0 ? 'text-emerald-400' : 'text-red-400'}>
-                    {matchup.away_power_rating > 0 ? `+${matchup.away_power_rating.toFixed(1)}` : matchup.away_power_rating.toFixed(1)}
-                  </strong>
+                  {matchup.away_power_rating != null ? (
+                    <strong className={matchup.away_power_rating > 0 ? 'text-emerald-400' : 'text-red-400'}>
+                      {matchup.away_power_rating > 0 ? `+${matchup.away_power_rating.toFixed(1)}` : matchup.away_power_rating.toFixed(1)}
+                    </strong>
+                  ) : (
+                    <span className="text-slate-500">—</span>
+                  )}
                 </span>
               )}
             </div>
@@ -112,11 +217,13 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
                     {matchup.home_score}
                   </span>
                 </div>
-                <span className="text-[11px] sm:text-[9px] font-mono text-slate-500 mt-1 truncate max-w-full">
-                  Proj: {marginDisplay}
-                </span>
+                {marginDisplay && (
+                  <span className="text-[11px] sm:text-[9px] font-mono text-slate-500 mt-1 truncate max-w-full">
+                    Proj: {marginDisplay}
+                  </span>
+                )}
               </>
-            ) : (
+            ) : hasProjection ? (
               <>
                 <span className="text-[11px] sm:text-[10px] font-mono uppercase tracking-wider text-slate-500 font-bold mb-0.5">
                   Proj Margin
@@ -124,7 +231,13 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
                 <div className="bg-surface px-2 py-1 rounded-md border border-slate-800 text-xs font-mono font-black text-emerald-400 shadow-inner whitespace-nowrap">
                   {marginDisplay}
                 </div>
-                <span className="text-[11px] sm:text-[10px] font-mono text-slate-400 mt-1">Total {matchup.projected_total.toFixed(1)}</span>
+              </>
+            ) : (
+              <>
+                <span className="text-[11px] sm:text-[10px] font-mono uppercase tracking-wider text-slate-500 font-bold mb-0.5">
+                  Matchup
+                </span>
+                <span className="text-[10px] text-slate-500 font-mono italic">No forecast recorded</span>
               </>
             )}
           </div>
@@ -143,9 +256,13 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
               ) : (
                 <span className="text-[11px] font-mono text-slate-400">
                   Pwr:{' '}
-                  <strong className={matchup.home_power_rating > 0 ? 'text-emerald-400' : 'text-red-400'}>
-                    {matchup.home_power_rating > 0 ? `+${matchup.home_power_rating.toFixed(1)}` : matchup.home_power_rating.toFixed(1)}
-                  </strong>
+                  {matchup.home_power_rating != null ? (
+                    <strong className={matchup.home_power_rating > 0 ? 'text-emerald-400' : 'text-red-400'}>
+                      {matchup.home_power_rating > 0 ? `+${matchup.home_power_rating.toFixed(1)}` : matchup.home_power_rating.toFixed(1)}
+                    </strong>
+                  ) : (
+                    <span className="text-slate-500">—</span>
+                  )}
                 </span>
               )}
             </div>
@@ -154,35 +271,72 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup }) => {
         </div>
 
         {/* Win Probability Bar */}
-        <div className="space-y-1.5 pt-1">
-          <div className="flex items-center justify-between text-xs font-mono">
-            <span className={`font-bold ${!isHomeFavored ? 'text-emerald-400' : 'text-slate-400'}`}>
-              {(matchup.away_win_prob * 100).toFixed(1)}% Win
-            </span>
-            <span className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-semibold">Model Win Probability</span>
-            <span className={`font-bold ${isHomeFavored ? 'text-emerald-400' : 'text-slate-400'}`}>
-              {(matchup.home_win_prob * 100).toFixed(1)}% Win
-            </span>
-          </div>
+        {hasProjection && matchup.away_win_prob != null && matchup.home_win_prob != null ? (
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center justify-between text-xs font-mono">
+              <span className={`font-bold ${!isHomeFavored ? 'text-emerald-400' : 'text-slate-400'}`}>
+                {(matchup.away_win_prob * 100).toFixed(1)}% Win
+              </span>
+              <span className="text-[11px] sm:text-[10px] text-slate-400 uppercase font-semibold">Model Win Probability</span>
+              <span className={`font-bold ${isHomeFavored ? 'text-emerald-400' : 'text-slate-400'}`}>
+                {(matchup.home_win_prob * 100).toFixed(1)}% Win
+              </span>
+            </div>
 
-          <div className="h-2 w-full bg-surface rounded-full overflow-hidden flex border border-slate-800">
-            <div
-              className={`h-full transition-all duration-500 ${
-                !isHomeFavored ? 'bg-emerald-500' : 'bg-slate-700'
-              }`}
-              style={{ width: `${matchup.away_win_prob * 100}%` }}
-              title={`${matchup.away_team} win prob: ${(matchup.away_win_prob * 100).toFixed(1)}%`}
-            />
-            <div
-              className={`h-full transition-all duration-500 ${
-                isHomeFavored ? 'bg-emerald-500' : 'bg-slate-700'
-              }`}
-              style={{ width: `${matchup.home_win_prob * 100}%` }}
-              title={`${matchup.home_team} win prob: ${(matchup.home_win_prob * 100).toFixed(1)}%`}
-            />
+            <div className="h-2 w-full bg-surface rounded-full overflow-hidden flex border border-slate-800">
+              <div
+                className={`h-full transition-all duration-500 ${
+                  !isHomeFavored ? 'bg-emerald-500' : 'bg-slate-700'
+                }`}
+                style={{ width: `${matchup.away_win_prob * 100}%` }}
+                title={`${matchup.away_team} win prob: ${(matchup.away_win_prob * 100).toFixed(1)}%`}
+              />
+              <div
+                className={`h-full transition-all duration-500 ${
+                  isHomeFavored ? 'bg-emerald-500' : 'bg-slate-700'
+                }`}
+                style={{ width: `${matchup.home_win_prob * 100}%` }}
+                title={`${matchup.home_team} win prob: ${(matchup.home_win_prob * 100).toFixed(1)}%`}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="pt-1 text-center text-xs font-mono text-slate-500 italic">
+            No forecast recorded
+          </div>
+        )}
+      </div>
+
+      {/* Passing Leaders Summary Strip (completed games with data) */}
+      {matchup.is_completed && (awayPassingLeader || homePassingLeader) && (
+        <div
+          className="px-4 py-2 bg-surface/50 border-t border-slate-800/80 text-xs font-mono"
+          data-testid="passing-leaders-strip"
+        >
+          <div className="flex items-center justify-between text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-1">
+            <span>Passing Leader</span>
+            <span>Passing Leader</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="min-w-0">
+              <span className="text-slate-200 font-semibold truncate block text-xs">
+                {awayPassingLeader ? awayPassingLeader.playerName : '—'}
+              </span>
+              <span className="text-emerald-400/90 text-[11px] truncate block">
+                {awayPassingLeader?.stat_line ?? '—'}
+              </span>
+            </div>
+            <div className="min-w-0 text-right">
+              <span className="text-slate-200 font-semibold truncate block text-xs">
+                {homePassingLeader ? homePassingLeader.playerName : '—'}
+              </span>
+              <span className="text-emerald-400/90 text-[11px] truncate block">
+                {homePassingLeader?.stat_line ?? '—'}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Fatigue & Travel Metrics Footer */}
       <div className="p-3 bg-surface/60 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">

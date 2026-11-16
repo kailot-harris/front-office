@@ -1,0 +1,1876 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-11-16T12:04:25Z",
+  "sport": "nfl",
+  "endpoint": "game_detail",
+  "season": 2026,
+  "season_label": "2026-2027",
+  "game_id": "2026_05_NYG_WAS",
+  "data": {
+    "game_id": "2026_05_NYG_WAS",
+    "season": 2026,
+    "season_label": "2026-2027",
+    "week": 5,
+    "week_label": "Week 5",
+    "gameday": "2026-10-11",
+    "weekday": "Sunday",
+    "gametime": "13:00",
+    "is_completed": true,
+    "has_box_score": true,
+    "away_team": {
+      "teamAbbr": "NYG",
+      "teamName": "New York Giants",
+      "score": 27,
+      "is_winner": false
+    },
+    "home_team": {
+      "teamAbbr": "WAS",
+      "teamName": "Washington Commanders",
+      "score": 27,
+      "is_winner": false
+    },
+    "forecast": {
+      "projected_margin": -1,
+      "home_win_prob": 0.473,
+      "away_win_prob": 0.527,
+      "home_power_rating": -3.64,
+      "away_power_rating": 4.7,
+      "prediction_correct": false
+    },
+    "efficiency_factors": [
+      {
+        "key": "epa_per_play",
+        "label": "EPA / Play",
+        "away_value": 0.058,
+        "home_value": 0.059,
+        "unit": "epa",
+        "higher_is_better": true,
+        "description": "Expected Points Added per offensive play"
+      },
+      {
+        "key": "success_rate",
+        "label": "Success Rate",
+        "away_value": 51.8,
+        "home_value": 45.2,
+        "unit": "pct",
+        "higher_is_better": true,
+        "description": "Percentage of plays with positive Expected Points Added"
+      },
+      {
+        "key": "dropback_epa",
+        "label": "Dropback EPA",
+        "away_value": 0.286,
+        "home_value": 0.207,
+        "unit": "epa",
+        "higher_is_better": true,
+        "description": "Expected Points Added per dropback pass play"
+      },
+      {
+        "key": "rush_epa",
+        "label": "Rush EPA",
+        "away_value": -0.271,
+        "home_value": -0.069,
+        "unit": "epa",
+        "higher_is_better": true,
+        "description": "Expected Points Added per rushing play"
+      },
+      {
+        "key": "cpoe",
+        "label": "CPOE",
+        "away_value": -0.25,
+        "home_value": 8.08,
+        "unit": "pct",
+        "higher_is_better": true,
+        "description": "Completion Percentage Over Expected on pass attempts"
+      },
+      {
+        "key": "yards_per_play",
+        "label": "Yards / Play",
+        "away_value": 3.7,
+        "home_value": 4.5,
+        "unit": "yards",
+        "higher_is_better": true,
+        "description": "Total offensive yards gained per play"
+      },
+      {
+        "key": "early_down_epa",
+        "label": "Early Down EPA",
+        "away_value": -0.134,
+        "home_value": 0.118,
+        "unit": "epa",
+        "higher_is_better": true,
+        "description": "Expected Points Added on 1st and 2nd downs"
+      },
+      {
+        "key": "late_down_success_rate",
+        "label": "Late Down Success Rate",
+        "away_value": 60,
+        "home_value": 40.9,
+        "unit": "pct",
+        "higher_is_better": true,
+        "description": "Percentage of 3rd and 4th down plays converted successfully"
+      }
+    ],
+    "team_stats": [
+      {
+        "stat_key": "total_yards",
+        "label": "Total Yards",
+        "away_value": 429,
+        "home_value": 401
+      },
+      {
+        "stat_key": "passing_yards",
+        "label": "Passing Yards",
+        "away_value": 326,
+        "home_value": 199
+      },
+      {
+        "stat_key": "rushing_yards",
+        "label": "Rushing Yards",
+        "away_value": 103,
+        "home_value": 202
+      },
+      {
+        "stat_key": "completions_attempts",
+        "label": "Comp / Att",
+        "away_value": "33/54",
+        "home_value": "17/25"
+      },
+      {
+        "stat_key": "turnovers",
+        "label": "Turnovers",
+        "away_value": 2,
+        "home_value": 0
+      },
+      {
+        "stat_key": "penalties_yards",
+        "label": "Penalties - Yards",
+        "away_value": "7-35",
+        "home_value": "9-69"
+      },
+      {
+        "stat_key": "first_downs",
+        "label": "First Downs",
+        "away_value": 24,
+        "home_value": 19
+      },
+      {
+        "stat_key": "sacks_yards_lost",
+        "label": "Sacks - Yards Lost",
+        "away_value": "2-21",
+        "home_value": "5-23"
+      }
+    ],
+    "leaders": [
+      {
+        "category": "passing",
+        "teamAbbr": "NYG",
+        "playerId": "00-0031503",
+        "playerName": "Jameis Winston",
+        "stat_line": "33/54, 326 YDS, 3 TD"
+      },
+      {
+        "category": "rushing",
+        "teamAbbr": "NYG",
+        "playerId": "00-0040715",
+        "playerName": "Cam Skattebo",
+        "stat_line": "13 CAR, 59 YDS, 0 TD"
+      },
+      {
+        "category": "receiving",
+        "teamAbbr": "NYG",
+        "playerId": "00-0039337",
+        "playerName": "Malik Nabers",
+        "stat_line": "11 REC, 121 YDS, 1 TD"
+      },
+      {
+        "category": "defense",
+        "teamAbbr": "NYG",
+        "playerId": "00-0039821",
+        "playerName": "Andru Phillips",
+        "stat_line": "2.0 SCK, 5 TKL"
+      },
+      {
+        "category": "passing",
+        "teamAbbr": "WAS",
+        "playerId": "00-0039910",
+        "playerName": "Jayden Daniels",
+        "stat_line": "17/25, 199 YDS, 0 TD"
+      },
+      {
+        "category": "rushing",
+        "teamAbbr": "WAS",
+        "playerId": "00-0039910",
+        "playerName": "Jayden Daniels",
+        "stat_line": "9 CAR, 103 YDS, 2 TD"
+      },
+      {
+        "category": "receiving",
+        "teamAbbr": "WAS",
+        "playerId": "00-0035659",
+        "playerName": "Terry McLaurin",
+        "stat_line": "4 REC, 62 YDS, 0 TD"
+      },
+      {
+        "category": "defense",
+        "teamAbbr": "WAS",
+        "playerId": "00-0034333",
+        "playerName": "Daron Payne",
+        "stat_line": "1.0 SCK, 1 TKL"
+      }
+    ],
+    "box_score": {
+      "away_players": [
+        {
+          "playerId": "00-0031270",
+          "playerName": "Shelby Harris",
+          "teamAbbr": "NYG",
+          "position": "DE",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 52,
+          "def_tackles_solo": 1,
+          "def_tackle_assists": 2,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 1,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0031503",
+          "playerName": "Jameis Winston",
+          "teamAbbr": "NYG",
+          "position": "QB",
+          "categories": [
+            "passing",
+            "rushing"
+          ],
+          "snap_pct": 94,
+          "completions": 33,
+          "attempts": 54,
+          "passing_yards": 326,
+          "passing_tds": 3,
+          "passing_interceptions": 0,
+          "sacks_suffered": 2,
+          "sack_yards_lost": -21,
+          "passing_epa": 10.56,
+          "passing_cpoe": -0.25,
+          "carries": 5,
+          "rushing_yards": 27,
+          "rushing_tds": 0,
+          "rushing_fumbles": 0,
+          "rushing_fumbles_lost": 0,
+          "rushing_first_downs": 2,
+          "rushing_epa": 4.1
+        },
+        {
+          "playerId": "00-0032424",
+          "playerName": "DJ Reader",
+          "teamAbbr": "NYG",
+          "position": "DT",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 52,
+          "def_tackles_solo": 2,
+          "def_tackle_assists": 3,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0033046",
+          "playerName": "Jihad Ward",
+          "teamAbbr": "NYG",
+          "position": "LB",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 37,
+          "def_tackles_solo": 1,
+          "def_tackle_assists": 0,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0033290",
+          "playerName": "Jermaine Eluemunor",
+          "teamAbbr": "NYG",
+          "position": "G",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 49,
+          "def_tackles_solo": 1,
+          "def_tackle_assists": 0,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0034668",
+          "playerName": "Aaron Stinnie",
+          "teamAbbr": "NYG",
+          "position": "G",
+          "categories": [],
+          "snap_pct": 24
+        },
+        {
+          "playerId": "00-0034673",
+          "playerName": "Tremaine Edmunds",
+          "teamAbbr": "NYG",
+          "position": "MLB",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 100,
+          "def_tackles_solo": 6,
+          "def_tackle_assists": 3,
+          "def_tackles_for_loss": 1,
+          "def_sacks": 1,
+          "def_qb_hits": 1,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0036309",
+          "playerName": "Darnell Mooney",
+          "teamAbbr": "NYG",
+          "position": "WR",
+          "categories": [
+            "receiving"
+          ],
+          "snap_pct": 65,
+          "receptions": 2,
+          "targets": 7,
+          "receiving_yards": 14,
+          "receiving_tds": 0,
+          "receiving_fumbles": 0,
+          "receiving_fumbles_lost": 0,
+          "receiving_first_downs": 0,
+          "receiving_epa": -3.69
+        },
+        {
+          "playerId": "00-0036587",
+          "playerName": "Ar'Darius Washington",
+          "teamAbbr": "NYG",
+          "position": "SAF",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 47,
+          "def_tackles_solo": 2,
+          "def_tackle_assists": 1,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0036893",
+          "playerName": "Najee Harris",
+          "teamAbbr": "NYG",
+          "position": "RB",
+          "categories": [
+            "rushing",
+            "receiving"
+          ],
+          "snap_pct": 18,
+          "carries": 5,
+          "rushing_yards": 9,
+          "rushing_tds": 0,
+          "rushing_fumbles": 0,
+          "rushing_fumbles_lost": 0,
+          "rushing_first_downs": 1,
+          "rushing_epa": -2.35,
+          "receptions": 1,
+          "targets": 1,
+          "receiving_yards": 5,
+          "receiving_tds": 0,
+          "receiving_fumbles": 0,
+          "receiving_fumbles_lost": 0,
+          "receiving_first_downs": 0,
+          "receiving_epa": 0.1
+        },
+        {
+          "playerId": "00-0036996",
+          "playerName": "Greg Newsome II",
+          "teamAbbr": "NYG",
+          "position": "CB",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 100,
+          "def_tackles_solo": 4,
+          "def_tackle_assists": 0,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0036998",
+          "playerName": "Jevon Holland",
+          "teamAbbr": "NYG",
+          "position": "SAF",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 100,
+          "def_tackles_solo": 2,
+          "def_tackle_assists": 0,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0037611",
+          "playerName": "Kayvon Thibodeaux",
+          "teamAbbr": "NYG",
+          "position": "LB",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 87,
+          "def_tackles_solo": 0,
+          "def_tackle_assists": 1,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0037838",
+          "playerName": "Isaiah Likely",
+          "teamAbbr": "NYG",
+          "position": "TE",
+          "categories": [
+            "receiving"
+          ],
+          "snap_pct": 80,
+          "receptions": 11,
+          "targets": 13,
+          "receiving_yards": 94,
+          "receiving_tds": 2,
+          "receiving_fumbles": 0,
+          "receiving_fumbles_lost": 0,
+          "receiving_first_downs": 6,
+          "receiving_epa": 10.4
+        },
+        {
+          "playerId": "00-0038094",
+          "playerName": "Jordan Stout",
+          "teamAbbr": "NYG",
+          "position": "P",
+          "categories": [],
+          "snap_pct": 30
+        },
+        {
+          "playerId": "00-0038399",
+          "playerName": "Zaire Barnes",
+          "teamAbbr": "NYG",
+          "position": "LB",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 76,
+          "def_tackles_solo": 2,
+          "def_tackle_assists": 0,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0038576",
+          "playerName": "Charlie Jones",
+          "teamAbbr": "NYG",
+          "position": "WR",
+          "categories": [],
+          "snap_pct": 39
+        },
+        {
+          "playerId": "00-0039000",
+          "playerName": "Deonte Banks",
+          "teamAbbr": "NYG",
+          "position": "CB",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 100,
+          "def_tackles_solo": 4,
+          "def_tackle_assists": 2,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 1,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0039176",
+          "playerName": "Basil Okoye",
+          "teamAbbr": "NYG",
+          "position": "DT",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": null,
+          "def_tackles_solo": 0,
+          "def_tackle_assists": 0,
+          "def_tackles_for_loss": 1,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0039337",
+          "playerName": "Malik Nabers",
+          "teamAbbr": "NYG",
+          "position": "WR",
+          "categories": [
+            "receiving"
+          ],
+          "snap_pct": 90,
+          "receptions": 11,
+          "targets": 20,
+          "receiving_yards": 121,
+          "receiving_tds": 1,
+          "receiving_fumbles": 0,
+          "receiving_fumbles_lost": 0,
+          "receiving_first_downs": 7,
+          "receiving_epa": 3.41
+        },
+        {
+          "playerId": "00-0039384",
+          "playerName": "Tyrone Tracy Jr.",
+          "teamAbbr": "NYG",
+          "position": "RB",
+          "categories": [
+            "rushing",
+            "receiving"
+          ],
+          "snap_pct": 21,
+          "carries": 3,
+          "rushing_yards": 6,
+          "rushing_tds": 0,
+          "rushing_fumbles": 0,
+          "rushing_fumbles_lost": 0,
+          "rushing_first_downs": 0,
+          "rushing_epa": -1.53,
+          "receptions": 2,
+          "targets": 3,
+          "receiving_yards": 25,
+          "receiving_tds": 0,
+          "receiving_fumbles": 0,
+          "receiving_fumbles_lost": 0,
+          "receiving_first_downs": 1,
+          "receiving_epa": 2.73
+        },
+        {
+          "playerId": "00-0039821",
+          "playerName": "Andru Phillips",
+          "teamAbbr": "NYG",
+          "position": "DB",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 77,
+          "def_tackles_solo": 5,
+          "def_tackle_assists": 0,
+          "def_tackles_for_loss": 2,
+          "def_sacks": 2,
+          "def_qb_hits": 4,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0039847",
+          "playerName": "Theo Johnson",
+          "teamAbbr": "NYG",
+          "position": "TE",
+          "categories": [
+            "receiving",
+            "defense"
+          ],
+          "snap_pct": 79,
+          "receptions": 2,
+          "targets": 3,
+          "receiving_yards": 35,
+          "receiving_tds": 0,
+          "receiving_fumbles": 0,
+          "receiving_fumbles_lost": 0,
+          "receiving_first_downs": 2,
+          "receiving_epa": 2.61,
+          "def_tackles_solo": 1,
+          "def_tackle_assists": 0,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0039861",
+          "playerName": "Tyler Nubin",
+          "teamAbbr": "NYG",
+          "position": "SAF",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 56,
+          "def_tackles_solo": 2,
+          "def_tackle_assists": 2,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0039923",
+          "playerName": "J.J. McCarthy",
+          "teamAbbr": "NYG",
+          "position": "QB",
+          "categories": [
+            "rushing"
+          ],
+          "snap_pct": 6,
+          "carries": 2,
+          "rushing_yards": 2,
+          "rushing_tds": 0,
+          "rushing_fumbles": 0,
+          "rushing_fumbles_lost": 0,
+          "rushing_first_downs": 0,
+          "rushing_epa": -2.76
+        },
+        {
+          "playerId": "00-0040181",
+          "playerName": "Marcus Mbow",
+          "teamAbbr": "NYG",
+          "position": "G",
+          "categories": [],
+          "snap_pct": 51
+        },
+        {
+          "playerId": "00-0040431",
+          "playerName": "Dalen Cambre",
+          "teamAbbr": "NYG",
+          "position": "WR",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 33,
+          "def_tackles_solo": 0,
+          "def_tackle_assists": 1,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0040434",
+          "playerName": "Trace Ford",
+          "teamAbbr": "NYG",
+          "position": "LB",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 70,
+          "def_tackles_solo": 1,
+          "def_tackle_assists": 1,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0040677",
+          "playerName": "Abdul Carter",
+          "teamAbbr": "NYG",
+          "position": "LB",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 87,
+          "def_tackles_solo": 2,
+          "def_tackle_assists": 3,
+          "def_tackles_for_loss": 1,
+          "def_sacks": 1,
+          "def_qb_hits": 1,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 1
+        },
+        {
+          "playerId": "00-0040694",
+          "playerName": "Darius Alexander",
+          "teamAbbr": "NYG",
+          "position": "DT",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 53,
+          "def_tackles_solo": 1,
+          "def_tackle_assists": 1,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0040715",
+          "playerName": "Cam Skattebo",
+          "teamAbbr": "NYG",
+          "position": "RB",
+          "categories": [
+            "rushing",
+            "receiving"
+          ],
+          "snap_pct": 63,
+          "carries": 13,
+          "rushing_yards": 59,
+          "rushing_tds": 0,
+          "rushing_fumbles": 1,
+          "rushing_fumbles_lost": 1,
+          "rushing_first_downs": 4,
+          "rushing_epa": -2.62,
+          "receptions": 2,
+          "targets": 3,
+          "receiving_yards": 12,
+          "receiving_tds": 0,
+          "receiving_fumbles": 0,
+          "receiving_fumbles_lost": 0,
+          "receiving_first_downs": 0,
+          "receiving_epa": 1.43
+        },
+        {
+          "playerId": "00-0041042",
+          "playerName": "Malachi Fields",
+          "teamAbbr": "NYG",
+          "position": "WR",
+          "categories": [
+            "receiving"
+          ],
+          "snap_pct": 72,
+          "receptions": 2,
+          "targets": 2,
+          "receiving_yards": 20,
+          "receiving_tds": 0,
+          "receiving_fumbles": 0,
+          "receiving_fumbles_lost": 0,
+          "receiving_first_downs": 1,
+          "receiving_epa": 1.77
+        },
+        {
+          "playerId": "00-0041145",
+          "playerName": "Dominic Zvada",
+          "teamAbbr": "NYG",
+          "position": "K",
+          "categories": [
+            "kicking"
+          ],
+          "snap_pct": 42,
+          "fg_made": 2,
+          "fg_att": 5,
+          "fg_long": 56,
+          "pat_made": 3,
+          "pat_att": 3
+        },
+        {
+          "playerId": "00-0041462",
+          "playerName": "Colton Hood",
+          "teamAbbr": "NYG",
+          "position": "CB",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 21,
+          "def_tackles_solo": 2,
+          "def_tackle_assists": 1,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0041509",
+          "playerName": "Arvell Reese",
+          "teamAbbr": "NYG",
+          "position": "LB",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 100,
+          "def_tackles_solo": 3,
+          "def_tackle_assists": 6,
+          "def_tackles_for_loss": 1,
+          "def_sacks": 1,
+          "def_qb_hits": 1,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        }
+      ],
+      "home_players": [
+        {
+          "playerId": "00-0030140",
+          "playerName": "Tress Way",
+          "teamAbbr": "WAS",
+          "position": "P",
+          "categories": [],
+          "snap_pct": 36
+        },
+        {
+          "playerId": "00-0033551",
+          "playerName": "Rasul Douglas",
+          "teamAbbr": "WAS",
+          "position": "CB",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 98,
+          "def_tackles_solo": 9,
+          "def_tackle_assists": 1,
+          "def_tackles_for_loss": 2,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 1,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0033699",
+          "playerName": "Austin Ekeler",
+          "teamAbbr": "WAS",
+          "position": "RB",
+          "categories": [
+            "rushing",
+            "receiving"
+          ],
+          "snap_pct": 10,
+          "carries": 3,
+          "rushing_yards": -1,
+          "rushing_tds": 0,
+          "rushing_fumbles": 0,
+          "rushing_fumbles_lost": 0,
+          "rushing_first_downs": 0,
+          "rushing_epa": -1.99,
+          "receptions": 1,
+          "targets": 1,
+          "receiving_yards": 15,
+          "receiving_tds": 0,
+          "receiving_fumbles": 0,
+          "receiving_fumbles_lost": 0,
+          "receiving_first_downs": 1,
+          "receiving_epa": 1.56
+        },
+        {
+          "playerId": "00-0033918",
+          "playerName": "Fabian Moreau",
+          "teamAbbr": "WAS",
+          "position": "CB",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 29,
+          "def_tackles_solo": 4,
+          "def_tackle_assists": 0,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 1,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0033947",
+          "playerName": "Deatrich Wise",
+          "teamAbbr": "WAS",
+          "position": "DE",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 39,
+          "def_tackles_solo": 3,
+          "def_tackle_assists": 0,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0034302",
+          "playerName": "Frankie Luvu",
+          "teamAbbr": "WAS",
+          "position": "LB",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 100,
+          "def_tackles_solo": 6,
+          "def_tackle_assists": 3,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 1,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0034333",
+          "playerName": "Daron Payne",
+          "teamAbbr": "WAS",
+          "position": "NT",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 71,
+          "def_tackles_solo": 1,
+          "def_tackle_assists": 2,
+          "def_tackles_for_loss": 1,
+          "def_sacks": 1,
+          "def_qb_hits": 1,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 1
+        },
+        {
+          "playerId": "00-0034373",
+          "playerName": "Dorance Armstrong",
+          "teamAbbr": "WAS",
+          "position": "DE",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 49,
+          "def_tackles_solo": 1,
+          "def_tackle_assists": 2,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 2,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0034397",
+          "playerName": "Tim Settle",
+          "teamAbbr": "WAS",
+          "position": "DT",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 37,
+          "def_tackles_solo": 0,
+          "def_tackle_assists": 1,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0034465",
+          "playerName": "Jeremy Reaves",
+          "teamAbbr": "WAS",
+          "position": "DB",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 97,
+          "def_tackles_solo": 4,
+          "def_tackle_assists": 3,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 1,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0035409",
+          "playerName": "Shy Tuttle",
+          "teamAbbr": "WAS",
+          "position": "DT",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 20,
+          "def_tackles_solo": 0,
+          "def_tackle_assists": 2,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0035659",
+          "playerName": "Terry McLaurin",
+          "teamAbbr": "WAS",
+          "position": "WR",
+          "categories": [
+            "receiving"
+          ],
+          "snap_pct": 58,
+          "receptions": 4,
+          "targets": 4,
+          "receiving_yards": 62,
+          "receiving_tds": 0,
+          "receiving_fumbles": 0,
+          "receiving_fumbles_lost": 0,
+          "receiving_first_downs": 3,
+          "receiving_epa": 3.18
+        },
+        {
+          "playerId": "00-0036260",
+          "playerName": "Javon Kinlaw",
+          "teamAbbr": "WAS",
+          "position": "DT",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 63,
+          "def_tackles_solo": 0,
+          "def_tackle_assists": 2,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 1,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0036286",
+          "playerName": "K'Lavon Chaisson",
+          "teamAbbr": "WAS",
+          "position": "LB",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 65,
+          "def_tackles_solo": 1,
+          "def_tackle_assists": 0,
+          "def_tackles_for_loss": 1,
+          "def_sacks": 1,
+          "def_qb_hits": 2,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 1
+        },
+        {
+          "playerId": "00-0036375",
+          "playerName": "Amik Robertson",
+          "teamAbbr": "WAS",
+          "position": "CB",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 98,
+          "def_tackles_solo": 6,
+          "def_tackle_assists": 1,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 1,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0036626",
+          "playerName": "Dyami Brown",
+          "teamAbbr": "WAS",
+          "position": "WR",
+          "categories": [
+            "receiving"
+          ],
+          "snap_pct": 37,
+          "receptions": 1,
+          "targets": 2,
+          "receiving_yards": 2,
+          "receiving_tds": 0,
+          "receiving_fumbles": 1,
+          "receiving_fumbles_lost": 0,
+          "receiving_first_downs": 0,
+          "receiving_epa": -1.36
+        },
+        {
+          "playerId": "00-0036628",
+          "playerName": "John Bates",
+          "teamAbbr": "WAS",
+          "position": "TE",
+          "categories": [
+            "receiving"
+          ],
+          "snap_pct": 48,
+          "receptions": 1,
+          "targets": 1,
+          "receiving_yards": 1,
+          "receiving_tds": 0,
+          "receiving_fumbles": 0,
+          "receiving_fumbles_lost": 0,
+          "receiving_first_downs": 0,
+          "receiving_epa": -0.69
+        },
+        {
+          "playerId": "00-0036940",
+          "playerName": "Odafe Oweh",
+          "teamAbbr": "WAS",
+          "position": "LB",
+          "categories": [],
+          "snap_pct": 63
+        },
+        {
+          "playerId": "00-0036956",
+          "playerName": "Darren Hall",
+          "teamAbbr": "WAS",
+          "position": "CB",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 64,
+          "def_tackles_solo": 0,
+          "def_tackle_assists": 1,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0037256",
+          "playerName": "Rachaad White",
+          "teamAbbr": "WAS",
+          "position": "RB",
+          "categories": [
+            "rushing",
+            "receiving"
+          ],
+          "snap_pct": 60,
+          "carries": 7,
+          "rushing_yards": 18,
+          "rushing_tds": 0,
+          "rushing_fumbles": 0,
+          "rushing_fumbles_lost": 0,
+          "rushing_first_downs": 0,
+          "rushing_epa": -2.14,
+          "receptions": 1,
+          "targets": 1,
+          "receiving_yards": 2,
+          "receiving_tds": 0,
+          "receiving_fumbles": 0,
+          "receiving_fumbles_lost": 0,
+          "receiving_first_downs": 0,
+          "receiving_epa": -0.64
+        },
+        {
+          "playerId": "00-0037742",
+          "playerName": "Treylon Burks",
+          "teamAbbr": "WAS",
+          "position": "WR",
+          "categories": [
+            "receiving"
+          ],
+          "snap_pct": 73,
+          "receptions": 2,
+          "targets": 5,
+          "receiving_yards": 26,
+          "receiving_tds": 0,
+          "receiving_fumbles": 0,
+          "receiving_fumbles_lost": 0,
+          "receiving_first_downs": 2,
+          "receiving_epa": -1.01
+        },
+        {
+          "playerId": "00-0037809",
+          "playerName": "Chig Okonkwo",
+          "teamAbbr": "WAS",
+          "position": "TE",
+          "categories": [
+            "receiving"
+          ],
+          "snap_pct": 71,
+          "receptions": 4,
+          "targets": 6,
+          "receiving_yards": 60,
+          "receiving_tds": 0,
+          "receiving_fumbles": 0,
+          "receiving_fumbles_lost": 0,
+          "receiving_first_downs": 3,
+          "receiving_epa": 3.33
+        },
+        {
+          "playerId": "00-0039149",
+          "playerName": "Quan Martin",
+          "teamAbbr": "WAS",
+          "position": "SAF",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 99,
+          "def_tackles_solo": 3,
+          "def_tackle_assists": 5,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0039355",
+          "playerName": "Luke McCaffrey",
+          "teamAbbr": "WAS",
+          "position": "WR",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 42,
+          "def_tackles_solo": 0,
+          "def_tackle_assists": 2,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0039412",
+          "playerName": "Javontae Jean-Baptiste",
+          "teamAbbr": "WAS",
+          "position": "LB",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 45,
+          "def_tackles_solo": 2,
+          "def_tackle_assists": 0,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0039686",
+          "playerName": "Colson Yankoff",
+          "teamAbbr": "WAS",
+          "position": "TE",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 76,
+          "def_tackles_solo": 2,
+          "def_tackle_assists": 1,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0039898",
+          "playerName": "Mike Sainristil",
+          "teamAbbr": "WAS",
+          "position": "CB",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 52,
+          "def_tackles_solo": 4,
+          "def_tackle_assists": 1,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0039910",
+          "playerName": "Jayden Daniels",
+          "teamAbbr": "WAS",
+          "position": "QB",
+          "categories": [
+            "passing",
+            "rushing"
+          ],
+          "snap_pct": 100,
+          "completions": 17,
+          "attempts": 25,
+          "passing_yards": 199,
+          "passing_tds": 0,
+          "passing_interceptions": 0,
+          "sacks_suffered": 5,
+          "sack_yards_lost": -23,
+          "passing_epa": -2.39,
+          "passing_cpoe": 8.08,
+          "carries": 9,
+          "rushing_yards": 103,
+          "rushing_tds": 2,
+          "rushing_fumbles": 0,
+          "rushing_fumbles_lost": 0,
+          "rushing_first_downs": 4,
+          "rushing_epa": 9.76
+        },
+        {
+          "playerId": "00-0039912",
+          "playerName": "Ben Sinnott",
+          "teamAbbr": "WAS",
+          "position": "TE",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 39,
+          "def_tackles_solo": 0,
+          "def_tackle_assists": 1,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0039913",
+          "playerName": "Brandon Coleman",
+          "teamAbbr": "WAS",
+          "position": "G",
+          "categories": [],
+          "snap_pct": 100
+        },
+        {
+          "playerId": "00-0040242",
+          "playerName": "Jacory Croskey-Merritt",
+          "teamAbbr": "WAS",
+          "position": "RB",
+          "categories": [
+            "rushing"
+          ],
+          "snap_pct": 35,
+          "carries": 11,
+          "rushing_yards": 82,
+          "rushing_tds": 1,
+          "rushing_fumbles": 0,
+          "rushing_fumbles_lost": 0,
+          "rushing_first_downs": 4,
+          "rushing_epa": 3.42
+        },
+        {
+          "playerId": "00-0040501",
+          "playerName": "Austin Keys",
+          "teamAbbr": "WAS",
+          "position": "LB",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 88,
+          "def_tackles_solo": 0,
+          "def_tackle_assists": 2,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0041028",
+          "playerName": "Sonny Styles",
+          "teamAbbr": "WAS",
+          "position": "LB",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 100,
+          "def_tackles_solo": 3,
+          "def_tackle_assists": 9,
+          "def_tackles_for_loss": 1,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 1,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0041040",
+          "playerName": "Antonio Williams",
+          "teamAbbr": "WAS",
+          "position": "WR",
+          "categories": [
+            "receiving"
+          ],
+          "snap_pct": 68,
+          "receptions": 3,
+          "targets": 3,
+          "receiving_yards": 31,
+          "receiving_tds": 0,
+          "receiving_fumbles": 0,
+          "receiving_fumbles_lost": 0,
+          "receiving_first_downs": 2,
+          "receiving_epa": 2.79
+        },
+        {
+          "playerId": "00-0041074",
+          "playerName": "Joshua Josephs",
+          "teamAbbr": "WAS",
+          "position": "LB",
+          "categories": [
+            "defense"
+          ],
+          "snap_pct": 39,
+          "def_tackles_solo": 1,
+          "def_tackle_assists": 0,
+          "def_tackles_for_loss": 0,
+          "def_sacks": 0,
+          "def_qb_hits": 0,
+          "def_interceptions": 0,
+          "def_pass_defended": 0,
+          "def_fumbles_forced": 0
+        },
+        {
+          "playerId": "00-0041182",
+          "playerName": "Drew Stevens",
+          "teamAbbr": "WAS",
+          "position": "K",
+          "categories": [
+            "kicking"
+          ],
+          "snap_pct": 33,
+          "fg_made": 2,
+          "fg_att": 2,
+          "fg_long": 40,
+          "pat_made": 1,
+          "pat_att": 2
+        }
+      ]
+    },
+    "injury_designations": [
+      {
+        "playerId": "00-0036502",
+        "playerName": "Jason Pinnock",
+        "position": null,
+        "designation": "Out",
+        "body_part": "Concussion",
+        "played": false
+      },
+      {
+        "playerId": "00-0036982",
+        "playerName": "Chauncey Golston",
+        "position": null,
+        "designation": "Out",
+        "body_part": "Neck",
+        "played": false
+      },
+      {
+        "playerId": "00-0031588",
+        "playerName": "Stefon Diggs",
+        "position": null,
+        "designation": "Out",
+        "body_part": "Hamstring",
+        "played": false
+      },
+      {
+        "playerId": "00-0032268",
+        "playerName": "Marcus Mariota",
+        "position": null,
+        "designation": "Out",
+        "body_part": "Knee",
+        "played": false
+      },
+      {
+        "playerId": "00-0033947",
+        "playerName": "Deatrich Wise",
+        "position": null,
+        "designation": "Questionable",
+        "body_part": "Quadricep",
+        "played": true
+      },
+      {
+        "playerId": "00-0033955",
+        "playerName": "Jeremy McNichols",
+        "position": null,
+        "designation": "Questionable",
+        "body_part": "Quadricep",
+        "played": false
+      },
+      {
+        "playerId": "00-0035279",
+        "playerName": "Charles Omenihu",
+        "position": null,
+        "designation": "Out",
+        "body_part": "Groin",
+        "played": false
+      },
+      {
+        "playerId": "00-0035659",
+        "playerName": "Terry McLaurin",
+        "position": null,
+        "designation": "Questionable",
+        "body_part": "Hamstring",
+        "played": true
+      },
+      {
+        "playerId": "00-0037616",
+        "playerName": "Nick Cross",
+        "position": null,
+        "designation": "Out",
+        "body_part": "Illness",
+        "played": false
+      },
+      {
+        "playerId": "00-0038100",
+        "playerName": "Percy Butler",
+        "position": null,
+        "designation": "Out",
+        "body_part": "Hamstring",
+        "played": false
+      },
+      {
+        "playerId": "00-0039681",
+        "playerName": "Tyler Owens",
+        "position": null,
+        "designation": "Out",
+        "body_part": "Hamstring",
+        "played": false
+      },
+      {
+        "playerId": "00-0040731",
+        "playerName": "Trey Amos",
+        "position": null,
+        "designation": "Questionable",
+        "body_part": "Ankle",
+        "played": false
+      }
+    ],
+    "explainability": {
+      "game_id": "2026_05_NYG_WAS",
+      "season": 2026,
+      "week": 5,
+      "projection_basis": "backtest_preweek",
+      "predicted_margin": -0.97,
+      "predicted_home_win_prob": 0.473,
+      "waterfall": {
+        "projected_margin": -0.97,
+        "home_win_prob": 0.473,
+        "steps": [
+          {
+            "key": "step_current_epa",
+            "label": "Current-Season EPA",
+            "points": -1.1,
+            "description": "Current season rolling EPA net differential"
+          },
+          {
+            "key": "step_prior_epa",
+            "label": "Pre-Season Prior",
+            "points": -0.33,
+            "description": "Prior season baseline regressed to mean"
+          },
+          {
+            "key": "step_elo_diff",
+            "label": "Elo Differential",
+            "points": -1.63,
+            "description": "Elo rating points differential"
+          },
+          {
+            "key": "step_home_field",
+            "label": "Home Field Advantage",
+            "points": 2.08,
+            "description": "Neutral site and home field advantage blend"
+          },
+          {
+            "key": "step_qb_adjustment",
+            "label": "Starting Quarterback",
+            "points": 0,
+            "description": "Quarterback availability and injury adjustment"
+          },
+          {
+            "key": "step_rounding",
+            "label": "Rounding",
+            "points": 0,
+            "description": "Decomposition residual"
+          }
+        ],
+        "rounding": 0,
+        "sigma": 14.6,
+        "intercept": 2.24
+      },
+      "secondary_model": {
+        "model_id": "xgboost_feature_fusion_v1",
+        "model_label": "Secondary Model (XGBoost TreeSHAP)",
+        "model_win_prob": 0.709,
+        "logit": 0.8914,
+        "base_value": 0.2498,
+        "factors": [
+          {
+            "feature": "diff_raw",
+            "label": "Overall EPA/Play Differential",
+            "value": -9.469,
+            "shap_value": 0
+          },
+          {
+            "feature": "diff_prior",
+            "label": "Pre-Season Baseline Differential",
+            "value": -7.093,
+            "shap_value": 0
+          },
+          {
+            "feature": "diff_pass_epa",
+            "label": "Passing EPA Differential",
+            "value": -0.043,
+            "shap_value": -0.022
+          },
+          {
+            "feature": "diff_rush_epa",
+            "label": "Rushing EPA Differential",
+            "value": 0.091,
+            "shap_value": 0.0245
+          },
+          {
+            "feature": "diff_cpoe",
+            "label": "Completion % Over Expected Differential",
+            "value": 7.31,
+            "shap_value": 0.7032
+          },
+          {
+            "feature": "gp_avg",
+            "label": "Sample Maturity (Avg Games Played)",
+            "value": 4,
+            "shap_value": 0
+          },
+          {
+            "feature": "gp_min",
+            "label": "Minimum Team Games Played",
+            "value": 4,
+            "shap_value": 0
+          },
+          {
+            "feature": "qb_diff",
+            "label": "Quarterback Status Differential",
+            "value": 0,
+            "shap_value": 0
+          },
+          {
+            "feature": "ridge_margin",
+            "label": "Primary Ridge Model Projection",
+            "value": -0.974,
+            "shap_value": 0
+          },
+          {
+            "feature": "elo_margin",
+            "label": "Primary Elo Model Projection",
+            "value": -3.262,
+            "shap_value": 0
+          },
+          {
+            "feature": "fatigue_adj",
+            "label": "Schedule Rest & Travel Impact",
+            "value": 0.08,
+            "shap_value": -0.0574
+          },
+          {
+            "feature": "rest_diff",
+            "label": "Days Rest Differential",
+            "value": 0,
+            "shap_value": -0.0067
+          }
+        ],
+        "out_of_sample_record": {
+          "n_games": 145,
+          "accuracy": 59.3,
+          "brier": 0.2232,
+          "logloss": 0.6348
+        },
+        "agreement": "differ"
+      },
+      "entering_baselines": [
+        {
+          "metric_key": "epa_per_play",
+          "metric_label": "EPA / Play",
+          "team_abbr": "NYG",
+          "entering_baseline": -0.015,
+          "realized_value": 0.058,
+          "delta": 0.073,
+          "prior_games_n": 4,
+          "is_low_sample": false
+        },
+        {
+          "metric_key": "success_rate",
+          "metric_label": "Success Rate",
+          "team_abbr": "NYG",
+          "entering_baseline": 42.756,
+          "realized_value": 51.818,
+          "delta": 9.062,
+          "prior_games_n": 4,
+          "is_low_sample": false
+        },
+        {
+          "metric_key": "dropback_epa",
+          "metric_label": "Dropback EPA",
+          "team_abbr": "NYG",
+          "entering_baseline": 0.057,
+          "realized_value": 0.286,
+          "delta": 0.229,
+          "prior_games_n": 4,
+          "is_low_sample": false
+        },
+        {
+          "metric_key": "rush_epa",
+          "metric_label": "Rush EPA",
+          "team_abbr": "NYG",
+          "entering_baseline": -0.056,
+          "realized_value": -0.271,
+          "delta": -0.215,
+          "prior_games_n": 4,
+          "is_low_sample": false
+        },
+        {
+          "metric_key": "cpoe",
+          "metric_label": "CPOE",
+          "team_abbr": "NYG",
+          "entering_baseline": -3.069,
+          "realized_value": -0.25,
+          "delta": 2.819,
+          "prior_games_n": 4,
+          "is_low_sample": false
+        },
+        {
+          "metric_key": "epa_per_play",
+          "metric_label": "EPA / Play",
+          "team_abbr": "WAS",
+          "entering_baseline": -0.043,
+          "realized_value": 0.059,
+          "delta": 0.102,
+          "prior_games_n": 4,
+          "is_low_sample": false
+        },
+        {
+          "metric_key": "success_rate",
+          "metric_label": "Success Rate",
+          "team_abbr": "WAS",
+          "entering_baseline": 41.856,
+          "realized_value": 45.238,
+          "delta": 3.382,
+          "prior_games_n": 4,
+          "is_low_sample": false
+        },
+        {
+          "metric_key": "dropback_epa",
+          "metric_label": "Dropback EPA",
+          "team_abbr": "WAS",
+          "entering_baseline": 0.048,
+          "realized_value": 0.207,
+          "delta": 0.159,
+          "prior_games_n": 4,
+          "is_low_sample": false
+        },
+        {
+          "metric_key": "rush_epa",
+          "metric_label": "Rush EPA",
+          "team_abbr": "WAS",
+          "entering_baseline": -0.121,
+          "realized_value": -0.069,
+          "delta": 0.051,
+          "prior_games_n": 4,
+          "is_low_sample": false
+        },
+        {
+          "metric_key": "cpoe",
+          "metric_label": "CPOE",
+          "team_abbr": "WAS",
+          "entering_baseline": -2.048,
+          "realized_value": 8.076,
+          "delta": 10.124,
+          "prior_games_n": 4,
+          "is_low_sample": false
+        }
+      ],
+      "divergence_note": "WAS CPOE (+8.076) showed the largest divergence from entering baseline (-2.048).",
+      "margin_waterfall": [
+        {
+          "key": "step_current_epa",
+          "label": "Current-Season EPA",
+          "points": -1.1,
+          "description": "Current season rolling EPA net differential"
+        },
+        {
+          "key": "step_prior_epa",
+          "label": "Pre-Season Prior",
+          "points": -0.33,
+          "description": "Prior season baseline regressed to mean"
+        },
+        {
+          "key": "step_elo_diff",
+          "label": "Elo Differential",
+          "points": -1.63,
+          "description": "Elo rating points differential"
+        },
+        {
+          "key": "step_home_field",
+          "label": "Home Field Advantage",
+          "points": 2.08,
+          "description": "Neutral site and home field advantage blend"
+        },
+        {
+          "key": "step_qb_adjustment",
+          "label": "Starting Quarterback",
+          "points": 0,
+          "description": "Quarterback availability and injury adjustment"
+        },
+        {
+          "key": "step_rounding",
+          "label": "Rounding",
+          "points": 0,
+          "description": "Decomposition residual"
+        }
+      ]
+    }
+  }
+}

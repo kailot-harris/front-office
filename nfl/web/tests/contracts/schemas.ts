@@ -81,25 +81,25 @@ export const matchupGameSchema = z.object({
   home_team_name: z.string().min(3),
   away_team: teamCode,
   away_team_name: z.string().min(3),
-  home_power_rating: z.number().finite(),
-  away_power_rating: z.number().finite(),
-  projected_margin: z.number().min(-60).max(60),
-  projected_spread: z.number().min(-60).max(60),
-  projected_total: z.number().min(20).max(80),
-  home_win_prob: prob,
-  away_win_prob: prob,
+  home_power_rating: z.number().finite().nullable().optional(),
+  away_power_rating: z.number().finite().nullable().optional(),
+  has_projection: z.boolean(),
+  projected_margin: z.number().min(-60).max(60).nullable().optional(),
+  home_win_prob: prob.nullable().optional(),
+  away_win_prob: prob.nullable().optional(),
   home_rest_days: z.number().int().min(0).max(30),
   away_rest_days: z.number().int().min(0).max(30),
   rest_diff: z.number().int().min(-30).max(30),
   home_travel_miles: z.number().min(0).max(12000),
   away_travel_miles: z.number().min(0).max(12000),
-  key_number_flag: z.string(),
   // The R export emits JSON `null` (not an absent key) for games that have not
   // been played. `lib/types.ts` declares these as `?: number` / `?: string`,
   // i.e. `undefined`-able but NOT null-able — so at runtime these fields hold a
   // value the declared type says is impossible. Consumers must therefore use
   // `=== true` / `!= null` style guards, never a bare `!== undefined`.
   is_completed: z.boolean().optional(),
+  has_box_score: z.boolean().optional(),
+  has_game_detail: z.boolean().optional(),
   home_score: z.number().int().min(0).max(100).nullable().optional(),
   away_score: z.number().int().min(0).max(100).nullable().optional(),
   actual_winner: z.string().nullable().optional(),
@@ -204,6 +204,13 @@ export const calibrationBinSchema = z.object({
 const numberOrArray = z.union([z.number(), z.array(z.number()).nonempty()]);
 const stringOrArray = z.union([z.string(), z.array(z.string()).nonempty()]);
 
+export const modelTrackRecordSchema = z.object({
+  n_games: z.number().int().min(0),
+  accuracy: pct100.nullable(),
+  brier: z.number().min(0).max(1).nullable(),
+  logloss: z.number().min(0).max(5).nullable(),
+}).strict();
+
 export const diagnosticsDatasetSchema = z.object({
   generated_at: isoUtcStamp,
   season: z.union([z.number().int(), z.array(z.number().int()).nonempty()]),
@@ -222,6 +229,8 @@ export const diagnosticsDatasetSchema = z.object({
     ridge_massey_fallback: prob.optional(),
   }).strict(),
   calibration_curve: z.array(calibrationBinSchema).nonempty(),
+  genuine_pregame: modelTrackRecordSchema,
+  historical_backtest: modelTrackRecordSchema,
 }).strict();
 
 export const visualMediaItemSchema = z.object({
@@ -425,7 +434,7 @@ export const playerDnaProfileSchema = z.object({
   historicalTwins: z.array(playerDnaHistoricalTwinSchema).min(1),
 }).strict();
 
-export const ClutchProfileSchema = z.object({
+export const clutchProfileSchema = z.object({
   playerId: z.string().min(1),
   playerName: z.string().min(2),
   team: teamCode,
@@ -446,8 +455,241 @@ export const ClutchProfileSchema = z.object({
   fourthDownAggressiveness: pct100.nullable(),
   clutchArchetype: z.string().min(1),
   provenance: z.enum(['REAL_CURRENT_SEASON', 'INSUFFICIENT_SAMPLE']),
-
 }).strict();
+
+export const gameTeamSummarySchema = z.object({
+  teamAbbr: teamCode,
+  teamName: z.string().min(2),
+  score: z.number().int().min(0).nullable(),
+  is_winner: z.boolean().nullable(),
+}).strict();
+
+export const nflGameForecastSchema = z.object({
+  projected_margin: z.number().nullable(),
+  home_win_prob: prob.nullable(),
+  away_win_prob: prob.nullable(),
+  home_power_rating: z.number().nullable(),
+  away_power_rating: z.number().nullable(),
+  prediction_correct: z.boolean().nullable(),
+}).strict();
+
+export const nflEfficiencyFactorItemSchema = z.object({
+  key: z.enum([
+    'epa_per_play',
+    'success_rate',
+    'dropback_epa',
+    'rush_epa',
+    'cpoe',
+    'yards_per_play',
+    'early_down_epa',
+    'late_down_success_rate',
+  ]),
+  label: z.string().min(2),
+  away_value: z.number().nullable(),
+  home_value: z.number().nullable(),
+  unit: z.enum(['epa', 'pct', 'yards']),
+  higher_is_better: z.boolean(),
+  description: z.string().min(5),
+}).strict();
+
+export const nflTeamComparisonItemSchema = z.object({
+  stat_key: z.string().min(2),
+  label: z.string().min(2),
+  away_value: z.union([z.number(), z.string()]).nullable(),
+  home_value: z.union([z.number(), z.string()]).nullable(),
+}).strict();
+
+export const nflBoxCategorySchema = z.enum(['passing', 'rushing', 'receiving', 'defense', 'kicking']);
+
+export const nflPlayerBoxRowSchema = z.object({
+  playerId: z.string().min(2),
+  playerName: z.string().min(2),
+  teamAbbr: teamCode,
+  position: z.string().nullable(),
+  categories: z.array(nflBoxCategorySchema),
+  snap_pct: pct100.nullable(),
+
+  // Passing
+  completions: z.number().int().min(0).optional(),
+  attempts: z.number().int().min(0).optional(),
+  passing_yards: z.number().int().optional(),
+  passing_tds: z.number().int().min(0).optional(),
+  passing_interceptions: z.number().int().min(0).optional(),
+  sacks_suffered: z.number().int().min(0).optional(),
+  sack_yards_lost: z.number().int().optional(),
+  passing_epa: z.number().nullable().optional(),
+  passing_cpoe: z.number().nullable().optional(),
+
+  // Rushing
+  carries: z.number().int().min(0).optional(),
+  rushing_yards: z.number().int().optional(),
+  rushing_tds: z.number().int().min(0).optional(),
+  rushing_fumbles: z.number().int().min(0).optional(),
+  rushing_fumbles_lost: z.number().int().min(0).optional(),
+  rushing_first_downs: z.number().int().min(0).optional(),
+  rushing_epa: z.number().nullable().optional(),
+
+  // Receiving
+  receptions: z.number().int().min(0).optional(),
+  targets: z.number().int().min(0).optional(),
+  receiving_yards: z.number().int().optional(),
+  receiving_tds: z.number().int().min(0).optional(),
+  receiving_fumbles: z.number().int().min(0).optional(),
+  receiving_fumbles_lost: z.number().int().min(0).optional(),
+  receiving_first_downs: z.number().int().min(0).optional(),
+  receiving_epa: z.number().nullable().optional(),
+
+  // Defense
+  def_tackles_solo: z.number().int().min(0).optional(),
+  def_tackle_assists: z.number().int().min(0).optional(),
+  def_tackles_for_loss: z.number().int().min(0).optional(),
+  def_sacks: z.number().min(0).optional(),
+  def_qb_hits: z.number().int().min(0).optional(),
+  def_interceptions: z.number().int().min(0).optional(),
+  def_pass_defended: z.number().int().min(0).optional(),
+  def_fumbles_forced: z.number().int().min(0).optional(),
+
+  // Kicking
+  fg_made: z.number().int().min(0).optional(),
+  fg_att: z.number().int().min(0).optional(),
+  fg_long: z.number().int().min(0).max(100).nullable().optional(),
+  pat_made: z.number().int().min(0).optional(),
+  pat_att: z.number().int().min(0).optional(),
+}).strict();
+
+export const categoryLeaderSchema = z.object({
+  category: nflBoxCategorySchema,
+  teamAbbr: teamCode,
+  playerId: z.string().min(2),
+  playerName: z.string().min(2),
+  stat_line: z.string().min(2),
+}).strict();
+
+export const injuryDesignationRowSchema = z.object({
+  playerId: z.string().nullable(),
+  playerName: z.string().min(2),
+  position: z.string().nullable(),
+  designation: z.enum(['Out', 'IR', 'Doubtful', 'Questionable']),
+  body_part: z.string().nullable(),
+  played: z.boolean(),
+}).strict();
+
+export const waterfallStepSchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  points: z.number().finite(),
+  description: z.string().optional(),
+}).strict();
+
+export const pointsWaterfallPayloadSchema = z.object({
+  projected_margin: z.number().finite(),
+  home_win_prob: prob,
+  steps: z.array(waterfallStepSchema),
+  rounding: z.number().finite(),
+  sigma: z.number().positive(),
+  intercept: z.number().finite().optional(),
+}).strict();
+
+export const shapFactorItemSchema = z.object({
+  feature: z.string().min(1),
+  label: z.string().min(1),
+  value: z.number().finite(),
+  shap_value: z.number().finite(),
+}).strict();
+
+export const secondaryModelOutOfSampleRecordSchema = z.object({
+  n_games: z.number().int().min(0),
+  accuracy: z.number().min(0).max(100),
+  brier: z.number().min(0).max(1),
+  logloss: z.number().min(0),
+}).strict();
+
+export const secondaryModelSummarySchema = z.object({
+  model_id: z.string().min(1),
+  model_label: z.string().min(1),
+  model_win_prob: prob,
+  logit: z.number().finite(),
+  base_value: z.number().finite(),
+  factors: z.array(shapFactorItemSchema),
+  out_of_sample_record: secondaryModelOutOfSampleRecordSchema,
+  agreement: z.enum(['agree', 'differ']),
+}).strict();
+
+export const efficiencyBaselineComparisonSchema = z.object({
+  metric_key: z.string().min(1),
+  metric_label: z.string().min(1),
+  team_abbr: z.string().optional(),
+  entering_baseline: z.number().finite().nullable(),
+  realized_value: z.number().finite().nullable(),
+  delta: z.number().finite().nullable(),
+  prior_games_n: z.number().int().min(0),
+  is_low_sample: z.boolean(),
+}).strict();
+
+export const gameExplainabilityPayloadSchema = z.object({
+  game_id: z.string().min(4),
+  season: z.number().int().min(2000).max(2030),
+  week: z.number().int().min(1).max(22),
+  projection_basis: z.enum(['primary_ensemble', 'logged_pregame', 'backtest_preweek']).nullable().optional(),
+  predicted_margin: z.number().finite().nullable().optional(),
+  predicted_home_win_prob: prob.nullable().optional(),
+  waterfall: pointsWaterfallPayloadSchema,
+  secondary_model: secondaryModelSummarySchema.nullable(),
+  entering_baselines: z.array(efficiencyBaselineComparisonSchema),
+  divergence_note: z.string().nullable(),
+  margin_waterfall: z.array(waterfallStepSchema).nullable().optional(),
+}).strict();
+
+export const nflGameExplainabilityPayloadSchema = gameExplainabilityPayloadSchema;
+
+export const weeklyAttributionDatasetSchema = z.object({
+  schema_version: z.literal('1.0'),
+  generated_at: isoUtcStamp,
+  season: z.number().int().min(2000).max(2030),
+  week: z.number().int().min(1).max(22),
+  games: z.array(gameExplainabilityPayloadSchema),
+}).strict();
+
+export const nflGameDetailPayloadSchema = z.object({
+  game_id: z.string().min(4),
+  season: z.number().int(),
+  season_label: z.string().min(4),
+  week: z.number().int().min(1).max(22),
+  week_label: z.string().min(4),
+  gameday: isoishDate,
+  weekday: z.enum(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']),
+  gametime: z.string().regex(/^\d{2}:\d{2}$/, 'expected HH:MM'),
+  is_completed: z.boolean(),
+  has_box_score: z.boolean(),
+
+  away_team: gameTeamSummarySchema,
+  home_team: gameTeamSummarySchema,
+
+  forecast: nflGameForecastSchema.nullable(),
+  efficiency_factors: z.array(nflEfficiencyFactorItemSchema).nullable(),
+  team_stats: z.array(nflTeamComparisonItemSchema).nullable(),
+  leaders: z.array(categoryLeaderSchema).nullable(),
+
+  box_score: z.object({
+    away_players: z.array(nflPlayerBoxRowSchema),
+    home_players: z.array(nflPlayerBoxRowSchema),
+  }).nullable(),
+
+  injury_designations: z.array(injuryDesignationRowSchema).nullable(),
+  explainability: nflGameExplainabilityPayloadSchema.nullable(),
+}).strict();
+
+export const gameDetailEnvelopeSchema = z.object({
+  schema_version: z.literal('1.0'),
+  generated_at: isoUtcStamp,
+  sport: z.literal('nfl'),
+  endpoint: z.literal('game_detail'),
+  season: z.number().int(),
+  season_label: z.string().min(4),
+  game_id: z.string().min(4),
+  data: nflGameDetailPayloadSchema,
+}).strict();
+
 
 /** Filename -> schema, so one test can iterate every shipped dataset. */
 export const DATASET_SCHEMAS = {
@@ -460,12 +702,8 @@ export const DATASET_SCHEMAS = {
   'visual_media_index.json': z.array(visualMediaItemSchema),
   'coaching_profiles.json': z.array(coachProfileSchema),
   'salary_cap_profiles.json': salaryCapDatasetSchema,
-'passing_index.json': z.array(passingCatalogEntrySchema),
+  'passing_index.json': z.array(passingCatalogEntrySchema),
   'passing_metadata.json': passingMetadataSchema,
-
-'player_dna_profiles.json': z.array(playerDnaProfileSchema),
-
-
-'clutch_leverage_metrics.json': z.array(ClutchProfileSchema),
-
+  'player_dna_profiles.json': z.array(playerDnaProfileSchema),
+  'clutch_leverage_metrics.json': z.array(clutchProfileSchema),
 } as const;

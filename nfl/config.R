@@ -589,6 +589,10 @@ CACHE_SCHEDULES       <- file.path(CACHE_DIR, "schedules_cache.rds")
 CACHE_ROSTERS         <- file.path(CACHE_DIR, "rosters_cache.rds")
 CACHE_INJURY_DATA     <- file.path(CACHE_DIR, "injury_data_cache.rds")
 CACHE_PARTICIPATION   <- file.path(CACHE_DIR, "participation_cache.rds")
+# Added for Issue #104 (Phase 1 Tier 1a - game details builder and box score ingest)
+CACHE_TEAM_STATS      <- file.path(CACHE_DIR, "team_stats_cache.rds")
+CACHE_PLAYER_STATS    <- file.path(CACHE_DIR, "player_stats_cache.rds")
+CACHE_SNAP_COUNTS     <- file.path(CACHE_DIR, "snap_counts_cache.rds")
 # Added by tools/participation_features.R (Known Issue #7 pickup, 2026-09-17) - a
 # tools/-only, backtest-only historical feature pipeline, deliberately NOT part of
 # run_full_pipeline.R's DAG. See that file's header for why: nflreadr::load_participation()
@@ -678,6 +682,16 @@ CACHE_RISK_STATE <- file.path(CACHE_DIR, "risk_state.rds")
 # returns (documented there as list(per_game, by_week, overall_accuracy, overall_brier,
 # overall_logloss)) without needing a schema change once that function exists.
 CACHE_ACCURACY_HISTORY <- file.path(CACHE_DIR, "accuracy_history.rds")
+
+# Added per NFL Matchup Game Detail Plan v2 (Section 5.2 & 5.3, Issue #111 / 2-2).
+# Persisted unplayed game forecasts, points waterfall step values, ridge coefficients,
+# sigma, and entering power ratings before kickoff, ensuring logged pregame rows are immutable.
+CACHE_PREDICTION_ACCURACY_LOG <- file.path(CACHE_DIR, "prediction_accuracy_log.rds")
+
+# Added per NFL Matchup Game Detail Plan v2 (Section 5.4, Issue #113 / 2-4).
+# Secondary XGBoost feature fusion model and per-game TreeSHAP explanations.
+CACHE_XGBOOST_MODEL <- file.path(CACHE_DIR, "xgboost_shap_model.rds")
+CACHE_XGBOOST_SHAP  <- file.path(CACHE_DIR, "xgboost_game_shap_2026.rds")
 # Added per docs/SPEC_playoff_odds_table.md decision #5 (GitHub issue #11, "Playoff Odds 1" -
 # first slice of the playoff-clinching probability feature, issues #11-#16) - prep
 # infrastructure for the future playoff_odds_engine.R pipeline stage (issue #12). A narrowly-
@@ -752,6 +766,8 @@ CACHE_TURNOVER_HISTORY <- file.path(CACHE_DIR, "turnover_margin_history.rds")
 WEB_PUBLIC_DIR   <- file.path("web", "public")
 WEB_DATA_DIR     <- file.path(WEB_PUBLIC_DIR, "data")
 WEB_ANIM_DIR     <- file.path(WEB_PUBLIC_DIR, "animations")
+WEB_GAMES_DIR    <- file.path(WEB_DATA_DIR, "games")
+WEB_ATTRIBUTION_DIR <- file.path(WEB_DATA_DIR, "week_attribution")
 
 WEB_JSON_VISUAL_MEDIA_INDEX    <- file.path(WEB_DATA_DIR, "visual_media_index.json")
 WEB_JSON_STANDINGS_PROJECTIONS <- file.path(WEB_DATA_DIR, "standings_projections.json")

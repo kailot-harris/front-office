@@ -149,11 +149,14 @@ cat("\n--- Section 4: tools/refresh_live_results.R pure functions ---\n")
 RLR_ENV <- new.env(parent = globalenv())
 RLR_ENV$CURRENT_SEASON <- CURRENT_SEASON
 RLR_ENV$NFLVERSE_GAMES_CSV <- "https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv"
+RLR_ENV$WEB_JSON_MATCHUPS_CURRENT_WEEK <- WEB_JSON_MATCHUPS_CURRENT_WEEK
+RLR_ENV$WEB_JSON_MODEL_DIAGNOSTICS <- WEB_JSON_MODEL_DIAGNOSTICS
 load_ast_symbols(
   "tools/refresh_live_results.R",
   c("%||%", ".rlr_is_true", "fetch_season_results", ".rlr_grade",
     "apply_results", "recompute_diagnostics", "recompute_calibration_curve",
-    "reconcile_diagnostics"),
+    "reconcile_diagnostics", ".rlr_json_text", "write_json_if_changed",
+    "refresh_live_results"),
   RLR_ENV
 )
 
@@ -267,6 +270,47 @@ ok("RLR-6 `fetch_season_results()` filters to target season and scored finals on
    nrow(fetched) == 1L && identical(fetched$game_id, "2026_01_A_B") && fetched$home_score == 24L,
    sprintf("rows=%d (%s)", nrow(fetched), fetched$game_id))
 
+# RLR-7: apply_results preserves has_box_score and has_game_detail untouched
+fixture_with_flags <- fixture_rows
+fixture_with_flags$has_box_score <- c(TRUE, FALSE, FALSE)
+fixture_with_flags$has_game_detail <- c(TRUE, FALSE, FALSE)
+patched_flags <- RLR_ENV$apply_results(fixture_with_flags, fixture_results, active_week = 8L)
+ok("RLR-7 `apply_results()` preserves has_box_score and has_game_detail untouched",
+   identical(patched_flags$rows$has_box_score, c(TRUE, FALSE, FALSE)) &&
+     identical(patched_flags$rows$has_game_detail, c(TRUE, FALSE, FALSE)),
+   "has_box_score and has_game_detail flags preserved on both patched and unpatched rows")
+
+# RLR-8: Live score refresh round-trip test is byte-identical when no finished games
+empty_csv <- function(url) {
+  data.frame(
+    game_id = character(0),
+    season = integer(0),
+    home_score = integer(0),
+    away_score = integer(0),
+    stringsAsFactors = FALSE
+  )
+}
+temp_matchups <- tempfile(fileext = ".json")
+temp_diag <- tempfile(fileext = ".json")
+file.copy(WEB_JSON_MATCHUPS_CURRENT_WEEK, temp_matchups)
+file.copy(WEB_JSON_MODEL_DIAGNOSTICS, temp_diag)
+bytes_before <- readBin(temp_matchups, "raw", file.info(temp_matchups)$size)
+
+refresh_res <- RLR_ENV$refresh_live_results(
+  season = CURRENT_SEASON,
+  matchups_path = temp_matchups,
+  diagnostics_path = temp_diag,
+  csv_reader = empty_csv
+)
+bytes_after <- readBin(temp_matchups, "raw", file.info(temp_matchups)$size)
+unlink(c(temp_matchups, temp_diag))
+
+ok("RLR-8 Live score refresh round-trip is byte-identical when no finished games",
+   refresh_res$n_changed == 0L &&
+     length(refresh_res$files) == 0L &&
+     identical(bytes_before, bytes_after),
+   sprintf("n_changed=%d, bytes identical=%s", refresh_res$n_changed, identical(bytes_before, bytes_after)))
+
 # ==============================================================================
 # SECTION 5: tools/publish_web.R pure gate helpers (Assertions B, D, F)
 # ==============================================================================
@@ -326,6 +370,82 @@ comp_wk <- PW_ENV$.compute_active_week_from_schedules(tmp_sched)
 ok("PW-3 (Assertion B) `.compute_active_week_from_schedules()` picks the lowest week whose last gameday >= today",
    identical(comp_wk, 3L),
    sprintf("computed active_week=%d", comp_wk))
+
+# ==============================================================================
+# SECTION 6: tools/ridge_massey_model.R fallback logging and flags
+# ==============================================================================
+cat("\n--- Section 6: tools/ridge_massey_model.R pure fallback behavior ---\n")
+
+RM_ENV <- new.env(parent = baseenv())
+RM_ENV$RATING_SHRINKAGE_GAMES_K <- 3.6
+RM_ENV$NFL_HCA <- 1.93
+load_ast_symbols(file.path("tools", "ridge_massey_model.R"),
+                 c("fallback_margin", "build_ridge_features", "predict_ridge_massey_walkforward"),
+                 RM_ENV)
+
+# Construct synthetic test games: single season (no prior history < 2026), length < 100
+tiny_games <- data.frame(
+  season = c(2026L, 2026L),
+  home_raw = c(0.1, -0.05),
+  away_raw = c(-0.05, 0.1),
+  home_prior = c(0.05, 0.0),
+  away_prior = c(0.0, 0.05),
+  home_gp = c(1L, 2L),
+  away_gp = c(1L, 2L),
+  stringsAsFactors = FALSE
+)
+
+warn_emitted <- FALSE
+res_fb <- withCallingHandlers(
+  RM_ENV$predict_ridge_massey_walkforward(tiny_games, return_fallback_flag = TRUE),
+  warning = function(w) {
+    if (grepl("Falling back to shrinkage blend", conditionMessage(w))) {
+      warn_emitted <<- TRUE
+    }
+    invokeRestart("muffleWarning")
+  }
+)
+
+ok("RM-1 `predict_ridge_massey_walkforward()` warns and marks rows when falling back on insufficient history",
+   isTRUE(warn_emitted) && isTRUE(all(res_fb$used_fallback)) && length(res_fb$margin) == 2L,
+   sprintf("warn_emitted=%s, all_fallback=%s", warn_emitted, all(res_fb$used_fallback)))
+
+# ==============================================================================
+# SECTION 7: accuracy_tracker.R ridge_fallback publish guard (#131)
+# ==============================================================================
+cat("\n--- Section 7: accuracy_tracker.R ridge_fallback publish guard ---\n")
+
+AT_ENV <- new.env(parent = baseenv())
+invisible(load_ast_symbols("accuracy_tracker.R", c(".count_ridge_fallback"), AT_ENV))
+count_fb <- AT_ENV$.count_ridge_fallback
+
+pg_one_fb  <- data.frame(week = 1:3, ridge_fallback = c(FALSE, TRUE, FALSE))
+pg_none    <- data.frame(week = 1:3, ridge_fallback = c(FALSE, FALSE, FALSE))
+pg_na      <- data.frame(week = 1:3, ridge_fallback = c(FALSE, NA, FALSE))
+pg_empty   <- data.frame(week = integer(0), ridge_fallback = logical(0))
+pg_nocol   <- data.frame(week = 1:2)
+
+ok("AT-1 `.count_ridge_fallback()` counts a single TRUE in a multi-row per_game (isTRUE() would return 0)",
+   identical(count_fb(pg_one_fb), 1L),
+   sprintf("count=%s", count_fb(pg_one_fb)))
+
+ok("AT-2 `.count_ridge_fallback()` returns 0 when no game fell back, treating NA as not-fallback",
+   identical(count_fb(pg_none), 0L) && identical(count_fb(pg_na), 0L))
+
+ok("AT-3 `.count_ridge_fallback()` returns 0 for a zero-row per_game",
+   identical(count_fb(pg_empty), 0L))
+
+nocol_err <- tryCatch({ count_fb(pg_nocol); NULL }, error = function(e) conditionMessage(e))
+ok("AT-4 `.count_ridge_fallback()` errors when a non-empty per_game has no ridge_fallback column",
+   !is.null(nocol_err) && grepl("no ridge_fallback column", nocol_err),
+   nocol_err)
+
+at_src <- paste(deparse(body(load_ast_symbols("accuracy_tracker.R", "run_accuracy_tracker",
+                                                new.env(parent = baseenv()))$run_accuracy_tracker)),
+                collapse = "\n")
+ok("AT-5 `run_accuracy_tracker()` gates publishing on `.count_ridge_fallback()`, not isTRUE() on the column",
+   grepl(".count_ridge_fallback(graded$per_game)", at_src, fixed = TRUE) &&
+     !grepl("isTRUE(graded$per_game$ridge_fallback)", at_src, fixed = TRUE))
 
 cat(sprintf("\n=== %s: %d failure(s) ===\n",
             if (failures == 0L) "ALL TESTS PASSED" else "TEST FAILURES", failures))

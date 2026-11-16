@@ -13,6 +13,7 @@ afterEach(() => vi.restoreAllMocks());
 
 describe('every getter reads its file and returns parsed data', () => {
   const getters = Object.keys(DATASET_FILES) as Array<keyof typeof DATASET_FILES>;
+  const parameterizedGetters = ['getGameDetail'];
 
   it.each(getters)('%s() does not throw', (name) => {
     const fn = data[name] as () => unknown;
@@ -23,7 +24,16 @@ describe('every getter reads its file and returns parsed data', () => {
 
   it('exports exactly the getters the pages import, and no more', () => {
     const exported = Object.keys(data).filter((k) => typeof (data as Record<string, unknown>)[k] === 'function').sort();
-    expect(exported).toEqual(getters.slice().sort());
+    expect(exported).toEqual([...getters, ...parameterizedGetters].sort());
+  });
+
+  it('getGameDetail returns envelope or null', () => {
+    expect(typeof data.getGameDetail).toBe('function');
+    const existing = data.getGameDetail('2026_01_ARI_LAC');
+    expect(existing).toBeTruthy();
+    expect(existing?.game_id).toBe('2026_01_ARI_LAC');
+    const missing = data.getGameDetail('nonexistent_game_id');
+    expect(missing).toBeNull();
   });
 
   it('getStandingsData returns the dataset wrapper, not a bare array', () => {

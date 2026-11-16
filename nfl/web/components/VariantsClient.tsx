@@ -144,8 +144,7 @@ export default function VariantsClient({ data }: VariantsClientProps) {
           The published model is an <strong>ensemble</strong> &mdash; a weighted blend of two independently-built
           rating systems, not a single algorithm. Weights are tuned to minimize out-of-sample{' '}
           <GlossaryTerm term="Brier Score" className="text-slate-300" />, so a component only gets more influence
-          if it actually improves prediction accuracy on games the model has not seen. Every input is derived from
-          real on-field results; no synthetic or subjectively-assigned data feeds into any variant.
+          if it actually improves prediction accuracy on games the model has not seen.
         </p>
       </HowToRead>
 

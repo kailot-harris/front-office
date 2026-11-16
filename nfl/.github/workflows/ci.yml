@@ -38,13 +38,22 @@
 # ==============================================================================
 name: CI
 
-# CI does not run on pushes to main. Nearly every change reaches main through a
+# CI does not run on pushes to main, with one exception noted at the push
+# trigger below. Nearly every change reaches main through a
 # pull request that has already run this workflow, and the scheduled data
 # publishes are gated locally before they are committed, so the post-merge run
 # only repeated work. Use workflow_dispatch to check main on demand.
 on:
   pull_request:
   workflow_dispatch:
+  # The one push that does run CI: a change to the R dependency list on main.
+  # A pull request can restore caches saved on main but not ones saved by
+  # another pull request, so the R library cache has to be saved from main for
+  # later pull requests to reuse it. The list changes rarely.
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/r-dependencies.txt'
 
 # A new push to a PR makes the in-flight run obsolete. Manually dispatched runs
 # are left to finish.
@@ -123,7 +132,15 @@ jobs:
   r:
     name: R pipeline tests
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 10
+    # 20, not 10 (#99): on the self-hosted runner the host-wide CI lock's
+    # job-started hook runs inside this job, so time spent queued behind
+    # another repo's job counts against this limit. The job itself takes
+    # well under a minute; lock waits of ~6 minutes (351s) were observed
+    # on 2026-11-15 with only a few PRs in flight. Hosted runs are unaffected
+    # because they finish far below either ceiling.
+    timeout-minutes: 20
+    env:
+      R_LIBS_USER: ${{ github.workspace }}/.rlib
     steps:
       - uses: actions/checkout@v4
 
@@ -145,6 +162,32 @@ jobs:
       - name: Check chart authenticity
         run: Rscript .github/scripts/check-chart-authenticity.R
 
-      # Offline pure-R unit tests (base R only, zero external packages or APIs).
+      # The tests load packages (dplyr, testthat, xgboost and others), so the
+      # job installs them from .github/r-dependencies.txt into a library inside
+      # the workspace and caches it. The key carries the runner image so an
+      # image or host OS change rebuilds the library: ImageOS on hosted
+      # runners, the host's /etc/os-release on a self-hosted one.
+      - name: Record the runner image for the cache key
+        run: |
+          image="${ImageOS:-}"
+          if [ -z "$image" ] && [ -r /etc/os-release ]; then
+            image="$(. /etc/os-release && echo "${ID}${VERSION_ID}")"
+          fi
+          echo "RUNNER_IMAGE=${image:-unknown}" >> "$GITHUB_ENV"
+          echo "R library cache key image: ${image:-unknown}"
+
+      - name: Cache R library
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.R_LIBS_USER }}
+          key: rlib-${{ runner.os }}-${{ env.RUNNER_IMAGE }}-R4.5-${{ hashFiles('.github/r-dependencies.txt') }}
+
+      - name: Install R dependencies
+        run: |
+          mkdir -p "$R_LIBS_USER"
+          Rscript .github/scripts/install-deps.R
+
+      # Offline R tests: no network calls and no API keys. Tests that need
+      # gitignored pipeline caches print [SKIP] and are counted as skipped.
       - name: Run R unit tests
         run: Rscript .github/scripts/run-tests.R

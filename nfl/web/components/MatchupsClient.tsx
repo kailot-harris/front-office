@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { MatchupsDataset } from '@/lib/types';
-import { MatchupCard } from '@/components/MatchupCard';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { MatchupsDataset, MatchupGame } from '@/lib/types';
+import { MatchupCard, formatMatchupInspectLabel } from '@/components/MatchupCard';
+import { GameDetailModal } from '@/components/GameDetailModal';
 import { TeamLogo } from '@/components/TeamLogo';
 import {
   Calendar,
@@ -21,11 +23,114 @@ interface MatchupsClientProps {
   dataset: MatchupsDataset;
 }
 
+function syncGameQueryParam(gameId: string | null): void {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  if (gameId) {
+    url.searchParams.set('game', gameId);
+  } else {
+    url.searchParams.delete('game');
+  }
+  const search = url.searchParams.toString();
+  const nextUrl = `${url.pathname}${search ? `?${search}` : ''}${url.hash}`;
+  const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (nextUrl !== currentUrl) {
+    window.history.replaceState(window.history.state, '', nextUrl);
+  }
+}
+
 export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
   const [selectedWeek, setSelectedWeek] = useState<number>(dataset.active_week);
   const [selectedDay, setSelectedDay] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+
+  const [selectedGame, setSelectedGame] = useState<MatchupGame | null>(null);
+  const [returnFocusEl, setReturnFocusEl] = useState<HTMLElement | null>(null);
+  const selectedGameIdRef = useRef<string | null>(null);
+  selectedGameIdRef.current = selectedGame?.game_id ?? null;
+
+  const searchParams = useSearchParams();
+  const searchParamsGameId = searchParams?.get('game') || null;
+  const prevSearchParamsGameIdRef = useRef<string | null | undefined>(undefined);
+
+  const openGameFromQuery = useCallback(
+    (targetGameId: string | null) => {
+      if (!targetGameId) {
+        if (selectedGameIdRef.current !== null) {
+          selectedGameIdRef.current = null;
+          setReturnFocusEl(null);
+          setSelectedGame(null);
+        }
+        return;
+      }
+
+      if (selectedGameIdRef.current === targetGameId) {
+        return;
+      }
+
+      const matched = dataset.matchups.find((m) => m.game_id === targetGameId) ?? null;
+      if (matched) {
+        selectedGameIdRef.current = matched.game_id;
+        setSelectedWeek(matched.week);
+        setReturnFocusEl(null);
+        setSelectedGame(matched);
+      }
+    },
+    [dataset.matchups],
+  );
+
+  useEffect(() => {
+    const isInitialMount = prevSearchParamsGameIdRef.current === undefined;
+    const searchParamChanged = prevSearchParamsGameIdRef.current !== searchParamsGameId;
+    prevSearchParamsGameIdRef.current = searchParamsGameId;
+
+    if (!isInitialMount && !searchParamChanged) {
+      return;
+    }
+
+    const windowGameId =
+      typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('game') || null
+        : null;
+
+    if (isInitialMount) {
+      const initialGameId = searchParamsGameId ?? windowGameId;
+      if (initialGameId) {
+        openGameFromQuery(initialGameId);
+      }
+      return;
+    }
+
+    const nextGameId = searchParamsGameId ?? windowGameId;
+    openGameFromQuery(nextGameId);
+  }, [searchParamsGameId, openGameFromQuery]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handlePopState = () => {
+      const popGameId = new URLSearchParams(window.location.search).get('game') || null;
+      openGameFromQuery(popGameId);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [openGameFromQuery]);
+
+  const handleSelectGame = useCallback((game: MatchupGame, triggerEl: HTMLElement | null) => {
+    selectedGameIdRef.current = game.game_id;
+    setReturnFocusEl(triggerEl);
+    setSelectedGame(game);
+    syncGameQueryParam(game.game_id);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    selectedGameIdRef.current = null;
+    setSelectedGame(null);
+    setReturnFocusEl(null);
+    syncGameQueryParam(null);
+  }, []);
 
   // Filter matchups by selected week, day, and search query
   const weekMatchups = useMemo(() => {
@@ -66,13 +171,23 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
 
   // Key stats highlights
   const largestFavorite = useMemo(() => {
-    if (weekMatchups.length === 0) return null;
-    return [...weekMatchups].sort((a, b) => Math.abs(b.projected_margin) - Math.abs(a.projected_margin))[0];
+    const projected = weekMatchups.filter(
+      (m) => m.has_projection && m.projected_margin != null
+    );
+    if (projected.length === 0) return null;
+    return [...projected].sort(
+      (a, b) => Math.abs(b.projected_margin!) - Math.abs(a.projected_margin!)
+    )[0];
   }, [weekMatchups]);
 
   const closestGame = useMemo(() => {
-    if (weekMatchups.length === 0) return null;
-    return [...weekMatchups].sort((a, b) => Math.abs(a.projected_margin) - Math.abs(b.projected_margin))[0];
+    const projected = weekMatchups.filter(
+      (m) => m.has_projection && m.projected_margin != null
+    );
+    if (projected.length === 0) return null;
+    return [...projected].sort(
+      (a, b) => Math.abs(a.projected_margin!) - Math.abs(b.projected_margin!)
+    )[0];
   }, [weekMatchups]);
 
   const biggestRestMismatch = useMemo(() => {
@@ -95,7 +210,6 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
         { key: 'away_win_prob', label: 'Away Win %' },
         { key: 'home_win_prob', label: 'Home Win %' },
         { key: 'rest_diff', label: 'Rest Differential' },
-        { key: 'key_number_flag', label: 'Key Margin' },
       ],
       `nfl-matchups-week-${selectedWeek}`
     );
@@ -191,12 +305,12 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                 Largest Favorite
               </span>
               <span className="text-sm font-bold text-white block truncate">
-                {largestFavorite.projected_margin > 0
-                  ? `${largestFavorite.home_team} (-${largestFavorite.projected_margin.toFixed(1)})`
-                  : `${largestFavorite.away_team} (-${Math.abs(largestFavorite.projected_margin).toFixed(1)})`}
+                {largestFavorite.projected_margin! > 0
+                  ? `${largestFavorite.home_team} (+${largestFavorite.projected_margin!.toFixed(1)})`
+                  : `${largestFavorite.away_team} (+${Math.abs(largestFavorite.projected_margin!).toFixed(1)})`}
               </span>
               <span className="text-[11px] font-mono text-slate-400">
-                vs {largestFavorite.projected_margin > 0 ? largestFavorite.away_team : largestFavorite.home_team}
+                vs {largestFavorite.projected_margin! > 0 ? largestFavorite.away_team : largestFavorite.home_team}
               </span>
             </div>
           </div>
@@ -214,7 +328,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                 {closestGame.away_team} @ {closestGame.home_team}
               </span>
               <span className="text-[11px] font-mono text-cyan-400">
-                Line: {Math.abs(closestGame.projected_margin).toFixed(1)} pts
+                Margin: {Math.abs(closestGame.projected_margin!).toFixed(1)} pts
               </span>
             </div>
           </div>
@@ -280,7 +394,11 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
       {viewMode === 'grid' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredMatchups.map((matchup) => (
-            <MatchupCard key={matchup.game_id} matchup={matchup} />
+            <MatchupCard
+              key={matchup.game_id}
+              matchup={matchup}
+              onSelect={handleSelectGame}
+            />
           ))}
         </div>
       )}
@@ -314,17 +432,34 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                   <th className="py-3 px-3 text-right">Away Win %</th>
                   <th className="py-3 px-3 text-right">Home Win %</th>
                   <th className="py-3 px-3 text-center">Rest Adv</th>
-                  <th className="py-3 px-3 text-center">Key Margin</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-sans">
                 {filteredMatchups.map((m) => {
-                  const isHomeFav = m.projected_margin > 0;
-                  const favTeam = isHomeFav ? m.home_team : m.away_team;
-                  const margin = Math.abs(m.projected_margin).toFixed(1);
+                  const hasProj = m.has_projection !== false && m.projected_margin != null;
+                  const isHomeFav = hasProj ? m.projected_margin! > 0 : false;
+                  const favTeam = hasProj ? (isHomeFav ? m.home_team : m.away_team) : null;
+                  const margin = hasProj ? Math.abs(m.projected_margin!).toFixed(1) : null;
+                  const isInteractive = Boolean(m.is_completed || hasProj);
 
                   return (
-                    <tr key={m.game_id} className="hover:bg-slate-800/40 transition-colors">
+                    <tr
+                      key={m.game_id}
+                      tabIndex={isInteractive ? 0 : undefined}
+                      aria-label={isInteractive ? formatMatchupInspectLabel(m) : undefined}
+                      onClick={isInteractive ? (e) => handleSelectGame(m, e.currentTarget) : undefined}
+                      onKeyDown={isInteractive ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleSelectGame(m, e.currentTarget);
+                        }
+                      } : undefined}
+                      className={`transition-colors ${
+                        isInteractive
+                          ? 'cursor-pointer hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-400'
+                          : 'hover:bg-slate-800/40'
+                      }`}
+                    >
                       <td className="py-2.5 px-3 font-mono text-slate-300 whitespace-nowrap">
                         <span className="text-slate-400">{m.weekday.slice(0, 3)}</span> {m.gameday}
                       </td>
@@ -333,7 +468,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                           <TeamLogo team={m.away_team} size="xs" />
                           <span className="font-bold text-white">{m.away_team}</span>
                           <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">
-                            {m.away_power_rating > 0 ? `+${m.away_power_rating.toFixed(1)}` : m.away_power_rating.toFixed(1)}
+                            {m.away_power_rating != null ? (m.away_power_rating > 0 ? `+${m.away_power_rating.toFixed(1)}` : m.away_power_rating.toFixed(1)) : '—'}
                           </span>
                         </div>
                       </td>
@@ -343,12 +478,12 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                           <TeamLogo team={m.home_team} size="xs" />
                           <span className="font-bold text-white">{m.home_team}</span>
                           <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">
-                            {m.home_power_rating > 0 ? `+${m.home_power_rating.toFixed(1)}` : m.home_power_rating.toFixed(1)}
+                            {m.home_power_rating != null ? (m.home_power_rating > 0 ? `+${m.home_power_rating.toFixed(1)}` : m.home_power_rating.toFixed(1)) : '—'}
                           </span>
                         </div>
                       </td>
                       <td className="py-2.5 px-3 text-center font-mono font-bold text-emerald-400">
-                        {favTeam} +{margin}
+                        {hasProj ? `${favTeam} +${margin}` : <span className="text-slate-500 font-normal">No forecast</span>}
                       </td>
                       <td className="py-2.5 px-3 text-center font-mono">
                         {m.is_completed ? (
@@ -377,14 +512,22 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                         )}
                       </td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold">
-                        <span className={!isHomeFav ? 'text-emerald-400' : 'text-slate-400'}>
-                          {(m.away_win_prob * 100).toFixed(1)}%
-                        </span>
+                        {hasProj && m.away_win_prob != null ? (
+                          <span className={!isHomeFav ? 'text-emerald-400' : 'text-slate-400'}>
+                            {(m.away_win_prob * 100).toFixed(1)}%
+                          </span>
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )}
                       </td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold">
-                        <span className={isHomeFav ? 'text-emerald-400' : 'text-slate-400'}>
-                          {(m.home_win_prob * 100).toFixed(1)}%
-                        </span>
+                        {hasProj && m.home_win_prob != null ? (
+                          <span className={isHomeFav ? 'text-emerald-400' : 'text-slate-400'}>
+                            {(m.home_win_prob * 100).toFixed(1)}%
+                          </span>
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )}
                       </td>
                       <td className="py-2.5 px-3 text-center font-mono text-xs">
                         {m.rest_diff !== 0 ? (
@@ -395,15 +538,6 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                           <span className="text-slate-500">Even</span>
                         )}
                       </td>
-                      <td className="py-2.5 px-3 text-center font-mono text-xs">
-                        {m.key_number_flag !== 'Standard' ? (
-                          <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold text-[11px] sm:text-[10px]">
-                            {m.key_number_flag}
-                          </span>
-                        ) : (
-                          <span className="text-slate-600">—</span>
-                        )}
-                      </td>
                     </tr>
                   );
                 })}
@@ -412,6 +546,13 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
           </div>
         </div>
       )}
+
+      {/* Game Detail Modal */}
+      <GameDetailModal
+        matchup={selectedGame}
+        onClose={handleCloseModal}
+        returnFocusTo={returnFocusEl}
+      />
     </div>
   );
 };

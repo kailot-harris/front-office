@@ -51,20 +51,20 @@ export interface MatchupGame {
   home_team_name: string;
   away_team: string;
   away_team_name: string;
-  home_power_rating: number;
-  away_power_rating: number;
-  projected_margin: number;
-  projected_spread: number;
-  projected_total: number;
-  home_win_prob: number;
-  away_win_prob: number;
+  home_power_rating: number | null;
+  away_power_rating: number | null;
+  has_projection: boolean;
+  projected_margin: number | null;
+  home_win_prob: number | null;
+  away_win_prob: number | null;
   home_rest_days: number;
   away_rest_days: number;
   rest_diff: number;
   home_travel_miles: number;
   away_travel_miles: number;
-  key_number_flag: string;
   is_completed?: boolean;
+  has_box_score?: boolean;
+  has_game_detail?: boolean;
   home_score?: number | null;
   away_score?: number | null;
   actual_winner?: string | null;
@@ -157,6 +157,13 @@ export interface CalibrationBin {
   count: number;
 }
 
+export interface ModelTrackRecord {
+  n_games: number;
+  accuracy: number | null;
+  brier: number | null;
+  logloss: number | null;
+}
+
 export interface DiagnosticsDataset {
   generated_at: string;
   season: number | number[];
@@ -175,6 +182,8 @@ export interface DiagnosticsDataset {
     ridge_massey_fallback?: number;
   };
   calibration_curve: CalibrationBin[];
+  genuine_pregame: ModelTrackRecord;
+  historical_backtest: ModelTrackRecord;
 }
 
 export interface VisualMediaItem {
@@ -387,5 +396,7 @@ export interface ClutchProfile {
   clutchArchetype: string;
   provenance: string;
 }
+
+export * from './gameDetailTypes';
 
 

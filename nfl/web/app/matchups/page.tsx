@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { getMatchupsData } from '@/lib/data';
 import { MatchupsClient } from '@/components/MatchupsClient';
 import { Swords } from 'lucide-react';
@@ -8,7 +8,7 @@ import { HowToRead } from '@/components/HowToRead';
 export const metadata = {
   title: 'Weekly NFL Matchups & Projections',
   description:
-    'Game-by-game projected margins, totals, win probabilities, and situational fatigue adjustments for all weekly NFL matchups.',
+    'Game-by-game projected margins, win probabilities, and situational fatigue adjustments for all weekly NFL matchups.',
 };
 
 export default function MatchupsPage() {
@@ -31,7 +31,7 @@ export default function MatchupsPage() {
               <span><span className="text-emerald-400">NFL</span> Weekly Matchup Projections</span>
             </h1>
             <p className="text-slate-400 text-sm mt-1 max-w-3xl">
-              Model-projected victory margins, game totals, and win probabilities powered by Ridge regression, <GlossaryTerm term="Elo" className="text-slate-300" /> ratings, and situational fatigue adjustments (rest days, short weeks, and travel mileage).
+              Model-projected victory margins and win probabilities powered by Ridge regression, <GlossaryTerm term="Elo" className="text-slate-300" /> ratings, and situational fatigue adjustments (rest days, short weeks, and travel mileage).
             </p>
           </div>
 
@@ -42,8 +42,8 @@ export default function MatchupsPage() {
               <span className="text-white font-bold">Week {dataset.active_week}</span>
             </div>
             <div className="bg-surface-raised border border-slate-800 rounded-xl px-3 py-2 text-right">
-              <span className="text-slate-500 block text-[11px] sm:text-[10px] uppercase">Key Margin Alerts</span>
-              <span className="text-emerald-400 font-bold">3, 7, 6, 10, 4</span>
+              <span className="text-slate-500 block text-[11px] sm:text-[10px] uppercase">Schedule Slate</span>
+              <span className="text-emerald-400 font-bold">{dataset.total_games} Games</span>
             </div>
           </div>
         </div>
@@ -54,15 +54,16 @@ export default function MatchupsPage() {
         <p>
           <strong>Projected margin</strong> is the model&apos;s expected point differential for the home team, built
           from each team&apos;s <GlossaryTerm term="Elo" className="text-slate-300" /> rating plus rest, short-week,
-          and travel-distance adjustments. <strong>Win probability</strong> converts that margin into odds using the
+          and travel-distance adjustments. <strong>Win probability</strong> converts that margin into a calibrated home victory probability using the
           league&apos;s <GlossaryTerm term="Margin σ (Sigma)" className="text-slate-300" />, so a 3-point favorite
-          is not nearly as safe as a 14-point favorite even though both are favorites. &quot;Key Margin
-          Alerts&quot; flags games the model sees as close enough to flip on a single fatigue or <GlossaryTerm term="HFA / HCA" className="text-slate-300" /> adjustment.
+          is not nearly as safe as a 14-point favorite even though both are favorites.
         </p>
       </HowToRead>
 
       {/* Main Interactive Client */}
-      <MatchupsClient dataset={dataset} />
+      <Suspense fallback={<div className="p-8 text-center text-slate-500 font-mono">Loading matchups...</div>}>
+        <MatchupsClient dataset={dataset} />
+      </Suspense>
     </div>
   );
 }
