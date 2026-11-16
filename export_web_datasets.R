@@ -581,7 +581,13 @@ run_export_web_datasets <- function() {
         # pred_prob in accuracy history is already home team win probability (DATA-2)
         h_win_prob <- round(pred_prob, 3)
         a_win_prob <- round(1 - h_win_prob, 3)
-        proj_margin <- round(qnorm(pmax(0.01, pmin(0.99, h_win_prob))) * NFL_MARGIN_SIGMA, 1)
+        # Back-solving projected_margin via qnorm removed per Issue #110 (D2 unification).
+        # Margin is taken directly from the graded record when available, or NULL.
+        proj_margin <- if (!is.null(hist_record[["projected_margin"]]) && !is.na(hist_record[["projected_margin"]])) {
+          round(as.numeric(hist_record[["projected_margin"]]), 1)
+        } else {
+          NULL
+        }
       
         # Explicit tie handling (DATA-6)
         if (is_done && h_score == a_score) {

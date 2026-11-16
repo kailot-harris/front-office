@@ -12,7 +12,8 @@
 # script's own header/commit message).
 #
 # Assumes the CALLER has already done: source("config.R"); library(dplyr);
-# source("team_ratings_engine.R") (for compute_power_rating_points()). This file
+# source("team_ratings_engine.R") (for compute_power_rating_points());
+# source("tools/forecast_engine.R") (for compute_game_forecast()). This file
 # defines no top-level side effects beyond function definitions - safe to source()
 # from any script.
 #
@@ -276,13 +277,11 @@ append_accuracy_history <- function(season,
 # a separate follow-up) — this extraction is a pure relocation, zero behavior change.
 #
 # FORMULA PARITY WITH PRODUCTION (must be kept in sync with team_ratings_engine.R's run_team_
-# ratings() inner loop, ~lines 519-576, if that formula ever changes): ridge margin (Phase 2,
-# tools/ridge_massey_model.R's fit_ridge_massey()/predict_ridge_massey_walkforward(), refit once
-# per season) + Elo margin (Phase 3, tools/elo_model.R's run_elo_walkforward(), includes real
-# fatigue_adj), each shifted by the QB-injury penalty (config.R's QB_INJURY_RATING_PENALTY_PTS)
-# then pnorm()'d against NFL_MARGIN_SIGMA, each blended with historical market-implied probability
-# at MARKET_BLEND_WEIGHT, then averaged 50/50 — this is exactly tools/model_backtest_harness.R's
-# validated "ensemble_ridge_elo" candidate.
+# ratings() inner loop, ~lines 519-576, if that formula ever changes): Variant 1 (Issue #110,
+# Owner Decision D2) computes 50% Ridge margin + 50% Elo margin (or 100% Ridge if Elo unavailable)
+# via compute_game_forecast() from tools/forecast_engine.R, with zero fatigue term. Each margin
+# includes the QB-injury penalty (config.R's QB_INJURY_RATING_PENALTY_PTS), margins are averaged,
+# and home win probability is computed once via pnorm(projected_margin / NFL_MARGIN_SIGMA).
 #
 # Assumes the CALLER has already done everything build_walkforward_games() above assumes, PLUS:
 # source("market_odds_engine.R") (american_to_prob()), source("tools/qb_injury_features.R")
@@ -349,14 +348,21 @@ grade_walkforward_games <- function(epa, sch, fatigue, season) {
   all_games$ridge_margin_raw <- ridge_wf$margin
   all_games$ridge_fallback <- ridge_wf$used_fallback
 
-  ridge_margin <- all_games$ridge_margin_raw -
-    QB_INJURY_RATING_PENALTY_PTS * home_adj + QB_INJURY_RATING_PENALTY_PTS * away_adj
-  elo_margin <- all_games$elo_margin_pts + all_games$fatigue_adj -
-    QB_INJURY_RATING_PENALTY_PTS * home_adj + QB_INJURY_RATING_PENALTY_PTS * away_adj
+  qb_shift <- -QB_INJURY_RATING_PENALTY_PTS * home_adj + QB_INJURY_RATING_PENALTY_PTS * away_adj
+  ridge_margin <- all_games$ridge_margin_raw + qb_shift
+  elo_margin   <- all_games$elo_margin_pts + qb_shift  # Fatigue term removed per Owner Decision D2
+  elo_avail    <- !is.na(all_games$elo_margin_pts)
 
-  ridge_prob <- pnorm(ridge_margin / NFL_MARGIN_SIGMA)
-  elo_prob   <- pnorm(elo_margin / NFL_MARGIN_SIGMA)
-  all_games$home_win_prob_prod <- 0.5 * ridge_prob + 0.5 * elo_prob
+  if (!exists("compute_game_forecast", mode = "function")) {
+    source("tools/forecast_engine.R")
+  }
+  forecast <- compute_game_forecast(
+    ridge_margin  = ridge_margin,
+    elo_margin    = elo_margin,
+    elo_available = elo_avail
+  )
+  all_games$projected_margin   <- forecast$projected_margin
+  all_games$home_win_prob_prod <- forecast$home_win_prob
 
   # Filter down to the target season's games for grading and reporting
   games <- all_games |> filter(season == .env$season)
@@ -380,7 +386,7 @@ grade_walkforward_games <- function(epa, sch, fatigue, season) {
 
   per_game <- games |>
     arrange(week, desc(home_win_prob_prod)) |>
-    select(week, away_full, home_full, home_win_prob_prod, predicted_winner, actual_winner, correct, home_margin, ridge_fallback)
+    select(week, away_full, home_full, home_win_prob_prod, projected_margin, predicted_winner, actual_winner, correct, home_margin, ridge_fallback)
 
   by_week <- games |>
     group_by(week) |>

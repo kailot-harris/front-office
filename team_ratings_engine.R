@@ -129,6 +129,7 @@ source("tools/qb_injury_features.R")
 source("tools/backtest_common.R")     # -> build_walkforward_games() (Phase 2 training data)
 source("tools/ridge_massey_model.R")  # -> fit_ridge_massey()/build_ridge_features() (Phase 2)
 source("tools/elo_model.R")           # -> run_elo_walkforward()/project_elo_rating() (Phase 3)
+source("tools/forecast_engine.R")     # -> compute_game_forecast() (Variant 1 shared forecast)
 
 # ------------------------------------------------------------------------------------------
 # get_live_qb_backup_flags() - live analog of tools/qb_injury_features.R's walk-forward
@@ -524,7 +525,6 @@ run_team_ratings <- function() {
       if (home_backup || away_backup) n_qb_adjusted <- n_qb_adjusted + 1L
       qb_shift <- -QB_INJURY_RATING_PENALTY_PTS * home_backup + QB_INJURY_RATING_PENALTY_PTS * away_backup
       ridge_margin <- ridge_margin + qb_shift
-      ridge_model_prob <- pnorm(ridge_margin / NFL_MARGIN_SIGMA)
 
       # Phase 3: Elo's own margin (HCA baked in via ELO_HCA_POINTS, converted to point-margin
       # scale via ELO_POINTS_PER_MARGIN_PT), same QB-injury shift applied. NA if either team's
@@ -532,22 +532,22 @@ run_team_ratings <- function() {
       home_elo_r <- get_team_elo(home, g$season)
       away_elo_r <- get_team_elo(away, g$season)
       elo_available <- !is.na(home_elo_r) && !is.na(away_elo_r)
-      if (elo_available) {
+      elo_margin <- if (elo_available) {
         elo_diff <- (home_elo_r + ELO_HCA_POINTS) - away_elo_r
-        elo_margin <- (elo_diff / ELO_POINTS_PER_MARGIN_PT) + qb_shift
-        elo_model_prob <- pnorm(elo_margin / NFL_MARGIN_SIGMA)
+        (elo_diff / ELO_POINTS_PER_MARGIN_PT) + qb_shift
+      } else {
+        NA_real_
       }
 
-      # Pure endogenous ensemble: 50% Ridge-Massey margin + 50% Elo margin (or 100% Ridge if Elo unavailable)
-      # Win probability computed directly via normal CDF: pnorm(projected_margin / NFL_MARGIN_SIGMA)
-      if (elo_available) {
-        projected_margin <- 0.5 * ridge_margin + 0.5 * elo_margin
-        home_win_prob <- pnorm(projected_margin / NFL_MARGIN_SIGMA)
-        n_elo_ensembled <- n_elo_ensembled + 1L
-      } else {
-        projected_margin <- ridge_margin
-        home_win_prob <- ridge_model_prob
-      }
+      # Shared forecast function (Variant 1: 50% Ridge margin + 50% Elo margin, no fatigue)
+      forecast <- compute_game_forecast(
+        ridge_margin  = ridge_margin,
+        elo_margin    = elo_margin,
+        elo_available = elo_available
+      )
+      projected_margin <- forecast$projected_margin
+      home_win_prob    <- forecast$home_win_prob
+      if (elo_available) n_elo_ensembled <- n_elo_ensembled + 1L
 
       projected_rows[[i]] <- data.frame(
         game_id            = g$game_id,
