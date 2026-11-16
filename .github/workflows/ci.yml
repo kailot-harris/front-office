@@ -57,13 +57,22 @@
 # ==============================================================================
 name: CI
 
-# CI does not run on pushes to main. Nearly every change reaches main through a
+# CI does not run on pushes to main, with one exception noted at the push
+# trigger below. Nearly every change reaches main through a
 # pull request that has already run this workflow, and the scheduled data
 # publishes are gated locally before they are committed, so the post-merge run
 # only repeated work. Use workflow_dispatch to check main on demand.
 on:
   pull_request:
   workflow_dispatch:
+  # The one push that does run CI: a change to the R dependency list on main.
+  # A pull request can restore caches saved on main but not ones saved by
+  # another pull request, so the R library cache has to be saved from main for
+  # later pull requests to reuse it. The list changes rarely.
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/r-dependencies.txt'
 
 # A new push to a PR makes the in-flight run obsolete. Manually dispatched runs
 # are left to finish.
