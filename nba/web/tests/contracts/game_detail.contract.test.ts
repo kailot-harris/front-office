@@ -7,13 +7,13 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { isDeepStrictEqual } from 'util';
 import { describe, it, expect } from 'vitest';
 import type { z } from 'zod';
 import type {
   EfficiencyFactorItem,
   EnteringBaseline,
   GameDetailEnvelope,
+  GameExplainabilityEnvelope,
   GameExplainabilityPayload,
   PlayerBoxRow,
   TeamBoxTotals,
@@ -26,8 +26,24 @@ import {
   readGameDetailFile,
   readJsonFile,
 } from '../helpers/datasets';
-import type { MatchupsDataset } from '@/lib/matchupTypes';
-import { GameDetailEnvelopeSchema, GameExplainabilityPayloadSchema } from './schemas';
+import type { MatchupGame, MatchupsDataset } from '@/lib/matchupTypes';
+import {
+  GameDetailEnvelopeSchema,
+  GameExplainabilityEnvelopeSchema,
+  GameExplainabilityPayloadSchema,
+} from './schemas';
+
+// Per-game attribution files for games WITHOUT a detail file (issue #147).
+const EXPLAINABILITY_DIR = path.join(DATA_DIR, 'explainability');
+
+function listExplainabilityIds(): string[] {
+  if (!fs.existsSync(EXPLAINABILITY_DIR)) return [];
+  return fs
+    .readdirSync(EXPLAINABILITY_DIR)
+    .filter((f) => f.endsWith('.json'))
+    .map((f) => f.replace(/\.json$/, ''))
+    .sort();
+}
 
 const EXACT_COUNTING_STATS = [
   'points',
@@ -114,21 +130,6 @@ function formatIssues(issues: z.ZodIssue[], max = 6): string {
       .map((i) => `  • [${i.path.join('.')}] ${i.message} (${i.code})`)
       .join('\n') + (issues.length > max ? `\n  ... and ${issues.length - max} more` : '')
   );
-}
-
-// Leaf paths where two JSON values differ, each as "path: a !== b" (used in failure messages).
-function leafDifferences(a: unknown, b: unknown, trail = '', out: string[] = []): string[] {
-  const isObj = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === 'object';
-  if (isObj(a) && isObj(b) && Array.isArray(a) === Array.isArray(b)) {
-    const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
-    for (const k of keys) {
-      const next = Array.isArray(a) ? `${trail}[${k}]` : trail ? `${trail}.${k}` : k;
-      leafDifferences(a[k], b[k], next, out);
-    }
-  } else if (!isDeepStrictEqual(a, b)) {
-    out.push(`${trail || '<root>'}: ${JSON.stringify(a)} !== ${JSON.stringify(b)}`);
-  }
-  return out;
 }
 
 function sumStat(players: PlayerBoxRow[], stat: keyof PlayerBoxRow): number {
@@ -461,6 +462,28 @@ describe('Game detail dataset contracts (v3 §6 item 6)', () => {
     }),
   );
   const detailById = new Map(loadedGames.map((g) => [g.gameId, g.envelope]));
+  const explIds = listExplainabilityIds();
+  const loadedExpl: { gameId: string; raw: string; envelope: GameExplainabilityEnvelope }[] = explIds.map(
+    (gameId) => {
+      const raw = fs.readFileSync(path.join(EXPLAINABILITY_DIR, `${gameId}.json`), 'utf-8');
+      return { gameId, raw, envelope: JSON.parse(raw) as GameExplainabilityEnvelope };
+    },
+  );
+  const explById = new Map(loadedExpl.map((e) => [e.gameId, e.envelope]));
+
+  // The one attribution source of a MatchupGame row: games/<id>.json when it has a
+  // detail file, explainability/<id>.json otherwise. Null when the row has neither.
+  function attributionFor(g: MatchupGame): { label: string; ex: GameExplainabilityPayload | null } | null {
+    if (g.has_game_detail) {
+      const detail = detailById.get(g.game_id);
+      return detail ? { label: `games/${g.game_id}.json`, ex: detail.data.explainability } : null;
+    }
+    if (g.has_explainability) {
+      const expl = explById.get(g.game_id);
+      return expl ? { label: `explainability/${g.game_id}.json`, ex: expl.data } : null;
+    }
+    return null;
+  }
 
   it('1. envelope & strict schema parity: every games/<game_id>.json satisfies GameDetailEnvelope without predictedWinProb', () => {
     expect(fs.existsSync(GAMES_DIR), `Missing games directory: ${GAMES_DIR}`).toBe(true);
@@ -762,7 +785,7 @@ describe('Game detail dataset contracts (v3 §6 item 6)', () => {
     expect(failures, failures.slice(0, 10).join('\n')).toEqual([]);
   });
 
-  it('8. zero-betting & neutral-verdict compliance: no forbidden betting or verdict terms appear in games/*.json or matchups_slates.json', () => {
+  it('8. zero-betting & neutral-verdict compliance: no forbidden betting or verdict terms appear in games/*.json, explainability/*.json or matchups_slates.json', () => {
     const hits: string[] = [];
     for (const { gameId, raw } of loadedGames) {
       const betMatch = raw.match(FORBIDDEN_BETTING_RE);
@@ -772,6 +795,16 @@ describe('Game detail dataset contracts (v3 §6 item 6)', () => {
       const verdictMatch = raw.match(FORBIDDEN_VERDICT_RE);
       if (verdictMatch) {
         hits.push(`${gameId}: matched forbidden verdict term "${verdictMatch[0]}"`);
+      }
+    }
+    for (const { gameId, raw } of loadedExpl) {
+      const betMatch = raw.match(FORBIDDEN_BETTING_RE);
+      if (betMatch) {
+        hits.push(`explainability/${gameId}.json: matched forbidden betting term "${betMatch[0]}"`);
+      }
+      const verdictMatch = raw.match(FORBIDDEN_VERDICT_RE);
+      if (verdictMatch) {
+        hits.push(`explainability/${gameId}.json: matched forbidden verdict term "${verdictMatch[0]}"`);
       }
     }
     const slatesBetMatch = rawSlates.match(FORBIDDEN_BETTING_RE);
@@ -785,11 +818,13 @@ describe('Game detail dataset contracts (v3 §6 item 6)', () => {
     expect(hits, hits.slice(0, 10).join('\n')).toEqual([]);
   });
 
-  it('9. Phase 2 presence & slates parity (P2-c): non-null explainability on all games/*.json and projected MatchupGame rows, deep-equal when has_game_detail=true', () => {
+  it('9. Phase 2 presence & single attribution source (P2-c): every projected game has exactly one attribution source (games/<id>.json or explainability/<id>.json), it passes the schema, and the row scalars match it', () => {
+    // Issue #147: attribution is no longer inline in matchups_slates.json. Each game's
+    // attribution lives in exactly one file, so the old "inline deep-equals file" parity
+    // check is replaced by "one source per game, never both, never neither".
     const failures: string[] = [];
     let detailExplCount = 0;
-    let projectedExplCount = 0;
-    let parityCheckedCount = 0;
+    let projectedSourceCount = 0;
 
     for (const { gameId, envelope } of loadedGames) {
       const ex = envelope.data.explainability;
@@ -801,58 +836,60 @@ describe('Game detail dataset contracts (v3 §6 item 6)', () => {
     }
 
     for (const g of matchups.matchups) {
+      if ('explainability' in g) {
+        failures.push(`matchups[${g.game_id}]: row still carries inline explainability`);
+      }
       if (!g.has_projection) continue;
-      const ex = g.explainability;
+
+      const inDetail = g.has_game_detail === true && detailById.has(g.game_id);
+      const inExpl = explById.has(g.game_id);
+      if (inDetail && inExpl) {
+        failures.push(
+          `matchups[${g.game_id}]: attribution in both games/${g.game_id}.json and explainability/${g.game_id}.json`,
+        );
+        continue;
+      }
+      if (!inDetail && !inExpl) {
+        failures.push(
+          `matchups[${g.game_id}]: projected game has no attribution source (has_game_detail=${String(g.has_game_detail)}, has_explainability=${String(g.has_explainability)})`,
+        );
+        continue;
+      }
+
+      const label = inDetail ? `games/${g.game_id}.json` : `explainability/${g.game_id}.json`;
+      const ex = inDetail ? detailById.get(g.game_id)!.data.explainability : explById.get(g.game_id)!.data;
       if (ex === null || ex === undefined) {
-        failures.push(`matchups[${g.game_id}]: projected game missing non-null explainability`);
+        failures.push(`${label}: projected game has null explainability`);
         continue;
       }
       const parsed = GameExplainabilityPayloadSchema.safeParse(ex);
       if (!parsed.success) {
-        failures.push(`matchups[${g.game_id}].explainability:\n${formatIssues(parsed.error.issues)}`);
+        failures.push(`${label} explainability:\n${formatIssues(parsed.error.issues)}`);
         continue;
       }
-      projectedExplCount++;
+      projectedSourceCount++;
 
       if (g.projection_basis !== 'team_rating_differential') {
         if (ex.projection_basis !== g.projection_basis) {
-          failures.push(`matchups[${g.game_id}]: explainability.projection_basis=${String(ex.projection_basis)} !== ${String(g.projection_basis)}`);
+          failures.push(`matchups[${g.game_id}]: ${label} projection_basis=${String(ex.projection_basis)} !== ${String(g.projection_basis)}`);
         }
         if (ex.predicted_margin !== g.predicted_margin) {
-          failures.push(`matchups[${g.game_id}]: explainability.predicted_margin=${String(ex.predicted_margin)} !== ${String(g.predicted_margin)}`);
+          failures.push(`matchups[${g.game_id}]: ${label} predicted_margin=${String(ex.predicted_margin)} !== ${String(g.predicted_margin)}`);
         }
         if (ex.predicted_home_win_prob !== g.predicted_home_win_prob) {
-          failures.push(`matchups[${g.game_id}]: explainability.predicted_home_win_prob=${String(ex.predicted_home_win_prob)} !== ${String(g.predicted_home_win_prob)}`);
-        }
-      }
-
-      if (g.has_game_detail) {
-        const detail = detailById.get(g.game_id);
-        if (!detail) {
-          failures.push(`matchups[${g.game_id}]: has_game_detail=true but missing games/${g.game_id}.json`);
-          continue;
-        }
-        parityCheckedCount++;
-        if (!isDeepStrictEqual(ex, detail.data.explainability)) {
-          // Collect every mismatched game with the fields that differ, instead of stopping at the
-          // first one: on 2026-11-16 five games disagreed and the log named only one.
-          const diffs = leafDifferences(ex, detail.data.explainability);
-          const shown = diffs.slice(0, 4).join('; ');
-          const more = diffs.length > 4 ? ` (+${diffs.length - 4} more)` : '';
-          failures.push(
-            `matchups[${g.game_id}]: explainability disagrees with games/${g.game_id}.json: ${shown}${more}`,
-          );
+          failures.push(`matchups[${g.game_id}]: ${label} predicted_home_win_prob=${String(ex.predicted_home_win_prob)} !== ${String(g.predicted_home_win_prob)}`);
         }
       }
     }
 
+    // Every mismatch is reported, not only the first (2026-11-16: five games disagreed
+    // and the log named one).
     expect(failures, `${failures.length} failure(s):\n${failures.join('\n')}`).toEqual([]);
     expect(detailExplCount).toBe(loadedGames.length);
-    expect(projectedExplCount).toBe(matchups.games_with_projection);
-    expect(parityCheckedCount).toBe(loadedGames.length);
+    expect(projectedSourceCount).toBe(matchups.games_with_projection);
   });
 
-  it('10. waterfall veracity & Normal CDF invariants across games/*.json and matchups_slates.json', () => {
+  it('10. waterfall veracity & Normal CDF invariants across games/*.json and each row\'s attribution source', () => {
     const failures: string[] = [];
     let primaryEnsembleCount = 0;
     let waterfallCount = 0;
@@ -875,13 +912,14 @@ describe('Game detail dataset contracts (v3 §6 item 6)', () => {
     }
 
     for (const g of matchups.matchups) {
-      if (!g.explainability) {
-        failures.push(`matchups[${g.game_id}]: null explainability`);
+      const src = attributionFor(g);
+      if (!src || !src.ex) {
+        failures.push(`matchups[${g.game_id}]: no attribution source with non-null explainability`);
         continue;
       }
       const stats = assertWaterfallAndVeracity(
-        `matchups[${g.game_id}]`,
-        g.explainability,
+        `matchups[${g.game_id}] via ${src.label}`,
+        src.ex,
         g.log_source ?? null,
         g.is_completed,
         failures,
@@ -891,7 +929,7 @@ describe('Game detail dataset contracts (v3 §6 item 6)', () => {
       if (stats.isLegacyLogged) legacyLoggedCount++;
     }
 
-    expect(failures, failures.slice(0, 10).join('\n')).toEqual([]);
+    expect(failures, `${failures.length} failure(s):\n${failures.join('\n')}`).toEqual([]);
     expect(primaryEnsembleCount).toBeGreaterThan(0);
     expect(waterfallCount).toBeGreaterThan(0);
     expect(legacyLoggedCount).toBeGreaterThanOrEqual(219);
@@ -930,7 +968,9 @@ describe('Game detail dataset contracts (v3 §6 item 6)', () => {
       const awayPrior = (completedDatesByTeam.get(g.away_team) ?? []).filter((d) => d < g.game_date).length;
       const homePrior = (completedDatesByTeam.get(g.home_team) ?? []).filter((d) => d < g.game_date).length;
       const hasZeroPrior = awayPrior === 0 || homePrior === 0;
-      const shap = g.explainability?.xgboost_shap ?? null;
+      const src = attributionFor(g);
+      const shap = src?.ex?.xgboost_shap ?? null;
+      const label = `matchups[${g.game_id}] via ${src?.label ?? '<no source>'}`;
 
       if (shap === null) {
         slateShapNullCount++;
@@ -938,14 +978,14 @@ describe('Game detail dataset contracts (v3 §6 item 6)', () => {
         slateShapScoredCount++;
         if (hasZeroPrior) {
           failures.push(
-            `matchups[${g.game_id}] (${g.game_date} ${g.away_team}@${g.home_team}): 0-prior-history game (away=${awayPrior}, home=${homePrior}) must have xgboost_shap=null`,
+            `${label} (${g.game_date} ${g.away_team}@${g.home_team}): 0-prior-history game (away=${awayPrior}, home=${homePrior}) must have xgboost_shap=null`,
           );
         }
-        assertXgboostShap(`matchups[${g.game_id}]`, shap, failures);
+        assertXgboostShap(label, shap, failures);
       }
     }
 
-    expect(failures, failures.slice(0, 10).join('\n')).toEqual([]);
+    expect(failures, `${failures.length} failure(s):\n${failures.join('\n')}`).toEqual([]);
     expect(detailShapNullCount).toBeGreaterThanOrEqual(1);
     expect(detailShapScoredCount).toBeGreaterThan(0);
     expect(slateShapNullCount).toBeGreaterThanOrEqual(1);
@@ -957,7 +997,7 @@ describe('Game detail dataset contracts (v3 §6 item 6)', () => {
     }
   });
 
-  it('12. entering_baselines pooled factor invariants across games/*.json and matchups_slates.json', () => {
+  it('12. entering_baselines pooled factor invariants across games/*.json and each row\'s attribution source', () => {
     const failures: string[] = [];
     let detailEbCount = 0;
     let slateEbCount = 0;
@@ -977,9 +1017,10 @@ describe('Game detail dataset contracts (v3 §6 item 6)', () => {
     }
 
     for (const g of matchups.matchups) {
+      const src = attributionFor(g);
       const hasEb = assertEnteringBaselines(
-        `matchups[${g.game_id}]`,
-        g.explainability?.entering_baselines ?? null,
+        `matchups[${g.game_id}] via ${src?.label ?? '<no source>'}`,
+        src?.ex?.entering_baselines ?? null,
         g.is_completed,
         g.away_team,
         g.home_team,
@@ -989,8 +1030,54 @@ describe('Game detail dataset contracts (v3 §6 item 6)', () => {
       if (hasEb) slateEbCount++;
     }
 
-    expect(failures, failures.slice(0, 10).join('\n')).toEqual([]);
+    expect(failures, `${failures.length} failure(s):\n${failures.join('\n')}`).toEqual([]);
     expect(detailEbCount).toBeGreaterThanOrEqual(172);
     expect(slateEbCount).toBeGreaterThanOrEqual(172);
+  });
+
+  it('13. attribution file bijection (issue #147): has_explainability === true iff explainability/<game_id>.json exists, never alongside a detail file, no orphans, every file passes GameExplainabilityEnvelope', () => {
+    const failures: string[] = [];
+    const flaggedIds = new Set(
+      matchups.matchups.filter((g) => g.has_explainability === true).map((g) => g.game_id),
+    );
+    const diskIds = new Set(explIds);
+
+    expect(fs.existsSync(EXPLAINABILITY_DIR), `Missing explainability directory: ${EXPLAINABILITY_DIR}`).toBe(true);
+
+    for (const id of flaggedIds) {
+      if (!diskIds.has(id)) failures.push(`matchups[${id}]: has_explainability=true but explainability/${id}.json is missing`);
+    }
+    for (const id of diskIds) {
+      if (!flaggedIds.has(id)) failures.push(`explainability/${id}.json: orphan (no row with has_explainability=true)`);
+      if (!gameById.has(id)) failures.push(`explainability/${id}.json: game_id not in matchups_slates.json`);
+    }
+    for (const g of matchups.matchups) {
+      if (typeof g.has_explainability !== 'boolean') {
+        failures.push(`matchups[${g.game_id}]: has_explainability must be a boolean, got ${String(g.has_explainability)}`);
+      }
+      if (g.has_explainability && g.has_game_detail) {
+        failures.push(`matchups[${g.game_id}]: has_explainability and has_game_detail are both true`);
+      }
+      if (g.has_game_detail && diskIds.has(g.game_id)) {
+        failures.push(`explainability/${g.game_id}.json: must be removed once games/${g.game_id}.json exists`);
+      }
+    }
+
+    for (const { gameId, raw, envelope } of loadedExpl) {
+      if (/:\s*NaN\b/.test(raw) || /:\s*-?Infinity\b/.test(raw) || /:\s*"NA"/.test(raw)) {
+        failures.push(`explainability/${gameId}.json: contains NaN, Infinity or "NA"`);
+      }
+      const parsed = GameExplainabilityEnvelopeSchema.safeParse(envelope);
+      if (!parsed.success) {
+        failures.push(`explainability/${gameId}.json:\n${formatIssues(parsed.error.issues)}`);
+        continue;
+      }
+      if (envelope.game_id !== gameId) {
+        failures.push(`explainability/${gameId}.json: game_id=${envelope.game_id} disagrees with filename`);
+      }
+    }
+
+    expect(failures, `${failures.length} failure(s):\n${failures.join('\n')}`).toEqual([]);
+    expect(diskIds.size).toBe(flaggedIds.size);
   });
 });

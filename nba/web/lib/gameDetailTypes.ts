@@ -21,6 +21,19 @@ export interface GameDetailEnvelope {
   data: GameDetailPayload;
 }
 
+/**
+ * web/public/data/explainability/<game_id>.json (issue #147). Written for every
+ * game WITHOUT a detail file (`has_explainability` on its MatchupGame row); a game
+ * with a detail file carries the same payload in games/<game_id>.json instead.
+ */
+export interface GameExplainabilityEnvelope {
+  schema_version: '1.0';
+  game_id: string;
+  /** ISO-8601 UTC; changes only when the payload changes. */
+  generated_at: string;
+  data: GameExplainabilityPayload;
+}
+
 export interface GameDetailPayload {
   game_id: string;
   /** Matches MatchupGame.slate. */

@@ -57,8 +57,6 @@
  * field, never a placeholder number.
  */
 
-import type { GameExplainabilityPayload } from './gameDetailTypes';
-
 /**
  * Which model produced a game's projection. The first two values are the same
  * logged model (the second just derives the margin from its probability); the
@@ -112,8 +110,13 @@ export interface MatchupGame {
   has_game_detail?: boolean;
   /** Accuracy-log provenance kind for logged projections; null/omitted otherwise. */
   log_source?: MatchupLogSource | null;
-  /** Phase 2 explainability payload for modal inspection (including pending games). */
-  explainability?: GameExplainabilityPayload | null;
+  /**
+   * True when this game's attribution lives in public/data/explainability/<game_id>.json
+   * (games without a detail file). A game with `has_game_detail` carries its
+   * attribution in games/<game_id>.json instead, and this flag is false. The
+   * payload itself is never inline in matchups_slates.json (issue #147).
+   */
+  has_explainability?: boolean;
 }
 
 export type SlateStatus = 'past' | 'active' | 'future';

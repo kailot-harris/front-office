@@ -6,6 +6,7 @@ import { GameDetailModal } from '@/components/GameDetailModal';
 import { BASE_PATH } from '@/lib/basePath';
 import type {
   GameDetailEnvelope,
+  GameExplainabilityEnvelope,
   GameExplainabilityPayload,
   PlayerBoxRow,
   XgboostShapPayload,
@@ -631,6 +632,30 @@ function stubFetchJson(payload: unknown, status = 200) {
   return fetchMock;
 }
 
+function makeExplainabilityEnvelope(
+  gameId: string,
+  data: GameExplainabilityPayload,
+): GameExplainabilityEnvelope {
+  return { schema_version: '1.0', game_id: gameId, generated_at: '2026-11-16T17:00:00Z', data };
+}
+
+const explainabilityUrl = (gameId: string) => `${BASE_PATH}/data/explainability/${gameId}.json`;
+
+/** Serve JSON by exact URL; anything else answers 404. */
+function stubFetchByUrl(routes: Record<string, unknown>) {
+  const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+    const url = String(input);
+    const hit = Object.prototype.hasOwnProperty.call(routes, url);
+    return {
+      ok: hit,
+      status: hit ? 200 : 404,
+      json: async () => (hit ? routes[url] : {}),
+    } as Response;
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -1087,7 +1112,7 @@ describe('GameDetailModal empirical Phase 1 views & box score sorting', () => {
 
     render(
       <GameDetailModal
-        matchup={makeMatchup({ has_game_detail: true, explainability })}
+        matchup={makeMatchup({ has_game_detail: true })}
         onClose={vi.fn()}
       />,
     );
@@ -1123,7 +1148,41 @@ describe('GameDetailModal empirical Phase 1 views & box score sorting', () => {
         log_loss_component: 1.0328,
       },
     });
-    stubFetchJson(makeDetailEnvelope({ explainability: pregameExplainability }));
+    const missingWaterfallExplainability = makeExplainability({
+      margin_waterfall: null,
+      predicted_margin: 3.75,
+      predicted_home_win_prob: 0.625,
+      logged_forecast: {
+        prediction_timestamp: '2026-10-21T16:00:00Z',
+        log_source: 'LOGGED_PREGAME',
+        brier_component: null,
+        log_loss_component: null,
+      },
+    });
+    const preweekExplainability = makeExplainability({
+      logged_forecast: {
+        prediction_timestamp: '2026-10-22T12:00:00Z',
+        log_source: 'BACKTEST_PREWEEK',
+        brier_component: null,
+        log_loss_component: null,
+      },
+    });
+    const seededExplainability = makeExplainability({
+      projection_basis: 'primary_ensemble',
+      logged_forecast: {
+        prediction_timestamp: '2026-10-23T09:00:00Z',
+        log_source: 'BACKTEST_SEEDED',
+        brier_component: null,
+        log_loss_component: null,
+      },
+    });
+    // Games without a detail file fetch explainability/<id>.json on open (issue #147).
+    stubFetchByUrl({
+      [`${BASE_PATH}/data/games/401909089.json`]: makeDetailEnvelope({ explainability: pregameExplainability }),
+      [explainabilityUrl('401909090')]: makeExplainabilityEnvelope('401909090', missingWaterfallExplainability),
+      [explainabilityUrl('401909091')]: makeExplainabilityEnvelope('401909091', preweekExplainability),
+      [explainabilityUrl('401909092')]: makeExplainabilityEnvelope('401909092', seededExplainability),
+    });
     const { rerender } = render(
       <GameDetailModal matchup={makeMatchup({ has_game_detail: true })} onClose={vi.fn()} />,
     );
@@ -1137,31 +1196,20 @@ describe('GameDetailModal empirical Phase 1 views & box score sorting', () => {
     expect(screen.getByText(/Log Loss: 1\.0328/)).toBeInTheDocument();
 
     // Switch to LOGGED_PREGAME with margin_waterfall: null (still preserves recorded forecast)
-    const missingWaterfallExplainability = makeExplainability({
-      margin_waterfall: null,
-      predicted_margin: 3.75,
-      predicted_home_win_prob: 0.625,
-      logged_forecast: {
-        prediction_timestamp: '2026-10-21T16:00:00Z',
-        log_source: 'LOGGED_PREGAME',
-        brier_component: null,
-        log_loss_component: null,
-      },
-    });
     rerender(
       <GameDetailModal
         matchup={makeMatchup({
           game_id: '401909090',
           has_game_detail: false,
+          has_explainability: true,
           is_completed: true,
-          explainability: missingWaterfallExplainability,
         })}
         onClose={vi.fn()}
       />,
     );
 
     expect(
-      screen.getByText(
+      await screen.findByText(
         'Forecast recorded before the game. The ratings behind it were not stored, so only the recorded forecast is shown.',
       ),
     ).toBeInTheDocument();
@@ -1174,21 +1222,14 @@ describe('GameDetailModal empirical Phase 1 views & box score sorting', () => {
         matchup={makeMatchup({
           game_id: '401909091',
           has_game_detail: false,
+          has_explainability: true,
           is_completed: false,
-          explainability: makeExplainability({
-            logged_forecast: {
-              prediction_timestamp: '2026-10-22T12:00:00Z',
-              log_source: 'BACKTEST_PREWEEK',
-              brier_component: null,
-              log_loss_component: null,
-            },
-          }),
         })}
         onClose={vi.fn()}
       />,
     );
     expect(
-      screen.getByText(
+      await screen.findByText(
         'Backtest. Logging was unavailable that day; this forecast was rebuilt afterwards from ratings published before the game.',
       ),
     ).toBeInTheDocument();
@@ -1202,21 +1243,13 @@ describe('GameDetailModal empirical Phase 1 views & box score sorting', () => {
           has_game_detail: false,
           is_completed: false,
           projection_basis: 'primary_ensemble',
-          explainability: makeExplainability({
-            projection_basis: 'primary_ensemble',
-            logged_forecast: {
-              prediction_timestamp: '2026-10-23T09:00:00Z',
-              log_source: 'BACKTEST_SEEDED',
-              brier_component: null,
-              log_loss_component: null,
-            },
-          }),
+          has_explainability: true,
         })}
         onClose={vi.fn()}
       />,
     );
     expect(
-      screen.getByText('Backtest computed after the game from later ratings. Not a pre-game forecast.'),
+      await screen.findByText('Backtest computed after the game from later ratings. Not a pre-game forecast.'),
     ).toBeInTheDocument();
     expect(screen.getByText('Backtest · Seeded')).toBeInTheDocument();
     expect(screen.getByText('Live Primary Ensemble Ratings')).toBeInTheDocument();
@@ -1229,7 +1262,7 @@ describe('GameDetailModal empirical Phase 1 views & box score sorting', () => {
 
     const { container } = render(
       <GameDetailModal
-        matchup={makeMatchup({ has_game_detail: true, explainability })}
+        matchup={makeMatchup({ has_game_detail: true })}
         onClose={vi.fn()}
       />,
     );
@@ -1302,7 +1335,7 @@ describe('GameDetailModal empirical Phase 1 views & box score sorting', () => {
 
     render(
       <GameDetailModal
-        matchup={makeMatchup({ has_game_detail: true, explainability })}
+        matchup={makeMatchup({ has_game_detail: true })}
         onClose={vi.fn()}
       />,
     );
@@ -1346,7 +1379,7 @@ describe('GameDetailModal empirical Phase 1 views & box score sorting', () => {
 
     render(
       <GameDetailModal
-        matchup={makeMatchup({ has_game_detail: true, explainability })}
+        matchup={makeMatchup({ has_game_detail: true })}
         onClose={vi.fn()}
       />,
     );
@@ -1377,16 +1410,17 @@ describe('GameDetailModal empirical Phase 1 views & box score sorting', () => {
     expect((explainer as HTMLDetailsElement).open).toBe(true);
   });
 
-  it('opens unplayed games with inline matchup.explainability directly to Attribution & SHAP with zero fetch calls and accessible missing-box notice', async () => {
+  it('fetches explainability/<id>.json for an upcoming game, shows a loading state, then opens Attribution & SHAP with the missing-box notice (#147)', async () => {
     const user = userEvent.setup();
-    const fetchSpy = vi.fn<typeof fetch>();
-    vi.stubGlobal('fetch', fetchSpy);
 
-    const inlineExplainability = makeExplainability({
+    const upcomingExplainability = makeExplainability({
       projection_basis: 'primary_ensemble',
       xgboost_shap: null,
       entering_baselines: null,
       logged_forecast: null,
+    });
+    const fetchSpy = stubFetchByUrl({
+      [explainabilityUrl('0022600999')]: makeExplainabilityEnvelope('0022600999', upcomingExplainability),
     });
 
     const unplayedMatchup = makeMatchup({
@@ -1394,26 +1428,32 @@ describe('GameDetailModal empirical Phase 1 views & box score sorting', () => {
       is_completed: false,
       has_box_score: false,
       has_game_detail: false,
+      has_explainability: true,
       projection_basis: 'primary_ensemble',
       home_score: null,
       away_score: null,
       actual_margin: null,
       actual_winner: null,
       prediction_correct: null,
-      explainability: inlineExplainability,
     });
 
     render(<GameDetailModal matchup={unplayedMatchup} onClose={vi.fn()} />);
 
-    expect(fetchSpy).not.toHaveBeenCalled();
+    // Loading state is visible while the file is in flight; never a blank body.
+    expect(screen.getByRole('status')).toHaveTextContent('Loading attribution...');
 
-    const attributionTab = screen.getByRole('tab', { name: /Attribution & SHAP/i });
+    const attributionTab = await screen.findByRole('tab', { name: /Attribution & SHAP/i });
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).toHaveBeenCalledWith(explainabilityUrl('0022600999'));
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
     const boxTab = screen.getByRole('tab', { name: /Box Score/i });
     expect(attributionTab).toHaveAttribute('aria-selected', 'true');
     expect(boxTab).toHaveAttribute('aria-selected', 'false');
 
     expect(screen.getByText('Box score appears after the game.')).toBeInTheDocument();
     expect(screen.getByText('Live Primary Ensemble Ratings')).toBeInTheDocument();
+    expect(screen.getByText('Primary Ensemble Margin Waterfall')).toBeInTheDocument();
     expect(
       screen.getByText(/Secondary XGBoost TreeSHAP diagnostic is unavailable/i),
     ).toBeInTheDocument();
@@ -1424,32 +1464,124 @@ describe('GameDetailModal empirical Phase 1 views & box score sorting', () => {
     await user.click(boxTab);
     expect(boxTab).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByText('Box score appears after the game.')).toBeInTheDocument();
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps Final score recorded notice accessible when completed game lacks box score yet has inline explainability', () => {
-    const fetchSpy = vi.fn<typeof fetch>();
-    vi.stubGlobal('fetch', fetchSpy);
+  it('reads attribution for a completed game with a detail file from games/<id>.json only, never explainability/<id>.json (#147)', async () => {
+    const user = userEvent.setup();
+    const explainability = makeExplainability();
+    const fetchSpy = stubFetchByUrl({
+      [`${BASE_PATH}/data/games/401909089.json`]: makeDetailEnvelope({ explainability }),
+    });
+
+    render(
+      <GameDetailModal
+        matchup={makeMatchup({ has_game_detail: true, has_explainability: false })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent(/Loading empirical box score/);
+    await screen.findByText('Player Box Score');
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).toHaveBeenCalledWith(`${BASE_PATH}/data/games/401909089.json`);
+
+    await user.click(screen.getByRole('tab', { name: /Attribution & SHAP/i }));
+    expect(screen.getByText('Primary Ensemble Margin Waterfall')).toBeInTheDocument();
+    expect(
+      screen.getByText('Secondary Diagnostic Model: XGBoost Feature Fusion (TreeSHAP)'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Entering Baselines vs Realized Four Factors')).toBeInTheDocument();
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps Final score recorded notice accessible when a completed game lacks a box score and its attribution comes from explainability/<id>.json', async () => {
+    const fetchSpy = stubFetchByUrl({
+      [explainabilityUrl('0022600888')]: makeExplainabilityEnvelope('0022600888', makeExplainability()),
+    });
 
     const completedNoDetail = makeMatchup({
       game_id: '0022600888',
       is_completed: true,
       has_box_score: false,
       has_game_detail: false,
-      explainability: makeExplainability(),
+      has_explainability: true,
     });
 
     render(<GameDetailModal matchup={completedNoDetail} onClose={vi.fn()} />);
 
-    expect(fetchSpy).not.toHaveBeenCalled();
-    expect(screen.getByRole('tab', { name: /Attribution & SHAP/i })).toHaveAttribute(
+    expect(await screen.findByRole('tab', { name: /Attribution & SHAP/i })).toHaveAttribute(
       'aria-selected',
       'true',
     );
+    expect(fetchSpy).toHaveBeenCalledWith(explainabilityUrl('0022600888'));
     expect(
       screen.getByText(
         'Final score recorded. The full box score is added on a later data refresh, usually within a day.',
       ),
     ).toBeInTheDocument();
+    expect(screen.getByText('Entering Baselines vs Realized Four Factors')).toBeInTheDocument();
+  });
+
+  it('shows a visible error with Retry when the attribution fetch returns 404, and recovers on Retry (#147)', async () => {
+    const user = userEvent.setup();
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const envelope = makeExplainabilityEnvelope('0022600777', makeExplainability());
+    let calls = 0;
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async () => {
+      calls += 1;
+      return (calls === 1
+        ? { ok: false, status: 404, json: async () => ({}) }
+        : { ok: true, status: 200, json: async () => envelope }) as Response;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <GameDetailModal
+        matchup={makeMatchup({
+          game_id: '0022600777',
+          is_completed: false,
+          has_box_score: false,
+          has_game_detail: false,
+          has_explainability: true,
+        })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Unable to load attribution (HTTP 404).');
+    expect(alert).toHaveTextContent('Attribution file could not be retrieved for PHI @ NYK.');
+    expect(screen.queryByRole('tab', { name: /Attribution & SHAP/i })).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(explainabilityUrl('0022600777'));
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('has_explainability is true'));
+
+    await user.click(within(alert).getByRole('button', { name: /Retry/i }));
+    expect(await screen.findByText('Primary Ensemble Margin Waterfall')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows a visible error when the attribution fetch fails on the network or the file is malformed (#147)', async () => {
+    const networkFail = vi.fn<typeof fetch>().mockRejectedValue(new Error('Network down'));
+    vi.stubGlobal('fetch', networkFail);
+    const matchup = makeMatchup({
+      game_id: '0022600666',
+      is_completed: false,
+      has_box_score: false,
+      has_game_detail: false,
+      has_explainability: true,
+    });
+    const { rerender } = render(<GameDetailModal matchup={matchup} onClose={vi.fn()} />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Network down');
+
+    stubFetchByUrl({ [explainabilityUrl('0022600665')]: { schema_version: '1.0', game_id: '0022600665' } });
+    rerender(
+      <GameDetailModal matchup={{ ...matchup, game_id: '0022600665' }} onClose={vi.fn()} />,
+    );
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Attribution file is malformed.');
+    });
+    expect(screen.queryByRole('tab', { name: /Attribution & SHAP/i })).not.toBeInTheDocument();
   });
 });

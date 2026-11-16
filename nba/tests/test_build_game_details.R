@@ -1251,20 +1251,25 @@ ok("Phase 2 backfill updates >7d Phase 1 null file once, then Run #2 is unchange
 unlink(p2_tmp_dir, recursive = TRUE)
 
 # ------------------------------------------------------------------------------
-section("8. tools/refresh_live_results.R preserves Phase 2 log_source and explainability")
+section("8. tools/refresh_live_results.R preserves Phase 2 log_source and has_explainability (no inline explainability)")
 # ------------------------------------------------------------------------------
+# Issue #147: slate rows no longer carry the attribution payload; they carry the
+# has_explainability flag, and the payload lives in games/<id>.json or
+# explainability/<id>.json. refresh_live_results() rewrites matchups_slates.json
+# between full runs, so it must keep the flag as written and never re-add the
+# inline field. It does not touch the per-game files.
 rlr_p2_dir <- file.path(tempdir(), "gbd_rlr_p2_test")
 if (dir.exists(rlr_p2_dir)) unlink(rlr_p2_dir, recursive = TRUE)
 dir.create(rlr_p2_dir, recursive = TRUE)
 
 rlr_p2_fixture <- rlr_fixture
 rlr_p2_fixture$matchups[[1]]$log_source <- "LOGGED_PREGAME"
-rlr_p2_fixture$matchups[[1]]$explainability <- expl_full_p2
+rlr_p2_fixture$matchups[[1]]$has_explainability <- FALSE  # has a detail file
 rlr_p2_fixture$matchups[[2]]$log_source <- "LOGGED_PREGAME"
-rlr_p2_fixture$matchups[[2]]$explainability <- expl_pending_log
+rlr_p2_fixture$matchups[[2]]$has_explainability <- TRUE   # completes in this refresh
 rlr_p2_fixture$matchups[[3]]$projection_basis <- "primary_ensemble"
 rlr_p2_fixture$matchups[[3]]$log_source <- NULL
-rlr_p2_fixture$matchups[[3]]$explainability <- expl_ens
+rlr_p2_fixture$matchups[[3]]$has_explainability <- TRUE
 
 rlr_p2_path <- file.path(rlr_p2_dir, "slates_p2.json")
 jsonlite::write_json(rlr_p2_fixture, rlr_p2_path, pretty = TRUE,
@@ -1277,16 +1282,34 @@ rlr_p2_res <- rlr_env$refresh_live_results(
 )
 rlr_p2_parsed <- jsonlite::fromJSON(mod_env$.read_utf8_text(rlr_p2_path), simplifyVector = FALSE)
 p2_by_id <- setNames(rlr_p2_parsed$matchups, vapply(rlr_p2_parsed$matchups, `[[`, character(1), "game_id"))
-ok("refresh_live_results() preserves log_source and nested explainability payloads intact",
+ok("refresh_live_results() preserves log_source and has_explainability, and never adds inline explainability",
    rlr_p2_res$n_changed == 1L &&
      identical(p2_by_id[["1001"]]$log_source, "LOGGED_PREGAME") &&
-     length(p2_by_id[["1001"]]$explainability$margin_waterfall) == 6L &&
-     length(p2_by_id[["1001"]]$explainability$entering_baselines) == 2L &&
-     identical(p2_by_id[["1001"]]$explainability$xgboost_shap$model_id, "xgboost_feature_fusion_v1") &&
+     identical(p2_by_id[["1001"]]$has_explainability, FALSE) &&
+     identical(p2_by_id[["1001"]]$has_game_detail, TRUE) &&
      identical(p2_by_id[["1002"]]$log_source, "LOGGED_PREGAME") &&
-     identical(p2_by_id[["1002"]]$explainability$logged_forecast$log_source, "LOGGED_PREGAME") &&
+     isTRUE(p2_by_id[["1002"]]$is_completed) &&
+     identical(p2_by_id[["1002"]]$has_explainability, TRUE) &&
+     identical(p2_by_id[["1002"]]$has_game_detail, FALSE) &&
      is.null(p2_by_id[["1003"]]$log_source) &&
-     length(p2_by_id[["1003"]]$explainability$margin_waterfall) == 7L)
+     identical(p2_by_id[["1003"]]$has_explainability, TRUE) &&
+     !any(vapply(rlr_p2_parsed$matchups, function(m) "explainability" %in% names(m), logical(1))))
+
+# The payloads the rows used to carry still build and serialize as explainability
+# file envelopes with the shared writer, and a second write with only a new
+# generated_at is a no-op (write only on change).
+expl_env_path <- file.path(rlr_p2_dir, "explainability", "1003.json")
+expl_env <- list(schema_version = "1.0", game_id = "1003",
+                 generated_at = "2026-11-16T10:00:00Z", data = expl_ens)
+first_write <- mod_env$write_game_json_if_changed(expl_env, expl_env_path)
+expl_env$generated_at <- "2026-11-16T11:00:00Z"
+second_write <- mod_env$write_game_json_if_changed(expl_env, expl_env_path)
+expl_back <- jsonlite::fromJSON(mod_env$.read_utf8_text(expl_env_path), simplifyVector = FALSE)
+ok("explainability/<id>.json envelope writes once, skips a generated_at-only rewrite, and round-trips the payload",
+   isTRUE(first_write) && identical(second_write, FALSE) &&
+     identical(expl_back$game_id, "1003") &&
+     identical(expl_back$schema_version, "1.0") &&
+     length(expl_back$data$margin_waterfall) == 7L)
 unlink(rlr_p2_dir, recursive = TRUE)
 
 # ------------------------------------------------------------------------------

@@ -859,6 +859,17 @@ export const GameExplainabilityPayloadSchema = z
   })
   .strict();
 
+// web/public/data/explainability/<game_id>.json -> GameExplainabilityEnvelope
+// (issue #147): one file per game WITHOUT a detail file.
+export const GameExplainabilityEnvelopeSchema = z
+  .object({
+    schema_version: z.literal('1.0'),
+    game_id: z.string().regex(/^\d+$/),
+    generated_at: z.string().datetime(),
+    data: GameExplainabilityPayloadSchema,
+  })
+  .strict();
+
 // ----------------------------------------------------------------------------
 // 14. matchups_slates.json -> MatchupsDataset (lib/matchupTypes.ts)
 // ----------------------------------------------------------------------------
@@ -894,8 +905,8 @@ export const MatchupGameSchema = z
     prediction_correct: z.boolean().nullable(),
     has_box_score: z.boolean(),
     has_game_detail: z.boolean(),
+    has_explainability: z.boolean(),
     log_source: matchupLogSourceEnum.nullable().optional(),
-    explainability: GameExplainabilityPayloadSchema.nullable().optional(),
   })
   .strict();
 
