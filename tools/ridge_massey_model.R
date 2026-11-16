@@ -82,9 +82,10 @@ fallback_margin <- function(games, k = RATING_SHRINKAGE_GAMES_K) {
   (home_rating - away_rating) + NFL_HCA
 }
 
-predict_ridge_massey_walkforward <- function(games) {
+predict_ridge_massey_walkforward <- function(games, return_fallback_flag = FALSE) {
   seasons <- sort(unique(games$season))
   pred_margin <- rep(NA_real_, nrow(games))
+  used_fallback <- rep(FALSE, nrow(games))
 
   for (s in seasons) {
     train_idx <- which(games$season < s)
@@ -93,7 +94,10 @@ predict_ridge_massey_walkforward <- function(games) {
     if (length(train_idx) < 100) {
       # Not enough training history yet for a stable ridge fit - fall back to the
       # production formula for this season rather than fitting on a tiny sample.
+      warning(sprintf("[predict_ridge_massey_walkforward] Season %s has only %d historical training rows (< 100). Falling back to shrinkage blend.",
+                      as.character(s), length(train_idx)))
       pred_margin[test_idx] <- fallback_margin(games[test_idx, ])
+      used_fallback[test_idx] <- TRUE
       next
     }
 
@@ -102,5 +106,9 @@ predict_ridge_massey_walkforward <- function(games) {
     pred_margin[test_idx] <- as.numeric(predict(fit, newx = x_test, s = "lambda.min"))
   }
 
-  pred_margin
+  if (isTRUE(return_fallback_flag)) {
+    list(margin = pred_margin, used_fallback = used_fallback)
+  } else {
+    pred_margin
+  }
 }

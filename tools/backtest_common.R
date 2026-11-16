@@ -301,11 +301,17 @@ grade_walkforward_games <- function(epa, sch, fatigue, season) {
   completed <- sch |> filter(!is.na(home_score), !is.na(away_score))
   avg_plays_per_game <- mean(epa$n_off_plays, na.rm = TRUE)
 
-  games <- build_walkforward_games(epa, completed, calibration_seasons = season, avg_plays_per_game)
+  # Include historical seasons strictly before `season` so predict_ridge_massey_walkforward()
+  # has sufficient training history (>= 100 rows) instead of silently falling back to the
+  # shrinkage blend for every game of the target season.
+  first_hist_season <- MODERN_ERA_START_SEASON + 1L
+  cal_seasons <- if (season > first_hist_season) first_hist_season:season else season
 
-  if (nrow(games) == 0) {
+  all_games <- build_walkforward_games(epa, completed, calibration_seasons = cal_seasons, avg_plays_per_game)
+
+  if (nrow(all_games) == 0) {
     return(list(
-      per_game = games, by_week = data.frame(), overall_accuracy = NA_real_,
+      per_game = all_games, by_week = data.frame(), overall_accuracy = NA_real_,
       overall_brier = NA_real_, overall_logloss = NA_real_
     ))
   }
@@ -315,13 +321,13 @@ grade_walkforward_games <- function(epa, sch, fatigue, season) {
   # features.R's own header).
   starter_tbl <- get_qb_starter_table(MODERN_ERA_START_SEASON:season)
   qb_flags <- compute_qb_backup_flags(starter_tbl) |> select(season, week, team, qb_backup_started)
-  games <- games |>
+  all_games <- all_games |>
     left_join(qb_flags |> rename(home_qb_backup = qb_backup_started), by = c("season", "week", "home_team" = "team")) |>
     left_join(qb_flags |> rename(away_qb_backup = qb_backup_started), by = c("season", "week", "away_team" = "team"))
 
   # Devigged market odds removed per Phase 0/4 delinking
-  # games$market_prob removed
-  games$market_prob <- NA_real_
+  # all_games$market_prob removed
+  all_games$market_prob <- NA_real_
 
   # Elo run sequentially across full history THROUGH `season` (unlike model_backtest_harness.R's
   # historical-calibration run, which stops at season - 1 on purpose) so its sequential state is
@@ -334,21 +340,33 @@ grade_walkforward_games <- function(epa, sch, fatigue, season) {
            season >= MODERN_ERA_START_SEASON, season <= .env$season)
   elo_results <- run_elo_walkforward(elo_full_history, fatigue, ELO_K_FACTOR) |>
     select(game_id, elo_margin_pts, fatigue_adj)
-  games <- games |> left_join(elo_results, by = "game_id")
+  all_games <- all_games |> left_join(elo_results, by = "game_id")
 
+  home_adj <- ifelse(is.na(all_games$home_qb_backup), 0, as.integer(all_games$home_qb_backup))
+  away_adj <- ifelse(is.na(all_games$away_qb_backup), 0, as.integer(all_games$away_qb_backup))
 
+  ridge_wf <- predict_ridge_massey_walkforward(all_games, return_fallback_flag = TRUE)
+  all_games$ridge_margin_raw <- ridge_wf$margin
+  all_games$ridge_fallback <- ridge_wf$used_fallback
 
-  home_adj <- ifelse(is.na(games$home_qb_backup), 0, as.integer(games$home_qb_backup))
-  away_adj <- ifelse(is.na(games$away_qb_backup), 0, as.integer(games$away_qb_backup))
-
-  ridge_margin <- predict_ridge_massey_walkforward(games) -
+  ridge_margin <- all_games$ridge_margin_raw -
     QB_INJURY_RATING_PENALTY_PTS * home_adj + QB_INJURY_RATING_PENALTY_PTS * away_adj
-  elo_margin <- games$elo_margin_pts + games$fatigue_adj -
+  elo_margin <- all_games$elo_margin_pts + all_games$fatigue_adj -
     QB_INJURY_RATING_PENALTY_PTS * home_adj + QB_INJURY_RATING_PENALTY_PTS * away_adj
 
   ridge_prob <- pnorm(ridge_margin / NFL_MARGIN_SIGMA)
   elo_prob   <- pnorm(elo_margin / NFL_MARGIN_SIGMA)
-  games$home_win_prob_prod <- 0.5 * ridge_prob + 0.5 * elo_prob
+  all_games$home_win_prob_prod <- 0.5 * ridge_prob + 0.5 * elo_prob
+
+  # Filter down to the target season's games for grading and reporting
+  games <- all_games |> filter(season == .env$season)
+
+  if (nrow(games) == 0) {
+    return(list(
+      per_game = games, by_week = data.frame(), overall_accuracy = NA_real_,
+      overall_brier = NA_real_, overall_logloss = NA_real_
+    ))
+  }
 
   games <- games |>
     mutate(
@@ -362,7 +380,7 @@ grade_walkforward_games <- function(epa, sch, fatigue, season) {
 
   per_game <- games |>
     arrange(week, desc(home_win_prob_prod)) |>
-    select(week, away_full, home_full, home_win_prob_prod, predicted_winner, actual_winner, correct, home_margin)
+    select(week, away_full, home_full, home_win_prob_prod, predicted_winner, actual_winner, correct, home_margin, ridge_fallback)
 
   by_week <- games |>
     group_by(week) |>

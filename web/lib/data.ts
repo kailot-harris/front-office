@@ -75,4 +75,3 @@ export function getPlayerDnaProfiles(): PlayerDnaProfile[] {
 export function getClutchData(): ClutchProfile[] {
   return readJsonFile<ClutchProfile[]>('clutch_leverage_metrics.json');
 }
-

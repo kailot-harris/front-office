@@ -425,7 +425,7 @@ export const playerDnaProfileSchema = z.object({
   historicalTwins: z.array(playerDnaHistoricalTwinSchema).min(1),
 }).strict();
 
-export const ClutchProfileSchema = z.object({
+export const clutchProfileSchema = z.object({
   playerId: z.string().min(1),
   playerName: z.string().min(2),
   team: teamCode,
@@ -446,7 +446,6 @@ export const ClutchProfileSchema = z.object({
   fourthDownAggressiveness: pct100.nullable(),
   clutchArchetype: z.string().min(1),
   provenance: z.enum(['REAL_CURRENT_SEASON', 'INSUFFICIENT_SAMPLE']),
-
 }).strict();
 
 /** Filename -> schema, so one test can iterate every shipped dataset. */
@@ -460,12 +459,8 @@ export const DATASET_SCHEMAS = {
   'visual_media_index.json': z.array(visualMediaItemSchema),
   'coaching_profiles.json': z.array(coachProfileSchema),
   'salary_cap_profiles.json': salaryCapDatasetSchema,
-'passing_index.json': z.array(passingCatalogEntrySchema),
+  'passing_index.json': z.array(passingCatalogEntrySchema),
   'passing_metadata.json': passingMetadataSchema,
-
-'player_dna_profiles.json': z.array(playerDnaProfileSchema),
-
-
-'clutch_leverage_metrics.json': z.array(ClutchProfileSchema),
-
+  'player_dna_profiles.json': z.array(playerDnaProfileSchema),
+  'clutch_leverage_metrics.json': z.array(clutchProfileSchema),
 } as const;

@@ -43,10 +43,8 @@ const TEAM_CODE_SOURCES: Array<[string, () => string[]]> = [
   ['coaching_profiles[].team', () => coaching().map((c) => c.team)],
   ['salary_cap_profiles.teams[].team', () => salaryCap().teams.map((t) => t.team)],
   ['salary_cap_profiles.top_league_contracts[].team', () => salaryCap().top_league_contracts.map((c) => c.team)],
-['passing_index.json[].team', () => passingIndex().map((q) => q.team)],
-
-['clutch_leverage_metrics[].team', () => clutch().map((c) => c.team)],
-
+  ['passing_index.json[].team', () => passingIndex().map((q) => q.team)],
+  ['clutch_leverage_metrics[].team', () => clutch().map((c) => c.team)],
 ];
 
 describe('every team code resolves against lib/teams.ts', () => {

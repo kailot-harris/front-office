@@ -327,6 +327,45 @@ ok("PW-3 (Assertion B) `.compute_active_week_from_schedules()` picks the lowest 
    identical(comp_wk, 3L),
    sprintf("computed active_week=%d", comp_wk))
 
+# ==============================================================================
+# SECTION 6: tools/ridge_massey_model.R fallback logging and flags
+# ==============================================================================
+cat("\n--- Section 6: tools/ridge_massey_model.R pure fallback behavior ---\n")
+
+RM_ENV <- new.env(parent = baseenv())
+RM_ENV$RATING_SHRINKAGE_GAMES_K <- 3.6
+RM_ENV$NFL_HCA <- 1.93
+load_ast_symbols(file.path("tools", "ridge_massey_model.R"),
+                 c("fallback_margin", "build_ridge_features", "predict_ridge_massey_walkforward"),
+                 RM_ENV)
+
+# Construct synthetic test games: single season (no prior history < 2026), length < 100
+tiny_games <- data.frame(
+  season = c(2026L, 2026L),
+  home_raw = c(0.1, -0.05),
+  away_raw = c(-0.05, 0.1),
+  home_prior = c(0.05, 0.0),
+  away_prior = c(0.0, 0.05),
+  home_gp = c(1L, 2L),
+  away_gp = c(1L, 2L),
+  stringsAsFactors = FALSE
+)
+
+warn_emitted <- FALSE
+res_fb <- withCallingHandlers(
+  RM_ENV$predict_ridge_massey_walkforward(tiny_games, return_fallback_flag = TRUE),
+  warning = function(w) {
+    if (grepl("Falling back to shrinkage blend", conditionMessage(w))) {
+      warn_emitted <<- TRUE
+    }
+    invokeRestart("muffleWarning")
+  }
+)
+
+ok("RM-1 `predict_ridge_massey_walkforward()` warns and marks rows when falling back on insufficient history",
+   isTRUE(warn_emitted) && isTRUE(all(res_fb$used_fallback)) && length(res_fb$margin) == 2L,
+   sprintf("warn_emitted=%s, all_fallback=%s", warn_emitted, all(res_fb$used_fallback)))
+
 cat(sprintf("\n=== %s: %d failure(s) ===\n",
             if (failures == 0L) "ALL TESTS PASSED" else "TEST FAILURES", failures))
 quit(status = if (failures == 0L) 0L else 1L)

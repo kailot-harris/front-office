@@ -77,6 +77,15 @@ run_accuracy_tracker <- function() {
     return(invisible(FALSE))
   }
 
+  if (any(isTRUE(graded$per_game$ridge_fallback))) {
+    n_fb <- sum(isTRUE(graded$per_game$ridge_fallback))
+    log_error(sprintf("%d/%d completed %d game(s) used the fallback shrinkage blend instead of Ridge-Massey.",
+                      n_fb, nrow(graded$per_game), CURRENT_SEASON),
+              script = .LOG_SCRIPT)
+    stop(sprintf("Refusing to publish accuracy records: %d game(s) in season %d used ridge_fallback.",
+                 n_fb, CURRENT_SEASON))
+  }
+
   current_keys <- .accuracy_tracker_game_key(CURRENT_SEASON, graded$per_game)
 
   history <- load_accuracy_history()
