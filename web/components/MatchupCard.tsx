@@ -67,7 +67,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup, onSelect }) =
   // Kickoff time formatter
   const formattedTime = matchup.gametime ? `${matchup.gametime} ET` : 'TBD';
 
-  const isInteractive = Boolean(onSelect && matchup.is_completed);
+  const isInteractive = Boolean(onSelect && (matchup.is_completed || hasProjection));
   const cardLabel = formatMatchupInspectLabel(matchup);
 
   const [detail, setDetail] = useState<NflGameDetailPayload | null>(null);

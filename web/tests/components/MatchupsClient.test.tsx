@@ -412,6 +412,50 @@ describe('MatchupsClient Grid & Table GameDetailModal integration', () => {
     expect(window.location.href.endsWith('?')).toBe(false);
   });
 
+  it('opens GameDetailModal from unplayed card with projection, defaulting to Tab 4', async () => {
+    const user = userEvent.setup();
+    stubDetailFetch();
+
+    const futureWeek = dataset.available_weeks.find((w) =>
+      weekGames(w).some((g) => !g.is_completed && g.has_projection !== false && g.projected_margin != null)
+    )!;
+    const unplayedGame = weekGames(futureWeek).find(
+      (g) => !g.is_completed && g.has_projection !== false && g.projected_margin != null
+    )!;
+
+    render(<MatchupsClient dataset={dataset} />);
+    if (futureWeek !== dataset.active_week) {
+      clickWeek(futureWeek);
+    }
+
+    const card = screen.getByRole('button', {
+      name: formatMatchupInspectLabel(unplayedGame),
+    });
+    expect(card).toHaveAttribute('tabindex', '0');
+
+    await user.click(card);
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toBeInTheDocument();
+    expect(window.location.search).toBe(`?game=${unplayedGame.game_id}`);
+
+    // Tab 4 (Model Attribution) is active
+    const tabAttribution = within(dialog).getByRole('tab', { name: /model attribution/i });
+    expect(tabAttribution).toHaveAttribute('aria-selected', 'true');
+
+    // Tabs 1-3 are disabled
+    const tabOverview = within(dialog).getByRole('tab', { name: /overview & efficiency/i });
+    expect(tabOverview).toBeDisabled();
+
+    const closeBtn = within(dialog).getByRole('button', { name: /close modal/i });
+    await user.click(closeBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(window.location.search).toBe('');
+  });
+
   it('opens GameDetailModal via keyboard Enter and Space on focused completed card', async () => {
     const user = userEvent.setup();
     stubDetailFetch();

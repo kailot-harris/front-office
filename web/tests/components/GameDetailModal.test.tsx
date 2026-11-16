@@ -3,7 +3,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { GameDetailModal } from '@/components/GameDetailModal';
 import { BASE_PATH } from '@/lib/basePath';
-import type { GameDetailEnvelope, NflGameDetailPayload } from '@/lib/gameDetailTypes';
+import type {
+  GameDetailEnvelope,
+  GameExplainabilityPayload,
+  NflGameDetailPayload,
+} from '@/lib/gameDetailTypes';
 import type { MatchupGame } from '@/lib/types';
 
 function makeMatchup(overrides: Partial<MatchupGame> = {}): MatchupGame {
@@ -338,6 +342,193 @@ function makeDetailEnvelope(overrides: Partial<NflGameDetailPayload> = {}): Game
   };
 }
 
+function makeExplainabilityData(): GameExplainabilityPayload {
+  return {
+    game_id: '2026_10_BUF_NYJ',
+    season: 2026,
+    week: 10,
+    projection_basis: 'logged_pregame',
+    predicted_margin: -6.5,
+    predicted_home_win_prob: 0.32,
+    waterfall: {
+      projected_margin: -6.5,
+      home_win_prob: 0.32,
+      steps: [
+        {
+          key: 'step_current_epa',
+          label: 'Current-Season EPA',
+          points: -1.85,
+          description: 'Current season rolling EPA net differential',
+        },
+        {
+          key: 'step_prior_epa',
+          label: 'Pre-Season Prior',
+          points: -0.95,
+          description: 'Prior season baseline regressed to mean',
+        },
+        {
+          key: 'step_elo_diff',
+          label: 'Elo Differential',
+          points: -3.8,
+          description: 'Elo rating points differential',
+        },
+        {
+          key: 'step_home_field',
+          label: 'Home Field Advantage',
+          points: 2.08,
+          description: 'Neutral site and home field advantage blend',
+        },
+        {
+          key: 'step_qb_adjustment',
+          label: 'Starting Quarterback',
+          points: -1.98,
+          description: 'Quarterback availability and injury adjustment',
+        },
+        {
+          key: 'step_rounding',
+          label: 'Rounding',
+          points: 0.0,
+          description: 'Decomposition residual',
+        },
+      ],
+      rounding: 0.0,
+      sigma: 14.6,
+    },
+    secondary_model: {
+      model_id: 'xgboost_treeshap_v1',
+      model_label: 'Secondary Model (TreeSHAP)',
+      model_win_prob: 0.285,
+      logit: -0.92,
+      base_value: 0.187,
+      factors: [
+        { feature: 'diff_raw', label: 'Overall EPA/Play Differential', value: -0.15, shap_value: -0.32 },
+        { feature: 'diff_pass_epa', label: 'Passing EPA Differential', value: -0.22, shap_value: -0.28 },
+        { feature: 'diff_rush_epa', label: 'Rushing EPA Differential', value: -0.05, shap_value: -0.11 },
+        { feature: 'diff_cpoe', label: 'Completion % Over Expected Differential', value: -4.1, shap_value: -0.18 },
+        { feature: 'elo_margin', label: 'Primary Elo Model Projection', value: -5.2, shap_value: -0.21 },
+        { feature: 'ridge_margin', label: 'Primary Ridge Model Projection', value: -6.8, shap_value: -0.25 },
+        { feature: 'rest_diff', label: 'Days Rest Differential', value: 0, shap_value: 0.02 },
+        { feature: 'fatigue_adj', label: 'Schedule Rest & Travel Impact', value: 0, shap_value: 0.01 },
+        { feature: 'diff_prior', label: 'Pre-Season Baseline Differential', value: -3.2, shap_value: -0.05 },
+        { feature: 'qb_diff', label: 'Quarterback Status Differential', value: 0, shap_value: 0.0 },
+        { feature: 'gp_avg', label: 'Sample Maturity (Avg Games Played)', value: 9, shap_value: 0.0 },
+        { feature: 'gp_min', label: 'Minimum Team Games Played', value: 9, shap_value: 0.0 },
+      ],
+      out_of_sample_record: {
+        n_games: 145,
+        accuracy: 59.3,
+        brier: 0.2232,
+        logloss: 0.6348,
+      },
+      agreement: 'agree',
+    },
+    entering_baselines: [
+      {
+        metric_key: 'epa_per_play',
+        metric_label: 'EPA / Play',
+        team_abbr: 'BUF',
+        entering_baseline: 0.125,
+        realized_value: 0.12,
+        delta: -0.005,
+        prior_games_n: 9,
+        is_low_sample: false,
+      },
+      {
+        metric_key: 'success_rate',
+        metric_label: 'Success Rate',
+        team_abbr: 'BUF',
+        entering_baseline: 49.2,
+        realized_value: 48.5,
+        delta: -0.7,
+        prior_games_n: 9,
+        is_low_sample: false,
+      },
+      {
+        metric_key: 'dropback_epa',
+        metric_label: 'Dropback EPA',
+        team_abbr: 'BUF',
+        entering_baseline: 0.24,
+        realized_value: 0.22,
+        delta: -0.02,
+        prior_games_n: 9,
+        is_low_sample: false,
+      },
+      {
+        metric_key: 'rush_epa',
+        metric_label: 'Rush EPA',
+        team_abbr: 'BUF',
+        entering_baseline: 0.05,
+        realized_value: 0.04,
+        delta: -0.01,
+        prior_games_n: 9,
+        is_low_sample: false,
+      },
+      {
+        metric_key: 'cpoe',
+        metric_label: 'CPOE',
+        team_abbr: 'BUF',
+        entering_baseline: 5.4,
+        realized_value: 5.1,
+        delta: -0.3,
+        prior_games_n: 9,
+        is_low_sample: false,
+      },
+      {
+        metric_key: 'epa_per_play',
+        metric_label: 'EPA / Play',
+        team_abbr: 'NYJ',
+        entering_baseline: -0.04,
+        realized_value: -0.05,
+        delta: -0.01,
+        prior_games_n: 9,
+        is_low_sample: false,
+      },
+      {
+        metric_key: 'success_rate',
+        metric_label: 'Success Rate',
+        team_abbr: 'NYJ',
+        entering_baseline: 40.1,
+        realized_value: 39.2,
+        delta: -0.9,
+        prior_games_n: 9,
+        is_low_sample: false,
+      },
+      {
+        metric_key: 'dropback_epa',
+        metric_label: 'Dropback EPA',
+        team_abbr: 'NYJ',
+        entering_baseline: -0.06,
+        realized_value: -0.08,
+        delta: -0.02,
+        prior_games_n: 9,
+        is_low_sample: false,
+      },
+      {
+        metric_key: 'rush_epa',
+        metric_label: 'Rush EPA',
+        team_abbr: 'NYJ',
+        entering_baseline: -0.01,
+        realized_value: -0.02,
+        delta: -0.01,
+        prior_games_n: 9,
+        is_low_sample: false,
+      },
+      {
+        metric_key: 'cpoe',
+        metric_label: 'CPOE',
+        team_abbr: 'NYJ',
+        entering_baseline: -2.0,
+        realized_value: -2.3,
+        delta: -0.3,
+        prior_games_n: 9,
+        is_low_sample: false,
+      },
+    ],
+    divergence_note:
+      'NYJ Success Rate (+39.200) showed the largest divergence from entering baseline (+40.100).',
+  };
+}
+
 function stubFetchJson(payload: unknown, status = 200) {
   const fetchMock = vi.fn<typeof fetch>().mockResolvedValue({
     ok: status >= 200 && status < 300,
@@ -578,5 +769,262 @@ describe('GameDetailModal Component Tests', () => {
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
+  });
+
+  it('opens directly to Tab 4 (Attribution) for unplayed games with Tabs 1-3 disabled', async () => {
+    const explainData = makeExplainabilityData();
+    const weeklyDataset = {
+      schema_version: '1.0',
+      generated_at: '2026-11-16T00:00:00Z',
+      season: 2026,
+      week: 10,
+      games: [explainData],
+    };
+
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => weeklyDataset,
+    } as Response);
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <GameDetailModal
+        matchup={makeMatchup({
+          is_completed: false,
+          has_box_score: false,
+          has_projection: true,
+          projected_margin: -6.5,
+          home_win_prob: 0.32,
+          away_win_prob: 0.68,
+        })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    // Initial tab for unplayed game must be Tab 4 (Model Attribution)
+    const tabAttribution = screen.getByRole('tab', { name: /model attribution/i });
+    expect(tabAttribution).toHaveAttribute('aria-selected', 'true');
+
+    // Tabs 1-3 must be disabled with (Post-Game) indicator
+    const tabOverview = screen.getByRole('tab', { name: /overview & efficiency/i });
+    const tabComparison = screen.getByRole('tab', { name: /team comparison/i });
+    const tabBoxScore = screen.getByRole('tab', { name: /player box score/i });
+
+    expect(tabOverview).toBeDisabled();
+    expect(tabOverview).toHaveAttribute('aria-disabled', 'true');
+    expect(tabOverview).toHaveTextContent('(Post-Game)');
+
+    expect(tabComparison).toBeDisabled();
+    expect(tabComparison).toHaveAttribute('aria-disabled', 'true');
+    expect(tabComparison).toHaveTextContent('(Post-Game)');
+
+    expect(tabBoxScore).toBeDisabled();
+    expect(tabBoxScore).toHaveAttribute('aria-disabled', 'true');
+    expect(tabBoxScore).toHaveTextContent('(Post-Game)');
+
+    // Clicking a disabled tab must not change active tab
+    fireEvent.click(tabOverview);
+    expect(tabAttribution).toHaveAttribute('aria-selected', 'true');
+
+    // Wait for attribution data to load and render
+    await waitFor(() => {
+      expect(screen.getByTestId('points-waterfall-card')).toBeInTheDocument();
+    });
+
+    // 5-step points waterfall verification
+    expect(screen.getByText('5-Step Points Waterfall')).toBeInTheDocument();
+    expect(screen.getByText('Current-Season EPA')).toBeInTheDocument();
+    expect(screen.getByText('Pre-Season Prior')).toBeInTheDocument();
+    expect(screen.getByText('Elo Differential')).toBeInTheDocument();
+    expect(screen.getByText('Home Field Advantage')).toBeInTheDocument();
+    expect(screen.getByText('Starting Quarterback')).toBeInTheDocument();
+    expect(screen.getByText('Rounding')).toBeInTheDocument();
+    expect(screen.getByText('Pre-Game Forecast')).toBeInTheDocument();
+    expect(screen.getByText(/Additivity verified/)).toBeInTheDocument();
+  });
+
+  it('renders Secondary TreeSHAP card with agree/differ badge, win prob, out-of-sample track record, and feature toggle', async () => {
+    const explainData = makeExplainabilityData();
+    const weeklyDataset = {
+      schema_version: '1.0',
+      generated_at: '2026-11-16T00:00:00Z',
+      season: 2026,
+      week: 10,
+      games: [explainData],
+    };
+
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => weeklyDataset,
+    } as Response);
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <GameDetailModal
+        matchup={makeMatchup({
+          is_completed: false,
+          has_box_score: false,
+          has_projection: true,
+        })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('secondary-shap-card')).toBeInTheDocument();
+    });
+
+    // Agreement badge
+    const badge = screen.getByTestId('secondary-agreement-badge');
+    expect(badge).toHaveTextContent(/agrees with primary pick/i);
+
+    // Published out-of-sample track record
+    const trackRecord = screen.getByTestId('secondary-track-record');
+    expect(trackRecord).toHaveTextContent('145');
+    expect(trackRecord).toHaveTextContent('59.3%');
+    expect(trackRecord).toHaveTextContent('0.2232');
+    expect(trackRecord).toHaveTextContent('0.6348');
+
+    // Initial top 6 features shown
+    expect(screen.getByText('Overall EPA/Play Differential')).toBeInTheDocument();
+    expect(screen.getByText('Passing EPA Differential')).toBeInTheDocument();
+    expect(screen.getByText('Rushing EPA Differential')).toBeInTheDocument();
+
+    // Toggle to view all 12 features
+    const toggleBtn = screen.getByRole('button', { name: /show all 12 features/i });
+    expect(toggleBtn).toBeInTheDocument();
+
+    fireEvent.click(toggleBtn);
+    expect(screen.getByRole('button', { name: /show top 6 features/i })).toBeInTheDocument();
+    expect(screen.getByText('Minimum Team Games Played')).toBeInTheDocument();
+  });
+
+  it('renders Entering Efficiency Baselines card with 10 rows and divergence note callout', async () => {
+    const explainData = makeExplainabilityData();
+    const weeklyDataset = {
+      schema_version: '1.0',
+      generated_at: '2026-11-16T00:00:00Z',
+      season: 2026,
+      week: 10,
+      games: [explainData],
+    };
+
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => weeklyDataset,
+    } as Response);
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <GameDetailModal
+        matchup={makeMatchup({
+          is_completed: false,
+          has_box_score: false,
+          has_projection: true,
+        })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('entering-baselines-card')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Entering Efficiency Baselines')).toBeInTheDocument();
+    expect(screen.getByTestId('divergence-note-callout')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'NYJ Success Rate (+39.200) showed the largest divergence from entering baseline (+40.100).',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('allows completed games to navigate between all 4 tabs seamlessly', async () => {
+    const detailEnvelope = makeDetailEnvelope({
+      explainability: makeExplainabilityData(),
+    });
+    stubFetchJson(detailEnvelope);
+
+    render(<GameDetailModal matchup={makeMatchup({ is_completed: true })} onClose={vi.fn()} />);
+
+    // Defaults to Tab 1 Overview
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /overview & efficiency/i })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+    });
+
+    // Switch to Tab 4 Attribution
+    const tabAttribution = screen.getByRole('tab', { name: /model attribution/i });
+    fireEvent.click(tabAttribution);
+    expect(tabAttribution).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByTestId('points-waterfall-card')).toBeInTheDocument();
+
+    // Switch to Tab 2 Team Comparison
+    const tabComparison = screen.getByRole('tab', { name: /team comparison/i });
+    fireEvent.click(tabComparison);
+    expect(tabComparison).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('Team Statistics Comparison')).toBeInTheDocument();
+
+    // Switch to Tab 3 Player Box Score
+    const tabBoxScore = screen.getByRole('tab', { name: /player box score/i });
+    fireEvent.click(tabBoxScore);
+    expect(tabBoxScore).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('Injury report designations entering the game')).toBeInTheDocument();
+  });
+
+  it('contains zero betting terms across Tab 4 elements and copy', async () => {
+    const explainData = makeExplainabilityData();
+    const weeklyDataset = {
+      schema_version: '1.0',
+      generated_at: '2026-11-16T00:00:00Z',
+      season: 2026,
+      week: 10,
+      games: [explainData],
+    };
+
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => weeklyDataset,
+    } as Response);
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <GameDetailModal
+        matchup={makeMatchup({
+          is_completed: false,
+          has_box_score: false,
+          has_projection: true,
+        })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('points-waterfall-card')).toBeInTheDocument();
+    });
+
+    const dialog = screen.getByRole('dialog');
+    const fullText = dialog.textContent?.toLowerCase() || '';
+
+    const bannedTerms = [
+      'spread',
+      'moneyline',
+      'over_under',
+      'over/under',
+      'parlay',
+      'wager',
+      'sharp_book',
+      'key_number_flag',
+    ];
+
+    for (const term of bannedTerms) {
+      expect(fullText).not.toContain(term);
+    }
   });
 });

@@ -9,18 +9,25 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
+  Info,
   Loader2,
+  Sparkles,
   X,
 } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
 import type {
+  EfficiencyBaselineComparison,
   GameDetailEnvelope,
+  GameExplainabilityPayload,
   InjuryDesignationRow,
   NflBoxCategory,
   NflEfficiencyFactorItem,
   NflGameDetailPayload,
   NflPlayerBoxRow,
   NflTeamComparisonItem,
+  PointsWaterfallPayload,
+  SecondaryModelSummary,
+  WeeklyAttributionDataset,
 } from '@/lib/gameDetailTypes';
 import type { MatchupGame } from '@/lib/types';
 import { TeamLogo } from '@/components/TeamLogo';
@@ -31,7 +38,7 @@ export interface GameDetailModalProps {
   returnFocusTo?: HTMLElement | null;
 }
 
-export type DetailTab = 'overview' | 'comparison' | 'box_score';
+export type DetailTab = 'overview' | 'comparison' | 'box_score' | 'attribution';
 
 type SortDirection = 'asc' | 'desc';
 
@@ -211,6 +218,512 @@ const TeamComparisonRow: React.FC<TeamComparisonRowProps> = ({ item, awayAbbr, h
   );
 };
 
+export interface PointsWaterfallCardProps {
+  waterfall: PointsWaterfallPayload;
+  homeAbbr: string;
+  awayAbbr: string;
+  projectionBasis?: string | null;
+}
+
+export const PointsWaterfallCard: React.FC<PointsWaterfallCardProps> = ({
+  waterfall,
+  homeAbbr,
+  awayAbbr,
+  projectionBasis,
+}) => {
+  const steps = useMemo(() => {
+    const list = [...(waterfall.steps ?? [])];
+    const hasRounding = list.some(
+      (s) => s.key === 'step_rounding' || s.label.toLowerCase() === 'rounding',
+    );
+    if (!hasRounding && typeof waterfall.rounding === 'number') {
+      list.push({
+        key: 'step_rounding',
+        label: 'Rounding',
+        points: waterfall.rounding,
+        description: 'Decomposition residual',
+      });
+    }
+    return list;
+  }, [waterfall]);
+
+  const maxStepPoints = useMemo(() => {
+    const pts = steps.map((s) => Math.abs(s.points));
+    return Math.max(1, ...pts);
+  }, [steps]);
+
+  const stepsSum = useMemo(() => {
+    return steps.reduce((sum, s) => sum + s.points, 0);
+  }, [steps]);
+
+  const marginDiscrepancy = Math.abs(stepsSum - waterfall.projected_margin);
+
+  return (
+    <div
+      className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 sm:p-5 space-y-4"
+      data-testid="points-waterfall-card"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+        <div>
+          <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300">
+            5-Step Points Waterfall
+          </h3>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            Forecast decomposed into 5 additive factors plus residual rounding (points from home perspective).
+          </p>
+        </div>
+        <div>
+          {projectionBasis === 'logged_pregame' ? (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+              Pre-Game Forecast
+            </span>
+          ) : projectionBasis === 'backtest_preweek' ? (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+              Backtest (Pre-Week)
+            </span>
+          ) : (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-slate-800 text-slate-300 border border-slate-700">
+              Primary Ensemble
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Steps Table / Bars */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 uppercase px-1">
+          <span>Factor / Step</span>
+          <div className="flex items-center gap-6">
+            <span>{awayAbbr} &larr; Advantage &rarr; {homeAbbr}</span>
+            <span className="w-16 text-right">Points</span>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {steps.map((step) => {
+            const isHomeAdv = step.points > 0.001;
+            const isAwayAdv = step.points < -0.001;
+            const barWidth = Math.min(100, (Math.abs(step.points) / maxStepPoints) * 100);
+
+            return (
+              <div
+                key={step.key}
+                className="bg-slate-900/60 border border-slate-800/80 rounded-lg p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                data-testid={`waterfall-step-${step.key}`}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-white">{step.label}</span>
+                    {step.key === 'step_rounding' && (
+                      <span className="text-[10px] font-mono text-slate-500 px-1 py-0.2 rounded bg-slate-800 border border-slate-700/60">
+                        &le; 0.02
+                      </span>
+                    )}
+                  </div>
+                  {step.description && (
+                    <p className="text-[11px] text-slate-400 mt-0.5 leading-tight">{step.description}</p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  {/* Signed Relative Bar */}
+                  <div className="w-32 sm:w-44 flex items-center gap-1 h-2.5" aria-hidden="true">
+                    <div className="w-1/2 h-full bg-slate-800 rounded-l-full overflow-hidden flex justify-end">
+                      <div
+                        className={`h-full rounded-l-full transition-all ${
+                          isAwayAdv ? 'bg-amber-400' : 'bg-transparent'
+                        }`}
+                        style={{ width: `${isAwayAdv ? barWidth : 0}%` }}
+                      />
+                    </div>
+                    <div className="w-px h-3.5 bg-slate-600 flex-shrink-0" />
+                    <div className="w-1/2 h-full bg-slate-800 rounded-r-full overflow-hidden flex justify-start">
+                      <div
+                        className={`h-full rounded-r-full transition-all ${
+                          isHomeAdv ? 'bg-emerald-400' : 'bg-transparent'
+                        }`}
+                        style={{ width: `${isHomeAdv ? barWidth : 0}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Points value */}
+                  <div
+                    className={`w-16 text-right font-mono text-xs tabular-nums font-bold ${
+                      isHomeAdv ? 'text-emerald-400' : isAwayAdv ? 'text-amber-400' : 'text-slate-400'
+                    }`}
+                  >
+                    {step.points > 0 ? `+${step.points.toFixed(2)}` : step.points.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Waterfall Total Summary */}
+      <div className="border-t border-slate-800/80 pt-3 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-2">
+            <span className="text-slate-400">Sum of Steps:</span>
+            <span className="font-bold text-white tabular-nums">
+              {stepsSum > 0 ? `+${stepsSum.toFixed(2)}` : stepsSum.toFixed(2)} pts
+            </span>
+            <span className="text-slate-500">•</span>
+            <span className="text-slate-400">Projected Margin:</span>
+            <span className="font-bold text-emerald-400 tabular-nums">
+              {waterfall.projected_margin > 0
+                ? `+${waterfall.projected_margin.toFixed(2)}`
+                : waterfall.projected_margin.toFixed(2)}{' '}
+              pts
+            </span>
+          </div>
+          <div className="text-[11px] text-slate-500">
+            Win probability: {(waterfall.home_win_prob * 100).toFixed(1)}% via Φ(margin /{' '}
+            {waterfall.sigma?.toFixed(2) ?? '14.60'}).
+            {marginDiscrepancy <= 0.02 && (
+              <span className="text-emerald-500 ml-1">✓ Additivity verified (&le; 0.02)</span>
+            )}
+          </div>
+        </div>
+        <div className="text-right">
+          <span className="text-[11px] text-slate-400 uppercase tracking-wider block">Home Win Prob</span>
+          <span className="text-sm font-bold text-emerald-400 tabular-nums">
+            {(waterfall.home_win_prob * 100).toFixed(1)}%
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export interface SecondaryShapCardProps {
+  secondaryModel: SecondaryModelSummary;
+  homeAbbr: string;
+  awayAbbr: string;
+}
+
+export const SecondaryShapCard: React.FC<SecondaryShapCardProps> = ({
+  secondaryModel,
+  homeAbbr,
+  awayAbbr,
+}) => {
+  const [showAllFactors, setShowAllFactors] = useState<boolean>(false);
+
+  const sortedFactors = useMemo(() => {
+    return [...(secondaryModel.factors ?? [])].sort(
+      (a, b) => Math.abs(b.shap_value) - Math.abs(a.shap_value),
+    );
+  }, [secondaryModel.factors]);
+
+  const displayedFactors = showAllFactors ? sortedFactors : sortedFactors.slice(0, 6);
+
+  const maxShapAbs = useMemo(() => {
+    const vals = sortedFactors.map((f) => Math.abs(f.shap_value));
+    return Math.max(0.1, ...vals);
+  }, [sortedFactors]);
+
+  const shapSum = useMemo(() => {
+    return sortedFactors.reduce((acc, f) => acc + f.shap_value, 0);
+  }, [sortedFactors]);
+
+  const agrees = secondaryModel.agreement === 'agree';
+
+  return (
+    <div
+      className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 sm:p-5 space-y-4"
+      data-testid="secondary-shap-card"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300">
+              {secondaryModel.model_label || 'Secondary Model (TreeSHAP)'}
+            </h3>
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold flex items-center gap-1 border ${
+                agrees
+                  ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                  : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+              }`}
+              data-testid="secondary-agreement-badge"
+            >
+              {agrees ? (
+                <>
+                  <CheckCircle2 className="w-3 h-3" /> Agrees with Primary Pick
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="w-3 h-3" /> Differs from Primary Pick
+                </>
+              )}
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            Deterministic XGBoost TreeSHAP model trained on strictly historical seasons with entering signals only.
+          </p>
+        </div>
+
+        <div className="text-right">
+          <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">Model Win Prob</span>
+          <span className="text-sm font-mono font-bold text-white tabular-nums">
+            {(secondaryModel.model_win_prob * 100).toFixed(1)}%
+          </span>
+        </div>
+      </div>
+
+      {/* Out-of-sample track record */}
+      {secondaryModel.out_of_sample_record && (
+        <div
+          className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3 space-y-1.5"
+          data-testid="secondary-track-record"
+        >
+          <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 uppercase tracking-wider font-semibold">
+            <span>Published Out-of-Sample Track Record</span>
+            <span className="text-slate-500">Walk-forward validation</span>
+          </div>
+          <div className="grid grid-cols-4 gap-2 text-center font-mono">
+            <div className="bg-slate-950/80 p-2 rounded-lg border border-slate-800/60">
+              <span className="text-[10px] text-slate-500 block uppercase">Games</span>
+              <span className="text-xs font-bold text-white">{secondaryModel.out_of_sample_record.n_games}</span>
+            </div>
+            <div className="bg-slate-950/80 p-2 rounded-lg border border-slate-800/60">
+              <span className="text-[10px] text-slate-500 block uppercase">Accuracy</span>
+              <span className="text-xs font-bold text-emerald-400">
+                {secondaryModel.out_of_sample_record.accuracy.toFixed(1)}%
+              </span>
+            </div>
+            <div className="bg-slate-950/80 p-2 rounded-lg border border-slate-800/60">
+              <span className="text-[10px] text-slate-500 block uppercase">Brier</span>
+              <span className="text-xs font-bold text-slate-200">
+                {secondaryModel.out_of_sample_record.brier.toFixed(4)}
+              </span>
+            </div>
+            <div className="bg-slate-950/80 p-2 rounded-lg border border-slate-800/60">
+              <span className="text-[10px] text-slate-500 block uppercase">Log Loss</span>
+              <span className="text-xs font-bold text-slate-200">
+                {secondaryModel.out_of_sample_record.logloss.toFixed(4)}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TreeSHAP Feature Attribution Bars */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 uppercase px-1">
+          <span>Entering Signal</span>
+          <div className="flex items-center gap-6">
+            <span>{awayAbbr} &larr; Impact &rarr; {homeAbbr}</span>
+            <span className="w-16 text-right">SHAP (Log-Odds)</span>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {displayedFactors.map((factor) => {
+            const isHomeAdv = factor.shap_value > 0.0001;
+            const isAwayAdv = factor.shap_value < -0.0001;
+            const barWidth = Math.min(100, (Math.abs(factor.shap_value) / maxShapAbs) * 100);
+
+            return (
+              <div
+                key={factor.feature}
+                className="bg-slate-900/60 border border-slate-800/80 rounded-lg p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                data-testid={`shap-factor-${factor.feature}`}
+              >
+                <div className="min-w-0 flex-1">
+                  <span className="text-xs font-semibold text-white block">{factor.label}</span>
+                  <span className="text-[11px] font-mono text-slate-400">
+                    Entering Value: {isFiniteNum(factor.value) ? factor.value.toFixed(2) : '—'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  {/* Centered signed bar */}
+                  <div className="w-32 sm:w-44 flex items-center gap-1 h-2.5" aria-hidden="true">
+                    <div className="w-1/2 h-full bg-slate-800 rounded-l-full overflow-hidden flex justify-end">
+                      <div
+                        className={`h-full rounded-l-full transition-all ${
+                          isAwayAdv ? 'bg-amber-400' : 'bg-transparent'
+                        }`}
+                        style={{ width: `${isAwayAdv ? barWidth : 0}%` }}
+                      />
+                    </div>
+                    <div className="w-px h-3.5 bg-slate-600 flex-shrink-0" />
+                    <div className="w-1/2 h-full bg-slate-800 rounded-r-full overflow-hidden flex justify-start">
+                      <div
+                        className={`h-full rounded-r-full transition-all ${
+                          isHomeAdv ? 'bg-emerald-400' : 'bg-transparent'
+                        }`}
+                        style={{ width: `${isHomeAdv ? barWidth : 0}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div
+                    className={`w-16 text-right font-mono text-xs tabular-nums font-bold ${
+                      isHomeAdv ? 'text-emerald-400' : isAwayAdv ? 'text-amber-400' : 'text-slate-400'
+                    }`}
+                  >
+                    {factor.shap_value > 0 ? `+${factor.shap_value.toFixed(4)}` : factor.shap_value.toFixed(4)}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {sortedFactors.length > 6 && (
+          <div className="pt-1 text-center">
+            <button
+              type="button"
+              onClick={() => setShowAllFactors((prev) => !prev)}
+              className="text-xs font-mono font-semibold text-emerald-400 hover:text-emerald-300 py-1 px-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 transition-colors"
+            >
+              {showAllFactors ? 'Show Top 6 Features' : `Show All ${sortedFactors.length} Features`}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Additivity description note */}
+      <div className="border-t border-slate-800/80 pt-3 text-[11px] font-mono text-slate-400 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          TreeSHAP Additivity: Base Value ({secondaryModel.base_value.toFixed(3)}) + &sum; SHAP ({shapSum.toFixed(3)}) = Logit ({secondaryModel.logit.toFixed(3)}).
+        </div>
+        <div className="text-slate-500">
+          &sigma;(Logit) = {(secondaryModel.model_win_prob * 100).toFixed(1)}% (&plusmn;1e-4)
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export interface EnteringBaselinesCardProps {
+  baselines: EfficiencyBaselineComparison[];
+  divergenceNote: string | null;
+  homeAbbr: string;
+  awayAbbr: string;
+  isCompleted: boolean;
+}
+
+export const EnteringBaselinesCard: React.FC<EnteringBaselinesCardProps> = ({
+  baselines,
+  divergenceNote,
+  homeAbbr,
+  awayAbbr,
+  isCompleted,
+}) => {
+  const hasLowSample = useMemo(() => {
+    return baselines.some((b) => b.is_low_sample);
+  }, [baselines]);
+
+  const formatBaselineValue = (val: number | null): string => {
+    if (val === null || !isFiniteNum(val)) return '—';
+    return val > 0 ? `+${val.toFixed(3)}` : val.toFixed(3);
+  };
+
+  return (
+    <div
+      className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 sm:p-5 space-y-4"
+      data-testid="entering-baselines-card"
+    >
+      <div className="border-b border-slate-800/80 pb-3 space-y-1">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300">
+            Entering Efficiency Baselines
+          </h3>
+          <span className="text-[11px] font-mono text-slate-500">Strictly prior games</span>
+        </div>
+        <p className="text-[11px] text-slate-400 leading-snug">
+          Season-to-date efficiency metrics entering the game, computed over strictly prior games (week &lt; current game week).
+        </p>
+      </div>
+
+      {hasLowSample && (
+        <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <span>Low sample alert: Fewer than 4 prior games recorded this season. Baselines carry higher uncertainty.</span>
+        </div>
+      )}
+
+      {/* 10-row baseline comparison table */}
+      <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/40">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-900/80 font-mono text-[11px] text-slate-400 uppercase tracking-wider border-b border-slate-800">
+              <tr>
+                <th className="py-2.5 px-3">Team</th>
+                <th className="py-2.5 px-3">Metric</th>
+                <th className="py-2.5 px-3 text-center">Prior Games</th>
+                <th className="py-2.5 px-3 text-right">Entering Baseline</th>
+                <th className="py-2.5 px-3 text-right">Realized</th>
+                <th className="py-2.5 px-3 text-right">Delta</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60 font-mono tabular-nums">
+              {baselines.map((row, idx) => {
+                const deltaNum = isFiniteNum(row.delta) ? row.delta : null;
+                const deltaClass =
+                  deltaNum === null
+                    ? 'text-slate-400'
+                    : deltaNum > 0
+                    ? 'text-emerald-400 font-semibold'
+                    : deltaNum < 0
+                    ? 'text-rose-400 font-semibold'
+                    : 'text-slate-300';
+
+                return (
+                  <tr key={`${row.team_abbr}-${row.metric_key}-${idx}`} className="hover:bg-slate-800/20">
+                    <td className="py-2 px-3 font-bold text-white">
+                      {row.team_abbr ?? (idx < 5 ? awayAbbr : homeAbbr)}
+                    </td>
+                    <td className="py-2 px-3 font-sans text-slate-200">{row.metric_label}</td>
+                    <td className="py-2 px-3 text-center text-slate-400">{row.prior_games_n}</td>
+                    <td className="py-2 px-3 text-right text-slate-300">
+                      {formatBaselineValue(row.entering_baseline)}
+                    </td>
+                    <td className="py-2 px-3 text-right text-slate-300">
+                      {formatBaselineValue(row.realized_value)}
+                    </td>
+                    <td className={`py-2 px-3 text-right ${deltaClass}`}>
+                      {deltaNum !== null ? (deltaNum > 0 ? `+${deltaNum.toFixed(3)}` : deltaNum.toFixed(3)) : '—'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Divergence note callout */}
+      {divergenceNote ? (
+        <div
+          className="bg-slate-900/60 border border-slate-800 rounded-xl p-3.5 space-y-1.5"
+          data-testid="divergence-note-callout"
+        >
+          <div className="flex items-center gap-1.5 text-xs font-mono font-semibold text-emerald-400">
+            <Sparkles className="w-4 h-4" />
+            <span>Largest Baseline Divergence</span>
+          </div>
+          <p className="text-xs font-mono text-slate-200">{divergenceNote}</p>
+          <p className="text-[11px] text-slate-500 italic">
+            Descriptive indicator of largest divergence between entering baseline and realized game performance; makes no causal claim.
+          </p>
+        </div>
+      ) : (
+        <div className="bg-slate-900/30 border border-slate-800/60 rounded-xl p-3 text-xs text-slate-500 italic font-mono">
+          {isCompleted
+            ? 'No significant baseline divergence recorded for this game (or play-by-play data is pending ingest).'
+            : 'Baseline divergence will be calculated after the game concludes and efficiency data is ingested.'}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const GameDetailModal: React.FC<GameDetailModalProps> = ({
   matchup,
   onClose,
@@ -219,7 +732,9 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
   const [detail, setDetail] = useState<NflGameDetailPayload | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<DetailTab>('overview');
+  const [activeTab, setActiveTab] = useState<DetailTab>(
+    matchup && !matchup.is_completed ? 'attribution' : 'overview',
+  );
   const [boxCategory, setBoxCategory] = useState<NflBoxCategory>('passing');
   const [boxTeamFilter, setBoxTeamFilter] = useState<'both' | 'away' | 'home'>('both');
   const [sortKey, setSortKey] = useState<string | null>(null);
@@ -357,7 +872,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
 
   // Fetch game detail payload
   useEffect(() => {
-    if (!gameId) {
+    if (!gameId || !matchup) {
       setDetail(null);
       setLoading(false);
       setFetchError(null);
@@ -370,15 +885,76 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
 
     const fetchDetail = async () => {
       try {
-        const res = await fetch(`${BASE_PATH}/data/games/${gameId}.json`);
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-        const raw = await res.json();
-        const payload = unwrapEnvelope(raw);
-        if (!cancelled) {
-          setDetail(payload);
-          setLoading(false);
+        if (matchup.is_completed) {
+          const res = await fetch(`${BASE_PATH}/data/games/${gameId}.json`);
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+          const raw = await res.json();
+          const payload = unwrapEnvelope(raw);
+          if (!cancelled) {
+            setDetail(payload);
+            setLoading(false);
+          }
+        } else {
+          const season = matchup.season ?? 2026;
+          const week = matchup.week;
+          const res = await fetch(`${BASE_PATH}/data/week_attribution/${season}_${week}.json`);
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+          const raw: WeeklyAttributionDataset = await res.json();
+          const explainData: GameExplainabilityPayload | null =
+            raw && Array.isArray(raw.games)
+              ? raw.games.find((g: GameExplainabilityPayload) => g.game_id === gameId) ?? null
+              : null;
+
+          const synthesizedPayload: NflGameDetailPayload = {
+            game_id: matchup.game_id,
+            season: matchup.season,
+            season_label: `${matchup.season}-${matchup.season + 1}`,
+            week: matchup.week,
+            week_label: `Week ${matchup.week}`,
+            gameday: matchup.gameday,
+            weekday: matchup.weekday,
+            gametime: matchup.gametime,
+            is_completed: false,
+            has_box_score: false,
+            away_team: {
+              teamAbbr: matchup.away_team,
+              teamName: matchup.away_team_name,
+              score: null,
+              is_winner: null,
+            },
+            home_team: {
+              teamAbbr: matchup.home_team,
+              teamName: matchup.home_team_name,
+              score: null,
+              is_winner: null,
+            },
+            forecast: {
+              projected_margin: explainData?.predicted_margin ?? matchup.projected_margin ?? null,
+              home_win_prob: explainData?.predicted_home_win_prob ?? matchup.home_win_prob ?? null,
+              away_win_prob:
+                explainData?.predicted_home_win_prob != null
+                  ? 1 - explainData.predicted_home_win_prob
+                  : matchup.away_win_prob ?? null,
+              home_power_rating: matchup.home_power_rating ?? null,
+              away_power_rating: matchup.away_power_rating ?? null,
+              prediction_correct: null,
+            },
+            efficiency_factors: null,
+            team_stats: null,
+            leaders: null,
+            box_score: null,
+            injury_designations: null,
+            explainability: explainData,
+          };
+
+          if (!cancelled) {
+            setDetail(synthesizedPayload);
+            setLoading(false);
+          }
         }
       } catch (err: unknown) {
         if (!cancelled) {
@@ -395,16 +971,16 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [gameId]);
+  }, [gameId, matchup]);
 
   // Reset tab selection on game change
   useEffect(() => {
-    setActiveTab('overview');
+    setActiveTab(matchup && !matchup.is_completed ? 'attribution' : 'overview');
     setBoxCategory('passing');
     setBoxTeamFilter('both');
     setSortKey(null);
     setSortDir('desc');
-  }, [gameId]);
+  }, [gameId, matchup]);
 
   // Derived state
   const isCompleted = matchup?.is_completed ?? detail?.is_completed ?? false;
@@ -655,42 +1231,77 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
               id="tab-overview"
               aria-controls="panel-overview"
               aria-selected={activeTab === 'overview'}
-              onClick={() => setActiveTab('overview')}
+              disabled={!isCompleted}
+              aria-disabled={!isCompleted}
+              onClick={() => isCompleted && setActiveTab('overview')}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${
-                activeTab === 'overview'
+                !isCompleted
+                  ? 'opacity-40 cursor-not-allowed text-slate-500'
+                  : activeTab === 'overview'
                   ? 'bg-slate-800 text-white font-semibold border border-slate-700/70 shadow-sm'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
               }`}
             >
-              Overview & Efficiency
+              Overview & Efficiency{' '}
+              {!isCompleted && (
+                <span className="text-[10px] ml-1 text-slate-500 font-mono">(Post-Game)</span>
+              )}
             </button>
             <button
               role="tab"
               id="tab-comparison"
               aria-controls="panel-comparison"
               aria-selected={activeTab === 'comparison'}
-              onClick={() => setActiveTab('comparison')}
+              disabled={!isCompleted}
+              aria-disabled={!isCompleted}
+              onClick={() => isCompleted && setActiveTab('comparison')}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${
-                activeTab === 'comparison'
+                !isCompleted
+                  ? 'opacity-40 cursor-not-allowed text-slate-500'
+                  : activeTab === 'comparison'
                   ? 'bg-slate-800 text-white font-semibold border border-slate-700/70 shadow-sm'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
               }`}
             >
-              Team Comparison
+              Team Comparison{' '}
+              {!isCompleted && (
+                <span className="text-[10px] ml-1 text-slate-500 font-mono">(Post-Game)</span>
+              )}
             </button>
             <button
               role="tab"
               id="tab-box-score"
               aria-controls="panel-box-score"
               aria-selected={activeTab === 'box_score'}
-              onClick={() => setActiveTab('box_score')}
+              disabled={!isCompleted}
+              aria-disabled={!isCompleted}
+              onClick={() => isCompleted && setActiveTab('box_score')}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${
-                activeTab === 'box_score'
+                !isCompleted
+                  ? 'opacity-40 cursor-not-allowed text-slate-500'
+                  : activeTab === 'box_score'
                   ? 'bg-slate-800 text-white font-semibold border border-slate-700/70 shadow-sm'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
               }`}
             >
-              Player Box Score
+              Player Box Score{' '}
+              {!isCompleted && (
+                <span className="text-[10px] ml-1 text-slate-500 font-mono">(Post-Game)</span>
+              )}
+            </button>
+            <button
+              role="tab"
+              id="tab-attribution"
+              aria-controls="panel-attribution"
+              aria-selected={activeTab === 'attribution'}
+              onClick={() => setActiveTab('attribution')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${
+                activeTab === 'attribution'
+                  ? 'bg-slate-800 text-white font-semibold border border-slate-700/70 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+              }`}
+            >
+              Model Attribution
             </button>
           </div>
         </div>
@@ -704,24 +1315,44 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
             </div>
           )}
 
-          {!loading && (!hasBoxScore || fetchError || !detail) && (
+          {!loading && (!detail || fetchError) && (
             <div className="py-12 px-4 rounded-xl bg-slate-950/40 border border-slate-800 text-center space-y-3">
               <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
               <div className="space-y-1">
                 <p className="text-sm font-semibold text-slate-200">
-                  {isCompleted ? 'Final. Box score is added on a later data refresh.' : 'Box score is added on a later data refresh.'}
+                  {isCompleted
+                    ? 'Final. Box score is added on a later data refresh.'
+                    : 'Game attribution is not yet available.'}
                 </p>
                 <p className="text-xs text-slate-400">
-                  Data from nflreadr will populate automatically once finalized and ingested.
+                  {isCompleted
+                    ? 'Data from nflreadr will populate automatically once finalized and ingested.'
+                    : 'Attribution data will populate once weekly forecasts are logged.'}
                 </p>
               </div>
             </div>
           )}
 
-          {!loading && hasBoxScore && detail && (
+          {!loading && detail && !fetchError && (
             <>
+              {/* Post-game fallback when viewing Tabs 1-3 without box score */}
+              {activeTab !== 'attribution' && (!hasBoxScore || !detail.box_score) && (
+                <div className="py-12 px-4 rounded-xl bg-slate-950/40 border border-slate-800 text-center space-y-3">
+                  <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-slate-200">
+                      {isCompleted
+                        ? 'Final. Box score is added on a later data refresh.'
+                        : 'Box score is added on a later data refresh.'}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      Data from nflreadr will populate automatically once finalized and ingested.
+                    </p>
+                  </div>
+                </div>
+              )}
               {/* Tab 1: Overview & Efficiency */}
-              {activeTab === 'overview' && (
+              {activeTab === 'overview' && hasBoxScore && (
                 <div role="tabpanel" id="panel-overview" aria-labelledby="tab-overview" className="space-y-6">
                   {/* Category Leaders */}
                   {leaders && leaders.length > 0 && (
@@ -801,7 +1432,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
               )}
 
               {/* Tab 2: Team Comparison */}
-              {activeTab === 'comparison' && (
+              {activeTab === 'comparison' && hasBoxScore && (
                 <div role="tabpanel" id="panel-comparison" aria-labelledby="tab-comparison" className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400">
@@ -832,7 +1463,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
               )}
 
               {/* Tab 3: Player Box Score */}
-              {activeTab === 'box_score' && (
+              {activeTab === 'box_score' && hasBoxScore && (
                 <div role="tabpanel" id="panel-box-score" aria-labelledby="tab-box-score" className="space-y-6">
                   {/* Category & Team Filters */}
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1310,6 +1941,54 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                       </div>
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* Tab 4: Model Attribution */}
+              {activeTab === 'attribution' && (
+                <div
+                  role="tabpanel"
+                  id="panel-attribution"
+                  aria-labelledby="tab-attribution"
+                  className="space-y-6"
+                >
+                  {detail?.explainability ? (
+                    <>
+                      <PointsWaterfallCard
+                        waterfall={detail.explainability.waterfall}
+                        homeAbbr={matchup.home_team}
+                        awayAbbr={matchup.away_team}
+                        projectionBasis={detail.explainability.projection_basis}
+                      />
+                      {detail.explainability.secondary_model && (
+                        <SecondaryShapCard
+                          secondaryModel={detail.explainability.secondary_model}
+                          homeAbbr={matchup.home_team}
+                          awayAbbr={matchup.away_team}
+                        />
+                      )}
+                      {detail.explainability.entering_baselines &&
+                        detail.explainability.entering_baselines.length > 0 && (
+                          <EnteringBaselinesCard
+                            baselines={detail.explainability.entering_baselines}
+                            divergenceNote={detail.explainability.divergence_note}
+                            homeAbbr={matchup.home_team}
+                            awayAbbr={matchup.away_team}
+                            isCompleted={isCompleted}
+                          />
+                        )}
+                    </>
+                  ) : (
+                    <div className="py-12 px-4 rounded-xl bg-slate-950/40 border border-slate-800 text-center space-y-2">
+                      <Info className="w-8 h-8 text-slate-400 mx-auto" />
+                      <p className="text-sm font-semibold text-slate-200">
+                        No model attribution recorded
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        Attribution decomposition and secondary explanations will be generated once forecast ratings are logged.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </>

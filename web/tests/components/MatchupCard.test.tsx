@@ -124,15 +124,38 @@ describe('MatchupCard interactive trigger', () => {
     expect(card).not.toHaveAttribute('aria-label');
   });
 
-  it('renders non-interactive card when onSelect is passed but matchup is not completed', () => {
+  it('renders non-interactive card when onSelect is passed but matchup is uncompleted without forecast', () => {
     const onSelect = vi.fn();
-    const game = makeMatchup({ is_completed: false });
+    const game = makeMatchup({
+      is_completed: false,
+      has_projection: false,
+      projected_margin: null,
+    });
     render(<MatchupCard matchup={game} onSelect={onSelect} />);
 
     const card = screen.getByTestId('matchup-card');
     expect(card).not.toHaveAttribute('role');
     expect(card).not.toHaveAttribute('tabindex');
     expect(card).not.toHaveAttribute('aria-label');
+  });
+
+  it('renders accessible button when uncompleted/scheduled but has forecast projection', () => {
+    const onSelect = vi.fn();
+    const game = makeMatchup({
+      is_completed: false,
+      has_projection: true,
+      projected_margin: -6.5,
+    });
+    render(<MatchupCard matchup={game} onSelect={onSelect} />);
+
+    const cardBtn = screen.getByRole('button', {
+      name: formatMatchupInspectLabel(game),
+    });
+    expect(cardBtn).toHaveAttribute('tabindex', '0');
+
+    fireEvent.click(cardBtn);
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith(game, cardBtn);
   });
 
   it('renders accessible button when completed and onSelect is passed', () => {

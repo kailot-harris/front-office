@@ -440,7 +440,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                   const isHomeFav = hasProj ? m.projected_margin! > 0 : false;
                   const favTeam = hasProj ? (isHomeFav ? m.home_team : m.away_team) : null;
                   const margin = hasProj ? Math.abs(m.projected_margin!).toFixed(1) : null;
-                  const isInteractive = Boolean(m.is_completed);
+                  const isInteractive = Boolean(m.is_completed || hasProj);
 
                   return (
                     <tr
