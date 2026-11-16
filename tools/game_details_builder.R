@@ -308,6 +308,10 @@ if (!dir.exists(WEB_GAMES_DIR)) {
       as.character(p$player_name)
     }
 
+    if (is.na(pid) || !nzchar(pid) || pid == "NA" || is.na(pname) || !nzchar(pname) || pname == "NA") {
+      next
+    }
+
     # Resolve snap_pct
     pfr_id <- gsis_to_pfr[[pid]]
     snap_pct <- NULL
