@@ -317,23 +317,17 @@ describe('matchups — schedule integrity', () => {
 describe('matchups — projection coherence', () => {
   const d = matchups();
 
-  it('home_win_prob + away_win_prob === 1', () => {
-    for (const m of d.matchups) {
-      expect(m.home_win_prob + m.away_win_prob, `${m.game_id}`).toBeCloseTo(1, 2);
+  it('home_win_prob + away_win_prob === 1 for projected games', () => {
+    for (const m of d.matchups.filter((m) => m.has_projection && m.home_win_prob != null && m.away_win_prob != null)) {
+      expect(m.home_win_prob! + m.away_win_prob!, `${m.game_id}`).toBeCloseTo(1, 2);
     }
   });
 
-  it('projected_spread is the negation of projected_margin', () => {
-    // A home favourite has a positive margin and a negative (laying) spread.
-    for (const m of d.matchups) {
-      expect(m.projected_spread, `${m.game_id}`).toBeCloseTo(-m.projected_margin, 2);
-    }
-  });
-
-  it('the favourite by margin is also the favourite by win probability', () => {
+  it('the favourite by margin is also the favourite by win probability for projected games', () => {
     const offenders = d.matchups
-      .filter((m) => Math.abs(m.projected_margin) > 0.5)
-      .filter((m) => (m.projected_margin > 0) !== (m.home_win_prob > 0.5))
+      .filter((m) => m.has_projection && m.projected_margin != null && m.home_win_prob != null)
+      .filter((m) => Math.abs(m.projected_margin!) > 0.5)
+      .filter((m) => (m.projected_margin! > 0) !== (m.home_win_prob! > 0.5))
       .map((m) => `${m.game_id}: margin ${m.projected_margin} but home_win_prob ${m.home_win_prob}`);
     expect(offenders).toEqual([]);
   });
@@ -380,18 +374,18 @@ describe('matchups — projection coherence', () => {
     // `pred_winner == h_name` STRING comparison against the graded record.
     // When that comparison picks the wrong side, the card shows a favourite
     // that the badge then contradicts.
-    const graded = d.matchups.filter((m) => m.is_completed && m.home_score !== m.away_score);
+    const graded = d.matchups.filter((m) => m.is_completed && m.home_score !== m.away_score && m.has_projection && m.projected_margin != null);
     const offenders = graded
-      .filter((m) => m.prediction_correct !== ((m.projected_margin > 0) === (m.actual_winner === m.home_team_name)))
+      .filter((m) => m.prediction_correct !== ((m.projected_margin! > 0) === (m.actual_winner === m.home_team_name)))
       .map(
         (m) =>
-          `${m.game_id}: margin ${m.projected_margin > 0 ? '+' : ''}${m.projected_margin} favours ` +
-          `${m.projected_margin > 0 ? m.home_team : m.away_team}, ${m.actual_winner} won ` +
+          `${m.game_id}: margin ${m.projected_margin! > 0 ? '+' : ''}${m.projected_margin} favours ` +
+          `${m.projected_margin! > 0 ? m.home_team : m.away_team}, ${m.actual_winner} won ` +
           `${m.away_score}-${m.home_score}, badge says ${m.prediction_correct ? 'CORRECT' : 'WRONG'}`,
       );
     const flagAccuracy = graded.filter((m) => m.prediction_correct).length / graded.length;
     const marginAccuracy =
-      graded.filter((m) => (m.projected_margin > 0) === (m.actual_winner === m.home_team_name)).length / graded.length;
+      graded.filter((m) => (m.projected_margin! > 0) === (m.actual_winner === m.home_team_name)).length / graded.length;
     expect(
       offenders.slice(0, 8),
       `${offenders.length}/${graded.length} completed games contradict themselves. ` +
@@ -436,31 +430,6 @@ describe('matchups — projection coherence', () => {
     const latest = Array.isArray(graded) ? graded[graded.length - 1] : graded;
     expect(completed, 'matchups and model_diagnostics disagree on how many games are in the books')
       .toBe(latest);
-  });
-
-  it('key_number_flag uses only the documented vocabulary', () => {
-    const VALID = /^(Standard|(3|4|6|7|10)-pt Key)$/;
-    const offenders = [...new Set(d.matchups.map((m) => m.key_number_flag))].filter((f) => !VALID.test(f));
-    expect(offenders, 'unrecognised key_number_flag value(s)').toEqual([]);
-  });
-
-  it('an "N-pt Key" flag really does sit within a point of N', () => {
-    const offenders = d.matchups
-      .filter((m) => m.key_number_flag !== 'Standard')
-      .filter((m) => Math.abs(Math.abs(m.projected_margin) - parseInt(m.key_number_flag, 10)) > 1)
-      .map((m) => `${m.game_id}: margin ${m.projected_margin} flagged "${m.key_number_flag}"`);
-    expect(offenders.slice(0, 10)).toEqual([]);
-  });
-
-  it('every key number advertised on the matchups page is reachable', () => {
-    // app/matchups/page.tsx prints a "Key Margin Alerts: 3, 7, 6, 10, 4" chip.
-    // If the export never emits one of those, the chip is lying to the user.
-    const advertised = [3, 7, 6, 10, 4];
-    const emitted = new Set(
-      d.matchups.filter((m) => m.key_number_flag !== 'Standard').map((m) => parseInt(m.key_number_flag, 10)),
-    );
-    const unreachable = advertised.filter((n) => !emitted.has(n));
-    expect(unreachable, 'app/matchups/page.tsx advertises key number(s) the data never flags').toEqual([]);
   });
 });
 

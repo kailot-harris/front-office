@@ -27,7 +27,7 @@
 # WHAT IT DELIBERATELY DOES NOT DO
 #
 #   * It never invents or alters a prediction. `home_win_prob`,
-#     `projected_margin`, `projected_spread`, `projected_total` and the rest of
+#     `projected_margin` and the rest of
 #     the projection block are copied through untouched. It only GRADES them,
 #     and grading here is a pure function of fields already committed in the
 #     file (see .rlr_grade below) - not a recomputation from current ratings,
@@ -185,7 +185,11 @@ fetch_season_results <- function(season = CURRENT_SEASON,
   }
   home_won <- home_score > away_score
   row$actual_winner <- if (home_won) row$home_team_name else row$away_team_name
-  row$prediction_correct <- ((row$projected_margin > 0) == home_won)
+  if (is.null(row$projected_margin) || is.na(row$projected_margin) || identical(row$has_projection, FALSE)) {
+    row$prediction_correct <- NA
+  } else {
+    row$prediction_correct <- ((row$projected_margin > 0) == home_won)
+  }
   row
 }
 

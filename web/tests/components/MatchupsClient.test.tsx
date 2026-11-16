@@ -180,18 +180,18 @@ describe('MatchupsClient derived statistics', () => {
 
   it('identifies the largest projected favourite in the active week', () => {
     const { container } = render(<MatchupsClient dataset={dataset} />);
-    const biggest = [...weekGames(dataset.active_week)].sort(
-      (a, b) => Math.abs(b.projected_margin) - Math.abs(a.projected_margin),
-    )[0];
-    expect(container.textContent).toContain(Math.abs(biggest.projected_margin).toFixed(1));
+    const biggest = [...weekGames(dataset.active_week)]
+      .filter((g) => g.has_projection && g.projected_margin != null)
+      .sort((a, b) => Math.abs(b.projected_margin!) - Math.abs(a.projected_margin!))[0];
+    expect(container.textContent).toContain(Math.abs(biggest.projected_margin!).toFixed(1));
   });
 
   it('identifies the closest projected game in the active week', () => {
     const { container } = render(<MatchupsClient dataset={dataset} />);
-    const closest = [...weekGames(dataset.active_week)].sort(
-      (a, b) => Math.abs(a.projected_margin) - Math.abs(b.projected_margin),
-    )[0];
-    expect(container.textContent).toContain(`Line: ${Math.abs(closest.projected_margin).toFixed(1)} pts`);
+    const closest = [...weekGames(dataset.active_week)]
+      .filter((g) => g.has_projection && g.projected_margin != null)
+      .sort((a, b) => Math.abs(a.projected_margin!) - Math.abs(b.projected_margin!))[0];
+    expect(container.textContent).toContain(`Margin: ${Math.abs(closest.projected_margin!).toFixed(1)} pts`);
   });
 });
 

@@ -564,6 +564,7 @@ run_export_web_datasets <- function() {
     hist_record <- graded_map[[hist_key]]
   
     if (nrow(proj_match) > 0 && !is_done) {
+      has_proj <- TRUE
       proj_margin <- round(proj_match$projected_margin[1], 1)
       h_win_prob <- round(proj_match$home_win_prob[1], 3)
       a_win_prob <- round(1 - h_win_prob, 3)
@@ -573,6 +574,7 @@ run_export_web_datasets <- function() {
       pred_correct <- NULL
     } else {
       if (!is.null(hist_record)) {
+        has_proj <- TRUE
         pred_prob <- as.numeric(hist_record$predicted_win_prob)
         pred_winner <- as.character(hist_record$predicted_winner)
       
@@ -589,7 +591,10 @@ run_export_web_datasets <- function() {
           act_winner <- as.character(hist_record$actual_winner)
           pred_correct <- (act_winner == pred_winner)
         }
+        h_pwr <- 0.0
+        a_pwr <- 0.0
       } else {
+        has_proj <- FALSE
         if (is_done) {
           if (h_score > a_score) {
             act_winner <- h_name
@@ -602,17 +607,13 @@ run_export_web_datasets <- function() {
           act_winner <- NULL
         }
         pred_correct <- NULL
-        proj_margin <- 2.5
-        h_win_prob <- 0.57
-        a_win_prob <- 0.43
+        proj_margin <- NULL
+        h_win_prob <- NULL
+        a_win_prob <- NULL
+        h_pwr <- NULL
+        a_pwr <- NULL
       }
-      h_pwr <- 0.0
-      a_pwr <- 0.0
     }
-  
-    proj_spread <- round(-proj_margin, 1)
-    abs_spread <- abs(proj_spread)
-    key_number_flag <- if (abs(abs_spread - 3) <= 0.5) "3-pt Key" else if (abs(abs_spread - 7) <= 0.5) "7-pt Key" else if (abs(abs_spread - 6) <= 0.5) "6-pt Key" else if (abs(abs_spread - 10) <= 0.5) "10-pt Key" else if (abs(abs_spread - 4) <= 0.5) "4-pt Key" else "Standard"
 
     all_matchups_list[[length(all_matchups_list) + 1]] <- list(
       game_id           = gid,
@@ -627,9 +628,8 @@ run_export_web_datasets <- function() {
       away_team_name    = a_name,
       home_power_rating = h_pwr,
       away_power_rating = a_pwr,
+      has_projection    = has_proj,
       projected_margin  = proj_margin,
-      projected_spread  = proj_spread,
-      projected_total   = 44.5,
       home_win_prob     = h_win_prob,
       away_win_prob     = a_win_prob,
       home_rest_days    = h_rest,
@@ -637,7 +637,6 @@ run_export_web_datasets <- function() {
       rest_diff         = h_rest - a_rest,
       home_travel_miles = h_miles,
       away_travel_miles = a_miles,
-      key_number_flag   = key_number_flag,
       is_completed      = is_done,
       home_score        = if (is_done) as.integer(h_score) else NULL,
       away_score        = if (is_done) as.integer(a_score) else NULL,

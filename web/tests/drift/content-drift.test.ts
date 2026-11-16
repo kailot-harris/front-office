@@ -171,20 +171,10 @@ describe('schedule copy matches the schedule', () => {
     ).toBe(d.matchups.length);
   });
 
-  it('the matchups page key-number chip lists only numbers the data emits', () => {
+  it('the matchups page slate chip matches total_games', () => {
     const src = read('app', 'matchups', 'page.tsx');
-    const chip = src.match(/Key Margin Alerts[\s\S]{0,300}?>\s*(\d[\d,\s]*)</);
-    expect(chip, 'could not find the Key Margin Alerts chip').not.toBeNull();
-    const advertised = chip![1].split(',').map((s) => Number(s.trim())).filter(Number.isFinite);
-    const emitted = new Set(
-      d.matchups.filter((m) => m.key_number_flag !== 'Standard').map((m) => parseInt(m.key_number_flag, 10)),
-    );
-    const unreachable = advertised.filter((n) => !emitted.has(n));
-    expect(
-      unreachable,
-      `app/matchups/page.tsx advertises key number(s) ${JSON.stringify(unreachable)} that ` +
-        `key_number_flag never produces.`,
-    ).toEqual([]);
+    const chip = src.match(/Schedule Slate[\s\S]{0,300}?>\s*\{dataset\.total_games\}\s*Games</);
+    expect(chip, 'could not find the Schedule Slate chip').not.toBeNull();
   });
 });
 

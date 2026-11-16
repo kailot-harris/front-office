@@ -66,13 +66,23 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
 
   // Key stats highlights
   const largestFavorite = useMemo(() => {
-    if (weekMatchups.length === 0) return null;
-    return [...weekMatchups].sort((a, b) => Math.abs(b.projected_margin) - Math.abs(a.projected_margin))[0];
+    const projected = weekMatchups.filter(
+      (m) => m.has_projection && m.projected_margin != null
+    );
+    if (projected.length === 0) return null;
+    return [...projected].sort(
+      (a, b) => Math.abs(b.projected_margin!) - Math.abs(a.projected_margin!)
+    )[0];
   }, [weekMatchups]);
 
   const closestGame = useMemo(() => {
-    if (weekMatchups.length === 0) return null;
-    return [...weekMatchups].sort((a, b) => Math.abs(a.projected_margin) - Math.abs(b.projected_margin))[0];
+    const projected = weekMatchups.filter(
+      (m) => m.has_projection && m.projected_margin != null
+    );
+    if (projected.length === 0) return null;
+    return [...projected].sort(
+      (a, b) => Math.abs(a.projected_margin!) - Math.abs(b.projected_margin!)
+    )[0];
   }, [weekMatchups]);
 
   const biggestRestMismatch = useMemo(() => {
@@ -95,7 +105,6 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
         { key: 'away_win_prob', label: 'Away Win %' },
         { key: 'home_win_prob', label: 'Home Win %' },
         { key: 'rest_diff', label: 'Rest Differential' },
-        { key: 'key_number_flag', label: 'Key Margin' },
       ],
       `nfl-matchups-week-${selectedWeek}`
     );
@@ -191,12 +200,12 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                 Largest Favorite
               </span>
               <span className="text-sm font-bold text-white block truncate">
-                {largestFavorite.projected_margin > 0
-                  ? `${largestFavorite.home_team} (-${largestFavorite.projected_margin.toFixed(1)})`
-                  : `${largestFavorite.away_team} (-${Math.abs(largestFavorite.projected_margin).toFixed(1)})`}
+                {largestFavorite.projected_margin! > 0
+                  ? `${largestFavorite.home_team} (+${largestFavorite.projected_margin!.toFixed(1)})`
+                  : `${largestFavorite.away_team} (+${Math.abs(largestFavorite.projected_margin!).toFixed(1)})`}
               </span>
               <span className="text-[11px] font-mono text-slate-400">
-                vs {largestFavorite.projected_margin > 0 ? largestFavorite.away_team : largestFavorite.home_team}
+                vs {largestFavorite.projected_margin! > 0 ? largestFavorite.away_team : largestFavorite.home_team}
               </span>
             </div>
           </div>
@@ -214,7 +223,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                 {closestGame.away_team} @ {closestGame.home_team}
               </span>
               <span className="text-[11px] font-mono text-cyan-400">
-                Line: {Math.abs(closestGame.projected_margin).toFixed(1)} pts
+                Margin: {Math.abs(closestGame.projected_margin!).toFixed(1)} pts
               </span>
             </div>
           </div>
@@ -314,14 +323,14 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                   <th className="py-3 px-3 text-right">Away Win %</th>
                   <th className="py-3 px-3 text-right">Home Win %</th>
                   <th className="py-3 px-3 text-center">Rest Adv</th>
-                  <th className="py-3 px-3 text-center">Key Margin</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-sans">
                 {filteredMatchups.map((m) => {
-                  const isHomeFav = m.projected_margin > 0;
-                  const favTeam = isHomeFav ? m.home_team : m.away_team;
-                  const margin = Math.abs(m.projected_margin).toFixed(1);
+                  const hasProj = m.has_projection !== false && m.projected_margin != null;
+                  const isHomeFav = hasProj ? m.projected_margin! > 0 : false;
+                  const favTeam = hasProj ? (isHomeFav ? m.home_team : m.away_team) : null;
+                  const margin = hasProj ? Math.abs(m.projected_margin!).toFixed(1) : null;
 
                   return (
                     <tr key={m.game_id} className="hover:bg-slate-800/40 transition-colors">
@@ -333,7 +342,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                           <TeamLogo team={m.away_team} size="xs" />
                           <span className="font-bold text-white">{m.away_team}</span>
                           <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">
-                            {m.away_power_rating > 0 ? `+${m.away_power_rating.toFixed(1)}` : m.away_power_rating.toFixed(1)}
+                            {m.away_power_rating != null ? (m.away_power_rating > 0 ? `+${m.away_power_rating.toFixed(1)}` : m.away_power_rating.toFixed(1)) : '—'}
                           </span>
                         </div>
                       </td>
@@ -343,12 +352,12 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                           <TeamLogo team={m.home_team} size="xs" />
                           <span className="font-bold text-white">{m.home_team}</span>
                           <span className="text-[11px] sm:text-[10px] font-mono text-slate-500">
-                            {m.home_power_rating > 0 ? `+${m.home_power_rating.toFixed(1)}` : m.home_power_rating.toFixed(1)}
+                            {m.home_power_rating != null ? (m.home_power_rating > 0 ? `+${m.home_power_rating.toFixed(1)}` : m.home_power_rating.toFixed(1)) : '—'}
                           </span>
                         </div>
                       </td>
                       <td className="py-2.5 px-3 text-center font-mono font-bold text-emerald-400">
-                        {favTeam} +{margin}
+                        {hasProj ? `${favTeam} +${margin}` : <span className="text-slate-500 font-normal">No forecast</span>}
                       </td>
                       <td className="py-2.5 px-3 text-center font-mono">
                         {m.is_completed ? (
@@ -377,14 +386,22 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                         )}
                       </td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold">
-                        <span className={!isHomeFav ? 'text-emerald-400' : 'text-slate-400'}>
-                          {(m.away_win_prob * 100).toFixed(1)}%
-                        </span>
+                        {hasProj && m.away_win_prob != null ? (
+                          <span className={!isHomeFav ? 'text-emerald-400' : 'text-slate-400'}>
+                            {(m.away_win_prob * 100).toFixed(1)}%
+                          </span>
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )}
                       </td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold">
-                        <span className={isHomeFav ? 'text-emerald-400' : 'text-slate-400'}>
-                          {(m.home_win_prob * 100).toFixed(1)}%
-                        </span>
+                        {hasProj && m.home_win_prob != null ? (
+                          <span className={isHomeFav ? 'text-emerald-400' : 'text-slate-400'}>
+                            {(m.home_win_prob * 100).toFixed(1)}%
+                          </span>
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )}
                       </td>
                       <td className="py-2.5 px-3 text-center font-mono text-xs">
                         {m.rest_diff !== 0 ? (
@@ -393,15 +410,6 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                           </span>
                         ) : (
                           <span className="text-slate-500">Even</span>
-                        )}
-                      </td>
-                      <td className="py-2.5 px-3 text-center font-mono text-xs">
-                        {m.key_number_flag !== 'Standard' ? (
-                          <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold text-[11px] sm:text-[10px]">
-                            {m.key_number_flag}
-                          </span>
-                        ) : (
-                          <span className="text-slate-600">—</span>
                         )}
                       </td>
                     </tr>
