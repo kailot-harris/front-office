@@ -1,0 +1,677 @@
+# ==============================================================================
+# Game Details JSON Builder (NFL)
+# Path: tools/game_details_builder.R
+#
+# Generates per-game JSON files under web/public/data/games/{game_id}.json
+# adhering to GameDetailEnvelope schema (web/tests/contracts/schemas.ts).
+# Implements 7-day churn control and byte-identical idempotency.
+# ==============================================================================
+
+suppressWarnings(suppressPackageStartupMessages({
+  library(dplyr)
+  library(jsonlite)
+}))
+
+if (!exists("PROJECT_DIR")) {
+  source("config.R")
+}
+if (!exists("log_info")) {
+  source("logging_utils.R")
+}
+.LOG_SCRIPT <- "game_details_builder.R"
+
+# Ensure target directory exists
+if (!dir.exists(WEB_GAMES_DIR)) {
+  dir.create(WEB_GAMES_DIR, recursive = TRUE)
+}
+
+.build_efficiency_factors <- function(pbp_game, away_tm, home_tm) {
+  if (is.null(pbp_game) || nrow(pbp_game) == 0) {
+    return(NULL)
+  }
+
+  calc_team_eff <- function(tm) {
+    off_plays <- pbp_game |> filter(posteam == tm, play_type %in% c("pass", "run") | !is.na(epa))
+    off_epa <- off_plays |> filter(!is.na(epa))
+    pass_plays <- off_plays |> filter(pass == 1, !is.na(epa))
+    rush_plays <- off_plays |> filter(pass == 0, !is.na(epa))
+    early_plays <- off_plays |> filter(down %in% c(1, 2), !is.na(epa))
+    late_plays <- off_plays |> filter(down %in% c(3, 4), !is.na(success))
+
+    list(
+      epa_per_play = if (nrow(off_epa) > 0) round(mean(off_epa$epa), 3) else NULL,
+      success_rate = if (nrow(off_epa) > 0) round(mean(off_epa$success == 1) * 100, 1) else NULL,
+      dropback_epa = if (nrow(pass_plays) > 0) round(mean(pass_plays$epa), 3) else NULL,
+      rush_epa = if (nrow(rush_plays) > 0) round(mean(rush_plays$epa), 3) else NULL,
+      cpoe = if (any(!is.na(off_plays$cpoe))) round(mean(off_plays$cpoe, na.rm = TRUE), 2) else NULL,
+      yards_per_play = if (nrow(off_plays) > 0) round(sum(off_plays$yards_gained, na.rm = TRUE) / nrow(off_plays), 1) else NULL,
+      early_down_epa = if (nrow(early_plays) > 0) round(mean(early_plays$epa), 3) else NULL,
+      late_down_success_rate = if (nrow(late_plays) > 0) round(mean(late_plays$success == 1) * 100, 1) else NULL
+    )
+  }
+
+  away_eff <- calc_team_eff(away_tm)
+  home_eff <- calc_team_eff(home_tm)
+
+  factors <- list(
+    list(
+      key = "epa_per_play",
+      label = "EPA / Play",
+      away_value = away_eff$epa_per_play,
+      home_value = home_eff$epa_per_play,
+      unit = "epa",
+      higher_is_better = TRUE,
+      description = "Expected Points Added per offensive play"
+    ),
+    list(
+      key = "success_rate",
+      label = "Success Rate",
+      away_value = away_eff$success_rate,
+      home_value = home_eff$success_rate,
+      unit = "pct",
+      higher_is_better = TRUE,
+      description = "Percentage of plays with positive Expected Points Added"
+    ),
+    list(
+      key = "dropback_epa",
+      label = "Dropback EPA",
+      away_value = away_eff$dropback_epa,
+      home_value = home_eff$dropback_epa,
+      unit = "epa",
+      higher_is_better = TRUE,
+      description = "Expected Points Added per dropback pass play"
+    ),
+    list(
+      key = "rush_epa",
+      label = "Rush EPA",
+      away_value = away_eff$rush_epa,
+      home_value = home_eff$rush_epa,
+      unit = "epa",
+      higher_is_better = TRUE,
+      description = "Expected Points Added per rushing play"
+    ),
+    list(
+      key = "cpoe",
+      label = "CPOE",
+      away_value = away_eff$cpoe,
+      home_value = home_eff$cpoe,
+      unit = "pct",
+      higher_is_better = TRUE,
+      description = "Completion Percentage Over Expected on pass attempts"
+    ),
+    list(
+      key = "yards_per_play",
+      label = "Yards / Play",
+      away_value = away_eff$yards_per_play,
+      home_value = home_eff$yards_per_play,
+      unit = "yards",
+      higher_is_better = TRUE,
+      description = "Total offensive yards gained per play"
+    ),
+    list(
+      key = "early_down_epa",
+      label = "Early Down EPA",
+      away_value = early_eff <- away_eff$early_down_epa,
+      home_value = home_eff$early_down_epa,
+      unit = "epa",
+      higher_is_better = TRUE,
+      description = "Expected Points Added on 1st and 2nd downs"
+    ),
+    list(
+      key = "late_down_success_rate",
+      label = "Late Down Success Rate",
+      away_value = away_eff$late_down_success_rate,
+      home_value = home_eff$late_down_success_rate,
+      unit = "pct",
+      higher_is_better = TRUE,
+      description = "Percentage of 3rd and 4th down plays converted successfully"
+    )
+  )
+
+  factors
+}
+
+.build_team_stats <- function(away_ts, home_ts) {
+  if (nrow(away_ts) == 0 && nrow(home_ts) == 0) {
+    return(NULL)
+  }
+
+  get_stat <- function(ts, stat_name, default = 0) {
+    if (nrow(ts) > 0 && stat_name %in% names(ts) && !is.na(ts[[stat_name]][1])) {
+      ts[[stat_name]][1]
+    } else {
+      default
+    }
+  }
+
+  away_pass_yd <- get_stat(away_ts, "passing_yards")
+  away_rush_yd <- get_stat(away_ts, "rushing_yards")
+  home_pass_yd <- get_stat(home_ts, "passing_yards")
+  home_rush_yd <- get_stat(home_ts, "rushing_yards")
+
+  away_tot_yd <- away_pass_yd + away_rush_yd
+  home_tot_yd <- home_pass_yd + home_rush_yd
+
+  away_comp <- get_stat(away_ts, "completions")
+  away_att <- get_stat(away_ts, "attempts")
+  home_comp <- get_stat(home_ts, "completions")
+  home_att <- get_stat(home_ts, "attempts")
+
+  away_to <- get_stat(away_ts, "passing_interceptions") + get_stat(away_ts, "fumbles_lost_total")
+  home_to <- get_stat(home_ts, "passing_interceptions") + get_stat(home_ts, "fumbles_lost_total")
+
+  away_pen <- get_stat(away_ts, "penalties")
+  away_pen_yd <- get_stat(away_ts, "penalty_yards")
+  home_pen <- get_stat(home_ts, "penalties")
+  home_pen_yd <- get_stat(home_ts, "penalty_yards")
+
+  away_fd <- get_stat(away_ts, "passing_first_downs") + get_stat(away_ts, "rushing_first_downs")
+  home_fd <- get_stat(home_ts, "passing_first_downs") + get_stat(home_ts, "rushing_first_downs")
+
+  away_sacks <- get_stat(away_ts, "sacks_suffered")
+  away_sack_yd <- abs(get_stat(away_ts, "sack_yards_lost"))
+  home_sacks <- get_stat(home_ts, "sacks_suffered")
+  home_sack_yd <- abs(get_stat(home_ts, "sack_yards_lost"))
+
+  list(
+    list(stat_key = "total_yards", label = "Total Yards", away_value = away_tot_yd, home_value = home_tot_yd),
+    list(stat_key = "passing_yards", label = "Passing Yards", away_value = away_pass_yd, home_value = home_pass_yd),
+    list(stat_key = "rushing_yards", label = "Rushing Yards", away_value = away_rush_yd, home_value = home_rush_yd),
+    list(stat_key = "completions_attempts", label = "Comp / Att", away_value = sprintf("%d/%d", away_comp, away_att), home_value = sprintf("%d/%d", home_comp, home_att)),
+    list(stat_key = "turnovers", label = "Turnovers", away_value = away_to, home_value = home_to),
+    list(stat_key = "penalties_yards", label = "Penalties - Yards", away_value = sprintf("%d-%d", away_pen, away_pen_yd), home_value = sprintf("%d-%d", home_pen, home_pen_yd)),
+    list(stat_key = "first_downs", label = "First Downs", away_value = away_fd, home_value = home_fd),
+    list(stat_key = "sacks_yards_lost", label = "Sacks - Yards Lost", away_value = sprintf("%d-%d", away_sacks, away_sack_yd), home_value = sprintf("%d-%d", home_sacks, home_sack_yd))
+  )
+}
+
+.build_leaders <- function(players_df, away_tm, home_tm) {
+  if (is.null(players_df) || nrow(players_df) == 0) {
+    return(NULL)
+  }
+
+  leaders <- list()
+
+  for (tm in c(away_tm, home_tm)) {
+    p_tm <- players_df |> filter(team == tm)
+    if (nrow(p_tm) == 0) next
+
+    # 1. Passing
+    passers <- p_tm |> filter(attempts > 0 | passing_yards > 0) |>
+      arrange(desc(passing_yards), desc(completions), player_name)
+    if (nrow(passers) > 0) {
+      top_p <- passers[1, ]
+      display_name <- if (!is.na(top_p$player_display_name) && nzchar(top_p$player_display_name)) top_p$player_display_name else top_p$player_name
+      leaders[[length(leaders) + 1]] <- list(
+        category = "passing",
+        teamAbbr = tm,
+        playerId = top_p$player_id,
+        playerName = display_name,
+        stat_line = sprintf("%d/%d, %d YDS, %d TD", top_p$completions, top_p$attempts, top_p$passing_yards, top_p$passing_tds)
+      )
+    }
+
+    # 2. Rushing
+    rushers <- p_tm |> filter(carries > 0 | rushing_yards > 0) |>
+      arrange(desc(rushing_yards), desc(rushing_tds), desc(carries), player_name)
+    if (nrow(rushers) > 0) {
+      top_r <- rushers[1, ]
+      display_name <- if (!is.na(top_r$player_display_name) && nzchar(top_r$player_display_name)) top_r$player_display_name else top_r$player_name
+      leaders[[length(leaders) + 1]] <- list(
+        category = "rushing",
+        teamAbbr = tm,
+        playerId = top_r$player_id,
+        playerName = display_name,
+        stat_line = sprintf("%d CAR, %d YDS, %d TD", top_r$carries, top_r$rushing_yards, top_r$rushing_tds)
+      )
+    }
+
+    # 3. Receiving
+    receivers <- p_tm |> filter(targets > 0 | receptions > 0 | receiving_yards > 0) |>
+      arrange(desc(receiving_yards), desc(receiving_tds), desc(receptions), player_name)
+    if (nrow(receivers) > 0) {
+      top_rec <- receivers[1, ]
+      display_name <- if (!is.na(top_rec$player_display_name) && nzchar(top_rec$player_display_name)) top_rec$player_display_name else top_rec$player_name
+      leaders[[length(leaders) + 1]] <- list(
+        category = "receiving",
+        teamAbbr = tm,
+        playerId = top_rec$player_id,
+        playerName = display_name,
+        stat_line = sprintf("%d REC, %d YDS, %d TD", top_rec$receptions, top_rec$receiving_yards, top_rec$receiving_tds)
+      )
+    }
+
+    # 4. Defense: sacks then interceptions then solo tackles as tie-breakers. Ties broken by playerName.
+    defenders <- p_tm |> filter((def_tackles_solo + def_tackle_assists + def_sacks + def_interceptions) > 0) |>
+      arrange(desc(def_sacks), desc(def_interceptions), desc(def_tackles_solo), player_name)
+    if (nrow(defenders) > 0) {
+      top_def <- defenders[1, ]
+      display_name <- if (!is.na(top_def$player_display_name) && nzchar(top_def$player_display_name)) top_def$player_display_name else top_def$player_name
+      parts <- c()
+      if (top_def$def_sacks > 0) parts <- c(parts, sprintf("%.1f SCK", top_def$def_sacks))
+      if (top_def$def_interceptions > 0) parts <- c(parts, sprintf("%d INT", top_def$def_interceptions))
+      if (top_def$def_tackles_solo > 0) parts <- c(parts, sprintf("%d TKL", top_def$def_tackles_solo))
+      if (length(parts) == 0) parts <- c(sprintf("%d TKL", top_def$def_tackle_assists))
+      leaders[[length(leaders) + 1]] <- list(
+        category = "defense",
+        teamAbbr = tm,
+        playerId = top_def$player_id,
+        playerName = display_name,
+        stat_line = paste(parts, collapse = ", ")
+      )
+    }
+  }
+
+  if (length(leaders) == 0) NULL else leaders
+}
+
+.build_player_box_rows <- function(players_df, tm, snaps_df, gsis_to_pfr = list()) {
+  if (is.null(players_df) || nrow(players_df) == 0) {
+    return(I(list()))
+  }
+
+  p_tm <- players_df |> filter(team == tm)
+  if (nrow(p_tm) == 0) {
+    return(I(list()))
+  }
+
+  # Build snap percentage lookup for this game and team
+  snap_map <- list()
+  if (!is.null(snaps_df) && nrow(snaps_df) > 0) {
+    s_tm <- snaps_df |> filter(team == tm)
+    for (i in seq_len(nrow(s_tm))) {
+      row_s <- s_tm[i, ]
+      # pct on 0-100 scale
+      raw_pct <- max(c(row_s$offense_pct, row_s$defense_pct, row_s$st_pct), na.rm = TRUE)
+      if (is.finite(raw_pct)) {
+        pct_val <- round(raw_pct * 100, 1)
+        if (pct_val > 100) pct_val <- 100
+        if (pct_val < 0) pct_val <- 0
+        if (!is.na(row_s$pfr_player_id) && nzchar(row_s$pfr_player_id)) {
+          snap_map[[paste0("pfr_", row_s$pfr_player_id)]] <- pct_val
+        }
+        if (!is.na(row_s$player) && nzchar(row_s$player)) {
+          snap_map[[paste0("name_", tolower(trimws(row_s$player)))]] <- pct_val
+        }
+      }
+    }
+  }
+
+  box_rows <- list()
+
+  for (i in seq_len(nrow(p_tm))) {
+    p <- p_tm[i, ]
+    pid <- as.character(p$player_id)
+    pname <- if (!is.na(p$player_display_name) && nzchar(p$player_display_name)) {
+      as.character(p$player_display_name)
+    } else {
+      as.character(p$player_name)
+    }
+
+    # Resolve snap_pct
+    pfr_id <- gsis_to_pfr[[pid]]
+    snap_pct <- NULL
+    if (!is.null(pfr_id) && !is.null(snap_map[[paste0("pfr_", pfr_id)]])) {
+      snap_pct <- snap_map[[paste0("pfr_", pfr_id)]]
+    } else if (!is.null(snap_map[[paste0("name_", tolower(trimws(pname)))]])) {
+      snap_pct <- snap_map[[paste0("name_", tolower(trimws(pname)))]]
+    } else if (!is.null(snap_map[[paste0("name_", tolower(trimws(p$player_name)))]])) {
+      snap_pct <- snap_map[[paste0("name_", tolower(trimws(p$player_name)))]]
+    }
+
+    # Determine categories
+    has_pass <- (p$attempts > 0 || p$completions > 0 || p$passing_yards != 0 || p$passing_tds > 0 || p$sacks_suffered > 0)
+    has_rush <- (p$carries > 0 || p$rushing_yards != 0 || p$rushing_tds > 0)
+    has_rec  <- (p$targets > 0 || p$receptions > 0 || p$receiving_yards != 0 || p$receiving_tds > 0)
+    def_sum  <- (p$def_tackles_solo + p$def_tackle_assists + p$def_sacks + p$def_interceptions +
+                 p$def_pass_defended + p$def_qb_hits + p$def_fumbles_forced + p$def_tackles_for_loss)
+    has_def  <- (def_sum > 0)
+    has_kick <- (p$fg_att > 0 || p$pat_att > 0 || p$fg_made > 0 || p$pat_made > 0)
+
+    cats <- character(0)
+    if (has_pass) cats <- c(cats, "passing")
+    if (has_rush) cats <- c(cats, "rushing")
+    if (has_rec)  cats <- c(cats, "receiving")
+    if (has_def)  cats <- c(cats, "defense")
+    if (has_kick) cats <- c(cats, "kicking")
+
+    row_data <- list(
+      playerId   = pid,
+      playerName = pname,
+      teamAbbr   = tm,
+      position   = if (!is.na(p$position) && nzchar(p$position)) as.character(p$position) else NULL,
+      categories = I(cats),
+      snap_pct   = snap_pct
+    )
+
+    # Passing fields
+    if (has_pass || "passing" %in% cats) {
+      row_data$completions           <- as.integer(p$completions)
+      row_data$attempts              <- as.integer(p$attempts)
+      row_data$passing_yards         <- as.integer(p$passing_yards)
+      row_data$passing_tds           <- as.integer(p$passing_tds)
+      row_data$passing_interceptions <- as.integer(p$passing_interceptions)
+      row_data$sacks_suffered        <- as.integer(p$sacks_suffered)
+      row_data$sack_yards_lost       <- as.integer(p$sack_yards_lost)
+      row_data$passing_epa           <- if (!is.na(p$passing_epa)) round(p$passing_epa, 2) else NULL
+      row_data$passing_cpoe          <- if (!is.na(p$passing_cpoe)) round(p$passing_cpoe, 2) else NULL
+    }
+
+    # Rushing fields
+    if (has_rush || "rushing" %in% cats) {
+      row_data$carries              <- as.integer(p$carries)
+      row_data$rushing_yards        <- as.integer(p$rushing_yards)
+      row_data$rushing_tds          <- as.integer(p$rushing_tds)
+      row_data$rushing_fumbles      <- as.integer(p$rushing_fumbles)
+      row_data$rushing_fumbles_lost <- as.integer(p$rushing_fumbles_lost)
+      row_data$rushing_first_downs  <- as.integer(p$rushing_first_downs)
+      row_data$rushing_epa          <- if (!is.na(p$rushing_epa)) round(p$rushing_epa, 2) else NULL
+    }
+
+    # Receiving fields
+    if (has_rec || "receiving" %in% cats) {
+      row_data$receptions            <- as.integer(p$receptions)
+      row_data$targets               <- as.integer(p$targets)
+      row_data$receiving_yards       <- as.integer(p$receiving_yards)
+      row_data$receiving_tds         <- as.integer(p$receiving_tds)
+      row_data$receiving_fumbles     <- as.integer(p$receiving_fumbles)
+      row_data$receiving_fumbles_lost<- as.integer(p$receiving_fumbles_lost)
+      row_data$receiving_first_downs <- as.integer(p$receiving_first_downs)
+      row_data$receiving_epa         <- if (!is.na(p$receiving_epa)) round(p$receiving_epa, 2) else NULL
+    }
+
+    # Defense fields
+    if (has_def || "defense" %in% cats) {
+      row_data$def_tackles_solo     <- as.integer(p$def_tackles_solo)
+      row_data$def_tackle_assists   <- as.integer(p$def_tackle_assists)
+      row_data$def_tackles_for_loss <- as.integer(p$def_tackles_for_loss)
+      row_data$def_sacks            <- as.numeric(p$def_sacks)
+      row_data$def_qb_hits          <- as.integer(p$def_qb_hits)
+      row_data$def_interceptions    <- as.integer(p$def_interceptions)
+      row_data$def_pass_defended    <- as.integer(p$def_pass_defended)
+      row_data$def_fumbles_forced   <- as.integer(p$def_fumbles_forced)
+    }
+
+    # Kicking fields
+    if (has_kick || "kicking" %in% cats) {
+      row_data$fg_made  <- as.integer(p$fg_made)
+      row_data$fg_att   <- as.integer(p$fg_att)
+      row_data$fg_long  <- if (!is.na(p$fg_long) && p$fg_long > 0) as.integer(p$fg_long) else NULL
+      row_data$pat_made <- as.integer(p$pat_made)
+      row_data$pat_att  <- as.integer(p$pat_att)
+    }
+
+    box_rows[[length(box_rows) + 1]] <- row_data
+  }
+
+  I(box_rows)
+}
+
+.build_injury_designations <- function(inj_df, week_num, season_num, away_tm, home_tm, players_df, snaps_df) {
+  if (is.null(inj_df) || nrow(inj_df) == 0) {
+    return(NULL)
+  }
+
+  g_inj <- inj_df |>
+    filter(season == season_num, week == week_num, team %in% c(away_tm, home_tm),
+           status %in% c("Out", "IR", "Doubtful", "Questionable"))
+
+  if (nrow(g_inj) == 0) {
+    return(NULL)
+  }
+
+  # Build set of players who played (had stats or snaps)
+  played_ids <- character(0)
+  played_names <- character(0)
+
+  if (!is.null(players_df) && nrow(players_df) > 0) {
+    played_ids <- c(played_ids, as.character(players_df$player_id))
+    played_names <- c(played_names, tolower(trimws(players_df$player_name)), tolower(trimws(players_df$player_display_name)))
+  }
+  if (!is.null(snaps_df) && nrow(snaps_df) > 0) {
+    active_snaps <- snaps_df |> filter((offense_snaps + defense_snaps + st_snaps) > 0)
+    played_names <- c(played_names, tolower(trimws(active_snaps$player)))
+  }
+  played_names <- unique(played_names[nzchar(played_names)])
+
+  inj_rows <- list()
+  for (i in seq_len(nrow(g_inj))) {
+    row_i <- g_inj[i, ]
+    pid <- if (!is.na(row_i$gsis_id) && nzchar(row_i$gsis_id)) as.character(row_i$gsis_id) else NULL
+    pname <- as.character(row_i$player_name)
+    pos <- if ("position" %in% names(row_i) && !is.na(row_i$position) && nzchar(row_i$position)) as.character(row_i$position) else NULL
+    body_part <- if (!is.na(row_i$injury_desc) && nzchar(row_i$injury_desc)) as.character(row_i$injury_desc) else NULL
+
+    has_played <- FALSE
+    if (!is.null(pid) && pid %in% played_ids) {
+      has_played <- TRUE
+    } else if (tolower(trimws(pname)) %in% played_names) {
+      has_played <- TRUE
+    }
+
+    inj_rows[[length(inj_rows) + 1]] <- list(
+      playerId    = pid,
+      playerName  = pname,
+      position    = pos,
+      designation = as.character(row_i$status),
+      body_part   = body_part,
+      played      = has_played
+    )
+  }
+
+  if (length(inj_rows) == 0) NULL else inj_rows
+}
+
+#' Build per-game JSON files under web/public/data/games/{game_id}.json
+#'
+#' @param force Logical. If TRUE, re-evaluates all completed games regardless of date.
+#' @return Invisible summary list of evaluated, written, and skipped game counts.
+build_game_details <- function(force = FALSE) {
+  log_info("Starting game details JSON builder...", call = "build_game_details()")
+
+  # Load caches
+  if (!file.exists(CACHE_SCHEDULES)) {
+    stop("CACHE_SCHEDULES not found: ", CACHE_SCHEDULES)
+  }
+  sched_df <- readRDS(CACHE_SCHEDULES) |> filter(season == CURRENT_SEASON)
+
+  ts_df <- if (file.exists(CACHE_TEAM_STATS)) readRDS(CACHE_TEAM_STATS) else NULL
+  ps_df <- if (file.exists(CACHE_PLAYER_STATS)) readRDS(CACHE_PLAYER_STATS) else NULL
+  sc_df <- if (file.exists(CACHE_SNAP_COUNTS)) readRDS(CACHE_SNAP_COUNTS) else NULL
+  ros_df <- if (file.exists(CACHE_ROSTERS)) readRDS(CACHE_ROSTERS) else NULL
+  inj_df <- if (file.exists(CACHE_INJURY_DATA)) readRDS(CACHE_INJURY_DATA) else NULL
+
+  # Load PBP cache if available for efficiency factors
+  pbp_df <- if (file.exists(CACHE_PBP)) readRDS(CACHE_PBP) else NULL
+
+  # Precompute GSIS to PFR ID crosswalk once
+  gsis_to_pfr <- list()
+  if (!is.null(ros_df) && nrow(ros_df) > 0) {
+    r_valid <- ros_df |> filter(!is.na(gsis_id), !is.na(pfr_id)) |>
+      distinct(gsis_id, .keep_all = TRUE)
+    if (nrow(r_valid) > 0) {
+      for (i in seq_len(nrow(r_valid))) {
+        gsis_to_pfr[[r_valid$gsis_id[i]]] <- r_valid$pfr_id[i]
+      }
+    }
+  }
+
+  # Load matchups for forecast lookup if available
+  forecast_map <- list()
+  if (file.exists(WEB_JSON_MATCHUPS_CURRENT_WEEK)) {
+    tryCatch({
+      m_json <- fromJSON(WEB_JSON_MATCHUPS_CURRENT_WEEK, simplifyVector = FALSE)
+      if (!is.null(m_json$matchups)) {
+        for (m in m_json$matchups) {
+          if (!is.null(m$game_id)) {
+            forecast_map[[m$game_id]] <- m
+          }
+        }
+      }
+    }, error = function(e) {
+      log_warn("Failed to load forecast data from matchups_current_week.json")
+    })
+  }
+
+  # Identify completed games with box scores
+  completed_games <- sched_df |>
+    filter(!is.na(home_score), !is.na(away_score))
+
+  n_eval <- 0
+  n_written <- 0
+  n_unchanged <- 0
+  n_skipped_churn <- 0
+
+  today <- Sys.Date()
+
+  for (i in seq_len(nrow(completed_games))) {
+    g <- completed_games[i, ]
+    gid <- as.character(g$game_id)
+    out_file <- file.path(WEB_GAMES_DIR, sprintf("%s.json", gid))
+
+    # Churn control: evaluate if within 7 days of Sys.Date(), file is missing, or force = TRUE
+    g_date <- tryCatch(as.Date(g$gameday), error = function(e) NA)
+    within_7d <- !is.na(g_date) && abs(as.numeric(difftime(today, g_date, units = "days"))) <= 7
+    needs_eval <- force || !file.exists(out_file) || within_7d
+
+    if (!needs_eval) {
+      n_skipped_churn <- n_skipped_churn + 1
+      next
+    }
+
+    n_eval <- n_eval + 1
+
+    # Team stats and player stats for this game
+    g_ts <- if (!is.null(ts_df)) ts_df |> filter(game_id == gid) else data.frame()
+    g_ps <- if (!is.null(ps_df)) ps_df |> filter(game_id == gid) else data.frame()
+    g_sc <- if (!is.null(sc_df)) sc_df |> filter(game_id == gid) else data.frame()
+    g_pbp <- if (!is.null(pbp_df)) pbp_df |> filter(game_id == gid) else NULL
+
+    away_tm <- as.character(g$away_team)
+    home_tm <- as.character(g$home_team)
+
+    has_box_score <- nrow(g_ts) > 0 || nrow(g_ps) > 0
+    if (!has_box_score) {
+      # Per spec: write one JSON file per completed game WITH box scores
+      next
+    }
+
+    away_score <- as.integer(g$away_score)
+    home_score <- as.integer(g$home_score)
+
+    away_ts_sub <- if (nrow(g_ts) > 0) g_ts |> filter(team == away_tm) else data.frame()
+    home_ts_sub <- if (nrow(g_ts) > 0) g_ts |> filter(team == home_tm) else data.frame()
+
+    # Forecast
+    f_matchup <- forecast_map[[gid]]
+    forecast_data <- NULL
+    if (!is.null(f_matchup) && !identical(f_matchup$has_projection, FALSE) && !is.null(f_matchup$projected_margin)) {
+      forecast_data <- list(
+        projected_margin   = f_matchup$projected_margin,
+        home_win_prob      = f_matchup$home_win_prob,
+        away_win_prob      = f_matchup$away_win_prob,
+        home_power_rating  = f_matchup$home_power_rating,
+        away_power_rating  = f_matchup$away_power_rating,
+        prediction_correct = f_matchup$prediction_correct
+      )
+    }
+
+    # Gametime format HH:MM
+    g_time <- if (!is.na(g$gametime) && grepl("^\\d{2}:\\d{2}$", g$gametime)) {
+      as.character(g$gametime)
+    } else {
+      "13:00"
+    }
+
+    # Build components
+    eff_factors <- .build_efficiency_factors(g_pbp, away_tm, home_tm)
+    team_comp   <- .build_team_stats(away_ts_sub, home_ts_sub)
+    leaders     <- .build_leaders(g_ps, away_tm, home_tm)
+
+    away_players <- .build_player_box_rows(g_ps, away_tm, g_sc, gsis_to_pfr)
+    home_players <- .build_player_box_rows(g_ps, home_tm, g_sc, gsis_to_pfr)
+
+    injuries    <- .build_injury_designations(inj_df, as.integer(g$week), as.integer(g$season), away_tm, home_tm, g_ps, g_sc)
+
+    # Current UTC timestamp
+    gen_time <- format(as.POSIXlt(Sys.time(), tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ")
+
+    payload <- list(
+      game_id             = gid,
+      season              = as.integer(g$season),
+      season_label        = sprintf("%d-%d", as.integer(g$season), as.integer(g$season) + 1),
+      week                = as.integer(g$week),
+      week_label          = sprintf("Week %d", as.integer(g$week)),
+      gameday             = as.character(g$gameday),
+      weekday             = as.character(g$weekday),
+      gametime            = g_time,
+      is_completed        = TRUE,
+      has_box_score       = TRUE,
+      away_team           = list(
+        teamAbbr  = away_tm,
+        teamName  = unname(NFL_TEAMS[away_tm] %||% away_tm),
+        score     = away_score,
+        is_winner = (away_score > home_score)
+      ),
+      home_team           = list(
+        teamAbbr  = home_tm,
+        teamName  = unname(NFL_TEAMS[home_tm] %||% home_tm),
+        score     = home_score,
+        is_winner = (home_score > away_score)
+      ),
+      forecast            = forecast_data,
+      efficiency_factors  = eff_factors,
+      team_stats          = team_comp,
+      leaders             = leaders,
+      box_score           = list(
+        away_players = away_players,
+        home_players = home_players
+      ),
+      injury_designations = injuries,
+      explainability      = NULL
+    )
+
+    envelope <- list(
+      schema_version = "1.0",
+      generated_at   = gen_time,
+      sport          = "nfl",
+      endpoint       = "game_detail",
+      season         = as.integer(g$season),
+      season_label   = sprintf("%d-%d", as.integer(g$season), as.integer(g$season) + 1),
+      game_id        = gid,
+      data           = payload
+    )
+
+    # Serialize candidate JSON
+    candidate_json <- toJSON(envelope, auto_unbox = TRUE, pretty = 2, null = "null")
+
+    # Idempotency check: compare candidate JSON bytes against existing file bytes ignoring generated_at
+    if (file.exists(out_file)) {
+      existing_json <- paste(readLines(out_file, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+      # Strip generated_at from both
+      strip_pattern <- '"generated_at"\\s*:\\s*"[^"]*",?'
+      cand_clean <- gsub(strip_pattern, "", candidate_json)
+      exist_clean <- gsub(strip_pattern, "", existing_json)
+
+      if (isTRUE(trimws(cand_clean) == trimws(exist_clean))) {
+        n_unchanged <- n_unchanged + 1
+        next
+      }
+    }
+
+    # Write file
+    writeLines(candidate_json, out_file, useBytes = TRUE)
+    n_written <- n_written + 1
+  }
+
+  log_info(sprintf("Game details builder completed: %d evaluated, %d written, %d unchanged, %d skipped by churn control.",
+                   n_eval, n_written, n_unchanged, n_skipped_churn),
+           call = "build_game_details()")
+
+  invisible(list(
+    evaluated     = n_eval,
+    written       = n_written,
+    unchanged     = n_unchanged,
+    skipped_churn = n_skipped_churn
+  ))
+}

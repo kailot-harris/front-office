@@ -16,10 +16,10 @@
 # by run_full_pipeline.R's run_stage() via call_fn.
 # ==============================================================================
 
-suppressPackageStartupMessages({
+suppressWarnings(suppressPackageStartupMessages({
   library(dplyr)
   library(nflreadr)
-})
+}))
 
 source("config.R")
 source("logging_utils.R")
@@ -77,7 +77,8 @@ source("logging_utils.R")
 )
 
 .ingest_one <- function(cache_path, loader_fn, loader_name, dedupe_keys,
-                         force_refresh = FALSE, select_cols = NULL) {
+                         force_refresh = FALSE, select_cols = NULL,
+                         bootstrap_seasons = ALL_SEASONS) {
   needs_bootstrap <- force_refresh || !file.exists(cache_path)
 
   .trim <- function(df) {
@@ -88,13 +89,13 @@ source("logging_utils.R")
   if (needs_bootstrap) {
     log_info(sprintf(
       "%s: cache missing or force_refresh=TRUE. Initializing complete historical ingestion (%d:%d)...",
-      loader_name, min(ALL_SEASONS), max(ALL_SEASONS)
+      loader_name, min(bootstrap_seasons), max(bootstrap_seasons)
     ))
     existing <- tryCatch({
-      loader_fn(seasons = ALL_SEASONS)
+      loader_fn(seasons = bootstrap_seasons)
     }, error = function(e) {
       log_error(sprintf("Initial historical %s bootstrap failed.", loader_name), condition = e,
-                call = "run_daily_ingest()", seasons = paste(range(ALL_SEASONS), collapse = "-"))
+                call = "run_daily_ingest()", seasons = paste(range(bootstrap_seasons), collapse = "-"))
       stop(e)
     })
     existing <- .trim(existing) |> distinct(across(all_of(dedupe_keys)), .keep_all = TRUE)
@@ -223,6 +224,57 @@ run_daily_ingest <- function(force_refresh = FALSE) {
     FALSE
   })
   ok <- ok && isTRUE(sched_result)
+
+  # Ingest team stats into CACHE_TEAM_STATS (team_stats_cache.rds)
+  team_stats_result <- tryCatch({
+    .ingest_one(
+      cache_path        = CACHE_TEAM_STATS,
+      loader_fn         = nflreadr::load_team_stats,
+      loader_name       = "nflreadr::load_team_stats()",
+      dedupe_keys       = c("game_id", "team"),
+      force_refresh     = force_refresh,
+      bootstrap_seasons = CURRENT_SEASON
+    )
+    TRUE
+  }, error = function(e) {
+    log_error("Team stats ingestion failed.", condition = e, call = "run_daily_ingest()")
+    FALSE
+  })
+  ok <- ok && isTRUE(team_stats_result)
+
+  # Ingest player stats into CACHE_PLAYER_STATS (player_stats_cache.rds)
+  player_stats_result <- tryCatch({
+    .ingest_one(
+      cache_path        = CACHE_PLAYER_STATS,
+      loader_fn         = nflreadr::load_player_stats,
+      loader_name       = "nflreadr::load_player_stats()",
+      dedupe_keys       = c("game_id", "player_id"),
+      force_refresh     = force_refresh,
+      bootstrap_seasons = CURRENT_SEASON
+    )
+    TRUE
+  }, error = function(e) {
+    log_error("Player stats ingestion failed.", condition = e, call = "run_daily_ingest()")
+    FALSE
+  })
+  ok <- ok && isTRUE(player_stats_result)
+
+  # Ingest snap counts into CACHE_SNAP_COUNTS (snap_counts_cache.rds)
+  snap_counts_result <- tryCatch({
+    .ingest_one(
+      cache_path        = CACHE_SNAP_COUNTS,
+      loader_fn         = nflreadr::load_snap_counts,
+      loader_name       = "nflreadr::load_snap_counts()",
+      dedupe_keys       = c("game_id", "pfr_player_id"),
+      force_refresh     = force_refresh,
+      bootstrap_seasons = CURRENT_SEASON
+    )
+    TRUE
+  }, error = function(e) {
+    log_error("Snap counts ingestion failed.", condition = e, call = "run_daily_ingest()")
+    FALSE
+  })
+  ok <- ok && isTRUE(snap_counts_result)
 
   if (ok) {
     log_info("Daily NFL ingestion completed successfully.", call = "run_daily_ingest()")
