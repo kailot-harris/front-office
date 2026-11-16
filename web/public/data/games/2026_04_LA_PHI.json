@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-11-16T05:32:54Z",
+  "generated_at": "2026-11-16T12:04:23Z",
   "sport": "nfl",
   "endpoint": "game_detail",
   "season": 2026,
@@ -30,11 +30,11 @@
       "is_winner": false
     },
     "forecast": {
-      "projected_margin": -5,
-      "home_win_prob": 0.366,
-      "away_win_prob": 0.634,
-      "home_power_rating": 0,
-      "away_power_rating": 0,
+      "projected_margin": 0,
+      "home_win_prob": 0.5,
+      "away_win_prob": 0.5,
+      "home_power_rating": -1.17,
+      "away_power_rating": 5.51,
       "prediction_correct": true
     },
     "efficiency_factors": [
@@ -226,7 +226,10 @@
           "playerName": "Matthew Stafford",
           "teamAbbr": "LA",
           "position": "QB",
-          "categories": ["passing", "rushing"],
+          "categories": [
+            "passing",
+            "rushing"
+          ],
           "snap_pct": 100,
           "completions": 32,
           "attempts": 51,
@@ -250,7 +253,9 @@
           "playerName": "Davante Adams",
           "teamAbbr": "LA",
           "position": "WR",
-          "categories": ["receiving"],
+          "categories": [
+            "receiving"
+          ],
           "snap_pct": 95,
           "receptions": 4,
           "targets": 9,
@@ -266,7 +271,9 @@
           "playerName": "Tyler Higbee",
           "teamAbbr": "LA",
           "position": "TE",
-          "categories": ["receiving"],
+          "categories": [
+            "receiving"
+          ],
           "snap_pct": 65,
           "receptions": 5,
           "targets": 6,
@@ -282,7 +289,9 @@
           "playerName": "Poona Ford",
           "teamAbbr": "LA",
           "position": "DT",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 43,
           "def_tackles_solo": 1,
           "def_tackle_assists": 0,
@@ -306,7 +315,9 @@
           "playerName": "Larrell Murchison",
           "teamAbbr": "LA",
           "position": "DT",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 20,
           "def_tackles_solo": 0,
           "def_tackle_assists": 1,
@@ -322,7 +333,9 @@
           "playerName": "Kam Curl",
           "teamAbbr": "LA",
           "position": "SAF",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 100,
           "def_tackles_solo": 3,
           "def_tackle_assists": 1,
@@ -338,7 +351,9 @@
           "playerName": "Alaric Jackson",
           "teamAbbr": "LA",
           "position": "OT",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 100,
           "def_tackles_solo": 1,
           "def_tackle_assists": 0,
@@ -354,7 +369,9 @@
           "playerName": "Grant Stuard",
           "teamAbbr": "LA",
           "position": "LB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 83,
           "def_tackles_solo": 1,
           "def_tackle_assists": 0,
@@ -370,7 +387,9 @@
           "playerName": "Tutu Atwell",
           "teamAbbr": "LA",
           "position": "WR",
-          "categories": ["receiving"],
+          "categories": [
+            "receiving"
+          ],
           "snap_pct": 23,
           "receptions": 1,
           "targets": 1,
@@ -386,7 +405,9 @@
           "playerName": "Trent McDuffie",
           "teamAbbr": "LA",
           "position": "CB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 100,
           "def_tackles_solo": 2,
           "def_tackle_assists": 0,
@@ -402,7 +423,9 @@
           "playerName": "Nate Landman",
           "teamAbbr": "LA",
           "position": "LB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 93,
           "def_tackles_solo": 4,
           "def_tackle_assists": 6,
@@ -418,7 +441,11 @@
           "playerName": "Kyren Williams",
           "teamAbbr": "LA",
           "position": "RB",
-          "categories": ["rushing", "receiving", "defense"],
+          "categories": [
+            "rushing",
+            "receiving",
+            "defense"
+          ],
           "snap_pct": 83,
           "carries": 16,
           "rushing_yards": 80,
@@ -449,7 +476,9 @@
           "playerName": "Quentin Lake",
           "teamAbbr": "LA",
           "position": "SAF",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 100,
           "def_tackles_solo": 2,
           "def_tackle_assists": 4,
@@ -473,7 +502,9 @@
           "playerName": "Davis Allen",
           "teamAbbr": "LA",
           "position": "TE",
-          "categories": ["receiving"],
+          "categories": [
+            "receiving"
+          ],
           "snap_pct": 48,
           "receptions": 0,
           "targets": 2,
@@ -489,7 +520,10 @@
           "playerName": "Puka Nacua",
           "teamAbbr": "LA",
           "position": "WR",
-          "categories": ["rushing", "receiving"],
+          "categories": [
+            "rushing",
+            "receiving"
+          ],
           "snap_pct": 90,
           "carries": 1,
           "rushing_yards": 2,
@@ -512,7 +546,9 @@
           "playerName": "Byron Young",
           "teamAbbr": "LA",
           "position": "LB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 89,
           "def_tackles_solo": 4,
           "def_tackle_assists": 2,
@@ -528,7 +564,9 @@
           "playerName": "Kobie Turner",
           "teamAbbr": "LA",
           "position": "DE",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 79,
           "def_tackles_solo": 1,
           "def_tackle_assists": 0,
@@ -544,7 +582,9 @@
           "playerName": "Emmanuel Forbes",
           "teamAbbr": "LA",
           "position": "CB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 34,
           "def_tackles_solo": 1,
           "def_tackle_assists": 0,
@@ -560,7 +600,9 @@
           "playerName": "Harrison Mevis",
           "teamAbbr": "LA",
           "position": "K",
-          "categories": ["kicking"],
+          "categories": [
+            "kicking"
+          ],
           "snap_pct": 33,
           "fg_made": 1,
           "fg_att": 2,
@@ -573,7 +615,9 @@
           "playerName": "Braden Fiske",
           "teamAbbr": "LA",
           "position": "DE",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 72,
           "def_tackles_solo": 0,
           "def_tackle_assists": 2,
@@ -589,7 +633,10 @@
           "playerName": "Blake Corum",
           "teamAbbr": "LA",
           "position": "RB",
-          "categories": ["rushing", "receiving"],
+          "categories": [
+            "rushing",
+            "receiving"
+          ],
           "snap_pct": 15,
           "carries": 5,
           "rushing_yards": 14,
@@ -612,7 +659,9 @@
           "playerName": "Tyler Davis",
           "teamAbbr": "LA",
           "position": "DE",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 36,
           "def_tackles_solo": 1,
           "def_tackle_assists": 2,
@@ -628,7 +677,9 @@
           "playerName": "Jordan Whittington",
           "teamAbbr": "LA",
           "position": "WR",
-          "categories": ["receiving"],
+          "categories": [
+            "receiving"
+          ],
           "snap_pct": 70,
           "receptions": 1,
           "targets": 2,
@@ -644,7 +695,9 @@
           "playerName": "Josh Wallace",
           "teamAbbr": "LA",
           "position": "CB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 100,
           "def_tackles_solo": 3,
           "def_tackle_assists": 0,
@@ -660,7 +713,9 @@
           "playerName": "Omar Speights",
           "teamAbbr": "LA",
           "position": "LB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 47,
           "def_tackles_solo": 5,
           "def_tackle_assists": 0,
@@ -676,7 +731,9 @@
           "playerName": "Kamren Kinchens",
           "teamAbbr": "LA",
           "position": "SAF",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 70,
           "def_tackles_solo": 3,
           "def_tackle_assists": 3,
@@ -692,7 +749,9 @@
           "playerName": "Josaiah Stewart",
           "teamAbbr": "LA",
           "position": "LB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 52,
           "def_tackles_solo": 0,
           "def_tackle_assists": 1,
@@ -708,7 +767,9 @@
           "playerName": "Konata Mumpfield",
           "teamAbbr": "LA",
           "position": "WR",
-          "categories": ["receiving"],
+          "categories": [
+            "receiving"
+          ],
           "snap_pct": 27,
           "receptions": 1,
           "targets": 3,
@@ -724,7 +785,9 @@
           "playerName": "Shaun Dolac",
           "teamAbbr": "LA",
           "position": "LB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 83,
           "def_tackles_solo": 0,
           "def_tackle_assists": 1,
@@ -740,7 +803,9 @@
           "playerName": "Maximus Pulley",
           "teamAbbr": "LA",
           "position": "SAF",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 70,
           "def_tackles_solo": 0,
           "def_tackle_assists": 2,
@@ -756,7 +821,9 @@
           "playerName": "Wesley Bailey",
           "teamAbbr": "LA",
           "position": "LB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 48,
           "def_tackles_solo": 1,
           "def_tackle_assists": 1,
@@ -772,7 +839,9 @@
           "playerName": "Dean Connors",
           "teamAbbr": "LA",
           "position": "RB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 43,
           "def_tackles_solo": 0,
           "def_tackle_assists": 1,
@@ -790,7 +859,9 @@
           "playerName": "Zach Ertz",
           "teamAbbr": "PHI",
           "position": "TE",
-          "categories": ["receiving"],
+          "categories": [
+            "receiving"
+          ],
           "snap_pct": 21,
           "receptions": 2,
           "targets": 4,
@@ -806,7 +877,9 @@
           "playerName": "Jonathan Jones",
           "teamAbbr": "PHI",
           "position": "DB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 57,
           "def_tackles_solo": 2,
           "def_tackle_assists": 1,
@@ -830,7 +903,9 @@
           "playerName": "Jake Elliott",
           "teamAbbr": "PHI",
           "position": "K",
-          "categories": ["kicking"],
+          "categories": [
+            "kicking"
+          ],
           "snap_pct": 30,
           "fg_made": 2,
           "fg_att": 2,
@@ -843,7 +918,10 @@
           "playerName": "Saquon Barkley",
           "teamAbbr": "PHI",
           "position": "RB",
-          "categories": ["rushing", "receiving"],
+          "categories": [
+            "rushing",
+            "receiving"
+          ],
           "snap_pct": 7,
           "carries": 2,
           "rushing_yards": 8,
@@ -866,7 +944,9 @@
           "playerName": "A.J. Epenesa",
           "teamAbbr": "PHI",
           "position": "LB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 20,
           "def_tackles_solo": 0,
           "def_tackle_assists": 1,
@@ -898,7 +978,10 @@
           "playerName": "Jalen Hurts",
           "teamAbbr": "PHI",
           "position": "QB",
-          "categories": ["passing", "rushing"],
+          "categories": [
+            "passing",
+            "rushing"
+          ],
           "snap_pct": 100,
           "completions": 12,
           "attempts": 27,
@@ -922,7 +1005,9 @@
           "playerName": "Michael Carter II",
           "teamAbbr": "PHI",
           "position": "CB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 90,
           "def_tackles_solo": 0,
           "def_tackle_assists": 4,
@@ -938,7 +1023,9 @@
           "playerName": "Jordan Davis",
           "teamAbbr": "PHI",
           "position": "DT",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 35,
           "def_tackles_solo": 4,
           "def_tackle_assists": 0,
@@ -954,7 +1041,9 @@
           "playerName": "Riq Woolen",
           "teamAbbr": "PHI",
           "position": "CB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 100,
           "def_tackles_solo": 6,
           "def_tackle_assists": 1,
@@ -986,7 +1075,9 @@
           "playerName": "Arnold Ebiketie",
           "teamAbbr": "PHI",
           "position": "LB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 47,
           "def_tackles_solo": 0,
           "def_tackle_assists": 1,
@@ -1002,7 +1093,9 @@
           "playerName": "Jalen Carter",
           "teamAbbr": "PHI",
           "position": "DT",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 83,
           "def_tackles_solo": 0,
           "def_tackle_assists": 1,
@@ -1018,7 +1111,9 @@
           "playerName": "Dontayvion Wicks",
           "teamAbbr": "PHI",
           "position": "WR",
-          "categories": ["receiving"],
+          "categories": [
+            "receiving"
+          ],
           "snap_pct": 92,
           "receptions": 3,
           "targets": 5,
@@ -1034,7 +1129,9 @@
           "playerName": "Moro Ojomo",
           "teamAbbr": "PHI",
           "position": "DT",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 71,
           "def_tackles_solo": 1,
           "def_tackle_assists": 1,
@@ -1050,7 +1147,9 @@
           "playerName": "E.J. Jenkins",
           "teamAbbr": "PHI",
           "position": "TE",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 83,
           "def_tackles_solo": 1,
           "def_tackle_assists": 0,
@@ -1066,7 +1165,10 @@
           "playerName": "Tank Bigsby",
           "teamAbbr": "PHI",
           "position": "RB",
-          "categories": ["rushing", "receiving"],
+          "categories": [
+            "rushing",
+            "receiving"
+          ],
           "snap_pct": 48,
           "carries": 14,
           "rushing_yards": 55,
@@ -1089,7 +1191,9 @@
           "playerName": "Nolan Smith",
           "teamAbbr": "PHI",
           "position": "LB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 76,
           "def_tackles_solo": 2,
           "def_tackle_assists": 0,
@@ -1105,7 +1209,9 @@
           "playerName": "Kelee Ringo",
           "teamAbbr": "PHI",
           "position": "CB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 87,
           "def_tackles_solo": 1,
           "def_tackle_assists": 2,
@@ -1121,7 +1227,9 @@
           "playerName": "Jalyx Hunt",
           "teamAbbr": "PHI",
           "position": "LB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 75,
           "def_tackles_solo": 1,
           "def_tackle_assists": 0,
@@ -1137,7 +1245,10 @@
           "playerName": "Will Shipley",
           "teamAbbr": "PHI",
           "position": "RB",
-          "categories": ["rushing", "receiving"],
+          "categories": [
+            "rushing",
+            "receiving"
+          ],
           "snap_pct": 70,
           "carries": 6,
           "rushing_yards": 23,
@@ -1160,7 +1271,9 @@
           "playerName": "Jeremiah Trotter Jr.",
           "teamAbbr": "PHI",
           "position": "LB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 100,
           "def_tackles_solo": 10,
           "def_tackle_assists": 5,
@@ -1176,7 +1289,9 @@
           "playerName": "Cooper DeJean",
           "teamAbbr": "PHI",
           "position": "CB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 96,
           "def_tackles_solo": 3,
           "def_tackle_assists": 2,
@@ -1192,7 +1307,9 @@
           "playerName": "Quinyon Mitchell",
           "teamAbbr": "PHI",
           "position": "CB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 43,
           "def_tackles_solo": 4,
           "def_tackle_assists": 0,
@@ -1208,7 +1325,9 @@
           "playerName": "Smael Mondon Jr.",
           "teamAbbr": "PHI",
           "position": "LB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 70,
           "def_tackles_solo": 2,
           "def_tackle_assists": 2,
@@ -1224,7 +1343,10 @@
           "playerName": "Darius Cooper",
           "teamAbbr": "PHI",
           "position": "WR",
-          "categories": ["receiving", "defense"],
+          "categories": [
+            "receiving",
+            "defense"
+          ],
           "snap_pct": 90,
           "receptions": 3,
           "targets": 7,
@@ -1248,7 +1370,9 @@
           "playerName": "Mac McWilliams",
           "teamAbbr": "PHI",
           "position": "CB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 33,
           "def_tackles_solo": 1,
           "def_tackle_assists": 0,
@@ -1264,7 +1388,9 @@
           "playerName": "Jihaad Campbell",
           "teamAbbr": "PHI",
           "position": "LB",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 94,
           "def_tackles_solo": 9,
           "def_tackle_assists": 0,
@@ -1280,7 +1406,9 @@
           "playerName": "Andrew Mukuba",
           "teamAbbr": "PHI",
           "position": "SAF",
-          "categories": ["defense"],
+          "categories": [
+            "defense"
+          ],
           "snap_pct": 100,
           "def_tackles_solo": 1,
           "def_tackle_assists": 3,
@@ -1296,7 +1424,9 @@
           "playerName": "Makai Lemon",
           "teamAbbr": "PHI",
           "position": "WR",
-          "categories": ["receiving"],
+          "categories": [
+            "receiving"
+          ],
           "snap_pct": 74,
           "receptions": 3,
           "targets": 6,
@@ -1407,6 +1537,287 @@
         "played": false
       }
     ],
-    "explainability": null
+    "explainability": {
+      "game_id": "2026_04_LA_PHI",
+      "season": 2026,
+      "week": 4,
+      "projection_basis": "backtest_preweek",
+      "predicted_margin": 0.01,
+      "predicted_home_win_prob": 0.5,
+      "waterfall": {
+        "projected_margin": 0.01,
+        "home_win_prob": 0.5,
+        "steps": [
+          {
+            "key": "step_current_epa",
+            "label": "Current-Season EPA",
+            "points": -0.8,
+            "description": "Current season rolling EPA net differential"
+          },
+          {
+            "key": "step_prior_epa",
+            "label": "Pre-Season Prior",
+            "points": -0.29,
+            "description": "Prior season baseline regressed to mean"
+          },
+          {
+            "key": "step_elo_diff",
+            "label": "Elo Differential",
+            "points": -0.98,
+            "description": "Elo rating points differential"
+          },
+          {
+            "key": "step_home_field",
+            "label": "Home Field Advantage",
+            "points": 2.08,
+            "description": "Neutral site and home field advantage blend"
+          },
+          {
+            "key": "step_qb_adjustment",
+            "label": "Starting Quarterback",
+            "points": 0,
+            "description": "Quarterback availability and injury adjustment"
+          },
+          {
+            "key": "step_rounding",
+            "label": "Rounding",
+            "points": 0,
+            "description": "Decomposition residual"
+          }
+        ],
+        "rounding": 0,
+        "sigma": 14.6,
+        "intercept": 2.24
+      },
+      "secondary_model": {
+        "model_id": "xgboost_feature_fusion_v1",
+        "model_label": "Secondary Model (XGBoost TreeSHAP)",
+        "model_win_prob": 0.554,
+        "logit": 0.2162,
+        "base_value": 0.2498,
+        "factors": [
+          {
+            "feature": "diff_raw",
+            "label": "Overall EPA/Play Differential",
+            "value": -7.22,
+            "shap_value": 0
+          },
+          {
+            "feature": "diff_prior",
+            "label": "Pre-Season Baseline Differential",
+            "value": -6.238,
+            "shap_value": 0
+          },
+          {
+            "feature": "diff_pass_epa",
+            "label": "Passing EPA Differential",
+            "value": -0.057,
+            "shap_value": -0.0158
+          },
+          {
+            "feature": "diff_rush_epa",
+            "label": "Rushing EPA Differential",
+            "value": 0.142,
+            "shap_value": -0.0124
+          },
+          {
+            "feature": "diff_cpoe",
+            "label": "Completion % Over Expected Differential",
+            "value": -1.023,
+            "shap_value": -0.0051
+          },
+          {
+            "feature": "gp_avg",
+            "label": "Sample Maturity (Avg Games Played)",
+            "value": 3,
+            "shap_value": 0
+          },
+          {
+            "feature": "gp_min",
+            "label": "Minimum Team Games Played",
+            "value": 3,
+            "shap_value": 0
+          },
+          {
+            "feature": "qb_diff",
+            "label": "Quarterback Status Differential",
+            "value": 0,
+            "shap_value": 0
+          },
+          {
+            "feature": "ridge_margin",
+            "label": "Primary Ridge Model Projection",
+            "value": 0.012,
+            "shap_value": 0
+          },
+          {
+            "feature": "elo_margin",
+            "label": "Primary Elo Model Projection",
+            "value": -1.966,
+            "shap_value": 0
+          },
+          {
+            "feature": "fatigue_adj",
+            "label": "Schedule Rest & Travel Impact",
+            "value": 0.71,
+            "shap_value": 0.0079
+          },
+          {
+            "feature": "rest_diff",
+            "label": "Days Rest Differential",
+            "value": -1,
+            "shap_value": -0.0083
+          }
+        ],
+        "out_of_sample_record": {
+          "n_games": 145,
+          "accuracy": 59.3,
+          "brier": 0.2232,
+          "logloss": 0.6348
+        },
+        "agreement": "agree"
+      },
+      "entering_baselines": [
+        {
+          "metric_key": "epa_per_play",
+          "metric_label": "EPA / Play",
+          "team_abbr": "LA",
+          "entering_baseline": -0.041,
+          "realized_value": -0.071,
+          "delta": -0.031,
+          "prior_games_n": 3,
+          "is_low_sample": true
+        },
+        {
+          "metric_key": "success_rate",
+          "metric_label": "Success Rate",
+          "team_abbr": "LA",
+          "entering_baseline": 45.43,
+          "realized_value": 49.495,
+          "delta": 4.065,
+          "prior_games_n": 3,
+          "is_low_sample": true
+        },
+        {
+          "metric_key": "dropback_epa",
+          "metric_label": "Dropback EPA",
+          "team_abbr": "LA",
+          "entering_baseline": 0.085,
+          "realized_value": 0.023,
+          "delta": -0.062,
+          "prior_games_n": 3,
+          "is_low_sample": true
+        },
+        {
+          "metric_key": "rush_epa",
+          "metric_label": "Rush EPA",
+          "team_abbr": "LA",
+          "entering_baseline": -0.147,
+          "realized_value": -0.205,
+          "delta": -0.058,
+          "prior_games_n": 3,
+          "is_low_sample": true
+        },
+        {
+          "metric_key": "cpoe",
+          "metric_label": "CPOE",
+          "team_abbr": "LA",
+          "entering_baseline": 0.897,
+          "realized_value": -2.527,
+          "delta": -3.424,
+          "prior_games_n": 3,
+          "is_low_sample": true
+        },
+        {
+          "metric_key": "epa_per_play",
+          "metric_label": "EPA / Play",
+          "team_abbr": "PHI",
+          "entering_baseline": -0.028,
+          "realized_value": -0.158,
+          "delta": -0.13,
+          "prior_games_n": 3,
+          "is_low_sample": true
+        },
+        {
+          "metric_key": "success_rate",
+          "metric_label": "Success Rate",
+          "team_abbr": "PHI",
+          "entering_baseline": 42.566,
+          "realized_value": 38.75,
+          "delta": -3.816,
+          "prior_games_n": 3,
+          "is_low_sample": true
+        },
+        {
+          "metric_key": "dropback_epa",
+          "metric_label": "Dropback EPA",
+          "team_abbr": "PHI",
+          "entering_baseline": -0.083,
+          "realized_value": -0.17,
+          "delta": -0.087,
+          "prior_games_n": 3,
+          "is_low_sample": true
+        },
+        {
+          "metric_key": "rush_epa",
+          "metric_label": "Rush EPA",
+          "team_abbr": "PHI",
+          "entering_baseline": 0.04,
+          "realized_value": -0.149,
+          "delta": -0.189,
+          "prior_games_n": 3,
+          "is_low_sample": true
+        },
+        {
+          "metric_key": "cpoe",
+          "metric_label": "CPOE",
+          "team_abbr": "PHI",
+          "entering_baseline": 4.87,
+          "realized_value": -18.542,
+          "delta": -23.412,
+          "prior_games_n": 3,
+          "is_low_sample": true
+        }
+      ],
+      "divergence_note": "PHI CPOE (-18.542) showed the largest divergence from entering baseline (+4.870).",
+      "margin_waterfall": [
+        {
+          "key": "step_current_epa",
+          "label": "Current-Season EPA",
+          "points": -0.8,
+          "description": "Current season rolling EPA net differential"
+        },
+        {
+          "key": "step_prior_epa",
+          "label": "Pre-Season Prior",
+          "points": -0.29,
+          "description": "Prior season baseline regressed to mean"
+        },
+        {
+          "key": "step_elo_diff",
+          "label": "Elo Differential",
+          "points": -0.98,
+          "description": "Elo rating points differential"
+        },
+        {
+          "key": "step_home_field",
+          "label": "Home Field Advantage",
+          "points": 2.08,
+          "description": "Neutral site and home field advantage blend"
+        },
+        {
+          "key": "step_qb_adjustment",
+          "label": "Starting Quarterback",
+          "points": 0,
+          "description": "Quarterback availability and injury adjustment"
+        },
+        {
+          "key": "step_rounding",
+          "label": "Rounding",
+          "points": 0,
+          "description": "Decomposition residual"
+        }
+      ]
+    }
   }
 }

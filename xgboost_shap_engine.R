@@ -321,7 +321,13 @@ run_xgboost_shap_engine <- function(target_season = if (exists("CURRENT_SEASON")
   # 4. Generate TreeSHAP attributions for target season games
   # Include all 2026 games from prediction_accuracy_log and schedules
   target_games <- if (nrow(pred_log) > 0) {
-    pred_log |> filter(season == target_season)
+    unplayed <- schedules |>
+      filter(season == target_season, !game_id %in% pred_log$game_id)
+    if (nrow(unplayed) > 0) {
+      bind_rows(pred_log |> filter(season == target_season), unplayed)
+    } else {
+      pred_log |> filter(season == target_season)
+    }
   } else {
     schedules |> filter(season == target_season)
   }

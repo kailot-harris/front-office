@@ -767,6 +767,7 @@ WEB_PUBLIC_DIR   <- file.path("web", "public")
 WEB_DATA_DIR     <- file.path(WEB_PUBLIC_DIR, "data")
 WEB_ANIM_DIR     <- file.path(WEB_PUBLIC_DIR, "animations")
 WEB_GAMES_DIR    <- file.path(WEB_DATA_DIR, "games")
+WEB_ATTRIBUTION_DIR <- file.path(WEB_DATA_DIR, "week_attribution")
 
 WEB_JSON_VISUAL_MEDIA_INDEX    <- file.path(WEB_DATA_DIR, "visual_media_index.json")
 WEB_JSON_STANDINGS_PROJECTIONS <- file.path(WEB_DATA_DIR, "standings_projections.json")

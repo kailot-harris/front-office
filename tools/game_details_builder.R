@@ -466,6 +466,249 @@ if (!dir.exists(WEB_GAMES_DIR)) {
   if (length(inj_rows) == 0) NULL else inj_rows
 }
 
+# ==============================================================================
+# Attribution & Explainability Helpers (Phase 2, Issue 2-6 / #115)
+# ==============================================================================
+
+.precompute_team_eff_metrics <- function(pbp_df, target_season = CURRENT_SEASON) {
+  if (is.null(pbp_df) || nrow(pbp_df) == 0) return(NULL)
+  pbp_sub <- pbp_df |>
+    filter(season == target_season, !is.na(posteam), !is.na(epa))
+  if (nrow(pbp_sub) == 0) return(NULL)
+
+  pbp_sub |>
+    group_by(season, week, game_id, team = posteam) |>
+    summarize(
+      epa_per_play = mean(epa, na.rm = TRUE),
+      success_rate = mean(success == 1, na.rm = TRUE) * 100,
+      dropback_epa = mean(epa[pass == 1], na.rm = TRUE),
+      rush_epa     = mean(epa[pass == 0], na.rm = TRUE),
+      cpoe         = if (any(!is.na(cpoe))) mean(cpoe, na.rm = TRUE) else NA_real_,
+      .groups      = "drop"
+    )
+}
+
+.build_entering_baselines <- function(team_eff_df, g_season, g_week, gid, away_tm, home_tm, is_completed) {
+  metrics_meta <- list(
+    list(key = "epa_per_play", label = "EPA / Play"),
+    list(key = "success_rate", label = "Success Rate"),
+    list(key = "dropback_epa", label = "Dropback EPA"),
+    list(key = "rush_epa", label = "Rush EPA"),
+    list(key = "cpoe", label = "CPOE")
+  )
+
+  results <- list()
+
+  for (tm in c(away_tm, home_tm)) {
+    prior_games <- if (!is.null(team_eff_df)) {
+      team_eff_df |> filter(season == g_season, team == tm, week < g_week)
+    } else {
+      data.frame()
+    }
+    prior_n <- nrow(prior_games)
+    is_low <- prior_n < 4
+
+    cur_game <- if (is_completed && !is.null(team_eff_df)) {
+      team_eff_df |> filter(game_id == gid, team == tm)
+    } else {
+      data.frame()
+    }
+
+    for (m in metrics_meta) {
+      k <- m$key
+      ent_val <- if (prior_n > 0 && k %in% names(prior_games) && any(!is.na(prior_games[[k]]))) {
+        mean(prior_games[[k]], na.rm = TRUE)
+      } else {
+        NA_real_
+      }
+
+      real_val <- if (nrow(cur_game) > 0 && k %in% names(cur_game) && !is.na(cur_game[[k]][1])) {
+        cur_game[[k]][1]
+      } else {
+        NA_real_
+      }
+
+      delta_val <- if (!is.na(ent_val) && !is.na(real_val)) {
+        round(real_val - ent_val, 3)
+      } else {
+        NULL
+      }
+
+      results[[length(results) + 1L]] <- list(
+        metric_key        = k,
+        metric_label      = m$label,
+        team_abbr         = tm,
+        entering_baseline = if (!is.na(ent_val)) round(ent_val, 3) else NULL,
+        realized_value    = if (!is.na(real_val)) round(real_val, 3) else NULL,
+        delta             = delta_val,
+        prior_games_n     = as.integer(prior_n),
+        is_low_sample     = is_low
+      )
+    }
+  }
+
+  results
+}
+
+.build_game_explainability <- function(gid, g_season, g_week, away_tm, home_tm, pred_row, shap_game, team_eff_df, is_completed) {
+  if (is.null(pred_row)) return(NULL)
+
+  # 1. Waterfall steps (Section 5.2)
+  waterfall_steps <- list(
+    list(key = "step_current_epa", label = "Current-Season EPA", points = round(as.numeric(pred_row$step_current_epa), 2), description = "Current season rolling EPA net differential"),
+    list(key = "step_prior_epa", label = "Pre-Season Prior", points = round(as.numeric(pred_row$step_prior_epa), 2), description = "Prior season baseline regressed to mean"),
+    list(key = "step_elo_diff", label = "Elo Differential", points = round(as.numeric(pred_row$step_elo_diff), 2), description = "Elo rating points differential"),
+    list(key = "step_home_field", label = "Home Field Advantage", points = round(as.numeric(pred_row$step_home_field), 2), description = "Neutral site and home field advantage blend"),
+    list(key = "step_qb_adjustment", label = "Starting Quarterback", points = round(as.numeric(pred_row$step_qb_adjustment), 2), description = "Quarterback availability and injury adjustment"),
+    list(key = "step_rounding", label = "Rounding", points = round(as.numeric(pred_row$step_rounding), 3), description = "Decomposition residual")
+  )
+
+  waterfall_payload <- list(
+    projected_margin = round(as.numeric(pred_row$projected_margin), 2),
+    home_win_prob    = round(as.numeric(pred_row$home_win_prob), 3),
+    steps            = waterfall_steps,
+    rounding         = round(as.numeric(pred_row$step_rounding), 3),
+    sigma            = if (!is.null(pred_row$margin_sigma) && !is.na(pred_row$margin_sigma)) as.numeric(pred_row$margin_sigma) else 14.60,
+    intercept        = if (!is.null(pred_row$ridge_b_intercept) && !is.na(pred_row$ridge_b_intercept)) round(as.numeric(pred_row$ridge_b_intercept), 2) else 1.84
+  )
+
+  # 2. Secondary model TreeSHAP summary (Section 5.4)
+  secondary_model <- NULL
+  if (!is.null(shap_game)) {
+    sec_prob <- round(as.numeric(shap_game$model_win_prob), 3)
+    h_prob   <- round(as.numeric(pred_row$home_win_prob), 3)
+    agreement_val <- if ((sec_prob >= 0.5 && h_prob >= 0.5) || (sec_prob < 0.5 && h_prob < 0.5)) "agree" else "differ"
+
+    secondary_model <- list(
+      model_id             = shap_game$model_metadata$model_id,
+      model_label          = shap_game$model_metadata$model_label,
+      model_win_prob       = sec_prob,
+      logit                = round(as.numeric(shap_game$logit), 4),
+      base_value           = round(as.numeric(shap_game$base_value), 4),
+      factors              = shap_game$features,
+      out_of_sample_record = list(
+        n_games  = as.integer(shap_game$model_metadata$out_of_sample_record$n_games),
+        accuracy = as.numeric(shap_game$model_metadata$out_of_sample_record$accuracy),
+        brier    = as.numeric(shap_game$model_metadata$out_of_sample_record$brier),
+        logloss  = as.numeric(shap_game$model_metadata$out_of_sample_record$logloss)
+      ),
+      agreement            = agreement_val
+    )
+  }
+
+  # 3. Entering baselines (Section 5.5)
+  baselines <- .build_entering_baselines(team_eff_df, g_season, g_week, gid, away_tm, home_tm, is_completed)
+
+  # 4. Divergence note
+  divergence_note <- NULL
+  if (is_completed && length(baselines) > 0) {
+    deltas <- sapply(baselines, function(b) if (!is.null(b$delta)) abs(b$delta) else -1)
+    max_idx <- which.max(deltas)
+    if (length(max_idx) > 0 && deltas[max_idx] >= 0) {
+      top_b <- baselines[[max_idx]]
+      divergence_note <- sprintf("%s %s (%+0.3f) showed the largest divergence from entering baseline (%+0.3f).",
+                                 top_b$team_abbr, top_b$metric_label, top_b$realized_value, top_b$entering_baseline)
+    }
+  }
+
+  basis_str <- if (!is.null(pred_row$log_source)) {
+    if (identical(as.character(pred_row$log_source), "LOGGED_PREGAME")) "logged_pregame"
+    else if (identical(as.character(pred_row$log_source), "BACKTEST_PREWEEK")) "backtest_preweek"
+    else "primary_ensemble"
+  } else {
+    "primary_ensemble"
+  }
+
+  list(
+    game_id                 = gid,
+    season                  = as.integer(g_season),
+    week                    = as.integer(g_week),
+    projection_basis        = basis_str,
+    predicted_margin        = round(as.numeric(pred_row$projected_margin), 2),
+    predicted_home_win_prob = round(as.numeric(pred_row$home_win_prob), 3),
+    waterfall               = waterfall_payload,
+    secondary_model         = secondary_model,
+    entering_baselines      = baselines,
+    divergence_note         = divergence_note,
+    margin_waterfall        = waterfall_steps
+  )
+}
+
+.export_weekly_attribution <- function(sched_df, pred_log_df, shap_df, team_eff_df, force = FALSE) {
+  if (!dir.exists(WEB_ATTRIBUTION_DIR)) {
+    dir.create(WEB_ATTRIBUTION_DIR, recursive = TRUE, showWarnings = FALSE)
+  }
+
+  unplayed_games <- sched_df |>
+    filter(season == CURRENT_SEASON, is.na(home_score) | is.na(away_score))
+
+  if (nrow(unplayed_games) == 0) {
+    log_info("No unplayed games found for weekly attribution export.", call = "export_weekly_attribution()")
+    return(invisible(0L))
+  }
+
+  weeks <- sort(unique(unplayed_games$week))
+  n_written <- 0L
+
+  for (w in weeks) {
+    w_games <- unplayed_games |> filter(week == w)
+    explain_list <- list()
+
+    for (i in seq_len(nrow(w_games))) {
+      g <- w_games[i, ]
+      gid <- as.character(g$game_id)
+      away_tm <- as.character(g$away_team)
+      home_tm <- as.character(g$home_team)
+
+      pred_row <- if (!is.null(pred_log_df)) {
+        p_sub <- pred_log_df |> filter(game_id == gid)
+        if (nrow(p_sub) > 0) p_sub[1, ] else NULL
+      } else NULL
+
+      shap_game <- if (!is.null(shap_df) && !is.null(shap_df$games[[gid]])) {
+        shap_df$games[[gid]]
+      } else NULL
+
+      if (!is.null(pred_row)) {
+        expl <- .build_game_explainability(gid, CURRENT_SEASON, w, away_tm, home_tm, pred_row, shap_game, team_eff_df, is_completed = FALSE)
+        if (!is.null(expl)) {
+          explain_list[[length(explain_list) + 1L]] <- expl
+        }
+      }
+    }
+
+    if (length(explain_list) > 0) {
+      out_path <- file.path(WEB_ATTRIBUTION_DIR, sprintf("%d_%d.json", CURRENT_SEASON, w))
+      gen_time <- format(as.POSIXlt(Sys.time(), tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ")
+
+      weekly_envelope <- list(
+        schema_version = "1.0",
+        generated_at   = gen_time,
+        season         = as.integer(CURRENT_SEASON),
+        week           = as.integer(w),
+        games          = explain_list
+      )
+
+      cand_json <- toJSON(weekly_envelope, auto_unbox = TRUE, pretty = 2, null = "null")
+
+      if (!isTRUE(force) && file.exists(out_path)) {
+        exist_json <- paste(readLines(out_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+        strip_pattern <- '"generated_at"\\s*:\\s*"[^"]*",?'
+        if (isTRUE(trimws(gsub(strip_pattern, "", cand_json)) == trimws(gsub(strip_pattern, "", exist_json)))) {
+          next
+        }
+      }
+
+      writeLines(cand_json, out_path, useBytes = TRUE)
+      n_written <- n_written + 1L
+    }
+  }
+
+  log_info(sprintf("Exported weekly attribution files: %d written for %d weeks.", n_written, length(weeks)),
+           call = "export_weekly_attribution()")
+  invisible(n_written)
+}
+
 #' Build per-game JSON files under web/public/data/games/{game_id}.json
 #'
 #' @param force Logical. If TRUE, re-evaluates all completed games regardless of date.
@@ -487,6 +730,15 @@ build_game_details <- function(force = FALSE) {
 
   # Load PBP cache if available for efficiency factors
   pbp_df <- if (file.exists(CACHE_PBP)) readRDS(CACHE_PBP) else NULL
+
+  # Load explainability and attribution caches
+  pred_log_df <- if (file.exists(CACHE_PREDICTION_ACCURACY_LOG)) {
+    tryCatch(readRDS(CACHE_PREDICTION_ACCURACY_LOG), error = function(e) NULL)
+  } else NULL
+  shap_df <- if (file.exists(CACHE_XGBOOST_SHAP)) {
+    tryCatch(readRDS(CACHE_XGBOOST_SHAP), error = function(e) NULL)
+  } else NULL
+  team_eff_df <- .precompute_team_eff_metrics(pbp_df, CURRENT_SEASON)
 
   # Precompute GSIS to PFR ID crosswalk once
   gsis_to_pfr <- list()
@@ -554,7 +806,7 @@ build_game_details <- function(force = FALSE) {
     away_tm <- as.character(g$away_team)
     home_tm <- as.character(g$home_team)
 
-    has_box_score <- nrow(g_ts) > 0 || nrow(g_ps) > 0
+    has_box_score <- nrow(g_ts) > 0 || nrow(g_ps) > 0 || file.exists(out_file)
     if (!has_box_score) {
       # Per spec: write one JSON file per completed game WITH box scores
       next
@@ -587,15 +839,41 @@ build_game_details <- function(force = FALSE) {
       "13:00"
     }
 
-    # Build components
-    eff_factors <- .build_efficiency_factors(g_pbp, away_tm, home_tm)
-    team_comp   <- .build_team_stats(away_ts_sub, home_ts_sub)
-    leaders     <- .build_leaders(g_ps, away_tm, home_tm)
+    # If stats tables are not loaded but existing game file exists on disk, reuse existing box score payload
+    existing_env <- NULL
+    if (file.exists(out_file)) {
+      existing_env <- tryCatch(fromJSON(out_file, simplifyVector = FALSE), error = function(e) NULL)
+    }
 
-    away_players <- .build_player_box_rows(g_ps, away_tm, g_sc, gsis_to_pfr)
-    home_players <- .build_player_box_rows(g_ps, home_tm, g_sc, gsis_to_pfr)
+    if (nrow(g_ts) == 0 && nrow(g_ps) == 0 && !is.null(existing_env$data)) {
+      eff_factors  <- existing_env$data$efficiency_factors
+      team_comp    <- existing_env$data$team_stats
+      leaders      <- existing_env$data$leaders
+      away_players <- if (!is.null(existing_env$data$box_score$away_players)) existing_env$data$box_score$away_players else list()
+      home_players <- if (!is.null(existing_env$data$box_score$home_players)) existing_env$data$box_score$home_players else list()
+      injuries     <- existing_env$data$injury_designations
+      if (is.null(forecast_data)) {
+        forecast_data <- existing_env$data$forecast
+      }
+    } else {
+      # Build components from caches
+      eff_factors <- .build_efficiency_factors(g_pbp, away_tm, home_tm)
+      team_comp   <- .build_team_stats(away_ts_sub, home_ts_sub)
+      leaders     <- .build_leaders(g_ps, away_tm, home_tm)
 
-    injuries    <- .build_injury_designations(inj_df, as.integer(g$week), as.integer(g$season), away_tm, home_tm, g_ps, g_sc)
+      away_players <- .build_player_box_rows(g_ps, away_tm, g_sc, gsis_to_pfr)
+      home_players <- .build_player_box_rows(g_ps, home_tm, g_sc, gsis_to_pfr)
+
+      injuries    <- .build_injury_designations(inj_df, as.integer(g$week), as.integer(g$season), away_tm, home_tm, g_ps, g_sc)
+    }
+
+    # Explainability & Attribution (Section 5.2, 5.4, 5.5)
+    pred_row <- if (!is.null(pred_log_df)) {
+      p_sub <- pred_log_df |> filter(game_id == gid)
+      if (nrow(p_sub) > 0) p_sub[1, ] else NULL
+    } else NULL
+    shap_game <- if (!is.null(shap_df) && !is.null(shap_df$games[[gid]])) shap_df$games[[gid]] else NULL
+    expl_data <- .build_game_explainability(gid, as.integer(g$season), as.integer(g$week), away_tm, home_tm, pred_row, shap_game, team_eff_df, is_completed = TRUE)
 
     # Current UTC timestamp
     gen_time <- format(as.POSIXlt(Sys.time(), tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ")
@@ -632,7 +910,7 @@ build_game_details <- function(force = FALSE) {
         home_players = home_players
       ),
       injury_designations = injuries,
-      explainability      = NULL
+      explainability      = expl_data
     )
 
     envelope <- list(
@@ -672,10 +950,18 @@ build_game_details <- function(force = FALSE) {
                    n_eval, n_written, n_unchanged, n_skipped_churn),
            call = "build_game_details()")
 
+  # Export weekly attribution files for unplayed games (Section 3.2, Issue 2-6)
+  n_weekly_written <- .export_weekly_attribution(sched_df, pred_log_df, shap_df, team_eff_df, force = force)
+
   invisible(list(
-    evaluated     = n_eval,
-    written       = n_written,
-    unchanged     = n_unchanged,
-    skipped_churn = n_skipped_churn
+    evaluated      = n_eval,
+    written        = n_written,
+    unchanged      = n_unchanged,
+    skipped_churn  = n_skipped_churn,
+    weekly_written = n_weekly_written
   ))
+}
+
+if (sys.nframe() == 0L) {
+  build_game_details(force = TRUE)
 }

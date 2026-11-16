@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-11-16T05:32:35Z",
+  "generated_at": "2026-11-16T12:04:13Z",
   "sport": "nfl",
   "endpoint": "game_detail",
   "season": 2026,
@@ -30,11 +30,11 @@
       "is_winner": true
     },
     "forecast": {
-      "projected_margin": 3.9,
-      "home_win_prob": 0.605,
-      "away_win_prob": 0.395,
-      "home_power_rating": 0,
-      "away_power_rating": 0,
+      "projected_margin": 6.7,
+      "home_win_prob": 0.676,
+      "away_win_prob": 0.324,
+      "home_power_rating": 24.2,
+      "away_power_rating": 5.22,
       "prediction_correct": true
     },
     "efficiency_factors": [
@@ -1418,6 +1418,287 @@
         "played": false
       }
     ],
-    "explainability": null
+    "explainability": {
+      "game_id": "2026_01_NE_SEA",
+      "season": 2026,
+      "week": 1,
+      "projection_basis": "backtest_preweek",
+      "predicted_margin": 6.68,
+      "predicted_home_win_prob": 0.676,
+      "waterfall": {
+        "projected_margin": 6.68,
+        "home_win_prob": 0.676,
+        "steps": [
+          {
+            "key": "step_current_epa",
+            "label": "Current-Season EPA",
+            "points": 1.81,
+            "description": "Current season rolling EPA net differential"
+          },
+          {
+            "key": "step_prior_epa",
+            "label": "Pre-Season Prior",
+            "points": 0.86,
+            "description": "Prior season baseline regressed to mean"
+          },
+          {
+            "key": "step_elo_diff",
+            "label": "Elo Differential",
+            "points": 1.92,
+            "description": "Elo rating points differential"
+          },
+          {
+            "key": "step_home_field",
+            "label": "Home Field Advantage",
+            "points": 2.08,
+            "description": "Neutral site and home field advantage blend"
+          },
+          {
+            "key": "step_qb_adjustment",
+            "label": "Starting Quarterback",
+            "points": 0,
+            "description": "Quarterback availability and injury adjustment"
+          },
+          {
+            "key": "step_rounding",
+            "label": "Rounding",
+            "points": 0,
+            "description": "Decomposition residual"
+          }
+        ],
+        "rounding": 0,
+        "sigma": 14.6,
+        "intercept": 2.24
+      },
+      "secondary_model": {
+        "model_id": "xgboost_feature_fusion_v1",
+        "model_label": "Secondary Model (XGBoost TreeSHAP)",
+        "model_win_prob": 0.721,
+        "logit": 0.9511,
+        "base_value": 0.2498,
+        "factors": [
+          {
+            "feature": "diff_raw",
+            "label": "Overall EPA/Play Differential",
+            "value": 18.98,
+            "shap_value": 0
+          },
+          {
+            "feature": "diff_prior",
+            "label": "Pre-Season Baseline Differential",
+            "value": 18.98,
+            "shap_value": 0
+          },
+          {
+            "feature": "diff_pass_epa",
+            "label": "Passing EPA Differential",
+            "value": 0.275,
+            "shap_value": 0.1072
+          },
+          {
+            "feature": "diff_rush_epa",
+            "label": "Rushing EPA Differential",
+            "value": 0.321,
+            "shap_value": -0.0085
+          },
+          {
+            "feature": "diff_cpoe",
+            "label": "Completion % Over Expected Differential",
+            "value": 6.178,
+            "shap_value": 0.6802
+          },
+          {
+            "feature": "gp_avg",
+            "label": "Sample Maturity (Avg Games Played)",
+            "value": 0,
+            "shap_value": 0
+          },
+          {
+            "feature": "gp_min",
+            "label": "Minimum Team Games Played",
+            "value": 0,
+            "shap_value": 0
+          },
+          {
+            "feature": "qb_diff",
+            "label": "Quarterback Status Differential",
+            "value": 0,
+            "shap_value": 0
+          },
+          {
+            "feature": "ridge_margin",
+            "label": "Primary Ridge Model Projection",
+            "value": 6.68,
+            "shap_value": 0
+          },
+          {
+            "feature": "elo_margin",
+            "label": "Primary Elo Model Projection",
+            "value": 3.843,
+            "shap_value": 0
+          },
+          {
+            "feature": "fatigue_adj",
+            "label": "Schedule Rest & Travel Impact",
+            "value": 0,
+            "shap_value": -0.0711
+          },
+          {
+            "feature": "rest_diff",
+            "label": "Days Rest Differential",
+            "value": 0,
+            "shap_value": -0.0066
+          }
+        ],
+        "out_of_sample_record": {
+          "n_games": 145,
+          "accuracy": 59.3,
+          "brier": 0.2232,
+          "logloss": 0.6348
+        },
+        "agreement": "agree"
+      },
+      "entering_baselines": [
+        {
+          "metric_key": "epa_per_play",
+          "metric_label": "EPA / Play",
+          "team_abbr": "NE",
+          "entering_baseline": null,
+          "realized_value": -0.031,
+          "delta": null,
+          "prior_games_n": 0,
+          "is_low_sample": true
+        },
+        {
+          "metric_key": "success_rate",
+          "metric_label": "Success Rate",
+          "team_abbr": "NE",
+          "entering_baseline": null,
+          "realized_value": 43.529,
+          "delta": null,
+          "prior_games_n": 0,
+          "is_low_sample": true
+        },
+        {
+          "metric_key": "dropback_epa",
+          "metric_label": "Dropback EPA",
+          "team_abbr": "NE",
+          "entering_baseline": null,
+          "realized_value": 0.127,
+          "delta": null,
+          "prior_games_n": 0,
+          "is_low_sample": true
+        },
+        {
+          "metric_key": "rush_epa",
+          "metric_label": "Rush EPA",
+          "team_abbr": "NE",
+          "entering_baseline": null,
+          "realized_value": -0.201,
+          "delta": null,
+          "prior_games_n": 0,
+          "is_low_sample": true
+        },
+        {
+          "metric_key": "cpoe",
+          "metric_label": "CPOE",
+          "team_abbr": "NE",
+          "entering_baseline": null,
+          "realized_value": 5.97,
+          "delta": null,
+          "prior_games_n": 0,
+          "is_low_sample": true
+        },
+        {
+          "metric_key": "epa_per_play",
+          "metric_label": "EPA / Play",
+          "team_abbr": "SEA",
+          "entering_baseline": null,
+          "realized_value": 0.007,
+          "delta": null,
+          "prior_games_n": 0,
+          "is_low_sample": true
+        },
+        {
+          "metric_key": "success_rate",
+          "metric_label": "Success Rate",
+          "team_abbr": "SEA",
+          "entering_baseline": null,
+          "realized_value": 42.647,
+          "delta": null,
+          "prior_games_n": 0,
+          "is_low_sample": true
+        },
+        {
+          "metric_key": "dropback_epa",
+          "metric_label": "Dropback EPA",
+          "team_abbr": "SEA",
+          "entering_baseline": null,
+          "realized_value": 0.196,
+          "delta": null,
+          "prior_games_n": 0,
+          "is_low_sample": true
+        },
+        {
+          "metric_key": "rush_epa",
+          "metric_label": "Rush EPA",
+          "team_abbr": "SEA",
+          "entering_baseline": null,
+          "realized_value": -0.126,
+          "delta": null,
+          "prior_games_n": 0,
+          "is_low_sample": true
+        },
+        {
+          "metric_key": "cpoe",
+          "metric_label": "CPOE",
+          "team_abbr": "SEA",
+          "entering_baseline": null,
+          "realized_value": 2.364,
+          "delta": null,
+          "prior_games_n": 0,
+          "is_low_sample": true
+        }
+      ],
+      "divergence_note": null,
+      "margin_waterfall": [
+        {
+          "key": "step_current_epa",
+          "label": "Current-Season EPA",
+          "points": 1.81,
+          "description": "Current season rolling EPA net differential"
+        },
+        {
+          "key": "step_prior_epa",
+          "label": "Pre-Season Prior",
+          "points": 0.86,
+          "description": "Prior season baseline regressed to mean"
+        },
+        {
+          "key": "step_elo_diff",
+          "label": "Elo Differential",
+          "points": 1.92,
+          "description": "Elo rating points differential"
+        },
+        {
+          "key": "step_home_field",
+          "label": "Home Field Advantage",
+          "points": 2.08,
+          "description": "Neutral site and home field advantage blend"
+        },
+        {
+          "key": "step_qb_adjustment",
+          "label": "Starting Quarterback",
+          "points": 0,
+          "description": "Quarterback availability and injury adjustment"
+        },
+        {
+          "key": "step_rounding",
+          "label": "Rounding",
+          "points": 0,
+          "description": "Decomposition residual"
+        }
+      ]
+    }
   }
 }

@@ -123,56 +123,121 @@ ok("SCHEMA-7 Efficiency factors conform to 8-metric definition",
 # Test 4: Full player-to-team counting stat reconciliation across all game files
 # ------------------------------------------------------------------------------
 cat("\n--- Section 4: Player-to-Team Exact Counting Stat Reconciliation ---\n")
-ts_df <- readRDS(CACHE_TEAM_STATS)
+if (file.exists(CACHE_TEAM_STATS)) {
+  ts_df <- readRDS(CACHE_TEAM_STATS)
 
-reconcile_stats <- c(
-  "completions", "attempts", "passing_yards", "passing_tds", "passing_interceptions",
-  "sacks_suffered", "sack_yards_lost",
-  "carries", "rushing_yards", "rushing_tds", "rushing_fumbles", "rushing_fumbles_lost", "rushing_first_downs",
-  "receptions", "targets", "receiving_yards", "receiving_tds", "receiving_fumbles", "receiving_fumbles_lost", "receiving_first_downs",
-  "def_tackles_solo", "def_tackle_assists", "def_tackles_for_loss", "def_sacks", "def_qb_hits", "def_interceptions", "def_pass_defended", "def_fumbles_forced",
-  "fg_made", "fg_att", "pat_made", "pat_att"
-)
+  reconcile_stats <- c(
+    "completions", "attempts", "passing_yards", "passing_tds", "passing_interceptions",
+    "sacks_suffered", "sack_yards_lost",
+    "carries", "rushing_yards", "rushing_tds", "rushing_fumbles", "rushing_fumbles_lost", "rushing_first_downs",
+    "receptions", "targets", "receiving_yards", "receiving_tds", "receiving_fumbles", "receiving_fumbles_lost", "receiving_first_downs",
+    "def_tackles_solo", "def_tackle_assists", "def_tackles_for_loss", "def_sacks", "def_qb_hits", "def_interceptions", "def_pass_defended", "def_fumbles_forced",
+    "fg_made", "fg_att", "pat_made", "pat_att"
+  )
 
-total_checks <- 0L
-mismatches <- 0L
+  total_checks <- 0L
+  mismatches <- 0L
+
+  for (f in game_files) {
+    g_json <- fromJSON(f, simplifyVector = FALSE)
+    gid <- g_json$game_id
+    d_g <- g_json$data
+
+    for (side in c("away", "home")) {
+      tm <- if (side == "away") d_g$away_team$teamAbbr else d_g$home_team$teamAbbr
+      players <- if (side == "away") d_g$box_score$away_players else d_g$box_score$home_players
+
+      ts_row <- ts_df |> filter(game_id == gid, team == tm)
+      if (nrow(ts_row) == 0) next
+
+      for (st in reconcile_stats) {
+        if (!st %in% names(ts_row)) next
+        t_val <- ts_row[[st]][1]
+        if (is.na(t_val)) next
+
+        p_vals <- sapply(players, function(p) {
+          val <- p[[st]]
+          if (is.null(val) || is.na(val)) 0 else val
+        })
+        p_sum <- sum(p_vals)
+
+        total_checks <- total_checks + 1L
+        if (abs(p_sum - t_val) > 1e-6) {
+          cat(sprintf("  Reconciliation mismatch: %s | %s | %s (team=%s, player_sum=%s)\n",
+                      gid, tm, st, t_val, p_sum))
+          mismatches <- mismatches + 1L
+        }
+      }
+    }
+  }
+
+  ok("RECON-1 All 32 counting stats aggregate exactly from players to team totals",
+     mismatches == 0L,
+     sprintf("%d checks across %d games, %d mismatches", total_checks, length(game_files), mismatches))
+} else {
+  cat("[SKIP] Section 4 skipped because CACHE_TEAM_STATS is not in ephemeral cache\n")
+}
+
+# ------------------------------------------------------------------------------
+# Test 5: Phase 2 Attribution & Explainability Invariants (Issue #115 / 2-6)
+# ------------------------------------------------------------------------------
+cat("\n--- Section 5: Phase 2 Attribution & Explainability Invariants ---\n")
+
+# ATTR-1: All completed games carry non-null explainability
+expl_null_count <- 0L
+waterfall_mismatches <- 0L
 
 for (f in game_files) {
   g_json <- fromJSON(f, simplifyVector = FALSE)
-  gid <- g_json$game_id
-  d_g <- g_json$data
+  exp <- g_json$data$explainability
+  if (is.null(exp)) {
+    expl_null_count <- expl_null_count + 1L
+    next
+  }
 
-  for (side in c("away", "home")) {
-    tm <- if (side == "away") d_g$away_team$teamAbbr else d_g$home_team$teamAbbr
-    players <- if (side == "away") d_g$box_score$away_players else d_g$box_score$home_players
-
-    ts_row <- ts_df |> filter(game_id == gid, team == tm)
-    if (nrow(ts_row) == 0) next
-
-    for (st in reconcile_stats) {
-      if (!st %in% names(ts_row)) next
-      t_val <- ts_row[[st]][1]
-      if (is.na(t_val)) next
-
-      p_vals <- sapply(players, function(p) {
-        val <- p[[st]]
-        if (is.null(val) || is.na(val)) 0 else val
-      })
-      p_sum <- sum(p_vals)
-
-      total_checks <- total_checks + 1L
-      if (abs(p_sum - t_val) > 1e-6) {
-        cat(sprintf("  Reconciliation mismatch: %s | %s | %s (team=%s, player_sum=%s)\n",
-                    gid, tm, st, t_val, p_sum))
-        mismatches <- mismatches + 1L
-      }
+  # Check waterfall additivity
+  if (!is.null(exp$waterfall) && !is.null(exp$waterfall$steps)) {
+    pts <- sapply(exp$waterfall$steps, function(s) s$points)
+    wf_sum <- sum(pts)
+    proj_m <- exp$waterfall$projected_margin
+    if (abs(wf_sum - proj_m) > 0.02 + 1e-6) {
+      waterfall_mismatches <- waterfall_mismatches + 1L
     }
   }
 }
 
-ok("RECON-1 All 32 counting stats aggregate exactly from players to team totals",
-   mismatches == 0L,
-   sprintf("%d checks across %d games, %d mismatches", total_checks, length(game_files), mismatches))
+ok("ATTR-1 All completed games carry non-null explainability payload",
+   expl_null_count == 0L,
+   sprintf("%d / %d completed games have explainability", length(game_files) - expl_null_count, length(game_files)))
+
+ok("ATTR-2 Waterfall steps sum to projected margin within 0.02 across all completed games",
+   waterfall_mismatches == 0L,
+   sprintf("%d waterfall mismatches across %d games", waterfall_mismatches, length(game_files)))
+
+# ATTR-3: Weekly attribution files exist
+weekly_files <- if (dir.exists(WEB_ATTRIBUTION_DIR)) {
+  list.files(WEB_ATTRIBUTION_DIR, pattern = "\\.json$", full.names = TRUE)
+} else character(0)
+
+ok("ATTR-3 At least 9 weekly attribution files exist for unplayed weeks",
+   length(weekly_files) >= 9L,
+   sprintf("%d weekly attribution files found", length(weekly_files)))
+
+# ATTR-4: Zero banned betting vocabulary in weekly attribution files
+banned_betting_pattern <- "\\b(spread|projected_spread|point_spread|moneyline|sportsbook|over_under|parlay|wager|sharp_book|key_number_flag)\\b"
+betting_term_violations <- 0L
+
+for (wf in weekly_files) {
+  content <- paste(readLines(wf, warn = FALSE, encoding = "UTF-8"), collapse = " ")
+  if (grepl(banned_betting_pattern, content, ignore.case = TRUE)) {
+    cat(sprintf("  Forbidden betting vocabulary found in %s\n", basename(wf)))
+    betting_term_violations <- betting_term_violations + 1L
+  }
+}
+
+ok("ATTR-4 Zero banned betting vocabulary in all weekly attribution files",
+   betting_term_violations == 0L,
+   sprintf("%d violations across %d files", betting_term_violations, length(weekly_files)))
 
 # ------------------------------------------------------------------------------
 # Summary
@@ -182,6 +247,6 @@ if (failures > 0L) {
   cat(sprintf("FAILED with %d failure(s).\n", failures))
   quit(status = 1L)
 } else {
-  cat(sprintf("All %d checks PASSED successfully.\n", 11L))
+  cat("All attribution and game details checks PASSED successfully.\n")
   quit(status = 0L)
 }
