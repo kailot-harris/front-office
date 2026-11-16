@@ -1,0 +1,27 @@
+# R packages the R test job needs, one per line (blank lines and # comments ignored).
+# Single-sourced here because .github/workflows/ci.yml both installs from this
+# file and keys its package cache on its hash, so editing the list invalidates
+# the cache automatically.
+#
+# Derived from the library() and pkg:: references in tests/test_*.R and in the
+# files those tests source:
+#   testthat   tests/test_forecast_engine.R, test_prediction_logger.R,
+#              test_backfill_and_provenance.R, test_xgboost_shap_engine.R
+#   dplyr      most engines and tools
+#   jsonlite   tools/game_details_builder.R, tools/refresh_live_results.R
+#   tidyr      tools/qb_injury_features.R
+#   stringr    tools/qb_injury_features.R
+#   nflreadr   config.R, team_ratings_engine.R, tools/qb_injury_features.R
+#              (loaded only; the tests make no network calls)
+#   glmnet     tools/ridge_massey_model.R
+#   duckdb     logging_utils.R
+#   xgboost    xgboost_shap_engine.R
+testthat
+dplyr
+jsonlite
+tidyr
+stringr
+nflreadr
+glmnet
+duckdb
+xgboost

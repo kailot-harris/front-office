@@ -31,6 +31,12 @@ cat("=== NFL Analytics Game Details Builder Tests ===\n\n")
 # ------------------------------------------------------------------------------
 # Test 1: Run builder and verify output files exist
 # ------------------------------------------------------------------------------
+# build_game_details() reads gitignored pipeline caches. A fresh checkout (CI) has none, so the
+# whole file is skipped there and says so; it runs wherever the pipeline has run.
+if (!file.exists(CACHE_SCHEDULES)) {
+  cat("[SKIP] game details builder tests skipped: cache/schedules_cache.rds is not in this checkout\n")
+  quit(status = 0L)
+}
 cat("--- Section 1: Builder execution and file generation ---\n")
 initial_run <- build_game_details()
 ok("BUILD-1 Initial build completed", is.list(initial_run))
