@@ -137,16 +137,80 @@ export interface InjuryDesignationRow {
   played: boolean;
 }
 
-export interface NflGameExplainabilityPayload {
-  projection_basis: 'primary_ensemble' | 'logged_pregame' | 'backtest_preweek' | null;
-  predicted_margin: number | null;
-  predicted_home_win_prob: number | null;
-  margin_waterfall?: {
-    step_key: string;
-    label: string;
-    points: number;
-    formula?: string;
-  }[] | null;
+export interface WaterfallStep {
+  key: string;
+  label: string;
+  points: number;
+  description?: string;
+}
+
+export interface PointsWaterfallPayload {
+  projected_margin: number;
+  home_win_prob: number;
+  steps: WaterfallStep[];
+  rounding: number;
+  sigma: number;
+  intercept?: number;
+}
+
+export interface ShapFactorItem {
+  feature: string;
+  label: string;
+  value: number;
+  shap_value: number;
+}
+
+export interface SecondaryModelOutOfSampleRecord {
+  n_games: number;
+  accuracy: number;
+  brier: number;
+  logloss: number;
+}
+
+export interface SecondaryModelSummary {
+  model_id: string;
+  model_label: string;
+  model_win_prob: number;
+  logit: number;
+  base_value: number;
+  factors: ShapFactorItem[];
+  out_of_sample_record: SecondaryModelOutOfSampleRecord;
+  agreement: 'agree' | 'differ';
+}
+
+export interface EfficiencyBaselineComparison {
+  metric_key: string;
+  metric_label: string;
+  team_abbr?: string;
+  entering_baseline: number | null;
+  realized_value: number | null;
+  delta: number | null;
+  prior_games_n: number;
+  is_low_sample: boolean;
+}
+
+export interface GameExplainabilityPayload {
+  game_id: string;
+  season: number;
+  week: number;
+  projection_basis?: 'primary_ensemble' | 'logged_pregame' | 'backtest_preweek' | null;
+  predicted_margin?: number | null;
+  predicted_home_win_prob?: number | null;
+  waterfall: PointsWaterfallPayload;
+  secondary_model: SecondaryModelSummary | null;
+  entering_baselines: EfficiencyBaselineComparison[];
+  divergence_note: string | null;
+  margin_waterfall?: WaterfallStep[] | null;
+}
+
+export type NflGameExplainabilityPayload = GameExplainabilityPayload;
+
+export interface WeeklyAttributionDataset {
+  schema_version: '1.0';
+  generated_at: string;
+  season: number;
+  week: number;
+  games: GameExplainabilityPayload[];
 }
 
 export interface NflGameDetailPayload {
@@ -175,5 +239,5 @@ export interface NflGameDetailPayload {
   } | null;
 
   injury_designations: InjuryDesignationRow[] | null;
-  explainability: NflGameExplainabilityPayload | null;
+  explainability: GameExplainabilityPayload | null;
 }

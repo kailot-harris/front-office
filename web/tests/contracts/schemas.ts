@@ -574,16 +574,80 @@ export const injuryDesignationRowSchema = z.object({
   played: z.boolean(),
 }).strict();
 
-export const nflGameExplainabilityPayloadSchema = z.object({
-  projection_basis: z.enum(['primary_ensemble', 'logged_pregame', 'backtest_preweek']).nullable(),
-  predicted_margin: z.number().nullable(),
-  predicted_home_win_prob: prob.nullable(),
-  margin_waterfall: z.array(z.object({
-    step_key: z.string(),
-    label: z.string(),
-    points: z.number(),
-    formula: z.string().optional(),
-  })).nullable().optional(),
+export const waterfallStepSchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  points: z.number().finite(),
+  description: z.string().optional(),
+}).strict();
+
+export const pointsWaterfallPayloadSchema = z.object({
+  projected_margin: z.number().finite(),
+  home_win_prob: prob,
+  steps: z.array(waterfallStepSchema),
+  rounding: z.number().finite(),
+  sigma: z.number().positive(),
+  intercept: z.number().finite().optional(),
+}).strict();
+
+export const shapFactorItemSchema = z.object({
+  feature: z.string().min(1),
+  label: z.string().min(1),
+  value: z.number().finite(),
+  shap_value: z.number().finite(),
+}).strict();
+
+export const secondaryModelOutOfSampleRecordSchema = z.object({
+  n_games: z.number().int().min(0),
+  accuracy: z.number().min(0).max(100),
+  brier: z.number().min(0).max(1),
+  logloss: z.number().min(0),
+}).strict();
+
+export const secondaryModelSummarySchema = z.object({
+  model_id: z.string().min(1),
+  model_label: z.string().min(1),
+  model_win_prob: prob,
+  logit: z.number().finite(),
+  base_value: z.number().finite(),
+  factors: z.array(shapFactorItemSchema),
+  out_of_sample_record: secondaryModelOutOfSampleRecordSchema,
+  agreement: z.enum(['agree', 'differ']),
+}).strict();
+
+export const efficiencyBaselineComparisonSchema = z.object({
+  metric_key: z.string().min(1),
+  metric_label: z.string().min(1),
+  team_abbr: z.string().optional(),
+  entering_baseline: z.number().finite().nullable(),
+  realized_value: z.number().finite().nullable(),
+  delta: z.number().finite().nullable(),
+  prior_games_n: z.number().int().min(0),
+  is_low_sample: z.boolean(),
+}).strict();
+
+export const gameExplainabilityPayloadSchema = z.object({
+  game_id: z.string().min(4),
+  season: z.number().int().min(2000).max(2030),
+  week: z.number().int().min(1).max(22),
+  projection_basis: z.enum(['primary_ensemble', 'logged_pregame', 'backtest_preweek']).nullable().optional(),
+  predicted_margin: z.number().finite().nullable().optional(),
+  predicted_home_win_prob: prob.nullable().optional(),
+  waterfall: pointsWaterfallPayloadSchema,
+  secondary_model: secondaryModelSummarySchema.nullable(),
+  entering_baselines: z.array(efficiencyBaselineComparisonSchema),
+  divergence_note: z.string().nullable(),
+  margin_waterfall: z.array(waterfallStepSchema).nullable().optional(),
+}).strict();
+
+export const nflGameExplainabilityPayloadSchema = gameExplainabilityPayloadSchema;
+
+export const weeklyAttributionDatasetSchema = z.object({
+  schema_version: z.literal('1.0'),
+  generated_at: isoUtcStamp,
+  season: z.number().int().min(2000).max(2030),
+  week: z.number().int().min(1).max(22),
+  games: z.array(gameExplainabilityPayloadSchema),
 }).strict();
 
 export const nflGameDetailPayloadSchema = z.object({
