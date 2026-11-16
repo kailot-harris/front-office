@@ -30,13 +30,22 @@
 # ==============================================================================
 name: CI
 
-# CI does not run on pushes to main. Nearly every change reaches main through a
+# CI does not run on pushes to main, with one exception noted at the push
+# trigger below. Nearly every change reaches main through a
 # pull request that has already run this workflow, and the scheduled data
 # publishes are gated locally before they are committed, so the post-merge run
 # only repeated work. Use workflow_dispatch to check main on demand.
 on:
   pull_request:
   workflow_dispatch:
+  # The one push that does run CI: a change to the R dependency list on main.
+  # A pull request can restore caches saved on main but not ones saved by
+  # another pull request, so the R library cache has to be saved from main for
+  # later pull requests to reuse it. The list changes rarely.
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/r-dependencies.txt'
 
 # A new push to a PR makes the in-flight run obsolete. Manually dispatched runs
 # are left to finish.
@@ -141,8 +150,19 @@ jobs:
       # the new image and stringi failed to load (libicui18n.so.74 missing),
       # taking tidyverse and most of the suite with it. Keying on the image
       # (ImageOS, e.g. "ubuntu26") rebuilds the library when the image changes.
+      # A self-hosted runner does not set ImageOS (#116), so fall back to the
+      # host's own OS release from /etc/os-release (e.g. "ubuntu24.04"). The
+      # hosted key is unchanged because ImageOS still wins when it is set, and
+      # a host OS upgrade now changes the key. "unknown" is left only for a
+      # host with neither.
       - name: Record the runner image for the cache key
-        run: echo "RUNNER_IMAGE=${ImageOS:-unknown}" >> "$GITHUB_ENV"
+        run: |
+          image="${ImageOS:-}"
+          if [ -z "$image" ] && [ -r /etc/os-release ]; then
+            image="$(. /etc/os-release && echo "${ID}${VERSION_ID}")"
+          fi
+          echo "RUNNER_IMAGE=${image:-unknown}" >> "$GITHUB_ENV"
+          echo "R library cache key image: ${image:-unknown}"
 
       - name: Cache R library
         uses: actions/cache@v4

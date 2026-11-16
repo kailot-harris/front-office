@@ -206,6 +206,18 @@ run_stage("xgboost_shap_engine.R",
 run_stage("build_matchups_dataset.R", "Assemble Weekly Matchup Slates, Projections & Graded Results",
           output = file.path(CACHE_DIR, "matchups_cache.rds"))
 
+# 9.5. Daily Predictions Image (issue #130, part 1). Draws today's (Sys.Date())
+# nba_predictions_<date>.png/.gif and the canonical nba_predictions_today.png/.gif
+# from the prediction log written by prediction_accuracy_logger.R above, into cache/
+# and web/public/media/ (publish_web.R then stages web/public/media). On a date with
+# no games it writes a "No Games Scheduled" card for that date instead of another
+# day's slate. A missing/unreadable prediction log makes the script stop(); run_stage()
+# catches that as a [FAILED] stage warning and the pipeline continues, so a plotting
+# failure never aborts the stages below. It self-executes on source(), so no call_fn.
+run_stage("tools/plot_today_predictions.R", "Render Daily Predictions Image (or No-Games Card)",
+          output = c(file.path(CACHE_DIR, "nba_predictions_today.png"),
+                     file.path(CACHE_DIR, "nba_predictions_today.gif")))
+
 # 10. Front-Office Operations Alert Dispatcher (Issue #18)
 run_stage("notify_pipeline_ops.R", "Dispatch Front-Office Operations & Calibration Telemetry",
           call_fn = "run_notify_pipeline_ops")

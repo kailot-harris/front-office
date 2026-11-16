@@ -26,7 +26,28 @@
 #   fetched_at      POSIXct, UTC, time this script ran
 #
 # Usage: Rscript tools/fetch_bbref_salary_cap_history.R
-setwd("c:/Users/kailo/kayceeslices/front-office/NBA Analytics")
+#
+# Working directory (#112): set to the repo root of whichever checkout this file lives in,
+# found from the script's own path (--file= under Rscript, `ofile` under source()), the same
+# lookup tools/derive_team_payroll_from_bbref.R uses. So a run from a worktree writes that
+# worktree's cache/, not the primary checkout's. Under run_full_pipeline.R's run_stage() the
+# cwd is already the repo root, so this is a no-op there. Falls back to the current directory
+# if the script's path cannot be found.
+local({
+  args <- commandArgs(trailingOnly = FALSE)
+  f <- sub("^--file=", "", args[grepl("^--file=", args)])
+  ofile <- NULL
+  for (fr in sys.frames()) {
+    cand <- tryCatch(get("ofile", envir = fr, inherits = FALSE), error = function(e) NULL)
+    if (is.character(cand) && length(cand) == 1L && nzchar(cand)) ofile <- cand
+  }
+  script_dir <- if (!is.null(ofile)) dirname(ofile)
+                else if (length(f) == 1L && nzchar(f)) dirname(f)
+                else NULL
+  if (!is.null(script_dir)) {
+    setwd(normalizePath(file.path(script_dir, ".."), winslash = "/", mustWork = TRUE))
+  }
+})
 
 suppressPackageStartupMessages({
   library(httr2)

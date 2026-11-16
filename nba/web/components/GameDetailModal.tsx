@@ -495,13 +495,30 @@ const PROVENANCE_META: Record<
 
 const BASELINE_FACTOR_ORDER = ['efg_pct', 'tov_pct', 'oreb_pct', 'fta_rate', 'ortg'] as const;
 
-const BASELINE_FACTOR_META: Record<string, { label: string; isPct: boolean }> = {
+const BASELINE_FACTOR_META: Record<
+  string,
+  { label: string; isPct: boolean; lowerIsBetter?: boolean }
+> = {
   efg_pct: { label: 'Effective FG% (eFG%)', isPct: true },
-  tov_pct: { label: 'Turnover Rate (TOV%)', isPct: true },
+  tov_pct: { label: 'Turnover Rate (TOV%)', isPct: true, lowerIsBetter: true },
   oreb_pct: { label: 'Offensive Reb% (OREB%)', isPct: true },
   fta_rate: { label: 'FT Attempt Rate (FTA/FGA)', isPct: false },
   ortg: { label: 'Offensive Rating (ORtg)', isPct: false },
 };
+
+/**
+ * Colors an entering-vs-realized diff by whether the change is favorable,
+ * not by its sign: for lower-is-better factors (TOV%) a negative diff is
+ * favorable. Favorable = emerald, unfavorable = sky, zero = slate-400,
+ * non-finite = slate-500.
+ */
+function baselineDiffColorClass(key: string, difference: number | null | undefined): string {
+  if (!isFiniteNum(difference)) return 'text-slate-500';
+  if (difference === 0) return 'text-slate-400';
+  const lowerIsBetter = BASELINE_FACTOR_META[key]?.lowerIsBetter === true;
+  const favorable = lowerIsBetter ? difference < 0 : difference > 0;
+  return favorable ? 'text-emerald-300' : 'text-sky-300';
+}
 
 /** Formats finite signed decimals without `-0.00` artifacts. */
 function formatSignedNumber(value: number | null | undefined, decimals = 2): string {
@@ -911,6 +928,51 @@ const SecondaryShapCard: React.FC<{
               </button>
             </div>
           )}
+
+          <details
+            className="group bg-surface/60 border border-slate-800 rounded-xl overflow-hidden"
+            data-testid="shap-explainer"
+          >
+            <summary className="flex items-center justify-between px-3.5 py-2.5 cursor-pointer select-none text-xs font-mono font-bold uppercase tracking-wider text-slate-400 hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-accent-400">
+              <span>How to read this</span>
+              <ChevronDown
+                className="w-4 h-4 text-slate-500 transition-transform group-open:rotate-180"
+                aria-hidden="true"
+              />
+            </summary>
+            <div className="px-3.5 pb-3 pt-2 border-t border-slate-800/60">
+              <ul className="list-disc pl-4 space-y-1.5 text-[11px] text-slate-300 leading-relaxed">
+                <li>
+                  <span className="font-semibold text-slate-200">Perspective:</span> every value is
+                  from the home team&apos;s ({homeAbbr}) point of view.
+                </li>
+                <li>
+                  <span className="font-semibold text-slate-200">Raw Value:</span> home minus away
+                  on each feature, over each team&apos;s last L{xgboostShap.window_games} games
+                  before tip-off. Style similarity is a similarity score between the two teams, not a
+                  difference.
+                </li>
+                <li>
+                  <span className="font-semibold text-slate-200">SHAP Logit:</span> how far the
+                  feature moves the model&apos;s home-win logit away from the base logit (the
+                  model&apos;s average prediction). Positive values
+                  push toward {homeAbbr}, negative toward {awayAbbr}. Base logit plus all SHAP logits
+                  equals the total logit exactly.
+                </li>
+                <li>
+                  <span className="font-semibold text-slate-200">Δ Prob (pp):</span> each
+                  feature&apos;s SHAP logit converted to win probability on its own, as{' '}
+                  <code className="font-mono">plogis(base + shap) − plogis(base)</code>. Because the
+                  logistic curve is not linear, the pp values do not add up exactly to the diagnostic
+                  win probability.
+                </li>
+                <li>
+                  <span className="font-semibold text-slate-200">Context:</span> this is a secondary
+                  diagnostic and is never blended into the primary projection.
+                </li>
+              </ul>
+            </div>
+          </details>
         </div>
       ) : (
         <div className="px-3 py-2.5 rounded-lg bg-slate-900/60 border border-slate-800 text-xs text-slate-300">
@@ -993,13 +1055,7 @@ const EnteringBaselinesCard: React.FC<{
                         </td>
                         <td
                           className={`px-3 py-1.5 text-right font-mono tabular-nums ${
-                            isFiniteNum(factor.difference)
-                              ? factor.difference > 0
-                                ? 'text-emerald-300'
-                                : factor.difference < 0
-                                  ? 'text-sky-300'
-                                  : 'text-slate-400'
-                              : 'text-slate-500'
+                            baselineDiffColorClass(factor.key, factor.difference)
                           }`}
                         >
                           {formatBaselineDiff(factor.key, factor.difference)}
