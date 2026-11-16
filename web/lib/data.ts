@@ -14,6 +14,7 @@ import {
   PassingMetadata,
   PlayerDnaProfile,
   ClutchProfile,
+  GameDetailEnvelope,
 } from './types';
 
 function readJsonFile<T>(filename: string): T {
@@ -75,3 +76,13 @@ export function getPlayerDnaProfiles(): PlayerDnaProfile[] {
 export function getClutchData(): ClutchProfile[] {
   return readJsonFile<ClutchProfile[]>('clutch_leverage_metrics.json');
 }
+
+export function getGameDetail(gameId: string): GameDetailEnvelope | null {
+  const filePath = path.join(process.cwd(), 'public', 'data', 'games', `${gameId}.json`);
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+  const content = fs.readFileSync(filePath, 'utf-8');
+  return JSON.parse(content) as GameDetailEnvelope;
+}
+

@@ -386,3 +386,6 @@ export interface ClutchProfile {
   provenance: string;
 }
 
+export * from './gameDetailTypes';
+
+
