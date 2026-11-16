@@ -1295,6 +1295,88 @@ describe('GameDetailModal empirical Phase 1 views & box score sorting', () => {
     expect(container.textContent).not.toContain('undefined');
   });
 
+  it('colors Entering Baselines diffs by favorable direction: TOV% is lower-is-better, other factors unchanged (#129)', async () => {
+    const user = userEvent.setup();
+    const explainability = makeExplainability();
+    stubFetchJson(makeDetailEnvelope({ explainability }));
+
+    render(
+      <GameDetailModal
+        matchup={makeMatchup({ has_game_detail: true, explainability })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await screen.findByText('Player Box Score');
+    await user.click(screen.getByRole('tab', { name: /Attribution & SHAP/i }));
+
+    const diffCell = (teamAbbr: string, factorLabel: string) => {
+      const table = screen.getByRole('table', {
+        name: new RegExp(`${teamAbbr} entering baselines vs realized Four Factors`, 'i'),
+      });
+      const row = within(table).getByText(factorLabel).closest('tr');
+      expect(row).not.toBeNull();
+      const cells = within(row as HTMLTableRowElement).getAllByRole('cell');
+      return cells[cells.length - 1];
+    };
+
+    // TOV%: negative diff (fewer turnovers) is favorable -> emerald; sign/number unchanged.
+    const phiTov = diffCell('PHI', 'Turnover Rate (TOV%)');
+    expect(phiTov).toHaveTextContent('-1.7%');
+    expect(phiTov).toHaveClass('text-emerald-300');
+    expect(phiTov).not.toHaveClass('text-sky-300');
+
+    // TOV%: positive diff (more turnovers) is unfavorable -> sky.
+    const nykTov = diffCell('NYK', 'Turnover Rate (TOV%)');
+    expect(nykTov).toHaveTextContent('+1.4%');
+    expect(nykTov).toHaveClass('text-sky-300');
+    expect(nykTov).not.toHaveClass('text-emerald-300');
+
+    // Higher-is-better factors keep sign-based coloring.
+    expect(diffCell('PHI', 'FT Attempt Rate (FTA/FGA)')).toHaveClass('text-sky-300');
+    expect(diffCell('PHI', 'Effective FG% (eFG%)')).toHaveClass('text-emerald-300');
+    expect(diffCell('NYK', 'Effective FG% (eFG%)')).toHaveClass('text-sky-300');
+    expect(diffCell('PHI', 'Offensive Rating (ORtg)')).toHaveClass('text-emerald-300');
+  });
+
+  it('renders a collapsed-by-default "How to read this" explainer in the TreeSHAP card (#129)', async () => {
+    const user = userEvent.setup();
+    const explainability = makeExplainability();
+    stubFetchJson(makeDetailEnvelope({ explainability }));
+
+    render(
+      <GameDetailModal
+        matchup={makeMatchup({ has_game_detail: true, explainability })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await screen.findByText('Player Box Score');
+    await user.click(screen.getByRole('tab', { name: /Attribution & SHAP/i }));
+
+    const explainer = screen.getByTestId('shap-explainer');
+    expect(explainer.tagName).toBe('DETAILS');
+    expect(explainer).not.toHaveAttribute('open');
+    expect((explainer as HTMLDetailsElement).open).toBe(false);
+
+    const summary = within(explainer).getByText('How to read this').closest('summary');
+    expect(summary).not.toBeNull();
+
+    const text = explainer.textContent ?? '';
+    expect(text).toMatch(/home team/i);
+    expect(text).toMatch(/Raw Value/);
+    expect(text).toMatch(/home minus away/i);
+    expect(text).toMatch(/L10 games/);
+    expect(text).toMatch(/SHAP Logit/);
+    expect(text).toMatch(/base logit/i);
+    expect(text).toMatch(/Δ Prob \(pp\)/);
+    expect(text).toMatch(/do not add up exactly/i);
+    expect(text).toMatch(/never blended/i);
+
+    await user.click(summary as HTMLElement);
+    expect((explainer as HTMLDetailsElement).open).toBe(true);
+  });
+
   it('opens unplayed games with inline matchup.explainability directly to Attribution & SHAP with zero fetch calls and accessible missing-box notice', async () => {
     const user = userEvent.setup();
     const fetchSpy = vi.fn<typeof fetch>();
