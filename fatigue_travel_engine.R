@@ -89,6 +89,21 @@ calculate_travel_fatigue <- function(team_code, origin_team_code, days_rest = 1,
   )
 }
 
+# Zero-row result with the columns the normal path writes: the schedule's
+# required inputs plus the three computed fatigue columns.
+empty_fatigue_table <- function() {
+  tibble(
+    away_team         = character(),
+    home_team         = character(),
+    last_played_at    = character(),
+    days_rest         = numeric(),
+    is_b2b            = logical(),
+    travel_miles      = numeric(),
+    tz_shift          = numeric(),
+    point_spread_drag = numeric()
+  )
+}
+
 # Evaluate a slate of road teams
 evaluate_slate_fatigue <- function(schedule_data = NULL) {
   sched_path <- if (exists("CACHE_DIR")) file.path(CACHE_DIR, "schedule_cache.rds") else "cache/schedule_cache.rds"
@@ -99,15 +114,15 @@ evaluate_slate_fatigue <- function(schedule_data = NULL) {
     }
   }
   
+  out_path <- if (exists("CACHE_DIR")) file.path(CACHE_DIR, "travel_fatigue_metrics.rds") else "cache/travel_fatigue_metrics.rds"
+
+  # No schedule: write an empty table with the normal path's columns rather than
+  # inventing matchups (NBA_analytics#144).
   if (is.null(schedule_data) || !is.data.frame(schedule_data) || nrow(schedule_data) == 0) {
-    message(sprintf(">>> [WARN] Using SYNTHETIC_FALLBACK schedule: '%s' is missing or unreadable. Generating calibrated 4-game sample slate.", sched_path))
-    schedule_data <- tibble(
-      away_team = c("LAL", "MIA", "GSW", "BOS"),
-      home_team = c("DEN", "UTA", "NYK", "PHI"),
-      last_played_at = c("LAL", "DAL", "GSW", "BOS"),
-      days_rest = c(0, 1, 0, 2), # LAL on B2B playing at altitude in Denver
-      is_b2b = c(TRUE, FALSE, TRUE, FALSE)
-    )
+    message(sprintf(">>> [WARN] publish-irrelevant: schedule '%s' is missing, unreadable or empty; saving an empty travel fatigue table, no games invented.", sched_path))
+    results <- empty_fatigue_table()
+    saveRDS(results, out_path)
+    return(results)
   }
   
   results <- schedule_data %>%
