@@ -709,22 +709,137 @@ if (!dir.exists(WEB_GAMES_DIR)) {
   invisible(n_written)
 }
 
+#' Describe what changed between an existing game file and newly rebuilt payload
+.describe_game_detail_changes <- function(old_env, new_payload) {
+  changes <- character(0)
+
+  old_d <- if (!is.null(old_env)) old_env$data else NULL
+  if (!is.null(old_d)) {
+    old_h_score <- old_d$home_team$score
+    new_h_score <- new_payload$home_team$score
+    old_a_score <- old_d$away_team$score
+    new_a_score <- new_payload$away_team$score
+    if (!identical(old_h_score, new_h_score) || !identical(old_a_score, new_a_score)) {
+      changes <- c(changes, sprintf("score (%s-%s -> %s-%s)", old_a_score, old_h_score, new_a_score, new_h_score))
+    }
+
+    if (!identical(old_d$home_team$is_winner, new_payload$home_team$is_winner)) {
+      changes <- c(changes, sprintf("home_winner (%s -> %s)", old_d$home_team$is_winner, new_payload$home_team$is_winner))
+    }
+
+    old_f <- old_d$forecast
+    new_f <- new_payload$forecast
+    if (!is.null(old_f) && !is.null(new_f)) {
+      if (!identical(old_f$projected_margin, new_f$projected_margin)) {
+        changes <- c(changes, sprintf("forecast_margin (%s -> %s)", old_f$projected_margin, new_f$projected_margin))
+      }
+      if (!identical(old_f$home_win_prob, new_f$home_win_prob)) {
+        changes <- c(changes, sprintf("home_win_prob (%s -> %s)", old_f$home_win_prob, new_f$home_win_prob))
+      }
+      if (!identical(old_f$home_power_rating, new_f$home_power_rating) || !identical(old_f$away_power_rating, new_f$away_power_rating)) {
+        changes <- c(changes, sprintf("power_ratings (H:%s A:%s -> H:%s A:%s)",
+                                      old_f$home_power_rating, old_f$away_power_rating,
+                                      new_f$home_power_rating, new_f$away_power_rating))
+      }
+    }
+
+    old_pc <- length(old_d$box_score$away_players) + length(old_d$box_score$home_players)
+    new_pc <- length(new_payload$box_score$away_players) + length(new_payload$box_score$home_players)
+    if (!identical(old_pc, new_pc)) {
+      changes <- c(changes, sprintf("box_score_players (%d -> %d)", old_pc, new_pc))
+    }
+
+    # Team stats comparison
+    if (!is.null(old_d$team_stats) && !is.null(new_payload$team_stats)) {
+      old_ts_map <- list()
+      for (row in old_d$team_stats) old_ts_map[[row$stat_key]] <- row
+      for (row in new_payload$team_stats) {
+        k <- row$stat_key
+        if (!is.null(old_ts_map[[k]])) {
+          o_row <- old_ts_map[[k]]
+          if (!identical(o_row$away_value, row$away_value) || !identical(o_row$home_value, row$home_value)) {
+            changes <- c(changes, sprintf("team_stat:%s (A:%s H:%s -> A:%s H:%s)",
+                                          k, o_row$away_value, o_row$home_value,
+                                          row$away_value, row$home_value))
+          }
+        }
+      }
+    }
+
+    # Player stats per-player comparison (detects stat corrections including player-to-player transfers)
+    stat_cols <- c("passing_tds", "passing_interceptions", "passing_yards",
+                   "rushing_tds", "rushing_yards", "receiving_tds", "receiving_yards",
+                   "def_interceptions", "def_sacks", "def_tackles_solo")
+    old_all_players <- c(old_d$box_score$away_players, old_d$box_score$home_players)
+    new_all_players <- c(new_payload$box_score$away_players, new_payload$box_score$home_players)
+
+    old_p_map <- list()
+    for (p in old_all_players) {
+      pid <- if (!is.null(p$playerId)) p$playerId else p$playerName
+      if (!is.null(pid)) old_p_map[[pid]] <- p
+    }
+    for (p in new_all_players) {
+      pid <- if (!is.null(p$playerId)) p$playerId else p$playerName
+      if (!is.null(pid) && !is.null(old_p_map[[pid]])) {
+        o_p <- old_p_map[[pid]]
+        for (col in stat_cols) {
+          o_val <- if (!is.null(o_p[[col]])) o_p[[col]] else 0
+          n_val <- if (!is.null(p[[col]])) p[[col]] else 0
+          if (!identical(o_val, n_val)) {
+            p_label <- if (!is.null(p$playerName)) p$playerName else pid
+            changes <- c(changes, sprintf("player_stat:%s[%s] (%s -> %s)", col, p_label, o_val, n_val))
+          }
+        }
+      }
+    }
+  }
+
+  if (length(changes) == 0) {
+    changes <- "rebuilt metadata, attribution, or stats updated"
+  }
+  paste(changes, collapse = ", ")
+}
+
 #' Build per-game JSON files under web/public/data/games/{game_id}.json
 #'
 #' @param force Logical. If TRUE, re-evaluates all completed games regardless of date.
+#' @param out_dir Directory path where game detail JSON files are written.
+#' @param today_date Date used for churn control 7-day evaluation window.
+#' @param sched_df_override Optional schedule dataframe override (for testing).
+#' @param ts_df_override Optional team stats dataframe override (for testing).
+#' @param ps_df_override Optional player stats dataframe override (for testing).
+#' @param sc_df_override Optional snap counts dataframe override (for testing).
+#' @param matchups_path Path to matchups JSON file for forecast lookup (defaults to WEB_JSON_MATCHUPS_CURRENT_WEEK).
+#' @param matchups_list Optional in-memory list of matchup objects from export_web_datasets.R (single-run pipeline guarantee).
 #' @return Invisible summary list of evaluated, written, and skipped game counts.
-build_game_details <- function(force = FALSE) {
+build_game_details <- function(force = FALSE,
+                               out_dir = WEB_GAMES_DIR,
+                               today_date = Sys.Date(),
+                               sched_df_override = NULL,
+                               ts_df_override = NULL,
+                               ps_df_override = NULL,
+                               sc_df_override = NULL,
+                               matchups_path = WEB_JSON_MATCHUPS_CURRENT_WEEK,
+                               matchups_list = NULL) {
   log_info("Starting game details JSON builder...", call = "build_game_details()")
 
-  # Load caches
-  if (!file.exists(CACHE_SCHEDULES)) {
-    stop("CACHE_SCHEDULES not found: ", CACHE_SCHEDULES)
+  if (!dir.exists(out_dir)) {
+    dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
   }
-  sched_df <- readRDS(CACHE_SCHEDULES) |> filter(season == CURRENT_SEASON)
 
-  ts_df <- if (file.exists(CACHE_TEAM_STATS)) readRDS(CACHE_TEAM_STATS) else NULL
-  ps_df <- if (file.exists(CACHE_PLAYER_STATS)) readRDS(CACHE_PLAYER_STATS) else NULL
-  sc_df <- if (file.exists(CACHE_SNAP_COUNTS)) readRDS(CACHE_SNAP_COUNTS) else NULL
+  # Load caches
+  if (!is.null(sched_df_override)) {
+    sched_df <- sched_df_override
+  } else {
+    if (!file.exists(CACHE_SCHEDULES)) {
+      stop("CACHE_SCHEDULES not found: ", CACHE_SCHEDULES)
+    }
+    sched_df <- readRDS(CACHE_SCHEDULES) |> filter(season == CURRENT_SEASON)
+  }
+
+  ts_df <- if (!is.null(ts_df_override)) ts_df_override else if (file.exists(CACHE_TEAM_STATS)) readRDS(CACHE_TEAM_STATS) else NULL
+  ps_df <- if (!is.null(ps_df_override)) ps_df_override else if (file.exists(CACHE_PLAYER_STATS)) readRDS(CACHE_PLAYER_STATS) else NULL
+  sc_df <- if (!is.null(sc_df_override)) sc_df_override else if (file.exists(CACHE_SNAP_COUNTS)) readRDS(CACHE_SNAP_COUNTS) else NULL
   ros_df <- if (file.exists(CACHE_ROSTERS)) readRDS(CACHE_ROSTERS) else NULL
   inj_df <- if (file.exists(CACHE_INJURY_DATA)) readRDS(CACHE_INJURY_DATA) else NULL
 
@@ -752,11 +867,17 @@ build_game_details <- function(force = FALSE) {
     }
   }
 
-  # Load matchups for forecast lookup if available
+  # Load matchups for forecast lookup if available (preferring in-memory matchups_list)
   forecast_map <- list()
-  if (file.exists(WEB_JSON_MATCHUPS_CURRENT_WEEK)) {
+  if (!is.null(matchups_list) && length(matchups_list) > 0) {
+    for (m in matchups_list) {
+      if (!is.null(m$game_id)) {
+        forecast_map[[m$game_id]] <- m
+      }
+    }
+  } else if (file.exists(matchups_path)) {
     tryCatch({
-      m_json <- fromJSON(WEB_JSON_MATCHUPS_CURRENT_WEEK, simplifyVector = FALSE)
+      m_json <- fromJSON(matchups_path, simplifyVector = FALSE)
       if (!is.null(m_json$matchups)) {
         for (m in m_json$matchups) {
           if (!is.null(m$game_id)) {
@@ -765,7 +886,7 @@ build_game_details <- function(force = FALSE) {
         }
       }
     }, error = function(e) {
-      log_warn("Failed to load forecast data from matchups_current_week.json")
+      log_warn(sprintf("Failed to load forecast data from %s", matchups_path))
     })
   }
 
@@ -775,33 +896,32 @@ build_game_details <- function(force = FALSE) {
 
   n_eval <- 0
   n_written <- 0
+  n_created <- 0
   n_unchanged <- 0
   n_skipped_churn <- 0
+  updates <- list()
 
-  today <- Sys.Date()
+  today <- as.Date(today_date)
 
   for (i in seq_len(nrow(completed_games))) {
     g <- completed_games[i, ]
     gid <- as.character(g$game_id)
-    out_file <- file.path(WEB_GAMES_DIR, sprintf("%s.json", gid))
+    out_file <- file.path(out_dir, sprintf("%s.json", gid))
 
-    # Churn control: evaluate if within 7 days of Sys.Date(), file is missing, or force = TRUE
-    g_date <- tryCatch(as.Date(g$gameday), error = function(e) NA)
-    within_7d <- !is.na(g_date) && abs(as.numeric(difftime(today, g_date, units = "days"))) <= 7
-    needs_eval <- force || !file.exists(out_file) || within_7d
+    # Team stats and player stats for this game
+    g_ts <- if (!is.null(ts_df) && "game_id" %in% names(ts_df)) ts_df |> filter(game_id == gid) else data.frame()
+    g_ps <- if (!is.null(ps_df) && "game_id" %in% names(ps_df)) ps_df |> filter(game_id == gid) else data.frame()
+    g_sc <- if (!is.null(sc_df) && "game_id" %in% names(sc_df)) sc_df |> filter(game_id == gid) else data.frame()
+    g_pbp <- if (!is.null(pbp_df) && "game_id" %in% names(pbp_df)) pbp_df |> filter(game_id == gid) else NULL
 
-    if (!needs_eval) {
-      n_skipped_churn <- n_skipped_churn + 1
+    existed <- file.exists(out_file)
+    has_box_score <- nrow(g_ts) > 0 || nrow(g_ps) > 0 || existed
+    if (!has_box_score) {
+      # Per spec: write one JSON file per completed game WITH box scores
       next
     }
 
     n_eval <- n_eval + 1
-
-    # Team stats and player stats for this game
-    g_ts <- if (!is.null(ts_df)) ts_df |> filter(game_id == gid) else data.frame()
-    g_ps <- if (!is.null(ps_df)) ps_df |> filter(game_id == gid) else data.frame()
-    g_sc <- if (!is.null(sc_df)) sc_df |> filter(game_id == gid) else data.frame()
-    g_pbp <- if (!is.null(pbp_df)) pbp_df |> filter(game_id == gid) else NULL
 
     away_tm <- as.character(g$away_team)
     home_tm <- as.character(g$home_team)
@@ -823,7 +943,7 @@ build_game_details <- function(force = FALSE) {
     forecast_data <- NULL
     if (!is.null(f_matchup) && !identical(f_matchup$has_projection, FALSE) && !is.null(f_matchup$projected_margin)) {
       forecast_data <- list(
-        projected_margin   = f_matchup$projected_margin,
+        projected_margin   = if (!is.null(f_matchup$projected_margin)) round(as.numeric(f_matchup$projected_margin), 1) + 0 else NULL,
         home_win_prob      = f_matchup$home_win_prob,
         away_win_prob      = f_matchup$away_win_prob,
         home_power_rating  = f_matchup$home_power_rating,
@@ -914,21 +1034,21 @@ build_game_details <- function(force = FALSE) {
     )
 
     envelope <- list(
-      schema_version = "1.0",
-      generated_at   = gen_time,
-      sport          = "nfl",
-      endpoint       = "game_detail",
-      season         = as.integer(g$season),
-      season_label   = sprintf("%d-%d", as.integer(g$season), as.integer(g$season) + 1),
-      game_id        = gid,
-      data           = payload
+      schema_version    = "1.0",
+      generated_at      = gen_time,
+      sport             = "nfl",
+      endpoint          = "game_detail",
+      season            = as.integer(g$season),
+      season_label      = sprintf("%d-%d", as.integer(g$season), as.integer(g$season) + 1),
+      game_id           = gid,
+      data              = payload
     )
 
     # Serialize candidate JSON
     candidate_json <- toJSON(envelope, auto_unbox = TRUE, pretty = 2, null = "null")
 
     # Idempotency check: compare candidate JSON bytes against existing file bytes ignoring generated_at
-    if (file.exists(out_file)) {
+    if (existed) {
       existing_json <- paste(readLines(out_file, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
       # Strip generated_at from both
       strip_pattern <- '"generated_at"\\s*:\\s*"[^"]*",?'
@@ -944,20 +1064,42 @@ build_game_details <- function(force = FALSE) {
     # Write file
     writeLines(candidate_json, out_file, useBytes = TRUE)
     n_written <- n_written + 1
+
+    if (existed) {
+      existing_env <- tryCatch(fromJSON(existing_json, simplifyVector = FALSE), error = function(e) NULL)
+      change_desc <- .describe_game_detail_changes(existing_env, payload)
+      g_date <- tryCatch(as.Date(g$gameday), error = function(e) NA)
+      days_old <- if (!is.na(g_date)) as.integer(today - g_date) else NA_integer_
+      log_info(sprintf(">>> Game detail %s (%s days old) updated: %s", gid, days_old, change_desc), call = "build_game_details()")
+      updates[[length(updates) + 1L]] <- list(
+        game_id  = gid,
+        days_old = days_old,
+        changes  = change_desc
+      )
+    } else {
+      n_created <- n_created + 1
+    }
   }
 
-  log_info(sprintf("Game details builder completed: %d evaluated, %d written, %d unchanged, %d skipped by churn control.",
-                   n_eval, n_written, n_unchanged, n_skipped_churn),
+  log_info(sprintf("Game details builder completed: %d evaluated, %d written (%d created, %d updated), %d unchanged.",
+                   n_eval, n_written, n_created, n_written - n_created, n_unchanged),
            call = "build_game_details()")
 
   # Export weekly attribution files for unplayed games (Section 3.2, Issue 2-6)
-  n_weekly_written <- .export_weekly_attribution(sched_df, pred_log_df, shap_df, team_eff_df, force = force)
+  n_weekly_written <- if (identical(out_dir, WEB_GAMES_DIR)) {
+    .export_weekly_attribution(sched_df, pred_log_df, shap_df, team_eff_df, force = force)
+  } else {
+    0L
+  }
 
   invisible(list(
     evaluated      = n_eval,
     written        = n_written,
+    created        = n_created,
+    updated        = n_written - n_created,
     unchanged      = n_unchanged,
-    skipped_churn  = n_skipped_churn,
+    skipped_churn  = 0L,
+    updates        = updates,
     weekly_written = n_weekly_written
   ))
 }

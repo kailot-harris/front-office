@@ -35,6 +35,7 @@ source("config.R")
 # (e.g. Rscript -e 'source("export_web_datasets.R"); run_export_web_datasets()'). Sourcing
 # logging_utils.R only defines functions - it writes nothing until a log_*() call.
 if (!exists("log_warn", mode = "function")) source("logging_utils.R")
+if (!exists("build_game_details", mode = "function")) source("tools/game_details_builder.R")
 
 run_export_web_datasets <- function() {
 
@@ -581,7 +582,7 @@ run_export_web_datasets <- function() {
   
     if (nrow(proj_match) > 0 && !is_done) {
       has_proj <- TRUE
-      proj_margin <- round(proj_match$projected_margin[1], 1)
+      proj_margin <- round(proj_match$projected_margin[1], 1) + 0
       h_win_prob <- round(proj_match$home_win_prob[1], 3)
       a_win_prob <- round(1 - h_win_prob, 3)
       h_pwr <- round(proj_match$home_power_rating[1], 2)
@@ -592,9 +593,9 @@ run_export_web_datasets <- function() {
       if (!is.null(log_record) || !is.null(hist_record)) {
         has_proj <- TRUE
         proj_margin <- if (!is.null(log_record) && !is.na(log_record[["projected_margin"]])) {
-          round(as.numeric(log_record[["projected_margin"]]), 1)
+          round(as.numeric(log_record[["projected_margin"]]), 1) + 0
         } else if (!is.null(hist_record[["projected_margin"]]) && !is.na(hist_record[["projected_margin"]])) {
-          round(as.numeric(hist_record[["projected_margin"]]), 1)
+          round(as.numeric(hist_record[["projected_margin"]]), 1) + 0
         } else {
           NULL
         }
@@ -689,13 +690,25 @@ run_export_web_datasets <- function() {
       home_travel_miles = h_miles,
       away_travel_miles = a_miles,
       is_completed      = is_done,
-      has_box_score     = file.exists(file.path(WEB_GAMES_DIR, paste0(gid, ".json"))),
-      has_game_detail   = file.exists(file.path(WEB_GAMES_DIR, paste0(gid, ".json"))),
+      has_box_score     = FALSE,
+      has_game_detail   = FALSE,
       home_score        = if (is_done) as.integer(h_score) else NULL,
       away_score        = if (is_done) as.integer(a_score) else NULL,
       actual_winner     = act_winner,
       prediction_correct= pred_correct
     )
+  }
+
+  # Build/update per-game detail JSON files using the in-memory slate forecast
+  # (Single-run pipeline guarantee: game files built before final flags & slate serialization)
+  build_game_details(matchups_list = all_matchups_list)
+
+  # Set has_box_score and has_game_detail based on game files present after builder run
+  for (i in seq_along(all_matchups_list)) {
+    gid <- all_matchups_list[[i]]$game_id
+    game_file_exists <- file.exists(file.path(WEB_GAMES_DIR, paste0(gid, ".json")))
+    all_matchups_list[[i]]$has_box_score <- game_file_exists
+    all_matchups_list[[i]]$has_game_detail <- game_file_exists
   }
 
   matchups_data <- list(
