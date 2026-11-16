@@ -157,6 +157,13 @@ export interface CalibrationBin {
   count: number;
 }
 
+export interface ModelTrackRecord {
+  n_games: number;
+  accuracy: number | null;
+  brier: number | null;
+  logloss: number | null;
+}
+
 export interface DiagnosticsDataset {
   generated_at: string;
   season: number | number[];
@@ -175,6 +182,8 @@ export interface DiagnosticsDataset {
     ridge_massey_fallback?: number;
   };
   calibration_curve: CalibrationBin[];
+  genuine_pregame: ModelTrackRecord;
+  historical_backtest: ModelTrackRecord;
 }
 
 export interface VisualMediaItem {

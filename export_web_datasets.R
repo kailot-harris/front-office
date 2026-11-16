@@ -25,6 +25,7 @@
 
 suppressPackageStartupMessages({
   library(jsonlite)
+  library(dplyr)
 })
 
 source("config.R")
@@ -474,6 +475,20 @@ run_export_web_datasets <- function() {
   schedules_df <- if (file.exists(CACHE_SCHEDULES)) readRDS(CACHE_SCHEDULES) else data.frame()
   fatigue_df <- if (file.exists(CACHE_FATIGUE_METRICS)) readRDS(CACHE_FATIGUE_METRICS) else data.frame()
   acc_obj <- if (file.exists(CACHE_ACCURACY_HISTORY)) readRDS(CACHE_ACCURACY_HISTORY) else NULL
+  pred_log_df <- if (file.exists(CACHE_PREDICTION_ACCURACY_LOG)) {
+    tryCatch(readRDS(CACHE_PREDICTION_ACCURACY_LOG), error = function(e) NULL)
+  } else {
+    NULL
+  }
+
+  # Build prediction accuracy log map for entering power ratings and forecast provenance
+  pred_log_map <- list()
+  if (!is.null(pred_log_df) && nrow(pred_log_df) > 0) {
+    for (pi in seq_len(nrow(pred_log_df))) {
+      pgid <- as.character(pred_log_df$game_id[pi])
+      pred_log_map[[pgid]] <- pred_log_df[pi, ]
+    }
+  }
 
   # Build historical graded predictions map
   graded_map <- list()
@@ -562,6 +577,7 @@ run_export_web_datasets <- function() {
     # Check if in historical graded map: target key: "<CURRENT_SEASON>|wk|away_name|home_name"
     hist_key <- paste0(CURRENT_SEASON, "|", wk, "|", a_name, "|", h_name)
     hist_record <- graded_map[[hist_key]]
+    log_record <- pred_log_map[[gid]]
   
     if (nrow(proj_match) > 0 && !is_done) {
       has_proj <- TRUE
@@ -573,32 +589,61 @@ run_export_web_datasets <- function() {
       act_winner <- NULL
       pred_correct <- NULL
     } else {
-      if (!is.null(hist_record)) {
+      if (!is.null(log_record) || !is.null(hist_record)) {
         has_proj <- TRUE
-        pred_prob <- as.numeric(hist_record$predicted_win_prob)
-        pred_winner <- as.character(hist_record$predicted_winner)
-      
-        # pred_prob in accuracy history is already home team win probability (DATA-2)
-        h_win_prob <- round(pred_prob, 3)
-        a_win_prob <- round(1 - h_win_prob, 3)
-        # Back-solving projected_margin via qnorm removed per Issue #110 (D2 unification).
-        # Margin is taken directly from the graded record when available, or NULL.
-        proj_margin <- if (!is.null(hist_record[["projected_margin"]]) && !is.na(hist_record[["projected_margin"]])) {
+        proj_margin <- if (!is.null(log_record) && !is.na(log_record[["projected_margin"]])) {
+          round(as.numeric(log_record[["projected_margin"]]), 1)
+        } else if (!is.null(hist_record[["projected_margin"]]) && !is.na(hist_record[["projected_margin"]])) {
           round(as.numeric(hist_record[["projected_margin"]]), 1)
         } else {
           NULL
         }
-      
+
+        pred_prob <- if (!is.null(log_record) && !is.na(log_record$home_win_prob)) {
+          as.numeric(log_record$home_win_prob)
+        } else {
+          as.numeric(hist_record$predicted_win_prob)
+        }
+        h_win_prob <- round(pred_prob, 3)
+        a_win_prob <- round(1 - h_win_prob, 3)
+
+        pred_winner <- if (!is.null(proj_margin)) {
+          if (proj_margin > 0) h_name else a_name
+        } else if (!is.null(log_record) && !is.na(log_record$predicted_winner)) {
+          as.character(NFL_TEAMS[as.character(log_record$predicted_winner)])
+        } else {
+          as.character(hist_record$predicted_winner)
+        }
+
         # Explicit tie handling (DATA-6)
         if (is_done && h_score == a_score) {
           act_winner <- "Tie"
           pred_correct <- FALSE
         } else {
-          act_winner <- as.character(hist_record$actual_winner)
-          pred_correct <- (act_winner == pred_winner)
+          act_winner <- if (h_score > a_score) {
+            h_name
+          } else if (a_score > h_score) {
+            a_name
+          } else if (!is.null(hist_record)) {
+            as.character(hist_record$actual_winner)
+          } else {
+            "Tie"
+          }
+          pred_correct <- if (!is.null(proj_margin)) {
+            (proj_margin > 0) == (act_winner == h_name)
+          } else {
+            (act_winner == pred_winner)
+          }
         }
-        h_pwr <- 0.0
-        a_pwr <- 0.0
+
+        # Look up entering power ratings from prediction accuracy log, eliminating 0.0
+        if (!is.null(log_record) && !is.na(log_record$home_power_rating) && !is.na(log_record$away_power_rating)) {
+          h_pwr <- round(as.numeric(log_record$home_power_rating), 2)
+          a_pwr <- round(as.numeric(log_record$away_power_rating), 2)
+        } else {
+          h_pwr <- NULL
+          a_pwr <- NULL
+        }
       } else {
         has_proj <- FALSE
         if (is_done) {
@@ -979,27 +1024,96 @@ run_export_web_datasets <- function() {
       )
     }
 
+  # Owner Decision D1: Strict separation between genuine pregame headline forecasts
+  # (log_source == "LOGGED_PREGAME") and historical backtest records
+  # (log_source == "BACKTEST_PREWEEK").
+  genuine_block <- local({
+    if (!is.null(pred_log_df) && nrow(pred_log_df) > 0) {
+      g_rows <- pred_log_df[pred_log_df$log_source == "LOGGED_PREGAME" &
+                            !is.na(pred_log_df$home_score) &
+                            !is.na(pred_log_df$away_score), ]
+      if (nrow(g_rows) > 0) {
+        h_win <- as.integer(g_rows$home_score > g_rows$away_score)
+        p <- pmin(pmax(as.numeric(g_rows$home_win_prob), 1e-6), 1 - 1e-6)
+        list(
+          n_games  = as.integer(nrow(g_rows)),
+          accuracy = round(mean(as.integer(g_rows$prediction_correct)) * 100, 1),
+          brier    = round(mean(as.numeric(g_rows$brier_score)), 4),
+          logloss  = round(-mean(h_win * log(p) + (1 - h_win) * log(1 - p)), 4)
+        )
+      } else {
+        list(
+          n_games  = 0L,
+          accuracy = NULL,
+          brier    = NULL,
+          logloss  = NULL
+        )
+      }
+    } else {
+      list(
+        n_games  = 0L,
+        accuracy = NULL,
+        brier    = NULL,
+        logloss  = NULL
+      )
+    }
+  })
+
+  backtest_block <- local({
+    if (!is.null(pred_log_df) && nrow(pred_log_df) > 0) {
+      b_rows <- pred_log_df[pred_log_df$log_source == "BACKTEST_PREWEEK" &
+                            !is.na(pred_log_df$home_score) &
+                            !is.na(pred_log_df$away_score), ]
+      if (nrow(b_rows) > 0) {
+        h_win <- as.integer(b_rows$home_score > b_rows$away_score)
+        p <- pmin(pmax(as.numeric(b_rows$home_win_prob), 1e-6), 1 - 1e-6)
+        list(
+          n_games  = as.integer(nrow(b_rows)),
+          accuracy = round(mean(as.integer(b_rows$prediction_correct)) * 100, 1),
+          brier    = round(mean(as.numeric(b_rows$brier_score)), 4),
+          logloss  = round(-mean(h_win * log(p) + (1 - h_win) * log(1 - p)), 4)
+        )
+      } else {
+        list(
+          n_games  = as.integer(tail(acc_obj$n_games_graded, 1)),
+          accuracy = round(tail(acc_obj$overall_accuracy, 1) * 100, 1),
+          brier    = round(tail(acc_obj$overall_brier, 1), 4),
+          logloss  = round(tail(acc_obj$overall_logloss, 1), 4)
+        )
+      }
+    } else {
+      list(
+        n_games  = as.integer(tail(acc_obj$n_games_graded, 1)),
+        accuracy = round(tail(acc_obj$overall_accuracy, 1) * 100, 1),
+        brier    = round(tail(acc_obj$overall_brier, 1), 4),
+        logloss  = round(tail(acc_obj$overall_logloss, 1), 4)
+      )
+    }
+  })
+
   diagnostics_data <- list(
-    generated_at       = generated_at_utc,
-    season             = acc_obj$season,
-    last_evaluated     = as.character(acc_obj$run_timestamp),
-    n_games_graded     = as.integer(acc_obj$n_games_graded),
-    overall_accuracy   = round(acc_obj$overall_accuracy * 100, 1),
-    overall_brier      = round(acc_obj$overall_brier, 4),
-    overall_logloss    = round(acc_obj$overall_logloss, 4),
-    brier_baseline     = 0.2500, # 50/50 naive guessing benchmark
-    brier_improvement  = round((0.2500 - acc_obj$overall_brier) / 0.2500 * 100, 2),
-    margin_sigma       = NFL_MARGIN_SIGMA,
-    home_field_adv     = NFL_HCA,
+    generated_at        = generated_at_utc,
+    season              = acc_obj$season,
+    last_evaluated      = as.character(acc_obj$run_timestamp),
+    n_games_graded      = as.integer(acc_obj$n_games_graded),
+    overall_accuracy    = round(acc_obj$overall_accuracy * 100, 1),
+    overall_brier       = round(acc_obj$overall_brier, 4),
+    overall_logloss     = round(acc_obj$overall_logloss, 4),
+    brier_baseline      = 0.2500, # 50/50 naive guessing benchmark
+    brier_improvement   = round((0.2500 - acc_obj$overall_brier) / 0.2500 * 100, 2),
+    margin_sigma        = NFL_MARGIN_SIGMA,
+    home_field_adv      = NFL_HCA,
     # Pure endogenous ensemble (see team_ratings_engine.R's projected_margin calc): 50% Ridge-Massey
     # margin + 50% Elo margin when live Elo is available for both teams, falling back to 100% Ridge
-    # when it is not. There is no market/odds-derived weight in the live model.
-    ensemble_weights   = list(
-      ridge_massey           = 0.50,
-      elo_dynamic            = 0.50,
-      ridge_massey_fallback  = 1.00
+    # when it is not.
+    ensemble_weights    = list(
+      ridge_massey          = 0.50,
+      elo_dynamic           = 0.50,
+      ridge_massey_fallback = 1.00
     ),
-    calibration_curve  = calib_curve
+    calibration_curve   = calib_curve,
+    genuine_pregame     = genuine_block,
+    historical_backtest = backtest_block
   )
   write_json_clean(diagnostics_data, "model_diagnostics.json")
 

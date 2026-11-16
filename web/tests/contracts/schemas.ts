@@ -204,6 +204,13 @@ export const calibrationBinSchema = z.object({
 const numberOrArray = z.union([z.number(), z.array(z.number()).nonempty()]);
 const stringOrArray = z.union([z.string(), z.array(z.string()).nonempty()]);
 
+export const modelTrackRecordSchema = z.object({
+  n_games: z.number().int().min(0),
+  accuracy: pct100.nullable(),
+  brier: z.number().min(0).max(1).nullable(),
+  logloss: z.number().min(0).max(5).nullable(),
+}).strict();
+
 export const diagnosticsDatasetSchema = z.object({
   generated_at: isoUtcStamp,
   season: z.union([z.number().int(), z.array(z.number().int()).nonempty()]),
@@ -222,6 +229,8 @@ export const diagnosticsDatasetSchema = z.object({
     ridge_massey_fallback: prob.optional(),
   }).strict(),
   calibration_curve: z.array(calibrationBinSchema).nonempty(),
+  genuine_pregame: modelTrackRecordSchema,
+  historical_backtest: modelTrackRecordSchema,
 }).strict();
 
 export const visualMediaItemSchema = z.object({
