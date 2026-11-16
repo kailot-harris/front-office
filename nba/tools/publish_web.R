@@ -769,6 +769,218 @@ if (!dir.exists(WEB_MEDIA_DIR)) dir.create(WEB_MEDIA_DIR, recursive = TRUE)
 }
 
 # ------------------------------------------------------------------------------
+# GitHub issue notification for a blocked live publish (NBA_analytics#145).
+#
+# The Discord path above needs a webhook that is not set on the host, so a
+# blocked 09:00 run went unnoticed for ~100 minutes. This reports the block
+# where the owner already gets notified: a GitHub issue labelled
+# `publish-blocked`, through the host's existing `gh` login.
+#   * BLOCKED and live: comment on the open `publish-blocked` issue, or (after
+#     making sure the label exists) open one. Never a second open one.
+#   * Successful live publish: if one is open, comment that publishing has
+#     recovered and close it.
+#   * Dry runs never call gh (the call sites only fire on live runs, and the
+#     notifier refuses a dry-run result as well).
+#
+# NOTIFICATION NEVER CHANGES THE GATE'S OUTCOME. Every gh failure (binary
+# missing, not logged in, no network, non-zero exit, timeout) is caught and
+# logged as a `>>> publish_web:` line; nothing here touches `result` or the
+# exit code. Each gh call is bounded by system2(timeout = .PW_GH_TIMEOUT_SEC).
+#
+# The gh call is injectable (`runner`, and publish_web(gh_runner = )) so the
+# tests drive this with a recording fake and never touch GitHub. A runner is
+# function(args) -> list(status = <int>, out = <character>).
+#
+# The repo is private, but issue text still leaves this machine (GitHub email
+# and mobile notifications, and anyone later given access), so every line goes
+# through .pw_sanitize_public(), which strips the repo root, the home
+# directory, any remaining absolute path, the host name and the user name.
+# ------------------------------------------------------------------------------
+.PW_GH_REPO        <- "kailot-harris/NBA_analytics"
+.PW_GH_LABEL       <- "publish-blocked"
+.PW_GH_TIMEOUT_SEC <- 60
+.PW_GH_FALLBACK    <- "C:/Program Files/GitHub CLI/gh.exe"
+
+# Task Scheduler's PATH may not include gh: NBA_GH_BIN override, then PATH,
+# then the host's install location. "" when none exists.
+.pw_gh_bin <- function() {
+  override <- Sys.getenv("NBA_GH_BIN", "")
+  if (nzchar(override)) return(if (file.exists(override)) override else "")
+  on_path <- unname(Sys.which("gh"))
+  if (nzchar(on_path)) return(on_path)
+  if (file.exists(.PW_GH_FALLBACK)) return(.PW_GH_FALLBACK)
+  ""
+}
+
+.pw_gh_default_runner <- function(args) {
+  gh <- .pw_gh_bin()
+  if (!nzchar(gh)) stop("gh CLI not found (checked NBA_GH_BIN, PATH and ", .PW_GH_FALLBACK, ")")
+  old <- Sys.getenv(c("GH_PROMPT_DISABLED", "GH_NO_UPDATE_NOTIFIER"), unset = NA)
+  on.exit({
+    for (nm in names(old)) if (is.na(old[[nm]])) Sys.unsetenv(nm) else do.call(Sys.setenv, as.list(old[nm]))
+  }, add = TRUE)
+  Sys.setenv(GH_PROMPT_DISABLED = "1", GH_NO_UPDATE_NOTIFIER = "1")
+  out <- suppressWarnings(system2(gh, shQuote(args), stdout = TRUE, stderr = TRUE,
+                                  timeout = .PW_GH_TIMEOUT_SEC))
+  st <- attr(out, "status")
+  list(status = if (is.null(st)) 0L else as.integer(st),
+       out = if (is.null(out)) character(0) else as.character(out))
+}
+
+.pw_regex_escape <- function(s) gsub("([][{}()+*^$|\\\\?.])", "\\\\\\1", s, perl = TRUE)
+
+# Strip machine-specific detail from text bound for the GitHub issue tracker.
+.pw_sanitize_public <- function(x,
+                                repo_root = c(.pw_repo_root(), if (exists("PROJECT_DIR")) PROJECT_DIR),
+                                home = c(Sys.getenv("USERPROFILE"), Sys.getenv("HOME"), path.expand("~")),
+                                host = c(Sys.info()[["nodename"]], Sys.getenv("COMPUTERNAME")),
+                                user = c(Sys.info()[["user"]], Sys.getenv("USERNAME"))) {
+  if (!length(x)) return(character(0))
+  x <- as.character(x)
+  x[is.na(x)] <- ""
+  variants <- function(p) {
+    p <- p[!is.na(p) & nzchar(p)]
+    if (!length(p)) return(character(0))
+    fwd <- gsub("\\\\", "/", p)
+    v <- unique(c(fwd, gsub("/", "\\\\", fwd), gsub("/", "\\\\\\\\", fwd)))
+    v[order(nchar(v), decreasing = TRUE)]
+  }
+  replace_paths <- function(x, paths, placeholder) {
+    for (p in variants(paths)) x <- gsub(.pw_regex_escape(p), placeholder, x, perl = TRUE, ignore.case = TRUE)
+    x
+  }
+  # Longest first: the repo root lives under the home directory.
+  x <- replace_paths(x, repo_root, "<repo>")
+  x <- replace_paths(x, home, "<home>")
+  # Any absolute path left over (another drive, a temp dir, a profile path).
+  x <- gsub("(?<![A-Za-z0-9])[A-Za-z]:[\\\\/][^\\s'\"`<>|]*", "<path>", x, perl = TRUE)
+  x <- gsub("(?<![A-Za-z0-9._-])/(?:home|Users)/[^\\s/'\"`<>|]+", "<home>", x, perl = TRUE)
+  for (w in unique(c(host, user))) {
+    if (is.na(w) || nchar(w) < 2L) next
+    x <- gsub(sprintf("(?<![A-Za-z0-9])%s(?![A-Za-z0-9])", .pw_regex_escape(w)),
+              if (w %in% host) "<host>" else "<user>", x, perl = TRUE, ignore.case = TRUE)
+  }
+  x
+}
+
+.pw_run_date <- function(result) {
+  if (!is.null(result$run_start) && !is.na(result$run_start)) format(result$run_start, "%Y-%m-%d") else format(Sys.Date())
+}
+
+.pw_failed_fatal <- function(result) {
+  Filter(function(ch) !isTRUE(ch$pass) && isTRUE(ch$fatal), result$checks)
+}
+
+.pw_gh_issue_title <- function(result) {
+  ids <- vapply(.pw_failed_fatal(result), function(ch) as.character(ch$id), character(1))
+  .pw_sanitize_public(sprintf("Publish gate blocked on %s: assertion%s %s",
+                              .pw_run_date(result), if (length(ids) == 1L) "" else "s",
+                              if (length(ids)) paste(ids, collapse = ", ") else "<none recorded>"))
+}
+
+.pw_gh_issue_body <- function(result, heading = "The NBA web publish gate blocked a live run") {
+  fence <- function(lines) c("```", gsub("```", "'''", lines, fixed = TRUE), "```")
+  run_time <- if (!is.null(result$run_start) && !is.na(result$run_start)) format(result$run_start, "%Y-%m-%d %H:%M") else "<undetected>"
+  failed <- .pw_failed_fatal(result)
+  body <- c(sprintf("## %s (%s)", heading, .pw_run_date(result)), "",
+            sprintf("Run start: `%s`. Nothing was published; the live site still shows the last published data.", run_time),
+            "", "### Failing fatal assertions", "")
+  if (!length(failed)) body <- c(body, "- none recorded")
+  for (ch in failed) body <- c(body, sprintf("- **%s** (%s): %s", ch$id, ch$name, ch$summary))
+  for (ch in failed) {
+    detail <- trimws(as.character(unlist(ch$detail)), which = "right")
+    detail <- detail[nzchar(trimws(detail))]
+    if (!length(detail)) next
+    body <- c(body, "", sprintf("#### %s: first lines of output", ch$id), "", fence(head(detail, 15)))
+    if (length(detail) > 15) body <- c(body, sprintf("(%d more line(s) in the local log)", length(detail) - 15))
+  }
+  warns <- as.character(unlist(result$stage_warnings))
+  body <- c(body, "", sprintf("### Stage warnings (%d in the run window%s)", length(warns),
+                              if (length(warns) > 5) ", first 5 shown" else ""), "")
+  body <- c(body, if (length(warns)) fence(head(warns, 5)) else "None in the run window.")
+  body <- c(body, "", "---",
+            sprintf("Posted by `tools/publish_web.R` (#145). This issue is closed automatically by the next successful live publish."))
+  paste(.pw_sanitize_public(body), collapse = "\n")
+}
+
+.pw_gh_recovery_body <- function(result) {
+  run_time <- if (!is.null(result$run_start) && !is.na(result$run_start)) format(result$run_start, "%Y-%m-%d %H:%M") else "<undetected>"
+  paste(.pw_sanitize_public(c(
+    sprintf("## Publishing recovered (%s)", .pw_run_date(result)), "",
+    sprintf("The run starting `%s` passed every fatal assertion and pushed to `%s`. Closing.",
+            run_time, if (is.null(result$publish_branch)) "main" else result$publish_branch),
+    "", "---", "Posted by `tools/publish_web.R` (#145).")), collapse = "\n")
+}
+
+.pw_notify_github <- function(result, runner = NULL, repo = .PW_GH_REPO, label = .PW_GH_LABEL) {
+  if (is.null(runner)) runner <- .pw_gh_default_runner
+  tryCatch({
+    if (isTRUE(result$dry_run)) return(invisible("skipped: dry run"))
+    blocked   <- isTRUE(result$blocked)
+    published <- isTRUE(result$published)
+    if (!blocked && !published) return(invisible("skipped: not a live outcome"))
+
+    gh <- function(args, what) {
+      res <- tryCatch(runner(args), error = function(e) list(status = NA_integer_, out = conditionMessage(e)))
+      st <- suppressWarnings(as.integer(res$status))
+      if (length(st) != 1L || is.na(st) || st != 0L) {
+        stop(sprintf("gh %s failed (exit %s%s): %s", what,
+                     if (length(st) == 1L && !is.na(st)) st else "NA",
+                     if (identical(st, 124L)) ", timed out" else "",
+                     paste(head(as.character(res$out), 3), collapse = " | ")), call. = FALSE)
+      }
+      as.character(res$out)
+    }
+    with_body <- function(text, f) {
+      path <- tempfile("publish_web_gh_", fileext = ".md")
+      on.exit(unlink(path), add = TRUE)
+      writeLines(text, path, useBytes = TRUE)
+      f(path)
+    }
+
+    open_out <- gh(c("issue", "list", "--repo", repo, "--label", label, "--state", "open",
+                     "--json", "number", "--jq", ".[].number", "--limit", "20"), "issue list")
+    open_nums <- suppressWarnings(as.integer(trimws(open_out)))
+    open_nums <- sort(open_nums[!is.na(open_nums)])
+    existing <- if (length(open_nums)) open_nums[[1]] else NA_integer_
+
+    if (blocked) {
+      if (!is.na(existing)) {
+        with_body(.pw_gh_issue_body(result, "Blocked again"), function(p)
+          gh(c("issue", "comment", existing, "--repo", repo, "--body-file", p), "issue comment"))
+        message(sprintf(">>> publish_web: commented on open %s issue #%d.", label, existing))
+        return(invisible(sprintf("commented #%d", existing)))
+      }
+      labels <- gh(c("label", "list", "--repo", repo, "--search", label, "--json", "name",
+                     "--jq", ".[].name", "--limit", "100"), "label list")
+      if (!(label %in% trimws(labels))) {
+        gh(c("label", "create", label, "--repo", repo, "--color", "B60205",
+             "--description", "The publish gate blocked a live run (opened by tools/publish_web.R)"),
+           "label create")
+        message(sprintf(">>> publish_web: created the %s label.", label))
+      }
+      out <- with_body(.pw_gh_issue_body(result), function(p)
+        gh(c("issue", "create", "--repo", repo, "--title", .pw_gh_issue_title(result),
+             "--label", label, "--body-file", p), "issue create"))
+      message(sprintf(">>> publish_web: opened %s issue %s", label, paste(tail(out, 1), collapse = "")))
+      return(invisible("created"))
+    }
+
+    # Successful live publish.
+    if (is.na(existing)) return(invisible("nothing open"))
+    with_body(.pw_gh_recovery_body(result), function(p)
+      gh(c("issue", "comment", existing, "--repo", repo, "--body-file", p), "issue comment"))
+    gh(c("issue", "close", existing, "--repo", repo), "issue close")
+    message(sprintf(">>> publish_web: publishing recovered; closed %s issue #%d.", label, existing))
+    invisible(sprintf("closed #%d", existing))
+  }, error = function(e) {
+    message(sprintf(">>> [WARN] publish_web: GitHub %s notification skipped: %s",
+                    label, conditionMessage(e)))
+    invisible("failed")
+  })
+}
+
+# ------------------------------------------------------------------------------
 # publish_web() - the explicitly-callable entry point.
 #
 # Deliberately NOT guarded by a `sys.nframe() == 0`-style top-level-only check:
@@ -784,7 +996,10 @@ publish_web <- function(dry_run = TRUE,
                         publish_branch = "main",
                         fail_on_exporter_warnings = FALSE,
                         skip_contracts = FALSE,
-                        commit_message = NULL) {
+                        commit_message = NULL,
+                        gh_runner = NULL) {
+  # gh_runner: injectable gh call for .pw_notify_github() (tests only); NULL
+  # means the real gh CLI. It never affects the gate's decision.
 
   repo_root <- .pw_repo_root()
   log_lines <- if (file.exists(LOG_FILE)) readLines(LOG_FILE, warn = FALSE) else character(0)
@@ -870,7 +1085,10 @@ publish_web <- function(dry_run = TRUE,
   )
 
   if (blocked || dry_run) {
-    if (blocked && !dry_run) .pw_notify_discord(result)
+    if (blocked && !dry_run) {
+      .pw_notify_discord(result)
+      .pw_notify_github(result, runner = gh_runner)
+    }
     return(invisible(result))
   }
 
@@ -879,6 +1097,7 @@ publish_web <- function(dry_run = TRUE,
   message(sprintf(">>> publish_web: web artifacts committed and pushed to NBA_analytics %s. The site changes when the aggregator's sync-sports.yml next pulls; this script does not deploy.",
                   publish_branch))
   .pw_notify_discord(result)
+  .pw_notify_github(result, runner = gh_runner)
   invisible(result)
 }
 
