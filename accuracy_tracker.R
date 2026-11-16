@@ -62,6 +62,19 @@ source("tools/elo_model.R")          # -> run_elo_walkforward()
   paste(season, per_game$week, per_game$away_full, per_game$home_full, sep = "|")
 }
 
+# Counts graded games whose walk-forward margin came from the fallback shrinkage blend instead of
+# Ridge-Massey (#131). Compares element-wise with `%in% TRUE`, so NA counts as not-fallback;
+# isTRUE() cannot be used here because it is FALSE for any vector longer than 1. A non-empty
+# per_game without a ridge_fallback column is an error, not zero, so a schema change in
+# grade_walkforward_games() cannot silently disable the publish guard.
+.count_ridge_fallback <- function(per_game) {
+  if (nrow(per_game) == 0L) return(0L)
+  if (!"ridge_fallback" %in% names(per_game)) {
+    stop("graded per_game has no ridge_fallback column; cannot check for fallback-graded games.")
+  }
+  sum(per_game$ridge_fallback %in% TRUE)
+}
+
 run_accuracy_tracker <- function() {
   log_info(sprintf("Starting accuracy tracker for season %d.", CURRENT_SEASON), script = .LOG_SCRIPT)
 
@@ -77,8 +90,8 @@ run_accuracy_tracker <- function() {
     return(invisible(FALSE))
   }
 
-  if (any(isTRUE(graded$per_game$ridge_fallback))) {
-    n_fb <- sum(isTRUE(graded$per_game$ridge_fallback))
+  n_fb <- .count_ridge_fallback(graded$per_game)
+  if (n_fb > 0L) {
     log_error(sprintf("%d/%d completed %d game(s) used the fallback shrinkage blend instead of Ridge-Massey.",
                       n_fb, nrow(graded$per_game), CURRENT_SEASON),
               script = .LOG_SCRIPT)

@@ -410,6 +410,43 @@ ok("RM-1 `predict_ridge_massey_walkforward()` warns and marks rows when falling 
    isTRUE(warn_emitted) && isTRUE(all(res_fb$used_fallback)) && length(res_fb$margin) == 2L,
    sprintf("warn_emitted=%s, all_fallback=%s", warn_emitted, all(res_fb$used_fallback)))
 
+# ==============================================================================
+# SECTION 7: accuracy_tracker.R ridge_fallback publish guard (#131)
+# ==============================================================================
+cat("\n--- Section 7: accuracy_tracker.R ridge_fallback publish guard ---\n")
+
+AT_ENV <- new.env(parent = baseenv())
+invisible(load_ast_symbols("accuracy_tracker.R", c(".count_ridge_fallback"), AT_ENV))
+count_fb <- AT_ENV$.count_ridge_fallback
+
+pg_one_fb  <- data.frame(week = 1:3, ridge_fallback = c(FALSE, TRUE, FALSE))
+pg_none    <- data.frame(week = 1:3, ridge_fallback = c(FALSE, FALSE, FALSE))
+pg_na      <- data.frame(week = 1:3, ridge_fallback = c(FALSE, NA, FALSE))
+pg_empty   <- data.frame(week = integer(0), ridge_fallback = logical(0))
+pg_nocol   <- data.frame(week = 1:2)
+
+ok("AT-1 `.count_ridge_fallback()` counts a single TRUE in a multi-row per_game (isTRUE() would return 0)",
+   identical(count_fb(pg_one_fb), 1L),
+   sprintf("count=%s", count_fb(pg_one_fb)))
+
+ok("AT-2 `.count_ridge_fallback()` returns 0 when no game fell back, treating NA as not-fallback",
+   identical(count_fb(pg_none), 0L) && identical(count_fb(pg_na), 0L))
+
+ok("AT-3 `.count_ridge_fallback()` returns 0 for a zero-row per_game",
+   identical(count_fb(pg_empty), 0L))
+
+nocol_err <- tryCatch({ count_fb(pg_nocol); NULL }, error = function(e) conditionMessage(e))
+ok("AT-4 `.count_ridge_fallback()` errors when a non-empty per_game has no ridge_fallback column",
+   !is.null(nocol_err) && grepl("no ridge_fallback column", nocol_err),
+   nocol_err)
+
+at_src <- paste(deparse(body(load_ast_symbols("accuracy_tracker.R", "run_accuracy_tracker",
+                                                new.env(parent = baseenv()))$run_accuracy_tracker)),
+                collapse = "\n")
+ok("AT-5 `run_accuracy_tracker()` gates publishing on `.count_ridge_fallback()`, not isTRUE() on the column",
+   grepl(".count_ridge_fallback(graded$per_game)", at_src, fixed = TRUE) &&
+     !grepl("isTRUE(graded$per_game$ridge_fallback)", at_src, fixed = TRUE))
+
 cat(sprintf("\n=== %s: %d failure(s) ===\n",
             if (failures == 0L) "ALL TESTS PASSED" else "TEST FAILURES", failures))
 quit(status = if (failures == 0L) 0L else 1L)
