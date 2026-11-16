@@ -40,33 +40,16 @@ fix_abbr <- function(x) {
 # ------------------------------------------------------------------------------
 # Play-by-play ingestion (cached per season)
 # ------------------------------------------------------------------------------
+# The current season is refreshed when its cache is behind, and the seasons are
+# bound after their column types are made to agree (pbp_cache_utils.R, #143).
+source("pbp_cache_utils.R")
+
 load_pbp <- function(seasons) {
-  frames <- list()
-  for (sn in seasons) {
-    pbp_cache <- file.path(.cache_dir, sprintf("nba_pbp_%d.rds", sn))
-    got <- NULL
-    if (file.exists(pbp_cache)) {
-      got <- tryCatch(readRDS(pbp_cache), error = function(e) NULL)
-      if (!is.null(got) && nrow(got) > 0) {
-        message(sprintf(">>> [STINTS] Loaded season %d play-by-play from cache (%s rows).",
-                        sn, format(nrow(got), big.mark = ",")))
-      } else got <- NULL
-    }
-    if (is.null(got)) {
-      message(sprintf(">>> [STINTS] Fetching season %d play-by-play via hoopR...", sn))
-      got <- tryCatch({
-        p <- hoopR::load_nba_pbp(seasons = sn)
-        if (!is.null(p) && nrow(p) > 0) saveRDS(p, pbp_cache)
-        p
-      }, error = function(e) {
-        message(sprintf(">>> [WARN] hoopR pbp fetch failed for season %d: %s", sn, conditionMessage(e)))
-        NULL
-      })
-    }
-    if (!is.null(got) && nrow(got) > 0) frames[[length(frames) + 1]] <- as.data.frame(got)
-  }
-  if (length(frames) == 0) return(NULL)
-  bind_rows(frames)
+  frames <- lapply(seasons, function(sn)
+    load_pbp_season_cached(sn, .cache_dir, .current_season, hoopR::load_nba_pbp, tag = "STINTS"))
+  keep <- !vapply(frames, is.null, TRUE)
+  if (!any(keep)) return(NULL)
+  pbp_bind_seasons(frames[keep], labels = paste0("season_", seasons[keep]), tag = "STINTS")
 }
 
 # ------------------------------------------------------------------------------

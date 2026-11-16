@@ -20,6 +20,7 @@ suppressPackageStartupMessages({
 })
 
 if (file.exists("config.R")) source("config.R")
+source("pbp_cache_utils.R")
 .cache_dir <- if (exists("CACHE_DIR")) CACHE_DIR else "cache"
 if (!dir.exists(.cache_dir)) dir.create(.cache_dir, recursive = TRUE)
 
@@ -222,11 +223,12 @@ extract_challenges <- function(pbp) {
 # Driver
 # ------------------------------------------------------------------------------
 build_tactical_dataset <- function() {
+  # Current season refreshed when behind; column types aligned before binding (#143).
   frames <- lapply(TACTICAL_SEASONS, function(sn)
-    load_cached_season(sn, "nba_pbp", hoopR::load_nba_pbp, "play-by-play"))
-  frames <- Filter(Negate(is.null), frames)
-  if (length(frames) == 0) stop("No play-by-play available; cannot build pbp_timeout_cache.rds.")
-  pbp <- bind_rows(frames)
+    load_pbp_season_cached(sn, .cache_dir, .current_season, hoopR::load_nba_pbp, tag = "TACTICAL"))
+  keep <- !vapply(frames, is.null, TRUE)
+  if (!any(keep)) stop("No play-by-play available; cannot build pbp_timeout_cache.rds.")
+  pbp <- pbp_bind_seasons(frames[keep], labels = paste0("season_", TACTICAL_SEASONS[keep]), tag = "TACTICAL")
   pbp$game_id <- as.character(pbp$game_id)
   pbp <- pbp[!is.na(pbp$game_play_number) & !is.na(pbp$period_number), ]
 
