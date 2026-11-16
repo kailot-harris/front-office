@@ -1348,62 +1348,61 @@ build_game_detail_payload <- function(
 # Churn control & atomic JSON output (v3 sections 2.2 & 2.3)
 # ------------------------------------------------------------------------------
 
-.read_json_schema_version <- function(path) {
-  if (!file.exists(path)) return(NULL)
-  header <- tryCatch(readLines(path, n = 10L, warn = FALSE, encoding = "UTF-8"),
-                     error = function(e) character(0))
-  hit <- grep('"schema_version"\\s*:', header, value = TRUE)
-  if (length(hit) >= 1L) {
-    m <- regexec('"schema_version"\\s*:\\s*"([^"]+)"', hit[1], perl = TRUE)
-    caps <- regmatches(hit[1], m)[[1]]
-    if (length(caps) >= 2L) return(caps[2])
+# No rebuild window (frozen-game-file drift, 2026-11-16). Every completed game's payload is
+# rebuilt in memory on every run, and write_game_json_if_changed() writes it only when its
+# content differs. An earlier version skipped games older than 7 days whose file existed.
+# That froze old files while matchups_slates.json kept recomputing the same figures, so a
+# late feed correction made the two disagree, failed contract test P2-c and blocked the
+# publish. Of the five files that drifted on 2026-11-16:
+#   - three had a box-score correction to that game, and
+#   - two had no change to their own box score at all: a correction to an EARLIER game
+#     moved a team's season-to-date "entering" baseline.
+# A fingerprint of a game's own box rows would have missed those two, which is why the
+# whole payload is rebuilt and compared instead. The cost is about 12 s for 197 games.
+# Daily churn stays limited to files whose content actually changed.
+
+# Leaf paths (e.g. "data.box_score.away_totals.dreb") whose values differ between two
+# serialized game detail payloads, ignoring generated_at. Used only for the log line written
+# when an existing file is rewritten.
+.game_detail_changed_paths <- function(old_txt, new_txt) {
+  parse <- function(t) tryCatch(jsonlite::fromJSON(t, simplifyVector = FALSE),
+                                error = function(e) NULL)
+  old <- parse(old_txt)
+  new <- parse(new_txt)
+  if (is.null(old) || is.null(new)) return("<unparseable previous file>")
+  flatten <- function(x, prefix) {
+    if (is.list(x) && length(x) > 0L) {
+      nms <- names(x)
+      keys <- if (is.null(nms)) sprintf("%s[%d]", prefix, seq_along(x) - 1L)
+              else if (nzchar(prefix)) paste0(prefix, ".", nms)
+              else nms
+      unlist(Map(flatten, x, keys), recursive = FALSE, use.names = FALSE)
+    } else {
+      list(list(path = prefix, value = if (is.null(x) || length(x) == 0L) NA else x))
+    }
   }
-  # Fallback for compact/non-standard formatting when header lines didn't match.
-  parsed <- tryCatch(jsonlite::fromJSON(path), error = function(e) NULL)
-  if (is.list(parsed) && !is.null(parsed$schema_version)) {
-    return(as.character(parsed$schema_version))
+  to_map <- function(x) {
+    leaves <- flatten(x, "")
+    vals <- lapply(leaves, `[[`, "value")
+    names(vals) <- vapply(leaves, `[[`, character(1), "path")
+    vals
   }
-  NULL
+  om <- to_map(old)
+  nm <- to_map(new)
+  keys <- union(names(om), names(nm))
+  keys <- keys[!grepl("(^|\\.)generated_at$", keys)]
+  differs <- vapply(keys, function(k) !identical(om[[k]], nm[[k]]), logical(1))
+  keys[differs]
 }
 
-.json_has_null_explainability <- function(path) {
-  if (!file.exists(path)) return(FALSE)
-  lines <- tryCatch(readLines(path, warn = FALSE, encoding = "UTF-8"),
-                    error = function(e) character(0))
-  if (length(lines) == 0L) return(FALSE)
-  any(grepl('"explainability"\\s*:\\s*null\\b', lines, perl = TRUE))
-}
-
-#' Decide whether a game detail file should be rebuilt on this run.
-#'
-#' Returns TRUE when no file exists, force is TRUE, game_date is within the
-#' 7-day stat-correction window (>= today_date - 7), expect_explainability is
-#' TRUE while the on-disk file still has `"explainability": null`, or the
-#' existing file's schema_version differs from schema_ver.
-should_rebuild_game_detail <- function(
-  game_date,
-  path,
-  schema_ver = GAME_DETAIL_SCHEMA_VERSION,
-  today_date = Sys.Date(),
-  force = identical(Sys.getenv("NBA_FORCE_REBUILD_GAMES"), "true"),
-  expect_explainability = FALSE
-) {
-  if (isTRUE(force)) return(TRUE)
-  if (!file.exists(path)) return(TRUE)
-
-  gd <- tryCatch(as.Date(as.character(game_date)), error = function(e) as.Date(NA))
-  td <- as.Date(today_date)
-  if (is.na(gd) || is.na(td)) return(TRUE)
-  if (gd >= (td - 7L)) return(TRUE)
-
-  existing_ver <- .read_json_schema_version(path)
-  if (!identical(existing_ver, as.character(schema_ver))) return(TRUE)
-
-  if (isTRUE(expect_explainability) && .json_has_null_explainability(path)) {
-    return(TRUE)
-  }
-
-  FALSE
+# Box-score fields (the feed's own numbers) are listed first, then derived figures, so the
+# log line leads with what the feed corrected rather than its knock-on effects.
+.format_changed_paths <- function(paths, max_show = 6L) {
+  if (length(paths) == 0L) return("no field-level difference (formatting only)")
+  paths <- paths[order(!grepl("^data\\.box_score\\.", paths), seq_along(paths))]
+  shown <- head(paths, max_show)
+  more <- length(paths) - length(shown)
+  paste0(paste(shown, collapse = ", "), if (more > 0L) sprintf(" (+%d more)", more) else "")
 }
 
 .strip_generated_at_text <- function(txt) {
@@ -1516,8 +1515,12 @@ write_game_json_if_changed <- function(payload, path) {
 #' Batch export per-game detail JSON files under out_dir.
 #'
 #' Emits games/<game_id>.json ONLY when has_box_score is TRUE (game is completed
-#' and has valid away/home team_box rows plus player_box rows). Applies the
-#' 7-day rebuild window and generated_at-ignoring byte comparison.
+#' and has valid away/home team_box rows plus player_box rows). Every such game is
+#' rebuilt in memory on every run and written only when its content changed
+#' (generated_at ignored). Each rewrite of an existing file is logged through
+#' log_fn with the game, its age and the changed fields, and returned in
+#' `$updates`. `force` is accepted for backward compatibility; it has no effect,
+#' because every game is already rebuilt.
 export_game_details <- function(
   team_box,
   player_box,
@@ -1529,11 +1532,17 @@ export_game_details <- function(
   force = identical(Sys.getenv("NBA_FORCE_REBUILD_GAMES"), "true"),
   schema_ver = GAME_DETAIL_SCHEMA_VERSION,
   generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
-  explainability_by_game = NULL
+  explainability_by_game = NULL,
+  log_fn = function(msg) cat(msg, "\n", sep = "")
 ) {
   if (is.null(games)) {
     games <- .derive_games_from_team_box(team_box)
   }
+
+  empty_updates <- data.frame(
+    game_id = character(0), game_date = as.Date(character(0)), days_old = integer(0),
+    n_changed = integer(0), changed_fields = character(0), stringsAsFactors = FALSE
+  )
 
   n_games <- nrow(games)
   if (n_games == 0L) {
@@ -1542,10 +1551,12 @@ export_game_details <- function(
       games_with_box_score = 0L,
       rebuilt_candidates   = 0L,
       written              = 0L,
+      created              = 0L,
+      updated              = 0L,
       unchanged            = 0L,
-      skipped_window       = 0L,
       skipped_no_box_score = 0L,
       written_ids          = character(0),
+      updates              = empty_updates,
       game_status          = data.frame(
         game_id = character(0), has_box_score = logical(0),
         has_game_detail = logical(0), action = character(0),
@@ -1583,9 +1594,11 @@ export_game_details <- function(
   n_has_box        <- 0L
   n_rebuilt        <- 0L
   n_written        <- 0L
+  n_created        <- 0L
   n_unchanged      <- 0L
-  n_skipped_window <- 0L
   n_skipped_no_box <- 0L
+  updates          <- list()
+  td               <- as.Date(today_date)
 
   for (i in seq_len(n_games)) {
     gid <- gids[i]
@@ -1615,20 +1628,6 @@ export_game_details <- function(
     } else NULL
 
     n_has_box <- n_has_box + 1L
-    if (!should_rebuild_game_detail(
-      game_date             = gdates[i],
-      path                  = out_path,
-      schema_ver            = schema_ver,
-      today_date            = today_date,
-      force                 = force,
-      expect_explainability = !is.null(exp_i)
-    )) {
-      n_skipped_window <- n_skipped_window + 1L
-      has_detail_vec[i] <- file.exists(out_path)
-      action_vec[i] <- "skipped_window"
-      next
-    }
-
     n_rebuilt <- n_rebuilt + 1L
     away_meta <- if ("away_team" %in% names(games) && any(c("away_team_name", "away_name") %in% names(games))) {
       nm_col <- if ("away_team_name" %in% names(games)) "away_team_name" else "away_name"
@@ -1656,12 +1655,30 @@ export_game_details <- function(
       explainability  = exp_i
     )
 
+    existed <- file.exists(out_path)
+    old_txt <- if (existed) tryCatch(.read_utf8_text(out_path), error = function(e) NULL) else NULL
     changed <- write_game_json_if_changed(payload, out_path)
     has_detail_vec[i] <- file.exists(out_path)
     if (changed) {
       n_written <- n_written + 1L
       written_ids <- c(written_ids, gid)
-      action_vec[i] <- "written"
+      if (existed) {
+        action_vec[i] <- "updated"
+        paths <- if (is.null(old_txt)) "<unreadable previous file>"
+                 else .game_detail_changed_paths(old_txt, serialize_game_detail_json(payload))
+        days_old <- if (is.na(gdates[i]) || is.na(td)) NA_integer_ else as.integer(td - gdates[i])
+        updates[[length(updates) + 1L]] <- data.frame(
+          game_id = gid, game_date = gdates[i], days_old = days_old,
+          n_changed = length(paths), changed_fields = paste(paths, collapse = ", "),
+          stringsAsFactors = FALSE
+        )
+        log_fn(sprintf(">>> Game detail %s (%s, %s days old) updated: %d field(s) changed: %s",
+                       gid, format(gdates[i]), days_old, length(paths),
+                       .format_changed_paths(paths)))
+      } else {
+        n_created <- n_created + 1L
+        action_vec[i] <- "written"
+      }
     } else {
       n_unchanged <- n_unchanged + 1L
       action_vec[i] <- "unchanged"
@@ -1673,10 +1690,12 @@ export_game_details <- function(
     games_with_box_score = n_has_box,
     rebuilt_candidates   = n_rebuilt,
     written              = n_written,
+    created              = n_created,
+    updated              = n_written - n_created,
     unchanged            = n_unchanged,
-    skipped_window       = n_skipped_window,
     skipped_no_box_score = n_skipped_no_box,
     written_ids          = written_ids,
+    updates              = if (length(updates) > 0L) do.call(rbind, updates) else empty_updates,
     game_status          = data.frame(
       game_id         = gids,
       has_box_score   = has_box_vec,

@@ -116,6 +116,21 @@ function formatIssues(issues: z.ZodIssue[], max = 6): string {
   );
 }
 
+// Leaf paths where two JSON values differ, each as "path: a !== b" (used in failure messages).
+function leafDifferences(a: unknown, b: unknown, trail = '', out: string[] = []): string[] {
+  const isObj = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === 'object';
+  if (isObj(a) && isObj(b) && Array.isArray(a) === Array.isArray(b)) {
+    const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+    for (const k of keys) {
+      const next = Array.isArray(a) ? `${trail}[${k}]` : trail ? `${trail}.${k}` : k;
+      leafDifferences(a[k], b[k], next, out);
+    }
+  } else if (!isDeepStrictEqual(a, b)) {
+    out.push(`${trail || '<root>'}: ${JSON.stringify(a)} !== ${JSON.stringify(b)}`);
+  }
+  return out;
+}
+
 function sumStat(players: PlayerBoxRow[], stat: keyof PlayerBoxRow): number {
   return players.reduce((acc, row) => acc + (row[stat] as number), 0);
 }
@@ -819,15 +834,19 @@ describe('Game detail dataset contracts (v3 §6 item 6)', () => {
         }
         parityCheckedCount++;
         if (!isDeepStrictEqual(ex, detail.data.explainability)) {
-          expect(ex, `matchups[${g.game_id}].explainability disagrees with games/${g.game_id}.json`).toEqual(
-            detail.data.explainability,
+          // Collect every mismatched game with the fields that differ, instead of stopping at the
+          // first one: on 2026-11-16 five games disagreed and the log named only one.
+          const diffs = leafDifferences(ex, detail.data.explainability);
+          const shown = diffs.slice(0, 4).join('; ');
+          const more = diffs.length > 4 ? ` (+${diffs.length - 4} more)` : '';
+          failures.push(
+            `matchups[${g.game_id}]: explainability disagrees with games/${g.game_id}.json: ${shown}${more}`,
           );
-          failures.push(`matchups[${g.game_id}]: explainability disagrees with games/${g.game_id}.json`);
         }
       }
     }
 
-    expect(failures, failures.slice(0, 10).join('\n')).toEqual([]);
+    expect(failures, `${failures.length} failure(s):\n${failures.join('\n')}`).toEqual([]);
     expect(detailExplCount).toBe(loadedGames.length);
     expect(projectedExplCount).toBe(matchups.games_with_projection);
     expect(parityCheckedCount).toBe(loadedGames.length);
