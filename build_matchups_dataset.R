@@ -42,8 +42,10 @@
 #       web/public/data/games/<game_id>.json via build_game_details.R and
 #       populate `has_box_score` / `has_game_detail` on every MatchupGame.
 #
-# Exports CACHE_MATCHUPS (.rds), CACHE_MATCHUPS_JSON (web/public/data), and
-# per-game detail payloads under WEB_GAMES_DIR.
+# Exports CACHE_MATCHUPS (.rds), CACHE_MATCHUPS_JSON (web/public/data),
+# per-game detail payloads under WEB_GAMES_DIR, and per-game attribution files
+# under web/public/data/explainability/ for games without a detail file
+# (issue #147; the slate rows carry `has_explainability`, not the payload).
 #
 # ------------------------------------------------------------------------------
 # JOIN KEY - game date + team short display name.
@@ -798,8 +800,10 @@ for (i in seq_len(nrow(games))) {
       if (g$box_home_score >= g$box_away_score) home_abbr else away_abbr
     } else NULL,
     # Taken verbatim from the accuracy log's own `correct` column, never regraded.
-    prediction_correct = if (is_completed) as.logical(g$log_correct) else NULL,
-    explainability = expl_i
+    prediction_correct = if (is_completed) as.logical(g$log_correct) else NULL
+    # No inline `explainability` (issue #147). Each game's attribution lives in exactly
+    # one file, fetched when its card is opened: games/<id>.json for a game with a
+    # detail file, explainability/<id>.json otherwise (see section 5c).
   )
 }
 
@@ -891,6 +895,75 @@ cat(sprintf(
   ">>> Game details: %d with box score (%d new, %d updated, %d unchanged)\n",
   detail_res$games_with_box_score, detail_res$created, detail_res$updated,
   detail_res$unchanged
+))
+
+# ------------------------------------------------------------------------------
+# 5c. Per-game attribution files + has_explainability flag (issue #147)
+# ------------------------------------------------------------------------------
+# The matchups page used to carry every game's attribution inline in
+# matchups_slates.json, which serialized all 1,200 of them into the page. Now each
+# game's attribution exists in exactly ONE file, fetched when its card is opened:
+#   - has_game_detail = TRUE  -> games/<id>.json (data.explainability, unchanged);
+#   - otherwise, when the game has attribution -> explainability/<id>.json.
+# A game that gets a detail file loses its explainability/<id>.json in the same run
+# (it is an orphan from then on). Files are written only when their content changes
+# (generated_at ignored), with the same helper the game detail files use.
+WEB_EXPLAINABILITY_DIR <- file.path(dirname(WEB_GAMES_DIR), "explainability")
+EXPLAINABILITY_SCHEMA_VERSION <- "1.0"
+if (!dir.exists(WEB_EXPLAINABILITY_DIR)) {
+  dir.create(WEB_EXPLAINABILITY_DIR, recursive = TRUE)
+}
+
+expl_generated_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+expl_valid_ids <- character(0)
+n_expl_created <- 0L
+n_expl_updated <- 0L
+n_expl_unchanged <- 0L
+for (i in seq_along(matchups)) {
+  gid <- matchups[[i]]$game_id
+  expl_i <- explainability_by_game[[gid]]
+  has_expl_file <- !isTRUE(matchups[[i]]$has_game_detail) && !is.null(expl_i)
+  matchups[[i]]$has_explainability <- has_expl_file
+  if (!has_expl_file) next
+
+  expl_valid_ids <- c(expl_valid_ids, gid)
+  expl_path <- file.path(WEB_EXPLAINABILITY_DIR, sprintf("%s.json", gid))
+  existed <- file.exists(expl_path)
+  changed <- write_game_json_if_changed(
+    list(
+      schema_version = EXPLAINABILITY_SCHEMA_VERSION,
+      game_id        = gid,
+      generated_at   = expl_generated_at,
+      data           = expl_i
+    ),
+    expl_path
+  )
+  if (!changed) {
+    n_expl_unchanged <- n_expl_unchanged + 1L
+  } else if (existed) {
+    n_expl_updated <- n_expl_updated + 1L
+  } else {
+    n_expl_created <- n_expl_created + 1L
+  }
+}
+
+# Remove orphans (including files of games that now have a detail file) so the
+# bijection with has_explainability stays strict.
+n_expl_removed <- 0L
+existing_expl_files <- list.files(WEB_EXPLAINABILITY_DIR, pattern = "\\.json$", full.names = TRUE)
+if (length(existing_expl_files) > 0) {
+  expl_stems <- sub("\\.json$", "", basename(existing_expl_files))
+  expl_orphans <- existing_expl_files[!(expl_stems %in% expl_valid_ids)]
+  if (length(expl_orphans) > 0) {
+    unlink(expl_orphans)
+    n_expl_removed <- length(expl_orphans)
+  }
+}
+
+cat(sprintf(
+  ">>> Attribution files: %d in %s (%d new, %d updated, %d unchanged, %d removed)\n",
+  length(expl_valid_ids), WEB_EXPLAINABILITY_DIR, n_expl_created, n_expl_updated,
+  n_expl_unchanged, n_expl_removed
 ))
 
 # ------------------------------------------------------------------------------

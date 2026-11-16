@@ -26,6 +26,7 @@ import {
   EnteringBaseline,
   GameDetailEnvelope,
   GameDetailPayload,
+  GameExplainabilityEnvelope,
   GameExplainabilityPayload,
   InactivePlayerRow,
   MarginWaterfallStep,
@@ -192,6 +193,25 @@ function unwrapEnvelope(raw: unknown): GameDetailPayload {
     }
   }
   return raw as GameDetailPayload;
+}
+
+/**
+ * Unwrap explainability/<game_id>.json (issue #147). Throws on a malformed file
+ * or a file for another game, so the modal shows its error state instead of a
+ * blank Attribution tab.
+ */
+function unwrapExplainabilityEnvelope(raw: unknown, gameId: string): GameExplainabilityPayload {
+  if (raw && typeof raw === 'object' && 'data' in raw) {
+    const env = raw as GameExplainabilityEnvelope;
+    if (env.game_id !== undefined && String(env.game_id) !== gameId) {
+      throw new Error(`Attribution file is for game ${String(env.game_id)}, not ${gameId}.`);
+    }
+    const candidate = env.data;
+    if (candidate && typeof candidate === 'object' && 'projection_basis' in candidate) {
+      return candidate;
+    }
+  }
+  throw new Error('Attribution file is malformed.');
 }
 
 function sortPlayers(
@@ -1131,6 +1151,12 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
   returnFocusTo,
 }) => {
   const [detail, setDetail] = useState<GameDetailPayload | null>(null);
+  // Attribution fetched from explainability/<game_id>.json, keyed by game so a
+  // previous game's payload can never render under the next game's header.
+  const [explFile, setExplFile] = useState<{
+    gameId: string;
+    data: GameExplainabilityPayload;
+  } | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [retryToken, setRetryToken] = useState<number>(0);
@@ -1148,8 +1174,14 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
   const isOpen = matchup !== null;
   const gameId = matchup?.game_id ?? null;
   const hasGameDetail = matchup?.has_game_detail === true;
-  const inlineExplainability = matchup?.explainability ?? null;
-  const hasInlineExplainabilityOnly = Boolean(!hasGameDetail && inlineExplainability);
+  // Attribution is never inline in the slate (issue #147). It is fetched on open from
+  // games/<id>.json when the game has a detail file, else explainability/<id>.json.
+  const hasExplainabilityFile = !hasGameDetail && matchup?.has_explainability === true;
+  const fetchKind: 'detail' | 'explainability' | null = hasGameDetail
+    ? 'detail'
+    : hasExplainabilityFile
+      ? 'explainability'
+      : null;
 
   const restoreOpenerFocus = useCallback(() => {
     if (restoredFocusRef.current) return;
@@ -1174,22 +1206,23 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
   // Reset per-game UI state when switching games or closing.
   useEffect(() => {
     setDetail(null);
+    setExplFile(null);
     setError(null);
-    setActiveSection(hasInlineExplainabilityOnly ? 'attribution' : 'box_score');
+    setActiveSection(hasExplainabilityFile ? 'attribution' : 'box_score');
     setActiveTeam('away');
     setSortField(null);
     setSortDirection('desc');
-  }, [gameId, hasInlineExplainabilityOnly]);
+  }, [gameId, hasExplainabilityFile]);
 
   // If a detail file arrives without box_score while explainability is present,
   // default cleanly into Attribution & SHAP instead of leaving an empty box view.
   useEffect(() => {
     if (hasGameDetail && !loading && !error && detail && !detail.box_score) {
-      if (detail.explainability ?? inlineExplainability) {
+      if (detail.explainability) {
         setActiveSection('attribution');
       }
     }
-  }, [hasGameDetail, loading, error, detail, inlineExplainability]);
+  }, [hasGameDetail, loading, error, detail]);
 
   // Capture opener focus when opening and move focus inside the dialog;
   // restore focus if closed externally via `matchup={null}`.
@@ -1272,9 +1305,11 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
     };
   }, [isOpen, handleClose]);
 
-  // Conditionally fetch game detail ONLY when matchup.has_game_detail === true.
+  // Fetch on open: games/<id>.json when has_game_detail (box score + attribution),
+  // otherwise explainability/<id>.json when has_explainability (attribution only).
+  // A failed fetch or a 404 sets `error`, which renders a visible alert with Retry.
   useEffect(() => {
-    if (!gameId || !hasGameDetail) {
+    if (!gameId || fetchKind === null) {
       setLoading(false);
       return;
     }
@@ -1283,39 +1318,59 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
     setLoading(true);
     setError(null);
 
-    const loadDetail = async () => {
+    const load = async () => {
       try {
-        const res = await fetch(`${BASE_PATH}/data/games/${gameId}.json`);
-        if (!res.ok) {
-          if (res.status === 404 && hasGameDetail) {
-            console.error(
-              `[GameDetailModal] Contract violation: HTTP 404 for game ${gameId} while has_game_detail is true.`,
-            );
+        if (fetchKind === 'detail') {
+          const res = await fetch(`${BASE_PATH}/data/games/${gameId}.json`);
+          if (!res.ok) {
+            if (res.status === 404) {
+              console.error(
+                `[GameDetailModal] Contract violation: HTTP 404 for game ${gameId} while has_game_detail is true.`,
+              );
+            }
+            throw new Error(`Unable to load game detail (HTTP ${res.status}).`);
           }
-          throw new Error(`Unable to load game detail (HTTP ${res.status}).`);
-        }
 
-        const raw: unknown = await res.json();
-        const payload = unwrapEnvelope(raw);
-        if (!cancelled) {
-          setDetail(payload);
-          setLoading(false);
+          const raw: unknown = await res.json();
+          const payload = unwrapEnvelope(raw);
+          if (!cancelled) {
+            setDetail(payload);
+            setLoading(false);
+          }
+        } else {
+          const res = await fetch(`${BASE_PATH}/data/explainability/${gameId}.json`);
+          if (!res.ok) {
+            if (res.status === 404) {
+              console.error(
+                `[GameDetailModal] Contract violation: HTTP 404 for game ${gameId} while has_explainability is true.`,
+              );
+            }
+            throw new Error(`Unable to load attribution (HTTP ${res.status}).`);
+          }
+
+          const raw: unknown = await res.json();
+          const payload = unwrapExplainabilityEnvelope(raw, gameId);
+          if (!cancelled) {
+            setExplFile({ gameId, data: payload });
+            setLoading(false);
+          }
         }
       } catch (err: unknown) {
         if (!cancelled) {
-          const message = err instanceof Error ? err.message : 'Failed to load game detail.';
-          setError(message);
+          const fallback =
+            fetchKind === 'detail' ? 'Failed to load game detail.' : 'Failed to load attribution.';
+          setError(err instanceof Error ? err.message : fallback);
           setLoading(false);
         }
       }
     };
 
-    void loadDetail();
+    void load();
 
     return () => {
       cancelled = true;
     };
-  }, [gameId, hasGameDetail, retryToken]);
+  }, [gameId, fetchKind, retryToken]);
 
   const handleSortClick = useCallback(
     (field: SortField) => {
@@ -1383,10 +1438,21 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
         : null;
 
   const basisInfo = matchup.projection_basis ? BASIS_LABEL[matchup.projection_basis] : null;
-  const explainability = detail?.explainability ?? matchup.explainability ?? null;
+  const explainability: GameExplainabilityPayload | null =
+    fetchKind === 'detail'
+      ? (detail?.explainability ?? null)
+      : fetchKind === 'explainability' && explFile?.gameId === gameId
+        ? explFile.data
+        : null;
   const hasExplainability = explainability !== null;
-  const hasBoxScoreData = Boolean(hasGameDetail && !loading && !error && detail && detail.box_score);
-  const showSectionTabs = Boolean(hasBoxScoreData || (!loading && !error && hasExplainability));
+  const needsFetch = fetchKind !== null;
+  // Loading until the fetched file is in hand (this also covers the first render,
+  // before the fetch effect runs), so an opened card never shows a blank body.
+  const fetchedReady =
+    fetchKind === 'detail' ? detail !== null : fetchKind === 'explainability' ? hasExplainability : true;
+  const isLoading = needsFetch && !error && (loading || !fetchedReady);
+  const hasBoxScoreData = Boolean(hasGameDetail && !isLoading && !error && detail && detail.box_score);
+  const showSectionTabs = Boolean(hasBoxScoreData || (!isLoading && !error && hasExplainability));
   const hasEfficiencyFactors = Boolean(
     hasBoxScoreData && detail?.efficiency_factors && detail.efficiency_factors.length > 0,
   );
@@ -1687,8 +1753,8 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
 
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
-          {/* Missing-data states (no fetch issued when explainability is absent) */}
-          {!hasGameDetail && !hasExplainability && (
+          {/* Missing-data state: no detail file and no attribution file, so no fetch is issued */}
+          {!needsFetch && (
             <div className="py-12 px-4 flex flex-col items-center justify-center text-center gap-3 bg-surface/50 border border-slate-800 rounded-xl">
               <Info className="w-9 h-9 text-accent-400" aria-hidden="true" />
               <p className="text-sm font-semibold text-white max-w-md">{missingBoxMessage}</p>
@@ -1696,18 +1762,22 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
           )}
 
           {/* Loading state */}
-          {hasGameDetail && loading && (
+          {isLoading && (
             <div
               role="status"
               className="py-16 flex flex-col items-center justify-center gap-3 text-slate-300"
             >
               <Loader2 className="w-8 h-8 animate-spin text-accent-400" aria-hidden="true" />
-              <p className="text-sm font-medium">Loading empirical box score and efficiency factors...</p>
+              <p className="text-sm font-medium">
+                {fetchKind === 'detail'
+                  ? 'Loading empirical box score and efficiency factors...'
+                  : 'Loading attribution...'}
+              </p>
             </div>
           )}
 
-          {/* Fetch Error / 404 Retry state */}
-          {hasGameDetail && !loading && error && (
+          {/* Fetch Error / 404 Retry state (game detail or attribution file) */}
+          {needsFetch && !isLoading && error && (
             <div
               role="alert"
               className="py-12 px-4 flex flex-col items-center justify-center text-center gap-4 bg-surface/50 border border-rose-500/30 rounded-xl"
@@ -1716,7 +1786,8 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
               <div className="space-y-1">
                 <p className="text-sm font-semibold text-white">{error}</p>
                 <p className="text-xs text-slate-400">
-                  Game detail file could not be retrieved for {awayAbbr} @ {homeAbbr}.
+                  {fetchKind === 'detail' ? 'Game detail file' : 'Attribution file'} could not be
+                  retrieved for {awayAbbr} @ {homeAbbr}.
                 </p>
               </div>
               <button
@@ -1731,7 +1802,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
           )}
 
           {/* Defensive fallback when detail file loaded without box_score or explainability */}
-          {hasGameDetail && !loading && !error && detail && !detail.box_score && !hasExplainability && (
+          {hasGameDetail && !isLoading && !error && detail && !detail.box_score && !hasExplainability && (
             <div className="py-12 px-4 flex flex-col items-center justify-center text-center gap-3 bg-surface/50 border border-slate-800 rounded-xl">
               <Info className="w-9 h-9 text-accent-400" aria-hidden="true" />
               <p className="text-sm font-semibold text-white max-w-md">{missingBoxMessage}</p>
@@ -1739,7 +1810,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
           )}
 
           {/* Missing Box Score tab panel when explainability enables tabs without box score */}
-          {!loading && !error && !hasBoxScoreData && hasExplainability && activeSection === 'box_score' && (
+          {!isLoading && !error && !hasBoxScoreData && hasExplainability && activeSection === 'box_score' && (
             <div
               id="section-panel-box-score"
               role="tabpanel"
@@ -1752,7 +1823,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
           )}
 
           {/* Empirical Phase 1 Detail */}
-          {hasGameDetail && !loading && !error && detail && detail.box_score && (
+          {hasGameDetail && !isLoading && !error && detail && detail.box_score && (
             <>
               {/* Tab 1: Box Score + Top Performers */}
               {activeSection === 'box_score' && (
@@ -2183,7 +2254,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
           )}
 
           {/* Tier 2b Explainability Tab: Attribution & SHAP */}
-          {!loading &&
+          {!isLoading &&
             !error &&
             hasExplainability &&
             explainability &&
