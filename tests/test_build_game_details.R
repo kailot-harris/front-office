@@ -81,7 +81,7 @@ ok("build_game_details.R loads cleanly from scratch directory",
    is.function(mod_env$build_game_detail_payload) &&
      is.function(mod_env$export_game_details) &&
      is.function(mod_env$write_game_json_if_changed) &&
-     is.function(mod_env$should_rebuild_game_detail))
+     is.function(mod_env$.game_detail_changed_paths))
 ok("build_game_details.R produces zero stdout side effects on source()",
    length(load_out) == 0L)
 ok("build_game_details.R leaves working directory untouched",
@@ -467,7 +467,7 @@ ok("Serialized payload contains zero betting terms",
    !grepl(betting_re, json_9001, ignore.case = TRUE, perl = TRUE))
 
 # ------------------------------------------------------------------------------
-section("4. Churn control, 7-day rebuild window, and idempotency")
+section("4. Churn control, no rebuild window, and idempotency")
 # ------------------------------------------------------------------------------
 
 tmp_games_dir <- file.path(tempdir(), "gbd_churn_test")
@@ -478,8 +478,8 @@ today_ref <- as.Date("2026-11-15")
 
 # Games:
 # - 9001: 2026-11-12 (3 days old, has box score)
-# - 9003: 2026-11-08 (exactly 7 days old, has box score -> rebuilt inside window)
-# - 9004: 2026-11-01 (14 days old, has box score -> skipped outside window on run 2)
+# - 9003: 2026-11-08 (7 days old, has box score)
+# - 9004: 2026-11-01 (14 days old, has box score; still rebuilt every run, since there is no window)
 # - 9005: 2026-11-14 (completed, missing player_box -> has_box_score FALSE, no file)
 # - 9006: 2026-11-18 (unplayed, is_completed FALSE -> has_box_score FALSE, no file)
 tb_9003 <- tb_9001; tb_9003$game_id <- 9003L; tb_9003$game_date <- as.Date("2026-11-08")
@@ -543,10 +543,10 @@ bytes_after <- lapply(c("9001.json", "9003.json", "9004.json"), function(f) {
   readBin(p, "raw", file.info(p)$size)
 })
 
-ok("Run 2 with new generated_at writes 0 files, skips 14d game, leaves bytes untouched",
+ok("Run 2 with new generated_at writes 0 files (all 3 rebuilt and unchanged), leaves bytes untouched",
    res2$written == 0L &&
-     res2$unchanged == 2L &&
-     res2$skipped_window == 1L &&
+     res2$unchanged == 3L &&
+     nrow(res2$updates) == 0L &&
      identical(bytes_before, bytes_after) &&
      identical(jsonlite::fromJSON(file.path(tmp_games_dir, "9001.json"))$generated_at,
                "2026-11-15T10:00:00Z"))
@@ -564,37 +564,77 @@ res3 <- mod_env$export_game_details(
   today_date   = today_ref,
   generated_at = "2026-11-15T19:00:00Z"
 )
-ok("Stat correction in 7-day window rewrites only the changed game (9001)",
+ok("Stat correction rewrites only the changed game (9001) and reports it as an update",
    res3$written == 1L && identical(res3$written_ids, "9001") &&
-     res3$unchanged == 1L && res3$skipped_window == 1L)
+     res3$updated == 1L && res3$created == 0L && res3$unchanged == 2L &&
+     identical(res3$updates$game_id, "9001") &&
+     grepl("data.box_score.away_totals.ast", res3$updates$changed_fields, fixed = TRUE))
 
-# should_rebuild_game_detail predicates (including exact 7-day boundary):
-p_old <- file.path(tmp_games_dir, "9004.json")
-p_7d  <- file.path(tmp_games_dir, "9003.json")
-ok("should_rebuild_game_detail returns TRUE at exact 7-day boundary (today - 7) and FALSE at (today - 8)",
-   mod_env$should_rebuild_game_detail("2026-11-08", p_7d, schema_ver = "1.0",
-                                      today_date = today_ref, force = FALSE) &&
-     !mod_env$should_rebuild_game_detail("2026-11-07", p_old, schema_ver = "1.0",
-                                         today_date = today_ref, force = FALSE))
-ok("should_rebuild_game_detail returns FALSE outside 7-day window when schema matches",
-   !mod_env$should_rebuild_game_detail("2026-11-01", p_old, schema_ver = "1.0",
-                                       today_date = today_ref, force = FALSE))
-ok("should_rebuild_game_detail returns TRUE on schema_version mismatch",
-   mod_env$should_rebuild_game_detail("2026-11-01", p_old, schema_ver = "1.1",
-                                      today_date = today_ref, force = FALSE))
-ok("should_rebuild_game_detail returns TRUE when force=TRUE or file missing",
-   mod_env$should_rebuild_game_detail("2026-11-01", p_old, schema_ver = "1.0",
-                                      today_date = today_ref, force = TRUE) &&
-     mod_env$should_rebuild_game_detail("2026-11-01", file.path(tmp_games_dir, "missing.json"),
-                                        schema_ver = "1.0", today_date = today_ref, force = FALSE))
+# Frozen-game-file drift (2026-11-16). A game more than 7 days old used to be skipped once
+# its file existed, so a late feed correction reached matchups_slates.json but not
+# games/<id>.json, failed contract test P2-c and blocked the publish. Reproduce both shapes
+# seen that day on 9004 (14 days old):
+#   (a) a box-score correction to that game (one defensive rebound added to one player), and
+#   (b) no box-score change, but a new "entering" baseline because an earlier game changed.
+# After each, the file must match what the slate is given.
+p_9004 <- file.path(tmp_games_dir, "9004.json")
+logged <- character(0)
+capture_log <- function(msg) logged <<- c(logged, msg)
 
-# Env var NBA_FORCE_REBUILD_GAMES="true":
-old_force_env <- Sys.getenv("NBA_FORCE_REBUILD_GAMES", unset = NA)
-Sys.setenv(NBA_FORCE_REBUILD_GAMES = "true")
-ok("NBA_FORCE_REBUILD_GAMES='true' triggers rebuild for old game",
-   mod_env$should_rebuild_game_detail("2026-11-01", p_old, schema_ver = "1.0",
-                                      today_date = today_ref))
-if (is.na(old_force_env)) Sys.unsetenv("NBA_FORCE_REBUILD_GAMES") else Sys.setenv(NBA_FORCE_REBUILD_GAMES = old_force_env)
+tb_drift <- tb_batch_corr
+pb_drift <- pb_batch
+a_idx <- which(pb_drift$game_id == 9004L & pb_drift$athlete_id == 101L)
+pb_drift$defensive_rebounds[a_idx] <- pb_drift$defensive_rebounds[a_idx] + 1L
+pb_drift$rebounds[a_idx] <- pb_drift$rebounds[a_idx] + 1L
+t_idx <- which(tb_drift$game_id == 9004L & tb_drift$team_home_away == "away")
+tb_drift$defensive_rebounds[t_idx] <- tb_drift$defensive_rebounds[t_idx] + 1L
+tb_drift$total_rebounds[t_idx] <- tb_drift$total_rebounds[t_idx] + 1L
+dreb_before <- jsonlite::fromJSON(p_9004)$data$box_score$away_totals$dreb
+
+res_a <- mod_env$export_game_details(
+  team_box = tb_drift, player_box = pb_drift, games = games_batch,
+  out_dir = tmp_games_dir, season = 2027L, season_label = "2026-2027",
+  today_date = today_ref, generated_at = "2026-11-15T20:00:00Z", log_fn = capture_log
+)
+dreb_after <- jsonlite::fromJSON(p_9004)$data$box_score$away_totals$dreb
+ok("(a) A correction to a 14-day-old game reaches its file (away dreb +1)",
+   identical(res_a$written_ids, "9004") && res_a$updated == 1L &&
+     identical(as.integer(dreb_after), as.integer(dreb_before) + 1L))
+ok("(a) The update is logged with the game, its age and the changed fields",
+   identical(res_a$updates$days_old, 14L) &&
+     grepl("data.box_score.away_totals.dreb", res_a$updates$changed_fields, fixed = TRUE) &&
+     length(logged) == 1L &&
+     grepl("Game detail 9004 (2026-11-01, 14 days old) updated", logged[1], fixed = TRUE) &&
+     grepl("dreb", logged[1], fixed = TRUE))
+
+expl_old <- list(projection_basis = "primary_ensemble", predicted_margin = 3.1,
+                 entering_baselines = list(list(team = "away",
+                   factors = list(list(key = "orb_pct", entering = 28.4, realized = 31.0, difference = 2.6)))))
+expl_new <- expl_old
+expl_new$entering_baselines[[1]]$factors[[1]]$entering <- 28.3
+expl_new$entering_baselines[[1]]$factors[[1]]$difference <- 2.7
+run_with_expl <- function(expl, stamp) mod_env$export_game_details(
+  team_box = tb_drift, player_box = pb_drift, games = games_batch,
+  out_dir = tmp_games_dir, season = 2027L, season_label = "2026-2027",
+  today_date = today_ref, generated_at = stamp, log_fn = capture_log,
+  explainability_by_game = list("9004" = expl)
+)
+invisible(run_with_expl(expl_old, "2026-11-15T21:00:00Z"))
+logged <- character(0)
+res_b <- run_with_expl(expl_new, "2026-11-15T22:00:00Z")
+file_expl <- jsonlite::fromJSON(p_9004, simplifyVector = FALSE)$data$explainability
+ok("(b) With no box-score change, a new entering baseline still reaches the 14-day-old file, matching the slate's value",
+   identical(res_b$written_ids, "9004") &&
+     isTRUE(all.equal(file_expl, jsonlite::fromJSON(jsonlite::toJSON(expl_new, auto_unbox = TRUE, digits = NA),
+                                                    simplifyVector = FALSE))) &&
+     identical(sort(strsplit(res_b$updates$changed_fields, ", ")[[1]]),
+               sort(c("data.explainability.entering_baselines[0].factors[0].entering",
+                      "data.explainability.entering_baselines[0].factors[0].difference"))))
+
+logged <- character(0)
+res_c <- run_with_expl(expl_new, "2026-11-15T23:00:00Z")
+ok("Re-running with unchanged inputs writes nothing and logs nothing (churn stays at zero)",
+   res_c$written == 0L && res_c$unchanged == 3L && length(logged) == 0L)
 
 unlink(tmp_games_dir, recursive = TRUE)
 
@@ -1204,10 +1244,10 @@ bf_run2 <- mod_env$export_game_details(
   out_dir = p2_tmp_dir, today_date = as.Date("2026-11-15"),
   generated_at = "2026-11-15T13:00:00Z", explainability_by_game = exp_map_p2
 )
-ok("Phase 2 backfill updates >7d Phase 1 null file once, then skips cleanly on Run #2 (0 written)",
+ok("Phase 2 backfill updates >7d Phase 1 null file once, then Run #2 is unchanged (0 written)",
    bf_run1$written == 1L &&
      bf_run2$written == 0L &&
-     identical(bf_run2$game_status$action[1], "skipped_window"))
+     identical(bf_run2$game_status$action[1], "unchanged"))
 unlink(p2_tmp_dir, recursive = TRUE)
 
 # ------------------------------------------------------------------------------

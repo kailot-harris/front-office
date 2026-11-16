@@ -885,10 +885,12 @@ for (i in seq_along(matchups)) {
   matchups[[i]]$has_game_detail <- as.logical(hgd)
 }
 
+# Every game with a box score is rebuilt each run; only changed files are written.
+# Each "updated" game has its own log line from export_game_details() naming the fields.
 cat(sprintf(
-  ">>> Game details: %d with box score (%d written, %d unchanged, %d skipped by window)\n",
-  detail_res$games_with_box_score, detail_res$written, detail_res$unchanged,
-  detail_res$skipped_window
+  ">>> Game details: %d with box score (%d new, %d updated, %d unchanged)\n",
+  detail_res$games_with_box_score, detail_res$created, detail_res$updated,
+  detail_res$unchanged
 ))
 
 # ------------------------------------------------------------------------------
