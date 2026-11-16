@@ -269,6 +269,13 @@ run_stage("prediction_accuracy_logger.R", "Log Unplayed Game Forecasts & Points 
           call_fn = "run_prediction_accuracy_logger",
           output   = CACHE_PREDICTION_ACCURACY_LOG)
 
+# 5.2. Secondary XGBoost feature fusion & TreeSHAP engine (Issue #113 / Phase 2, Issue 2-4).
+# Writes CACHE_XGBOOST_MODEL and CACHE_XGBOOST_SHAP (config.R). Computes exact per-game
+# TreeSHAP feature attributions and publishes out-of-sample track record.
+run_stage("xgboost_shap_engine.R", "Extract Secondary Model TreeSHAP Feature Attributions",
+          call_fn = "run_xgboost_shap_engine",
+          output   = c(CACHE_XGBOOST_MODEL, CACHE_XGBOOST_SHAP))
+
 # 6. Fatigue/travel & short-rest engine (Phase 3, task P3-B; engine itself built under P3-A).
 # Writes CACHE_FATIGUE_METRICS (config.R). Reads CACHE_SCHEDULES from stage 1 above.
 run_stage("fatigue_engine.R", "Compute Travel/Circadian & Short-Rest Fatigue Metrics",

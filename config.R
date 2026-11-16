@@ -687,6 +687,11 @@ CACHE_ACCURACY_HISTORY <- file.path(CACHE_DIR, "accuracy_history.rds")
 # Persisted unplayed game forecasts, points waterfall step values, ridge coefficients,
 # sigma, and entering power ratings before kickoff, ensuring logged pregame rows are immutable.
 CACHE_PREDICTION_ACCURACY_LOG <- file.path(CACHE_DIR, "prediction_accuracy_log.rds")
+
+# Added per NFL Matchup Game Detail Plan v2 (Section 5.4, Issue #113 / 2-4).
+# Secondary XGBoost feature fusion model and per-game TreeSHAP explanations.
+CACHE_XGBOOST_MODEL <- file.path(CACHE_DIR, "xgboost_shap_model.rds")
+CACHE_XGBOOST_SHAP  <- file.path(CACHE_DIR, "xgboost_game_shap_2026.rds")
 # Added per docs/SPEC_playoff_odds_table.md decision #5 (GitHub issue #11, "Playoff Odds 1" -
 # first slice of the playoff-clinching probability feature, issues #11-#16) - prep
 # infrastructure for the future playoff_odds_engine.R pipeline stage (issue #12). A narrowly-
