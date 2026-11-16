@@ -101,8 +101,19 @@ jobs:
       # the new image and stringi failed to load (libicui18n.so.74 missing),
       # taking tidyverse and most of the suite with it. Keying on the image
       # (ImageOS, e.g. "ubuntu26") rebuilds the library when the image changes.
+      # A self-hosted runner does not set ImageOS (#91), so fall back to the
+      # host's own OS release from /etc/os-release (e.g. "ubuntu24.04"). The
+      # hosted key is unchanged because ImageOS still wins when it is set, and
+      # a host OS upgrade now changes the key. "unknown" is left only for a
+      # host with neither.
       - name: Record the runner image for the cache key
-        run: echo "RUNNER_IMAGE=${ImageOS:-unknown}" >> "$GITHUB_ENV"
+        run: |
+          image="${ImageOS:-}"
+          if [ -z "$image" ] && [ -r /etc/os-release ]; then
+            image="$(. /etc/os-release && echo "${ID}${VERSION_ID}")"
+          fi
+          echo "RUNNER_IMAGE=${image:-unknown}" >> "$GITHUB_ENV"
+          echo "R library cache key image: ${image:-unknown}"
 
       - name: Cache R library
         uses: actions/cache@v4
