@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-11-16T14:00:49Z",
+  "generated_at": "2026-11-17T14:02:46Z",
   "season": "2026-2027",
   "cbaThresholdSources": "Cap/tax/apron/minimum thresholds (salaryCap/luxuryTaxThreshold/firstApron/secondApron): manually-updated constants, sourced from the NBA's own official release (pr.nba.com), July 2026 -- no Basketball-Reference page carries these figures (see cap_data_phase3_findings.md), and they change only once per season. Team payroll totals (payroll_2026): automated, from Basketball-Reference's /contracts/players.html active-roster current-season salaries, aggregated per team by tools/derive_team_payroll_from_bbref.R. ACTIVE-ROSTER SALARY ONLY -- excludes dead cap, cap holds, and non-guaranteed partial-season proration, so it is NOT the same quantity as a 'Total Cap Allocations' figure (e.g. Spotrac's) and will not match one team-for-team; see cap_data_phase3_findings.md for the quantified gap. payroll_2027/payroll_2028 are not BBRef figures -- they are this season's BBRef total projected forward using the league-wide cap growth rate (CAP_PROJ_2027/2028 vs. SALARY_CAP), an explicit modeling assumption. Per-player contract rows shown for the teams listed in verified_contracts: automated, read directly from Basketball-Reference's /contracts/players.html (tools/fetch_bbref_player_contracts.R); playerName/salary figures are sourced from BBRef, current-season salary only. playerId is a synthetic 'bbref-<team>-<rank>' string (BBRef has no player id on this page); position is looked up from the projections player catalog where possible, else defaulted to 'F'; contractType defaults to 'Guaranteed' -- BBRef's table carries no option/guaranteed flag. All three are disclosed per-row in each contract's own `notes` field. All other teams' per-player rows are a proportional-fill estimate, not sourced.",
   "salaryCap": 165,
   "luxuryTaxThreshold": 200.4,
   "firstApron": 209,
   "secondApron": 221.7,
-  "averagePayroll": 201.5,
-  "totalLeagueTaxRevenue": 712,
-  "secondApronTeamCount": 3,
-  "firstApronTeamCount": 7,
-  "taxTeamCount": 17,
+  "averagePayroll": 200.8,
+  "totalLeagueTaxRevenue": 658.7,
+  "secondApronTeamCount": 2,
+  "firstApronTeamCount": 8,
+  "taxTeamCount": 16,
   "capRoomTeamCount": 3,
   "teams": [
     {
@@ -189,178 +189,6 @@
           "position": "F",
           "salary2026": 2.2,
           "salary2027": 2.5,
-          "salary2028": 2.7,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        }
-      ]
-    },
-    {
-      "teamAbbr": "MIA",
-      "teamName": "Heat",
-      "conference": "East",
-      "totalPayroll2026": 224.4,
-      "totalPayroll2027": 246.8,
-      "totalPayroll2028": 271.5,
-      "salaryCap": 165,
-      "luxuryTaxThreshold": 200.4,
-      "firstApron": 209,
-      "secondApron": 221.7,
-      "capSpace2026": 0,
-      "taxSpace2026": -24,
-      "firstApronSpace2026": -15.4,
-      "secondApronSpace2026": -2.7,
-      "cbaTier": "Second Apron Restricted",
-      "isRepeaterTax": false,
-      "luxuryTaxBill": 73.5,
-      "totalFinancialCommitment": 297.9,
-      "projectedCapSpace2027": 0,
-      "projectedCapSpace2028": 0,
-      "handcuffs": {
-        "frozenPick7Years": true,
-        "noSalaryAggregation": true,
-        "noCashInTrades": true,
-        "noTpmle": true,
-        "tradeSalaryMatchingPct": 100,
-        "signAndTradeHardCapped": true
-      },
-      "contracts": [
-        {
-          "playerId": "bbref-MIA-001",
-          "playerName": "Giannis Antetokounmpo",
-          "position": "F",
-          "salary2026": 58.5,
-          "salary2027": 62.8,
-          "salary2028": 0,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-MIA-002",
-          "playerName": "Bam Adebayo",
-          "position": "C",
-          "salary2026": 49.8,
-          "salary2027": 53.8,
-          "salary2028": 57.8,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-MIA-003",
-          "playerName": "Andrew Wiggins",
-          "position": "F",
-          "salary2026": 30.2,
-          "salary2027": 16.3,
-          "salary2028": 17.7,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-MIA-004",
-          "playerName": "Klay Thompson",
-          "position": "G",
-          "salary2026": 23.1,
-          "salary2027": 5.9,
-          "salary2028": 0,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-MIA-005",
-          "playerName": "Nikola Jović",
-          "position": "F",
-          "salary2026": 16.2,
-          "salary2027": 14.9,
-          "salary2028": 15.1,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-MIA-006",
-          "playerName": "Bobby Portis",
-          "position": "F",
-          "salary2026": 14.5,
-          "salary2027": 15.6,
-          "salary2028": 0,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-MIA-007",
-          "playerName": "Davion Mitchell",
-          "position": "G",
-          "salary2026": 12.4,
-          "salary2027": 0,
-          "salary2028": 0,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-MIA-008",
-          "playerName": "Tim Hardaway Jr.",
-          "position": "G",
-          "salary2026": 6.5,
-          "salary2027": 0,
-          "salary2028": 0,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-MIA-009",
-          "playerName": "Dru Smith",
-          "position": "F",
-          "salary2026": 2.6,
-          "salary2027": 2.9,
-          "salary2028": 0,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-MIA-010",
-          "playerName": "Nick Richards",
-          "position": "C",
-          "salary2026": 2.4,
-          "salary2027": 0,
-          "salary2028": 0,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-MIA-011",
-          "playerName": "Simone Fontecchio",
-          "position": "F",
-          "salary2026": 2.4,
-          "salary2027": 0,
-          "salary2028": 0,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-MIA-012",
-          "playerName": "Pelle Larsson",
-          "position": "G",
-          "salary2026": 2.3,
-          "salary2027": 13.4,
-          "salary2028": 14.5,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-MIA-013",
-          "playerName": "Myron Gardner",
-          "position": "F",
-          "salary2026": 2.2,
-          "salary2027": 2.5,
-          "salary2028": 0,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-MIA-014",
-          "playerName": "Ryan Conwell",
-          "position": "F",
-          "salary2026": 1.4,
-          "salary2027": 2.3,
           "salary2028": 2.7,
           "contractType": "Guaranteed",
           "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
@@ -1392,7 +1220,7 @@
           "playerName": "Nikola Topić",
           "position": "F",
           "salary2026": 5.4,
-          "salary2027": 7.5,
+          "salary2027": 0,
           "salary2028": 0,
           "contractType": "Guaranteed",
           "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
@@ -1632,6 +1460,178 @@
         {
           "playerId": "bbref-MIN-015",
           "playerName": "Isaiah Evans",
+          "position": "F",
+          "salary2026": 1.4,
+          "salary2027": 2.3,
+          "salary2028": 2.7,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        }
+      ]
+    },
+    {
+      "teamAbbr": "MIA",
+      "teamName": "Heat",
+      "conference": "East",
+      "totalPayroll2026": 214.6,
+      "totalPayroll2027": 236.1,
+      "totalPayroll2028": 259.6,
+      "salaryCap": 165,
+      "luxuryTaxThreshold": 200.4,
+      "firstApron": 209,
+      "secondApron": 221.7,
+      "capSpace2026": 0,
+      "taxSpace2026": -14.2,
+      "firstApronSpace2026": -5.6,
+      "secondApronSpace2026": 7.1,
+      "cbaTier": "First Apron Team",
+      "isRepeaterTax": false,
+      "luxuryTaxBill": 25.9,
+      "totalFinancialCommitment": 240.5,
+      "projectedCapSpace2027": 0,
+      "projectedCapSpace2028": 0,
+      "handcuffs": {
+        "frozenPick7Years": false,
+        "noSalaryAggregation": false,
+        "noCashInTrades": false,
+        "noTpmle": false,
+        "tradeSalaryMatchingPct": 100,
+        "signAndTradeHardCapped": true
+      },
+      "contracts": [
+        {
+          "playerId": "bbref-MIA-001",
+          "playerName": "Giannis Antetokounmpo",
+          "position": "F",
+          "salary2026": 58.5,
+          "salary2027": 62.8,
+          "salary2028": 0,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-MIA-002",
+          "playerName": "Bam Adebayo",
+          "position": "C",
+          "salary2026": 49.8,
+          "salary2027": 53.8,
+          "salary2028": 57.8,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-MIA-003",
+          "playerName": "Andrew Wiggins",
+          "position": "F",
+          "salary2026": 30.2,
+          "salary2027": 16.3,
+          "salary2028": 17.7,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-MIA-004",
+          "playerName": "Nikola Jović",
+          "position": "F",
+          "salary2026": 16.2,
+          "salary2027": 14.9,
+          "salary2028": 15.1,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-MIA-005",
+          "playerName": "Bobby Portis",
+          "position": "F",
+          "salary2026": 14.5,
+          "salary2027": 15.6,
+          "salary2028": 0,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-MIA-006",
+          "playerName": "Klay Thompson",
+          "position": "G",
+          "salary2026": 13.3,
+          "salary2027": 5.9,
+          "salary2028": 0,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-MIA-007",
+          "playerName": "Davion Mitchell",
+          "position": "G",
+          "salary2026": 12.4,
+          "salary2027": 0,
+          "salary2028": 0,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-MIA-008",
+          "playerName": "Tim Hardaway Jr.",
+          "position": "G",
+          "salary2026": 6.5,
+          "salary2027": 0,
+          "salary2028": 0,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-MIA-009",
+          "playerName": "Dru Smith",
+          "position": "F",
+          "salary2026": 2.6,
+          "salary2027": 2.9,
+          "salary2028": 0,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-MIA-010",
+          "playerName": "Nick Richards",
+          "position": "C",
+          "salary2026": 2.4,
+          "salary2027": 0,
+          "salary2028": 0,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-MIA-011",
+          "playerName": "Simone Fontecchio",
+          "position": "F",
+          "salary2026": 2.4,
+          "salary2027": 0,
+          "salary2028": 0,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-MIA-012",
+          "playerName": "Pelle Larsson",
+          "position": "G",
+          "salary2026": 2.3,
+          "salary2027": 13.4,
+          "salary2028": 14.5,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-MIA-013",
+          "playerName": "Myron Gardner",
+          "position": "F",
+          "salary2026": 2.2,
+          "salary2027": 2.5,
+          "salary2028": 0,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-MIA-014",
+          "playerName": "Ryan Conwell",
           "position": "F",
           "salary2026": 1.4,
           "salary2027": 2.3,
@@ -2212,218 +2212,6 @@
           "salary2026": 1.7,
           "salary2027": 2.3,
           "salary2028": 2.7,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        }
-      ]
-    },
-    {
-      "teamAbbr": "DAL",
-      "teamName": "Mavericks",
-      "conference": "West",
-      "totalPayroll2026": 206,
-      "totalPayroll2027": 226.6,
-      "totalPayroll2028": 249.2,
-      "salaryCap": 165,
-      "luxuryTaxThreshold": 200.4,
-      "firstApron": 209,
-      "secondApron": 221.7,
-      "capSpace2026": 0,
-      "taxSpace2026": -5.6,
-      "firstApronSpace2026": 3,
-      "secondApronSpace2026": 15.7,
-      "cbaTier": "Taxpayer (Below Apron 1)",
-      "isRepeaterTax": false,
-      "luxuryTaxBill": 5.7,
-      "totalFinancialCommitment": 211.7,
-      "projectedCapSpace2027": 0,
-      "projectedCapSpace2028": 0,
-      "handcuffs": {
-        "frozenPick7Years": false,
-        "noSalaryAggregation": false,
-        "noCashInTrades": false,
-        "noTpmle": false,
-        "tradeSalaryMatchingPct": 125,
-        "signAndTradeHardCapped": false
-      },
-      "contracts": [
-        {
-          "playerId": "bbref-DAL-001",
-          "playerName": "Kyrie Irving",
-          "position": "G",
-          "salary2026": 39.5,
-          "salary2027": 42.4,
-          "salary2028": 0,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-DAL-002",
-          "playerName": "Klay Thompson",
-          "position": "F",
-          "salary2026": 23.1,
-          "salary2027": 5.9,
-          "salary2028": 0,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-DAL-003",
-          "playerName": "P.J. Washington",
-          "position": "F",
-          "salary2026": 19.8,
-          "salary2027": 21.4,
-          "salary2028": 23,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-DAL-004",
-          "playerName": "Daniel Gafford",
-          "position": "F",
-          "salary2026": 17.3,
-          "salary2027": 18.1,
-          "salary2028": 19,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-DAL-005",
-          "playerName": "Santi Aldama",
-          "position": "F",
-          "salary2026": 17,
-          "salary2027": 17,
-          "salary2028": 0,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-DAL-006",
-          "playerName": "Cooper Flagg",
-          "position": "F",
-          "salary2026": 14.5,
-          "salary2027": 15.2,
-          "salary2028": 19.2,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-DAL-007",
-          "playerName": "Zaccharie Risacher",
-          "position": "F",
-          "salary2026": 13.8,
-          "salary2027": 17.4,
-          "salary2028": 0,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-DAL-008",
-          "playerName": "Caleb Martin",
-          "position": "F",
-          "salary2026": 10,
-          "salary2027": 9.4,
-          "salary2028": 0,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-DAL-009",
-          "playerName": "Naji Marshall",
-          "position": "F",
-          "salary2026": 9.4,
-          "salary2027": 18.2,
-          "salary2028": 17.3,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-DAL-010",
-          "playerName": "Max Christie",
-          "position": "G",
-          "salary2026": 8.3,
-          "salary2027": 8.9,
-          "salary2028": 0,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-DAL-011",
-          "playerName": "Dereck Lively II",
-          "position": "C",
-          "salary2026": 7.2,
-          "salary2027": 0,
-          "salary2028": 0,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-DAL-012",
-          "playerName": "Morez Johnson Jr.",
-          "position": "F",
-          "salary2026": 6.8,
-          "salary2027": 7.1,
-          "salary2028": 7.4,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-DAL-013",
-          "playerName": "Marcus Sasser",
-          "position": "F",
-          "salary2026": 5.2,
-          "salary2027": 0,
-          "salary2028": 0,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-DAL-014",
-          "playerName": "Olivier-Maxence Prosper",
-          "position": "F",
-          "salary2026": 3.5,
-          "salary2027": 1,
-          "salary2028": 0,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-DAL-015",
-          "playerName": "Sergio de Larrea",
-          "position": "F",
-          "salary2026": 3.2,
-          "salary2027": 3.3,
-          "salary2028": 3.5,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-DAL-016",
-          "playerName": "Tarik Biberovic",
-          "position": "F",
-          "salary2026": 3,
-          "salary2027": 3,
-          "salary2028": 0,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-DAL-017",
-          "playerName": "JaVale McGee",
-          "position": "F",
-          "salary2026": 2.2,
-          "salary2027": 2.2,
-          "salary2028": 0,
-          "contractType": "Guaranteed",
-          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
-        },
-        {
-          "playerId": "bbref-DAL-018",
-          "playerName": "Moussa Cissé",
-          "position": "F",
-          "salary2026": 2.2,
-          "salary2027": 2.6,
-          "salary2028": 0,
           "contractType": "Guaranteed",
           "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
         }
@@ -3898,6 +3686,228 @@
           "playerName": "Taj Gibson",
           "position": "F",
           "salary2026": 0.1,
+          "salary2027": 0,
+          "salary2028": 0,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        }
+      ]
+    },
+    {
+      "teamAbbr": "DAL",
+      "teamName": "Mavericks",
+      "conference": "West",
+      "totalPayroll2026": 196.2,
+      "totalPayroll2027": 215.8,
+      "totalPayroll2028": 237.3,
+      "salaryCap": 165,
+      "luxuryTaxThreshold": 200.4,
+      "firstApron": 209,
+      "secondApron": 221.7,
+      "capSpace2026": 0,
+      "taxSpace2026": 4.2,
+      "firstApronSpace2026": 12.8,
+      "secondApronSpace2026": 25.5,
+      "cbaTier": "Over Cap (Non-Taxpayer)",
+      "isRepeaterTax": false,
+      "luxuryTaxBill": 0,
+      "totalFinancialCommitment": 196.2,
+      "projectedCapSpace2027": 0,
+      "projectedCapSpace2028": 0,
+      "handcuffs": {
+        "frozenPick7Years": false,
+        "noSalaryAggregation": false,
+        "noCashInTrades": false,
+        "noTpmle": false,
+        "tradeSalaryMatchingPct": 125,
+        "signAndTradeHardCapped": false
+      },
+      "contracts": [
+        {
+          "playerId": "bbref-DAL-001",
+          "playerName": "Kyrie Irving",
+          "position": "G",
+          "salary2026": 39.5,
+          "salary2027": 42.4,
+          "salary2028": 0,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-DAL-002",
+          "playerName": "P.J. Washington",
+          "position": "F",
+          "salary2026": 19.8,
+          "salary2027": 21.4,
+          "salary2028": 23,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-DAL-003",
+          "playerName": "Daniel Gafford",
+          "position": "F",
+          "salary2026": 17.3,
+          "salary2027": 18.1,
+          "salary2028": 19,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-DAL-004",
+          "playerName": "Santi Aldama",
+          "position": "F",
+          "salary2026": 17,
+          "salary2027": 17,
+          "salary2028": 0,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-DAL-005",
+          "playerName": "Cooper Flagg",
+          "position": "F",
+          "salary2026": 14.5,
+          "salary2027": 15.2,
+          "salary2028": 19.2,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-DAL-006",
+          "playerName": "Zaccharie Risacher",
+          "position": "F",
+          "salary2026": 13.8,
+          "salary2027": 17.4,
+          "salary2028": 0,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-DAL-007",
+          "playerName": "Klay Thompson",
+          "position": "F",
+          "salary2026": 13.3,
+          "salary2027": 5.9,
+          "salary2028": 0,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-DAL-008",
+          "playerName": "Caleb Martin",
+          "position": "F",
+          "salary2026": 10,
+          "salary2027": 9.4,
+          "salary2028": 0,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-DAL-009",
+          "playerName": "Naji Marshall",
+          "position": "F",
+          "salary2026": 9.4,
+          "salary2027": 18.2,
+          "salary2028": 17.3,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-DAL-010",
+          "playerName": "Max Christie",
+          "position": "G",
+          "salary2026": 8.3,
+          "salary2027": 8.9,
+          "salary2028": 0,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-DAL-011",
+          "playerName": "Dereck Lively II",
+          "position": "C",
+          "salary2026": 7.2,
+          "salary2027": 0,
+          "salary2028": 0,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position from the projections player catalog. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-DAL-012",
+          "playerName": "Morez Johnson Jr.",
+          "position": "F",
+          "salary2026": 6.8,
+          "salary2027": 7.1,
+          "salary2028": 7.4,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-DAL-013",
+          "playerName": "Marcus Sasser",
+          "position": "F",
+          "salary2026": 5.2,
+          "salary2027": 0,
+          "salary2028": 0,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-DAL-014",
+          "playerName": "Olivier-Maxence Prosper",
+          "position": "F",
+          "salary2026": 3.5,
+          "salary2027": 1,
+          "salary2028": 0,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-DAL-015",
+          "playerName": "Sergio de Larrea",
+          "position": "F",
+          "salary2026": 3.2,
+          "salary2027": 3.3,
+          "salary2028": 3.5,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-DAL-016",
+          "playerName": "Tarik Biberovic",
+          "position": "F",
+          "salary2026": 3,
+          "salary2027": 3,
+          "salary2028": 0,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-DAL-017",
+          "playerName": "JaVale McGee",
+          "position": "F",
+          "salary2026": 2.2,
+          "salary2027": 2.2,
+          "salary2028": 0,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-DAL-018",
+          "playerName": "Moussa Cissé",
+          "position": "F",
+          "salary2026": 2.2,
+          "salary2027": 2.6,
+          "salary2028": 0,
+          "contractType": "Guaranteed",
+          "notes": "Basketball-Reference /contracts/players.html (active roster; current-season salary_y1). Position not found in the projections player catalog; defaulted to 'F', not sourced. contractType is not available from BBRef and defaults to 'Guaranteed'; not individually verified."
+        },
+        {
+          "playerId": "bbref-DAL-019",
+          "playerName": "Dwight Powell",
+          "position": "F",
+          "salary2026": 0,
           "salary2027": 0,
           "salary2028": 0,
           "contractType": "Guaranteed",

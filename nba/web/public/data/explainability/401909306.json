@@ -1,9 +1,9 @@
 {
   "schema_version": "1.0",
   "game_id": "401909306",
-  "generated_at": "2026-11-16T18:07:54Z",
+  "generated_at": "2026-11-17T14:05:13Z",
   "data": {
-    "projection_basis": "primary_ensemble",
+    "projection_basis": "logged_model_margin",
     "predicted_margin": -4.37,
     "predicted_home_win_prob": 0.3565,
     "sigma_game": 11.8807,
@@ -12,40 +12,45 @@
         "key": "bottom_up",
         "label": "Bottom-up BPM",
         "points": -2.48,
-        "detail": "35% BPM blend (BKN -7.10 vs ORL -0.01)"
+        "detail": "Logged pregame 35% BPM blend differential"
       },
       {
         "key": "rapm",
         "label": "Regularized APM",
         "points": -1.46,
-        "detail": "25% RAPM blend (BKN -5.57 vs ORL +0.26)"
+        "detail": "Logged pregame 25% RAPM blend differential"
       },
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": -1.83,
-        "detail": "20% Shot/Fatigue blend (BKN -6.02 vs ORL +3.11)"
+        "detail": "Logged pregame 20% Shot/Fatigue blend differential"
       },
       {
         "key": "embeddings",
         "label": "Player embeddings",
         "points": -1.38,
-        "detail": "20% Embeddings blend (BKN -6.95 vs ORL -0.03)"
+        "detail": "Logged pregame 20% Embeddings blend differential"
       },
       {
         "key": "home_court",
         "label": "Home court advantage",
         "points": 2.4,
-        "detail": "BKN home-court constant (+2.40 pts)"
+        "detail": "Logged pregame home-court constant"
       },
       {
         "key": "schedule",
         "label": "Schedule & travel",
         "points": 0.38,
-        "detail": "ORL fatigue 0.38 minus BKN fatigue 0.00"
+        "detail": "Logged pregame schedule & travel drag differential"
       }
     ],
-    "logged_forecast": null,
+    "logged_forecast": {
+      "prediction_timestamp": "2026-11-17T14:03:41Z",
+      "log_source": "LOGGED_PREGAME",
+      "brier_component": null,
+      "log_loss_component": null
+    },
     "entering_baselines": null,
     "xgboost_shap": {
       "model_id": "xgboost_feature_fusion_v1",
