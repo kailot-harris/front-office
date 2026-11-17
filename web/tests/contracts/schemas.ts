@@ -611,7 +611,7 @@ export const secondaryModelSummarySchema = z.object({
   logit: z.number().finite(),
   base_value: z.number().finite(),
   factors: z.array(shapFactorItemSchema),
-  out_of_sample_record: secondaryModelOutOfSampleRecordSchema,
+  out_of_sample_record: secondaryModelOutOfSampleRecordSchema.optional(),
   agreement: z.enum(['agree', 'differ']),
 }).strict();
 

@@ -231,6 +231,90 @@ resolve_elo_live <- function(sch, fatigue_path = if (exists("CACHE_FATIGUE_METRI
   })
 }
 
+#' Recover missing completed games via honest walk-forward backfill
+#'
+#' Single unified recovery path for finished games with no pre-game forecast.
+#' Routes missing completed games through tools/backfill_prediction_log.R,
+#' evaluating ratings strictly prior to each game's week and assigning
+#' log_source = "BACKTEST_PREWEEK".
+#'
+#' @param updated_log Existing prediction log data frame.
+#' @param sch Schedules data frame.
+#' @param epa_path Path to EPA cache (or data frame).
+#' @param fatigue_path Path to fatigue cache (or data frame).
+#' @param season Target season.
+#' @param ridge_coefs Optional pre-computed ridge coefficients or model object.
+#' @return Updated prediction log data frame.
+#' @export
+recover_missing_backtest_rows <- function(updated_log, sch, epa_path, fatigue_path, season = 2026L, ridge_coefs = NULL, qb_starter_table = NULL) {
+  if (is.null(sch) || nrow(sch) == 0) return(updated_log)
+  sch_completed <- sch |>
+    filter(season == !!season, !is.na(home_score), !is.na(away_score))
+
+  logged_gids <- if (!is.null(updated_log) && nrow(updated_log) > 0) updated_log$game_id else character(0)
+  missing_completed <- sch_completed |> filter(!game_id %in% logged_gids)
+
+  if (nrow(missing_completed) == 0) return(updated_log)
+
+  log_info(sprintf("Found %d completed game(s) with no logged forecast. Generating backtest row(s) via walk-forward backfill.",
+                   nrow(missing_completed)), script = .LOG_SCRIPT)
+
+  if (!exists("compute_walkforward_backfill", mode = "function")) {
+    bf_script <- if (file.exists("tools/backfill_prediction_log.R")) {
+      "tools/backfill_prediction_log.R"
+    } else if (file.exists("../tools/backfill_prediction_log.R")) {
+      "../tools/backfill_prediction_log.R"
+    } else {
+      NULL
+    }
+    if (!is.null(bf_script)) source(bf_script)
+  }
+
+  epa_data <- if (is.data.frame(epa_path)) {
+    epa_path
+  } else if (!is.null(epa_path) && file.exists(epa_path)) {
+    readRDS(epa_path)
+  } else {
+    NULL
+  }
+
+  fatigue_data <- if (is.data.frame(fatigue_path)) {
+    fatigue_path
+  } else if (!is.null(fatigue_path) && file.exists(fatigue_path)) {
+    readRDS(fatigue_path)
+  } else {
+    NULL
+  }
+
+  if (exists("compute_walkforward_backfill", mode = "function") && !is.null(epa_data)) {
+    backfill_df <- compute_walkforward_backfill(
+      sch         = sch,
+      epa         = epa_data,
+      fatigue     = fatigue_data,
+      season      = season,
+      ridge_coefs = ridge_coefs,
+      qb_starter_table = qb_starter_table
+    )
+    if (!is.null(backfill_df) && nrow(backfill_df) > 0) {
+      missing_rows <- backfill_df |> filter(game_id %in% missing_completed$game_id)
+      if (nrow(missing_rows) > 0) {
+        updated_log <- if (is.null(updated_log) || nrow(updated_log) == 0) {
+          missing_rows
+        } else {
+          bind_rows(updated_log, missing_rows)
+        }
+        log_info(sprintf("Successfully added %d backtested forecast row(s) for completed games.", nrow(missing_rows)),
+                 script = .LOG_SCRIPT)
+      }
+    }
+  } else {
+    log_warn("compute_walkforward_backfill or epa_data unavailable; cannot backfill missing completed games.",
+             script = .LOG_SCRIPT)
+  }
+
+  updated_log
+}
+
 #' Run Prediction Accuracy Logger
 #'
 #' Primary pipeline entry point. Reads projected matchups and schedules, appends
@@ -274,6 +358,7 @@ run_prediction_accuracy_logger <- function(
     fatigue_path            = if (exists("CACHE_FATIGUE_METRICS")) CACHE_FATIGUE_METRICS else file.path("cache", "fatigue_metrics.rds"),
     ridge_coefs             = NULL,
     qb_lookup               = NULL,
+    qb_starter_table        = NULL,
     elo_live                = NULL,
     force_refit             = FALSE,
     as_of                   = Sys.time(),
@@ -562,7 +647,10 @@ run_prediction_accuracy_logger <- function(
 
       } else {
         # Game does NOT exist in log
-        if (is_past_kickoff) {
+        is_comp <- (!is.null(sch_match) && nrow(sch_match) > 0 && !is.na(sch_match$home_score[1]) && !is.na(sch_match$away_score[1])) ||
+                   ("home_score" %in% names(g) && !is.na(g$home_score) && "away_score" %in% names(g) && !is.na(g$away_score))
+
+        if (is_past_kickoff && !is_comp) {
           # Post-kickoff creation guard: never create a pre-game row after kickoff!
           log_warn(sprintf("Game %s has already kicked off (kickoff: %s, run start: %s). Refusing to create LOGGED_PREGAME row.",
                            gid, as.character(ko_dt), as.character(run_start_time)), script = .LOG_SCRIPT)
@@ -570,7 +658,12 @@ run_prediction_accuracy_logger <- function(
           next
         }
 
-        # Game is pre-kickoff: create new row with log_source = "LOGGED_PREGAME"
+        if (is_comp) {
+          # Completed game without prior forecast: recovered via walk-forward backfill below
+          next
+        }
+
+        # Game is pre-kickoff: create genuine LOGGED_PREGAME row
         h_raw   <- if (home %in% names(raw_lookup)) raw_lookup[[home]] else 0.0
         a_raw   <- if (away %in% names(raw_lookup)) raw_lookup[[away]] else 0.0
         h_prior <- if (home %in% names(prior_lookup)) prior_lookup[[home]] else 0.0
@@ -606,8 +699,9 @@ run_prediction_accuracy_logger <- function(
           b_prior_gp         = resolved_coefs$ridge_b_prior_gp,
           projected_margin   = g$projected_margin
         )
-
-        pred_winner <- if (g$projected_margin >= 0) home else away
+        eff_proj_margin <- as.numeric(g$projected_margin)
+        eff_win_prob <- as.numeric(g$home_win_prob)
+        pred_winner <- if (eff_proj_margin >= 0) home else away
 
         new_rows_list[[length(new_rows_list) + 1L]] <- data.frame(
           game_id            = gid,
@@ -630,9 +724,9 @@ run_prediction_accuracy_logger <- function(
           away_power_rating  = as.numeric(g$away_power_rating),
           home_games_played  = as.integer(h_gp),
           away_games_played  = as.integer(a_gp),
-          projected_margin   = as.numeric(g$projected_margin),
-          home_win_prob      = as.numeric(g$home_win_prob),
-          away_win_prob      = 1.0 - as.numeric(g$home_win_prob),
+          projected_margin   = eff_proj_margin,
+          home_win_prob      = eff_win_prob,
+          away_win_prob      = 1.0 - eff_win_prob,
           predicted_winner   = pred_winner,
           margin_sigma       = as.numeric(sigma_val),
           step_current_epa   = as.numeric(waterfall$step_current_epa),
@@ -716,16 +810,31 @@ run_prediction_accuracy_logger <- function(
     }
   }
 
+  # 10.5 Generate backtest rows for completed games with no logged forecast
+  target_season <- if (exists("CURRENT_SEASON", mode = "numeric")) CURRENT_SEASON else 2026L
+  prior_n <- if (!is.null(updated_log)) nrow(updated_log) else 0L
+  updated_log <- recover_missing_backtest_rows(
+    updated_log  = updated_log,
+    sch          = sch,
+    epa_path     = epa_path,
+    fatigue_path = fatigue_path,
+    season       = target_season,
+    ridge_coefs  = resolved_coefs,
+    qb_starter_table = qb_starter_table
+  )
+  n_backtest_added <- (if (!is.null(updated_log)) nrow(updated_log) else 0L) - prior_n
+
   final_log <- updated_log
 
   # Persist log to cache
   if (nrow(final_log) > 0) {
     saveRDS(final_log, log_path)
-    log_info(sprintf("Persisted %d rows to %s (%d new unplayed logged, %d unplayed refreshed, %d completed results updated, %d post-kickoff creation skipped).",
+    log_info(sprintf("Persisted %d rows to %s (%d new unplayed logged, %d unplayed refreshed, %d completed results updated, %d backtest created for finished games, %d post-kickoff creation skipped).",
                      nrow(final_log), log_path,
                      if (!is.null(new_rows_df)) nrow(new_rows_df) else 0L,
                      n_unplayed_refreshed,
                      n_results_updated,
+                     n_backtest_added,
                      n_postkickoff_skipped),
              script = .LOG_SCRIPT)
   } else {

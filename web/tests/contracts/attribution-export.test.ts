@@ -25,8 +25,15 @@ describe('Attribution & Explainability Export Suite (Issue #115 / 2-6)', () => {
     ? fs.readdirSync(ATTRIBUTION_DIR).filter((f) => f.endsWith('.json'))
     : [];
 
-  it('finds exactly 145 completed game detail files on disk', () => {
-    expect(gameFiles.length).toBe(145);
+  it('finds completed game detail files on disk matching the slate count', () => {
+    expect(fs.existsSync(MATCHUPS_FILE), 'matchups_current_week.json must exist').toBe(true);
+    const rawMatchups = JSON.parse(fs.readFileSync(MATCHUPS_FILE, 'utf8')) as {
+      matchups: { is_completed: boolean; has_game_detail?: boolean }[];
+    };
+    const completedWithDetailCount = rawMatchups.matchups.filter(
+      (m) => m.has_game_detail ?? m.is_completed
+    ).length;
+    expect(gameFiles.length).toBe(completedWithDetailCount);
   });
 
   it('finds at least 9 weekly attribution files for unplayed weeks (weeks 10-18)', () => {
@@ -81,6 +88,12 @@ describe('Attribution & Explainability Export Suite (Issue #115 / 2-6)', () => {
       } else {
         expect(exp.divergence_note).toBeNull();
       }
+
+      // Individual game files omit secondary_model.out_of_sample_record
+      // to avoid file churn whenever new games are graded
+      if (exp.secondary_model) {
+        expect(exp.secondary_model.out_of_sample_record).toBeUndefined();
+      }
     }
   });
 
@@ -109,6 +122,18 @@ describe('Attribution & Explainability Export Suite (Issue #115 / 2-6)', () => {
 
         // Unplayed games must have divergence_note null
         expect(gameExp.divergence_note).toBeNull();
+
+        // Weekly attribution files carry secondary_model.out_of_sample_record
+        // tested with realistic bounds rather than hard-coded counts
+        if (gameExp.secondary_model?.out_of_sample_record) {
+          const oos = gameExp.secondary_model.out_of_sample_record;
+          expect(oos.n_games).toBeGreaterThanOrEqual(100);
+          expect(oos.accuracy).toBeGreaterThanOrEqual(55.0);
+          expect(oos.brier).toBeGreaterThan(0.18);
+          expect(oos.brier).toBeLessThan(0.30);
+          expect(oos.logloss).toBeGreaterThan(0.50);
+          expect(oos.logloss).toBeLessThan(0.80);
+        }
       }
     }
   });

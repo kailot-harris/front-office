@@ -550,7 +550,7 @@ if (!dir.exists(WEB_GAMES_DIR)) {
   results
 }
 
-.build_game_explainability <- function(gid, g_season, g_week, away_tm, home_tm, pred_row, shap_game, team_eff_df, is_completed) {
+.build_game_explainability <- function(gid, g_season, g_week, away_tm, home_tm, pred_row, shap_game, team_eff_df, is_completed, include_oos = FALSE) {
   if (is.null(pred_row)) return(NULL)
 
   # 1. Waterfall steps (Section 5.2)
@@ -586,14 +586,19 @@ if (!dir.exists(WEB_GAMES_DIR)) {
       logit                = round(as.numeric(shap_game$logit), 4),
       base_value           = round(as.numeric(shap_game$base_value), 4),
       factors              = shap_game$features,
-      out_of_sample_record = list(
+      agreement            = agreement_val
+    )
+
+    # Season accuracy block is kept in weekly attribution datasets, but omitted from
+    # individual game files to keep completed game files frozen and avoid O(N) churn.
+    if (isTRUE(include_oos) && !is.null(shap_game$model_metadata$out_of_sample_record)) {
+      secondary_model$out_of_sample_record <- list(
         n_games  = as.integer(shap_game$model_metadata$out_of_sample_record$n_games),
         accuracy = as.numeric(shap_game$model_metadata$out_of_sample_record$accuracy),
         brier    = as.numeric(shap_game$model_metadata$out_of_sample_record$brier),
         logloss  = as.numeric(shap_game$model_metadata$out_of_sample_record$logloss)
-      ),
-      agreement            = agreement_val
-    )
+      )
+    }
   }
 
   # 3. Entering baselines (Section 5.5)
@@ -670,7 +675,7 @@ if (!dir.exists(WEB_GAMES_DIR)) {
       } else NULL
 
       if (!is.null(pred_row)) {
-        expl <- .build_game_explainability(gid, CURRENT_SEASON, w, away_tm, home_tm, pred_row, shap_game, team_eff_df, is_completed = FALSE)
+        expl <- .build_game_explainability(gid, CURRENT_SEASON, w, away_tm, home_tm, pred_row, shap_game, team_eff_df, is_completed = FALSE, include_oos = TRUE)
         if (!is.null(expl)) {
           explain_list[[length(explain_list) + 1L]] <- expl
         }

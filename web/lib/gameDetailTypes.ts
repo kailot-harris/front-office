@@ -174,7 +174,7 @@ export interface SecondaryModelSummary {
   logit: number;
   base_value: number;
   factors: ShapFactorItem[];
-  out_of_sample_record: SecondaryModelOutOfSampleRecord;
+  out_of_sample_record?: SecondaryModelOutOfSampleRecord;
   agreement: 'agree' | 'differ';
 }
 

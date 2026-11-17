@@ -36,6 +36,7 @@ root_dir <- if (file.exists("config.R")) {
 
 source(file.path(root_dir, "config.R"))
 source(file.path(root_dir, "tools", "forecast_engine.R"))
+source(file.path(root_dir, "tools", "backfill_prediction_log.R"))
 source(file.path(root_dir, "prediction_accuracy_logger.R"))
 
 failures <- 0L
@@ -772,6 +773,108 @@ test_that("PAL-5f Dual timestamps and kickoff audit columns verified non-null ac
   } else {
     ok("PAL-5f Skipped (fixture not found)", TRUE)
   }
+})
+
+test_that("PAL-5g Finished game without prior forecast creates BACKTEST_PREWEEK row with waterfall & realized scores", {
+  temp_dir <- tempfile("test_pred_logger_5g_")
+  dir.create(temp_dir, recursive = TRUE)
+  on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
+
+  test_log_path <- file.path(temp_dir, "test_prediction_log.rds")
+  test_sch_path <- file.path(temp_dir, "test_schedules.rds")
+  test_pm_path  <- file.path(temp_dir, "test_projected_matchups.rds")
+  test_tr_path  <- file.path(temp_dir, "test_team_ratings.rds")
+
+  sch_df <- data.frame(
+    game_id    = "2026_10_LA_ARI",
+    season     = 2026L,
+    week       = 10L,
+    gameday    = "2026-11-15",
+    weekday    = "Sunday",
+    gametime   = "16:05",
+    home_team  = "ARI",
+    away_team  = "LA",
+    home_score = 6L,
+    away_score = 34L,
+    location   = "Home",
+    stringsAsFactors = FALSE
+  )
+  expect_false("home_games_played" %in% names(sch_df))
+  expect_false("away_games_played" %in% names(sch_df))
+  saveRDS(sch_df, test_sch_path)
+
+  # No unplayed matchups in pm_df (game is already finished)
+  pm_df <- data.frame(stringsAsFactors = FALSE)
+  saveRDS(pm_df, test_pm_path)
+
+  # Run logger after kickoff (e.g. 23:00 after game finished) with empty prior log
+  t_post_game <- as.POSIXct("2026-11-15 23:00:00", tz = "America/New_York")
+  test_coefs <- list(
+    ridge_b_intercept = 2.24,
+    ridge_b_raw       = 0.22,
+    ridge_b_prior     = 0.11,
+    ridge_b_raw_gp    = 0.015,
+    ridge_b_prior_gp  = 0.005
+  )
+
+  # Compute direct walk-forward backfill expectation. Inputs are committed real extracts
+  # (2026 EPA rows) so this test needs no pipeline cache and no network: the depth-chart
+  # table is passed in empty, which leaves backup-QB flags NA (no adjustment).
+  epa_fixture <- file.path(root_dir, "tests", "fixtures", "team_epa_metrics_fixture.rds")
+  epa_path_val <- file.path(temp_dir, "team_epa_metrics.rds")
+  file.copy(epa_fixture, epa_path_val)
+  empty_starters <- data.frame(season = integer(0), week = integer(0),
+                               team = character(0), gsis_id = character(0),
+                               stringsAsFactors = FALSE)
+  expected_bf <- compute_walkforward_backfill(
+    sch         = sch_df,
+    epa         = epa_path_val,
+    season      = 2026L,
+    ridge_coefs = test_coefs,
+    qb_starter_table = empty_starters
+  )
+
+  run_prediction_accuracy_logger(
+    log_path                = test_log_path,
+    schedules_path          = test_sch_path,
+    projected_matchups_path = test_pm_path,
+    ridge_coefs             = test_coefs,
+    epa_path                = epa_path_val,
+    fatigue_path            = file.path(temp_dir, "no_fatigue.rds"),
+    qb_lookup               = list(),
+    qb_starter_table        = empty_starters,
+    as_of                   = t_post_game
+  )
+
+  expect_true(file.exists(test_log_path))
+  res <- readRDS(test_log_path)
+
+  cond_one_row   <- nrow(res) == 1L
+  cond_source    <- isTRUE(res$log_source[1] == "BACKTEST_PREWEEK")
+  cond_rounding  <- abs(res$step_rounding[1]) <= 0.02
+  wf_sum         <- res$step_current_epa[1] + res$step_prior_epa[1] + res$step_elo_diff[1] +
+                    res$step_home_field[1] + res$step_qb_adjustment[1] + res$step_rounding[1]
+  cond_wf_add    <- abs(wf_sum - res$projected_margin[1]) < 1e-6
+  cond_realized  <- res$home_score[1] == 6L && res$away_score[1] == 34L &&
+                    res$actual_winner[1] == "LA" && !is.na(res$prediction_correct[1])
+
+  # Assert recovered row equals backfill row for this game
+  cond_eq_bf     <- abs(res$projected_margin[1] - expected_bf$projected_margin[1]) < 1e-6 &&
+                    abs(res$home_power_rating[1] - expected_bf$home_power_rating[1]) < 1e-6 &&
+                    abs(res$away_power_rating[1] - expected_bf$away_power_rating[1]) < 1e-6 &&
+                    res$home_games_played[1] == expected_bf$home_games_played[1] &&
+                    res$away_games_played[1] == expected_bf$away_games_played[1]
+
+  cond_all <- cond_one_row && cond_source && cond_rounding && cond_wf_add && cond_realized && cond_eq_bf
+
+  ok("PAL-5g Finished game without prior forecast creates BACKTEST_PREWEEK row matching walk-forward backfill",
+     cond_all,
+     sprintf("Source: %s, margin: %.2f (bf: %.2f), gp: %d-%d, realized: %d-%d winner=%s correct=%s",
+             res$log_source[1], res$projected_margin[1], expected_bf$projected_margin[1],
+             res$home_games_played[1], res$away_games_played[1],
+             res$home_score[1], res$away_score[1], res$actual_winner[1], res$prediction_correct[1]))
+
+  expect_true(cond_all)
 })
 
 # ------------------------------------------------------------------------------

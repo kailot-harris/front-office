@@ -36,13 +36,29 @@ if (file.exists("logging_utils.R")) {
   source("../logging_utils.R")
 }
 
-source("tools/forecast_engine.R")
-source("tools/elo_model.R")
-source("tools/qb_injury_features.R")
-source("tools/ridge_massey_model.R")
-source("tools/backtest_common.R")
-source("team_ratings_engine.R")
-source("prediction_accuracy_logger.R")
+if (file.exists("tools/forecast_engine.R")) {
+  source("tools/forecast_engine.R")
+  source("tools/elo_model.R")
+  source("tools/qb_injury_features.R")
+  source("tools/ridge_massey_model.R")
+  source("tools/backtest_common.R")
+  source("team_ratings_engine.R")
+} else {
+  source("../tools/forecast_engine.R")
+  source("../tools/elo_model.R")
+  source("../tools/qb_injury_features.R")
+  source("../tools/ridge_massey_model.R")
+  source("../tools/backtest_common.R")
+  source("../team_ratings_engine.R")
+}
+
+if (!exists("run_prediction_accuracy_logger", mode = "function")) {
+  if (file.exists("prediction_accuracy_logger.R")) {
+    source("prediction_accuracy_logger.R")
+  } else if (file.exists("../prediction_accuracy_logger.R")) {
+    source("../prediction_accuracy_logger.R")
+  }
+}
 
 .LOG_SCRIPT <- "backfill_prediction_log.R"
 
@@ -115,30 +131,27 @@ merge_with_existing_log <- function(existing_log, backfill_df, season = 2026L) {
 #' @param season Target season to backfill (defaults to CURRENT_SEASON or 2026L).
 #' @return Invisible data.frame of the updated prediction accuracy log.
 #' @export
-backfill_prediction_log <- function(
-    log_path       = if (exists("CACHE_PREDICTION_ACCURACY_LOG")) CACHE_PREDICTION_ACCURACY_LOG else file.path("cache", "prediction_accuracy_log.rds"),
-    schedules_path = if (exists("CACHE_SCHEDULES")) CACHE_SCHEDULES else file.path("cache", "schedules_cache.rds"),
-    epa_path       = if (exists("CACHE_EPA_METRICS")) CACHE_EPA_METRICS else file.path("cache", "team_epa_metrics.rds"),
-    fatigue_path   = if (exists("CACHE_FATIGUE_METRICS")) CACHE_FATIGUE_METRICS else file.path("cache", "fatigue_metrics.rds"),
-    season         = if (exists("CURRENT_SEASON", mode = "numeric")) CURRENT_SEASON else 2026L) {
+compute_walkforward_backfill <- function(
+    sch,
+    epa,
+    fatigue     = NULL,
+    season      = if (exists("CURRENT_SEASON", mode = "numeric")) CURRENT_SEASON else 2026L,
+    ridge_coefs = NULL,
+    qb_starter_table = NULL) {
 
-  log_info(sprintf("Starting prediction accuracy log backfill for season %d...", as.integer(season)),
-           script = .LOG_SCRIPT)
-
-  # Ensure destination cache directory exists
-  log_dir <- dirname(log_path)
-  if (!dir.exists(log_dir)) {
-    dir.create(log_dir, recursive = TRUE, showWarnings = FALSE)
+  if (is.character(sch)) {
+    if (!file.exists(sch)) stop(sprintf("Schedules cache not found at %s", sch))
+    sch <- readRDS(sch)
+  }
+  if (is.character(epa)) {
+    if (!file.exists(epa)) stop(sprintf("EPA metrics cache not found at %s", epa))
+    epa <- readRDS(epa)
+  }
+  if (is.character(fatigue)) {
+    fatigue <- if (file.exists(fatigue)) readRDS(fatigue) else NULL
   }
 
-  if (!file.exists(schedules_path)) {
-    stop(sprintf("Schedules cache not found at %s", schedules_path))
-  }
-  if (!file.exists(epa_path)) {
-    stop(sprintf("EPA metrics cache not found at %s", epa_path))
-  }
-
-  sch <- readRDS(schedules_path) |> mutate(gameday = as.Date(gameday))
+  sch <- sch |> mutate(gameday = as.Date(gameday))
   completed <- sch |> filter(!is.na(home_score), !is.na(away_score))
   completed_target <- completed |> filter(season == !!season)
 
@@ -151,23 +164,27 @@ backfill_prediction_log <- function(
   log_info(sprintf("Found %d completed games for season %d to backfill.", nrow(completed_target), as.integer(season)),
            script = .LOG_SCRIPT)
 
-  epa <- readRDS(epa_path) |> mutate(game_date = as.Date(game_date))
+  epa <- epa |> mutate(game_date = as.Date(game_date))
   avg_plays_per_game <- mean(epa$n_off_plays, na.rm = TRUE)
 
-  fatigue <- if (file.exists(fatigue_path)) {
-    readRDS(fatigue_path)
+  fatigue <- if (!is.null(fatigue) && is.data.frame(fatigue)) {
+    fatigue
   } else {
     data.frame(game_id = character(0), team = character(0), fatigue_drag_pts = numeric(0), stringsAsFactors = FALSE)
   }
 
   mod_start <- if (exists("MODERN_ERA_START_SEASON", mode = "numeric")) MODERN_ERA_START_SEASON else 2002L
-  cal_seasons <- (mod_start + 1L):season
+  cal_seasons <- if (!is.null(ridge_coefs)) as.integer(season) else (mod_start + 1L):as.integer(season)
+
+  if (!"home_moneyline" %in% names(completed)) completed$home_moneyline <- NA_real_
+  if (!"away_moneyline" %in% names(completed)) completed$away_moneyline <- NA_real_
 
   # 1. Build walk-forward games table across historical calibration seasons through target season
   all_games <- build_walkforward_games(epa, completed, calibration_seasons = cal_seasons, avg_plays_per_game)
 
   # 2. QB backup participation flags (as-of, strictly prior to each game)
-  starter_tbl <- get_qb_starter_table(mod_start:season)
+  # qb_starter_table lets callers (tests) supply the depth-chart table; NULL fetches it live.
+  starter_tbl <- if (is.null(qb_starter_table)) get_qb_starter_table(mod_start:season) else qb_starter_table
   qb_flags <- compute_qb_backup_flags(starter_tbl) |> select(season, week, team, qb_backup_started)
   all_games <- all_games |>
     left_join(qb_flags |> rename(home_qb_backup = qb_backup_started), by = c("season", "week", "home_team" = "team")) |>
@@ -175,25 +192,36 @@ backfill_prediction_log <- function(
 
   # 3. Elo walk-forward state (strictly historical through target season)
   elo_full_history <- sch |>
-    filter(!is.na(home_score), !is.na(away_score), season >= mod_start, season <= season)
+    filter(!is.na(home_score), !is.na(away_score), season >= mod_start, season <= !!season)
   k_factor <- if (exists("ELO_K_FACTOR", mode = "numeric")) ELO_K_FACTOR else 20.0
   elo_results <- run_elo_walkforward(elo_full_history, fatigue, k_factor) |>
     select(game_id, home_elo_pre, away_elo_pre, elo_margin_pts, fatigue_adj)
   all_games <- all_games |> left_join(elo_results, by = "game_id")
 
-  # 4. Train Ridge Massey model strictly on historical seasons prior to target season
-  train_idx <- which(all_games$season < season)
-  if (length(train_idx) < 100) {
-    stop(sprintf("Insufficient historical games (%d < 100) to train Ridge model for season %d",
-                 length(train_idx), as.integer(season)))
-  }
-  fit_ridge <- fit_ridge_massey(all_games[train_idx, ])
-  coefs <- get_ridge_coefficient_list(fit_ridge)
-
-  # 5. Filter to target season games and predict
+  # 4. Resolve Ridge coefficients and predict
   target_games <- all_games |> filter(season == !!season)
-  x_target <- build_ridge_features(target_games)
-  target_games$ridge_margin_raw <- as.numeric(predict(fit_ridge, newx = x_target, s = "lambda.min"))
+
+  if (!is.null(ridge_coefs)) {
+    coefs <- get_ridge_coefficient_list(ridge_coefs)
+    diff_raw   <- target_games$home_raw   - target_games$away_raw
+    diff_prior <- target_games$home_prior - target_games$away_prior
+    avg_gp     <- (target_games$home_gp + target_games$away_gp) / 2
+    target_games$ridge_margin_raw <- coefs$ridge_b_intercept +
+      coefs$ridge_b_raw * diff_raw +
+      coefs$ridge_b_prior * diff_prior +
+      coefs$ridge_b_raw_gp * (diff_raw * avg_gp) +
+      coefs$ridge_b_prior_gp * (diff_prior * avg_gp)
+  } else {
+    train_idx <- which(all_games$season < as.integer(season))
+    if (length(train_idx) < 100) {
+      stop(sprintf("Insufficient historical games (%d < 100) to train Ridge model for season %d",
+                   length(train_idx), as.integer(season)))
+    }
+    fit_ridge <- fit_ridge_massey(all_games[train_idx, ])
+    coefs <- get_ridge_coefficient_list(fit_ridge)
+    x_target <- build_ridge_features(target_games)
+    target_games$ridge_margin_raw <- as.numeric(predict(fit_ridge, newx = x_target, s = "lambda.min"))
+  }
 
   home_adj <- ifelse(is.na(target_games$home_qb_backup), 0, as.integer(target_games$home_qb_backup))
   away_adj <- ifelse(is.na(target_games$away_qb_backup), 0, as.integer(target_games$away_qb_backup))
@@ -332,8 +360,47 @@ backfill_prediction_log <- function(
              script = .LOG_SCRIPT)
   }
 
+  backfill_df
+}
+
+#' Backfill Prediction Accuracy Log for Completed Games
+#'
+#' Evaluates completed games for the target season walk-forward, computing
+#' entering power ratings, five waterfall steps, projected margin and win
+#' probability under Variant 1, and realized accuracy metrics. Writes backfilled
+#' rows to log_path with log_source = "BACKTEST_PREWEEK" while preserving any
+#' existing "LOGGED_PREGAME" rows.
+#'
+#' @param log_path Path to persist the prediction accuracy log RDS.
+#' @param schedules_path Path to schedules cache RDS.
+#' @param epa_path Path to EPA metrics cache RDS.
+#' @param fatigue_path Path to fatigue metrics cache RDS.
+#' @param season Target season to backfill (defaults to CURRENT_SEASON or 2026L).
+#' @return Invisible data.frame of the updated prediction accuracy log.
+#' @export
+backfill_prediction_log <- function(
+    log_path       = if (exists("CACHE_PREDICTION_ACCURACY_LOG")) CACHE_PREDICTION_ACCURACY_LOG else file.path("cache", "prediction_accuracy_log.rds"),
+    schedules_path = if (exists("CACHE_SCHEDULES")) CACHE_SCHEDULES else file.path("cache", "schedules_cache.rds"),
+    epa_path       = if (exists("CACHE_EPA_METRICS")) CACHE_EPA_METRICS else file.path("cache", "team_epa_metrics.rds"),
+    fatigue_path   = if (exists("CACHE_FATIGUE_METRICS")) CACHE_FATIGUE_METRICS else file.path("cache", "fatigue_metrics.rds"),
+    season         = if (exists("CURRENT_SEASON", mode = "numeric")) CURRENT_SEASON else 2026L) {
+
+  log_info(sprintf("Starting prediction accuracy log backfill for season %d...", as.integer(season)),
+           script = .LOG_SCRIPT)
+
+  backfill_df <- compute_walkforward_backfill(
+    sch     = schedules_path,
+    epa     = epa_path,
+    fatigue = fatigue_path,
+    season  = as.integer(season)
+  )
+
+  if (is.null(backfill_df) || nrow(backfill_df) == 0) {
+    return(invisible(NULL))
+  }
+
   # 11. Merge into log_path without overwriting LOGGED_PREGAME rows
-  existing_log <- if (file.exists(log_path)) {
+  existing_log <- if (!is.null(log_path) && file.exists(log_path)) {
     tryCatch(readRDS(log_path), error = function(e) {
       log_warn(sprintf("Could not read existing log at %s: %s", log_path, conditionMessage(e)), script = .LOG_SCRIPT)
       NULL
@@ -344,10 +411,16 @@ backfill_prediction_log <- function(
 
   final_log <- merge_with_existing_log(existing_log, backfill_df, season = as.integer(season))
 
-  saveRDS(final_log, log_path)
-  log_info(sprintf("Successfully persisted %d rows to %s (%d backfilled for season %d).",
-                   nrow(final_log), log_path, nrow(backfill_df), as.integer(season)),
-           script = .LOG_SCRIPT)
+  if (!is.null(log_path)) {
+    log_dir <- dirname(log_path)
+    if (!dir.exists(log_dir)) {
+      dir.create(log_dir, recursive = TRUE, showWarnings = FALSE)
+    }
+    saveRDS(final_log, log_path)
+    log_info(sprintf("Successfully persisted %d rows to %s (%d backfilled for season %d).",
+                     nrow(final_log), log_path, nrow(backfill_df), as.integer(season)),
+             script = .LOG_SCRIPT)
+  }
 
   invisible(final_log)
 }

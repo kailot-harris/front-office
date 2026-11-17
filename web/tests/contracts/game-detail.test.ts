@@ -241,7 +241,7 @@ describe('In-Repo Zero-Betting Vocabulary Term Guard', () => {
   const FORBIDDEN_BETTING_RE =
     /\b(spread|projected_spread|point_spread|moneyline|sportsbook|over_under|parlay|wager|sharp_book|key_number_flag)\b/i;
 
-  it('asserts zero banned betting terminology in all 145 game files', () => {
+  it('asserts zero banned betting terminology in all completed game files', () => {
     const violations: string[] = [];
 
     for (const filename of gameFiles) {
