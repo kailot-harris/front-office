@@ -521,3 +521,14 @@ error worth not repeating.
 No secret, token or webhook URL appears in any scheduling file. `config.R`'s
 `DISCORD_WEBHOOK` is read from the environment via `Sys.getenv()`, and any future
 credential must follow the same pattern.
+
+## Publish checkout guard keeps pipeline output (NFL_analytics#154)
+
+`schedule_publish.bat`'s checkout guard no longer stashes the 04:15 pipeline's
+output. On `main`, `tools/publish_guard.R` splits dirty paths using
+`PIPELINE_OUTPUT_DIRS` (config.R, the same vector `publish_web.R` uses for
+assertion C and `git add`): files under those directories are left in place for
+the gate; any other dirty file (code, config, docs) is stashed with
+`git stash push -u --pathspec-from-file`. On any branch other than `main` the
+whole tree is stashed and the guard checks out `main`, as before.
+`schedule_daily.bat` is unchanged (stashing everything is correct there).

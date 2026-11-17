@@ -151,6 +151,29 @@ set PRE_BRANCH=
 for /f "usebackq delims=" %%B in (`git rev-parse --abbrev-ref HEAD`) do set PRE_BRANCH=%%B
 echo [GUARD] Checkout guard: starting branch is "%PRE_BRANCH%". >> "%LOG_FILE%"
 
+REM Resolve Rscript exactly as the sibling wrappers do (needed by the guard below).
+REM WHERE_RC keeps %ERRORLEVEL% out of any parenthesized block (see
+REM schedule_daily.bat's delayed-expansion note).
+where Rscript >nul 2>&1
+set WHERE_RC=%ERRORLEVEL%
+if "%WHERE_RC%"=="0" (
+    set RSCRIPT=Rscript
+) else (
+    for /d %%i in ("C:\Program Files\R\R-*") do set RSCRIPT="%%i\bin\x64\Rscript.exe"
+)
+
+REM NFL_analytics#154: unlike schedule_daily.bat, the publish step's INPUT is the
+REM uncommitted pipeline output (web/public/{data,animations}), so on `main` the
+REM guard must NOT stash those paths. tools/publish_guard.R classifies dirty paths
+REM using config.R's PIPELINE_OUTPUT_DIRS (the same vector publish_web.R uses) and
+REM writes NUL-separated lists: OTHER (code/config/docs -> stashed as before) and
+REM OUTPUT (kept for the gate). On any branch other than main nothing is trusted:
+REM everything is stashed (old behaviour) and the checkout lands on main.
+set "GUARD_TMPDIR=%TEMP%"
+set "GUARD_OTHER=%GUARD_TMPDIR%\nfl_guard_other_%RANDOM%.bin"
+set "GUARD_OUTPUT=%GUARD_TMPDIR%\nfl_guard_output_%RANDOM%.bin"
+set GUARD_OTHER_SIZE=0
+
 set GUARD_STATUS_FILE=%TEMP%\nfl_sched_guard_status_%RANDOM%.txt
 git status --porcelain > "%GUARD_STATUS_FILE%" 2>nul
 set GUARD_DIRTY_SIZE=0
@@ -158,12 +181,33 @@ for %%F in ("%GUARD_STATUS_FILE%") do set GUARD_DIRTY_SIZE=%%~zF
 del /q "%GUARD_STATUS_FILE%" >nul 2>&1
 
 if not "%GUARD_DIRTY_SIZE%"=="0" (
-    echo [GUARD] Working tree is dirty on "%PRE_BRANCH%" - stashing tracked+untracked changes before landing on main ^(nothing is discarded; recoverable via "git stash pop"^). >> "%LOG_FILE%"
-    git stash push -u -m "schedule_publish.bat-auto-stash" >> "%LOG_FILE%" 2>&1
-    set STASH_RC=%ERRORLEVEL%
-    if not "!STASH_RC!"=="0" (
-        echo [ERROR] Checkout guard: git stash -u FAILED with exit code !STASH_RC! - refusing to run. Nothing was discarded; the dirty tree on "%PRE_BRANCH%" is untouched. >> "%LOG_FILE%"
-        exit /b 1
+    if "%PRE_BRANCH%"=="main" (
+        %RSCRIPT% "tools\publish_guard.R" "!GUARD_OTHER!" "!GUARD_OUTPUT!" >> "%LOG_FILE%" 2>&1
+        set GUARD_RC=!ERRORLEVEL!
+        if not "!GUARD_RC!"=="0" (
+            echo [ERROR] Checkout guard: tools\publish_guard.R FAILED with exit code !GUARD_RC! - refusing to run. Nothing was stashed or discarded. >> "%LOG_FILE%"
+            exit /b 1
+        )
+        for %%F in ("!GUARD_OTHER!") do set GUARD_OTHER_SIZE=%%~zF
+        if not "!GUARD_OTHER_SIZE!"=="0" (
+            echo [GUARD] Non-output files are dirty on main - stashing only those ^(pipeline output under PIPELINE_OUTPUT_DIRS is kept for the gate^). >> "%LOG_FILE%"
+            git stash push -u -m "schedule_publish.bat-auto-stash" --pathspec-from-file="!GUARD_OTHER!" --pathspec-file-nul >> "%LOG_FILE%" 2>&1
+            set STASH_RC=!ERRORLEVEL!
+            if not "!STASH_RC!"=="0" (
+                echo [ERROR] Checkout guard: git stash -u FAILED with exit code !STASH_RC! - refusing to run. Nothing was discarded. >> "%LOG_FILE%"
+                exit /b 1
+            )
+        ) else (
+            echo [GUARD] Only pipeline output is dirty on main - nothing to stash; leaving it for the gate. >> "%LOG_FILE%"
+        )
+    ) else (
+        echo [GUARD] Working tree is dirty on "%PRE_BRANCH%" - stashing tracked+untracked changes before landing on main ^(nothing is discarded; recoverable via "git stash pop"^). >> "%LOG_FILE%"
+        git stash push -u -m "schedule_publish.bat-auto-stash" >> "%LOG_FILE%" 2>&1
+        set STASH_RC=!ERRORLEVEL!
+        if not "!STASH_RC!"=="0" (
+            echo [ERROR] Checkout guard: git stash -u FAILED with exit code !STASH_RC! - refusing to run. Nothing was discarded; the dirty tree on "%PRE_BRANCH%" is untouched. >> "%LOG_FILE%"
+            exit /b 1
+        )
     )
 )
 
@@ -181,27 +225,39 @@ if not "%POST_BRANCH%"=="main" (
     exit /b 1
 )
 
-set GUARD_STATUS_FILE2=%TEMP%\nfl_sched_guard_status2_%RANDOM%.txt
-git status --porcelain > "%GUARD_STATUS_FILE2%" 2>nul
-set GUARD_DIRTY_SIZE2=0
-for %%F in ("%GUARD_STATUS_FILE2%") do set GUARD_DIRTY_SIZE2=%%~zF
-del /q "%GUARD_STATUS_FILE2%" >nul 2>&1
-if not "%GUARD_DIRTY_SIZE2%"=="0" (
-    echo [ERROR] Checkout guard: main is still dirty after stash+checkout - refusing to run. >> "%LOG_FILE%"
-    exit /b 1
+REM Post-checkout verification. On main only non-output files must be clean (the
+REM pipeline output is intentionally dirty); anywhere else the tree must be fully clean.
+REM The temp lists are only ever deleted by exact file name, never a directory/wildcard.
+if "%PRE_BRANCH%"=="main" (
+    if exist "!GUARD_OTHER!" del /q "!GUARD_OTHER!" >nul 2>&1
+    if exist "!GUARD_OUTPUT!" del /q "!GUARD_OUTPUT!" >nul 2>&1
+    %RSCRIPT% "tools\publish_guard.R" "!GUARD_OTHER!" "!GUARD_OUTPUT!" >> "%LOG_FILE%" 2>&1
+    set GUARD_RC2=!ERRORLEVEL!
+    set GUARD_OTHER_SIZE2=0
+    for %%F in ("!GUARD_OTHER!") do set GUARD_OTHER_SIZE2=%%~zF
+    if exist "!GUARD_OTHER!" del /q "!GUARD_OTHER!" >nul 2>&1
+    if exist "!GUARD_OUTPUT!" del /q "!GUARD_OUTPUT!" >nul 2>&1
+    if not "!GUARD_RC2!"=="0" (
+        echo [ERROR] Checkout guard: post-check classification FAILED with exit code !GUARD_RC2! - refusing to run. >> "%LOG_FILE%"
+        exit /b 1
+    )
+    if not "!GUARD_OTHER_SIZE2!"=="0" (
+        echo [ERROR] Checkout guard: non-output files are still dirty after stash - refusing to run. >> "%LOG_FILE%"
+        exit /b 1
+    )
+) else (
+    set GUARD_STATUS_FILE2=%TEMP%\nfl_sched_guard_status2_%RANDOM%.txt
+    git status --porcelain > "!GUARD_STATUS_FILE2!" 2>nul
+    set GUARD_DIRTY_SIZE2=0
+    for %%F in ("!GUARD_STATUS_FILE2!") do set GUARD_DIRTY_SIZE2=%%~zF
+    del /q "!GUARD_STATUS_FILE2!" >nul 2>&1
+    if not "!GUARD_DIRTY_SIZE2!"=="0" (
+        echo [ERROR] Checkout guard: main is still dirty after stash+checkout - refusing to run. >> "%LOG_FILE%"
+        exit /b 1
+    )
 )
 
 echo [GUARD] Checkout guard: landed cleanly on main (pre-guard branch was "%PRE_BRANCH%"). >> "%LOG_FILE%"
-
-REM Resolve Rscript exactly as the sibling wrappers do. WHERE_RC keeps %ERRORLEVEL%
-REM out of any parenthesized block (see schedule_daily.bat's delayed-expansion note).
-where Rscript >nul 2>&1
-set WHERE_RC=%ERRORLEVEL%
-if "%WHERE_RC%"=="0" (
-    set RSCRIPT=Rscript
-) else (
-    for /d %%i in ("C:\Program Files\R\R-*") do set RSCRIPT="%%i\bin\x64\Rscript.exe"
-)
 
 echo ================================================================== >> "%LOG_FILE%"
 echo NFL WEB PUBLISH GATE: %DATE% %TIME% >> "%LOG_FILE%"

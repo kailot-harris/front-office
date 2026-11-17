@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-11-16T12:04:31Z",
+  "generated_at": "2026-11-17T14:06:26Z",
   "sport": "nfl",
   "endpoint": "game_detail",
   "season": 2026,
@@ -41,8 +41,8 @@
       {
         "key": "epa_per_play",
         "label": "EPA / Play",
-        "away_value": 0.316,
-        "home_value": 0.233,
+        "away_value": 0.245,
+        "home_value": 0.158,
         "unit": "epa",
         "higher_is_better": true,
         "description": "Expected Points Added per offensive play"
@@ -51,7 +51,7 @@
         "key": "success_rate",
         "label": "Success Rate",
         "away_value": 53.7,
-        "home_value": 56.8,
+        "home_value": 58,
         "unit": "pct",
         "higher_is_better": true,
         "description": "Percentage of plays with positive Expected Points Added"
@@ -59,8 +59,8 @@
       {
         "key": "dropback_epa",
         "label": "Dropback EPA",
-        "away_value": 0.655,
-        "home_value": 0.303,
+        "away_value": 0.569,
+        "home_value": 0.229,
         "unit": "epa",
         "higher_is_better": true,
         "description": "Expected Points Added per dropback pass play"
@@ -68,8 +68,8 @@
       {
         "key": "rush_epa",
         "label": "Rush EPA",
-        "away_value": 0.12,
-        "home_value": 0.171,
+        "away_value": 0.058,
+        "home_value": 0.095,
         "unit": "epa",
         "higher_is_better": true,
         "description": "Expected Points Added per rushing play"
@@ -95,8 +95,8 @@
       {
         "key": "early_down_epa",
         "label": "Early Down EPA",
-        "away_value": 0.145,
-        "home_value": 0.245,
+        "away_value": 0.11,
+        "home_value": 0.198,
         "unit": "epa",
         "higher_is_better": true,
         "description": "Expected Points Added on 1st and 2nd downs"
@@ -105,7 +105,7 @@
         "key": "late_down_success_rate",
         "label": "Late Down Success Rate",
         "away_value": 61.1,
-        "home_value": 52.6,
+        "home_value": 57.9,
         "unit": "pct",
         "higher_is_better": true,
         "description": "Percentage of 3rd and 4th down plays converted successfully"
@@ -226,10 +226,7 @@
           "playerName": "Kirk Cousins",
           "teamAbbr": "LV",
           "position": "QB",
-          "categories": [
-            "passing",
-            "rushing"
-          ],
+          "categories": ["passing", "rushing"],
           "snap_pct": 100,
           "completions": 19,
           "attempts": 26,
@@ -238,7 +235,7 @@
           "passing_interceptions": 0,
           "sacks_suffered": 1,
           "sack_yards_lost": -9,
-          "passing_epa": 16.4,
+          "passing_epa": 14.16,
           "passing_cpoe": 15.1,
           "carries": 5,
           "rushing_yards": 3,
@@ -246,16 +243,14 @@
           "rushing_fumbles": 0,
           "rushing_fumbles_lost": 0,
           "rushing_first_downs": 3,
-          "rushing_epa": 1.96
+          "rushing_epa": 1.62
         },
         {
           "playerId": "00-0033381",
           "playerName": "Adam Butler",
           "teamAbbr": "LV",
           "position": "DT",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 52,
           "def_tackles_solo": 0,
           "def_tackle_assists": 1,
@@ -271,9 +266,7 @@
           "playerName": "Foley Fatukasi",
           "teamAbbr": "LV",
           "position": "DT",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 41,
           "def_tackles_solo": 1,
           "def_tackle_assists": 0,
@@ -289,9 +282,7 @@
           "playerName": "Taron Johnson",
           "teamAbbr": "LV",
           "position": "CB",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 66,
           "def_tackles_solo": 0,
           "def_tackle_assists": 1,
@@ -307,9 +298,7 @@
           "playerName": "Maxx Crosby",
           "teamAbbr": "LV",
           "position": "DE",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 92,
           "def_tackles_solo": 2,
           "def_tackle_assists": 2,
@@ -333,9 +322,7 @@
           "playerName": "Matt Gay",
           "teamAbbr": "LV",
           "position": "K",
-          "categories": [
-            "kicking"
-          ],
+          "categories": ["kicking"],
           "snap_pct": 41,
           "fg_made": 1,
           "fg_att": 1,
@@ -348,9 +335,7 @@
           "playerName": "Jeremy Chinn",
           "teamAbbr": "LV",
           "position": "SAF",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 100,
           "def_tackles_solo": 4,
           "def_tackle_assists": 6,
@@ -366,9 +351,7 @@
           "playerName": "Kwity Paye",
           "teamAbbr": "LV",
           "position": "DE",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 67,
           "def_tackles_solo": 0,
           "def_tackle_assists": 2,
@@ -384,9 +367,7 @@
           "playerName": "Eric Stokes",
           "teamAbbr": "LV",
           "position": "CB",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 100,
           "def_tackles_solo": 6,
           "def_tackle_assists": 1,
@@ -402,9 +383,7 @@
           "playerName": "Quay Walker",
           "teamAbbr": "LV",
           "position": "LB",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 100,
           "def_tackles_solo": 2,
           "def_tackle_assists": 7,
@@ -420,9 +399,7 @@
           "playerName": "Dareke Young",
           "teamAbbr": "LV",
           "position": "WR",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 56,
           "def_tackles_solo": 0,
           "def_tackle_assists": 1,
@@ -438,9 +415,7 @@
           "playerName": "Thomas Booker",
           "teamAbbr": "LV",
           "position": "DT",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 45,
           "def_tackles_solo": 1,
           "def_tackle_assists": 1,
@@ -456,9 +431,7 @@
           "playerName": "Jalen Nailor",
           "teamAbbr": "LV",
           "position": "WR",
-          "categories": [
-            "receiving"
-          ],
+          "categories": ["receiving"],
           "snap_pct": 46,
           "receptions": 4,
           "targets": 4,
@@ -467,16 +440,14 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 3,
-          "receiving_epa": 6.32
+          "receiving_epa": 5.42
         },
         {
           "playerId": "00-0037304",
           "playerName": "Connor Heyward",
           "teamAbbr": "LV",
           "position": "FB",
-          "categories": [
-            "rushing"
-          ],
+          "categories": ["rushing"],
           "snap_pct": 34,
           "carries": 1,
           "rushing_yards": 0,
@@ -484,16 +455,14 @@
           "rushing_fumbles": 0,
           "rushing_fumbles_lost": 0,
           "rushing_first_downs": 0,
-          "rushing_epa": -2.87
+          "rushing_epa": -2.32
         },
         {
           "playerId": "00-0037512",
           "playerName": "Isaiah Pola-Mao",
           "teamAbbr": "LV",
           "position": "SAF",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 81,
           "def_tackles_solo": 1,
           "def_tackle_assists": 0,
@@ -509,9 +478,7 @@
           "playerName": "Nakobe Dean",
           "teamAbbr": "LV",
           "position": "LB",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 100,
           "def_tackles_solo": 1,
           "def_tackle_assists": 10,
@@ -527,9 +494,7 @@
           "playerName": "Tre Tucker",
           "teamAbbr": "LV",
           "position": "WR",
-          "categories": [
-            "receiving"
-          ],
+          "categories": ["receiving"],
           "snap_pct": 54,
           "receptions": 0,
           "targets": 1,
@@ -538,16 +503,14 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 0,
-          "receiving_epa": -1.28
+          "receiving_epa": -1.02
         },
         {
           "playerId": "00-0038594",
           "playerName": "Darrell Luter Jr.",
           "teamAbbr": "LV",
           "position": "CB",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 81,
           "def_tackles_solo": 1,
           "def_tackle_assists": 0,
@@ -563,9 +526,7 @@
           "playerName": "Michael Mayer",
           "teamAbbr": "LV",
           "position": "TE",
-          "categories": [
-            "receiving"
-          ],
+          "categories": ["receiving"],
           "snap_pct": 79,
           "receptions": 5,
           "targets": 6,
@@ -574,16 +535,14 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 2,
-          "receiving_epa": 1.41
+          "receiving_epa": 0.95
         },
         {
           "playerId": "00-0039338",
           "playerName": "Brock Bowers",
           "teamAbbr": "LV",
           "position": "TE",
-          "categories": [
-            "receiving"
-          ],
+          "categories": ["receiving"],
           "snap_pct": 86,
           "receptions": 7,
           "targets": 10,
@@ -592,7 +551,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 5,
-          "receiving_epa": 9.23
+          "receiving_epa": 8.33
         },
         {
           "playerId": "00-0039349",
@@ -607,9 +566,7 @@
           "playerName": "Tommy Eichenberg",
           "teamAbbr": "LV",
           "position": "LB",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 81,
           "def_tackles_solo": 2,
           "def_tackle_assists": 0,
@@ -625,9 +582,7 @@
           "playerName": "Dylan Laube",
           "teamAbbr": "LV",
           "position": "RB",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 81,
           "def_tackles_solo": 1,
           "def_tackle_assists": 0,
@@ -643,10 +598,7 @@
           "playerName": "Ashton Jeanty",
           "teamAbbr": "LV",
           "position": "RB",
-          "categories": [
-            "rushing",
-            "receiving"
-          ],
+          "categories": ["rushing", "receiving"],
           "snap_pct": 40,
           "carries": 2,
           "rushing_yards": 9,
@@ -654,7 +606,7 @@
           "rushing_fumbles": 0,
           "rushing_fumbles_lost": 0,
           "rushing_first_downs": 0,
-          "rushing_epa": -0.92,
+          "rushing_epa": -0.67,
           "receptions": 3,
           "targets": 4,
           "receiving_yards": 64,
@@ -662,16 +614,14 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 2,
-          "receiving_epa": 3.8
+          "receiving_epa": 3.03
         },
         {
           "playerId": "00-0040868",
           "playerName": "Treydan Stukes",
           "teamAbbr": "LV",
           "position": "SAF",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 100,
           "def_tackles_solo": 3,
           "def_tackle_assists": 5,
@@ -687,9 +637,7 @@
           "playerName": "Mike Washington Jr.",
           "teamAbbr": "LV",
           "position": "RB",
-          "categories": [
-            "rushing"
-          ],
+          "categories": ["rushing"],
           "snap_pct": 60,
           "carries": 25,
           "rushing_yards": 83,
@@ -697,16 +645,14 @@
           "rushing_fumbles": 0,
           "rushing_fumbles_lost": 0,
           "rushing_first_downs": 5,
-          "rushing_epa": -2.3
+          "rushing_epa": -1.81
         },
         {
           "playerId": "00-0040889",
           "playerName": "Hezekiah Masses",
           "teamAbbr": "LV",
           "position": "CB",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 45,
           "def_tackles_solo": 1,
           "def_tackle_assists": 0,
@@ -722,9 +668,7 @@
           "playerName": "Cian Slone",
           "teamAbbr": "LV",
           "position": "LB",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 81,
           "def_tackles_solo": 0,
           "def_tackle_assists": 1,
@@ -740,9 +684,7 @@
           "playerName": "Tim Keenan III",
           "teamAbbr": "LV",
           "position": "DT",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 30,
           "def_tackles_solo": 1,
           "def_tackle_assists": 0,
@@ -758,9 +700,7 @@
           "playerName": "Jermod McCoy",
           "teamAbbr": "LV",
           "position": "CB",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 53,
           "def_tackles_solo": 1,
           "def_tackle_assists": 0,
@@ -778,9 +718,7 @@
           "playerName": "Demario Davis",
           "teamAbbr": "NYJ",
           "position": "OLB",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 98,
           "def_tackles_solo": 1,
           "def_tackle_assists": 6,
@@ -796,10 +734,7 @@
           "playerName": "Geno Smith",
           "teamAbbr": "NYJ",
           "position": "QB",
-          "categories": [
-            "passing",
-            "rushing"
-          ],
+          "categories": ["passing", "rushing"],
           "snap_pct": 100,
           "completions": 20,
           "attempts": 32,
@@ -808,7 +743,7 @@
           "passing_interceptions": 1,
           "sacks_suffered": 2,
           "sack_yards_lost": -17,
-          "passing_epa": 11.73,
+          "passing_epa": 8.8,
           "passing_cpoe": 10.76,
           "carries": 1,
           "rushing_yards": 4,
@@ -816,16 +751,14 @@
           "rushing_fumbles": 0,
           "rushing_fumbles_lost": 0,
           "rushing_first_downs": 0,
-          "rushing_epa": 0.1
+          "rushing_epa": 0.12
         },
         {
           "playerId": "00-0034782",
           "playerName": "Harrison Phillips",
           "teamAbbr": "NYJ",
           "position": "DT",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 60,
           "def_tackles_solo": 1,
           "def_tackle_assists": 1,
@@ -841,9 +774,7 @@
           "playerName": "Minkah Fitzpatrick",
           "teamAbbr": "NYJ",
           "position": "FS",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 100,
           "def_tackles_solo": 2,
           "def_tackle_assists": 7,
@@ -859,9 +790,7 @@
           "playerName": "Jason Sanders",
           "teamAbbr": "NYJ",
           "position": "K",
-          "categories": [
-            "kicking"
-          ],
+          "categories": ["kicking"],
           "snap_pct": 38,
           "fg_made": 4,
           "fg_att": 4,
@@ -874,9 +803,7 @@
           "playerName": "Jamien Sherwood",
           "teamAbbr": "NYJ",
           "position": "LB",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 100,
           "def_tackles_solo": 5,
           "def_tackle_assists": 9,
@@ -892,9 +819,7 @@
           "playerName": "Jack Heflin",
           "teamAbbr": "NYJ",
           "position": "DT",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 33,
           "def_tackles_solo": 0,
           "def_tackle_assists": 2,
@@ -910,9 +835,7 @@
           "playerName": "Andre Cisco",
           "teamAbbr": "NYJ",
           "position": "SAF",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 59,
           "def_tackles_solo": 0,
           "def_tackle_assists": 1,
@@ -928,9 +851,7 @@
           "playerName": "Brandon Stephens",
           "teamAbbr": "NYJ",
           "position": "CB",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 95,
           "def_tackles_solo": 2,
           "def_tackle_assists": 1,
@@ -946,9 +867,7 @@
           "playerName": "Kingsley Enagbare",
           "teamAbbr": "NYJ",
           "position": "LB",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 87,
           "def_tackles_solo": 0,
           "def_tackle_assists": 3,
@@ -964,9 +883,7 @@
           "playerName": "Garrett Wilson",
           "teamAbbr": "NYJ",
           "position": "WR",
-          "categories": [
-            "receiving"
-          ],
+          "categories": ["receiving"],
           "snap_pct": 81,
           "receptions": 6,
           "targets": 12,
@@ -975,7 +892,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 6,
-          "receiving_epa": 0.87
+          "receiving_epa": -0.03
         },
         {
           "playerId": "00-0037755",
@@ -990,9 +907,7 @@
           "playerName": "Dane Belton",
           "teamAbbr": "NYJ",
           "position": "SAF",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 100,
           "def_tackles_solo": 9,
           "def_tackle_assists": 3,
@@ -1008,9 +923,7 @@
           "playerName": "Will McDonald IV",
           "teamAbbr": "NYJ",
           "position": "DE",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 57,
           "def_tackles_solo": 1,
           "def_tackle_assists": 1,
@@ -1026,9 +939,7 @@
           "playerName": "Trevin Wallace",
           "teamAbbr": "NYJ",
           "position": "LB",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 59,
           "def_tackles_solo": 0,
           "def_tackle_assists": 1,
@@ -1044,9 +955,7 @@
           "playerName": "Jarvis Brownlee Jr.",
           "teamAbbr": "NYJ",
           "position": "DB",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 43,
           "def_tackles_solo": 0,
           "def_tackle_assists": 1,
@@ -1062,9 +971,7 @@
           "playerName": "Jowon Briggs",
           "teamAbbr": "NYJ",
           "position": "DE",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 78,
           "def_tackles_solo": 1,
           "def_tackle_assists": 2,
@@ -1080,9 +987,7 @@
           "playerName": "Nate Lynn",
           "teamAbbr": "NYJ",
           "position": "LB",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 44,
           "def_tackles_solo": 1,
           "def_tackle_assists": 1,
@@ -1098,9 +1003,7 @@
           "playerName": "Isaiah Williams",
           "teamAbbr": "NYJ",
           "position": "WR",
-          "categories": [
-            "receiving"
-          ],
+          "categories": ["receiving"],
           "snap_pct": 28,
           "receptions": 1,
           "targets": 1,
@@ -1109,7 +1012,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 1,
-          "receiving_epa": 2.2
+          "receiving_epa": 2.03
         },
         {
           "playerId": "00-0039634",
@@ -1132,10 +1035,7 @@
           "playerName": "Braelon Allen",
           "teamAbbr": "NYJ",
           "position": "RB",
-          "categories": [
-            "rushing",
-            "receiving"
-          ],
+          "categories": ["rushing", "receiving"],
           "snap_pct": 83,
           "carries": 21,
           "rushing_yards": 147,
@@ -1143,7 +1043,7 @@
           "rushing_fumbles": 0,
           "rushing_fumbles_lost": 0,
           "rushing_first_downs": 8,
-          "rushing_epa": 4.64,
+          "rushing_epa": 4.06,
           "receptions": 2,
           "targets": 2,
           "receiving_yards": 6,
@@ -1151,17 +1051,14 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 1,
-          "receiving_epa": -0.28
+          "receiving_epa": -0.21
         },
         {
           "playerId": "00-0039798",
           "playerName": "Isaiah Davis",
           "teamAbbr": "NYJ",
           "position": "RB",
-          "categories": [
-            "rushing",
-            "defense"
-          ],
+          "categories": ["rushing", "defense"],
           "snap_pct": 53,
           "carries": 5,
           "rushing_yards": 15,
@@ -1169,7 +1066,7 @@
           "rushing_fumbles": 0,
           "rushing_fumbles_lost": 0,
           "rushing_first_downs": 0,
-          "rushing_epa": -1.25,
+          "rushing_epa": -1.13,
           "def_tackles_solo": 0,
           "def_tackle_assists": 1,
           "def_tackles_for_loss": 0,
@@ -1184,9 +1081,7 @@
           "playerName": "Adonai Mitchell",
           "teamAbbr": "NYJ",
           "position": "WR",
-          "categories": [
-            "receiving"
-          ],
+          "categories": ["receiving"],
           "snap_pct": 61,
           "receptions": 7,
           "targets": 9,
@@ -1195,16 +1090,14 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 6,
-          "receiving_epa": 12.97
+          "receiving_epa": 10.67
         },
         {
           "playerId": "00-0040133",
           "playerName": "Azareye'h Thomas",
           "teamAbbr": "NYJ",
           "position": "CB",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 100,
           "def_tackles_solo": 0,
           "def_tackle_assists": 5,
@@ -1220,9 +1113,7 @@
           "playerName": "Malachi Moore",
           "teamAbbr": "NYJ",
           "position": "SAF",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 78,
           "def_tackles_solo": 1,
           "def_tackle_assists": 0,
@@ -1238,9 +1129,7 @@
           "playerName": "Mason Taylor",
           "teamAbbr": "NYJ",
           "position": "TE",
-          "categories": [
-            "receiving"
-          ],
+          "categories": ["receiving"],
           "snap_pct": 61,
           "receptions": 3,
           "targets": 5,
@@ -1249,16 +1138,14 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 0,
-          "receiving_epa": -1.24
+          "receiving_epa": -1.25
         },
         {
           "playerId": "00-0041032",
           "playerName": "Kenyon Sadiq",
           "teamAbbr": "NYJ",
           "position": "TE",
-          "categories": [
-            "receiving"
-          ],
+          "categories": ["receiving"],
           "snap_pct": 48,
           "receptions": 1,
           "targets": 2,
@@ -1267,16 +1154,14 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 1,
-          "receiving_epa": -0.51
+          "receiving_epa": -0.89
         },
         {
           "playerId": "00-0041549",
           "playerName": "Darrell Jackson Jr.",
           "teamAbbr": "NYJ",
           "position": "DT",
-          "categories": [
-            "defense"
-          ],
+          "categories": ["defense"],
           "snap_pct": 67,
           "def_tackles_solo": 1,
           "def_tackle_assists": 2,
@@ -1426,8 +1311,8 @@
       "secondary_model": {
         "model_id": "xgboost_feature_fusion_v1",
         "model_label": "Secondary Model (XGBoost TreeSHAP)",
-        "model_win_prob": 0.612,
-        "logit": 0.4561,
+        "model_win_prob": 0.635,
+        "logit": 0.5542,
         "base_value": 0.2498,
         "factors": [
           {
@@ -1445,20 +1330,20 @@
           {
             "feature": "diff_pass_epa",
             "label": "Passing EPA Differential",
-            "value": -0.144,
-            "shap_value": -0.0151
+            "value": -0.127,
+            "shap_value": -0.0639
           },
           {
             "feature": "diff_rush_epa",
             "label": "Rushing EPA Differential",
-            "value": -0.257,
-            "shap_value": -0.1181
+            "value": -0.207,
+            "shap_value": -0.0006
           },
           {
             "feature": "diff_cpoe",
             "label": "Completion % Over Expected Differential",
             "value": 4.013,
-            "shap_value": 0.3934
+            "shap_value": 0.3877
           },
           {
             "feature": "gp_avg",
@@ -1494,21 +1379,15 @@
             "feature": "fatigue_adj",
             "label": "Schedule Rest & Travel Impact",
             "value": 1.94,
-            "shap_value": -0.0384
+            "shap_value": -0.002
           },
           {
             "feature": "rest_diff",
             "label": "Days Rest Differential",
             "value": 0,
-            "shap_value": -0.0155
+            "shap_value": -0.0168
           }
         ],
-        "out_of_sample_record": {
-          "n_games": 145,
-          "accuracy": 59.3,
-          "brier": 0.2232,
-          "logloss": 0.6348
-        },
         "agreement": "agree"
       },
       "entering_baselines": [
@@ -1516,9 +1395,9 @@
           "metric_key": "epa_per_play",
           "metric_label": "EPA / Play",
           "team_abbr": "LV",
-          "entering_baseline": -0.003,
-          "realized_value": 0.316,
-          "delta": 0.319,
+          "entering_baseline": -0.017,
+          "realized_value": 0.245,
+          "delta": 0.262,
           "prior_games_n": 7,
           "is_low_sample": false
         },
@@ -1526,9 +1405,9 @@
           "metric_key": "success_rate",
           "metric_label": "Success Rate",
           "team_abbr": "LV",
-          "entering_baseline": 45.967,
+          "entering_baseline": 44.496,
           "realized_value": 53.659,
-          "delta": 7.691,
+          "delta": 9.162,
           "prior_games_n": 7,
           "is_low_sample": false
         },
@@ -1536,9 +1415,9 @@
           "metric_key": "dropback_epa",
           "metric_label": "Dropback EPA",
           "team_abbr": "LV",
-          "entering_baseline": 0.157,
-          "realized_value": 0.655,
-          "delta": 0.498,
+          "entering_baseline": 0.143,
+          "realized_value": 0.569,
+          "delta": 0.426,
           "prior_games_n": 7,
           "is_low_sample": false
         },
@@ -1546,9 +1425,9 @@
           "metric_key": "rush_epa",
           "metric_label": "Rush EPA",
           "team_abbr": "LV",
-          "entering_baseline": -0.165,
-          "realized_value": 0.12,
-          "delta": 0.285,
+          "entering_baseline": -0.18,
+          "realized_value": 0.058,
+          "delta": 0.239,
           "prior_games_n": 7,
           "is_low_sample": false
         },
@@ -1566,9 +1445,9 @@
           "metric_key": "epa_per_play",
           "metric_label": "EPA / Play",
           "team_abbr": "NYJ",
-          "entering_baseline": -0.002,
-          "realized_value": 0.233,
-          "delta": 0.236,
+          "entering_baseline": -0.023,
+          "realized_value": 0.158,
+          "delta": 0.181,
           "prior_games_n": 7,
           "is_low_sample": false
         },
@@ -1576,9 +1455,9 @@
           "metric_key": "success_rate",
           "metric_label": "Success Rate",
           "team_abbr": "NYJ",
-          "entering_baseline": 46.745,
-          "realized_value": 56.79,
-          "delta": 10.045,
+          "entering_baseline": 44.306,
+          "realized_value": 58.025,
+          "delta": 13.718,
           "prior_games_n": 7,
           "is_low_sample": false
         },
@@ -1586,9 +1465,9 @@
           "metric_key": "dropback_epa",
           "metric_label": "Dropback EPA",
           "team_abbr": "NYJ",
-          "entering_baseline": 0.094,
-          "realized_value": 0.303,
-          "delta": 0.209,
+          "entering_baseline": 0.077,
+          "realized_value": 0.229,
+          "delta": 0.151,
           "prior_games_n": 7,
           "is_low_sample": false
         },
@@ -1596,9 +1475,9 @@
           "metric_key": "rush_epa",
           "metric_label": "Rush EPA",
           "team_abbr": "NYJ",
-          "entering_baseline": -0.112,
-          "realized_value": 0.171,
-          "delta": 0.283,
+          "entering_baseline": -0.133,
+          "realized_value": 0.095,
+          "delta": 0.229,
           "prior_games_n": 7,
           "is_low_sample": false
         },

@@ -372,6 +372,21 @@ reconcile_diagnostics <- function(diag, metrics) {
     diag$last_evaluated[n] <- format(Sys.time(), "%Y-%m-%d %H:%M:%OS6", tz = "UTC")
   }
 
+  # Preserve genuine_pregame nulls when unpopulated (n_games == 0) so fromJSON/toJSON
+  # round trip doesn't turn JSON null into {}
+  if (!is.null(diag$genuine_pregame) && is.list(diag$genuine_pregame) &&
+      identical(as.integer(diag$genuine_pregame$n_games), 0L)) {
+    if (length(diag$genuine_pregame$accuracy) == 0L || is.null(diag$genuine_pregame$accuracy)) {
+      diag$genuine_pregame$accuracy <- NA_real_
+    }
+    if (length(diag$genuine_pregame$brier) == 0L || is.null(diag$genuine_pregame$brier)) {
+      diag$genuine_pregame$brier <- NA_real_
+    }
+    if (length(diag$genuine_pregame$logloss) == 0L || is.null(diag$genuine_pregame$logloss)) {
+      diag$genuine_pregame$logloss <- NA_real_
+    }
+  }
+
   list(diag = diag, changed = TRUE)
 }
 

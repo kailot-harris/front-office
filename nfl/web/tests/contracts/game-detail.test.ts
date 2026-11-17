@@ -129,11 +129,119 @@ describe('Game Detail Contract Suite (All Game Files)', () => {
   });
 });
 
+describe('Cross-Dataset Parity: games/<id>.json vs matchups_current_week.json', () => {
+  it('asserts that has_game_detail and has_box_score match physical file existence for all matchups', () => {
+    expect(fs.existsSync(MATCHUPS_FILE), 'matchups_current_week.json must exist').toBe(true);
+    const rawMatchups = JSON.parse(fs.readFileSync(MATCHUPS_FILE, 'utf8')) as { matchups: any[] };
+    const mismatches: string[] = [];
+
+    for (const m of rawMatchups.matchups) {
+      const gid = m.game_id;
+      const gameFilePath = path.join(GAMES_DIR, `${gid}.json`);
+      const fileExists = fs.existsSync(gameFilePath);
+
+      if (Boolean(m.has_game_detail) !== fileExists) {
+        mismatches.push(
+          `[${gid}] has_game_detail (${m.has_game_detail}) does not match game file existence (${fileExists})`
+        );
+      }
+      if (Boolean(m.has_box_score) !== fileExists) {
+        mismatches.push(
+          `[${gid}] has_box_score (${m.has_box_score}) does not match game file existence (${fileExists})`
+        );
+      }
+    }
+
+    expect(
+      mismatches,
+      `Reported ${mismatches.length} flag-to-file mismatch(es):\n${mismatches.join('\n')}`
+    ).toEqual([]);
+  });
+
+  it('asserts complete parity across all games with has_game_detail=true without stopping at first mismatch', () => {
+    expect(fs.existsSync(MATCHUPS_FILE), 'matchups_current_week.json must exist').toBe(true);
+    const rawMatchups = JSON.parse(fs.readFileSync(MATCHUPS_FILE, 'utf8')) as { matchups: any[] };
+    const matchupsWithDetail = rawMatchups.matchups.filter((m) => m.has_game_detail);
+
+    expect(matchupsWithDetail.length).toBeGreaterThanOrEqual(100);
+
+    const mismatches: string[] = [];
+
+    for (const m of matchupsWithDetail) {
+      const gid = m.game_id;
+      const gameFilePath = path.join(GAMES_DIR, `${gid}.json`);
+
+      if (!fs.existsSync(gameFilePath)) {
+        mismatches.push(`[${gid}] has_game_detail=true but game detail file does not exist`);
+        continue;
+      }
+
+      const env = JSON.parse(fs.readFileSync(gameFilePath, 'utf8')) as GameDetailEnvelope;
+      const d = env.data;
+
+      // 1. Scores
+      if (d.home_team.score !== m.home_score) {
+        mismatches.push(`[${gid}] home_score mismatch: game=${d.home_team.score} vs matchup=${m.home_score}`);
+      }
+      if (d.away_team.score !== m.away_score) {
+        mismatches.push(`[${gid}] away_score mismatch: game=${d.away_team.score} vs matchup=${m.away_score}`);
+      }
+
+      // 2. Winner
+      const expHomeWinner = m.home_score > m.away_score;
+      const expAwayWinner = m.away_score > m.home_score;
+      if (d.home_team.is_winner !== expHomeWinner) {
+        mismatches.push(`[${gid}] home_team.is_winner mismatch: game=${d.home_team.is_winner} vs expected=${expHomeWinner}`);
+      }
+      if (d.away_team.is_winner !== expAwayWinner) {
+        mismatches.push(`[${gid}] away_team.is_winner mismatch: game=${d.away_team.is_winner} vs expected=${expAwayWinner}`);
+      }
+      if (m.actual_winner) {
+        const expWinnerName = expHomeWinner ? m.home_team_name : expAwayWinner ? m.away_team_name : 'Tie';
+        if (m.actual_winner !== expWinnerName) {
+          mismatches.push(`[${gid}] actual_winner mismatch: matchup=${m.actual_winner} vs expected=${expWinnerName}`);
+        }
+      }
+
+      // 3. Shared forecast figures
+      if (d.forecast) {
+        if (d.forecast.projected_margin !== null && d.forecast.projected_margin !== undefined &&
+            m.projected_margin !== null && m.projected_margin !== undefined) {
+          if (Math.abs(d.forecast.projected_margin - m.projected_margin) > 0.05) {
+            mismatches.push(`[${gid}] projected_margin mismatch: game=${d.forecast.projected_margin} vs matchup=${m.projected_margin}`);
+          }
+        }
+        if (d.forecast.home_win_prob !== null && d.forecast.home_win_prob !== undefined &&
+            m.home_win_prob !== null && m.home_win_prob !== undefined) {
+          if (Math.abs(d.forecast.home_win_prob - m.home_win_prob) > 0.005) {
+            mismatches.push(`[${gid}] home_win_prob mismatch: game=${d.forecast.home_win_prob} vs matchup=${m.home_win_prob}`);
+          }
+        }
+        if (d.forecast.home_power_rating !== null && d.forecast.home_power_rating !== undefined &&
+            m.home_power_rating !== null && m.home_power_rating !== undefined &&
+            Math.abs(d.forecast.home_power_rating - m.home_power_rating) > 0.05) {
+          mismatches.push(`[${gid}] home_power_rating mismatch: game=${d.forecast.home_power_rating} vs matchup=${m.home_power_rating}`);
+        }
+        if (d.forecast.away_power_rating !== null && d.forecast.away_power_rating !== undefined &&
+            m.away_power_rating !== null && m.away_power_rating !== undefined &&
+            Math.abs(d.forecast.away_power_rating - m.away_power_rating) > 0.05) {
+          mismatches.push(`[${gid}] away_power_rating mismatch: game=${d.forecast.away_power_rating} vs matchup=${m.away_power_rating}`);
+        }
+      }
+    }
+
+    expect(
+      mismatches,
+      `Reported ${mismatches.length} parity mismatch(es) between games/*.json and matchups_current_week.json:\n${mismatches.join('\n')}`
+    ).toEqual([]);
+  });
+});
+
 describe('In-Repo Zero-Betting Vocabulary Term Guard', () => {
   const FORBIDDEN_BETTING_RE =
     /\b(spread|projected_spread|point_spread|moneyline|sportsbook|over_under|parlay|wager|sharp_book|key_number_flag)\b/i;
 
-  it('asserts zero banned betting terminology in all 145 game files', () => {
+  it('asserts zero banned betting terminology in all completed game files', () => {
     const violations: string[] = [];
 
     for (const filename of gameFiles) {

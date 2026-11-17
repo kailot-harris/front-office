@@ -67,6 +67,11 @@ get_qb_starter_table <- function(seasons) {
 # more here than micro-performance (see this repo's no-lookahead-audit convention).
 # ------------------------------------------------------------------------------------------
 compute_qb_backup_flags <- function(starter_tbl) {
+  if (nrow(starter_tbl) == 0L) {
+    return(data.frame(season = integer(0), week = integer(0), team = character(0),
+                      gsis_id = character(0), primary_qb_asof = character(0),
+                      qb_backup_started = logical(0), stringsAsFactors = FALSE))
+  }
   teams <- unique(starter_tbl$team)
   out <- vector("list", length(teams))
 

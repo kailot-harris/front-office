@@ -338,7 +338,7 @@ source("logging_utils.R")
                 detail = "    could not resolve a git repository for the working directory",
                 summary = "no git repo"))
   }
-  r <- .pw_git(repo_root, c("status", "--porcelain", "--", WEB_DATA_DIR, WEB_ANIM_DIR))
+  r <- .pw_git(repo_root, c("status", "--porcelain", "--", PIPELINE_OUTPUT_DIRS))
   changed <- if (r$ok) r$out[nzchar(r$out)] else character(0)
   list(id = "C", name = "non-empty diff under web/public/{data,animations}",
        pass = length(changed) > 0, fatal = TRUE, changed = changed,
@@ -591,7 +591,7 @@ source("logging_utils.R")
     invisible(TRUE)
   }
   record("git add web/public/{data,animations}",
-         .pw_git(repo_root, c("add", "--", WEB_DATA_DIR, WEB_ANIM_DIR)))
+         .pw_git(repo_root, c("add", "--", PIPELINE_OUTPUT_DIRS)))
   record("git commit (NFL_analytics)",
          .pw_git(repo_root, c("commit", "-m", shQuote(commit_message))))
   record("git push origin HEAD (NFL_analytics)",
