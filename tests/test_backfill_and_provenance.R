@@ -219,33 +219,56 @@ test_that("BFP-7 model_diagnostics.json strictly separates genuine pregame and b
 
   diag <- jsonlite::fromJSON(diag_path, simplifyVector = TRUE)
 
-  cond_blocks <- ("genuine_pregame" %in% names(diag)) && ("historical_backtest" %in% names(diag))
-  ok("BFP-7b distinct genuine_pregame and historical_backtest blocks exist", cond_blocks)
-  expect_true(cond_blocks)
+  # Completed-game count from a committed source: the per-game files, each carrying
+  # data$is_completed. (Invariants, not day-one literals: the live values move every run.)
+  game_files <- list.files(file.path(root_dir, "web", "public", "data", "games"),
+                           pattern = "[.]json$", full.names = TRUE)
+  completed <- sum(vapply(game_files, function(f) {
+    isTRUE(jsonlite::fromJSON(f, simplifyVector = FALSE)$data$is_completed)
+  }, logical(1)))
 
-  # Genuine pregame block on Day 1: n_games = 0, accuracy = null
-  gen <- diag$genuine_pregame
-  cond_gen_count <- gen$n_games == 0L
-  cond_gen_acc <- is.null(gen$accuracy) || length(gen$accuracy) == 0L || (is.atomic(gen$accuracy) && is.na(gen$accuracy))
+  is_count <- function(x) length(x) == 1L && is.numeric(x) && !is.na(x) && x >= 0 && x == floor(x)
+  in_range <- function(x, lo, hi) length(x) == 1L && is.numeric(x) && !is.na(x) && x >= lo && x <= hi
+  acc_missing <- function(a) is.null(a) || length(a) == 0L || (is.atomic(a) && all(is.na(a)))
 
-  ok("BFP-7c genuine_pregame starts with n_games = 0 and accuracy = null",
-     cond_gen_count && cond_gen_acc,
-     sprintf("n_games: %s, accuracy: %s", as.character(gen$n_games), as.character(gen$accuracy)))
-  expect_equal(gen$n_games, 0L)
-  expect_true(cond_gen_acc)
+  # Returns a named logical vector of invariant results for one diagnostics object.
+  check_diag <- function(d, completed) {
+    g <- d$genuine_pregame; h <- d$historical_backtest
+    blocks <- !is.null(g) && !is.null(h)
+    if (!blocks) return(c(blocks = FALSE))
+    c(blocks = TRUE,
+      counts_valid = is_count(g$n_games) && is_count(h$n_games),
+      genuine_acc_null_iff_zero = acc_missing(g$accuracy) == (isTRUE(g$n_games == 0)),
+      genuine_ranges = acc_missing(g$accuracy) || in_range(g$accuracy, 0, 100),
+      genuine_brier = acc_missing(g$brier) || in_range(g$brier, 0, 1),
+      backtest_acc = in_range(h$accuracy, 0, 100) || (isTRUE(h$n_games == 0) && acc_missing(h$accuracy)),
+      backtest_brier = in_range(h$brier, 0, 1) || (isTRUE(h$n_games == 0) && acc_missing(h$brier)),
+      sum_matches_completed = is_count(g$n_games) && is_count(h$n_games) &&
+        (g$n_games + h$n_games) == completed)
+  }
 
-  # Historical backtest block on Day 1: n_games = 145, accuracy = 61.4%, brier = 0.2242
-  hist <- diag$historical_backtest
-  cond_hist_count <- hist$n_games == 145L
-  cond_hist_acc <- round(hist$accuracy, 1) == 61.4
-  cond_hist_brier <- round(hist$brier, 4) == 0.2242
+  res <- check_diag(diag, completed)
+  ok("BFP-7b distinct genuine_pregame and historical_backtest blocks exist", isTRUE(res[["blocks"]]))
+  expect_true(isTRUE(res[["blocks"]]))
+  ok("BFP-7c n_games are non-negative integers", isTRUE(res[["counts_valid"]]))
+  ok("BFP-7d genuine accuracy is null iff its n_games is 0", isTRUE(res[["genuine_acc_null_iff_zero"]]))
+  ok("BFP-7e accuracy in [0,100] and Brier in [0,1] for both blocks",
+     all(res[c("genuine_ranges", "genuine_brier", "backtest_acc", "backtest_brier")]))
+  ok("BFP-7f genuine + backtest n_games equals completed games in committed game files",
+     isTRUE(res[["sum_matches_completed"]]),
+     sprintf("genuine %s + backtest %s vs completed %d",
+             diag$genuine_pregame$n_games, diag$historical_backtest$n_games, completed))
+  expect_true(all(res))
 
-  ok("BFP-7d historical_backtest has n_games = 145, accuracy = 61.4%, brier = 0.2242",
-     cond_hist_count && cond_hist_acc && cond_hist_brier,
-     sprintf("n_games: %d, accuracy: %.1f%%, brier: %.4f", hist$n_games, hist$accuracy, hist$brier))
-  expect_equal(hist$n_games, 145L)
-  expect_equal(round(hist$accuracy, 1), 61.4)
-  expect_equal(round(hist$brier, 4), 0.2242)
+  # Negative control: forcing either block's n_games off by one must trip the sum invariant.
+  bad_g <- diag; bad_g$genuine_pregame$n_games <- diag$genuine_pregame$n_games + 1L
+  bad_h <- diag; bad_h$historical_backtest$n_games <- diag$historical_backtest$n_games - 1L
+  ok("BFP-7g invariants FAIL when genuine n_games is off by one",
+     !isTRUE(check_diag(bad_g, completed)[["sum_matches_completed"]]))
+  ok("BFP-7h invariants FAIL when backtest n_games is off by one",
+     !isTRUE(check_diag(bad_h, completed)[["sum_matches_completed"]]))
+  expect_false(isTRUE(check_diag(bad_g, completed)[["sum_matches_completed"]]))
+  expect_false(isTRUE(check_diag(bad_h, completed)[["sum_matches_completed"]]))
 })
 
 # ------------------------------------------------------------------------------
