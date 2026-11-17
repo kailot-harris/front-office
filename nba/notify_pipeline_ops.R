@@ -44,6 +44,31 @@ if (!exists("CACHE_DIR", inherits = FALSE)) {
   CACHE_DIR <- if (exists("PROJECT_DIR", inherits = FALSE)) file.path(PROJECT_DIR, "cache") else "cache"
 }
 
+# Availability embed from the injury scraper's table (columns team_name,
+# player_name, status; see injury_scraper.R). NULL when nobody is out/doubtful,
+# for an empty or malformed table. An NA player or team name never prints as "NA".
+build_availability_embed <- function(inj, sport = "NBA") {
+  if (!is.data.frame(inj) || nrow(inj) == 0 || !("status" %in% names(inj))) return(NULL)
+  unavailable <- !is.na(inj$status) & grepl("out|doubtful|suspension", tolower(as.character(inj$status)))
+  out_players <- inj[unavailable, , drop = FALSE]
+  if (nrow(out_players) == 0) return(NULL)
+  sample_out <- head(out_players, 3)
+  or_default <- function(x, default) if (is.null(x) || length(x) == 0 || is.na(x[[1]]) || !nzchar(x[[1]])) default else as.character(x[[1]])
+  shock_desc <- paste(vapply(seq_len(nrow(sample_out)), function(i) {
+    row <- sample_out[i, ]
+    name   <- or_default(row$player_name, "Unknown Player")
+    team   <- or_default(row$team_name, "Team")
+    status <- or_default(row$status, "Out")
+    sprintf("• :warning: **%s** (%s) — Status: `%s` (Model impact evaluated)", name, team, status)
+  }, character(1)), collapse = "
+")
+  list(
+    title       = sprintf(":rotating_light: %s Key Personnel Availability Monitor", sport),
+    description = shock_desc,
+    color       = 15105570 # Amber/Orange
+  )
+}
+
 run_notify_pipeline_ops <- function(sport = "NBA") {
   cat("\n==================================================================\n")
   cat(sprintf("     FRONT-OFFICE OPERATIONS ALERT DISPATCHER (%s)         \n", sport))
@@ -99,29 +124,12 @@ run_notify_pipeline_ops <- function(sport = "NBA") {
     }
   }
 
-  # 3. Availability Shock Alerts
-  inj_path <- file.path(CACHE_DIR, "injuries_cache.rds")
+  # 3. Availability Shock Alerts (reads CACHE_INJURY_DATA, the scraper's own output)
+  inj_path <- if (exists("CACHE_INJURY_DATA", inherits = TRUE)) CACHE_INJURY_DATA else file.path(CACHE_DIR, "injury_data_cache.rds")
   if (file.exists(inj_path)) {
-    inj <- readRDS(inj_path)
-    if (is.data.frame(inj) && nrow(inj) > 0) {
-      out_players <- inj[grepl("out|doubtful|suspension", tolower(inj$status %||% inj$injury_status %||% "")), ]
-      if (nrow(out_players) > 0) {
-        sample_out <- head(out_players, 3)
-        shock_desc <- paste(vapply(seq_len(nrow(sample_out)), function(i) {
-          row <- sample_out[i, ]
-          name <- row$player_name %||% row$name %||% "Unknown Player"
-          team <- row$team %||% "Team"
-          status <- row$status %||% row$injury_status %||% "Out"
-          sprintf("• :warning: **%s** (%s) — Status: `%s` (Model impact evaluated)", name, team, status)
-        }, character(1)), collapse = "\n")
-
-        embeds[[length(embeds) + 1]] <- list(
-          title       = sprintf(":rotating_light: %s Key Personnel Availability Monitor", sport),
-          description = shock_desc,
-          color       = 15105570 # Amber/Orange
-        )
-      }
-    }
+    inj <- tryCatch(readRDS(inj_path), error = function(e) NULL)
+    shock <- build_availability_embed(inj, sport)
+    if (!is.null(shock)) embeds[[length(embeds) + 1]] <- shock
   }
 
   payload <- list(
@@ -149,6 +157,7 @@ run_notify_pipeline_ops <- function(sport = "NBA") {
   invisible(TRUE)
 }
 
-if (!interactive()) {
+# Tests set NOTIFY_OPS_LIBRARY_ONLY <- TRUE to load the helpers without dispatching.
+if (!interactive() && !isTRUE(get0("NOTIFY_OPS_LIBRARY_ONLY", inherits = TRUE))) {
   run_notify_pipeline_ops("NBA")
 }

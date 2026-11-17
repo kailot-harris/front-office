@@ -981,6 +981,89 @@ if (!dir.exists(WEB_MEDIA_DIR)) dir.create(WEB_MEDIA_DIR, recursive = TRUE)
 }
 
 # ------------------------------------------------------------------------------
+# Pipeline-crash alert (NBA_analytics#161, follow-up to #145).
+#
+# #145 covered the gate only. When run_full_pipeline.R itself exits non-zero,
+# schedule_daily.bat never reaches publish_web.R, so nothing is opened and the
+# site goes stale silently. tools/notify_pipeline_failure.R (called from the
+# .bat's failure branch) calls .pw_notify_pipeline_failure() below: it opens one
+# `pipeline-failed` issue, or comments on the open one, carrying a sanitized
+# tail of the run log. Same contract as .pw_notify_github(): the gh runner is
+# injectable, every line goes through .pw_sanitize_public(), and nothing here
+# can throw or touch an exit code. The issue is closed by hand once the
+# pipeline is healthy again (a recurring crash comments on it instead of
+# opening a new one each night).
+# ------------------------------------------------------------------------------
+.PW_GH_LABEL_CRASH <- "pipeline-failed"
+
+.pw_pipeline_failure_body <- function(exit_code, log_tail, when, heading) {
+  fence <- function(lines) c("```", gsub("```", "'''", lines, fixed = TRUE), "```")
+  body <- c(sprintf("## %s (%s)", heading, format(when, "%Y-%m-%d %H:%M")), "",
+            sprintf("`run_full_pipeline.R` exited with code `%s` before the publish gate ran.", exit_code),
+            "Nothing was published; the live site still shows the last published data.", "",
+            sprintf("### Last %d line(s) of the run log", length(log_tail)), "",
+            if (length(log_tail)) fence(log_tail) else "The run log could not be read.",
+            "", "---",
+            "Posted by `tools/notify_pipeline_failure.R` (#161). Close this issue once a scheduled run is healthy again.")
+  paste(.pw_sanitize_public(body), collapse = "\n")
+}
+
+.pw_notify_pipeline_failure <- function(exit_code, log_path = NULL, runner = NULL,
+                                        repo = .PW_GH_REPO, label = .PW_GH_LABEL_CRASH,
+                                        tail_lines = 40L, when = Sys.time()) {
+  if (is.null(runner)) runner <- .pw_gh_default_runner
+  tryCatch({
+    log_tail <- character(0)
+    if (!is.null(log_path) && file.exists(log_path)) {
+      log_tail <- tryCatch(utils::tail(readLines(log_path, warn = FALSE, encoding = "UTF-8"), tail_lines),
+                           error = function(e) character(0))
+      log_tail <- log_tail[nzchar(trimws(log_tail))]
+    }
+    gh <- function(args, what) {
+      res <- tryCatch(runner(args), error = function(e) list(status = NA_integer_, out = conditionMessage(e)))
+      st <- suppressWarnings(as.integer(res$status))
+      if (length(st) != 1L || is.na(st) || st != 0L) {
+        stop(sprintf("gh %s failed (exit %s): %s", what, if (length(st) == 1L && !is.na(st)) st else "NA",
+                     paste(head(as.character(res$out), 3), collapse = " | ")), call. = FALSE)
+      }
+      as.character(res$out)
+    }
+    with_body <- function(text, f) {
+      path <- tempfile("pipeline_failed_gh_", fileext = ".md")
+      on.exit(unlink(path), add = TRUE)
+      writeLines(text, path, useBytes = TRUE)
+      f(path)
+    }
+    open_out <- gh(c("issue", "list", "--repo", repo, "--label", label, "--state", "open",
+                     "--json", "number", "--jq", ".[].number", "--limit", "20"), "issue list")
+    open_nums <- sort(suppressWarnings(as.integer(trimws(open_out))))
+    open_nums <- open_nums[!is.na(open_nums)]
+    if (length(open_nums)) {
+      with_body(.pw_pipeline_failure_body(exit_code, log_tail, when, "Failed again"), function(p)
+        gh(c("issue", "comment", open_nums[[1]], "--repo", repo, "--body-file", p), "issue comment"))
+      message(sprintf(">>> notify_pipeline_failure: commented on open %s issue #%d.", label, open_nums[[1]]))
+      return(invisible(sprintf("commented #%d", open_nums[[1]])))
+    }
+    labels <- gh(c("label", "list", "--repo", repo, "--search", label, "--json", "name",
+                   "--jq", ".[].name", "--limit", "100"), "label list")
+    if (!(label %in% trimws(labels))) {
+      gh(c("label", "create", label, "--repo", repo, "--color", "B60205",
+           "--description", "run_full_pipeline.R crashed before the publish gate (opened by tools/notify_pipeline_failure.R)"),
+         "label create")
+    }
+    title <- .pw_sanitize_public(sprintf("Pipeline crashed on %s (exit %s)", format(when, "%Y-%m-%d"), exit_code))
+    out <- with_body(.pw_pipeline_failure_body(exit_code, log_tail, when, "The NBA pipeline crashed before the publish gate"),
+                     function(p) gh(c("issue", "create", "--repo", repo, "--title", title,
+                                      "--label", label, "--body-file", p), "issue create"))
+    message(sprintf(">>> notify_pipeline_failure: opened %s issue %s", label, paste(tail(out, 1), collapse = "")))
+    invisible("created")
+  }, error = function(e) {
+    message(sprintf(">>> [WARN] notify_pipeline_failure: GitHub %s notification skipped: %s", label, conditionMessage(e)))
+    invisible("failed")
+  })
+}
+
+# ------------------------------------------------------------------------------
 # publish_web() - the explicitly-callable entry point.
 #
 # Deliberately NOT guarded by a `sys.nframe() == 0`-style top-level-only check:

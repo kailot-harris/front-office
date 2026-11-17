@@ -98,12 +98,16 @@ run_stage("injury_scraper.R", "Scrape Official Injury Scratches & Availability U
 
 # 2. Physics & Biometric Latent Engines (Phase 5)
 run_stage("shot_quality_engine.R", "Calculate 15-Game Spatial Shot Quality (xeFG%) & Luck")
-run_stage("fatigue_travel_engine.R", "Compute Haversine Flight Miles, Circadian & Altitude Drag")
+# fatigue_travel_engine.R is a library (calculate_travel_fatigue / ARENA_DB), sourced by
+# by the matchups builder and tools/project_week_predictions.R; it is no longer a stage (#155).
 
 # 3. Microstructure & Player Valuation Engines (Phase 4)
 # Play-by-play extraction must precede the engines that consume it:
-# build_coaching_dataset.R falls back to per-coach synthetic bands without
-# pbp_timeout_cache.rds.
+# build_coaching_dataset.R measures ATO PPP and challenge overturn rate from
+# pbp_timeout_cache.rds. If that cache is missing it uses neutral league-average
+# baselines with an "unobserved" provenance tag (or stops when
+# STRICT_COACHING_PROVENANCE is set); it never generates synthetic per-coach bands.
+# A stale cache is used as-is.
 #
 # rapm_engine.R no longer reads stint_lineups.rds -- it fits a possession-level
 # design on hoopR's published possession table instead, which is what makes ORAPM
@@ -194,6 +198,14 @@ run_stage("prediction_accuracy_logger.R", "Reconcile Outcomes & Log Pre-Game Win
 # 8.5. Forecast Accuracy Governance & Calibration Engine (Issue #17)
 run_stage("accuracy_governance.R", "Compute Forecast Accuracy Governance & Calibration Diagnostics",
           output = file.path(CACHE_DIR, "accuracy_governance.rds"))
+
+# 8.55. Refresh the season team-box cache BEFORE TreeSHAP (issue #171). The SHAP engine
+# computes prior-games counts from cache/matchups_team_box_<season>.rds, which was
+# previously refreshed only by stage 9 (after SHAP), leaving SHAP one day stale.
+run_stage("tools/refresh_matchups_team_box.R",
+          "Refresh Season Team Box Scores Ahead of TreeSHAP",
+          call_fn = "run_refresh_matchups_team_box",
+          output = CACHE_MATCHUPS_TEAM_BOX(MATCHUPS_HOOPR_SEASON))
 
 # 8.6. Secondary XGBoost Feature Fusion & TreeSHAP Explanations (Issue #124)
 run_stage("xgboost_shap_engine.R",

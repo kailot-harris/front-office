@@ -187,6 +187,8 @@ if "%PIPELINE_EXIT%"=="0" (
     set RUN_PUBLISH=1
 ) else (
     echo PIPELINE RUN FAILED WITH EXIT CODE %PIPELINE_EXIT%: %DATE% %TIME% >> "%LOG_FILE%"
+    REM #161: tell GitHub, because publish_web.R (and its #145 alert) will not run. Never changes PIPELINE_EXIT.
+    %RSCRIPT% "tools\notify_pipeline_failure.R" %PIPELINE_EXIT% "%LOG_FILE%" >> "%LOG_FILE%" 2>&1
 )
 echo ================================================================== >> "%LOG_FILE%"
 echo. >> "%LOG_FILE%"

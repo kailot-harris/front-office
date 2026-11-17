@@ -90,8 +90,7 @@ unlink(scratch_cwd, recursive = TRUE)
 ok("project_week_predictions.R loads fatigue engine as library",
    is.function(pwp_env$.pwp_compute_schedule_adjustments) &&
      is.function(pwp_env$.pwp_build_week_projections) &&
-     is.function(pwp_env$calculate_travel_fatigue) &&
-     isTRUE(pwp_env$FATIGUE_ENGINE_LIBRARY_ONLY))
+     is.function(pwp_env$calculate_travel_fatigue))
 
 # ------------------------------------------------------------------------------
 section("2. P2-b snapshot schema & standardized provenance emitters")
@@ -367,17 +366,19 @@ if (file.exists(live_log_path)) {
   src_27 <- live_log$log_source[s27]
   src_prior <- live_log$log_source[!s27]
 
-  ok("live cache/prediction_accuracy_log.rds has 2850 total rows",
-     nrow(live_log) == 2850L)
+  # Counts grow every day the pipeline runs, so expectations are derived from the
+  # cache itself (like with like) instead of pinned to one day's snapshot (#160).
+  n_pregame  <- sum(src_27 == "LOGGED_PREGAME", na.rm = TRUE)
+  n_preweek  <- sum(src_27 == "BACKTEST_PREWEEK", na.rm = TRUE)
+  n_seeded   <- sum(src_prior == "BACKTEST_SEEDED", na.rm = TRUE)
+  ok("live log rows partition exactly into the known cohorts",
+     nrow(live_log) == n_pregame + n_preweek + n_seeded + sum(is.na(live_log$log_source)))
   ok("live log has 0 SEEDED_HINDSIGHT rows anywhere",
      sum(live_log$log_source == "SEEDED_HINDSIGHT", na.rm = TRUE) == 0L)
-  ok("live 2026-27 log has 210 LOGGED_PREGAME, 9 BACKTEST_PREWEEK, 0 BACKTEST_SEEDED",
-     sum(src_27 == "LOGGED_PREGAME", na.rm = TRUE) == 210L &&
-       sum(src_27 == "BACKTEST_PREWEEK", na.rm = TRUE) == 9L &&
-       sum(src_27 == "BACKTEST_SEEDED", na.rm = TRUE) == 0L)
-  ok("live prior-season log has 2631 BACKTEST_SEEDED rows",
-     sum(src_prior == "BACKTEST_SEEDED", na.rm = TRUE) == 2631L &&
-       length(src_prior) == 2631L)
+  ok("live 2026-27 log has no BACKTEST_SEEDED rows and some LOGGED_PREGAME",
+     sum(src_27 == "BACKTEST_SEEDED", na.rm = TRUE) == 0L && n_pregame > 0L)
+  ok("live prior-season log is entirely BACKTEST_SEEDED (2631 rows, frozen)",
+     n_seeded == 2631L && length(src_prior) == 2631L)
   ok("live log includes all 7 snapshot columns as typeof == 'double'",
      all(vapply(SNAPSHOT_COLS, function(k) {
        k %in% names(live_log) && typeof(live_log[[k]]) == "double"
@@ -386,21 +387,38 @@ if (file.exists(live_log_path)) {
   live_gov <- readRDS(file.path(REPO_ROOT, "cache", "accuracy_governance.rds"))
   live_diag <- jsonlite::fromJSON(file.path(REPO_ROOT, "web", "public", "data", "projections_diagnostics.json"),
                                   simplifyVector = TRUE)
-  ok("live accuracy_governance.rds & projections_diagnostics.json isolate BACKTEST_PREWEEK (179 genuine, 2631 backtest, 2819 resolvedTotal)",
-     identical(as.integer(live_gov$total_games), 179L) &&
+  # Governance cache and the published diagnostics are written by different stages
+  # (and the JSON is tracked), so compare them with each other, not with literals.
+  # An unparseable/missing generated_at is never treated as stale: it fails.
+  gov_n  <- as.integer(live_gov$total_games)
+  diag_n <- as.integer(live_diag$totalResolvedGames)
+  # Skip ONLY when the tracked JSON was generated before the governance cache was
+  # last written by more than 300 s (publish blocked/pending: provably stale). Anything else must agree.
+  diag_ts <- as.POSIXct(live_diag$generated_at, tz = "UTC", format = "%Y-%m-%dT%H:%M:%SZ")
+  gov_mtime <- file.mtime(file.path(REPO_ROOT, "cache", "accuracy_governance.rds"))
+  # generated_at is truncated to the second while the mtime is sub-second, and both
+  # come from the same run, so allow 300 s of slack before calling the JSON stale.
+  diag_stale <- !is.na(diag_ts) && diag_ts < gov_mtime - 300
+  if (diag_stale) {
+    cat(sprintf("  SKIP  projections_diagnostics.json generated_at (%s) predates cache/accuracy_governance.rds mtime (%s): tracked JSON is stale
+",
+                format(diag_ts, "%Y-%m-%dT%H:%M:%SZ"), format(gov_mtime, tz = "UTC", "%Y-%m-%dT%H:%M:%SZ")))
+  } else {
+    ok("live governance and diagnostics isolate BACKTEST_PREWEEK and agree on cohort sizes",
+       identical(diag_n, gov_n) &&
        identical(as.integer(live_gov$historical_backtest$total_games), 2631L) &&
-       identical(as.integer(live_diag$totalResolvedGames), 179L) &&
-       identical(as.integer(live_diag$historicalBacktest$totalGames), 2631L) &&
-       identical(as.integer(live_diag$rowCounts$resolvedTotal), 2819L) &&
-       identical(as.integer(live_diag$rowCounts$genuinePregame), 179L) &&
-       identical(as.integer(live_diag$rowCounts$seededHindsight), 2631L))
-  ok("live diagnostics buckets reconcile identically to headline and historical totals",
-     identical(sum(live_diag$calibration$count), 179L) &&
-       identical(sum(live_diag$accuracyDrift$games), 179L) &&
-       identical(sum(live_diag$residualDistribution$count), 179L) &&
-       identical(sum(live_diag$historicalBacktest$calibration$count), 2631L) &&
-       identical(sum(live_diag$historicalBacktest$accuracyDrift$games), 2631L) &&
-       identical(sum(live_diag$historicalBacktest$residualDistribution$count), 2631L))
+         identical(as.integer(live_diag$historicalBacktest$totalGames), 2631L) &&
+         identical(as.integer(live_diag$rowCounts$genuinePregame), gov_n) &&
+         identical(as.integer(live_diag$rowCounts$seededHindsight), 2631L) &&
+         identical(as.integer(live_diag$rowCounts$resolvedTotal), gov_n + 2631L + n_preweek))
+    ok("live diagnostics buckets reconcile identically to headline and historical totals",
+       identical(sum(live_diag$calibration$count), gov_n) &&
+         identical(sum(live_diag$accuracyDrift$games), gov_n) &&
+         identical(sum(live_diag$residualDistribution$count), gov_n) &&
+         identical(sum(live_diag$historicalBacktest$calibration$count), 2631L) &&
+         identical(sum(live_diag$historicalBacktest$accuracyDrift$games), 2631L) &&
+         identical(sum(live_diag$historicalBacktest$residualDistribution$count), 2631L))
+  }
 } else {
   cat("  SKIP  cache/prediction_accuracy_log.rds absent (e.g. CI fresh checkout); standalone checks cover contracts.\n")
 }

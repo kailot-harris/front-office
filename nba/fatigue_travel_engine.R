@@ -1,6 +1,14 @@
 # ==============================================================================
 # fatigue_travel_engine.R
 # Phase 5: Circadian Rhythm, Altitude & Haversine Travel Vector Engine
+#
+# LIBRARY FILE. This file defines ARENA_DB and calculate_travel_fatigue() and
+# does nothing when sourced. It used to be a pipeline stage that also exported a
+# slate table to cache/travel_fatigue_metrics.rds; nothing ever read that file
+# and nothing wrote the schedule it needed (NBA_analytics#155), so the stage was
+# removed. The real consumers - build_matchups_dataset.R and
+# tools/project_week_predictions.R - source this file and call
+# calculate_travel_fatigue() on the full schedule they already hold.
 # ==============================================================================
 
 suppressPackageStartupMessages({
@@ -9,9 +17,6 @@ suppressPackageStartupMessages({
 })
 
 if (file.exists("config.R")) source("config.R")
-if (!dir.exists("cache")) dir.create("cache", recursive = TRUE)
-
-message(">>> [FATIGUE] Initializing Circadian & Travel Distance Engine...")
 
 # ------------------------------------------------------------------------------
 # 1. Arena Geographic & Elevation Coordinates
@@ -34,6 +39,18 @@ ARENA_DB <- tibble(
                   10, 233, 233, 1086, 30, 430, 80, 337, 3, 650)
 )
 
+# ESPN's abbreviations for six clubs differ from ARENA_DB's (NBA_analytics#156).
+# Same set as ESPN_ABBR_FIXUPS in build_matchups_dataset.R; callers that already
+# canonicalise pass codes straight through unchanged.
+ESPN_TO_ARENA_CODE <- c(GS = "GSW", SA = "SAS", NY = "NYK", UTAH = "UTA", NO = "NOP", WSH = "WAS")
+arena_code <- function(x) {
+  x <- as.character(x)
+  hit <- !is.na(x) & x %in% names(ESPN_TO_ARENA_CODE)
+  x[hit] <- unname(ESPN_TO_ARENA_CODE[x[hit]])
+  x
+}
+.fatigue_warned_codes <- new.env(parent = emptyenv())
+
 # ------------------------------------------------------------------------------
 # 2. Haversine Great-Circle Distance (Miles)
 # ------------------------------------------------------------------------------
@@ -53,11 +70,22 @@ haversine_dist_miles <- function(lat1, lon1, lat2, lon2) {
 # 3. Micro-Rest & Fatigue Rating Calculator
 # ------------------------------------------------------------------------------
 calculate_travel_fatigue <- function(team_code, origin_team_code, days_rest = 1, is_back_to_back = FALSE) {
-  orig <- ARENA_DB %>% filter(team == origin_team_code)
-  dest <- ARENA_DB %>% filter(team == team_code)
+  orig <- ARENA_DB %>% filter(team == arena_code(origin_team_code))
+  dest <- ARENA_DB %>% filter(team == arena_code(team_code))
   
-  req_found <- (nrow(orig) > 0 && nrow(dest) > 0)
-  if (!req_found) return(list(travel_miles = 0, fatigue_drag_pts = 0))
+  # An arena we cannot place is a gap in the data, not a zero: return NA in the
+  # same shape as a found row and say so once per code, never error (#156).
+  if (nrow(orig) == 0L || nrow(dest) == 0L) {
+    for (code in unique(c(if (nrow(orig) == 0L) as.character(origin_team_code),
+                          if (nrow(dest) == 0L) as.character(team_code)))) {
+      if (!isTRUE(.fatigue_warned_codes[[code]])) {
+        assign(code, TRUE, envir = .fatigue_warned_codes)
+        message(sprintf(">>> [WARN] fatigue: team code '%s' is not in ARENA_DB (even after ESPN aliasing); travel fatigue is NA for games involving it.", code))
+      }
+    }
+    return(list(travel_miles = NA_real_, timezone_shift = NA_real_,
+                destination_elevation = NA_real_, fatigue_drag_pts = NA_real_))
+  }
   
   # Flight Distance
   miles <- haversine_dist_miles(orig$lat, orig$lon, dest$lat, dest$lon)
@@ -87,65 +115,4 @@ calculate_travel_fatigue <- function(team_code, origin_team_code, days_rest = 1,
     destination_elevation = dest$altitude_ft,
     fatigue_drag_pts = total_fatigue_drag
   )
-}
-
-# Zero-row result with the columns the normal path writes: the schedule's
-# required inputs plus the three computed fatigue columns.
-empty_fatigue_table <- function() {
-  tibble(
-    away_team         = character(),
-    home_team         = character(),
-    last_played_at    = character(),
-    days_rest         = numeric(),
-    is_b2b            = logical(),
-    travel_miles      = numeric(),
-    tz_shift          = numeric(),
-    point_spread_drag = numeric()
-  )
-}
-
-# Evaluate a slate of road teams
-evaluate_slate_fatigue <- function(schedule_data = NULL) {
-  sched_path <- if (exists("CACHE_DIR")) file.path(CACHE_DIR, "schedule_cache.rds") else "cache/schedule_cache.rds"
-  
-  if (is.null(schedule_data)) {
-    if (file.exists(sched_path)) {
-      schedule_data <- tryCatch(readRDS(sched_path), error = function(e) NULL)
-    }
-  }
-  
-  out_path <- if (exists("CACHE_DIR")) file.path(CACHE_DIR, "travel_fatigue_metrics.rds") else "cache/travel_fatigue_metrics.rds"
-
-  # No schedule: write an empty table with the normal path's columns rather than
-  # inventing matchups (NBA_analytics#144).
-  if (is.null(schedule_data) || !is.data.frame(schedule_data) || nrow(schedule_data) == 0) {
-    message(sprintf(">>> [WARN] publish-irrelevant: schedule '%s' is missing, unreadable or empty; saving an empty travel fatigue table, no games invented.", sched_path))
-    results <- empty_fatigue_table()
-    saveRDS(results, out_path)
-    return(results)
-  }
-  
-  results <- schedule_data %>%
-    rowwise() %>%
-    mutate(
-      fatigue_metrics = list(calculate_travel_fatigue(home_team, last_played_at, days_rest, is_b2b)),
-      travel_miles = fatigue_metrics$travel_miles,
-      tz_shift = fatigue_metrics$timezone_shift,
-      point_spread_drag = fatigue_metrics$fatigue_drag_pts
-    ) %>%
-    select(-fatigue_metrics)
-  
-  out_path <- if (exists("CACHE_DIR")) file.path(CACHE_DIR, "travel_fatigue_metrics.rds") else "cache/travel_fatigue_metrics.rds"
-  saveRDS(results, out_path)
-  message(">>> [FATIGUE] Successfully computed travel fatigue vectors for active slate.")
-  return(results)
-}
-
-# Other stages (build_matchups_dataset.R) source this file only for
-# calculate_travel_fatigue() / ARENA_DB and must not trigger the slate export,
-# which would overwrite cache/travel_fatigue_metrics.rds with their own scope.
-# They set FATIGUE_ENGINE_LIBRARY_ONLY <- TRUE before sourcing.
-if (!interactive() &&
-    !(exists("FATIGUE_ENGINE_LIBRARY_ONLY") && isTRUE(FATIGUE_ENGINE_LIBRARY_ONLY))) {
-  invisible(evaluate_slate_fatigue())
 }

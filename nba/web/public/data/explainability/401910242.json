@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "game_id": "401910242",
-  "generated_at": "2026-11-17T14:05:13Z",
+  "generated_at": "2026-11-17T18:23:25Z",
   "data": {
     "projection_basis": "primary_ensemble",
     "predicted_margin": 2.26,
@@ -59,90 +59,74 @@
       "train_seasons_label": "2018-19..2025-26",
       "window_games": 18,
       "away_prior_games_n": 13,
-      "home_prior_games_n": 11,
+      "home_prior_games_n": 12,
       "base_value_log_odds": 0.23286,
-      "total_log_odds": 1.11943,
-      "predicted_home_win_prob": 0.7539,
+      "total_log_odds": 0.97165,
+      "predicted_home_win_prob": 0.7254,
       "factors": [
         {
           "feature": "diff_roll_ts",
           "label": "18-Game True Shooting Diff",
-          "feature_value": 0.0345,
-          "z_score": 1.0738,
-          "shap_log_odds": 0.50922,
-          "shap_prob_approx": 0.1195
+          "feature_value": 0.033,
+          "z_score": 1.0283,
+          "shap_log_odds": 0.50853,
+          "shap_prob_approx": 0.1193
         },
         {
           "feature": "diff_roll_stl",
           "label": "18-Game Steals Diff",
-          "feature_value": 1.4615,
-          "z_score": 0.9045,
-          "shap_log_odds": 0.21154,
-          "shap_prob_approx": 0.0514
-        },
-        {
-          "feature": "diff_roll_tovp",
-          "label": "18-Game Turnover Rate Diff",
-          "feature_value": -0.0084,
-          "z_score": -0.4768,
-          "shap_log_odds": 0.09426,
-          "shap_prob_approx": 0.0231
-        },
-        {
-          "feature": "diff_roll_efg",
-          "label": "18-Game eFG% Diff",
-          "feature_value": 0.0313,
-          "z_score": 0.9239,
-          "shap_log_odds": 0.09405,
-          "shap_prob_approx": 0.0231
+          "feature_value": 1.2949,
+          "z_score": 0.8019,
+          "shap_log_odds": 0.17654,
+          "shap_prob_approx": 0.043
         },
         {
           "feature": "diff_roll_dreb",
           "label": "18-Game Defensive Rebound Diff",
-          "feature_value": -1.972,
-          "z_score": -0.6462,
-          "shap_log_odds": -0.08897,
-          "shap_prob_approx": -0.022
+          "feature_value": -2.4872,
+          "z_score": -0.815,
+          "shap_log_odds": -0.13622,
+          "shap_prob_approx": -0.0338
+        },
+        {
+          "feature": "diff_roll_efg",
+          "label": "18-Game eFG% Diff",
+          "feature_value": 0.0301,
+          "z_score": 0.8884,
+          "shap_log_odds": 0.09166,
+          "shap_prob_approx": 0.0225
+        },
+        {
+          "feature": "diff_roll_tovp",
+          "label": "18-Game Turnover Rate Diff",
+          "feature_value": -0.0048,
+          "z_score": -0.2771,
+          "shap_log_odds": 0.07641,
+          "shap_prob_approx": 0.0188
         },
         {
           "feature": "diff_fatigue_index",
           "label": "Schedule Fatigue Index Diff",
           "feature_value": -0.5,
           "z_score": -0.3708,
-          "shap_log_odds": 0.05729,
-          "shap_prob_approx": 0.0141
+          "shap_log_odds": 0.07165,
+          "shap_prob_approx": 0.0176
         },
         {
           "feature": "diff_roll_pts",
           "label": "18-Game Scoring Diff (PPG)",
-          "feature_value": 4.7133,
-          "z_score": 0.6792,
-          "shap_log_odds": -0.0552,
-          "shap_prob_approx": -0.0137
-        },
-        {
-          "feature": "diff_roll_blk",
-          "label": "18-Game Blocks Diff",
-          "feature_value": 0.3916,
-          "z_score": 0.2777,
-          "shap_log_odds": 0.04038,
-          "shap_prob_approx": 0.0099
+          "feature_value": 3.9103,
+          "z_score": 0.5671,
+          "shap_log_odds": -0.04216,
+          "shap_prob_approx": -0.0104
         },
         {
           "feature": "diff_roll_oreb",
           "label": "18-Game Offensive Rebound Diff",
-          "feature_value": -3.5245,
-          "z_score": -1.5363,
-          "shap_log_odds": -0.03456,
-          "shap_prob_approx": -0.0085
-        },
-        {
-          "feature": "style_similarity",
-          "label": "16-D Style Embedding Cosine Sim",
-          "feature_value": -0.5855,
-          "z_score": -2.406,
-          "shap_log_odds": 0.03414,
-          "shap_prob_approx": 0.0084
+          "feature_value": -3.6154,
+          "z_score": -1.576,
+          "shap_log_odds": -0.03824,
+          "shap_prob_approx": -0.0095
         },
         {
           "feature": "diff_is_b2b",
@@ -153,20 +137,36 @@
           "shap_prob_approx": 0.0054
         },
         {
+          "feature": "style_similarity",
+          "label": "16-D Style Embedding Cosine Sim",
+          "feature_value": -0.5855,
+          "z_score": -2.406,
+          "shap_log_odds": 0.00689,
+          "shap_prob_approx": 0.0017
+        },
+        {
+          "feature": "diff_roll_blk",
+          "label": "18-Game Blocks Diff",
+          "feature_value": 0.2628,
+          "z_score": 0.1873,
+          "shap_log_odds": 0.00405,
+          "shap_prob_approx": 0.001
+        },
+        {
           "feature": "diff_roll_ast",
           "label": "18-Game Assists Diff",
-          "feature_value": 0.958,
-          "z_score": 0.3004,
-          "shap_log_odds": 0.00292,
-          "shap_prob_approx": 0.0007
+          "feature_value": 0.4808,
+          "z_score": 0.1571,
+          "shap_log_odds": -0.00274,
+          "shap_prob_approx": -0.0007
         },
         {
           "feature": "diff_days_rest",
           "label": "Days Rest Diff",
           "feature_value": 0,
           "z_score": -0.102,
-          "shap_log_odds": -0.00039,
-          "shap_prob_approx": -0.0001
+          "shap_log_odds": 0.00054,
+          "shap_prob_approx": 0.0001
         }
       ]
     }
