@@ -128,10 +128,44 @@ ok("SKIP and FAIL fixtures are reported as distinct outcomes",
 cat("\n[Part B] Real chart script runs against this machine's cache/ (advisory)...\n")
 
 real_specs <- list(
-  list(script = "tools/plot_week5_projections.R", artifact = NULL),
-  list(script = "tools/gif_elo_heatmap.R",        artifact = "cache/gif_elo_heatmap.png")
+  list(script = "tools/plot_week5_projections.R", artifact = NULL,
+       writes = "cache/week5_projections.png"),
+  list(script = "tools/gif_elo_heatmap.R",        artifact = "cache/gif_elo_heatmap.png",
+       writes = "cache/gif_elo_heatmap.png")
 )
 
+# These scripts write into the repo's real cache/. cache/week5_projections.png is a TRACKED
+# file, so running this suite used to leave the checkout dirty (observed 2026-11-17 in the
+# primary checkout: the 08:00 publish guard then had to stash it every morning). Snapshot
+# each file a spec writes and put the exact bytes back afterwards (or delete it if it did
+# not exist), so the run exercises the script without mutating the checkout or its mtime-
+# based media freshness rules.
+snapshot_files <- function(rel_paths) {
+  lapply(stats::setNames(rel_paths, rel_paths), function(rel) {
+    p <- file.path(REPO_ROOT, rel)
+    if (file.exists(p)) list(existed = TRUE, bytes = readBin(p, "raw", file.size(p)),
+                             mtime = file.mtime(p))
+    else list(existed = FALSE)
+  })
+}
+restore_files <- function(snap) {
+  for (rel in names(snap)) {
+    p <- file.path(REPO_ROOT, rel)
+    if (isTRUE(snap[[rel]]$existed)) {
+      writeBin(snap[[rel]]$bytes, p)
+      Sys.setFileTime(p, snap[[rel]]$mtime)
+    } else if (file.exists(p)) {
+      unlink(p)
+    }
+  }
+}
+all_writes <- unique(unlist(lapply(real_specs, function(s) s$writes)))
+partB_snapshot <- snapshot_files(all_writes)
+
+# Restore via on.exit inside a function: on.exit() at the top level of an Rscript never fires,
+# but inside a function it runs even if a chart script errors or the loop is interrupted.
+run_part_b <- function() {
+  on.exit(restore_files(partB_snapshot), add = TRUE)
 for (spec in real_specs) {
   script_path <- file.path(REPO_ROOT, spec$script)
   if (!file.exists(script_path)) {
@@ -145,6 +179,14 @@ for (spec in real_specs) {
     cat(paste("   ", tail(res$output, 5), collapse = "\n"), "\n")
   }
 }
+}
+run_part_b()
+ok("Part B left tracked/cached chart files exactly as it found them",
+   all(vapply(names(partB_snapshot), function(rel) {
+     p <- file.path(REPO_ROOT, rel); s <- partB_snapshot[[rel]]
+     if (s$existed) file.exists(p) && identical(readBin(p, "raw", file.size(p)), s$bytes)
+     else !file.exists(p)
+   }, logical(1))))
 
 cat(sprintf("\n=== %d assertion(s) failed ===\n", failures))
 if (failures > 0L) quit(status = 1L, save = "no")

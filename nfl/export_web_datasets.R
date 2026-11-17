@@ -29,6 +29,7 @@ suppressPackageStartupMessages({
 })
 
 source("config.R")
+source("web_media_filter.R")
 
 # log_warn()/log_info() live in logging_utils.R. run_full_pipeline.R already source()s it
 # before any stage runs, so this guard only fires when the exporter is invoked directly
@@ -544,6 +545,28 @@ run_export_web_datasets <- function() {
     if (length(not_finished) > 0) min(not_finished) else max(weeks)
   })
   available_weeks <- sort(unique(as.integer(s26$week)))
+
+  # ----------------------------------------------------------------------------
+  # 1b. Gallery freshness rule (needs active_week, hence after section 3's derivation).
+  # Per-week PNGs (week<N>_*.png) are shown only for the active week; GIFs only if their
+  # cache/ file was modified within MEDIA_GIF_MAX_AGE_DAYS. Rule lives in
+  # web_media_filter.R. Excluded files are dropped from the index AND deleted from
+  # WEB_ANIM_DIR so the deployed bundle matches the index (assets contract test).
+  # ----------------------------------------------------------------------------
+  if (length(media_index) > 0L) {
+    media_names <- vapply(media_index, function(m) m$filename, character(1))
+    media_sel <- select_publishable_media(media_names,
+                                          file.mtime(file.path(CACHE_DIR, media_names)),
+                                          active_week, Sys.time(), MEDIA_GIF_MAX_AGE_DAYS)
+    for (k in which(!media_sel$keep)) {
+      log_info(sprintf("export_web_datasets: gallery excludes %s (%s)",
+                       media_sel$filename[k], media_sel$reason[k]))
+      stale_dest <- file.path(WEB_ANIM_DIR, media_sel$filename[k])
+      if (file.exists(stale_dest)) unlink(stale_dest)
+    }
+    media_index <- media_index[media_sel$keep]
+    write_json_clean(media_index, "visual_media_index.json")
+  }
 
   all_matchups_list <- list()
 
