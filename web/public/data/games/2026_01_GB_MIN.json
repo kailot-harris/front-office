@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-11-17T05:37:18Z",
+  "generated_at": "2026-11-17T14:05:28Z",
   "sport": "nfl",
   "endpoint": "game_detail",
   "season": 2026,
@@ -41,8 +41,8 @@
       {
         "key": "epa_per_play",
         "label": "EPA / Play",
-        "away_value": -0.11,
-        "home_value": 0.087,
+        "away_value": -0.12,
+        "home_value": 0.061,
         "unit": "epa",
         "higher_is_better": true,
         "description": "Expected Points Added per offensive play"
@@ -50,8 +50,8 @@
       {
         "key": "success_rate",
         "label": "Success Rate",
-        "away_value": 40.4,
-        "home_value": 42.9,
+        "away_value": 36,
+        "home_value": 40.5,
         "unit": "pct",
         "higher_is_better": true,
         "description": "Percentage of plays with positive Expected Points Added"
@@ -59,8 +59,8 @@
       {
         "key": "dropback_epa",
         "label": "Dropback EPA",
-        "away_value": -0.059,
-        "home_value": 0.233,
+        "away_value": -0.061,
+        "home_value": 0.222,
         "unit": "epa",
         "higher_is_better": true,
         "description": "Expected Points Added per dropback pass play"
@@ -68,8 +68,8 @@
       {
         "key": "rush_epa",
         "label": "Rush EPA",
-        "away_value": -0.164,
-        "home_value": -0.011,
+        "away_value": -0.184,
+        "home_value": -0.049,
         "unit": "epa",
         "higher_is_better": true,
         "description": "Expected Points Added per rushing play"
@@ -95,8 +95,8 @@
       {
         "key": "early_down_epa",
         "label": "Early Down EPA",
-        "away_value": 0.077,
-        "home_value": -0.234,
+        "away_value": 0.066,
+        "home_value": -0.183,
         "unit": "epa",
         "higher_is_better": true,
         "description": "Expected Points Added on 1st and 2nd downs"
@@ -251,7 +251,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 2,
-          "receiving_epa": 3.96
+          "receiving_epa": 3.31
         },
         {
           "playerId": "00-0034431",
@@ -315,7 +315,7 @@
           "passing_interceptions": 1,
           "sacks_suffered": 4,
           "sack_yards_lost": -34,
-          "passing_epa": -2.7,
+          "passing_epa": -2.78,
           "passing_cpoe": -9.65,
           "carries": 1,
           "rushing_yards": 0,
@@ -323,7 +323,7 @@
           "rushing_fumbles": 0,
           "rushing_fumbles_lost": 0,
           "rushing_first_downs": 0,
-          "rushing_epa": -4.35,
+          "rushing_epa": -3.16,
           "def_tackles_solo": 1,
           "def_tackle_assists": 0,
           "def_tackles_for_loss": 0,
@@ -435,7 +435,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 1,
-          "receiving_epa": 1
+          "receiving_epa": 0.83
         },
         {
           "playerId": "00-0037094",
@@ -491,7 +491,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 0,
-          "receiving_epa": -3.66
+          "receiving_epa": -2.6
         },
         {
           "playerId": "00-0038124",
@@ -507,7 +507,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 5,
-          "receiving_epa": 6.88
+          "receiving_epa": 6.03
         },
         {
           "playerId": "00-0038398",
@@ -554,7 +554,7 @@
           "rushing_fumbles": 0,
           "rushing_fumbles_lost": 0,
           "rushing_first_downs": 1,
-          "rushing_epa": -0.82,
+          "rushing_epa": -0.47,
           "receptions": 0,
           "targets": 1,
           "receiving_yards": 0,
@@ -562,7 +562,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 0,
-          "receiving_epa": -0.91
+          "receiving_epa": -0.71
         },
         {
           "playerId": "00-0038996",
@@ -578,7 +578,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 3,
-          "receiving_epa": 1.8
+          "receiving_epa": 1.37
         },
         {
           "playerId": "00-0039112",
@@ -610,7 +610,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 1,
-          "receiving_epa": -1.2
+          "receiving_epa": -1.42
         },
         {
           "playerId": "00-0039272",
@@ -633,7 +633,7 @@
           "rushing_fumbles": 0,
           "rushing_fumbles_lost": 0,
           "rushing_first_downs": 2,
-          "rushing_epa": -3.84,
+          "rushing_epa": -3.34,
           "receptions": 0,
           "targets": 1,
           "receiving_yards": 0,
@@ -641,7 +641,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 0,
-          "receiving_epa": -0.51
+          "receiving_epa": -0.44
         },
         {
           "playerId": "00-0039813",
@@ -753,7 +753,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 4,
-          "receiving_epa": 0.76
+          "receiving_epa": -0.51
         },
         {
           "playerId": "00-0040869",
@@ -880,7 +880,7 @@
           "passing_interceptions": 0,
           "sacks_suffered": 3,
           "sack_yards_lost": -19,
-          "passing_epa": 4.99,
+          "passing_epa": 5.1,
           "passing_cpoe": -7.26,
           "carries": 5,
           "rushing_yards": -1,
@@ -888,7 +888,7 @@
           "rushing_fumbles": 0,
           "rushing_fumbles_lost": 0,
           "rushing_first_downs": 1,
-          "rushing_epa": 0.05
+          "rushing_epa": -0.07
         },
         {
           "playerId": "00-0033293",
@@ -903,7 +903,7 @@
           "rushing_fumbles": 0,
           "rushing_fumbles_lost": 0,
           "rushing_first_downs": 3,
-          "rushing_epa": -1.05,
+          "rushing_epa": -0.77,
           "receptions": 0,
           "targets": 1,
           "receiving_yards": 0,
@@ -911,7 +911,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 0,
-          "receiving_epa": -0.88
+          "receiving_epa": -0.68
         },
         {
           "playerId": "00-0033336",
@@ -951,7 +951,7 @@
           "passing_interceptions": 1,
           "sacks_suffered": 0,
           "sack_yards_lost": 0,
-          "passing_epa": -4.47,
+          "passing_epa": -3.38,
           "passing_cpoe": 6.36,
           "carries": 2,
           "rushing_yards": 9,
@@ -959,7 +959,7 @@
           "rushing_fumbles": 0,
           "rushing_fumbles_lost": 0,
           "rushing_first_downs": 0,
-          "rushing_epa": 2.29
+          "rushing_epa": 1.73
         },
         {
           "playerId": "00-0035229",
@@ -975,7 +975,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 2,
-          "receiving_epa": 3.17,
+          "receiving_epa": 2.82,
           "def_tackles_solo": 1,
           "def_tackle_assists": 0,
           "def_tackles_for_loss": 0,
@@ -1015,7 +1015,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 1,
-          "receiving_epa": -0.03
+          "receiving_epa": 0.02
         },
         {
           "playerId": "00-0035272",
@@ -1095,7 +1095,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 0,
-          "receiving_epa": -4.07
+          "receiving_epa": -3.08
         },
         {
           "playerId": "00-0036322",
@@ -1111,7 +1111,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 5,
-          "receiving_epa": 12.5
+          "receiving_epa": 10.69
         },
         {
           "playerId": "00-0036347",
@@ -1151,7 +1151,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 0,
-          "receiving_epa": -1.63,
+          "receiving_epa": -1.24,
           "def_tackles_solo": 1,
           "def_tackle_assists": 0,
           "def_tackles_for_loss": 0,
@@ -1190,7 +1190,7 @@
           "rushing_fumbles": 0,
           "rushing_fumbles_lost": 0,
           "rushing_first_downs": 2,
-          "rushing_epa": -2.97
+          "rushing_epa": -2.61
         },
         {
           "playerId": "00-0038778",
@@ -1238,7 +1238,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 0,
-          "receiving_epa": -3.28
+          "receiving_epa": -2.73
         },
         {
           "playerId": "00-0039404",
@@ -1463,13 +1463,13 @@
           {
             "feature": "diff_raw",
             "label": "Overall EPA/Play Differential",
-            "value": 25.628,
+            "value": 25.629,
             "shap_value": 0
           },
           {
             "feature": "diff_prior",
             "label": "Pre-Season Baseline Differential",
-            "value": 25.628,
+            "value": 25.629,
             "shap_value": 0
           },
           {
@@ -1541,7 +1541,7 @@
           "metric_label": "EPA / Play",
           "team_abbr": "GB",
           "entering_baseline": null,
-          "realized_value": -0.11,
+          "realized_value": -0.12,
           "delta": null,
           "prior_games_n": 0,
           "is_low_sample": true
@@ -1551,7 +1551,7 @@
           "metric_label": "Success Rate",
           "team_abbr": "GB",
           "entering_baseline": null,
-          "realized_value": 40.449,
+          "realized_value": 35.955,
           "delta": null,
           "prior_games_n": 0,
           "is_low_sample": true
@@ -1561,7 +1561,7 @@
           "metric_label": "Dropback EPA",
           "team_abbr": "GB",
           "entering_baseline": null,
-          "realized_value": -0.059,
+          "realized_value": -0.061,
           "delta": null,
           "prior_games_n": 0,
           "is_low_sample": true
@@ -1571,7 +1571,7 @@
           "metric_label": "Rush EPA",
           "team_abbr": "GB",
           "entering_baseline": null,
-          "realized_value": -0.164,
+          "realized_value": -0.184,
           "delta": null,
           "prior_games_n": 0,
           "is_low_sample": true
@@ -1591,7 +1591,7 @@
           "metric_label": "EPA / Play",
           "team_abbr": "MIN",
           "entering_baseline": null,
-          "realized_value": 0.087,
+          "realized_value": 0.061,
           "delta": null,
           "prior_games_n": 0,
           "is_low_sample": true
@@ -1601,7 +1601,7 @@
           "metric_label": "Success Rate",
           "team_abbr": "MIN",
           "entering_baseline": null,
-          "realized_value": 42.857,
+          "realized_value": 40.476,
           "delta": null,
           "prior_games_n": 0,
           "is_low_sample": true
@@ -1611,7 +1611,7 @@
           "metric_label": "Dropback EPA",
           "team_abbr": "MIN",
           "entering_baseline": null,
-          "realized_value": 0.233,
+          "realized_value": 0.222,
           "delta": null,
           "prior_games_n": 0,
           "is_low_sample": true
@@ -1621,7 +1621,7 @@
           "metric_label": "Rush EPA",
           "team_abbr": "MIN",
           "entering_baseline": null,
-          "realized_value": -0.011,
+          "realized_value": -0.049,
           "delta": null,
           "prior_games_n": 0,
           "is_low_sample": true
