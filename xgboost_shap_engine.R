@@ -249,15 +249,19 @@ train_deterministic_xgboost <- function(x_train, y_train, seed = 42L) {
 #'
 #' @param target_season Integer target season (default CURRENT_SEASON).
 #' @param force_retrain Logical. If TRUE, retrains even if model cache exists.
+#' @param pred_log_path Character path to prediction accuracy log RDS.
+#' @param schedules_path Character path to schedules cache RDS.
 #' @return Logical TRUE on success.
 run_xgboost_shap_engine <- function(target_season = if (exists("CURRENT_SEASON")) CURRENT_SEASON else 2026L,
-                                    force_retrain = FALSE) {
+                                    force_retrain = FALSE,
+                                    pred_log_path = if (exists("CACHE_PREDICTION_ACCURACY_LOG")) CACHE_PREDICTION_ACCURACY_LOG else "cache/prediction_accuracy_log.rds",
+                                    schedules_path = if (exists("CACHE_SCHEDULES")) CACHE_SCHEDULES else "cache/schedules_cache.rds") {
   log_info(sprintf("Starting XGBoost Feature Fusion & TreeSHAP Engine for season %d...", target_season),
            call = "run_xgboost_shap_engine()")
 
   # 1. Load data sources
-  pred_log <- if (file.exists(CACHE_PREDICTION_ACCURACY_LOG)) readRDS(CACHE_PREDICTION_ACCURACY_LOG) else data.frame()
-  schedules <- if (file.exists(CACHE_SCHEDULES)) readRDS(CACHE_SCHEDULES) else data.frame()
+  pred_log <- if (file.exists(pred_log_path)) readRDS(pred_log_path) else data.frame()
+  schedules <- if (file.exists(schedules_path)) readRDS(schedules_path) else data.frame()
   epa_df <- if (file.exists(CACHE_EPA_METRICS)) readRDS(CACHE_EPA_METRICS) else data.frame()
   fatigue_df <- if (file.exists(CACHE_FATIGUE_METRICS)) readRDS(CACHE_FATIGUE_METRICS) else data.frame()
 
@@ -289,6 +293,7 @@ run_xgboost_shap_engine <- function(target_season = if (exists("CURRENT_SEASON")
     x_train <- build_xgboost_feature_matrix(hist_games, epa_df, fatigue_df)
 
     model <- train_deterministic_xgboost(x_train, y_train, seed = 42L)
+    dir.create(dirname(CACHE_XGBOOST_MODEL), recursive = TRUE, showWarnings = FALSE)
     saveRDS(model, CACHE_XGBOOST_MODEL)
     log_info(sprintf("Trained and saved XGBoost model to %s (N=%d games).", CACHE_XGBOOST_MODEL, nrow(hist_games)),
              call = "run_xgboost_shap_engine()")
@@ -411,6 +416,7 @@ run_xgboost_shap_engine <- function(target_season = if (exists("CURRENT_SEASON")
     games              = game_shap_list
   )
 
+  dir.create(dirname(CACHE_XGBOOST_SHAP), recursive = TRUE, showWarnings = FALSE)
   saveRDS(shap_payload, CACHE_XGBOOST_SHAP)
   log_info(sprintf("Persisted TreeSHAP explanations for %d games to %s.",
                    length(game_shap_list), CACHE_XGBOOST_SHAP),

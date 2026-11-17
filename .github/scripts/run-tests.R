@@ -52,6 +52,13 @@ for (i in seq_along(tests)) {
   results$passed[[i]] <- sum(grepl("^\\s*\\[PASS\\]", out))
   results$failed[[i]] <- sum(grepl("^\\s*\\[FAIL\\]", out))
   results$skipped[[i]] <- sum(grepl("^\\s*\\[SKIP\\]", out))
+
+  # If the test script exited non-zero without printing any [FAIL] line,
+  # count at least one failure so a crashed file is reflected in the count
+  # and "0 failed" cannot appear beside an exited non-zero test file.
+  if (results$status[[i]] != 0L && results$failed[[i]] == 0L) {
+    results$failed[[i]] <- 1L
+  }
 }
 
 failed_files <- results[results$status != 0L | results$failed > 0L, , drop = FALSE]

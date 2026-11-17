@@ -46,6 +46,37 @@ source("prediction_accuracy_logger.R")
 
 .LOG_SCRIPT <- "backfill_prediction_log.R"
 
+#' Merge new backfill rows with existing prediction log, preserving genuine pregame predictions
+#'
+#' @param existing_log data.frame Existing log (or NULL).
+#' @param backfill_df data.frame Newly computed backfill rows.
+#' @param season integer Target season.
+#' @return data.frame Merged log.
+#' @export
+merge_with_existing_log <- function(existing_log, backfill_df, season = 2026L) {
+  if (is.null(existing_log) || nrow(existing_log) == 0L) {
+    return(backfill_df)
+  }
+
+  # Isolate existing genuine pregame rows
+  if ("log_source" %in% names(existing_log)) {
+    pregame_rows <- existing_log |> filter(log_source == "LOGGED_PREGAME")
+    if (nrow(pregame_rows) > 0L) {
+      log_info(sprintf("Preserving %d existing LOGGED_PREGAME row(s) untouched.", nrow(pregame_rows)),
+               script = .LOG_SCRIPT)
+      # Exclude any games already logged pregame
+      clean_backfill <- backfill_df |> filter(!game_id %in% pregame_rows$game_id)
+      # Also preserve other seasons' rows if any
+      other_rows <- existing_log |> filter(log_source != "LOGGED_PREGAME", season != !!season)
+      return(bind_rows(pregame_rows, other_rows, clean_backfill))
+    }
+  }
+
+  # No LOGGED_PREGAME rows; replace any prior backtest for target season
+  other_rows <- existing_log |> filter(season != !!season)
+  bind_rows(other_rows, backfill_df)
+}
+
 #' Backfill Prediction Accuracy Log for Completed Games
 #'
 #' Evaluates completed games for the target season walk-forward, computing
@@ -284,25 +315,7 @@ backfill_prediction_log <- function(
     NULL
   }
 
-  final_log <- if (!is.null(existing_log) && nrow(existing_log) > 0) {
-    # Isolate existing genuine pregame rows
-    pregame_rows <- existing_log |> filter(log_source == "LOGGED_PREGAME")
-    if (nrow(pregame_rows) > 0) {
-      log_info(sprintf("Preserving %d existing LOGGED_PREGAME row(s) untouched.", nrow(pregame_rows)),
-               script = .LOG_SCRIPT)
-      # Exclude any games already logged pregame
-      clean_backfill <- backfill_df |> filter(!game_id %in% pregame_rows$game_id)
-      # Also preserve other seasons' rows if any
-      other_rows <- existing_log |> filter(log_source != "LOGGED_PREGAME", season != !!season)
-      bind_rows(pregame_rows, other_rows, clean_backfill)
-    } else {
-      # No LOGGED_PREGAME rows; replace any prior backtest for target season
-      other_rows <- existing_log |> filter(season != !!season)
-      bind_rows(other_rows, backfill_df)
-    }
-  } else {
-    backfill_df
-  }
+  final_log <- merge_with_existing_log(existing_log, backfill_df, season = as.integer(season))
 
   saveRDS(final_log, log_path)
   log_info(sprintf("Successfully persisted %d rows to %s (%d backfilled for season %d).",

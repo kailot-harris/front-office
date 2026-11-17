@@ -38,6 +38,7 @@ root_dir <- if (file.exists("config.R")) {
 source(file.path(root_dir, "config.R"))
 source(file.path(root_dir, "tools", "forecast_engine.R"))
 source(file.path(root_dir, "tools", "backfill_prediction_log.R"))
+source(file.path(root_dir, "tests", "helpers", "test_fixtures.R"))
 
 failures <- 0L
 ok <- function(label, cond, detail = NULL) {
@@ -52,18 +53,17 @@ ok <- function(label, cond, detail = NULL) {
 tol <- 1e-6
 
 # ------------------------------------------------------------------------------
-# Test 1: CACHE_PREDICTION_ACCURACY_LOG exists with 145 backfilled games
+# Test 1: Prediction accuracy log exists with 145 backfilled games
 # ------------------------------------------------------------------------------
-# cache/prediction_accuracy_log.rds is gitignored pipeline state, so a fresh checkout (CI) does
-# not have it. Tests that read it are skipped there and say so; they run wherever the pipeline has run.
-have_log <- file.exists(CACHE_PREDICTION_ACCURACY_LOG)
-if (!have_log) cat("[SKIP] BFP-1 to BFP-5 skipped: cache/prediction_accuracy_log.rds is not in this checkout\n")
+log_path <- get_prediction_log_path(root_dir)
+have_log <- !is.null(log_path)
+if (!have_log) cat("[SKIP] BFP-1 to BFP-5 skipped: prediction accuracy log is not available in cache/ or tests/fixtures/\n")
 if (have_log) test_that("BFP-1 Prediction accuracy log contains 145 completed 2026 games with BACKTEST_PREWEEK", {
-  cond_file <- file.exists(CACHE_PREDICTION_ACCURACY_LOG)
-  ok("BFP-1a CACHE_PREDICTION_ACCURACY_LOG exists on disk", cond_file, CACHE_PREDICTION_ACCURACY_LOG)
+  cond_file <- file.exists(log_path)
+  ok("BFP-1a Prediction accuracy log exists on disk", cond_file, log_path)
   expect_true(cond_file)
 
-  log_df <- readRDS(CACHE_PREDICTION_ACCURACY_LOG)
+  log_df <- readRDS(log_path)
   backtest_26 <- log_df |> filter(season == 2026L, log_source == "BACKTEST_PREWEEK")
 
   cond_count <- nrow(backtest_26) == 145L
@@ -76,7 +76,7 @@ if (have_log) test_that("BFP-1 Prediction accuracy log contains 145 completed 20
 # Test 2: Required columns completeness
 # ------------------------------------------------------------------------------
 if (have_log) test_that("BFP-2 All required schema columns exist in backfilled records", {
-  log_df <- readRDS(CACHE_PREDICTION_ACCURACY_LOG)
+  log_df <- readRDS(log_path)
   required_cols <- c(
     "game_id", "season", "week", "gameday", "away_team", "home_team",
     "log_source", "logged_at", "projected_margin", "home_win_prob", "away_win_prob",
@@ -99,7 +99,7 @@ if (have_log) test_that("BFP-2 All required schema columns exist in backfilled r
 # Test 3: Non-zero entering power ratings
 # ------------------------------------------------------------------------------
 if (have_log) test_that("BFP-3 Non-zero entering power ratings across all 145 backfilled games", {
-  log_df <- readRDS(CACHE_PREDICTION_ACCURACY_LOG)
+  log_df <- readRDS(log_path)
   b26 <- log_df |> filter(season == 2026L, log_source == "BACKTEST_PREWEEK")
 
   cond_no_na <- all(!is.na(b26$home_power_rating)) && all(!is.na(b26$away_power_rating))
@@ -121,7 +121,7 @@ if (have_log) test_that("BFP-3 Non-zero entering power ratings across all 145 ba
 # Test 4: Points waterfall step integrity
 # ------------------------------------------------------------------------------
 if (have_log) test_that("BFP-4 Points waterfall steps sum to projected margin with rounding <= 0.02", {
-  log_df <- readRDS(CACHE_PREDICTION_ACCURACY_LOG)
+  log_df <- readRDS(log_path)
   b26 <- log_df |> filter(season == 2026L, log_source == "BACKTEST_PREWEEK")
 
   sum_five <- b26$step_current_epa + b26$step_prior_epa + b26$step_elo_diff +
@@ -144,7 +144,7 @@ if (have_log) test_that("BFP-4 Points waterfall steps sum to projected margin wi
 # Test 5: Model accuracy and Brier score reconciliation per D1
 # ------------------------------------------------------------------------------
 if (have_log) test_that("BFP-5 Walk-forward backtest matches Variant 1 benchmark (89/145 = 61.4%, Brier = 0.2242)", {
-  log_df <- readRDS(CACHE_PREDICTION_ACCURACY_LOG)
+  log_df <- readRDS(log_path)
   b26 <- log_df |> filter(season == 2026L, log_source == "BACKTEST_PREWEEK")
 
   n_games <- nrow(b26)
@@ -209,7 +209,7 @@ test_that("BFP-7 model_diagnostics.json strictly separates genuine pregame and b
   # Genuine pregame block on Day 1: n_games = 0, accuracy = null
   gen <- diag$genuine_pregame
   cond_gen_count <- gen$n_games == 0L
-  cond_gen_acc <- is.null(gen$accuracy) || is.na(gen$accuracy)
+  cond_gen_acc <- is.null(gen$accuracy) || length(gen$accuracy) == 0L || (is.atomic(gen$accuracy) && is.na(gen$accuracy))
 
   ok("BFP-7c genuine_pregame starts with n_games = 0 and accuracy = null",
      cond_gen_count && cond_gen_acc,
@@ -234,9 +234,7 @@ test_that("BFP-7 model_diagnostics.json strictly separates genuine pregame and b
 # ------------------------------------------------------------------------------
 # Test 8: Immutability gate — LOGGED_PREGAME rows preserved across backfill runs
 # ------------------------------------------------------------------------------
-if (!file.exists(CACHE_SCHEDULES)) {
-  cat("[SKIP] BFP-8 skipped: cache/schedules_cache.rds is not in this checkout\n")
-} else test_that("BFP-8 backfill preserves existing LOGGED_PREGAME rows permanently", {
+test_that("BFP-8 backfill preserves existing LOGGED_PREGAME rows permanently", {
   temp_log <- file.path(tempdir(), "test_immutability_log.rds")
   on.exit(if (file.exists(temp_log)) unlink(temp_log), add = TRUE)
 
@@ -293,8 +291,16 @@ if (!file.exists(CACHE_SCHEDULES)) {
   )
   saveRDS(fake_pregame, temp_log)
 
-  # Run backfill targeting this temp log
-  backfill_prediction_log(log_path = temp_log)
+  if (file.exists(CACHE_SCHEDULES)) {
+    # Full end-to-end backfill run on machines with live pipeline caches
+    backfill_prediction_log(log_path = temp_log)
+  } else {
+    # Offline fixture path in CI: merge fake_pregame with fixture backtest rows
+    fixture_log <- readRDS(log_path)
+    fixture_backtest <- fixture_log |> filter(log_source == "BACKTEST_PREWEEK")
+    merged <- merge_with_existing_log(fake_pregame, fixture_backtest, season = 2026L)
+    saveRDS(merged, temp_log)
+  }
 
   merged_log <- readRDS(temp_log)
   pregame_after <- merged_log |> filter(log_source == "LOGGED_PREGAME")

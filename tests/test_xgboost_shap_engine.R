@@ -31,6 +31,11 @@ root_dir <- if (file.exists("config.R")) {
 source(file.path(root_dir, "config.R"))
 source(file.path(root_dir, "xgboost_shap_engine.R"))
 
+fixtures_helper <- file.path(root_dir, "tests", "helpers", "test_fixtures.R")
+if (file.exists(fixtures_helper)) {
+  source(fixtures_helper)
+}
+
 test_failures <- 0L
 ok <- function(label, expr, detail = "") {
   res <- tryCatch(isTRUE(expr), error = function(e) FALSE)
@@ -156,10 +161,21 @@ test_that("XGB-5: Determinism with fixed seed (42) and nthread = 1", {
 # ------------------------------------------------------------------------------
 # Test 5: End-to-End Pipeline Execution
 # ------------------------------------------------------------------------------
-if (!file.exists(CACHE_SCHEDULES)) {
-  cat("[SKIP] XGB-6 skipped: cache/schedules_cache.rds is not in this checkout\n")
+have_sched <- file.exists(CACHE_SCHEDULES) ||
+  (exists("get_schedules_path") && !is.null(get_schedules_path(root_dir)))
+
+if (!have_sched) {
+  cat("[SKIP] XGB-6 skipped: schedules data/fixture not found\n")
 } else test_that("XGB-6: End-to-end execution produces valid CACHE_XGBOOST_SHAP payload", {
-  res <- run_xgboost_shap_engine(target_season = 2026L, force_retrain = TRUE)
+  sched_path <- if (file.exists(CACHE_SCHEDULES)) CACHE_SCHEDULES else get_schedules_path(root_dir)
+  pred_path <- if (file.exists(CACHE_PREDICTION_ACCURACY_LOG)) CACHE_PREDICTION_ACCURACY_LOG else get_prediction_log_path(root_dir)
+
+  res <- run_xgboost_shap_engine(
+    target_season = 2026L,
+    force_retrain = TRUE,
+    pred_log_path = pred_path,
+    schedules_path = sched_path
+  )
   ok("XGB-6a run_xgboost_shap_engine returns TRUE", isTRUE(res), "Success")
 
   ok("XGB-6b CACHE_XGBOOST_SHAP file created on disk",

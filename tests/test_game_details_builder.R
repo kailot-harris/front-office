@@ -15,6 +15,7 @@ suppressWarnings(suppressPackageStartupMessages({
 
 source("config.R")
 source("tools/game_details_builder.R")
+source("tests/helpers/test_fixtures.R")
 
 failures <- 0L
 ok <- function(label, cond, detail = NULL) {
@@ -31,25 +32,62 @@ cat("=== NFL Analytics Game Details Builder Tests ===\n\n")
 # ------------------------------------------------------------------------------
 # Test 1: Run builder and verify output files exist
 # ------------------------------------------------------------------------------
-# build_game_details() reads gitignored pipeline caches. A fresh checkout (CI) has none, so the
-# whole file is skipped there and says so; it runs wherever the pipeline has run.
-if (!file.exists(CACHE_SCHEDULES)) {
-  cat("[SKIP] game details builder tests skipped: cache/schedules_cache.rds is not in this checkout\n")
+# build_game_details() reads gitignored pipeline caches. When caches are absent
+# (e.g. fresh clone / CI), committed test fixtures under tests/fixtures/ are used.
+root_dir <- if (file.exists("config.R")) getwd() else if (file.exists("../config.R")) normalizePath("..", winslash = "/") else getwd()
+fixture <- get_game_details_fixture(root_dir)
+pred_log_path <- get_prediction_log_path(root_dir)
+pred_log_fixture <- if (!is.null(pred_log_path)) readRDS(pred_log_path) else NULL
+use_caches <- file.exists(CACHE_SCHEDULES)
+have_data <- use_caches || !is.null(fixture)
+
+if (!have_data) {
+  cat("[SKIP] game details builder tests skipped: cache/schedules_cache.rds and tests/fixtures/game_details_fixture.rds are absent\n")
   quit(status = 0L)
 }
+
+test_games_dir <- file.path(tempdir(), "test_game_details_output")
+if (dir.exists(test_games_dir)) unlink(test_games_dir, recursive = TRUE)
+dir.create(test_games_dir, recursive = TRUE, showWarnings = FALSE)
+on.exit(if (dir.exists(test_games_dir)) unlink(test_games_dir, recursive = TRUE), add = TRUE)
+
 cat("--- Section 1: Builder execution and file generation ---\n")
-initial_run <- build_game_details()
+initial_run <- if (use_caches) {
+  build_game_details(out_dir = test_games_dir)
+} else {
+  build_game_details(
+    out_dir              = test_games_dir,
+    sched_df_override    = fixture$schedules,
+    ts_df_override       = fixture$team_stats,
+    ps_df_override       = fixture$player_stats,
+    sc_df_override       = fixture$snap_counts,
+    ros_df_override      = fixture$rosters,
+    pred_log_df_override = pred_log_fixture
+  )
+}
 ok("BUILD-1 Initial build completed", is.list(initial_run))
 
-game_files <- list.files(WEB_GAMES_DIR, pattern = "\\.json$", full.names = TRUE)
+game_files <- list.files(test_games_dir, pattern = "\\.json$", full.names = TRUE)
 ok("BUILD-2 Game detail JSON files produced", length(game_files) > 0L,
-   sprintf("%d files in %s", length(game_files), WEB_GAMES_DIR))
+   sprintf("%d files in %s", length(game_files), test_games_dir))
 
 # ------------------------------------------------------------------------------
 # Test 2: Idempotency & churn control (0 rewrites on consecutive run)
 # ------------------------------------------------------------------------------
 cat("\n--- Section 2: Idempotency and Churn Control ---\n")
-second_run <- build_game_details()
+second_run <- if (use_caches) {
+  build_game_details(out_dir = test_games_dir)
+} else {
+  build_game_details(
+    out_dir              = test_games_dir,
+    sched_df_override    = fixture$schedules,
+    ts_df_override       = fixture$team_stats,
+    ps_df_override       = fixture$player_stats,
+    sc_df_override       = fixture$snap_counts,
+    ros_df_override      = fixture$rosters,
+    pred_log_df_override = pred_log_fixture
+  )
+}
 ok("IDEMP-1 Running builder consecutively writes exactly 0 files",
    identical(as.integer(second_run$written), 0L),
    sprintf("written: %d, unchanged: %d, skipped: %d",
@@ -129,8 +167,9 @@ ok("SCHEMA-7 Efficiency factors conform to 8-metric definition",
 # Test 4: Full player-to-team counting stat reconciliation across all game files
 # ------------------------------------------------------------------------------
 cat("\n--- Section 4: Player-to-Team Exact Counting Stat Reconciliation ---\n")
-if (file.exists(CACHE_TEAM_STATS)) {
-  ts_df <- readRDS(CACHE_TEAM_STATS)
+have_ts <- file.exists(CACHE_TEAM_STATS) || (!is.null(fixture) && !is.null(fixture$team_stats))
+if (have_ts) {
+  ts_df <- if (file.exists(CACHE_TEAM_STATS)) readRDS(CACHE_TEAM_STATS) else fixture$team_stats
 
   reconcile_stats <- c(
     "completions", "attempts", "passing_yards", "passing_tds", "passing_interceptions",
@@ -254,14 +293,18 @@ drift_test_dir <- file.path(tempdir(), "nfl_test_game_drift")
 dir.create(drift_test_dir, recursive = TRUE, showWarnings = FALSE)
 
 # 1. Select a completed game (e.g. Week 1)
-test_sched <- readRDS(CACHE_SCHEDULES) |> filter(season == CURRENT_SEASON)
+test_sched <- if (use_caches) {
+  readRDS(CACHE_SCHEDULES) |> filter(season == CURRENT_SEASON)
+} else {
+  fixture$schedules |> filter(season == CURRENT_SEASON)
+}
 test_completed <- test_sched |> filter(!is.na(home_score), !is.na(away_score))
 target_game <- test_completed[1, ]
 target_gid <- as.character(target_game$game_id)
 target_file <- file.path(drift_test_dir, sprintf("%s.json", target_gid))
 
-# Copy existing file into test directory
-orig_file <- file.path(WEB_GAMES_DIR, sprintf("%s.json", target_gid))
+# Copy existing test file into drift test directory
+orig_file <- file.path(test_games_dir, sprintf("%s.json", target_gid))
 file.copy(orig_file, target_file, overwrite = TRUE)
 
 ok("DRIFT-1 Existing game file staged in test directory",
@@ -272,13 +315,23 @@ ok("DRIFT-1 Existing game file staged in test directory",
 env_before <- fromJSON(target_file, simplifyVector = FALSE)
 score_before <- env_before$data$home_team$score
 
+target_ts <- if (!use_caches) fixture$team_stats |> filter(game_id == target_gid) else NULL
+target_ps <- if (!use_caches) fixture$player_stats |> filter(game_id == target_gid) else NULL
+target_sc <- if (!use_caches) fixture$snap_counts |> filter(game_id == target_gid) else NULL
+target_ros <- if (!use_caches) fixture$rosters else NULL
+
 # Repeat run with unchanged game: assert evaluated and marked unchanged, written = 0
 simulated_today <- as.Date(target_game$gameday) + 30
 repeat_drift <- build_game_details(
   force = FALSE,
   out_dir = drift_test_dir,
   today_date = simulated_today,
-  sched_df_override = target_game
+  sched_df_override = target_game,
+  ts_df_override = target_ts,
+  ps_df_override = target_ps,
+  sc_df_override = target_sc,
+  ros_df_override = target_ros,
+  pred_log_df_override = pred_log_fixture
 )
 
 ok("DRIFT-2 Unchanged input evaluates game but writes 0 files",
@@ -295,7 +348,12 @@ rebuild_drift <- build_game_details(
   force = FALSE,
   out_dir = drift_test_dir,
   today_date = simulated_today,
-  sched_df_override = modified_game
+  sched_df_override = modified_game,
+  ts_df_override = target_ts,
+  ps_df_override = target_ps,
+  sc_df_override = target_sc,
+  ros_df_override = target_ros,
+  pred_log_df_override = pred_log_fixture
 )
 
 ok("DRIFT-3 Modified input row triggers automatic rebuild",
@@ -355,6 +413,11 @@ rebuild_slate <- build_game_details(
   out_dir = drift_test_dir,
   today_date = simulated_today,
   sched_df_override = modified_game,
+  ts_df_override = target_ts,
+  ps_df_override = target_ps,
+  sc_df_override = target_sc,
+  ros_df_override = target_ros,
+  pred_log_df_override = pred_log_fixture,
   matchups_path = temp_matchups_path
 )
 

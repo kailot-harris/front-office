@@ -785,7 +785,14 @@ if (!dir.exists(WEB_GAMES_DIR)) {
         for (col in stat_cols) {
           o_val <- if (!is.null(o_p[[col]])) o_p[[col]] else 0
           n_val <- if (!is.null(p[[col]])) p[[col]] else 0
-          if (!identical(o_val, n_val)) {
+          o_num <- suppressWarnings(as.numeric(o_val))
+          n_num <- suppressWarnings(as.numeric(n_val))
+          diff_detected <- if (!is.na(o_num) && !is.na(n_num)) {
+            abs(o_num - n_num) > 1e-6
+          } else {
+            !identical(o_val, n_val)
+          }
+          if (diff_detected) {
             p_label <- if (!is.null(p$playerName)) p$playerName else pid
             changes <- c(changes, sprintf("player_stat:%s[%s] (%s -> %s)", col, p_label, o_val, n_val))
           }
@@ -819,6 +826,8 @@ build_game_details <- function(force = FALSE,
                                ts_df_override = NULL,
                                ps_df_override = NULL,
                                sc_df_override = NULL,
+                               ros_df_override = NULL,
+                               pred_log_df_override = NULL,
                                matchups_path = WEB_JSON_MATCHUPS_CURRENT_WEEK,
                                matchups_list = NULL) {
   log_info("Starting game details JSON builder...", call = "build_game_details()")
@@ -840,14 +849,16 @@ build_game_details <- function(force = FALSE,
   ts_df <- if (!is.null(ts_df_override)) ts_df_override else if (file.exists(CACHE_TEAM_STATS)) readRDS(CACHE_TEAM_STATS) else NULL
   ps_df <- if (!is.null(ps_df_override)) ps_df_override else if (file.exists(CACHE_PLAYER_STATS)) readRDS(CACHE_PLAYER_STATS) else NULL
   sc_df <- if (!is.null(sc_df_override)) sc_df_override else if (file.exists(CACHE_SNAP_COUNTS)) readRDS(CACHE_SNAP_COUNTS) else NULL
-  ros_df <- if (file.exists(CACHE_ROSTERS)) readRDS(CACHE_ROSTERS) else NULL
+  ros_df <- if (!is.null(ros_df_override)) ros_df_override else if (file.exists(CACHE_ROSTERS)) readRDS(CACHE_ROSTERS) else NULL
   inj_df <- if (file.exists(CACHE_INJURY_DATA)) readRDS(CACHE_INJURY_DATA) else NULL
 
   # Load PBP cache if available for efficiency factors
   pbp_df <- if (file.exists(CACHE_PBP)) readRDS(CACHE_PBP) else NULL
 
   # Load explainability and attribution caches
-  pred_log_df <- if (file.exists(CACHE_PREDICTION_ACCURACY_LOG)) {
+  pred_log_df <- if (!is.null(pred_log_df_override)) {
+    pred_log_df_override
+  } else if (file.exists(CACHE_PREDICTION_ACCURACY_LOG)) {
     tryCatch(readRDS(CACHE_PREDICTION_ACCURACY_LOG), error = function(e) NULL)
   } else NULL
   shap_df <- if (file.exists(CACHE_XGBOOST_SHAP)) {
