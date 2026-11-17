@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-11-15T20:46:44Z",
+  "generated_at": "2026-11-17T14:04:24Z",
   "sport": "nba",
   "endpoint": "game_detail",
   "season": 2027,
@@ -48,7 +48,7 @@
         "key": "tov_pct",
         "label": "Turnover %",
         "away_value": 13.5,
-        "home_value": 14.5,
+        "home_value": 13.8,
         "unit": "pct",
         "higher_is_better": false,
         "description": "Share of possessions ending in a turnover using total turnovers: 100 * TotalTOV / (FGA + 0.44 * FTA + TotalTOV)."
@@ -74,8 +74,8 @@
       {
         "key": "ortg",
         "label": "Offensive Rating",
-        "away_value": 114.1,
-        "home_value": 126.3,
+        "away_value": 114.6,
+        "home_value": 126.9,
         "unit": "per100poss",
         "higher_is_better": true,
         "description": "Points scored per 100 estimated Dean Oliver possessions: 100 * PTS / Poss."
@@ -83,8 +83,8 @@
       {
         "key": "drtg",
         "label": "Defensive Rating",
-        "away_value": 126.3,
-        "home_value": 114.1,
+        "away_value": 126.9,
+        "home_value": 114.6,
         "unit": "per100poss",
         "higher_is_better": false,
         "description": "Points allowed per 100 estimated Dean Oliver possessions (equals opponent Offensive Rating)."
@@ -92,8 +92,8 @@
       {
         "key": "pace",
         "label": "Pace",
-        "away_value": 98.2,
-        "home_value": 98.2,
+        "away_value": 97.7,
+        "home_value": 97.7,
         "unit": "poss48",
         "higher_is_better": null,
         "description": "Estimated Dean Oliver possessions per 48 minutes: 48 * Poss / game_minutes."
@@ -116,7 +116,7 @@
         "key": "turnover_points",
         "label": "Points Off Turnovers",
         "away_value": 20,
-        "home_value": 21
+        "home_value": 17
       },
       {
         "key": "bench_points",
@@ -174,10 +174,10 @@
         "pf": 16,
         "efg_pct": 59.8,
         "ts_pct": 62.3,
-        "possessions_est": 98.2,
-        "ortg": 114.1,
-        "drtg": 126.3,
-        "pace": 98.2
+        "possessions_est": 97.7,
+        "ortg": 114.6,
+        "drtg": 126.9,
+        "pace": 97.7
       },
       "home_totals": {
         "minutes": 240,
@@ -197,16 +197,16 @@
         "ast": 29,
         "stl": 9,
         "blk": 3,
-        "tov": 14,
+        "tov": 13,
         "team_tov": 3,
-        "total_tov": 17,
+        "total_tov": 16,
         "pf": 16,
         "efg_pct": 59.7,
         "ts_pct": 62,
-        "possessions_est": 98.2,
-        "ortg": 126.3,
-        "drtg": 114.1,
-        "pace": 98.2
+        "possessions_est": 97.7,
+        "ortg": 126.9,
+        "drtg": 114.6,
+        "pace": 97.7
       },
       "away_players": [
         {
@@ -722,7 +722,7 @@
           "ast": 9,
           "stl": 0,
           "blk": 0,
-          "tov": 3,
+          "tov": 2,
           "pf": 2,
           "plus_minus": -6,
           "fgm": 3,
@@ -736,7 +736,7 @@
           "ft_pct": 80,
           "efg_pct": 25,
           "ts_pct": 35.2,
-          "game_score": 5.9
+          "game_score": 6.9
         },
         {
           "playerId": "2583632",
@@ -983,8 +983,8 @@
             {
               "key": "ortg",
               "entering": 114.6,
-              "realized": 114.1,
-              "difference": -0.5
+              "realized": 114.6,
+              "difference": 0
             }
           ]
         },
@@ -1001,8 +1001,8 @@
             {
               "key": "tov_pct",
               "entering": 16.9,
-              "realized": 14.5,
-              "difference": -2.4
+              "realized": 13.8,
+              "difference": -3.1
             },
             {
               "key": "oreb_pct",
@@ -1019,8 +1019,8 @@
             {
               "key": "ortg",
               "entering": 100.1,
-              "realized": 126.3,
-              "difference": 26.2
+              "realized": 126.9,
+              "difference": 26.8
             }
           ]
         }
