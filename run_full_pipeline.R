@@ -103,8 +103,11 @@ run_stage("shot_quality_engine.R", "Calculate 15-Game Spatial Shot Quality (xeFG
 
 # 3. Microstructure & Player Valuation Engines (Phase 4)
 # Play-by-play extraction must precede the engines that consume it:
-# build_coaching_dataset.R falls back to per-coach synthetic bands without
-# pbp_timeout_cache.rds.
+# build_coaching_dataset.R measures ATO PPP and challenge overturn rate from
+# pbp_timeout_cache.rds. If that cache is missing it uses neutral league-average
+# baselines with an "unobserved" provenance tag (or stops when
+# STRICT_COACHING_PROVENANCE is set); it never generates synthetic per-coach bands.
+# A stale cache is used as-is.
 #
 # rapm_engine.R no longer reads stint_lineups.rds -- it fits a possession-level
 # design on hoopR's published possession table instead, which is what makes ORAPM

@@ -88,7 +88,7 @@ skipped <- character(0)
 for (item in artifacts_spec) {
   cat(sprintf("\n--- Executing %s ---\n", item$script))
   script_full <- file.path(REPO_ROOT, item$script)
-  res <- system2("Rscript", args = c(script_full), stdout = TRUE, stderr = TRUE)
+  res <- system2("Rscript", args = shQuote(script_full), stdout = TRUE, stderr = TRUE)
   status <- attr(res, "status")
   if (!is.null(status) && status != 0) {
     # These scripts refuse to draw without their real input data (they no longer

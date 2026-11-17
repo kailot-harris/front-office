@@ -101,7 +101,7 @@ for (spec in artifacts_spec) {
   media_png   <- file.path(REPO_ROOT, spec$media_png)
 
   cat(sprintf("\n  -> Executing: %s\n", spec$script))
-  res <- system2("Rscript", args = c(script_path), stdout = TRUE, stderr = TRUE)
+  res <- system2("Rscript", args = shQuote(script_path), stdout = TRUE, stderr = TRUE)
   status <- attr(res, "status")
   if (!is.null(status) && status != 0) {
     # A script that refuses to draw without its real input data is an expected
