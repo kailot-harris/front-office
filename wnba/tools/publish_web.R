@@ -240,7 +240,12 @@ source("config.R")
 }
 
 .pw_detect_run_start <- function(log_lines) {
-  hits <- grep("Pipeline run started", log_lines, fixed = TRUE)
+  # The in-season pipeline logs "Pipeline run started"; the offseason DAG
+  # (build_offseason_monitor.R) never does, so matching only that marker made
+  # offseason publishes pick up a stale run from weeks earlier. Match the
+  # offseason init line too and take the latest of either.
+  hits <- grep("Pipeline run started|Initializing Offseason Dynamics Monitor weekly DAG run",
+               log_lines)
   if (!length(hits)) return(NA)
   tail(.pw_log_timestamp(log_lines[hits]), 1)
 }
@@ -1101,6 +1106,29 @@ publish_web <- function(dry_run = TRUE,
       if (file.exists(staged_file)) {
         file.copy(staged_file, baseline_file, overwrite = TRUE)
         log_info("publish_web: Atomic baseline promotion succeeded (league_state_staged.json -> league_state_baseline.json).", script = .PW_LOG_SCRIPT)
+
+        # The promotion lands AFTER the publish commit, so without this the
+        # baseline (and the manifest the ingest step updated) stay modified-but-
+        # uncommitted, and the next weekly run's checkout-safety stash would roll
+        # the baseline back. Commit + push them as a follow-up commit.
+        state_paths <- c(baseline_file, file.path("cache", "ingestion_manifest.json"))
+        state_paths <- state_paths[file.exists(file.path(repo_root, state_paths))]
+        if (length(state_paths)) {
+          add_res <- .pw_git(repo_root, c("add", "--", state_paths))
+          dirty <- .pw_git(repo_root, c("diff", "--cached", "--quiet", "--", state_paths))
+          if (!add_res$ok) {
+            stop("publish_web: failed to stage promoted baseline/manifest:\n", paste(add_res$out, collapse = "\n"))
+          }
+          if (!dirty$ok) {  # --quiet exits 1 when there ARE staged changes
+            c_res <- .pw_git(repo_root, c("commit", "-m", shQuote("Promote WNBA offseason baseline after publish"), "--", state_paths))
+            p_res <- if (c_res$ok) .pw_git(repo_root, c("push", "origin", "HEAD")) else c_res
+            if (!c_res$ok || !p_res$ok) {
+              stop("publish_web: baseline/manifest commit or push failed; baseline is promoted on disk but NOT committed:\n",
+                   paste(c(c_res$out, p_res$out), collapse = "\n"))
+            }
+            log_info("publish_web: committed and pushed promoted baseline + ingestion manifest.", script = .PW_LOG_SCRIPT)
+          }
+        }
       }
     }
   }

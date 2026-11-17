@@ -124,25 +124,34 @@ REM Resolve Rscript executable
 set RSCRIPT=
 where Rscript >nul 2>&1
 if %ERRORLEVEL% equ 0 (
-    set RSCRIPT=Rscript
+    set "RSCRIPT=Rscript"
 ) else (
     if exist "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" (
-        set RSCRIPT="C:\Program Files\R\R-4.5.2\bin\Rscript.exe"
+        set "RSCRIPT=C:\Program Files\R\R-4.5.2\bin\Rscript.exe"
     ) else (
         for /d %%i in ("C:\Program Files\R\R-*") do (
-            if exist "%%i\bin\Rscript.exe" set RSCRIPT="%%i\bin\Rscript.exe"
+            if exist "%%i\bin\Rscript.exe" set "RSCRIPT=%%i\bin\Rscript.exe"
         )
     )
 )
 
-if "%RSCRIPT%"=="" (
+if not defined RSCRIPT (
     echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] Rscript not found on PATH or in C:\Program Files\R. Aborting. >> "%LOG_FILE%"
+    exit /b 1
+)
+
+REM Step 0: Package preflight. --vanilla skips .Rprofile, so renv never activates
+REM and R sees only the user library. Fail loudly here if a required package is
+REM missing there, rather than degrading mid-run (see tools/check_packages.R).
+"%RSCRIPT%" --vanilla tools/check_packages.R >> "%LOG_FILE%" 2>&1
+if %ERRORLEVEL% neq 0 (
+    echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] Package preflight failed - required R packages not visible under --vanilla. Aborting - nothing was run. >> "%LOG_FILE%"
     exit /b 1
 )
 
 REM Step 1: Build Offseason Monitor dataset and reconcile state
 echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 1: Running build_offseason_monitor.R... >> "%LOG_FILE%"
-%RSCRIPT% --vanilla build_offseason_monitor.R >> "%LOG_FILE%" 2>&1
+"%RSCRIPT%" --vanilla build_offseason_monitor.R >> "%LOG_FILE%" 2>&1
 if %ERRORLEVEL% neq 0 (
     echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] build_offseason_monitor.R failed with exit code %ERRORLEVEL%. >> "%LOG_FILE%"
     exit /b %ERRORLEVEL%
@@ -150,7 +159,7 @@ if %ERRORLEVEL% neq 0 (
 
 REM Step 2: Publish web artifacts and promote staged baseline
 echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 2: Running tools/publish_web.R --publish --mode=offseason... >> "%LOG_FILE%"
-%RSCRIPT% --vanilla tools/publish_web.R --publish --mode=offseason >> "%LOG_FILE%" 2>&1
+"%RSCRIPT%" --vanilla tools/publish_web.R --publish --mode=offseason >> "%LOG_FILE%" 2>&1
 if %ERRORLEVEL% neq 0 (
     echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] tools/publish_web.R failed with exit code %ERRORLEVEL%. >> "%LOG_FILE%"
     exit /b %ERRORLEVEL%
@@ -161,15 +170,18 @@ echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 3: Dispatching 
 set GH_BIN=
 where gh >nul 2>&1
 if %ERRORLEVEL% equ 0 (
-    set GH_BIN=gh
+    set "GH_BIN=gh"
 ) else (
     if exist "C:\Program Files\GitHub CLI\gh.exe" (
-        set GH_BIN="C:\Program Files\GitHub CLI\gh.exe"
+        set "GH_BIN=C:\Program Files\GitHub CLI\gh.exe"
     )
 )
 
-if not "%GH_BIN%"=="" (
-    %GH_BIN% workflow run "Sync sport subtrees and deploy" --repo kailot-harris/front-office -f sports="wnba" -f deploy=true >> "%LOG_FILE%" 2>&1
+REM GH_BIN is stored WITHOUT embedded quotes (set "VAR=value") and quoted at
+REM each use; embedded quotes made `if not "%GH_BIN%"==""` parse as
+REM `""C:\...""` and cmd aborted with "not was unexpected at this time".
+if defined GH_BIN (
+    "!GH_BIN!" workflow run "Sync sport subtrees and deploy" --repo kailot-harris/front-office -f sports="wnba" -f deploy=true >> "%LOG_FILE%" 2>&1
     if !ERRORLEVEL! equ 0 (
         echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Workflow dispatch successfully triggered. >> "%LOG_FILE%"
     ) else (
