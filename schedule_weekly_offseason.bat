@@ -88,6 +88,14 @@ if not "%ERRORLEVEL%"=="0" (
     exit /b 1
 )
 
+REM Record exactly which untracked, not-ignored files `git stash push -u` is about
+REM to take off disk, so a sweep is visible in this log. Logging only; the guard's
+REM stash-then-check behaviour is unchanged. Ignored files are not listed (and are
+REM not stashed).
+echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Checkout-safety guard: untracked, not-ignored files the stash below will sweep ^(git status --porcelain --untracked-files=all, ?? lines^): >> "%LOG_FILE%"
+git status --porcelain --untracked-files=all 2>&1 | findstr /b /c:"??" >> "%LOG_FILE%"
+echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Checkout-safety guard: end of untracked file list. >> "%LOG_FILE%"
+
 echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Checkout-safety guard: stashing any uncommitted work ^(tracked + untracked^) before touching branches... >> "%LOG_FILE%"
 git stash push -u -m "schedule_weekly_offseason.bat auto-stash %DATE% %TIME%" >> "%LOG_FILE%" 2>&1
 echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Checkout-safety guard: git stash push -u exit code %ERRORLEVEL% ^(0 = stashed or nothing to stash, both fine^). >> "%LOG_FILE%"
