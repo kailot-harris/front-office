@@ -65,3 +65,16 @@ implementation. That guard protects the scheduled task; rules 1-3 above
 are what keep the primary checkout in a state the guard can actually
 recover from, and what protects interactive/agent sessions from each
 other and from the scheduled task.
+
+## Worktrees: never link to another checkout (incident 2026-11-16)
+- Never junction, symlink or hardlink anything (`cache/`, `web/node_modules`, `renv/library`, ...) from a worktree
+  into the primary checkout or any other checkout. `git worktree remove` follows the link and deletes the
+  target's files silently; a `cache/` junction emptied a primary checkout's cache this way.
+- Instead: copy only the cache files the task needs, or point code at the primary's cache read-only via an env
+  var, and run `npm ci` in the worktree's own `web/`.
+- Before removing ANY worktree by ANY means, run
+  `python ~/.claude/skills/subagent-brief/scripts/cleanup_worktrees.py check --path <worktree>`
+  (read-only; exit 1 = links found). Delete each reported link on its own (`cmd /c rmdir <link>`), re-check, then
+  use `cleanup_worktrees.py remove-merged --path <worktree> --confirmed-by-user` rather than raw `git worktree remove`.
+- After the FIRST removal incident, stop all removals and audit every worktree
+  (`cleanup_worktrees.py incident --note "..."`); do not repair and continue.
