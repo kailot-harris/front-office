@@ -548,13 +548,16 @@ run_export_web_datasets <- function() {
 
   # ----------------------------------------------------------------------------
   # 1b. Gallery freshness rule (needs active_week, hence after section 3's derivation).
-  # Per-week PNGs (week<N>_*.png) are shown only for the active week; everything else
-  # (including GIFs, no age rule) is kept. Rule lives in web_media_filter.R. Excluded files are dropped from the index AND deleted from
+  # Per-week PNGs (week<N>_*.png) are shown only for the active week; GIFs only if their
+  # cache/ file was modified within MEDIA_GIF_MAX_AGE_DAYS. Rule lives in
+  # web_media_filter.R. Excluded files are dropped from the index AND deleted from
   # WEB_ANIM_DIR so the deployed bundle matches the index (assets contract test).
   # ----------------------------------------------------------------------------
   if (length(media_index) > 0L) {
     media_names <- vapply(media_index, function(m) m$filename, character(1))
-    media_sel <- select_publishable_media(media_names, active_week)
+    media_sel <- select_publishable_media(media_names,
+                                          file.mtime(file.path(CACHE_DIR, media_names)),
+                                          active_week, Sys.time(), MEDIA_GIF_MAX_AGE_DAYS)
     for (k in which(!media_sel$keep)) {
       log_info(sprintf("export_web_datasets: gallery excludes %s (%s)",
                        media_sel$filename[k], media_sel$reason[k]))

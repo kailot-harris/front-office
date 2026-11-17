@@ -767,6 +767,12 @@ WEB_PUBLIC_DIR   <- file.path("web", "public")
 WEB_DATA_DIR     <- file.path(WEB_PUBLIC_DIR, "data")
 WEB_ANIM_DIR     <- file.path(WEB_PUBLIC_DIR, "animations")
 
+# MEDIA_GIF_MAX_AGE_DAYS: the web gallery only shows a GIF whose cache/ file was
+# modified within this many days (rule in web_media_filter.R, applied by
+# export_web_datasets.R). 8 days keeps a weekly-regenerated GIF visible for a full week
+# plus a day of slack, and hides one that stopped updating.
+MEDIA_GIF_MAX_AGE_DAYS <- 8
+
 # PIPELINE_OUTPUT_DIRS: the ONE list of directories the daily pipeline writes and the
 # publish step commits. tools/publish_web.R uses it for assertion C and for `git add`;
 # tools/publish_guard.R (called by schedule_publish.bat) uses it to leave these paths
