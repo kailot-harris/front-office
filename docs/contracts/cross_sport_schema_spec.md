@@ -59,7 +59,7 @@ All shared endpoints must standardize on the **Level-1 Canonical Envelope**. Bar
 
 ```json
 {
-  "$schema": "https://front-office.kayceeslices.internal/schemas/v1/envelope.json",
+  "$schema": "https://front-office.internal/schemas/v1/envelope.json",
   "schema_version": "1.0",
   "generated_at": "2026-11-10T06:00:00Z",
   "season": "2026",
