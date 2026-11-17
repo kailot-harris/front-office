@@ -62,6 +62,29 @@ merge_with_existing_log <- function(existing_log, backfill_df, season = 2026L) {
   if ("log_source" %in% names(existing_log)) {
     pregame_rows <- existing_log |> filter(log_source == "LOGGED_PREGAME")
     if (nrow(pregame_rows) > 0L) {
+      if (!"logged_at" %in% names(pregame_rows) || any(is.na(pregame_rows$logged_at))) {
+        if ("log_timestamp" %in% names(pregame_rows)) {
+          if (!"logged_at" %in% names(pregame_rows)) {
+            pregame_rows$logged_at <- pregame_rows$log_timestamp
+          } else {
+            pregame_rows$logged_at[is.na(pregame_rows$logged_at)] <- pregame_rows$log_timestamp[is.na(pregame_rows$logged_at)]
+          }
+        }
+      }
+      if (!"refreshed_at" %in% names(pregame_rows) || any(is.na(pregame_rows$refreshed_at))) {
+        if (!"refreshed_at" %in% names(pregame_rows)) {
+          pregame_rows$refreshed_at <- pregame_rows$logged_at
+        } else {
+          pregame_rows$refreshed_at[is.na(pregame_rows$refreshed_at)] <- pregame_rows$logged_at[is.na(pregame_rows$refreshed_at)]
+        }
+      }
+      if (!"kickoff_time" %in% names(pregame_rows)) {
+        pregame_rows$kickoff_time <- as.POSIXct(NA, tz = "America/New_York")
+      }
+      if (!"kickoff_fallback" %in% names(pregame_rows)) {
+        pregame_rows$kickoff_fallback <- FALSE
+      }
+
       log_info(sprintf("Preserving %d existing LOGGED_PREGAME row(s) untouched.", nrow(pregame_rows)),
                script = .LOG_SCRIPT)
       # Exclude any games already logged pregame
@@ -244,6 +267,7 @@ backfill_prediction_log <- function(
   brier <- (target_games$home_win_prob - home_win)^2
 
   now_ts <- Sys.time()
+  ko_info <- .resolve_kickoff_time(target_games$gameday, target_games$gametime)
 
   # 10. Construct backfill dataframe matching prediction logger contract
   backfill_df <- data.frame(
@@ -260,6 +284,9 @@ backfill_prediction_log <- function(
     log_source         = "BACKTEST_PREWEEK",
     log_timestamp      = now_ts,
     logged_at          = now_ts,
+    refreshed_at       = now_ts,
+    kickoff_time       = ko_info$kickoff_time,
+    kickoff_fallback   = ko_info$kickoff_fallback,
     home_power_rating  = as.numeric(target_games$home_power_rating),
     away_power_rating  = as.numeric(target_games$away_power_rating),
     home_games_played  = as.integer(target_games$home_gp),

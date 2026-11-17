@@ -79,7 +79,8 @@ if (have_log) test_that("BFP-2 All required schema columns exist in backfilled r
   log_df <- readRDS(log_path)
   required_cols <- c(
     "game_id", "season", "week", "gameday", "away_team", "home_team",
-    "log_source", "logged_at", "projected_margin", "home_win_prob", "away_win_prob",
+    "log_source", "logged_at", "refreshed_at", "kickoff_time", "kickoff_fallback",
+    "projected_margin", "home_win_prob", "away_win_prob",
     "home_power_rating", "away_power_rating",
     "step_current_epa", "step_prior_epa", "step_elo_diff", "step_home_field",
     "step_qb_adjustment", "step_rounding",
@@ -90,7 +91,7 @@ if (have_log) test_that("BFP-2 All required schema columns exist in backfilled r
   missing_cols <- setdiff(required_cols, names(log_df))
   cond_cols <- length(missing_cols) == 0L
 
-  ok("BFP-2 All 25 required forecast, metadata, waterfall, and result columns present",
+  ok("BFP-2 All 28 required forecast, metadata, waterfall, and result columns present",
      cond_cols, if (cond_cols) "All present" else paste("Missing:", paste(missing_cols, collapse = ", ")))
   expect_true(cond_cols)
 })
@@ -252,6 +253,9 @@ test_that("BFP-8 backfill preserves existing LOGGED_PREGAME rows permanently", {
     log_source         = "LOGGED_PREGAME",
     log_timestamp      = as.POSIXct("2026-11-18 12:00:00", tz = "UTC"),
     logged_at          = as.POSIXct("2026-11-18 12:00:00", tz = "UTC"),
+    refreshed_at       = as.POSIXct("2026-11-18 12:00:00", tz = "UTC"),
+    kickoff_time       = as.POSIXct("2026-11-22 13:00:00", tz = "America/New_York"),
+    kickoff_fallback   = FALSE,
     home_power_rating  = 12.5,
     away_power_rating  = 3.2,
     home_games_played  = 10L,

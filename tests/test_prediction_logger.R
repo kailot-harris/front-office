@@ -221,10 +221,10 @@ test_that("PAL-4 Neutral site zeroes home field step in waterfall", {
 })
 
 # ------------------------------------------------------------------------------
-# Test 5: IMMUTABILITY GATE — consecutive logger runs preserve existing rows
+# Test 5: KICKOFF FREEZE & TIMESTAMPS MATRIX (Issue #149)
 # ------------------------------------------------------------------------------
-test_that("PAL-5 Immutability Gate: consecutive runs preserve existing rows without modification", {
-  temp_dir <- tempfile("test_pred_logger_")
+test_that("PAL-5a Pre-kickoff refresh updates forecast, waterfall, and refreshed_at, keeping logged_at unchanged", {
+  temp_dir <- tempfile("test_pred_logger_5a_")
   dir.create(temp_dir, recursive = TRUE)
   on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
 
@@ -233,151 +233,545 @@ test_that("PAL-5 Immutability Gate: consecutive runs preserve existing rows with
   test_pm_path  <- file.path(temp_dir, "test_projected_matchups.rds")
   test_tr_path  <- file.path(temp_dir, "test_team_ratings.rds")
 
-  # Create initial schedule with 2 unplayed games
   sch_df <- data.frame(
-    game_id    = c("2026_11_KC_BUF", "2026_11_BAL_PIT"),
-    season     = c(2026L, 2026L),
-    week       = c(11L, 11L),
-    gameday    = c("2026-11-22", "2026-11-22"),
-    weekday    = c("Sunday", "Sunday"),
-    gametime   = c("16:25", "13:00"),
-    home_team  = c("BUF", "PIT"),
-    away_team  = c("KC", "BAL"),
-    home_score = c(NA_integer_, NA_integer_),
-    away_score = c(NA_integer_, NA_integer_),
-    location   = c("Home", "Home"),
+    game_id    = "2026_12_KC_BUF",
+    season     = 2026L,
+    week       = 12L,
+    gameday    = "2026-11-29",
+    weekday    = "Sunday",
+    gametime   = "16:25",
+    home_team  = "BUF",
+    away_team  = "KC",
+    home_score = NA_integer_,
+    away_score = NA_integer_,
+    location   = "Home",
     stringsAsFactors = FALSE
   )
   saveRDS(sch_df, test_sch_path)
 
-  # Team ratings lookup
   tr_df <- data.frame(
-    team                = c("BUF", "KC", "PIT", "BAL", "NE", "MIA"),
-    current_raw_rating  = c(18.0, 14.0, 6.0, 10.0, 2.0, 8.0),
-    prior_season_rating = c(16.0, 15.0, 8.0, 12.0, 3.0, 7.0),
-    power_rating        = c(17.5, 14.5, 6.5, 10.5, 2.2, 7.8),
-    games_played        = c(9L, 9L, 9L, 9L, 9L, 9L),
+    team                = c("BUF", "KC"),
+    current_raw_rating  = c(18.0, 14.0),
+    prior_season_rating = c(16.0, 15.0),
+    power_rating        = c(17.5, 14.5),
+    games_played        = c(10L, 10L),
     stringsAsFactors    = FALSE
   )
   saveRDS(tr_df, test_tr_path)
 
   test_coefs <- list(
-    ridge_b_intercept = 2.2427706,
-    ridge_b_raw       = 0.1911252,
-    ridge_b_prior     = 0.0909437,
-    ridge_b_raw_gp    = 0.0101408,
-    ridge_b_prior_gp  = 0.0003518
+    ridge_b_intercept = 2.0,
+    ridge_b_raw       = 0.20,
+    ridge_b_prior     = 0.10,
+    ridge_b_raw_gp    = 0.01,
+    ridge_b_prior_gp  = 0.001
   )
 
-  # Compute exact projected margins for test games using waterfall formula
-  # Game 1: BUF (home) vs KC (away), diff_raw=4, diff_prior=1, gp=9
-  m1 <- 1.0 * (test_coefs$ridge_b_raw + test_coefs$ridge_b_raw_gp * 9) * 4 +
-        1.0 * (test_coefs$ridge_b_prior + test_coefs$ridge_b_prior_gp * 9) * 1 +
-        test_coefs$ridge_b_intercept
-  # Game 2: PIT (home) vs BAL (away), diff_raw=-4, diff_prior=-4, gp=9
-  m2 <- 1.0 * (test_coefs$ridge_b_raw + test_coefs$ridge_b_raw_gp * 9) * (-4) +
-        1.0 * (test_coefs$ridge_b_prior + test_coefs$ridge_b_prior_gp * 9) * (-4) +
-        test_coefs$ridge_b_intercept
+  # Exact margin: 2.0 + (0.2 + 0.1)*4 + (0.1 + 0.01)*1 = 2.0 + 1.2 + 0.11 = 3.31
+  m1 <- 3.31
+  pm_df1 <- data.frame(
+    game_id           = "2026_12_KC_BUF",
+    season            = 2026L,
+    week              = 12L,
+    home_team         = "BUF",
+    away_team         = "KC",
+    home_power_rating = 17.5,
+    away_power_rating = 14.5,
+    home_games_played = 10L,
+    away_games_played = 10L,
+    projected_margin  = m1,
+    home_win_prob     = pnorm(m1 / 14.60),
+    stringsAsFactors  = FALSE
+  )
+  saveRDS(pm_df1, test_pm_path)
 
-  # Projected matchups for week 11
+  # Initial run on Wednesday Nov 25 at 10:00 Eastern
+  t1 <- as.POSIXct("2026-11-25 10:00:00", tz = "America/New_York")
+  run_prediction_accuracy_logger(
+    log_path                = test_log_path,
+    schedules_path          = test_sch_path,
+    projected_matchups_path = test_pm_path,
+    team_ratings_path       = test_tr_path,
+    ridge_coefs             = test_coefs,
+    qb_lookup               = list(),
+    as_of                   = t1
+  )
+
+  log1 <- readRDS(test_log_path)
+  cond_init_margin <- abs(log1$projected_margin[1] - m1) < 1e-6
+  cond_init_logged <- log1$logged_at[1] == t1
+  cond_init_refreshed <- log1$refreshed_at[1] == t1
+
+  # BUF raw rating updates to 19.0 (diff_raw = 5.0) -> exact margin: 2.0 + 1.5 + 0.11 = 3.61
+  tr_df$current_raw_rating[tr_df$team == "BUF"] <- 19.0
+  saveRDS(tr_df, test_tr_path)
+
+  m2 <- 3.61
+  pm_df2 <- pm_df1
+  pm_df2$projected_margin <- m2
+  pm_df2$home_win_prob <- pnorm(m2 / 14.60)
+  saveRDS(pm_df2, test_pm_path)
+
+  t2 <- as.POSIXct("2026-11-28 14:00:00", tz = "America/New_York")
+  run_prediction_accuracy_logger(
+    log_path                = test_log_path,
+    schedules_path          = test_sch_path,
+    projected_matchups_path = test_pm_path,
+    team_ratings_path       = test_tr_path,
+    ridge_coefs             = test_coefs,
+    qb_lookup               = list(),
+    as_of                   = t2
+  )
+
+  log2 <- readRDS(test_log_path)
+  cond_updated_margin <- abs(log2$projected_margin[1] - m2) < 1e-6
+  cond_logged_unchanged <- log2$logged_at[1] == t1
+  cond_refreshed_updated <- log2$refreshed_at[1] == t2
+  cond_wf_sums <- abs((log2$step_current_epa[1] + log2$step_prior_epa[1] +
+                       log2$step_elo_diff[1] + log2$step_home_field[1] +
+                       log2$step_qb_adjustment[1] + log2$step_rounding[1]) - m2) < 1e-6
+
+  cond_all <- cond_init_margin && cond_init_logged && cond_init_refreshed &&
+              cond_updated_margin && cond_logged_unchanged && cond_refreshed_updated && cond_wf_sums
+
+  ok("PAL-5a Pre-kickoff refresh updates forecast, waterfall, and refreshed_at, keeping logged_at unchanged",
+     cond_all,
+     sprintf("Initial margin: %.2f, refreshed margin: %.2f, logged_at: %s, refreshed_at: %s",
+             log1$projected_margin[1], log2$projected_margin[1],
+             as.character(log2$logged_at[1]), as.character(log2$refreshed_at[1])))
+
+  expect_true(cond_all)
+})
+
+test_that("PAL-5b Post-kickoff run (as_of >= kickoff_time) leaves forecast completely frozen", {
+  temp_dir <- tempfile("test_pred_logger_5b_")
+  dir.create(temp_dir, recursive = TRUE)
+  on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
+
+  test_log_path <- file.path(temp_dir, "test_prediction_log.rds")
+  test_sch_path <- file.path(temp_dir, "test_schedules.rds")
+  test_pm_path  <- file.path(temp_dir, "test_projected_matchups.rds")
+  test_tr_path  <- file.path(temp_dir, "test_team_ratings.rds")
+
+  # Kickoff is 2026-11-29 16:25:00 Eastern
+  sch_df <- data.frame(
+    game_id    = "2026_12_KC_BUF",
+    season     = 2026L,
+    week       = 12L,
+    gameday    = "2026-11-29",
+    weekday    = "Sunday",
+    gametime   = "16:25",
+    home_team  = "BUF",
+    away_team  = "KC",
+    home_score = NA_integer_,
+    away_score = NA_integer_,
+    location   = "Home",
+    stringsAsFactors = FALSE
+  )
+  saveRDS(sch_df, test_sch_path)
+
+  tr_df <- data.frame(
+    team                = c("BUF", "KC"),
+    current_raw_rating  = c(18.0, 14.0),
+    prior_season_rating = c(16.0, 15.0),
+    power_rating        = c(17.5, 14.5),
+    games_played        = c(10L, 10L),
+    stringsAsFactors    = FALSE
+  )
+  saveRDS(tr_df, test_tr_path)
+
+  m_pre <- 3.31
   pm_df <- data.frame(
-    game_id           = c("2026_11_KC_BUF", "2026_11_BAL_PIT"),
-    season            = c(2026L, 2026L),
-    week              = c(11L, 11L),
-    home_team         = c("BUF", "PIT"),
-    away_team         = c("KC", "BAL"),
-    home_power_rating = c(17.5, 6.5),
-    away_power_rating = c(14.5, 10.5),
-    home_games_played = c(9L, 9L),
-    away_games_played = c(9L, 9L),
-    projected_margin  = c(m1, m2),
-    home_win_prob     = c(pnorm(m1 / 14.60), pnorm(m2 / 14.60)),
+    game_id           = "2026_12_KC_BUF",
+    season            = 2026L,
+    week              = 12L,
+    home_team         = "BUF",
+    away_team         = "KC",
+    home_power_rating = 17.5,
+    away_power_rating = 14.5,
+    home_games_played = 10L,
+    away_games_played = 10L,
+    projected_margin  = m_pre,
+    home_win_prob     = pnorm(m_pre / 14.60),
     stringsAsFactors  = FALSE
   )
   saveRDS(pm_df, test_pm_path)
 
-  # RUN 1: Initial logging
+  # Initial log prior to kickoff
+  t_pre <- as.POSIXct("2026-11-29 12:00:00", tz = "America/New_York")
   run_prediction_accuracy_logger(
     log_path                = test_log_path,
     schedules_path          = test_sch_path,
     projected_matchups_path = test_pm_path,
     team_ratings_path       = test_tr_path,
-    ridge_coefs             = test_coefs,
-    qb_lookup               = list()
+    ridge_coefs             = list(ridge_b_intercept = 2, ridge_b_raw = 0.2, ridge_b_prior = 0.1, ridge_b_raw_gp = 0.01, ridge_b_prior_gp = 0.001),
+    qb_lookup               = list(),
+    as_of                   = t_pre
   )
 
-  log_run1 <- readRDS(test_log_path)
-  cond_count1 <- nrow(log_run1) == 2L
-  cond_source1 <- all(log_run1$log_source == "LOGGED_PREGAME")
+  # Projected matchups changes significantly after kickoff
+  pm_df$projected_margin <- 99.9
+  pm_df$home_win_prob <- 0.99
+  saveRDS(pm_df, test_pm_path)
 
-  # Snapshot all pre-game values from run 1
-  snapshot_cols <- c(
-    "game_id", "season", "week", "home_team", "away_team", "log_source",
-    "home_power_rating", "away_power_rating", "projected_margin", "home_win_prob",
-    "step_current_epa", "step_prior_epa", "step_elo_diff", "step_home_field",
-    "step_qb_adjustment", "step_rounding", "ridge_b_intercept", "ridge_b_raw"
+  # 1. Post-kickoff run at 16:30 Eastern (kickoff was 16:25)
+  t_post <- as.POSIXct("2026-11-29 16:30:00", tz = "America/New_York")
+  run_prediction_accuracy_logger(
+    log_path                = test_log_path,
+    schedules_path          = test_sch_path,
+    projected_matchups_path = test_pm_path,
+    team_ratings_path       = test_tr_path,
+    ridge_coefs             = list(ridge_b_intercept = 2, ridge_b_raw = 0.2, ridge_b_prior = 0.1, ridge_b_raw_gp = 0.01, ridge_b_prior_gp = 0.001),
+    qb_lookup               = list(),
+    as_of                   = t_post
   )
-  snap1 <- log_run1[, snapshot_cols]
 
-  # Modify projected matchups and team ratings as if a subsequent pipeline run
-  # had newer ratings for future games or changed underlying ratings
-  pm_df_modified <- pm_df
-  pm_df_modified$projected_margin[1] <- 99.9  # drastically changed projection
-  pm_df_modified$home_win_prob[1]    <- 0.99
-  # Also add a new 3rd game with exact margin
-  m3 <- 1.0 * (test_coefs$ridge_b_raw + test_coefs$ridge_b_raw_gp * 9) * (-6) +
-        1.0 * (test_coefs$ridge_b_prior + test_coefs$ridge_b_prior_gp * 9) * (-4) +
-        test_coefs$ridge_b_intercept
-  pm_df_modified <- bind_rows(pm_df_modified, data.frame(
-    game_id           = "2026_11_MIA_NE",
+  log_post <- readRDS(test_log_path)
+  cond_frozen_margin <- abs(log_post$projected_margin[1] - m_pre) < 1e-6
+  cond_refreshed_not_changed <- log_post$refreshed_at[1] == t_pre
+
+  # 2. Mid-run safety: run started at 16:20 (before kickoff) but evaluated at 16:26 (after kickoff)
+  t_mid_start <- as.POSIXct("2026-11-29 16:20:00", tz = "America/New_York")
+  t_mid_eval  <- as.POSIXct("2026-11-29 16:26:00", tz = "America/New_York")
+  pm_df$projected_margin <- -50.0
+  saveRDS(pm_df, test_pm_path)
+
+  run_prediction_accuracy_logger(
+    log_path                = test_log_path,
+    schedules_path          = test_sch_path,
+    projected_matchups_path = test_pm_path,
+    team_ratings_path       = test_tr_path,
+    ridge_coefs             = list(ridge_b_intercept = 2, ridge_b_raw = 0.2, ridge_b_prior = 0.1, ridge_b_raw_gp = 0.01, ridge_b_prior_gp = 0.001),
+    qb_lookup               = list(),
+    as_of                   = t_mid_start,
+    eval_time               = t_mid_eval
+  )
+
+  log_mid <- readRDS(test_log_path)
+  cond_mid_frozen <- abs(log_mid$projected_margin[1] - m_pre) < 1e-6
+
+  cond_all <- cond_frozen_margin && cond_refreshed_not_changed && cond_mid_frozen
+
+  ok("PAL-5b Post-kickoff run and mid-run kickoff evaluation leave forecast completely frozen",
+     cond_all,
+     sprintf("Margin remained %.2f (not 99.9 or -50.0), refreshed_at: %s", m_pre, as.character(log_mid$refreshed_at[1])))
+
+  expect_true(cond_all)
+})
+
+test_that("PAL-5c Missing kickoff time (gametime = NA) freezes at start of the day in Eastern time", {
+  temp_dir <- tempfile("test_pred_logger_5c_")
+  dir.create(temp_dir, recursive = TRUE)
+  on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
+
+  test_log_path <- file.path(temp_dir, "test_prediction_log.rds")
+  test_sch_path <- file.path(temp_dir, "test_schedules.rds")
+  test_pm_path  <- file.path(temp_dir, "test_projected_matchups.rds")
+  test_tr_path  <- file.path(temp_dir, "test_team_ratings.rds")
+
+  # Game on 2026-11-29 with gametime = NA (missing kickoff time)
+  sch_df <- data.frame(
+    game_id    = "2026_12_KC_BUF",
+    season     = 2026L,
+    week       = 12L,
+    gameday    = "2026-11-29",
+    weekday    = "Sunday",
+    gametime   = NA_character_,
+    home_team  = "BUF",
+    away_team  = "KC",
+    home_score = NA_integer_,
+    away_score = NA_integer_,
+    location   = "Home",
+    stringsAsFactors = FALSE
+  )
+  saveRDS(sch_df, test_sch_path)
+
+  tr_df <- data.frame(
+    team                = c("BUF", "KC"),
+    current_raw_rating  = c(18.0, 14.0),
+    prior_season_rating = c(16.0, 15.0),
+    power_rating        = c(17.5, 14.5),
+    games_played        = c(10L, 10L),
+    stringsAsFactors    = FALSE
+  )
+  saveRDS(tr_df, test_tr_path)
+
+  m_val <- 3.31
+  pm_df <- data.frame(
+    game_id           = "2026_12_KC_BUF",
     season            = 2026L,
-    week              = 11L,
-    home_team         = "NE",
-    away_team         = "MIA",
-    home_power_rating = 2.0,
-    away_power_rating = 8.0,
-    home_games_played = 9L,
-    away_games_played = 9L,
-    projected_margin  = m3,
-    home_win_prob     = pnorm(m3 / 14.60),
+    week              = 12L,
+    home_team         = "BUF",
+    away_team         = "KC",
+    home_power_rating = 17.5,
+    away_power_rating = 14.5,
+    home_games_played = 10L,
+    away_games_played = 10L,
+    projected_margin  = m_val,
+    home_win_prob     = pnorm(m_val / 14.60),
     stringsAsFactors  = FALSE
-  ))
-  saveRDS(pm_df_modified, test_pm_path)
+  )
+  saveRDS(pm_df, test_pm_path)
 
-  # RUN 2: Subsequent run
+  # Initial log on Saturday Nov 28 at 20:00 Eastern (before midnight date start)
+  t_prev_day <- as.POSIXct("2026-11-28 20:00:00", tz = "America/New_York")
+  run_prediction_accuracy_logger(
+    log_path                = test_log_path,
+    schedules_path          = test_sch_path,
+    projected_matchups_path = test_pm_path,
+    team_ratings_path       = test_tr_path,
+    ridge_coefs             = list(ridge_b_intercept = 2, ridge_b_raw = 0.2, ridge_b_prior = 0.1, ridge_b_raw_gp = 0.01, ridge_b_prior_gp = 0.001),
+    qb_lookup               = list(),
+    as_of                   = t_prev_day
+  )
+
+  log1 <- readRDS(test_log_path)
+  expected_freeze_ko <- as.POSIXct("2026-11-29 00:00:00", tz = "America/New_York")
+  cond_ko_time <- log1$kickoff_time[1] == expected_freeze_ko
+  cond_ko_fb   <- isTRUE(log1$kickoff_fallback[1])
+
+  # Now run on Sunday Nov 29 at 08:00 Eastern (after midnight date start, but morning)
+  t_gameday_morning <- as.POSIXct("2026-11-29 08:00:00", tz = "America/New_York")
+  pm_df$projected_margin <- 99.9
+  saveRDS(pm_df, test_pm_path)
+
+  run_prediction_accuracy_logger(
+    log_path                = test_log_path,
+    schedules_path          = test_sch_path,
+    projected_matchups_path = test_pm_path,
+    team_ratings_path       = test_tr_path,
+    ridge_coefs             = list(ridge_b_intercept = 2, ridge_b_raw = 0.2, ridge_b_prior = 0.1, ridge_b_raw_gp = 0.01, ridge_b_prior_gp = 0.001),
+    qb_lookup               = list(),
+    as_of                   = t_gameday_morning
+  )
+
+  log2 <- readRDS(test_log_path)
+  cond_frozen <- abs(log2$projected_margin[1] - m_val) < 1e-6  # Frozen at midnight, not refreshed to 99.9!
+
+  cond_all <- cond_ko_time && cond_ko_fb && cond_frozen
+
+  ok("PAL-5c Missing kickoff time freezes at start of the day (00:00:00 Eastern) with kickoff_fallback = TRUE",
+     cond_all,
+     sprintf("Kickoff time: %s, fallback flag: %s, frozen margin: %.2f",
+             as.character(log2$kickoff_time[1]), log2$kickoff_fallback[1], log2$projected_margin[1]))
+
+  expect_true(cond_all)
+})
+
+test_that("PAL-5d Unlogged game past kickoff is NOT created as LOGGED_PREGAME", {
+  temp_dir <- tempfile("test_pred_logger_5d_")
+  dir.create(temp_dir, recursive = TRUE)
+  on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
+
+  test_log_path <- file.path(temp_dir, "test_prediction_log.rds")
+  test_sch_path <- file.path(temp_dir, "test_schedules.rds")
+  test_pm_path  <- file.path(temp_dir, "test_projected_matchups.rds")
+  test_tr_path  <- file.path(temp_dir, "test_team_ratings.rds")
+
+  sch_df <- data.frame(
+    game_id    = "2026_12_DAL_WAS",
+    season     = 2026L,
+    week       = 12L,
+    gameday    = "2026-11-29",
+    weekday    = "Sunday",
+    gametime   = "13:00",
+    home_team  = "WAS",
+    away_team  = "DAL",
+    home_score = NA_integer_,
+    away_score = NA_integer_,
+    location   = "Home",
+    stringsAsFactors = FALSE
+  )
+  saveRDS(sch_df, test_sch_path)
+
+  tr_df <- data.frame(
+    team                = c("WAS", "DAL"),
+    current_raw_rating  = c(10.0, 8.0),
+    prior_season_rating = c(9.0, 7.0),
+    power_rating        = c(9.5, 7.5),
+    games_played        = c(10L, 10L),
+    stringsAsFactors    = FALSE
+  )
+  saveRDS(tr_df, test_tr_path)
+
+  pm_df <- data.frame(
+    game_id           = "2026_12_DAL_WAS",
+    season            = 2026L,
+    week              = 12L,
+    home_team         = "WAS",
+    away_team         = "DAL",
+    home_power_rating = 9.5,
+    away_power_rating = 7.5,
+    home_games_played = 10L,
+    away_games_played = 10L,
+    projected_margin  = 2.0,
+    home_win_prob     = pnorm(2.0 / 14.60),
+    stringsAsFactors  = FALSE
+  )
+  saveRDS(pm_df, test_pm_path)
+
+  # Logger runs at 14:00 Eastern (1 hour after kickoff 13:00) with empty prior log
+  t_post_ko <- as.POSIXct("2026-11-29 14:00:00", tz = "America/New_York")
+  run_prediction_accuracy_logger(
+    log_path                = test_log_path,
+    schedules_path          = test_sch_path,
+    projected_matchups_path = test_pm_path,
+    team_ratings_path       = test_tr_path,
+    ridge_coefs             = list(ridge_b_intercept = 2, ridge_b_raw = 0.2, ridge_b_prior = 0.1, ridge_b_raw_gp = 0.01, ridge_b_prior_gp = 0.001),
+    qb_lookup               = list(),
+    as_of                   = t_post_ko
+  )
+
+  # Log must NOT exist or have 0 rows
+  cond_no_row <- !file.exists(test_log_path) || nrow(readRDS(test_log_path)) == 0L
+
+  ok("PAL-5d No pre-game row created for game after kickoff",
+     cond_no_row,
+     if (cond_no_row) "Game correctly excluded from LOGGED_PREGAME" else "FAIL: Row was created post-kickoff")
+
+  expect_true(cond_no_row)
+})
+
+test_that("PAL-5e Rescheduled game follows its new kickoff time", {
+  temp_dir <- tempfile("test_pred_logger_5e_")
+  dir.create(temp_dir, recursive = TRUE)
+  on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
+
+  test_log_path <- file.path(temp_dir, "test_prediction_log.rds")
+  test_sch_path <- file.path(temp_dir, "test_schedules.rds")
+  test_pm_path  <- file.path(temp_dir, "test_projected_matchups.rds")
+  test_tr_path  <- file.path(temp_dir, "test_team_ratings.rds")
+
+  # Game originally scheduled for Sunday 13:00
+  sch_df <- data.frame(
+    game_id    = "2026_12_BAL_CLE",
+    season     = 2026L,
+    week       = 12L,
+    gameday    = "2026-11-29",
+    weekday    = "Sunday",
+    gametime   = "13:00",
+    home_team  = "CLE",
+    away_team  = "BAL",
+    home_score = NA_integer_,
+    away_score = NA_integer_,
+    location   = "Home",
+    stringsAsFactors = FALSE
+  )
+  saveRDS(sch_df, test_sch_path)
+
+  tr_df <- data.frame(
+    team                = c("CLE", "BAL"),
+    current_raw_rating  = c(2.0, 12.0),
+    prior_season_rating = c(3.0, 11.0),
+    power_rating        = c(2.5, 11.5),
+    games_played        = c(10L, 10L),
+    stringsAsFactors    = FALSE
+  )
+  saveRDS(tr_df, test_tr_path)
+
+  test_coefs <- list(
+    ridge_b_intercept = 2.0,
+    ridge_b_raw       = 0.20,
+    ridge_b_prior     = 0.10,
+    ridge_b_raw_gp    = 0.01,
+    ridge_b_prior_gp  = 0.001
+  )
+
+  # Exact margin: 2.0 + 0.3*(-10) + 0.11*(-8) = 2.0 - 3.0 - 0.88 = -1.88
+  m1 <- -1.88
+  pm_df <- data.frame(
+    game_id           = "2026_12_BAL_CLE",
+    season            = 2026L,
+    week              = 12L,
+    home_team         = "CLE",
+    away_team         = "BAL",
+    home_power_rating = 2.5,
+    away_power_rating = 11.5,
+    home_games_played = 10L,
+    away_games_played = 10L,
+    projected_margin  = m1,
+    home_win_prob     = pnorm(m1 / 14.60),
+    stringsAsFactors  = FALSE
+  )
+  saveRDS(pm_df, test_pm_path)
+
+  # Initial log on Wednesday Nov 25
+  t_init <- as.POSIXct("2026-11-25 10:00:00", tz = "America/New_York")
   run_prediction_accuracy_logger(
     log_path                = test_log_path,
     schedules_path          = test_sch_path,
     projected_matchups_path = test_pm_path,
     team_ratings_path       = test_tr_path,
     ridge_coefs             = test_coefs,
-    qb_lookup               = list()
+    qb_lookup               = list(),
+    as_of                   = t_init
   )
 
-  log_run2 <- readRDS(test_log_path)
-  cond_count2 <- nrow(log_run2) == 3L  # 2 original + 1 new
+  # NFL flexes game to Monday Night 20:15
+  sch_df$gameday  <- "2026-11-30"
+  sch_df$weekday  <- "Monday"
+  sch_df$gametime <- "20:15"
+  saveRDS(sch_df, test_sch_path)
 
-  # Filter down to the 2 original games in run 2
-  snap2 <- log_run2[log_run2$game_id %in% snap1$game_id, snapshot_cols]
-  snap2 <- snap2[order(snap2$game_id), ]
-  snap1_ordered <- snap1[order(snap1$game_id), ]
+  # On Sunday Nov 29 at 15:00 Eastern (after the old 13:00 kickoff, but before new Monday 20:15 kickoff)
+  # CLE raw drops to 0.0 (diff_raw = -12.0) -> margin: 2.0 - 3.60 - 0.88 = -2.48
+  tr_df$current_raw_rating[tr_df$team == "CLE"] <- 0.0
+  saveRDS(tr_df, test_tr_path)
 
-  # IMMUTABILITY GATE ASSERTION:
-  # Values for the 2 original games must be 100% IDENTICAL to run 1 snapshot
-  cond_immutable <- isTRUE(all.equal(snap1_ordered, snap2))
-  # In particular, projected_margin[1] must NOT be 99.9!
-  cond_not_overwritten <- log_run2$projected_margin[log_run2$game_id == "2026_11_KC_BUF"] == m1
+  m2 <- -2.48
+  pm_df$projected_margin <- m2
+  pm_df$home_win_prob <- pnorm(m2 / 14.60)
+  saveRDS(pm_df, test_pm_path)
 
-  ok("PAL-5 Immutability gate: existing logged games are NEVER overwritten on subsequent runs",
-     cond_count1 && cond_source1 && cond_count2 && cond_immutable && cond_not_overwritten,
-     sprintf("Run 1 rows: %d, Run 2 rows: %d, Immutability preserved: %s",
-             nrow(log_run1), nrow(log_run2), cond_immutable))
+  t_resched <- as.POSIXct("2026-11-29 15:00:00", tz = "America/New_York")
+  run_prediction_accuracy_logger(
+    log_path                = test_log_path,
+    schedules_path          = test_sch_path,
+    projected_matchups_path = test_pm_path,
+    team_ratings_path       = test_tr_path,
+    ridge_coefs             = test_coefs,
+    qb_lookup               = list(),
+    as_of                   = t_resched
+  )
 
-  expect_true(cond_count1)
-  expect_true(cond_source1)
-  expect_true(cond_count2)
-  expect_true(cond_immutable)
-  expect_true(cond_not_overwritten)
+  log_resched <- readRDS(test_log_path)
+  expected_new_ko <- as.POSIXct("2026-11-30 20:15:00", tz = "America/New_York")
+  cond_ko_updated <- log_resched$kickoff_time[1] == expected_new_ko
+  cond_refreshed  <- log_resched$refreshed_at[1] == t_resched
+  cond_margin_updated <- abs(log_resched$projected_margin[1] - m2) < 1e-6
+
+  cond_all <- cond_ko_updated && cond_refreshed && cond_margin_updated
+
+  ok("PAL-5e Rescheduled game follows new kickoff time and refreshes until new freeze",
+     cond_all,
+     sprintf("Updated kickoff: %s, refreshed margin: %.2f, refreshed_at: %s",
+             as.character(log_resched$kickoff_time[1]), log_resched$projected_margin[1],
+             as.character(log_resched$refreshed_at[1])))
+
+  expect_true(cond_all)
+})
+
+test_that("PAL-5f Dual timestamps and kickoff audit columns verified non-null across log", {
+  fixture_path <- file.path(root_dir, "tests", "fixtures", "prediction_accuracy_log_fixture.rds")
+  if (file.exists(fixture_path)) {
+    log_df <- readRDS(fixture_path)
+    cond_logged_not_na    <- all(!is.na(log_df$logged_at))
+    cond_refreshed_not_na <- all(!is.na(log_df$refreshed_at))
+    cond_ko_not_na        <- all(!is.na(log_df$kickoff_time))
+    cond_fb_not_na        <- all(!is.na(log_df$kickoff_fallback))
+    cond_refreshed_gte    <- all(log_df$refreshed_at >= log_df$logged_at)
+
+    cond_all <- cond_logged_not_na && cond_refreshed_not_na &&
+                cond_ko_not_na && cond_fb_not_na && cond_refreshed_gte
+
+    ok("PAL-5f Dual timestamps (logged_at, refreshed_at) and audit columns (kickoff_time, kickoff_fallback) non-null",
+       cond_all,
+       sprintf("N=%d rows, all timestamps valid, refreshed >= logged: %s", nrow(log_df), cond_refreshed_gte))
+
+    expect_true(cond_all)
+  } else {
+    ok("PAL-5f Skipped (fixture not found)", TRUE)
+  }
 })
 
 # ------------------------------------------------------------------------------
@@ -448,14 +842,16 @@ test_that("PAL-6 Game completion updates result fields while preserving pregame 
   )
   saveRDS(pm_df, test_pm_path)
 
-  # Pre-game run
+  # Pre-game run before kickoff on Sunday Nov 15
+  t_pre <- as.POSIXct("2026-11-15 12:00:00", tz = "America/New_York")
   run_prediction_accuracy_logger(
     log_path                = test_log_path,
     schedules_path          = test_sch_path,
     projected_matchups_path = test_pm_path,
     team_ratings_path       = test_tr_path,
     ridge_coefs             = test_coefs,
-    qb_lookup               = list(ARI = TRUE)
+    qb_lookup               = list(ARI = TRUE),
+    as_of                   = t_pre
   )
 
   pre_log <- readRDS(test_log_path)
@@ -467,13 +863,15 @@ test_that("PAL-6 Game completion updates result fields while preserving pregame 
   saveRDS(sch_df, test_sch_path)
 
   # Run logger after game finish
+  t_post <- as.POSIXct("2026-11-15 20:00:00", tz = "America/New_York")
   run_prediction_accuracy_logger(
     log_path                = test_log_path,
     schedules_path          = test_sch_path,
     projected_matchups_path = test_pm_path,
     team_ratings_path       = test_tr_path,
     ridge_coefs             = test_coefs,
-    qb_lookup               = list(ARI = TRUE)
+    qb_lookup               = list(ARI = TRUE),
+    as_of                   = t_post
   )
 
   post_log <- readRDS(test_log_path)
@@ -554,6 +952,7 @@ test_that("PAL-7 Logger runs against real repository cache and verifies waterfal
     expect_true(cond_rounding_threshold)
   } else {
     ok("PAL-7 Skipped production cache test (caches not present in testing environment)", TRUE)
+    expect_true(TRUE)
   }
 })
 
