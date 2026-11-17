@@ -766,6 +766,12 @@ CACHE_TURNOVER_HISTORY <- file.path(CACHE_DIR, "turnover_margin_history.rds")
 WEB_PUBLIC_DIR   <- file.path("web", "public")
 WEB_DATA_DIR     <- file.path(WEB_PUBLIC_DIR, "data")
 WEB_ANIM_DIR     <- file.path(WEB_PUBLIC_DIR, "animations")
+
+# PIPELINE_OUTPUT_DIRS: the ONE list of directories the daily pipeline writes and the
+# publish step commits. tools/publish_web.R uses it for assertion C and for `git add`;
+# tools/publish_guard.R (called by schedule_publish.bat) uses it to leave these paths
+# alone when it stashes unrelated dirty files. Both read this vector so they cannot drift.
+PIPELINE_OUTPUT_DIRS <- c(WEB_DATA_DIR, WEB_ANIM_DIR)
 WEB_GAMES_DIR    <- file.path(WEB_DATA_DIR, "games")
 WEB_ATTRIBUTION_DIR <- file.path(WEB_DATA_DIR, "week_attribution")
 
