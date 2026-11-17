@@ -199,6 +199,14 @@ run_stage("prediction_accuracy_logger.R", "Reconcile Outcomes & Log Pre-Game Win
 run_stage("accuracy_governance.R", "Compute Forecast Accuracy Governance & Calibration Diagnostics",
           output = file.path(CACHE_DIR, "accuracy_governance.rds"))
 
+# 8.55. Refresh the season team-box cache BEFORE TreeSHAP (issue #171). The SHAP engine
+# computes prior-games counts from cache/matchups_team_box_<season>.rds, which was
+# previously refreshed only by stage 9 (after SHAP), leaving SHAP one day stale.
+run_stage("tools/refresh_matchups_team_box.R",
+          "Refresh Season Team Box Scores Ahead of TreeSHAP",
+          call_fn = "run_refresh_matchups_team_box",
+          output = CACHE_MATCHUPS_TEAM_BOX(MATCHUPS_HOOPR_SEASON))
+
 # 8.6. Secondary XGBoost Feature Fusion & TreeSHAP Explanations (Issue #124)
 run_stage("xgboost_shap_engine.R",
           "Compute XGBoost Feature Fusion Predictions & TreeSHAP Explanations",
