@@ -83,7 +83,6 @@ PWP_SNAPSHOT_COLS <- c(
   "comp_home_court", "comp_schedule", "sigma_game"
 )
 
-FATIGUE_ENGINE_LIBRARY_ONLY <- TRUE
 source(file.path(.pw_root(), "fatigue_travel_engine.R"), local = TRUE)
 
 .pwp_arg <- function(flag) {

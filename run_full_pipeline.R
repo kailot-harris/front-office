@@ -98,7 +98,8 @@ run_stage("injury_scraper.R", "Scrape Official Injury Scratches & Availability U
 
 # 2. Physics & Biometric Latent Engines (Phase 5)
 run_stage("shot_quality_engine.R", "Calculate 15-Game Spatial Shot Quality (xeFG%) & Luck")
-run_stage("fatigue_travel_engine.R", "Compute Haversine Flight Miles, Circadian & Altitude Drag")
+# fatigue_travel_engine.R is a library (calculate_travel_fatigue / ARENA_DB), sourced by
+# by the matchups builder and tools/project_week_predictions.R; it is no longer a stage (#155).
 
 # 3. Microstructure & Player Valuation Engines (Phase 4)
 # Play-by-play extraction must precede the engines that consume it:

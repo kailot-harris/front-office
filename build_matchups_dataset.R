@@ -463,12 +463,10 @@ if (rated_pct < 90) {
 # fatigue_travel_engine.R (haversine distance, eastward-biased circadian tax,
 # DEN/UTA altitude tax, back-to-back tax) - they are not re-derived here, so the
 # altitude handling the plan calls for is that engine's, applied to every game
-# instead of to a 4-game sample slate. cache/travel_fatigue_metrics.rds is NOT
-# read: it only ever holds the active slate, while this spine needs all 1,200.
+# instead of to a 4-game sample slate.
 #
 # Rest and the previous venue are read off the spine itself: for each team, the
 # game that precedes this one in date order, and the arena it was played in.
-FATIGUE_ENGINE_LIBRARY_ONLY <- TRUE
 source("fatigue_travel_engine.R")
 
 # One row per team per game, in date order, carrying the arena played in.

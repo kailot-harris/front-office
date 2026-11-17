@@ -4,7 +4,7 @@
 # NBA_analytics#144: the injury scraper parsed 0 of ~100 live ESPN entries
 # because it read athlete$id, which the feed does not carry; the id lives in
 # athlete.links[].href. Both invented-data fallbacks (a hand-typed injury list
-# and a 4-game sample schedule slate) are gone: no feed / no schedule now means
+# and a 4-game sample schedule slate) are gone: no feed now means
 # an empty table plus a WARN line.
 #
 # No network. The fixture copies the live feed's field names and nesting
@@ -155,25 +155,6 @@ check(is.data.frame(ld) && nrow(ld) == 0L, "load_injury_data() returns the empty
 check(identical(reader_env$team_availability_score(ld, data.frame()), 1.0), "team_availability_score() on zero rows -> 1.0")
 saveRDS(na_row, tmp_cache)
 check(is.na(reader_env$load_injury_data()$player_id), "load_injury_data() returns an NA-id row unchanged")
-
-cat("== schedule missing -> empty fatigue table, no invented games ==\n")
-old_wd <- setwd(tempdir())
-fat_env <- new.env()
-fat_env$FATIGUE_ENGINE_LIBRARY_ONLY <- TRUE
-suppressWarnings(suppressMessages(source(file.path(REPO_ROOT, "fatigue_travel_engine.R"), local = fat_env)))
-fake_cache <- file.path(tempdir(), "fatigue_cache_test")
-dir.create(fake_cache, showWarnings = FALSE)
-fat_env$CACHE_DIR <- fake_cache
-fr <- capture_msgs(fat_env$evaluate_slate_fatigue())
-setwd(old_wd)
-fat_saved <- readRDS(file.path(fake_cache, "travel_fatigue_metrics.rds"))
-check(is.data.frame(fr$value) && nrow(fr$value) == 0L, "no schedule -> zero rows returned")
-check(nrow(fat_saved) == 0L, "no schedule -> zero rows saved")
-check(identical(names(fat_saved), c("away_team", "home_team", "last_played_at", "days_rest", "is_b2b",
-                                    "travel_miles", "tz_shift", "point_spread_drag")),
-      "empty fatigue table has the normal path's columns")
-check(any(grepl("^>>> \\[WARN\\].*no games invented", fr$messages)), "no schedule logs a >>> [WARN] line")
-check(!any(grepl("SYNTHETIC_FALLBACK", fr$messages)), "schedule WARN has no SYNTHETIC_FALLBACK wording")
 
 cat(sprintf("\n%d passed, %d failed\n", n_pass, n_fail))
 if (n_fail > 0L) quit(status = 1L)

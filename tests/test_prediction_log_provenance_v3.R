@@ -90,8 +90,7 @@ unlink(scratch_cwd, recursive = TRUE)
 ok("project_week_predictions.R loads fatigue engine as library",
    is.function(pwp_env$.pwp_compute_schedule_adjustments) &&
      is.function(pwp_env$.pwp_build_week_projections) &&
-     is.function(pwp_env$calculate_travel_fatigue) &&
-     isTRUE(pwp_env$FATIGUE_ENGINE_LIBRARY_ONLY))
+     is.function(pwp_env$calculate_travel_fatigue))
 
 # ------------------------------------------------------------------------------
 section("2. P2-b snapshot schema & standardized provenance emitters")
