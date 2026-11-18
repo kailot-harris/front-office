@@ -659,7 +659,11 @@ function Invoke-ModelRefresh {
         Write-Step "  $Sport model refresh: $($step -join ' ')"
         Push-Location $dir
         try {
-            & cmd.exe /c $bat @stepArgs
+            # Out-Host, so the wrapper's printed lines stay visible but never
+            # join this function's return value: an array holding them plus
+            # $false is truthy, and the caller would miss the failure.
+            # $LASTEXITCODE still holds cmd.exe's exit code after the pipe.
+            & cmd.exe /c $bat @stepArgs | Out-Host
             $rc = $LASTEXITCODE
         }
         finally { Pop-Location }
