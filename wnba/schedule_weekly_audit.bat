@@ -2,7 +2,7 @@
 REM ==============================================================================
 REM schedule_weekly_audit.bat
 REM Windows Task Scheduler target for this repo's two repo-health audit skills.
-REM Path: c:\Users\kailo\kayceeslices\WNBA Analytics\schedule_weekly_audit.bat
+REM Path: schedule_weekly_audit.bat
 REM
 REM Runs orphaned-cache-audit and config-constant-drift-audit and appends their
 REM output to logs/weekly_audit.log. Both scripts are advisory only (exit 0

@@ -3,7 +3,7 @@ setlocal EnableDelayedExpansion
 REM ==============================================================================
 REM schedule_daily.bat (WNBA port)
 REM Windows Task Scheduler target for the WNBA Analytics pipeline.
-REM Path: c:\Users\kailo\kayceeslices\WNBA Analytics\schedule_daily.bat
+REM Path: schedule_daily.bat
 REM
 REM Ported from NBA Analytics\schedule_daily.bat's 3-step structure. Per
 REM WNBA_REPLICATION_PLAN.md section (e) risk #1, the WNBA off-season is much longer than the

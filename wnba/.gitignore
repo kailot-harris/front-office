@@ -162,3 +162,25 @@ data/team_similarity_matrix.csv
 node_modules/
 cache/raw_ingest_archive/
 cache/league_state_staged.json
+
+# ------------------------------------------------------------------------------
+# Local-only outputs, caches and scratch (regenerable; never published).
+# ------------------------------------------------------------------------------
+# schedule_weekly_offseason.bat's checkout-safety guard runs `git stash push -u`,
+# which sweeps every UNTRACKED, NOT-IGNORED file off disk into a stash. Anything
+# that is local-only must be ignored here so the guard can never take it.
+# Gallery chart outputs (written by tools/gif_*.R, rebuilt by tests/test_gallery_viz.R)
+cache/gif_*.gif
+cache/gif_*.png
+# Team logos downloaded once into the cache by tools/viz_common.R
+cache/logos/
+# Local viz / RAPM caches rebuilt by the gallery chart scripts
+cache/viz_*.rds
+cache/rapm_ratings_2026.rds
+# Local archives and old build output
+archive/
+# Agent scratch: batch/brief/result files and the finals closeout log
+batch_issue*
+brief_issue*.md
+result_issue*.json
+finals_closeout.log

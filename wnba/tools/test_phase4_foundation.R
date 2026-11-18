@@ -18,7 +18,8 @@ local({
   } else if (file.exists("config.R")) {
     getwd()
   } else {
-    "C:/Users/kailo/kayceeslices/front-office/WNBA Analytics"
+    stop("Cannot locate the repo root: run this script via Rscript, or from a ",
+         "working directory that contains config.R.")
   }
   if (dir.exists(root)) setwd(root)
 })
