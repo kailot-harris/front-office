@@ -518,9 +518,25 @@ function Assert-ScheduledCheckoutSafety {
         `git worktree`; this checkout is for the scheduled pipeline only and
         must stay on `main` and clean. See CLAUDE.md, "Scheduled checkouts
         stay on main".
+
+        Invoke-ModelRefresh also calls this on each sport's PRIMARY checkout
+        before pulling it, with its own -StashMessage tag, and catches the
+        throw so one sport's bad checkout skips only that sport's model
+        refresh. Before that, the pull relied on `git pull --autostash`; when
+        the checkout was dirty with pipeline output the autostash could not be
+        re-applied and left model_diagnostics.json conflicted ("needs merge"),
+        which then failed the sport's own checkout guard and had to be
+        untangled by hand.
+
+        `-u` is passed to `git stash push` ONLY when there are untracked,
+        non-ignored files. On Windows, `git stash -u` has been seen to create
+        the stash and then fail with "Permission denied" while cleaning an
+        ignored-but-present directory (renv/cache), leaving a half-cleaned
+        tree. Tracked-only changes need no `-u`.
     #>
     param(
         [Parameter(Mandatory)] [string] $RepoDir,
+        [string] $StashMessage = 'issue-105 scheduled-checkout-guard',
         [switch] $WhatIfOnly
     )
 
@@ -561,18 +577,40 @@ function Assert-ScheduledCheckoutSafety {
 
     Write-Step "checkout guard: HEAD=$currentBranch dirty=$isDirty -- stashing (if needed) and landing on main"
 
+    # Untracked files that are NOT ignored are the only reason to pass -u; see
+    # the note above on `git stash -u` and ignored directories on Windows.
+    $stashArgs = @('stash', 'push')
+    if ($isDirty) {
+        $untracked = Invoke-CheckoutGit @('ls-files', '--others', '--exclude-standard')
+        if ($untracked.ExitCode -ne 0) {
+            throw "CHECKOUT GUARD FAILED: 'git ls-files --others' failed in $RepoDir -- $($untracked.Output)"
+        }
+        if (-not [string]::IsNullOrWhiteSpace($untracked.Output)) { $stashArgs += '-u' }
+    }
+    $stashCmd = $stashArgs -join ' '
+    $stashArgs += @('-m', $StashMessage)
+
     if ($WhatIfOnly) {
-        if ($isDirty) { Write-Host "  would run: git -C $RepoDir stash push -u -m 'issue-105 scheduled-checkout-guard'" }
+        if ($isDirty) { Write-Host "  would run: git -C $RepoDir $stashCmd -m '$StashMessage'" }
+        if ($isDirty) { Write-Host "  dirty paths now:"; $status.Output -split "`n" | ForEach-Object { Write-Host "    $_" } }
         Write-Host "  would run: git -C $RepoDir checkout main"
         return
     }
 
     if ($isDirty) {
-        $stash = Invoke-CheckoutGit @('stash', 'push', '-u', '-m', 'issue-105 scheduled-checkout-guard')
+        $stashBefore = (Invoke-CheckoutGit @('rev-parse', '--verify', '--quiet', 'refs/stash')).Output.Trim()
+        $stash = Invoke-CheckoutGit $stashArgs
+        $stashAfter  = (Invoke-CheckoutGit @('rev-parse', '--verify', '--quiet', 'refs/stash')).Output.Trim()
         if ($stash.ExitCode -ne 0) {
-            throw "CHECKOUT GUARD FAILED: 'git stash -u' failed in $RepoDir -- $($stash.Output). Refusing to touch a dirty checkout it could not safely preserve."
+            # The stash may have been created before the failure (the -u clean
+            # step runs last); name it so it can be found and re-applied.
+            $created = if ($stashAfter -and $stashAfter -ne $stashBefore) { " A stash WAS created before the failure: $stashAfter ('$StashMessage')." } else { '' }
+            throw "CHECKOUT GUARD FAILED: '$stashCmd' failed in $RepoDir -- $(if ($stash.Output) { $stash.Output } else { 'see the git error printed above' }).$created Refusing to touch a dirty checkout it could not safely preserve."
         }
-        Write-Step "  stashed dirty tree: $($stash.Output.Trim())"
+        if (-not $stashAfter -or $stashAfter -eq $stashBefore) {
+            throw "CHECKOUT GUARD FAILED: 'git stash push' exited 0 in $RepoDir but created no stash. Refusing to proceed on a tree it could not preserve."
+        }
+        Write-Step "  stashed dirty tree with '$stashCmd' as $stashAfter ('$StashMessage')"
     }
 
     $checkout = Invoke-CheckoutGit @('checkout', 'main')
@@ -616,6 +654,18 @@ function Invoke-ModelRefresh {
         Runs one sport's local pipeline wrappers so standings, ratings and
         playoff odds reflect the results the refresh just committed. Returns
         $true only if every step exited 0.
+
+        This runs in the sport's PRIMARY checkout, which pipeline runs often
+        leave dirty with regenerated output. It used to be brought up to date
+        with `git pull --rebase --autostash`; when the autostash could not be
+        re-applied on top of the results the slot had just pushed, the pull
+        left web/public/data/model_diagnostics.json conflicted, the sport's
+        own schedule_daily.bat guard refused to run, and the checkout had to
+        be repaired by hand. So the checkout is first brought to a clean
+        `main` by Assert-ScheduledCheckoutSafety, which stashes (never
+        discards) anything dirty under a tag unique to this run, and only
+        then pulled, with no autostash. Any guard failure skips this sport's
+        model refresh and lets the rest of the slot continue.
     #>
     param(
         [string] $Sport,
@@ -625,8 +675,20 @@ function Invoke-ModelRefresh {
     $cfg = $MODEL_REFRESH[$Sport]
     $dir = Join-Path $WORKSPACE_ROOT $cfg.Dir
 
+    # Unique per sport and run, so a stash left behind can be traced to the
+    # slot run that made it ('git stash list' shows the message).
+    $stashTag = "slot-refresh $Sport $((Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ'))"
+
     if ($WhatIfOnly) {
-        Write-Host "  would pull main in '$dir', then run:"
+        Write-Host "  would bring '$dir' to a clean main (stash tag '$stashTag'). As of now:"
+        try {
+            Assert-ScheduledCheckoutSafety -RepoDir $dir -StashMessage $stashTag -WhatIfOnly
+        }
+        catch {
+            Write-Host "  $Sport model refresh would be SKIPPED: $($_.Exception.Message)"
+        }
+        Write-Host "  would run: git -C $dir pull --quiet --rebase origin main"
+        Write-Host "  then run:"
         foreach ($step in $cfg.Steps) { Write-Host "    $($step -join ' ')" }
         return $true
     }
@@ -637,14 +699,34 @@ function Invoke-ModelRefresh {
     }
 
     # The publish gate only pushes from main, and the pipeline must start from
-    # the results the refresh just committed, or its push is rejected.
-    $branch = (& git -C $dir rev-parse --abbrev-ref HEAD)
-    if ($LASTEXITCODE -ne 0 -or ([string] $branch).Trim() -ne 'main') {
-        Write-Step "  $Sport model refresh SKIPPED: checkout is on '$branch', not main"
+    # the results the refresh just committed, or its push is rejected. Land on
+    # a clean main first; the guard throws on anything it cannot do safely.
+    Write-Step "  ${Sport}: checking its checkout before the model refresh"
+    try {
+        Assert-ScheduledCheckoutSafety -RepoDir $dir -StashMessage $stashTag
+    }
+    catch {
+        Write-Step "  $Sport model refresh SKIPPED: $($_.Exception.Message)"
         return $false
     }
-    & git -C $dir pull --quiet --rebase --autostash origin main
+
+    # No --autostash: the tree is clean now, so there is nothing to re-apply.
+    # --rebase stays (not --ff-only) because the sport's publish wrapper
+    # commits in this checkout, and a commit whose push failed would make a
+    # fast-forward impossible. Output goes to Out-Host so it cannot leak into
+    # this function's return value.
+    & git -C $dir pull --quiet --rebase origin main | Out-Host
     if ($LASTEXITCODE -ne 0) {
+        # Never leave a rebase half-done in a checkout a scheduled task uses.
+        $rebaseDirs = @('rebase-merge', 'rebase-apply') | ForEach-Object {
+            $p = ([string] (& git -C $dir rev-parse --git-path $_)).Trim()
+            if (-not [System.IO.Path]::IsPathRooted($p)) { $p = Join-Path $dir $p }
+            $p
+        }
+        if (@($rebaseDirs | Where-Object { Test-Path $_ }).Count -gt 0) {
+            & git -C $dir rebase --abort | Out-Host
+            Write-Step "  ${Sport}: pull stopped mid-rebase; aborted it (exit $LASTEXITCODE)"
+        }
         Write-Step "  $Sport model refresh SKIPPED: could not bring the checkout up to date with origin/main"
         return $false
     }
