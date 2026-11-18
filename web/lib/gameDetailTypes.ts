@@ -186,6 +186,13 @@ export interface GameExplainabilityPayload {
   sigma_game: number | null;
   /** Non-null only when component values for THIS forecast exist (section 4.2). */
   margin_waterfall: MarginWaterfallStep[] | null;
+  /**
+   * False when travel/schedule context could not be computed for this game (a
+   * team arena is missing): the projection leaves the schedule term out, and the
+   * waterfall's schedule step reads "Travel data unavailable". Null when the
+   * game has no projection; absent in files published before this field existed.
+   */
+  schedule_context_available?: boolean | null;
   /** Non-null whenever the number comes from the log; log_source says what kind of row. */
   logged_forecast: {
     prediction_timestamp: string;

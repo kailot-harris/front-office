@@ -293,6 +293,16 @@ function assertWaterfallAndVeracity(
         failures.push(`${label}: margin_waterfall missing core step "${coreKey}"`);
       }
     }
+    // schedule_context_available === false means travel data was missing: the schedule
+    // step must say so and contribute nothing, never carry an invented number.
+    const schedStep = wf.find((x) => x.key === 'schedule');
+    if (ex.schedule_context_available === false) {
+      if (!schedStep || schedStep.points !== 0 || schedStep.detail !== 'Travel data unavailable') {
+        failures.push(`${label}: schedule_context_available=false requires a 0-point schedule step labelled "Travel data unavailable"`);
+      }
+    } else if (schedStep?.detail === 'Travel data unavailable') {
+      failures.push(`${label}: "Travel data unavailable" schedule step requires schedule_context_available=false`);
+    }
     for (const rs of roundingSteps) {
       if (Math.abs(rs.points) > 0.02) {
         failures.push(`${label}: margin_waterfall rounding step |${rs.points}| > 0.02`);

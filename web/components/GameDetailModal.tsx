@@ -722,11 +722,17 @@ const PrimaryWaterfallCard: React.FC<{
               const widthPct = Math.min(50, (Math.abs(step.points) / maxAbs) * 50);
               const isPositive = step.points >= 0;
               const isRounding = step.key === 'rounding';
+              const travelUnavailable =
+                step.key === 'schedule' && explainability.schedule_context_available === false;
 
               return (
                 <div
                   key={step.key}
-                  aria-label={`${step.label}: ${formatSignedNumber(step.points, 2)} points`}
+                  aria-label={
+                    travelUnavailable
+                      ? `${step.label}: Travel data unavailable`
+                      : `${step.label}: ${formatSignedNumber(step.points, 2)} points`
+                  }
                   className="px-3 py-2 grid grid-cols-1 sm:grid-cols-12 items-center gap-2 text-xs"
                 >
                   <div className="sm:col-span-5 min-w-0">
@@ -767,7 +773,7 @@ const PrimaryWaterfallCard: React.FC<{
                       isPositive ? 'text-emerald-300' : 'text-sky-300'
                     }`}
                   >
-                    {formatSignedNumber(step.points, 2)} pts
+                    {travelUnavailable ? 'Travel data unavailable' : `${formatSignedNumber(step.points, 2)} pts`}
                   </div>
                 </div>
               );

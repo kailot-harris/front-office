@@ -189,6 +189,7 @@ source(file.path(.pw_root(), "fatigue_travel_engine.R"), local = TRUE)
       home_fatigue_drag = numeric(0),
       away_fatigue_drag = numeric(0),
       schedule_adjustment = numeric(0),
+      schedule_context_available = logical(0),
       stringsAsFactors = FALSE
     ))
   }
@@ -245,8 +246,15 @@ source(file.path(.pw_root(), "fatigue_travel_engine.R"), local = TRUE)
   games$away_fatigue_drag <- vapply(seq_len(nrow(games)), function(i) {
     .side_drag(games$away_team[i], games$game_date[i], games$home_team[i])
   }, numeric(1))
+  # NA drag on either side (a team code absent from ARENA_DB, #156) leaves the
+  # adjustment NA -- a data gap, never a zero -- and flags the game so the
+  # projection omits the schedule term rather than going NA itself.
   games$schedule_adjustment <- round(games$away_fatigue_drag - games$home_fatigue_drag, 2)
-  games[, c("game_id", "home_fatigue_drag", "away_fatigue_drag", "schedule_adjustment"), drop = FALSE]
+  games$schedule_context_available <- is.finite(games$home_fatigue_drag) &
+    is.finite(games$away_fatigue_drag) & is.finite(games$schedule_adjustment)
+  games$schedule_adjustment[!games$schedule_context_available] <- NA_real_
+  games[, c("game_id", "home_fatigue_drag", "away_fatigue_drag", "schedule_adjustment",
+            "schedule_context_available"), drop = FALSE]
 }
 
 .pwp_build_week_projections <- function(wk, full_spine, r, prediction_timestamp = Sys.time()) {
@@ -261,7 +269,10 @@ source(file.path(.pw_root(), "fatigue_travel_engine.R"), local = TRUE)
     stop(sprintf("schedule adjustment missing for game_id(s): %s",
                  paste(wk$game_id[is.na(sched_idx)], collapse = ", ")))
   }
+  # comp_schedule stays NA where travel context is unavailable: the log then
+  # records, with no extra column, that the schedule term was left out.
   comp_schedule <- as.numeric(sched_df$schedule_adjustment[sched_idx])
+  schedule_context_available <- as.logical(sched_df$schedule_context_available[sched_idx])
 
   fin <- function(v) { v <- unname(as.numeric(v)); ifelse(is.finite(v) & v > 0, v, 0) }
   comp_bottom_up    <- round(PWP_WEIGHTS[["bottom_up"]]    * unname(r$bottom_up[hn]    - r$bottom_up[an]),    4)
@@ -270,7 +281,10 @@ source(file.path(.pw_root(), "fatigue_travel_engine.R"), local = TRUE)
   comp_embeddings   <- round(PWP_WEIGHTS[["embeddings"]]   * unname(r$embeddings[hn]   - r$embeddings[an]),   4)
   comp_home_court   <- rep(as.numeric(PWP_HCA), nrow(wk))
 
-  margin <- unname(r$rating[hn] - r$rating[an]) + comp_home_court + comp_schedule
+  # The schedule term joins the margin only where it exists; elsewhere the
+  # projection is rating difference plus home court, and stays finite.
+  margin <- unname(r$rating[hn] - r$rating[an]) + comp_home_court +
+    ifelse(schedule_context_available, comp_schedule, 0)
   sigma_game_val <- sqrt(PWP_SIGMA^2 + fin(r$sd[hn])^2 + fin(r$sd[an])^2)
   prob <- pnorm(margin / sigma_game_val)
 

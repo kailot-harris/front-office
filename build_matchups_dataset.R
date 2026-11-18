@@ -515,15 +515,25 @@ games$home_fatigue_drag <- vapply(seq_len(nrow(games)), function(i) {
 games$away_fatigue_drag <- vapply(seq_len(nrow(games)), function(i) {
   .side_drag(games$away_team[i], games$game_date[i], games$home_team[i])
 }, numeric(1))
-# Positive helps the home side: the visitor's drag minus the host's own.
+# Positive helps the home side: the visitor's drag minus the host's own. When
+# either side's drag is NA (a team code absent from ARENA_DB, #156) the
+# adjustment stays NA -- a data gap, never a zero -- and the game is flagged so
+# the projection can leave the schedule term out instead of going NA itself.
 games$schedule_adjustment <- round(games$away_fatigue_drag - games$home_fatigue_drag, 2)
+games$schedule_context_available <- is.finite(games$home_fatigue_drag) &
+  is.finite(games$away_fatigue_drag) & is.finite(games$schedule_adjustment)
+games$schedule_adjustment[!games$schedule_context_available] <- NA_real_
 
+.sched_ok <- games$schedule_adjustment[games$schedule_context_available]
 cat(sprintf(paste0(
   ">>> Schedule context: %d of %d games carry a non-zero fatigue differential ",
-  "(mean %+.2f, range %+.2f .. %+.2f points to the home side)\n"),
-  sum(games$schedule_adjustment != 0), nrow(games),
-  mean(games$schedule_adjustment), min(games$schedule_adjustment),
-  max(games$schedule_adjustment)))
+  "(mean %+.2f, range %+.2f .. %+.2f points to the home side); ",
+  "%d games without travel context\n"),
+  sum(.sched_ok != 0), nrow(games),
+  if (length(.sched_ok)) mean(.sched_ok) else NA_real_,
+  if (length(.sched_ok)) min(.sched_ok) else NA_real_,
+  if (length(.sched_ok)) max(.sched_ok) else NA_real_,
+  sum(!games$schedule_context_available)))
 
 ratings_source_desc <- sprintf(paste0(
   "Primary 4-Model Ensemble Blend (35%% BPM, 25%% RAPM, 20%% Shot Quality/Fatigue, ",
@@ -695,7 +705,7 @@ for (i in seq_len(nrow(games))) {
     # 48-hour logged slate has not reached. Blended net-rating differential,
     # home-court advantage, then the two sides' fatigue differential (2c).
     margin <- (as.numeric(g$home_rating) - as.numeric(g$away_rating)) +
-      HCA_POINTS + as.numeric(g$schedule_adjustment)
+      HCA_POINTS + (if (isTRUE(g$schedule_context_available)) as.numeric(g$schedule_adjustment) else 0)
     # SIGMA IS PER GAME, not the flat MARGIN_SIGMA. Two independent sources of
     # error stack on the game's own outcome noise: how far apart the four models
     # put the home team, and how far apart they put the visitor. Added in
@@ -755,6 +765,7 @@ for (i in seq_len(nrow(games))) {
     sigma_game              = sigma_game_val,
     hca_pts                 = HCA_POINTS,
     schedule_adjustment     = as.numeric(g$schedule_adjustment),
+    schedule_context_available = isTRUE(g$schedule_context_available),
     home_fatigue_drag       = as.numeric(g$home_fatigue_drag),
     away_fatigue_drag       = as.numeric(g$away_fatigue_drag),
     home_score              = if (is_completed) as.numeric(g$box_home_score) else NA_real_,
