@@ -97,9 +97,10 @@ param(
     [switch] $DryRun,
     [switch] $Remove,
 
+    # Defaults to this checkout's root (the parent of tools\).
     # Mirrors config.R's PROJECT_DIR; see register_scheduled_tasks.ps1's note on why
     # this one value is restated in PowerShell rather than read from config.R.
-    [string] $ProjectDir = 'c:\Users\kailo\kayceeslices\front-office\nfl analytics',
+    [string] $ProjectDir = '',
 
     [int] $TimeoutSec = 60,
 
@@ -107,8 +108,13 @@ param(
     # The registered task is the artifact a future reader audits, so every input the
     # probe acts on should be visible in the task's Arguments string -- an implicit
     # default is invisible in Get-ScheduledTask output.
-    [string] $AggregatorDir = 'c:\Users\kailo\kayceeslices\front-office\front-office-aggregator'
+    [string] $AggregatorDir = ''
 )
+
+# Defaults resolved here, not in param(): $PSScriptRoot is empty inside param() in
+# Windows PowerShell 5.1. The project root is the parent of this tools\ folder.
+if (-not $ProjectDir) { $ProjectDir = Split-Path -Parent $PSScriptRoot }
+if (-not $AggregatorDir) { $AggregatorDir = Join-Path (Split-Path $ProjectDir -Parent) 'front-office-aggregator' }
 
 $ErrorActionPreference = 'Stop'
 

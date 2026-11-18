@@ -1,6 +1,6 @@
 # ==============================================================================
 # General-Purpose Model-Comparison Backtest Harness (Phase A, model-quality remediation)
-# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/model_backtest_harness.R
+# Path: tools/model_backtest_harness.R
 #
 # Generalizes tools/backtest_shrinkage_optimizer.R's walk-forward, no-lookahead discipline
 # into a REUSABLE comparison across multiple candidate rating models, not just the two

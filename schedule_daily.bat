@@ -34,20 +34,23 @@ REM at a call site -- but a .bat file cannot source R, so the project root has t
 REM stated here to be able to cd into it at all. The duplication is deliberately
 REM limited to this single path: every other value the run needs (cache paths, web
 REM paths, modeling constants) is read by the R code from config.R, not passed in
-REM from here. If the repo ever moves, config.R:22 and this line must change together.
+REM from here. The path itself is derived from this file's location (see below).
 REM
 REM The existing task NFL_analytics_task_01 runs Rscript against an absolute script
 REM path with an EMPTY WorkingDirectory, which only survives today because config.R
 REM hardcodes PROJECT_DIR (issue #43). This wrapper cd's explicitly instead of
 REM relying on that, as the sibling wrappers do.
 REM ------------------------------------------------------------------------------
-set PROJECT_DIR=c:\Users\kailo\kayceeslices\front-office\nfl analytics
+REM The project root is this wrapper's own directory (%~dp0 minus its trailing
+REM backslash), so the same file works from any checkout without a hard-coded path.
+set "PROJECT_DIR=%~dp0"
+if "%PROJECT_DIR:~-1%"=="\" set "PROJECT_DIR=%PROJECT_DIR:~0,-1%"
 
 REM Testing/worktree escape hatch: if NFL_PROJECT_DIR is set in the environment, it
 REM wins. This lets the wrapper be exercised from a git worktree (or a relocated
 REM checkout) without editing the file and without writing logs into the main
 REM checkout. The registered scheduled tasks do NOT set it, so production always
-REM uses the path above. No secret is involved -- it is a directory path only.
+REM uses this wrapper's own directory. No secret is involved -- it is a directory path only.
 if defined NFL_PROJECT_DIR set PROJECT_DIR=%NFL_PROJECT_DIR%
 
 REM Wrapper log lives under logs\ so .gitignore's existing "logs/*.log" rule (line 56)

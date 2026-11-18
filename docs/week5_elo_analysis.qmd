@@ -36,7 +36,21 @@ suppressPackageStartupMessages({
   library(nflplotR)
   library(magick)
 })
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/NFL Analytics"
+# Repo root: NFL_PROJECT_DIR if set, else the working directory or its parent (Quarto
+# renders from docs/), whichever holds config.R. No hard-coded fallback.
+PROJECT_DIR <- local({
+  env_root <- Sys.getenv("NFL_PROJECT_DIR", "")
+  root <- if (nzchar(env_root)) {
+    env_root
+  } else if (file.exists("config.R")) {
+    getwd()
+  } else if (file.exists(file.path("..", "config.R"))) {
+    normalizePath("..", winslash = "/", mustWork = FALSE)
+  } else {
+    stop("Cannot locate the NFL Analytics project root: set NFL_PROJECT_DIR or render from the repo.")
+  }
+  normalizePath(root, winslash = "/", mustWork = FALSE)
+})
 setwd(PROJECT_DIR)
 source("config.R")
 source("logging_utils.R")

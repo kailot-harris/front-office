@@ -86,11 +86,16 @@
 #>
 [CmdletBinding()]
 param(
-    [string] $ProjectDir    = 'c:\Users\kailo\kayceeslices\front-office\nfl analytics',
-    [string] $AggregatorDir = 'c:\Users\kailo\kayceeslices\front-office\front-office-aggregator',
+    [string] $ProjectDir    = '',
+    [string] $AggregatorDir = '',
     [int]    $TimeoutSec    = 60,
     [switch] $DryRun
 )
+
+# Defaults resolved here, not in param(): $PSScriptRoot is empty inside param() in
+# Windows PowerShell 5.1. The project root is the parent of this tools\ folder.
+if (-not $ProjectDir) { $ProjectDir = Split-Path -Parent $PSScriptRoot }
+if (-not $AggregatorDir) { $AggregatorDir = Join-Path (Split-Path $ProjectDir -Parent) 'front-office-aggregator' }
 
 $ErrorActionPreference = 'Stop'
 

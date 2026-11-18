@@ -1,6 +1,6 @@
 # ==============================================================================
 # NFL Playoff Odds — Week-by-Week History Backfill
-# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/playoff_odds_history_backfill.R
+# Path: tools/playoff_odds_history_backfill.R
 #
 # GitHub issue #18 ("Historical weekly playoff-odds backfill (CACHE_PLAYOFF_ODDS_HISTORY)"),
 # docs/task_assignments_phase8.md task P9-B. CACHE_PLAYOFF_ODDS (playoff_odds_engine.R's
@@ -78,7 +78,26 @@
 # week backfill, same as the original behavior.
 # ==============================================================================
 
-setwd("c:/Users/kailo/kayceeslices/front-office/nfl analytics")
+setwd(local({
+  # Repo root: NFL_PROJECT_DIR if set, else this script's parent directory (it lives in
+  # tools/), else the working directory if it holds config.R. No hard-coded fallback.
+  env_root <- Sys.getenv("NFL_PROJECT_DIR", "")
+  f <- sub("^--file=", "", grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE))
+  f <- gsub("~+~", " ", f, fixed = TRUE)
+  script_root <- if (length(f) == 1L) {
+    dirname(dirname(normalizePath(f, winslash = "/", mustWork = FALSE)))
+  } else ""
+  root <- if (nzchar(env_root)) {
+    env_root
+  } else if (nzchar(script_root) && file.exists(file.path(script_root, "config.R"))) {
+    script_root
+  } else if (file.exists("config.R")) {
+    getwd()
+  } else {
+    stop("Cannot locate the NFL Analytics project root: set NFL_PROJECT_DIR or run from the repo root.")
+  }
+  normalizePath(root, winslash = "/", mustWork = FALSE)
+}))
 source("config.R")
 source("logging_utils.R")
 .LOG_SCRIPT <- "playoff_odds_history_backfill.R"

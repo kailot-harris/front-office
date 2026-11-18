@@ -2,7 +2,26 @@
 # freshly regenerated CACHE_PROJECTED_MATCHUPS (home_win_prob / projected_margin columns per
 # config.R's documented schema). Not part of run_full_pipeline.R's DAG - a one-off chart, same
 # category as tools/weekly_accuracy_report.R.
-setwd("c:/Users/kailo/kayceeslices/front-office/nfl analytics")
+setwd(local({
+  # Repo root: NFL_PROJECT_DIR if set, else this script's parent directory (it lives in
+  # tools/), else the working directory if it holds config.R. No hard-coded fallback.
+  env_root <- Sys.getenv("NFL_PROJECT_DIR", "")
+  f <- sub("^--file=", "", grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE))
+  f <- gsub("~+~", " ", f, fixed = TRUE)
+  script_root <- if (length(f) == 1L) {
+    dirname(dirname(normalizePath(f, winslash = "/", mustWork = FALSE)))
+  } else ""
+  root <- if (nzchar(env_root)) {
+    env_root
+  } else if (nzchar(script_root) && file.exists(file.path(script_root, "config.R"))) {
+    script_root
+  } else if (file.exists("config.R")) {
+    getwd()
+  } else {
+    stop("Cannot locate the NFL Analytics project root: set NFL_PROJECT_DIR or run from the repo root.")
+  }
+  normalizePath(root, winslash = "/", mustWork = FALSE)
+}))
 source("config.R")
 library(ggplot2)
 library(dplyr)
@@ -53,7 +72,7 @@ p <- ggplot(df, aes(y = matchup)) +
                        " \u00b7 Generated ", format(Sys.Date(), "%b %d, %Y")),
     x = "Home team win probability",
     y = NULL,
-    caption = "Dot right of the dashed 50% line = home favored \u00b7 left = away favored \u00b7 kayceeslices/NFL Analytics"
+    caption = "Dot right of the dashed 50% line = home favored \u00b7 left = away favored \u00b7 NFL Analytics"
   ) +
   theme_minimal(base_size = 12) +
   theme(

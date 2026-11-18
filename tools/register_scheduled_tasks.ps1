@@ -57,12 +57,17 @@ param(
     [ValidateSet('dryrun', 'strict', 'publish', 'publish-strict')]
     [string] $PublishMode = 'dryrun',
 
+    # Defaults to this checkout's root (the parent of tools\).
     # Mirrors config.R:22's PROJECT_DIR. A PowerShell script cannot source R, so
     # the project root is restated here -- the same single, deliberate duplication
     # the .bat wrappers make and justify in their own header comments. Nothing else
     # is duplicated: every other value lives in config.R and is read by the R code.
-    [string] $ProjectDir = 'c:\Users\kailo\kayceeslices\front-office\nfl analytics'
+    [string] $ProjectDir = ''
 )
+
+# Defaults resolved here, not in param(): $PSScriptRoot is empty inside param() in
+# Windows PowerShell 5.1. The project root is the parent of this tools\ folder.
+if (-not $ProjectDir) { $ProjectDir = Split-Path -Parent $PSScriptRoot }
 
 $ErrorActionPreference = 'Stop'
 
