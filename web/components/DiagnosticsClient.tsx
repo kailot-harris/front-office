@@ -84,7 +84,7 @@ export default function DiagnosticsClient({ data }: DiagnosticsClientProps) {
           </h1>
           <p className="text-slate-400 text-sm mt-1 max-w-3xl">
             Multi-decile probability reliability curves, out-of-sample <GlossaryTerm term="Brier Score" className="text-slate-300" /> trajectories,
-            and statistical loss metrics evaluated continuously against consensus market baselines.
+            and statistical loss metrics evaluated continuously against a naive coin-flip baseline.
           </p>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-emerald-500/40 to-transparent" />

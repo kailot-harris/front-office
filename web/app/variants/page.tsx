@@ -3,7 +3,7 @@ import VariantsClient from '@/components/VariantsClient';
 
 export const metadata = {
   title: 'Model Variants & Architecture',
-  description: 'Ridge Massey, Dynamic Elo, and Market Blend ensemble weighting and divergence analysis.',
+  description: 'Ridge Massey and Dynamic Elo ensemble weighting, candidate model evaluation, and divergence analysis.',
 };
 
 export default function VariantsPage() {

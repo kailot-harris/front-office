@@ -53,10 +53,6 @@ export const GLOSSARY_TERMS: GlossaryEntry[] = [
     definition: 'The share of plays that gain enough yardage to be considered "successful" for that down and distance.',
   },
   {
-    term: 'Market Blend',
-    definition: 'The portion of a projection derived from sportsbook market lines rather than this app’s own models.',
-  },
-  {
     term: 'Brier Score',
     definition:
       'The average squared error between a predicted win probability and the actual outcome (0 or 1). Lower is better; 0 is a perfect forecast, 0.25 is a coin flip guessed every time.',
