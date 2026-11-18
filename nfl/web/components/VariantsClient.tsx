@@ -60,7 +60,7 @@ export default function VariantsClient({ data }: VariantsClientProps) {
       brierImpact: 'Unverified',
       liftStatus: 'Pending re-evaluation',
       finding:
-        'An earlier one-off study (not saved as a reusable backtest candidate) reported this architecture degraded Brier score; those exact figures traced to a different, now-retired 3-model ensemble (Ridge 40% / Elo 35% / Market 25%) and cannot honestly be attributed to the current 2-model production ensemble. tools/model_backtest_harness.R has no saved predict_fn reconstructing this exact "EPA differential as an independent linear estimator" architecture against today’s Ridge+Elo base, so no number is shown here pending a real re-run (tools/ridge_situational_model.R’s situational-EPA ridge candidate is the closest existing building block, but it blends EPA features INTO the ridge fit rather than testing EPA as a separate estimator, so it is not a faithful substitute).',
+        'An earlier one-off study (not saved as a reusable backtest candidate) reported this architecture degraded Brier score; those exact figures traced to a different, now-retired 3-model ensemble (Ridge 40% / Elo 35% / external baseline 25%) and cannot honestly be attributed to the current 2-model production ensemble. tools/model_backtest_harness.R has no saved predict_fn reconstructing this exact "EPA differential as an independent linear estimator" architecture against today’s Ridge+Elo base, so no number is shown here pending a real re-run (tools/ridge_situational_model.R’s situational-EPA ridge candidate is the closest existing building block, but it blends EPA features INTO the ridge fit rather than testing EPA as a separate estimator, so it is not a faithful substitute).',
       recommendation: 'Do not cite a Brier/log-loss number for this row until a dedicated walk-forward candidate is built and run against the current production base.',
     },
     {
@@ -71,7 +71,7 @@ export default function VariantsClient({ data }: VariantsClientProps) {
       brierImpact: 'Unverified',
       liftStatus: 'Pending re-evaluation',
       finding:
-        'An earlier one-off study (not saved as a reusable backtest candidate) reported this architecture degraded log loss; those exact figures traced to the same now-retired 3-model (Ridge/Elo/Market) ensemble, not the current 2-model production ensemble. fatigue_engine.R’s fatigue_drag_pts is already used as an additive term inside the Elo candidate (tools/elo_model.R), but no STANDALONE rest/travel/circadian win-probability model has been built or backtested on its own against today’s base, so no number is shown here pending a real re-run.',
+        'An earlier one-off study (not saved as a reusable backtest candidate) reported this architecture degraded log loss; those exact figures traced to the same now-retired 3-model (Ridge/Elo/external-baseline) ensemble, not the current 2-model production ensemble. fatigue_engine.R’s fatigue_drag_pts is already used as an additive term inside the Elo candidate (tools/elo_model.R), but no STANDALONE rest/travel/circadian win-probability model has been built or backtested on its own against today’s base, so no number is shown here pending a real re-run.',
       recommendation: 'Do not cite a Brier/log-loss number for this row until a dedicated standalone walk-forward candidate is built and run against the current production base.',
     },
   ];

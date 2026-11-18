@@ -119,7 +119,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       label: 'Model Variants',
       badge: '3 Engines',
       icon: BarChart3,
-      desc: 'Ridge vs Elo vs Market weights',
+      desc: 'Ridge Massey + Elo ensemble weights',
     },
     {
       href: '/diagnostics',
