@@ -146,6 +146,24 @@ create_test_sandbox <- function(test_id_str) {
   list(root = sandbox, cache = s_cache, web = s_web)
 }
 
+# Helper to stamp a fixture manifest's ingest_timestamp relative to the
+# mock_date the same test builds with -- never relative to the real clock.
+#
+# build_offseason_monitor(mock_date = D) evaluates the ingest freshness gate
+# at now = D 12:00:00 UTC (build_offseason_monitor.R: `now_clock`). Since #75,
+# assert_ingest_freshness() fails closed with status FUTURE when the stamp is
+# more than future_tolerance_hours (0.05h) ahead of now, and with STALE when it
+# is more than max_age_hours (26h) behind. A Sys.time() stamp therefore drifts
+# further into the "future" every day the suite runs after D. Stamping from
+# mock_date keeps every result identical whatever day the suite runs.
+#
+# offset_hours is relative to that effective now: the default (-1) is a fresh
+# manifest one hour old; a large negative offset builds a stale manifest.
+mock_ingest_timestamp <- function(mock_date, offset_hours = -1) {
+  now_mock <- as.POSIXct(paste(mock_date, "12:00:00"), tz = "UTC")
+  format(now_mock + round(offset_hours * 3600), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+}
+
 # ------------------------------------------------------------------------------
 # Test 1: Cardinal Assertion — Non-Quiet Week Reportable
 # ------------------------------------------------------------------------------
@@ -159,7 +177,7 @@ file.copy(fixtures_s0_path, file.path(sb1$cache, "league_state_baseline.json"), 
 file.copy(fixtures_sample_path, file.path(sb1$cache, "offseason_wire_items.json"), overwrite = TRUE)
 
 manifest1 <- list(
-  ingest_timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+  ingest_timestamp = mock_ingest_timestamp("2026-10-31"),
   composite_health = "HEALTHY",
   adapters = list(
     league_wire = list(status = "HEALTHY", items_found = 15L)
@@ -234,7 +252,7 @@ file.copy(staged_file1, file.path(sb2$cache, "league_state_baseline.json"), over
 file.copy(fixtures_sample_path, file.path(sb2$cache, "offseason_wire_items.json"), overwrite = TRUE)
 
 manifest2 <- list(
-  ingest_timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+  ingest_timestamp = mock_ingest_timestamp("2026-11-01"),
   composite_health = "HEALTHY",
   adapters = list(
     league_wire = list(status = "HEALTHY", items_found = 15L)
@@ -299,7 +317,7 @@ sb3 <- create_test_sandbox("blind")
 file.copy(fixtures_s0_path, file.path(sb3$cache, "league_state_baseline.json"), overwrite = TRUE)
 
 manifest3 <- list(
-  ingest_timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+  ingest_timestamp = mock_ingest_timestamp("2026-10-31"),
   composite_health = "HEALTHY",
   adapters = list(
     league_wire = list(status = "HEALTHY", items_found = 0L)  # Zero fetched items!
@@ -353,13 +371,15 @@ file.copy(fixtures_s0_path, file.path(sb4$cache, "league_state_baseline.json"), 
 file.copy(fixtures_sample_path, file.path(sb4$cache, "offseason_wire_items.json"), overwrite = TRUE)
 
 # The frozen manifest from the incident: certified HEALTHY but dated Nov 1
+# 2026-11-01T01:49:37Z is 130h10m23s before the mock_date "2026-11-06" now.
 frozen_manifest <- list(
-  ingest_timestamp = "2026-11-01T01:49:37Z",
+  ingest_timestamp = mock_ingest_timestamp("2026-11-06", offset_hours = -(130 + 10 / 60 + 23 / 3600)),
   composite_health = "HEALTHY",
   adapters = list(
     league_wire = list(status = "HEALTHY", items_found = 276L)
   )
 )
+stopifnot(identical(frozen_manifest$ingest_timestamp, "2026-11-01T01:49:37Z"))
 jsonlite::write_json(frozen_manifest, file.path(sb4$cache, "ingestion_manifest.json"), auto_unbox = TRUE, pretty = TRUE)
 wire_sample4 <- jsonlite::fromJSON(file.path(sb4$cache, "offseason_wire_items.json"), simplifyVector = FALSE)
 
@@ -409,7 +429,7 @@ sb5 <- create_test_sandbox("fixture_tripwire")
 file.copy(fixtures_s0_path, file.path(sb5$cache, "league_state_baseline.json"), overwrite = TRUE)
 
 manifest5 <- list(
-  ingest_timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+  ingest_timestamp = mock_ingest_timestamp("2026-10-31"),
   composite_health = "HEALTHY",
   adapters = list(
     league_wire = list(status = "HEALTHY", items_found = 15L)
@@ -459,7 +479,7 @@ file.copy(fixtures_sample_path, file.path(sb6$cache, "offseason_wire_items.json"
 
 # Manifest is FRESH, but can_assert_quiet_week is FALSE
 manifest6 <- list(
-  ingest_timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+  ingest_timestamp = mock_ingest_timestamp("2026-11-01"),
   composite_health = "HEALTHY",
   adapters = list(
     league_wire = list(status = "HEALTHY", items_found = 15L)
