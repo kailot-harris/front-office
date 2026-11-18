@@ -384,6 +384,88 @@ tp_sorted <- mod_env$.select_top_performers(tp_cands, n = 3L)
 ok("top_performers breaks equal game_score by points DESC, minutes DESC, playerName ASC",
    identical(vapply(tp_sorted, `[[`, character(1), "playerId"), c("3", "2", "1")))
 
+# ------------------------------------------------------------------------------
+# 3b. Team totals that contradict the player rows are reconciled to the player sums (#181)
+# ------------------------------------------------------------------------------
+# Game 401910000 (2026-11-17): the source's NOP team row said 97 FGA while its own player
+# rows summed to 98. Fixture: 9001 with the home team row revised to FGA 86 (players: 85)
+# and TOV 15 / team_tov 1 / total_tov 16 (players: 14), player rows untouched.
+tb_bad <- tb_9001
+h_row <- tb_bad$team_home_away == "home"
+tb_bad$field_goals_attempted[h_row] <- 86L
+tb_bad$turnovers[h_row] <- 15L
+tb_bad$total_turnovers[h_row] <- 16L
+
+recon_log <- character(0)
+payload_bad <- mod_env$build_game_detail_payload(
+  game_id = "9001", team_box_game = tb_bad, player_box_game = pb_9001,
+  slate = 4L, slate_label = "Week 4 · Nov 10 – Nov 16", game_date = "2026-11-12",
+  is_completed = TRUE, season = 2027L, season_label = "2026-2027",
+  generated_at = "2026-11-15T12:00:00Z",
+  log_fn = function(msg) recon_log <<- c(recon_log, msg)
+)
+hb <- payload_bad$data$box_score
+ok("Reconciled home fga/tov equal the player sums (85, 14) and total_tov keeps tov + team_tov (15)",
+   identical(hb$home_totals$fga, 85L) &&
+     identical(sum_field(hb$home_players, "fga"), 85L) &&
+     identical(hb$home_totals$tov, 14L) &&
+     identical(hb$home_totals$total_tov, 15L))
+ok("Every counting stat the contract checks equals the active-player sum on both sides",
+   all(vapply(c("away", "home"), function(sd) {
+     tot <- hb[[paste0(sd, "_totals")]]
+     pl <- hb[[paste0(sd, "_players")]]
+     all(vapply(c("points", mod_env$GAME_DETAIL_RECONCILED_STATS),
+                function(s) identical(as.integer(sum_field(pl, s)), as.integer(tot[[s]])), logical(1)))
+   }, logical(1))))
+ok("Derived values (percentages, possessions, ratings, pace, efficiency factors) are recomputed from the reconciled totals",
+   identical(hb$home_totals, payload_9001$data$box_score$home_totals) &&
+     identical(hb$away_totals, payload_9001$data$box_score$away_totals) &&
+     identical(payload_bad$data$efficiency_factors, payload_9001$data$efficiency_factors))
+ok("One warning line per reconciled stat names the game, team, stat and both values",
+   length(recon_log) == 3L &&
+     grepl("Game detail 9001 home (NOP) fga: team total 86 disagrees with player rows 85", recon_log[1], fixed = TRUE) &&
+     grepl("Game detail 9001 home (NOP) tov: team total 15 disagrees with player rows 14", recon_log[2], fixed = TRUE) &&
+     grepl("total_tov: team total 16 becomes 15", recon_log[3], fixed = TRUE))
+
+# entering_baselines.realized is computed upstream from the team rows alone; after a
+# reconciliation it must follow the published efficiency factors (contract identity).
+tb_hist_r <- rbind(transform(tb_9001, game_id = 9000L, game_date = as.Date("2026-11-05")), tb_bad)
+eb_bad <- mod_env$build_entering_baselines("9001", "2026-11-12", "GSW", "NOP", tb_hist_r,
+                                           mod_env$compute_game_realized_factors(tb_bad))
+payload_bad_ex <- mod_env$build_game_detail_payload(
+  game_id = "9001", team_box_game = tb_bad, player_box_game = pb_9001,
+  slate = 4L, game_date = "2026-11-12", generated_at = "2026-11-15T12:00:00Z",
+  explainability = list(entering_baselines = eb_bad), log_fn = function(msg) NULL
+)
+eb_out <- payload_bad_ex$data$explainability$entering_baselines
+ef_out <- payload_bad_ex$data$efficiency_factors
+ef_val <- function(key, fld) ef_out[[which(vapply(ef_out, `[[`, character(1), "key") == key)]][[fld]]
+ok("entering_baselines realized/difference follow the reconciled efficiency factors",
+   !is.null(eb_bad) && length(eb_out) == 2L &&
+     all(vapply(seq_len(2L), function(i) all(vapply(eb_out[[i]]$factors, function(f) {
+       real <- ef_val(f$key, c("away_value", "home_value")[i])
+       identical(f$realized, real) &&
+         (is.null(f$entering) || near_eq(f$difference, round(real - f$entering, 1L)))
+     }, logical(1))), logical(1))) &&
+     !identical(eb_bad[[2]]$factors, eb_out[[2]]$factors))
+
+# Points that do not add up to the final score are never reconciled: the game is left as
+# the source has it, so the contract fails and a human looks at it.
+tb_pts <- tb_bad
+tb_pts$team_score[h_row] <- 103L
+pts_log <- character(0)
+payload_pts <- mod_env$build_game_detail_payload(
+  game_id = "9001", team_box_game = tb_pts, player_box_game = pb_9001,
+  slate = 4L, game_date = "2026-11-12", generated_at = "2026-11-15T12:00:00Z",
+  log_fn = function(msg) pts_log <<- c(pts_log, msg)
+)
+ok("When player points disagree with the score, nothing is reconciled and the disagreement is logged",
+   identical(payload_pts$data$box_score$home_totals$fga, 86L) &&
+     identical(payload_pts$data$box_score$home_totals$tov, 15L) &&
+     identical(payload_pts$data$box_score$home_totals$points, 103L) &&
+     length(pts_log) == 1L &&
+     grepl("player points sum to 102 but the final score is 103", pts_log[1], fixed = TRUE))
+
 # Overtime game_minutes test (sum_min = 265 -> 53 min):
 pb_ot <- pb_9001
 pb_ot$minutes[pb_ot$athlete_id == 101] <- 61 # away sum_min = 240 + 25 = 265 -> 53
@@ -551,12 +633,16 @@ ok("Run 2 with new generated_at writes 0 files (all 3 rebuilt and unchanged), le
      identical(jsonlite::fromJSON(file.path(tmp_games_dir, "9001.json"))$generated_at,
                "2026-11-15T10:00:00Z"))
 
-# Run 3: stat correction on 9001 updates only 9001.json:
+# Run 3: stat correction on 9001 updates only 9001.json. The correction lands on both the
+# team row and a player row (an assist credited to Alpha Star), so the feed stays
+# self-consistent; a team-row-only change is reconciled to the player rows (section 3b).
 tb_batch_corr <- tb_batch
 tb_batch_corr$assists[tb_batch_corr$game_id == 9001L & tb_batch_corr$team_home_away == "away"] <- 26L
+pb_batch_corr <- pb_batch
+pb_batch_corr$assists[pb_batch_corr$game_id == 9001L & pb_batch_corr$athlete_id == 101L] <- 9L
 res3 <- mod_env$export_game_details(
   team_box     = tb_batch_corr,
-  player_box   = pb_batch,
+  player_box   = pb_batch_corr,
   games        = games_batch,
   out_dir      = tmp_games_dir,
   season       = 2027L,
@@ -582,7 +668,7 @@ logged <- character(0)
 capture_log <- function(msg) logged <<- c(logged, msg)
 
 tb_drift <- tb_batch_corr
-pb_drift <- pb_batch
+pb_drift <- pb_batch_corr
 a_idx <- which(pb_drift$game_id == 9004L & pb_drift$athlete_id == 101L)
 pb_drift$defensive_rebounds[a_idx] <- pb_drift$defensive_rebounds[a_idx] + 1L
 pb_drift$rebounds[a_idx] <- pb_drift$rebounds[a_idx] + 1L

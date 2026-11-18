@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "game_id": "401910165",
-  "generated_at": "2026-11-18T05:37:14Z",
+  "generated_at": "2026-11-18T19:40:12Z",
   "data": {
     "projection_basis": "primary_ensemble",
     "predicted_margin": -2.58,
@@ -62,8 +62,8 @@
         {
           "feature": "diff_roll_ts",
           "label": "18-Game True Shooting Diff",
-          "feature_value": -0.0328,
-          "z_score": -0.9937,
+          "feature_value": -0.0325,
+          "z_score": -0.9836,
           "shap_log_odds": -0.46566,
           "shap_prob_approx": -0.1159
         },
@@ -86,18 +86,18 @@
         {
           "feature": "diff_roll_efg",
           "label": "18-Game eFG% Diff",
-          "feature_value": -0.0471,
-          "z_score": -1.353,
-          "shap_log_odds": -0.07106,
-          "shap_prob_approx": -0.0176
+          "feature_value": -0.0467,
+          "z_score": -1.3432,
+          "shap_log_odds": -0.06753,
+          "shap_prob_approx": -0.0167
         },
         {
           "feature": "diff_roll_oreb",
           "label": "18-Game Offensive Rebound Diff",
-          "feature_value": -1.5143,
-          "z_score": -0.6583,
-          "shap_log_odds": -0.06414,
-          "shap_prob_approx": -0.0159
+          "feature_value": -1.581,
+          "z_score": -0.6874,
+          "shap_log_odds": -0.0657,
+          "shap_prob_approx": -0.0163
         },
         {
           "feature": "diff_roll_ast",
@@ -108,20 +108,20 @@
           "shap_prob_approx": 0.0087
         },
         {
-          "feature": "diff_roll_pts",
-          "label": "18-Game Scoring Diff (PPG)",
-          "feature_value": -5.9143,
-          "z_score": -0.8051,
-          "shap_log_odds": 0.0293,
-          "shap_prob_approx": 0.0072
-        },
-        {
           "feature": "style_similarity",
           "label": "16-D Style Embedding Cosine Sim",
           "feature_value": 0.0102,
           "z_score": 0.0821,
           "shap_log_odds": 0.02885,
           "shap_prob_approx": 0.0071
+        },
+        {
+          "feature": "diff_roll_pts",
+          "label": "18-Game Scoring Diff (PPG)",
+          "feature_value": -5.9143,
+          "z_score": -0.8051,
+          "shap_log_odds": 0.0282,
+          "shap_prob_approx": 0.0069
         },
         {
           "feature": "diff_roll_blk",
@@ -143,9 +143,9 @@
           "feature": "diff_roll_tovp",
           "label": "18-Game Turnover Rate Diff",
           "feature_value": -0.0027,
-          "z_score": -0.1635,
-          "shap_log_odds": 0.01561,
-          "shap_prob_approx": 0.0038
+          "z_score": -0.1606,
+          "shap_log_odds": 0.01475,
+          "shap_prob_approx": 0.0036
         },
         {
           "feature": "diff_is_b2b",
