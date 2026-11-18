@@ -113,7 +113,7 @@ run_export_web_datasets <- function() {
     "gif_playoff_prob_bump.gif"       = list(title = "Playoff Probability Trajectory", category = "standings", desc = "Weekly probability of clinching a playoff spot for all 32 teams."),
     "gif_sos_adjusted_winrace.gif"    = list(title = "SOS-Adjusted Win Race", category = "standings", desc = "Strength of schedule adjusted expected wins."),
     "gif_turnover_margin_race.gif"    = list(title = "Turnover Margin Trajectory", category = "epa", desc = "Cumulative turnover differential across weeks."),
-    "gif_upset_timeline.gif"          = list(title = "Upset Timeline & Leverage", category = "standings", desc = "Timeline of major model upsets and market discrepancies."),
+    "gif_upset_timeline.gif"          = list(title = "Upset Timeline & Leverage", category = "standings", desc = "Timeline of the biggest upsets measured against the model's pre-game win probability."),
     "elo_scatter_animation.gif"       = list(title = "Elo Rating Distribution", category = "elo", desc = "Scatter animation of current team Elo ratings."),
     "gif_elo_heatmap.png"             = list(title = "Elo Rating Matrix Heatmap", category = "heatmaps", desc = "Full-season matrix heatmap of weekly Elo ratings across all franchises."),
     "gif_playoff_odds_heatmap.png"    = list(title = "Playoff Odds Heatmap", category = "heatmaps", desc = "Weekly probability heatmap of playoff qualification.")
