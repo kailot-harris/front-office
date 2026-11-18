@@ -516,6 +516,127 @@ assert_test(
 )
 
 # ------------------------------------------------------------------------------
+# Tests 7-9: Publish Gate A Run Start (GitHub issue #74)
+# ------------------------------------------------------------------------------
+# tools/publish_web.R used to find the run start by grepping the pipeline log
+# for "Pipeline run started", which only the in-season pipeline writes. In
+# off-season mode it resolved to the last in-season run (2026-10-31 09:00:19),
+# so Gate A certified a ten-day-old projections_season_teams.json (mtime
+# 2026-10-31 09:00:24) as FRESH. The fix: schedule_weekly_offseason.bat passes
+# --run-start, and off-season never reads the log for it.
+#
+# These tests drive the publish gate exactly the way the bat's Step 3 does --
+# through the CLI -- but in a throwaway sandbox under tempdir(): a copy of
+# tools/publish_web.R, config.R and logging_utils.R, a CONSTRUCTED fixture log,
+# and constructed datasets. No --publish flag, so every run is a dry run, and
+# the sandbox is not a git checkout of this repo, so nothing can be committed
+# or pushed. The live logs/ and web/public/data/ are never read or written.
+# ------------------------------------------------------------------------------
+cat("\n--- Tests 7-9: Publish Gate A Run Start (Issue #74) ---\n")
+
+.pw_fixture_frozen_line <- "[2026-10-31 09:00:19] [INFO] [run_full_pipeline.R] Pipeline run started (season=2026, force_refresh=FALSE)."
+
+make_publish_sandbox <- function(tag, backdate = character(0)) {
+  root <- tempfile(pattern = sprintf("mlb_publish_%s_", tag))
+  dir.create(file.path(root, "tools"), recursive = TRUE, showWarnings = FALSE)
+  dir.create(file.path(root, "logs"), showWarnings = FALSE)
+  data_dir <- file.path(root, "web", "public", "data")
+  dir.create(data_dir, recursive = TRUE, showWarnings = FALSE)
+  file.copy(file.path(PROJECT_DIR, "tools", "publish_web.R"), file.path(root, "tools", "publish_web.R"))
+  file.copy(file.path(PROJECT_DIR, c("config.R", "logging_utils.R")), root)
+  # Keep config.R offline: it seeds MLB_TEAMS from this cache file when present
+  # and only otherwise makes a live call. Gate A does not use the team table.
+  teams_dir <- file.path(root, "cache", MLB_CACHE_STAGES[["id_crosswalk"]])
+  dir.create(teams_dir, recursive = TRUE, showWarnings = FALSE)
+  saveRDS(data.frame(), file.path(teams_dir, "mlb_teams.rds"))
+  # Fixture log: the frozen in-season sentinel from #74, then an off-season
+  # build line, which carries no "Pipeline run started" sentinel.
+  writeLines(c(.pw_fixture_frozen_line,
+               sprintf("[%s] [INFO] [build_offseason_monitor.R] MLB Off-Season Dynamics Monitor build started.",
+                       format(Sys.time(), "%Y-%m-%d %H:%M:%S"))),
+             file.path(root, "logs", "mlb_pipeline.log"))
+  # One file per config.R WEB_DATA_FILES_OFFSEASON entry, written now. Any named
+  # in `backdate` get the real stale mtime from #74 (5 s after the frozen line).
+  for (b in basename(WEB_DATA_FILES_OFFSEASON)) {
+    p <- file.path(data_dir, b)
+    writeLines("{}", p)
+    if (b %in% backdate) Sys.setFileTime(p, as.POSIXct("2026-10-31 09:00:24", tz = ""))
+  }
+  root
+}
+
+run_publish_cli <- function(root, args) {
+  rscript <- file.path(R.home("bin"), if (.Platform$OS.type == "windows") "Rscript.exe" else "Rscript")
+  old_root <- Sys.getenv("MLB_ANALYTICS_ROOT", unset = NA)
+  Sys.unsetenv("MLB_ANALYTICS_ROOT")
+  on.exit(if (!is.na(old_root)) Sys.setenv(MLB_ANALYTICS_ROOT = old_root), add = TRUE)
+  out <- suppressWarnings(system2(rscript,
+                                  c("--vanilla", shQuote(file.path(root, "tools", "publish_web.R")), args),
+                                  stdout = TRUE, stderr = TRUE))
+  st <- attr(out, "status")
+  list(status = if (is.null(st)) 0L else as.integer(st), out = as.character(out))
+}
+
+gate_line <- function(out, verdict) any(grepl(sprintf("^  \\[%s\\] A\\. ", verdict), out))
+field_line <- function(out, field) {
+  hit <- grep(sprintf("^  %s +: ", field), out, value = TRUE)
+  if (length(hit)) hit[1] else ""
+}
+
+run_start_t   <- as.POSIXct(format(Sys.time() - 120, "%Y-%m-%d %H:%M:%S"), tz = "")
+run_start_arg <- format(run_start_t, "%Y-%m-%dT%H:%M:%S")
+run_start_txt <- format(run_start_t, "%Y-%m-%d %H:%M:%S")
+
+# Test 7 (a): the run start the bat passes is the run start the gate uses.
+sb7 <- make_publish_sandbox("explicit")
+r7 <- run_publish_cli(sb7, c("--mode=offseason", paste0("--run-start=", run_start_arg), "--skip-contracts"))
+rs7 <- field_line(r7$out, "run start")
+assert_test(
+  "Run Start (a): offseason resolves run start to the --run-start value passed in, not the log",
+  identical(rs7, sprintf("  run start        : %s", run_start_txt)) && gate_line(r7$out, "PASS"),
+  sprintf("exit=%d; run start line: '%s'; expected '%s' with Gate A PASS; first lines: %s",
+          r7$status, rs7, run_start_txt, paste(head(r7$out, 3), collapse = " / "))
+)
+
+# Test 8 (b): a dataset back-dated before the run start FAILS Gate A. On the
+# old code the frozen 2026-10-31 09:00:19 log value made such a file FRESH.
+# The back-dated file is offseason_monitor.json, the one WEB_DATA_FILES_OFFSEASON
+# entry left once the two files the off-season run does not regenerate came off.
+sb8 <- make_publish_sandbox("backdated", backdate = basename(WEB_JSON_OFFSEASON_MONITOR))
+r8 <- run_publish_cli(sb8, c("--mode=offseason", paste0("--run-start=", run_start_arg), "--skip-contracts"))
+stale8 <- any(grepl("^ +\\[STALE\\] +offseason_monitor\\.json +mtime=2026-10-31 09:00:24", r8$out))
+assert_test(
+  "Run Start (b): back-dated offseason_monitor.json fails Gate A and blocks the publish",
+  r8$status != 0L && gate_line(r8$out, "FAIL") && stale8,
+  sprintf("exit=%d; Gate A FAIL=%s; STALE row=%s; A lines: %s", r8$status, gate_line(r8$out, "FAIL"), stale8,
+          paste(grep("A\\. mtime|offseason_monitor", r8$out, value = TRUE), collapse = " / "))
+)
+
+# Test 9 (c): no usable run start blocks the publish, and neither Sys.Date()
+# nor the frozen log value is substituted -- for a missing, empty (what the
+# bat passes if it could not read the clock) or unparseable --run-start.
+today_txt <- format(Sys.Date())
+cases9 <- list(missing = character(0), empty = "--run-start=", garbage = "--run-start=yesterday-ish")
+ok9 <- TRUE
+detail9 <- character(0)
+for (nm in names(cases9)) {
+  sb9 <- make_publish_sandbox(paste0("unknown_", nm))
+  r9 <- run_publish_cli(sb9, c("--mode=offseason", cases9[[nm]], "--skip-contracts"))
+  rs9 <- field_line(r9$out, "run start")
+  cm9 <- field_line(r9$out, "commit message")
+  invented <- grepl(today_txt, paste(rs9, cm9), fixed = TRUE) || grepl("2026-10-31", paste(rs9, cm9), fixed = TRUE)
+  this_ok <- r9$status != 0L && gate_line(r9$out, "FAIL") && grepl("<unknown", rs9, fixed = TRUE) &&
+    nzchar(cm9) && !invented && any(grepl("BLOCKED", r9$out, fixed = TRUE))
+  ok9 <- ok9 && this_ok
+  detail9 <- c(detail9, sprintf("[%s] exit=%d ok=%s run start='%s' commit='%s'", nm, r9$status, this_ok, rs9, cm9))
+}
+assert_test(
+  "Run Start (c): missing/empty/unparseable run start blocks the publish with no invented date",
+  ok9,
+  paste(detail9, collapse = " | ")
+)
+
+# ------------------------------------------------------------------------------
 # Write Markdown Summary to test-results/SUMMARY.md
 # ------------------------------------------------------------------------------
 suite_duration_sec <- as.numeric(difftime(Sys.time(), start_suite_time, units = "secs"))
