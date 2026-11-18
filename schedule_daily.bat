@@ -311,6 +311,8 @@ if "%MODE_LABEL%"=="" (
 
 if not "%RUN_PUBLISH%"=="1" (
     echo [SKIPPED] Publish gate not run: the pipeline did not succeed. >> "%LOG_FILE%"
+    REM #164: back up the append-only cache files even when the pipeline failed.
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_DIR%\tools\backup_accumulated_cache.ps1" -CacheDir "%PROJECT_DIR%\cache" >> "%LOG_FILE%" 2>&1
     echo. >> "%LOG_FILE%"
     exit /b %PIPELINE_EXIT%
 )
@@ -340,6 +342,19 @@ if not "%PUBLISH_RC%"=="0" (
     echo NBA WEB PUBLISH GATE COMPLETED: %DATE% %TIME% >> "%LOG_FILE%"
 )
 echo ================================================================== >> "%LOG_FILE%"
+echo. >> "%LOG_FILE%"
+
+REM ------------------------------------------------------------------
+REM Back up the append-only cache files (issue #164). cache/ is gitignored
+REM and inside this checkout, so nothing else protects the graded
+REM prediction log. tools\backup_accumulated_cache.ps1 COPIES the files it
+REM names (never moves or links them) to a dated folder outside any git
+REM checkout, by default %USERPROFILE%\front-office-backups\nba\YYYY-MM-DD\
+REM (override: NBA_BACKUP_ROOT), keeps the 30 newest daily folders, and logs
+REM one [BACKUP] line. It always exits 0: a failed copy is a [WARN] line and
+REM never changes this run's exit code.
+REM ------------------------------------------------------------------
+powershell -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_DIR%\tools\backup_accumulated_cache.ps1" -CacheDir "%PROJECT_DIR%\cache" >> "%LOG_FILE%" 2>&1
 echo. >> "%LOG_FILE%"
 
 REM The pipeline's own exit code is what Task Scheduler's "Last Run Result"
