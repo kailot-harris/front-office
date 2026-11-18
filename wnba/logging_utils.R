@@ -105,6 +105,9 @@ suppressPackageStartupMessages({
     return(con)
   }
   .log_state$con <- NULL
+  # DuckDB cannot create the logs/ folder itself. On a fresh checkout or worktree it does not
+  # exist yet, so create it here before the first open (and before any reconnect).
+  .log_ensure_dir()
   con <- dbConnect(duckdb(), LOG_DB_FILE)
   dbExecute(con, "
     CREATE TABLE IF NOT EXISTS logs (
