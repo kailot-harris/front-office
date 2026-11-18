@@ -9,7 +9,7 @@
 // of inventing a fallback number.
 // ==============================================================================
 
-const isFiniteNumber = (value: unknown): value is number =>
+export const isFiniteNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
 
 /** Em dash shown in place of a missing/invalid figure. */

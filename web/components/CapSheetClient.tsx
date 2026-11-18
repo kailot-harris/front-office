@@ -8,7 +8,7 @@ import { TeamLogo } from '@/components/TeamLogo';
 import { ApronThermometer } from '@/components/ApronThermometer';
 import { TradeCbaValidator } from '@/components/TradeCbaValidator';
 import { FranchiseCapTable } from '@/components/FranchiseCapTable';
-import { money } from '@/lib/format';
+import { MISSING_VALUE, isFiniteNumber, money } from '@/lib/format';
 import { HowToReadDisclosure } from '@/components/HowToReadDisclosure';
 import { GlossaryTerm } from '@/components/GlossaryTerm';
 import {
@@ -260,10 +260,10 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                       <span className="text-[11px] sm:text-[10px] text-slate-400 block font-sans">Tax Bill</span>
                       <span
                         className={`text-xs font-bold ${
-                          t.luxuryTaxBill > 0 ? 'text-amber-400' : 'text-slate-600'
+                          isFiniteNumber(t.luxuryTaxBill) && t.luxuryTaxBill > 0 ? 'text-amber-400' : 'text-slate-600'
                         }`}
                       >
-                        {t.luxuryTaxBill > 0 ? money(t.luxuryTaxBill) : '$0.0M'}
+                        {!isFiniteNumber(t.luxuryTaxBill) ? MISSING_VALUE : t.luxuryTaxBill > 0 ? money(t.luxuryTaxBill) : '$0.0M'}
                       </span>
                     </div>
 
