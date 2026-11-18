@@ -221,7 +221,7 @@ generate_gif_trophy_lift_champions <- function(season = 2026,
                fill = "#161B22", color = "#7EE787", fontface = "bold", size = 3.4,
                label.padding = unit(0.4, "lines"), alpha = 0.9) +
       annotate("text", x = 5.0, y = 0.7,
-               label = "Source: KayceeSlices MLB Analytics Engine | Commissioner's Trophy Finale | mlbplotR",
+               label = "Source: MLB Analytics Engine | Commissioner's Trophy Finale | mlbplotR",
                color = "#8B949E", size = 2.6) +
       coord_cartesian(xlim = c(0, 10), ylim = c(0, 10), expand = FALSE) +
       theme_void() +

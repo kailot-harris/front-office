@@ -1,6 +1,6 @@
 # ==============================================================================
 # tools/viz_postseason_odds.R — 12-Team Postseason Advancement & Championship Odds
-# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/tools/viz_postseason_odds.R
+# Path: tools/viz_postseason_odds.R
 #
 # Phase 9: Quantitative Visualization Suite (Issue #24)
 # Visualizes Monte Carlo simulated probabilities across all 12 MLB postseason teams:
@@ -104,7 +104,7 @@ generate_viz_postseason_odds <- function(season = 2024,
       subtitle = "Simulated probabilities through Wild Card, Division Series, League Championship, and World Series\nOrdered by title likelihood; shaded blue backdrop indicates League Pennant probability",
       x = "World Series Championship Probability (%)",
       y = "Playoff Seed & Team Strength",
-      caption = "Source: KayceeSlices MLB Analytics Engine | 12-Team Bracket Monte Carlo Simulation"
+      caption = "Source: MLB Analytics Engine | 12-Team Bracket Monte Carlo Simulation"
     )
   
   # Layer Team Logo Images onto the end of each World Series bar

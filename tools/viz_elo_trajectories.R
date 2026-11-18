@@ -1,6 +1,6 @@
 # ==============================================================================
 # tools/viz_elo_trajectories.R — 30-Team MLB Elo Rating Trajectories Over Season
-# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/tools/viz_elo_trajectories.R
+# Path: tools/viz_elo_trajectories.R
 #
 # Phase 9: Quantitative Visualization Suite (Issue #24)
 # Visualizes the daily evolution of Elo ratings across all 30 MLB franchises,
@@ -164,7 +164,7 @@ generate_viz_elo_trajectories <- function(season = 2024,
       ),
       x = sprintf("Date (%d Regular Season)", season),
       y = "Elo Rating (1500 = League Average Baseline)",
-      caption = "Source: MLB Stats API & KayceeSlices MLB Analytics Engine | Tangotiger rGS & Rest Adjusted"
+      caption = "Source: MLB Stats API & MLB Analytics Engine | Tangotiger rGS & Rest Adjusted"
     )
   
   # Save PNG

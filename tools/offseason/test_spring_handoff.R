@@ -41,8 +41,8 @@ PROJECT_DIR <- local({
 })
 setwd(PROJECT_DIR)
 
-if (dir.exists("C:/Users/kailo/AppData/Local/R/win-library/4.5")) {
-  .libPaths(unique(c("C:/Users/kailo/AppData/Local/R/win-library/4.5", .libPaths())))
+if (nzchar(Sys.getenv("R_LIBS_USER")) && dir.exists(Sys.getenv("R_LIBS_USER"))) {
+  .libPaths(unique(c(Sys.getenv("R_LIBS_USER"), .libPaths())))
 }
 
 suppressPackageStartupMessages({

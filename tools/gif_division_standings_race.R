@@ -176,7 +176,7 @@ generate_gif_division_standings_race <- function(season = 2026,
         title = sprintf("%d MLB 6-Division Standings Win Race", season),
         subtitle = subtitle_txt,
         x = "Cumulative Regular Season Wins",
-        caption = "Source: KayceeSlices MLB Analytics Engine | mlbplotR transparent franchise logos"
+        caption = "Source: MLB Analytics Engine | mlbplotR transparent franchise logos"
       )
 
     fpath <- file.path(tmp_dir, sprintf("frame_%03d.png", idx))

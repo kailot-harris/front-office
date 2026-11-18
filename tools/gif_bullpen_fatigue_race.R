@@ -174,7 +174,7 @@ generate_gif_bullpen_fatigue_race <- function(season = 2026,
         subtitle = subtitle_txt,
         x = sprintf("Date (%d Regular Season)", season),
         y = "Composite Bullpen Fatigue Index (0-100)",
-        caption = "Dashed: Elevated (70) | Dotted: Exhaustion Alert (85) | Source: KayceeSlices MLB Analytics"
+        caption = "Dashed: Elevated (70) | Dotted: Exhaustion Alert (85) | Source: MLB Analytics"
       )
 
     fpath <- file.path(tmp_dir, sprintf("frame_%03d.png", idx))
