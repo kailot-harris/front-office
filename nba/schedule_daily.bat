@@ -163,6 +163,51 @@ if "%POST_DIRTY%"=="1" (
 echo [GUARD] OK - HEAD=main, tree clean. Proceeding with pipeline. >> "%LOG_FILE%"
 echo ------------------------------------------------------------------ >> "%LOG_FILE%"
 
+REM ------------------------------------------------------------------
+REM Fast-forward main to origin/main (issue #162). Without this, merged
+REM changes never ran until someone pulled by hand. tools\ff_main.bat
+REM logs main's SHA before and after; a failed fetch is a [WARN] and the
+REM run continues on the local main; a main that cannot fast-forward
+REM (diverged) is an [ERROR] and the pipeline does NOT run. It never
+REM resets and never discards a commit.
+REM
+REM Self-update safety. cmd does not load a .bat into memory: after each
+REM command it re-opens the file and reads on from a saved byte offset.
+REM If the fast-forward rewrites THIS file, the old offset points into the
+REM new text and cmd would run half-lines or skip steps, silently. So the
+REM call and ALL of its result handling are one parenthesised block, which
+REM cmd parses whole before running any of it. If schedule_daily.bat
+REM changed, the block starts the updated script fresh with the same
+REM arguments (NBA_FF_DONE=1 tells it the fast-forward is already done)
+REM and exits with its exit code; nothing after the block is read from
+REM the rewritten file. tools\ff_main.bat protects itself the same way.
+REM ------------------------------------------------------------------
+set FF_BEFORE=
+for /f "delims=" %%S in ('git rev-parse HEAD 2^>nul') do set FF_BEFORE=%%S
+if defined NBA_FF_DONE (
+    echo [FF] NBA_FF_DONE=%NBA_FF_DONE%: fast-forward already done by the instance that relaunched this one. Skipped. main=%FF_BEFORE% >> "%LOG_FILE%"
+) else (
+    call "%PROJECT_DIR%\tools\ff_main.bat" "%LOG_FILE%"
+    if errorlevel 1 (
+        echo [ERROR] schedule_daily.bat: main could not be fast-forwarded to origin/main. Pipeline NOT run. >> "%LOG_FILE%"
+        exit /b 4
+    ) else (
+        set FF_AFTER=
+        for /f "delims=" %%S in ('git rev-parse HEAD 2^>nul') do set FF_AFTER=%%S
+        git diff --quiet !FF_BEFORE! !FF_AFTER! -- schedule_daily.bat >nul 2>&1
+        if errorlevel 1 (
+            echo [FF] schedule_daily.bat changed in the fast-forward !FF_BEFORE! -^> !FF_AFTER!. Relaunched itself after a self-update, same arguments: %* >> "%LOG_FILE%"
+            set NBA_FF_DONE=1
+            cmd /c ""%~f0" %*"
+            exit /b !ERRORLEVEL!
+        )
+    )
+)
+REM Each "exit /b" above is the LAST command of its block on purpose: under
+REM "cmd /c", an "exit /b N" followed by more commands in the same block makes
+REM the process exit code 0 instead of N (seen in the sandbox for #162).
+echo ------------------------------------------------------------------ >> "%LOG_FILE%"
+
 where Rscript >nul 2>&1
 if %ERRORLEVEL% equ 0 (
     set RSCRIPT=Rscript
@@ -266,6 +311,8 @@ if "%MODE_LABEL%"=="" (
 
 if not "%RUN_PUBLISH%"=="1" (
     echo [SKIPPED] Publish gate not run: the pipeline did not succeed. >> "%LOG_FILE%"
+    REM #164: back up the append-only cache files even when the pipeline failed.
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_DIR%\tools\backup_accumulated_cache.ps1" -CacheDir "%PROJECT_DIR%\cache" >> "%LOG_FILE%" 2>&1
     echo. >> "%LOG_FILE%"
     exit /b %PIPELINE_EXIT%
 )
@@ -295,6 +342,19 @@ if not "%PUBLISH_RC%"=="0" (
     echo NBA WEB PUBLISH GATE COMPLETED: %DATE% %TIME% >> "%LOG_FILE%"
 )
 echo ================================================================== >> "%LOG_FILE%"
+echo. >> "%LOG_FILE%"
+
+REM ------------------------------------------------------------------
+REM Back up the append-only cache files (issue #164). cache/ is gitignored
+REM and inside this checkout, so nothing else protects the graded
+REM prediction log. tools\backup_accumulated_cache.ps1 COPIES the files it
+REM names (never moves or links them) to a dated folder outside any git
+REM checkout, by default %USERPROFILE%\front-office-backups\nba\YYYY-MM-DD\
+REM (override: NBA_BACKUP_ROOT), keeps the 30 newest daily folders, and logs
+REM one [BACKUP] line. It always exits 0: a failed copy is a [WARN] line and
+REM never changes this run's exit code.
+REM ------------------------------------------------------------------
+powershell -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_DIR%\tools\backup_accumulated_cache.ps1" -CacheDir "%PROJECT_DIR%\cache" >> "%LOG_FILE%" 2>&1
 echo. >> "%LOG_FILE%"
 
 REM The pipeline's own exit code is what Task Scheduler's "Last Run Result"

@@ -78,3 +78,4 @@ other and from the scheduled task.
   use `cleanup_worktrees.py remove-merged --path <worktree> --confirmed-by-user` rather than raw `git worktree remove`.
 - After the FIRST removal incident, stop all removals and audit every worktree
   (`cleanup_worktrees.py incident --note "..."`); do not repair and continue.
+- In this repo, `powershell -NoProfile -ExecutionPolicy Bypass -File tools/remove_worktree.ps1 -Path <worktree> [-WhatIf]` enforces this (#163): it refuses the primary checkout, unregistered paths and any worktree that still holds a link (listing each), and only then runs `git worktree remove`.
