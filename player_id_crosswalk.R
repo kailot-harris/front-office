@@ -1,7 +1,7 @@
 # ==============================================================================
 # player_id_crosswalk.R (WNBA)
 # Cross-Source WNBA Player-ID Crosswalk
-# Path: c:/Users/kailo/kayceeslices/front-office/WNBA Analytics/player_id_crosswalk.R
+# Path: player_id_crosswalk.R
 #
 # Connects ESPN athlete IDs (used in active_rosters_cache.rds) to WNBA.com / Stats API
 # person_id values (used in rapm_ratings.rds as `player_id`).

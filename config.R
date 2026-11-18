@@ -563,7 +563,7 @@ RAPM_MIN_DATA_SHARE <- 1 / 3
 # has been deleted. So RAPM_MIN_POSS_PER_SIDE_DEFAULT currently has no caller in this repo.
 #
 # Precisely who still reads it, verified 2026-10-23 -- the two are NOT the same thing:
-#   - The frozen retirement snapshot at C:/Users/kailo/kayceeslices/_retired/
+#   - The frozen retirement snapshot at <workspace>/_retired/
 #     wnba_summary_app_upstream/ DOES read this constant; its app.R lifts it out of a
 #     private config_env. That snapshot carries its own frozen copy of this file, though,
 #     so editing the value here does not reach it.

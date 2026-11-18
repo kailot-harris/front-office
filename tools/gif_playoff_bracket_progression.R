@@ -79,8 +79,8 @@
 # (dplyr/ggplot2/gifski), while a complete, working set is installed in the
 # ordinary user library. Prepend it so library() calls below resolve there
 # too, without disabling renv outright.
-.user_lib <- "C:/Users/kailo/AppData/Local/R/win-library/4.5"
-if (dir.exists(.user_lib)) .libPaths(c(.user_lib, .libPaths()))
+.user_lib <- Sys.getenv("R_LIBS_USER")
+if (nzchar(.user_lib) && dir.exists(.user_lib)) .libPaths(c(.user_lib, .libPaths()))
 
 suppressPackageStartupMessages({
   library(dplyr)

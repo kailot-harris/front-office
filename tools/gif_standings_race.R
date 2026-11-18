@@ -85,8 +85,8 @@ CACHE_DIR_RESOLVED <- viz_cache_dir(ROOT)
 # data/ is gitignored in this repo (config.R's CACHE_TEAM_BOX points at
 # data/box_scores_cache.rds), so a fresh git worktree built for this chart has
 # no copy of its own. Mirrors tools/gif_point_diff_race.R's own
-# find_team_box_file() (WNBA_VIZ_DATA_DIR env var, then a hardcoded
-# main-checkout fallback, same pattern the NBA original's own
+# find_team_box_file() (WNBA_VIZ_DATA_DIR env var, then a main-checkout fallback
+# located via git, same pattern the NBA original's own
 # find_cache_file() uses for its sibling-repo case). No candidate here is
 # synthetic data -- every one is a real on-disk cache file, or the search
 # comes up empty and the chart does not render.
@@ -98,7 +98,16 @@ find_team_box_file <- function() {
       if (nzchar(d)) file.path(d, "box_scores_cache.rds") else NULL
     },
     file.path(ROOT, "data", "box_scores_cache.rds"),
-    "C:/Users/kailo/kayceeslices/front-office/WNBA Analytics/data/box_scores_cache.rds"
+    {
+      # From a git worktree: the primary checkout is the parent of git's
+      # common dir. Empty (and skipped) when git or the repo is unavailable.
+      gcd <- tryCatch(
+        suppressWarnings(system2("git", c("-C", shQuote(ROOT), "rev-parse", "--path-format=absolute", "--git-common-dir"),
+                                 stdout = TRUE, stderr = FALSE)),
+        error = function(e) character(0)
+      )
+      if (length(gcd) == 1L && nzchar(gcd)) file.path(dirname(gcd), "data", "box_scores_cache.rds") else NULL
+    }
   )
   for (cand in candidates) {
     if (!is.null(cand) && nzchar(cand) && file.exists(cand)) {

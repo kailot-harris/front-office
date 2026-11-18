@@ -14,7 +14,7 @@
 # ==============================================================================
 
 # Resolve the repo root from THIS SCRIPT'S own location rather than hardcoding it.
-# The previous line was setwd("c:/Users/kailo/kayceeslices/WNBA Analytics"), a path
+# The previous line was a setwd() to a hard-coded absolute checkout path, a path
 # that stopped existing when the repo moved under front-office/ — which left the
 # suite unrunnable from any cwd, main tree included. Deriving it from --file= also
 # makes the suite work unchanged inside a git worktree.
