@@ -375,10 +375,11 @@ WEB_DATA_FILES <- c(
 # 8. Off-season published web artifacts and burst windows
 # ---------------------------------------------------------------------------
 # Published data files monitored under tools/publish_web.R --mode=offseason
+# cbt_payroll_sheet.json and projections_season_teams.json are deliberately NOT
+# listed: the off-season run does not regenerate them, so Gate A would always
+# mark them stale. Their committed copies stay in git and keep being served.
 WEB_DATA_FILES_OFFSEASON <- c(
-  WEB_JSON_OFFSEASON_MONITOR,
-  WEB_JSON_CBT_PAYROLL_SHEET,
-  WEB_JSON_PROJECTIONS_SEASON_TEAMS
+  WEB_JSON_OFFSEASON_MONITOR
 )
 
 # Off-season burst windows for cadence escalation (blueprint §4)

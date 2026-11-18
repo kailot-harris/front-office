@@ -136,6 +136,10 @@
 #     Rscript -e "source('tools/publish_web.R'); print(publish_web(dry_run = TRUE, run_start = Sys.time())$assertions_failed)"
 #   Passing run_start = now makes every published file older than the run start
 #   by construction. Nothing is written; no restore needed.
+#   Off-season (#74): the run start must be passed; omitting it fails closed.
+#     Rscript tools/publish_web.R --mode=offseason --run-start=2026-11-18T07:00:00
+#     Rscript tools/publish_web.R --mode=offseason   # BLOCKED: run start unknown
+#   tools/offseason/test_dag_end_to_end.R Tests 7-9 run both against fixtures.
 #
 # B (slate agreement) FAILS, with no mutation:
 #     Rscript -e "source('tools/publish_web.R'); print(.assert_slate_agreement(published_override = list(active_week = 99L, total_games = 1L)))"
@@ -250,16 +254,55 @@ source("config.R")
 }
 
 # ------------------------------------------------------------------------------
-# Run-start discovery. Parsed from LOG_FILE's own "Pipeline run started." marker
-# (run_full_pipeline.R:177, in logging_utils.R's
-# "[YYYY-MM-DD HH:MM:SS] [LEVEL] [script] msg" format), so a scheduled
-# unattended run has nothing to pass in. Overridable for tests and for
-# republishing a specific historical run.
+# Run-start discovery.
+#
+# Off-season (MLB-Analytics#74): the run start is passed in explicitly. The
+# orchestrator (schedule_weekly_offseason.bat) records it once at the top of
+# its run and hands it to Step 3 as --run-start=YYYY-MM-DDTHH:MM:SS (local
+# time). It is NEVER inferred from the log: the off-season orchestrator does
+# not emit "Pipeline run started", so a grep resolves to the last in-season
+# run (frozen at 2026-10-31 09:00:19 once the in-season task was disabled),
+# and Gate A then certified ten-day-old files as FRESH. A missing or
+# unparseable run start resolves to NA, and NA fails closed: Gate A marks
+# every dataset STALE (fatal), so nothing is published.
+#
+# In-season: unchanged. run_full_pipeline.R emits the "Pipeline run started."
+# marker for its own run (logging_utils.R's
+# "[YYYY-MM-DD HH:MM:SS] [LEVEL] [script] msg" format), so a NULL run_start
+# still falls back to that grep there.
 # ------------------------------------------------------------------------------
 .pw_log_timestamp <- function(lines) {
   ts <- sub("^\\[([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2})\\].*$", "\\1", lines)
   ts[!grepl("^[0-9]{4}-", ts)] <- NA_character_
   as.POSIXct(ts, format = "%Y-%m-%d %H:%M:%S", tz = "")
+}
+
+# Parses an explicitly passed run start. Accepts a length-1 POSIXct, or a
+# "YYYY-MM-DDTHH:MM:SS" / "YYYY-MM-DD HH:MM:SS" local-time string. Anything
+# else (NULL, "", garbage, a date with no time, an impossible value such as
+# 2026-02-30) returns NA -- never a guessed value.
+.pw_parse_run_start <- function(x) {
+  na <- as.POSIXct(NA_character_, tz = "")
+  if (inherits(x, "POSIXct")) return(if (length(x) == 1L) x else na)
+  if (!is.character(x) || length(x) != 1L || is.na(x)) return(na)
+  s <- sub("T", " ", trimws(x), fixed = TRUE)
+  if (!grepl("^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$", s)) return(na)
+  out <- as.POSIXct(s, format = "%Y-%m-%d %H:%M:%S", tz = "")
+  # Round-trip so strptime cannot silently roll an impossible value forward.
+  if (is.na(out) || !identical(format(out, "%Y-%m-%d %H:%M:%S"), s)) return(na)
+  out
+}
+
+# The single place publish_web() turns its run_start argument into the value
+# every gate compares against. Off-season never reads the log for it.
+.pw_resolve_run_start <- function(run_start, mode, log_lines) {
+  if (identical(mode, "offseason")) {
+    if (is.null(run_start)) return(as.POSIXct(NA_character_, tz = ""))
+    return(.pw_parse_run_start(run_start))
+  }
+  if (is.null(run_start)) return(.pw_detect_run_start(log_lines))
+  if (is.character(run_start)) return(.pw_parse_run_start(run_start))
+  run_start
 }
 
 .pw_detect_run_start <- function(log_lines) {
@@ -321,6 +364,19 @@ source("config.R")
        summary = sprintf("%d zero-betting violation(s) detected", length(violations)))
 }
 
+# Files the zero-betting policy guard reads. In off-season mode
+# cbt_payroll_sheet.json and projections_season_teams.json are not in
+# WEB_DATA_FILES_OFFSEASON (the off-season run does not regenerate them), but
+# their committed copies are still served, so the guard keeps reading them.
+# This is a read-only content check, not a freshness check.
+.policy_guard_files <- function(target_files, mode = "inseason") {
+  if (identical(mode, "offseason")) {
+    unique(c(target_files, WEB_JSON_CBT_PAYROLL_SHEET, WEB_JSON_PROJECTIONS_SEASON_TEAMS))
+  } else {
+    target_files
+  }
+}
+
 # ------------------------------------------------------------------------------
 # ASSERTION A - mtime freshness
 # ------------------------------------------------------------------------------
@@ -343,9 +399,13 @@ source("config.R")
                                 if (identical(mode, "offseason")) "WEB_DATA_FILES_OFFSEASON" else "WEB_DATA_FILES"),
        pass = length(stale) == 0, fatal = TRUE,
        detail = unlist(rows), stale = stale,
-       summary = sprintf("%d/%d published datasets regenerated after run start %s",
-                         length(files) - length(stale), length(files),
-                         if (is.na(run_start)) "<unknown>" else format(run_start, "%Y-%m-%d %H:%M:%S")))
+       summary = if (is.na(run_start)) {
+         sprintf("run start unknown - all %d published datasets treated as STALE (fail closed)", length(files))
+       } else {
+         sprintf("%d/%d published datasets regenerated after run start %s",
+                 length(files) - length(stale), length(files),
+                 format(run_start, "%Y-%m-%d %H:%M:%S"))
+       })
 }
 
 # ------------------------------------------------------------------------------
@@ -947,14 +1007,31 @@ publish_web <- function(dry_run = TRUE,
 
   repo_root <- .pw_repo_root()
   log_lines <- if (file.exists(LOG_FILE)) readLines(LOG_FILE, warn = FALSE) else character(0)
-  if (is.null(run_start)) run_start <- .pw_detect_run_start(log_lines)
+  run_start_arg <- run_start
+  run_start <- .pw_resolve_run_start(run_start, mode, log_lines)
+  run_start_known <- length(run_start) == 1L && !is.na(run_start)
+  run_start_label <- if (run_start_known) {
+    format(run_start, "%Y-%m-%d %H:%M:%S")
+  } else if (identical(mode, "offseason") && is.null(run_start_arg)) {
+    "<unknown: no run start passed (--run-start=YYYY-MM-DDTHH:MM:SS); off-season never reads it from the log>"
+  } else if (identical(mode, "offseason")) {
+    sprintf("<unknown: unparseable run start '%s'>", paste(format(run_start_arg), collapse = " "))
+  } else {
+    "<undetected>"
+  }
   if (is.null(commit_message)) {
-    commit_message <- sprintf("Publish MLB %s web artifacts from the %s pipeline run",
-                              mode,
-                              if (is.na(run_start)) format(Sys.Date()) else format(run_start, "%Y-%m-%d %H:%M"))
+    # Never invent a date: with an unknown run start Gate A fails closed and
+    # nothing is published, so this text only ever shows up in the report.
+    commit_message <- if (run_start_known) {
+      sprintf("Publish MLB %s web artifacts from the %s pipeline run",
+              mode, format(run_start, "%Y-%m-%d %H:%M"))
+    } else {
+      sprintf("Publish MLB %s web artifacts (run start unknown - publish blocked)", mode)
+    }
   }
 
   target_files <- if (identical(mode, "offseason")) WEB_DATA_FILES_OFFSEASON else WEB_DATA_FILES
+  policy_files <- .policy_guard_files(target_files, mode = mode)
 
   checks <- list(
     .assert_mtime_freshness(run_start, mode = mode),
@@ -964,12 +1041,15 @@ publish_web <- function(dry_run = TRUE,
     .assert_log_scan(log_lines, run_start, fail_on_exporter_warnings, mode = mode, allow_degraded = allow_degraded),
     .assert_payload_provenance(run_start, mode = mode),
     .assert_web_contracts(skip_contracts),
-    .assert_zero_betting(target_files)
+    .assert_zero_betting(policy_files)
   )
 
   passed  <- vapply(checks, function(ch) isTRUE(ch$pass), logical(1))
   fatal   <- vapply(checks, function(ch) isTRUE(ch$fatal), logical(1))
   blocked <- any(!passed & fatal)
+  # Belt and braces for #74: an off-season publish with no known run start is
+  # blocked even if Gate A were somehow vacuous (for example an empty file list).
+  if (identical(mode, "offseason") && !run_start_known) blocked <- TRUE
 
   # ---- report ----------------------------------------------------------------
   cat("\n================================================================\n")
@@ -981,8 +1061,7 @@ publish_web <- function(dry_run = TRUE,
   cat(sprintf("  season           : %d\n", as.integer(season)))
   cat(sprintf("  mode             : %s\n", mode))
   cat(sprintf("  pipeline log     : %s (%d lines)\n", LOG_FILE, length(log_lines)))
-  cat(sprintf("  run start        : %s\n",
-              ifelse(is.na(run_start), "<undetected>", format(run_start, "%Y-%m-%d %H:%M:%S"))))
+  cat(sprintf("  run start        : %s\n", run_start_label))
   if (!identical(mode, "offseason")) {
     cat(sprintf("  schedule cache   : %s\n", CACHE_MLB_SCHEDULE(season)))
   }
@@ -1010,6 +1089,9 @@ publish_web <- function(dry_run = TRUE,
   if (blocked) {
     cat("  BLOCKED - at least one fatal assertion failed. PUBLISHING NOTHING.\n")
     cat("  Yesterday's correct site stays up rather than a half-updated one.\n")
+    if (!run_start_known) {
+      cat("  Run start unknown - freshness cannot be verified, so the publish is blocked.\n")
+    }
     for (ch in checks[!passed & fatal]) {
       log_warn(sprintf("publish_web: assertion %s FAILED (%s) - publishing nothing. %s",
                        ch$id, ch$name, ch$summary), script = .PW_LOG_SCRIPT)
@@ -1109,14 +1191,26 @@ local({
     mode_val <- sub("^--mode=", "", mode_opt[1])
   }
   
+  # --run-start=YYYY-MM-DDTHH:MM:SS (local time), passed by the orchestrator
+  # (MLB-Analytics#74). Given more than once is ambiguous, so it is treated as
+  # unparseable and fails closed rather than picking one.
+  run_start_val <- NULL
+  rs_opt <- grep("^--run-start=", opts, value = TRUE)
+  if (length(rs_opt) == 1L) {
+    run_start_val <- sub("^--run-start=", "", rs_opt)
+  } else if (length(rs_opt) > 1L) {
+    run_start_val <- paste(sub("^--run-start=", "", rs_opt), collapse = " | ")
+  }
+
   recognized <- c("--publish", "--strict-warnings", "--skip-contracts", "--allow-degraded")
-  unknown <- setdiff(opts[!grepl("^--mode=", opts)], recognized)
+  unknown <- setdiff(opts[!grepl("^--(mode|run-start)=", opts)], recognized)
   if (length(unknown) > 0) {
-    cat(sprintf("[ERROR] publish_web.R: unknown CLI option(s): %s (allowed: --publish, --strict-warnings, --skip-contracts, --mode=inseason|offseason, --allow-degraded)\n",
+    cat(sprintf("[ERROR] publish_web.R: unknown CLI option(s): %s (allowed: --publish, --strict-warnings, --skip-contracts, --mode=inseason|offseason, --run-start=YYYY-MM-DDTHH:MM:SS, --allow-degraded)\n",
                 paste(unknown, collapse = ", ")), file = stderr())
     quit(status = 2L)
   }
   res <- publish_web(dry_run = !("--publish" %in% opts),
+                     run_start = run_start_val,
                      fail_on_exporter_warnings = "--strict-warnings" %in% opts,
                      skip_contracts = "--skip-contracts" %in% opts,
                      mode = mode_val,

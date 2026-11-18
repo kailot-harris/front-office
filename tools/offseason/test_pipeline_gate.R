@@ -153,7 +153,7 @@ main <- function() {
   # ---------------------------------------------------------------------------
   run_test("Zero-Betting Policy Guard blocks sportsbooks and permits whitelisted math terms", function() {
     # Test valid files
-    res_valid <- .assert_zero_betting(WEB_DATA_FILES_OFFSEASON)
+    res_valid <- .assert_zero_betting(.policy_guard_files(WEB_DATA_FILES_OFFSEASON, mode = "offseason"))
     if (!res_valid$pass) return(FALSE)
     
     # Test forbidden domain
@@ -175,6 +175,28 @@ main <- function() {
     TRUE
   })
   
+  # ---------------------------------------------------------------------------
+  # Test 5b: off-season zero-betting coverage keeps the two files that left
+  # WEB_DATA_FILES_OFFSEASON. Fails if either drops out of the off-season check.
+  # ---------------------------------------------------------------------------
+  run_test("Zero-Betting Policy Guard still reads cbt_payroll_sheet.json and projections_season_teams.json off-season", function() {
+    policy <- .policy_guard_files(WEB_DATA_FILES_OFFSEASON, mode = "offseason")
+    needed <- c(WEB_JSON_CBT_PAYROLL_SHEET, WEB_JSON_PROJECTIONS_SEASON_TEAMS, WEB_DATA_FILES_OFFSEASON)
+    if (!all(needed %in% policy)) return(FALSE)
+    # publish_web() must hand that list to the guard, not the freshness list.
+    body_txt <- paste(deparse(body(publish_web)), collapse = " ")
+    if (!grepl("policy_files <- .policy_guard_files(target_files, mode = mode)", body_txt, fixed = TRUE)) return(FALSE)
+    if (!grepl(".assert_zero_betting(policy_files)", body_txt, fixed = TRUE)) return(FALSE)
+    # A forbidden term planted in a copy of either file is caught.
+    for (f in c(WEB_JSON_CBT_PAYROLL_SHEET, WEB_JSON_PROJECTIONS_SEASON_TEAMS)) {
+      tmp <- file.path(tempdir(), basename(f))
+      writeLines(c(readLines(f, warn = FALSE), .PW_FORBIDDEN_BETTING_TERMS[[1]]), tmp)
+      if (.assert_zero_betting(tmp)$pass) return(FALSE)
+      unlink(tmp)
+    }
+    TRUE
+  })
+
   # ---------------------------------------------------------------------------
   # Test 6: Atomic Promotion on Publish
   # ---------------------------------------------------------------------------
