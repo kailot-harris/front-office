@@ -61,6 +61,18 @@
     that found nothing new triggers nothing, so a quiet slot still takes
     minutes. A slot with new NFL finals takes roughly 10-15 minutes longer.
 
+    RE-APPLY AFTER THE MODEL REFRESH. The model refresh rebuilds the matchups
+    JSON from scratch, and its rebuild only counts a game as completed once
+    the prediction log has graded it against a box score. Box scores for last
+    night's games arrive the next morning (hoopR around 12:20 UTC for NBA), so
+    at slot time the rebuild set every just-finished game back to not
+    completed and the sync published that: on 11/18 Slot C, three NBA 11/17
+    finals vanished from the site until the morning pipeline. So right after
+    a sport's model refresh, whether it succeeded or not, this script runs
+    that sport's live-results refresh once more to patch the finals back in.
+    It never re-runs the model refresh. A failed re-apply is reported as
+    "<sport>-reapply" and fails the slot's exit code, but still syncs.
+
     A failed model refresh is reported and fails the slot's exit code, but
     does not withhold the sync: the publish gate inside each sport's wrapper
     refuses to push a bad payload, so the worst case is the site keeps the
@@ -847,6 +859,7 @@ function Invoke-RefreshSlot {
         if ($DryRun) {
             Write-Host "  if that refresh commits new results:"
             [void] (Invoke-ModelRefresh -Sport $sport -WhatIfOnly)
+            Write-Host "  then re-apply $sport live results after the model refresh (refresh_live_results.R again)"
             continue
         }
 
@@ -854,6 +867,14 @@ function Invoke-RefreshSlot {
             Write-Step "  $sport has new results; refreshing standings and odds"
             $modelOk = Invoke-ModelRefresh -Sport $sport
             if (-not $modelOk) { $failed += "$sport-model-refresh" }
+
+            # The model refresh rebuilds the matchups JSON from scratch and
+            # drops the finals patched in above (see MODEL REFRESH ON NEW
+            # RESULTS in the header), so patch them back in. Runs whether or
+            # not the model refresh succeeded; never re-runs the model refresh.
+            Write-Step "  $sport re-applying live results after the model refresh"
+            $reapply = Invoke-LocalRefresh -Sport $sport
+            if (-not $reapply.Ok) { $failed += "$sport-reapply" }
         }
         else {
             Write-Step "  $sport has no new results; model refresh not needed"
