@@ -446,6 +446,118 @@ classify_game_players <- function(pb_team, team_abbr = NULL) {
   )
 }
 
+# Team totals vs player rows (issue #181). The team totals come from the source's
+# team-stats feed and the player lines from its player box, and after a game the
+# source can revise one without the other. On 2026-11-18 game 401910000 had NOP's
+# player rows summing to 98 FGA while its team row said 97, failing the exact
+# conservation contract (web/tests/contracts/game_detail.contract.test.ts, test 5).
+# For each counting stat that contract checks, the published total is the sum of
+# the published player rows whenever the team row disagrees. Every value still
+# comes from the source's own rows. `points` is never reconciled: when the player
+# points do not add up to the final score the game is left as the source has it,
+# so the contract fails and a human looks at it. Rebounds are not reconciled
+# either: team rebounds legitimately make the team row differ from the players.
+GAME_DETAIL_RECONCILED_STATS <- c(
+  "fgm", "fga", "fg3m", "fg3a", "ftm", "fta", "ast", "stl", "blk", "tov", "pf"
+)
+
+.sum_player_stat <- function(players, stat) {
+  if (length(players) == 0L) return(0L)
+  as.integer(sum(vapply(players, function(p) {
+    v <- p[[stat]]
+    if (is.null(v) || length(v) == 0L || is.na(v)) 0L else as.integer(v)
+  }, integer(1))))
+}
+
+# Returns list(away, home, changed) with the stats lists reconciled to the player
+# rows, and logs one line per changed stat.
+.reconcile_team_stats_with_players <- function(away_stats, home_stats,
+                                               away_players, home_players,
+                                               game_id, away_abbr, home_abbr,
+                                               log_fn = function(msg) cat(msg, "\n", sep = "")) {
+  sides <- list(
+    away = list(stats = away_stats, players = away_players, abbr = away_abbr),
+    home = list(stats = home_stats, players = home_players, abbr = home_abbr)
+  )
+
+  points_ok <- TRUE
+  for (side in names(sides)) {
+    s <- sides[[side]]
+    p_sum <- .sum_player_stat(s$players, "points")
+    if (is.null(s$stats$points) || !identical(as.integer(s$stats$points), p_sum)) {
+      points_ok <- FALSE
+      log_fn(sprintf(paste0(
+        ">>> [WARN] Game detail %s %s (%s): player points sum to %d but the final score is %s; ",
+        "team totals left as the source reports them"),
+        game_id, side, s$abbr, p_sum, format(s$stats$points %||% "NA")))
+    }
+  }
+  if (!points_ok) return(list(away = away_stats, home = home_stats, changed = FALSE))
+
+  changed <- FALSE
+  for (side in names(sides)) {
+    st <- sides[[side]]$stats
+    src_tov <- st$tov
+    for (stat in GAME_DETAIL_RECONCILED_STATS) {
+      team_val <- st[[stat]]
+      if (is.null(team_val)) next
+      p_sum <- .sum_player_stat(sides[[side]]$players, stat)
+      if (!identical(as.integer(team_val), p_sum)) {
+        log_fn(sprintf(paste0(
+          ">>> [WARN] Game detail %s %s (%s) %s: team total %d disagrees with player rows %d; ",
+          "publishing the player sum"),
+          game_id, side, sides[[side]]$abbr, stat, as.integer(team_val), p_sum))
+        st[[stat]] <- p_sum
+        changed <- TRUE
+      }
+    }
+    # Keep total_tov = tov + team_tov when the source's own row held that identity.
+    if (!is.null(src_tov) && !is.null(st$team_tov) && !is.null(st$total_tov) &&
+        !identical(as.integer(src_tov), as.integer(st$tov)) &&
+        identical(as.integer(st$total_tov), as.integer(src_tov + st$team_tov))) {
+      new_total <- as.integer(st$tov + st$team_tov)
+      log_fn(sprintf(paste0(
+        ">>> [WARN] Game detail %s %s (%s) total_tov: team total %d becomes %d ",
+        "(reconciled tov + team_tov)"),
+        game_id, side, sides[[side]]$abbr, as.integer(st$total_tov), new_total))
+      st$total_tov <- new_total
+    }
+    sides[[side]]$stats <- st
+  }
+
+  list(away = sides$away$stats, home = sides$home$stats, changed = changed)
+}
+
+# After a reconciliation the efficiency factors move, so the entering_baselines
+# `realized` values (computed upstream from the team rows alone) are re-read from
+# them, keeping the contract identity realized === efficiency_factors.
+.sync_entering_realized <- function(entering_baselines, efficiency_factors) {
+  if (is.null(entering_baselines) || length(entering_baselines) != 2L ||
+      is.null(efficiency_factors)) {
+    return(entering_baselines)
+  }
+  ef_keys <- vapply(efficiency_factors, function(f) as.character(f$key), character(1))
+  side_fields <- c("away_value", "home_value")
+  for (idx in seq_len(2L)) {
+    fl <- entering_baselines[[idx]]$factors
+    for (j in seq_along(fl)) {
+      k <- as.character(fl[[j]]$key)
+      m <- match(k, ef_keys)
+      real <- if (is.na(m)) NULL else num_or_null(efficiency_factors[[m]][[side_fields[idx]]], 1L)
+      ent <- fl[[j]]$entering
+      diff_val <- if (!is.null(ent) && !is.null(real) && is.finite(ent) && is.finite(real)) {
+        d <- round(real - ent, 1L)
+        if (abs(d) < 1e-12) 0 else d
+      } else {
+        NULL
+      }
+      fl[[j]] <- list(key = fl[[j]]$key, entering = ent, realized = real, difference = diff_val)
+    }
+    entering_baselines[[idx]]$factors <- fl
+  }
+  entering_baselines
+}
+
 .build_efficiency_factors <- function(away_totals, home_totals, away_stats, home_stats) {
   calc_tov_pct <- function(s) {
     if (is.null(s$total_tov) || is.null(s$fga) || is.null(s$fta)) return(NULL)
@@ -1197,7 +1309,8 @@ build_game_detail_payload <- function(
   home_team_meta = NULL,
   generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
   schema_ver = GAME_DETAIL_SCHEMA_VERSION,
-  explainability = NULL
+  explainability = NULL,
+  log_fn = function(msg) cat(msg, "\n", sep = "")
 ) {
   gid <- as.character(game_id)
 
@@ -1308,6 +1421,16 @@ build_game_detail_payload <- function(
   away_stats <- .extract_team_counting_stats(away_tb)
   home_stats <- .extract_team_counting_stats(home_tb)
 
+  # Issue #181: publish the player-row sums where the source's team row disagrees,
+  # before any derived value (percentages, possessions, ratings, pace) is computed.
+  recon <- .reconcile_team_stats_with_players(
+    away_stats, home_stats,
+    away_players_res$players, home_players_res$players,
+    gid, away_info$abbr, home_info$abbr, log_fn = log_fn
+  )
+  away_stats <- recon$away
+  home_stats <- recon$home
+
   game_minutes <- max(
     round(away_players_res$active_minutes / 5),
     round(home_players_res$active_minutes / 5),
@@ -1323,6 +1446,12 @@ build_game_detail_payload <- function(
   )
 
   efficiency_factors <- .build_efficiency_factors(away_totals, home_totals, away_stats, home_stats)
+  if (isTRUE(recon$changed) && is.list(explainability) &&
+      !is.null(explainability$entering_baselines)) {
+    explainability$entering_baselines <- .sync_entering_realized(
+      explainability$entering_baselines, efficiency_factors
+    )
+  }
   context_splits <- .build_context_splits(
     away_stats, home_stats,
     away_players_res$bench_points, home_players_res$bench_points
@@ -1684,7 +1813,8 @@ export_game_details <- function(
       home_team_meta  = home_meta,
       generated_at    = generated_at,
       schema_ver      = schema_ver,
-      explainability  = exp_i
+      explainability  = exp_i,
+      log_fn          = log_fn
     )
 
     existed <- file.exists(out_path)
