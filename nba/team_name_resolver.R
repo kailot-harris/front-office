@@ -1,6 +1,6 @@
 # ==============================================================================
 # team_name_resolver.R
-# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/team_name_resolver.R
+# Path: team_name_resolver.R
 #
 # SINGLE SOURCE OF TRUTH for NBA team-name normalization.
 #

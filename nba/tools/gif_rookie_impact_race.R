@@ -51,8 +51,7 @@ find_cache_file <- function(filename) {
     if (exists("PROJECT_DIR")) file.path(PROJECT_DIR, "cache", filename) else NULL,
     file.path(SCRIPT_DIR, "cache", filename),
     file.path(getwd(), "cache", filename),
-    file.path("..", "NBA Analytics", "cache", filename),
-    file.path("C:/Users/kailo/kayceeslices/front-office/NBA Analytics/cache", filename)
+    file.path("..", "NBA Analytics", "cache", filename)
   )
   for (cand in candidates) {
     if (!is.null(cand) && file.exists(cand)) {
@@ -67,8 +66,7 @@ find_draft_file <- function() {
   candidates <- c(
     file.path(SCRIPT_DIR, "web", "public", "data", "offseason_draft.json"),
     file.path(getwd(), "web", "public", "data", "offseason_draft.json"),
-    file.path("C:/Users/kailo/kayceeslices/front-office/NBA Analytics/web/public/data/offseason_draft.json"),
-    file.path("C:/Users/kailo/kayceeslices/front-office/web/public/data/offseason_draft.json")
+    file.path(dirname(SCRIPT_DIR), "web", "public", "data", "offseason_draft.json")
   )
   for (cand in candidates) {
     if (file.exists(cand)) {

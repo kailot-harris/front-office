@@ -99,7 +99,7 @@ ok("CACHE_TEAM_BOX sits under this checkout",
 ok("sourcing left the working directory where it found it",
    identical(WD_AFTER_SOURCE, WD_DURING_LOAD))
 ok("no absolute authoring path is hardcoded in the logger",
-   !any(grepl("kayceeslices", readLines(LOGGER_PATH, warn = FALSE), fixed = TRUE)))
+   !any(grepl("[A-Za-z]:[/\\]Users[/\\][A-Za-z0-9_]", readLines(LOGGER_PATH, warn = FALSE), ignore.case = TRUE)))
 # Loading must not run the stage: the banner run_prediction_accuracy_logger()
 # prints is absent, so no reconciliation touched the real prediction log.
 ok("NBA_SKIP_STAGE_AUTORUN suppressed the pipeline run",

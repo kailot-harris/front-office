@@ -1,6 +1,6 @@
 # ==============================================================================
 # Player-Level Impact Metrics (BPM, Minutes Concentration & Depth)
-# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/player_metrics.R
+# Path: player_metrics.R
 # ==============================================================================
 
 suppressPackageStartupMessages({

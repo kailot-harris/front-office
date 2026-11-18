@@ -89,7 +89,7 @@ for (fn in names(ENTRYPOINTS)) {
   lines <- readLines(path, warn = FALSE)
 
   ok(sprintf("%-29s no hardcoded authoring path", fn),
-     !any(grepl("kayceeslices", lines, fixed = TRUE)))
+     !any(grepl("[A-Za-z]:[/\\]Users[/\\][A-Za-z0-9_]", lines, ignore.case = TRUE)))
 
   # Textual, not top-level-only: the original defect hid the call inside an
   # `if (dir.exists(PROJECT_DIR))`, so a check that only read top-level call

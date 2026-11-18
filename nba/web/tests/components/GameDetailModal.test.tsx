@@ -1137,6 +1137,29 @@ describe('GameDetailModal empirical Phase 1 views & box score sorting', () => {
     expect(screen.getByText('Entering Baselines vs Realized Four Factors')).toBeInTheDocument();
   });
 
+  it('shows "Travel data unavailable" instead of a number for the schedule step when travel context is missing', async () => {
+    const user = userEvent.setup();
+    const base = makeExplainability();
+    const explainability = makeExplainability({
+      schedule_context_available: false,
+      margin_waterfall: (base.margin_waterfall ?? []).map((st) =>
+        st.key === 'schedule'
+          ? { ...st, points: 0, detail: 'Travel data unavailable' }
+          : st,
+      ),
+    });
+    stubFetchJson(makeDetailEnvelope({ explainability }));
+
+    render(
+      <GameDetailModal matchup={makeMatchup({ has_game_detail: true })} onClose={vi.fn()} />,
+    );
+    await screen.findByText('Player Box Score');
+    await user.click(screen.getByRole('tab', { name: /Attribution & SHAP/i }));
+
+    expect(screen.getAllByText('Travel data unavailable').length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByLabelText(/Schedule Context: [+-−]?0\.00 points/)).toBeNull();
+  });
+
   it('displays verbatim provenance banners for LOGGED_PREGAME, missing-waterfall LOGGED_PREGAME, BACKTEST_PREWEEK, BACKTEST_SEEDED, and primary_ensemble basis', async () => {
     const user = userEvent.setup();
 

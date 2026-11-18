@@ -1,6 +1,6 @@
 # ==============================================================================
 # NBA Analytics Pipeline - Global Configuration
-# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/config.R
+# Path: config.R
 # ==============================================================================
 
 # Working and Cache Directories

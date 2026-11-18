@@ -739,6 +739,29 @@ compute_game_realized_factors <- function(team_box_game) {
 
 #' Build a strictly attributed 6-step (plus optional rounding residual) margin
 #' waterfall. Never substitutes current ensemble ratings onto a logged forecast.
+# TRUE when this game's schedule/travel term could not be computed (a team code
+# absent from ARENA_DB leaves it NA, #156) and the projection left it out. It is
+# a data gap: the schedule step then carries 0 points and says so, never an
+# invented number. Logged rows record the gap as NA comp_schedule while the other
+# four components are finite -- an all-NA row is a legacy row, not a gap.
+.schedule_context_unavailable <- function(game_row, log_row = NULL, basis = NULL) {
+  if (identical(basis, "primary_ensemble")) {
+    flag <- .field_or_null(game_row, "schedule_context_available")
+    if (!is.null(flag) && !is.na(flag)) return(!isTRUE(as.logical(flag)))
+    return("schedule_adjustment" %in% names(game_row) &&
+             !is.finite(.num_field(game_row, "schedule_adjustment")))
+  }
+  if (!is.null(basis) && basis %in% c("logged_model_margin", "margin_from_logged_win_prob") &&
+      !is.null(log_row)) {
+    others <- vapply(c("comp_bottom_up", "comp_rapm", "comp_shot_fatigue",
+                       "comp_embeddings", "comp_home_court", "sigma_game"),
+                     function(c) .num_field(log_row, c), numeric(1))
+    return(all(is.finite(others)) && !is.finite(.num_field(log_row, "comp_schedule")))
+  }
+  FALSE
+}
+GAME_DETAIL_TRAVEL_UNAVAILABLE <- "Travel data unavailable"
+
 build_margin_waterfall <- function(game_row, ensemble_ratings = NULL, log_row = NULL) {
   basis <- chr_or_null(.field_or_null(game_row, "projection_basis"))
   if (is.null(basis) || identical(basis, "team_rating_differential")) return(NULL)
@@ -776,7 +799,10 @@ build_margin_waterfall <- function(game_row, ensemble_ratings = NULL, log_row = 
 
     away_drag <- .num_field(game_row, "away_fatigue_drag")
     home_drag <- .num_field(game_row, "home_fatigue_drag")
-    sched_adj <- if ("schedule_adjustment" %in% names(game_row)) {
+    sched_missing <- .schedule_context_unavailable(game_row, basis = basis)
+    sched_adj <- if (sched_missing) {
+      0
+    } else if ("schedule_adjustment" %in% names(game_row)) {
       val <- .num_field(game_row, "schedule_adjustment")
       if (!is.finite(val)) return(NULL)
       val
@@ -814,7 +840,9 @@ build_margin_waterfall <- function(game_row, ensemble_ratings = NULL, log_row = 
       sprintf("20%% Shot/Fatigue blend (%s %+.2f vs %s %+.2f)", h_lbl, h_vals[["rating_shot_fatigue"]], a_lbl, a_vals[["rating_shot_fatigue"]]),
       sprintf("20%% Embeddings blend (%s %+.2f vs %s %+.2f)", h_lbl, h_vals[["rating_embeddings"]], a_lbl, a_vals[["rating_embeddings"]]),
       sprintf("%s home-court constant (+%.2f pts)", h_lbl, round(hca_pts, 2L)),
-      if (is.finite(away_drag) && is.finite(home_drag)) {
+      if (sched_missing) {
+        GAME_DETAIL_TRAVEL_UNAVAILABLE
+      } else if (is.finite(away_drag) && is.finite(home_drag)) {
         sprintf("%s fatigue %.2f minus %s fatigue %.2f", a_lbl, away_drag, h_lbl, home_drag)
       } else {
         "Rest, back-to-back & travel drag differential"
@@ -834,6 +862,8 @@ build_margin_waterfall <- function(game_row, ensemble_ratings = NULL, log_row = 
       "comp_home_court", "comp_schedule", "sigma_game"
     )
     vals <- vapply(req_cols, function(c) .num_field(log_row, c), numeric(1))
+    sched_missing <- .schedule_context_unavailable(game_row, log_row = log_row, basis = basis)
+    if (sched_missing) vals[["comp_schedule"]] <- 0
     if (!all(is.finite(vals)) || vals[["sigma_game"]] <= 0) return(NULL)
 
     target_margin <- .num_field(game_row, "predicted_margin")
@@ -846,7 +876,7 @@ build_margin_waterfall <- function(game_row, ensemble_ratings = NULL, log_row = 
       "Logged pregame 20% Shot/Fatigue blend differential",
       "Logged pregame 20% Embeddings blend differential",
       "Logged pregame home-court constant",
-      "Logged pregame schedule & travel drag differential"
+      if (sched_missing) GAME_DETAIL_TRAVEL_UNAVAILABLE else "Logged pregame schedule & travel drag differential"
     )
     return(.assemble_waterfall_steps(
       vals[seq_len(6L)], details, target_margin,
@@ -1141,6 +1171,8 @@ build_game_explainability <- function(game_row, ensemble_ratings = NULL, log_row
     predicted_home_win_prob = pred_prob,
     sigma_game              = sigma_out,
     margin_waterfall        = waterfall,
+    schedule_context_available = if (is.null(proj_basis)) NULL else
+      !.schedule_context_unavailable(game_row, log_row = log_row, basis = proj_basis),
     logged_forecast         = logged_forecast,
     entering_baselines      = entering_baselines,
     xgboost_shap            = shap_out

@@ -33,7 +33,10 @@ REM Set-ScheduledTask returns "Access is denied". The registered trigger is stil
 REM 08:00, so the race above is still live until the command is run.
 REM ------------------------------------------------------------------------------
 REM ==============================================================================
-set PROJECT_DIR=c:\Users\kailo\kayceeslices\front-office\NBA Analytics
+REM Project dir defaults to this script's own folder (%~dp0 minus its trailing
+REM backslash); NBA_PROJECT_DIR still overrides it.
+set PROJECT_DIR=%~dp0
+if "%PROJECT_DIR:~-1%"=="\" set PROJECT_DIR=%PROJECT_DIR:~0,-1%
 if defined NBA_PROJECT_DIR set PROJECT_DIR=%NBA_PROJECT_DIR%
 set LOG_FILE=%PROJECT_DIR%\pipeline_execution.log
 set LOG_MAX_BYTES=5242880

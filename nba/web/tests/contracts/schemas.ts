@@ -845,6 +845,7 @@ export const GameExplainabilityPayloadSchema = z
     predicted_home_win_prob: prob.nullable(),
     sigma_game: num.positive().nullable(),
     margin_waterfall: z.array(MarginWaterfallStepSchema).nullable(),
+    schedule_context_available: z.boolean().nullable().optional(),
     logged_forecast: z
       .object({
         prediction_timestamp: z.string().min(1),

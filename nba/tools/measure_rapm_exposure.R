@@ -8,7 +8,19 @@
 # which already carries off_possessions, def_possessions, total_rapm and lambda.
 #
 # Usage: Rscript tools/measure_rapm_exposure.R
-setwd("c:/Users/kailo/kayceeslices/front-office/NBA Analytics")
+PROJECT_ROOT <- local({
+  args <- commandArgs(trailingOnly = FALSE)
+  f <- sub("^--file=", "", args[grepl("^--file=", args)])
+  if (length(f) == 1L) {
+    normalizePath(file.path(dirname(normalizePath(f)), ".."), winslash = "/", mustWork = FALSE)
+  } else if (file.exists(file.path(getwd(), "config.R"))) {
+    normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+  } else {
+    stop("Cannot locate the NBA Analytics repo root: run via `Rscript tools/measure_rapm_exposure.R` ",
+         "or from a working directory that contains config.R.")
+  }
+})
+setwd(PROJECT_ROOT)
 
 suppressPackageStartupMessages(library(dplyr))
 

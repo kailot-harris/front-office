@@ -1,6 +1,6 @@
 # ==============================================================================
 # Offseason Roster Dynamics, Age Curves & Continuity Regression
-# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/roster_dynamics.R
+# Path: roster_dynamics.R
 # ==============================================================================
 
 suppressPackageStartupMessages({
