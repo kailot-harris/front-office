@@ -172,7 +172,7 @@ generate_gif_point_diff_race <- function(season = 2026,
         subtitle = subtitle_txt,
         x = sprintf("Date (%d Regular Season)", season),
         y = "Cumulative Run Differential (RS - RA)",
-        caption = "Source: KayceeSlices MLB Analytics Engine | mlbplotR transparent franchise logos"
+        caption = "Source: MLB Analytics Engine | mlbplotR transparent franchise logos"
       )
 
     fpath <- file.path(tmp_dir, sprintf("frame_%03d.png", idx))

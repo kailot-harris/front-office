@@ -1,6 +1,6 @@
 # ==============================================================================
 # tools/viz_pythag_luck.R — Actual vs Pythagenpat Win% Quadrant Analysis
-# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/tools/viz_pythag_luck.R
+# Path: tools/viz_pythag_luck.R
 #
 # Phase 9: Quantitative Visualization Suite (Issue #24)
 # Visualizes Actual Win% vs. Pythagenpat Expected Win% in a 4-quadrant layout:
@@ -154,7 +154,7 @@ generate_viz_pythag_luck <- function(season = 2024,
       subtitle = "Comparison of Actual Win% vs. Pythagenpat Expected Win% based on Run Differential & Run Environment\nPoints sized and colored by Luck Residuals (Wins above/below expected) with official team logos",
       x = "Pythagenpat Expected Win % (Run Differential Quality)",
       y = sprintf("Actual %d Win %%", season),
-      caption = "Dotted line: Expected = Actual Win% | Dashed lines: .500 Division | Source: KayceeSlices MLB Analytics Engine"
+      caption = "Dotted line: Expected = Actual Win% | Dashed lines: .500 Division | Source: MLB Analytics Engine"
     )
 
   # Layer official team logos on top of points

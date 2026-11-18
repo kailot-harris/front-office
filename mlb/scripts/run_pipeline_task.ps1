@@ -54,7 +54,9 @@ param(
 
 $ErrorActionPreference = 'Continue'
 
-$ProjectDir = "c:\Users\kailo\kayceeslices\front-office\MLB Analytics"
+# Project root = the parent of this script's own folder (scripts), so the
+# wrapper runs against whichever checkout it lives in.
+$ProjectDir = Split-Path -Path $PSScriptRoot -Parent
 Set-Location -Path $ProjectDir
 
 # Defense-in-depth for git commit identity resolution under Task Scheduler

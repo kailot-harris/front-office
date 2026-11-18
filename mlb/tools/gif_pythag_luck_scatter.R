@@ -202,7 +202,7 @@ generate_gif_pythag_luck_scatter <- function(season = 2026,
         subtitle = subtitle_txt,
         x = "Cumulative Runs Scored (RS)",
         y = "Cumulative Runs Allowed (RA — Inverted: Lower is Better)",
-        caption = "Dotted line: 1:1 Run Parity | Halos colored by Pythagorean Luck | Source: KayceeSlices MLB Analytics"
+        caption = "Dotted line: 1:1 Run Parity | Halos colored by Pythagorean Luck | Source: MLB Analytics"
       )
 
     fpath <- file.path(tmp_dir, sprintf("frame_%03d.png", idx))

@@ -1,6 +1,6 @@
 # ==============================================================================
 # tools/export_player_spatial_maps.R — Player Dropdown Spatial Maps Exporter
-# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/tools/export_player_spatial_maps.R
+# Path: tools/export_player_spatial_maps.R
 #
 # Generates empirical per-player spatial maps from Statcast tracking data:
 #   - Batters: Field Spray Charts from tracked balls in play (type == "X",

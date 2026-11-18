@@ -1,6 +1,6 @@
 # ==============================================================================
 # tools/gif_elo_trajectories.R — 30-Team MLB Elo Race Trajectory Animation
-# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/tools/gif_elo_trajectories.R
+# Path: tools/gif_elo_trajectories.R
 #
 # Phase 9: Quantitative Visualization Suite (Issue #24 / Animated Trajectories)
 # Converts game-by-game Elo rating trajectories into an animated race GIF across
@@ -204,7 +204,7 @@ generate_gif_elo_trajectories <- function(season = 2026,
         subtitle = subtitle_txt,
         x = sprintf("Date (%d Regular Season)", season),
         y = "Elo Rating (1500 = League Baseline)",
-        caption = "Source: KayceeSlices MLB Analytics Engine | Tangotiger rGS & Rest Adjusted"
+        caption = "Source: MLB Analytics Engine | Tangotiger rGS & Rest Adjusted"
       )
     
     fpath <- file.path(frame_dir, sprintf("frame_%03d.png", idx))

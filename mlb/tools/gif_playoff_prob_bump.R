@@ -193,7 +193,7 @@ generate_gif_playoff_prob_bump <- function(season = 2026,
         subtitle = subtitle_txt,
         x = sprintf("Date (%d Regular Season)", season),
         y = "Simulated Postseason Probability (%)",
-        caption = "Top 6 seeds per league qualify | Source: KayceeSlices MLB Analytics Engine"
+        caption = "Top 6 seeds per league qualify | Source: MLB Analytics Engine"
       )
 
     fpath <- file.path(tmp_dir, sprintf("frame_%03d.png", idx))

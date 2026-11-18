@@ -1,6 +1,6 @@
 # ==============================================================================
 # tools/viz_bullpen_fatigue.R — Reliever High-Stress Workload & Bullpen Vulnerability
-# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/tools/viz_bullpen_fatigue.R
+# Path: tools/viz_bullpen_fatigue.R
 #
 # Phase 9: Quantitative Visualization Suite (Issue #24)
 # Visualizes reliever arm stress and bullpen vulnerability scores across all 30 teams:
@@ -128,7 +128,7 @@ generate_viz_bullpen_fatigue <- function(status_file = cache_path("specialty", "
       subtitle = "Evaluation of Relief Corps High-Leverage Workload, Back-to-Back Outings, and Vulnerability",
       x = x_label,
       y = "Bullpen Vulnerability Score (0 = Fully Rested, 100+ = Critical Fatigue)",
-      caption = "Source: KayceeSlices MLB Analytics Engine | Workload & Velocity Delta Adjusted"
+      caption = "Source: MLB Analytics Engine | Workload & Velocity Delta Adjusted"
     )
 
   # Layer official team logos on top of points

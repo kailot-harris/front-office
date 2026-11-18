@@ -1,7 +1,7 @@
 # ==============================================================================
 # mlb_player_dna_engine.R
 # Phase 2 / Sprint 2: High-Dimensional Player DNA & Historical Twins (1980–2026)
-# Path: c:/Users/kailo/kayceeslices/front-office/MLB Analytics/mlb_player_dna_engine.R
+# Path: mlb_player_dna_engine.R
 #
 # Generates 16-D skill vectors, 5-factor category scores, 2D stylistic manifold
 # coordinates, and cosine similarity matches against 1980–2026 historical peaks
@@ -161,8 +161,6 @@ find_cache_file <- function(stage, filename) {
   if (file.exists(rel_path)) return(rel_path)
   parent_path <- file.path(PROJECT_DIR, "..", "MLB Analytics", "cache", stage, filename)
   if (file.exists(parent_path)) return(parent_path)
-  default_main <- file.path("C:/Users/kailo/kayceeslices/front-office/MLB Analytics/cache", stage, filename)
-  if (file.exists(default_main)) return(default_main)
   NULL
 }
 
@@ -170,8 +168,7 @@ find_ingest_statcast_files <- function() {
   dirs <- c(
     cache_path("ingest", create = FALSE),
     file.path(PROJECT_DIR, "cache", "ingest"),
-    file.path(PROJECT_DIR, "..", "MLB Analytics", "cache", "ingest"),
-    "C:/Users/kailo/kayceeslices/front-office/MLB Analytics/cache/ingest"
+    file.path(PROJECT_DIR, "..", "MLB Analytics", "cache", "ingest")
   )
   for (d in dirs) {
     if (dir.exists(d)) {

@@ -233,7 +233,7 @@ generate_gif_season_calendar_heatmap <- function(season = 2026,
         x = "Regular Season Chronological Progression (Games 1 to 162)",
         y = "MLB Franchises (Ordered by Division & Record)",
         fill = "Game Outcome",
-        caption = "Source: KayceeSlices MLB Analytics Engine | 30 MLB Franchises | mlbplotR transparent franchise logos"
+        caption = "Source: MLB Analytics Engine | 30 MLB Franchises | mlbplotR transparent franchise logos"
       ) +
       theme(
         panel.grid.major = element_blank(),

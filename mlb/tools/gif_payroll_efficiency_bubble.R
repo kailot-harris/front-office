@@ -272,7 +272,7 @@ generate_gif_payroll_efficiency_bubble <- function(season = 2026,
         ),
         x = "2026 Opening Day & 26-Man Roster Payroll ($ Millions)",
         y = "2026 Regular Season Wins",
-        caption = "Source: KayceeSlices MLB Analytics Engine | Bubble Size = Team WAR | mlbplotR transparent franchise logos"
+        caption = "Source: MLB Analytics Engine | Bubble Size = Team WAR | mlbplotR transparent franchise logos"
       ) +
       theme(
         legend.position = "bottom",
