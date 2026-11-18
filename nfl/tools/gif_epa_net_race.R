@@ -1,6 +1,6 @@
 # ==============================================================================
 # EPA Net Bar Race - Animated GIF (NFL)
-# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/gif_epa_net_race.R
+# Path: tools/gif_epa_net_race.R
 #
 # Closes GitHub issue #30. Phase 9 (docs/task_assignments_phase8.md, task P9-E), Wave 1 - no
 # dependency on the Elo infra work, reads only CACHE_EPA_METRICS (see epa_metrics_engine.R).
@@ -30,7 +30,7 @@
 # ticks) are the same pattern as that .qmd's scatter animation section.
 #
 # Run with:
-#   "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" "C:\Users\kailo\kayceeslices\NFL Analytics\tools\gif_epa_net_race.R"
+#   "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" "<repo root>\tools\gif_epa_net_race.R"
 # (always an absolute path - see CLAUDE.md's Rscript.exe relative-path segfault note)
 # ==============================================================================
 
@@ -43,7 +43,26 @@
 # CACHE_EPA_METRICS) still correctly resolves to config.R's main-repo path (that input cache is
 # shared, read-only, real data - not something this task regenerates). Same pattern as
 # tools/derive_min_sample_games_for_stake.R's own WORKTREE_DIR handling.
-WORKTREE_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
+WORKTREE_DIR <- local({
+  # Repo root: NFL_PROJECT_DIR if set, else this script's parent directory (it lives in
+  # tools/), else the working directory if it holds config.R. No hard-coded fallback.
+  env_root <- Sys.getenv("NFL_PROJECT_DIR", "")
+  f <- sub("^--file=", "", grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE))
+  f <- gsub("~+~", " ", f, fixed = TRUE)
+  script_root <- if (length(f) == 1L) {
+    dirname(dirname(normalizePath(f, winslash = "/", mustWork = FALSE)))
+  } else ""
+  root <- if (nzchar(env_root)) {
+    env_root
+  } else if (nzchar(script_root) && file.exists(file.path(script_root, "config.R"))) {
+    script_root
+  } else if (file.exists("config.R")) {
+    getwd()
+  } else {
+    stop("Cannot locate the NFL Analytics project root: set NFL_PROJECT_DIR or run from the repo root.")
+  }
+  normalizePath(root, winslash = "/", mustWork = FALSE)
+})
 WORKTREE_CACHE_DIR <- file.path(WORKTREE_DIR, "cache")
 if (!dir.exists(WORKTREE_CACHE_DIR)) dir.create(WORKTREE_CACHE_DIR, recursive = TRUE)
 setwd(WORKTREE_DIR)

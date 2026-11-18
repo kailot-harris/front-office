@@ -387,7 +387,7 @@ Register-ScheduledTask : Access is denied.
 Cause, confirmed rather than assumed:
 
 ```
-[Security.Principal.WindowsIdentity]::GetCurrent().Name          # KAILOT_HP\kailo
+[Security.Principal.WindowsIdentity]::GetCurrent().Name          # <MACHINE>\<user>
 IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator) # False
 whoami /groups   # BUILTIN\Administrators -> "Group used for deny only"
 ```

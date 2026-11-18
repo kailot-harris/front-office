@@ -1,6 +1,6 @@
 # ==============================================================================
 # logging_utils.R (NFL port — copied verbatim from WNBA Analytics, sport-agnostic)
-# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/logging_utils.R
+# Path: logging_utils.R
 #
 # Structured logging utility for the NFL pipeline.
 # Implements dual-logging: (1) Standard append-only text logs for fast tailing,

@@ -1,7 +1,7 @@
 # ==============================================================================
 # run_full_pipeline.R
 # NFL Analytics Pipeline Orchestrator — Wave 1 Skeleton
-# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/run_full_pipeline.R
+# Path: run_full_pipeline.R
 #
 # Task P1-D (nfl_pipeline_skeleton_agent, docs/task_assignments_phase0.md). Per that file's
 # Constraints section, this is deliberately a SKELETON sized to the three real Wave-1 ingestion

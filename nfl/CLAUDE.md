@@ -1,8 +1,8 @@
 # NFL Analytics — Working Notes
 
 ## Environment
-- Repo root: `C:\Users\kailo\kayceeslices\front-office\NFL Analytics` (Bash path
-  `/c/Users/kailo/kayceeslices/front-office/NFL Analytics`). Note the `front-office\` segment —
+- Repo root: `<workspace>\front-office\NFL Analytics` (Bash path
+  `/c/<workspace>/front-office/NFL Analytics`). Note the `front-office\` segment —
   this file omitted it until 2026-10-26, and the sibling sport repos sit alongside this one under
   that same parent. This is a git repo (initialized during Phase 0),
   unlike the WNBA sibling repo's own early history.
@@ -102,7 +102,7 @@ that touches a modeling/structural constant.
   start here, not fix after the fact.
 
 ## Shared-checkout safety (front-office issue #105)
-The repo root (`C:\Users\kailo\kayceeslices\front-office\NFL Analytics`) is the **primary
+The repo root (`<workspace>\front-office\NFL Analytics`) is the **primary
 checkout** — the same directory Windows Task Scheduler's `NFL_analytics_task_01` (05:15
 pipeline, `schedule_daily.bat`) and `NFL_analytics_publish_01` (09:00 publish gate,
 `schedule_publish.bat`) run in, and the same directory interactive sessions and subagents
@@ -161,9 +161,11 @@ will source each stage script the same way once it exists. Do not move these int
   `CACHE_ROSTERS`, `CACHE_INJURY_DATA`, `CACHE_PARTICIPATION`, `CACHE_NEXTGEN_STATS`,
   `CACHE_PLAYER_PROPS`, etc. all point here).
 - `tools/` — one-off utility/derivation scripts not part of `run_full_pipeline.R`'s DAG (e.g.
-  `tools/derive_nfl_constants.R`). Each should `setwd()` to the absolute project root before
+  `tools/derive_nfl_constants.R`). Each should `setwd()` to the project root before
   `source()`-ing dependencies by bare filename, so it runs correctly regardless of invocation
-  location.
+  location. Resolve that root at run time (`NFL_PROJECT_DIR`, else the script's own
+  `--file=` location, else a working directory holding `config.R`); never hard-code an
+  absolute local path.
 - `.claude/skills/` — repo-specific agent tooling conventions (deep-review-to-manuscript,
   render-and-inspect-quarto, remediation-phase-scaffold, config-constant-drift-audit,
   pipeline-freshness-audit), adapted from the WNBA Analytics sibling repo.

@@ -30,7 +30,7 @@
 # consistency with the existing cache/elo_scatter_animation.gif and the other Phase 9 GIFs.
 #
 # Run with:
-#   "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" "C:\Users\kailo\kayceeslices\NFL Analytics\.claude\worktrees\agent-a9109db7db5e8351c\tools\gif_elo_rank_bump.R"
+#   "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" "<repo root>\tools\gif_elo_rank_bump.R"
 # (always an absolute path - see CLAUDE.md's Rscript.exe relative-path segfault note)
 # ==============================================================================
 
@@ -41,7 +41,26 @@
 # OUTPUT, however, is written under WORKTREE_CACHE_DIR so it lands inside THIS worktree's cache/
 # rather than silently writing into the main repo's cache/ - same pattern as every other Phase 9
 # gif_*.R script (e.g. tools/gif_epa_net_race.R, tools/gif_division_standings_race.R).
-WORKTREE_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
+WORKTREE_DIR <- local({
+  # Repo root: NFL_PROJECT_DIR if set, else this script's parent directory (it lives in
+  # tools/), else the working directory if it holds config.R. No hard-coded fallback.
+  env_root <- Sys.getenv("NFL_PROJECT_DIR", "")
+  f <- sub("^--file=", "", grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE))
+  f <- gsub("~+~", " ", f, fixed = TRUE)
+  script_root <- if (length(f) == 1L) {
+    dirname(dirname(normalizePath(f, winslash = "/", mustWork = FALSE)))
+  } else ""
+  root <- if (nzchar(env_root)) {
+    env_root
+  } else if (nzchar(script_root) && file.exists(file.path(script_root, "config.R"))) {
+    script_root
+  } else if (file.exists("config.R")) {
+    getwd()
+  } else {
+    stop("Cannot locate the NFL Analytics project root: set NFL_PROJECT_DIR or run from the repo root.")
+  }
+  normalizePath(root, winslash = "/", mustWork = FALSE)
+})
 WORKTREE_CACHE_DIR <- file.path(WORKTREE_DIR, "cache")
 if (!dir.exists(WORKTREE_CACHE_DIR)) dir.create(WORKTREE_CACHE_DIR, recursive = TRUE)
 setwd(WORKTREE_DIR)

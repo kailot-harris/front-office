@@ -1,6 +1,6 @@
 # ==============================================================================
 # QB-Injury/Backup-Starter Rating Penalty - Empirical Derivation (Phase 1)
-# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/derive_qb_injury_penalty.R
+# Path: tools/derive_qb_injury_penalty.R
 #
 # Precedent: tools/derive_nfl_constants.R (one-off, documented derivation script that
 # prints the final value(s) for config.R rather than writing config.R itself). This
@@ -22,7 +22,26 @@
 #   "/c/Program Files/R/R-4.5.2/bin/Rscript.exe" tools/derive_qb_injury_penalty.R
 # ==============================================================================
 
-PROJECT_DIR <- "c:/Users/kailo/kayceeslices/front-office/nfl analytics"
+PROJECT_DIR <- local({
+  # Repo root: NFL_PROJECT_DIR if set, else this script's parent directory (it lives in
+  # tools/), else the working directory if it holds config.R. No hard-coded fallback.
+  env_root <- Sys.getenv("NFL_PROJECT_DIR", "")
+  f <- sub("^--file=", "", grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE))
+  f <- gsub("~+~", " ", f, fixed = TRUE)
+  script_root <- if (length(f) == 1L) {
+    dirname(dirname(normalizePath(f, winslash = "/", mustWork = FALSE)))
+  } else ""
+  root <- if (nzchar(env_root)) {
+    env_root
+  } else if (nzchar(script_root) && file.exists(file.path(script_root, "config.R"))) {
+    script_root
+  } else if (file.exists("config.R")) {
+    getwd()
+  } else {
+    stop("Cannot locate the NFL Analytics project root: set NFL_PROJECT_DIR or run from the repo root.")
+  }
+  normalizePath(root, winslash = "/", mustWork = FALSE)
+})
 setwd(PROJECT_DIR)
 
 suppressPackageStartupMessages({

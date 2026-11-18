@@ -1,7 +1,7 @@
 # ==============================================================================
 # One-off timing/stability harness for GitHub issue #16 ("Playoff Odds 6: Time
 # and tune N_SEASON_SIMULATIONS against real data").
-# Path: c:/Users/kailo/kayceeslices/front-office/nfl analytics/tools/time_playoff_odds_engine.R
+# Path: tools/time_playoff_odds_engine.R
 #
 # NOT part of run_full_pipeline.R's DAG (per tools/ convention in CLAUDE.md) and not
 # required to be kept as a permanent script per issue #16's own "Testable independently"
@@ -25,7 +25,26 @@
 # regardless of invocation directory.
 # ==============================================================================
 
-setwd("c:/Users/kailo/kayceeslices/front-office/nfl analytics/.claude/worktrees/agent-a29965b4a3135a707")
+setwd(local({
+  # Repo root: NFL_PROJECT_DIR if set, else this script's parent directory (it lives in
+  # tools/), else the working directory if it holds config.R. No hard-coded fallback.
+  env_root <- Sys.getenv("NFL_PROJECT_DIR", "")
+  f <- sub("^--file=", "", grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE))
+  f <- gsub("~+~", " ", f, fixed = TRUE)
+  script_root <- if (length(f) == 1L) {
+    dirname(dirname(normalizePath(f, winslash = "/", mustWork = FALSE)))
+  } else ""
+  root <- if (nzchar(env_root)) {
+    env_root
+  } else if (nzchar(script_root) && file.exists(file.path(script_root, "config.R"))) {
+    script_root
+  } else if (file.exists("config.R")) {
+    getwd()
+  } else {
+    stop("Cannot locate the NFL Analytics project root: set NFL_PROJECT_DIR or run from the repo root.")
+  }
+  normalizePath(root, winslash = "/", mustWork = FALSE)
+}))
 source("config.R")
 source("playoff_odds_engine.R")
 
