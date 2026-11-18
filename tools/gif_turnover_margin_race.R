@@ -56,8 +56,7 @@ find_cache_file <- function(filename) {
     if (exists("PROJECT_DIR")) file.path(PROJECT_DIR, "cache", filename) else NULL,
     file.path(SCRIPT_DIR, "cache", filename),
     file.path(getwd(), "cache", filename),
-    file.path("..", "NBA Analytics", "cache", filename),
-    file.path("C:/Users/kailo/kayceeslices/front-office/NBA Analytics/cache", filename)
+    file.path("..", "NBA Analytics", "cache", filename)
   )
   for (cand in candidates) {
     if (!is.null(cand) && file.exists(cand)) {

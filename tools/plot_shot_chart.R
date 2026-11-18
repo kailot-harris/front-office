@@ -229,8 +229,7 @@ load_nba_shots_cache <- function(season = c(2026, 2027), player = NULL, cache_di
   if (is.null(cache_dirs)) {
     cache_dirs <- c(
       file.path(REPO_ROOT, "cache"),
-      "cache",
-      "C:/Users/kailo/kayceeslices/front-office/NBA Analytics/cache"
+      "cache"
     )
   }
 

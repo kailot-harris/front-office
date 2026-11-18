@@ -137,7 +137,7 @@ code_lines <- sub("#.*$", "", engine_lines)
 
 ok("xgboost_shap_engine.R exists", file.exists(engine_path))
 ok("xgboost_shap_engine.R has no hardcoded authoring path",
-   !any(grepl("kayceeslices", engine_lines, fixed = TRUE)))
+   !any(grepl("[A-Za-z]:[/\\]Users[/\\][A-Za-z0-9_]", engine_lines, ignore.case = TRUE)))
 ok("xgboost_shap_engine.R never calls setwd()",
    !any(grepl("setwd(", code_lines, fixed = TRUE)))
 ok("xgboost_shap_engine.R has no cwd-relative source()",

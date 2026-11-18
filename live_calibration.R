@@ -1,6 +1,6 @@
 # ==============================================================================
 # Statistical Calibration Analysis & Live In-Play Simulation Engine (NBA)
-# Path: c:/Users/kailo/kayceeslices/front-office/NBA Analytics/live_calibration.R
+# Path: live_calibration.R
 # Sanitized per Phase 0 (Issue #9): removed odds conversion & market comparison.
 # ==============================================================================
 

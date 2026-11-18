@@ -20,8 +20,11 @@ PROJECT_ROOT <- local({
     normalizePath(base, winslash = "/", mustWork = FALSE)
   } else if (file.exists(file.path(base, "..", "config.R"))) {
     normalizePath(file.path(base, ".."), winslash = "/", mustWork = FALSE)
+  } else if (file.exists(file.path(getwd(), "config.R"))) {
+    normalizePath(getwd(), winslash = "/", mustWork = FALSE)
   } else {
-    "c:/Users/kailo/kayceeslices/front-office/NBA Analytics"
+    stop("Cannot locate the NBA Analytics repo root (no config.R next to this script, ",
+         "in its parent, or in the working directory).")
   }
 })
 setwd(PROJECT_ROOT)
@@ -145,7 +148,7 @@ build_game_day_plot <- function(today_games, target_date) {
                          " \u00b7 Generated ", format(Sys.Date(), "%b %d, %Y")),
       x = "Home team win probability",
       y = NULL,
-      caption = "Dot right of the dashed 50% line = home favored \u00b7 left = away favored \u00b7 kayceeslices/NBA Analytics"
+      caption = "Dot right of the dashed 50% line = home favored \u00b7 left = away favored \u00b7 NBA Analytics"
     ) +
     theme_minimal(base_size = 12) +
     theme(
@@ -191,7 +194,7 @@ build_no_games_plot <- function(target_date, next_slate = NULL, offseason = FALS
       title    = paste0("NBA \u2014 ", headline, " for ", format(target_date, "%b %d, %Y")),
       subtitle = paste0("Season ", CURRENT_SEASON, " \u00b7 Generated ", format(Sys.Date(), "%b %d, %Y")),
       x = NULL, y = NULL,
-      caption = "Model projections appear here on game days \u00b7 kayceeslices/NBA Analytics"
+      caption = "Model projections appear here on game days \u00b7 NBA Analytics"
     ) +
     theme_void(base_size = 12) +
     theme(

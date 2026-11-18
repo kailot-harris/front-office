@@ -184,8 +184,7 @@ if (is_main) {
     season = c(2026, 2027),
     cache_dirs = c(
       file.path(REPO_ROOT, "cache"),
-      "cache",
-      "C:/Users/kailo/kayceeslices/front-office/NBA Analytics/cache"
+      "cache"
     )
   )
 
