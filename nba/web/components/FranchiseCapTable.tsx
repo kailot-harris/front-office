@@ -4,7 +4,7 @@ import React from 'react';
 import { Download } from 'lucide-react';
 import { FranchiseCbaProfile } from '@/lib/cbaTypes';
 import { exportToCsv } from '@/lib/exportToCsv';
-import { money } from '@/lib/format';
+import { MISSING_VALUE, isFiniteNumber, money } from '@/lib/format';
 
 interface FranchiseCapTableProps {
   profile: FranchiseCbaProfile;
@@ -51,14 +51,14 @@ export const FranchiseCapTable: React.FC<FranchiseCapTableProps> = ({ profile })
           </button>
           <div>
             <span className="text-slate-400 text-[11px] sm:text-[10px] mr-1">2027 Room:</span>
-            <span className={`font-bold ${projectedCapSpace2027 > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
-              {projectedCapSpace2027 > 0 ? `+${money(projectedCapSpace2027)}` : '$0.0M'}
+            <span className={`font-bold ${isFiniteNumber(projectedCapSpace2027) && projectedCapSpace2027 > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
+              {!isFiniteNumber(projectedCapSpace2027) ? MISSING_VALUE : projectedCapSpace2027 > 0 ? `+${money(projectedCapSpace2027)}` : '$0.0M'}
             </span>
           </div>
           <div>
             <span className="text-slate-400 text-[11px] sm:text-[10px] mr-1">2028 Room:</span>
-            <span className={`font-bold ${projectedCapSpace2028 > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
-              {projectedCapSpace2028 > 0 ? `+${money(projectedCapSpace2028)}` : '$0.0M'}
+            <span className={`font-bold ${isFiniteNumber(projectedCapSpace2028) && projectedCapSpace2028 > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
+              {!isFiniteNumber(projectedCapSpace2028) ? MISSING_VALUE : projectedCapSpace2028 > 0 ? `+${money(projectedCapSpace2028)}` : '$0.0M'}
             </span>
           </div>
         </div>
@@ -90,10 +90,10 @@ export const FranchiseCapTable: React.FC<FranchiseCapTableProps> = ({ profile })
                   {money(c.salary2026)}
                 </td>
                 <td className="py-2 text-right text-slate-300">
-                  {c.salary2027 > 0 ? money(c.salary2027) : <span className="text-slate-600">UFA</span>}
+                  {!isFiniteNumber(c.salary2027) ? MISSING_VALUE : c.salary2027 > 0 ? money(c.salary2027) : <span className="text-slate-600">UFA</span>}
                 </td>
                 <td className="py-2 text-right text-slate-300">
-                  {c.salary2028 > 0 ? money(c.salary2028) : <span className="text-slate-600">UFA</span>}
+                  {!isFiniteNumber(c.salary2028) ? MISSING_VALUE : c.salary2028 > 0 ? money(c.salary2028) : <span className="text-slate-600">UFA</span>}
                 </td>
                 <td className="py-2 text-center">
                   <span

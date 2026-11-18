@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { FranchiseCbaProfile } from '@/lib/cbaTypes';
-import { money } from '@/lib/format';
+import { MISSING_VALUE, isFiniteNumber, money } from '@/lib/format';
 
 interface ApronThermometerProps {
   profile: FranchiseCbaProfile;
@@ -106,26 +106,26 @@ export const ApronThermometer: React.FC<ApronThermometerProps> = ({ profile }) =
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-800/80 text-[11px] font-mono">
         <div className="p-1.5 rounded bg-surface-raised/80 border border-slate-800">
           <span className="text-[11px] sm:text-[9px] text-slate-400 block font-sans">Cap Space</span>
-          <span className={`font-bold ${profile.capSpace2026 > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
-            {profile.capSpace2026 > 0 ? `+${money(profile.capSpace2026)}` : '$0.0M'}
+          <span className={`font-bold ${isFiniteNumber(profile.capSpace2026) && profile.capSpace2026 > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
+            {!isFiniteNumber(profile.capSpace2026) ? MISSING_VALUE : profile.capSpace2026 > 0 ? `+${money(profile.capSpace2026)}` : '$0.0M'}
           </span>
         </div>
         <div className="p-1.5 rounded bg-surface-raised/80 border border-slate-800">
           <span className="text-[11px] sm:text-[9px] text-slate-400 block font-sans">Tax Cushion</span>
-          <span className={`font-bold ${profile.taxSpace2026 >= 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
-            {profile.taxSpace2026 >= 0 ? `+${money(profile.taxSpace2026)}` : `-${money(Math.abs(profile.taxSpace2026))} (Tax)`}
+          <span className={`font-bold ${!isFiniteNumber(profile.taxSpace2026) ? 'text-slate-500' : profile.taxSpace2026 >= 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+            {!isFiniteNumber(profile.taxSpace2026) ? MISSING_VALUE : profile.taxSpace2026 >= 0 ? `+${money(profile.taxSpace2026)}` : `-${money(Math.abs(profile.taxSpace2026))} (Tax)`}
           </span>
         </div>
         <div className="p-1.5 rounded bg-surface-raised/80 border border-slate-800">
           <span className="text-[11px] sm:text-[9px] text-slate-400 block font-sans">1st Apron Room</span>
-          <span className={`font-bold ${profile.firstApronSpace2026 >= 0 ? 'text-emerald-400' : 'text-orange-400'}`}>
-            {profile.firstApronSpace2026 >= 0 ? `+${money(profile.firstApronSpace2026)}` : `-${money(Math.abs(profile.firstApronSpace2026))}`}
+          <span className={`font-bold ${!isFiniteNumber(profile.firstApronSpace2026) ? 'text-slate-500' : profile.firstApronSpace2026 >= 0 ? 'text-emerald-400' : 'text-orange-400'}`}>
+            {!isFiniteNumber(profile.firstApronSpace2026) ? MISSING_VALUE : profile.firstApronSpace2026 >= 0 ? `+${money(profile.firstApronSpace2026)}` : `-${money(Math.abs(profile.firstApronSpace2026))}`}
           </span>
         </div>
         <div className="p-1.5 rounded bg-surface-raised/80 border border-slate-800">
           <span className="text-[11px] sm:text-[9px] text-slate-400 block font-sans">2nd Apron Room</span>
-          <span className={`font-bold ${profile.secondApronSpace2026 >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {profile.secondApronSpace2026 >= 0 ? `+${money(profile.secondApronSpace2026)}` : `-${money(Math.abs(profile.secondApronSpace2026))} (Breached)`}
+          <span className={`font-bold ${!isFiniteNumber(profile.secondApronSpace2026) ? 'text-slate-500' : profile.secondApronSpace2026 >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {!isFiniteNumber(profile.secondApronSpace2026) ? MISSING_VALUE : profile.secondApronSpace2026 >= 0 ? `+${money(profile.secondApronSpace2026)}` : `-${money(Math.abs(profile.secondApronSpace2026))} (Breached)`}
           </span>
         </div>
       </div>
