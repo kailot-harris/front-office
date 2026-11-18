@@ -143,7 +143,7 @@ del /q "%GUARD_STATUS_FILE%" >nul 2>&1
 if not "%GUARD_DIRTY_SIZE%"=="0" (
     echo [GUARD] Working tree is dirty on "%PRE_BRANCH%" - stashing tracked+untracked changes before landing on main ^(nothing is discarded; recoverable via "git stash pop"^). >> "%LOG_FILE%"
     git stash push -u -m "schedule_daily.bat-auto-stash" >> "%LOG_FILE%" 2>&1
-    set STASH_RC=%ERRORLEVEL%
+    set STASH_RC=!ERRORLEVEL!
     if not "!STASH_RC!"=="0" (
         echo [ERROR] Checkout guard: git stash -u FAILED with exit code !STASH_RC! - refusing to run. Nothing was discarded; the dirty tree on "%PRE_BRANCH%" is untouched. >> "%LOG_FILE%"
         exit /b 1
