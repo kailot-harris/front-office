@@ -57,8 +57,16 @@ REM
 REM Rule this guard enforces (see CLAUDE.md "Shared-checkout discipline"):
 REM feature work happens in a worktree; THIS primary checkout stays on main
 REM and clean for every unattended run; a dirty tree is always
-REM `git stash -u`'d, never `git checkout -- .`'d away. If this checkout
+REM stashed, never `git checkout -- .`'d away. If this checkout
 REM cannot be verified clean on main, NOTHING below this point runs.
+REM
+REM `-u` is used ONLY when untracked, not-ignored files exist
+REM (`git ls-files --others --exclude-standard` prints something), and those
+REM files are listed in RUN_LOG first, because `-u` takes them off disk.
+REM With tracked changes only, a plain `git stash push` is used: `-u` then has
+REM nothing to save, and on this machine it made git try to clean
+REM renv/cache/... and fail with "Permission denied" after creating the stash,
+REM so the guard exited 97 every day from 2026-11-13 (MLB-Analytics#106).
 REM ==============================================================================
 where git >nul 2>&1
 if errorlevel 1 (
@@ -73,10 +81,28 @@ set "GUARD_STATUS_FILE=%TEMP%\mlb_guard_status_%RANDOM%.txt"
 git status --porcelain -uall > "%GUARD_STATUS_FILE%" 2>&1
 for %%A in ("%GUARD_STATUS_FILE%") do set "STATUS_SIZE=%%~zA"
 if not "%STATUS_SIZE%"=="0" (
-    echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] [Checkout Guard] Working tree is dirty. Stashing with 'git stash -u' before touching HEAD -- never discarding with 'git checkout -- .'. >> "%RUN_LOG%"
-    git stash push -u -m "auto-stash by schedule_weekly_offseason.bat checkout guard %DATE% %TIME%" >> "%RUN_LOG%" 2>&1
+    REM Decide -u: only when untracked, not-ignored files exist. If ls-files
+    REM itself fails, fall back to -u (its error text makes the file non-empty).
+    set "GUARD_STASH_U="
+    set "GUARD_UNTRACKED_FILE=%TEMP%\mlb_guard_untracked_%RANDOM%.txt"
+    git ls-files --others --exclude-standard > "!GUARD_UNTRACKED_FILE!" 2>&1
+    if errorlevel 1 set "GUARD_STASH_U=-u"
+    for %%A in ("!GUARD_UNTRACKED_FILE!") do if not "%%~zA"=="0" set "GUARD_STASH_U=-u"
+    set "GUARD_PREV_STASH=none"
+    for /f "delims=" %%s in ('git stash list --format^=%%H -1 2^>nul') do set "GUARD_PREV_STASH=%%s"
+    if defined GUARD_STASH_U (
+        echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] [Checkout Guard] Working tree is dirty and has untracked, not-ignored files. Stashing with 'git stash push -u' before touching HEAD -- never discarding with 'git checkout -- .'. Untracked files this stash takes off disk ^(git ls-files --others --exclude-standard^): >> "%RUN_LOG%"
+        type "!GUARD_UNTRACKED_FILE!" >> "%RUN_LOG%"
+        echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] [Checkout Guard] End of untracked file list. >> "%RUN_LOG%"
+    ) else (
+        echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] [Checkout Guard] Working tree is dirty with tracked changes only. Stashing with 'git stash push' ^(no -u: nothing untracked to save^) before touching HEAD -- never discarding with 'git checkout -- .'. >> "%RUN_LOG%"
+    )
+    del "!GUARD_UNTRACKED_FILE!" >nul 2>&1
+    git stash push !GUARD_STASH_U! -m "auto-stash by schedule_weekly_offseason.bat checkout guard %DATE% %TIME%" >> "%RUN_LOG%" 2>&1
     if errorlevel 1 (
-        echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] [Checkout Guard] 'git stash -u' failed, so this wrapper is NOT touching HEAD. Nothing was run or published. >> "%RUN_LOG%"
+        set "GUARD_NEW_STASH=none"
+        for /f "delims=" %%s in ('git stash list --format^=%%H -1 2^>nul') do set "GUARD_NEW_STASH=%%s"
+        echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] [Checkout Guard] 'git stash push !GUARD_STASH_U!' failed, so this wrapper is NOT touching HEAD. Newest stash is now !GUARD_NEW_STASH! ^(before this run: !GUARD_PREV_STASH!; if they differ, a stash was created before the failure^). Nothing was run or published. >> "%RUN_LOG%"
         del "%GUARD_STATUS_FILE%" >nul 2>&1
         exit /b 97
     )
