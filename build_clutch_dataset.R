@@ -17,6 +17,21 @@
 # Exports:
 #   - web/public/data/clutch_leverage_metrics.json
 #   - cache/clutch_leverage_metrics.rds
+#
+# Data window (front-office#109)
+#   Seasons: play-by-play from the last cache/nfl_pbp_*.rds by file name; if
+#     none, CACHE_PBP (cache/pbp_cache.rds); if neither, CURRENT_SEASON
+#     downloaded with nflreadr. Adding another nfl_pbp_*.rds file can silently
+#     change the season. No season-type filter: playoff games count if present.
+#   Filters: a clutch play is in the 4th quarter or overtime and either has a
+#     score margin of 8 or less, or comes in the last 5 minutes with win
+#     probability from 10% to 90%. QBs come from player_qb_profiles.json, and
+#     their plays are matched on passer id or passer name only, so plays with
+#     no passer listed (such as scrambles) are left out.
+#   Minimum sample: MIN_CLUTCH_PASS_ATTEMPTS (5 clutch pass attempts). QBs
+#     below it stay in the output with empty metrics, marked "Insufficient
+#     Sample".
+#   Known issues: #80 (minimum sample), #168 (scrambles, fourth-down label).
 # ==============================================================================
 
 suppressPackageStartupMessages({

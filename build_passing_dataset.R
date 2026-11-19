@@ -3,6 +3,18 @@
 # Extracts NFL NextGenStats-style QB passing charts and throw maps, calculates
 # 12 discrete depth/horizontal zone baselines, and outputs chunked JSON files
 # for the Next.js web application.
+#
+# Data window (front-office#109)
+#   Seasons: one season, NFL_PASSING_SEASON (default 2026), read from
+#     cache/nfl_pbp_<season>.rds. If that file is missing but another
+#     cache/nfl_pbp_*.rds exists, it silently reads the last one by file name,
+#     which can be a different season. With no such file, it downloads the
+#     season with nflreadr. No season-type filter: playoff games count if present.
+#   Filters: pass plays with a passer id, recorded air yards, a left, middle or
+#     right pass location, and a recorded completion result. Missing EPA counts
+#     as 0.
+#   Minimum sample: MIN_PASS_ATTEMPTS (15 such passes) for a QB to get a file.
+#   Known issues: none open.
 # ==============================================================================
 
 suppressPackageStartupMessages({
