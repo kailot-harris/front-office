@@ -16,14 +16,14 @@
 #     (2026-27 and 2025-26 by default). If fewer than MIN_CURRENT_SEASON_GAMES (10)
 #     current-season games are in it, load_tactical_events() switches to the prior
 #     season alone (a console line is the only notice); observedSeasons names the seasons actually used. If the
-#     cache is missing or unreadable, every team gets the league-average defaults
-#     and is tagged "unobserved". The head-coach registry (tenure, career games,
+#     cache is missing or unreadable, ATO and challenge metrics, their percentiles,
+#     and coachImpactRating are published as null and tagged "unobserved". The head-coach registry (tenure, career games,
 #     career win pct) is typed by hand in coaching_registry_raw, not loaded from data.
 #   Filters: ATO rows are event_type "ato_offense" / "ato_defense"; challenge rows are
 #     event_type "challenge". ATO points per possession is total points divided by
 #     total possessions per team.
-#   Minimum sample: none. One event is enough for a team's observed rate; a team
-#     with no events gets 1.020 ATO points per possession and a 0.500 challenge rate.
+#   Minimum sample: 1 observed event. A team with 0 observed events publishes null
+#     for its rate, percentile, and composite rating (never a league-average default).
 #   Known issues: #188 (hand-typed career record).
 # ==============================================================================
 
@@ -200,8 +200,8 @@ if (has_pbp_cache) {
   cat(sprintf(">>> Loaded %d real tactical events from %s (ATO and challenge metrics measured).\n",
               tactical_events$n_events, basename(PBP_TIMEOUT_CACHE)))
 } else {
-  msg <- paste0("Play-by-play tactical cache is missing. Defaulting to neutral league-average baselines ",
-                "(1.020 ATO PPP, 50% challenge overturn rate) with unobserved provenance tag.")
+  msg <- paste0("Play-by-play tactical cache is missing. Publishing null for ATO and challenge ",
+                "metrics, their percentiles, and coachImpactRating with unobserved provenance tag.")
   if (STRICT_COACHING_PROVENANCE) stop(msg)
   cat(sprintf(">>> [WARN] %s\n", msg))
 }
@@ -248,12 +248,12 @@ compute_coaching_metrics <- function(reg) {
   for (i in seq_len(nrow(reg))) {
     team <- reg$team_abbr[i]
     
-    # Defaults in case cache is absent or team unobserved
-    b_off <- 1.020
-    b_def <- 1.020
+    # Missing cache or unobserved team publishes null (NA_real_), never a default
+    b_off <- NA_real_
+    b_def <- NA_real_
     n_off <- 0L
     n_def <- 0L
-    c_succ <- 0.500
+    c_succ <- NA_real_
     n_chal <- 0L
     src_ato <- "unobserved"
     src_chal <- "unobserved"
@@ -295,22 +295,39 @@ compute_coaching_metrics <- function(reg) {
   }
   
   coaching_wins_added_vec <- round(ensemble_wins_vec - talent_wins_vec, 1)
-  ato_net_vec <- round(base_ato_off_vec - base_ato_def_vec, 3)
+  ato_net_vec <- ifelse(
+    !is.na(base_ato_off_vec) & !is.na(base_ato_def_vec),
+    round(base_ato_off_vec - base_ato_def_vec, 3),
+    NA_real_
+  )
   
-  # Compute deterministic rank percentiles (1-99) grounded in real metrics
+  ranked_pct <- function(x) {
+    out <- rep(NA_real_, length(x))
+    ok <- !is.na(x)
+    if (any(ok)) {
+      out[ok] <- pmin(99, pmax(1, round(percent_rank(x[ok]) * 98 + 1)))
+    }
+    out
+  }
+  
+  # Compute deterministic rank percentiles (1-99) over observed teams only
   # 1. ATO mastery percentile (net ATO PPP)
-  p_ato_vec <- pmin(99, pmax(1, round(percent_rank(ato_net_vec) * 98 + 1)))
+  p_ato_vec <- ranked_pct(ato_net_vec)
   # 2. Tactical innovation percentile (system win lift residual)
   p_tac_vec <- pmin(99, pmax(1, round(percent_rank(coaching_wins_added_vec) * 98 + 1)))
   # 3. Rotation efficiency percentile (talent execution depth)
   p_rot_vec <- pmin(99, pmax(1, round(percent_rank(talent_wins_vec) * 98 + 1)))
   # 4. In-game challenge equity percentile (challenge overturn rate)
-  p_wpa_vec <- pmin(99, pmax(1, round(percent_rank(challenge_success_vec) * 98 + 1)))
+  p_wpa_vec <- ranked_pct(challenge_success_vec)
   # 5. Overall development percentile (total projected wins)
   p_dev_vec <- pmin(99, pmax(1, round(percent_rank(ensemble_wins_vec) * 98 + 1)))
   
-  # Composite Coach Impact Rating (CIR: 0 - 100)
-  cir_vec <- round(0.25 * p_ato_vec + 0.25 * p_tac_vec + 0.20 * p_rot_vec + 0.15 * p_wpa_vec + 0.15 * p_dev_vec, 1)
+  # Composite Coach Impact Rating (CIR: 0 - 100); NA when observed components are missing
+  cir_vec <- ifelse(
+    !is.na(p_ato_vec) & !is.na(p_wpa_vec),
+    round(0.25 * p_ato_vec + 0.25 * p_tac_vec + 0.20 * p_rot_vec + 0.15 * p_wpa_vec + 0.15 * p_dev_vec, 1),
+    NA_real_
+  )
   
   metrics_list <- list()
   for (i in seq_len(nrow(reg))) {
@@ -389,10 +406,11 @@ cat(sprintf(">>> Saving compiled coaching metrics to: %s\n", CACHE_COACHING_METR
 saveRDS(coaching_dataset, CACHE_COACHING_METRICS)
 
 cat(sprintf(">>> Exporting public JSON for Next.js to: %s\n", CACHE_COACHING_JSON))
-write_json(coaching_dataset, CACHE_COACHING_JSON, pretty = TRUE, auto_unbox = TRUE)
+write_json(coaching_dataset, CACHE_COACHING_JSON, pretty = TRUE, auto_unbox = TRUE, na = "null", null = "null")
 
 cat(">>> [SUCCESS] Phase 1 Coaching Staff Ingestion & Dataset Construction Complete!\n")
-cat(sprintf(">>> Processed 30 teams. Example top CIR coach: %s (%s, CIR: %.1f)\n",
+example_cir <- coaching_dataset[[1]]$metrics$coachImpactRating
+cat(sprintf(">>> Processed 30 teams. Example coach: %s (%s, CIR: %s)\n",
             coaching_dataset[[1]]$headCoach$name,
             coaching_dataset[[1]]$teamAbbr,
-            coaching_dataset[[1]]$metrics$coachImpactRating))
+            if (is.na(example_cir)) "N/A" else sprintf("%.1f", example_cir)))

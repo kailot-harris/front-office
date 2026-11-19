@@ -63,24 +63,32 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
 
       const matchesTree = selectedTree === 'All' || c.headCoach.coachingTree === selectedTree;
       return matchesSearch && matchesTree;
-    }).sort((a, b) => b.metrics.coachImpactRating - a.metrics.coachImpactRating);
+    }).sort((a, b) => (b.metrics.coachImpactRating ?? -Infinity) - (a.metrics.coachImpactRating ?? -Infinity));
   }, [initialData, searchTerm, selectedTree]);
 
   // Top KPI metrics
   const topCirCoach = useMemo(() => {
-    return [...initialData].sort((a, b) => b.metrics.coachImpactRating - a.metrics.coachImpactRating)[0];
+    return [...initialData]
+      .filter((c) => c.metrics.coachImpactRating !== null)
+      .sort((a, b) => (b.metrics.coachImpactRating ?? -Infinity) - (a.metrics.coachImpactRating ?? -Infinity))[0];
   }, [initialData]);
 
   const topAtoCoach = useMemo(() => {
-    return [...initialData].sort((a, b) => b.metrics.atoOffensivePpp - a.metrics.atoOffensivePpp)[0];
+    return [...initialData]
+      .filter((c) => c.metrics.atoOffensivePpp !== null)
+      .sort((a, b) => (b.metrics.atoOffensivePpp ?? -Infinity) - (a.metrics.atoOffensivePpp ?? -Infinity))[0];
   }, [initialData]);
 
   const topDefAtoCoach = useMemo(() => {
-    return [...initialData].sort((a, b) => a.metrics.atoDefensivePppAllowed - b.metrics.atoDefensivePppAllowed)[0];
+    return [...initialData]
+      .filter((c) => c.metrics.atoDefensivePppAllowed !== null)
+      .sort((a, b) => (a.metrics.atoDefensivePppAllowed ?? Infinity) - (b.metrics.atoDefensivePppAllowed ?? Infinity))[0];
   }, [initialData]);
 
   const topChallengeCoach = useMemo(() => {
-    return [...initialData].sort((a, b) => b.metrics.challengeSuccessRate - a.metrics.challengeSuccessRate)[0];
+    return [...initialData]
+      .filter((c) => c.metrics.challengeSuccessRate !== null)
+      .sort((a, b) => (b.metrics.challengeSuccessRate ?? -Infinity) - (a.metrics.challengeSuccessRate ?? -Infinity))[0];
   }, [initialData]);
 
   return (
@@ -185,8 +193,10 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           <div className="min-w-0">
             <span className="text-[11px] text-slate-400 font-medium block truncate">#1 Coach Impact Rating</span>
             <div className="flex items-center gap-2 mt-0.5">
-              <span className="font-bold text-white text-sm truncate">{topCirCoach?.headCoach.name}</span>
-              <span className="text-xs font-mono font-bold text-emerald-400">{topCirCoach?.metrics.coachImpactRating} CIR</span>
+              <span className="font-bold text-white text-sm truncate">{topCirCoach?.headCoach.name ?? '—'}</span>
+              <span className="text-xs font-mono font-bold text-emerald-400">
+                {topCirCoach?.metrics.coachImpactRating != null ? `${topCirCoach.metrics.coachImpactRating} CIR` : '—'}
+              </span>
             </div>
             <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">{topCirCoach?.teamAbbr} • {topCirCoach?.headCoach.coachingTree}</span>
           </div>
@@ -227,9 +237,11 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           <div className="min-w-0">
             <span className="text-[11px] text-slate-400 font-medium block truncate">Challenge Overturn Leader</span>
             <div className="flex items-center gap-2 mt-0.5">
-              <span className="font-bold text-white text-sm truncate">{topChallengeCoach?.headCoach.name}</span>
+              <span className="font-bold text-white text-sm truncate">{topChallengeCoach?.headCoach.name ?? '—'}</span>
               <span className="text-xs font-mono font-bold text-amber-400">
-                {(topChallengeCoach?.metrics.challengeSuccessRate * 100).toFixed(1)}%
+                {topChallengeCoach?.metrics.challengeSuccessRate != null
+                  ? `${(topChallengeCoach.metrics.challengeSuccessRate * 100).toFixed(1)}%`
+                  : '—'}
               </span>
             </div>
             <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">{topChallengeCoach?.teamAbbr}</span>
@@ -326,7 +338,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                       <div className="text-right">
                         <span className="text-[11px] sm:text-[10px] text-slate-400 block font-sans">CIR</span>
                         <span className="text-sm font-mono font-extrabold text-amber-400">
-                          {cir.toFixed(1)}
+                          {cir !== null ? cir.toFixed(1) : '—'}
                         </span>
                       </div>
 
@@ -486,7 +498,11 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {coachingTrees.filter((t) => t !== 'All').map((treeName) => {
               const treeMembers = initialData.filter((c) => c.headCoach.coachingTree === treeName);
-              const avgCir = +(treeMembers.reduce((sum, c) => sum + c.metrics.coachImpactRating, 0) / treeMembers.length).toFixed(1);
+              const ratedMembers = treeMembers.filter((c) => c.metrics.coachImpactRating !== null);
+              const avgCir =
+                ratedMembers.length > 0
+                  ? +(ratedMembers.reduce((sum, c) => sum + c.metrics.coachImpactRating!, 0) / ratedMembers.length).toFixed(1)
+                  : null;
 
               return (
                 <div
