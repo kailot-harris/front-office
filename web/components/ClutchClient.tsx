@@ -31,10 +31,18 @@ type SortField =
   | 'clutchSuccessRate'
   | 'clutchCpoe'
   | 'clutchAttempts'
+  | 'clutchPlays'
   | 'turnoverFragility'
   | 'fourthDownAggressiveness';
 
+/** Below the builder's MIN_CLUTCH_PASS_ATTEMPTS a QB has no metrics, rank or archetype (NFL#80). */
+const isQualified = (p: ClutchProfile) => p.provenance === 'REAL_CURRENT_SEASON';
+
 export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
+  // Build-wide facts, exported on every profile by build_clutch_dataset.R.
+  const minClutchAttempts = initialProfiles[0]?.minClutchAttempts ?? null;
+  const dataSeason = initialProfiles[0]?.season ?? null;
+  const throughWeek = initialProfiles[0]?.throughWeek ?? null;
   const [search, setSearch] = useState('');
   const [selectedTeam, setSelectedTeam] = useState('ALL');
   const [sampleFilter, setSampleFilter] = useState<'qualified' | 'all'>('qualified');
@@ -42,7 +50,7 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
   const [sortAsc, setSortAsc] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>(() => {
     const qualified = initialProfiles.filter(
-      (p) => p.provenance === 'REAL_CURRENT_SEASON' && p.clutchEpaDelta !== null
+      (p) => isQualified(p) && p.clutchEpaDelta !== null
     );
     const topCloser = qualified.sort((a, b) => (b.clutchEpaDelta ?? -99) - (a.clutchEpaDelta ?? -99))[0];
     return topCloser?.playerId || initialProfiles[0]?.playerId || '';
@@ -61,7 +69,7 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
 
   // Qualified count
   const qualifiedCount = useMemo(() => {
-    return initialProfiles.filter((p) => p.provenance === 'REAL_CURRENT_SEASON').length;
+    return initialProfiles.filter(isQualified).length;
   }, [initialProfiles]);
 
   // Filtered & Sorted profiles
@@ -84,6 +92,11 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
         return true;
       })
       .sort((a, b) => {
+        // Qualified QBs always rank above low-sample QBs, whatever the sort field or direction.
+        const qa = isQualified(a);
+        const qb = isQualified(b);
+        if (qa !== qb) return qa ? -1 : 1;
+
         const valA = a[sortField];
         const valB = b[sortField];
 
@@ -109,7 +122,7 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
   // Top performers KPI calculations
   const kpiHighlights = useMemo(() => {
     const qualified = initialProfiles.filter(
-      (p) => p.provenance === 'REAL_CURRENT_SEASON' && p.clutchEpaDelta !== null
+      (p) => isQualified(p) && p.clutchEpaDelta !== null
     );
     if (qualified.length === 0) return null;
 
@@ -210,6 +223,13 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
             <p className="text-sm text-slate-400 leading-relaxed">
               Empirical play-by-play execution in high-leverage late-game scenarios: one-score margins (≤ 8 points) in 4Q/OT or 10–90% win probability in the final 5 minutes.
             </p>
+            <p className="text-xs font-mono text-slate-400" data-testid="clutch-data-window">
+              {dataSeason !== null ? `${dataSeason} season` : 'Season unknown'}
+              {throughWeek !== null ? `, through week ${throughWeek}` : ''}
+              {minClutchAttempts !== null
+                ? ` · Ranked and labelled only with ≥ ${minClutchAttempts} clutch pass attempts`
+                : ''}
+            </p>
           </div>
 
           <button
@@ -300,7 +320,7 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
                 {qualifiedCount} <span className="text-xs font-normal text-slate-400">/ {initialProfiles.length} QBs</span>
               </div>
               <div className="text-xs text-slate-400">
-                Threshold: ≥ 5 clutch attempts (4Q/OT)
+                Threshold: ≥ {minClutchAttempts ?? '?'} clutch pass attempts (4Q/OT)
               </div>
             </div>
           </div>
@@ -531,7 +551,7 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
               <div className="p-6 text-center text-slate-500 bg-surface/40 rounded-xl border border-slate-800/80 space-y-2">
                 <ShieldAlert className="w-8 h-8 text-slate-600 mx-auto" />
                 <p className="text-xs">
-                  Fewer than 5 clutch attempts in current sample ({selectedProfile.clutchAttempts} attempt{selectedProfile.clutchAttempts === 1 ? '' : 's'}). Typed null emitted for rate metrics.
+                  Fewer than {minClutchAttempts ?? '?'} clutch pass attempts in current sample ({selectedProfile.clutchAttempts} attempt{selectedProfile.clutchAttempts === 1 ? '' : 's'}). Not ranked and no archetype; typed null emitted for rate metrics.
                 </p>
               </div>
             )}
@@ -539,7 +559,7 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
 
           <div className="pt-4 border-t border-slate-800/80 text-[11px] font-mono text-slate-500 flex justify-between items-center">
             <span>Clutch Att: {selectedProfile.clutchAttempts}</span>
-            <span>Total Drops: {selectedProfile.baselinePlays}</span>
+            <span>Baseline dropbacks: {selectedProfile.baselinePlays}</span>
           </div>
         </div>
       </div>
@@ -616,9 +636,19 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
                 <th
                   className="py-2.5 px-3 cursor-pointer hover:text-white"
                   onClick={() => handleSort('clutchAttempts')}
+                  title="Clutch pass attempts (passes, sacks and spikes). The qualification threshold counts these."
                 >
                   <div className="flex items-center gap-1">
-                    Att <ArrowUpDown className="w-3 h-3 text-slate-500" />
+                    Clutch att <ArrowUpDown className="w-3 h-3 text-slate-500" />
+                  </div>
+                </th>
+                <th
+                  className="py-2.5 px-3 cursor-pointer hover:text-white"
+                  onClick={() => handleSort('clutchPlays')}
+                  title="Clutch dropbacks credited to the passer (passes and sacks; spikes excluded). Clutch EPA and success rate are averaged over these."
+                >
+                  <div className="flex items-center gap-1">
+                    Clutch dropbacks <ArrowUpDown className="w-3 h-3 text-slate-500" />
                   </div>
                 </th>
                 <th
@@ -690,7 +720,7 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
                       isSelected ? 'bg-emerald-950/20' : 'hover:bg-slate-800/40'
                     }`}
                   >
-                    <td className="py-2.5 px-3 text-slate-500 font-mono">{idx + 1}</td>
+                    <td className="py-2.5 px-3 text-slate-500 font-mono">{isQualified(p) ? idx + 1 : '—'}</td>
                     <td className="py-2.5 px-3 font-sans">
                       <div className="flex items-center gap-2.5">
                         <TeamLogo team={p.team} size="sm" />
@@ -716,9 +746,8 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
                         {p.clutchArchetype}
                       </span>
                     </td>
-                    <td className="py-2.5 px-3 text-slate-300">
-                      {p.clutchAttempts} <span className="text-slate-500">/ {p.clutchPlays}</span>
-                    </td>
+                    <td className="py-2.5 px-3 text-slate-300">{p.clutchAttempts}</td>
+                    <td className="py-2.5 px-3 text-slate-400">{p.clutchPlays}</td>
                     <td className="py-2.5 px-3">
                       {p.clutchEpa !== null ? (
                         <span className={p.clutchEpa >= 0 ? 'text-emerald-400' : 'text-rose-400'}>

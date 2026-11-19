@@ -381,7 +381,15 @@ export interface ClutchProfile {
   position: string;
   isStarter: boolean;
   headshotUrl: string;
+  /** Season the play-by-play covers (builder keeps only season == CURRENT_SEASON). */
+  season: number;
+  /** Latest week present in that season's play-by-play. */
+  throughWeek: number;
+  /** MIN_CLUTCH_PASS_ATTEMPTS used for this build: below it, no metrics, rank or archetype. */
+  minClutchAttempts: number;
+  /** pass_attempt == 1 rows in clutch situations (passes, sacks and spikes). */
   clutchAttempts: number;
+  /** pass == 1 | qb_dropback == 1 rows in clutch situations (passes and sacks, no spikes). */
   clutchPlays: number;
   baselineAttempts: number;
   baselinePlays: number;
