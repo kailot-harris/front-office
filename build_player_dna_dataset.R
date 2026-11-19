@@ -29,7 +29,7 @@
 #   Minimum sample: QBs need 40+ pass attempts or 4+ games. RBs need 40+ carries or 25+
 #     targets, WRs 30+ targets, TEs 25+ targets (listed as "qualified players" on the page).
 #     Early in a season these gates admit few players; they are not relaxed.
-#   Known issues: pipeline wiring is NFL_analytics #86 (this builder is run by hand).
+#   Pipeline wiring: Stage 14.3 of run_full_pipeline.R via run_build_player_dna_dataset().
 #
 # Methodology (documented modelling choices on real data, not fabricated data)
 #   - Shrinkage: deep and short completion rates are Empirical-Bayes shrunk toward
@@ -67,12 +67,6 @@ suppressPackageStartupMessages({
   library(jsonlite)
 })
 
-# Source global config
-config_path <- if (file.exists("config.R")) "config.R" else "../config.R"
-source(config_path)
-
-cat(sprintf(">>> [PLAYER DNA] Initializing Empirical Player DNA & Peer Comps (season %d)...\n", CURRENT_SEASON))
-
 # Team code normalization
 clean_team <- function(t) {
   t <- as.character(t)
@@ -85,19 +79,37 @@ clean_team <- function(t) {
 nan_to_na <- function(x) ifelse(is.nan(x), NA_real_, x)
 
 # ------------------------------------------------------------------------------
-# 1. Load current-season caches (exact filenames; download that one season if absent)
+# 1. Load current-season caches (exact filenames; refresh if missing or >max_age_hours)
 # ------------------------------------------------------------------------------
-load_season_cache <- function(path, loader, label) {
-  d <- if (file.exists(path)) {
-    readRDS(path)
+load_season_cache <- function(path, loader, label, max_age_hours = 24, force_refresh = FALSE) {
+  needs_refresh <- isTRUE(force_refresh) || !file.exists(path) ||
+    as.numeric(difftime(Sys.time(), file.info(path)$mtime, units = "hours")) > max_age_hours
+
+  d <- NULL
+  if (!needs_refresh) {
+    d <- readRDS(path)
   } else if (requireNamespace("nflreadr", quietly = TRUE)) {
     cat(sprintf(">>> Downloading %s for season %d via nflreadr -> %s\n", label, CURRENT_SEASON, basename(path)))
-    d <- loader()
-    saveRDS(d, path)
-    d
+    d <- tryCatch({
+      fetched <- loader()
+      if (!dir.exists(dirname(path))) dir.create(dirname(path), recursive = TRUE)
+      saveRDS(fetched, path)
+      fetched
+    }, error = function(e) {
+      if (file.exists(path)) {
+        warning(sprintf("Downloading %s failed (%s); falling back to existing cache '%s'", label, e$message, path))
+        readRDS(path)
+      } else {
+        stop(sprintf("Failed to download %s for season %d: %s", label, CURRENT_SEASON, e$message))
+      }
+    })
+  } else if (file.exists(path)) {
+    warning(sprintf("nflreadr is unavailable; using existing %s cache '%s'", label, path))
+    d <- readRDS(path)
   } else {
     stop(sprintf("Missing %s cache '%s' and nflreadr is unavailable", label, path))
   }
+
   if (!"season" %in% names(d) || nrow(d) == 0 || !all(d$season == CURRENT_SEASON)) {
     stop(sprintf("%s cache '%s' is empty or holds seasons other than %d; delete it and re-run",
                  label, path, CURRENT_SEASON))
@@ -105,11 +117,18 @@ load_season_cache <- function(path, loader, label) {
   d
 }
 
-pbp       <- load_season_cache(CACHE_DNA_PBP, function() nflreadr::load_pbp(seasons = CURRENT_SEASON), "play-by-play")
-ps        <- load_season_cache(CACHE_DNA_PLAYER_STATS, function() nflreadr::load_player_stats(seasons = CURRENT_SEASON), "player stats")
-schedule  <- load_season_cache(CACHE_DNA_SCHEDULES, function() nflreadr::load_schedules(seasons = CURRENT_SEASON), "schedule")
-ngs_pass  <- load_season_cache(CACHE_DNA_NGS_PASSING, function() nflreadr::load_nextgen_stats(seasons = CURRENT_SEASON, stat_type = "passing"), "NGS passing")
-ngs_rush  <- load_season_cache(CACHE_DNA_NGS_RUSHING, function() nflreadr::load_nextgen_stats(seasons = CURRENT_SEASON, stat_type = "rushing"), "NGS rushing")
+run_build_player_dna_dataset <- function(force_refresh = FALSE) {
+  if (!exists("CURRENT_SEASON") || !exists("CACHE_DNA_PBP")) {
+    config_path <- if (file.exists("config.R")) "config.R" else "../config.R"
+    source(config_path)
+  }
+  cat(sprintf(">>> [PLAYER DNA] Initializing Empirical Player DNA & Peer Comps (season %d)...\n", CURRENT_SEASON))
+
+  pbp       <- load_season_cache(CACHE_DNA_PBP, function() nflreadr::load_pbp(seasons = CURRENT_SEASON), "play-by-play", force_refresh = force_refresh)
+  ps        <- load_season_cache(CACHE_DNA_PLAYER_STATS, function() nflreadr::load_player_stats(seasons = CURRENT_SEASON), "player stats", force_refresh = force_refresh)
+  schedule  <- load_season_cache(CACHE_DNA_SCHEDULES, function() nflreadr::load_schedules(seasons = CURRENT_SEASON), "schedule", force_refresh = force_refresh)
+  ngs_pass  <- load_season_cache(CACHE_DNA_NGS_PASSING, function() nflreadr::load_nextgen_stats(seasons = CURRENT_SEASON, stat_type = "passing"), "NGS passing", force_refresh = force_refresh)
+  ngs_rush  <- load_season_cache(CACHE_DNA_NGS_RUSHING, function() nflreadr::load_nextgen_stats(seasons = CURRENT_SEASON, stat_type = "rushing"), "NGS rushing", force_refresh = force_refresh)
 
 # throughWeek: last week W where every scheduled REG game in weeks 1..W is in the play-by-play
 sched_reg <- schedule %>% filter(game_type == "REG")
@@ -513,3 +532,16 @@ cat(sprintf(">>> [SUCCESS] Wrote %d Player DNA profiles (season %d, through Week
 
 saveRDS(output, CACHE_PLAYER_DNA_PROFILES)
 cat(sprintf(">>> [SUCCESS] Cached RDS in '%s'.\n", CACHE_PLAYER_DNA_PROFILES))
+}
+
+if (sys.nframe() == 0) {
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- grep("^--file=", args, value = TRUE)
+  if (length(file_arg) > 0) {
+    script_dir <- dirname(normalizePath(sub("^--file=", "", file_arg[1]), winslash = "/", mustWork = FALSE))
+    if (dir.exists(script_dir)) setwd(script_dir)
+  }
+  config_path <- if (file.exists("config.R")) "config.R" else "../config.R"
+  source(config_path)
+  run_build_player_dna_dataset()
+}

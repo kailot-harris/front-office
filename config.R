@@ -803,12 +803,22 @@ WEB_JSON_STANDINGS_PROJECTIONS <- file.path(WEB_DATA_DIR, "standings_projections
 WEB_JSON_MATCHUPS_CURRENT_WEEK <- file.path(WEB_DATA_DIR, "matchups_current_week.json")
 WEB_JSON_TEAM_EPA_PROFILES     <- file.path(WEB_DATA_DIR, "team_epa_profiles.json")
 WEB_JSON_PLAYOFF_PICTURE       <- file.path(WEB_DATA_DIR, "playoff_picture.json")
-WEB_JSON_PLAYER_QB_PROFILES    <- file.path(WEB_DATA_DIR, "player_qb_profiles.json")
-WEB_JSON_PLAYER_DNA_PROFILES   <- file.path(WEB_DATA_DIR, "player_dna_profiles.json")
-WEB_JSON_MODEL_DIAGNOSTICS     <- file.path(WEB_DATA_DIR, "model_diagnostics.json")
-WEB_JSON_SALARY_CAP_PROFILES   <- file.path(WEB_DATA_DIR, "salary_cap_profiles.json")
-WEB_JSON_COACHING_PROFILES     <- file.path(WEB_DATA_DIR, "coaching_profiles.json")
+WEB_JSON_PLAYER_QB_PROFILES       <- file.path(WEB_DATA_DIR, "player_qb_profiles.json")
+WEB_JSON_PLAYER_DNA_PROFILES      <- file.path(WEB_DATA_DIR, "player_dna_profiles.json")
+WEB_JSON_PASSING_INDEX            <- file.path(WEB_DATA_DIR, "passing_index.json")
+WEB_JSON_PASSING_METADATA         <- file.path(WEB_DATA_DIR, "passing_metadata.json")
+WEB_JSON_CLUTCH_LEVERAGE_METRICS  <- file.path(WEB_DATA_DIR, "clutch_leverage_metrics.json")
+WEB_JSON_MODEL_DIAGNOSTICS        <- file.path(WEB_DATA_DIR, "model_diagnostics.json")
+WEB_JSON_SALARY_CAP_PROFILES      <- file.path(WEB_DATA_DIR, "salary_cap_profiles.json")
+WEB_JSON_COACHING_PROFILES        <- file.path(WEB_DATA_DIR, "coaching_profiles.json")
 
+# Note: WEB_JSON_PASSING_INDEX, WEB_JSON_PASSING_METADATA,
+# WEB_JSON_CLUTCH_LEVERAGE_METRICS, and WEB_JSON_PLAYER_DNA_PROFILES are
+# intentionally excluded from WEB_DATA_FILES because tools/publish_web.R's
+# Assertion F scans every WEB_DATA_FILES member for top-level `"generated_at"`,
+# whereas their .strict() Zod schemas use array/updated_at/generatedAt shapes.
+# Stages 14.1-14.3 declare them directly via run_stage(..., output = ...) in
+# run_full_pipeline.R, and PIPELINE_OUTPUT_DIRS publishes all WEB_DATA_DIR JSONs.
 WEB_DATA_FILES <- c(
   WEB_JSON_VISUAL_MEDIA_INDEX,
   WEB_JSON_STANDINGS_PROJECTIONS,

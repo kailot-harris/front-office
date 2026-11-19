@@ -19,14 +19,14 @@
 #   - cache/clutch_leverage_metrics.rds
 #
 # Data window (front-office#109)
-#   Seasons: play-by-play from the last cache/nfl_pbp_*.rds by file name; if
-#     none, CACHE_PBP (cache/pbp_cache.rds); if neither, CURRENT_SEASON
-#     downloaded with nflreadr. Whatever file is read, only rows with
-#     season == CURRENT_SEASON are kept (so a multi-season cache such as
-#     pbp_cache.rds can never mix seasons); if no rows for CURRENT_SEASON
-#     remain, the build stops without writing anything. Every profile carries
-#     the season and the latest week found in the data (season, throughWeek).
+#   Seasons: play-by-play read from exact single-season cache CACHE_DNA_PBP
+#     (cache/nfl_pbp_<CURRENT_SEASON>.rds) and refreshed via nflreadr when
+#     missing or >12h old (never falls back to 26-col pbp_cache.rds). Only rows
+#     with season == CURRENT_SEASON are kept; if no rows remain, the build
+#     stops without writing anything. Every profile carries the season and the
+#     latest week found in the data (season, throughWeek).
 #     No season-type filter: playoff games count if present.
+#   Pipeline wiring: Stage 14.2 of run_full_pipeline.R via run_build_clutch_dataset().
 #   Filters: a clutch play is in the 4th quarter or overtime and either has a
 #     score margin of 8 or less, or comes in the last 5 minutes with win
 #     probability from 10% to 90%. QBs come from player_qb_profiles.json, and
@@ -52,21 +52,6 @@ suppressPackageStartupMessages({
   library(jsonlite)
   library(tibble)
 })
-
-# Determine script directory and set working directory to worktree root
-args <- commandArgs(trailingOnly = FALSE)
-file_arg <- grep("--file=", args, value = TRUE)
-script_dir <- if (length(file_arg) > 0) {
-  dirname(normalizePath(sub("--file=", "", file_arg[1]), winslash = "/"))
-} else {
-  getwd()
-}
-if (dir.exists(script_dir)) {
-  setwd(script_dir)
-}
-
-# Source global config
-source("config.R")
 
 # ------------------------------------------------------------------------------
 # Pure helper functions (extracted for unit testing via load_ast_symbols)
@@ -294,131 +279,171 @@ compute_qb_clutch_profile <- function(
   }
 }
 
-cat(">>> [CLUTCH ENGINE] Initializing NFL 4Q True Clutch & Leverage Index Engine...\n")
+run_build_clutch_dataset <- function(force_refresh = FALSE) {
+  if (!exists("CACHE_DIR") || !exists("WEB_DATA_DIR")) {
+    source("config.R")
+  }
+  if (!dir.exists(CACHE_DIR)) dir.create(CACHE_DIR, recursive = TRUE)
 
-# Locate play-by-play cache file
-# Search for cache/nfl_pbp_*.rds, or pbp_cache.rds
-pbp_files <- list.files(CACHE_DIR, pattern = "^nfl_pbp_.*\\.rds$", full.names = TRUE)
-pbp_file <- if (length(pbp_files) > 0) {
-  pbp_files[length(pbp_files)] # use latest matching season
-} else if (file.exists(CACHE_PBP)) {
-  CACHE_PBP
-} else {
-  NULL
-}
+  cat(">>> [CLUTCH ENGINE] Initializing NFL 4Q True Clutch & Leverage Index Engine...\n")
 
-if (is.null(pbp_file) || !file.exists(pbp_file)) {
-  cat(">>> [CLUTCH ENGINE] No local PBP cache found; pulling CURRENT_SEASON via nflreadr...\n")
-  pbp_df <- nflreadr::load_pbp(seasons = CURRENT_SEASON)
-  target_cache <- file.path(CACHE_DIR, sprintf("nfl_pbp_%d.rds", CURRENT_SEASON))
-  saveRDS(pbp_df, target_cache)
-  pbp_file <- target_cache
-}
+  # Use exact single-season full PBP cache (never 26-col pbp_cache.rds which lacks wp/half_seconds_remaining)
+  pbp_file <- if (exists("CACHE_DNA_PBP")) {
+    CACHE_DNA_PBP
+  } else {
+    file.path(CACHE_DIR, sprintf("nfl_pbp_%d.rds", CURRENT_SEASON))
+  }
 
-cat(sprintf(">>> [CLUTCH ENGINE] Ingesting play-by-play from %s...\n", pbp_file))
-pbp <- readRDS(pbp_file)
-cat(sprintf(">>> [CLUTCH ENGINE] Loaded %d raw play-by-play events.\n", nrow(pbp)))
+  needs_refresh <- isTRUE(force_refresh) || !file.exists(pbp_file) ||
+    as.numeric(difftime(Sys.time(), file.info(pbp_file)$mtime, units = "hours")) > 12
 
-# Keep only the current season (front-office#109 / NFL#80): a fallback to the
-# multi-season pbp_cache.rds must never mix seasons into one board.
-if (!"season" %in% names(pbp)) {
-  stop(sprintf("Play-by-play file %s has no 'season' column; cannot filter to CURRENT_SEASON (%d).",
-               pbp_file, CURRENT_SEASON))
-}
-pbp <- pbp %>% filter(season == CURRENT_SEASON)
-if (nrow(pbp) == 0) {
-  stop(sprintf("Play-by-play file %s has no rows for CURRENT_SEASON (%d); refusing to write an empty clutch board.",
-               pbp_file, CURRENT_SEASON))
-}
-DATA_SEASON <- as.integer(CURRENT_SEASON)
-DATA_THROUGH_WEEK <- as.integer(max(pbp$week, na.rm = TRUE))
-cat(sprintf(">>> [CLUTCH ENGINE] Kept %d events for season %d (through week %d).\n",
-            nrow(pbp), DATA_SEASON, DATA_THROUGH_WEEK))
-
-# Ingest active QB profiles
-qb_json_path <- if (exists("WEB_JSON_PLAYER_QB_PROFILES")) {
-  WEB_JSON_PLAYER_QB_PROFILES
-} else {
-  file.path(PROJECT_DIR, "web", "public", "data", "player_qb_profiles.json")
-}
-
-if (!file.exists(qb_json_path)) {
-  stop(sprintf("Missing required QB profiles dataset at %s", qb_json_path))
-}
-
-qb_profiles_df <- jsonlite::fromJSON(qb_json_path)
-cat(sprintf(">>> [CLUTCH ENGINE] Ingested %d QB profiles from %s.\n", nrow(qb_profiles_df), basename(qb_json_path)))
-
-# Ingest rosters cache for cross-referencing gsis_id / jersey / names
-rosters_path <- file.path(CACHE_DIR, "rosters_cache.rds")
-rosters_df <- if (file.exists(rosters_path)) {
-  readRDS(rosters_path) %>%
-    filter(position == "QB") %>%
-    group_by(full_name, team) %>%
-    slice(1) %>%
-    ungroup()
-} else {
-  NULL
-}
-
-# Identify high-leverage plays window:
-# Margin <= 8 points in 4Q/OT, OR win probability between 10% and 90% in final 5m of 4Q/OT
-pbp <- add_clutch_flag(pbp)
-
-clutch_play_count <- sum(pbp$is_clutch, na.rm = TRUE)
-cat(sprintf(">>> [CLUTCH ENGINE] Identified %d high-leverage late-game clutch plays (%.1f%% of sample).\n",
-            clutch_play_count, (clutch_play_count / nrow(pbp)) * 100))
-
-# Minimum clutch pass attempts for a QB to be ranked and given an archetype
-# (NFL#80). Raised from 5L: on 2026-11-10 a 7-attempt sample topped the board.
-# 20 is a judgement call, not a derived value; the owner may tune it. The
-# qualification counts at 5/10/15/20/25/30 are in the PR that set it.
-MIN_CLUTCH_PASS_ATTEMPTS <- 20L
-clutch_profiles <- list()
-
-for (i in seq_len(nrow(qb_profiles_df))) {
-  qb <- qb_profiles_df[i, ]
-  pname <- qb$player_name
-  pteam <- qb$team
-  is_starter <- if ("is_starter" %in% names(qb)) isTRUE(qb$is_starter) else FALSE
-  headshot <- if ("headshot_url" %in% names(qb)) qb$headshot_url else ""
-
-  # Resolve gsis_id
-  gid <- NULL
-  if (!is.null(rosters_df)) {
-    match_r <- rosters_df %>% filter(full_name == pname, team == pteam)
-    if (nrow(match_r) == 0) {
-      match_r <- rosters_df %>% filter(full_name == pname)
-    }
-    if (nrow(match_r) > 0) {
-      gid <- match_r$gsis_id[1]
+  if (needs_refresh) {
+    if (!requireNamespace("nflreadr", quietly = TRUE)) {
+      if (!file.exists(pbp_file)) {
+        stop("Package 'nflreadr' unavailable and no single-season PBP cache exists.")
+      }
+      warning("Package 'nflreadr' unavailable; falling back to existing cache.")
+    } else {
+      cat(sprintf(">>> [CLUTCH ENGINE] Pulling CURRENT_SEASON (%d) PBP via nflreadr -> %s...\n",
+                  CURRENT_SEASON, pbp_file))
+      pbp_df <- tryCatch({
+        d <- nflreadr::load_pbp(seasons = CURRENT_SEASON)
+        saveRDS(d, pbp_file)
+        d
+      }, error = function(e) {
+        if (file.exists(pbp_file)) {
+          warning(sprintf("nflreadr::load_pbp failed (%s); falling back to existing cache %s", e$message, pbp_file))
+          readRDS(pbp_file)
+        } else {
+          stop(sprintf("Failed to load CURRENT_SEASON PBP: %s", e$message))
+        }
+      })
+      pbp <- pbp_df
     }
   }
 
-  clutch_profiles[[i]] <- compute_qb_clutch_profile(
-    pbp = pbp,
-    pname = pname,
-    pteam = pteam,
-    gid = gid,
-    is_starter = is_starter,
-    headshot = headshot,
-    season = DATA_SEASON,
-    through_week = DATA_THROUGH_WEEK,
-    min_clutch_attempts = MIN_CLUTCH_PASS_ATTEMPTS,
-    fallback_player_id = sprintf("NFL-%s-%02d", pteam, i)
-  )
+  if (!exists("pbp", inherits = FALSE)) {
+    cat(sprintf(">>> [CLUTCH ENGINE] Ingesting play-by-play from %s...\n", pbp_file))
+    pbp <- readRDS(pbp_file)
+  }
+  cat(sprintf(">>> [CLUTCH ENGINE] Loaded %d raw play-by-play events.\n", nrow(pbp)))
+
+  # Keep only the current season (front-office#109 / NFL#80)
+  if (!"season" %in% names(pbp)) {
+    stop(sprintf("Play-by-play file %s has no 'season' column; cannot filter to CURRENT_SEASON (%d).",
+                 pbp_file, CURRENT_SEASON))
+  }
+  pbp <- pbp %>% filter(season == CURRENT_SEASON)
+  if (nrow(pbp) == 0) {
+    stop(sprintf("Play-by-play file %s has no rows for CURRENT_SEASON (%d); refusing to write an empty clutch board.",
+                 pbp_file, CURRENT_SEASON))
+  }
+  DATA_SEASON <- as.integer(CURRENT_SEASON)
+  DATA_THROUGH_WEEK <- as.integer(max(pbp$week, na.rm = TRUE))
+  cat(sprintf(">>> [CLUTCH ENGINE] Kept %d events for season %d (through week %d).\n",
+              nrow(pbp), DATA_SEASON, DATA_THROUGH_WEEK))
+
+  # Ingest active QB profiles
+  qb_json_path <- if (exists("WEB_JSON_PLAYER_QB_PROFILES")) {
+    WEB_JSON_PLAYER_QB_PROFILES
+  } else {
+    file.path(PROJECT_DIR, "web", "public", "data", "player_qb_profiles.json")
+  }
+
+  if (!file.exists(qb_json_path)) {
+    stop(sprintf("Missing required QB profiles dataset at %s", qb_json_path))
+  }
+
+  qb_profiles_df <- jsonlite::fromJSON(qb_json_path)
+  cat(sprintf(">>> [CLUTCH ENGINE] Ingested %d QB profiles from %s.\n", nrow(qb_profiles_df), basename(qb_json_path)))
+
+  # Ingest rosters cache for cross-referencing gsis_id / jersey / names
+  rosters_path <- if (exists("CACHE_ROSTERS")) CACHE_ROSTERS else file.path(CACHE_DIR, "rosters_cache.rds")
+  rosters_df <- if (file.exists(rosters_path)) {
+    readRDS(rosters_path) %>%
+      filter(position == "QB") %>%
+      group_by(full_name, team) %>%
+      slice(1) %>%
+      ungroup()
+  } else {
+    NULL
+  }
+
+  # Identify high-leverage plays window:
+  # Margin <= 8 points in 4Q/OT, OR win probability between 10% and 90% in final 5m of 4Q/OT
+  pbp <- add_clutch_flag(pbp)
+
+  clutch_play_count <- sum(pbp$is_clutch, na.rm = TRUE)
+  cat(sprintf(">>> [CLUTCH ENGINE] Identified %d high-leverage late-game clutch plays (%.1f%% of sample).\n",
+              clutch_play_count, (clutch_play_count / nrow(pbp)) * 100))
+
+  # Minimum clutch pass attempts for a QB to be ranked and given an archetype (NFL#80)
+  MIN_CLUTCH_PASS_ATTEMPTS <- 20L
+  clutch_profiles <- list()
+
+  for (i in seq_len(nrow(qb_profiles_df))) {
+    qb <- qb_profiles_df[i, ]
+    pname <- qb$player_name
+    pteam <- qb$team
+    is_starter <- if ("is_starter" %in% names(qb)) isTRUE(qb$is_starter) else FALSE
+    headshot <- if ("headshot_url" %in% names(qb)) qb$headshot_url else ""
+
+    # Resolve gsis_id
+    gid <- NULL
+    if (!is.null(rosters_df)) {
+      match_r <- rosters_df %>% filter(full_name == pname, team == pteam)
+      if (nrow(match_r) == 0) {
+        match_r <- rosters_df %>% filter(full_name == pname)
+      }
+      if (nrow(match_r) > 0) {
+        gid <- match_r$gsis_id[1]
+      }
+    }
+
+    clutch_profiles[[i]] <- compute_qb_clutch_profile(
+      pbp = pbp,
+      pname = pname,
+      pteam = pteam,
+      gid = gid,
+      is_starter = is_starter,
+      headshot = headshot,
+      season = DATA_SEASON,
+      through_week = DATA_THROUGH_WEEK,
+      min_clutch_attempts = MIN_CLUTCH_PASS_ATTEMPTS,
+      fallback_player_id = sprintf("NFL-%s-%02d", pteam, i)
+    )
+  }
+
+  # Export outputs
+  out_json_path <- if (exists("WEB_JSON_CLUTCH_LEVERAGE_METRICS")) {
+    WEB_JSON_CLUTCH_LEVERAGE_METRICS
+  } else {
+    file.path(PROJECT_DIR, "web", "public", "data", "clutch_leverage_metrics.json")
+  }
+  out_rds_path <- file.path(CACHE_DIR, "clutch_leverage_metrics.rds")
+
+  # Write JSON with null formatting
+  json_text <- jsonlite::toJSON(clutch_profiles, na = "null", auto_unbox = TRUE, pretty = TRUE)
+  writeLines(json_text, out_json_path)
+  cat(sprintf(">>> [CLUTCH ENGINE] Exported %d profiles to %s\n", length(clutch_profiles), out_json_path))
+
+  saveRDS(clutch_profiles, out_rds_path)
+  cat(sprintf(">>> [CLUTCH ENGINE] Cached profiles to %s\n", out_rds_path))
+
+  cat(">>> [CLUTCH ENGINE] Complete.\n")
 }
 
-# Export outputs
-out_json_path <- file.path(PROJECT_DIR, "web", "public", "data", "clutch_leverage_metrics.json")
-out_rds_path <- file.path(CACHE_DIR, "clutch_leverage_metrics.rds")
-
-# Write JSON with null formatting
-json_text <- jsonlite::toJSON(clutch_profiles, na = "null", auto_unbox = TRUE, pretty = TRUE)
-writeLines(json_text, out_json_path)
-cat(sprintf(">>> [CLUTCH ENGINE] Exported %d profiles to %s\n", length(clutch_profiles), out_json_path))
-
-saveRDS(clutch_profiles, out_rds_path)
-cat(sprintf(">>> [CLUTCH ENGINE] Cached profiles to %s\n", out_rds_path))
-
-cat(">>> [CLUTCH ENGINE] Complete.\n")
+if (sys.nframe() == 0) {
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- grep("^--file=", args, value = TRUE)
+  script_dir <- if (length(file_arg) > 0) {
+    dirname(normalizePath(sub("^--file=", "", file_arg[1]), winslash = "/"))
+  } else {
+    getwd()
+  }
+  if (dir.exists(script_dir)) {
+    setwd(script_dir)
+  }
+  source("config.R")
+  run_build_clutch_dataset()
+}

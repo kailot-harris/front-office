@@ -9,7 +9,7 @@ import { clutch } from '../helpers/datasets';
 
 describe('clutchProfileSchema #168 backward compatibility', () => {
   const sample = clutch().find((p) => p.provenance === 'REAL_CURRENT_SEASON')!;
-  const { fourthDownAggressiveness: _legacy, ...withoutFourth } = sample;
+  const { fourthDownAggressiveness: _legacy, fourthDownConversionRate: _conv, ...withoutFourth } = sample;
 
   it('accepts new builds emitting fourthDownConversionRate (number or null)', () => {
     expect(
