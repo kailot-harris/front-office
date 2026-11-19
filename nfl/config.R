@@ -606,6 +606,23 @@ CACHE_SNAP_COUNTS     <- file.path(CACHE_DIR, "snap_counts_cache.rds")
 CACHE_PARTICIPATION_FEATURES <- file.path(CACHE_DIR, "participation_features.rds")
 PARTICIPATION_MIN_SEASON <- 2016L  # nflreadr::load_participation()'s own hard floor, verified live
 CACHE_NEXTGEN_STATS   <- file.path(CACHE_DIR, "nextgen_stats_cache.rds")
+# /dna (build_player_dna_dataset.R, front-office NFL_analytics #78/#79): current-season-only
+# inputs, selected by EXACT filename built from CURRENT_SEASON (never a glob, never another
+# season). The builder may download exactly this season via nflreadr when a file is missing.
+# nfl_pbp_<season>.rds is the same file build_clutch_dataset.R saves for CURRENT_SEASON.
+CACHE_DNA_PBP           <- file.path(CACHE_DIR, sprintf("nfl_pbp_%d.rds", CURRENT_SEASON))
+CACHE_DNA_PLAYER_STATS  <- file.path(CACHE_DIR, sprintf("nfl_player_stats_%d.rds", CURRENT_SEASON))
+CACHE_DNA_SCHEDULES     <- file.path(CACHE_DIR, sprintf("nfl_schedules_%d.rds", CURRENT_SEASON))
+CACHE_DNA_NGS_PASSING   <- file.path(CACHE_DIR, sprintf("nfl_ngs_passing_%d.rds", CURRENT_SEASON))
+CACHE_DNA_NGS_RUSHING   <- file.path(CACHE_DIR, sprintf("nfl_ngs_rushing_%d.rds", CURRENT_SEASON))
+CACHE_PLAYER_DNA_PROFILES <- file.path(CACHE_DIR, "player_dna_profiles.rds")
+# /dna null / comparison thresholds (documented in build_player_dna_dataset.R's header). Each
+# player has 5 skill dimensions: overallRating needs at least DNA_MIN_DIMS_OVERALL non-null
+# dimensions; two players are compared only on dimensions both have, and only when at least
+# DNA_MIN_SHARED_DIMS are shared. Each player gets the top DNA_PEER_COUNT peers.
+DNA_MIN_DIMS_OVERALL <- 3L
+DNA_MIN_SHARED_DIMS  <- 4L
+DNA_PEER_COUNT       <- 5L
 CACHE_PLAYER_PROPS    <- file.path(CACHE_DIR, "latest_player_props.rds")
 # Added by player_id_crosswalk.R's load_player_id_crosswalk() (cross-source NFL player-ID
 # crosswalk, nflreadr::load_ff_playerids() - see that file's header for the live-verified
@@ -787,6 +804,7 @@ WEB_JSON_MATCHUPS_CURRENT_WEEK <- file.path(WEB_DATA_DIR, "matchups_current_week
 WEB_JSON_TEAM_EPA_PROFILES     <- file.path(WEB_DATA_DIR, "team_epa_profiles.json")
 WEB_JSON_PLAYOFF_PICTURE       <- file.path(WEB_DATA_DIR, "playoff_picture.json")
 WEB_JSON_PLAYER_QB_PROFILES    <- file.path(WEB_DATA_DIR, "player_qb_profiles.json")
+WEB_JSON_PLAYER_DNA_PROFILES   <- file.path(WEB_DATA_DIR, "player_dna_profiles.json")
 WEB_JSON_MODEL_DIAGNOSTICS     <- file.path(WEB_DATA_DIR, "model_diagnostics.json")
 WEB_JSON_SALARY_CAP_PROFILES   <- file.path(WEB_DATA_DIR, "salary_cap_profiles.json")
 WEB_JSON_COACHING_PROFILES     <- file.path(WEB_DATA_DIR, "coaching_profiles.json")

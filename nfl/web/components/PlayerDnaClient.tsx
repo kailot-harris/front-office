@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { PlayerDnaProfile } from '@/lib/types';
+import { PlayerDnaProfile, PlayerDnaDataset } from '@/lib/types';
 import { TeamLogo } from './TeamLogo';
 import { BASE_PATH } from '@/lib/basePath';
 import { HowToRead } from './HowToRead';
@@ -18,6 +18,19 @@ interface PlayerDnaClientProps {
   initialProfiles: PlayerDnaProfile[];
   /** Total number of profiles in the full dataset, if more than `initialProfiles` were shipped. */
   totalCount?: number;
+  /** Season window the profiles were built from (config.R CURRENT_SEASON), from the data. */
+  season: number;
+  /** Last completed regular-season week in the data. */
+  throughWeek: number;
+  /** ISO timestamp the dataset was built. */
+  generatedAt: string;
+}
+
+/** Build date shown on the page (UTC so server and client render the same text). */
+function formatBuildDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
 
 /**
@@ -37,8 +50,10 @@ const RadarChart: React.FC<RadarChartProps> = ({ playerA, playerB, size = 320 })
   const numAxes = axes.length;
 
   // Calculate coordinates on the radar grid
-  const getCoords = (val: number, index: number, total: number, rMax: number) => {
+  const getCoords = (rawVal: number | null, index: number, total: number, rMax: number) => {
     const angle = -Math.PI / 2 + (index * 2 * Math.PI) / total;
+    // A null dimension has no measurement; it is drawn at the centre and labelled n/a
+    const val = rawVal ?? 0;
     const r = (Math.max(0, Math.min(100, val)) / 100) * rMax;
     return {
       x: center + r * Math.cos(angle),
@@ -71,7 +86,7 @@ const RadarChart: React.FC<RadarChartProps> = ({ playerA, playerB, size = 320 })
         .map((axisA, i) => {
           // Match by axis key if possible, else index
           const matchAxis = playerB.radarAxes.find((ax) => ax.axis === axisA.axis);
-          const val = matchAxis ? matchAxis.value : playerB.radarAxes[i]?.value ?? 50;
+          const val = matchAxis ? matchAxis.value : playerB.radarAxes[i]?.value ?? null;
           const { x, y } = getCoords(val, i, numAxes, radius);
           return `${x},${y}`;
         })
@@ -135,8 +150,9 @@ const RadarChart: React.FC<RadarChartProps> = ({ playerA, playerB, size = 320 })
             />
             {axes.map((axisA, i) => {
               const matchAxis = playerB.radarAxes.find((ax) => ax.axis === axisA.axis);
-              const val = matchAxis ? matchAxis.value : playerB.radarAxes[i]?.value ?? 50;
+              const val = matchAxis ? matchAxis.value : playerB.radarAxes[i]?.value ?? null;
               const { x, y } = getCoords(val, i, numAxes, radius);
+              if (val === null) return null;
               return (
                 <circle
                   key={`b-${i}`}
@@ -162,6 +178,7 @@ const RadarChart: React.FC<RadarChartProps> = ({ playerA, playerB, size = 320 })
         />
         {axes.map((axis, i) => {
           const { x, y } = getCoords(axis.value, i, numAxes, radius);
+          if (axis.value === null) return null;
           return (
             <circle
               key={`a-${i}`}
@@ -187,7 +204,7 @@ const RadarChart: React.FC<RadarChartProps> = ({ playerA, playerB, size = 320 })
               textAnchor={anchor}
               className="text-[10.5px] font-mono font-medium fill-slate-300 pointer-events-none"
             >
-              {axis.label} ({axis.value.toFixed(0)})
+              {axis.label} ({axis.value === null ? 'n/a' : axis.value.toFixed(0)})
             </text>
           );
         })}
@@ -210,7 +227,7 @@ const RadarChart: React.FC<RadarChartProps> = ({ playerA, playerB, size = 320 })
   );
 };
 
-export default function PlayerDnaClient({ initialProfiles, totalCount }: PlayerDnaClientProps) {
+export default function PlayerDnaClient({ initialProfiles, totalCount, season, throughWeek, generatedAt }: PlayerDnaClientProps) {
   // #134: the server only sends the first screen of rows (see app/dna/page.tsx). If more exist,
   // fetch the rest from the same JSON file the server read, client-side, so search/filter/compare
   // still work across the full roster without inlining ~900 KB of HTML on every page load.
@@ -225,10 +242,10 @@ export default function PlayerDnaClient({ initialProfiles, totalCount }: PlayerD
     fetch(`${BASE_PATH}/data/player_dna_profiles.json`)
       .then((res) => {
         if (!res.ok) throw new Error(`Failed to load player DNA dataset: ${res.status}`);
-        return res.json() as Promise<PlayerDnaProfile[]>;
+        return res.json() as Promise<PlayerDnaDataset>;
       })
       .then((full) => {
-        if (!cancelled) setProfiles(full);
+        if (!cancelled) setProfiles(full.profiles);
       })
       .catch(() => {
         // Keep the initial (partial) set rendered rather than blanking the page.
@@ -264,7 +281,7 @@ export default function PlayerDnaClient({ initialProfiles, totalCount }: PlayerD
       const matchesSearch =
         p.playerName.toLowerCase().includes(q) ||
         p.team.toLowerCase().includes(q) ||
-        p.archetype.toLowerCase().includes(q);
+        (p.archetype ?? '').toLowerCase().includes(q);
       const matchesPos = selectedPos === 'ALL' || p.position === selectedPos;
       const matchesTeam = selectedTeam === 'ALL' || p.team === selectedTeam;
       return matchesSearch && matchesPos && matchesTeam;
@@ -294,13 +311,16 @@ export default function PlayerDnaClient({ initialProfiles, totalCount }: PlayerD
               <span className="text-xs text-slate-400 font-mono">
                 {profiles.length} Empirical Skill Profiles{isLoadingRest ? ' (loading full roster…)' : ''}
               </span>
+              <span className="text-xs text-slate-400 font-mono" data-testid="dna-window">
+                {season} season &middot; Updated {formatBuildDate(generatedAt)}, through Week {throughWeek}
+              </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white font-space">
-              Player DNA & Nearest Historical Comparables
+              Player DNA & Nearest Peer Comparables
             </h1>
             <p className="text-sm text-slate-300 max-w-3xl mt-1.5 leading-relaxed">
               Empirical skill vectors quantifying deep accuracy, pressure resilience, quick game execution, and YAC over expected.
-              Profiles are mapped with cosine-similarity matching against iconic NFL historical peaks (1995–2024).
+              Each player is matched by cosine similarity to the other {season} players at the same position (regular season, Weeks 1&ndash;{throughWeek}).
             </p>
           </div>
 
@@ -327,9 +347,10 @@ export default function PlayerDnaClient({ initialProfiles, totalCount }: PlayerD
         <p>
           Each player is reduced to a vector of empirical skill traits (deep accuracy, pressure resilience, quick
           game execution, YAC over expected) measured directly from play-by-play, not scouting grades.{' '}
-          <strong>Nearest comparables</strong> are found by cosine similarity &mdash; the historical player (1995
-          &ndash;2024) whose skill vector points in the most similar direction, regardless of career length or
-          raw volume. Use Compare Mode to place two players&apos; vectors side by side on the same scale.
+          <strong>Nearest comparables</strong> are found by cosine similarity &mdash; the other {season} players at
+          the same position (Weeks 1&ndash;{throughWeek}) whose skill vectors point in the most similar direction,
+          regardless of raw volume. A skill that could not be measured for a player shows as n/a and is never
+          estimated; players with too few measured skills have no comparables. Use Compare Mode to place two players&apos; vectors side by side on the same scale.
         </p>
       </HowToRead>
 
@@ -383,12 +404,12 @@ export default function PlayerDnaClient({ initialProfiles, totalCount }: PlayerD
         </div>
       </div>
 
-      {/* Main Grid: Left Roster Directory / Right Detailed Radar & Twin Analysis */}
+      {/* Main Grid: Left Roster Directory / Right Detailed Radar & Peer Analysis */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Player Directory (4 cols) */}
         <div className="lg:col-span-4 space-y-3">
           <div className="flex items-center justify-between text-xs font-mono text-slate-400 px-1">
-            <span>Starters ({filteredPlayers.length})</span>
+            <span>Qualified players ({filteredPlayers.length})</span>
             {isCompareMode && (
               <span className="text-cyan-400 font-bold">Select comparison target</span>
             )}
@@ -429,13 +450,13 @@ export default function PlayerDnaClient({ initialProfiles, totalCount }: PlayerD
                           {player.position}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-400 truncate">{player.archetype}</p>
+                      <p className="text-[11px] text-slate-400 truncate">{player.archetype ?? 'Insufficient data'}</p>
                     </div>
                   </div>
 
                   <div className="text-right flex-shrink-0 ml-2">
                     <span className="text-xs font-bold font-mono text-emerald-400 block">
-                      {player.overallRating.toFixed(1)}
+                      {player.overallRating === null ? 'n/a' : player.overallRating.toFixed(1)}
                     </span>
                     <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono uppercase">Rating</span>
                   </div>
@@ -463,7 +484,7 @@ export default function PlayerDnaClient({ initialProfiles, totalCount }: PlayerD
                     <span className="text-xs font-mono text-slate-400">{selectedPlayer.team}</span>
                   </div>
                   <p className="text-sm text-emerald-300/90 font-medium mt-0.5">
-                    {selectedPlayer.archetype}
+                    {selectedPlayer.archetype ?? 'Insufficient data'}
                   </p>
                 </div>
               </div>
@@ -474,7 +495,7 @@ export default function PlayerDnaClient({ initialProfiles, totalCount }: PlayerD
                     DNA Overall
                   </span>
                   <span className="text-2xl font-black font-mono text-emerald-400">
-                    {selectedPlayer.overallRating.toFixed(1)}
+                    {selectedPlayer.overallRating === null ? 'n/a' : selectedPlayer.overallRating.toFixed(1)}
                   </span>
                 </div>
               </div>
@@ -535,11 +556,16 @@ export default function PlayerDnaClient({ initialProfiles, totalCount }: PlayerD
                 </span>
                 <span
                   className={`text-sm font-bold font-mono ${
-                    selectedPlayer.statsSummary.epaPerPlay >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                    selectedPlayer.statsSummary.epaPerPlay === null
+                      ? 'text-slate-400'
+                      : selectedPlayer.statsSummary.epaPerPlay >= 0
+                      ? 'text-emerald-400'
+                      : 'text-rose-400'
                   }`}
                 >
-                  {selectedPlayer.statsSummary.epaPerPlay > 0 ? '+' : ''}
-                  {selectedPlayer.statsSummary.epaPerPlay.toFixed(3)}
+                  {selectedPlayer.statsSummary.epaPerPlay === null
+                    ? 'n/a'
+                    : `${selectedPlayer.statsSummary.epaPerPlay > 0 ? '+' : ''}${selectedPlayer.statsSummary.epaPerPlay.toFixed(3)}`}
                 </span>
               </div>
             </div>
@@ -558,7 +584,7 @@ export default function PlayerDnaClient({ initialProfiles, totalCount }: PlayerD
                     <span className="font-bold text-sm text-white">{comparePlayer.playerName}</span>
                     <span className="text-xs text-slate-400 font-mono">({comparePlayer.position} - {comparePlayer.team})</span>
                   </div>
-                  <p className="text-xs text-cyan-200/80">{comparePlayer.archetype}</p>
+                  <p className="text-xs text-cyan-200/80">{comparePlayer.archetype ?? 'Insufficient data'}</p>
                 </div>
               </div>
 
@@ -588,14 +614,15 @@ export default function PlayerDnaClient({ initialProfiles, totalCount }: PlayerD
 
               {selectedPlayer.radarAxes.map((axis) => {
                 const compVal = comparePlayer?.radarAxes.find((ax) => ax.axis === axis.axis)?.value;
-                const delta = compVal !== undefined ? axis.value - compVal : null;
+                const delta =
+                  compVal !== undefined && compVal !== null && axis.value !== null ? axis.value - compVal : null;
 
                 return (
                   <div key={axis.axis} className="space-y-1">
                     <div className="flex items-center justify-between text-xs font-mono">
                       <span className="text-slate-300 font-medium">{axis.label}</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-emerald-400 font-bold">{axis.value.toFixed(1)}</span>
+                        <span className="text-emerald-400 font-bold">{axis.value === null ? 'n/a' : axis.value.toFixed(1)}</span>
                         {delta !== null && (
                           <span
                             className={`text-[11px] sm:text-[10px] font-bold ${
@@ -615,9 +642,9 @@ export default function PlayerDnaClient({ initialProfiles, totalCount }: PlayerD
                     <div className="h-2 rounded-full bg-slate-800 overflow-hidden relative">
                       <div
                         className="h-full bg-emerald-500 rounded-full transition-all duration-300"
-                        style={{ width: `${axis.value}%` }}
+                        style={{ width: `${axis.value ?? 0}%` }}
                       />
-                      {compVal !== undefined && (
+                      {compVal !== undefined && compVal !== null && (
                         <div
                           className="h-full bg-cyan-400/80 rounded-full absolute top-0 left-0 transition-all duration-300 opacity-60"
                           style={{ width: `${compVal}%` }}
@@ -630,20 +657,26 @@ export default function PlayerDnaClient({ initialProfiles, totalCount }: PlayerD
             </div>
           </div>
 
-          {/* Historical Comparables / Archetype Twins */}
+          {/* Peer comparables: other same-position players from the same season window */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-400" />
                 <h3 className="text-base font-bold font-space text-white">
-                  Nearest Historical Archetypes & Comparables
+                  Nearest {season} Peers at {selectedPlayer.position}
                 </h3>
               </div>
               <span className="text-xs font-mono text-slate-400">Cosine Similarity Matching</span>
             </div>
 
+            {selectedPlayer.peerComps.length === 0 && (
+              <p className="text-xs text-slate-400 font-mono p-3 rounded-xl bg-surface-raised border border-slate-800/80">
+                Not enough measured skills to compare this player with peers.
+              </p>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {selectedPlayer.historicalTwins.map((twin, idx) => (
+              {selectedPlayer.peerComps.map((twin, idx) => (
                 <div
                   key={idx}
                   className="p-3.5 rounded-xl bg-surface-raised border border-slate-800/80 hover:border-emerald-500/40 transition-colors space-y-2"
@@ -654,7 +687,7 @@ export default function PlayerDnaClient({ initialProfiles, totalCount }: PlayerD
                         <span className="font-bold text-sm text-slate-100">{twin.compName}</span>
                       </div>
                       <p className="text-xs text-emerald-400 font-medium mt-0.5">
-                        {twin.archetype}
+                        {twin.archetype ?? 'Insufficient data'}
                       </p>
                     </div>
 
@@ -678,7 +711,7 @@ export default function PlayerDnaClient({ initialProfiles, totalCount }: PlayerD
                   <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono pt-1">
                     <span className="truncate">{twin.keySharedTrait}</span>
                     <span className="px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">
-                      Era {twin.era}
+                      {twin.era} season
                     </span>
                   </div>
                 </div>
@@ -721,15 +754,15 @@ export default function PlayerDnaClient({ initialProfiles, totalCount }: PlayerD
 
               {/* Scatter nodes for filtered players of this position */}
               {filteredPlayers
-                .filter((p) => p.position === selectedPlayer.position)
+                .filter((p) => p.position === selectedPlayer.position && p.manifoldX !== null && p.manifoldY !== null)
                 .slice(0, 70)
                 .map((p) => {
                   const isPrimary = p.playerId === selectedPlayer.playerId;
                   const isCompare = p.playerId === comparePlayer?.playerId;
 
                   // Map manifold coordinates [-50, 50] to [5%, 95%]
-                  const left = Math.max(5, Math.min(95, 50 + (p.manifoldX * 0.8)));
-                  const top = Math.max(5, Math.min(95, 50 - (p.manifoldY * 0.8)));
+                  const left = Math.max(5, Math.min(95, 50 + ((p.manifoldX ?? 0) * 0.8)));
+                  const top = Math.max(5, Math.min(95, 50 - ((p.manifoldY ?? 0) * 0.8)));
 
                   return (
                     <button
@@ -741,7 +774,7 @@ export default function PlayerDnaClient({ initialProfiles, totalCount }: PlayerD
                           setSelectedPlayerId(p.playerId);
                         }
                       }}
-                      title={`${p.playerName} (${p.team}) - ${p.archetype}`}
+                      title={`${p.playerName} (${p.team}) - ${p.archetype ?? 'Insufficient data'}`}
                       style={{ left: `${left}%`, top: `${top}%` }}
                       className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full transition-transform hover:scale-150 ${
                         isPrimary

@@ -330,10 +330,14 @@ export interface PassingMetadata {
   league_averages: PassingZoneMetric[];
 }
 
-export interface PlayerDnaHistoricalTwin {
+/** A same-position player from the same season window (never the player themself). */
+export interface PlayerDnaPeerComp {
+  playerId: string;
   compName: string;
+  /** Season of the window, derived from CURRENT_SEASON in the builder. */
   era: string;
-  archetype: string;
+  archetype: string | null;
+  position: 'QB' | 'WR' | 'RB' | 'TE';
   similarityPct: number;
   keySharedTrait: string;
 }
@@ -341,7 +345,8 @@ export interface PlayerDnaHistoricalTwin {
 export interface PlayerDnaRadarAxis {
   axis: string;
   label: string;
-  value: number;
+  /** null when the dimension could not be measured (never imputed). */
+  value: number | null;
 }
 
 export interface PlayerDnaStatsSummary {
@@ -354,7 +359,7 @@ export interface PlayerDnaStatsSummary {
   receptions?: number;
   recYards?: number;
   recTds?: number;
-  epaPerPlay: number;
+  epaPerPlay: number | null;
 }
 
 export interface PlayerDnaProfile {
@@ -362,16 +367,25 @@ export interface PlayerDnaProfile {
   playerName: string;
   team: string;
   position: 'QB' | 'WR' | 'RB' | 'TE';
-  archetype: string;
-  overallRating: number;
+  archetype: string | null;
+  overallRating: number | null;
   statsSummary: PlayerDnaStatsSummary;
-  manifoldX: number;
-  manifoldY: number;
+  manifoldX: number | null;
+  manifoldY: number | null;
   radarAxes: PlayerDnaRadarAxis[];
-  skillVector: Record<string, number>;
-  categoryScores: Record<string, number>;
-  historicalTwins: PlayerDnaHistoricalTwin[];
+  skillVector: Record<string, number | null>;
+  categoryScores: Record<string, number | null>;
+  peerComps: PlayerDnaPeerComp[];
+}
 
+/** player_dna_profiles.json envelope: provenance plus the profiles. */
+export interface PlayerDnaDataset {
+  season: number;
+  /** Last completed regular-season week present in the play-by-play data. */
+  throughWeek: number;
+  /** ISO UTC build timestamp. */
+  generatedAt: string;
+  profiles: PlayerDnaProfile[];
 }
 
 export interface ClutchProfile {
