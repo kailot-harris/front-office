@@ -9,6 +9,7 @@ import {
   loadAllDatasets,
   readPlayerShotFile,
 } from '../helpers/datasets';
+import { CLUTCH_MIN_FGA } from '@/lib/clutchTypes';
 
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
@@ -277,6 +278,40 @@ describe('Domain & mathematical invariants: clutch, defense, playerDna, coaches,
     }
     // Track known drift in baseline
     expect(mismatches, `Clutch tsDelta mismatches:\n${mismatches.slice(0, 10).join('\n')}`).toEqual([]);
+  });
+
+  it(`clutch_leverage_metrics.json: archetypes and ranks only at clutchFga >= ${CLUTCH_MIN_FGA} (NBA#90)`, () => {
+    const labelledUnderMin: string[] = [];
+    const rankedUnderMin: string[] = [];
+    const qualifiedMismatch: string[] = [];
+    for (const p of clutch) {
+      if (p.clutchArchetype != null && !(p.clutchFga >= CLUTCH_MIN_FGA)) {
+        labelledUnderMin.push(`${p.playerName}: "${p.clutchArchetype}" on ${p.clutchFga} FGA`);
+      }
+      if (p.clutchRank != null && !(p.clutchFga >= CLUTCH_MIN_FGA)) {
+        rankedUnderMin.push(`${p.playerName}: rank ${p.clutchRank} on ${p.clutchFga} FGA`);
+      }
+      if (p.qualified !== (p.clutchFga >= CLUTCH_MIN_FGA)) {
+        qualifiedMismatch.push(`${p.playerName}: qualified=${p.qualified} on ${p.clutchFga} FGA`);
+      }
+    }
+    expect(labelledUnderMin, `Archetype under ${CLUTCH_MIN_FGA} FGA:\n${labelledUnderMin.slice(0, 10).join('\n')}`).toEqual([]);
+    expect(rankedUnderMin, `Rank under ${CLUTCH_MIN_FGA} FGA:\n${rankedUnderMin.slice(0, 10).join('\n')}`).toEqual([]);
+    expect(qualifiedMismatch, `qualified flag mismatch:\n${qualifiedMismatch.slice(0, 10).join('\n')}`).toEqual([]);
+
+    // Every qualified player is ranked, ranks start at 1, and the attempt count
+    // matches the published shot breakdown.
+    const qualified = clutch.filter((p) => p.qualified);
+    for (const p of qualified) {
+      expect(p.clutchRank, `${p.playerName} qualified but unranked`).not.toBeNull();
+      expect(p.clutchArchetype, `${p.playerName} qualified but no archetype`).not.toBeNull();
+    }
+    if (qualified.length > 0) {
+      expect(Math.min(...qualified.map((p) => p.clutchRank as number))).toBe(1);
+    }
+    for (const p of clutch) {
+      expect(p.clutchFga, `${p.playerName} clutchFga vs shotBreakdown`).toBe(p.shotBreakdown.totalClutchFga);
+    }
   });
 
   it('defensive_metrics.json: matchupDist pgPct+sgPct+sfPct+pfPct+cPct sums to ~100%', () => {

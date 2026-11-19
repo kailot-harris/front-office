@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ClutchProfile } from '@/lib/clutchTypes';
+import { ClutchProfile, CLUTCH_MIN_FGA, CLUTCH_DATA_SEASON_NOTE } from '@/lib/clutchTypes';
 import { ClutchShotBreakdownCard } from './ClutchShotBreakdownCard';
 import { PressureResiliencePlot } from './PressureResiliencePlot';
 import { Flame, Search, ChevronRight, Activity, Crosshair, ArrowUpDown, Shield } from 'lucide-react';
@@ -14,28 +14,77 @@ interface ClutchClientProps {
   initialProfiles: ClutchProfile[];
 }
 
+/**
+ * True when a profile meets the clutch sample minimum (NBA#90). Checked on the
+ * attempt count as well as the published flag, so a stale file can never let an
+ * under-threshold player be ranked or labelled.
+ */
+const isQualified = (p: ClutchProfile) => p.qualified === true && p.clutchFga >= CLUTCH_MIN_FGA;
+
+/** Lowest and highest USCI among qualified players, or null when none qualify. */
+export function qualifiedUsciRange(
+  profiles: ClutchProfile[]
+): { min: number; max: number; above100: number } | null {
+  const values = profiles
+    .filter(isQualified)
+    .map((p) => p.usciScore)
+    .filter((v): v is number => v != null && Number.isFinite(v));
+  if (values.length === 0) return null;
+  return {
+    min: Math.min(...values),
+    max: Math.max(...values),
+    above100: values.filter((v) => v > 100).length,
+  };
+}
+
 export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedProfile, setSelectedProfile] = useState<ClutchProfile>(
-    initialProfiles.find((p) => p.playerName === 'Luka Doncic') || initialProfiles[0]
-  );
-  const [selectedArchetypeFilter, setSelectedArchetypeFilter] = useState<string>('ALL');
   const [sortKey, setSortKey] = useState<'usciScore' | 'clutchTsPct' | 'cDwpa' | 'clutchUsgPct'>('usciScore');
+  const [sampleView, setSampleView] = useState<'QUALIFIED' | 'ALL'>('QUALIFIED');
+  const [selectedArchetypeFilter, setSelectedArchetypeFilter] = useState<string>('ALL');
+
+  const qualifiedCount = initialProfiles.filter(isQualified).length;
+  const usciRange = qualifiedUsciRange(initialProfiles);
+  const usciScaleText =
+    'USCI is not a 0-100 scale: it is the unassisted share of clutch makes times clutch points per shot attempt, times 100, capped at 0-150.';
+  const usciRangeText = usciRange
+    ? `${usciScaleText} Among the ${qualifiedCount} qualified players it runs from ${usciRange.min} to ${usciRange.max}; ${usciRange.above100} ${usciRange.above100 === 1 ? 'is' : 'are'} above 100.`
+    : `${usciScaleText} No player meets the sample minimum yet.`;
+
+  // Default selection is a qualified player, never an unranked one.
+  const topQualified = [...initialProfiles]
+    .filter(isQualified)
+    .sort((a, b) => (a.clutchRank ?? Infinity) - (b.clutchRank ?? Infinity))[0];
+  const [selectedProfile, setSelectedProfile] = useState<ClutchProfile>(
+    initialProfiles.find((p) => p.playerName === 'Luka Doncic' && isQualified(p)) ||
+      topQualified ||
+      initialProfiles[0]
+  );
 
   const filteredProfiles = initialProfiles
     .filter((p) => {
+      const q = searchQuery.toLowerCase();
       const matchesSearch =
-        p.playerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.team.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.clutchArchetype.toLowerCase().includes(searchQuery.toLowerCase());
+        p.playerName.toLowerCase().includes(q) ||
+        p.team.toLowerCase().includes(q) ||
+        (p.clutchArchetype ?? '').toLowerCase().includes(q);
       const matchesPos =
         selectedArchetypeFilter === 'ALL' ||
         (selectedArchetypeFilter === 'G' && p.position === 'G') ||
         (selectedArchetypeFilter === 'F' && p.position === 'F') ||
         (selectedArchetypeFilter === 'C' && p.position === 'C');
-      return matchesSearch && matchesPos;
+      const matchesSample = sampleView === 'ALL' || isQualified(p);
+      return matchesSearch && matchesPos && matchesSample;
     })
-    .sort((a, b) => ((b[sortKey] ?? -Infinity) as number) - ((a[sortKey] ?? -Infinity) as number));
+    // Qualified players always sort ahead of unranked ones, whatever the metric;
+    // unranked players follow, ordered by attempt count.
+    .sort((a, b) => {
+      const qa = isQualified(a) ? 1 : 0;
+      const qb = isQualified(b) ? 1 : 0;
+      if (qa !== qb) return qb - qa;
+      if (!qa) return b.clutchFga - a.clutchFga;
+      return ((b[sortKey] ?? -Infinity) as number) - ((a[sortKey] ?? -Infinity) as number);
+    });
 
   return (
     <div className="space-y-6">
@@ -72,6 +121,25 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
         efficiency holds up or falls off once the game tightens.
       </HowToReadDisclosure>
 
+      {/* Methodology note (NBA#90): sample minimum, season and USCI range */}
+      <div
+        data-testid="clutch-methodology"
+        className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 text-xs text-zinc-400 leading-relaxed space-y-1"
+      >
+        <div className="font-semibold text-zinc-300">Methodology</div>
+        <p>
+          Season: {CLUTCH_DATA_SEASON_NOTE} Clutch means the 4th quarter or overtime, 5:00 or less on the
+          clock, with the score within 5 points.
+        </p>
+        <p>
+          Sample minimum: a player needs at least {CLUTCH_MIN_FGA} clutch field-goal attempts to get clutch
+          rates, a rank and an archetype. {qualifiedCount} of {initialProfiles.length} players qualify.
+          Players under the minimum are listed only in the &quot;All players&quot; view, unranked, with their
+          attempt count.
+        </p>
+        <p>{usciRangeText}</p>
+      </div>
+
       {/* Main Grid: Left Roster / Right Focus View */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Search & Leaderboard (4 cols) */}
@@ -86,6 +154,26 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 text-sm bg-zinc-950 border border-zinc-800 rounded-lg text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-rose-500 transition-colors"
               />
+            </div>
+
+            {/* Sample View Toggle */}
+            <div className="flex items-center gap-1.5">
+              {[
+                { label: `Qualified (${CLUTCH_MIN_FGA}+ FGA)`, val: 'QUALIFIED' as const },
+                { label: 'All players', val: 'ALL' as const },
+              ].map((tab) => (
+                <button
+                  key={tab.val}
+                  onClick={() => setSampleView(tab.val)}
+                  className={`flex-1 py-1 text-xs font-semibold rounded-md transition-colors ${
+                    sampleView === tab.val
+                      ? 'bg-accent-600 text-white shadow-sm'
+                      : 'bg-zinc-800/80 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
 
             {/* Position Filter Buttons */}
@@ -118,6 +206,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
               <div className="flex gap-2">
                 <button
                   onClick={() => setSortKey('usciScore')}
+                  title={usciRangeText}
                   className={`underline-offset-2 ${sortKey === 'usciScore' ? 'text-rose-400 underline font-semibold' : 'hover:text-zinc-200'}`}
                 >
                   USCI
@@ -154,13 +243,18 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                 >
                   <div>
                     <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-mono text-zinc-500 w-7">
+                        {isQualified(profile) && profile.clutchRank != null ? `#${profile.clutchRank}` : '–'}
+                      </span>
                       <span className="font-semibold text-sm">{profile.playerName}</span>
                       <span className="text-[11px] sm:text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">
                         {profile.team} · {profile.position}
                       </span>
                     </div>
                     <div className="text-xs text-zinc-400 truncate max-w-[210px] mt-0.5">
-                      {profile.clutchArchetype}
+                      {isQualified(profile)
+                        ? `${profile.clutchArchetype ?? ''} · ${profile.clutchFga} FGA`
+                        : `Unranked · ${profile.clutchFga} of ${CLUTCH_MIN_FGA} clutch FGA`}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -202,14 +296,24 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                   {selectedProfile.playerName}
                 </h2>
                 <p className="text-sm font-semibold text-rose-400 mt-0.5 flex items-center gap-1.5">
-                  <Flame className="w-4 h-4" /> {selectedProfile.clutchArchetype}
+                  <Flame className="w-4 h-4" />
+                  {isQualified(selectedProfile)
+                    ? `${selectedProfile.clutchRank != null ? `#${selectedProfile.clutchRank} USCI · ` : ''}${selectedProfile.clutchArchetype ?? ''}`
+                    : `Unranked: ${selectedProfile.clutchFga} of the ${CLUTCH_MIN_FGA} clutch FGA needed`}
                 </p>
               </div>
 
-              {/* 4 Core Clutch Badges */}
+              {/* Core Clutch Badges, with the sample size beside them */}
               <div className="flex items-center gap-2.5">
+                <div
+                  className="px-3 py-2 rounded-xl bg-zinc-950/80 border border-zinc-800 text-center"
+                  data-testid="clutch-fga-badge"
+                >
+                  <div className="text-[11px] text-zinc-400 font-medium">CLUTCH FGA</div>
+                  <div className="text-base font-bold text-zinc-100">{selectedProfile.clutchFga}</div>
+                </div>
                 <div className="px-3 py-2 rounded-xl bg-zinc-950/80 border border-zinc-800 text-center">
-                  <div className="text-[11px] text-zinc-400 font-medium">USCI</div>
+                  <div className="text-[11px] text-zinc-400 font-medium" title={usciRangeText}>USCI</div>
                   <div className="text-base font-bold text-rose-400">{selectedProfile.usciScore != null ? selectedProfile.usciScore : 'N/A'}</div>
                 </div>
                 <div className="px-3 py-2 rounded-xl bg-zinc-950/80 border border-zinc-800 text-center">
