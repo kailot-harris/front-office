@@ -148,6 +148,31 @@ Rules that follow from this, in order of how often they matter:
    (e.g. for exercising a wrapper from a worktree without touching the primary checkout's
    logs) — it does not by itself prevent a shared-checkout collision in whichever directory
    ends up set, which is why the guard in point 3 exists independently of it.
+5. Both wrappers also fast-forward `main` to `origin/main` right after the guard (#148,
+   `tools/ff_main.bat`): a failed fetch is a `[WARN]` and the run goes on; a `main` that
+   cannot fast-forward is an `[ERROR]` and nothing runs. It never resets. Do not commit
+   directly on the primary's `main`: a local-only commit makes every scheduled run stop.
+
+## Worktrees: never link to another checkout (incident 2026-11-16)
+- Never junction, symlink or hardlink anything (`cache/`, `web/node_modules`, `renv/library`, ...) from a worktree
+  into the primary checkout or any other checkout. `git worktree remove` follows the link and deletes the
+  target's files silently; a `cache/` junction emptied the NBA primary checkout's cache this way
+  (NBA_analytics#163), and three worktrees of this repo held `web/node_modules` junctions into the primary (#151).
+- Instead: copy only the cache files the task needs, or point code at the primary's cache read-only via an env
+  var, and run `npm ci` in the worktree's own `web/`.
+- Before removing ANY worktree by ANY means, run
+  `python ~/.claude/skills/subagent-brief/scripts/cleanup_worktrees.py check --path <worktree>`
+  (read-only; exit 1 = links found). Delete each reported link on its own (`cmd /c rmdir <link>`), re-check, then
+  use `cleanup_worktrees.py remove-merged --path <worktree> --confirmed-by-user` rather than raw `git worktree remove`.
+- After the FIRST removal incident, stop all removals and audit every worktree
+  (`cleanup_worktrees.py incident --note "..."`); do not repair and continue.
+- In this repo, `powershell -NoProfile -ExecutionPolicy Bypass -File tools/remove_worktree.ps1 -Path <worktree> [-WhatIf]`
+  enforces this (#151): it refuses the primary checkout, unregistered paths and any worktree that still holds a link
+  (listing each, with its target), and only then runs `git worktree remove`. `-WhatIf` is the read-only check
+  (exit 1 = links found).
+- The append-only files (`cache/prediction_accuracy_log.rds`, `cache/accuracy_history.rds`, `logs/logs.duckdb`)
+  are copied after each scheduled pipeline run to `%USERPROFILE%\front-office-backups\nfl\YYYY-MM-DD\` by
+  `tools/backup_accumulated_cache.ps1` (#152; 30 daily folders kept). Restore from there, never from a worktree.
 
 ## Folder layout
 Repo root holds the pipeline `.R` scripts, deliberately flat: every script `source()`s its
