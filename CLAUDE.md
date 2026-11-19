@@ -46,6 +46,33 @@
   branch and never discards whatever was sitting in the checkout (recoverable afterward via
   `git stash list`). If you are extending or porting these scripts, keep this guard as the very
   first thing that runs after `cd /d "%PROJECT_DIR%"`.
+- **Both entrypoints also fast-forward `main` right after the guard (issue #198).**
+  `tools/ff_main.bat` runs `git fetch origin main` then `git merge --ff-only origin/main` and logs
+  main's SHA before and after. A failed fetch is a `[WARN]` and the run continues on the local
+  `main`; a `main` that cannot fast-forward is an `[ERROR]` and nothing runs. It never resets. If
+  the fast-forward rewrote the running `.bat`, the script relaunches itself once with
+  `WNBA_FF_DONE=1`. Keep every `exit /b` the last command of its block.
+- **After each run both entrypoints copy the append-only files out of the checkout (issue #200)**
+  with `tools/backup_accumulated_cache.ps1`, to `%USERPROFILE%\front-office-backups\wnba\YYYY-MM-DD\`
+  (override: `WNBA_BACKUP_ROOT`), keeping 30 daily folders. The script header names each file and
+  why it is append-only.
+
+## Worktrees: never link to another checkout (incident 2026-11-16, issue #199)
+- Never junction, symlink or hardlink anything (`cache/`, `web/node_modules`, `renv/library`, ...) from a worktree
+  into the primary checkout or any other checkout. `git worktree remove` follows the link and deletes the
+  target's files silently; a `cache/` junction emptied the NBA primary checkout's cache this way
+  (NBA_analytics #163).
+- Instead: copy only the cache files the task needs, or point code at the primary's cache read-only via an env
+  var, and run `npm ci` in the worktree's own `web/`.
+- Before removing ANY worktree by ANY means, run
+  `powershell -NoProfile -ExecutionPolicy Bypass -File tools/remove_worktree.ps1 -Path <worktree> -WhatIf`
+  (read-only; exit 1 = links found, each listed with its target). Delete each reported link on its own,
+  non-recursively (`cmd /c rmdir "<link>"` or `[System.IO.Directory]::Delete("<link>", $false)`), re-check, then
+  run the same command without `-WhatIf`. Never use raw `git worktree remove`, `Remove-Item -Recurse` or `rm -r` on
+  a worktree that may still hold a link.
+- `tools/remove_worktree.ps1` refuses the primary checkout, unregistered paths and any worktree that still holds
+  a link, and only then runs `git worktree remove` (never `--force`).
+- After the FIRST removal incident, stop all removals and audit every worktree; do not repair and continue.
 
 ## Environment
 - R is **not on PATH** on this machine. Use the full path:
