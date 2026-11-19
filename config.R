@@ -148,6 +148,8 @@ MAX_RETRIES          <- 3
 # writer now names its output from here.
 #
 # Membership rule: written by a stage that run_full_pipeline.R actually runs.
+# (projections_diagnostics.json is written on every run by accuracy_governance.R,
+# so it is registered in WEB_DATA_FILES under #194.)
 # Deliberate NON-members, each for a stated reason:
 #   * offseason_transactions.json -- an INPUT, not an output. It is the
 #     canonical hand-curated transaction catalog that
@@ -158,16 +160,12 @@ MAX_RETRIES          <- 3
 #     build_shot_chart_dataset.R, which is NOT one of run_full_pipeline.R's
 #     stages. They are refreshed out of band, so a run-start mtime assertion
 #     over them would be red on a healthy pipeline.
-#   * projections_diagnostics.json -- present in web/public/data but written by
-#     nothing in this repo (checked 2026-10-26: no writer, in any stage or
-#     tool). It appears to have arrived as a copy from a sibling sport. Left in
-#     place rather than deleted, since the web app may read it, but it is not
-#     something a run can be expected to refresh.
 WEB_PUBLIC_DIR <- file.path(PROJECT_DIR, "web", "public")
 
 WEB_JSON_PROJECTIONS_SEASON_TEAMS    <- file.path(WEB_DATA_DIR, "projections_season_teams.json")
 WEB_JSON_PROJECTIONS_SEASON_PLAYERS  <- file.path(WEB_DATA_DIR, "projections_season_players.json")
 WEB_JSON_PROJECTIONS_MODELS_METADATA <- file.path(WEB_DATA_DIR, "projections_models_metadata.json")
+WEB_JSON_PROJECTIONS_DIAGNOSTICS     <- file.path(WEB_DATA_DIR, "projections_diagnostics.json")
 WEB_JSON_OFFSEASON_TEAMS             <- file.path(WEB_DATA_DIR, "offseason_teams.json")
 WEB_JSON_OFFSEASON_DRAFT             <- file.path(WEB_DATA_DIR, "offseason_draft.json")
 WEB_JSON_COACHING_METRICS            <- file.path(WEB_DATA_DIR, "coaching_metrics.json")
@@ -187,6 +185,7 @@ WEB_DATA_FILES <- c(
   WEB_JSON_PROJECTIONS_SEASON_TEAMS,
   WEB_JSON_PROJECTIONS_SEASON_PLAYERS,
   WEB_JSON_PROJECTIONS_MODELS_METADATA,
+  WEB_JSON_PROJECTIONS_DIAGNOSTICS,
   WEB_JSON_OFFSEASON_TEAMS,
   WEB_JSON_OFFSEASON_DRAFT,
   WEB_JSON_COACHING_METRICS,
