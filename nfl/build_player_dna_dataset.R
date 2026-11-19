@@ -9,6 +9,21 @@
 # ZERO synthetic data, zero hardcoded player overrides.
 #
 # Exports JSON for Next.js web application to web/public/data/player_dna_profiles.json.
+#
+# Data window (front-office#109)
+#   Seasons: play-by-play from the first cache/nfl_pbp_*.rds by file name, or
+#     cache/nfl_pbp_2024_2025.rds if none exists (when that is also missing it
+#     downloads 2024 only). Box scores from cache/nfl_player_box.rds (downloaded
+#     for 2024-2025 when missing); rosters and Next Gen Stats from their cache
+#     files. No season filter is applied, so the window is whatever seasons
+#     those files hold, pooled together.
+#   Filters: regular season only (season_type REG; play-by-play rows with no
+#     season type are kept; Next Gen Stats rows are not filtered). QB pass and
+#     scramble plays, receiver targets and rushes.
+#   Minimum sample: QBs need 40+ pass attempts or 4+ games. RBs need 40+
+#     carries or 25+ targets, WRs 30+ targets, TEs 25+ targets.
+#   Known issues: #78 (season window and cache file choice), #79 (hand-typed
+#     historical comparables).
 # ==============================================================================
 
 suppressPackageStartupMessages({
