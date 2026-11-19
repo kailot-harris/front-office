@@ -46,7 +46,7 @@ export const ROUTES: RouteSpec[] = [
     path: '/player-dna',
     title: 'Player DNA',
     heading: 'Player DNA',
-    dataMarkers: ['16-D Manifold Embedding', 'Nearest Historical Comparables'],
+    dataMarkers: ['15-D Manifold Embedding', 'Nearest Current-Season Comparables'],
     expectsSearch: true,
   },
   {

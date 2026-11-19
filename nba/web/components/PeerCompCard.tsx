@@ -1,20 +1,19 @@
 'use client';
 
 import React from 'react';
-import { HistoricalTwin } from '@/lib/playerDnaTypes';
+import { PeerComp } from '@/lib/playerDnaTypes';
 import { Sparkles } from 'lucide-react';
-import { formatSeasonLabel } from '@/lib/season';
 
-interface HistoricalTwinCardProps {
-  twin: HistoricalTwin;
+interface PeerCompCardProps {
+  twin: PeerComp;
   rank: number;
 }
 
-export const HistoricalTwinCard: React.FC<HistoricalTwinCardProps> = ({ twin, rank }) => {
+export const PeerCompCard: React.FC<PeerCompCardProps> = ({ twin, rank }) => {
   const getBadgeColor = (pct: number) => {
-    if (pct >= 99) return 'bg-emerald-950/80 text-emerald-400 border-emerald-800';
-    if (pct >= 98) return 'bg-sky-950/80 text-sky-400 border-sky-800';
-    if (pct >= 96) return 'bg-amber-950/80 text-amber-400 border-amber-800';
+    if (pct >= 90) return 'bg-emerald-950/80 text-emerald-400 border-emerald-800';
+    if (pct >= 80) return 'bg-sky-950/80 text-sky-400 border-sky-800';
+    if (pct >= 70) return 'bg-amber-950/80 text-amber-400 border-amber-800';
     return 'bg-zinc-900 text-zinc-400 border-zinc-800';
   };
 
@@ -27,7 +26,7 @@ export const HistoricalTwinCard: React.FC<HistoricalTwinCardProps> = ({ twin, ra
         <div>
           <div className="flex items-center gap-2">
             <span className="font-semibold text-sm text-zinc-100">
-              {formatSeasonLabel(twin.compName) ?? twin.compName}
+              {twin.compName}
             </span>
             <span className="text-[11px] sm:text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-medium">
               {twin.position}
@@ -50,7 +49,7 @@ export const HistoricalTwinCard: React.FC<HistoricalTwinCardProps> = ({ twin, ra
         <div className="w-24 bg-zinc-800 rounded-full h-1.5 overflow-hidden">
           <div
             className="bg-sky-500 h-full rounded-full"
-            style={{ width: `${Math.max(0, (twin.similarityPct - 90) * 10)}%` }}
+            style={{ width: `${Math.max(0, Math.min(100, twin.similarityPct))}%` }}
           />
         </div>
       </div>

@@ -28,7 +28,7 @@ export const GLOSSARY: Record<string, string> = {
   embeddings:
     'A learned numerical representation of a player\'s style or skill profile, positioned in a multi-dimensional space so similar players sit close together.',
   manifold:
-    'A lower-dimensional surface that high-dimensional player data (e.g. 16-D skill vectors) is projected onto so it can be visualized or compared.',
+    'A lower-dimensional surface that high-dimensional player data (e.g. 15-D skill vectors) is projected onto so it can be visualized or compared.',
   USCI:
     'Unassisted Shot Creation Index — a clutch-specific rating of how much scoring a player generates on self-created (unassisted) shots in late-game situations, isolating shot creation from simply finishing a teammate\'s pass.',
   'c-dWPA':

@@ -44,9 +44,11 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
     };
   };
 
-  const polygonPoints = axes
+  // Null axes are never plotted as 0: the polygon is drawn only through axes with data.
+  const dataAxes = axes.filter((axis) => axis.value !== null);
+  const polygonPoints = dataAxes
     .map((axis) => {
-      const coords = getCoordinates(axis.value, axis.angle);
+      const coords = getCoordinates(axis.value as number, axis.angle);
       return `${coords.x},${coords.y}`;
     })
     .join(' ');
@@ -63,7 +65,7 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
     <div ref={containerRef} className="flex flex-col items-center justify-center p-3 bg-zinc-950/60 rounded-xl border border-zinc-800/80">
       <div className="w-full flex items-center justify-between mb-1">
         <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-          Skill Fingerprint (16-D Aggregate)
+          Skill Fingerprint (15-D Aggregate)
         </div>
         <button
           type="button"
@@ -83,8 +85,8 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
         role="img"
         aria-label={
           playerName
-            ? `16-dimensional skill fingerprint radar for ${playerName}`
-            : '16-dimensional skill fingerprint radar'
+            ? `15-dimensional skill fingerprint radar for ${playerName}`
+            : '15-dimensional skill fingerprint radar'
         }
       >
         {/* Background Concentric Rings (25%, 50%, 75%, 100%) */}
@@ -124,6 +126,7 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
         })}
 
         {/* Data Filled Polygon */}
+        {dataAxes.length >= 3 ? (
         <polygon
           points={polygonPoints}
           fill="rgba(56, 189, 248, 0.25)"
@@ -131,13 +134,17 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
           strokeWidth="2.5"
           className="transition-all duration-500"
         />
+        ) : dataAxes.length === 2 ? (
+          <polyline points={polygonPoints} fill="none" stroke="#38bdf8" strokeWidth="2.5" />
+        ) : null}
 
         {/* Data Point Dots & Labels */}
         {axes.map((axis, i) => {
-          const coords = getCoordinates(axis.value, axis.angle);
+          const coords = getCoordinates(axis.value ?? 0, axis.angle);
           const labelCoords = getCoordinates(120, axis.angle);
           return (
             <g key={i}>
+              {axis.value !== null && (
               <circle
                 cx={coords.x}
                 cy={coords.y}
@@ -146,6 +153,7 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
                 stroke="#e0f2fe"
                 strokeWidth="1.5"
               />
+              )}
               <text
                 x={labelCoords.x}
                 y={labelCoords.y}
@@ -162,7 +170,7 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
                 dominantBaseline="central"
                 className="text-[11px] sm:text-[10px] font-bold fill-sky-400"
               >
-                {Math.round(axis.value)}
+                {axis.value === null ? '—' : Math.round(axis.value)}
               </text>
             </g>
           );

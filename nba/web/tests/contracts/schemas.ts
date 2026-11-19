@@ -466,30 +466,34 @@ export const PlayerDnaProfileSchema = z
     playerName: z.string().min(2),
     team: teamEnum,
     position: positionEnum,
-    archetype: z.string().min(2),
+    archetype: z.string().min(2).nullable(),
     projPts: nonNeg,
     projReb: nonNeg,
     projAst: nonNeg,
     projMpg: num.min(0).max(48),
-    overallRating: pct,
-    manifoldX: num,
-    manifoldY: num,
+    overallRating: pct.nullable(),
+    manifoldX: num.nullable(),
+    manifoldY: num.nullable(),
     skillVector: z
       .object({
-        rim_fg: pct, dunks: pct, paint_touches: pct, cns_3p: pct, pullup_3p: pct, ft_pct: pct,
-        ast_pct: pct, pot_ast: pct, tov_control: pct, drive_ast: pct, switchability: pct,
-        rim_protection: pct, perimeter_havoc: pct, d_rapm: pct, oreb: pct, dreb: pct,
+        rim_fg: pct.nullable(), dunks: pct.nullable(), paint_touches: pct.nullable(), cns_3p: pct.nullable(), pullup_3p: pct.nullable(), ft_pct: pct.nullable(),
+        ast_pct: pct.nullable(), tov_control: pct.nullable(), drive_ast: pct.nullable(), switchability: pct.nullable(),
+        rim_protection: pct.nullable(), perimeter_havoc: pct.nullable(), d_rapm: pct.nullable(), oreb: pct.nullable(), dreb: pct.nullable(),
       })
       .strict(),
     categoryScores: z
-      .object({ finishing: pct, shooting: pct, playmaking: pct, defense: pct, rebounding: pct })
+      .object({
+        finishing: pct.nullable(), shooting: pct.nullable(), playmaking: pct.nullable(),
+        defense: pct.nullable(), rebounding: pct.nullable(),
+      })
       .strict(),
-    historicalTwins: z
+    peerComps: z
       .array(
         z
           .object({
-            compName: z.string().min(2).refine((v) => !/\b[0-9]{4}-[0-9]{2}\b/.test(v), "short-form season span"),
-            era: z.string().regex(/^[0-9]{4}-[0-9]{4}$/),
+            compName: z.string().min(2),
+            playerId: z.string().min(1),
+            era: z.literal('2025-26'),
             archetype: z.string().min(2),
             position: z.string().min(1),
             similarityPct: pct,
@@ -497,7 +501,7 @@ export const PlayerDnaProfileSchema = z
           })
           .strict(),
       )
-      .min(1),
+      .max(5),
   })
   .strict();
 

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { PlayerDnaProfile } from '@/lib/playerDnaTypes';
 import { SkillFingerprintPolygon } from './SkillFingerprintPolygon';
-import { HistoricalTwinCard } from './HistoricalTwinCard';
+import { PeerCompCard } from './PeerCompCard';
 import { DnaManifoldScatter } from './DnaManifoldScatter';
 import { Search, Dna, Activity, Crosshair, BarChart3, ChevronRight } from 'lucide-react';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
@@ -26,7 +26,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
     const matchesSearch =
       p.playerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.team.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.archetype.toLowerCase().includes(searchQuery.toLowerCase());
+      (p.archetype ?? '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesPos = selectedPosFilter === 'ALL' || p.position === selectedPosFilter;
     return matchesSearch && matchesPos;
   });
@@ -40,7 +40,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20 flex items-center gap-1">
               <Dna className="w-3.5 h-3.5" /> High-Dimensional Player DNA
             </span>
-            <span className="text-xs text-zinc-500 font-mono">16-D Manifold Embedding</span>
+            <span className="text-xs text-zinc-500 font-mono">15-D Manifold Embedding</span>
             <SeasonSourceBadge
               season={SEASON_SOURCES.playerDna.season}
               kind="projection"
@@ -49,18 +49,18 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
             />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
-            Player DNA & Nearest Historical Comparables
+            Player DNA & Nearest Current-Season Comparables
           </h1>
           <p className="text-sm text-zinc-400 max-w-2xl mt-1">
             Multivariate stylistic fingerprinting quantifying finishing, perimeter gravity, playmaking leverage,
-            switchability, and rim deterrence with cosine-similarity matching against 1990–2025 all-time peaks.
+            switchability, and rim deterrence with cosine-similarity matching against every other 2025-26 player.
           </p>
         </div>
       </div>
 
       <HowToReadDisclosure pageKey="player-dna">
-        Each player&rsquo;s 16-D skill vector is projected onto a shared <GlossaryTerm term="manifold" /> and
-        matched by cosine similarity to find historical &ldquo;twins&rdquo; with the closest stylistic
+        Each player&rsquo;s 15-D skill vector is projected onto a shared <GlossaryTerm term="manifold" /> and
+        matched by cosine similarity to find the 2025-26 peers with the closest stylistic
         fingerprint, not necessarily the closest box-score stats.
       </HowToReadDisclosure>
 
@@ -120,12 +120,12 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
                       </span>
                     </div>
                     <div className="text-xs text-zinc-400 truncate max-w-[210px] mt-0.5">
-                      {player.archetype}
+                      {player.archetype ?? 'Insufficient data'}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="text-right">
-                      <div className="text-xs font-bold text-sky-400">{player.overallRating}</div>
+                      <div className="text-xs font-bold text-sky-400">{player.overallRating ?? '—'}</div>
                       <div className="text-[11px] sm:text-[9px] text-zinc-500 uppercase">Rating</div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-zinc-500" />
@@ -154,7 +154,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
                   {selectedPlayer.playerName}
                 </h2>
                 <p className="text-sm font-semibold text-sky-400 mt-0.5 flex items-center gap-1.5">
-                  <Crosshair className="w-4 h-4" /> {selectedPlayer.archetype}
+                  <Crosshair className="w-4 h-4" /> {selectedPlayer.archetype ?? 'Insufficient data'}
                 </p>
               </div>
 
@@ -174,13 +174,13 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
                 </div>
                 <div className="px-3.5 py-2 rounded-xl bg-sky-950/60 border border-sky-800/80 text-center">
                   <div className="text-xs text-sky-400 font-medium">INDEX</div>
-                  <div className="text-base font-bold text-sky-200">{selectedPlayer.overallRating}</div>
+                  <div className="text-base font-bold text-sky-200">{selectedPlayer.overallRating ?? '—'}</div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Polygon Radar + Nearest Historical Twins Grid */}
+          {/* Polygon Radar + Nearest Current-Season Peers Grid */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
             {/* Skill Radar (5 cols) */}
             <div className="md:col-span-5">
@@ -190,62 +190,66 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
               />
             </div>
 
-            {/* Historical Twins List (7 cols) */}
+            {/* Peer Comps List (7 cols) */}
             <div className="md:col-span-7 flex flex-col justify-between space-y-2">
               <div className="flex items-center justify-between mb-1">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
                   <Activity className="w-3.5 h-3.5 text-sky-400" />
-                  Top Historical Stylistic Twins (Cosine Metric)
+                  Top Current-Season Stylistic Peers (Cosine Metric)
                 </h3>
-                <span className="text-[11px] sm:text-[10px] text-zinc-500">1990–2025 Era</span>
+                <span className="text-[11px] sm:text-[10px] text-zinc-500">2025-26 Peers</span>
               </div>
               <div className="space-y-2">
-                {selectedPlayer.historicalTwins.map((twin, idx) => (
-                  <HistoricalTwinCard key={twin.compName} twin={twin} rank={idx + 1} />
+                {selectedPlayer.peerComps.length === 0 && (
+                  <div className="text-xs text-zinc-500 p-3.5 rounded-xl border border-zinc-800/80 bg-zinc-900/60">
+                    No peer comps: this player has no 2025-26 box-score data to compare.
+                  </div>
+                )}
+                {selectedPlayer.peerComps.map((twin, idx) => (
+                  <PeerCompCard key={twin.playerId} twin={twin} rank={idx + 1} />
                 ))}
               </div>
             </div>
           </div>
 
-          {/* 16-D Detailed Skill Decomposition Breakdown */}
+          {/* 15-D Detailed Skill Decomposition Breakdown */}
           <div className="p-4 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
             <h4 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <BarChart3 className="w-3.5 h-3.5 text-sky-400" />
-              16-Dimensional Skill Vector Breakdown
+              15-Dimensional Skill Vector Breakdown
             </h4>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div className="p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800">
                 <div className="text-zinc-400 font-medium mb-1">Finishing</div>
                 <div className="text-[11px] text-zinc-300 space-y-0.5">
-                  <div className="flex justify-between"><span>Rim FG%:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.rim_fg}</span></div>
-                  <div className="flex justify-between"><span>Dunk Freq:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.dunks}</span></div>
-                  <div className="flex justify-between"><span>Paint Touches:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.paint_touches}</span></div>
+                  <div className="flex justify-between"><span>Rim FG%:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.rim_fg ?? '—'}</span></div>
+                  <div className="flex justify-between"><span>Dunk Freq:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.dunks ?? '—'}</span></div>
+                  <div className="flex justify-between"><span>Paint Touches:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.paint_touches ?? '—'}</span></div>
                 </div>
               </div>
               <div className="p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800">
                 <div className="text-zinc-400 font-medium mb-1">Shooting</div>
                 <div className="text-[11px] text-zinc-300 space-y-0.5">
-                  <div className="flex justify-between"><span>C&S 3PT%:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.cns_3p}</span></div>
-                  <div className="flex justify-between"><span>Pull-Up 3PT%:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.pullup_3p}</span></div>
-                  <div className="flex justify-between"><span>FT%:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.ft_pct}</span></div>
+                  <div className="flex justify-between"><span>C&S 3PT%:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.cns_3p ?? '—'}</span></div>
+                  <div className="flex justify-between"><span>Pull-Up 3PT%:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.pullup_3p ?? '—'}</span></div>
+                  <div className="flex justify-between"><span>FT%:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.ft_pct ?? '—'}</span></div>
                 </div>
               </div>
               <div className="p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800">
                 <div className="text-zinc-400 font-medium mb-1">Playmaking</div>
                 <div className="text-[11px] text-zinc-300 space-y-0.5">
-                  <div className="flex justify-between"><span>Assist%:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.ast_pct}</span></div>
-                  <div className="flex justify-between"><span>Pot. Assists:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.pot_ast}</span></div>
-                  <div className="flex justify-between"><span>Drive Ast%:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.drive_ast}</span></div>
-                  <div className="flex justify-between"><span>TOV Control:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.tov_control}</span></div>
+                  <div className="flex justify-between"><span>Assist%:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.ast_pct ?? '—'}</span></div>
+                  <div className="flex justify-between"><span>Drive Ast%:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.drive_ast ?? '—'}</span></div>
+                  <div className="flex justify-between"><span>TOV Control:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.tov_control ?? '—'}</span></div>
                 </div>
               </div>
               <div className="p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800">
                 <div className="text-zinc-400 font-medium mb-1">Defense & Glass</div>
                 <div className="text-[11px] text-zinc-300 space-y-0.5">
-                  <div className="flex justify-between"><span>Switchability:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.switchability}</span></div>
-                  <div className="flex justify-between"><span>Rim Protect:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.rim_protection}</span></div>
-                  <div className="flex justify-between"><span>Perimeter Havoc:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.perimeter_havoc}</span></div>
-                  <div className="flex justify-between"><span>D-RAPM:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.d_rapm}</span></div>
+                  <div className="flex justify-between"><span>Switchability:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.switchability ?? '—'}</span></div>
+                  <div className="flex justify-between"><span>Rim Protect:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.rim_protection ?? '—'}</span></div>
+                  <div className="flex justify-between"><span>Perimeter Havoc:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.perimeter_havoc ?? '—'}</span></div>
+                  <div className="flex justify-between"><span>D-RAPM:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.d_rapm ?? '—'}</span></div>
                 </div>
               </div>
             </div>

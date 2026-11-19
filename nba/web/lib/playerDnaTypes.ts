@@ -1,5 +1,7 @@
-export interface HistoricalTwin {
+/** Nearest current-season (2025-26) peer by cosine similarity of skill vectors. */
+export interface PeerComp {
   compName: string;
+  playerId: string;
   era: string;
   archetype: string;
   position: string;
@@ -7,31 +9,32 @@ export interface HistoricalTwin {
   keySharedTrait: string;
 }
 
+/** Each dimension is null when its inputs are unavailable (no box-score row, RAPM or defensive metric). */
 export interface SkillVector {
-  rim_fg: number;
-  dunks: number;
-  paint_touches: number;
-  cns_3p: number;
-  pullup_3p: number;
-  ft_pct: number;
-  ast_pct: number;
-  pot_ast: number;
-  tov_control: number;
-  drive_ast: number;
-  switchability: number;
-  rim_protection: number;
-  perimeter_havoc: number;
-  d_rapm: number;
-  oreb: number;
-  dreb: number;
+  rim_fg: number | null;
+  dunks: number | null;
+  paint_touches: number | null;
+  cns_3p: number | null;
+  pullup_3p: number | null;
+  ft_pct: number | null;
+  ast_pct: number | null;
+  tov_control: number | null;
+  drive_ast: number | null;
+  switchability: number | null;
+  rim_protection: number | null;
+  perimeter_havoc: number | null;
+  d_rapm: number | null;
+  oreb: number | null;
+  dreb: number | null;
 }
 
 export interface CategoryScores {
-  finishing: number;
-  shooting: number;
-  playmaking: number;
-  defense: number;
-  rebounding: number;
+  /** null when every dimension in the category is null (player has no 2025-26 box-score row) */
+  finishing: number | null;
+  shooting: number | null;
+  playmaking: number | null;
+  defense: number | null;
+  rebounding: number | null;
 }
 
 export interface PlayerDnaProfile {
@@ -39,15 +42,17 @@ export interface PlayerDnaProfile {
   playerName: string;
   team: string;
   position: string;
-  archetype: string;
+  /** null when the player has no 2025-26 box-score row */
+  archetype: string | null;
   projPts: number;
   projReb: number;
   projAst: number;
   projMpg: number;
-  overallRating: number;
-  manifoldX: number;
-  manifoldY: number;
+  overallRating: number | null;
+  /** null when any contributing category is null */
+  manifoldX: number | null;
+  manifoldY: number | null;
   skillVector: SkillVector;
   categoryScores: CategoryScores;
-  historicalTwins: HistoricalTwin[];
+  peerComps: PeerComp[];
 }
