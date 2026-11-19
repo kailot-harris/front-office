@@ -79,7 +79,8 @@ if (!exists("log_warn", mode = "function")) log_warn <- function(...) invisible(
 #'
 #' Derived from WNBA_TEAMS so an expansion franchise needs no edit here. Returns
 #' the three forms separately because they are used differently: relevance
-#' testing accepts any of them, masking replaces longest-first.
+#' testing distinguishes full names and nicknames from bare cities, while
+#' masking replaces longest-first across all forms.
 #'
 #' @return list(full =, city =, nickname =, all =) character vectors, lowercase
 wnba_team_vocabulary <- function() {
@@ -305,16 +306,56 @@ mask_basketball_jargon <- function(txt) {
   })
 }
 
+#' Competing non-WNBA leagues/tournaments excluded unless WNBA/team name present
+SP_COMPETING_LEAGUES <- c(
+  "pwhl", "nwsl", "nhl", "nfl", "mlb", "mls", "nba",
+  "ncaa", "ncaaw", "ncaab", "wta", "atp", "pga", "lpga",
+  "ecac", "fifa", "uswnt", "usmnt", "wnbl", "wsl", "epl", "uefa",
+  "ufc", "nascar", "ausl", "lovb", "pvf",
+  "g league", "college basketball", "march madness", "fiba world cup"
+)
+
+#' Basketball-specific context terms required when only a bare franchise city appears
+SP_BASKETBALL_CONTEXT <- c(
+  "basketball", "hoops",
+  "point guard", "shooting guard", "combo guard", "wing guard",
+  "backcourt", "frontcourt",
+  "three point", "three pointer", "three pointers",
+  "free throw", "free throws",
+  "jump shot", "layup", "dunk", "tipoff", "tip off", "hardwood"
+)
+
+.sp_matches_any_term <- function(terms, txt, allow_hyphen_space = FALSE) {
+  if (length(terms) == 0L || !nzchar(txt)) return(FALSE)
+  for (term in terms) {
+    pat <- if (isTRUE(allow_hyphen_space)) {
+      gsub(" ", "[[:space:]-]+", term, fixed = TRUE)
+    } else {
+      term
+    }
+    if (grepl(.sp_term_pattern(pat), txt, perl = TRUE)) return(TRUE)
+  }
+  FALSE
+}
+
 #' Does this item actually concern the WNBA?
 #'
 #' The beat outlets in DEFAULT_BEAT_SOURCES are women's-basketball and
 #' women's-sports feeds, not WNBA-only wires. On the 2026-11-07 live run 24 of
 #' 70 ingested items were off-topic -- WTA tennis, PWHL and ECAC hockey, NCAA
 #' game recaps, FIBA World Cup -- and one of them (a Florida-UCF college recap)
-#' was published as the week's most negative WNBA story. An item counts as
-#' relevant when it names the league or any franchise, city or nickname.
+#' was published as the week's most negative WNBA story.
 #'
-#' Accepted false negative: a WNBA-adjacent item that names neither (e.g. an
+#' Deterministic rules (issue #213):
+#' - Items naming a competing non-WNBA league (SP_COMPETING_LEAGUES) are excluded
+#'   unless they also name `"wnba"` or a WNBA franchise full name or nickname.
+#' - Items naming `"wnba"` or a WNBA franchise full name or nickname are kept.
+#' - Bare franchise city names (`"Washington"`, `"New York"`, `"Chicago"`, etc.)
+#'   are not sufficient on their own; they count as relevant only when paired
+#'   with basketball context (and no competing league).
+#'
+#' Accepted false negative: a WNBA-adjacent item that names neither the league,
+#' a franchise name/nickname, nor a city with basketball context (e.g. an
 #' Unrivaled roster story, or a Hall-of-Fame class item naming only players) is
 #' excluded. Excluding it is the conservative error; the count is reported so a
 #' reader can see how much was filtered.
@@ -322,17 +363,32 @@ mask_basketball_jargon <- function(txt) {
 #' @param item one wire item
 #' @return TRUE/FALSE
 item_is_wnba_relevant <- function(item) {
-  txt <- tolower(paste(
-    as.character(item$raw_text %||% ""),
-    as.character(item$source_url %||% "")
-  ))
+  if (is.null(item) || !is.list(item)) return(FALSE)
+  raw <- item$raw_text %||% ""
+  url <- item$source_url %||% ""
+  raw_chr <- if (length(raw) == 0L || is.na(raw[1])) "" else as.character(raw[1])
+  url_chr <- if (length(url) == 0L || is.na(url[1])) "" else as.character(url[1])
+  txt <- tolower(paste(raw_chr, url_chr))
   if (!nzchar(trimws(txt))) return(FALSE)
-  if (grepl(.sp_term_pattern("wnba"), txt, perl = TRUE)) return(TRUE)
+
+  has_wnba <- grepl(.sp_term_pattern("wnba"), txt, perl = TRUE)
   vocab <- wnba_team_vocabulary()
-  for (term in vocab$all) {
-    if (grepl(.sp_term_pattern(term), txt, perl = TRUE)) return(TRUE)
+  has_full <- .sp_matches_any_term(vocab$full, txt, allow_hyphen_space = TRUE)
+  has_nickname <- .sp_matches_any_term(vocab$nickname, txt)
+  has_explicit_wnba <- has_wnba || has_full || has_nickname
+
+  has_competing_league <- .sp_matches_any_term(SP_COMPETING_LEAGUES, txt, allow_hyphen_space = TRUE)
+  if (has_competing_league) {
+    return(has_explicit_wnba)
   }
-  FALSE
+  if (has_explicit_wnba) return(TRUE)
+
+  has_city <- .sp_matches_any_term(vocab$city, txt, allow_hyphen_space = TRUE)
+  if (!has_city) return(FALSE)
+
+  has_basketball_context <- .sp_matches_any_term(SP_BASKETBALL_CONTEXT, txt, allow_hyphen_space = TRUE) ||
+    grepl("(?<![[:alnum:]])3[[:space:]-]*pointers?(?![[:alpha:]])", txt, perl = TRUE)
+  has_basketball_context
 }
 
 #' Keep only the WNBA-relevant items

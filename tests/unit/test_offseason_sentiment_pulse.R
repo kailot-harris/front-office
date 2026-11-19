@@ -765,3 +765,101 @@ test_that("Memo block reports the exclusion count and the masking caveat", {
   expect_true(grepl("team names and basketball jargon masked", blk, fixed = TRUE))
   expect_true(grepl("at least 40 words", blk, fixed = TRUE))
 })
+
+# ==============================================================================
+# Issue #213: tighten item_is_wnba_relevant() against bare-city and
+# competing-league false positives
+# ==============================================================================
+
+test_that("Issue #213: excludes PWHL and other non-WNBA league stories with bare franchise cities", {
+  off_topic <- list(
+    mk_item("pwhl_dc", "just_womens_sports",
+            "PWHL Expands Takeover Tour to Washington, DC"),
+    mk_item("pwhl_url", "just_womens_sports",
+            "Takeover Tour announces new stops for 2026-27 season",
+            url = "https://justwomenssports.com/reads/pwhl-expands-takeover-tour-to-washington-dc/"),
+    mk_item("nwsl_dc", "just_womens_sports",
+            "NWSL Washington Spirit announce new stadium partnership"),
+    mk_item("nhl_dc", "espn_wnba_beat",
+            "NHL Capitals open home stand in Washington"),
+    mk_item("nfl_ny", "just_womens_sports",
+            "NFL Giants and Jets prepare for New York primetime showcase"),
+    mk_item("mlb_chi", "just_womens_sports",
+            "MLB Cubs and White Sox host youth clinics across Chicago"),
+    mk_item("mls_sea", "just_womens_sports",
+            "MLS Sounders celebrate Seattle supporter milestone"),
+    mk_item("ncaa_ind_con", "her_hoop_stats",
+            "NCAA women's basketball: Connecticut defeats Indiana in non-conference clash"),
+    mk_item("march_madness_dal", "the_next_hoops",
+            "March Madness regional semifinal tips off in Dallas"),
+    mk_item("nba_ny", "espn_wnba_beat",
+            "NBA Knicks outlast Bulls in New York basketball thriller"),
+    mk_item("fiba_lv", "the_next_hoops",
+            "FIBA World Cup training camp opens in Las Vegas")
+  )
+
+  for (it in off_topic) {
+    expect_false(item_is_wnba_relevant(it),
+                 info = paste("expected excluded:", it$item_id, it$raw_text))
+  }
+})
+
+test_that("Issue #213: excludes bare franchise cities alone without WNBA/team/basketball context", {
+  bare_city_items <- list(
+    mk_item("city_dc", "just_womens_sports", "Washington, DC hosts major winter festival"),
+    mk_item("city_ny", "just_womens_sports", "New York sports summit draws record crowd"),
+    mk_item("city_chi", "just_womens_sports", "Chicago stadium renovation proposal advances"),
+    mk_item("city_gs", "just_womens_sports", "Golden State marathon draws thousands of runners")
+  )
+
+  for (it in bare_city_items) {
+    expect_false(item_is_wnba_relevant(it),
+                 info = paste("expected excluded bare city:", it$item_id))
+  }
+
+  # Bare city WITH basketball context and no competing league still passes
+  bball_city <- mk_item("city_chi_bball", "winsidr",
+                        "Chicago front office adds basketball operations staff and backcourt depth")
+  expect_true(item_is_wnba_relevant(bball_city))
+})
+
+test_that("Issue #213: keeps Mystics, Washington Mystics, WNBA mentions, and dual-mention stories", {
+  relevant <- list(
+    mk_item("nick_only", "winsidr", "Mystics"),
+    mk_item("full_only", "winsidr", "Washington Mystics"),
+    mk_item("wnba_only", "espn_wnba_beat", "WNBA collective bargaining talks continue"),
+    mk_item("cross_nba", "espn_wnba_beat", "Washington Mystics partner with NBA Wizards on youth clinic"),
+    mk_item("cross_nhl", "winsidr", "Mystics players attend NHL Capitals playoff opener"),
+    mk_item("cross_wnba_ncaa", "her_hoop_stats", "WNBA draft prospects shine in NCAA tournament"),
+    mk_item("url_full", "winsidr", "Offseason roster review",
+            url = "https://winsidr.com/2026/11/washington-mystics-free-agency/")
+  )
+
+  for (it in relevant) {
+    expect_true(item_is_wnba_relevant(it),
+                info = paste("expected kept:", it$item_id, it$raw_text))
+  }
+})
+
+test_that("Issue #213: item_is_wnba_relevant() handles malformed inputs safely and is deterministic", {
+  expect_false(item_is_wnba_relevant(NULL))
+  expect_false(item_is_wnba_relevant(list()))
+  expect_false(item_is_wnba_relevant(list(raw_text = NA_character_, source_url = NA_character_)))
+
+  probe_items <- list(
+    mk_item("d1", "just_womens_sports", "PWHL Expands Takeover Tour to Washington, DC"),
+    mk_item("d2", "winsidr", "Mystics"),
+    mk_item("d3", "winsidr", "Washington Mystics"),
+    mk_item("d4", "just_womens_sports", "Washington, DC hosts winter event"),
+    mk_item("d5", "espn_wnba_beat", "NBA Knicks beat Chicago in basketball"),
+    mk_item("d6", "the_next_hoops", "Chicago basketball frontcourt notes"),
+    mk_item("d7", "espn_wnba_beat", "WNBA Mystics host NBA clinic")
+  )
+
+  r1 <- vapply(probe_items, item_is_wnba_relevant, logical(1))
+  r2 <- vapply(probe_items, item_is_wnba_relevant, logical(1))
+  expect_identical(r1, c(FALSE, TRUE, TRUE, FALSE, FALSE, TRUE, TRUE))
+  expect_identical(r1, r2)
+  expect_identical(filter_wnba_relevant_items(probe_items),
+                   filter_wnba_relevant_items(probe_items))
+})
