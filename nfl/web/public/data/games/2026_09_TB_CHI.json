@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-11-17T14:06:33Z",
+  "generated_at": "2026-11-19T09:27:40Z",
   "sport": "nfl",
   "endpoint": "game_detail",
   "season": 2026,
@@ -78,7 +78,7 @@
         "key": "cpoe",
         "label": "CPOE",
         "away_value": -3.64,
-        "home_value": 1.02,
+        "home_value": -0.6,
         "unit": "pct",
         "higher_is_better": true,
         "description": "Completion Percentage Over Expected on pass attempts"
@@ -1250,7 +1250,7 @@
           "sacks_suffered": 1,
           "sack_yards_lost": -2,
           "passing_epa": -5.45,
-          "passing_cpoe": 1.02,
+          "passing_cpoe": -0.6,
           "carries": 5,
           "rushing_yards": 16,
           "rushing_tds": 0,
@@ -1315,13 +1315,13 @@
           "categories": ["receiving", "defense"],
           "snap_pct": 56,
           "receptions": 7,
-          "targets": 9,
+          "targets": 10,
           "receiving_yards": 97,
           "receiving_tds": 1,
           "receiving_fumbles": 1,
           "receiving_fumbles_lost": 1,
           "receiving_first_downs": 2,
-          "receiving_epa": -6.31,
+          "receiving_epa": -7.48,
           "def_tackles_solo": 1,
           "def_tackle_assists": 0,
           "def_tackles_for_loss": 0,
@@ -1525,7 +1525,7 @@
           {
             "feature": "diff_cpoe",
             "label": "Completion % Over Expected Differential",
-            "value": 23.007,
+            "value": 22.601,
             "shap_value": 1.8868
           },
           {
@@ -1669,13 +1669,13 @@
           "metric_label": "CPOE",
           "team_abbr": "CHI",
           "entering_baseline": 5.255,
-          "realized_value": 1.025,
-          "delta": -4.231,
+          "realized_value": -0.6,
+          "delta": -5.855,
           "prior_games_n": 8,
           "is_low_sample": false
         }
       ],
-      "divergence_note": "CHI CPOE (+1.025) showed the largest divergence from entering baseline (+5.255).",
+      "divergence_note": "CHI CPOE (-0.600) showed the largest divergence from entering baseline (+5.255).",
       "margin_waterfall": [
         {
           "key": "step_current_epa",

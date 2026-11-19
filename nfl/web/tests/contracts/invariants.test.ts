@@ -959,6 +959,63 @@ describe('clutch — leverage and EPA delta invariants', () => {
       expect(p.turnoverFragility).toBeNull();
     }
   });
+
+  // NFL#80: a 7-attempt sample topped the board under the old 5-attempt minimum.
+  // The builder's MIN_CLUTCH_PASS_ATTEMPTS is the owner's to tune, but never back below this floor.
+  const CLUTCH_MIN_ATTEMPTS_FLOOR = 20;
+
+  it(`exports one sample minimum of at least ${CLUTCH_MIN_ATTEMPTS_FLOOR} clutch pass attempts`, () => {
+    const mins = new Set(profiles.map((p) => p.minClutchAttempts));
+    expect(mins.size, `minClutchAttempts values: ${[...mins].join(', ')}`).toBe(1);
+    const min = profiles[0].minClutchAttempts;
+    expect(Number.isInteger(min), `minClutchAttempts is ${min}`).toBe(true);
+    expect(min).toBeGreaterThanOrEqual(CLUTCH_MIN_ATTEMPTS_FLOOR);
+  });
+
+  it(`no QB below ${CLUTCH_MIN_ATTEMPTS_FLOOR} clutch pass attempts is qualified, rated or given an archetype`, () => {
+    const violations = profiles.filter(
+      (p) =>
+        p.clutchAttempts < Math.max(CLUTCH_MIN_ATTEMPTS_FLOOR, p.minClutchAttempts ?? 0) &&
+        (p.provenance !== 'INSUFFICIENT_SAMPLE' ||
+          p.clutchArchetype !== 'Insufficient Sample' ||
+          p.clutchEpaDelta !== null)
+    );
+    expect(
+      violations.map((p) => `${p.playerName} (${p.clutchAttempts} att, ${p.clutchArchetype})`)
+    ).toEqual([]);
+  });
+
+  it('qualification matches the exported minimum exactly', () => {
+    for (const p of profiles) {
+      const qualified = p.clutchAttempts >= p.minClutchAttempts;
+      expect(
+        p.provenance,
+        `${p.playerName}: ${p.clutchAttempts} att vs minimum ${p.minClutchAttempts}`
+      ).toBe(qualified ? 'REAL_CURRENT_SEASON' : 'INSUFFICIENT_SAMPLE');
+    }
+  });
+
+  // clutchAttempts counts pass_attempt == 1 rows (passes, sacks, spikes); clutchPlays counts
+  // pass == 1 | qb_dropback == 1 rows (passes, sacks, no spikes). Rows are matched on the
+  // passer, so every play is also an attempt and the gap is spikes.
+  it('dropbacks never exceed pass attempts, in clutch and in baseline', () => {
+    for (const p of profiles) {
+      expect(p.clutchPlays, `${p.playerName} clutch`).toBeLessThanOrEqual(p.clutchAttempts);
+      expect(p.baselinePlays, `${p.playerName} baseline`).toBeLessThanOrEqual(p.baselineAttempts);
+    }
+  });
+
+  it('clutch counts are a subset of baseline counts', () => {
+    for (const p of profiles) {
+      expect(p.clutchAttempts, `${p.playerName} attempts`).toBeLessThanOrEqual(p.baselineAttempts);
+      expect(p.clutchPlays, `${p.playerName} dropbacks`).toBeLessThanOrEqual(p.baselinePlays);
+    }
+  });
+
+  it('covers a single season and week window', () => {
+    expect(new Set(profiles.map((p) => p.season)).size).toBe(1);
+    expect(new Set(profiles.map((p) => p.throughWeek)).size).toBe(1);
+  });
 });
 
 

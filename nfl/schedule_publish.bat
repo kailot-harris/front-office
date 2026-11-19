@@ -262,6 +262,42 @@ if "%PRE_BRANCH%"=="main" (
 
 echo [GUARD] Checkout guard: landed cleanly on main (pre-guard branch was "%PRE_BRANCH%"). >> "%LOG_FILE%"
 
+REM ------------------------------------------------------------------------------
+REM Fast-forward main to origin/main (issue #148), exactly as schedule_daily.bat
+REM does; see that file's comment for the self-update reasoning. A failed fetch
+REM is a [WARN] and the gate runs on the local main; a main that cannot
+REM fast-forward is an [ERROR] and the gate does NOT run. On main the guard above
+REM deliberately keeps the uncommitted pipeline output (#154); git refuses the
+REM fast-forward only if an incoming commit also changes one of those files, and
+REM then this fails loudly instead of touching them. It never resets and never
+REM discards a commit or a file. If schedule_publish.bat itself changed, the
+REM updated script is relaunched once with the same arguments and NFL_FF_DONE=1.
+REM ------------------------------------------------------------------------------
+set FF_BEFORE=
+for /f "delims=" %%S in ('git rev-parse HEAD 2^>nul') do set FF_BEFORE=%%S
+if defined NFL_FF_DONE (
+    echo [FF] NFL_FF_DONE=%NFL_FF_DONE%: fast-forward already done by the instance that relaunched this one. Skipped. main=%FF_BEFORE% >> "%LOG_FILE%"
+) else (
+    call "%PROJECT_DIR%\tools\ff_main.bat" "%LOG_FILE%"
+    if errorlevel 1 (
+        echo [ERROR] schedule_publish.bat: main could not be fast-forwarded to origin/main. Publish gate NOT run. >> "%LOG_FILE%"
+        exit /b 4
+    ) else (
+        set FF_AFTER=
+        for /f "delims=" %%S in ('git rev-parse HEAD 2^>nul') do set FF_AFTER=%%S
+        git diff --quiet !FF_BEFORE! !FF_AFTER! -- schedule_publish.bat >nul 2>&1
+        if errorlevel 1 (
+            echo [FF] schedule_publish.bat changed in the fast-forward !FF_BEFORE! -^> !FF_AFTER!. Relaunched itself after a self-update, same arguments: %* >> "%LOG_FILE%"
+            set NFL_FF_DONE=1
+            cmd /c ""%~f0" %*"
+            exit /b !ERRORLEVEL!
+        )
+    )
+)
+REM Each "exit /b" above is the LAST command of its block on purpose: under
+REM "cmd /c", an "exit /b N" followed by more commands in the same block makes
+REM the process exit code 0 instead of N.
+
 echo ================================================================== >> "%LOG_FILE%"
 echo NFL WEB PUBLISH GATE: %DATE% %TIME% >> "%LOG_FILE%"
 echo Mode: %MODE_LABEL%  (argument: %MODE%) >> "%LOG_FILE%"

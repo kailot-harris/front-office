@@ -12,7 +12,7 @@
 #   3. Clutch CPOE (Completion % Over Expected)
 #   4. Turnover Fragility Under Pressure (Clutch TO% - Baseline TO%)
 #   5. 4th Down Go-for-it Aggressiveness (%)
-#   6. Situational Archetype Tagging & Sample Qualification (MIN_CLUTCH_PASS_ATTEMPTS = 5L)
+#   6. Situational Archetype Tagging & Sample Qualification (MIN_CLUTCH_PASS_ATTEMPTS = 20L)
 #
 # Exports:
 #   - web/public/data/clutch_leverage_metrics.json
@@ -21,17 +21,27 @@
 # Data window (front-office#109)
 #   Seasons: play-by-play from the last cache/nfl_pbp_*.rds by file name; if
 #     none, CACHE_PBP (cache/pbp_cache.rds); if neither, CURRENT_SEASON
-#     downloaded with nflreadr. Adding another nfl_pbp_*.rds file can silently
-#     change the season. No season-type filter: playoff games count if present.
+#     downloaded with nflreadr. Whatever file is read, only rows with
+#     season == CURRENT_SEASON are kept (so a multi-season cache such as
+#     pbp_cache.rds can never mix seasons); if no rows for CURRENT_SEASON
+#     remain, the build stops without writing anything. Every profile carries
+#     the season and the latest week found in the data (season, throughWeek).
+#     No season-type filter: playoff games count if present.
 #   Filters: a clutch play is in the 4th quarter or overtime and either has a
 #     score margin of 8 or less, or comes in the last 5 minutes with win
 #     probability from 10% to 90%. QBs come from player_qb_profiles.json, and
 #     their plays are matched on passer id or passer name only, so plays with
 #     no passer listed (such as scrambles) are left out.
-#   Minimum sample: MIN_CLUTCH_PASS_ATTEMPTS (5 clutch pass attempts). QBs
-#     below it stay in the output with empty metrics, marked "Insufficient
-#     Sample".
-#   Known issues: #80 (minimum sample), #168 (scrambles, fourth-down label).
+#   Minimum sample: MIN_CLUTCH_PASS_ATTEMPTS (20 clutch pass attempts; was 5
+#     before #80). QBs below it stay in the output with their attempt counts
+#     and empty metrics, marked "Insufficient Sample", and get no archetype.
+#     The value is exported on every profile (minClutchAttempts) so the page
+#     states the threshold actually used.
+#   Counts: clutchAttempts / baselineAttempts count pass_attempt == 1 rows
+#     (passes, sacks and spikes); clutchPlays / baselinePlays count
+#     pass == 1 | qb_dropback == 1 rows (passes and sacks, but not spikes).
+#     Rows are matched on the passer, so in practice plays <= attempts.
+#   Known issues: #168 (scrambles, fourth-down label).
 # ==============================================================================
 
 suppressPackageStartupMessages({
@@ -80,6 +90,22 @@ cat(sprintf(">>> [CLUTCH ENGINE] Ingesting play-by-play from %s...\n", pbp_file)
 pbp <- readRDS(pbp_file)
 cat(sprintf(">>> [CLUTCH ENGINE] Loaded %d raw play-by-play events.\n", nrow(pbp)))
 
+# Keep only the current season (front-office#109 / NFL#80): a fallback to the
+# multi-season pbp_cache.rds must never mix seasons into one board.
+if (!"season" %in% names(pbp)) {
+  stop(sprintf("Play-by-play file %s has no 'season' column; cannot filter to CURRENT_SEASON (%d).",
+               pbp_file, CURRENT_SEASON))
+}
+pbp <- pbp %>% filter(season == CURRENT_SEASON)
+if (nrow(pbp) == 0) {
+  stop(sprintf("Play-by-play file %s has no rows for CURRENT_SEASON (%d); refusing to write an empty clutch board.",
+               pbp_file, CURRENT_SEASON))
+}
+DATA_SEASON <- as.integer(CURRENT_SEASON)
+DATA_THROUGH_WEEK <- as.integer(max(pbp$week, na.rm = TRUE))
+cat(sprintf(">>> [CLUTCH ENGINE] Kept %d events for season %d (through week %d).\n",
+            nrow(pbp), DATA_SEASON, DATA_THROUGH_WEEK))
+
 # Ingest active QB profiles
 qb_json_path <- if (exists("WEB_JSON_PLAYER_QB_PROFILES")) {
   WEB_JSON_PLAYER_QB_PROFILES
@@ -122,7 +148,11 @@ clutch_play_count <- sum(pbp$is_clutch, na.rm = TRUE)
 cat(sprintf(">>> [CLUTCH ENGINE] Identified %d high-leverage late-game clutch plays (%.1f%% of sample).\n",
             clutch_play_count, (clutch_play_count / nrow(pbp)) * 100))
 
-MIN_CLUTCH_PASS_ATTEMPTS <- 5L
+# Minimum clutch pass attempts for a QB to be ranked and given an archetype
+# (NFL#80). Raised from 5L: on 2026-11-10 a 7-attempt sample topped the board.
+# 20 is a judgement call, not a derived value; the owner may tune it. The
+# qualification counts at 5/10/15/20/25/30 are in the PR that set it.
+MIN_CLUTCH_PASS_ATTEMPTS <- 20L
 clutch_profiles <- list()
 
 for (i in seq_len(nrow(qb_profiles_df))) {
@@ -227,6 +257,9 @@ for (i in seq_len(nrow(qb_profiles_df))) {
       position = "QB",
       isStarter = is_starter,
       headshotUrl = headshot,
+      season = DATA_SEASON,
+      throughWeek = DATA_THROUGH_WEEK,
+      minClutchAttempts = MIN_CLUTCH_PASS_ATTEMPTS,
       clutchAttempts = as.integer(n_clutch_att),
       clutchPlays = as.integer(n_clutch_plays),
       baselineAttempts = as.integer(n_base_att),
@@ -251,6 +284,9 @@ for (i in seq_len(nrow(qb_profiles_df))) {
       position = "QB",
       isStarter = is_starter,
       headshotUrl = headshot,
+      season = DATA_SEASON,
+      throughWeek = DATA_THROUGH_WEEK,
+      minClutchAttempts = MIN_CLUTCH_PASS_ATTEMPTS,
       clutchAttempts = as.integer(n_clutch_att),
       clutchPlays = as.integer(n_clutch_plays),
       baselineAttempts = as.integer(n_base_att),
