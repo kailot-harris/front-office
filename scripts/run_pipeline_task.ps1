@@ -181,6 +181,81 @@ if (-not (Invoke-CheckoutSafetyGuard)) {
 }
 
 # ------------------------------------------------------------------------------
+# FAST-FORWARD main TO origin/main (MLB-Analytics#101, ported from NBA #162).
+#
+# The same steps and rules as tools\ff_main.bat, run natively so every line goes
+# through Write-Log (one UTF-8 log, see Add-NativeOutputToLog above):
+#   1. git fetch origin main      fails -> [WARN], the run continues on local main.
+#   2. git merge --ff-only origin/main
+#                                 fails -> [ERROR], exit 4, NOTHING below runs.
+#                                 Never reset, never discard a commit.
+#   3. main's SHA is logged before and after.
+#
+# PowerShell parses the whole script before running it, so a fast-forward that
+# rewrites THIS file cannot corrupt the running copy the way it can a .bat. But
+# the run would still be the OLD code. So if this file changed, it relaunches the
+# updated script once with the same parameters and MLB_FF_DONE=1 (which skips
+# this step in the child) and exits with the child's exit code.
+# ------------------------------------------------------------------------------
+function Invoke-FastForwardMain {
+    # Returns 'ok' or 'error'.
+    Write-Log "[FF] Fast-forward main to origin/main."
+    $before = ((& git rev-parse HEAD) 2>&1 | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0 -or -not $before) {
+        Write-Log "[ERROR] [FF] 'git rev-parse HEAD' failed: $before"
+        return 'error'
+    }
+    Write-Log "[FF] Before: main=$before"
+
+    $fetchOut = ((& git fetch origin main) 2>&1 | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0) {
+        Write-Log "[WARN] [FF] 'git fetch origin main' failed. Continuing on local main=$before. $fetchOut"
+        return 'ok'
+    }
+    $remote = ((& git rev-parse origin/main) 2>&1 | Out-String).Trim()
+    Write-Log "[FF] Fetched: origin/main=$remote"
+
+    $mergeOut = ((& git merge --ff-only origin/main) 2>&1 | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0) {
+        $counts = ((& git rev-list --left-right --count HEAD...origin/main) 2>&1 | Out-String).Trim()
+        Write-Log "[ERROR] [FF] main cannot fast-forward to origin/main (main-only/origin-only commits: $counts). $mergeOut"
+        Write-Log "[ERROR] [FF] Local main has diverged or the merge was blocked. Nothing was reset or discarded."
+        Write-Log "[ERROR] [FF] main=$before origin/main=$remote. Pipeline must not run until a human reconciles main."
+        return 'error'
+    }
+    $after = ((& git rev-parse HEAD) 2>&1 | Out-String).Trim()
+    if ($after -eq $before) {
+        Write-Log "[FF] Already up to date: main=$after"
+    } else {
+        Write-Log "[FF] Fast-forwarded main $before -> $after"
+    }
+    return 'ok'
+}
+
+if ($env:MLB_FF_DONE) {
+    $ffHead = ((& git rev-parse HEAD) 2>&1 | Out-String).Trim()
+    Write-Log "[FF] MLB_FF_DONE=$($env:MLB_FF_DONE): fast-forward already done by the instance that relaunched this one. Skipped. main=$ffHead"
+} else {
+    $ffBefore = ((& git rev-parse HEAD) 2>&1 | Out-String).Trim()
+    if ((Invoke-FastForwardMain) -ne 'ok') {
+        Write-Log "[ERROR] [FF] main could not be fast-forwarded to origin/main. Nothing was run or published."
+        Write-Log "================================================================"
+        exit 4
+    }
+    $ffAfter = ((& git rev-parse HEAD) 2>&1 | Out-String).Trim()
+    & git diff --quiet $ffBefore $ffAfter -- scripts/run_pipeline_task.ps1 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        $relaunchArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $PSCommandPath, '-Mode', $Mode)
+        if ($IgnoreSeasonGuard) { $relaunchArgs += '-IgnoreSeasonGuard' }
+        Write-Log "[FF] scripts/run_pipeline_task.ps1 changed in the fast-forward $ffBefore -> $ffAfter. Relaunching the updated script once, same parameters (-Mode $Mode$(if ($IgnoreSeasonGuard) { ' -IgnoreSeasonGuard' }))."
+        $env:MLB_FF_DONE = '1'
+        & powershell.exe @relaunchArgs
+        $childExit = if ($null -eq $LASTEXITCODE) { -1 } else { $LASTEXITCODE }
+        exit $childExit
+    }
+}
+
+# ------------------------------------------------------------------------------
 # Seasonal guard. Ported from WNBA's schedule_daily.bat, which the four-repo
 # audit flagged as the one sport that had one -- "add WNBA's seasonal guard to
 # MLB while you are in there. MLB's dead window is Nov-Mar and it has no guard."
@@ -238,6 +313,22 @@ if (-not (Test-Path $Rscript)) {
     $Rscript = $FromPath.Source
 }
 Write-Log "Using Rscript: $Rscript"
+
+# ------------------------------------------------------------------------------
+# Back up the append-only files (MLB-Analytics#103, ported from NBA #164).
+# cache/ and logs/ are gitignored and inside this checkout, so nothing else
+# protects history a run builds up and cannot refetch. The script COPIES the
+# files it names (never moves or links them) to a dated folder outside any git
+# checkout, by default $env:USERPROFILE\front-office-backups\mlb\YYYY-MM-DD\
+# (override: MLB_BACKUP_ROOT), keeps the 30 newest daily folders and prints one
+# [BACKUP] line. It always exits 0, so it never changes this run's exit code.
+# Called after the pipeline has run, on the success and the failure paths.
+# ------------------------------------------------------------------------------
+function Invoke-AccumulatedBackup {
+    $backupScript = Join-Path $ProjectDir "tools\backup_accumulated_cache.ps1"
+    $backupOutput = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $backupScript -ProjectDir $ProjectDir 2>&1
+    Add-NativeOutputToLog $backupOutput
+}
 
 # ------------------------------------------------------------------------------
 # 1. The pipeline.
@@ -303,6 +394,7 @@ Write-Log "[Step 2/2] MLB web publish gate ($ModeLabel)"
 
 if (-not (Test-Path $PublishScript)) {
     Write-Log "[ERROR] [Step 2/2] $PublishScript is missing. Nothing was published."
+    Invoke-AccumulatedBackup
     exit $PipelineExit
 }
 
@@ -334,6 +426,7 @@ if ($PublishExit -eq 0) {
     Write-Log "[ERROR] and the offending file or value in its detail lines."
 }
 
+Invoke-AccumulatedBackup
 Write-Log "MLB scheduled run finished (pipeline=$PipelineExit, publish=$PublishExit)."
 Write-Log "================================================================"
 

@@ -139,6 +139,51 @@ if not "%FINAL_STATUS_SIZE%"=="0" (
 echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] [Checkout Guard] Verified: HEAD is on 'main' and the working tree is clean. Proceeding. >> "%RUN_LOG%"
 
 REM ==============================================================================
+REM FAST-FORWARD main TO origin/main (MLB-Analytics#101, ported from NBA #162).
+REM
+REM Without this, merged changes never ran until someone pulled by hand.
+REM tools\ff_main.bat logs main's SHA before and after into RUN_LOG; a failed
+REM fetch is a [WARN] and the run continues on the local main; a main that
+REM cannot fast-forward (diverged, or the merge is blocked) is an [ERROR] and
+REM NOTHING below runs. It never resets and never discards a commit.
+REM
+REM Self-update safety. cmd does not load a .bat into memory: after each
+REM command it re-opens the file and reads on from a saved byte offset. If the
+REM fast-forward rewrites THIS file, the old offset points into the new text
+REM and cmd would run half-lines or skip steps, silently. So the call and ALL
+REM of its result handling are one parenthesised block, which cmd parses whole
+REM before running any of it. If this file changed, the block starts the
+REM updated script fresh with the same arguments (MLB_FF_DONE=1 tells it the
+REM fast-forward is already done) and exits with its exit code; nothing after
+REM the block is read from the rewritten file. tools\ff_main.bat protects
+REM itself the same way.
+REM ==============================================================================
+set "FF_BEFORE="
+for /f "delims=" %%S in ('git rev-parse HEAD 2^>nul') do set "FF_BEFORE=%%S"
+if defined MLB_FF_DONE (
+    echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] [FF] MLB_FF_DONE=%MLB_FF_DONE%: fast-forward already done by the instance that relaunched this one. Skipped. main=%FF_BEFORE% >> "%RUN_LOG%"
+) else (
+    call "%PROJECT_DIR%\tools\ff_main.bat" "%RUN_LOG%"
+    if errorlevel 1 (
+        echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] [FF] main could not be fast-forwarded to origin/main. Nothing was run or published. >> "%RUN_LOG%"
+        exit /b 4
+    ) else (
+        set "FF_AFTER="
+        for /f "delims=" %%S in ('git rev-parse HEAD 2^>nul') do set "FF_AFTER=%%S"
+        git diff --quiet !FF_BEFORE! !FF_AFTER! -- schedule_weekly_offseason.bat >nul 2>&1
+        if errorlevel 1 (
+            echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] [FF] schedule_weekly_offseason.bat changed in the fast-forward !FF_BEFORE! -^> !FF_AFTER!. Relaunching the updated script once, same arguments: %* >> "%RUN_LOG%"
+            set "MLB_FF_DONE=1"
+            cmd /c ""%~f0" %*"
+            exit /b !ERRORLEVEL!
+        )
+    )
+)
+REM Each "exit /b" above is the LAST command of its block on purpose: under
+REM "cmd /c", an "exit /b N" followed by more commands in the same block makes
+REM the process exit code 0 instead of N (seen in the NBA sandbox for #162).
+
+REM ==============================================================================
 REM RUN START (MLB-Analytics#74).
 REM
 REM Recorded ONCE, here, before Step 1 writes anything, and handed to Step 3 as
@@ -199,6 +244,10 @@ echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 1: Running buil
 "%RSCRIPT%" --vanilla build_offseason_monitor.R >> "%RUN_LOG%" 2>&1
 if %ERRORLEVEL% neq 0 (
     echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] build_offseason_monitor.R failed with exit code %ERRORLEVEL%. >> "%RUN_LOG%"
+    REM #103: back up the append-only files even when this step failed. %ERRORLEVEL%
+    REM in this block was expanded when the block was parsed, so the exit below
+    REM still returns the step's exit code, not the backup's.
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_DIR%\tools\backup_accumulated_cache.ps1" -ProjectDir "%PROJECT_DIR%" >> "%RUN_LOG%" 2>&1
     exit /b %ERRORLEVEL%
 )
 
@@ -207,6 +256,10 @@ echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 2: Running tool
 "%RSCRIPT%" --vanilla tools/offseason/test_dag_end_to_end.R >> "%RUN_LOG%" 2>&1
 if %ERRORLEVEL% neq 0 (
     echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] tools/offseason/test_dag_end_to_end.R failed with exit code %ERRORLEVEL%. Halting publication. >> "%RUN_LOG%"
+    REM #103: back up the append-only files even when this step failed. %ERRORLEVEL%
+    REM in this block was expanded when the block was parsed, so the exit below
+    REM still returns the step's exit code, not the backup's.
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_DIR%\tools\backup_accumulated_cache.ps1" -ProjectDir "%PROJECT_DIR%" >> "%RUN_LOG%" 2>&1
     exit /b %ERRORLEVEL%
 )
 
@@ -215,6 +268,10 @@ echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 3: Running tool
 "%RSCRIPT%" --vanilla tools/publish_web.R --publish --mode=offseason "--run-start=!RUN_START!" >> "%RUN_LOG%" 2>&1
 if %ERRORLEVEL% neq 0 (
     echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] tools/publish_web.R failed with exit code %ERRORLEVEL%. >> "%RUN_LOG%"
+    REM #103: back up the append-only files even when this step failed. %ERRORLEVEL%
+    REM in this block was expanded when the block was parsed, so the exit below
+    REM still returns the step's exit code, not the backup's.
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_DIR%\tools\backup_accumulated_cache.ps1" -ProjectDir "%PROJECT_DIR%" >> "%RUN_LOG%" 2>&1
     exit /b %ERRORLEVEL%
 )
 
@@ -231,5 +288,16 @@ if errorlevel 1 (
     echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Workflow dispatch successfully triggered. >> "%RUN_LOG%"
 )
 
+REM ==============================================================================
+REM BACK UP THE APPEND-ONLY FILES (MLB-Analytics#103, ported from NBA #164).
+REM cache/ and logs/ are gitignored and inside this checkout, so nothing else
+REM protects history a run builds up and cannot refetch. The script COPIES the
+REM files it names (never moves or links them) to a dated folder outside any git
+REM checkout, by default %USERPROFILE%\front-office-backups\mlb\YYYY-MM-DD\
+REM (override: MLB_BACKUP_ROOT), keeps the 30 newest daily folders, and logs one
+REM [BACKUP] line. It always exits 0: a failed copy is a [WARN] line and never
+REM changes this run's exit code.
+REM ==============================================================================
+powershell -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_DIR%\tools\backup_accumulated_cache.ps1" -ProjectDir "%PROJECT_DIR%" >> "%RUN_LOG%" 2>&1
 echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Daily offseason monitor run completed successfully. >> "%RUN_LOG%"
 exit /b 0

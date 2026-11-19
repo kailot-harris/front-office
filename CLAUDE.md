@@ -62,3 +62,22 @@ sessions also use.
   *before running anything else* if that verification fails. Neither guard
   silently discards work or silently runs from the wrong branch; both either
   land clean or refuse to proceed.
+
+## Worktrees: never link to another checkout (incident 2026-11-16, MLB-Analytics#102)
+- Never junction, symlink or hardlink anything (`cache/`, `cache/<subfolder>`, `web/node_modules`,
+  `renv/library`, ...) from a worktree into the primary checkout or any other checkout. `git worktree remove`
+  follows the link and deletes the target's files silently; a `cache/` junction emptied a sibling sport's
+  primary `cache/` this way (NBA_analytics#163). Here, `logs/logs.duckdb` holds run history nothing can rebuild,
+  and `cache/` takes a long refetch (see `tools/backup_accumulated_cache.ps1`).
+- Instead: copy only the cache files the task needs, or point code at the primary's cache read-only via an env
+  var, and run `npm ci` in the worktree's own `web/`.
+- Before removing ANY worktree by ANY means, run the read-only check
+  `powershell -NoProfile -ExecutionPolicy Bypass -File tools/remove_worktree.ps1 -Path <worktree> -WhatIf`
+  (exit 1 = links found, each listed with its target). Delete each reported link on its own, never
+  recursively (`cmd /c rmdir "<link>"` or `[System.IO.Directory]::Delete("<link>", $false)`), re-check, then
+  run the same command without `-WhatIf`. It refuses the primary checkout, unregistered paths and any worktree
+  that still holds a link, and only then runs `git worktree remove` (never `--force`).
+- Never use plain `git worktree remove`, `Remove-Item -Recurse` or `rm -r` on a worktree that may hold a link.
+  `python ~/.claude/skills/subagent-brief/scripts/cleanup_worktrees.py check --path <worktree>` is an
+  equivalent read-only check.
+- After the FIRST removal incident, stop all removals and audit every worktree; do not repair and continue.
