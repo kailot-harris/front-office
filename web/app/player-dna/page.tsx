@@ -16,8 +16,8 @@ async function getPlayerDnaProfiles(): Promise<PlayerDnaProfile[]> {
 }
 
 export const metadata = {
-  title: 'Player DNA & Historical Twins | NBA Quantitative Analytics',
-  description: '16-Dimensional player skill vectors, archetypes, and nearest historical comparables.',
+  title: 'Player DNA & Peer Comps | NBA Quantitative Analytics',
+  description: '15-Dimensional player skill vectors, archetypes, and nearest current-season (2025-26) comparables.',
 };
 
 export default async function PlayerDnaPage() {

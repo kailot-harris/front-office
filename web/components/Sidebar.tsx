@@ -89,10 +89,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore }) => 
     },
     {
       href: '/player-dna',
-      label: 'Player DNA & Twins',
-      badge: '16-D Manifold',
+      label: 'Player DNA & Peer Comps',
+      badge: '15-D Manifold',
       icon: Dna,
-      desc: 'Archetypes & historical comps',
+      desc: 'Archetypes & current-season comps',
     },
     {
       href: '/defense',

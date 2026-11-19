@@ -1,12 +1,13 @@
 # ==============================================================================
 # build_player_dna_dataset.R
-# Feature 4: High-Dimensional Player DNA & Nearest Historical Comparables
-# Calculates 16-D skill vectors across Finishing, Shooting, Playmaking, Defense, Rebounding.
-# Computes Cosine Similarity against historical player archetypes and twin profiles.
+# Feature 4: High-Dimensional Player DNA & Nearest Current-Season Peer Comparables
+# Calculates 15-D skill vectors across Finishing, Shooting, Playmaking, Defense, Rebounding.
+# Computes cosine similarity between each player's empirical skill vector and every
+# other player's (2025-26 peers only; no hand-typed historical comps).
 #
 # All affine clamp heuristics, synthetic formulas, and hardcoded player overrides
 # have been eliminated (Issue #82, following WNBA Issue #144 precedent).
-# All 16 skill dimensions are grounded in empirical box scores
+# All 15 skill dimensions are grounded in empirical box scores
 # (cache/nba_player_box_2026.rds), play-by-play tracking (cache/nba_pbp_2026.rds),
 # ridge RAPM (cache/rapm_ratings.rds), and defensive metrics (cache/defensive_metrics.rds).
 #
@@ -15,16 +16,33 @@
 # Data window (front-office#109):
 #   Seasons: 2025-26 only: cache/nba_player_box_2026.rds and cache/nba_pbp_2026.rds
 #     (the script stops if either is missing), plus cache/rapm_ratings.rds and
-#     cache/defensive_metrics.rds when present (fixed defaults otherwise). The
+#     cache/defensive_metrics.rds when present (when absent, the
+#     dependent skills are published as null; no substitute constants). The
 #     player list comes from the 2026-27 season projections. No season-type filter
 #     is applied.
 #   Filters: box-score rows with more than 0 minutes; dunks are play-by-play rows
 #     whose play type contains "dunk". Each skill is a percentile across every
 #     player in the projections file.
 #   Minimum sample: none. Every projected player is listed. Per-36 rates use at least
-#     40 minutes (eff_min); shooting percentages are pulled toward league averages
-#     with 25 two-point, 15 three-point and 10 free-throw pseudo-attempts.
-#   Known issues: #82 (formula proxies).
+#     40 minutes (eff_min).
+#   Methodology (documented modelling choices, not fabricated data):
+#     - Shooting percentages are Empirical-Bayes shrunk toward league averages
+#       (2P 0.54, 3P 0.36, FT 0.78) with 25 two-point, 15 three-point and 10
+#       free-throw pseudo-attempts.
+#     - Each raw dimension is a fixed weighted blend of per-36 rates (the weights
+#       are visible in the raw_* definitions below); 3PA/36 is capped at 12.
+#     - Percentiles are ecdf ranks scaled to 15 + 83 * ecdf, i.e. range 15-98.
+#     - Peer similarity is the cosine of the 50-centred percentile vectors over
+#       dimensions non-null for both players (minimum 8 shared), published as
+#       similarityPct = max(cos, 0) * 100 (negative cosines floored at 0). keySharedTrait
+#       is the dimension with the highest min(a, b), shown with a readable label.
+#     - Archetype labels come from category-score thresholds (assign_archetype); players with no box row get a null archetype.
+#     - Missing inputs are never imputed: a player with no 2025-26 box-score row has
+#       every box/PBP-derived skill published as null, receives peerComps = [] and is
+#       excluded from other players' comp candidates. A missing RAPM or defensive
+#       metric likewise publishes null for d_rapm / switchability. A category score
+#       averages its non-null dimensions and is null unless at least half of them
+#       are non-null; overallRating is null unless at least 8 of 15 are non-null.
 # ==============================================================================
 
 suppressPackageStartupMessages({
@@ -37,7 +55,7 @@ suppressPackageStartupMessages({
 config_path <- if (file.exists("config.R")) "config.R" else "../config.R"
 source(config_path)
 
-cat(">>> [PLAYER DNA] Initializing 16-D Player Skill Embeddings & Historical Twins...\n")
+cat(">>> [PLAYER DNA] Initializing 15-D Player Skill Embeddings & Peer Comps...\n")
 
 # Load existing player projections
 proj_players_file <- WEB_JSON_PROJECTIONS_SEASON_PLAYERS  # config.R
@@ -102,73 +120,24 @@ def_lookup <- if (!is.null(def_list)) {
 }
 
 # ------------------------------------------------------------------------------
-# 1. Historical Archetype Database (Gold Standard Comps 1990-2025)
-# 16-Dimensional Normalized Metrics [0 - 100 percentile scales]:
+# 1. Skill dimensions (15-D, empirical percentiles [15 - 98] across the player universe)
 # Finishing: rim_fg, dunks, paint_touches
 # Shooting: cns_3p, pullup_3p, ft_pct
-# Playmaking: ast_pct, pot_ast, tov_control, drive_ast
+# Playmaking: ast_pct, tov_control, drive_ast
 # Defense: switchability, rim_protection, perimeter_havoc, d_rapm
 # Rebounding: oreb, dreb
 # ------------------------------------------------------------------------------
 
-format_season_label <- function(x) {
-  gsub("\\b([0-9]{2})([0-9]{2})-([0-9]{2})\\b", "\\1\\2-\\1\\3", x, perl = TRUE)
-}
-
-historical_comps <- tribble(
-  ~comp_name, ~era, ~archetype, ~pos, ~dna_vector,
-  "LeBron James (2012-13 MIA)", "2012-13", "Helio-Centric Power Hub", "F",
-    c(96, 92, 95,  75, 78, 76,  94, 95, 78, 92,  95, 72, 85, 96,  58, 82),
-  "Stephen Curry (2015-16 GSW)", "2015-16", "Off-Ball Movement Sniper", "G",
-    c(88, 15, 65,  99, 99, 98,  82, 85, 72, 80,  62, 28, 92, 65,  35, 62),
-  "Kevin Durant (2016-17 GSW)", "2016-17", "Three-Level Scoring Wing", "F",
-    c(92, 78, 85,  92, 95, 94,  74, 76, 75, 72,  84, 82, 74, 86,  42, 84),
-  "Nikola Jokic (2023-24 DEN)", "2023-24", "Post Playmaking Maestro", "C",
-    c(95, 45, 98,  72, 68, 88,  99, 98, 82, 88,  48, 64, 82, 88,  94, 98),
-  "Giannis Antetokounmpo (2019-20 MIL)", "2019-20", "Rim-Running Attrition Beast", "F",
-    c(98, 99, 99,  55, 48, 68,  78, 80, 65, 75,  92, 88, 76, 98,  88, 97),
-  "Kawhi Leonard (2018-19 TOR)", "2018-19", "Two-Way Mid-Range Assassin", "F",
-    c(88, 68, 78,  88, 86, 90,  68, 72, 84, 70,  94, 62, 94, 94,  52, 78),
-  "James Harden (2018-19 HOU)", "2018-19", "Isolation Step-Back Engine", "G",
-    c(85, 42, 88,  82, 98, 89,  95, 96, 60, 94,  55, 45, 88, 68,  44, 72),
-  "Anthony Davis (2019-20 LAL)", "2019-20", "Anchor Big & Lob Threat", "C",
-    c(94, 95, 92,  68, 55, 84,  58, 60, 78, 55,  88, 96, 78, 95,  84, 94),
-  "Chris Paul (2007-08 NOH)", "2007-08", "Floor General Point God", "G",
-    c(78, 12, 72,  82, 84, 91,  98, 98, 95, 92,  75, 22, 98, 84,  38, 64),
-  "Klay Thompson (2015-16 GSW)", "2015-16", "Catch-and-Shoot Specialist", "G",
-    c(74, 38, 50,  98, 86, 89,  48, 50, 85, 45,  78, 48, 72, 76,  28, 48),
-  "Draymond Green (2015-16 GSW)", "2015-16", "Defensive Disruptor & Short-Roll Hub", "F",
-    c(70, 48, 65,  78, 65, 72,  88, 89, 74, 82,  98, 85, 94, 98,  62, 88),
-  "Rudy Gobert (2020-21 UTA)", "2020-21", "Paint Fortress & Rim Deterrent", "C",
-    c(92, 96, 88,  20, 15, 64,  32, 35, 70, 25,  52, 98, 55, 97,  96, 98),
-  "Russell Westbrook (2016-17 OKC)", "2016-17", "Downhill Force Engine", "G",
-    c(86, 82, 92,  72, 75, 84,  96, 97, 52, 95,  68, 38, 86, 68,  68, 85),
-  "Jimmy Butler (2019-20 MIA)", "2019-20", "Grind-it-Out Two-Way Slasher", "F",
-    c(84, 62, 85,  68, 62, 86,  78, 82, 82, 85,  92, 54, 92, 89,  68, 76),
-  "Paul George (2018-19 OKC)", "2018-19", "Two-Way Wing Shotmaker", "F",
-    c(82, 74, 76,  90, 88, 85,  68, 72, 78, 68,  90, 58, 94, 88,  48, 78),
-  "Dirk Nowitzki (2005-06 DAL)", "2005-06", "Trail Big & Mid-Post Deadeye", "F",
-    c(86, 45, 80,  92, 90, 92,  64, 66, 88, 55,  58, 65, 62, 78,  52, 88),
-  "Manu Ginobili (2006-07 SAS)", "2006-07", "Eurostep Craft Creator", "G",
-    c(86, 52, 75,  85, 82, 84,  84, 86, 76, 88,  78, 42, 90, 78,  42, 65),
-  "Dwight Howard (2008-09 ORL)", "2008-09", "Hyper-Athletic Paint Eraser", "C",
-    c(94, 99, 96,  15, 10, 59,  40, 42, 62, 30,  70, 99, 72, 98,  96, 99),
-  "Kyrie Irving (2015-16 CLE)", "2015-16", "Elite Isolation Finisher", "G",
-    c(92, 35, 82,  88, 94, 89,  80, 82, 84, 86,  60, 32, 78, 62,  32, 52),
-  "Marcus Smart (2021-22 BOS)", "2021-22", "Point-of-Attack Pest", "G",
-    c(68, 25, 52,  75, 72, 79,  76, 78, 76, 72,  96, 45, 96, 92,  38, 58)
-)
-
 dim_names <- c(
   "rim_fg", "dunks", "paint_touches",
   "cns_3p", "pullup_3p", "ft_pct",
-  "ast_pct", "pot_ast", "tov_control", "drive_ast",
+  "ast_pct", "tov_control", "drive_ast",
   "switchability", "rim_protection", "perimeter_havoc", "d_rapm",
   "oreb", "dreb"
 )
 
 # ------------------------------------------------------------------------------
-# 2. Derive Empirical Indicators Across All 16 Dimensions
+# 2. Derive Empirical Indicators Across All 15 Dimensions
 # ------------------------------------------------------------------------------
 
 # Aggregate regular-season box scores per player
@@ -210,31 +179,38 @@ player_metrics <- players_df %>%
   left_join(box_agg, by = c("pid" = "athlete_id")) %>%
   left_join(dunk_counts, by = c("pid" = "athlete_id")) %>%
   mutate(
-    drapm_val = coalesce(rapm_lookup[c_name], if_else(position == "C", 0.85, if_else(position == "F", 0.25, -0.15))),
-    dunk_count = coalesce(dunk_count, 0L),
-    eff_min = pmax(coalesce(min_tot, 0), 40.0),
+    # Missing RAPM -> NA (published as null), never a made-up position constant
+    drapm_val = unname(rapm_lookup[c_name]),
+    # Players with no 2025-26 box-score row: every box- and PBP-derived quantity
+    # stays NA (published as null). No priors-only shrinkage, no zero-fill, no
+    # proj_* substitution.
+    has_box_row = !is.na(games),
+    # A player with a box row and no dunk play-by-play events genuinely has 0 dunks
+    dunk_count = if_else(has_box_row, coalesce(dunk_count, 0L), NA_integer_),
+    eff_min = pmax(min_tot, 40.0),
 
-    # 2P and 3P stats (Empirical Bayes shrunk)
-    fg2m = pmax(0, coalesce(fgm, 0) - coalesce(fg3m, 0)),
-    fg2a = pmax(0, coalesce(fga, 0) - coalesce(fg3a, 0)),
+    # 2P and 3P stats (Empirical Bayes shrunk; only when the player has box data)
+    fg2m = pmax(0, fgm - fg3m),
+    fg2a = pmax(0, fga - fg3a),
     fg2_pct = (fg2m + 25 * 0.54) / (fg2a + 25),
-    fg3_pct = (coalesce(fg3m, 0) + 15 * 0.36) / (coalesce(fg3a, 0) + 15),
-    ft_pct_raw = (coalesce(ftm, 0) + 10 * 0.78) / (coalesce(fta, 0) + 10),
+    fg3_pct = (fg3m + 15 * 0.36) / (fg3a + 15),
+    ft_pct_raw = (ftm + 10 * 0.78) / (fta + 10),
 
     # Per-36 minute rates
-    pts_per36 = (coalesce(pts, proj_pts * (eff_min / 36)) / eff_min) * 36,
+    pts_per36 = (pts / eff_min) * 36,
     dunk_per36 = (dunk_count / eff_min) * 36,
-    paint_per36 = (fg2m / eff_min) * 36 + (coalesce(fta, 0) / eff_min) * 18,
-    fg3a_per36 = (coalesce(fg3a, 0) / eff_min) * 36,
-    ast_per36 = (coalesce(ast, proj_ast * (eff_min / 36)) / eff_min) * 36,
-    oreb_per36 = (coalesce(oreb, 0) / eff_min) * 36,
-    dreb_per36 = (coalesce(dreb, proj_reb * (eff_min / 36)) / eff_min) * 36,
-    stl_per36 = (coalesce(stl, 0) / eff_min) * 36,
-    blk_per36 = (coalesce(blk, 0) / eff_min) * 36,
-    tov_per36 = (coalesce(tov, 0) / eff_min) * 36,
+    paint_per36 = (fg2m / eff_min) * 36 + (fta / eff_min) * 18,
+    fg3a_per36 = (fg3a / eff_min) * 36,
+    ast_per36 = (ast / eff_min) * 36,
+    oreb_per36 = (oreb / eff_min) * 36,
+    dreb_per36 = (dreb / eff_min) * 36,
+    stl_per36 = (stl / eff_min) * 36,
+    blk_per36 = (blk / eff_min) * 36,
+    tov_per36 = (tov / eff_min) * 36,
 
     # Versatility score from defensive metrics
-    versatility = coalesce(def_lookup[pid], 65.0),
+    # Missing defensive metrics -> NA (published as null), never a constant
+    versatility = unname(def_lookup[pid]),
 
     # Raw dimension values
     raw_rim_fg = fg2_pct,
@@ -244,8 +220,7 @@ player_metrics <- players_df %>%
     raw_pullup_3p = (pmin(fg3a_per36, 12) / 12) * 0.65 + fg3_pct * 0.35,
     raw_ft_pct = ft_pct_raw,
     raw_ast_pct = ast_per36,
-    raw_pot_ast = ast_per36 * 1.3,
-    raw_tov_control = 1.0 - (coalesce(tov, 2) + 2) / (coalesce(fga, 10) + coalesce(ast, 3) + coalesce(tov, 2) + 10),
+    raw_tov_control = 1.0 - (tov + 2) / (fga + ast + tov + 10),
     raw_drive_ast = ast_per36 * 0.70 + pts_per36 * 0.30,
     raw_switchability = versatility,
     raw_rim_protection = blk_per36 * 3.5 + dreb_per36 * 0.5,
@@ -269,17 +244,68 @@ for (d in dim_names) {
   skill_matrix[, d] <- pct_map(player_metrics[[raw_col]])
 }
 
-cat(">>> Computed empirical 16-D skill percentiles across all 330 roster players.\n")
+cat(">>> Computed empirical 15-D skill percentiles across all 330 roster players.\n")
 
-# Cosine similarity function
+# Cosine similarity of 50-centred percentile vectors, over the dimensions both
+# players have (NA dims skipped). Returns NA when fewer than MIN_OVERLAP dims are
+# shared. Published as similarityPct = max(cos, 0) * 100 (negatives floored at 0).
+# Centring removes the shared positive offset of raw 15-98 percentiles, which
+# otherwise makes every pair look ~90%+ similar.
+MIN_OVERLAP <- 8
 calc_cosine_sim <- function(v1, v2) {
-  dot_prod <- sum(v1 * v2)
+  ok <- !is.na(v1) & !is.na(v2)
+  if (sum(ok) < MIN_OVERLAP) return(NA_real_)
+  v1 <- v1[ok] - 50; v2 <- v2[ok] - 50
   norm1 <- sqrt(sum(v1^2))
   norm2 <- sqrt(sum(v2^2))
-  if (norm1 == 0 || norm2 == 0) return(0)
-  sim <- (dot_prod / (norm1 * norm2)) * 100
-  return(round(sim, 1))
+  if (norm1 == 0 || norm2 == 0) return(NA_real_)
+  round(max(sum(v1 * v2) / (norm1 * norm2), 0) * 100, 1)
 }
+
+# Human-readable dimension labels for keySharedTrait
+dim_labels <- c(
+  rim_fg = "Rim finishing", dunks = "Dunking", paint_touches = "Paint touches",
+  cns_3p = "Catch-and-shoot 3PT", pullup_3p = "Pull-up 3PT", ft_pct = "Free-throw shooting",
+  ast_pct = "Assist rate", tov_control = "Turnover control", drive_ast = "Drive creation",
+  switchability = "Switchability", rim_protection = "Rim protection",
+  perimeter_havoc = "Perimeter havoc", d_rapm = "Defensive RAPM",
+  oreb = "Offensive rebounding", dreb = "Defensive rebounding"
+)
+
+# Archetype per player (also reused as the archetype of each peer comp)
+# Mean of non-null dims, or NA unless at least min_n dims are non-null
+mean_or_na <- function(x, min_n = 1) if (sum(!is.na(x)) < min_n) NA_real_ else round(mean(x, na.rm = TRUE), 1)
+assign_archetype <- function(cs, pos, proj_pts, proj_reb, has_box) {
+  if (!has_box) return(NA_character_)  # no box data: no archetype, published as null
+  is_guard <- pos == "G"; is_center <- pos == "C"; is_forward <- pos == "F"
+  ge <- function(x, t) !is.na(x) && x >= t
+  if (is_center && ge(cs$defense, 80)) "Interior Rim Anchor" else
+  if (ge(cs$playmaking, 85) && ge(cs$shooting, 80)) "Helio-Centric Playmaking Engine" else
+  if (ge(cs$finishing, 85) && ge(cs$rebounding, 85)) "Rim-Running Attrition Beast" else
+  if (ge(cs$playmaking, 85)) "Floor General Point Hub" else
+  if (ge(cs$shooting, 85) && is_guard) "Off-Ball Movement Sniper" else
+  if (ge(cs$defense, 80) && is_forward) "Two-Way Championship Wing" else
+  if (ge(cs$defense, 80) && is_guard) "Point-of-Attack Stopper" else
+  if (is_guard && proj_pts >= 22.0) "Scoring Combo Guard" else
+  if (is_forward && proj_pts >= 20.0) "Three-Level Scoring Forward" else
+  if (is_forward && proj_reb >= 6.0) "Two-Way Wing Connector" else
+  if (is_center) "Interior Frontcourt Anchor" else
+  "Versatile System Contributor"
+}
+# A category score needs at least half of its dimensions non-null
+cat_mean <- function(v) mean_or_na(v, min_n = ceiling(length(v) / 2))
+cat_scores <- function(vec) list(
+  finishing = cat_mean(vec[1:3]),
+  shooting = cat_mean(vec[4:6]),
+  playmaking = cat_mean(vec[7:9]),
+  defense = cat_mean(vec[10:13]),
+  rebounding = cat_mean(vec[14:15])
+)
+has_box_row <- player_metrics$has_box_row
+all_archetypes <- vapply(seq_len(nrow(players_df)), function(j) {
+  assign_archetype(cat_scores(skill_matrix[j, ]), players_df$position[j],
+                   players_df$proj_pts[j], players_df$proj_reb[j], has_box_row[j])
+}, character(1))
 
 player_dna_list <- list()
 
@@ -290,54 +316,34 @@ for (i in seq_len(nrow(players_df))) {
   team <- p$team
   pid <- as.character(p$player_id)
 
-  is_guard <- pos == "G"
-  is_center <- pos == "C"
-  is_forward <- pos == "F"
-
   vec <- skill_matrix[i, ]
 
   # 5-Category Aggregate Scores for radar UI
-  category_scores <- list(
-    finishing = round(mean(vec[1:3]), 1),
-    shooting = round(mean(vec[4:6]), 1),
-    playmaking = round(mean(vec[7:10]), 1),
-    defense = round(mean(vec[11:14]), 1),
-    rebounding = round(mean(vec[15:16]), 1)
-  )
+  category_scores <- cat_scores(vec)
 
-  # Compute Cosine Similarity against all historical archetypes
-  sim_scores <- sapply(1:nrow(historical_comps), function(h_idx) {
-    calc_cosine_sim(vec, historical_comps$dna_vector[[h_idx]])
-  })
+  # Peer comps: cosine similarity vs every OTHER current-season player
+  # No-box players neither receive comps nor appear as candidates for others.
+  sim_scores <- vapply(seq_len(nrow(players_df)), function(j) {
+    if (j == i || !has_box_row[i] || !has_box_row[j]) NA_real_
+    else calc_cosine_sim(vec, skill_matrix[j, ])
+  }, numeric(1))
+  rank_order <- order(sim_scores, decreasing = TRUE, na.last = NA)
+  top_idx <- head(rank_order, 5)
 
-  # Rank top 5 historical twins
-  rank_order <- order(sim_scores, decreasing = TRUE)
-  top_5_indices <- rank_order[1:5]
-
-  twins <- lapply(top_5_indices, function(idx) {
+  peers <- lapply(top_idx, function(idx) {
+    shared <- pmin(vec, skill_matrix[idx, ])
     list(
-      compName = format_season_label(historical_comps$comp_name[idx]),
-      era = format_season_label(historical_comps$era[idx]),
-      archetype = historical_comps$archetype[idx],
-      position = historical_comps$pos[idx],
+      compName = players_df$player_name[idx],
+      playerId = as.character(players_df$player_id[idx]),
+      era = "2025-26",
+      archetype = all_archetypes[idx],
+      position = players_df$position[idx],
       similarityPct = sim_scores[idx],
-      keySharedTrait = paste0("High affinity in ", dim_names[which.max(historical_comps$dna_vector[[idx]])])
+      keySharedTrait = paste0("Shared strength: ", dim_labels[[dim_names[which.max(shared)]]])
     )
   })
 
-  # Dynamic archetype assignment derived from category strengths
-  archetype <- if (is_center && category_scores$defense >= 80) "Interior Rim Anchor" else
-               if (category_scores$playmaking >= 85 && category_scores$shooting >= 80) "Helio-Centric Playmaking Engine" else
-               if (category_scores$finishing >= 85 && category_scores$rebounding >= 85) "Rim-Running Attrition Beast" else
-               if (category_scores$playmaking >= 85) "Floor General Point Hub" else
-               if (category_scores$shooting >= 85 && is_guard) "Off-Ball Movement Sniper" else
-               if (category_scores$defense >= 80 && is_forward) "Two-Way Championship Wing" else
-               if (category_scores$defense >= 80 && is_guard) "Point-of-Attack Stopper" else
-               if (is_guard && p$proj_pts >= 22.0) "Scoring Combo Guard" else
-               if (is_forward && p$proj_pts >= 20.0) "Three-Level Scoring Forward" else
-               if (is_forward && p$proj_reb >= 6.0) "Two-Way Wing Connector" else
-               if (is_center) "Interior Frontcourt Anchor" else
-               "Versatile System Contributor"
+  archetype <- all_archetypes[i]
 
   # 2D Manifold Coordinates for scatter plot
   manifold_x <- round((category_scores$playmaking * 0.6 + category_scores$shooting * 0.4) - 50, 1)
@@ -353,12 +359,12 @@ for (i in seq_len(nrow(players_df))) {
     projReb = p$proj_reb,
     projAst = p$proj_ast,
     projMpg = p$proj_mpg,
-    overallRating = round(mean(vec), 1),
+    overallRating = mean_or_na(vec, min_n = 8),
     manifoldX = manifold_x,
     manifoldY = manifold_y,
-    skillVector = as.list(setNames(vec, dim_names)),
+    skillVector = as.list(setNames(as.numeric(vec), dim_names)),
     categoryScores = category_scores,
-    historicalTwins = twins
+    peerComps = peers
   )
 }
 
@@ -366,7 +372,7 @@ for (i in seq_len(nrow(players_df))) {
 # 3. Export to JSON for Next.js Web Application
 # ------------------------------------------------------------------------------
 output_json <- WEB_JSON_PLAYER_DNA_PROFILES  # config.R
-jsonlite::write_json(player_dna_list, output_json, pretty = TRUE, auto_unbox = TRUE)
+jsonlite::write_json(player_dna_list, output_json, pretty = TRUE, auto_unbox = TRUE, na = "null")
 cat(sprintf(">>> [SUCCESS] Wrote %d Player DNA profiles to '%s'.\n", length(player_dna_list), output_json))
 
 # Cache RDS as well

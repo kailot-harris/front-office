@@ -76,6 +76,7 @@ export const DnaManifoldScatter: React.FC<DnaManifoldScatterProps> = ({
 
           {/* Background points */}
           {players.map((p) => {
+            if (p.manifoldX === null || p.manifoldY === null) return null;
             const isSelected = p.playerId === selectedPlayer.playerId;
             const cx = scaleX(p.manifoldX);
             const cy = scaleY(p.manifoldY);
@@ -95,12 +96,13 @@ export const DnaManifoldScatter: React.FC<DnaManifoldScatterProps> = ({
                 className="cursor-pointer transition-all hover:opacity-100 hover:r-4"
                 onClick={() => onSelectPlayer(p)}
               >
-                <title>{`${p.playerName} (${p.team}) - ${p.archetype}`}</title>
+                <title>{`${p.playerName} (${p.team}) - ${p.archetype ?? 'Insufficient data'}`}</title>
               </circle>
             );
           })}
 
           {/* Active Highlight Pin */}
+          {selectedPlayer.manifoldX !== null && selectedPlayer.manifoldY !== null && (
           <g transform={`translate(${scaleX(selectedPlayer.manifoldX)}, ${scaleY(selectedPlayer.manifoldY)})`}>
             <circle r="8" fill="none" stroke="#f43f5e" strokeWidth="1.5" className="animate-ping" opacity="0.6" />
             <text
@@ -111,6 +113,7 @@ export const DnaManifoldScatter: React.FC<DnaManifoldScatterProps> = ({
               {selectedPlayer.playerName}
             </text>
           </g>
+          )}
         </svg>
       </div>
 

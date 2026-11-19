@@ -291,11 +291,93 @@ describe('Domain & mathematical invariants: clutch, defense, playerDna, coaches,
     }
   });
 
-  it('player_dna_profiles.json: every player has historical twins with similarityPct sorted descending', () => {
+  it('player_dna_profiles.json: peer comps are sorted descending; players with data get 5', () => {
     for (const p of playerDna) {
-      expect(p.historicalTwins.length).toBeGreaterThanOrEqual(1);
-      for (let i = 1; i < p.historicalTwins.length; i++) {
-        expect(p.historicalTwins[i - 1].similarityPct).toBeGreaterThanOrEqual(p.historicalTwins[i].similarityPct);
+      if (p.peerComps.length > 0) expect(p.peerComps.length).toBe(5);
+      for (let i = 1; i < p.peerComps.length; i++) {
+        expect(p.peerComps[i - 1].similarityPct).toBeGreaterThanOrEqual(p.peerComps[i].similarityPct);
+      }
+    }
+  });
+
+  const BOX_DERIVED_DIMS = [
+    'rim_fg', 'dunks', 'paint_touches', 'cns_3p', 'pullup_3p', 'ft_pct', 'ast_pct',
+    'tov_control', 'drive_ast', 'rim_protection', 'perimeter_havoc', 'oreb', 'dreb',
+  ] as const;
+
+  it('player_dna_profiles.json: no two players share an identical full skillVector unless it has no box-derived data', () => {
+    const seen = new Map<string, string>();
+    for (const p of playerDna) {
+      // Vectors with no box-derived dim are skipped: only a tie-prone switchability
+      // percentile can remain, which is not a fabricated shared vector.
+      if (BOX_DERIVED_DIMS.every((d) => p.skillVector[d] === null)) continue;
+      const key = JSON.stringify(p.skillVector);
+      expect(seen.has(key), `${p.playerName} duplicates skillVector of ${seen.get(key)}`).toBe(false);
+      seen.set(key, p.playerName);
+    }
+  });
+
+  it('player_dna_profiles.json: empty peerComps implies null box-derived dims and never appears as a peer', () => {
+    const empty = playerDna.filter((p) => p.peerComps.length === 0);
+    for (const p of empty) {
+      for (const d of BOX_DERIVED_DIMS) {
+        expect(p.skillVector[d], `${p.playerName} ${d} should be null`).toBeNull();
+      }
+    }
+    const emptyIds = new Set(empty.map((p) => p.playerId));
+    const emptyNames = new Set(empty.map((p) => p.playerName));
+    for (const p of playerDna) {
+      for (const c of p.peerComps) {
+        expect(emptyIds.has(c.playerId), `${p.playerName} lists no-data player ${c.compName}`).toBe(false);
+        expect(emptyNames.has(c.compName)).toBe(false);
+      }
+    }
+    // Inverse: a player with any non-null box-derived dim has comps.
+    for (const p of playerDna) {
+      if (BOX_DERIVED_DIMS.some((d) => p.skillVector[d] !== null)) {
+        expect(p.peerComps.length, `${p.playerName} has box data but no comps`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('player_dna_profiles.json: archetype is null exactly for players with no box-derived data; skillVector has 15 dims', () => {
+    for (const p of playerDna) {
+      const noBox = BOX_DERIVED_DIMS.every((d) => p.skillVector[d] === null);
+      expect(p.archetype === null, `${p.playerName} archetype nullness`).toBe(noBox);
+      expect(Object.keys(p.skillVector).length).toBe(15);
+      expect(Object.keys(p.skillVector)).not.toContain('pot_ast');
+    }
+  });
+
+  it('player_dna_profiles.json: overallRating null iff <8 of 15 dims non-null; category null iff <half of its dims non-null', () => {
+    const groups: Record<string, string[]> = {
+      finishing: ['rim_fg', 'dunks', 'paint_touches'],
+      shooting: ['cns_3p', 'pullup_3p', 'ft_pct'],
+      playmaking: ['ast_pct', 'tov_control', 'drive_ast'],
+      defense: ['switchability', 'rim_protection', 'perimeter_havoc', 'd_rapm'],
+      rebounding: ['oreb', 'dreb'],
+    };
+    const sv = (p: (typeof playerDna)[number]) => p.skillVector as unknown as Record<string, number | null>;
+    const cs = (p: (typeof playerDna)[number]) => p.categoryScores as unknown as Record<string, number | null>;
+    for (const p of playerDna) {
+      const nn = Object.values(p.skillVector).filter((v) => v !== null).length;
+      expect(p.overallRating === null, `${p.playerName} overallRating nullness (non-null dims=${nn})`).toBe(nn < 8);
+      for (const [cat, dims] of Object.entries(groups)) {
+        const k = dims.filter((d) => sv(p)[d] !== null).length;
+        expect(cs(p)[cat] === null, `${p.playerName} ${cat} nullness (non-null dims=${k}/${dims.length})`).toBe(k * 2 < dims.length);
+      }
+    }
+  });
+
+  it('player_dna_profiles.json: every peer comp is another player present in the same payload', () => {
+    const names = new Set(playerDna.map((p) => p.playerName));
+    const ids = new Set(playerDna.map((p) => p.playerId));
+    for (const p of playerDna) {
+      for (const c of p.peerComps) {
+        expect(names.has(c.compName), `${p.playerName} comp ${c.compName} not in payload`).toBe(true);
+        expect(ids.has(c.playerId), `${p.playerName} comp id ${c.playerId} not in payload`).toBe(true);
+        expect(c.compName, `${p.playerName} lists itself as a comp`).not.toBe(p.playerName);
+        expect(c.playerId, `${p.playerName} lists itself as a comp`).not.toBe(p.playerId);
       }
     }
   });
