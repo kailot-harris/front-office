@@ -181,7 +181,7 @@ run_stage("tools/fetch_bbref_salary_cap_history.R", "Fetch Basketball-Reference 
 run_stage("tools/derive_team_payroll_from_bbref.R", "Derive Per-Team Active-Roster Payroll from BBRef Contracts",
           output = file.path(CACHE_DIR, "bbref_team_payroll_active_roster.rds"))
 run_stage("build_cba_cap_dataset.R", "Calculate 30-Team CBA Cap Sheets, Aprons & Luxury Tax Penalties")
-run_stage("build_player_dna_dataset.R", "Embed 16-D Player DNA Vectors & Nearest Historical Twins",
+run_stage("build_player_dna_dataset.R", "Embed 15-D Player DNA Vectors & Current-Season Peer Comps",
           output = file.path(CACHE_DIR, "player_dna_profiles.rds"))
 run_stage("build_defense_dataset.R", "Compute Positional Versatility Entropy & Rim Deterrence Residuals",
           output = file.path(CACHE_DIR, "defensive_metrics.rds"))
