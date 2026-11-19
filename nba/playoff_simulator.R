@@ -1,8 +1,10 @@
 # ==============================================================================
 # playoff_simulator.R
 # Phase 4 / Sprint 1 Upgrade: Comprehensive 7-Game Playoff Series Matchup Simulator
-# Incorporates 8-man postseason rotation minute-tightening, pairwise tactical mismatch
-# adjustments, and 10,000 Monte Carlo series iterations per matchup.
+# Incorporates 8-man postseason rotation minute-tightening, deterministic empirical
+# team tactical ratings (from Player DNA, Defensive Metrics, and Clutch eFG%),
+# pairwise tactical mismatch adjustments, and 10,000 seeded Monte Carlo series
+# iterations per matchup.
 # ==============================================================================
 
 suppressPackageStartupMessages({
@@ -20,25 +22,152 @@ if (!dir.exists(CACHE_DIR)) dir.create(CACHE_DIR, recursive = TRUE)
 
 message(">>> [PLAYOFFS] Initializing Monte Carlo Playoff Series Simulator Engine...")
 
-# Load baseline team and player projections
+# Load baseline team, player, and empirical tactical datasets
 teams_file <- WEB_JSON_PROJECTIONS_SEASON_TEAMS  # config.R
-players_file <- file.path(PROJECT_DIR, "web", "public", "data", "projections_season_players.json")
+players_file <- WEB_JSON_PROJECTIONS_SEASON_PLAYERS  # config.R
+dna_file <- WEB_JSON_PLAYER_DNA_PROFILES
+defense_file <- WEB_JSON_DEFENSIVE_METRICS
+clutch_file <- WEB_JSON_CLUTCH_LEVERAGE_METRICS
 
-if (!file.exists(teams_file) || !file.exists(players_file)) {
-  stop("Missing projections_season_teams.json or projections_season_players.json")
+required_inputs <- c(teams_file, players_file, dna_file, defense_file, clutch_file)
+missing_inputs <- required_inputs[!file.exists(required_inputs)]
+if (length(missing_inputs) > 0) {
+  stop(sprintf("Missing required input dataset(s): %s", paste(missing_inputs, collapse = ", ")))
+}
+
+unwrap_profiles <- function(obj, label) {
+  if (is.data.frame(obj)) {
+    return(obj)
+  }
+  if (is.list(obj) && !is.null(obj$profiles) && is.data.frame(obj$profiles)) {
+    return(obj$profiles)
+  }
+  stop(sprintf("Unexpected JSON envelope in %s: expected data.frame or object with $profiles", label))
 }
 
 teams_df <- fromJSON(teams_file)
 players_df <- fromJSON(players_file)
+dna_profiles_df <- unwrap_profiles(fromJSON(dna_file), dna_file)
+def_profiles_df <- unwrap_profiles(fromJSON(defense_file), defense_file)
+clutch_profiles_df <- unwrap_profiles(fromJSON(clutch_file), clutch_file)
 
-message(sprintf(">>> Loaded %d teams and %d projected rotation players.", nrow(teams_df), nrow(players_df)))
+message(sprintf(
+  ">>> Loaded %d teams, %d projected players, %d DNA profiles, %d defensive profiles, %d clutch profiles.",
+  nrow(teams_df), nrow(players_df), nrow(dna_profiles_df), nrow(def_profiles_df), nrow(clutch_profiles_df)
+))
 
 # ------------------------------------------------------------------------------
-# 1. 8-Man Playoff Rotation & Tactical Profiling
+# 1. Empirical Team Tactical Profiling & 8-Man Playoff Rotation
 # ------------------------------------------------------------------------------
-message(">>> Computing 8-man playoff rotation contractions and tactical ratings...")
+message(">>> Computing empirical team tactical ratings and 8-man playoff rotations...")
 
-build_playoff_profiles <- function(teams, players) {
+weighted_mean_safe <- function(vals, wts) {
+  if (length(vals) == 0) return(NA_real_)
+  vals_num <- suppressWarnings(as.numeric(vals))
+  wts_num <- suppressWarnings(as.numeric(wts))
+  ok <- is.finite(vals_num) & is.finite(wts_num) & wts_num > 0
+  if (any(ok)) {
+    return(sum(vals_num[ok] * wts_num[ok]) / sum(wts_num[ok]))
+  }
+  ok_v <- is.finite(vals_num)
+  if (any(ok_v)) {
+    return(mean(vals_num[ok_v]))
+  }
+  NA_real_
+}
+
+scale_rating <- function(x, lo, hi, metric_name = "metric") {
+  x_num <- suppressWarnings(as.numeric(x))
+  bad <- !is.finite(x_num)
+  if (any(bad)) {
+    med <- median(x_num[!bad], na.rm = TRUE)
+    if (!is.finite(med)) med <- (lo + hi) / 2
+    warning(sprintf("Empirical %s had %d missing/non-finite team value(s); filled with league median.", metric_name, sum(bad)))
+    x_num[bad] <- med
+  }
+  rng <- range(x_num)
+  if (diff(rng) == 0) {
+    return(rep(as.integer(round((lo + hi) / 2)), length(x_num)))
+  }
+  as.integer(round(lo + ((x_num - rng[1]) / (rng[2] - rng[1])) * (hi - lo)))
+}
+
+compute_empirical_tactical_ratings <- function(team_codes, dna_profiles, def_profiles, clutch_profiles) {
+  n_teams <- length(team_codes)
+  raw_perim <- numeric(n_teams)
+  raw_dropv <- numeric(n_teams)
+  raw_inter <- numeric(n_teams)
+  raw_switc <- numeric(n_teams)
+  raw_clutc <- numeric(n_teams)
+
+  for (idx in seq_len(n_teams)) {
+    tc <- team_codes[idx]
+
+    d_sub <- dna_profiles[dna_profiles$team == tc, , drop = FALSE]
+    if (nrow(d_sub) > 0 && is.data.frame(d_sub$skillVector) && is.data.frame(d_sub$categoryScores)) {
+      sv <- d_sub$skillVector
+      cs <- d_sub$categoryScores
+      p_player <- 0.60 * as.numeric(sv$pullup_3p) + 0.40 * as.numeric(sv$drive_ast)
+      i_player <- 0.45 * as.numeric(cs$finishing) + 0.35 * as.numeric(cs$rebounding) + 0.20 * as.numeric(sv$rim_protection)
+      raw_perim[idx] <- weighted_mean_safe(p_player, d_sub$projMpg)
+      raw_inter[idx] <- weighted_mean_safe(i_player, d_sub$projMpg)
+    } else {
+      raw_perim[idx] <- NA_real_
+      raw_inter[idx] <- NA_real_
+    }
+
+    df_sub <- def_profiles[def_profiles$team == tc, , drop = FALSE]
+    if (nrow(df_sub) > 0) {
+      raw_dropv[idx] <- weighted_mean_safe(-as.numeric(df_sub$dRapm), df_sub$projMpg)
+      raw_switc[idx] <- weighted_mean_safe(as.numeric(df_sub$versatilityScore), df_sub$projMpg)
+    } else {
+      raw_dropv[idx] <- NA_real_
+      raw_switc[idx] <- NA_real_
+    }
+
+    c_sub <- clutch_profiles[clutch_profiles$team == tc, , drop = FALSE]
+    if (nrow(c_sub) > 0 && is.data.frame(c_sub$shotBreakdown)) {
+      sb <- c_sub$shotBreakdown
+      fga_vec <- suppressWarnings(as.numeric(sb$totalClutchFga))
+      ok_c <- is.finite(fga_vec) & fga_vec > 0
+      tot_fga <- sum(fga_vec[ok_c], na.rm = TRUE)
+      if (tot_fga > 0 && is.data.frame(sb$rim) && is.data.frame(sb$mid) && is.data.frame(sb$three)) {
+        rim_fgm <- sum(suppressWarnings(as.numeric(sb$rim$fgm[ok_c])), na.rm = TRUE)
+        mid_fgm <- sum(suppressWarnings(as.numeric(sb$mid$fgm[ok_c])), na.rm = TRUE)
+        three_fgm <- sum(suppressWarnings(as.numeric(sb$three$fgm[ok_c])), na.rm = TRUE)
+        raw_clutc[idx] <- (rim_fgm + mid_fgm + 1.5 * three_fgm) / tot_fga
+      } else {
+        raw_clutc[idx] <- NA_real_
+      }
+    } else {
+      raw_clutc[idx] <- NA_real_
+    }
+  }
+
+  scaled_df <- data.frame(
+    team = team_codes,
+    perimeterCreation = scale_rating(raw_perim, 35, 95, "perimeterCreation"),
+    dropVulnerability = scale_rating(raw_dropv, 20, 85, "dropVulnerability"),
+    interiorDominance = scale_rating(raw_inter, 35, 95, "interiorDominance"),
+    switchability     = scale_rating(raw_switc, 35, 95, "switchability"),
+    clutchExecution   = scale_rating(raw_clutc, 35, 95, "clutchExecution"),
+    stringsAsFactors  = FALSE
+  )
+
+  out <- list()
+  for (idx in seq_len(n_teams)) {
+    out[[team_codes[idx]]] <- list(
+      perimeterCreation = scaled_df$perimeterCreation[idx],
+      dropVulnerability = scaled_df$dropVulnerability[idx],
+      interiorDominance = scaled_df$interiorDominance[idx],
+      switchability     = scaled_df$switchability[idx],
+      clutchExecution   = scaled_df$clutchExecution[idx]
+    )
+  }
+  out
+}
+
+build_playoff_profiles <- function(teams, players, tactical_ratings_by_team) {
   profiles <- list()
   
   for (i in 1:nrow(teams)) {
@@ -93,37 +222,13 @@ build_playoff_profiles <- function(teams, players) {
     reg_net_rtg <- round((tm_row$ensemble_mean_wins - 41.0) * 0.32, 2)
     playoff_net_rtg <- round(reg_net_rtg + top3_bump, 2)
     
-    # Tactical Archetype Ratings (0-100)
-    # Calibrated based on team personnel
-    perim_creation <- case_when(
-      tm_code %in% c("OKC", "NYK", "DAL", "IND", "GSW", "BOS") ~ round(runif(1, 88, 97)),
-      tm_code %in% c("MIA", "DEN", "CLE", "MIN", "LAL", "PHX", "MEM") ~ round(runif(1, 78, 87)),
-      TRUE ~ round(runif(1, 55, 75))
-    )
-    
-    drop_vuln <- case_when(
-      tm_code %in% c("MIL", "IND", "CHI", "DET", "UTA") ~ round(runif(1, 65, 85)),
-      tm_code %in% c("BOS", "OKC", "HOU", "MIA") ~ round(runif(1, 20, 35)),
-      TRUE ~ round(runif(1, 40, 60))
-    )
-    
-    interior_dom <- case_when(
-      tm_code %in% c("MIA", "DEN", "OKC", "MIN", "HOU", "LAL", "CLE") ~ round(runif(1, 86, 96)),
-      tm_code %in% c("IND", "GSW", "BKN", "CHA") ~ round(runif(1, 45, 65)),
-      TRUE ~ round(runif(1, 65, 80))
-    )
-    
-    switchability <- case_when(
-      tm_code %in% c("BOS", "OKC", "HOU", "MIA", "MIN") ~ round(runif(1, 88, 98)),
-      tm_code %in% c("MIL", "IND", "DEN", "SAC") ~ round(runif(1, 50, 70)),
-      TRUE ~ round(runif(1, 65, 80))
-    )
-    
-    clutch_exec <- case_when(
-      tm_code %in% c("OKC", "BOS", "DEN", "NYK", "MIA", "DAL") ~ round(runif(1, 85, 96)),
-      TRUE ~ round(runif(1, 60, 80))
-    )
-    
+    # Deterministic empirical tactical archetype ratings (0-100) derived from
+    # Player DNA, Defensive Metrics (-dRapm, versatilityScore), and Clutch eFG%.
+    t_ratings <- tactical_ratings_by_team[[tm_code]]
+    if (is.null(t_ratings)) {
+      stop(sprintf("Missing empirical tactical ratings for team %s", tm_code))
+    }
+
     profiles[[tm_code]] <- list(
       teamAbbr = tm_code,
       teamName = tm_row$team_name,
@@ -132,13 +237,7 @@ build_playoff_profiles <- function(teams, players) {
       regularNetRtg = reg_net_rtg,
       playoffNetRtg = playoff_net_rtg,
       top3TalentBump = top3_bump,
-      tacticalRatings = list(
-        perimeterCreation = perim_creation,
-        dropVulnerability = drop_vuln,
-        interiorDominance = interior_dom,
-        switchability = switchability,
-        clutchExecution = clutch_exec
-      ),
+      tacticalRatings = t_ratings,
       rotation = rotation_list
     )
   }
@@ -146,7 +245,13 @@ build_playoff_profiles <- function(teams, players) {
   profiles
 }
 
-team_profiles <- build_playoff_profiles(teams_df, players_df)
+empirical_tactical_ratings <- compute_empirical_tactical_ratings(
+  teams_df$team,
+  dna_profiles_df,
+  def_profiles_df,
+  clutch_profiles_df
+)
+team_profiles <- build_playoff_profiles(teams_df, players_df, empirical_tactical_ratings)
 
 # ------------------------------------------------------------------------------
 # 2. Pairwise Tactical Mismatch & Monte Carlo Simulator (10,000 Iterations)
