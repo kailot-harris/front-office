@@ -470,8 +470,7 @@ run_registered_stage("export_web_json")
 run_registered_stage("shot_chart_dataset")
 
 # 11. WNBA Offseason Moves & Roster Landscape (Phase 3)
-# Output: web/public/data/offseason_transactions.json (+ offseason_teams.json, offseason_draft.json)
-run_registered_stage("offseason_dataset")
+# ARCHIVED pending live feed integration (GitHub #129, #141; stage removed from pipeline_stages.R)
 
 # 12. WNBA Coaching Staff & Tactical Analytics (Phase 3)
 # Output: web/public/data/coaching_metrics.json (+ cache/coaching_metrics.rds)
@@ -490,8 +489,7 @@ run_registered_stage("player_dna_dataset")
 run_registered_stage("clutch_dataset")
 
 # 16. WNBA Hard Salary Cap, Rookie Scale & 11-vs-12 Player Roster Crunch (Phase 3)
-# Output: web/public/data/cba_cap_sheet.json (+ cache/cba_cap_sheet.rds)
-run_registered_stage("cba_cap_dataset")
+# ARCHIVED pending live feed integration (GitHub #128, #140, #141; stage removed from pipeline_stages.R)
 
 # 17. Per-game Matchups: week ribbon, graded past weeks, pending future weeks (#74)
 # Output: web/public/data/matchups_slates.json (+ cache/matchups_cache.rds)

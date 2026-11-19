@@ -178,6 +178,50 @@ if not "%ERRORLEVEL%"=="0" (
 
 echo [OK] Checkout-safety guard: landed cleanly on main ^(HEAD=%CUR_BRANCH%^). Proceeding with the pipeline. >> "%LOG_FILE%"
 
+REM ------------------------------------------------------------------------------
+REM Fast-forward main to origin/main (issue #198; ported from NBA_analytics #162).
+REM Without this, merged changes never ran until someone pulled by hand.
+REM tools\ff_main.bat logs main's SHA before and after; a failed fetch is a
+REM [WARN] and the run continues on the local main; a main that cannot
+REM fast-forward (diverged) is an [ERROR] and the pipeline does NOT run. It
+REM never resets and never discards a commit.
+REM
+REM Self-update safety. cmd does not load a .bat into memory: after each
+REM command it re-opens the file and reads on from a saved byte offset.
+REM If the fast-forward rewrites THIS file, the old offset points into the
+REM new text and cmd would run half-lines or skip steps, silently. So the
+REM call and ALL of its result handling are one parenthesised block, which
+REM cmd parses whole before running any of it. If schedule_daily.bat
+REM changed, the block starts the updated script fresh with the same
+REM arguments (WNBA_FF_DONE=1 tells it the fast-forward is already done)
+REM and exits with its exit code; nothing after the block is read from
+REM the rewritten file. tools\ff_main.bat protects itself the same way.
+REM ------------------------------------------------------------------------------
+set FF_BEFORE=
+for /f "delims=" %%S in ('git rev-parse HEAD 2^>nul') do set FF_BEFORE=%%S
+if defined WNBA_FF_DONE (
+    echo [FF] WNBA_FF_DONE=%WNBA_FF_DONE%: fast-forward already done by the instance that relaunched this one. Skipped. main=%FF_BEFORE% >> "%LOG_FILE%"
+) else (
+    call "%PROJECT_DIR%\tools\ff_main.bat" "%LOG_FILE%"
+    if errorlevel 1 (
+        echo [ERROR] schedule_daily.bat: main could not be fast-forwarded to origin/main. Pipeline NOT run. >> "%LOG_FILE%"
+        exit /b 4
+    ) else (
+        set FF_AFTER=
+        for /f "delims=" %%S in ('git rev-parse HEAD 2^>nul') do set FF_AFTER=%%S
+        git diff --quiet !FF_BEFORE! !FF_AFTER! -- schedule_daily.bat >nul 2>&1
+        if errorlevel 1 (
+            echo [FF] schedule_daily.bat changed in the fast-forward !FF_BEFORE! -^> !FF_AFTER!. Relaunched itself after a self-update, same arguments: %* >> "%LOG_FILE%"
+            set WNBA_FF_DONE=1
+            cmd /c ""%~f0" %*"
+            exit /b !ERRORLEVEL!
+        )
+    )
+)
+REM Each "exit /b" above is the LAST command of its block on purpose: under
+REM "cmd /c", an "exit /b N" followed by more commands in the same block makes
+REM the process exit code 0 instead of N (seen in the NBA sandbox for #162).
+
 where Rscript >nul 2>&1
 if %ERRORLEVEL% equ 0 (
     set RSCRIPT=Rscript
@@ -316,6 +360,18 @@ if not "%PUBLISH_RC%"=="0" (
 ) else (
     echo [OK] Step 4/4 - publish gate passed in mode %MODE_LABEL%. >> "%LOG_FILE%"
 )
+
+REM ------------------------------------------------------------------------------
+REM Back up the append-only files (issue #200; ported from NBA_analytics #164).
+REM cache/ and logs/ are gitignored and inside this checkout, so nothing else
+REM protects the graded prediction log. tools\backup_accumulated_cache.ps1 COPIES
+REM the files it names (never moves or links them) to a dated folder outside any
+REM git checkout, by default %USERPROFILE%\front-office-backups\wnba\YYYY-MM-DD\
+REM (override: WNBA_BACKUP_ROOT), keeps the 30 newest daily folders, and logs
+REM one [BACKUP] line. It always exits 0: a failed copy is a [WARN] line and
+REM never changes this run's exit code. It runs whether or not a step failed.
+REM ------------------------------------------------------------------------------
+powershell -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_DIR%\tools\backup_accumulated_cache.ps1" -CacheDir "%PROJECT_DIR%\cache" -LogsDir "%PROJECT_DIR%\logs" >> "%LOG_FILE%" 2>&1
 
 echo ================================================================== >> "%LOG_FILE%"
 if "%PIPELINE_FAILED%"=="1" (

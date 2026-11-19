@@ -128,6 +128,37 @@ if not "%ERRORLEVEL%"=="0" (
 
 echo [%DATE% %TIME%] [OK] [schedule_weekly_offseason.bat] Checkout-safety guard: landed cleanly on main ^(HEAD=%CUR_BRANCH%^). Proceeding. >> "%LOG_FILE%"
 
+REM ------------------------------------------------------------------------------
+REM Fast-forward main to origin/main (issue #198; same block and rationale as
+REM schedule_daily.bat). A failed fetch is a [WARN] and the run continues on the
+REM local main; a main that cannot fast-forward is an [ERROR] and nothing runs.
+REM It never resets. If the fast-forward rewrote THIS file, the block relaunches
+REM the updated script once with the same arguments (WNBA_FF_DONE=1) and exits
+REM with its exit code, so nothing more is read from the rewritten file. Each
+REM "exit /b" is the last command of its block on purpose (see schedule_daily.bat).
+REM ------------------------------------------------------------------------------
+set FF_BEFORE=
+for /f "delims=" %%S in ('git rev-parse HEAD 2^>nul') do set FF_BEFORE=%%S
+if defined WNBA_FF_DONE (
+    echo [%DATE% %TIME%] [FF] [schedule_weekly_offseason.bat] WNBA_FF_DONE=%WNBA_FF_DONE%: fast-forward already done by the instance that relaunched this one. Skipped. main=%FF_BEFORE% >> "%LOG_FILE%"
+) else (
+    call "%PROJECT_DIR%\tools\ff_main.bat" "%LOG_FILE%"
+    if errorlevel 1 (
+        echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] main could not be fast-forwarded to origin/main. Pipeline NOT run. >> "%LOG_FILE%"
+        exit /b 4
+    ) else (
+        set FF_AFTER=
+        for /f "delims=" %%S in ('git rev-parse HEAD 2^>nul') do set FF_AFTER=%%S
+        git diff --quiet !FF_BEFORE! !FF_AFTER! -- schedule_weekly_offseason.bat >nul 2>&1
+        if errorlevel 1 (
+            echo [%DATE% %TIME%] [FF] [schedule_weekly_offseason.bat] changed in the fast-forward !FF_BEFORE! -^> !FF_AFTER!. Relaunched itself after a self-update, same arguments: %* >> "%LOG_FILE%"
+            set WNBA_FF_DONE=1
+            cmd /c ""%~f0" %*"
+            exit /b !ERRORLEVEL!
+        )
+    )
+)
+
 REM Resolve Rscript executable
 set RSCRIPT=
 where Rscript >nul 2>&1
@@ -162,6 +193,9 @@ echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 1: Running buil
 "%RSCRIPT%" --vanilla build_offseason_monitor.R >> "%LOG_FILE%" 2>&1
 if %ERRORLEVEL% neq 0 (
     echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] build_offseason_monitor.R failed with exit code %ERRORLEVEL%. >> "%LOG_FILE%"
+    REM #200: back up the append-only files even when this step failed. %ERRORLEVEL%
+    REM below was expanded when this block was parsed, so the step's exit code is kept.
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_DIR%\tools\backup_accumulated_cache.ps1" -CacheDir "%PROJECT_DIR%\cache" -LogsDir "%PROJECT_DIR%\logs" >> "%LOG_FILE%" 2>&1
     exit /b %ERRORLEVEL%
 )
 
@@ -170,6 +204,9 @@ echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 2: Running tool
 "%RSCRIPT%" --vanilla tools/publish_web.R --publish --mode=offseason >> "%LOG_FILE%" 2>&1
 if %ERRORLEVEL% neq 0 (
     echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] tools/publish_web.R failed with exit code %ERRORLEVEL%. >> "%LOG_FILE%"
+    REM #200: back up the append-only files even when this step failed. %ERRORLEVEL%
+    REM below was expanded when this block was parsed, so the step's exit code is kept.
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_DIR%\tools\backup_accumulated_cache.ps1" -CacheDir "%PROJECT_DIR%\cache" -LogsDir "%PROJECT_DIR%\logs" >> "%LOG_FILE%" 2>&1
     exit /b %ERRORLEVEL%
 )
 
@@ -199,5 +236,12 @@ if defined GH_BIN (
     echo [%DATE% %TIME%] [WARN] [schedule_weekly_offseason.bat] GitHub CLI (gh) not found; skipping direct workflow dispatch. >> "%LOG_FILE%"
 )
 
+REM ------------------------------------------------------------------------------
+REM Back up the append-only files (issue #200; same script and rationale as
+REM schedule_daily.bat). In the off-season schedule_daily.bat exits before its
+REM pipeline, so this weekly run is what takes the dated copy Nov-Apr. Always
+REM exits 0: a failed copy is a [WARN] line and never changes this run's result.
+REM ------------------------------------------------------------------------------
+powershell -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_DIR%\tools\backup_accumulated_cache.ps1" -CacheDir "%PROJECT_DIR%\cache" -LogsDir "%PROJECT_DIR%\logs" >> "%LOG_FILE%" 2>&1
 echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Weekly offseason monitor run completed successfully. >> "%LOG_FILE%"
 exit /b 0
