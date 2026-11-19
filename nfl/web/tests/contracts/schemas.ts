@@ -464,10 +464,16 @@ export const clutchProfileSchema = z.object({
   baselineSuccessRate: pct100.nullable(),
   clutchCpoe: z.number().nullable(),
   turnoverFragility: z.number().nullable(),
-  fourthDownAggressiveness: pct100.nullable(),
+  fourthDownConversionRate: pct100.nullable().optional(),
+  fourthDownAggressiveness: pct100.nullable().optional(),
   clutchArchetype: z.string().min(1),
   provenance: z.enum(['REAL_CURRENT_SEASON', 'INSUFFICIENT_SAMPLE']),
-}).strict();
+})
+  .strict()
+  .refine(
+    (p) => p.fourthDownConversionRate !== undefined || p.fourthDownAggressiveness !== undefined,
+    { message: 'ClutchProfile must carry fourthDownConversionRate (or legacy fourthDownAggressiveness)' },
+  );
 
 export const gameTeamSummarySchema = z.object({
   teamAbbr: teamCode,

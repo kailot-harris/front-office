@@ -11,7 +11,7 @@
 #   2. Clutch Success Rate (%)
 #   3. Clutch CPOE (Completion % Over Expected)
 #   4. Turnover Fragility Under Pressure (Clutch TO% - Baseline TO%)
-#   5. 4th Down Go-for-it Aggressiveness (%)
+#   5. 4th Down Conversion Rate (%)
 #   6. Situational Archetype Tagging & Sample Qualification (MIN_CLUTCH_PASS_ATTEMPTS = 20L)
 #
 # Exports:
@@ -30,18 +30,21 @@
 #   Filters: a clutch play is in the 4th quarter or overtime and either has a
 #     score margin of 8 or less, or comes in the last 5 minutes with win
 #     probability from 10% to 90%. QBs come from player_qb_profiles.json, and
-#     their plays are matched on passer id or passer name only, so plays with
-#     no passer listed (such as scrambles) are left out.
+#     their plays match passer_player_id / passer_player_name plus QB scrambles
+#     (qb_scramble == 1) matched via rusher_player_id / rusher_player_name
+#     (NFL_analytics#168).
 #   Minimum sample: MIN_CLUTCH_PASS_ATTEMPTS (20 clutch pass attempts; was 5
 #     before #80). QBs below it stay in the output with their attempt counts
 #     and empty metrics, marked "Insufficient Sample", and get no archetype.
 #     The value is exported on every profile (minClutchAttempts) so the page
 #     states the threshold actually used.
 #   Counts: clutchAttempts / baselineAttempts count pass_attempt == 1 rows
-#     (passes, sacks and spikes); clutchPlays / baselinePlays count
-#     pass == 1 | qb_dropback == 1 rows (passes and sacks, but not spikes).
-#     Rows are matched on the passer, so in practice plays <= attempts.
-#   Known issues: #168 (scrambles, fourth-down label).
+#     (passes, sacks and spikes; used for sample qualification and CPOE);
+#     clutchPlays / baselinePlays count pass == 1 | qb_dropback == 1 |
+#     qb_scramble == 1 rows (passes, sacks and scrambles, but not spikes).
+#     Because scrambles have pass_attempt == 0, plays can exceed attempts.
+#   4th down metric: fourthDownConversionRate computes converted / total 4th-down
+#     QB plays and emits NA_real_ (JSON null) when 0 4th-down plays exist.
 # ==============================================================================
 
 suppressPackageStartupMessages({
@@ -64,6 +67,232 @@ if (dir.exists(script_dir)) {
 
 # Source global config
 source("config.R")
+
+# ------------------------------------------------------------------------------
+# Pure helper functions (extracted for unit testing via load_ast_symbols)
+# ------------------------------------------------------------------------------
+
+is_flag_one <- function(df, col) {
+  if (col %in% names(df)) !is.na(df[[col]]) & df[[col]] == 1 else rep(FALSE, nrow(df))
+}
+
+add_clutch_flag <- function(pbp) {
+  score_diff_abs <- abs(pbp$score_differential)
+  qtr_ge_4 <- !is.na(pbp$qtr) & pbp$qtr >= 4
+  pbp$score_diff_abs <- score_diff_abs
+  pbp$is_clutch <- (
+    (qtr_ge_4 & !is.na(score_diff_abs) & score_diff_abs <= 8) |
+    (qtr_ge_4 & !is.na(pbp$half_seconds_remaining) & pbp$half_seconds_remaining <= 300 &
+     !is.na(pbp$wp) & pbp$wp >= 0.10 & pbp$wp <= 0.90)
+  )
+  pbp
+}
+
+extract_qb_clutch_plays <- function(pbp, pname, gid = NULL) {
+  abbr_name <- paste0(substr(pname, 1, 1), ".", sub(".* ", "", pname))
+  has_gid <- !is.null(gid) && length(gid) == 1L && !is.na(gid) && nzchar(as.character(gid))
+  n_rows <- nrow(pbp)
+  if (n_rows == 0L) return(pbp)
+
+  passer_match <- rep(FALSE, n_rows)
+  has_passer_id <- "passer_player_id" %in% names(pbp)
+  has_passer_name <- "passer_player_name" %in% names(pbp)
+  if (has_gid && has_passer_id) {
+    passer_match <- passer_match | (!is.na(pbp$passer_player_id) & pbp$passer_player_id == gid)
+    if (has_passer_name) {
+      passer_match <- passer_match | (
+        is.na(pbp$passer_player_id) &
+          !is.na(pbp$passer_player_name) &
+          (pbp$passer_player_name == pname | pbp$passer_player_name == abbr_name)
+      )
+    }
+  } else if (has_passer_name) {
+    passer_match <- passer_match | (
+      !is.na(pbp$passer_player_name) &
+        (pbp$passer_player_name == pname | pbp$passer_player_name == abbr_name)
+    )
+  }
+
+  # Include QB scrambles (passer_player_* are NA on scrambles; match rusher_player_*).
+  scramble_match <- rep(FALSE, n_rows)
+  if ("qb_scramble" %in% names(pbp)) {
+    is_scramble <- !is.na(pbp$qb_scramble) & pbp$qb_scramble == 1
+    rusher_match <- rep(FALSE, n_rows)
+    has_rusher_id <- "rusher_player_id" %in% names(pbp)
+    has_rusher_name <- "rusher_player_name" %in% names(pbp)
+    if (has_gid && has_rusher_id) {
+      rusher_match <- rusher_match | (!is.na(pbp$rusher_player_id) & pbp$rusher_player_id == gid)
+      if (has_rusher_name) {
+        rusher_match <- rusher_match | (
+          is.na(pbp$rusher_player_id) &
+            !is.na(pbp$rusher_player_name) &
+            (pbp$rusher_player_name == pname | pbp$rusher_player_name == abbr_name)
+        )
+      }
+    } else if (has_rusher_name) {
+      rusher_match <- rusher_match | (
+        !is.na(pbp$rusher_player_name) &
+          (pbp$rusher_player_name == pname | pbp$rusher_player_name == abbr_name)
+      )
+    }
+    scramble_match <- is_scramble & rusher_match
+  }
+
+  pbp[passer_match | scramble_match, , drop = FALSE]
+}
+
+compute_qb_clutch_profile <- function(
+  pbp,
+  pname,
+  pteam,
+  gid = NULL,
+  is_starter = FALSE,
+  headshot = "",
+  season = CURRENT_SEASON,
+  through_week = NA_integer_,
+  min_clutch_attempts = 20L,
+  fallback_player_id = sprintf("NFL-%s-00", pteam)
+) {
+  if (!"is_clutch" %in% names(pbp)) {
+    pbp <- add_clutch_flag(pbp)
+  }
+
+  qb_plays <- extract_qb_clutch_plays(pbp, pname = pname, gid = gid)
+
+  is_dropback <- is_flag_one(qb_plays, "pass") |
+    is_flag_one(qb_plays, "qb_dropback") |
+    is_flag_one(qb_plays, "qb_scramble")
+  is_pass_att <- is_flag_one(qb_plays, "pass_attempt")
+  is_clutch_row <- !is.na(qb_plays$is_clutch) & qb_plays$is_clutch
+
+  # Baseline (all regular passes / dropbacks, including QB scrambles)
+  baseline_plays <- qb_plays[is_dropback, , drop = FALSE]
+  baseline_pass_att <- qb_plays[is_pass_att, , drop = FALSE]
+
+  # Clutch plays (high-leverage passes / dropbacks, including QB scrambles)
+  clutch_plays <- qb_plays[is_clutch_row & is_dropback, , drop = FALSE]
+  clutch_pass_att <- qb_plays[is_clutch_row & is_pass_att, , drop = FALSE]
+
+  n_clutch_att <- nrow(clutch_pass_att)
+  n_clutch_plays <- nrow(clutch_plays)
+  n_base_att <- nrow(baseline_pass_att)
+  n_base_plays <- nrow(baseline_plays)
+
+  player_id <- if (!is.null(gid) && length(gid) == 1L && !is.na(gid) && nzchar(as.character(gid))) {
+    gid
+  } else {
+    fallback_player_id
+  }
+
+  has_sample <- n_clutch_att >= min_clutch_attempts
+
+  if (has_sample) {
+    # 1. Clutch EPA and Baseline EPA
+    c_epa_vals <- clutch_plays$epa[!is.na(clutch_plays$epa)]
+    b_epa_vals <- baseline_plays$epa[!is.na(baseline_plays$epa)]
+    c_epa <- if (length(c_epa_vals) > 0L) round(mean(c_epa_vals), 3) else NA_real_
+    b_epa <- if (length(b_epa_vals) > 0L) round(mean(b_epa_vals), 3) else NA_real_
+    c_epa_delta <- if (!is.na(c_epa) && !is.na(b_epa)) round(c_epa - b_epa, 3) else NA_real_
+
+    # 2. Success rates
+    c_sr_vals <- clutch_plays$success[!is.na(clutch_plays$success)]
+    b_sr_vals <- baseline_plays$success[!is.na(baseline_plays$success)]
+    c_sr <- if (length(c_sr_vals) > 0L) round(mean(c_sr_vals) * 100, 1) else NA_real_
+    b_sr <- if (length(b_sr_vals) > 0L) round(mean(b_sr_vals) * 100, 1) else NA_real_
+
+    # 3. Clutch CPOE (pass attempts only; scrambles have pass_attempt == 0)
+    cpoe_vals <- clutch_pass_att$cpoe[!is.na(clutch_pass_att$cpoe)]
+    c_cpoe <- if (length(cpoe_vals) > 0L) round(mean(cpoe_vals), 1) else 0.0
+
+    # 4. Turnover fragility under pressure: Delta TOV rate
+    # Turnovers = interceptions + lost fumbles
+    c_to_count <- sum(is_flag_one(clutch_plays, "interception")) + sum(is_flag_one(clutch_plays, "fumble_lost"))
+    b_to_count <- sum(is_flag_one(baseline_plays, "interception")) + sum(is_flag_one(baseline_plays, "fumble_lost"))
+    c_to_rate <- (c_to_count / max(1, n_clutch_plays)) * 100
+    b_to_rate <- (b_to_count / max(1, n_base_plays)) * 100
+    tov_fragility <- round(c_to_rate - b_to_rate, 1)
+
+    # 5. 4th down conversion rate (%)
+    qb_4th_plays <- if ("down" %in% names(qb_plays)) {
+      qb_plays[!is.na(qb_plays$down) & qb_plays$down == 4, , drop = FALSE]
+    } else {
+      qb_plays[0, , drop = FALSE]
+    }
+    fourth_conv_rate <- if (nrow(qb_4th_plays) > 0L) {
+      round((sum(is_flag_one(qb_4th_plays, "fourth_down_converted")) / nrow(qb_4th_plays)) * 100, 1)
+    } else {
+      NA_real_
+    }
+
+    # 6. Situational Archetype Tag
+    archetype <- if (!is.na(c_epa_delta) && !is.na(c_sr) && c_epa_delta >= 0.12 && c_sr >= 50.0) {
+      "Elite Ice-in-Veins Finisher"
+    } else if (!is.na(c_cpoe) && !is.na(c_epa) && c_cpoe >= 3.5 && c_epa >= 0.05) {
+      "High-Leverage Shotmaker"
+    } else if (!is.na(c_epa) && !is.na(tov_fragility) && c_epa >= 0.10 && tov_fragility <= 0.0) {
+      "Poised Late-Game Closer"
+    } else if ((!is.na(c_epa_delta) && c_epa_delta <= -0.12) || (!is.na(tov_fragility) && tov_fragility >= 4.0)) {
+      "Fragile Under Pressure"
+    } else if (!is.na(c_sr) && c_sr >= 45.0) {
+      "Efficient Situational Closer"
+    } else {
+      "Game Manager Under Pressure"
+    }
+
+    list(
+      playerId = player_id,
+      playerName = pname,
+      team = pteam,
+      position = "QB",
+      isStarter = is_starter,
+      headshotUrl = headshot,
+      season = season,
+      throughWeek = through_week,
+      minClutchAttempts = min_clutch_attempts,
+      clutchAttempts = as.integer(n_clutch_att),
+      clutchPlays = as.integer(n_clutch_plays),
+      baselineAttempts = as.integer(n_base_att),
+      baselinePlays = as.integer(n_base_plays),
+      clutchEpa = c_epa,
+      baselineEpa = b_epa,
+      clutchEpaDelta = c_epa_delta,
+      clutchSuccessRate = c_sr,
+      baselineSuccessRate = b_sr,
+      clutchCpoe = c_cpoe,
+      turnoverFragility = tov_fragility,
+      fourthDownConversionRate = fourth_conv_rate,
+      clutchArchetype = archetype,
+      provenance = "REAL_CURRENT_SEASON"
+    )
+  } else {
+    # Low sample player: emit typed null for rate and efficiency metrics
+    list(
+      playerId = player_id,
+      playerName = pname,
+      team = pteam,
+      position = "QB",
+      isStarter = is_starter,
+      headshotUrl = headshot,
+      season = season,
+      throughWeek = through_week,
+      minClutchAttempts = min_clutch_attempts,
+      clutchAttempts = as.integer(n_clutch_att),
+      clutchPlays = as.integer(n_clutch_plays),
+      baselineAttempts = as.integer(n_base_att),
+      baselinePlays = as.integer(n_base_plays),
+      clutchEpa = NA_real_,
+      baselineEpa = NA_real_,
+      clutchEpaDelta = NA_real_,
+      clutchSuccessRate = NA_real_,
+      baselineSuccessRate = NA_real_,
+      clutchCpoe = NA_real_,
+      turnoverFragility = NA_real_,
+      fourthDownConversionRate = NA_real_,
+      clutchArchetype = "Insufficient Sample",
+      provenance = "INSUFFICIENT_SAMPLE"
+    )
+  }
+}
 
 cat(">>> [CLUTCH ENGINE] Initializing NFL 4Q True Clutch & Leverage Index Engine...\n")
 
@@ -134,15 +363,7 @@ rosters_df <- if (file.exists(rosters_path)) {
 
 # Identify high-leverage plays window:
 # Margin <= 8 points in 4Q/OT, OR win probability between 10% and 90% in final 5m of 4Q/OT
-pbp <- pbp %>%
-  mutate(
-    score_diff_abs = abs(score_differential),
-    is_clutch = (
-      (qtr >= 4 & !is.na(score_diff_abs) & score_diff_abs <= 8) |
-      (qtr >= 4 & !is.na(half_seconds_remaining) & half_seconds_remaining <= 300 &
-       !is.na(wp) & wp >= 0.10 & wp <= 0.90)
-    )
-  )
+pbp <- add_clutch_flag(pbp)
 
 clutch_play_count <- sum(pbp$is_clutch, na.rm = TRUE)
 cat(sprintf(">>> [CLUTCH ENGINE] Identified %d high-leverage late-game clutch plays (%.1f%% of sample).\n",
@@ -174,135 +395,18 @@ for (i in seq_len(nrow(qb_profiles_df))) {
     }
   }
 
-  abbr_name <- paste0(substr(pname, 1, 1), ".", sub(".* ", "", pname))
-
-  # Extract QB plays
-  qb_plays <- if (!is.null(gid) && !is.na(gid) && "passer_player_id" %in% names(pbp)) {
-    pbp %>% filter(
-      (!is.na(passer_player_id) & passer_player_id == gid) |
-      (!is.na(passer_player_name) & (passer_player_name == pname | passer_player_name == abbr_name))
-    )
-  } else {
-    pbp %>% filter(
-      !is.na(passer_player_name) & (passer_player_name == pname | passer_player_name == abbr_name)
-    )
-  }
-
-  # Baseline (all regular passes / dropbacks)
-  baseline_plays <- qb_plays %>% filter(pass == 1 | qb_dropback == 1)
-  baseline_pass_att <- qb_plays %>% filter(pass_attempt == 1)
-  
-  # Clutch plays (high-leverage passes / dropbacks)
-  clutch_plays <- qb_plays %>% filter(is_clutch & (pass == 1 | qb_dropback == 1))
-  clutch_pass_att <- qb_plays %>% filter(is_clutch & pass_attempt == 1)
-
-  n_clutch_att <- nrow(clutch_pass_att)
-  n_clutch_plays <- nrow(clutch_plays)
-  n_base_att <- nrow(baseline_pass_att)
-  n_base_plays <- nrow(baseline_plays)
-
-  has_sample <- n_clutch_att >= MIN_CLUTCH_PASS_ATTEMPTS
-
-  if (has_sample) {
-    # 1. Clutch EPA and Baseline EPA
-    c_epa <- round(mean(clutch_plays$epa, na.rm = TRUE), 3)
-    b_epa <- round(mean(baseline_plays$epa, na.rm = TRUE), 3)
-    c_epa_delta <- round(c_epa - b_epa, 3)
-
-    # 2. Success rates
-    c_sr <- round(mean(clutch_plays$success, na.rm = TRUE) * 100, 1)
-    b_sr <- round(mean(baseline_plays$success, na.rm = TRUE) * 100, 1)
-
-    # 3. Clutch CPOE
-    cpoe_vals <- clutch_pass_att$cpoe[!is.na(clutch_pass_att$cpoe)]
-    c_cpoe <- if (length(cpoe_vals) > 0) round(mean(cpoe_vals), 1) else 0.0
-
-    # 4. Turnover fragility under pressure: Delta TOV rate
-    # Turnovers = interceptions + lost fumbles
-    c_to_count <- sum(clutch_plays$interception == 1, na.rm = TRUE) + sum(clutch_plays$fumble_lost == 1, na.rm = TRUE)
-    b_to_count <- sum(baseline_plays$interception == 1, na.rm = TRUE) + sum(baseline_plays$fumble_lost == 1, na.rm = TRUE)
-    c_to_rate <- (c_to_count / max(1, n_clutch_plays)) * 100
-    b_to_rate <- (b_to_count / max(1, n_base_plays)) * 100
-    tov_fragility <- round(c_to_rate - b_to_rate, 1)
-
-    # 5. 4th down go-for-it aggressiveness / conversion
-    qb_4th_plays <- qb_plays %>% filter(down == 4)
-    fourth_agg <- if (nrow(qb_4th_plays) > 0) {
-      round((sum(qb_4th_plays$fourth_down_converted == 1, na.rm = TRUE) / nrow(qb_4th_plays)) * 100, 1)
-    } else {
-      50.0
-    }
-
-    # 6. Situational Archetype Tag
-    archetype <- if (c_epa_delta >= 0.12 && c_sr >= 50.0) {
-      "Elite Ice-in-Veins Finisher"
-    } else if (c_cpoe >= 3.5 && c_epa >= 0.05) {
-      "High-Leverage Shotmaker"
-    } else if (c_epa >= 0.10 && tov_fragility <= 0.0) {
-      "Poised Late-Game Closer"
-    } else if (c_epa_delta <= -0.12 || tov_fragility >= 4.0) {
-      "Fragile Under Pressure"
-    } else if (c_sr >= 45.0) {
-      "Efficient Situational Closer"
-    } else {
-      "Game Manager Under Pressure"
-    }
-
-    provenance <- "REAL_CURRENT_SEASON"
-
-    clutch_profiles[[i]] <- list(
-      playerId = if (!is.null(gid) && !is.na(gid)) gid else sprintf("NFL-%s-%02d", pteam, i),
-      playerName = pname,
-      team = pteam,
-      position = "QB",
-      isStarter = is_starter,
-      headshotUrl = headshot,
-      season = DATA_SEASON,
-      throughWeek = DATA_THROUGH_WEEK,
-      minClutchAttempts = MIN_CLUTCH_PASS_ATTEMPTS,
-      clutchAttempts = as.integer(n_clutch_att),
-      clutchPlays = as.integer(n_clutch_plays),
-      baselineAttempts = as.integer(n_base_att),
-      baselinePlays = as.integer(n_base_plays),
-      clutchEpa = c_epa,
-      baselineEpa = b_epa,
-      clutchEpaDelta = c_epa_delta,
-      clutchSuccessRate = c_sr,
-      baselineSuccessRate = b_sr,
-      clutchCpoe = c_cpoe,
-      turnoverFragility = tov_fragility,
-      fourthDownAggressiveness = fourth_agg,
-      clutchArchetype = archetype,
-      provenance = provenance
-    )
-  } else {
-    # Low sample player: emit typed null for rate and efficiency metrics
-    clutch_profiles[[i]] <- list(
-      playerId = if (!is.null(gid) && !is.na(gid)) gid else sprintf("NFL-%s-%02d", pteam, i),
-      playerName = pname,
-      team = pteam,
-      position = "QB",
-      isStarter = is_starter,
-      headshotUrl = headshot,
-      season = DATA_SEASON,
-      throughWeek = DATA_THROUGH_WEEK,
-      minClutchAttempts = MIN_CLUTCH_PASS_ATTEMPTS,
-      clutchAttempts = as.integer(n_clutch_att),
-      clutchPlays = as.integer(n_clutch_plays),
-      baselineAttempts = as.integer(n_base_att),
-      baselinePlays = as.integer(n_base_plays),
-      clutchEpa = NA_real_,
-      baselineEpa = NA_real_,
-      clutchEpaDelta = NA_real_,
-      clutchSuccessRate = NA_real_,
-      baselineSuccessRate = NA_real_,
-      clutchCpoe = NA_real_,
-      turnoverFragility = NA_real_,
-      fourthDownAggressiveness = NA_real_,
-      clutchArchetype = "Insufficient Sample",
-      provenance = "INSUFFICIENT_SAMPLE"
-    )
-  }
+  clutch_profiles[[i]] <- compute_qb_clutch_profile(
+    pbp = pbp,
+    pname = pname,
+    pteam = pteam,
+    gid = gid,
+    is_starter = is_starter,
+    headshot = headshot,
+    season = DATA_SEASON,
+    through_week = DATA_THROUGH_WEEK,
+    min_clutch_attempts = MIN_CLUTCH_PASS_ATTEMPTS,
+    fallback_player_id = sprintf("NFL-%s-%02d", pteam, i)
+  )
 }
 
 # Export outputs

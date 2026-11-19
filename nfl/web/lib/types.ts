@@ -403,7 +403,7 @@ export interface ClutchProfile {
   minClutchAttempts: number;
   /** pass_attempt == 1 rows in clutch situations (passes, sacks and spikes). */
   clutchAttempts: number;
-  /** pass == 1 | qb_dropback == 1 rows in clutch situations (passes and sacks, no spikes). */
+  /** pass == 1 | qb_dropback == 1 rows in clutch situations (passes, sacks, and scrambles; no spikes). */
   clutchPlays: number;
   baselineAttempts: number;
   baselinePlays: number;
@@ -414,7 +414,10 @@ export interface ClutchProfile {
   baselineSuccessRate: number | null;
   clutchCpoe: number | null;
   turnoverFragility: number | null;
-  fourthDownAggressiveness: number | null;
+  /** 4th-down conversion rate (%) across the QB's 4th-down plays, or null when 0 4th-down plays. */
+  fourthDownConversionRate?: number | null;
+  /** Legacy field name from pre-#168 builds; prefer fourthDownConversionRate. */
+  fourthDownAggressiveness?: number | null;
   clutchArchetype: string;
   provenance: string;
 }
