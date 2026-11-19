@@ -20,6 +20,8 @@ import {
   ModelDiagnosticsSchema,
   CbaLeagueOverviewSchema,
   ClutchProfileSchema,
+  SeasonWindowSchema,
+  RapmSeasonWindowSchema,
   CoachingStaffMetricSchema,
   DefensiveProfileSchema,
   PlayerDnaProfileSchema,
@@ -99,6 +101,12 @@ describe('Strict Zod schema contracts against public/data/*.json', () => {
   it('clutch_leverage_metrics.json matches ClutchProfileSchema', () => {
     expect(d.clutch).toHaveLength(LEAGUE.ACTIVE_PLAYER_POOL);
     assertValid(z.array(ClutchProfileSchema), d.clutch, 'clutch_leverage_metrics.json');
+  });
+
+  it('clutch, defense and Player DNA envelopes carry a valid season window', () => {
+    assertValid(SeasonWindowSchema, d.clutchWindow, 'clutch_leverage_metrics.json window');
+    assertValid(RapmSeasonWindowSchema, d.defenseWindow, 'defensive_metrics.json window');
+    assertValid(RapmSeasonWindowSchema, d.playerDnaWindow, 'player_dna_profiles.json window');
   });
 
   it('coaching_metrics.json (30 staffs) matches CoachingStaffMetricSchema', () => {

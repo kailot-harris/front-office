@@ -96,10 +96,37 @@ const parityCases: ParityCase[] = [
     iface: 'PlayerContract',
     pick: (j) => (j as { teams: { contracts: Record<string, unknown>[] }[] }).teams.flatMap((t) => t.contracts),
   },
-  { file: 'clutch_leverage_metrics.json', tsFile: 'lib/clutchTypes.ts', iface: 'ClutchProfile' },
+  { file: 'clutch_leverage_metrics.json', tsFile: 'lib/clutchTypes.ts', iface: 'ClutchProfile', pick: (j) => (j as { profiles: Record<string, unknown>[] }).profiles },
+  {
+    file: 'clutch_leverage_metrics.json',
+    tsFile: 'lib/seasonWindow.ts',
+    iface: 'SeasonWindow',
+    pick: (j) => {
+      const { profiles: _profiles, ...window } = j as Record<string, unknown>;
+      return [window];
+    },
+  },
   { file: 'coaching_metrics.json', tsFile: 'lib/coachingTypes.ts', iface: 'CoachingStaffMetric' },
-  { file: 'defensive_metrics.json', tsFile: 'lib/defenseTypes.ts', iface: 'DefensiveProfile' },
-  { file: 'player_dna_profiles.json', tsFile: 'lib/playerDnaTypes.ts', iface: 'PlayerDnaProfile' },
+  { file: 'defensive_metrics.json', tsFile: 'lib/defenseTypes.ts', iface: 'DefensiveProfile', pick: (j) => (j as { profiles: Record<string, unknown>[] }).profiles },
+  {
+    file: 'defensive_metrics.json',
+    tsFile: 'lib/seasonWindow.ts',
+    iface: 'SeasonWindow',
+    pick: (j) => {
+      const { profiles: _profiles, ...window } = j as Record<string, unknown>;
+      return [window];
+    },
+  },
+  { file: 'player_dna_profiles.json', tsFile: 'lib/playerDnaTypes.ts', iface: 'PlayerDnaProfile', pick: (j) => (j as { profiles: Record<string, unknown>[] }).profiles },
+  {
+    file: 'player_dna_profiles.json',
+    tsFile: 'lib/seasonWindow.ts',
+    iface: 'SeasonWindow',
+    pick: (j) => {
+      const { profiles: _profiles, ...window } = j as Record<string, unknown>;
+      return [window];
+    },
+  },
   { file: 'offseason_draft.json', tsFile: 'lib/offseasonTypes.ts', iface: 'RookieDraftProfile' },
   { file: 'offseason_teams.json', tsFile: 'lib/offseasonTypes.ts', iface: 'TeamOffseasonProfile' },
   { file: 'offseason_transactions.json', tsFile: 'lib/offseasonTypes.ts', iface: 'OffseasonTransaction' },

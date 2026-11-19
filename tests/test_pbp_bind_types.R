@@ -113,6 +113,22 @@ saveRDS(old_cur, p27); age_file(p27, 120)
 got <- quiet(load_pbp_season_cached(2027, tmp, 2027, fetch_none, today = today))
 check(identical(got$id, c("1", "2")) && nrow(readRDS(p27)) == 2L, "empty fetch -> cache kept, not emptied")
 
+
+# --- player box freshness (#191): current-season box is refetched when behind the reference date
+cat("player box cache freshness
+")
+box_old <- data.frame(game_date = as.Date(c("2026-11-16", "2026-11-17")), athlete_id = 1:2)
+box_new <- data.frame(game_date = as.Date(c("2026-11-16", "2026-11-17", "2026-11-18")), athlete_id = 1:3)
+pb <- file.path(tmp, "nba_player_box_2027.rds")
+saveRDS(box_old, pb); age_file(pb, 120)
+got <- quiet(load_player_box_season_cached(2027, tmp, 2027, function(seasons) box_new,
+                                           reference_date = as.Date("2026-11-18"), today = as.Date("2026-11-18")))
+check(nrow(got) == 3L && nrow(readRDS(pb)) == 3L, "box behind pbp max date -> refetched")
+saveRDS(box_old, pb); age_file(pb, 120)
+got <- quiet(load_player_box_season_cached(2027, tmp, 2027, function(seasons) box_new,
+                                           reference_date = as.Date("2026-11-17"), today = as.Date("2026-11-18")))
+check(nrow(got) == 2L, "box at the reference date -> cache kept")
+check(identical(box_reference_date(data.frame(game_date = "2026-11-17"), NULL), as.Date("2026-11-17")), "reference date = pbp max when no team box")
 unlink(tmp, recursive = TRUE)
 cat(sprintf("\n%d passed, %d failed\n", n_pass, n_fail))
 if (n_fail > 0) quit(status = 1L)

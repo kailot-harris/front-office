@@ -1,4 +1,4 @@
-/** Nearest current-season (2025-26) peer by cosine similarity of skill vectors. */
+/** Nearest current-season peer by cosine similarity of skill vectors. */
 export interface PeerComp {
   compName: string;
   playerId: string;
@@ -29,7 +29,7 @@ export interface SkillVector {
 }
 
 export interface CategoryScores {
-  /** null when every dimension in the category is null (player has no 2025-26 box-score row) */
+  /** null when every dimension in the category is null (player has no current-season box-score row) */
   finishing: number | null;
   shooting: number | null;
   playmaking: number | null;
@@ -42,7 +42,7 @@ export interface PlayerDnaProfile {
   playerName: string;
   team: string;
   position: string;
-  /** null when the player has no 2025-26 box-score row */
+  /** null when the player has no current-season box-score row */
   archetype: string | null;
   projPts: number;
   projReb: number;

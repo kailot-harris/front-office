@@ -11,6 +11,10 @@ interface VersatilityScatterProps {
   onSelectProfile: (profile: DefensiveProfile) => void;
 }
 
+type Plottable = DefensiveProfile & { versatilityScore: number; rimDfgDelta: number };
+const hasPoint = (p: DefensiveProfile): p is Plottable =>
+  p.versatilityScore != null && p.rimDfgDelta != null;
+
 export const VersatilityScatter: React.FC<VersatilityScatterProps> = ({
   profiles,
   selectedProfile,
@@ -54,7 +58,7 @@ export const VersatilityScatter: React.FC<VersatilityScatterProps> = ({
         </div>
         <div className="text-right flex items-center gap-2">
           <span className="text-[11px] sm:text-[10px] font-mono bg-zinc-900 border border-zinc-800 text-sky-400 px-2 py-0.5 rounded">
-            N = {profiles.length} Defenders
+            N = {profiles.filter(hasPoint).length} Defenders
           </span>
           <button
             type="button"
@@ -103,7 +107,7 @@ export const VersatilityScatter: React.FC<VersatilityScatterProps> = ({
           </text>
 
           {/* Points */}
-          {profiles.map((p) => {
+          {profiles.filter(hasPoint).map((p) => {
             const isSelected = p.playerId === selectedProfile.playerId;
             const cx = scaleX(p.versatilityScore);
             const cy = scaleY(p.rimDfgDelta);
@@ -128,6 +132,7 @@ export const VersatilityScatter: React.FC<VersatilityScatterProps> = ({
           })}
 
           {/* Selected Pin */}
+          {hasPoint(selectedProfile) && (
           <g transform={`translate(${scaleX(selectedProfile.versatilityScore)}, ${scaleY(selectedProfile.rimDfgDelta)})`}>
             <circle r="8" fill="none" stroke="#f43f5e" strokeWidth="1.5" className="animate-ping" opacity="0.6" />
             <text
@@ -138,6 +143,7 @@ export const VersatilityScatter: React.FC<VersatilityScatterProps> = ({
               {selectedProfile.playerName} ({selectedProfile.rimDfgDelta > 0 ? `+${selectedProfile.rimDfgDelta}` : selectedProfile.rimDfgDelta}%)
             </text>
           </g>
+          )}
         </svg>
       </div>
 

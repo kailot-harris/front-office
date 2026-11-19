@@ -3,15 +3,16 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { ClutchProfile } from '@/lib/clutchTypes';
 import { ClutchClient } from '@/components/ClutchClient';
+import { SeasonWindow, splitSeasonPayload } from '@/lib/seasonWindow';
 
-async function getClutchProfiles(): Promise<ClutchProfile[]> {
+async function getClutchProfiles(): Promise<{ profiles: ClutchProfile[]; seasonWindow: SeasonWindow | null }> {
   try {
     const filePath = path.join(process.cwd(), 'public', 'data', 'clutch_leverage_metrics.json');
     const fileContents = await fs.readFile(filePath, 'utf8');
-    return JSON.parse(fileContents);
+    return splitSeasonPayload<ClutchProfile>(JSON.parse(fileContents));
   } catch (error) {
     console.error('Error reading clutch_leverage_metrics.json:', error);
-    return [];
+    return { profiles: [], seasonWindow: null };
   }
 }
 
@@ -21,11 +22,11 @@ export const metadata = {
 };
 
 export default async function ClutchPage() {
-  const profiles = await getClutchProfiles();
+  const { profiles, seasonWindow } = await getClutchProfiles();
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <ClutchClient initialProfiles={profiles} />
+      <ClutchClient initialProfiles={profiles} seasonWindow={seasonWindow} />
     </div>
   );
 }

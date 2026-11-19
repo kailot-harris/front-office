@@ -58,21 +58,6 @@ export const SEASON_SOURCES = {
     kind: 'projection',
     note: 'Projected 2026-2027 per-game rates and season totals.',
   },
-  clutch: {
-    season: '2025-2026',
-    kind: 'observed',
-    note: 'Clutch rates are observed 2025-2026 play-by-play; the player list comes from the 2026-2027 projection set.',
-  },
-  defense: {
-    season: '2026-2027',
-    kind: 'projection',
-    note: 'Projected 2026-2027 defensive role and matchup metrics.',
-  },
-  playerDna: {
-    season: '2026-2027',
-    kind: 'projection',
-    note: 'Projected 2026-2027 skill vector; historical comparables span 1990-2025.',
-  },
   coachesObserved: {
     season: '2025-2026',
     kind: 'fallback',

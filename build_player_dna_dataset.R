@@ -3,21 +3,29 @@
 # Feature 4: High-Dimensional Player DNA & Nearest Current-Season Peer Comparables
 # Calculates 15-D skill vectors across Finishing, Shooting, Playmaking, Defense, Rebounding.
 # Computes cosine similarity between each player's empirical skill vector and every
-# other player's (2025-26 peers only; no hand-typed historical comps).
+# other player's (current-season peers only; no hand-typed historical comps).
 #
 # All affine clamp heuristics, synthetic formulas, and hardcoded player overrides
 # have been eliminated (Issue #82, following WNBA Issue #144 precedent).
 # All 15 skill dimensions are grounded in empirical box scores
-# (cache/nba_player_box_2026.rds), play-by-play tracking (cache/nba_pbp_2026.rds),
+# (cache/nba_player_box_<CURRENT_SEASON>.rds), play-by-play tracking (cache/nba_pbp_<CURRENT_SEASON>.rds),
 # ridge RAPM (cache/rapm_ratings.rds), and defensive metrics (cache/defensive_metrics.rds).
 #
 # Exports JSON for Next.js web application.
 #
 # Data window (front-office#109):
-#   Seasons: 2025-26 only: cache/nba_player_box_2026.rds and cache/nba_pbp_2026.rds
-#     (the script stops if either is missing), plus cache/rapm_ratings.rds and
-#     cache/defensive_metrics.rds when present (when absent, the
-#     dependent skills are published as null; no substitute constants). The
+#   Seasons: the current season (CURRENT_SEASON in config.R, labelled via
+#     season_label(); 2027 = 2026-27): cache/nba_player_box_<CURRENT_SEASON>.rds
+#     and cache/nba_pbp_<CURRENT_SEASON>.rds (the script stops if either is
+#     missing; no fallback to another season, front-office#191), plus
+#     cache/rapm_ratings.rds and cache/defensive_metrics.rds when present (when
+#     absent, the dependent skills are published as null; no substitute
+#     constants). defensive_metrics.rds is written by build_defense_dataset.R,
+#     which must run first. The JSON exports season, throughDate (latest game_date
+#     in the play-by-play input), generatedAt and rapmSeason. rapm_ratings.rds is
+#     NOT current-season (possession data for the in-progress season is not
+#     published, so rapm_engine.R fits the last completed season); d_rapm is kept
+#     but its season is read from the file and exported as rapmSeason. The
 #     player list comes from the 2026-27 season projections. No season-type filter
 #     is applied.
 #   Filters: box-score rows with more than 0 minutes; dunks are play-by-play rows
@@ -37,7 +45,7 @@
 #       similarityPct = max(cos, 0) * 100 (negative cosines floored at 0). keySharedTrait
 #       is the dimension with the highest min(a, b), shown with a readable label.
 #     - Archetype labels come from category-score thresholds (assign_archetype); players with no box row get a null archetype.
-#     - Missing inputs are never imputed: a player with no 2025-26 box-score row has
+#     - Missing inputs are never imputed: a player with no current-season box-score row has
 #       every box/PBP-derived skill published as null, receives peerComps = [] and is
 #       excluded from other players' comp candidates. A missing RAPM or defensive
 #       metric likewise publishes null for d_rapm / switchability. A category score
@@ -64,27 +72,30 @@ if (!file.exists(proj_players_file)) {
 }
 
 players_df <- jsonlite::fromJSON(proj_players_file)
-cat(sprintf(">>> Loaded %d player projections for 2026-2027 season.\n", nrow(players_df)))
+cat(sprintf(">>> Loaded %d player projections for %s season.\n", nrow(players_df), season_label()))
 
 # Load empirical data caches
-box_file <- file.path(CACHE_DIR, "nba_player_box_2026.rds")
-pbp_file <- file.path(CACHE_DIR, "nba_pbp_2026.rds")
+box_file <- current_season_cache("player_box")  # stop()s if missing
+pbp_file <- current_season_cache("pbp")          # stop()s if missing
 rapm_file <- file.path(CACHE_DIR, "rapm_ratings.rds")
 def_file <- file.path(CACHE_DIR, "defensive_metrics.rds")
 
-has_box <- file.exists(box_file)
-has_pbp <- file.exists(pbp_file)
 has_rapm <- file.exists(rapm_file)
 has_def <- file.exists(def_file)
-
-if (!has_box || !has_pbp) {
-  stop("Missing required cache files (nba_player_box_2026.rds or nba_pbp_2026.rds)")
-}
 
 box_df <- readRDS(box_file)
 pbp <- readRDS(pbp_file)
 rapm_df <- if (has_rapm) readRDS(rapm_file) else NULL
 def_list <- if (has_def) readRDS(def_file) else NULL
+through_date <- data_through_date(pbp, box_df)
+cat(sprintf(">>> Season %s, data through %s (earlier of play-by-play and player box).\n", season_label(), through_date))
+rapm_season <- if (!is.null(rapm_df) && "season_label" %in% names(rapm_df)) {
+  u <- unique(as.character(rapm_df$season_label)); if (length(u) == 1L) u else NA_character_
+} else NA_character_
+if (!is.null(rapm_df) && !identical(rapm_season, season_label())) {
+  cat(sprintf(">>> [NOTE] rapm_ratings.rds covers %s, not %s; dRAPM is published with rapmSeason so it is not read as current-season.\n",
+              ifelse(is.na(rapm_season), "an unknown season", rapm_season), season_label()))
+}
 
 # Clean name helper for RAPM alignment
 clean_name <- function(x) {
@@ -181,7 +192,7 @@ player_metrics <- players_df %>%
   mutate(
     # Missing RAPM -> NA (published as null), never a made-up position constant
     drapm_val = unname(rapm_lookup[c_name]),
-    # Players with no 2025-26 box-score row: every box- and PBP-derived quantity
+    # Players with no current-season box-score row: every box- and PBP-derived quantity
     # stays NA (published as null). No priors-only shrinkage, no zero-fill, no
     # proj_* substitution.
     has_box_row = !is.na(games),
@@ -210,7 +221,7 @@ player_metrics <- players_df %>%
 
     # Versatility score from defensive metrics
     # Missing defensive metrics -> NA (published as null), never a constant
-    versatility = unname(def_lookup[pid]),
+    versatility = if_else(has_box_row, unname(def_lookup[pid]), NA_real_),
 
     # Raw dimension values
     raw_rim_fg = fg2_pct,
@@ -335,7 +346,7 @@ for (i in seq_len(nrow(players_df))) {
     list(
       compName = players_df$player_name[idx],
       playerId = as.character(players_df$player_id[idx]),
-      era = "2025-26",
+      era = season_label(),
       archetype = all_archetypes[idx],
       position = players_df$position[idx],
       similarityPct = sim_scores[idx],
@@ -372,7 +383,14 @@ for (i in seq_len(nrow(players_df))) {
 # 3. Export to JSON for Next.js Web Application
 # ------------------------------------------------------------------------------
 output_json <- WEB_JSON_PLAYER_DNA_PROFILES  # config.R
-jsonlite::write_json(player_dna_list, output_json, pretty = TRUE, auto_unbox = TRUE, na = "null")
+dna_payload <- list(
+  season = season_label(),
+  throughDate = through_date,
+  generatedAt = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+  rapmSeason = if (is.na(rapm_season)) NULL else rapm_season,
+  profiles = player_dna_list
+)
+jsonlite::write_json(dna_payload, output_json, pretty = TRUE, auto_unbox = TRUE, na = "null")
 cat(sprintf(">>> [SUCCESS] Wrote %d Player DNA profiles to '%s'.\n", length(player_dna_list), output_json))
 
 # Cache RDS as well

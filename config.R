@@ -32,6 +32,41 @@ CURRENT_SEASON     <- 2027
 ALL_SEASONS        <- 2019:2027
 SIMULATION_SEASON  <- 2027
 
+# hoopR end-year numbering: 2027 === the 2026-27 season. The label is derived from
+# CURRENT_SEASON, never typed (front-office#191).
+season_label <- function(end_year = CURRENT_SEASON) {
+  sprintf("%d-%02d", as.integer(end_year) - 1L, as.integer(end_year) %% 100L)
+}
+
+# Current-season cache inputs (front-office#191). Missing file => stop(), never a
+# fallback to another season.
+current_season_cache <- function(kind = c("pbp", "player_box")) {
+  kind <- match.arg(kind)
+  path <- file.path(CACHE_DIR, sprintf("nba_%s_%d.rds", kind, CURRENT_SEASON))
+  if (!file.exists(path)) {
+    stop(sprintf("Missing current-season (%s) input: %s", season_label(), path), call. = FALSE)
+  }
+  path
+}
+
+# Latest game_date actually present in a PBP frame, as "YYYY-MM-DD".
+pbp_through_date <- function(pbp) {
+  d <- suppressWarnings(max(as.Date(pbp$game_date), na.rm = TRUE))
+  if (!is.finite(as.numeric(d))) stop("PBP input has no valid game_date; cannot derive throughDate.", call. = FALSE)
+  format(d, "%Y-%m-%d")
+}
+
+# throughDate for the pbp + player-box builders: the earlier of the two max dates, so the
+# stated window is never wider than the data behind it (front-office#191).
+data_through_date <- function(pbp, box) {
+  p <- pbp_through_date(pbp)
+  b <- pbp_through_date(box)
+  if (b < p) {
+    message(sprintf(">>> [WARN] player box ends %s, behind play-by-play (%s); throughDate = %s.", b, p, b))
+  }
+  min(p, b)
+}
+
 # Rolling Window & Modeling Hyperparameters
 ROLLING_WINDOW_SIZE <- 18
 OFFSEASON_METHOD    <- "reset"  # "reset", "mean_regress", or "decay"
