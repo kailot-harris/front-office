@@ -262,6 +262,34 @@ test_that("Issue #172: 'never' + comparative scores with expected polarity sign"
   expect_gt(norm("She has never been bad."), 0)
 })
 
+test_that("Issue #172: every sentence in the issue's table keeps its expected sign", {
+  skip_if_not_installed("udpipe")
+  skip_if_not_installed("sentimentr")
+  skip_if(is.null(.sp_udpipe_model()), "pinned udpipe model not present")
+
+  raw <- function(t) {
+    s <- score_text_sentiment(t)
+    expect_false(is.null(s))
+    s$raw
+  }
+
+  # The issue's 11-sentence table, verbatim. The first three were the wrong
+  # signs (-0.80, +0.75, -0.80 before the fix); the other eight were already
+  # correct and must stay correct.
+  expect_gt(raw("She has never been better"), 0)
+  expect_lt(raw("She has never been worse"), 0)
+  expect_gt(raw("The roster has never looked better"), 0)
+  expect_gt(raw("The timing couldn't be better"), 0)
+  expect_gt(raw("The coach couldn't be happier"), 0)
+  expect_gt(raw("The season was not bad"), 0)
+  expect_gt(raw("The run was nothing short of great"), 0)
+  expect_gt(raw("There is no shortage of talent"), 0)
+  # Expected "neutral/neg": it must not turn positive.
+  expect_lte(raw("The trade was hardly surprising"), 0)
+  expect_lt(raw("The move is not good"), 0)
+  expect_lt(raw("The situation is hardly ideal"), 0)
+})
+
 test_that("Negators and de-amplifiers survive the POS filter", {
   skip_if_not_installed("udpipe")
   skip_if(is.null(.sp_udpipe_model()), "pinned udpipe model not present")
