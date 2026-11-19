@@ -23,6 +23,7 @@ import {
   sumBy,
   teamEpa,
   clutch,
+  dnaDataset,
 } from '../helpers/datasets';
 
 /** Tolerance for probabilities the export rounds to 3-4 decimals, per team. */
@@ -1019,3 +1020,65 @@ describe('clutch — leverage and EPA delta invariants', () => {
 });
 
 
+
+describe('player DNA - window, null and peer-comp invariants', () => {
+  const d = dnaDataset();
+  const byId = new Map(d.profiles.map((p) => [p.playerId, p]));
+  const presentDims = (p: (typeof d.profiles)[number]) => Object.values(p.skillVector).filter((v) => v !== null).length;
+  // Mirrors config.R DNA_MIN_DIMS_OVERALL / DNA_MIN_SHARED_DIMS
+  const MIN_DIMS_OVERALL = 3;
+  const MIN_SHARED_DIMS = 4;
+
+  it('publishes one season window with a build time', () => {
+    expect(d.season).toBeGreaterThanOrEqual(2020);
+    expect(d.throughWeek).toBeGreaterThanOrEqual(1);
+    expect(Number.isNaN(Date.parse(d.generatedAt))).toBe(false);
+  });
+
+  it('player ids are unique', () => {
+    expect(byId.size).toBe(d.profiles.length);
+  });
+
+  it('every peer comp is another player of the same position, in the same window', () => {
+    for (const p of d.profiles) {
+      const ids = p.peerComps.map((c) => c.playerId);
+      expect(new Set(ids).size, `${p.playerName} repeats a peer`).toBe(ids.length);
+      for (const c of p.peerComps) {
+        expect(c.playerId, `${p.playerName} is compared with themself`).not.toBe(p.playerId);
+        const peer = byId.get(c.playerId);
+        expect(peer, `${c.compName} is not in the dataset`).toBeDefined();
+        expect(peer?.position).toBe(p.position);
+        expect(c.position).toBe(p.position);
+        expect(c.era).toBe(String(d.season));
+      }
+    }
+  });
+
+  it('peer comps are sorted by similarity, best first', () => {
+    for (const p of d.profiles) {
+      const sims = p.peerComps.map((c) => c.similarityPct);
+      expect([...sims].sort((a, b) => b - a)).toEqual(sims);
+    }
+  });
+
+  it('missing dimensions publish null, never a filler value', () => {
+    for (const p of d.profiles) {
+      p.radarAxes.forEach((ax) => expect(ax.value).toBe(p.skillVector[ax.axis]));
+      expect(p.categoryScores).toEqual(p.skillVector);
+      if (presentDims(p) < MIN_DIMS_OVERALL) {
+        expect(p.overallRating, `${p.playerName} rating needs >= ${MIN_DIMS_OVERALL} dims`).toBeNull();
+        expect(p.archetype).toBeNull();
+      } else {
+        expect(p.overallRating).not.toBeNull();
+      }
+    }
+  });
+
+  it('players with too few measured dimensions have no peers and are nobody elses peer', () => {
+    const noData = new Set(d.profiles.filter((p) => presentDims(p) < MIN_SHARED_DIMS).map((p) => p.playerId));
+    for (const p of d.profiles) {
+      if (noData.has(p.playerId)) expect(p.peerComps).toEqual([]);
+      for (const c of p.peerComps) expect(noData.has(c.playerId), `${c.compName} leaked as a peer`).toBe(false);
+    }
+  });
+});

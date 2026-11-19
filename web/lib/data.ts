@@ -12,7 +12,7 @@ import {
   SalaryCapDataset,
   PassingCatalogEntry,
   PassingMetadata,
-  PlayerDnaProfile,
+  PlayerDnaDataset,
   ClutchProfile,
   GameDetailEnvelope,
 } from './types';
@@ -70,8 +70,8 @@ export function getPassingMetadata(): PassingMetadata {
   return readJsonFile<PassingMetadata>('passing_metadata.json');
 }
 
-export function getPlayerDnaProfiles(): PlayerDnaProfile[] {
-  return readJsonFile<PlayerDnaProfile[]>('player_dna_profiles.json');
+export function getPlayerDnaProfiles(): PlayerDnaDataset {
+  return readJsonFile<PlayerDnaDataset>('player_dna_profiles.json');
 }
 export function getClutchData(): ClutchProfile[] {
   return readJsonFile<ClutchProfile[]>('clutch_leverage_metrics.json');

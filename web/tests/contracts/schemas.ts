@@ -391,10 +391,12 @@ export const passingMetadataSchema = z.object({
   league_averages: z.array(passingZoneMetricSchema).length(12),
 }).strict();
 
-export const playerDnaHistoricalTwinSchema = z.object({
+export const playerDnaPeerCompSchema = z.object({
+  playerId: z.string().min(1),
   compName: z.string().min(2),
-  era: z.string().min(2),
-  archetype: z.string().min(2),
+  era: z.string().regex(/^20\d{2}$/),
+  archetype: z.string().min(2).nullable(),
+  position: z.enum(['QB', 'WR', 'RB', 'TE']),
   similarityPct: z.number().min(0).max(100),
   keySharedTrait: z.string().min(2),
 }).strict();
@@ -402,7 +404,7 @@ export const playerDnaHistoricalTwinSchema = z.object({
 export const playerDnaRadarAxisSchema = z.object({
   axis: z.string().min(1),
   label: z.string().min(1),
-  value: z.number().min(0).max(100),
+  value: z.number().min(0).max(100).nullable(),
 }).strict();
 
 export const playerDnaStatsSummarySchema = z.object({
@@ -415,7 +417,7 @@ export const playerDnaStatsSummarySchema = z.object({
   receptions: z.number().int().optional(),
   recYards: z.number().int().optional(),
   recTds: z.number().int().optional(),
-  epaPerPlay: z.number().finite(),
+  epaPerPlay: z.number().finite().nullable(),
 }).strict();
 
 export const playerDnaProfileSchema = z.object({
@@ -423,15 +425,22 @@ export const playerDnaProfileSchema = z.object({
   playerName: z.string().min(2),
   team: teamCode,
   position: z.enum(['QB', 'WR', 'RB', 'TE']),
-  archetype: z.string().min(2),
-  overallRating: z.number().min(0).max(100),
+  archetype: z.string().min(2).nullable(),
+  overallRating: z.number().min(0).max(100).nullable(),
   statsSummary: playerDnaStatsSummarySchema,
-  manifoldX: z.number().finite(),
-  manifoldY: z.number().finite(),
+  manifoldX: z.number().finite().nullable(),
+  manifoldY: z.number().finite().nullable(),
   radarAxes: z.array(playerDnaRadarAxisSchema).min(3),
-  skillVector: z.record(z.string(), z.number().min(0).max(100)),
-  categoryScores: z.record(z.string(), z.number().min(0).max(100)),
-  historicalTwins: z.array(playerDnaHistoricalTwinSchema).min(1),
+  skillVector: z.record(z.string(), z.number().min(0).max(100).nullable()),
+  categoryScores: z.record(z.string(), z.number().min(0).max(100).nullable()),
+  peerComps: z.array(playerDnaPeerCompSchema).max(5),
+}).strict();
+
+export const playerDnaDatasetSchema = z.object({
+  season: z.number().int().min(2020).max(2030),
+  throughWeek: z.number().int().min(1).max(22),
+  generatedAt: isoUtcStamp,
+  profiles: z.array(playerDnaProfileSchema).min(1),
 }).strict();
 
 export const clutchProfileSchema = z.object({
@@ -707,6 +716,6 @@ export const DATASET_SCHEMAS = {
   'salary_cap_profiles.json': salaryCapDatasetSchema,
   'passing_index.json': z.array(passingCatalogEntrySchema),
   'passing_metadata.json': passingMetadataSchema,
-  'player_dna_profiles.json': z.array(playerDnaProfileSchema),
+  'player_dna_profiles.json': playerDnaDatasetSchema,
   'clutch_leverage_metrics.json': z.array(clutchProfileSchema),
 } as const;
