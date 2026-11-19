@@ -9,8 +9,8 @@
 #   cadence is daily 07:00 local per issue #66, matching the 26h freshness gate).
 #
 # Flow:
-#   1. Runs build_offseason_monitor.R
-#   2. Runs tools/offseason/test_dag_end_to_end.R (pre-publish regression suite)
+#   1. Runs tools/offseason/test_dag_end_to_end.R (offline pre-build regression suite)
+#   2. Runs build_offseason_monitor.R
 #   3. Runs tools/publish_web.R --publish --mode=offseason
 #   4. Direct aggregator workflow dispatch:
 #      gh workflow run "Sync sport subtrees and deploy" --repo kailot-harris/front-office -f sports="mlb" -f deploy=true
@@ -86,8 +86,27 @@ if (-not $rscriptCmd) {
     }
 }
 
-# Step 1: Execute build_offseason_monitor.R
-Write-PipelineLog "INFO" "Step 1: Running build_offseason_monitor.R..."
+# Step 1: Run offline End-to-End DAG Regression Suite BEFORE building (GitHub issue #62)
+Write-PipelineLog "INFO" "Step 1: Running tools/offseason/test_dag_end_to_end.R..."
+$testArgs = @("--vanilla", "tools/offseason/test_dag_end_to_end.R")
+$testProcess = Start-Process -FilePath $Rscript -ArgumentList $testArgs -NoNewWindow -Wait -PassThru -RedirectStandardOutput (Join-Path $LogDir "offseason_test_stdout.tmp") -RedirectStandardError (Join-Path $LogDir "offseason_test_stderr.tmp")
+
+if (Test-Path (Join-Path $LogDir "offseason_test_stdout.tmp")) {
+    Get-Content (Join-Path $LogDir "offseason_test_stdout.tmp") | Add-Content -Path $LogFile -Encoding utf8
+    Remove-Item (Join-Path $LogDir "offseason_test_stdout.tmp") -Force
+}
+if (Test-Path (Join-Path $LogDir "offseason_test_stderr.tmp")) {
+    Get-Content (Join-Path $LogDir "offseason_test_stderr.tmp") | Add-Content -Path $LogFile -Encoding utf8
+    Remove-Item (Join-Path $LogDir "offseason_test_stderr.tmp") -Force
+}
+
+if ($testProcess.ExitCode -ne 0) {
+    Write-PipelineLog "ERROR" "tools/offseason/test_dag_end_to_end.R failed with exit code $($testProcess.ExitCode). Halting build and publication."
+    exit $testProcess.ExitCode
+}
+
+# Step 2: Execute build_offseason_monitor.R
+Write-PipelineLog "INFO" "Step 2: Running build_offseason_monitor.R..."
 $buildArgs = @("--vanilla", "build_offseason_monitor.R")
 if ($AllowDegraded) {
     $buildArgs += "--allow-degraded"
@@ -107,25 +126,6 @@ if (Test-Path (Join-Path $LogDir "offseason_build_stderr.tmp")) {
 if ($buildProcess.ExitCode -ne 0) {
     Write-PipelineLog "ERROR" "build_offseason_monitor.R failed with exit code $($buildProcess.ExitCode)."
     exit $buildProcess.ExitCode
-}
-
-# Step 2: Run End-to-End DAG Regression Suite prior to publishing (GitHub issue #62)
-Write-PipelineLog "INFO" "Step 2: Running tools/offseason/test_dag_end_to_end.R..."
-$testArgs = @("--vanilla", "tools/offseason/test_dag_end_to_end.R")
-$testProcess = Start-Process -FilePath $Rscript -ArgumentList $testArgs -NoNewWindow -Wait -PassThru -RedirectStandardOutput (Join-Path $LogDir "offseason_test_stdout.tmp") -RedirectStandardError (Join-Path $LogDir "offseason_test_stderr.tmp")
-
-if (Test-Path (Join-Path $LogDir "offseason_test_stdout.tmp")) {
-    Get-Content (Join-Path $LogDir "offseason_test_stdout.tmp") | Add-Content -Path $LogFile -Encoding utf8
-    Remove-Item (Join-Path $LogDir "offseason_test_stdout.tmp") -Force
-}
-if (Test-Path (Join-Path $LogDir "offseason_test_stderr.tmp")) {
-    Get-Content (Join-Path $LogDir "offseason_test_stderr.tmp") | Add-Content -Path $LogFile -Encoding utf8
-    Remove-Item (Join-Path $LogDir "offseason_test_stderr.tmp") -Force
-}
-
-if ($testProcess.ExitCode -ne 0) {
-    Write-PipelineLog "ERROR" "tools/offseason/test_dag_end_to_end.R failed with exit code $($testProcess.ExitCode). Halting publication."
-    exit $testProcess.ExitCode
 }
 
 # Step 3: Publish web artifacts and promote staged baseline

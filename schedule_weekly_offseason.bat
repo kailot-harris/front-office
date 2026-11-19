@@ -13,9 +13,9 @@ REM
 REM Rationale:
 REM   In the off-season, there are no live games. What moves is roster,
 REM   contract, and organizational state, arriving irregularly as text.
-REM   This daily script executes build_offseason_monitor.R, runs the pre-publish
-REM   end-to-end regression test suite (tools/offseason/test_dag_end_to_end.R), and
-REM   publishes web artifacts via tools/publish_web.R --publish --mode=offseason.
+REM   This daily script runs the offline end-to-end DAG regression test suite
+REM   (tools/offseason/test_dag_end_to_end.R), executes build_offseason_monitor.R,
+REM   and publishes web artifacts via tools/publish_web.R --publish --mode=offseason.
 REM
 REM Winter DST Direct Workflow Dispatch:
 REM   sync-sports.yml runs at cron: '30 13 * * *' (13:30 UTC). Under Eastern
@@ -246,11 +246,15 @@ if "%RSCRIPT%"=="" (
     exit /b 1
 )
 
-REM Step 1: Build Offseason Monitor dataset and reconcile state
-echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 1: Running build_offseason_monitor.R... >> "%RUN_LOG%"
-"%RSCRIPT%" --vanilla build_offseason_monitor.R >> "%RUN_LOG%" 2>&1
+REM Step 1: Run offline End-to-End DAG Regression Suite BEFORE building (GitHub issue #62)
+REM test_dag_end_to_end.R is a pure offline fixture suite running in isolated temp
+REM sandboxes, so running it first guarantees a test failure halts cleanly without
+REM modifying tracked web/public/data/*.json and dirtying the primary checkout for
+REM the next day's guard; /test-results/ is gitignored per .gitignore (#114).
+echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 1: Running tools/offseason/test_dag_end_to_end.R... >> "%RUN_LOG%"
+"%RSCRIPT%" --vanilla tools/offseason/test_dag_end_to_end.R >> "%RUN_LOG%" 2>&1
 if %ERRORLEVEL% neq 0 (
-    echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] build_offseason_monitor.R failed with exit code %ERRORLEVEL%. >> "%RUN_LOG%"
+    echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] tools/offseason/test_dag_end_to_end.R failed with exit code %ERRORLEVEL%. Halting build and publication. >> "%RUN_LOG%"
     REM #103: back up the append-only files even when this step failed. %ERRORLEVEL%
     REM in this block was expanded when the block was parsed, so the exit below
     REM still returns the step's exit code, not the backup's.
@@ -258,11 +262,11 @@ if %ERRORLEVEL% neq 0 (
     exit /b %ERRORLEVEL%
 )
 
-REM Step 2: Run End-to-End DAG Regression Suite prior to publishing (GitHub issue #62)
-echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 2: Running tools/offseason/test_dag_end_to_end.R... >> "%RUN_LOG%"
-"%RSCRIPT%" --vanilla tools/offseason/test_dag_end_to_end.R >> "%RUN_LOG%" 2>&1
+REM Step 2: Build Offseason Monitor dataset and reconcile state
+echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 2: Running build_offseason_monitor.R... >> "%RUN_LOG%"
+"%RSCRIPT%" --vanilla build_offseason_monitor.R >> "%RUN_LOG%" 2>&1
 if %ERRORLEVEL% neq 0 (
-    echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] tools/offseason/test_dag_end_to_end.R failed with exit code %ERRORLEVEL%. Halting publication. >> "%RUN_LOG%"
+    echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] build_offseason_monitor.R failed with exit code %ERRORLEVEL%. >> "%RUN_LOG%"
     REM #103: back up the append-only files even when this step failed. %ERRORLEVEL%
     REM in this block was expanded when the block was parsed, so the exit below
     REM still returns the step's exit code, not the backup's.
