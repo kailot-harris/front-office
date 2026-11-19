@@ -9,17 +9,25 @@
 #
 # All affine clamp heuristics, synthetic matchup formulas, and hardcoded player
 # overrides have been eliminated (Issue #82, following WNBA Issue #144 precedent).
-# All metrics are derived from empirical PBP events (cache/nba_pbp_2026.rds),
-# regular-season box scores (cache/nba_player_box_2026.rds), and ridge RAPM
+# All metrics are derived from empirical PBP events (cache/nba_pbp_<CURRENT_SEASON>.rds),
+# regular-season box scores (cache/nba_player_box_<CURRENT_SEASON>.rds), and ridge RAPM
 # (cache/rapm_ratings.rds).
 #
 # Exports defensive_metrics.json for Next.js web application.
 #
 # Data window (front-office#109):
-#   Seasons: 2025-26 only: cache/nba_pbp_2026.rds and cache/nba_player_box_2026.rds
-#     (the script stops if either is missing) and cache/rapm_ratings.rds (optional;
-#     without it, or for a player not found in it, dRAPM is a fixed value by
-#     position). The player list comes from the 2026-27 season projections. No
+#   Seasons: the current season (CURRENT_SEASON in config.R, labelled via
+#     season_label(); 2027 = 2026-27): cache/nba_pbp_<CURRENT_SEASON>.rds and
+#     cache/nba_player_box_<CURRENT_SEASON>.rds (the script stops if either is
+#     missing; no fallback to another season, front-office#191). The JSON exports
+#     season, throughDate (latest game_date in the play-by-play input), generatedAt
+#     and rapmSeason.
+#     cache/rapm_ratings.rds (optional; without it, or for a player not found in
+#     it, dRAPM is a fixed value by position) is NOT current-season: possession
+#     data for the in-progress season is not published, so rapm_engine.R fits the
+#     last completed season. Its season is read from the file's season_label column
+#     and exported as rapmSeason (never presented as current-season data).
+#     The player list comes from the 2026-27 season projections. No
 #     season-type filter is applied to the play-by-play or box scores.
 #   Filters: box-score rows with more than 0 minutes. Matchup events are plays whose
 #     text contains "block" or "steal", and "Shooting Foul" plays paired with the
@@ -27,8 +35,14 @@
 #     position is known. Rim and point-of-attack scores are weighted formulas over
 #     those rates, not measured opponent shooting.
 #   Minimum sample: none. Every projected player is listed. Per-36 rates use at least
-#     40 minutes (eff_min); players with no box rows get projection-based stand-ins;
-#     matchup shares add 15 position-based prior events to each player.
+#     40 minutes (eff_min). No imputation (front-office#191): a player with no
+#     current-season box row has every box-derived metric (rim, POA, role) published
+#     as null, a player with no observed matchup events (or no box row) has null
+#     matchupDist/versatilityScore, and a player absent from the RAPM fit has null
+#     dRapm (no position constants, no projection stand-ins). Role and POA also
+#     require dRapm / their inputs, so they are null when any input is null. Where
+#     matchup events exist, shares add 15 position-based prior events (smoothing).
+#     Player DNA reads this file, so both boards null the same players.
 #   Known issues: #82 (formula proxies, role thresholds).
 # ==============================================================================
 
@@ -51,24 +65,27 @@ if (!file.exists(proj_players_file)) {
 }
 
 players_df <- jsonlite::fromJSON(proj_players_file)
-cat(sprintf(">>> Loaded %d player projections for 2026-2027 season.\n", nrow(players_df)))
+cat(sprintf(">>> Loaded %d player projections for %s season.\n", nrow(players_df), season_label()))
 
 # Load empirical data caches
-box_file <- file.path(CACHE_DIR, "nba_player_box_2026.rds")
-pbp_file <- file.path(CACHE_DIR, "nba_pbp_2026.rds")
+box_file <- current_season_cache("player_box")  # stop()s if missing
+pbp_file <- current_season_cache("pbp")          # stop()s if missing
 rapm_file <- file.path(CACHE_DIR, "rapm_ratings.rds")
 
-has_box <- file.exists(box_file)
-has_pbp <- file.exists(pbp_file)
 has_rapm <- file.exists(rapm_file)
-
-if (!has_box || !has_pbp) {
-  stop("Missing required cache files (nba_player_box_2026.rds or nba_pbp_2026.rds)")
-}
 
 box_df <- readRDS(box_file)
 pbp <- readRDS(pbp_file)
 rapm_df <- if (has_rapm) readRDS(rapm_file) else NULL
+through_date <- data_through_date(pbp, box_df)
+cat(sprintf(">>> Season %s, data through %s (earlier of play-by-play and player box).\n", season_label(), through_date))
+rapm_season <- if (!is.null(rapm_df) && "season_label" %in% names(rapm_df)) {
+  u <- unique(as.character(rapm_df$season_label)); if (length(u) == 1L) u else NA_character_
+} else NA_character_
+if (!is.null(rapm_df) && !identical(rapm_season, season_label())) {
+  cat(sprintf(">>> [NOTE] rapm_ratings.rds covers %s, not %s; dRAPM is published with rapmSeason so it is not read as current-season.\n",
+              ifelse(is.na(rapm_season), "an unknown season", rapm_season), season_label()))
+}
 
 # Clean name helper for RAPM alignment
 clean_name <- function(x) {
@@ -224,17 +241,16 @@ for (i in seq_len(nrow(players_df))) {
   is_forward <- pos == "F"
 
   # Real dRAPM from ridge regression
-  d_rapm <- if (c_name %in% names(rapm_lookup)) {
-    round(unname(rapm_lookup[c_name]), 2)
-  } else {
-    if (is_center) 0.85 else if (is_forward) 0.25 else -0.15
-  }
+  # Not in the RAPM fit -> NA (published as null); never a position constant.
+  d_rapm <- if (c_name %in% names(rapm_lookup)) round(unname(rapm_lookup[c_name]), 2) else NA_real_
 
   # Defensive box stats
   b_stat <- box_def_map[[pid]]
-  blk_per36 <- if (!is.null(b_stat)) b_stat$blk_per36 else (p$proj_reb * 0.1)
-  stl_per36 <- if (!is.null(b_stat)) b_stat$stl_per36 else (p$proj_ast * 0.15)
-  dreb_per36 <- if (!is.null(b_stat)) b_stat$dreb_per36 else (p$proj_reb * 0.75)
+  # No current-season box row -> NA (published as null); never a projection stand-in.
+  has_box_row <- !is.null(b_stat)
+  blk_per36 <- if (has_box_row) b_stat$blk_per36 else NA_real_
+  stl_per36 <- if (has_box_row) b_stat$stl_per36 else NA_real_
+  dreb_per36 <- if (has_box_row) b_stat$dreb_per36 else NA_real_
 
   # Matchup distribution derived from empirical PBP events with Bayes smoothing
   prior <- if (is_guard) prior_guard else if (is_forward) prior_forward else prior_center
@@ -245,6 +261,10 @@ for (i in seq_len(nrow(players_df))) {
   obs_sf <- if (!is.null(m_row)) m_row$n_sf else 0
   obs_pf <- if (!is.null(m_row)) m_row$n_pf else 0
   obs_c  <- if (!is.null(m_row)) m_row$n_c  else 0
+
+  # Matchup shares need observed events AND a box row: with neither, the 15-event
+  # positional prior would be the whole published value, so it is published as null.
+  has_matchups <- has_box_row && !is.null(m_row)
 
   smooth_pg <- obs_pg + prior["pg"]
   smooth_sg <- obs_sg + prior["sg"]
@@ -260,9 +280,11 @@ for (i in seq_len(nrow(players_df))) {
   m_c_pct  <- round(100 - (m_pg_pct + m_sg_pct + m_sf_pct + m_pf_pct), 1)
 
   dist_vector <- c(m_pg_pct, m_sg_pct, m_sf_pct, m_pf_pct, m_c_pct) / 100
-  versatility_score <- calc_shannon_entropy(dist_vector)
+  versatility_score <- if (has_matchups) calc_shannon_entropy(dist_vector) else NA_real_
+  if (!has_matchups) m_pg_pct <- m_sg_pct <- m_sf_pct <- m_pf_pct <- m_c_pct <- NA_real_
 
   # Rim contest metrics derived empirically from blk_per36, dreb_per36, and frontcourt presence
+  # (NA whenever any input is NA: no box row, or no observed matchups)
   rim_presence <- (m_c_pct + m_pf_pct) / 100
   rim_factor <- (blk_per36 / max_blk) * 0.65 + (pmin(dreb_per36, 12.0) / 12.0) * 0.20 + rim_presence * 0.15
   rim_dfg_delta <- round(2.2 - rim_factor * 16.5, 1)
@@ -274,7 +296,9 @@ for (i in seq_len(nrow(players_df))) {
   poa_navigation <- round(45.0 + poa_factor * 52.0, 1)
 
   # Defensive Role Archetype dynamically assigned from empirical profile
-  defensive_role <- if (is_center && rim_dfg_delta <= -6.0) "Primary Rim Anchor" else
+  role_inputs <- c(rim_dfg_delta, poa_navigation, versatility_score, dreb_per36)
+  defensive_role <- if (anyNA(role_inputs)) NA_character_ else
+                    if (is_center && rim_dfg_delta <= -6.0) "Primary Rim Anchor" else
                     if (is_guard && poa_navigation >= 75.0) "Point-of-Attack Stopper" else
                     if (versatility_score >= 82.0) "1-Through-5 Switch Eraser" else
                     if (is_forward && dreb_per36 >= 5.5) "Roaming Weakside Disrupter" else
@@ -293,13 +317,13 @@ for (i in seq_len(nrow(players_df))) {
     rimDeterrenceIndex = rim_deterrence_index,
     poaNavigation = poa_navigation,
     dRapm = d_rapm,
-    matchupDist = list(
+    matchupDist = if (has_matchups) list(
       pgPct = m_pg_pct,
       sgPct = m_sg_pct,
       sfPct = m_sf_pct,
       pfPct = m_pf_pct,
       cPct = m_c_pct
-    )
+    ) else NA
   )
 }
 
@@ -307,7 +331,14 @@ for (i in seq_len(nrow(players_df))) {
 # Export JSON & RDS
 # ------------------------------------------------------------------------------
 output_json <- WEB_JSON_DEFENSIVE_METRICS  # config.R
-jsonlite::write_json(defensive_profiles, output_json, pretty = TRUE, auto_unbox = TRUE)
+defense_payload <- list(
+  season = season_label(),
+  throughDate = through_date,
+  generatedAt = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+  rapmSeason = if (is.na(rapm_season)) NULL else rapm_season,
+  profiles = defensive_profiles
+)
+jsonlite::write_json(defense_payload, output_json, pretty = TRUE, auto_unbox = TRUE, na = "null")
 cat(sprintf(">>> [SUCCESS] Wrote %d Defensive profiles to '%s'.\n", length(defensive_profiles), output_json))
 
 if (!dir.exists("cache")) dir.create("cache", recursive = TRUE)

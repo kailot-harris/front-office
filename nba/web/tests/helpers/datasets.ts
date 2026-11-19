@@ -20,6 +20,7 @@ import type { ClutchProfile } from '@/lib/clutchTypes';
 import type { CoachingStaffMetric } from '@/lib/coachingTypes';
 import type { DefensiveProfile } from '@/lib/defenseTypes';
 import type { PlayerDnaProfile } from '@/lib/playerDnaTypes';
+import type { RapmSeasonWindow, SeasonWindow, SeasonWindowPayload } from '@/lib/seasonWindow';
 import type {
   OffseasonTransaction,
   TeamOffseasonProfile,
@@ -150,17 +151,29 @@ export function readGameDetailFile(gameId: string): GameDetailEnvelope {
   return parsed;
 }
 
+/** Splits a season-window envelope (clutch / defense / Player DNA) into profiles + window. */
+function readSeasonPayload<T, W extends SeasonWindow = SeasonWindow>(file: DataFileName): { profiles: T[]; window: W } {
+  const { profiles, ...window } = readJsonFile<SeasonWindowPayload<T> & W>(file);
+  return { profiles, window: window as unknown as W };
+}
+
 export function loadAllDatasets() {
+  const clutchPayload = readSeasonPayload<ClutchProfile>('clutch_leverage_metrics.json');
+  const defensePayload = readSeasonPayload<DefensiveProfile, RapmSeasonWindow>('defensive_metrics.json');
+  const playerDnaPayload = readSeasonPayload<PlayerDnaProfile, RapmSeasonWindow>('player_dna_profiles.json');
   return {
+    clutchWindow: clutchPayload.window,
+    defenseWindow: defensePayload.window,
+    playerDnaWindow: playerDnaPayload.window,
     teams: readJsonFile<TeamProjection[]>('projections_season_teams.json'),
     players: readJsonFile<PlayerProjection[]>('projections_season_players.json'),
     metadata: readJsonFile<ModelMetadata>('projections_models_metadata.json'),
     diagnostics: readJsonFile<ModelDiagnostics>('projections_diagnostics.json'),
     cbaCapSheet: readJsonFile<CbaLeagueOverview>('cba_cap_sheet.json'),
-    clutch: readJsonFile<ClutchProfile[]>('clutch_leverage_metrics.json'),
+    clutch: clutchPayload.profiles,
     coaches: readJsonFile<CoachingStaffMetric[]>('coaching_metrics.json'),
-    defense: readJsonFile<DefensiveProfile[]>('defensive_metrics.json'),
-    playerDna: readJsonFile<PlayerDnaProfile[]>('player_dna_profiles.json'),
+    defense: defensePayload.profiles,
+    playerDna: playerDnaPayload.profiles,
     offseasonDraft: readJsonFile<RookieDraftProfile[]>('offseason_draft.json'),
     offseasonTeams: readJsonFile<TeamOffseasonProfile[]>('offseason_teams.json'),
     offseasonTransactions: readJsonFile<OffseasonTransaction[]>('offseason_transactions.json'),

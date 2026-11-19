@@ -83,13 +83,19 @@ pbp_bind_seasons <- function(frames, labels = NULL, tag = "PBP") {
 # (games from yesterday may not be published yet) and the file has not already
 # been refreshed within min_refresh_age_hours (so back-to-back stages, or an
 # off-day with no new games, do not refetch on every call).
+#
+# reference_date (optional): when given, the cache is behind when its latest game_date is
+# before that date, instead of before yesterday. The player box cache passes the later of
+# the play-by-play max date and the latest completed game, so it can never lag the
+# play-by-play it is joined to (front-office#191).
 pbp_cache_decision <- function(season, current_season, cache_rows, cache_max_date,
                                cache_age_hours, today = Sys.Date(),
-                               min_refresh_age_hours = 6) {
+                               min_refresh_age_hours = 6, reference_date = NULL) {
   if (is.null(cache_rows) || is.na(cache_rows) || cache_rows == 0) return("fetch")
   if (season < current_season) return("cache")
   if (is.null(cache_max_date) || is.na(cache_max_date)) return("refetch")
-  behind <- as.Date(cache_max_date) < (as.Date(today) - 1)
+  behind_by <- if (!is.null(reference_date) && !is.na(reference_date)) as.Date(reference_date) else (as.Date(today) - 1)
+  behind <- as.Date(cache_max_date) < behind_by
   recently_refreshed <- !is.na(cache_age_hours) && cache_age_hours < min_refresh_age_hours
   if (behind && !recently_refreshed) "refetch" else "cache"
 }
@@ -103,7 +109,8 @@ pbp_cache_decision <- function(season, current_season, cache_rows, cache_max_dat
 # applying pbp_cache_decision(). fetch_fn is called as fetch_fn(seasons = season).
 load_pbp_season_cached <- function(season, cache_dir, current_season, fetch_fn,
                                    tag = "PBP", label = "play-by-play",
-                                   prefix = "nba_pbp", today = Sys.Date()) {
+                                   prefix = "nba_pbp", today = Sys.Date(),
+                                   reference_date = NULL) {
   path <- file.path(cache_dir, sprintf("%s_%d.rds", prefix, season))
   cached <- NULL
   age_h <- NA_real_
@@ -115,7 +122,8 @@ load_pbp_season_cached <- function(season, cache_dir, current_season, fetch_fn,
   cache_max <- .pbp_max_date(cached)
   decision <- pbp_cache_decision(season, current_season,
                                  if (is.null(cached)) 0L else nrow(cached),
-                                 cache_max, age_h, today = today)
+                                 cache_max, age_h, today = today,
+                                 reference_date = reference_date)
 
   if (decision == "cache") {
     message(sprintf(">>> [%s] Loaded season %d %s from cache (%s rows, through %s).",
@@ -153,4 +161,28 @@ load_pbp_season_cached <- function(season, cache_dir, current_season, fetch_fn,
     return(as.data.frame(cached))
   }
   NULL
+}
+
+# Latest completed game date in the team box cache (box_scores_cache.rds), or NA when the
+# file is absent/unreadable. Used as one reference for player box freshness.
+latest_completed_game_date <- function(team_box_path) {
+  if (is.null(team_box_path) || !file.exists(team_box_path)) return(as.Date(NA))
+  d <- tryCatch(readRDS(team_box_path), error = function(e) NULL)
+  .pbp_max_date(d)
+}
+
+# The date the current-season player box cache must reach: the later of the play-by-play
+# max date and the latest completed game (NA parts ignored).
+box_reference_date <- function(pbp, team_box_path = NULL) {
+  ds <- c(.pbp_max_date(pbp), latest_completed_game_date(team_box_path))
+  ds <- ds[!is.na(ds)]
+  if (length(ds) == 0) as.Date(NA) else max(ds)
+}
+
+# One player-box season through the same staleness refetch as play-by-play.
+load_player_box_season_cached <- function(season, cache_dir, current_season, fetch_fn,
+                                          reference_date = NULL, tag = "BOX", today = Sys.Date()) {
+  load_pbp_season_cached(season, cache_dir, current_season, fetch_fn, tag = tag,
+                         label = "player box", prefix = "nba_player_box", today = today,
+                         reference_date = reference_date)
 }

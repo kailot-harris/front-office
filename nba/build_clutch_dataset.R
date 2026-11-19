@@ -9,7 +9,7 @@
 # 5. Clutch Shot Spatial Distribution (Rim, Mid-Range, 3PT with make/miss rates)
 #
 # All metrics are derived strictly from empirical play-by-play events
-# in cache/nba_pbp_cache.rds (or cache/nba_pbp_2026.rds) and box scores.
+# in the current-season cache/nba_pbp_<CURRENT_SEASON>.rds and box scores.
 # Manual star player overrides and affine clamping heuristics have been
 # eradicated (Issue #81, following WNBA Issue #144 precedent).
 #
@@ -18,13 +18,15 @@
 #   - cache/clutch_leverage_metrics.rds
 #
 # Data window (front-office#109):
-#   Seasons: play-by-play is the first file in pbp_candidates that exists:
-#     cache/nba_pbp_cache.rds, else cache/nba_pbp_2026.rds (the 2025-26 season).
-#     No script in this repo writes nba_pbp_cache.rds, so if one is present it is
-#     used silently in place of the 2025-26 file. Baseline shooting and turnover
-#     rates come from cache/nba_player_box_2026.rds (2025-26); if that file is
-#     missing, a projection-based stand-in is used. The player list comes from
-#     the 2026-27 season projections. No season-type filter is applied.
+#   Seasons: the current season only (CURRENT_SEASON in config.R, labelled via
+#     season_label(); 2027 = 2026-27). Play-by-play is
+#     cache/nba_pbp_<CURRENT_SEASON>.rds and baseline shooting / turnover rates
+#     come from cache/nba_player_box_<CURRENT_SEASON>.rds. The script stops if
+#     either is missing: there is no fallback to another season, to an unnamed
+#     cache file, or to projection baselines (front-office#191). The player list
+#     comes from the 2026-27 season projections. No season-type filter is
+#     applied. The JSON exports season, throughDate (latest game_date present in
+#     the play-by-play input) and generatedAt, so pages read the window from data.
 #   Filters: the clutch window is period 4 or overtime, 5:00 or less on the clock,
 #     and a score margin of 5 points or fewer, using the score recorded on each
 #     play row (the score after that play).
@@ -56,21 +58,17 @@ if (!file.exists(proj_players_file)) {
 }
 
 players_df <- jsonlite::fromJSON(proj_players_file)
-cat(sprintf(">>> Loaded %d player projections for 2026-2027 season.\n", nrow(players_df)))
+cat(sprintf(">>> Loaded %d player projections for %s season.\n", nrow(players_df), season_label()))
 
 # Load empirical play-by-play cache
-pbp_candidates <- c(
-  file.path(CACHE_DIR, "nba_pbp_cache.rds"),
-  file.path(CACHE_DIR, "nba_pbp_2026.rds")
-)
-pbp_file <- pbp_candidates[file.exists(pbp_candidates)][1]
-
-if (is.na(pbp_file) || !file.exists(pbp_file)) {
-  stop("No NBA play-by-play cache found in cache directory.")
-}
+pbp_file <- current_season_cache("pbp")  # stop()s if the current-season file is missing
+box_file <- current_season_cache("player_box")  # stop()s if missing
 
 cat(sprintf(">>> Ingesting empirical play-by-play from '%s'...\n", pbp_file))
 pbp <- readRDS(pbp_file)
+box_df <- readRDS(box_file)
+through_date <- data_through_date(pbp, box_df)
+cat(sprintf(">>> Season %s, data through %s (earlier of play-by-play and player box).\n", season_label(), through_date))
 
 # Compute seconds remaining and score margin
 pbp$sec_remaining <- pbp$clock_minutes * 60 + pbp$clock_seconds
@@ -82,45 +80,32 @@ cat(sprintf(">>> Filtered %d clutch event records across %d close games.\n",
             nrow(clutch), length(unique(clutch$game_id))))
 
 # Ingest regular season player box scores for baseline TS% and TOV%
-box_file <- file.path(CACHE_DIR, "nba_player_box_2026.rds")
-has_box <- file.exists(box_file)
-box_df <- if (has_box) readRDS(box_file) else NULL
-
-if (has_box) {
-  cat(sprintf(">>> Ingested %d regular-season player box scores for baseline calibration.\n", nrow(box_df)))
-  reg_box <- box_df %>%
-    group_by(athlete_id = as.character(athlete_id)) %>%
-    summarise(
-      reg_games = n(),
-      reg_min = sum(as.numeric(minutes), na.rm = TRUE),
-      reg_pts = sum(as.numeric(points), na.rm = TRUE),
-      reg_fga = sum(as.numeric(field_goals_attempted), na.rm = TRUE),
-      reg_fgm = sum(as.numeric(field_goals_made), na.rm = TRUE),
-      reg_fta = sum(as.numeric(free_throws_attempted), na.rm = TRUE),
-      reg_ftm = sum(as.numeric(free_throws_made), na.rm = TRUE),
-      reg_tov = sum(as.numeric(turnovers), na.rm = TRUE),
-      .groups = "drop"
-    ) %>%
-    mutate(
-      base_ts = if_else(
-        (reg_fga + 0.44 * reg_fta) > 0,
-        round((reg_pts / (2 * (reg_fga + 0.44 * reg_fta))) * 100, 1),
-        55.0
-      ),
-      base_tov_rate = if_else(
-        (reg_fga + 0.44 * reg_fta + reg_tov) > 0,
-        (reg_tov / (reg_fga + 0.44 * reg_fta + reg_tov)) * 100,
-        12.0
-      )
+cat(sprintf(">>> Ingested %d regular-season player box scores for baseline calibration.\n", nrow(box_df)))
+reg_box <- box_df %>%
+  group_by(athlete_id = as.character(athlete_id)) %>%
+  summarise(
+    reg_games = n(),
+    reg_min = sum(as.numeric(minutes), na.rm = TRUE),
+    reg_pts = sum(as.numeric(points), na.rm = TRUE),
+    reg_fga = sum(as.numeric(field_goals_attempted), na.rm = TRUE),
+    reg_fgm = sum(as.numeric(field_goals_made), na.rm = TRUE),
+    reg_fta = sum(as.numeric(free_throws_attempted), na.rm = TRUE),
+    reg_ftm = sum(as.numeric(free_throws_made), na.rm = TRUE),
+    reg_tov = sum(as.numeric(turnovers), na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    base_ts = if_else(
+      (reg_fga + 0.44 * reg_fta) > 0,
+      round((reg_pts / (2 * (reg_fga + 0.44 * reg_fta))) * 100, 1),
+      NA_real_  # no attempts: unobserved, published as null (never a default)
+    ),
+    base_tov_rate = if_else(
+      (reg_fga + 0.44 * reg_fta + reg_tov) > 0,
+      (reg_tov / (reg_fga + 0.44 * reg_fta + reg_tov)) * 100,
+      NA_real_  # no possessions used: unobserved, published as null
     )
-} else {
-  warning(">>> [CLUTCH ENGINE] nba_player_box_2026.rds missing; using projection baselines.")
-  reg_box <- tibble(
-    athlete_id = character(0),
-    base_ts = numeric(0),
-    base_tov_rate = numeric(0)
   )
-}
 
 # --- Aggregations from empirical PBP ---
 
@@ -275,12 +260,9 @@ for (i in seq_len(nrow(players_df))) {
   c_fga <- if (nrow(sh) > 0) sh$clutch_fga else 0L
   has_sufficient_sample <- c_fga >= MIN_CLUTCH_FGA
 
-  # Base TS% from regular season box scores (or projection fallback)
-  base_ts <- if (nrow(bx) > 0) {
-    bx$base_ts
-  } else {
-    round(54.0 + (pts * 0.3) + (if (is_center) 4.0 else 0.0), 1)
-  }
+  # Base TS% from current-season regular season box scores
+  # (null when the player has no box row or no attempts; never imputed)
+  base_ts <- if (nrow(bx) > 0) bx$base_ts else NA_real_
 
   rim_fga <- if (nrow(sh) > 0) as.integer(sh$rim_fga) else 0L
   rim_fgm <- if (nrow(sh) > 0) as.integer(sh$rim_fgm) else 0L
@@ -302,13 +284,13 @@ for (i in seq_len(nrow(players_df))) {
     c_dreb <- if (nrow(dr) > 0) dr$clutch_dreb else 0L
     c_blk <- if (nrow(bk) > 0) bk$clutch_blk else 0L
     c_stl <- if (nrow(st) > 0) st$clutch_stl else 0L
-    c_gp <- if (nrow(tm) > 0) tm$clutch_games else 1L
+    c_gp <- if (nrow(tm) > 0) tm$clutch_games else 0L  # 0 clutch games; the "+ 8" prior below keeps c-dWPA finite
 
     # Empirical Clutch MPG
-    clutch_min_pg <- round(pmin(5.0, pmax(0.5, if (nrow(tm) > 0) tm$avg_clutch_mpg else 2.0)), 1)
+    clutch_min_pg <- if (nrow(tm) > 0) round(pmin(5.0, pmax(0.5, tm$avg_clutch_mpg)), 1) else NA_real_
 
     # Empirical Clutch Usage %
-    clutch_usg_pct <- if (nrow(us) > 0) us$clutch_usg_pct else 20.0
+    clutch_usg_pct <- if (nrow(us) > 0) us$clutch_usg_pct else NA_real_
 
     # Empirical True Shooting %
     clutch_ts_pct <- round(pmin(100.0, pmax(0.0, (c_pts / (2 * (c_fga + 0.44 * c_fta))) * 100)), 1)
@@ -321,15 +303,15 @@ for (i in seq_len(nrow(players_df))) {
 
     # Turnover Fragility Under Pressure (Delta TOV%)
     clutch_tov_rate <- (c_tov / (c_fga + 0.44 * c_fta + c_tov)) * 100
-    base_tov_rate <- if (nrow(bx) > 0) bx$base_tov_rate else 12.0
-    tov_fragility <- round(clutch_tov_rate - base_tov_rate, 1)
+    base_tov_rate <- if (nrow(bx) > 0) bx$base_tov_rate else NA_real_
+    tov_fragility <- round(clutch_tov_rate - base_tov_rate, 1)  # NA when baseline unobserved
 
     # Clutch Defensive Win Probability Added (c-dWPA) in percentage points
     c_dwpa <- round((c_dreb * 0.12 + c_stl * 0.35 + c_blk * 0.40 + 2.0) / (c_gp + 8) * 6, 2)
 
     # Archetype based on empirical metrics
     clutch_archetype <- if (usci_score >= 65.0) "Elite Late-Game Closer & Iso Engine" else
-                        if (ts_delta >= 2.0) "High-Pressure True Shooting Riser" else
+                        if (isTRUE(ts_delta >= 2.0)) "High-Pressure True Shooting Riser" else
                         if (c_dwpa >= 1.5) "Late-Game Defensive Anchor & Lock" else
                         if (unassisted_fgm_pct <= 35.0 && clutch_ts_pct >= 58.0) "Dead-Eye Spot-Up Release Valve" else
                         "Situational Rotation Finisher"
@@ -392,7 +374,13 @@ cat(sprintf(">>> %d of %d players reach MIN_CLUTCH_FGA = %d and are ranked.
 # Export JSON & RDS
 # ------------------------------------------------------------------------------
 output_json <- WEB_JSON_CLUTCH_LEVERAGE_METRICS
-jsonlite::write_json(clutch_profiles, output_json, pretty = TRUE, auto_unbox = TRUE, na = "null")
+clutch_payload <- list(
+  season = season_label(),
+  throughDate = through_date,
+  generatedAt = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+  profiles = clutch_profiles
+)
+jsonlite::write_json(clutch_payload, output_json, pretty = TRUE, auto_unbox = TRUE, na = "null")
 cat(sprintf(">>> [SUCCESS] Wrote %d Clutch profiles to '%s'.\n", length(clutch_profiles), output_json))
 
 if (!dir.exists(CACHE_DIR)) dir.create(CACHE_DIR, recursive = TRUE)

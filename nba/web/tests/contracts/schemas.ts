@@ -338,6 +338,21 @@ export const CbaLeagueOverviewSchema = z
   .strict();
 
 // ----------------------------------------------------------------------------
+// Season-window envelope shared by clutch / defense / Player DNA (lib/seasonWindow.ts)
+// ----------------------------------------------------------------------------
+const seasonLabel = z.string().regex(/^\d{4}-\d{2}$/);
+export const SeasonWindowSchema = z
+  .object({
+    season: seasonLabel,
+    throughDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    generatedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/),
+    rapmSeason: seasonLabel.optional(),
+  })
+  .strict();
+/** Defense and Player DNA publish ridge RAPM fit on another season, so rapmSeason is required there. */
+export const RapmSeasonWindowSchema = SeasonWindowSchema.extend({ rapmSeason: seasonLabel });
+
+// ----------------------------------------------------------------------------
 // 6. clutch_leverage_metrics.json -> ClutchProfile[] (lib/clutchTypes.ts)
 // ----------------------------------------------------------------------------
 const ShotZoneStatsSchema = z
@@ -357,7 +372,12 @@ export const ClutchProfileSchema = z
     clutchMpg: num.min(0).max(5).nullable(),
     clutchUsgPct: pct.nullable(),
     clutchTsPct: pct.nullable(),
-    baseTsPct: pct,
+    // True shooting can legitimately exceed 100 on a handful of early-season attempts
+    // (free throws and and-ones inflate pts per shot); the full-season bound is 100, so the
+    // <=150 bound only exists for tiny early-season samples. null = no box row or no attempts.
+    // clutchTsPct needs no such widening: the builder clamps it to [0, 100]. tsDelta is an
+    // unbounded difference, so it already tolerates a >100 baseline.
+    baseTsPct: num.min(0).max(150).nullable(),
     tsDelta: num.nullable(),
     usciScore: num.min(0).max(150).nullable(),
     unassistedFgmPct: pct.nullable(),
@@ -448,15 +468,16 @@ export const DefensiveProfileSchema = z
     team: teamEnum,
     position: positionEnum,
     projMpg: num.min(0).max(48),
-    defensiveRole: z.string().min(2),
-    versatilityScore: pct,
-    rimDfgDelta: num,
-    rimDeterrenceIndex: nonNeg,
-    poaNavigation: pct,
-    dRapm: num,
+    defensiveRole: z.string().min(2).nullable(),
+    versatilityScore: pct.nullable(),
+    rimDfgDelta: num.nullable(),
+    rimDeterrenceIndex: nonNeg.nullable(),
+    poaNavigation: pct.nullable(),
+    dRapm: num.nullable(),
     matchupDist: z
       .object({ pgPct: pct, sgPct: pct, sfPct: pct, pfPct: pct, cPct: pct })
-      .strict(),
+      .strict()
+      .nullable(),
   })
   .strict();
 
@@ -496,7 +517,7 @@ export const PlayerDnaProfileSchema = z
           .object({
             compName: z.string().min(2),
             playerId: z.string().min(1),
-            era: z.literal('2025-26'),
+            era: seasonLabel,
             archetype: z.string().min(2),
             position: z.string().min(1),
             similarityPct: pct,

@@ -1,17 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ClutchProfile, CLUTCH_MIN_FGA, CLUTCH_DATA_SEASON_NOTE } from '@/lib/clutchTypes';
+import { ClutchProfile, CLUTCH_MIN_FGA } from '@/lib/clutchTypes';
 import { ClutchShotBreakdownCard } from './ClutchShotBreakdownCard';
 import { PressureResiliencePlot } from './PressureResiliencePlot';
 import { Flame, Search, ChevronRight, Activity, Crosshair, ArrowUpDown, Shield } from 'lucide-react';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
-import { SEASON_SOURCES } from '@/lib/season';
+import type { SeasonWindow } from '@/lib/seasonWindow';
 import { HowToReadDisclosure } from '@/components/HowToReadDisclosure';
 import { GlossaryTerm } from '@/components/GlossaryTerm';
 
 interface ClutchClientProps {
   initialProfiles: ClutchProfile[];
+  /** Season label and last-game date read from the published JSON; null when the file is unreadable. */
+  seasonWindow: SeasonWindow | null;
 }
 
 /**
@@ -37,7 +39,7 @@ export function qualifiedUsciRange(
   };
 }
 
-export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) => {
+export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles, seasonWindow }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortKey, setSortKey] = useState<'usciScore' | 'clutchTsPct' | 'cDwpa' | 'clutchUsgPct'>('usciScore');
   const [sampleView, setSampleView] = useState<'QUALIFIED' | 'ALL'>('QUALIFIED');
@@ -96,12 +98,14 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
               <Flame className="w-3.5 h-3.5" /> True Clutch & Leverage Creation Index
             </span>
             <span className="text-xs text-zinc-500 font-mono">Leverage Index (LI ≤ 5 pts, ≤ 5:00 4Q)</span>
-            <SeasonSourceBadge
-              season={SEASON_SOURCES.clutch.season}
-              kind="projection"
-              label="Projected season"
-              title={SEASON_SOURCES.clutch.note}
-            />
+            {seasonWindow && (
+              <SeasonSourceBadge
+                season={seasonWindow.season}
+                kind="observed"
+                label={`Games through ${seasonWindow.throughDate} · season`}
+                title={`Computed from ${seasonWindow.season} games played through ${seasonWindow.throughDate}`}
+              />
+            )}
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
             Late-Game Shot Creation, Efficiency & Defensive Stops
@@ -128,7 +132,11 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
       >
         <div className="font-semibold text-zinc-300">Methodology</div>
         <p>
-          Season: {CLUTCH_DATA_SEASON_NOTE} Clutch means the 4th quarter or overtime, 5:00 or less on the
+          Season:{' '}
+          {seasonWindow
+            ? `Observed ${seasonWindow.season} play-by-play through ${seasonWindow.throughDate}.`
+            : 'Season window unavailable.'}{' '}
+          Clutch means the 4th quarter or overtime, 5:00 or less on the
           clock, with the score within 5 points.
         </p>
         <p>
