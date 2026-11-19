@@ -25,6 +25,14 @@ Each `<sport>/` folder is everything from that sport's original standalone repo
 in with `git subtree` so the original commit history is still reachable —
 `git log <sport>/<some-file>` walks all the way back to that project's first
 commit.
+
+**Never edit the subtree folders here.** `mlb/`, `nba/`, `nfl/` and `wnba/`
+(including each `*/web` app) are `git subtree` copies of the sport repos. A
+change is made in the sport repo and arrives here by subtree pull. That covers
+dependency updates too: each sport repo runs its own Dependabot, so this repo
+has no `.github/dependabot.yml`. Do not add one with update blocks for the
+`*/web` folders.
+
 ## How deploys work
 `.github/workflows/deploy.yml` builds all four apps in parallel
 (`output: 'export'` static builds), stitches their `out/` directories plus the
