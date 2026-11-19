@@ -14,6 +14,7 @@ export interface VisualMediaItem {
   sizeBytes?: number;
   width?: number;
   height?: number;
+  unrendered?: boolean;
 }
 
 export const WNBA_GALLERY_ITEMS: VisualMediaItem[] = [
@@ -125,6 +126,7 @@ export const WNBA_GALLERY_ITEMS: VisualMediaItem[] = [
     description:
       'The score margin through the closing stretch of the Finals-deciding game, paired with where each shot in that stretch was taken. Not yet rendered: wehoop has not ingested this game\'s play-by-play/shot data, so this chart has no media files on disk until that data lands and the script is re-run.',
     type: 'gif',
+    unrendered: true,
   },
 ];
 
@@ -214,6 +216,7 @@ export const GalleryClient: React.FC<GalleryClientProps> = ({ mediaItems = WNBA_
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredMedia.map((item) => {
           const isGif = item.type === 'gif' || item.filename.endsWith('.gif');
+          const isUnrendered = Boolean(item.unrendered);
           const mediaUrl = `${BASE_PATH}/media/${item.filename}`;
           const companionPng = `${BASE_PATH}/media/${item.id}.png`;
 
@@ -225,32 +228,57 @@ export const GalleryClient: React.FC<GalleryClientProps> = ({ mediaItems = WNBA_
               <div>
                 {/* Media Preview Box */}
                 <div
-                  className="relative w-full aspect-video bg-surface border-b border-slate-800 cursor-pointer overflow-hidden flex items-center justify-center"
-                  onClick={() => setActiveMedia(item)}
+                  className={`relative w-full aspect-video bg-surface border-b border-slate-800 overflow-hidden flex items-center justify-center ${
+                    isUnrendered ? 'cursor-default' : 'cursor-pointer'
+                  }`}
+                  onClick={() => {
+                    if (!isUnrendered) setActiveMedia(item);
+                  }}
                 >
-                  <picture className="w-full h-full">
-                    <source media="(prefers-reduced-motion: reduce)" srcSet={companionPng} />
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={mediaUrl}
-                      alt={item.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  </picture>
+                  {isUnrendered ? (
+                    <div className="w-full h-full flex flex-col items-center justify-center gap-2 px-4 text-center bg-gradient-to-br from-surface-raised to-surface">
+                      <Film className="w-8 h-8 text-amber-400/60" />
+                      <span className="text-[11px] sm:text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                        PENDING UPSTREAM PBP
+                      </span>
+                      <span className="text-xs text-slate-400">
+                        Awaiting wehoop Game 7 play-by-play ingestion
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <picture className="w-full h-full">
+                        <source media="(prefers-reduced-motion: reduce)" srcSet={companionPng} />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={mediaUrl}
+                          alt={item.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </picture>
+
+                      {/* Hover Maximizer Icon */}
+                      <div className="absolute inset-0 bg-surface/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                        <span className="p-2.5 rounded-full bg-surface-raised/90 text-white border border-slate-700 shadow-xl flex items-center gap-1.5 text-xs font-mono">
+                          <Maximize2 className="w-4 h-4 text-emerald-400" /> Fullscreen
+                        </span>
+                      </div>
+                    </>
+                  )}
 
                   {/* Badge Overlay */}
                   <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
-                    <span className="bg-surface/80 backdrop-blur border border-slate-800 text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded text-white flex items-center gap-1">
-                      {isGif ? <Film className="w-3 h-3 text-cyan-400" /> : <ImageIcon className="w-3 h-3 text-emerald-400" />}
-                      {isGif ? 'ANIMATION' : 'STATIC PLOT'}
-                    </span>
-                  </div>
-
-                  {/* Hover Maximizer Icon */}
-                  <div className="absolute inset-0 bg-surface/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                    <span className="p-2.5 rounded-full bg-surface-raised/90 text-white border border-slate-700 shadow-xl flex items-center gap-1.5 text-xs font-mono">
-                      <Maximize2 className="w-4 h-4 text-emerald-400" /> Fullscreen
-                    </span>
+                    {isUnrendered ? (
+                      <span className="bg-amber-950/80 backdrop-blur border border-amber-500/30 text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded text-amber-300 flex items-center gap-1">
+                        <Film className="w-3 h-3 text-amber-400" />
+                        PENDING DATA
+                      </span>
+                    ) : (
+                      <span className="bg-surface/80 backdrop-blur border border-slate-800 text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded text-white flex items-center gap-1">
+                        {isGif ? <Film className="w-3 h-3 text-cyan-400" /> : <ImageIcon className="w-3 h-3 text-emerald-400" />}
+                        {isGif ? 'ANIMATION' : 'STATIC PLOT'}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -280,7 +308,7 @@ export const GalleryClient: React.FC<GalleryClientProps> = ({ mediaItems = WNBA_
       </div>
 
       {/* Fullscreen Modal View */}
-      {activeMedia && (
+      {activeMedia && !activeMedia.unrendered && (
         <div className="fixed inset-0 z-50 bg-surface/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-surface-raised border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
             {/* Modal Header */}
