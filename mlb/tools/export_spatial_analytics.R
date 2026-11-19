@@ -61,8 +61,56 @@ get_mlb_park_dimensions <- function() {
   )
 }
 
+#' Resolve the Season-Scoped Statcast Pitch Cache File
+#'
+#' Resolves `cache/ingest/statcast_pitches_<season>.rds` under `root_dir`,
+#' defaulting `season` to `MLB_CURRENT_SEASON` (from config.R) or the current
+#' calendar year. Falls back within the same `root_dir/cache/ingest` directory
+#' to any matching `statcast_pitches_<season>*.rds` file if the canonical file
+#' is not yet present. Never traverses outside `root_dir`.
+#'
+#' @param season Optional integer season year
+#' @param root_dir Repository root directory (defaults to `MLB_ROOT_DIR`)
+#' @return Normalized path to the resolved Statcast cache file
+resolve_statcast_cache_file <- function(season = NULL, root_dir = MLB_ROOT_DIR) {
+  if (is.null(season) || length(season) == 0L || is.na(season[1])) {
+    season <- if (exists("MLB_CURRENT_SEASON", inherits = TRUE)) {
+      as.integer(get("MLB_CURRENT_SEASON", inherits = TRUE))
+    } else if (exists("CURRENT_SEASON", inherits = TRUE)) {
+      as.integer(get("CURRENT_SEASON", inherits = TRUE))
+    } else {
+      as.integer(format(Sys.Date(), "%Y"))
+    }
+  } else {
+    season <- as.integer(season[1])
+  }
+
+  ingest_dir <- file.path(root_dir, "cache", "ingest")
+  canonical <- file.path(ingest_dir, sprintf("statcast_pitches_%d.rds", season))
+  if (file.exists(canonical)) {
+    return(normalizePath(canonical, winslash = "/", mustWork = FALSE))
+  }
+
+  if (dir.exists(ingest_dir)) {
+    season_files <- list.files(
+      ingest_dir,
+      pattern = sprintf("^statcast_pitches_%d([_-].*)?\\.rds$", season),
+      full.names = TRUE
+    )
+    if (length(season_files) > 0L) {
+      mtimes <- file.info(season_files)$mtime
+      best <- season_files[order(mtimes, season_files, decreasing = TRUE)[1L]]
+      return(normalizePath(best, winslash = "/", mustWork = FALSE))
+    }
+  }
+
+  normalizePath(canonical, winslash = "/", mustWork = FALSE)
+}
+
 #' Run Complete Statcast Spatial Analytics Processing
-export_spatial_analytics <- function(out_dir = file.path(MLB_ROOT_DIR, "web", "public", "data")) {
+export_spatial_analytics <- function(out_dir = file.path(MLB_ROOT_DIR, "web", "public", "data"),
+                                     season = NULL,
+                                     root_dir = MLB_ROOT_DIR) {
   start_time <- Sys.time()
   cat("==================================================================\n")
   cat(">>> EXPORTING STATCAST 4-TIER SPATIAL ANALYTICS JSON\n")
@@ -72,12 +120,17 @@ export_spatial_analytics <- function(out_dir = file.path(MLB_ROOT_DIR, "web", "p
     dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
   }
 
-  sc_file <- file.path(MLB_ROOT_DIR, "cache", "ingest", "statcast_pitches_2024-04-01_2024-04-02.rds")
+  sc_file <- resolve_statcast_cache_file(season = season, root_dir = root_dir)
   if (!file.exists(sc_file)) {
     stop(sprintf("Statcast data cache not found at %s", sc_file))
   }
   sc_df <- readRDS(sc_file)
-  cw_df <- readRDS(file.path(MLB_ROOT_DIR, "cache", "id_crosswalk", "mlb_id_crosswalk.rds"))
+  cw_file <- file.path(root_dir, "cache", "id_crosswalk", "mlb_id_crosswalk.rds")
+  cw_df <- if (file.exists(cw_file)) {
+    readRDS(cw_file)
+  } else {
+    tibble::tibble(mlb_id = character(), full_name = character())
+  }
 
   # Build name lookup from crosswalk (mlb_id -> full_name)
   cw_names <- cw_df %>%
@@ -400,10 +453,17 @@ export_spatial_analytics <- function(out_dir = file.path(MLB_ROOT_DIR, "web", "p
            script = .LOG_SCRIPT)
 
   # Generate individual player spatial dropdown maps (Spray Charts & Strike Zone Arsenals)
-  player_maps_script <- file.path(PROJECT_DIR, "tools", "export_player_spatial_maps.R")
-  if (file.exists(player_maps_script)) {
-    source(player_maps_script)
-    export_player_spatial_maps(out_dir = out_dir)
+  if (!exists("export_player_spatial_maps", mode = "function")) {
+    player_maps_script <- file.path(root_dir, "tools", "export_player_spatial_maps.R")
+    if (!file.exists(player_maps_script)) {
+      player_maps_script <- file.path(PROJECT_DIR, "tools", "export_player_spatial_maps.R")
+    }
+    if (file.exists(player_maps_script)) {
+      source(player_maps_script)
+    }
+  }
+  if (exists("export_player_spatial_maps", mode = "function")) {
+    export_player_spatial_maps(out_dir = out_dir, season = season, root_dir = root_dir)
   }
 
   invisible(out_file)

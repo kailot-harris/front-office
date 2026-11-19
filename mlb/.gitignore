@@ -22,5 +22,10 @@
 /web/test-results/
 /web/tsconfig.tsbuildinfo
 
+# Root-level test output (tools/offseason/test_dag_end_to_end.R writes
+# test-results/SUMMARY.md here; left behind on a failed run it forced the
+# scheduled checkout guard into 'git stash push -u')
+/test-results/
+
 # Agent-written planning/handoff docs (kept locally, not published)
 docs/internal/

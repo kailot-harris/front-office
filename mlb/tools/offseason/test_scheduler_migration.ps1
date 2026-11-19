@@ -118,6 +118,41 @@ Run-Test "Zero-betting policy compliance in schedule scripts" {
     return $true
 }
 
+<#
+.SYNOPSIS
+    Returns the zero-based index of the first non-blank, non-comment line containing Needle.
+#>
+function Get-FirstCodeLineIndex([string[]]$Lines, [string]$CommentPattern, [string]$Needle) {
+    $filtered = @($Lines | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and ($_ -notmatch $CommentPattern) })
+    for ($i = 0; $i -lt $filtered.Count; $i++) {
+        if ($filtered[$i].Contains($Needle)) {
+            return $i
+        }
+    }
+    return -1
+}
+
+# Test 7: DAG regression suite runs before monitor build in both scheduled wrappers
+Run-Test "DAG regression suite runs before monitor build in both scheduled wrappers" {
+    $wrappers = @(
+        @{ File = "schedule_weekly_offseason.bat"; Comment = "^\s*(REM\b|::)" },
+        @{ File = "schedule_weekly_offseason.ps1"; Comment = "^\s*#" }
+    )
+    foreach ($w in $wrappers) {
+        $path = Join-Path $ProjectDir $w.File
+        if (-not (Test-Path $path)) { return $false }
+        $lines = Get-Content -Path $path
+        $idxDag = Get-FirstCodeLineIndex $lines $w.Comment "tools/offseason/test_dag_end_to_end.R"
+        $idxBuild = Get-FirstCodeLineIndex $lines $w.Comment "build_offseason_monitor.R"
+        $idxPublish = Get-FirstCodeLineIndex $lines $w.Comment "tools/publish_web.R"
+        if (-not ($idxDag -ge 0 -and $idxBuild -gt $idxDag -and $idxPublish -gt $idxBuild)) {
+            Write-Host ("  Step order violation in {0}: dag={1}, build={2}, publish={3}" -f $w.File, $idxDag, $idxBuild, $idxPublish)
+            return $false
+        }
+    }
+    return $true
+}
+
 Write-Host "====================================================================="
 Write-Host ("Summary: {0}/{1} tests passed." -f $passCount, $testCount)
 Write-Host "====================================================================="
