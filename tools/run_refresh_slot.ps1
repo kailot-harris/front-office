@@ -49,9 +49,9 @@
     MODEL REFRESH ON NEW RESULTS. Each sport's tools/refresh_live_results.R
     patches finished scores plus the grading and slate counts that follow
     mechanically from them, into already-committed JSON. It cannot refresh
-    standings, ratings, projections or playoff odds: those need the pipeline
+    standings, ratings, projections or playoff probabilities: those need the pipeline
     caches, which live on this box. Left alone, a Thursday-night final showed
-    its score on the site for hours while standings and playoff odds still
+    its score on the site for hours while standings and playoff probabilities still
     described the world before the game.
 
     So when a sport's refresh run COMMITS something (new finals were written),
@@ -76,7 +76,7 @@
     A failed model refresh is reported and fails the slot's exit code, but
     does not withhold the sync: the publish gate inside each sport's wrapper
     refuses to push a bad payload, so the worst case is the site keeps the
-    patched scores with yesterday's odds, which is what it did before.
+    patched scores with yesterday's playoff probabilities, which is what it did before.
 
     WHY IT ALWAYS SYNCS, even when a refresh changed nothing: the aggregator's
     sync-sports.yml only dispatches deploy.yml when a subtree pull produced a
@@ -199,7 +199,7 @@ $REPO_DIR   = Split-Path -Parent $SCRIPT_DIR
 $RUN_DISCOVERY_ATTEMPTS = 10
 $RUN_DISCOVERY_DELAY_S  = 3
 
-# Sports whose model outputs (standings, ratings, projections, playoff odds)
+# Sports whose model outputs (standings, ratings, projections, playoff probabilities)
 # are rebuilt locally when the score refresh wrote new results. Each step is a
 # wrapper in that sport's checkout plus its arguments, run in order; the first
 # failing step stops that sport. These are the SAME wrappers Task Scheduler
@@ -664,7 +664,7 @@ function Get-RemoteHead {
 function Invoke-ModelRefresh {
     <#
         Runs one sport's local pipeline wrappers so standings, ratings and
-        playoff odds reflect the results the refresh just committed. Returns
+        playoff probabilities reflect the results the refresh just committed. Returns
         $true only if every step exited 0.
 
         This runs in the sport's PRIMARY checkout, which pipeline runs often
@@ -864,7 +864,7 @@ function Invoke-RefreshSlot {
         }
 
         if ($committed) {
-            Write-Step "  $sport has new results; refreshing standings and odds"
+            Write-Step "  $sport has new results; refreshing standings and playoff probabilities"
             $modelOk = Invoke-ModelRefresh -Sport $sport
             if (-not $modelOk) { $failed += "$sport-model-refresh" }
 
