@@ -60,6 +60,10 @@ jobs:
         with:
           ref: ${{ github.event.inputs.ref || github.ref }}
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Run pre-publish gate (drift / synthetic-data)
         run: node scripts/predeploy_gate.mjs
 
