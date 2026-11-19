@@ -26,7 +26,8 @@ if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
 
 source("logging_utils.R")
 source("config.R")
-if (!exists("get_mlb_park_dimensions", mode = "function")) {
+if (!exists("get_mlb_park_dimensions", mode = "function") ||
+    !exists("resolve_statcast_cache_file", mode = "function")) {
   source("tools/export_spatial_analytics.R")
 }
 .LOG_SCRIPT <- "export_player_spatial_maps.R"
@@ -38,7 +39,9 @@ pt_labels <- c(
   "PO" = "Pitchout"
 )
 
-export_player_spatial_maps <- function(out_dir = file.path(MLB_ROOT_DIR, "web", "public", "data")) {
+export_player_spatial_maps <- function(out_dir = file.path(MLB_ROOT_DIR, "web", "public", "data"),
+                                       season = NULL,
+                                       root_dir = MLB_ROOT_DIR) {
   start_time <- Sys.time()
   cat("==================================================================\n")
   cat(">>> EXPORTING EMPIRICAL PLAYER SPATIAL MAPS (HITS & PITCHES)\n")
@@ -50,7 +53,7 @@ export_player_spatial_maps <- function(out_dir = file.path(MLB_ROOT_DIR, "web", 
 
   players_file <- file.path(out_dir, "projections_season_players.json")
   if (!file.exists(players_file)) {
-    alt_p <- file.path(MLB_ROOT_DIR, "web", "public", "data", "projections_season_players.json")
+    alt_p <- file.path(root_dir, "web", "public", "data", "projections_season_players.json")
     if (file.exists(alt_p)) players_file <- alt_p
   }
   if (!file.exists(players_file)) {
@@ -58,34 +61,10 @@ export_player_spatial_maps <- function(out_dir = file.path(MLB_ROOT_DIR, "web", 
   }
   players <- jsonlite::fromJSON(players_file)
 
-  sc_file <- file.path(MLB_ROOT_DIR, "cache", "ingest", "statcast_pitches_2024-04-01_2024-04-02.rds")
-  if (!file.exists(sc_file)) {
-    alt_paths <- c(
-      file.path(MLB_ROOT_DIR, "..", "..", "MLB Analytics", "cache", "ingest", "statcast_pitches_2024-04-01_2024-04-02.rds"),
-      file.path(MLB_ROOT_DIR, "..", "MLB Analytics", "cache", "ingest", "statcast_pitches_2024-04-01_2024-04-02.rds")
-    )
-    for (ap in alt_paths) {
-      if (file.exists(ap)) {
-        sc_file <- ap
-        break
-      }
-    }
-  }
+  sc_file <- resolve_statcast_cache_file(season = season, root_dir = root_dir)
   sc_df <- if (file.exists(sc_file)) readRDS(sc_file) else data.frame()
 
-  cw_file <- file.path(MLB_ROOT_DIR, "cache", "id_crosswalk", "mlb_id_crosswalk.rds")
-  if (!file.exists(cw_file)) {
-    alt_paths_cw <- c(
-      file.path(MLB_ROOT_DIR, "..", "..", "MLB Analytics", "cache", "id_crosswalk", "mlb_id_crosswalk.rds"),
-      file.path(MLB_ROOT_DIR, "..", "MLB Analytics", "cache", "id_crosswalk", "mlb_id_crosswalk.rds")
-    )
-    for (ap in alt_paths_cw) {
-      if (file.exists(ap)) {
-        cw_file <- ap
-        break
-      }
-    }
-  }
+  cw_file <- file.path(root_dir, "cache", "id_crosswalk", "mlb_id_crosswalk.rds")
   cw_df <- if (file.exists(cw_file)) readRDS(cw_file) else data.frame()
 
   park_dims <- get_mlb_park_dimensions()
