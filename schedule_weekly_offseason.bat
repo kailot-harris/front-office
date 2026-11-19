@@ -103,6 +103,13 @@ if not "%STATUS_SIZE%"=="0" (
         set "GUARD_NEW_STASH=none"
         for /f "delims=" %%s in ('git stash list --format^=%%H -1 2^>nul') do set "GUARD_NEW_STASH=%%s"
         echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] [Checkout Guard] 'git stash push !GUARD_STASH_U!' failed, so this wrapper is NOT touching HEAD. Newest stash is now !GUARD_NEW_STASH! ^(before this run: !GUARD_PREV_STASH!; if they differ, a stash was created before the failure^). Nothing was run or published. >> "%RUN_LOG%"
+        REM A failed push can still have saved a stash (e.g. git saved it, then
+        REM could not delete an untracked folder). Git then skips its reset, so
+        REM the tree keeps the same changes AND a stash copy exists. Say so by
+        REM SHA; refuse anyway. Nothing here drops, pops or discards anything.
+        if not "!GUARD_NEW_STASH!"=="!GUARD_PREV_STASH!" (
+            echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] [Checkout Guard] Partial stash: 'git stash push !GUARD_STASH_U!' exited non-zero but DID create stash !GUARD_NEW_STASH! ^(stash@{0}^). The working tree may still be dirty ^(git skips its reset after such a failure^), so the same changes may exist both in the tree and in that stash. The stash was left in place for the owner to inspect. Refusing to run. Nothing was run or published. >> "%RUN_LOG%"
+        )
         del "%GUARD_STATUS_FILE%" >nul 2>&1
         exit /b 97
     )
