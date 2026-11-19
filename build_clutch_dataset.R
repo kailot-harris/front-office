@@ -28,10 +28,13 @@
 #   Filters: the clutch window is period 4 or overtime, 5:00 or less on the clock,
 #     and a score margin of 5 points or fewer, using the score recorded on each
 #     play row (the score after that play).
-#   Minimum sample: MIN_CLUTCH_FGA = 5 clutch field-goal attempts for clutch rates
-#     and an archetype; players below it are listed with empty rates and
-#     "Insufficient Clutch Sample", but their shot breakdown is still published.
-#   Known issues: #187 (score margin after the play), #90 (minimum sample, USCI scale).
+#   Minimum sample: MIN_CLUTCH_FGA = 20 clutch field-goal attempts (NBA#90; the
+#     owner's to tune) for clutch rates, a USCI rank and an archetype. Players
+#     below it stay in the file with their attempt count (clutchFga) and shot
+#     breakdown, but with empty rates, qualified = false, clutchRank = null and
+#     clutchArchetype = null.
+#   USCI scale: capped at 0-150, not a 0-100 index; values above 100 occur (#90).
+#   Known issues: #187 (score margin after the play).
 # ==============================================================================
 
 suppressPackageStartupMessages({
@@ -241,8 +244,11 @@ p_time_summary <- p_events %>%
     .groups = "drop"
   )
 
-# Minimum sample threshold
-MIN_CLUTCH_FGA <- 5L
+# Minimum sample threshold (NBA#90). Below this many clutch field-goal attempts a
+# player is published unranked, with no clutch rates and no archetype. 20 is the
+# default; the value is the owner's to tune. Keep CLUTCH_MIN_FGA in
+# web/lib/clutchTypes.ts equal to this constant.
+MIN_CLUTCH_FGA <- 20L
 
 clutch_profiles <- list()
 
@@ -337,7 +343,7 @@ for (i in seq_len(nrow(players_df))) {
     clutch_ppp <- NA_real_
     tov_fragility <- NA_real_
     c_dwpa <- NA_real_
-    clutch_archetype <- "Insufficient Clutch Sample"
+    clutch_archetype <- NA_character_
   }
 
   clutch_profiles[[i]] <- list(
@@ -345,6 +351,9 @@ for (i in seq_len(nrow(players_df))) {
     playerName = name,
     team = team,
     position = pos,
+    clutchFga = as.integer(c_fga),
+    qualified = has_sufficient_sample,
+    clutchRank = NA_integer_,
     clutchArchetype = clutch_archetype,
     clutchMpg = clutch_min_pg,
     clutchUsgPct = clutch_usg_pct,
@@ -364,6 +373,20 @@ for (i in seq_len(nrow(players_df))) {
     )
   )
 }
+
+# USCI rank among qualified players only (1 = highest USCI, ties share the best
+# rank). Players under MIN_CLUTCH_FGA keep clutchRank = null.
+qualified_idx <- which(vapply(clutch_profiles, function(x) isTRUE(x$qualified), logical(1)))
+if (length(qualified_idx) > 0) {
+  q_usci <- vapply(clutch_profiles[qualified_idx], function(x) x$usciScore, numeric(1))
+  q_rank <- as.integer(rank(-q_usci, ties.method = "min"))
+  for (k in seq_along(qualified_idx)) {
+    clutch_profiles[[qualified_idx[k]]]$clutchRank <- q_rank[k]
+  }
+}
+cat(sprintf(">>> %d of %d players reach MIN_CLUTCH_FGA = %d and are ranked.
+",
+            length(qualified_idx), length(clutch_profiles), MIN_CLUTCH_FGA))
 
 # ------------------------------------------------------------------------------
 # Export JSON & RDS

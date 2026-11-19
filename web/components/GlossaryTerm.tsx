@@ -30,7 +30,7 @@ export const GLOSSARY: Record<string, string> = {
   manifold:
     'A lower-dimensional surface that high-dimensional player data (e.g. 15-D skill vectors) is projected onto so it can be visualized or compared.',
   USCI:
-    'Unassisted Shot Creation Index — a clutch-specific rating of how much scoring a player generates on self-created (unassisted) shots in late-game situations, isolating shot creation from simply finishing a teammate\'s pass.',
+    'Unassisted Shot Creation Index — a clutch-specific rating of how much scoring a player generates on self-created (unassisted) shots in late-game situations, isolating shot creation from simply finishing a teammate\'s pass. It is the unassisted share of clutch makes times clutch points per shot attempt, times 100, capped at 0-150, so it is not a 0-100 scale and can exceed 100. Only players with the clutch sample minimum get a value.',
   'c-dWPA':
     'Clutch Defensive Win Probability Added — the estimated swing in win probability a player\'s defensive possessions produce during clutch time, crediting stops and limiting the shots the model expects to go in.',
   entropy:
