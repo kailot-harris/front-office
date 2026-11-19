@@ -38,10 +38,10 @@ export const CoachRadarProfile: React.FC<CoachRadarProfileProps> = ({
     };
   };
 
-  // Polygon points string for the data
+  // Polygon points string for the data (null axes collapse to 0 radius, label shows —)
   const polygonPoints = axes
     .map((axis, i) => {
-      const { x, y } = getCoordinates(i, axis.value);
+      const { x, y } = getCoordinates(i, axis.value ?? 0);
       return `${x},${y}`;
     })
     .join(' ');
@@ -144,6 +144,7 @@ export const CoachRadarProfile: React.FC<CoachRadarProfileProps> = ({
 
           {/* Data Points on vertices */}
           {axes.map((axis, i) => {
+            if (axis.value === null) return null;
             const { x, y } = getCoordinates(i, axis.value);
             return (
               <g key={axis.key}>
@@ -188,7 +189,7 @@ export const CoachRadarProfile: React.FC<CoachRadarProfileProps> = ({
                   textAnchor={textAnchor}
                   className="fill-amber-400 font-mono text-[11px] sm:text-[10px] font-semibold"
                 >
-                  {axis.value}th %ile
+                  {axis.value !== null ? `${axis.value}th %ile` : '—'}
                 </text>
               </g>
             );
@@ -206,17 +207,21 @@ export const CoachRadarProfile: React.FC<CoachRadarProfileProps> = ({
           >
             <span className="text-[11px] sm:text-[10px] text-slate-400 font-medium truncate">{a.label}</span>
             <div className="flex items-baseline justify-between mt-1">
-              <span className="font-mono text-xs font-bold text-white">{a.value}%</span>
+              <span className="font-mono text-xs font-bold text-white">
+                {a.value !== null ? `${a.value}%` : '—'}
+              </span>
               <span
                 className={`text-[11px] sm:text-[9px] font-mono font-semibold px-1 py-0.2 rounded ${
-                  a.value >= 80
+                  a.value === null
+                    ? 'bg-slate-500/10 text-slate-400'
+                    : a.value >= 80
                     ? 'bg-emerald-500/10 text-emerald-400'
                     : a.value >= 50
                     ? 'bg-amber-500/10 text-amber-400'
                     : 'bg-rose-500/10 text-rose-400'
                 }`}
               >
-                {a.value >= 80 ? 'Elite' : a.value >= 50 ? 'Above Avg' : 'Developing'}
+                {a.value === null ? 'Unobserved' : a.value >= 80 ? 'Elite' : a.value >= 50 ? 'Above Avg' : 'Developing'}
               </span>
             </div>
           </div>

@@ -258,13 +258,19 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
             </text>
 
             {/* Scatter Plot Points */}
-            {coaches.map((c) => {
-              const cx = scaleX(c.metrics.atoDefensivePppAllowed);
-              const cy = scaleY(c.metrics.atoOffensivePpp);
+            {coaches
+              .filter(
+                (c) =>
+                  c.metrics.atoDefensivePppAllowed !== null &&
+                  c.metrics.atoOffensivePpp !== null
+              )
+              .map((c) => {
+              const cx = scaleX(c.metrics.atoDefensivePppAllowed!);
+              const cy = scaleY(c.metrics.atoOffensivePpp!);
               const isSelected = selectedCoach?.teamAbbr === c.teamAbbr;
               const isHovered = hoveredCoach?.teamAbbr === c.teamAbbr;
 
-              const cir = c.metrics.coachImpactRating;
+              const cir = c.metrics.coachImpactRating ?? 0;
               const dotColor = cir >= 80 ? '#10b981' : cir >= 65 ? '#f59e0b' : '#64748b';
 
               return (
@@ -333,7 +339,7 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
               <div className="ml-auto text-right">
                 <span className="text-[11px] sm:text-[10px] text-slate-400 block">CIR</span>
                 <span className="text-xs font-mono font-bold text-amber-400">
-                  {hoveredCoach.metrics.coachImpactRating}
+                  {hoveredCoach.metrics.coachImpactRating ?? '—'}
                 </span>
               </div>
             </div>
@@ -342,19 +348,25 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
               <div className="p-1.5 bg-surface-raised/80 rounded border border-slate-800/80">
                 <span className="text-[11px] sm:text-[9px] text-slate-400 block">Off ATO PPP</span>
                 <span className="font-mono font-bold text-emerald-400">
-                  {hoveredCoach.metrics.atoOffensivePpp.toFixed(3)}
+                  {hoveredCoach.metrics.atoOffensivePpp !== null
+                    ? hoveredCoach.metrics.atoOffensivePpp.toFixed(3)
+                    : '—'}
                 </span>
               </div>
               <div className="p-1.5 bg-surface-raised/80 rounded border border-slate-800/80">
                 <span className="text-[11px] sm:text-[9px] text-slate-400 block">Def ATO PPP</span>
                 <span className="font-mono font-bold text-sky-400">
-                  {hoveredCoach.metrics.atoDefensivePppAllowed.toFixed(3)}
+                  {hoveredCoach.metrics.atoDefensivePppAllowed !== null
+                    ? hoveredCoach.metrics.atoDefensivePppAllowed.toFixed(3)
+                    : '—'}
                 </span>
               </div>
               <div className="p-1.5 bg-surface-raised/80 rounded border border-slate-800/80">
                 <span className="text-[11px] sm:text-[9px] text-slate-400 block">Challenge Win %</span>
                 <span className="font-mono font-bold text-amber-400">
-                  {(hoveredCoach.metrics.challengeSuccessRate * 100).toFixed(1)}%
+                  {hoveredCoach.metrics.challengeSuccessRate !== null
+                    ? `${(hoveredCoach.metrics.challengeSuccessRate * 100).toFixed(1)}%`
+                    : '—'}
                 </span>
               </div>
               <div className="p-1.5 bg-surface-raised/80 rounded border border-slate-800/80">

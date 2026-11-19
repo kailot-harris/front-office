@@ -73,13 +73,42 @@ describe('CoachImpactProfile', () => {
 
     expect(
       screen.getByText(
-        `${metrics.atoOffensivePpp.toFixed(3)} for / ${metrics.atoDefensivePppAllowed.toFixed(3)} allowed`,
+        `${metrics.atoOffensivePpp!.toFixed(3)} for / ${metrics.atoDefensivePppAllowed!.toFixed(3)} allowed`,
       ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        new RegExp(`${(metrics.challengeSuccessRate * 100).toFixed(1)}% success`),
+        new RegExp(`${(metrics.challengeSuccessRate! * 100).toFixed(1)}% success`),
       ),
     ).toBeInTheDocument();
+  });
+
+  it('shows insufficient sample instead of a default when ATO or challenge metrics are null', () => {
+    const base = coaches[0];
+    const unobservedCoach = {
+      ...base,
+      metrics: {
+        ...base.metrics,
+        coachImpactRating: null,
+        atoOffensivePpp: null,
+        atoDefensivePppAllowed: null,
+        challengeSuccessRate: null,
+        atoOffPossessions: 0,
+        atoDefPossessions: 0,
+        challengeAttempts: 0,
+      },
+      radarPercentiles: {
+        ...base.radarPercentiles,
+        atoMastery: null,
+        inGameWpa: null,
+      },
+      provenance: {
+        ...base.provenance,
+        atoMetrics: 'unobserved' as const,
+        challengeMetrics: 'unobserved' as const,
+      },
+    };
+    render(<CoachImpactProfile coach={unobservedCoach} />);
+    expect(screen.getAllByText('insufficient sample (n = 0, needs 1)').length).toBe(3);
   });
 });

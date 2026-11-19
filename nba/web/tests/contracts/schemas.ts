@@ -422,13 +422,13 @@ export const CoachingStaffMetricSchema = z
       .strict(),
     metrics: z
       .object({
-        coachImpactRating: pct,
+        coachImpactRating: pct.nullable(),
         talentExpectedWins: wins,
         actualProjectedWins: wins,
         coachingWinsAdded: num,
-        atoOffensivePpp: num.positive(),
-        atoDefensivePppAllowed: num.positive(),
-        challengeSuccessRate: prob,
+        atoOffensivePpp: num.positive().nullable(),
+        atoDefensivePppAllowed: num.positive().nullable(),
+        challengeSuccessRate: prob.nullable(),
         atoOffPossessions: z.number().int().min(0),
         atoDefPossessions: z.number().int().min(0),
         challengeAttempts: z.number().int().min(0),
@@ -436,10 +436,10 @@ export const CoachingStaffMetricSchema = z
       .strict(),
     radarPercentiles: z
       .object({
-        atoMastery: pct,
+        atoMastery: pct.nullable(),
         tacticalInnovation: pct,
         rotationEfficiency: pct,
-        inGameWpa: pct,
+        inGameWpa: pct.nullable(),
         playerDevelopment: pct,
       })
       .strict(),

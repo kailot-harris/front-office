@@ -34,7 +34,7 @@ const PROVENANCE_STYLE: Record<
   unobserved: {
     label: 'Unobserved',
     className: 'bg-slate-500/10 text-slate-400 border-slate-500/30',
-    title: 'Play-by-play cache unavailable; using league-average baseline.',
+    title: 'Play-by-play cache unavailable or team has no observed events.',
   },
 };
 
@@ -47,23 +47,33 @@ export const CoachImpactProfile: React.FC<CoachImpactProfileProps> = ({ coach })
   const ensembleWins = metrics.actualProjectedWins;
   const gap = metrics.coachingWinsAdded;
 
+  const atoAvailable = metrics.atoOffensivePpp !== null && metrics.atoDefensivePppAllowed !== null;
+  const atoN = Math.min(metrics.atoOffPossessions, metrics.atoDefPossessions);
+
   const indicators = [
     {
       label: 'ATO & Set Execution',
       subtext: 'After-timeout offense vs. defense, points per possession',
-      value: `${metrics.atoOffensivePpp.toFixed(3)} for / ${metrics.atoDefensivePppAllowed.toFixed(3)} allowed`,
+      value: atoAvailable
+        ? `${metrics.atoOffensivePpp!.toFixed(3)} for / ${metrics.atoDefensivePppAllowed!.toFixed(3)} allowed`
+        : `insufficient sample (n = ${atoN}, needs 1)`,
       tag: provenance.atoMetrics,
     },
     {
       label: 'Net ATO Margin',
       subtext: 'Net point differential per post-timeout possession',
-      value: `${signed(+((metrics.atoOffensivePpp - metrics.atoDefensivePppAllowed)).toFixed(3))} net PPP`,
+      value: atoAvailable
+        ? `${signed(+((metrics.atoOffensivePpp! - metrics.atoDefensivePppAllowed!)).toFixed(3))} net PPP`
+        : `insufficient sample (n = ${atoN}, needs 1)`,
       tag: provenance.atoMetrics,
     },
     {
       label: 'In-Game Challenge Leverage',
       subtext: 'Challenge success rate and verified overturn attempts',
-      value: `${(metrics.challengeSuccessRate * 100).toFixed(1)}% success (${metrics.challengeAttempts} attempts)`,
+      value:
+        metrics.challengeSuccessRate !== null
+          ? `${(metrics.challengeSuccessRate * 100).toFixed(1)}% success (${metrics.challengeAttempts} attempts)`
+          : `insufficient sample (n = ${metrics.challengeAttempts}, needs 1)`,
       tag: provenance.challengeMetrics,
     },
     {

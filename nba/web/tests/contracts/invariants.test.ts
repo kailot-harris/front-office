@@ -427,6 +427,31 @@ describe('Domain & mathematical invariants: clutch, defense, playerDna, coaches,
     }
   });
 
+  it('coaching_metrics.json: unobserved or zero-sample ATO/challenge rates must be null (#200)', () => {
+    for (const c of coaches) {
+      const hasAtoRate =
+        c.metrics.atoOffensivePpp !== null || c.metrics.atoDefensivePppAllowed !== null;
+      if (c.provenance.atoMetrics === 'unobserved') {
+        expect(c.metrics.atoOffensivePpp, `${c.teamAbbr} unobserved atoOffensivePpp`).toBeNull();
+        expect(c.metrics.atoDefensivePppAllowed, `${c.teamAbbr} unobserved atoDefensivePppAllowed`).toBeNull();
+        expect(c.radarPercentiles.atoMastery, `${c.teamAbbr} unobserved atoMastery`).toBeNull();
+        expect(c.metrics.coachImpactRating, `${c.teamAbbr} unobserved coachImpactRating`).toBeNull();
+      }
+      if (hasAtoRate) {
+        expect(c.metrics.atoOffPossessions, `${c.teamAbbr} atoOffPossessions >= 1`).toBeGreaterThanOrEqual(1);
+        expect(c.metrics.atoDefPossessions, `${c.teamAbbr} atoDefPossessions >= 1`).toBeGreaterThanOrEqual(1);
+      }
+      if (c.provenance.challengeMetrics === 'unobserved') {
+        expect(c.metrics.challengeSuccessRate, `${c.teamAbbr} unobserved challengeSuccessRate`).toBeNull();
+        expect(c.radarPercentiles.inGameWpa, `${c.teamAbbr} unobserved inGameWpa`).toBeNull();
+        expect(c.metrics.coachImpactRating, `${c.teamAbbr} unobserved coachImpactRating`).toBeNull();
+      }
+      if (c.metrics.challengeSuccessRate !== null) {
+        expect(c.metrics.challengeAttempts, `${c.teamAbbr} challengeAttempts >= 1`).toBeGreaterThanOrEqual(1);
+      }
+    }
+  });
+
   it('offseason_draft.json: picks are sequential 1..60 across rounds 1 and 2', () => {
     expect(offseasonDraft.map((p) => p.pick)).toEqual(Array.from({ length: 60 }, (_, i) => i + 1));
     expect(offseasonDraft.slice(0, 30).every((p) => p.round === 1)).toBe(true);
