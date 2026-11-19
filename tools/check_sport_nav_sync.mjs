@@ -44,23 +44,11 @@ const INDEX_HTML_PATH = process.argv[2]
 const SPORTS = ['mlb', 'nba', 'nfl', 'wnba'];
 
 // Accordion links that are deliberately NOT a 1:1 mirror of their sport's
-// Sidebar.tsx, with a reason each. Keep this list short and specific (one
-// entry per (sport, href) pair) -- it is an escape hatch for a documented,
-// decided exception, not a place to silence a real drift.
-//
-// front-office#110: WNBA's web/app/cap-sheet and web/app/offseason pages
-// exist and build successfully, but WNBA Analytics' own Sidebar.tsx does
-// not link them (confirmed live against WNBA Analytics/web/components/
-// Sidebar.tsx -- this is a gap in that repo's own nav, out of scope for the
-// aggregator to fix by editing another repo's Sidebar.tsx). Keeping the
-// accordion links means the pages stay reachable from the landing page
-// until WNBA Analytics adds them to its sidebar; remove this exception
-// (and drop the links, or keep them if Sidebar catches up) once that
-// upstream gap is resolved.
-const NAV_SYNC_EXCEPTIONS = [
-  { sport: 'wnba', href: '/cap-sheet', reason: 'page exists; not yet in WNBA Sidebar.tsx nav (upstream gap, front-office#110)' },
-  { sport: 'wnba', href: '/offseason', reason: 'page exists; not yet in WNBA Sidebar.tsx nav (upstream gap, front-office#110)' },
-];
+// Sidebar.tsx, with a reason each. Keep this list empty in steady state --
+// the two archived WNBA tombstone links (/cap-sheet and /offseason,
+// front-office#110) were removed from index.html so all 4 sports are now 1:1
+// synchronized with their Sidebar.tsx nav arrays.
+const NAV_SYNC_EXCEPTIONS = [];
 
 function readFileSafe(p) {
   try {

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Front Office — NFL, NBA, WNBA &amp; MLB Probabilistic Analytics</title>
-  <meta name="description" content="58 interactive analytics modules across the NFL, NBA, WNBA and MLB: season simulations, cap sheets, player projections, clutch indexes and playoff simulators." />
+  <meta name="description" content="56 interactive analytics modules across the NFL, NBA, WNBA and MLB: season simulations, cap sheets, player projections, clutch indexes and playoff simulators." />
   <meta name="theme-color" content="#041313" />
   <link rel="canonical" href="https://kailot-harris.github.io/front-office/" />
   <!-- robots.txt can only be honored at the domain root for a GitHub Pages
@@ -20,14 +20,14 @@
   <meta property="og:site_name" content="Front Office" />
   <meta property="og:url" content="https://kailot-harris.github.io/front-office/" />
   <meta property="og:title" content="Front Office — Multi-Sport Probabilistic Engine" />
-  <meta property="og:description" content="58 interactive analytics modules across the NFL, NBA, WNBA and MLB: season simulations, cap sheets, player projections and playoff simulators." />
+  <meta property="og:description" content="56 interactive analytics modules across the NFL, NBA, WNBA and MLB: season simulations, cap sheets, player projections and playoff simulators." />
   <meta property="og:image" content="https://kailot-harris.github.io/front-office/assets/social/og-card.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Front Office: multi-sport probabilistic engine covering the NFL, NBA, WNBA and MLB" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Front Office — Multi-Sport Probabilistic Engine" />
-  <meta name="twitter:description" content="58 interactive analytics modules across the NFL, NBA, WNBA and MLB." />
+  <meta name="twitter:description" content="56 interactive analytics modules across the NFL, NBA, WNBA and MLB." />
   <meta name="twitter:image" content="https://kailot-harris.github.io/front-office/assets/social/og-card.png" />
   <style>
     :root {
@@ -524,6 +524,56 @@
     @media (prefers-reduced-motion: reduce) {
       .trophy-stage video { display: none; }
     }
+
+    .site-footer {
+      width: 100%;
+      max-width: 1080px;
+      padding: 1.25rem 1rem 2rem;
+      box-sizing: border-box;
+      border-top: 1px solid #1c3333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.55rem;
+      text-align: center;
+      color: #94a3b8;
+      font-size: 0.78rem;
+      line-height: 1.5;
+    }
+    .footer-context {
+      margin: 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #cbd5e1;
+    }
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem 1.15rem;
+    }
+    .footer-links a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+      padding: 0.15rem 0.25rem;
+      border-radius: 0.25rem;
+    }
+    .footer-links a:hover {
+      text-decoration: underline;
+    }
+    .footer-links a:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .footer-cadence {
+      margin: 0;
+      font-size: 0.72rem;
+      color: #94a3b8;
+    }
   </style>
 </head>
 <body>
@@ -569,7 +619,7 @@
     <div class="nav-column">
       <div class="module-filter" role="search">
         <label class="sr-only" for="module-filter">Filter modules across all four leagues</label>
-        <input id="module-filter" type="search" placeholder="Filter 58 modules&hellip;" autocomplete="off" spellcheck="false" aria-describedby="filter-status" />
+        <input id="module-filter" type="search" placeholder="Filter 56 modules&hellip;" autocomplete="off" spellcheck="false" aria-describedby="filter-status" />
         <kbd aria-hidden="true">/</kbd>
       </div>
       <p id="filter-status" class="filter-status" role="status" aria-live="polite"></p>
@@ -642,7 +692,7 @@
             <img class="favicon" src="wnba/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
             <span class="sport-pip" aria-hidden="true"></span>
             <span>WNBA</span>
-            <span class="card-count" aria-label="17 modules">(17)</span>
+            <span class="card-count" aria-label="15 modules">(15)</span>
             <span class="chevron" aria-hidden="true">&#9656;</span>
           </div>
           <div class="card-rail" aria-hidden="true"></div>
@@ -664,13 +714,6 @@
           <li><a href="wnba/series/">Playoff Simulator</a></li>
           <li><a href="wnba/diagnostics/">Diagnostics</a></li>
           <li><a href="wnba/gallery/">Visual Gallery</a></li>
-          <!-- Nav-sync exceptions (see tools/check_sport_nav_sync.mjs NAV_SYNC_EXCEPTIONS):
-               these two pages exist in WNBA's web/app but are not in WNBA's
-               Sidebar.tsx nav yet (front-office#110) -- flagged upstream,
-               not editable from this repo. Kept linked here so the pages
-               stay reachable until WNBA Analytics adds them to its sidebar. -->
-          <li><a href="wnba/cap-sheet/">CBA Cap Sheet</a></li>
-          <li><a href="wnba/offseason/">Offseason &amp; Moves</a></li>
         </ul>
         </div>
       </div>
@@ -708,6 +751,16 @@
       </nav>
     </div>
   </div>
+  <footer class="site-footer" aria-label="Documentation and data provenance">
+    <p class="footer-context">Front Office &middot; 4-League Probabilistic Sports Analytics Platform &middot; Data Acquisition &amp; Management Project</p>
+    <div class="footer-links">
+      <a href="https://github.com/kailot-harris/front-office/blob/main/docs/WALKTHROUGH.md" target="_blank" rel="noopener noreferrer">Start Here (Walkthrough)</a>
+      <a href="https://github.com/kailot-harris/front-office/blob/main/docs/EXECUTIVE_SUMMARY.md" target="_blank" rel="noopener noreferrer">Executive Summary</a>
+      <a href="https://github.com/kailot-harris/front-office#system-architecture" target="_blank" rel="noopener noreferrer">Architecture &amp; Provenance</a>
+      <a href="https://github.com/kailot-harris/front-office" target="_blank" rel="noopener noreferrer">Source Repository</a>
+    </div>
+    <p class="footer-cadence">Live Slate leagues refresh twice daily (automated) &middot; Off-Season monitors refresh weekly &middot; Zero-betting, empirical-data architecture.</p>
+  </footer>
   <script>
     (function initTrophyShowcase() {
       var showcase = document.querySelector('.trophy-showcase');
