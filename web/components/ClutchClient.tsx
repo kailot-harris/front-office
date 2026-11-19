@@ -33,10 +33,14 @@ type SortField =
   | 'clutchAttempts'
   | 'clutchPlays'
   | 'turnoverFragility'
-  | 'fourthDownAggressiveness';
+  | 'fourthDownConversionRate';
 
 /** Below the builder's MIN_CLUTCH_PASS_ATTEMPTS a QB has no metrics, rank or archetype (NFL#80). */
 const isQualified = (p: ClutchProfile) => p.provenance === 'REAL_CURRENT_SEASON';
+
+/** Reads the honest #168 field name while remaining compatible with pre-rebuild JSON. */
+const getFourthDownConversionRate = (p: ClutchProfile): number | null =>
+  p.fourthDownConversionRate ?? p.fourthDownAggressiveness ?? null;
 
 export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
   // Build-wide facts, exported on every profile by build_clutch_dataset.R.
@@ -97,13 +101,19 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
         const qb = isQualified(b);
         if (qa !== qb) return qa ? -1 : 1;
 
-        const valA = a[sortField];
-        const valB = b[sortField];
+        const valA =
+          sortField === 'fourthDownConversionRate'
+            ? getFourthDownConversionRate(a)
+            : a[sortField];
+        const valB =
+          sortField === 'fourthDownConversionRate'
+            ? getFourthDownConversionRate(b)
+            : b[sortField];
 
         // Nulls always sort to bottom
-        if (valA === null && valB === null) return 0;
-        if (valA === null) return 1;
-        if (valB === null) return -1;
+        if (valA == null && valB == null) return 0;
+        if (valA == null) return 1;
+        if (valB == null) return -1;
 
         const diff = (valB as number) - (valA as number);
         return sortAsc ? -diff : diff;
@@ -118,6 +128,10 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
       initialProfiles[0]
     );
   }, [initialProfiles, filteredProfiles, selectedPlayerId]);
+
+  const selectedFourthDownConvRate = selectedProfile
+    ? getFourthDownConversionRate(selectedProfile)
+    : null;
 
   // Top performers KPI calculations
   const kpiHighlights = useMemo(() => {
@@ -143,8 +157,12 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
   };
 
   const handleExportCsv = () => {
+    const exportRows = filteredProfiles.map((p) => ({
+      ...p,
+      fourthDownConversionRate: getFourthDownConversionRate(p),
+    }));
     exportToCsv(
-      filteredProfiles as unknown as Record<string, unknown>[],
+      exportRows as unknown as Record<string, unknown>[],
       [
         { key: 'playerName', label: 'Player Name' },
         { key: 'team', label: 'Team' },
@@ -160,7 +178,7 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
         { key: 'baselineSuccessRate', label: 'Baseline Success %' },
         { key: 'clutchCpoe', label: 'Clutch CPOE' },
         { key: 'turnoverFragility', label: 'Turnover Fragility %' },
-        { key: 'fourthDownAggressiveness', label: '4th Down Aggressiveness %' },
+        { key: 'fourthDownConversionRate', label: '4th Down Conversion %' },
         { key: 'provenance', label: 'Provenance' },
       ],
       'nfl_clutch_leverage_metrics'
@@ -541,9 +559,9 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
                 </div>
 
                 <div className="bg-surface/80 rounded-lg p-3 border border-slate-800/80 flex items-center justify-between">
-                  <span className="text-slate-400">4th Down Aggressiveness</span>
+                  <span className="text-slate-400">4th Down Conversion %</span>
                   <span className="font-mono font-bold text-white">
-                    {(selectedProfile.fourthDownAggressiveness ?? 0).toFixed(1)}%
+                    {selectedFourthDownConvRate !== null ? `${selectedFourthDownConvRate.toFixed(1)}%` : '—'}
                   </span>
                 </div>
               </div>
@@ -645,7 +663,7 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
                 <th
                   className="py-2.5 px-3 cursor-pointer hover:text-white"
                   onClick={() => handleSort('clutchPlays')}
-                  title="Clutch dropbacks credited to the passer (passes and sacks; spikes excluded). Clutch EPA and success rate are averaged over these."
+                  title="Clutch dropbacks credited to the QB (passes, sacks, and scrambles; spikes excluded). Clutch EPA and success rate are averaged over these."
                 >
                   <div className="flex items-center gap-1">
                     Clutch dropbacks <ArrowUpDown className="w-3 h-3 text-slate-500" />
@@ -701,7 +719,8 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
                 </th>
                 <th
                   className="py-2.5 px-3 cursor-pointer hover:text-white"
-                  onClick={() => handleSort('fourthDownAggressiveness')}
+                  onClick={() => handleSort('fourthDownConversionRate')}
+                  title="4th Down Conversion % across the QB's 4th-down plays"
                 >
                   <div className="flex items-center gap-1">
                     4th Conv % <ArrowUpDown className="w-3 h-3 text-slate-500" />
@@ -712,6 +731,7 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
             <tbody className="divide-y divide-slate-800/60 font-mono">
               {filteredProfiles.map((p, idx) => {
                 const isSelected = p.playerId === selectedProfile.playerId;
+                const fourthDownConvRate = getFourthDownConversionRate(p);
                 return (
                   <tr
                     key={p.playerId}
@@ -803,7 +823,7 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
                       )}
                     </td>
                     <td className="py-2.5 px-3 text-slate-300">
-                      {p.fourthDownAggressiveness !== null ? `${p.fourthDownAggressiveness.toFixed(1)}%` : '—'}
+                      {fourthDownConvRate !== null ? `${fourthDownConvRate.toFixed(1)}%` : '—'}
                     </td>
                   </tr>
                 );

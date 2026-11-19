@@ -958,6 +958,7 @@ describe('clutch — leverage and EPA delta invariants', () => {
       expect(p.clutchSuccessRate).toBeNull();
       expect(p.clutchCpoe).toBeNull();
       expect(p.turnoverFragility).toBeNull();
+      expect(p.fourthDownConversionRate ?? p.fourthDownAggressiveness ?? null).toBeNull();
     }
   });
 
@@ -997,12 +998,14 @@ describe('clutch — leverage and EPA delta invariants', () => {
   });
 
   // clutchAttempts counts pass_attempt == 1 rows (passes, sacks, spikes); clutchPlays counts
-  // pass == 1 | qb_dropback == 1 rows (passes, sacks, no spikes). Rows are matched on the
-  // passer, so every play is also an attempt and the gap is spikes.
-  it('dropbacks never exceed pass attempts, in clutch and in baseline', () => {
+  // pass == 1 | qb_dropback == 1 rows (passes, sacks, and scrambles; no spikes; NFL#168).
+  // Because scrambles have pass_attempt == 0, dropbacks can exceed pass attempts whenever
+  // scrambles outnumber spikes.
+  it('clutch and baseline play/attempt counts are non-negative integers', () => {
     for (const p of profiles) {
-      expect(p.clutchPlays, `${p.playerName} clutch`).toBeLessThanOrEqual(p.clutchAttempts);
-      expect(p.baselinePlays, `${p.playerName} baseline`).toBeLessThanOrEqual(p.baselineAttempts);
+      for (const field of ['clutchAttempts', 'clutchPlays', 'baselineAttempts', 'baselinePlays'] as const) {
+        expect(Number.isInteger(p[field]) && p[field] >= 0, `${p.playerName} ${field}=${p[field]}`).toBe(true);
+      }
     }
   });
 
