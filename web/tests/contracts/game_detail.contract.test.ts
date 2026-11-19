@@ -217,7 +217,12 @@ function assertWaterfallAndVeracity(
   label: string,
   ex: GameExplainabilityPayload,
   slateLogSource: string | null | undefined,
-  isCompleted: boolean,
+  // True only once the pipeline has graded the game from its box score. The
+  // live-results refresh (tools/refresh_live_results.R) marks a game completed
+  // from the final score alone, before any box score exists; the Brier and
+  // log-loss components are written later, when prediction_accuracy_logger.R
+  // grades it. Callers must not pass bare is_completed here.
+  isGraded: boolean,
   failures: string[],
 ): { isPrimaryEnsemble: boolean; isLegacyLogged: boolean; hasWaterfall: boolean } {
   const isPrimaryEnsemble = ex.projection_basis === 'primary_ensemble';
@@ -265,12 +270,12 @@ function assertWaterfallAndVeracity(
       }
     }
 
-    if (isCompleted) {
+    if (isGraded) {
       if (lf.brier_component === null || lf.log_loss_component === null) {
-        failures.push(`${label}: completed logged game missing brier_component or log_loss_component`);
+        failures.push(`${label}: graded logged game missing brier_component or log_loss_component`);
       }
     } else if (lf.brier_component !== null || lf.log_loss_component !== null) {
-      failures.push(`${label}: pending logged game must have null brier_component & log_loss_component`);
+      failures.push(`${label}: ungraded logged game must have null brier_component & log_loss_component`);
     }
   } else if (slateLogSource !== null && slateLogSource !== undefined) {
     failures.push(`${label}: non-null log_source=${slateLogSource} requires non-null logged_forecast`);
@@ -931,7 +936,9 @@ describe('Game detail dataset contracts (v3 §6 item 6)', () => {
         `matchups[${g.game_id}] via ${src.label}`,
         src.ex,
         g.log_source ?? null,
-        g.is_completed,
+        // Graded = completed AND box score in. A row the live-results refresh
+        // has completed (has_box_score=false) is not graded yet.
+        g.is_completed && g.has_box_score === true,
         failures,
       );
       if (stats.isPrimaryEnsemble) primaryEnsembleCount++;
