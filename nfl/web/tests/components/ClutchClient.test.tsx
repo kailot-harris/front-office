@@ -52,7 +52,7 @@ describe('ClutchClient', () => {
 
   it('reads fourthDownConversionRate (including null as "—") and stays backward-compatible with fourthDownAggressiveness', () => {
     const base = profiles.find((p) => p.provenance === 'REAL_CURRENT_SEASON')!;
-    const { fourthDownAggressiveness: _legacy, ...baseWithoutLegacy } = base;
+    const { fourthDownAggressiveness: _legacy, fourthDownConversionRate: _conv, ...baseWithoutLegacy } = base;
     const fixtures = [
       {
         ...baseWithoutLegacy,

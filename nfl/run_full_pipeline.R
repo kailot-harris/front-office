@@ -348,6 +348,25 @@ run_stage("export_web_datasets.R", "Export Web Application JSON Datasets (web/pu
           output = WEB_DATA_FILES)
 
 # ------------------------------------------------------------------------------
+# Stages 14.1–14.3: Specialty Web Dataset Builders
+# ------------------------------------------------------------------------------
+# Stage 14.1: QB Passing Zone & Throw-Map Dataset (build_passing_dataset.R)
+run_stage("build_passing_dataset.R", "Build QB Passing Zone & Throw-Map Dataset (web/public/data/passing)",
+          call_fn = "run_build_passing_dataset",
+          output = c(WEB_JSON_PASSING_INDEX, WEB_JSON_PASSING_METADATA))
+
+# Stage 14.2: 4Q True Clutch & Leverage Index Dataset (build_clutch_dataset.R)
+# Must run after Stage 14 (reads player_qb_profiles.json) and Stage 14.1 (shares CACHE_DNA_PBP).
+run_stage("build_clutch_dataset.R", "Build 4Q True Clutch & Leverage Index Dataset",
+          call_fn = "run_build_clutch_dataset",
+          output = WEB_JSON_CLUTCH_LEVERAGE_METRICS)
+
+# Stage 14.3: High-Dimensional Player DNA & Peer Comparables Dataset (build_player_dna_dataset.R)
+run_stage("build_player_dna_dataset.R", "Build High-Dimensional Player DNA & Peer Comparables Dataset",
+          call_fn = "run_build_player_dna_dataset",
+          output = WEB_JSON_PLAYER_DNA_PROFILES)
+
+# ------------------------------------------------------------------------------
 # Stage 15: Front-Office Operations Alert Dispatcher (notify_pipeline_ops.R)
 # ------------------------------------------------------------------------------
 run_stage("notify_pipeline_ops.R", "Dispatch Front-Office Operations & Calibration Telemetry",

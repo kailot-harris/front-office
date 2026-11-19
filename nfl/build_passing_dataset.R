@@ -5,16 +5,15 @@
 # for the Next.js web application.
 #
 # Data window (front-office#109)
-#   Seasons: one season, NFL_PASSING_SEASON (default 2026), read from
-#     cache/nfl_pbp_<season>.rds. If that file is missing but another
-#     cache/nfl_pbp_*.rds exists, it silently reads the last one by file name,
-#     which can be a different season. With no such file, it downloads the
-#     season with nflreadr. No season-type filter: playoff games count if present.
+#   Seasons: one season, NFL_PASSING_SEASON (default CURRENT_SEASON = 2026),
+#     read from exact single-season cache (CACHE_DNA_PBP / cache/nfl_pbp_<season>.rds)
+#     and refreshed via nflreadr::load_pbp() when missing, stale (>12h), or forced.
+#     No season-type filter: playoff games count if present.
 #   Filters: pass plays with a passer id, recorded air yards, a left, middle or
 #     right pass location, and a recorded completion result. Missing EPA counts
 #     as 0.
 #   Minimum sample: MIN_PASS_ATTEMPTS (15 such passes) for a QB to get a file.
-#   Known issues: none open.
+#   Pipeline wiring: Stage 14.1 of run_full_pipeline.R via run_build_passing_dataset().
 # ==============================================================================
 
 suppressPackageStartupMessages({
@@ -22,87 +21,9 @@ suppressPackageStartupMessages({
   library(jsonlite)
 })
 
-# Robustly determine root directory from script location or working directory
-get_script_dir <- function() {
-  args <- commandArgs(trailingOnly = FALSE)
-  file_arg <- grep("^--file=", args, value = TRUE)
-  if (length(file_arg) > 0) {
-    p <- sub("^--file=", "", file_arg[1])
-    return(normalizePath(dirname(p), winslash = "/", mustWork = FALSE))
-  }
-  normalizePath(getwd(), winslash = "/", mustWork = FALSE)
-}
-ROOT_DIR <- get_script_dir()
-setwd(ROOT_DIR)
-cat(sprintf(">>> Working directory set to: %s\n", getwd()))
-
-# Source project configuration if present
-if (file.exists("config.R")) {
-  source("config.R")
-}
-
-PASSING_SEASON <- as.integer(Sys.getenv("NFL_PASSING_SEASON", "2026"))
-cat(sprintf(">>> [PASSING CHARTS] Building passing dataset for season %d...\n", PASSING_SEASON))
-
-# 1. Load PBP data: check cache/nfl_pbp_*.rds first
-pbp_files <- list.files("cache", pattern = "^nfl_pbp_.*\\.rds$", full.names = TRUE)
-raw_pbp <- NULL
-
-if (length(pbp_files) > 0) {
-  # Prefer the file matching PASSING_SEASON or most recent
-  target_file <- sprintf("cache/nfl_pbp_%d.rds", PASSING_SEASON)
-  chosen_file <- if (target_file %in% pbp_files) target_file else tail(sort(pbp_files), 1)
-  cat(sprintf(">>> Loading PBP data from local cache (%s)...\n", chosen_file))
-  raw_pbp <- readRDS(chosen_file)
-} else {
-  cat(sprintf(">>> No cache/nfl_pbp_*.rds found. Loading season %d PBP via nflreadr...\n", PASSING_SEASON))
-  if (!requireNamespace("nflreadr", quietly = TRUE)) {
-    stop("Package 'nflreadr' required to fetch PBP data when cache is missing.")
-  }
-  raw_pbp <- tryCatch({
-    p <- nflreadr::load_pbp(seasons = PASSING_SEASON)
-    out_cache <- sprintf("cache/nfl_pbp_%d.rds", PASSING_SEASON)
-    if (!dir.exists("cache")) dir.create("cache", recursive = TRUE)
-    saveRDS(p, out_cache)
-    cat(sprintf(">>> Cached raw PBP to %s (%d rows).\n", out_cache, nrow(p)))
-    p
-  }, error = function(e) {
-    stop(sprintf("Failed to load PBP: %s", e$message))
-  })
-}
-
-if (is.null(raw_pbp) || nrow(raw_pbp) == 0) {
-  stop("Could not obtain valid play-by-play data.")
-}
-cat(sprintf(">>> Loaded %d raw PBP records.\n", nrow(raw_pbp)))
-
-# 2. Load QB metadata from rosters_cache or player_qb_profiles
-qb_metadata_map <- list()
-
-if (file.exists("cache/rosters_cache.rds")) {
-  rosters <- readRDS("cache/rosters_cache.rds")
-  qb_rosters <- rosters %>%
-    filter(position == "QB") %>%
-    distinct(gsis_id, .keep_all = TRUE)
-  for (i in seq_len(nrow(qb_rosters))) {
-    gid <- qb_rosters$gsis_id[i]
-    if (!is.na(gid) && nzchar(gid)) {
-      qb_metadata_map[[gid]] <- list(
-        player_name = qb_rosters$full_name[i],
-        team = qb_rosters$team[i],
-        jersey_number = if (!is.na(qb_rosters$jersey_number[i])) as.integer(qb_rosters$jersey_number[i]) else NULL,
-        headshot_url = if (!is.na(qb_rosters$headshot_url[i]) && nzchar(qb_rosters$headshot_url[i])) qb_rosters$headshot_url[i] else NULL
-      )
-    }
-  }
-}
-
-if (file.exists("web/public/data/player_qb_profiles.json")) {
-  qb_profs <- fromJSON("web/public/data/player_qb_profiles.json")
-  # Fallback lookup by player name if gsis_id was missing
-}
-
-# 3. 12 Discrete Throw Zone Classification
+# ------------------------------------------------------------------------------
+# 1. 12 Discrete Throw Zone Classification (top-level pure constants & helpers)
+# ------------------------------------------------------------------------------
 # Depths:
 # - Behind LOS (< 0 air yards)
 # - Short (0 <= air yards < 10)
@@ -142,6 +63,100 @@ classify_12_zones <- function(air_yards, pass_loc) {
   sector <- paste0(toupper(substr(loc, 1, 1)), substr(loc, 2, nchar(loc)))
   paste(depth, sector)
 }
+
+run_build_passing_dataset <- function(force_refresh = FALSE) {
+  if (!exists("WEB_DATA_DIR") || !exists("CACHE_DIR")) {
+    if (file.exists("config.R")) {
+      source("config.R")
+    }
+  }
+
+  default_season <- if (exists("CURRENT_SEASON")) as.character(CURRENT_SEASON) else "2026"
+  PASSING_SEASON <- as.integer(Sys.getenv("NFL_PASSING_SEASON", default_season))
+  cat(sprintf(">>> [PASSING CHARTS] Building passing dataset for season %d...\n", PASSING_SEASON))
+
+  # 1. Load PBP data from exact single-season cache (refresh if missing or >12h old)
+  cache_dir <- if (exists("CACHE_DIR")) CACHE_DIR else "cache"
+  if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
+  pbp_cache_path <- if (exists("CACHE_DNA_PBP") && exists("CURRENT_SEASON") &&
+                        PASSING_SEASON == as.integer(CURRENT_SEASON)) {
+    CACHE_DNA_PBP
+  } else {
+    file.path(cache_dir, sprintf("nfl_pbp_%d.rds", PASSING_SEASON))
+  }
+
+  needs_refresh <- isTRUE(force_refresh) || !file.exists(pbp_cache_path) ||
+    as.numeric(difftime(Sys.time(), file.info(pbp_cache_path)$mtime, units = "hours")) > 12
+
+  raw_pbp <- NULL
+  if (needs_refresh) {
+    if (!requireNamespace("nflreadr", quietly = TRUE)) {
+      if (file.exists(pbp_cache_path)) {
+        warning("Package 'nflreadr' unavailable; falling back to existing cache.")
+        raw_pbp <- readRDS(pbp_cache_path)
+      } else {
+        stop("Package 'nflreadr' required to fetch PBP data when cache is missing.")
+      }
+    } else {
+      cat(sprintf(">>> Fetching season %d PBP via nflreadr -> %s...\n", PASSING_SEASON, pbp_cache_path))
+      raw_pbp <- tryCatch({
+        p <- nflreadr::load_pbp(seasons = PASSING_SEASON)
+        saveRDS(p, pbp_cache_path)
+        cat(sprintf(">>> Cached raw PBP to %s (%d rows).\n", pbp_cache_path, nrow(p)))
+        p
+      }, error = function(e) {
+        if (file.exists(pbp_cache_path)) {
+          warning(sprintf("nflreadr::load_pbp failed (%s); falling back to existing cache %s", e$message, pbp_cache_path))
+          readRDS(pbp_cache_path)
+        } else {
+          stop(sprintf("Failed to load PBP: %s", e$message))
+        }
+      })
+    }
+  } else {
+    cat(sprintf(">>> Loading PBP data from local cache (%s)...\n", pbp_cache_path))
+    raw_pbp <- readRDS(pbp_cache_path)
+  }
+
+  if (is.null(raw_pbp) || nrow(raw_pbp) == 0 || !"season" %in% names(raw_pbp)) {
+    stop("Could not obtain valid play-by-play data.")
+  }
+  raw_pbp <- raw_pbp %>% filter(season == PASSING_SEASON)
+  if (nrow(raw_pbp) == 0) {
+    stop(sprintf("Could not obtain play-by-play rows for season %d.", PASSING_SEASON))
+  }
+  cat(sprintf(">>> Loaded %d raw PBP records for season %d.\n", nrow(raw_pbp), PASSING_SEASON))
+
+  # 2. Load QB metadata from rosters_cache or player_qb_profiles
+  qb_metadata_map <- list()
+  rosters_path <- if (exists("CACHE_ROSTERS")) CACHE_ROSTERS else file.path(cache_dir, "rosters_cache.rds")
+
+  if (file.exists(rosters_path)) {
+    rosters <- readRDS(rosters_path)
+    qb_rosters <- rosters %>%
+      filter(position == "QB") %>%
+      distinct(gsis_id, .keep_all = TRUE)
+    for (i in seq_len(nrow(qb_rosters))) {
+      gid <- qb_rosters$gsis_id[i]
+      if (!is.na(gid) && nzchar(gid)) {
+        qb_metadata_map[[gid]] <- list(
+          player_name = qb_rosters$full_name[i],
+          team = qb_rosters$team[i],
+          jersey_number = if (!is.na(qb_rosters$jersey_number[i])) as.integer(qb_rosters$jersey_number[i]) else NULL,
+          headshot_url = if (!is.na(qb_rosters$headshot_url[i]) && nzchar(qb_rosters$headshot_url[i])) qb_rosters$headshot_url[i] else NULL
+        )
+      }
+    }
+  }
+
+  qb_profiles_path <- if (exists("WEB_JSON_PLAYER_QB_PROFILES")) {
+    WEB_JSON_PLAYER_QB_PROFILES
+  } else {
+    "web/public/data/player_qb_profiles.json"
+  }
+  if (file.exists(qb_profiles_path)) {
+    qb_profs <- fromJSON(qb_profiles_path)
+  }
 
 # 4. Filter to valid targeted pass attempts
 clean_passes <- raw_pbp %>%
@@ -199,7 +214,8 @@ cat(">>> League Baselines across 12 Throw Zones:\n")
 print(league_averages)
 
 # 6. Group by QB and export chunked JSON
-out_dir <- "web/public/data/passing"
+index_path <- if (exists("WEB_JSON_PASSING_INDEX")) WEB_JSON_PASSING_INDEX else "web/public/data/passing_index.json"
+out_dir <- file.path(dirname(index_path), "passing")
 if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 
 qb_groups <- split(clean_passes, clean_passes$player_id)
@@ -310,14 +326,13 @@ for (pid in eligible_qbs) {
 index_df <- bind_rows(passing_index) %>%
   arrange(team, desc(total_passes), player_name)
 
-index_path <- "web/public/data/passing_index.json"
 write_json(index_df, index_path, auto_unbox = TRUE, pretty = TRUE, null = "null")
 cat(sprintf(">>> Wrote passing catalog with %d QBs to %s\n", nrow(index_df), index_path))
 
 # 8. Save passing metadata
-meta_path <- "web/public/data/passing_metadata.json"
+meta_path <- if (exists("WEB_JSON_PASSING_METADATA")) WEB_JSON_PASSING_METADATA else "web/public/data/passing_metadata.json"
 write_json(list(
-  updated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ"),
+  updated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
   season = PASSING_SEASON,
   total_passes_sampled = total_lg_passes,
   zones = CANONICAL_ZONES,
@@ -326,3 +341,19 @@ write_json(list(
 cat(sprintf(">>> Wrote passing metadata to %s\n", meta_path))
 
 cat(">>> [SUCCESS] QB Passing dataset generation complete!\n")
+}
+
+if (sys.nframe() == 0) {
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- grep("^--file=", args, value = TRUE)
+  root_dir <- if (length(file_arg) > 0) {
+    normalizePath(dirname(sub("^--file=", "", file_arg[1])), winslash = "/", mustWork = FALSE)
+  } else {
+    normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+  }
+  setwd(root_dir)
+  if (file.exists("config.R")) {
+    source("config.R")
+  }
+  run_build_passing_dataset()
+}
