@@ -3,15 +3,16 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { DefensiveProfile } from '@/lib/defenseTypes';
 import { DefenseClient } from '@/components/DefenseClient';
+import { RapmSeasonWindow, splitSeasonPayload } from '@/lib/seasonWindow';
 
-async function getDefensiveProfiles(): Promise<DefensiveProfile[]> {
+async function getDefensiveProfiles(): Promise<{ profiles: DefensiveProfile[]; seasonWindow: RapmSeasonWindow | null }> {
   try {
     const filePath = path.join(process.cwd(), 'public', 'data', 'defensive_metrics.json');
     const fileContents = await fs.readFile(filePath, 'utf8');
-    return JSON.parse(fileContents);
+    return splitSeasonPayload<DefensiveProfile, RapmSeasonWindow>(JSON.parse(fileContents));
   } catch (error) {
     console.error('Error reading defensive_metrics.json:', error);
-    return [];
+    return { profiles: [], seasonWindow: null };
   }
 }
 
@@ -21,11 +22,11 @@ export const metadata = {
 };
 
 export default async function DefensePage() {
-  const profiles = await getDefensiveProfiles();
+  const { profiles, seasonWindow } = await getDefensiveProfiles();
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <DefenseClient initialProfiles={profiles} />
+      <DefenseClient initialProfiles={profiles} seasonWindow={seasonWindow} />
     </div>
   );
 }

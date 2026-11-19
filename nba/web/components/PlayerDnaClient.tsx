@@ -7,15 +7,19 @@ import { PeerCompCard } from './PeerCompCard';
 import { DnaManifoldScatter } from './DnaManifoldScatter';
 import { Search, Dna, Activity, Crosshair, BarChart3, ChevronRight } from 'lucide-react';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
-import { SEASON_SOURCES } from '@/lib/season';
+import type { RapmSeasonWindow } from '@/lib/seasonWindow';
 import { HowToReadDisclosure } from '@/components/HowToReadDisclosure';
 import { GlossaryTerm } from '@/components/GlossaryTerm';
 
 interface PlayerDnaClientProps {
   initialProfiles: PlayerDnaProfile[];
+  /** Season label and last-game date read from the published JSON; null when the file is unreadable. */
+  seasonWindow: RapmSeasonWindow | null;
 }
 
-export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfiles }) => {
+export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfiles, seasonWindow }) => {
+  // Read from the payload, never typed: the RAPM input is fit on a different season than the box/PBP.
+  const rapmLabel = seasonWindow ? `dRAPM: ${seasonWindow.rapmSeason} fit` : null;
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerDnaProfile>(
     initialProfiles.find((p) => p.playerName === 'Victor Wembanyama') || initialProfiles[0]
@@ -41,26 +45,28 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
               <Dna className="w-3.5 h-3.5" /> High-Dimensional Player DNA
             </span>
             <span className="text-xs text-zinc-500 font-mono">15-D Manifold Embedding</span>
-            <SeasonSourceBadge
-              season={SEASON_SOURCES.playerDna.season}
-              kind="projection"
-              label="Projected season"
-              title={SEASON_SOURCES.playerDna.note}
-            />
+            {seasonWindow && (
+              <SeasonSourceBadge
+                season={seasonWindow.season}
+                kind="observed"
+                label={`Games through ${seasonWindow.throughDate} · season`}
+                title={`Computed from ${seasonWindow.season} games played through ${seasonWindow.throughDate}`}
+              />
+            )}
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
             Player DNA & Nearest Current-Season Comparables
           </h1>
           <p className="text-sm text-zinc-400 max-w-2xl mt-1">
             Multivariate stylistic fingerprinting quantifying finishing, perimeter gravity, playmaking leverage,
-            switchability, and rim deterrence with cosine-similarity matching against every other 2025-26 player.
+            switchability, and rim deterrence with cosine-similarity matching against every other player in the {seasonWindow?.season ?? 'current'} season.
           </p>
         </div>
       </div>
 
       <HowToReadDisclosure pageKey="player-dna">
         Each player&rsquo;s 15-D skill vector is projected onto a shared <GlossaryTerm term="manifold" /> and
-        matched by cosine similarity to find the 2025-26 peers with the closest stylistic
+        matched by cosine similarity to find the {seasonWindow?.season ?? 'current-season'} peers with the closest stylistic
         fingerprint, not necessarily the closest box-score stats.
       </HowToReadDisclosure>
 
@@ -188,6 +194,11 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
                 categoryScores={selectedPlayer.categoryScores}
                 playerName={selectedPlayer.playerName}
               />
+              {rapmLabel && (
+                <p className="mt-1 text-[11px] text-zinc-500" data-testid="drapm-season-label">
+                  Defense category includes {rapmLabel}.
+                </p>
+              )}
             </div>
 
             {/* Peer Comps List (7 cols) */}
@@ -197,12 +208,12 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
                   <Activity className="w-3.5 h-3.5 text-sky-400" />
                   Top Current-Season Stylistic Peers (Cosine Metric)
                 </h3>
-                <span className="text-[11px] sm:text-[10px] text-zinc-500">2025-26 Peers</span>
+                <span className="text-[11px] sm:text-[10px] text-zinc-500">{seasonWindow?.season ?? 'Current-season'} Peers</span>
               </div>
               <div className="space-y-2">
                 {selectedPlayer.peerComps.length === 0 && (
                   <div className="text-xs text-zinc-500 p-3.5 rounded-xl border border-zinc-800/80 bg-zinc-900/60">
-                    No peer comps: this player has no 2025-26 box-score data to compare.
+                    No peer comps: this player has no {seasonWindow?.season ?? 'current-season'} box-score data to compare.
                   </div>
                 )}
                 {selectedPlayer.peerComps.map((twin, idx) => (
@@ -244,12 +255,15 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
                 </div>
               </div>
               <div className="p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800">
-                <div className="text-zinc-400 font-medium mb-1">Defense & Glass</div>
+                <div className="text-zinc-400 font-medium mb-1">
+                  Defense & Glass
+                  {rapmLabel && <span className="ml-1.5 text-[10px] text-zinc-500 font-mono">{rapmLabel}</span>}
+                </div>
                 <div className="text-[11px] text-zinc-300 space-y-0.5">
                   <div className="flex justify-between"><span>Switchability:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.switchability ?? '—'}</span></div>
                   <div className="flex justify-between"><span>Rim Protect:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.rim_protection ?? '—'}</span></div>
                   <div className="flex justify-between"><span>Perimeter Havoc:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.perimeter_havoc ?? '—'}</span></div>
-                  <div className="flex justify-between"><span>D-RAPM:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.d_rapm ?? '—'}</span></div>
+                  <div className="flex justify-between"><span>D-RAPM{seasonWindow ? ` (${seasonWindow.rapmSeason} fit)` : ''}:</span> <span className="font-mono text-sky-400">{selectedPlayer.skillVector.d_rapm ?? '—'}</span></div>
                 </div>
               </div>
             </div>

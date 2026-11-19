@@ -59,29 +59,12 @@ load_pbp <- function(seasons) {
 # and kicked-ball violations it can name the opponent, which silently assigns
 # players to the wrong side of the ridge design. The player box score states each
 # athlete's team per game directly, so side assignment comes from there instead.
-load_player_teams <- function(seasons) {
+load_player_teams <- function(seasons, pbp = NULL) {
   frames <- list()
   for (sn in seasons) {
-    box_cache <- file.path(.cache_dir, sprintf("nba_player_box_%d.rds", sn))
-    got <- NULL
-    if (file.exists(box_cache)) {
-      got <- tryCatch(readRDS(box_cache), error = function(e) NULL)
-      if (!is.null(got) && nrow(got) > 0) {
-        message(sprintf(">>> [STINTS] Loaded season %d player box from cache (%s rows).",
-                        sn, format(nrow(got), big.mark = ",")))
-      } else got <- NULL
-    }
-    if (is.null(got)) {
-      message(sprintf(">>> [STINTS] Fetching season %d player box via hoopR...", sn))
-      got <- tryCatch({
-        b <- hoopR::load_nba_player_box(seasons = sn)
-        if (!is.null(b) && nrow(b) > 0) saveRDS(b, box_cache)
-        b
-      }, error = function(e) {
-        message(sprintf(">>> [WARN] hoopR player box fetch failed for season %d: %s", sn, conditionMessage(e)))
-        NULL
-      })
-    }
+    got <- load_player_box_season_cached(
+      sn, .cache_dir, .current_season, hoopR::load_nba_player_box, tag = "STINTS",
+      reference_date = if (sn == .current_season) box_reference_date(pbp, if (exists("CACHE_TEAM_BOX")) CACHE_TEAM_BOX else NULL) else NULL)
     if (!is.null(got) && nrow(got) > 0) frames[[length(frames) + 1]] <- as.data.frame(got)
   }
   if (length(frames) == 0) return(NULL)
@@ -259,7 +242,7 @@ build_stint_dataset <- function() {
   pbp <- load_pbp(STINT_SEASONS)
   if (is.null(pbp)) stop("No play-by-play available; cannot build stint_lineups.rds.")
 
-  rosters <- load_player_teams(STINT_SEASONS)
+  rosters <- load_player_teams(STINT_SEASONS, pbp)
   if (is.null(rosters)) stop("No player box data available; cannot assign players to teams.")
   roster_by_game <- split(rosters, rosters$game_id)
 

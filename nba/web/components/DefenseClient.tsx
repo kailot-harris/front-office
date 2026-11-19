@@ -6,15 +6,21 @@ import { MatchupHeatmap } from './MatchupHeatmap';
 import { VersatilityScatter } from './VersatilityScatter';
 import { Shield, Search, ChevronRight, Activity, Crosshair, ArrowUpDown } from 'lucide-react';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
-import { SEASON_SOURCES } from '@/lib/season';
+import type { RapmSeasonWindow } from '@/lib/seasonWindow';
 import { HowToReadDisclosure } from '@/components/HowToReadDisclosure';
 import { GlossaryTerm } from '@/components/GlossaryTerm';
 
 interface DefenseClientProps {
   initialProfiles: DefensiveProfile[];
+  /** Season label and last-game date read from the published JSON; null when the file is unreadable. */
+  seasonWindow: RapmSeasonWindow | null;
 }
 
-export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles }) => {
+const signed = (v: number | null, suffix = '') =>
+  v == null ? 'N/A' : `${v > 0 ? '+' : ''}${v}${suffix}`;
+const plain = (v: number | null) => (v == null ? 'N/A' : `${v}`);
+
+export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles, seasonWindow }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProfile, setSelectedProfile] = useState<DefensiveProfile>(
     initialProfiles.find((p) => p.playerName === 'Victor Wembanyama') || initialProfiles[0]
@@ -22,12 +28,15 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('ALL');
   const [sortKey, setSortKey] = useState<'versatilityScore' | 'rimDfgDelta' | 'dRapm' | 'poaNavigation'>('versatilityScore');
 
+  // Read from the payload, never typed: the RAPM input is fit on a different season than the box/PBP.
+  const rapmLabel = seasonWindow ? `dRAPM: ${seasonWindow.rapmSeason} fit` : null;
+
   const filteredProfiles = initialProfiles
     .filter((p) => {
       const matchesSearch =
         p.playerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.team.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.defensiveRole.toLowerCase().includes(searchQuery.toLowerCase());
+        (p.defensiveRole ?? '').toLowerCase().includes(searchQuery.toLowerCase());
       const matchesRole =
         selectedRoleFilter === 'ALL' ||
         (selectedRoleFilter === 'ANCHOR' && p.position === 'C') ||
@@ -36,8 +45,14 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
       return matchesSearch && matchesRole;
     })
     .sort((a, b) => {
-      if (sortKey === 'rimDfgDelta') return a.rimDfgDelta - b.rimDfgDelta; // Lower (more negative) is better
-      return b[sortKey] - a[sortKey];
+      // Null (unobserved) rows always sort last.
+      const av = a[sortKey];
+      const bv = b[sortKey];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (sortKey === 'rimDfgDelta') return av - bv; // Lower (more negative) is better
+      return bv - av;
     });
 
   return (
@@ -50,12 +65,14 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
               <Shield className="w-3.5 h-3.5" /> Positional Versatility & Coverage Matrix
             </span>
             <span className="text-xs text-zinc-500 font-mono">Shannon Entropy (H<sub>v</sub>) & Tracking Shares</span>
-            <SeasonSourceBadge
-              season={SEASON_SOURCES.defense.season}
-              kind="projection"
-              label="Projected season"
-              title={SEASON_SOURCES.defense.note}
-            />
+            {seasonWindow && (
+              <SeasonSourceBadge
+                season={seasonWindow.season}
+                kind="observed"
+                label={`Games through ${seasonWindow.throughDate} · season`}
+                title={`Computed from ${seasonWindow.season} games played through ${seasonWindow.throughDate}`}
+              />
+            )}
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
             Defensive Versatility & Rim Protection Architecture
@@ -138,6 +155,11 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                 >
                   D-RAPM
                 </button>
+                {rapmLabel && (
+                  <span className="text-[11px] text-zinc-500 font-mono" data-testid="drapm-season-label">
+                    {rapmLabel}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -164,20 +186,20 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                       </span>
                     </div>
                     <div className="text-xs text-zinc-400 truncate max-w-[210px] mt-0.5">
-                      {profile.defensiveRole}
+                      {profile.defensiveRole ?? 'N/A (no current-season sample)'}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="text-right">
                       <div className="text-xs font-bold text-emerald-400">
                         {sortKey === 'rimDfgDelta'
-                          ? `${profile.rimDfgDelta > 0 ? '+' : ''}${profile.rimDfgDelta}%`
+                          ? signed(profile.rimDfgDelta, '%')
                           : sortKey === 'dRapm'
-                          ? `${profile.dRapm > 0 ? '+' : ''}${profile.dRapm}`
-                          : `${profile.versatilityScore}`}
+                          ? signed(profile.dRapm)
+                          : plain(profile.versatilityScore)}
                       </div>
                       <div className="text-[11px] sm:text-[9px] text-zinc-500 uppercase">
-                        {sortKey === 'rimDfgDelta' ? 'Rim Delta' : sortKey === 'dRapm' ? 'D-RAPM' : 'Entropy'}
+                        {sortKey === 'rimDfgDelta' ? 'Rim Delta' : sortKey === 'dRapm' ? `D-RAPM${seasonWindow ? ` (${seasonWindow.rapmSeason} fit)` : ''}` : 'Entropy'}
                       </div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-zinc-500" />
@@ -206,7 +228,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
                   {selectedProfile.playerName}
                 </h2>
                 <p className="text-sm font-semibold text-emerald-400 mt-0.5 flex items-center gap-1.5">
-                  <Shield className="w-4 h-4" /> {selectedProfile.defensiveRole}
+                  <Shield className="w-4 h-4" /> {selectedProfile.defensiveRole ?? 'N/A (no current-season sample)'}
                 </p>
               </div>
 
@@ -214,22 +236,23 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
               <div className="flex items-center gap-2.5">
                 <div className="px-3 py-2 rounded-xl bg-zinc-950/80 border border-zinc-800 text-center">
                   <div className="text-[11px] text-zinc-400 font-medium">H_VERS</div>
-                  <div className="text-base font-bold text-emerald-400">{selectedProfile.versatilityScore}</div>
+                  <div className="text-base font-bold text-emerald-400">{plain(selectedProfile.versatilityScore)}</div>
                 </div>
                 <div className="px-3 py-2 rounded-xl bg-zinc-950/80 border border-zinc-800 text-center">
                   <div className="text-[11px] text-zinc-400 font-medium">RIM DFG</div>
-                  <div className={`text-base font-bold ${selectedProfile.rimDfgDelta <= -5.0 ? 'text-emerald-400' : 'text-zinc-200'}`}>
-                    {selectedProfile.rimDfgDelta > 0 ? `+${selectedProfile.rimDfgDelta}` : selectedProfile.rimDfgDelta}%
+                  <div className={`text-base font-bold ${selectedProfile.rimDfgDelta != null && selectedProfile.rimDfgDelta <= -5.0 ? 'text-emerald-400' : 'text-zinc-200'}`}>
+                    {signed(selectedProfile.rimDfgDelta, '%')}
                   </div>
                 </div>
                 <div className="px-3 py-2 rounded-xl bg-zinc-950/80 border border-zinc-800 text-center">
                   <div className="text-[11px] text-zinc-400 font-medium">POA NAV</div>
-                  <div className="text-base font-bold text-zinc-200">{selectedProfile.poaNavigation}</div>
+                  <div className="text-base font-bold text-zinc-200">{plain(selectedProfile.poaNavigation)}</div>
                 </div>
                 <div className="px-3 py-2 rounded-xl bg-emerald-950/60 border border-emerald-800/80 text-center">
                   <div className="text-[11px] text-emerald-400 font-medium">D-RAPM</div>
+                  {rapmLabel && <div className="text-[10px] text-emerald-500/80">{rapmLabel}</div>}
                   <div className="text-base font-bold text-emerald-200">
-                    {selectedProfile.dRapm > 0 ? `+${selectedProfile.dRapm}` : selectedProfile.dRapm}
+                    {signed(selectedProfile.dRapm)}
                   </div>
                 </div>
               </div>
@@ -237,7 +260,13 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
           </div>
 
           {/* Positional Matchup Heatmap */}
-          <MatchupHeatmap dist={selectedProfile.matchupDist} playerName={selectedProfile.playerName} />
+          {selectedProfile.matchupDist ? (
+            <MatchupHeatmap dist={selectedProfile.matchupDist} playerName={selectedProfile.playerName} />
+          ) : (
+            <div className="p-4 rounded-xl border border-zinc-800/80 bg-zinc-950/60 text-xs text-zinc-500">
+              Matchup distribution: N/A (no observed current-season matchup events for this player).
+            </div>
+          )}
 
           {/* Versatility vs Rim Deterrence 2D Scatter Matrix */}
           <VersatilityScatter
@@ -251,7 +280,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
             <div className="p-3.5 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
               <div className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5 mb-1">
                 <Crosshair className="w-3.5 h-3.5 text-emerald-400" />
-                Rim Deterrence Index: {selectedProfile.rimDeterrenceIndex}
+                Rim Deterrence Index: {plain(selectedProfile.rimDeterrenceIndex)}
               </div>
               <p className="text-[11px] text-zinc-400 leading-relaxed">
                 Measures how drastically opponents abandon paint attacks when this defender is active on court vs on bench.
@@ -260,7 +289,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
             <div className="p-3.5 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
               <div className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5 mb-1">
                 <Activity className="w-3.5 h-3.5 text-sky-400" />
-                Screen Navigation: {selectedProfile.poaNavigation} / 100
+                Screen Navigation: {selectedProfile.poaNavigation == null ? 'N/A' : `${selectedProfile.poaNavigation} / 100`}
               </div>
               <p className="text-[11px] text-zinc-400 leading-relaxed">
                 Rates avoidance of screen-contact stalls, direct drive recovery, and blow-by prevention on initial ball containment.
@@ -269,7 +298,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
             <div className="p-3.5 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
               <div className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5 mb-1">
                 <Shield className="w-3.5 h-3.5 text-indigo-400" />
-                Shannon Entropy (H<sub>v</sub>): {selectedProfile.versatilityScore}
+                Shannon Entropy (H<sub>v</sub>): {plain(selectedProfile.versatilityScore)}
               </div>
               <p className="text-[11px] text-zinc-400 leading-relaxed">
                 A score of 100 indicates perfect 20% parity defending all 5 positions without team defensive rotation compromises.

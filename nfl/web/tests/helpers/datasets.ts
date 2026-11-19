@@ -22,6 +22,7 @@ import type {
   PassingChartData,
   PassingMetadata,
   PlayerDnaProfile,
+  PlayerDnaDataset,
   ClutchProfile,
 } from '../../lib/types';
 
@@ -75,7 +76,8 @@ export function readQbPassingFile(qbId: string): PassingChartData {
   return JSON.parse(fs.readFileSync(filePath, 'utf-8')) as PassingChartData;
 }
 
-export const dnaProfiles = () => loadRaw(DATASET_FILES.getPlayerDnaProfiles) as PlayerDnaProfile[];
+export const dnaDataset = () => loadRaw(DATASET_FILES.getPlayerDnaProfiles) as PlayerDnaDataset;
+export const dnaProfiles = (): PlayerDnaProfile[] => dnaDataset().profiles;
 
 
 export const clutch = () => loadRaw(DATASET_FILES.getClutchData) as ClutchProfile[];

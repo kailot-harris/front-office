@@ -181,12 +181,23 @@ run_stage("tools/fetch_bbref_salary_cap_history.R", "Fetch Basketball-Reference 
 run_stage("tools/derive_team_payroll_from_bbref.R", "Derive Per-Team Active-Roster Payroll from BBRef Contracts",
           output = file.path(CACHE_DIR, "bbref_team_payroll_active_roster.rds"))
 run_stage("build_cba_cap_dataset.R", "Calculate 30-Team CBA Cap Sheets, Aprons & Luxury Tax Penalties")
-run_stage("build_player_dna_dataset.R", "Embed 16-D Player DNA Vectors & Nearest Historical Twins",
-          output = file.path(CACHE_DIR, "player_dna_profiles.rds"))
-run_stage("build_defense_dataset.R", "Compute Positional Versatility Entropy & Rim Deterrence Residuals",
-          output = file.path(CACHE_DIR, "defensive_metrics.rds"))
-run_stage("build_clutch_dataset.R", "Analyze Leverage Index Filtering & Unassisted Shot Creation (USCI)",
-          output = file.path(CACHE_DIR, "clutch_leverage_metrics.rds"))
+# These three stages are strict (a missing current-season cache or a stale output is a
+# hard stage failure) but must not stop the rest of the pipeline: a failure is recorded in
+# strict_failures, every later stage still runs, and the failures are re-reported as [FAIL] lines at the bottom (exit code unchanged).
+strict_failures <- character(0)
+# Defense must precede DNA: build_player_dna_dataset.R reads cache/defensive_metrics.rds.
+if (!run_stage("build_defense_dataset.R", "Compute Positional Versatility Entropy & Rim Deterrence Residuals",
+               output = c(file.path(CACHE_DIR, "defensive_metrics.rds"),
+                          file.path(WEB_DATA_DIR, "defensive_metrics.json")),
+               strict_output = TRUE)) strict_failures <- c(strict_failures, "build_defense_dataset.R")
+if (!run_stage("build_player_dna_dataset.R", "Embed 15-D Player DNA Vectors & Current-Season Peer Comps",
+               output = c(file.path(CACHE_DIR, "player_dna_profiles.rds"),
+                          file.path(WEB_DATA_DIR, "player_dna_profiles.json")),
+               strict_output = TRUE)) strict_failures <- c(strict_failures, "build_player_dna_dataset.R")
+if (!run_stage("build_clutch_dataset.R", "Analyze Leverage Index Filtering & Unassisted Shot Creation (USCI)",
+               output = c(file.path(CACHE_DIR, "clutch_leverage_metrics.rds"),
+                          file.path(WEB_DATA_DIR, "clutch_leverage_metrics.json")),
+               strict_output = TRUE)) strict_failures <- c(strict_failures, "build_clutch_dataset.R")
 
 # 7. Postseason Simulation
 run_stage("playoff_simulator.R", "Execute 8-Man Playoff Series Monte Carlo (10,000 Iterations)")
@@ -279,3 +290,16 @@ pipeline_total_time <- as.numeric(difftime(Sys.time(), pipeline_start_time, unit
 message("\n==================================================================")
 message(sprintf(">>> FULL PIPELINE EXECUTED SUCCESSFULLY IN %.2f SECONDS", pipeline_total_time))
 message("==================================================================")
+
+# Strict-stage failures must not change the exit code: schedule_daily.bat only publishes
+# when this script exits 0, so a non-zero exit would freeze every board. Instead each
+# failure is re-emitted in the ">>> [FAIL] <script>: ..." shape that publish_web.R's
+# assertion D scans for, so the #145 alert lists it (and it is fatal only in the
+# --strict-warnings publish modes). Those boards keep their previous file, which shows its
+# own throughDate.
+for (.sf in strict_failures) {
+  message(sprintf(">>> [FAIL] %s: strict stage failed (missing current-season cache or stale output); its board keeps the previous published file. Other stages ran and the run exits 0.", .sf))
+}
+if (length(strict_failures) > 0) {
+  warning(sprintf("Strict stage(s) failed: %s", paste(strict_failures, collapse = ", ")), call. = FALSE)
+}

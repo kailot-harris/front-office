@@ -11,9 +11,6 @@ export const CLUTCH_MIN_FGA = 20;
  * season (games 2025-10-21 to 2026-06-13: regular season, play-in and playoffs).
  */
 export const CLUTCH_DATA_SEASON = '2025-2026';
-export const CLUTCH_DATA_SEASON_NOTE =
-  'Observed 2025-2026 play-by-play (regular season, play-in and playoffs, 21 Oct 2025 to 13 Jun 2026).';
-
 export interface ShotZoneStats {
   fga: number;
   fgm: number;
@@ -43,7 +40,7 @@ export interface ClutchProfile {
   clutchMpg: number | null;
   clutchUsgPct: number | null;
   clutchTsPct: number | null;
-  baseTsPct: number;
+  baseTsPct: number | null;
   tsDelta: number | null;
   usciScore: number | null; // Unassisted Shot Creation Index
   unassistedFgmPct: number | null;

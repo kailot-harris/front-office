@@ -19,6 +19,9 @@ const {
   diagnostics,
   cbaCapSheet,
   clutch,
+  clutchWindow,
+  defenseWindow,
+  playerDnaWindow,
   coaches,
   defense,
   playerDna,
@@ -100,7 +103,7 @@ describe('Page Clients mount on real data', () => {
   });
 
   it('ClutchClient mounts without error', () => {
-    expect(() => render(<ClutchClient initialProfiles={clutch} />)).not.toThrow();
+    expect(() => render(<ClutchClient initialProfiles={clutch} seasonWindow={clutchWindow} />)).not.toThrow();
   });
 
   it('CoachesClient mounts without error', () => {
@@ -108,11 +111,11 @@ describe('Page Clients mount on real data', () => {
   });
 
   it('DefenseClient mounts without error', () => {
-    expect(() => render(<DefenseClient initialProfiles={defense} />)).not.toThrow();
+    expect(() => render(<DefenseClient initialProfiles={defense} seasonWindow={defenseWindow} />)).not.toThrow();
   });
 
   it('PlayerDnaClient mounts without error', () => {
-    expect(() => render(<PlayerDnaClient initialProfiles={playerDna} />)).not.toThrow();
+    expect(() => render(<PlayerDnaClient initialProfiles={playerDna} seasonWindow={playerDnaWindow} />)).not.toThrow();
   });
 
   it('OffseasonClient mounts without error', () => {
