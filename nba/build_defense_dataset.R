@@ -14,6 +14,22 @@
 # (cache/rapm_ratings.rds).
 #
 # Exports defensive_metrics.json for Next.js web application.
+#
+# Data window (front-office#109):
+#   Seasons: 2025-26 only: cache/nba_pbp_2026.rds and cache/nba_player_box_2026.rds
+#     (the script stops if either is missing) and cache/rapm_ratings.rds (optional;
+#     without it, or for a player not found in it, dRAPM is a fixed value by
+#     position). The player list comes from the 2026-27 season projections. No
+#     season-type filter is applied to the play-by-play or box scores.
+#   Filters: box-score rows with more than 0 minutes. Matchup events are plays whose
+#     text contains "block" or "steal", and "Shooting Foul" plays paired with the
+#     next play's player as the shooter; an event counts only when the opponent's
+#     position is known. Rim and point-of-attack scores are weighted formulas over
+#     those rates, not measured opponent shooting.
+#   Minimum sample: none. Every projected player is listed. Per-36 rates use at least
+#     40 minutes (eff_min); players with no box rows get projection-based stand-ins;
+#     matchup shares add 15 position-based prior events to each player.
+#   Known issues: #82 (formula proxies, role thresholds).
 # ==============================================================================
 
 suppressPackageStartupMessages({

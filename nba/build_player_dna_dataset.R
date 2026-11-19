@@ -11,6 +11,20 @@
 # ridge RAPM (cache/rapm_ratings.rds), and defensive metrics (cache/defensive_metrics.rds).
 #
 # Exports JSON for Next.js web application.
+#
+# Data window (front-office#109):
+#   Seasons: 2025-26 only: cache/nba_player_box_2026.rds and cache/nba_pbp_2026.rds
+#     (the script stops if either is missing), plus cache/rapm_ratings.rds and
+#     cache/defensive_metrics.rds when present (fixed defaults otherwise). The
+#     player list comes from the 2026-27 season projections. No season-type filter
+#     is applied.
+#   Filters: box-score rows with more than 0 minutes; dunks are play-by-play rows
+#     whose play type contains "dunk". Each skill is a percentile across every
+#     player in the projections file.
+#   Minimum sample: none. Every projected player is listed. Per-36 rates use at least
+#     40 minutes (eff_min); shooting percentages are pulled toward league averages
+#     with 25 two-point, 15 three-point and 10 free-throw pseudo-attempts.
+#   Known issues: #82 (formula proxies).
 # ==============================================================================
 
 suppressPackageStartupMessages({

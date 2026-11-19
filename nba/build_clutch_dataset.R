@@ -16,6 +16,22 @@
 # Exports:
 #   - web/public/data/clutch_leverage_metrics.json
 #   - cache/clutch_leverage_metrics.rds
+#
+# Data window (front-office#109):
+#   Seasons: play-by-play is the first file in pbp_candidates that exists:
+#     cache/nba_pbp_cache.rds, else cache/nba_pbp_2026.rds (the 2025-26 season).
+#     No script in this repo writes nba_pbp_cache.rds, so if one is present it is
+#     used silently in place of the 2025-26 file. Baseline shooting and turnover
+#     rates come from cache/nba_player_box_2026.rds (2025-26); if that file is
+#     missing, a projection-based stand-in is used. The player list comes from
+#     the 2026-27 season projections. No season-type filter is applied.
+#   Filters: the clutch window is period 4 or overtime, 5:00 or less on the clock,
+#     and a score margin of 5 points or fewer, using the score recorded on each
+#     play row (the score after that play).
+#   Minimum sample: MIN_CLUTCH_FGA = 5 clutch field-goal attempts for clutch rates
+#     and an archetype; players below it are listed with empty rates and
+#     "Insufficient Clutch Sample", but their shot breakdown is still published.
+#   Known issues: #187 (score margin after the play), #90 (minimum sample, USCI scale).
 # ==============================================================================
 
 suppressPackageStartupMessages({

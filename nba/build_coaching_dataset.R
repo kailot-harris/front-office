@@ -9,6 +9,22 @@
 #   - ATO PPP and challenge overturn rates directly derived from cache/pbp_timeout_cache.rds.
 #   - Removed unmeasurable challenge WPA, synthetic shot quality lift, and rotation/dev scores.
 #   - Radar percentiles and composite CIR deterministically calibrated against empirical metrics.
+#
+# Data window (front-office#109):
+#   Seasons: ATO and challenge figures come from cache/pbp_timeout_cache.rds, which
+#     build_tactical_events_dataset.R fills with the current and prior seasons
+#     (2026-27 and 2025-26 by default). If fewer than MIN_CURRENT_SEASON_GAMES (10)
+#     current-season games are in it, load_tactical_events() switches to the prior
+#     season alone (a console line is the only notice); observedSeasons names the seasons actually used. If the
+#     cache is missing or unreadable, every team gets the league-average defaults
+#     and is tagged "unobserved". The head-coach registry (tenure, career games,
+#     career win pct) is typed by hand in coaching_registry_raw, not loaded from data.
+#   Filters: ATO rows are event_type "ato_offense" / "ato_defense"; challenge rows are
+#     event_type "challenge". ATO points per possession is total points divided by
+#     total possessions per team.
+#   Minimum sample: none. One event is enough for a team's observed rate; a team
+#     with no events gets 1.020 ATO points per possession and a 0.500 challenge rate.
+#   Known issues: #188 (hand-typed career record).
 # ==============================================================================
 
 suppressPackageStartupMessages({
