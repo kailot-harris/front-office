@@ -587,6 +587,32 @@ SP_POS_POLAR_SENSE <- list(
 
 #' Neutralize 'never' when governing a comparative to prevent polarity inversion (Issue #172)
 #'
+#' The issue's 11-sentence table, raw score before -> after this pre-pass:
+#' "never been better" -0.80 -> +0.80, "never been worse" +0.75 -> -0.75,
+#' "never looked better" -0.80 -> +0.80; the eight controls ("couldn't be
+#' better", "couldn't be happier", "not bad", "nothing short of great", "no
+#' shortage of", "hardly surprising", "not good", "hardly ideal") are unchanged.
+#'
+#' Measured effect, on one live `scrape = TRUE` capture of 2026-11-18 (70 beat
+#' items ingested, 44 WNBA-relevant after filter_wnba_relevant_items(), 25 with
+#' scraped bodies and 19 on RSS fallback). As for #171, the corpus was captured
+#' ONCE to a temp file outside the repo and scored with the pre-#172 scorer and
+#' with this one, so both numbers describe the same 44 articles:
+#'
+#'   without this pre-pass  +0.0501 (0.0500895838)
+#'   with this pre-pass     +0.0503 (0.0502602995)   (+0.00017, +0.34%)
+#'
+#' Occurrences: the 44 scored articles contain 17 `never` tokens, of which 3
+#' govern a comparative and are neutralized here ("never been stronger", "never
+#' been higher", "never claimed more than eight wins"); the other 14 ("never
+#' wavered", "never got out of hand", ...) keep sentimentr's negator. The most
+#' positive and most negative article picks did not change. The fix is a
+#' correctness fix with a small effect on the weekly mean, not a material move.
+#'
+#' Determinism: the corpus scored twice in one session with this pre-pass gave
+#' 0.050260299483690 both times, identical() == TRUE. The rule is a fixed
+#' token-window lookup over udpipe's deterministic tags; there is no RNG.
+#'
 #' @param ann annotated data.frame from udpipe::udpipe_annotate()
 #' @return character vector of scoring tokens with 'never' neutralized before comparatives
 .sp_neutralize_never_comparatives <- function(ann) {
