@@ -93,11 +93,17 @@ const RadarChart: React.FC<RadarChartProps> = ({ playerA, playerB, size = 320 })
         .join(' ')
     : '';
 
+  const radarLabel = playerB
+    ? `Player DNA skill radar chart comparing ${playerA.playerName} (${playerA.position}, ${playerA.team}) and ${playerB.playerName} (${playerB.position}, ${playerB.team}) across ${numAxes} empirical skill dimensions`
+    : `Player DNA skill radar chart for ${playerA.playerName} (${playerA.position}, ${playerA.team}) across ${numAxes} empirical skill dimensions`;
+
   return (
     <div className="relative flex flex-col items-center justify-center p-4 bg-slate-950/80 rounded-2xl border border-slate-800/80 shadow-inner">
       <svg
         width={size}
         height={size}
+        role="img"
+        aria-label={radarLabel}
         className="overflow-visible select-none max-w-full"
         viewBox={`0 0 ${size} ${size}`}
       >

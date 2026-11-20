@@ -5,9 +5,16 @@ import React from 'react';
 interface FootballIconProps {
   className?: string;
   size?: number;
+  ariaLabel?: string;
 }
 
-export const FootballIcon: React.FC<FootballIconProps> = ({ className = 'w-6 h-6', size = 24 }) => {
+export const FootballIcon: React.FC<FootballIconProps> = ({
+  className = 'w-6 h-6',
+  size = 24,
+  ariaLabel = 'NFL football emblem',
+}) => {
+  const resolvedLabel = ariaLabel.trim() || 'NFL football emblem';
+
   return (
     <svg
       width={size}
@@ -16,6 +23,8 @@ export const FootballIcon: React.FC<FootballIconProps> = ({ className = 'w-6 h-6
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
+      role="img"
+      aria-label={resolvedLabel}
     >
       <path
         d="M21.5 2.5C14.5 1.5 4 6 2.5 12C1 18 6 22.5 12 21.5C18 20 22.5 9.5 21.5 2.5Z"
