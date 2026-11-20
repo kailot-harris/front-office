@@ -111,7 +111,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
               onClick={() => handleTypeSwitch('Batter')}
               className={`px-4 py-2 rounded-lg font-bold transition-all ${
                 playerType === 'Batter'
-                  ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
+                  ? 'bg-accent-600 text-fo-on-accent shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -122,7 +122,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
               onClick={() => handleTypeSwitch('Pitcher')}
               className={`px-4 py-2 rounded-lg font-bold transition-all ${
                 playerType === 'Pitcher'
-                  ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
+                  ? 'bg-accent-600 text-fo-on-accent shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -153,7 +153,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
             <div className="grid grid-cols-2 gap-2">
               <div className="flex items-center gap-1.5">
                 <Filter className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                <select
+                <select aria-label="Filter by archetype"
                   value={selectedArchetype}
                   onChange={(e) => setSelectedArchetype(e.target.value)}
                   className="w-full bg-surface border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-rose-500 font-mono truncate"
@@ -168,7 +168,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
 
               <div className="flex items-center gap-1.5">
                 <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                <select
+                <select aria-label="Sort by"
                   value={sortKey}
                   onChange={(e) => setSortKey(e.target.value as 'clutchScore' | 'deltaClutch' | 'highLiWpa' | 'wpaTotal')}
                   className="w-full bg-surface border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-rose-500 font-mono"
@@ -182,7 +182,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
             </div>
 
             {/* Leaderboard Roster */}
-            <div className="space-y-1.5 max-h-[580px] overflow-y-auto pr-1">
+            <div tabIndex={0} role="region" aria-label="Clutch leaderboard" className="space-y-1.5 max-h-[580px] overflow-y-auto pr-1">
               {filteredProfiles.map((p) => {
                 const isSelected = p.playerId === selectedProfile?.playerId;
                 const isGoodDelta = isBatter ? p.deltaClutch >= 0 : p.deltaClutch <= 0;

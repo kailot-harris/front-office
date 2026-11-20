@@ -81,7 +81,7 @@ export const DnaManifoldScatter: React.FC<DnaManifoldScatterProps> = ({
             y1={scaleY(0)}
             x2={width - padding}
             y2={scaleY(0)}
-            stroke="#1e293b"
+            stroke="var(--tw-c-slate-800)"
             strokeWidth="1"
             strokeDasharray="3,3"
           />
@@ -90,7 +90,7 @@ export const DnaManifoldScatter: React.FC<DnaManifoldScatterProps> = ({
             y1={padding}
             x2={scaleX(0)}
             y2={height - padding}
-            stroke="#1e293b"
+            stroke="var(--tw-c-slate-800)"
             strokeWidth="1"
             strokeDasharray="3,3"
           />

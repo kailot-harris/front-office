@@ -230,3 +230,69 @@ test_that("fetch_season_results() flattens the API shape it is given", {
   expect_equal(out$status_detail[3], "In Progress")
   expect_true(is.na(out$home_score[4]))
 })
+
+# ------------------------------------------------------------------------------
+# Landing digest patch (MLB-Analytics#125): slots B/C update yesterday, record
+# and calibration in landing_digest.json; today and movers are left alone.
+# ------------------------------------------------------------------------------
+
+write_digest_fixture <- function(dir) {
+  f31 <- file.path(dir, "matchups", "week-31.json")
+  wk <- jsonlite::fromJSON(f31)
+  wk$projection_source <- "walk_forward"
+  write_json(wk, f31, pretty = FALSE, auto_unbox = TRUE, na = "null")
+  digest <- list(
+    schema_version = 1L, sport = "mlb", generated_at = "2026-10-25T09:00:00Z",
+    slate_date = "2026-10-25", season_state = "postseason", next_milestone = NULL,
+    today = list(list(game_id = "3", start_time_utc = "2026-10-26T00:08:00Z", home = "TB",
+                      away = "MIL", status = "Scheduled", home_win_prob = 0.5712,
+                      away_win_prob = 0.4288, prediction_status = "available")),
+    yesterday = list(list(game_id = "2", start_time_utc = "2026-10-25T00:08:00Z", home = "MIL",
+                          away = "TB", status = "In Progress", home_win_prob = 0.5712,
+                          away_win_prob = 0.4288, prediction_status = "available",
+                          home_score = NULL, away_score = NULL, final = FALSE,
+                          predicted_winner = "MIL", hit = NULL)),
+    record = list(season = list(hits = 0L, games = 0L, excluded = 0L),
+                  last_7 = list(hits = 0L, games = 0L, excluded = 0L)),
+    calibration = list(),
+    movers = list(metric = "elo_rating", windows = list(
+      "1" = list(compared_to = "2026-10-24",
+                 items = list(list(team = "MIL", previous = 1580, current = 1584.6, delta = 4.6))),
+      "7" = list(compared_to = NULL, items = list()),
+      "21" = list(compared_to = NULL, items = list())))
+  )
+  writeLines(ld_to_json(digest), file.path(dir, "landing_digest.json"))
+}
+
+test_that("refresh_live_results() patches yesterday, record and calibration in the digest", {
+  dir <- write_fixture_data_dir()
+  write_digest_fixture(dir)
+  f <- file.path(dir, "landing_digest.json")
+  res <- refresh_live_results(season = 2026, data_dir = dir, url_reader = stub_reader(),
+                              today = as.Date("2026-10-25"))
+  expect_true(f %in% res$files)
+  d <- jsonlite::fromJSON(f, simplifyVector = FALSE)
+
+  y <- d$yesterday[[1]]
+  expect_identical(y$status, "Final")
+  expect_true(y$final)
+  expect_equal(c(y$home_score, y$away_score), c(5, 4))
+  expect_true(y$hit)
+
+  # Games 1 (3-2) and 2 (5-4): MIL at home at 0.5712, both won -> 2 of 2.
+  expect_equal(d$record$season, list(hits = 2L, games = 2L, excluded = 0L))
+  expect_equal(d$record$last_7$games, 2L)
+  expect_equal(vapply(d$calibration, function(b) b$lo, integer(1)), c(50L, 60L, 70L, 80L, 90L))
+  expect_equal(d$calibration[[1]]$games, 2L)
+  expect_equal(d$calibration[[1]]$actual_rate, 1)
+
+  # Slot A's fields are untouched.
+  expect_identical(d$today[[1]]$game_id, "3")
+  expect_equal(d$movers$windows[["1"]]$items[[1]]$delta, 4.6)
+  expect_false(identical(d$generated_at, "2026-10-25T09:00:00Z"))
+
+  # Second run: nothing changed, nothing written.
+  again <- refresh_live_results(season = 2026, data_dir = dir, url_reader = stub_reader(),
+                                today = as.Date("2026-10-25"))
+  expect_false(f %in% again$files)
+})

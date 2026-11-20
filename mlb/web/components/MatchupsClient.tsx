@@ -18,6 +18,7 @@ import {
   Loader2,
   AlertTriangle,
 } from 'lucide-react';
+import { onTabListKeyDown } from '@/lib/tabKeys';
 
 interface MatchupsClientProps {
   index: MatchupsIndex;
@@ -153,7 +154,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ index, initialMa
                 title={`${wk.label} — ${STATUS_COPY[wk.status]}`}
                 className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 border ${
                   isSelected
-                    ? 'bg-accent-600 text-white border-accent-500 shadow-md shadow-accent-600/30 font-bold'
+                    ? 'bg-accent-600 text-fo-on-accent border-accent-500 shadow-md shadow-accent-600/30 font-bold'
                     : wk.status === 'active'
                     ? 'bg-surface-raised text-accent-400 border-accent-500/40 hover:bg-slate-800'
                     : 'bg-surface text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
@@ -283,12 +284,14 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ index, initialMa
             />
           </div>
 
-          <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
+          <div role="tablist" onKeyDown={onTabListKeyDown} className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
             <button
               type="button"
               onClick={() => setViewMode('grid')}
+              role="tab"
+              aria-selected={viewMode === 'grid'}
               className={`p-1.5 rounded-md transition-colors ${
-                viewMode === 'grid' ? 'bg-accent-600 text-white' : 'text-slate-400 hover:text-white'
+                viewMode === 'grid' ? 'bg-accent-600 text-fo-on-accent' : 'text-slate-400 hover:text-white'
               }`}
               title="Card view"
               aria-label="Card view"
@@ -298,8 +301,10 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ index, initialMa
             <button
               type="button"
               onClick={() => setViewMode('table')}
+              role="tab"
+              aria-selected={viewMode === 'table'}
               className={`p-1.5 rounded-md transition-colors ${
-                viewMode === 'table' ? 'bg-accent-600 text-white' : 'text-slate-400 hover:text-white'
+                viewMode === 'table' ? 'bg-accent-600 text-fo-on-accent' : 'text-slate-400 hover:text-white'
               }`}
               title="Table view"
               aria-label="Table view"
@@ -311,14 +316,14 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ index, initialMa
       </div>
 
       {isLoading && (
-        <div className="bg-surface-raised/70 border border-slate-800 rounded-xl p-8 flex items-center justify-center gap-2.5 text-sm text-slate-400 font-mono">
+        <div role="status" aria-live="polite" className="bg-surface-raised/70 border border-slate-800 rounded-xl p-8 flex items-center justify-center gap-2.5 text-sm text-slate-400 font-mono">
           <Loader2 className="w-4 h-4 animate-spin text-accent-400" />
           <span>Loading week {selectedWeek}…</span>
         </div>
       )}
 
       {loadError === selectedWeek && (
-        <div className="bg-surface-raised/70 border border-amber-500/30 rounded-xl p-8 text-center space-y-3">
+        <div role="alert" className="bg-surface-raised/70 border border-amber-500/30 rounded-xl p-8 text-center space-y-3">
           <div className="flex items-center justify-center gap-2.5 text-sm text-amber-400 font-mono">
             <AlertTriangle className="w-4 h-4" />
             <span>Could not load week {selectedWeek}.</span>

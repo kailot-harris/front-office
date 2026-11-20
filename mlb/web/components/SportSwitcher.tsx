@@ -37,7 +37,7 @@ export const SportSwitcher: React.FC<{ current: (typeof SPORTS)[number]['slug'] 
           title={isCurrent ? `${label} Analytics (current)` : `Open ${label} Analytics`}
           className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
             isCurrent
-              ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
+              ? 'bg-accent-600 text-fo-on-accent shadow-md shadow-accent-600/30'
               : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
           }`}
         >
