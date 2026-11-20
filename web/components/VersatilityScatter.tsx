@@ -83,21 +83,19 @@ export const VersatilityScatter: React.FC<VersatilityScatterProps> = ({
           aria-label={`Defensive versatility vs. rim deterrence scatter plot (${plottedProfiles.length} defenders, selected: ${selectedProfile.playerName}, ${selectedProfile.team})`}
         >
           {/* Quadrant Guidelines */}
-          <line
+          <line className="stroke-zinc-800"
             x1={padding}
             y1={scaleY(-5.0)}
             x2={width - padding}
             y2={scaleY(-5.0)}
-            stroke="#27272a"
             strokeWidth="1"
             strokeDasharray="3,3"
           />
-          <line
+          <line className="stroke-zinc-800"
             x1={scaleX(75)}
             y1={padding}
             x2={scaleX(75)}
             y2={height - padding}
-            stroke="#27272a"
             strokeWidth="1"
             strokeDasharray="3,3"
           />

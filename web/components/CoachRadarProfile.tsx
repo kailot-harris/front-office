@@ -119,13 +119,12 @@ export const CoachRadarProfile: React.FC<CoachRadarProfileProps> = ({
           {axes.map((_, i) => {
             const { x, y } = getCoordinates(i, 100);
             return (
-              <line
+              <line className="stroke-slate-700"
                 key={i}
                 x1={center}
                 y1={center}
                 x2={x}
                 y2={y}
-                stroke="#334155"
                 strokeWidth="1"
               />
             );

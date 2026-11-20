@@ -1,4 +1,6 @@
 import type { Config } from "tailwindcss";
+import plugin from "tailwindcss/plugin";
+import { themedColors, themedVariables } from "./lib/themePalette";
 
 const config: Config = {
   content: [
@@ -17,16 +19,8 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
-        accent: {
-          DEFAULT: "var(--fo-accent)",
-          50: "#eef2ff",
-          400: "#818cf8",
-          500: "#6366f1",
-          600: "#4f46e5",
-          700: "#4338ca",
-          900: "#312e81",
-          950: "#1e1b4b",
-        },
+        // Palettes flip with prefers-color-scheme; see lib/themePalette.ts.
+        ...themedColors(),
         // Shared --fo-* tokens (app/design-tokens.css, data-site="nba").
         // color-mix keeps Tailwind's /opacity modifiers working on CSS variables.
         surface: "color-mix(in srgb, var(--fo-surface) calc(<alpha-value> * 100%), transparent)",
@@ -44,6 +38,6 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [plugin(({ addBase }) => addBase(themedVariables()))],
 };
 export default config;

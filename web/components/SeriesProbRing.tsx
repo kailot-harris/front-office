@@ -28,11 +28,9 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
   const strokeWidth = 18;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  
   // Percentages
   const pctA = Math.round(winProbA * 100);
   const pctB = Math.round(winProbB * 100);
-  
   const strokeDashoffsetA = circumference - (winProbA * circumference);
 
   // Group distributions by team
@@ -69,12 +67,11 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
       </div>
       <div className="relative" style={{ width: size, height: size }}>
         <svg width={size} height={size} className="transform -rotate-90">
-          <circle
+          <circle className="stroke-slate-800"
             cx={size / 2}
             cy={size / 2}
             r={radius}
             fill="transparent"
-            stroke="#1e293b"
             strokeWidth={strokeWidth}
           />
           {/* Team B arc */}
