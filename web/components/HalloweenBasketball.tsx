@@ -19,6 +19,8 @@ export const HalloweenBasketball: React.FC<HalloweenBasketballProps> = ({
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={`inline-block flex-shrink-0 drop-shadow-md ${className}`}
+      role="img"
+      aria-label="October Halloween jack-o'-lantern basketball"
     >
       <title>October Halloween Basketball</title>
       <defs>

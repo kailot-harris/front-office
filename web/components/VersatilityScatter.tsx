@@ -43,6 +43,8 @@ export const VersatilityScatter: React.FC<VersatilityScatterProps> = ({
     }
   };
 
+  const plottedProfiles = profiles.filter(hasPoint);
+
   return (
     <div ref={containerRef} className="flex flex-col p-4 bg-zinc-950/60 rounded-xl border border-zinc-800/80">
       <div className="flex items-center justify-between mb-2">
@@ -58,7 +60,7 @@ export const VersatilityScatter: React.FC<VersatilityScatterProps> = ({
         </div>
         <div className="text-right flex items-center gap-2">
           <span className="text-[11px] sm:text-[10px] font-mono bg-zinc-900 border border-zinc-800 text-sky-400 px-2 py-0.5 rounded">
-            N = {profiles.filter(hasPoint).length} Defenders
+            N = {plottedProfiles.length} Defenders
           </span>
           <button
             type="button"
@@ -74,7 +76,12 @@ export const VersatilityScatter: React.FC<VersatilityScatterProps> = ({
       </div>
 
       <div className="relative w-full overflow-hidden flex justify-center">
-        <svg viewBox={`0 0 ${width} ${height}`} className="w-full max-w-[500px] h-auto overflow-visible">
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          className="w-full max-w-[500px] h-auto overflow-visible"
+          role="img"
+          aria-label={`Defensive versatility vs. rim deterrence scatter plot (${plottedProfiles.length} defenders, selected: ${selectedProfile.playerName}, ${selectedProfile.team})`}
+        >
           {/* Quadrant Guidelines */}
           <line
             x1={padding}
@@ -107,7 +114,7 @@ export const VersatilityScatter: React.FC<VersatilityScatterProps> = ({
           </text>
 
           {/* Points */}
-          {profiles.filter(hasPoint).map((p) => {
+          {plottedProfiles.map((p) => {
             const isSelected = p.playerId === selectedProfile.playerId;
             const cx = scaleX(p.versatilityScore);
             const cy = scaleY(p.rimDfgDelta);
