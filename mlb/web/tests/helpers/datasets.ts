@@ -83,6 +83,13 @@ export const OPTIONAL_DATA_FILES = [
   'offseason_monitor.json',
 ] as const;
 
+/**
+ * Sidecar manifest written by tools/write_data_manifest.R (front-office#102).
+ * It describes the datasets rather than being one, so it is allowed on disk
+ * but validated separately (tests/contracts/dataManifest.test.ts).
+ */
+export const DATA_MANIFEST_FILE = 'data_manifest.json' as const;
+
 export type DataFileName =
   | (typeof EXPECTED_DATA_FILES)[number]
   | (typeof OPTIONAL_DATA_FILES)[number];

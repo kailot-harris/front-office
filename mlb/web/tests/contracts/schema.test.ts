@@ -10,6 +10,7 @@ import {
   MATCHUPS_DIR,
   EXPECTED_DATA_FILES,
   OPTIONAL_DATA_FILES,
+  DATA_MANIFEST_FILE,
   LEAGUE,
   loadAllDatasets,
   readMatchupWeekFile,
@@ -61,7 +62,11 @@ describe('JSON data file presence & parseability', () => {
 
   it('public/data contains no undocumented top-level .json files', () => {
     const onDisk = fs.readdirSync(DATA_DIR).filter((f) => f.endsWith('.json'));
-    const allowed = new Set<string>([...EXPECTED_DATA_FILES, ...OPTIONAL_DATA_FILES]);
+    const allowed = new Set<string>([
+      ...EXPECTED_DATA_FILES,
+      ...OPTIONAL_DATA_FILES,
+      DATA_MANIFEST_FILE,
+    ]);
     const orphans = onDisk.filter((f) => !allowed.has(f));
     expect(orphans, `Orphan data files: ${orphans.join(', ')}`).toEqual([]);
   });
