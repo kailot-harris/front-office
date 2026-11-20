@@ -535,11 +535,28 @@ Several top-level artifacts in each sport's `web/public/data/` are bare JSON arr
     "games.json": {
       "generated_at": "2026-11-20T11:58:03Z",
       "through_date": "2026-11-19",
+      "through_date_source": "payload:games[].game_date",
       "source_season": 2026,
       "builder": "build_games_dataset.R",
       "max_lag_days": 1,
       "static": false,
-      "static_reason": null
+      "static_reason": null,
+      "stamp_source": "manifest:content_hash",
+      "content_sha256": "3f1c…e9a0",
+      "coverage_note": null
+    },
+    "team_profiles.json": {
+      "generated_at": "2026-11-18T06:02:11Z",
+      "through_date": null,
+      "through_date_source": "not_game_dated",
+      "source_season": 2026,
+      "builder": "build_team_profiles.R",
+      "max_lag_days": 7,
+      "static": false,
+      "static_reason": null,
+      "stamp_source": "payload:metadata.generated_at",
+      "content_sha256": null,
+      "coverage_note": "Team profile catalog; content carries no game dates."
     }
   }
 }
@@ -549,20 +566,40 @@ Several top-level artifacts in each sport's `web/public/data/` are bare JSON arr
 |---|---|---|
 | `schema_version` | integer | Always `1` for this revision. |
 | `sport` | string | One of `nba`, `nfl`, `wnba`, `mlb`. |
-| `generated_at` | string | UTC ISO-8601, strftime `%Y-%m-%dT%H:%M:%SZ`. Time the manifest was written. |
+| `generated_at` | string | UTC ISO-8601, strftime `%Y-%m-%dT%H:%M:%SZ`. Changes **only** when at least one dataset entry changed since the previous manifest; otherwise the previous value is kept so an unchanged publish produces no manifest diff. |
 | `schedule_through_date` | string or `null` | `YYYY-MM-DD` of the latest completed scheduled game in the sport's schedule; `null` when no games have been played in the source season. |
 | `datasets` | object | Keyed by top-level `.json` filename (basename only, e.g. `games.json`). One entry per artifact; `data_manifest.json` itself is excluded. |
-| `datasets.*.generated_at` | string | UTC ISO-8601 `%Y-%m-%dT%H:%M:%SZ`; when the artifact was written. |
-| `datasets.*.through_date` | string or `null` | `YYYY-MM-DD` of the latest game/event reflected in the artifact. |
+| `datasets.*.generated_at` | string | UTC ISO-8601 `%Y-%m-%dT%H:%M:%SZ`; determined as described in 8.4 (never file mtime, git time, or a sibling's stamp). |
+| `datasets.*.through_date` | string or `null` | `YYYY-MM-DD` of the latest game date **actually present in the payload content**. `null` only for `not_game_dated` datasets. Never derived from `generated_at`. |
+| `datasets.*.through_date_source` | string | `payload:<field path>` naming the payload field the date was extracted from, or `not_game_dated`. |
 | `datasets.*.source_season` | integer or string | Season the artifact was built from. |
 | `datasets.*.builder` | string | Script that produced the artifact. |
-| `datasets.*.max_lag_days` | integer | Allowed lag (days) behind `schedule_through_date` for non-static datasets. |
+| `datasets.*.max_lag_days` | integer | Allowed lag (days) behind `schedule_through_date`. |
 | `datasets.*.static` | boolean | `true` for static/archived artifacts not expected to track the schedule. |
 | `datasets.*.static_reason` | string or `null` | Required and non-empty when `static` is `true`; `null` otherwise. |
+| `datasets.*.stamp_source` | string | `payload:<field>` when the payload carries its own stamp (`generated_at`, `updated_at`, `generatedAt`, `metadata.generated_at`, `lastPublished`, …), else `manifest:content_hash`. |
+| `datasets.*.content_sha256` | string or `null` | Hex sha256 of the payload bytes. Required when `stamp_source` is `manifest:content_hash`; may be `null` (or present) when a payload stamp is used. |
+| `datasets.*.coverage_note` | string or `null` | Short explanation; required for `not_game_dated` datasets, otherwise optional. |
 
-### 8.3 Publish-gate coverage rules (`FO#191`)
+### 8.3 Coverage extraction (`through_date`)
 
-1. **Stamped coverage:** every top-level `.json` file in `web/public/data/` (except `data_manifest.json`) has an entry in `datasets` with a valid `generated_at` (`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$`). A missing entry or malformed stamp fails the gate.
-2. **Lag ceiling:** a non-static dataset fails when `schedule_through_date - through_date > max_lag_days` (difference in calendar days).
-3. **Off-season pass:** when `schedule_through_date <= through_date` (including off-season periods where the schedule has not advanced), the dataset passes the lag check.
-4. **Static declaration:** static/archived datasets must set `static: true` with a non-empty `static_reason`; they are exempt from rule 2 but the UI must visibly label them as static/archived rather than presenting them as live.
+Each sport's manifest writer holds a per-dataset coverage extractor: a mapping from filename to a function that reads the parsed payload and returns the latest game date it genuinely contains (for example the max of a `game_date`, `date`, `gameday`, week-resolved date, or `through` field, chosen by inspecting the real payload). The chosen path is recorded in `through_date_source` as `payload:<field path>`.
+
+A dataset whose content is genuinely not game-dated (profiles, indexes, metadata catalogs, cap sheets) sets `through_date: null`, `through_date_source: "not_game_dated"`, and a `coverage_note`. There is **no fallback** that derives `through_date` from `generated_at`: a dataset rebuilt today from an out-of-date cache must show its stale content date and fail the gate.
+
+### 8.4 Stamping (`generated_at`) — content-hash carry-forward
+
+1. **Embedded stamp:** if the payload carries its own stamp, use it; `stamp_source: "payload:<field>"`.
+2. **No embedded stamp:** compute the payload's sha256 (`content_sha256`). If the previous `data_manifest.json` has the same filename with the same `content_sha256`, carry its `generated_at` forward unchanged; otherwise stamp the current writer run time. `stamp_source: "manifest:content_hash"`.
+3. **First manifest:** with no previous manifest, unstamped files get the writer run time (the moment the manifest first observed them).
+4. File modification time, git commit/log time, and stamps borrowed from sibling artifacts are **never** used.
+
+### 8.5 Publish-gate coverage rules (`FO#191`)
+
+1. **Stamped coverage:** every top-level `.json` file in `web/public/data/` (except `data_manifest.json`) has an entry in `datasets` with a valid `generated_at` (`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$`) and a valid `through_date_source` / `stamp_source`. A missing entry or malformed field fails the gate.
+2. **Lag ceiling (game-dated):** a non-static dataset with a payload-derived `through_date` fails when `schedule_through_date - through_date > max_lag_days` (difference in calendar days).
+3. **Off-season pass:** when `through_date >= schedule_through_date` (including off-season periods where the schedule has not advanced), the dataset passes the lag check.
+4. **Undated datasets:** `not_game_dated` datasets are not silently passed as fresh. They are checked on `generated_at` freshness only: the date part of `generated_at` must be within `max_lag_days` of `schedule_through_date`. The gate's report line labels them `[UNDATED]`.
+5. **Static declaration:** static/archived datasets must set `static: true` with a non-empty `static_reason`; they are exempt from rules 2–4, but the UI must visibly label them as static/archived rather than presenting them as live.
+
+Acceptance (FO#191): a payload whose latest content game date is old but whose file/stamp is brand new **fails** the gate in each sport's test suite.
