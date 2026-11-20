@@ -70,7 +70,12 @@ export const VersatilityScatter: React.FC<VersatilityScatterProps> = ({
       </div>
 
       <div className="relative w-full overflow-hidden flex justify-center">
-        <svg viewBox={`0 0 ${width} ${height}`} className="w-full max-w-[500px] h-auto overflow-visible select-none">
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          className="w-full max-w-[500px] h-auto overflow-visible select-none"
+          role="img"
+          aria-label={`Defensive versatility vs rim deterrence scatter plot for ${profiles.length} ${profiles.length === 1 ? 'defender' : 'defenders'}, highlighting ${selectedProfile.playerName} (${selectedProfile.team})`}
+        >
           {/* Quadrant Guidelines */}
           <line
             x1={padding}

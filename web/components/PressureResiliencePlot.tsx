@@ -20,6 +20,7 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
 
   // Filter to players with meaningful clutch volume (>= 5 clutch FGA) and non-null FG%
   const qualified = profiles.filter((p) => p.clutchFga >= 5 && p.clutchFgPct !== null);
+  const selectedProfile = qualified.find((p) => p.playerId === selectedPlayerId);
 
   const width = 600;
   const height = 400;
@@ -95,6 +96,8 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
         <svg
           viewBox={`0 0 ${width} ${height}`}
           className="w-full h-full select-none overflow-visible"
+          role="img"
+          aria-label={`Clutch field goal percentage vs shot attempts scatter plot for ${qualified.length} qualified ${qualified.length === 1 ? 'player' : 'players'}${selectedProfile ? `, highlighting ${selectedProfile.playerName} (${selectedProfile.team})` : ''}`}
         >
           {/* Quadrant shading */}
           <rect
