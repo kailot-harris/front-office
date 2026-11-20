@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { GameScheduleDetail, TeamPlayoffProfile } from '@/lib/playoffTypes';
 import { Sparkles } from 'lucide-react';
+import { onTabListKeyDown } from '@/lib/tabKeys';
 
 interface RotationMatchupCardProps {
   teamA: string;
@@ -25,10 +26,12 @@ export const RotationMatchupCard: React.FC<RotationMatchupCardProps> = ({
     <div className="bg-surface-raised/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
       {/* Tab Navigation */}
       <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
-        <div className="flex items-center gap-2">
+        <div role="tablist" onKeyDown={onTabListKeyDown} className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setActiveTab('schedule')}
+            role="tab"
+            aria-selected={activeTab === 'schedule'}
             className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
               activeTab === 'schedule'
                 ? 'bg-accent-600 text-fo-on-accent shadow-md shadow-accent-600/30'
@@ -40,6 +43,8 @@ export const RotationMatchupCard: React.FC<RotationMatchupCardProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('pitching')}
+            role="tab"
+            aria-selected={activeTab === 'pitching'}
             className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
               activeTab === 'pitching'
                 ? 'bg-accent-600 text-fo-on-accent shadow-md shadow-accent-600/30'
@@ -51,6 +56,8 @@ export const RotationMatchupCard: React.FC<RotationMatchupCardProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('lineups')}
+            role="tab"
+            aria-selected={activeTab === 'lineups'}
             className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
               activeTab === 'lineups'
                 ? 'bg-accent-600 text-fo-on-accent shadow-md shadow-accent-600/30'

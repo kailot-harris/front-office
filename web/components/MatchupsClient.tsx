@@ -18,6 +18,7 @@ import {
   Loader2,
   AlertTriangle,
 } from 'lucide-react';
+import { onTabListKeyDown } from '@/lib/tabKeys';
 
 interface MatchupsClientProps {
   index: MatchupsIndex;
@@ -283,10 +284,12 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ index, initialMa
             />
           </div>
 
-          <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
+          <div role="tablist" onKeyDown={onTabListKeyDown} className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
             <button
               type="button"
               onClick={() => setViewMode('grid')}
+              role="tab"
+              aria-selected={viewMode === 'grid'}
               className={`p-1.5 rounded-md transition-colors ${
                 viewMode === 'grid' ? 'bg-accent-600 text-fo-on-accent' : 'text-slate-400 hover:text-white'
               }`}
@@ -298,6 +301,8 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ index, initialMa
             <button
               type="button"
               onClick={() => setViewMode('table')}
+              role="tab"
+              aria-selected={viewMode === 'table'}
               className={`p-1.5 rounded-md transition-colors ${
                 viewMode === 'table' ? 'bg-accent-600 text-fo-on-accent' : 'text-slate-400 hover:text-white'
               }`}
@@ -311,14 +316,14 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ index, initialMa
       </div>
 
       {isLoading && (
-        <div className="bg-surface-raised/70 border border-slate-800 rounded-xl p-8 flex items-center justify-center gap-2.5 text-sm text-slate-400 font-mono">
+        <div role="status" aria-live="polite" className="bg-surface-raised/70 border border-slate-800 rounded-xl p-8 flex items-center justify-center gap-2.5 text-sm text-slate-400 font-mono">
           <Loader2 className="w-4 h-4 animate-spin text-accent-400" />
           <span>Loading week {selectedWeek}…</span>
         </div>
       )}
 
       {loadError === selectedWeek && (
-        <div className="bg-surface-raised/70 border border-amber-500/30 rounded-xl p-8 text-center space-y-3">
+        <div role="alert" className="bg-surface-raised/70 border border-amber-500/30 rounded-xl p-8 text-center space-y-3">
           <div className="flex items-center justify-center gap-2.5 text-sm text-amber-400 font-mono">
             <AlertTriangle className="w-4 h-4" />
             <span>Could not load week {selectedWeek}.</span>

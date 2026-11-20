@@ -23,6 +23,7 @@ import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 import { exportToCsv } from '@/lib/exportToCsv';
 import { HowToRead } from '@/components/HowToRead';
 import { GlossaryTerm } from '@/components/Glossary';
+import { onTabListKeyDown } from '@/lib/tabKeys';
 
 interface SpatialAnalyticsClientProps {
   data: StatcastSpatialData;
@@ -258,9 +259,11 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
         </div>
 
         {/* Tab Navigation Pill Bar */}
-        <div className="flex flex-wrap items-center gap-2 mt-6 pt-4 border-t border-slate-800/80">
+        <div role="tablist" onKeyDown={onTabListKeyDown} className="flex flex-wrap items-center gap-2 mt-6 pt-4 border-t border-slate-800/80">
           <button
             onClick={() => setActiveTab('spray')}
+            role="tab"
+            aria-selected={activeTab === 'spray'}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               activeTab === 'spray'
                 ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/30 ring-1 ring-accent-400/50'
@@ -273,6 +276,8 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
 
           <button
             onClick={() => setActiveTab('zone')}
+            role="tab"
+            aria-selected={activeTab === 'zone'}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               activeTab === 'zone'
                 ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/30 ring-1 ring-accent-400/50'
@@ -285,6 +290,8 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
 
           <button
             onClick={() => setActiveTab('movement')}
+            role="tab"
+            aria-selected={activeTab === 'movement'}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               activeTab === 'movement'
                 ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/30 ring-1 ring-accent-400/50'
@@ -297,6 +304,8 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
 
           <button
             onClick={() => setActiveTab('defense')}
+            role="tab"
+            aria-selected={activeTab === 'defense'}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               activeTab === 'defense'
                 ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/30 ring-1 ring-accent-400/50'
@@ -322,7 +331,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                 <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
                   Ballpark Overlay
                 </label>
-                <select
+                <select aria-label="Ballpark overlay"
                   value={selectedPark}
                   onChange={(e) => setSelectedPark(e.target.value)}
                   className="bg-surface border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-sky-500"
@@ -362,7 +371,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                 <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
                   Hit Outcome
                 </label>
-                <select
+                <select aria-label="Hit outcome"
                   value={sprayTypeFilter}
                   onChange={(e) => setSprayTypeFilter(e.target.value)}
                   className="bg-surface border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-sky-500"
@@ -1269,7 +1278,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Drill Down Pitcher Arsenal:
               </label>
-              <select
+              <select aria-label="Drill down pitcher arsenal"
                 value={selectedPitcherId}
                 onChange={(e) => setSelectedPitcherId(Number(e.target.value))}
                 className="bg-surface border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-sky-500"

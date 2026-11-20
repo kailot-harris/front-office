@@ -78,7 +78,7 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
       {/* Donut Ring Visualizer */}
       <div className="flex flex-col sm:flex-row items-center justify-around gap-6 my-2">
         <div className="relative flex items-center justify-center">
-          <svg width={size} height={size} className="transform -rotate-90">
+          <svg width={size} height={size} className="transform -rotate-90" role="img" aria-label={`Series win probability: ${teamA} ${pctA}%, ${teamB} ${pctB}%`}>
             {/* Background circle (Team B) */}
             <circle
               cx={size / 2}

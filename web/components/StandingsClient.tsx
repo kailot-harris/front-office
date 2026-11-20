@@ -476,7 +476,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                 ))}
               </div>
 
-              <select
+              <select aria-label="Filter by division"
                 value={selectedDivision}
                 onChange={(e) => setSelectedDivision(e.target.value)}
                 className="bg-surface border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500"
@@ -515,6 +515,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                 <thead>
                   <tr className="border-b border-slate-800 bg-surface/80 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                     <th
+                      aria-sort={sortBy === 'rank' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('rank'); } }}
                       onClick={() => handleSort('rank')}
                       className="py-3.5 px-3 cursor-pointer hover:text-white group select-none hidden sm:table-cell"
                     >
@@ -524,6 +527,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                       </div>
                     </th>
                     <th
+                      aria-sort={sortBy === 'team' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('team'); } }}
                       onClick={() => handleSort('team')}
                       className="py-3.5 px-4 cursor-pointer hover:text-white group select-none sticky left-0 z-20 bg-surface border-r border-slate-800"
                     >
@@ -533,6 +539,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                       </div>
                     </th>
                     <th
+                      aria-sort={sortBy === 'division' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('division'); } }}
                       onClick={() => handleSort('division')}
                       className="py-3.5 px-3 cursor-pointer hover:text-white group select-none hidden sm:table-cell"
                     >
@@ -542,6 +551,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                       </div>
                     </th>
                     <th
+                      aria-sort={sortBy === 'ensemble_mean_wins' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('ensemble_mean_wins'); } }}
                       onClick={() => handleSort('ensemble_mean_wins')}
                       className="py-3.5 px-3 text-right cursor-pointer hover:text-white group select-none"
                     >
@@ -551,6 +563,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                       </div>
                     </th>
                     <th
+                      aria-sort={sortBy === 'win_pct' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('win_pct'); } }}
                       onClick={() => handleSort('win_pct')}
                       className="py-3.5 px-3 text-right cursor-pointer hover:text-white group select-none"
                     >
@@ -560,6 +575,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                       </div>
                     </th>
                     <th
+                      aria-sort={sortBy === 'elo_rating' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('elo_rating'); } }}
                       onClick={() => handleSort('elo_rating')}
                       className="py-3.5 px-3 text-right cursor-pointer hover:text-white group select-none hidden sm:table-cell"
                     >
@@ -569,6 +587,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                       </div>
                     </th>
                     <th
+                      aria-sort={sortBy === 'luck_wins' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('luck_wins'); } }}
                       onClick={() => handleSort('luck_wins')}
                       className="py-3.5 px-3 text-right cursor-pointer hover:text-white group select-none hidden sm:table-cell"
                     >
@@ -578,6 +599,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                       </div>
                     </th>
                     <th
+                      aria-sort={sortBy === 'percentile_range' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('percentile_range'); } }}
                       onClick={() => handleSort('percentile_range')}
                       className="py-3.5 px-4 text-center cursor-pointer hover:text-white group select-none min-w-[170px] hidden sm:table-cell"
                     >
@@ -587,6 +611,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                       </div>
                     </th>
                     <th
+                      aria-sort={sortBy === 'ensemble_playoff_prob' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('ensemble_playoff_prob'); } }}
                       onClick={() => handleSort('ensemble_playoff_prob')}
                       className="py-3.5 px-3 text-right cursor-pointer hover:text-white group select-none"
                     >
@@ -596,6 +623,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                       </div>
                     </th>
                     <th
+                      aria-sort={sortBy === 'ensemble_title_prob' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('ensemble_title_prob'); } }}
                       onClick={() => handleSort('ensemble_title_prob')}
                       className="py-3.5 px-4 text-right cursor-pointer hover:text-white group select-none"
                     >

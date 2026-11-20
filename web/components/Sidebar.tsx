@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -45,6 +45,44 @@ export interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'offseason' }) => {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const drawerRef = useRef<HTMLDivElement | null>(null);
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  // Mobile drawer is a modal dialog: focus moves in, Tab stays inside, Escape
+  // closes it and focus returns to the menu button (MLB-Analytics#130).
+  useEffect(() => {
+    if (!isOpen) return;
+    const drawer = drawerRef.current;
+    const focusables = () =>
+      Array.from(
+        drawer?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? [],
+      );
+    focusables()[0]?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const items = focusables();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    const opener = menuButtonRef.current;
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      opener?.focus();
+    };
+  }, [isOpen]);
   const [showEloExplainer, setShowEloExplainer] = useState(false);
 
   const primaryNavItems = [
@@ -454,6 +492,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
           </div>
         </div>
         <button
+          ref={menuButtonRef}
           onClick={() => setIsOpen(!isOpen)}
           aria-label="Toggle navigation menu"
           className="p-2 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
@@ -469,10 +508,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
             className="fixed inset-0 bg-surface/80 backdrop-blur-sm transition-opacity"
             onClick={() => setIsOpen(false)}
           />
-          <div className="relative w-72 max-w-[85vw] bg-surface-raised border-r border-slate-800 h-full z-10 flex flex-col shadow-2xl">
+          <div
+            ref={drawerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Site navigation"
+            className="relative w-72 max-w-[85vw] bg-surface-raised border-r border-slate-800 h-full z-10 flex flex-col shadow-2xl"
+          >
             <div className="absolute top-3 right-3">
               <button
                 onClick={() => setIsOpen(false)}
+                aria-label="Close navigation"
                 className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
               >
                 <X className="w-4 h-4" />

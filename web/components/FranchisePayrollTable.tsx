@@ -149,7 +149,7 @@ export const FranchisePayrollTable: React.FC<FranchisePayrollTableProps> = ({
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="bg-surface/80 border-b border-slate-800 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                <th className="py-3 px-4 sticky left-0 z-20 bg-surface border-r border-slate-800">
+                <th className="py-3 px-4 sticky left-0 z-20 bg-surface border-r border-slate-800" aria-sort={sortField === 'playerName' ? (sortAsc ? 'ascending' : 'descending') : 'none'}>
                   <button
                     onClick={() => toggleSort('playerName')}
                     className="flex items-center gap-1 hover:text-slate-200"
@@ -160,7 +160,7 @@ export const FranchisePayrollTable: React.FC<FranchisePayrollTableProps> = ({
                 </th>
                 <th className="py-3 px-3 hidden sm:table-cell">Position</th>
                 <th className="py-3 px-3">Status</th>
-                <th className="py-3 px-3 text-right">
+                <th className="py-3 px-3 text-right" aria-sort={sortField === 'salary2026' ? (sortAsc ? 'ascending' : 'descending') : 'none'}>
                   <button
                     onClick={() => toggleSort('salary2026')}
                     className="flex items-center gap-1 ml-auto hover:text-slate-200"
@@ -169,7 +169,7 @@ export const FranchisePayrollTable: React.FC<FranchisePayrollTableProps> = ({
                     <ArrowUpDown className="w-3 h-3" />
                   </button>
                 </th>
-                <th className="py-3 px-3 text-right hidden sm:table-cell">
+                <th className="py-3 px-3 text-right hidden sm:table-cell" aria-sort={sortField === 'salary2027' ? (sortAsc ? 'ascending' : 'descending') : 'none'}>
                   <button
                     onClick={() => toggleSort('salary2027')}
                     className="flex items-center gap-1 ml-auto hover:text-slate-200"
@@ -178,7 +178,7 @@ export const FranchisePayrollTable: React.FC<FranchisePayrollTableProps> = ({
                     <ArrowUpDown className="w-3 h-3" />
                   </button>
                 </th>
-                <th className="py-3 px-3 text-right hidden sm:table-cell">
+                <th className="py-3 px-3 text-right hidden sm:table-cell" aria-sort={sortField === 'salary2028' ? (sortAsc ? 'ascending' : 'descending') : 'none'}>
                   <button
                     onClick={() => toggleSort('salary2028')}
                     className="flex items-center gap-1 ml-auto hover:text-slate-200"
@@ -187,7 +187,7 @@ export const FranchisePayrollTable: React.FC<FranchisePayrollTableProps> = ({
                     <ArrowUpDown className="w-3 h-3" />
                   </button>
                 </th>
-                <th className="py-3 px-3 text-right">
+                <th className="py-3 px-3 text-right" aria-sort={sortField === 'projectedWar' ? (sortAsc ? 'ascending' : 'descending') : 'none'}>
                   <button
                     onClick={() => toggleSort('projectedWar')}
                     className="flex items-center gap-1 ml-auto hover:text-slate-200"
@@ -196,7 +196,7 @@ export const FranchisePayrollTable: React.FC<FranchisePayrollTableProps> = ({
                     <ArrowUpDown className="w-3 h-3" />
                   </button>
                 </th>
-                <th className="py-3 px-4 text-right">
+                <th className="py-3 px-4 text-right" aria-sort={sortField === 'surplusValue' ? (sortAsc ? 'ascending' : 'descending') : 'none'}>
                   <button
                     onClick={() => toggleSort('surplusValue')}
                     className="flex items-center gap-1 ml-auto hover:text-slate-200"

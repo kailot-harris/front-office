@@ -155,6 +155,7 @@ export const VisualMediaGalleryClient: React.FC<VisualMediaGalleryClientProps> =
               <button
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.id)}
+                aria-pressed={isCatActive}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all flex items-center gap-1.5 ${
                   isCatActive
                     ? 'bg-sky-500 text-fo-on-accent border-sky-400 shadow-sm'

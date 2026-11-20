@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { onTabListKeyDown } from '@/lib/tabKeys';
 
 interface PostseasonOpsClientProps {
   data: PostseasonOpsData;
@@ -170,10 +171,12 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data, 
   return (
     <div className="space-y-6">
       {/* Top Sub-Navigation Tabs */}
-      <div className="flex flex-wrap items-center gap-2 bg-surface-raised/90 border border-slate-800 rounded-xl p-2 shadow-lg">
+      <div role="tablist" onKeyDown={onTabListKeyDown} className="flex flex-wrap items-center gap-2 bg-surface-raised/90 border border-slate-800 rounded-xl p-2 shadow-lg">
         <button
           type="button"
           onClick={() => setActiveTab('bracket')}
+          role="tab"
+          aria-selected={activeTab === 'bracket'}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
             activeTab === 'bracket'
               ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/30'
@@ -194,6 +197,8 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data, 
         <button
           type="button"
           onClick={() => setActiveTab('bullpen')}
+          role="tab"
+          aria-selected={activeTab === 'bullpen'}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
             activeTab === 'bullpen'
               ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/30'
@@ -214,6 +219,8 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data, 
         <button
           type="button"
           onClick={() => setActiveTab('tactical')}
+          role="tab"
+          aria-selected={activeTab === 'tactical'}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
             activeTab === 'tactical'
               ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/30'

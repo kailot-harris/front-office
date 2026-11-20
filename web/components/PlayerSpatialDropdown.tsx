@@ -16,6 +16,7 @@ import {
 import { BallparkFieldSvg } from '@/components/BallparkFieldSvg';
 import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { onTabListKeyDown } from '@/lib/tabKeys';
 
 interface PlayerSpatialDropdownProps {
   player: PlayerProjection;
@@ -129,7 +130,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
 
   if (!spatialData) {
     return (
-      <div className="p-8 text-center bg-surface-raised/90 border border-slate-800 rounded-xl space-y-3">
+      <div role="status" aria-live="polite" className="p-8 text-center bg-surface-raised/90 border border-slate-800 rounded-xl space-y-3">
         <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
         <div className="text-sm font-semibold text-slate-300">
           Loading spatial mapping telemetry for {player.player_name}...
@@ -175,10 +176,12 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
         {/* Filter Controls & Close Button */}
         <div className="flex items-center gap-2 flex-wrap">
           {isBatter ? (
-            <div className="inline-flex rounded-lg bg-surface-raised border border-slate-800 p-0.5 text-xs font-medium flex-wrap gap-0.5">
+            <div role="tablist" onKeyDown={onTabListKeyDown} className="inline-flex rounded-lg bg-surface-raised border border-slate-800 p-0.5 text-xs font-medium flex-wrap gap-0.5">
               <button
                 type="button"
                 onClick={() => setBatterFilter('all')}
+                role="tab"
+                aria-selected={batterFilter === 'all'}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   batterFilter === 'all'
                     ? 'bg-accent-600 text-fo-on-accent font-bold'
@@ -190,6 +193,8 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
               <button
                 type="button"
                 onClick={() => setBatterFilter('hits')}
+                role="tab"
+                aria-selected={batterFilter === 'hits'}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   batterFilter === 'hits'
                     ? 'bg-accent-600 text-fo-on-accent font-bold'
@@ -201,6 +206,8 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
               <button
                 type="button"
                 onClick={() => setBatterFilter('hrs')}
+                role="tab"
+                aria-selected={batterFilter === 'hrs'}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   batterFilter === 'hrs'
                     ? 'bg-accent-600 text-fo-on-accent font-bold'
@@ -212,6 +219,8 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
               <button
                 type="button"
                 onClick={() => setBatterFilter('xbh')}
+                role="tab"
+                aria-selected={batterFilter === 'xbh'}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   batterFilter === 'xbh'
                     ? 'bg-accent-600 text-fo-on-accent font-bold'
@@ -223,6 +232,8 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
               <button
                 type="button"
                 onClick={() => setBatterFilter('hard_hit')}
+                role="tab"
+                aria-selected={batterFilter === 'hard_hit'}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   batterFilter === 'hard_hit'
                     ? 'bg-accent-600 text-fo-on-accent font-bold'
@@ -233,10 +244,12 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
               </button>
             </div>
           ) : (
-            <div className="inline-flex rounded-lg bg-surface-raised border border-slate-800 p-0.5 text-xs font-medium flex-wrap gap-0.5">
+            <div role="tablist" onKeyDown={onTabListKeyDown} className="inline-flex rounded-lg bg-surface-raised border border-slate-800 p-0.5 text-xs font-medium flex-wrap gap-0.5">
               <button
                 type="button"
                 onClick={() => setPitcherFilter('all')}
+                role="tab"
+                aria-selected={pitcherFilter === 'all'}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   pitcherFilter === 'all'
                     ? 'bg-accent-600 text-fo-on-accent font-bold'
@@ -248,6 +261,8 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
               <button
                 type="button"
                 onClick={() => setPitcherFilter('whiffs')}
+                role="tab"
+                aria-selected={pitcherFilter === 'whiffs'}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   pitcherFilter === 'whiffs'
                     ? 'bg-accent-600 text-fo-on-accent font-bold'
@@ -259,6 +274,8 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
               <button
                 type="button"
                 onClick={() => setPitcherFilter('strikes')}
+                role="tab"
+                aria-selected={pitcherFilter === 'strikes'}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   pitcherFilter === 'strikes'
                     ? 'bg-accent-600 text-fo-on-accent font-bold'
