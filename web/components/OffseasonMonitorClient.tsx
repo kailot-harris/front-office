@@ -387,7 +387,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
           onClick={() => setActiveTab('brief')}
           className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
             activeTab === 'brief'
-              ? 'bg-sky-600 text-white shadow-md shadow-sky-600/20'
+              ? 'bg-sky-600 text-fo-on-accent shadow-md shadow-sky-600/20'
               : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
@@ -400,7 +400,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
           onClick={() => setActiveTab('confirmed')}
           className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
             activeTab === 'confirmed'
-              ? 'bg-sky-600 text-white shadow-md shadow-sky-600/20'
+              ? 'bg-sky-600 text-fo-on-accent shadow-md shadow-sky-600/20'
               : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
@@ -416,7 +416,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
           onClick={() => setActiveTab('reported')}
           className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
             activeTab === 'reported'
-              ? 'bg-sky-600 text-white shadow-md shadow-sky-600/20'
+              ? 'bg-sky-600 text-fo-on-accent shadow-md shadow-sky-600/20'
               : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
@@ -432,7 +432,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
           onClick={() => setActiveTab('expired')}
           className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
             activeTab === 'expired'
-              ? 'bg-sky-600 text-white shadow-md shadow-sky-600/20'
+              ? 'bg-sky-600 text-fo-on-accent shadow-md shadow-sky-600/20'
               : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
@@ -448,7 +448,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
           onClick={() => setActiveTab('cbt')}
           className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
             activeTab === 'cbt'
-              ? 'bg-sky-600 text-white shadow-md shadow-sky-600/20'
+              ? 'bg-sky-600 text-fo-on-accent shadow-md shadow-sky-600/20'
               : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
@@ -462,7 +462,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
             onClick={() => setActiveTab('labor')}
             className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
               activeTab === 'labor'
-                ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
+                ? 'bg-rose-600 text-fo-on-accent shadow-md shadow-rose-600/20'
                 : 'text-rose-400 hover:text-rose-200 hover:bg-rose-950/40 border border-rose-900/40'
             }`}
           >
@@ -926,7 +926,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
             </div>
             <Link
               href="/cap-sheet"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs transition-colors shadow-lg shadow-sky-600/30 self-start md:self-center font-mono"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-fo-on-accent font-semibold text-xs transition-colors shadow-lg shadow-sky-600/30 self-start md:self-center font-mono"
             >
               <span>Explore Interactive CBT Sheet</span>
               <ArrowRight className="w-4 h-4" />

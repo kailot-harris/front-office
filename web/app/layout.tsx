@@ -39,7 +39,12 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#040a1a',
+  // Matches --fo-surface for data-site="mlb" in each colour scheme.
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f2f7fc' },
+    { media: '(prefers-color-scheme: dark)', color: '#040a1a' },
+  ],
+  colorScheme: 'light dark',
 };
 
 export default function RootLayout({
@@ -49,13 +54,13 @@ export default function RootLayout({
 }) {
   const { generated_at } = getMetadata();
   return (
-    <html lang="en" data-site="mlb" className={`dark ${GeistSans.variable} ${GeistMono.variable}`}>
+    <html lang="en" data-site="mlb" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body
-        className={`${GeistSans.className} font-sans bg-surface text-slate-100 min-h-screen flex flex-col md:flex-row antialiased selection:bg-accent-600 selection:text-white`}
+        className={`${GeistSans.className} font-sans bg-surface text-slate-100 min-h-screen flex flex-col md:flex-row antialiased selection:bg-accent-600 selection:text-fo-on-accent`}
       >
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-[100] focus:rounded-lg focus:bg-accent-600 focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-white focus:shadow-xl"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-[100] focus:rounded-lg focus:bg-accent-600 focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-fo-on-accent focus:shadow-xl"
         >
           Skip to content
         </a>

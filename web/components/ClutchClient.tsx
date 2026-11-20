@@ -111,7 +111,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
               onClick={() => handleTypeSwitch('Batter')}
               className={`px-4 py-2 rounded-lg font-bold transition-all ${
                 playerType === 'Batter'
-                  ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
+                  ? 'bg-accent-600 text-fo-on-accent shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -122,7 +122,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
               onClick={() => handleTypeSwitch('Pitcher')}
               className={`px-4 py-2 rounded-lg font-bold transition-all ${
                 playerType === 'Pitcher'
-                  ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
+                  ? 'bg-accent-600 text-fo-on-accent shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >

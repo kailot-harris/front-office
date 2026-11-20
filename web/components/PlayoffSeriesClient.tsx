@@ -392,7 +392,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               onClick={() => setSeriesLength(3)}
               className={`px-3 py-2 rounded-lg font-bold transition-all ${
                 seriesLength === 3
-                  ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
+                  ? 'bg-accent-600 text-fo-on-accent shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -403,7 +403,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               onClick={() => setSeriesLength(5)}
               className={`px-3 py-2 rounded-lg font-bold transition-all ${
                 seriesLength === 5
-                  ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
+                  ? 'bg-accent-600 text-fo-on-accent shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -414,7 +414,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               onClick={() => setSeriesLength(7)}
               className={`px-3 py-2 rounded-lg font-bold transition-all ${
                 seriesLength === 7
-                  ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
+                  ? 'bg-accent-600 text-fo-on-accent shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >

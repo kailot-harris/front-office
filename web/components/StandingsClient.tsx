@@ -258,7 +258,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
             onClick={() => setActiveTab('visualizer')}
             className={`cursor-pointer select-none touch-manipulation flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-20 ${
               activeTab === 'visualizer'
-                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
+                ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
                 : 'text-slate-400 hover:text-white hover:bg-surface-raised'
             }`}
           >
@@ -267,7 +267,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
             <span
               className={`text-[11px] sm:text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
                 activeTab === 'visualizer'
-                  ? 'bg-white/20 text-white font-bold'
+                  ? 'border border-current text-fo-on-accent font-bold'
                   : 'bg-slate-800 text-slate-400'
               }`}
             >
@@ -283,7 +283,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
             onClick={() => setActiveTab('gallery')}
             className={`cursor-pointer select-none touch-manipulation flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-20 ${
               activeTab === 'gallery'
-                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
+                ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
                 : 'text-slate-400 hover:text-white hover:bg-surface-raised'
             }`}
           >
@@ -291,7 +291,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
             <span className="pointer-events-none">Animated GIF Races & Postseason</span>
             <span
               className={`text-[11px] sm:text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
-                activeTab === 'gallery' ? 'bg-white/20 text-white font-bold' : 'bg-slate-800 text-slate-400'
+                activeTab === 'gallery' ? 'border border-current text-fo-on-accent font-bold' : 'bg-slate-800 text-slate-400'
               }`}
             >
               20 GIFs
@@ -306,7 +306,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
             onClick={() => setActiveTab('table')}
             className={`cursor-pointer select-none touch-manipulation flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-20 ${
               activeTab === 'table'
-                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
+                ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
                 : 'text-slate-400 hover:text-white hover:bg-surface-raised'
             }`}
           >
@@ -314,7 +314,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
             <span className="pointer-events-none">Full MLB Standings (30 Clubs)</span>
             <span
               className={`text-[11px] sm:text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
-                activeTab === 'table' ? 'bg-white/20 text-white font-bold' : 'bg-slate-800 text-slate-400'
+                activeTab === 'table' ? 'border border-current text-fo-on-accent font-bold' : 'bg-slate-800 text-slate-400'
               }`}
             >
               Full Table
@@ -467,7 +467,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                     }}
                     className={`px-3 py-1 min-h-[24px] min-w-[24px] flex items-center justify-center text-xs font-semibold rounded-md transition-all ${
                       selectedLeague === lg
-                        ? 'bg-accent-600 text-white shadow-sm'
+                        ? 'bg-accent-600 text-fo-on-accent shadow-sm'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >

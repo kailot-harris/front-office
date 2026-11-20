@@ -84,7 +84,7 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
             y1={scaleY(0)}
             x2={width - padding}
             y2={scaleY(0)}
-            stroke="#334155"
+            stroke="var(--tw-c-slate-700)"
             strokeWidth="1.5"
             strokeDasharray="4,4"
           />
@@ -95,7 +95,7 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
             y1={padding}
             x2={scaleX(isBatter ? 0.335 : 0.300)}
             y2={height - padding}
-            stroke="#1e293b"
+            stroke="var(--tw-c-slate-800)"
             strokeWidth="1"
             strokeDasharray="2,2"
           />

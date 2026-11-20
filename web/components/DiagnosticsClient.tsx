@@ -143,7 +143,7 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
                         y1={400 - pos + 40}
                         x2="360"
                         y2={400 - pos + 40}
-                        stroke="#334155"
+                        stroke="var(--tw-c-slate-700)"
                         strokeDasharray="4 4"
                         strokeWidth="1"
                       />
@@ -152,7 +152,7 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
                         y1="40"
                         x2={pos}
                         y2="360"
-                        stroke="#334155"
+                        stroke="var(--tw-c-slate-700)"
                         strokeDasharray="4 4"
                         strokeWidth="1"
                       />
@@ -161,8 +161,8 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
                 })}
 
                 {/* Axes */}
-                <line x1="40" y1="360" x2="360" y2="360" stroke="#64748b" strokeWidth="2" />
-                <line x1="40" y1="40" x2="40" y2="360" stroke="#64748b" strokeWidth="2" />
+                <line x1="40" y1="360" x2="360" y2="360" stroke="var(--tw-c-slate-500)" strokeWidth="2" />
+                <line x1="40" y1="40" x2="40" y2="360" stroke="var(--tw-c-slate-500)" strokeWidth="2" />
 
                 {/* Perfect Calibration diagonal (y = x) */}
                 <line
@@ -170,7 +170,7 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
                   y1="360"
                   x2="360"
                   y2="40"
-                  stroke="#94a3b8"
+                  stroke="var(--tw-c-slate-400)"
                   strokeDasharray="6 6"
                   strokeWidth="2"
                 />
@@ -213,7 +213,7 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
                   x="200"
                   y="395"
                   textAnchor="middle"
-                  fill="#94a3b8"
+                  fill="var(--tw-c-slate-400)"
                   fontSize="12"
                   fontWeight="600"
                 >
@@ -224,7 +224,7 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
                   y="16"
                   transform="rotate(-90)"
                   textAnchor="middle"
-                  fill="#94a3b8"
+                  fill="var(--tw-c-slate-400)"
                   fontSize="12"
                   fontWeight="600"
                 >

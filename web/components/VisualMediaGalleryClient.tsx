@@ -157,14 +157,14 @@ export const VisualMediaGalleryClient: React.FC<VisualMediaGalleryClientProps> =
                 onClick={() => setSelectedCategory(cat.id)}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all flex items-center gap-1.5 ${
                   isCatActive
-                    ? 'bg-sky-500 text-white border-sky-400 shadow-sm'
+                    ? 'bg-sky-500 text-fo-on-accent border-sky-400 shadow-sm'
                     : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800 hover:text-white'
                 }`}
               >
                 <span>{cat.label}</span>
                 <span
                   className={`text-[11px] sm:text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                    isCatActive ? 'bg-sky-600 text-white' : 'bg-slate-800 text-slate-400'
+                    isCatActive ? 'bg-sky-600 text-fo-on-accent' : 'bg-slate-800 text-slate-400'
                   }`}
                 >
                   {cat.count}
@@ -219,7 +219,7 @@ export const VisualMediaGalleryClient: React.FC<VisualMediaGalleryClientProps> =
                     loading="lazy"
                   />
                   <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <span className="px-3 py-1.5 rounded-lg bg-sky-500 text-white text-xs font-bold shadow-md">
+                    <span className="px-3 py-1.5 rounded-lg bg-sky-500 text-fo-on-accent text-xs font-bold shadow-md">
                       Play in Showcase &uarr;
                     </span>
                   </div>

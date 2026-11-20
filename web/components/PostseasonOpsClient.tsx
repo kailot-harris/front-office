@@ -176,7 +176,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data, 
           onClick={() => setActiveTab('bracket')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
             activeTab === 'bracket'
-              ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
+              ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/30'
               : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
@@ -184,7 +184,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data, 
           <span>12-Team Postseason Bracket</span>
           <span
             className={`text-xs font-mono px-2 py-0.5 rounded-full ${
-              activeTab === 'bracket' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
+              activeTab === 'bracket' ? 'border border-current text-fo-on-accent' : 'bg-slate-800 text-slate-400'
             }`}
           >
             10,000 Sims
@@ -196,7 +196,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data, 
           onClick={() => setActiveTab('bullpen')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
             activeTab === 'bullpen'
-              ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
+              ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/30'
               : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
@@ -204,7 +204,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data, 
           <span>Bullpen Workload & Fatigue</span>
           <span
             className={`text-xs font-mono px-2 py-0.5 rounded-full ${
-              activeTab === 'bullpen' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
+              activeTab === 'bullpen' ? 'border border-current text-fo-on-accent' : 'bg-slate-800 text-slate-400'
             }`}
           >
             30 Bullpens
@@ -216,7 +216,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data, 
           onClick={() => setActiveTab('tactical')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
             activeTab === 'tactical'
-              ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
+              ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/30'
               : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
@@ -224,7 +224,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data, 
           <span>Tactical Matchups & Upset Vulnerability</span>
           <span
             className={`text-xs font-mono px-2 py-0.5 rounded-full ${
-              activeTab === 'tactical' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
+              activeTab === 'tactical' ? 'border border-current text-fo-on-accent' : 'bg-slate-800 text-slate-400'
             }`}
           >
             {highRiskCount} Elevated
@@ -517,7 +517,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data, 
                   onClick={() => setBullpenLeague(lg)}
                   className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                     bullpenLeague === lg
-                      ? 'bg-accent-600 text-white shadow-sm'
+                      ? 'bg-accent-600 text-fo-on-accent shadow-sm'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >

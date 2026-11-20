@@ -31,7 +31,7 @@ export const RotationMatchupCard: React.FC<RotationMatchupCardProps> = ({
             onClick={() => setActiveTab('schedule')}
             className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
               activeTab === 'schedule'
-                ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
+                ? 'bg-accent-600 text-fo-on-accent shadow-md shadow-accent-600/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >
@@ -42,7 +42,7 @@ export const RotationMatchupCard: React.FC<RotationMatchupCardProps> = ({
             onClick={() => setActiveTab('pitching')}
             className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
               activeTab === 'pitching'
-                ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
+                ? 'bg-accent-600 text-fo-on-accent shadow-md shadow-accent-600/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >
@@ -53,7 +53,7 @@ export const RotationMatchupCard: React.FC<RotationMatchupCardProps> = ({
             onClick={() => setActiveTab('lineups')}
             className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
               activeTab === 'lineups'
-                ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
+                ? 'bg-accent-600 text-fo-on-accent shadow-md shadow-accent-600/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >

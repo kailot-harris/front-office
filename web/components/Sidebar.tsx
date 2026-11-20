@@ -182,7 +182,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
         onClick={() => setIsOpen(false)}
         className={`group flex items-start gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
           isActive
-            ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
+            ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/30'
             : item.primary
             ? 'text-white bg-slate-800/40 hover:bg-slate-800/80 border border-sky-500/20'
             : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
@@ -203,7 +203,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
             <span
               className={`text-[11px] sm:text-[10px] px-1.5 py-0.2 rounded font-mono font-medium ${
                 isActive
-                  ? 'bg-white/20 text-white'
+                  ? 'border border-current text-fo-on-accent'
                   : item.primary
                   ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
                   : 'bg-slate-800 text-slate-400'
@@ -214,7 +214,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
           </div>
           <p
             className={`text-[11px] truncate ${
-              isActive ? 'text-accent-50' : 'text-slate-400'
+              isActive ? 'text-fo-on-accent' : 'text-slate-400'
             }`}
           >
             {item.desc}

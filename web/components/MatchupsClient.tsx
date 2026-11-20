@@ -153,7 +153,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ index, initialMa
                 title={`${wk.label} — ${STATUS_COPY[wk.status]}`}
                 className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 border ${
                   isSelected
-                    ? 'bg-accent-600 text-white border-accent-500 shadow-md shadow-accent-600/30 font-bold'
+                    ? 'bg-accent-600 text-fo-on-accent border-accent-500 shadow-md shadow-accent-600/30 font-bold'
                     : wk.status === 'active'
                     ? 'bg-surface-raised text-accent-400 border-accent-500/40 hover:bg-slate-800'
                     : 'bg-surface text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
@@ -288,7 +288,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ index, initialMa
               type="button"
               onClick={() => setViewMode('grid')}
               className={`p-1.5 rounded-md transition-colors ${
-                viewMode === 'grid' ? 'bg-accent-600 text-white' : 'text-slate-400 hover:text-white'
+                viewMode === 'grid' ? 'bg-accent-600 text-fo-on-accent' : 'text-slate-400 hover:text-white'
               }`}
               title="Card view"
               aria-label="Card view"
@@ -299,7 +299,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ index, initialMa
               type="button"
               onClick={() => setViewMode('table')}
               className={`p-1.5 rounded-md transition-colors ${
-                viewMode === 'table' ? 'bg-accent-600 text-white' : 'text-slate-400 hover:text-white'
+                viewMode === 'table' ? 'bg-accent-600 text-fo-on-accent' : 'text-slate-400 hover:text-white'
               }`}
               title="Table view"
               aria-label="Table view"

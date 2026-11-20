@@ -25,8 +25,8 @@ type Shade = (typeof SHADES)[number];
 
 /** Light-mode stand-in for each dark-first shade. */
 const LIGHT_MIRROR: Record<Shade, Shade> = {
-  "50": "950", "100": "900", "200": "900", "300": "800", "400": "700",
-  "500": "600", "600": "700", "700": "300", "800": "200", "900": "100", "950": "50",
+  "50": "950", "100": "900", "200": "900", "300": "900", "400": "800",
+  "500": "700", "600": "700", "700": "300", "800": "200", "900": "100", "950": "50",
 };
 
 const withAlpha = (cssVar: string) =>
@@ -57,6 +57,9 @@ const colorVariables = plugin(({ addBase }) => {
     Object.assign(dark, v.dark);
   }
   // The accent ramp is MLB's sapphire (Tailwind sky), with 400/500 bound to the token accent.
+  // Plain white is "brightest text" in the dark-first markup, so it flips to near-black in light mode.
+  light["--tw-c-white"] = stock.slate["950"];
+  dark["--tw-c-white"] = "#ffffff";
   const acc = paletteVars("accent", stock.sky);
   Object.assign(light, acc.light);
   Object.assign(dark, acc.dark);
@@ -80,6 +83,7 @@ const config: Config = {
       },
       colors: {
         ...Object.fromEntries(PALETTES.map((p) => [p, varPalette(p)])),
+        white: withAlpha("--tw-c-white"),
         background: withAlpha("--fo-surface"),
         foreground: withAlpha("--fo-text"),
         accent: {

@@ -25,7 +25,7 @@ const HIT_COLORS: Record<string, { fill: string; stroke: string; label: string }
   'Triple': { fill: '#a855f7', stroke: '#f3e8ff', label: 'Triple' },
   'Double': { fill: '#06b6d4', stroke: '#cffafe', label: 'Double' },
   'Single': { fill: '#10b981', stroke: '#d1fae5', label: 'Single' },
-  'Out': { fill: '#64748b', stroke: '#334155', label: 'Out' },
+  'Out': { fill: 'var(--tw-c-slate-500)', stroke: 'var(--tw-c-slate-700)', label: 'Out' },
 };
 
 export const BallparkFieldSvg: React.FC<BallparkFieldSvgProps> = ({
@@ -139,8 +139,8 @@ export const BallparkFieldSvg: React.FC<BallparkFieldSvgProps> = ({
           {/* Foul Ground Perimeter & Backstop */}
           <path
             d={svgData.backstopPolygon}
-            fill="#0f172a"
-            stroke="#1e293b"
+            fill="var(--tw-c-slate-900)"
+            stroke="var(--tw-c-slate-800)"
             strokeWidth="1.2"
           />
 
@@ -148,7 +148,7 @@ export const BallparkFieldSvg: React.FC<BallparkFieldSvgProps> = ({
           <path
             d={svgData.fairTerritoryPolygon}
             fill="url(#ballparkGrass)"
-            stroke="#1e293b"
+            stroke="var(--tw-c-slate-800)"
             strokeWidth="1"
           />
 
@@ -170,7 +170,7 @@ export const BallparkFieldSvg: React.FC<BallparkFieldSvgProps> = ({
                 y1={homeY}
                 x2={svgData.wallPoints[0].x}
                 y2={svgData.wallPoints[0].y}
-                stroke="#e2e8f0"
+                stroke="var(--tw-c-slate-200)"
                 strokeWidth="1.6"
               />
               {/* Right Field Foul Line (Home to RF vertex) */}
@@ -179,7 +179,7 @@ export const BallparkFieldSvg: React.FC<BallparkFieldSvgProps> = ({
                 y1={homeY}
                 x2={svgData.wallPoints[svgData.wallPoints.length - 1].x}
                 y2={svgData.wallPoints[svgData.wallPoints.length - 1].y}
-                stroke="#e2e8f0"
+                stroke="var(--tw-c-slate-200)"
                 strokeWidth="1.6"
               />
 
@@ -216,14 +216,14 @@ export const BallparkFieldSvg: React.FC<BallparkFieldSvgProps> = ({
                 <path
                   d={`M ${leftX} ${leftY} A ${r} ${r} 0 0 1 ${rightX} ${rightY}`}
                   fill="none"
-                  stroke="#1e293b"
+                  stroke="var(--tw-c-slate-800)"
                   strokeWidth="1"
                   strokeDasharray="3 4"
                 />
                 <text
                   x={homeX + 4}
                   y={homeY - r + 11}
-                  fill="#475569"
+                  fill="var(--tw-c-slate-600)"
                   fontSize="8.5"
                   fontFamily="monospace"
                 >
@@ -238,7 +238,7 @@ export const BallparkFieldSvg: React.FC<BallparkFieldSvgProps> = ({
           <path
             d={`M ${homeX - 110} ${homeY - 110} A 155 155 0 0 1 ${homeX + 110} ${homeY - 110} L ${homeX} ${homeY} Z`}
             fill="url(#ballparkDirt)"
-            stroke="#334155"
+            stroke="var(--tw-c-slate-700)"
             strokeWidth="1"
           />
 
@@ -257,9 +257,9 @@ export const BallparkFieldSvg: React.FC<BallparkFieldSvgProps> = ({
           {/* 1B: (homeX + 55, homeY - 55), 2B: (homeX, homeY - 110), 3B: (homeX - 55, homeY - 55) */}
           <polygon
             points={`${homeX},${homeY} ${homeX + 55},${homeY - 55} ${homeX},${homeY - 110} ${homeX - 55},${homeY - 55}`}
-            fill="#020617"
+            fill="var(--tw-c-slate-950)"
             fillOpacity="0.6"
-            stroke="#64748b"
+            stroke="var(--tw-c-slate-500)"
             strokeWidth="1.2"
           />
 
@@ -278,7 +278,7 @@ export const BallparkFieldSvg: React.FC<BallparkFieldSvgProps> = ({
             y={homeY - 54.2}
             width="4.4"
             height="1.5"
-            fill="#f8fafc"
+            fill="var(--tw-c-slate-50)"
           />
 
           {/* Bases (1B, 2B, 3B diamonds) */}
@@ -287,7 +287,7 @@ export const BallparkFieldSvg: React.FC<BallparkFieldSvgProps> = ({
             y={homeY - 57.5}
             width="5.5"
             height="5.5"
-            fill="#f8fafc"
+            fill="var(--tw-c-slate-50)"
             transform={`rotate(45 ${homeX + 55} ${homeY - 55})`}
           />
           <rect
@@ -295,7 +295,7 @@ export const BallparkFieldSvg: React.FC<BallparkFieldSvgProps> = ({
             y={homeY - 112.75}
             width="5.5"
             height="5.5"
-            fill="#f8fafc"
+            fill="var(--tw-c-slate-50)"
             transform={`rotate(45 ${homeX} ${homeY - 110})`}
           />
           <rect
@@ -303,14 +303,14 @@ export const BallparkFieldSvg: React.FC<BallparkFieldSvgProps> = ({
             y={homeY - 57.5}
             width="5.5"
             height="5.5"
-            fill="#f8fafc"
+            fill="var(--tw-c-slate-50)"
             transform={`rotate(45 ${homeX - 55} ${homeY - 55})`}
           />
 
           {/* Home Plate */}
           <polygon
             points={`${homeX},${homeY} ${homeX - 4.5},${homeY + 3.5} ${homeX - 4.5},${homeY + 7} ${homeX + 4.5},${homeY + 7} ${homeX + 4.5},${homeY + 3.5}`}
-            fill="#f8fafc"
+            fill="var(--tw-c-slate-50)"
           />
 
           {/* Outfield Wall Base Path (All segments) */}

@@ -221,7 +221,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
             onClick={() => handleGroupSwitch('Batter')}
             className={`flex items-center gap-2.5 px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${
               activeGroup === 'Batter'
-                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
+                ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/30'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -230,7 +230,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
             <span
               className={`text-xs font-mono px-2 py-0.5 rounded-full ${
                 activeGroup === 'Batter'
-                  ? 'bg-white/20 text-white'
+                  ? 'border border-current text-fo-on-accent'
                   : 'bg-slate-800 text-slate-400'
               }`}
             >
@@ -243,7 +243,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
             onClick={() => handleGroupSwitch('Pitcher')}
             className={`flex items-center gap-2.5 px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${
               activeGroup === 'Pitcher'
-                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
+                ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/30'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -252,7 +252,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
             <span
               className={`text-xs font-mono px-2 py-0.5 rounded-full ${
                 activeGroup === 'Pitcher'
-                  ? 'bg-white/20 text-white'
+                  ? 'border border-current text-fo-on-accent'
                   : 'bg-slate-800 text-slate-400'
               }`}
             >
@@ -424,7 +424,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
               }}
               className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                 statMode === 'pooled_rates'
-                  ? 'bg-accent-600 text-white shadow-sm'
+                  ? 'bg-accent-600 text-fo-on-accent shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -438,7 +438,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
               }}
               className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                 statMode === 'marcel_totals'
-                  ? 'bg-accent-600 text-white shadow-sm'
+                  ? 'bg-accent-600 text-fo-on-accent shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -616,7 +616,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                           }}
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all ${
                             isExpanded
-                              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-bold'
+                              ? 'bg-indigo-600 text-fo-on-accent shadow-lg shadow-indigo-600/30 font-bold'
                               : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60'
                           }`}
                           title={

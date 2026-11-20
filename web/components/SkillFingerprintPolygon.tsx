@@ -104,7 +104,7 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
               key={level}
               points={points}
               fill="none"
-              stroke="#1e293b"
+              stroke="var(--tw-c-slate-800)"
               strokeWidth="1"
               strokeDasharray={level < 1.0 ? '2,2' : undefined}
             />
@@ -121,7 +121,7 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
               y1={center}
               x2={end.x}
               y2={end.y}
-              stroke="#334155"
+              stroke="var(--tw-c-slate-700)"
               strokeWidth="1"
             />
           );
@@ -146,7 +146,7 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
               cy={coords.y}
               r="4.5"
               fill={playerType === 'Batter' ? '#38bdf8' : '#fbbf24'}
-              stroke="#0f172a"
+              stroke="var(--tw-c-slate-900)"
               strokeWidth="2"
             />
           );
