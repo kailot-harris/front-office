@@ -34,6 +34,7 @@ registration tokens to this file.
 | Deployment clone of this repo (stays on `main`) | `~/runners/front-office/` |
 | Installed lock hooks | `/opt/actions-runner/hooks/` |
 | Lock directory (exists only while a job runs) | `/var/lock/front-office-ci.lock` |
+| Lock queue directory (tickets while jobs wait) | `/var/lock/front-office-ci.lock.queue` |
 | Runner logs | `~/runners/<sport>/actions-runner/_diag/` |
 | Memory cap | `%UserProfile%\.wslconfig` on Windows |
 
@@ -139,8 +140,13 @@ nothing to store. The runner should show as **Idle** in the repo's runner list.
 ## 7. Job lock hooks
 
 The hooks in `tools/ci-runner/` (see its README) let only one job run at a
-time across all four runners. Run their tests on the host, then install them
-from the deployment clone:
+time across all four runners, using FIFO queueing
+(`/var/lock/front-office-ci.lock.queue` by default, with heartbeat-based stale
+ticket eviction), a short grace timeout for unlabelled locks
+(`FRONT_OFFICE_CI_LOCK_UNLABELLED_GRACE_SECONDS`, default `60` s), and
+post-rename owner verification inside `take_over_stale` so concurrent stale
+takeovers cannot delete a freshly acquired lock. Run their tests on the host,
+then install them from the deployment clone:
 
 ```sh
 git clone https://github.com/kailot-harris/front-office.git ~/runners/front-office
@@ -160,27 +166,37 @@ ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/opt/actions-runner/hooks/job-completed.sh
 ```
 
 Restart the four services (see [Everyday commands](#everyday-commands)). All
-four run as `<user>`, so the default lock path under `/var/lock` works and
-stale-lock takeover works.
+four run as `<user>`, so the default lock and queue paths under `/var/lock`
+work, stale-lock takeover works, and stale-ticket cleanup works.
 
 The next job on any runner should show a `[ci-lock]` hook step in its log.
 
 **Updating the hooks:** pulling `main` in `~/runners/front-office` does not
-change the installed copies. After a hook change is merged:
+change the installed copies under `/opt/actions-runner/hooks/`. After any hook
+change is merged, pull `main`, run the test suite, re-install both scripts to
+`/opt/actions-runner/hooks/`, verify the installed copies match with `cmp`, and
+restart all four runner services:
 
 ```sh
 git -C ~/runners/front-office pull
 bash ~/runners/front-office/tools/ci-runner/tests/run_tests.sh   # must end "failed: 0"
-# rerun the two `sudo install` commands above, then restart the four services
+sudo install -m 0755 \
+  ~/runners/front-office/tools/ci-runner/job-started.sh \
+  ~/runners/front-office/tools/ci-runner/job-completed.sh \
+  /opt/actions-runner/hooks/
 cmp ~/runners/front-office/tools/ci-runner/job-started.sh /opt/actions-runner/hooks/job-started.sh
 cmp ~/runners/front-office/tools/ci-runner/job-completed.sh /opt/actions-runner/hooks/job-completed.sh
+for s in mlb nba nfl wnba; do
+  sudo systemctl restart "$(cat ~/runners/$s/actions-runner/.service)"
+done
 ```
 
 Do it while the runners are idle. Keep the deployment clone on `main`; do
 feature work in a separate worktree or clone.
 
 Time spent waiting for the lock counts against each job's `timeout-minutes`.
-The worst case and the stale-lock timeout are explained in
+The FIFO queue, environment overrides, unlabelled grace period, post-rename
+takeover invariant, worst-case wait, and stale-lock timeouts are explained in
 `tools/ci-runner/README.md`.
 
 ## 8. Start with the machine
