@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "sport": "nfl",
+  "generated_at": "2026-11-20T17:31:19Z",
+  "slate_date": "2026-11-20",
+  "season_state": "regular",
+  "next_milestone": {
+    "label": "Final regular-season games",
+    "date": "2027-01-10"
+  },
+  "today": [],
+  "yesterday": [
+    {
+      "game_id": "2026_11_IND_HOU",
+      "start_time_utc": "2026-11-20T01:15:00Z",
+      "home": "HOU",
+      "away": "IND",
+      "status": "final",
+      "home_win_prob": 0.714,
+      "away_win_prob": 0.286,
+      "prediction_status": "available",
+      "home_score": 26,
+      "away_score": 3,
+      "final": true,
+      "predicted_winner": "HOU",
+      "hit": true
+    }
+  ],
+  "record": {
+    "season": {
+      "hits": 92,
+      "games": 148,
+      "excluded": 3
+    },
+    "last_7": {
+      "hits": 10,
+      "games": 14,
+      "excluded": 0
+    }
+  },
+  "calibration": [
+    {
+      "lo": 0.5,
+      "hi": 0.6,
+      "predicted_mean": 0.555,
+      "actual_rate": 0.529,
+      "games": 68
+    },
+    {
+      "lo": 0.6,
+      "hi": 0.7,
+      "predicted_mean": 0.638,
+      "actual_rate": 0.585,
+      "games": 53
+    },
+    {
+      "lo": 0.7,
+      "hi": 0.8,
+      "predicted_mean": 0.736,
+      "actual_rate": 0.917,
+      "games": 24
+    },
+    {
+      "lo": 0.8,
+      "hi": 0.9,
+      "predicted_mean": 0.81,
+      "actual_rate": 1,
+      "games": 3
+    },
+    {
+      "lo": 0.9,
+      "hi": 1,
+      "predicted_mean": null,
+      "actual_rate": null,
+      "games": 0
+    }
+  ],
+  "movers": {
+    "metric": "power_rating",
+    "windows": {
+      "1": {
+        "compared_to": null,
+        "items": []
+      },
+      "7": {
+        "compared_to": null,
+        "items": []
+      },
+      "21": {
+        "compared_to": null,
+        "items": []
+      }
+    }
+  }
+}

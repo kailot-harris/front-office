@@ -85,9 +85,9 @@ test.describe('home page standings dashboard', () => {
   test('the conference chips filter the table', async ({ page }) => {
     await page.goto('/?view=table', { waitUntil: 'networkidle' });
     await expect(page.locator('tbody tr')).toHaveCount(32);
-    await page.getByRole('button', { name: 'AFC', exact: true }).first().click();
+    await page.getByRole('tab', { name: 'AFC', exact: true }).first().click();
     await expect(page.locator('tbody tr')).toHaveCount(16);
-    await page.getByRole('button', { name: 'All', exact: true }).first().click();
+    await page.getByRole('tab', { name: 'All', exact: true }).first().click();
     await expect(page.locator('tbody tr')).toHaveCount(32);
   });
 
@@ -226,15 +226,15 @@ test.describe('playoff bracket simulator', () => {
 test.describe('salary cap tabs', () => {
   test('switching to the contracts tab lists players', async ({ page }) => {
     await page.goto('/salary-cap', { waitUntil: 'networkidle' });
-    await page.getByRole('button', { name: /Top 100 League Contracts/i }).click();
+    await page.getByRole('tab', { name: /Top 100 League Contracts/i }).click();
     await expect(page.locator('tbody tr').first()).toBeVisible();
     expect(await page.locator('tbody tr').count()).toBeGreaterThan(10);
   });
 
   test('switching back to team profiles restores 32 rows', async ({ page }) => {
     await page.goto('/salary-cap', { waitUntil: 'networkidle' });
-    await page.getByRole('button', { name: /Top 100 League Contracts/i }).click();
-    await page.getByRole('button', { name: /32 Team Cap Profiles/i }).click();
+    await page.getByRole('tab', { name: /Top 100 League Contracts/i }).click();
+    await page.getByRole('tab', { name: /32 Team Cap Profiles/i }).click();
     await expect(page.locator('tbody tr')).toHaveCount(32);
   });
 });
@@ -254,7 +254,7 @@ test.describe('gallery', () => {
       await elo.click();
       await page.waitForTimeout(250);
       expect(await tiles().count()).toBeLessThan(before);
-      await page.getByRole('button', { name: /All Visuals/i }).click();
+      await page.getByRole('tab', { name: /All Visuals/i }).click();
       await page.waitForTimeout(250);
       expect(await tiles().count()).toBe(before);
     }

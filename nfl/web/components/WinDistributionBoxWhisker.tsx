@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { TeamStanding } from '@/lib/types';
 import { TeamLogo } from '@/components/TeamLogo';
 import { ChevronDown, ChevronUp, Layers, Award } from 'lucide-react';
+import { tablistKeys } from '@/lib/a11y';
 
 interface WinDistributionBoxWhiskerProps {
   teams: TeamStanding[];
@@ -58,8 +59,10 @@ export const WinDistributionBoxWhisker: React.FC<WinDistributionBoxWhiskerProps>
 
         <div className="flex items-center gap-2.5">
           {/* Threshold toggle */}
-          <div className="inline-flex rounded-lg bg-surface-raised p-1 border border-slate-800 text-xs">
+          <div role="tablist" onKeyDown={tablistKeys} className="inline-flex rounded-lg bg-surface-raised p-1 border border-slate-800 text-xs">
             <button
+              role="tab"
+              aria-selected={filterThreshold === 0.0}
               onClick={() => setFilterThreshold(0.0)}
               className={`px-2 py-1 rounded-md font-medium transition-all ${
                 filterThreshold === 0.0 ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'
@@ -68,9 +71,11 @@ export const WinDistributionBoxWhisker: React.FC<WinDistributionBoxWhiskerProps>
               All 32
             </button>
             <button
+              role="tab"
+              aria-selected={filterThreshold === 0.25}
               onClick={() => setFilterThreshold(0.25)}
               className={`px-2 py-1 rounded-md font-medium transition-all ${
-                filterThreshold === 0.25 ? 'bg-accent-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                filterThreshold === 0.25 ? 'bg-fo-accent text-on-accent shadow' : 'text-slate-400 hover:text-white'
               }`}
             >
               Contenders (≥25%)
@@ -78,14 +83,16 @@ export const WinDistributionBoxWhisker: React.FC<WinDistributionBoxWhiskerProps>
           </div>
 
           {/* Conference filter pills */}
-          <div className="inline-flex rounded-lg bg-surface-raised p-1 border border-slate-800">
+          <div role="tablist" onKeyDown={tablistKeys} className="inline-flex rounded-lg bg-surface-raised p-1 border border-slate-800">
             {(['All', 'AFC', 'NFC'] as const).map((conf) => (
               <button
+                role="tab"
+                aria-selected={selectedConf === conf}
                 key={conf}
                 onClick={() => setSelectedConf(conf)}
                 className={`cursor-pointer select-none px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
                   selectedConf === conf
-                    ? 'bg-accent-600 text-white shadow-sm'
+                    ? 'bg-fo-accent text-on-accent shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -134,7 +141,7 @@ export const WinDistributionBoxWhisker: React.FC<WinDistributionBoxWhiskerProps>
           </div>
 
           {/* Team Rows */}
-          <div className="space-y-2.5 pt-1">
+          <div role="figure" aria-label="Projected win distribution per team: each row shows the 10th to 90th percentile range of simulated wins, the core expected range, the projected wins and the 9.5-win playoff line" className="space-y-2.5 pt-1">
             {/* Axis Ruler Header */}
             <div className="grid grid-cols-12 items-center gap-2 text-[11px] sm:text-[10px] font-mono text-slate-400 select-none pb-1">
               <div className="col-span-4 sm:col-span-3 font-semibold uppercase tracking-wider">Franchise</div>

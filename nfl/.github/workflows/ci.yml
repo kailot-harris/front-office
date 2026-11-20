@@ -101,6 +101,10 @@ jobs:
       # managed webServer was `npx next start`, which exits 1 against this app
       # (web/next.config.mjs sets `output: 'export'`). It now serves the exported
       # `out/` dir via web/scripts/serve-export.mjs.
+      #
+      # That stage includes web/tests/e2e/axe.spec.ts: @axe-core/playwright (WCAG 2.2 AA)
+      # on every top-level route in both colorScheme 'light' and 'dark', failing on any
+      # serious or critical violation (NFL_analytics#188).
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 

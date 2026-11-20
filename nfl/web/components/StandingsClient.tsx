@@ -25,6 +25,7 @@ import { TeamLogo } from '@/components/TeamLogo';
 import { WinDistributionBoxWhisker } from '@/components/WinDistributionBoxWhisker';
 import { exportToCsv } from '@/lib/exportToCsv';
 import { NFL_ACTUAL_TEAM_RECORDS, NflActualTeamRecord } from '@/lib/actualRecords';
+import { activateOnKey, ariaSort, tablistKeys } from '@/lib/a11y';
 
 interface StandingsClientProps {
   dataset: StandingsDataset;
@@ -496,7 +497,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
             onClick={() => handleTabChange('visualizer')}
             className={`cursor-pointer select-none touch-manipulation flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-20 ${
               activeTab === 'visualizer'
-                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
+                ? 'bg-fo-accent text-on-accent shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
                 : 'text-slate-400 hover:text-white hover:bg-surface-raised'
             }`}
           >
@@ -511,7 +512,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
             onClick={() => handleTabChange('table')}
             className={`cursor-pointer select-none touch-manipulation flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-20 ${
               activeTab === 'table'
-                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
+                ? 'bg-fo-accent text-on-accent shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
                 : 'text-slate-400 hover:text-white hover:bg-surface-raised'
             }`}
           >
@@ -526,7 +527,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
             onClick={() => handleTabChange('divisions')}
             className={`cursor-pointer select-none touch-manipulation flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-20 ${
               activeTab === 'divisions'
-                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
+                ? 'bg-fo-accent text-on-accent shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
                 : 'text-slate-400 hover:text-white hover:bg-surface-raised'
             }`}
           >
@@ -536,24 +537,28 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
         </div>
 
         {/* Global Model Projections vs Projections vs. Reality Pill */}
-        <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800 self-start md:self-auto">
+        <div role="tablist" onKeyDown={tablistKeys} className="inline-flex rounded-lg bg-surface p-1 border border-slate-800 self-start md:self-auto">
           <button
+            role="tab"
+            aria-selected={tableMode === 'projections'}
             type="button"
             onClick={() => handleModeChange('projections')}
             className={`cursor-pointer select-none px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
               tableMode === 'projections'
-                ? 'bg-accent-600 text-white shadow-sm'
+                ? 'bg-fo-accent text-on-accent shadow-sm'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             Model Projections
           </button>
           <button
+            role="tab"
+            aria-selected={tableMode === 'reality'}
             type="button"
             onClick={() => handleModeChange('reality')}
             className={`cursor-pointer select-none px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
               tableMode === 'reality'
-                ? 'bg-accent-600 text-white shadow-sm'
+                ? 'bg-fo-accent text-on-accent shadow-sm'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -577,14 +582,16 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
           </div>
 
           {/* Conference filter */}
-          <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
+          <div role="tablist" onKeyDown={tablistKeys} className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
             {(['All', 'AFC', 'NFC'] as const).map((conf) => (
               <button
+                role="tab"
+                aria-selected={selectedConference === conf}
                 key={conf}
                 onClick={() => setSelectedConference(conf)}
                 className={`cursor-pointer select-none px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
                   selectedConference === conf
-                    ? 'bg-accent-600 text-white shadow-sm'
+                    ? 'bg-fo-accent text-on-accent shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -733,6 +740,12 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                 <tr>
                   <th
                     onClick={() => handleSort('rank')}
+
+                    tabIndex={0}
+
+                    onKeyDown={activateOnKey}
+
+                    aria-sort={ariaSort(sortBy === 'rank', sortOrder === 'asc')}
                     className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white"
                   >
                     <div className="flex items-center gap-1.5">
@@ -742,6 +755,12 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                   </th>
                   <th
                     onClick={() => handleSort('team')}
+
+                    tabIndex={0}
+
+                    onKeyDown={activateOnKey}
+
+                    aria-sort={ariaSort(sortBy === 'team', sortOrder === 'asc')}
                     className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white"
                   >
                     <div className="flex items-center gap-1.5">
@@ -751,6 +770,12 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                   </th>
                   <th
                     onClick={() => handleSort('division')}
+
+                    tabIndex={0}
+
+                    onKeyDown={activateOnKey}
+
+                    aria-sort={ariaSort(sortBy === 'division', sortOrder === 'asc')}
                     className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white"
                   >
                     <div className="flex items-center gap-1.5">
@@ -764,6 +789,12 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                     <>
                       <th
                         onClick={() => handleSort('actual_record')}
+
+                        tabIndex={0}
+
+                        onKeyDown={activateOnKey}
+
+                        aria-sort={ariaSort(sortBy === 'actual_record', sortOrder === 'asc')}
                         className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-center"
                       >
                         <div className="flex items-center justify-center gap-1.5">
@@ -773,6 +804,12 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                       </th>
                       <th
                         onClick={() => handleSort('actual_win_pct')}
+
+                        tabIndex={0}
+
+                        onKeyDown={activateOnKey}
+
+                        aria-sort={ariaSort(sortBy === 'actual_win_pct', sortOrder === 'asc')}
                         className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
                       >
                         <div className="flex items-center justify-end gap-1.5">
@@ -782,6 +819,12 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                       </th>
                       <th
                         onClick={() => handleSort('points_for')}
+
+                        tabIndex={0}
+
+                        onKeyDown={activateOnKey}
+
+                        aria-sort={ariaSort(sortBy === 'points_for', sortOrder === 'asc')}
                         className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
                       >
                         <div className="flex items-center justify-end gap-1.5">
@@ -791,6 +834,12 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                       </th>
                       <th
                         onClick={() => handleSort('points_against')}
+
+                        tabIndex={0}
+
+                        onKeyDown={activateOnKey}
+
+                        aria-sort={ariaSort(sortBy === 'points_against', sortOrder === 'asc')}
                         className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
                       >
                         <div className="flex items-center justify-end gap-1.5">
@@ -800,6 +849,12 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                       </th>
                       <th
                         onClick={() => handleSort('point_diff')}
+
+                        tabIndex={0}
+
+                        onKeyDown={activateOnKey}
+
+                        aria-sort={ariaSort(sortBy === 'point_diff', sortOrder === 'asc')}
                         className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
                       >
                         <div className="flex items-center justify-end gap-1.5">
@@ -809,6 +864,12 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                       </th>
                       <th
                         onClick={() => handleSort('projected_wins')}
+
+                        tabIndex={0}
+
+                        onKeyDown={activateOnKey}
+
+                        aria-sort={ariaSort(sortBy === 'projected_wins', sortOrder === 'asc')}
                         className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
                       >
                         <div className="flex items-center justify-end gap-1.5">
@@ -818,6 +879,12 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                       </th>
                       <th
                         onClick={() => handleSort('current_pace')}
+
+                        tabIndex={0}
+
+                        onKeyDown={activateOnKey}
+
+                        aria-sort={ariaSort(sortBy === 'current_pace', sortOrder === 'asc')}
                         className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
                       >
                         <div className="flex items-center justify-end gap-1.5">
@@ -827,6 +894,12 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                       </th>
                       <th
                         onClick={() => handleSort('performance_delta')}
+
+                        tabIndex={0}
+
+                        onKeyDown={activateOnKey}
+
+                        aria-sort={ariaSort(sortBy === 'performance_delta', sortOrder === 'asc')}
                         className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
                       >
                         <div className="flex items-center justify-end gap-1.5">
@@ -840,6 +913,12 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                     <>
                       <th
                         onClick={() => handleSort('power_rating')}
+
+                        tabIndex={0}
+
+                        onKeyDown={activateOnKey}
+
+                        aria-sort={ariaSort(sortBy === 'power_rating', sortOrder === 'asc')}
                         className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
                       >
                         <div className="flex items-center justify-end gap-1.5">
@@ -849,6 +928,12 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                       </th>
                       <th
                         onClick={() => handleSort('net_epa_roll')}
+
+                        tabIndex={0}
+
+                        onKeyDown={activateOnKey}
+
+                        aria-sort={ariaSort(sortBy === 'net_epa_roll', sortOrder === 'asc')}
                         className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
                       >
                         <div className="flex items-center justify-end gap-1.5">
@@ -858,6 +943,12 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                       </th>
                       <th
                         onClick={() => handleSort('point_diff')}
+
+                        tabIndex={0}
+
+                        onKeyDown={activateOnKey}
+
+                        aria-sort={ariaSort(sortBy === 'point_diff', sortOrder === 'asc')}
                         className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
                       >
                         <div className="flex items-center justify-end gap-1.5">
@@ -867,6 +958,12 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                       </th>
                       <th
                         onClick={() => handleSort('projected_wins')}
+
+                        tabIndex={0}
+
+                        onKeyDown={activateOnKey}
+
+                        aria-sort={ariaSort(sortBy === 'projected_wins', sortOrder === 'asc')}
                         className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
                       >
                         <div className="flex items-center justify-end gap-1.5">
@@ -879,6 +976,12 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                       </th>
                       <th
                         onClick={() => handleSort('playoff_prob')}
+
+                        tabIndex={0}
+
+                        onKeyDown={activateOnKey}
+
+                        aria-sort={ariaSort(sortBy === 'playoff_prob', sortOrder === 'asc')}
                         className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
                       >
                         <div className="flex items-center justify-end gap-1.5">
@@ -888,6 +991,12 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                       </th>
                       <th
                         onClick={() => handleSort('division_title_prob')}
+
+                        tabIndex={0}
+
+                        onKeyDown={activateOnKey}
+
+                        aria-sort={ariaSort(sortBy === 'division_title_prob', sortOrder === 'asc')}
                         className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
                       >
                         <div className="flex items-center justify-end gap-1.5">
@@ -897,6 +1006,12 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
                       </th>
                       <th
                         onClick={() => handleSort('super_bowl_prob')}
+
+                        tabIndex={0}
+
+                        onKeyDown={activateOnKey}
+
+                        aria-sort={ariaSort(sortBy === 'super_bowl_prob', sortOrder === 'asc')}
                         className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
                       >
                         <div className="flex items-center justify-end gap-1.5">

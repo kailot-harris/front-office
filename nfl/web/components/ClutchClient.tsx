@@ -19,6 +19,7 @@ import {
 import { exportToCsv } from '@/lib/exportToCsv';
 import { GlossaryTerm } from './Glossary';
 import { HowToRead } from './HowToRead';
+import { activateOnKey, ariaSort, tablistKeys } from '@/lib/a11y';
 
 interface ClutchClientProps {
   initialProfiles: ClutchProfile[];
@@ -652,22 +653,26 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
             </select>
 
             {/* Sample Toggle */}
-            <div className="flex items-center gap-1 bg-surface border border-slate-800 p-0.5 rounded-lg text-xs font-mono">
+            <div role="tablist" onKeyDown={tablistKeys} className="flex items-center gap-1 bg-surface border border-slate-800 p-0.5 rounded-lg text-xs font-mono">
               <button
+                role="tab"
+                aria-selected={sampleFilter === 'qualified'}
                 onClick={() => setSampleFilter('qualified')}
                 className={`px-2.5 py-1 rounded-md transition-all ${
                   sampleFilter === 'qualified'
-                    ? 'bg-accent-600 text-white font-bold shadow-sm'
+                    ? 'bg-fo-accent text-on-accent font-bold shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
                 Qualified ({qualifiedCount})
               </button>
               <button
+                role="tab"
+                aria-selected={sampleFilter === 'all'}
                 onClick={() => setSampleFilter('all')}
                 className={`px-2.5 py-1 rounded-md transition-all ${
                   sampleFilter === 'all'
-                    ? 'bg-accent-600 text-white font-bold shadow-sm'
+                    ? 'bg-fo-accent text-on-accent font-bold shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -688,6 +693,12 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
                 <th
                   className="py-2.5 px-3 cursor-pointer hover:text-white"
                   onClick={() => handleSort('clutchAttempts')}
+
+                  tabIndex={0}
+
+                  onKeyDown={activateOnKey}
+
+                  aria-sort={ariaSort(sortField === 'clutchAttempts', sortAsc)}
                   title="Clutch pass attempts (passes, sacks and spikes). The qualification threshold counts these."
                 >
                   <div className="flex items-center gap-1">
@@ -697,6 +708,12 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
                 <th
                   className="py-2.5 px-3 cursor-pointer hover:text-white"
                   onClick={() => handleSort('clutchPlays')}
+
+                  tabIndex={0}
+
+                  onKeyDown={activateOnKey}
+
+                  aria-sort={ariaSort(sortField === 'clutchPlays', sortAsc)}
                   title="Clutch dropbacks credited to the QB (passes, sacks, and scrambles; spikes excluded). Clutch EPA and success rate are averaged over these."
                 >
                   <div className="flex items-center gap-1">
@@ -706,6 +723,12 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
                 <th
                   className="py-2.5 px-3 cursor-pointer hover:text-white"
                   onClick={() => handleSort('clutchEpa')}
+
+                  tabIndex={0}
+
+                  onKeyDown={activateOnKey}
+
+                  aria-sort={ariaSort(sortField === 'clutchEpa', sortAsc)}
                 >
                   <div className="flex items-center gap-1">
                     Clutch EPA <ArrowUpDown className="w-3 h-3 text-slate-500" />
@@ -714,6 +737,12 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
                 <th
                   className="py-2.5 px-3 cursor-pointer hover:text-white"
                   onClick={() => handleSort('baselineEpa')}
+
+                  tabIndex={0}
+
+                  onKeyDown={activateOnKey}
+
+                  aria-sort={ariaSort(sortField === 'baselineEpa', sortAsc)}
                 >
                   <div className="flex items-center gap-1">
                     Base EPA <ArrowUpDown className="w-3 h-3 text-slate-500" />
@@ -722,6 +751,12 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
                 <th
                   className="py-2.5 px-3 cursor-pointer hover:text-white"
                   onClick={() => handleSort('clutchEpaDelta')}
+
+                  tabIndex={0}
+
+                  onKeyDown={activateOnKey}
+
+                  aria-sort={ariaSort(sortField === 'clutchEpaDelta', sortAsc)}
                 >
                   <div className="flex items-center gap-1 text-emerald-400 font-bold">
                     EPA Delta <ArrowUpDown className="w-3 h-3" />
@@ -730,6 +765,12 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
                 <th
                   className="py-2.5 px-3 cursor-pointer hover:text-white"
                   onClick={() => handleSort('clutchSuccessRate')}
+
+                  tabIndex={0}
+
+                  onKeyDown={activateOnKey}
+
+                  aria-sort={ariaSort(sortField === 'clutchSuccessRate', sortAsc)}
                 >
                   <div className="flex items-center gap-1">
                     Success % <ArrowUpDown className="w-3 h-3 text-slate-500" />
@@ -738,6 +779,12 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
                 <th
                   className="py-2.5 px-3 cursor-pointer hover:text-white"
                   onClick={() => handleSort('clutchCpoe')}
+
+                  tabIndex={0}
+
+                  onKeyDown={activateOnKey}
+
+                  aria-sort={ariaSort(sortField === 'clutchCpoe', sortAsc)}
                 >
                   <div className="flex items-center gap-1">
                     CPOE <ArrowUpDown className="w-3 h-3 text-slate-500" />
@@ -746,6 +793,12 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
                 <th
                   className="py-2.5 px-3 cursor-pointer hover:text-white"
                   onClick={() => handleSort('turnoverFragility')}
+
+                  tabIndex={0}
+
+                  onKeyDown={activateOnKey}
+
+                  aria-sort={ariaSort(sortField === 'turnoverFragility', sortAsc)}
                 >
                   <div className="flex items-center gap-1">
                     TO Fragility <ArrowUpDown className="w-3 h-3 text-slate-500" />
@@ -754,6 +807,12 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
                 <th
                   className="py-2.5 px-3 cursor-pointer hover:text-white"
                   onClick={() => handleSort('fourthDownConversionRate')}
+
+                  tabIndex={0}
+
+                  onKeyDown={activateOnKey}
+
+                  aria-sort={ariaSort(sortField === 'fourthDownConversionRate', sortAsc)}
                   title="4th Down Conversion % across the QB's 4th-down plays"
                 >
                   <div className="flex items-center gap-1">

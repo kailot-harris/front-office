@@ -173,13 +173,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
                 onClick={() => setIsOpen(false)}
                 className={`group flex items-start gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
+                    ? 'bg-fo-accent text-on-accent shadow-lg shadow-accent-600/30'
                     : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
                 }`}
               >
                 <Icon
                   className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
-                    isActive ? 'text-white' : 'text-slate-400 group-hover:text-emerald-400'
+                    isActive ? 'text-on-accent' : 'text-slate-400 group-hover:text-emerald-400'
                   }`}
                 />
                 <div className="min-w-0 flex-1">
@@ -187,7 +187,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
                     <span className="font-semibold">{item.label}</span>
                     <span
                       className={`text-[11px] sm:text-[10px] px-1.5 py-0.2 rounded font-mono font-medium ${
-                        isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
+                        isActive ? 'border border-on-accent/50 text-on-accent' : 'bg-slate-800 text-slate-400'
                       }`}
                     >
                       {item.badge}
@@ -195,7 +195,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
                   </div>
                   <p
                     className={`text-[11px] truncate ${
-                      isActive ? 'text-emerald-200' : 'text-slate-500'
+                      isActive ? 'text-on-accent' : 'text-slate-500'
                     }`}
                   >
                     {item.desc}

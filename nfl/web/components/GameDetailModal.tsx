@@ -31,6 +31,7 @@ import type {
 } from '@/lib/gameDetailTypes';
 import type { MatchupGame } from '@/lib/types';
 import { TeamLogo } from '@/components/TeamLogo';
+import { activateOnKey, ariaSort } from '@/lib/a11y';
 
 export interface GameDetailModalProps {
   matchup: MatchupGame | null;
@@ -1307,7 +1308,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
         </div>
 
         {/* Tab Content Panels */}
-        <div className="overflow-y-auto p-4 sm:p-6 flex-1 space-y-6">
+        <div className="overflow-y-auto p-4 sm:p-6 flex-1 space-y-6" aria-live="polite" aria-busy={loading}>
           {loading && (
             <div className="py-12 flex flex-col items-center justify-center text-slate-400 gap-3">
               <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
@@ -1547,6 +1548,12 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                                 scope="col"
                                 className="py-2 px-2 text-right cursor-pointer hover:text-white"
                                 onClick={() => handleSort('passing_yards')}
+
+                                tabIndex={0}
+
+                                onKeyDown={activateOnKey}
+
+                                aria-sort={ariaSort(sortKey === 'passing_yards', sortDir === 'asc')}
                               >
                                 YDS{renderSortIndicator('passing_yards')}
                               </th>
@@ -1554,6 +1561,12 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                                 scope="col"
                                 className="py-2 px-2 text-right cursor-pointer hover:text-white"
                                 onClick={() => handleSort('passing_tds')}
+
+                                tabIndex={0}
+
+                                onKeyDown={activateOnKey}
+
+                                aria-sort={ariaSort(sortKey === 'passing_tds', sortDir === 'asc')}
                               >
                                 TD{renderSortIndicator('passing_tds')}
                               </th>
@@ -1561,6 +1574,12 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                                 scope="col"
                                 className="py-2 px-2 text-right cursor-pointer hover:text-white"
                                 onClick={() => handleSort('passing_interceptions')}
+
+                                tabIndex={0}
+
+                                onKeyDown={activateOnKey}
+
+                                aria-sort={ariaSort(sortKey === 'passing_interceptions', sortDir === 'asc')}
                               >
                                 INT{renderSortIndicator('passing_interceptions')}
                               </th>
@@ -1571,6 +1590,12 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                                 scope="col"
                                 className="py-2 px-2 text-right cursor-pointer hover:text-white"
                                 onClick={() => handleSort('passing_epa')}
+
+                                tabIndex={0}
+
+                                onKeyDown={activateOnKey}
+
+                                aria-sort={ariaSort(sortKey === 'passing_epa', sortDir === 'asc')}
                               >
                                 EPA (nflreadr){renderSortIndicator('passing_epa')}
                               </th>
@@ -1586,6 +1611,12 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                                 scope="col"
                                 className="py-2 px-2 text-right cursor-pointer hover:text-white"
                                 onClick={() => handleSort('carries')}
+
+                                tabIndex={0}
+
+                                onKeyDown={activateOnKey}
+
+                                aria-sort={ariaSort(sortKey === 'carries', sortDir === 'asc')}
                               >
                                 CAR{renderSortIndicator('carries')}
                               </th>
@@ -1593,6 +1624,12 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                                 scope="col"
                                 className="py-2 px-2 text-right cursor-pointer hover:text-white"
                                 onClick={() => handleSort('rushing_yards')}
+
+                                tabIndex={0}
+
+                                onKeyDown={activateOnKey}
+
+                                aria-sort={ariaSort(sortKey === 'rushing_yards', sortDir === 'asc')}
                               >
                                 YDS{renderSortIndicator('rushing_yards')}
                               </th>
@@ -1600,6 +1637,12 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                                 scope="col"
                                 className="py-2 px-2 text-right cursor-pointer hover:text-white"
                                 onClick={() => handleSort('rushing_tds')}
+
+                                tabIndex={0}
+
+                                onKeyDown={activateOnKey}
+
+                                aria-sort={ariaSort(sortKey === 'rushing_tds', sortDir === 'asc')}
                               >
                                 TD{renderSortIndicator('rushing_tds')}
                               </th>
@@ -1613,6 +1656,12 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                                 scope="col"
                                 className="py-2 px-2 text-right cursor-pointer hover:text-white"
                                 onClick={() => handleSort('rushing_epa')}
+
+                                tabIndex={0}
+
+                                onKeyDown={activateOnKey}
+
+                                aria-sort={ariaSort(sortKey === 'rushing_epa', sortDir === 'asc')}
                               >
                                 EPA (nflreadr){renderSortIndicator('rushing_epa')}
                               </th>
@@ -1625,6 +1674,12 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                                 scope="col"
                                 className="py-2 px-2 text-right cursor-pointer hover:text-white"
                                 onClick={() => handleSort('receptions')}
+
+                                tabIndex={0}
+
+                                onKeyDown={activateOnKey}
+
+                                aria-sort={ariaSort(sortKey === 'receptions', sortDir === 'asc')}
                               >
                                 REC{renderSortIndicator('receptions')}
                               </th>
@@ -1632,6 +1687,12 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                                 scope="col"
                                 className="py-2 px-2 text-right cursor-pointer hover:text-white"
                                 onClick={() => handleSort('targets')}
+
+                                tabIndex={0}
+
+                                onKeyDown={activateOnKey}
+
+                                aria-sort={ariaSort(sortKey === 'targets', sortDir === 'asc')}
                               >
                                 TGTS{renderSortIndicator('targets')}
                               </th>
@@ -1639,6 +1700,12 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                                 scope="col"
                                 className="py-2 px-2 text-right cursor-pointer hover:text-white"
                                 onClick={() => handleSort('receiving_yards')}
+
+                                tabIndex={0}
+
+                                onKeyDown={activateOnKey}
+
+                                aria-sort={ariaSort(sortKey === 'receiving_yards', sortDir === 'asc')}
                               >
                                 YDS{renderSortIndicator('receiving_yards')}
                               </th>
@@ -1646,6 +1713,12 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                                 scope="col"
                                 className="py-2 px-2 text-right cursor-pointer hover:text-white"
                                 onClick={() => handleSort('receiving_tds')}
+
+                                tabIndex={0}
+
+                                onKeyDown={activateOnKey}
+
+                                aria-sort={ariaSort(sortKey === 'receiving_tds', sortDir === 'asc')}
                               >
                                 TD{renderSortIndicator('receiving_tds')}
                               </th>
@@ -1659,6 +1732,12 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                                 scope="col"
                                 className="py-2 px-2 text-right cursor-pointer hover:text-white"
                                 onClick={() => handleSort('receiving_epa')}
+
+                                tabIndex={0}
+
+                                onKeyDown={activateOnKey}
+
+                                aria-sort={ariaSort(sortKey === 'receiving_epa', sortDir === 'asc')}
                               >
                                 EPA (nflreadr){renderSortIndicator('receiving_epa')}
                               </th>
@@ -1671,6 +1750,12 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                                 scope="col"
                                 className="py-2 px-2 text-right cursor-pointer hover:text-white"
                                 onClick={() => handleSort('def_tackles_solo')}
+
+                                tabIndex={0}
+
+                                onKeyDown={activateOnKey}
+
+                                aria-sort={ariaSort(sortKey === 'def_tackles_solo', sortDir === 'asc')}
                               >
                                 SOLO{renderSortIndicator('def_tackles_solo')}
                               </th>
@@ -1681,6 +1766,12 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                                 scope="col"
                                 className="py-2 px-2 text-right cursor-pointer hover:text-white"
                                 onClick={() => handleSort('def_sacks')}
+
+                                tabIndex={0}
+
+                                onKeyDown={activateOnKey}
+
+                                aria-sort={ariaSort(sortKey === 'def_sacks', sortDir === 'asc')}
                               >
                                 SCK{renderSortIndicator('def_sacks')}
                               </th>
@@ -1694,6 +1785,12 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                                 scope="col"
                                 className="py-2 px-2 text-right cursor-pointer hover:text-white"
                                 onClick={() => handleSort('def_interceptions')}
+
+                                tabIndex={0}
+
+                                onKeyDown={activateOnKey}
+
+                                aria-sort={ariaSort(sortKey === 'def_interceptions', sortDir === 'asc')}
                               >
                                 INT{renderSortIndicator('def_interceptions')}
                               </th>

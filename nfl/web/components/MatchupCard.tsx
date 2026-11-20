@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { MatchupGame } from '@/lib/types';
 import { TeamLogo } from '@/components/TeamLogo';
 import { Clock, Calendar, Plane, Shield, AlertCircle, ChevronRight } from 'lucide-react';
@@ -98,7 +98,11 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup, onSelect }) =
     ) ?? null;
   }, [detail, matchup.home_team]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+  // The card body stays readable to screen readers; a stretched, real <button>
+  // carries the name and keyboard focus. (A role="button" wrapper with an
+  // aria-label hid the card's text and failed axe's label-content-name-mismatch.)
+  const inspectButtonRef = useRef<HTMLButtonElement>(null);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
     if (!onSelect || !isInteractive) return;
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -108,18 +112,25 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup, onSelect }) =
 
   return (
     <div
-      className={`bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden transition-all shadow-md group flex flex-col justify-between ${
+      className={`relative bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden transition-all shadow-md group flex flex-col justify-between ${
         isInteractive
-          ? 'cursor-pointer hover:border-emerald-500/60 hover:bg-surface-raised focus:outline-none focus:ring-2 focus:ring-emerald-400'
+          ? 'cursor-pointer hover:border-emerald-500/60 hover:bg-surface-raised focus-within:ring-2 focus-within:ring-emerald-400'
           : 'hover:border-emerald-500/40'
       }`}
       data-testid="matchup-card"
-      role={isInteractive ? 'button' : undefined}
-      tabIndex={isInteractive ? 0 : undefined}
-      aria-label={isInteractive ? cardLabel : undefined}
-      onClick={isInteractive ? (e) => onSelect?.(matchup, e.currentTarget) : undefined}
-      onKeyDown={isInteractive ? handleKeyDown : undefined}
+      onClick={isInteractive ? (e) => onSelect?.(matchup, inspectButtonRef.current ?? e.currentTarget) : undefined}
     >
+      {isInteractive && (
+        <button
+          ref={inspectButtonRef}
+          type="button"
+          tabIndex={0}
+          onKeyDown={handleKeyDown}
+          className="absolute inset-0 z-10 rounded-xl focus:outline-none"
+        >
+          <span className="sr-only">{cardLabel}</span>
+        </button>
+      )}
       {/* Card Header */}
       <div className="p-3 bg-surface/80 border-b border-slate-800 flex items-center justify-between text-xs font-mono text-slate-400">
         <div className="flex items-center gap-2">

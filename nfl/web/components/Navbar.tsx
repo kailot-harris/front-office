@@ -56,7 +56,7 @@ export const Navbar: React.FC = () => {
                   href={item.href}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     isActive
-                      ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
+                      ? 'bg-fo-accent text-on-accent shadow-md shadow-accent-600/30'
                       : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
                   }`}
                 >

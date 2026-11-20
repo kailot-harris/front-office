@@ -109,6 +109,8 @@ suppressPackageStartupMessages(library(jsonlite))
 # jsonlite-only install the scheduled workflow sets up. logging_utils.R writes
 # into logs/, which a CI runner has no reason to carry.
 source("config.R")
+# Landing digest helpers (NFL_analytics#183): jsonlite-only, no side effects.
+source(file.path("tools", "build_landing_digest.R"))
 
 NFLVERSE_GAMES_CSV <-
   "https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv"
@@ -438,7 +440,8 @@ write_json_if_changed <- function(x, path) {
 refresh_live_results <- function(season = CURRENT_SEASON,
                                  matchups_path = WEB_JSON_MATCHUPS_CURRENT_WEEK,
                                  diagnostics_path = WEB_JSON_MODEL_DIAGNOSTICS,
-                                 csv_reader = NULL) {
+                                 csv_reader = NULL,
+                                 digest_path = file.path(dirname(matchups_path), "landing_digest.json")) {
   if (!file.exists(matchups_path)) {
     stop(sprintf("refresh_live_results(): no payload at %s - run export_web_datasets.R first.",
                  matchups_path))
@@ -472,6 +475,19 @@ refresh_live_results <- function(season = CURRENT_SEASON,
     } else {
       warning(sprintf("no diagnostics at %s - the contract suite's graded-count reconciliation will fail.",
                       diagnostics_path), call. = FALSE)
+    }
+  }
+
+  # Landing digest (NFL_analytics#183): re-grade yesterday, record and
+  # calibration from the same patched rows. Runs even when no game changed, so
+  # a digest written before an earlier top-up still converges. Its slate_date,
+  # today, movers and season state are slot A's and are left alone.
+  if (file.exists(digest_path) && exists("patch_landing_digest", mode = "function")) {
+    digest <- jsonlite::fromJSON(digest_path, simplifyVector = FALSE)
+    pd <- patch_landing_digest(digest, payload$matchups)
+    if (pd$changed) {
+      ld_write_digest(pd$digest, digest_path)
+      changed_files <- c(changed_files, digest_path)
     }
   }
 

@@ -18,6 +18,7 @@ import {
   Download,
 } from 'lucide-react';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { tablistKeys } from '@/lib/a11y';
 
 interface MatchupsClientProps {
   dataset: MatchupsDataset;
@@ -224,18 +225,20 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
           <span className="text-xs font-mono font-bold uppercase text-slate-300">Select Slate:</span>
         </div>
 
-        <div className="flex items-center gap-1.5 flex-nowrap">
+        <div role="tablist" onKeyDown={tablistKeys} className="flex items-center gap-1.5 flex-nowrap">
           {dataset.available_weeks.map((wk) => {
             const isSelected = selectedWeek === wk;
             const isActive = wk === dataset.active_week;
             const isPast = wk < dataset.active_week;
             return (
               <button
+                role="tab"
+                aria-selected={isSelected}
                 key={wk}
                 onClick={() => setSelectedWeek(wk)}
                 className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                   isSelected
-                    ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30 font-bold'
+                    ? 'bg-fo-accent text-on-accent shadow-md shadow-accent-600/30 font-bold'
                     : isPast
                     ? 'bg-surface text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800/80'
                     : isActive
@@ -244,7 +247,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
                 }`}
               >
                 <span>Week {wk}</span>
-                {isActive && <span className="text-amber-400 text-[11px] sm:text-[10px]">★ Active</span>}
+                {isActive && <span className="text-on-accent text-[11px] sm:text-[10px]">★ Active</span>}
                 {isPast && <span className="text-[11px] sm:text-[10px] text-slate-500 font-normal">Final</span>}
               </button>
             );
@@ -367,20 +370,24 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
             />
           </div>
 
-          <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
+          <div role="tablist" onKeyDown={tablistKeys} className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
             <button
+              role="tab"
+              aria-selected={viewMode === 'grid'}
               onClick={() => setViewMode('grid')}
               className={`p-1.5 rounded-md text-xs transition-colors ${
-                viewMode === 'grid' ? 'bg-accent-600 text-white' : 'text-slate-400 hover:text-white'
+                viewMode === 'grid' ? 'bg-fo-accent text-on-accent' : 'text-slate-400 hover:text-white'
               }`}
               title="Card Grid View"
             >
               <Grid className="w-4 h-4" />
             </button>
             <button
+              role="tab"
+              aria-selected={viewMode === 'table'}
               onClick={() => setViewMode('table')}
               className={`p-1.5 rounded-md text-xs transition-colors ${
-                viewMode === 'table' ? 'bg-accent-600 text-white' : 'text-slate-400 hover:text-white'
+                viewMode === 'table' ? 'bg-fo-accent text-on-accent' : 'text-slate-400 hover:text-white'
               }`}
               title="Compact Table View"
             >
