@@ -424,7 +424,8 @@ source("config.R")
 # This is a read-only content check, not a freshness check.
 .policy_guard_files <- function(target_files, mode = "inseason") {
   if (identical(mode, "offseason")) {
-    unique(c(target_files, WEB_JSON_CBT_PAYROLL_SHEET, WEB_JSON_PROJECTIONS_SEASON_TEAMS))
+    unique(c(target_files, WEB_JSON_CBT_PAYROLL_SHEET, WEB_JSON_PROJECTIONS_SEASON_TEAMS,
+             WEB_JSON_LANDING_DIGEST))
   } else {
     target_files
   }
@@ -1045,6 +1046,47 @@ source("config.R")
 }
 
 # ------------------------------------------------------------------------------
+# ASSERTION L - landing digest contract (front-office#200, MLB-Analytics#124)
+#
+# landing_digest.json must parse and carry every top-level contract field,
+# calibration buckets 50-100 by 10 and movers windows "1", "7", "21". Its
+# betting check runs through ZERO_BETTING (it is a policy-guard file in both
+# modes). Read-only.
+# ------------------------------------------------------------------------------
+.PW_LANDING_DIGEST_FIELDS <- c("schema_version", "sport", "generated_at", "slate_date",
+                               "season_state", "next_milestone", "today", "yesterday",
+                               "record", "calibration", "movers")
+
+.assert_landing_digest_contract <- function(path = file.path(WEB_DATA_DIR, "landing_digest.json")) {
+  mk <- function(problems) list(
+    id = "L", name = "landing digest contract", pass = !length(problems), fatal = TRUE,
+    detail = if (length(problems)) paste0("    [VIOLATION] ", problems)
+             else "    landing_digest.json carries the full contract",
+    summary = sprintf("%d landing digest contract problem(s)", length(problems)))
+  if (!file.exists(path)) return(mk(sprintf("%s absent", basename(path))))
+  j <- tryCatch(jsonlite::fromJSON(path, simplifyVector = FALSE), error = function(e) NULL)
+  if (!is.list(j)) return(mk("does not parse"))
+  p <- character(0)
+  miss <- setdiff(.PW_LANDING_DIGEST_FIELDS, names(j))
+  if (length(miss)) p <- c(p, paste("missing field(s):", paste(miss, collapse = ", ")))
+  if (!identical(as.integer(j$schema_version), 1L)) p <- c(p, "schema_version != 1")
+  if (!.pw_is_utc_iso(j$generated_at)) p <- c(p, "generated_at not UTC ISO-8601")
+  if (!isTRUE(j$season_state %in% c("regular", "postseason", "offseason", "preseason")))
+    p <- c(p, "season_state not in regular|postseason|offseason|preseason")
+  if (!all(c("season", "last_7") %in% names(j$record))) p <- c(p, "record needs season and last_7")
+  lo <- vapply(.dm_or_pw(j$calibration), function(b) as.integer(.dm_or_pw(b$lo, NA)), integer(1))
+  if (!identical(lo, c(50L, 60L, 70L, 80L, 90L))) p <- c(p, "calibration buckets must be 50-100 by 10")
+  if (!setequal(names(j$movers$windows), c("1", "7", "21")))
+    p <- c(p, "movers.windows must be \"1\", \"7\", \"21\"")
+  rows <- c(.dm_or_pw(j$today), .dm_or_pw(j$yesterday))
+  bad_ps <- !vapply(rows, function(r) isTRUE(r$prediction_status %in%
+                                                c("available", "no_model", "not_yet_run")), logical(1))
+  if (any(bad_ps)) p <- c(p, sprintf("%d game row(s) with an invalid prediction_status", sum(bad_ps)))
+  mk(p)
+}
+.dm_or_pw <- function(a, b = list()) if (is.null(a)) b else a
+
+# ------------------------------------------------------------------------------
 # Commit / push sequence. ONLY reached when dry_run = FALSE and every fatal
 # assertion passed. Commits the published tree and pushes MLB-Analytics --
 # nothing more. The deploy belongs to the aggregator's sync-sports.yml.
@@ -1241,7 +1283,8 @@ publish_web <- function(dry_run = TRUE,
     .assert_payload_provenance(run_start, mode = mode),
     .assert_web_contracts(skip_contracts),
     .assert_zero_betting(policy_files),
-    .assert_manifest_and_coverage(mode = mode)
+    .assert_manifest_and_coverage(mode = mode),
+    .assert_landing_digest_contract()
   )
 
   passed  <- vapply(checks, function(ch) isTRUE(ch$pass), logical(1))

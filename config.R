@@ -352,6 +352,8 @@ WEB_JSON_SPATIAL_INDEX               <- file.path(WEB_DATA_DIR, "spatial_index.j
 WEB_DIR_SPATIAL                      <- file.path(WEB_DATA_DIR, "spatial")
 WEB_JSON_WORLD_SERIES                <- file.path(WEB_DATA_DIR, "world_series.json")
 WEB_JSON_OFFSEASON_MONITOR           <- file.path(WEB_DATA_DIR, "offseason_monitor.json")
+# Front-office landing feed (front-office#200): written by tools/export_landing_digest.R
+WEB_JSON_LANDING_DIGEST              <- file.path(WEB_DATA_DIR, "landing_digest.json")
 # Older weekly editions, split out of offseason_monitor.json by build_offseason_monitor.R
 # and fetched on demand by the site. Written only when an edition rolls into the archive,
 # so it is NOT in WEB_DATA_FILES_OFFSEASON (assertion A would be red on a normal week).
@@ -368,7 +370,8 @@ WEB_DATA_FILES <- c(
   WEB_JSON_PLAYER_DNA_PROFILES,
   WEB_JSON_CLUTCH_LEVERAGE_METRICS,
   WEB_JSON_CBT_PAYROLL_SHEET,
-  WEB_JSON_MATCHUPS_INDEX
+  WEB_JSON_MATCHUPS_INDEX,
+  WEB_JSON_LANDING_DIGEST
 )
 
 # ---------------------------------------------------------------------------
