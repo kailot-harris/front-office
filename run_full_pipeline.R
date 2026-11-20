@@ -237,6 +237,12 @@ run_stage("xgboost_shap_engine.R",
 run_stage("build_matchups_dataset.R", "Assemble Weekly Matchup Slates, Projections & Graded Results",
           output = file.path(CACHE_DIR, "matchups_cache.rds"))
 
+# 9.2. Landing digest (front-office#200). Reads the matchups payload written just
+# above plus the schedule and ensemble-ratings caches; appends today's ratings to
+# data/history/ratings_history.csv (tracked) and writes web/public/data/landing_digest.json.
+run_stage("tools/build_landing_digest.R", "Write Landing Digest (today, yesterday, record, calibration, movers)",
+          call_fn = "run_build_landing_digest")
+
 # 9.5. Daily Predictions Image (issue #130, part 1). Draws today's (Sys.Date())
 # nba_predictions_<date>.png/.gif and the canonical nba_predictions_today.png/.gif
 # from the prediction log written by prediction_accuracy_logger.R above, into cache/
