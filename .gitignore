@@ -184,3 +184,7 @@ batch_issue*
 brief_issue*.md
 result_issue*.json
 finals_closeout.log
+
+# Test artifacts (root and web test suites) so test runs never trigger git stash push -u
+/test-results/
+/web/test-results/
