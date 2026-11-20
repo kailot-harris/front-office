@@ -1,6 +1,6 @@
 # ==============================================================================
 # ingest_freshness.R
-# WNBA Offseason Dynamics Monitor — Ingestion Freshness & Gate Evaluation (Issue #163)
+# WNBA Offseason Dynamics Monitor -- Ingestion Freshness & Gate Evaluation (Issue #163)
 #
 # Provides fail-closed gate evaluation for weekly ingestion manifests:
 #   1. Freshness: Blocks on absent, unparseable, or stale timestamps (> max_age_hours).
@@ -317,7 +317,7 @@ check_ingest_volume <- function(manifest) {
   health_raw <- m$composite_health
   health <- if (!is.null(health_raw) && length(health_raw) > 0) as.character(health_raw)[1] else NA_character_
 
-  # Strict status enum verification — never default to HEALTHY
+  # Strict status enum verification -- never default to HEALTHY
   if (is.na(health) || !(health %in% VALID_HEALTH_STATUSES)) {
     return(list(
       valid = FALSE,
@@ -459,7 +459,7 @@ evaluate_ingestion_gate <- function(manifest,
     ))
   }
 
-  # Strict status verification — never default to HEALTHY
+  # Strict status verification -- never default to HEALTHY
   health_raw <- m$composite_health
   health <- if (!is.null(health_raw) && length(health_raw) > 0) as.character(health_raw)[1] else NA_character_
   if (is.na(health) || !(health %in% VALID_HEALTH_STATUSES)) {

@@ -1,6 +1,6 @@
 # ==============================================================================
 # sentiment_pulse.R
-# WNBA Offseason Dynamics Monitor — Media Sentiment Pulse (Issue #156)
+# WNBA Offseason Dynamics Monitor -- Media Sentiment Pulse (Issue #156)
 #
 # Scores the beat-feed wire items the monitor ALREADY ingests each week
 # (source_family == "beat_feeds", produced by tools/offseason/ingest_sources.R's

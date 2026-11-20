@@ -1,6 +1,6 @@
 # ==============================================================================
 # build_offseason_monitor.R
-# WNBA Offseason Dynamics Monitor — Top-Level DAG Orchestrator (Phase 4 / Issue #121)
+# WNBA Offseason Dynamics Monitor -- Top-Level DAG Orchestrator (Phase 4 / Issue #121)
 #
 # Chains execution:
 #   Ingest -> Extract -> Reconcile -> Cap Sheet Sync -> Render Memo -> Export JSON
@@ -232,7 +232,7 @@ build_offseason_monitor_dag <- function(dry_run = FALSE,
   }, extracted_deltas)
   
   # ----------------------------------------------------------------------------
-  # Step 3: Reconcile State (S_staged = S_last ⊕ ΔS_confirmed)
+  # Step 3: Reconcile State (S_staged = S_last (+) DeltaS_confirmed)
   # ----------------------------------------------------------------------------
   log_info("build_offseason_monitor: Step 3 - Reconciling state and generating atomic staged artifact...", script = "build_offseason_monitor.R")
   rec_res <- reconcile_offseason_state(
@@ -381,7 +381,7 @@ build_offseason_monitor_dag <- function(dry_run = FALSE,
   
   is_quiet_week <- can_assert_quiet_week(manifest, confirmed_changes = confirmed_changes_list)
   
-  # Assemble Edition Object with Array Unboxing Defense per Blueprint §6
+  # Assemble Edition Object with Array Unboxing Defense per Blueprint Sec. 6
   current_edition <- list(
     weekNumber = week_num,
     publishDate = format(now_date, "%Y-%m-%d"),

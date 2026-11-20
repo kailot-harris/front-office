@@ -1,6 +1,6 @@
 # ==============================================================================
 # ingest_sources.R
-# WNBA Offseason Dynamics Monitor — Ingestion Subsystem & Health Gate (Phase 2)
+# WNBA Offseason Dynamics Monitor -- Ingestion Subsystem & Health Gate (Phase 2)
 #
 # Implements multi-source weekly ingestion across isolated adapters:
 #   1. league_wire: Official WNBA transaction wire & ESPN wire (paginated)
@@ -70,7 +70,7 @@ DEFAULT_WNBA_TEAMS <- c(
   WSH = "Washington Mystics"
 )
 
-# Canonical beat sources (6 beat feeds per Blueprint §2 & Issue #160 spike)
+# Canonical beat sources (6 beat feeds per Blueprint Sec. 2 & Issue #160 spike)
 # athletic_wnba replaced with just_womens_sports due to NYT migration (404)
 DEFAULT_BEAT_SOURCES <- list(
   list(id = "the_next_hoops", name = "The Next Hoops", url = "https://thenexthoops.com/feed/"),
@@ -620,7 +620,7 @@ can_assert_quiet_week <- function(manifest) {
   isTRUE(manifest$composite_health == "HEALTHY")
 }
 
-# Evaluates publication gate rule per Blueprint §2 & §10
+# Evaluates publication gate rule per Blueprint Sec. 2 & Sec. 10
 check_publication_gate <- function(manifest, allow_degraded = FALSE) {
   if (is.list(manifest) && "manifest" %in% names(manifest) && !("adapters" %in% names(manifest))) {
     manifest <- manifest$manifest

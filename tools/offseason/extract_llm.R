@@ -1,6 +1,6 @@
 # ==============================================================================
 # extract_llm.R
-# WNBA Offseason Dynamics Monitor — LLM Extraction Harness (Layer B / Phase 3)
+# WNBA Offseason Dynamics Monitor -- LLM Extraction Harness (Layer B / Phase 3)
 #
 # Formats prompt and structured JSON schema for LLM-based delta extraction.
 # Parses LLM structured JSON output into candidate deltas with confidence tiers:
