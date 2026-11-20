@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-11-19T09:27:52Z",
+  "generated_at": "2026-11-20T05:09:43Z",
   "season": 2026,
   "week": 18,
   "games": [
@@ -138,10 +138,10 @@
         ],
         "agreement": "differ",
         "out_of_sample_record": {
-          "n_games": 150,
-          "accuracy": 59.3,
-          "brier": 0.2249,
-          "logloss": 0.6405
+          "n_games": 151,
+          "accuracy": 59.6,
+          "brier": 0.2246,
+          "logloss": 0.64
         }
       },
       "entering_baselines": [
@@ -420,10 +420,10 @@
         ],
         "agreement": "differ",
         "out_of_sample_record": {
-          "n_games": 150,
-          "accuracy": 59.3,
-          "brier": 0.2249,
-          "logloss": 0.6405
+          "n_games": 151,
+          "accuracy": 59.6,
+          "brier": 0.2246,
+          "logloss": 0.64
         }
       },
       "entering_baselines": [
@@ -702,10 +702,10 @@
         ],
         "agreement": "agree",
         "out_of_sample_record": {
-          "n_games": 150,
-          "accuracy": 59.3,
-          "brier": 0.2249,
-          "logloss": 0.6405
+          "n_games": 151,
+          "accuracy": 59.6,
+          "brier": 0.2246,
+          "logloss": 0.64
         }
       },
       "entering_baselines": [
@@ -984,10 +984,10 @@
         ],
         "agreement": "agree",
         "out_of_sample_record": {
-          "n_games": 150,
-          "accuracy": 59.3,
-          "brier": 0.2249,
-          "logloss": 0.6405
+          "n_games": 151,
+          "accuracy": 59.6,
+          "brier": 0.2246,
+          "logloss": 0.64
         }
       },
       "entering_baselines": [
@@ -1266,10 +1266,10 @@
         ],
         "agreement": "agree",
         "out_of_sample_record": {
-          "n_games": 150,
-          "accuracy": 59.3,
-          "brier": 0.2249,
-          "logloss": 0.6405
+          "n_games": 151,
+          "accuracy": 59.6,
+          "brier": 0.2246,
+          "logloss": 0.64
         }
       },
       "entering_baselines": [
@@ -1548,10 +1548,10 @@
         ],
         "agreement": "agree",
         "out_of_sample_record": {
-          "n_games": 150,
-          "accuracy": 59.3,
-          "brier": 0.2249,
-          "logloss": 0.6405
+          "n_games": 151,
+          "accuracy": 59.6,
+          "brier": 0.2246,
+          "logloss": 0.64
         }
       },
       "entering_baselines": [
@@ -1830,10 +1830,10 @@
         ],
         "agreement": "differ",
         "out_of_sample_record": {
-          "n_games": 150,
-          "accuracy": 59.3,
-          "brier": 0.2249,
-          "logloss": 0.6405
+          "n_games": 151,
+          "accuracy": 59.6,
+          "brier": 0.2246,
+          "logloss": 0.64
         }
       },
       "entering_baselines": [
@@ -1983,16 +1983,16 @@
       "season": 2026,
       "week": 18,
       "projection_basis": "logged_pregame",
-      "predicted_margin": 9.15,
-      "predicted_home_win_prob": 0.735,
+      "predicted_margin": 9.59,
+      "predicted_home_win_prob": 0.744,
       "waterfall": {
-        "projected_margin": 9.15,
-        "home_win_prob": 0.735,
+        "projected_margin": 9.59,
+        "home_win_prob": 0.744,
         "steps": [
           {
             "key": "step_current_epa",
             "label": "Current-Season EPA",
-            "points": 1.35,
+            "points": 1.38,
             "description": "Current season rolling EPA net differential"
           },
           {
@@ -2004,7 +2004,7 @@
           {
             "key": "step_elo_diff",
             "label": "Elo Differential",
-            "points": 4.7,
+            "points": 5.12,
             "description": "Elo rating points differential"
           },
           {
@@ -2022,11 +2022,11 @@
           {
             "key": "step_rounding",
             "label": "Rounding",
-            "points": -0,
+            "points": 0,
             "description": "Decomposition residual"
           }
         ],
-        "rounding": -0,
+        "rounding": 0,
         "sigma": 14.6,
         "intercept": 2.24
       },
@@ -2070,7 +2070,7 @@
           {
             "feature": "gp_avg",
             "label": "Sample Maturity (Avg Games Played)",
-            "value": 9,
+            "value": 9.5,
             "shap_value": 0
           },
           {
@@ -2088,13 +2088,13 @@
           {
             "feature": "ridge_margin",
             "label": "Primary Ridge Model Projection",
-            "value": 9.147,
+            "value": 9.586,
             "shap_value": 0
           },
           {
             "feature": "elo_margin",
             "label": "Primary Elo Model Projection",
-            "value": 9.407,
+            "value": 10.232,
             "shap_value": 0
           },
           {
@@ -2112,10 +2112,10 @@
         ],
         "agreement": "agree",
         "out_of_sample_record": {
-          "n_games": 150,
-          "accuracy": 59.3,
-          "brier": 0.2249,
-          "logloss": 0.6405
+          "n_games": 151,
+          "accuracy": 59.6,
+          "brier": 0.2246,
+          "logloss": 0.64
         }
       },
       "entering_baselines": [
@@ -2225,7 +2225,7 @@
         {
           "key": "step_current_epa",
           "label": "Current-Season EPA",
-          "points": 1.35,
+          "points": 1.38,
           "description": "Current season rolling EPA net differential"
         },
         {
@@ -2237,7 +2237,7 @@
         {
           "key": "step_elo_diff",
           "label": "Elo Differential",
-          "points": 4.7,
+          "points": 5.12,
           "description": "Elo rating points differential"
         },
         {
@@ -2255,7 +2255,7 @@
         {
           "key": "step_rounding",
           "label": "Rounding",
-          "points": -0,
+          "points": 0,
           "description": "Decomposition residual"
         }
       ]
@@ -2265,28 +2265,28 @@
       "season": 2026,
       "week": 18,
       "projection_basis": "logged_pregame",
-      "predicted_margin": -9.91,
-      "predicted_home_win_prob": 0.249,
+      "predicted_margin": -10.41,
+      "predicted_home_win_prob": 0.238,
       "waterfall": {
-        "projected_margin": -9.91,
-        "home_win_prob": 0.249,
+        "projected_margin": -10.41,
+        "home_win_prob": 0.238,
         "steps": [
           {
             "key": "step_current_epa",
             "label": "Current-Season EPA",
-            "points": -4.42,
+            "points": -4.49,
             "description": "Current season rolling EPA net differential"
           },
           {
             "key": "step_prior_epa",
             "label": "Pre-Season Prior",
-            "points": -1.32,
+            "points": -1.33,
             "description": "Prior season baseline regressed to mean"
           },
           {
             "key": "step_elo_diff",
             "label": "Elo Differential",
-            "points": -6.25,
+            "points": -6.67,
             "description": "Elo rating points differential"
           },
           {
@@ -2352,7 +2352,7 @@
           {
             "feature": "gp_avg",
             "label": "Sample Maturity (Avg Games Played)",
-            "value": 9.5,
+            "value": 10,
             "shap_value": 0
           },
           {
@@ -2370,13 +2370,13 @@
           {
             "feature": "ridge_margin",
             "label": "Primary Ridge Model Projection",
-            "value": -9.913,
+            "value": -10.405,
             "shap_value": 0
           },
           {
             "feature": "elo_margin",
             "label": "Primary Elo Model Projection",
-            "value": -12.509,
+            "value": -13.333,
             "shap_value": 0
           },
           {
@@ -2394,10 +2394,10 @@
         ],
         "agreement": "differ",
         "out_of_sample_record": {
-          "n_games": 150,
-          "accuracy": 59.3,
-          "brier": 0.2249,
-          "logloss": 0.6405
+          "n_games": 151,
+          "accuracy": 59.6,
+          "brier": 0.2246,
+          "logloss": 0.64
         }
       },
       "entering_baselines": [
@@ -2507,19 +2507,19 @@
         {
           "key": "step_current_epa",
           "label": "Current-Season EPA",
-          "points": -4.42,
+          "points": -4.49,
           "description": "Current season rolling EPA net differential"
         },
         {
           "key": "step_prior_epa",
           "label": "Pre-Season Prior",
-          "points": -1.32,
+          "points": -1.33,
           "description": "Prior season baseline regressed to mean"
         },
         {
           "key": "step_elo_diff",
           "label": "Elo Differential",
-          "points": -6.25,
+          "points": -6.67,
           "description": "Elo rating points differential"
         },
         {
@@ -2676,10 +2676,10 @@
         ],
         "agreement": "agree",
         "out_of_sample_record": {
-          "n_games": 150,
-          "accuracy": 59.3,
-          "brier": 0.2249,
-          "logloss": 0.6405
+          "n_games": 151,
+          "accuracy": 59.6,
+          "brier": 0.2246,
+          "logloss": 0.64
         }
       },
       "entering_baselines": [
@@ -2958,10 +2958,10 @@
         ],
         "agreement": "agree",
         "out_of_sample_record": {
-          "n_games": 150,
-          "accuracy": 59.3,
-          "brier": 0.2249,
-          "logloss": 0.6405
+          "n_games": 151,
+          "accuracy": 59.6,
+          "brier": 0.2246,
+          "logloss": 0.64
         }
       },
       "entering_baselines": [
@@ -3240,10 +3240,10 @@
         ],
         "agreement": "differ",
         "out_of_sample_record": {
-          "n_games": 150,
-          "accuracy": 59.3,
-          "brier": 0.2249,
-          "logloss": 0.6405
+          "n_games": 151,
+          "accuracy": 59.6,
+          "brier": 0.2246,
+          "logloss": 0.64
         }
       },
       "entering_baselines": [
@@ -3522,10 +3522,10 @@
         ],
         "agreement": "agree",
         "out_of_sample_record": {
-          "n_games": 150,
-          "accuracy": 59.3,
-          "brier": 0.2249,
-          "logloss": 0.6405
+          "n_games": 151,
+          "accuracy": 59.6,
+          "brier": 0.2246,
+          "logloss": 0.64
         }
       },
       "entering_baselines": [
@@ -3804,10 +3804,10 @@
         ],
         "agreement": "differ",
         "out_of_sample_record": {
-          "n_games": 150,
-          "accuracy": 59.3,
-          "brier": 0.2249,
-          "logloss": 0.6405
+          "n_games": 151,
+          "accuracy": 59.6,
+          "brier": 0.2246,
+          "logloss": 0.64
         }
       },
       "entering_baselines": [
@@ -4086,10 +4086,10 @@
         ],
         "agreement": "agree",
         "out_of_sample_record": {
-          "n_games": 150,
-          "accuracy": 59.3,
-          "brier": 0.2249,
-          "logloss": 0.6405
+          "n_games": 151,
+          "accuracy": 59.6,
+          "brier": 0.2246,
+          "logloss": 0.64
         }
       },
       "entering_baselines": [
@@ -4368,10 +4368,10 @@
         ],
         "agreement": "agree",
         "out_of_sample_record": {
-          "n_games": 150,
-          "accuracy": 59.3,
-          "brier": 0.2249,
-          "logloss": 0.6405
+          "n_games": 151,
+          "accuracy": 59.6,
+          "brier": 0.2246,
+          "logloss": 0.64
         }
       },
       "entering_baselines": [

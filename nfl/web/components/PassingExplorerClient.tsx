@@ -214,6 +214,14 @@ export const PassingExplorerClient: React.FC<PassingExplorerClientProps> = ({
     return zoneMetricsMap.get(selectedZone) || null;
   }, [selectedZone, zoneMetricsMap]);
 
+  const throwMapAriaLabel = useMemo(() => {
+    if (!selectedQb) {
+      return 'NextGenStats quarterback passing throw map';
+    }
+    const base = `NextGenStats passing throw map for ${selectedQb.player_name} (${selectedQb.team}), ${selectedQb.completions} completions on ${selectedQb.total_passes} pass attempts`;
+    return selectedZone ? `${base}, filtered to ${selectedZone}` : base;
+  }, [selectedQb, selectedZone]);
+
   return (
     <div className="space-y-6">
       {/* 1. Top Controls Bar: Search, Team Filter, Quick Select Pills */}
@@ -233,6 +241,7 @@ export const PassingExplorerClient: React.FC<PassingExplorerClientProps> = ({
             <select
               value={selectedTeam}
               onChange={(e) => setSelectedTeam(e.target.value)}
+              aria-label="Filter quarterbacks by team"
               className="bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
             >
               {teams.map((t) => (
@@ -247,6 +256,7 @@ export const PassingExplorerClient: React.FC<PassingExplorerClientProps> = ({
                 const qb = catalog.find((c) => c.player_id === e.target.value);
                 if (qb) setSelectedQb(qb);
               }}
+              aria-label="Select quarterback"
               className="bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 max-w-[200px]"
             >
               {filteredCatalog.map((qb) => (
@@ -430,6 +440,8 @@ export const PassingExplorerClient: React.FC<PassingExplorerClientProps> = ({
           ) : (
             <div className="relative w-full max-w-[560px] aspect-[600/680] select-none">
               <svg
+                role="img"
+                aria-label={throwMapAriaLabel}
                 viewBox="0 0 600 680"
                 className="w-full h-full rounded-lg overflow-hidden border border-slate-800/90 shadow-inner bg-slate-950"
               >
@@ -518,18 +530,36 @@ export const PassingExplorerClient: React.FC<PassingExplorerClientProps> = ({
                       const cmp = zm?.completions || 0;
                       const cpoe = zm?.avg_cpoe || 0;
                       const epa = zm?.avg_epa || 0;
+                      const compPctDisplay = zm ? `${(zm.comp_pct * 100).toFixed(0)}%` : '0%';
                       const heat = getZoneHeatColor(cpoe, att);
 
                       const isSelected = selectedZone === zoneName;
                       const isHovered = hoveredZone === zoneName;
+                      const toggleZone = () => setSelectedZone(isSelected ? null : zoneName);
+                      const zoneAriaLabel =
+                        att > 0
+                          ? `Filter by ${zoneName} zone: ${cmp} of ${att} completions (${compPctDisplay}), ${cpoe >= 0 ? '+' : ''}${cpoe.toFixed(1)}% CPOE, ${epa >= 0 ? '+' : ''}${epa.toFixed(2)} EPA`
+                          : `Filter by ${zoneName} zone: 0 pass attempts`;
 
                       return (
                         <g
                           key={zoneName}
-                          onClick={() => setSelectedZone(isSelected ? null : zoneName)}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={zoneAriaLabel}
+                          aria-pressed={isSelected}
+                          onClick={toggleZone}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              toggleZone();
+                            }
+                          }}
+                          onFocus={() => setHoveredZone(zoneName)}
+                          onBlur={() => setHoveredZone((prev) => (prev === zoneName ? null : prev))}
                           onMouseEnter={() => setHoveredZone(zoneName)}
                           onMouseLeave={() => setHoveredZone(null)}
-                          className="cursor-pointer transition-all duration-200"
+                          className="cursor-pointer transition-all duration-200 focus:outline-none"
                         >
                           <rect
                             x={rect.x + 2}
@@ -644,7 +674,7 @@ export const PassingExplorerClient: React.FC<PassingExplorerClientProps> = ({
 
           {/* Canvas Footer explanation */}
           <div className="w-full text-center text-xs text-slate-500 pt-3">
-            Click any zone rectangle to isolate throws and filter the metrics table below.
+            Click or press Enter or Space on any zone rectangle to isolate throws and filter the metrics table below.
           </div>
         </div>
 
@@ -808,10 +838,13 @@ export const PassingExplorerClient: React.FC<PassingExplorerClientProps> = ({
             const isSelected = selectedZone === zoneName;
 
             return (
-              <div
+              <button
                 key={zoneName}
+                type="button"
+                aria-pressed={isSelected}
+                aria-label={`${zoneName} zone performance card: ${cmp} of ${att} completions (${pct}%), ${cpoe >= 0 ? '+' : ''}${cpoe.toFixed(1)}% CPOE, ${epa >= 0 ? '+' : ''}${epa.toFixed(2)} EPA`}
                 onClick={() => setSelectedZone(isSelected ? null : zoneName)}
-                className={`bg-surface-raised border rounded-xl p-3.5 cursor-pointer transition-all ${
+                className={`w-full text-left bg-surface-raised border rounded-xl p-3.5 cursor-pointer transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
                   isSelected
                     ? 'border-sky-500 bg-sky-950/20 shadow-md shadow-sky-500/10'
                     : 'border-slate-800 hover:border-slate-700 hover:bg-slate-900/60'
@@ -859,7 +892,7 @@ export const PassingExplorerClient: React.FC<PassingExplorerClientProps> = ({
                     </span>
                   </div>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>

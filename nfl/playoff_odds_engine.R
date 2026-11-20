@@ -223,7 +223,7 @@ run_playoff_odds_engine <- function() {
              call = "run_playoff_odds_engine()", out_path = CACHE_PLAYOFF_ODDS)
 
     # --------------------------------------------------------------------------------------
-    # Discord dispatch (GitHub issue #14) — reuses notify_bets.R's/accuracy_tracker.R's exact
+    # Discord dispatch (GitHub issue #14) — reuses accuracy_tracker.R's exact
     # webhook/payload/fallback pattern verbatim (same NFL_DISCORD_WEBHOOK env var, same
     # nzchar()-gated POST()/console-only branching). NO hardcoded webhook URL, live or dummy,
     # anywhere in this file.
@@ -259,7 +259,7 @@ run_playoff_odds_engine <- function() {
             "**%d-season** Monte Carlo field: probability each team clinches a playoff berth (not advancement odds), %d season.",
             N_SEASON_SIMULATIONS, CURRENT_SEASON
           ),
-          color = 3066993, # Sharp Dark Emerald Green — matches notify_bets.R's embed style
+          color = 3066993, # Sharp Dark Emerald Green
           fields = embed_fields,
           footer = list(text = paste("NFL Quant Engine - Playoff Odds • Generated at", format(Sys.time(), "%H:%M:%S EST")))
         )
