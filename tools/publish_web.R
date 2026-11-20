@@ -254,6 +254,59 @@ source("config.R")
 }
 
 # ------------------------------------------------------------------------------
+# Off-season baseline promotion (blueprint section 2 & 7), called by
+# publish_web() only after a successful publish commit, only in offseason mode
+# and only without --allow-degraded. Copies <cache_root>/league_state_staged.json
+# over league_state_baseline.json, then commits and pushes the baseline when it
+# is this repo's tracked cache/ copy. Extracted so it can be tested against a
+# throwaway repo (tests/testthat/test-offseason-baseline-promotion.R).
+# ------------------------------------------------------------------------------
+.pw_promote_offseason_baseline <- function(repo_root, cache_root) {
+  staged_file <- file.path(cache_root, "league_state_staged.json")
+  baseline_file <- file.path(cache_root, "league_state_baseline.json")
+  if (file.exists(staged_file)) {
+    file.copy(staged_file, baseline_file, overwrite = TRUE)
+    log_info("publish_web: atomically promoted league_state_staged.json to league_state_baseline.json",
+             script = .PW_LOG_SCRIPT)
+
+    # The promotion lands AFTER publish_web()'s publish commit, so without this the
+    # tracked baseline stays modified-but-uncommitted, and the next run's
+    # checkout guard stashes it -- rolling the promotion back (MLB-Analytics#106).
+    # Commit + push it as a follow-up commit, as WNBA_analytics#202 does.
+    # Only when the promoted file IS this repo's tracked cache/ copy (MLB_ANALYTICS_ROOT
+    # can point the cache elsewhere).
+    baseline_rel <- "cache/league_state_baseline.json"
+    in_repo <- !is.na(repo_root) &&
+      identical(normalizePath(baseline_file, winslash = "/", mustWork = FALSE),
+                normalizePath(file.path(repo_root, baseline_rel), winslash = "/", mustWork = FALSE))
+    if (in_repo && .pw_git(repo_root, c("ls-files", "--error-unmatch", "--", baseline_rel))$ok) {
+      # -f: when cache/ is gitignored, `git add` exits 1 on the ignored path even
+      # though the file is already tracked (the 2026-11-20 off-season run failed
+      # here). .gitignore now un-ignores this one file; -f keeps the promotion
+      # working regardless. The ls-files guard above means -f can only ever stage
+      # this already-tracked file, never add a new one.
+      add_res <- .pw_git(repo_root, c("add", "-f", "--", baseline_rel))
+      if (!add_res$ok) {
+        stop("publish_web: failed to stage promoted baseline:\n", paste(add_res$out, collapse = "\n"))
+      }
+      staged_diff <- .pw_git(repo_root, c("diff", "--cached", "--quiet", "--", baseline_rel))
+      if (!staged_diff$ok) {  # --quiet exits 1 when there ARE staged changes
+        c_res <- .pw_git(repo_root, c("commit", "-m", shQuote("Promote MLB offseason baseline after publish"),
+                                      "--", baseline_rel))
+        p_res <- if (c_res$ok) .pw_git(repo_root, c("push", "origin", "HEAD")) else c_res
+        if (!c_res$ok || !p_res$ok) {
+          stop("publish_web: baseline commit or push failed; baseline is promoted on disk but NOT committed:\n",
+               paste(unique(c(c_res$out, p_res$out)), collapse = "\n"))
+        }
+        log_info("publish_web: committed and pushed promoted cache/league_state_baseline.json.",
+                 script = .PW_LOG_SCRIPT)
+      }
+    }
+  }
+  invisible(NULL)
+}
+
+# ------------------------------------------------------------------------------
 # Run-start discovery.
 #
 # Off-season (MLB-Analytics#74): the run start is passed in explicitly. The
@@ -1283,42 +1336,7 @@ publish_web <- function(dry_run = TRUE,
   # In offseason mode, promote cache/league_state_staged.json to cache/league_state_baseline.json
   # ONLY after successful git publish commit, and ONLY if NOT --allow-degraded
   if (identical(mode, "offseason") && !isTRUE(allow_degraded)) {
-    staged_file <- file.path(MLB_CACHE_ROOT, "league_state_staged.json")
-    baseline_file <- file.path(MLB_CACHE_ROOT, "league_state_baseline.json")
-    if (file.exists(staged_file)) {
-      file.copy(staged_file, baseline_file, overwrite = TRUE)
-      log_info("publish_web: atomically promoted league_state_staged.json to league_state_baseline.json",
-               script = .PW_LOG_SCRIPT)
-
-      # The promotion lands AFTER the publish commit above, so without this the
-      # tracked baseline stays modified-but-uncommitted, and the next run's
-      # checkout guard stashes it -- rolling the promotion back (MLB-Analytics#106).
-      # Commit + push it as a follow-up commit, as WNBA_analytics#202 does.
-      # Only when the promoted file IS this repo's tracked cache/ copy (MLB_ANALYTICS_ROOT
-      # can point the cache elsewhere).
-      baseline_rel <- "cache/league_state_baseline.json"
-      in_repo <- !is.na(repo_root) &&
-        identical(normalizePath(baseline_file, winslash = "/", mustWork = FALSE),
-                  normalizePath(file.path(repo_root, baseline_rel), winslash = "/", mustWork = FALSE))
-      if (in_repo && .pw_git(repo_root, c("ls-files", "--error-unmatch", "--", baseline_rel))$ok) {
-        add_res <- .pw_git(repo_root, c("add", "--", baseline_rel))
-        if (!add_res$ok) {
-          stop("publish_web: failed to stage promoted baseline:\n", paste(add_res$out, collapse = "\n"))
-        }
-        staged_diff <- .pw_git(repo_root, c("diff", "--cached", "--quiet", "--", baseline_rel))
-        if (!staged_diff$ok) {  # --quiet exits 1 when there ARE staged changes
-          c_res <- .pw_git(repo_root, c("commit", "-m", shQuote("Promote MLB offseason baseline after publish"),
-                                        "--", baseline_rel))
-          p_res <- if (c_res$ok) .pw_git(repo_root, c("push", "origin", "HEAD")) else c_res
-          if (!c_res$ok || !p_res$ok) {
-            stop("publish_web: baseline commit or push failed; baseline is promoted on disk but NOT committed:\n",
-                 paste(unique(c(c_res$out, p_res$out)), collapse = "\n"))
-          }
-          log_info("publish_web: committed and pushed promoted cache/league_state_baseline.json.",
-                   script = .PW_LOG_SCRIPT)
-        }
-      }
-    }
+    .pw_promote_offseason_baseline(repo_root, MLB_CACHE_ROOT)
   }
 
   log_info(sprintf("publish_web: web artifacts committed and pushed to MLB-Analytics %s. The site changes when the aggregator's sync-sports.yml next pulls; this script does not deploy.",
