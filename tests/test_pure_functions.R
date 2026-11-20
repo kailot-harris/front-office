@@ -81,11 +81,22 @@ ok("CFG-4 Empirically derived NFL_HCA and NFL_MARGIN_SIGMA sit in sane NFL range
    sprintf("NFL_HCA=%.2f, NFL_MARGIN_SIGMA=%.2f -> neutral home win prob=%.3f",
            NFL_HCA, NFL_MARGIN_SIGMA, pnorm(NFL_HCA / NFL_MARGIN_SIGMA)))
 
-ok("CFG-5 WEB_DATA_FILES declares the 8 derived JSON datasets and excludes static coaching_profiles.json",
-   length(WEB_DATA_FILES) == 8L &&
+ok("CFG-5 WEB_DATA_FILES declares the 9 derived JSON datasets, including coaching_profiles.json (NFL_analytics#171)",
+   length(WEB_DATA_FILES) == 9L &&
      all(grepl("^web/public/data/.*\\.json$", gsub("\\\\", "/", WEB_DATA_FILES))) &&
-     !(WEB_JSON_COACHING_PROFILES %in% WEB_DATA_FILES),
+     WEB_JSON_COACHING_PROFILES %in% WEB_DATA_FILES,
    sprintf("%d files in WEB_DATA_FILES", length(WEB_DATA_FILES)))
+
+# The pipeline declares coaching_profiles.json on its own builder stage, not the exporter's,
+# and the exporter no longer republishes it.
+pipeline_src <- paste(readLines("run_full_pipeline.R", warn = FALSE), collapse = "\n")
+exporter_src <- paste(readLines("export_web_datasets.R", warn = FALSE), collapse = "\n")
+ok("CFG-6 build_coaching_dataset.R is a pipeline stage and the exporter no longer republishes coaching_profiles.json",
+   grepl('run_stage("build_coaching_dataset.R"', pipeline_src, fixed = TRUE) &&
+     grepl("output = WEB_JSON_COACHING_PROFILES", pipeline_src, fixed = TRUE) &&
+     grepl("setdiff(WEB_DATA_FILES, WEB_JSON_COACHING_PROFILES)", pipeline_src, fixed = TRUE) &&
+     !grepl('republish_json_verbatim("coaching_profiles.json"', exporter_src, fixed = TRUE),
+   "stage wired; verbatim republish removed")
 
 # ==============================================================================
 # SECTION 2: logging_utils.R pure helpers (%||%, .log_redact, .log_format_extra)

@@ -196,26 +196,61 @@ export interface VisualMediaItem {
   size_bytes: number;
 }
 
+/**
+ * One measured figure on /coaching (NFL_analytics#171). `value` is null when the sample `n`
+ * is below `min_n` = max(floor, ceil(per_game * games_coached)); never a default or average.
+ */
+export interface CoachingFigure {
+  value: number | null;
+  n: number;
+  min_n: number;
+}
+
+/** A row of the minimum-sample table; per_game is null for a fixed minimum. */
+export interface CoachingMinSampleRule {
+  metric: string;
+  per_game: number | null;
+  floor: number;
+}
+
+/** One team's head-coach profile, built by build_coaching_dataset.R from nflverse data. */
 export interface CoachProfile {
   team: string;
   head_coach: string;
-  tenure_years: number;
-  offensive_coordinator: string;
-  defensive_coordinator: string;
-  play_caller: 'Head Coach' | 'Offensive Coordinator' | 'Defensive Coordinator';
-  offensive_play_caller?: 'Head Coach' | 'Offensive Coordinator';
-  defensive_play_caller?: 'Head Coach' | 'Defensive Coordinator';
-  fourth_down_aggression_index: number; // 0 - 100 scale (percentile)
-  pass_rate_over_expected: number; // PROE %
-  early_down_pass_rate: number; // %
-  play_action_rate: number; // %
-  pace_seconds_per_play: number; // neutral game-script pace
-  offensive_scheme: string;
-  defensive_scheme: string;
-  timeout_management_grade: 'A+' | 'A' | 'A-' | 'B+' | 'B' | 'B-' | 'C+' | 'C' | 'D';
-  challenge_win_pct: number;
+  latest_game_id: string;
+  since_week: number | null;
+  games_coached: number;
+  tenure_seasons: number;
+  career_wins: number;
+  career_losses: number;
+  career_ties: number;
+  career_games: number;
   career_record: string;
   super_bowl_wins: number;
+  career_first_season: number | null;
+  career_possibly_truncated: boolean;
+  fourth_down_go_rate: CoachingFigure; // % of qualifying 4th downs where the team went for it
+  nfl4th_go_when_recommended: CoachingFigure; // % went, of 4th downs where nfl4th favoured going
+  nfl4th_go_when_not_recommended: CoachingFigure; // % went, of 4th downs where nfl4th favoured kicking
+  fourth_downs_without_model_estimate: number;
+  pass_rate_over_expected: CoachingFigure; // mean pass_oe, percentage points
+  early_down_pass_rate: CoachingFigure; // %
+  play_action_rate: CoachingFigure; // % of FTN-charted dropbacks
+  seconds_per_play: CoachingFigure; // neutral snap-to-snap seconds
+  challenge_success_rate: CoachingFigure; // % of coach challenges reversed
+  epa_after_own_timeout: CoachingFigure; // EPA per play
+  timeouts_q1_q3_share: CoachingFigure; // %
+  unused_timeouts_close_losses: CoachingFigure; // timeouts left, mean
+}
+
+export interface CoachingDataset {
+  generated_at: string;
+  season: number;
+  through_week: number;
+  play_action_through_week: number | null;
+  history_start_season: number;
+  min_sample_rules: CoachingMinSampleRule[];
+  teams: CoachProfile[];
 }
 
 export interface PositionalSpendingItem {

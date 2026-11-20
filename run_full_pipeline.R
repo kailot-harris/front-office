@@ -331,26 +331,26 @@ run_stage("accuracy_governance.R", "Compute Forecast Accuracy Governance & Calib
 # cache and produces nothing any other stage reads.
 #
 # Unlike notify_bets.R / accuracy_tracker.R / bet_tracker.r above (which deliberately omit
-# `output` because a day with nothing new is a legitimate no-op), this stage rewrites the nine
-# files in WEB_DATA_FILES on every run, so declaring them is right. WEB_DATA_FILES is
-# config.R's single source of truth for that list - do not restate the paths here.
+# `output` because a day with nothing new is a legitimate no-op), this stage rewrites every
+# file in WEB_DATA_FILES except coaching_profiles.json on every run, so declaring them is
+# right. WEB_DATA_FILES is config.R's single source of truth for that list - do not restate
+# the paths here. coaching_profiles.json is declared by its own builder, Stage 14.4 below.
 #
 # Scope of the C-2 guarantee, stated precisely so nobody over-trusts it: .check_stage_output()
 # compares mtimes only. It will WARN if a declared file is not touched at all - e.g. the
 # exporter dies partway, or a numbered section is removed without updating the list. It CANNOT
 # detect a file whose bytes were merely republished verbatim, because that still advances the
 # mtime. That applies to salary_cap_profiles.json on a run where its live
-# nflreadr::load_contracts() fetch fails and it falls back, and to coaching_profiles.json,
-# which is a hand-seeded static artifact with no upstream source and is therefore excluded
-# from WEB_DATA_FILES entirely. For those paths the exporter's own log_warn() in
-# logs/nfl_pipeline.log - naming the file and the reason - is the staleness signal, not this
-# assertion. See config.R's WEB_* block for the full rationale.
+# nflreadr::load_contracts() fetch fails and it falls back. For that path the exporter's own
+# log_warn() in logs/nfl_pipeline.log - naming the file and the reason - is the staleness
+# signal, not this assertion (the publish gate's Assertion F also catches it through the
+# embedded generated_at). See config.R's WEB_* block for the full rationale.
 run_stage("export_web_datasets.R", "Export Web Application JSON Datasets (web/public/data)",
           call_fn = "run_export_web_datasets",
-          output = WEB_DATA_FILES)
+          output = setdiff(WEB_DATA_FILES, WEB_JSON_COACHING_PROFILES))
 
 # ------------------------------------------------------------------------------
-# Stages 14.1–14.3: Specialty Web Dataset Builders
+# Stages 14.1–14.4: Specialty Web Dataset Builders
 # ------------------------------------------------------------------------------
 # Stage 14.1: QB Passing Zone & Throw-Map Dataset (build_passing_dataset.R)
 run_stage("build_passing_dataset.R", "Build QB Passing Zone & Throw-Map Dataset (web/public/data/passing)",
@@ -367,6 +367,14 @@ run_stage("build_clutch_dataset.R", "Build 4Q True Clutch & Leverage Index Datas
 run_stage("build_player_dna_dataset.R", "Build High-Dimensional Player DNA & Peer Comparables Dataset",
           call_fn = "run_build_player_dna_dataset",
           output = WEB_JSON_PLAYER_DNA_PROFILES)
+
+# Stage 14.4: Head-Coach Decision Profiles (build_coaching_dataset.R, NFL_analytics#171)
+# Measured from nflverse play-by-play (shares CACHE_DNA_PBP with Stage 14.2), schedules from
+# 1999, FTN charting and nfl4th. Rewrites coaching_profiles.json on every run; the file is a
+# WEB_DATA_FILES member, so the publish gate (Assertions A and F) blocks a stale copy.
+run_stage("build_coaching_dataset.R", "Build Head-Coach Decision Profiles (coaching_profiles.json)",
+          call_fn = "run_build_coaching_dataset",
+          output = WEB_JSON_COACHING_PROFILES)
 
 # ------------------------------------------------------------------------------
 # Stage 15: Front-Office Operations Alert Dispatcher (notify_pipeline_ops.R)

@@ -13,13 +13,13 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { DATASET_FILES, REPO_WEB_ROOT, coaching, loadRaw, matchups, media, qbs, standings, teamEpa } from '../helpers/datasets';
+import { DATASET_FILES, REPO_WEB_ROOT, loadRaw, matchups, media, qbs, standings, teamEpa } from '../helpers/datasets';
 
 const TYPES_SRC = fs.readFileSync(path.join(REPO_WEB_ROOT, 'lib', 'types.ts'), 'utf-8');
 
 /**
  * Pull the string-literal union declared for `field` out of the types source.
- * e.g. `play_caller: 'Head Coach' | 'Offensive Coordinator';` -> both literals.
+ * e.g. `conference: 'AFC' | 'NFC';` -> both literals.
  */
 function declaredUnion(field: string): string[] {
   const re = new RegExp(`^\\s*${field}\\??:\\s*([^;]+);`, 'm');
@@ -34,30 +34,6 @@ const distinct = (values: readonly (string | undefined)[]): string[] =>
   Array.from(new Set(values.filter((v): v is string => typeof v === 'string'))).sort();
 
 describe('lib/types.ts string unions cover every value in the data', () => {
-  it('CoachProfile.timeout_management_grade', () => {
-    const declared = declaredUnion('timeout_management_grade');
-    const actual = distinct(coaching().map((c) => c.timeout_management_grade));
-    const uncovered = actual.filter((v) => !declared.includes(v));
-    expect(
-      uncovered,
-      `coaching_profiles.json emits grade(s) ${JSON.stringify(uncovered)} that lib/types.ts does not declare. ` +
-        `Declared: ${JSON.stringify(declared)}. Widen the union (or fix the export).`,
-    ).toEqual([]);
-  });
-
-  it('CoachProfile.play_caller', () => {
-    const declared = declaredUnion('play_caller');
-    const actual = distinct(coaching().map((c) => c.play_caller));
-    expect(actual.filter((v) => !declared.includes(v))).toEqual([]);
-  });
-
-  it('CoachProfile.offensive_play_caller / defensive_play_caller', () => {
-    const offDeclared = declaredUnion('offensive_play_caller');
-    const defDeclared = declaredUnion('defensive_play_caller');
-    expect(distinct(coaching().map((c) => c.offensive_play_caller)).filter((v) => !offDeclared.includes(v))).toEqual([]);
-    expect(distinct(coaching().map((c) => c.defensive_play_caller)).filter((v) => !defDeclared.includes(v))).toEqual([]);
-  });
-
   it('VisualMediaItem.category and .type', () => {
     const catDeclared = declaredUnion('category');
     const typeDeclared = declaredUnion('type');
@@ -185,7 +161,10 @@ const parityCases: ParityCase[] = [
   { file: 'model_diagnostics.json', iface: 'DiagnosticsDataset', pick: (j) => [j as Record<string, unknown>] },
   { file: 'model_diagnostics.json', iface: 'CalibrationBin', pick: (j) => (j as { calibration_curve: Record<string, unknown>[] }).calibration_curve },
   { file: 'visual_media_index.json', iface: 'VisualMediaItem' },
-  { file: 'coaching_profiles.json', iface: 'CoachProfile' },
+  { file: 'coaching_profiles.json', iface: 'CoachingDataset', pick: (j) => [j as Record<string, unknown>] },
+  { file: 'coaching_profiles.json', iface: 'CoachProfile', pick: (j) => (j as { teams: Record<string, unknown>[] }).teams },
+  { file: 'coaching_profiles.json', iface: 'CoachingMinSampleRule', pick: (j) => (j as { min_sample_rules: Record<string, unknown>[] }).min_sample_rules },
+  { file: 'coaching_profiles.json', iface: 'CoachingFigure', pick: (j) => (j as { teams: Record<string, unknown>[] }).teams.map((t) => t.fourth_down_go_rate as Record<string, unknown>) },
   { file: 'salary_cap_profiles.json', iface: 'SalaryCapDataset', pick: (j) => [j as Record<string, unknown>] },
   { file: 'salary_cap_profiles.json', iface: 'TeamCapProfile', pick: (j) => (j as { teams: Record<string, unknown>[] }).teams },
   { file: 'salary_cap_profiles.json', iface: 'LeagueTopContract', pick: (j) => (j as { top_league_contracts: Record<string, unknown>[] }).top_league_contracts },

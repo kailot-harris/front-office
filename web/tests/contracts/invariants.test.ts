@@ -12,7 +12,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   LEAGUE,
-  coaching,
+  coachingDataset,
   diagnostics,
   groupBy,
   matchups,
@@ -25,6 +25,7 @@ import {
   clutch,
   dnaDataset,
 } from '../helpers/datasets';
+import { COACHING_FIGURE_KEYS, COACHING_REMOVED_FIELDS } from './schemas';
 
 /** Tolerance for probabilities the export rounds to 3-4 decimals, per team. */
 const roundingSlack = (n: number, dp = 3) => (n * 0.5) / 10 ** dp;
@@ -644,71 +645,90 @@ describe('QB profiles', () => {
   });
 });
 
-describe('coaching profiles', () => {
-  const d = coaching();
+describe('coaching profiles (measured, NFL_analytics#171)', () => {
+  const ds = coachingDataset();
+  const d = ds.teams;
+  const rules = ds.min_sample_rules;
+
+  /** Same formula as build_coaching_dataset.R's coaching_min_n(), incl. the 6-dp rounding. */
+  const minN = (perGame: number | null, floor: number, games: number) =>
+    perGame === null ? floor : Math.max(floor, Math.ceil(Math.round(perGame * games * 1e6) / 1e6));
+
+  it('carries generated_at and season at the top level', () => {
+    expect(Object.keys(ds)[0], 'generated_at must be the first key (publish gate Assertion F)').toBe('generated_at');
+    expect(Number.isNaN(Date.parse(ds.generated_at))).toBe(false);
+    expect(Number.isInteger(ds.season)).toBe(true);
+  });
 
   it(`covers all ${LEAGUE.TEAM_COUNT} teams exactly once`, () => {
     expect(d).toHaveLength(LEAGUE.TEAM_COUNT);
     expect(new Set(d.map((c) => c.team)).size).toBe(LEAGUE.TEAM_COUNT);
   });
 
-  it('career_record parses and is internally plausible', () => {
+  it('no removed field (staff, scheme, grade, aggression index) is present', () => {
+    const present = new Set<string>([...Object.keys(ds), ...d.flatMap((c) => Object.keys(c))]);
+    expect(COACHING_REMOVED_FIELDS.filter((f) => present.has(f))).toEqual([]);
+  });
+
+  it('every non-null figure has n >= min_n', () => {
+    const offenders: string[] = [];
     for (const c of d) {
-      const [w, l] = c.career_record.split('-').map(Number);
-      expect(Number.isFinite(w) && Number.isFinite(l), `${c.team}: "${c.career_record}"`).toBe(true);
-      // A coach cannot have more games than ~17 per season of tenure, plus
-      // prior stops elsewhere; cap generously at 40 seasons.
-      expect(w + l, `${c.head_coach}: ${w + l} career games`).toBeLessThanOrEqual(40 * 20);
+      for (const k of COACHING_FIGURE_KEYS) {
+        const f = c[k];
+        if (f.value !== null && f.n < f.min_n) offenders.push(`${c.team} ${k}: n=${f.n} < min_n=${f.min_n}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("min_n = max(floor, ceil(per_game * games_coached)) for that team's games_coached", () => {
+    expect(rules.map((r) => r.metric)).toEqual([...COACHING_FIGURE_KEYS]);
+    const offenders: string[] = [];
+    for (const c of d) {
+      for (const r of rules) {
+        const want = minN(r.per_game, r.floor, c.games_coached);
+        const got = c[r.metric as (typeof COACHING_FIGURE_KEYS)[number]].min_n;
+        if (got !== want) offenders.push(`${c.team} ${r.metric}: min_n=${got}, formula gives ${want}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('a null figure is a sample below its minimum, never a missing measurement above it', () => {
+    const offenders: string[] = [];
+    for (const c of d) {
+      for (const k of COACHING_FIGURE_KEYS) {
+        const f = c[k];
+        if (f.value === null && f.n >= f.min_n) offenders.push(`${c.team} ${k}: null with n=${f.n} >= ${f.min_n}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('the coaching window sits inside the season played so far', () => {
+    for (const c of d) {
+      expect(c.games_coached, `${c.team} games_coached`).toBeLessThanOrEqual(ds.through_week);
+      if (c.since_week !== null) expect(c.since_week, `${c.team} since_week`).toBeLessThanOrEqual(ds.through_week);
+      expect(c.latest_game_id.startsWith(`${ds.season}_`), `${c.team} latest game ${c.latest_game_id}`).toBe(true);
+      expect(c.latest_game_id.includes(`_${c.team}`), `${c.team} latest game ${c.latest_game_id}`).toBe(true);
     }
   });
 
-  it('tenure of 0-1 years implies a short career record at this stop', () => {
-    // Guards against a stale coach row surviving a coaching change.
-    const offenders = d
-      .filter((c) => c.tenure_years <= 1)
-      .filter((c) => {
-        const [w, l] = c.career_record.split('-').map(Number);
-        return w + l > 17 * 25; // allow a long career elsewhere, flag the absurd
-      })
-      .map((c) => `${c.team} ${c.head_coach}: tenure ${c.tenure_years}y, record ${c.career_record}`);
-    expect(offenders).toEqual([]);
-  });
-
-  it('play_caller agrees with the offensive/defensive play-caller split', () => {
-    const offenders = d
-      .filter((c) => c.offensive_play_caller !== undefined)
-      .filter((c) => c.play_caller !== c.offensive_play_caller && c.play_caller !== c.defensive_play_caller)
-      .map((c) => `${c.team}: play_caller="${c.play_caller}" but off="${c.offensive_play_caller}" def="${c.defensive_play_caller}"`);
-    expect(offenders).toEqual([]);
-  });
-
-  it('HC and OC share a name only where the head coach calls the offence', () => {
-    // Kyle Shanahan-style setups legitimately list one name in both slots.
-    // A duplicate name WITHOUT that designation means one field was overwritten.
-    const offenders = d
-      .filter((c) => c.offensive_coordinator === c.head_coach)
-      .filter((c) => c.offensive_play_caller !== 'Head Coach' && c.play_caller !== 'Head Coach')
-      .map((c) => `${c.team}: ${c.head_coach} fills both HC and OC but does not call plays`);
-    expect(offenders).toEqual([]);
-  });
-
-  it('no coordinator name is duplicated across the offensive and defensive slots', () => {
-    const offenders = d
-      .filter((c) => c.offensive_coordinator === c.defensive_coordinator)
-      .map((c) => `${c.team}: ${c.offensive_coordinator} listed as both OC and DC`);
-    expect(offenders).toEqual([]);
-  });
-
-  it('fourth_down_aggression_index behaves like a percentile across the league', () => {
-    const vals = d.map((c) => c.fourth_down_aggression_index);
-    expect(Math.min(...vals), 'no coach near the bottom of the percentile range').toBeLessThan(25);
-    expect(Math.max(...vals), 'no coach near the top of the percentile range').toBeGreaterThan(75);
+  it('career_record agrees with the W-L-T counts and the truncation flag with the first season', () => {
+    for (const c of d) {
+      const expected = c.career_ties > 0
+        ? `${c.career_wins}-${c.career_losses}-${c.career_ties}`
+        : `${c.career_wins}-${c.career_losses}`;
+      expect(c.career_record, c.team).toBe(expected);
+      expect(c.career_wins + c.career_losses + c.career_ties, c.team).toBe(c.career_games);
+      expect(c.career_games, `${c.team} career covers this season`).toBeGreaterThanOrEqual(c.games_coached);
+      expect(c.career_possibly_truncated, c.team).toBe(c.career_first_season === ds.history_start_season);
+    }
   });
 
   it('super_bowl_wins totals are not inflated beyond history', () => {
-    // 59 Super Bowls have been played; active HCs cannot collectively hold
-    // more rings than that.
-    expect(sumBy(d, (c) => c.super_bowl_wins)).toBeLessThanOrEqual(59);
+    // 27 Super Bowls fall inside the 1999+ schedule window; active HCs cannot hold more.
+    expect(sumBy(d, (c) => c.super_bowl_wins)).toBeLessThanOrEqual(27);
   });
 });
 

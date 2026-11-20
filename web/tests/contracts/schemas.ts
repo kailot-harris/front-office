@@ -25,15 +25,6 @@ const division = z.enum([
 const isoishDate = z.string().regex(/^\d{4}-\d{2}-\d{2}/, 'expected a YYYY-MM-DD prefix');
 const isoUtcStamp = z.string().datetime();
 
-/**
- * Full letter-grade ladder the upstream coaching export can emit, including
- * minus grades. `lib/types.ts` currently declares a narrower union; see
- * tests/contracts/types-vs-data.test.ts.
- */
-export const TIMEOUT_GRADES = [
-  'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-', 'F',
-] as const;
-
 export const teamStandingSchema = z.object({
   team: teamCode,
   team_name: z.string().min(3),
@@ -243,26 +234,88 @@ export const visualMediaItemSchema = z.object({
   size_bytes: z.number().int().min(1),
 }).strict();
 
+/**
+ * coaching_profiles.json (NFL_analytics#171): built by build_coaching_dataset.R from nflverse
+ * data. A figure's value is null when n < min_n; it is never a default or league average.
+ */
+export const coachingFigureSchema = z.object({
+  value: z.number().finite().nullable(),
+  n: z.number().int().min(0),
+  min_n: z.number().int().min(1),
+}).strict();
+
+export const COACHING_FIGURE_KEYS = [
+  'fourth_down_go_rate',
+  'nfl4th_go_when_recommended',
+  'nfl4th_go_when_not_recommended',
+  'pass_rate_over_expected',
+  'early_down_pass_rate',
+  'play_action_rate',
+  'seconds_per_play',
+  'challenge_success_rate',
+  'epa_after_own_timeout',
+  'timeouts_q1_q3_share',
+  'unused_timeouts_close_losses',
+] as const;
+
+/** Fields the hand-typed file carried that #171 removed; none may come back. */
+export const COACHING_REMOVED_FIELDS = [
+  'offensive_coordinator',
+  'defensive_coordinator',
+  'play_caller',
+  'offensive_play_caller',
+  'defensive_play_caller',
+  'offensive_scheme',
+  'defensive_scheme',
+  'timeout_management_grade',
+  'fourth_down_aggression_index',
+] as const;
+
+const pctFigure = coachingFigureSchema.refine((f) => f.value === null || (f.value >= 0 && f.value <= 100), 'expected 0-100');
+
 export const coachProfileSchema = z.object({
   team: teamCode,
   head_coach: z.string().min(2),
-  tenure_years: z.number().min(0).max(40),
-  offensive_coordinator: z.string().min(1),
-  defensive_coordinator: z.string().min(1),
-  play_caller: z.enum(['Head Coach', 'Offensive Coordinator', 'Defensive Coordinator']),
-  offensive_play_caller: z.enum(['Head Coach', 'Offensive Coordinator']).optional(),
-  defensive_play_caller: z.enum(['Head Coach', 'Defensive Coordinator']).optional(),
-  fourth_down_aggression_index: z.number().min(0).max(100),
-  pass_rate_over_expected: z.number().min(-20).max(20),
-  early_down_pass_rate: pct100,
-  play_action_rate: pct100,
-  pace_seconds_per_play: z.number().min(15).max(45),
-  offensive_scheme: z.string().min(1),
-  defensive_scheme: z.string().min(1),
-  timeout_management_grade: z.enum(TIMEOUT_GRADES),
-  challenge_win_pct: pct100,
+  latest_game_id: z.string().regex(/^\d{4}_\d{2}_[A-Z]{2,3}_[A-Z]{2,3}$/),
+  since_week: z.number().int().min(1).max(22).nullable(),
+  games_coached: z.number().int().min(0).max(LEAGUE.SEASON_GAMES + 4),
+  tenure_seasons: z.number().int().min(1).max(40),
+  career_wins: z.number().int().min(0),
+  career_losses: z.number().int().min(0),
+  career_ties: z.number().int().min(0),
+  career_games: z.number().int().min(0),
   career_record: z.string().regex(/^\d+-\d+(-\d+)?$/, 'expected W-L or W-L-T'),
   super_bowl_wins: z.number().int().min(0).max(10),
+  career_first_season: z.number().int().min(1999).nullable(),
+  career_possibly_truncated: z.boolean(),
+  fourth_down_go_rate: pctFigure,
+  nfl4th_go_when_recommended: pctFigure,
+  nfl4th_go_when_not_recommended: pctFigure,
+  fourth_downs_without_model_estimate: z.number().int().min(0),
+  pass_rate_over_expected: coachingFigureSchema.refine((f) => f.value === null || Math.abs(f.value) <= 100),
+  early_down_pass_rate: pctFigure,
+  play_action_rate: pctFigure,
+  seconds_per_play: coachingFigureSchema.refine((f) => f.value === null || (f.value > 0 && f.value < 60)),
+  challenge_success_rate: pctFigure,
+  epa_after_own_timeout: coachingFigureSchema.refine((f) => f.value === null || Math.abs(f.value) < 10),
+  timeouts_q1_q3_share: pctFigure,
+  unused_timeouts_close_losses: coachingFigureSchema.refine((f) => f.value === null || (f.value >= 0 && f.value <= 3)),
+}).strict();
+
+export const coachingMinSampleRuleSchema = z.object({
+  metric: z.enum(COACHING_FIGURE_KEYS),
+  per_game: z.number().positive().nullable(),
+  floor: z.number().int().min(1),
+}).strict();
+
+export const coachingDatasetSchema = z.object({
+  generated_at: isoUtcStamp,
+  season: z.number().int().min(2020),
+  through_week: z.number().int().min(1).max(22),
+  play_action_through_week: z.number().int().min(1).max(22).nullable(),
+  history_start_season: z.literal(1999),
+  min_sample_rules: z.array(coachingMinSampleRuleSchema).length(COACHING_FIGURE_KEYS.length),
+  teams: z.array(coachProfileSchema).length(LEAGUE.TEAM_COUNT),
 }).strict();
 
 export const positionalSpendingItemSchema = z.object({
@@ -718,7 +771,7 @@ export const DATASET_SCHEMAS = {
   'player_qb_profiles.json': z.array(qbProfileSchema),
   'model_diagnostics.json': diagnosticsDatasetSchema,
   'visual_media_index.json': z.array(visualMediaItemSchema),
-  'coaching_profiles.json': z.array(coachProfileSchema),
+  'coaching_profiles.json': coachingDatasetSchema,
   'salary_cap_profiles.json': salaryCapDatasetSchema,
   'passing_index.json': z.array(passingCatalogEntrySchema),
   'passing_metadata.json': passingMetadataSchema,

@@ -17,6 +17,7 @@ import type {
   DiagnosticsDataset,
   VisualMediaItem,
   CoachProfile,
+  CoachingDataset,
   SalaryCapDataset,
   PassingCatalogEntry,
   PassingChartData,
@@ -63,7 +64,8 @@ export const playoffs = () => loadRaw(DATASET_FILES.getPlayoffPicture) as Playof
 export const qbs = () => loadRaw(DATASET_FILES.getQbProfiles) as QbProfile[];
 export const diagnostics = () => loadRaw(DATASET_FILES.getDiagnosticsData) as DiagnosticsDataset;
 export const media = () => loadRaw(DATASET_FILES.getVisualMediaIndex) as VisualMediaItem[];
-export const coaching = () => loadRaw(DATASET_FILES.getCoachingProfiles) as CoachProfile[];
+export const coachingDataset = () => loadRaw(DATASET_FILES.getCoachingProfiles) as CoachingDataset;
+export const coaching = (): CoachProfile[] => coachingDataset().teams;
 export const salaryCap = () => loadRaw(DATASET_FILES.getSalaryCapData) as SalaryCapDataset;
 export const passingIndex = () => loadRaw(DATASET_FILES.getPassingIndex) as PassingCatalogEntry[];
 export const passingMetadata = () => loadRaw(DATASET_FILES.getPassingMetadata) as PassingMetadata;

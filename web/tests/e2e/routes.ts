@@ -45,7 +45,7 @@ export const ROUTES: RouteSpec[] = [
     path: '/coaching',
     title: 'Coaching Analysis',
     heading: 'Head Coach Decision Profiles',
-    dataMarkers: ['4th-Down Aggression', 'PROE'],
+    dataMarkers: ['4th-Down Go Rate', 'PROE'],
     expectsSearch: true,
   },
   {
