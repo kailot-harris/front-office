@@ -4,15 +4,47 @@ import Link from 'next/link';
 import { ArrowRightLeft, ArrowLeft, ShieldAlert } from 'lucide-react';
 import { HowToRead } from '@/components/HowToRead';
 
+const ARCHIVED_OFFSEASON_SNAPSHOT_DATE = '2026-11-07';
+
 export const metadata: Metadata = {
   title: 'Offseason Moves & Expansion Hub (Archived)',
   description:
-    'The 2026 WNBA offseason moves and draft board are currently archived pending integration with live transaction feeds.',
+    'The 2026 WNBA offseason moves and draft board are archived static snapshots (2026-11-07) pending integration with live transaction feeds.',
 };
 
 export default function OffseasonPage() {
+  const snapshotDate = ARCHIVED_OFFSEASON_SNAPSHOT_DATE;
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center space-y-6">
+      <aside
+        role="note"
+        aria-label="Archived Static Snapshot"
+        data-testid="archived-static-snapshot-banner"
+        className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-left"
+      >
+        <div className="flex items-start gap-3">
+          <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+          <div className="space-y-1 text-sm">
+            <p className="font-bold text-amber-200 uppercase tracking-wide text-xs font-mono">
+              Archived Static Snapshot
+            </p>
+            <p className="text-slate-200 leading-relaxed">
+              The underlying{' '}
+              <code className="font-mono text-amber-300">offseason_draft.json</code>,{' '}
+              <code className="font-mono text-amber-300">offseason_teams.json</code>, and{' '}
+              <code className="font-mono text-amber-300">offseason_transactions.json</code> datasets
+              are frozen historical snapshots archived on{' '}
+              <time dateTime={snapshotDate} className="font-mono font-semibold text-white">
+                {snapshotDate}
+              </time>
+              . No scheduled pipeline stage updates these payloads (archived under issues #129, #141,
+              and #209).
+            </p>
+          </div>
+        </div>
+      </aside>
+
       <div className="inline-flex items-center justify-center p-3 bg-amber-500/10 rounded-full border border-amber-500/20 text-amber-400">
         <ArrowRightLeft className="w-8 h-8" />
       </div>

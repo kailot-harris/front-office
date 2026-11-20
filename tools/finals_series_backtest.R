@@ -40,7 +40,12 @@
 # cannot be located in it, the script warns and exits without writing, rather
 # than inventing a slate. It never overwrites an archived pre-game forecast.
 #
-# Output: cache/finals_series_backtest_2026.rds
+# Stage entry point: `run_finals_series_backtest()` (wired into run_full_pipeline.R
+# before export_web_json.R). Top-level autorun fires only when invoked directly
+# (`sys.nframe() == 0L && !interactive()`) and neither `WNBA_FINALS_BACKTEST_NO_AUTORUN`
+# nor `WNBA_SKIP_STAGE_AUTORUN` is set.
+#
+# Output: cache/finals_series_backtest_2026.rds (CACHE_FINALS_SERIES_BACKTEST)
 # ==============================================================================
 
 if (!requireNamespace("here", quietly = TRUE)) {
@@ -54,18 +59,29 @@ suppressPackageStartupMessages({
   library(tibble)
 })
 
-# Sourcing the predictor for its functions must not fire its demo autorun, which
-# re-simulates every series and targets the archived forecast file.
+# Sourcing the predictor for its functions must not fire its demo autorun (or
+# playoff_simulator.R's demo autorun), which re-simulate every series and target
+# archived forecast files. Restore caller env vars afterward so this library
+# load has no sticky side effects.
+.prev_sl_no_autorun <- Sys.getenv("WNBA_SERIES_LENGTH_NO_AUTORUN", unset = NA_character_)
+.prev_ps_no_autorun <- Sys.getenv("WNBA_PLAYOFF_SIM_NO_AUTORUN", unset = NA_character_)
 Sys.setenv(WNBA_SERIES_LENGTH_NO_AUTORUN = "1")
-if (!exists("WNBA_HCA") || !exists("WNBA_MARGIN_SIGMA")) source("config.R")
+Sys.setenv(WNBA_PLAYOFF_SIM_NO_AUTORUN = "1")
+if (!exists("WNBA_HCA") || !exists("WNBA_MARGIN_SIGMA") ||
+    !exists("CACHE_FINALS_SERIES_BACKTEST") || !exists("CACHE_PLAYOFF_BRACKET_CURRENT") ||
+    !exists("CACHE_TEAM_BOX")) {
+  source("config.R")
+}
 if (!exists("series_length_distribution")) source("tools/series_length_predictor.R")
 if (!exists("filter_real_franchises")) source("daily_ingest.R")
+if (!exists("log_info", mode = "function") && file.exists("logging_utils.R")) source("logging_utils.R")
+if (is.na(.prev_sl_no_autorun)) Sys.unsetenv("WNBA_SERIES_LENGTH_NO_AUTORUN") else Sys.setenv(WNBA_SERIES_LENGTH_NO_AUTORUN = .prev_sl_no_autorun)
+if (is.na(.prev_ps_no_autorun)) Sys.unsetenv("WNBA_PLAYOFF_SIM_NO_AUTORUN") else Sys.setenv(WNBA_PLAYOFF_SIM_NO_AUTORUN = .prev_ps_no_autorun)
+rm(.prev_sl_no_autorun, .prev_ps_no_autorun)
 
 .LOG_SCRIPT <- "finals_series_backtest.R"
 # CLAUDE.md: read the path from config.R, never restate the filename locally.
 OUT_PATH <- CACHE_FINALS_SERIES_BACKTEST
-
-message(">>> [FINALS BACKTEST] Walk-forward Finals series forecast reconstruction...")
 
 # ------------------------------------------------------------------------------
 # Generalized exact DP over series state. Identical model to
@@ -158,12 +174,13 @@ validate_against_production <- function(net_high, net_low, format = "bo7") {
 # Resolve the Finals from box scores rather than hardcoding the scorelines, so
 # this stays correct as further games are played.
 # ------------------------------------------------------------------------------
-load_finals_games <- function(high_abb, low_abb, season_yr = CURRENT_SEASON) {
-  if (!file.exists(CACHE_TEAM_BOX)) {
-    warning(sprintf(">>> [FINALS BACKTEST] %s not found -- cannot run backtest.", CACHE_TEAM_BOX))
+load_finals_games <- function(high_abb, low_abb, season_yr = CURRENT_SEASON,
+                              team_box_path = CACHE_TEAM_BOX) {
+  if (!file.exists(team_box_path)) {
+    warning(sprintf(">>> [FINALS BACKTEST] %s not found -- cannot run backtest.", team_box_path))
     return(NULL)
   }
-  box <- filter_real_franchises(readRDS(CACHE_TEAM_BOX)) %>%
+  box <- filter_real_franchises(readRDS(team_box_path)) %>%
     filter(season == season_yr) %>%
     mutate(game_day = as.Date(game_date))
 
@@ -216,11 +233,14 @@ ratings_as_of <- function(box, cutoff, season_types, high_abb, low_abb) {
 run_finals_backtest <- function(high_abb = "GS", high_name = "Golden State Valkyries",
                                 low_abb = "ATL", low_name = "Atlanta Dream",
                                 season_yr = CURRENT_SEASON, format = "bo7",
-                                write = TRUE) {
-  games <- load_finals_games(high_abb, low_abb, season_yr)
+                                write = TRUE,
+                                team_box_path = CACHE_TEAM_BOX,
+                                out_path = CACHE_FINALS_SERIES_BACKTEST) {
+  message(">>> [FINALS BACKTEST] Walk-forward Finals series forecast reconstruction...")
+  games <- load_finals_games(high_abb, low_abb, season_yr, team_box_path = team_box_path)
   if (is.null(games)) return(invisible(NULL))
 
-  box <- filter_real_franchises(readRDS(CACHE_TEAM_BOX)) %>%
+  box <- filter_real_franchises(readRDS(team_box_path)) %>%
     filter(season == season_yr) %>%
     mutate(game_day = as.Date(game_date))
 
@@ -307,13 +327,103 @@ run_finals_backtest <- function(high_abb = "GS", high_name = "Golden State Valky
   attr(out, "finals_games") <- games
 
   if (isTRUE(write)) {
-    saveRDS(out, OUT_PATH)
+    dir.create(dirname(out_path), recursive = TRUE, showWarnings = FALSE)
+    saveRDS(out, out_path)
     message(sprintf(">>> [FINALS BACKTEST] Saved %s (%d rows across %d information sets).",
-                    OUT_PATH, nrow(out), length(unique(out$info_set))))
+                    out_path, nrow(out), length(unique(out$info_set))))
   }
   invisible(out)
 }
 
-if (!interactive() && !identical(Sys.getenv("WNBA_FINALS_BACKTEST_NO_AUTORUN"), "1")) {
-  invisible(run_finals_backtest())
+resolve_finals_backtest_matchup <- function(season_yr = CURRENT_SEASON,
+                                            team_box_path = CACHE_TEAM_BOX,
+                                            bracket_path = CACHE_PLAYOFF_BRACKET_CURRENT) {
+  default_matchup <- list(
+    high_abb = "GS",
+    high_name = "Golden State Valkyries",
+    low_abb = "ATL",
+    low_name = "Atlanta Dream"
+  )
+  if (is.null(bracket_path) || !nzchar(bracket_path) || !file.exists(bracket_path)) {
+    return(default_matchup)
+  }
+  bracket <- tryCatch(readRDS(bracket_path), error = function(e) NULL)
+  if (is.null(bracket) || !is.data.frame(bracket) || nrow(bracket) == 0 ||
+      !"round" %in% names(bracket)) {
+    warning(">>> [FINALS BACKTEST] Playoff bracket cache is empty or missing round labels -- skipping.")
+    return(NULL)
+  }
+  fin <- bracket[!is.na(bracket$round) & bracket$round == "Finals", ]
+  if (nrow(fin) == 0) {
+    warning(">>> [FINALS BACKTEST] No Finals series in playoff bracket yet -- skipping.")
+    return(NULL)
+  }
+  fin <- fin[1, ]
+  a_abb <- as.character(fin$team_a_abb)
+  a_name <- as.character(fin$team_a)
+  b_abb <- as.character(fin$team_b_abb)
+  b_name <- as.character(fin$team_b)
+
+  # Order high vs low seed using regular-season seeds when available on this team_box_path.
+  seeds <- if (identical(team_box_path, CACHE_TEAM_BOX) &&
+               file.exists(team_box_path) &&
+               exists("derive_playoff_seeds", mode = "function")) {
+    tryCatch(derive_playoff_seeds(season_yr = season_yr, season_type_filter = 2L),
+             error = function(e) NULL)
+  } else {
+    NULL
+  }
+  if (!is.null(seeds) && nrow(seeds) > 0 &&
+      a_abb %in% seeds$abbr && b_abb %in% seeds$abbr) {
+    s_a <- seeds$seed[seeds$abbr == a_abb][1]
+    s_b <- seeds$seed[seeds$abbr == b_abb][1]
+    if (s_a <= s_b) {
+      return(list(high_abb = a_abb, high_name = a_name, low_abb = b_abb, low_name = b_name))
+    } else {
+      return(list(high_abb = b_abb, high_name = b_name, low_abb = a_abb, low_name = a_name))
+    }
+  }
+  if (setequal(c(a_abb, b_abb), c("GS", "ATL"))) {
+    return(default_matchup)
+  }
+  list(high_abb = a_abb, high_name = a_name, low_abb = b_abb, low_name = b_name)
+}
+
+run_finals_series_backtest <- function(high_abb = NULL, high_name = NULL,
+                                       low_abb = NULL, low_name = NULL,
+                                       season_yr = CURRENT_SEASON, format = "bo7",
+                                       write = TRUE,
+                                       team_box_path = CACHE_TEAM_BOX,
+                                       out_path = CACHE_FINALS_SERIES_BACKTEST,
+                                       bracket_path = CACHE_PLAYOFF_BRACKET_CURRENT) {
+  if (is.null(high_abb) || is.null(high_name) || is.null(low_abb) || is.null(low_name)) {
+    matchup <- resolve_finals_backtest_matchup(
+      season_yr = season_yr,
+      team_box_path = team_box_path,
+      bracket_path = bracket_path
+    )
+    if (is.null(matchup)) return(invisible(NULL))
+    high_abb  <- matchup$high_abb
+    high_name <- matchup$high_name
+    low_abb   <- matchup$low_abb
+    low_name  <- matchup$low_name
+  }
+  run_finals_backtest(
+    high_abb = high_abb,
+    high_name = high_name,
+    low_abb = low_abb,
+    low_name = low_name,
+    season_yr = season_yr,
+    format = format,
+    write = write,
+    team_box_path = team_box_path,
+    out_path = out_path
+  )
+}
+
+if (sys.nframe() == 0L &&
+    !interactive() &&
+    !identical(Sys.getenv("WNBA_FINALS_BACKTEST_NO_AUTORUN"), "1") &&
+    !nzchar(Sys.getenv("WNBA_SKIP_STAGE_AUTORUN"))) {
+  invisible(run_finals_series_backtest())
 }
