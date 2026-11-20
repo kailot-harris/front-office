@@ -1,0 +1,23 @@
+name: Check design tokens
+
+# front-office#201 (epic #200): the canonical assets/design-tokens.css must match its
+# published sha256, every sport mirror's web/app/design-tokens.css must be byte-identical,
+# and every token text/background pair must meet WCAG AA in light and dark mode.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-tokens:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Token drift and contrast
+        run: node tools/check_design_tokens.mjs
+      - name: Checker tests
+        run: node tools/test_check_design_tokens.mjs
