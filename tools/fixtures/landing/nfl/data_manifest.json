@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "sport": "nfl",
+  "generated_at": "2026-11-20T17:31:59Z",
+  "schedule_through_date": null,
+  "datasets": {
+    "clutch_leverage_metrics.json": {
+      "builder": "build_clutch_dataset.R",
+      "generated_at": "2026-11-20T15:44:36Z",
+      "stamp_source": "manifest:content_hash",
+      "content_sha256": "e017469ee7ba63688213f7c21d0421880247e6a439ce57ec1e57999d65a6b332",
+      "through_date": "2026-11-16",
+      "through_date_source": "payload:[].throughWeek (week -> latest completed gameday via matchups_current_week.json)",
+      "static": false,
+      "max_lag_days": 8,
+      "coverage_note": null
+    },
+    "coaching_profiles.json": {
+      "builder": "build_coaching_dataset.R",
+      "generated_at": "2026-11-20T05:53:21Z",
+      "stamp_source": "payload:generated_at",
+      "content_sha256": "64981e47fa57382231c03f281a76a8e0f6fbc000e19dfa08305e2a0cca7b7a29",
+      "through_date": "2026-11-19",
+      "through_date_source": "payload:through_week (week -> latest completed gameday via matchups_current_week.json)",
+      "static": false,
+      "max_lag_days": 8,
+      "coverage_note": null
+    },
+    "landing_digest.json": {
+      "builder": "tools/build_landing_digest.R",
+      "generated_at": "2026-11-20T17:31:19Z",
+      "stamp_source": "payload:generated_at",
+      "content_sha256": "ac981ce7d341ae026c9b676cb77489ef79d358815feed99cded835312ea36117",
+      "through_date": "2026-11-19",
+      "through_date_source": "payload:yesterday[final].start_time_utc (US Eastern date of the latest final)",
+      "static": false,
+      "max_lag_days": 8,
+      "coverage_note": null
+    },
+    "matchups_current_week.json": {
+      "builder": "export_web_datasets.R",
+      "generated_at": "2026-11-20T05:08:34Z",
+      "stamp_source": "payload:generated_at",
+      "content_sha256": "f517ebdca89d1c848c7c4df642c4ec782b22d813f6234fb9b7b3d78138bc1076",
+      "through_date": "2026-11-19",
+      "through_date_source": "payload:matchups[is_completed].gameday",
+      "static": false,
+      "max_lag_days": 8,
+      "coverage_note": null
+    },
+    "model_diagnostics.json": {
+      "builder": "export_web_datasets.R",
+      "generated_at": "2026-11-20T05:08:34Z",
+      "stamp_source": "payload:generated_at",
+      "content_sha256": "feb18ca1223b00815b1a9a5a3ce8e6f1fb3bc008a36e3874e0cdd9054cd10ee2",
+      "through_date": null,
+      "through_date_source": "not_game_dated",
+      "coverage_note": "Accuracy history keyed by evaluation run time (last_evaluated), not by game date",
+      "static": false,
+      "max_lag_days": 8
+    },
+    "passing_index.json": {
+      "builder": "build_passing_dataset.R",
+      "generated_at": "2026-11-20T15:44:36Z",
+      "stamp_source": "manifest:content_hash",
+      "content_sha256": "37c644142934ace934ae48b85421f2b86a45d0e1664e8b5c0748dbfb61f6ae32",
+      "through_date": null,
+      "through_date_source": "not_game_dated",
+      "coverage_note": "QB catalog for the passing charts; carries no game date",
+      "static": false,
+      "max_lag_days": 8
+    },
+    "passing_metadata.json": {
+      "builder": "build_passing_dataset.R",
+      "generated_at": "2026-11-20T05:10:07Z",
+      "stamp_source": "payload:updated_at",
+      "content_sha256": "2f0111a5810f04733b85242696baef7b2e91c4333aa794144ea9b0639d6179e4",
+      "through_date": null,
+      "through_date_source": "not_game_dated",
+      "coverage_note": "League zone averages for the season; carries no game date",
+      "static": false,
+      "max_lag_days": 8
+    },
+    "player_dna_profiles.json": {
+      "builder": "build_player_dna_dataset.R",
+      "generated_at": "2026-11-20T05:10:15Z",
+      "stamp_source": "payload:generatedAt",
+      "content_sha256": "57d059a2da37707fadc027378401c282b8f2809dacbfbfa6f6189b2f6e470640",
+      "through_date": "2026-11-16",
+      "through_date_source": "payload:throughWeek (week -> latest completed gameday via matchups_current_week.json)",
+      "static": false,
+      "max_lag_days": 8,
+      "coverage_note": null
+    },
+    "player_qb_profiles.json": {
+      "builder": "export_web_datasets.R",
+      "generated_at": "2026-11-20T05:08:34Z",
+      "stamp_source": "payload:[0].generated_at",
+      "content_sha256": "27996f5bd5690855edda211da49c84990e90b859e0d379190da751621da55990",
+      "through_date": null,
+      "through_date_source": "not_game_dated",
+      "coverage_note": "Rolling QB profiles; carries no game date",
+      "static": false,
+      "max_lag_days": 8
+    },
+    "playoff_picture.json": {
+      "builder": "export_web_datasets.R",
+      "generated_at": "2026-11-20T05:08:34Z",
+      "stamp_source": "payload:generated_at",
+      "content_sha256": "ca77192eb38ce8f01822fb420f6666cc98f654f5cbfe5ed76154ccc5c4f152e7",
+      "through_date": null,
+      "through_date_source": "not_game_dated",
+      "coverage_note": "Simulated seeding probabilities; carries no game date",
+      "static": false,
+      "max_lag_days": 8
+    },
+    "salary_cap_profiles.json": {
+      "builder": "export_web_datasets.R",
+      "generated_at": "2026-11-20T05:08:34Z",
+      "stamp_source": "payload:generated_at",
+      "content_sha256": "cb879a809ff6fe2854b4ad29b242dda3e722a1ef0cab40ff2723b787abe4d632",
+      "through_date": null,
+      "through_date_source": "not_game_dated",
+      "coverage_note": "Annual cap snapshot; carries no game date",
+      "static": true,
+      "static_reason": "Annual NFL salary cap snapshot"
+    },
+    "standings_projections.json": {
+      "builder": "export_web_datasets.R",
+      "generated_at": "2026-11-20T05:08:34Z",
+      "stamp_source": "payload:generated_at",
+      "content_sha256": "cca8454e2fee1e9b310848c77ed146e6a763aaf5f4320145960bfd3a6d19727a",
+      "through_date": null,
+      "through_date_source": "not_game_dated",
+      "coverage_note": "Team ratings and projections carry games_played counts, not game dates",
+      "static": false,
+      "max_lag_days": 8
+    },
+    "team_epa_profiles.json": {
+      "builder": "export_web_datasets.R",
+      "generated_at": "2026-11-20T05:08:34Z",
+      "stamp_source": "payload:[0].generated_at",
+      "content_sha256": "e8086dd8689e5efe6e09d7c64da780b4eef212fef0cb03b55ebf46aa8a0f4bf6",
+      "through_date": null,
+      "through_date_source": "not_game_dated",
+      "coverage_note": "Rolling team EPA profiles; carries no game date",
+      "static": false,
+      "max_lag_days": 8
+    },
+    "visual_media_index.json": {
+      "builder": "export_web_datasets.R",
+      "generated_at": "2026-11-20T05:08:34Z",
+      "stamp_source": "payload:[0].generated_at",
+      "content_sha256": "b5458ec25f09c71a478574fd8c6ae4071e65fbe0c4acbf7a063c142f5b00988e",
+      "through_date": null,
+      "through_date_source": "not_game_dated",
+      "coverage_note": "Media catalog; carries no game date",
+      "static": false,
+      "max_lag_days": 8
+    }
+  }
+}

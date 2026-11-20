@@ -1,11 +1,15 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-site="landing">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Front Office — NFL, NBA, WNBA &amp; MLB Probabilistic Analytics</title>
   <meta name="description" content="56 interactive analytics modules across the NFL, NBA, WNBA and MLB: season simulations, cap sheets, player projections, clutch indexes and playoff simulators." />
-  <meta name="theme-color" content="#041313" />
+  <meta name="theme-color" content="#f3fafa" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#041313" media="(prefers-color-scheme: dark)" />
+  <link rel="stylesheet" href="assets/fonts/fonts.css" />
+  <link rel="stylesheet" href="assets/design-tokens.css" />
+  <link rel="stylesheet" href="assets/landing/digest.css" />
   <link rel="canonical" href="https://kailot-harris.github.io/front-office/" />
   <!-- robots.txt can only be honored at the domain root for a GitHub Pages
        project site (outside this repo's control), so this <link> is the
@@ -31,22 +35,30 @@
   <meta name="twitter:image" content="https://kailot-harris.github.io/front-office/assets/social/og-card.png" />
   <style>
     :root {
-      color-scheme: dark;
       /* Teal Current — this landing page's own colorway, per
          docs-internal/COLORWAY_IMPLEMENTATION_PLAN.md §1/§4 */
-      --surface: #041313;
-      --surface-raised: #0a2424;
-      --accent: #2dd4bf;
+      --surface: var(--fo-surface);
+      --surface-raised: var(--fo-surface-raised);
+      --accent: var(--fo-accent);
       /* Each sport's own accent, sampled here so a card previews the site it links to */
-      --nfl-accent: #059669;
-      --nba-accent: #4f46e5;
-      --wnba-accent: #7c3aed;
-      --mlb-accent: #0284c7;
-      /* Each sport's Hybrid B luminous status pip */
-      --nfl-pip: #34d399;
-      --nba-pip: #fb923c;
-      --wnba-pip: #a78bfa;
-      --mlb-pip: #38bdf8;
+      --nfl-accent: var(--fo-nfl-accent);
+      --nba-accent: var(--fo-nba-accent);
+      --wnba-accent: var(--fo-wnba-accent);
+      --mlb-accent: var(--fo-mlb-accent);
+      /* Each sport's status pip. Pips double as text color (tabs, badges), so light mode
+         uses the AA-safe token accents; dark mode keeps the Hybrid B luminous pips. */
+      --nfl-pip: var(--fo-nfl-accent);
+      --nba-pip: var(--fo-nba-accent);
+      --wnba-pip: var(--fo-wnba-accent);
+      --mlb-pip: var(--fo-mlb-accent);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --nfl-pip: #34d399;
+        --nba-pip: #fb923c;
+        --wnba-pip: #a78bfa;
+        --mlb-pip: #38bdf8;
+      }
     }
     body {
       margin: 0;
@@ -57,8 +69,8 @@
       justify-content: center;
       gap: 2rem;
       background: var(--surface);
-      color: #e7e9ee;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--fo-text);
+      font-family: var(--fo-font-sans);
     }
     .hero-header {
       display: flex;
@@ -88,7 +100,7 @@
       font-weight: 800;
       letter-spacing: 0.04em;
       margin: 0;
-      color: #e7e9ee;
+      color: var(--fo-text);
       text-shadow: 0 0 24px rgba(45, 212, 191, 0.25);
     }
     .hero-rail {
@@ -101,11 +113,11 @@
     }
     .hero-subheader {
       margin: 0;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-family: var(--fo-font-mono);
       font-size: 0.75rem;
       font-weight: 500;
       letter-spacing: 0.06em;
-      color: #94a3b8;
+      color: var(--fo-text-muted);
     }
     nav {
       display: grid;
@@ -131,13 +143,13 @@
       box-sizing: border-box;
       padding: 0.55rem 2.25rem 0.55rem 0.85rem;
       background: var(--surface-raised);
-      border: 1px solid #1c3333;
+      border: 1px solid var(--fo-border);
       border-radius: 0.6rem;
-      color: #e7e9ee;
+      color: var(--fo-text);
       font: inherit;
       font-size: 0.85rem;
     }
-    .module-filter input::placeholder { color: #94a3b8; }
+    .module-filter input::placeholder { color: var(--fo-text-muted); }
     .module-filter input:focus-visible {
       outline: 2px solid var(--accent);
       outline-offset: 1px;
@@ -146,11 +158,11 @@
       position: absolute;
       right: 0.6rem;
       padding: 0.05rem 0.4rem;
-      border: 1px solid #2a4a4a;
+      border: 1px solid var(--fo-border);
       border-radius: 0.3rem;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-family: var(--fo-font-mono);
       font-size: 0.6875rem;
-      color: #94a3b8;
+      color: var(--fo-text-muted);
       pointer-events: none;
     }
     .module-filter input:focus + kbd,
@@ -158,10 +170,10 @@
     .filter-status {
       margin: 0;
       min-height: 1.2em;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-family: var(--fo-font-mono);
       font-size: 0.6875rem;
       letter-spacing: 0.04em;
-      color: #94a3b8;
+      color: var(--fo-text-muted);
     }
     nav.filtering .card.no-match,
     nav.filtering .tab-list li.no-match { display: none; }
@@ -182,7 +194,7 @@
       display: flex;
       flex-direction: column;
       padding: 0;
-      border: 1px solid #1c3333;
+      border: 1px solid var(--fo-border);
       border-top: 3px solid var(--sport-accent);
       border-radius: 0.75rem;
       background: var(--surface-raised);
@@ -255,7 +267,7 @@
       border-radius: 9999px;
       background: color-mix(in srgb, var(--sport-pip) 12%, transparent);
       color: var(--sport-pip);
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-family: var(--fo-font-mono);
       font-size: 0.625rem;
       font-weight: 600;
       line-height: 1.4;
@@ -264,10 +276,10 @@
       white-space: nowrap;
     }
     .card-count {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-family: var(--fo-font-mono);
       font-size: 0.75rem;
       font-weight: 500;
-      color: #94a3b8;
+      color: var(--fo-text-muted);
       text-shadow: none;
     }
     .card-header:focus-visible {
@@ -369,7 +381,7 @@
       box-sizing: border-box;
       padding: 1.25rem;
       background: var(--surface-raised);
-      border: 1px solid #1c3333;
+      border: 1px solid var(--fo-border);
       border-radius: 1.75rem;
       box-shadow: 0 0 0 1px color-mix(in srgb, var(--sport-accent) 25%, transparent) inset,
                   0 20px 50px -10px rgba(0, 0, 0, 0.6);
@@ -385,7 +397,7 @@
       gap: 0.375rem;
       padding: 0.25rem;
       background: var(--surface);
-      border: 1px solid #1c3333;
+      border: 1px solid var(--fo-border);
       border-radius: 0.75rem;
     }
     .trophy-tab[data-sport="nfl"] { --tab-pip: var(--nfl-pip); }
@@ -399,9 +411,9 @@
       gap: 0.35rem;
       background: transparent;
       border: 1px solid transparent;
-      color: #e7e9ee;
+      color: var(--fo-text);
       opacity: 0.65;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-family: var(--fo-font-mono);
       font-size: 0.75rem;
       font-weight: 700;
       letter-spacing: 0.05em;
@@ -412,7 +424,7 @@
     }
     .trophy-tab:hover {
       opacity: 1;
-      color: #fff;
+      color: var(--fo-text);
     }
     .trophy-tab:focus-visible {
       outline: 2px solid var(--tab-pip, var(--sport-pip));
@@ -486,7 +498,7 @@
       font-size: 0.875rem;
       font-weight: 700;
       letter-spacing: 0.03em;
-      color: #e7e9ee;
+      color: var(--fo-text);
     }
     .trophy-rail {
       width: 100%;
@@ -498,7 +510,7 @@
       margin: 0.1rem 0;
     }
     .trophy-subtitle {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-family: var(--fo-font-mono);
       font-size: 0.6875rem;
       font-weight: 600;
       text-transform: uppercase;
@@ -527,6 +539,7 @@
   </style>
 </head>
 <body>
+  <a class="fo-skip-link" href="#main">Skip to content</a>
   <header class="hero-header">
     <div class="hero-title-row">
       <span class="hero-pip" aria-hidden="true"></span>
@@ -535,6 +548,7 @@
     <div class="hero-rail" aria-hidden="true"></div>
     <p class="hero-subheader">Multi-Sport Probabilistic Engine • 2026 Slate</p>
   </header>
+  <main id="main">
   <div class="hero-container">
     <!-- ===================== Trophy Hero Showcase ===================== -->
     <section class="trophy-showcase" data-sport="nfl"
@@ -576,7 +590,7 @@
       <nav aria-label="Leagues and modules">
       <div class="card" data-sport="nfl">
         <button class="card-header" type="button" aria-expanded="false" aria-controls="modules-nfl">
-          <span class="card-badge">In-Season (Live Slate)</span>
+          <span class="card-badge" aria-live="polite"></span>
           <div class="card-title-row">
             <img class="favicon" src="nfl/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
             <span class="sport-pip" aria-hidden="true"></span>
@@ -606,7 +620,7 @@
       </div>
       <div class="card" data-sport="nba">
         <button class="card-header" type="button" aria-expanded="false" aria-controls="modules-nba">
-          <span class="card-badge">In-Season (Live Slate)</span>
+          <span class="card-badge" aria-live="polite"></span>
           <div class="card-title-row">
             <img class="favicon" src="nba/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
             <span class="sport-pip" aria-hidden="true"></span>
@@ -637,7 +651,7 @@
       </div>
       <div class="card" data-sport="wnba">
         <button class="card-header" type="button" aria-expanded="false" aria-controls="modules-wnba">
-          <span class="card-badge">Off-Season (Weekly Monitor)</span>
+          <span class="card-badge" aria-live="polite"></span>
           <div class="card-title-row">
             <img class="favicon" src="wnba/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
             <span class="sport-pip" aria-hidden="true"></span>
@@ -669,7 +683,7 @@
       </div>
       <div class="card" data-sport="mlb">
         <button class="card-header" type="button" aria-expanded="false" aria-controls="modules-mlb">
-          <span class="card-badge">Off-Season (Weekly Monitor)</span>
+          <span class="card-badge" aria-live="polite"></span>
           <div class="card-title-row">
             <img class="favicon" src="mlb/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
             <span class="sport-pip" aria-hidden="true"></span>
@@ -701,6 +715,43 @@
       </nav>
     </div>
   </div>
+  <section id="digest" class="digest" aria-labelledby="digest-heading" aria-busy="true">
+    <h2 id="digest-heading">Daily digest</h2>
+    <p id="dg-status" class="fo-sr-only" role="status" aria-live="polite">Loading the daily digest.</p>
+    <noscript><p class="dg-noscript">The daily digest needs JavaScript. Each league's pages above work without it.</p></noscript>
+    <ul id="dg-fresh" class="dg-fresh" aria-label="Data freshness by league"></ul>
+    <div class="dg-grid">
+      <section class="dg-panel" aria-labelledby="dg-today-heading">
+        <h3 id="dg-today-heading">Today's games</h3>
+        <div id="dg-today-body"></div>
+      </section>
+      <section class="dg-panel" aria-labelledby="dg-yesterday-heading">
+        <h3 id="dg-yesterday-heading">Yesterday's results</h3>
+        <div id="dg-yesterday-body"></div>
+      </section>
+    </div>
+    <section id="dg-insights" class="dg-panel" aria-labelledby="dg-insights-heading" style="margin-top: var(--fo-space-4)">
+      <div class="dg-insights-head">
+        <h3 id="dg-insights-heading">Model track record and biggest movers</h3>
+        <div id="dg-picker" class="dg-tabs" data-controls="dg-insights-panel"></div>
+      </div>
+      <div id="dg-insights-panel" role="tabpanel" class="dg-grid" style="margin-top: var(--fo-space-3)">
+        <div>
+          <h4 class="dg-sport">Track record</h4>
+          <div id="dg-cal"></div>
+        </div>
+        <div>
+          <div class="dg-insights-head">
+            <h4 class="dg-sport">Biggest movers <span id="dg-movers-metric" class="dg-sub"></span></h4>
+            <div id="dg-window" class="dg-tabs" data-controls="dg-movers"></div>
+          </div>
+          <div id="dg-movers" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+  </section>
+  </main>
+  <script src="assets/landing/digest.js" defer></script>
   <script>
     (function initTrophyShowcase() {
       var showcase = document.querySelector('.trophy-showcase');
