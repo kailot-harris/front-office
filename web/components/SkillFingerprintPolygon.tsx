@@ -98,11 +98,10 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
             })
             .join(' ');
           return (
-            <polygon
+            <polygon className="stroke-zinc-800"
               key={level}
               points={points}
               fill="none"
-              stroke="#27272a"
               strokeWidth={level === 1.0 ? '1.5' : '1'}
               strokeDasharray={level === 1.0 ? 'none' : '3,3'}
             />

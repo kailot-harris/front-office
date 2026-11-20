@@ -110,6 +110,8 @@ export const EXPECTED_DATA_FILES = [
   'matchups_slates.json',
   'shots_index.json',
   'shots_metadata.json',
+  // Consumed by the front-office landing page (front-office#200), not a route here.
+  'landing_digest.json',
 ] as const;
 export type DataFileName = (typeof EXPECTED_DATA_FILES)[number];
 

@@ -258,16 +258,14 @@ describe('MatchupCard interactive trigger', () => {
     const cardBtn = screen.getByRole('button', {
       name: 'Inspect game detail: 76ers (PHI) at Knicks (NYK) on 2026-10-20',
     });
-    expect(cardBtn).toHaveAttribute('tabindex', '0');
+    // A native <button> stretched over the card (WCAG 2.5.3): focusable and
+    // Enter/Space-activated by the browser, so only the click is simulated here.
+    expect(cardBtn.tagName).toBe('BUTTON');
 
     fireEvent.click(cardBtn);
-    fireEvent.keyDown(cardBtn, { key: 'Enter' });
-    fireEvent.keyDown(cardBtn, { key: ' ' });
 
-    expect(onSelect).toHaveBeenCalledTimes(3);
+    expect(onSelect).toHaveBeenCalledTimes(1);
     expect(onSelect).toHaveBeenNthCalledWith(1, game, cardBtn);
-    expect(onSelect).toHaveBeenNthCalledWith(2, game, cardBtn);
-    expect(onSelect).toHaveBeenNthCalledWith(3, game, cardBtn);
   });
 });
 
@@ -350,7 +348,7 @@ describe('MatchupsClient Grid & Table GameDetailModal integration', () => {
 
     render(<MatchupsClient dataset={dataset} />);
 
-    await user.click(screen.getByRole('button', { name: 'Compact table view' }));
+    await user.click(screen.getByRole('tab', { name: 'Compact table view' }));
 
     const row = screen.getByRole('row', {
       name: 'Inspect game detail: Celtics (BOS) at Lakers (LAL) on 2026-10-28',

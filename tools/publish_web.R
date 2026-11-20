@@ -845,7 +845,11 @@ if (!dir.exists(WEB_MEDIA_DIR)) dir.create(WEB_MEDIA_DIR, recursive = TRUE)
     invisible(TRUE)
   }
   rel_media <- .pw_rel_to_repo(WEB_MEDIA_DIR, repo_root)
-  all_paths <- unique(c(rel_paths, rel_media))
+  # Landing-digest ratings history (NBA#213): tracked, outside web/public, and
+  # staged by its exact path without -f (it must never be gitignored).
+  rel_hist <- if (file.exists(file.path(repo_root, "data", "history", "ratings_history.csv")))
+    "data/history/ratings_history.csv" else character(0)
+  all_paths <- unique(c(rel_paths, rel_media, rel_hist))
   record("git add web/public/data & web/public/media",
          .pw_git(repo_root, c("add", "-A", "--", all_paths)))
   record("git commit (NBA_analytics)",

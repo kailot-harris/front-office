@@ -136,7 +136,7 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
             type="button"
             onClick={handleExportCalibrationPng}
             title="Export chart as PNG"
-            aria-label="Export calibration chart as PNG"
+            aria-label="Chart PNG: export the calibration chart"
             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
           >
             <Download className="w-3.5 h-3.5" />
@@ -146,7 +146,7 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
             type="button"
             onClick={handleExportCalibrationCsv}
             title="Export table as CSV"
-            aria-label="Export calibration table as CSV"
+            aria-label="Table CSV: export the calibration table"
             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
           >
             <Download className="w-3.5 h-3.5" />
@@ -181,22 +181,20 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
                   return (
                     <React.Fragment key={step}>
                       {/* Horizontal grid line */}
-                      <line
+                      <line className="stroke-slate-700"
                         x1="40"
                         y1={400 - pos + 40}
                         x2="360"
                         y2={400 - pos + 40}
-                        stroke="#334155"
                         strokeDasharray="4 4"
                         strokeWidth="1"
                       />
                       {/* Vertical grid line */}
-                      <line
+                      <line className="stroke-slate-700"
                         x1={pos}
                         y1="40"
                         x2={pos}
                         y2="360"
-                        stroke="#334155"
                         strokeDasharray="4 4"
                         strokeWidth="1"
                       />
@@ -205,16 +203,15 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
                 })}
 
                 {/* Axes */}
-                <line x1="40" y1="360" x2="360" y2="360" stroke="#64748b" strokeWidth="2" />
-                <line x1="40" y1="40" x2="40" y2="360" stroke="#64748b" strokeWidth="2" />
+                <line className="stroke-slate-500" x1="40" y1="360" x2="360" y2="360" strokeWidth="2" />
+                <line className="stroke-slate-500" x1="40" y1="40" x2="40" y2="360" strokeWidth="2" />
 
                 {/* Perfect Calibration diagonal (y = x) */}
-                <line
+                <line className="stroke-slate-400"
                   x1="40"
                   y1="360"
                   x2="360"
                   y2="40"
-                  stroke="#94a3b8"
                   strokeDasharray="6 6"
                   strokeWidth="2"
                 />
@@ -253,15 +250,14 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
                 })}
 
                 {/* Axis Labels */}
-                <text x="200" y="395" textAnchor="middle" fill="#94a3b8" fontSize="12" fontWeight="600">
+                <text className="fill-slate-400" x="200" y="395" textAnchor="middle" fontSize="12" fontWeight="600">
                   Predicted Win Probability →
                 </text>
-                <text
+                <text className="fill-slate-400"
                   x="-200"
                   y="16"
                   transform="rotate(-90)"
                   textAnchor="middle"
-                  fill="#94a3b8"
                   fontSize="12"
                   fontWeight="600"
                 >

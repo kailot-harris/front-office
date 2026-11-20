@@ -59,6 +59,8 @@ DM_SPEC <- list(
   "coaching_metrics.json"            = list(builder = "build_coaching_dataset.R",   max_lag_days = 2L,
     coverage_note = "Per-staff ratings; content carries no game date."),
   "defensive_metrics.json"           = list(builder = "build_defense_dataset.R",    max_lag_days = 2L),
+  "landing_digest.json"              = list(builder = "build_landing_digest.R", max_lag_days = 2L,
+    coverage_note = "No final game in the digest's yesterday list (off day or off-season)."),
   "matchups_slates.json"             = list(builder = "build_matchups_dataset.R",   max_lag_days = 2L),
   "player_dna_profiles.json"         = list(builder = "build_player_dna_dataset.R", max_lag_days = 2L),
   "playoff_series_matchups.json"     = list(builder = "playoff_simulator.R",        max_lag_days = 2L,
@@ -93,6 +95,14 @@ DM_COVERAGE <- list(
   "defensive_metrics.json"       = .dm_date_field("throughDate"),
   "player_dna_profiles.json"     = .dm_date_field("throughDate"),
   "shots_metadata.json"          = .dm_date_field("through_date"),
+  "landing_digest.json" = function(j) {
+    # Latest FINAL game in yesterday[]: never generated_at or slate_date.
+    d <- vapply(j$yesterday %||% list(), function(g)
+      if (isTRUE(g$final) && !is.null(g$game_date)) as.character(g$game_date) else NA_character_, character(1))
+    d <- d[!is.na(d)]
+    list(date = if (length(d)) as.character(max(as.Date(d))) else NA_character_,
+         source = "payload:yesterday[final].game_date")
+  },
   "matchups_slates.json" = function(j) {
     d <- vapply(j$matchups %||% list(), function(m)
       if (isTRUE(m$is_completed)) as.character(m$game_date) else NA_character_, character(1))

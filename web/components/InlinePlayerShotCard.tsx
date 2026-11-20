@@ -99,6 +99,9 @@ export const InlinePlayerShotCard: React.FC<InlinePlayerShotCardProps> = ({
       </div>
 
       {/* Body Content */}
+      <div className="sr-only" aria-live="polite">
+        {loading ? 'Loading shot chart.' : error ? 'The shot chart failed to load.' : 'Shot chart loaded.'}
+      </div>
       {loading && (
         <div className="h-64 flex flex-col items-center justify-center gap-3 text-slate-400">
           <Loader2 className="w-7 h-7 animate-spin text-indigo-500" />

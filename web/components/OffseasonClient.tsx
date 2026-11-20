@@ -400,8 +400,8 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
 
       {/* Primary Tab Navigation */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-raised/70 p-1.5 rounded-2xl border border-slate-800/80">
-        <div className="flex items-center gap-1.5 overflow-x-auto">
-          <button
+        <div role="tablist" aria-label="Active tab" className="flex items-center gap-1.5 overflow-x-auto">
+          <button role="tab" aria-selected={activeTab === 'feed'}
             onClick={() => setActiveTab('feed')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
               activeTab === 'feed'
@@ -420,7 +420,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
             </span>
           </button>
 
-          <button
+          <button role="tab" aria-selected={activeTab === 'teams'}
             onClick={() => setActiveTab('teams')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
               activeTab === 'teams'
@@ -439,7 +439,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
             </span>
           </button>
 
-          <button
+          <button role="tab" aria-selected={activeTab === 'machine'}
             onClick={() => setActiveTab('machine')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
               activeTab === 'machine'
@@ -454,7 +454,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
             </span>
           </button>
 
-          <button
+          <button role="tab" aria-selected={activeTab === 'draft'}
             onClick={() => setActiveTab('draft')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
               activeTab === 'draft'
@@ -543,8 +543,8 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
               </div>
 
               {/* Type Category Pills */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
-                <button
+              <div role="tablist" aria-label="Type filter" className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+                <button role="tab" aria-selected={typeFilter === 'all'}
                   onClick={() => setTypeFilter('all')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                     typeFilter === 'all'
@@ -554,7 +554,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 >
                   All Types ({transactions.length})
                 </button>
-                <button
+                <button role="tab" aria-selected={typeFilter === 'trade'}
                   onClick={() => setTypeFilter('trade')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                     typeFilter === 'trade'
@@ -564,7 +564,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 >
                   Trades ({totalTrades})
                 </button>
-                <button
+                <button role="tab" aria-selected={typeFilter === 'free_agency'}
                   onClick={() => setTypeFilter('free_agency')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                     typeFilter === 'free_agency'
@@ -574,7 +574,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 >
                   Free Agency ({totalFreeAgents})
                 </button>
-                <button
+                <button role="tab" aria-selected={typeFilter === 'draft'}
                   onClick={() => setTypeFilter('draft')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                     typeFilter === 'draft'
@@ -589,6 +589,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
               {/* Team Dropdown & Sort */}
               <div className="flex items-center gap-2">
                 <select
+                  aria-label="Filter by franchise"
                   value={teamFilter}
                   onChange={(e) => setTeamFilter(e.target.value)}
                   className="bg-surface border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
@@ -602,6 +603,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                 </select>
 
                 <select
+                  aria-label="Sort transactions"
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as 'wins' | 'nrtg' | 'bpm' | 'date')}
                   className="bg-surface border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
@@ -898,8 +900,8 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
               </p>
             </div>
 
-            <div className="flex items-center gap-1.5 self-start sm:self-auto">
-              <button
+            <div role="tablist" aria-label="Conf filter" className="flex items-center gap-1.5 self-start sm:self-auto">
+              <button role="tab" aria-selected={confFilter === 'all'}
                 onClick={() => setConfFilter('all')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   confFilter === 'all'
@@ -909,7 +911,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
               >
                 All 30 Teams
               </button>
-              <button
+              <button role="tab" aria-selected={confFilter === 'East'}
                 onClick={() => setConfFilter('East')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   confFilter === 'East'
@@ -919,7 +921,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
               >
                 Eastern Conference
               </button>
-              <button
+              <button role="tab" aria-selected={confFilter === 'West'}
                 onClick={() => setConfFilter('West')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   confFilter === 'West'
@@ -1185,7 +1187,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
               <span className="font-mono text-amber-400">MARGIN_SIGMA = 11.8</span> model.
             </p>
             {allPlayersLoading && (
-              <p className="text-xs text-slate-500">Loading full roster data&hellip;</p>
+              <p className="text-xs text-slate-500" role="status">Loading full roster data&hellip;</p>
             )}
           </div>
 
@@ -1198,7 +1200,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                   <TeamLogo team={sandboxTeamA} size="md" />
                   <div>
                     <span className="text-xs text-slate-400 font-mono block">Primary Franchise (Team A)</span>
-                    <select
+                    <select aria-label="Select sandbox team a"
                       value={sandboxTeamA}
                       onChange={(e) => setSandboxTeamA(e.target.value)}
                       className="bg-surface border border-slate-800 rounded-lg px-2.5 py-1 text-sm font-bold text-white focus:outline-none focus:border-indigo-500"
@@ -1334,7 +1336,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
                   <TeamLogo team={sandboxTeamB} size="md" />
                   <div>
                     <span className="text-xs text-slate-400 font-mono block">Trade Partner (Team B)</span>
-                    <select
+                    <select aria-label="Select sandbox team b"
                       value={sandboxTeamB}
                       onChange={(e) => setSandboxTeamB(e.target.value)}
                       className="bg-surface border border-slate-800 rounded-lg px-2.5 py-1 text-sm font-bold text-white focus:outline-none focus:border-indigo-500"
@@ -1569,8 +1571,8 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
             </div>
 
             {/* Position Filter Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
-              <button
+            <div role="tablist" aria-label="Draft pos filter" className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+              <button role="tab" aria-selected={draftPosFilter === 'all'}
                 onClick={() => setDraftPosFilter('all')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   draftPosFilter === 'all'
@@ -1580,7 +1582,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
               >
                 All Pos
               </button>
-              <button
+              <button role="tab" aria-selected={draftPosFilter === 'G'}
                 onClick={() => setDraftPosFilter('G')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   draftPosFilter === 'G'
@@ -1590,7 +1592,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
               >
                 Guards
               </button>
-              <button
+              <button role="tab" aria-selected={draftPosFilter === 'F'}
                 onClick={() => setDraftPosFilter('F')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   draftPosFilter === 'F'
@@ -1600,7 +1602,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
               >
                 Forwards
               </button>
-              <button
+              <button role="tab" aria-selected={draftPosFilter === 'C'}
                 onClick={() => setDraftPosFilter('C')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   draftPosFilter === 'C'
@@ -1614,7 +1616,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
 
             {/* Tier Filter Dropdown */}
             <div className="flex items-center gap-2">
-              <select
+              <select aria-label="Select draft tier filter"
                 value={draftTierFilter}
                 onChange={(e) => setDraftTierFilter(e.target.value)}
                 className="bg-surface border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"

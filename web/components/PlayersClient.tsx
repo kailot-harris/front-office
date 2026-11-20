@@ -96,6 +96,16 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
     }
   };
 
+  // Sortable headers: aria-sort for assistive tech, and Enter/Space to sort from the keyboard.
+  const ariaSortFor = (field: keyof PlayerProjection): 'ascending' | 'descending' | 'none' =>
+    sortBy === field ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none';
+  const sortKeyDown = (field: keyof PlayerProjection) => (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleSort(field);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Overview Cards */}
@@ -161,7 +171,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
           </div>
 
           {/* Team filter */}
-          <select
+          <select aria-label="Select team"
             value={selectedTeam}
             onChange={(e) => setSelectedTeam(e.target.value)}
             className="bg-surface border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500"
@@ -175,7 +185,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
           </select>
 
           {/* Position filter */}
-          <select
+          <select aria-label="Select position"
             value={selectedPosition}
             onChange={(e) => setSelectedPosition(e.target.value)}
             className="bg-surface border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500"
@@ -263,6 +273,9 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                 <th className="py-3 px-3 text-center hidden sm:table-cell">Pos</th>
                 <th
                   onClick={() => handleSort('proj_games')}
+                  aria-sort={ariaSortFor('proj_games')}
+                  tabIndex={0}
+                  onKeyDown={sortKeyDown('proj_games')}
                   className="py-3 px-3 text-center cursor-pointer hover:text-white hidden sm:table-cell"
                 >
                   <div className="flex items-center justify-center gap-1">
@@ -272,6 +285,9 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                 </th>
                 <th
                   onClick={() => handleSort('proj_mpg')}
+                  aria-sort={ariaSortFor('proj_mpg')}
+                  tabIndex={0}
+                  onKeyDown={sortKeyDown('proj_mpg')}
                   className="py-3 px-3 text-center cursor-pointer hover:text-white hidden sm:table-cell"
                 >
                   <div className="flex items-center justify-center gap-1">
@@ -314,6 +330,9 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                 </th>
                 <th
                   onClick={() => handleSort('pra_zscore')}
+                  aria-sort={ariaSortFor('pra_zscore')}
+                  tabIndex={0}
+                  onKeyDown={sortKeyDown('pra_zscore')}
                   className="py-3 px-3 text-center cursor-pointer hover:text-white hidden sm:table-cell"
                 >
                   <div className="flex items-center justify-center gap-1">

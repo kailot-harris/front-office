@@ -275,6 +275,16 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
     }
   };
 
+  // Sortable headers: aria-sort for assistive tech, and Enter/Space to sort from the keyboard.
+  const ariaSortFor = (field: StandingsSortField): 'ascending' | 'descending' | 'none' =>
+    sortBy === field ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none';
+  const sortKeyDown = (field: StandingsSortField) => (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleSort(field);
+    }
+  };
+
   const renderSortIndicator = (field: StandingsSortField) => {
     if (sortBy !== field) {
       return <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 opacity-40 group-hover:opacity-100 transition-opacity" />;
@@ -479,7 +489,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
             <span className="pointer-events-none">Playoff Contenders (Box-Whisker)</span>
             <span
               className={`text-[11px] sm:text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
-                activeTab === 'visualizer' ? 'bg-white/20 text-white font-bold' : 'bg-slate-800 text-slate-400'
+                activeTab === 'visualizer' ? 'bg-black/25 text-white font-bold' : 'bg-slate-800 text-slate-400'
               }`}
             >
               Visualizer
@@ -502,7 +512,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
             <span className="pointer-events-none">Full Standings Table</span>
             <span
               className={`text-[11px] sm:text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
-                activeTab === 'table' ? 'bg-white/20 text-white font-bold' : 'bg-slate-800 text-slate-400'
+                activeTab === 'table' ? 'bg-black/25 text-white font-bold' : 'bg-slate-800 text-slate-400'
               }`}
             >
               30 Teams
@@ -606,7 +616,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                 <span className="text-xs font-semibold text-slate-200">
                   {tableMode === 'reality' ? 'Projections vs. Actual Table' : 'Model Projections Table'}
                 </span>
-                <span className="text-slate-600">•</span>
+                <span className="text-slate-500">•</span>
                 <span className="text-xs text-slate-400 font-mono">
                   {tableMode === 'reality' ? '82-Game Pace Benchmarking' : 'Ensemble Monte Carlo Projections'}
                 </span>
@@ -679,6 +689,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                   <tr className="bg-surface/80 border-b border-slate-800 text-slate-400 font-medium text-xs select-none">
                     <th
                       onClick={() => handleSort('rank')}
+                      aria-sort={ariaSortFor('rank')}
+                      tabIndex={0}
+                      onKeyDown={sortKeyDown('rank')}
                       className="py-3.5 px-4 w-14 text-center cursor-pointer hover:text-white transition-colors group hidden sm:table-cell"
                       title="Click to sort by rank"
                     >
@@ -689,6 +702,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                     </th>
                     <th
                       onClick={() => handleSort('team')}
+                      aria-sort={ariaSortFor('team')}
+                      tabIndex={0}
+                      onKeyDown={sortKeyDown('team')}
                       className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors group sticky left-0 z-10 bg-surface border-r border-slate-800"
                       title="Click to sort alphabetically by team name"
                     >
@@ -699,6 +715,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                     </th>
                     <th
                       onClick={() => handleSort('conference')}
+                      aria-sort={ariaSortFor('conference')}
+                      tabIndex={0}
+                      onKeyDown={sortKeyDown('conference')}
                       className="py-3.5 px-3 text-center cursor-pointer hover:text-white transition-colors group hidden sm:table-cell"
                       title="Click to sort by conference"
                     >
@@ -709,6 +728,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                     </th>
                     <th
                       onClick={() => handleSort('division')}
+                      aria-sort={ariaSortFor('division')}
+                      tabIndex={0}
+                      onKeyDown={sortKeyDown('division')}
                       className="py-3.5 px-3 text-center cursor-pointer hover:text-white transition-colors group hidden sm:table-cell"
                       title="Click to sort by division"
                     >
@@ -723,6 +745,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                       <>
                         <th
                           onClick={() => handleSort('actual_record')}
+                          aria-sort={ariaSortFor('actual_record')}
+                          tabIndex={0}
+                          onKeyDown={sortKeyDown('actual_record')}
                           className="py-3.5 px-3 text-center cursor-pointer hover:text-white transition-colors group"
                           title="Click to sort by actual record"
                         >
@@ -735,6 +760,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                         </th>
                         <th
                           onClick={() => handleSort('actual_win_pct')}
+                          aria-sort={ariaSortFor('actual_win_pct')}
+                          tabIndex={0}
+                          onKeyDown={sortKeyDown('actual_win_pct')}
                           className="py-3.5 px-3 cursor-pointer hover:text-white transition-colors text-right group"
                           title="Click to sort by actual win percentage"
                         >
@@ -747,6 +775,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                         </th>
                         <th
                           onClick={() => handleSort('point_diff')}
+                          aria-sort={ariaSortFor('point_diff')}
+                          tabIndex={0}
+                          onKeyDown={sortKeyDown('point_diff')}
                           className="py-3.5 px-3 cursor-pointer hover:text-white transition-colors text-right group"
                           title="Click to sort by scoring differential"
                         >
@@ -759,6 +790,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                         </th>
                         <th
                           onClick={() => handleSort('ensemble_mean_wins')}
+                          aria-sort={ariaSortFor('ensemble_mean_wins')}
+                          tabIndex={0}
+                          onKeyDown={sortKeyDown('ensemble_mean_wins')}
                           className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors text-right group"
                           title="Click to sort by preseason projected ensemble wins"
                         >
@@ -771,6 +805,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                         </th>
                         <th
                           onClick={() => handleSort('current_pace')}
+                          aria-sort={ariaSortFor('current_pace')}
+                          tabIndex={0}
+                          onKeyDown={sortKeyDown('current_pace')}
                           className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors text-right group"
                           title="Click to sort by 82-game win pace"
                         >
@@ -783,6 +820,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                         </th>
                         <th
                           onClick={() => handleSort('performance_delta')}
+                          aria-sort={ariaSortFor('performance_delta')}
+                          tabIndex={0}
+                          onKeyDown={sortKeyDown('performance_delta')}
                           className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors text-right group"
                           title="Click to sort by performance delta (Pace - Proj Wins)"
                         >
@@ -799,6 +839,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                       <>
                         <th
                           onClick={() => handleSort('ensemble_mean_wins')}
+                          aria-sort={ariaSortFor('ensemble_mean_wins')}
+                          tabIndex={0}
+                          onKeyDown={sortKeyDown('ensemble_mean_wins')}
                           className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors group"
                           title="Click to sort by projected ensemble wins"
                         >
@@ -811,6 +854,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                         </th>
                         <th
                           onClick={() => handleSort('win_pct')}
+                          aria-sort={ariaSortFor('win_pct')}
+                          tabIndex={0}
+                          onKeyDown={sortKeyDown('win_pct')}
                           className="py-3.5 px-3 cursor-pointer hover:text-white transition-colors text-right group"
                           title="Click to sort by win percentage"
                         >
@@ -821,6 +867,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                         </th>
                         <th
                           onClick={() => handleSort('percentile_range')}
+                          aria-sort={ariaSortFor('percentile_range')}
+                          tabIndex={0}
+                          onKeyDown={sortKeyDown('percentile_range')}
                           className="py-3.5 px-4 min-w-[200px] cursor-pointer hover:text-white transition-colors group"
                           title="Click to sort by distribution width (p90 - p10 variance)"
                         >
@@ -833,6 +882,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                         </th>
                         <th
                           onClick={() => handleSort('ensemble_playoff_prob')}
+                          aria-sort={ariaSortFor('ensemble_playoff_prob')}
+                          tabIndex={0}
+                          onKeyDown={sortKeyDown('ensemble_playoff_prob')}
                           className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors text-right group"
                           title="Click to sort by playoff probability"
                         >
@@ -845,6 +897,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                         </th>
                         <th
                           onClick={() => handleSort('ensemble_title_prob')}
+                          aria-sort={ariaSortFor('ensemble_title_prob')}
+                          tabIndex={0}
+                          onKeyDown={sortKeyDown('ensemble_title_prob')}
                           className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors text-right group"
                           title="Click to sort by title probability"
                         >

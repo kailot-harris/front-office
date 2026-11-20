@@ -159,7 +159,7 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
           </div>
 
           <div className="sm:col-span-3">
-            <select
+            <select aria-label="Select team"
               value={selectedTeam}
               onChange={(e) => {
                 const newTeam = e.target.value;
@@ -185,7 +185,7 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
           </div>
 
           <div className="sm:col-span-3">
-            <select
+            <select aria-label="Select player"
               value={selectedPlayer?.player_id || ''}
               onChange={(e) => {
                 const found = catalog.find((c) => c.player_id === e.target.value);
@@ -205,6 +205,9 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
 
       {/* Main Shot Chart Container */}
       <div className="bg-surface-raised/60 border border-slate-800 rounded-2xl p-6 shadow-2xl">
+        <div className="sr-only" aria-live="polite">
+          {loading ? 'Loading shot chart.' : error ? 'The shot chart failed to load.' : 'Shot chart loaded.'}
+        </div>
         {loading && (
           <div className="h-96 flex flex-col items-center justify-center gap-3 text-slate-400">
             <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />

@@ -136,20 +136,20 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles, s
               <span className="flex items-center gap-1">
                 <ArrowUpDown className="w-3 h-3 text-emerald-400" /> Sort metric:
               </span>
-              <div className="flex gap-2">
-                <button
+              <div role="tablist" aria-label="Sort key" className="flex gap-2">
+                <button role="tab" aria-selected={sortKey === 'versatilityScore'}
                   onClick={() => setSortKey('versatilityScore')}
                   className={`underline-offset-2 ${sortKey === 'versatilityScore' ? 'text-emerald-400 underline font-semibold' : 'hover:text-zinc-200'}`}
                 >
                   H<sub>v</sub> Switch
                 </button>
-                <button
+                <button role="tab" aria-selected={sortKey === 'rimDfgDelta'}
                   onClick={() => setSortKey('rimDfgDelta')}
                   className={`underline-offset-2 ${sortKey === 'rimDfgDelta' ? 'text-emerald-400 underline font-semibold' : 'hover:text-zinc-200'}`}
                 >
                   Rim DFG
                 </button>
-                <button
+                <button role="tab" aria-selected={sortKey === 'dRapm'}
                   onClick={() => setSortKey('dRapm')}
                   className={`underline-offset-2 ${sortKey === 'dRapm' ? 'text-emerald-400 underline font-semibold' : 'hover:text-zinc-200'}`}
                 >
@@ -250,7 +250,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles, s
                 </div>
                 <div className="px-3 py-2 rounded-xl bg-emerald-950/60 border border-emerald-800/80 text-center">
                   <div className="text-[11px] text-emerald-400 font-medium">D-RAPM</div>
-                  {rapmLabel && <div className="text-[10px] text-emerald-500/80">{rapmLabel}</div>}
+                  {rapmLabel && <div className="text-[10px] text-emerald-400">{rapmLabel}</div>}
                   <div className="text-base font-bold text-emerald-200">
                     {signed(selectedProfile.dRapm)}
                   </div>

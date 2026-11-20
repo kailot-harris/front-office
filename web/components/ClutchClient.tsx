@@ -211,21 +211,21 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles, sea
               <span className="flex items-center gap-1">
                 <ArrowUpDown className="w-3 h-3 text-rose-400" /> Sort metric:
               </span>
-              <div className="flex gap-2">
-                <button
+              <div role="tablist" aria-label="Sort key" className="flex gap-2">
+                <button role="tab" aria-selected={sortKey === 'usciScore'}
                   onClick={() => setSortKey('usciScore')}
                   title={usciRangeText}
                   className={`underline-offset-2 ${sortKey === 'usciScore' ? 'text-rose-400 underline font-semibold' : 'hover:text-zinc-200'}`}
                 >
                   USCI
                 </button>
-                <button
+                <button role="tab" aria-selected={sortKey === 'clutchTsPct'}
                   onClick={() => setSortKey('clutchTsPct')}
                   className={`underline-offset-2 ${sortKey === 'clutchTsPct' ? 'text-rose-400 underline font-semibold' : 'hover:text-zinc-200'}`}
                 >
                   Clutch TS%
                 </button>
-                <button
+                <button role="tab" aria-selected={sortKey === 'cDwpa'}
                   onClick={() => setSortKey('cDwpa')}
                   className={`underline-offset-2 ${sortKey === 'cDwpa' ? 'text-rose-400 underline font-semibold' : 'hover:text-zinc-200'}`}
                 >

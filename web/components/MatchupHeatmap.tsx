@@ -44,7 +44,7 @@ export const MatchupHeatmap: React.FC<MatchupHeatmapProps> = ({ dist }) => {
           >
             <div className="text-xs font-bold uppercase">{pos.label}</div>
             <div className="text-sm font-extrabold mt-0.5">{pos.val.toFixed(1)}%</div>
-            <div className="text-[11px] sm:text-[9px] opacity-75 mt-0.5 truncate max-w-full text-center">
+            <div className="text-[11px] sm:text-[9px] mt-0.5 truncate max-w-full text-center">
               {pos.name}
             </div>
           </div>

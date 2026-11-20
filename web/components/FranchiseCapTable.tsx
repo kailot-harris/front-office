@@ -90,10 +90,10 @@ export const FranchiseCapTable: React.FC<FranchiseCapTableProps> = ({ profile })
                   {money(c.salary2026)}
                 </td>
                 <td className="py-2 text-right text-slate-300">
-                  {!isFiniteNumber(c.salary2027) ? MISSING_VALUE : c.salary2027 > 0 ? money(c.salary2027) : <span className="text-slate-600">UFA</span>}
+                  {!isFiniteNumber(c.salary2027) ? MISSING_VALUE : c.salary2027 > 0 ? money(c.salary2027) : <span className="text-slate-500">UFA</span>}
                 </td>
                 <td className="py-2 text-right text-slate-300">
-                  {!isFiniteNumber(c.salary2028) ? MISSING_VALUE : c.salary2028 > 0 ? money(c.salary2028) : <span className="text-slate-600">UFA</span>}
+                  {!isFiniteNumber(c.salary2028) ? MISSING_VALUE : c.salary2028 > 0 ? money(c.salary2028) : <span className="text-slate-500">UFA</span>}
                 </td>
                 <td className="py-2 text-center">
                   <span

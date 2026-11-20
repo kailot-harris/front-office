@@ -149,31 +149,28 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
               fillOpacity="0.03"
             />
             {/* Bottom-Left: Developing */}
-            <rect
+            <rect className="fill-slate-500"
               x={0}
               y={midY}
               width={midX}
               height={innerHeight - midY}
-              fill="#64748b"
               fillOpacity="0.02"
             />
 
             {/* Quadrant Divider Guidelines */}
-            <line
+            <line className="stroke-slate-700"
               x1={midX}
               y1={0}
               x2={midX}
               y2={innerHeight}
-              stroke="#334155"
               strokeDasharray="4,4"
               strokeWidth="1.2"
             />
-            <line
+            <line className="stroke-slate-700"
               x1={0}
               y1={midY}
               x2={innerWidth}
               y2={midY}
-              stroke="#334155"
               strokeDasharray="4,4"
               strokeWidth="1.2"
             />
@@ -217,7 +214,7 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
               const y = scaleY(tick);
               return (
                 <g key={`y-${tick}`}>
-                  <line x1={0} y1={y} x2={innerWidth} y2={y} stroke="#1e293b" strokeWidth="1" />
+                  <line className="stroke-slate-800" x1={0} y1={y} x2={innerWidth} y2={y} strokeWidth="1" />
                   <text
                     x={-10}
                     y={y + 4}
@@ -234,7 +231,7 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
               const x = scaleX(tick);
               return (
                 <g key={`x-${tick}`}>
-                  <line x1={x} y1={0} x2={x} y2={innerHeight} stroke="#1e293b" strokeWidth="1" />
+                  <line className="stroke-slate-800" x1={x} y1={0} x2={x} y2={innerHeight} strokeWidth="1" />
                   <text
                     x={x}
                     y={innerHeight + 18}
