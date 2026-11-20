@@ -3,14 +3,15 @@
 @tailwind utilities;
 
 :root {
-  --background: #020617;
-  --foreground: #f8fafc;
+  /* Site colors come from the shared tokens in design-tokens.css (front-office#201). */
+  --background: var(--fo-surface);
+  --foreground: var(--fo-text);
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  font-family: var(--fo-font-sans);
   overflow-x: hidden;
 }
 

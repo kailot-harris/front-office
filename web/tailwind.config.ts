@@ -1,5 +1,9 @@
 import type { Config } from 'tailwindcss';
 
+/** A Tailwind color backed by a design token, with opacity-modifier support. */
+const token = (name: string) =>
+  `color-mix(in srgb, var(${name}) calc(<alpha-value> * 100%), transparent)`;
+
 const config: Config = {
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
@@ -24,8 +28,14 @@ const config: Config = {
           900: '#064e3b',
           950: '#022c22',
         },
-        surface: '#04140f',
-        'surface-raised': '#0a2018',
+        // Mapped to the shared --fo-* tokens (design-tokens.css, data-site="nfl").
+        // color-mix keeps Tailwind's opacity modifiers (bg-surface-raised/50) working.
+        surface: token('--fo-surface'),
+        'surface-raised': token('--fo-surface-raised'),
+        'fo-text': token('--fo-text'),
+        'fo-muted': token('--fo-text-muted'),
+        'fo-accent': token('--fo-accent'),
+        'on-accent': token('--fo-on-accent'),
       },
     },
   },
