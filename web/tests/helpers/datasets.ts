@@ -99,6 +99,7 @@ export const EXPECTED_DATA_FILES = [
   'shots_metadata.json',
   'matchups_slates.json',
   'offseason_monitor.json',
+  'landing_digest.json',
 ] as const;
 
 /** Sidecar freshness manifest (front-office#102); excluded from its own coverage. */
