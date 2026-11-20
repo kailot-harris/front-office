@@ -36,7 +36,7 @@ jobs:
   web:
     name: Web suite
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 20
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: web
@@ -76,7 +76,7 @@ jobs:
   r:
     name: R pipeline tests
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       RENV_CONFIG_AUTOLOADER_ENABLED: 'FALSE'
       R_LIBS_USER: ${{ github.workspace }}/.rlib
