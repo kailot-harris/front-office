@@ -113,6 +113,25 @@ export const EXPECTED_DATA_FILES = [
 ] as const;
 export type DataFileName = (typeof EXPECTED_DATA_FILES)[number];
 
+/**
+ * Sidecar freshness manifest (front-office#102), written by
+ * tools/write_data_manifest.R. Not a page dataset: it describes the others and
+ * is validated by tests/contracts/dataManifest.test.ts.
+ */
+export const DATA_MANIFEST_FILE = 'data_manifest.json';
+
+/** Every top-level public/data/*.json except the manifest itself. */
+export function listTopLevelDataFiles(): string[] {
+  return fs
+    .readdirSync(DATA_DIR)
+    .filter((f) => f.endsWith('.json') && f !== DATA_MANIFEST_FILE)
+    .sort();
+}
+
+export function readDataManifest(): unknown {
+  return JSON.parse(fs.readFileSync(path.join(DATA_DIR, DATA_MANIFEST_FILE), 'utf-8'));
+}
+
 const cache = new Map<string, unknown>();
 
 export function readJsonFile<T = unknown>(fileName: DataFileName): T {

@@ -86,6 +86,13 @@
 #      2026-10-26 -- see this assertion's own header for what prompted it.
 #      Fatal, with web/tests/known-issues.json as the documented escape valve.
 #
+#   H  data manifest + schedule coverage (front-office#102/#191) - every
+#      top-level payload is stamped in web/public/data/data_manifest.json and
+#      no non-static dataset trails the schedule by more than its max_lag_days.
+#      Content-dated through_date; not-game-dated payloads checked on
+#      generated_at ([UNDATED]). Live runs refresh the manifest first; dry
+#      runs never write it.
+#
 #      KNOWN GAP, reported rather than silently tolerated: only 2 of NBA's 12
 #      published payloads carry a `generated_at` at all. F names the other ten
 #      in its detail lines rather than implying it has checked them. Stamping
@@ -657,6 +664,174 @@ if (!dir.exists(WEB_MEDIA_DIR)) dir.create(WEB_MEDIA_DIR, recursive = TRUE)
 }
 
 # ------------------------------------------------------------------------------
+# ASSERTION H - data manifest completeness + schedule coverage
+# (front-office#102 sidecar, front-office#191 lag gate).
+#
+# web/public/data/data_manifest.json (tools/write_data_manifest.R) stamps every
+# top-level payload with generated_at / through_date / builder / max_lag_days /
+# static. H requires:
+#   * the manifest exists and parses, and EVERY top-level *.json beside it is
+#     listed with a UTC ISO-8601 generated_at, a builder and a boolean static
+#     (always checked, even offline - an unlisted payload is unaccounted for);
+#   * when the schedule's latest completed game date is known, every non-static
+#     dataset's through_date trails it by at most max_lag_days (off-season, i.e.
+#     schedule <= through_date, passes); a static dataset passes only with a
+#     non-empty static_reason.
+# With no schedule cache (CI, sandbox) only completeness is enforced, and the
+# summary says so. Every dataset gets a detail line so a dry run prints each
+# one's coverage date. Self-contained: works when write_data_manifest.R is not
+# present beside this file (tests isolate publish_web.R).
+# ------------------------------------------------------------------------------
+.PW_MANIFEST_FILE <- "data_manifest.json"
+
+.pw_dm_script <- function() file.path(PROJECT_DIR, "tools", "write_data_manifest.R")
+
+.pw_latest_completed_schedule_date <- function(schedule_path) {
+  if (exists("dm_latest_completed_schedule_date", mode = "function")) {
+    return(dm_latest_completed_schedule_date(schedule_path))
+  }
+  if (is.null(schedule_path) || is.na(schedule_path) || !file.exists(schedule_path)) return(as.Date(NA))
+  s <- tryCatch(as.data.frame(readRDS(schedule_path)), error = function(e) NULL)
+  if (is.null(s) || !nrow(s) || !"game_date" %in% names(s)) return(as.Date(NA))
+  done <- if ("status_type_completed" %in% names(s)) as.logical(s$status_type_completed)
+          else if ("status_type_state" %in% names(s)) s$status_type_state == "post"
+          else return(as.Date(NA))
+  gd <- as.Date(as.character(s$game_date))[done %in% TRUE]
+  gd <- gd[!is.na(gd)]
+  if (!length(gd)) as.Date(NA) else max(gd)
+}
+
+.pw_nzstr <- function(x) is.character(x) && length(x) == 1L && !is.na(x) && nzchar(x)
+
+.pw_is_utc_iso <- function(x) {
+  is.character(x) && length(x) == 1L && !is.na(x) &&
+    grepl("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$", x) &&
+    !is.na(as.POSIXct(x, format = "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"))
+}
+
+.pw_h_result <- function(pass, summary, detail, extra = list()) {
+  c(list(id = "H", name = "data manifest completeness + schedule coverage (FO#102/#191)",
+         pass = pass, fatal = TRUE, summary = summary, detail = detail), extra)
+}
+
+.assert_manifest_and_coverage <- function(web_data_dir = WEB_DATA_DIR,
+                                          schedule_through_date = NULL,
+                                          schedule_path = CACHE_MATCHUPS_SCHEDULE(MATCHUPS_HOOPR_SEASON)) {
+  mpath <- file.path(web_data_dir, .PW_MANIFEST_FILE)
+  if (!file.exists(mpath)) {
+    return(.pw_h_result(FALSE, sprintf("%s is absent", .PW_MANIFEST_FILE),
+                        "    [BLOCK]   run `Rscript tools/write_data_manifest.R`"))
+  }
+  m <- tryCatch(jsonlite::fromJSON(mpath, simplifyVector = FALSE), error = function(e) e)
+  if (inherits(m, "error") || !is.list(m) || !is.list(m$datasets)) {
+    return(.pw_h_result(FALSE, sprintf("%s does not parse as a manifest", .PW_MANIFEST_FILE),
+                        paste("    [BLOCK]  ", if (inherits(m, "error")) conditionMessage(m) else "no datasets object")))
+  }
+  on_disk <- setdiff(sort(list.files(web_data_dir, pattern = "\\.json$")), .PW_MANIFEST_FILE)
+
+  sched <- if (!is.null(schedule_through_date)) as.Date(schedule_through_date)
+           else .pw_latest_completed_schedule_date(schedule_path)
+  sched_known <- length(sched) == 1L && !is.na(sched)
+
+  rows <- character(0); bad <- character(0)
+  for (f in on_disk) {
+    e <- m$datasets[[f]]
+    if (is.null(e)) {
+      bad <- c(bad, f)
+      rows <- c(rows, sprintf("    %-10s %-36s not listed in %s", "[MISSING]", f, .PW_MANIFEST_FILE))
+      next
+    }
+    problems <- c(
+      if (!.pw_is_utc_iso(e$generated_at)) "generated_at not UTC ISO-8601",
+      if (!is.character(e$builder) || !nzchar(e$builder) || identical(e$builder, "<unregistered>")) "no builder",
+      if (!is.logical(e$static) || length(e$static) != 1L) "static not boolean",
+      if (!.pw_nzstr(e$through_date_source)) "no through_date_source",
+      if (!.pw_nzstr(e$stamp_source)) "no stamp_source",
+      if (!is.null(e$content_sha256) && !grepl("^[0-9a-f]{64}$", as.character(e$content_sha256)[1])) "content_sha256 not sha256 hex",
+      if (!is.null(e$coverage_note) && !.pw_nzstr(e$coverage_note)) "coverage_note not a string",
+      if (identical(e$stamp_source, "manifest:content_hash") && is.null(e$content_sha256)) "content-hash stamp without content_sha256")
+    if (length(problems)) {
+      bad <- c(bad, f)
+      rows <- c(rows, sprintf("    %-10s %-36s %s", "[UNSTAMPED]", f, paste(problems, collapse = "; ")))
+      next
+    }
+    td <- if (is.null(e$through_date)) NA_character_ else as.character(e$through_date)
+    if (isTRUE(e$static)) {
+      ok <- is.character(e$static_reason) && nzchar(e$static_reason)
+      if (!ok) bad <- c(bad, f)
+      rows <- c(rows, sprintf("    %-10s %-36s through=%-10s %s", if (ok) "[STATIC]" else "[LAGGING]", f,
+                              ifelse(is.na(td), "<none>", td),
+                              if (ok) e$static_reason else "static without a static_reason"))
+      next
+    }
+    lag_max <- suppressWarnings(as.integer(e$max_lag_days))
+    if (!sched_known) {
+      rows <- c(rows, sprintf("    %-10s %-36s through=%-10s (schedule unknown; lag not checked)",
+                              if (is.na(td)) "[UNDATED]" else "[OK]", f, ifelse(is.na(td), "<none>", td)))
+      next
+    }
+    if (identical(e$through_date_source, "not_game_dated") && is.na(td)) {
+      # Content carries no game date: checked on generated_at freshness only,
+      # never passed silently as fresh.
+      gdate <- as.Date(substr(e$generated_at, 1L, 10L))
+      if (length(lag_max) != 1L || is.na(lag_max)) {
+        ok <- FALSE; lag <- NA_integer_
+      } else {
+        lag <- as.integer(sched - gdate); ok <- lag <= lag_max
+      }
+      if (!ok) bad <- c(bad, f)
+      rows <- c(rows, sprintf("    %-10s %-36s generated=%s lag=%sd max=%sd%s", if (ok) "[UNDATED]" else "[LAGGING]",
+                              f, format(gdate), ifelse(is.na(lag), "NA", max(lag, 0L)),
+                              ifelse(is.na(lag_max), "NA", lag_max),
+                              if (.pw_nzstr(e$coverage_note)) paste0(" (", e$coverage_note, ")") else ""))
+      next
+    }
+    if (is.na(td) || length(lag_max) != 1L || is.na(lag_max)) {
+      bad <- c(bad, f)
+      rows <- c(rows, sprintf("    %-10s %-36s through=%-10s no through_date/max_lag_days on a non-static dataset",
+                              "[LAGGING]", f, ifelse(is.na(td), "<none>", td)))
+      next
+    }
+    lag <- as.integer(sched - as.Date(td))
+    ok <- lag <= lag_max      # off-season / ahead of schedule => lag <= 0 => pass
+    if (!ok) bad <- c(bad, f)
+    rows <- c(rows, sprintf("    %-10s %-36s through=%s lag=%dd max=%dd", if (ok) "[OK]" else "[LAGGING]",
+                            f, td, max(lag, 0L), lag_max))
+  }
+  phantom <- setdiff(names(m$datasets), on_disk)
+  if (length(phantom)) rows <- c(rows, sprintf("    [NOTE]     manifest lists %s with no file on disk", phantom))
+
+  summary <- if (!sched_known) {
+    sprintf("%d/%d dataset(s) stamped; schedule cache absent; manifest completeness verified%s",
+            length(on_disk) - length(bad), length(on_disk), if (length(bad)) " - FAILED" else "")
+  } else {
+    sprintf("%d/%d dataset(s) within lag of schedule through %s", length(on_disk) - length(bad),
+            length(on_disk), format(sched))
+  }
+  .pw_h_result(length(bad) == 0L, summary,
+               c(sprintf("    schedule through : %s", if (sched_known) format(sched) else "<unknown>"), rows),
+               list(failing = bad, schedule_through_date = if (sched_known) format(sched) else NA_character_))
+}
+
+# Live publishes refresh the manifest right before the gate; dry runs never write.
+.pw_refresh_manifest <- function(dry_run, web_data_dir = WEB_DATA_DIR,
+                                 schedule_path = CACHE_MATCHUPS_SCHEDULE(MATCHUPS_HOOPR_SEASON)) {
+  if (isTRUE(dry_run)) return(invisible(FALSE))
+  script <- .pw_dm_script()
+  if (!file.exists(script)) return(invisible(FALSE))
+  env <- new.env()
+  ok <- tryCatch({
+    sys.source(script, envir = env)
+    env$write_data_manifest(data_dir = web_data_dir, schedule_path = schedule_path)
+    TRUE
+  }, error = function(e) {
+    message(sprintf(">>> [WARN] publish_web: data manifest refresh failed: %s", conditionMessage(e)))
+    FALSE
+  })
+  invisible(ok)
+}
+
+# ------------------------------------------------------------------------------
 # Commit / push sequence. ONLY reached when dry_run = FALSE and every fatal
 # assertion passed. Commits the published tree and pushes NBA_analytics --
 # nothing more. The deploy belongs to the aggregator's sync-sports.yml.
@@ -1093,6 +1268,7 @@ publish_web <- function(dry_run = TRUE,
   }
 
   synced_media <- .pw_sync_media(dry_run = dry_run)
+  .pw_refresh_manifest(dry_run, schedule_path = CACHE_MATCHUPS_SCHEDULE(season))
 
   checks <- list(
     .assert_mtime_freshness(run_start),
@@ -1101,7 +1277,8 @@ publish_web <- function(dry_run = TRUE,
     .assert_publish_branch(repo_root, publish_branch),
     .assert_log_scan(log_lines, fail_on_exporter_warnings),
     .assert_payload_provenance(run_start),
-    .assert_web_contracts(skip_contracts)
+    .assert_web_contracts(skip_contracts),
+    .assert_manifest_and_coverage(WEB_DATA_DIR, schedule_path = CACHE_MATCHUPS_SCHEDULE(season))
   )
 
   passed  <- vapply(checks, function(ch) isTRUE(ch$pass), logical(1))
@@ -1163,7 +1340,8 @@ publish_web <- function(dry_run = TRUE,
     unstamped_payloads = checks[[6]]$unstamped,
     pending_changes = checks[[3]]$changed,
     synced_media = synced_media,
-    contracts_pass = isTRUE(checks[[length(checks)]]$pass),
+    contracts_pass = isTRUE(checks[[7]]$pass),
+    manifest_pass = isTRUE(checks[[8]]$pass),
     checks = checks, published = FALSE, steps = list()
   )
 
