@@ -1,0 +1,26 @@
+name: Check landing page
+
+# front-office#202-#206 (epic #200): unit tests for the daily-digest helpers, and axe
+# (WCAG 2.2 AA, serious or critical fails) on the landing page in light and dark mode.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  landing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Digest helper tests
+        run: node --test tools/test_landing_digest.mjs
+      - name: Install axe tooling
+        run: |
+          npm i --no-save --no-package-lock playwright @axe-core/playwright
+          npx playwright install --with-deps chromium
+      - name: axe (light and dark)
+        run: node tools/axe_landing.mjs
