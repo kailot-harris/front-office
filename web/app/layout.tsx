@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { GeistSans, GeistMono } from 'geist/font';
+// Shared tokens first, so globals.css and Tailwind can build on the --fo-* variables.
+import './design-tokens.css';
 import './globals.css';
 import { BASE_PATH } from '@/lib/basePath';
 import { Sidebar } from '@/components/Sidebar';
@@ -50,7 +52,7 @@ export default function RootLayout({
   const { generated_at } = getMetadata();
   const { brierScore } = getDiagnostics();
   return (
-    <html lang="en" className={`dark ${GeistSans.variable} ${GeistMono.variable}`}>
+    <html lang="en" data-site="nba" className={`dark ${GeistSans.variable} ${GeistMono.variable}`}>
       <body
         className={`${GeistSans.className} font-sans bg-surface text-slate-100 min-h-screen flex flex-col md:flex-row antialiased selection:bg-accent-600 selection:text-white`}
       >

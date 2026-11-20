@@ -9,13 +9,16 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
-        mono: ["var(--font-geist-mono)", "ui-monospace", "monospace"],
+        // Resolve through the shared tokens (app/design-tokens.css), which put
+        // the geist package's --font-geist-* variables first.
+        sans: ["var(--fo-font-sans)"],
+        mono: ["var(--fo-font-mono)"],
       },
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
         accent: {
+          DEFAULT: "var(--fo-accent)",
           50: "#eef2ff",
           400: "#818cf8",
           500: "#6366f1",
@@ -24,8 +27,20 @@ const config: Config = {
           900: "#312e81",
           950: "#1e1b4b",
         },
-        surface: "#0a0920",
-        "surface-raised": "#14123a",
+        // Shared --fo-* tokens (app/design-tokens.css, data-site="nba").
+        // color-mix keeps Tailwind's /opacity modifiers working on CSS variables.
+        surface: "color-mix(in srgb, var(--fo-surface) calc(<alpha-value> * 100%), transparent)",
+        "surface-raised": "color-mix(in srgb, var(--fo-surface-raised) calc(<alpha-value> * 100%), transparent)",
+        fo: {
+          text: "var(--fo-text)",
+          muted: "var(--fo-text-muted)",
+          border: "var(--fo-border)",
+          accent: "var(--fo-accent)",
+          "on-accent": "var(--fo-on-accent)",
+          success: "var(--fo-success)",
+          warning: "var(--fo-warning)",
+          danger: "var(--fo-danger)",
+        },
       },
     },
   },
