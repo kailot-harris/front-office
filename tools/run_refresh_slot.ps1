@@ -903,6 +903,11 @@ function Invoke-RefreshSlot {
     Write-Output ""
     if ($failed.Count -gt 0) {
         Write-Output "=== slot $($plan.Slot) finished WITH FAILURES: $($failed -join ', ')"
+        Send-SlotFailureAlert `
+            -Slot $plan.Slot `
+            -FailedSteps $failed `
+            -LogFileName $script:CurrentLogFileName `
+            -WhatIfOnly:$DryRun
         # Flag rather than `exit` here: `exit` inside a function unwinds the
         # whole script WITHOUT running the caller's finally block, which would
         # leave Start-Transcript open and the log truncated. The exit code is
@@ -914,30 +919,168 @@ function Invoke-RefreshSlot {
     Write-Output "=== slot $($plan.Slot) completed cleanly"
 }
 
+function Resolve-DiscordWebhook {
+    $candidates = @('FRONT_OFFICE_DISCORD_WEBHOOK', 'DISCORD_WEBHOOK', 'DISCORD_WEBHOOK_URL')
+    foreach ($name in $candidates) {
+        $val = [Environment]::GetEnvironmentVariable($name)
+        if ($val -and $val.Trim()) { return $val.Trim() }
+    }
+
+    $homeDir = if ($env:HOME) { $env:HOME } elseif ($env:USERPROFILE) { $env:USERPROFILE } else { '' }
+    if ($homeDir) {
+        $renv = Join-Path $homeDir '.Renviron'
+        if (Test-Path $renv) {
+            $lines = Get-Content -Path $renv -ErrorAction SilentlyContinue
+            foreach ($name in $candidates) {
+                $prefix = "$name="
+                foreach ($line in $lines) {
+                    $trimmed = $line.Trim()
+                    if (-not $trimmed -or $trimmed.StartsWith('#')) { continue }
+                    if ($trimmed.StartsWith($prefix)) {
+                        $raw = $trimmed.Substring($prefix.Length).Trim()
+                        if (($raw.StartsWith('"') -and $raw.EndsWith('"')) -or ($raw.StartsWith("'") -and $raw.EndsWith("'"))) {
+                            $raw = $raw.Substring(1, $raw.Length - 2).Trim()
+                        }
+                        if ($raw) { return $raw }
+                    }
+                }
+            }
+        }
+    }
+    return ''
+}
+
+function Send-SlotFailureAlert {
+    param(
+        [string]   $Slot,
+        [string[]] $FailedSteps,
+        [string]   $LogFileName = '',
+        [switch]   $WhatIfOnly
+    )
+
+    $summary = ($FailedSteps -join ', ')
+    $logNote = if ($LogFileName) { " (log: $LogFileName)" } else { '' }
+    if ($WhatIfOnly) {
+        Write-Host "  would post Discord failure alert for slot $Slot`: $summary$logNote"
+        return
+    }
+
+    $webhook = Resolve-DiscordWebhook
+    if (-not $webhook) {
+        Write-Step "  no Discord webhook configured; skipping failure alert"
+        return
+    }
+
+    $stampUtc = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd HH:mm:ss UTC')
+    $bodyText = "**Front Office Slot $Slot Refresh Failed**`n- **Failed**: ``$summary```n- **Time**: $stampUtc"
+    if ($LogFileName) {
+        $bodyText += "`n- **Log**: ``$LogFileName``"
+    }
+    $payload = (@{ content = $bodyText } | ConvertTo-Json -Depth 4 -Compress)
+
+    try {
+        [void] (Invoke-RestMethod -Uri $webhook -Method Post -ContentType 'application/json' -Body $payload -TimeoutSec 10)
+        Write-Step "  posted Discord failure alert for slot $Slot"
+    }
+    catch {
+        $msg = $_.Exception.Message -replace 'https://discord(?:app)?\.com/api/webhooks/\S+', '[REDACTED_WEBHOOK]'
+        Write-Step "  Discord failure alert failed: $msg"
+    }
+}
+
+function Sync-SlotRepoAndCheckReexec {
+    param(
+        [string] $RepoDir,
+        [switch] $WhatIfOnly
+    )
+
+    if ($env:FRONT_OFFICE_SLOT_REEXEC -eq '1') { return $false }
+
+    $beforeHead = (& git -C $RepoDir rev-parse HEAD 2>$null | Out-String).Trim()
+    if ($WhatIfOnly) {
+        Write-Host "  would run: git -C $RepoDir fetch --quiet origin main && git -C $RepoDir merge --ff-only --quiet origin/main"
+        return $false
+    }
+
+    & git -C $RepoDir fetch --quiet origin main
+    if ($LASTEXITCODE -ne 0) {
+        Write-Step "  self-update: git fetch origin main failed (exit $LASTEXITCODE); continuing on current HEAD"
+        return $false
+    }
+    & git -C $RepoDir merge --ff-only --quiet origin/main
+    if ($LASTEXITCODE -ne 0) {
+        Write-Step "  self-update: fast-forward merge failed (exit $LASTEXITCODE); continuing on current HEAD"
+        return $false
+    }
+
+    $afterHead = (& git -C $RepoDir rev-parse HEAD 2>$null | Out-String).Trim()
+    if (-not $beforeHead -or -not $afterHead -or $beforeHead -eq $afterHead) { return $false }
+
+    Write-Step "  self-update: fast-forwarded main ($($beforeHead.Substring(0, 7)) -> $($afterHead.Substring(0, 7)))"
+    $changedSelf = (& git -C $RepoDir diff --name-only $beforeHead $afterHead -- 'tools/run_refresh_slot.ps1' 2>$null | Out-String).Trim()
+    if ($changedSelf) {
+        Write-Step "  self-update: tools/run_refresh_slot.ps1 changed on origin/main; re-executing updated script"
+        return $true
+    }
+    return $false
+}
+
+$script:CurrentLogFileName = ''
+
 if ($MyInvocation.InvocationName -ne '.') {
     # Transcript is started here rather than inside Invoke-RefreshSlot so that
     # a parameter-validation throw (an unknown sport, say) is still captured.
     $script:SlotFailed = $false
+    $reexecExitCode = $null
     $transcribing = $false
     if ($LogDir) {
         if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
         $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMdd-HHmmss')
-        Start-Transcript -Path (Join-Path $LogDir "slot-$Slot-$stamp.log") | Out-Null
+        $reexecSuffix = if ($env:FRONT_OFFICE_SLOT_REEXEC -eq '1') { '-reexec' } else { '' }
+        $script:CurrentLogFileName = "slot-$Slot-$stamp$reexecSuffix.log"
+        Start-Transcript -Path (Join-Path $LogDir $script:CurrentLogFileName) | Out-Null
         $transcribing = $true
     }
 
     try {
-        Invoke-RefreshSlot `
-            -Slot $Slot `
-            -DryRun:$DryRun `
-            -Sports $Sports `
-            -SkipSync:$SkipSync `
-            -SkipModelRefresh:$SkipModelRefresh `
-            -HostedRefresh:$HostedRefresh
+        Assert-ScheduledCheckoutSafety -RepoDir $REPO_DIR -WhatIfOnly:$DryRun
+        $needsReexec = Sync-SlotRepoAndCheckReexec -RepoDir $REPO_DIR -WhatIfOnly:$DryRun
+
+        if ($needsReexec) {
+            if ($transcribing) { Stop-Transcript | Out-Null; $transcribing = $false }
+            [string[]] $reexecArgs = @('-Slot', $Slot)
+            if ($LogDir) { $reexecArgs += @('-LogDir', $LogDir) }
+            if ($Sports -and $Sports.Count -gt 0) { $reexecArgs += @('-Sports') + $Sports }
+            if ($SkipSync) { $reexecArgs += '-SkipSync' }
+            if ($SkipModelRefresh) { $reexecArgs += '-SkipModelRefresh' }
+            if ($HostedRefresh) { $reexecArgs += '-HostedRefresh' }
+            if ($DryRun) { $reexecArgs += '-DryRun' }
+
+            $prevReexec = $env:FRONT_OFFICE_SLOT_REEXEC
+            $env:FRONT_OFFICE_SLOT_REEXEC = '1'
+            try {
+                & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath @reexecArgs
+                $reexecExitCode = $LASTEXITCODE
+            }
+            finally {
+                $env:FRONT_OFFICE_SLOT_REEXEC = $prevReexec
+            }
+        }
+        else {
+            Invoke-RefreshSlot `
+                -Slot $Slot `
+                -DryRun:$DryRun `
+                -Sports $Sports `
+                -SkipSync:$SkipSync `
+                -SkipModelRefresh:$SkipModelRefresh `
+                -HostedRefresh:$HostedRefresh
+        }
     }
     finally {
         if ($transcribing) { Stop-Transcript | Out-Null }
     }
+
+    if ($null -ne $reexecExitCode) { exit $reexecExitCode }
 
     # Non-zero so Task Scheduler records a failing LastTaskResult; a silently
     # green run is the exact failure mode this whole design exists to remove.
