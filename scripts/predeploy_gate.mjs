@@ -36,6 +36,11 @@
  *      hard gate, so that landing a convention later requires zero workflow
  *      changes — just start writing the marker.
  *
+ *   3. Fabrication idioms (#108): invokes `tools/check_fabrication_idioms.mjs`
+ *      to scan `build_*.R` and `export_*.R` across mlb/, nba/, nfl/, wnba/ for
+ *      unreviewed RNG, player-name literal overrides, affine box-score clamps,
+ *      and unreviewed hard-coded metric vectors/tribbles.
+ *
  * Warn-only (never fails the build):
  *   - Accessibility findings are explicitly out of scope here per #98's
  *     acceptance criteria ("should not block on accessibility findings from
@@ -47,7 +52,7 @@
  * Exit code 0 = clear to deploy. Exit code 1 = blocked, see stdout for why.
  */
 
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -135,9 +140,31 @@ function checkSyntheticDataFlags() {
   return flagged;
 }
 
+function checkFabricationIdioms() {
+  const guardPath = path.join(ROOT_DIR, 'tools', 'check_fabrication_idioms.mjs');
+  if (!fs.existsSync(guardPath)) {
+    return { ok: false, output: `Missing guard script: ${guardPath}` };
+  }
+  try {
+    const stdout = execFileSync(process.execPath, [guardPath], {
+      cwd: ROOT_DIR,
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    return { ok: true, output: stdout.trim() };
+  } catch (err) {
+    const combined = [err.stdout, err.stderr]
+      .filter(Boolean)
+      .map((s) => s.toString().trim())
+      .filter(Boolean)
+      .join('\n');
+    return { ok: false, output: combined || err.message };
+  }
+}
+
 function main() {
-  console.log('=== Pre-publish gate (#98) ===');
-  console.log('Hard gates: uncommitted drift, synthetic-data flags.');
+  console.log('=== Pre-publish gate (#98, #108) ===');
+  console.log('Hard gates: uncommitted drift, synthetic-data flags, fabrication idioms.');
   console.log('Warn-only: accessibility (not run by this script; see #96).');
   console.log('');
 
@@ -174,6 +201,18 @@ function main() {
     }
   } else {
     console.log('OK: no synthetic-data flags found.');
+  }
+
+  // --- Gate 3: fabrication idioms (#108) ------------------------------
+  const fabricationGate = checkFabricationIdioms();
+  if (!fabricationGate.ok) {
+    blocked = true;
+    console.log('BLOCKED: fabrication-idiom guard failed:');
+    for (const line of fabricationGate.output.split('\n').slice(0, 25)) {
+      console.log(`  ${line}`);
+    }
+  } else {
+    console.log(`OK: ${fabricationGate.output || 'no unreviewed fabrication idioms found.'}`);
   }
 
   console.log('');

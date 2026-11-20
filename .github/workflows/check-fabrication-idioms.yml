@@ -1,0 +1,34 @@
+name: Check fabrication idioms
+
+# front-office#108: static veracity guard scanning build_*.R and export_*.R
+# across the four vendored sport subtrees (mlb/, nba/, nfl/, wnba/) for
+# fabrication idioms (unreviewed RNG, player-name literal conditional overrides,
+# affine box-score clamps, and hard-coded multi-number metric vectors/tribbles).
+#
+# Runs on push/PR against main because either a direct aggregator edit or a
+# subtree-sync PR can introduce an unreviewed fabrication pattern, and both
+# paths should fail CI identically. deploy.yml also enforces this guard as a
+# hard pre-publish gate via scripts/predeploy_gate.mjs.
+#
+# No dependencies: tools/check_fabrication_idioms.mjs is plain Node 22 ESM.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-fabrication-idioms:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check R builders/exporters for fabrication idioms (issue #108)
+        run: node tools/check_fabrication_idioms.mjs
+
+      - name: Run fabrication-idiom guard unit tests
+        run: node tools/test_check_fabrication_idioms.mjs
