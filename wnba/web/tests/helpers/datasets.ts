@@ -98,7 +98,20 @@ export const EXPECTED_DATA_FILES = [
   'shots_index.json',
   'shots_metadata.json',
   'matchups_slates.json',
+  'offseason_monitor.json',
 ] as const;
+
+/** Sidecar freshness manifest (front-office#102); excluded from its own coverage. */
+export const MANIFEST_FILE = 'data_manifest.json';
+
+/** Every top-level public/data/*.json on disk, excluding the manifest. */
+export function listTopLevelDataFiles(): string[] {
+  return fs
+    .readdirSync(DATA_DIR, { withFileTypes: true })
+    .filter((e) => e.isFile() && e.name.endsWith('.json') && e.name !== MANIFEST_FILE)
+    .map((e) => e.name)
+    .sort();
+}
 
 export type DataFileName = (typeof EXPECTED_DATA_FILES)[number];
 

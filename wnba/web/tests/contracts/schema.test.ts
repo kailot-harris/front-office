@@ -6,6 +6,7 @@ import {
   DATA_DIR,
   SHOTS_DIR,
   EXPECTED_DATA_FILES,
+  listTopLevelDataFiles,
   loadAllDatasets,
   readPlayerShotFile,
 } from '../helpers/datasets';
@@ -63,6 +64,14 @@ describe('JSON data file presence & parseability', () => {
     expect(() => JSON.parse(raw)).not.toThrow();
     expect(raw).not.toMatch(/:\s*NaN\b/);
     expect(raw).not.toMatch(/:\s*-?Infinity\b/);
+  });
+});
+
+describe('No orphan top-level data files', () => {
+  it('every top-level public/data/*.json (except data_manifest.json) is in EXPECTED_DATA_FILES', () => {
+    const expected = new Set<string>(EXPECTED_DATA_FILES);
+    const orphans = listTopLevelDataFiles().filter((f) => !expected.has(f));
+    expect(orphans, `Unregistered data files: ${orphans.join(', ')}`).toEqual([]);
   });
 });
 
