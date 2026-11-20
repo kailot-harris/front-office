@@ -135,6 +135,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
               />
             </div>
 
+            <div role="status" aria-live="polite">
             {isLoadingFull && (
               <div className="flex items-center gap-1.5 text-[11px] sm:text-[10px] text-slate-400 font-mono">
                 <Loader2 className="w-3 h-3 animate-spin" />
@@ -143,6 +144,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
                 </span>
               </div>
             )}
+            </div>
 
             {/* Position Filter Buttons */}
             <div className="flex items-center gap-1.5">
@@ -163,7 +165,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialProfile
           </div>
 
           {/* Player Cards List */}
-          <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1" tabIndex={0} role="region" aria-label="Player list">
             {filteredPlayers.map((player) => {
               const isSelected = player.playerId === selectedPlayer.playerId;
               return (

@@ -509,6 +509,9 @@ run_registered_stage("clutch_dataset")
 # standings (stage 10). See the ordering note in pipeline_stages.R.
 run_registered_stage("matchups_dataset")
 
+# 18. Landing digest for the front-office landing page (WNBA#224); reads matchups_slates.json.
+run_registered_stage("landing_digest")
+
 # 16. Front-Office Operations Alert Dispatcher (Issue #18)
 run_registered_stage("notify_pipeline_ops")
 

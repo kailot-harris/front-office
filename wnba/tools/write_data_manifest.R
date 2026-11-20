@@ -104,6 +104,12 @@ DM_COVERAGE_EXTRACTORS <- list(
   "playoff_bracket_2026.json" = list(
     source = "payload:series[].games[].gameDate",
     fn = function(j) .dm_max_date(lapply(j$series, function(s) lapply(s$games, `[[`, "gameDate")))),
+  # Landing digest (WNBA#224): latest FINAL game in yesterday[]. Off-season /
+  # no-final days yield NA -> not_game_dated with a coverage_note; never generated_at.
+  "landing_digest.json" = list(
+    source = "payload:yesterday[].game_date (final)",
+    fn = function(j) .dm_max_date(lapply(Filter(function(g) isTRUE(g$final), j$yesterday),
+                                         `[[`, "game_date"))),
   "offseason_transactions.json" = list(
     source = "payload:[].date",
     fn = function(j) .dm_max_date(lapply(j, `[[`, "date")))
@@ -183,7 +189,8 @@ build_data_manifest <- function(data_dir = file.path("web", "public", "data"),
     through <- if (!is.null(ex) && !is.null(j)) tryCatch(ex$fn(j), error = function(e) NA_character_) else NA_character_
     if (is.na(through)) {
       through_src <- "not_game_dated"
-      note <- if (!is.null(ex)) "Extractor found no game date in payload" else
+      note <- if (identical(f, "landing_digest.json")) "No final game in yesterday[] (off-season or no games yesterday)" else
+        if (!is.null(ex)) "Extractor found no game date in payload" else
         .dm_or(unname(DM_UNDATED_NOTES[f]), "No game-dated field in payload")
     } else {
       through_src <- ex$source

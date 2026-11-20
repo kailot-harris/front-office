@@ -1006,6 +1006,30 @@ source("config.R")
     !is.na(as.POSIXct(x, format = "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"))
 }
 
+# Landing digest contract (WNBA#224, front-office#200 spec section 1). Returns a
+# character vector of problems (empty = OK).
+.pw_landing_digest_problems <- function(path) {
+  d <- tryCatch(jsonlite::fromJSON(path, simplifyVector = FALSE), error = function(e) NULL)
+  if (is.null(d)) return("unparseable")
+  p <- character(0)
+  req <- c("schema_version", "sport", "generated_at", "slate_date", "season_state",
+           "next_milestone", "today", "yesterday", "record", "calibration", "movers")
+  miss <- setdiff(req, names(d))
+  if (length(miss)) p <- c(p, paste("missing field(s):", paste(miss, collapse = ", ")))
+  if (!identical(as.integer(d$schema_version %||% NA), 1L)) p <- c(p, "schema_version != 1")
+  if (!.pw_is_utc_iso(d$generated_at)) p <- c(p, "generated_at not UTC ISO-8601")
+  if (!is.null(d$season_state) && !d$season_state %in% c("regular", "postseason", "offseason", "preseason"))
+    p <- c(p, "invalid season_state")
+  for (k in c("season", "last_7")) if (is.null(d$record[[k]]$games)) p <- c(p, sprintf("record$%s incomplete", k))
+  if (length(d$calibration) != 5L) p <- c(p, "calibration must have 5 buckets")
+  if (!all(c("1", "7", "21") %in% names(d$movers$windows))) p <- c(p, "movers windows 1/7/21 missing")
+  ok_ps <- c("available", "no_model", "not_yet_run")
+  for (g in c(d$today, d$yesterday)) {
+    if (!(g$prediction_status %||% "") %in% ok_ps) { p <- c(p, "bad prediction_status"); break }
+  }
+  unique(p)
+}
+
 .assert_manifest_and_coverage <- function(data_dir = file.path("web", "public", "data"),
                                           max_lag_days = 3L,
                                           schedule_through_date = NULL,
@@ -1090,6 +1114,13 @@ source("config.R")
       lines <- c(lines, sprintf("    [OK] %s - through %s (lag %d day(s))", f, thr, max(lag, 0L)))
     } else {
       lines <- c(lines, sprintf("    [OK] %s - through %s (lag not evaluated)", f, thr))
+    }
+  }
+  if ("landing_digest.json" %in% on_disk) {
+    dp <- .pw_landing_digest_problems(file.path(data_dir, "landing_digest.json"))
+    if (length(dp)) {
+      lines <- c(lines, sprintf("    [FAIL] landing_digest.json - %s", dp))
+      problems <- c(problems, paste("landing_digest.json", dp))
     }
   }
   stale_entries <- setdiff(names(entries), on_disk)

@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { Film, Image as ImageIcon, Search, Download, Maximize2, X } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
+import { useFocusTrap } from '@/lib/useFocusTrap';
 
 export interface VisualMediaItem {
   id: string;
@@ -138,6 +139,9 @@ export const GalleryClient: React.FC<GalleryClientProps> = ({ mediaItems = WNBA_
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeMedia, setActiveMedia] = useState<VisualMediaItem | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const closeDialog = useCallback(() => setActiveMedia(null), []);
+  useFocusTrap(dialogRef, !!activeMedia && !activeMedia.unrendered, closeDialog);
 
   const categories = useMemo(() => {
     const set = new Set(mediaItems.map((m) => m.category).filter(Boolean));
@@ -299,7 +303,7 @@ export const GalleryClient: React.FC<GalleryClientProps> = ({ mediaItems = WNBA_
               <div className="px-4 py-2.5 bg-surface/60 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-mono text-slate-400">
                 <span className="capitalize">{item.category}</span>
                 {item.sizeBytes && (
-                  <span className="text-slate-500">{(item.sizeBytes / 1024).toFixed(0)} KB</span>
+                  <span className="text-slate-400">{(item.sizeBytes / 1024).toFixed(0)} KB</span>
                 )}
               </div>
             </div>
@@ -310,11 +314,18 @@ export const GalleryClient: React.FC<GalleryClientProps> = ({ mediaItems = WNBA_
       {/* Fullscreen Modal View */}
       {activeMedia && !activeMedia.unrendered && (
         <div className="fixed inset-0 z-50 bg-surface/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-surface-raised border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="gallery-dialog-title"
+            tabIndex={-1}
+            className="bg-surface-raised border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
+          >
             {/* Modal Header */}
             <div className="flex items-center justify-between p-4 border-b border-slate-800">
               <div>
-                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <h2 id="gallery-dialog-title" className="text-base font-bold text-white flex items-center gap-2">
                   {activeMedia.title}
                   <span className="text-xs font-mono font-normal text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
                     {activeMedia.category}

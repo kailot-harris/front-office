@@ -19,13 +19,12 @@
 #
 # DIFFERENCES FROM NBA'S:
 #
-#  1. No Playwright install. This repo has @playwright/test and a
-#     playwright.config.ts but ZERO spec files, so the e2e stage reports
-#     SKIPPED and downloading a browser for it would be pure cost. The day a
-#     spec lands, add NBA's "Install Playwright Chromium" step back -- and fix
-#     the managed webServer first, which is `npx next start` and cannot serve
-#     an `output: 'export'` app.
-#
+#  1. Playwright runs the axe accessibility suite (web/tests/e2e/a11y.spec.ts,
+#     WNBA#230) against the built static export, served under /wnba by
+#     web/scripts/serve-export.mjs (`next start` cannot serve an
+#     `output: 'export'` app). Every top-level route is checked in light and
+#     dark color schemes; a serious or critical violation fails the job.
+
 #  2. No NBA_SKIP_STAGE_AUTORUN equivalent. There is no such guard in this
 #     repo. The protection here is the explicit RUN/SKIP list in
 #     .github/scripts/run-tests.R: three of the 14 test scripts spawn the real
@@ -102,6 +101,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
 
       # The suite's own exit code is the gate: a failure listed in
       # known-issues.json is reported as KNOWN and tolerated, anything else is

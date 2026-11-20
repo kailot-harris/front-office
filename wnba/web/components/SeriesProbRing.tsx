@@ -63,7 +63,13 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
         </button>
       </div>
       <div className="relative" style={{ width: size, height: size }}>
-        <svg width={size} height={size} className="transform -rotate-90">
+        <svg
+          width={size}
+          height={size}
+          className="transform -rotate-90"
+          role="img"
+          aria-label={`Series win probability: ${teamA} ${pctA}%, ${teamB} ${pctB}%`}
+        >
           <circle
             cx={size / 2}
             cy={size / 2}

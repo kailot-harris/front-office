@@ -237,7 +237,7 @@ export const NextEditionPill: React.FC<NextEditionPillProps> = ({ nextEdition, p
       aria-disabled="true"
       data-testid="next-edition-pill"
       title={`Next edition, projected ${nextEdition.projectedPublishDate}; not published yet`}
-      className="px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap border border-dashed border-slate-700 text-slate-500 cursor-not-allowed"
+      className="px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap border border-dashed border-slate-700 text-slate-400 cursor-not-allowed"
     >
       {label}
     </button>
@@ -255,7 +255,7 @@ const MilestoneRow: React.FC<{ m: UpcomingMilestone; passed?: boolean }> = ({ m,
   <li
     data-testid="milestone-row"
     className={`p-3.5 rounded-xl bg-surface border border-slate-800/70 flex items-start justify-between gap-3 text-xs ${
-      passed ? 'opacity-70' : ''
+      passed ? 'border-dashed' : ''
     }`}
   >
     <div className="space-y-1">
@@ -533,7 +533,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
               <span className="text-xs text-slate-400 font-mono">
                 Phase: <strong className="text-slate-200">{initialDataset.activePhase}</strong>
               </span>
-              <span className="text-slate-600">•</span>
+              <span className="text-slate-400">•</span>
               <span className="text-xs text-slate-400 font-mono">
                 Baseline: {initialDataset.baselineAsOfDate}
               </span>
@@ -581,7 +581,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                   >
                     Week {ed.weekNumber}
                     {ed.isQuietWeek && (
-                      <span className="ml-1 text-[11px] sm:text-[10px] text-slate-400 opacity-70">
+                      <span className="ml-1 text-[11px] sm:text-[10px]">
                         (Quiet)
                       </span>
                     )}
@@ -769,11 +769,11 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                   <span className="text-xs text-slate-400 font-mono">
                     Edition: <strong className="text-slate-200">Week {currentEdition.weekNumber}</strong>
                   </span>
-                  <span className="text-slate-600">•</span>
+                  <span className="text-slate-400">•</span>
                   <span className="text-xs text-slate-400 font-mono">
                     Published: {currentEdition.publishDate}
                   </span>
-                  <span className="text-slate-600">•</span>
+                  <span className="text-slate-400">•</span>
                   {currentEdition.isQuietWeek ? (
                     <span className="px-2 py-0.5 rounded text-[11px] sm:text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30 flex items-center gap-1">
                       <Clock className="w-3 h-3 text-amber-400" />
