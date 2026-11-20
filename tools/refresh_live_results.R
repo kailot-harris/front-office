@@ -96,6 +96,8 @@ suppressPackageStartupMessages(library(jsonlite))
 # workflow sets up.
 source("config.R")
 source("tools/espn_scoreboard.R")
+# Landing digest patcher (NBA#211). jsonlite-only, like this script.
+source("tools/build_landing_digest.R")
 
 # Default lookback for the date sweep. ESPN's scoreboard is keyed by a single
 # date, so an unbounded sweep over every pending date in a 1,200-game season is
@@ -272,7 +274,8 @@ refresh_live_results <- function(dates = NULL,
                                  lookback_days = RLR_DEFAULT_LOOKBACK_DAYS,
                                  payload_path = WEB_JSON_MATCHUPS_SLATES,
                                  fetcher = espn_fetch_dates,
-                                 today = Sys.Date()) {
+                                 today = Sys.Date(),
+                                 digest_path = file.path(dirname(payload_path), LD_FILE_NAME)) {
   if (!file.exists(payload_path)) {
     stop(sprintf("refresh_live_results(): no payload at %s - run the pipeline first.",
                  payload_path))
@@ -300,8 +303,12 @@ refresh_live_results <- function(dates = NULL,
   payload$generated_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
 
   written <- write_json_if_changed(payload, payload_path)
+  # Slots B/C: re-grade the landing digest's yesterday, record and calibration
+  # from the same patched rows (NBA#211). Absent digest -> nothing to patch.
+  digest_written <- ld_patch_digest_file(digest_path, payload$matchups)
   list(n_changed = patched$n_changed, dates = dates,
-       file = if (written) payload_path else NULL)
+       file = if (written) payload_path else NULL,
+       digest = if (isTRUE(digest_written)) digest_path else NULL)
 }
 
 # Entry point for the scheduled workflow.
