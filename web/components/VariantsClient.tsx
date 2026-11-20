@@ -202,14 +202,14 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
               onClick={() => setActiveVariant(key)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                 isActive
-                  ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
+                  ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/30'
                   : 'bg-surface-raised text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
               }`}
             >
               <span>{detail.name}</span>
               <span
                 className={`text-[11px] px-2 py-0.5 rounded-full font-mono ${
-                  isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
+                  isActive ? 'border border-current text-fo-on-accent' : 'bg-slate-800 text-slate-400'
                 }`}
               >
                 {detail.weightBadge}
@@ -300,7 +300,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
                   onClick={() => setDivergenceSort(opt.id)}
                   className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
                     divergenceSort === opt.id
-                      ? 'bg-accent-600 text-white shadow-sm'
+                      ? 'bg-accent-600 text-fo-on-accent shadow-sm'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >

@@ -1,23 +1,23 @@
+@import './design-tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/*
+ * Shell colours come from the shared tokens (design-tokens.css, data-site="mlb").
+ * Light and dark follow prefers-color-scheme (kailot-harris/MLB-Analytics#129).
+ */
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--fo-text);
+  background: var(--fo-surface);
+  font-family: var(--fo-font-sans);
+}
+
+/* Numbers and tables use Geist Mono (kailot-harris/MLB-Analytics#128). */
+table {
+  font-family: var(--fo-font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 @layer utilities {

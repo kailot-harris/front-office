@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "sport": "mlb",
-  "generated_at": "2026-11-20T15:44:34Z",
-  "schedule_through_date": null,
+  "generated_at": "2026-11-20T17:52:08Z",
+  "schedule_through_date": "2026-10-24",
   "datasets": [
     {
       "file": "cbt_payroll_sheet.json",
@@ -24,6 +24,18 @@
       "through_date": null,
       "through_date_source": "not_game_dated",
       "coverage_note": "season-aggregate leverage metrics; no per-game dates in content",
+      "static": false,
+      "static_reason": null,
+      "builder": "tools/write_data_manifest.R"
+    },
+    {
+      "file": "landing_digest.json",
+      "generated_at": "2026-11-20T17:32:10Z",
+      "stamp_source": "payload:generated_at",
+      "content_sha256": "def33bdbdf6adff7c2a691406bd0f8f564bb8f59f87b768ecd0a6cb9b69f2695",
+      "through_date": null,
+      "through_date_source": "not_game_dated",
+      "coverage_note": "no yesterday[].start_time_utc (final games, US Eastern date) present in content",
       "static": false,
       "static_reason": null,
       "builder": "tools/write_data_manifest.R"

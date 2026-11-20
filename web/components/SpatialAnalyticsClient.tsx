@@ -23,6 +23,7 @@ import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 import { exportToCsv } from '@/lib/exportToCsv';
 import { HowToRead } from '@/components/HowToRead';
 import { GlossaryTerm } from '@/components/Glossary';
+import { onTabListKeyDown } from '@/lib/tabKeys';
 
 interface SpatialAnalyticsClientProps {
   data: StatcastSpatialData;
@@ -102,7 +103,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
       case 'Single':
         return '#38bdf8'; // sky-400
       default:
-        return '#64748b'; // slate-500
+        return 'var(--tw-c-slate-500)'; // slate-500
     }
   };
 
@@ -130,7 +131,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
       case 'KC':
         return '#e11d48'; // rose-600 (knuckle curve)
       default:
-        return '#94a3b8'; // slate-400
+        return 'var(--tw-c-slate-400)'; // slate-400
     }
   };
 
@@ -258,12 +259,14 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
         </div>
 
         {/* Tab Navigation Pill Bar */}
-        <div className="flex flex-wrap items-center gap-2 mt-6 pt-4 border-t border-slate-800/80">
+        <div role="tablist" onKeyDown={onTabListKeyDown} className="flex flex-wrap items-center gap-2 mt-6 pt-4 border-t border-slate-800/80">
           <button
             onClick={() => setActiveTab('spray')}
+            role="tab"
+            aria-selected={activeTab === 'spray'}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               activeTab === 'spray'
-                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30 ring-1 ring-accent-400/50'
+                ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/30 ring-1 ring-accent-400/50'
                 : 'bg-surface/60 text-slate-400 hover:text-white hover:bg-slate-800/60 border border-slate-800'
             }`}
           >
@@ -273,9 +276,11 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
 
           <button
             onClick={() => setActiveTab('zone')}
+            role="tab"
+            aria-selected={activeTab === 'zone'}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               activeTab === 'zone'
-                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30 ring-1 ring-accent-400/50'
+                ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/30 ring-1 ring-accent-400/50'
                 : 'bg-surface/60 text-slate-400 hover:text-white hover:bg-slate-800/60 border border-slate-800'
             }`}
           >
@@ -285,9 +290,11 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
 
           <button
             onClick={() => setActiveTab('movement')}
+            role="tab"
+            aria-selected={activeTab === 'movement'}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               activeTab === 'movement'
-                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30 ring-1 ring-accent-400/50'
+                ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/30 ring-1 ring-accent-400/50'
                 : 'bg-surface/60 text-slate-400 hover:text-white hover:bg-slate-800/60 border border-slate-800'
             }`}
           >
@@ -297,9 +304,11 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
 
           <button
             onClick={() => setActiveTab('defense')}
+            role="tab"
+            aria-selected={activeTab === 'defense'}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               activeTab === 'defense'
-                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30 ring-1 ring-accent-400/50'
+                ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/30 ring-1 ring-accent-400/50'
                 : 'bg-surface/60 text-slate-400 hover:text-white hover:bg-slate-800/60 border border-slate-800'
             }`}
           >
@@ -322,7 +331,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                 <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
                   Ballpark Overlay
                 </label>
-                <select
+                <select aria-label="Ballpark overlay"
                   value={selectedPark}
                   onChange={(e) => setSelectedPark(e.target.value)}
                   className="bg-surface border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-sky-500"
@@ -347,7 +356,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                       onClick={() => setSprayHandFilter(hand)}
                       className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
                         sprayHandFilter === hand
-                          ? 'bg-accent-600 text-white'
+                          ? 'bg-accent-600 text-fo-on-accent'
                           : 'text-slate-400 hover:text-white'
                       }`}
                     >
@@ -362,7 +371,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                 <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
                   Hit Outcome
                 </label>
-                <select
+                <select aria-label="Hit outcome"
                   value={sprayTypeFilter}
                   onChange={(e) => setSprayTypeFilter(e.target.value)}
                   className="bg-surface border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-sky-500"
@@ -481,8 +490,8 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                 >
                   <defs>
                     <radialGradient id="fieldGrad" cx="50%" cy="90%" r="90%">
-                      <stop offset="0%" stopColor="#0f172a" />
-                      <stop offset="100%" stopColor="#020617" />
+                      <stop offset="0%" stopColor="var(--tw-c-slate-900)" />
+                      <stop offset="100%" stopColor="var(--tw-c-slate-950)" />
                     </radialGradient>
                     <radialGradient id="ballparkGrassTier1" cx="50%" cy="90%" r="90%">
                       <stop offset="0%" stopColor="#064e3b" stopOpacity="0.45" />
@@ -516,8 +525,8 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                   {/* Foul Ground & Backstop Geometry */}
                   <path
                     d={parkSvgData.backstopPolygon}
-                    fill="#0f172a"
-                    stroke="#1e293b"
+                    fill="var(--tw-c-slate-900)"
+                    stroke="var(--tw-c-slate-800)"
                     strokeWidth="1.2"
                   />
 
@@ -525,7 +534,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                   <path
                     d={parkSvgData.fairTerritoryPolygon}
                     fill="url(#ballparkGrassTier1)"
-                    stroke="#1e293b"
+                    stroke="var(--tw-c-slate-800)"
                     strokeWidth="1"
                   />
 
@@ -546,7 +555,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                         y1={homeY}
                         x2={parkSvgData.wallPoints[0].x}
                         y2={parkSvgData.wallPoints[0].y}
-                        stroke="#e2e8f0"
+                        stroke="var(--tw-c-slate-200)"
                         strokeWidth="1.5"
                       />
                       <line
@@ -554,7 +563,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                         y1={homeY}
                         x2={parkSvgData.wallPoints[parkSvgData.wallPoints.length - 1].x}
                         y2={parkSvgData.wallPoints[parkSvgData.wallPoints.length - 1].y}
-                        stroke="#e2e8f0"
+                        stroke="var(--tw-c-slate-200)"
                         strokeWidth="1.5"
                       />
                       {/* Yellow Foul Poles */}
@@ -585,14 +594,14 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                         <path
                           d={`M ${homeX - r * Math.sin(Math.PI / 4)} ${homeY - r * Math.cos(Math.PI / 4)} A ${r} ${r} 0 0 1 ${homeX + r * Math.sin(Math.PI / 4)} ${homeY - r * Math.cos(Math.PI / 4)}`}
                           fill="none"
-                          stroke="#1e293b"
+                          stroke="var(--tw-c-slate-800)"
                           strokeWidth="1"
                           strokeDasharray="2 4"
                         />
                         <text
                           x={homeX + 5}
                           y={homeY - r + 12}
-                          fill="#475569"
+                          fill="var(--tw-c-slate-600)"
                           fontSize="9"
                           fontFamily="monospace"
                         >
@@ -606,7 +615,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                   <path
                     d={`M ${homeX - 110} ${homeY - 110} A 155 155 0 0 1 ${homeX + 110} ${homeY - 110} L ${homeX} ${homeY} Z`}
                     fill="url(#ballparkDirtTier1)"
-                    stroke="#334155"
+                    stroke="var(--tw-c-slate-700)"
                     strokeWidth="1"
                   />
 
@@ -624,9 +633,9 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                   {/* Infield Diamond (90-ft basepaths scaled: ~80 px) */}
                   <polygon
                     points={`${homeX},${homeY} ${homeX + 55},${homeY - 55} ${homeX},${homeY - 110} ${homeX - 55},${homeY - 55}`}
-                    fill="#020617"
+                    fill="var(--tw-c-slate-950)"
                     fillOpacity="0.6"
-                    stroke="#64748b"
+                    stroke="var(--tw-c-slate-500)"
                     strokeWidth="1.2"
                   />
 
@@ -644,7 +653,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                     y={homeY - 56.6}
                     width="4.4"
                     height="1.5"
-                    fill="#f8fafc"
+                    fill="var(--tw-c-slate-50)"
                   />
 
                   {/* Bases (1B, 2B, 3B diamonds) */}
@@ -653,7 +662,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                     y={homeY - 57.5}
                     width="5.5"
                     height="5.5"
-                    fill="#f8fafc"
+                    fill="var(--tw-c-slate-50)"
                     transform={`rotate(45 ${homeX + 55} ${homeY - 55})`}
                   />
                   <rect
@@ -661,7 +670,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                     y={homeY - 112.75}
                     width="5.5"
                     height="5.5"
-                    fill="#f8fafc"
+                    fill="var(--tw-c-slate-50)"
                     transform={`rotate(45 ${homeX} ${homeY - 110})`}
                   />
                   <rect
@@ -669,14 +678,14 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                     y={homeY - 57.5}
                     width="5.5"
                     height="5.5"
-                    fill="#f8fafc"
+                    fill="var(--tw-c-slate-50)"
                     transform={`rotate(45 ${homeX - 55} ${homeY - 55})`}
                   />
 
                   {/* Home Plate Icon */}
                   <polygon
                     points={`${homeX},${homeY} ${homeX - 5},${homeY + 4} ${homeX - 5},${homeY + 8} ${homeX + 5},${homeY + 8} ${homeX + 5},${homeY + 4}`}
-                    fill="#f8fafc"
+                    fill="var(--tw-c-slate-50)"
                   />
 
                   {/* Multi-Segment Outfield Wall Base Path */}
@@ -946,7 +955,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                     onClick={() => setZoneMetric(m.id as 'pct' | 'swing' | 'whiff' | 'calledStrike')}
                     className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
                       zoneMetric === m.id
-                        ? 'bg-accent-600 text-white'
+                        ? 'bg-accent-600 text-fo-on-accent'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -997,14 +1006,14 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                   {/* Home Plate Indicator at Bottom */}
                   <polygon
                     points="200,380 180,365 180,355 220,355 220,365"
-                    fill="#334155"
-                    stroke="#475569"
+                    fill="var(--tw-c-slate-700)"
+                    stroke="var(--tw-c-slate-600)"
                     strokeWidth="1"
                   />
                   <text
                     x="200"
                     y="395"
-                    fill="#64748b"
+                    fill="var(--tw-c-slate-500)"
                     fontSize="9"
                     textAnchor="middle"
                     fontFamily="monospace"
@@ -1018,8 +1027,8 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                     y="40"
                     width="320"
                     height="300"
-                    fill="#0f172a"
-                    stroke="#334155"
+                    fill="var(--tw-c-slate-900)"
+                    stroke="var(--tw-c-slate-700)"
                     strokeWidth="2"
                     strokeDasharray="4 4"
                     rx="8"
@@ -1027,7 +1036,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                   <text
                     x="200"
                     y="30"
-                    fill="#64748b"
+                    fill="var(--tw-c-slate-500)"
                     fontSize="10"
                     fontWeight="bold"
                     textAnchor="middle"
@@ -1066,7 +1075,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                     }
 
                     // Dynamic heat color
-                    let heatColor = '#1e293b';
+                    let heatColor = 'var(--tw-c-slate-800)';
                     if (zoneMetric === 'whiff') {
                       // High whiff = rose/purple
                       const alpha = Math.min(Math.max((val - 10) / 25, 0.15), 0.85);
@@ -1099,7 +1108,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                           width={cellW}
                           height={cellH}
                           fill={heatColor}
-                          stroke={isSelected ? '#38bdf8' : '#334155'}
+                          stroke={isSelected ? '#38bdf8' : 'var(--tw-c-slate-700)'}
                           strokeWidth={isSelected ? 2.5 : 1}
                           rx="6"
                         />
@@ -1117,7 +1126,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                         <text
                           x={x + cellW / 2}
                           y={y + 50}
-                          fill="#94a3b8"
+                          fill="var(--tw-c-slate-400)"
                           fontSize="10"
                           textAnchor="middle"
                         >
@@ -1126,7 +1135,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                         <text
                           x={x + cellW / 2}
                           y={y + 68}
-                          fill="#64748b"
+                          fill="var(--tw-c-slate-500)"
                           fontSize="9"
                           textAnchor="middle"
                           fontFamily="monospace"
@@ -1269,7 +1278,7 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Drill Down Pitcher Arsenal:
               </label>
-              <select
+              <select aria-label="Drill down pitcher arsenal"
                 value={selectedPitcherId}
                 onChange={(e) => setSelectedPitcherId(Number(e.target.value))}
                 className="bg-surface border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-sky-500"
@@ -1329,12 +1338,12 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                     const y = 220 - val * 9;
                     return (
                       <g key={val}>
-                        <line x1={x} y1="20" x2={x} y2="420" stroke="#1e293b" strokeWidth="0.8" />
-                        <line x1="20" y1={y} x2="420" y2={y} stroke="#1e293b" strokeWidth="0.8" />
-                        <text x={x} y="432" fill="#475569" fontSize="8" textAnchor="middle" fontFamily="monospace">
+                        <line x1={x} y1="20" x2={x} y2="420" stroke="var(--tw-c-slate-800)" strokeWidth="0.8" />
+                        <line x1="20" y1={y} x2="420" y2={y} stroke="var(--tw-c-slate-800)" strokeWidth="0.8" />
+                        <text x={x} y="432" fill="var(--tw-c-slate-600)" fontSize="8" textAnchor="middle" fontFamily="monospace">
                           {val}&quot;
                         </text>
-                        <text x="12" y={y + 3} fill="#475569" fontSize="8" textAnchor="middle" fontFamily="monospace">
+                        <text x="12" y={y + 3} fill="var(--tw-c-slate-600)" fontSize="8" textAnchor="middle" fontFamily="monospace">
                           {val}&quot;
                         </text>
                       </g>
@@ -1342,20 +1351,20 @@ export const SpatialAnalyticsClient: React.FC<SpatialAnalyticsClientProps> = ({
                   })}
 
                   {/* Zero Axes (Gravity Baseline) */}
-                  <line x1="20" y1="220" x2="420" y2="220" stroke="#475569" strokeWidth="1.5" />
-                  <line x1="220" y1="20" x2="220" y2="420" stroke="#475569" strokeWidth="1.5" />
+                  <line x1="20" y1="220" x2="420" y2="220" stroke="var(--tw-c-slate-600)" strokeWidth="1.5" />
+                  <line x1="220" y1="20" x2="220" y2="420" stroke="var(--tw-c-slate-600)" strokeWidth="1.5" />
 
                   {/* Axis Quadrant Labels */}
-                  <text x="410" y="215" fill="#64748b" fontSize="9" textAnchor="end">
+                  <text x="410" y="215" fill="var(--tw-c-slate-500)" fontSize="9" textAnchor="end">
                     +Glove Break →
                   </text>
-                  <text x="30" y="215" fill="#64748b" fontSize="9">
+                  <text x="30" y="215" fill="var(--tw-c-slate-500)" fontSize="9">
                     ← +Arm Run
                   </text>
-                  <text x="225" y="32" fill="#64748b" fontSize="9">
+                  <text x="225" y="32" fill="var(--tw-c-slate-500)" fontSize="9">
                     ↑ Hop / Rising (IVB)
                   </text>
-                  <text x="225" y="415" fill="#64748b" fontSize="9">
+                  <text x="225" y="415" fill="var(--tw-c-slate-500)" fontSize="9">
                     ↓ Heavy Drop (Sink/Curve)
                   </text>
 

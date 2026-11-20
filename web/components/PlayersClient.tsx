@@ -221,7 +221,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
             onClick={() => handleGroupSwitch('Batter')}
             className={`flex items-center gap-2.5 px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${
               activeGroup === 'Batter'
-                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
+                ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/30'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -230,7 +230,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
             <span
               className={`text-xs font-mono px-2 py-0.5 rounded-full ${
                 activeGroup === 'Batter'
-                  ? 'bg-white/20 text-white'
+                  ? 'border border-current text-fo-on-accent'
                   : 'bg-slate-800 text-slate-400'
               }`}
             >
@@ -243,7 +243,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
             onClick={() => handleGroupSwitch('Pitcher')}
             className={`flex items-center gap-2.5 px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${
               activeGroup === 'Pitcher'
-                ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
+                ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/30'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -252,7 +252,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
             <span
               className={`text-xs font-mono px-2 py-0.5 rounded-full ${
                 activeGroup === 'Pitcher'
-                  ? 'bg-white/20 text-white'
+                  ? 'border border-current text-fo-on-accent'
                   : 'bg-slate-800 text-slate-400'
               }`}
             >
@@ -362,7 +362,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
           </div>
 
           {/* Team filter */}
-          <select
+          <select aria-label="Filter by club"
             value={selectedTeam}
             onChange={(e) => setSelectedTeam(e.target.value)}
             className="bg-surface border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500"
@@ -377,7 +377,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
 
           {/* Pitcher Role filter (shown whenPitchers tab is active) */}
           {activeGroup === 'Pitcher' && (
-            <select
+            <select aria-label="Pitcher role"
               value={pitcherRole}
               onChange={(e) => setPitcherRole(e.target.value as 'All' | 'SP' | 'RP')}
               className="bg-surface border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500"
@@ -424,7 +424,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
               }}
               className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                 statMode === 'pooled_rates'
-                  ? 'bg-accent-600 text-white shadow-sm'
+                  ? 'bg-accent-600 text-fo-on-accent shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -438,7 +438,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
               }}
               className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                 statMode === 'marcel_totals'
-                  ? 'bg-accent-600 text-white shadow-sm'
+                  ? 'bg-accent-600 text-fo-on-accent shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -458,6 +458,9 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                 <th className="py-3.5 px-3 text-center hidden sm:table-cell">Spatial Map</th>
                 <th className="py-3.5 px-3">Club / Role</th>
                 <th
+                  aria-sort={sortBy === 'proj_workload' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('proj_workload'); } }}
                   onClick={() => handleSort('proj_workload')}
                   className="py-3.5 px-3 text-right cursor-pointer hover:text-white hidden sm:table-cell"
                 >
@@ -467,6 +470,9 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                   </div>
                 </th>
                 <th
+                  aria-sort={sortBy === 'park_factor' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('park_factor'); } }}
                   onClick={() => handleSort('park_factor')}
                   className="py-3.5 px-3 text-right cursor-pointer hover:text-white hidden sm:table-cell"
                 >
@@ -479,6 +485,9 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                 {statMode === 'pooled_rates' ? (
                   <>
                     <th
+                      aria-sort={sortBy === 'stat1_raw' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('stat1_raw'); } }}
                       onClick={() => handleSort('stat1_raw')}
                       className="py-3.5 px-3 text-right cursor-pointer hover:text-white"
                     >
@@ -488,6 +497,9 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                       </div>
                     </th>
                     <th
+                      aria-sort={sortBy === 'stat1_pooled' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('stat1_pooled'); } }}
                       onClick={() => handleSort('stat1_pooled')}
                       className="py-3.5 px-3 text-right cursor-pointer hover:text-white text-indigo-300"
                     >
@@ -497,6 +509,9 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                       </div>
                     </th>
                     <th
+                      aria-sort={sortBy === 'stat2_pooled' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('stat2_pooled'); } }}
                       onClick={() => handleSort('stat2_pooled')}
                       className="py-3.5 px-3 text-right cursor-pointer hover:text-white"
                     >
@@ -506,6 +521,9 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                       </div>
                     </th>
                     <th
+                      aria-sort={sortBy === 'k_pct_pooled' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('k_pct_pooled'); } }}
                       onClick={() => handleSort('k_pct_pooled')}
                       className="py-3.5 px-3 text-right cursor-pointer hover:text-white"
                     >
@@ -515,6 +533,9 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                       </div>
                     </th>
                     <th
+                      aria-sort={sortBy === 'stat1_shrinkage' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('stat1_shrinkage'); } }}
                       onClick={() => handleSort('stat1_shrinkage')}
                       className="py-3.5 px-3 text-right cursor-pointer hover:text-white"
                     >
@@ -527,6 +548,9 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                 ) : (
                   <>
                     <th
+                      aria-sort={sortBy === 'count1_val' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('count1_val'); } }}
                       onClick={() => handleSort('count1_val')}
                       className="py-3.5 px-3 text-right cursor-pointer hover:text-white text-amber-300"
                     >
@@ -536,6 +560,9 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                       </div>
                     </th>
                     <th
+                      aria-sort={sortBy === 'count2_val' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('count2_val'); } }}
                       onClick={() => handleSort('count2_val')}
                       className="py-3.5 px-3 text-right cursor-pointer hover:text-white"
                     >
@@ -545,6 +572,9 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                       </div>
                     </th>
                     <th
+                      aria-sort={sortBy === 'count3_val' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('count3_val'); } }}
                       onClick={() => handleSort('count3_val')}
                       className="py-3.5 px-3 text-right cursor-pointer hover:text-white"
                     >
@@ -554,6 +584,9 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                       </div>
                     </th>
                     <th
+                      aria-sort={sortBy === 'stat3_val' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('stat3_val'); } }}
                       onClick={() => handleSort('stat3_val')}
                       className="py-3.5 px-3 text-right cursor-pointer hover:text-white"
                     >
@@ -567,6 +600,9 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                 )}
 
                 <th
+                  aria-sort={sortBy === 'composite_zscore' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('composite_zscore'); } }}
                   onClick={() => handleSort('composite_zscore')}
                   className="py-3.5 px-4 text-right cursor-pointer hover:text-white"
                 >
@@ -616,7 +652,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
                           }}
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all ${
                             isExpanded
-                              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-bold'
+                              ? 'bg-indigo-600 text-fo-on-accent shadow-lg shadow-indigo-600/30 font-bold'
                               : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60'
                           }`}
                           title={
@@ -776,7 +812,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
           />
         )}
         {isLoadingFullRoster && (
-          <div className="p-3 bg-surface/80 border-t border-slate-800 text-center text-xs text-slate-400 font-mono animate-pulse">
+          <div role="status" aria-live="polite" className="p-3 bg-surface/80 border-t border-slate-800 text-center text-xs text-slate-400 font-mono animate-pulse">
             Loading full {activeGroup === 'Batter' ? 'batter' : 'pitcher'} roster…
           </div>
         )}

@@ -59,6 +59,21 @@ DM_STAMP_FIELDS <- list(
 # DM_NOT_GAME_DATED with the reason.
 # ------------------------------------------------------------------------------
 DM_COVERAGE_EXTRACTORS <- list(
+  # Landing digest (front-office#200): the latest FINAL game in yesterday[],
+  # dated in US Eastern from its start_time_utc. Never generated_at/slate_date.
+  "landing_digest.json" = list(
+    field = "yesterday[].start_time_utc (final games, US Eastern date)",
+    fn = function(j) {
+      d <- vapply(.dm_or(j$yesterday, list()), function(g) {
+        if (isTRUE(g$final) && is.character(g$start_time_utc)) {
+          t <- as.POSIXct(substr(g$start_time_utc, 1L, 19L), format = "%Y-%m-%dT%H:%M:%S", tz = "UTC")
+          if (is.na(t)) NA_character_ else format(t, "%Y-%m-%d", tz = "America/New_York")
+        } else NA_character_
+      }, character(1))
+      d <- d[!is.na(d)]
+      if (length(d)) max(d) else NA_character_
+    }
+  ),
   "world_series.json" = list(
     field = "games[].game_date (scored games)",
     fn = function(j) {

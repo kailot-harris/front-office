@@ -111,7 +111,7 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
           >
             <div className="w-0.5 h-2 bg-amber-500/60 mb-0.5" />
             <span className="text-amber-400/90">${t1}M</span>
-            <span className="text-[11px] sm:text-[9px] text-amber-400/70">T1</span>
+            <span className="text-[11px] sm:text-[9px] text-amber-400">T1</span>
           </div>
 
           {/* Tier 2 */}
@@ -121,7 +121,7 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
           >
             <div className="w-0.5 h-2 bg-rose-500/60 mb-0.5" />
             <span className="text-rose-400/90">${t2}M</span>
-            <span className="text-[11px] sm:text-[9px] text-rose-400/70">Draft -10</span>
+            <span className="text-[11px] sm:text-[9px] text-rose-400">Draft -10</span>
           </div>
 
           {/* Tier 3 */}

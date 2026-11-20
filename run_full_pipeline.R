@@ -371,6 +371,19 @@ run_full_pipeline <- function(season = MLB_CURRENT_SEASON, force_refresh = FALSE
   )
 
   # ----------------------------------------------------------------------------
+  # Stage 14c: Front-office landing digest (tools/export_landing_digest.R)
+  # Reads the matchups written by stage 14, so it must run after it.
+  # ----------------------------------------------------------------------------
+  run_stage(
+    script_name   = "tools/export_landing_digest.R",
+    description   = "Export Landing Digest (today / yesterday / record / calibration / movers)",
+    call_fn       = "run_landing_digest_export",
+    output        = WEB_JSON_LANDING_DIGEST,
+    require_fresh = force_refresh,
+    season        = season
+  )
+
+  # ----------------------------------------------------------------------------
   # Stage 15: Front-Office Operations Alert Dispatcher (notify_pipeline_ops.R)
   # ----------------------------------------------------------------------------
   run_stage(

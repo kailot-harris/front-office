@@ -392,7 +392,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               onClick={() => setSeriesLength(3)}
               className={`px-3 py-2 rounded-lg font-bold transition-all ${
                 seriesLength === 3
-                  ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
+                  ? 'bg-accent-600 text-fo-on-accent shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -403,7 +403,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               onClick={() => setSeriesLength(5)}
               className={`px-3 py-2 rounded-lg font-bold transition-all ${
                 seriesLength === 5
-                  ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
+                  ? 'bg-accent-600 text-fo-on-accent shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -414,7 +414,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               onClick={() => setSeriesLength(7)}
               className={`px-3 py-2 rounded-lg font-bold transition-all ${
                 seriesLength === 7
-                  ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
+                  ? 'bg-accent-600 text-fo-on-accent shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -431,7 +431,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
           <TeamLogo team={teamACode} size="lg" />
           <div className="flex-1 min-w-0">
             <span className="text-[10px] uppercase font-mono font-bold text-sky-400 block">Team A (High Seed Option)</span>
-            <select
+            <select aria-label="Team A"
               value={teamACode}
               onChange={(e) => setTeamACode(e.target.value)}
               className="w-full bg-transparent text-white font-bold text-sm sm:text-base focus:outline-none cursor-pointer truncate"
@@ -448,7 +448,8 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               <button
                 type="button"
                 onClick={() => setHcaOverride('A')}
-                className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                aria-pressed={hcaTeam === teamACode}
+                className={`inline-flex items-center min-h-6 px-1.5 py-0.5 rounded text-[10px] font-bold ${
                   hcaTeam === teamACode ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40' : 'text-slate-400'
                 }`}
               >
@@ -488,7 +489,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
           <TeamLogo team={teamBCode} size="lg" />
           <div className="flex-1 min-w-0">
             <span className="text-[10px] uppercase font-mono font-bold text-amber-400 block">Team B (Challenger)</span>
-            <select
+            <select aria-label="Team B"
               value={teamBCode}
               onChange={(e) => setTeamBCode(e.target.value)}
               className="w-full bg-transparent text-white font-bold text-sm sm:text-base focus:outline-none cursor-pointer truncate"
@@ -505,7 +506,8 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               <button
                 type="button"
                 onClick={() => setHcaOverride('B')}
-                className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                aria-pressed={hcaTeam === teamBCode}
+                className={`inline-flex items-center min-h-6 px-1.5 py-0.5 rounded text-[10px] font-bold ${
                   hcaTeam === teamBCode ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'text-slate-400'
                 }`}
               >

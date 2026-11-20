@@ -16,6 +16,7 @@ import {
 import { BallparkFieldSvg } from '@/components/BallparkFieldSvg';
 import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { onTabListKeyDown } from '@/lib/tabKeys';
 
 interface PlayerSpatialDropdownProps {
   player: PlayerProjection;
@@ -35,7 +36,7 @@ const PITCH_COLORS: Record<string, { bg: string; text: string; fill: string; bor
   CU: { bg: 'bg-purple-500/20', text: 'text-purple-400', fill: '#a855f7', border: '#9333ea' },
   KC: { bg: 'bg-indigo-500/20', text: 'text-indigo-400', fill: '#6366f1', border: '#4f46e5' },
   SV: { bg: 'bg-violet-500/20', text: 'text-violet-400', fill: '#8b5cf6', border: '#7c3aed' },
-  KN: { bg: 'bg-slate-500/20', text: 'text-slate-300', fill: '#94a3b8', border: '#64748b' },
+  KN: { bg: 'bg-slate-500/20', text: 'text-slate-300', fill: 'var(--tw-c-slate-400)', border: 'var(--tw-c-slate-500)' },
 };
 
 const HIT_COLORS: Record<string, { fill: string; stroke: string; label: string; textClass: string }> = {
@@ -43,7 +44,7 @@ const HIT_COLORS: Record<string, { fill: string; stroke: string; label: string; 
   'Triple': { fill: '#a855f7', stroke: '#f3e8ff', label: 'Triple', textClass: 'text-purple-400' },
   'Double': { fill: '#06b6d4', stroke: '#cffafe', label: 'Double', textClass: 'text-cyan-400' },
   'Single': { fill: '#10b981', stroke: '#d1fae5', label: 'Single', textClass: 'text-emerald-400' },
-  'Out': { fill: '#64748b', stroke: '#334155', label: 'Out', textClass: 'text-slate-400' },
+  'Out': { fill: 'var(--tw-c-slate-500)', stroke: 'var(--tw-c-slate-700)', label: 'Out', textClass: 'text-slate-400' },
 };
 
 export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
@@ -129,7 +130,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
 
   if (!spatialData) {
     return (
-      <div className="p-8 text-center bg-surface-raised/90 border border-slate-800 rounded-xl space-y-3">
+      <div role="status" aria-live="polite" className="p-8 text-center bg-surface-raised/90 border border-slate-800 rounded-xl space-y-3">
         <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
         <div className="text-sm font-semibold text-slate-300">
           Loading spatial mapping telemetry for {player.player_name}...
@@ -175,13 +176,15 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
         {/* Filter Controls & Close Button */}
         <div className="flex items-center gap-2 flex-wrap">
           {isBatter ? (
-            <div className="inline-flex rounded-lg bg-surface-raised border border-slate-800 p-0.5 text-xs font-medium flex-wrap gap-0.5">
+            <div role="tablist" onKeyDown={onTabListKeyDown} className="inline-flex rounded-lg bg-surface-raised border border-slate-800 p-0.5 text-xs font-medium flex-wrap gap-0.5">
               <button
                 type="button"
                 onClick={() => setBatterFilter('all')}
+                role="tab"
+                aria-selected={batterFilter === 'all'}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   batterFilter === 'all'
-                    ? 'bg-accent-600 text-white font-bold'
+                    ? 'bg-accent-600 text-fo-on-accent font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -190,9 +193,11 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
               <button
                 type="button"
                 onClick={() => setBatterFilter('hits')}
+                role="tab"
+                aria-selected={batterFilter === 'hits'}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   batterFilter === 'hits'
-                    ? 'bg-accent-600 text-white font-bold'
+                    ? 'bg-accent-600 text-fo-on-accent font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -201,9 +206,11 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
               <button
                 type="button"
                 onClick={() => setBatterFilter('hrs')}
+                role="tab"
+                aria-selected={batterFilter === 'hrs'}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   batterFilter === 'hrs'
-                    ? 'bg-accent-600 text-white font-bold'
+                    ? 'bg-accent-600 text-fo-on-accent font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -212,9 +219,11 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
               <button
                 type="button"
                 onClick={() => setBatterFilter('xbh')}
+                role="tab"
+                aria-selected={batterFilter === 'xbh'}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   batterFilter === 'xbh'
-                    ? 'bg-accent-600 text-white font-bold'
+                    ? 'bg-accent-600 text-fo-on-accent font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -223,9 +232,11 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
               <button
                 type="button"
                 onClick={() => setBatterFilter('hard_hit')}
+                role="tab"
+                aria-selected={batterFilter === 'hard_hit'}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   batterFilter === 'hard_hit'
-                    ? 'bg-accent-600 text-white font-bold'
+                    ? 'bg-accent-600 text-fo-on-accent font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -233,13 +244,15 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
               </button>
             </div>
           ) : (
-            <div className="inline-flex rounded-lg bg-surface-raised border border-slate-800 p-0.5 text-xs font-medium flex-wrap gap-0.5">
+            <div role="tablist" onKeyDown={onTabListKeyDown} className="inline-flex rounded-lg bg-surface-raised border border-slate-800 p-0.5 text-xs font-medium flex-wrap gap-0.5">
               <button
                 type="button"
                 onClick={() => setPitcherFilter('all')}
+                role="tab"
+                aria-selected={pitcherFilter === 'all'}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   pitcherFilter === 'all'
-                    ? 'bg-accent-600 text-white font-bold'
+                    ? 'bg-accent-600 text-fo-on-accent font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -248,9 +261,11 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
               <button
                 type="button"
                 onClick={() => setPitcherFilter('whiffs')}
+                role="tab"
+                aria-selected={pitcherFilter === 'whiffs'}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   pitcherFilter === 'whiffs'
-                    ? 'bg-accent-600 text-white font-bold'
+                    ? 'bg-accent-600 text-fo-on-accent font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -259,9 +274,11 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
               <button
                 type="button"
                 onClick={() => setPitcherFilter('strikes')}
+                role="tab"
+                aria-selected={pitcherFilter === 'strikes'}
                 className={`px-2.5 py-1.5 rounded-md transition-colors ${
                   pitcherFilter === 'strikes'
-                    ? 'bg-accent-600 text-white font-bold'
+                    ? 'bg-accent-600 text-fo-on-accent font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -274,7 +291,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                   onClick={() => setPitcherFilter(pitcherFilter === a.pitch_type ? 'all' : a.pitch_type)}
                   className={`px-2.5 py-1.5 rounded-md transition-colors ${
                     pitcherFilter === a.pitch_type
-                      ? 'bg-accent-600 text-white font-bold'
+                      ? 'bg-accent-600 text-fo-on-accent font-bold'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -516,25 +533,25 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                   {/* Strike Zone Background Gradient */}
                   <linearGradient id="zoneGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#1e1b4b" stopOpacity="0.4" />
-                    <stop offset="100%" stopColor="#0f172a" stopOpacity="0.6" />
+                    <stop offset="100%" stopColor="var(--tw-c-slate-900)" stopOpacity="0.6" />
                   </linearGradient>
                 </defs>
 
                 {/* Home Plate at Ground Level (under the strike zone) */}
                 <polygon
                   points="-0.71,4.05 0.71,4.05 0.71,4.20 0,4.35 -0.71,4.20"
-                  fill="#334155"
-                  stroke="#64748b"
+                  fill="var(--tw-c-slate-700)"
+                  stroke="var(--tw-c-slate-500)"
                   strokeWidth="0.03"
                 />
 
                 {/* Batter Box Guidelines (Left & Right) */}
-                <rect x="-1.9" y="1.3" width="0.7" height="2.7" fill="none" stroke="#1e293b" strokeWidth="0.03" strokeDasharray="0.08 0.08" rx="0.1" />
-                <rect x="1.2" y="1.3" width="0.7" height="2.7" fill="none" stroke="#1e293b" strokeWidth="0.03" strokeDasharray="0.08 0.08" rx="0.1" />
-                <text x="-1.55" y="2.7" fill="#334155" fontSize="0.18" textAnchor="middle" fontFamily="monospace">
+                <rect x="-1.9" y="1.3" width="0.7" height="2.7" fill="none" stroke="var(--tw-c-slate-800)" strokeWidth="0.03" strokeDasharray="0.08 0.08" rx="0.1" />
+                <rect x="1.2" y="1.3" width="0.7" height="2.7" fill="none" stroke="var(--tw-c-slate-800)" strokeWidth="0.03" strokeDasharray="0.08 0.08" rx="0.1" />
+                <text x="-1.55" y="2.7" fill="var(--tw-c-slate-700)" fontSize="0.18" textAnchor="middle" fontFamily="monospace">
                   RHB
                 </text>
-                <text x="1.55" y="2.7" fill="#334155" fontSize="0.18" textAnchor="middle" fontFamily="monospace">
+                <text x="1.55" y="2.7" fill="var(--tw-c-slate-700)" fontSize="0.18" textAnchor="middle" fontFamily="monospace">
                   LHB
                 </text>
 
@@ -545,7 +562,7 @@ export const PlayerSpatialDropdown: React.FC<PlayerSpatialDropdownProps> = ({
                   width="2.3"
                   height="2.8"
                   fill="none"
-                  stroke="#1e293b"
+                  stroke="var(--tw-c-slate-800)"
                   strokeWidth="0.03"
                   strokeDasharray="0.05 0.05"
                   rx="0.08"

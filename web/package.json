@@ -14,7 +14,8 @@
     "test:strict": "node scripts/run-test-suite.mjs --strict",
     "test:contracts": "vitest run --project node",
     "test:unit": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:a11y": "playwright test"
   },
   "dependencies": {
     "geist": "^1.9.2",
@@ -24,6 +25,8 @@
     "react-dom": "^18"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.65.1",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
