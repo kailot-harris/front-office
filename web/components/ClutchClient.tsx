@@ -215,6 +215,33 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
     );
   }, [initialProfiles]);
 
+  const hoveredProfile = useMemo(() => {
+    if (!hoveredQbId) return null;
+    return initialProfiles.find((p) => p.playerId === hoveredQbId) ?? null;
+  }, [initialProfiles, hoveredQbId]);
+
+  const activeScatterProfile = hoveredProfile ?? selectedProfile ?? null;
+
+  const scatterAriaLabel = useMemo(() => {
+    const poolLabel =
+      sampleFilter === 'qualified'
+        ? `qualified pool (${scatterQbs.length} QBs)`
+        : `all QBs view (${scatterQbs.length} qualified plotted)`;
+    const teamScope = selectedTeam !== 'ALL' ? `, table filtered to ${selectedTeam}` : '';
+    if (!activeScatterProfile) {
+      return `Clutch EPA vs. baseline EPA scatter plot, ${poolLabel}${teamScope}`;
+    }
+    const isHovered = hoveredProfile?.playerId === activeScatterProfile.playerId;
+    const selectionPrefix = isHovered ? 'Highlighted QB' : 'Selected QB';
+    const metricsSummary =
+      activeScatterProfile.clutchEpa !== null &&
+      activeScatterProfile.baselineEpa !== null &&
+      activeScatterProfile.clutchEpaDelta !== null
+        ? `, clutch EPA ${activeScatterProfile.clutchEpa.toFixed(3)}, baseline EPA ${activeScatterProfile.baselineEpa.toFixed(3)}, delta ${activeScatterProfile.clutchEpaDelta >= 0 ? '+' : ''}${activeScatterProfile.clutchEpaDelta.toFixed(3)}`
+        : ', below qualification threshold';
+    return `Clutch EPA vs. baseline EPA scatter plot, ${poolLabel}${teamScope}. ${selectionPrefix}: ${activeScatterProfile.playerName} (${activeScatterProfile.team})${metricsSummary}`;
+  }, [activeScatterProfile, hoveredProfile, sampleFilter, scatterQbs.length, selectedTeam]);
+
   const minEpa = -0.35;
   const maxEpa = 0.45;
   const toScatterX = (val: number) => 5 + ((val - minEpa) / (maxEpa - minEpa)) * 90;
@@ -374,7 +401,13 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
 
           {/* SVG Scatter Chart */}
           <div className="relative w-full h-80 sm:h-96 bg-surface/80 rounded-xl border border-slate-800/80 p-4">
-            <svg className="w-full h-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <svg
+              role="img"
+              aria-label={scatterAriaLabel}
+              className="w-full h-full overflow-visible"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+            >
               {/* Grid Lines */}
               <line x1="5" y1="50" x2="95" y2="50" stroke="#334155" strokeWidth="0.4" strokeDasharray="1,1" />
               <line x1="50" y1="5" x2="50" y2="95" stroke="#334155" strokeWidth="0.4" strokeDasharray="1,1" />
@@ -608,6 +641,7 @@ export default function ClutchClient({ initialProfiles }: ClutchClientProps) {
             <select
               value={selectedTeam}
               onChange={(e) => setSelectedTeam(e.target.value)}
+              aria-label="Filter leaderboard by team"
               className="px-3 py-1.5 bg-surface border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
             >
               {teams.map((t) => (
