@@ -672,7 +672,7 @@ if (!dir.exists(WEB_MEDIA_DIR)) dir.create(WEB_MEDIA_DIR, recursive = TRUE)
   rel_media <- .pw_rel_to_repo(WEB_MEDIA_DIR, repo_root)
   all_paths <- unique(c(rel_paths, rel_media))
   record("git add web/public/data & web/public/media",
-         .pw_git(repo_root, c("add", "--", all_paths)))
+         .pw_git(repo_root, c("add", "-A", "--", all_paths)))
   record("git commit (NBA_analytics)",
          .pw_git(repo_root, c("commit", "-m", shQuote(commit_message))))
   record("git push origin HEAD (NBA_analytics)",
