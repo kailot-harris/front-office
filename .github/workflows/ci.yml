@@ -68,7 +68,7 @@ jobs:
   web:
     name: Web suite
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 30
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: web
@@ -132,13 +132,14 @@ jobs:
   r:
     name: R pipeline tests
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    # 20, not 10 (#99): on the self-hosted runner the host-wide CI lock's
+    # 45, not 20 (#99): on the self-hosted runner the host-wide CI lock's
     # job-started hook runs inside this job, so time spent queued behind
-    # another repo's job counts against this limit. The job itself takes
-    # well under a minute; lock waits of ~6 minutes (351s) were observed
-    # on 2026-11-15 with only a few PRs in flight. Hosted runs are unaffected
-    # because they finish far below either ceiling.
-    timeout-minutes: 20
+    # another repo's job counts against this limit (standardized to 45 across
+    # web and r, matching NBA/WNBA r). The job itself takes well under a
+    # minute; lock waits of ~6 minutes (351s) were observed on 2026-11-15
+    # with only a few PRs in flight. Hosted runs are unaffected because they
+    # finish far below either ceiling.
+    timeout-minutes: 45
     env:
       R_LIBS_USER: ${{ github.workspace }}/.rlib
     steps:

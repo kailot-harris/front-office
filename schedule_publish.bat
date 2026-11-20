@@ -193,22 +193,40 @@ if not "%GUARD_DIRTY_SIZE%"=="0" (
         )
         for %%F in ("!GUARD_OTHER!") do set GUARD_OTHER_SIZE=%%~zF
         if not "!GUARD_OTHER_SIZE!"=="0" (
+            set GUARD_PREV_STASH=none
+            for /f "usebackq delims=" %%S in (`git stash list "--format=%%H" -1 2^>nul`) do set GUARD_PREV_STASH=%%S
             echo [GUARD] Non-output files are dirty on main - stashing only those ^(pipeline output under PIPELINE_OUTPUT_DIRS is kept for the gate^). >> "%LOG_FILE%"
             git stash push -u -m "schedule_publish.bat-auto-stash" --pathspec-from-file="!GUARD_OTHER!" --pathspec-file-nul >> "%LOG_FILE%" 2>&1
             set STASH_RC=!ERRORLEVEL!
             if not "!STASH_RC!"=="0" (
+                set GUARD_NEW_STASH=none
+                for /f "usebackq delims=" %%S in (`git stash list "--format=%%H" -1 2^>nul`) do set GUARD_NEW_STASH=%%S
                 echo [ERROR] Checkout guard: git stash -u FAILED with exit code !STASH_RC! - refusing to run. Nothing was discarded. >> "%LOG_FILE%"
+                if not "!GUARD_NEW_STASH!"=="!GUARD_PREV_STASH!" (
+                    if not "!GUARD_NEW_STASH!"=="none" (
+                        echo [ERROR] Checkout guard: Partial stash: !GUARD_NEW_STASH! ^(stash@{0}^) was created before failure ^(previous=!GUARD_PREV_STASH!^) - left intact ^(not dropped or popped^). >> "%LOG_FILE%"
+                    )
+                )
                 exit /b 1
             )
         ) else (
             echo [GUARD] Only pipeline output is dirty on main - nothing to stash; leaving it for the gate. >> "%LOG_FILE%"
         )
     ) else (
+        set GUARD_PREV_STASH=none
+        for /f "usebackq delims=" %%S in (`git stash list "--format=%%H" -1 2^>nul`) do set GUARD_PREV_STASH=%%S
         echo [GUARD] Working tree is dirty on "%PRE_BRANCH%" - stashing tracked+untracked changes before landing on main ^(nothing is discarded; recoverable via "git stash pop"^). >> "%LOG_FILE%"
         git stash push -u -m "schedule_publish.bat-auto-stash" >> "%LOG_FILE%" 2>&1
         set STASH_RC=!ERRORLEVEL!
         if not "!STASH_RC!"=="0" (
+            set GUARD_NEW_STASH=none
+            for /f "usebackq delims=" %%S in (`git stash list "--format=%%H" -1 2^>nul`) do set GUARD_NEW_STASH=%%S
             echo [ERROR] Checkout guard: git stash -u FAILED with exit code !STASH_RC! - refusing to run. Nothing was discarded; the dirty tree on "%PRE_BRANCH%" is untouched. >> "%LOG_FILE%"
+            if not "!GUARD_NEW_STASH!"=="!GUARD_PREV_STASH!" (
+                if not "!GUARD_NEW_STASH!"=="none" (
+                    echo [ERROR] Checkout guard: Partial stash: !GUARD_NEW_STASH! ^(stash@{0}^) was created before failure ^(previous=!GUARD_PREV_STASH!^) - left intact ^(not dropped or popped^). >> "%LOG_FILE%"
+                )
+            )
             exit /b 1
         )
     )
