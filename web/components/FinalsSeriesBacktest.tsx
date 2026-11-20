@@ -106,7 +106,7 @@ function InfoSetRow({
           {lowAbbr} {s.netAdjLow >= 0 ? '+' : ''}
           {s.netAdjLow.toFixed(2)}
         </div>
-        <div className="mt-1 text-slate-600">
+        <div className="mt-1 text-slate-400">
           {s.nGamesHigh}/{s.nGamesLow} games
         </div>
       </td>
@@ -134,11 +134,11 @@ function InfoSetRow({
 
       <td className="py-3 pr-3 font-mono text-[11px] text-slate-400">
         {fromZero === null ? (
-          <span className="text-slate-600">&mdash;</span>
+          <span className="text-slate-400">&mdash;</span>
         ) : (
           <>
             <div>{pct(fromZero)}</div>
-            <div className="text-slate-600">ratings only</div>
+            <div className="text-slate-400">ratings only</div>
           </>
         )}
       </td>
@@ -286,9 +286,9 @@ export function FinalsSeriesBacktest({ data }: { data: FinalsSeriesBacktestSet }
 
       <div className="mt-4 flex items-center gap-2 font-mono text-[12px] text-slate-400">
         <span>{pct(first.pHighSeries)}</span>
-        <ArrowRight className="h-3.5 w-3.5 text-slate-600" />
+        <ArrowRight className="h-3.5 w-3.5 text-slate-400" />
         <span className="font-bold text-violet-300">{pct(last.pHighSeries)}</span>
-        <span className="text-slate-600">
+        <span className="text-slate-400">
           ({signedPp(totalMove)} for {matchup.teamHighAbbr} across {games.length} games)
         </span>
       </div>

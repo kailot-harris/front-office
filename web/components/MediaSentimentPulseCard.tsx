@@ -134,7 +134,7 @@ function WordChips({
               key={w.word}
               className={`px-2 py-0.5 rounded text-[11px] font-medium border ${chip}`}
             >
-              {w.word} <span className="font-mono opacity-70">{w.n}</span>
+              {w.word} <span className="font-mono">{w.n}</span>
             </span>
           ))
         )}

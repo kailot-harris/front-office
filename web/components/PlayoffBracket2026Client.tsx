@@ -455,7 +455,7 @@ export function PlayoffBracket2026Client({
         <footer className="border-t border-slate-800 pt-4">
           <p className="text-[11px] text-slate-400 leading-relaxed">{bracket.sourceNote}</p>
           {bracket.generatedAt ? (
-            <p className="text-[11px] sm:text-[10px] text-slate-600 font-mono mt-1">
+            <p className="text-[11px] sm:text-[10px] text-slate-400 font-mono mt-1">
               Artifact generated {bracket.generatedAt}
             </p>
           ) : null}

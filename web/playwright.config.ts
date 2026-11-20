@@ -3,7 +3,8 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * End-to-end config for the WNBA Analytics web app.
  *
- * Runs against a PRODUCTION build (`next build && next start`) rather than
+ * Runs against the PRODUCTION static export (`next build`, then
+ * scripts/serve-export.mjs serving out/ under /wnba) rather than
  * `next dev`, because every page here is statically prerendered — dev mode
  * would exercise a different rendering path from the one that ships, and would
  * hide a build-time data error behind an on-demand compile.
@@ -59,8 +60,9 @@ export default defineConfig({
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
-        command: `npx next start -p ${PORT}`,
-        url: baseURL,
+        // `next start` cannot serve an `output: 'export'` app.
+        command: `node scripts/serve-export.mjs ${PORT}`,
+        url: `${baseURL}${process.env.PAGES_BASE_PATH ?? ''}/wnba/`,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
         // Not piped: buffering next start's output through the driver is what

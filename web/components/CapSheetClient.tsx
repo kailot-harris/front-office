@@ -161,6 +161,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
             </div>
 
             <select
+              aria-label="Conference"
               value={selectedConf}
               onChange={(e) => setSelectedConf(e.target.value)}
               className="bg-surface border border-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-500 font-mono"

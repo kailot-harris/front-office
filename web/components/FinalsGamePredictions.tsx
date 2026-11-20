@@ -164,11 +164,11 @@ function GameRow({
           <span>
             Home court {g.hostIsHighSeed ? 'favours' : 'works against'} {highAbbr} here
           </span>
-          <span className="text-slate-600">|</span>
+          <span className="text-slate-400">|</span>
           <span>HCA only: {pct(g.pHighSeedWinHca)} {highAbbr}</span>
           {restApplied && g.restApplied && g.pHighSeedWinWithRest !== null ? (
             <>
-              <span className="text-slate-600">|</span>
+              <span className="text-slate-400">|</span>
               <span className="text-sky-300">
                 with rest: {pct(g.pHighSeedWinWithRest)} {highAbbr} (
                 {signed(g.pHighSeedWinWithRest - g.pHighSeedWinHca)})
@@ -183,16 +183,16 @@ function GameRow({
             <span>
               {highAbbr} {g.daysRestHigh ?? '?'}d rest{g.backToBackHigh ? ' (B2B)' : ''}
             </span>
-            <span className="text-slate-600">|</span>
+            <span className="text-slate-400">|</span>
             <span>
               {lowAbbr} {g.daysRestLow ?? '?'}d rest{g.backToBackLow ? ' (B2B)' : ''}
             </span>
-            <span className="text-slate-600">|</span>
+            <span className="text-slate-400">|</span>
             <Plane className="w-3 h-3" />
             <span>
               travel {Math.round(g.travelMilesHigh ?? 0)} / {Math.round(g.travelMilesLow ?? 0)} mi
             </span>
-            <span className="text-slate-600">|</span>
+            <span className="text-slate-400">|</span>
             <span>
               drag {(g.fatigueDragHigh ?? 0).toFixed(2)} / {(g.fatigueDragLow ?? 0).toFixed(2)} pts
             </span>
@@ -214,7 +214,7 @@ function GameRow({
             <div className="flex items-center gap-2">
               <TeamLogo team={highAbbr} size="sm" />
               <span className="font-mono text-sm font-bold text-white">{g.scoreHigh}</span>
-              <span className="text-slate-600">—</span>
+              <span className="text-slate-400">—</span>
               <span className="font-mono text-sm font-bold text-white">{g.scoreLow}</span>
               <TeamLogo team={lowAbbr} size="sm" />
             </div>
@@ -299,18 +299,18 @@ export function FinalsGamePredictions({ finals }: { finals: FinalsGamePrediction
             <span className="text-white font-bold">#{matchup.seedHigh} {matchup.teamHigh}</span>
             <span className="text-slate-400">(home court)</span>
           </span>
-          <span className="text-slate-600">vs</span>
+          <span className="text-slate-400">vs</span>
           <span className="inline-flex items-center gap-1">
             <TeamLogo team={lowAbbr} size="sm" />
             <span className="text-white font-bold">#{matchup.seedLow} {matchup.teamLow}</span>
           </span>
-          <span className="text-slate-600">|</span>
+          <span className="text-slate-400">|</span>
           <span>
             {matchup.seriesComplete ? 'Final' : 'Series'} {matchup.winsHigh}-{matchup.winsLow}
           </span>
-          <span className="text-slate-600">|</span>
+          <span className="text-slate-400">|</span>
           <span>{finals.formatLabel}</span>
-          <span className="text-slate-600">|</span>
+          <span className="text-slate-400">|</span>
           <span>expected {matchup.expectedGames} games</span>
         </div>
 
