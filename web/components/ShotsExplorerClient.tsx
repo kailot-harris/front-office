@@ -129,7 +129,7 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
               >
                 <TeamLogo team={star.team} size="xs" />
                 <span>{star.player_name}</span>
-                <span className="text-[11px] sm:text-[10px] opacity-75 font-mono">({star.total_shots})</span>
+                <span className="text-[11px] sm:text-[10px] font-mono">({star.total_shots})</span>
               </button>
             );
           })}
@@ -151,6 +151,7 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
 
         <div className="md:col-span-3">
           <select
+            aria-label="Team"
             value={selectedTeam}
             onChange={(e) => setSelectedTeam(e.target.value)}
             className="w-full bg-surface border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
@@ -165,6 +166,7 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
 
         <div className="md:col-span-3">
           <select
+            aria-label="Player"
             value={selectedPlayer?.player_id || ''}
             onChange={(e) => {
               const match = catalog.find((p) => p.player_id === e.target.value);
@@ -219,7 +221,8 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
         </div>
       )}
 
-      {/* Loading & Error States */}
+      {/* Loading & Error States, announced to screen readers (WNBA#230) */}
+      <div role="status" aria-live="polite" aria-busy={loading}>
       {loading && (
         <div className="bg-surface-raised/40 border border-slate-800/80 rounded-2xl p-16 flex flex-col items-center justify-center space-y-3">
           <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
@@ -238,6 +241,7 @@ export const ShotsExplorerClient: React.FC<ShotsExplorerClientProps> = ({
           </div>
         </div>
       )}
+      </div>
 
       {/* Render Shot Chart Component */}
       {!loading && !error && playerShotData && (

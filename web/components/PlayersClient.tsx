@@ -5,6 +5,7 @@ import { PlayerProjection } from '@/lib/types';
 import { Search, AlertTriangle, ArrowUpDown, Filter, Sparkles, UserCheck, Download } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { sortableTh } from '@/lib/a11y';
 
 interface PlayersClientProps {
   players: PlayerProjection[];
@@ -168,6 +169,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
 
           {/* Team filter */}
           <select
+            aria-label="Team"
             value={selectedTeam}
             onChange={(e) => setSelectedTeam(e.target.value)}
             className="bg-surface border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500"
@@ -182,6 +184,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
 
           {/* Position filter */}
           <select
+            aria-label="Position"
             value={selectedPosition}
             onChange={(e) => setSelectedPosition(e.target.value)}
             className="bg-surface border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500"
@@ -265,7 +268,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                 <th className="py-3 px-3 text-center">Team</th>
                 <th className="py-3 px-3 text-center">Pos</th>
                 <th
-                  onClick={() => handleSort('proj_games')}
+                  {...sortableTh(sortBy === 'proj_games', sortOrder === 'asc', () => handleSort('proj_games'))}
                   className="py-3 px-3 text-center cursor-pointer hover:text-white hidden sm:table-cell"
                 >
                   <div className="flex items-center justify-center gap-1">
@@ -274,7 +277,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                   </div>
                 </th>
                 <th
-                  onClick={() => handleSort('proj_mpg')}
+                  {...sortableTh(sortBy === 'proj_mpg', sortOrder === 'asc', () => handleSort('proj_mpg'))}
                   className="py-3 px-3 text-center cursor-pointer hover:text-white hidden sm:table-cell"
                 >
                   <div className="flex items-center justify-center gap-1">
@@ -283,9 +286,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                   </div>
                 </th>
                 <th
-                  onClick={() =>
-                    handleSort(statMode === 'per_game' ? 'proj_pts' : 'proj_pts_total')
-                  }
+                  {...sortableTh(sortBy === (statMode === 'per_game' ? 'proj_pts' : 'proj_pts_total'), sortOrder === 'asc', () => handleSort(statMode === 'per_game' ? 'proj_pts' : 'proj_pts_total'))}
                   className="py-3 px-4 text-right cursor-pointer hover:text-white"
                 >
                   <div className="flex items-center justify-end gap-1">
@@ -294,9 +295,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                   </div>
                 </th>
                 <th
-                  onClick={() =>
-                    handleSort(statMode === 'per_game' ? 'proj_reb' : 'proj_reb_total')
-                  }
+                  {...sortableTh(sortBy === (statMode === 'per_game' ? 'proj_reb' : 'proj_reb_total'), sortOrder === 'asc', () => handleSort(statMode === 'per_game' ? 'proj_reb' : 'proj_reb_total'))}
                   className="py-3 px-4 text-right cursor-pointer hover:text-white"
                 >
                   <div className="flex items-center justify-end gap-1">
@@ -305,9 +304,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                   </div>
                 </th>
                 <th
-                  onClick={() =>
-                    handleSort(statMode === 'per_game' ? 'proj_ast' : 'proj_ast_total')
-                  }
+                  {...sortableTh(sortBy === (statMode === 'per_game' ? 'proj_ast' : 'proj_ast_total'), sortOrder === 'asc', () => handleSort(statMode === 'per_game' ? 'proj_ast' : 'proj_ast_total'))}
                   className="py-3 px-4 text-right cursor-pointer hover:text-white"
                 >
                   <div className="flex items-center justify-end gap-1">
@@ -316,7 +313,7 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({ players }) => {
                   </div>
                 </th>
                 <th
-                  onClick={() => handleSort('pra_zscore')}
+                  {...sortableTh(sortBy === 'pra_zscore', sortOrder === 'asc', () => handleSort('pra_zscore'))}
                   className="py-3 px-3 text-center cursor-pointer hover:text-white hidden sm:table-cell"
                 >
                   <div className="flex items-center justify-center gap-1">

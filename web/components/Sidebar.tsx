@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BASE_PATH } from '@/lib/basePath';
+import { useFocusTrap } from '@/lib/useFocusTrap';
 import {
   Trophy,
   BarChart3,
@@ -44,6 +45,9 @@ export interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const drawerRef = useRef<HTMLDivElement | null>(null);
+  const closeDrawer = useCallback(() => setIsOpen(false), []);
+  useFocusTrap(drawerRef, isOpen, closeDrawer);
   const [showSigmaExplainer, setShowSigmaExplainer] = useState(false);
 
   // Active primary items (2026-2027 Off-Season focus)
@@ -202,7 +206,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
             <span className="font-semibold">{item.label}</span>
             <span
               className={`text-[11px] sm:text-[10px] px-1.5 py-0.2 rounded font-mono font-medium ${
-                isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
+                isActive ? 'bg-surface/30 text-white' : 'bg-slate-800 text-slate-400'
               }`}
             >
               {item.badge}
@@ -210,7 +214,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
           </div>
           <p
             className={`text-[11px] truncate ${
-              isActive ? 'text-accent-200' : 'text-slate-400'
+              isActive ? 'text-accent-100' : 'text-slate-400'
             }`}
           >
             {item.desc}
@@ -409,6 +413,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
         <button
           onClick={() => setIsOpen(!isOpen)}
           aria-label="Toggle navigation menu"
+          aria-expanded={isOpen}
           className="p-2 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
         >
           {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -422,10 +427,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
             className="fixed inset-0 bg-surface/80 backdrop-blur-sm transition-opacity"
             onClick={() => setIsOpen(false)}
           />
-          <div className="relative w-72 max-w-[85vw] bg-surface-raised border-r border-slate-800 h-full z-10 flex flex-col shadow-2xl">
+          <div
+            ref={drawerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation menu"
+            className="relative w-72 max-w-[85vw] bg-surface-raised border-r border-slate-800 h-full z-10 flex flex-col shadow-2xl"
+          >
             <div className="absolute top-3 right-3">
               <button
                 onClick={() => setIsOpen(false)}
+                aria-label="Close navigation menu"
                 className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
               >
                 <X className="w-4 h-4" />

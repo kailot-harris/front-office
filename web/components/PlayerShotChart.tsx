@@ -270,7 +270,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
             <svg
               viewBox="0 0 500 470"
               className="w-full h-auto drop-shadow-md rounded-lg"
-              style={{ background: '#0b1120' }}
+              style={{ background: 'var(--fo-surface)' }}
               role="img"
               aria-label={`Half-court shot chart for ${playerData.player_name}`}
             >
@@ -598,6 +598,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
                 <button
                   key={f}
                   onClick={() => setZoneFilter(f)}
+                  aria-pressed={zoneFilter === f}
                   className={`px-2 py-0.5 rounded ${
                     zoneFilter === f ? 'bg-accent-600 text-white' : 'text-slate-400 hover:text-white'
                   }`}
@@ -609,7 +610,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
           </div>
 
           {/* Zones Table */}
-          <div className="overflow-y-auto max-h-[460px] space-y-2 pr-1">
+          <div className="overflow-y-auto max-h-[460px] space-y-2 pr-1" tabIndex={0} role="region" aria-label="Shot zone list">
             {filteredZoneMetrics.map((zm) => {
               const display = getZoneDisplayName(zm.zone);
               const badge = getStatusBadge(zm.status);

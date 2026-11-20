@@ -2,23 +2,40 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Colors come from the shared tokens in ./design-tokens.css (imported by
+   layout.tsx) and follow prefers-color-scheme; see tailwind.config.ts. */
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--fo-text);
+  background: var(--fo-surface);
+  font-family: var(--fo-font-sans);
 }
+
+/* Numbers and tables use Geist Mono's tabular figures. */
+table,
+.tabular-nums {
+  font-family: var(--fo-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+
+/* Charts (WNBA#229): SVG neutrals were hard-coded for the dark theme. These
+   attribute selectors route them through the same palette variables as the
+   Tailwind classes (tailwind.config.ts), so axes, grids and labels flip with
+   prefers-color-scheme. Chromatic series colors read on both surfaces. */
+svg [fill="#0f172a"] { fill: rgb(var(--c-slate-900)); }
+svg [stroke="#0f172a"] { stroke: rgb(var(--c-slate-900)); }
+svg [fill="#1e293b"] { fill: rgb(var(--c-slate-800)); }
+svg [stroke="#1e293b"] { stroke: rgb(var(--c-slate-800)); }
+svg [fill="#334155"] { fill: rgb(var(--c-slate-700)); }
+svg [stroke="#334155"] { stroke: rgb(var(--c-slate-700)); }
+svg [fill="#475569"] { fill: rgb(var(--c-slate-600)); }
+svg [stroke="#475569"] { stroke: rgb(var(--c-slate-600)); }
+svg [fill="#64748b"] { fill: rgb(var(--c-slate-500)); }
+svg [stroke="#64748b"] { stroke: rgb(var(--c-slate-500)); }
+svg [fill="#94a3b8"] { fill: rgb(var(--c-slate-400)); }
+svg [stroke="#94a3b8"] { stroke: rgb(var(--c-slate-400)); }
+svg [fill="#ffffff"] { fill: rgb(var(--c-white)); }
+svg [stroke="#ffffff"] { stroke: rgb(var(--c-white)); }
 
 @layer utilities {
   .text-balance {

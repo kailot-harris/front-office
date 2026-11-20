@@ -596,6 +596,23 @@ PIPELINE_STAGES <- list(
                     file.path(CACHE_DIR, "prediction_accuracy_log.rds"),
                     file.path(CACHE_DIR, "projected_wnba_standings.rds")),
     group       = NULL
+  ),
+
+  # ---------------------------------------------------------------------------------------
+  # 18. Landing digest (WNBA#224-#227, front-office#200). Runs after matchups_dataset, whose
+  # payload is its game spine; appends today's Net_Rating per team to the tracked
+  # data/history/ratings_history.csv. call_fn: the script does not self-run on source().
+  # output = NULL: the writer skips the write when only the stamp would change.
+  # ---------------------------------------------------------------------------------------
+  landing_digest = list(
+    id          = "landing_digest",
+    script      = "tools/build_landing_digest.R",
+    description = "Build Landing Digest (today, yesterday, record, calibration, movers)",
+    call_fn     = "run_landing_digest",
+    entry_fn    = NULL,
+    output      = NULL,
+    inputs      = c(WEB_JSON_MATCHUPS_SLATES, file.path(CACHE_DIR, "projected_wnba_standings.rds")),
+    group       = NULL
   )
 )
 

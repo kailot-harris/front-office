@@ -109,20 +109,9 @@ const STAGES = [
     cmd: ['npx', 'playwright', 'test'],
     resultFile: 'playwright-results.json',
     parse: parsePlaywright,
-    // `tests/e2e/` holds no spec files in this repo, so there is nothing for
-    // Playwright to run. Without this guard the stage printed `PASS 0/0` --
-    // a green tick with nothing behind it. Worse, it printed it even though
-    // its managed webServer had failed to start at all: playwright still
-    // writes a `{"suites": []}` report, which parses to zero tests, which is
-    // zero regressions, which is a pass.
-    //
-    // Reported as SKIPPED instead, so the absence is visible rather than
-    // disguised, and the suite is not failed merely for having no specs.
-    // The moment a spec lands the stage runs for real -- and will then need
-    // the webServer fixed first: `npx next start` cannot serve this app
-    // (next.config.mjs sets `output: 'export'`), which is the reason the
-    // stage was dead. NFL Analytics' web/scripts/serve-export.mjs is the
-    // fix; it is not ported here because there is nothing yet to exercise it.
+    // Skipped (not passed) when tests/e2e holds no spec files, so an empty
+    // `{"suites": []}` report is never mistaken for a green run. The
+    // webServer is scripts/serve-export.mjs, which serves the static export.
     skip: () => {
       const dir = path.join(ROOT, 'tests', 'e2e');
       const specs = fs.existsSync(dir)

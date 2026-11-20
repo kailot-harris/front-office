@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { exportToCsv } from '@/lib/exportToCsv';
 import { HowToRead } from '@/components/HowToRead';
+import { sortableTh } from '@/lib/a11y';
 
 interface ClutchClientProps {
   initialProfiles: ClutchProfile[];
@@ -299,6 +300,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
             <div className="flex items-center gap-1 text-xs">
               <span className="text-slate-400 font-medium">Team:</span>
               <select
+                aria-label="Team"
                 value={selectedTeam}
                 onChange={(e) => setSelectedTeam(e.target.value)}
                 className="bg-surface border border-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-rose-500 font-mono"
@@ -315,6 +317,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
             <div className="flex items-center gap-1 text-xs">
               <span className="text-slate-400 font-medium">Pos:</span>
               <select
+                aria-label="Position"
                 value={selectedPos}
                 onChange={(e) => setSelectedPos(e.target.value)}
                 className="bg-surface border border-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-rose-500 font-mono"
@@ -330,6 +333,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
             <div className="flex items-center gap-1 text-xs">
               <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
               <select
+                aria-label="Sort by"
                 value={sortField}
                 onChange={(e) => handleSort(e.target.value as SortField)}
                 className="bg-surface border border-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-rose-500 font-mono"
@@ -366,31 +370,31 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ initialProfiles }) =
                 <th className="py-2.5 px-3 font-semibold">Pos</th>
                 <th className="py-2.5 px-3 font-semibold">Clutch Archetype</th>
                 <th
-                  onClick={() => handleSort('clutchFga')}
+                  {...sortableTh(sortField === 'clutchFga', sortAsc, () => handleSort('clutchFga'))}
                   className="py-2.5 px-3 font-semibold text-right cursor-pointer hover:text-white"
                 >
                   Clutch FGA {sortField === 'clutchFga' && (sortAsc ? '↑' : '↓')}
                 </th>
                 <th
-                  onClick={() => handleSort('clutchPoints')}
+                  {...sortableTh(sortField === 'clutchPoints', sortAsc, () => handleSort('clutchPoints'))}
                   className="py-2.5 px-3 font-semibold text-right cursor-pointer hover:text-white"
                 >
                   Clutch PTS {sortField === 'clutchPoints' && (sortAsc ? '↑' : '↓')}
                 </th>
                 <th
-                  onClick={() => handleSort('clutchFgPct')}
+                  {...sortableTh(sortField === 'clutchFgPct', sortAsc, () => handleSort('clutchFgPct'))}
                   className="py-2.5 px-3 font-semibold text-right cursor-pointer hover:text-white"
                 >
                   Clutch FG% {sortField === 'clutchFgPct' && (sortAsc ? '↑' : '↓')}
                 </th>
                 <th
-                  onClick={() => handleSort('clutchPpp')}
+                  {...sortableTh(sortField === 'clutchPpp', sortAsc, () => handleSort('clutchPpp'))}
                   className="py-2.5 px-3 font-semibold text-right cursor-pointer hover:text-white"
                 >
                   Points/FGA {sortField === 'clutchPpp' && (sortAsc ? '↑' : '↓')}
                 </th>
                 <th
-                  onClick={() => handleSort('clutchScoringPlays')}
+                  {...sortableTh(sortField === 'clutchScoringPlays', sortAsc, () => handleSort('clutchScoringPlays'))}
                   className="py-2.5 px-3 font-semibold text-right cursor-pointer hover:text-white"
                 >
                   Scoring Plays {sortField === 'clutchScoringPlays' && (sortAsc ? '↑' : '↓')}

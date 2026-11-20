@@ -215,7 +215,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
               <span>{detail.name}</span>
               <span
                 className={`text-[11px] px-2 py-0.5 rounded-full ${
-                  isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
+                  isActive ? 'bg-surface/30 text-white' : 'bg-slate-800 text-slate-400'
                 }`}
               >
                 {detail.weightBadge}
@@ -291,6 +291,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
               </button>
               <button
                 onClick={() => setDivergenceSort('wins')}
+                aria-pressed={divergenceSort === 'wins'}
                 className={`px-2.5 py-1 rounded text-xs font-semibold ${
                   divergenceSort === 'wins' ? 'bg-accent-600 text-white' : 'text-slate-400 hover:text-white'
                 }`}
@@ -299,6 +300,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
               </button>
               <button
                 onClick={() => setDivergenceSort('alpha')}
+                aria-pressed={divergenceSort === 'alpha'}
                 className={`px-2.5 py-1 rounded text-xs font-semibold ${
                   divergenceSort === 'alpha' ? 'bg-accent-600 text-white' : 'text-slate-400 hover:text-white'
                 }`}
@@ -420,7 +422,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams }) => {
                           <span className="text-emerald-400 font-medium">
                             +{team.highestModel.model.split(' ')[0]} ({team.highestModel.wins.toFixed(1)})
                           </span>
-                          <span className="text-slate-600">•</span>
+                          <span className="text-slate-400">•</span>
                           <span className="text-rose-400 font-medium">
                             -{team.lowestModel.model.split(' ')[0]} ({team.lowestModel.wins.toFixed(1)})
                           </span>

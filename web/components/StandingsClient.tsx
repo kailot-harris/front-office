@@ -8,6 +8,7 @@ import { PlayoffContendersBoxWhisker } from '@/components/PlayoffContendersBoxWh
 import { exportToCsv } from '@/lib/exportToCsv';
 import { GlossaryTerm } from '@/components/GlossaryTerm';
 import { HowToRead } from '@/components/HowToRead';
+import { sortableTh } from '@/lib/a11y';
 
 interface StandingsClientProps {
   teams: TeamProjection[];
@@ -238,12 +239,22 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
 
       {/* View Switcher: Playoff Contenders Snapshot vs Full League Standings Table */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-raised/60 p-2.5 rounded-2xl border border-slate-800">
-        <div className="flex flex-wrap sm:inline-flex rounded-xl bg-surface p-1.5 border border-slate-800/80 shadow-inner relative z-20 w-full sm:w-auto gap-1 sm:gap-0" role="tablist">
+        <div className="flex flex-wrap sm:inline-flex rounded-xl bg-surface p-1.5 border border-slate-800/80 shadow-inner relative z-20 w-full sm:w-auto gap-1 sm:gap-0" role="tablist" aria-label="Standings view" onKeyDown={(e) => {
+            // ARIA tab pattern: arrow keys, Home and End move between the two tabs.
+            if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+              e.preventDefault();
+              const next = e.key === 'Home' ? 'visualizer' : e.key === 'End' ? 'table' : activeTab === 'visualizer' ? 'table' : 'visualizer';
+              handleTabChange(next);
+              document.getElementById(`tab-btn-${next}`)?.focus();
+            }
+          }}>
           <button
             type="button"
             role="tab"
             id="tab-btn-visualizer"
             aria-selected={activeTab === 'visualizer'}
+            aria-controls="standings-tabpanel"
+            tabIndex={activeTab === 'visualizer' ? 0 : -1}
             onClick={() => handleTabChange('visualizer')}
             className={`cursor-pointer select-none touch-manipulation flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-20 ${
               activeTab === 'visualizer'
@@ -255,7 +266,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
             <span className="pointer-events-none">Playoff Contenders (Box-Whisker)</span>
             <span
               className={`text-[11px] sm:text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
-                activeTab === 'visualizer' ? 'bg-white/20 text-white font-bold' : 'bg-slate-800 text-slate-400'
+                activeTab === 'visualizer' ? 'bg-surface/30 text-white font-bold' : 'bg-slate-800 text-slate-400'
               }`}
             >
               Visualizer
@@ -267,6 +278,8 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
             role="tab"
             id="tab-btn-table"
             aria-selected={activeTab === 'table'}
+            aria-controls="standings-tabpanel"
+            tabIndex={activeTab === 'table' ? 0 : -1}
             onClick={() => handleTabChange('table')}
             className={`cursor-pointer select-none touch-manipulation flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-20 ${
               activeTab === 'table'
@@ -278,7 +291,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
             <span className="pointer-events-none">Full Standings Table</span>
             <span
               className={`text-[11px] sm:text-[10px] px-2 py-0.5 rounded font-mono pointer-events-none ${
-                activeTab === 'table' ? 'bg-white/20 text-white font-bold' : 'bg-slate-800 text-slate-400'
+                activeTab === 'table' ? 'bg-surface/30 text-white font-bold' : 'bg-slate-800 text-slate-400'
               }`}
             >
               15 Teams
@@ -294,6 +307,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
         </div>
       </div>
 
+      <div id="standings-tabpanel" role="tabpanel" aria-labelledby={`tab-btn-${activeTab}`}>
       {activeTab === 'visualizer' ? (
         /* Tab 1: Playoff Contenders Box-Whisker Visualization */
         <div className="space-y-4">
@@ -342,6 +356,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
               <div className="flex items-center gap-2">
                 <label className="text-xs text-slate-400">Division:</label>
                 <select
+                  aria-label="Division"
                   value={selectedDivision}
                   onChange={(e) => setSelectedDivision(e.target.value)}
                   className="bg-surface border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500"
@@ -380,7 +395,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                 <thead>
                   <tr className="bg-surface/80 border-b border-slate-800 text-slate-400 font-medium text-xs select-none">
                     <th
-                      onClick={() => handleSort('rank')}
+                      {...sortableTh(sortBy === 'rank', sortOrder === 'asc', () => handleSort('rank'))}
                       className="py-3.5 px-4 w-14 text-center cursor-pointer hover:text-white transition-colors group hidden sm:table-cell"
                       title="Click to sort by rank"
                     >
@@ -390,7 +405,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                       </div>
                     </th>
                     <th
-                      onClick={() => handleSort('team')}
+                      {...sortableTh(sortBy === 'team', sortOrder === 'asc', () => handleSort('team'))}
                       className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors group sticky left-0 z-20 bg-surface border-r border-slate-700"
                       title="Click to sort alphabetically by team name"
                     >
@@ -400,7 +415,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                       </div>
                     </th>
                     <th
-                      onClick={() => handleSort('conference')}
+                      {...sortableTh(sortBy === 'conference', sortOrder === 'asc', () => handleSort('conference'))}
                       className="py-3.5 px-3 text-center cursor-pointer hover:text-white transition-colors group hidden sm:table-cell"
                       title="Click to sort by conference"
                     >
@@ -410,7 +425,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                       </div>
                     </th>
                     <th
-                      onClick={() => handleSort('division')}
+                      {...sortableTh(sortBy === 'division', sortOrder === 'asc', () => handleSort('division'))}
                       className="py-3.5 px-3 text-center cursor-pointer hover:text-white transition-colors group hidden sm:table-cell"
                       title="Click to sort by division"
                     >
@@ -420,7 +435,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                       </div>
                     </th>
                     <th
-                      onClick={() => handleSort('ensemble_mean_wins')}
+                      {...sortableTh(sortBy === 'ensemble_mean_wins', sortOrder === 'asc', () => handleSort('ensemble_mean_wins'))}
                       className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors group"
                       title="Click to sort by projected ensemble wins"
                     >
@@ -433,7 +448,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                       </div>
                     </th>
                     <th
-                      onClick={() => handleSort('win_pct')}
+                      {...sortableTh(sortBy === 'win_pct', sortOrder === 'asc', () => handleSort('win_pct'))}
                       className="py-3.5 px-3 cursor-pointer hover:text-white transition-colors text-right group hidden sm:table-cell"
                       title="Click to sort by win percentage"
                     >
@@ -443,7 +458,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                       </div>
                     </th>
                     <th
-                      onClick={() => handleSort('percentile_range')}
+                      {...sortableTh(sortBy === 'percentile_range', sortOrder === 'asc', () => handleSort('percentile_range'))}
                       className="py-3.5 px-4 min-w-[200px] cursor-pointer hover:text-white transition-colors group hidden sm:table-cell"
                       title="Click to sort by distribution width (p90 - p10 variance)"
                     >
@@ -456,7 +471,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                       </div>
                     </th>
                     <th
-                      onClick={() => handleSort('ensemble_playoff_prob')}
+                      {...sortableTh(sortBy === 'ensemble_playoff_prob', sortOrder === 'asc', () => handleSort('ensemble_playoff_prob'))}
                       className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors text-right group"
                       title="Click to sort by playoff probability"
                     >
@@ -469,7 +484,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                       </div>
                     </th>
                     <th
-                      onClick={() => handleSort('ensemble_title_prob')}
+                      {...sortableTh(sortBy === 'ensemble_title_prob', sortOrder === 'asc', () => handleSort('ensemble_title_prob'))}
                       className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors text-right group"
                       title="Click to sort by title probability"
                     >
@@ -617,6 +632,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

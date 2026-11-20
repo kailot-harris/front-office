@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "sport": "wnba",
-  "generated_at": "2026-11-20T15:43:58Z",
+  "generated_at": "2026-11-20T17:55:24Z",
   "schedule_through_date": null,
   "datasets": [
     {
@@ -68,6 +68,17 @@
       "through_date": "2026-10-24",
       "through_date_source": "payload:games[].gameDate",
       "coverage_note": null,
+      "builder": "run_full_pipeline.R",
+      "static": false
+    },
+    {
+      "file": "landing_digest.json",
+      "generated_at": "2026-11-20T17:31:32Z",
+      "stamp_source": "payload:generated_at",
+      "content_sha256": "483e37d37216c0676c733c35a5d8fc95443202bbd6a72888f59e6298a0cf5ac6",
+      "through_date": null,
+      "through_date_source": "not_game_dated",
+      "coverage_note": "No final game in yesterday[] (off-season or no games yesterday)",
       "builder": "run_full_pipeline.R",
       "static": false
     },

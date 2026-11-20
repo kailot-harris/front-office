@@ -131,6 +131,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
             <div className="flex items-center justify-between text-xs text-slate-400 pt-1 border-t border-slate-800/80">
               <span>Sort leaderboard by:</span>
               <select
+                aria-label="Sort leaderboard by"
                 value={sortKey}
                 onChange={(e) =>
                   setSortKey(
@@ -147,7 +148,7 @@ export const DefenseClient: React.FC<DefenseClientProps> = ({ initialProfiles })
           </div>
 
           {/* Defenders List */}
-          <div className="space-y-2 max-h-[640px] overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-[640px] overflow-y-auto pr-1" tabIndex={0} role="region" aria-label="Defender leaderboard">
             {filteredProfiles.map((p) => {
               const isSelected = p.playerId === selectedProfile.playerId;
               return (

@@ -315,7 +315,7 @@ const MatchupTable: React.FC<{ games: Matchup[] }> = ({ games }) => (
                       table can tell the two models apart without opening a card. */}
                   {g.projection_basis === 'team_rating_differential' && (
                     <span
-                      className="text-slate-600 ml-1.5 text-xs"
+                      className="text-slate-400 ml-1.5 text-xs"
                       title="Rating differential, not the per-game model. Never graded."
                     >
                       (rating)
@@ -343,7 +343,7 @@ const MatchupTable: React.FC<{ games: Matchup[] }> = ({ games }) => (
                 )
               ) : (
                 <CircleDashed
-                  className="w-4 h-4 text-slate-600 inline"
+                  className="w-4 h-4 text-slate-400 inline"
                   aria-label={
                     g.has_logged_prediction ? 'Not resolved' : 'No prediction logged'
                   }
