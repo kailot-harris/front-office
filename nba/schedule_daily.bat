@@ -124,10 +124,21 @@ set DIRTY=0
 for %%A in ("%GUARD_TMP%") do if %%~zA GTR 0 set DIRTY=1
 
 if "%DIRTY%"=="1" (
+    set "GUARD_PREV_STASH=none"
+    for /f "delims=" %%s in ('git stash list --format^=%%H -1 2^>nul') do set "GUARD_PREV_STASH=%%s"
     echo [GUARD] Working tree is dirty on branch "%PRE_BRANCH%" - stashing ^(git stash -u^) before checkout. >> "%LOG_FILE%"
     git stash push -u -m "schedule_daily.bat auto-stash %DATE% %TIME%" >> "%LOG_FILE%" 2>&1
     if errorlevel 1 (
-        echo [ERROR] schedule_daily.bat: "git stash -u" FAILED on branch "%PRE_BRANCH%". >> "%LOG_FILE%"
+        set "GUARD_NEW_STASH=none"
+        for /f "delims=" %%s in ('git stash list --format^=%%H -1 2^>nul') do set "GUARD_NEW_STASH=%%s"
+        echo [ERROR] schedule_daily.bat: "git stash -u" FAILED on branch "%PRE_BRANCH%". Newest stash is now !GUARD_NEW_STASH! ^(before this run: !GUARD_PREV_STASH!^). >> "%LOG_FILE%"
+        REM A failed push can still have saved a stash (e.g. git saved it, then
+        REM could not delete an untracked file or folder). Git skips its reset,
+        REM so the tree keeps the changes AND a stash copy exists. Log the SHA;
+        REM never drop, pop, or discard anything.
+        if not "!GUARD_NEW_STASH!"=="!GUARD_PREV_STASH!" (
+            echo [ERROR] Partial stash: "git stash push -u" exited non-zero but DID create stash !GUARD_NEW_STASH! ^(stash@{0}^). The working tree may still be dirty, so the same changes may exist both in the tree and in that stash. The stash was left in place for inspection. >> "%LOG_FILE%"
+        )
         echo [ERROR] Refusing to touch this checkout further. Pipeline NOT run. >> "%LOG_FILE%"
         del "%GUARD_TMP%" >nul 2>&1
         exit /b 3

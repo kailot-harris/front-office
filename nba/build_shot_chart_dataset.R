@@ -119,13 +119,191 @@ extract_through_date <- function(shots_df) {
   format(max(valid), "%Y-%m-%d")
 }
 
+# ESPN uses non-canonical abbreviations in hoopR play-by-play/shots feeds for 6 teams.
+ESPN_ABBR_FIXUPS <- c(
+  GS   = "GSW",
+  SA   = "SAS",
+  NY   = "NYK",
+  UTAH = "UTA",
+  NO   = "NOP",
+  WSH  = "WAS"
+)
+
+REQUIRED_SHOT_COLS <- c(
+  "athlete_id_1",
+  "coordinate_x_raw",
+  "coordinate_y_raw",
+  "type_text",
+  "scoring_play",
+  "score_value",
+  "period_number",
+  "clock_display_value"
+)
+
+canonical_nba_abbr <- function(x) {
+  s <- toupper(trimws(as.character(x)))
+  hit <- !is.na(s) & (s %in% names(ESPN_ABBR_FIXUPS))
+  s[hit] <- unname(ESPN_ABBR_FIXUPS[s[hit]])
+  s
+}
+
+derive_shot_team_abbrev <- function(df) {
+  n <- nrow(df)
+  if (n == 0L) return(character(0))
+
+  abbrev <- if ("team_abbrev" %in% names(df)) {
+    canonical_nba_abbr(df$team_abbrev)
+  } else {
+    rep(NA_character_, n)
+  }
+  abbrev[is.na(abbrev) | !nzchar(abbrev)] <- NA_character_
+
+  pbp_team_cols <- c("team_id", "home_team_id", "home_team_abbrev", "away_team_id", "away_team_abbrev")
+  if (all(pbp_team_cols %in% names(df))) {
+    tid  <- trimws(as.character(df$team_id))
+    hid  <- trimws(as.character(df$home_team_id))
+    aid  <- trimws(as.character(df$away_team_id))
+    habb <- canonical_nba_abbr(df$home_team_abbrev)
+    aabb <- canonical_nba_abbr(df$away_team_abbrev)
+
+    derived <- rep(NA_character_, n)
+    is_home <- !is.na(tid) & nzchar(tid) & !is.na(hid) & nzchar(hid) & (tid == hid)
+    is_away <- !is.na(tid) & nzchar(tid) & !is.na(aid) & nzchar(aid) & (tid == aid)
+    derived[is_home] <- habb[is_home]
+    derived[is_away & !is_home] <- aabb[is_away & !is_home]
+
+    missing_abbrev <- is.na(abbrev)
+    abbrev[missing_abbrev] <- derived[missing_abbrev]
+  }
+
+  abbrev
+}
+
+has_valid_shot_cols <- function(df) {
+  is.data.frame(df) && nrow(df) > 0L && all(REQUIRED_SHOT_COLS %in% names(df))
+}
+
+normalize_shot_records <- function(df) {
+  if (is.null(df) || !is.data.frame(df)) return(NULL)
+  out <- df
+  if ("shooting_play" %in% names(out)) {
+    out <- out[!is.na(out$shooting_play) & as.logical(out$shooting_play), , drop = FALSE]
+  }
+  if (!("athlete_name_1" %in% names(out))) {
+    out$athlete_name_1 <- NA_character_
+  }
+  out$team_abbrev <- derive_shot_team_abbrev(out)
+  out
+}
+
+distinct_non_na_games <- function(df) {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) == 0L || !("game_id" %in% names(df))) {
+    return(character(0))
+  }
+  g <- trimws(as.character(df$game_id))
+  unique(g[!is.na(g) & nzchar(g)])
+}
+
+is_pbp_richer_than_shots <- function(pbp_df, shots_df) {
+  if ("game_id" %in% names(pbp_df) && "game_id" %in% names(shots_df)) {
+    pbp_g <- distinct_non_na_games(pbp_df)
+    sh_g  <- distinct_non_na_games(shots_df)
+    if (length(pbp_g) > 0L || length(sh_g) > 0L) {
+      return(length(pbp_g) > length(sh_g))
+    }
+  }
+  nrow(pbp_df) > nrow(shots_df)
+}
+
+default_shot_fetch_fn <- function(sn) {
+  if (!requireNamespace("hoopR", quietly = TRUE)) {
+    stop("Package 'hoopR' is required to fetch shot charts when cache is absent.", call. = FALSE)
+  }
+  hoopR::load_nba_shots(seasons = sn)
+}
+
+read_rds_safely <- function(path) {
+  if (is.null(path) || length(path) != 1L || !nzchar(path) || !file.exists(path)) {
+    return(NULL)
+  }
+  tryCatch(readRDS(path), error = function(e) {
+    cat(sprintf(">>> [WARN] Failed to read RDS cache (%s): %s\n", path, e$message))
+    NULL
+  })
+}
+
+# Prefer a richer/fresher nba_pbp_<season>.rds cache when nba_shots_<season>.rds
+# is absent or trails in game/row coverage; preserve fetch_fn + shots_cache_path
+# when neither cache is usable.
+load_shot_records <- function(
+  shots_cache_path,
+  pbp_cache_path = NULL,
+  season = CURRENT_SEASON,
+  fetch_fn = NULL
+) {
+  season <- as.integer(season)
+  if (is.null(pbp_cache_path)) {
+    pbp_cache_path <- file.path(dirname(shots_cache_path), sprintf("nba_pbp_%d.rds", season))
+  }
+  if (is.null(fetch_fn)) {
+    fetch_fn <- default_shot_fetch_fn
+  }
+
+  shots_raw <- read_rds_safely(shots_cache_path)
+  pbp_raw   <- read_rds_safely(pbp_cache_path)
+
+  shots_norm <- if (has_valid_shot_cols(shots_raw)) normalize_shot_records(shots_raw) else NULL
+  shots_ok   <- !is.null(shots_norm) && nrow(shots_norm) > 0L
+
+  pbp_norm <- if (has_valid_shot_cols(pbp_raw)) normalize_shot_records(pbp_raw) else NULL
+  pbp_ok   <- !is.null(pbp_norm) && nrow(pbp_norm) > 0L
+
+  if (pbp_ok && (!shots_ok || is_pbp_richer_than_shots(pbp_norm, shots_norm))) {
+    if (shots_ok) {
+      cat(sprintf(
+        ">>> Loading shot data from PBP cache (%s; %d games / %d rows vs shots cache %d games / %d rows)...\n",
+        pbp_cache_path,
+        length(distinct_non_na_games(pbp_norm)), nrow(pbp_norm),
+        length(distinct_non_na_games(shots_norm)), nrow(shots_norm)
+      ))
+    } else {
+      cat(sprintf(">>> Loading shot data from PBP cache (%s)...\n", pbp_cache_path))
+    }
+    return(pbp_norm)
+  }
+
+  if (file.exists(shots_cache_path) && !is.null(shots_raw)) {
+    cat(sprintf(">>> Loading shot data from local cache (%s)...\n", shots_cache_path))
+    if (shots_ok) return(shots_norm)
+    return(shots_raw)
+  }
+
+  cat(sprintf(">>> Fetching season %d NBA shot records via hoopR...\n", season))
+  fetched <- tryCatch({
+    s <- fetch_fn(season)
+    if (!is.null(s) && nrow(s) > 0) {
+      if (!dir.exists(dirname(shots_cache_path))) {
+        dir.create(dirname(shots_cache_path), recursive = TRUE, showWarnings = FALSE)
+      }
+      saveRDS(s, shots_cache_path)
+    }
+    s
+  }, error = function(e) {
+    cat(sprintf(">>> [WARN] Failed to load hoopR shots: %s\n", e$message))
+    NULL
+  })
+
+  if (has_valid_shot_cols(fetched)) normalize_shot_records(fetched) else fetched
+}
+
 build_shot_chart_dataset <- function(
   season = NULL,
   cache_dir = CACHE_DIR,
   web_data_dir = WEB_DATA_DIR,
   players_json_path = file.path(web_data_dir, "projections_season_players.json"),
   shots_cache_path = NULL,
-  fetch_fn = NULL
+  fetch_fn = NULL,
+  pbp_cache_path = NULL
 ) {
   if (is.null(season)) {
     season <- resolve_shot_chart_season(CURRENT_SEASON)
@@ -135,13 +313,11 @@ build_shot_chart_dataset <- function(
   if (is.null(shots_cache_path)) {
     shots_cache_path <- file.path(cache_dir, sprintf("nba_shots_%d.rds", season))
   }
+  if (is.null(pbp_cache_path)) {
+    pbp_cache_path <- file.path(dirname(shots_cache_path), sprintf("nba_pbp_%d.rds", season))
+  }
   if (is.null(fetch_fn)) {
-    fetch_fn <- function(sn) {
-      if (!requireNamespace("hoopR", quietly = TRUE)) {
-        stop("Package 'hoopR' is required to fetch shot charts when cache is absent.", call. = FALSE)
-      }
-      hoopR::load_nba_shots(seasons = sn)
-    }
+    fetch_fn <- default_shot_fetch_fn
   }
 
   cat(">>> [SHOT CHARTS] Loading rotation player catalog from Next.js web app...\n")
@@ -153,25 +329,12 @@ build_shot_chart_dataset <- function(
   cat(sprintf(">>> Loaded %d rotation players.\n", nrow(players_df)))
 
   # 1. Load or fetch shot data
-  if (file.exists(shots_cache_path)) {
-    cat(sprintf(">>> Loading shot data from local cache (%s)...\n", shots_cache_path))
-    raw_shots <- readRDS(shots_cache_path)
-  } else {
-    cat(sprintf(">>> Fetching season %d NBA shot records via hoopR...\n", season))
-    raw_shots <- tryCatch({
-      s <- fetch_fn(season)
-      if (!is.null(s) && nrow(s) > 0) {
-        if (!dir.exists(dirname(shots_cache_path))) {
-          dir.create(dirname(shots_cache_path), recursive = TRUE, showWarnings = FALSE)
-        }
-        saveRDS(s, shots_cache_path)
-      }
-      s
-    }, error = function(e) {
-      cat(sprintf(">>> [WARN] Failed to load hoopR shots: %s\n", e$message))
-      NULL
-    })
-  }
+  raw_shots <- load_shot_records(
+    shots_cache_path = shots_cache_path,
+    pbp_cache_path = pbp_cache_path,
+    season = season,
+    fetch_fn = fetch_fn
+  )
 
   if (is.null(raw_shots) || nrow(raw_shots) == 0) {
     stop("Could not obtain shot data.", call. = FALSE)
@@ -205,8 +368,8 @@ build_shot_chart_dataset <- function(
       x = round(coordinate_x_raw - 25.0, 1),
       y = round(pmax(0, pmin(47, coordinate_y_raw + 4.0)), 1),
       dist = round(sqrt(x^2 + (y - 5.25)^2), 1),
-      made = as.logical(scoring_play),
-      val = ifelse(score_value == 3 | (dist >= 23.5 & !grepl("Free Throw", type_text)), 3, 2),
+      made = !is.na(scoring_play) & as.logical(scoring_play),
+      val = ifelse((!is.na(score_value) & score_value == 3) | (dist >= 23.5 & !grepl("Free Throw", type_text)), 3, 2),
       zone = as.character(mapply(classify_14_zones, x, y, dist, val, USE.NAMES = FALSE))
     )
 
@@ -325,10 +488,10 @@ build_shot_chart_dataset <- function(
     p_meta <- players_df %>% filter(as.character(player_id) == pid)
     if (nrow(p_meta) > 0) {
       p_name <- p_meta$player_name[1]
-      p_team <- p_meta$team[1]
+      p_team <- canonical_nba_abbr(p_meta$team[1])
     } else {
       p_name <- p_shots$player_name[1]
-      p_team <- p_shots$team_abbrev[1]
+      p_team <- canonical_nba_abbr(p_shots$team_abbrev[1])
     }
 
     clean_shots <- p_shots %>%
