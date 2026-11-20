@@ -72,7 +72,12 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
       </div>
 
       <div className="relative w-full overflow-hidden flex justify-center my-1">
-        <svg viewBox={`0 0 ${width} ${height}`} className="w-full max-w-[500px] h-auto overflow-visible">
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          className="w-full max-w-[500px] h-auto overflow-visible"
+          role="img"
+          aria-label={`Pressure resilience scatter plot for ${profiles.length} MLB ${playerType}s with ${selectedProfile.playerName} selected`}
+        >
           {/* Zero Delta Horizontal Line */}
           <line
             x1={padding}

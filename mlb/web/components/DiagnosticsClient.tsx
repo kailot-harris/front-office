@@ -127,7 +127,12 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
               <Download className="w-3.5 h-3.5" />
             </button>
             <div className="relative w-full aspect-square max-w-[420px] mx-auto">
-              <svg viewBox="0 0 400 400" className="w-full h-full overflow-visible">
+              <svg
+                viewBox="0 0 400 400"
+                className="w-full h-full overflow-visible"
+                role="img"
+                aria-label={`MLB win probability calibration curve across ${diagnostics.calibration.length} forecast bins covering ${diagnostics.totalResolvedGames.toLocaleString()} resolved games`}
+              >
                 {/* Grid lines */}
                 {[0.2, 0.4, 0.6, 0.8].map((step) => {
                   const pos = 40 + step * 320;

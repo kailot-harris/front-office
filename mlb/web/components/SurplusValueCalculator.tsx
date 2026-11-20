@@ -36,12 +36,12 @@ export const SurplusValueCalculator: React.FC = () => {
           </div>
           <input
             type="range"
+            aria-label="Annual Salary (AAV)"
             min={0.8}
             max={55.0}
             step={0.5}
             value={salary}
             onChange={(e) => setSalary(parseFloat(e.target.value))}
-            aria-label="Annual Salary (AAV)"
             className="w-full accent-sky-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
           />
           <div className="flex justify-between text-[11px] sm:text-[10px] text-slate-400 mt-1">
@@ -59,12 +59,12 @@ export const SurplusValueCalculator: React.FC = () => {
           </div>
           <input
             type="range"
+            aria-label="Projected WAR"
             min={-0.5}
             max={10.0}
             step={0.1}
             value={projectedWar}
             onChange={(e) => setProjectedWar(parseFloat(e.target.value))}
-            aria-label="Projected WAR"
             className="w-full accent-sky-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
           />
           <div className="flex justify-between text-[11px] sm:text-[10px] text-slate-400 mt-1">
@@ -82,12 +82,12 @@ export const SurplusValueCalculator: React.FC = () => {
           </div>
           <input
             type="range"
+            aria-label="Market Cost / Win"
             min={7.0}
             max={11.0}
             step={0.25}
             value={marketRate}
             onChange={(e) => setMarketRate(parseFloat(e.target.value))}
-            aria-label="Market Cost / Win"
             className="w-full accent-amber-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
           />
           <div className="flex justify-between text-[11px] sm:text-[10px] text-slate-400 mt-1">

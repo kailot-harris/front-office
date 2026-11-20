@@ -19,6 +19,8 @@ export const BaseballCrest: React.FC<BaseballCrestProps> = ({
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
+      role="img"
+      aria-label="MLB Analytics baseball diamond crest"
     >
       {/* Outer Diamond Field Frame */}
       <path
