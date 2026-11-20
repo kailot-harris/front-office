@@ -229,3 +229,19 @@ jobs:
           echo "Dispatched deploy.yml for: ${{ steps.sync.outputs.synced }}"
           echo 'Verify the run, then curl the published page — a green build does'
           echo 'not prove client-side fetches resolve under the production basePath.'
+
+      - name: Notify Discord on sync failure
+        if: ${{ failure() }}
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          SPORTS: ${{ inputs.sports || 'mlb nfl nba wnba' }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "${DISCORD_WEBHOOK:-}" ]; then
+            echo "DISCORD_WEBHOOK secret not set; skipping failure alert."
+            exit 0
+          fi
+          MSG=$(printf '⚠️ **Front Office Subtree Sync Failed**\n- **Sports**: `%s`\n- **Time**: %s\n- **Run**: %s' \
+            "$SPORTS" "$(date -u +"%Y-%m-%d %H:%M:%S UTC")" "$RUN_URL")
+          PAYLOAD=$(jq -n --arg content "$MSG" '{content: $content}')
+          curl -fsS -H "Content-Type: application/json" -X POST -d "$PAYLOAD" "$DISCORD_WEBHOOK" || true

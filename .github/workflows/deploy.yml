@@ -128,7 +128,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -189,7 +189,22 @@ jobs:
         with:
           path: site
 
+      # GitHub's artifact metadata index is eventually consistent right after
+      # upload-pages-artifact@v3 finishes; give it a moment to settle and retry
+      # once on transient "No artifacts named github-pages were found" failures.
+      - name: Wait for Pages artifact indexing
+        run: sleep 10
+
       - id: deployment
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+
+      - name: Wait before retrying Pages deployment
+        if: steps.deployment.outcome != 'success'
+        run: sleep 20
+
+      - id: deployment_retry
+        if: steps.deployment.outcome != 'success'
         uses: actions/deploy-pages@v4
 
       - name: Tag deployed release and record summary
@@ -197,7 +212,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEPLOYED_REF: ${{ github.event.inputs.ref || github.ref }}
-          DEPLOY_URL: ${{ steps.deployment.outputs.page_url }}
+          DEPLOY_URL: ${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url }}
         run: |
           set -euo pipefail
           COMMIT_SHA=$(git rev-parse HEAD)
@@ -229,3 +244,24 @@ jobs:
           echo "- **Pages URL:** $DEPLOY_URL" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Timestamp:** $TIMESTAMP" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Release Tag:** `release-latest`" >> "$GITHUB_STEP_SUMMARY"
+
+  notify-failure:
+    needs: [predeploy-gate, nav-sync-check, build, assemble-and-deploy]
+    if: ${{ failure() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Discord on deploy failure
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DEPLOYED_REF: ${{ github.event.inputs.ref || github.ref }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "${DISCORD_WEBHOOK:-}" ]; then
+            echo "DISCORD_WEBHOOK secret not set; skipping failure alert."
+            exit 0
+          fi
+          MSG=$(printf '⚠️ **Front Office Pages Deploy Failed**\n- **Ref**: `%s`\n- **Commit**: `%s`\n- **Time**: %s\n- **Run**: %s' \
+            "$DEPLOYED_REF" "${COMMIT_SHA:0:8}" "$(date -u +"%Y-%m-%d %H:%M:%S UTC")" "$RUN_URL")
+          PAYLOAD=$(jq -n --arg content "$MSG" '{content: $content}')
+          curl -fsS -H "Content-Type: application/json" -X POST -d "$PAYLOAD" "$DISCORD_WEBHOOK" || true
