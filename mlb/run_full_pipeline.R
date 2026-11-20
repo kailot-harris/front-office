@@ -359,6 +359,18 @@ run_full_pipeline <- function(season = MLB_CURRENT_SEASON, force_refresh = FALSE
   )
 
   # ----------------------------------------------------------------------------
+  # Stage 14b: Empirical Player Spatial Maps Exporter (tools/export_player_spatial_maps.R)
+  # ----------------------------------------------------------------------------
+  run_stage(
+    script_name   = "tools/export_player_spatial_maps.R",
+    description   = "Export Empirical Player Spatial Maps & Prune Stale Files",
+    call_fn       = "export_player_spatial_maps",
+    output        = WEB_JSON_SPATIAL_INDEX,
+    require_fresh = force_refresh,
+    season        = season
+  )
+
+  # ----------------------------------------------------------------------------
   # Stage 15: Front-Office Operations Alert Dispatcher (notify_pipeline_ops.R)
   # ----------------------------------------------------------------------------
   run_stage(
