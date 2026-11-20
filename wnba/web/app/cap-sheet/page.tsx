@@ -1,18 +1,64 @@
 import React from 'react';
+import fs from 'fs';
+import path from 'path';
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { Coins, ArrowLeft, ShieldAlert } from 'lucide-react';
 import { HowToRead } from '@/components/HowToRead';
 
+const ARCHIVED_SNAPSHOT_FALLBACK_DATE = '2026-11-07';
+
+function getCapSheetSnapshotDate(): string {
+  try {
+    const filePath = path.join(process.cwd(), 'public', 'data', 'cba_cap_sheet.json');
+    if (typeof fs.existsSync === 'function' && fs.existsSync(filePath)) {
+      const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as { generated_at?: string };
+      if (typeof parsed.generated_at === 'string' && parsed.generated_at.length >= 10) {
+        return parsed.generated_at.slice(0, 10);
+      }
+    }
+  } catch {
+    // Fall back to the recorded archive date if the JSON cannot be read at runtime.
+  }
+  return ARCHIVED_SNAPSHOT_FALLBACK_DATE;
+}
+
 export const metadata: Metadata = {
   title: 'CBA Salary Cap Reference (Archived)',
   description:
-    'The 2026 WNBA CBA salary cap sheet is currently archived pending integration with verified contract feeds.',
+    'The 2026 WNBA CBA salary cap sheet is an archived static snapshot (2026-11-07) pending integration with verified contract feeds.',
 };
 
 export default function CapSheetPage() {
+  const snapshotDate = getCapSheetSnapshotDate();
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center space-y-6">
+      <aside
+        role="note"
+        aria-label="Archived Static Snapshot"
+        data-testid="archived-static-snapshot-banner"
+        className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-left"
+      >
+        <div className="flex items-start gap-3">
+          <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+          <div className="space-y-1 text-sm">
+            <p className="font-bold text-amber-200 uppercase tracking-wide text-xs font-mono">
+              Archived Static Snapshot
+            </p>
+            <p className="text-slate-200 leading-relaxed">
+              The underlying <code className="font-mono text-amber-300">cba_cap_sheet.json</code>{' '}
+              dataset is a frozen historical snapshot archived on{' '}
+              <time dateTime={snapshotDate} className="font-mono font-semibold text-white">
+                {snapshotDate}
+              </time>
+              . No scheduled pipeline stage updates this payload (archived under issues #128, #140,
+              #141, and #209).
+            </p>
+          </div>
+        </div>
+      </aside>
+
       <div className="inline-flex items-center justify-center p-3 bg-amber-500/10 rounded-full border border-amber-500/20 text-amber-400">
         <Coins className="w-8 h-8" />
       </div>

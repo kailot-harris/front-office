@@ -48,8 +48,38 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
       .sort((a, b) => a.teamName.localeCompare(b.teamName));
   }, [initialData.teams, selectedConf, search]);
 
+  const snapshotDate =
+    typeof initialData.generated_at === 'string' && initialData.generated_at.length >= 10
+      ? initialData.generated_at.slice(0, 10)
+      : '2026-11-07';
+
   return (
     <div className="space-y-6">
+      <aside
+        role="note"
+        aria-label="Archived Static Snapshot"
+        data-testid="archived-static-snapshot-banner"
+        className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-left"
+      >
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+          <div className="space-y-1 text-sm">
+            <p className="font-bold text-amber-200 uppercase tracking-wide text-xs font-mono">
+              Archived Static Snapshot
+            </p>
+            <p className="text-slate-200 leading-relaxed">
+              The underlying <code className="font-mono text-amber-300">cba_cap_sheet.json</code>{' '}
+              dataset is a frozen historical snapshot archived on{' '}
+              <time dateTime={snapshotDate} className="font-mono font-semibold text-white">
+                {snapshotDate}
+              </time>
+              . No scheduled pipeline stage updates this payload (archived under issues #128, #140,
+              #141, and #209).
+            </p>
+          </div>
+        </div>
+      </aside>
+
       {/* Overview Banner */}
       <div className="p-6 rounded-2xl bg-gradient-to-r from-amber-950/40 via-slate-900 to-indigo-950/40 border border-amber-900/40 shadow-xl">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">

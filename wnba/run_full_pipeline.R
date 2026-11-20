@@ -448,6 +448,17 @@ run_registered_stage("playoff_bracket_current")
 # Must follow 6b: it reads the Finals matchup and played results off that artifact.
 run_registered_stage("finals_game_predictions")
 
+# 6d. Finals Walk-Forward Series Backtest (#211)
+# Output: cache/finals_series_backtest_2026.rds (CACHE_FINALS_SERIES_BACKTEST)
+# Must precede export_web_json so Section 5d exports an up-to-date reconstruction.
+# Fails safe when Finals games are unavailable (warns and skips writing).
+run_stage(
+  "tools/finals_series_backtest.R",
+  "Walk-Forward Finals Series Forecast Reconstruction",
+  call_fn = "run_finals_series_backtest",
+  output = CACHE_FINALS_SERIES_BACKTEST
+)
+
 # 7. Portfolio Risk Management & Capital Preservation
 # Output: cache/risk_state.rds
 

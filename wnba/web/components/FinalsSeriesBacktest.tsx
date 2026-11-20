@@ -178,6 +178,34 @@ export function FinalsSeriesBacktest({ data }: { data: FinalsSeriesBacktestSet }
   const last = infoSets[infoSets.length - 1];
   const totalMove = last.pHighSeries - first.pHighSeries;
 
+  const highWins = games.filter((g) => g.highWon).length;
+  const lowWins = games.length - highWins;
+  const WIN_THRESHOLD = 4;
+  let outcomeText: string;
+  if (games.length === 0) {
+    outcomeText = 'No covered games';
+  } else if (highWins >= WIN_THRESHOLD || lowWins >= WIN_THRESHOLD) {
+    const winnerName = highWins >= WIN_THRESHOLD ? matchup.teamHigh : matchup.teamLow;
+    outcomeText = `${winnerName} won ${Math.max(highWins, lowWins)}\u2013${Math.min(highWins, lowWins)}`;
+  } else if (highWins === lowWins) {
+    outcomeText = `Series tied ${highWins}\u2013${lowWins}`;
+  } else {
+    const leaderName = highWins > lowWins ? matchup.teamHigh : matchup.teamLow;
+    outcomeText = `${leaderName} led ${Math.max(highWins, lowWins)}\u2013${Math.min(highWins, lowWins)}`;
+  }
+
+  const coveredDates = games
+    .map((g) => g.gameDate)
+    .filter((d): d is string => typeof d === 'string' && d.trim().length > 0)
+    .slice()
+    .sort();
+  const dateRangeText =
+    coveredDates.length === 0
+      ? 'Dates unavailable'
+      : coveredDates.length === 1
+        ? coveredDates[0]
+        : `${coveredDates[0]} to ${coveredDates[coveredDates.length - 1]}`;
+
   return (
     <section className="mt-10">
       <h2 className="flex items-center gap-2 text-xl font-bold text-slate-100">
@@ -196,15 +224,37 @@ export function FinalsSeriesBacktest({ data }: { data: FinalsSeriesBacktestSet }
         </p>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-slate-300">
-        <TeamLogo team={matchup.teamHighAbbr} size="sm" />
-        <span className="font-semibold">{matchup.teamHigh}</span>
-        <span className="text-slate-600">vs</span>
-        <TeamLogo team={matchup.teamLowAbbr} size="sm" />
-        <span className="font-semibold">{matchup.teamLow}</span>
-        <span className="ml-2 font-mono text-[11px] text-slate-400">
-          {games.length} game{games.length === 1 ? '' : 's'} played
-        </span>
+      <div
+        data-testid="finals-backtest-summary"
+        className="mt-4 rounded-lg border border-slate-800 bg-slate-900/60 p-3.5 space-y-2"
+      >
+        <div
+          data-testid="finals-backtest-matchup"
+          className="flex flex-wrap items-center gap-3 text-sm text-slate-300"
+        >
+          <TeamLogo team={matchup.teamHighAbbr} size="sm" />
+          <span className="font-semibold text-white">{matchup.teamHigh}</span>
+          <span className="text-slate-400">vs</span>
+          <TeamLogo team={matchup.teamLowAbbr} size="sm" />
+          <span className="font-semibold text-white">{matchup.teamLow}</span>
+          <span
+            data-testid="finals-backtest-record"
+            className="font-mono text-xs text-slate-300"
+          >
+            ({matchup.teamHighAbbr} {highWins}&ndash;{lowWins} {matchup.teamLowAbbr})
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono text-slate-400">
+          <span data-testid="finals-backtest-outcome" className="text-slate-200 font-semibold">
+            {outcomeText}
+          </span>
+          <span data-testid="finals-backtest-games-count">
+            {games.length} covered game{games.length === 1 ? '' : 's'}
+          </span>
+          <span data-testid="finals-backtest-dates">
+            Dates covered: {dateRangeText}
+          </span>
+        </div>
       </div>
 
       <div className="mt-4 overflow-x-auto rounded-lg border border-slate-800 bg-slate-900/60 p-4">

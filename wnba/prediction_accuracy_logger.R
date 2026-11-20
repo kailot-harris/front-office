@@ -3,43 +3,24 @@
 # Path: prediction_accuracy_logger.R
 #
 # Daily, structured, append-only log of the model's OWN pre-game win-probability
-# predictions vs. real outcomes — distinct from bet_tracker.r's betting ledger
-# (which only tracks games that passed the EV/CLV +EV filter, a biased subset).
-# Captures every real game the model priced, whether or not it became a bet, to
-# support future accuracy/calibration/drift analysis. Full rationale, schema, and
+# predictions vs. real outcomes. Captures every real game the model scored to
+# support accuracy, calibration, and drift analysis. Full rationale, schema, and
 # phased plan: docs/PREDICTION_LOGGING_PLAN.md — this file follows that plan
 # precisely; any deviation is called out inline below and in
 # docs/task_assignments_phase2.md's dated section for this task.
 #
-# Mirrors bet_tracker.r's proven PENDING -> RESOLVED two-phase pattern
-# (append_todays_picks() / grade_yesterday_bets()) rather than inventing a new
-# structure. Reuses market_odds_engine.R::evaluate_betting_slate()'s real same-day
-# output (cache/latest_value_bets.rds, Model_Win_Prob column) as the source of
-# "today's real games + today's model prediction", instead of recomputing
-# predictions independently, so the logged prediction matches exactly what the
-# rest of the pipeline (EV, notify_bets) acted on that day.
+# Uses a PENDING -> RESOLVED two-phase lifecycle and reads the compatible slate
+# cache (`cache/latest_value_bets.rds`, `Model_Win_Prob` column) when present.
 #
-# DEVIATION #1 (name resolution): market_odds_engine.R's resolve_team_name()/
-# abbr_for() helpers are NOT sourced here, because market_odds_engine.R has an
-# UNCONDITIONAL top-level call at its own tail (evaluate_betting_slate(), no
-# sys.nframe() guard, unlike daily_ingest.R) — sourcing that file would silently
-# re-trigger a live odds pull / rewrite cache/latest_value_bets.rds as a side
-# effect of just wanting two helper functions. Instead, a small local .team_abbr()
-# below does the same WNBA_TEAMS-based canonicalization directly.
+# DEVIATION #1 (name resolution): Team names are canonicalized via a local
+# `.team_abbr()` helper using `config.R`'s `WNBA_TEAMS` directly, avoiding any
+# side-effectful external sourcing.
 #
-# DEVIATION #2 (game_id is NOT joinable across sources — confirmed empirically
-# this session, not assumed): cache/latest_value_bets.rds's game_id is The Odds
-# API's hex event ID (e.g. "e1345bc3242e9236f8524205bb759ad3"); data/box_scores_
-# cache.rds's game_id is ESPN's integer game ID. These are two different ID
-# spaces. Per the plan's explicit fallback instruction, reconcile_predictions()
-# joins on (team, game_date) instead — same JOIN SHAPE as bet_tracker.r's
-# grade_yesterday_bets(), but with team identity normalized to box_scores_cache's
-# actual short-nickname format (see reconcile_predictions() comments below). Note:
-# a literal byte-for-byte copy of bet_tracker.r's join (team_picked full name ==
-# team_short_display_name short nickname) would silently match zero rows, since
-# those two columns use different name representations — flagged in Handoff Notes
-# as a related pre-existing issue in bet_tracker.r, out of scope to fix per this
-# task's Constraints.
+# DEVIATION #2 (game_id is NOT joinable across sources — confirmed empirically):
+# `cache/latest_value_bets.rds` uses a hex event ID, while
+# `data/box_scores_cache.rds` uses ESPN's integer game ID. `reconcile_predictions()`
+# joins on `(team, game_date)` instead, with team identity normalized to
+# `box_scores_cache.rds`'s short-nickname format.
 #
 # DEVIATION #3 (run_stage() call_fn parameter): run_stage() in run_full_pipeline.R
 # sources a script and expects it to auto-execute at the top level (like bet_
@@ -338,34 +319,29 @@ save_prediction_log <- function(df) {
 # ------------------------------------------------------------------------------
 # Phase 1, step 1: log_todays_predictions()
 #
-# Source of "today's real games + today's model prediction": cache/
-# latest_value_bets.rds, written by market_odds_engine.R::evaluate_betting_slate()
-# (Model_Win_Prob column) — the SAME cache bet_tracker.r::append_todays_picks()
-# already reads, so this reuses the exact live computation the rest of the
-# pipeline acted on, per the plan's Best Practice #3 (point-in-time correctness).
+# Source of today's scheduled games and pre-game win probabilities:
+# `cache/latest_value_bets.rds` (retained for cache compatibility; reads the
+# `Model_Win_Prob`, `Team`, and `Matchup` columns if a pre-game slate exists).
 #
-# Model_Win_Prob is the probability of whichever side (home or away) had the
-# better EV that day (`team_picked`), NOT always the home team's probability.
-# home_team/away_team are not retained as separate columns in latest_value_bets.
-# rds's final output_table, but Matchup is always formatted "{away} vs. {home}"
-# (verified against both market_odds_engine.R::fetch_market_odds()'s fixture
-# fallback AND parse_multi_book_feed()'s live-API formatting, AND against a real
-# cache pull inspected this session) — so home/away are recovered by splitting
-# Matchup, then predicted_home_win_prob is derived: Model_Win_Prob if the picked
-# Team is the home side, else 1 - Model_Win_Prob.
+# `Model_Win_Prob` is the probability of whichever side (`Team`) was recorded on
+# the slate row, not necessarily the home team's probability. `home_team` and
+# `away_team` are not stored as separate columns, so they are recovered by
+# splitting `Matchup` (`"{away} vs. {home}"`), then `predicted_home_win_prob` is
+# derived as `Model_Win_Prob` when `Team` is the home side, else
+# `1 - Model_Win_Prob`.
 # ------------------------------------------------------------------------------
 log_todays_predictions <- function() {
   tryCatch({
     val_path <- file.path(CACHE_DIR, "latest_value_bets.rds")
     if (!file.exists(val_path)) {
-      log_info("cache/latest_value_bets.rds not found (market_odds_engine.R has not produced a slate yet this session); skipping prediction logging.",
+      log_info("Daily prediction slate cache (cache/latest_value_bets.rds) not found; skipping prediction logging.",
                call = "log_todays_predictions()")
       return(invisible(NULL))
     }
 
     slate <- readRDS(val_path)
     if (nrow(slate) == 0) {
-      log_info("0 real games in latest_value_bets.rds (e.g. WNBA off-season or an empty slate); skipping prediction logging (Best Practice #6, trigger-gated).",
+      log_info("0 real games in daily prediction slate cache (e.g. WNBA off-season or an empty slate); skipping prediction logging (Best Practice #6, trigger-gated).",
                call = "log_todays_predictions()")
       return(invisible(NULL))
     }
@@ -422,7 +398,7 @@ log_todays_predictions <- function() {
     row_synthetic <- market_src == "SYNTHETIC_FALLBACK"
 
     if (any(row_synthetic)) {
-      log_warn(sprintf("%d of %d slate row(s) were priced off a SYNTHETIC_FALLBACK odds slate; logged with is_synthetic = TRUE and excluded from accuracy aggregation (M-5).",
+      log_warn(sprintf("%d of %d slate row(s) were sourced from a SYNTHETIC_FALLBACK fixture slate; logged with is_synthetic = TRUE and excluded from accuracy aggregation (M-5).",
                        sum(row_synthetic), length(row_synthetic)),
                call = "log_todays_predictions()", synthetic_rows = sum(row_synthetic))
     }
