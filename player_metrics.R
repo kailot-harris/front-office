@@ -18,6 +18,7 @@ suppressPackageStartupMessages({
 
 source("config.R")
 source("logging_utils.R")
+source("wnba_cache_utils.R")
 .LOG_SCRIPT <- "player_metrics.R"
 
 # Same WNBA-specific gotcha as daily_ingest.R: raw wehoop player box includes
@@ -44,50 +45,125 @@ filter_real_franchises <- function(df) {
   df |> filter(team_abbreviation %in% names(WNBA_TEAMS))
 }
 
-get_player_box_scores_chunked <- function(seasons = ALL_SEASONS) {
-  if (file.exists(CACHE_PLAYER_BOX)) {
-    message(sprintf("[Player Metrics] Loading player box scores from cache: %s", CACHE_PLAYER_BOX))
-    return(readRDS(CACHE_PLAYER_BOX))
+.pull_player_box_season <- function(s, pull_fn, max_retries = MAX_RETRIES, sleep_sec = RATE_LIMIT_SLEEP_SEC) {
+  s_data <- NULL
+  for (attempt in seq_len(max_retries)) {
+    s_data <- tryCatch({
+      pull_fn(s)
+    }, error = function(e) {
+      warning(sprintf("     Attempt %d failed for season %d: %s", attempt, s, e$message))
+      log_error(sprintf("wehoop::load_wnba_player_box() attempt %d/%d failed for season %d.",
+                         attempt, max_retries, s),
+                condition = e, call = "get_player_box_scores_chunked()", season = s, attempt = attempt)
+      if (sleep_sec > 0) Sys.sleep(sleep_sec * 2)
+      NULL
+    })
+    if (!is.null(s_data) && is.data.frame(s_data)) break
+    s_data <- NULL
+  }
+  s_data
+}
+
+get_player_box_scores_chunked <- function(seasons = ALL_SEASONS,
+                                          force_refresh = FALSE,
+                                          cache_path = CACHE_PLAYER_BOX,
+                                          schedule_path = CACHE_WNBA_SCHEDULE,
+                                          team_box_path = CACHE_TEAM_BOX,
+                                          current_season = CURRENT_SEASON,
+                                          min_refresh_age_hours = 6,
+                                          now = Sys.time(),
+                                          fetch_fn = NULL,
+                                          max_retries = MAX_RETRIES,
+                                          sleep_sec = RATE_LIMIT_SLEEP_SEC) {
+  pull_fn <- if (!is.null(fetch_fn)) fetch_fn else function(s) wehoop::load_wnba_player_box(seasons = s)
+
+  state <- wnba_inspect_cache_state(
+    cache_path = cache_path,
+    seasons = seasons,
+    force_refresh = force_refresh,
+    current_season = current_season,
+    schedule_path = schedule_path,
+    team_box_path = team_box_path,
+    min_refresh_age_hours = min_refresh_age_hours,
+    now = now
+  )
+
+  if (identical(state$decision, "cache")) {
+    message(sprintf("[Player Metrics] Loading player box scores from cache: %s", cache_path))
+    return(state$existing_cache)
   }
 
-  message("[Player Metrics] Cache not found. Initiating chunked download with rate-limiting...")
+  if (identical(state$decision, "refetch")) {
+    message(sprintf("[Player Metrics] Cache current season (%d) lags schedule (%s vs %s); refreshing season %d only...",
+                    current_season,
+                    as.character(state$cache_max_date),
+                    as.character(state$schedule_max_date),
+                    current_season))
+    s_data <- .pull_player_box_season(current_season, pull_fn, max_retries = max_retries, sleep_sec = sleep_sec)
+    if (!is.null(s_data) && is.data.frame(s_data)) {
+      s_data <- filter_real_franchises(s_data)
+    }
+    if (is.null(s_data) || !is.data.frame(s_data) || nrow(s_data) == 0) {
+      warning(sprintf("[Player Metrics] Refresh for season %d failed or returned 0 rows; keeping existing cache intact (%s).",
+                      current_season, cache_path))
+      log_warn(sprintf("Current-season player box refresh returned no rows for season %d; keeping existing cache intact.",
+                       current_season),
+               call = "get_player_box_scores_chunked()", season = current_season, cache_path = cache_path)
+      return(state$existing_cache)
+    }
+    if (!"season" %in% names(s_data)) s_data$season <- as.integer(current_season)
+    all_player_box <- wnba_replace_season_rows(state$existing_cache, s_data, target_season = current_season)
+    if (!dir.exists(dirname(cache_path))) dir.create(dirname(cache_path), recursive = TRUE)
+    saveRDS(all_player_box, cache_path)
+    message(sprintf("[Player Metrics] Refreshed season %d (%d rows); total cached player-game rows: %d.",
+                    current_season, nrow(s_data), nrow(all_player_box)))
+    log_info(sprintf("Refreshed season %d player box scores (%d new rows, %d total).",
+                     current_season, nrow(s_data), nrow(all_player_box)),
+             call = "get_player_box_scores_chunked()", season = current_season,
+             refreshed_rows = nrow(s_data), rows = nrow(all_player_box), out_path = cache_path)
+    return(all_player_box)
+  }
+
+  message("[Player Metrics] Cache not found (or force_refresh=TRUE). Initiating chunked download with rate-limiting...")
   season_dfs <- list()
 
   for (s in seasons) {
     message(sprintf("  -> Ingesting season %d...", s))
-    s_data <- NULL
-    for (attempt in 1:MAX_RETRIES) {
-      s_data <- tryCatch({
-        wehoop::load_wnba_player_box(seasons = s)
-      }, error = function(e) {
-        warning(sprintf("     Attempt %d failed for season %d: %s", attempt, s, e$message))
-        log_error(sprintf("wehoop::load_wnba_player_box() attempt %d/%d failed for season %d.",
-                           attempt, MAX_RETRIES, s),
-                  condition = e, call = "get_player_box_scores_chunked()", season = s, attempt = attempt)
-        Sys.sleep(RATE_LIMIT_SLEEP_SEC * 2)
-        NULL
-      })
-      if (!is.null(s_data)) break
-    }
+    s_data <- .pull_player_box_season(s, pull_fn, max_retries = max_retries, sleep_sec = sleep_sec)
 
     if (is.null(s_data)) {
-      log_error(sprintf("Failed to retrieve player box scores for season %d after %d retries.", s, MAX_RETRIES),
-                call = "get_player_box_scores_chunked()", season = s, max_retries = MAX_RETRIES)
-      stop(sprintf("Failed to retrieve player box scores for season %d after %d retries.", s, MAX_RETRIES))
+      if (isTRUE(force_refresh) && isTRUE(state$cache_non_empty)) {
+        warning(sprintf("[Player Metrics] Forced refresh failed for season %d; keeping existing cache intact (%s).",
+                        s, cache_path))
+        log_warn(sprintf("Forced player box refresh failed for season %d; keeping existing cache intact.", s),
+                 call = "get_player_box_scores_chunked()", season = s, cache_path = cache_path)
+        return(state$existing_cache)
+      }
+      log_error(sprintf("Failed to retrieve player box scores for season %d after %d retries.", s, max_retries),
+                call = "get_player_box_scores_chunked()", season = s, max_retries = max_retries)
+      stop(sprintf("Failed to retrieve player box scores for season %d after %d retries.", s, max_retries))
     }
 
     s_data <- filter_real_franchises(s_data)
+    if (!"season" %in% names(s_data)) s_data$season <- as.integer(s)
     log_info(sprintf("Ingested %d real-franchise player-game rows for season %d.", nrow(s_data), s),
              call = "get_player_box_scores_chunked()", season = s, rows = nrow(s_data))
     season_dfs[[as.character(s)]] <- s_data
-    Sys.sleep(RATE_LIMIT_SLEEP_SEC) # Protect ESPN/wehoop endpoints
+    if (sleep_sec > 0) Sys.sleep(sleep_sec) # Protect ESPN/wehoop endpoints
   }
 
-  all_player_box <- bind_rows(season_dfs)
-  saveRDS(all_player_box, CACHE_PLAYER_BOX)
+  all_player_box <- wnba_bind_rows_safe(season_dfs)
+  if (nrow(all_player_box) == 0 && isTRUE(force_refresh) && isTRUE(state$cache_non_empty)) {
+    warning(sprintf("[Player Metrics] Forced refresh returned 0 rows; keeping existing cache intact (%s).", cache_path))
+    log_warn("Forced player box refresh returned 0 rows; keeping existing cache intact.",
+             call = "get_player_box_scores_chunked()", cache_path = cache_path)
+    return(state$existing_cache)
+  }
+  if (!dir.exists(dirname(cache_path))) dir.create(dirname(cache_path), recursive = TRUE)
+  saveRDS(all_player_box, cache_path)
   message(sprintf("[Player Metrics] Ingestion complete. Cached %d player-game rows.", nrow(all_player_box)))
   log_info(sprintf("Cached %d total player-game rows across %d seasons.", nrow(all_player_box), length(seasons)),
-           call = "get_player_box_scores_chunked()", rows = nrow(all_player_box), out_path = CACHE_PLAYER_BOX)
+           call = "get_player_box_scores_chunked()", rows = nrow(all_player_box), out_path = cache_path)
   return(all_player_box)
 }
 

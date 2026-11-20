@@ -190,6 +190,7 @@ suppressPackageStartupMessages({
 
 source("config.R")
 source("logging_utils.R")
+source("wnba_cache_utils.R")
 .LOG_SCRIPT <- "pbp_engine.R"
 
 # NOT "wnba_pbp_cache.rds" — see the header's "REAL NAME/PATH COLLISION DISCOVERED
@@ -224,10 +225,80 @@ PBP_FEATURE_COLS <- c(
 # returning NULL for the caller to handle via the fail-safe path in
 # compute_player_pbp_features().
 # ------------------------------------------------------------------------------------------
-load_or_build_wnba_espn_pbp_cache <- function(seasons = ALL_SEASONS, force_refresh = FALSE) {
-  if (file.exists(CACHE_PBP_EVENTS) && !force_refresh) {
-    message(sprintf("[PBP] Loading cached play-by-play from: %s", CACHE_PBP_EVENTS))
-    return(readRDS(CACHE_PBP_EVENTS))
+.pull_wnba_espn_pbp_season <- function(s, pull_fn, max_retries = MAX_RETRIES, sleep_sec = RATE_LIMIT_SLEEP_SEC) {
+  s_data <- NULL
+  for (attempt in seq_len(max_retries)) {
+    s_data <- tryCatch({
+      pull_fn(s)
+    }, error = function(e) {
+      warning(sprintf("     Attempt %d failed for PBP season %d: %s", attempt, s, e$message))
+      log_error(sprintf("wehoop::load_wnba_pbp() attempt %d/%d failed for season %d.",
+                         attempt, max_retries, s),
+                condition = e, call = "load_or_build_wnba_espn_pbp_cache()", season = s, attempt = attempt)
+      if (sleep_sec > 0) Sys.sleep(sleep_sec * 2)
+      NULL
+    })
+    if (!is.null(s_data) && is.data.frame(s_data) && nrow(s_data) > 0) break
+    s_data <- NULL
+  }
+  s_data
+}
+
+load_or_build_wnba_espn_pbp_cache <- function(seasons = ALL_SEASONS,
+                                              force_refresh = FALSE,
+                                              cache_path = CACHE_PBP_EVENTS,
+                                              schedule_path = CACHE_WNBA_SCHEDULE,
+                                              team_box_path = CACHE_TEAM_BOX,
+                                              current_season = CURRENT_SEASON,
+                                              min_refresh_age_hours = 6,
+                                              now = Sys.time(),
+                                              fetch_fn = NULL,
+                                              max_retries = MAX_RETRIES,
+                                              sleep_sec = RATE_LIMIT_SLEEP_SEC) {
+  pull_fn <- if (!is.null(fetch_fn)) fetch_fn else function(s) wehoop::load_wnba_pbp(seasons = s)
+
+  state <- wnba_inspect_cache_state(
+    cache_path = cache_path,
+    seasons = seasons,
+    force_refresh = force_refresh,
+    current_season = current_season,
+    schedule_path = schedule_path,
+    team_box_path = team_box_path,
+    min_refresh_age_hours = min_refresh_age_hours,
+    now = now
+  )
+
+  if (identical(state$decision, "cache")) {
+    message(sprintf("[PBP] Loading cached play-by-play from: %s", cache_path))
+    return(state$existing_cache)
+  }
+
+  if (identical(state$decision, "refetch")) {
+    message(sprintf("[PBP] Cache current season (%d) lags schedule (%s vs %s); refreshing season %d only...",
+                    current_season,
+                    as.character(state$cache_max_date),
+                    as.character(state$schedule_max_date),
+                    current_season))
+    s_data <- .pull_wnba_espn_pbp_season(current_season, pull_fn, max_retries = max_retries, sleep_sec = sleep_sec)
+    if (is.null(s_data) || !is.data.frame(s_data) || nrow(s_data) == 0) {
+      warning(sprintf("[PBP] Refresh for season %d failed or returned 0 rows; keeping existing cache intact (%s).",
+                      current_season, cache_path))
+      log_warn(sprintf("Current-season PBP refresh returned no rows for season %d; keeping existing cache intact.",
+                       current_season),
+               call = "load_or_build_wnba_espn_pbp_cache()", season = current_season, cache_path = cache_path)
+      return(state$existing_cache)
+    }
+    if (!"season" %in% names(s_data)) s_data$season <- as.integer(current_season)
+    all_pbp <- wnba_replace_season_rows(state$existing_cache, s_data, target_season = current_season)
+    if (!dir.exists(dirname(cache_path))) dir.create(dirname(cache_path), recursive = TRUE)
+    saveRDS(all_pbp, cache_path)
+    message(sprintf("[PBP] Refreshed season %d (%d rows); total cached PBP rows: %d (%s).",
+                    current_season, nrow(s_data), nrow(all_pbp), cache_path))
+    log_info(sprintf("Refreshed season %d PBP (%d new rows, %d total rows).",
+                     current_season, nrow(s_data), nrow(all_pbp)),
+             call = "load_or_build_wnba_espn_pbp_cache()", season = current_season,
+             refreshed_rows = nrow(s_data), rows = nrow(all_pbp), out_path = cache_path)
+    return(all_pbp)
   }
 
   message("[PBP] Cache not found (or force_refresh=TRUE). Pulling per-season with retry/backoff...")
@@ -235,52 +306,46 @@ load_or_build_wnba_espn_pbp_cache <- function(seasons = ALL_SEASONS, force_refre
 
   for (s in seasons) {
     message(sprintf("  -> Ingesting PBP for season %d...", s))
-    s_data <- NULL
-    for (attempt in 1:MAX_RETRIES) {
-      s_data <- tryCatch({
-        wehoop::load_wnba_pbp(seasons = s)
-      }, error = function(e) {
-        warning(sprintf("     Attempt %d failed for PBP season %d: %s", attempt, s, e$message))
-        log_error(sprintf("wehoop::load_wnba_pbp() attempt %d/%d failed for season %d.",
-                           attempt, MAX_RETRIES, s),
-                  condition = e, call = "load_or_build_wnba_espn_pbp_cache()", season = s, attempt = attempt)
-        Sys.sleep(RATE_LIMIT_SLEEP_SEC * 2)
-        NULL
-      })
-      if (!is.null(s_data) && nrow(s_data) > 0) break
-      s_data <- NULL
-    }
+    s_data <- .pull_wnba_espn_pbp_season(s, pull_fn, max_retries = max_retries, sleep_sec = sleep_sec)
 
     if (is.null(s_data)) {
       # Deliberately NOT stop()-ing here (unlike get_player_box_scores_chunked()) —
       # a single bad/rate-limited season should not sacrifice every other season's
       # already-successful pull.
-      log_error(sprintf("Skipping PBP season %d after %d failed attempts.", s, MAX_RETRIES),
-                call = "load_or_build_wnba_espn_pbp_cache()", season = s, max_retries = MAX_RETRIES)
-      message(sprintf("  -> Skipping season %d (failed after %d attempts).", s, MAX_RETRIES))
+      log_error(sprintf("Skipping PBP season %d after %d failed attempts.", s, max_retries),
+                call = "load_or_build_wnba_espn_pbp_cache()", season = s, max_retries = max_retries)
+      message(sprintf("  -> Skipping season %d (failed after %d attempts).", s, max_retries))
       next
     }
 
+    if (!"season" %in% names(s_data)) s_data$season <- as.integer(s)
     log_info(sprintf("Ingested %d PBP event rows for season %d.", nrow(s_data), s),
              call = "load_or_build_wnba_espn_pbp_cache()", season = s, rows = nrow(s_data))
     season_dfs[[as.character(s)]] <- s_data
-    Sys.sleep(RATE_LIMIT_SLEEP_SEC)
+    if (sleep_sec > 0) Sys.sleep(sleep_sec)
   }
 
   if (length(season_dfs) == 0) {
+    if (isTRUE(force_refresh) && isTRUE(state$cache_non_empty)) {
+      warning(sprintf("[PBP] Forced refresh failed for all seasons; keeping existing cache intact (%s).", cache_path))
+      log_warn("Forced PBP refresh failed for all seasons; keeping existing cache intact.",
+               call = "load_or_build_wnba_espn_pbp_cache()", cache_path = cache_path)
+      return(state$existing_cache)
+    }
     log_error("Zero PBP seasons succeeded — returning NULL, caller must fail-safe.",
               call = "load_or_build_wnba_espn_pbp_cache()")
     message("[PBP] All seasons failed. Returning NULL (no cache written).")
     return(NULL)
   }
 
-  all_pbp <- bind_rows(season_dfs)
-  saveRDS(all_pbp, CACHE_PBP_EVENTS)
+  all_pbp <- wnba_bind_rows_safe(season_dfs)
+  if (!dir.exists(dirname(cache_path))) dir.create(dirname(cache_path), recursive = TRUE)
+  saveRDS(all_pbp, cache_path)
   message(sprintf("[PBP] Ingestion complete. Cached %d PBP event rows across %d/%d requested seasons.",
                   nrow(all_pbp), length(season_dfs), length(seasons)))
   log_info(sprintf("Cached %d total PBP event rows across %d/%d requested seasons.",
                    nrow(all_pbp), length(season_dfs), length(seasons)),
-           call = "load_or_build_wnba_espn_pbp_cache()", rows = nrow(all_pbp), out_path = CACHE_PBP_EVENTS)
+           call = "load_or_build_wnba_espn_pbp_cache()", rows = nrow(all_pbp), out_path = cache_path)
   all_pbp
 }
 
