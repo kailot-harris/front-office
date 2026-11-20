@@ -989,6 +989,137 @@ source("config.R")
   )
 }
 
+# ------------------------------------------------------------------------------
+# ASSERTION I - data manifest completeness + schedule-coverage lag gate
+# (Refs kailot-harris/front-office#102 and #191).
+#
+# data_manifest.json must list every top-level web/public/data/*.json (itself
+# excluded) with a valid UTC ISO-8601 generated_at. A non-static dataset whose
+# through_date trails the latest completed scheduled game by more than
+# max_lag_days fails. Off-season (schedule_through_date <= through_date) passes.
+# static: true is allowed only with a non-empty static_reason. When the schedule
+# date is unknown (cache absent, offline CI) the lag comparison is skipped and
+# said so; completeness is still enforced.
+# ------------------------------------------------------------------------------
+.pw_is_utc_iso <- function(x) {
+  is.character(x) && length(x) == 1 && grepl("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$", x, perl = TRUE) &&
+    !is.na(as.POSIXct(x, format = "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"))
+}
+
+.assert_manifest_and_coverage <- function(data_dir = file.path("web", "public", "data"),
+                                          max_lag_days = 3L,
+                                          schedule_through_date = NULL,
+                                          dry_run = TRUE) {
+  mpath <- file.path(data_dir, "data_manifest.json")
+  base <- list(id = "I", name = "data manifest completeness + schedule-coverage lag",
+               fatal = TRUE)
+  if (!file.exists(mpath)) {
+    return(c(base, list(pass = FALSE, detail = sprintf("    [MISSING] %s", mpath),
+                        summary = "data_manifest.json is absent")))
+  }
+  m <- tryCatch(jsonlite::fromJSON(mpath, simplifyVector = FALSE), error = function(e) NULL)
+  if (is.null(m) || !is.list(m$datasets)) {
+    return(c(base, list(pass = FALSE, detail = "    [FAIL] data_manifest.json is unparseable or lacks datasets",
+                        summary = "manifest unreadable")))
+  }
+  problems <- character(0)
+  if (!.pw_is_utc_iso(m$generated_at)) problems <- c(problems, "manifest generated_at is not UTC ISO-8601")
+
+  sched <- schedule_through_date %||% m$schedule_through_date
+  sched_d <- if (is.null(sched) || (length(sched) == 1 && is.na(sched))) as.Date(NA) else
+    suppressWarnings(as.Date(as.character(sched)))
+  notes <- character(0)
+  if (is.na(sched_d)) notes <- "    [NOTE] schedule_through_date unknown (schedule cache absent?) - lag comparison skipped"
+
+  on_disk <- setdiff(sort(list.files(data_dir, pattern = "\\.json$")), "data_manifest.json")
+  entries <- m$datasets
+  names(entries) <- vapply(entries, function(e) as.character(e$file %||% ""), character(1))
+  lines <- character(0)
+  for (f in on_disk) {
+    e <- entries[[f]]
+    if (is.null(e)) {
+      lines <- c(lines, sprintf("    [MISSING] %s - not listed in manifest", f))
+      problems <- c(problems, sprintf("%s unlisted", f)); next
+    }
+    if (!.pw_is_utc_iso(e$generated_at)) {
+      lines <- c(lines, sprintf("    [MISSING] %s - generated_at absent or not UTC ISO-8601", f))
+      problems <- c(problems, sprintf("%s unstamped", f)); next
+    }
+    if (isTRUE(e$static)) {
+      if (is.null(e$static_reason) || !nzchar(trimws(as.character(e$static_reason)))) {
+        lines <- c(lines, sprintf("    [MISSING] %s - static without static_reason", f))
+        problems <- c(problems, sprintf("%s static without reason", f))
+      } else {
+        lines <- c(lines, sprintf("    [STATIC] %s - generated %s (%s)", f, e$generated_at, e$static_reason))
+      }
+      next
+    }
+    for (fld in c("stamp_source", "through_date_source")) {
+      if (is.null(e[[fld]]) || !nzchar(as.character(e[[fld]]))) {
+        problems <- c(problems, sprintf("%s lacks %s", f, fld))
+      }
+    }
+    if (identical(e$through_date_source, "not_game_dated")) {
+      # Undated content is checked on generated_at freshness only (FO#191).
+      gen_d <- as.Date(substr(e$generated_at, 1, 10))
+      if (is.null(e$coverage_note) || !nzchar(as.character(e$coverage_note))) {
+        problems <- c(problems, sprintf("%s not_game_dated without coverage_note", f))
+      }
+      if (!is.na(sched_d) && as.integer(sched_d - gen_d) > max_lag_days) {
+        lines <- c(lines, sprintf("    [LAGGING] %s - undated, generated %s, schedule through %s (lag %d > %d days)",
+                                  f, gen_d, sched_d, as.integer(sched_d - gen_d), as.integer(max_lag_days)))
+        problems <- c(problems, sprintf("%s undated and generated %d days before schedule", f,
+                                        as.integer(sched_d - gen_d)))
+      } else {
+        lines <- c(lines, sprintf("    [UNDATED] %s - generated %s (%s)", f, gen_d, e$coverage_note %||% ""))
+      }
+      next
+    }
+    thr <- suppressWarnings(as.Date(as.character(e$through_date %||% NA)))
+    if (is.na(thr)) {
+      lines <- c(lines, sprintf("    [MISSING] %s - through_date absent", f))
+      problems <- c(problems, sprintf("%s no through_date", f)); next
+    }
+    if (!is.na(sched_d)) {
+      lag <- as.integer(sched_d - thr)
+      if (lag > max_lag_days) {
+        lines <- c(lines, sprintf("    [LAGGING] %s - through %s, schedule through %s (lag %d > %d days)",
+                                  f, thr, sched_d, lag, as.integer(max_lag_days)))
+        problems <- c(problems, sprintf("%s lagging %d days", f, lag)); next
+      }
+      lines <- c(lines, sprintf("    [OK] %s - through %s (lag %d day(s))", f, thr, max(lag, 0L)))
+    } else {
+      lines <- c(lines, sprintf("    [OK] %s - through %s (lag not evaluated)", f, thr))
+    }
+  }
+  stale_entries <- setdiff(names(entries), on_disk)
+  if (length(stale_entries)) {
+    lines <- c(lines, sprintf("    [NOTE] manifest lists %s which is not on disk", stale_entries))
+  }
+  if (isTRUE(dry_run)) cat(paste0(c("  Assertion I coverage:", notes, lines), collapse = "\n"), "\n", sep = "")
+  pass <- length(problems) == 0
+  c(base, list(pass = pass, coverage = lines, problems = problems,
+               detail = c(notes, lines),
+               summary = if (pass) sprintf("%d dataset(s) covered", length(on_disk))
+                         else sprintf("%d problem(s): %s", length(problems), paste(problems, collapse = "; "))))
+}
+
+# Refresh the manifest (live runs only). Missing writer is non-fatal.
+.pw_refresh_manifest <- function() {
+  writer <- file.path("tools", "write_data_manifest.R")
+  if (!file.exists(writer)) return(invisible(FALSE))
+  env <- new.env()
+  ok <- tryCatch({
+    sys.source(writer, envir = env)
+    env$write_data_manifest(schedule_path = CACHE_WNBA_SCHEDULE)
+    TRUE
+  }, error = function(e) {
+    log_warn(paste("publish_web: manifest refresh failed:", conditionMessage(e)), script = .PW_LOG_SCRIPT)
+    FALSE
+  })
+  invisible(ok)
+}
+
 publish_web <- function(dry_run = TRUE,
                         run_start = NULL,
                         season = CURRENT_SEASON,
@@ -1007,6 +1138,9 @@ publish_web <- function(dry_run = TRUE,
                               if (is.na(run_start)) format(Sys.Date()) else format(run_start, "%Y-%m-%d %H:%M"))
   }
 
+  # Refresh data_manifest.json on live runs only; a dry run never mutates it.
+  if (!isTRUE(dry_run)) .pw_refresh_manifest()
+
   checks <- list(
     .assert_mtime_freshness(run_start, mode = mode),
     if (identical(mode, "offseason")) .assert_offseason_coverage() else .assert_schedule_coverage(season),
@@ -1015,7 +1149,8 @@ publish_web <- function(dry_run = TRUE,
     .assert_log_scan(log_lines, run_start, fail_on_exporter_warnings, mode = mode, allow_degraded = allow_degraded),
     .assert_payload_provenance(run_start),
     .assert_web_contracts(skip_contracts),
-    .assert_zero_betting_guard()
+    .assert_zero_betting_guard(),
+    .assert_manifest_and_coverage(WEB_DATA_DIR, dry_run = dry_run)
   )
 
   passed  <- vapply(checks, function(ch) isTRUE(ch$pass), logical(1))
