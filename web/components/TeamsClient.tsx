@@ -18,6 +18,7 @@ import {
   Download,
 } from 'lucide-react';
 import { exportToCsv } from '@/lib/exportToCsv';
+import { activateOnKey, ariaSort, tablistKeys } from '@/lib/a11y';
 
 interface TeamsClientProps {
   teams: TeamEpaProfile[];
@@ -264,14 +265,16 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams, generatedAt }) 
             />
           </div>
 
-          <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
+          <div role="tablist" onKeyDown={tablistKeys} className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
             {(['All', 'AFC', 'NFC'] as const).map((conf) => (
               <button
+                role="tab"
+                aria-selected={selectedConf === conf}
                 key={conf}
                 onClick={() => setSelectedConf(conf)}
                 className={`cursor-pointer select-none px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
                   selectedConf === conf
-                    ? 'bg-accent-600 text-white shadow-sm'
+                    ? 'bg-fo-accent text-on-accent shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -307,6 +310,12 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams, generatedAt }) 
                 <tr>
                   <th
                     onClick={() => handleSort('team')}
+
+                    tabIndex={0}
+
+                    onKeyDown={activateOnKey}
+
+                    aria-sort={ariaSort(sortBy === 'team', sortOrder === 'asc')}
                     className="sticky left-0 z-10 bg-surface/95 cursor-pointer py-3.5 px-3 font-semibold hover:text-white border-r border-slate-800"
                   >
                     <div className="flex items-center gap-1.5">
@@ -316,6 +325,12 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams, generatedAt }) 
                   </th>
                   <th
                     onClick={() => handleSort('division')}
+
+                    tabIndex={0}
+
+                    onKeyDown={activateOnKey}
+
+                    aria-sort={ariaSort(sortBy === 'division', sortOrder === 'asc')}
                     className="hidden sm:table-cell cursor-pointer py-3.5 px-3 font-semibold hover:text-white"
                   >
                     <div className="flex items-center gap-1.5">
@@ -325,6 +340,12 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams, generatedAt }) 
                   </th>
                   <th
                     onClick={() => handleSort('net_epa_per_play')}
+
+                    tabIndex={0}
+
+                    onKeyDown={activateOnKey}
+
+                    aria-sort={ariaSort(sortBy === 'net_epa_per_play', sortOrder === 'asc')}
                     className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
                   >
                     <div className="flex items-center justify-end gap-1.5">
@@ -334,6 +355,12 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams, generatedAt }) 
                   </th>
                   <th
                     onClick={() => handleSort('off_epa_per_play')}
+
+                    tabIndex={0}
+
+                    onKeyDown={activateOnKey}
+
+                    aria-sort={ariaSort(sortBy === 'off_epa_per_play', sortOrder === 'asc')}
                     className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
                   >
                     <div className="flex items-center justify-end gap-1.5">
@@ -343,6 +370,12 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams, generatedAt }) 
                   </th>
                   <th
                     onClick={() => handleSort('def_epa_per_play')}
+
+                    tabIndex={0}
+
+                    onKeyDown={activateOnKey}
+
+                    aria-sort={ariaSort(sortBy === 'def_epa_per_play', sortOrder === 'asc')}
                     className="cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
                   >
                     <div className="flex items-center justify-end gap-1.5">
@@ -352,6 +385,12 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams, generatedAt }) 
                   </th>
                   <th
                     onClick={() => handleSort('off_success_rate')}
+
+                    tabIndex={0}
+
+                    onKeyDown={activateOnKey}
+
+                    aria-sort={ariaSort(sortBy === 'off_success_rate', sortOrder === 'asc')}
                     className="hidden sm:table-cell cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
                   >
                     <div className="flex items-center justify-end gap-1.5">
@@ -361,6 +400,12 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams, generatedAt }) 
                   </th>
                   <th
                     onClick={() => handleSort('off_cpoe')}
+
+                    tabIndex={0}
+
+                    onKeyDown={activateOnKey}
+
+                    aria-sort={ariaSort(sortBy === 'off_cpoe', sortOrder === 'asc')}
                     className="hidden sm:table-cell cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
                   >
                     <div className="flex items-center justify-end gap-1.5">
@@ -370,6 +415,12 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams, generatedAt }) 
                   </th>
                   <th
                     onClick={() => handleSort('off_money_down_epa')}
+
+                    tabIndex={0}
+
+                    onKeyDown={activateOnKey}
+
+                    aria-sort={ariaSort(sortBy === 'off_money_down_epa', sortOrder === 'asc')}
                     className="hidden sm:table-cell cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
                   >
                     <div className="flex items-center justify-end gap-1.5">
@@ -379,6 +430,12 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams, generatedAt }) 
                   </th>
                   <th
                     onClick={() => handleSort('off_redzone_success')}
+
+                    tabIndex={0}
+
+                    onKeyDown={activateOnKey}
+
+                    aria-sort={ariaSort(sortBy === 'off_redzone_success', sortOrder === 'asc')}
                     className="hidden sm:table-cell cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
                   >
                     <div className="flex items-center justify-end gap-1.5">
@@ -388,6 +445,12 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams, generatedAt }) 
                   </th>
                   <th
                     onClick={() => handleSort('off_explosive_rate')}
+
+                    tabIndex={0}
+
+                    onKeyDown={activateOnKey}
+
+                    aria-sort={ariaSort(sortBy === 'off_explosive_rate', sortOrder === 'asc')}
                     className="hidden sm:table-cell cursor-pointer py-3.5 px-3 font-semibold hover:text-white text-right"
                   >
                     <div className="flex items-center justify-end gap-1.5">
@@ -603,7 +666,7 @@ export const TeamsClient: React.FC<TeamsClientProps> = ({ teams, generatedAt }) 
             <div className="p-3 bg-surface border-t border-slate-800 text-right">
               <button
                 onClick={() => setSelectedTeam(null)}
-                className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold font-mono transition-colors"
+                className="px-4 py-1.5 rounded-lg bg-fo-accent hover:bg-fo-accent/90 text-on-accent text-xs font-semibold font-mono transition-colors"
               >
                 Close Profile
               </button>

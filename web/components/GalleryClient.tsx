@@ -6,6 +6,7 @@ import { Image as ImageIcon, Search, Film, Download, Maximize2, X, Play } from '
 import Image from 'next/image';
 import { BASE_PATH } from '@/lib/basePath';
 import { HowToRead } from './HowToRead';
+import { tablistKeys } from '@/lib/a11y';
 
 interface GalleryClientProps {
   mediaItems: VisualMediaItem[];
@@ -147,14 +148,16 @@ export default function GalleryClient({ mediaItems }: GalleryClientProps) {
       {/* Filter and Category Pills */}
       <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-surface-raised/90 border border-slate-800 p-3.5 rounded-xl">
         {/* Category Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+        <div role="tablist" onKeyDown={tablistKeys} className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
           {categories.map((cat) => (
             <button
+              role="tab"
+              aria-selected={selectedCategory === cat}
               key={cat}
               onClick={() => setSelectedCategory(cat)}
               className={`px-3 py-1.5 rounded-lg text-xs font-mono capitalize whitespace-nowrap transition-all ${
                 selectedCategory === cat
-                  ? 'bg-accent-500 text-slate-950 font-bold shadow-md'
+                  ? 'bg-fo-accent text-on-accent font-bold shadow-md'
                   : 'bg-surface text-slate-400 hover:text-white border border-slate-800'
               }`}
             >
@@ -275,7 +278,7 @@ export default function GalleryClient({ mediaItems }: GalleryClientProps) {
               <a
                 href={`${BASE_PATH}/animations/${activeMedia.filename}`}
                 download={activeMedia.filename}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-emerald-500 text-slate-950 font-bold font-mono hover:bg-emerald-400 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-fo-accent text-on-accent font-bold font-mono hover:bg-fo-accent/90 transition-colors"
               >
                 <Download className="w-4 h-4" /> Download Asset
               </a>

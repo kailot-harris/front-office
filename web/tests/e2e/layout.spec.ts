@@ -122,7 +122,7 @@ test.describe('the sidebar itself stays usable', () => {
     await page.goto('/teams', { waitUntil: 'networkidle' });
     const activeHrefs = await page.locator('aside a').evaluateAll((els) =>
       els
-        .filter((el) => /bg-emerald|text-emerald|border-emerald|bg-accent|text-accent|border-accent/.test(el.className))
+        .filter((el) => /bg-emerald|text-emerald|border-emerald|bg-accent|text-accent|border-accent|bg-fo-accent/.test(el.className))
         .map((el) => el.getAttribute('href')),
     );
     expect(activeHrefs, `${linkHref('/teams')} is not highlighted in the sidebar`).toContain(linkHref('/teams'));

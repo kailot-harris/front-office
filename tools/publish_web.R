@@ -587,6 +587,53 @@ if (file.exists(file.path("tools", "write_data_manifest.R"))) {
 }
 
 # ------------------------------------------------------------------------------
+# ASSERTION I - landing digest (NFL_analytics#182, front-office#200).
+#
+# web/public/data/landing_digest.json is what the front-office landing page
+# reads. H already requires it in the manifest; I checks the payload itself:
+# every top-level contract field present, schema_version 1, sport "nfl",
+# movers windows "1"/"7"/"21", generated_at at or after run start (when the
+# run start is known), every `hit` consistent with the shared hit rule, and no
+# betting vocabulary anywhere in the bytes.
+# Reproduce a failure: delete a top-level key from the digest, then
+#   Rscript -e "source('tools/publish_web.R'); publish_web(dry_run = TRUE)"
+# ------------------------------------------------------------------------------
+.PW_DIGEST_FIELDS <- c("schema_version", "sport", "generated_at", "slate_date", "season_state",
+                       "next_milestone", "today", "yesterday", "record", "calibration", "movers")
+.PW_BETTING_RE <- "odds|spread|moneyline|over/under|sportsbook|wager"
+
+.assert_landing_digest <- function(run_start = NA, path = file.path(WEB_DATA_DIR, "landing_digest.json")) {
+  res <- function(pass, summary, detail) list(id = "I", name = "landing digest contract",
+                                              pass = pass, fatal = TRUE, summary = summary, detail = detail)
+  if (!file.exists(path)) return(res(FALSE, "landing_digest.json is absent",
+                                     "    [MISSING]  run Rscript tools/build_landing_digest.R"))
+  txt <- paste(readLines(path, warn = FALSE), collapse = "
+")
+  d <- tryCatch(jsonlite::fromJSON(txt, simplifyVector = FALSE), error = function(e) NULL)
+  if (is.null(d)) return(res(FALSE, "landing_digest.json is not valid JSON", "    [BAD]      unparseable"))
+  problems <- character(0)
+  miss <- setdiff(.PW_DIGEST_FIELDS, names(d))
+  if (length(miss)) problems <- c(problems, sprintf("missing field(s): %s", paste(miss, collapse = ", ")))
+  if (!identical(as.integer(d$schema_version), 1L)) problems <- c(problems, "schema_version is not 1")
+  if (!identical(d$sport, "nfl")) problems <- c(problems, "sport is not \"nfl\"")
+  if (!all(c("1", "7", "21") %in% names(d$movers$windows))) problems <- c(problems, "movers.windows lacks 1/7/21")
+  g <- as.POSIXct(d$generated_at %||% NA_character_, format = "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+  if (is.na(g)) problems <- c(problems, "generated_at missing or not ISO-8601 UTC")
+  else if (!is.null(run_start) && !is.na(run_start) && g < run_start) problems <- c(problems, "generated_at predates the run start")
+  for (r in d$yesterday) {
+    p <- r$home_win_prob
+    want <- if (is.null(p) || !isTRUE(r$final) || is.null(r$home_score) || is.null(r$away_score) ||
+                r$home_score == r$away_score || p == 0.5) NULL else (p > 0.5) == (r$home_score > r$away_score)
+    if (!identical(r$hit, want)) problems <- c(problems, sprintf("%s: hit disagrees with the hit rule", r$game_id))
+  }
+  if (grepl(.PW_BETTING_RE, tolower(txt))) problems <- c(problems, "betting vocabulary present")
+  if (length(problems)) return(res(FALSE, sprintf("%d problem(s)", length(problems)), paste0("    [FAIL]     ", problems)))
+  res(TRUE, sprintf("slate %s, %s, %d today / %d yesterday", d$slate_date, d$season_state %||% "null",
+                    length(d$today), length(d$yesterday)),
+      sprintf("    [OK]       generated_at=%s", d$generated_at))
+}
+
+# ------------------------------------------------------------------------------
 # ASSERTION H - data manifest completeness + schedule-lag (front-office#102, #191).
 #
 # web/public/data/data_manifest.json (written by tools/write_data_manifest.R)
@@ -726,6 +773,11 @@ if (file.exists(file.path("tools", "write_data_manifest.R"))) {
   }
   record("git add web/public/{data,animations}",
          .pw_git(repo_root, c("add", "--", PIPELINE_OUTPUT_DIRS)))
+  # Tracked ratings history behind the landing digest's movers (NFL_analytics#185).
+  # Plain `git add`, never -f: if an ignore rule ever swallows it, this fails loudly.
+  hist <- file.path("data", "history", "ratings_history.csv")
+  if (file.exists(file.path(repo_root, hist)))
+    record("git add data/history/ratings_history.csv", .pw_git(repo_root, c("add", "--", hist)))
   record("git commit (NFL_analytics)",
          .pw_git(repo_root, c("commit", "-m", shQuote(commit_message))))
   record("git push origin HEAD (NFL_analytics)",
@@ -863,7 +915,8 @@ publish_web <- function(dry_run = TRUE,
     .assert_log_scan(log_lines, run_start, fail_on_exporter_warnings),
     .assert_payload_provenance(run_start),
     .assert_web_contracts(skip_contracts),
-    .assert_manifest_and_coverage()
+    .assert_manifest_and_coverage(),
+    .assert_landing_digest(run_start)
   )
 
   passed  <- vapply(checks, function(ch) isTRUE(ch$pass), logical(1))

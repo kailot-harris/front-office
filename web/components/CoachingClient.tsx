@@ -7,6 +7,7 @@ import { Search, Zap, Clock, SlidersHorizontal, ChevronRight, Download } from 'l
 import { exportToCsv } from '@/lib/exportToCsv';
 import { GlossaryTerm } from './Glossary';
 import { HowToRead } from './HowToRead';
+import { activateOnKey, ariaSort } from '@/lib/a11y';
 
 interface CoachingClientProps {
   data: CoachingDataset;
@@ -471,7 +472,7 @@ export default function CoachingClient({ data }: CoachingClientProps) {
             <Download className="w-3.5 h-3.5" />
           </button>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Coaching decision table">
           <table className="w-full text-left text-xs font-mono" data-testid="coaching-table">
             <thead className="bg-surface/80 text-slate-400 uppercase text-[11px] sm:text-[10px] tracking-wider border-b border-slate-800">
               <tr>
@@ -480,6 +481,12 @@ export default function CoachingClient({ data }: CoachingClientProps) {
                 <th
                   className="px-3 py-3 text-right cursor-pointer hover:text-white whitespace-nowrap"
                   onClick={() => toggleSort('tenure_seasons')}
+
+                  tabIndex={0}
+
+                  onKeyDown={activateOnKey}
+
+                  aria-sort={ariaSort(sortField === 'tenure_seasons', sortAsc)}
                 >
                   Tenure{sortArrow('tenure_seasons')}
                 </th>
@@ -489,7 +496,12 @@ export default function CoachingClient({ data }: CoachingClientProps) {
                     key={f.key}
                     className="px-3 py-3 text-right cursor-pointer hover:text-white whitespace-nowrap"
                     onClick={() => toggleSort(f.key)}
-                    aria-sort={sortField === f.key ? (sortAsc ? 'ascending' : 'descending') : 'none'}
+
+                    tabIndex={0}
+
+                    onKeyDown={activateOnKey}
+
+                    aria-sort={ariaSort(sortField === f.key, sortAsc)}
                   >
                     {f.short}
                     {sortArrow(f.key)}

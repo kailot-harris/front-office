@@ -55,6 +55,13 @@ export const DATASET_FILES = {
  */
 export const DATA_MANIFEST_FILE = 'data_manifest.json';
 
+/**
+ * Landing digest (NFL_analytics#182, front-office#200) written by
+ * tools/build_landing_digest.R. Not read by this app; the front-office landing
+ * page fetches it. Its contract is landingDigest.test.ts.
+ */
+export const LANDING_DIGEST_FILE = 'landing_digest.json';
+
 export function loadRaw(filename: string): unknown {
   const p = path.join(DATA_DIR, filename);
   if (!fs.existsSync(p)) {

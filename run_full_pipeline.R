@@ -376,6 +376,13 @@ run_stage("build_coaching_dataset.R", "Build Head-Coach Decision Profiles (coach
           call_fn = "run_build_coaching_dataset",
           output = WEB_JSON_COACHING_PROFILES)
 
+# Stage 14.5: Landing digest (tools/build_landing_digest.R, NFL_analytics#182-#185)
+# Must run after Stage 14 (reads matchups_current_week.json). Also appends today's
+# power_rating rows to the tracked data/history/ratings_history.csv for movers.
+run_stage(file.path("tools", "build_landing_digest.R"), "Build Landing Digest (landing_digest.json)",
+          call_fn = "run_build_landing_digest",
+          output = file.path(WEB_DATA_DIR, "landing_digest.json"))
+
 # ------------------------------------------------------------------------------
 # Stage 15: Front-Office Operations Alert Dispatcher (notify_pipeline_ops.R)
 # ------------------------------------------------------------------------------

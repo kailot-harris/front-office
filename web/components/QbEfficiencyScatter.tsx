@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { QbProfile } from '@/lib/types';
 import { TeamLogo } from './TeamLogo';
+import { tablistKeys } from '@/lib/a11y';
 
 interface QbEfficiencyScatterProps {
   qbs: QbProfile[];
@@ -95,22 +96,26 @@ export default function QbEfficiencyScatter({
         {/* View Controls & Legend */}
         <div className="flex items-center gap-4 flex-wrap">
           {/* Starter Filter Toggle */}
-          <div className="flex items-center gap-1 bg-surface border border-slate-800 p-0.5 rounded-lg text-xs font-mono">
+          <div role="tablist" onKeyDown={tablistKeys} className="flex items-center gap-1 bg-surface border border-slate-800 p-0.5 rounded-lg text-xs font-mono">
             <button
+              role="tab"
+              aria-selected={startersOnly}
               onClick={() => setStartersOnly(true)}
               className={`px-2.5 py-1 rounded-md transition-all ${
                 startersOnly
-                  ? 'bg-accent-600 text-white font-bold shadow-sm'
+                  ? 'bg-fo-accent text-on-accent font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
               Starters (32)
             </button>
             <button
+              role="tab"
+              aria-selected={!startersOnly}
               onClick={() => setStartersOnly(false)}
               className={`px-2.5 py-1 rounded-md transition-all ${
                 !startersOnly
-                  ? 'bg-accent-600 text-white font-bold shadow-sm'
+                  ? 'bg-fo-accent text-on-accent font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -141,34 +146,34 @@ export default function QbEfficiencyScatter({
       </div>
 
       {/* Scatter Canvas */}
-      <div className="relative w-full h-[420px] sm:h-[480px] bg-surface/60 rounded-lg border border-slate-800/80 p-6 select-none overflow-hidden">
+      <div role="figure" aria-label={`QB efficiency scatter: EPA per play against CPOE for ${validQbs.length} quarterbacks, split into four quadrants`} className="relative w-full h-[420px] sm:h-[480px] bg-surface/60 rounded-lg border border-slate-800/80 p-6 select-none overflow-hidden">
         {/* Quadrant Background Labels */}
         <div className="absolute top-4 right-4 text-right pointer-events-none">
-          <div className="text-xs font-bold font-mono tracking-wider text-emerald-400/30 uppercase">
+          <div className="text-xs font-bold font-mono tracking-wider text-emerald-400 uppercase">
             Elite Playmakers
           </div>
-          <div className="text-[11px] sm:text-[10px] text-slate-500/40 font-mono">+EPA / +CPOE</div>
+          <div className="text-[11px] sm:text-[10px] text-slate-500 font-mono">+EPA / +CPOE</div>
         </div>
 
         <div className="absolute top-4 left-4 text-left pointer-events-none">
-          <div className="text-xs font-bold font-mono tracking-wider text-cyan-400/30 uppercase">
+          <div className="text-xs font-bold font-mono tracking-wider text-cyan-400 uppercase">
             Ball Placement Artists
           </div>
-          <div className="text-[11px] sm:text-[10px] text-slate-500/40 font-mono">-EPA / +CPOE</div>
+          <div className="text-[11px] sm:text-[10px] text-slate-500 font-mono">-EPA / +CPOE</div>
         </div>
 
         <div className="absolute bottom-4 right-4 text-right pointer-events-none">
-          <div className="text-xs font-bold font-mono tracking-wider text-amber-400/30 uppercase">
+          <div className="text-xs font-bold font-mono tracking-wider text-amber-400 uppercase">
             Scheme & Deep Shot Drivers
           </div>
-          <div className="text-[11px] sm:text-[10px] text-slate-500/40 font-mono">+EPA / -CPOE</div>
+          <div className="text-[11px] sm:text-[10px] text-slate-500 font-mono">+EPA / -CPOE</div>
         </div>
 
         <div className="absolute bottom-4 left-4 text-left pointer-events-none">
-          <div className="text-xs font-bold font-mono tracking-wider text-rose-400/30 uppercase">
+          <div className="text-xs font-bold font-mono tracking-wider text-rose-400 uppercase">
             Struggling / Low Margin
           </div>
-          <div className="text-[11px] sm:text-[10px] text-slate-500/40 font-mono">-EPA / -CPOE</div>
+          <div className="text-[11px] sm:text-[10px] text-slate-500 font-mono">-EPA / -CPOE</div>
         </div>
 
         {/* Quadrant Divider Grid Lines */}

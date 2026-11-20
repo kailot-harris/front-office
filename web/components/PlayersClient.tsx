@@ -9,6 +9,7 @@ import { exportToCsv } from '@/lib/exportToCsv';
 import { headshotSrc } from '@/lib/format';
 import { GlossaryButton, GlossaryTerm } from './Glossary';
 import { HowToRead } from './HowToRead';
+import { activateOnKey, ariaSort } from '@/lib/a11y';
 
 interface PlayersClientProps {
   initialQbs: QbProfile[];
@@ -284,6 +285,9 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
                 <th className="px-3 py-3">Experience</th>
                 <th className="px-3 py-3">College</th>
                 <th
+                  tabIndex={0}
+                  onKeyDown={activateOnKey}
+                  aria-sort={ariaSort(sortField === 'off_epa_roll', sortDirection === 'asc')}
                   className="px-3 py-3 text-right cursor-pointer hover:text-white"
                   onClick={() => {
                     if (sortField === 'off_epa_roll') {
@@ -297,6 +301,9 @@ export default function PlayersClient({ initialQbs }: PlayersClientProps) {
                   EPA / Play {sortField === 'off_epa_roll' && (sortDirection === 'desc' ? '↓' : '↑')}
                 </th>
                 <th
+                  tabIndex={0}
+                  onKeyDown={activateOnKey}
+                  aria-sort={ariaSort(sortField === 'off_cpoe_roll', sortDirection === 'asc')}
                   className="px-3 py-3 text-right cursor-pointer hover:text-white"
                   onClick={() => {
                     if (sortField === 'off_cpoe_roll') {
