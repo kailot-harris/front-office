@@ -137,7 +137,12 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
           {/* SVG Calibration Chart */}
           <div className="bg-surface p-6 rounded-xl border border-slate-800">
             <div className="relative w-full aspect-square max-w-[420px] mx-auto">
-              <svg viewBox="0 0 400 400" className="w-full h-full overflow-visible">
+              <svg
+                viewBox="0 0 400 400"
+                className="w-full h-full overflow-visible"
+                role="img"
+                aria-label={`Probability calibration reliability diagram across ${diagnostics.calibration.length} ${diagnostics.calibration.length === 1 ? 'bin' : 'bins'} and ${diagnostics.totalResolvedGames.toLocaleString()} resolved games (${metadata.season} model)`}
+              >
                 {/* Grid lines */}
                 {[0.2, 0.4, 0.6, 0.8].map((step) => {
                   const pos = 40 + step * 320;

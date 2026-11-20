@@ -98,6 +98,8 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
         <svg
           viewBox={`0 0 ${width} ${height}`}
           className="w-full h-auto min-w-[640px] select-none"
+          role="img"
+          aria-label={`In-game ATO efficiency scatter plot across ${coaches.length} coaching ${coaches.length === 1 ? 'staff' : 'staffs'}${selectedCoach ? `, highlighting ${selectedCoach.headCoach.name} (${selectedCoach.teamAbbr})` : ''}`}
         >
           {/* Quadrant Tint Overlays */}
           {/* Top-Right: Dual Dominant (Green) */}
