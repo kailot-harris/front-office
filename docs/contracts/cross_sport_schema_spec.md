@@ -512,3 +512,57 @@ Each sport's Vitest contract test suite (`web/tests/contracts/`) will validate t
 4. **`salaryCap` Invariant:** Positive finite number (`> 0`).
 5. **`playerId` Invariant:** Non-empty string or integer string (`min(1)`).
 6. **`generated_at` Invariant:** Valid ISO 8601 UTC timestamp format (`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$`).
+
+---
+
+## 8. Sidecar `data_manifest.json` & Schedule-Coverage Gate
+
+> Refs `front-office#102` (canonical freshness stamping) and `front-office#191` (schedule-coverage publish gate).
+
+### 8.1 Why a sidecar manifest
+
+Several top-level artifacts in each sport's `web/public/data/` are bare JSON arrays (for example game lists and leaderboards). Wrapping them in an envelope just to carry a `generated_at` stamp would break every existing frontend consumer that iterates the array directly. Instead, each sport publishes one sidecar file, `web/public/data/data_manifest.json`, that stamps **every** top-level `.json` artifact in that directory (objects and bare arrays alike). Artifacts keep their current shape; freshness and coverage metadata live only in the manifest.
+
+### 8.2 Schema
+
+```json
+{
+  "schema_version": 1,
+  "sport": "nba",
+  "generated_at": "2026-11-20T12:00:00Z",
+  "schedule_through_date": "2026-11-19",
+  "datasets": {
+    "games.json": {
+      "generated_at": "2026-11-20T11:58:03Z",
+      "through_date": "2026-11-19",
+      "source_season": 2026,
+      "builder": "build_games_dataset.R",
+      "max_lag_days": 1,
+      "static": false,
+      "static_reason": null
+    }
+  }
+}
+```
+
+| Field | Type | Rules |
+|---|---|---|
+| `schema_version` | integer | Always `1` for this revision. |
+| `sport` | string | One of `nba`, `nfl`, `wnba`, `mlb`. |
+| `generated_at` | string | UTC ISO-8601, strftime `%Y-%m-%dT%H:%M:%SZ`. Time the manifest was written. |
+| `schedule_through_date` | string or `null` | `YYYY-MM-DD` of the latest completed scheduled game in the sport's schedule; `null` when no games have been played in the source season. |
+| `datasets` | object | Keyed by top-level `.json` filename (basename only, e.g. `games.json`). One entry per artifact; `data_manifest.json` itself is excluded. |
+| `datasets.*.generated_at` | string | UTC ISO-8601 `%Y-%m-%dT%H:%M:%SZ`; when the artifact was written. |
+| `datasets.*.through_date` | string or `null` | `YYYY-MM-DD` of the latest game/event reflected in the artifact. |
+| `datasets.*.source_season` | integer or string | Season the artifact was built from. |
+| `datasets.*.builder` | string | Script that produced the artifact. |
+| `datasets.*.max_lag_days` | integer | Allowed lag (days) behind `schedule_through_date` for non-static datasets. |
+| `datasets.*.static` | boolean | `true` for static/archived artifacts not expected to track the schedule. |
+| `datasets.*.static_reason` | string or `null` | Required and non-empty when `static` is `true`; `null` otherwise. |
+
+### 8.3 Publish-gate coverage rules (`FO#191`)
+
+1. **Stamped coverage:** every top-level `.json` file in `web/public/data/` (except `data_manifest.json`) has an entry in `datasets` with a valid `generated_at` (`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$`). A missing entry or malformed stamp fails the gate.
+2. **Lag ceiling:** a non-static dataset fails when `schedule_through_date - through_date > max_lag_days` (difference in calendar days).
+3. **Off-season pass:** when `schedule_through_date <= through_date` (including off-season periods where the schedule has not advanced), the dataset passes the lag check.
+4. **Static declaration:** static/archived datasets must set `static: true` with a non-empty `static_reason`; they are exempt from rule 2 but the UI must visibly label them as static/archived rather than presenting them as live.

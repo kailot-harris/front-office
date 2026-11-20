@@ -1,0 +1,30 @@
+name: Check R offline imports
+
+# Static offline-CI guard: fails when an R script under mlb/, nba/, nfl/, or
+# wnba/ unconditionally attaches a heavy network-fetch package (hoopR,
+# nflfastR, nflreadr, wehoop, baseballr) via library()/require() without a
+# reviewed entry in tools/r_offline_imports_allowlist.json, or when an
+# allow-list entry is stale. Lazy requireNamespace() guards are preferred.
+#
+# No dependencies: tools/check_r_offline_imports.mjs is plain Node 22 ESM.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-r-offline-imports:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check R scripts for unconditional heavy-package imports
+        run: node tools/check_r_offline_imports.mjs
+
+      - name: Run R offline-import guard unit tests
+        run: node tools/test_check_r_offline_imports.mjs
