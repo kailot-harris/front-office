@@ -43,7 +43,7 @@ LANDING_DIGEST_SCHEMA_VERSION <- 1L
 LANDING_RATINGS_HISTORY       <- file.path("data", "history", "ratings_history.csv")
 LANDING_RATING_METRIC         <- "power_rating"
 LANDING_HISTORY_KEEP_DAYS     <- 400L
-LANDING_MOVER_WINDOWS         <- c(1L, 7L, 21L)
+LANDING_MOVER_WINDOWS         <- as.integer(c("1", "7", "21"))  # the movers.windows keys in the landing-digest contract
 LANDING_MOVERS_TOP_N          <- 5L
 LANDING_TZ                    <- "America/New_York"
 # NFL scheduling fact, not a model constant: the Super Bowl is played about
@@ -208,7 +208,7 @@ ld_calibration <- function(g, slate_date = NULL) {
     pick_p <- c(pick_p, max(p, 1 - p))
     hit <- c(hit, h)
   }
-  los <- c(0.5, 0.6, 0.7, 0.8, 0.9)
+  los <- round(seq(0.5, 0.9, by = 0.1), 1)  # 10-point bins from 50% to 100%
   lapply(los, function(lo) {
     hi <- round(lo + 0.1, 1)
     inb <- pick_p > lo - 1e-12 & (pick_p < hi - 1e-12 | (hi == 1 & pick_p <= 1))
