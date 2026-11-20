@@ -1,10 +1,10 @@
 # ==============================================================================
 # capture_baseline_s0.R
-# WNBA Offseason Dynamics Monitor — End-of-Season Baseline S0 Extractor (Phase 1)
+# WNBA Offseason Dynamics Monitor -- End-of-Season Baseline S0 Extractor (Phase 1)
 #
 # Generates cache/league_state_baseline.json representing the deterministic
 # end-of-season league state baseline (S0) immediately following Finals Game 7.
-# Conforms strictly to the LeagueStateBaseline specification in Blueprint §3.
+# Conforms strictly to the LeagueStateBaseline specification in Blueprint Sec. 3.
 #
 # Usage:
 #   Rscript tools/offseason/capture_baseline_s0.R [--champion=<ABBR>] [--dry-run]
@@ -33,7 +33,7 @@ if (file.exists("logging_utils.R")) {
   source("logging_utils.R")
 }
 
-# Helper to construct Provenanced<T> envelopes per Blueprint §3
+# Helper to construct Provenanced<T> envelopes per Blueprint Sec. 3
 make_provenanced <- function(value,
                              source_url = NULL,
                              as_of_date = format(Sys.time(), "%Y-%m-%d"),
@@ -232,15 +232,18 @@ capture_baseline_s0 <- function(champion = NULL,
   }
 
   # 5. Build League State conforming to LeagueState
-  # Milestone corrections per Mission Brief & Blueprint §4:
+  # Milestone corrections per Mission Brief & Blueprint Sec. 4:
   # - NO Expansion Draft (Cleveland arrives in 2028; expansion notes tracked as informational only)
   # - 2027 WNBA Draft is 2027-04-12
   # - Free agency dates are NULL with status "Unannounced"
   milestones <- list(
+    # Result as ingested from the ESPN beat feed (raw archive 20261117, item
+    # beat_espn_wnba_beat_042, event_date 2026-11-15).
     list(
       date = "2026-11-15",
-      event = "2027 WNBA Draft Lottery (ESPN)",
-      status = "Confirmed"
+      event = "2027 WNBA Draft Lottery: Toronto Tempo won the No. 1 pick, Houston Comets No. 2 (ESPN, 2026-11-15, https://www.espn.com/wnba/story/_/id/50497107/toronto-tempo-win-2027-wnba-draft-lottery)",
+      status = "Confirmed",
+      sourceUrl = "https://www.espn.com/wnba/story/_/id/50497107/toronto-tempo-win-2027-wnba-draft-lottery"
     ),
     list(
       date = NULL,
@@ -261,6 +264,14 @@ capture_baseline_s0 <- function(champion = NULL,
       date = "2027-04-25",
       event = "2027 Training Camps Open (Hand-off to Daily In-Season Pipeline)",
       status = "Tentative"
+    ),
+    # Reported by ESPN sources, not confirmed by the league (raw archive
+    # 20261117, item beat_espn_wnba_beat_043, event_date 2026-11-13).
+    list(
+      date = "2027-05-07",
+      event = "2027 WNBA season window, reported, not confirmed: expected to open May 7 and end no later than Oct. 24 (reported by ESPN 2026-11-13, https://www.espn.com/wnba/story/_/id/50466261/sources-2027-wnba-season-start-7)",
+      status = "Reported",
+      sourceUrl = "https://www.espn.com/wnba/story/_/id/50466261/sources-2027-wnba-season-start-7"
     )
   )
 
@@ -273,7 +284,7 @@ capture_baseline_s0 <- function(champion = NULL,
     calendarMilestones = make_provenanced(I(milestones), as_of_date = as_of_day)
   )
 
-  # 6. Assemble Full LeagueStateBaseline conforming to Blueprint §3
+  # 6. Assemble Full LeagueStateBaseline conforming to Blueprint Sec. 3
   s0 <- list(
     schemaVersion = "1.0.0",
     asOf = as_of_iso,

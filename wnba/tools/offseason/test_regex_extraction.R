@@ -1,6 +1,6 @@
 # ==============================================================================
 # test_regex_extraction.R
-# WNBA Offseason Dynamics Monitor — Unit Tests for Deterministic Regex Extractor
+# WNBA Offseason Dynamics Monitor -- Unit Tests for Deterministic Regex Extractor
 # Tier 2 / Phase 3 CI Gate (Issue #164)
 #
 # Asserts:

@@ -1,6 +1,6 @@
 # ==============================================================================
 # check_preseason_trigger.R
-# WNBA Offseason Dynamics Monitor — Preseason Hand-Off Trigger (Phase 7 / Issue #124)
+# WNBA Offseason Dynamics Monitor -- Preseason Hand-Off Trigger (Phase 7 / Issue #124)
 #
 # Implements the dual-trigger preseason detection mechanism:
 #   1. Condition 1 (Schedule Feed with Franchise Code Guard):
@@ -163,7 +163,7 @@ execute_preseason_hand_off <- function(eval_result,
   should_execute <- (eval_result$triggered || force)
   
   cat("==============================================================================\n")
-  cat("WNBA Analytics — Spring 2027 Preseason Hand-Off Orchestrator\n")
+  cat("WNBA Analytics \u2014 Spring 2027 Preseason Hand-Off Orchestrator\n")
   cat("==============================================================================\n")
   cat(sprintf("As of Date:         %s\n", eval_result$as_of_date))
   cat(sprintf("Calendar Ceiling:   %s\n", eval_result$calendar_ceiling))

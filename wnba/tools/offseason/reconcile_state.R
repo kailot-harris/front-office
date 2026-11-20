@@ -1,10 +1,10 @@
 # ==============================================================================
 # reconcile_state.R
-# WNBA Offseason Dynamics Monitor — Deterministic State Reconciler (Phase 3)
+# WNBA Offseason Dynamics Monitor -- Deterministic State Reconciler (Phase 3)
 #
 # Implements:
-#   S_staged = S_last ⊕ ΔS_confirmed
-#   ΔS = S_staged ⊖ S_last
+#   S_staged = S_last (+) DeltaS_confirmed
+#   DeltaS = S_staged (-) S_last
 #
 # Enforces the 6 Blueprint diff rules:
 #   1. Diff compares .value at identical key paths; provenance changes do not
@@ -92,7 +92,7 @@ wrap_safe_arrays <- function(state) {
   state
 }
 
-#' Apply confirmed deltas to state baseline: S_staged = S_last ⊕ ΔS_confirmed
+#' Apply confirmed deltas to state baseline: S_staged = S_last (+) DeltaS_confirmed
 apply_deltas_to_state <- function(baseline_state, confirmed_deltas) {
   staged <- baseline_state
   staged$asOf <- strftime(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
@@ -185,7 +185,7 @@ apply_deltas_to_state <- function(baseline_state, confirmed_deltas) {
   staged
 }
 
-#' Compute deterministic diff: ΔS = S_staged ⊖ S_last
+#' Compute deterministic diff: DeltaS = S_staged (-) S_last
 compute_state_diff <- function(baseline_state, staged_state) {
   confirmed_changes <- list()
   backfill_changes <- list()

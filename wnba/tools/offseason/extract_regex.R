@@ -1,6 +1,6 @@
 # ==============================================================================
 # extract_regex.R
-# WNBA Offseason Dynamics Monitor — Deterministic Regex Extractor (Tier 2 / Phase 3)
+# WNBA Offseason Dynamics Monitor -- Deterministic Regex Extractor (Tier 2 / Phase 3)
 #
 # Parses official transaction wire text snapshots using deterministic regex patterns.
 # Returns candidate structured delta tuples:
@@ -86,7 +86,7 @@ KNOWN_MARQ <- list(
 # Known player lookup helper
 find_player_by_name <- function(player_name, baseline_state = NULL) {
   clean_target <- tolower(trimws(player_name))
-  clean_target <- sub("['’]s$", "", clean_target)
+  clean_target <- sub("['\u2019]s$", "", clean_target)
   
   # Check marquee fixture dictionary first if matches
   if (clean_target %in% names(KNOWN_MARQ)) {
@@ -169,7 +169,7 @@ split_wire_clauses <- function(raw_text) {
   # 2. Periods followed by whitespace: \.\s+
   # 3. Lookahead for known action verbs following a sentence boundary or word:
   #    Signed, Waived, Released, Acquired, Announced, Set, Tendered, Matched, Fired
-  split_pat <- "(?:;\\s*|\\r?\\n+|(?<=[a-z0-9'’\"\\)])\\.\\s+(?=[A-Z])|(?<=[a-z0-9'’\"\\)])\\s+(?=(?:(?:Re[- ]?)?Signed|Waived|Released|Acquired|Announced|Set|Tendered|Matched|Fired|Activated|Exercised)\\b))"
+  split_pat <- "(?:;\\s*|\\r?\\n+|(?<=[a-z0-9'\u2019\"\\)])\\.\\s+(?=[A-Z])|(?<=[a-z0-9'\u2019\"\\)])\\s+(?=(?:(?:Re[- ]?)?Signed|Waived|Released|Acquired|Announced|Set|Tendered|Matched|Fired|Activated|Exercised)\\b))"
   parts <- unlist(strsplit(txt, split_pat, perl = TRUE))
   parts <- trimws(parts)
   parts <- sub("\\.+$", "", parts)
@@ -191,8 +191,8 @@ extract_pos_and_name <- function(text) {
     text <- trimws(substr(text, pos_len + 1, nchar(text)))
   }
   
-  # Clean possessive ('s / ’s) and trailing punctuation
-  name <- sub("['’]s$", "", text)
+  # Clean possessive (straight 's / curly U+2019 's) and trailing punctuation
+  name <- sub("['\u2019]s$", "", text)
   name <- trimws(sub("[.,;]+$", "", name))
   
   list(pos = pos, name = name)
@@ -508,7 +508,7 @@ extract_deltas_regex <- function(raw_text,
     # 7. Offer Match Pattern:
     # "Matched Ashlon Jackson's offer sheet from Los Angeles."
     # --------------------------------------------------------------------------
-    m_match <- regexec("^Matched\\s+(.*?)(?:'s|’s)?\\s+offer\\s+sheet(?:\\s+from\\s+(.*?))?$",
+    m_match <- regexec("^Matched\\s+(.*?)(?:'s|\u2019s)?\\s+offer\\s+sheet(?:\\s+from\\s+(.*?))?$",
                        clause, ignore.case = TRUE, perl = TRUE)
     r_match <- regmatches(clause, m_match)[[1]]
     if (length(r_match) >= 2 && nzchar(trimws(r_match[2]))) {
@@ -597,7 +597,7 @@ extract_deltas_regex <- function(raw_text,
     # "Fired general manager Amber Cox"
     # Or legacy: "Washington Mystics name Teresa Weatherspoon head coach."
     # --------------------------------------------------------------------------
-    m_ann_step <- regexec("^(?:Announced\\s+)?([A-Za-z'’-]+(?:\\s+[A-Za-z'’-]+)*)\\s+stepped\\s+down\\s+as\\s+(president|general\\s+manager|head\\s+coach|coach)",
+    m_ann_step <- regexec("^(?:Announced\\s+)?([A-Za-z'\u2019-]+(?:\\s+[A-Za-z'\u2019-]+)*)\\s+stepped\\s+down\\s+as\\s+(president|general\\s+manager|head\\s+coach|coach)",
                           clause, ignore.case = TRUE, perl = TRUE)
     r_ann_step <- regmatches(clause, m_ann_step)[[1]]
     if (length(r_ann_step) >= 3) {
@@ -621,7 +621,7 @@ extract_deltas_regex <- function(raw_text,
       next
     }
     
-    m_fired <- regexec("^Fired\\s+(?:(?:as|the)\\s+)?(president|general\\s+manager|head\\s+coach|coach)?\\s*([A-Za-z'’-]+(?:\\s+[A-Za-z'’-]+)*)",
+    m_fired <- regexec("^Fired\\s+(?:(?:as|the)\\s+)?(president|general\\s+manager|head\\s+coach|coach)?\\s*([A-Za-z'\u2019-]+(?:\\s+[A-Za-z'\u2019-]+)*)",
                        clause, ignore.case = TRUE, perl = TRUE)
     r_fired <- regmatches(clause, m_fired)[[1]]
     if (length(r_fired) >= 3 && nzchar(trimws(r_fired[3]))) {
@@ -645,7 +645,7 @@ extract_deltas_regex <- function(raw_text,
       next
     }
     
-    m_fo_legacy <- regexec("^(.*?)\\s+(?:name(?:s)?|hire(?:s)?)\\s+([A-Za-z'’-]+(?:\\s+[A-Za-z'’-]+)*?)(?:\\s+as)?\\s+(head coach|general manager|president)",
+    m_fo_legacy <- regexec("^(.*?)\\s+(?:name(?:s)?|hire(?:s)?)\\s+([A-Za-z'\u2019-]+(?:\\s+[A-Za-z'\u2019-]+)*?)(?:\\s+as)?\\s+(head coach|general manager|president)",
                            clause, ignore.case = TRUE, perl = TRUE)
     r_fo_legacy <- regmatches(clause, m_fo_legacy)[[1]]
     if (length(r_fo_legacy) >= 4) {
@@ -675,7 +675,7 @@ extract_deltas_regex <- function(raw_text,
     # 11. Off-season Specific Classes:
     # --------------------------------------------------------------------------
     # 11a. Core Designation:
-    m_core <- regexec("designate(?:s)?\\s+(?:(?:G/F|F/G|C/F|CF|center|forward|guard|[CFG])\\b\\s*)?([A-Za-z'’-]+(?:\\s+[A-Za-z'’-]+)*)\\s+as\\s+Core\\s+Player",
+    m_core <- regexec("designate(?:s)?\\s+(?:(?:G/F|F/G|C/F|CF|center|forward|guard|[CFG])\\b\\s*)?([A-Za-z'\u2019-]+(?:\\s+[A-Za-z'\u2019-]+)*)\\s+as\\s+Core\\s+Player",
                       clause, ignore.case = TRUE, perl = TRUE)
     r_core <- regmatches(clause, m_core)[[1]]
     if (length(r_core) >= 2 && nzchar(trimws(r_core[2]))) {
@@ -699,7 +699,7 @@ extract_deltas_regex <- function(raw_text,
     }
     
     # 11b. Reserved Player:
-    m_res <- regexec("designate(?:s)?\\s+(?:(?:G/F|F/G|C/F|CF|center|forward|guard|[CFG])\\b\\s*)?([A-Za-z'’-]+(?:\\s+[A-Za-z'’-]+)*)\\s+as\\s+Reserved\\s+Player",
+    m_res <- regexec("designate(?:s)?\\s+(?:(?:G/F|F/G|C/F|CF|center|forward|guard|[CFG])\\b\\s*)?([A-Za-z'\u2019-]+(?:\\s+[A-Za-z'\u2019-]+)*)\\s+as\\s+Reserved\\s+Player",
                      clause, ignore.case = TRUE, perl = TRUE)
     r_res <- regmatches(clause, m_res)[[1]]
     if (length(r_res) >= 2 && nzchar(trimws(r_res[2]))) {
@@ -723,7 +723,7 @@ extract_deltas_regex <- function(raw_text,
     }
     
     # 11c. Qualifying Offer:
-    m_qo <- regexec("(?:tender(?:s|ed)?|extend(?:s|ed)?)\\s+(?:a\\s+)?qualifying\\s+offer\\s+to\\s+(?:(?:G/F|F/G|C/F|CF|center|forward|guard|[CFG])\\b\\s*)?([A-Za-z'’-]+(?:\\s+[A-Za-z'’-]+)*)",
+    m_qo <- regexec("(?:tender(?:s|ed)?|extend(?:s|ed)?)\\s+(?:a\\s+)?qualifying\\s+offer\\s+to\\s+(?:(?:G/F|F/G|C/F|CF|center|forward|guard|[CFG])\\b\\s*)?([A-Za-z'\u2019-]+(?:\\s+[A-Za-z'\u2019-]+)*)",
                     clause, ignore.case = TRUE, perl = TRUE)
     r_qo <- regmatches(clause, m_qo)[[1]]
     if (length(r_qo) >= 2 && nzchar(trimws(r_qo[2]))) {
@@ -747,7 +747,7 @@ extract_deltas_regex <- function(raw_text,
     }
     
     # 11d. Prioritization:
-    m_prio <- regexec("(?:prioritization\\s+(?:violation|ineligible|suspension)|ineligible\\s+under\\s+prioritization|suspended\\s+under\\s+prioritization)\\s+(?:for\\s+)?(?:(?:G/F|F/G|C/F|CF|center|forward|guard|[CFG])\\b\\s*)?([A-Za-z'’-]+(?:\\s+[A-Za-z'’-]+)*)",
+    m_prio <- regexec("(?:prioritization\\s+(?:violation|ineligible|suspension)|ineligible\\s+under\\s+prioritization|suspended\\s+under\\s+prioritization)\\s+(?:for\\s+)?(?:(?:G/F|F/G|C/F|CF|center|forward|guard|[CFG])\\b\\s*)?([A-Za-z'\u2019-]+(?:\\s+[A-Za-z'\u2019-]+)*)",
                       clause, ignore.case = TRUE, perl = TRUE)
     r_prio <- regmatches(clause, m_prio)[[1]]
     if (length(r_prio) >= 2 && nzchar(trimws(r_prio[2]))) {
@@ -771,7 +771,7 @@ extract_deltas_regex <- function(raw_text,
     }
     
     # 11e. Retirement:
-    m_ret <- regexec("(?:announced?\\s+retirement|retire(?:s|d)?\\s+from\\s+wnba|placed\\s+on\\s+retired\\s+list)\\s*(?:for|of)?\\s*(?:(?:G/F|F/G|C/F|CF|center|forward|guard|[CFG])\\b\\s*)?([A-Za-z'’-]+(?:\\s+[A-Za-z'’-]+)*)",
+    m_ret <- regexec("(?:announced?\\s+retirement|retire(?:s|d)?\\s+from\\s+wnba|placed\\s+on\\s+retired\\s+list)\\s*(?:for|of)?\\s*(?:(?:G/F|F/G|C/F|CF|center|forward|guard|[CFG])\\b\\s*)?([A-Za-z'\u2019-]+(?:\\s+[A-Za-z'\u2019-]+)*)",
                      clause, ignore.case = TRUE, perl = TRUE)
     r_ret <- regmatches(clause, m_ret)[[1]]
     if (length(r_ret) >= 2 && nzchar(trimws(r_ret[2]))) {
@@ -795,7 +795,7 @@ extract_deltas_regex <- function(raw_text,
     }
     
     # 11f. Suspension:
-    m_susp <- regexec("(?:suspended?(?:\\s+(?:for\\s+[0-9]+\\s+games?|indefinitely))?|placed\\s+on\\s+(?:the\\s+)?suspended\\s+list)\\s*(?:for|of)?\\s*(?:(?:G/F|F/G|C/F|CF|center|forward|guard|[CFG])\\b\\s*)?([A-Za-z'’-]+(?:\\s+[A-Za-z'’-]+)*)",
+    m_susp <- regexec("(?:suspended?(?:\\s+(?:for\\s+[0-9]+\\s+games?|indefinitely))?|placed\\s+on\\s+(?:the\\s+)?suspended\\s+list)\\s*(?:for|of)?\\s*(?:(?:G/F|F/G|C/F|CF|center|forward|guard|[CFG])\\b\\s*)?([A-Za-z'\u2019-]+(?:\\s+[A-Za-z'\u2019-]+)*)",
                       clause, ignore.case = TRUE, perl = TRUE)
     r_susp <- regmatches(clause, m_susp)[[1]]
     if (length(r_susp) >= 2 && nzchar(trimws(r_susp[2]))) {
@@ -819,7 +819,7 @@ extract_deltas_regex <- function(raw_text,
     }
     
     # 11g. Draft Rights:
-    m_dr <- regexec("(?:renounce(?:s|d)?\\s+draft\\s+rights\\s+to|signed?\\s+draft\\s+pick)\\s+(?:(?:G/F|F/G|C/F|CF|center|forward|guard|[CFG])\\b\\s*)?([A-Za-z'’-]+(?:\\s+[A-Za-z'’-]+)*)",
+    m_dr <- regexec("(?:renounce(?:s|d)?\\s+draft\\s+rights\\s+to|signed?\\s+draft\\s+pick)\\s+(?:(?:G/F|F/G|C/F|CF|center|forward|guard|[CFG])\\b\\s*)?([A-Za-z'\u2019-]+(?:\\s+[A-Za-z'\u2019-]+)*)",
                     clause, ignore.case = TRUE, perl = TRUE)
     r_dr <- regmatches(clause, m_dr)[[1]]
     if (length(r_dr) >= 2 && nzchar(trimws(r_dr[2]))) {
@@ -843,7 +843,7 @@ extract_deltas_regex <- function(raw_text,
     }
     
     # 11h. Expansion Draft:
-    m_exp <- regexec("(?:select(?:s|ed)?\\s+(?:(?:G/F|F/G|C/F|CF|center|forward|guard|[CFG])\\b\\s*)?([A-Za-z'’-]+(?:\\s+[A-Za-z'’-]+)*)\\s+in\\s+(?:the\\s+)?expansion\\s+draft|expansion\\s+draft\\s+selection\\s+(?:(?:G/F|F/G|C/F|CF|center|forward|guard|[CFG])\\b\\s*)?([A-Za-z'’-]+(?:\\s+[A-Za-z'’-]+)*))",
+    m_exp <- regexec("(?:select(?:s|ed)?\\s+(?:(?:G/F|F/G|C/F|CF|center|forward|guard|[CFG])\\b\\s*)?([A-Za-z'\u2019-]+(?:\\s+[A-Za-z'\u2019-]+)*)\\s+in\\s+(?:the\\s+)?expansion\\s+draft|expansion\\s+draft\\s+selection\\s+(?:(?:G/F|F/G|C/F|CF|center|forward|guard|[CFG])\\b\\s*)?([A-Za-z'\u2019-]+(?:\\s+[A-Za-z'\u2019-]+)*))",
                      clause, ignore.case = TRUE, perl = TRUE)
     r_exp <- regmatches(clause, m_exp)[[1]]
     if (length(r_exp) >= 2) {
@@ -868,7 +868,7 @@ extract_deltas_regex <- function(raw_text,
     }
     
     # 11i. Contract Option Exercised (Legacy Pattern):
-    m_opt <- regexec("exercise(?:s)?\\s+contract\\s+option\\s+on\\s+(?:(?:G/F|F/G|C/F|CF|center|forward|guard|[CFG])\\b\\s*)?([A-Za-z'’-]+(?:\\s+[A-Za-z'’-]+)*)\\s+through\\s+([0-9]{4})",
+    m_opt <- regexec("exercise(?:s)?\\s+contract\\s+option\\s+on\\s+(?:(?:G/F|F/G|C/F|CF|center|forward|guard|[CFG])\\b\\s*)?([A-Za-z'\u2019-]+(?:\\s+[A-Za-z'\u2019-]+)*)\\s+through\\s+([0-9]{4})",
                      clause, ignore.case = TRUE, perl = TRUE)
     r_opt <- regmatches(clause, m_opt)[[1]]
     if (length(r_opt) >= 3) {

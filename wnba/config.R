@@ -461,6 +461,13 @@ WEB_DATA_FILES_OFFSEASON <- c(
 )
 
 OFFSEASON_FA_BURST_WINDOW <- NULL
+
+# Weekly edition cadence for build_offseason_monitor.R, as an ISO weekday (1 = Monday).
+# Matches the weekly scheduled run (Mondays 09:00 local). A "cadence week" runs from this
+# weekday through the day before the next one: a run in a later cadence week than the latest
+# edition publishes the next week number, a re-run in the same cadence week replaces it, and
+# nextEdition.projectedPublishDate is the first such weekday strictly after the latest edition.
+OFFSEASON_CADENCE_WEEKDAY <- 1L
 # Example format once announced: c(start = "YYYY-MM-DD", end = "YYYY-MM-DD")
 
 # ------------------------------------------------------------------------------------------

@@ -1,9 +1,9 @@
 # ==============================================================================
 # render_memo.R
-# WNBA Offseason Dynamics Monitor — Deterministic 7-Block Memo Renderer (Phase 4)
+# WNBA Offseason Dynamics Monitor -- Deterministic 7-Block Memo Renderer (Phase 4)
 #
-# Formats the weekly state-diff memo strictly following Blueprint §5:
-#   ## Week NN — Monday, DD Month YYYY
+# Formats the weekly state-diff memo strictly following Blueprint Sec. 5:
+#   ## Week NN -- Monday, DD Month YYYY
 #   **State of Play:** [1-2 sentences summarizing net league movement and elapsed
 #   days since last baseline. Quiet weeks state: "Quiet week: 0 confirmed state
 #   transitions recorded."]
@@ -82,7 +82,7 @@ render_block_1_confirmed <- function(confirmed_changes, max_items = 25L, unclass
   if (length(confirmed_changes) == 0) {
     lines <- c(lines, "| Date | Entity | Field | Prior State (S_last) | New State (S_t) | Source |",
                       "|---|---|---|---|---|---|",
-                      "| — | — | — | — | — | — |")
+                      "| \u2014 | \u2014 | \u2014 | \u2014 | \u2014 | \u2014 |")
     return(paste(lines, collapse = "\n"))
   }
   
@@ -93,15 +93,15 @@ render_block_1_confirmed <- function(confirmed_changes, max_items = 25L, unclass
   items_to_render <- if (total_items > max_items) confirmed_changes[seq_len(max_items)] else confirmed_changes
   
   for (item in items_to_render) {
-    dt <- if (!is.null(item$date) && nzchar(as.character(item$date))) as.character(item$date) else "—"
+    dt <- if (!is.null(item$date) && nzchar(as.character(item$date))) as.character(item$date) else "\u2014"
     ent <- if (!is.null(item$entityName) && nzchar(as.character(item$entityName))) {
       as.character(item$entityName)
     } else if (!is.null(item$entityId)) {
       as.character(item$entityId)
     } else {
-      "—"
+      "\u2014"
     }
-    fld <- if (!is.null(item$field)) as.character(item$field) else "—"
+    fld <- if (!is.null(item$field)) as.character(item$field) else "\u2014"
     
     val_to_str <- function(v) {
       if (is.null(v)) return("None")
@@ -134,7 +134,7 @@ render_block_2_reported <- function(reported_claims, max_items = 25L) {
              "|---|---|---|---|---|")
   
   if (length(reported_claims) == 0) {
-    lines <- c(lines, "| — | — | — | — | — |")
+    lines <- c(lines, "| \u2014 | \u2014 | \u2014 | \u2014 | \u2014 |")
     return(paste(lines, collapse = "\n"))
   }
   
@@ -142,10 +142,10 @@ render_block_2_reported <- function(reported_claims, max_items = 25L) {
   items_to_render <- if (total_items > max_items) reported_claims[seq_len(max_items)] else reported_claims
   
   for (item in items_to_render) {
-    ent <- if (!is.null(item$entityName)) as.character(item$entityName) else "—"
-    clm <- if (!is.null(item$claim)) as.character(item$claim) else "—"
+    ent <- if (!is.null(item$entityName)) as.character(item$entityName) else "\u2014"
+    clm <- if (!is.null(item$claim)) as.character(item$claim) else "\u2014"
     cat <- if (!is.null(item$sourceCategory)) as.character(item$sourceCategory) else "National Beat"
-    fr <- if (!is.null(item$firstReportedDate)) as.character(item$firstReportedDate) else "—"
+    fr <- if (!is.null(item$firstReportedDate)) as.character(item$firstReportedDate) else "\u2014"
     days <- if (!is.null(item$daysPending)) as.integer(item$daysPending) else 0L
     stat <- sprintf("Pending (Day %d)", days)
     
@@ -167,7 +167,7 @@ render_block_3_expired <- function(expired_claims, max_items = 25L) {
              "|---|---|---|---|---|")
   
   if (length(expired_claims) == 0) {
-    lines <- c(lines, "| — | — | — | — | — |")
+    lines <- c(lines, "| \u2014 | \u2014 | \u2014 | \u2014 | \u2014 |")
     return(paste(lines, collapse = "\n"))
   }
   
@@ -175,11 +175,11 @@ render_block_3_expired <- function(expired_claims, max_items = 25L) {
   items_to_render <- if (total_items > max_items) expired_claims[seq_len(max_items)] else expired_claims
   
   for (item in items_to_render) {
-    ent <- if (!is.null(item$entityName)) as.character(item$entityName) else "—"
-    clm <- if (!is.null(item$claim)) as.character(item$claim) else "—"
+    ent <- if (!is.null(item$entityName)) as.character(item$entityName) else "\u2014"
+    clm <- if (!is.null(item$claim)) as.character(item$claim) else "\u2014"
     cat <- if (!is.null(item$sourceCategory)) as.character(item$sourceCategory) else "National Beat"
-    fr <- if (!is.null(item$firstReportedDate)) as.character(item$firstReportedDate) else "—"
-    ex <- if (!is.null(item$expiredDate)) as.character(item$expiredDate) else "—"
+    fr <- if (!is.null(item$firstReportedDate)) as.character(item$firstReportedDate) else "\u2014"
+    ex <- if (!is.null(item$expiredDate)) as.character(item$expiredDate) else "\u2014"
     
     lines <- c(lines, sprintf("| %s | %s | %s | %s | %s |", ent, clm, cat, fr, ex))
   }
@@ -193,25 +193,74 @@ render_block_3_expired <- function(expired_claims, max_items = 25L) {
 }
 
 #' Render Block 4: Next 30 Days (Milestone Calendar)
-render_block_4_milestones <- function(upcoming_milestones) {
+#'
+#' Buckets each milestone against the edition's run date:
+#'   - dated within [run_date, run_date + horizon_days] and undated ("Date TBD")
+#'     items are listed as upcoming (`- [ ]`);
+#'   - dated after the horizon go on one "Later" line;
+#'   - dated before run_date are never upcoming; those within the previous
+#'     recent_days are shown under "Recently passed" (`- [x]`), older ones drop.
+#'
+#' @param upcoming_milestones list of list(date, event, status); date may be NULL.
+#' @param run_date Date or "YYYY-MM-DD" of the edition run.
+render_block_4_milestones <- function(upcoming_milestones, run_date = Sys.Date(),
+                                      horizon_days = 30L, recent_days = 14L) {
   lines <- c("### 4. Next 30 Days (Milestone Calendar)")
-  
-  if (length(upcoming_milestones) == 0) {
-    lines <- c(lines, "- [ ] [Date TBD]: No upcoming milestones scheduled in next 30 days")
-    return(paste(lines, collapse = "\n"))
-  }
-  
-  for (m in upcoming_milestones) {
+  run_dt <- as.Date(run_date)
+
+  ms_date <- function(m) {
     dt_val <- m$date
-    dt <- if (is.null(dt_val) || length(dt_val) == 0 || is.na(dt_val[1]) || !nzchar(as.character(dt_val[1]))) {
-      "[Date TBD]"
-    } else {
-      as.character(dt_val[1])
+    if (is.null(dt_val) || length(dt_val) == 0 || is.list(dt_val) || is.na(dt_val[1]) ||
+        !nzchar(as.character(dt_val[1]))) {
+      return(as.Date(NA))
     }
-    ev <- if (!is.null(m$event)) as.character(m$event) else "Milestone"
-    lines <- c(lines, sprintf("- [ ] %s: %s", dt, ev))
+    as.Date(as.character(dt_val[1]))
   }
-  
+  ms_event <- function(m) if (!is.null(m$event)) as.character(m$event) else "Milestone"
+
+  dates <- if (length(upcoming_milestones) > 0) {
+    do.call(c, lapply(upcoming_milestones, ms_date))
+  } else {
+    as.Date(character(0))
+  }
+  events <- vapply(upcoming_milestones, ms_event, character(1))
+
+  is_tbd <- is.na(dates)
+  is_past <- !is_tbd & dates < run_dt
+  is_recent <- is_past & dates >= run_dt - as.integer(recent_days)
+  is_soon <- !is_tbd & !is_past & dates <= run_dt + as.integer(horizon_days)
+  is_later <- !is_tbd & !is_past & !is_soon
+
+  by_date <- function(mask) {
+    idx <- which(mask)
+    idx[order(dates[idx])]
+  }
+
+  soon_idx <- c(by_date(is_soon), which(is_tbd))
+  if (length(soon_idx) == 0) {
+    lines <- c(lines, "- No milestones scheduled in the next 30 days.")
+  } else {
+    for (i in soon_idx) {
+      dt <- if (is_tbd[i]) "[Date TBD]" else format(dates[i], "%Y-%m-%d")
+      lines <- c(lines, sprintf("- [ ] %s: %s", dt, events[i]))
+    }
+  }
+
+  later_idx <- by_date(is_later)
+  if (length(later_idx) > 0) {
+    later_txt <- paste(sprintf("%s: %s", format(dates[later_idx], "%Y-%m-%d"), events[later_idx]),
+                       collapse = "; ")
+    lines <- c(lines, sprintf("- **Later:** %s", later_txt))
+  }
+
+  recent_idx <- by_date(is_recent)
+  if (length(recent_idx) > 0) {
+    lines <- c(lines, "", "**Recently passed:**")
+    for (i in recent_idx) {
+      lines <- c(lines, sprintf("- [x] %s: %s", format(dates[i], "%Y-%m-%d"), events[i]))
+    }
+  }
+
   paste(lines, collapse = "\n")
 }
 
@@ -260,7 +309,7 @@ render_block_6_winter <- function(winter_league_notes) {
     lg <- if (!is.null(note$league)) note$league else "Alternative Play"
     hlth <- if (!is.null(note$healthStatus)) note$healthStatus else "Active"
     
-    lines <- c(lines, sprintf("- **%s**%s: %s — %s", pname, wtm, lg, hlth))
+    lines <- c(lines, sprintf("- **%s**%s: %s \u2014 %s", pname, wtm, lg, hlth))
   }
   
   paste(lines, collapse = "\n")
@@ -286,7 +335,7 @@ render_block_7_sources <- function(sources_visited) {
 #'
 #' Strictly additive: returns NULL when no pulse object is supplied, so
 #' render_7_block_memo()'s existing 7-block output is byte-identical to before.
-#' Never prints a fabricated number — when the pulse is unavailable it says so
+#' Never prints a fabricated number -- when the pulse is unavailable it says so
 #' and names the reason.
 #'
 #' @param pulse Result of compute_media_sentiment_pulse(), or NULL.
@@ -323,7 +372,7 @@ render_block_media_sentiment <- function(pulse) {
 
   fmt_item <- function(label, it) {
     if (is.null(it)) return(sprintf("- **%s:** none", label))
-    src <- if (!is.null(it$sourceId) && nzchar(it$sourceId)) sprintf(" — %s", it$sourceId) else ""
+    src <- if (!is.null(it$sourceId) && nzchar(it$sourceId)) sprintf(" \u2014 %s", it$sourceId) else ""
     url <- if (!is.null(it$url) && !is.na(it$url) && nzchar(it$url)) sprintf(" ([link](%s))", it$url) else ""
     sprintf("- **%s:** \"%s\"%s (%+.4f)%s", label, it$headline, src, as.numeric(it$score), url)
   }
@@ -391,13 +440,13 @@ render_7_block_memo <- function(week_number,
   num_confirmed <- length(confirmed_changes)
   sop_str <- generate_state_of_play(num_confirmed, elapsed_days, baseline_date, publish_date)
   
-  header <- sprintf("## Week %d — %s\n\n**State of Play:** %s",
+  header <- sprintf("## Week %d \u2014 %s\n\n**State of Play:** %s",
                     as.integer(week_number), date_header_str, sop_str)
   
   b1 <- render_block_1_confirmed(confirmed_changes, max_items = max_display_items, unclassified_count = unclassified_count)
   b2 <- render_block_2_reported(reported_claims, max_items = max_display_items)
   b3 <- render_block_3_expired(expired_claims, max_items = max_display_items)
-  b4 <- render_block_4_milestones(upcoming_milestones)
+  b4 <- render_block_4_milestones(upcoming_milestones, run_date = publish_date)
   b5 <- render_block_5_model(model_prior_impact)
   b6 <- render_block_6_winter(winter_league_notes)
   b7 <- render_block_7_sources(sources_visited)

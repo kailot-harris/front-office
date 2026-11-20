@@ -146,9 +146,27 @@ if not "%ERRORLEVEL%"=="0" (
     exit /b 1
 )
 
+REM Capture the top stash SHA before running `git stash push -u` so a failed
+REM stash push can tell whether git created a partial stash before failing
+REM (e.g. saved the stash, then failed to clean an untracked folder and skipped
+REM its reset, leaving the same changes both in the working tree and in stash).
+REM Nothing here ever drops, pops, or discards a stash.
+set "GUARD_PREV_STASH=none"
+for /f "delims=" %%s in ('git stash list --format^=%%H -1 2^>nul') do set "GUARD_PREV_STASH=%%s"
+
 echo [INFO] Checkout-safety guard: stashing any uncommitted work ^(tracked + untracked^) before touching branches... >> "%LOG_FILE%"
 git stash push -u -m "schedule_daily.bat auto-stash %DATE% %TIME%" >> "%LOG_FILE%" 2>&1
-echo [INFO] Checkout-safety guard: git stash push -u exit code %ERRORLEVEL% ^(0 = stashed or nothing to stash, both fine^). >> "%LOG_FILE%"
+set "STASH_RC=!ERRORLEVEL!"
+echo [INFO] Checkout-safety guard: git stash push -u exit code !STASH_RC! ^(0 = stashed or nothing to stash, both fine^). >> "%LOG_FILE%"
+if not "!STASH_RC!"=="0" (
+    set "GUARD_NEW_STASH=none"
+    for /f "delims=" %%s in ('git stash list --format^=%%H -1 2^>nul') do set "GUARD_NEW_STASH=%%s"
+    echo [ERROR] Checkout-safety guard: "git stash push -u" FAILED with exit code !STASH_RC!. Aborting before touching main - nothing was run, nothing was discarded. Newest stash is now !GUARD_NEW_STASH! ^(before this run: !GUARD_PREV_STASH!; if they differ, a stash was created before the failure^). >> "%LOG_FILE%"
+    if not "!GUARD_NEW_STASH!"=="!GUARD_PREV_STASH!" (
+        echo [ERROR] Checkout-safety guard: Partial stash: "git stash push -u" exited !STASH_RC! but DID create stash !GUARD_NEW_STASH! ^(stash@{0}^). The working tree may still be dirty ^(git skips its reset after such a failure^), so the same changes may exist both in the tree and in that stash. The stash was left in place for the owner to inspect. Refusing to run. >> "%LOG_FILE%"
+    )
+    exit /b 1
+)
 
 git checkout main >> "%LOG_FILE%" 2>&1
 set CHECKOUT_RC=%ERRORLEVEL%

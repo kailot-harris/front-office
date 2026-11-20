@@ -110,7 +110,7 @@ export interface TeamState {
 export interface CalendarMilestone {
   date: string | null;
   event: string;
-  status: 'Confirmed' | 'Tentative' | 'Unannounced';
+  status: 'Confirmed' | 'Tentative' | 'Unannounced' | 'Reported';
 }
 
 export interface LeagueState {
@@ -188,10 +188,17 @@ export interface ExpiredClaim {
   expiredDate: string;
 }
 
+/**
+ * 'Reported' = date reported by the press but not confirmed by the league
+ * (for example the 2027 season window). The builder maps any other baseline
+ * status to 'Tentative'.
+ */
+export type UpcomingMilestoneStatus = 'Confirmed' | 'Tentative' | 'Reported';
+
 export interface UpcomingMilestone {
   date: string | null;
   event: string;
-  status: 'Confirmed' | 'Tentative';
+  status: UpcomingMilestoneStatus;
 }
 
 export interface ModelPriorImpact {
@@ -298,6 +305,19 @@ export interface CurrentStateSummary {
   cbaLaborStatus: string;
 }
 
+/**
+ * The next, not-yet-published weekly edition. Emitted by
+ * build_offseason_monitor.R's compute_offseason_next_edition(): the week after
+ * the latest edition, projected for the first cadence weekday (Monday,
+ * config.R's OFFSEASON_CADENCE_WEEKDAY) strictly after its publishDate.
+ * Absent on JSON published before this field existed.
+ */
+export interface OffseasonNextEdition {
+  weekNumber: number;
+  /** YYYY-MM-DD */
+  projectedPublishDate: string;
+}
+
 export interface OffseasonMonitorDataset {
   version: '2026-2027.1.0';
   lastPublished: string;
@@ -314,6 +334,7 @@ export interface OffseasonMonitorDataset {
     | 'Training Camp Transition';
   editions: OffseasonEdition[];
   currentStateSummary: CurrentStateSummary;
+  nextEdition?: OffseasonNextEdition;
 }
 
 

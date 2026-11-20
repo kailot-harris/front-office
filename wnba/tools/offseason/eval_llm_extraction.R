@@ -1,6 +1,6 @@
 # ==============================================================================
 # eval_llm_extraction.R
-# WNBA Offseason Dynamics Monitor — Offline LLM Evaluation Harness (Layer B / Phase 3)
+# WNBA Offseason Dynamics Monitor -- Offline LLM Evaluation Harness (Layer B / Phase 3)
 #
 # Evaluates candidate deltas using Key Tuple Identity:
 #   (entity_id == exp_id) & (field == exp_field) & (tier == exp_tier)
