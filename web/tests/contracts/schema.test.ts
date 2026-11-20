@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { DATASET_SCHEMAS, PassingChartSchema } from './schemas';
-import { DATA_DIR, DATA_MANIFEST_FILE, DATASET_FILES, PASSING_DIR, loadRaw, passingIndex, readQbPassingFile } from '../helpers/datasets';
+import { DATA_DIR, DATA_MANIFEST_FILE, DATASET_FILES, LANDING_DIGEST_FILE, PASSING_DIR, loadRaw, passingIndex, readQbPassingFile } from '../helpers/datasets';
 
 describe('dataset files exist and are well-formed JSON', () => {
   it.each(Object.entries(DATASET_FILES))(
@@ -23,8 +23,9 @@ describe('dataset files exist and are well-formed JSON', () => {
 
   it('ships no dataset file that the app never reads', () => {
     const onDisk = fs.readdirSync(DATA_DIR).filter((f) => f.endsWith('.json'));
-    // The sidecar manifest is validated in dataManifest.test.ts, not read by the app.
-    const referenced = new Set<string>([...Object.values(DATASET_FILES), DATA_MANIFEST_FILE]);
+    // The sidecar manifest is validated in dataManifest.test.ts and the landing
+    // digest in landingDigest.test.ts; neither is read by this app.
+    const referenced = new Set<string>([...Object.values(DATASET_FILES), DATA_MANIFEST_FILE, LANDING_DIGEST_FILE]);
     const orphans = onDisk.filter((f) => !referenced.has(f));
     expect(orphans, `orphaned dataset files in public/data/: ${orphans.join(', ')}`).toEqual([]);
   });

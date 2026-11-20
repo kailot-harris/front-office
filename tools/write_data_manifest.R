@@ -73,6 +73,16 @@ DATA_MANIFEST_SPECS <- list(
   "coaching_profiles.json" = list(builder = "build_coaching_dataset.R",
     path = "through_week (week -> latest completed gameday via matchups_current_week.json)",
     extract = function(x, dd) .dm_week_to_date(x$through_week, dd)),
+  "landing_digest.json" = list(builder = "tools/build_landing_digest.R",
+    path = "yesterday[final].start_time_utc (US Eastern date of the latest final)",
+    note = "No final in the digest's yesterday list (no NFL game was played that day)",
+    extract = function(x, dd) {
+      t <- vapply(Filter(function(g) isTRUE(g$final), x$yesterday),
+                  function(g) as.character(g$start_time_utc %||% NA), "")
+      t <- as.POSIXct(t, format = "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+      t <- t[!is.na(t)]
+      if (!length(t)) NA_character_ else format(max(t), "%Y-%m-%d", tz = "America/New_York")
+    }),
   "matchups_current_week.json" = list(builder = "export_web_datasets.R",
     path = "matchups[is_completed].gameday",
     extract = function(x, dd) .dm_date(lapply(Filter(function(g) isTRUE(g$is_completed), x$matchups), `[[`, "gameday"))),

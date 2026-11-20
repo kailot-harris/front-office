@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "sport": "nfl",
-  "generated_at": "2026-11-20T15:44:36Z",
+  "generated_at": "2026-11-20T17:31:59Z",
   "schedule_through_date": null,
   "datasets": {
     "clutch_leverage_metrics.json": {
@@ -22,6 +22,17 @@
       "content_sha256": "64981e47fa57382231c03f281a76a8e0f6fbc000e19dfa08305e2a0cca7b7a29",
       "through_date": "2026-11-19",
       "through_date_source": "payload:through_week (week -> latest completed gameday via matchups_current_week.json)",
+      "static": false,
+      "max_lag_days": 8,
+      "coverage_note": null
+    },
+    "landing_digest.json": {
+      "builder": "tools/build_landing_digest.R",
+      "generated_at": "2026-11-20T17:31:19Z",
+      "stamp_source": "payload:generated_at",
+      "content_sha256": "ac981ce7d341ae026c9b676cb77489ef79d358815feed99cded835312ea36117",
+      "through_date": "2026-11-19",
+      "through_date_source": "payload:yesterday[final].start_time_utc (US Eastern date of the latest final)",
       "static": false,
       "max_lag_days": 8,
       "coverage_note": null
