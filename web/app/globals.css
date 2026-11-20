@@ -2,22 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Colors come from the shared tokens in ./design-tokens.css (imported by
+   layout.tsx) and follow prefers-color-scheme; see tailwind.config.ts. */
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--fo-text);
+  background: var(--fo-surface);
+  font-family: var(--fo-font-sans);
+}
+
+/* Numbers and tables use Geist Mono's tabular figures. */
+table,
+.tabular-nums {
+  font-family: var(--fo-font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 @layer utilities {
