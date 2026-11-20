@@ -34,7 +34,10 @@ import {
   ConfirmedChange,
   OffseasonChangeType,
   OffseasonNextEdition,
+  UpcomingMilestone,
+  UpcomingMilestoneStatus,
 } from '@/lib/offseasonTypes';
+import { bucketMilestones, MILESTONE_HORIZON_DAYS, MILESTONE_RECENT_DAYS } from '@/lib/milestoneBuckets';
 
 interface Props {
   initialDataset: OffseasonMonitorDataset | null;
@@ -238,6 +241,99 @@ export const NextEditionPill: React.FC<NextEditionPillProps> = ({ nextEdition, p
     >
       {label}
     </button>
+  );
+};
+
+const MILESTONE_STATUS_BADGE: Record<UpcomingMilestoneStatus, string> = {
+  Confirmed: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
+  Tentative: 'bg-amber-500/10 text-amber-300 border border-amber-500/30',
+  // Reported by the press, not confirmed by the league: muted, not a warning.
+  Reported: 'bg-slate-500/10 text-slate-400 border border-slate-600/50',
+};
+
+const MilestoneRow: React.FC<{ m: UpcomingMilestone; passed?: boolean }> = ({ m, passed = false }) => (
+  <li
+    data-testid="milestone-row"
+    className={`p-3.5 rounded-xl bg-surface border border-slate-800/70 flex items-start justify-between gap-3 text-xs ${
+      passed ? 'opacity-70' : ''
+    }`}
+  >
+    <div className="space-y-1">
+      <span className={`font-mono font-bold block text-xs ${passed ? 'text-slate-400' : 'text-violet-400'}`}>
+        {m.date || 'Date TBD'}
+      </span>
+      <span className="text-slate-200 font-medium block">{m.event}</span>
+    </div>
+    <span
+      data-testid="milestone-status"
+      className={`px-2.5 py-0.5 rounded text-[11px] sm:text-[10px] font-semibold flex-shrink-0 ${
+        MILESTONE_STATUS_BADGE[m.status] ?? MILESTONE_STATUS_BADGE.Tentative
+      }`}
+    >
+      {m.status}
+    </span>
+  </li>
+);
+
+interface MilestoneCalendarProps {
+  milestones: UpcomingMilestone[];
+  /** The edition's publishDate (YYYY-MM-DD); groups are relative to it, never the browser clock. */
+  publishDate: string;
+}
+
+/**
+ * Block 4 milestone list, grouped like the memo's Block 4: next 30 days
+ * (including Date TBD items), later, and recently passed (last 14 days).
+ */
+export const MilestoneCalendar: React.FC<MilestoneCalendarProps> = ({ milestones, publishDate }) => {
+  const groups = bucketMilestones(milestones, publishDate);
+  return (
+    <div className="space-y-4">
+      <section data-testid="milestones-next-30-days" aria-labelledby="milestones-next-30-days-heading" className="space-y-2.5">
+        <h4 id="milestones-next-30-days-heading" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+          {`Next ${MILESTONE_HORIZON_DAYS} days`}
+        </h4>
+        {groups.next30Days.length === 0 ? (
+          <p className="text-xs text-slate-400 py-3">No scheduled calendar events in next 30 days.</p>
+        ) : (
+          <ul className="space-y-2.5">
+            {groups.next30Days.map((m, idx) => (
+              <MilestoneRow key={idx} m={m} />
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {groups.later.length > 0 && (
+        <section data-testid="milestones-later" aria-labelledby="milestones-later-heading" className="space-y-2.5">
+          <h4 id="milestones-later-heading" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Later
+          </h4>
+          <ul className="space-y-2.5">
+            {groups.later.map((m, idx) => (
+              <MilestoneRow key={idx} m={m} />
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {groups.recentlyPassed.length > 0 && (
+        <section
+          data-testid="milestones-recently-passed"
+          aria-labelledby="milestones-recently-passed-heading"
+          className="space-y-2.5"
+        >
+          <h4 id="milestones-recently-passed-heading" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            {`Recently passed (last ${MILESTONE_RECENT_DAYS} days)`}
+          </h4>
+          <ul className="space-y-2.5">
+            {groups.recentlyPassed.map((m, idx) => (
+              <MilestoneRow key={idx} m={m} passed />
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
   );
 };
 
@@ -1086,34 +1182,10 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                 </div>
               </div>
 
-              {currentEdition.upcomingMilestones.length === 0 ? (
-                <p className="text-xs text-slate-400 py-3">No scheduled calendar events in next 30 days.</p>
-              ) : (
-                <div className="space-y-2.5">
-                  {currentEdition.upcomingMilestones.map((m, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3.5 rounded-xl bg-surface border border-slate-800/70 flex items-start justify-between gap-3 text-xs"
-                    >
-                      <div className="space-y-1">
-                        <span className="font-mono text-violet-400 font-bold block text-xs">
-                          {m.date || 'Date TBD'}
-                        </span>
-                        <span className="text-slate-200 font-medium block">
-                          {m.event}
-                        </span>
-                      </div>
-                      <span className={`px-2.5 py-0.5 rounded text-[11px] sm:text-[10px] font-semibold flex-shrink-0 ${
-                        m.status === 'Confirmed'
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                          : 'bg-amber-500/10 text-amber-300 border border-amber-500/30'
-                      }`}>
-                        {m.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <MilestoneCalendar
+                milestones={currentEdition.upcomingMilestones}
+                publishDate={currentEdition.publishDate}
+              />
             </div>
 
             {/* BLOCK 5: MODEL IMPLICATIONS */}

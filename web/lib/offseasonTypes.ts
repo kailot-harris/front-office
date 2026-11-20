@@ -110,7 +110,7 @@ export interface TeamState {
 export interface CalendarMilestone {
   date: string | null;
   event: string;
-  status: 'Confirmed' | 'Tentative' | 'Unannounced';
+  status: 'Confirmed' | 'Tentative' | 'Unannounced' | 'Reported';
 }
 
 export interface LeagueState {
@@ -188,10 +188,17 @@ export interface ExpiredClaim {
   expiredDate: string;
 }
 
+/**
+ * 'Reported' = date reported by the press but not confirmed by the league
+ * (for example the 2027 season window). The builder maps any other baseline
+ * status to 'Tentative'.
+ */
+export type UpcomingMilestoneStatus = 'Confirmed' | 'Tentative' | 'Reported';
+
 export interface UpcomingMilestone {
   date: string | null;
   event: string;
-  status: 'Confirmed' | 'Tentative';
+  status: UpcomingMilestoneStatus;
 }
 
 export interface ModelPriorImpact {

@@ -35,7 +35,7 @@ const ExpiredClaimSchema = z.object({
 const UpcomingMilestoneSchema = z.object({
   date: z.string().nullable(),
   event: z.string(),
-  status: z.enum(['Confirmed', 'Tentative']),
+  status: z.enum(['Confirmed', 'Tentative', 'Reported']),
 });
 
 const ModelPriorImpactSchema = z.object({

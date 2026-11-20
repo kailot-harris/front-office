@@ -117,6 +117,40 @@ compute_offseason_next_edition <- function(editions, cadence_weekday = offseason
   )
 }
 
+# Statuses passed through to upcomingMilestones unchanged. "Reported" marks a
+# date reported by the press but not confirmed by the league (for example the
+# 2027 season window); every other status is shown as "Tentative".
+OFFSEASON_MILESTONE_STATUSES <- c("Confirmed", "Tentative", "Reported")
+
+# Map baseline calendarMilestones entries to the edition's upcomingMilestones.
+# An empty or missing date (jsonlite reads a baseline "date": {} as an empty
+# list) becomes NULL, which the page and memo show as "Date TBD".
+map_upcoming_milestones <- function(ms_raw) {
+  out <- list()
+  if (is.null(ms_raw)) return(out)
+  for (m in ms_raw) {
+    stat <- if (!is.null(m$status) && length(m$status) == 1 &&
+                as.character(m$status) %in% OFFSEASON_MILESTONE_STATUSES) {
+      as.character(m$status)
+    } else {
+      "Tentative"
+    }
+    m_date <- m$date
+    date_str <- if (is.null(m_date) || length(m_date) == 0 || is.list(m_date) || is.na(m_date[1]) ||
+                    !nzchar(as.character(m_date[1]))) {
+      NULL
+    } else {
+      as.character(m_date[1])
+    }
+    out[[length(out) + 1L]] <- list(
+      date = date_str,
+      event = m$event,
+      status = stat
+    )
+  }
+  out
+}
+
 build_offseason_monitor_dag <- function(dry_run = FALSE,
                                         allow_degraded = FALSE,
                                         week_override = NULL,
@@ -279,24 +313,7 @@ build_offseason_monitor_dag <- function(dry_run = FALSE,
   expired_claims_list <- list()
   
   # Upcoming milestones from baseline
-  upcoming_milestones_list <- list()
-  if (!is.null(s_last$league$calendarMilestones$value)) {
-    ms_raw <- s_last$league$calendarMilestones$value
-    for (m in ms_raw) {
-      stat <- if (!is.null(m$status) && m$status %in% c("Confirmed", "Tentative")) m$status else "Tentative"
-      m_date <- m$date
-      date_str <- if (is.null(m_date) || length(m_date) == 0 || is.na(m_date[1]) || !nzchar(as.character(m_date[1]))) {
-        NULL
-      } else {
-        as.character(m_date[1])
-      }
-      upcoming_milestones_list[[length(upcoming_milestones_list) + 1L]] <- list(
-        date = date_str,
-        event = m$event,
-        status = stat
-      )
-    }
-  }
+  upcoming_milestones_list <- map_upcoming_milestones(s_last$league$calendarMilestones$value)
   
   # Model Implications
   model_prior_impact <- list(
