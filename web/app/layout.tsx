@@ -48,10 +48,14 @@ export const metadata: Metadata = {
 
 // Issue #135: no `viewport.themeColor` meant mobile browser chrome (the
 // address bar / status bar tint on Android Chrome, PWA splash background)
-// didn't match the app at all. This is the real `surface` token from
-// tailwind.config.ts (#100a22), not an invented color.
+// didn't match the app at all. These are the WNBA --fo-surface token values
+// from design-tokens.css, one per color scheme (WNBA#229).
 export const viewport: Viewport = {
-  themeColor: '#100a22',
+  colorScheme: 'light dark',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f7f5fc' },
+    { media: '(prefers-color-scheme: dark)', color: '#100a22' },
+  ],
 };
 
 export default function RootLayout({
@@ -61,7 +65,7 @@ export default function RootLayout({
 }) {
   const { generated_at } = getMetadata();
   return (
-    <html lang="en" data-site="wnba" className={`dark ${GeistSans.variable} ${GeistMono.variable}`}>
+    <html lang="en" data-site="wnba" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body
         className={`${GeistSans.className} font-sans bg-surface text-slate-100 min-h-screen flex flex-col md:flex-row antialiased selection:bg-accent-600 selection:text-white`}
       >

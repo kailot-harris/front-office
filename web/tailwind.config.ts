@@ -11,8 +11,8 @@ import plugin from "tailwindcss/plugin";
  *   comes from one place and flips with the color scheme.
  * - Every Tailwind palette class (slate, amber, emerald, ...) and `white` read
  *   a CSS variable. Dark mode keeps Tailwind's own values, which is what this
- *   site was designed against. Light mode mirrors each scale (50<->950,
- *   100<->900, ... 400<->600) and swaps white for the token text color, so
+ *   site was designed against. Light mode mirrors each scale (see LIGHT
+ *   below) and swaps white for the token text color, so
  *   `text-slate-100` on `bg-surface` stays high-contrast in both modes without
  *   a `dark:` variant on every element.
  */
@@ -22,7 +22,18 @@ const MIRRORED = [
   "indigo", "violet", "purple", "fuchsia", "pink", "rose",
 ] as const;
 const SHADES = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "950"] as const;
-const mirror = (s: string) => (s === "50" ? "950" : s === "950" ? "50" : String(1000 - Number(s)));
+// Light mode mirrors the scale, one step darker at the light end so that text
+// shades (300/400/500) clear WCAG AA on the light surface: 400 -> 700,
+// 300 -> 800, 500 -> 600; the dark end (600+, used for fills) mirrors exactly.
+const LIGHT: Record<string, string> = {
+  "50": "950", "100": "950", "200": "900", "300": "800", "400": "700", "500": "600",
+  "600": "400", "700": "300", "800": "200", "900": "100", "950": "50",
+};
+// Yellow-family hues are light at every step, so their text shades go one
+// step darker again in light mode.
+const WARM = new Set(["yellow", "amber", "orange", "lime"]);
+const WARM_LIGHT: Record<string, string> = { ...LIGHT, "300": "900", "400": "800", "500": "700" };
+const mirror = (name: string, s: string) => (WARM.has(name) ? WARM_LIGHT : LIGHT)[s];
 
 const channels = (hex: string) => {
   const h = hex.replace("#", "");
@@ -36,7 +47,7 @@ const colors: Record<string, Record<string, string>> = {};
 for (const name of MIRRORED) {
   colors[name] = {};
   for (const s of SHADES) {
-    lightVars[`--c-${name}-${s}`] = channels(palette[name][mirror(s)]);
+    lightVars[`--c-${name}-${s}`] = channels(palette[name][mirror(name, s)]);
     darkVars[`--c-${name}-${s}`] = channels(palette[name][s]);
     colors[name][s] = `rgb(var(--c-${name}-${s}) / <alpha-value>)`;
   }
