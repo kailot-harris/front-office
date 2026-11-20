@@ -39,7 +39,7 @@ pt_labels <- c(
   "PO" = "Pitchout"
 )
 
-export_player_spatial_maps <- function(out_dir = file.path(MLB_ROOT_DIR, "web", "public", "data"),
+export_player_spatial_maps <- function(out_dir = file.path(root_dir, "web", "public", "data"),
                                        season = NULL,
                                        root_dir = MLB_ROOT_DIR) {
   start_time <- Sys.time()
@@ -60,9 +60,26 @@ export_player_spatial_maps <- function(out_dir = file.path(MLB_ROOT_DIR, "web", 
     stop(sprintf("Players file not found at %s. Run export_web_data.R first.", players_file))
   }
   players <- jsonlite::fromJSON(players_file)
+  if (!is.data.frame(players) || nrow(players) == 0L) {
+    players <- data.frame(
+      player_id = character(0),
+      mlbam_id = character(0),
+      player_name = character(0),
+      player_type = character(0),
+      team = character(0),
+      position = character(0),
+      stringsAsFactors = FALSE
+    )
+  }
 
   sc_file <- resolve_statcast_cache_file(season = season, root_dir = root_dir)
-  sc_df <- if (file.exists(sc_file)) readRDS(sc_file) else data.frame()
+  sc_df <- if (file.exists(sc_file)) {
+    readRDS(sc_file)
+  } else {
+    log_warn(sprintf("Statcast cache not found at %s; emitting untracked spatial placeholders.", sc_file),
+             script = .LOG_SCRIPT)
+    data.frame()
+  }
 
   cw_file <- file.path(root_dir, "cache", "id_crosswalk", "mlb_id_crosswalk.rds")
   cw_df <- if (file.exists(cw_file)) readRDS(cw_file) else data.frame()
@@ -364,6 +381,30 @@ export_player_spatial_maps <- function(out_dir = file.path(MLB_ROOT_DIR, "web", 
   for (pid in names(spatial_maps)) {
     p_file <- file.path(spatial_dir, sprintf("%s.json", pid))
     jsonlite::write_json(spatial_maps[[pid]], p_file, pretty = FALSE, auto_unbox = TRUE)
+  }
+
+  # Prune stale <id>.json files not belonging to this export so spatial/ and
+  # spatial_index.json remain 1-to-1 across runs (MLB-Analytics#113).
+  expected_files <- if (length(spatial_maps) > 0L) {
+    sprintf("%s.json", names(spatial_maps))
+  } else {
+    character(0)
+  }
+  existing_files <- list.files(spatial_dir, pattern = "\\.json$", full.names = FALSE)
+  stale_files <- setdiff(existing_files, expected_files)
+  if (length(stale_files) > 0L) {
+    stale_paths <- file.path(spatial_dir, stale_files)
+    unlink(stale_paths)
+    remaining <- stale_paths[file.exists(stale_paths)]
+    if (length(remaining) > 0L) {
+      stop(sprintf("Failed to prune %d stale spatial file(s): %s",
+                   length(remaining), paste(basename(remaining), collapse = ", ")))
+    }
+    cat(sprintf("      Pruned %d stale spatial file(s) from %s\n",
+                length(stale_files), spatial_dir))
+    log_info(sprintf("Pruned %d stale player spatial file(s) from %s.",
+                     length(stale_files), spatial_dir),
+             script = .LOG_SCRIPT)
   }
 
   cat("Building lightweight spatial index...\n")

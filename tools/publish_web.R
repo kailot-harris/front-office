@@ -884,8 +884,15 @@ source("config.R")
                               paste(res$out, collapse = "\n")))
     invisible(TRUE)
   }
-  record("git add web/public/data",
-         .pw_git(repo_root, c("add", "--", rel_paths)))
+  stage_paths <- rel_paths[!is.na(rel_paths) & nzchar(trimws(rel_paths))]
+  if (!length(stage_paths)) {
+    stop("publish_web: no target paths provided to stage.")
+  }
+  # Use -A scoped to stage_paths so in-season publishes stage added, modified,
+  # and pruned spatial/<id>.json files under WEB_DATA_DIR while off-season
+  # publishes remain scoped strictly to WEB_DATA_FILES_OFFSEASON (+ archive).
+  record("git add -A",
+         .pw_git(repo_root, c("add", "-A", "--", stage_paths)))
   record("git commit (MLB-Analytics)",
          .pw_git(repo_root, c("commit", "-m", shQuote(commit_message))))
   record("git push origin HEAD (MLB-Analytics)",
@@ -1080,6 +1087,9 @@ publish_web <- function(dry_run = TRUE,
     slates <- if (dir.exists(WEB_MATCHUPS_DIR)) list.files(WEB_MATCHUPS_DIR) else character(0)
     cat(sprintf("  %d per-slate file(s) from %s (not individually asserted; see config.R section 7)\n",
                 length(slates), WEB_MATCHUPS_DIR))
+    spatial_files <- if (dir.exists(WEB_DIR_SPATIAL)) list.files(WEB_DIR_SPATIAL, pattern = "\\.json$") else character(0)
+    cat(sprintf("  %d per-player spatial file(s) from %s (not individually asserted; see config.R section 7)\n",
+                length(spatial_files), WEB_DIR_SPATIAL))
   }
   cat(sprintf("  commit message   : %s\n", commit_message))
   cat(sprintf("  push sequence    : commit -> push MLB-Analytics %s (deploy belongs to the aggregator's sync-sports.yml)\n",
