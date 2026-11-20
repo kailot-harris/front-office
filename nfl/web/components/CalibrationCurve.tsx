@@ -44,6 +44,15 @@ export default function CalibrationCurve({ bins }: CalibrationCurveProps) {
     return `${acc} ${idx === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`;
   }, '');
 
+  const gradedGames = bins.reduce(
+    (sum, bin) => sum + (Number.isFinite(bin.count) ? bin.count : 0),
+    0
+  );
+  const chartLabel =
+    bins.length > 0
+      ? `Reliability calibration curve comparing predicted win probability against actual realized win rate across ${bins.length} probability ${bins.length === 1 ? 'bin' : 'bins'} (${gradedGames} graded games)`
+      : 'Reliability calibration curve comparing predicted win probability against actual realized win rate (no calibration bins available)';
+
   return (
     <div ref={containerRef} className="bg-surface-raised/90 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col">
       <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
@@ -83,6 +92,8 @@ export default function CalibrationCurve({ bins }: CalibrationCurveProps) {
       <div className="relative w-full aspect-[5/3.5] max-h-[380px] select-none">
         <svg
           viewBox={`0 0 ${width} ${height}`}
+          role="img"
+          aria-label={chartLabel}
           className="w-full h-full overflow-visible font-mono text-[11px] sm:text-[10px]"
         >
           {/* Grid lines */}

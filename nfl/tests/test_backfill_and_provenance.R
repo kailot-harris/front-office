@@ -219,11 +219,19 @@ test_that("BFP-7 model_diagnostics.json strictly separates genuine pregame and b
 
   diag <- jsonlite::fromJSON(diag_path, simplifyVector = TRUE)
 
-  # Completed-game count from a committed source: the per-game files, each carrying
-  # data$is_completed. (Invariants, not day-one literals: the live values move every run.)
+  # Completed-game count from matchups_current_week.json (updated atomically alongside
+  # model_diagnostics.json by tools/refresh_live_results.R after prime-time games).
+  # web/public/data/games/*.json lags behind live scores for Thursday/Sunday/Monday
+  # night finals until nflfastR play-by-play publishes at 04:15 AM, so BFP-7 reconciles
+  # against matchups_current_week.json and checks games/*.json separately as <= completed.
+  matchups_path <- file.path(root_dir, "web", "public", "data", "matchups_current_week.json")
+  expect_true(file.exists(matchups_path))
+  matchups_df <- jsonlite::fromJSON(matchups_path, simplifyDataFrame = TRUE)$matchups
+  completed <- sum(!is.na(matchups_df$home_score) & !is.na(matchups_df$away_score))
+
   game_files <- list.files(file.path(root_dir, "web", "public", "data", "games"),
                            pattern = "[.]json$", full.names = TRUE)
-  completed <- sum(vapply(game_files, function(f) {
+  game_files_completed <- sum(vapply(game_files, function(f) {
     isTRUE(jsonlite::fromJSON(f, simplifyVector = FALSE)$data$is_completed)
   }, logical(1)))
 
@@ -254,11 +262,16 @@ test_that("BFP-7 model_diagnostics.json strictly separates genuine pregame and b
   ok("BFP-7d genuine accuracy is null iff its n_games is 0", isTRUE(res[["genuine_acc_null_iff_zero"]]))
   ok("BFP-7e accuracy in [0,100] and Brier in [0,1] for both blocks",
      all(res[c("genuine_ranges", "genuine_brier", "backtest_acc", "backtest_brier")]))
-  ok("BFP-7f genuine + backtest n_games equals completed games in committed game files",
+  ok("BFP-7f genuine + backtest n_games equals completed games in matchups_current_week.json",
      isTRUE(res[["sum_matches_completed"]]),
      sprintf("genuine %s + backtest %s vs completed %d",
              diag$genuine_pregame$n_games, diag$historical_backtest$n_games, completed))
   expect_true(all(res))
+  ok("BFP-7i committed game-detail files do not exceed completed matchups",
+     isTRUE(game_files_completed <= completed),
+     sprintf("games/*.json completed=%d <= matchups_current_week.json completed=%d",
+             game_files_completed, completed))
+  expect_true(game_files_completed <= completed)
 
   # Negative control: forcing either block's n_games off by one must trip the sum invariant.
   bad_g <- diag; bad_g$genuine_pregame$n_games <- diag$genuine_pregame$n_games + 1L
