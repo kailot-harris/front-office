@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { GeistSans, GeistMono } from 'geist/font';
 import './design-tokens.css';
+import './palette.css';
 import './globals.css';
 import { BASE_PATH } from '@/lib/basePath';
 import { Sidebar } from '@/components/Sidebar';
@@ -43,7 +44,12 @@ export const metadata: Metadata = {
 // didn't match the app. tailwind.config.ts's `surface` token (#04140f) is this app's actual
 // background color — reuse it rather than picking an arbitrary accent.
 export const viewport: Viewport = {
-  themeColor: '#04140f',
+  // Matches --fo-surface for data-site="nfl" in each scheme.
+  colorScheme: 'light dark',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f2f9f6' },
+    { media: '(prefers-color-scheme: dark)', color: '#04140f' },
+  ],
 };
 
 export default function RootLayout({
@@ -53,9 +59,9 @@ export default function RootLayout({
 }) {
   const { generated_at } = getStandingsData();
   return (
-    <html lang="en" data-site="nfl" className={`dark ${GeistSans.variable} ${GeistMono.variable}`}>
+    <html lang="en" data-site="nfl" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body
-        className={`${GeistSans.className} font-sans bg-surface text-slate-100 min-h-screen flex flex-col md:flex-row antialiased selection:bg-accent-600 selection:text-white`}
+        className={`${GeistSans.className} font-sans bg-surface text-slate-100 min-h-screen flex flex-col md:flex-row antialiased selection:bg-fo-accent selection:text-on-accent`}
       >
         {/*
           #136: skip-to-content link. Visually hidden until focused (keyboard Tab from page
@@ -64,7 +70,7 @@ export default function RootLayout({
         */}
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-accent-600 focus:text-white focus:text-sm focus:font-semibold focus:shadow-lg"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-fo-accent focus:text-on-accent focus:text-sm focus:font-semibold focus:shadow-lg"
         >
           Skip to content
         </a>

@@ -22,17 +22,36 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: rgb(var(--c-slate-900));
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: rgb(var(--c-slate-700));
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: rgb(var(--c-slate-600));
 }
+
+/*
+ * Charts draw with hard-coded slate hex values in SVG attributes. CSS beats a
+ * presentation attribute, so these rules move every chart's grid, axis and label
+ * colors onto the scheme-aware palette without touching each chart.
+ */
+svg [stroke="#1e293b"] { stroke: rgb(var(--c-slate-800)); }
+svg [stroke="#334155"] { stroke: rgb(var(--c-slate-700)); }
+svg [stroke="#475569"] { stroke: rgb(var(--c-slate-600)); }
+svg [stroke="#64748b"] { stroke: rgb(var(--c-slate-500)); }
+svg [fill="#334155"] { fill: rgb(var(--c-slate-700)); }
+svg [fill="#475569"] { fill: rgb(var(--c-slate-600)); }
+svg [fill="#64748b"] { fill: rgb(var(--c-slate-500)); }
+svg [fill="#94a3b8"] { fill: rgb(var(--c-slate-400)); }
+svg [fill="#cbd5e1"] { fill: rgb(var(--c-slate-300)); }
+svg text[fill="#ffffff"] { fill: rgb(var(--c-white)); }
+svg [fill="#022c22"] { fill: var(--fo-surface-raised); }
+svg [fill="#091410"] { fill: var(--fo-surface-raised); }
+svg [fill="#060e0b"] { fill: var(--fo-surface); }
 
 @layer utilities {
   .text-balance {
