@@ -59,17 +59,9 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup: m, onSelect }
   const isInteractive = typeof onSelect === 'function';
   const cardLabel = formatMatchupInspectLabel(m);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (!onSelect) return;
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      onSelect(m, e.currentTarget);
-    }
-  };
-
   return (
     <div
-      className={`group bg-surface-raised/80 border rounded-xl p-4 flex flex-col gap-3 transition-colors ${
+      className={`group relative bg-surface-raised/80 border rounded-xl p-4 flex flex-col gap-3 transition-colors ${
         graded
           ? m.prediction_correct
             ? 'border-accent-500/40'
@@ -77,16 +69,22 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup: m, onSelect }
           : 'border-slate-800 hover:border-accent-500/40'
       }${
         isInteractive
-          ? ' cursor-pointer hover:bg-surface-raised hover:border-accent-500/60 focus:outline-none focus:ring-2 focus:ring-accent-400'
+          ? ' cursor-pointer hover:bg-surface-raised hover:border-accent-500/60'
           : ''
       }`}
       data-testid="matchup-card"
-      role={isInteractive ? 'button' : undefined}
-      tabIndex={isInteractive ? 0 : undefined}
-      aria-label={isInteractive ? cardLabel : undefined}
-      onClick={isInteractive ? (e) => onSelect(m, e.currentTarget) : undefined}
-      onKeyDown={isInteractive ? handleKeyDown : undefined}
     >
+      {/* Stretched button: the whole card opens the detail, while the card's own
+          text stays outside the button so its name does not have to repeat it
+          (WCAG 2.5.3 label-in-name). */}
+      {isInteractive && (
+        <button
+          type="button"
+          aria-label={cardLabel}
+          onClick={(e) => onSelect(m, e.currentTarget)}
+          className="absolute inset-0 z-10 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
+        />
+      )}
       {/* Date + status chip */}
       <div className="flex items-center justify-between text-[11px] sm:text-[10px] font-mono uppercase tracking-wider">
         <span className="text-slate-400">
@@ -138,7 +136,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({ matchup: m, onSelect }
               </div>
               <span
                 className={`text-lg font-black font-mono tabular-nums ${
-                  score === null ? 'text-slate-600' : isWinner ? 'text-white' : 'text-slate-400'
+                  score === null ? 'text-slate-500' : isWinner ? 'text-white' : 'text-slate-400'
                 }`}
               >
                 {score === null ? '–' : score}

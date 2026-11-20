@@ -124,7 +124,7 @@ export const SeriesProbRing: React.FC<SeriesProbRingProps> = ({
           </div>
         </div>
 
-        <span className="text-xs font-mono font-bold text-slate-600">VS</span>
+        <span className="text-xs font-mono font-bold text-slate-500">VS</span>
 
         <div className="flex items-center gap-2 flex-row-reverse text-right">
           <TeamLogo team={teamB} size="sm" />

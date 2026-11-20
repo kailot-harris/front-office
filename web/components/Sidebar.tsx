@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { useDialogFocus } from '@/lib/useDialogFocus';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -49,6 +50,8 @@ export interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore }) => {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(drawerRef, isOpen, () => setIsOpen(false));
   const [showSigmaExplainer, setShowSigmaExplainer] = useState(false);
 
   const navItems = [
@@ -207,7 +210,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore }) => 
                     <span className="font-semibold">{item.label}</span>
                     <span
                       className={`text-[11px] sm:text-[10px] px-1.5 py-0.2 rounded font-mono font-medium ${
-                        isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
+                        isActive ? 'bg-black/25 text-white' : 'bg-slate-800 text-slate-400'
                       }`}
                     >
                       {item.badge}
@@ -215,7 +218,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore }) => 
                   </div>
                   <p
                     className={`text-[11px] truncate ${
-                      isActive ? 'text-emerald-200' : 'text-slate-500'
+                      isActive ? 'text-accent-100' : 'text-slate-500'
                     }`}
                   >
                     {item.desc}
@@ -377,7 +380,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore }) => 
             className="fixed inset-0 bg-surface/80 backdrop-blur-sm transition-opacity"
             onClick={() => setIsOpen(false)}
           />
-          <div className="relative w-72 max-w-[85vw] bg-surface-raised border-r border-slate-800 h-full z-10 flex flex-col shadow-2xl">
+          <div
+            ref={drawerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Site navigation"
+            className="relative w-72 max-w-[85vw] bg-surface-raised border-r border-slate-800 h-full z-10 flex flex-col shadow-2xl">
             <div className="absolute top-3 right-3">
               <button
                 onClick={() => setIsOpen(false)}

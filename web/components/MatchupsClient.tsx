@@ -288,7 +288,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
               >
                 <span>Wk {s}</span>
                 {meta?.status === 'active' && (
-                  <span className="text-amber-400 text-[11px] sm:text-[10px]">★ Active</span>
+                  <span className={`${isSelected ? 'text-white' : 'text-amber-400'} text-[11px] sm:text-[10px]`}>★ Active</span>
                 )}
                 {/* A past week with nothing graded says so rather than "Final". */}
                 {meta?.status === 'past' && (
@@ -451,8 +451,8 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
             />
           </div>
 
-          <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
-            <button
+          <div role="tablist" aria-label="View mode" className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
+            <button role="tab" aria-selected={viewMode === 'grid'}
               type="button"
               onClick={() => setViewMode('grid')}
               title="Card grid view"
@@ -463,7 +463,7 @@ export const MatchupsClient: React.FC<MatchupsClientProps> = ({ dataset }) => {
             >
               <Grid className="w-4 h-4" />
             </button>
-            <button
+            <button role="tab" aria-selected={viewMode === 'table'}
               type="button"
               onClick={() => setViewMode('table')}
               title="Compact table view"

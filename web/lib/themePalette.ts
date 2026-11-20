@@ -9,7 +9,7 @@ import defaultColors from 'tailwindcss/colors';
  * Dark mode (prefers-color-scheme: dark) gets Tailwind's real values, so the
  * existing dark design is unchanged and stays the reference. Light mode gets
  * the mirrored shade (slate-100 text becomes slate-900, a slate-800 border
- * becomes slate-200, emerald-400 text becomes emerald-700), which keeps every
+ * becomes slate-200, emerald-400 text becomes emerald-800), which keeps every
  * text pairing at WCAG AA on the light --fo-surface tokens.
  */
 export const THEMED_PALETTES = [
@@ -22,7 +22,7 @@ type Shade = (typeof SHADES)[number];
 
 /** Light-mode shade used in place of each dark-mode shade. Text shades land on 700+ for AA on light surfaces. */
 const LIGHT_SHADE: Record<Shade, Shade> = {
-  50: 950, 100: 900, 200: 800, 300: 800, 400: 700, 500: 700,
+  50: 950, 100: 900, 200: 800, 300: 800, 400: 800, 500: 700,
   600: 300, 700: 200, 800: 200, 900: 100, 950: 50,
 };
 
@@ -54,7 +54,9 @@ export function themedVariables() {
   for (const name of [...THEMED_PALETTES, 'accent'] as PaletteName[]) {
     const pal = source(name);
     for (const s of SHADES) {
-      dark[`--c-${name}-${s}`] = channels(pal[s]);
+      // Neutral 500 text failed AA on the dark surfaces (3.6:1), so it borrows the 400 value.
+      const darkShade = (name === 'slate' || name === 'zinc' || name === 'gray') && s === 500 ? 400 : s;
+      dark[`--c-${name}-${s}`] = channels(pal[darkShade]);
       light[`--c-${name}-${s}`] = channels(pal[LIGHT_SHADE[s]]);
     }
   }

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useDialogFocus } from '@/lib/useDialogFocus';
 import { PlayerShotData, ShotsMetadata } from '@/lib/shotTypes';
 import { PlayerShotChart } from '@/components/PlayerShotChart';
 import { TeamLogo } from '@/components/TeamLogo';
@@ -70,11 +71,18 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
     };
   }, [playerId]);
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, !!playerId, onClose);
   if (!playerId) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-surface/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-5xl max-h-[92vh] bg-surface-raised border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="shot-chart-modal-title"
+        className="relative w-full max-w-5xl max-h-[92vh] bg-surface-raised border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
         {/* Modal Header */}
         <div className="relative flex items-center justify-between px-6 py-4 bg-surface/60">
           <div className="flex items-center gap-3">
@@ -82,7 +90,7 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shadow-[0_0_8px_#fb923c]" />
-                <h2 className="text-xl font-bold text-white tracking-tight">
+                <h2 id="shot-chart-modal-title" className="text-xl font-bold text-white tracking-tight">
                   {shotData?.player_name || playerName || 'Player'}
                 </h2>
                 <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20">

@@ -136,7 +136,7 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
             type="button"
             onClick={handleExportCalibrationPng}
             title="Export chart as PNG"
-            aria-label="Export calibration chart as PNG"
+            aria-label="Chart PNG: export the calibration chart"
             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
           >
             <Download className="w-3.5 h-3.5" />
@@ -146,7 +146,7 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
             type="button"
             onClick={handleExportCalibrationCsv}
             title="Export table as CSV"
-            aria-label="Export calibration table as CSV"
+            aria-label="Table CSV: export the calibration table"
             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
           >
             <Download className="w-3.5 h-3.5" />

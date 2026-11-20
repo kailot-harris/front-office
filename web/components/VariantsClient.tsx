@@ -242,7 +242,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams, metadata 
               <span>{detail.name}</span>
               <span
                 className={`text-[11px] px-2 py-0.5 rounded-full ${
-                  isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
+                  isActive ? 'bg-black/25 text-white' : 'bg-slate-800 text-slate-400'
                 }`}
               >
                 {detail.weightBadge}
@@ -250,7 +250,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams, metadata 
               {sourceSeasons[key] && (
                 <span
                   className={`text-[11px] sm:text-[10px] font-mono ${
-                    isActive ? 'text-white/75' : 'text-slate-500'
+                    isActive ? 'text-white/90' : 'text-slate-500'
                   }`}
                   title={`Inputs observed in ${sourceSeasons[key]}, projected onto the current season`}
                 >
@@ -330,8 +330,8 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams, metadata 
           </div>
           <div className="flex items-center gap-2 text-xs">
             <span className="text-slate-400">Sort by:</span>
-            <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
-              <button
+            <div role="tablist" aria-label="Divergence sort" className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
+              <button role="tab" aria-selected={divergenceSort === 'divergence'}
                 onClick={() => setDivergenceSort('divergence')}
                 className={`px-2.5 py-1 rounded text-xs font-semibold ${
                   divergenceSort === 'divergence'
@@ -341,7 +341,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams, metadata 
               >
                 Max Spread
               </button>
-              <button
+              <button role="tab" aria-selected={divergenceSort === 'wins'}
                 onClick={() => setDivergenceSort('wins')}
                 className={`px-2.5 py-1 rounded text-xs font-semibold ${
                   divergenceSort === 'wins' ? 'bg-accent-600 text-white' : 'text-slate-400 hover:text-white'
@@ -349,7 +349,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams, metadata 
               >
                 Ensemble Wins
               </button>
-              <button
+              <button role="tab" aria-selected={divergenceSort === 'alpha'}
                 onClick={() => setDivergenceSort('alpha')}
                 className={`px-2.5 py-1 rounded text-xs font-semibold ${
                   divergenceSort === 'alpha' ? 'bg-accent-600 text-white' : 'text-slate-400 hover:text-white'
@@ -471,7 +471,7 @@ export const VariantsClient: React.FC<VariantsClientProps> = ({ teams, metadata 
                           <span className="text-emerald-400 font-medium">
                             +{team.highestModel.model.split(' ')[0]} ({team.highestModel.wins.toFixed(1)})
                           </span>
-                          <span className="text-slate-600">•</span>
+                          <span className="text-slate-500">•</span>
                           <span className="text-rose-400 font-medium">
                             -{team.lowestModel.model.split(' ')[0]} ({team.lowestModel.wins.toFixed(1)})
                           </span>
