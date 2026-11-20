@@ -86,7 +86,12 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
       </div>
 
       <div className="relative w-full overflow-hidden flex justify-center">
-        <svg viewBox={`0 0 ${width} ${height}`} className="w-full max-w-[500px] h-auto overflow-visible">
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          className="w-full max-w-[500px] h-auto overflow-visible"
+          role="img"
+          aria-label={`Pressure resilience scatter plot of clutch true shooting percentage vs. turnover fragility (${validProfiles.length} closers, selected: ${selectedProfile.playerName}, ${selectedProfile.team})`}
+        >
           {/* Quadrant Axis Lines */}
           <line
             x1={padding}

@@ -54,6 +54,14 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
 
   const midX = scaleX(0.98); // League median defensive PPP allowed
   const midY = scaleY(1.05); // League median offensive PPP
+  const plottedCoaches = coaches.filter(
+    (c) =>
+      c.metrics.atoDefensivePppAllowed !== null &&
+      c.metrics.atoOffensivePpp !== null
+  );
+  const svgAriaLabel = selectedCoach
+    ? `In-game ATO offensive vs. defensive PPP scatter plot (${plottedCoaches.length} teams, selected: ${selectedCoach.headCoach.name}, ${selectedCoach.teamAbbr})`
+    : `In-game ATO offensive vs. defensive PPP scatter plot (${plottedCoaches.length} teams)`;
 
   return (
     <div ref={containerRef} className="bg-surface-raised/80 border border-slate-800 rounded-xl overflow-hidden shadow-lg p-5">
@@ -108,6 +116,8 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
         <svg
           viewBox={`0 0 ${width} ${height}`}
           className="w-full max-w-[760px] select-none font-sans"
+          role="img"
+          aria-label={svgAriaLabel}
         >
           <g transform={`translate(${padding.left}, ${padding.top})`}>
             {/* Quadrant Background shading */}
@@ -258,13 +268,7 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
             </text>
 
             {/* Scatter Plot Points */}
-            {coaches
-              .filter(
-                (c) =>
-                  c.metrics.atoDefensivePppAllowed !== null &&
-                  c.metrics.atoOffensivePpp !== null
-              )
-              .map((c) => {
+            {plottedCoaches.map((c) => {
               const cx = scaleX(c.metrics.atoDefensivePppAllowed!);
               const cy = scaleY(c.metrics.atoOffensivePpp!);
               const isSelected = selectedCoach?.teamAbbr === c.teamAbbr;

@@ -169,7 +169,12 @@ export const DiagnosticsClient: React.FC<DiagnosticsClientProps> = ({
               </p>
             </div>
             <div className="relative w-full aspect-square max-w-[420px] mx-auto">
-              <svg viewBox="0 0 400 400" className="w-full h-full overflow-visible">
+              <svg
+                viewBox="0 0 400 400"
+                className="w-full h-full overflow-visible"
+                role="img"
+                aria-label={`Probability calibration curve comparing predicted win probability against empirical win rate across ${diagnostics.calibration.length} probability bins (${diagnostics.totalResolvedGames.toLocaleString()} resolved games)`}
+              >
                 {/* Grid lines */}
                 {[0.2, 0.4, 0.6, 0.8].map((step) => {
                   const pos = 40 + step * 320;
