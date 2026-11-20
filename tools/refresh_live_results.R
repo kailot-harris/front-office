@@ -29,6 +29,7 @@
 suppressPackageStartupMessages(library(jsonlite))
 
 source(file.path("tools", "world_series_summary.R"))
+source(file.path("tools", "export_landing_digest.R"))
 
 MLB_SCHEDULE_API <- "https://statsapi.mlb.com/api/v1/schedule"
 
@@ -161,6 +162,50 @@ write_json_if_changed <- function(x, path, pretty) {
   TRUE
 }
 
+#' Patch landing_digest.json (slots B/C; MLB-Analytics#125)
+#'
+#' Updates yesterday[] scores / status / final / hit from the API results and
+#' recomputes record and calibration from the (patched) prediction log. today,
+#' movers, season_state and next_milestone are slot A's and are left alone.
+#' Never adds games and never invents a probability: a row keeps the
+#' home_win_prob slot A wrote. Writes only when content changed.
+#'
+#' @return TRUE if the file was rewritten
+refresh_landing_digest <- function(data_dir, results, log, now = Sys.time()) {
+  f <- file.path(data_dir, LD_FILE)
+  if (!file.exists(f)) return(FALSE)
+  d <- jsonlite::fromJSON(f, simplifyVector = FALSE)
+  for (k in seq_along(d$yesterday)) {
+    g <- d$yesterday[[k]]
+    j <- match(as.integer(g$game_id), results$game_pk)
+    if (is.na(j)) next
+    status <- results$status_detail[j]
+    final <- status %in% LD_FINAL_STATUSES && !is.na(results$home_score[j]) &&
+      !is.na(results$away_score[j])
+    g$status <- status
+    g$final <- final
+    hp <- if (is.null(g$home_win_prob)) NA_real_ else as.numeric(g$home_win_prob)
+    if (final) {
+      g$home_score <- results$home_score[j]
+      g$away_score <- results$away_score[j]
+      g["hit"] <- list(.ld_na_null(ld_hit(hp, g$home_score, g$away_score, status)))
+    } else {
+      g["hit"] <- list(NULL)
+    }
+    d$yesterday[[k]] <- g
+  }
+  slate <- as.Date(d$slate_date)
+  d$record <- ld_record(log, slate)
+  d$calibration <- ld_calibration(log, slate)
+  new_text <- as.character(ld_to_json(d))
+  old_text <- paste(readLines(f, warn = FALSE), collapse = "
+")
+  if (trimws(old_text) == trimws(new_text)) return(FALSE)
+  d$generated_at <- format(as.POSIXct(now, tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+  writeLines(ld_to_json(d), f, useBytes = TRUE)
+  TRUE
+}
+
 #' Refresh the committed web JSON with any newly finished results
 #'
 #' @param season Season year
@@ -224,6 +269,12 @@ refresh_live_results <- function(season = 2026,
     candidate$generated_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
     jsonlite::write_json(candidate, index_file, pretty = TRUE, auto_unbox = TRUE, na = "null")
     changed_files <- c(changed_files, index_file)
+  }
+
+  log <- combined[, intersect(LD_LOG_COLS, names(combined)), drop = FALSE]
+  for (c in setdiff(LD_LOG_COLS, names(log))) log[[c]] <- NA
+  if (refresh_landing_digest(data_dir, results, log)) {
+    changed_files <- c(changed_files, file.path(data_dir, LD_FILE))
   }
 
   list(n_changed = n_changed, files = changed_files, world_series = ws)
