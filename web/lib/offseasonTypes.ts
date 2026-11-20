@@ -298,6 +298,19 @@ export interface CurrentStateSummary {
   cbaLaborStatus: string;
 }
 
+/**
+ * The next, not-yet-published weekly edition. Emitted by
+ * build_offseason_monitor.R's compute_offseason_next_edition(): the week after
+ * the latest edition, projected for the first cadence weekday (Monday,
+ * config.R's OFFSEASON_CADENCE_WEEKDAY) strictly after its publishDate.
+ * Absent on JSON published before this field existed.
+ */
+export interface OffseasonNextEdition {
+  weekNumber: number;
+  /** YYYY-MM-DD */
+  projectedPublishDate: string;
+}
+
 export interface OffseasonMonitorDataset {
   version: '2026-2027.1.0';
   lastPublished: string;
@@ -314,6 +327,7 @@ export interface OffseasonMonitorDataset {
     | 'Training Camp Transition';
   editions: OffseasonEdition[];
   currentStateSummary: CurrentStateSummary;
+  nextEdition?: OffseasonNextEdition;
 }
 
 

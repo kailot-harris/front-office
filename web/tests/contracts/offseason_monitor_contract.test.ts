@@ -76,6 +76,11 @@ const CurrentStateSummarySchema = z.object({
   cbaLaborStatus: z.string(),
 });
 
+const NextEditionSchema = z.object({
+  weekNumber: z.number().int().positive(),
+  projectedPublishDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
 const OffseasonMonitorDatasetSchema = z.object({
   version: z.literal('2026-2027.1.0'),
   lastPublished: z.string(),
@@ -93,6 +98,7 @@ const OffseasonMonitorDatasetSchema = z.object({
   ]),
   editions: z.array(OffseasonEditionSchema).min(1),
   currentStateSummary: CurrentStateSummarySchema,
+  nextEdition: NextEditionSchema.optional(),
 });
 
 describe('Off-Season Dynamics Monitor Contract Suite', () => {
@@ -145,6 +151,22 @@ describe('Off-Season Dynamics Monitor Contract Suite', () => {
       expect(ed.memoMarkdown).toContain('### 6. Winter League & Alternative Play');
       expect(ed.memoMarkdown).toContain('### 7. Sources Verified');
     }
+  });
+
+  it('nextEdition is the week after the latest edition, projected for the next Monday strictly after it', () => {
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const data = JSON.parse(raw) as OffseasonMonitorDataset;
+    if (!data.nextEdition) return; // optional: absent on JSON published before the field existed
+
+    const latest = data.editions.reduce((a, b) => (b.weekNumber > a.weekNumber ? b : a));
+    expect(data.nextEdition.weekNumber).toBe(latest.weekNumber + 1);
+
+    const published = new Date(`${latest.publishDate}T00:00:00Z`);
+    const projected = new Date(`${data.nextEdition.projectedPublishDate}T00:00:00Z`);
+    const gapDays = (projected.getTime() - published.getTime()) / 86_400_000;
+    expect(projected.getUTCDay()).toBe(1); // Monday, config.R OFFSEASON_CADENCE_WEEKDAY
+    expect(gapDays).toBeGreaterThanOrEqual(1);
+    expect(gapDays).toBeLessThanOrEqual(7);
   });
 
   it('validates 28-day TTL on reported claims and expired ledger integrity', () => {

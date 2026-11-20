@@ -11,6 +11,9 @@
 #
 # Usage:
 #   Rscript build_offseason_monitor.R [--dry-run] [--allow-degraded] [--week=<N>]
+#
+# Without --week, the edition's week number is derived from the existing
+# offseason_monitor.json (see derive_offseason_week_number()).
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -56,6 +59,62 @@ determine_active_phase <- function(current_date) {
   } else {
     "Training Camp Transition"
   }
+}
+
+# ------------------------------------------------------------------------------
+# Edition cadence: week numbering and the projected next edition
+# ------------------------------------------------------------------------------
+# A "cadence week" is the 7-day window that opens on OFFSEASON_CADENCE_WEEKDAY
+# (config.R; ISO weekday, 1 = Monday) and runs through the day before the next
+# one. The weekly scheduled run publishes once per cadence week, so two runs in
+# the same window are the same edition (a re-run replaces it) and a run in a
+# later window is a new edition.
+offseason_cadence_weekday <- function() {
+  if (exists("OFFSEASON_CADENCE_WEEKDAY")) as.integer(OFFSEASON_CADENCE_WEEKDAY) else 1L
+}
+
+# First day (on the cadence weekday) of the cadence week containing `date`.
+cadence_week_start <- function(date, cadence_weekday = offseason_cadence_weekday()) {
+  dt <- as.Date(date)
+  iso_wday <- as.integer(format(dt, "%u"))
+  dt - ((iso_wday - cadence_weekday) %% 7L)
+}
+
+# Latest published edition (highest weekNumber), or NULL when there are none.
+latest_offseason_edition <- function(editions) {
+  if (is.null(editions) || length(editions) == 0) return(NULL)
+  weeks <- vapply(editions, function(e) as.integer(e$weekNumber), integer(1))
+  editions[[which.max(weeks)]]
+}
+
+# Week number for a run on `run_date`. `week_override` (--week=N) always wins.
+# Otherwise: Week 1 with no editions; latest + 1 when `run_date` falls in a
+# later cadence week than the latest edition's publishDate; else the latest
+# edition's week (a same-week re-run replaces that edition).
+derive_offseason_week_number <- function(run_date, existing_editions, week_override = NULL,
+                                         cadence_weekday = offseason_cadence_weekday()) {
+  if (!is.null(week_override) && length(week_override) == 1 && !is.na(week_override)) {
+    return(as.integer(week_override))
+  }
+  latest <- latest_offseason_edition(existing_editions)
+  if (is.null(latest)) return(1L)
+  latest_week <- as.integer(latest$weekNumber)
+  run_start <- cadence_week_start(run_date, cadence_weekday)
+  latest_start <- cadence_week_start(latest$publishDate, cadence_weekday)
+  if (run_start > latest_start) latest_week + 1L else latest_week
+}
+
+# Top-level `nextEdition` object: the week after the latest edition and its
+# projected publish date, the first cadence weekday strictly after the latest
+# edition's publishDate. NULL when there are no editions.
+compute_offseason_next_edition <- function(editions, cadence_weekday = offseason_cadence_weekday()) {
+  latest <- latest_offseason_edition(editions)
+  if (is.null(latest)) return(NULL)
+  projected <- cadence_week_start(latest$publishDate, cadence_weekday) + 7L
+  list(
+    weekNumber = as.integer(latest$weekNumber) + 1L,
+    projectedPublishDate = format(projected, "%Y-%m-%d")
+  )
 }
 
 build_offseason_monitor_dag <- function(dry_run = FALSE,
@@ -272,8 +331,19 @@ build_offseason_monitor_dag <- function(dry_run = FALSE,
     "https://unrivaled.basketball/roster"
   )
   
-  # Determine Week Number
-  week_num <- if (!is.null(week_override)) as.integer(week_override) else 1L
+  # Read existing dataset to preserve historical editions if present
+  prior_editions <- list()
+  if (file.exists(output_path)) {
+    tryCatch({
+      ds <- jsonlite::fromJSON(output_path, simplifyVector = FALSE)
+      if (!is.null(ds$editions) && length(ds$editions) > 0) prior_editions <- ds$editions
+    }, error = function(e) {
+      log_warn(paste("Could not parse existing offseason_monitor.json:", e$message), script = "build_offseason_monitor.R")
+    })
+  }
+
+  # Determine Week Number (derived from existing editions unless --week=N is given)
+  week_num <- derive_offseason_week_number(now_date, prior_editions, week_override = week_override)
   
   # Determine Active Phase
   active_phase <- determine_active_phase(now_date)
@@ -328,20 +398,9 @@ build_offseason_monitor_dag <- function(dry_run = FALSE,
     mediaSentimentPulse = sentiment_pulse
   )
   
-  # Read existing dataset to preserve historical editions if present
-  existing_editions <- list()
-  if (file.exists(output_path)) {
-    tryCatch({
-      ds <- jsonlite::fromJSON(output_path, simplifyVector = FALSE)
-      if (!is.null(ds$editions) && length(ds$editions) > 0) {
-        # Keep earlier editions that don't match current week
-        existing_editions <- Filter(function(ed) ed$weekNumber != week_num, ds$editions)
-      }
-    }, error = function(e) {
-      log_warn(paste("Could not parse existing offseason_monitor.json:", e$message), script = "build_offseason_monitor.R")
-    })
-  }
-  
+  # Keep earlier editions that don't match current week
+  existing_editions <- Filter(function(ed) ed$weekNumber != week_num, prior_editions)
+
   all_editions <- c(existing_editions, list(current_edition))
   # Sort editions ascending by weekNumber
   edition_weeks <- vapply(all_editions, function(e) e$weekNumber, integer(1))
@@ -365,7 +424,8 @@ build_offseason_monitor_dag <- function(dry_run = FALSE,
     elapsedDaysSinceLastPublish = elapsed_days,
     activePhase = active_phase,
     editions = I(all_editions),
-    currentStateSummary = current_state_summary
+    currentStateSummary = current_state_summary,
+    nextEdition = compute_offseason_next_edition(all_editions)
   )
   
   # ----------------------------------------------------------------------------
@@ -400,7 +460,7 @@ if (!interactive()) {
   allow_deg_flag <- "--allow-degraded" %in% cmd_args
   
   wk_arg <- grep("^--week=", cmd_args, value = TRUE)
-  wk_val <- if (length(wk_arg) > 0) as.integer(sub("^--week=", "", wk_arg[1])) else 1L
+  wk_val <- if (length(wk_arg) > 0) as.integer(sub("^--week=", "", wk_arg[1])) else NULL
   
   build_offseason_monitor_dag(
     dry_run = dry_run_flag,

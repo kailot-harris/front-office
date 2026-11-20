@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Sparkles,
@@ -33,6 +33,7 @@ import {
   OffseasonEdition,
   ConfirmedChange,
   OffseasonChangeType,
+  OffseasonNextEdition,
 } from '@/lib/offseasonTypes';
 
 interface Props {
@@ -173,6 +174,71 @@ const formatSourceUrl = (url: string) => {
   } catch {
     return { title: url, host: 'wire' };
   }
+};
+
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** "2026-11-23" -> "Mon 23 Nov" (calendar date only, no timezone shift). */
+export const formatProjectedDate = (isoDate: string): string => {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  if (Number.isNaN(dt.getTime())) return isoDate;
+  return `${WEEKDAY_SHORT[dt.getUTCDay()]} ${dt.getUTCDate()} ${MONTH_SHORT[dt.getUTCMonth()]}`;
+};
+
+/** Local calendar date of `d` as YYYY-MM-DD. */
+const toLocalIsoDate = (d: Date): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/**
+ * Label for the next, not-yet-published edition. Once the reader's date is past
+ * the projected publish date and that week is still unpublished, it says so
+ * rather than showing a stale date as if it were upcoming.
+ */
+export const nextEditionLabel = (
+  nextEdition: OffseasonNextEdition,
+  today: Date | null,
+  publishedWeeks: number[],
+): string => {
+  const base = `Week ${nextEdition.weekNumber} · expected ${formatProjectedDate(nextEdition.projectedPublishDate)}`;
+  const isPublished = publishedWeeks.some((w) => w >= nextEdition.weekNumber);
+  const isLate = !!today && !isPublished && toLocalIsoDate(today) > nextEdition.projectedPublishDate;
+  return isLate ? `${base}, not yet published` : base;
+};
+
+interface NextEditionPillProps {
+  nextEdition?: OffseasonNextEdition | null;
+  publishedWeeks: number[];
+  /** Injected for tests; otherwise the client's date, read after mount. */
+  today?: Date;
+}
+
+/** Disabled edition-selector slot for the next weekly edition. */
+export const NextEditionPill: React.FC<NextEditionPillProps> = ({ nextEdition, publishedWeeks, today }) => {
+  // The page is statically prerendered, so the client date is read after mount
+  // to keep server and first client render identical.
+  const [clientToday, setClientToday] = useState<Date | null>(null);
+  useEffect(() => {
+    if (!today) setClientToday(new Date());
+  }, [today]);
+
+  if (!nextEdition) return null;
+  if (publishedWeeks.some((w) => w >= nextEdition.weekNumber)) return null;
+
+  const label = nextEditionLabel(nextEdition, today ?? clientToday, publishedWeeks);
+  return (
+    <button
+      type="button"
+      disabled
+      aria-disabled="true"
+      data-testid="next-edition-pill"
+      title={`Next edition, projected ${nextEdition.projectedPublishDate}; not published yet`}
+      className="px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap border border-dashed border-slate-700 text-slate-500 cursor-not-allowed"
+    >
+      {label}
+    </button>
+  );
 };
 
 export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
@@ -426,6 +492,10 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                   </button>
                 );
               })}
+              <NextEditionPill
+                nextEdition={initialDataset.nextEdition}
+                publishedWeeks={editions.map((ed) => ed.weekNumber)}
+              />
             </div>
           </div>
         </div>
