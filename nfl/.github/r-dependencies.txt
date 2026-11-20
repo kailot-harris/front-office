@@ -16,6 +16,11 @@
 #   glmnet     tools/ridge_massey_model.R
 #   duckdb     logging_utils.R
 #   xgboost    xgboost_shap_engine.R
+#   nfl4th     build_coaching_dataset.R (4th-down model estimates, NFL_analytics#171).
+#              Listed with the CRAN packages it imports that are not already
+#              above, including nflfastR (and nflfastR's fastrmodels). The
+#              tests do not call nfl4th; it is installed so the builder's
+#              requireNamespace() check matches the pipeline machine.
 testthat
 dplyr
 jsonlite
@@ -25,3 +30,14 @@ nflreadr
 glmnet
 duckdb
 xgboost
+nfl4th
+nflfastR
+fastrmodels
+cli
+curl
+data.table
+janitor
+mgcv
+purrr
+rlang
+tibble

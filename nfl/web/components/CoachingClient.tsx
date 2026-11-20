@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { CoachProfile } from '@/lib/types';
+import { CoachingDataset, CoachingFigure, CoachProfile } from '@/lib/types';
 import { TeamLogo } from './TeamLogo';
 import { Search, Zap, Clock, SlidersHorizontal, ChevronRight, Download } from 'lucide-react';
 import { exportToCsv } from '@/lib/exportToCsv';
@@ -9,100 +9,270 @@ import { GlossaryTerm } from './Glossary';
 import { HowToRead } from './HowToRead';
 
 interface CoachingClientProps {
-  initialCoaches: CoachProfile[];
+  data: CoachingDataset;
 }
 
-export default function CoachingClient({ initialCoaches }: CoachingClientProps) {
+/** The measured figures, in table order. Every value comes from coaching_profiles.json. */
+type FigureKey =
+  | 'fourth_down_go_rate'
+  | 'nfl4th_go_when_recommended'
+  | 'nfl4th_go_when_not_recommended'
+  | 'pass_rate_over_expected'
+  | 'early_down_pass_rate'
+  | 'play_action_rate'
+  | 'seconds_per_play'
+  | 'challenge_success_rate'
+  | 'epa_after_own_timeout'
+  | 'timeouts_q1_q3_share'
+  | 'unused_timeouts_close_losses';
+
+interface FigureSpec {
+  key: FigureKey;
+  label: string;
+  short: string;
+  digits: number;
+  suffix: string;
+  signed?: boolean;
+  definition: string;
+}
+
+const FIGURES: FigureSpec[] = [
+  {
+    key: 'fourth_down_go_rate',
+    label: '4th-down go rate',
+    short: '4th Go %',
+    digits: 1,
+    suffix: '%',
+    definition:
+      'Share of 4th downs where the team ran a play rather than punting or attempting a field goal. Leaves out the last 2:00 of either half and 4th downs at or inside the opponent’s 2-yard line.',
+  },
+  {
+    key: 'nfl4th_go_when_recommended',
+    label: 'nfl4th: went when it should',
+    short: 'Went (Should)',
+    digits: 1,
+    suffix: '%',
+    definition:
+      'Using the nfl4th model: of 4th downs where going for it had the higher estimated win probability, the share where the team went. 4th downs the model gives no estimate for are left out.',
+  },
+  {
+    key: 'nfl4th_go_when_not_recommended',
+    label: 'nfl4th: went when it shouldn’t',
+    short: 'Went (Shouldn’t)',
+    digits: 1,
+    suffix: '%',
+    definition:
+      'Of 4th downs where kicking (punt or field goal) had the higher estimated win probability, the share where the team went.',
+  },
+  {
+    key: 'pass_rate_over_expected',
+    label: 'Pass rate over expected',
+    short: 'PROE',
+    digits: 1,
+    suffix: ' pts',
+    signed: true,
+    definition:
+      'Mean of nflverse pass_oe (percentage points above or below the expected pass rate) on 1st and 2nd down with win probability between 20% and 80%.',
+  },
+  {
+    key: 'early_down_pass_rate',
+    label: 'Early-down pass rate',
+    short: 'Early Pass %',
+    digits: 1,
+    suffix: '%',
+    definition: 'Dropbacks / (dropbacks + runs) on 1st and 2nd down with win probability between 20% and 80%.',
+  },
+  {
+    key: 'play_action_rate',
+    label: 'Play-action rate',
+    short: 'Play-Action %',
+    digits: 1,
+    suffix: '%',
+    definition:
+      'Play-action dropbacks / charted dropbacks, from FTN charting (n is the charted-dropback count). FTN charting can trail play-by-play by a week.',
+  },
+  {
+    key: 'seconds_per_play',
+    label: 'Seconds per play',
+    short: 'Sec / Play',
+    digits: 1,
+    suffix: 's',
+    definition:
+      'Mean game-clock seconds between consecutive offensive snaps (runs and passes) on the same drive, with the score within 7 and both snaps outside the last 2:00 of either half.',
+  },
+  {
+    key: 'challenge_success_rate',
+    label: 'Challenge success',
+    short: 'Challenge %',
+    digits: 1,
+    suffix: '%',
+    definition:
+      'Successful coach challenges / coach challenges. A coach challenge is a play whose nflverse description says the team challenged (for example “Indianapolis challenged …”); booth reviews by the Replay Official are not counted. Success means the ruling was reversed (nflverse replay_or_challenge_result).',
+  },
+  {
+    key: 'epa_after_own_timeout',
+    label: 'EPA after own timeout',
+    short: 'EPA After TO',
+    digits: 3,
+    suffix: '',
+    signed: true,
+    definition:
+      'Mean EPA on the next snap after a timeout the team called, counted when that snap is the team’s own offensive play (same game and half).',
+  },
+  {
+    key: 'timeouts_q1_q3_share',
+    label: 'Share of timeouts in quarters 1-3',
+    short: 'TO Q1-3 %',
+    digits: 1,
+    suffix: '%',
+    definition:
+      'Timeouts the team called in quarters 1-3 / all timeouts it called. Timeouts charged for a lost challenge are not counted as called.',
+  },
+  {
+    key: 'unused_timeouts_close_losses',
+    label: 'Unused timeouts when trailing at the end',
+    short: 'Unused TOs',
+    digits: 2,
+    suffix: '',
+    definition: 'Mean timeouts the team still had on the last play of games it lost by 8 points or fewer.',
+  },
+];
+
+const LABEL_BY_KEY: Record<string, string> = Object.fromEntries(FIGURES.map((f) => [f.key, f.label]));
+
+function insufficientText(fig: CoachingFigure): string {
+  return `insufficient sample (n = ${fig.n}, needs ${fig.min_n})`;
+}
+
+function formatFigure(fig: CoachingFigure, spec: FigureSpec): string {
+  if (fig.value === null) return insufficientText(fig);
+  const sign = spec.signed && fig.value > 0 ? '+' : '';
+  return `${sign}${fig.value.toFixed(spec.digits)}${spec.suffix}`;
+}
+
+function FigureCell({ fig, spec }: { fig: CoachingFigure; spec: FigureSpec }) {
+  if (fig.value === null) {
+    return (
+      <span className="text-[10px] font-sans text-slate-500 whitespace-normal" data-insufficient>
+        {insufficientText(fig)}
+      </span>
+    );
+  }
+  return <span className="text-slate-200">{formatFigure(fig, spec)}</span>;
+}
+
+/** Sort with nulls always last, whatever the direction. */
+function compareFigures(a: CoachingFigure, b: CoachingFigure, asc: boolean): number {
+  if (a.value === null && b.value === null) return 0;
+  if (a.value === null) return 1;
+  if (b.value === null) return -1;
+  return asc ? a.value - b.value : b.value - a.value;
+}
+
+function topBy(coaches: CoachProfile[], key: FigureKey, n = 3): CoachProfile[] {
+  return [...coaches]
+    .filter((c) => c[key].value !== null)
+    .sort((a, b) => compareFigures(a[key], b[key], false))
+    .slice(0, n);
+}
+
+export default function CoachingClient({ data }: CoachingClientProps) {
+  const coaches = data.teams;
   const [searchQuery, setSearchQuery] = useState('');
-  const [playCallerFilter, setPlayCallerFilter] = useState<string>('ALL');
   const [selectedCoach, setSelectedCoach] = useState<CoachProfile | null>(null);
-  const [sortField, setSortField] = useState<keyof CoachProfile>('fourth_down_aggression_index');
+  const [sortField, setSortField] = useState<FigureKey | 'tenure_seasons'>('fourth_down_go_rate');
   const [sortAsc, setSortAsc] = useState(false);
 
   const filteredCoaches = useMemo(() => {
-    return initialCoaches
-      .filter((c) => {
-        const matchesSearch =
-          c.head_coach.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.team.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.offensive_scheme.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.offensive_coordinator.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.defensive_coordinator.toLowerCase().includes(searchQuery.toLowerCase());
-
-        const matchesPlayCaller =
-          playCallerFilter === 'ALL' || c.play_caller === playCallerFilter;
-
-        return matchesSearch && matchesPlayCaller;
-      })
+    const q = searchQuery.toLowerCase();
+    return coaches
+      .filter((c) => c.head_coach.toLowerCase().includes(q) || c.team.toLowerCase().includes(q))
       .sort((a, b) => {
-        const aVal = a[sortField];
-        const bVal = b[sortField];
-        if (typeof aVal === 'number' && typeof bVal === 'number') {
-          return sortAsc ? aVal - bVal : bVal - aVal;
+        if (sortField === 'tenure_seasons') {
+          return sortAsc ? a.tenure_seasons - b.tenure_seasons : b.tenure_seasons - a.tenure_seasons;
         }
-        return sortAsc
-          ? String(aVal).localeCompare(String(bVal))
-          : String(bVal).localeCompare(String(aVal));
+        return compareFigures(a[sortField], b[sortField], sortAsc);
       });
-  }, [initialCoaches, searchQuery, playCallerFilter, sortField, sortAsc]);
+  }, [coaches, searchQuery, sortField, sortAsc]);
 
-  const topAggressive = useMemo(() => {
-    return [...initialCoaches]
-      .sort((a, b) => b.fourth_down_aggression_index - a.fourth_down_aggression_index)
-      .slice(0, 3);
-  }, [initialCoaches]);
+  const topGoRate = useMemo(() => topBy(coaches, 'fourth_down_go_rate'), [coaches]);
+  const topProe = useMemo(() => topBy(coaches, 'pass_rate_over_expected'), [coaches]);
+  const longestTenured = useMemo(
+    () => [...coaches].sort((a, b) => b.tenure_seasons - a.tenure_seasons).slice(0, 3),
+    [coaches],
+  );
 
-  const topProe = useMemo(() => {
-    return [...initialCoaches]
-      .sort((a, b) => b.pass_rate_over_expected - a.pass_rate_over_expected)
-      .slice(0, 3);
-  }, [initialCoaches]);
+  const buildDate = data.generated_at.slice(0, 10);
 
-  const longestTenured = useMemo(() => {
-    return [...initialCoaches]
-      .sort((a, b) => b.tenure_years - a.tenure_years)
-      .slice(0, 3);
-  }, [initialCoaches]);
+  const toggleSort = (key: FigureKey | 'tenure_seasons') => {
+    if (sortField === key) setSortAsc(!sortAsc);
+    else {
+      setSortField(key);
+      setSortAsc(false);
+    }
+  };
 
   const handleExportCsv = () => {
+    const rows = filteredCoaches.map((c) => {
+      const row: Record<string, unknown> = {
+        team: c.team,
+        head_coach: c.head_coach,
+        since_week: c.since_week,
+        games_coached: c.games_coached,
+        tenure_seasons: c.tenure_seasons,
+        career_record: c.career_record,
+        super_bowl_wins: c.super_bowl_wins,
+      };
+      for (const f of FIGURES) {
+        row[f.key] = c[f.key].value;
+        row[`${f.key}_n`] = c[f.key].n;
+        row[`${f.key}_min_n`] = c[f.key].min_n;
+      }
+      return row;
+    });
     exportToCsv(
-      filteredCoaches as unknown as Record<string, unknown>[],
+      rows,
       [
         { key: 'team', label: 'Team' },
         { key: 'head_coach', label: 'Head Coach' },
-        { key: 'tenure_years', label: 'Tenure (Years)' },
-        { key: 'offensive_coordinator', label: 'Off Coordinator' },
-        { key: 'defensive_coordinator', label: 'Def Coordinator' },
-        { key: 'offensive_play_caller', label: 'Off Play Caller' },
-        { key: 'defensive_play_caller', label: 'Def Play Caller' },
-        { key: 'fourth_down_aggression_index', label: '4th Down Aggression %ile' },
-        { key: 'pass_rate_over_expected', label: 'PROE %' },
-        { key: 'pace_seconds_per_play', label: 'Pace (s)' },
-        { key: 'timeout_management_grade', label: 'Clock Grade' },
+        { key: 'since_week', label: 'Since Week' },
+        { key: 'games_coached', label: 'Games Coached' },
+        { key: 'tenure_seasons', label: 'Tenure (Seasons)' },
+        { key: 'career_record', label: 'Career Record (1999+)' },
+        { key: 'super_bowl_wins', label: 'Super Bowl Wins (1999+)' },
+        ...FIGURES.flatMap((f) => [
+          { key: f.key, label: f.label },
+          { key: `${f.key}_n`, label: `${f.label} n` },
+          { key: `${f.key}_min_n`, label: `${f.label} min n` },
+        ]),
       ],
-      'nfl-coaching-profiles'
+      'nfl-coaching-profiles',
     );
   };
+
+  const sortArrow = (key: FigureKey | 'tenure_seasons') => (sortField === key ? (sortAsc ? ' ↑' : ' ↓') : '');
 
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="relative pb-6">
         <div>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
             <span className="text-xs font-mono font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded-full">
-              Coaching Analysis & In-Game Decision Matrix
+              Coaching Analysis & In-Game Decisions
             </span>
-            <span className="text-xs font-mono text-slate-400">
-              32 NFL Head Coaches & Staffs
+            <span className="text-xs font-mono text-slate-400">{coaches.length} NFL Head Coaches</span>
+            <span className="text-xs font-mono text-slate-400" data-testid="coaching-build-info">
+              {data.season} season, through week {data.through_week} &middot; built {buildDate}
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-            <span className="text-emerald-400">NFL</span> Head Coach Decision Profiles & Staff Architecture
+            <span className="text-emerald-400">NFL</span> Head Coach Decision Profiles
           </h1>
           <p className="text-slate-400 text-sm mt-1 max-w-3xl">
-            Analytical evaluation of NFL coaching decision tendencies: 4th-down go-for-it aggression percentiles,
-            Pass Rate Over Expected (<GlossaryTerm term="PROE" className="text-slate-300" />), play-action frequency, game pace, and timeout leverage.
+            Measured {data.season} decision tendencies for each team&rsquo;s current head coach: 4th-down go rate,
+            Pass Rate Over Expected (<GlossaryTerm term="PROE" className="text-slate-300" />), play-action rate, pace,
+            challenges and timeouts. Every figure is computed from nflverse data on each daily build.
           </p>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-emerald-500/40 to-transparent" />
@@ -110,28 +280,75 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
 
       <HowToRead pageKey="coaching">
         <p>
-          <strong>4th-down aggression</strong> is a percentile rank of how often a coach goes for it on 4th down
-          relative to what a points-maximizing model recommends in that situation, not just a raw go-for-it rate.{' '}
-          <GlossaryTerm term="PROE" className="text-slate-300" /> shows whether a staff passes more or less than
-          an average play-caller would given the down, distance, score, and time remaining &mdash; a positive
-          number means a pass-heavy scheme beyond what the situation calls for. &quot;Franchise Stability&quot;
-          tracks tenure and scheme continuity, not performance.
+          Each card covers only the games coached by the team&rsquo;s current head coach this season (&ldquo;since week
+          N&rdquo;), taken from the nflverse schedule. Every number is measured from nflverse play-by-play, FTN
+          charting and the nfl4th model, and carries its sample size n. A figure whose sample is below its minimum is
+          shown as &ldquo;insufficient sample (n = X, needs Y)&rdquo; instead of a number; no default or league
+          average is ever filled in.
         </p>
+        <h3 className="mt-3 mb-1 font-semibold text-slate-300">Definitions</h3>
+        <dl className="space-y-1.5">
+          {FIGURES.map((f) => (
+            <div key={f.key}>
+              <dt className="inline font-semibold text-slate-300">{f.label}: </dt>
+              <dd className="inline">{f.definition}</dd>
+            </div>
+          ))}
+          <div>
+            <dt className="inline font-semibold text-slate-300">Tenure with team: </dt>
+            <dd className="inline">Consecutive seasons, ending this one, as this team&rsquo;s head coach, from schedules.</dd>
+          </div>
+          <div>
+            <dt className="inline font-semibold text-slate-300">Career record and Super Bowl wins: </dt>
+            <dd className="inline">
+              Regular-season plus playoff W-L-T across all teams, and Super Bowls won, from nflverse schedules, which
+              start in {data.history_start_season}. A coach whose first game in that data is in{' '}
+              {data.history_start_season} is flagged as possibly truncated: games before {data.history_start_season}{' '}
+              are not counted.
+            </dd>
+          </div>
+        </dl>
+        <p className="mt-2">
+          The two nfl4th figures are model estimates: they compare a team&rsquo;s choice with the nfl4th package&rsquo;s
+          estimated win probability for going for it versus kicking, not with a known right answer.
+        </p>
+        <h3 className="mt-3 mb-1 font-semibold text-slate-300">Minimum samples</h3>
+        <p>
+          minimum = max(floor, ceiling(per-game rate &times; games coached)). Below it the figure is shown as
+          &ldquo;insufficient sample (n = X, needs Y)&rdquo;.
+        </p>
+        <table className="mt-1 text-[11px] font-mono" data-testid="coaching-min-sample-table">
+          <thead>
+            <tr className="text-slate-300">
+              <th className="pr-4 text-left font-semibold">Figure</th>
+              <th className="pr-4 text-right font-semibold">Per game</th>
+              <th className="text-right font-semibold">Floor</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.min_sample_rules.map((r) => (
+              <tr key={r.metric}>
+                <td className="pr-4">{LABEL_BY_KEY[r.metric] ?? r.metric}</td>
+                <td className="pr-4 text-right">{r.per_game === null ? 'fixed' : r.per_game}</td>
+                <td className="text-right">{r.floor}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </HowToRead>
 
       {/* KPI Cards / Leaders */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Most Aggressive on 4th Down */}
         <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 shadow-lg">
           <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
             <div className="flex items-center gap-2">
               <Zap className="w-4 h-4 text-emerald-400" />
-              <h2 className="text-sm font-semibold text-white">4th-Down Aggression Leaders</h2>
+              <h2 className="text-sm font-semibold text-white">4th-Down Go Rate Leaders</h2>
             </div>
-            <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">Percentile</span>
+            <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">Went for it</span>
           </div>
           <div className="space-y-2">
-            {topAggressive.map((c, i) => (
+            {topGoRate.map((c, i) => (
               <div
                 key={c.team}
                 onClick={() => setSelectedCoach(c)}
@@ -142,18 +359,19 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
                   <TeamLogo team={c.team} size="sm" />
                   <div>
                     <div className="text-xs font-medium text-white">{c.head_coach}</div>
-                    <div className="text-[11px] sm:text-[10px] text-slate-400 font-mono">{c.team} • {c.offensive_scheme.split('/')[0]}</div>
+                    <div className="text-[11px] sm:text-[10px] text-slate-400 font-mono">
+                      {c.team} &bull; n = {c.fourth_down_go_rate.n}
+                    </div>
                   </div>
                 </div>
                 <span className="text-xs font-mono font-bold text-emerald-400">
-                  {c.fourth_down_aggression_index}th %ile
+                  {formatFigure(c.fourth_down_go_rate, FIGURES[0])}
                 </span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Highest PROE (Pass-Happy) */}
         <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 shadow-lg">
           <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
             <div className="flex items-center gap-2">
@@ -162,7 +380,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
                 Pass Rate Over Expected (<GlossaryTerm term="PROE" className="text-cyan-300" />)
               </h2>
             </div>
-            <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">Air Raid / Spread</span>
+            <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">Early downs</span>
           </div>
           <div className="space-y-2">
             {topProe.map((c, i) => (
@@ -176,25 +394,26 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
                   <TeamLogo team={c.team} size="sm" />
                   <div>
                     <div className="text-xs font-medium text-white">{c.head_coach}</div>
-                    <div className="text-[11px] sm:text-[10px] text-slate-400 font-mono">{c.team} • {c.play_caller} Calls</div>
+                    <div className="text-[11px] sm:text-[10px] text-slate-400 font-mono">
+                      {c.team} &bull; n = {c.pass_rate_over_expected.n}
+                    </div>
                   </div>
                 </div>
                 <span className="text-xs font-mono font-bold text-cyan-400">
-                  +{c.pass_rate_over_expected.toFixed(1)}%
+                  {formatFigure(c.pass_rate_over_expected, FIGURES[3])}
                 </span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Longest Tenured */}
         <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 shadow-lg">
           <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-indigo-400" />
               <h2 className="text-sm font-semibold text-white">Franchise Stability</h2>
             </div>
-            <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">Tenure</span>
+            <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">Seasons with team</span>
           </div>
           <div className="space-y-2">
             {longestTenured.map((c, i) => (
@@ -208,46 +427,34 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
                   <TeamLogo team={c.team} size="sm" />
                   <div>
                     <div className="text-xs font-medium text-white">{c.head_coach}</div>
-                    <div className="text-[11px] sm:text-[10px] text-slate-400 font-mono">{c.team} • {c.super_bowl_wins} Rings</div>
+                    <div className="text-[11px] sm:text-[10px] text-slate-400 font-mono">
+                      {c.team} &bull; career {c.career_record}
+                      {c.career_possibly_truncated ? '*' : ''}
+                    </div>
                   </div>
                 </div>
-                <span className="text-xs font-mono font-bold text-indigo-400">
-                  {c.tenure_years} Seasons
-                </span>
+                <span className="text-xs font-mono font-bold text-indigo-400">{c.tenure_seasons} Seasons</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
+      {/* Search */}
       <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-surface-raised/90 border border-slate-800 p-3.5 rounded-xl">
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search coach, coordinator, team, or scheme..."
+            placeholder="Search coach or team..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-surface border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
           />
         </div>
-
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-mono text-slate-400 whitespace-nowrap">Offensive Caller:</label>
-            <select
-              aria-label="Filter by offensive play caller"
-              value={playCallerFilter}
-              onChange={(e) => setPlayCallerFilter(e.target.value)}
-              className="bg-surface border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
-            >
-              <option value="ALL">All Roles</option>
-              <option value="Head Coach">Head Coach</option>
-              <option value="Offensive Coordinator">Offensive Coordinator</option>
-            </select>
-          </div>
-        </div>
+        <span className="text-[11px] font-mono text-slate-400">
+          * career figures possibly truncated: first game in the data is in {data.history_start_season}
+        </span>
       </div>
 
       {/* Coaches Table */}
@@ -265,42 +472,29 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
           </button>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-mono">
+          <table className="w-full text-left text-xs font-mono" data-testid="coaching-table">
             <thead className="bg-surface/80 text-slate-400 uppercase text-[11px] sm:text-[10px] tracking-wider border-b border-slate-800">
               <tr>
                 <th className="px-4 py-3">Team</th>
                 <th className="px-3 py-3">Head Coach</th>
-                <th className="px-3 py-3">Tenure</th>
-                <th className="px-3 py-3">Off Coordinator</th>
-                <th className="px-3 py-3">Def Coordinator</th>
-                <th className="px-3 py-3">Off. Caller</th>
-                <th className="px-3 py-3">Def. Caller</th>
                 <th
-                  className="px-3 py-3 text-right cursor-pointer hover:text-white"
-                  onClick={() => {
-                    if (sortField === 'fourth_down_aggression_index') setSortAsc(!sortAsc);
-                    else {
-                      setSortField('fourth_down_aggression_index');
-                      setSortAsc(false);
-                    }
-                  }}
+                  className="px-3 py-3 text-right cursor-pointer hover:text-white whitespace-nowrap"
+                  onClick={() => toggleSort('tenure_seasons')}
                 >
-                  4th Aggress %ile {sortField === 'fourth_down_aggression_index' && (sortAsc ? '↑' : '↓')}
+                  Tenure{sortArrow('tenure_seasons')}
                 </th>
-                <th
-                  className="px-3 py-3 text-right cursor-pointer hover:text-white"
-                  onClick={() => {
-                    if (sortField === 'pass_rate_over_expected') setSortAsc(!sortAsc);
-                    else {
-                      setSortField('pass_rate_over_expected');
-                      setSortAsc(false);
-                    }
-                  }}
-                >
-                  PROE % {sortField === 'pass_rate_over_expected' && (sortAsc ? '↑' : '↓')}
-                </th>
-                <th className="px-3 py-3 text-right">Pace (s)</th>
-                <th className="px-3 py-3 text-center">Clock Grade</th>
+                <th className="px-3 py-3 whitespace-nowrap">Career</th>
+                {FIGURES.map((f) => (
+                  <th
+                    key={f.key}
+                    className="px-3 py-3 text-right cursor-pointer hover:text-white whitespace-nowrap"
+                    onClick={() => toggleSort(f.key)}
+                    aria-sort={sortField === f.key ? (sortAsc ? 'ascending' : 'descending') : 'none'}
+                  >
+                    {f.short}
+                    {sortArrow(f.key)}
+                  </th>
+                ))}
                 <th className="px-4 py-3 text-center">Action</th>
               </tr>
             </thead>
@@ -321,83 +515,22 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
                         <span className="font-bold text-white">{c.team}</span>
                       </div>
                     </td>
-                    <td className="px-3 py-3 font-sans font-semibold text-white">
-                      {c.head_coach}
+                    <td className="px-3 py-3 font-sans">
+                      <div className="font-semibold text-white whitespace-nowrap">{c.head_coach}</div>
+                      <div className="text-[10px] font-mono text-slate-500 whitespace-nowrap">
+                        since week {c.since_week ?? '—'} &middot; {c.games_coached} games
+                      </div>
                     </td>
-                    <td className="px-3 py-3 text-slate-400">
-                      {c.tenure_years} yrs
+                    <td className="px-3 py-3 text-right text-slate-400 whitespace-nowrap">{c.tenure_seasons} yrs</td>
+                    <td className="px-3 py-3 text-slate-400 whitespace-nowrap">
+                      {c.career_record}
+                      {c.career_possibly_truncated ? '*' : ''}
                     </td>
-                    <td className="px-3 py-3 font-sans text-slate-300">
-                      {c.offensive_coordinator}
-                    </td>
-                    <td className="px-3 py-3 font-sans text-slate-300">
-                      {c.defensive_coordinator}
-                    </td>
-                    <td className="px-3 py-3">
-                      <span
-                        className={`px-1.5 py-0.5 rounded text-[11px] sm:text-[10px] font-sans font-medium ${
-                          (c.offensive_play_caller || c.play_caller) === 'Head Coach'
-                            ? 'bg-purple-950/80 border border-purple-800 text-purple-300'
-                            : 'bg-emerald-950/80 border border-emerald-800 text-emerald-300'
-                        }`}
-                      >
-                        {c.offensive_play_caller || c.play_caller}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3">
-                      <span
-                        className={`px-1.5 py-0.5 rounded text-[11px] sm:text-[10px] font-sans font-medium ${
-                          (c.defensive_play_caller || 'Defensive Coordinator') === 'Head Coach'
-                            ? 'bg-purple-950/80 border border-purple-800 text-purple-300'
-                            : 'bg-blue-950/80 border border-blue-800 text-blue-300'
-                        }`}
-                      >
-                        {c.defensive_play_caller || 'Defensive Coordinator'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-right font-bold">
-                      <span
-                        className={
-                          c.fourth_down_aggression_index >= 80
-                            ? 'text-emerald-400'
-                            : c.fourth_down_aggression_index < 60
-                            ? 'text-rose-400'
-                            : 'text-amber-400'
-                        }
-                      >
-                        {c.fourth_down_aggression_index}th
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-right font-bold">
-                      <span
-                        className={
-                          c.pass_rate_over_expected > 2.0
-                            ? 'text-cyan-400'
-                            : c.pass_rate_over_expected < -2.0
-                            ? 'text-amber-400'
-                            : 'text-slate-300'
-                        }
-                      >
-                        {c.pass_rate_over_expected > 0 ? '+' : ''}
-                        {c.pass_rate_over_expected.toFixed(1)}%
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-right text-slate-400">
-                      {c.pace_seconds_per_play.toFixed(1)}s
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[11px] sm:text-[10px] font-bold ${
-                          c.timeout_management_grade.startsWith('A')
-                            ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                            : c.timeout_management_grade.startsWith('B')
-                            ? 'bg-blue-950 text-blue-400 border border-blue-800'
-                            : 'bg-rose-950 text-rose-400 border border-rose-800'
-                        }`}
-                      >
-                        {c.timeout_management_grade}
-                      </span>
-                    </td>
+                    {FIGURES.map((f) => (
+                      <td key={f.key} className="px-3 py-3 text-right min-w-[7rem]">
+                        <FigureCell fig={c[f.key]} spec={f} />
+                      </td>
+                    ))}
                     <td className="px-4 py-3 text-center">
                       <ChevronRight className="w-4 h-4 text-slate-500 inline group-hover:text-white" />
                     </td>
@@ -409,7 +542,7 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
         </div>
       </div>
 
-      {/* Selected Coach Deep-Dive Drawer */}
+      {/* Selected Coach Card */}
       {selectedCoach && (
         <div className="bg-surface-raised/90 border border-emerald-500/50 rounded-xl p-5 shadow-2xl relative">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-slate-800 gap-4">
@@ -419,20 +552,20 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                   {selectedCoach.head_coach}
                   <span className="text-xs font-mono font-normal text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
-                    {selectedCoach.team} • Year {selectedCoach.tenure_years}
+                    {selectedCoach.team} &bull; since week {selectedCoach.since_week ?? '—'} &bull;{' '}
+                    {selectedCoach.games_coached} games
                   </span>
                 </h2>
                 <p className="text-xs text-slate-400 font-mono mt-0.5">
-                  Career Record: {selectedCoach.career_record} • {selectedCoach.super_bowl_wins} Super Bowl Titles
+                  Tenure {selectedCoach.tenure_seasons} seasons &bull; Career {selectedCoach.career_record} (
+                  {selectedCoach.career_games} games) &bull; {selectedCoach.super_bowl_wins} Super Bowl wins
                 </p>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded bg-surface border border-slate-800 text-slate-300">
-                    <strong className="text-slate-400">Offense Calls:</strong> {selectedCoach.offensive_play_caller || selectedCoach.play_caller} ({selectedCoach.offensive_play_caller === 'Head Coach' ? selectedCoach.head_coach : selectedCoach.offensive_coordinator})
-                  </span>
-                  <span className="text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded bg-surface border border-slate-800 text-slate-300">
-                    <strong className="text-slate-400">Defense Calls:</strong> {selectedCoach.defensive_play_caller || 'Defensive Coordinator'} ({selectedCoach.defensive_play_caller === 'Head Coach' ? selectedCoach.head_coach : selectedCoach.defensive_coordinator})
-                  </span>
-                </div>
+                {selectedCoach.career_possibly_truncated && (
+                  <p className="text-[11px] text-amber-400 font-mono mt-1" data-testid="coaching-truncation-flag">
+                    Career figures possibly truncated: nflverse schedules start in {data.history_start_season}, the
+                    season of this coach&rsquo;s first game in the data.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -445,33 +578,33 @@ export default function CoachingClient({ initialCoaches }: CoachingClientProps) 
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
-            <div className="bg-surface/60 p-3 rounded-lg border border-slate-800">
-              <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-500 block">Offensive Scheme</span>
-              <span className="text-xs font-sans font-semibold text-white block mt-0.5">
-                {selectedCoach.offensive_scheme}
-              </span>
-            </div>
-            <div className="bg-surface/60 p-3 rounded-lg border border-slate-800">
-              <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-500 block">Defensive Scheme</span>
-              <span className="text-xs font-sans font-semibold text-white block mt-0.5">
-                {selectedCoach.defensive_scheme}
-              </span>
-            </div>
-            <div className="bg-surface/60 p-3 rounded-lg border border-slate-800">
-              <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-500 block">Play-Action Rate</span>
-              <span className="text-sm font-mono font-bold text-emerald-400 block mt-0.5">
-                {selectedCoach.play_action_rate.toFixed(1)}%
-              </span>
-            </div>
-            <div className="bg-surface/60 p-3 rounded-lg border border-slate-800">
-              <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-500 block">Challenge Win %</span>
-              <span className="text-sm font-mono font-bold text-cyan-400 block mt-0.5">
-                {selectedCoach.challenge_win_pct.toFixed(1)}%
-              </span>
-            </div>
+            {FIGURES.map((f) => {
+              const fig = selectedCoach[f.key];
+              return (
+                <div key={f.key} className="bg-surface/60 p-3 rounded-lg border border-slate-800">
+                  <span className="text-[11px] sm:text-[10px] font-mono uppercase text-slate-500 block">{f.label}</span>
+                  {fig.value === null ? (
+                    <span className="text-[11px] font-mono text-slate-400 block mt-0.5">{insufficientText(fig)}</span>
+                  ) : (
+                    <>
+                      <span className="text-sm font-mono font-bold text-emerald-400 block mt-0.5">
+                        {formatFigure(fig, f)}
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-500 block">n = {fig.n}</span>
+                    </>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
+
+      <p className="text-[11px] font-mono text-slate-500">
+        Play-action data: FTN Data via nflverse (CC-BY-SA 4.0)
+        {data.play_action_through_week !== null ? `, charted through week ${data.play_action_through_week}` : ''}.
+        Play-by-play, schedules and 4th-down model estimates: nflverse and nfl4th.
+      </p>
     </div>
   );
 }

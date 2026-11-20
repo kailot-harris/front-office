@@ -18,7 +18,7 @@
 #
 # THE ASSERTIONS
 #   A  mtime freshness - every entry of config.R's WEB_DATA_FILES has an mtime
-#      later than the run start. The nine filenames are NEVER re-typed here; they
+#      later than the run start. The filenames are NEVER re-typed here; they
 #      are read from config.R, per CLAUDE.md's single-source-of-truth convention.
 #   B  week agreement  - active_week is INDEPENDENTLY recomputed from
 #      CACHE_SCHEDULES (lowest CURRENT_SEASON week whose max(gameday) >=
@@ -98,7 +98,7 @@
 # A (mtime freshness) FAILS:
 #     Rscript -e "source('tools/publish_web.R'); print(publish_web(dry_run = TRUE, run_start = Sys.time())$assertions_failed)"
 #   Passing run_start = now makes every published file older than the run start by
-#   construction, so A fails for all nine and the exit status is non-zero.
+#   construction, so A fails for every listed file and the exit status is non-zero.
 #   Nothing is written; no restore needed. (Equivalent no-argument form: push one
 #   file's mtime backwards with Sys.setFileTime() and re-run.)
 #
@@ -135,12 +135,15 @@
 #   on any clean tree and C fails with "CLEAN against HEAD - nothing to publish".
 #
 # D (log scan) is a REPORTING assertion by default (warnings are surfaced, not
-#   fatal), because coaching_profiles.json emits a benign republish warning on
-#   every single run by design (config.R:676-711) and making that fatal would make
-#   the gate permanently red. Its FAILING form is opt-in and reproducible:
+#   fatal). It was made non-fatal while coaching_profiles.json was a hand-typed
+#   file the exporter republished verbatim, with a benign warning, on every run.
+#   Since NFL_analytics#171 that file is built from nflverse data by
+#   build_coaching_dataset.R and is a WEB_DATA_FILES member, so a stale copy is
+#   caught by A and F and no longer produces an exporter warning. D stays
+#   reporting-only because salary_cap_profiles.json can still fall back to a
+#   verbatim republish (which F also catches). Its FAILING form is opt-in:
 #     Rscript -e "source('tools/publish_web.R'); publish_web(dry_run = TRUE, fail_on_exporter_warnings = TRUE)"
-#   Against the real log this fails on the live "republished coaching_profiles.json
-#   VERBATIM" warning. To reproduce a warning that SHOULD always be treated as
+#   It fails whenever the run window holds any exporter [WARN] line. To reproduce a warning that SHOULD always be treated as
 #   fatal (a genuinely stale published dataset), move cache/latest_value_bets.rds
 #   aside so the exporter's republish branch at export_web_datasets.R:1135 fires,
 #   re-run the exporter, and D then surfaces "value_bets.json NOT refreshed ...
@@ -254,7 +257,7 @@ source("logging_utils.R")
 # ASSERTION A - mtime freshness
 # ------------------------------------------------------------------------------
 .assert_mtime_freshness <- function(run_start) {
-  files <- WEB_DATA_FILES          # <- the nine names come from config.R ONLY
+  files <- WEB_DATA_FILES          # <- the names come from config.R ONLY
   info  <- file.info(files)
   stale <- character(0)
   rows  <- vector("list", length(files))

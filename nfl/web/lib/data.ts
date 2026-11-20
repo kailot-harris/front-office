@@ -8,7 +8,7 @@ import {
   QbProfile,
   DiagnosticsDataset,
   VisualMediaItem,
-  CoachProfile,
+  CoachingDataset,
   SalaryCapDataset,
   PassingCatalogEntry,
   PassingMetadata,
@@ -54,8 +54,8 @@ export function getVisualMediaIndex(): VisualMediaItem[] {
   return readJsonFile<VisualMediaItem[]>('visual_media_index.json');
 }
 
-export function getCoachingProfiles(): CoachProfile[] {
-  return readJsonFile<CoachProfile[]>('coaching_profiles.json');
+export function getCoachingProfiles(): CoachingDataset {
+  return readJsonFile<CoachingDataset>('coaching_profiles.json');
 }
 
 export function getSalaryCapData(): SalaryCapDataset {

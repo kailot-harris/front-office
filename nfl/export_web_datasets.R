@@ -56,18 +56,18 @@ run_export_web_datasets <- function() {
   }
 
   # Republish an already-correct file verbatim (byte-identical) so that its mtime
-  # advances on every run. Two of the ten published datasets still need this:
-  # salary_cap_profiles.json when its live nflreadr::load_contracts() fetch is
-  # unavailable or fails, and coaching_profiles.json which is a hand-seeded static
-  # artifact with no upstream cache at all (see section 9).
+  # advances on every run. Only salary_cap_profiles.json still needs this, when its
+  # live nflreadr::load_contracts() fetch is unavailable or fails. (coaching_profiles.json
+  # used to be republished here as a hand-typed file; since NFL_analytics#171 it is
+  # built from nflverse data by build_coaching_dataset.R and this script no longer
+  # touches it.)
   #
   # IMPORTANT, and the reason `reason` is mandatory: run_stage()'s declared
   # `output = WEB_DATA_FILES` staleness check (finding C-2) compares mtimes only, so a
   # republished file ALWAYS looks fresh and the C-2 assertion is structurally blind to
   # it. A republish is therefore a silent fallback unless it announces itself - hence the
   # log_warn() below, which puts the filename and the reason in logs/nfl_pipeline.log
-  # where an operator reviewing a run can actually see it. coaching_profiles.json is
-  # deliberately no longer a member of WEB_DATA_FILES for exactly this reason.
+  # where an operator reviewing a run can actually see it.
   #
   # Verbatim bytes, never a re-serialization - round-tripping these through
   # fromJSON()/toJSON() would reshape nested arrays and break the JSON contract the
@@ -1281,29 +1281,8 @@ run_export_web_datasets <- function() {
                             reason = sprintf("load_contracts() export failed: %s", conditionMessage(e)))
   })
 
-  # ------------------------------------------------------------------------------
-  # 9. Coaching Profiles (coaching_profiles.json) - STATIC SEEDED ARTIFACT
-  # ------------------------------------------------------------------------------
-  # coaching_profiles.json has NO upstream source. "coaching" appears in exactly two
-  # files in this repo: config.R (where it is nothing but the WEB_JSON_COACHING_PROFILES
-  # path constant) and this script. No ingest script, engine or cache/*.rds produces
-  # coaching-staff, scheme, aggression or pace data, so this file is hand-seeded content
-  # committed under web/public/data/ and it can never be "live". It is therefore
-  # deliberately NOT a member of config.R's WEB_DATA_FILES aggregate - declaring a file
-  # the pipeline cannot derive as a pipeline output is how a stale artifact gets
-  # laundered into looking fresh by an mtime-only staleness check.
-  #
-  # The old percentile-normalization branch here (DATA-7) was a one-shot migration: it
-  # rescaled fourth_down_aggression_index onto 12..98 only when min(vals) >= 25, and the
-  # committed file has held the post-migration range (min 12, max 98) ever since. The
-  # guard can therefore never be true again, so the branch was dead code that implied
-  # this file had a derivation step it does not have. It has been removed. If coaching
-  # metrics ever gain a real upstream source, build a numbered section that reads it from
-  # cache/ and add WEB_JSON_COACHING_PROFILES back to WEB_DATA_FILES at that point.
-  cat(">>> [9] Republishing static coaching profiles artifact (no upstream source)...\n")
-  republish_json_verbatim("coaching_profiles.json",
-                          reason = "hand-seeded static artifact with no upstream cache/*.rds source")
-
+  # coaching_profiles.json is not exported here: build_coaching_dataset.R (pipeline
+  # Stage 14.4) builds it from nflverse data (NFL_analytics#171).
 
   cat(sprintf("\n>>> [SUCCESS] Web datasets successfully exported to %s/!\n", WEB_DATA_DIR))
   invisible(TRUE)

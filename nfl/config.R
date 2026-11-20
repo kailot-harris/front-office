@@ -616,6 +616,10 @@ CACHE_DNA_SCHEDULES     <- file.path(CACHE_DIR, sprintf("nfl_schedules_%d.rds", 
 CACHE_DNA_NGS_PASSING   <- file.path(CACHE_DIR, sprintf("nfl_ngs_passing_%d.rds", CURRENT_SEASON))
 CACHE_DNA_NGS_RUSHING   <- file.path(CACHE_DIR, sprintf("nfl_ngs_rushing_%d.rds", CURRENT_SEASON))
 CACHE_PLAYER_DNA_PROFILES <- file.path(CACHE_DIR, "player_dna_profiles.rds")
+# /coaching (build_coaching_dataset.R, NFL_analytics#171): nflverse schedules from 1999 (the first
+# season nflverse covers) through CURRENT_SEASON, saved by the builder so the offline tests can
+# check the published head coaches against the schedule. Gitignored via cache/nfl_schedules_*.rds.
+CACHE_COACHING_SCHEDULES <- file.path(CACHE_DIR, sprintf("nfl_schedules_coaching_1999_%d.rds", CURRENT_SEASON))
 # /dna null / comparison thresholds (documented in build_player_dna_dataset.R's header). Each
 # player has 5 skill dimensions: overallRating needs at least DNA_MIN_DIMS_OVERALL non-null
 # dimensions; two players are compared only on dimensions both have, and only when at least
@@ -759,21 +763,16 @@ CACHE_TURNOVER_HISTORY <- file.path(CACHE_DIR, "turnover_margin_history.rds")
 # as CACHE_DIR above, because every script in this flat repo is run with the repo root as the
 # working directory (run_full_pipeline.R's run_stage() source()s siblings by bare filename).
 #
-# WEB_DATA_FILES is the aggregate run_full_pipeline.R passes to run_stage()'s `output =`.
-# It lists the EIGHT published datasets the exporter genuinely DERIVES from cache/*.rds on
-# every run, which is what makes declaring them correct here (unlike accuracy_tracker.R /
-# bet_tracker.r, which legitimately no-op on a quiet day and therefore deliberately omit
-# `output =`).
+# WEB_DATA_FILES is the list of published datasets the daily pipeline regenerates on every
+# run. tools/publish_web.R checks each one (Assertion A: mtime after run start; Assertion F:
+# embedded `generated_at` at or after run start), so a member that is not refreshed blocks the
+# publish. run_full_pipeline.R declares these files as stage outputs: the exporter stage
+# declares every member except WEB_JSON_COACHING_PROFILES, which its own stage declares.
 #
-# WEB_JSON_COACHING_PROFILES is deliberately NOT a member. coaching_profiles.json is a
-# hand-seeded static artifact with no upstream source anywhere in this repo - no ingest
-# script, engine or cache/*.rds produces coaching-staff/scheme/pace data - so the exporter
-# can only republish its existing bytes verbatim. The path constant below is still needed
-# (the exporter republishes through it), but declaring it as a stage `output` would be
-# false: .check_stage_output() compares mtimes only, and a verbatim republish always
-# advances the mtime, so the C-2 assertion is structurally incapable of flagging that file
-# as stale. Keeping it out of this list is what keeps the assertion honest; the exporter
-# emits a log_warn() naming the file and the reason on every republish instead.
+# WEB_JSON_COACHING_PROFILES is a member since NFL_analytics#171. coaching_profiles.json used
+# to be a hand-typed file the exporter republished verbatim; it is now written on every run by
+# build_coaching_dataset.R (Stage 14.4), measured from nflverse data, with `generated_at` as
+# its first key. The exporter no longer touches it.
 #
 # Caveat that applies to one file that IS listed: salary_cap_profiles.json is normally
 # derived live (nflreadr::load_contracts()), but falls back to a verbatim republish if that
@@ -827,7 +826,8 @@ WEB_DATA_FILES <- c(
   WEB_JSON_PLAYOFF_PICTURE,
   WEB_JSON_PLAYER_QB_PROFILES,
   WEB_JSON_MODEL_DIAGNOSTICS,
-  WEB_JSON_SALARY_CAP_PROFILES
+  WEB_JSON_SALARY_CAP_PROFILES,
+  WEB_JSON_COACHING_PROFILES
 )
 
 # ------------------------------------------------------------------------------------------

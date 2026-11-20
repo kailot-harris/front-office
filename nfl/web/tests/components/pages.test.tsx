@@ -19,7 +19,8 @@ import { PlayoffBracketSimulator } from '../../components/PlayoffBracketSimulato
 import { TeamLogo } from '../../components/TeamLogo';
 import { Sidebar } from '../../components/Sidebar';
 import { NFL_TEAMS_METADATA } from '../../lib/teams';
-import { coaching, diagnostics, media, playoffs, salaryCap } from '../helpers/datasets';
+import { coachingDataset, diagnostics, media, playoffs, salaryCap } from '../helpers/datasets';
+import { COACHING_FIGURE_KEYS } from '../contracts/schemas';
 
 // ---------------------------------------------------------------- TeamLogo ---
 
@@ -122,35 +123,74 @@ describe('Sidebar', () => {
 // --------------------------------------------------------- CoachingClient ---
 
 describe('CoachingClient', () => {
-  const coaches = coaching();
+  const data = coachingDataset();
+  const coaches = data.teams;
 
   it('lists all 32 head coaches', () => {
-    const { container } = render(<CoachingClient initialCoaches={coaches} />);
+    const { container } = render(<CoachingClient data={data} />);
     for (const c of coaches) {
       expect(container.textContent, `${c.team} / ${c.head_coach} missing`).toContain(c.head_coach);
     }
   });
 
   it('never prints NaN or undefined', () => {
-    const { container } = render(<CoachingClient initialCoaches={coaches} />);
+    const { container } = render(<CoachingClient data={data} />);
     expect(container.textContent).not.toMatch(/NaN|undefined/);
   });
 
-  it('renders the minus grades the data actually contains', () => {
-    // lib/types.ts omits 'A-' and 'B-' from the timeout_management_grade union.
-    // The component keys its colour off `.startsWith('A')`, so these render
-    // correctly despite the type being wrong — this test pins that behaviour.
-    const { container } = render(<CoachingClient initialCoaches={coaches} />);
-    for (const grade of new Set(coaches.map((c) => c.timeout_management_grade))) {
-      expect(container.textContent, `grade ${grade} not rendered`).toContain(grade);
-    }
+  it('shows no staff, scheme or grade UI', () => {
+    const { container } = render(<CoachingClient data={data} />);
+    expect(container.textContent).not.toMatch(/Coordinator|Scheme|Clock Grade|Play Caller|%ile/i);
+  });
+
+  it('shows the build date, the season and the FTN credit line', () => {
+    const { container } = render(<CoachingClient data={data} />);
+    expect(container.textContent).toContain(`built ${data.generated_at.slice(0, 10)}`);
+    expect(container.textContent).toContain(`${data.season} season`);
+    expect(container.textContent).toContain('Play-action data: FTN Data via nflverse (CC-BY-SA 4.0)');
+  });
+
+  it('prints "insufficient sample (n = X, needs Y)" for every null figure in the table', () => {
+    const { container } = render(<CoachingClient data={data} />);
+    const cells = Array.from(container.querySelectorAll('[data-testid="coaching-table"] [data-insufficient]')).map((e) => e.textContent);
+    const expected = coaches.flatMap((c) =>
+      COACHING_FIGURE_KEYS.filter((k) => c[k].value === null).map(
+        (k) => `insufficient sample (n = ${c[k].n}, needs ${c[k].min_n})`,
+      ),
+    );
+    expect(cells.sort()).toEqual(expected.sort());
+  });
+
+  it('sorts by 4th-down go rate, highest first, by default', () => {
+    const { container } = render(<CoachingClient data={data} />);
+    const first = container.querySelector('[data-testid="coaching-table"] tbody tr')!.textContent ?? '';
+    const top = [...coaches]
+      .filter((c) => c.fourth_down_go_rate.value !== null)
+      .sort((a, b) => b.fourth_down_go_rate.value! - a.fourth_down_go_rate.value!)[0];
+    expect(first).toContain(top.head_coach);
+  });
+
+  it('flags a possibly truncated career on the coach card', () => {
+    const truncated = coaches.find((c) => c.career_possibly_truncated);
+    if (!truncated) return;
+    const { container } = render(<CoachingClient data={data} />);
+    const row = Array.from(container.querySelectorAll('[data-testid="coaching-table"] tbody tr')).find((r) => r.textContent?.includes(truncated.head_coach))!;
+    fireEvent.click(row);
+    expect(screen.getByTestId('coaching-truncation-flag').textContent).toContain(String(data.history_start_season));
+  });
+
+  it('the How to read disclosure lists the minimum-sample table from the data', () => {
+    const { container } = render(<CoachingClient data={data} />);
+    fireEvent.click(screen.getByRole('button', { name: /how to read this/i }));
+    const table = screen.getByTestId('coaching-min-sample-table');
+    expect(table.querySelectorAll('tbody tr')).toHaveLength(data.min_sample_rules.length);
+    expect(container.textContent).not.toMatch(/points-maximizing|percentile rank/i);
+    expect(container.textContent).toContain('model estimates');
   });
 
   it('searching by coach name narrows the table', () => {
-    // Scoped to <tbody>: the aggression/PROE/tenure podiums above the table
-    // always show the league top three and are deliberately not filtered.
-    const { container } = render(<CoachingClient initialCoaches={coaches} />);
-    const body = () => container.querySelector('tbody')!.textContent ?? '';
+    const { container } = render(<CoachingClient data={data} />);
+    const body = () => container.querySelector('[data-testid="coaching-table"] tbody')!.textContent ?? '';
     const target = coaches[0];
     fireEvent.change(screen.getAllByPlaceholderText(/search/i)[0], { target: { value: target.head_coach } });
     expect(body()).toContain(target.head_coach);
@@ -158,30 +198,15 @@ describe('CoachingClient', () => {
     expect(body().includes(other.head_coach), `${other.head_coach} survived the filter`).toBe(false);
   });
 
-  it('searching by scheme and by coordinator both work', () => {
-    const { container } = render(<CoachingClient initialCoaches={coaches} />);
-    const search = () => screen.getAllByPlaceholderText(/search/i)[0];
-    fireEvent.change(search(), { target: { value: coaches[0].offensive_scheme } });
-    expect(container.textContent).toContain(coaches[0].head_coach);
-    fireEvent.change(search(), { target: { value: coaches[0].defensive_coordinator } });
-    expect(container.textContent).toContain(coaches[0].head_coach);
-  });
-
   it('an unmatched search empties the table without crashing', () => {
-    const { container } = render(<CoachingClient initialCoaches={coaches} />);
+    const { container } = render(<CoachingClient data={data} />);
     fireEvent.change(screen.getAllByPlaceholderText(/search/i)[0], { target: { value: 'zzzznotacoach' } });
     expect(container.textContent).not.toMatch(/NaN|undefined/);
-    expect(container.querySelector('tbody')!.querySelectorAll('tr')).toHaveLength(0);
+    expect(container.querySelector('[data-testid="coaching-table"] tbody')!.querySelectorAll('tr')).toHaveLength(0);
   });
 
-  it('the aggression podium holds the three most aggressive coaches', () => {
-    const { container } = render(<CoachingClient initialCoaches={coaches} />);
-    const top = [...coaches].sort((a, b) => b.fourth_down_aggression_index - a.fourth_down_aggression_index)[0];
-    expect(container.textContent).toContain(`${top.fourth_down_aggression_index}th %ile`);
-  });
-
-  it('renders an empty staff list without throwing', () => {
-    expect(() => render(<CoachingClient initialCoaches={[]} />)).not.toThrow();
+  it('renders an empty team list without throwing', () => {
+    expect(() => render(<CoachingClient data={{ ...data, teams: [] }} />)).not.toThrow();
   });
 });
 
