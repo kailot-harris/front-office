@@ -367,7 +367,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                         {selectedCoach.headCoach.name}
                       </h3>
                       <div className="text-xs text-slate-400 mt-0.5">
-                        {selectedCoach.teamName} • {selectedCoach.headCoach.tenureYears} yrs tenure • {selectedCoach.headCoach.careerGames} G
+                        {selectedCoach.teamName} • {selectedCoach.headCoach.tenureYears} yrs tenure
                       </div>
                     </div>
                   </div>

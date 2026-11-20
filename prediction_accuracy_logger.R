@@ -442,8 +442,8 @@ migrate_prediction_log_provenance_v3 <- function(log_df, persist = FALSE) {
     cat(sprintf("[PREDICTION LOG]   REJECTED  game_id %s  %s\n",
                 rejected$game_id[i], keys[i]))
   }
-  cat(paste0("[PREDICTION LOG]   Cause is upstream in market_odds_engine.R: the ",
-             "bookmaker matchup string paired teams that are not playing each ",
+  cat(paste0("[PREDICTION LOG]   Cause is upstream in matchup/schedule slate ingestion: ",
+             "the parsed matchup string paired teams that are not playing each ",
              "other. Do NOT 'fix' this with a reversed home/away join.\n"))
 
   if (isTRUE(strict)) {

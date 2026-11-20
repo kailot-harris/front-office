@@ -452,6 +452,17 @@ describe('Domain & mathematical invariants: clutch, defense, playerDna, coaches,
     }
   });
 
+  it('coaching_metrics.json: omits unverified hand-typed careerGames and careerWinPct fields (#188)', () => {
+    for (const c of coaches) {
+      const topKeys = Object.keys(c as unknown as Record<string, unknown>);
+      const hcKeys = Object.keys(c.headCoach as unknown as Record<string, unknown>);
+      expect(topKeys, `${c.teamAbbr} top-level`).not.toContain('careerGames');
+      expect(topKeys, `${c.teamAbbr} top-level`).not.toContain('careerWinPct');
+      expect(hcKeys, `${c.teamAbbr} headCoach`).not.toContain('careerGames');
+      expect(hcKeys, `${c.teamAbbr} headCoach`).not.toContain('careerWinPct');
+    }
+  });
+
   it('offseason_draft.json: picks are sequential 1..60 across rounds 1 and 2', () => {
     expect(offseasonDraft.map((p) => p.pick)).toEqual(Array.from({ length: 60 }, (_, i) => i + 1));
     expect(offseasonDraft.slice(0, 30).every((p) => p.round === 1)).toBe(true);

@@ -6,8 +6,6 @@
 export interface HeadCoachInfo {
   name: string;
   tenureYears: number;
-  careerGames: number;
-  careerWinPct: number;
   coachingTree: string;
   tacticalArchetype: string;
 }

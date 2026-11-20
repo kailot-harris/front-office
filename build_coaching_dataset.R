@@ -17,14 +17,15 @@
 #     current-season games are in it, load_tactical_events() switches to the prior
 #     season alone (a console line is the only notice); observedSeasons names the seasons actually used. If the
 #     cache is missing or unreadable, ATO and challenge metrics, their percentiles,
-#     and coachImpactRating are published as null and tagged "unobserved". The head-coach registry (tenure, career games,
-#     career win pct) is typed by hand in coaching_registry_raw, not loaded from data.
+#     and coachImpactRating are published as null and tagged "unobserved". The head-coach
+#     registry (tenure, coaching tree, staff) is maintained in coaching_registry_raw,
+#     not loaded from data (hand-typed career win/loss fields removed under #188).
 #   Filters: ATO rows are event_type "ato_offense" / "ato_defense"; challenge rows are
 #     event_type "challenge". ATO points per possession is total points divided by
 #     total possessions per team.
 #   Minimum sample: 1 observed event. A team with 0 observed events publishes null
 #     for its rate, percentile, and composite rating (never a league-average default).
-#   Known issues: #188 (hand-typed career record).
+#   Resolved: #188 (removed hand-typed career record fields).
 # ==============================================================================
 
 suppressPackageStartupMessages({
@@ -48,37 +49,37 @@ if (!dir.exists(CACHE_DIR)) dir.create(CACHE_DIR, recursive = TRUE)
 cat(">>> Building official 30-team coaching staff registry (2026-2027 season baseline)...\n")
 
 coaching_registry_raw <- tribble(
-  ~team_abbr, ~team_name, ~head_coach, ~tenure_years, ~career_games, ~career_win_pct, ~coaching_tree, ~assoc_head_coach, ~offensive_coord, ~defensive_coord, ~player_dev_lead, ~tactical_archetype,
-  "OKC", "Thunder", "Mark Daigneault", 7, 476, 0.605, "Billy Donovan", "Dave Bliss", "Chip Engelland", "Grant Gibbs", "Chip Engelland", "5-Out Drive & Kick / Aggressive Blitz & Switch",
-  "BOS", "Celtics", "Joe Mazzulla", 5, 328, 0.720, "Brad Stevens", "Sam Cassell", "Matt Reynolds", "Craig Luschenat", "Amile Jefferson", "Extreme 3P Volume & Switch-Everything Defense",
-  "HOU", "Rockets", "Ime Udoka", 5, 328, 0.604, "Gregg Popovich", "Royal Ivey", "Garrett Jackson", "Ben Sullivan", "Tiago Splitter", "Physical Attrition, Switching & Relentless Glass Crash",
-  "CLE", "Cavaliers", "Kenny Atkinson", 7, 472, 0.530, "Mike Budenholzer", "Johnnie Bryant", "DeMarre Carroll", "Trevor Hendry", "Alex Jensen", "Dual-Rim Bigs Flow & Pace Acceleration",
-  "NYK", "Knicks", "Mike Brown", 1, 848, 0.540, "Gregg Popovich", "Rick Brunson", "Andy Greer", "Dice Yoshimoto", "Darren Erman", "DHO Motion Flow, High Pacing & Brunson/Towns Spread PnR",
-  "GSW", "Warriors", "Steve Kerr", 13, 957, 0.641, "Gregg Popovich", "Terry Stotts", "Bruce Fraser", "Jerry Stackhouse", "Kris Weems", "Motion Read-and-React, Split-Cuts & Off-Ball Screens",
-  "MIN", "Timberwolves", "Chris Finch", 7, 451, 0.565, "Nick Nurse", "Micah Nori", "Pablo Prigioni", "Elston Turner", "Corliss Williamson", "Twin Towers Low-Drop & Corner Pinch Post",
-  "IND", "Pacers", "Rick Carlisle", 25, 1935, 0.545, "Chuck Daly", "Lloyd Pierce", "Mike Weinar", "Jenny Boucek", "Jim Boylen", "Turbo-Pace 7-Second Early Offense & Haliburton DHOs",
-  "DEN", "Nuggets", "Michael Malone", 12, 989, 0.574, "Bob Malone", "David Adelman", "Ryan Saunders", "Charles Klask", "Ognjen Stojakovic", "Jokic Elbow Hub, Cutters & Inverted Pick-and-Roll",
-  "MEM", "Grizzlies", "Tuomas Iisalo", 1, 0, 0.500, "European Modern Motion", "Anthony Carter", "Noah LaRoche", "Patrick Mutombo", "Blake Ahearn", "Iisalo High-Tempo Spacing & Ja Morant Transition Assault",
-  "MIL", "Bucks", "Taylor Jenkins", 1, 554, 0.536, "Mike Budenholzer", "Rex Kalamian", "Dave Joerger", "Pete Dominguez", "Vin Baker", "Post-Giannis Lillard Spread Sets, PnR Flow & Drop Protection",
-  "MIA", "Heat", "Erik Spoelstra", 19, 1441, 0.598, "Pat Riley", "Chris Quinn", "Caron Butler", "Malik Allen", "Wayne Ellington", "Giannis/Bam Point-Forward Spacing & Hybrid 2-3 Zone Traps",
-  "ORL", "Magic", "Sean Sweeney", 1, 0, 0.500, "Jason Kidd", "Nate Tibbetts", "Dale Osbourne", "Lionel Chalmers", "Bret Brielmaier", "Length & Point-of-Attack Harassment",
-  "DAL", "Mavericks", "Dusty May", 1, 0, 0.500, "Modern Spread", "Sean Sweeney", "Alex Jensen", "Jared Dudley", "God Shammgod", "NCAA Champion Modern Spread Motion & Flagg/Luka PnR",
-  "PHX", "Suns", "Mike Budenholzer", 13, 965, 0.601, "Gregg Popovich", "David Fizdale", "Chad Forcier", "Vince Legarza", "Brent Barry", "Spread 4-Out Paint-to-3 & Drop Deterrence",
-  "SAC", "Kings", "Doug Christie", 2, 112, 0.527, "Mike Brown", "Jay Triano", "Luke Loucks", "Doug Christie", "Leandro Barbosa", "High-Energy Perimeter Pressure, Sabonis Hub & DHO Motion",
-  "NOP", "Pelicans", "Jamahl Mosley", 1, 410, 0.505, "Rick Carlisle", "James Borrego", "Jarron Collins", "Casey Hill", "Corey Brewer", "Zion Point-Forward Isolation & Wing Length",
-  "LAC", "Clippers", "Tyronn Lue", 11, 704, 0.585, "Doc Rivers", "Dan Craig", "Brian Shaw", "Jeremy Castleberry", "Dahntay Jones", "Tactical Chameleon, Late-Game Inversion & Matchup Hunting",
-  "LAL", "Lakers", "JJ Redick", 3, 164, 0.579, "Mike Krzyzewski", "Nate McMillan", "Scott Brooks", "Bob Beyer", "Greg St. Jean", "Modern 5-Out Motion & Davis/Trae Pick-and-Roll",
-  "PHI", "76ers", "Nick Nurse", 9, 636, 0.570, "British Basketball", "Bobby Jackson", "Bryan Gates", "Rico Hines", "Doug West", "Exotic Defensive Zones, Maxey PnR & High-Post Actions",
-  "CHI", "Bulls", "Tiago Splitter", 1, 42, 0.476, "Gregg Popovich", "Chris Fleming", "John Bryant", "Damian Cotter", "Peter Patton", "European Motion, DHO Triggers & Perimeter Containment",
-  "SAS", "Spurs", "Mitch Johnson", 3, 145, 0.517, "Gregg Popovich", "Brett Brown", "Matt Nielsen", "Jimmy Baron", "Brandon Brimm", "Wembanyama 5-Out Hub & Motion Continuity",
-  "DET", "Pistons", "J.B. Bickerstaff", 11, 709, 0.485, "Bernie Bickerstaff", "Dan Burke", "Jarrett Jack", "Luke Walton", "Vitaly Potapenko", "Physical Interior Crash & Double-Big Rebounding",
-  "ATL", "Hawks", "Quin Snyder", 12, 904, 0.560, "Larry Brown", "Igor Kokoskov", "Antonio Lang", "Ekpe Udoh", "Brittni Donaldson", "High-Volume 3P Spacing & Fast-Break Rim Pressure",
-  "TOR", "Raptors", "Darko Rajakovic", 4, 246, 0.398, "European Continuity", "Pat Delany", "Jama Mahlalela", "James Wade", "Mike Batiste", ".5-Second Decision Flow & Barnes Point-Forward Post",
-  "UTA", "Jazz", "Will Hardy", 5, 328, 0.415, "Gregg Popovich", "Jason Terry", "Sean Sheldon", "Evan Bradds", "Chris Jones", "5-Out Read-and-React, Markkanen Spacing & Corner Crashes",
-  "BKN", "Nets", "Jordi Fernandez", 3, 164, 0.384, "Mike Brown", "Juwan Howard", "Steve Hetzel", "Jay Hernandez", "Deividas Dulkys", ".5-Second Rapid Motion & Aggressive Full-Court Stunt",
-  "CHA", "Hornets", "Charles Lee", 3, 164, 0.439, "Mike Budenholzer", "Lamar Skeeter", "Josh Longstaff", "Blaine Mueller", "Jermaine Bucknor", "Budenholzer 4-Out Drop & LaMelo Transition Pace",
-  "POR", "Trail Blazers", "Micah Nori", 1, 0, 0.500, "Chris Finch", "Scott Brooks", "Ronnie Burrell", "Mark Hughes", "Pooh Jeter", "Scoot/Sharpe Downhill Drive & Finch Corner-Pinch Flow",
-  "WAS", "Wizards", "Brian Keefe", 3, 203, 0.355, "Gregg Popovich", "David Vanterpool", "Alexis Ajinca", "Adam Caporn", "T.J. Sorrentine", "Rebuilding 5-Out Spacing & Fast-Break Rim Attack"
+  ~team_abbr, ~team_name, ~head_coach, ~tenure_years, ~coaching_tree, ~assoc_head_coach, ~offensive_coord, ~defensive_coord, ~player_dev_lead, ~tactical_archetype,
+  "OKC", "Thunder", "Mark Daigneault", 7, "Billy Donovan", "Dave Bliss", "Chip Engelland", "Grant Gibbs", "Chip Engelland", "5-Out Drive & Kick / Aggressive Blitz & Switch",
+  "BOS", "Celtics", "Joe Mazzulla", 5, "Brad Stevens", "Sam Cassell", "Matt Reynolds", "Craig Luschenat", "Amile Jefferson", "Extreme 3P Volume & Switch-Everything Defense",
+  "HOU", "Rockets", "Ime Udoka", 5, "Gregg Popovich", "Royal Ivey", "Garrett Jackson", "Ben Sullivan", "Tiago Splitter", "Physical Attrition, Switching & Relentless Glass Crash",
+  "CLE", "Cavaliers", "Kenny Atkinson", 7, "Mike Budenholzer", "Johnnie Bryant", "DeMarre Carroll", "Trevor Hendry", "Alex Jensen", "Dual-Rim Bigs Flow & Pace Acceleration",
+  "NYK", "Knicks", "Mike Brown", 1, "Gregg Popovich", "Rick Brunson", "Andy Greer", "Dice Yoshimoto", "Darren Erman", "DHO Motion Flow, High Pacing & Brunson/Towns Spread PnR",
+  "GSW", "Warriors", "Steve Kerr", 13, "Gregg Popovich", "Terry Stotts", "Bruce Fraser", "Jerry Stackhouse", "Kris Weems", "Motion Read-and-React, Split-Cuts & Off-Ball Screens",
+  "MIN", "Timberwolves", "Chris Finch", 7, "Nick Nurse", "Micah Nori", "Pablo Prigioni", "Elston Turner", "Corliss Williamson", "Twin Towers Low-Drop & Corner Pinch Post",
+  "IND", "Pacers", "Rick Carlisle", 25, "Chuck Daly", "Lloyd Pierce", "Mike Weinar", "Jenny Boucek", "Jim Boylen", "Turbo-Pace 7-Second Early Offense & Haliburton DHOs",
+  "DEN", "Nuggets", "Michael Malone", 12, "Bob Malone", "David Adelman", "Ryan Saunders", "Charles Klask", "Ognjen Stojakovic", "Jokic Elbow Hub, Cutters & Inverted Pick-and-Roll",
+  "MEM", "Grizzlies", "Tuomas Iisalo", 1, "European Modern Motion", "Anthony Carter", "Noah LaRoche", "Patrick Mutombo", "Blake Ahearn", "Iisalo High-Tempo Spacing & Ja Morant Transition Assault",
+  "MIL", "Bucks", "Taylor Jenkins", 1, "Mike Budenholzer", "Rex Kalamian", "Dave Joerger", "Pete Dominguez", "Vin Baker", "Post-Giannis Lillard Spread Sets, PnR Flow & Drop Protection",
+  "MIA", "Heat", "Erik Spoelstra", 19, "Pat Riley", "Chris Quinn", "Caron Butler", "Malik Allen", "Wayne Ellington", "Giannis/Bam Point-Forward Spacing & Hybrid 2-3 Zone Traps",
+  "ORL", "Magic", "Sean Sweeney", 1, "Jason Kidd", "Nate Tibbetts", "Dale Osbourne", "Lionel Chalmers", "Bret Brielmaier", "Length & Point-of-Attack Harassment",
+  "DAL", "Mavericks", "Dusty May", 1, "Modern Spread", "Sean Sweeney", "Alex Jensen", "Jared Dudley", "God Shammgod", "NCAA Champion Modern Spread Motion & Flagg/Luka PnR",
+  "PHX", "Suns", "Mike Budenholzer", 13, "Gregg Popovich", "David Fizdale", "Chad Forcier", "Vince Legarza", "Brent Barry", "Spread 4-Out Paint-to-3 & Drop Deterrence",
+  "SAC", "Kings", "Doug Christie", 2, "Mike Brown", "Jay Triano", "Luke Loucks", "Doug Christie", "Leandro Barbosa", "High-Energy Perimeter Pressure, Sabonis Hub & DHO Motion",
+  "NOP", "Pelicans", "Jamahl Mosley", 1, "Rick Carlisle", "James Borrego", "Jarron Collins", "Casey Hill", "Corey Brewer", "Zion Point-Forward Isolation & Wing Length",
+  "LAC", "Clippers", "Tyronn Lue", 11, "Doc Rivers", "Dan Craig", "Brian Shaw", "Jeremy Castleberry", "Dahntay Jones", "Tactical Chameleon, Late-Game Inversion & Matchup Hunting",
+  "LAL", "Lakers", "JJ Redick", 3, "Mike Krzyzewski", "Nate McMillan", "Scott Brooks", "Bob Beyer", "Greg St. Jean", "Modern 5-Out Motion & Davis/Trae Pick-and-Roll",
+  "PHI", "76ers", "Nick Nurse", 9, "British Basketball", "Bobby Jackson", "Bryan Gates", "Rico Hines", "Doug West", "Exotic Defensive Zones, Maxey PnR & High-Post Actions",
+  "CHI", "Bulls", "Tiago Splitter", 1, "Gregg Popovich", "Chris Fleming", "John Bryant", "Damian Cotter", "Peter Patton", "European Motion, DHO Triggers & Perimeter Containment",
+  "SAS", "Spurs", "Mitch Johnson", 3, "Gregg Popovich", "Brett Brown", "Matt Nielsen", "Jimmy Baron", "Brandon Brimm", "Wembanyama 5-Out Hub & Motion Continuity",
+  "DET", "Pistons", "J.B. Bickerstaff", 11, "Bernie Bickerstaff", "Dan Burke", "Jarrett Jack", "Luke Walton", "Vitaly Potapenko", "Physical Interior Crash & Double-Big Rebounding",
+  "ATL", "Hawks", "Quin Snyder", 12, "Larry Brown", "Igor Kokoskov", "Antonio Lang", "Ekpe Udoh", "Brittni Donaldson", "High-Volume 3P Spacing & Fast-Break Rim Pressure",
+  "TOR", "Raptors", "Darko Rajakovic", 4, "European Continuity", "Pat Delany", "Jama Mahlalela", "James Wade", "Mike Batiste", ".5-Second Decision Flow & Barnes Point-Forward Post",
+  "UTA", "Jazz", "Will Hardy", 5, "Gregg Popovich", "Jason Terry", "Sean Sheldon", "Evan Bradds", "Chris Jones", "5-Out Read-and-React, Markkanen Spacing & Corner Crashes",
+  "BKN", "Nets", "Jordi Fernandez", 3, "Mike Brown", "Juwan Howard", "Steve Hetzel", "Jay Hernandez", "Deividas Dulkys", ".5-Second Rapid Motion & Aggressive Full-Court Stunt",
+  "CHA", "Hornets", "Charles Lee", 3, "Mike Budenholzer", "Lamar Skeeter", "Josh Longstaff", "Blaine Mueller", "Jermaine Bucknor", "Budenholzer 4-Out Drop & LaMelo Transition Pace",
+  "POR", "Trail Blazers", "Micah Nori", 1, "Chris Finch", "Scott Brooks", "Ronnie Burrell", "Mark Hughes", "Pooh Jeter", "Scoot/Sharpe Downhill Drive & Finch Corner-Pinch Flow",
+  "WAS", "Wizards", "Brian Keefe", 3, "Gregg Popovich", "David Vanterpool", "Alexis Ajinca", "Adam Caporn", "T.J. Sorrentine", "Rebuilding 5-Out Spacing & Fast-Break Rim Attack"
 )
 
 # ------------------------------------------------------------------------------
@@ -340,8 +341,6 @@ compute_coaching_metrics <- function(reg) {
       headCoach = list(
         name = row$head_coach,
         tenureYears = row$tenure_years,
-        careerGames = row$career_games,
-        careerWinPct = round(row$career_win_pct, 3),
         coachingTree = row$coaching_tree,
         tacticalArchetype = row$tactical_archetype
       ),
