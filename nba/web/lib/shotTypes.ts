@@ -31,7 +31,9 @@ export interface ZoneLeagueAverage {
 }
 
 export interface ShotsMetadata {
+  generated_at?: string;
   updated_at: string;
+  through_date?: string | null;
   total_shots_sampled: number;
   /**
    * NBA season(s) the shots were taken in, e.g. '2025-2026'. `updated_at` is when the

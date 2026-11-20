@@ -199,6 +199,14 @@ if (!run_stage("build_clutch_dataset.R", "Analyze Leverage Index Filtering & Una
                           file.path(WEB_DATA_DIR, "clutch_leverage_metrics.json")),
                strict_output = TRUE)) strict_failures <- c(strict_failures, "build_clutch_dataset.R")
 
+# Shot Charts & 14-Zone Telemetry (NBA_analytics#192). Must run AFTER both
+# shot_quality_engine.R (which writes cache/nba_shots_<season>.rds) and
+# season_simulator.R (which writes projections_season_players.json).
+run_stage("build_shot_chart_dataset.R",
+          "Build 14-Zone Player Shot Charts & Spatial Telemetry Catalog",
+          output = c(file.path(WEB_DATA_DIR, "shots_index.json"),
+                     file.path(WEB_DATA_DIR, "shots_metadata.json")))
+
 # 7. Postseason Simulation
 run_stage("playoff_simulator.R", "Execute 8-Man Playoff Series Monte Carlo (10,000 Iterations)")
 

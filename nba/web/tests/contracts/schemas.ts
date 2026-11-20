@@ -750,7 +750,9 @@ export const PlayerCatalogEntrySchema = z
 
 export const ShotsMetadataSchema = z
   .object({
+    generated_at: z.string().datetime().optional(),
     updated_at: z.string().datetime(),
+    through_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
     total_shots_sampled: z.number().int().positive(),
     source_season_label: seasonSpan,
     league_averages: z
