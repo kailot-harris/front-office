@@ -46,7 +46,7 @@ LD_FILE_NAME      <- "landing_digest.json"
 LD_HISTORY_PATH   <- file.path("data", "history", "ratings_history.csv")
 LD_METRIC         <- "ensemble_net_rating"
 LD_HISTORY_DAYS   <- 400L
-LD_WINDOWS        <- c(1L, 7L, 21L)
+LD_WINDOWS        <- as.integer(c("1", "7", "21"))  # the movers.windows keys in the landing-digest contract
 LD_TOP_N          <- 5L
 LD_BUCKETS        <- list(c(0.5, 0.6), c(0.6, 0.7), c(0.7, 0.8), c(0.8, 0.9), c(0.9, 1.0))
 LD_EXCLUDED_STATUS <- c("postponed", "cancelled")
@@ -89,10 +89,10 @@ ld_grade <- function(home, away, home_prob, home_score, away_score, final, statu
 }
 
 .ld_status_from_espn <- function(name, state) {
-  n <- toupper(as.character(name)); s <- tolower(as.character(state))
-  out <- ifelse(grepl("POSTPONED", n), "postponed",
-         ifelse(grepl("CANCEL", n), "cancelled",
-         ifelse(s == "post" | grepl("FINAL", n), "final",
+  n <- tolower(as.character(name)); s <- tolower(as.character(state))
+  out <- ifelse(grepl("postponed", n, fixed = TRUE), "postponed",
+         ifelse(grepl("cancel", n, fixed = TRUE), "cancelled",
+         ifelse(s == "post" | grepl("final", n, fixed = TRUE), "final",
          ifelse(s == "in", "in_progress", "scheduled"))))
   out[is.na(out)] <- "scheduled"
   out
