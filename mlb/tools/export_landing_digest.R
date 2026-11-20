@@ -32,7 +32,7 @@ LD_FILE           <- "landing_digest.json"
 LD_METRIC         <- "elo_rating"
 LD_HISTORY_PATH   <- file.path("data", "history", "ratings_history.csv")
 LD_HISTORY_KEEP_DAYS <- 400L
-LD_MOVER_WINDOWS  <- c(1L, 7L, 21L)
+LD_MOVER_WINDOWS  <- as.integer(c("1", "7", "21"))  # the movers.windows keys in the landing-digest contract
 LD_MOVER_TOP_N    <- 5L
 LD_TZ             <- "America/New_York"
 
