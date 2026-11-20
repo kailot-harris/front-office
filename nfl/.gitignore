@@ -113,3 +113,8 @@ cache/nfl_ngs_*_*.rds
 cache/nfl_player_stats_*.rds
 cache/nfl_schedules_*.rds
 cache/player_dna_profiles.rds
+
+# Test / Playwright output directories (never tracked, so untracked test output
+# at repo root or under web/ never triggers a `git stash push -u` failure).
+/test-results/
+/web/test-results/

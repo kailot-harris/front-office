@@ -141,11 +141,20 @@ for %%F in ("%GUARD_STATUS_FILE%") do set GUARD_DIRTY_SIZE=%%~zF
 del /q "%GUARD_STATUS_FILE%" >nul 2>&1
 
 if not "%GUARD_DIRTY_SIZE%"=="0" (
+    set GUARD_PREV_STASH=none
+    for /f "usebackq delims=" %%S in (`git stash list "--format=%%H" -1 2^>nul`) do set GUARD_PREV_STASH=%%S
     echo [GUARD] Working tree is dirty on "%PRE_BRANCH%" - stashing tracked+untracked changes before landing on main ^(nothing is discarded; recoverable via "git stash pop"^). >> "%LOG_FILE%"
     git stash push -u -m "schedule_daily.bat-auto-stash" >> "%LOG_FILE%" 2>&1
     set STASH_RC=!ERRORLEVEL!
     if not "!STASH_RC!"=="0" (
+        set GUARD_NEW_STASH=none
+        for /f "usebackq delims=" %%S in (`git stash list "--format=%%H" -1 2^>nul`) do set GUARD_NEW_STASH=%%S
         echo [ERROR] Checkout guard: git stash -u FAILED with exit code !STASH_RC! - refusing to run. Nothing was discarded; the dirty tree on "%PRE_BRANCH%" is untouched. >> "%LOG_FILE%"
+        if not "!GUARD_NEW_STASH!"=="!GUARD_PREV_STASH!" (
+            if not "!GUARD_NEW_STASH!"=="none" (
+                echo [ERROR] Checkout guard: Partial stash: !GUARD_NEW_STASH! ^(stash@{0}^) was created before failure ^(previous=!GUARD_PREV_STASH!^) - left intact ^(not dropped or popped^). >> "%LOG_FILE%"
+            )
+        )
         exit /b 1
     )
 )
