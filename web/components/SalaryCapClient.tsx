@@ -8,6 +8,7 @@ import { exportToCsv } from '@/lib/exportToCsv';
 import { money } from '@/lib/format';
 import { GlossaryTerm } from './Glossary';
 import { HowToRead } from './HowToRead';
+import { activateOnKey, ariaSort, tablistKeys } from '@/lib/a11y';
 
 interface SalaryCapClientProps {
   data: SalaryCapDataset;
@@ -169,22 +170,26 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
 
       {/* View Switcher Ribbon & Search */}
       <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-surface-raised/90 border border-slate-800 p-3.5 rounded-xl">
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div role="tablist" onKeyDown={tablistKeys} className="flex items-center gap-2 w-full sm:w-auto">
           <button
+            role="tab"
+            aria-selected={activeTab === 'teams'}
             onClick={() => setActiveTab('teams')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
               activeTab === 'teams'
-                ? 'bg-emerald-500 text-slate-950 font-bold shadow-md'
+                ? 'bg-fo-accent text-on-accent font-bold shadow-md'
                 : 'bg-surface text-slate-400 hover:text-white border border-slate-800'
             }`}
           >
             32 Team Cap Profiles
           </button>
           <button
+            role="tab"
+            aria-selected={activeTab === 'top_contracts'}
             onClick={() => setActiveTab('top_contracts')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
               activeTab === 'top_contracts'
-                ? 'bg-emerald-500 text-slate-950 font-bold shadow-md'
+                ? 'bg-fo-accent text-on-accent font-bold shadow-md'
                 : 'bg-surface text-slate-400 hover:text-white border border-slate-800'
             }`}
           >
@@ -228,6 +233,9 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
                     <tr>
                       <th className="px-4 py-3">Team</th>
                       <th
+                        tabIndex={0}
+                        onKeyDown={activateOnKey}
+                        aria-sort={ariaSort(sortField === 'total_active_apy', sortAsc)}
                         className="px-3 py-3 text-right cursor-pointer hover:text-white"
                         onClick={() => {
                           if (sortField === 'total_active_apy') setSortAsc(!sortAsc);
@@ -240,6 +248,9 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
                         Active APY ($M) {sortField === 'total_active_apy' && (sortAsc ? '↑' : '↓')}
                       </th>
                       <th
+                        tabIndex={0}
+                        onKeyDown={activateOnKey}
+                        aria-sort={ariaSort(sortField === 'total_guaranteed', sortAsc)}
                         className="px-3 py-3 text-right cursor-pointer hover:text-white"
                         onClick={() => {
                           if (sortField === 'total_guaranteed') setSortAsc(!sortAsc);

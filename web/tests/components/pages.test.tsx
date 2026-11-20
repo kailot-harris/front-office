@@ -250,7 +250,7 @@ describe('SalaryCapClient', () => {
 
   it('switches to the top contracts tab and lists contracts', () => {
     const { container } = render(<SalaryCapClient data={data} />);
-    fireEvent.click(screen.getByRole('button', { name: /top 100/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /top 100/i }));
     expect(container.textContent).toContain(data.top_league_contracts[0].player);
   });
 
@@ -262,7 +262,7 @@ describe('SalaryCapClient', () => {
 
   it('searching filters contracts by player, team and position', () => {
     const { container } = render(<SalaryCapClient data={data} />);
-    fireEvent.click(screen.getByRole('button', { name: /top 100/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /top 100/i }));
     const target = data.top_league_contracts[0];
     fireEvent.change(screen.getAllByPlaceholderText(/search/i)[0], { target: { value: target.player } });
     expect(container.textContent).toContain(target.player);
@@ -304,7 +304,7 @@ describe('GalleryClient', () => {
 
   it('offers a chip for every category plus an All Visuals reset', () => {
     render(<GalleryClient mediaItems={items} />);
-    const labels = screen.getAllByRole('button').map((b) => b.textContent?.trim());
+    const labels = screen.getAllByRole('tab').map((b) => b.textContent?.trim());
     // The ALL sentinel renders with the friendlier label "All Visuals".
     expect(labels).toContain('All Visuals');
     for (const cat of new Set(items.map((i) => i.category))) {
@@ -315,7 +315,7 @@ describe('GalleryClient', () => {
   it('filtering by category keeps only that category', () => {
     const { container } = render(<GalleryClient mediaItems={items} />);
     const cat = items[0].category;
-    const chip = screen.getAllByRole('button').find((b) => b.textContent?.trim().toLowerCase().includes(cat));
+    const chip = screen.getAllByRole('tab').find((b) => b.textContent?.trim().toLowerCase().includes(cat));
     fireEvent.click(chip!);
     for (const item of items.filter((i) => i.category !== cat)) {
       expect(container.textContent!.includes(item.title), `${item.title} (${item.category}) survived`).toBe(false);

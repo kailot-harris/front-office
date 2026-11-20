@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { TeamEpaProfile } from '@/lib/types';
 import { TeamLogo } from '@/components/TeamLogo';
 import { Layers, Clock } from 'lucide-react';
+import { tablistKeys } from '@/lib/a11y';
 
 interface EpaQuadrantScatterProps {
   teams: TeamEpaProfile[];
@@ -75,14 +76,16 @@ export const EpaQuadrantScatter: React.FC<EpaQuadrantScatterProps> = ({
               <span>Data generated: {new Date(generatedAt).toLocaleString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}</span>
             </div>
           )}
-          <div className="inline-flex rounded-lg bg-surface-raised p-1 border border-slate-800">
+          <div role="tablist" onKeyDown={tablistKeys} className="inline-flex rounded-lg bg-surface-raised p-1 border border-slate-800">
             {(['All', 'AFC', 'NFC'] as const).map((conf) => (
               <button
+                role="tab"
+                aria-selected={selectedConf === conf}
                 key={conf}
                 onClick={() => setSelectedConf(conf)}
                 className={`cursor-pointer select-none px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
                   selectedConf === conf
-                    ? 'bg-accent-600 text-white shadow-sm'
+                    ? 'bg-fo-accent text-on-accent shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -95,7 +98,7 @@ export const EpaQuadrantScatter: React.FC<EpaQuadrantScatterProps> = ({
 
       {/* Main Scatter Canvas Area */}
       <div className="p-4 sm:p-6">
-        <div className="relative w-full h-[460px] sm:h-[520px] bg-surface/70 rounded-xl border border-slate-800/80 p-4 overflow-hidden select-none">
+        <div role="figure" aria-label={`EPA quadrant scatter: offensive EPA per play against defensive EPA per play for ${filteredTeams.length} teams, split into four efficiency quadrants`} className="relative w-full h-[460px] sm:h-[520px] bg-surface/70 rounded-xl border border-slate-800/80 p-4 overflow-hidden select-none">
           {/* Quadrant Background Tints */}
           {/* Top-Right: Elite Tier (Good Offense, Good Defense) */}
           <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-emerald-500/5 border-b border-l border-slate-800/60 pointer-events-none">

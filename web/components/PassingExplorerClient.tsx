@@ -440,7 +440,7 @@ export const PassingExplorerClient: React.FC<PassingExplorerClientProps> = ({
           ) : (
             <div className="relative w-full max-w-[560px] aspect-[600/680] select-none">
               <svg
-                role="img"
+                role="group"
                 aria-label={throwMapAriaLabel}
                 viewBox="0 0 600 680"
                 className="w-full h-full rounded-lg overflow-hidden border border-slate-800/90 shadow-inner bg-slate-950"
@@ -488,7 +488,7 @@ export const PassingExplorerClient: React.FC<PassingExplorerClientProps> = ({
                 {/* Line of Scrimmage (LOS) prominent gold/blue line */}
                 <line x1="20" y1="480" x2="580" y2="480" stroke="#38bdf8" strokeWidth="3" filter="url(#glow)" />
                 <rect x="250" y="471" width="100" height="18" rx="4" fill="#0369a1" />
-                <text x="300" y="484" fill="#ffffff" fontSize="10" fontWeight="bold" textAnchor="middle" letterSpacing="1">
+                <text x="300" y="484" fill="#fff" fontSize="10" fontWeight="bold" textAnchor="middle" letterSpacing="1">
                   LINE OF SCRIMMAGE
                 </text>
 
@@ -546,7 +546,6 @@ export const PassingExplorerClient: React.FC<PassingExplorerClientProps> = ({
                           key={zoneName}
                           role="button"
                           tabIndex={0}
-                          aria-label={zoneAriaLabel}
                           aria-pressed={isSelected}
                           onClick={toggleZone}
                           onKeyDown={(e) => {
@@ -572,6 +571,12 @@ export const PassingExplorerClient: React.FC<PassingExplorerClientProps> = ({
                             strokeWidth={isSelected ? 3 : isHovered ? 2 : 1}
                             strokeDasharray={isSelected ? 'none' : 'none'}
                           />
+                          {/* The zone's accessible name comes from its content: this invisible label
+                              first, then the visible stats. (An aria-label failed axe's
+                              label-content-name-mismatch, since it hid the visible numbers.) */}
+                          <text x={rect.x} y={rect.y} opacity={0} fontSize="1">
+                            {`${zoneAriaLabel}. `}
+                          </text>
                           {/* Zone Stat Overlay */}
                           <text
                             x={rect.x + rect.width / 2}
@@ -842,7 +847,6 @@ export const PassingExplorerClient: React.FC<PassingExplorerClientProps> = ({
                 key={zoneName}
                 type="button"
                 aria-pressed={isSelected}
-                aria-label={`${zoneName} zone performance card: ${cmp} of ${att} completions (${pct}%), ${cpoe >= 0 ? '+' : ''}${cpoe.toFixed(1)}% CPOE, ${epa >= 0 ? '+' : ''}${epa.toFixed(2)} EPA`}
                 onClick={() => setSelectedZone(isSelected ? null : zoneName)}
                 className={`w-full text-left bg-surface-raised border rounded-xl p-3.5 cursor-pointer transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
                   isSelected
@@ -850,17 +854,18 @@ export const PassingExplorerClient: React.FC<PassingExplorerClientProps> = ({
                     : 'border-slate-800 hover:border-slate-700 hover:bg-slate-900/60'
                 }`}
               >
-                <div className="flex items-center justify-between">
+                <span className="sr-only">{`${zoneName} zone performance card: ${cmp} of ${att} completions (${pct}%), ${cpoe >= 0 ? '+' : ''}${cpoe.toFixed(1)}% CPOE, ${epa >= 0 ? '+' : ''}${epa.toFixed(2)} EPA`}</span>
+                <div aria-hidden="true" className="flex items-center justify-between">
                   <span className="text-xs font-bold text-white truncate">{zoneName}</span>
                   <span
-                    className="text-[11px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
-                    style={{ backgroundColor: heat.fill, color: heat.stroke, border: `1px solid ${heat.stroke}` }}
+                    className="text-[11px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider text-slate-100"
+                    style={{ backgroundColor: heat.fill, border: `1px solid ${heat.stroke}` }}
                   >
                     {heat.label}
                   </span>
                 </div>
 
-                <div className="mt-2.5 grid grid-cols-2 gap-2 text-xs">
+                <div aria-hidden="true" className="mt-2.5 grid grid-cols-2 gap-2 text-xs">
                   <div>
                     <span className="text-[11px] sm:text-[10px] text-slate-500 block">Volume</span>
                     <span className="font-mono font-bold text-slate-200">

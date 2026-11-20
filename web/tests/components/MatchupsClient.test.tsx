@@ -115,14 +115,14 @@ function clickWeek(week: number) {
   // "Week 1Final" has no word boundary between "1" and "F", so match on
   // "not followed by another digit" instead (otherwise week 1 matches week 18).
   const btn = screen
-    .getAllByRole('button')
+    .getAllByRole('tab')
     .find((b) => new RegExp(`^Week ${week}(?!\\d)`).test(b.textContent?.trim() ?? ''));
   expect(btn, `no week ${week} button in the rail`).toBeTruthy();
   fireEvent.click(btn!);
 }
 
 function chip(label: string) {
-  return screen.getAllByRole('button').find((b) => b.textContent?.trim() === label);
+  return [...screen.queryAllByRole('button'), ...screen.queryAllByRole('tab')].find((b) => b.textContent?.trim() === label);
 }
 
 describe('MatchupsClient initial state', () => {
@@ -137,7 +137,7 @@ describe('MatchupsClient initial state', () => {
 
   it('renders a selector button for every available week', () => {
     render(<MatchupsClient dataset={dataset} />);
-    const labels = screen.getAllByRole('button').map((b) => b.textContent?.trim() ?? '');
+    const labels = screen.getAllByRole('tab').map((b) => b.textContent?.trim() ?? '');
     for (const wk of dataset.available_weeks) {
       expect(labels.some((l) => new RegExp(`^Week ${wk}(?!\\d)`).test(l)), `no button for week ${wk}`).toBe(true);
     }
@@ -145,7 +145,7 @@ describe('MatchupsClient initial state', () => {
 
   it('marks the active week and past weeks distinctly', () => {
     render(<MatchupsClient dataset={dataset} />);
-    const labels = screen.getAllByRole('button').map((b) => b.textContent?.trim() ?? '');
+    const labels = screen.getAllByRole('tab').map((b) => b.textContent?.trim() ?? '');
     expect(labels.some((l) => l.startsWith(`Week ${dataset.active_week}`) && /active/i.test(l))).toBe(true);
     const past = dataset.available_weeks.find((w) => w < dataset.active_week);
     if (past) expect(labels.some((l) => l === `Week ${past}Final`)).toBe(true);

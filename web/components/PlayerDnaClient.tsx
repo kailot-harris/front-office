@@ -13,6 +13,7 @@ import {
   Sparkles,
   Crosshair,
 } from 'lucide-react';
+import { tablistKeys } from '@/lib/a11y';
 
 interface PlayerDnaClientProps {
   initialProfiles: PlayerDnaProfile[];
@@ -375,14 +376,16 @@ export default function PlayerDnaClient({ initialProfiles, totalCount, season, t
         </div>
 
         {/* Position Filter Pills */}
-        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800/80">
+        <div role="tablist" onKeyDown={tablistKeys} className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800/80">
           {['ALL', 'QB', 'WR', 'RB', 'TE'].map((pos) => (
             <button
+              role="tab"
+              aria-selected={selectedPos === pos}
               key={pos}
               onClick={() => setSelectedPos(pos)}
               className={`px-3 py-1 rounded text-xs font-semibold font-mono transition-colors ${
                 selectedPos === pos
-                  ? 'bg-accent-600 text-white shadow-sm'
+                  ? 'bg-fo-accent text-on-accent shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -782,14 +785,22 @@ export default function PlayerDnaClient({ initialProfiles, totalCount, season, t
                       }}
                       title={`${p.playerName} (${p.team}) - ${p.archetype ?? 'Insufficient data'}`}
                       style={{ left: `${left}%`, top: `${top}%` }}
-                      className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full transition-transform hover:scale-150 ${
-                        isPrimary
-                          ? 'w-4 h-4 bg-emerald-400 ring-4 ring-emerald-500/40 z-20 shadow-[0_0_10px_#10b981]'
-                          : isCompare
-                          ? 'w-4 h-4 bg-cyan-400 ring-4 ring-cyan-500/40 z-20 shadow-[0_0_10px_#06b6d4]'
-                          : 'w-2 h-2 bg-slate-600 hover:bg-slate-300 z-10'
+                      aria-label={`${p.playerName} (${p.team})`}
+                      className={`group absolute -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center ${
+                        isPrimary || isCompare ? 'z-20' : 'z-10'
                       }`}
-                    />
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`block rounded-full transition-transform group-hover:scale-150 ${
+                          isPrimary
+                            ? 'w-4 h-4 bg-emerald-400 ring-4 ring-emerald-500/40 shadow-[0_0_10px_#10b981]'
+                            : isCompare
+                            ? 'w-4 h-4 bg-cyan-400 ring-4 ring-cyan-500/40 shadow-[0_0_10px_#06b6d4]'
+                            : 'w-2 h-2 bg-slate-600 group-hover:bg-slate-300'
+                        }`}
+                      />
+                    </button>
                   );
                 })}
             </div>

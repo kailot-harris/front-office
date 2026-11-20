@@ -69,7 +69,7 @@ describe('StandingsClient renders', () => {
 describe('StandingsClient conference filter', () => {
   it('narrows the table to one conference', () => {
     const { table } = renderTable();
-    fireEvent.click(screen.getByRole('button', { name: 'AFC' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'AFC' }));
     const shown = new Set(rowOrder(table));
     expect(shown.size).toBe(16);
     for (const t of dataset.teams) {
@@ -79,8 +79,8 @@ describe('StandingsClient conference filter', () => {
 
   it('restores all teams when switching back to All', () => {
     const { table } = renderTable();
-    fireEvent.click(screen.getByRole('button', { name: 'NFC' }));
-    fireEvent.click(screen.getByRole('button', { name: 'All' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'NFC' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'All' }));
     expect(rowOrder(table)).toHaveLength(32);
   });
 });
@@ -152,7 +152,7 @@ describe('StandingsClient search', () => {
 
   it('composes with the conference filter rather than replacing it', () => {
     const { table } = renderTable();
-    fireEvent.click(screen.getByRole('button', { name: 'AFC' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'AFC' }));
     fireEvent.change(search(), { target: { value: 'New York' } });
     // Both New York teams match the text, but only the Jets are AFC.
     expect(rowOrder(table)).toEqual(['New York Jets']);
@@ -209,7 +209,7 @@ describe('StandingsClient sorting', () => {
 
   it('sorting is stable with respect to the filter (no rows gained or lost)', () => {
     const { table } = renderTable();
-    fireEvent.click(screen.getByRole('button', { name: 'NFC' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'NFC' }));
     const before = rowOrder(table).sort();
     clickHeader(table, /Power Rating/i);
     expect(rowOrder(table).sort()).toEqual(before);
@@ -265,7 +265,7 @@ describe('StandingsClient Projections vs. Reality tracker', () => {
 
   it('toggles Projections vs. Reality sub-view in table and renders delta headers', () => {
     const { container } = renderTable();
-    const realityBtn = screen.getByRole('button', { name: /projections vs\. reality/i });
+    const realityBtn = screen.getByRole('tab', { name: /projections vs\. reality/i });
     expect(realityBtn).toBeInTheDocument();
     fireEvent.click(realityBtn);
 
@@ -277,7 +277,7 @@ describe('StandingsClient Projections vs. Reality tracker', () => {
 
   it('updates 8 Divisions view when Projections vs. Reality mode is toggled', () => {
     const { container } = render(<StandingsClient dataset={dataset} initialTab="divisions" />);
-    const realityBtn = screen.getByRole('button', { name: /projections vs\. reality/i });
+    const realityBtn = screen.getByRole('tab', { name: /projections vs\. reality/i });
     fireEvent.click(realityBtn);
 
     expect(screen.getByText(/benchmarked against 17-game pace/i)).toBeInTheDocument();

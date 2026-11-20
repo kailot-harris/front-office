@@ -53,7 +53,7 @@ describe('PassingExplorerClient SVG & keyboard accessibility (NFL#84)', () => {
     vi.stubGlobal('fetch', originalFetch);
   });
 
-  it('gives the throw-map SVG role="img" and a dynamic aria-label naming the selected QB', async () => {
+  it('gives the throw-map SVG role="group" (it holds focusable zones, so not role="img") and a dynamic aria-label naming the selected QB', async () => {
     const firstQb = catalog[0];
     const secondQb = catalog.find((q) => q.player_id !== firstQb.player_id)!;
 
@@ -65,7 +65,7 @@ describe('PassingExplorerClient SVG & keyboard accessibility (NFL#84)', () => {
       />
     );
 
-    const svg = await screen.findByRole('img', {
+    const svg = await screen.findByRole('group', {
       name: new RegExp(`passing throw map for ${escapeRegex(firstQb.player_name)}`, 'i'),
     });
     expect(svg.tagName.toLowerCase()).toBe('svg');
@@ -76,7 +76,7 @@ describe('PassingExplorerClient SVG & keyboard accessibility (NFL#84)', () => {
     const qbSelect = screen.getByLabelText('Select quarterback');
     fireEvent.change(qbSelect, { target: { value: secondQb.player_id } });
 
-    const updatedSvg = await screen.findByRole('img', {
+    const updatedSvg = await screen.findByRole('group', {
       name: new RegExp(`passing throw map for ${escapeRegex(secondQb.player_name)}`, 'i'),
     });
     expect(updatedSvg.getAttribute('aria-label')).toContain(secondQb.team);
@@ -95,7 +95,7 @@ describe('PassingExplorerClient SVG & keyboard accessibility (NFL#84)', () => {
       />
     );
 
-    const throwMap = await screen.findByRole('img', {
+    const throwMap = await screen.findByRole('group', {
       name: new RegExp(`passing throw map for ${escapeRegex(targetQb.player_name)}`, 'i'),
     });
 
@@ -145,7 +145,7 @@ describe('PassingExplorerClient SVG & keyboard accessibility (NFL#84)', () => {
       />
     );
 
-    await screen.findByRole('img', {
+    await screen.findByRole('group', {
       name: new RegExp(`passing throw map for ${escapeRegex(targetQb.player_name)}`, 'i'),
     });
 
@@ -162,7 +162,7 @@ describe('PassingExplorerClient SVG & keyboard accessibility (NFL#84)', () => {
     const { container } = render(
       <PassingExplorerClient catalog={[]} metadata={metadata} />
     );
-    const svg = screen.getByRole('img', {
+    const svg = screen.getByRole('group', {
       name: /NextGenStats quarterback passing throw map/i,
     });
     expect(svg.tagName.toLowerCase()).toBe('svg');
