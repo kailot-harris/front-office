@@ -55,6 +55,8 @@ suppressPackageStartupMessages({
 })
 
 source("config.R")
+if (!exists("log_info", mode = "function")) source("logging_utils.R")
+source("wnba_cache_utils.R")
 
 if (!dir.exists("cache")) dir.create("cache", recursive = TRUE)
 
@@ -91,17 +93,78 @@ calc_expected_shot_prob <- function(distance_ft, is_corner_3 = FALSE) {
 # load_or_build_wnba_shots_cache() — real ingestion step, mirrors rapm_engine.R's
 # load_or_build_wnba_pbp_cache() pattern. Caches to cache/wnba_shots_cache.rds.
 # ------------------------------------------------------------------------------
-load_or_build_wnba_shots_cache <- function(seasons = ALL_SEASONS, force_refresh = FALSE) {
-  cache_path <- file.path(CACHE_DIR, "wnba_shots_cache.rds")
+load_or_build_wnba_shots_cache <- function(seasons = ALL_SEASONS,
+                                           force_refresh = FALSE,
+                                           cache_path = file.path(CACHE_DIR, "wnba_shots_cache.rds"),
+                                           schedule_path = CACHE_WNBA_SCHEDULE,
+                                           team_box_path = CACHE_TEAM_BOX,
+                                           current_season = CURRENT_SEASON,
+                                           min_refresh_age_hours = 6,
+                                           now = Sys.time(),
+                                           fetch_fn = NULL) {
+  state <- wnba_inspect_cache_state(
+    cache_path = cache_path,
+    seasons = seasons,
+    force_refresh = force_refresh,
+    current_season = current_season,
+    schedule_path = schedule_path,
+    team_box_path = team_box_path,
+    min_refresh_age_hours = min_refresh_age_hours,
+    now = now
+  )
 
-  if (file.exists(cache_path) && !force_refresh) {
+  if (identical(state$decision, "cache")) {
     message(">>> [SHOT QUALITY] Loading cached real shot data from ", cache_path)
-    return(readRDS(cache_path))
+    return(state$existing_cache)
   }
 
-  if (!requireNamespace("wehoop", quietly = TRUE)) {
+  if (is.null(fetch_fn) && !requireNamespace("wehoop", quietly = TRUE)) {
     message(">>> [SHOT QUALITY] wehoop package not available — cannot pull real shot data.")
+    if (identical(state$decision, "refetch") || (isTRUE(force_refresh) && isTRUE(state$cache_non_empty))) {
+      warning(sprintf(">>> [SHOT QUALITY] wehoop unavailable during refresh; keeping existing cache intact (%s).", cache_path))
+      return(state$existing_cache)
+    }
     return(NULL)
+  }
+
+  pull_fn <- if (!is.null(fetch_fn)) fetch_fn else function(yr) wehoop::load_wnba_stats_shots(seasons = yr)
+
+  if (identical(state$decision, "refetch")) {
+    message(sprintf(">>> [SHOT QUALITY] Shot cache current season (%d) lags schedule (%s vs %s); refreshing season %d only...",
+                    current_season,
+                    as.character(state$cache_max_date),
+                    as.character(state$schedule_max_date),
+                    current_season))
+    s <- tryCatch(pull_fn(current_season), error = function(e) {
+      warning(sprintf(">>> [SHOT QUALITY] Refresh warning: season %d shot pull failed: %s",
+                      current_season, conditionMessage(e)))
+      log_warn(sprintf("Current-season shots refresh failed for season %d: %s",
+                       current_season, conditionMessage(e)),
+               script = "shot_quality_engine.R", call = "load_or_build_wnba_shots_cache()",
+               season = current_season, cache_path = cache_path)
+      NULL
+    })
+    if (is.null(s) || !is.data.frame(s) || nrow(s) == 0) {
+      warning(sprintf(">>> [SHOT QUALITY] Refresh for season %d failed or returned 0 rows; keeping existing cache intact (%s).",
+                      current_season, cache_path))
+      log_warn(sprintf("Current-season shots refresh returned no rows for season %d; keeping existing cache intact.",
+                       current_season),
+               script = "shot_quality_engine.R", call = "load_or_build_wnba_shots_cache()",
+               season = current_season, cache_path = cache_path)
+      return(state$existing_cache)
+    }
+    if (!"season" %in% names(s)) s$season <- as.integer(current_season)
+    shots <- wnba_replace_season_rows(state$existing_cache, s, target_season = current_season)
+    attr(shots, "pulled_at") <- now
+    if (!dir.exists(dirname(cache_path))) dir.create(dirname(cache_path), recursive = TRUE)
+    saveRDS(shots, cache_path)
+    message(sprintf(">>> [SHOT QUALITY] Refreshed season %d (%d shot rows); total cached: %d (%s)",
+                    current_season, nrow(s), nrow(shots), cache_path))
+    log_info(sprintf("Refreshed season %d shot rows (%d new, %d total).",
+                     current_season, nrow(s), nrow(shots)),
+             script = "shot_quality_engine.R", call = "load_or_build_wnba_shots_cache()",
+             season = current_season, refreshed_rows = nrow(s), rows = nrow(shots), out_path = cache_path)
+    return(shots)
   }
 
   message(sprintf(">>> [SHOT QUALITY] Pulling REAL wehoop::load_wnba_stats_shots() for seasons %s...",
@@ -109,19 +172,32 @@ load_or_build_wnba_shots_cache <- function(seasons = ALL_SEASONS, force_refresh 
 
   shot_list <- list()
   for (yr in seasons) {
-    s <- tryCatch(wehoop::load_wnba_stats_shots(seasons = yr), error = function(e) {
-      message(sprintf(">>> [SHOT QUALITY] WARNING: season %d shot pull failed: %s", yr, conditionMessage(e)))
+    s <- tryCatch(pull_fn(yr), error = function(e) {
+      warning(sprintf(">>> [SHOT QUALITY] WARNING: season %d shot pull failed: %s", yr, conditionMessage(e)))
+      log_warn(sprintf("Shot pull failed for season %d: %s", yr, conditionMessage(e)),
+               script = "shot_quality_engine.R", call = "load_or_build_wnba_shots_cache()", season = yr)
       NULL
     })
-    if (!is.null(s) && nrow(s) > 0) shot_list[[as.character(yr)]] <- s
+    if (!is.null(s) && is.data.frame(s) && nrow(s) > 0) {
+      if (!"season" %in% names(s)) s$season <- as.integer(yr)
+      shot_list[[as.character(yr)]] <- s
+    }
   }
 
   if (length(shot_list) == 0) {
+    if (isTRUE(force_refresh) && isTRUE(state$cache_non_empty)) {
+      warning(sprintf(">>> [SHOT QUALITY] Forced refresh returned 0 rows; keeping existing cache intact (%s).", cache_path))
+      log_warn("Forced shots refresh failed for all seasons; keeping existing cache intact.",
+               script = "shot_quality_engine.R", call = "load_or_build_wnba_shots_cache()", cache_path = cache_path)
+      return(state$existing_cache)
+    }
     message(">>> [SHOT QUALITY] No real shot data could be pulled for any season.")
     return(NULL)
   }
 
-  shots <- dplyr::bind_rows(shot_list)
+  shots <- wnba_bind_rows_safe(shot_list)
+  attr(shots, "pulled_at") <- now
+  if (!dir.exists(dirname(cache_path))) dir.create(dirname(cache_path), recursive = TRUE)
   saveRDS(shots, cache_path)
   message(sprintf(">>> [SHOT QUALITY] Cached %d real shot rows (%d seasons) to %s",
                    nrow(shots), length(shot_list), cache_path))

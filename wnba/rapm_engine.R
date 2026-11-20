@@ -68,6 +68,7 @@ if (dir.exists(PROJECT_DIR)) setwd(PROJECT_DIR)
 source("config.R")  # WNBA_TEAMS, ALL_SEASONS, CACHE_DIR
 source("logging_utils.R")
 source("rapm_join_utils.R")  # normalize_rapm_last_name() — current-roster re-attribution below
+source("wnba_cache_utils.R")
 .LOG_SCRIPT <- "rapm_engine.R"
 
 if (!dir.exists("cache")) dir.create("cache", recursive = TRUE)
@@ -177,17 +178,170 @@ tune_lambda_cv <- function(dm,
 # name-map possessions players — that mismatch is why shot_quality_engine.R below uses
 # load_wnba_stats_shots() directly rather than trying to fuse the two ID spaces).
 # ------------------------------------------------------------------------------
-load_or_build_wnba_pbp_cache <- function(seasons = ALL_SEASONS, force_refresh = FALSE) {
-  cache_path <- file.path(CACHE_DIR, "wnba_pbp_cache.rds")
-
-  if (file.exists(cache_path) && !force_refresh) {
-    message(">>> [RAPM] Loading cached real possession data from ", cache_path)
-    return(readRDS(cache_path))
+.pull_rapm_season_data <- function(yr, pull_poss_fn, pull_shots_fn, fetch_fn = NULL) {
+  if (!is.null(fetch_fn)) {
+    res <- tryCatch(fetch_fn(yr), error = function(e) {
+      warning(sprintf(">>> [RAPM] WARNING: season %d possession pull failed: %s", yr, conditionMessage(e)))
+      log_error(sprintf("RAPM possession pull failed for season %d.", yr),
+                condition = e, call = "load_or_build_wnba_pbp_cache()", season = yr)
+      NULL
+    })
+    if (is.null(res)) return(list(poss = NULL, names = NULL))
+    if (is.data.frame(res)) {
+      s_df <- if (!is.null(pull_shots_fn)) {
+        tryCatch(pull_shots_fn(yr), error = function(e) {
+          log_error(sprintf("wehoop::load_wnba_stats_shots() (name-lookup pull) failed for season %d.", yr),
+                    condition = e, call = "load_or_build_wnba_pbp_cache()", season = yr)
+          NULL
+        })
+      } else NULL
+      n_df <- if (!is.null(s_df) && is.data.frame(s_df) && nrow(s_df) > 0 &&
+                  all(c("person_id", "player_name") %in% names(s_df))) {
+        s_df %>% dplyr::distinct(person_id, player_name)
+      } else NULL
+      return(list(poss = res, names = n_df))
+    }
+    if (is.list(res)) {
+      p_df <- if (!is.null(res$possessions) && is.data.frame(res$possessions)) res$possessions else NULL
+      n_df <- if (!is.null(res$player_names) && is.data.frame(res$player_names)) {
+        res$player_names
+      } else if (!is.null(res$shots) && is.data.frame(res$shots) &&
+                 all(c("person_id", "player_name") %in% names(res$shots))) {
+        res$shots %>% dplyr::distinct(person_id, player_name)
+      } else NULL
+      return(list(poss = p_df, names = n_df))
+    }
+    return(list(poss = NULL, names = NULL))
   }
 
-  if (!requireNamespace("wehoop", quietly = TRUE)) {
+  p <- tryCatch(pull_poss_fn(yr), error = function(e) {
+    warning(sprintf(">>> [RAPM] WARNING: season %d possession pull failed: %s", yr, conditionMessage(e)))
+    log_error(sprintf("wehoop::load_wnba_stats_possessions() failed for season %d.", yr),
+              condition = e, call = "load_or_build_wnba_pbp_cache()", season = yr)
+    NULL
+  })
+
+  s <- if (!is.null(pull_shots_fn)) {
+    tryCatch(pull_shots_fn(yr), error = function(e) {
+      log_error(sprintf("wehoop::load_wnba_stats_shots() (name-lookup pull) failed for season %d.", yr),
+                condition = e, call = "load_or_build_wnba_pbp_cache()", season = yr)
+      NULL
+    })
+  } else NULL
+
+  n_df <- if (!is.null(s) && is.data.frame(s) && nrow(s) > 0 &&
+              all(c("person_id", "player_name") %in% names(s))) {
+    s %>% dplyr::distinct(person_id, player_name)
+  } else NULL
+
+  list(poss = p, names = n_df)
+}
+
+load_or_build_wnba_pbp_cache <- function(seasons = ALL_SEASONS,
+                                         force_refresh = FALSE,
+                                         cache_path = file.path(CACHE_DIR, "wnba_pbp_cache.rds"),
+                                         schedule_path = CACHE_WNBA_SCHEDULE,
+                                         team_box_path = CACHE_TEAM_BOX,
+                                         current_season = CURRENT_SEASON,
+                                         min_refresh_age_hours = 6,
+                                         now = Sys.time(),
+                                         poss_fetch_fn = NULL,
+                                         shots_fetch_fn = NULL,
+                                         fetch_fn = NULL) {
+  state <- wnba_inspect_cache_state(
+    cache_path = cache_path,
+    seasons = seasons,
+    force_refresh = force_refresh,
+    current_season = current_season,
+    schedule_path = schedule_path,
+    team_box_path = team_box_path,
+    min_refresh_age_hours = min_refresh_age_hours,
+    now = now,
+    expect_list_field = "possessions"
+  )
+
+  if (identical(state$decision, "cache")) {
+    message(">>> [RAPM] Loading cached real possession data from ", cache_path)
+    return(state$existing_cache)
+  }
+
+  use_live_wehoop <- is.null(fetch_fn) && is.null(poss_fetch_fn)
+  if (use_live_wehoop && !requireNamespace("wehoop", quietly = TRUE)) {
     message(">>> [RAPM] wehoop package not available — cannot pull real possession data.")
+    if (identical(state$decision, "refetch") || (isTRUE(force_refresh) && isTRUE(state$cache_non_empty))) {
+      warning(sprintf(">>> [RAPM] wehoop unavailable during refresh; keeping existing cache intact (%s).", cache_path))
+      return(state$existing_cache)
+    }
     return(NULL)
+  }
+
+  pull_poss_fn <- if (!is.null(poss_fetch_fn)) {
+    poss_fetch_fn
+  } else if (is.null(fetch_fn)) {
+    function(yr) wehoop::load_wnba_stats_possessions(seasons = yr)
+  } else {
+    NULL
+  }
+
+  pull_shots_fn <- if (!is.null(shots_fetch_fn)) {
+    shots_fetch_fn
+  } else if (!is.null(poss_fetch_fn) || !is.null(fetch_fn)) {
+    NULL
+  } else {
+    function(yr) wehoop::load_wnba_stats_shots(seasons = yr)
+  }
+
+  if (identical(state$decision, "refetch")) {
+    message(sprintf(">>> [RAPM] Possession cache current season (%d) lags schedule (%s vs %s); refreshing season %d only...",
+                    current_season,
+                    as.character(state$cache_max_date),
+                    as.character(state$schedule_max_date),
+                    current_season))
+    pulled <- .pull_rapm_season_data(current_season, pull_poss_fn, pull_shots_fn, fetch_fn = fetch_fn)
+    p <- pulled$poss
+    if (is.null(p) || !is.data.frame(p) || nrow(p) == 0) {
+      warning(sprintf(">>> [RAPM] Refresh for season %d possessions failed or returned 0 rows; keeping existing cache intact (%s).",
+                      current_season, cache_path))
+      log_warn(sprintf("Current-season RAPM possessions refresh returned no rows for season %d; keeping existing cache intact.",
+                       current_season),
+               call = "load_or_build_wnba_pbp_cache()", season = current_season, cache_path = cache_path)
+      return(state$existing_cache)
+    }
+
+    if (!"season" %in% names(p)) p$season <- as.integer(current_season)
+    possessions <- wnba_replace_season_rows(state$existing_cache$possessions, p, target_season = current_season)
+
+    name_dfs <- list(pulled$names, state$existing_cache$player_names)
+    combined_names <- wnba_bind_rows_safe(name_dfs)
+    player_names <- if (nrow(combined_names) > 0 && "person_id" %in% names(combined_names)) {
+      combined_names %>% dplyr::distinct(person_id, .keep_all = TRUE)
+    } else {
+      tibble::tibble(person_id = integer(0), player_name = character(0))
+    }
+
+    prev_seasons <- if (!is.null(state$existing_cache$seasons)) {
+      suppressWarnings(as.integer(state$existing_cache$seasons))
+    } else {
+      integer(0)
+    }
+    seasons_merged <- sort(unique(c(prev_seasons[!is.na(prev_seasons)], as.integer(current_season))))
+
+    result <- list(
+      possessions = possessions,
+      player_names = player_names,
+      pulled_at = now,
+      seasons = seasons_merged,
+      data_source = "wehoop::load_wnba_stats_possessions (real, WNBA Stats API-backed)"
+    )
+    if (!dir.exists(dirname(cache_path))) dir.create(dirname(cache_path), recursive = TRUE)
+    saveRDS(result, cache_path)
+    message(sprintf(">>> [RAPM] Refreshed season %d (%d possession rows); total cached: %d (%s)",
+                    current_season, nrow(p), nrow(possessions), cache_path))
+    log_info(sprintf("Refreshed season %d possession rows (%d new, %d total).",
+                     current_season, nrow(p), nrow(possessions)),
+             call = "load_or_build_wnba_pbp_cache()", season = current_season,
+             refreshed_rows = nrow(p), rows = nrow(possessions), out_path = cache_path)
+    return(result)
   }
 
   message(sprintf(">>> [RAPM] Pulling REAL wehoop::load_wnba_stats_possessions() for seasons %s...",
@@ -199,49 +353,47 @@ load_or_build_wnba_pbp_cache <- function(seasons = ALL_SEASONS, force_refresh = 
   poss_list <- list()
   name_list <- list()
   for (yr in seasons) {
-    p <- tryCatch(wehoop::load_wnba_stats_possessions(seasons = yr), error = function(e) {
-      message(sprintf(">>> [RAPM] WARNING: season %d possession pull failed: %s", yr, conditionMessage(e)))
-      log_error(sprintf("wehoop::load_wnba_stats_possessions() failed for season %d.", yr),
-                condition = e, call = "load_or_build_wnba_pbp_cache()", season = yr)
-      NULL
-    })
-    if (!is.null(p) && nrow(p) > 0) {
+    pulled <- .pull_rapm_season_data(yr, pull_poss_fn, pull_shots_fn, fetch_fn = fetch_fn)
+    p <- pulled$poss
+    if (!is.null(p) && is.data.frame(p) && nrow(p) > 0) {
+      if (!"season" %in% names(p)) p$season <- as.integer(yr)
       poss_list[[as.character(yr)]] <- p
       log_info(sprintf("Pulled %d real possession rows for season %d.", nrow(p), yr),
                call = "load_or_build_wnba_pbp_cache()", season = yr, rows = nrow(p))
     }
-
-    s <- tryCatch(wehoop::load_wnba_stats_shots(seasons = yr), error = function(e) {
-      log_error(sprintf("wehoop::load_wnba_stats_shots() (name-lookup pull) failed for season %d.", yr),
-                condition = e, call = "load_or_build_wnba_pbp_cache()", season = yr)
-      NULL
-    })
-    if (!is.null(s) && nrow(s) > 0) {
-      name_list[[as.character(yr)]] <- s %>% dplyr::distinct(person_id, player_name)
+    if (!is.null(pulled$names) && is.data.frame(pulled$names) && nrow(pulled$names) > 0) {
+      name_list[[as.character(yr)]] <- pulled$names
     }
   }
 
   if (length(poss_list) == 0) {
+    if (isTRUE(force_refresh) && isTRUE(state$cache_non_empty)) {
+      warning(sprintf(">>> [RAPM] Forced refresh failed for all seasons; keeping existing cache intact (%s).", cache_path))
+      log_warn("Forced RAPM possession refresh failed for all seasons; keeping existing cache intact.",
+               call = "load_or_build_wnba_pbp_cache()", cache_path = cache_path)
+      return(state$existing_cache)
+    }
     message(">>> [RAPM] No real possession data could be pulled for any season.")
     log_error("No real possession data could be pulled for any season; RAPM will fall through to box-score fallback.",
               call = "load_or_build_wnba_pbp_cache()", seasons = paste(range(seasons), collapse = "-"))
     return(NULL)
   }
 
-  possessions <- dplyr::bind_rows(poss_list)
+  possessions <- wnba_bind_rows_safe(poss_list)
   player_names <- if (length(name_list) > 0) {
-    dplyr::bind_rows(name_list) %>% dplyr::distinct(person_id, .keep_all = TRUE)
+    wnba_bind_rows_safe(name_list) %>% dplyr::distinct(person_id, .keep_all = TRUE)
   } else {
-    tibble(person_id = integer(0), player_name = character(0))
+    tibble::tibble(person_id = integer(0), player_name = character(0))
   }
 
   result <- list(
     possessions = possessions,
     player_names = player_names,
-    pulled_at = Sys.time(),
+    pulled_at = now,
     seasons = seasons,
     data_source = "wehoop::load_wnba_stats_possessions (real, WNBA Stats API-backed)"
   )
+  if (!dir.exists(dirname(cache_path))) dir.create(dirname(cache_path), recursive = TRUE)
   saveRDS(result, cache_path)
   message(sprintf(">>> [RAPM] Cached %d real possession rows (%d seasons) to %s",
                    nrow(possessions), length(poss_list), cache_path))
