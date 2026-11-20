@@ -9,6 +9,7 @@ import {
   DATA_DIR,
   SHOTS_DIR,
   EXPECTED_DATA_FILES,
+  DATA_MANIFEST_FILE,
   LEAGUE,
   loadAllDatasets,
   readPlayerShotFile,
@@ -66,7 +67,10 @@ describe('JSON data file presence & parseability', () => {
   });
 
   it('public/data contains no orphaned top-level .json files that no route consumes', () => {
-    const onDisk = fs.readdirSync(DATA_DIR).filter((f) => f.endsWith('.json'));
+    // data_manifest.json is the freshness sidecar, validated by dataManifest.test.ts.
+    const onDisk = fs
+      .readdirSync(DATA_DIR)
+      .filter((f) => f.endsWith('.json') && f !== DATA_MANIFEST_FILE);
     const expected = new Set<string>(EXPECTED_DATA_FILES);
     const orphans = onDisk.filter((f) => !expected.has(f));
     expect(orphans, `Orphan data files: ${orphans.join(', ')}`).toEqual([]);
