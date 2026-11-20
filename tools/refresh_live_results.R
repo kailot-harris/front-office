@@ -66,6 +66,7 @@ suppressPackageStartupMessages(library(jsonlite))
 
 source("config.R")
 source("tools/espn_scoreboard.R")
+source("tools/build_landing_digest.R")  # ld_patch_digest() (WNBA#225)
 
 RLR_DEFAULT_LOOKBACK_DAYS <- 3L
 
@@ -246,12 +247,22 @@ write_json_if_changed <- function(x, path) {
 #' @param payload_path Path to matchups_slates.json.
 #' @param fetcher Injectable ESPN reader, for tests.
 #' @param today Date treated as "now", for tests.
-#' @return list(n_changed, dates, file)
+#' @param digest_path landing_digest.json; its yesterday, record and calibration
+#'   are re-derived from the (patched) matchup rows on every run (WNBA#225).
+#' @return list(n_changed, dates, file, digest_file)
 refresh_live_results <- function(dates = NULL,
                                  lookback_days = RLR_DEFAULT_LOOKBACK_DAYS,
                                  payload_path = WEB_JSON_MATCHUPS_SLATES,
                                  fetcher = espn_fetch_dates,
-                                 today = Sys.Date()) {
+                                 today = Sys.Date(),
+                                 digest_path = LD_DIGEST_PATH) {
+  res <- .rlr_refresh_matchups(dates, lookback_days, payload_path, fetcher, today)
+  rows <- jsonlite::fromJSON(payload_path, simplifyVector = TRUE)$matchups
+  res$digest_file <- if (isTRUE(ld_patch_digest(rows, digest_path))) digest_path else NULL
+  res
+}
+
+.rlr_refresh_matchups <- function(dates, lookback_days, payload_path, fetcher, today) {
   if (!file.exists(payload_path)) {
     stop(sprintf("refresh_live_results(): no payload at %s - run the pipeline first.",
                  payload_path))
