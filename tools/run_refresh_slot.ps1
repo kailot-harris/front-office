@@ -749,7 +749,12 @@ function Invoke-ModelRefresh {
             Write-Step "  $Sport model refresh FAILED: missing $bat"
             return $false
         }
-        $stepArgs = if ($step.Count -gt 1) { $step[1..($step.Count - 1)] } else { @() }
+        # PowerShell 5.1 unwraps a 1-element array returned from an `if` expression into a
+        # scalar [string], causing `@stepArgs` splatting to pass "publish" as "p u b l i s h".
+        [string[]] $stepArgs = @()
+        if ($step.Count -gt 1) {
+            $stepArgs = @($step[1..($step.Count - 1)])
+        }
         Write-Step "  $Sport model refresh: $($step -join ' ')"
         Push-Location $dir
         try {
