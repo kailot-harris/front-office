@@ -73,6 +73,7 @@ export const EXPECTED_DATA_FILES = [
   'cbt_payroll_sheet.json',
   'matchups_index.json',
   'world_series.json',
+  'landing_digest.json',
 ] as const;
 
 /** Optional Statcast spatial artifacts written when Statcast caches are present, and offseason monitor. */
