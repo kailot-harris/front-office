@@ -151,6 +151,48 @@
       "rule": "hardcoded_metric_vector",
       "pattern": "c\\(34\\.0, 32\\.5, 30\\.5, 28\\.5, 26\\.5, 20\\.0, 15\\.5, 12\\.5\\)",
       "justification": "Standard 8-player WNBA 40-minute regulation playoff rotation minute template (sums to 200 team minutes)."
+    },
+    {
+      "file": "mlb/tools/export_landing_digest.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(1L, 7L, 21L\\)",
+      "justification": "Movers look-back windows (1, 7, 21 days) fixed by the landing-digest contract (front-office#200 spec, Q14); window keys, not metric values."
+    },
+    {
+      "file": "nba/tools/build_landing_digest.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(1L, 7L, 21L\\)",
+      "justification": "Movers look-back windows (1, 7, 21 days) fixed by the landing-digest contract (front-office#200 spec, Q14); window keys, not metric values."
+    },
+    {
+      "file": "nba/tools/build_landing_digest.R",
+      "rule": "player_name_override",
+      "pattern": "grepl\\(\"(?:POSTPONED|CANCEL|FINAL)\", n\\)",
+      "justification": "Maps ESPN status type names (STATUS_POSTPONED / _CANCELED / _FINAL) to the digest's game status for the shared hit rule; not a player name override."
+    },
+    {
+      "file": "nfl/tools/build_landing_digest.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(1L, 7L, 21L\\)",
+      "justification": "Movers look-back windows (1, 7, 21 days) fixed by the landing-digest contract (front-office#200 spec, Q14); window keys, not metric values."
+    },
+    {
+      "file": "nfl/tools/build_landing_digest.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(0\\.5, 0\\.6, 0\\.7, 0\\.8, 0\\.9\\)",
+      "justification": "Calibration bucket lower edges (50-100% in 10-point bins) fixed by the landing-digest contract (front-office#200 spec); bin boundaries, not metric values."
+    },
+    {
+      "file": "wnba/tools/build_landing_digest.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(1L, 7L, 21L\\)",
+      "justification": "Movers look-back windows (1, 7, 21 days) fixed by the landing-digest contract (front-office#200 spec, Q14); window keys, not metric values."
+    },
+    {
+      "file": "wnba/tools/build_landing_digest.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(0\\.5, 0\\.6, 0\\.7, 0\\.8, 0\\.9\\)",
+      "justification": "Calibration bucket lower edges (50-100% in 10-point bins) fixed by the landing-digest contract (front-office#200 spec); bin boundaries, not metric values."
     }
   ]
 }
