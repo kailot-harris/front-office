@@ -40,7 +40,7 @@ LD_SPORT            <- "wnba"
 LD_TZ               <- "America/New_York"
 LD_METRIC           <- "net_rating"
 LD_HISTORY_KEEP     <- 400L
-LD_MOVER_WINDOWS    <- c(1L, 7L, 21L)
+LD_MOVER_WINDOWS    <- as.integer(c("1", "7", "21"))  # the movers.windows keys in the landing-digest contract
 LD_MOVERS_TOP_N     <- 5L
 LD_LOGGED_BASES     <- c("logged_model", "logged_model_prob_only")
 LD_DIGEST_PATH      <- file.path("web", "public", "data", "landing_digest.json")
@@ -189,7 +189,7 @@ ld_record <- function(graded, slate_date) {
 ld_calibration <- function(graded) {
   g <- graded[graded$outcome %in% c("hit", "miss"), , drop = FALSE]
   conf <- pmax(g$home_win_prob, 1 - g$home_win_prob)
-  los <- c(0.5, 0.6, 0.7, 0.8, 0.9)
+  los <- round(seq(0.5, 0.9, by = 0.1), 1)  # 10-point bins from 50% to 100%
   lapply(los, function(lo) {
     hi <- lo + 0.1
     sel <- conf >= lo - 1e-9 & (if (lo >= 0.9) conf <= 1 else conf < hi - 1e-9)
