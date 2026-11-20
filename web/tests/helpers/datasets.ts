@@ -49,6 +49,12 @@ export const DATASET_FILES = {
   getClutchData: 'clutch_leverage_metrics.json',
 } as const;
 
+/**
+ * Sidecar manifest (front-office#102) written by tools/write_data_manifest.R.
+ * Not read by the app; it describes every other top-level dataset file.
+ */
+export const DATA_MANIFEST_FILE = 'data_manifest.json';
+
 export function loadRaw(filename: string): unknown {
   const p = path.join(DATA_DIR, filename);
   if (!fs.existsSync(p)) {
