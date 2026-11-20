@@ -500,6 +500,271 @@ if (nzchar(git_bin)) {
 }
 
 # ------------------------------------------------------------------------------
+section("6. Stale shots cache + richer PBP fallback and ESPN team_abbrev fixups")
+# ------------------------------------------------------------------------------
+
+ok("load_shot_records() exported as a function",
+   is.function(env_default$load_shot_records))
+
+pbp_sb_root <- file.path(tempdir(), "shot_chart_pbp_sandbox")
+if (dir.exists(pbp_sb_root)) unlink(pbp_sb_root, recursive = TRUE)
+pbp_sb_cache <- file.path(pbp_sb_root, "cache")
+pbp_sb_web   <- file.path(pbp_sb_root, "web_data")
+dir.create(pbp_sb_cache, recursive = TRUE)
+dir.create(pbp_sb_web, recursive = TRUE)
+on.exit(unlink(pbp_sb_root, recursive = TRUE), add = TRUE)
+
+# Include ESPN-mapped teams in player catalog (GSW, SAS, NYK, UTA, NOP, WAS)
+pbp_players_fixture <- data.frame(
+  player_id   = c("201", "202", "203", "204", "205", "206"),
+  player_name = c("Bay Guard", "Spur Wing", "Knick Guard", "Jazz Big", "Pel Forward", "Wiz Guard"),
+  team        = c("GSW", "SAS", "NYK", "UTA", "NOP", "WAS"),
+  stringsAsFactors = FALSE
+)
+write_json(pbp_players_fixture, file.path(pbp_sb_web, "projections_season_players.json"),
+           auto_unbox = TRUE, pretty = TRUE)
+
+make_pbp_fixture <- function(season_val, game_ids = c("g1", "g2", "g3"), include_non_shots = TRUE) {
+  # Pairs of (player_id, player_name, team_id, home_id, home_abbr, away_id, away_abbr, game_id, gd)
+  specs <- list(
+    list("201", "Bay Guard",   10L, 10L, "GS",   20L, "SA",  game_ids[1], "2026-11-01", 25.0, 2.0, 2L, TRUE,  "Driving Layup Shot"),
+    list("202", "Spur Wing",   20L, 10L, "GS",   20L, "SA",  game_ids[1], "2026-11-01", 2.0,  4.0, 3L, TRUE,  "Jump Shot"),
+    list("203", "Knick Guard", 30L, 30L, "NY",   40L, "UTAH",game_ids[min(2L, length(game_ids))], "2026-11-10", 48.0, 4.0, 3L, FALSE, "Jump Shot"),
+    list("204", "Jazz Big",    40L, 30L, "NY",   40L, "UTAH",game_ids[min(2L, length(game_ids))], "2026-11-10", 26.0, 3.0, 2L, TRUE,  "Dunk Shot"),
+    list("205", "Pel Forward", 50L, 50L, "NO",   60L, "WSH", game_ids[length(game_ids)], "2026-11-18", 25.0, 12.0, 2L, FALSE, "Hook Shot"),
+    list("206", "Wiz Guard",   60L, 50L, "NO",   60L, "WSH", game_ids[length(game_ids)], "2026-11-18", 25.0, 25.0, 3L, TRUE,  "Pullup Jump Shot")
+  )
+  rows <- lapply(specs[seq_len(min(length(specs), length(game_ids) * 2L))], function(sp) {
+    data.frame(
+      game_id             = sp[[8]],
+      season              = season_val,
+      game_date           = as.Date(sp[[9]]),
+      team_id             = sp[[3]],
+      home_team_id        = sp[[4]],
+      home_team_abbrev    = sp[[5]],
+      away_team_id        = sp[[6]],
+      away_team_abbrev    = sp[[7]],
+      athlete_id_1        = sp[[1]],
+      athlete_name_1      = sp[[2]],
+      coordinate_x_raw    = sp[[10]],
+      coordinate_y_raw    = sp[[11]],
+      score_value         = sp[[12]],
+      scoring_play        = sp[[13]],
+      shooting_play       = TRUE,
+      type_text           = sp[[14]],
+      period_number       = 1L,
+      clock_display_value = "10:15",
+      stringsAsFactors    = FALSE
+    )
+  })
+  if (include_non_shots) {
+    rows[[length(rows) + 1L]] <- data.frame(
+      game_id             = game_ids[1],
+      season              = season_val,
+      game_date           = as.Date("2026-11-19"),
+      team_id             = 10L,
+      home_team_id        = 10L,
+      home_team_abbrev    = "GS",
+      away_team_id        = 20L,
+      away_team_abbrev    = "SA",
+      athlete_id_1        = "201",
+      athlete_name_1      = "Bay Guard",
+      coordinate_x_raw    = 25.0,
+      coordinate_y_raw    = 10.0,
+      score_value         = 0L,
+      scoring_play        = FALSE,
+      shooting_play       = FALSE,
+      type_text           = "Bad Pass Turnover",
+      period_number       = 1L,
+      clock_display_value = "09:40",
+      stringsAsFactors    = FALSE
+    )
+    rows[[length(rows) + 1L]] <- data.frame(
+      game_id             = game_ids[1],
+      season              = season_val,
+      game_date           = as.Date("2026-11-17"),
+      team_id             = 20L,
+      home_team_id        = 10L,
+      home_team_abbrev    = "GS",
+      away_team_id        = 20L,
+      away_team_abbrev    = "SA",
+      athlete_id_1        = "202",
+      athlete_name_1      = "Spur Wing",
+      coordinate_x_raw    = 25.0,
+      coordinate_y_raw    = 15.0,
+      score_value         = 1L,
+      scoring_play        = TRUE,
+      shooting_play       = TRUE,
+      type_text           = "Free Throw 1 of 1",
+      period_number       = 1L,
+      clock_display_value = "09:10",
+      stringsAsFactors    = FALSE
+    )
+  }
+  do.call(rbind, rows)
+}
+
+# 6a: Stale 1-game shots cache (no game_date) + 3-game PBP cache (no team_abbrev column)
+stale_shots <- make_shots_df(cur_season, with_game_date = FALSE, include_players = c("101"))
+stale_shots$game_id <- "g_old_1"
+stale_shots_path <- file.path(pbp_sb_cache, sprintf("nba_shots_%d.rds", cur_season))
+rich_pbp_path    <- file.path(pbp_sb_cache, sprintf("nba_pbp_%d.rds", cur_season))
+saveRDS(stale_shots, stale_shots_path)
+saveRDS(make_pbp_fixture(cur_season, game_ids = c("g1", "g2", "g3")), rich_pbp_path)
+
+pbp_selected <- NULL
+suppressMessages(capture.output(
+  pbp_selected <- env_default$load_shot_records(
+    shots_cache_path = stale_shots_path,
+    pbp_cache_path   = NULL,
+    season           = cur_season
+  )
+))
+ok("load_shot_records() prefers richer PBP over stale shots cache",
+   is.data.frame(pbp_selected) &&
+     !("Bad Pass Turnover" %in% pbp_selected$type_text) &&
+     length(unique(pbp_selected$game_id)) == 3L)
+ok("load_shot_records() derives canonical team_abbrev with all 6 ESPN fixups",
+   identical(
+     sort(unique(pbp_selected$team_abbrev)),
+     c("GSW", "NOP", "NYK", "SAS", "UTA", "WAS")
+   ))
+
+res_pbp_build <- NULL
+suppressMessages(capture.output(
+  res_pbp_build <- env_default$build_shot_chart_dataset(
+    season       = cur_season,
+    cache_dir    = pbp_sb_cache,
+    web_data_dir = pbp_sb_web
+  )
+))
+pbp_meta <- fromJSON(file.path(pbp_sb_web, "shots_metadata.json"), simplifyVector = FALSE)
+pbp_idx  <- fromJSON(file.path(pbp_sb_web, "shots_index.json"), simplifyVector = TRUE)
+ok("build_shot_chart_dataset() using PBP fallback sets through_date from shooting plays (ignores non-shot 2026-11-19)",
+   identical(pbp_meta$through_date, "2026-11-18"))
+ok("build_shot_chart_dataset() excludes shooting_play=FALSE and Free Throws in total_shots_sampled",
+   identical(as.integer(pbp_meta$total_shots_sampled), 6L))
+ok("build_shot_chart_dataset() emits all 6 rotation players with canonical team codes",
+   nrow(pbp_idx) == 6L &&
+     identical(sort(unique(pbp_idx$team)), c("GSW", "NOP", "NYK", "SAS", "UTA", "WAS")))
+
+# 6b: PBP present when shots cache is absent -> uses PBP without calling fetch_fn or writing shots RDS
+pbp_only_dir <- file.path(pbp_sb_root, "pbp_only")
+dir.create(pbp_only_dir, recursive = TRUE)
+pbp_only_shots <- file.path(pbp_only_dir, "nba_shots_2027.rds")
+pbp_only_pbp   <- file.path(pbp_only_dir, "nba_pbp_2027.rds")
+saveRDS(make_pbp_fixture(2027L, game_ids = c("g1", "g2", "g3")), pbp_only_pbp)
+fetch_invoked_pbp_only <- FALSE
+pbp_only_loaded <- NULL
+suppressMessages(capture.output(
+  pbp_only_loaded <- env_default$load_shot_records(
+    shots_cache_path = pbp_only_shots,
+    pbp_cache_path   = pbp_only_pbp,
+    season           = 2027L,
+    fetch_fn         = function(sn) { fetch_invoked_pbp_only <<- TRUE; stale_shots }
+  )
+))
+ok("load_shot_records() uses PBP when shots cache is absent without invoking fetch_fn",
+   !isTRUE(fetch_invoked_pbp_only) &&
+     !file.exists(pbp_only_shots) &&
+     is.data.frame(pbp_only_loaded) &&
+     nrow(pbp_only_loaded) > 0L)
+
+# 6c: Equal/fewer games in PBP than shots -> preserves shots cache (strictly-more rule)
+tie_dir <- file.path(pbp_sb_root, "tie_games")
+dir.create(tie_dir, recursive = TRUE)
+tie_shots <- make_shots_df(2027L, with_game_date = TRUE, include_players = c("101", "102"))
+tie_shots$game_id <- c("s1", "s2", "s3", "s3", "s2")
+tie_pbp   <- make_pbp_fixture(2027L, game_ids = c("g1", "g2", "g3"), include_non_shots = FALSE)
+saveRDS(tie_shots, file.path(tie_dir, "nba_shots_2027.rds"))
+saveRDS(tie_pbp,   file.path(tie_dir, "nba_pbp_2027.rds"))
+tie_loaded <- NULL
+suppressMessages(capture.output(
+  tie_loaded <- env_default$load_shot_records(
+    shots_cache_path = file.path(tie_dir, "nba_shots_2027.rds"),
+    pbp_cache_path   = NULL,
+    season           = 2027L
+  )
+))
+ok("load_shot_records() keeps shots cache when PBP game count equals shots game count",
+   "s1" %in% tie_loaded$game_id && !("g1" %in% tie_loaded$game_id))
+
+# 6d: Row-count fallback when game_id is absent (non-shooting PBP rows do not inflate score)
+nogid_dir <- file.path(pbp_sb_root, "no_game_id")
+dir.create(nogid_dir, recursive = TRUE)
+nogid_shots <- make_shots_df(2027L, with_game_date = TRUE, include_players = c("101", "102")) # 5 rows
+nogid_pbp_fewer <- make_pbp_fixture(2027L, game_ids = c("g1"), include_non_shots = TRUE)     # 2 valid shooting + 2 non-shot/FT
+nogid_pbp_fewer$game_id <- NULL
+saveRDS(nogid_shots,     file.path(nogid_dir, "nba_shots_2027.rds"))
+saveRDS(nogid_pbp_fewer, file.path(nogid_dir, "nba_pbp_2027.rds"))
+nogid_loaded <- NULL
+suppressMessages(capture.output(
+  nogid_loaded <- env_default$load_shot_records(
+    shots_cache_path = file.path(nogid_dir, "nba_shots_2027.rds"),
+    pbp_cache_path   = NULL,
+    season           = 2027L
+  )
+))
+ok("load_shot_records() keeps shots cache when game_id is absent and valid PBP shot rows <= shots rows",
+   "101" %in% as.character(nogid_loaded$athlete_id_1) && !("201" %in% as.character(nogid_loaded$athlete_id_1)))
+
+# 6e: Invalid PBP (missing required shot columns) falls back cleanly to shots cache
+invalid_pbp_dir <- file.path(pbp_sb_root, "invalid_pbp")
+dir.create(invalid_pbp_dir, recursive = TRUE)
+inv_shots <- make_shots_df(2027L, with_game_date = TRUE, include_players = c("101"))
+inv_shots$team_abbrev[1] <- "NY" # also verifies ESPN fixup on shots cache
+inv_pbp   <- data.frame(game_id = c("g1", "g2", "g3", "g4"), note = "missing shot cols", stringsAsFactors = FALSE)
+saveRDS(inv_shots, file.path(invalid_pbp_dir, "nba_shots_2027.rds"))
+saveRDS(inv_pbp,   file.path(invalid_pbp_dir, "nba_pbp_2027.rds"))
+inv_loaded <- NULL
+suppressMessages(capture.output(
+  inv_loaded <- env_default$load_shot_records(
+    shots_cache_path = file.path(invalid_pbp_dir, "nba_shots_2027.rds"),
+    pbp_cache_path   = NULL,
+    season           = 2027L
+  )
+))
+ok("load_shot_records() ignores invalid PBP lacking shot columns and fixes shots team_abbrev",
+   "101" %in% as.character(inv_loaded$athlete_id_1) &&
+     "NYK" %in% inv_loaded$team_abbrev &&
+     !("NY" %in% inv_loaded$team_abbrev))
+
+# 6f: Custom shots_cache_path outside cache_dir with pbp_cache_path = NULL checks dirname(shots_cache_path)
+custom_dir <- file.path(pbp_sb_root, "custom_shots_loc")
+dir.create(custom_dir, recursive = TRUE)
+custom_shots_p <- file.path(custom_dir, "custom_shots.rds")
+saveRDS(inv_shots, custom_shots_p)
+custom_loaded <- NULL
+suppressMessages(capture.output(
+  custom_loaded <- env_default$build_shot_chart_dataset(
+    season            = cur_season,
+    cache_dir         = pbp_sb_cache, # has rich nba_pbp_<cur_season>.rds, must NOT be picked for custom path
+    web_data_dir      = pbp_sb_web,
+    players_json_path = file.path(sb_web, "projections_season_players.json"),
+    shots_cache_path  = custom_shots_p,
+    pbp_cache_path    = NULL
+  )
+))
+ok("custom shots_cache_path outside cache_dir does not accidentally pull PBP from cache_dir",
+   "101" %in% as.character(custom_loaded$catalog$player_id) &&
+     !("201" %in% as.character(custom_loaded$catalog$player_id)))
+
+explicit_pbp_loaded <- NULL
+suppressMessages(capture.output(
+  explicit_pbp_loaded <- env_default$build_shot_chart_dataset(
+    season            = cur_season,
+    cache_dir         = custom_dir,
+    web_data_dir      = pbp_sb_web,
+    players_json_path = file.path(pbp_sb_web, "projections_season_players.json"),
+    shots_cache_path  = custom_shots_p,
+    pbp_cache_path    = rich_pbp_path
+  )
+))
+ok("explicit pbp_cache_path overrides sibling default and builds from PBP",
+   nrow(explicit_pbp_loaded$catalog) == 6L &&
+     identical(sort(unique(explicit_pbp_loaded$catalog$team)), c("GSW", "NOP", "NYK", "SAS", "UTA", "WAS")))
+
+# ------------------------------------------------------------------------------
 cat(sprintf("\n%d checks, %d failure(s).\n", checks, failures))
 if (failures > 0L) quit(status = 1L)
 cat("ALL CHECKS PASSED\n")
