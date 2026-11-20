@@ -1114,6 +1114,12 @@ source("config.R")
   if (file.exists(file.path(repo_root, manifest_rel))) {
     stage_paths <- unique(c(stage_paths, manifest_rel))
   }
+  # The landing digest's ratings history (MLB-Analytics#127) is tracked and NOT
+  # ignored, so a plain scoped add stages it (never -f).
+  history_rel <- file.path("data", "history", "ratings_history.csv")
+  if (file.exists(file.path(repo_root, history_rel))) {
+    stage_paths <- unique(c(stage_paths, history_rel))
+  }
   record("git add -A",
          .pw_git(repo_root, c("add", "-A", "--", stage_paths)))
   record("git commit (MLB-Analytics)",
