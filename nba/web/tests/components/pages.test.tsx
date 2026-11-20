@@ -132,3 +132,64 @@ describe('Page Clients mount on real data', () => {
     ).not.toThrow();
   });
 });
+
+describe('OffseasonClient Static Off-Season Snapshot notice (#193)', () => {
+  it('renders the derived transaction end date and updates when a newer date is passed', () => {
+    const expectedMaxDate = offseasonTransactions
+      .map((t) => t.date)
+      .reduce((max, cur) => (cur > max ? cur : max));
+
+    const { rerender } = render(
+      <OffseasonClient
+        transactions={offseasonTransactions}
+        teams={offseasonTeams}
+        draftProspects={offseasonDraft}
+      />
+    );
+
+    const notice = screen.getByTestId('offseason-static-snapshot-notice');
+    expect(notice).toHaveTextContent(/Static Off-Season Snapshot/i);
+    expect(notice).toHaveTextContent(expectedMaxDate);
+    expect(notice).toHaveTextContent(/stops on/i);
+    expect(notice).toHaveTextContent(/live in-season moves/i);
+    expect(notice).toHaveTextContent(/not automatically refreshed/i);
+
+    const newerDate = '2026-11-18';
+    const updatedTransactions = [
+      ...offseasonTransactions,
+      {
+        ...offseasonTransactions[0],
+        id: 'tx-test-newer-date',
+        date: newerDate,
+      },
+    ];
+
+    rerender(
+      <OffseasonClient
+        transactions={updatedTransactions}
+        teams={offseasonTeams}
+        draftProspects={offseasonDraft}
+      />
+    );
+
+    const updatedNotice = screen.getByTestId('offseason-static-snapshot-notice');
+    expect(updatedNotice).toHaveTextContent(newerDate);
+    expect(updatedNotice).not.toHaveTextContent(expectedMaxDate);
+  });
+
+  it('renders the Static Off-Season Snapshot notice safely when transactions is empty', () => {
+    render(
+      <OffseasonClient
+        transactions={[]}
+        teams={offseasonTeams}
+        draftProspects={offseasonDraft}
+      />
+    );
+
+    const notice = screen.getByTestId('offseason-static-snapshot-notice');
+    expect(notice).toHaveTextContent(/Static Off-Season Snapshot/i);
+    expect(notice).toHaveTextContent(/live in-season moves/i);
+    expect(notice).toHaveTextContent(/not automatically refreshed/i);
+    expect(notice.textContent).not.toMatch(/\b(null|undefined)\b/i);
+  });
+});

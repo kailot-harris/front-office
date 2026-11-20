@@ -30,10 +30,27 @@ import {
   Zap,
   Scale,
   Download,
+  Info,
 } from 'lucide-react';
 import { exportToCsv } from '@/lib/exportToCsv';
 import { HowToReadDisclosure } from '@/components/HowToReadDisclosure';
 import { GlossaryTerm } from '@/components/GlossaryTerm';
+
+/**
+ * Derive the latest YYYY-MM-DD transaction date from the static offseason catalog,
+ * returning null when no valid transaction dates are present (#193).
+ */
+export function getLatestTransactionDate(
+  transactions: ReadonlyArray<Pick<OffseasonTransaction, 'date'>>
+): string | null {
+  let latest: string | null = null;
+  for (const tx of transactions) {
+    const d = typeof tx.date === 'string' ? tx.date.trim() : '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) continue;
+    if (latest === null || d > latest) latest = d;
+  }
+  return latest;
+}
 
 interface OffseasonClientProps {
   transactions: OffseasonTransaction[];
@@ -205,6 +222,7 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
 
   const totalFreeAgents = useMemo(() => transactions.filter((t) => t.type === 'free_agency').length, [transactions]);
   const totalDraftPicks = useMemo(() => transactions.filter((t) => t.type === 'draft').length, [transactions]);
+  const latestTransactionDate = useMemo(() => getLatestTransactionDate(transactions), [transactions]);
   const topGainTeam = teams[0] || null;
 
   // Selected team profile object for deep-dive
@@ -341,6 +359,34 @@ export const OffseasonClient: React.FC<OffseasonClientProps> = ({
             </span>
             <span className="font-bold text-white text-sm font-mono">{transactions.length} Major Moves</span>
           </div>
+        </div>
+      </div>
+
+      {/* Static Off-Season Snapshot Notice (#193) */}
+      <div
+        role="note"
+        data-testid="offseason-static-snapshot-notice"
+        className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs sm:text-sm text-amber-100"
+      >
+        <Info className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
+        <div className="space-y-0.5">
+          <div className="font-semibold text-amber-300">
+            Static Off-Season Snapshot{latestTransactionDate ? ` (through ${latestTransactionDate})` : ''}
+          </div>
+          <p className="text-slate-300 leading-relaxed">
+            {latestTransactionDate ? (
+              <>
+                This transaction catalog stops on{' '}
+                <span className="font-mono font-semibold text-white">{latestTransactionDate}</span>. Live in-season
+                moves after that date are excluded and are not automatically refreshed.
+              </>
+            ) : (
+              <>
+                No dated offseason transactions are currently loaded. Live in-season moves are excluded and are not
+                automatically refreshed.
+              </>
+            )}
+          </p>
         </div>
       </div>
 
