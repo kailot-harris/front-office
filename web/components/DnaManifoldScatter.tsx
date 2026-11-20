@@ -69,7 +69,12 @@ export const DnaManifoldScatter: React.FC<DnaManifoldScatterProps> = ({
       </div>
 
       <div className="relative w-full overflow-hidden flex justify-center my-1">
-        <svg viewBox={`0 0 ${width} ${height}`} className="w-full max-w-[500px] h-auto overflow-visible">
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          className="w-full max-w-[500px] h-auto overflow-visible"
+          role="img"
+          aria-label={`2D stylistic manifold scatter plot for ${players.length} MLB ${playerType}s with ${selectedPlayer.playerName} selected`}
+        >
           {/* Grid lines */}
           <line
             x1={padding}
