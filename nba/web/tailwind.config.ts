@@ -1,4 +1,6 @@
 import type { Config } from "tailwindcss";
+import plugin from "tailwindcss/plugin";
+import { themedColors, themedVariables } from "./lib/themePalette";
 
 const config: Config = {
   content: [
@@ -9,26 +11,33 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
-        mono: ["var(--font-geist-mono)", "ui-monospace", "monospace"],
+        // Resolve through the shared tokens (app/design-tokens.css), which put
+        // the geist package's --font-geist-* variables first.
+        sans: ["var(--fo-font-sans)"],
+        mono: ["var(--fo-font-mono)"],
       },
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
-        accent: {
-          50: "#eef2ff",
-          400: "#818cf8",
-          500: "#6366f1",
-          600: "#4f46e5",
-          700: "#4338ca",
-          900: "#312e81",
-          950: "#1e1b4b",
+        // Palettes flip with prefers-color-scheme; see lib/themePalette.ts.
+        ...themedColors(),
+        // Shared --fo-* tokens (app/design-tokens.css, data-site="nba").
+        // color-mix keeps Tailwind's /opacity modifiers working on CSS variables.
+        surface: "color-mix(in srgb, var(--fo-surface) calc(<alpha-value> * 100%), transparent)",
+        "surface-raised": "color-mix(in srgb, var(--fo-surface-raised) calc(<alpha-value> * 100%), transparent)",
+        fo: {
+          text: "var(--fo-text)",
+          muted: "var(--fo-text-muted)",
+          border: "var(--fo-border)",
+          accent: "var(--fo-accent)",
+          "on-accent": "var(--fo-on-accent)",
+          success: "var(--fo-success)",
+          warning: "var(--fo-warning)",
+          danger: "var(--fo-danger)",
         },
-        surface: "#0a0920",
-        "surface-raised": "#14123a",
       },
     },
   },
-  plugins: [],
+  plugins: [plugin(({ addBase }) => addBase(themedVariables()))],
 };
 export default config;

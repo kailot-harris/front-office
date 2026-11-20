@@ -1593,7 +1593,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                 <div
                   className={`text-xl sm:text-2xl font-black font-mono tabular-nums ml-2 ${
                     awayScore === null
-                      ? 'text-slate-600'
+                      ? 'text-slate-500'
                       : awayIsWinner === true
                         ? 'text-white'
                         : 'text-slate-400'
@@ -1646,7 +1646,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                 <div
                   className={`text-xl sm:text-2xl font-black font-mono tabular-nums mr-2 ${
                     homeScore === null
-                      ? 'text-slate-600'
+                      ? 'text-slate-500'
                       : homeIsWinner === true
                         ? 'text-white'
                         : 'text-slate-400'

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "sport": "nba",
-  "generated_at": "2026-11-20T15:45:21Z",
+  "generated_at": "2026-11-20T17:56:34Z",
   "schedule_through_date": "2026-11-19",
   "datasets": {
     "cba_cap_sheet.json": {
@@ -52,6 +52,19 @@
       "coverage_note": null,
       "source_season": "2026-27",
       "builder": "build_defense_dataset.R",
+      "max_lag_days": 2,
+      "static": false,
+      "static_reason": null
+    },
+    "landing_digest.json": {
+      "generated_at": "2026-11-20T17:31:31Z",
+      "through_date": "2026-11-19",
+      "through_date_source": "payload:yesterday[final].game_date",
+      "stamp_source": "payload:generated_at",
+      "content_sha256": "10be41ebaac939f5754c7657da8e16638a38fda356258d06f5f04354cfc58cee",
+      "coverage_note": null,
+      "source_season": "2026-27",
+      "builder": "build_landing_digest.R",
       "max_lag_days": 2,
       "static": false,
       "static_reason": null

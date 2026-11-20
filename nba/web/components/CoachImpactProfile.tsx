@@ -125,7 +125,7 @@ export const CoachImpactProfile: React.FC<CoachImpactProfileProps> = ({ coach })
             </span>
             <span className="font-bold text-indigo-400 text-sm">{talentWins} W</span>
           </div>
-          <div className="text-slate-600 font-bold text-lg">&rarr;</div>
+          <div className="text-slate-500 font-bold text-lg">&rarr;</div>
           <div className="p-2 rounded-lg bg-surface/80 border border-slate-800 text-right">
             <span className="text-[11px] sm:text-[10px] text-slate-400 block font-sans">
               Ensemble Projection

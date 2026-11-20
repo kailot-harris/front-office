@@ -70,7 +70,7 @@ export const TacticalMismatchRadar: React.FC<TacticalMismatchRadarProps> = ({
                 </div>
                 <div className="flex items-center gap-3 font-mono font-bold text-xs">
                   <span className="text-amber-400">{valA}</span>
-                  <span className="text-slate-600">vs</span>
+                  <span className="text-slate-500">vs</span>
                   <span className="text-sky-400">{valB}</span>
                 </div>
               </div>

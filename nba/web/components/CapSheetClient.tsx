@@ -196,7 +196,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
               />
             </div>
 
-            <select
+            <select aria-label="Select tier"
               value={selectedTier}
               onChange={(e) => setSelectedTier(e.target.value)}
               className="bg-surface border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
@@ -210,7 +210,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
           </div>
 
           {/* Teams Table */}
-          <div className="space-y-2 max-h-[720px] overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-[720px] overflow-y-auto pr-1" tabIndex={0} role="region" aria-label="Franchise list">
             {filteredTeams.map((t, idx) => {
               const isSelected = selectedTeam?.teamAbbr === t.teamAbbr;
 
@@ -260,7 +260,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                       <span className="text-[11px] sm:text-[10px] text-slate-400 block font-sans">Tax Bill</span>
                       <span
                         className={`text-xs font-bold ${
-                          isFiniteNumber(t.luxuryTaxBill) && t.luxuryTaxBill > 0 ? 'text-amber-400' : 'text-slate-600'
+                          isFiniteNumber(t.luxuryTaxBill) && t.luxuryTaxBill > 0 ? 'text-amber-400' : 'text-slate-500'
                         }`}
                       >
                         {!isFiniteNumber(t.luxuryTaxBill) ? MISSING_VALUE : t.luxuryTaxBill > 0 ? money(t.luxuryTaxBill) : '$0.0M'}
@@ -269,7 +269,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
 
                     <ChevronRight
                       className={`w-4 h-4 transition-transform ${
-                        isSelected ? 'text-amber-400 translate-x-0.5' : 'text-slate-600'
+                        isSelected ? 'text-amber-400 translate-x-0.5' : 'text-slate-500'
                       }`}
                     />
                   </div>
@@ -302,8 +302,8 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 bg-surface p-1 rounded-lg border border-slate-800 text-xs">
-                  <button
+                <div role="tablist" aria-label="View mode" className="flex items-center gap-1.5 bg-surface p-1 rounded-lg border border-slate-800 text-xs">
+                  <button role="tab" aria-selected={viewMode === 'roster'}
                     onClick={() => setViewMode('roster')}
                     className={`px-2.5 py-1 rounded font-medium transition-all ${
                       viewMode === 'roster'
@@ -313,7 +313,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                   >
                     Roster
                   </button>
-                  <button
+                  <button role="tab" aria-selected={viewMode === 'multiyear'}
                     onClick={() => setViewMode('multiyear')}
                     className={`px-2.5 py-1 rounded font-medium transition-all ${
                       viewMode === 'multiyear'
@@ -338,7 +338,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                   <div className="flex items-center gap-2 p-2 rounded bg-surface-raised/60 border border-slate-800/80">
                     <Lock
                       className={`w-3.5 h-3.5 ${
-                        selectedTeam.handcuffs.frozenPick7Years ? 'text-rose-400' : 'text-slate-600'
+                        selectedTeam.handcuffs.frozenPick7Years ? 'text-rose-400' : 'text-slate-500'
                       }`}
                     />
                     <span
@@ -353,7 +353,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                   <div className="flex items-center gap-2 p-2 rounded bg-surface-raised/60 border border-slate-800/80">
                     <Lock
                       className={`w-3.5 h-3.5 ${
-                        selectedTeam.handcuffs.noSalaryAggregation ? 'text-rose-400' : 'text-slate-600'
+                        selectedTeam.handcuffs.noSalaryAggregation ? 'text-rose-400' : 'text-slate-500'
                       }`}
                     />
                     <span
@@ -368,7 +368,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                   <div className="flex items-center gap-2 p-2 rounded bg-surface-raised/60 border border-slate-800/80">
                     <Lock
                       className={`w-3.5 h-3.5 ${
-                        selectedTeam.handcuffs.noCashInTrades ? 'text-rose-400' : 'text-slate-600'
+                        selectedTeam.handcuffs.noCashInTrades ? 'text-rose-400' : 'text-slate-500'
                       }`}
                     />
                     <span
@@ -383,7 +383,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                   <div className="flex items-center gap-2 p-2 rounded bg-surface-raised/60 border border-slate-800/80">
                     <Lock
                       className={`w-3.5 h-3.5 ${
-                        selectedTeam.handcuffs.noTpmle ? 'text-rose-400' : 'text-slate-600'
+                        selectedTeam.handcuffs.noTpmle ? 'text-rose-400' : 'text-slate-500'
                       }`}
                     />
                     <span

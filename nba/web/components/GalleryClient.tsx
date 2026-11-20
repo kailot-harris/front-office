@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
+import { useDialogFocus } from '@/lib/useDialogFocus';
 import { Film, Image as ImageIcon, Search, Download, Maximize2, X } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
 import { HowToReadDisclosure } from '@/components/HowToReadDisclosure';
@@ -203,6 +204,8 @@ export const GalleryClient: React.FC<GalleryClientProps> = ({ mediaItems = NBA_G
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeMedia, setActiveMedia] = useState<VisualMediaItem | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, activeMedia !== null, () => setActiveMedia(null));
 
   const categories = useMemo(() => {
     const set = new Set(mediaItems.map((m) => m.category).filter(Boolean));
@@ -354,11 +357,16 @@ export const GalleryClient: React.FC<GalleryClientProps> = ({ mediaItems = NBA_G
       {/* Fullscreen Modal View */}
       {activeMedia && (
         <div className="fixed inset-0 z-50 bg-surface/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-surface-raised border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="gallery-modal-title"
+            className="bg-surface-raised border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-4 border-b border-slate-800">
               <div>
-                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <h2 id="gallery-modal-title" className="text-base font-bold text-white flex items-center gap-2">
                   {activeMedia.title}
                   <span className="text-xs font-mono font-normal text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
                     {activeMedia.category}

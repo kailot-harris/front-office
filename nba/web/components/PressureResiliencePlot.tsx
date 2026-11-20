@@ -93,21 +93,19 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
           aria-label={`Pressure resilience scatter plot of clutch true shooting percentage vs. turnover fragility (${validProfiles.length} closers, selected: ${selectedProfile.playerName}, ${selectedProfile.team})`}
         >
           {/* Quadrant Axis Lines */}
-          <line
+          <line className="stroke-zinc-800"
             x1={padding}
             y1={scaleY(55.0)}
             x2={width - padding}
             y2={scaleY(55.0)}
-            stroke="#27272a"
             strokeWidth="1"
             strokeDasharray="3,3"
           />
-          <line
+          <line className="stroke-zinc-800"
             x1={scaleX(0.0)}
             y1={padding}
             x2={scaleX(0.0)}
             y2={height - padding}
-            stroke="#27272a"
             strokeWidth="1"
             strokeDasharray="3,3"
           />

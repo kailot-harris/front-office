@@ -391,7 +391,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               <span className="text-[11px] sm:text-[10px] text-amber-400 font-bold uppercase tracking-wider block font-mono">
                 Team A (Designated)
               </span>
-              <select
+              <select aria-label="Select team a code"
                 value={teamACode}
                 onChange={(e) => {
                   const newA = e.target.value;
@@ -463,7 +463,7 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               <span className="text-[11px] sm:text-[10px] text-sky-400 font-bold uppercase tracking-wider block font-mono">
                 Team B (Opponent)
               </span>
-              <select
+              <select aria-label="Select team b code"
                 value={teamBCode}
                 onChange={(e) => {
                   const newB = e.target.value;

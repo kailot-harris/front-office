@@ -132,8 +132,8 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
           <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
             Display:
           </span>
-          <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
-            <button
+          <div role="tablist" aria-label="View mode" className="inline-flex rounded-lg bg-surface p-1 border border-slate-800">
+            <button role="tab" aria-selected={viewMode === 'zones'}
               onClick={() => setViewMode('zones')}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                 viewMode === 'zones'
@@ -144,7 +144,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
               <Flame className="w-3.5 h-3.5" />
               <span>Hot / Cold Zones</span>
             </button>
-            <button
+            <button role="tab" aria-selected={viewMode === 'hex'}
               onClick={() => setViewMode('hex')}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                 viewMode === 'hex'
@@ -155,7 +155,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
               <Layers className="w-3.5 h-3.5" />
               <span>Hex Density</span>
             </button>
-            <button
+            <button role="tab" aria-selected={viewMode === 'scatter'}
               onClick={() => setViewMode('scatter')}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                 viewMode === 'scatter'
@@ -557,8 +557,8 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
               </div>
 
               {/* Status Filter Tabs */}
-              <div className="flex items-center gap-1 p-1 bg-surface/80 rounded-lg border border-slate-800 text-[11px]">
-                <button
+              <div role="tablist" aria-label="Zone filter" className="flex items-center gap-1 p-1 bg-surface/80 rounded-lg border border-slate-800 text-[11px]">
+                <button role="tab" aria-selected={zoneFilter === 'ALL'}
                   type="button"
                   onClick={() => setZoneFilter('ALL')}
                   className={`px-2.5 py-1 rounded font-semibold transition-all ${
@@ -569,7 +569,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
                 >
                   All ({zoneMetrics.length})
                 </button>
-                <button
+                <button role="tab" aria-selected={zoneFilter === 'HOT'}
                   type="button"
                   onClick={() => setZoneFilter('HOT')}
                   className={`px-2 py-1 rounded font-semibold transition-all flex items-center gap-1 ${
@@ -581,7 +581,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
                   <Flame className="w-3 h-3 text-rose-500" />
                   <span>Hot ({overall.hotCount})</span>
                 </button>
-                <button
+                <button role="tab" aria-selected={zoneFilter === 'COLD'}
                   type="button"
                   onClick={() => setZoneFilter('COLD')}
                   className={`px-2 py-1 rounded font-semibold transition-all flex items-center gap-1 ${
@@ -593,7 +593,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
                   <Snowflake className="w-3 h-3 text-cyan-400" />
                   <span>Cold ({overall.coldCount})</span>
                 </button>
-                <button
+                <button role="tab" aria-selected={zoneFilter === 'NEUTRAL'}
                   type="button"
                   onClick={() => setZoneFilter('NEUTRAL')}
                   className={`px-2 py-1 rounded font-semibold transition-all ${
@@ -607,7 +607,7 @@ export const PlayerShotChart: React.FC<PlayerShotChartProps> = ({
               </div>
             </div>
 
-            <div className="space-y-2 max-h-[440px] overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-[440px] overflow-y-auto pr-1" tabIndex={0} role="region" aria-label="Zone list">
               {filteredZoneMetrics.map((zm) => {
                 const badge = getStatusBadge(zm.status);
                 const isPositive = zm.deltaPct >= 0;

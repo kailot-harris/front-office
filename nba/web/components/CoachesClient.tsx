@@ -126,8 +126,8 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           </div>
 
           {/* Sub-tab Navigation */}
-          <div className="flex items-center gap-1.5 p-1 bg-surface/80 border border-slate-800 rounded-xl overflow-x-auto self-start md:self-auto">
-            <button
+          <div role="tablist" aria-label="Active tab" className="flex items-center gap-1.5 p-1 bg-surface/80 border border-slate-800 rounded-xl overflow-x-auto self-start md:self-auto">
+            <button role="tab" aria-selected={activeTab === 'tierboard'}
               onClick={() => setActiveTab('tierboard')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                 activeTab === 'tierboard'
@@ -138,7 +138,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
               <Award className="w-3.5 h-3.5" />
               Tier Board & Dossiers
             </button>
-            <button
+            <button role="tab" aria-selected={activeTab === 'scatter'}
               onClick={() => setActiveTab('scatter')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                 activeTab === 'scatter'
@@ -149,7 +149,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
               <Crosshair className="w-3.5 h-3.5" />
               ATO Tactical Matrix
             </button>
-            <button
+            <button role="tab" aria-selected={activeTab === 'profile'}
               onClick={() => setActiveTab('profile')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                 activeTab === 'profile'
@@ -160,7 +160,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
               <TrendingUp className="w-3.5 h-3.5" />
               Impact Profile
             </button>
-            <button
+            <button role="tab" aria-selected={activeTab === 'genealogy'}
               onClick={() => setActiveTab('genealogy')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                 activeTab === 'genealogy'
@@ -270,7 +270,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
               {/* Coaching Tree Selector */}
               <div className="flex items-center gap-1.5">
                 <span className="text-[11px] text-slate-400">Tree:</span>
-                <select
+                <select aria-label="Select tree"
                   value={selectedTree}
                   onChange={(e) => setSelectedTree(e.target.value)}
                   className="bg-surface border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
@@ -285,7 +285,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
             </div>
 
             {/* Coach Cards List */}
-            <div className="space-y-2.5 max-h-[680px] overflow-y-auto pr-1">
+            <div className="space-y-2.5 max-h-[680px] overflow-y-auto pr-1" tabIndex={0} role="region" aria-label="Coach list">
               {filteredCoaches.map((c, idx) => {
                 const isSelected = selectedCoach?.teamAbbr === c.teamAbbr;
                 const cir = c.metrics.coachImpactRating;
@@ -344,7 +344,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
 
                       <ChevronRight
                         className={`w-4 h-4 transition-transform ${
-                          isSelected ? 'text-amber-400 translate-x-0.5' : 'text-slate-600'
+                          isSelected ? 'text-amber-400 translate-x-0.5' : 'text-slate-500'
                         }`}
                       />
                     </div>

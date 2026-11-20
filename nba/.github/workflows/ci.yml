@@ -6,7 +6,11 @@
 #   web  - the Next.js app. Delegates to `npm test`, i.e. web/scripts/run-test-suite.mjs,
 #          which already runs typecheck -> lint -> vitest(node) -> vitest(components)
 #          -> build -> playwright in cheapest-first order and reconciles failures
-#          against web/tests/known-issues.json. CI deliberately calls that one
+#          against web/tests/known-issues.json.
+#          The playwright stage includes tests/e2e/axe.spec.ts: @axe-core/playwright
+#          on every top-level route of the static export in light and dark
+#          prefers-color-scheme, failing on serious or critical WCAG 2.2 AA
+#          violations (NBA_analytics#216). CI deliberately calls that one
 #          command rather than re-listing the stages here, so the merge gate and
 #          the local command cannot drift apart.
 #   r    - the R pipeline. Parses every tracked .R file (syntax only, nothing is
