@@ -29,6 +29,7 @@
 #   httr        market_odds_engine.R
 #   jsonlite    market_odds_engine.R
 #   ranger      market_odds_engine.R
+#   processx    render_weekly_gifs.R (runs each GIF script, kills its process tree on timeout)
 #
 # bcrypt, RSQLite and sys were removed with the control panel login (now in
 # retired/control_panel/); nothing else in the repo uses them.
@@ -42,3 +43,4 @@ httr2
 httr
 jsonlite
 ranger
+processx

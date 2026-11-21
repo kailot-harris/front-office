@@ -525,9 +525,21 @@ run_registered_stage("matchups_dataset")
 # 18. Landing digest for the front-office landing page (WNBA#224); reads matchups_slates.json.
 run_registered_stage("landing_digest")
 
+# 18a. Weekly GIF re-render (front-office weekly GIF design, 2026-11-21). Runs the scheduled
+# tools/gif_*.R scripts (each in its own R process, 10-min timeout, process tree killed on
+# timeout) when in season and the last successful render is GIF_RERENDER_DAYS+ days old
+# (FO_FORCE_GIF_RENDER=1 forces it); off-season it logs the skip and renders nothing. Must run
+# immediately before the index stage below. Its status file is rewritten on every run except a
+# total failure, so strict_output reports "every script failed" as FAIL (exit code unchanged,
+# never stop()).
+if (!run_stage("render_weekly_gifs.R", "Re-render Weekly GIFs (tools/gif_*.R, in season, every 6+ days)",
+               call_fn = "run_render_weekly_gifs",
+               output = file.path(CACHE_DIR, "gif_render_status.json"),
+               strict_output = TRUE)) strict_failures <- c(strict_failures, "render_weekly_gifs.R")
+
 # 18b. Visual media index (front-office#210). Scans web/public/media (the GIFs and PNGs
 # rendered by the tools/gif_*.R scripts) and writes web/public/data/visual_media_index.json:
-# per-file mtime as generated_at, GIF loop duration_ms. The Gallery page reads it at build
+# per-file generated_at (media_generated_at(): mtime if re-rendered, else last commit time), GIF loop duration_ms. The Gallery page reads it at build
 # time and the landing slideshow in the browser. strict_output: a failed or no-op export is
 # re-reported as ">>> [FAIL]" at the bottom (exit code unchanged, never stop()).
 if (!run_stage("export_visual_media_index.R", "Publish Visual Media Index (Gallery + Landing Slideshow)",
